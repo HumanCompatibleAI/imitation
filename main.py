@@ -144,10 +144,11 @@ def reset_and_wrap_env_reward(env, R):
     Param:
       env [gym.Env] -- An environment to modify in place.
       R [callable] -- The new reward function. Takes three arguments,
-        `old_obs`, `action`, and `obs`. Returns the new reward.
+        `old_obs`, `action`, and `new_obs`. Returns the new reward.
         - `old_obs` is the observation made before taking the action.
         - `action` is simply the action passed to env.step().
-        - `obs` is the observation made after taking the action.
+        - `new_obs` is the observation made after taking the action. This is
+          same as the observation returned by env.step().
     """
     old_obs = env.reset()
 
