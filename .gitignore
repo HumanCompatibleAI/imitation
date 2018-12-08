@@ -1,0 +1,13 @@
+*.ipynb
+__pycache__
+*.out
+*.lprof
+.*/
+*.pyc
+.DS_STORE
+output/
+*.html
+data/
+*.notes
+*.dream
+*.pkl
