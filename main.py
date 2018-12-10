@@ -7,6 +7,9 @@ def idealize():
     env = gym.make("FrozenLake-v0")
 
     reward_true = TODO
+    # TODO: Pickle an optimized solution to save time,
+    # XXX: Make it easy to abstract out which planner/optimizer to use
+    # to generate policies.
     traj_list_expert = generate_traj_reward(env, reward_true)
 
     # Initialize networks (train these)
@@ -25,6 +28,7 @@ def idealize():
     trainer.train(n_epochs=1000)
 
     # Get unshaped reward (depends only on state and theta)
+    # XXX: Make sure that rewards can depend on states and actions.
     reward_simple = reward_net.get_unshaped()
 
     # Test on other environment/Evaluate.
@@ -129,9 +133,9 @@ class AIRLTrainer():
 
 
     def _train_gen(self):
-        # Note: By this time we call this function, the environment
-        # should already be modified to return our custom reward.
-        self.policy_model.learn(1000)
+        # Adam: It's not necessary to train to convergence.
+        # (Probably should take a look at Justin's code for intuit.)
+        self.policy_model.learn(10)
 
 
 def reset_and_wrap_env_reward(env, R):
@@ -150,7 +154,12 @@ def reset_and_wrap_env_reward(env, R):
         - `new_obs` is the observation made after taking the action. This is
           same as the observation returned by env.step().
     """
+    # XXX: Look at gym wrapper class which can override step in a
+    # more idiomatic way.
     old_obs = env.reset()
+
+    # XXX: VecEnv later.
+    # XXX: Consider saving a s,a pairs until the end and evaluate sim.
 
     orig = getattr(env, "_orig_step_", env.step)
     env._orig_step_ = orig

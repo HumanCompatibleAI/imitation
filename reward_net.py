@@ -2,9 +2,8 @@ import tensorflow as tf
 import tf.keras as keras
 from keras import models, layers
 
+# Immediate TODO: Use tf.layers instead of keras.
 
-def init_reward_net():
-    pass
 
 class RewardNet():
 
@@ -74,7 +73,7 @@ class RewardNet():
             x = obs_inputs
 
         # TODO:
-        # Just insert dense layers for now, we can somehow have arbitrary keras
+        # Just insert dense layers for now, we can somehow have arbitrary
         # layers later.
         x = layers.Dense(64, activation='relu')(x)
         reward = layers.Dense(1)(x)
@@ -91,6 +90,8 @@ class RewardNet():
         Return phi_network, the reward shaping network (serves to disentangle
         dynamics from reward).
         """
+        # TODO: Parameter instead of magic # for the '64' part. (This seems less
+        # urgent than getting something up and running.)
         shared_layers = [
                 layers.Dense(64, activation='relu'),
                 layers.Dense(1),
@@ -123,4 +124,3 @@ class RewardNet():
                 outputs=shaped_reward,
                 )
         return model
-
