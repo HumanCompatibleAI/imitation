@@ -4,53 +4,114 @@ MVP-not-really
 
 import numpy as np
 import gym
+import stable_baselines
 from stable_baselines.common.policies import MlpPolicy
 from stable_baselines.common.vec_env import DummyVecEnv, SubprocVecEnv
-from stable_baselines import PPO1, PPO2
+import tensorflow as tf
+
+import os.path
 
 
-def _basics1(env_name="CartPole-v1", skip_training=True):
+def _maybe_load_env(env_or_str):
     """
-    * Load X environment.
-    * Train a PPO policy on frozen lake.
-    * Generate 9 trajectory rollouts.
-    * Print the state action pairs.
-    BONUS:
-    # Pickle the policy.
-    # Load the policy.
-    # Repeat the procedure above from the rollout part.
+    Params:
+    env_or_str (str or gym.Env): The Env or its string id in Gym.
+
+    Return:
+    env (gym.Env) -- Either the original argument if it was an Env or an
+      instantiated gym Env if it was a string.
+    id (str) -- The environment's id.
     """
-    orig_env = gym.make(env_name)
-    # # PPO1
-    env = DummyVecEnv([lambda: orig_env])
-    savepath = "saved_models/ppo_"+env_name
-    if not skip_training:
-        model = PPO1(MlpPolicy, env, verbose=1,
-                tensorboard_log="./output/{}/".format(env_name))
-        model.learn(50000)
-        model.save(savepath)
+    if isinstance(env_or_str, str):
+        env = gym.make(env_or_str)
     else:
-        model = PPO1.load(savepath, env=env)
-
-    X = generate_rollouts(model, orig_env, n_timesteps=3)
-    print(X)
+        env = env_or_str
+    return env
 
 
-def generate_rollouts(model, env, n_timesteps):
+def make_blank_policy(env, policy_network_class=MlpPolicy,
+        init_tensorboard=True, policy_class=stable_baselines.PPO1):
+    """
+    Instantiates a policy for the provided environment.
+
+    Params:
+    env (str or Env): The Env or its string id in Gym.
+    policy_network_class (stable_baselines.BasePolicy): A policy network
+      constructor from the stable_baselines module.
+    policy_class (stable_baselines.BaseRLModel subclass): A policy constructor
+      from the stable_baselines module.
+    init_tensorboard (bool): If True, then initialize the policy to make
+      TensorBoard summary writes.
+
+    Return:
+    policy (stable_baselines.BaseRLModel)
+    """
+    env = _maybe_load_env(env)
+    policy = policy_class(policy_network_class, env, verbose=1,
+            tensorboard_log="./output/{}/".format(env.spec.id))
+    return policy
+
+
+def get_trained_policy(env, force_train=False, timesteps=30000,
+        never_overwrite=False, policy_class=stable_baselines.PPO1):
+    """
+    Returns a trained policy, maybe pretrained.
+
+    If a policy for the environment hasn't been trained and pickled before,
+    then first train and pickle it. Otherwise, load that pickled policy.
+
+    Params:
+    env (str or Env): The Env that this policy is meant to act in, or the
+      string name of the Gym environment.
+    timesteps (int): The number of training timesteps.
+    force_train (bool): If True, then always train and pickle first, even
+      if the policy already exists.
+    never_overwrite (bool): It True, then don't pickle a policy if it means
+      overwriting another pickle. Ah, pickles.
+    policy_class (stable_baselines.BaseRLModel class): A policy constructor
+      from the stable_baselines module.
+
+    Return:
+    policy (stable_baselines.BaseRLModel)
+    """
+    env = _maybe_load_env(env)
+    savepath = "saved_models/{}_{}.pkl".format(
+            policy_class.__name__, env.spec.id)
+    exists = os.path.exists(savepath)
+
+    if exists and not force_train:
+        policy = policy_class.load(savepath, env=env)
+        print("loaded policy from '{}'".format(savepath))
+    else:
+        print("Didn't find pickled policy at {}. Training...".format(savepath))
+        policy = make_blank_policy(env, policy_class=policy_class)
+        policy.learn(timesteps)
+        if exists and never_overwrite:
+            print(("Avoided saving policy pickle at {} because overwrite "
+                    "is disabled and that file already exists!"
+                    ).format(savepath))
+        else:
+            policy.save(savepath)
+            print("Saved pickle!")
+    return policy
+
+
+def generate_rollouts(policy, env, n_timesteps):
     """
     Generate state-action pairs from a policy.
 
     Params:
     model -- A stable_baselines Model, trained on the gym environment.
-    env (Env) -- A Gym Env. VecEnv is not currently supported.
+    env (Env or str) -- A Gym Env. VecEnv is not currently supported.
     n_timesteps (int) -- The number of state-action pairs to collect.
 
     Return:
     rollout_obs (array) -- A numpy array with shape
       `[n_timesteps] + env.observation_space.shape`.
     rollout_act (array) -- A numpy array with shape
-      `[n_timesteps] + env.action_space.shape`.
-    """
+      `[n_timesteps] + env.action_space.shape`.  """
+    env = _maybe_load_env(env)
+
     rollout_obs = []
     rollout_act = []
     while len(rollout_obs) < n_timesteps:
@@ -72,4 +133,17 @@ def generate_rollouts(model, env, n_timesteps):
 
     return rollout_obs, rollout_act
 
-_basics1()
+
+def discriminate_rollouts(env="CartPole-v1"):
+    """
+    1. Generate rollouts from expert policy.
+    2. Generate random rollouts.
+    3. Train a Discriminator to distinguish betwen expert and random s-a pairs.
+    4. Show loss decreasing over time.
+    5. Show accuracy over training set. (Don't care about validation for now.)
+    """
+    expert_policy = get_trained_policy(env)
+    fake_policy = make_blank_policy(env)
+    import pdb; pdb.set_trace()
+
+discriminate_rollouts()
