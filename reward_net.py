@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 
 class RewardNet(ABC):
 
-    def __init__(self, env, state_only=True, discount_factor=0.9):
+    def __init__(self, env, discount_factor=0.9):
         """
         Reward network for Adversarial IRL. Contains two networks, the
         state(-action) reward parameterized by theta, and the state reward
@@ -12,32 +12,32 @@ class RewardNet(ABC):
 
         Params:
           env (gym.Env): The environment that we are predicting reward for.
-            Maybe we could pass in the observation space instead.
-          state_only (bool): If True, then ignore the action when predicting
-            and training rewards.
           discount_factor (float): A number in the range [0, 1].
         """
 
         self.env = env
-        self.state_only = state_only
         self.discount_factor = discount_factor
 
         phs = self._build_placeholders()
         self.old_obs_ph, self.act_ph, self.new_obs_ph = phs
 
-        self.reward_output = self.build_theta_network(
-                self.old_obs_ph, self.act_ph)
+        with tf.variable_scope("theta_network"):
+            self.reward_output = self.build_theta_network(
+                    self.old_obs_ph, self.act_ph)
 
-        old_shaping_output, new_shaping_output = self.build_phi_network(
-                self.old_obs_ph, self.new_obs_ph)
+        with tf.variable_scope("phi_network"):
+            old_shaping_output, new_shaping_output = self.build_phi_network(
+                    self.old_obs_ph, self.new_obs_ph)
 
-        self.shaped_reward_output = (self.reward_output +
-                self.discount_factor * new_shaping_output - old_shaping_output)
+        with tf.variable_scope("f_network"):
+            self.shaped_reward_output = (self.reward_output +
+                    self.discount_factor * new_shaping_output
+                    - old_shaping_output)
 
 
     def _build_placeholders(self):
         """
-        Returns old_obs, action, new_obs
+        Returns old_obs_ph, act_ph, new_obs_ph
         """
         o_shape = (None,) + self.env.observation_space.shape
         a_shape = (None,) + self.env.action_space.shape
@@ -49,14 +49,13 @@ class RewardNet(ABC):
         act_ph = tf.placeholder(name="act_ph",
                 dtype=tf.float32, shape=a_shape)
 
-        return old_obs, act_ph, new_obs_ph
+        return old_obs_ph, act_ph, new_obs_ph
 
 
     @abstractmethod
     def build_theta_network(self, obs_input, act_input):
         """
-        Returns theta_network, a keras Model that predicts reward whose
-        input is a state-action pair.
+        Build the reward network.
 
         Although AIRL doesn't individually optimize this subnetwork during
         training, it ends up being our reward approximator at test time.
@@ -95,55 +94,93 @@ class RewardNet(ABC):
           state that we transition to after this state-action pair.
 
         Return:
-        shaping_output_old (Tensor) -- A reward shaping prediction for each of
-          the old inputs.
-        shaping_output_new (Tensor) -- A reward shaping prediction for each of
-          the new outputs.
+        old_shaping_output (Tensor) -- A reward shaping prediction for each of
+          the old observation inputs.
+        new_shaping_output (Tensor) -- A reward shaping prediction for each of
+          the new observation inputs.
         """
         pass
 
 
 class BasicRewardNet(RewardNet):
+    """
+    A reward network with default settings. Meant for prototyping.
+
+    This network flattens inputs. So probably don't use an RGB observation
+    space.
+    """
+
+    def __init__(self, env, ignore_action=False, **kwargs):
+        """
+        Params:
+          env (gym.Env): The environment that we are predicting reward for.
+          ignore_action (bool): If True, then ignore the action when predicting
+            and training rewards.
+          discount_factor (float): A number in the range [0, 1].
+        """
+        self.ignore_action = ignore_action
+        super().__init__(env, **kwargs)
+
+
+    def _build_ff(self):
+        # XXX: Seems like xavier is default?
+        # https://stackoverflow.com/q/37350131/1091722
+        xavier = tf.contrib.layers.xavier_initializer
+        layers = [
+            tf.layers.Dense(64, activation='relu', kernel_initializer=xavier(),
+                name="dense1"),
+            tf.layers.Dense(1, kernel_initializer=xavier(),
+                name="dense2"),
+        ]
+        return layers
+
 
     def build_theta_network(self, obs_input, act_input):
-        inputs = [obs_inputs, act_input]
-
-        if not self.state_only:
-            x = layers.concatenate(inputs)
+        if self.ignore_action:
+            inputs = flat(obs_input)
         else:
-            # Ignore actions, while allowing them to be inputted into the
-            # network. (Actually, this setup *requires* that the unused actions
-            # are inputted.)
-            x = obs_inputs
+            inputs = tf.concat([
+                _flat(obs_input, self.env.observation_space.shape),
+                _flat(act_input, self.env.action_space.shape)], axis=0)
 
-        # TODO:
-        # Just insert dense layers for now, we can somehow have arbitrary
-        # layers later.
-        x = layers.Dense(64, activation='relu')(x)
-        reward = layers.Dense(1)(x)
+        layers = self._build_ff()
+        reward_output = tf.identity(_apply_layers(layers, inputs),
+                "reward_output")
 
-        model = tf.keras.Model(name="theta",
-                inputs=[obs_input, act_inputs],
-                outputs=reward)
-
-        return model, reward
+        return reward_output
 
 
     def build_phi_network(self, old_obs_input, new_obs_input):
         # TODO: Parameter instead of magic # for the '64' part. (This seems less
         # urgent than getting something up and running.)
-        shared_layers = [
-                layers.Dense(64, activation='relu'),
-                layers.Dense(1),
-                ]
+        old_o = _flat(old_obs_input, self.env.observation_space.shape)
+        new_o = _flat(new_obs_input, self.env.observation_space.shape)
 
-        def apply_shared(x):
-            for layer in shared_layers:
-                x = layer(x)
-            return x
+        layers = self._build_ff()
+        old_shaping_output = tf.identity(_apply_layers(layers, old_o),
+                name="old_shaping_output")
+        new_shaping_output = tf.identity(_apply_layers(layers, new_o),
+                name="new_shaping_output")
 
-        inputs = [old_obs_input, new_obs_input]
-        outputs = old_shaping, new_shaping = [apply_share(x) for x in inputs]
-        model = tf.keras.Model(name="phi", inputs=inputs, outputs=outputs)
+        return old_shaping_output, new_shaping_output
 
-        return model, old_shaping, new_shaping
+
+def _flat(tensor, space_shape):
+    ndim = len(space_shape)
+    if ndim== 0:
+        return tf.reshape(tensor, [-1, 1])
+    elif ndim == 1:
+        return tf.reshape(tensor, [-1, space_shape[0]])
+    else:
+        # TODO: Take the product(space_shape) and use that as the final
+        # dimension. In fact, product could encompass all the previous
+        # cases.
+        raise NotImplementedError
+
+
+# TODO: Util fn, maybe? (Or is there a built-in tf method for doing the
+# same thing?
+def _apply_layers(layers, x):
+    for layer in layers:
+        x = layer(x)
+    return x
