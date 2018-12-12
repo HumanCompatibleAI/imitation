@@ -122,17 +122,22 @@ class BasicRewardNet(RewardNet):
         super().__init__(env, **kwargs)
 
 
-    def _build_ff(self):
+    def _apply_ff(self, inputs):
+        """
+        Apply the a default feed forward network on the inputs. The Dense
+        layers are auto_reused. (Recall that build_*_network() called inside
+        a var scope named *_network.)
+        """
+        # TODO: Parameter instead of magic # for the '64' part. (This seems less # urgent than getting something up and running.)
         # XXX: Seems like xavier is default?
         # https://stackoverflow.com/q/37350131/1091722
         xavier = tf.contrib.layers.xavier_initializer
-        layers = [
-            tf.layers.Dense(64, activation='relu', kernel_initializer=xavier(),
-                name="dense1"),
-            tf.layers.Dense(1, kernel_initializer=xavier(),
-                name="dense2"),
-        ]
-        return layers
+        with tf.variable_scope("ff", reuse=tf.AUTO_REUSE):
+            x = tf.layers.dense(inputs, 64, activation='relu',
+                    kernel_initializer=xavier(), name="dense1")
+            x = tf.layers.dense(x, 1, kernel_initializer=xavier(),
+                    name="dense2")
+        return x
 
 
     def build_theta_network(self, obs_input, act_input):
@@ -143,25 +148,19 @@ class BasicRewardNet(RewardNet):
                 _flat(obs_input, self.env.observation_space.shape),
                 _flat(act_input, self.env.action_space.shape)], axis=0)
 
-        layers = self._build_ff()
-        reward_output = tf.identity(_apply_layers(layers, inputs),
+        reward_output = tf.identity(self._apply_ff(inputs),
                 "reward_output")
-
         return reward_output
 
 
     def build_phi_network(self, old_obs_input, new_obs_input):
-        # TODO: Parameter instead of magic # for the '64' part. (This seems less
-        # urgent than getting something up and running.)
         old_o = _flat(old_obs_input, self.env.observation_space.shape)
         new_o = _flat(new_obs_input, self.env.observation_space.shape)
 
-        layers = self._build_ff()
-        old_shaping_output = tf.identity(_apply_layers(layers, old_o),
+        old_shaping_output = tf.identity(self._apply_ff(old_o),
                 name="old_shaping_output")
-        new_shaping_output = tf.identity(_apply_layers(layers, new_o),
+        new_shaping_output = tf.identity(self._apply_ff(new_o),
                 name="new_shaping_output")
-
         return old_shaping_output, new_shaping_output
 
 
@@ -176,11 +175,3 @@ def _flat(tensor, space_shape):
         # dimension. In fact, product could encompass all the previous
         # cases.
         raise NotImplementedError
-
-
-# TODO: Util fn, maybe? (Or is there a built-in tf method for doing the
-# same thing?
-def _apply_layers(layers, x):
-    for layer in layers:
-        x = layer(x)
-    return x
