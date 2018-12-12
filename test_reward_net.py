@@ -7,6 +7,8 @@ from reward_net import BasicRewardNet
 
 class TestBasicRewardNet(unittest.TestCase):
 
-    def test_init_no_crash(self):
+    @pytest.mark.parameterize("env", ['FrozenLake-v0', 'Cartpole-v1',
+        'CarRacing-v0', 'LunarLander-v2'])
+    def test_init_no_crash(self, env='FrozenLake-v0'):
         for i in range(3):
-            x = BasicRewardNet(gym.make('FrozenLake-v0'))
+            x = BasicRewardNet(env)

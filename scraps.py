@@ -2,31 +2,17 @@
 MVP-not-really
 """
 
+import os.path
 import numpy as np
 import gym
+import tensorflow as tf
+
 import stable_baselines
 from stable_baselines.common.policies import MlpPolicy
 from stable_baselines.common.vec_env import DummyVecEnv, SubprocVecEnv
-import tensorflow as tf
 
-import os.path
-
-
-def _maybe_load_env(env_or_str):
-    """
-    Params:
-    env_or_str (str or gym.Env): The Env or its string id in Gym.
-
-    Return:
-    env (gym.Env) -- Either the original argument if it was an Env or an
-      instantiated gym Env if it was a string.
-    id (str) -- The environment's id.
-    """
-    if isinstance(env_or_str, str):
-        env = gym.make(env_or_str)
-    else:
-        env = env_or_str
-    return env
+import reward_net
+import util
 
 
 def make_blank_policy(env, policy_network_class=MlpPolicy,
@@ -46,7 +32,7 @@ def make_blank_policy(env, policy_network_class=MlpPolicy,
     Return:
     policy (stable_baselines.BaseRLModel)
     """
-    env = _maybe_load_env(env)
+    env = util.maybe_load_env(env)
     policy = policy_class(policy_network_class, env, verbose=1,
             tensorboard_log="./output/{}/".format(env.spec.id))
     return policy
@@ -74,7 +60,7 @@ def get_trained_policy(env, force_train=False, timesteps=30000,
     Return:
     policy (stable_baselines.BaseRLModel)
     """
-    env = _maybe_load_env(env)
+    env = util.maybe_load_env(env)
     savepath = "saved_models/{}_{}.pkl".format(
             policy_class.__name__, env.spec.id)
     exists = os.path.exists(savepath)
@@ -110,7 +96,7 @@ def generate_rollouts(policy, env, n_timesteps):
       `[n_timesteps] + env.observation_space.shape`.
     rollout_act (array) -- A numpy array with shape
       `[n_timesteps] + env.action_space.shape`.  """
-    env = _maybe_load_env(env)
+    env = util.maybe_load_env(env)
 
     rollout_obs = []
     rollout_act = []
@@ -144,6 +130,7 @@ def discriminate_rollouts(env="CartPole-v1"):
     """
     expert_policy = get_trained_policy(env)
     fake_policy = make_blank_policy(env)
-    import pdb; pdb.set_trace()
+    rnet = reward_net.BasicRewardNet(env)
+
 
 discriminate_rollouts()

@@ -1,6 +1,7 @@
 import tensorflow as tf
 from abc import ABC, abstractmethod
 
+import util
 
 class RewardNet(ABC):
 
@@ -11,11 +12,12 @@ class RewardNet(ABC):
         shaper parameterized by phi.
 
         Params:
-          env (gym.Env): The environment that we are predicting reward for.
+          env (gym.Env or str): The environment that we are predicting reward
+            for.
           discount_factor (float): A number in the range [0, 1].
         """
 
-        self.env = env
+        self.env = util.maybe_load_env(env)
         self.discount_factor = discount_factor
 
         phs = self._build_placeholders()
@@ -113,7 +115,8 @@ class BasicRewardNet(RewardNet):
     def __init__(self, env, ignore_action=False, **kwargs):
         """
         Params:
-          env (gym.Env): The environment that we are predicting reward for.
+          env (gym.Env or str): The environment that we are predicting reward
+            for.
           ignore_action (bool): If True, then ignore the action when predicting
             and training rewards.
           discount_factor (float): A number in the range [0, 1].
@@ -146,7 +149,7 @@ class BasicRewardNet(RewardNet):
         else:
             inputs = tf.concat([
                 _flat(obs_input, self.env.observation_space.shape),
-                _flat(act_input, self.env.action_space.shape)], axis=0)
+                _flat(act_input, self.env.action_space.shape)], axis=1)
 
         reward_output = tf.identity(self._apply_ff(inputs),
                 "reward_output")
