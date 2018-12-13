@@ -21,8 +21,7 @@ class TestAIRL(tf.test.TestCase):
     def test_init_no_crash(self, env='CartPole-v1'):
         _init_trainer(env)
 
-    @pytest.mark.parameterize("n_timesteps", [100, 20, 1])
-    def test_train_disc_no_crash(self, env='CartPole-v1', n_timesteps=100):
+    def test_train_disc_no_crash(self, env='CartPole-v1', n_timesteps=110):
         policy, trainer = _init_trainer(env)
         obs_old, act, obs_new = util.generate_rollouts(policy, env,
                 n_timesteps)

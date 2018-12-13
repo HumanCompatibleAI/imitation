@@ -7,10 +7,11 @@ from reward_net import BasicRewardNet
 import util
 
 
-class TestBasicRewardNet(tf.test.TestCase):
 
-    @pytest.mark.parameterize("env", ['FrozenLake-v0', 'Cartpole-v1',
-        'CarRacing-v0', 'LunarLander-v2'])
-    def test_init_no_crash(self, env='FrozenLake-v0'):
-        for i in range(3):
+# class TestBasicRewardNet(tf.test.TestCase):
+@pytest.mark.parametrize("env", ['FrozenLake-v0', 'CartPole-v1'])
+    # 'CarRacing-v0', 'LunarLander-v2']) #  I can't even intiialize these envs!
+def test_init_no_crash(env):
+    for i in range(3):
+        with tf.variable_scope(env+str(i)):
             x = BasicRewardNet(env)
