@@ -177,4 +177,4 @@ class AIRLTrainer():
     def train_gen(self, n_steps=100):
         # Adam: It's not necessary to train to convergence.
         # (Probably should take a look at Justin's code for intuit.)
-        self.policy.learn(n_timesteps)
+        self.policy.learn(n_steps)
