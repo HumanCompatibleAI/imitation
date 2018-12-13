@@ -207,9 +207,6 @@ def generate_rollouts(policy, env, n_timesteps):
     """
     assert n_timesteps > 0
 
-    if env is None:
-        env = policy.env
-
     env = util.maybe_load_env(env, vectorize=True)
     policy.set_env(env)  # This checks that env and policy are compatbile.
     assert is_vec_env(env)
