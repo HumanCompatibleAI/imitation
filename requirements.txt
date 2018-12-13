@@ -28,7 +28,7 @@ mock
 mpi4py
 nltk
 numba
-numpy
+numpy>=1.15
 nvidia-dali
 opencv-python
 pandas

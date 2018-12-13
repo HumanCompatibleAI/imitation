@@ -112,7 +112,7 @@ def generate_rollouts(policy, n_timesteps, env=None):
         done = False
         obs = env.reset()
         while not done and len(rollout_obs) < n_timesteps:
-            act, _ = model.predict(obs)
+            act, _ = policy.predict(obs)
             rollout_obs.append(obs)
             rollout_act.append(act)
             obs, _, done, _ = env.step(act)
@@ -139,6 +139,42 @@ def discriminate_rollouts(env="CartPole-v1"):
     expert_policy = get_trained_policy(env)
     fake_policy = make_blank_policy(env)
     rnet = reward_net.BasicRewardNet(env)
+    ## DEBUG
+    env = expert_policy.env
+    obv = env.reset()
+    pol = expert_policy
+    expert_rollout_obs, expert_rollout_act = generate_rollouts(pol, 100)
+    act_prob = action_prob_rollout(pol, expert_rollout_obs, expert_rollout_act)
 
 
-discriminate_rollouts()
+def action_prob_rollout(policy, rollout_obs, rollout_act):
+    """
+    Find the batch probability of observation, action pairs under a given
+    policy.
+
+    Params:
+    policy (stable_baselines.BaseRLModel): The policy.
+    rollout_obs (array) -- A numpy array with shape
+      `[n_timesteps] + env.observation_space.shape`.
+    rollout_act (array) -- A numpy array with shape
+      `[n_timesteps] + env.action_space.shape`.
+
+    Return:
+    rollout_prob (array) -- A numpy array with shape `[n_timesteps]`. The
+      `i`th entry is the action probability of action `rollout_act[i]` when
+      observing `rollout_obs[i]`.
+    """
+    act_prob = policy.action_probability(rollout_obs)
+    if rollout_act.ndim == 1:
+        # Expand None dimension so that we can use take_along_axis.
+        rollout_act = rollout_act[:, np.newaxis]
+
+    rollout_prob = np.take_along_axis(act_prob, rollout_act, axis=-1)
+    rollout_prob = np.squeeze(rollout_prob, axis=1)
+
+    n_timesteps = len(rollout_obs)
+    assert len(rollout_obs) == len(rollout_act)
+    assert rollout_prob.shape == (n_timesteps,)
+
+
+discriminate_rollouts('CartPole-v1')
