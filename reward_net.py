@@ -35,6 +35,7 @@ class RewardNet(ABC):
             self.shaped_reward_output = (self.reward_output +
                     self.discount_factor * new_shaping_output
                     - old_shaping_output)
+        # TODO: assert that all the outputs above have shape (None,).
 
 
     def _build_placeholders(self):
@@ -97,9 +98,9 @@ class RewardNet(ABC):
 
         Return:
         old_shaping_output (Tensor) -- A reward shaping prediction for each of
-          the old observation inputs.
+          the old observation inputs. Has shape `(None,)` (batch size).
         new_shaping_output (Tensor) -- A reward shaping prediction for each of
-          the new observation inputs.
+          the new observation inputs. Has shape `(None,)` (batch size).
         """
         pass
 
@@ -131,7 +132,8 @@ class BasicRewardNet(RewardNet):
         layers are auto_reused. (Recall that build_*_network() called inside
         a var scope named *_network.)
         """
-        # TODO: Parameter instead of magic # for the '64' part. (This seems less # urgent than getting something up and running.)
+        # TODO: Parameter instead of magic # for the '64' part. (This seems less
+        # urgent than getting something up and running.)
         # XXX: Seems like xavier is default?
         # https://stackoverflow.com/q/37350131/1091722
         xavier = tf.contrib.layers.xavier_initializer
@@ -140,7 +142,7 @@ class BasicRewardNet(RewardNet):
                     kernel_initializer=xavier(), name="dense1")
             x = tf.layers.dense(x, 1, kernel_initializer=xavier(),
                     name="dense2")
-        return x
+        return tf.squeeze(x, axis=1)
 
 
     def build_theta_network(self, obs_input, act_input):
