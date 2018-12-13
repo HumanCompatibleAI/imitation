@@ -1,17 +1,21 @@
 import gym
 import numpy as np
+import os.path
 
 import stable_baselines
 from stable_baselines.common.policies import MlpPolicy
-from stable_baselines.common.vec_env import DummyVecEnv, SubprocVecEnv
+from stable_baselines.common.vec_env import DummyVecEnv, VecEnv
 
 import reward_net
 import util
 
-def maybe_load_env(env_or_str):
+
+def maybe_load_env(env_or_str, vectorize=False):
     """
     Params:
     env_or_str (str or gym.Env): The Env or its string id in Gym.
+    vectorize (bool): If True, then vectorize the environment before returning,
+      if it isn't already vectorized.
 
     Return:
     env (gym.Env) -- Either the original argument if it was an Env or an
@@ -22,38 +26,50 @@ def maybe_load_env(env_or_str):
         env = gym.make(env_or_str)
     else:
         env = env_or_str
+
+    if not is_vec_env(env) and vectorize:
+        env = DummyVecEnv([lambda: env])
+
     return env
+
+
+def is_vec_env(env):
+    return isinstance(env, VecEnv)
+
+
+def get_env_id(env):
+    if is_vec_env(env):
+        env = env.envs[0]
+    return env.spec.id
 
 
 def reset_and_wrap_env_reward(env, R):
     """
-    Reset the environment, and then wrap its step function so that it
+    Reset the VecEnv, and then wrap its step function so that it
     returns a custom reward based on state-action-new_state tuples.
 
     The old step function is saved as `env._orig_step_`.
 
     Param:
-      env [gym.Env] -- An environment to modify in place.
+      env [gym.VecEnv] -- An vectorized Environment to modify in place.
       R [callable] -- The new reward function. Takes three arguments,
         `old_obs`, `action`, and `new_obs`. Returns the new reward.
-        - `old_obs` is the observation made before taking the action.
-        - `action` is simply the action passed to env.step().
-        - `new_obs` is the observation made after taking the action. This is
-          same as the observation returned by env.step().
+        - `old_obs` is the vector of observations seen before taking the action.
+        - `action` is vector of actions passed to env.step().
+        - `new_obs` is the vector of observations seen after taking the action.
+            This is same as the observation vector returned by env.step().
     """
+    assert is_vec_env(env)
     # XXX: Look at gym wrapper class which can override step in a
     # more idiomatic way.
     old_obs = env.reset()
-
-    # XXX: VecEnv later.
-    # XXX: Consider saving a s,a pairs until the end and evaluate sim.
 
     orig = getattr(env, "_orig_step_", env.step)
     env._orig_step_ = orig
     def wrapped_step(action):
         nonlocal old_obs
-        obs, reward, done, info = env._orig_step_(*args, **kwargs)
-        wrapped_reward = R(env._old_obs_, action, obs)
+        obs, reward, done, info = env._orig_step_(action)
+        wrapped_reward = R(old_obs, action, obs)
         old_obs = obs
         return obs, wrapped_reward, done, info
 
@@ -114,7 +130,7 @@ def make_blank_policy(env, policy_network_class=MlpPolicy,
     env = util.maybe_load_env(env)
     policy = policy_class(policy_network_class, env, verbose=1,
             optim_stepsize=0.0005,
-            tensorboard_log="./output/{}/".format(env.spec.id))
+            tensorboard_log="./output/{}/".format(get_env_id(env)))
     return policy
 
 
@@ -142,7 +158,7 @@ def get_trained_policy(env, force_train=False, timesteps=500000,
     """
     env = util.maybe_load_env(env)
     savepath = "saved_models/{}_{}.pkl".format(
-            policy_class.__name__, env.spec.id)
+            policy_class.__name__, get_env_id(env))
     exists = os.path.exists(savepath)
 
     if exists and not force_train:
@@ -162,15 +178,14 @@ def get_trained_policy(env, force_train=False, timesteps=500000,
     return policy
 
 
-def generate_rollouts(policy, n_timesteps, env=None):
+def generate_rollouts(policy, env, n_timesteps):
     """
     Generate state-action pairs from a policy.
 
     Params:
     policy (stable_baselines.BaseRLModel) -- A stable_baselines Model, trained
       on the gym environment.
-    env (Env or str or None) -- A Gym Env. VecEnv is not currently supported.
-      If env is None, then use policy.env.
+    env (VecEnv or Env or str) -- The environment(s) to interact with.
     n_timesteps (int) -- The number of state-action pairs to collect.
 
     Return:
@@ -181,20 +196,23 @@ def generate_rollouts(policy, n_timesteps, env=None):
     """
     if env is None:
         env = policy.env
-    else:
-        env = util.maybe_load_env(env)
-        policy.set_env(env)  # This checks that env and policy are compatbile.
+
+    env = util.maybe_load_env(env, vectorize=True)
+    policy.set_env(env)  # This checks that env and policy are compatbile.
+    assert is_vec_env(env)
 
     rollout_obs = []
     rollout_act = []
+    obs = env.reset()
     while len(rollout_obs) < n_timesteps:
-        done = False
-        obs = env.reset()
-        while not done and len(rollout_obs) < n_timesteps:
-            act, _ = policy.predict(obs)
-            rollout_obs.append(obs)
-            rollout_act.append(act)
-            obs, _, done, _ = env.step(act)
+        act, _ = policy.predict(obs)
+        rollout_obs.extend(obs)
+        rollout_act.extend(act)
+        obs, _, done, _ = env.step(act)
+
+        # DEBUG
+        if np.any(done):
+            print("new episode!")
 
     rollout_obs = np.array(rollout_obs)
     exp_obs = (n_timesteps,) + env.observation_space.shape
