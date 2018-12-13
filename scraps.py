@@ -6,9 +6,6 @@ import numpy as np
 import tensorflow as tf
 
 import stable_baselines
-from stable_baselines.common.policies import MlpPolicy
-from stable_baselines.common.vec_env import DummyVecEnv, SubprocVecEnv
-
 import reward_net
 import util
 
@@ -28,11 +25,10 @@ def discriminate_rollouts(env="CartPole-v1"):
     ## DEBUG
     obs = env.reset()
     pol = expert_policy
-    expert_ro_obs, expert_ro_act = util.generate_rollouts(pol, env, 1000)
-    act_prob = util.action_prob_rollout(pol, expert_ro_obs,
-            expert_ro_act)
     util.reset_and_wrap_env_reward(env, lambda s, a, s_p: 3)
-    expert_ro_obs, expert_ro_act = util.generate_rollouts(pol, env, 1000)
-    act_prob = util.action_prob_rollout(pol, expert_ro_obs, expert_ro_act)
+    expert_obs_old, expert_act, expert_obs_new = util.generate_rollouts(
+            pol, env, 1000)
+    act_prob = util.rollout_action_probability(pol, expert_obs_old,
+            expert_act)
 
 discriminate_rollouts('CartPole-v1')

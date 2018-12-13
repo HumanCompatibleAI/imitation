@@ -34,6 +34,11 @@ def maybe_load_env(env_or_str, vectorize=False):
 
 
 def is_vec_env(env):
+    # In the future, if I build a real WrapEnv around my VecEnv to replace
+    # reset_and_wrap_env_reward, then I will have to tweak this logic to
+    # make sure it still works. (Ah, remember that AIRLTrainer always
+    # operates on VecEnv. So I just need to make my CustomWrapEnv extend
+    # VecEnv).
     return isinstance(env, VecEnv)
 
 
@@ -76,7 +81,7 @@ def reset_and_wrap_env_reward(env, R):
     env.step = wrapped_step
 
 
-def action_prob_rollout(policy, rollout_obs, rollout_act):
+def rollout_action_probability(policy, rollout_obs, rollout_act):
     """
     Find the batch probability of observation, action pairs under a given
     policy.
@@ -180,7 +185,7 @@ def get_trained_policy(env, force_train=False, timesteps=500000,
 
 def generate_rollouts(policy, env, n_timesteps):
     """
-    Generate state-action pairs from a policy.
+    Generate state-action-state triples from a policy and an environment.
 
     Params:
     policy (stable_baselines.BaseRLModel) -- A stable_baselines Model, trained
@@ -189,11 +194,19 @@ def generate_rollouts(policy, env, n_timesteps):
     n_timesteps (int) -- The number of state-action pairs to collect.
 
     Return:
-    rollout_obs (array) -- A numpy array with shape
-      `[n_timesteps] + env.observation_space.shape`.
+    rollout_obs_old (array) -- A numpy array with shape
+      `[n_timesteps] + env.observation_space.shape`. The ith observation in this
+      array is the observation seen with the agent chooses action
+      `rollout_act[i]`.
     rollout_act (array) -- A numpy array with shape
       `[n_timesteps] + env.action_space.shape`.
+    rollout_obs_new (array) -- A numpy array with shape
+      `[n_timesteps] + env.observation_space.shape`. The ith observation in this
+      array is from the transition state after the agent chooses action
+      `rollout_act[i]`.
     """
+    assert n_timesteps > 0
+
     if env is None:
         env = policy.env
 
@@ -201,25 +214,36 @@ def generate_rollouts(policy, env, n_timesteps):
     policy.set_env(env)  # This checks that env and policy are compatbile.
     assert is_vec_env(env)
 
-    rollout_obs = []
+    rollout_obs_old = []
     rollout_act = []
+    rollout_obs_new = []
     obs = env.reset()
-    while len(rollout_obs) < n_timesteps:
+    while len(rollout_obs_new) < n_timesteps:
+        # Current state.
+        rollout_obs_old.extend(obs)
+
+        # Current action.
         act, _ = policy.predict(obs)
-        rollout_obs.extend(obs)
         rollout_act.extend(act)
+
+        # Transition state.
         obs, _, done, _ = env.step(act)
+        rollout_obs_new.extend(obs)
 
         # DEBUG
         if np.any(done):
             print("new episode!")
 
-    rollout_obs = np.array(rollout_obs)
+    rollout_obs_new = np.array(rollout_obs_new)[:n_timesteps]
+    rollout_obs_old = np.array(rollout_obs_old)[:n_timesteps]
     exp_obs = (n_timesteps,) + env.observation_space.shape
-    assert rollout_obs.shape == exp_obs
+    assert rollout_obs_new.shape == exp_obs
+    assert rollout_obs_old.shape == exp_obs
 
-    rollout_act = np.array(rollout_act)
+    rollout_act = np.array(rollout_act)[:n_timesteps]
     exp_act = (n_timesteps,) + env.action_space.shape
     assert rollout_act.shape == exp_act
 
-    return rollout_obs, rollout_act
+    assert np.all(rollout_obs_new[:-1] == rollout_obs_old[1:])
+
+    return rollout_obs_old, rollout_act, rollout_obs_new
