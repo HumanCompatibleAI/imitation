@@ -32,3 +32,29 @@ class TestAIRL(tf.test.TestCase):
     def test_train_gen_no_crash(self, env='CartPole-v1', n_steps=10):
         policy, trainer = _init_trainer(env)
         trainer.train_gen(n_steps)
+
+
+    def test_train_disc_improve_D(self, env='CartPole-v1', n_timesteps=100,
+            n_steps=10000):
+        policy, trainer = _init_trainer(env)
+        obs_old, act, obs_new = util.generate_rollouts(policy, env,
+                n_timesteps)
+        args = [trainer.expert_obs_old, trainer.expert_act,
+                trainer.expert_obs_new, obs_old, act, obs_new]
+        loss1 = trainer.eval_disc_loss(*args)
+        trainer.train_disc(*args, n_steps=n_steps)
+        loss2 = trainer.eval_disc_loss(*args)
+        assert loss2 < loss1
+
+
+    def test_train_disc_degrade_D(self, env='CartPole-v1', n_timesteps=100,
+            n_steps=10000):
+        policy, trainer = _init_trainer(env)
+        obs_old, act, obs_new = util.generate_rollouts(policy, env,
+                n_timesteps)
+        args = [trainer.expert_obs_old, trainer.expert_act,
+                trainer.expert_obs_new, obs_old, act, obs_new]
+        loss1 = trainer.eval_disc_loss(*args)
+        trainer.train_gen(n_steps=n_steps)
+        loss2 = trainer.eval_disc_loss(*args)
+        assert loss2 > loss1

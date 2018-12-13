@@ -89,6 +89,72 @@ class AIRLTrainer():
         self._disc_train_op = self._disc_opt.minimize(self._disc_loss)
 
 
+    def eval_disc_loss(self, *args, **kwargs):
+        """
+        Evaluate the discriminator loss.
+
+        Params:
+          expert_obs_old (array) -- A numpy array with shape
+            `[n_timesteps] + env.observation_space.shape`. The ith observation
+            in this array is the observation seen when the expert chooses action
+            `expert_act[i]`.
+          expert_act (array) -- A numpy array with shape
+            `[n_timesteps] + env.action_space.shape`.
+          expert_obs_new (array) -- A numpy array with shape
+            `[n_timesteps] + env.observation_space.shape`. The ith observation
+            in this array is from the transition state after the expert chooses
+            action `expert_act[i]`.
+          gen_obs_old (array) -- A numpy array with shape
+            `[n_timesteps] + env.observation_space.shape`. The ith observation
+            in this array is the observation seen when the generator chooses
+            action `gen_act[i]`.
+          gen_act (array) -- A numpy array with shape
+            `[n_timesteps] + env.action_space.shape`.
+          gen_obs_new (array) -- A numpy array with shape
+            `[n_timesteps] + env.observation_space.shape`. The ith observation
+            in this array is from the transition state after the generator
+            chooses action `gen_act[i]`.
+
+        Return:
+          discriminator_loss (type?) -- The cross-entropy error in the
+            discriminator's clasifications.
+        """
+        fd = self._build_disc_feed_dict(*args, **kwargs)
+        return np.sum(self._sess.run(self._disc_loss, feed_dict=fd))
+
+
+    def _build_disc_feed_dict(self, expert_obs_old, expert_act, expert_obs_new,
+            gen_obs_old, gen_act, gen_obs_new):
+
+        n_expert = len(expert_obs_old)
+        n_gen = len(gen_obs_old)
+        N = n_expert + n_gen
+        assert n_expert == len(expert_act)
+        assert n_expert == len(expert_obs_new)
+        assert n_gen == len(gen_act)
+        assert n_gen == len(gen_obs_new)
+
+        # Concatenate rollouts, and label each row as expert or generator.
+        obs_old = np.concatenate([expert_obs_old, gen_obs_old])
+        act = np.concatenate([expert_act, gen_act])
+        obs_new = np.concatenate([expert_obs_new, gen_obs_new])
+        labels = np.concatenate([np.zeros(n_expert, dtype=int),
+            np.ones(n_gen, dtype=int)])
+
+        # Calculate generator-policy log probabilities.
+        log_act_prob = np.log(util.rollout_action_probability(
+            self.policy, obs_old, act))  # (N,)
+
+        fd = {
+                self.reward_net.old_obs_ph: obs_old,
+                self.reward_net.act_ph: act,
+                self.reward_net.new_obs_ph: obs_new,
+                self._labels_ph: labels,
+                self._log_policy_act_prob_ph: log_act_prob,
+            }
+        return fd
+
+
     def _build_policy_train(self):
         """
         Sets self._policy_train_reward_fn, the reward function to use when
@@ -141,35 +207,34 @@ class AIRLTrainer():
         self.train_gen()
 
 
-    def train_disc(self, expert_obs_old, expert_act, expert_obs_new,
-            gen_obs_old, gen_act, gen_obs_new, n_steps=100):
+    def train_disc(self, *args, n_steps=100, **kwargs):
+        """
+        Train the discriminator to minimize classification cross-entropy.
 
-        n_expert = len(expert_obs_old)
-        n_gen = len(gen_obs_old)
-        N = n_expert + n_gen
-        assert n_expert == len(expert_act)
-        assert n_expert == len(expert_obs_new)
-        assert n_gen == len(gen_act)
-        assert n_gen == len(gen_obs_new)
-
-        # Concatenate rollouts, and label each row as expert or generator.
-        obs_old = np.concatenate([expert_obs_old, gen_obs_old])
-        act = np.concatenate([expert_act, gen_act])
-        obs_new = np.concatenate([expert_obs_new, gen_obs_new])
-        labels = np.concatenate([np.zeros(n_expert, dtype=int),
-            np.ones(n_gen, dtype=int)])
-
-        # Calculate generator-policy log probabilities.
-        log_act_prob = np.log(util.rollout_action_probability(
-            self.policy, obs_old, act))  # (N,)
-
-        fd = {
-                self.reward_net.old_obs_ph: obs_old,
-                self.reward_net.act_ph: act,
-                self.reward_net.new_obs_ph: obs_new,
-                self._labels_ph: labels,
-                self._log_policy_act_prob_ph: log_act_prob,
-            }
+        Params:
+          expert_obs_old (array) -- A numpy array with shape
+            `[n_timesteps] + env.observation_space.shape`. The ith observation
+            in this array is the observation seen when the expert chooses action
+            `expert_act[i]`.
+          expert_act (array) -- A numpy array with shape
+            `[n_timesteps] + env.action_space.shape`.
+          expert_obs_new (array) -- A numpy array with shape
+            `[n_timesteps] + env.observation_space.shape`. The ith observation
+            in this array is from the transition state after the expert chooses
+            action `expert_act[i]`.
+          gen_obs_old (array) -- A numpy array with shape
+            `[n_timesteps] + env.observation_space.shape`. The ith observation
+            in this array is the observation seen when the generator chooses
+            action `gen_act[i]`.
+          gen_act (array) -- A numpy array with shape
+            `[n_timesteps] + env.action_space.shape`.
+          gen_obs_new (array) -- A numpy array with shape
+            `[n_timesteps] + env.observation_space.shape`. The ith observation
+            in this array is from the transition state after the generator
+            chooses action `gen_act[i]`.
+          n_steps (int) -- The number of training steps to take.
+        """
+        fd = self._build_disc_feed_dict(*args, **kwargs)
         for _ in range(n_steps):
             self._sess.run(self._disc_train_op, feed_dict=fd)
 
