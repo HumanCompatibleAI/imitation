@@ -1,11 +1,13 @@
 import pytest
-import unittest
 
 import gym
+import tensorflow as tf
+
 from reward_net import BasicRewardNet
+import util
 
 
-class TestBasicRewardNet(unittest.TestCase):
+class TestBasicRewardNet(tf.test.TestCase):
 
     @pytest.mark.parameterize("env", ['FrozenLake-v0', 'Cartpole-v1',
         'CarRacing-v0', 'LunarLander-v2'])
