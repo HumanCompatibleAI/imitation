@@ -34,11 +34,12 @@ def make_blank_policy(env, policy_network_class=MlpPolicy,
     """
     env = util.maybe_load_env(env)
     policy = policy_class(policy_network_class, env, verbose=1,
+            optim_stepsize=0.0005,
             tensorboard_log="./output/{}/".format(env.spec.id))
     return policy
 
 
-def get_trained_policy(env, force_train=False, timesteps=30000,
+def get_trained_policy(env, force_train=False, timesteps=500000,
         never_overwrite=False, policy_class=stable_baselines.PPO1):
     """
     Returns a trained policy, maybe pretrained.
@@ -82,21 +83,28 @@ def get_trained_policy(env, force_train=False, timesteps=30000,
     return policy
 
 
-def generate_rollouts(policy, env, n_timesteps):
+def generate_rollouts(policy, n_timesteps, env=None):
     """
     Generate state-action pairs from a policy.
 
     Params:
-    model -- A stable_baselines Model, trained on the gym environment.
-    env (Env or str) -- A Gym Env. VecEnv is not currently supported.
+    policy (stable_baselines.BaseRLModel) -- A stable_baselines Model, trained
+      on the gym environment.
+    env (Env or str or None) -- A Gym Env. VecEnv is not currently supported.
+      If env is None, then use policy.env.
     n_timesteps (int) -- The number of state-action pairs to collect.
 
     Return:
     rollout_obs (array) -- A numpy array with shape
       `[n_timesteps] + env.observation_space.shape`.
     rollout_act (array) -- A numpy array with shape
-      `[n_timesteps] + env.action_space.shape`.  """
-    env = util.maybe_load_env(env)
+      `[n_timesteps] + env.action_space.shape`.
+    """
+    if env is None:
+        env = policy.env
+    else:
+        env = util.maybe_load_env(env)
+        policy.set_env(env)  # This checks that env and policy are compatbile.
 
     rollout_obs = []
     rollout_act = []
