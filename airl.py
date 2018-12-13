@@ -1,3 +1,4 @@
+import numpy as np
 import tensorflow as tf
 
 from tqdm import tqdm
@@ -48,6 +49,8 @@ class AIRLTrainer():
             with tf.variable_scope("discriminator"):
                 self._build_disc_train()
             self._build_policy_train()
+
+        self._sess.run(tf.global_variables_initializer())
 
         # Even after wrapping the reward, we should still have a
         # VecEnv.
@@ -149,15 +152,16 @@ class AIRLTrainer():
         assert n_gen == len(gen_act)
         assert n_gen == len(gen_obs_new)
 
-        # Stack rollouts, and label each row as expert or generator.
-        obs_old = np.vstack([expert_obs_old, gen_obs_old])
-        act = np.vstack([expert_act, gen_act])
-        obs_new = np.vstack([expert_obs_new, gen_obs_new])
+        # Concatenate rollouts, and label each row as expert or generator.
+        obs_old = np.concatenate([expert_obs_old, gen_obs_old])
+        act = np.concatenate([expert_act, gen_act])
+        obs_new = np.concatenate([expert_obs_new, gen_obs_new])
         labels = np.concatenate([np.zeros(n_expert, dtype=int),
             np.ones(n_gen, dtype=int)])
 
         # Calculate generator-policy log probabilities.
-        log_act_prob = np.log(util.rollout_action_prob(obs_old, act))
+        log_act_prob = np.log(util.rollout_action_probability(
+            self.policy, obs_old, act))  # (N,)
 
         fd = {
                 self.reward_net.old_obs_ph: obs_old,

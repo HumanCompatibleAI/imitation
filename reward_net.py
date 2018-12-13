@@ -11,6 +11,9 @@ class RewardNet(ABC):
         state(-action) reward parameterized by theta, and the state reward
         shaper parameterized by phi.
 
+        This network is session-less -- we assume that the caller will
+        initialize the network's variables.
+
         Params:
           env (gym.Env or str): The environment that we are predicting reward
             for.
