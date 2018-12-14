@@ -11,3 +11,4 @@ data/
 *.notes
 *.dream
 *.pkl
+saved_models/
