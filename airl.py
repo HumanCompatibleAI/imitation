@@ -3,13 +3,14 @@ import tensorflow as tf
 
 from tqdm import tqdm
 
+import summaries
 import util
 
 
 class AIRLTrainer():
 
     def __init__(self, env, policy, reward_net,
-            expert_obs_old, expert_act, expert_obs_new):
+            expert_obs_old, expert_act, expert_obs_new, init_tensorboard=False):
         """
         Adversarial IRL. After training, the RewardNet will have recovered
         the reward.
@@ -18,6 +19,11 @@ class AIRLTrainer():
           env (gym.Env or str) -- A gym environment to train in. AIRL will
             modify env's step() function. Internally, we will wrap this
             in a DummyVecEnv.
+          policy (stable_baselines.BaseRLModel) --
+            The policy acts as generator. We train this policy
+            to maximize discriminator confusion.
+          reward_net (RewardNet) -- The reward network to train. Used to
+            discriminate generated trajectories from other trajectories.
           expert_obs_old (array) -- A numpy array with shape
             `[n_timesteps] + env.observation_space.shape`. The ith observation
             in this array is the observation seen when the expert chooses action
@@ -28,11 +34,8 @@ class AIRLTrainer():
             `[n_timesteps] + env.observation_space.shape`. The ith observation
             in this array is from the transition state after the expert chooses
             action `expert_act[i]`.
-          policy (stable_baselines.BaseRLModel) --
-            The policy acts as generator. We train this policy
-            to maximize discriminator confusion.
-          reward_net (RewardNet) -- The reward network to train. Used to
-            discriminate generated trajectories from other trajectories.
+          init_tensorboard (bool) -- Make various tensorboard summaries under
+            the run name "AIRL_{date}_{runnumber}".
         """
         self._sess = tf.Session()
 
@@ -44,6 +47,12 @@ class AIRLTrainer():
         self.expert_obs_old = expert_obs_old
         self.expert_act = expert_act
         self.expert_obs_new = expert_obs_new
+        self.init_tensorboard = init_tensorboard
+
+        self._global_step = tf.train.create_global_step()
+        if self.init_tensorboard:
+            with tf.name_scope("summaries"):
+                self._build_summarize()
 
         with tf.variable_scope("AIRLTrainer"):
             with tf.variable_scope("discriminator"):
@@ -55,6 +64,22 @@ class AIRLTrainer():
         # Even after wrapping the reward, we should still have a
         # VecEnv.
         assert util.is_vec_env(self.env)
+
+
+    def _build_summarize(self):
+        self._summary_writer = summaries.make_summary_writer(
+                graph=self._sess.graph)
+        tf.summary.histogram("reward", self.reward_net.reward_output)
+        tf.summary.histogram("shaping_old", self.reward_net.old_shaping_output)
+        tf.summary.histogram("shaping_new", self.reward_net.new_shaping_output)
+        tf.summary.histogram("shaped_reward",
+                self.reward_net.shaped_reward_output)
+        self._summary_op = tf.summary.merge_all()
+
+
+    def _summarize(self, fd, step):
+        events = self._sess.run(self._summary_op, feed_dict=fd)
+        self._summary_writer.add_summary(events, step)
 
 
     def _build_disc_train(self):
@@ -85,8 +110,9 @@ class AIRLTrainer():
 
         # Construct Train operation.
         self._disc_opt = tf.train.AdamOptimizer()
-        # TODO: Maybe add global step for Tensorboard stuff.
-        self._disc_train_op = self._disc_opt.minimize(self._disc_loss)
+        # XXX: I am passing a [None] Tensor as loss. Can this be problematic?
+        self._disc_train_op = self._disc_opt.minimize(self._disc_loss,
+                global_step=self._global_step)
 
 
     def eval_disc_loss(self, *args, **kwargs):
@@ -236,7 +262,10 @@ class AIRLTrainer():
         """
         fd = self._build_disc_feed_dict(*args, **kwargs)
         for _ in range(n_steps):
-            self._sess.run(self._disc_train_op, feed_dict=fd)
+            step, _ = self._sess.run([self._global_step, self._disc_train_op],
+                    feed_dict=fd)
+            if self.init_tensorboard and step % 20 == 0:
+                self._summarize(fd, step)
 
 
     def train_gen(self, n_steps=100):

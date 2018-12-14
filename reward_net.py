@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 
 import util
 
+
 class RewardNet(ABC):
 
     def __init__(self, env, discount_factor=0.9):
@@ -31,13 +32,13 @@ class RewardNet(ABC):
                     self.old_obs_ph, self.act_ph)
 
         with tf.variable_scope("phi_network"):
-            old_shaping_output, new_shaping_output = self.build_phi_network(
-                    self.old_obs_ph, self.new_obs_ph)
+            res = self.build_phi_network(self.old_obs_ph, self.new_obs_ph)
+            self.old_shaping_output, self.new_shaping_output = res
 
         with tf.variable_scope("f_network"):
             self.shaped_reward_output = (self.reward_output +
-                    self.discount_factor * new_shaping_output
-                    - old_shaping_output)
+                    self.discount_factor * self.new_shaping_output
+                    - self.old_shaping_output)
         # TODO: assert that all the outputs above have shape (None,).
 
 
