@@ -81,6 +81,7 @@ class RewardNet(ABC):
         pass
 
 
+    # TODO: Add an option to ignore phi network.
     @abstractmethod
     def build_phi_network(self, old_obs_input, new_obs_input):
         """
@@ -141,11 +142,10 @@ class BasicRewardNet(RewardNet):
         # XXX: Seems like xavier is default?
         # https://stackoverflow.com/q/37350131/1091722
         xavier = tf.contrib.layers.xavier_initializer
-        with tf.variable_scope("ff", reuse=tf.AUTO_REUSE):
-            x = tf.layers.dense(inputs, 64, activation='relu',
-                    kernel_initializer=xavier(), name="dense1")
-            x = tf.layers.dense(x, 1, kernel_initializer=xavier(),
-                    name="dense2")
+        x = tf.layers.dense(inputs, 64, activation='relu',
+                kernel_initializer=xavier(), name="dense1")
+        x = tf.layers.dense(x, 1, kernel_initializer=xavier(),
+                name="dense2")
         return tf.squeeze(x, axis=1)
 
 
@@ -166,10 +166,11 @@ class BasicRewardNet(RewardNet):
         old_o = _flat(old_obs_input, self.env.observation_space.shape)
         new_o = _flat(new_obs_input, self.env.observation_space.shape)
 
-        old_shaping_output = tf.identity(self._apply_ff(old_o),
-                name="old_shaping_output")
-        new_shaping_output = tf.identity(self._apply_ff(new_o),
-                name="new_shaping_output")
+        with tf.variable_scope("ff", reuse=tf.AUTO_REUSE):
+            old_shaping_output = tf.identity(self._apply_ff(old_o),
+                    name="old_shaping_output")
+            new_shaping_output = tf.identity(self._apply_ff(new_o),
+                    name="new_shaping_output")
         return old_shaping_output, new_shaping_output
 
 
