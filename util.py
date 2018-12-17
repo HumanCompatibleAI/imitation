@@ -1,4 +1,5 @@
 import os.path
+import logging
 
 import gym
 import numpy as np
@@ -130,18 +131,19 @@ def get_trained_policy(env, force_train=False, timesteps=500000,
 
     if exists and not force_train:
         policy = policy_class.load(savepath, env=env)
-        print("loaded policy from '{}'".format(savepath))
+        logging.info("loaded policy from '{}'".format(savepath))
     else:
-        print("Didn't find pickled policy at {}. Training...".format(savepath))
+        logging.info("Didn't find pickled policy at {}. Training..."
+                .format(savepath))
         policy = make_blank_policy(env, policy_class=policy_class)
         policy.learn(timesteps)
         if exists and never_overwrite:
-            print(("Avoided saving policy pickle at {} because overwrite "
-                    "is disabled and that file already exists!"
+            logging.info(("Avoided saving policy pickle at {} because "
+                "overwrite is disabled and that file already exists."
                     ).format(savepath))
         else:
             policy.save(savepath)
-            print("Saved pickle!")
+            logging.info("Saved pickle!")
     return policy
 
 
@@ -191,7 +193,7 @@ def generate_rollouts(policy, env, n_timesteps):
 
         # DEBUG
         if np.any(done):
-            print("new episode!")
+            logging.debug("new episode!")
 
     rollout_obs_new = np.array(rollout_obs_new)[:n_timesteps]
     rollout_obs_old = np.array(rollout_obs_old)[:n_timesteps]
