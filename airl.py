@@ -56,13 +56,12 @@ class AIRLTrainer():
         with tf.variable_scope("AIRLTrainer"):
             with tf.variable_scope("discriminator"):
                 self._build_disc_train()
-            self._build_policy_train()
+            self._build_policy_train_reward()
+            self._build_test_reward()
 
         self._sess.run(tf.global_variables_initializer())
 
-        # Even after wrapping the reward, we should still have a
-        # VecEnv.
-        assert util.is_vec_env(self.env)
+        self.env = self.wrap_env_train_reward(self.env)
 
     def _build_summarize(self):
         self._summary_writer = summaries.make_summary_writer(
@@ -174,11 +173,10 @@ class AIRLTrainer():
             }
         return fd
 
-    def _build_policy_train(self):
+    def _build_policy_train_reward(self):
         """
         Sets self._policy_train_reward_fn, the reward function to use when
-        running a policy optimizer (e.g. PPO). Then wraps the environment
-        to return this new reward during step().
+        running a policy optimizer (e.g. PPO).
         """
         # Construct generator reward.
         self._log_softmax_logits = tf.nn.log_softmax(
@@ -221,7 +219,20 @@ class AIRLTrainer():
             return self._sess.run(self._policy_train_reward, feed_dict=fd)
 
         self._policy_train_reward_fn = R
-        self.env = _RewardVecEnvWrapper(self.env, R)
+
+    def _build_test_reward(self):
+        """
+        Sets self._test_reward_fn, the reward function learned by AIRL.
+        """
+        def R(old_obs, act, new_obs):
+            fd = {
+                self.reward_net.old_obs_ph: old_obs,
+                self.reward_net.act_ph: act,
+                self.reward_net.new_obs_ph: new_obs,
+            }
+            return self._sess.run(self.reward_net.reward_output, feed_dict=fd)
+
+        self._test_reward_fn = R
 
     def train(self, n_epochs=1000):
         for i in tqdm(range(n_epochs)):
@@ -275,6 +286,43 @@ class AIRLTrainer():
         # (Probably should take a look at Justin's code for intuit.)
         self.policy.set_env(self.env)  # Can't guarantee that env is the same.
         self.policy.learn(n_steps)
+
+    def wrap_env_train_reward(self, env):
+        """
+        Returns the given Env wrapped with a reward function that returns
+        the AIRL training reward (discriminator confusion).
+
+        The reward network referenced (not copied) into the Env
+        wrapper, and therefore the rewards are changed by calls to
+        AIRLTrainer.train().
+
+        Params:
+        env (str, Env, or VecEnv) -- The Env that we want to wrap. If a
+          string environment name is given or a Env is given, then we first
+          make a VecEnv before continuing.
+        """
+        env = util.maybe_load_env(env, vectorize=True)
+        return _RewardVecEnvWrapper(env, self._policy_train_reward_fn)
+
+    def wrap_env_test_reward(self, env):
+        """
+        Returns the given Env wrapped with a reward function that returns
+        the reward learned by this AIRLTrainer.
+
+        The reward network referenced (not copied) into the Env
+        wrapper, and therefore the rewards are changed by calls to
+        AIRLTrainer.train().
+
+        Params:
+        env (str, Env, or VecEnv) -- The Env that we want to wrap. If a
+          string environment name is given or a Env is given, then we first
+          make a VecEnv before continuing.
+
+        Returns:
+        env
+        """
+        env = util.maybe_load_env(env, vectorize=True)
+        return _RewardVecEnvWrapper(env, self._test_reward_fn)
 
 
 class _RewardVecEnvWrapper(VecEnvWrapper):

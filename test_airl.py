@@ -79,3 +79,16 @@ class TestAIRL(tf.test.TestCase):
     def test_train_no_crash(self, env='CartPole-v1'):
         policy, trainer = _init_trainer(env)
         trainer.train(n_epochs=3)
+
+    @pytest.mark.now
+    def test_wrap_learned_reward_no_crash(self, env="CartPole-v1"):
+        """
+        Briefly train with AIRL, and then used the learned reward to wrap
+        a duplicate environment. Finally, use that learned reward to train
+        a policy.
+        """
+        policy, trainer = _init_trainer(env)
+        trainer.train(n_epochs=3)
+        learned_reward_env = trainer.wrap_env_test_reward(env)
+        policy.set_env(learned_reward_env)
+        policy.learn(10)
