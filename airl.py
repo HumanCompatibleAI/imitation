@@ -294,6 +294,7 @@ class _RewardVecEnvWrapper(VecEnvWrapper):
           reward_fn -- A function that wraps takes in arguments
             (old_obs, act, new_obs) and returns a vector of rewards.
         """
+        assert not isinstance(venv, _RewardVecEnvWrapper)
         super().__init__(venv)
         self.reward_fn = reward_fn
         self.reset()
