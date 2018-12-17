@@ -59,3 +59,8 @@ class TestAIRL(tf.test.TestCase):
         trainer.train_gen(n_steps=n_steps)
         loss2 = trainer.eval_disc_loss(*args)
         assert loss2 > loss1
+
+    @pytest.mark.expensive
+    def test_train_no_crash(self, env='CartPole-v1'):
+        policy, trainer = _init_trainer(env)
+        trainer.train(n_epochs=3)

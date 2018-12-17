@@ -34,11 +34,6 @@ def maybe_load_env(env_or_str, vectorize=False):
 
 
 def is_vec_env(env):
-    # In the future, if I build a real WrapEnv around my VecEnv to replace
-    # reset_and_wrap_env_reward, then I will have to tweak this logic to
-    # make sure it still works. (Ah, remember that AIRLTrainer always
-    # operates on VecEnv. So I just need to make my CustomWrapEnv extend
-    # VecEnv).
     return isinstance(env, VecEnv)
 
 
@@ -46,39 +41,6 @@ def get_env_id(env):
     if is_vec_env(env):
         env = env.envs[0]
     return env.spec.id
-
-
-def reset_and_wrap_env_reward(env, R):
-    """
-    Reset the VecEnv, and then wrap its step function so that it
-    returns a custom reward based on state-action-new_state tuples.
-
-    The old step function is saved as `env._orig_step_`.
-
-    Param:
-      env [gym.VecEnv] -- An vectorized Environment to modify in place.
-      R [callable] -- The new reward function. Takes three arguments,
-        `old_obs`, `action`, and `new_obs`. Returns the new reward.
-        - `old_obs` is the vector of observations seen before taking the action.
-        - `action` is vector of actions passed to env.step().
-        - `new_obs` is the vector of observations seen after taking the action.
-            This is same as the observation vector returned by env.step().
-    """
-    assert is_vec_env(env)
-    # XXX: Look at gym wrapper class which can override step in a
-    # more idiomatic way.
-    old_obs = env.reset()
-
-    orig = getattr(env, "_orig_step_", env.step)
-    env._orig_step_ = orig
-    def wrapped_step(action):
-        nonlocal old_obs
-        obs, reward, done, info = env._orig_step_(action)
-        wrapped_reward = R(old_obs, action, obs)
-        old_obs = obs
-        return obs, wrapped_reward, done, info
-
-    env.step = wrapped_step
 
 
 def rollout_action_probability(policy, rollout_obs, rollout_act):

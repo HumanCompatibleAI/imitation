@@ -1,6 +1,6 @@
 import numpy as np
+from stable_baselines.common.vec_env import VecEnvWrapper
 import tensorflow as tf
-
 from tqdm import tqdm
 
 import summaries
@@ -41,7 +41,6 @@ class AIRLTrainer():
 
         self.env = util.maybe_load_env(env, vectorize=True)
         self.policy = policy
-        policy.set_env(self.env)
 
         self.reward_net = reward_net
         self.expert_obs_old = expert_obs_old
@@ -194,7 +193,7 @@ class AIRLTrainer():
                 self._log_softmax_logits, [1, 1], axis=1)
         self._policy_train_reward = self._log_D - self._log_D_compl
 
-        def R(self, old_obs, act, new_obs):
+        def R(old_obs, act, new_obs):
             """
             Vectorized reward function.
 
@@ -207,15 +206,28 @@ class AIRLTrainer():
             new_obs (array): The observation input. Its shape is
               `((None,) + self.env.observation_space.shape)`.
             """
+            old_obs = np.atleast_1d(old_obs)
+            act = np.atleast_1d(act)
+            new_obs = np.atleast_1d(new_obs)
+
+            n_gen = len(old_obs)
+            assert len(act) == n_gen
+            assert len(new_obs) == n_gen
+
+            log_prob = np.log(
+                    util.rollout_action_probability(self.policy, old_obs, act))
+
             fd = {
-                    self.old_obs_ph: old_obs,
-                    self.act_ph: act,
-                    self.new_obs_ph: new_obs,
+                    self.reward_net.old_obs_ph: old_obs,
+                    self.reward_net.act_ph: act,
+                    self.reward_net.new_obs_ph: new_obs,
+                    self._labels_ph: np.ones(n_gen),
+                    self._log_policy_act_prob_ph: log_prob,
                 }
-            return self.sess.run(self._policy_train_reward, feed_dict=fd)
+            return self._sess.run(self._policy_train_reward, feed_dict=fd)
 
         self._policy_train_reward_fn = R
-        util.reset_and_wrap_env_reward(self.env, self._policy_train_reward_fn)
+        self.env = _RewardVecEnvWrapper(self.env, R)
 
 
     def train(self, n_epochs=1000):
@@ -228,8 +240,9 @@ class AIRLTrainer():
         (gen_obs_old, gen_act, gen_obs_new) = util.generate_rollouts(
                 self.policy, self.env, n_timesteps)
 
+
         self.train_disc(self.expert_obs_old, self.expert_act,
-                self.expert_obs_new, gen_obs_old, gen_act, eng_obs_new)
+                self.expert_obs_new, gen_obs_old, gen_act, gen_obs_new)
         self.train_gen()
 
 
@@ -271,4 +284,43 @@ class AIRLTrainer():
     def train_gen(self, n_steps=100):
         # Adam: It's not necessary to train to convergence.
         # (Probably should take a look at Justin's code for intuit.)
+        self.policy.set_env(self.env)  # Can't guarantee that env is the same.
         self.policy.learn(n_steps)
+
+
+class _RewardVecEnvWrapper(VecEnvWrapper):
+
+    def __init__(self, venv, reward_fn):
+        """
+        A RewardVecEnvWrapper uses a provided reward_fn to replace
+        the reward function returned by step().
+
+        Automatically resets the inner VecEnv upon initialization.
+
+        A tricky part about this class keeping track of the most recent
+        observation from each environment.
+
+        Params:
+          venv -- The VirtualEnv to wrap.
+          reward_fn -- A function that wraps takes in arguments
+            (old_obs, act, new_obs) and returns a vector of rewards.
+        """
+        super().__init__(venv)
+        self.reward_fn = reward_fn
+        self.reset()
+
+    def reset(self):
+        self._old_obs =  self.venv.reset()
+        return self._old_obs
+
+    def step_async(self, actions):
+        self._actions = actions
+        return self.venv.step_async(actions)
+
+    def step_wait(self):
+        obs, rew, done, info = self.venv.step_wait()
+        rew = self.reward_fn(self._old_obs, self._actions, obs)
+        # XXX: We never get to see episode end. (See Issue #1).
+        # Therefore, the final obs of every episode is incorrect.
+        self._old_obs = obs
+        return obs, rew, done, info
