@@ -64,7 +64,6 @@ class AIRLTrainer():
         # VecEnv.
         assert util.is_vec_env(self.env)
 
-
     def _build_summarize(self):
         self._summary_writer = summaries.make_summary_writer(
                 graph=self._sess.graph)
@@ -75,11 +74,9 @@ class AIRLTrainer():
                 self.reward_net.shaped_reward_output)
         self._summary_op = tf.summary.merge_all()
 
-
     def _summarize(self, fd, step):
         events = self._sess.run(self._summary_op, feed_dict=fd)
         self._summary_writer.add_summary(events, step)
-
 
     def _build_disc_train(self):
         # Holds the generator-policy log action probabilities of every
@@ -112,7 +109,6 @@ class AIRLTrainer():
         # XXX: I am passing a [None] Tensor as loss. Can this be problematic?
         self._disc_train_op = self._disc_opt.minimize(self._disc_loss,
                 global_step=self._global_step)
-
 
     def eval_disc_loss(self, *args, **kwargs):
         """
@@ -147,7 +143,6 @@ class AIRLTrainer():
         fd = self._build_disc_feed_dict(*args, **kwargs)
         return np.sum(self._sess.run(self._disc_loss, feed_dict=fd))
 
-
     def _build_disc_feed_dict(self, expert_obs_old, expert_act, expert_obs_new,
             gen_obs_old, gen_act, gen_obs_new):
 
@@ -178,7 +173,6 @@ class AIRLTrainer():
                 self._log_policy_act_prob_ph: log_act_prob,
             }
         return fd
-
 
     def _build_policy_train(self):
         """
@@ -229,22 +223,18 @@ class AIRLTrainer():
         self._policy_train_reward_fn = R
         self.env = _RewardVecEnvWrapper(self.env, R)
 
-
     def train(self, n_epochs=1000):
         for i in tqdm(range(n_epochs)):
             self._train_epoch()
-
 
     def _train_epoch(self):
         n_timesteps = len(self.expert_obs_old)
         (gen_obs_old, gen_act, gen_obs_new) = util.generate_rollouts(
                 self.policy, self.env, n_timesteps)
 
-
         self.train_disc(self.expert_obs_old, self.expert_act,
                 self.expert_obs_new, gen_obs_old, gen_act, gen_obs_new)
         self.train_gen()
-
 
     def train_disc(self, *args, n_steps=100, **kwargs):
         """
@@ -279,7 +269,6 @@ class AIRLTrainer():
                     feed_dict=fd)
             if self.init_tensorboard and step % 20 == 0:
                 self._summarize(fd, step)
-
 
     def train_gen(self, n_steps=100):
         # Adam: It's not necessary to train to convergence.

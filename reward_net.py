@@ -1,5 +1,6 @@
-import tensorflow as tf
 from abc import ABC, abstractmethod
+
+import tensorflow as tf
 
 import util
 
@@ -41,7 +42,6 @@ class RewardNet(ABC):
                     - self.old_shaping_output)
         # TODO: assert that all the outputs above have shape (None,).
 
-
     def _build_placeholders(self):
         """
         Returns old_obs_ph, act_ph, new_obs_ph
@@ -57,7 +57,6 @@ class RewardNet(ABC):
                 dtype=tf.float32, shape=a_shape)
 
         return old_obs_ph, act_ph, new_obs_ph
-
 
     @abstractmethod
     def build_theta_network(self, obs_input, act_input):
@@ -79,7 +78,6 @@ class RewardNet(ABC):
           inputs. The shape is `(None,)`.
         """
         pass
-
 
     # TODO: Add an option to ignore phi network.
     @abstractmethod
@@ -130,7 +128,6 @@ class BasicRewardNet(RewardNet):
         self.ignore_action = ignore_action
         super().__init__(env, **kwargs)
 
-
     def _apply_ff(self, inputs):
         """
         Apply the a default feed forward network on the inputs. The Dense
@@ -148,7 +145,6 @@ class BasicRewardNet(RewardNet):
                 name="dense2")
         return tf.squeeze(x, axis=1)
 
-
     def build_theta_network(self, obs_input, act_input):
         if self.ignore_action:
             inputs = flat(obs_input)
@@ -160,7 +156,6 @@ class BasicRewardNet(RewardNet):
         reward_output = tf.identity(self._apply_ff(inputs),
                 "reward_output")
         return reward_output
-
 
     def build_phi_network(self, old_obs_input, new_obs_input):
         old_o = _flat(old_obs_input, self.env.observation_space.shape)

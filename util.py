@@ -1,7 +1,7 @@
-import gym
-import numpy as np
 import os.path
 
+import gym
+import numpy as np
 import stable_baselines
 from stable_baselines.common.policies import MlpPolicy
 from stable_baselines.common.vec_env import DummyVecEnv, VecEnv
@@ -202,7 +202,6 @@ def generate_rollouts(policy, env, n_timesteps):
     rollout_act = np.array(rollout_act)[:n_timesteps]
     exp_act = (n_timesteps,) + env.action_space.shape
     assert rollout_act.shape == exp_act
-
     assert np.all(rollout_obs_new[:-1] == rollout_obs_old[1:])
 
     return rollout_obs_old, rollout_act, rollout_obs_new

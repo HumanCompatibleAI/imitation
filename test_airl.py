@@ -16,6 +16,7 @@ def _init_trainer(env):
             expert_act=act, expert_obs_new=obs_new)
     return policy, trainer
 
+
 class TestAIRL(tf.test.TestCase):
 
     def test_init_no_crash(self, env='CartPole-v1'):
@@ -32,7 +33,6 @@ class TestAIRL(tf.test.TestCase):
         policy, trainer = _init_trainer(env)
         trainer.train_gen(n_steps)
 
-
     @pytest.mark.expensive
     def test_train_disc_improve_D(self, env='CartPole-v1', n_timesteps=100,
             n_steps=10000):
@@ -45,7 +45,6 @@ class TestAIRL(tf.test.TestCase):
         trainer.train_disc(*args, n_steps=n_steps)
         loss2 = trainer.eval_disc_loss(*args)
         assert loss2 < loss1
-
 
     @pytest.mark.expensive
     def test_train_gen_degrade_D(self, env='CartPole-v1', n_timesteps=100,
