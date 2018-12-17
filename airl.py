@@ -63,6 +63,120 @@ class AIRLTrainer():
 
         self.env = self.wrap_env_train_reward(self.env)
 
+    def train_disc(self, *args, n_steps=100, **kwargs):
+        """
+        Train the discriminator to minimize classification cross-entropy.
+
+        Params:
+          expert_obs_old (array) -- A numpy array with shape
+            `[n_timesteps] + env.observation_space.shape`. The ith observation
+            in this array is the observation seen when the expert chooses action
+            `expert_act[i]`.
+          expert_act (array) -- A numpy array with shape
+            `[n_timesteps] + env.action_space.shape`.
+          expert_obs_new (array) -- A numpy array with shape
+            `[n_timesteps] + env.observation_space.shape`. The ith observation
+            in this array is from the transition state after the expert chooses
+            action `expert_act[i]`.
+          gen_obs_old (array) -- A numpy array with shape
+            `[n_timesteps] + env.observation_space.shape`. The ith observation
+            in this array is the observation seen when the generator chooses
+            action `gen_act[i]`.
+          gen_act (array) -- A numpy array with shape
+            `[n_timesteps] + env.action_space.shape`.
+          gen_obs_new (array) -- A numpy array with shape
+            `[n_timesteps] + env.observation_space.shape`. The ith observation
+            in this array is from the transition state after the generator
+            chooses action `gen_act[i]`.
+          n_steps (int) -- The number of training steps to take.
+        """
+        fd = self._build_disc_feed_dict(*args, **kwargs)
+        for _ in range(n_steps):
+            step, _ = self._sess.run([self._global_step, self._disc_train_op],
+                    feed_dict=fd)
+            if self.init_tensorboard and step % 20 == 0:
+                self._summarize(fd, step)
+
+    def train_gen(self, n_steps=100):
+        # Adam: It's not necessary to train to convergence.
+        # (Probably should take a look at Justin's code for intuit.)
+        self.policy.set_env(self.env)  # Can't guarantee that env is the same.
+        self.policy.learn(n_steps)
+
+    def train(self, n_epochs=1000):
+        for i in tqdm(range(n_epochs)):
+            self._train_epoch()
+
+    def eval_disc_loss(self, *args, **kwargs):
+        """
+        Evaluate the discriminator loss.
+
+        Params:
+          expert_obs_old (array) -- A numpy array with shape
+            `[n_timesteps] + env.observation_space.shape`. The ith observation
+            in this array is the observation seen when the expert chooses action
+            `expert_act[i]`.
+          expert_act (array) -- A numpy array with shape
+            `[n_timesteps] + env.action_space.shape`.
+          expert_obs_new (array) -- A numpy array with shape
+            `[n_timesteps] + env.observation_space.shape`. The ith observation
+            in this array is from the transition state after the expert chooses
+            action `expert_act[i]`.
+          gen_obs_old (array) -- A numpy array with shape
+            `[n_timesteps] + env.observation_space.shape`. The ith observation
+            in this array is the observation seen when the generator chooses
+            action `gen_act[i]`.
+          gen_act (array) -- A numpy array with shape
+            `[n_timesteps] + env.action_space.shape`.
+          gen_obs_new (array) -- A numpy array with shape
+            `[n_timesteps] + env.observation_space.shape`. The ith observation
+            in this array is from the transition state after the generator
+            chooses action `gen_act[i]`.
+
+        Return:
+          discriminator_loss (type?) -- The cross-entropy error in the
+            discriminator's clasifications.
+        """
+        fd = self._build_disc_feed_dict(*args, **kwargs)
+        return np.sum(self._sess.run(self._disc_loss, feed_dict=fd))
+
+    def wrap_env_train_reward(self, env):
+        """
+        Returns the given Env wrapped with a reward function that returns
+        the AIRL training reward (discriminator confusion).
+
+        The reward network referenced (not copied) into the Env
+        wrapper, and therefore the rewards are changed by calls to
+        AIRLTrainer.train().
+
+        Params:
+        env (str, Env, or VecEnv) -- The Env that we want to wrap. If a
+          string environment name is given or a Env is given, then we first
+          make a VecEnv before continuing.
+        """
+        env = util.maybe_load_env(env, vectorize=True)
+        return _RewardVecEnvWrapper(env, self._policy_train_reward_fn)
+
+    def wrap_env_test_reward(self, env):
+        """
+        Returns the given Env wrapped with a reward function that returns
+        the reward learned by this AIRLTrainer.
+
+        The reward network referenced (not copied) into the Env
+        wrapper, and therefore the rewards are changed by calls to
+        AIRLTrainer.train().
+
+        Params:
+        env (str, Env, or VecEnv) -- The Env that we want to wrap. If a
+          string environment name is given or a Env is given, then we first
+          make a VecEnv before continuing.
+
+        Returns:
+        env
+        """
+        env = util.maybe_load_env(env, vectorize=True)
+        return _RewardVecEnvWrapper(env, self._test_reward_fn)
+
     def _build_summarize(self):
         self._summary_writer = summaries.make_summary_writer(
                 graph=self._sess.graph)
@@ -108,39 +222,6 @@ class AIRLTrainer():
         # XXX: I am passing a [None] Tensor as loss. Can this be problematic?
         self._disc_train_op = self._disc_opt.minimize(self._disc_loss,
                 global_step=self._global_step)
-
-    def eval_disc_loss(self, *args, **kwargs):
-        """
-        Evaluate the discriminator loss.
-
-        Params:
-          expert_obs_old (array) -- A numpy array with shape
-            `[n_timesteps] + env.observation_space.shape`. The ith observation
-            in this array is the observation seen when the expert chooses action
-            `expert_act[i]`.
-          expert_act (array) -- A numpy array with shape
-            `[n_timesteps] + env.action_space.shape`.
-          expert_obs_new (array) -- A numpy array with shape
-            `[n_timesteps] + env.observation_space.shape`. The ith observation
-            in this array is from the transition state after the expert chooses
-            action `expert_act[i]`.
-          gen_obs_old (array) -- A numpy array with shape
-            `[n_timesteps] + env.observation_space.shape`. The ith observation
-            in this array is the observation seen when the generator chooses
-            action `gen_act[i]`.
-          gen_act (array) -- A numpy array with shape
-            `[n_timesteps] + env.action_space.shape`.
-          gen_obs_new (array) -- A numpy array with shape
-            `[n_timesteps] + env.observation_space.shape`. The ith observation
-            in this array is from the transition state after the generator
-            chooses action `gen_act[i]`.
-
-        Return:
-          discriminator_loss (type?) -- The cross-entropy error in the
-            discriminator's clasifications.
-        """
-        fd = self._build_disc_feed_dict(*args, **kwargs)
-        return np.sum(self._sess.run(self._disc_loss, feed_dict=fd))
 
     def _build_disc_feed_dict(self, expert_obs_old, expert_act, expert_obs_new,
             gen_obs_old, gen_act, gen_obs_new):
@@ -234,10 +315,6 @@ class AIRLTrainer():
 
         self._test_reward_fn = R
 
-    def train(self, n_epochs=1000):
-        for i in tqdm(range(n_epochs)):
-            self._train_epoch()
-
     def _train_epoch(self):
         n_timesteps = len(self.expert_obs_old)
         (gen_obs_old, gen_act, gen_obs_new) = util.generate_rollouts(
@@ -246,83 +323,6 @@ class AIRLTrainer():
         self.train_disc(self.expert_obs_old, self.expert_act,
                 self.expert_obs_new, gen_obs_old, gen_act, gen_obs_new)
         self.train_gen()
-
-    def train_disc(self, *args, n_steps=100, **kwargs):
-        """
-        Train the discriminator to minimize classification cross-entropy.
-
-        Params:
-          expert_obs_old (array) -- A numpy array with shape
-            `[n_timesteps] + env.observation_space.shape`. The ith observation
-            in this array is the observation seen when the expert chooses action
-            `expert_act[i]`.
-          expert_act (array) -- A numpy array with shape
-            `[n_timesteps] + env.action_space.shape`.
-          expert_obs_new (array) -- A numpy array with shape
-            `[n_timesteps] + env.observation_space.shape`. The ith observation
-            in this array is from the transition state after the expert chooses
-            action `expert_act[i]`.
-          gen_obs_old (array) -- A numpy array with shape
-            `[n_timesteps] + env.observation_space.shape`. The ith observation
-            in this array is the observation seen when the generator chooses
-            action `gen_act[i]`.
-          gen_act (array) -- A numpy array with shape
-            `[n_timesteps] + env.action_space.shape`.
-          gen_obs_new (array) -- A numpy array with shape
-            `[n_timesteps] + env.observation_space.shape`. The ith observation
-            in this array is from the transition state after the generator
-            chooses action `gen_act[i]`.
-          n_steps (int) -- The number of training steps to take.
-        """
-        fd = self._build_disc_feed_dict(*args, **kwargs)
-        for _ in range(n_steps):
-            step, _ = self._sess.run([self._global_step, self._disc_train_op],
-                    feed_dict=fd)
-            if self.init_tensorboard and step % 20 == 0:
-                self._summarize(fd, step)
-
-    def train_gen(self, n_steps=100):
-        # Adam: It's not necessary to train to convergence.
-        # (Probably should take a look at Justin's code for intuit.)
-        self.policy.set_env(self.env)  # Can't guarantee that env is the same.
-        self.policy.learn(n_steps)
-
-    def wrap_env_train_reward(self, env):
-        """
-        Returns the given Env wrapped with a reward function that returns
-        the AIRL training reward (discriminator confusion).
-
-        The reward network referenced (not copied) into the Env
-        wrapper, and therefore the rewards are changed by calls to
-        AIRLTrainer.train().
-
-        Params:
-        env (str, Env, or VecEnv) -- The Env that we want to wrap. If a
-          string environment name is given or a Env is given, then we first
-          make a VecEnv before continuing.
-        """
-        env = util.maybe_load_env(env, vectorize=True)
-        return _RewardVecEnvWrapper(env, self._policy_train_reward_fn)
-
-    def wrap_env_test_reward(self, env):
-        """
-        Returns the given Env wrapped with a reward function that returns
-        the reward learned by this AIRLTrainer.
-
-        The reward network referenced (not copied) into the Env
-        wrapper, and therefore the rewards are changed by calls to
-        AIRLTrainer.train().
-
-        Params:
-        env (str, Env, or VecEnv) -- The Env that we want to wrap. If a
-          string environment name is given or a Env is given, then we first
-          make a VecEnv before continuing.
-
-        Returns:
-        env
-        """
-        env = util.maybe_load_env(env, vectorize=True)
-        return _RewardVecEnvWrapper(env, self._test_reward_fn)
 
 
 class _RewardVecEnvWrapper(VecEnvWrapper):
