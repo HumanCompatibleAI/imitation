@@ -60,6 +60,22 @@ class TestAIRL(tf.test.TestCase):
         assert loss2 > loss1
 
     @pytest.mark.expensive
+    def test_train_disc_then_gen(self, env='CartPole-v1', n_timesteps=100,
+            n_steps=10000):
+        policy, trainer = _init_trainer(env)
+        obs_old, act, obs_new = util.generate_rollouts(policy, env,
+                n_timesteps)
+        args = [trainer.expert_obs_old, trainer.expert_act,
+                trainer.expert_obs_new, obs_old, act, obs_new]
+        loss1 = trainer.eval_disc_loss(*args)
+        trainer.train_disc(*args, n_steps=n_steps)
+        loss2 = trainer.eval_disc_loss(*args)
+        trainer.train_gen(n_steps=n_steps)
+        loss3 = trainer.eval_disc_loss(*args)
+        assert loss2 < loss1
+        assert loss3 > loss2
+
+    @pytest.mark.expensive
     def test_train_no_crash(self, env='CartPole-v1'):
         policy, trainer = _init_trainer(env)
         trainer.train(n_epochs=3)
