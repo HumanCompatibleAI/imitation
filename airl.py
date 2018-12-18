@@ -297,7 +297,8 @@ class AIRLTrainer():
                     self._labels_ph: np.ones(n_gen),
                     self._log_policy_act_prob_ph: log_prob,
                 }
-            return self._sess.run(self._policy_train_reward, feed_dict=fd)
+            rew = self._sess.run(self._policy_train_reward, feed_dict=fd)
+            return rew.flatten()
 
         self._policy_train_reward_fn = R
 
@@ -311,7 +312,8 @@ class AIRLTrainer():
                 self.reward_net.act_ph: act,
                 self.reward_net.new_obs_ph: new_obs,
             }
-            return self._sess.run(self.reward_net.reward_output, feed_dict=fd)
+            rew = self._sess.run(self.reward_net.reward_output, feed_dict=fd)
+            return rew.flatten()
 
         self._test_reward_fn = R
 

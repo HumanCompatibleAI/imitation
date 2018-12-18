@@ -310,12 +310,10 @@ def rollout_generate(policy, env, *, n_timesteps=None, n_episodes=None):
         act, _ = policy.predict(obs)
         rollout_act.extend(act)
 
-        # Transition state.
+        # Transition state and rewards.
         obs, rew, done, _ = env.step(act)
         rollout_obs_new.extend(obs)
-
-        # Rewards.
-        rollout_rew.extend(rew.flatten())
+        rollout_rew.extend(rew)
 
         # Track episodes
         if end_cond == "episodes":
