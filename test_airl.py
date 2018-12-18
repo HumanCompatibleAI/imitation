@@ -90,7 +90,8 @@ class TestAIRL(tf.test.TestCase):
         trainer.train(n_epochs=3)
 
     @pytest.mark.expensive
-    @pytest.xfail(reason="Either AIRL train is broken or not enough epochs."
+    @pytest.mark.xfail(reason=
+            "Either AIRL train is broken or not enough epochs."
             " Consider making a plot of episode reward over time to check.")
     def test_trained_policy_better_than_random(self, env='CartPole-v1',
             n_episodes=10):
