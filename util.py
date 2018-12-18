@@ -96,9 +96,15 @@ def make_blank_policy(env, policy_network_class=MlpPolicy,
     policy (stable_baselines.BaseRLModel)
     """
     env = util.maybe_load_env(env)
+
+    if init_tensorboard:
+        tensorboard_log= "./output/{}/".format(get_env_id(env)))
+    else:
+        tensorboard_log = None
+
     policy = policy_class(policy_network_class, env, verbose=1,
             optim_stepsize=0.0005,
-            tensorboard_log="./output/{}/".format(get_env_id(env)))
+            tensorboard_log=tensorboard_log)
     return policy
 
 
