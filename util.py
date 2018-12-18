@@ -10,7 +10,7 @@ import reward_net
 import util
 
 
-def maybe_load_env(env_or_str, vectorize=False):
+def maybe_load_env(env_or_str, vectorize=True):
     """
     Params:
     env_or_str (str or gym.Env): The Env or its string id in Gym.
@@ -44,7 +44,7 @@ def get_env_id(env):
     return env.spec.id
 
 
-def make_blank_policy(env, policy_class=stable_baselines.PPO1,
+def make_blank_policy(env, policy_class=stable_baselines.PPO2,
         init_tensorboard=False, policy_network_class="MlpPolicy",
         **kwargs):
     """
