@@ -238,7 +238,8 @@ def rollout_action_probability(policy, rollout_obs, rollout_act):
     return rollout_prob
 
 
-def rollout_generate(policy, env, *, n_timesteps=None, n_episodes=None):
+def rollout_generate(policy, env, *, n_timesteps=None, n_episodes=None,
+        truncate_timesteps=False):
     """
     Generate old_obs-action-new_obs-reward tuples from a policy and an
     environment.
@@ -248,6 +249,8 @@ def rollout_generate(policy, env, *, n_timesteps=None, n_episodes=None):
       on the gym environment.
     env (VecEnv or Env or str) -- The environment(s) to interact with.
     n_timesteps (int) -- The number of obs-action-obs-reward tuples to collect.
+      The `truncate_timesteps` parameter chooses whether to discard extra
+      tuples.
       Set exactly one of `n_timesteps` and `n_episodes`, or this function will
       error.
     n_episodes (int) -- The number of episodes to finish before returning
@@ -255,6 +258,9 @@ def rollout_generate(policy, env, *, n_timesteps=None, n_episodes=None):
       episode is finished will also be returned.
       Set exactly one of `n_timesteps` and `n_episodes`, or this function will
       error.
+    truncate_timesteps (bool) -- If True, then discard any tuples, ensuring that
+      exactly `n_timesteps` are returned. Otherwise, return every collected
+      tuple.
 
     Return:
     rollout_obs_old (array) -- A numpy array with shape
@@ -327,7 +333,7 @@ def rollout_generate(policy, env, *, n_timesteps=None, n_episodes=None):
     rollout_obs_old = np.atleast_1d(rollout_obs_old)
     rollout_act = np.atleast_1d(rollout_act)
     rollout_rew = np.atleast_1d(rollout_rew)
-    if end_cond == "timesteps":
+    if end_cond == "timesteps" and truncate_timesteps:
         n_steps = n_timesteps
 
         # Truncate because we want exactly n_timesteps.
@@ -335,15 +341,17 @@ def rollout_generate(policy, env, *, n_timesteps=None, n_episodes=None):
         rollout_obs_old = rollout_obs_old[:n_timesteps]
         rollout_act = rollout_act[:n_timesteps]
         rollout_rew = rollout_rew[:n_timesteps]
-    elif end_cond == "episodes":
+    else:
         n_steps = len(rollout_obs_new)
 
     # Sanity checks.
     exp_obs = (n_steps,) + env.observation_space.shape
     exp_act = (n_steps,) + env.action_space.shape
+    n_envs = env.num_envs
     assert rollout_obs_new.shape == exp_obs
     assert rollout_obs_old.shape == exp_obs
-    assert np.all(rollout_obs_new[:-1] == rollout_obs_old[1:])
+    if not truncate_timesteps or n_timesteps % n_envs == 0:
+        assert np.all(rollout_obs_new[:-n_envs] == rollout_obs_old[n_envs:])
     assert rollout_act.shape == exp_act
     assert rollout_rew.shape == (n_steps,)
 
