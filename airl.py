@@ -38,6 +38,7 @@ class AIRLTrainer():
             the run name "AIRL_{date}_{runnumber}".
         """
         self._sess = tf.Session()
+        self.epochs_so_far = 0
 
         self.env = util.maybe_load_env(env, vectorize=True)
         self.policy = policy
@@ -62,6 +63,8 @@ class AIRLTrainer():
         self._sess.run(tf.global_variables_initializer())
 
         self.env = self.wrap_env_train_reward(self.env)
+
+
 
     def train_disc(self, *args, n_steps=100, **kwargs):
         """
@@ -104,8 +107,9 @@ class AIRLTrainer():
         self.policy.learn(n_steps)
 
     def train(self, n_epochs=1000):
-        for i in tqdm(range(n_epochs)):
+        for i in tqdm(range(n_epochs), desc="AIRL train"):
             self._train_epoch()
+        self.epochs_so_far += n_epochs
 
     def eval_disc_loss(self, *args, **kwargs):
         """
