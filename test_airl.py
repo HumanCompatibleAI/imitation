@@ -9,7 +9,10 @@ import util
 
 
 def _init_trainer(env, use_expert_rollouts=False):
-    env = util.make_vec_env(env, 8)
+    if isinstance(env, str):
+        env = util.make_vec_env(env, 8)
+    else:
+        env = util.maybe_load_env(env, True)
     policy = util.make_blank_policy(env, init_tensorboard=False)
     if use_expert_rollouts:
         rollout_policy = util.load_expert_policy(env)
@@ -94,9 +97,8 @@ class TestAIRL(tf.test.TestCase):
     @pytest.mark.xfail(reason=
             "Either AIRL train is broken or not enough epochs."
             " Consider making a plot of episode reward over time to check.")
-    @pytest.mark.skip
     def test_trained_policy_better_than_random(self, env='CartPole-v1',
-            n_episodes=10):
+            n_episodes=50):
         """
         Make sure that generator policy trained to mimick expert policy
         demonstrations) achieves higher reward than a random policy.
@@ -104,6 +106,7 @@ class TestAIRL(tf.test.TestCase):
         In other words, perform a basic check on the imitation learning
         capabilities of AIRLTrainer.
         """
+        env = util.make_vec_env(env, 32)
         policy, trainer = _init_trainer(env, use_expert_rollouts=True)
         expert_policy = util.load_expert_policy(env)
         random_policy = util.make_blank_policy(env)
@@ -111,7 +114,7 @@ class TestAIRL(tf.test.TestCase):
         if expert_policy is None:
             pytest.fail("Couldn't load expert_policy!")
 
-        trainer.train(n_epochs=100)
+        trainer.train(n_epochs=200)
 
         # Idea: Plot n_epochs vs generator reward.
         for _ in range(4):

@@ -33,7 +33,7 @@ def maybe_load_env(env_or_str, vectorize=True):
     return env
 
 
-def make_vec_env(env_id, n_envs):
+def make_vec_env(env_id, n_envs=8):
     """
     Make a DummyVecEnv initialized with `n_envs` Envs.
 
