@@ -238,7 +238,7 @@ def _policy_filename(policy_class, env):
     return "{}_{}.pkl".format(policy_class.__name__, get_env_id(env))
 
 
-def generate_rollouts(policy, env, n_timesteps):
+def rollout_generate(policy, env, n_timesteps):
     """
     Generate old_obs-action-new_obs-reward tuples from a policy and an
     environment.
