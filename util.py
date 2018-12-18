@@ -4,7 +4,6 @@ import logging
 import gym
 import numpy as np
 import stable_baselines
-from stable_baselines.common.policies import MlpPolicy
 from stable_baselines.common.vec_env import DummyVecEnv, VecEnv
 
 import reward_net
@@ -39,6 +38,7 @@ def is_vec_env(env):
 
 
 def get_env_id(env):
+    env = maybe_load_env(env)
     if is_vec_env(env):
         env = env.envs[0]
     return env.spec.id
@@ -78,8 +78,9 @@ def rollout_action_probability(policy, rollout_obs, rollout_act):
     return rollout_prob
 
 
-def make_blank_policy(env, policy_network_class=MlpPolicy,
-        init_tensorboard=True, policy_class=stable_baselines.PPO1):
+def make_blank_policy(env, policy_class=stable_baselines.PPO1,
+        init_tensorboard=False, policy_network_class="MlpPolicy",
+        **kwargs):
     """
     Instantiates a policy for the provided environment.
 
@@ -96,61 +97,145 @@ def make_blank_policy(env, policy_network_class=MlpPolicy,
     policy (stable_baselines.BaseRLModel)
     """
     env = util.maybe_load_env(env)
-
-    if init_tensorboard:
-        tensorboard_log= "./output/{}/".format(get_env_id(env)))
-    else:
-        tensorboard_log = None
-
-    policy = policy_class(policy_network_class, env, verbose=1,
-            optim_stepsize=0.0005,
-            tensorboard_log=tensorboard_log)
-    return policy
+    return policy_class(policy_network_class, env, verbose=1,
+            tensorboard_log=_get_tb_log_dir(env, init_tensorboard),
+            **kwargs)
 
 
-def get_trained_policy(env, force_train=False, timesteps=500000,
-        never_overwrite=False, policy_class=stable_baselines.PPO1):
+def get_or_train_policy(env, force_train=False, timesteps=500000,
+        never_overwrite=False, policy_class=stable_baselines.PPO1,
+        init_tensorboard=False, **kwargs):
     """
-    Returns a trained policy, maybe pretrained.
+    Returns a policy trained on the given environment, maybe pretrained.
 
     If a policy for the environment hasn't been trained and pickled before,
-    then first train and pickle it. Otherwise, load that pickled policy.
+    then first train and pickle it in saved_models/. Otherwise, load that
+    pickled policy.
+
+    When looking for trained policies, we first check for an expert policy
+    in expert_models/ and then check in saved_models/ for a policy trained
+    by this method.
 
     Params:
     env (str or Env): The Env that this policy is meant to act in, or the
       string name of the Gym environment.
-    timesteps (int): The number of training timesteps.
-    force_train (bool): If True, then always train and pickle first, even
-      if the policy already exists.
+    force_train (bool): If True, then always train a policy, ignoring any
+      saved policies.
+    timesteps (int): The number of training timesteps if we decide to train
+      a policy.
     never_overwrite (bool): It True, then don't pickle a policy if it means
-      overwriting another pickle. Ah, pickles.
+      overwriting another pickle.
     policy_class (stable_baselines.BaseRLModel class): A policy constructor
       from the stable_baselines module.
+    init_tensorboard (bool): Whether to initialize Tensorboard logging for
+      this policy.
+    **kwargs: Additional options for initializing the BaseRLModel class.
 
     Return:
     policy (stable_baselines.BaseRLModel)
     """
     env = util.maybe_load_env(env)
-    savepath = "saved_models/{}_{}.pkl".format(
-            policy_class.__name__, get_env_id(env))
-    exists = os.path.exists(savepath)
 
-    if exists and not force_train:
-        policy = policy_class.load(savepath, env=env)
-        logging.info("loaded policy from '{}'".format(savepath))
+    if not force_train:
+        # Try expert first.
+        expert_policy = load_expert_policy(env, policy_class,
+                init_tensorboard, **kwargs)
+        if expert_policy is not None:
+            return expert_policy
+
+        # Try trained.
+        trained_policy = load_trained_policy(env, policy_class,
+                init_tensorboard, **kwargs)
+        if trained_policy is not None:
+            return trained_policy
+
+        logging.info("Didn't find a pickled policy. Training...")
     else:
-        logging.info("Didn't find pickled policy at {}. Training..."
-                .format(savepath))
-        policy = make_blank_policy(env, policy_class=policy_class)
-        policy.learn(timesteps)
-        if exists and never_overwrite:
-            logging.info(("Avoided saving policy pickle at {} because "
-                "overwrite is disabled and that file already exists."
-                    ).format(savepath))
-        else:
-            policy.save(savepath)
-            logging.info("Saved pickle!")
+        logging.info("force_train=True. Training...")
+
+    # Learn and pickle a policy
+    policy = make_blank_policy(env, policy_class, init_tensorboard, **kwargs)
+    policy.learn(timesteps)
+    save_trained_policy(policy, never_overwrite)
+
     return policy
+
+
+def save_trained_policy(policy, never_overwrite=False):
+    """
+    Save a trained policy to saved_models/.
+    """
+    path = os.path.join("saved_models", _policy_filename(policy.__class__))
+    if never_overwrite and os.path.exists(path):
+        logging.info(("Avoided saving policy pickle to {} because "
+            "overwrite is disabled and that file already exists."
+                ).format(path))
+    else:
+        policy.save(path)
+        logging.info("Saved pickle to {}!".path)
+
+
+def load_trained_policy(env, **kwargs):
+    """
+    Load a trained policy from saved_models/.
+    """
+    return load_policy(env, basedir="saved_models", **kwargs)
+
+
+def load_expert_policy(env, **kwargs):
+    """
+    Load an expert policy from expert_models/.
+    """
+    return load_policy(env, basedir="expert_models", **kwargs)
+
+
+# TODO: It's probably a good idea to just use the model/policy semantics
+# from stable_baselines, even if I disagree with their naming scheme.
+#
+# ie, rename policy_class=> policy_model_class
+#     rename policy_network_class => policy (matches policy_class.__init__ arg)
+def load_policy(env, policy_class=stable_baselines.PPO1, basedir="",
+        init_tensorboard=False, policy_network_class=None, **kwargs):
+    """
+    Load a pickled policy and return it.
+
+    Params:
+    env (str or Env): The Env that this policy is meant to act in, or the
+      string name of the Gym environment.
+    policy_class (stable_baselines.BaseRLModel class): A policy constructor
+      from the stable_baselines module.
+    init_tensorboard (bool): Whether to initialize Tensorboard logging for
+      this policy.
+    base_dir (str): The directory of the pickled file.
+    policy_network_class (stable_baselines.BasePolicy): A policy network
+      constructor. Unless we are using a custom BasePolicy (not builtin to
+      stable_baselines), this is automatically infered, and so we can leave
+      this argument as None.
+    **kwargs: Additional options for initializing the BaseRLModel class.
+    """
+    path = os.path.join(basedir, _policy_filename(policy_class, env))
+    exists = os.path.exists(path)
+    if exists:
+        env = maybe_load_env(env)
+        if policy_network_class is not None:
+            kwargs["policy"] = policy_network_class
+
+        policy = policy_class.load(path, env,
+                tensorboard_log=_get_tb_log_dir(env, init_tensorboard),
+                **kwargs)
+        logging.info("loaded policy from '{}'".format(path))
+        return policy
+    else:
+        logging.info("couldn't find policy at '{}'".format(path))
+        return None
+
+
+def _policy_filename(policy_class, env):
+    """
+    Returns the .pkl filename that the policy instantiated with policy_class
+    and trained on env should be saved to.
+    """
+    return "{}_{}.pkl".format(policy_class.__name__, get_env_id(env))
 
 
 def generate_rollouts(policy, env, n_timesteps):
@@ -213,3 +298,10 @@ def generate_rollouts(policy, env, n_timesteps):
     assert np.all(rollout_obs_new[:-1] == rollout_obs_old[1:])
 
     return rollout_obs_old, rollout_act, rollout_obs_new
+
+
+def _get_tb_log_dir(env, init_tensorboard):
+    if init_tensorboard:
+        return "./output/{}/".format(get_env_id(env))
+    else:
+        return None
