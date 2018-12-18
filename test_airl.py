@@ -1,5 +1,6 @@
 import gym
 import pytest
+import stable_baselines
 import tensorflow as tf
 
 from airl import AIRLTrainer
@@ -8,6 +9,7 @@ import util
 
 
 def _init_trainer(env, use_expert_rollouts=False):
+    env = util.make_vec_env(env, 8)
     policy = util.make_blank_policy(env, init_tensorboard=False)
     if use_expert_rollouts:
         rollout_policy = util.load_expert_policy(env)
@@ -20,9 +22,8 @@ def _init_trainer(env, use_expert_rollouts=False):
             n_timesteps=1000)
 
     rn = BasicRewardNet(env)
-    trainer = AIRLTrainer(env, policy=util.make_blank_policy(env,
-        init_tensorboard=False), reward_net=rn, expert_obs_old=obs_old,
-            expert_act=act, expert_obs_new=obs_new)
+    trainer = AIRLTrainer(env, policy=policy, reward_net=rn,
+            expert_obs_old=obs_old, expert_act=act, expert_obs_new=obs_new)
     return policy, trainer
 
 
@@ -31,7 +32,7 @@ class TestAIRL(tf.test.TestCase):
     def test_init_no_crash(self, env='CartPole-v1'):
         _init_trainer(env)
 
-    def test_train_disc_no_crash(self, env='CartPole-v1', n_timesteps=110):
+    def test_train_disc_no_crash(self, env='CartPole-v1', n_timesteps=200):
         policy, trainer = _init_trainer(env)
         obs_old, act, obs_new, _ = util.rollout_generate(policy, env,
                 n_timesteps=n_timesteps)
@@ -43,7 +44,7 @@ class TestAIRL(tf.test.TestCase):
         trainer.train_gen(n_steps)
 
     @pytest.mark.expensive
-    def test_train_disc_improve_D(self, env='CartPole-v1', n_timesteps=100,
+    def test_train_disc_improve_D(self, env='CartPole-v1', n_timesteps=200,
             n_steps=10000):
         policy, trainer = _init_trainer(env)
         obs_old, act, obs_new, _ = util.rollout_generate(policy, env,
@@ -56,7 +57,7 @@ class TestAIRL(tf.test.TestCase):
         assert loss2 < loss1
 
     @pytest.mark.expensive
-    def test_train_gen_degrade_D(self, env='CartPole-v1', n_timesteps=100,
+    def test_train_gen_degrade_D(self, env='CartPole-v1', n_timesteps=200,
             n_steps=10000):
         policy, trainer = _init_trainer(env)
         obs_old, act, obs_new, _ = util.rollout_generate(policy, env,
@@ -69,7 +70,7 @@ class TestAIRL(tf.test.TestCase):
         assert loss2 > loss1
 
     @pytest.mark.expensive
-    def test_train_disc_then_gen(self, env='CartPole-v1', n_timesteps=100,
+    def test_train_disc_then_gen(self, env='CartPole-v1', n_timesteps=200,
             n_steps=10000):
         policy, trainer = _init_trainer(env)
         obs_old, act, obs_new, _ = util.rollout_generate(policy, env,
@@ -93,6 +94,7 @@ class TestAIRL(tf.test.TestCase):
     @pytest.mark.xfail(reason=
             "Either AIRL train is broken or not enough epochs."
             " Consider making a plot of episode reward over time to check.")
+    @pytest.mark.skip
     def test_trained_policy_better_than_random(self, env='CartPole-v1',
             n_episodes=10):
         """

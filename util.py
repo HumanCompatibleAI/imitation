@@ -33,6 +33,17 @@ def maybe_load_env(env_or_str, vectorize=True):
     return env
 
 
+def make_vec_env(env_id, n_envs):
+    """
+    Make a DummyVecEnv initialized with `n_envs` Envs.
+
+    Params:
+    env_id (str): The Env's string id in Gym.
+    n_envs (int): The number of duplicate environments.
+    """
+    return DummyVecEnv([lambda: gym.make(env_id) for _ in range(n_envs)])
+
+
 def is_vec_env(env):
     return isinstance(env, VecEnv)
 
