@@ -80,7 +80,7 @@ def make_blank_policy(env, policy_class=stable_baselines.PPO2,
 
 
 def get_or_train_policy(env, force_train=False, timesteps=500000,
-        never_overwrite=False, policy_class=stable_baselines.PPO1,
+        never_overwrite=False, policy_class=stable_baselines.PPO2,
         init_tensorboard=False, **kwargs):
     """
     Returns a policy trained on the given environment, maybe pretrained.
@@ -171,7 +171,7 @@ def load_expert_policy(env, **kwargs):
 #
 # ie, rename policy_class=> policy_model_class
 #     rename policy_network_class => policy (matches policy_class.__init__ arg)
-def load_policy(env, policy_class=stable_baselines.PPO1, basedir="",
+def load_policy(env, policy_class=stable_baselines.PPO2, basedir="",
         init_tensorboard=False, policy_network_class=None, **kwargs):
     """
     Load a pickled policy and return it.
