@@ -320,24 +320,33 @@ def rollout_generate(policy, env, *, n_timesteps=None, n_episodes=None,
     rollout_rew = []
     obs = env.reset()
     while not rollout_done():
-        # Current state.
-        rollout_obs_old.extend(obs)
-
-        # Current action.
-        act, _ = policy.predict(obs)
-        rollout_act.extend(act)
-
-        # Transition state and rewards.
+        obs_old = obs
+        act, _ = policy.predict(obs_old)
         obs, rew, done, _ = env.step(act)
-        rollout_obs_new.extend(obs)
-        rollout_rew.extend(rew)
 
-        # Track episodes
+        # Track episode count.
         if end_cond == "episodes":
             episodes_elapsed += np.sum(done)
 
+        # Don't save tuples if there is a done. The new_obs for any environment
+        # is incorrect for any timestep where there is an episode end.
+        # (See GH Issue #1).
+        # XXX: A more efficient alternative could save the outputs from
+        # environments that aren't done in this timestep. Right now we discard
+        # every output in the timestep.
         if np.any(done):
-            logging.debug("new episode!")
+            logging.debug("Skipping rollout append due to done.")
+            continue
+
+        # Current state.
+        rollout_obs_old.extend(obs_old)
+
+        # Current action.
+        rollout_act.extend(act)
+
+        # Transition state and rewards.
+        rollout_obs_new.extend(obs)
+        rollout_rew.extend(rew)
 
     # Convert results to numpy arrays. (Possibly truncate).
     rollout_obs_new = np.atleast_1d(rollout_obs_new)
@@ -361,8 +370,6 @@ def rollout_generate(policy, env, *, n_timesteps=None, n_episodes=None,
     n_envs = env.num_envs
     assert rollout_obs_new.shape == exp_obs
     assert rollout_obs_old.shape == exp_obs
-    if not truncate_timesteps or n_timesteps % n_envs == 0:
-        assert np.all(rollout_obs_new[:-n_envs] == rollout_obs_old[n_envs:])
     assert rollout_act.shape == exp_act
     assert rollout_rew.shape == (n_steps,)
 
