@@ -44,40 +44,6 @@ def get_env_id(env):
     return env.spec.id
 
 
-def rollout_action_probability(policy, rollout_obs, rollout_act):
-    """
-    Find the batch probability of observation, action pairs under a given
-    policy.
-
-    Params:
-    policy (stable_baselines.BaseRLModel): The policy.
-    rollout_obs (array) -- A numpy array with shape
-      `[n_timesteps] + env.observation_space.shape`.
-    rollout_act (array) -- A numpy array with shape
-      `[n_timesteps] + env.action_space.shape`.
-
-    Return:
-    rollout_prob (array) -- A numpy array with shape `[n_timesteps]`. The
-      `i`th entry is the action probability of action `rollout_act[i]` when
-      observing `rollout_obs[i]`.
-    """
-
-    # TODO: Only tested this on Cartpole (which has discrete actions). No
-    # idea how this works in a different action space.
-    act_prob = policy.action_probability(rollout_obs)
-    if rollout_act.ndim == 1:
-        # Expand None dimension so that we can use take_along_axis.
-        rollout_act = rollout_act[:, np.newaxis]
-
-    rollout_prob = np.take_along_axis(act_prob, rollout_act, axis=-1)
-    rollout_prob = np.squeeze(rollout_prob, axis=1)
-
-    n_timesteps = len(rollout_obs)
-    assert len(rollout_obs) == len(rollout_act)
-    assert rollout_prob.shape == (n_timesteps,)
-    return rollout_prob
-
-
 def make_blank_policy(env, policy_class=stable_baselines.PPO1,
         init_tensorboard=False, policy_network_class="MlpPolicy",
         **kwargs):
@@ -238,6 +204,40 @@ def _policy_filename(policy_class, env):
     return "{}_{}.pkl".format(policy_class.__name__, get_env_id(env))
 
 
+def rollout_action_probability(policy, rollout_obs, rollout_act):
+    """
+    Find the batch probability of observation, action pairs under a given
+    policy.
+
+    Params:
+    policy (stable_baselines.BaseRLModel): The policy.
+    rollout_obs (array) -- A numpy array with shape
+      `[n_timesteps] + env.observation_space.shape`.
+    rollout_act (array) -- A numpy array with shape
+      `[n_timesteps] + env.action_space.shape`.
+
+    Return:
+    rollout_prob (array) -- A numpy array with shape `[n_timesteps]`. The
+      `i`th entry is the action probability of action `rollout_act[i]` when
+      observing `rollout_obs[i]`.
+    """
+
+    # TODO: Only tested this on Cartpole (which has discrete actions). No
+    # idea how this works in a different action space.
+    act_prob = policy.action_probability(rollout_obs)
+    if rollout_act.ndim == 1:
+        # Expand None dimension so that we can use take_along_axis.
+        rollout_act = rollout_act[:, np.newaxis]
+
+    rollout_prob = np.take_along_axis(act_prob, rollout_act, axis=-1)
+    rollout_prob = np.squeeze(rollout_prob, axis=1)
+
+    n_timesteps = len(rollout_obs)
+    assert len(rollout_obs) == len(rollout_act)
+    assert rollout_prob.shape == (n_timesteps,)
+    return rollout_prob
+
+
 def rollout_generate(policy, env, n_timesteps):
     """
     Generate old_obs-action-new_obs-reward tuples from a policy and an
@@ -306,6 +306,26 @@ def rollout_generate(policy, env, n_timesteps):
     assert np.all(rollout_obs_new[:-1] == rollout_obs_old[1:])
 
     return rollout_obs_old, rollout_act, rollout_obs_new, rollout_rew
+
+
+def rollout_total_reward(policy, env, n_timesteps, n_episodes):
+    """
+    Get the undiscounted reward after rolling out `n_timestep` steps in
+    of the policy. With large n_timesteps, this can be a decent metric
+    for policy performance.
+
+    Params:
+    policy (stable_baselines.BaseRLModel) -- A stable_baselines Model, trained
+      on the gym environment.
+    env (VecEnv or Env or str) -- The environment(s) to interact with.
+    n_timesteps (int) -- The number of rewards to collect.
+
+    Return:
+    total_reward (int) -- The undiscounted reward from `n_timesteps` consecutive
+      actions in `env`.
+    """
+    _, _, _, rew = rollout_generate(policy, env, n_timesteps)
+    return np.sum(rew)
 
 
 def _get_tb_log_dir(env, init_tensorboard):
