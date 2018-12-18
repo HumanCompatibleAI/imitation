@@ -317,8 +317,8 @@ class AIRLTrainer():
 
     def _train_epoch(self):
         n_timesteps = len(self.expert_obs_old)
-        (gen_obs_old, gen_act, gen_obs_new) = util.generate_rollouts(
-                self.policy, self.env, n_timesteps)
+        (gen_obs_old, gen_act, gen_obs_new, _) = util.rollout_generate(
+                self.policy, self.env, n_timesteps=n_timesteps)
 
         self.train_disc(self.expert_obs_old, self.expert_act,
                 self.expert_obs_new, gen_obs_old, gen_act, gen_obs_new)

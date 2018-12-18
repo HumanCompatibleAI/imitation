@@ -7,12 +7,21 @@ from reward_net import BasicRewardNet
 import util
 
 
-def _init_trainer(env):
-    rn = BasicRewardNet(env)
+def _init_trainer(env, use_expert_rollouts=False):
     policy = util.make_blank_policy(env, init_tensorboard=False)
-    obs_old, act, obs_new, _ = util.rollout_generate(policy, env, 100)
-    trainer = AIRLTrainer(env, policy=policy,
-            reward_net=rn, expert_obs_old=obs_old,
+    if use_expert_rollouts:
+        rollout_policy = util.load_expert_policy(env)
+        if rollout_policy is None:
+            raise ValueError(env)
+    else:
+        rollout_policy = policy
+
+    obs_old, act, obs_new, _ = util.rollout_generate(rollout_policy, env,
+            n_timesteps=1000)
+
+    rn = BasicRewardNet(env)
+    trainer = AIRLTrainer(env, policy=util.make_blank_policy(env,
+        init_tensorboard=False), reward_net=rn, expert_obs_old=obs_old,
             expert_act=act, expert_obs_new=obs_new)
     return policy, trainer
 
@@ -25,7 +34,7 @@ class TestAIRL(tf.test.TestCase):
     def test_train_disc_no_crash(self, env='CartPole-v1', n_timesteps=110):
         policy, trainer = _init_trainer(env)
         obs_old, act, obs_new, _ = util.rollout_generate(policy, env,
-                n_timesteps)
+                n_timesteps=n_timesteps)
         trainer.train_disc(trainer.expert_obs_old, trainer.expert_act,
                 trainer.expert_obs_new, obs_old, act, obs_new)
 
@@ -38,7 +47,7 @@ class TestAIRL(tf.test.TestCase):
             n_steps=10000):
         policy, trainer = _init_trainer(env)
         obs_old, act, obs_new, _ = util.rollout_generate(policy, env,
-                n_timesteps)
+                n_timesteps=n_timesteps)
         args = [trainer.expert_obs_old, trainer.expert_act,
                 trainer.expert_obs_new, obs_old, act, obs_new]
         loss1 = trainer.eval_disc_loss(*args)
@@ -51,7 +60,7 @@ class TestAIRL(tf.test.TestCase):
             n_steps=10000):
         policy, trainer = _init_trainer(env)
         obs_old, act, obs_new, _ = util.rollout_generate(policy, env,
-                n_timesteps)
+                n_timesteps=n_timesteps)
         args = [trainer.expert_obs_old, trainer.expert_act,
                 trainer.expert_obs_new, obs_old, act, obs_new]
         loss1 = trainer.eval_disc_loss(*args)
@@ -64,7 +73,7 @@ class TestAIRL(tf.test.TestCase):
             n_steps=10000):
         policy, trainer = _init_trainer(env)
         obs_old, act, obs_new, _ = util.rollout_generate(policy, env,
-                n_timesteps)
+                n_timesteps=n_timesteps)
         args = [trainer.expert_obs_old, trainer.expert_act,
                 trainer.expert_obs_new, obs_old, act, obs_new]
         loss1 = trainer.eval_disc_loss(*args)
@@ -80,7 +89,43 @@ class TestAIRL(tf.test.TestCase):
         policy, trainer = _init_trainer(env)
         trainer.train(n_epochs=3)
 
-    @pytest.mark.now
+    @pytest.mark.expensive
+    @pytest.xfail(reason="Either AIRL train is broken or not enough epochs."
+            " Consider making a plot of episode reward over time to check.")
+    def test_trained_policy_better_than_random(self, env='CartPole-v1',
+            n_episodes=10):
+        """
+        Make sure that generator policy trained to mimick expert policy
+        demonstrations) achieves higher reward than a random policy.
+
+        In other words, perform a basic check on the imitation learning
+        capabilities of AIRLTrainer.
+        """
+        policy, trainer = _init_trainer(env, use_expert_rollouts=True)
+        expert_policy = util.load_expert_policy(env)
+        random_policy = util.make_blank_policy(env)
+        gen_policy = trainer.policy
+        if expert_policy is None:
+            pytest.fail("Couldn't load expert_policy!")
+
+        trainer.train(n_epochs=100)
+
+        # Idea: Plot n_epochs vs generator reward.
+        for _ in range(4):
+            expert_rew = util.rollout_total_reward(expert_policy, env,
+                    n_episodes=n_episodes)
+            gen_rew = util.rollout_total_reward(gen_policy, env,
+                    n_episodes=n_episodes)
+            random_rew = util.rollout_total_reward(random_policy, env,
+                    n_episodes=n_episodes)
+
+            print("expert reward:", expert_rew)
+            print("generator reward:", gen_rew)
+            print("random reward:", random_rew)
+            assert expert_rew > random_rew
+            assert gen_rew > random_rew
+
+    @pytest.mark.expensive
     def test_wrap_learned_reward_no_crash(self, env="CartPole-v1"):
         """
         Briefly train with AIRL, and then used the learned reward to wrap

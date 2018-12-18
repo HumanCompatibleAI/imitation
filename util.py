@@ -238,7 +238,7 @@ def rollout_action_probability(policy, rollout_obs, rollout_act):
     return rollout_prob
 
 
-def rollout_generate(policy, env, n_timesteps):
+def rollout_generate(policy, env, *, n_timesteps=None, n_episodes=None):
     """
     Generate old_obs-action-new_obs-reward tuples from a policy and an
     environment.
@@ -248,6 +248,13 @@ def rollout_generate(policy, env, n_timesteps):
       on the gym environment.
     env (VecEnv or Env or str) -- The environment(s) to interact with.
     n_timesteps (int) -- The number of obs-action-obs-reward tuples to collect.
+      Set exactly one of `n_timesteps` and `n_episodes`, or this function will
+      error.
+    n_episodes (int) -- The number of episodes to finish before returning
+      collected tuples. Tuples from parallel episodes underway when the final
+      episode is finished will also be returned.
+      Set exactly one of `n_timesteps` and `n_episodes`, or this function will
+      error.
 
     Return:
     rollout_obs_old (array) -- A numpy array with shape
@@ -263,18 +270,39 @@ def rollout_generate(policy, env, n_timesteps):
     rollout_rewards (array) -- A numpy array with shape `[n_timesteps]`. The
       reward received on the ith timestep is `rollout_rewards[i]`.
     """
-    assert n_timesteps > 0
-
     env = util.maybe_load_env(env, vectorize=True)
     policy.set_env(env)  # This checks that env and policy are compatbile.
     assert is_vec_env(env)
 
+    # Validate end condition arguments and initialize end conditions.
+    if n_timesteps is not None and n_episodes is not None:
+        raise ValueError("n_timesteps and n_episodes were both set")
+    elif n_timesteps is not None:
+        assert n_timesteps > 0
+        end_cond = "timesteps"
+    elif n_episodes is not None:
+        assert n_episodes > 0
+        end_cond = "episodes"
+        episodes_elapsed = 0
+    else:
+        raise ValueError("Set at least one of n_timesteps and n_episodes")
+
+    # Implements end-condition logic.
+    def rollout_done():
+        if end_cond == "timesteps":
+            return len(rollout_obs_new) >= n_timesteps
+        elif end_cond == "episodes":
+            return episodes_elapsed >= n_episodes
+        else:
+            raise RuntimeError(end_cond)
+
+    # Collect rollout tuples.
     rollout_obs_old = []
     rollout_act = []
     rollout_obs_new = []
     rollout_rew = []
     obs = env.reset()
-    while len(rollout_obs_new) < n_timesteps:
+    while not rollout_done():
         # Current state.
         rollout_obs_old.extend(obs)
 
@@ -283,32 +311,48 @@ def rollout_generate(policy, env, n_timesteps):
         rollout_act.extend(act)
 
         # Transition state.
-        obs, _, done, rew = env.step(act)
+        obs, rew, done, _ = env.step(act)
         rollout_obs_new.extend(obs)
 
         # Rewards.
-        rollout_rew.extend(rew)
+        rollout_rew.extend(rew.flatten())
+
+        # Track episodes
+        if end_cond == "episodes":
+            episodes_elapsed += np.sum(done)
 
         if np.any(done):
             logging.debug("new episode!")
 
-    rollout_obs_new = np.array(rollout_obs_new)[:n_timesteps]
-    rollout_obs_old = np.array(rollout_obs_old)[:n_timesteps]
-    rollout_rew = np.array(rollout_rew)[:n_timesteps]
-    exp_obs = (n_timesteps,) + env.observation_space.shape
+    # Convert results to numpy arrays. (Possibly truncate).
+    rollout_obs_new = np.atleast_1d(rollout_obs_new)
+    rollout_obs_old = np.atleast_1d(rollout_obs_old)
+    rollout_act = np.atleast_1d(rollout_act)
+    rollout_rew = np.atleast_1d(rollout_rew)
+    if end_cond == "timesteps":
+        n_steps = n_timesteps
+
+        # Truncate because we want exactly n_timesteps.
+        rollout_obs_new = rollout_obs_new[:n_timesteps]
+        rollout_obs_old = rollout_obs_old[:n_timesteps]
+        rollout_act = rollout_act[:n_timesteps]
+        rollout_rew = rollout_rew[:n_timesteps]
+    elif end_cond == "episodes":
+        n_steps = len(rollout_obs_new)
+
+    # Sanity checks.
+    exp_obs = (n_steps,) + env.observation_space.shape
+    exp_act = (n_steps,) + env.action_space.shape
     assert rollout_obs_new.shape == exp_obs
     assert rollout_obs_old.shape == exp_obs
-    assert rollout_rew.shape == (n_timesteps,)
-
-    rollout_act = np.array(rollout_act)[:n_timesteps]
-    exp_act = (n_timesteps,) + env.action_space.shape
-    assert rollout_act.shape == exp_act
     assert np.all(rollout_obs_new[:-1] == rollout_obs_old[1:])
+    assert rollout_act.shape == exp_act
+    assert rollout_rew.shape == (n_steps,)
 
     return rollout_obs_old, rollout_act, rollout_obs_new, rollout_rew
 
 
-def rollout_total_reward(policy, env, n_timesteps, n_episodes):
+def rollout_total_reward(policy, env, **kwargs):
     """
     Get the undiscounted reward after rolling out `n_timestep` steps in
     of the policy. With large n_timesteps, this can be a decent metric
@@ -319,12 +363,15 @@ def rollout_total_reward(policy, env, n_timesteps, n_episodes):
       on the gym environment.
     env (VecEnv or Env or str) -- The environment(s) to interact with.
     n_timesteps (int) -- The number of rewards to collect.
+    n_episodes (int) -- The number of episodes to finish before we stop
+      collecting rewards. Reward from parallel episodes that are underway when
+      the final episode is finished is also included in the reward total.
 
     Return:
     total_reward (int) -- The undiscounted reward from `n_timesteps` consecutive
       actions in `env`.
     """
-    _, _, _, rew = rollout_generate(policy, env, n_timesteps)
+    _, _, _, rew = rollout_generate(policy, env, **kwargs)
     return np.sum(rew)
 
 
