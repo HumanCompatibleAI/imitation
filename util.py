@@ -240,13 +240,14 @@ def _policy_filename(policy_class, env):
 
 def generate_rollouts(policy, env, n_timesteps):
     """
-    Generate state-action-state triples from a policy and an environment.
+    Generate old_obs-action-new_obs-reward tuples from a policy and an
+    environment.
 
     Params:
     policy (stable_baselines.BaseRLModel) -- A stable_baselines Model, trained
       on the gym environment.
     env (VecEnv or Env or str) -- The environment(s) to interact with.
-    n_timesteps (int) -- The number of state-action pairs to collect.
+    n_timesteps (int) -- The number of obs-action-obs-reward tuples to collect.
 
     Return:
     rollout_obs_old (array) -- A numpy array with shape
@@ -259,6 +260,8 @@ def generate_rollouts(policy, env, n_timesteps):
       `[n_timesteps] + env.observation_space.shape`. The ith observation in this
       array is from the transition state after the agent chooses action
       `rollout_act[i]`.
+    rollout_rewards (array) -- A numpy array with shape `[n_timesteps]`. The
+      reward received on the ith timestep is `rollout_rewards[i]`.
     """
     assert n_timesteps > 0
 
@@ -269,6 +272,7 @@ def generate_rollouts(policy, env, n_timesteps):
     rollout_obs_old = []
     rollout_act = []
     rollout_obs_new = []
+    rollout_rew = []
     obs = env.reset()
     while len(rollout_obs_new) < n_timesteps:
         # Current state.
@@ -279,25 +283,29 @@ def generate_rollouts(policy, env, n_timesteps):
         rollout_act.extend(act)
 
         # Transition state.
-        obs, _, done, _ = env.step(act)
+        obs, _, done, rew = env.step(act)
         rollout_obs_new.extend(obs)
 
-        # DEBUG
+        # Rewards.
+        rollout_rew.extend(rew)
+
         if np.any(done):
             logging.debug("new episode!")
 
     rollout_obs_new = np.array(rollout_obs_new)[:n_timesteps]
     rollout_obs_old = np.array(rollout_obs_old)[:n_timesteps]
+    rollout_rew = np.array(rollout_rew)[:n_timesteps]
     exp_obs = (n_timesteps,) + env.observation_space.shape
     assert rollout_obs_new.shape == exp_obs
     assert rollout_obs_old.shape == exp_obs
+    assert rollout_rew.shape == (n_timesteps,)
 
     rollout_act = np.array(rollout_act)[:n_timesteps]
     exp_act = (n_timesteps,) + env.action_space.shape
     assert rollout_act.shape == exp_act
     assert np.all(rollout_obs_new[:-1] == rollout_obs_old[1:])
 
-    return rollout_obs_old, rollout_act, rollout_obs_new
+    return rollout_obs_old, rollout_act, rollout_obs_new, rollout_rew
 
 
 def _get_tb_log_dir(env, init_tensorboard):
