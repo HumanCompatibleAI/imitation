@@ -106,9 +106,16 @@ class AIRLTrainer():
         self.policy.set_env(self.env)  # Can't guarantee that env is the same.
         self.policy.learn(n_steps)
 
-    def train(self, n_epochs=1000):
+    def train(self, n_epochs=1000, n_gen_steps_per_epoch=100,
+            n_disc_steps_per_epoch=100):
         for i in tqdm(range(n_epochs), desc="AIRL train"):
-            self._train_epoch()
+            n_timesteps = len(self.expert_obs_old)
+            (gen_obs_old, gen_act, gen_obs_new, _) = util.rollout_generate(
+                    self.policy, self.env, n_timesteps=n_timesteps)
+
+            self.train_disc(self.expert_obs_old, self.expert_act,
+                    self.expert_obs_new, gen_obs_old, gen_act, gen_obs_new)
+            self.train_gen()
         self.epochs_so_far += n_epochs
 
     def eval_disc_loss(self, *args, **kwargs):
@@ -321,14 +328,6 @@ class AIRLTrainer():
 
         self._test_reward_fn = R
 
-    def _train_epoch(self):
-        n_timesteps = len(self.expert_obs_old)
-        (gen_obs_old, gen_act, gen_obs_new, _) = util.rollout_generate(
-                self.policy, self.env, n_timesteps=n_timesteps)
-
-        self.train_disc(self.expert_obs_old, self.expert_act,
-                self.expert_obs_new, gen_obs_old, gen_act, gen_obs_new)
-        self.train_gen()
 
 
 class _RewardVecEnvWrapper(VecEnvWrapper):
