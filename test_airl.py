@@ -37,10 +37,11 @@ class TestAIRL(tf.test.TestCase):
 
     def test_train_disc_no_crash(self, env='CartPole-v1', n_timesteps=200):
         policy, trainer = _init_trainer(env)
+        trainer.train_disc()
         obs_old, act, obs_new, _ = util.rollout_generate(policy, env,
                 n_timesteps=n_timesteps)
-        trainer.train_disc(trainer.expert_obs_old, trainer.expert_act,
-                trainer.expert_obs_new, obs_old, act, obs_new)
+        trainer.train_disc(gen_obs_old=obs_old, gen_act=act,
+                gen_obs_new=obs_new)
 
     def test_train_gen_no_crash(self, env='CartPole-v1', n_steps=10):
         policy, trainer = _init_trainer(env)
@@ -52,11 +53,10 @@ class TestAIRL(tf.test.TestCase):
         policy, trainer = _init_trainer(env)
         obs_old, act, obs_new, _ = util.rollout_generate(policy, env,
                 n_timesteps=n_timesteps)
-        args = [trainer.expert_obs_old, trainer.expert_act,
-                trainer.expert_obs_new, obs_old, act, obs_new]
-        loss1 = trainer.eval_disc_loss(*args)
-        trainer.train_disc(*args, n_steps=n_steps)
-        loss2 = trainer.eval_disc_loss(*args)
+        kwargs = dict(gen_obs_old=obs_old, gen_act=act, gen_obs_new=obs_new)
+        loss1 = trainer.eval_disc_loss(**kwargs)
+        trainer.train_disc(n_steps=n_steps, **kwargs)
+        loss2 = trainer.eval_disc_loss(**kwargs)
         assert loss2 < loss1
 
     @pytest.mark.expensive
@@ -65,11 +65,11 @@ class TestAIRL(tf.test.TestCase):
         policy, trainer = _init_trainer(env)
         obs_old, act, obs_new, _ = util.rollout_generate(policy, env,
                 n_timesteps=n_timesteps)
-        args = [trainer.expert_obs_old, trainer.expert_act,
-                trainer.expert_obs_new, obs_old, act, obs_new]
-        loss1 = trainer.eval_disc_loss(*args)
+        kwargs = dict(gen_obs_old=obs_old, gen_act=act, gen_obs_new=obs_new)
+
+        loss1 = trainer.eval_disc_loss(**kwargs)
         trainer.train_gen(n_steps=n_steps)
-        loss2 = trainer.eval_disc_loss(*args)
+        loss2 = trainer.eval_disc_loss(**kwargs)
         assert loss2 > loss1
 
     @pytest.mark.expensive
@@ -78,13 +78,13 @@ class TestAIRL(tf.test.TestCase):
         policy, trainer = _init_trainer(env)
         obs_old, act, obs_new, _ = util.rollout_generate(policy, env,
                 n_timesteps=n_timesteps)
-        args = [trainer.expert_obs_old, trainer.expert_act,
-                trainer.expert_obs_new, obs_old, act, obs_new]
-        loss1 = trainer.eval_disc_loss(*args)
-        trainer.train_disc(*args, n_steps=n_steps)
-        loss2 = trainer.eval_disc_loss(*args)
+        kwargs = dict(gen_obs_old=obs_old, gen_act=act, gen_obs_new=obs_new)
+
+        loss1 = trainer.eval_disc_loss(**kwargs)
+        trainer.train_disc(n_steps=n_steps, **kwargs)
+        loss2 = trainer.eval_disc_loss(**kwargs)
         trainer.train_gen(n_steps=n_steps)
-        loss3 = trainer.eval_disc_loss(*args)
+        loss3 = trainer.eval_disc_loss(**kwargs)
         assert loss2 < loss1
         assert loss3 > loss2
 
@@ -97,6 +97,7 @@ class TestAIRL(tf.test.TestCase):
     @pytest.mark.xfail(reason=
             "Either AIRL train is broken or not enough epochs."
             " Consider making a plot of episode reward over time to check.")
+    @pytest.mark.skip
     def test_trained_policy_better_than_random(self, env='CartPole-v1',
             n_episodes=50):
         """

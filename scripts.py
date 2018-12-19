@@ -11,7 +11,19 @@ from reward_net import BasicRewardNet
 import util
 
 
-def _init_trainer(env, use_expert_rollouts=False):
+def _init_trainer(env, use_expert_rollouts=True):
+    """
+    Initialize an AIRL trainer to train a BasicRewardNet (discriminator)
+    versus a policy (generator).
+
+    Params:
+    use_expert_rollouts (bool) -- If True, then load an expert policy to
+      generate training data, and error if this expert policy doesn't exist for
+      this environment. If False, then generate random rollouts.
+
+    Return:
+    trainer (AIRLTrainer) -- The AIRL trainer.
+    """
     if isinstance(env, str):
         env = util.make_vec_env(env, 8)
     else:
@@ -30,11 +42,11 @@ def _init_trainer(env, use_expert_rollouts=False):
     rn = BasicRewardNet(env)
     trainer = AIRLTrainer(env, policy=policy, reward_net=rn,
             expert_obs_old=obs_old, expert_act=act, expert_obs_new=obs_new)
-    return policy, trainer
+    return trainer
 
 
 def plot_episode_reward_vs_time(env='CartPole-v1', n_episodes=50,
-        n_epochs_per_plot=10, n_plots=1):
+        n_epochs_per_plot=250, n_plots=100):
     """
     Make sure that generator policy trained to mimick expert policy
     demonstrations) achieves higher reward than a random policy.
@@ -42,7 +54,7 @@ def plot_episode_reward_vs_time(env='CartPole-v1', n_episodes=50,
     In other words, perform a basic check on the imitation learning
     capabilities of AIRLTrainer.
     """
-    policy, trainer = _init_trainer(env, use_expert_rollouts=True)
+    trainer = _init_trainer(env, use_expert_rollouts=True)
     expert_policy = util.load_expert_policy(env)
     random_policy = util.make_blank_policy(env)
     gen_policy = trainer.policy
@@ -76,6 +88,24 @@ def plot_episode_reward_vs_time(env='CartPole-v1', n_episodes=50,
     plt.savefig("output/plot_episode_reward_vs_time_{}.png".format(
         datetime.datetime.now()
         ))
+
+
+def plot_discriminator_loss(env='CartPole-v1', n_epochs_per_plot=250,
+        n_plots=100):
+    """
+    Train the discriminator to distinguish (unchanging) expert rollouts versus
+    the unchanging random rollouts for a long time and plot discriminator loss.
+    """
+
+    trainer = _init_trainer(env, use_expert_rollouts=True)
+    n_timesteps = len(self.trainer.expert_obs_old)
+
+    (gen_obs_old, gen_act, gen_obs_new, _) = util.rollout_generate(
+            self.trainer.policy, self.trainer.env, n_timesteps=n_timesteps)
+
+    trainer.train_disc(self.trainer.expert_obs_old, self.trainer.expert_act,
+            self.trainer.expert_obs_new, )
+
 
 if __name__ == "__main__":
     plot_episode_reward_vs_time()

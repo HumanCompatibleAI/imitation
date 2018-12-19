@@ -1,3 +1,5 @@
+import logging
+
 import numpy as np
 from stable_baselines.common.vec_env import VecEnvWrapper
 import tensorflow as tf
@@ -64,23 +66,18 @@ class AIRLTrainer():
 
         self.env = self.wrap_env_train_reward(self.env)
 
-
-
-    def train_disc(self, *args, n_steps=100, **kwargs):
+    def train_disc(self, *, n_steps=100, **kwargs):
         """
         Train the discriminator to minimize classification cross-entropy.
 
+        The generator rollout parameters of the form "gen_*" are optional,
+        but if one is given, then all such parameters must be filled (otherwise
+        this method will error). If none of the generator rollout parameters are
+        given, then a rollout with the same length as the expert rollout
+        is generated on the fly.
+
         Params:
-          expert_obs_old (array) -- A numpy array with shape
-            `[n_timesteps] + env.observation_space.shape`. The ith observation
-            in this array is the observation seen when the expert chooses action
-            `expert_act[i]`.
-          expert_act (array) -- A numpy array with shape
-            `[n_timesteps] + env.action_space.shape`.
-          expert_obs_new (array) -- A numpy array with shape
-            `[n_timesteps] + env.observation_space.shape`. The ith observation
-            in this array is from the transition state after the expert chooses
-            action `expert_act[i]`.
+          n_steps (int) -- The number of training steps to take.
           gen_obs_old (array) -- A numpy array with shape
             `[n_timesteps] + env.observation_space.shape`. The ith observation
             in this array is the observation seen when the generator chooses
@@ -91,9 +88,8 @@ class AIRLTrainer():
             `[n_timesteps] + env.observation_space.shape`. The ith observation
             in this array is from the transition state after the generator
             chooses action `gen_act[i]`.
-          n_steps (int) -- The number of training steps to take.
         """
-        fd = self._build_disc_feed_dict(*args, **kwargs)
+        fd = self._build_disc_feed_dict(**kwargs)
         for _ in range(n_steps):
             step, _ = self._sess.run([self._global_step, self._disc_train_op],
                     feed_dict=fd)
@@ -101,38 +97,40 @@ class AIRLTrainer():
                 self._summarize(fd, step)
 
     def train_gen(self, n_steps=100):
-        # Adam: It's not necessary to train to convergence.
-        # (Probably should take a look at Justin's code for intuit.)
         self.policy.set_env(self.env)  # Can't guarantee that env is the same.
         self.policy.learn(n_steps)
 
-    def train(self, n_epochs=1000, n_gen_steps_per_epoch=100,
+    def train(self, *, n_epochs=1000, n_gen_steps_per_epoch=100,
             n_disc_steps_per_epoch=100):
-        for i in tqdm(range(n_epochs), desc="AIRL train"):
-            n_timesteps = len(self.expert_obs_old)
-            (gen_obs_old, gen_act, gen_obs_new, _) = util.rollout_generate(
-                    self.policy, self.env, n_timesteps=n_timesteps)
+        """
+        Train the discriminator and generator against each other.
 
-            self.train_disc(self.expert_obs_old, self.expert_act,
-                    self.expert_obs_new, gen_obs_old, gen_act, gen_obs_new)
-            self.train_gen()
+        Params:
+          n_epochs (int) -- The number of epochs to train. Every epoch consists
+            of training the discriminator and then training the generator.
+          n_disc_steps_per_epoch (int) -- The number of steps to train the
+            discriminator every epoch. More precisely, the number of full batch
+            Adam optimizer steps to perform.
+          n_gen_steps_per_epoch (int) -- The number of steps to train the
+            generator every epoch. (ie, the number of timesteps to train in
+            `policy.learn(timesteps)`).
+        """
+        for i in tqdm(range(n_epochs), desc="AIRL train"):
+            self.train_disc(n_steps=n_disc_steps_per_epoch)
+            self.train_gen(n_steps=n_gen_steps_per_epoch)
         self.epochs_so_far += n_epochs
 
-    def eval_disc_loss(self, *args, **kwargs):
+    def eval_disc_loss(self, **kwargs):
         """
         Evaluate the discriminator loss.
 
+        The generator rollout parameters of the form "gen_*" are optional,
+        but if one is given, then all such parameters must be filled (otherwise
+        this method will error). If none of the generator rollout parameters are
+        given, then a rollout with the same length as the expert rollout
+        is generated on the fly.
+
         Params:
-          expert_obs_old (array) -- A numpy array with shape
-            `[n_timesteps] + env.observation_space.shape`. The ith observation
-            in this array is the observation seen when the expert chooses action
-            `expert_act[i]`.
-          expert_act (array) -- A numpy array with shape
-            `[n_timesteps] + env.action_space.shape`.
-          expert_obs_new (array) -- A numpy array with shape
-            `[n_timesteps] + env.observation_space.shape`. The ith observation
-            in this array is from the transition state after the expert chooses
-            action `expert_act[i]`.
           gen_obs_old (array) -- A numpy array with shape
             `[n_timesteps] + env.observation_space.shape`. The ith observation
             in this array is the observation seen when the generator chooses
@@ -148,7 +146,7 @@ class AIRLTrainer():
           discriminator_loss (type?) -- The cross-entropy error in the
             discriminator's clasifications.
         """
-        fd = self._build_disc_feed_dict(*args, **kwargs)
+        fd = self._build_disc_feed_dict(**kwargs)
         return np.sum(self._sess.run(self._disc_loss, feed_dict=fd))
 
     def wrap_env_train_reward(self, env):
@@ -234,9 +232,27 @@ class AIRLTrainer():
         self._disc_train_op = self._disc_opt.minimize(self._disc_loss,
                 global_step=self._global_step)
 
-    def _build_disc_feed_dict(self, expert_obs_old, expert_act, expert_obs_new,
-            gen_obs_old, gen_act, gen_obs_new):
+    def _build_disc_feed_dict(self, gen_obs_old=None, gen_act=None,
+            gen_obs_new=None):
 
+        none_count = sum(int(x is None)
+                for x in (gen_obs_old, gen_act, gen_obs_new))
+        if none_count == 3:
+            logging.debug("_build_disc_feed_dict: No generator rollout "
+                    "parameters were "
+                    "provided, so we are generating them now.")
+            n_timesteps = len(self.expert_obs_old)
+            (gen_obs_old, gen_act, gen_obs_new, _) = util.rollout_generate(
+                    self.policy, self.env, n_timesteps=n_timesteps)
+        elif none_count != 0:
+            raise ValueError("Gave some but not all of the generator params.")
+
+        # Alias saved expert rollout.
+        expert_obs_old = self.expert_obs_old
+        expert_act = self.expert_act
+        expert_obs_new = self.expert_obs_new
+
+        # Check dimensions.
         n_expert = len(expert_obs_old)
         n_gen = len(gen_obs_old)
         N = n_expert + n_gen
