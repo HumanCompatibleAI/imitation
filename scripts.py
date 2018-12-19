@@ -5,6 +5,7 @@ experiments into an scripts/ directory.
 import datetime
 
 from matplotlib import pyplot as plt
+import tqdm
 
 from airl import AIRLTrainer
 from reward_net import BasicRewardNet
@@ -25,7 +26,7 @@ def _init_trainer(env, use_expert_rollouts=True):
     trainer (AIRLTrainer) -- The AIRL trainer.
     """
     if isinstance(env, str):
-        env = util.make_vec_env(env, 8)
+        env = util.make_vec_env(env, 32)
     else:
         env = util.maybe_load_env(env, True)
     policy = util.make_blank_policy(env, init_tensorboard=False)
@@ -90,22 +91,139 @@ def plot_episode_reward_vs_time(env='CartPole-v1', n_episodes=50,
         ))
 
 
-def plot_discriminator_loss(env='CartPole-v1', n_epochs_per_plot=250,
-        n_plots=100):
+def plot_discriminator_loss(env='CartPole-v1', n_steps_per_plot=1000,
+        n_plots=100, n_gen_warmup_steps=500):
     """
+    Train the generator briefly, and then
+
     Train the discriminator to distinguish (unchanging) expert rollouts versus
     the unchanging random rollouts for a long time and plot discriminator loss.
     """
-
     trainer = _init_trainer(env, use_expert_rollouts=True)
-    n_timesteps = len(self.trainer.expert_obs_old)
+    n_timesteps = len(trainer.expert_obs_old)
+    (gen_obs_old, gen_act, gen_obs_new, _) = util.rollout_generate(
+            trainer.policy, trainer.env, n_timesteps=n_timesteps)
+    kwargs = dict(gen_obs_old=gen_obs_old, gen_act=gen_act,
+            gen_obs_new=gen_obs_new)
+    trainer.train_gen(n_steps=n_gen_warmup_steps)
+
+    steps_so_far = 0
+    def epoch():
+        nonlocal steps_so_far
+        trainer.train_disc(**kwargs, n_steps=n_steps_per_plot)
+        steps_so_far += n_steps_per_plot
+
+    X = []
+    Y = []
+    def add_plot():
+        X.append(steps_so_far)
+        Y.append(trainer.eval_disc_loss(**kwargs))
+        print("step: {}".format(steps_so_far))
+        print("loss: {}".format(Y[-1]))
+
+    add_plot()
+    for _ in tqdm.trange(n_plots, desc="discriminator"):
+        epoch()
+        add_plot()
+
+    plt.plot(X, Y, label="discriminator loss")
+    plt.legend()
+    plt.savefig("output/plot_discriminator_loss_{}.png".format(
+        datetime.datetime.now()
+        ))
+
+
+def plot_generator_loss(env='CartPole-v1', n_steps_per_plot=5000,
+        n_plots=100, n_disc_warmup_steps=100):
+    """
+    Train the discriminator briefly, and then
+
+    Train the generator to distinguish (unchanging) expert rollouts to
+    confuse the discriminator, and plot discriminator loss.
+    """
+    trainer = _init_trainer(env, use_expert_rollouts=True)
+    n_timesteps = len(trainer.expert_obs_old)
 
     (gen_obs_old, gen_act, gen_obs_new, _) = util.rollout_generate(
-            self.trainer.policy, self.trainer.env, n_timesteps=n_timesteps)
+            trainer.policy, trainer.env, n_timesteps=n_timesteps)
 
-    trainer.train_disc(self.trainer.expert_obs_old, self.trainer.expert_act,
-            self.trainer.expert_obs_new, )
+    steps_so_far = 0
+    def epoch():
+        nonlocal steps_so_far
+        trainer.train_gen(n_steps=n_steps_per_plot)
+        steps_so_far += n_steps_per_plot
+
+    X = []
+    Y = []
+    def add_plot():
+        X.append(steps_so_far)
+        Y.append(trainer.eval_disc_loss())
+        print("step: {}".format(steps_so_far))
+        print("disc loss: {}".format(Y[-1]))
+
+    add_plot()
+    for _ in tqdm.trange(n_plots, desc="generator"):
+        epoch()
+        add_plot()
+
+    plt.plot(X, Y, label="discriminator loss")
+    plt.legend()
+    plt.savefig("output/plot_generator_loss_{}.png".format(
+        datetime.datetime.now()
+        ))
+
+
+def plot_fight_loss(env='CartPole-v1',
+        n_epochs=100,
+        n_plots_each_per_epoch=50,
+        n_disc_steps_per_plot=100,
+        n_gen_steps_per_plot=10000):
+    """
+    Alternate between training the generator and discriminator.
+
+    Plot discriminator loss during discriminator training steps in blue and
+    discriminator loss during generator training steps in red.
+    """
+    trainer = _init_trainer(env, use_expert_rollouts=True)
+    n_timesteps = len(trainer.expert_obs_old)
+
+    plot_idx = 0
+    def epoch(gen_mode=False):
+        nonlocal plot_idx
+        if gen_mode:
+            trainer.train_gen(n_steps=n_gen_steps_per_plot)
+        else:
+            trainer.train_disc(n_steps=n_disc_steps_per_plot)
+        plot_idx += 1
+
+    gen_data = ([], [])
+    disc_data = ([], [])
+    def add_plot(gen_mode=False):
+        mode = "gen" if gen_mode else "dis"
+        X, Y = gen_data if gen_mode else disc_data
+        X.append(plot_idx)
+        Y.append(trainer.eval_disc_loss())
+        print("plot idx ({}): {}".format(mode, plot_idx))
+        print("disc loss: {}".format(Y[-1]))
+
+    add_plot(False)
+    for _ in tqdm.trange(n_epochs, desc="epoch"):
+        for _ in range(n_plots_each_per_epoch):
+            epoch(False)
+            add_plot(False)
+        for _ in range(n_plots_each_per_epoch):
+            epoch(True)
+            add_plot(True)
+
+    plt.scatter(disc_data[0], disc_data[1], c='g',
+            label="discriminator loss (dis step)")
+    plt.scatter(gen_data[0], gen_data[1], c='r',
+            label="discriminator loss (gen step)")
+    plt.legend()
+    plt.savefig("output/plot_fight_loss_{}.png".format(
+        datetime.datetime.now()
+        ))
 
 
 if __name__ == "__main__":
-    plot_episode_reward_vs_time()
+    plot_fight_loss()
