@@ -54,7 +54,7 @@ def get_env_id(env):
 
 def make_blank_policy(env, policy_class=stable_baselines.PPO2,
         init_tensorboard=False, policy_network_class="MlpPolicy",
-        **kwargs):
+        verbose=0, **kwargs):
     """
     Instantiates a policy for the provided environment.
 
@@ -66,19 +66,20 @@ def make_blank_policy(env, policy_class=stable_baselines.PPO2,
       from the stable_baselines module.
     init_tensorboard (bool): If True, then initialize the policy to make
       TensorBoard summary writes.
+    verbose (int): The verbosity level of the policy during training.
 
     Return:
     policy (stable_baselines.BaseRLModel)
     """
     env = maybe_load_env(env)
-    return policy_class(policy_network_class, env, verbose=1,
+    return policy_class(policy_network_class, env, verbose=verbose,
             tensorboard_log=_get_tb_log_dir(env, init_tensorboard),
             **kwargs)
 
 
 def get_or_train_policy(env, force_train=False, timesteps=500000,
         never_overwrite=False, policy_class=stable_baselines.PPO2,
-        init_tensorboard=False, **kwargs):
+        init_tensorboard=False, verbose=0, **kwargs):
     """
     Returns a policy trained on the given environment, maybe pretrained.
 
@@ -103,6 +104,7 @@ def get_or_train_policy(env, force_train=False, timesteps=500000,
       from the stable_baselines module.
     init_tensorboard (bool): Whether to initialize Tensorboard logging for
       this policy.
+    verbose (int): The verbosity level of the policy during training.
     **kwargs: Additional options for initializing the BaseRLModel class.
 
     Return:
@@ -113,13 +115,13 @@ def get_or_train_policy(env, force_train=False, timesteps=500000,
     if not force_train:
         # Try expert first.
         expert_policy = load_expert_policy(env, policy_class,
-                init_tensorboard, **kwargs)
+                init_tensorboard, verbose=verbose, **kwargs)
         if expert_policy is not None:
             return expert_policy
 
         # Try trained.
         trained_policy = load_trained_policy(env, policy_class,
-                init_tensorboard, **kwargs)
+                init_tensorboard, verbose=verbose, **kwargs)
         if trained_policy is not None:
             return trained_policy
 
@@ -170,7 +172,7 @@ def load_expert_policy(env, **kwargs):
 # ie, rename policy_class=> policy_model_class
 #     rename policy_network_class => policy (matches policy_class.__init__ arg)
 def load_policy(env, policy_class=stable_baselines.PPO2, basedir="",
-        init_tensorboard=False, policy_network_class=None, **kwargs):
+        init_tensorboard=False, policy_network_class=None, verbose=0, **kwargs):
     """
     Load a pickled policy and return it.
 
@@ -186,6 +188,7 @@ def load_policy(env, policy_class=stable_baselines.PPO2, basedir="",
       constructor. Unless we are using a custom BasePolicy (not builtin to
       stable_baselines), this is automatically infered, and so we can leave
       this argument as None.
+    verbose (int): The verbosity level of the model during training.
     **kwargs: Additional options for initializing the BaseRLModel class.
     """
     path = os.path.join(basedir, _policy_filename(policy_class, env))
