@@ -1,10 +1,13 @@
 """
-Random experiments. As this file expands, I will probably move individual
-experiments into an scripts/ directory.
+Random experiments. As this file expands, I will probably move individual experiments into an scripts/ directory.
+
+These scripts are meant to be run in a Jupyter notebook (displays figures)
+but also automatically save timestamped figures to the output/ directory.
 """
 import datetime
 
 from matplotlib import pyplot as plt
+import tensorflow as tf
 import tqdm
 
 from yairl.airl import AIRLTrainer
@@ -86,9 +89,7 @@ def plot_episode_reward_vs_time(env='CartPole-v1', n_episodes=50,
     plt.plot(X, gen_rews, label="generator")
     plt.plot(X, random_rews, label="random")
     plt.legend()
-    plt.savefig("output/plot_episode_reward_vs_time_{}.png".format(
-        datetime.datetime.now()
-        ))
+    _savefig_timestamp("plot_episode_reward_vs_time")
 
 
 def plot_discriminator_loss(env='CartPole-v1', n_steps_per_plot=1000,
@@ -122,15 +123,13 @@ def plot_discriminator_loss(env='CartPole-v1', n_steps_per_plot=1000,
         print("loss: {}".format(Y[-1]))
 
     add_plot()
-    for _ in tqdm.trange(n_plots, desc="discriminator"):
+    for _ in tqdm.tnrange(n_plots, desc="discriminator"):
         epoch()
         add_plot()
 
     plt.plot(X, Y, label="discriminator loss")
     plt.legend()
-    plt.savefig("output/plot_discriminator_loss_{}.png".format(
-        datetime.datetime.now()
-        ))
+    _savefig_timestamp("plot_discriminator_loss")
 
 
 def plot_generator_loss(env='CartPole-v1', n_steps_per_plot=5000,
@@ -162,15 +161,13 @@ def plot_generator_loss(env='CartPole-v1', n_steps_per_plot=5000,
         print("disc loss: {}".format(Y[-1]))
 
     add_plot()
-    for _ in tqdm.trange(n_plots, desc="generator"):
+    for _ in tqdm.tnrange(n_plots, desc="generator"):
         epoch()
         add_plot()
 
     plt.plot(X, Y, label="discriminator loss")
     plt.legend()
-    plt.savefig("output/plot_generator_loss_{}.png".format(
-        datetime.datetime.now()
-        ))
+    _savefig_timestamp("plot_generator_loss")
 
 
 def plot_fight_loss(env='CartPole-v1',
@@ -184,6 +181,7 @@ def plot_fight_loss(env='CartPole-v1',
     Plot discriminator loss during discriminator training steps in blue and
     discriminator loss during generator training steps in red.
     """
+    import ipdb; ipdb.set_trace()
     trainer = _init_trainer(env, use_expert_rollouts=True)
     n_timesteps = len(trainer.expert_obs_old)
 
@@ -207,7 +205,7 @@ def plot_fight_loss(env='CartPole-v1',
         print("disc loss: {}".format(Y[-1]))
 
     add_plot(False)
-    for _ in tqdm.trange(n_epochs, desc="epoch"):
+    for _ in tqdm.tnrange(n_epochs, desc="epoch"):
         for _ in range(n_plots_each_per_epoch):
             epoch(False)
             add_plot(False)
@@ -220,10 +218,19 @@ def plot_fight_loss(env='CartPole-v1',
     plt.scatter(gen_data[0], gen_data[1], c='r',
             label="discriminator loss (gen step)")
     plt.legend()
-    plt.savefig("output/plot_fight_loss_{}.png".format(
-        datetime.datetime.now()
-        ))
+    # Idea: Save every epoch
+    _savefig_timestamp("plot_fight_loss")
+    return trainer, gen_data, disc_data
 
+
+def _savefig_timestamp(prefix="", also_show=True):
+    path = "output/{}_{}.png".format(prefix, datetime.datetime.now())
+    plt.savefig(path)
+    plt.show()
+
+def _decor_tf_init(f):
+    with tf.Session() as sess:
+        pass
 
 if __name__ == "__main__":
     plot_fight_loss()

@@ -12,7 +12,8 @@ import yairl.util as util
 class AIRLTrainer():
 
     def __init__(self, env, policy, reward_net,
-            expert_obs_old, expert_act, expert_obs_new, init_tensorboard=False):
+            expert_obs_old, expert_act, expert_obs_new, init_tensorboard=False,
+            sess=None):
         """
         Adversarial IRL. After training, the RewardNet will have recovered
         the reward.
@@ -39,7 +40,7 @@ class AIRLTrainer():
           init_tensorboard (bool) -- Make various tensorboard summaries under
             the run name "AIRL_{date}_{runnumber}".
         """
-        self._sess = tf.Session()
+        self._sess = sess or tf.Session()
         self.epochs_so_far = 0
 
         self.env = util.maybe_load_env(env, vectorize=True)
@@ -367,6 +368,10 @@ class _RewardVecEnvWrapper(VecEnvWrapper):
         super().__init__(venv)
         self.reward_fn = reward_fn
         self.reset()
+
+    @property
+    def envs(self):
+        return self.venv.envs
 
     def reset(self):
         self._old_obs =  self.venv.reset()
