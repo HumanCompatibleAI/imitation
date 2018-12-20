@@ -43,6 +43,7 @@ ptyprocess
 pyglet
 PyOpenGL
 pyparsing
+pytest
 python-dateutil
 python-speech-features
 python-utils
@@ -65,4 +66,6 @@ urllib3
 Werkzeug
 zmq
 
-# Now install stable-baselines.
+# Now install stable-baselines. (In my DGX container, I need to manually
+# install because stable-baselines forces a version different from
+# my custom nvidia tensorflow).

@@ -1,0 +1,3 @@
+# Required pip packages for running Jupyter Notebook scripts
+ipdb
+jupyter
