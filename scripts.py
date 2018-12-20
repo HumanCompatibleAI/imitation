@@ -7,9 +7,9 @@ import datetime
 from matplotlib import pyplot as plt
 import tqdm
 
-from airl import AIRLTrainer
-from reward_net import BasicRewardNet
-import util
+from yairl.airl import AIRLTrainer
+from yairl.reward_net import BasicRewardNet
+import yairl.util as util
 
 
 def _init_trainer(env, use_expert_rollouts=True):

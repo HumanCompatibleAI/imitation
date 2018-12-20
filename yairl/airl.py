@@ -5,8 +5,8 @@ from stable_baselines.common.vec_env import VecEnvWrapper
 import tensorflow as tf
 from tqdm import tqdm
 
-import summaries
-import util
+import yairl.summaries as summaries
+import yairl.util as util
 
 
 class AIRLTrainer():

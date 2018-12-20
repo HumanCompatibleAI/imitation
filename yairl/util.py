@@ -6,9 +6,6 @@ import numpy as np
 import stable_baselines
 from stable_baselines.common.vec_env import DummyVecEnv, VecEnv
 
-import reward_net
-import util
-
 
 def maybe_load_env(env_or_str, vectorize=True):
     """
@@ -73,7 +70,7 @@ def make_blank_policy(env, policy_class=stable_baselines.PPO2,
     Return:
     policy (stable_baselines.BaseRLModel)
     """
-    env = util.maybe_load_env(env)
+    env = maybe_load_env(env)
     return policy_class(policy_network_class, env, verbose=1,
             tensorboard_log=_get_tb_log_dir(env, init_tensorboard),
             **kwargs)
@@ -111,7 +108,7 @@ def get_or_train_policy(env, force_train=False, timesteps=500000,
     Return:
     policy (stable_baselines.BaseRLModel)
     """
-    env = util.maybe_load_env(env)
+    env = maybe_load_env(env)
 
     if not force_train:
         # Try expert first.
@@ -142,7 +139,8 @@ def save_trained_policy(policy, never_overwrite=False):
     """
     Save a trained policy to saved_models/.
     """
-    path = os.path.join("saved_models", _policy_filename(policy.__class__))
+    path = os.path.join("saved_models",
+            _policy_filename(policy.__class__, policy.env))
     if never_overwrite and os.path.exists(path):
         logging.info(("Avoided saving policy pickle to {} because "
             "overwrite is disabled and that file already exists."
@@ -287,7 +285,7 @@ def rollout_generate(policy, env, *, n_timesteps=None, n_episodes=None,
     rollout_rewards (array) -- A numpy array with shape `[n_timesteps]`. The
       reward received on the ith timestep is `rollout_rewards[i]`.
     """
-    env = util.maybe_load_env(env, vectorize=True)
+    env = maybe_load_env(env, vectorize=True)
     policy.set_env(env)  # This checks that env and policy are compatbile.
     assert is_vec_env(env)
 

@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 
 import tensorflow as tf
 
-import util
+import yairl.util as util
 
 
 class RewardNet(ABC):

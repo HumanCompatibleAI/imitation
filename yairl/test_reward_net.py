@@ -2,8 +2,8 @@ import gym
 import pytest
 import tensorflow as tf
 
-from reward_net import BasicRewardNet
-import util
+from yairl.reward_net import BasicRewardNet
+import yairl.util
 
 
 # class TestBasicRewardNet(tf.test.TestCase):

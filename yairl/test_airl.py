@@ -3,9 +3,9 @@ import pytest
 import stable_baselines
 import tensorflow as tf
 
-from airl import AIRLTrainer
-from reward_net import BasicRewardNet
-import util
+from yairl.airl import AIRLTrainer
+from yairl.reward_net import BasicRewardNet
+import yairl.util as util
 
 
 def _init_trainer(env, use_expert_rollouts=False):
