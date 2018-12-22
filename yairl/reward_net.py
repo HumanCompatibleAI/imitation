@@ -18,7 +18,6 @@ class RewardNet(ABC):
         Params:
           env (gym.Env or str): The environment that we are predicting reward
             for.
-          discount_factor (float): A number in the range [0, 1].
         """
 
         self.env = util.maybe_load_env(env)
@@ -233,10 +232,10 @@ class BasicShapedRewardNet(RewardNetShaped):
 
         with tf.variable_scope("ff", reuse=tf.AUTO_REUSE):
             old_shaping_output = tf.identity(
-                    _apply_ff(old_o, hid_sizes=[32, 32]),
+                    _apply_ff(old_o, hid_sizes=[self._units]*2),
                     name="old_shaping_output")
             new_shaping_output = tf.identity(
-                    _apply_ff(new_o, hid_sizes=[32, 32]),
+                    _apply_ff(new_o, hid_sizes=[self._units]*2),
                     name="new_shaping_output")
         return old_shaping_output, new_shaping_output
 
@@ -255,7 +254,6 @@ class BasicRewardNet(RewardNet):
             for.
           state_only (bool): If True, then ignore the action when predicting
             and training the reward network phi.
-          discount_factor (float): A number in the range [0, 1].
         """
         self.state_only = state_only
         super().__init__(env, **kwargs)
@@ -274,6 +272,10 @@ class BasicRewardNet(RewardNet):
 
     @property
     def reward_output_train(self):
+        """
+        The training reward is the same as the test reward since there is
+        no shaping.
+        """
         return self.reward_output_test
 
 
@@ -288,6 +290,7 @@ def _flat(tensor, space_shape):
         # dimension. In fact, product could encompass all the previous
         # cases.
         raise NotImplementedError
+
 
 def _apply_ff(inputs, hid_sizes):
     """
