@@ -6,7 +6,7 @@ prevent cyclic imports between yairl.airl and yairl.util)
 """
 
 from yairl.airl import AIRLTrainer
-from yairl.reward_net import BasicRewardNet
+from yairl.reward_net import BasicShapedRewardNet
 import yairl.util as util
 
 
@@ -30,7 +30,7 @@ def init_trainer(env_id, use_random_expert=True, **kwargs):
         if expert_policy is None:
             raise ValueError(env)
 
-    rn = BasicRewardNet(env)
+    rn = BasicShapedRewardNet(env)
     trainer = AIRLTrainer(env, gen_policy, rn, expert_policies=expert_policy,
             **kwargs)
     return trainer

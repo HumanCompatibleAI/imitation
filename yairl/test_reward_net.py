@@ -2,7 +2,7 @@ import gym
 import pytest
 import tensorflow as tf
 
-from yairl.reward_net import BasicRewardNet
+from yairl.reward_net import BasicShapedRewardNet, BasicRewardNet
 import yairl.util
 
 
@@ -11,5 +11,7 @@ import yairl.util
     # 'CarRacing-v0', 'LunarLander-v2']) #  I can't even intiialize these envs!
 def test_init_no_crash(env):
     for i in range(3):
+        with tf.variable_scope(env+str(i)+"shaped"):
+            x = BasicShapedRewardNet(env)
         with tf.variable_scope(env+str(i)):
             x = BasicRewardNet(env)

@@ -187,7 +187,7 @@ class RewardNetShaped(RewardNet):
         pass
 
 
-class BasicRewardNet(RewardNetShaped):
+class BasicShapedRewardNet(RewardNetShaped):
     """
     A shaped reward network with default settings.
     With default parameters this RewardNet has two hidden layers [32, 32]
@@ -215,30 +215,15 @@ class BasicRewardNet(RewardNetShaped):
         self._units = units
         super().__init__(env, **kwargs)
 
-    def _apply_ff(self, inputs, hid_sizes):
-        """
-        Apply a feed forward network on the inputs.
-        """
-        # XXX: Seems like xavier is default?
-        # https://stackoverflow.com/q/37350131/1091722
-        xavier = tf.contrib.layers.xavier_initializer
-        x = inputs
-        for i, size in enumerate(hid_sizes):
-            x = tf.layers.dense(x, self._units, activation='relu',
-                    kernel_initializer=xavier(), name="dense"+str(i))
-        x = tf.layers.dense(x, 1, kernel_initializer=xavier(),
-                name="dense_final")
-        return tf.squeeze(x, axis=1)
-
     def build_theta_network(self, obs_input, act_input):
         if self.state_only:
-            inputs = flat(obs_input)
+            inputs = _flat(obs_input)
         else:
             inputs = tf.concat([
                 _flat(obs_input, self.env.observation_space.shape),
                 _flat(act_input, self.env.action_space.shape)], axis=1)
 
-        theta_output = tf.identity(self._apply_ff(inputs, hid_sizes=[]),
+        theta_output = tf.identity(_apply_ff(inputs, hid_sizes=[]),
                 name="theta_output")
         return theta_output
 
@@ -248,12 +233,48 @@ class BasicRewardNet(RewardNetShaped):
 
         with tf.variable_scope("ff", reuse=tf.AUTO_REUSE):
             old_shaping_output = tf.identity(
-                    self._apply_ff(old_o, hid_sizes=[32, 32]),
+                    _apply_ff(old_o, hid_sizes=[32, 32]),
                     name="old_shaping_output")
             new_shaping_output = tf.identity(
-                    self._apply_ff(new_o, hid_sizes=[32, 32]),
+                    _apply_ff(new_o, hid_sizes=[32, 32]),
                     name="new_shaping_output")
         return old_shaping_output, new_shaping_output
+
+
+class BasicRewardNet(RewardNet):
+    """
+    An unshaped reward net. Meant to match the reward network trained for
+    the original AIRL pendulum experiments. Right now it has a linear function
+    approximator for the theta network, not sure if this is what I want.
+    """
+
+    def __init__(self, env, *, state_only=False, **kwargs):
+        """
+        Params:
+          env (gym.Env or str): The environment that we are predicting reward
+            for.
+          state_only (bool): If True, then ignore the action when predicting
+            and training the reward network phi.
+          discount_factor (float): A number in the range [0, 1].
+        """
+        self.state_only = state_only
+        super().__init__(env, **kwargs)
+
+    def build_theta_network(self, obs_input, act_input):
+        if self.state_only:
+            inputs = _flat(obs_input)
+        else:
+            inputs = tf.concat([
+                _flat(obs_input, self.env.observation_space.shape),
+                _flat(act_input, self.env.action_space.shape)], axis=1)
+
+        theta_output = tf.identity(_apply_ff(inputs, hid_sizes=[]),
+                name="theta_output")
+        return theta_output
+
+    @property
+    def reward_output_train(self):
+        return self.reward_output_test
 
 
 def _flat(tensor, space_shape):
@@ -267,3 +288,18 @@ def _flat(tensor, space_shape):
         # dimension. In fact, product could encompass all the previous
         # cases.
         raise NotImplementedError
+
+def _apply_ff(inputs, hid_sizes):
+    """
+    Apply a feed forward network on the inputs.
+    """
+    # XXX: Seems like xavier is default?
+    # https://stackoverflow.com/q/37350131/1091722
+    xavier = tf.contrib.layers.xavier_initializer
+    x = inputs
+    for i, size in enumerate(hid_sizes):
+        x = tf.layers.dense(x, size, activation='relu',
+                kernel_initializer=xavier(), name="dense"+str(i))
+    x = tf.layers.dense(x, 1, kernel_initializer=xavier(),
+            name="dense_final")
+    return tf.squeeze(x, axis=1)
