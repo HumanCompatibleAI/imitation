@@ -11,3 +11,4 @@ data/
 *.dream
 saved_models/
 *.ipynb
+*.egg-info/
