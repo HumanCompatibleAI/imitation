@@ -116,16 +116,18 @@ class BasicRewardNet(RewardNet):
     space.
     """
 
-    def __init__(self, env, ignore_action=False, **kwargs):
+    def __init__(self, env, *, units=32, ignore_action=False, **kwargs):
         """
         Params:
           env (gym.Env or str): The environment that we are predicting reward
             for.
+          units (int): The number of hidden units in the feed forward network.
           ignore_action (bool): If True, then ignore the action when predicting
             and training rewards.
           discount_factor (float): A number in the range [0, 1].
         """
         self.ignore_action = ignore_action
+        self._units = units
         super().__init__(env, **kwargs)
 
     def _apply_ff(self, inputs):
@@ -139,10 +141,12 @@ class BasicRewardNet(RewardNet):
         # XXX: Seems like xavier is default?
         # https://stackoverflow.com/q/37350131/1091722
         xavier = tf.contrib.layers.xavier_initializer
-        x = tf.layers.dense(inputs, 64, activation='relu',
+        x = tf.layers.dense(inputs, self._units, activation='relu',
                 kernel_initializer=xavier(), name="dense1")
+        x = tf.layers.dense(inputs, self._units, activation='relu',
+                kernel_initializer=xavier(), name="dense2")
         x = tf.layers.dense(x, 1, kernel_initializer=xavier(),
-                name="dense2")
+                name="dense3")
         return tf.squeeze(x, axis=1)
 
     def build_theta_network(self, obs_input, act_input):
