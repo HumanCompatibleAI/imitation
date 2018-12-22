@@ -168,12 +168,14 @@ class RewardNetShaped(RewardNet):
           only one input. ie build_phi_network(obs_input). Later in
           _build_f_network, I could stack Tensors of old and new observations,
           pass them simulatenously through the network, and then unstack the
-          outputs.
+          outputs. Another way to do this would be to pass in a single
+          rank 3 obs_input with shape
+          `(2, None) + self.env.observation_space`.
 
         Params:
         old_obs_input (Tensor): The old observations (corresponding to the
           state at which the current action is made). The shape of this
-          Tensor should be `((None,) + self.env.observation_space.shape)`.
+          Tensor should be `(None,) + self.env.observation_space.shape`.
         new_obs_input (Tensor): The new observations (corresponding to the
           state that we transition to after this state-action pair.
 
