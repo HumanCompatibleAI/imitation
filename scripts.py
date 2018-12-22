@@ -11,43 +11,8 @@ from matplotlib import pyplot as plt
 import tensorflow as tf
 import tqdm
 
-from yairl.airl import AIRLTrainer
-from yairl.reward_net import BasicRewardNet
+from yairl.trainer_util import init_trainer
 import yairl.util as util
-
-
-def _init_trainer(env, use_expert_rollouts=True, n_rollout_samples=1000):
-    """
-    Initialize an AIRL trainer to train a BasicRewardNet (discriminator)
-    versus a policy (generator).
-
-    Params:
-    use_expert_rollouts (bool) -- If True, then load an expert policy to
-      generate training data, and error if this expert policy doesn't exist for
-      this environment. If False, then generate random rollouts.
-
-    Return:
-    trainer (AIRLTrainer) -- The AIRL trainer.
-    """
-    if isinstance(env, str):
-        env = util.make_vec_env(env, 32)
-    else:
-        env = util.maybe_load_env(env, True)
-    policy = util.make_blank_policy(env, init_tensorboard=False)
-    if use_expert_rollouts:
-        rollout_policy = util.load_expert_policy(env)
-        if rollout_policy is None:
-            raise ValueError(env)
-    else:
-        rollout_policy = policy
-
-    obs_old, act, obs_new, _ = util.rollout_generate(rollout_policy, env,
-            n_timesteps=n_rollout_samples)
-
-    rn = BasicRewardNet(env)
-    trainer = AIRLTrainer(env, policy=policy, reward_net=rn,
-            expert_obs_old=obs_old, expert_act=act, expert_obs_new=obs_new)
-    return trainer
 
 
 def plot_episode_reward_vs_time(env='CartPole-v1', n_episodes=50,
@@ -59,7 +24,7 @@ def plot_episode_reward_vs_time(env='CartPole-v1', n_episodes=50,
     In other words, perform a basic check on the imitation learning
     capabilities of AIRLTrainer.
     """
-    trainer = _init_trainer(env, use_expert_rollouts=True)
+    trainer = init_trainer(env)
     expert_policy = util.load_expert_policy(env)
     random_policy = util.make_blank_policy(env)
     gen_policy = trainer.policy
@@ -101,7 +66,7 @@ def plot_discriminator_loss(env='CartPole-v1', n_steps_per_plot=1000,
     Train the discriminator to distinguish (unchanging) expert rollouts versus
     the unchanging random rollouts for a long time and plot discriminator loss.
     """
-    trainer = _init_trainer(env, use_expert_rollouts=True)
+    trainer = init_trainer(env)
     n_timesteps = len(trainer.expert_obs_old)
     (gen_obs_old, gen_act, gen_obs_new, _) = util.rollout_generate(
             trainer.policy, trainer.env, n_timesteps=n_timesteps)
@@ -141,7 +106,7 @@ def plot_generator_loss(env='CartPole-v1', n_steps_per_plot=5000,
     Train the generator to distinguish (unchanging) expert rollouts to
     confuse the discriminator, and plot discriminator loss.
     """
-    trainer = _init_trainer(env, use_expert_rollouts=True)
+    trainer = init_trainer(env)
     n_timesteps = len(trainer.expert_obs_old)
 
     (gen_obs_old, gen_act, gen_obs_new, _) = util.rollout_generate(
@@ -189,8 +154,7 @@ def plot_fight_loss(env='CartPole-v1',
     - Plot the performance of the generator policy versus the performance of
       a random policy.
     """
-    trainer = trainer or _init_trainer(env, use_expert_rollouts=True,
-            n_rollout_samples=n_rollout_samples)
+    trainer = trainer or init_trainer(env, n_expert_samples=n_rollout_samples)
     trainer_hook_fn(trainer)
     n_timesteps = len(trainer.expert_obs_old)
 

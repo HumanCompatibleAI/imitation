@@ -11,9 +11,8 @@ import yairl.util as util
 
 class AIRLTrainer():
 
-    def __init__(self, env, policy, reward_net,
-            expert_obs_old, expert_act, expert_obs_new, init_tensorboard=False,
-            sess=None):
+    def __init__(self, env, gen_policy, reward_net, expert_policies, *,
+            n_expert_timesteps=2000, init_tensorboard=False):
         """
         Adversarial IRL. After training, the RewardNet will have recovered
         the reward.
@@ -22,34 +21,38 @@ class AIRLTrainer():
           env (gym.Env or str) -- A gym environment to train in. AIRL will
             modify env's step() function. Internally, we will wrap this
             in a DummyVecEnv.
-          policy (stable_baselines.BaseRLModel) --
-            The policy acts as generator. We train this policy
-            to maximize discriminator confusion.
+          gen_policy (stable_baselines.BaseRLModel) --
+            The generator policy that AIRL will train to maximize discriminator
+            confusion.
           reward_net (RewardNet) -- The reward network to train. Used to
-            discriminate generated trajectories from other trajectories.
-          expert_obs_old (array) -- A numpy array with shape
-            `[n_timesteps] + env.observation_space.shape`. The ith observation
-            in this array is the observation seen when the expert chooses action
-            `expert_act[i]`.
-          expert_act (array) -- A numpy array with shape
-            `[n_timesteps] + env.action_space.shape`.
-          expert_obs_new (array) -- A numpy array with shape
-            `[n_timesteps] + env.observation_space.shape`. The ith observation
-            in this array is from the transition state after the expert chooses
-            action `expert_act[i]`.
-          init_tensorboard (bool) -- Make various tensorboard summaries under
-            the run name "AIRL_{date}_{runnumber}".
+            discriminate generated trajectories from other trajectories, and
+            also holds the inferred reward for transfer learning.
+          expert_policies (BaseRLModel or [BaseRLModel]) -- An expert policy
+            or a list of expert policies that will be used to generate example
+            obs-action-obs triples.
+
+            WARNING:
+            Due to the way VecEnvs handle
+            episode completion states, the last obs-state-obs triple in every
+            episode is omitted. (See GitHub issue #1)
+          n_expert_timesteps (int) -- The number of expert obs-action-obs
+            triples to generate. If the number of expert policies given doesn't
+            divide this number evenly, then the last expert policy will generate
+            more timesteps.
+          init_tensorboard (bool) -- Make various discriminator tensorboard
+            summaries under the run name "AIRL_{date}_{runnumber}". (Generator
+            summaries appear under a different runname because they are
+            configured by initializing the stable_baselines policy).
         """
-        self._sess = sess or tf.Session()
+        self._sess = tf.Session()
         self.epochs_so_far = 0
 
         self.env = util.maybe_load_env(env, vectorize=True)
-        self.policy = policy
-
+        self.gen_policy = gen_policy
         self.reward_net = reward_net
-        self.expert_obs_old = expert_obs_old
-        self.expert_act = expert_act
-        self.expert_obs_new = expert_obs_new
+        self.expert_obs_old, self.expert_act, self.expert_obs_new = \
+                self._generate_expert_rollouts(
+                        expert_policies, n_expert_timesteps)
         self.init_tensorboard = init_tensorboard
 
         self._global_step = tf.train.create_global_step()
@@ -98,8 +101,8 @@ class AIRLTrainer():
                 self._summarize(fd, step)
 
     def train_gen(self, n_steps=100):
-        self.policy.set_env(self.env)  # Can't guarantee that env is the same.
-        self.policy.learn(n_steps)
+        self.gen_policy.set_env(self.env)  # Can't guarantee that env is the same.
+        self.gen_policy.learn(n_steps)
 
     def train(self, *, n_epochs=1000, n_gen_steps_per_epoch=100,
             n_disc_steps_per_epoch=100):
@@ -244,7 +247,7 @@ class AIRLTrainer():
                     "provided, so we are generating them now.")
             n_timesteps = len(self.expert_obs_old)
             (gen_obs_old, gen_act, gen_obs_new, _) = util.rollout_generate(
-                    self.policy, self.env, n_timesteps=n_timesteps)
+                    self.gen_policy, self.env, n_timesteps=n_timesteps)
         elif none_count != 0:
             raise ValueError("Gave some but not all of the generator params.")
 
@@ -271,7 +274,7 @@ class AIRLTrainer():
 
         # Calculate generator-policy log probabilities.
         log_act_prob = np.log(util.rollout_action_probability(
-            self.policy, obs_old, act))  # (N,)
+            self.gen_policy, obs_old, act))  # (N,)
 
         fd = {
                 self.reward_net.old_obs_ph: obs_old,
@@ -316,7 +319,7 @@ class AIRLTrainer():
             assert len(new_obs) == n_gen
 
             log_prob = np.log(
-                    util.rollout_action_probability(self.policy, old_obs, act))
+                    util.rollout_action_probability(self.gen_policy, old_obs, act))
 
             fd = {
                     self.reward_net.old_obs_ph: old_obs,
@@ -344,6 +347,38 @@ class AIRLTrainer():
             return rew.flatten()
 
         self._test_reward_fn = R
+
+    # TODO prob belongs in util since self doesn't do anything
+    def _generate_expert_rollouts(self, expert_policies, n_steps):
+        """
+        Generate obs-act-obs triples from expert policies.
+        """
+        try:
+            expert_policies = list(expert_policies)
+        except TypeError:
+            expert_policies = [expert_policies]
+
+        n_experts = len(expert_policies)
+        quot, rem = n_steps // n_experts, n_steps % n_experts
+        logging.debug("expert rollouts: quot={}, rem={}".format(quot, rem))
+
+        obs_old, act, obs_new = [], [], []
+        for i, pol in enumerate(expert_policies):
+            n_timesteps_ = quot
+            if i == n_experts - 1:
+                # The final expert policy also generates the remainder if
+                # n_experts doesn't evenly divide n_steps.
+                n_timesteps_ += rem
+
+            obs_old_, act_, obs_new_, _ = util.rollout_generate(pol, self.env,
+                    n_timesteps=n_timesteps_, truncate_timesteps=True)
+            obs_old.extend(obs_old_)
+            act.extend(act_)
+            obs_new.extend(obs_new_)
+
+        assert len(obs_old) == len(obs_new) == len(act) == n_steps
+
+        return (np.array(x) for x in (obs_old, act, obs_new))
 
 
 

@@ -3,56 +3,33 @@ import pytest
 import stable_baselines
 import tensorflow as tf
 
-from yairl.airl import AIRLTrainer
-from yairl.reward_net import BasicRewardNet
+from yairl.trainer_util import init_trainer
 import yairl.util as util
-
-
-def _init_trainer(env, use_expert_rollouts=False):
-    if isinstance(env, str):
-        env = util.make_vec_env(env, 8)
-    else:
-        env = util.maybe_load_env(env, True)
-    policy = util.make_blank_policy(env, init_tensorboard=False)
-    if use_expert_rollouts:
-        rollout_policy = util.load_expert_policy(env)
-        if rollout_policy is None:
-            raise ValueError(env)
-    else:
-        rollout_policy = policy
-
-    obs_old, act, obs_new, _ = util.rollout_generate(rollout_policy, env,
-            n_timesteps=1000)
-
-    rn = BasicRewardNet(env)
-    trainer = AIRLTrainer(env, policy=policy, reward_net=rn,
-            expert_obs_old=obs_old, expert_act=act, expert_obs_new=obs_new)
-    return policy, trainer
 
 
 class TestAIRL(tf.test.TestCase):
 
     def test_init_no_crash(self, env='CartPole-v1'):
-        _init_trainer(env)
+        init_trainer(env)
 
     def test_train_disc_no_crash(self, env='CartPole-v1', n_timesteps=200):
-        policy, trainer = _init_trainer(env)
+        trainer = init_trainer(env)
         trainer.train_disc()
-        obs_old, act, obs_new, _ = util.rollout_generate(policy, env,
-                n_timesteps=n_timesteps)
+        obs_old, act, obs_new, _ = util.rollout_generate(trainer.gen_policy,
+                env, n_timesteps=n_timesteps)
         trainer.train_disc(gen_obs_old=obs_old, gen_act=act,
                 gen_obs_new=obs_new)
 
     def test_train_gen_no_crash(self, env='CartPole-v1', n_steps=10):
-        policy, trainer = _init_trainer(env)
+        trainer = init_trainer(env)
         trainer.train_gen(n_steps)
 
     @pytest.mark.expensive
     def test_train_disc_improve_D(self, env='CartPole-v1', n_timesteps=200,
             n_steps=10000):
-        policy, trainer = _init_trainer(env)
-        obs_old, act, obs_new, _ = util.rollout_generate(policy, env,
-                n_timesteps=n_timesteps)
+        trainer = init_trainer(env)
+        obs_old, act, obs_new, _ = util.rollout_generate(trainer.gen_policy,
+                env, n_timesteps=n_timesteps)
         kwargs = dict(gen_obs_old=obs_old, gen_act=act, gen_obs_new=obs_new)
         loss1 = trainer.eval_disc_loss(**kwargs)
         trainer.train_disc(n_steps=n_steps, **kwargs)
@@ -62,9 +39,9 @@ class TestAIRL(tf.test.TestCase):
     @pytest.mark.expensive
     def test_train_gen_degrade_D(self, env='CartPole-v1', n_timesteps=200,
             n_steps=10000):
-        policy, trainer = _init_trainer(env)
-        obs_old, act, obs_new, _ = util.rollout_generate(policy, env,
-                n_timesteps=n_timesteps)
+        trainer = init_trainer(env)
+        obs_old, act, obs_new, _ = util.rollout_generate(trainer.gen_policy,
+                env, n_timesteps=n_timesteps)
         kwargs = dict(gen_obs_old=obs_old, gen_act=act, gen_obs_new=obs_new)
 
         loss1 = trainer.eval_disc_loss(**kwargs)
@@ -75,9 +52,9 @@ class TestAIRL(tf.test.TestCase):
     @pytest.mark.expensive
     def test_train_disc_then_gen(self, env='CartPole-v1', n_timesteps=200,
             n_steps=10000):
-        policy, trainer = _init_trainer(env)
-        obs_old, act, obs_new, _ = util.rollout_generate(policy, env,
-                n_timesteps=n_timesteps)
+        trainer = init_trainer(env)
+        obs_old, act, obs_new, _ = util.rollout_generate(trainer.gen_policy,
+                env, n_timesteps=n_timesteps)
         kwargs = dict(gen_obs_old=obs_old, gen_act=act, gen_obs_new=obs_new)
 
         loss1 = trainer.eval_disc_loss(**kwargs)
@@ -90,7 +67,7 @@ class TestAIRL(tf.test.TestCase):
 
     @pytest.mark.expensive
     def test_train_no_crash(self, env='CartPole-v1'):
-        policy, trainer = _init_trainer(env)
+        trainer = init_trainer(env)
         trainer.train(n_epochs=3)
 
     @pytest.mark.expensive
@@ -108,10 +85,9 @@ class TestAIRL(tf.test.TestCase):
         capabilities of AIRLTrainer.
         """
         env = util.make_vec_env(env, 32)
-        policy, trainer = _init_trainer(env, use_expert_rollouts=True)
+        trainer = init_trainer(env, use_expert_rollouts=True)
         expert_policy = util.load_expert_policy(env)
         random_policy = util.make_blank_policy(env)
-        gen_policy = trainer.policy
         if expert_policy is None:
             pytest.fail("Couldn't load expert_policy!")
 
@@ -121,7 +97,7 @@ class TestAIRL(tf.test.TestCase):
         for _ in range(4):
             expert_rew = util.rollout_total_reward(expert_policy, env,
                     n_episodes=n_episodes)
-            gen_rew = util.rollout_total_reward(gen_policy, env,
+            gen_rew = util.rollout_total_reward(trainer.gen_policy, env,
                     n_episodes=n_episodes)
             random_rew = util.rollout_total_reward(random_policy, env,
                     n_episodes=n_episodes)
@@ -139,8 +115,10 @@ class TestAIRL(tf.test.TestCase):
         a duplicate environment. Finally, use that learned reward to train
         a policy.
         """
-        policy, trainer = _init_trainer(env)
+        trainer = init_trainer(env)
         trainer.train(n_epochs=3)
+
         learned_reward_env = trainer.wrap_env_test_reward(env)
+        policy = util.make_blank_policy(env, init_tensorboard=False)
         policy.set_env(learned_reward_env)
         policy.learn(10)
