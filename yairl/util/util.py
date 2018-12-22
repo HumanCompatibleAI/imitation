@@ -3,6 +3,7 @@ import logging
 
 import gym
 import stable_baselines
+from stable_baselines.common.policies import FeedForwardPolicy
 from stable_baselines.common.vec_env import DummyVecEnv, VecEnv
 
 
@@ -51,8 +52,18 @@ def get_env_id(env):
     return env.spec.id
 
 
+class _FeedForward32Policy(FeedForwardPolicy):
+    """
+    A feed forward gaussian policy network with two hidden layers of 32 units.
+    This matches the IRL policies in the original AIRL paper.
+    """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs,
+                net_arch=[32, 32], feature_extraction="mlp")
+
+
 def make_blank_policy(env, policy_class=stable_baselines.PPO2,
-        init_tensorboard=False, policy_network_class="MlpPolicy",
+        init_tensorboard=False, policy_network_class=_FeedForward32Policy,
         verbose=0, **kwargs):
     """
     Instantiates a policy for the provided environment.
