@@ -3,7 +3,7 @@ import pytest
 import stable_baselines
 import tensorflow as tf
 
-from yairl.trainer_util import init_trainer
+from yairl.util.trainer import init_trainer
 import yairl.util as util
 
 

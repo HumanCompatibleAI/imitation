@@ -1,5 +1,8 @@
 """
 Utilities functions for manipulating AIRLTrainer.
+
+(The primary reason these functions are here instead of in utils.py is to
+prevent cyclic imports between yairl.airl and yairl.util)
 """
 
 from yairl.airl import AIRLTrainer
