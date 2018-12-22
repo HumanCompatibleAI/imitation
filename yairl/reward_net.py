@@ -116,17 +116,17 @@ class BasicRewardNet(RewardNet):
     space.
     """
 
-    def __init__(self, env, *, units=32, ignore_action=False, **kwargs):
+    def __init__(self, env, *, units=32, state_only=False, **kwargs):
         """
         Params:
           env (gym.Env or str): The environment that we are predicting reward
             for.
           units (int): The number of hidden units in the feed forward network.
-          ignore_action (bool): If True, then ignore the action when predicting
-            and training rewards.
+          state_only (bool): If True, then ignore the action when predicting
+            and training the reward network phi.
           discount_factor (float): A number in the range [0, 1].
         """
-        self.ignore_action = ignore_action
+        self.state_only = state_only
         self._units = units
         super().__init__(env, **kwargs)
 
@@ -150,7 +150,7 @@ class BasicRewardNet(RewardNet):
         return tf.squeeze(x, axis=1)
 
     def build_theta_network(self, obs_input, act_input):
-        if self.ignore_action:
+        if self.state_only:
             inputs = flat(obs_input)
         else:
             inputs = tf.concat([
