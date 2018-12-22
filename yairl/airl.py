@@ -190,14 +190,22 @@ class AIRLTrainer():
         env = util.maybe_load_env(env, vectorize=True)
         return _RewardVecEnvWrapper(env, self._test_reward_fn)
 
+    # TODO: These summaries should belong to the reward net.
+    # One problem here is that `old_shaping_output` only belongs to
+    # RewardNetShaped. Ideally, I think _build_summarize should call a
+    # RewardNet._build_summaries(), and then merge those summaries into
+    # it's self._summary_op.
     def _build_summarize(self):
         self._summary_writer = summaries.make_summary_writer(
                 graph=self._sess.graph)
-        tf.summary.histogram("reward", self.reward_net.reward_output)
-        tf.summary.histogram("shaping_old", self.reward_net.old_shaping_output)
-        tf.summary.histogram("shaping_new", self.reward_net.new_shaping_output)
-        tf.summary.histogram("shaped_reward",
-                self.reward_net.shaped_reward_output)
+        tf.summary.histogram("train_reward",
+                self.reward_net.reward_output_train)
+        tf.summary.histogram("test_reward",
+                self.reward_net.reward_output_test)
+        tf.summary.histogram("shaping_old",
+                self.reward_net._old_shaping_output)
+        tf.summary.histogram("shaping_new",
+                self.reward_net._new_shaping_output)
         self._summary_op = tf.summary.merge_all()
 
     def _summarize(self, fd, step):
@@ -219,7 +227,7 @@ class AIRLTrainer():
         # Construct discriminator logits by stacking predicted rewards
         # and log action probabilities.
         self._presoftmax_disc_logits = tf.stack(
-                [self.reward_net.shaped_reward_output,
+                [self.reward_net.reward_output_train,
                     self._log_policy_act_prob_ph],
                 axis=1, name="presoftmax_discriminator_logits")  # (None, 2)
 
@@ -343,7 +351,8 @@ class AIRLTrainer():
                 self.reward_net.act_ph: act,
                 self.reward_net.new_obs_ph: new_obs,
             }
-            rew = self._sess.run(self.reward_net.reward_output, feed_dict=fd)
+            rew = self._sess.run(self.reward_net.reward_output_test,
+                    feed_dict=fd)
             return rew.flatten()
 
         self._test_reward_fn = R

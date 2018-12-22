@@ -7,14 +7,13 @@ import yairl.util as util
 
 class RewardNet(ABC):
 
-    def __init__(self, env, discount_factor=0.9):
+    def __init__(self, env):
         """
-        Reward network for Adversarial IRL. Contains two networks, the
-        state(-action) reward parameterized by theta, and the state reward
-        shaper parameterized by phi.
+        Reward network for Adversarial IRL.
 
-        This network is session-less -- we assume that the caller will
-        initialize the network's variables.
+        This class assumes that the caller will
+        set the default Tensorflow Session and initialize the network's
+        variables.
 
         Params:
           env (gym.Env or str): The environment that we are predicting reward
@@ -23,24 +22,76 @@ class RewardNet(ABC):
         """
 
         self.env = util.maybe_load_env(env)
-        self.discount_factor = discount_factor
 
         phs = self._build_placeholders()
         self.old_obs_ph, self.act_ph, self.new_obs_ph = phs
 
         with tf.variable_scope("theta_network"):
-            self.reward_output = self.build_theta_network(
+            self._theta_output = self.build_theta_network(
                     self.old_obs_ph, self.act_ph)
-
-        with tf.variable_scope("phi_network"):
-            res = self.build_phi_network(self.old_obs_ph, self.new_obs_ph)
-            self.old_shaping_output, self.new_shaping_output = res
-
-        with tf.variable_scope("f_network"):
-            self.shaped_reward_output = (self.reward_output +
-                    self.discount_factor * self.new_shaping_output
-                    - self.old_shaping_output)
         # TODO: assert that all the outputs above have shape (None,).
+
+    @property
+    @abstractmethod
+    def reward_output_train(self):
+        """
+        Returns a Tensor that holds the training reward associated with each
+        timestep. Different concrete subclasses will require different
+        placeholders to be filled to calculate this output, but for all
+        subclasses, filling the following placeholders will be sufficient:
+
+        ```
+        self.old_obs_ph
+        self.act_ph
+        self.new_obs_ph
+        ```
+
+        Returns:
+        _reward_output_train (Tensor): A (None,) shaped Tensor holding
+          the training reward associated with each timestep.
+        """
+        pass
+
+    @property
+    def reward_output_test(self):
+        """
+        Returns a Tensor that holds the test reward associated with each
+        timestep. (This is the reward we use for transfer learning.)
+        Different concrete subclasses will require different
+        placeholders to be filled to calculate this output, but for all
+        subclasses, filling the following placeholders will be sufficient:
+
+        ```
+        self.old_obs_ph
+        self.act_ph
+        self.new_obs_ph
+        ```
+
+        Returns:
+        _reward_output_test (Tensor): A (None,) shaped Tensor holding
+          the test reward associated with each timestep.
+        """
+        return self._theta_output
+
+    @abstractmethod
+    def build_theta_network(self, obs_input, act_input):
+        """
+        Build the test reward network. The output of the network is
+        the same as the reward we use during transfer learning, and
+        is the Tensor returned by `self.reward_output_test()`.
+
+        Params:
+        obs_input (Tensor) -- The observation input. Its shape is
+          `((None,) + self.env.observation_space.shape)`.
+        act_input (Tensor) -- The action input. Its shape is
+          `((None,) + self.env.action_space.shape)`. The None dimension is
+          expected to be the same as None dimension from `obs_input`.
+
+        Return:
+        theta_output (Tensor) -- A reward prediction for each of the
+          inputs. The shape is `(None,)`.
+        """
+        pass
 
     def _build_placeholders(self):
         """
@@ -58,28 +109,56 @@ class RewardNet(ABC):
 
         return old_obs_ph, act_ph, new_obs_ph
 
-    @abstractmethod
-    def build_theta_network(self, obs_input, act_input):
+
+class RewardNetShaped(RewardNet):
+    """
+    Abstract subclass of RewardNet that adds a abstract phi network used to
+    shape the training reward. This RewardNet formulation matches Equation (4)
+    in the AIRL paper.
+
+    Note that the experiments in Table 2 of the same paper showed
+    shaped training rewards
+    to be inferior to an unshaped training rewards in
+    a Pendulum environment imitation learning task (and maybe HalfCheetah).
+    (See original implementation of Pendulum experiment's reward function at
+    https://github.com/justinjfu/inverse_rl/blob/master/inverse_rl/models/imitation_learning.py#L374)
+
+
+    To make a concrete subclass, implement `build_phi_network()` and
+    `build_theta_network()`.
+    """
+
+    def __init__(self, env, *, discount_factor=0.9, **kwargs):
+        super().__init__(env, **kwargs)
+        self._discount_factor = discount_factor
+
+        with tf.variable_scope("phi_network"):
+            res = self.build_phi_network(self.old_obs_ph, self.new_obs_ph)
+            self._old_shaping_output, self._new_shaping_output = res
+
+        with tf.variable_scope("f_network"):
+            self._shaped_reward_output = (self._theta_output +
+                    self._discount_factor * self._new_shaping_output
+                    - self._old_shaping_output)
+
+    @property
+    def reward_output_train(self):
         """
-        Build the reward network.
+        Returns a Tensor that holds the (shaped) training reward associated
+        with each timestep. Requires the following placeholders to be filled:
 
-        Although AIRL doesn't individually optimize this subnetwork during
-        training, it ends up being our reward approximator at test time.
+        ```
+        self.old_obs_ph
+        self.act_ph
+        self.new_obs_ph
+        ```
 
-        Params:
-        obs_input (Tensor) -- The observation input. Its shape is
-          `((None,) + self.env.observation_space.shape)`.
-        act_input (Tensor) -- The action input. Its shape is
-          `((None,) + self.env.action_space.shape)`. The None dimension is
-          expected to be the same as None dimension from `obs_input`.
-
-        Return:
-        reward_output (Tensor) -- A reward prediction for each of the
-          inputs. The shape is `(None,)`.
+        Returns:
+        _reward_output_train (Tensor): A (None,) shaped Tensor holding
+          the training reward associated with each timestep.
         """
-        pass
+        return self._shaped_reward_output
 
-    # TODO: Add an option to ignore phi network.
     @abstractmethod
     def build_phi_network(self, old_obs_input, new_obs_input):
         """
@@ -108,12 +187,17 @@ class RewardNet(ABC):
         pass
 
 
-class BasicRewardNet(RewardNet):
+class BasicRewardNet(RewardNetShaped):
     """
-    A reward network with default settings. Meant for prototyping.
+    A shaped reward network with default settings.
+    With default parameters this RewardNet has two hidden layers [32, 32]
+    for the reward shaping phi network, and a linear function approximator
+    for the theta network. These settings match the network architectures for
+    continuous control experiments described in Appendix D.1 of the
+    AIRL paper.
 
-    This network flattens inputs. So probably don't use an RGB observation
-    space.
+    This network flattens inputs. So it isn't suitable for training on
+    pixel observations.
     """
 
     def __init__(self, env, *, units=32, state_only=False, **kwargs):
@@ -121,7 +205,8 @@ class BasicRewardNet(RewardNet):
         Params:
           env (gym.Env or str): The environment that we are predicting reward
             for.
-          units (int): The number of hidden units in the feed forward network.
+          units (int): The number of hidden units in each of the two layers of
+            the feed forward phi network.
           state_only (bool): If True, then ignore the action when predicting
             and training the reward network phi.
           discount_factor (float): A number in the range [0, 1].
@@ -130,23 +215,19 @@ class BasicRewardNet(RewardNet):
         self._units = units
         super().__init__(env, **kwargs)
 
-    def _apply_ff(self, inputs):
+    def _apply_ff(self, inputs, hid_sizes):
         """
-        Apply the a default feed forward network on the inputs. The Dense
-        layers are auto_reused. (Recall that build_*_network() called inside
-        a var scope named *_network.)
+        Apply a feed forward network on the inputs.
         """
-        # TODO: Parameter instead of magic # for the '64' part. (This seems less
-        # urgent than getting something up and running.)
         # XXX: Seems like xavier is default?
         # https://stackoverflow.com/q/37350131/1091722
         xavier = tf.contrib.layers.xavier_initializer
-        x = tf.layers.dense(inputs, self._units, activation='relu',
-                kernel_initializer=xavier(), name="dense1")
-        x = tf.layers.dense(inputs, self._units, activation='relu',
-                kernel_initializer=xavier(), name="dense2")
+        x = inputs
+        for i, size in enumerate(hid_sizes):
+            x = tf.layers.dense(x, self._units, activation='relu',
+                    kernel_initializer=xavier(), name="dense"+str(i))
         x = tf.layers.dense(x, 1, kernel_initializer=xavier(),
-                name="dense3")
+                name="dense_final")
         return tf.squeeze(x, axis=1)
 
     def build_theta_network(self, obs_input, act_input):
@@ -157,18 +238,20 @@ class BasicRewardNet(RewardNet):
                 _flat(obs_input, self.env.observation_space.shape),
                 _flat(act_input, self.env.action_space.shape)], axis=1)
 
-        reward_output = tf.identity(self._apply_ff(inputs),
-                "reward_output")
-        return reward_output
+        theta_output = tf.identity(self._apply_ff(inputs, hid_sizes=[]),
+                name="theta_output")
+        return theta_output
 
     def build_phi_network(self, old_obs_input, new_obs_input):
         old_o = _flat(old_obs_input, self.env.observation_space.shape)
         new_o = _flat(new_obs_input, self.env.observation_space.shape)
 
         with tf.variable_scope("ff", reuse=tf.AUTO_REUSE):
-            old_shaping_output = tf.identity(self._apply_ff(old_o),
+            old_shaping_output = tf.identity(
+                    self._apply_ff(old_o, hid_sizes=[32, 32]),
                     name="old_shaping_output")
-            new_shaping_output = tf.identity(self._apply_ff(new_o),
+            new_shaping_output = tf.identity(
+                    self._apply_ff(new_o, hid_sizes=[32, 32]),
                     name="new_shaping_output")
         return old_shaping_output, new_shaping_output
 
