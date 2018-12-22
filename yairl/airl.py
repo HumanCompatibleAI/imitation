@@ -51,8 +51,8 @@ class AIRLTrainer():
         self.gen_policy = gen_policy
         self.reward_net = reward_net
         self.expert_obs_old, self.expert_act, self.expert_obs_new = \
-                self._generate_expert_rollouts(
-                        expert_policies, n_expert_timesteps)
+                util.rollout_generate_multiple(
+                        expert_policies, self.env, n_expert_timesteps)
         self.init_tensorboard = init_tensorboard
 
         self._global_step = tf.train.create_global_step()
@@ -347,39 +347,6 @@ class AIRLTrainer():
             return rew.flatten()
 
         self._test_reward_fn = R
-
-    # TODO prob belongs in util since self doesn't do anything
-    def _generate_expert_rollouts(self, expert_policies, n_steps):
-        """
-        Generate obs-act-obs triples from expert policies.
-        """
-        try:
-            expert_policies = list(expert_policies)
-        except TypeError:
-            expert_policies = [expert_policies]
-
-        n_experts = len(expert_policies)
-        quot, rem = n_steps // n_experts, n_steps % n_experts
-        logging.debug("expert rollouts: quot={}, rem={}".format(quot, rem))
-
-        obs_old, act, obs_new = [], [], []
-        for i, pol in enumerate(expert_policies):
-            n_timesteps_ = quot
-            if i == n_experts - 1:
-                # The final expert policy also generates the remainder if
-                # n_experts doesn't evenly divide n_steps.
-                n_timesteps_ += rem
-
-            obs_old_, act_, obs_new_, _ = util.rollout_generate(pol, self.env,
-                    n_timesteps=n_timesteps_, truncate_timesteps=True)
-            obs_old.extend(obs_old_)
-            act.extend(act_)
-            obs_new.extend(obs_new_)
-
-        assert len(obs_old) == len(obs_new) == len(act) == n_steps
-
-        return (np.array(x) for x in (obs_old, act, obs_new))
-
 
 
 class _RewardVecEnvWrapper(VecEnvWrapper):

@@ -400,6 +400,66 @@ def rollout_total_reward(policy, env, **kwargs):
     return np.sum(rew)
 
 
+def rollout_generate_multiple(policies, env, n_timesteps):
+    """
+    Generate obs-act-obs triples from several policies. Split the desired
+    number of timesteps evenly between all the policies given.
+
+    Params:
+    policies (BaseRLModel or [BaseRLModel]) -- A policy
+      or a list of policies that will be used to generate
+      obs-action-obs triples.
+
+      WARNING:
+      Due to the way VecEnvs handle
+      episode completion states, the last obs-state-obs triple in every
+      episode is omitted. (See GitHub issue #1)
+    env (gym.Env) -- The environment the policy should act in.
+    n_timesteps (int) -- The number of obs-action-obs
+      triples to generate. If the number of policies given doesn't
+      divide this number evenly, then the last policy will generate
+      more timesteps.
+    Returns:
+    rollout_obs_old (array) -- A numpy array with shape
+      `[n_timesteps] + env.observation_space.shape`. The ith observation in this
+      array is the observation seen with the agent chooses action
+      `rollout_act[i]`.
+    rollout_act (array) -- A numpy array with shape
+      `[n_timesteps] + env.action_space.shape`.
+    rollout_obs_new (array) -- A numpy array with shape
+      `[n_timesteps] + env.observation_space.shape`. The ith observation in this
+      array is from the transition state after the agent chooses action
+      `rollout_act[i]`.
+    """
+    try:
+        policies = list(policies)
+    except TypeError:
+        policies = [policies]
+
+    n_policies = len(policies)
+    quot, rem = n_timesteps // n_policies, n_timesteps % n_policies
+    logging.debug("rollout_generate_multiple: quot={}, rem={}"
+            .format(quot, rem))
+
+    obs_old, act, obs_new = [], [], []
+    for i, pol in enumerate(policies):
+        n_timesteps_ = quot
+        if i == n_policies - 1:
+            # The final policy also generates the remainder if
+            # n_policies doesn't evenly divide n_timesteps.
+            n_timesteps_ += rem
+
+        obs_old_, act_, obs_new_, _ = rollout_generate(pol, env,
+                n_timesteps=n_timesteps_, truncate_timesteps=True)
+        obs_old.extend(obs_old_)
+        act.extend(act_)
+        obs_new.extend(obs_new_)
+
+    assert len(obs_old) == len(obs_new) == len(act) == n_timesteps
+
+    return (np.array(x) for x in (obs_old, act, obs_new))
+
+
 def _get_tb_log_dir(env, init_tensorboard):
     if init_tensorboard:
         return "./output/{}/".format(get_env_id(env))
