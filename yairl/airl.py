@@ -51,7 +51,7 @@ class AIRLTrainer():
         self.gen_policy = gen_policy
         self.reward_net = reward_net
         self.expert_obs_old, self.expert_act, self.expert_obs_new = \
-                util.rollout_generate_multiple(
+                util.rollout.generate_multiple(
                         expert_policies, self.env, n_expert_timesteps)
         self.init_tensorboard = init_tensorboard
 
@@ -246,7 +246,7 @@ class AIRLTrainer():
                     "parameters were "
                     "provided, so we are generating them now.")
             n_timesteps = len(self.expert_obs_old)
-            (gen_obs_old, gen_act, gen_obs_new, _) = util.rollout_generate(
+            (gen_obs_old, gen_act, gen_obs_new, _) = util.rollout.generate(
                     self.gen_policy, self.env, n_timesteps=n_timesteps)
         elif none_count != 0:
             raise ValueError("Gave some but not all of the generator params.")
@@ -273,7 +273,7 @@ class AIRLTrainer():
             np.ones(n_gen, dtype=int)])
 
         # Calculate generator-policy log probabilities.
-        log_act_prob = np.log(util.rollout_action_probability(
+        log_act_prob = np.log(util.rollout.action_probability(
             self.gen_policy, obs_old, act))  # (N,)
 
         fd = {
@@ -319,7 +319,7 @@ class AIRLTrainer():
             assert len(new_obs) == n_gen
 
             log_prob = np.log(
-                    util.rollout_action_probability(self.gen_policy, old_obs, act))
+                    util.rollout.action_probability(self.gen_policy, old_obs, act))
 
             fd = {
                     self.reward_net.old_obs_ph: old_obs,

@@ -15,7 +15,7 @@ class TestAIRL(tf.test.TestCase):
     def test_train_disc_no_crash(self, env='CartPole-v1', n_timesteps=200):
         trainer = init_trainer(env)
         trainer.train_disc()
-        obs_old, act, obs_new, _ = util.rollout_generate(trainer.gen_policy,
+        obs_old, act, obs_new, _ = util.rollout.generate(trainer.gen_policy,
                 env, n_timesteps=n_timesteps)
         trainer.train_disc(gen_obs_old=obs_old, gen_act=act,
                 gen_obs_new=obs_new)
@@ -28,7 +28,7 @@ class TestAIRL(tf.test.TestCase):
     def test_train_disc_improve_D(self, env='CartPole-v1', n_timesteps=200,
             n_steps=10000):
         trainer = init_trainer(env)
-        obs_old, act, obs_new, _ = util.rollout_generate(trainer.gen_policy,
+        obs_old, act, obs_new, _ = util.rollout.generate(trainer.gen_policy,
                 env, n_timesteps=n_timesteps)
         kwargs = dict(gen_obs_old=obs_old, gen_act=act, gen_obs_new=obs_new)
         loss1 = trainer.eval_disc_loss(**kwargs)
@@ -40,7 +40,7 @@ class TestAIRL(tf.test.TestCase):
     def test_train_gen_degrade_D(self, env='CartPole-v1', n_timesteps=200,
             n_steps=10000):
         trainer = init_trainer(env)
-        obs_old, act, obs_new, _ = util.rollout_generate(trainer.gen_policy,
+        obs_old, act, obs_new, _ = util.rollout.generate(trainer.gen_policy,
                 env, n_timesteps=n_timesteps)
         kwargs = dict(gen_obs_old=obs_old, gen_act=act, gen_obs_new=obs_new)
 
@@ -53,7 +53,7 @@ class TestAIRL(tf.test.TestCase):
     def test_train_disc_then_gen(self, env='CartPole-v1', n_timesteps=200,
             n_steps=10000):
         trainer = init_trainer(env)
-        obs_old, act, obs_new, _ = util.rollout_generate(trainer.gen_policy,
+        obs_old, act, obs_new, _ = util.rollout.generate(trainer.gen_policy,
                 env, n_timesteps=n_timesteps)
         kwargs = dict(gen_obs_old=obs_old, gen_act=act, gen_obs_new=obs_new)
 
@@ -95,11 +95,11 @@ class TestAIRL(tf.test.TestCase):
 
         # Idea: Plot n_epochs vs generator reward.
         for _ in range(4):
-            expert_rew = util.rollout_total_reward(expert_policy, env,
+            expert_rew = util.rollout.total_reward(expert_policy, env,
                     n_episodes=n_episodes)
-            gen_rew = util.rollout_total_reward(trainer.gen_policy, env,
+            gen_rew = util.rollout.total_reward(trainer.gen_policy, env,
                     n_episodes=n_episodes)
-            random_rew = util.rollout_total_reward(random_policy, env,
+            random_rew = util.rollout.total_reward(random_policy, env,
                     n_episodes=n_episodes)
 
             print("expert reward:", expert_rew)
