@@ -26,7 +26,7 @@ class TestAIRL(tf.test.TestCase):
 
     @pytest.mark.expensive
     def test_train_disc_improve_D(self, env='CartPole-v1', n_timesteps=200,
-            n_steps=10000):
+            n_steps=1000):
         trainer = init_trainer(env)
         obs_old, act, obs_new, _ = util.rollout.generate(trainer.gen_policy,
                 env, n_timesteps=n_timesteps)
@@ -39,7 +39,7 @@ class TestAIRL(tf.test.TestCase):
     @pytest.mark.expensive
     def test_train_gen_degrade_D(self, env='CartPole-v1', n_timesteps=200,
             n_steps=10000):
-        trainer = init_trainer(env)
+        trainer = init_trainer(env, False)
         obs_old, act, obs_new, _ = util.rollout.generate(trainer.gen_policy,
                 env, n_timesteps=n_timesteps)
         kwargs = dict(gen_obs_old=obs_old, gen_act=act, gen_obs_new=obs_new)
