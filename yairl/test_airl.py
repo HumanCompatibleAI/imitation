@@ -17,8 +17,8 @@ class TestAIRL(tf.test.TestCase):
         trainer.train_disc()
         obs_old, act, obs_new, _ = util.rollout.generate(trainer.gen_policy,
                 env, n_timesteps=n_timesteps)
-        trainer.train_disc(gen_obs_old=obs_old, gen_act=act,
-                gen_obs_new=obs_new)
+        trainer.train_disc(gen_old_obs=obs_old, gen_act=act,
+                gen_new_obs=obs_new)
 
     def test_train_gen_no_crash(self, env='CartPole-v1', n_steps=10):
         trainer = init_trainer(env)
@@ -30,7 +30,7 @@ class TestAIRL(tf.test.TestCase):
         trainer = init_trainer(env)
         obs_old, act, obs_new, _ = util.rollout.generate(trainer.gen_policy,
                 env, n_timesteps=n_timesteps)
-        kwargs = dict(gen_obs_old=obs_old, gen_act=act, gen_obs_new=obs_new)
+        kwargs = dict(gen_old_obs=obs_old, gen_act=act, gen_new_obs=obs_new)
         loss1 = trainer.eval_disc_loss(**kwargs)
         trainer.train_disc(n_steps=n_steps, **kwargs)
         loss2 = trainer.eval_disc_loss(**kwargs)
@@ -42,7 +42,7 @@ class TestAIRL(tf.test.TestCase):
         trainer = init_trainer(env, False)
         obs_old, act, obs_new, _ = util.rollout.generate(trainer.gen_policy,
                 env, n_timesteps=n_timesteps)
-        kwargs = dict(gen_obs_old=obs_old, gen_act=act, gen_obs_new=obs_new)
+        kwargs = dict(gen_old_obs=obs_old, gen_act=act, gen_new_obs=obs_new)
 
         loss1 = trainer.eval_disc_loss(**kwargs)
         trainer.train_gen(n_steps=n_steps)
@@ -55,7 +55,7 @@ class TestAIRL(tf.test.TestCase):
         trainer = init_trainer(env)
         obs_old, act, obs_new, _ = util.rollout.generate(trainer.gen_policy,
                 env, n_timesteps=n_timesteps)
-        kwargs = dict(gen_obs_old=obs_old, gen_act=act, gen_obs_new=obs_new)
+        kwargs = dict(gen_old_obs=obs_old, gen_act=act, gen_new_obs=obs_new)
 
         loss1 = trainer.eval_disc_loss(**kwargs)
         trainer.train_disc(n_steps=n_steps, **kwargs)

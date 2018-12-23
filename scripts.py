@@ -68,10 +68,10 @@ def plot_discriminator_loss(env='CartPole-v1', n_steps_per_plot=1000,
     """
     trainer = init_trainer(env)
     n_timesteps = len(trainer.expert_obs_old)
-    (gen_obs_old, gen_act, gen_obs_new, _) = util.rollout_generate(
+    (gen_old_obs, gen_act, gen_new_obs, _) = util.rollout_generate(
             trainer.policy, trainer.env, n_timesteps=n_timesteps)
-    kwargs = dict(gen_obs_old=gen_obs_old, gen_act=gen_act,
-            gen_obs_new=gen_obs_new)
+    kwargs = dict(gen_old_obs=gen_old_obs, gen_act=gen_act,
+            gen_new_obs=gen_new_obs)
     trainer.train_gen(n_steps=n_gen_warmup_steps)
 
     steps_so_far = 0
@@ -109,7 +109,7 @@ def plot_generator_loss(env='CartPole-v1', n_steps_per_plot=5000,
     trainer = init_trainer(env)
     n_timesteps = len(trainer.expert_obs_old)
 
-    (gen_obs_old, gen_act, gen_obs_new, _) = util.rollout_generate(
+    (gen_old_obs, gen_act, gen_new_obs, _) = util.rollout_generate(
             trainer.policy, trainer.env, n_timesteps=n_timesteps)
 
     steps_so_far = 0

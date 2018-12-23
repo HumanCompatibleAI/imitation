@@ -50,7 +50,7 @@ class AIRLTrainer():
         self.env = util.maybe_load_env(env, vectorize=True)
         self.gen_policy = gen_policy
         self.reward_net = reward_net
-        self.expert_obs_old, self.expert_act, self.expert_obs_new = \
+        self.expert_old_obs, self.expert_act, self.expert_new_obs = \
                 util.rollout.generate_multiple(
                         expert_policies, self.env, n_expert_timesteps)
         self.init_tensorboard = init_tensorboard
@@ -82,13 +82,13 @@ class AIRLTrainer():
 
         Params:
           n_steps (int) -- The number of training steps to take.
-          gen_obs_old (array) -- A numpy array with shape
+          gen_old_obs (array) -- A numpy array with shape
             `[n_timesteps] + env.observation_space.shape`. The ith observation
             in this array is the observation seen when the generator chooses
             action `gen_act[i]`.
           gen_act (array) -- A numpy array with shape
             `[n_timesteps] + env.action_space.shape`.
-          gen_obs_new (array) -- A numpy array with shape
+          gen_new_obs (array) -- A numpy array with shape
             `[n_timesteps] + env.observation_space.shape`. The ith observation
             in this array is from the transition state after the generator
             chooses action `gen_act[i]`.
@@ -135,13 +135,13 @@ class AIRLTrainer():
         is generated on the fly.
 
         Params:
-          gen_obs_old (array) -- A numpy array with shape
+          gen_old_obs (array) -- A numpy array with shape
             `[n_timesteps] + env.observation_space.shape`. The ith observation
             in this array is the observation seen when the generator chooses
             action `gen_act[i]`.
           gen_act (array) -- A numpy array with shape
             `[n_timesteps] + env.action_space.shape`.
-          gen_obs_new (array) -- A numpy array with shape
+          gen_new_obs (array) -- A numpy array with shape
             `[n_timesteps] + env.observation_space.shape`. The ith observation
             in this array is from the transition state after the generator
             chooses action `gen_act[i]`.
@@ -244,50 +244,50 @@ class AIRLTrainer():
         self._disc_train_op = self._disc_opt.minimize(self._disc_loss,
                 global_step=self._global_step)
 
-    def _build_disc_feed_dict(self, gen_obs_old=None, gen_act=None,
-            gen_obs_new=None):
+    def _build_disc_feed_dict(self, gen_old_obs=None, gen_act=None,
+            gen_new_obs=None):
 
         none_count = sum(int(x is None)
-                for x in (gen_obs_old, gen_act, gen_obs_new))
+                for x in (gen_old_obs, gen_act, gen_new_obs))
         if none_count == 3:
             logging.debug("_build_disc_feed_dict: No generator rollout "
                     "parameters were "
                     "provided, so we are generating them now.")
-            n_timesteps = len(self.expert_obs_old)
-            (gen_obs_old, gen_act, gen_obs_new, _) = util.rollout.generate(
+            n_timesteps = len(self.expert_old_obs)
+            (gen_old_obs, gen_act, gen_new_obs, _) = util.rollout.generate(
                     self.gen_policy, self.env, n_timesteps=n_timesteps)
         elif none_count != 0:
             raise ValueError("Gave some but not all of the generator params.")
 
         # Alias saved expert rollout.
-        expert_obs_old = self.expert_obs_old
+        expert_old_obs= self.expert_old_obs
         expert_act = self.expert_act
-        expert_obs_new = self.expert_obs_new
+        expert_new_obs= self.expert_new_obs
 
         # Check dimensions.
-        n_expert = len(expert_obs_old)
-        n_gen = len(gen_obs_old)
+        n_expert = len(expert_old_obs)
+        n_gen = len(gen_old_obs)
         N = n_expert + n_gen
         assert n_expert == len(expert_act)
-        assert n_expert == len(expert_obs_new)
+        assert n_expert == len(expert_new_obs)
         assert n_gen == len(gen_act)
-        assert n_gen == len(gen_obs_new)
+        assert n_gen == len(gen_new_obs)
 
         # Concatenate rollouts, and label each row as expert or generator.
-        obs_old = np.concatenate([expert_obs_old, gen_obs_old])
+        old_obs = np.concatenate([expert_old_obs, gen_old_obs])
         act = np.concatenate([expert_act, gen_act])
-        obs_new = np.concatenate([expert_obs_new, gen_obs_new])
+        new_obs = np.concatenate([expert_new_obs, gen_new_obs])
         labels = np.concatenate([np.zeros(n_expert, dtype=int),
             np.ones(n_gen, dtype=int)])
 
         # Calculate generator-policy log probabilities.
         log_act_prob = np.log(self.gen_policy.action_probability(
-            obs_old, actions=act))  # (N,)
+            old_obs, actions=act))  # (N,)
 
         fd = {
-                self.reward_net.old_obs_ph: obs_old,
+                self.reward_net.old_obs_ph: old_obs,
                 self.reward_net.act_ph: act,
-                self.reward_net.new_obs_ph: obs_new,
+                self.reward_net.new_obs_ph: new_obs,
                 self._labels_ph: labels,
                 self._log_policy_act_prob_ph: log_act_prob,
             }
