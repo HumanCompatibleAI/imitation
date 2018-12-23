@@ -160,32 +160,32 @@ def save_trained_policy(policy, savedir="saved_models", filename=None):
       a default name using the names of the policy model and the environment.
     """
     filename = filename or _policy_filename(policy.__class__, env)
-    os.makedirs(savedir)
+    os.makedirs(savedir, exist_ok=True)
     path = os.path.join(savedir, filename)
     policy.save(path)
-    logging.info("Saved pickle to {}!".path)
+    logging.info("Saved pickle to {}!".format(path))
 
 
 def make_save_policy_callback(savedir, file_prefix, save_interval):
     """
     Make a policy.learn() callback that saves snapshots of the policy
-    to `{savedir}/{save_prefix}-{step}`, where step is the training
+    to `{savedir}/{file_prefix}-{step}`, where step is the training
     step.
 
     Params:
     savedir (str): The directory to save in.
-    save_prefix (str): The pickle file prefix.
+    file_prefix (str): The pickle file prefix.
     save_interval (int): The number of training timesteps in between saves.
     """
     step = 0
-    save_prefix = save_prefix
     def callback(locals_, globals_):
+        nonlocal step
         step += 1
         if step % save_interval == 0:
             policy = locals_['self']
             # TODO: After we use globs in scripts.data_generate_...,
             # then we can simply use step.
-            filename = "{}-{}".format(file_prefix, step//step_interval)
+            filename = "{}-{}".format(file_prefix, step//save_interval)
             save_trained_policy(policy, savedir, filename)
         return True
     return callback
