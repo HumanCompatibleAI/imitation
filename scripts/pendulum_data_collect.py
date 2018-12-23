@@ -37,7 +37,6 @@ def make_TRPO():
 def main():
     logging.getLogger().setLevel(logging.INFO)
 
-    # policy = util.make_blank_policy(env, policy_class=stable_baselines.TRPO)
     policy = make_PPO2()
     data_train_and_save_experts(policy, total_timesteps=600000,
             savedir="data/", file_prefix="pendulum")
