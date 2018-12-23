@@ -88,7 +88,7 @@ def make_blank_policy(env, policy_class=stable_baselines.PPO2,
 
 
 def get_or_train_policy(env, force_train=False, timesteps=500000,
-        never_overwrite=False, policy_class=stable_baselines.PPO2,
+        policy_class=stable_baselines.PPO2,
         init_tensorboard=False, verbose=0, **kwargs):
     """
     Returns a policy trained on the given environment, maybe pretrained.
@@ -108,8 +108,6 @@ def get_or_train_policy(env, force_train=False, timesteps=500000,
       saved policies.
     timesteps (int): The number of training timesteps if we decide to train
       a policy.
-    never_overwrite (bool): It True, then don't pickle a policy if it means
-      overwriting another pickle.
     policy_class (stable_baselines.BaseRLModel class): A policy constructor
       from the stable_baselines module.
     init_tensorboard (bool): Whether to initialize Tensorboard logging for
@@ -142,24 +140,19 @@ def get_or_train_policy(env, force_train=False, timesteps=500000,
     # Learn and pickle a policy
     policy = make_blank_policy(env, policy_class, init_tensorboard, **kwargs)
     policy.learn(timesteps)
-    save_trained_policy(policy, never_overwrite)
+    save_trained_policy(policy)
 
     return policy
 
 
-def save_trained_policy(policy, never_overwrite=False):
+def save_trained_policy(policy, savedir="saved_models"):
     """
     Save a trained policy to saved_models/.
     """
-    path = os.path.join("saved_models",
+    path = os.path.join(savedir,
             _policy_filename(policy.__class__, policy.env))
-    if never_overwrite and os.path.exists(path):
-        logging.info(("Avoided saving policy pickle to {} because "
-            "overwrite is disabled and that file already exists."
-                ).format(path))
-    else:
-        policy.save(path)
-        logging.info("Saved pickle to {}!".path)
+    policy.save(path)
+    logging.info("Saved pickle to {}!".path)
 
 
 def load_trained_policy(env, **kwargs):
