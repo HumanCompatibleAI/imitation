@@ -2,9 +2,9 @@ import logging
 
 import stable_baselines
 
-from scripts import data_load_experts
 from yairl.airl import AIRLTrainer
 from yairl.reward_net import BasicRewardNet
+from yairl.scripts import data_load_experts
 import yairl.util as util
 
 def make_PPO2():

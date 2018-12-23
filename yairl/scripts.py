@@ -128,7 +128,7 @@ def plot_episode_reward_vs_time(env='CartPole-v1', n_episodes=50,
 
 
 def plot_fight_loss(env='CartPole-v1',
-        n_epochs=500,
+        n_epochs=70,
         n_plots_each_per_epoch=10,
         n_disc_steps_per_plot=10,
         n_gen_steps_per_plot=10000,
@@ -150,6 +150,8 @@ def plot_fight_loss(env='CartPole-v1',
     trainer = trainer or init_trainer(env, n_expert_timesteps=n_rollout_samples)
     if trainer_hook_fn:
         trainer_hook_fn(trainer)
+
+    os.makedirs("output/", exist_ok=True)
 
     plot_idx = 0
     def epoch(gen_mode=False):

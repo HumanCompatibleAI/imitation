@@ -2,7 +2,7 @@ import logging
 
 import stable_baselines
 
-from scripts import data_train_and_save_experts
+from yairl.scripts import data_train_and_save_experts
 import yairl.util as util
 
 def make_PPO2():
