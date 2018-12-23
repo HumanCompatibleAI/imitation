@@ -12,7 +12,7 @@ import yairl.util as util
 class AIRLTrainer():
 
     def __init__(self, env, gen_policy, reward_net, expert_policies, *,
-            n_expert_timesteps=2000, init_tensorboard=False):
+            n_expert_timesteps=4000, init_tensorboard=False):
         """
         Adversarial IRL. After training, the RewardNet will have recovered
         the reward.
@@ -70,7 +70,7 @@ class AIRLTrainer():
 
         self.env = self.wrap_env_train_reward(self.env)
 
-    def train_disc(self, *, n_steps=100, **kwargs):
+    def train_disc(self, *, n_steps=10, **kwargs):
         """
         Train the discriminator to minimize classification cross-entropy.
 
@@ -100,12 +100,12 @@ class AIRLTrainer():
             if self.init_tensorboard and step % 20 == 0:
                 self._summarize(fd, step)
 
-    def train_gen(self, n_steps=100):
+    def train_gen(self, n_steps=10000):
         self.gen_policy.set_env(self.env)  # Can't guarantee that env is the same.
         self.gen_policy.learn(n_steps)
 
-    def train(self, *, n_epochs=1000, n_gen_steps_per_epoch=100,
-            n_disc_steps_per_epoch=100):
+    def train(self, *, n_epochs=1000, n_gen_steps_per_epoch=None,
+            n_disc_steps_per_epoch=None):
         """
         Train the discriminator and generator against each other.
 
@@ -120,8 +120,8 @@ class AIRLTrainer():
             `policy.learn(timesteps)`).
         """
         for i in tqdm(range(n_epochs), desc="AIRL train"):
-            self.train_disc(n_steps=n_disc_steps_per_epoch)
-            self.train_gen(n_steps=n_gen_steps_per_epoch)
+            self.train_disc(**_n_steps_if_not_none(n_disc_steps_per_epoch))
+            self.train_gen(**_n_steps_if_not_none(n_gen_steps_per_epoch))
         self.epochs_so_far += n_epochs
 
     def eval_disc_loss(self, **kwargs):
@@ -387,3 +387,10 @@ class _RewardVecEnvWrapper(VecEnvWrapper):
         # Therefore, the final obs of every episode is incorrect.
         self._old_obs = obs
         return obs, rew, done, info
+
+
+def _n_steps_if_not_none(n_steps):
+    if n_steps is None:
+        return {}
+    else:
+        return dict(n_steps=n_steps)
