@@ -6,6 +6,7 @@ These scripts are meant to be run in a Jupyter notebook (displays figures)
 but also automatically save timestamped figures to the output/ directory.
 """
 import datetime
+import os
 
 from matplotlib import pyplot as plt
 import tensorflow as tf
@@ -13,6 +14,69 @@ import tqdm
 
 from yairl.trainer_util import init_trainer
 import yairl.util as util
+
+
+def data_train_and_save_experts(policy, env, *, total_timesteps, savedir,
+        file_prefix, save_interval=250, policy_learn_opt=None):
+    """
+    Train an policy and save the number of environment
+
+    Params:
+    policy (stable_baselines.BaseRLModel): The policy to train.
+    env (gym.Env): The environment to train.
+    total_timesteps (int): The total_timesteps argument for policy.learn(). In
+      other words, the number of timesteps to train for.
+    savedir (str) -- The directory to save pickle files to.
+    file_prefix (str) -- A prefix for the pickle file.
+    save_interval (int): The number of training timesteps in between saves.
+    policy_learn_opt (dict): Additional keyword arguments to policy.learn().
+    """
+    callback_opt = callback_opt or {}
+    policy_learn_opt = policy_learn_opt or {}
+    callback = util.make_save_policy_callback(savedir, save_prefix,
+            **callback_opt)
+    policy.learn(total_timesteps, callback=callback, **policy_learn_opt)
+
+
+def data_load_experts(*, savedir, file_prefix, policy_class, n_experts,
+        policy_load_opt={}):
+    """
+    Load expert policies saved using data_collect.
+
+    Params:
+    savedir (str) -- The directory containing pickle files, same as in
+      `data_collect()`.
+    file_prefix (str) -- The prefix for pickle filenames, same as in
+      `data_collect()`.
+    n_experts (int) -- The number of experts to load. We prioritize recent
+      iterations over earlier iterations.
+    policy_class (stable_baselines.BaseRLModel class) -- The class of the
+      pickled policy.
+    policy_load_opt (dict) -- Keyword arguments for `policy_class.load()`.
+      Must set policy=CustomPolicy if using a custom policy class.
+      (See https://stable-baselines.readthedocs.io/en/master/guide/custom_policy.html)
+    """
+    assert n_experts > 0
+
+    # XXX: Use a number-aware sorted glob instead of a linear search.
+    # We could get a sorted list and simply take the last n_experts elements.
+    n = 1
+    while os.path.join(savedir, "{}-{}.pkl".format(file_prefix, n)).exists():
+        n += 1
+
+    if n - 1 < n_experts:
+        raise ValueError(
+            """
+            Wanted to load {} experts, but there were only {} experts at
+            {}-*.pkl
+            """.format(n_experts, i - 1))
+
+    policy_load_opt = policy_load_opt or {}
+    expert_pols = []
+    for i in range(n - n_experts, n):
+        pol = policy_class.load("{}-{}.pkl".format(file_prefix, i), **kwargs)
+        expert_pols.append(pol)
+    return expert_pols
 
 
 def plot_episode_reward_vs_time(env='CartPole-v1', n_episodes=50,

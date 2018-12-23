@@ -1,5 +1,5 @@
-import os.path
 import logging
+import os
 
 import gym
 import stable_baselines
@@ -46,10 +46,15 @@ def is_vec_env(env):
 
 
 def get_env_id(env):
-    env = maybe_load_env(env)
-    if is_vec_env(env):
-        env = env.envs[0]
-    return env.spec.id
+    try:
+        env = maybe_load_env(env)
+        if is_vec_env(env):
+            env = env.envs[0]
+        return env.spec.id
+    except Exception as e:
+        logging.warning("Couldn't find environment id, using 'UnknownEnv'")
+        logging.warning(e)
+        return "UnknownEnv"
 
 
 class _FeedForward32Policy(FeedForwardPolicy):
@@ -145,14 +150,45 @@ def get_or_train_policy(env, force_train=False, timesteps=500000,
     return policy
 
 
-def save_trained_policy(policy, savedir="saved_models"):
+def save_trained_policy(policy, savedir="saved_models", filename=None):
     """
-    Save a trained policy to saved_models/.
+    Save a trained policy as a pickle file.
+
+    Params:
+    savedir (str): The directory to save the file to.
+    filename (str): The the name of the pickle file. If None, then choose
+      a default name using the names of the policy model and the environment.
     """
-    path = os.path.join(savedir,
-            _policy_filename(policy.__class__, policy.env))
+    filename = filename or _policy_filename(policy.__class__, env)
+    os.makedirs(savedir)
+    path = os.path.join(savedir, filename)
     policy.save(path)
     logging.info("Saved pickle to {}!".path)
+
+
+def make_save_policy_callback(savedir, file_prefix, save_interval):
+    """
+    Make a policy.learn() callback that saves snapshots of the policy
+    to `{savedir}/{save_prefix}-{step}`, where step is the training
+    step.
+
+    Params:
+    savedir (str): The directory to save in.
+    save_prefix (str): The pickle file prefix.
+    save_interval (int): The number of training timesteps in between saves.
+    """
+    step = 0
+    save_prefix = save_prefix
+    def callback(locals_, globals_):
+        step += 1
+        if step % save_interval == 0:
+            policy = locals_['self']
+            # TODO: After we use globs in scripts.data_generate_...,
+            # then we can simply use step.
+            filename = "{}-{}".format(file_prefix, step//step_interval)
+            save_trained_policy(policy, savedir, filename)
+        return True
+    return callback
 
 
 def load_trained_policy(env, **kwargs):
