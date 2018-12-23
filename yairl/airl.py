@@ -270,7 +270,8 @@ class AIRLTrainer():
 
         # Calculate generator-policy log probabilities.
         log_act_prob = np.log(self.gen_policy.action_probability(
-            old_obs, actions=act))  # (N,)
+            old_obs, actions=act)).flatten()  # (N,)
+        assert len(log_act_prob) == N
 
         fd = {
                 self.reward_net.old_obs_ph: old_obs,
@@ -314,8 +315,10 @@ class AIRLTrainer():
             assert len(act) == n_gen
             assert len(new_obs) == n_gen
 
+            # Calculate generator-policy log probabilities.
             log_act_prob = np.log(self.gen_policy.action_probability(
-                old_obs, actions=act))  # (N,)
+                old_obs, actions=act)).flatten()  # (N,)
+            assert len(log_act_prob) == n_gen
 
             fd = {
                     self.reward_net.old_obs_ph: old_obs,
