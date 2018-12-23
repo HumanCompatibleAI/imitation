@@ -57,7 +57,7 @@ def get_env_id(env):
         return "UnknownEnv"
 
 
-class _FeedForward32Policy(FeedForwardPolicy):
+class FeedForward32Policy(FeedForwardPolicy):
     """
     A feed forward gaussian policy network with two hidden layers of 32 units.
     This matches the IRL policies in the original AIRL paper.
@@ -68,7 +68,7 @@ class _FeedForward32Policy(FeedForwardPolicy):
 
 
 def make_blank_policy(env, policy_class=stable_baselines.PPO2,
-        init_tensorboard=False, policy_network_class=_FeedForward32Policy,
+        init_tensorboard=False, policy_network_class=FeedForward32Policy,
         verbose=0, **kwargs):
     """
     Instantiates a policy for the provided environment.
