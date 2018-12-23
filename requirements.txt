@@ -66,6 +66,10 @@ urllib3
 Werkzeug
 zmq
 
-# Now install stable-baselines. (In my DGX container, I need to manually
-# install because stable-baselines forces a version different from
-# my custom nvidia tensorflow).
+# Now install experimental stable-baselines. (Contains a PPO2 logging
+# improvement and merges an experimental action_probabilities
+# function needed to evaluate continuous action space probabilities)
+#
+# TODO: Remove this and replace with official stable-baselines once
+# the action_probability patch is merged into stable.
+git+git://github.com/sirspinach/stable-baselines.git@action_proba
