@@ -1,6 +1,6 @@
 import logging
-
 import numpy as np
+
 from stable_baselines.common.vec_env import VecEnvWrapper
 import tensorflow as tf
 from tqdm import tqdm
@@ -104,7 +104,7 @@ class AIRLTrainer():
         self.gen_policy.set_env(self.env)  # Can't guarantee that env is the same.
         self.gen_policy.learn(n_steps)
 
-    def train(self, *, n_epochs=1000, n_gen_steps_per_epoch=None,
+    def train(self, *, n_epochs=100, n_gen_steps_per_epoch=None,
             n_disc_steps_per_epoch=None):
         """
         Train the discriminator and generator against each other.
