@@ -7,7 +7,7 @@ import yairl.util
 
 
 # class TestBasicRewardNet(tf.test.TestCase):
-@pytest.mark.parametrize("env", ['FrozenLake-v0', 'CartPole-v1'])
+@pytest.mark.parametrize("env", ['FrozenLake-v0', 'CartPole-v1', 'Pendulum-v0'])
     # 'CarRacing-v0', 'LunarLander-v2']) #  I can't even intiialize these envs!
 def test_init_no_crash(env):
     for i in range(3):
