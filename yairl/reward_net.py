@@ -92,6 +92,10 @@ class RewardNet(ABC):
         """
         pass
 
+    def build_summaries(self):
+        tf.summary.histogram("train_reward", self.reward_output_train)
+        tf.summary.histogram("test_reward", self.reward_output_test)
+
     def _build_placeholders(self):
         """
         Returns old_obs_ph, act_ph, new_obs_ph
@@ -186,6 +190,11 @@ class RewardNetShaped(RewardNet):
           the new observation inputs. Has shape `(None,)` (batch size).
         """
         pass
+
+    def build_summaries(self):
+        super().build_summaries()
+        tf.summary.histogram("shaping_old", self._old_shaping_output)
+        tf.summary.histogram("shaping_new", self._new_shaping_output)
 
 
 class BasicShapedRewardNet(RewardNetShaped):

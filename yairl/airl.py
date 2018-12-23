@@ -190,22 +190,10 @@ class AIRLTrainer():
         env = util.maybe_load_env(env, vectorize=True)
         return _RewardVecEnvWrapper(env, self._test_reward_fn)
 
-    # TODO: These summaries should belong to the reward net.
-    # One problem here is that `old_shaping_output` only belongs to
-    # RewardNetShaped. Ideally, I think _build_summarize should call a
-    # RewardNet._build_summaries(), and then merge those summaries into
-    # it's self._summary_op.
     def _build_summarize(self):
         self._summary_writer = summaries.make_summary_writer(
                 graph=self._sess.graph)
-        tf.summary.histogram("train_reward",
-                self.reward_net.reward_output_train)
-        tf.summary.histogram("test_reward",
-                self.reward_net.reward_output_test)
-        tf.summary.histogram("shaping_old",
-                self.reward_net._old_shaping_output)
-        tf.summary.histogram("shaping_new",
-                self.reward_net._new_shaping_output)
+        self.reward_net.build_summaries()
         self._summary_op = tf.summary.merge_all()
 
     def _summarize(self, fd, step):
