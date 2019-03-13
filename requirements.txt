@@ -1,13 +1,5 @@
 gym
 numpy>=1.15
 pytest
-tensorflow-gpu
+tensorflow  # Replace with tensorflow-gpu if you have a GPU
 tqdm
-
-# Now install experimental stable-baselines. (Contains a PPO2 logging
-# improvement and merges an experimental action_probabilities
-# function needed to evaluate continuous action space probabilities)
-#
-# TODO: Remove this and replace with official stable-baselines once
-# the action_probability patch is merged into stable.
-git+git://github.com/sirspinach/stable-baselines.git@action_proba
