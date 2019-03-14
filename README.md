@@ -1,4 +1,8 @@
-# Yet Another AIRL (Implementation?)
+# Adversarial Inverse Reinforcment Learning
+
+This repository reimplements AIRL with modern dependencies.
+Paper: https://arxiv.org/abs/1710.11248
+Original Implementation: https://github.com/justinjfu/inverse_rl
 
 To install:
 
@@ -9,10 +13,7 @@ conda activate yairl
 pip install -r requirements.txt -r jupt_requirements.txt
 ```
 
-Now install experimental stable-baselines. (Contains a PPO2 logging
-improvement and merges an experimental action_probabilities
-function needed to evaluate continuous action space probabilities)
-
+Now install stable-baselines.
 ```
 sudo apt install libopenmpi-dev
 pip install git+git://github.com/hill-a/stable-baselines.git
