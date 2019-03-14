@@ -7,6 +7,7 @@ from tqdm import tqdm
 
 import yairl.summaries as summaries
 import yairl.util as util
+import yairl.discrim_net as discrim_net
 
 
 class AIRLTrainer():
@@ -49,22 +50,24 @@ class AIRLTrainer():
 
         self.env = util.maybe_load_env(env, vectorize=True)
         self.gen_policy = gen_policy
-        self.reward_net = reward_net
         self.expert_old_obs, self.expert_act, self.expert_new_obs = \
                 util.rollout.generate_multiple(
                         expert_policies, self.env, n_expert_timesteps)
         self.init_tensorboard = init_tensorboard
 
         self._global_step = tf.train.create_global_step()
-        if self.init_tensorboard:
-            with tf.name_scope("summaries"):
-                self._build_summarize()
 
         with tf.variable_scope("AIRLTrainer"):
             with tf.variable_scope("discriminator"):
+                self.discrim = discrim_net.DiscrimNetAIRL(reward_net)
+
                 self._build_disc_train()
             self._build_policy_train_reward()
             self._build_test_reward()
+
+        if self.init_tensorboard:
+            with tf.name_scope("summaries"):
+                self._build_summarize()
 
         self._sess.run(tf.global_variables_initializer())
 
@@ -151,7 +154,7 @@ class AIRLTrainer():
             discriminator's clasifications.
         """
         fd = self._build_disc_feed_dict(**kwargs)
-        return np.sum(self._sess.run(self._disc_loss, feed_dict=fd))
+        return np.sum(self._sess.run(self.discrim.disc_loss, feed_dict=fd))
 
     def wrap_env_train_reward(self, env):
         """
@@ -193,7 +196,7 @@ class AIRLTrainer():
     def _build_summarize(self):
         self._summary_writer = summaries.make_summary_writer(
                 graph=self._sess.graph)
-        self.reward_net.build_summaries()
+        self.discrim.build_summaries()
         self._summary_op = tf.summary.merge_all()
 
     def _summarize(self, fd, step):
@@ -201,35 +204,10 @@ class AIRLTrainer():
         self._summary_writer.add_summary(events, step)
 
     def _build_disc_train(self):
-        # Holds the generator-policy log action probabilities of every
-        # state-action pair that the discriminator is being trained on.
-        self._log_policy_act_prob_ph = tf.placeholder(shape=(None,),
-                dtype=tf.float32, name="log_ro_act_prob_ph")
-
-        # Holds the label of every state-action pair that the discriminator
-        # is being trained on. Use 0.0 for expert policy. Use 1.0 for generated
-        # policy.
-        self._labels_ph = tf.placeholder(shape=(None,), dtype=tf.int32,
-                name="log_ro_act_prob_ph")
-
-        # Construct discriminator logits by stacking predicted rewards
-        # and log action probabilities.
-        self._presoftmax_disc_logits = tf.stack(
-                [self.reward_net.reward_output_train,
-                    self._log_policy_act_prob_ph],
-                axis=1, name="presoftmax_discriminator_logits")  # (None, 2)
-
-        # Construct discriminator loss.
-        self._disc_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(
-                labels=self._labels_ph,
-                logits=self._presoftmax_disc_logits,
-                name="discrim_loss"
-            )
-
         # Construct Train operation.
         self._disc_opt = tf.train.AdamOptimizer()
         # XXX: I am passing a [None] Tensor as loss. Can this be problematic?
-        self._disc_train_op = self._disc_opt.minimize(self._disc_loss,
+        self._disc_train_op = self._disc_opt.minimize(self.discrim.disc_loss,
                 global_step=self._global_step)
 
     def _build_disc_feed_dict(self, gen_old_obs=None, gen_act=None,
@@ -274,11 +252,11 @@ class AIRLTrainer():
         assert len(log_act_prob) == N
 
         fd = {
-                self.reward_net.old_obs_ph: old_obs,
-                self.reward_net.act_ph: act,
-                self.reward_net.new_obs_ph: new_obs,
-                self._labels_ph: labels,
-                self._log_policy_act_prob_ph: log_act_prob,
+                self.discrim.old_obs_ph: old_obs,
+                self.discrim.act_ph: act,
+                self.discrim.new_obs_ph: new_obs,
+                self.discrim.labels_ph: labels,
+                self.discrim.log_policy_act_prob_ph: log_act_prob,
             }
         return fd
 
@@ -287,12 +265,6 @@ class AIRLTrainer():
         Sets self._policy_train_reward_fn, the reward function to use when
         running a policy optimizer (e.g. PPO).
         """
-        # Construct generator reward.
-        self._log_softmax_logits = tf.nn.log_softmax(
-                self._presoftmax_disc_logits)
-        self._log_D, self._log_D_compl = tf.split(
-                self._log_softmax_logits, [1, 1], axis=1)
-        self._policy_train_reward = self._log_D - self._log_D_compl
 
         def R(old_obs, act, new_obs):
             """
@@ -321,13 +293,13 @@ class AIRLTrainer():
             assert len(log_act_prob) == n_gen
 
             fd = {
-                    self.reward_net.old_obs_ph: old_obs,
-                    self.reward_net.act_ph: act,
-                    self.reward_net.new_obs_ph: new_obs,
-                    self._labels_ph: np.ones(n_gen),
-                    self._log_policy_act_prob_ph: log_act_prob,
+                    self.discrim.old_obs_ph: old_obs,
+                    self.discrim.act_ph: act,
+                    self.discrim.new_obs_ph: new_obs,
+                    self.discrim.labels_ph: np.ones(n_gen),
+                    self.discrim.log_policy_act_prob_ph: log_act_prob,
                 }
-            rew = self._sess.run(self._policy_train_reward, feed_dict=fd)
+            rew = self._sess.run(self.discrim.policy_train_reward, feed_dict=fd)
             return rew.flatten()
 
         self._policy_train_reward_fn = R
@@ -338,11 +310,11 @@ class AIRLTrainer():
         """
         def R(old_obs, act, new_obs):
             fd = {
-                self.reward_net.old_obs_ph: old_obs,
-                self.reward_net.act_ph: act,
-                self.reward_net.new_obs_ph: new_obs,
+                self.discrim.old_obs_ph: old_obs,
+                self.discrim.act_ph: act,
+                self.discrim.new_obs_ph: new_obs,
             }
-            rew = self._sess.run(self.reward_net.reward_output_test,
+            rew = self._sess.run(self.discrim._policy_test_reward,
                     feed_dict=fd)
             return rew.flatten()
 
