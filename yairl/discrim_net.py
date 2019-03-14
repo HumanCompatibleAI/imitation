@@ -4,6 +4,7 @@ import tensorflow as tf
 
 
 class DiscrimNet(ABC):
+    """Base class for discriminator. Flexible enough to be used in different IRL methods."""
     def __init__(self):
         self._disc_loss = self.build_disc_loss()
         self._policy_train_reward = self.build_policy_train_reward()
@@ -43,6 +44,7 @@ class DiscrimNet(ABC):
 
 
 class DiscrimNetAIRL(DiscrimNet):
+    """The discriminator to use for AIRL. This discriminator uses a RewardNet."""
     def __init__(self, reward_net):
         self.reward_net = reward_net
         super().__init__()
