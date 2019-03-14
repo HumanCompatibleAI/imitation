@@ -22,7 +22,7 @@ class RewardNet(ABC):
 
         self.env = util.maybe_load_env(env)
 
-        phs = self._build_placeholders()
+        phs = util.build_placeholders(self.env, True)
         self.old_obs_ph, self.act_ph, self.new_obs_ph = phs
 
         with tf.variable_scope("theta_network"):
@@ -95,22 +95,6 @@ class RewardNet(ABC):
     def build_summaries(self):
         tf.summary.histogram("train_reward", self.reward_output_train)
         tf.summary.histogram("test_reward", self.reward_output_test)
-
-    def _build_placeholders(self):
-        """
-        Returns old_obs_ph, act_ph, new_obs_ph
-        """
-        o_shape = (None,) + self.env.observation_space.shape
-        a_shape = (None,) + self.env.action_space.shape
-
-        old_obs_ph = tf.placeholder(name="old_obs_ph",
-                dtype=tf.float32, shape=o_shape)
-        new_obs_ph = tf.placeholder(name="new_obs_ph",
-                dtype=tf.float32, shape=o_shape)
-        act_ph = tf.placeholder(name="act_ph",
-                dtype=tf.float32, shape=a_shape)
-
-        return old_obs_ph, act_ph, new_obs_ph
 
 
 class RewardNetShaped(RewardNet):
@@ -233,7 +217,7 @@ class BasicShapedRewardNet(RewardNetShaped):
                 _flat(obs_input, self.env.observation_space.shape),
                 _flat(act_input, self.env.action_space.shape)], axis=1)
 
-        theta_output = tf.identity(_apply_ff(inputs, hid_sizes=[]),
+        theta_output = tf.identity(util.apply_ff(inputs, hid_sizes=[]),
                 name="theta_output")
         return theta_output
 
@@ -243,10 +227,10 @@ class BasicShapedRewardNet(RewardNetShaped):
 
         with tf.variable_scope("ff", reuse=tf.AUTO_REUSE):
             old_shaping_output = tf.identity(
-                    _apply_ff(old_o, hid_sizes=[self._units]*2),
+                    util.apply_ff(old_o, hid_sizes=[self._units]*2),
                     name="old_shaping_output")
             new_shaping_output = tf.identity(
-                    _apply_ff(new_o, hid_sizes=[self._units]*2),
+                    util.apply_ff(new_o, hid_sizes=[self._units]*2),
                     name="new_shaping_output")
         return old_shaping_output, new_shaping_output
 
@@ -277,7 +261,7 @@ class BasicRewardNet(RewardNet):
                 _flat(obs_input, self.env.observation_space.shape),
                 _flat(act_input, self.env.action_space.shape)], axis=1)
 
-        theta_output = tf.identity(_apply_ff(inputs, hid_sizes=[]),
+        theta_output = tf.identity(util.apply_ff(inputs, hid_sizes=[]),
                 name="theta_output")
         return theta_output
 
@@ -302,18 +286,3 @@ def _flat(tensor, space_shape):
         # cases.
         raise NotImplementedError
 
-
-def _apply_ff(inputs, hid_sizes):
-    """
-    Apply a feed forward network on the inputs.
-    """
-    # XXX: Seems like xavier is default?
-    # https://stackoverflow.com/q/37350131/1091722
-    xavier = tf.contrib.layers.xavier_initializer
-    x = inputs
-    for i, size in enumerate(hid_sizes):
-        x = tf.layers.dense(x, size, activation='relu',
-                kernel_initializer=xavier(), name="dense"+str(i))
-    x = tf.layers.dense(x, 1, kernel_initializer=xavier(),
-            name="dense_final")
-    return tf.squeeze(x, axis=1)

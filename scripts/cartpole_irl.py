@@ -29,7 +29,7 @@ def main():
 
     env, gen_policy = make_PPO2()
     rn = BasicRewardNet(env)
-    trainer = AIRLTrainer(env, gen_policy, rn, expert_policies=experts)
+    trainer = AIRLTrainer(env, gen_policy, rn, expert_policies=experts, init_tensorboard=True)
     trainer.train()
 
 if __name__ == "__main__":

@@ -5,6 +5,7 @@ import gym
 import stable_baselines
 from stable_baselines.common.policies import FeedForwardPolicy
 from stable_baselines.common.vec_env import DummyVecEnv, VecEnv
+import tensorflow as tf
 
 
 def maybe_load_env(env_or_str, vectorize=True):
@@ -260,3 +261,40 @@ def _get_tb_log_dir(env, init_tensorboard):
         return "./output/{}/".format(get_env_id(env))
     else:
         return None
+
+
+def apply_ff(inputs, hid_sizes):
+    """
+    Apply a feed forward network on the inputs.
+    """
+    # XXX: Seems like xavier is default?
+    # https://stackoverflow.com/q/37350131/1091722
+    xavier = tf.contrib.layers.xavier_initializer
+    x = inputs
+    for i, size in enumerate(hid_sizes):
+        x = tf.layers.dense(x, size, activation='relu',
+                kernel_initializer=xavier(), name="dense"+str(i))
+    x = tf.layers.dense(x, 1, kernel_initializer=xavier(),
+            name="dense_final")
+    return tf.squeeze(x, axis=1)
+
+
+def build_placeholders(env, include_new_obs):
+    """
+    Returns old_obs_ph, act_ph, new_obs_ph
+    """
+    o_shape = (None,) + env.observation_space.shape
+    a_shape = (None,) + env.action_space.shape
+
+    old_obs_ph = tf.placeholder(name="old_obs_ph",
+            dtype=tf.float32, shape=o_shape)
+    if include_new_obs:
+        new_obs_ph = tf.placeholder(name="new_obs_ph",
+                dtype=tf.float32, shape=o_shape)
+    act_ph = tf.placeholder(name="act_ph",
+            dtype=tf.float32, shape=a_shape)
+
+    if include_new_obs:
+        return old_obs_ph, act_ph, new_obs_ph
+    else:
+        return old_obs_ph, act_ph
