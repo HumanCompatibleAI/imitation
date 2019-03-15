@@ -11,7 +11,7 @@ import yairl.util as util
 import yairl.discrim_net as discrim_net
 
 
-def init_trainer(env_id, use_random_expert=True, use_gail=False, **kwargs):
+def init_trainer(env_id, use_random_expert=True, use_gail=True, **kwargs):
     """
     Build an AIRLTrainer, ready to be trained on a vectorized environment
     and either expert rollout data or random rollout data.

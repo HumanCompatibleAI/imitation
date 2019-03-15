@@ -60,6 +60,11 @@ class DiscrimNetAIRL(DiscrimNet):
 
     def build_disc_loss(self):
         super().build_disc_loss()
+
+        print_op = tf.print("labels_ph:", self.labels_ph)
+        with tf.control_dependencies([print_op]):
+            self.labels_ph = tf.identity(self.labels_ph, name="labels_ph")
+
         # Holds the generator-policy log action probabilities of every
         # state-action pair that the discriminator is being trained on.
         self.log_policy_act_prob_ph = tf.placeholder(shape=(None,),
@@ -73,11 +78,17 @@ class DiscrimNetAIRL(DiscrimNet):
             axis=1, name="presoftmax_discriminator_logits")  # (None, 2)
 
         # Construct discriminator loss.
-        return tf.nn.sparse_softmax_cross_entropy_with_logits(
+        disc_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(
             labels=self.labels_ph,
             logits=self._presoftmax_disc_logits,
             name="discrim_loss"
         )
+
+        print_op = tf.print("disc_loss:", disc_loss)
+        with tf.control_dependencies([print_op]):
+            disc_loss = tf.identity(disc_loss, name="disc_loss")
+
+        return disc_loss
 
     def build_policy_test_reward(self):
         super().build_policy_test_reward()
@@ -119,11 +130,6 @@ class DiscrimNetGAIL(DiscrimNet):
             util.flat(act_input, self.env.action_space.shape)], axis=1)
 
         discrim_logits = util.apply_ff(inputs, hid_sizes=[])
-        #
-        # print_op = tf.print("discrim_logits:", discrim_logits)
-        # with tf.control_dependencies([print_op]):
-
-        discrim_logits = tf.identity(discrim_logits, name="discrim_logits")
 
         return discrim_logits
 
@@ -131,9 +137,9 @@ class DiscrimNetGAIL(DiscrimNet):
         super().build_policy_train_reward()
         train_reward = -tf.log_sigmoid(self._discrim_logits)
 
-        print_op = tf.print("train_reward:", train_reward)
-        with tf.control_dependencies([print_op]):
-            train_reward = tf.identity(train_reward, name="train_reward")
+        # print_op = tf.print("train_reward:", train_reward)
+        # with tf.control_dependencies([print_op]):
+        #     train_reward = tf.identity(train_reward, name="train_reward")
 
         return train_reward
 
@@ -143,10 +149,24 @@ class DiscrimNetGAIL(DiscrimNet):
 
     def build_disc_loss(self):
         super().build_disc_loss()
-        return tf.nn.sigmoid_cross_entropy_with_logits(
+
+        # print_op = tf.print("discrim_logits:", self._discrim_logits)
+        # with tf.control_dependencies([print_op]):
+        #     self._discrim_logits = tf.identity(self._discrim_logits, name="discrim_logits")
+
+        print_op = tf.print("labels_ph:", self.labels_ph)
+        with tf.control_dependencies([print_op]):
+            self.labels_ph = tf.identity(self.labels_ph, name="labels_ph")
+
+        disc_loss = tf.nn.sigmoid_cross_entropy_with_logits(
             logits=self._discrim_logits,
             labels=tf.cast(self.labels_ph, tf.float32)
         )
+        print_op = tf.print("disc_loss:", disc_loss)
+        with tf.control_dependencies([print_op]):
+            disc_loss = tf.identity(disc_loss, name="disc_loss")
+
+        return disc_loss
 
     def build_summaries(self):
         super().build_summaries()

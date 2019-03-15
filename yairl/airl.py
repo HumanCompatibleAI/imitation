@@ -299,7 +299,6 @@ class AIRLTrainer():
                     self.discrim.log_policy_act_prob_ph: log_act_prob,
                 }
             rew = self._sess.run(self.discrim.policy_train_reward, feed_dict=fd)
-            print("rew", rew)
             return rew.flatten()
 
         self._policy_train_reward_fn = R
