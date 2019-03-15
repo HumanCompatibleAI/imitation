@@ -8,9 +8,10 @@ prevent cyclic imports between yairl.airl and yairl.util)
 from yairl.airl import AIRLTrainer
 from yairl.reward_net import BasicShapedRewardNet
 import yairl.util as util
+import yairl.discrim_net as discrim_net
 
 
-def init_trainer(env_id, use_random_expert=True, **kwargs):
+def init_trainer(env_id, use_random_expert=True, use_gail=False, **kwargs):
     """
     Build an AIRLTrainer, ready to be trained on a vectorized environment
     and either expert rollout data or random rollout data.
@@ -30,7 +31,12 @@ def init_trainer(env_id, use_random_expert=True, **kwargs):
         if expert_policy is None:
             raise ValueError(env)
 
-    rn = BasicShapedRewardNet(env)
-    trainer = AIRLTrainer(env, gen_policy, rn, expert_policies=expert_policy,
+    if use_gail:
+        discrim = discrim_net.DiscrimNetGAIL(env)
+    else:
+        rn = BasicShapedRewardNet(env)
+        discrim = discrim_net.DiscrimNetAIRL(rn)
+
+    trainer = AIRLTrainer(env, gen_policy, discrim, expert_policies=expert_policy,
             **kwargs)
     return trainer

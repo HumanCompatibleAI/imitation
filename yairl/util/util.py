@@ -298,3 +298,15 @@ def build_placeholders(env, include_new_obs):
         return old_obs_ph, act_ph, new_obs_ph
     else:
         return old_obs_ph, act_ph
+
+def flat(tensor, space_shape):
+    ndim = len(space_shape)
+    if ndim== 0:
+        return tf.reshape(tensor, [-1, 1])
+    elif ndim == 1:
+        return tf.reshape(tensor, [-1, space_shape[0]])
+    else:
+        # TODO: Take the product(space_shape) and use that as the final
+        # dimension. In fact, product could encompass all the previous
+        # cases.
+        raise NotImplementedError

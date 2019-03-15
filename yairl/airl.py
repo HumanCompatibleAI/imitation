@@ -7,12 +7,11 @@ from tqdm import tqdm
 
 import yairl.summaries as summaries
 import yairl.util as util
-import yairl.discrim_net as discrim_net
 
 
 class AIRLTrainer():
 
-    def __init__(self, env, gen_policy, reward_net, expert_policies, *,
+    def __init__(self, env, gen_policy, discrim, expert_policies, *,
             n_expert_timesteps=4000, init_tensorboard=False):
         """
         Adversarial IRL. After training, the RewardNet will have recovered
@@ -59,7 +58,7 @@ class AIRLTrainer():
 
         with tf.variable_scope("AIRLTrainer"):
             with tf.variable_scope("discriminator"):
-                self.discrim = discrim_net.DiscrimNetAIRL(reward_net)
+                self.discrim = discrim
 
                 self._build_disc_train()
             self._build_policy_train_reward()
@@ -300,6 +299,7 @@ class AIRLTrainer():
                     self.discrim.log_policy_act_prob_ph: log_act_prob,
                 }
             rew = self._sess.run(self.discrim.policy_train_reward, feed_dict=fd)
+            print("rew", rew)
             return rew.flatten()
 
         self._policy_train_reward_fn = R

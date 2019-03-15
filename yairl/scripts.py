@@ -15,6 +15,7 @@ import tqdm
 
 from yairl.util.trainer import init_trainer
 import yairl.util as util
+import yairl.discrim_net as discrim_net
 
 
 # TODO: This is cruft. It was mostly useful for prototyping, but

@@ -211,19 +211,19 @@ class BasicShapedRewardNet(RewardNetShaped):
 
     def build_theta_network(self, obs_input, act_input):
         if self.state_only:
-            inputs = _flat(obs_input)
+            inputs = util.flat(obs_input)
         else:
             inputs = tf.concat([
-                _flat(obs_input, self.env.observation_space.shape),
-                _flat(act_input, self.env.action_space.shape)], axis=1)
+                util.flat(obs_input, self.env.observation_space.shape),
+                util.flat(act_input, self.env.action_space.shape)], axis=1)
 
         theta_output = tf.identity(util.apply_ff(inputs, hid_sizes=[]),
                 name="theta_output")
         return theta_output
 
     def build_phi_network(self, old_obs_input, new_obs_input):
-        old_o = _flat(old_obs_input, self.env.observation_space.shape)
-        new_o = _flat(new_obs_input, self.env.observation_space.shape)
+        old_o = util.flat(old_obs_input, self.env.observation_space.shape)
+        new_o = util.flat(new_obs_input, self.env.observation_space.shape)
 
         with tf.variable_scope("ff", reuse=tf.AUTO_REUSE):
             old_shaping_output = tf.identity(
@@ -255,11 +255,11 @@ class BasicRewardNet(RewardNet):
 
     def build_theta_network(self, obs_input, act_input):
         if self.state_only:
-            inputs = _flat(obs_input)
+            inputs = util.flat(obs_input)
         else:
             inputs = tf.concat([
-                _flat(obs_input, self.env.observation_space.shape),
-                _flat(act_input, self.env.action_space.shape)], axis=1)
+                util.flat(obs_input, self.env.observation_space.shape),
+                util.flat(act_input, self.env.action_space.shape)], axis=1)
 
         theta_output = tf.identity(util.apply_ff(inputs, hid_sizes=[]),
                 name="theta_output")
@@ -272,17 +272,5 @@ class BasicRewardNet(RewardNet):
         no shaping.
         """
         return self.reward_output_test
-
-
-def _flat(tensor, space_shape):
-    ndim = len(space_shape)
-    if ndim== 0:
-        return tf.reshape(tensor, [-1, 1])
-    elif ndim == 1:
-        return tf.reshape(tensor, [-1, space_shape[0]])
-    else:
-        # TODO: Take the product(space_shape) and use that as the final
-        # dimension. In fact, product could encompass all the previous
-        # cases.
-        raise NotImplementedError
+    
 
