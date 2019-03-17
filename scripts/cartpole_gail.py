@@ -29,8 +29,7 @@ def main():
             n_experts=5)
 
     env, gen_policy = make_PPO2()
-    rn = BasicRewardNet(env)
-    discrim = discrim_net.DiscrimNetAIRL(rn)
+    discrim = discrim_net.DiscrimNetGAIL(env)
     trainer = AIRLTrainer(env, gen_policy, discrim, expert_policies=experts, init_tensorboard=True)
     trainer.train()
 

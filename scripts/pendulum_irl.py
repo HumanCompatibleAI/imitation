@@ -6,6 +6,7 @@ from yairl.airl import AIRLTrainer
 from yairl.reward_net import BasicRewardNet
 from yairl.scripts import data_load_experts
 import yairl.util as util
+import yairl.discrim_net as discrim_net
 
 def make_PPO2():
     """
@@ -29,7 +30,8 @@ def main():
 
     env, gen_policy = make_PPO2()
     rn = BasicRewardNet(env)
-    trainer = AIRLTrainer(env, gen_policy, rn, expert_policies=experts)
+    discrim = discrim_net.DiscrimNetAIRL(rn)
+    trainer = AIRLTrainer(env, gen_policy, discrim, expert_policies=experts)
     trainer.train()
 
 if __name__ == "__main__":
