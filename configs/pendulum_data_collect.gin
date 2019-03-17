@@ -1,0 +1,2 @@
+main.env_name = "Pendulum-v0"
+main.total_timesteps = 600000

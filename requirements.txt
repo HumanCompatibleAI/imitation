@@ -3,3 +3,4 @@ numpy>=1.15
 pytest
 tensorflow  # Replace with tensorflow-gpu if you have a GPU
 tqdm
+gin-config

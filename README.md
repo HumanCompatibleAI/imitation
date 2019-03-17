@@ -24,7 +24,7 @@ To run:
 
 ```
 # train demos with normal AIRL
-python scripts/cartpole_data_collect.py
+python scripts/data_collect.py --gin_config configs/cartpole_data_collect.gin
 # do AIRL magic to get back reward from demos
 python scripts/cartpole_irl.py
 ```

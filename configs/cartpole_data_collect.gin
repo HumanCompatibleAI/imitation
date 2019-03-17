@@ -1,0 +1,2 @@
+main.env_name = "CartPole-v1"
+main.total_timesteps = 400000

@@ -18,28 +18,6 @@ import yairl.util as util
 import yairl.discrim_net as discrim_net
 
 
-# TODO: This is cruft. It was mostly useful for prototyping, but
-# I should get rid of it because it doesn't really add anything.
-def data_train_and_save_experts(policy, *, total_timesteps, savedir,
-        file_prefix, save_interval=1, policy_learn_opt=None):
-    """
-    Train an policy and save the number of environment
-
-    Params:
-    policy (stable_baselines.BaseRLModel): The policy to train.
-    total_timesteps (int): The total_timesteps argument for policy.learn(). In
-      other words, the number of timesteps to train for.
-    savedir (str) -- The directory to save pickle files to.
-    file_prefix (str) -- A prefix for the pickle file.
-    save_interval (int): The number of training timesteps in between saves.
-    policy_learn_opt (dict): Additional keyword arguments to policy.learn().
-    """
-    policy_learn_opt = policy_learn_opt or {}
-    callback = util.make_save_policy_callback(savedir, file_prefix,
-            save_interval)
-    policy.learn(total_timesteps, callback=callback, **policy_learn_opt)
-
-
 def data_load_experts(*, savedir, file_prefix, policy_class, n_experts,
         policy_load_opt={}):
     """
