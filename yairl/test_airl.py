@@ -46,7 +46,7 @@ def test_train_disc_improve_D(use_gail, env='CartPole-v1', n_timesteps=200,
     assert loss2 < loss1
 
 @pytest.mark.expensive
-@pytest.mark.parametrize("use_gail", use_gail_vals)
+@pytest.mark.parametrize("use_gail", [False])
 def test_train_gen_degrade_D(use_gail, env='CartPole-v1', n_timesteps=200,
         n_steps=10000):
     trainer = init_trainer(env, False, use_gail=use_gail)
@@ -63,7 +63,7 @@ def test_train_gen_degrade_D(use_gail, env='CartPole-v1', n_timesteps=200,
     assert loss2 > loss1
 
 @pytest.mark.expensive
-@pytest.mark.parametrize("use_gail", use_gail_vals)
+@pytest.mark.parametrize("use_gail", [False])
 def test_train_disc_then_gen(use_gail, env='CartPole-v1', n_timesteps=200,
         n_steps=10000):
     trainer = init_trainer(env, use_gail=use_gail)
@@ -103,7 +103,7 @@ def test_trained_policy_better_than_random(use_gail, env='CartPole-v1',
     capabilities of AIRLTrainer.
     """
     env = util.make_vec_env(env, 32)
-    trainer = init_trainer(env,  use_expert_rollouts=True, use_gail=use_gail)
+    trainer = init_trainer(env, use_expert_rollouts=True, use_gail=use_gail)
     expert_policy = util.load_expert_policy(env)
     random_policy = util.make_blank_policy(env)
     if expert_policy is None:
