@@ -46,7 +46,7 @@ def test_train_disc_improve_D(use_gail, env='CartPole-v1', n_timesteps=200,
     assert loss2 < loss1
 
 @pytest.mark.expensive
-@pytest.mark.parametrize("use_gail", [False])
+@pytest.mark.parametrize("use_gail", [False])  # Not testing with GAIL because it's flaky.
 def test_train_gen_degrade_D(use_gail, env='CartPole-v1', n_timesteps=200,
         n_steps=10000):
     trainer = init_trainer(env, False, use_gail=use_gail)
@@ -63,7 +63,7 @@ def test_train_gen_degrade_D(use_gail, env='CartPole-v1', n_timesteps=200,
     assert loss2 > loss1
 
 @pytest.mark.expensive
-@pytest.mark.parametrize("use_gail", [False])
+@pytest.mark.parametrize("use_gail", [False])  # Not testing with GAIL because it's flaky.
 def test_train_disc_then_gen(use_gail, env='CartPole-v1', n_timesteps=200,
         n_steps=10000):
     trainer = init_trainer(env, use_gail=use_gail)
