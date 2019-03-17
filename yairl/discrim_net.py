@@ -1,11 +1,13 @@
 from abc import ABC, abstractmethod
 
 import tensorflow as tf
+
 import yairl.util as util
 
 
 class DiscrimNet(ABC):
     """Base class for discriminator. Flexible enough to be used in different IRL methods."""
+
     def __init__(self):
         self._disc_loss = self.build_disc_loss()
         self._policy_train_reward = self.build_policy_train_reward()
@@ -46,6 +48,7 @@ class DiscrimNet(ABC):
 
 class DiscrimNetAIRL(DiscrimNet):
     """The discriminator to use for AIRL. This discriminator uses a RewardNet."""
+
     def __init__(self, reward_net):
         self.reward_net = reward_net
         super().__init__()
@@ -95,7 +98,10 @@ class DiscrimNetAIRL(DiscrimNet):
             self._log_softmax_logits, [1, 1], axis=1)
         return self._log_D - self._log_D_compl
 
+
 class DiscrimNetGAIL(DiscrimNet):
+    """The discriminator to use for GAIL."""
+
     def __init__(self, env):
         self.env = util.maybe_load_env(env)
 
@@ -107,7 +113,7 @@ class DiscrimNetGAIL(DiscrimNet):
 
         with tf.variable_scope("discrim_network"):
             self._discrim_logits = self.build_discrm_network(
-                    self.old_obs_ph, self.act_ph)
+                self.old_obs_ph, self.act_ph)
 
         super().__init__()
 
