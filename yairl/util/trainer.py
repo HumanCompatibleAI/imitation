@@ -9,9 +9,11 @@ from yairl.airl import AIRLTrainer
 from yairl.reward_net import BasicShapedRewardNet
 import yairl.util as util
 import yairl.discrim_net as discrim_net
+import gin.tf
 
 
-def init_trainer(env_id, use_random_expert=True, use_gail=True, **kwargs):
+@gin.configurable
+def init_trainer(env_id, use_random_expert=True, use_gail=True, policy_dir='expert_models', **kwargs):
     """
     Build an AIRLTrainer, ready to be trained on a vectorized environment
     and either expert rollout data or random rollout data.
@@ -27,7 +29,7 @@ def init_trainer(env_id, use_random_expert=True, use_gail=True, **kwargs):
     if use_random_expert:
         expert_policy = gen_policy
     else:
-        expert_policy = util.load_expert_policy(env)
+        expert_policy = util.load_policy(env, basedir=policy_dir,)
         if expert_policy is None:
             raise ValueError(env)
 

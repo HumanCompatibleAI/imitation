@@ -29,7 +29,7 @@ def main(env_name, total_timesteps):
 
     policy = make_PPO2(env_name)
 
-    callback = util.make_save_policy_callback("data/", env_name, 1)
+    callback = util.make_save_policy_callback("data/")
     policy.learn(total_timesteps, callback=callback)
 
 

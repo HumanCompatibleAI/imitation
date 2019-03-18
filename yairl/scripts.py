@@ -15,52 +15,6 @@ import tqdm
 
 from yairl.util.trainer import init_trainer
 import yairl.util as util
-import yairl.discrim_net as discrim_net
-
-
-def data_load_experts(*, savedir, file_prefix, policy_class, n_experts,
-        policy_load_opt={}):
-    """
-    Load expert policies saved using data_collect.
-
-    Params:
-    savedir (str) -- The directory containing pickle files, same as in
-      `data_collect()`.
-    file_prefix (str) -- The prefix for pickle filenames, same as in
-      `data_collect()`.
-    n_experts (int) -- The number of experts to load. We prioritize recent
-      iterations over earlier iterations.
-    policy_class (stable_baselines.BaseRLModel class) -- The class of the
-      pickled policy.
-    policy_load_opt (dict) -- Keyword arguments for `policy_class.load()`.
-      Must set policy=CustomPolicy if using a custom policy class.
-      (See https://stable-baselines.readthedocs.io/en/master/guide/custom_policy.html)
-    """
-    assert n_experts > 0
-
-    def ith_file(i):
-        return os.path.join(savedir, "{}-{}.pkl".format(file_prefix, i))
-
-    # XXX: Use a number-aware sorted glob instead of a linear search.
-    # We could get a sorted list and simply take the last n_experts elements.
-    n = 1
-    while os.path.exists(ith_file(n)):
-        n += 1
-
-    if n - 1 < n_experts:
-        raise ValueError(
-            """
-            Wanted to load {} experts, but there were only {} experts at
-            {}-*.pkl
-            """.format(n_experts, n - 1))
-
-    policy_load_opt = policy_load_opt or {}
-    expert_pols = []
-    for i in range(n - n_experts, n):
-        logging.info("Loading expert {}".format(i))
-        pol = policy_class.load(ith_file(i), **policy_load_opt)
-        expert_pols.append(pol)
-    return expert_pols
 
 
 def plot_episode_reward_vs_time(env='CartPole-v1', n_episodes=50,
