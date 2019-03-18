@@ -4,13 +4,12 @@ import stable_baselines
 import tensorflow as tf
 import gin.tf
 
-
 from yairl.util.trainer import init_trainer
 import yairl.util as util
 
 use_gail_vals = [True, False]
-
 gin.parse_config_file("configs/test.gin")
+tf.logging.set_verbosity(tf.logging.INFO)
 
 @pytest.fixture(autouse=True)
 def setup_and_teardown():
@@ -53,13 +52,15 @@ def test_train_disc_improve_D(use_gail, env='CartPole-v1', n_timesteps=200,
 @pytest.mark.parametrize("use_gail", [False])  # Not testing with GAIL because it's flaky.
 def test_train_gen_degrade_D(use_gail, env='CartPole-v1', n_timesteps=200,
         n_steps=10000):
-    trainer = init_trainer(env, False, use_gail=use_gail)
+    trainer = init_trainer(env, use_gail=use_gail, use_random_expert=False,)
     if use_gail:
         kwargs = {}
     else:
         obs_old, act, obs_new, _ = util.rollout.generate(trainer.gen_policy,
                 env, n_timesteps=n_timesteps)
         kwargs = dict(gen_old_obs=obs_old, gen_act=act, gen_new_obs=obs_new)
+
+    print("use_gail", use_gail)
 
     loss1 = trainer.eval_disc_loss(**kwargs)
     trainer.train_gen(n_steps=n_steps)
@@ -90,7 +91,7 @@ def test_train_disc_then_gen(use_gail, env='CartPole-v1', n_timesteps=200,
 @pytest.mark.parametrize("use_gail", use_gail_vals)
 def test_train_no_crash(use_gail, env='CartPole-v1'):
     trainer = init_trainer(env, use_gail=use_gail)
-    trainer.train(n_epochs=3)
+    trainer.train(n_epochs=1)
 
 @pytest.mark.expensive
 @pytest.mark.xfail(reason=
@@ -139,7 +140,7 @@ def test_wrap_learned_reward_no_crash(use_gail, env="CartPole-v1"):
     a policy.
     """
     trainer = init_trainer(env, use_gail=use_gail)
-    trainer.train(n_epochs=3)
+    trainer.train(n_epochs=1)
 
     learned_reward_env = trainer.wrap_env_test_reward(env)
     policy = util.make_blank_policy(env, init_tensorboard=False)

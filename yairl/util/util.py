@@ -149,7 +149,7 @@ def get_policy_paths(env, policy_model_class, basedir, n_experts):
         raise ValueError(
             """
             Wanted to load {} experts, but there were only {} experts at
-            {}-*.pkl
+            {}
             """.format(n_experts, len(paths), path))
 
     paths = paths[-n_experts:]
