@@ -145,19 +145,19 @@ def get_policy_paths(env, policy_model_class, basedir, n_experts):
 
     paths.sort(key=lambda f: int(''.join(filter(str.isdigit, f))))
 
-    if len(paths) - 1 < n_experts:
+    if len(paths) < n_experts:
         raise ValueError(
             """
             Wanted to load {} experts, but there were only {} experts at
             {}-*.pkl
-            """.format(n_experts, len(paths) - 1, path))
+            """.format(n_experts, len(paths), path))
 
     paths = paths[-n_experts:]
 
     return paths
 
 @gin.configurable
-def load_policy(env, policy_model_class=stable_baselines.PPO2, basedir="",
+def load_policy(env, basedir, policy_model_class=stable_baselines.PPO2,
         init_tensorboard=False, policy_network_class=None, n_experts=1, **kwargs):
     """
     Load a pickled policy and return it.
@@ -190,7 +190,6 @@ def load_policy(env, policy_model_class=stable_baselines.PPO2, basedir="",
         policy = policy_model_class.load(path, env,
                 tensorboard_log=_get_tb_log_dir(env, init_tensorboard),
                 **kwargs)
-        print("PATH", path)
         tf.logging.info("loaded policy from '{}'".format(path))
         pols.append(policy)
 

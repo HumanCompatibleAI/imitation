@@ -15,6 +15,7 @@ import tqdm
 
 from yairl.util.trainer import init_trainer
 import yairl.util as util
+import gin.tf
 
 
 def plot_episode_reward_vs_time(env='CartPole-v1', n_episodes=50,
@@ -59,8 +60,8 @@ def plot_episode_reward_vs_time(env='CartPole-v1', n_episodes=50,
     plt.legend()
     _savefig_timestamp("plot_episode_reward_vs_time")
 
-
-def plot_fight_loss(env='CartPole-v1',
+@gin.configurable
+def plot_fight_loss(policy_dir, env='CartPole-v1',
         n_epochs=70,
         n_plots_each_per_epoch=10,
         n_disc_steps_per_plot=10,
@@ -80,7 +81,7 @@ def plot_fight_loss(env='CartPole-v1',
     - Plot the performance of the generator policy versus the performance of
       a random policy.
     """
-    trainer = trainer or init_trainer(env, n_expert_timesteps=n_rollout_samples)
+    trainer = trainer or init_trainer(env, policy_dir=policy_dir, n_expert_timesteps=n_rollout_samples)
     if trainer_hook_fn:
         trainer_hook_fn(trainer)
 

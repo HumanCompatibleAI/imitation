@@ -2,11 +2,15 @@ import gym
 import pytest
 import stable_baselines
 import tensorflow as tf
+import gin.tf
+
 
 from yairl.util.trainer import init_trainer
 import yairl.util as util
 
 use_gail_vals = [True, False]
+
+gin.parse_config_file("configs/test.gin")
 
 @pytest.fixture(autouse=True)
 def setup_and_teardown():

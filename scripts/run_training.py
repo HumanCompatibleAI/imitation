@@ -1,13 +1,12 @@
-import logging
-
 from yairl.util.trainer import init_trainer
 import gin.tf
 import argparse
+import tensorflow as tf
 
 
 @gin.configurable
 def main(env_name):
-    logging.getLogger().setLevel(logging.INFO)
+    tf.logging.set_verbosity(tf.logging.INFO)
 
     trainer = init_trainer(env_name, use_random_expert=False, policy_dir="data")
     trainer.train()

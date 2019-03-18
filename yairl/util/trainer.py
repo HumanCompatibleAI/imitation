@@ -13,7 +13,7 @@ import gin.tf
 
 
 @gin.configurable
-def init_trainer(env_id, use_random_expert=True, use_gail=True, policy_dir='expert_models', **kwargs):
+def init_trainer(env_id, policy_dir, use_gail, use_random_expert=True, **kwargs):
     """
     Build an AIRLTrainer, ready to be trained on a vectorized environment
     and either expert rollout data or random rollout data.
