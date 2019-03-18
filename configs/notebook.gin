@@ -1,5 +1,5 @@
 load_policy.n_experts=5
 
-init_trainer.use_gail=False
+init_trainer.use_gail=True
 
 plot_fight_loss.env="CartPole-v1"

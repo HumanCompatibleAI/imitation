@@ -52,7 +52,7 @@ def test_train_disc_improve_D(use_gail, env='CartPole-v1', n_timesteps=200,
 @pytest.mark.parametrize("use_gail", [False])  # Not testing with GAIL because it's flaky.
 def test_train_gen_degrade_D(use_gail, env='CartPole-v1', n_timesteps=200,
         n_steps=10000):
-    trainer = init_trainer(env, use_gail=use_gail, use_random_expert=False,)
+    trainer = init_trainer(env, use_gail=use_gail)
     if use_gail:
         kwargs = {}
     else:
