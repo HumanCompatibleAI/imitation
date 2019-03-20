@@ -18,49 +18,6 @@ import yairl.util as util
 from yairl.util.trainer import init_trainer
 
 
-def plot_episode_reward_vs_time(env='CartPole-v1', n_episodes=50,
-                                n_epochs_per_plot=250, n_plots=100):
-    """
-    Make sure that generator policy trained to mimick expert policy
-    demonstrations) achieves higher reward than a random policy.
-
-    In other words, perform a basic check on the imitation learning
-    capabilities of AIRLTrainer.
-    """
-    trainer = init_trainer(env)
-    expert_policy = util.load_expert_policy(env)
-    random_policy = util.make_blank_policy(env)
-    gen_policy = trainer.policy
-
-    assert expert_policy is not None
-    assert random_policy is not None
-
-    X, random_rews, gen_rews = [], [], []
-
-    def add_single_data(policy, policy_name, lst):
-        rew = util.rollout.total_reward(policy, env, n_episodes=n_episodes)
-        lst.append(rew)
-        logging.info("{} reward:".format(policy_name), rew)
-
-    def make_data():
-        X.append(trainer.epochs_so_far)
-        loggin.info("Epoch {}".format(trainer.epochs_so_far))
-        # add_single_data(expert_policy, "expert", expert_rews)
-        add_single_data(random_policy, "random", random_rews)
-        add_single_data(gen_policy, "generator", gen_rews)
-
-    make_data()
-    for _ in range(n_plots):
-        trainer.train(n_epochs=n_epochs_per_plot)
-        make_data()
-
-    # plt.plot(X, expert_rews, label="expert")
-    plt.plot(X, gen_rews, label="generator")
-    plt.plot(X, random_rews, label="random")
-    plt.legend()
-    _savefig_timestamp("plot_episode_reward_vs_time")
-
-
 @gin.configurable
 def train_and_plot(policy_dir, env='CartPole-v1',
                    n_epochs=100,
@@ -204,11 +161,6 @@ def _savefig_timestamp(prefix="", also_show=True):
     logging.info("plot saved to {}".format(path))
     if also_show:
         plt.show()
-
-
-def _decor_tf_init(f):
-    with tf.Session() as sess:
-        pass
 
 
 if __name__ == "__main__":

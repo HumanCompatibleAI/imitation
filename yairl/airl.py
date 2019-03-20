@@ -44,7 +44,6 @@ class AIRLTrainer():
             configured by initializing the stable_baselines policy).
         """
         self._sess = tf.Session()
-        self.epochs_so_far = 0
 
         self.env = util.maybe_load_env(env, vectorize=True)
         self.gen_policy = gen_policy
@@ -123,7 +122,6 @@ class AIRLTrainer():
         for i in tqdm(range(n_epochs), desc="AIRL train"):
             self.train_disc(**_n_steps_if_not_none(n_disc_steps_per_epoch))
             self.train_gen(**_n_steps_if_not_none(n_gen_steps_per_epoch))
-        self.epochs_so_far += n_epochs
 
     def eval_disc_loss(self, **kwargs):
         """

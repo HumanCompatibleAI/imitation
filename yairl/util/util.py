@@ -129,7 +129,7 @@ def make_save_policy_callback(savedir, save_interval=1):
     """
     step = 0
 
-    def callback(locals_, globals_):
+    def callback(locals_, _):
         nonlocal step
         step += 1
         if step % save_interval == 0:
