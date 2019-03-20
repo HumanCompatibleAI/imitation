@@ -1,0 +1,18 @@
+# Replicates the results in the original AIRL paper.
+
+make_blank_policy.learning_rate=3e-3
+make_blank_policy.nminibatches=32
+make_blank_policy.noptepochs=10
+make_blank_policy.n_steps=2048
+
+load_policy.n_experts=5
+
+init_trainer.use_gail=False
+init_trainer.use_random_expert = False
+
+train_and_plot.env="CartPole-v1"
+train_and_plot.policy_dir = "data"
+train_and_plot.n_epochs = 100
+train_and_plot.n_disc_steps_per_epoch=10
+train_and_plot.n_gen_steps_per_epoch=10000
+train_and_plot.n_expert_timesteps=4000

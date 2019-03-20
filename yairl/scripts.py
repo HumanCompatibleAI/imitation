@@ -81,6 +81,16 @@ def train_and_plot(policy_dir, env='CartPole-v1',
     - Plot the performance of the generator policy versus the performance of
       a random policy.
     """
+
+    # print("policy_dir", policy_dir, "env", env,
+    #     "n_epochs", n_epochs,
+    #     "n_plots_each_per_epoch", n_plots_each_per_epoch,
+    #     "n_disc_steps_per_epoch", n_disc_steps_per_epoch,
+    #     "n_gen_steps_per_epoch", n_gen_steps_per_epoch,
+    #     "n_expert_timesteps", n_expert_timesteps,
+    #     "n_gen_plot_episodes", n_gen_plot_episodes,
+    #       )
+
     trainer = trainer or init_trainer(env, policy_dir=policy_dir, n_expert_timesteps=n_expert_timesteps)
     if trainer_hook_fn:
         trainer_hook_fn(trainer)
@@ -159,8 +169,8 @@ def train_and_plot(policy_dir, env='CartPole-v1',
         n_gen_steps_per_plot = float('Inf')
         n_disc_steps_per_plot = float('Inf')
     else:
-        n_gen_steps_per_plot = int(n_gen_steps_per_epoch / n_plots_each_per_epoch)
-        n_disc_steps_per_plot = int(n_disc_steps_per_epoch / n_plots_each_per_epoch)
+        n_gen_steps_per_plot = int(n_gen_steps_per_epoch / n_plots_each_per_epoch + .5)
+        n_disc_steps_per_plot = int(n_disc_steps_per_epoch / n_plots_each_per_epoch + .5)
 
     def train_plot_itr(steps, gen_mode, steps_per_plot):
         nonlocal plot_idx
@@ -171,7 +181,6 @@ def train_and_plot(policy_dir, env='CartPole-v1',
             else:
                 trainer.train_disc(n_steps=steps_to_train)
             steps -= steps_to_train
-            print("steps", steps)
             add_plot_disc(gen_mode)
             plot_idx += 1
 

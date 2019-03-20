@@ -1,5 +1,0 @@
-load_policy.n_experts=5
-
-init_trainer.use_gail=True
-
-train_and_plot.env="CartPole-v1"

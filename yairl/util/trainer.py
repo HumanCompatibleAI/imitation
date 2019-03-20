@@ -10,6 +10,7 @@ from yairl.reward_net import BasicShapedRewardNet
 import yairl.util as util
 import yairl.discrim_net as discrim_net
 import gin.tf
+import tensorflow as tf
 
 
 @gin.configurable
@@ -26,7 +27,7 @@ def init_trainer(env_id, policy_dir, use_gail, use_random_expert=True, **kwargs)
     """
     env = util.make_vec_env(env_id, 8)
     gen_policy = util.make_blank_policy(env, init_tensorboard=False)
-    print("use_random_expert", use_random_expert)
+    tf.logging.info("use_random_expert %s", use_random_expert)
     if use_random_expert:
         expert_policy = gen_policy
     else:

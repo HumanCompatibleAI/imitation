@@ -60,8 +60,6 @@ def test_train_gen_degrade_D(use_gail, env='CartPole-v1', n_timesteps=200,
                 env, n_timesteps=n_timesteps)
         kwargs = dict(gen_old_obs=obs_old, gen_act=act, gen_new_obs=obs_new)
 
-    print("use_gail", use_gail)
-
     loss1 = trainer.eval_disc_loss(**kwargs)
     trainer.train_gen(n_steps=n_steps)
     loss2 = trainer.eval_disc_loss(**kwargs)
