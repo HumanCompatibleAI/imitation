@@ -9,7 +9,7 @@ import tensorflow as tf
 def make_summary_writer(exp_name="AIRL", graph=None):
     summary_base = os.path.join("output/", exp_name, "summary/")
     today_str = datetime.datetime.today().strftime('%Y-%m-%d')
-    dir_list = glob.glob(os.path.join(summary_base, today_str+"*/"))
+    dir_list = glob.glob(os.path.join(summary_base, today_str + "*/"))
 
     i = 0
     done = False

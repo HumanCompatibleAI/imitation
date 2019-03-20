@@ -1,13 +1,16 @@
-import yairl.scripts as scripts
-import gin.tf
 import argparse
+
+import gin.tf
 import tensorflow as tf
+
+import yairl.scripts as scripts
 
 
 def main():
     tf.logging.set_verbosity(tf.logging.INFO)
 
     scripts.train_and_plot()
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

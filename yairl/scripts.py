@@ -9,17 +9,17 @@ import datetime
 import logging
 import os
 
-from matplotlib import pyplot as plt
+import gin.tf
 import tensorflow as tf
 import tqdm
+from matplotlib import pyplot as plt
 
-from yairl.util.trainer import init_trainer
 import yairl.util as util
-import gin.tf
+from yairl.util.trainer import init_trainer
 
 
 def plot_episode_reward_vs_time(env='CartPole-v1', n_episodes=50,
-        n_epochs_per_plot=250, n_plots=100):
+                                n_epochs_per_plot=250, n_plots=100):
     """
     Make sure that generator policy trained to mimick expert policy
     demonstrations) achieves higher reward than a random policy.
@@ -60,18 +60,19 @@ def plot_episode_reward_vs_time(env='CartPole-v1', n_episodes=50,
     plt.legend()
     _savefig_timestamp("plot_episode_reward_vs_time")
 
+
 @gin.configurable
 def train_and_plot(policy_dir, env='CartPole-v1',
-        n_epochs=100,
-        n_plots_each_per_epoch=0,
-        n_disc_steps_per_epoch=10,
-        n_gen_steps_per_epoch=10000,
-        n_expert_timesteps=4000,
-        n_gen_plot_episodes=0,
-        trainer_hook_fn=None,
-        trainer=None,
-        interactive=True,
-        ):
+                   n_epochs=100,
+                   n_plots_each_per_epoch=0,
+                   n_disc_steps_per_epoch=10,
+                   n_gen_steps_per_epoch=10000,
+                   n_expert_timesteps=4000,
+                   n_gen_plot_episodes=0,
+                   trainer_hook_fn=None,
+                   trainer=None,
+                   interactive=True,
+                   ):
     """
     Alternate between training the generator and discriminator.
 
@@ -101,6 +102,7 @@ def train_and_plot(policy_dir, env='CartPole-v1',
 
     gen_data = ([], [])
     disc_data = ([], [])
+
     def add_plot_disc(gen_mode=False):
         """
         gen_mode (bool): Whether the generator or the discriminator is active.
@@ -114,23 +116,22 @@ def train_and_plot(policy_dir, env='CartPole-v1',
         X.append(plot_idx)
         Y.append(trainer.eval_disc_loss())
         logging.info("plot idx ({}): {} disc loss: {}"
-                .format(mode, plot_idx, Y[-1]))
+                     .format(mode, plot_idx, Y[-1]))
 
     def show_plot_disc():
         if n_plots_each_per_epoch <= 0:
             return
 
         plt.scatter(disc_data[0], disc_data[1], c='g', alpha=0.7, s=4,
-                label="discriminator loss (dis step)")
+                    label="discriminator loss (dis step)")
         plt.scatter(gen_data[0], gen_data[1], c='r', alpha=0.7, s=4,
-                label="discriminator loss (gen step)")
+                    label="discriminator loss (gen step)")
         plt.title("epoch={}".format(epoch_num))
         plt.legend()
         _savefig_timestamp("plot_fight_loss_disc", interactive)
 
     gen_ep_reward = []
     rand_ep_reward = []
-
 
     def add_plot_gen():
         if n_gen_plot_episodes <= 0:
@@ -140,14 +141,13 @@ def train_and_plot(policy_dir, env='CartPole-v1',
         rand_policy = util.make_blank_policy(env)
 
         gen_rew = util.rollout.total_reward(gen_policy, env,
-                n_episodes=n_gen_plot_episodes)/n_gen_plot_episodes
+                                            n_episodes=n_gen_plot_episodes) / n_gen_plot_episodes
         rand_rew = util.rollout.total_reward(rand_policy, env,
-                n_episodes=n_gen_plot_episodes)/n_gen_plot_episodes
+                                             n_episodes=n_gen_plot_episodes) / n_gen_plot_episodes
         gen_ep_reward.append(gen_rew)
         rand_ep_reward.append(rand_rew)
         logging.info("generator reward: {}".format(gen_rew))
         logging.info("random reward: {}".format(rand_rew))
-
 
     def show_plot_gen():
         if n_gen_plot_episodes <= 0:
@@ -156,7 +156,7 @@ def train_and_plot(policy_dir, env='CartPole-v1',
         plt.title("Cartpole performance (expert=500)")
         plt.xlabel("epochs")
         plt.ylabel("Average reward per episode (n={})"
-                .format(n_gen_plot_episodes))
+                   .format(n_gen_plot_episodes))
         plt.plot(gen_ep_reward, label="avg gen ep reward", c="red")
         plt.plot(rand_ep_reward, label="avg random ep reward", c="black")
         plt.legend()
@@ -205,9 +205,11 @@ def _savefig_timestamp(prefix="", also_show=True):
     if also_show:
         plt.show()
 
+
 def _decor_tf_init(f):
     with tf.Session() as sess:
         pass
+
 
 if __name__ == "__main__":
     logging.getLogger().setLevel(logging.INFO)

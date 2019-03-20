@@ -5,12 +5,13 @@ Utilities functions for manipulating AIRLTrainer.
 prevent cyclic imports between yairl.airl and yairl.util)
 """
 
-from yairl.airl import AIRLTrainer
-from yairl.reward_net import BasicShapedRewardNet
-import yairl.util as util
-import yairl.discrim_net as discrim_net
 import gin.tf
 import tensorflow as tf
+
+import yairl.discrim_net as discrim_net
+import yairl.util as util
+from yairl.airl import AIRLTrainer
+from yairl.reward_net import BasicShapedRewardNet
 
 
 @gin.configurable
@@ -31,7 +32,7 @@ def init_trainer(env_id, policy_dir, use_gail, use_random_expert=True, **kwargs)
     if use_random_expert:
         expert_policy = gen_policy
     else:
-        expert_policy = util.load_policy(env, basedir=policy_dir,)
+        expert_policy = util.load_policy(env, basedir=policy_dir, )
         if expert_policy is None:
             raise ValueError(env)
 
@@ -42,5 +43,5 @@ def init_trainer(env_id, policy_dir, use_gail, use_random_expert=True, **kwargs)
         discrim = discrim_net.DiscrimNetAIRL(rn)
 
     trainer = AIRLTrainer(env, gen_policy, discrim, expert_policies=expert_policy,
-            **kwargs)
+                          **kwargs)
     return trainer

@@ -1,10 +1,10 @@
+import argparse
 import logging
 
+import gin.tf
 import stable_baselines
 
 import yairl.util as util
-import gin.tf
-import argparse
 
 
 def make_PPO2(env_name):
@@ -15,11 +15,11 @@ def make_PPO2(env_name):
     # Didn't look at rl-baselines-zoo for this, but these hyperparameters
     # seem ok. They aren't great though.
     policy = stable_baselines.PPO2(util.FeedForward32Policy, env,
-            verbose=0, tensorboard_log="output/",
-            learning_rate=3e-3,
-            nminibatches=32,
-            noptepochs=10,
-            n_steps=2048)
+                                   verbose=0, tensorboard_log="output/",
+                                   learning_rate=3e-3,
+                                   nminibatches=32,
+                                   noptepochs=10,
+                                   n_steps=2048)
     return policy
 
 
