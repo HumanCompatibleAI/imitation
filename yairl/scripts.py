@@ -61,7 +61,7 @@ def plot_episode_reward_vs_time(env='CartPole-v1', n_episodes=50,
     _savefig_timestamp("plot_episode_reward_vs_time")
 
 @gin.configurable
-def plot_fight_loss(policy_dir, env='CartPole-v1',
+def train_and_plot(policy_dir, env='CartPole-v1',
         n_epochs=70,
         n_plots_each_per_epoch=10,
         n_disc_steps_per_epoch=100,
@@ -96,13 +96,20 @@ def plot_fight_loss(policy_dir, env='CartPole-v1',
         gen_mode (bool): Whether the generator or the discriminator is active.
           We use this to color the data points.
         """
+        if n_plots_each_per_epoch <= 0:
+            return
+
         mode = "gen" if gen_mode else "dis"
         X, Y = gen_data if gen_mode else disc_data
         X.append(plot_idx)
         Y.append(trainer.eval_disc_loss())
         logging.info("plot idx ({}): {} disc loss: {}"
                 .format(mode, plot_idx, Y[-1]))
+
     def show_plot_disc():
+        if n_plots_each_per_epoch <= 0:
+            return
+
         plt.scatter(disc_data[0], disc_data[1], c='g', alpha=0.7, s=4,
                 label="discriminator loss (dis step)")
         plt.scatter(gen_data[0], gen_data[1], c='r', alpha=0.7, s=4,
@@ -113,8 +120,12 @@ def plot_fight_loss(policy_dir, env='CartPole-v1',
 
     gen_ep_reward = []
     rand_ep_reward = []
+
+
     def add_plot_gen():
-        env_vec = util.make_vec_env(env, 8)
+        if n_gen_plot_episodes <= 0:
+            return
+
         gen_policy = trainer.gen_policy
         rand_policy = util.make_blank_policy(env)
 
@@ -126,7 +137,12 @@ def plot_fight_loss(policy_dir, env='CartPole-v1',
         rand_ep_reward.append(rand_rew)
         logging.info("generator reward: {}".format(gen_rew))
         logging.info("random reward: {}".format(rand_rew))
+
+
     def show_plot_gen():
+        if n_gen_plot_episodes <= 0:
+            return
+
         plt.title("Cartpole performance (expert=500)")
         plt.xlabel("epochs")
         plt.ylabel("Average reward per episode (n={})"
@@ -139,24 +155,29 @@ def plot_fight_loss(policy_dir, env='CartPole-v1',
     add_plot_disc(False)
     add_plot_gen()
 
-    n_gen_steps_per_plot = int(n_gen_steps_per_epoch / n_plots_each_per_epoch)
-    n_disc_steps_per_plot = int(n_disc_steps_per_epoch / n_plots_each_per_epoch)
+    if n_plots_each_per_epoch <= 0:
+        n_gen_steps_per_plot = float('Inf')
+        n_disc_steps_per_plot = float('Inf')
+    else:
+        n_gen_steps_per_plot = int(n_gen_steps_per_epoch / n_plots_each_per_epoch)
+        n_disc_steps_per_plot = int(n_disc_steps_per_epoch / n_plots_each_per_epoch)
 
-    def train_plot(steps, gen_mode):
+    def train_plot_itr(steps, gen_mode, steps_per_plot):
         nonlocal plot_idx
         while steps > 0:
-            steps_to_train = min(steps, n_gen_steps_per_plot)
+            steps_to_train = min(steps, steps_per_plot)
             if gen_mode:
-                trainer.train_gen(n_steps=n_gen_steps_per_plot)
+                trainer.train_gen(n_steps=steps_to_train)
             else:
-                trainer.train_disc(n_steps=n_disc_steps_per_plot)
+                trainer.train_disc(n_steps=steps_to_train)
             steps -= steps_to_train
+            print("steps", steps)
             add_plot_disc(gen_mode)
             plot_idx += 1
 
     for epoch_num in tqdm.trange(n_epochs, desc="epoch"):
-        train_plot(n_gen_steps_per_epoch, True)
-        train_plot(n_gen_steps_per_epoch, False)
+        train_plot_itr(n_disc_steps_per_epoch, False, n_disc_steps_per_plot)
+        train_plot_itr(n_gen_steps_per_epoch, True, n_gen_steps_per_plot)
 
         add_plot_gen()
 
@@ -181,4 +202,4 @@ def _decor_tf_init(f):
 
 if __name__ == "__main__":
     logging.getLogger().setLevel(logging.INFO)
-    plot_fight_loss(interactive=False)
+    train_and_plot(interactive=False)
