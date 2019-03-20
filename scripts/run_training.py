@@ -1,4 +1,4 @@
-from yairl.util.trainer import init_trainer
+import yairl.scripts as scripts
 import gin.tf
 import argparse
 import tensorflow as tf
@@ -8,8 +8,7 @@ import tensorflow as tf
 def main(env_name):
     tf.logging.set_verbosity(tf.logging.INFO)
 
-    trainer = init_trainer(env_name, use_random_expert=False, policy_dir="data")
-    trainer.train()
+    scripts.train_and_plot("data")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

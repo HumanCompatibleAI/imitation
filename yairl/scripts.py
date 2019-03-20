@@ -62,12 +62,12 @@ def plot_episode_reward_vs_time(env='CartPole-v1', n_episodes=50,
 
 @gin.configurable
 def train_and_plot(policy_dir, env='CartPole-v1',
-        n_epochs=70,
-        n_plots_each_per_epoch=10,
-        n_disc_steps_per_epoch=100,
-        n_gen_steps_per_epoch=100000,
-        n_rollout_samples=4000,
-        n_gen_plot_episodes=10,
+        n_epochs=100,
+        n_plots_each_per_epoch=0,
+        n_disc_steps_per_epoch=10,
+        n_gen_steps_per_epoch=10000,
+        n_expert_timesteps=4000,
+        n_gen_plot_episodes=0,
         trainer_hook_fn=None,
         trainer=None,
         interactive=True,
@@ -81,7 +81,7 @@ def train_and_plot(policy_dir, env='CartPole-v1',
     - Plot the performance of the generator policy versus the performance of
       a random policy.
     """
-    trainer = trainer or init_trainer(env, policy_dir=policy_dir, n_expert_timesteps=n_rollout_samples)
+    trainer = trainer or init_trainer(env, policy_dir=policy_dir, n_expert_timesteps=n_expert_timesteps)
     if trainer_hook_fn:
         trainer_hook_fn(trainer)
 
