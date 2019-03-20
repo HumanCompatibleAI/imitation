@@ -64,8 +64,8 @@ def plot_episode_reward_vs_time(env='CartPole-v1', n_episodes=50,
 def plot_fight_loss(policy_dir, env='CartPole-v1',
         n_epochs=70,
         n_plots_each_per_epoch=10,
-        n_disc_steps_per_plot=10,
-        n_gen_steps_per_plot=10000,
+        n_disc_steps_per_epoch=100,
+        n_gen_steps_per_epoch=100000,
         n_rollout_samples=4000,
         n_gen_plot_episodes=10,
         trainer_hook_fn=None,
@@ -88,13 +88,6 @@ def plot_fight_loss(policy_dir, env='CartPole-v1',
     os.makedirs("output/", exist_ok=True)
 
     plot_idx = 0
-    def epoch(gen_mode=False):
-        nonlocal plot_idx
-        if gen_mode:
-            trainer.train_gen(n_steps=n_gen_steps_per_plot)
-        else:
-            trainer.train_disc(n_steps=n_disc_steps_per_plot)
-        plot_idx += 1
 
     gen_data = ([], [])
     disc_data = ([], [])
@@ -145,13 +138,26 @@ def plot_fight_loss(policy_dir, env='CartPole-v1',
 
     add_plot_disc(False)
     add_plot_gen()
+
+    n_gen_steps_per_plot = int(n_gen_steps_per_epoch / n_plots_each_per_epoch)
+    n_disc_steps_per_plot = int(n_disc_steps_per_epoch / n_plots_each_per_epoch)
+
+    def train_plot(steps, gen_mode):
+        nonlocal plot_idx
+        while steps > 0:
+            steps_to_train = min(steps, n_gen_steps_per_plot)
+            if gen_mode:
+                trainer.train_gen(n_steps=n_gen_steps_per_plot)
+            else:
+                trainer.train_disc(n_steps=n_disc_steps_per_plot)
+            steps -= steps_to_train
+            add_plot_disc(gen_mode)
+            plot_idx += 1
+
     for epoch_num in tqdm.trange(n_epochs, desc="epoch"):
-        for _ in range(n_plots_each_per_epoch):
-            epoch(False)
-            add_plot_disc(False)
-        for _ in range(n_plots_each_per_epoch):
-            epoch(True)
-            add_plot_disc(True)
+        train_plot(n_gen_steps_per_epoch, True)
+        train_plot(n_gen_steps_per_epoch, False)
+
         add_plot_gen()
 
         show_plot_disc()
