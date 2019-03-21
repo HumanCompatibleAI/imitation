@@ -26,5 +26,8 @@ matrix:
     python: "3.7"
   - name: "3.7 Coverage Tests"
     python: "3.7"
+    install:
+      - pip install codecov
+      - pip install -r requirements.txt
     script:
       - pytest --cov=yairl/ yairl/
