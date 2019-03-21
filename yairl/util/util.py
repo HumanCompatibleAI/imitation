@@ -152,16 +152,16 @@ def get_or_train_policy(env, force_train=False, timesteps=500000,
     return policy
 
 
-def save_trained_policy(policy, savedir="saved_models", filename=None):
+def save_trained_policy(policy, savedir, filename):
     """
     Save a trained policy as a pickle file.
 
     Params:
-    savedir (str): The directory to save the file to.
-    filename (str): The the name of the pickle file. If None, then choose
+    policy: (BasePolicy) policy to save
+    savedir: (str) The directory to save the file to.
+    filename: (str) The the name of the pickle file. If None, then choose
       a default name using the names of the policy model and the environment.
     """
-    filename = filename or _policy_filename(policy.__class__, env)
     os.makedirs(savedir, exist_ok=True)
     path = os.path.join(savedir, filename)
     policy.save(path)

@@ -195,9 +195,9 @@ def plot_fight_loss(env='CartPole-v1',
         rand_policy = util.make_blank_policy(env_vec)
 
         gen_rew = util.rollout.total_reward(gen_policy, env_vec,
-                                            n_episodes=n_gen_plot_episodes)/n_gen_plot_episodes
+                                            n_episodes=n_gen_plot_episodes) / n_gen_plot_episodes
         rand_rew = util.rollout.total_reward(rand_policy, env_vec,
-                                             n_episodes=n_gen_plot_episodes)/n_gen_plot_episodes
+                                             n_episodes=n_gen_plot_episodes) / n_gen_plot_episodes
         gen_ep_reward.append(gen_rew)
         rand_ep_reward.append(rand_rew)
         logging.info("generator reward: {}".format(gen_rew))
