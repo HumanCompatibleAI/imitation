@@ -1,0 +1,23 @@
+sudo: required
+dist: xenial
+
+language: python
+script:
+  - pytest yairl/
+matrix:
+  include:
+  - name: "Linting"
+    python: "3.7"
+    before_install: []
+    install:
+      - pip install flake8 isort
+    script:
+      - ci/code_checks.sh
+    after_success: []
+
+  - name: "3.5 Unit Tests"
+    python: "3.5"
+  - name: "3.6 Unit Tests"
+    python: "3.6"
+  - name: "3.7 Unit Tests"
+    python: "3.7"
