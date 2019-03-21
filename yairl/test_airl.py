@@ -1,6 +1,4 @@
-import gym
 import pytest
-import stable_baselines
 import tensorflow as tf
 
 import yairl.util as util

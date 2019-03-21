@@ -10,10 +10,8 @@ import logging
 import os
 
 from matplotlib import pyplot as plt
-import tensorflow as tf
 import tqdm
 
-import yairl.discrim_net as discrim_net
 import yairl.util as util
 from yairl.util.trainer import init_trainer
 
@@ -56,7 +54,6 @@ def data_load_experts(*, savedir, file_prefix, policy_class, n_experts,
       pickled policy.
     policy_load_opt (dict) -- Keyword arguments for `policy_class.load()`.
       Must set policy=CustomPolicy if using a custom policy class.
-      (See https://stable-baselines.readthedocs.io/en/master/guide/custom_policy.html)
     """
     assert n_experts > 0
 
@@ -111,7 +108,7 @@ def plot_episode_reward_vs_time(env='CartPole-v1', n_episodes=50,
 
     def make_data():
         X.append(trainer.epochs_so_far)
-        loggin.info("Epoch {}".format(trainer.epochs_so_far))
+        logging.info("Epoch {}".format(trainer.epochs_so_far))
         # add_single_data(expert_policy, "expert", expert_rews)
         add_single_data(random_policy, "random", random_rews)
         add_single_data(gen_policy, "generator", gen_rews)
@@ -236,9 +233,6 @@ def _savefig_timestamp(prefix="", also_show=True):
     if also_show:
         plt.show()
 
-def _decor_tf_init(f):
-    with tf.Session() as sess:
-        pass
 
 if __name__ == "__main__":
     logging.getLogger().setLevel(logging.INFO)

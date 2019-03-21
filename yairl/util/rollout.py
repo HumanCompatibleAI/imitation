@@ -123,7 +123,6 @@ def generate(policy, env, *, n_timesteps=None, n_episodes=None,
     # Sanity checks.
     exp_obs = (n_steps,) + env.observation_space.shape
     exp_act = (n_steps,) + env.action_space.shape
-    n_envs = env.num_envs
     assert rollout_obs_new.shape == exp_obs
     assert rollout_obs_old.shape == exp_obs
     assert rollout_act.shape == exp_act
