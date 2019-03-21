@@ -190,11 +190,11 @@ def plot_fight_loss(env='CartPole-v1',
     def add_plot_gen():
         env_vec = util.make_vec_env(env, 8)
         gen_policy = trainer.gen_policy
-        rand_policy = util.make_blank_policy(env)
+        rand_policy = util.make_blank_policy(env_vec)
 
-        gen_rew = util.rollout.total_reward(gen_policy, env,
+        gen_rew = util.rollout.total_reward(gen_policy, env_vec,
                 n_episodes=n_gen_plot_episodes)/n_gen_plot_episodes
-        rand_rew = util.rollout.total_reward(rand_policy, env,
+        rand_rew = util.rollout.total_reward(rand_policy, env_vec,
                 n_episodes=n_gen_plot_episodes)/n_gen_plot_episodes
         gen_ep_reward.append(gen_rew)
         rand_ep_reward.append(rand_rew)
