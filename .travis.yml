@@ -2,6 +2,8 @@ sudo: required
 dist: xenial
 
 language: python
+before_install:
+  - sudo apt-get install -y libopenmpi-dev
 script:
   - pytest yairl/
 matrix:
