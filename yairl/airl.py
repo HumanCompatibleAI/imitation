@@ -1,6 +1,6 @@
 import logging
-import numpy as np
 
+import numpy as np
 from stable_baselines.common.vec_env import VecEnvWrapper
 import tensorflow as tf
 from tqdm import tqdm

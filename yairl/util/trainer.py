@@ -6,9 +6,9 @@ prevent cyclic imports between yairl.airl and yairl.util)
 """
 
 from yairl.airl import AIRLTrainer
+import yairl.discrim_net as discrim_net
 from yairl.reward_net import BasicShapedRewardNet
 import yairl.util as util
-import yairl.discrim_net as discrim_net
 
 
 def init_trainer(env_id, use_random_expert=True, use_gail=True, **kwargs):

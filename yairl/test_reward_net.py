@@ -2,7 +2,7 @@ import gym
 import pytest
 import tensorflow as tf
 
-from yairl.reward_net import BasicShapedRewardNet, BasicRewardNet
+from yairl.reward_net import BasicRewardNet, BasicShapedRewardNet
 import yairl.util
 
 

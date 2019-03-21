@@ -3,8 +3,8 @@ import pytest
 import stable_baselines
 import tensorflow as tf
 
-from yairl.util.trainer import init_trainer
 import yairl.util as util
+from yairl.util.trainer import init_trainer
 
 use_gail_vals = [True, False]
 

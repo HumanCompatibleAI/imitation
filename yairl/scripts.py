@@ -13,9 +13,9 @@ from matplotlib import pyplot as plt
 import tensorflow as tf
 import tqdm
 
-from yairl.util.trainer import init_trainer
-import yairl.util as util
 import yairl.discrim_net as discrim_net
+import yairl.util as util
+from yairl.util.trainer import init_trainer
 
 
 # TODO: This is cruft. It was mostly useful for prototyping, but

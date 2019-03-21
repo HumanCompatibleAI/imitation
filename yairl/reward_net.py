@@ -272,5 +272,3 @@ class BasicRewardNet(RewardNet):
         no shaping.
         """
         return self.reward_output_test
-    
-
