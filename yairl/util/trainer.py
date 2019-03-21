@@ -38,5 +38,5 @@ def init_trainer(env_id, use_random_expert=True, use_gail=True, **kwargs):
         discrim = discrim_net.DiscrimNetAIRL(rn)
 
     trainer = AIRLTrainer(env, gen_policy, discrim, expert_policies=expert_policy,
-            **kwargs)
+                          **kwargs)
     return trainer

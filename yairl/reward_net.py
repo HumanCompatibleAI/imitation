@@ -27,7 +27,7 @@ class RewardNet(ABC):
 
         with tf.variable_scope("theta_network"):
             self._theta_output = self.build_theta_network(
-                    self.old_obs_ph, self.act_ph)
+                self.old_obs_ph, self.act_ph)
         # TODO: assert that all the outputs above have shape (None,).
 
     @property
@@ -125,8 +125,8 @@ class RewardNetShaped(RewardNet):
 
         with tf.variable_scope("f_network"):
             self._shaped_reward_output = (self._theta_output +
-                    self._discount_factor * self._new_shaping_output
-                    - self._old_shaping_output)
+                                          self._discount_factor * self._new_shaping_output
+                                          - self._old_shaping_output)
 
     @property
     def reward_output_train(self):
@@ -218,7 +218,7 @@ class BasicShapedRewardNet(RewardNetShaped):
                 util.flat(act_input, self.env.action_space.shape)], axis=1)
 
         theta_output = tf.identity(util.apply_ff(inputs, hid_sizes=[]),
-                name="theta_output")
+                                   name="theta_output")
         return theta_output
 
     def build_phi_network(self, old_obs_input, new_obs_input):
@@ -227,11 +227,11 @@ class BasicShapedRewardNet(RewardNetShaped):
 
         with tf.variable_scope("ff", reuse=tf.AUTO_REUSE):
             old_shaping_output = tf.identity(
-                    util.apply_ff(old_o, hid_sizes=[self._units]*2),
-                    name="old_shaping_output")
+                util.apply_ff(old_o, hid_sizes=[self._units]*2),
+                name="old_shaping_output")
             new_shaping_output = tf.identity(
-                    util.apply_ff(new_o, hid_sizes=[self._units]*2),
-                    name="new_shaping_output")
+                util.apply_ff(new_o, hid_sizes=[self._units]*2),
+                name="new_shaping_output")
         return old_shaping_output, new_shaping_output
 
 
@@ -262,7 +262,7 @@ class BasicRewardNet(RewardNet):
                 util.flat(act_input, self.env.action_space.shape)], axis=1)
 
         theta_output = tf.identity(util.apply_ff(inputs, hid_sizes=[]),
-                name="theta_output")
+                                   name="theta_output")
         return theta_output
 
     @property
