@@ -1,5 +1,6 @@
 gym
 numpy>=1.15
 pytest
-tensorflow  # Replace with tensorflow-gpu if you have a GPU
+tensorflow>=1.13.1,<2  # Replace with tensorflow-gpu if you have a GPU
 tqdm
+git+git://github.com/hill-a/stable-baselines.git

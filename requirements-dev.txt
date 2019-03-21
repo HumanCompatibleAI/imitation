@@ -1,0 +1,5 @@
+# Recommended packages for interactive development
+ipdb
+jupyter
+flake8
+isort
