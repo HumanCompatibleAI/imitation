@@ -18,12 +18,6 @@ matrix:
       - ci/code_checks.sh
     after_success: []
 
-  - name: "3.5 Unit Tests"
-    python: "3.5"
-  - name: "3.6 Unit Tests"
-    python: "3.6"
-  - name: "3.7 Unit Tests"
-    python: "3.7"
   - name: "3.7 Coverage Tests"
     python: "3.7"
     install:
@@ -31,3 +25,10 @@ matrix:
       - pip install -r requirements.txt
     script:
       - pytest --cov=yairl/ yairl/
+
+  - name: "3.5 Unit Tests"
+    python: "3.5"
+  - name: "3.6 Unit Tests"
+    python: "3.6"
+  - name: "3.7 Unit Tests"
+    python: "3.7"
