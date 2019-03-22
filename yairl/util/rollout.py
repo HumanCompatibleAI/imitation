@@ -124,7 +124,6 @@ def generate(policy, env, *, n_timesteps=None, n_episodes=None,
     # Sanity checks.
     exp_obs = (n_steps,) + env.observation_space.shape
     exp_act = (n_steps,) + env.action_space.shape
-    n_envs = env.num_envs
     assert rollout_obs_new.shape == exp_obs
     assert rollout_obs_old.shape == exp_obs
     assert rollout_act.shape == exp_act
@@ -195,7 +194,7 @@ def generate_multiple(policies, env, n_timesteps):
     n_policies = len(policies)
     quot, rem = n_timesteps // n_policies, n_timesteps % n_policies
     tf.logging.debug("rollout.generate_multiple: quot={}, rem={}"
-                  .format(quot, rem))
+                     .format(quot, rem))
 
     obs_old, act, obs_new = [], [], []
     for i, pol in enumerate(policies):

@@ -8,10 +8,10 @@ prevent cyclic imports between yairl.airl and yairl.util)
 import gin.tf
 import tensorflow as tf
 
-import yairl.discrim_net as discrim_net
-import yairl.util as util
 from yairl.airl import AIRLTrainer
+import yairl.discrim_net as discrim_net
 from yairl.reward_net import BasicShapedRewardNet
+import yairl.util as util
 
 
 @gin.configurable

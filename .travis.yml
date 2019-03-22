@@ -1,0 +1,33 @@
+sudo: required
+dist: xenial
+
+language: python
+cache: pip
+before_install:
+  - sudo apt-get install -y libopenmpi-dev
+script:
+  - pytest --expensive yairl/
+matrix:
+  include:
+  - name: "Linting"
+    python: "3.7"
+    before_install: []
+    install:
+      - pip install flake8 isort
+    script:
+      - ci/code_checks.sh
+    after_success: []
+
+  - name: "3.7 Coverage Tests"
+    python: "3.7"
+    script:
+      - py.test --cov-report=xml --cov=yairl --expensive yairl/
+    after_success:
+      - codecov
+
+  - name: "3.5 Unit Tests"
+    python: "3.5"
+  - name: "3.6 Unit Tests"
+    python: "3.6"
+  - name: "3.7 Unit Tests"
+    python: "3.7"

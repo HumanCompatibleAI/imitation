@@ -1,3 +1,6 @@
-import yairl.util.rollout
-from yairl.util.util import *
+# flake8: noqa: F401
 
+import yairl.util.rollout
+from yairl.util.util import (FeedForward32Policy, apply_ff, build_placeholders, flat, get_env_id,
+                             is_vec_env, load_policy, make_blank_policy, make_save_policy_callback,
+                             make_vec_env, maybe_load_env, save_trained_policy)

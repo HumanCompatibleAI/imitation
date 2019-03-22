@@ -1,8 +1,6 @@
-
-
 import numpy as np
-import tensorflow as tf
 from stable_baselines.common.vec_env import VecEnvWrapper
+import tensorflow as tf
 from tqdm import tqdm
 
 import yairl.summaries as summaries
@@ -213,8 +211,8 @@ class AIRLTrainer():
                          for x in (gen_old_obs, gen_act, gen_new_obs))
         if none_count == 3:
             tf.logging.debug("_build_disc_feed_dict: No generator rollout "
-                          "parameters were "
-                          "provided, so we are generating them now.")
+                             "parameters were "
+                             "provided, so we are generating them now.")
             n_timesteps = len(self.expert_old_obs)
             (gen_old_obs, gen_act, gen_new_obs, _) = util.rollout.generate(
                 self.gen_policy, self.env, n_timesteps=n_timesteps)
@@ -304,7 +302,6 @@ class AIRLTrainer():
         """
         Sets self._test_reward_fn, the reward function learned by AIRL.
         """
-
         def R(old_obs, act, new_obs):
             fd = {
                 self.discrim.old_obs_ph: old_obs,

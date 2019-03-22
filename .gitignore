@@ -11,3 +11,5 @@ data/
 *.dream
 saved_models/
 *.egg-info/
+.coverage
+coverage.xml

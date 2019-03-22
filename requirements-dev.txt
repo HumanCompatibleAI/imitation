@@ -1,0 +1,5 @@
+# Recommended packages for development 
+ipdb
+jupyter
+flake8
+isort

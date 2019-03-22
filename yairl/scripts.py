@@ -6,13 +6,13 @@ These scripts are meant to be run in a Jupyter notebook (displays figures)
 but also automatically save timestamped figures to the output/ directory.
 """
 import datetime
-
+import logging
 import os
 
 import gin.tf
+from matplotlib import pyplot as plt
 import tensorflow as tf
 import tqdm
-from matplotlib import pyplot as plt
 
 import yairl.util as util
 from yairl.util.trainer import init_trainer
@@ -39,17 +39,8 @@ def train_and_plot(policy_dir, env='CartPole-v1',
     - Plot the performance of the generator policy versus the performance of
       a random policy.
     """
-
-    # print("policy_dir", policy_dir, "env", env,
-    #     "n_epochs", n_epochs,
-    #     "n_plots_each_per_epoch", n_plots_each_per_epoch,
-    #     "n_disc_steps_per_epoch", n_disc_steps_per_epoch,
-    #     "n_gen_steps_per_epoch", n_gen_steps_per_epoch,
-    #     "n_expert_timesteps", n_expert_timesteps,
-    #     "n_gen_plot_episodes", n_gen_plot_episodes,
-    #       )
-
-    trainer = trainer or init_trainer(env, policy_dir=policy_dir, n_expert_timesteps=n_expert_timesteps)
+    if trainer is None:
+        trainer = init_trainer(env, policy_dir=policy_dir, n_expert_timesteps=n_expert_timesteps)
     if trainer_hook_fn:
         trainer_hook_fn(trainer)
 
@@ -72,8 +63,7 @@ def train_and_plot(policy_dir, env='CartPole-v1',
         X, Y = gen_data if gen_mode else disc_data
         X.append(plot_idx)
         Y.append(trainer.eval_disc_loss())
-        tf.logging.info("plot idx ({}): {} disc loss: {}"
-                     .format(mode, plot_idx, Y[-1]))
+        tf.logging.info("plot idx ({}): {} disc loss: {}".format(mode, plot_idx, Y[-1]))
 
     def show_plot_disc():
         if n_plots_each_per_epoch <= 0:
