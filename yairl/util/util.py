@@ -134,17 +134,17 @@ def make_save_policy_callback(savedir, save_interval=1):
         step += 1
         if step % save_interval == 0:
             policy = locals_['self']
-            filename = policy_filename(policy.__class__, policy.get_env(), step)
+            filename = _policy_filename(policy.__class__, policy.get_env(), step)
             save_trained_policy(policy, savedir, filename)
         return True
 
     return callback
 
 
-def get_policy_paths(env, policy_model_class, basedir, n_experts):
+def _get_policy_paths(env, policy_model_class, basedir, n_experts):
     assert n_experts > 0
 
-    path = os.path.join(basedir, policy_filename(policy_model_class, env))
+    path = os.path.join(basedir, _policy_filename(policy_model_class, env))
     paths = glob.glob(path)
 
     paths.sort(key=lambda f: int(''.join(filter(str.isdigit, f))))
@@ -180,7 +180,7 @@ def load_policy(env, basedir, policy_model_class=stable_baselines.PPO2,
     **kwargs: Additional options for initializing the BaseRLModel class.
     """
 
-    paths = get_policy_paths(env, policy_model_class, basedir, n_experts)
+    paths = _get_policy_paths(env, policy_model_class, basedir, n_experts)
 
     env = maybe_load_env(env)
 
@@ -199,7 +199,7 @@ def load_policy(env, basedir, policy_model_class=stable_baselines.PPO2,
     return pols
 
 
-def policy_filename(policy_class, env, n="[0-9]*"):
+def _policy_filename(policy_class, env, n="[0-9]*"):
     """
     Returns the .pkl filename that the policy instantiated with policy_class
     and trained on env should be saved to.
