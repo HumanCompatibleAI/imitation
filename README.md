@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.com/HumanCompatibleAI/airl.svg?branch=master)](https://travis-ci.com/HumanCompatibleAI/airl)
+
 # Adversarial Inverse Reinforcment Learning
 
 This repository reimplements AIRL with modern dependencies.
