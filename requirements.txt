@@ -6,3 +6,4 @@ git+git://github.com/hill-a/stable-baselines.git@e59f32#egg=stable-baselines
 codecov
 pytest
 pytest-cov
+gin-config

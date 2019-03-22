@@ -1,11 +1,12 @@
-import logging
+import glob
 import os
 
+import gin.tf
 import gym
 import stable_baselines
+import tensorflow as tf
 from stable_baselines.common.policies import FeedForwardPolicy
 from stable_baselines.common.vec_env import DummyVecEnv, VecEnv
-import tensorflow as tf
 
 
 def maybe_load_env(env_or_str, vectorize=True):
@@ -46,15 +47,18 @@ def is_vec_env(env):
     return isinstance(env, VecEnv)
 
 
-def get_env_id(env):
+def get_env_id(env_or_str):
+    if isinstance(env_or_str, str):
+        return env_or_str
+
     try:
-        env = maybe_load_env(env)
+        env = maybe_load_env(env_or_str)
         if is_vec_env(env):
             env = env.envs[0]
         return env.spec.id
     except Exception as e:
-        logging.warning("Couldn't find environment id, using 'UnknownEnv'")
-        logging.warning(e)
+        tf.logging.warning("Couldn't find environment id, using 'UnknownEnv'")
+        tf.logging.warning(e)
         return "UnknownEnv"
 
 
@@ -63,14 +67,16 @@ class FeedForward32Policy(FeedForwardPolicy):
     A feed forward gaussian policy network with two hidden layers of 32 units.
     This matches the IRL policies in the original AIRL paper.
     """
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs,
-                net_arch=[32, 32], feature_extraction="mlp")
+                         net_arch=[32, 32], feature_extraction="mlp")
 
 
+@gin.configurable
 def make_blank_policy(env, policy_class=stable_baselines.PPO2,
-        init_tensorboard=False, policy_network_class=FeedForward32Policy,
-        verbose=0, **kwargs):
+                      init_tensorboard=False, policy_network_class=FeedForward32Policy,
+                      verbose=0, **kwargs):
     """
     Instantiates a policy for the provided environment.
 
@@ -88,12 +94,13 @@ def make_blank_policy(env, policy_class=stable_baselines.PPO2,
     policy (stable_baselines.BaseRLModel)
     """
     env = maybe_load_env(env)
+    tf.logging.info("kwargs %s", kwargs)
     return policy_class(policy_network_class, env, verbose=verbose,
-            tensorboard_log=_get_tb_log_dir(env, init_tensorboard),
-            **kwargs)
+                        tensorboard_log=_get_tb_log_dir(env, init_tensorboard),
+                        **kwargs)
 
 
-def save_trained_policy(policy, savedir, filename):
+def save_trained_policy(policy, savedir="saved_models", filename=None):
     """
     Save a trained policy as a pickle file.
 
@@ -106,10 +113,10 @@ def save_trained_policy(policy, savedir, filename):
     os.makedirs(savedir, exist_ok=True)
     path = os.path.join(savedir, filename)
     policy.save(path)
-    logging.info("Saved pickle to {}!".format(path))
+    tf.logging.info("Saved pickle to {}!".format(path))
 
 
-def make_save_policy_callback(savedir, file_prefix, save_interval):
+def make_save_policy_callback(savedir, save_interval=1):
     """
     Make a policy.learn() callback that saves snapshots of the policy
     to `{savedir}/{file_prefix}-{step}`, where step is the training
@@ -121,40 +128,40 @@ def make_save_policy_callback(savedir, file_prefix, save_interval):
     save_interval (int): The number of training timesteps in between saves.
     """
     step = 0
-    def callback(locals_, globals_):
+
+    def callback(locals_, _):
         nonlocal step
         step += 1
         if step % save_interval == 0:
             policy = locals_['self']
-            # TODO: After we use globs in scripts.data_generate_...,
-            # then we can simply use step.
-            filename = "{}-{}".format(file_prefix, step//save_interval)
+            filename = policy_filename(policy.__class__, policy.get_env(), step)
             save_trained_policy(policy, savedir, filename)
         return True
+
     return callback
 
 
-def load_trained_policy(env, **kwargs):
-    """
-    Load a trained policy from saved_models/.
-    """
-    return load_policy(env, basedir="saved_models", **kwargs)
+def get_policy_paths(env, policy_model_class, basedir, n_experts):
+    assert n_experts > 0
+
+    path = os.path.join(basedir, policy_filename(policy_model_class, env))
+    paths = glob.glob(path)
+
+    paths.sort(key=lambda f: int(''.join(filter(str.isdigit, f))))
+
+    if len(paths) < n_experts:
+        raise ValueError(
+            "Wanted to load {} experts, but there were only {} experts at {}".format(
+                n_experts, len(paths), path))
+
+    paths = paths[-n_experts:]
+
+    return paths
 
 
-def load_expert_policy(env, **kwargs):
-    """
-    Load an expert policy from expert_models/.
-    """
-    return load_policy(env, basedir="expert_models", **kwargs)
-
-
-# TODO: It's probably a good idea to just use the model/policy semantics
-# from stable_baselines, even if I disagree with their naming scheme.
-#
-# ie, rename policy_class=> policy_model_class
-#     rename policy_network_class => policy (matches policy_class.__init__ arg)
-def load_policy(env, policy_class=stable_baselines.PPO2, basedir="",
-        init_tensorboard=False, policy_network_class=None, verbose=0, **kwargs):
+@gin.configurable
+def load_policy(env, basedir, policy_model_class=stable_baselines.PPO2,
+                init_tensorboard=False, policy_network_class=None, n_experts=1, **kwargs):
     """
     Load a pickled policy and return it.
 
@@ -170,32 +177,34 @@ def load_policy(env, policy_class=stable_baselines.PPO2, basedir="",
       constructor. Unless we are using a custom BasePolicy (not builtin to
       stable_baselines), this is automatically infered, and so we can leave
       this argument as None.
-    verbose (int): The verbosity level of the model during training.
     **kwargs: Additional options for initializing the BaseRLModel class.
     """
-    path = os.path.join(basedir, _policy_filename(policy_class, env))
-    exists = os.path.exists(path)
-    if exists:
-        env = maybe_load_env(env)
-        if policy_network_class is not None:
-            kwargs["policy"] = policy_network_class
 
-        policy = policy_class.load(path, env,
-                tensorboard_log=_get_tb_log_dir(env, init_tensorboard),
-                **kwargs)
-        logging.info("loaded policy from '{}'".format(path))
-        return policy
-    else:
-        logging.info("couldn't find policy at '{}'".format(path))
-        return None
+    paths = get_policy_paths(env, policy_model_class, basedir, n_experts)
+
+    env = maybe_load_env(env)
+
+    if (policy_network_class is not None) and ("policy" not in kwargs):
+        kwargs["policy"] = policy_network_class
+
+    pols = []
+
+    for path in paths:
+        policy = policy_model_class.load(path, env,
+                                         tensorboard_log=_get_tb_log_dir(env, init_tensorboard),
+                                         **kwargs)
+        tf.logging.info("loaded policy from '{}'".format(path))
+        pols.append(policy)
+
+    return pols
 
 
-def _policy_filename(policy_class, env):
+def policy_filename(policy_class, env, n="[0-9]*"):
     """
     Returns the .pkl filename that the policy instantiated with policy_class
     and trained on env should be saved to.
     """
-    return "{}_{}.pkl".format(policy_class.__name__, get_env_id(env))
+    return "{}_{}_{}.pkl".format(policy_class.__name__, get_env_id(env), n)
 
 
 def _get_tb_log_dir(env, init_tensorboard):
@@ -215,9 +224,9 @@ def apply_ff(inputs, hid_sizes):
     x = inputs
     for i, size in enumerate(hid_sizes):
         x = tf.layers.dense(x, size, activation='relu',
-                kernel_initializer=xavier(), name="dense"+str(i))
+                            kernel_initializer=xavier(), name="dense" + str(i))
     x = tf.layers.dense(x, 1, kernel_initializer=xavier(),
-            name="dense_final")
+                        name="dense_final")
     return tf.squeeze(x, axis=1)
 
 
@@ -229,21 +238,22 @@ def build_placeholders(env, include_new_obs):
     a_shape = (None,) + env.action_space.shape
 
     old_obs_ph = tf.placeholder(name="old_obs_ph",
-            dtype=tf.float32, shape=o_shape)
+                                dtype=tf.float32, shape=o_shape)
     if include_new_obs:
         new_obs_ph = tf.placeholder(name="new_obs_ph",
-                dtype=tf.float32, shape=o_shape)
+                                    dtype=tf.float32, shape=o_shape)
     act_ph = tf.placeholder(name="act_ph",
-            dtype=tf.float32, shape=a_shape)
+                            dtype=tf.float32, shape=a_shape)
 
     if include_new_obs:
         return old_obs_ph, act_ph, new_obs_ph
     else:
         return old_obs_ph, act_ph
 
+
 def flat(tensor, space_shape):
     ndim = len(space_shape)
-    if ndim== 0:
+    if ndim == 0:
         return tf.reshape(tensor, [-1, 1])
     elif ndim == 1:
         return tf.reshape(tensor, [-1, space_shape[0]])
