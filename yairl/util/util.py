@@ -150,10 +150,8 @@ def get_policy_paths(env, policy_model_class, basedir, n_experts):
 
     if len(paths) < n_experts:
         raise ValueError(
-            """
-            Wanted to load {} experts, but there were only {} experts at
-            {}
-            """.format(n_experts, len(paths), path))
+            "Wanted to load {} experts, but there were only {} experts at {}".format(
+                n_experts, len(paths), path))
 
     paths = paths[-n_experts:]
 
@@ -185,7 +183,7 @@ def load_policy(env, basedir, policy_model_class=stable_baselines.PPO2,
 
     env = maybe_load_env(env)
 
-    if policy_network_class is not None:
+    if (policy_network_class is not None) and ("policy" not in kwargs):
         kwargs["policy"] = policy_network_class
 
     pols = []
