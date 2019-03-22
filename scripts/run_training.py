@@ -3,7 +3,7 @@ import argparse
 import gin.tf
 import tensorflow as tf
 
-import yairl.scripts as scripts
+import imitation.scripts as scripts
 
 
 def main():

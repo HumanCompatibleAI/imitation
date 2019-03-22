@@ -1,9 +1,8 @@
 import gin.tf
+import imitation.util as util
+from imitation.util.trainer import init_trainer
 import pytest
 import tensorflow as tf
-
-import yairl.util as util
-from yairl.util.trainer import init_trainer
 
 use_gail_vals = [True, False]
 gin.parse_config_file("configs/test.gin")

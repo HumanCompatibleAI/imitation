@@ -1,8 +1,7 @@
 from abc import ABC, abstractmethod
 
+import imitation.util as util
 import tensorflow as tf
-
-import yairl.util as util
 
 
 class DiscrimNet(ABC):

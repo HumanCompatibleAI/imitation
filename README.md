@@ -1,16 +1,16 @@
-[![Build Status](https://travis-ci.com/HumanCompatibleAI/airl.svg?branch=master)](https://travis-ci.com/HumanCompatibleAI/airl)
+[![Build Status](https://travis-ci.com/HumanCompatibleAI/imitation.svg?branch=master)](https://travis-ci.com/HumanCompatibleAI/imitation)
 
-# Adversarial Inverse Reinforcment Learning
+# Imitation Learning Baseline Implementations
 
-This repository reimplements AIRL with modern dependencies.
-Paper: https://arxiv.org/abs/1710.11248
-Original Implementation: https://github.com/justinjfu/inverse_rl
+This projects aim to provide clean implementations of imitation learning algorithms. 
+Currently we have implementations of [AIRL](https://arxiv.org/abs/1710.11248) and 
+[GAIL](https://arxiv.org/abs/1606.03476), and intend to add more in the future.
 
 To install:
 ```
 sudo apt install libopenmpi-dev
-conda create -n yairl python
-conda activate yairl
+conda create -n imitation python
+conda activate imitation
 pip install -r requirements.txt -r jupt_requirements.txt
 pip install -e .  # install yairl in developer mode
 ```

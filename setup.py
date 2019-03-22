@@ -1,7 +1,7 @@
 from setuptools import find_packages, setup
 
 setup(
-    name='yairl',
+    name='imitation',
     version='0.1',
     description='Implementation of modern IRL and imitation learning algorithms.',
     author='Center for Human-Compatible AI and Google',

@@ -4,7 +4,7 @@ import tensorflow as tf
 import gin.tf
 import stable_baselines
 
-import yairl.util as util
+import imitation.util as util
 
 
 def make_PPO2(env_name):

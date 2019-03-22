@@ -2,16 +2,15 @@
 Utilities functions for manipulating AIRLTrainer.
 
 (The primary reason these functions are here instead of in utils.py is to
-prevent cyclic imports between yairl.airl and yairl.util)
+prevent cyclic imports between imitation.airl and imitation.util)
 """
 
 import gin.tf
+from imitation.airl import AIRLTrainer
+import imitation.discrim_net as discrim_net
+from imitation.reward_net import BasicShapedRewardNet
+import imitation.util as util
 import tensorflow as tf
-
-from yairl.airl import AIRLTrainer
-import yairl.discrim_net as discrim_net
-from yairl.reward_net import BasicShapedRewardNet
-import yairl.util as util
 
 
 @gin.configurable

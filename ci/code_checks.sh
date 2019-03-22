@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-SOURCE_DIRS="yairl"
+SOURCE_DIRS="imitation"
 
 RET=0
 
