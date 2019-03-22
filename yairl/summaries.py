@@ -1,6 +1,5 @@
 import datetime
 import glob
-
 import os.path
 
 import tensorflow as tf

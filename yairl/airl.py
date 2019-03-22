@@ -1,5 +1,3 @@
-import logging
-
 import numpy as np
 from stable_baselines.common.vec_env import VecEnvWrapper
 import tensorflow as tf
@@ -213,8 +211,8 @@ class AIRLTrainer():
                          for x in (gen_old_obs, gen_act, gen_new_obs))
         if none_count == 3:
             tf.logging.debug("_build_disc_feed_dict: No generator rollout "
-                          "parameters were "
-                          "provided, so we are generating them now.")
+                             "parameters were "
+                             "provided, so we are generating them now.")
             n_timesteps = len(self.expert_old_obs)
             (gen_old_obs, gen_act, gen_new_obs, _) = util.rollout.generate(
                 self.gen_policy, self.env, n_timesteps=n_timesteps)

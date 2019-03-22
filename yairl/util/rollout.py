@@ -194,7 +194,7 @@ def generate_multiple(policies, env, n_timesteps):
     n_policies = len(policies)
     quot, rem = n_timesteps // n_policies, n_timesteps % n_policies
     tf.logging.debug("rollout.generate_multiple: quot={}, rem={}"
-                  .format(quot, rem))
+                     .format(quot, rem))
 
     obs_old, act, obs_new = [], [], []
     for i, pol in enumerate(policies):

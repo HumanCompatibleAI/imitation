@@ -98,9 +98,8 @@ def test_train_no_crash(use_gail, env='CartPole-v1'):
 
 
 @pytest.mark.expensive
-@pytest.mark.xfail(reason=
-                   "Either AIRL train is broken or not enough epochs."
-                   " Consider making a plot of episode reward over time to check.")
+@pytest.mark.xfail(reason="Either AIRL train is broken or not enough epochs."
+                          " Consider making a plot of episode reward over time to check.")
 @pytest.mark.skip
 def test_trained_policy_better_than_random(use_gail, env='CartPole-v1',
                                            n_episodes=50):

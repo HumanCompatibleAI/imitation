@@ -4,9 +4,9 @@ import os
 import gin.tf
 import gym
 import stable_baselines
-import tensorflow as tf
 from stable_baselines.common.policies import FeedForwardPolicy
 from stable_baselines.common.vec_env import DummyVecEnv, VecEnv
+import tensorflow as tf
 
 
 def maybe_load_env(env_or_str, vectorize=True):
