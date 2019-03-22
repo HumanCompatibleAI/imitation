@@ -1,6 +1,6 @@
 import argparse
-import logging
 
+import tensorflow as tf
 import gin.tf
 import stable_baselines
 
@@ -25,7 +25,7 @@ def make_PPO2(env_name):
 
 @gin.configurable
 def main(env_name, total_timesteps):
-    logging.getLogger().setLevel(logging.INFO)
+    tf.logging.set_verbosity(tf.logging.INFO)
 
     policy = make_PPO2(env_name)
 

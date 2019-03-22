@@ -6,7 +6,7 @@ These scripts are meant to be run in a Jupyter notebook (displays figures)
 but also automatically save timestamped figures to the output/ directory.
 """
 import datetime
-import logging
+
 import os
 
 import gin.tf
@@ -72,7 +72,7 @@ def train_and_plot(policy_dir, env='CartPole-v1',
         X, Y = gen_data if gen_mode else disc_data
         X.append(plot_idx)
         Y.append(trainer.eval_disc_loss())
-        logging.info("plot idx ({}): {} disc loss: {}"
+        tf.logging.info("plot idx ({}): {} disc loss: {}"
                      .format(mode, plot_idx, Y[-1]))
 
     def show_plot_disc():
@@ -103,8 +103,8 @@ def train_and_plot(policy_dir, env='CartPole-v1',
                                              n_episodes=n_gen_plot_episodes) / n_gen_plot_episodes
         gen_ep_reward.append(gen_rew)
         rand_ep_reward.append(rand_rew)
-        logging.info("generator reward: {}".format(gen_rew))
-        logging.info("random reward: {}".format(rand_rew))
+        tf.logging.info("generator reward: {}".format(gen_rew))
+        tf.logging.info("random reward: {}".format(rand_rew))
 
     def show_plot_gen():
         if n_gen_plot_episodes <= 0:
@@ -158,11 +158,11 @@ def train_and_plot(policy_dir, env='CartPole-v1',
 def _savefig_timestamp(prefix="", also_show=True):
     path = "output/{}_{}.png".format(prefix, datetime.datetime.now())
     plt.savefig(path)
-    logging.info("plot saved to {}".format(path))
+    tf.logging.info("plot saved to {}".format(path))
     if also_show:
         plt.show()
 
 
 if __name__ == "__main__":
-    logging.getLogger().setLevel(logging.INFO)
+    tf.logging.getLogger().setLevel(logging.INFO)
     train_and_plot(interactive=False)

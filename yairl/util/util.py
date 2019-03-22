@@ -1,5 +1,4 @@
 import glob
-import logging
 import os
 
 import gin.tf
@@ -58,8 +57,8 @@ def get_env_id(env_or_str):
             env = env.envs[0]
         return env.spec.id
     except Exception as e:
-        logging.warning("Couldn't find environment id, using 'UnknownEnv'")
-        logging.warning(e)
+        tf.logging.warning("Couldn't find environment id, using 'UnknownEnv'")
+        tf.logging.warning(e)
         return "UnknownEnv"
 
 
@@ -95,7 +94,7 @@ def make_blank_policy(env, policy_class=stable_baselines.PPO2,
     policy (stable_baselines.BaseRLModel)
     """
     env = maybe_load_env(env)
-    print("kwargs", kwargs)
+    tf.logging.info("kwargs %s", kwargs)
     return policy_class(policy_network_class, env, verbose=verbose,
                         tensorboard_log=_get_tb_log_dir(env, init_tensorboard),
                         **kwargs)
@@ -113,7 +112,7 @@ def save_trained_policy(policy, savedir="saved_models", filename=None):
     os.makedirs(savedir, exist_ok=True)
     path = os.path.join(savedir, filename)
     policy.save(path)
-    logging.info("Saved pickle to {}!".format(path))
+    tf.logging.info("Saved pickle to {}!".format(path))
 
 
 def make_save_policy_callback(savedir, save_interval=1):

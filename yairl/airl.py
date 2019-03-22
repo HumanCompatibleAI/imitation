@@ -1,4 +1,4 @@
-import logging
+
 
 import numpy as np
 import tensorflow as tf
@@ -212,7 +212,7 @@ class AIRLTrainer():
         none_count = sum(int(x is None)
                          for x in (gen_old_obs, gen_act, gen_new_obs))
         if none_count == 3:
-            logging.debug("_build_disc_feed_dict: No generator rollout "
+            tf.logging.debug("_build_disc_feed_dict: No generator rollout "
                           "parameters were "
                           "provided, so we are generating them now.")
             n_timesteps = len(self.expert_old_obs)

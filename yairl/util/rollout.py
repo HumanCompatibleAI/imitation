@@ -1,6 +1,7 @@
-import logging
+
 
 import numpy as np
+import tensorflow as tf
 
 from . import util  # Relative import needed to prevent cycle with __init__.py
 
@@ -91,7 +92,7 @@ def generate(policy, env, *, n_timesteps=None, n_episodes=None,
         # environments that aren't done in this timestep. Right now we discard
         # every output in the timestep.
         if np.any(done):
-            logging.debug("Skipping rollout append due to done.")
+            tf.logging.debug("Skipping rollout append due to done.")
             continue
 
         # Current state.
@@ -193,7 +194,7 @@ def generate_multiple(policies, env, n_timesteps):
 
     n_policies = len(policies)
     quot, rem = n_timesteps // n_policies, n_timesteps % n_policies
-    logging.debug("rollout.generate_multiple: quot={}, rem={}"
+    tf.logging.debug("rollout.generate_multiple: quot={}, rem={}"
                   .format(quot, rem))
 
     obs_old, act, obs_new = [], [], []

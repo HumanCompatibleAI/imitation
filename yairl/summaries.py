@@ -1,6 +1,6 @@
 import datetime
 import glob
-import logging
+
 import os.path
 
 import tensorflow as tf
@@ -20,7 +20,7 @@ def make_summary_writer(exp_name="AIRL", graph=None):
         done = run_dir not in dir_list
         i += 1
 
-    logging.info("building summary directory at " + run_dir)
+    tf.logging.info("building summary directory at " + run_dir)
     if not os.path.exists(run_dir):
         os.makedirs(run_dir)
 
