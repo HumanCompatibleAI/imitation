@@ -94,64 +94,6 @@ def make_blank_policy(env, policy_class=stable_baselines.PPO2,
                         **kwargs)
 
 
-def get_or_train_policy(env, force_train=False, timesteps=500000,
-                        policy_class=stable_baselines.PPO2,
-                        init_tensorboard=False, verbose=0, **kwargs):
-    """
-    Returns a policy trained on the given environment, maybe pretrained.
-
-    If a policy for the environment hasn't been trained and pickled before,
-    then first train and pickle it in saved_models/. Otherwise, load that
-    pickled policy.
-
-    When looking for trained policies, we first check for an expert policy
-    in expert_models/ and then check in saved_models/ for a policy trained
-    by this method.
-
-    Params:
-    env (str or Env): The Env that this policy is meant to act in, or the
-      string name of the Gym environment.
-    force_train (bool): If True, then always train a policy, ignoring any
-      saved policies.
-    timesteps (int): The number of training timesteps if we decide to train
-      a policy.
-    policy_class (stable_baselines.BaseRLModel class): A policy constructor
-      from the stable_baselines module.
-    init_tensorboard (bool): Whether to initialize Tensorboard logging for
-      this policy.
-    verbose (int): The verbosity level of the policy during training.
-    **kwargs: Additional options for initializing the BaseRLModel class.
-
-    Return:
-    policy (stable_baselines.BaseRLModel)
-    """
-    env = maybe_load_env(env)
-
-    if not force_train:
-        # Try expert first.
-        expert_policy = load_expert_policy(env, policy_class,
-                                           init_tensorboard, verbose=verbose, **kwargs)
-        if expert_policy is not None:
-            return expert_policy
-
-        # Try trained.
-        trained_policy = load_trained_policy(env, policy_class,
-                                             init_tensorboard, verbose=verbose, **kwargs)
-        if trained_policy is not None:
-            return trained_policy
-
-        logging.info("Didn't find a pickled policy. Training...")
-    else:
-        logging.info("force_train=True. Training...")
-
-    # Learn and pickle a policy
-    policy = make_blank_policy(env, policy_class, init_tensorboard, **kwargs)
-    policy.learn(timesteps)
-    save_trained_policy(policy)
-
-    return policy
-
-
 def save_trained_policy(policy, savedir, filename):
     """
     Save a trained policy as a pickle file.
