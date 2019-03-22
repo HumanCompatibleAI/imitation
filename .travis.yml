@@ -6,7 +6,7 @@ cache: pip
 before_install:
   - sudo apt-get install -y libopenmpi-dev
 script:
-  - pytest yairl/
+  - pytest --expensive yairl/
 matrix:
   include:
   - name: "Linting"
@@ -21,7 +21,7 @@ matrix:
   - name: "3.7 Coverage Tests"
     python: "3.7"
     script:
-      - py.test --cov-report=xml --cov=yairl yairl/
+      - py.test --cov-report=xml --cov=yairl --expensive yairl/
     after_success:
       - codecov
 

@@ -9,7 +9,7 @@ Original Implementation: https://github.com/justinjfu/inverse_rl
 To install:
 ```
 sudo apt install libopenmpi-dev
-conda create -n yairl python=3.7.2
+conda create -n yairl python
 conda activate yairl
 pip install -r requirements.txt -r jupt_requirements.txt
 pip install -e .  # install yairl in developer mode
