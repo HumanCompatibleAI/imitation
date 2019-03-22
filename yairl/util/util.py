@@ -63,15 +63,14 @@ class FeedForward32Policy(FeedForwardPolicy):
     A feed forward gaussian policy network with two hidden layers of 32 units.
     This matches the IRL policies in the original AIRL paper.
     """
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs,
-                         net_arch=[32, 32], feature_extraction="mlp")
+                net_arch=[32, 32], feature_extraction="mlp")
 
 
 def make_blank_policy(env, policy_class=stable_baselines.PPO2,
-                      init_tensorboard=False, policy_network_class=FeedForward32Policy,
-                      verbose=0, **kwargs):
+        init_tensorboard=False, policy_network_class=FeedForward32Policy,
+        verbose=0, **kwargs):
     """
     Instantiates a policy for the provided environment.
 
@@ -90,8 +89,8 @@ def make_blank_policy(env, policy_class=stable_baselines.PPO2,
     """
     env = maybe_load_env(env)
     return policy_class(policy_network_class, env, verbose=verbose,
-                        tensorboard_log=_get_tb_log_dir(env, init_tensorboard),
-                        **kwargs)
+            tensorboard_log=_get_tb_log_dir(env, init_tensorboard),
+            **kwargs)
 
 
 def save_trained_policy(policy, savedir, filename):
@@ -122,7 +121,6 @@ def make_save_policy_callback(savedir, file_prefix, save_interval):
     save_interval (int): The number of training timesteps in between saves.
     """
     step = 0
-
     def callback(locals_, globals_):
         nonlocal step
         step += 1
@@ -156,7 +154,7 @@ def load_expert_policy(env, **kwargs):
 # ie, rename policy_class=> policy_model_class
 #     rename policy_network_class => policy (matches policy_class.__init__ arg)
 def load_policy(env, policy_class=stable_baselines.PPO2, basedir="",
-                init_tensorboard=False, policy_network_class=None, verbose=0, **kwargs):
+        init_tensorboard=False, policy_network_class=None, verbose=0, **kwargs):
     """
     Load a pickled policy and return it.
 
@@ -183,9 +181,8 @@ def load_policy(env, policy_class=stable_baselines.PPO2, basedir="",
             kwargs["policy"] = policy_network_class
 
         policy = policy_class.load(path, env,
-                                   tensorboard_log=_get_tb_log_dir(
-                                       env, init_tensorboard),
-                                   **kwargs)
+                tensorboard_log=_get_tb_log_dir(env, init_tensorboard),
+                **kwargs)
         logging.info("loaded policy from '{}'".format(path))
         return policy
     else:
@@ -218,9 +215,9 @@ def apply_ff(inputs, hid_sizes):
     x = inputs
     for i, size in enumerate(hid_sizes):
         x = tf.layers.dense(x, size, activation='relu',
-                            kernel_initializer=xavier(), name="dense"+str(i))
+                kernel_initializer=xavier(), name="dense"+str(i))
     x = tf.layers.dense(x, 1, kernel_initializer=xavier(),
-                        name="dense_final")
+            name="dense_final")
     return tf.squeeze(x, axis=1)
 
 
@@ -232,22 +229,21 @@ def build_placeholders(env, include_new_obs):
     a_shape = (None,) + env.action_space.shape
 
     old_obs_ph = tf.placeholder(name="old_obs_ph",
-                                dtype=tf.float32, shape=o_shape)
+            dtype=tf.float32, shape=o_shape)
     if include_new_obs:
         new_obs_ph = tf.placeholder(name="new_obs_ph",
-                                    dtype=tf.float32, shape=o_shape)
+                dtype=tf.float32, shape=o_shape)
     act_ph = tf.placeholder(name="act_ph",
-                            dtype=tf.float32, shape=a_shape)
+            dtype=tf.float32, shape=a_shape)
 
     if include_new_obs:
         return old_obs_ph, act_ph, new_obs_ph
     else:
         return old_obs_ph, act_ph
 
-
 def flat(tensor, space_shape):
     ndim = len(space_shape)
-    if ndim == 0:
+    if ndim== 0:
         return tf.reshape(tensor, [-1, 1])
     elif ndim == 1:
         return tf.reshape(tensor, [-1, space_shape[0]])

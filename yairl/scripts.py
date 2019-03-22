@@ -19,7 +19,7 @@ from yairl.util.trainer import init_trainer
 # TODO: This is cruft. It was mostly useful for prototyping, but
 # I should get rid of it because it doesn't really add anything.
 def data_train_and_save_experts(policy, *, total_timesteps, savedir,
-                                file_prefix, save_interval=1, policy_learn_opt=None):
+        file_prefix, save_interval=1, policy_learn_opt=None):
     """
     Train an policy and save the number of environment
 
@@ -34,12 +34,12 @@ def data_train_and_save_experts(policy, *, total_timesteps, savedir,
     """
     policy_learn_opt = policy_learn_opt or {}
     callback = util.make_save_policy_callback(savedir, file_prefix,
-                                              save_interval)
+            save_interval)
     policy.learn(total_timesteps, callback=callback, **policy_learn_opt)
 
 
 def data_load_experts(*, savedir, file_prefix, policy_class, n_experts,
-                      policy_load_opt={}):
+        policy_load_opt={}):
     """
     Load expert policies saved using data_collect.
 
@@ -83,7 +83,7 @@ def data_load_experts(*, savedir, file_prefix, policy_class, n_experts,
 
 
 def plot_episode_reward_vs_time(env='CartPole-v1', n_episodes=50,
-                                n_epochs_per_plot=250, n_plots=100):
+        n_epochs_per_plot=250, n_plots=100):
     """
     Make sure that generator policy trained to mimick expert policy
     demonstrations) achieves higher reward than a random policy.
@@ -126,16 +126,16 @@ def plot_episode_reward_vs_time(env='CartPole-v1', n_episodes=50,
 
 
 def plot_fight_loss(env='CartPole-v1',
-                    n_epochs=70,
-                    n_plots_each_per_epoch=10,
-                    n_disc_steps_per_plot=10,
-                    n_gen_steps_per_plot=10000,
-                    n_rollout_samples=4000,
-                    n_gen_plot_episodes=10,
-                    trainer_hook_fn=None,
-                    trainer=None,
-                    interactive=True,
-                    ):
+        n_epochs=70,
+        n_plots_each_per_epoch=10,
+        n_disc_steps_per_plot=10,
+        n_gen_steps_per_plot=10000,
+        n_rollout_samples=4000,
+        n_gen_plot_episodes=10,
+        trainer_hook_fn=None,
+        trainer=None,
+        interactive=True,
+        ):
     """
     Alternate between training the generator and discriminator.
 
@@ -145,15 +145,13 @@ def plot_fight_loss(env='CartPole-v1',
     - Plot the performance of the generator policy versus the performance of
       a random policy.
     """
-    trainer = trainer or init_trainer(
-        env, n_expert_timesteps=n_rollout_samples)
+    trainer = trainer or init_trainer(env, n_expert_timesteps=n_rollout_samples)
     if trainer_hook_fn:
         trainer_hook_fn(trainer)
 
     os.makedirs("output/", exist_ok=True)
 
     plot_idx = 0
-
     def epoch(gen_mode=False):
         nonlocal plot_idx
         if gen_mode:
@@ -164,7 +162,6 @@ def plot_fight_loss(env='CartPole-v1',
 
     gen_data = ([], [])
     disc_data = ([], [])
-
     def add_plot_disc(gen_mode=False):
         """
         gen_mode (bool): Whether the generator or the discriminator is active.
@@ -175,20 +172,18 @@ def plot_fight_loss(env='CartPole-v1',
         X.append(plot_idx)
         Y.append(trainer.eval_disc_loss())
         logging.info("plot idx ({}): {} disc loss: {}"
-                     .format(mode, plot_idx, Y[-1]))
-
+                .format(mode, plot_idx, Y[-1]))
     def show_plot_disc():
         plt.scatter(disc_data[0], disc_data[1], c='g', alpha=0.7, s=4,
-                    label="discriminator loss (dis step)")
+                label="discriminator loss (dis step)")
         plt.scatter(gen_data[0], gen_data[1], c='r', alpha=0.7, s=4,
-                    label="discriminator loss (gen step)")
+                label="discriminator loss (gen step)")
         plt.title("epoch={}".format(epoch_num))
         plt.legend()
         _savefig_timestamp("plot_fight_loss_disc", interactive)
 
     gen_ep_reward = []
     rand_ep_reward = []
-
     def add_plot_gen():
         env_vec = util.make_vec_env(env, 8)
         gen_policy = trainer.gen_policy
@@ -202,12 +197,11 @@ def plot_fight_loss(env='CartPole-v1',
         rand_ep_reward.append(rand_rew)
         logging.info("generator reward: {}".format(gen_rew))
         logging.info("random reward: {}".format(rand_rew))
-
     def show_plot_gen():
         plt.title("Cartpole performance (expert=500)")
         plt.xlabel("epochs")
         plt.ylabel("Average reward per episode (n={})"
-                   .format(n_gen_plot_episodes))
+                .format(n_gen_plot_episodes))
         plt.plot(gen_ep_reward, label="avg gen ep reward", c="red")
         plt.plot(rand_ep_reward, label="avg random ep reward", c="black")
         plt.legend()
