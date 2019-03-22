@@ -21,7 +21,9 @@ matrix:
   - name: "3.7 Coverage Tests"
     python: "3.7"
     script:
-      - pytest --cov-report=xml --cov=yairl yairl/
+      - py.test --cov-report=xml --cov=yairl yairl/
+    after_success:
+      - codecov
 
   - name: "3.5 Unit Tests"
     python: "3.5"

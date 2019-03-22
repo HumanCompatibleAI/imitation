@@ -3,5 +3,6 @@ numpy>=1.15
 tensorflow>=1.13.1,<2  # Replace with tensorflow-gpu if you have a GPU
 tqdm
 git+git://github.com/hill-a/stable-baselines.git@e59f32#egg=stable-baselines
+codecov
 pytest
 pytest-cov
