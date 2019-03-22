@@ -1,2 +1,3 @@
-from yairl.util.util import *
 import yairl.util.rollout
+from yairl.util.util import *
+

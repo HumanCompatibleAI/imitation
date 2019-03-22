@@ -10,5 +10,4 @@ data/
 *.notes
 *.dream
 saved_models/
-*.ipynb
 *.egg-info/

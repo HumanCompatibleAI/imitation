@@ -1,8 +1,8 @@
-import logging
-import numpy as np
 
-from stable_baselines.common.vec_env import VecEnvWrapper
+
+import numpy as np
 import tensorflow as tf
+from stable_baselines.common.vec_env import VecEnvWrapper
 from tqdm import tqdm
 
 import yairl.summaries as summaries
@@ -10,9 +10,8 @@ import yairl.util as util
 
 
 class AIRLTrainer():
-
     def __init__(self, env, gen_policy, discrim, expert_policies, *,
-            n_expert_timesteps=4000, init_tensorboard=False):
+                 n_expert_timesteps=4000, init_tensorboard=False):
         """
         Adversarial IRL. After training, the RewardNet will have recovered
         the reward.
@@ -45,13 +44,12 @@ class AIRLTrainer():
             configured by initializing the stable_baselines policy).
         """
         self._sess = tf.Session()
-        self.epochs_so_far = 0
 
         self.env = util.maybe_load_env(env, vectorize=True)
         self.gen_policy = gen_policy
         self.expert_old_obs, self.expert_act, self.expert_new_obs = \
-                util.rollout.generate_multiple(
-                        expert_policies, self.env, n_expert_timesteps)
+            util.rollout.generate_multiple(
+                expert_policies, self.env, n_expert_timesteps)
         self.init_tensorboard = init_tensorboard
 
         self._global_step = tf.train.create_global_step()
@@ -98,7 +96,7 @@ class AIRLTrainer():
         fd = self._build_disc_feed_dict(**kwargs)
         for _ in range(n_steps):
             step, _ = self._sess.run([self._global_step, self._disc_train_op],
-                    feed_dict=fd)
+                                     feed_dict=fd)
             if self.init_tensorboard and step % 20 == 0:
                 self._summarize(fd, step)
 
@@ -107,7 +105,7 @@ class AIRLTrainer():
         self.gen_policy.learn(n_steps)
 
     def train(self, *, n_epochs=100, n_gen_steps_per_epoch=None,
-            n_disc_steps_per_epoch=None):
+              n_disc_steps_per_epoch=None):
         """
         Train the discriminator and generator against each other.
 
@@ -124,7 +122,6 @@ class AIRLTrainer():
         for i in tqdm(range(n_epochs), desc="AIRL train"):
             self.train_disc(**_n_steps_if_not_none(n_disc_steps_per_epoch))
             self.train_gen(**_n_steps_if_not_none(n_gen_steps_per_epoch))
-        self.epochs_so_far += n_epochs
 
     def eval_disc_loss(self, **kwargs):
         """
@@ -194,7 +191,7 @@ class AIRLTrainer():
 
     def _build_summarize(self):
         self._summary_writer = summaries.make_summary_writer(
-                graph=self._sess.graph)
+            graph=self._sess.graph)
         self.discrim.build_summaries()
         self._summary_op = tf.summary.merge_all()
 
@@ -207,27 +204,27 @@ class AIRLTrainer():
         self._disc_opt = tf.train.AdamOptimizer()
         # XXX: I am passing a [None] Tensor as loss. Can this be problematic?
         self._disc_train_op = self._disc_opt.minimize(self.discrim.disc_loss,
-                global_step=self._global_step)
+                                                      global_step=self._global_step)
 
     def _build_disc_feed_dict(self, gen_old_obs=None, gen_act=None,
-            gen_new_obs=None):
+                              gen_new_obs=None):
 
         none_count = sum(int(x is None)
-                for x in (gen_old_obs, gen_act, gen_new_obs))
+                         for x in (gen_old_obs, gen_act, gen_new_obs))
         if none_count == 3:
-            logging.debug("_build_disc_feed_dict: No generator rollout "
-                    "parameters were "
-                    "provided, so we are generating them now.")
+            tf.logging.debug("_build_disc_feed_dict: No generator rollout "
+                          "parameters were "
+                          "provided, so we are generating them now.")
             n_timesteps = len(self.expert_old_obs)
             (gen_old_obs, gen_act, gen_new_obs, _) = util.rollout.generate(
-                    self.gen_policy, self.env, n_timesteps=n_timesteps)
+                self.gen_policy, self.env, n_timesteps=n_timesteps)
         elif none_count != 0:
             raise ValueError("Gave some but not all of the generator params.")
 
         # Alias saved expert rollout.
-        expert_old_obs= self.expert_old_obs
+        expert_old_obs = self.expert_old_obs
         expert_act = self.expert_act
-        expert_new_obs= self.expert_new_obs
+        expert_new_obs = self.expert_new_obs
 
         # Check dimensions.
         n_expert = len(expert_old_obs)
@@ -243,7 +240,7 @@ class AIRLTrainer():
         act = np.concatenate([expert_act, gen_act])
         new_obs = np.concatenate([expert_new_obs, gen_new_obs])
         labels = np.concatenate([np.zeros(n_expert, dtype=int),
-            np.ones(n_gen, dtype=int)])
+                                 np.ones(n_gen, dtype=int)])
 
         # Calculate generator-policy log probabilities.
         log_act_prob = np.log(self.gen_policy.action_probability(
@@ -251,12 +248,12 @@ class AIRLTrainer():
         assert len(log_act_prob) == N
 
         fd = {
-                self.discrim.old_obs_ph: old_obs,
-                self.discrim.act_ph: act,
-                self.discrim.new_obs_ph: new_obs,
-                self.discrim.labels_ph: labels,
-                self.discrim.log_policy_act_prob_ph: log_act_prob,
-            }
+            self.discrim.old_obs_ph: old_obs,
+            self.discrim.act_ph: act,
+            self.discrim.new_obs_ph: new_obs,
+            self.discrim.labels_ph: labels,
+            self.discrim.log_policy_act_prob_ph: log_act_prob,
+        }
         return fd
 
     def _build_policy_train_reward(self):
@@ -292,12 +289,12 @@ class AIRLTrainer():
             assert len(log_act_prob) == n_gen
 
             fd = {
-                    self.discrim.old_obs_ph: old_obs,
-                    self.discrim.act_ph: act,
-                    self.discrim.new_obs_ph: new_obs,
-                    self.discrim.labels_ph: np.ones(n_gen),
-                    self.discrim.log_policy_act_prob_ph: log_act_prob,
-                }
+                self.discrim.old_obs_ph: old_obs,
+                self.discrim.act_ph: act,
+                self.discrim.new_obs_ph: new_obs,
+                self.discrim.labels_ph: np.ones(n_gen),
+                self.discrim.log_policy_act_prob_ph: log_act_prob,
+            }
             rew = self._sess.run(self.discrim.policy_train_reward, feed_dict=fd)
             return rew.flatten()
 
@@ -307,6 +304,7 @@ class AIRLTrainer():
         """
         Sets self._test_reward_fn, the reward function learned by AIRL.
         """
+
         def R(old_obs, act, new_obs):
             fd = {
                 self.discrim.old_obs_ph: old_obs,
@@ -314,14 +312,13 @@ class AIRLTrainer():
                 self.discrim.new_obs_ph: new_obs,
             }
             rew = self._sess.run(self.discrim._policy_test_reward,
-                    feed_dict=fd)
+                                 feed_dict=fd)
             return rew.flatten()
 
         self._test_reward_fn = R
 
 
 class _RewardVecEnvWrapper(VecEnvWrapper):
-
     def __init__(self, venv, reward_fn):
         """
         A RewardVecEnvWrapper uses a provided reward_fn to replace
@@ -347,7 +344,7 @@ class _RewardVecEnvWrapper(VecEnvWrapper):
         return self.venv.envs
 
     def reset(self):
-        self._old_obs =  self.venv.reset()
+        self._old_obs = self.venv.reset()
         return self._old_obs
 
     def step_async(self, actions):
