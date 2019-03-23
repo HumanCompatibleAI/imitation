@@ -1,11 +1,12 @@
-import pytest
-
 """
 Configures pytest to ignore unit tests marked as expensive unless we
 use the --expensive flag. The goal of the marking tests as expensive
 is to ensure that the default pytest run should take less than 30
 seconds.
 """
+
+
+import pytest
 
 
 def pytest_addoption(parser):

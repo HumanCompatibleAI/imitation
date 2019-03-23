@@ -98,7 +98,7 @@ class AIRLTrainer():
                 self._summarize(fd, step)
 
     def train_gen(self, n_steps=10000):
-        self.gen_policy.set_env(self.env)  # Can't guarantee that env is the same.
+        self.gen_policy.set_env(self.env)
         self.gen_policy.learn(n_steps)
 
     def train(self, *, n_epochs=100, n_gen_steps_per_epoch=None,
@@ -200,8 +200,8 @@ class AIRLTrainer():
         # Construct Train operation.
         self._disc_opt = tf.train.AdamOptimizer()
         # XXX: I am passing a [None] Tensor as loss. Can this be problematic?
-        self._disc_train_op = self._disc_opt.minimize(self.discrim.disc_loss,
-                                                      global_step=self._global_step)
+        self._disc_train_op = self._disc_opt.minimize(
+                self.discrim.disc_loss, global_step=self._global_step)
 
     def _build_disc_feed_dict(self, gen_old_obs=None, gen_act=None,
                               gen_new_obs=None):

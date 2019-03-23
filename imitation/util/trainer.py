@@ -14,7 +14,8 @@ import tensorflow as tf
 
 
 @gin.configurable
-def init_trainer(env_id, policy_dir, use_gail, use_random_expert=True, **kwargs):
+def init_trainer(env_id, policy_dir, use_gail, use_random_expert=True,
+                 **kwargs):
     """
     Build an AIRLTrainer, ready to be trained on a vectorized environment
     and either expert rollout data or random rollout data.
@@ -31,7 +32,7 @@ def init_trainer(env_id, policy_dir, use_gail, use_random_expert=True, **kwargs)
     if use_random_expert:
         expert_policy = gen_policy
     else:
-        expert_policy = util.load_policy(env, basedir=policy_dir, )
+        expert_policy = util.load_policy(env, basedir=policy_dir)
         if expert_policy is None:
             raise ValueError(env)
 
@@ -41,6 +42,6 @@ def init_trainer(env_id, policy_dir, use_gail, use_random_expert=True, **kwargs)
         rn = BasicShapedRewardNet(env)
         discrim = discrim_net.DiscrimNetAIRL(rn)
 
-    trainer = AIRLTrainer(env, gen_policy, discrim, expert_policies=expert_policy,
-                          **kwargs)
+    trainer = AIRLTrainer(env, gen_policy, discrim,
+                          expert_policies=expert_policy, **kwargs)
     return trainer

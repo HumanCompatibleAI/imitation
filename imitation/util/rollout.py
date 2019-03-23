@@ -204,8 +204,8 @@ def generate_multiple(policies, env, n_timesteps):
             # n_policies doesn't evenly divide n_timesteps.
             n_timesteps_ += rem
 
-        obs_old_, act_, obs_new_, _ = generate(pol, env,
-                                               n_timesteps=n_timesteps_, truncate_timesteps=True)
+        obs_old_, act_, obs_new_, _ = generate(
+                pol, env, n_timesteps=n_timesteps_, truncate_timesteps=True)
         obs_old.extend(obs_old_)
         act.extend(act_)
         obs_new.extend(obs_new_)

@@ -39,7 +39,9 @@ def train_and_plot(policy_dir, env='CartPole-v1',
       a random policy.
     """
     if trainer is None:
-        trainer = init_trainer(env, policy_dir=policy_dir, n_expert_timesteps=n_expert_timesteps)
+        trainer = init_trainer(
+                env, policy_dir=policy_dir,
+                n_expert_timesteps=n_expert_timesteps)
     if trainer_hook_fn:
         trainer_hook_fn(trainer)
 
@@ -62,7 +64,9 @@ def train_and_plot(policy_dir, env='CartPole-v1',
         X, Y = gen_data if gen_mode else disc_data
         X.append(plot_idx)
         Y.append(trainer.eval_disc_loss())
-        tf.logging.info("plot idx ({}): {} disc loss: {}".format(mode, plot_idx, Y[-1]))
+        tf.logging.info(
+                "plot idx ({}): {} disc loss: {}"
+                .format(mode, plot_idx, Y[-1]))
 
     def show_plot_disc():
         if n_plots_each_per_epoch <= 0:
@@ -86,10 +90,12 @@ def train_and_plot(policy_dir, env='CartPole-v1',
         gen_policy = trainer.gen_policy
         rand_policy = util.make_blank_policy(env)
 
-        gen_rew = util.rollout.total_reward(gen_policy, env,
-                                            n_episodes=n_gen_plot_episodes) / n_gen_plot_episodes
-        rand_rew = util.rollout.total_reward(rand_policy, env,
-                                             n_episodes=n_gen_plot_episodes) / n_gen_plot_episodes
+        gen_rew = util.rollout.total_reward(
+                gen_policy, env, n_episodes=n_gen_plot_episodes
+                ) / n_gen_plot_episodes
+        rand_rew = util.rollout.total_reward(
+                rand_policy, env, n_episodes=n_gen_plot_episodes
+                ) / n_gen_plot_episodes
         gen_ep_reward.append(gen_rew)
         rand_ep_reward.append(rand_rew)
         tf.logging.info("generator reward: {}".format(gen_rew))
@@ -115,8 +121,10 @@ def train_and_plot(policy_dir, env='CartPole-v1',
         n_gen_steps_per_plot = float('Inf')
         n_disc_steps_per_plot = float('Inf')
     else:
-        n_gen_steps_per_plot = int(n_gen_steps_per_epoch / n_plots_each_per_epoch + .5)
-        n_disc_steps_per_plot = int(n_disc_steps_per_epoch / n_plots_each_per_epoch + .5)
+        n_gen_steps_per_plot = int(
+                n_gen_steps_per_epoch / n_plots_each_per_epoch + .5)
+        n_disc_steps_per_plot = int(
+                n_disc_steps_per_epoch / n_plots_each_per_epoch + .5)
 
     def train_plot_itr(steps, gen_mode, steps_per_plot):
         nonlocal plot_idx
