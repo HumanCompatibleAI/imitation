@@ -5,7 +5,6 @@ is to ensure that the default pytest run should take less than 30
 seconds.
 """
 
-
 import pytest
 
 
