@@ -5,6 +5,9 @@ language: python
 cache: pip
 before_install:
   - sudo apt-get install -y libopenmpi-dev
+install:
+  - pip install -r requirements.txt
+  - pip install .
 script:
   - pytest --expensive imitation/
 matrix:
@@ -25,8 +28,6 @@ matrix:
     after_success:
       - codecov
 
-  - name: "3.5 Unit Tests"
-    python: "3.5"
   - name: "3.6 Unit Tests"
     python: "3.6"
   - name: "3.7 Unit Tests"
