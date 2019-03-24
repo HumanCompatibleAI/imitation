@@ -1,10 +1,9 @@
 import argparse
 
-import tensorflow as tf
 import gin.tf
-import stable_baselines
-
 import imitation.util as util
+import stable_baselines
+import tensorflow as tf
 
 
 def make_PPO2(env_name):
@@ -35,7 +34,8 @@ def main(env_name, total_timesteps):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--gin_config", default='configs/cartpole_data_collect.gin')
+    parser.add_argument(
+            "--gin_config", default='configs/cartpole_data_collect.gin')
     args = parser.parse_args()
 
     gin.parse_config_file(args.gin_config)

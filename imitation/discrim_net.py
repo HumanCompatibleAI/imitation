@@ -5,7 +5,8 @@ import tensorflow as tf
 
 
 class DiscrimNet(ABC):
-    """Base class for discriminator. Flexible enough to be used in different IRL methods."""
+    """Base class for discriminator. Flexible enough to be used in different
+    IRL methods."""
 
     def __init__(self):
         self._disc_loss = self.build_disc_loss()
@@ -46,7 +47,8 @@ class DiscrimNet(ABC):
 
 
 class DiscrimNetAIRL(DiscrimNet):
-    """The discriminator to use for AIRL. This discriminator uses a RewardNet."""
+    """The discriminator to use for AIRL. This discriminator uses a
+    RewardNet."""
 
     def __init__(self, reward_net):
         self.reward_net = reward_net
@@ -64,8 +66,8 @@ class DiscrimNetAIRL(DiscrimNet):
         super().build_disc_loss()
         # Holds the generator-policy log action probabilities of every
         # state-action pair that the discriminator is being trained on.
-        self.log_policy_act_prob_ph = tf.placeholder(shape=(None,),
-                                                     dtype=tf.float32, name="log_ro_act_prob_ph")
+        self.log_policy_act_prob_ph = tf.placeholder(
+                shape=(None,), dtype=tf.float32, name="log_ro_act_prob_ph")
 
         # Construct discriminator logits by stacking predicted rewards
         # and log action probabilities.
@@ -107,8 +109,8 @@ class DiscrimNetGAIL(DiscrimNet):
         phs = util.build_placeholders(self.env, True)
         self.old_obs_ph, self.act_ph, self.new_obs_ph = phs
 
-        self.log_policy_act_prob_ph = tf.placeholder(shape=(None,),
-                                                     dtype=tf.float32, name="log_ro_act_prob_ph")
+        self.log_policy_act_prob_ph = tf.placeholder(
+                shape=(None,), dtype=tf.float32, name="log_ro_act_prob_ph")
 
         with tf.variable_scope("discrim_network"):
             self._discrim_logits = self.build_discrm_network(

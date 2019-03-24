@@ -3,7 +3,8 @@ from setuptools import find_packages, setup
 setup(
     name='imitation',
     version='0.1',
-    description='Implementation of modern IRL and imitation learning algorithms.',
+    description=(
+        'Implementation of modern IRL and imitation learning algorithms.'),
     author='Center for Human-Compatible AI and Google',
     python_requires='>=3.6.0',
     packages=find_packages(exclude=['test*']),

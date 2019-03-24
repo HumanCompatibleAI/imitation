@@ -75,8 +75,9 @@ class FeedForward32Policy(FeedForwardPolicy):
 
 @gin.configurable
 def make_blank_policy(env, policy_class=stable_baselines.PPO2,
-                      init_tensorboard=False, policy_network_class=FeedForward32Policy,
-                      verbose=0, **kwargs):
+                      init_tensorboard=False,
+                      policy_network_class=FeedForward32Policy, verbose=0,
+                      **kwargs):
     """
     Instantiates a policy for the provided environment.
 
@@ -134,7 +135,8 @@ def make_save_policy_callback(savedir, save_interval=1):
         step += 1
         if step % save_interval == 0:
             policy = locals_['self']
-            filename = _policy_filename(policy.__class__, policy.get_env(), step)
+            filename = _policy_filename(policy.__class__, policy.get_env(),
+                                        step)
             save_trained_policy(policy, savedir, filename)
         return True
 
@@ -151,8 +153,8 @@ def _get_policy_paths(env, policy_model_class, basedir, n_experts):
 
     if len(paths) < n_experts:
         raise ValueError(
-            "Wanted to load {} experts, but there were only {} experts at {}".format(
-                n_experts, len(paths), path))
+            "Wanted to load {} experts, but there were only {} experts at {}"
+            .format(n_experts, len(paths), path))
 
     paths = paths[-n_experts:]
 
@@ -161,7 +163,8 @@ def _get_policy_paths(env, policy_model_class, basedir, n_experts):
 
 @gin.configurable
 def load_policy(env, basedir, policy_model_class=stable_baselines.PPO2,
-                init_tensorboard=False, policy_network_class=None, n_experts=1, **kwargs):
+                init_tensorboard=False, policy_network_class=None, n_experts=1,
+                **kwargs):
     """
     Load a pickled policy and return it.
 
@@ -190,9 +193,9 @@ def load_policy(env, basedir, policy_model_class=stable_baselines.PPO2,
     pols = []
 
     for path in paths:
-        policy = policy_model_class.load(path, env,
-                                         tensorboard_log=_get_tb_log_dir(env, init_tensorboard),
-                                         **kwargs)
+        policy = policy_model_class.load(
+            path, env, tensorboard_log=_get_tb_log_dir(env, init_tensorboard),
+            **kwargs)
         tf.logging.info("loaded policy from '{}'".format(path))
         pols.append(policy)
 
