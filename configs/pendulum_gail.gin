@@ -1,0 +1,11 @@
+load_policy.n_experts=5
+
+init_trainer.use_gail=True
+init_trainer.use_random_expert = False
+
+train_and_plot.env="Pendulum-v0"
+train_and_plot.policy_dir = "data"
+train_and_plot.n_epochs = 100
+train_and_plot.n_disc_steps_per_epoch=100
+train_and_plot.n_gen_steps_per_epoch=100000
+train_and_plot.n_expert_timesteps=4000
