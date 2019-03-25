@@ -42,7 +42,9 @@ def make_vec_env(env_id, n_envs=8):
     n_envs (int): The number of duplicate environments.
     """
     # Use Monitor to support logging the episode reward and length.
-    return DummyVecEnv([lambda: Monitor(gym.make(env_id), '', allow_early_resets=True) for _ in range(n_envs)])
+    return DummyVecEnv(
+        [lambda: Monitor(gym.make(env_id),
+                         '', allow_early_resets=True) for _ in range(n_envs)])
 
 
 def is_vec_env(env):
