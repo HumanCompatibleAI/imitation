@@ -202,7 +202,7 @@ class AIRLTrainer():
         self._disc_opt = tf.train.AdamOptimizer()
         # XXX: I am passing a [None] Tensor as loss. Can this be problematic?
         self._disc_train_op = self._disc_opt.minimize(
-                self.discrim.disc_loss, global_step=self._global_step)
+            self.discrim.disc_loss, global_step=self._global_step)
 
     def _build_disc_feed_dict(self, gen_old_obs=None, gen_act=None,
                               gen_new_obs=None):

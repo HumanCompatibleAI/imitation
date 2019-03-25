@@ -123,9 +123,9 @@ class RewardNetShaped(RewardNet):
 
         with tf.variable_scope("f_network"):
             self._shaped_reward_output = (
-                    self._theta_output +
-                    self._discount_factor * self._new_shaping_output
-                    - self._old_shaping_output)
+                self._theta_output +
+                self._discount_factor * self._new_shaping_output
+                - self._old_shaping_output)
 
     @property
     def reward_output_train(self):

@@ -4,10 +4,9 @@ import os
 import gin.tf
 import gym
 import stable_baselines
+from stable_baselines.bench import Monitor
 from stable_baselines.common.policies import FeedForwardPolicy
 from stable_baselines.common.vec_env import DummyVecEnv, VecEnv
-from stable_baselines.bench import Monitor
-
 import tensorflow as tf
 
 

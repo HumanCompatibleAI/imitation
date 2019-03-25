@@ -5,6 +5,7 @@ experiments into an scripts/ directory.
 These scripts are meant to be run in a Jupyter notebook (displays figures)
 but also automatically save timestamped figures to the output/ directory.
 """
+from collections import defaultdict
 import datetime
 import logging
 import os
@@ -15,7 +16,6 @@ from imitation.util.trainer import init_trainer
 from matplotlib import pyplot as plt
 import tensorflow as tf
 import tqdm
-from collections import defaultdict
 
 
 @gin.configurable
@@ -41,8 +41,8 @@ def train_and_plot(policy_dir, env='CartPole-v1',
     """
     if trainer is None:
         trainer = init_trainer(
-                env, policy_dir=policy_dir,
-                n_expert_timesteps=n_expert_timesteps)
+            env, policy_dir=policy_dir,
+            n_expert_timesteps=n_expert_timesteps)
     if trainer_hook_fn:
         trainer_hook_fn(trainer)
 
@@ -66,8 +66,8 @@ def train_and_plot(policy_dir, env='CartPole-v1',
         X.append(plot_idx)
         Y.append(trainer.eval_disc_loss())
         tf.logging.info(
-                "plot idx ({}): {} disc loss: {}"
-                .format(mode, plot_idx, Y[-1]))
+            "plot idx ({}): {} disc loss: {}"
+            .format(mode, plot_idx, Y[-1]))
 
     def show_plot_disc():
         if n_plots_each_per_epoch <= 0:
@@ -94,14 +94,14 @@ def train_and_plot(policy_dir, env='CartPole-v1',
         exp_policy = trainer.expert_policies[-1]
 
         gen_rew = util.rollout.total_reward(
-                gen_policy, env, n_episodes=n_gen_plot_episodes
-                ) / n_gen_plot_episodes
+            gen_policy, env, n_episodes=n_gen_plot_episodes
+        ) / n_gen_plot_episodes
         rand_rew = util.rollout.total_reward(
-                rand_policy, env, n_episodes=n_gen_plot_episodes
-                ) / n_gen_plot_episodes
+            rand_policy, env, n_episodes=n_gen_plot_episodes
+        ) / n_gen_plot_episodes
         exp_rew = util.rollout.total_reward(
             exp_policy, env, n_episodes=n_gen_plot_episodes
-                ) / n_gen_plot_episodes
+        ) / n_gen_plot_episodes
         gen_ep_reward[name].append(gen_rew)
         rand_ep_reward[name].append(rand_rew)
         exp_ep_reward[name].append(exp_rew)
@@ -119,7 +119,8 @@ def train_and_plot(policy_dir, env='CartPole-v1',
             plt.ylabel("Average reward per episode (n={})"
                        .format(n_gen_plot_episodes))
             plt.plot(gen_ep_reward[name], label="avg gen ep reward", c="red")
-            plt.plot(rand_ep_reward[name], label="avg random ep reward", c="black")
+            plt.plot(rand_ep_reward[name],
+                     label="avg random ep reward", c="black")
             plt.plot(exp_ep_reward[name], label="avg exp ep reward", c="blue")
             plt.legend()
             _savefig_timestamp("plot_fight_epreward_gen", interactive)
@@ -133,9 +134,9 @@ def train_and_plot(policy_dir, env='CartPole-v1',
         n_disc_steps_per_plot = float('Inf')
     else:
         n_gen_steps_per_plot = int(
-                n_gen_steps_per_epoch / n_plots_each_per_epoch + .5)
+            n_gen_steps_per_epoch / n_plots_each_per_epoch + .5)
         n_disc_steps_per_plot = int(
-                n_disc_steps_per_epoch / n_plots_each_per_epoch + .5)
+            n_disc_steps_per_epoch / n_plots_each_per_epoch + .5)
 
     def train_plot_itr(steps, gen_mode, steps_per_plot):
         nonlocal plot_idx

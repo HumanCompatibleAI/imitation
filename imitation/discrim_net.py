@@ -67,7 +67,7 @@ class DiscrimNetAIRL(DiscrimNet):
         # Holds the generator-policy log action probabilities of every
         # state-action pair that the discriminator is being trained on.
         self.log_policy_act_prob_ph = tf.placeholder(
-                shape=(None,), dtype=tf.float32, name="log_ro_act_prob_ph")
+            shape=(None,), dtype=tf.float32, name="log_ro_act_prob_ph")
 
         # Construct discriminator logits by stacking predicted rewards
         # and log action probabilities.
@@ -110,7 +110,7 @@ class DiscrimNetGAIL(DiscrimNet):
         self.old_obs_ph, self.act_ph, self.new_obs_ph = phs
 
         self.log_policy_act_prob_ph = tf.placeholder(
-                shape=(None,), dtype=tf.float32, name="log_ro_act_prob_ph")
+            shape=(None,), dtype=tf.float32, name="log_ro_act_prob_ph")
 
         with tf.variable_scope("discrim_network"):
             self._discrim_logits = self.build_discrm_network(
