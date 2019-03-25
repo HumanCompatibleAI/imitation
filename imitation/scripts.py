@@ -81,12 +81,11 @@ def train_and_plot(policy_dir, env='CartPole-v1',
         plt.legend()
         _savefig_timestamp("plot_fight_loss_disc", interactive)
 
-    gen_ep_reward = []  # defaultdict(list)
-    rand_ep_reward = []
-    exp_ep_reward = []
+    gen_ep_reward = defaultdict(list)
+    rand_ep_reward = defaultdict(list)
+    exp_ep_reward = defaultdict(list)
 
     def add_plot_gen(env, name):
-        env = trainer.wrap_env_test_reward(env)
         if n_gen_plot_episodes <= 0:
             return
 
@@ -103,9 +102,9 @@ def train_and_plot(policy_dir, env='CartPole-v1',
         exp_rew = util.rollout.total_reward(
             exp_policy, env, n_episodes=n_gen_plot_episodes
                 ) / n_gen_plot_episodes
-        gen_ep_reward.append(gen_rew)
-        rand_ep_reward.append(rand_rew)
-        exp_ep_reward.append(exp_rew)
+        gen_ep_reward[name].append(gen_rew)
+        rand_ep_reward[name].append(rand_rew)
+        exp_ep_reward[name].append(exp_rew)
         tf.logging.info("generator reward: {}".format(gen_rew))
         tf.logging.info("random reward: {}".format(rand_rew))
         tf.logging.info("exp reward: {}".format(exp_rew))
@@ -114,18 +113,20 @@ def train_and_plot(policy_dir, env='CartPole-v1',
         if n_gen_plot_episodes <= 0:
             return
 
-        plt.title("Performance")
-        plt.xlabel("epochs")
-        plt.ylabel("Average reward per episode (n={})"
-                   .format(n_gen_plot_episodes))
-        plt.plot(gen_ep_reward, label="avg gen ep reward", c="red")
-        plt.plot(rand_ep_reward, label="avg random ep reward", c="black")
-        plt.plot(exp_ep_reward, label="avg exp ep reward", c="blue")
-        plt.legend()
-        _savefig_timestamp("plot_fight_epreward_gen", interactive)
+        for name in gen_ep_reward:
+            plt.title(name + " Performance")
+            plt.xlabel("epochs")
+            plt.ylabel("Average reward per episode (n={})"
+                       .format(n_gen_plot_episodes))
+            plt.plot(gen_ep_reward[name], label="avg gen ep reward", c="red")
+            plt.plot(rand_ep_reward[name], label="avg random ep reward", c="black")
+            plt.plot(exp_ep_reward[name], label="avg exp ep reward", c="blue")
+            plt.legend()
+            _savefig_timestamp("plot_fight_epreward_gen", interactive)
 
     add_plot_disc(False)
-    add_plot_gen(env)
+    add_plot_gen(env, "True Reward")
+    add_plot_gen(trainer.wrap_env_test_reward(env), "Learned Reward")
 
     if n_plots_each_per_epoch <= 0:
         n_gen_steps_per_plot = float('Inf')
@@ -152,7 +153,8 @@ def train_and_plot(policy_dir, env='CartPole-v1',
         train_plot_itr(n_disc_steps_per_epoch, False, n_disc_steps_per_plot)
         train_plot_itr(n_gen_steps_per_epoch, True, n_gen_steps_per_plot)
 
-        add_plot_gen(env)
+        add_plot_gen(env, "True Reward")
+        add_plot_gen(trainer.wrap_env_test_reward(env), "Learned Reward")
 
         show_plot_disc()
         show_plot_gen()
