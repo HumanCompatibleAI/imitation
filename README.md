@@ -12,7 +12,7 @@ sudo apt install libopenmpi-dev
 conda create -n imitation python
 conda activate imitation
 pip install -r requirements.txt -r requirements-dev.txt
-pip install -e .  # install yairl in developer mode
+pip install -e .  # install `imitation` in developer mode
 ```
 
 To run:
