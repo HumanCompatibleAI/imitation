@@ -4,7 +4,8 @@ import numpy as np
 
 from imitation.model_env import ModelBasedEnv, RandomMDP
 from imitation.tabular_irl import (SGD, AMSGrad, maxent_irl,
-                                   mce_occupancy_measures, mce_partition_fh)
+                                   mce_occupancy_measures, mce_partition_fh,
+                                   LinearRewardModel)
 
 # import pytest
 
@@ -205,13 +206,11 @@ def test_policy_om_reasonable_mdp():
     assert np.all(pi[:19, 1, 0] > pi[:19, 1, 1])
 
     # now compute demonstrator features
-    demo_counts = D @ mdp.observation_matrix
     # initial reward weights
-    init_weights = np.zeros_like(demo_counts)
-    opt = AMSGrad(init_weights, alpha=1e-2)
-    # opt = AMSGrad(init_weights, alpha=1e-1)
+    rmodel = LinearRewardModel(mdp.obs_dim, seed=13)
+    opt = AMSGrad(rmodel, alpha_sched=1e-2)
     final_weights, final_counts = maxent_irl(
-        mdp, opt, demo_counts, linf_eps=1e-2)
+        mdp, opt, rmodel, D, linf_eps=1e-2)
 
 
 def test_optimisers():
@@ -233,12 +232,13 @@ def test_optimisers():
     opt_value = f(solution)
 
     # start in some place far from minimum of f(x)
-    init_x = 5 * rng.randn(10) + 2
-    sgd = SGD(init_x, alpha=1e-2)
+    sgd_rmodel = LinearRewardModel(10, seed=42)
+    sgd = SGD(sgd_rmodel, alpha_sched=1e-2)
     # amsgrad typically requires (and can deal with) a higher step size
-    agd = AMSGrad(init_x, alpha=1e-1)
-    for optimiser in [sgd, agd]:
-        x = init_x
+    agd_rmodel = LinearRewardModel(10, seed=42)
+    agd = AMSGrad(agd_rmodel, alpha_sched=1e-1)
+    for rmodel, optimiser in [(sgd_rmodel, sgd), (agd_rmodel, agd)]:
+        x = rmodel.get_params()
         grad = df(x)
         val = f(x)
         assert np.linalg.norm(grad) > 1
