@@ -13,3 +13,4 @@ def test_init_no_crash(env):
             BasicShapedRewardNet(env)
         with tf.variable_scope(env + str(i)):
             BasicRewardNet(env)
+    tf.reset_default_graph()
