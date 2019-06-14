@@ -7,7 +7,6 @@ but also automatically save timestamped figures to the output/ directory.
 """
 from collections import defaultdict
 import datetime
-import logging
 import os
 
 import gin.tf

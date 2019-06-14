@@ -51,10 +51,11 @@ def test_train_disc_improve_D(use_gail, env='CartPole-v1', n_timesteps=200,
     assert loss2 < loss1
 
 
-# Not testing with GAIL because it's flaky.
 @pytest.mark.expensive
-@pytest.mark.parametrize("use_gail", [False])
-def test_train_gen_degrade_D(use_gail, env='CartPole-v1', n_timesteps=200,
+@pytest.mark.xfail(reason="(AIRL) With random seeding, this test passed 36 "
+                   "times out of 40.",
+                   raises=AssertionError)
+def test_train_gen_degrade_D(use_gail=False, env='CartPole-v1', n_timesteps=200,
                              n_steps=10000):
     trainer = init_trainer(env, use_gail=use_gail)
     if use_gail:
@@ -70,10 +71,11 @@ def test_train_gen_degrade_D(use_gail, env='CartPole-v1', n_timesteps=200,
     assert loss2 > loss1
 
 
-# Not testing with GAIL because it's flaky.
 @pytest.mark.expensive
-@pytest.mark.parametrize("use_gail", [False])
-def test_train_disc_then_gen(use_gail, env='CartPole-v1', n_timesteps=200,
+@pytest.mark.xfail(reason="(AIRL) With random seeding, this test passed 19 "
+                   "times out of 30.",
+                   raises=AssertionError)
+def test_train_disc_then_gen(use_gail=False, env='CartPole-v1', n_timesteps=200,
                              n_steps=10000):
     trainer = init_trainer(env, use_gail=use_gail)
     if use_gail:
