@@ -1,8 +1,9 @@
 import argparse
 
 import gin.tf
-import imitation.scripts as scripts
 import tensorflow as tf
+
+import imitation.scripts as scripts
 
 
 def main():

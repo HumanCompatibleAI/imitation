@@ -1,6 +1,7 @@
-from imitation.reward_net import BasicRewardNet, BasicShapedRewardNet
 import pytest
 import tensorflow as tf
+
+from imitation.reward_net import BasicRewardNet, BasicShapedRewardNet
 
 ENVS = ['FrozenLake-v0', 'CartPole-v1', 'Pendulum-v0']
 

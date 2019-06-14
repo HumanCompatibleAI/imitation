@@ -6,11 +6,12 @@ prevent cyclic imports between imitation.airl and imitation.util)
 """
 
 import gin.tf
+import tensorflow as tf
+
 from imitation.airl import AIRLTrainer
 import imitation.discrim_net as discrim_net
 from imitation.reward_net import BasicShapedRewardNet
 import imitation.util as util
-import tensorflow as tf
 
 
 @gin.configurable
