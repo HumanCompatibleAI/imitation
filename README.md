@@ -9,7 +9,7 @@ Currently we have implementations of [AIRL](https://arxiv.org/abs/1710.11248) an
 To install:
 ```
 sudo apt install libopenmpi-dev
-conda create -n imitation python
+conda create -n imitation python=3.7
 conda activate imitation
 pip install -r requirements.txt -r requirements-dev.txt
 pip install -e .  # install `imitation` in developer mode
