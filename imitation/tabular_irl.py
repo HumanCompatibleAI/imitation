@@ -1,8 +1,11 @@
-"""Finite-horizon tabular MCE IRL, as described in Ziebart's thesis. See
-chapters 9 and 10 of
-http://www.cs.cmu.edu/~bziebart/publications/thesis-bziebart.pdf. Also includes
-some Numpy-based optimisers so that this code can be run without
-PyTorch/TensorFlow, and some abstract code for simple reward models."""
+"""Finite-horizon tabular Maximum Causal Entropy IRL.
+
+Follows the description in Brian Ziebart's PhD thesis (2010), see
+chapters 9 and 10 of:
+    http://www.cs.cmu.edu/~bziebart/publications/thesis-bziebart.pdf
+
+Uses NumPy-based optimizer Jax, so the code can be run without
+PyTorch/TensorFlow, and some code for simple reward models."""
 
 import abc
 
@@ -13,11 +16,24 @@ import jax.experimental.stax as jstax
 import numpy as np
 import scipy
 
+from imitation.model_env import ModelBasedEnv
+
 
 def mce_partition_fh(env, *, R=None):
-    """Calculate V^soft, Q^soft, and pi using recurrences (9.1), (9.2), and
-    (9.3). Stop once l-infty distance between Vs is less than linf_eps. This is
-    the finite-horizon variant."""
+    """Performs the soft Bellman backup for a finite-horizon, undiscounted MDP.
+
+    Calculates V^{soft}, Q^{soft}, and \pi using recurrences (9.1), (9.2), and
+    (9.3) from Ziebart (2010).
+
+    Args:
+        env (ModelBasedEnv): a tabular, known-dynamics MDP.
+        R (None or np.array): a reward matrix. Defaults to env.reward_matrix.
+
+    Returns:
+        (V, Q, pi) corresponding to the soft values, Q-values and MCE policy.
+        V is a 2d array, indexed V[t,s]. Q is a 3d array, indexed Q[t,s,a].
+        pi is a 3d array, indexed pi[t,s,a].
+    """
 
     # shorthand
     horizon = env.horizon
@@ -27,16 +43,20 @@ def mce_partition_fh(env, *, R=None):
     if R is None:
         R = env.reward_matrix
 
+    # Initialization
     # indexed as V[t,s]
     V = np.full((horizon, n_states), -np.inf)
     # indexed as Q[t,s,a]
     Q = np.zeros((horizon, n_states, n_actions))
     broad_R = R[:, None]
+
+    # Base case: final timestep
     # final Q(s,a) is just reward
     Q[horizon - 1, :, :] = broad_R
     # V(s) is always normalising constant
     V[horizon - 1, :] = scipy.special.logsumexp(Q[horizon - 1, :, :], axis=1)
 
+    # Recursive case
     for t in range(horizon - 1)[::-1]:
         next_values_s_a = T @ V[t + 1, :]
         Q[t, :, :] = broad_R + next_values_s_a
@@ -47,9 +67,9 @@ def mce_partition_fh(env, *, R=None):
     return V, Q, pi
 
 
-def mce_occupancy_measures(env, *, pi=None, R=None):
+def mce_occupancy_measures(env, *, R=None, pi=None):
     """Calculate state visitation frequency Ds for each state s under a given
-    policy pi. You can get pi from mce_partition_func()."""
+    policy pi. You can get pi from `mce_partition_fh`."""
 
     # shorthand
     horizon = env.horizon
