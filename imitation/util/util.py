@@ -4,6 +4,7 @@ import os
 import gin.tf
 import gym
 import stable_baselines
+from stable_baselines.bench import Monitor
 from stable_baselines.common.policies import FeedForwardPolicy
 from stable_baselines.common.vec_env import DummyVecEnv, VecEnv
 import tensorflow as tf
@@ -40,7 +41,10 @@ def make_vec_env(env_id, n_envs=8):
     env_id (str): The Env's string id in Gym.
     n_envs (int): The number of duplicate environments.
     """
-    return DummyVecEnv([lambda: gym.make(env_id) for _ in range(n_envs)])
+    # Use Monitor to support logging the episode reward and length.
+    def monitored_env():
+        return Monitor(gym.make(env_id), '', allow_early_resets=True)
+    return DummyVecEnv([monitored_env for _ in range(n_envs)])
 
 
 def is_vec_env(env):

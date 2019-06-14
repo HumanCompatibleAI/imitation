@@ -48,6 +48,7 @@ class AIRLTrainer():
         self.expert_old_obs, self.expert_act, self.expert_new_obs = \
             util.rollout.generate_multiple(
                 expert_policies, self.env, n_expert_timesteps)
+        self.expert_policies = expert_policies
         self.init_tensorboard = init_tensorboard
 
         self._global_step = tf.train.create_global_step()
@@ -202,7 +203,7 @@ class AIRLTrainer():
         self._disc_opt = tf.train.AdamOptimizer()
         # XXX: I am passing a [None] Tensor as loss. Can this be problematic?
         self._disc_train_op = self._disc_opt.minimize(
-                self.discrim.disc_loss, global_step=self._global_step)
+            self.discrim.disc_loss, global_step=self._global_step)
 
     def _build_disc_feed_dict(self, gen_old_obs=None, gen_act=None,
                               gen_new_obs=None):
