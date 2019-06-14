@@ -10,19 +10,17 @@ PyTorch/TensorFlow, and some code for simple reward models."""
 import abc
 
 import jax
+import jax.experimental.stax as jstax
 import jax.numpy as jnp
 import jax.random as jrandom
-import jax.experimental.stax as jstax
 import numpy as np
 import scipy
-
-from imitation.model_env import ModelBasedEnv
 
 
 def mce_partition_fh(env, *, R=None):
     """Performs the soft Bellman backup for a finite-horizon, undiscounted MDP.
 
-    Calculates V^{soft}, Q^{soft}, and \pi using recurrences (9.1), (9.2), and
+    Calculates V^{soft}, Q^{soft}, and pi using recurrences (9.1), (9.2), and
     (9.3) from Ziebart (2010).
 
     Args:
