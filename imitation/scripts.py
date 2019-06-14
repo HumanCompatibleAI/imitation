@@ -11,11 +11,12 @@ import logging
 import os
 
 import gin.tf
-import imitation.util as util
-from imitation.util.trainer import init_trainer
 from matplotlib import pyplot as plt
 import tensorflow as tf
 import tqdm
+
+import imitation.util as util
+from imitation.util.trainer import init_trainer
 
 
 @gin.configurable

@@ -1,7 +1,8 @@
 from abc import ABC, abstractmethod
 
-import imitation.util as util
 import tensorflow as tf
+
+import imitation.util as util
 
 
 class RewardNet(ABC):
