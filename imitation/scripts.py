@@ -133,10 +133,10 @@ def train_and_plot(policy_dir, env='CartPole-v1',
         n_gen_steps_per_plot = float('Inf')
         n_disc_steps_per_plot = float('Inf')
     else:
-        n_gen_steps_per_plot = int(
-            n_gen_steps_per_epoch / n_plots_each_per_epoch + .5)
-        n_disc_steps_per_plot = int(
-            n_disc_steps_per_epoch / n_plots_each_per_epoch + .5)
+        n_gen_steps_per_plot = int(round(
+                n_gen_steps_per_epoch / n_plots_each_per_epoch))
+        n_disc_steps_per_plot = int(round(
+                n_disc_steps_per_epoch / n_plots_each_per_epoch))
 
     def train_plot_itr(steps, gen_mode, steps_per_plot):
         nonlocal plot_idx
