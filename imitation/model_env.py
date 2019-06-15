@@ -8,11 +8,11 @@ from gym import spaces
 import numpy as np
 
 
-class ModelBasedEnv(gym.Env, metaclass=abc.ABCMeta):
+class ModelBasedEnv(gym.Env, abc.ABC):
     """ABC for tabular environments with known dynamics."""
     def __init__(self):
-        self.cur_state = 0
-        self.actions_taken = 0
+        self.cur_state = None
+        self.n_actions_taken = None
         # we must cache action & observation spaces instead of reconstructing
         # anew so that the random state of the action space (!!) is preserved
         self._action_space = None
@@ -41,20 +41,23 @@ class ModelBasedEnv(gym.Env, metaclass=abc.ABCMeta):
 
     def reset(self):
         self.cur_state = 0
-        self.actions_taken = 0
+        self.n_actions_taken = 0
         # as in step(), we copy so that it can't be mutated in-place (updates
         # will be reflected in self.observation_matrix!)
         return self.observation_matrix[self.cur_state].copy()
 
     def step(self, action):
+        assert self.cur_state is not None \
+            and self.n_actions_taken is not None, \
+            "remember to call reset() before first step()"
         old_state = self.cur_state
         out_dist = self.transition_matrix[old_state, action]
         choice_states = np.arange(self.n_states)
         next_state = int(
             self.rand_state.choice(choice_states, p=out_dist, size=()))
         self.cur_state = next_state
-        self.actions_taken += 1
-        done = self.actions_taken >= self.horizon
+        self.n_actions_taken += 1
+        done = self.n_actions_taken >= self.horizon
         reward = self.reward_matrix[old_state]
         assert np.isscalar(reward), reward
         # copy so that it can't be mutated in-place
@@ -90,27 +93,23 @@ class ModelBasedEnv(gym.Env, metaclass=abc.ABCMeta):
         words, if `T` is our returned matrix, then `T[s,a,sprime]` is the
         chance of transitioning into state `sprime` after taking action `a` in
         state `s`."""
-        pass
 
     @property
     @abc.abstractmethod
     def observation_matrix(self):
         """Yields 2D observation matrix with dimensions corresponding to
         current state (first dim) and elements of observation (second dim)."""
-        pass
 
     @property
     @abc.abstractmethod
     def reward_matrix(self):
         """Yields 2D reward matrix with dimensions corresponding to current
         state and current action."""
-        pass
 
     @property
     @abc.abstractmethod
     def horizon(self):
         """Number of actions that can be taken in an episode."""
-        pass
 
 
 def make_random_trans_mat(

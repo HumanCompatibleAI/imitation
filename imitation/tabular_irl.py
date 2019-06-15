@@ -67,7 +67,19 @@ def mce_partition_fh(env, *, R=None):
 
 def mce_occupancy_measures(env, *, R=None, pi=None):
     """Calculate state visitation frequency Ds for each state s under a given
-    policy pi. You can get pi from `mce_partition_fh`."""
+    policy pi. You can get pi from `mce_partition_fh`.
+
+    Args:
+        env (ModelBasedEnv): a tabular MDP.
+        R (None or np.ndarray): reward matrix. Defaults is env.reward_matrix.
+        pi (None or np.ndarray): policy to simulate. Defaults to soft-optimal
+            policy w.r.t reward matrix.
+
+    Returns:
+        Tuple of D (ndarray) and Dt (ndarray). D is an |S|-dimensional vector
+        recording the expected number of times each state is visited. Dt is a
+        T*|S|-dimensional vector recording the probability of being in a given
+        state at a given timestep."""
 
     # shorthand
     horizon = env.horizon
@@ -84,8 +96,6 @@ def mce_occupancy_measures(env, *, R=None, pi=None):
     init_states = np.zeros((n_states))
     init_states[0] = 1
 
-    # TODO: do I also need to account for final state at horizon + 1? Maybe
-    # that's imaginary (it certainly doesn't carry reward).
     D = np.zeros((horizon, n_states))
     D[0, :] = init_states
     for t in range(1, horizon):
@@ -156,18 +166,16 @@ def maxent_irl(
 # ############################### #
 
 
-class RewardModel(metaclass=abc.ABCMeta):
+class RewardModel(abc.ABC):
     """Abstract model for reward functions (which might be linear, MLPs,
     nearest-neighbour, etc.)"""
     @abc.abstractmethod
     def out(self, inputs):
         """Get rewards for a batch of observations."""
-        pass
 
     @abc.abstractmethod
     def grads(self, inputs):
         """Gradients of reward with respect to a batch of input observations."""
-        pass
 
     def out_grads(self, inputs):
         """Combination method to do forward-prop AND back-prop (trivial for
@@ -177,12 +185,10 @@ class RewardModel(metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def set_params(self, params):
         """Set a new parameter vector for the model (from flat Numpy array)."""
-        pass
 
     @abc.abstractmethod
     def get_params(self):
         """Get current parameter vector from model (as flat Numpy array)."""
-        pass
 
 
 class LinearRewardModel(RewardModel):
@@ -215,7 +221,7 @@ class LinearRewardModel(RewardModel):
         return self._weights
 
 
-class JaxRewardModel(RewardModel, metaclass=abc.ABCMeta):
+class JaxRewardModel(RewardModel, abc.ABC):
     """Wrapper for arbitrary Jax-based reward models. Useful for neural
     nets."""
     def __init__(self, obs_dim, *, seed=None):
@@ -235,7 +241,6 @@ class JaxRewardModel(RewardModel, metaclass=abc.ABCMeta):
     def make_stax_model(self):
         """Build the stax model that this thing is meant to optimise. Should
         return (net_init, net_apply) pair, just like Stax modules."""
-        pass
 
     def _flatten(self, matrix_tups):
         """Flatten everything and concatenate it together."""
@@ -329,12 +334,11 @@ def StaxSqueeze(axis=-1):
 # ######### OPTIMISERS ########## #
 # ############################### #
 
-class Schedule(metaclass=abc.ABCMeta):
+class Schedule(abc.ABC):
     """Base class for learning rate schedules."""
     @abc.abstractmethod
     def __iter__(self):
         """Yield an iterable of step sizes."""
-        pass
 
 
 class ConstantSchedule(Schedule):
@@ -369,18 +373,16 @@ def get_schedule(lr_or_schedule):
     raise TypeError("No idea how to make schedule out of '%s'" % lr_or_schedule)
 
 
-class Optimiser(metaclass=abc.ABCMeta):
+class Optimiser(abc.ABC):
     """Abstract base class for optimisers like Nesterov, Adam, etc."""
     @abc.abstractmethod
     def step(self, grad):
         """Take a step using the supplied gradient vector."""
-        pass
 
     @property
     @abc.abstractmethod
     def current_params(self):
         """Return the parameters corresponding to the current iterate."""
-        pass
 
 
 class AMSGrad(Optimiser):
