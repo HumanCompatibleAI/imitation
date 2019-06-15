@@ -1,12 +1,13 @@
 """Test tabular environments and tabular MCE IRL."""
 
+import logging
+
 import numpy as np
+import pytest
 
 from imitation.model_env import ModelBasedEnv, RandomMDP
 from imitation.tabular_irl import (SGD, AMSGrad, LinearRewardModel, maxent_irl,
                                    mce_occupancy_measures, mce_partition_fh)
-
-# import pytest
 
 
 def rollouts(env, n=10, seed=None):
@@ -20,10 +21,8 @@ def rollouts(env, n=10, seed=None):
             env.action_space.seed(seed)
         obs = env.reset()
         traj = [obs]
-        acts = []
         while not done:
             act = env.action_space.sample()
-            acts.append(act)
             obs, rew, done, info = env.step(act)
             traj.append((obs, rew))
         rv.append(traj)
@@ -52,8 +51,12 @@ def test_random_mdp():
 
         # sanity checks on sizes of things
         assert mdp.transition_matrix.shape == (n_states, n_actions, n_states)
+        assert np.allclose(1, np.sum(mdp.transition_matrix, axis=-1))
+        assert np.all(mdp.transition_matrix >= 0)
         assert mdp.observation_matrix.shape[0] == n_states \
             and mdp.observation_matrix.ndim == 2
+        assert mdp.reward_matrix.shape == (n_states, )
+        assert mdp.horizon == horizon
 
         # make sure trajectories aren't all the same if we don't specify same
         # seed each time
@@ -82,10 +85,7 @@ def test_policy_om_random_mdp():
     assert np.all(pi >= 0)
     # it (always?) has to take SOME actions
     assert np.any(pi > 0)
-    # we do <= 1 instead of allclose() because pi actually doesn't have to be
-    # normalised (per remark in Ziebart's thesis); missing probability mass
-    # corresponds to early termination or something
-    assert np.all(np.sum(pi, axis=-1) <= 1 + 1e-5)
+    assert np.allclose(np.sum(pi, axis=-1), 1)
 
     Dt, D = mce_occupancy_measures(mdp, pi=pi)
     assert np.all(np.isfinite(D))
@@ -93,27 +93,22 @@ def test_policy_om_random_mdp():
     # make sure we're in state 0 (the initial state) for at least one step, in
     # expectation
     assert D[0] >= 1
-    # expected number of state visits (over all states) should be roughly equal
-    # to the horizon
-    assert np.sum(D) <= mdp.horizon + 1e-5
-    # heuristic to make sure we're *roughly* having 90% of the state encounters
-    # we expect we should
-    assert np.sum(D) >= mdp.horizon * 0.9
+    # expected number of state visits (over all states) should be equal to the
+    # horizon
+    assert np.allclose(np.sum(D), mdp.horizon)
 
 
 class ReasonableMDP(ModelBasedEnv):
     observation_matrix = np.array([
-        # TODO: remove first 5 features once I know this works for sure
-        # state 0 (init)
-        [1, 0, 0, 0, 0, 3, -5, -1, -1, -4, 5, 3, 0],
+        [3, -5, -1, -1, -4, 5, 3, 0],
         # state 1 (top)
-        [0, 1, 0, 0, 0, 4, -4, 2, 2, -4, -1, -2, -2],
+        [4, -4, 2, 2, -4, -1, -2, -2],
         # state 2 (bottom, equiv to top)
-        [0, 0, 1, 0, 0, 3, -1, 5, -1, 0, 2, -5, 2],
+        [3, -1, 5, -1, 0, 2, -5, 2],
         # state 3 (middle, very low reward and so dominated by others)
-        [0, 0, 0, 1, 0, -5, -1, 4, 1, 4, 1, 5, 3],
+        [-5, -1, 4, 1, 4, 1, 5, 3],
         # state 4 (final, all self loops, good reward)
-        [0, 0, 0, 0, 1, 2, -5, 1, -5, 1, 4, 4, -3]
+        [2, -5, 1, -5, 1, 4, 4, -3]
     ])
     transition_matrix = np.array([
         # transitions out of state 0
@@ -212,7 +207,8 @@ def test_policy_om_reasonable_mdp():
         mdp, opt, rmodel, D, linf_eps=1e-2)
 
 
-def test_optimisers():
+@pytest.mark.parametrize("opt_class,alpha", [(SGD, 1e-2), (AMSGrad, 1e-1)])
+def test_optimisers(opt_class, alpha):
     rng = np.random.RandomState(42)
     # make a positive definite Q
     Q = rng.randn(10, 10)
@@ -230,31 +226,27 @@ def test_optimisers():
     solution = -Qinv @ v
     opt_value = f(solution)
 
-    # start in some place far from minimum of f(x)
-    sgd_rmodel = LinearRewardModel(10, seed=42)
-    sgd = SGD(sgd_rmodel, alpha_sched=1e-2)
-    # amsgrad typically requires (and can deal with) a higher step size
-    agd_rmodel = LinearRewardModel(10, seed=42)
-    agd = AMSGrad(agd_rmodel, alpha_sched=1e-1)
-    for rmodel, optimiser in [(sgd_rmodel, sgd), (agd_rmodel, agd)]:
-        x = rmodel.get_params()
+    rmodel = LinearRewardModel(10, seed=42)
+    optimiser = opt_class(rmodel, alpha_sched=alpha)
+    x = rmodel.get_params()
+    grad = df(x)
+    val = f(x)
+    assert np.linalg.norm(grad) > 1
+    assert np.abs(val) > 1
+    logging.info('Initial: val=%.3f, grad=%.3f' % (val, np.linalg.norm(grad)))
+    for it in range(25000):
+        optimiser.step(grad)
+        x = optimiser.current_params
         grad = df(x)
+        # natural gradient: grad = Qinv @ x
         val = f(x)
-        assert np.linalg.norm(grad) > 1
-        assert np.abs(val) > 1
-        print('Initial: val=%.3f, grad=%.3f' % (val, np.linalg.norm(grad)))
-        for it in range(25000):
-            optimiser.step(grad)
-            x = optimiser.current_params
-            grad = df(x)
-            # natural gradient: grad = Qinv @ x
-            val = f(x)
-            if 0 == (it % 50):
-                print('Value %.3f (grad %.3f) after %d steps' %
-                      (val, np.linalg.norm(grad), it))
-            if np.linalg.norm(grad) < 1e-4:
-                break
-        # pretty loose because we use big step sizes
-        assert np.linalg.norm(grad) < 1e-2
-        assert np.sum(np.abs(x - solution)) < 1e-2
-        assert np.abs(val - opt_value) < 1e-2
+        if 0 == (it % 50):
+            logging.info(
+                'Value %.3f (grad %.3f) after %d steps' %
+                (val, np.linalg.norm(grad), it))
+        if np.linalg.norm(grad) < 1e-4:
+            break
+    # pretty loose because we use big step sizes
+    assert np.linalg.norm(grad) < 1e-2
+    assert np.sum(np.abs(x - solution)) < 1e-2
+    assert np.abs(val - opt_value) < 1e-2
