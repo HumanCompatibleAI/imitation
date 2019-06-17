@@ -102,18 +102,19 @@ def mce_occupancy_measures(env, *, R=None, pi=None):
     return D, D.sum(axis=0)
 
 
-def maxent_irl(
-        env,
-        optimiser,
-        rmodel,
-        demo_state_om,
-        linf_eps=1e-3,
-        grad_l2_eps=1e-4,
-        print_interval=100):
+def mce_irl(env,
+            optimiser_tuple,
+            rmodel,
+            demo_state_om,
+            linf_eps=1e-3,
+            grad_l2_eps=1e-4,
+            print_interval=100):
     r"""Tabular MCE IRL.
 
     Args:
         env (ModelBasedEnv): a tabular MDP.
+        optimiser_tuple (tuple): a tuple of `(optim_init_fn, optim_update_fn,
+            get_params_fn)` produced by a Jax optimiser.
         rmodel (RewardModel): a reward function to be optimised.
         demo_state_om (np.ndarray): matrix representing state occupancy measure
             for demonstrator.
@@ -141,8 +142,9 @@ def maxent_irl(
     # number of optimisation steps taken
     t = 0
     assert demo_state_om.shape == (len(obs_mat), )
-    rew_params = optimiser.current_params
-    rmodel.set_params(rew_params)
+    opt_init, opt_update, opt_get_params = optimiser_tuple
+    rew_params = rmodel.get_params()
+    opt_state = opt_init(rew_params)
 
     while linf_delta > linf_eps and grad_norm > grad_l2_eps:
         # get reward predicted for each state by current model, & compute
@@ -170,12 +172,12 @@ def maxent_irl(
                  np.linalg.norm(grad), np.linalg.norm(pol_grad)))
 
         # take a single optimiser step
-        optimiser.step(grad)
-        rew_params = optimiser.current_params
+        opt_state = opt_update(t, grad, opt_state)
+        rew_params = opt_get_params(opt_state)
         rmodel.set_params(rew_params)
         t += 1
 
-    return optimiser.current_params, visitations
+    return rew_params, visitations
 
 
 # ############################### #
@@ -358,129 +360,3 @@ def StaxSqueeze(axis=-1):
         return jnp.squeeze(inputs, axis=axis)
 
     return init_fun, apply_fun
-
-
-# ############################### #
-# ######### OPTIMISERS ########## #
-# ############################### #
-
-
-class Schedule(abc.ABC):
-    """Base class for learning rate schedules."""
-
-    @abc.abstractmethod
-    def __iter__(self):
-        """Return an iterable of step sizes."""
-
-
-class ConstantSchedule(Schedule):
-    """Constant step size schedule."""
-
-    def __init__(self, lr):
-        self.lr = lr
-
-    def __iter__(self):
-        while True:
-            yield self.lr
-
-
-class SqrtTSchedule(Schedule):
-    """1/sqrt(t) step size schedule."""
-
-    def __init__(self, init_lr):
-        self.init_lr = init_lr
-
-    def __iter__(self):
-        t = 1
-        while True:
-            yield self.init_lr / np.sqrt(t)
-            t += 1
-
-
-def get_schedule(lr_or_schedule):
-    """Turn a constant float/int or an actual Schedule into a canonical
-    Schedule instance."""
-    if isinstance(lr_or_schedule, Schedule):
-        return lr_or_schedule
-    if isinstance(lr_or_schedule, (float, int)):
-        return ConstantSchedule(lr_or_schedule)
-    raise TypeError("No idea how to make schedule out of '%s'" %
-                    lr_or_schedule)
-
-
-class Optimiser(abc.ABC):
-    """Abstract base class for optimisers like Nesterov, Adam, etc."""
-
-    @abc.abstractmethod
-    def step(self, grad):
-        """Take a step using the supplied gradient vector."""
-
-    @property
-    @abc.abstractmethod
-    def current_params(self):
-        """Return the parameters corresponding to the current iterate."""
-
-
-class AMSGrad(Optimiser):
-    """Kind-of-fixed version of Adam optimiser, as described in
-    https://openreview.net/pdf?id=ryQu7f-RZ. This should roughly correspond to
-    a diagonal approximation to natural gradient, just as Adam does, but
-    without the pesky non-convergence issues."""
-
-    def __init__(self,
-                 rmodel,
-                 alpha_sched=1e-3,
-                 beta1=0.9,
-                 beta2=0.99,
-                 eps=1e-8):
-        # x is initial parameter vector; alpha is step size; beta1 & beta2 are
-        # as defined in AMSGrad paper; eps is added to sqrt(vhat) during
-        # calculation of next iterate to ensure division does not overflow.
-        init_params = rmodel.get_params()
-        param_size, = init_params.shape
-        # first moment estimate
-        self.m = np.zeros((param_size, ))
-        # second moment estimate
-        self.v = np.zeros((param_size, ))
-        # max second moment
-        self.vhat = np.zeros((param_size, ))
-        # parameter estimate
-        self.x = init_params
-        # step sizes etc.
-        self.alpha_schedule = iter(get_schedule(alpha_sched))
-        self.beta1 = beta1
-        self.beta2 = beta2
-        self.eps = eps
-
-    def step(self, grad):
-        alpha = next(self.alpha_schedule)
-        self.m = self.beta1 * self.m + (1 - self.beta1) * grad
-        self.v = self.beta2 * self.v + (1 - self.beta2) * grad**2
-        self.vhat = np.maximum(self.vhat, self.v)
-        # 1e-5 for numerical stability
-        denom = np.sqrt(self.vhat) + self.eps
-        self.x = self.x - alpha * self.m / denom
-        return self.x
-
-    @property
-    def current_params(self):
-        return self.x
-
-
-class SGD(Optimiser):
-    """Standard gradient method."""
-
-    def __init__(self, rmodel, alpha_sched=1e-3):
-        init_params = rmodel.get_params()
-        self.x = init_params
-        self.alpha_schedule = iter(get_schedule(alpha_sched))
-        self.cnt = 1
-
-    def step(self, grad):
-        alpha = next(self.alpha_schedule)
-        self.x = self.x - alpha * grad
-        return self.x
-
-    @property
-    def current_params(self):
-        return self.x

@@ -1,12 +1,12 @@
 """Test tabular environments and tabular MCE IRL."""
 
+import jax.experimental.optimizers as jaxopt
 import numpy as np
 import pytest
-import tensorflow as tf
 
 from imitation.examples.model_envs import RandomMDP
 from imitation.model_env import ModelBasedEnv
-from imitation.tabular_irl import (SGD, AMSGrad, LinearRewardModel, maxent_irl,
+from imitation.tabular_irl import (LinearRewardModel, MLPRewardModel, mce_irl,
                                    mce_occupancy_measures, mce_partition_fh)
 
 
@@ -203,57 +203,23 @@ def test_policy_om_reasonable_mdp():
     # check that Dt[0] matches our initial state dist
     assert np.allclose(Dt[0], mdp.initial_state_dist)
 
-    # now compute demonstrator features, just to show that it works
-    # initial reward weights
-    rmodel = LinearRewardModel(mdp.obs_dim, seed=13)
-    opt = AMSGrad(rmodel, alpha_sched=1e-2)
-    final_weights, final_counts = maxent_irl(mdp,
-                                             opt,
-                                             rmodel,
-                                             D,
-                                             linf_eps=1e-2)
 
+@pytest.mark.expensive
+@pytest.mark.parametrize("model_class,model_kwargs",
+                         [(LinearRewardModel, dict()),
+                          (MLPRewardModel, dict(hiddens=[32, 32]))])
+def test_mce_irl_reasonable_mdp(model_class, model_kwargs):
+    # test MCE IRL on the MDP
+    mdp = ReasonableMDP()
 
-@pytest.mark.parametrize("opt_class,alpha", [(SGD, 1e-2), (AMSGrad, 1e-1)])
-def test_optimisers(opt_class, alpha):
-    rng = np.random.RandomState(42)
-    # make a positive definite Q
-    Q = rng.randn(10, 10)
-    Q = Q.T @ Q + 1e-5 * np.eye(10)
-    v = rng.randn(10)
+    # demo occupancy measure
+    V, Q, pi = mce_partition_fh(mdp)
+    Dt, D = mce_occupancy_measures(mdp, pi=pi)
 
-    def f(x):
-        return 0.5 * x.T @ Q @ x + np.dot(v, x)
+    rmodel = model_class(mdp.obs_dim, seed=13, **model_kwargs)
+    opt = jaxopt.adam(1e-2)
+    final_weights, final_counts = mce_irl(mdp, opt, rmodel, D, linf_eps=1e-3)
 
-    def df(x):
-        return Q @ x + v
-
-    # also find the solution
-    Qinv = np.linalg.inv(Q)
-    solution = -Qinv @ v
-    opt_value = f(solution)
-
-    rmodel = LinearRewardModel(10, seed=42)
-    optimiser = opt_class(rmodel, alpha_sched=alpha)
-    x = rmodel.get_params()
-    grad = df(x)
-    val = f(x)
-    assert np.linalg.norm(grad) > 1
-    assert np.abs(val) > 1
-    tf.logging.info('Initial: val=%.3f, grad=%.3f' %
-                    (val, np.linalg.norm(grad)))
-    for it in range(25000):
-        optimiser.step(grad)
-        x = optimiser.current_params
-        grad = df(x)
-        # natural gradient: grad = Qinv @ x
-        val = f(x)
-        if 0 == (it % 50):
-            tf.logging.info('Value %.3f (grad %.3f) after %d steps' %
-                            (val, np.linalg.norm(grad), it))
-        if np.linalg.norm(grad) < 1e-4:
-            break
-    # pretty loose because we use big step sizes
-    assert np.linalg.norm(grad) < 1e-2
-    assert np.sum(np.abs(x - solution)) < 1e-2
-    assert np.abs(val - opt_value) < 1e-2
+    assert np.allclose(final_counts, D, atol=1e-3, rtol=1e-3)
+    # make sure weights have non-insane norm
+    assert np.linalg.norm(final_weights) < 1000
