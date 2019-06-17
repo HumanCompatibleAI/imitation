@@ -41,9 +41,10 @@ class ModelBasedEnv(gym.Env, abc.ABC):
 
     def seed(self, seed=None):
         if seed is None:
+            # Gym API wants list of seeds to be returned for some reason, so
+            # generate a seed explicitly in this case
             seed = np.random.randint(0, 1 << 31)
-        self.rand_state = np.random.RandomState(seed=seed)
-        # Gym API wants list of seeds to be returned for some reason
+        self.rand_state = np.random.RandomState(seed)
         return [seed]
 
     def reset(self):

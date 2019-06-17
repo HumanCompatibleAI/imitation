@@ -14,7 +14,7 @@ def make_random_trans_mat(
         # give an np.random.RandomState
         rand_state=np.random):
     """Make a 'random' transition matrix, in which each action goes to at least
-    `max_branch-factor` other states from the current state, with transition
+    `max_branch_factor` other states from the current state, with transition
     distribution sampled from Dirichlet(1,1,…,1).
 
     This roughly apes the strategy from some old Lisp code that Rich Sutton
@@ -87,11 +87,9 @@ class RandomMDP(ModelBasedEnv):
                  obs_dim=None,
                  generator_seed=None):
         super().__init__()
-        if generator_seed is None:
-            generator_seed = np.random.randint(0, 1 << 31)
         # this generator is ONLY for constructing the MDP, not for controlling
         # random outcomes during rollouts
-        rand_gen = np.random.RandomState(seed=generator_seed)
+        rand_gen = np.random.RandomState(generator_seed)
         if random_obs:
             if obs_dim is None:
                 obs_dim = n_states
