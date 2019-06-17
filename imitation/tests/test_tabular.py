@@ -1,9 +1,8 @@
 """Test tabular environments and tabular MCE IRL."""
 
-import logging
-
 import numpy as np
 import pytest
+import tensorflow as tf
 
 from imitation.examples.model_envs import RandomMDP
 from imitation.model_env import ModelBasedEnv
@@ -71,6 +70,8 @@ def test_random_mdp():
 
 
 def test_policy_om_random_mdp():
+    """Test that optimal policy occupancy measure ("om") for a random MDP makes
+    sense."""
     mdp = RandomMDP(
         n_states=16,
         n_actions=3,
@@ -234,7 +235,8 @@ def test_optimisers(opt_class, alpha):
     val = f(x)
     assert np.linalg.norm(grad) > 1
     assert np.abs(val) > 1
-    logging.info('Initial: val=%.3f, grad=%.3f' % (val, np.linalg.norm(grad)))
+    tf.logging.info(
+        'Initial: val=%.3f, grad=%.3f' % (val, np.linalg.norm(grad)))
     for it in range(25000):
         optimiser.step(grad)
         x = optimiser.current_params
@@ -242,7 +244,7 @@ def test_optimisers(opt_class, alpha):
         # natural gradient: grad = Qinv @ x
         val = f(x)
         if 0 == (it % 50):
-            logging.info(
+            tf.logging.info(
                 'Value %.3f (grad %.3f) after %d steps' %
                 (val, np.linalg.norm(grad), it))
         if np.linalg.norm(grad) < 1e-4:

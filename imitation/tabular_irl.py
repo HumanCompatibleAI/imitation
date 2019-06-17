@@ -15,6 +15,7 @@ import jax.numpy as jnp
 import jax.random as jrandom
 import numpy as np
 import scipy
+import tensorflow as tf
 
 
 def mce_partition_fh(env, *, R=None):
@@ -111,53 +112,74 @@ def maxent_irl(
         optimiser,
         rmodel,
         demo_state_om,
-        # we terminate either once linf_eps goes below this value, or once
-        # gradient norm goes below second value
         linf_eps=1e-3,
         grad_l2_eps=1e-4,
-        print_interval=100,
-        occupancy_change_dest=None,
-        occupancy_error_dest=None):
-    """Vanilla maxent IRL with whatever optimiser you want to use."""
+        print_interval=100):
+    r"""Tabular MCE IRL.
+
+    Args:
+        env (ModelBasedEnv): a tabular MDP.
+        rmodel (RewardModel): a reward function to be optimised.
+        demo_state_om (np.ndarray): matrix representing state occupancy measure
+            for demonstrator.
+        linf_eps (float): optimisation terminates if the $l_\infty$ distance
+            between the demonstrator's state occupancy measure and the state
+            occupancy measure for the current reward falls below this value.
+        grad_l2_eps (float): optimisation also terminates if the $\ell_2$ norm
+            of the MCE IRL gradient falls below this value.
+        print_interval (int or None): how often to log current loss stats
+            (using tf.logging). None to disable.
+
+    Returns:
+        (np.ndarray, np.ndarray): tuple of final parameters found by optimiser
+        and state occupancy measure for the final reward function. Note that
+        rmodel will also be updated with the latest parameters."""
+
     obs_mat = env.observation_matrix
-    delta = linf_eps + 1
+    # l_\infty distance between demonstrator occupancy measure (OM) and OM for
+    # soft-optimal policy w.r.t current reward (initially set to this value to
+    # prevent termination)
+    linf_delta = linf_eps + 1
+    # norm of the MCE IRL gradient (also set to this value to prevent
+    # termination)
     grad_norm = grad_l2_eps + 1
+    # number of optimisation steps taken
     t = 0
     assert demo_state_om.shape == (len(obs_mat), )
     rew_params = optimiser.current_params
     rmodel.set_params(rew_params)
-    last_occ = None
-    while delta > linf_eps and grad_norm > grad_l2_eps:
+
+    while linf_delta > linf_eps and grad_norm > grad_l2_eps:
+        # get reward predicted for each state by current model, & compute
+        # expected # of times each state is visited by soft-optimal policy
+        # w.r.t that reward function
         predicted_r, out_grads = rmodel.out_grads(obs_mat)
         _, visitations = mce_occupancy_measures(env, R=predicted_r)
+        # gradient of partition function w.r.t parameters; equiv to expectation
+        # over states drawn from current imitation distribution of the gradient
+        # of the reward function w.r.t its params
         pol_grad = np.sum(visitations[:, None] * out_grads, axis=0)
         # gradient of reward function w.r.t parameters, with expectation taken
         # over states
         expert_grad = np.sum(demo_state_om[:, None] * out_grads, axis=0)
-        # FIXME: is this even the correct gradient? Seems negated. Hmm.
         grad = pol_grad - expert_grad
+
+        # these are just for termination conditions & debug logging
         grad_norm = np.linalg.norm(grad)
-        delta = np.max(np.abs(demo_state_om - visitations))
+        linf_delta = np.max(np.abs(demo_state_om - visitations))
         if print_interval is not None and 0 == (t % print_interval):
-            print('Occupancy measure error@iter % 3d: %f (||params||=%f, '
-                  '||grad||=%f, ||E[dr/dw]||=%f)' %
-                  (t, delta, np.linalg.norm(rew_params), np.linalg.norm(grad),
-                   np.linalg.norm(pol_grad)))
+            tf.logging.info(
+                'Occupancy measure error@iter % 3d: %f (||params||=%f, '
+                '||grad||=%f, ||E[dr/dw]||=%f)' %
+                (t, linf_delta, np.linalg.norm(rew_params),
+                 np.linalg.norm(grad), np.linalg.norm(pol_grad)))
+
+        # take a single optimiser step
         optimiser.step(grad)
         rew_params = optimiser.current_params
         rmodel.set_params(rew_params)
         t += 1
-        if occupancy_error_dest is not None:
-            occupancy_error_dest.append(
-                np.sum(np.abs(demo_state_om - visitations)))
-        if occupancy_change_dest is not None:
-            # store change in L1 distance
-            if last_occ is None:
-                occupancy_change_dest.append(0)
-            else:
-                occupancy_change_dest.append(
-                    np.sum(np.abs(last_occ - visitations)))
-            last_occ = visitations
+
     return optimiser.current_params, visitations
 
 
@@ -169,6 +191,7 @@ def maxent_irl(
 class RewardModel(abc.ABC):
     """Abstract model for reward functions (which might be linear, MLPs,
     nearest-neighbour, etc.)"""
+
     @abc.abstractmethod
     def out(self, inputs):
         """Get rewards for a batch of observations."""
@@ -193,7 +216,10 @@ class RewardModel(abc.ABC):
 
 class LinearRewardModel(RewardModel):
     """Linear reward model (without bias)."""
+
     def __init__(self, obs_dim, *, seed=None):
+        """Construct linear reward model for `obs_dim`-dimensional observation
+        space. Initial values are generated from given seed (int or None)."""
         if seed is not None:
             rng = np.random.RandomState(seed)
         else:
@@ -224,7 +250,10 @@ class LinearRewardModel(RewardModel):
 class JaxRewardModel(RewardModel, abc.ABC):
     """Wrapper for arbitrary Jax-based reward models. Useful for neural
     nets."""
+
     def __init__(self, obs_dim, *, seed=None):
+        """Internal setup for Jax-based reward models. Initialises reward model
+        using given seed & input size (`obs_dim`)."""
         # TODO: apply jax.jit() to everything in sight
         net_init, self._net_apply = self.make_stax_model()
         if seed is None:
@@ -294,7 +323,12 @@ class JaxRewardModel(RewardModel, abc.ABC):
 
 class MLPRewardModel(JaxRewardModel):
     """Simple MLP-based reward function with Jax/Stax."""
+
     def __init__(self, obs_dim, hiddens, activation='Tanh', **kwargs):
+        """Construct an MLP-based reward function with input layer dimension
+        `obs_dim`, size of hidden layers given by `hiddens` (`list[int]`), and
+        `activation` nonlinearity (can be `Tanh`, `Relu`, or `Softplus`). Extra
+        kwargs are passed to JaxRewardModel.__init__()."""
         assert activation in ['Tanh', 'Relu', 'Softplus'], \
             "probably can't handle activation '%s'" % activation
         self._hiddens = hiddens
@@ -312,6 +346,7 @@ class MLPRewardModel(JaxRewardModel):
 
 def StaxSqueeze(axis=-1):
     """Stax layer that collapses a single axis that has dimension 1."""
+
     def init_fun(rng, input_shape):
         ax = axis
         if ax < 0:
@@ -334,8 +369,10 @@ def StaxSqueeze(axis=-1):
 # ######### OPTIMISERS ########## #
 # ############################### #
 
+
 class Schedule(abc.ABC):
     """Base class for learning rate schedules."""
+
     @abc.abstractmethod
     def __iter__(self):
         """Return an iterable of step sizes."""
@@ -343,6 +380,7 @@ class Schedule(abc.ABC):
 
 class ConstantSchedule(Schedule):
     """Constant step size schedule."""
+
     def __init__(self, lr):
         self.lr = lr
 
@@ -353,6 +391,7 @@ class ConstantSchedule(Schedule):
 
 class SqrtTSchedule(Schedule):
     """1/sqrt(t) step size schedule."""
+
     def __init__(self, init_lr):
         self.init_lr = init_lr
 
@@ -370,11 +409,13 @@ def get_schedule(lr_or_schedule):
         return lr_or_schedule
     if isinstance(lr_or_schedule, (float, int)):
         return ConstantSchedule(lr_or_schedule)
-    raise TypeError("No idea how to make schedule out of '%s'" % lr_or_schedule)
+    raise TypeError("No idea how to make schedule out of '%s'" %
+                    lr_or_schedule)
 
 
 class Optimiser(abc.ABC):
     """Abstract base class for optimisers like Nesterov, Adam, etc."""
+
     @abc.abstractmethod
     def step(self, grad):
         """Take a step using the supplied gradient vector."""
@@ -391,7 +432,11 @@ class AMSGrad(Optimiser):
     a diagonal approximation to natural gradient, just as Adam does, but
     without the pesky non-convergence issues."""
 
-    def __init__(self, rmodel, alpha_sched=1e-3, beta1=0.9, beta2=0.99,
+    def __init__(self,
+                 rmodel,
+                 alpha_sched=1e-3,
+                 beta1=0.9,
+                 beta2=0.99,
                  eps=1e-8):
         # x is initial parameter vector; alpha is step size; beta1 & beta2 are
         # as defined in AMSGrad paper; eps is added to sqrt(vhat) during
