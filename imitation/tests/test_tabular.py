@@ -5,7 +5,8 @@ import logging
 import numpy as np
 import pytest
 
-from imitation.model_env import ModelBasedEnv, RandomMDP
+from imitation.examples.model_envs import RandomMDP
+from imitation.model_env import ModelBasedEnv
 from imitation.tabular_irl import (SGD, AMSGrad, LinearRewardModel, maxent_irl,
                                    mce_occupancy_measures, mce_partition_fh)
 
