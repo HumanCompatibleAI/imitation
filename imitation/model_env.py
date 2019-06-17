@@ -13,8 +13,13 @@ class ModelBasedEnv(gym.Env, abc.ABC):
     def __init__(self):
         self.cur_state = None
         self.n_actions_taken = None
-        # we must cache action & observation spaces instead of reconstructing
-        # anew so that the random state of the action space (!!) is preserved
+        # Constructing action & observation spaces requires self.n_actions and
+        # self.obs_dim, which are set in subclasses. If we constructed
+        # observation & action in this __init__ method, then subclasses would
+        # have to call super().__init__() last to give it access to
+        # obs_dim/n_actions. By constructing these lazily, we ensure that
+        # subclasses can call super().__init__() at any point & still have it
+        # succeed.
         self._action_space = None
         self._observation_space = None
         self.seed()
@@ -37,6 +42,7 @@ class ModelBasedEnv(gym.Env, abc.ABC):
         if seed is None:
             seed = np.random.randint(0, 1 << 31)
         self.rand_state = np.random.RandomState(seed=seed)
+        # Gym API wants list of seeds to be returned for some reason
         return [seed]
 
     def reset(self):
@@ -81,6 +87,15 @@ class ModelBasedEnv(gym.Env, abc.ABC):
         """Size of observation vectors for this MDP."""
         return self.observation_matrix.shape[-1]
 
+    @property
+    def initial_state_dist(self):
+        """1D vector representing a distribution over initial states."""
+        # by default we have a deterministic distribution where we always start
+        # in s0
+        rv = np.zeros((self.n_states,))
+        rv[0] = 1.0
+        return rv
+
     # ############################### #
     # METHODS THAT MUST BE OVERRIDDEN #
     # ############################### #
@@ -88,23 +103,22 @@ class ModelBasedEnv(gym.Env, abc.ABC):
     @property
     @abc.abstractmethod
     def transition_matrix(self):
-        """Yield a 3D transition matrix with dimensions corresponding to
-        current state, current action, and next state (in that order). In other
-        words, if `T` is our returned matrix, then `T[s,a,sprime]` is the
-        chance of transitioning into state `sprime` after taking action `a` in
-        state `s`."""
+        """3D transition matrix with dimensions corresponding to current state,
+        current action, and next state (in that order). In other words, if `T`
+        is our returned matrix, then `T[s,a,sprime]` is the chance of
+        transitioning into state `sprime` after taking action `a` in state
+        `s`."""
 
     @property
     @abc.abstractmethod
     def observation_matrix(self):
-        """Yields 2D observation matrix with dimensions corresponding to
-        current state (first dim) and elements of observation (second dim)."""
+        """2D observation matrix with dimensions corresponding to current state
+        (first dim) and elements of observation (second dim)."""
 
     @property
     @abc.abstractmethod
     def reward_matrix(self):
-        """Yields 2D reward matrix with dimensions corresponding to current
-        state and current action."""
+        """1D reward matrix with an element corresponding to each state."""
 
     @property
     @abc.abstractmethod

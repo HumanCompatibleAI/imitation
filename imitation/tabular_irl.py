@@ -338,7 +338,7 @@ class Schedule(abc.ABC):
     """Base class for learning rate schedules."""
     @abc.abstractmethod
     def __iter__(self):
-        """Yield an iterable of step sizes."""
+        """Return an iterable of step sizes."""
 
 
 class ConstantSchedule(Schedule):
