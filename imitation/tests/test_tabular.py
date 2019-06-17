@@ -40,14 +40,13 @@ def test_random_mdp():
         horizon = 5 * (i + 1)
         random_obs = (i % 2) == 0
         obs_dim = (i * 3 + 4)**2 + i
-        mdp = RandomMDP(
-            n_states=n_states,
-            n_actions=n_actions,
-            branch_factor=branch_factor,
-            horizon=horizon,
-            random_obs=random_obs,
-            obs_dim=obs_dim if random_obs else None,
-            generator_seed=i)
+        mdp = RandomMDP(n_states=n_states,
+                        n_actions=n_actions,
+                        branch_factor=branch_factor,
+                        horizon=horizon,
+                        random_obs=random_obs,
+                        obs_dim=obs_dim if random_obs else None,
+                        generator_seed=i)
 
         # sanity checks on sizes of things
         assert mdp.transition_matrix.shape == (n_states, n_actions, n_states)
@@ -57,6 +56,9 @@ def test_random_mdp():
             and mdp.observation_matrix.ndim == 2
         assert mdp.reward_matrix.shape == (n_states, )
         assert mdp.horizon == horizon
+        assert np.all(mdp.initial_state_dist >= 0)
+        assert np.allclose(1, np.sum(mdp.initial_state_dist))
+        assert np.sum(mdp.initial_state_dist > 0) == branch_factor
 
         # make sure trajectories aren't all the same if we don't specify same
         # seed each time
@@ -72,14 +74,13 @@ def test_random_mdp():
 def test_policy_om_random_mdp():
     """Test that optimal policy occupancy measure ("om") for a random MDP makes
     sense."""
-    mdp = RandomMDP(
-        n_states=16,
-        n_actions=3,
-        branch_factor=2,
-        horizon=20,
-        random_obs=True,
-        obs_dim=5,
-        generator_seed=42)
+    mdp = RandomMDP(n_states=16,
+                    n_actions=3,
+                    branch_factor=2,
+                    horizon=20,
+                    random_obs=True,
+                    obs_dim=5,
+                    generator_seed=42)
     V, Q, pi = mce_partition_fh(mdp)
     assert np.all(np.isfinite(V))
     assert np.all(np.isfinite(Q))
@@ -92,9 +93,6 @@ def test_policy_om_random_mdp():
     Dt, D = mce_occupancy_measures(mdp, pi=pi)
     assert np.all(np.isfinite(D))
     assert np.any(D > 0)
-    # make sure we're in state 0 (the initial state) for at least one step, in
-    # expectation
-    assert D[0] >= 1
     # expected number of state visits (over all states) should be equal to the
     # horizon
     assert np.allclose(np.sum(D), mdp.horizon)
@@ -171,6 +169,8 @@ class ReasonableMDP(ModelBasedEnv):
         # of 1 & 2)
         3
     ])
+    # always start in s0 or s4
+    initial_state_dist = [0.5, 0, 0, 0, 0.5]
     horizon = 20
 
 
@@ -200,13 +200,18 @@ def test_policy_om_reasonable_mdp():
     # that both are better than action 1 (which always goes to the bad state).
     assert np.all(pi[:19, 1, 2] > pi[:19, 1, 0])
     assert np.all(pi[:19, 1, 0] > pi[:19, 1, 1])
+    # check that Dt[0] matches our initial state dist
+    assert np.allclose(Dt[0], mdp.initial_state_dist)
 
-    # now compute demonstrator features
+    # now compute demonstrator features, just to show that it works
     # initial reward weights
     rmodel = LinearRewardModel(mdp.obs_dim, seed=13)
     opt = AMSGrad(rmodel, alpha_sched=1e-2)
-    final_weights, final_counts = maxent_irl(
-        mdp, opt, rmodel, D, linf_eps=1e-2)
+    final_weights, final_counts = maxent_irl(mdp,
+                                             opt,
+                                             rmodel,
+                                             D,
+                                             linf_eps=1e-2)
 
 
 @pytest.mark.parametrize("opt_class,alpha", [(SGD, 1e-2), (AMSGrad, 1e-1)])
@@ -235,8 +240,8 @@ def test_optimisers(opt_class, alpha):
     val = f(x)
     assert np.linalg.norm(grad) > 1
     assert np.abs(val) > 1
-    tf.logging.info(
-        'Initial: val=%.3f, grad=%.3f' % (val, np.linalg.norm(grad)))
+    tf.logging.info('Initial: val=%.3f, grad=%.3f' %
+                    (val, np.linalg.norm(grad)))
     for it in range(25000):
         optimiser.step(grad)
         x = optimiser.current_params
@@ -244,9 +249,8 @@ def test_optimisers(opt_class, alpha):
         # natural gradient: grad = Qinv @ x
         val = f(x)
         if 0 == (it % 50):
-            tf.logging.info(
-                'Value %.3f (grad %.3f) after %d steps' %
-                (val, np.linalg.norm(grad), it))
+            tf.logging.info('Value %.3f (grad %.3f) after %d steps' %
+                            (val, np.linalg.norm(grad), it))
         if np.linalg.norm(grad) < 1e-4:
             break
     # pretty loose because we use big step sizes

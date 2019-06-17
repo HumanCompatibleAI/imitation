@@ -21,13 +21,12 @@ def make_random_trans_mat(
     left on the internet (http://incompleteideas.net/RandomMDPs.html), and is
     therefore a legitimate way to generate MDPs."""
     out_mat = np.zeros((n_states, n_actions, n_states), dtype='float32')
-    state_array = np.arange(n_states)
-    for start_state in state_array:
+    for start_state in range(n_states):
         for action in range(n_actions):
             # uniformly sample a number of successors in [1,max_branch_factor]
             # for this action
             succs = rand_state.randint(1, max_branch_factor + 1)
-            next_states = rand_state.choice(state_array,
+            next_states = rand_state.choice(n_states,
                                             size=(succs, ),
                                             replace=False)
             # generate random vec in probability simplex
@@ -35,6 +34,19 @@ def make_random_trans_mat(
             next_vec = next_vec / np.sum(next_vec)
             out_mat[start_state, action, next_states] = next_vec
     return out_mat
+
+
+def make_random_state_dist(n_avail, n_states, rand_state=np.random):
+    """Make a random initial state distribution over n_states in which
+    n_avail<=n_states of the states are supported."""
+    assert 0 < n_avail <= n_states
+    init_dist = np.zeros((n_states, ))
+    next_states = rand_state.choice(n_states, size=(n_avail, ), replace=False)
+    avail_state_dist = rand_state.dirichlet(np.ones((n_avail, )))
+    init_dist[next_states] = avail_state_dist
+    assert np.sum(init_dist > 0) == n_avail
+    init_dist = init_dist / np.sum(init_dist)
+    return init_dist
 
 
 def make_obs_mat(
@@ -94,11 +106,13 @@ class RandomMDP(ModelBasedEnv):
             n_actions=n_actions,
             max_branch_factor=branch_factor,
             rand_state=rand_gen)
+        self._initial_state_dist = make_random_state_dist(
+            n_avail=branch_factor,
+            n_states=n_states,
+            rand_state=rand_gen)
         self._horizon = horizon
         self._reward_weights = rand_gen.randn(
             self._observation_matrix.shape[-1])
-        # TODO: should I have action-dependent rewards? If so, how do I make
-        # the reward function aware of the current action?
         self._reward_matrix = self._observation_matrix @ self._reward_weights
         assert self._reward_matrix.shape == (self.n_states, )
 
@@ -113,6 +127,10 @@ class RandomMDP(ModelBasedEnv):
     @property
     def reward_matrix(self):
         return self._reward_matrix
+
+    @property
+    def initial_state_dist(self):
+        return self._initial_state_dist
 
     @property
     def horizon(self):
@@ -228,6 +246,13 @@ class CliffWorld(ModelBasedEnv):
     @property
     def horizon(self):
         return self._horizon
+
+    @property
+    def initial_state_dist(self):
+        # always start in s0
+        rv = np.zeros((self.n_states,))
+        rv[0] = 1.0
+        return rv
 
     def draw_value_vec(self, D):
         """Use matplotlib a vector of values for each state. The vector could

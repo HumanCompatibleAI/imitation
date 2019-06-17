@@ -92,13 +92,8 @@ def mce_occupancy_measures(env, *, R=None, pi=None):
     if pi is None:
         _, _, pi = mce_partition_fh(env, R=R)
 
-    # we always start in s0, WLOG (for other distributions, just make all
-    # actions in s0 take you to random state)
-    init_states = np.zeros((n_states))
-    init_states[0] = 1
-
     D = np.zeros((horizon, n_states))
-    D[0, :] = init_states
+    D[0, :] = env.initial_state_dist
     for t in range(1, horizon):
         for a in range(n_actions):
             E = D[t - 1] * pi[t - 1, :, a]

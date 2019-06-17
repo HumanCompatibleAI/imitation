@@ -10,6 +10,7 @@ import numpy as np
 
 class ModelBasedEnv(gym.Env, abc.ABC):
     """ABC for tabular environments with known dynamics."""
+
     def __init__(self):
         self.cur_state = None
         self.n_actions_taken = None
@@ -46,7 +47,8 @@ class ModelBasedEnv(gym.Env, abc.ABC):
         return [seed]
 
     def reset(self):
-        self.cur_state = 0
+        self.cur_state = self.rand_state.choice(self.n_states,
+                                                p=self.initial_state_dist)
         self.n_actions_taken = 0
         # as in step(), we copy so that it can't be mutated in-place (updates
         # will be reflected in self.observation_matrix!)
@@ -87,15 +89,6 @@ class ModelBasedEnv(gym.Env, abc.ABC):
         """Size of observation vectors for this MDP."""
         return self.observation_matrix.shape[-1]
 
-    @property
-    def initial_state_dist(self):
-        """1D vector representing a distribution over initial states."""
-        # by default we have a deterministic distribution where we always start
-        # in s0
-        rv = np.zeros((self.n_states,))
-        rv[0] = 1.0
-        return rv
-
     # ############################### #
     # METHODS THAT MUST BE OVERRIDDEN #
     # ############################### #
@@ -124,3 +117,9 @@ class ModelBasedEnv(gym.Env, abc.ABC):
     @abc.abstractmethod
     def horizon(self):
         """Number of actions that can be taken in an episode."""
+
+    @property
+    @abc.abstractmethod
+    def initial_state_dist(self):
+        """1D vector representing a distribution over initial states."""
+        return
