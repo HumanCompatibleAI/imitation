@@ -191,24 +191,58 @@ class RewardModel(abc.ABC):
 
     @abc.abstractmethod
     def out(self, inputs):
-        """Get rewards for a batch of observations."""
+        """Get rewards for a batch of observations.
+
+        Args:
+            inputs (np.ndarray): 2D matrix of observations, with first axis
+                most likely indexing over state & second indexing over elements
+                of observations themselves.
+
+        Returns:
+            np.ndarray of rewards (just a 1D vector with one element for each
+            supplied observation)."""
 
     @abc.abstractmethod
     def grads(self, inputs):
-        """Gradients of reward with respect to a batch of input observations."""
+        """Gradients of reward with respect to a batch of input observations.
+
+        Args:
+            inputs (np.ndarray): 2D matrix of observations, like .out().
+
+        Returns:
+            np.ndarray of gradients *with respect to each input separately*.
+            e.g if the model has a W-dimensional parameter vector, and there
+            are O observation passed in, then the return value will be an O*W
+            matrix of gradients."""
 
     def out_grads(self, inputs):
-        """Combination method to do forward-prop AND back-prop (trivial for
-        linear models, maybe some cost saving for deep model)."""
+        """Combination method to do forward-prop AND back-prop. This is trivial
+        for linear models, but might provide some cost saving for deep ones.
+
+        Args:
+            inputs (np.ndarray): 2D matrix of observations, like .out().
+
+        Returns:
+            (np.ndarray, np.ndarray), where first array is equivalent to return
+            value of .out() and second array is equivalent to return value of
+            .grads()."""
         return self.out(inputs), self.grads(inputs)
 
     @abc.abstractmethod
     def set_params(self, params):
-        """Set a new parameter vector for the model (from flat Numpy array)."""
+        """Set a new parameter vector for the model (from flat Numpy array).
+
+        Args:
+            params (np.ndarray): 1D parameter vector for the model."""
 
     @abc.abstractmethod
     def get_params(self):
-        """Get current parameter vector from model (as flat Numpy array)."""
+        """Get current parameter vector from model (as flat Numpy array).
+
+        Args: empty.
+
+        Returns:
+            np.ndarray: 1D parameter vector for the model."""
 
 
 class LinearRewardModel(RewardModel):
@@ -216,7 +250,12 @@ class LinearRewardModel(RewardModel):
 
     def __init__(self, obs_dim, *, seed=None):
         """Construct linear reward model for `obs_dim`-dimensional observation
-        space. Initial values are generated from given seed (int or None)."""
+        space. Initial values are generated from given seed (int or None).
+
+        Args:
+            obs_dim (int): dimensionality of observation space.
+            seed (int or None): random seed for generating initial params. If
+                None, seed will be chosen arbitrarily."""
         if seed is not None:
             rng = np.random.RandomState(seed)
         else:
@@ -224,23 +263,18 @@ class LinearRewardModel(RewardModel):
         self._weights = rng.randn(obs_dim, )
 
     def out(self, inputs):
-        """Get rewards for a batch of observations."""
         assert inputs.shape[1:] == self._weights.shape
         return inputs @ self._weights
 
     def grads(self, inputs):
-        """Individual gradient of reward with respect to each element in a
-        batch of input observations."""
         assert inputs.shape[1:] == self._weights.shape
         return inputs
 
     def set_params(self, params):
-        """Set a new parameter vector for the model (from flat Numpy array)."""
         assert params.shape == self._weights.shape
         self._weights = params
 
     def get_params(self):
-        """Get current parameter vector from model (as flat Numpy array)."""
         return self._weights
 
 
@@ -250,7 +284,13 @@ class JaxRewardModel(RewardModel, abc.ABC):
 
     def __init__(self, obs_dim, *, seed=None):
         """Internal setup for Jax-based reward models. Initialises reward model
-        using given seed & input size (`obs_dim`)."""
+        using given seed & input size (`obs_dim`).
+
+        Args:
+            obs_dim (int): dimensionality of observation space.
+            seed (int or None): random seed for generating initial params. If
+                None, seed will be chosen arbitrarily, as in
+                LinearRewardModel."""
         # TODO: apply jax.jit() to everything in sight
         net_init, self._net_apply = self.make_stax_model()
         if seed is None:
@@ -266,7 +306,14 @@ class JaxRewardModel(RewardModel, abc.ABC):
     @abc.abstractmethod
     def make_stax_model(self):
         """Build the stax model that this thing is meant to optimise. Should
-        return (net_init, net_apply) pair, just like Stax modules."""
+        return (net_init, net_apply) pair, just like Stax modules.
+
+        Args: empty.
+
+        Returns:
+            tuple of net_init(rng, input_shape) function to initialise the
+            network, and net_apply(params, inputs) to do forward prop on the
+            network."""
 
     def _flatten(self, matrix_tups):
         """Flatten everything and concatenate it together."""
@@ -322,10 +369,15 @@ class MLPRewardModel(JaxRewardModel):
     """Simple MLP-based reward function with Jax/Stax."""
 
     def __init__(self, obs_dim, hiddens, activation='Tanh', **kwargs):
-        """Construct an MLP-based reward function with input layer dimension
-        `obs_dim`, size of hidden layers given by `hiddens` (`list[int]`), and
-        `activation` nonlinearity (can be `Tanh`, `Relu`, or `Softplus`). Extra
-        kwargs are passed to JaxRewardModel.__init__()."""
+        """Construct an MLP-based reward function.
+
+        Args:
+            obs_dim (int): dimensionality of observation space.
+            hiddens ([int]): size of hidden layers.
+            activation (str): name of activation (Tanh, Relu, Softplus
+                supported).
+            **kwargs: extra keyword arguments to be passed to
+                JaxRewardModel.__init__()."""
         assert activation in ['Tanh', 'Relu', 'Softplus'], \
             "probably can't handle activation '%s'" % activation
         self._hiddens = hiddens
@@ -337,12 +389,13 @@ class MLPRewardModel(JaxRewardModel):
         layers = []
         for h in self._hiddens:
             layers.extend([jstax.Dense(h), act])
-        layers.extend([jstax.Dense(1), StaxSqueeze()])
+        layers.extend([jstax.Dense(1), _StaxSqueeze()])
         return jstax.serial(*layers)
 
 
-def StaxSqueeze(axis=-1):
-    """Stax layer that collapses a single axis that has dimension 1."""
+def _StaxSqueeze(axis=-1):
+    """Stax layer that collapses a single axis that has dimension 1. Only used
+    in MLPRewardModel."""
 
     def init_fun(rng, input_shape):
         ax = axis

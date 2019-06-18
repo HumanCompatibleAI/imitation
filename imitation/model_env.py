@@ -12,6 +12,10 @@ class ModelBasedEnv(gym.Env, abc.ABC):
     """ABC for tabular environments with known dynamics."""
 
     def __init__(self):
+        """Initialise common attributes of all model-based environments,
+        including current state & number of actions taken so far (initial None,
+        so that error can be thrown if reset() is not called), attributes for
+        cached observation/action space, and random seed for rollouts."""
         self.cur_state = None
         self.n_actions_taken = None
         # Constructing action & observation spaces requires self.n_actions and
