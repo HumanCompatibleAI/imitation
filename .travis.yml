@@ -24,8 +24,10 @@ matrix:
   - name: "3.7 Coverage Tests"
     python: "3.7"
     script:
-      - py.test --cov-report=xml --cov=imitation --expensive imitation/
+      - py.test --cov-report=xml --cov=${VIRTUAL_ENV}/lib/python3.7/site-packages/imitation --expensive tests/
     after_success:
+      - mv .coverage .coverage.imitation
+      - coverage combine  # rewrite paths
       - codecov
 
   - name: "3.6 Unit Tests"
