@@ -43,7 +43,7 @@ def make_vec_env(env_id, n_envs=8):
     """
     # Use Monitor to support logging the episode reward and length.
     def monitored_env():
-        return Monitor(gym.make(env_id), '', allow_early_resets=True)
+        return Monitor(gym.make(env_id), None, allow_early_resets=True)
     return DummyVecEnv([monitored_env for _ in range(n_envs)])
 
 
