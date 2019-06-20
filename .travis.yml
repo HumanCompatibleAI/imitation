@@ -9,7 +9,7 @@ install:
   - pip install -r requirements.txt
   - pip install .
 script:
-  - pytest --expensive imitation/
+  - pytest --expensive tests/
 matrix:
   include:
   - name: "Linting"
