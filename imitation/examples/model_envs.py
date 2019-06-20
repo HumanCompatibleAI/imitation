@@ -8,14 +8,12 @@ from imitation.model_env import ModelBasedEnv
 def make_random_trans_mat(
         n_states,
         n_actions,
-        # maximum number of successors of an action in any
-        # state
         max_branch_factor,
-        # give an np.random.RandomState
         rand_state=np.random):
-    """Make a 'random' transition matrix, in which each action goes to at least
-    `max_branch_factor` other states from the current state, with transition
-    distribution sampled from Dirichlet(1,1,…,1).
+    """Make a 'random' transition matrix.
+
+    Each action goes to at least `max_branch_factor` other states from the
+    current state, with transition distribution sampled from Dirichlet(1,1,…,1).
 
     This roughly apes the strategy from some old Lisp code that Rich Sutton
     left on the internet (http://incompleteideas.net/RandomMDPs.html), and is
@@ -51,17 +49,23 @@ def make_random_state_dist(n_avail, n_states, rand_state=np.random):
 
 def make_obs_mat(
         n_states,
-        # should we have random observations (True) or one-hot
-        # observations (False)?
         is_random,
-        # in case is_random==True: what should dimension of
-        # observations be?
         obs_dim,
-        # can pass in an np.random.RandomState if desired
         rand_state=np.random):
-    """Make an observation matrix with a single observation for each state.
-    Observations can either be drawn from random normal distribution (holds if
-    `is_random=True`), or be unique one-hot vectors for each state."""
+    """Makes an observation matrix with a single observation for each state.
+
+    Args:
+        n_states: (int) Number of states.
+        is_random: (bool) Are observations drawn at random?
+                    If `True`, draw from random normal distribution.
+                    If `False`, are unique one-hot vectors for each state.
+        obs_dim: (int or NoneType) Must be `None` if `is_random == False`.
+                 Otherwise, this must be set to the size of the random vectors.
+        rand_state: (np.random.RandomState) Random number generator.
+
+    Returns:
+        A matrix of shape `(n_states, obs_dim if is_random else n_states)`.
+    """
     if not is_random:
         assert obs_dim is None
     if is_random:
@@ -75,8 +79,9 @@ def make_obs_mat(
 
 
 class RandomMDP(ModelBasedEnv):
-    """An simple MDP with a random transition matrix (random in the sense of
-    `make_random_trans_mat`)."""
+    """AN MDP with a random transition matrix.
+
+    Random matrix is created by `make_random_trans_mat`."""
     def __init__(self,
                  n_states,
                  n_actions,

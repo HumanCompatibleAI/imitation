@@ -85,9 +85,8 @@ def test_policy_om_random_mdp():
     assert np.all(np.isfinite(V))
     assert np.all(np.isfinite(Q))
     assert np.all(np.isfinite(pi))
+    # Check it is a probability distribution along the last axis
     assert np.all(pi >= 0)
-    # it (always?) has to take SOME actions
-    assert np.any(pi > 0)
     assert np.allclose(np.sum(pi, axis=-1), 1)
 
     Dt, D = mce_occupancy_measures(mdp, pi=pi)

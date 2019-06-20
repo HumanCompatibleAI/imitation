@@ -31,13 +31,13 @@ class ModelBasedEnv(gym.Env, abc.ABC):
 
     @property
     def action_space(self):
-        if not self._action_space:
+        if self._action_space is None:
             self._action_space = spaces.Discrete(self.n_actions)
         return self._action_space
 
     @property
     def observation_space(self):
-        if not self._observation_space:
+        if self._observation_space is None:
             self._observation_space = spaces.Box(low=float('-inf'),
                                                  high=float('inf'),
                                                  shape=(self.obs_dim, ))

@@ -19,7 +19,7 @@ import tensorflow as tf
 
 
 def mce_partition_fh(env, *, R=None):
-    """Performs the soft Bellman backup for a finite-horizon, undiscounted MDP.
+    r"""Performs the soft Bellman backup for a finite-horizon, undiscounted MDP.
 
     Calculates V^{soft}, Q^{soft}, and pi using recurrences (9.1), (9.2), and
     (9.3) from Ziebart (2010).
@@ -29,9 +29,9 @@ def mce_partition_fh(env, *, R=None):
         R (None or np.array): a reward matrix. Defaults to env.reward_matrix.
 
     Returns:
-        (V, Q, pi) corresponding to the soft values, Q-values and MCE policy.
+        (V, Q, \pi) corresponding to the soft values, Q-values and MCE policy.
         V is a 2d array, indexed V[t,s]. Q is a 3d array, indexed Q[t,s,a].
-        pi is a 3d array, indexed pi[t,s,a].
+        \pi is a 3d array, indexed \pi[t,s,a].
     """
 
     # shorthand
@@ -118,7 +118,7 @@ def mce_irl(env,
         rmodel (RewardModel): a reward function to be optimised.
         demo_state_om (np.ndarray): matrix representing state occupancy measure
             for demonstrator.
-        linf_eps (float): optimisation terminates if the $l_\infty$ distance
+        linf_eps (float): optimisation terminates if the $l_{\infty}$ distance
             between the demonstrator's state occupancy measure and the state
             occupancy measure for the current reward falls below this value.
         grad_l2_eps (float): optimisation also terminates if the $\ell_2$ norm
