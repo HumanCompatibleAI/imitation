@@ -272,3 +272,34 @@ class BasicRewardNet(RewardNet):
         no shaping.
         """
         return self.reward_output_test
+
+def dummy_function_hack_remove():
+    x = 42
+    x += 1
+    x *= 2
+    x += 1
+    x *= 2
+    x += 1
+    x *= 2
+    x += 1
+    x *= 2
+    x += 1
+    x *= 2
+    x += 1
+    x *= 2
+    x += 1
+    x *= 2
+    x += 1
+    x *= 2
+    x += 1
+    x *= 2
+    x += 1
+    x *= 2
+    x += 1
+    x *= 2
+    x += 1
+    x *= 2
+    x += 1
+    x *= 2
+    print('I was never tested! OH NO!')
+    return x
