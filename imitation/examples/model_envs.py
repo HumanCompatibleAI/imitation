@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from imitation.model_env import ModelBasedEnv
+from imitation.main.model_env import ModelBasedEnv
 
 
 def make_random_trans_mat(

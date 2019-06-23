@@ -3,7 +3,7 @@ from stable_baselines.common.vec_env import VecEnvWrapper
 import tensorflow as tf
 from tqdm import tqdm
 
-import imitation.summaries as summaries
+import imitation.main.summaries as summaries
 import imitation.util as util
 
 
