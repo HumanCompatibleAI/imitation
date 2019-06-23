@@ -28,7 +28,7 @@ matrix:
     after_success:
       - mv .coverage .coverage.imitation
       - coverage combine  # rewrite paths
-      - codecov -c -F main
+      - codecov
 
   - name: "3.6 Unit Tests"
     python: "3.6"
