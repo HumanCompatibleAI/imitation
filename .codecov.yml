@@ -1,0 +1,17 @@
+coverage:
+  status:
+    project:
+      main:
+        target: 80%
+        flags: main
+
+flags:
+  main:
+    paths:
+      - imitation/
+  examples:
+    paths:
+      - imitation/examples/
+  scripts:
+    paths:
+      - imitation/scripts/
