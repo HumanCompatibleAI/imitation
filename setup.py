@@ -15,6 +15,8 @@ setup(
         'tensorflow',
         'tqdm',
         'stable-baselines',
+        'jax',
+        'jaxlib',
     ],
     tests_require=[
         'codecov',
