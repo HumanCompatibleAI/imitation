@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-SOURCE_DIRS="imitation scripts"
+SOURCE_DIRS="imitation"
 
 RET=0
 
