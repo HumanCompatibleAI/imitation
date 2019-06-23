@@ -11,7 +11,7 @@ flags:
     # Code necessary for users of library.
     # Imitation learning algorithms, utility functions, etc.
     paths:
-      - imitation/main/
+      - imitation/
   # We also ship example code and some pre-written scripts.
   # These do not need to be scrutinized as carefully.
   examples:

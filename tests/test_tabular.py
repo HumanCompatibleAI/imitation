@@ -5,9 +5,9 @@ import numpy as np
 import pytest
 
 from imitation.examples.model_envs import RandomMDP
-from imitation.main.model_env import ModelBasedEnv
-from imitation.main.tabular_irl import (LinearRewardModel, MLPRewardModel, mce_irl,
-                                        mce_occupancy_measures, mce_partition_fh)
+from imitation.model_env import ModelBasedEnv
+from imitation.tabular_irl import (LinearRewardModel, MLPRewardModel, mce_irl,
+                                   mce_occupancy_measures, mce_partition_fh)
 
 
 def rollouts(env, n=10, seed=None):
