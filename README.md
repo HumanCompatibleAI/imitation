@@ -19,9 +19,9 @@ pip install -e .  # install `imitation` in developer mode
 To run:
 ```
 # train demos with normal AIRL
-python scripts/data_collect.py --gin_config configs/cartpole_data_collect.gin
+python -m imitation.scripts.data_collect --gin_config configs/cartpole_data_collect.gin
 # do AIRL magic to get back reward from demos
-python scripts/run_training.py --gin_config configs/cartpole_orig_airl_repro.gin
+python -m imitation.scripts.train --gin_config configs/cartpole_orig_airl_repro.gin
 ```
 
 # Contributing
