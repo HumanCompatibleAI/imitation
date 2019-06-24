@@ -30,6 +30,6 @@ docstrings can be found [here](https://sphinxcontrib-napoleon.readthedocs.io/en/
   * PEP8 guidelines and line-width=80 are enforced by `ci/code_checks.sh`, which is automatically run by Travis CI.
   * Add units tests covering any new features, or bugs that are being fixed.
   * Code coverage is automatically enforced by CodeCov.
-    The exact coverage required by CodeCov depends is a function of the current
+    The exact coverage required by CodeCov depends on the previous
     code coverage %. Files in `imitation/{examples,scripts}/` have no
     coverage requirements.
