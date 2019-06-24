@@ -1,0 +1,16 @@
+coverage:
+  status:
+    project:
+      default: false
+      main:
+        target: 80%
+        paths:
+          - "imitation/"
+          - "!imitation/examples/"
+          - "!imitation/scripts/"
+        flags: main
+      auxiliary:
+        target: 0%
+        paths:
+          - "imitation/examples/"
+          - "imitation/scripts/"

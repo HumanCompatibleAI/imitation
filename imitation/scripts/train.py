@@ -1,10 +1,9 @@
-"""
-Random experiments. As this file expands, I will probably move individual
-experiments into an scripts/ directory.
+"""Train an IRL algorithm and plot its output.
 
-These scripts are meant to be run in a Jupyter notebook (displays figures)
-but also automatically save timestamped figures to the output/ directory.
-"""
+Can be used as a CLI script, or the `train_and_plot` function can be called
+directly."""
+
+import argparse
 from collections import defaultdict
 import datetime
 import os
@@ -171,3 +170,20 @@ def _savefig_timestamp(prefix="", also_show=True):
     tf.logging.info("plot saved to {}".format(path))
     if also_show:
         plt.show()
+
+
+def main():
+    tf.logging.set_verbosity(tf.logging.INFO)
+
+    train_and_plot()
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--gin_config",
+                        default='configs/cartpole_orig_airl_repro.gin')
+    args = parser.parse_args()
+
+    gin.parse_config_file(args.gin_config)
+
+    main()
