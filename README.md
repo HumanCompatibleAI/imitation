@@ -29,4 +29,7 @@ python -m imitation.scripts.train --gin_config configs/cartpole_orig_airl_repro.
 docstrings can be found [here](https://sphinxcontrib-napoleon.readthedocs.io/en/latest/example_google.html).
   * PEP8 guidelines and line-width=80 are enforced by `ci/code_checks.sh`, which is automatically run by Travis CI.
   * Add units tests covering any new features, or bugs that are being fixed.
-  * Pull requests should pass Travis CI tests before they are merged.
+  * Code coverage is automatically enforced by CodeCov.
+    The exact coverage required by CodeCov depends is a function of the current
+    code coverage %. Files in `imitation/{examples,scripts}/` have no
+    coverage requirements.
