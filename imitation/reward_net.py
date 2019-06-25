@@ -14,10 +14,10 @@ class RewardNet(ABC):
   and initialize the network's variables.
 
   Attributes:
-      env: (gym.Env) the environment we are predicting reward for.
-      old_obs_ph: (tf.Tensor) previous observation placeholder.
-      act_ph: (tf.Tensor) action placeholder.
-      new_obs_ph: (tf.Tensor) next observation placeholder.
+    env: (gym.Env) the environment we are predicting reward for.
+    old_obs_ph: (tf.Tensor) previous observation placeholder.
+    act_ph: (tf.Tensor) action placeholder.
+    new_obs_ph: (tf.Tensor) next observation placeholder.
   """
 
   def __init__(self, env):
@@ -53,8 +53,8 @@ class RewardNet(ABC):
     ```
 
     Returns:
-        _reward_output_train: (tf.Tensor) A (None,) shaped Tensor holding
-            the training reward associated with each timestep.
+      _reward_output_train: (tf.Tensor) A (None,) shaped Tensor holding
+          the training reward associated with each timestep.
     """
     pass
 
@@ -75,8 +75,8 @@ class RewardNet(ABC):
     ```
 
     Returns:
-    _reward_output_test (Tensor): A (None,) shaped Tensor holding
-      the test reward associated with each timestep.
+      _reward_output_test: (tf.Tensor) A (None,) shaped Tensor holding
+        the test reward associated with each timestep.
     """
     return self._theta_output
 
@@ -88,15 +88,15 @@ class RewardNet(ABC):
     learning, and is the Tensor returned by `self.reward_output_test()`.
 
     Args:
-        obs_input: (tf.Tensor) The observation input. Its shape is
-            `((None,) + self.env.observation_space.shape)`.
-        act_input: (tf.Tensor) The action input. Its shape is
-            `((None,) + self.env.action_space.shape)`. The None dimension is
-            expected to be the same as None dimension from `obs_input`.
+      obs_input: (tf.Tensor) The observation input. Its shape is
+          `((None,) + self.env.observation_space.shape)`.
+      act_input: (tf.Tensor) The action input. Its shape is
+          `((None,) + self.env.action_space.shape)`. The None dimension is
+          expected to be the same as None dimension from `obs_input`.
 
     Returns:
-        theta_output: (tf.Tensor) A reward prediction for each of the
-            inputs. The shape is `(None,)`.
+      theta_output: (tf.Tensor) A reward prediction for each of the
+          inputs. The shape is `(None,)`.
     """
     pass
 
@@ -146,8 +146,8 @@ class RewardNetShaped(RewardNet):
     ```
 
     Returns:
-    _reward_output_train (Tensor): A (None,) shaped Tensor holding
-      the training reward associated with each timestep.
+      _reward_output_train: (tf.Tensor) A (None,) shaped Tensor holding
+          the training reward associated with each timestep.
     """
     return self._shaped_reward_output
 
@@ -163,17 +163,17 @@ class RewardNetShaped(RewardNet):
     rank 3 obs_input with shape `(2, None) + self.env.observation_space`.
 
     Args:
-        old_obs_input: (tf.Tensor) The old observations (corresponding to the
-            state at which the current action is made). The shape of this
-            Tensor should be `(None,) + self.env.observation_space.shape`.
-        new_obs_input: (tf.Tensor) The new observations (corresponding to
+      old_obs_input: (tf.Tensor) The old observations (corresponding to the
+          state at which the current action is made). The shape of this
+          Tensor should be `(None,) + self.env.observation_space.shape`.
+      new_obs_input: (tf.Tensor) The new observations (corresponding to
           the state that we transition to after this state-action pair.
 
     Returns:
-        old_shaping_output: (tf.Tensor) A reward shaping prediction for
-            each of the old observation inputs. Has shape `(None,)`.
-        new_shaping_output: (tf.Tensor) A reward shaping prediction for
-             each of the new observation inputs. Has shape `(None,)`
+      old_shaping_output: (tf.Tensor) A reward shaping prediction for
+          each of the old observation inputs. Has shape `(None,)`.
+      new_shaping_output: (tf.Tensor) A reward shaping prediction for
+          each of the new observation inputs. Has shape `(None,)`
     """
     pass
 
@@ -213,11 +213,11 @@ class BasicRewardNet(RewardNet):
     """Builds a simple reward network.
 
     Args:
-        env: (gym.Env or str): The environment we are predicting reward for.
-        state_only: (bool) If True, then ignore the action when predicting
-            and training the reward network phi.
-        theta_units: (List[int]) number of hidden units at each layer of
-            the feedforward theta network.
+      env: (gym.Env or str): The environment we are predicting reward for.
+      state_only: (bool) If True, then ignore the action when predicting
+          and training the reward network phi.
+      theta_units: (List[int]) number of hidden units at each layer of
+          the feedforward theta network.
     """
     self.state_only = state_only
     self.theta_units = theta_units
@@ -252,16 +252,16 @@ class BasicShapedRewardNet(RewardNetShaped):
     """Builds a simple shaped reward network.
 
     Args:
-        env: (gym.Env or str) The environment we are predicitng reward for.
-        units: (int) The number of hidden units in each of the two layers
-            of the feed forward phi network.
-        state_only: (bool) If True, then ignore the action when predicting
-            and training the reward network phi.
-        theta_units: (List[int]) number of hidden units at each layer of
-            the feedforward theta network.
-        phi_units: (List[int] number of hidden units at each layer of
-            the feedforward phi network.
-        discount_factor: (float) A number in the range [0, 1].
+      env: (gym.Env or str) The environment we are predicitng reward for.
+      units: (int) The number of hidden units in each of the two layers
+          of the feed forward phi network.
+      state_only: (bool) If True, then ignore the action when predicting
+          and training the reward network phi.
+      theta_units: (List[int]) number of hidden units at each layer of
+          the feedforward theta network.
+      phi_units: (List[int] number of hidden units at each layer of
+          the feedforward phi network.
+      discount_factor: (float) A number in the range [0, 1].
     """
     self.state_only = state_only
     self.theta_units = theta_units
