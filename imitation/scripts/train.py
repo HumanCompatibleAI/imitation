@@ -54,8 +54,9 @@ def train_and_plot(policy_dir, env='CartPole-v1',
 
   def add_plot_disc(gen_mode=False):
     """
-    gen_mode (bool): Whether the generator or the discriminator is active.
-      We use this to color the data points.
+    Arguments:
+        gen_mode (bool): Whether the generator or the discriminator is active.
+            We use this to color the data points.
     """
     if n_plots_each_per_epoch <= 0:
       return
