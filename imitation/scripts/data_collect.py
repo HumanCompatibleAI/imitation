@@ -8,9 +8,6 @@ import imitation.util as util
 
 
 def make_PPO2(env_name):
-  """
-  Hyperparameters and a vectorized environment for training a PPO2 expert.
-  """
   env = util.make_vec_env(env_name, 8)
   # Didn't look at rl-baselines-zoo for this, but these hyperparameters
   # seem ok. They aren't great though.

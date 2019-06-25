@@ -233,7 +233,8 @@ class RewardModel(abc.ABC):
     """Set a new parameter vector for the model (from flat Numpy array).
 
     Args:
-        params (np.ndarray): 1D parameter vector for the model."""
+        params (np.ndarray): 1D parameter vector for the model.
+    """
 
   @abc.abstractmethod
   def get_params(self):
@@ -242,7 +243,8 @@ class RewardModel(abc.ABC):
     Args: empty.
 
     Returns:
-        np.ndarray: 1D parameter vector for the model."""
+        np.ndarray: 1D parameter vector for the model.
+    """
 
 
 class LinearRewardModel(RewardModel):
@@ -255,7 +257,8 @@ class LinearRewardModel(RewardModel):
     Args:
         obs_dim (int): dimensionality of observation space.
         seed (int or None): random seed for generating initial params. If
-            None, seed will be chosen arbitrarily."""
+            None, seed will be chosen arbitrarily
+    """
     if seed is not None:
       rng = np.random.RandomState(seed)
     else:
@@ -280,7 +283,8 @@ class LinearRewardModel(RewardModel):
 
 class JaxRewardModel(RewardModel, abc.ABC):
   """Wrapper for arbitrary Jax-based reward models. Useful for neural
-  nets."""
+  nets.
+  """
 
   def __init__(self, obs_dim, *, seed=None):
     """Internal setup for Jax-based reward models. Initialises reward model
@@ -290,7 +294,8 @@ class JaxRewardModel(RewardModel, abc.ABC):
         obs_dim (int): dimensionality of observation space.
         seed (int or None): random seed for generating initial params. If
             None, seed will be chosen arbitrarily, as in
-            LinearRewardModel."""
+            LinearRewardModel.
+    """
     # TODO: apply jax.jit() to everything in sight
     net_init, self._net_apply = self.make_stax_model()
     if seed is None:
@@ -313,7 +318,8 @@ class JaxRewardModel(RewardModel, abc.ABC):
     Returns:
         tuple of net_init(rng, input_shape) function to initialise the
         network, and net_apply(params, inputs) to do forward prop on the
-        network."""
+        network.
+    """
 
   def _flatten(self, matrix_tups):
     """Flatten everything and concatenate it together."""
@@ -322,7 +328,8 @@ class JaxRewardModel(RewardModel, abc.ABC):
 
   def _flatten_batch(self, matrix_tups):
     """Flatten all except leading dim & concatenate results together in
-    channel dim (i.e whatever the dim after the leading dim is)."""
+    channel dim (i.e whatever the dim after the leading dim is).
+    """
     out_vecs = []
     for t in matrix_tups:
       for v in t:
@@ -377,7 +384,8 @@ class MLPRewardModel(JaxRewardModel):
         activation (str): name of activation (Tanh, Relu, Softplus
             supported).
         **kwargs: extra keyword arguments to be passed to
-            JaxRewardModel.__init__()."""
+            JaxRewardModel.__init__().
+    """
     assert activation in ['Tanh', 'Relu', 'Softplus'], \
         "probably can't handle activation '%s'" % activation
     self._hiddens = hiddens
@@ -395,7 +403,8 @@ class MLPRewardModel(JaxRewardModel):
 
 def _StaxSqueeze(axis=-1):
   """Stax layer that collapses a single axis that has dimension 1. Only used
-  in MLPRewardModel."""
+  in MLPRewardModel.
+  """
 
   def init_fun(rng, input_shape):
     ax = axis
