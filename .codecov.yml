@@ -8,7 +8,6 @@ coverage:
           - "imitation/"
           - "!imitation/examples/"
           - "!imitation/scripts/"
-        flags: main
       auxiliary:
         target: 0%
         paths:
