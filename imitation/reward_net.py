@@ -183,19 +183,42 @@ class RewardNetShaped(RewardNet):
     tf.summary.histogram("shaping_new", self._new_shaping_output)
 
 
-def _build_theta_network(state_only, hid_sizes, obs_input, obs_space,
-                         act_input, act_space):
+def build_basic_theta_network(hid_sizes, obs_space, act_space,
+                              old_obs_input, new_obs_input, act_input):
+  """Builds a reward network depending on specified observations and actions.
+
+  All specified inputs will be preprocessed and then concatenated. If all
+  inputs are specified, then it will be a :math:`R(o,a,o')` network.
+  Conversely, if `new_obs_input` and `act_input` are both set to `None`, it
+  will depend just on the current observation: :math:`R(o)`.
+
+  Arguments:
+    hid_sizes (Optional[List[int]]): Number of units at each hidden layer.
+    obs_space (gym.Space): Observation space.
+    act_space (gym.Space): Action space.
+    old_obs_input (Optional[tf.Tensor]): Previous observation.
+    new_obs_input (Optional[tf.Tensor]): Next observation.
+    act_input (tf.Tensor): Action.
+
+  Returns:
+    tf.Tensor: Predicted reward.
+
+  Raises:
+    ValueError: If all of old_obs_input, new_obs_input and act_input are None.
+  """
+  if hid_sizes is None:
+    hid_sizes = []
+
   with tf.variable_scope("theta"):
-    if hid_sizes is None:
-      hid_sizes = []
+    inputs = [(old_obs_input, obs_space),
+              (act_input, act_space),
+              (new_obs_input, obs_space)]
+    inputs = [(input, space) for input, space in inputs if input is not None]
+    if len(inputs) == 0:
+      raise ValueError("Must specify at least one input")
 
-    if state_only:
-      inputs = util.flat(obs_input)
-    else:
-      inputs = [util.flat(obs_input, obs_space.shape),
-                util.flat(act_input, act_space.shape)]
-      inputs = tf.concat(inputs, axis=1)
-
+    inputs = [util.flat(input, space.shape) for input, space in inputs]
+    inputs = tf.concat(inputs, axis=1)
     theta_output = util.apply_ff(inputs, hid_sizes=hid_sizes)
 
     return theta_output
@@ -224,14 +247,48 @@ class BasicRewardNet(RewardNet):
     super().__init__(env, **kwargs)
 
   def build_theta_network(self, obs_input, act_input):
-    return _build_theta_network(self.state_only, self.theta_units,
-                                obs_input, self.env.observation_space,
-                                act_input, self.env.action_space)
+    act_or_none = None if self.state_only else act_input
+    return build_basic_theta_network(self.theta_units,
+                                     self.env.observation_space,
+                                     self.env.action_space,
+                                     old_obs_input=obs_input,
+                                     act_input=act_or_none,
+                                     new_obs_input=None)
 
   @property
   def reward_output_train(self):
     """Training reward is the same as the test reward, since no shaping."""
     return self.reward_output_test
+
+
+def build_basic_phi_network(hid_sizes, obs_space, old_obs_input, new_obs_input):
+  """Builds a potential network depending on specified observation.
+
+  Arguments:
+    hid_sizes (Optional[List[int]]): Number of units at each hidden layer.
+    obs_space (gym.Space): Observation space.
+    old_obs_input (Optional[tf.Tensor]): Previous observation.
+    new_obs_input (Optional[tf.Tensor]): Next observation.
+
+  Returns:
+    Tuple[tf.Tensor]: potential for the old and new observations.
+  """
+  if hid_sizes is None:
+    hid_sizes = [32, 32]
+
+  with tf.variable_scope("phi", reuse=tf.AUTO_REUSE):
+    old_o = util.flat(old_obs_input, obs_space)
+    new_o = util.flat(new_obs_input, obs_space)
+
+    # Weight share, just with different inputs old_o and new_o
+    old_shaping_output = tf.identity(
+        util.apply_ff(old_o, hid_sizes=hid_sizes),
+        name="old_shaping_output")
+    new_shaping_output = tf.identity(
+        util.apply_ff(new_o, hid_sizes=hid_sizes),
+        name="new_shaping_output")
+
+  return old_shaping_output, new_shaping_output
 
 
 class BasicShapedRewardNet(RewardNetShaped):
@@ -269,25 +326,14 @@ class BasicShapedRewardNet(RewardNetShaped):
     super().__init__(env, **kwargs)
 
   def build_theta_network(self, obs_input, act_input):
-    return _build_theta_network(self.state_only, self.theta_units,
-                                obs_input, self.env.observation_space,
-                                act_input, self.env.action_space)
+    act_or_none = None if self.state_only else act_input
+    return build_basic_theta_network(self.theta_units,
+                                     self.env.observation_space,
+                                     self.env.action_space,
+                                     old_obs_input=obs_input,
+                                     act_input=act_or_none,
+                                     new_obs_input=None)
 
   def build_phi_network(self, old_obs_input, new_obs_input):
-    phi_units = self.phi_units
-    if phi_units is None:
-      phi_units = [32, 32]
-
-    with tf.variable_scope("phi", reuse=tf.AUTO_REUSE):
-      old_o = util.flat(old_obs_input, self.env.observation_space.shape)
-      new_o = util.flat(new_obs_input, self.env.observation_space.shape)
-
-      # Weight share, just with different inputs old_o and new_o
-      old_shaping_output = tf.identity(
-        util.apply_ff(old_o, hid_sizes=phi_units),
-        name="old_shaping_output")
-      new_shaping_output = tf.identity(
-        util.apply_ff(new_o, hid_sizes=phi_units),
-        name="new_shaping_output")
-
-    return old_shaping_output, new_shaping_output
+    return build_basic_phi_network(self.phi_units, self.env.observation_space,
+                                   old_obs_input, new_obs_input)
