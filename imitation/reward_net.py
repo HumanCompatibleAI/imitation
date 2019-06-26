@@ -194,11 +194,12 @@ def build_basic_theta_network(hid_sizes, obs_space, act_space,
 
   Arguments:
     hid_sizes (Optional[List[int]]): Number of units at each hidden layer.
+        Default is [], i.e. linear.
     obs_space (gym.Space): Observation space.
     act_space (gym.Space): Action space.
     old_obs_input (Optional[tf.Tensor]): Previous observation.
     new_obs_input (Optional[tf.Tensor]): Next observation.
-    act_input (tf.Tensor): Action.
+    act_input (Optional[tf.Tensor]): Action.
 
   Returns:
     tf.Tensor: Predicted reward.
@@ -266,12 +267,13 @@ def build_basic_phi_network(hid_sizes, obs_space, old_obs_input, new_obs_input):
 
   Arguments:
     hid_sizes (Optional[List[int]]): Number of units at each hidden layer.
+        Default is [32, 32].
     obs_space (gym.Space): Observation space.
     old_obs_input (Optional[tf.Tensor]): Previous observation.
     new_obs_input (Optional[tf.Tensor]): Next observation.
 
   Returns:
-    Tuple[tf.Tensor]: potential for the old and new observations.
+    Tuple[tf.Tensor, tf.Tensor]: potential for the old and new observations.
   """
   if hid_sizes is None:
     hid_sizes = [32, 32]
