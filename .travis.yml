@@ -14,7 +14,6 @@ matrix:
   include:
   - name: "Linting"
     python: "3.7"
-    before_install: []
     install:
       - pip install -r requirements.txt
       - pip install -r requirements-dev.txt
