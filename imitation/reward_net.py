@@ -277,8 +277,8 @@ def build_basic_phi_network(hid_sizes, obs_space, old_obs_input, new_obs_input):
     hid_sizes = [32, 32]
 
   with tf.variable_scope("phi", reuse=tf.AUTO_REUSE):
-    old_o = util.flat(old_obs_input, obs_space)
-    new_o = util.flat(new_obs_input, obs_space)
+    old_o = util.flat(old_obs_input, obs_space.shape)
+    new_o = util.flat(new_obs_input, obs_space.shape)
 
     # Weight share, just with different inputs old_o and new_o
     old_shaping_output = tf.identity(
