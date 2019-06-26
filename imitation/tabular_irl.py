@@ -1,11 +1,13 @@
 """Finite-horizon tabular Maximum Causal Entropy IRL.
 
-Follows the description in Brian Ziebart's PhD thesis (2010), see
-chapters 9 and 10 of:
-    http://www.cs.cmu.edu/~bziebart/publications/thesis-bziebart.pdf
+Follows the description in chapters 9 and 10 of Brian Ziebart's `PhD thesis`_.
 
 Uses NumPy-based optimizer Jax, so the code can be run without
-PyTorch/TensorFlow, and some code for simple reward models."""
+PyTorch/TensorFlow, and some code for simple reward models.
+
+.. _PhD thesis:
+    http://www.cs.cmu.edu/~bziebart/publications/thesis-bziebart.pdf
+"""
 
 import abc
 
@@ -77,10 +79,10 @@ def mce_occupancy_measures(env, *, R=None, pi=None):
           policy w.r.t reward matrix.
 
   Returns:
-      Tuple of D (ndarray) and Dt (ndarray). D is an |S|-dimensional vector
-      recording the expected number of times each state is visited. Dt is a
-      T*|S|-dimensional vector recording the probability of being in a given
-      state at a given timestep."""
+      Tuple of D (ndarray) and Dt (ndarray). D is an :math:`|S|`-dimensional
+      vector recording the expected number of times each state is visited.
+      Dt is a :math:`T*|S|`-dimensional vector recording the probability of
+      being in a given state at a given timestep."""
 
   # shorthand
   horizon = env.horizon

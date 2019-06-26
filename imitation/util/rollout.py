@@ -10,7 +10,7 @@ def generate(policy, env, *, n_timesteps=None, n_episodes=None,
   Generate old_obs-action-new_obs-reward tuples from a policy and an
   environment.
 
-  Params:
+  Args:
     policy: (stable_baselines.BaseRLModel) A stable_baselines Model, trained
         on the gym environment.
     env: (VecEnv or Env or str) The environment(s) to interact with.
@@ -136,7 +136,7 @@ def total_reward(policy, env, **kwargs):
 
   With large n_timesteps, this can be a decent metric for policy performance.
 
-  Params:
+  Args:
       policy: (stable_baselines.BaseRLModel) A stable_baselines Model,
           trained on the gym environment.
       env: (VecEnv or Env or str) The environment(s) to interact with.
@@ -158,7 +158,7 @@ def generate_multiple(policies, env, n_timesteps):
 
   Splits the desired number of timesteps evenly between all the policies given.
 
-  Params:
+  Args:
       policies: (BaseRLModel or [BaseRLModel]) A policy
           or a list of policies that will be used to generate
           obs-action-obs triples.

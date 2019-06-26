@@ -142,17 +142,16 @@ class RandomMDP(ModelBasedEnv):
 
 
 class CliffWorld(ModelBasedEnv):
-  """
-  A grid world like this:
+  """A grid world like this::
 
-     0 1 2 3 4 5 6 7 8 9
-    +-+-+-+-+-+-+-+-+-+-+  Wind:
-  0 |S|C|C|C|C|C|C|C|C|G|
-    +-+-+-+-+-+-+-+-+-+-+  ^ ^ ^
-  1 | | | | | | | | | | |  | | |
-    +-+-+-+-+-+-+-+-+-+-+
-  2 | | | | | | | | | | |  ^ ^ ^
-    +-+-+-+-+-+-+-+-+-+-+  | | |
+       0 1 2 3 4 5 6 7 8 9
+      +-+-+-+-+-+-+-+-+-+-+  Wind:
+    0 |S|C|C|C|C|C|C|C|C|G|
+      +-+-+-+-+-+-+-+-+-+-+  ^ ^ ^
+    1 | | | | | | | | | | |  | | |
+      +-+-+-+-+-+-+-+-+-+-+
+    2 | | | | | | | | | | |  ^ ^ ^
+      +-+-+-+-+-+-+-+-+-+-+  | | |
 
   Aim is to get from S to G. The G square has reward +10, the C squares
   ("cliff") have reward -10, and all other squares have reward -1. Agent can

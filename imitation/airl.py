@@ -256,7 +256,7 @@ class AIRLTrainer():
     def R(old_obs, act, new_obs):
       """Vectorized reward function.
 
-      Params:
+      Args:
           old_obs (array): The observation input. Its shape is
               `((None,) + self.env.observation_space.shape)`.
           act (array): The action input. Its shape is

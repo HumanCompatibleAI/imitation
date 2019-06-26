@@ -29,14 +29,13 @@ def train_and_plot(policy_dir, env='CartPole-v1',
                    trainer=None,
                    interactive=True,
                    ):
-  """
-  Alternate between training the generator and discriminator.
+  """Alternate between training the generator and discriminator.
 
   Every epoch:
-  - Plot discriminator loss during discriminator training steps in blue and
-  discriminator loss during generator training steps in red.
-  - Plot the performance of the generator policy versus the performance of
-    a random policy.
+    - Plot discriminator loss during discriminator training steps in blue and
+      discriminator loss during generator training steps in red.
+    - Plot the performance of the generator policy versus the performance of
+      a random policy.
   """
   if trainer is None:
     trainer = init_trainer(

@@ -1,8 +1,10 @@
 from setuptools import find_packages, setup
 
+import imitation
+
 setup(
     name='imitation',
-    version='0.1',
+    version=imitation.__version__,
     description=(
         'Implementation of modern IRL and imitation learning algorithms.'),
     author='Center for Human-Compatible AI and Google',
