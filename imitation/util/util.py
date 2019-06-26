@@ -19,7 +19,7 @@ def maybe_load_env(env_or_str, vectorize=True):
           returning, if it isn't already vectorized.
 
   Return:
-      env: (gym.Env) Either the original argument if it was an Env or an
+      env (gym.Env): Either the original argument if it was an Env or an
           instantiated gym Env if it was a string.
   """
   if isinstance(env_or_str, str):
@@ -107,9 +107,9 @@ def save_trained_policy(policy, savedir="saved_models", filename=None):
   """Saves a trained policy as a pickle file.
 
   Args:
-      policy: (BasePolicy) policy to save
-      savedir: (str) The directory to save the file to.
-      filename: (str) The the name of the pickle file. If None, then choose
+      policy (BasePolicy): policy to save
+      savedir (str): The directory to save the file to.
+      filename (str): The the name of the pickle file. If None, then choose
           a default name using the names of the policy model and the
           environment.
   """

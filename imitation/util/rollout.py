@@ -11,35 +11,35 @@ def generate(policy, env, *, n_timesteps=None, n_episodes=None,
   environment.
 
   Args:
-    policy: (stable_baselines.BaseRLModel) A stable_baselines Model, trained
+    policy (stable_baselines.BaseRLModel): A stable_baselines Model, trained
         on the gym environment.
-    env: (VecEnv or Env or str) The environment(s) to interact with.
-    n_timesteps: (int) The number of obs-action-obs-reward tuples to collect.
+    env (VecEnv or Env or str): The environment(s) to interact with.
+    n_timesteps (int): The number of obs-action-obs-reward tuples to collect.
         The `truncate_timesteps` parameter chooses whether to discard extra
         tuples.
         Set exactly one of `n_timesteps` and `n_episodes`, or this function will
         error.
-    n_episodes: (int) The number of episodes to finish before returning
+    n_episodes (int): The number of episodes to finish before returning
         collected tuples. Tuples from parallel episodes underway when the final
         episode is finished will also be returned.
         Set exactly one of `n_timesteps` and `n_episodes`, or this function will
         error.
-    truncate_timesteps: (bool) If True, then discard any tuples, ensuring that
+    truncate_timesteps (bool): If True, then discard any tuples, ensuring that
       exactly `n_timesteps` are returned. Otherwise, return every collected
       tuple.
 
   Return:
-    rollout_obs_old: (array) A numpy array with shape
+    rollout_obs_old (array): A numpy array with shape
         `[n_timesteps] + env.observation_space.shape`. The ith observation in
         this array is the observation seen with the agent chooses action
         `rollout_act[i]`.
-    rollout_act: (array) A numpy array with shape
+    rollout_act (array): A numpy array with shape
         `[n_timesteps] + env.action_space.shape`.
-    rollout_obs_new: (array) A numpy array with shape
+    rollout_obs_new (array): A numpy array with shape
         `[n_timesteps] + env.observation_space.shape`. The ith observation in
         this array is from the transition state after the agent chooses action
         `rollout_act[i]`.
-    rollout_rewards: (array) A numpy array with shape `[n_timesteps]`. The
+    rollout_rewards (array): A numpy array with shape `[n_timesteps]`. The
         reward received on the ith timestep is `rollout_rewards[i]`.
   """
   env = util.maybe_load_env(env, vectorize=True)
@@ -137,16 +137,16 @@ def total_reward(policy, env, **kwargs):
   With large n_timesteps, this can be a decent metric for policy performance.
 
   Args:
-      policy: (stable_baselines.BaseRLModel) A stable_baselines Model,
+      policy (stable_baselines.BaseRLModel): A stable_baselines Model,
           trained on the gym environment.
-      env: (VecEnv or Env or str) The environment(s) to interact with.
-      n_timesteps: (int) The number of rewards to collect.
-      n_episodes: (int) The number of episodes to finish before we stop
+      env (VecEnv or Env or str): The environment(s) to interact with.
+      n_timesteps (int): The number of rewards to collect.
+      n_episodes (int): The number of episodes to finish before we stop
           collecting rewards. Rewards from parallel episodes that are underway
           when the final episode is finished are also included in the return.
 
   Return:
-     total_reward: (int) The undiscounted reward from `n_timesteps` consecutive
+     total_reward (int): The undiscounted reward from `n_timesteps` consecutive
          actions in `env`.
   """
   _, _, _, rew = generate(policy, env, **kwargs)
@@ -159,7 +159,7 @@ def generate_multiple(policies, env, n_timesteps):
   Splits the desired number of timesteps evenly between all the policies given.
 
   Args:
-      policies: (BaseRLModel or [BaseRLModel]) A policy
+      policies (BaseRLModel or [BaseRLModel]): A policy
           or a list of policies that will be used to generate
           obs-action-obs triples.
 
@@ -167,19 +167,19 @@ def generate_multiple(policies, env, n_timesteps):
           Due to the way VecEnvs handle
           episode completion states, the last obs-state-obs triple in every
           episode is omitted. (See GitHub issue #1)
-      env: (gym.Env) The environment the policy should act in.
-      n_timesteps: (int) The number of obs-action-obs
+      env (gym.Env): The environment the policy should act in.
+      n_timesteps (int): The number of obs-action-obs
           triples to generate. If the number of policies given doesn't
           divide this number evenly, then the last policy generates
           more timesteps.
   Returns:
-      rollout_obs_old: (array) A numpy array with shape
+      rollout_obs_old (array): A numpy array with shape
           `[n_timesteps] + env.observation_space.shape`. The ith observation in
           this array is the observation seen with the agent chooses action
           `rollout_act[i]`.
-      rollout_act: (array) A numpy array with shape
+      rollout_act (array): A numpy array with shape
           `[n_timesteps] + env.action_space.shape`.
-      rollout_obs_new: (array) A numpy array with shape
+      rollout_obs_new (array): A numpy array with shape
           `[n_timesteps] + env.observation_space.shape`. The ith observation in
           this array is from the transition state after the agent chooses
           action `rollout_act[i]`.
