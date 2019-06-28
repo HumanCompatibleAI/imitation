@@ -11,10 +11,12 @@ import tensorflow as tf
 
 
 def maybe_load_env(env_or_str, vectorize=True):
-  """Maybe load and process an environment or environment id.
+  """Load an environment if it isn't already loaded. Then optionally vectorize
+  it as a DummyVecEnv, if it isn't already vectorized.
 
   Args:
-      env_or_str (str or gym.Env): The Env or its string id in Gym.
+      env_or_str (str or gym.Env): If `env_or_str` is a str, it's loaded
+          before returning.
       vectorize (bool): If True, then vectorize the environment before
           returning, if it isn't already vectorized.
 

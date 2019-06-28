@@ -53,7 +53,7 @@ class RewardNet(ABC):
     ```
 
     Returns:
-      _reward_output_train (tf.Tensor) A (None,): shaped Tensor holding
+      _reward_output_train: (tf.Tensor) A (None,) shaped Tensor holding
           the training reward associated with each timestep.
     """
     pass
@@ -75,7 +75,7 @@ class RewardNet(ABC):
     ```
 
     Returns:
-      _reward_output_test (tf.Tensor) A (None,): shaped Tensor holding
+      _reward_output_test: (tf.Tensor) A (None,) shaped Tensor holding
         the test reward associated with each timestep.
     """
     return self._theta_output
@@ -252,7 +252,7 @@ class BasicShapedRewardNet(RewardNetShaped):
     """Builds a simple shaped reward network.
 
     Args:
-      env (gym.Env or str): The environment we are predicitng reward for.
+      env (gym.Env or str): The environment we are predicting reward for.
       units (int): The number of hidden units in each of the two layers
           of the feed forward phi network.
       state_only (bool): If True, then ignore the action when predicting
