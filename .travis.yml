@@ -23,8 +23,6 @@ matrix:
 
   - name: "3.7 Coverage Tests"
     python: "3.7"
-    install:
-      - pip install flake8 isort
     script:
       - py.test --cov-report=xml --cov=${VIRTUAL_ENV}/lib/python3.7/site-packages/imitation --expensive tests/
     after_success:
