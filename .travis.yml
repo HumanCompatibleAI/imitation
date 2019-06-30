@@ -19,7 +19,7 @@ matrix:
     install:
       - pip install flake8 isort
     script:
-      - ci/code_checks.sh
+      - ci/lint.sh
 
   - name: "3.7 Coverage Tests"
     python: "3.7"
@@ -37,7 +37,7 @@ matrix:
       - pip install .
       - pip install pytype
     script:
-      - pytype imitation/ tests/
+      - ci/type_check.sh
 
   - name: "3.6 Unit Tests"
     python: "3.6"
