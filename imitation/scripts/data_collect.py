@@ -1,5 +1,6 @@
 import argparse
 
+import gin
 import gin.tf
 import stable_baselines
 import tensorflow as tf

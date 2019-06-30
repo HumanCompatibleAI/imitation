@@ -1,3 +1,4 @@
+import gin
 import gin.tf
 import pytest
 import tensorflow as tf
