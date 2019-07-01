@@ -210,4 +210,4 @@ def generate_multiple(policies, env, n_timesteps):
 
   assert len(obs_old) == len(obs_new) == len(act) == n_timesteps
 
-  return (np.array(x) for x in (obs_old, act, obs_new))
+  return tuple(np.array(x) for x in (obs_old, act, obs_new))

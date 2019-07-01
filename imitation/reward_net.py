@@ -190,7 +190,7 @@ def _build_theta_network(state_only, hid_sizes, obs_input, obs_space,
       hid_sizes = []
 
     if state_only:
-      inputs = util.flat(obs_input)
+      inputs = util.flat(obs_input, obs_space.shape)
     else:
       inputs = [util.flat(obs_input, obs_space.shape),
                 util.flat(act_input, act_space.shape)]

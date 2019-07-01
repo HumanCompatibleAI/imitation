@@ -58,7 +58,7 @@ def mce_partition_fh(env, *, R=None):
   V[horizon - 1, :] = scipy.special.logsumexp(Q[horizon - 1, :, :], axis=1)
 
   # Recursive case
-  for t in range(horizon - 1)[::-1]:
+  for t in reversed(range(horizon - 1)):
     next_values_s_a = T @ V[t + 1, :]
     Q[t, :, :] = broad_R + next_values_s_a
     V[t, :] = scipy.special.logsumexp(Q[t, :, :], axis=1)

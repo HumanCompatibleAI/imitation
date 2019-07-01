@@ -27,9 +27,10 @@ python -m imitation.scripts.train --gin_config configs/cartpole_orig_airl_repro.
 # Contributing
   * Follow the [Google Python Style Guide](http://google.github.io/styleguide/pyguide.html). Examples of Google-style
 docstrings can be found [here](https://sphinxcontrib-napoleon.readthedocs.io/en/latest/example_google.html).
-  * PEP8 guidelines with line width 80 and 2-space indents are enforced by `ci/code_checks.sh`,
-which is automatically run by Travis CI.
   * Add units tests covering any new features, or bugs that are being fixed.
+  * PEP8 guidelines with line width 80 and 2-space indents are enforced by `ci/lint.sh`,
+which is automatically run by Travis CI.
+  * Static type checking via `pytype` is automatically run in `ci/type_check.sh`.
   * Code coverage is automatically enforced by CodeCov.
     The exact coverage required by CodeCov depends on the previous
     code coverage %. Files in `imitation/{examples,scripts}/` have no

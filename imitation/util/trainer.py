@@ -5,6 +5,7 @@ Utility functions for manipulating AIRLTrainer.
 prevent cyclic imports between imitation.airl and imitation.util)
 """
 
+import gin
 import gin.tf
 import tensorflow as tf
 

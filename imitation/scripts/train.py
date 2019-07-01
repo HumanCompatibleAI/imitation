@@ -8,6 +8,7 @@ from collections import defaultdict
 import datetime
 import os
 
+import gin
 import gin.tf
 from matplotlib import pyplot as plt
 import tensorflow as tf

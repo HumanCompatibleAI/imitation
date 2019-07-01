@@ -1,6 +1,7 @@
 import glob
 import os
 
+import gin
 import gin.tf
 import gym
 import stable_baselines
