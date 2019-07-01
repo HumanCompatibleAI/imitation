@@ -5,6 +5,7 @@ Utility functions for manipulating AIRLTrainer.
 prevent cyclic imports between imitation.airl and imitation.util)
 """
 
+import gin
 import gin.tf
 import tensorflow as tf
 
@@ -22,6 +23,10 @@ def init_trainer(env_id, policy_dir, use_gail, use_random_expert=True,
 
   Args:
     env_id (str): The string id of a gym environment.
+    use_gail (bool): If True, then train using GAIL. If False, then train
+        using AIRL.
+    policy_dir (str): The directory containing the pickled experts for
+        generating rollouts. Only applicable if `use_random_expert` is True.
     use_random_expert (bool):
         If True, then use a blank (random) policy to generate rollouts.
         If False, then load an expert policy. Will crash if DNE.

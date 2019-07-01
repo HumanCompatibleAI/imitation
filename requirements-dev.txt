@@ -1,8 +1,9 @@
-# Recommended packages for development 
-ipdb
-jupyter
-flake8
-isort
+# Recommended packages for development
 autopep8
+flake8
+pytype
 sphinx
 sphinxcontrib-napoleon
+ipdb
+isort
+jupyter

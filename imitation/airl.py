@@ -142,7 +142,7 @@ class AIRLTrainer():
 
     Returns:
         discriminator_loss (float): The total cross-entropy error in the
-            discriminator's clasifications.
+            discriminator's classification.
     """
     fd = self._build_disc_feed_dict(**kwargs)
     return np.sum(self._sess.run(self.discrim.disc_loss, feed_dict=fd))
@@ -151,14 +151,14 @@ class AIRLTrainer():
     """Returns the given Env wrapped with a reward function that returns
     the AIRL training reward (discriminator confusion).
 
-    The reward network is referenced (not copied) into the Env
-    wrapper, and therefore the rewards are changed by calls to
-    AIRLTrainer.train().
+    The wrapped `Env`'s reward is directly evaluated from the reward network,
+    and therefore changes whenever `AIRLTrainer.train()` is called.
 
     Args:
         env (str, Env, or VecEnv): The Env that we want to wrap. If a
             string environment name is given or a Env is given, then we first
             convert to a VecEnv before continuing.
+    wrapped_env (VecEnv): The wrapped environment with a new reward.
     """
     env = util.maybe_load_env(env, vectorize=True)
     return _RewardVecEnvWrapper(env, self._policy_train_reward_fn)
@@ -167,9 +167,8 @@ class AIRLTrainer():
     """Returns the given Env wrapped with a reward function that returns
     the reward learned by this AIRLTrainer.
 
-    References the reward network (not copied) into the `Env`
-    wrapper, and therefore the changes the wrapped `Env`'s reward when
-    `AIRLTrainer.train()` is called.
+    The wrapped `Env`'s reward is directly evaluated from the reward network,
+    and therefore changes whenever `AIRLTrainer.train()` is called.
 
     Args:
         env (str, Env, or VecEnv): The Env that should be wrapped. If a
@@ -177,7 +176,7 @@ class AIRLTrainer():
             make a VecEnv before continuing.
 
     Returns:
-        wrapped_env (Env): The wrapped environment with a new reward.
+        wrapped_env (VecEnv): The wrapped environment with a new reward.
     """
     env = util.maybe_load_env(env, vectorize=True)
     return _RewardVecEnvWrapper(env, self._test_reward_fn)
