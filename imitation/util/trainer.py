@@ -1,5 +1,5 @@
 """
-Utilities functions for manipulating AIRLTrainer.
+Utility functions for manipulating AIRLTrainer.
 
 (The primary reason these functions are here instead of in utils.py is to
 prevent cyclic imports between imitation.airl and imitation.util)
@@ -18,15 +18,19 @@ import imitation.util as util
 @gin.configurable
 def init_trainer(env_id, policy_dir, use_gail, use_random_expert=True,
                  **kwargs):
-  """
-  Build an AIRLTrainer, ready to be trained on a vectorized environment
+  """Build an AIRLTrainer, ready to be trained on a vectorized environment
   and either expert rollout data or random rollout data.
 
-  env_id (str): The string id of a gym environment.
-  use_random_expert (bool):
-    If True, then use a blank (random) policy to generate rollouts.
-    If False, then load an expert policy. Will crash if DNE.
-  **kwargs -- Pass additional arguments to the AIRLTrainer constructor.
+  Args:
+    env_id (str): The string id of a gym environment.
+    use_gail (bool): If True, then train using GAIL. If False, then train
+        using AIRL.
+    policy_dir (str): The directory containing the pickled experts for
+        generating rollouts. Only applicable if `use_random_expert` is True.
+    use_random_expert (bool):
+        If True, then use a blank (random) policy to generate rollouts.
+        If False, then load an expert policy. Will crash if DNE.
+    **kwargs: Additional arguments For the AIRLTrainer constructor.
   """
   env = util.make_vec_env(env_id, 8)
   gen_policy = util.make_blank_policy(env, init_tensorboard=False)

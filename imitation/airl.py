@@ -11,35 +11,34 @@ class AIRLTrainer():
   def __init__(self, env, gen_policy, discrim, expert_policies, *,
                n_expert_timesteps=4000, init_tensorboard=False):
     """
-    Adversarial IRL. After training, the RewardNet will have recovered
-    the reward.
+    Adversarial IRL. After training, the RewardNet recovers the reward.
 
-    Params:
-      env (gym.Env or str) -- A gym environment to train in. AIRL will
-        modify env's step() function. Internally, we will wrap this
-        in a DummyVecEnv.
-      gen_policy (stable_baselines.BaseRLModel) --
-        The generator policy that AIRL will train to maximize discriminator
-        confusion.
-      reward_net (RewardNet) -- The reward network to train. Used to
-        discriminate generated trajectories from other trajectories, and
-        also holds the inferred reward for transfer learning.
-      expert_policies (BaseRLModel or [BaseRLModel]) -- An expert policy
-        or a list of expert policies that will be used to generate example
-        obs-action-obs triples.
+    Args:
+        env (gym.Env or str): A gym environment to train in. AIRL
+            modifies env's step() function. Internally, we will wrap this
+            in a DummyVecEnv.
+        gen_policy (stable_baselines.BaseRLModel):
+            The generator policy that AIRL trains to maximize discriminator
+            confusion.
+        reward_net (RewardNet): The reward network to train.
+            Discriminates generated trajectories from other trajectories, and
+            also holds the inferred reward for transfer learning.
+        expert_policies (BaseRLModel or [BaseRLModel]): An expert policy
+            or a list of expert policies that used to generate example
+            obs-action-obs triples.
 
-        WARNING:
-        Due to the way VecEnvs handle
-        episode completion states, the last obs-state-obs triple in every
-        episode is omitted. (See GitHub issue #1)
-      n_expert_timesteps (int) -- The number of expert obs-action-obs
-        triples to generate. If the number of expert policies given doesn't
-        divide this number evenly, then the last expert policy will generate
-        more timesteps.
-      init_tensorboard (bool) -- Make various discriminator tensorboard
-        summaries under the run name "AIRL_{date}_{runnumber}". (Generator
-        summaries appear under a different runname because they are
-        configured by initializing the stable_baselines policy).
+            WARNING:
+            Due to the way VecEnvs handle
+            episode completion states, the last obs-state-obs triple in every
+            episode is omitted. (See GitHub issue #1)
+        n_expert_timesteps (int): The number of expert obs-action-obs
+            triples that are generated. If the number of expert policies given
+            doesn't divide this number evenly, then the last expert policy
+            generates more timesteps.
+        init_tensorboard (bool): If True, makes various discriminator
+            Tensorboard summaries under the run name "AIRL_{date}_{runnumber}".
+            (Generator summaries appear under a different runname because they
+            are configured by initializing the stable_baselines policy).
     """
     self._sess = tf.Session()
 
@@ -70,27 +69,26 @@ class AIRLTrainer():
     self.env = self.wrap_env_train_reward(self.env)
 
   def train_disc(self, *, n_steps=10, **kwargs):
-    """
-    Train the discriminator to minimize classification cross-entropy.
+    """Trains the discriminator to minimize classification cross-entropy.
 
     The generator rollout parameters of the form "gen_*" are optional,
     but if one is given, then all such parameters must be filled (otherwise
-    this method will error). If none of the generator rollout parameters are
+    this method errors). If none of the generator rollout parameters are
     given, then a rollout with the same length as the expert rollout
     is generated on the fly.
 
-    Params:
-      n_steps (int) -- The number of training steps to take.
-      gen_old_obs (array) -- A numpy array with shape
-        `[n_timesteps] + env.observation_space.shape`. The ith observation
-        in this array is the observation seen when the generator chooses
-        action `gen_act[i]`.
-      gen_act (array) -- A numpy array with shape
-        `[n_timesteps] + env.action_space.shape`.
-      gen_new_obs (array) -- A numpy array with shape
-        `[n_timesteps] + env.observation_space.shape`. The ith observation
-        in this array is from the transition state after the generator
-        chooses action `gen_act[i]`.
+    Args:
+        n_steps (int): The number of training steps taken.
+        gen_old_obs (array): A numpy array with shape
+            `[n_timesteps] + env.observation_space.shape`. The ith observation
+            in this array should be the observation seen when the generator
+            chooses action `gen_act[i]`.
+        gen_act (array): A numpy array with shape
+            `[n_timesteps] + env.action_space.shape`.
+        gen_new_obs (array): A numpy array with shape
+            `[n_timesteps] + env.observation_space.shape`. The ith observation
+            in this array is from the transition state after the generator
+            chooses action `gen_act[i]`.
     """
     fd = self._build_disc_feed_dict(**kwargs)
     for _ in range(n_steps):
@@ -105,26 +103,24 @@ class AIRLTrainer():
 
   def train(self, *, n_epochs=100, n_gen_steps_per_epoch=None,
             n_disc_steps_per_epoch=None):
-    """
-    Train the discriminator and generator against each other.
+    """Trains the discriminator and generator against each other.
 
-    Params:
-      n_epochs (int) -- The number of epochs to train. Every epoch consists
-        of training the discriminator and then training the generator.
-      n_disc_steps_per_epoch (int) -- The number of steps to train the
-        discriminator every epoch. More precisely, the number of full batch
-        Adam optimizer steps to perform.
-      n_gen_steps_per_epoch (int) -- The number of steps to train the
-        generator every epoch. (ie, the number of timesteps to train in
-        `policy.learn(timesteps)`).
+    Args:
+        n_epochs (int): The number of epochs to train. Every epoch consists
+            of training the discriminator and then training the generator.
+        n_disc_steps_per_epoch (int): The number of steps to train the
+            discriminator every epoch. More precisely, the number of full batch
+            Adam optimizer steps to perform.
+        n_gen_steps_per_epoch (int): The number of generator training steps
+            during each epoch. (ie, the timesteps argument in in
+            `policy.learn(timesteps)`).
     """
     for i in tqdm(range(n_epochs), desc="AIRL train"):
       self.train_disc(**_n_steps_if_not_none(n_disc_steps_per_epoch))
       self.train_gen(**_n_steps_if_not_none(n_gen_steps_per_epoch))
 
   def eval_disc_loss(self, **kwargs):
-    """
-    Evaluate the discriminator loss.
+    """Evaluates the discriminator loss.
 
     The generator rollout parameters of the form "gen_*" are optional,
     but if one is given, then all such parameters must be filled (otherwise
@@ -132,58 +128,55 @@ class AIRLTrainer():
     given, then a rollout with the same length as the expert rollout
     is generated on the fly.
 
-    Params:
-      gen_old_obs (array) -- A numpy array with shape
-        `[n_timesteps] + env.observation_space.shape`. The ith observation
-        in this array is the observation seen when the generator chooses
-        action `gen_act[i]`.
-      gen_act (array) -- A numpy array with shape
-        `[n_timesteps] + env.action_space.shape`.
-      gen_new_obs (array) -- A numpy array with shape
-        `[n_timesteps] + env.observation_space.shape`. The ith observation
-        in this array is from the transition state after the generator
-        chooses action `gen_act[i]`.
+    Args:
+        gen_old_obs (np.ndarray): A numpy array with shape
+            `[n_timesteps] + env.observation_space.shape`. The ith observation
+            in this array is the observation seen when the generator chooses
+            action `gen_act[i]`.
+        gen_act (np.ndarray): A numpy array with shape
+            `[n_timesteps] + env.action_space.shape`.
+        gen_new_obs (np.ndarray): A numpy array with shape
+            `[n_timesteps] + env.observation_space.shape`. The ith observation
+            in this array is from the transition state after the generator
+            chooses action `gen_act[i]`.
 
-    Return:
-      discriminator_loss (type?) -- The cross-entropy error in the
-        discriminator's clasifications.
+    Returns:
+        discriminator_loss (float): The total cross-entropy error in the
+            discriminator's classification.
     """
     fd = self._build_disc_feed_dict(**kwargs)
     return np.sum(self._sess.run(self.discrim.disc_loss, feed_dict=fd))
 
   def wrap_env_train_reward(self, env):
-    """
-    Returns the given Env wrapped with a reward function that returns
+    """Returns the given Env wrapped with a reward function that returns
     the AIRL training reward (discriminator confusion).
 
-    The reward network referenced (not copied) into the Env
-    wrapper, and therefore the rewards are changed by calls to
-    AIRLTrainer.train().
+    The wrapped `Env`'s reward is directly evaluated from the reward network,
+    and therefore changes whenever `AIRLTrainer.train()` is called.
 
-    Params:
-    env (str, Env, or VecEnv) -- The Env that we want to wrap. If a
-      string environment name is given or a Env is given, then we first
-      make a VecEnv before continuing.
+    Args:
+        env (str, Env, or VecEnv): The Env that we want to wrap. If a
+            string environment name is given or a Env is given, then we first
+            convert to a VecEnv before continuing.
+    wrapped_env (VecEnv): The wrapped environment with a new reward.
     """
     env = util.maybe_load_env(env, vectorize=True)
     return _RewardVecEnvWrapper(env, self._policy_train_reward_fn)
 
   def wrap_env_test_reward(self, env):
-    """
-    Returns the given Env wrapped with a reward function that returns
+    """Returns the given Env wrapped with a reward function that returns
     the reward learned by this AIRLTrainer.
 
-    The reward network referenced (not copied) into the Env
-    wrapper, and therefore the rewards are changed by calls to
-    AIRLTrainer.train().
+    The wrapped `Env`'s reward is directly evaluated from the reward network,
+    and therefore changes whenever `AIRLTrainer.train()` is called.
 
-    Params:
-    env (str, Env, or VecEnv) -- The Env that we want to wrap. If a
-      string environment name is given or a Env is given, then we first
-      make a VecEnv before continuing.
+    Args:
+        env (str, Env, or VecEnv): The Env that should be wrapped. If a
+            string environment name is given or a Env is given, then we first
+            make a VecEnv before continuing.
 
     Returns:
-    env
+        wrapped_env (VecEnv): The wrapped environment with a new reward.
     """
     env = util.maybe_load_env(env, vectorize=True)
     return _RewardVecEnvWrapper(env, self._test_reward_fn)
@@ -207,7 +200,6 @@ class AIRLTrainer():
 
   def _build_disc_feed_dict(self, gen_old_obs=None, gen_act=None,
                             gen_new_obs=None):
-
     none_count = sum(int(x is None)
                      for x in (gen_old_obs, gen_act, gen_new_obs))
     if none_count == 3:
@@ -256,23 +248,21 @@ class AIRLTrainer():
     return fd
 
   def _build_policy_train_reward(self):
-    """
-    Sets self._policy_train_reward_fn, the reward function to use when
+    """Sets self._policy_train_reward_fn, the reward function to use when
     running a policy optimizer (e.g. PPO).
     """
 
     def R(old_obs, act, new_obs):
-      """
-      Vectorized reward function.
+      """Vectorized reward function.
 
-      Params:
-      old_obs (array): The observation input. Its shape is
-        `((None,) + self.env.observation_space.shape)`.
-      act (array): The action input. Its shape is
-        `((None,) + self.env.action_space.shape)`. The None dimension is
-        expected to be the same as None dimension from `obs_input`.
-      new_obs (array): The observation input. Its shape is
-        `((None,) + self.env.observation_space.shape)`.
+      Args:
+          old_obs (array): The observation input. Its shape is
+              `((None,) + self.env.observation_space.shape)`.
+          act (array): The action input. Its shape is
+              `((None,) + self.env.action_space.shape)`. The None dimension is
+              expected to be the same as None dimension from `obs_input`.
+          new_obs (array): The observation input. Its shape is
+              `((None,) + self.env.observation_space.shape)`.
       """
       old_obs = np.atleast_1d(old_obs)
       act = np.atleast_1d(act)
@@ -300,9 +290,7 @@ class AIRLTrainer():
     self._policy_train_reward_fn = R
 
   def _build_test_reward(self):
-    """
-    Sets self._test_reward_fn, the reward function learned by AIRL.
-    """
+    """Sets self._test_reward_fn, the reward function learned by AIRL."""
     def R(old_obs, act, new_obs):
       fd = {
           self.discrim.old_obs_ph: old_obs,
@@ -317,20 +305,19 @@ class AIRLTrainer():
 
 
 class _RewardVecEnvWrapper(VecEnvWrapper):
+
   def __init__(self, venv, reward_fn):
-    """
-    A RewardVecEnvWrapper uses a provided reward_fn to replace
-    the reward function returned by step().
+    """A RewardVecEnvWrapper uses a provided reward_fn to replace
+    the reward function returned by `step()`.
 
     Automatically resets the inner VecEnv upon initialization.
-
     A tricky part about this class keeping track of the most recent
     observation from each environment.
 
-    Params:
-      venv -- The VirtualEnv to wrap.
-      reward_fn -- A function that wraps takes in arguments
-        (old_obs, act, new_obs) and returns a vector of rewards.
+    Args:
+        venv (VecEnv): The VecEnv to wrap.
+        reward_fn (Callable): A function that wraps takes in arguments
+            (old_obs, act, new_obs) and returns a vector of rewards.
     """
     assert not isinstance(venv, _RewardVecEnvWrapper)
     super().__init__(venv)

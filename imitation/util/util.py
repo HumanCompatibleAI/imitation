@@ -12,16 +12,18 @@ import tensorflow as tf
 
 
 def maybe_load_env(env_or_str, vectorize=True):
-  """
-  Params:
-  env_or_str (str or gym.Env): The Env or its string id in Gym.
-  vectorize (bool): If True, then vectorize the environment before returning,
-    if it isn't already vectorized.
+  """Load an environment if it isn't already loaded. Then optionally vectorize
+  it as a DummyVecEnv, if it isn't already vectorized.
+
+  Args:
+      env_or_str (str or gym.Env): If `env_or_str` is a str, it's loaded
+          before returning.
+      vectorize (bool): If True, then vectorize the environment before
+          returning, if it isn't already vectorized.
 
   Return:
-  env (gym.Env) -- Either the original argument if it was an Env or an
-    instantiated gym Env if it was a string.
-  id (str) -- The environment's id.
+      env (gym.Env): Either the original argument if it was an Env or an
+          instantiated gym Env if it was a string.
   """
   if isinstance(env_or_str, str):
     env = gym.make(env_or_str)
@@ -35,12 +37,11 @@ def maybe_load_env(env_or_str, vectorize=True):
 
 
 def make_vec_env(env_id, n_envs=8):
-  """
-  Make a DummyVecEnv initialized with `n_envs` Envs.
+  """Returns a DummyVecEnv initialized with `n_envs` Envs.
 
-  Params:
-  env_id (str): The Env's string id in Gym.
-  n_envs (int): The number of duplicate environments.
+  Args:
+      env_id (str): The Env's string id in Gym.
+      n_envs (int): The number of duplicate environments.
   """
   # Use Monitor to support logging the episode reward and length.
   def monitored_env():
@@ -68,8 +69,8 @@ def get_env_id(env_or_str):
 
 
 class FeedForward32Policy(FeedForwardPolicy):
-  """
-  A feed forward gaussian policy network with two hidden layers of 32 units.
+  """A feed forward gaussian policy network with two hidden layers of 32 units.
+
   This matches the IRL policies in the original AIRL paper.
   """
 
@@ -83,18 +84,17 @@ def make_blank_policy(env, policy_class=stable_baselines.PPO2,
                       init_tensorboard=False,
                       policy_network_class=FeedForward32Policy, verbose=0,
                       **kwargs):
-  """
-  Instantiates a policy for the provided environment.
+  """Instantiates a policy for the provided environment.
 
-  Params:
-  env (str or Env): The Env or its string id in Gym.
-  policy_network_class (stable_baselines.BasePolicy): A policy network
-    constructor from the stable_baselines module.
-  policy_class (stable_baselines.BaseRLModel subclass): A policy constructor
-    from the stable_baselines module.
-  init_tensorboard (bool): If True, then initialize the policy to make
-    TensorBoard summary writes.
-  verbose (int): The verbosity level of the policy during training.
+  Args:
+      env (str or Env): The Env or its string id in Gym.
+      policy_network_class (stable_baselines.BasePolicy): A policy network
+          constructor from the stable_baselines module.
+      policy_class (stable_baselines.BaseRLModel subclass): A policy constructor
+          from the stable_baselines module.
+      init_tensorboard (bool): Whether to make TensorBoard summary writes during
+          training.
+      verbose (int): The verbosity level of the policy during training.
 
   Return:
   policy (stable_baselines.BaseRLModel)
@@ -107,14 +107,14 @@ def make_blank_policy(env, policy_class=stable_baselines.PPO2,
 
 
 def save_trained_policy(policy, savedir="saved_models", filename=None):
-  """
-  Save a trained policy as a pickle file.
+  """Saves a trained policy as a pickle file.
 
-  Params:
-  policy: (BasePolicy) policy to save
-  savedir: (str) The directory to save the file to.
-  filename: (str) The the name of the pickle file. If None, then choose
-    a default name using the names of the policy model and the environment.
+  Args:
+      policy (BasePolicy): policy to save
+      savedir (str): The directory to save the file to.
+      filename (str): The the name of the pickle file. If None, then choose
+          a default name using the names of the policy model and the
+          environment.
   """
   os.makedirs(savedir, exist_ok=True)
   path = os.path.join(savedir, filename)
@@ -123,15 +123,14 @@ def save_trained_policy(policy, savedir="saved_models", filename=None):
 
 
 def make_save_policy_callback(savedir, save_interval=1):
-  """
-  Make a policy.learn() callback that saves snapshots of the policy
+  """Makes a policy.learn() callback that saves snapshots of the policy
   to `{savedir}/{file_prefix}-{step}`, where step is the training
   step.
 
-  Params:
-  savedir (str): The directory to save in.
-  file_prefix (str): The pickle file prefix.
-  save_interval (int): The number of training timesteps in between saves.
+  Args:
+      savedir (str): The directory to save in.
+      file_prefix (str): The pickle file prefix.
+      save_interval (int): The number of training timesteps in between saves.
   """
   step = 0
 
@@ -170,22 +169,21 @@ def _get_policy_paths(env, policy_model_class, basedir, n_experts):
 def load_policy(env, basedir, policy_model_class=stable_baselines.PPO2,
                 init_tensorboard=False, policy_network_class=None, n_experts=1,
                 **kwargs):
-  """
-  Load a pickled policy and return it.
+  """Loads and returns a pickled policy.
 
-  Params:
-  env (str or Env): The Env that this policy is meant to act in, or the
-    string name of the Gym environment.
-  policy_class (stable_baselines.BaseRLModel class): A policy constructor
-    from the stable_baselines module.
-  init_tensorboard (bool): Whether to initialize Tensorboard logging for
-    this policy.
-  base_dir (str): The directory of the pickled file.
-  policy_network_class (stable_baselines.BasePolicy): A policy network
-    constructor. Unless we are using a custom BasePolicy (not builtin to
-    stable_baselines), this is automatically infered, and so we can leave
-    this argument as None.
-  **kwargs: Additional options for initializing the BaseRLModel class.
+  Args:
+      env (str or Env): The Env that this policy is meant to act in, or the
+          string name of the Gym environment.
+      policy_class (stable_baselines.BaseRLModel class): A policy constructor
+          from the stable_baselines module.
+      init_tensorboard (bool): Whether to initialize Tensorboard logging for
+          this policy.
+      base_dir (str): The directory of the pickled file.
+      policy_network_class (stable_baselines.BasePolicy): A policy network
+          constructor. Unless we are using a custom BasePolicy (not builtin to
+          stable_baselines), this is automatically infered, and so we can leave
+          this argument as None.
+      **kwargs: Additional options for initializing the BaseRLModel class.
   """
 
   paths = _get_policy_paths(env, policy_model_class, basedir, n_experts)
@@ -208,8 +206,7 @@ def load_policy(env, basedir, policy_model_class=stable_baselines.PPO2,
 
 
 def _policy_filename(policy_class, env, n="[0-9]*"):
-  """
-  Returns the .pkl filename that the policy instantiated with policy_class
+  """Returns the .pkl filename that the policy instantiated with `policy_class`
   and trained on env should be saved to.
   """
   return "{}_{}_{}.pkl".format(policy_class.__name__, get_env_id(env), n)
@@ -223,9 +220,7 @@ def _get_tb_log_dir(env, init_tensorboard):
 
 
 def apply_ff(inputs, hid_sizes):
-  """
-  Apply a feed forward network on the inputs.
-  """
+  """Applies a feed forward network on the inputs."""
   # XXX: Seems like xavier is default?
   # https://stackoverflow.com/q/37350131/1091722
   xavier = tf.contrib.layers.xavier_initializer
@@ -239,9 +234,7 @@ def apply_ff(inputs, hid_sizes):
 
 
 def build_placeholders(env, include_new_obs):
-  """
-  Returns old_obs_ph, act_ph, new_obs_ph
-  """
+  """Returns (old_obs_ph, act_ph) or (old_obs_ph, act_ph, new_obs_ph)."""
   o_shape = (None,) + env.observation_space.shape
   a_shape = (None,) + env.action_space.shape
 

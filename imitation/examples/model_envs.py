@@ -55,13 +55,13 @@ def make_obs_mat(
   """Makes an observation matrix with a single observation for each state.
 
   Args:
-      n_states: (int) Number of states.
-      is_random: (bool) Are observations drawn at random?
+      n_states (int): Number of states.
+      is_random (bool): Are observations drawn at random?
                   If `True`, draw from random normal distribution.
                   If `False`, are unique one-hot vectors for each state.
-      obs_dim: (int or NoneType) Must be `None` if `is_random == False`.
+      obs_dim (int or NoneType): Must be `None` if `is_random == False`.
                Otherwise, this must be set to the size of the random vectors.
-      rand_state: (np.random.RandomState) Random number generator.
+      rand_state (np.random.RandomState): Random number generator.
 
   Returns:
       A matrix of shape `(n_states, obs_dim if is_random else n_states)`.
@@ -142,17 +142,16 @@ class RandomMDP(ModelBasedEnv):
 
 
 class CliffWorld(ModelBasedEnv):
-  """
-  A grid world like this:
+  """A grid world like this::
 
-     0 1 2 3 4 5 6 7 8 9
-    +-+-+-+-+-+-+-+-+-+-+  Wind:
-  0 |S|C|C|C|C|C|C|C|C|G|
-    +-+-+-+-+-+-+-+-+-+-+  ^ ^ ^
-  1 | | | | | | | | | | |  | | |
-    +-+-+-+-+-+-+-+-+-+-+
-  2 | | | | | | | | | | |  ^ ^ ^
-    +-+-+-+-+-+-+-+-+-+-+  | | |
+       0 1 2 3 4 5 6 7 8 9
+      +-+-+-+-+-+-+-+-+-+-+  Wind:
+    0 |S|C|C|C|C|C|C|C|C|G|
+      +-+-+-+-+-+-+-+-+-+-+  ^ ^ ^
+    1 | | | | | | | | | | |  | | |
+      +-+-+-+-+-+-+-+-+-+-+
+    2 | | | | | | | | | | |  ^ ^ ^
+      +-+-+-+-+-+-+-+-+-+-+  | | |
 
   Aim is to get from S to G. The G square has reward +10, the C squares
   ("cliff") have reward -10, and all other squares have reward -1. Agent can
