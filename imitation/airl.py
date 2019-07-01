@@ -6,9 +6,9 @@ from stable_baselines.common.vec_env import VecEnvWrapper
 import tensorflow as tf
 from tqdm import tqdm
 
-from imitation.buffer import ReplayBuffer
 import imitation.summaries as summaries
 import imitation.util as util
+from imitation.util.buffer import ReplayBuffer
 
 
 class AIRLTrainer:

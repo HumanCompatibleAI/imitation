@@ -25,7 +25,7 @@ class Buffer:
   """An integer in `range(0, self.capacity)`.
   The index of the first row that new data should be written to."""
 
-  def __init__(self, capacity: int, sample_shape: Tuple[int], dtype):
+  def __init__(self, capacity: int, sample_shape: Tuple[int, ...], dtype):
     """Constructs a Buffer.
 
     Args:
@@ -60,19 +60,23 @@ class Buffer:
     Raises:
         ValueError: `data` is empty.
         ValueError: If `n_samples` is greater than `self.capacity`.
+        ValueError: data is the wrong shape.
     """
     if len(data) == 0:
       raise ValueError("Trying to store empty data.")
     if len(data) > self.capacity:
       raise ValueError("Not enough capacity to store data.")
+    if data.shape[1:] != self.sample_shape:
+      raise ValueError("Wrong data_shape")
 
     new_idx = self._idx + len(data)
-    if new_idx - 1 > self.capacity:
-      n_split = self.capacity - len(self)
+    if new_idx > self.capacity:
+      # import pdb; pdb.set_trace()
+      n_remain = self.capacity - self._idx
       # Need to loop around the buffer. Break into two recursive calls.
-      self.store(data[:n_split])
+      self.store(data[:n_remain])
       assert self._idx == 0
-      self.store(data[n_split:])
+      self.store(data[n_remain:])
     else:
       self._buffer[self._idx:new_idx] = data
       self._idx = (self._idx + len(data)) % self.capacity
@@ -92,7 +96,7 @@ class Buffer:
         ValueError: The buffer is empty.
     """
     if len(self) == 0:
-      raise ValueError("Requested more samples than are available.")
+      raise ValueError("Buffer is empty")
     ind = np.atleast_1d(np.random.randint(len(self), size=n_samples))
     return self._buffer[ind]
 
