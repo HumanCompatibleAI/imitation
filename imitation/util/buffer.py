@@ -90,7 +90,7 @@ class Buffer:
 
     Returns:
         samples (np.ndarray): An array with shape
-        `(n_samples) + self.sample_shape`.
+            `(n_samples) + self.sample_shape`.
 
     Raises:
         ValueError: The buffer is empty.

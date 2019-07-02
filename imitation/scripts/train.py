@@ -41,8 +41,7 @@ def train_and_plot(policy_dir, env='CartPole-v1',
     - ...
   """
   if trainer is None:
-    trainer = init_trainer(
-        env, policy_dir=policy_dir)
+    trainer = init_trainer(env, policy_dir=policy_dir)
   if trainer_hook_fn:
     trainer_hook_fn(trainer)
 

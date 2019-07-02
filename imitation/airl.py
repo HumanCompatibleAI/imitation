@@ -34,24 +34,19 @@ class AIRLTrainer:
             obs-action-obs triples.
 
             WARNING:
-            Due to the way VecEnvs handle
-            episode completion states, the last obs-state-obs triple in every
-            episode is omitted. (See GitHub issue #1)
-        n_disc_samples_per_buffer (int): The number of
-            obs-state-obs triples sampled from each replay buffer
-            (expert and generator) during
-            each step of discriminator training. This is also the number of
-            triples stored
-            in the replay buffer after each epoch of generator training.
-
-        n_expert_samples (int): The number of expert obs-action-obs
-            triples that are generated. If the number of expert policies given
+            Due to the way VecEnvs handle episode completion states, the last
+            obs-state-obs triple in every episode is omitted. (See issue #1.)
+        n_disc_samples_per_buffer (int): The number of obs-state-obs triples
+            sampled from each replay buffer (expert and generator) during each
+            step of discriminator training. This is also the number of triples
+            stored in the replay buffer after each epoch of generator training.
+        n_expert_samples (int): The number of expert obs-action-obs triples
+            that are generated. If the number of expert policies given
             doesn't divide this number evenly, then the last expert policy
             generates more timesteps.
         gen_replay_buffer_capacity (Optional[int]): The capacity of the
-            generator replay
-            buffer (the number of obs-action-obs samples from the generator
-            that can be stored).
+            generator replay buffer (the number of obs-action-obs samples from
+            the generator that can be stored).
 
             By default this is equal to `20 * n_disc_training_samples`.
         init_tensorboard (bool): If True, makes various discriminator
@@ -154,16 +149,14 @@ class AIRLTrainer:
     Args:
         gen_old_obs (np.ndarray): A numpy array with shape
             `[self.n_disc_training_samples_per_buffer] + env.observation_space.shape`.
-            The ith observation
-            in this array is the observation seen when the generator chooses
-            action `gen_act[i]`.
+            The ith observation in this array is the observation seen when the
+            generator chooses action `gen_act[i]`.
         gen_act (np.ndarray): A numpy array with shape
             `[self.n_disc_training_samples_per_buffer] + env.action_space.shape`.
         gen_new_obs (np.ndarray): A numpy array with shape
             `[self.n_disc_training_samples_per_buffer] + env.observation_space.shape`.
-            The ith observation
-            in this array is from the transition state after the generator
-            chooses action `gen_act[i]`.
+            The ith observation in this array is from the transition state after
+            the generator chooses action `gen_act[i]`.
 
     Returns:
         discriminator_loss (float): The total cross-entropy error in the
@@ -234,16 +227,14 @@ class AIRLTrainer:
     Args:
         gen_old_obs (np.ndarray): A numpy array with shape
             `[self.n_disc_training_samples_per_buffer] + env.observation_space.shape`.
-            The ith observation
-            in this array is the observation seen when the generator chooses
-            action `gen_act[i]`.
+            The ith observation in this array is the observation seen when the
+            generator chooses action `gen_act[i]`.
         gen_act (np.ndarray): A numpy array with shape
             `[self.n_disc_training_samples_per_buffer] + env.action_space.shape`.
         gen_new_obs (np.ndarray): A numpy array with shape
             `[self.n_disc_training_samples_per_buffer] + env.observation_space.shape`.
-            The ith observation
-            in this array is from the transition state after the generator
-            chooses action `gen_act[i]`.
+            The ith observation in this array is from the transition state after
+            the generator chooses action `gen_act[i]`.
     """  # noqa: E501
 
     # Sample generator training batch from replay buffers, unless provided

@@ -8,8 +8,8 @@ from imitation.util.buffer import Buffer, ReplayBuffer
 @pytest.mark.parametrize("chunk_len", [1, 2, 4, 9])
 @pytest.mark.parametrize("sample_shape", [(), (1, 2), (5, 4, 4)])
 def test_buffer(capacity, chunk_len, sample_shape):
-  """ Build a Buffer with the provided `capacity` and insert `capacity * 3`
-  samples into the buffer in chunks of shape `(insert_size,) + sample_shape`.
+  """Builds a Buffer with the provided `capacity` and insert `capacity * 3`
+  samples into the buffer in chunks of shape `(chunk_len,) + sample_shape`.
 
   We always insert the same chunk, an array containing only 66.6.
 
@@ -44,7 +44,7 @@ def test_buffer(capacity, chunk_len, sample_shape):
   (32, np.int), (True, np.bool), (32.4, np.float32)])
 def test_replay_buffer(capacity, chunk_len, obs_shape, act_shape, fill_val,
                        dtype):
-  """ Build a ReplayBuffer with the provided `capacity` and insert
+  """Builds a ReplayBuffer with the provided `capacity` and insert
   `capacity * 3` observation-action-observation samples into the buffer in
   chunks of length `chunk_len`.
 
