@@ -15,4 +15,3 @@ train_and_plot.policy_dir = "data"
 train_and_plot.n_epochs = 100
 train_and_plot.n_disc_steps_per_epoch=10
 train_and_plot.n_gen_steps_per_epoch=10000
-train_and_plot.n_expert_timesteps=4000

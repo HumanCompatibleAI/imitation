@@ -8,4 +8,3 @@ train_and_plot.policy_dir = "expert_models"
 train_and_plot.n_epochs = 500
 train_and_plot.n_disc_steps_per_epoch=100
 train_and_plot.n_gen_steps_per_epoch=100000
-train_and_plot.n_expert_timesteps=4000

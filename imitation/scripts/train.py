@@ -24,7 +24,6 @@ def train_and_plot(policy_dir, env='CartPole-v1',
                    n_plots_each_per_epoch=0,
                    n_disc_steps_per_epoch=10,
                    n_gen_steps_per_epoch=10000,
-                   n_expert_timesteps=4000,
                    n_gen_plot_episodes=0,
                    trainer_hook_fn=None,
                    trainer=None,
@@ -37,11 +36,13 @@ def train_and_plot(policy_dir, env='CartPole-v1',
       discriminator loss during generator training steps in red.
     - Plot the performance of the generator policy versus the performance of
       a random policy.
+
+  Params:
+    - ...
   """
   if trainer is None:
     trainer = init_trainer(
-        env, policy_dir=policy_dir,
-        n_expert_timesteps=n_expert_timesteps)
+        env, policy_dir=policy_dir)
   if trainer_hook_fn:
     trainer_hook_fn(trainer)
 

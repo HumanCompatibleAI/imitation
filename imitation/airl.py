@@ -70,6 +70,7 @@ class AIRLTrainer:
 
     self.env = util.maybe_load_env(env, vectorize=True)
     self.gen_policy = gen_policy
+    self.expert_policies = expert_policies
     self._n_disc_samples_per_buffer = n_disc_samples_per_buffer
 
     self._global_step = tf.train.create_global_step()
@@ -94,7 +95,7 @@ class AIRLTrainer:
     self._gen_replay_buffer = ReplayBuffer(gen_replay_buffer_capacity, self.env)
     self._exp_replay_buffer = ReplayBuffer.fromData(
       *util.rollout.generate_multiple(
-        expert_policies, self.env, n_expert_samples)[:3])
+        self.expert_policies, self.env, n_expert_samples)[:3])
     self._populate_gen_replay_buffer()
 
   def train_disc(self, *, n_steps=10, **kwargs):
