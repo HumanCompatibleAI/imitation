@@ -43,7 +43,7 @@ def generate(policy, env, *, n_timesteps=None, n_episodes=None,
         reward received on the ith timestep is `rollout_rewards[i]`.
   """
   env = util.maybe_load_env(env, vectorize=True)
-  policy.set_env(env)  # This checks that env and policy are compatbile.
+  policy.set_env(env)
   assert util.is_vec_env(env)
 
   # Validate end condition arguments and initialize end conditions.

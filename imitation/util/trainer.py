@@ -16,7 +16,7 @@ import imitation.util as util
 
 
 @gin.configurable
-def init_trainer(env_id, policy_dir, use_gail, use_random_expert=True,
+def init_trainer(env_id, policy_dir, use_gail=False, use_random_expert=True,
                  **airl_trainer_kwargs):
   """Build an AIRLTrainer, ready to be trained on a vectorized environment
   and either expert rollout data or random rollout data.

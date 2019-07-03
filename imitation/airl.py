@@ -1,3 +1,4 @@
+import collections
 from typing import Optional
 from warnings import warn
 
@@ -62,6 +63,8 @@ class AIRLTrainer:
 
     self.env = util.maybe_load_env(env, vectorize=True)
     self.gen_policy = gen_policy
+    if not isinstance(expert_policies, collections.abc.Sequence):
+        expert_policies = [expert_policies]
     self.expert_policies = expert_policies
     self._n_disc_samples_per_buffer = n_disc_samples_per_buffer
 
@@ -80,12 +83,13 @@ class AIRLTrainer:
 
     self._sess.run(tf.global_variables_initializer())
 
-    self.env = self.wrap_env_train_reward(self.env)
-    self.gen_policy.set_env(self.env)
+    self.env_wrapped_train = self.wrap_env_train_reward(self.env)
+    self.env_wrapped_test = self.wrap_env_test_reward(self.env)
 
     if gen_replay_buffer_capacity is None:
         gen_replay_buffer_capacity = 20 * self._n_disc_samples_per_buffer
-    self._gen_replay_buffer = ReplayBuffer(gen_replay_buffer_capacity, self.env)
+    self._gen_replay_buffer = ReplayBuffer(gen_replay_buffer_capacity,
+                                           self.env)
     exp_rollouts = util.rollout.generate_multiple(
         self.expert_policies, self.env, n_expert_samples)[:3]
     self._exp_replay_buffer = ReplayBuffer.from_data(*exp_rollouts)
@@ -108,7 +112,7 @@ class AIRLTrainer:
         self._summarize(fd, step)
 
   def train_gen(self, n_steps=10000):
-    self.gen_policy.set_env(self.env)
+    self.gen_policy.set_env(self.env_wrapped_train)
     self.gen_policy.learn(n_steps)
     self._populate_gen_replay_buffer()
 
