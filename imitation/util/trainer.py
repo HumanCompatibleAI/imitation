@@ -7,6 +7,7 @@ prevent cyclic imports between imitation.airl and imitation.util)
 
 import gin
 import gin.tf
+import stable_baselines
 import tensorflow as tf
 
 from imitation.airl import AIRLTrainer
@@ -33,7 +34,12 @@ def init_trainer(env_id, policy_dir, use_gail, use_random_expert=True,
     **kwargs: Additional arguments For the AIRLTrainer constructor.
   """
   env = util.make_vec_env(env_id, 8)
-  gen_policy = util.make_blank_policy(env, init_tensorboard=False)
+  gen_policy = stable_baselines.PPO2(util.FeedForward32Policy, env,
+                                     verbose=1, tensorboard_log="output/",
+                                     learning_rate=3e-3,
+                                     nminibatches=32,
+                                     noptepochs=10,
+                                     n_steps=2048)
   tf.logging.info("use_random_expert %s", use_random_expert)
   if use_random_expert:
     expert_policy = gen_policy
@@ -45,7 +51,7 @@ def init_trainer(env_id, policy_dir, use_gail, use_random_expert=True,
   if use_gail:
     discrim = discrim_net.DiscrimNetGAIL(env)
   else:
-    rn = BasicShapedRewardNet(env)
+    rn = BasicShapedRewardNet(env, theta_units=[32, 32])
     discrim = discrim_net.DiscrimNetAIRL(rn)
 
   trainer = AIRLTrainer(env, gen_policy, discrim,

@@ -66,6 +66,7 @@ class AIRLTrainer():
 
     self._sess.run(tf.global_variables_initializer())
 
+    # TODO(adam): make this wrapping configurable for debugging purposes
     self.env = self.wrap_env_train_reward(self.env)
 
   def train_disc(self, *, n_steps=10, **kwargs):
