@@ -65,16 +65,25 @@ class DiscrimNetAIRL(DiscrimNet):
 
   def build_disc_loss(self):
     super().build_disc_loss()
-    # Holds the generator-policy log action probabilities of every
-    # state-action pair that the discriminator is being trained on.
+
+    # The AIRL discriminator is of the form:
+    # \[D_{\theta} = \frac{\exp(f_{\theta}(s,a)}
+    #                     {\exp(f_{\theta}(s,a) + \pi(a \mid s)}\],
+    # where $f_{\theta}$ is the reward network, and $\pi(a \mid s)$ is the
+    # generator-policy action probability. It is trained with the
+    # cross-entropy loss between expert demonstrations and generated samples.
+
+    # This placeholder holds the generator-policy log action probabilities,
+    # $\log \pi(a \mid s)$, of each state-action pair. This includes both
+    # actions taken by the generator *and* those by the expert (we can
+    # ask our policy for action probabilities even if we don't take them).
     self.log_policy_act_prob_ph = tf.placeholder(
         shape=(None,), dtype=tf.float32, name="log_ro_act_prob_ph")
 
-    # Construct discriminator logits by stacking predicted rewards
-    # and log action probabilities.
+    # Construct discriminator logits: $f_{\theta}(s,a)$, predicted rewards,
+    # and $\log \pi(a \mid s)$, generator-policy log action probabilities.
     self._presoftmax_disc_logits = tf.stack(
-        [self.reward_net.reward_output_train,
-         self.log_policy_act_prob_ph],
+        [self.reward_net.reward_output_train, self.log_policy_act_prob_ph],
         axis=1, name="presoftmax_discriminator_logits")  # (None, 2)
 
     # Construct discriminator loss.
@@ -93,11 +102,13 @@ class DiscrimNetAIRL(DiscrimNet):
     Sets self._policy_train_reward_fn, the reward function to use when
     running a policy optimizer (e.g. PPO).
     """
-    # Construct generator reward.
-    self._log_softmax_logits = tf.nn.log_softmax(
-        self._presoftmax_disc_logits)
-    self._log_D, self._log_D_compl = tf.split(
-        self._log_softmax_logits, [1, 1], axis=1)
+    # Construct generator reward:
+    # \[\hat{r}(s,a) = \log(D_{\theta}(s,a)) - \log(1 - D_{\theta}(s,a)).\]
+    # This simplifies to:
+    # \[\hat{r}(s,a) = f_{\theta}(s,a) - \log \pi(a \mid s).\]
+    # This is just an entropy-regularized objective.
+    self._log_D = tf.nn.log_softmax(self.reward_net.reward_output_train)
+    self._log_D_compl = tf.nn.log_softmax(self.log_policy_act_prob_ph)
     return self._log_D - self._log_D_compl
 
 

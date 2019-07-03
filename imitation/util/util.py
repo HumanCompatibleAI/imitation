@@ -100,7 +100,6 @@ def make_blank_policy(env, policy_class=stable_baselines.PPO2,
   policy (stable_baselines.BaseRLModel)
   """
   env = maybe_load_env(env)
-  tf.logging.info("kwargs %s", kwargs)
   return policy_class(policy_network_class, env, verbose=verbose,
                       tensorboard_log=_get_tb_log_dir(env, init_tensorboard),
                       **kwargs)
