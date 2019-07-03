@@ -17,7 +17,7 @@ import imitation.util as util
 
 @gin.configurable
 def init_trainer(env_id, policy_dir, use_gail, use_random_expert=True,
-                 **kwargs):
+                 **airl_trainer_kwargs):
   """Build an AIRLTrainer, ready to be trained on a vectorized environment
   and either expert rollout data or random rollout data.
 
@@ -30,7 +30,7 @@ def init_trainer(env_id, policy_dir, use_gail, use_random_expert=True,
     use_random_expert (bool):
         If True, then use a blank (random) policy to generate rollouts.
         If False, then load an expert policy. Will crash if DNE.
-    **kwargs: Additional arguments For the AIRLTrainer constructor.
+    **airl_trainer_kwargs: Additional arguments For the AIRLTrainer constructor.
   """
   env = util.make_vec_env(env_id, 8)
   gen_policy = util.make_blank_policy(env, init_tensorboard=False)
@@ -49,5 +49,5 @@ def init_trainer(env_id, policy_dir, use_gail, use_random_expert=True,
     discrim = discrim_net.DiscrimNetAIRL(rn)
 
   trainer = AIRLTrainer(env, gen_policy, discrim,
-                        expert_policies=expert_policy, **kwargs)
+                        expert_policies=expert_policy, **airl_trainer_kwargs)
   return trainer

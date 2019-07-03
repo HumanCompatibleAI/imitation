@@ -35,8 +35,8 @@ class AIRLTrainer:
 
             WARNING:
             Due to the way VecEnvs handle episode completion states, the last
-            obs-state-obs triple in every episode is omitted. (See issue #1.)
-        n_disc_samples_per_buffer (int): The number of obs-state-obs triples
+            obs-act-obs triple in every episode is omitted. (See issue #1.)
+        n_disc_samples_per_buffer (int): The number of obs-act-obs triples
             sampled from each replay buffer (expert and generator) during each
             step of discriminator training. This is also the number of triples
             stored in the replay buffer after each epoch of generator training.
@@ -53,9 +53,6 @@ class AIRLTrainer:
             Tensorboard summaries under the run name "AIRL_{date}_{runnumber}".
             (Generator summaries appear under a different runname because they
             are configured by initializing the stable_baselines policy).
-
-    Raises:
-        ValueError: n_disc_samples_per_buffer > n_expert_samples
     """
     if n_disc_samples_per_buffer > n_expert_samples:
       warn("The discriminator batch size is larger than the number of "
@@ -86,18 +83,22 @@ class AIRLTrainer:
     self.env = self.wrap_env_train_reward(self.env)
     self.gen_policy.set_env(self.env)
 
-    gen_replay_buffer_capacity = 20 * self._n_disc_samples_per_buffer
+    if gen_replay_buffer_capacity is None:
+        gen_replay_buffer_capacity = 20 * self._n_disc_samples_per_buffer
     self._gen_replay_buffer = ReplayBuffer(gen_replay_buffer_capacity, self.env)
-    self._exp_replay_buffer = ReplayBuffer.from_data(
-      *util.rollout.generate_multiple(
-        self.expert_policies, self.env, n_expert_samples)[:3])
+    exp_rollouts = util.rollout.generate_multiple(
+        self.expert_policies, self.env, n_expert_samples)[:3]
+    self._exp_replay_buffer = ReplayBuffer.from_data(*exp_rollouts)
     self._populate_gen_replay_buffer()
 
   def train_disc(self, *, n_steps=10, **kwargs):
     """Trains the discriminator to minimize classification cross-entropy.
 
     Args:
-        n_steps (int): The number of training steps taken.
+        n_steps (int): The number of training steps.
+        gen_old_obs (np.ndarray): See `_build_disc_feed_dict`.
+        gen_act (np.ndarray): See `_build_disc_feed_dict`.
+        gen_new_obs (np.ndarray): See `_build_disc_feed_dict .
     """
     for _ in range(n_steps):
       fd = self._build_disc_feed_dict(**kwargs)
@@ -112,12 +113,16 @@ class AIRLTrainer:
     self._populate_gen_replay_buffer()
 
   def _populate_gen_replay_buffer(self) -> None:
-    """Generate and store `self._n_disc_sample_per_buffer` new generator
-    samples in the buffer.
+    """Generate and store generator samples in the buffer.
+
+    More specifically, rolls out generator-policy trajectories in the
+    environment until `self._n_disc_sample_per_buffer` obs-act-obs samples are
+    produced, and then stores these samples.
     """
-    self._gen_replay_buffer.store(*util.rollout.generate(
+    gen_rollouts = util.rollout.generate(
         self.gen_policy, self.env,
-        n_timesteps=self._n_disc_samples_per_buffer)[:3])
+        n_timesteps=self._n_disc_samples_per_buffer)[:3]
+    self._gen_replay_buffer.store(*gen_rollouts)
 
   def train(self, *, n_epochs=100, n_gen_steps_per_epoch=None,
             n_disc_steps_per_epoch=None):
@@ -147,16 +152,9 @@ class AIRLTrainer:
     is generated on the fly.
 
     Args:
-        gen_old_obs (np.ndarray): A numpy array with shape
-            `[self.n_disc_training_samples_per_buffer] + env.observation_space.shape`.
-            The ith observation in this array is the observation seen when the
-            generator chooses action `gen_act[i]`.
-        gen_act (np.ndarray): A numpy array with shape
-            `[self.n_disc_training_samples_per_buffer] + env.action_space.shape`.
-        gen_new_obs (np.ndarray): A numpy array with shape
-            `[self.n_disc_training_samples_per_buffer] + env.observation_space.shape`.
-            The ith observation in this array is from the transition state after
-            the generator chooses action `gen_act[i]`.
+        gen_old_obs (np.ndarray): See `_build_disc_feed_dict`.
+        gen_act (np.ndarray): See `_build_disc_feed_dict`.
+        gen_new_obs (np.ndarray): See `_build_disc_feed_dict .
 
     Returns:
         discriminator_loss (float): The total cross-entropy error in the
