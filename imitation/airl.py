@@ -207,8 +207,9 @@ class AIRLTrainer():
                        "parameters were "
                        "provided, so we are generating them now.")
       n_timesteps = len(self.expert_old_obs)
-      (gen_old_obs, gen_act, gen_new_obs, _) = util.rollout.generate(
-          self.gen_policy, self.env, n_timesteps=n_timesteps)
+      (gen_old_obs, gen_act, gen_new_obs, _) \
+          = util.rollout.flatten_trajectories(util.rollout.generate(
+              self.gen_policy, self.env, n_timesteps=n_timesteps))
     elif none_count != 0:
       raise ValueError("Gave some but not all of the generator params.")
 
