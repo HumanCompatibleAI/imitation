@@ -109,8 +109,9 @@ class DiscrimNetAIRL(DiscrimNet):
     # This is just an entropy-regularized objective.
     self._log_D = tf.nn.log_softmax(self.reward_net.reward_output_train)
     self._log_D_compl = tf.nn.log_softmax(self.log_policy_act_prob_ph)
-    # TODO(adam): Justin's AIRL uses 0.1 (entropy_weight) coef for _log_D_compl
-    return self._log_D - 0.1 * self._log_D_compl
+    # TODO(adam): make entropy weight on self._log_D_compl configurable
+    # Justin's AIRL uses 0.1 entropy weight, supposedly works better
+    return self._log_D - self._log_D_compl
 
 
 class DiscrimNetGAIL(DiscrimNet):
