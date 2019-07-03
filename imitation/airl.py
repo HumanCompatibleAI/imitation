@@ -91,7 +91,7 @@ class AIRLTrainer:
     self._exp_replay_buffer = ReplayBuffer.from_data(*exp_rollouts)
     self._populate_gen_replay_buffer()
 
-  def train_disc(self, n_steps=10, *, **kwargs):
+  def train_disc(self, n_steps=10, **kwargs):
     """Trains the discriminator to minimize classification cross-entropy.
 
     Args:
