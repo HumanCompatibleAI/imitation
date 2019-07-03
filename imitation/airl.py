@@ -88,7 +88,7 @@ class AIRLTrainer:
 
     gen_replay_buffer_capacity = 20 * self._n_disc_samples_per_buffer
     self._gen_replay_buffer = ReplayBuffer(gen_replay_buffer_capacity, self.env)
-    self._exp_replay_buffer = ReplayBuffer.fromData(
+    self._exp_replay_buffer = ReplayBuffer.from_data(
       *util.rollout.generate_multiple(
         self.expert_policies, self.env, n_expert_samples)[:3])
     self._populate_gen_replay_buffer()

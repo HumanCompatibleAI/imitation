@@ -4,26 +4,32 @@ import numpy as np
 
 
 class Buffer:
-  """A buffer that stores numpy arrays of fixed shape, and from which these
-  arrays can be arbitrarily sampled."""
+  """A FIFO ring buffer for numpy arrays of a fixed shape and dtype.
+
+  Supports random sampling with replacement.
+  """
 
   capacity: int
   """The number of data samples that can be stored in this buffer."""
 
-  sample_shape: Tuple[int]
+  sample_shape: Tuple[int, ...]
   """The shape of each data sample stored in this buffer."""
 
   _buffer: np.ndarray
   """The underlying numpy array (which actually stores the data)."""
 
   _n_data: int
-  """An integer in `range(0, self.capacity + 1)`. The number of
-  samples currently stored in this buffer. This attribute is the return
-  value of `self.__len__`."""
+  """The number of samples currently stored in this buffer.
+
+  An integer in `range(0, self.capacity + 1)`. This attribute is the return
+  value of `self.__len__`.
+  """
 
   _idx: int
-  """An integer in `range(0, self.capacity)`.
-  The index of the first row that new data should be written to."""
+  """The index of the first row that new data should be written to.
+
+  An integer in `range(0, self.capacity)`.
+  """
 
   def __init__(self, capacity: int, sample_shape: Tuple[int, ...], dtype):
     """Constructs a Buffer.
@@ -40,7 +46,7 @@ class Buffer:
     self._idx = 0
 
   @classmethod
-  def fromData(cls, data: np.ndarray) -> "Buffer":
+  def from_data(cls, data: np.ndarray) -> "Buffer":
     """Construct and return a Buffer containing only the provided data.
 
     The returned ReplayBuffer is at full capacity and ready for sampling.
@@ -71,19 +77,36 @@ class Buffer:
 
     new_idx = self._idx + len(data)
     if new_idx > self.capacity:
-      # import pdb; pdb.set_trace()
       n_remain = self.capacity - self._idx
-      # Need to loop around the buffer. Break into two recursive calls.
-      self.store(data[:n_remain])
+      # Need to loop around the buffer. Break into two "easy" calls.
+      self._store_easy(data[:n_remain])
       assert self._idx == 0
       self.store(data[n_remain:])
     else:
-      self._buffer[self._idx:new_idx] = data
-      self._idx = (self._idx + len(data)) % self.capacity
-      self._n_data = min(self._n_data + len(data), self.capacity)
+      self._store_easy(data)
+
+  def _store_easy(self, data: np.ndarray) -> None:
+    """Store new data samples in buffer, replacing old samples with FIFO
+    priority.
+
+    Requires that `len(data) <= self.capacity - self._idx`. Updates `self._idx`
+    to be the insertion point of the next call to `_store_easy` call,
+    looping back to `self._idx = 0` if necessary.
+
+    Also updates `self._n_data`.
+
+    Args:
+        data: Same as in `self.store`'s docstring, except with the additional
+            constraint `len(data) <= self.capacity - self._idx`.
+    """
+    assert len(data) <= self.capacity - self._idx
+    idx_hi = self._idx + len(data)
+    self._buffer[self._idx:idx_hi] = data
+    self._idx = idx_hi % self.capacity
+    self._n_data = min(self._n_data + len(data), self.capacity)
 
   def sample(self, n_samples: int) -> np.ndarray:
-    """Uniformly sample `n_samples` samples from the buffer without replacement.
+    """Uniformly sample `n_samples` samples from the buffer with replacement.
 
     Args:
         n_samples: The number of samples to randomly sample.
@@ -97,7 +120,7 @@ class Buffer:
     """
     if len(self) == 0:
       raise ValueError("Buffer is empty")
-    ind = np.atleast_1d(np.random.randint(len(self), size=n_samples))
+    ind = np.random.randint(len(self), size=n_samples)
     return self._buffer[ind]
 
   def __len__(self) -> int:
@@ -123,7 +146,7 @@ class ReplayBuffer:
     Args:
         env (Optional[gym.Env]): The environment whose action and observation
             spaces can be used to determine the data shapes of the underlying
-            buffers. Overrides the `obs_shape` and `act_shape` arguments.
+            buffers. Overrides all the following arguments.
         obs_shape (Optional[Tuple[int, ...]]): The shape of the observation
             space.
         act_shape (Optional[Tuple[int, ...]]): The shape of the action
@@ -139,9 +162,12 @@ class ReplayBuffer:
       act_shape = tuple(env.action_space.shape)
       obs_dtype = env.observation_space.dtype
       act_dtype = env.action_space.dtype
-    if obs_shape is None or act_shape is None:
-      raise ValueError("Couldn't infer both the observation and action shapes "
-                       "from the arguments.")
+
+    arg_none_count = sum(x is None
+                         for x in (obs_shape, act_shape, obs_dtype, act_dtype))
+    if arg_none_count != 0:
+      raise ValueError("Couldn't infer all the shapes and dtypes from the "
+                       "arguments.")
 
     self.capacity = capacity
     self._old_obs_buffer = Buffer(capacity, obs_shape, obs_dtype)
@@ -149,8 +175,8 @@ class ReplayBuffer:
     self._new_obs_buffer = Buffer(capacity, obs_shape, obs_dtype)
 
   @classmethod
-  def fromData(cls, old_obs: np.ndarray, act: np.ndarray, new_obs: np.ndarray
-               ) -> "ReplayBuffer":
+  def from_data(cls, old_obs: np.ndarray, act: np.ndarray, new_obs: np.ndarray
+                ) -> "ReplayBuffer":
     """Construct and return a ReplayBuffer containing only the provided data.
 
     The returned ReplayBuffer is at full capacity and ready for sampling.
@@ -160,7 +186,7 @@ class ReplayBuffer:
       act: Actions.
       new_obs: New observations.
     Returns:
-      (ReplayBuffer): A new ReplayBuffer.
+      A new ReplayBuffer.
     Raises:
       ValueError: The arguments didn't have the same length.
       ValueError: old_obs and new_obs have a different dtype.
@@ -206,8 +232,9 @@ class ReplayBuffer:
     self._old_obs_buffer.store(old_obs)
     self._act_buffer.store(act)
     self._new_obs_buffer.store(new_obs)
-    assert len(self._old_obs_buffer) == len(self._act_buffer) \
-        == len(self._new_obs_buffer)
+    assert (len(self._old_obs_buffer)
+            == len(self._act_buffer)
+            == len(self._new_obs_buffer))
 
   def __len__(self):
     return len(self._old_obs_buffer)
