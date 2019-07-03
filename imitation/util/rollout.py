@@ -1,18 +1,49 @@
+import functools
+
+import gym
 import numpy as np
 import tensorflow as tf
+
+from stable_baselines.common import BaseRLModel
 
 from . import util  # Relative import needed to prevent cycle with __init__.py
 
 
-def generate(policy, env, *, n_timesteps=None, n_episodes=None,
+def get_action_policy(policy, observation, deterministic=False):
+  """Get an action from a Stable Baselines policy, while accounting for
+  clipping and vectorised environments. This code was adapted from Stable
+  Baselines' BaseRLModel.predict()."""
+  observation = np.array(observation)
+  vectorized_env = BaseRLModel._is_vectorized_observation(observation,
+                                                          policy.ob_space)
+
+  observation = observation.reshape((-1, ) + policy.ob_space.shape)
+  actions, _, states, _ = policy.step(observation, deterministic=deterministic)
+
+  clipped_actions = actions
+  if isinstance(policy.ac_space, gym.spaces.Box):
+    clipped_actions = np.clip(actions, policy.ac_space.low,
+                              policy.ac_space.high)
+
+  if not vectorized_env:
+    clipped_actions = clipped_actions[0]
+
+  return clipped_actions, states
+
+
+def generate(policy,
+             env,
+             *,
+             n_timesteps=None,
+             n_episodes=None,
              truncate_timesteps=False):
   """
   Generate old_obs-action-new_obs-reward tuples from a policy and an
   environment.
 
   Args:
-    policy (stable_baselines.BaseRLModel): A stable_baselines Model, trained
-        on the gym environment.
+    policy (BasePolicy or BaseRLModel): A stable_baselines policy or RLModel,
+        trained on the gym environment.
     env (VecEnv or Env or str): The environment(s) to interact with.
     n_timesteps (int): The number of obs-action-obs-reward tuples to collect.
         The `truncate_timesteps` parameter chooses whether to discard extra
@@ -43,8 +74,13 @@ def generate(policy, env, *, n_timesteps=None, n_episodes=None,
         reward received on the ith timestep is `rollout_rewards[i]`.
   """
   env = util.maybe_load_env(env, vectorize=True)
-  policy.set_env(env)  # This checks that env and policy are compatbile.
   assert util.is_vec_env(env)
+
+  if isinstance(policy, BaseRLModel):
+    get_action = policy.predict
+    policy.set_env(env)  # This checks that env and policy are compatbile.
+  else:
+    get_action = functools.partial(get_action_policy, policy)
 
   # Validate end condition arguments and initialize end conditions.
   if n_timesteps is not None and n_episodes is not None:
@@ -73,35 +109,31 @@ def generate(policy, env, *, n_timesteps=None, n_episodes=None,
   rollout_act = []
   rollout_obs_new = []
   rollout_rew = []
-  obs = env.reset()
+  obs_batch = env.reset()
   while not rollout_done():
-    obs_old = obs
-    act, _ = policy.predict(obs_old)
-    obs, rew, done, _ = env.step(act)
+    obs_old_batch = obs_batch
+    act_batch, _ = get_action(obs_old_batch)
+    obs_batch, rew_batch, done_batch, _ = env.step(act_batch)
 
     # Track episode count.
     if end_cond == "episodes":
-      episodes_elapsed += np.sum(done)
+      episodes_elapsed += np.sum(done_batch)
 
     # Don't save tuples if there is a done. The new_obs for any environment
     # is incorrect for any timestep where there is an episode end.
     # (See GH Issue #1).
-    # XXX: A more efficient alternative could save the outputs from
-    # environments that aren't done in this timestep. Right now we discard
-    # every output in the timestep.
-    if np.any(done):
-      tf.logging.debug("Skipping rollout append due to done.")
-      continue
-
-    # Current state.
-    rollout_obs_old.extend(obs_old)
-
-    # Current action.
-    rollout_act.extend(act)
-
-    # Transition state and rewards.
-    rollout_obs_new.extend(obs)
-    rollout_rew.extend(rew)
+    for obs_old, act, obs, rew, done in zip(obs_old_batch, act_batch,
+                                            obs_batch, rew_batch, done_batch):
+      if done:
+        continue
+      # Current state.
+      rollout_obs_old.append(obs_old)
+      # Current action.
+      rollout_act.append(act)
+      # Next state.
+      rollout_obs_new.append(obs)
+      # Transition state and rewards.
+      rollout_rew.append(rew)
 
   # Convert results to numpy arrays. (Possibly truncate).
   rollout_obs_new = np.atleast_1d(rollout_obs_new)
@@ -120,12 +152,12 @@ def generate(policy, env, *, n_timesteps=None, n_episodes=None,
     n_steps = len(rollout_obs_new)
 
   # Sanity checks.
-  exp_obs = (n_steps,) + env.observation_space.shape
-  exp_act = (n_steps,) + env.action_space.shape
+  exp_obs = (n_steps, ) + env.observation_space.shape
+  exp_act = (n_steps, ) + env.action_space.shape
   assert rollout_obs_new.shape == exp_obs
   assert rollout_obs_old.shape == exp_obs
   assert rollout_act.shape == exp_act
-  assert rollout_rew.shape == (n_steps,)
+  assert rollout_rew.shape == (n_steps, )
 
   return rollout_obs_old, rollout_act, rollout_obs_new, rollout_rew
 
@@ -137,7 +169,7 @@ def total_reward(policy, env, **kwargs):
   With large n_timesteps, this can be a decent metric for policy performance.
 
   Args:
-      policy (stable_baselines.BaseRLModel): A stable_baselines Model,
+      policy (stable_baselines.BasePolicy): A stable_baselines Model,
           trained on the gym environment.
       env (VecEnv or Env or str): The environment(s) to interact with.
       n_timesteps (int): The number of rewards to collect.
@@ -149,6 +181,9 @@ def total_reward(policy, env, **kwargs):
      total_reward (int): The undiscounted reward from `n_timesteps` consecutive
          actions in `env`.
   """
+  # FIXME: policies should not be evaluated like this! Result will be
+  # meaningless in episodic environments. Replace with mean episode return
+  # instead.
   _, _, _, rew = generate(policy, env, **kwargs)
   return np.sum(rew)
 
@@ -159,7 +194,7 @@ def generate_multiple(policies, env, n_timesteps):
   Splits the desired number of timesteps evenly between all the policies given.
 
   Args:
-      policies (BaseRLModel or [BaseRLModel]): A policy
+      policies (BasePolicy or [BasePolicy]): A policy
           or a list of policies that will be used to generate
           obs-action-obs triples.
 

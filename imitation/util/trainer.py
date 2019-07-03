@@ -29,9 +29,9 @@ def init_trainer(env_id, policy_dir, use_gail, use_random_expert=True,
         generating rollouts. Only applicable if `use_random_expert` is True.
     use_random_expert (bool):
         If True, then use a blank (random) policy to generate rollouts.
-        If False, then load an expert policy. Will crash if DNE.
-    **kwargs: Additional arguments For the AIRLTrainer constructor.
-  """
+        If False, then load an expert policy. Will crash if there is no expert
+        policy in `policy_dir`....
+    **kwargs: Additional arguments For the AIRLTrainer constructor."""
   env = util.make_vec_env(env_id, 8)
   gen_policy = util.make_blank_policy(env, init_tensorboard=False)
   tf.logging.info("use_random_expert %s", use_random_expert)
