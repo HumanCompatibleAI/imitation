@@ -24,7 +24,7 @@ class AIRLTrainer():
             Discriminates generated trajectories from other trajectories, and
             also holds the inferred reward for transfer learning.
         expert_policies (BaseRLModel or [BaseRLModel]): An expert policy
-            or a list of expert policies that used to generate example
+            or a list of expert policies that are used to generate example
             obs-action-obs triples.
 
             WARNING:
