@@ -87,6 +87,7 @@ def test_replay_buffer(capacity, chunk_len, obs_shape, act_shape, dtype):
 def test_buffer_store_errors(sample_shape):
     capacity = 11
     dtype = "float32"
+
     def buf():
         return Buffer(capacity, sample_shape, dtype)
 
@@ -114,7 +115,7 @@ def test_buffer_sample_errors():
 
 def test_replay_buffer_init_errors():
     with pytest.raises(ValueError, match=r"Couldn't infer.*"):
-        ReplayBuffer(15, obs_shape=(10, 10), act_shape=(15), obs_dtype=bool)
+        ReplayBuffer(15, obs_shape=(10, 10), act_shape=(15,), obs_dtype=bool)
     with pytest.raises(ValueError, match=r"Couldn't infer.*"):
         ReplayBuffer(15, obs_shape=(10, 10), obs_dtype=bool, act_dtype=bool)
 
