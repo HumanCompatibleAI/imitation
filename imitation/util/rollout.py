@@ -2,9 +2,8 @@ import functools
 
 import gym
 import numpy as np
-import tensorflow as tf
-
 from stable_baselines.common import BaseRLModel
+import tensorflow as tf
 
 from . import util  # Relative import needed to prevent cycle with __init__.py
 
