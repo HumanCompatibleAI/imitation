@@ -1,11 +1,11 @@
-from typing import Optional, Tuple
+from typing import Dict, Optional, Tuple
 
 import gym
 import numpy as np
 
 
 class Buffer:
-  """A FIFO ring buffer for numpy arrays of a fixed shape and dtype.
+  """A FIFO ring buffer for NuPpy arrays of a fixed shape and dtype.
 
   Supports random sampling with replacement.
   """
@@ -13,11 +13,11 @@ class Buffer:
   capacity: int
   """The number of data samples that can be stored in this buffer."""
 
-  sample_shape: Tuple[int, ...]
-  """The shape of each data sample stored in this buffer."""
+  sample_shapes: Dict[str, Tuple[int, ...]]
+  """The shapes of each data sample stored in this buffer."""
 
-  _buffer: np.ndarray
-  """The underlying numpy array (which actually stores the data)."""
+  _buffer: Dict[str, np.ndarray]
+  """The underlying NumPy arrays (which actually store the data)."""
 
   _n_data: int
   """The number of samples currently stored in this buffer.
@@ -32,61 +32,99 @@ class Buffer:
   An integer in `range(0, self.capacity)`.
   """
 
-  def __init__(self, capacity: int, sample_shape: Tuple[int, ...], dtype):
+  def __init__(self, capacity: int,
+               sample_shapes: Dict[str, Tuple[int, ...]],
+               dtypes: Dict[str, np.dtype]):
     """Constructs a Buffer.
 
     Args:
         capacity: The number of samples that can be stored.
         sample_shape: The shape of each sample stored in this buffer.
-        dtype (`np.dtype`-like): The numpy dtype that will be stored.
+        dtypes (`np.dtype`-like): The numpy dtype that will be stored.
     """
     self.capacity = capacity
-    self.sample_shape = tuple(sample_shape)
-    self._buffer = np.zeros((capacity,) + self.sample_shape, dtype=dtype)
+    self.sample_shapes = {k: tuple(shape) for k, shape in sample_shapes.items()}
+    self._buffer = {k: np.zeros((capacity,) + shape, dtype=dtypes[k])
+                    for k, shape in self.sample_shapes.items()}
     self._n_data = 0
     self._idx = 0
 
   @classmethod
-  def from_data(cls, data: np.ndarray) -> "Buffer":
+  def from_data(cls, data: Dict[str, np.ndarray]) -> "Buffer":
     """Constructs and return a Buffer containing only the provided data.
 
     The returned ReplayBuffer is at full capacity and ready for sampling.
+
+    Args:
+        data: A dictionary mapping keys to data arrays. The arrays may differ
+            in their shape, but should agree in the first axis.
+
+    Raises:
+        ValueError: `data` is empty.
+        ValueError: `data` has items mapping to arrays differing in the
+            length of their first axis.
     """
-    capacity, *sample_shape = data.shape
-    buf = cls(capacity, sample_shape, dtype=data.dtype)
+    capacities = [arr.shape[0] for arr in data.values()]
+    capacities = np.unique(capacities)
+    if len(data) == 0:
+      raise ValueError("No keys in data.")
+    if len(capacities) > 1:
+      raise ValueError("Keys map to different length values")
+    capacity = capacities[0]
+
+    sample_shapes = {k: arr.shape[1:] for k, arr in data.items()}
+    dtypes = {k: arr.dtype for k, arr in data.items()}
+    buf = cls(capacity, sample_shapes, dtypes)
     buf.store(data)
     return buf
 
-  def store(self, data: np.ndarray) -> None:
+  def store(self, data: Dict[str, np.ndarray]) -> None:
     """Stores new data samples, replacing old samples with FIFO priority.
 
     Args:
-        data: An array with shape `(n_samples,) + self.sample_shape`, where
-            `n_samples` is less than or equal to `self.capacity`.
+        data: A dictionary mapping keys k to arrays with shape
+            `(n_samples,) + self.sample_shapes[k]`, where `n_samples` is less
+            than or equal to `self.capacity`.
 
     Raises:
         ValueError: `data` is empty.
         ValueError: If `n_samples` is greater than `self.capacity`.
         ValueError: data is the wrong shape.
     """
-    if len(data) == 0:
-      raise ValueError("Trying to store empty data.")
-    if len(data) > self.capacity:
-      raise ValueError("Not enough capacity to store data.")
-    if data.shape[1:] != self.sample_shape:
-      raise ValueError("Wrong data_shape")
+    expected_keys = set(self.sample_shapes.keys())
+    missing_keys = expected_keys.difference(data.keys())
+    unexpected_keys = set(data.keys()).difference(expected_keys)
+    if len(missing_keys) > 0:
+      raise ValueError(f"Missing keys {missing_keys}")
+    if len(unexpected_keys) > 0:
+      raise ValueError(f"Unexpected keys {unexpected_keys}")
 
-    new_idx = self._idx + len(data)
+    n_samples = [arr.shape[0] for arr in data.values()]
+    n_samples = np.unique(n_samples)
+    if len(n_samples) > 1:
+      raise ValueError("Keys map to different length values.")
+    n_samples = n_samples[0]
+
+    if n_samples == 0:
+      raise ValueError("Trying to store empty data.")
+    if n_samples > self.capacity:
+      raise ValueError("Not enough capacity to store data.")
+
+    for k, arr in data.items():
+      if arr.shape[1:] != self.sample_shapes[k]:
+        raise ValueError(f"Wrong data shape for {k}")
+
+    new_idx = self._idx + n_samples
     if new_idx > self.capacity:
       n_remain = self.capacity - self._idx
       # Need to loop around the buffer. Break into two "easy" calls.
-      self._store_easy(data[:n_remain])
+      self._store_easy({k: arr[:n_remain] for k, arr in data.items()})
       assert self._idx == 0
-      self._store_easy(data[n_remain:])
+      self._store_easy({k: arr[n_remain:] for k, arr in data.items()})
     else:
       self._store_easy(data)
 
-  def _store_easy(self, data: np.ndarray) -> None:
+  def _store_easy(self, data: Dict[str, np.ndarray]) -> None:
     """Stores new data samples, replacing old samples with FIFO priority.
 
     Requires that `len(data) <= self.capacity - self._idx`. Updates `self._idx`
@@ -99,11 +137,17 @@ class Buffer:
         data: Same as in `self.store`'s docstring, except with the additional
             constraint `len(data) <= self.capacity - self._idx`.
     """
-    assert len(data) <= self.capacity - self._idx
-    idx_hi = self._idx + len(data)
-    self._buffer[self._idx:idx_hi] = data
+    n_samples = [arr.shape[0] for arr in data.values()]
+    n_samples = np.unique(n_samples)
+    assert len(n_samples) == 1
+    n_samples = n_samples[0]
+
+    assert n_samples <= self.capacity - self._idx
+    idx_hi = self._idx + n_samples
+    for k, arr in data.items():
+      self._buffer[k][self._idx:idx_hi] = arr
     self._idx = idx_hi % self.capacity
-    self._n_data = min(self._n_data + len(data), self.capacity)
+    self._n_data = min(self._n_data + n_samples, self.capacity)
 
   def sample(self, n_samples: int) -> np.ndarray:
     """Uniformly sample `n_samples` samples from the buffer with replacement.
@@ -121,7 +165,7 @@ class Buffer:
     if len(self) == 0:
       raise ValueError("Buffer is empty")
     ind = np.random.randint(len(self), size=n_samples)
-    return self._buffer[ind]
+    return {k: buffer[ind] for k, buffer in self._buffer.items()}
 
   def __len__(self) -> int:
     """Returns the number of samples stored in the buffer."""

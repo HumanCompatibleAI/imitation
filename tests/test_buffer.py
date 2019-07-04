@@ -37,21 +37,21 @@ def test_buffer(capacity, chunk_len, sample_shape):
     FIFO insertion.
   * Mutating the inserted chunk shouldn't mutate the buffer.
   """
-  buf = Buffer(capacity, sample_shape=sample_shape, dtypes=float)
+  buf = Buffer(capacity, sample_shapes={'k': sample_shape}, dtypes={'k': float})
 
   for i in range(0, capacity*3, chunk_len):
     chunk = _fill_chunk(i, chunk_len, sample_shape)
     assert len(buf) == min(i, capacity)
     assert buf._idx == i % capacity
-    buf.store(chunk)
-    samples = buf.sample(100)
+    buf.store({'k': chunk})
+    samples = buf.sample(100)['k']
     assert samples.shape == (100,) + sample_shape
 
     _check_bound(i + chunk_len, capacity, samples)
 
   # Confirm that buffer is not mutable from inserted sample.
   chunk[:] = np.nan
-  assert not np.any(np.isnan(buf._buffer))
+  assert not np.any(np.isnan(buf._buffer['k']))
 
 
 @pytest.mark.parametrize("capacity", [30, 60])
