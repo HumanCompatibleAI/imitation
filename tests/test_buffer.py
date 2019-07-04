@@ -42,7 +42,7 @@ def test_buffer(capacity, chunk_len, sample_shape):
 @pytest.mark.parametrize("act_shape", [(), (5, 4, 4)])
 @pytest.mark.parametrize("dtype", [np.int, np.bool, np.float32])
 def test_replay_buffer(capacity, chunk_len, obs_shape, act_shape, dtype):
-  """ Build a ReplayBuffer with the provided `capacity` and inserts
+  """Builds a ReplayBuffer with the provided `capacity` and inserts
   `capacity * 3` observation-action-observation samples into the buffer in
   chunks of length `chunk_len`.
 

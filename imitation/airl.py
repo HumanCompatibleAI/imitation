@@ -159,7 +159,7 @@ class AIRLTrainer:
     Returns:
         discriminator_loss (float): The total cross-entropy error in the
             discriminator's classification.
-    """  # noqa: E501
+    """
     fd = self._build_disc_feed_dict(**kwargs)
     return np.sum(self._sess.run(self.discrim.disc_loss, feed_dict=fd))
 
