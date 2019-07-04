@@ -215,9 +215,17 @@ class ReplayBuffer:
         raise ValueError("Shape or dtype missing and no environment specified.")
 
     self.capacity = capacity
-    self._old_obs_buffer = Buffer(capacity, obs_shape, obs_dtype)
-    self._act_buffer = Buffer(capacity, act_shape, act_dtype)
-    self._new_obs_buffer = Buffer(capacity, obs_shape, obs_dtype)
+    sample_shapes = {
+        'old_obs': obs_shape,
+        'act': act_shape,
+        'new_obs': obs_shape,
+    }
+    dtypes = {
+        'old_obs': obs_dtype,
+        'act': act_dtype,
+        'new_obs': obs_dtype,
+    }
+    self._buffer = Buffer(capacity, sample_shapes=sample_shapes, dtypes=dtypes)
 
   @classmethod
   def from_data(cls, old_obs: np.ndarray, act: np.ndarray, new_obs: np.ndarray
@@ -235,11 +243,8 @@ class ReplayBuffer:
         A new ReplayBuffer.
 
     Raises:
-        ValueError: The arguments didn't have the same length.
         ValueError: old_obs and new_obs have a different dtype.
     """
-    if not len(old_obs) == len(act) == len(new_obs):
-      raise ValueError("Arguments must have the same length.")
     if old_obs.dtype != new_obs.dtype:
       raise ValueError("old_obs and new_obs must have the same dtype.")
 
@@ -261,9 +266,8 @@ class ReplayBuffer:
         act: Actions.
         new_obs: New observations.
     """
-    return (self._old_obs_buffer.sample(n_samples),
-            self._act_buffer.sample(n_samples),
-            self._new_obs_buffer.sample(n_samples))
+    sample = self._buffer.sample(n_samples)
+    return sample['old_obs'], sample['act'], sample['new_obs']
 
   def store(self, old_obs: np.ndarray, act: np.ndarray, new_obs: np.ndarray):
     """Store obs-act-obs triples.
@@ -278,12 +282,12 @@ class ReplayBuffer:
     """
     if not len(old_obs) == len(act) == len(new_obs):
       raise ValueError("Arguments must have the same length.")
-    self._old_obs_buffer.store(old_obs)
-    self._act_buffer.store(act)
-    self._new_obs_buffer.store(new_obs)
-    assert (len(self._old_obs_buffer)
-            == len(self._act_buffer)
-            == len(self._new_obs_buffer))
+    data = {
+        'old_obs': old_obs,
+        'act': act,
+        'new_obs': new_obs,
+    }
+    self._buffer.store(data)
 
   def __len__(self):
-    return len(self._old_obs_buffer)
+    return len(self._buffer)

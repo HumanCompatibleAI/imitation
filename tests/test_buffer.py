@@ -12,7 +12,7 @@ def _fill_chunk(start, chunk_len, sample_shape, dtype=np.float):
 
 
 def _get_fill_from_chunk(chunk):
-  chunk_len, *sample_shape = chunk
+  chunk_len, *sample_shape = chunk.shape
   sample_size = max(1, np.prod(sample_shape))
   return chunk.flatten()[::sample_size]
 
@@ -76,8 +76,7 @@ def test_replay_buffer(capacity, chunk_len, obs_shape, act_shape, dtype):
 
   for i in range(0, capacity*3, chunk_len):
     assert len(buf) == min(i, capacity)
-    for b in [buf._old_obs_buffer, buf._act_buffer, buf._new_obs_buffer]:
-      assert b._idx == i % capacity
+    assert buf._buffer._idx == i % capacity
 
     old_obs_data = _fill_chunk(i, chunk_len, obs_shape, dtype=dtype)
     new_obs_data = _fill_chunk(3 * capacity + i, chunk_len, obs_shape,
@@ -116,26 +115,36 @@ def test_buffer_store_errors(sample_shape):
   dtype = "float32"
 
   def buf():
-      return Buffer(capacity, sample_shape, dtype)
+      return Buffer(capacity, {'k': sample_shape}, {'k': dtype})
+
+  # Unexpected keys
+  b = buf()
+  with pytest.raises(ValueError):
+    b.store({})
+  chunk = np.ones((1, ) + sample_shape)
+  with pytest.raises(ValueError):
+    b.store({'y': chunk})
+  with pytest.raises(ValueError):
+    b.store({'k': chunk, 'y': chunk})
 
   # `data` is empty.
   b = buf()
   with pytest.raises(ValueError):
-      b.store(np.empty((0,) + sample_shape, dtype=dtype))
+      b.store({'k': np.empty((0,) + sample_shape, dtype=dtype)})
 
   # `data` has too many samples.
   b = buf()
   with pytest.raises(ValueError):
-      b.store(np.empty((capacity + 1,) + sample_shape, dtype=dtype))
+      b.store({'k': np.empty((capacity + 1,) + sample_shape, dtype=dtype)})
 
   # `data` has the wrong sample shape.
   b = buf()
   with pytest.raises(ValueError):
-      b.store(np.empty((1, 3, 3, 3, 3), dtype=dtype))
+      b.store({'k': np.empty((1, 3, 3, 3, 3), dtype=dtype)})
 
 
 def test_buffer_sample_errors():
-  b = Buffer(10, (2, 1), dtypes=bool)
+  b = Buffer(10, {'k': (2, 1)}, dtypes={'k': bool})
   with pytest.raises(ValueError):
       b.sample(5)
 
@@ -158,10 +167,10 @@ def test_replay_buffer_store_errors():
 
 def test_buffer_from_data():
   data = np.ndarray([50, 30], dtype=bool)
-  buf = Buffer.from_data(data)
-  assert buf._buffer is not data
-  assert data.dtype == buf._buffer.dtype
-  assert np.array_equal(buf._buffer, data)
+  buf = Buffer.from_data({'k': data})
+  assert buf._buffer['k'] is not data
+  assert data.dtype == buf._buffer['k'].dtype
+  assert np.array_equal(buf._buffer['k'], data)
 
 
 def test_replay_buffer_from_data():
@@ -169,9 +178,9 @@ def test_replay_buffer_from_data():
   act = np.ones((2, 6), dtype=float)
   new_obs = np.array([7, 8], dtype=int)
   buf = ReplayBuffer.from_data(old_obs, act, new_obs)
-  assert np.array_equal(buf._old_obs_buffer._buffer, old_obs)
-  assert np.array_equal(buf._new_obs_buffer._buffer, new_obs)
-  assert np.array_equal(buf._act_buffer._buffer, act)
+  assert np.array_equal(buf._buffer._buffer['old_obs'], old_obs)
+  assert np.array_equal(buf._buffer._buffer['new_obs'], new_obs)
+  assert np.array_equal(buf._buffer._buffer['act'], act)
 
   with pytest.raises(ValueError, match=r".*same length."):
     new_obs_toolong = np.array([7, 8, 9], dtype=int)
