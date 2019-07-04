@@ -6,6 +6,11 @@ train_and_plot.n_epochs = 50
 train_and_plot.n_disc_steps_per_epoch = 50
 train_and_plot.n_gen_steps_per_epoch = 16384
 
+make_blank_policy.learning_rate=3e-3
+make_blank_policy.nminibatches=32
+make_blank_policy.noptepochs=10
+make_blank_policy.n_steps=2048
+
 init_trainer.use_gail=False
 init_trainer.use_random_expert = False
 init_trainer.discrim_scale = False

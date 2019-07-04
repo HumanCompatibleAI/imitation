@@ -35,12 +35,7 @@ def init_trainer(env_id, policy_dir, use_gail, use_random_expert=True,
     discrim_kwargs (dict): Arguments for the DiscrimNet* constructor.
   """
   env = util.make_vec_env(env_id, 8)
-  gen_policy = stable_baselines.PPO2(util.FeedForward32Policy, env,
-                                     verbose=1, tensorboard_log="output/",
-                                     learning_rate=3e-3,
-                                     nminibatches=32,
-                                     noptepochs=10,
-                                     n_steps=2048)
+  gen_policy = util.make_blank_policy(env, verbose=1)
 
   if use_random_expert:
     expert_policies = [gen_policy]
