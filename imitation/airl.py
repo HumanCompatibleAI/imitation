@@ -98,7 +98,7 @@ class AIRLTrainer:
         n_steps (int): The number of training steps.
         gen_old_obs (np.ndarray): See `_build_disc_feed_dict`.
         gen_act (np.ndarray): See `_build_disc_feed_dict`.
-        gen_new_obs (np.ndarray): See `_build_disc_feed_dict .
+        gen_new_obs (np.ndarray): See `_build_disc_feed_dict`.
     """
     for _ in range(n_steps):
       fd = self._build_disc_feed_dict(**kwargs)
@@ -154,7 +154,7 @@ class AIRLTrainer:
     Args:
         gen_old_obs (np.ndarray): See `_build_disc_feed_dict`.
         gen_act (np.ndarray): See `_build_disc_feed_dict`.
-        gen_new_obs (np.ndarray): See `_build_disc_feed_dict .
+        gen_new_obs (np.ndarray): See `_build_disc_feed_dict`.
 
     Returns:
         discriminator_loss (float): The total cross-entropy error in the
