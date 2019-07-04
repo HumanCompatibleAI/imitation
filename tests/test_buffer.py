@@ -42,7 +42,7 @@ def test_buffer(capacity, chunk_len, sample_shape):
 @pytest.mark.parametrize("act_shape", [(), (5, 4, 4)])
 @pytest.mark.parametrize("dtype", [np.int, np.bool, np.float32])
 def test_replay_buffer(capacity, chunk_len, obs_shape, act_shape, dtype):
-  """ Build a ReplayBuffer with the provided `capacity` and inserts
+  """Builds a ReplayBuffer with the provided `capacity` and inserts
   `capacity * 3` observation-action-observation samples into the buffer in
   chunks of length `chunk_len`.
 
@@ -85,61 +85,70 @@ def test_replay_buffer(capacity, chunk_len, obs_shape, act_shape, dtype):
 
 @pytest.mark.parametrize("sample_shape", [(), (1,), (5, 2)])
 def test_buffer_store_errors(sample_shape):
-    capacity = 11
-    dtype = "float32"
+  capacity = 11
+  dtype = "float32"
 
-    def buf():
-        return Buffer(capacity, sample_shape, dtype)
+  def buf():
+      return Buffer(capacity, sample_shape, dtype)
 
-    # `data` is empty.
-    b = buf()
-    with pytest.raises(ValueError):
-        b.store(np.empty((0,) + sample_shape, dtype=dtype))
+  # `data` is empty.
+  b = buf()
+  with pytest.raises(ValueError):
+      b.store(np.empty((0,) + sample_shape, dtype=dtype))
 
-    # `data` has too many samples.
-    b = buf()
-    with pytest.raises(ValueError):
-        b.store(np.empty((capacity + 1,) + sample_shape, dtype=dtype))
+  # `data` has too many samples.
+  b = buf()
+  with pytest.raises(ValueError):
+      b.store(np.empty((capacity + 1,) + sample_shape, dtype=dtype))
 
-    # `data` has the wrong sample shape.
-    b = buf()
-    with pytest.raises(ValueError):
-        b.store(np.empty((1, 3, 3, 3, 3), dtype=dtype))
+  # `data` has the wrong sample shape.
+  b = buf()
+  with pytest.raises(ValueError):
+      b.store(np.empty((1, 3, 3, 3, 3), dtype=dtype))
 
 
 def test_buffer_sample_errors():
-    b = Buffer(10, (2, 1), dtype=bool)
-    with pytest.raises(ValueError):
-        b.sample(5)
+  b = Buffer(10, (2, 1), dtype=bool)
+  with pytest.raises(ValueError):
+      b.sample(5)
 
 
 def test_replay_buffer_init_errors():
-    with pytest.raises(ValueError, match=r"Couldn't infer.*"):
-        ReplayBuffer(15, obs_shape=(10, 10), act_shape=(15,), obs_dtype=bool)
-    with pytest.raises(ValueError, match=r"Couldn't infer.*"):
-        ReplayBuffer(15, obs_shape=(10, 10), obs_dtype=bool, act_dtype=bool)
+  with pytest.raises(ValueError, match=r"Specified.* and environment"):
+    ReplayBuffer(15, env="MockEnv", obs_shape=(10, 10))
+  with pytest.raises(ValueError, match=r"Shape or dtype missing.*"):
+      ReplayBuffer(15, obs_shape=(10, 10), act_shape=(15,), obs_dtype=bool)
+  with pytest.raises(ValueError, match=r"Shape or dtype missing.*"):
+      ReplayBuffer(15, obs_shape=(10, 10), obs_dtype=bool, act_dtype=bool)
 
 
 def test_replay_buffer_store_errors():
-    b = ReplayBuffer(10, obs_shape=(), obs_dtype=bool, act_shape=(),
-                     act_dtype=float)
-    with pytest.raises(ValueError, match=".* same length.*"):
-        b.store(np.ones(4), np.ones(4), np.ones(3))
+  b = ReplayBuffer(10, obs_shape=(), obs_dtype=bool, act_shape=(),
+                   act_dtype=float)
+  with pytest.raises(ValueError, match=".* same length.*"):
+      b.store(np.ones(4), np.ones(4), np.ones(3))
 
 
 def test_buffer_from_data():
-    data = np.ndarray([50, 30], dtype=bool)
-    buf = Buffer.from_data(data)
-    assert buf._buffer is not data
-    assert data.dtype == buf._buffer.dtype
-    assert np.array_equal(buf._buffer, data)
+  data = np.ndarray([50, 30], dtype=bool)
+  buf = Buffer.from_data(data)
+  assert buf._buffer is not data
+  assert data.dtype == buf._buffer.dtype
+  assert np.array_equal(buf._buffer, data)
 
 
 def test_replay_buffer_from_data():
-    old_obs = np.array([5, 2], dtype=int)
-    act = np.ones((2, 6), dtype=float)
-    new_obs = np.array([7, 8], dtype=int)
-    buf = ReplayBuffer.from_data(old_obs, act, new_obs)
-    assert np.array_equal(buf._old_obs_buffer._buffer, old_obs)
-    assert np.array_equal(buf._new_obs_buffer._buffer, new_obs)
-    assert np.array_equal(buf._act_buffer._buffer, act)
+  old_obs = np.array([5, 2], dtype=int)
+  act = np.ones((2, 6), dtype=float)
+  new_obs = np.array([7, 8], dtype=int)
+  buf = ReplayBuffer.from_data(old_obs, act, new_obs)
+  assert np.array_equal(buf._old_obs_buffer._buffer, old_obs)
+  assert np.array_equal(buf._new_obs_buffer._buffer, new_obs)
+  assert np.array_equal(buf._act_buffer._buffer, act)
+
+  with pytest.raises(ValueError, match=r".*same length."):
+    new_obs_toolong = np.array([7, 8, 9], dtype=int)
+    ReplayBuffer.from_data(old_obs, act, new_obs_toolong)
+  with pytest.raises(ValueError, match=r".*same dtype."):
+    new_obs_float = np.array(new_obs, dtype=float)
+    ReplayBuffer.from_data(old_obs, act, new_obs_float)

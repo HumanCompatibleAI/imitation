@@ -1,5 +1,6 @@
 from typing import Optional, Tuple
 
+import gym
 import numpy as np
 
 
@@ -47,7 +48,7 @@ class Buffer:
 
   @classmethod
   def from_data(cls, data: np.ndarray) -> "Buffer":
-    """Construct and return a Buffer containing only the provided data.
+    """Constructs and return a Buffer containing only the provided data.
 
     The returned ReplayBuffer is at full capacity and ready for sampling.
     """
@@ -57,12 +58,12 @@ class Buffer:
     return buf
 
   def store(self, data: np.ndarray) -> None:
-    """Store new data samples in the buffer, replacing old samples with FIFO
-    priority.
+    """Stores new data samples, replacing old samples with FIFO priority.
 
     Args:
         data: An array with shape `(n_samples,) + self.sample_shape`, where
             `n_samples` is less than or equal to `self.capacity`.
+
     Raises:
         ValueError: `data` is empty.
         ValueError: If `n_samples` is greater than `self.capacity`.
@@ -81,13 +82,12 @@ class Buffer:
       # Need to loop around the buffer. Break into two "easy" calls.
       self._store_easy(data[:n_remain])
       assert self._idx == 0
-      self.store(data[n_remain:])
+      self._store_easy(data[n_remain:])
     else:
       self._store_easy(data)
 
   def _store_easy(self, data: np.ndarray) -> None:
-    """Store new data samples in buffer, replacing old samples with FIFO
-    priority.
+    """Stores new data samples, replacing old samples with FIFO priority.
 
     Requires that `len(data) <= self.capacity - self._idx`. Updates `self._idx`
     to be the insertion point of the next call to `_store_easy` call,
@@ -136,38 +136,39 @@ class ReplayBuffer:
   capacity: int
   """The number of data samples that can be stored in this buffer."""
 
-  def __init__(self, capacity, env=None, *,
+  def __init__(self, capacity: int,
+               env: Optional[gym.Env] = None, *,
                obs_shape: Optional[Tuple[int, ...]] = None,
                act_shape: Optional[Tuple[int, ...]] = None,
-               obs_dtype=None,
-               act_dtype=None):
+               obs_dtype: Optional[np.dtype] = None,
+               act_dtype: Optional[np.dtype] = None):
     """Constructs a ReplayBuffer.
 
     Args:
-        env (Optional[gym.Env]): The environment whose action and observation
+        capacity: The number of samples that can be stored.
+        env: The environment whose action and observation
             spaces can be used to determine the data shapes of the underlying
             buffers. Overrides all the following arguments.
-        obs_shape (Optional[Tuple[int, ...]]): The shape of the observation
-            space.
-        act_shape (Optional[Tuple[int, ...]]): The shape of the action
-            space.
-        obs_dtype (Optional[dtype]): The dtype of the observation space.
-        action_dtype (Optional[dtype]): The dtype of the action space.
+        obs_shape: The shape of the observation space.
+        act_shape: The shape of the action space.
+        obs_dtype: The dtype of the observation space.
+        act_dtype: The dtype of the action space.
+
     Raises:
         ValueError: Couldn't infer the observation and action shapes and dtypes
             from the arguments.
     """
+    params = [obs_shape, act_shape, obs_dtype, act_dtype]
     if env is not None:
+      if np.any([x is not None for x in params]):
+        raise ValueError("Specified shape or dtype and environment.")
       obs_shape = tuple(env.observation_space.shape)
       act_shape = tuple(env.action_space.shape)
       obs_dtype = env.observation_space.dtype
       act_dtype = env.action_space.dtype
-
-    arg_none_count = sum(x is None
-                         for x in (obs_shape, act_shape, obs_dtype, act_dtype))
-    if arg_none_count != 0:
-      raise ValueError("Couldn't infer all the shapes and dtypes from the "
-                       "arguments.")
+    else:
+      if np.any([x is None for x in params]):
+        raise ValueError("Shape or dtype missing and no environment specified.")
 
     self.capacity = capacity
     self._old_obs_buffer = Buffer(capacity, obs_shape, obs_dtype)
@@ -182,14 +183,16 @@ class ReplayBuffer:
     The returned ReplayBuffer is at full capacity and ready for sampling.
 
     Args:
-      old_obs: Old observations.
-      act: Actions.
-      new_obs: New observations.
+        old_obs: Old observations.
+        act: Actions.
+        new_obs: New observations.
+
     Returns:
-      A new ReplayBuffer.
+        A new ReplayBuffer.
+
     Raises:
-      ValueError: The arguments didn't have the same length.
-      ValueError: old_obs and new_obs have a different dtype.
+        ValueError: The arguments didn't have the same length.
+        ValueError: old_obs and new_obs have a different dtype.
     """
     if not len(old_obs) == len(act) == len(new_obs):
       raise ValueError("Arguments must have the same length.")
@@ -205,13 +208,14 @@ class ReplayBuffer:
 
   def sample(self, n_samples: int) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Sample obs-act-obs triples.
+
     Args:
-      n_samples: The number of samples.
+        n_samples: The number of samples.
 
     Returns:
-      old_obs: Old observations.
-      act: Actions.
-      new_obs: New observations.
+        old_obs: Old observations.
+        act: Actions.
+        new_obs: New observations.
     """
     return (self._old_obs_buffer.sample(n_samples),
             self._act_buffer.sample(n_samples),
@@ -221,11 +225,12 @@ class ReplayBuffer:
     """Store obs-act-obs triples.
 
     Args:
-      old_obs: Old observations.
-      act: Actions.
-      new_obs: New observations.
+        old_obs: Old observations.
+        act: Actions.
+        new_obs: New observations.
+
     Raises:
-      ValueError: The arguments didn't have the same length.
+        ValueError: The arguments didn't have the same length.
     """
     if not len(old_obs) == len(act) == len(new_obs):
       raise ValueError("Arguments must have the same length.")
