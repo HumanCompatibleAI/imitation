@@ -117,18 +117,17 @@ class DiscrimNetAIRL(DiscrimNet):
 class DiscrimNetGAIL(DiscrimNet):
   """The discriminator to use for GAIL."""
 
-  def __init__(self, env):
-    self.env = util.maybe_load_env(env)
-
-    phs = util.build_placeholders(self.env, True)
-    self.old_obs_ph, self.act_ph, self.new_obs_ph = phs
+  def __init__(self, observation_space, action_space):
+    inputs = util.build_inputs(observation_space, action_space)
+    self.old_obs_ph, self.act_ph, self.new_obs_ph = inputs[:3]
+    self.old_obs_inp, self.act_inp, self.new_obs_inp = inputs[3:]
 
     self.log_policy_act_prob_ph = tf.placeholder(
         shape=(None,), dtype=tf.float32, name="log_ro_act_prob_ph")
 
     with tf.variable_scope("discrim_network"):
       self._discrim_logits = self.build_discrm_network(
-          self.old_obs_ph, self.act_ph)
+          self.old_obs_inp, self.act_inp)
 
     super().__init__()
 
@@ -136,8 +135,8 @@ class DiscrimNetGAIL(DiscrimNet):
 
   def build_discrm_network(self, obs_input, act_input):
     inputs = tf.concat([
-        util.flat(obs_input, self.env.observation_space.shape),
-        util.flat(act_input, self.env.action_space.shape)], axis=1)
+        tf.layers.flatten(obs_input),
+        tf.layers.flatten(act_input)], axis=1)
 
     discrim_logits = util.apply_ff(inputs, hid_sizes=[])
 

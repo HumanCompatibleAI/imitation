@@ -1,3 +1,6 @@
+from typing import Optional
+from warnings import warn
+
 import numpy as np
 from stable_baselines.common.vec_env import VecEnvWrapper
 import tensorflow as tf
@@ -5,62 +8,70 @@ from tqdm import tqdm
 
 import imitation.summaries as summaries
 import imitation.util as util
+from imitation.util.buffer import ReplayBuffer
 
 
-class AIRLTrainer():
+class Trainer:
+
   def __init__(self, env, gen_policy, discrim, expert_policies, *,
-               n_expert_timesteps=4000, init_tensorboard=False):
-    """
-    Adversarial IRL. After training, the RewardNet recovers the reward.
+               n_disc_samples_per_buffer=200, n_expert_samples=4000,
+               gen_replay_buffer_capacity: Optional[int] = None,
+               init_tensorboard=False):
+    """Trainer for GAIL and AIRL.
 
     Args:
-        env (gym.Env or str): A gym environment to train in. AIRL
-            modifies env's step() function. Internally, we will wrap this
-            in a DummyVecEnv.
+        env (gym.Env or str): A gym environment that the policy is trained on.
         gen_policy (stable_baselines.BaseRLModel):
-            The generator policy that AIRL trains to maximize discriminator
+            The generator policy that trained to maximize discriminator
             confusion.
-        reward_net (RewardNet): The reward network to train.
-            Discriminates generated trajectories from other trajectories, and
-            also holds the inferred reward for transfer learning.
+        discrim (DiscrimNet): The discriminator network.
+            For GAIL, use a DiscrimNetGAIL. For AIRL, use a DiscrimNetAIRL.
         expert_policies (BaseRLModel or [BaseRLModel]): An expert policy
             or a list of expert policies that are used to generate example
             obs-action-obs triples.
 
             WARNING:
-            Due to the way VecEnvs handle
-            episode completion states, the last obs-state-obs triple in every
-            episode is omitted. (See GitHub issue #1)
-        n_expert_timesteps (int): The number of expert obs-action-obs
-            triples that are generated. If the number of expert policies given
+            Due to the way VecEnvs handle episode completion states, the last
+            obs-act-obs triple in every episode is omitted. (See issue #1.)
+        n_disc_samples_per_buffer (int): The number of obs-act-obs triples
+            sampled from each replay buffer (expert and generator) during each
+            step of discriminator training. This is also the number of triples
+            stored in the replay buffer after each epoch of generator training.
+        n_expert_samples (int): The number of expert obs-action-obs triples
+            that are generated. If the number of expert policies given
             doesn't divide this number evenly, then the last expert policy
             generates more timesteps.
+        gen_replay_buffer_capacity (Optional[int]): The capacity of the
+            generator replay buffer (the number of obs-action-obs samples from
+            the generator that can be stored).
+
+            By default this is equal to `20 * n_disc_training_samples`.
         init_tensorboard (bool): If True, makes various discriminator
-            Tensorboard summaries under the run name "AIRL_{date}_{runnumber}".
-            (Generator summaries appear under a different runname because they
+            TensorBoard summaries. (Generator summaries appear under a
+            different runname than the discriminator summaries because they
             are configured by initializing the stable_baselines policy).
     """
+    if n_disc_samples_per_buffer > n_expert_samples:
+      warn("The discriminator batch size is larger than the number of "
+           "expert samples.")
+
     self._sess = tf.Session()
 
     self.env = util.maybe_load_env(env, vectorize=True)
     self.gen_policy = gen_policy
-    self.expert_old_obs, self.expert_act, self.expert_new_obs = \
-        util.rollout.generate_multiple(
-            expert_policies, self.env, n_expert_timesteps)
     self.expert_policies = expert_policies
-    self.init_tensorboard = init_tensorboard
+    self._n_disc_samples_per_buffer = n_disc_samples_per_buffer
 
     self._global_step = tf.train.create_global_step()
 
-    with tf.variable_scope("AIRLTrainer"):
+    with tf.variable_scope("trainer"):
       with tf.variable_scope("discriminator"):
         self.discrim = discrim
-
         self._build_disc_train()
       self._build_policy_train_reward()
       self._build_test_reward()
-
-    if self.init_tensorboard:
+    self._init_tensorboard = init_tensorboard
+    if init_tensorboard:
       with tf.name_scope("summaries"):
         self._build_summarize()
 
@@ -68,39 +79,48 @@ class AIRLTrainer():
 
     # TODO(adam): make this wrapping configurable for debugging purposes
     self.env = self.wrap_env_train_reward(self.env)
+    self.gen_policy.set_env(self.env)
 
-  def train_disc(self, *, n_steps=10, **kwargs):
+    if gen_replay_buffer_capacity is None:
+        gen_replay_buffer_capacity = 20 * self._n_disc_samples_per_buffer
+    self._gen_replay_buffer = ReplayBuffer(gen_replay_buffer_capacity, self.env)
+    exp_rollouts = util.rollout.generate_multiple(
+        self.expert_policies, self.env, n_expert_samples)[:3]
+    self._exp_replay_buffer = ReplayBuffer.from_data(*exp_rollouts)
+    self._populate_gen_replay_buffer()
+
+  def train_disc(self, n_steps=10, **kwargs):
     """Trains the discriminator to minimize classification cross-entropy.
 
-    The generator rollout parameters of the form "gen_*" are optional,
-    but if one is given, then all such parameters must be filled (otherwise
-    this method errors). If none of the generator rollout parameters are
-    given, then a rollout with the same length as the expert rollout
-    is generated on the fly.
-
     Args:
-        n_steps (int): The number of training steps taken.
-        gen_old_obs (array): A numpy array with shape
-            `[n_timesteps] + env.observation_space.shape`. The ith observation
-            in this array should be the observation seen when the generator
-            chooses action `gen_act[i]`.
-        gen_act (array): A numpy array with shape
-            `[n_timesteps] + env.action_space.shape`.
-        gen_new_obs (array): A numpy array with shape
-            `[n_timesteps] + env.observation_space.shape`. The ith observation
-            in this array is from the transition state after the generator
-            chooses action `gen_act[i]`.
+        n_steps (int): The number of training steps.
+        gen_old_obs (np.ndarray): See `_build_disc_feed_dict`.
+        gen_act (np.ndarray): See `_build_disc_feed_dict`.
+        gen_new_obs (np.ndarray): See `_build_disc_feed_dict`.
     """
-    fd = self._build_disc_feed_dict(**kwargs)
     for _ in range(n_steps):
+      fd = self._build_disc_feed_dict(**kwargs)
       step, _ = self._sess.run([self._global_step, self._disc_train_op],
                                feed_dict=fd)
-      if self.init_tensorboard and step % 20 == 0:
+      if self._init_tensorboard and step % 20 == 0:
         self._summarize(fd, step)
 
   def train_gen(self, n_steps=10000):
     self.gen_policy.set_env(self.env)
     self.gen_policy.learn(n_steps)
+    self._populate_gen_replay_buffer()
+
+  def _populate_gen_replay_buffer(self) -> None:
+    """Generate and store generator samples in the buffer.
+
+    More specifically, rolls out generator-policy trajectories in the
+    environment until `self._n_disc_sample_per_buffer` obs-act-obs samples are
+    produced, and then stores these samples.
+    """
+    gen_rollouts = util.rollout.generate(
+        self.gen_policy, self.env,
+        n_timesteps=self._n_disc_samples_per_buffer)[:3]
+    self._gen_replay_buffer.store(*gen_rollouts)
 
   def train(self, *, n_epochs=100, n_gen_steps_per_epoch=None,
             n_disc_steps_per_epoch=None):
@@ -130,16 +150,9 @@ class AIRLTrainer():
     is generated on the fly.
 
     Args:
-        gen_old_obs (np.ndarray): A numpy array with shape
-            `[n_timesteps] + env.observation_space.shape`. The ith observation
-            in this array is the observation seen when the generator chooses
-            action `gen_act[i]`.
-        gen_act (np.ndarray): A numpy array with shape
-            `[n_timesteps] + env.action_space.shape`.
-        gen_new_obs (np.ndarray): A numpy array with shape
-            `[n_timesteps] + env.observation_space.shape`. The ith observation
-            in this array is from the transition state after the generator
-            chooses action `gen_act[i]`.
+        gen_old_obs (np.ndarray): See `_build_disc_feed_dict`.
+        gen_act (np.ndarray): See `_build_disc_feed_dict`.
+        gen_new_obs (np.ndarray): See `_build_disc_feed_dict`.
 
     Returns:
         discriminator_loss (float): The total cross-entropy error in the
@@ -153,7 +166,7 @@ class AIRLTrainer():
     the AIRL training reward (discriminator confusion).
 
     The wrapped `Env`'s reward is directly evaluated from the reward network,
-    and therefore changes whenever `AIRLTrainer.train()` is called.
+    and therefore changes whenever `self.train()` is called.
 
     Args:
         env (str, Env, or VecEnv): The Env that we want to wrap. If a
@@ -166,10 +179,10 @@ class AIRLTrainer():
 
   def wrap_env_test_reward(self, env):
     """Returns the given Env wrapped with a reward function that returns
-    the reward learned by this AIRLTrainer.
+    the reward learned by this Trainer.
 
     The wrapped `Env`'s reward is directly evaluated from the reward network,
-    and therefore changes whenever `AIRLTrainer.train()` is called.
+    and therefore changes whenever `self.train()` is called.
 
     Args:
         env (str, Env, or VecEnv): The Env that should be wrapped. If a
@@ -199,24 +212,43 @@ class AIRLTrainer():
         tf.reduce_mean(self.discrim.disc_loss),
         global_step=self._global_step)
 
-  def _build_disc_feed_dict(self, gen_old_obs=None, gen_act=None,
-                            gen_new_obs=None):
+  def _build_disc_feed_dict(self, *,
+                            gen_old_obs: Optional[np.ndarray] = None,
+                            gen_act: Optional[np.ndarray] = None,
+                            gen_new_obs: Optional[np.ndarray] = None
+                            ) -> dict:
+    """Build a feed dict that holds the next training batch of generator
+    and expert obs-act-obs triples.
+
+    Args:
+        gen_old_obs (np.ndarray): A numpy array with shape
+            `[self.n_disc_training_samples_per_buffer] + env.observation_space.shape`.
+            The ith observation in this array is the observation seen when the
+            generator chooses action `gen_act[i]`.
+        gen_act (np.ndarray): A numpy array with shape
+            `[self.n_disc_training_samples_per_buffer] + env.action_space.shape`.
+        gen_new_obs (np.ndarray): A numpy array with shape
+            `[self.n_disc_training_samples_per_buffer] + env.observation_space.shape`.
+            The ith observation in this array is from the transition state after
+            the generator chooses action `gen_act[i]`.
+    """  # noqa: E501
+
+    # Sample generator training batch from replay buffers, unless provided
+    # in argument.
     none_count = sum(int(x is None)
                      for x in (gen_old_obs, gen_act, gen_new_obs))
     if none_count == 3:
       tf.logging.debug("_build_disc_feed_dict: No generator rollout "
                        "parameters were "
                        "provided, so we are generating them now.")
-      n_timesteps = len(self.expert_old_obs)
-      (gen_old_obs, gen_act, gen_new_obs, _) = util.rollout.generate(
-          self.gen_policy, self.env, n_timesteps=n_timesteps)
+      gen_old_obs, gen_act, gen_new_obs = self._gen_replay_buffer.sample(
+          self._n_disc_samples_per_buffer)
     elif none_count != 0:
       raise ValueError("Gave some but not all of the generator params.")
 
-    # Alias saved expert rollout.
-    expert_old_obs = self.expert_old_obs
-    expert_act = self.expert_act
-    expert_new_obs = self.expert_new_obs
+    # Sample expert training batch from replay buffer.
+    expert_old_obs, expert_act, expert_new_obs = self._exp_replay_buffer.sample(
+        self._n_disc_samples_per_buffer)
 
     # Check dimensions.
     n_expert = len(expert_old_obs)
@@ -291,7 +323,7 @@ class AIRLTrainer():
     self._policy_train_reward_fn = R
 
   def _build_test_reward(self):
-    """Sets self._test_reward_fn, the reward function learned by AIRL."""
+    """Sets self._test_reward_fn, the transfer reward function"""
     def R(old_obs, act, new_obs):
       fd = {
           self.discrim.old_obs_ph: old_obs,
