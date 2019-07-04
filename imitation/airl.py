@@ -30,7 +30,7 @@ class AIRLTrainer:
             Discriminates generated trajectories from other trajectories, and
             also holds the inferred reward for transfer learning.
         expert_policies (BaseRLModel or [BaseRLModel]): An expert policy
-            or a list of expert policies that used to generate example
+            or a list of expert policies that are used to generate example
             obs-action-obs triples.
 
             WARNING:
@@ -161,7 +161,7 @@ class AIRLTrainer:
             discriminator's classification.
     """
     fd = self._build_disc_feed_dict(**kwargs)
-    return np.sum(self._sess.run(self.discrim.disc_loss, feed_dict=fd))
+    return np.mean(self._sess.run(self.discrim.disc_loss, feed_dict=fd))
 
   def wrap_env_train_reward(self, env):
     """Returns the given Env wrapped with a reward function that returns
@@ -210,9 +210,9 @@ class AIRLTrainer:
   def _build_disc_train(self):
     # Construct Train operation.
     self._disc_opt = tf.train.AdamOptimizer()
-    # XXX: I am passing a [None] Tensor as loss. Can this be problematic?
     self._disc_train_op = self._disc_opt.minimize(
-        self.discrim.disc_loss, global_step=self._global_step)
+        tf.reduce_mean(self.discrim.disc_loss),
+        global_step=self._global_step)
 
   def _build_disc_feed_dict(self, *,
                             gen_old_obs: Optional[np.ndarray] = None,
