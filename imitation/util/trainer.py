@@ -1,24 +1,24 @@
 """
-Utility functions for manipulating AIRLTrainer.
+Utility functions for manipulating Trainer.
 
 (The primary reason these functions are here instead of in utils.py is to
-prevent cyclic imports between imitation.airl and imitation.util)
+prevent cyclic imports between imitation.trainer and imitation.util)
 """
 
 import gin
 import gin.tf
 import tensorflow as tf
 
-from imitation.airl import AIRLTrainer
 import imitation.discrim_net as discrim_net
 from imitation.reward_net import BasicShapedRewardNet
+from imitation.trainer import Trainer
 import imitation.util as util
 
 
 @gin.configurable
 def init_trainer(env_id, policy_dir, use_gail, use_random_expert=True,
-                 **airl_trainer_kwargs):
-  """Build an AIRLTrainer, ready to be trained on a vectorized environment
+                 **trainer_kwargs):
+  """Build an Trainer, ready to be trained on a vectorized environment
   and either expert rollout data or random rollout data.
 
   Args:
@@ -30,7 +30,7 @@ def init_trainer(env_id, policy_dir, use_gail, use_random_expert=True,
     use_random_expert (bool):
         If True, then use a blank (random) policy to generate rollouts.
         If False, then load an expert policy. Will crash if DNE.
-    **airl_trainer_kwargs: Additional arguments For the AIRLTrainer constructor.
+    **trainer_kwargs: Additional arguments For the Trainer constructor.
   """
   env = util.make_vec_env(env_id, 8)
   gen_policy = util.make_blank_policy(env, init_tensorboard=False)
@@ -48,6 +48,6 @@ def init_trainer(env_id, policy_dir, use_gail, use_random_expert=True,
     rn = BasicShapedRewardNet(env)
     discrim = discrim_net.DiscrimNetAIRL(rn)
 
-  trainer = AIRLTrainer(env, gen_policy, discrim,
-                        expert_policies=expert_policy, **airl_trainer_kwargs)
+  trainer = Trainer(env, gen_policy, discrim,
+                    expert_policies=expert_policy, **trainer_kwargs)
   return trainer

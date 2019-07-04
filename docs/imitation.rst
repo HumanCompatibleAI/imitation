@@ -13,14 +13,6 @@ Subpackages
 Submodules
 ----------
 
-imitation.airl module
----------------------
-
-.. automodule:: imitation.airl
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 imitation.discrim\_net module
 -----------------------------
 
@@ -57,6 +49,14 @@ imitation.tabular\_irl module
 -----------------------------
 
 .. automodule:: imitation.tabular_irl
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+imitation.trainer module
+---------------------
+
+.. automodule:: imitation.trainer
    :members:
    :undoc-members:
    :show-inheritance:

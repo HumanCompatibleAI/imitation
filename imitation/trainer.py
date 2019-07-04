@@ -11,24 +11,22 @@ import imitation.util as util
 from imitation.util.buffer import ReplayBuffer
 
 
-class AIRLTrainer:
+class Trainer:
 
   def __init__(self, env, gen_policy, discrim, expert_policies, *,
                n_disc_samples_per_buffer=200, n_expert_samples=4000,
                gen_replay_buffer_capacity: Optional[int] = None,
                init_tensorboard=False):
-    """Adversarial IRL. After training, the RewardNet recovers the reward.
+    """
+    Trainer for GAIL and AIRL.
 
     Args:
-        env (gym.Env or str): A gym environment to train in. AIRL
-            modifies env's step() function. Internally, we will wrap this
-            in a DummyVecEnv.
+        env (gym.Env or str): A gym environment that the policy is trained on.
         gen_policy (stable_baselines.BaseRLModel):
-            The generator policy that AIRL trains to maximize discriminator
+            The generator policy that trained to maximize discriminator
             confusion.
-        reward_net (RewardNet): The reward network to train.
-            Discriminates generated trajectories from other trajectories, and
-            also holds the inferred reward for transfer learning.
+        discrim (DiscrimNet): The discriminator network.
+            For GAIL, use a DiscrimNetGAIL. For AIRL, use a DiscrimNetAIRL.
         expert_policies (BaseRLModel or [BaseRLModel]): An expert policy
             or a list of expert policies that used to generate example
             obs-action-obs triples.
@@ -50,8 +48,9 @@ class AIRLTrainer:
 
             By default this is equal to `20 * n_disc_training_samples`.
         init_tensorboard (bool): If True, makes various discriminator
-            Tensorboard summaries under the run name "AIRL_{date}_{runnumber}".
-            (Generator summaries appear under a different runname because they
+            Tensorboard summaries.
+            (Generator summaries appear under a different runname than the
+            discriminator summaries because they
             are configured by initializing the stable_baselines policy).
     """
     if n_disc_samples_per_buffer > n_expert_samples:
@@ -67,7 +66,7 @@ class AIRLTrainer:
 
     self._global_step = tf.train.create_global_step()
 
-    with tf.variable_scope("AIRLTrainer"):
+    with tf.variable_scope("trainer"):
       with tf.variable_scope("discriminator"):
         self.discrim = discrim
         self._build_disc_train()
@@ -168,7 +167,7 @@ class AIRLTrainer:
     the AIRL training reward (discriminator confusion).
 
     The wrapped `Env`'s reward is directly evaluated from the reward network,
-    and therefore changes whenever `AIRLTrainer.train()` is called.
+    and therefore changes whenever `self.train()` is called.
 
     Args:
         env (str, Env, or VecEnv): The Env that we want to wrap. If a
@@ -181,10 +180,10 @@ class AIRLTrainer:
 
   def wrap_env_test_reward(self, env):
     """Returns the given Env wrapped with a reward function that returns
-    the reward learned by this AIRLTrainer.
+    the reward learned by this Trainer.
 
     The wrapped `Env`'s reward is directly evaluated from the reward network,
-    and therefore changes whenever `AIRLTrainer.train()` is called.
+    and therefore changes whenever `self.train()` is called.
 
     Args:
         env (str, Env, or VecEnv): The Env that should be wrapped. If a
@@ -325,7 +324,7 @@ class AIRLTrainer:
     self._policy_train_reward_fn = R
 
   def _build_test_reward(self):
-    """Sets self._test_reward_fn, the reward function learned by AIRL."""
+    """Sets self._test_reward_fn, the transfer reward function"""
     def R(old_obs, act, new_obs):
       fd = {
           self.discrim.old_obs_ph: old_obs,
