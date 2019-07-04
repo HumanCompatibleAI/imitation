@@ -3,8 +3,7 @@
 import gin
 import tensorflow as tf
 
-from imitation import bc
-from imitation import util
+from imitation import bc, util
 
 gin.parse_config_file("configs/test.gin")
 tf.logging.set_verbosity(tf.logging.INFO)
