@@ -1,11 +1,13 @@
 import glob
 import os
+from typing import Tuple
 
 import gin
 import gin.tf
 import gym
 import stable_baselines
 from stable_baselines.bench import Monitor
+from stable_baselines.common.input import observation_input
 from stable_baselines.common.policies import FeedForwardPolicy
 from stable_baselines.common.vec_env import DummyVecEnv, VecEnv
 import tensorflow as tf
@@ -233,33 +235,32 @@ def apply_ff(inputs, hid_sizes):
   return tf.squeeze(x, axis=1)
 
 
-def build_placeholders(env, include_new_obs):
-  """Returns (old_obs_ph, act_ph) or (old_obs_ph, act_ph, new_obs_ph)."""
-  o_shape = (None,) + env.observation_space.shape
-  a_shape = (None,) + env.action_space.shape
+def build_inputs(env: gym.Env, scale: bool = True) -> Tuple[tf.Tensor, ...]:
+  """Build placeholders and processed input Tensors for `old_obs`, `act`, and
+  `new_obs`.
 
-  old_obs_ph = tf.placeholder(name="old_obs_ph",
-                              dtype=tf.float32, shape=o_shape)
-  if include_new_obs:
-    new_obs_ph = tf.placeholder(name="new_obs_ph",
-                                dtype=tf.float32, shape=o_shape)
-  act_ph = tf.placeholder(name="act_ph",
-                          dtype=tf.float32, shape=a_shape)
+  Observation placeholders and processed input tensors have shape
+  `(None,) + obs_space.shape`.
+  The action placeholder and processed input tensors have shape
+  `(None,) + act_space.shape`.
 
-  if include_new_obs:
-    return old_obs_ph, act_ph, new_obs_ph
-  else:
-    return old_obs_ph, act_ph
+  Args:
+    env: The environment that the observation and action spaces comes from.
+    scale: Only relevant for environments with Box spaces. If True, then
+      processed input Tensors are automatically scaled to the interval [0, 1].
 
+  Returns:
+    old_obs_ph: Placeholder for old observations.
+    act_ph: Placeholder for actions.
+    new_obs_ph: Placeholder for new observations.
+    old_obs_inp: Network-ready float32 Tensor with processed old observations.
+    act_inp: Network-ready float32 Tensor with processed actions.
+    new_obs_inp: Network-ready float32 Tensor with processed new observations.
+  """
 
-def flat(tensor, space_shape):
-  ndim = len(space_shape)
-  if ndim == 0:
-    return tf.reshape(tensor, [-1, 1])
-  elif ndim == 1:
-    return tf.reshape(tensor, [-1, space_shape[0]])
-  else:
-    # TODO: Take the product(space_shape) and use that as the final
-    # dimension. In fact, product could encompass all the previous
-    # cases.
-    raise NotImplementedError
+  old_obs_ph, old_obs_inp = observation_input(env.observation_space,
+                                              name="old_obs", scale=scale)
+  act_ph, act_inp = observation_input(env.action_space, name="act", scale=scale)
+  new_obs_ph, new_obs_inp = observation_input(env.observation_space,
+                                              name="new_obs", scale=scale)
+  return old_obs_ph, act_ph, new_obs_ph, old_obs_inp, act_inp, new_obs_inp
