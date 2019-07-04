@@ -1,6 +1,6 @@
 import glob
 import os
-from typing import Tuple
+from typing import Iterable, Optional, Tuple
 
 import gin
 import gin.tf
@@ -221,10 +221,11 @@ def _get_tb_log_dir(env, init_tensorboard):
     return None
 
 
-def apply_ff(inputs, hid_sizes):
+def apply_ff(inputs: tf.Tensor,
+             hid_sizes: Iterable[int],
+             name: Optional[str] = None,
+             ) -> tf.Tensor:
   """Applies a feed forward network on the inputs."""
-  # XXX: Seems like xavier is default?
-  # https://stackoverflow.com/q/37350131/1091722
   xavier = tf.contrib.layers.xavier_initializer
   x = inputs
   for i, size in enumerate(hid_sizes):
@@ -232,7 +233,7 @@ def apply_ff(inputs, hid_sizes):
                         kernel_initializer=xavier(), name="dense" + str(i))
   x = tf.layers.dense(x, 1, kernel_initializer=xavier(),
                       name="dense_final")
-  return tf.squeeze(x, axis=1)
+  return tf.squeeze(x, axis=1, name=name)
 
 
 def build_inputs(env: gym.Env, scale: bool = True) -> Tuple[tf.Tensor, ...]:

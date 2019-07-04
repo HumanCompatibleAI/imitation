@@ -276,12 +276,10 @@ def build_basic_phi_network(hid_sizes, old_obs_input, new_obs_input):
     new_o = tf.layers.flatten(new_obs_input)
 
     # Weight share, just with different inputs old_o and new_o
-    old_shaping_output = tf.identity(
-        util.apply_ff(old_o, hid_sizes=hid_sizes),
-        name="old_shaping_output")
-    new_shaping_output = tf.identity(
-        util.apply_ff(new_o, hid_sizes=hid_sizes),
-        name="new_shaping_output")
+    old_shaping_output = util.apply_ff(old_o, hid_sizes=hid_sizes,
+                                       name="old_shaping_output")
+    new_shaping_output = util.apply_ff(new_o, hid_sizes=hid_sizes,
+                                       name="new_shaping_output")
 
   return old_shaping_output, new_shaping_output
 
