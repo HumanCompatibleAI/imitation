@@ -17,7 +17,7 @@ from matplotlib import pyplot as plt
 import tensorflow as tf
 import tqdm
 
-from imitation.airl import AIRLTrainer
+from imitation.trainer import Trainer
 import imitation.util as util
 from imitation.util.trainer import init_trainer
 
@@ -32,8 +32,8 @@ def train_and_plot(policy_dir: str = "expert_models",
                    n_gen_steps_per_epoch: int = 10000,
                    n_episodes_per_reward_data: int = 5,
                    interactive: bool = True,
-                   trainer: Optional[AIRLTrainer] = None,
-                   **airl_trainer_kwargs
+                   trainer: Optional[Trainer] = None,
+                   **trainer_kwargs
                    ) -> None:
   """Alternate between training the generator and discriminator.
 
@@ -72,11 +72,10 @@ def train_and_plot(policy_dir: str = "expert_models",
   assert n_epochs_per_plot is None or n_epochs_per_plot >= 1
   if trainer is None:
     assert env is not None
-    trainer = init_trainer(env, policy_dir=policy_dir,
-                           **airl_trainer_kwargs)
+    trainer = init_trainer(env, policy_dir=policy_dir, **trainer_kwargs)
   env = trainer.env
 
-  os.makedirs("output/", exist_ok=True)
+  os.makedirs("output", exist_ok=True)
 
   plot_idx = 0
   gen_data = ([], [])
