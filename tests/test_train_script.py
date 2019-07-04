@@ -1,3 +1,5 @@
+import tensorflow as tf
+
 from imitation.scripts.train import train_and_plot
 
 
@@ -9,3 +11,4 @@ def test_train_and_plot_no_crash():
                    n_episodes_per_reward_data=2,
                    n_disc_samples_per_buffer=10,
                    interactive=False)
+    tf.reset_default_graph()
