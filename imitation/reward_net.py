@@ -34,7 +34,7 @@ class RewardNet(ABC):
     self.observation_space = observation_space
     self.action_space = action_space
 
-    inputs = util.build_inputs(observation_space, action_space, True)
+    inputs = util.build_inputs(observation_space, action_space)
     self.old_obs_ph, self.act_ph, self.new_obs_ph = inputs[:3]
     self.old_obs_inp, self.act_inp, self.new_obs_inp = inputs[3:]
 

@@ -237,7 +237,7 @@ def apply_ff(inputs: tf.Tensor,
 
 def build_inputs(observation_space: gym.Space,
                  action_space: gym.Space,
-                 scale: bool = True) -> Tuple[tf.Tensor, ...]:
+                 scale: bool = False) -> Tuple[tf.Tensor, ...]:
   """Builds placeholders and processed input Tensors.
 
   Observation `old_obs_*` and `new_obs_*` placeholders and processed input
@@ -259,7 +259,6 @@ def build_inputs(observation_space: gym.Space,
     act_inp: Network-ready float32 Tensor with processed actions.
     new_obs_inp: Network-ready float32 Tensor with processed new observations.
   """
-
   old_obs_ph, old_obs_inp = observation_input(observation_space,
                                               name="old_obs", scale=scale)
   act_ph, act_inp = observation_input(action_space, name="act", scale=scale)
