@@ -1,69 +1,90 @@
-from typing import Optional
+from typing import Dict, Optional, Sequence, Union
 from warnings import warn
 
+import gym
 import numpy as np
+from stable_baselines.common.base_class import BaseRLModel
 from stable_baselines.common.vec_env import VecEnvWrapper
 import tensorflow as tf
 from tqdm import tqdm
 
-import imitation.summaries as summaries
-import imitation.util as util
+from imitation import summaries, util
+from imitation.discrim_net import DiscrimNet
 from imitation.util.buffer import ReplayBuffer
 
 
 class Trainer:
+  """Trainer for GAIL and AIRL."""
 
-  def __init__(self, env, gen_policy, discrim, expert_policies, *,
-               n_disc_samples_per_buffer=200, n_expert_samples=4000,
+  def __init__(self,
+               env: Union[gym.Env, str],
+               gen_policy: BaseRLModel,
+               discrim: DiscrimNet,
+               expert_policies: Sequence[BaseRLModel], *,
+               disc_opt_cls: tf.train.Optimizer = tf.train.AdamOptimizer,
+               disc_opt_kwargs: Dict = {},
+               n_disc_samples_per_buffer: int = 200,
+               n_expert_samples: int = 4000,
                gen_replay_buffer_capacity: Optional[int] = None,
-               init_tensorboard=False):
-    """Trainer for GAIL and AIRL.
+               init_tensorboard: bool = False,
+               debug_use_ground_truth: bool = False):
+    """Builds Trainer.
 
     Args:
-        env (gym.Env or str): A gym environment that the policy is trained on.
-        gen_policy (stable_baselines.BaseRLModel):
-            The generator policy that trained to maximize discriminator
-            confusion.
-        discrim (DiscrimNet): The discriminator network.
+        env: A Gym environment or ID that the policy is trained on.
+        gen_policy: The generator policy that trained to maximize discriminator
+                    confusion.
+        discrim: The discriminator network.
             For GAIL, use a DiscrimNetGAIL. For AIRL, use a DiscrimNetAIRL.
-        expert_policies (BaseRLModel or [BaseRLModel]): An expert policy
+        expert_policies: An expert policy
             or a list of expert policies that are used to generate example
             obs-action-obs triples.
 
             WARNING:
             Due to the way VecEnvs handle episode completion states, the last
             obs-act-obs triple in every episode is omitted. (See issue #1.)
-        n_disc_samples_per_buffer (int): The number of obs-act-obs triples
+        disc_opt_cls: The optimizer for discriminator training.
+        disc_opt_kwargs: Parameters for discriminator training.
+        n_disc_samples_per_buffer: The number of obs-act-obs triples
             sampled from each replay buffer (expert and generator) during each
             step of discriminator training. This is also the number of triples
             stored in the replay buffer after each epoch of generator training.
-        n_expert_samples (int): The number of expert obs-action-obs triples
+        n_expert_samples: The number of expert obs-action-obs triples
             that are generated. If the number of expert policies given
             doesn't divide this number evenly, then the last expert policy
             generates more timesteps.
-        gen_replay_buffer_capacity (Optional[int]): The capacity of the
+        gen_replay_buffer_capacity: The capacity of the
             generator replay buffer (the number of obs-action-obs samples from
             the generator that can be stored).
 
             By default this is equal to `20 * n_disc_samples_per_buffer`.
-        init_tensorboard (bool): If True, makes various discriminator
+        init_tensorboard: If True, makes various discriminator
             TensorBoard summaries. (Generator summaries appear under a
             different runname than the discriminator summaries because they
             are configured by initializing the stable_baselines policy).
+        debug_use_ground_truth: If True, use the ground truth reward.
+            This disables the reward wrapping that would normally replace
+            the environment reward with the learned reward. This is useful for
+            sanity checking that the policy training is functional.
     """
     if n_disc_samples_per_buffer > n_expert_samples:
       warn("The discriminator batch size is larger than the number of "
            "expert samples.")
 
+    # TODO(adam): we're not guaranteed to use this session, see issue #31
     self._sess = tf.Session()
 
     self.env = util.maybe_load_env(env, vectorize=True)
     self.gen_policy = gen_policy
     self.expert_policies = expert_policies
     self._n_disc_samples_per_buffer = n_disc_samples_per_buffer
+    self.debug_use_ground_truth = debug_use_ground_truth
 
     self._global_step = tf.train.create_global_step()
 
+    # Discriminator and reward output
+    self._disc_opt_cls = disc_opt_cls
+    self._disc_opt_kwargs = disc_opt_kwargs
     with tf.variable_scope("trainer"):
       with tf.variable_scope("discriminator"):
         self.discrim = discrim
@@ -84,10 +105,11 @@ class Trainer:
     if gen_replay_buffer_capacity is None:
         gen_replay_buffer_capacity = 20 * self._n_disc_samples_per_buffer
     self._gen_replay_buffer = ReplayBuffer(gen_replay_buffer_capacity, self.env)
+    self._populate_gen_replay_buffer()
+
     exp_rollouts = util.rollout.generate_multiple(
         self.expert_policies, self.env, n_expert_samples)[:3]
     self._exp_replay_buffer = ReplayBuffer.from_data(*exp_rollouts)
-    self._populate_gen_replay_buffer()
 
   def train_disc(self, n_steps=10, **kwargs):
     """Trains the discriminator to minimize classification cross-entropy.
@@ -107,14 +129,18 @@ class Trainer:
 
   def train_gen(self, n_steps=10000):
     self.gen_policy.set_env(self.env)
-    self.gen_policy.learn(n_steps)
+    # TODO(adam): learn was not intended to be called for each training batch
+    # It should work, but might incur unnecessary overhead: e.g. in PPO2
+    # a new Runner instance is created each time. Also a hotspot for errors:
+    # algorithms not tested for this use case, may reset state accidentally.
+    self.gen_policy.learn(n_steps, reset_num_timesteps=False)
     self._populate_gen_replay_buffer()
 
   def _populate_gen_replay_buffer(self) -> None:
     """Generate and store generator samples in the buffer.
 
     More specifically, rolls out generator-policy trajectories in the
-    environment until `self._n_disc_sample_per_buffer` obs-act-obs samples are
+    environment until `self._n_disc_samples_per_buffer` obs-act-obs samples are
     produced, and then stores these samples.
     """
     gen_rollouts = util.rollout.generate(
@@ -175,7 +201,10 @@ class Trainer:
     wrapped_env (VecEnv): The wrapped environment with a new reward.
     """
     env = util.maybe_load_env(env, vectorize=True)
-    return _RewardVecEnvWrapper(env, self._policy_train_reward_fn)
+    if self.debug_use_ground_truth:
+      return env
+    else:
+      return _RewardVecEnvWrapper(env, self._policy_train_reward_fn)
 
   def wrap_env_test_reward(self, env):
     """Returns the given Env wrapped with a reward function that returns
@@ -193,7 +222,10 @@ class Trainer:
         wrapped_env (VecEnv): The wrapped environment with a new reward.
     """
     env = util.maybe_load_env(env, vectorize=True)
-    return _RewardVecEnvWrapper(env, self._test_reward_fn)
+    if self.debug_use_ground_truth:
+      return env
+    else:
+      return _RewardVecEnvWrapper(env, self._test_reward_fn)
 
   def _build_summarize(self):
     self._summary_writer = summaries.make_summary_writer(
@@ -207,8 +239,8 @@ class Trainer:
 
   def _build_disc_train(self):
     # Construct Train operation.
-    self._disc_opt = tf.train.AdamOptimizer()
-    self._disc_train_op = self._disc_opt.minimize(
+    disc_opt = self._disc_opt_cls(**self._disc_opt_kwargs)
+    self._disc_train_op = disc_opt.minimize(
         tf.reduce_mean(self.discrim.disc_loss),
         global_step=self._global_step)
 

@@ -23,18 +23,20 @@ class RewardNet(ABC):
     new_obs_ph (tf.Tensor): next observation placeholder.
   """
 
-  def __init__(self, observation_space: gym.Space, action_space: gym.Space):
+  def __init__(self, observation_space: gym.Space, action_space: gym.Space, *,
+               scale: bool = False):
     """Builds a reward network.
 
     Args:
         observation_space: The observation space.
         action_space: The action space.
+        scale: Whether to scale the input.
     """
 
     self.observation_space = observation_space
     self.action_space = action_space
 
-    inputs = util.build_inputs(observation_space, action_space)
+    inputs = util.build_inputs(observation_space, action_space, scale)
     self.old_obs_ph, self.act_ph, self.new_obs_ph = inputs[:3]
     self.old_obs_inp, self.act_inp, self.new_obs_inp = inputs[3:]
 
@@ -125,8 +127,8 @@ class RewardNetShaped(RewardNet):
   """
 
   def __init__(self, observation_space: gym.Space, action_space: gym.Space, *,
-               discount_factor: float = 0.99):
-    super().__init__(observation_space, action_space)
+               scale: bool = False, discount_factor: float = 0.99):
+    super().__init__(observation_space, action_space, scale=scale)
     self._discount_factor = discount_factor
 
     with tf.variable_scope("phi_network"):
@@ -236,7 +238,7 @@ class BasicRewardNet(RewardNet):
   """
 
   def __init__(self, observation_space: gym.Space, action_space: gym.Space, *,
-               state_only: bool = False,
+               scale: bool = False, state_only: bool = False,
                theta_units: Optional[List[int]] = None):
     """Builds a simple reward network.
 
@@ -250,7 +252,7 @@ class BasicRewardNet(RewardNet):
     """
     self.state_only = state_only
     self.theta_units = theta_units
-    super().__init__(observation_space, action_space)
+    super().__init__(observation_space, action_space, scale=scale)
 
   def build_theta_network(self, obs_input, act_input):
     act_or_none = None if self.state_only else act_input
@@ -307,8 +309,8 @@ class BasicShapedRewardNet(RewardNetShaped):
   """
 
   def __init__(self, observation_space: gym.Space, action_space: gym.Space, *,
+               scale: bool = False, state_only: bool = False,
                discount_factor: float = 0.99,
-               state_only: bool = False,
                theta_units: Optional[List[int]] = None,
                phi_units: Optional[List[int]] = None):
     """Builds a simple shaped reward network.
@@ -327,7 +329,7 @@ class BasicShapedRewardNet(RewardNetShaped):
     self.state_only = state_only
     self.theta_units = theta_units
     self.phi_units = phi_units
-    super().__init__(observation_space, action_space,
+    super().__init__(observation_space, action_space, scale=scale,
                      discount_factor=discount_factor)
 
   def build_theta_network(self, obs_input, act_input):
