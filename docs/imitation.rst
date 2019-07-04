@@ -54,7 +54,7 @@ imitation.tabular\_irl module
    :show-inheritance:
 
 imitation.trainer module
----------------------
+------------------------
 
 .. automodule:: imitation.trainer
    :members:

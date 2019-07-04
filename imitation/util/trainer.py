@@ -43,7 +43,8 @@ def init_trainer(env_id, policy_dir, use_gail, use_random_expert=True,
       raise ValueError(env)
 
   if use_gail:
-    discrim = discrim_net.DiscrimNetGAIL(env.observation_space, env.action_space)
+    discrim = discrim_net.DiscrimNetGAIL(env.observation_space,
+                                         env.action_space)
   else:
     rn = BasicShapedRewardNet(env.observation_space, env.action_space)
     discrim = discrim_net.DiscrimNetAIRL(rn)
