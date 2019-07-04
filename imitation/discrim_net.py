@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 
+import gym
 import tensorflow as tf
 
 from imitation import reward_net, util
@@ -154,8 +155,11 @@ class DiscrimNetAIRL(DiscrimNet):
 class DiscrimNetGAIL(DiscrimNet):
   """The discriminator to use for GAIL."""
 
-  def __init__(self, observation_space, action_space):
-    inputs = util.build_inputs(observation_space, action_space)
+  def __init__(self,
+               observation_space: gym.Space,
+               action_space: gym.Space,
+               scale: bool = False):
+    inputs = util.build_inputs(observation_space, action_space, scale=scale)
     self._old_obs_ph, self._act_ph, self._new_obs_ph = inputs[:3]
     self.old_obs_inp, self.act_inp, self.new_obs_inp = inputs[3:]
 

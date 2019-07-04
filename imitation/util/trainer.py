@@ -7,7 +7,6 @@ prevent cyclic imports between imitation.trainer and imitation.util)
 
 import gin
 import gin.tf
-import stable_baselines
 
 import imitation.discrim_net as discrim_net
 from imitation.reward_net import BasicShapedRewardNet
