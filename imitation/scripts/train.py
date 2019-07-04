@@ -52,10 +52,8 @@ def train_and_plot(policy_dir: str = "expert_models",
           `n_disc_steps_per_epoch` discriminator steps followed by
           `n_gen_steps_per_epoch` generator steps.
       n_epochs_per_plot: An optional number, greater than or equal to 1. The
-          (possibly fractional)
-          number of epochs between each plot. The first plot is at epoch 0,
-          right after the first discrim and generator steps.
-
+          (possibly fractional) number of epochs between each plot. The first
+          plot is at epoch 0, after the first discrim and generator steps.
           If `n_epochs_per_plot is None`, then don't make any plots.
       n_disc_steps_per_epoch: The number of discriminator update steps during
           every training epoch.
@@ -65,9 +63,9 @@ def train_and_plot(policy_dir: str = "expert_models",
           calculating the average episode reward of a policy.
       interactive: Figures are always saved to "output/*.png". If `interactive`
         is True, then also show plots as they are created.
-      trainer: If this is provided, then start training on this AIRLTrainer
-        instead of initializing a new one using `airl_trainer_kwargs`. Also,
-        ignore the `env` argument.
+      trainer: If this is provided, then train using this Trainer instead of
+        initializing a new one. Also, ignore the `env` argument.
+      trainer_kwargs: Passed to `init_trainer` when `trainer` is not specified.
   """
   assert n_epochs_per_plot is None or n_epochs_per_plot >= 1
   if trainer is None:
@@ -81,11 +79,11 @@ def train_and_plot(policy_dir: str = "expert_models",
   gen_data = ([], [])
   disc_data = ([], [])
 
-  def disc_plot_add_data(gen_mode=False):
-    """ Evaluate and record the discriminator loss for plotting later.
+  def disc_plot_add_data(gen_mode: bool = False):
+    """Evaluates and records the discriminator loss for plotting later.
 
     Args:
-        gen_mode (bool): Whether the generator or the discriminator is active.
+        gen_mode: Whether the generator or the discriminator is active.
             We use this to color the data points.
     """
     nonlocal plot_idx
