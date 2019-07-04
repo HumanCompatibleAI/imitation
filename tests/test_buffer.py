@@ -145,3 +145,10 @@ def test_replay_buffer_from_data():
   assert np.array_equal(buf._old_obs_buffer._buffer, old_obs)
   assert np.array_equal(buf._new_obs_buffer._buffer, new_obs)
   assert np.array_equal(buf._act_buffer._buffer, act)
+
+  with pytest.raises(ValueError, match=r".*same length."):
+    new_obs_toolong = np.array([7, 8, 9], dtype=int)
+    ReplayBuffer.from_data(old_obs, act, new_obs_toolong)
+  with pytest.raises(ValueError, match=r".*same dtype."):
+    new_obs_float = np.array(new_obs, dtype=float)
+    ReplayBuffer.from_data(old_obs, act, new_obs_float)
