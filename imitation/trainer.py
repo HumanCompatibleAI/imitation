@@ -17,8 +17,7 @@ class Trainer:
                n_disc_samples_per_buffer=200, n_expert_samples=4000,
                gen_replay_buffer_capacity: Optional[int] = None,
                init_tensorboard=False):
-    """
-    Trainer for GAIL and AIRL.
+    """Trainer for GAIL and AIRL.
 
     Args:
         env (gym.Env or str): A gym environment that the policy is trained on.
@@ -48,9 +47,8 @@ class Trainer:
 
             By default this is equal to `20 * n_disc_training_samples`.
         init_tensorboard (bool): If True, makes various discriminator
-            Tensorboard summaries.
-            (Generator summaries appear under a different runname than the
-            discriminator summaries because they
+            TensorBoard summaries. (Generator summaries appear under a
+            different runname than the discriminator summaries because they
             are configured by initializing the stable_baselines policy).
     """
     if n_disc_samples_per_buffer > n_expert_samples:

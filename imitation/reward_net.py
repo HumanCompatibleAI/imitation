@@ -125,7 +125,7 @@ class RewardNetShaped(RewardNet):
   """
 
   def __init__(self, observation_space: gym.Space, action_space: gym.Space, *,
-               discount_factor: float = 0.9):
+               discount_factor: float = 0.99):
     super().__init__(observation_space, action_space)
     self._discount_factor = discount_factor
 
@@ -307,7 +307,7 @@ class BasicShapedRewardNet(RewardNetShaped):
   """
 
   def __init__(self, observation_space: gym.Space, action_space: gym.Space, *,
-               discount_factor: float = 0.9,
+               discount_factor: float = 0.99,
                state_only: bool = False,
                theta_units: Optional[List[int]] = None,
                phi_units: Optional[List[int]] = None):

@@ -18,7 +18,7 @@ import imitation.util as util
 @gin.configurable
 def init_trainer(env_id, policy_dir, use_gail, use_random_expert=True,
                  **trainer_kwargs):
-  """Build an Trainer, ready to be trained on a vectorized environment
+  """Builds a Trainer, ready to be trained on a vectorized environment
   and either expert rollout data or random rollout data.
 
   Args:
