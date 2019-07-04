@@ -45,7 +45,7 @@ class Trainer:
             generator replay buffer (the number of obs-action-obs samples from
             the generator that can be stored).
 
-            By default this is equal to `20 * n_disc_training_samples`.
+            By default this is equal to `20 * n_disc_samples_per_buffer`.
         init_tensorboard (bool): If True, makes various discriminator
             TensorBoard summaries. (Generator summaries appear under a
             different runname than the discriminator summaries because they
@@ -222,13 +222,13 @@ class Trainer:
 
     Args:
         gen_old_obs (np.ndarray): A numpy array with shape
-            `[self.n_disc_training_samples_per_buffer] + env.observation_space.shape`.
+            `[self.n_disc_samples_per_buffer_per_buffer] + env.observation_space.shape`.
             The ith observation in this array is the observation seen when the
             generator chooses action `gen_act[i]`.
         gen_act (np.ndarray): A numpy array with shape
-            `[self.n_disc_training_samples_per_buffer] + env.action_space.shape`.
+            `[self.n_disc_samples_per_buffer_per_buffer] + env.action_space.shape`.
         gen_new_obs (np.ndarray): A numpy array with shape
-            `[self.n_disc_training_samples_per_buffer] + env.observation_space.shape`.
+            `[self.n_disc_samples_per_buffer_per_buffer] + env.observation_space.shape`.
             The ith observation in this array is from the transition state after
             the generator chooses action `gen_act[i]`.
     """  # noqa: E501
