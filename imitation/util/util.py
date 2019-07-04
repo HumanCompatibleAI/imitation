@@ -1,11 +1,13 @@
 import glob
 import os
+from typing import Iterable, Optional, Tuple
 
 import gin
 import gin.tf
 import gym
 import stable_baselines
 from stable_baselines.bench import Monitor
+from stable_baselines.common.input import observation_input
 from stable_baselines.common.policies import FeedForwardPolicy
 from stable_baselines.common.vec_env import DummyVecEnv, VecEnv
 import tensorflow as tf
@@ -219,10 +221,11 @@ def _get_tb_log_dir(env, init_tensorboard):
     return None
 
 
-def apply_ff(inputs, hid_sizes):
+def apply_ff(inputs: tf.Tensor,
+             hid_sizes: Iterable[int],
+             name: Optional[str] = None,
+             ) -> tf.Tensor:
   """Applies a feed forward network on the inputs."""
-  # XXX: Seems like xavier is default?
-  # https://stackoverflow.com/q/37350131/1091722
   xavier = tf.contrib.layers.xavier_initializer
   x = inputs
   for i, size in enumerate(hid_sizes):
@@ -230,36 +233,37 @@ def apply_ff(inputs, hid_sizes):
                         kernel_initializer=xavier(), name="dense" + str(i))
   x = tf.layers.dense(x, 1, kernel_initializer=xavier(),
                       name="dense_final")
-  return tf.squeeze(x, axis=1)
+  return tf.squeeze(x, axis=1, name=name)
 
 
-def build_placeholders(env, include_new_obs):
-  """Returns (old_obs_ph, act_ph) or (old_obs_ph, act_ph, new_obs_ph)."""
-  o_shape = (None,) + env.observation_space.shape
-  a_shape = (None,) + env.action_space.shape
+def build_inputs(observation_space: gym.Space,
+                 action_space: gym.Space,
+                 scale: bool = True) -> Tuple[tf.Tensor, ...]:
+  """Builds placeholders and processed input Tensors.
 
-  old_obs_ph = tf.placeholder(name="old_obs_ph",
-                              dtype=tf.float32, shape=o_shape)
-  if include_new_obs:
-    new_obs_ph = tf.placeholder(name="new_obs_ph",
-                                dtype=tf.float32, shape=o_shape)
-  act_ph = tf.placeholder(name="act_ph",
-                          dtype=tf.float32, shape=a_shape)
+  Observation `old_obs_*` and `new_obs_*` placeholders and processed input
+  tensors have shape `(None,) + obs_space.shape`.
+  The action `act_*` placeholder and processed input tensors have shape
+  `(None,) + act_space.shape`.
 
-  if include_new_obs:
-    return old_obs_ph, act_ph, new_obs_ph
-  else:
-    return old_obs_ph, act_ph
+  Args:
+    observation_space: The observation space.
+    action_space: The action space.
+    scale: Only relevant for environments with Box spaces. If True, then
+      processed input Tensors are automatically scaled to the interval [0, 1].
 
+  Returns:
+    old_obs_ph: Placeholder for old observations.
+    act_ph: Placeholder for actions.
+    new_obs_ph: Placeholder for new observations.
+    old_obs_inp: Network-ready float32 Tensor with processed old observations.
+    act_inp: Network-ready float32 Tensor with processed actions.
+    new_obs_inp: Network-ready float32 Tensor with processed new observations.
+  """
 
-def flat(tensor, space_shape):
-  ndim = len(space_shape)
-  if ndim == 0:
-    return tf.reshape(tensor, [-1, 1])
-  elif ndim == 1:
-    return tf.reshape(tensor, [-1, space_shape[0]])
-  else:
-    # TODO: Take the product(space_shape) and use that as the final
-    # dimension. In fact, product could encompass all the previous
-    # cases.
-    raise NotImplementedError
+  old_obs_ph, old_obs_inp = observation_input(observation_space,
+                                              name="old_obs", scale=scale)
+  act_ph, act_inp = observation_input(action_space, name="act", scale=scale)
+  new_obs_ph, new_obs_inp = observation_input(observation_space,
+                                              name="new_obs", scale=scale)
+  return old_obs_ph, act_ph, new_obs_ph, old_obs_inp, act_inp, new_obs_inp

@@ -28,7 +28,7 @@ def train_and_plot(policy_dir, env='CartPole-v1',
                    trainer_hook_fn=None,
                    trainer=None,
                    interactive=True,
-                   **airl_trainer_kwargs
+                   **trainer_kwargs
                    ):
   """Alternate between training the generator and discriminator.
 
@@ -42,7 +42,7 @@ def train_and_plot(policy_dir, env='CartPole-v1',
     - ...
   """
   if trainer is None:
-    trainer = init_trainer(env, policy_dir=policy_dir, **airl_trainer_kwargs)
+    trainer = init_trainer(env, policy_dir=policy_dir, **trainer_kwargs)
   if trainer_hook_fn:
     trainer_hook_fn(trainer)
 
