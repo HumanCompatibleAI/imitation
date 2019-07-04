@@ -104,10 +104,8 @@ class DiscrimNetAIRL(DiscrimNet):
 class DiscrimNetGAIL(DiscrimNet):
   """The discriminator to use for GAIL."""
 
-  def __init__(self, env):
-    self.env = util.maybe_load_env(env)
-
-    inputs = util.build_inputs(self.env)
+  def __init__(self, observation_space, action_space):
+    inputs = util.build_inputs(observation_space, action_space)
     self.old_obs_ph, self.act_ph, self.new_obs_ph = inputs[:3]
     self.old_obs_inp, self.act_inp, self.new_obs_inp = inputs[3:]
 

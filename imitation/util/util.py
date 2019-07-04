@@ -236,17 +236,19 @@ def apply_ff(inputs: tf.Tensor,
   return tf.squeeze(x, axis=1, name=name)
 
 
-def build_inputs(env: gym.Env, scale: bool = True) -> Tuple[tf.Tensor, ...]:
-  """Build placeholders and processed input Tensors for `old_obs`, `act`, and
-  `new_obs`.
+def build_inputs(observation_space: gym.Space,
+                 action_space: gym.Space,
+                 scale: bool = True) -> Tuple[tf.Tensor, ...]:
+  """Builds placeholders and processed input Tensors.
 
-  Observation placeholders and processed input tensors have shape
-  `(None,) + obs_space.shape`.
-  The action placeholder and processed input tensors have shape
+  Observation `old_obs_*` and `new_obs_*` placeholders and processed input
+  tensors have shape `(None,) + obs_space.shape`.
+  The action `act_*` placeholder and processed input tensors have shape
   `(None,) + act_space.shape`.
 
   Args:
-    env: The environment that the observation and action spaces comes from.
+    observation_space: The observation space.
+    action_space: The action space.
     scale: Only relevant for environments with Box spaces. If True, then
       processed input Tensors are automatically scaled to the interval [0, 1].
 
@@ -259,9 +261,9 @@ def build_inputs(env: gym.Env, scale: bool = True) -> Tuple[tf.Tensor, ...]:
     new_obs_inp: Network-ready float32 Tensor with processed new observations.
   """
 
-  old_obs_ph, old_obs_inp = observation_input(env.observation_space,
+  old_obs_ph, old_obs_inp = observation_input(observation_space,
                                               name="old_obs", scale=scale)
-  act_ph, act_inp = observation_input(env.action_space, name="act", scale=scale)
-  new_obs_ph, new_obs_inp = observation_input(env.observation_space,
+  act_ph, act_inp = observation_input(action_space, name="act", scale=scale)
+  new_obs_ph, new_obs_inp = observation_input(observation_space,
                                               name="new_obs", scale=scale)
   return old_obs_ph, act_ph, new_obs_ph, old_obs_inp, act_inp, new_obs_inp
