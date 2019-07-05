@@ -30,7 +30,13 @@ def init_trainer(env_id, policy_dir, use_gail, use_random_expert=True,
     use_random_expert (bool):
         If True, then use a blank (random) policy to generate rollouts.
         If False, then load an expert policy. Will crash if DNE.
-    trainer_kwargs (dict): Aguments for the Trainer constructor.
+    theta_units (List[int]): Hidden layer sizes in the theta network. Only
+        applicable when using AIRL, ie `use_gail == False`.
+    phi_units (List[int]): Hidden layer sizes in the phi network. Only
+        applicable when using AIRL, ie `use_gail == False`.
+    discrim_scale (bool): If True, then automatically normalize some inputs to
+        the interval [0, 1] before passing into the discriminator network.
+    trainer_kwargs (dict): Arguments for the Trainer constructor.
     discrim_kwargs (dict): Arguments for the DiscrimNet* constructor.
   """
   env = util.make_vec_env(env_id, 8)
