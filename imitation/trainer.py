@@ -299,9 +299,10 @@ class Trainer:
                              np.ones(n_gen, dtype=int)])
 
     # Calculate generator-policy log probabilities.
-    log_act_prob = np.log(self.gen_policy.action_probability(
-        old_obs, actions=act)).flatten()  # (N,)
+    log_act_prob = self.gen_policy.action_probability(old_obs, actions=act,
+                                                      logp=True)
     assert len(log_act_prob) == N
+    log_act_prob = log_act_prob.reshape((N,))
 
     fd = {
         self.discrim.old_obs_ph: old_obs,
@@ -338,9 +339,10 @@ class Trainer:
       assert len(new_obs) == n_gen
 
       # Calculate generator-policy log probabilities.
-      log_act_prob = np.log(self.gen_policy.action_probability(
-          old_obs, actions=act)).flatten()  # (N,)
+      log_act_prob = self.gen_policy.action_probability(old_obs, actions=act,
+                                                        logp=True)
       assert len(log_act_prob) == n_gen
+      log_act_prob = log_act_prob.reshape((n_gen,))
 
       fd = {
           self.discrim.old_obs_ph: old_obs,

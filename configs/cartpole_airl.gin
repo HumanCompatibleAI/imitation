@@ -1,24 +1,4 @@
-load_policy.n_experts=1
+include "configs/classical_control.gin"
 
-train_and_plot.env="CartPole-v1"
-train_and_plot.policy_dir="expert_models"
-train_and_plot.n_epochs = 50
-train_and_plot.n_disc_steps_per_epoch = 50
-train_and_plot.n_gen_steps_per_epoch = 16384
-
-make_blank_policy.learning_rate=3e-3
-make_blank_policy.nminibatches=32
-make_blank_policy.noptepochs=10
-make_blank_policy.n_steps=2048
-
-init_trainer.use_gail=False
-init_trainer.use_random_expert = False
-init_trainer.discrim_scale = False
-
-init_trainer.trainer_kwargs = {
-    'n_disc_samples_per_buffer': 1000,
-    # Setting buffer capacity and disc samples to 1000 effectively disables the replay buffer
-    # This seems to improve convergence speed on cartpole, possibly at a cost of stability
-    'gen_replay_buffer_capacity': 1000,
-    'n_expert_samples': 1000,
-}
+train_and_plot.env = 'CartPole-v1'
+init_trainer.use_gail = False

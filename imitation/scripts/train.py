@@ -182,7 +182,7 @@ def main():
 if __name__ == "__main__":
   parser = argparse.ArgumentParser()
   parser.add_argument("--gin_config",
-                      default='configs/cartpole_orig_airl_repro.gin')
+                      default='configs/cartpole_airl.gin')
   args = parser.parse_args()
 
   gin.parse_config_file(args.gin_config)

@@ -1,0 +1,5 @@
+# Defaults common to all environments
+
+load_policy.n_experts=1
+train_and_plot.policy_dir="expert_models"
+init_trainer.use_random_expert = False
