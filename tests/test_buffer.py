@@ -49,9 +49,9 @@ def test_buffer(capacity, chunk_len, sample_shape):
 
     _check_bound(i + chunk_len, capacity, samples)
 
-  # Confirm that buffer is not mutable from inserted sample.
-  chunk[:] = np.nan
-  assert not np.any(np.isnan(buf._buffer['k']))
+    # Confirm that buffer is not mutable from inserted sample.
+    chunk[:] = np.nan
+    assert not np.any(np.isnan(buf._arrays['k']))
 
 
 @pytest.mark.parametrize("capacity", [30, 60])
@@ -149,6 +149,11 @@ def test_buffer_sample_errors():
       b.sample(5)
 
 
+def test_buffer_init_errors():
+  with pytest.raises(KeyError, match=r"sample_shape and dtypes.*"):
+    Buffer(10, dict(a=(2, 1), b=(3,)), dtypes=dict(a="float32", c=bool))
+
+
 def test_replay_buffer_init_errors():
   with pytest.raises(ValueError, match=r"Specified.* and environment"):
     ReplayBuffer(15, env="MockEnv", obs_shape=(10, 10))
@@ -168,9 +173,9 @@ def test_replay_buffer_store_errors():
 def test_buffer_from_data():
   data = np.ndarray([50, 30], dtype=bool)
   buf = Buffer.from_data({'k': data})
-  assert buf._buffer['k'] is not data
-  assert data.dtype == buf._buffer['k'].dtype
-  assert np.array_equal(buf._buffer['k'], data)
+  assert buf._arrays['k'] is not data
+  assert data.dtype == buf._arrays['k'].dtype
+  assert np.array_equal(buf._arrays['k'], data)
 
 
 def test_replay_buffer_from_data():
@@ -178,9 +183,9 @@ def test_replay_buffer_from_data():
   act = np.ones((2, 6), dtype=float)
   new_obs = np.array([7, 8], dtype=int)
   buf = ReplayBuffer.from_data(old_obs, act, new_obs)
-  assert np.array_equal(buf._buffer._buffer['old_obs'], old_obs)
-  assert np.array_equal(buf._buffer._buffer['new_obs'], new_obs)
-  assert np.array_equal(buf._buffer._buffer['act'], act)
+  assert np.array_equal(buf._buffer._arrays['old_obs'], old_obs)
+  assert np.array_equal(buf._buffer._arrays['new_obs'], new_obs)
+  assert np.array_equal(buf._buffer._arrays['act'], act)
 
   with pytest.raises(ValueError, match=r".*same length."):
     new_obs_toolong = np.array([7, 8, 9], dtype=int)
