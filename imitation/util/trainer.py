@@ -16,7 +16,7 @@ import imitation.util as util
 
 @gin.configurable
 def init_trainer(env_id, policy_dir, use_gail, use_random_expert=True,
-                 theta_units=[32, 32], phi_units=[32, 32],
+                 num_vec=8, theta_units=[32, 32], phi_units=[32, 32],
                  discrim_scale=False, discrim_kwargs={}, trainer_kwargs={}):
   """Builds a Trainer, ready to be trained on a vectorized environment
   and either expert rollout data or random rollout data.
@@ -33,7 +33,7 @@ def init_trainer(env_id, policy_dir, use_gail, use_random_expert=True,
     trainer_kwargs (dict): Aguments for the Trainer constructor.
     discrim_kwargs (dict): Arguments for the DiscrimNet* constructor.
   """
-  env = util.make_vec_env(env_id, 8)
+  env = util.make_vec_env(env_id, num_vec)
   gen_policy = util.make_blank_policy(env, verbose=1)
 
   if use_random_expert:
