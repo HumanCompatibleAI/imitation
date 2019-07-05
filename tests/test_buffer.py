@@ -115,7 +115,7 @@ def test_buffer_store_errors(sample_shape):
   dtype = "float32"
 
   def buf():
-      return Buffer(capacity, {'k': sample_shape}, {'k': dtype})
+    return Buffer(capacity, {'k': sample_shape}, {'k': dtype})
 
   # Unexpected keys
   b = buf()
@@ -130,23 +130,23 @@ def test_buffer_store_errors(sample_shape):
   # `data` is empty.
   b = buf()
   with pytest.raises(ValueError):
-      b.store({'k': np.empty((0,) + sample_shape, dtype=dtype)})
+    b.store({'k': np.empty((0,) + sample_shape, dtype=dtype)})
 
   # `data` has too many samples.
   b = buf()
   with pytest.raises(ValueError):
-      b.store({'k': np.empty((capacity + 1,) + sample_shape, dtype=dtype)})
+    b.store({'k': np.empty((capacity + 1,) + sample_shape, dtype=dtype)})
 
   # `data` has the wrong sample shape.
   b = buf()
   with pytest.raises(ValueError):
-      b.store({'k': np.empty((1, 3, 3, 3, 3), dtype=dtype)})
+    b.store({'k': np.empty((1, 3, 3, 3, 3), dtype=dtype)})
 
 
 def test_buffer_sample_errors():
   b = Buffer(10, {'k': (2, 1)}, dtypes={'k': bool})
   with pytest.raises(ValueError):
-      b.sample(5)
+    b.sample(5)
 
 
 def test_buffer_init_errors():
@@ -158,16 +158,16 @@ def test_replay_buffer_init_errors():
   with pytest.raises(ValueError, match=r"Specified.* and environment"):
     ReplayBuffer(15, env="MockEnv", obs_shape=(10, 10))
   with pytest.raises(ValueError, match=r"Shape or dtype missing.*"):
-      ReplayBuffer(15, obs_shape=(10, 10), act_shape=(15,), obs_dtype=bool)
+    ReplayBuffer(15, obs_shape=(10, 10), act_shape=(15,), obs_dtype=bool)
   with pytest.raises(ValueError, match=r"Shape or dtype missing.*"):
-      ReplayBuffer(15, obs_shape=(10, 10), obs_dtype=bool, act_dtype=bool)
+    ReplayBuffer(15, obs_shape=(10, 10), obs_dtype=bool, act_dtype=bool)
 
 
 def test_replay_buffer_store_errors():
   b = ReplayBuffer(10, obs_shape=(), obs_dtype=bool, act_shape=(),
                    act_dtype=float)
   with pytest.raises(ValueError, match=".* same length.*"):
-      b.store(np.ones(4), np.ones(4), np.ones(3))
+    b.store(np.ones(4), np.ones(4), np.ones(3))
 
 
 def test_buffer_from_data():
