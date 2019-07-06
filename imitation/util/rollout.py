@@ -1,3 +1,4 @@
+import collections
 import functools
 from typing import Dict, List, Sequence, Tuple
 
@@ -58,31 +59,29 @@ class _TrajectoryAccumulator:
   """
 
   def __init__(self):
-    self.partial_trajectories = {}
+    self.partial_trajectories = collections.defaultdict(list)
 
   def finish_trajectory(self, idx) -> List[Dict[str, np.ndarray]]:
     """Complete the trajectory labelled with `idx`.
     Return list of completed trajectories popped from
     `self.partial_trajectories`.
     """
-    if idx not in self.partial_trajectories:
-      return []
     part_dicts = self.partial_trajectories[idx]
-    out_dict_unstacked = {}
+    del self.partial_trajectories[idx]
+    out_dict_unstacked = collections.defaultdict(list)
     for part_dict in part_dicts:
       for key, array in part_dict.items():
-        out_dict_unstacked.setdefault(key, []).append(array)
-    final_dict = {
+        out_dict_unstacked[key].append(array)
+    out_dict_stacked = {
         key: np.stack(arr_list, axis=0)
         for key, arr_list in out_dict_unstacked.items()
     }
-    del self.partial_trajectories[idx]
-    return [final_dict]
+    return out_dict_stacked
 
   def add_step(self, idx, step_dict: Dict[str, np.ndarray]):
     """Add a single step to the partial trajectory identified by `idx` (this
     could correspond to, e.g., one environment managed by a vecenv)."""
-    self.partial_trajectories.setdefault(idx, []).append(step_dict)
+    self.partial_trajectories[idx].append(step_dict)
 
 
 def generate(policy, env, *, n_timesteps=None, n_episodes=None
@@ -149,13 +148,13 @@ def generate(policy, env, *, n_timesteps=None, n_episodes=None
   # accumulator for incomplete trajectories
   trajectories_accum = _TrajectoryAccumulator()
   obs_batch = env.reset()
-  for idx, obs in enumerate(obs_batch):
+  for env_idx, obs in enumerate(obs_batch):
     # Seed with first obs only. Inside loop, we'll only add second obs from
     # each (s,a,r,s') tuple, under the same "obs" key again. That way we still
     # get all observations, but they're not duplicated into "next obs" and
     # "previous obs" (this matters for, e.g., Atari, where observations are
     # really big).
-    trajectories_accum.add_step(idx, dict(obs=obs))
+    trajectories_accum.add_step(env_idx, dict(obs=obs))
   while not rollout_done():
     obs_old_batch = obs_batch
     act_batch, _ = get_action(obs_old_batch)
@@ -170,18 +169,24 @@ def generate(policy, env, *, n_timesteps=None, n_episodes=None
     # (See GH Issue #1).
     zip_iter = enumerate(
         zip(obs_old_batch, act_batch, obs_batch, rew_batch, done_batch))
-    for idx, (obs_old, act, obs, rew, done) in zip_iter:
+    for env_idx, (obs_old, act, obs, rew, done) in zip_iter:
       if done:
-        # finish idx-th trajectory
+        # finish env_idx-th trajectory
         # FIXME: this will break horribly if a trajectory ends after the first
         # action, b/c the trajectory will consist of just a single obs. The
         # "correct" fix for this is to PATCH STABLE BASELINES SO THAT ITS
-        # VECENV GIVES US A CORRECT FINAL OBSERVATION TO ADD.
-        trajectories.extend(trajectories_accum.finish_trajectory(idx))
-        trajectories_accum.add_step(idx, dict(obs=obs))
+        # VECENV GIVES US A CORRECT FINAL OBSERVATION TO ADD (see
+        # bug #1 in our repo).
+        new_traj = trajectories_accum.finish_trajectory(env_idx)
+        if not ({'act', 'obs', 'rew'} <= new_traj.keys()):
+          raise ValueError("Trajectory does not have expected act/obs/rew "
+                           "keys; it probably ended on first step. You should "
+                           "PATCH STABLE BASELINES (see bug #1 in our repo).")
+        trajectories.append(new_traj)
+        trajectories_accum.add_step(env_idx, dict(obs=obs))
         continue
       trajectories_accum.add_step(
-          idx,
+          env_idx,
           dict(
               act=act,
               rew=rew,
