@@ -9,18 +9,21 @@ from tqdm.autonotebook import tqdm, trange
 from imitation.util import FeedForward32Policy, rollout
 
 
-class BCTrainer(object):
-  """Simple Behavioural cloning (BC). Recovers only a policy.
+class BCTrainer:
+  """Simple behavioural cloning (BC).
+
+  Recovers only a policy.
 
   Args:
     env (gym.Env): environment to train on.
-    expert_trainers ([BaseRLModel]): snapshots RL algorithms that have
-      successfully trained to complete the task. Will be used to generate
-      rollouts.
-    policy_class (BasePolicy): will be used to instantiate imitation policy.
+    expert_trainers ([BaseRLModel]): snapshots of RL algorithms that have
+      successfully trained to complete the task. Used to generate
+      expert rollouts.
+    policy_class (BasePolicy): used to instantiate imitation policy.
     n_expert_timesteps (int): number of timesteps of expert environment
         interaction to use for BC training.
-    batch_size (int): batch size to use for training."""
+    batch_size (int): batch size used for training.
+    """
 
   def __init__(self,
                env,
@@ -47,11 +50,14 @@ class BCTrainer(object):
       self.sess.run(tf.global_variables_initializer())
 
   def train(self, *, n_epochs=100):
-    """Train with supervised learning for some number of epochs. Here an
-    'epoch' is just a complete pass through the expert transition dataset.
+    """Train with supervised learning for some number of epochs.
+
+    Here an 'epoch' is just a complete pass through the expert transition
+    dataset.
 
     Args:
-      n_epochs (int): number of complete passes to make through dataset."""
+      n_epochs (int): number of complete passes made through dataset.
+    """
     epoch_iter = trange(n_epochs, desc='BC epoch')
     for epoch_num in epoch_iter:
       total_batches = self.expert_dataset.n_samples // self.batch_size
@@ -78,11 +84,12 @@ class BCTrainer(object):
     stats.
 
     Args:
-      n_episodes (int): number of episodes of rollouts to perform.
+      n_episodes (int): number of rolled-out episodes.
 
     Returns:
       dict: rollout statistics collected by
-        `imitation.utils.rollout.rollout_stats()`."""
+        `imitation.utils.rollout.rollout_stats()`.
+    """
     reward_stats = rollout.rollout_stats(
         self.policy, self.env, n_episodes=n_episodes)
     return reward_stats

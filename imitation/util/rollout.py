@@ -9,9 +9,28 @@ from . import util  # Relative import needed to prevent cycle with __init__.py
 
 
 def get_action_policy(policy, observation, deterministic=False):
-  """Get an action from a Stable Baselines policy, while accounting for
-  clipping and vectorised environments. This code was adapted from Stable
-  Baselines' BaseRLModel.predict()."""
+  """Gets an action from a Stable Baselines policy after some processing.
+
+  Specifically, clips actions to the action space associated with `policy` and
+  automatically accounts for vectorized environments inputs.
+
+  This code was adapted from Stable Baselines' `BaseRLModel.predict()`.
+
+  Params:
+    policy (stable_baselines.common.policies.BasePolicy): The policy.
+    observation (np.ndarray): The input to the policy network. Can either
+      be a single input with shape `policy.ob_space.shape` or a vectorized
+      input with shape `(n_batch,) + policy.ob_space.shape`.
+    deterministic (bool): Whether or not to return deterministic actions
+      (usually means argmax over policy's action distribution).
+
+  Returns:
+    action (np.ndarray): The action output of the policy network. If
+      `observation` is not vectorized (has shape `policy.ob_space.shape`
+      instead of shape `(n_batch,) + policy.ob_space.shape`) then
+      `action` has shape `policy.ac_space.shape`.
+      Otherwise, `action` has shape `(n_batch,) + policy.ac_space.shape`.
+  """
   observation = np.array(observation)
   vectorized_env = BaseRLModel._is_vectorized_observation(observation,
                                                           policy.ob_space)
@@ -31,14 +50,20 @@ def get_action_policy(policy, observation, deterministic=False):
 
 
 class _TrajectoryAccumulator:
-  """Accumulates trajectories step-by-step. For use in generate() only."""
+  """Accumulates trajectories step-by-step.
+
+  Used in `generate()` only, for collecting completed trajectories while
+  ignoring partially-completed trajectories.
+  """
 
   def __init__(self):
     self.partial_trajectories = {}
 
-  def finish_trajectory(self, idx):
-    """Complete the trajectory labelled with `idx`, and return list of
-    completed trajectories popped from self.partial_trajectories."""
+  def finish_trajectory(self, idx) -> List[Dict[str, np.ndarray]]:
+    """Complete the trajectory labelled with `idx`.
+    Return list of completed trajectories popped from
+    `self.partial_trajectories`.
+    """
     if idx not in self.partial_trajectories:
       return []
     part_dicts = self.partial_trajectories[idx]
@@ -53,13 +78,14 @@ class _TrajectoryAccumulator:
     del self.partial_trajectories[idx]
     return [final_dict]
 
-  def add_step(self, idx, step_dict):
+  def add_step(self, idx, step_dict: Dict[str, np.ndarray]):
     """Add a single step to the partial trajectory identified by `idx` (this
     could correspond to, e.g., one environment managed by a vecenv)."""
     self.partial_trajectories.setdefault(idx, []).append(step_dict)
 
 
-def generate(policy, env, *, n_timesteps=None, n_episodes=None):
+def generate(policy, env, *, n_timesteps=None, n_episodes=None
+             ) -> List[Dict[str, np.ndarray]]:
   """
   Generate old_obs-action-new_obs-reward tuples from a policy and an
   environment.
@@ -78,18 +104,12 @@ def generate(policy, env, *, n_timesteps=None, n_episodes=None):
         error.
 
   Return:
-    rollout_obs_old (array): A numpy array with shape
-        `[n_timesteps] + env.observation_space.shape`. The ith observation in
-        this array is the observation seen with the agent chooses action
-        `rollout_act[i]`.
-    rollout_act (array): A numpy array with shape
-        `[n_timesteps] + env.action_space.shape`.
-    rollout_obs_new (array): A numpy array with shape
-        `[n_timesteps] + env.observation_space.shape`. The ith observation in
-        this array is from the transition state after the agent chooses action
-        `rollout_act[i]`.
-    rollout_rewards (array): A numpy array with shape `[n_timesteps]`. The
-        reward received on the ith timestep is `rollout_rewards[i]`.
+    trajectories: List of trajectory dictionaries. Each trajectory dictionary
+        `traj` has the following keys and values:
+         - traj["obs"] is an observations array with N+1 rows, where N depends
+          on the particular trajectory.
+         - traj["act"] is an actions array with N rows.
+         - traj["rew"] is a reward array with shape (N,).
   """
   env = util.maybe_load_env(env, vectorize=True)
   assert util.is_vec_env(env)
@@ -189,8 +209,7 @@ def generate(policy, env, *, n_timesteps=None, n_episodes=None):
 
 
 def rollout_stats(policy, env, **kwargs):
-  """Roll out some trajectories under given policy and return a dictionary of
-  statistics.
+  """Rolls out trajectories under the policy and returns various statistics.
 
   Args:
       policy (stable_baselines.BasePolicy): A stable_baselines Model,
@@ -205,7 +224,8 @@ def rollout_stats(policy, env, **kwargs):
       Dictionary containing `n_traj` collected (int), along with return
       statistics (keys: `return_{min,mean,std,max}`, float values) and
       trajectory length statistics (keys: `len_{min,mean,std,max}`, float
-      values)."""
+      values).
+  """
   trajectories = generate(policy, env, **kwargs)
   out_stats = {"n_traj": len(trajectories)}
   traj_descriptors = {
@@ -220,25 +240,39 @@ def rollout_stats(policy, env, **kwargs):
   return out_stats
 
 
-def mean_return(*args, **kwargs):
-  """Shortcut to call `rollout_stats` and fetch only the value for
-  `return_mean`; see documentation for `rollout_stats`."""
+def mean_return(*args, **kwargs) -> float:
+  """Find the mean return of a policy.
+
+  Shortcut to call `rollout_stats` and fetch only the value for
+  `return_mean`; see documentation for `rollout_stats`.
+  """
   return rollout_stats(*args, **kwargs)["return_mean"]
 
 
-def flatten_trajectories(trajectories):
-  """Flatten a series of trajectory dictionaries into conjoined sequences of
-  observations, actions, next observations, and rewards.
+def flatten_trajectories(trajectories: Sequence[Dict[str, np.ndarray]]
+                         ) -> Tuple[np.ndarray, ...]:
+  """Flatten a series of trajectory dictionaries into arrays.
+
+  Returns observations, actions, next observations, rewards.
 
   Args:
       trajectories ([dict]): list of dictionaries returned by `generate`, each
-        representing a trajectories and each with "obs", "rew", and "act" keys.
+        representing a trajectory and each with "obs", "rew", and "act" keys.
 
-  Returns: series of float arrays, each of same length.
-      obs_old (float array): starting state for transition.
-      act (float array): action taken during each transition.
-      obs_new (float_array): destination state during each transition.
-      rew (float array): reward incurred during each transition."""
+  Returns:
+      obs_old (array): A numpy array with shape
+          `[n_timesteps] + env.observation_space.shape`. The ith observation in
+          this array is the observation seen with the agent chooses action
+          `rollout_act[i]`.
+      act (array): A numpy array with shape
+          `[n_timesteps] + env.action_space.shape`.
+      obs_new (array): A numpy array with shape
+          `[n_timesteps] + env.observation_space.shape`. The ith observation in
+          this array is from the transition state after the agent chooses action
+          `rollout_act[i]`.
+      rew (array): A numpy array with shape `[n_timesteps]`. The
+          reward received on the ith timestep is `rew[i]`.
+  """
   keys = ["obs_old", "obs_new", "act", "rew"]
   parts = {key: [] for key in keys}
   for traj_dict in trajectories:
