@@ -61,7 +61,7 @@ class _TrajectoryAccumulator:
   def __init__(self):
     self.partial_trajectories = collections.defaultdict(list)
 
-  def finish_trajectory(self, idx) -> List[Dict[str, np.ndarray]]:
+  def finish_trajectory(self, idx) -> Dict[str, np.ndarray]:
     """Complete the trajectory labelled with `idx`.
     Return list of completed trajectories popped from
     `self.partial_trajectories`.
