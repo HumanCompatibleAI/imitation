@@ -2,4 +2,3 @@ include "configs/defaults_data_collect.gin"
 
 main.env_name = "HalfCheetah-v2"
 main.total_timesteps = 1000000
-make_blank_policy.learning_rate=3e-4

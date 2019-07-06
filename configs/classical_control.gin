@@ -7,7 +7,7 @@ include 'configs/defaults_imitation.gin'
 # Overall training parameters: ratio of discriminator and generator training.
 train_and_plot.n_epochs = 50
 train_and_plot.n_disc_steps_per_epoch = 50
-train_and_plot.n_gen_steps_per_epoch = 16384
+train_and_plot.n_gen_steps_per_epoch = 2048
 
 # Some environments (e.g. CartPole) have float max as limits, which breaks the scaling.
 init_trainer.discrim_scale = False
