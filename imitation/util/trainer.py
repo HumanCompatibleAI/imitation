@@ -16,8 +16,8 @@ import imitation.util as util
 
 @gin.configurable
 def init_trainer(env_id, policy_dir, use_gail, use_random_expert=True,
-                 num_vec=8, theta_units=[32, 32], phi_units=[32, 32],
-                 discrim_scale=False, discrim_kwargs={}, trainer_kwargs={}):
+                 num_vec=8, discrim_scale=False,
+                 discrim_kwargs={}, reward_kwargs={}, trainer_kwargs={}):
   """Builds a Trainer, ready to be trained on a vectorized environment
   and either expert rollout data or random rollout data.
 
@@ -31,7 +31,8 @@ def init_trainer(env_id, policy_dir, use_gail, use_random_expert=True,
         If True, then use a blank (random) policy to generate rollouts.
         If False, then load an expert policy. Will crash if DNE.
     trainer_kwargs (dict): Aguments for the Trainer constructor.
-    discrim_kwargs (dict): Arguments for the DiscrimNet* constructor.
+    reward_kwargs (dict): Arguments for the `*RewardNet` constructor.
+    discrim_kwargs (dict): Arguments for the `DiscrimNet*` constructor.
   """
   env = util.make_vec_env(env_id, num_vec)
   gen_policy = util.make_blank_policy(env, verbose=1)
@@ -50,8 +51,7 @@ def init_trainer(env_id, policy_dir, use_gail, use_random_expert=True,
                                          **discrim_kwargs)
   else:
     rn = BasicShapedRewardNet(env.observation_space, env.action_space,
-                              theta_units=theta_units, phi_units=phi_units,
-                              scale=discrim_scale)
+                              scale=discrim_scale, **reward_kwargs)
     discrim = discrim_net.DiscrimNetAIRL(rn, **discrim_kwargs)
 
   trainer = Trainer(env, gen_policy, discrim,

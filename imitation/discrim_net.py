@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from typing import Iterable, Optional
 
 import gym
 import tensorflow as tf
@@ -158,11 +159,13 @@ class DiscrimNetGAIL(DiscrimNet):
   def __init__(self,
                observation_space: gym.Space,
                action_space: gym.Space,
+               hid_sizes: Optional[Iterable[int]] = None,
                scale: bool = False):
     inputs = util.build_inputs(observation_space, action_space, scale=scale)
     self._old_obs_ph, self._act_ph, self._new_obs_ph = inputs[:3]
     self.old_obs_inp, self.act_inp, self.new_obs_inp = inputs[3:]
 
+    self.hid_sizes = hid_sizes
     with tf.variable_scope("discrim_network"):
       self._discrim_logits = self.build_discrm_network(
           self.old_obs_inp, self.act_inp)
@@ -188,7 +191,10 @@ class DiscrimNetGAIL(DiscrimNet):
         tf.layers.flatten(obs_input),
         tf.layers.flatten(act_input)], axis=1)
 
-    discrim_logits = util.apply_ff(inputs, hid_sizes=[])
+    hid_sizes = self.hid_sizes
+    if hid_sizes is None:
+      hid_sizes = (32, 32)
+    discrim_logits = util.apply_ff(inputs, hid_sizes=hid_sizes)
 
     return discrim_logits
 
