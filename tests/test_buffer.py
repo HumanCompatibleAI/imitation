@@ -41,17 +41,22 @@ def test_buffer(capacity, chunk_len, sample_shape):
                sample_shapes={'a': sample_shape, 'b': sample_shape},
                dtypes={'a': float, 'b': float})
 
-  for i in range(0, capacity*3, chunk_len):
+  to_insert = 3 * capacity
+  for i in range(0, to_insert, chunk_len):
     assert len(buf) == min(i, capacity)
     assert buf._idx == i % capacity
-    chunk = _fill_chunk(i, chunk_len, sample_shape)
-    buf.store({'a': chunk, 'b': chunk})
-    for samples in buf.sample(100).values():
-      assert samples.shape == (100,) + sample_shape
-      _check_bound(i + chunk_len, capacity, samples)
+    chunk_a = _fill_chunk(i, chunk_len, sample_shape)
+    chunk_b = _fill_chunk(i + to_insert, chunk_len, sample_shape)
+    buf.store({'a': chunk_a, 'b': chunk_b})
+    samples = buf.sample(100)
+    assert set(samples.keys()) == {'a', 'b'}, samples.keys()
+    _check_bound(i + chunk_len, capacity, samples['a'])
+    _check_bound(i + chunk_len + to_insert, capacity, samples['b'])
+    assert np.all(samples['b'] - samples['a'] == to_insert)
 
     # Confirm that buffer is not mutable from inserted sample.
-    chunk[:] = np.nan
+    chunk_a[:] = np.nan
+    chunk_b[:] = np.nan
     assert not np.any(np.isnan(buf._arrays['a']))
     assert not np.any(np.isnan(buf._arrays['b']))
 
