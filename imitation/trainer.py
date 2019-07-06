@@ -1,4 +1,4 @@
-from typing import Dict, Optional, Sequence, Union
+from typing import Optional, Sequence, Union
 from warnings import warn
 
 import gym
@@ -22,7 +22,7 @@ class Trainer:
                discrim: DiscrimNet,
                expert_policies: Sequence[BaseRLModel], *,
                disc_opt_cls: tf.train.Optimizer = tf.train.AdamOptimizer,
-               disc_opt_kwargs: Dict = {},
+               disc_opt_kwargs: dict = {},
                n_disc_samples_per_buffer: int = 200,
                n_expert_samples: int = 4000,
                gen_replay_buffer_capacity: Optional[int] = None,
