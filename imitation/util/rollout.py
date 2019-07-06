@@ -1,4 +1,5 @@
 import functools
+from typing import Dict, List, Sequence, Tuple
 
 import gym
 import numpy as np
