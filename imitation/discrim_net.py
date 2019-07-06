@@ -1,13 +1,13 @@
 from abc import ABC, abstractmethod
 
+import gym
 import tensorflow as tf
 
-import imitation.util as util
+from imitation import reward_net, util
 
 
 class DiscrimNet(ABC):
-  """Base class for discriminator. Flexible enough to be used in different
-  IRL methods."""
+  """Abstract base class for discriminator, used in multiple IRL methods."""
 
   def __init__(self):
     self._disc_loss = self.build_disc_loss()
@@ -42,39 +42,87 @@ class DiscrimNet(ABC):
     self.labels_ph = tf.placeholder(shape=(None,), dtype=tf.int32,
                                     name="discrim_labels")
 
+    # This placeholder holds the generator-policy log action probabilities,
+    # $\log \pi(a \mid s)$, of each state-action pair. This includes both
+    # actions taken by the generator *and* those by the expert (we can
+    # ask our policy for action probabilities even if we don't take them).
+    # TODO(adam): this is only used by AIRL; sad we have to always include it
+    self.log_policy_act_prob_ph = tf.placeholder(
+        shape=(None,), dtype=tf.float32, name="log_ro_act_prob_ph")
+
   @abstractmethod
   def build_summaries(self):
     pass
 
+  @property
+  @abstractmethod
+  def old_obs_ph(self):
+    """Gets the old observation placeholder."""
+    pass
+
+  @property
+  @abstractmethod
+  def act_ph(self):
+    """Gets the action placeholder."""
+    pass
+
+  @property
+  @abstractmethod
+  def new_obs_ph(self):
+    """Gets the new observation placeholder."""
+    pass
+
 
 class DiscrimNetAIRL(DiscrimNet):
-  """The discriminator to use for AIRL. This discriminator uses a
-  RewardNet."""
+  r"""The AIRL discriminator for a given RewardNet.
 
-  def __init__(self, reward_net):
+  The AIRL discriminator is of the form
+  .. math:: D_{\theta} = \frac{\exp(f_{\theta}(s,a)}{\exp(f_{\theta}(s,a) + \pi(a \mid s)}
+
+  where :math:`f_{\theta}` is `self.reward_net`.
+  """  # noqa: E501
+
+  def __init__(self,
+               reward_net: reward_net.RewardNet,
+               entropy_weight: float = 1.0):
+    """Builds a DiscrimNetAIRL.
+
+    Args:
+        reward_net: A RewardNet, used as $f_{\theta}$ in the discriminator.
+        entropy_weight: The coefficient for the entropy regularization term.
+            To match the AIRL derivation, it should be 1.0.
+            However, empirically a lower value sometimes work better.
+    """
     self.reward_net = reward_net
+    self.entropy_weight = entropy_weight
     super().__init__()
-    self.old_obs_ph = self.reward_net.old_obs_ph
-    self.act_ph = self.reward_net.act_ph
-    self.new_obs_ph = self.reward_net.new_obs_ph
-
     tf.logging.info("Using AIRL")
+
+  @property
+  def old_obs_ph(self):
+    return self.reward_net.old_obs_ph
+
+  @property
+  def act_ph(self):
+    return self.reward_net.act_ph
+
+  @property
+  def new_obs_ph(self):
+    return self.reward_net.new_obs_ph
 
   def build_summaries(self):
     self.reward_net.build_summaries()
 
   def build_disc_loss(self):
     super().build_disc_loss()
-    # Holds the generator-policy log action probabilities of every
-    # state-action pair that the discriminator is being trained on.
-    self.log_policy_act_prob_ph = tf.placeholder(
-        shape=(None,), dtype=tf.float32, name="log_ro_act_prob_ph")
 
-    # Construct discriminator logits by stacking predicted rewards
-    # and log action probabilities.
+    # The AIRL discriminator is trained with the cross-entropy loss between
+    # expert demonstrations and generated samples.
+
+    # Construct discriminator logits: $f_{\theta}(s,a)$, predicted rewards,
+    # and $\log \pi(a \mid s)$, generator-policy log action probabilities.
     self._presoftmax_disc_logits = tf.stack(
-        [self.reward_net.reward_output_train,
-         self.log_policy_act_prob_ph],
+        [self.reward_net.reward_output_train, self.log_policy_act_prob_ph],
         axis=1, name="presoftmax_discriminator_logits")  # (None, 2)
 
     # Construct discriminator loss.
@@ -93,24 +141,27 @@ class DiscrimNetAIRL(DiscrimNet):
     Sets self._policy_train_reward_fn, the reward function to use when
     running a policy optimizer (e.g. PPO).
     """
-    # Construct generator reward.
-    self._log_softmax_logits = tf.nn.log_softmax(
-        self._presoftmax_disc_logits)
-    self._log_D, self._log_D_compl = tf.split(
-        self._log_softmax_logits, [1, 1], axis=1)
-    return self._log_D - self._log_D_compl
+    # Construct generator reward:
+    # \[\hat{r}(s,a) = \log(D_{\theta}(s,a)) - \log(1 - D_{\theta}(s,a)).\]
+    # This simplifies to:
+    # \[\hat{r}(s,a) = f_{\theta}(s,a) - \log \pi(a \mid s).\]
+    # This is just an entropy-regularized objective.
+    self._log_D = tf.nn.log_softmax(self.reward_net.reward_output_train)
+    self._log_D_compl = tf.nn.log_softmax(self.log_policy_act_prob_ph)
+    # Note self._log_D_compl is effectively an entropy term.
+    return self._log_D - self.entropy_weight * self._log_D_compl
 
 
 class DiscrimNetGAIL(DiscrimNet):
   """The discriminator to use for GAIL."""
 
-  def __init__(self, observation_space, action_space):
-    inputs = util.build_inputs(observation_space, action_space)
-    self.old_obs_ph, self.act_ph, self.new_obs_ph = inputs[:3]
+  def __init__(self,
+               observation_space: gym.Space,
+               action_space: gym.Space,
+               scale: bool = False):
+    inputs = util.build_inputs(observation_space, action_space, scale=scale)
+    self._old_obs_ph, self._act_ph, self._new_obs_ph = inputs[:3]
     self.old_obs_inp, self.act_inp, self.new_obs_inp = inputs[3:]
-
-    self.log_policy_act_prob_ph = tf.placeholder(
-        shape=(None,), dtype=tf.float32, name="log_ro_act_prob_ph")
 
     with tf.variable_scope("discrim_network"):
       self._discrim_logits = self.build_discrm_network(
@@ -119,6 +170,18 @@ class DiscrimNetGAIL(DiscrimNet):
     super().__init__()
 
     tf.logging.info("using GAIL")
+
+  @property
+  def old_obs_ph(self):
+    return self._old_obs_ph
+
+  @property
+  def act_ph(self):
+    return self._act_ph
+
+  @property
+  def new_obs_ph(self):
+    return self._new_obs_ph
 
   def build_discrm_network(self, obs_input, act_input):
     inputs = tf.concat([

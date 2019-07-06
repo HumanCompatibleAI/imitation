@@ -28,7 +28,6 @@ def train_and_plot(policy_dir, env='CartPole-v1',
                    trainer_hook_fn=None,
                    trainer=None,
                    interactive=True,
-                   **trainer_kwargs
                    ):
   """Alternate between training the generator and discriminator.
 
@@ -42,7 +41,7 @@ def train_and_plot(policy_dir, env='CartPole-v1',
     - ...
   """
   if trainer is None:
-    trainer = init_trainer(env, policy_dir=policy_dir, **trainer_kwargs)
+    trainer = init_trainer(env, policy_dir=policy_dir)
   if trainer_hook_fn:
     trainer_hook_fn(trainer)
 
@@ -183,7 +182,7 @@ def main():
 if __name__ == "__main__":
   parser = argparse.ArgumentParser()
   parser.add_argument("--gin_config",
-                      default='configs/cartpole_orig_airl_repro.gin')
+                      default='configs/cartpole_airl.gin')
   args = parser.parse_args()
 
   gin.parse_config_file(args.gin_config)
