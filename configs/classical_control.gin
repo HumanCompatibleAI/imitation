@@ -2,18 +2,12 @@
 # This includes CartPole-v1, MountainCar-v0 and Pendulum-v0.
 # It'll probably work OK on low-dimensional MuJoCo too.
 
-include 'configs/defaults.gin'
+include 'configs/defaults_imitation.gin'
 
 # Overall training parameters: ratio of discriminator and generator training.
 train_and_plot.n_epochs = 50
 train_and_plot.n_disc_steps_per_epoch = 50
-train_and_plot.n_gen_steps_per_epoch = 16384
-
-# Generator hyperparameters
-make_blank_policy.learning_rate=3e-3
-make_blank_policy.nminibatches=32
-make_blank_policy.noptepochs=10
-make_blank_policy.n_steps=2048
+train_and_plot.n_gen_steps_per_epoch = 2048
 
 # Some environments (e.g. CartPole) have float max as limits, which breaks the scaling.
 init_trainer.discrim_scale = False

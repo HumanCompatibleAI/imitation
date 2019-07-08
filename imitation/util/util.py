@@ -1,3 +1,4 @@
+import functools
 import glob
 import os
 from typing import Iterable, Optional, Tuple
@@ -38,17 +39,23 @@ def maybe_load_env(env_or_str, vectorize=True):
   return env
 
 
-def make_vec_env(env_id, n_envs=8):
+# TODO(adam): performance enhancement -- make Dummy vs Subproc configurable
+def make_vec_env(env_id: str, n_envs: int = 8, seed: int = 0):
   """Returns a DummyVecEnv initialized with `n_envs` Envs.
 
   Args:
-      env_id (str): The Env's string id in Gym.
-      n_envs (int): The number of duplicate environments.
+      env_id: The Env's string id in Gym.
+      n_envs: The number of duplicate environments.
+      seed: The environment seed.
   """
-  # Use Monitor to support logging the episode reward and length.
-  def monitored_env():
-    return Monitor(gym.make(env_id), None, allow_early_resets=True)
-  return DummyVecEnv([monitored_env for _ in range(n_envs)])
+  def monitored_env(i):
+    env = gym.make(env_id)
+    env.seed(seed + i)
+    # Use Monitor to support logging the episode reward and length.
+    # TODO(adam): also log to disk -- can be useful for debugging occasionally?
+    return Monitor(env, None, allow_early_resets=True)
+  return DummyVecEnv([functools.partial(monitored_env, i)
+                      for i in range(n_envs)])
 
 
 def is_vec_env(env):
@@ -70,6 +77,7 @@ def get_env_id(env_or_str):
     return "UnknownEnv"
 
 
+@gin.configurable
 class FeedForward32Policy(FeedForwardPolicy):
   """A feed forward gaussian policy network with two hidden layers of 32 units.
 
@@ -82,9 +90,16 @@ class FeedForward32Policy(FeedForwardPolicy):
 
 
 @gin.configurable
+class FeedForward64Policy(FeedForwardPolicy):
+  def __init__(self, *args, **kwargs):
+    super().__init__(*args, **kwargs,
+                     net_arch=[64, 64], feature_extraction="mlp")
+
+
+@gin.configurable
 def make_blank_policy(env, policy_class=stable_baselines.PPO2,
                       init_tensorboard=False,
-                      policy_network_class=FeedForward32Policy, verbose=0,
+                      policy_network_class=FeedForward32Policy, verbose=1,
                       **kwargs):
   """Instantiates a policy for the provided environment.
 

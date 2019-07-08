@@ -1,5 +1,7 @@
-# Defaults common to all environments
+# Defaults common to all environments and imitation/data collection
 
-load_policy.n_experts=1
-train_and_plot.policy_dir="expert_models"
-init_trainer.use_random_expert = False
+# Generator hyperparameters
+make_blank_policy.learning_rate=3e-4
+make_blank_policy.nminibatches=32
+make_blank_policy.noptepochs=10
+make_blank_policy.n_steps=256  # WARNING: this is actually 8*256=2048 due to 8 vector environments
