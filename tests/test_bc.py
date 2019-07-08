@@ -3,7 +3,9 @@
 import gin
 import tensorflow as tf
 
+# `init_trainer` import required for parsing configs/test.gin.
 from imitation import bc, util
+from imitation.util.trainer import init_trainer  # noqa: F401
 
 gin.parse_config_file("configs/test.gin")
 tf.logging.set_verbosity(tf.logging.INFO)

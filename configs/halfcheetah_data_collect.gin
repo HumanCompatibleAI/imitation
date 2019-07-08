@@ -1,0 +1,4 @@
+include "configs/defaults_data_collect.gin"
+
+main.env_name = "HalfCheetah-v2"
+main.total_timesteps = 1000000

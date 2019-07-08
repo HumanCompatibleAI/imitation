@@ -1,0 +1,5 @@
+include "configs/defaults_data_collect.gin"
+
+main.env_name = "Ant-v2"
+main.total_timesteps = 2000000
+make_blank_policy.policy_network_class = @FeedForward64Policy

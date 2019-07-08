@@ -1,0 +1,7 @@
+# Defaults common to all environments and imitation/data collection
+
+# Generator hyperparameters
+make_blank_policy.learning_rate=3e-4
+make_blank_policy.nminibatches=32
+make_blank_policy.noptepochs=10
+make_blank_policy.n_steps=256  # WARNING: this is actually 8*256=2048 due to 8 vector environments

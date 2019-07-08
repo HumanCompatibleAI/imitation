@@ -115,7 +115,7 @@ def test_trained_policy_better_than_random(use_gail, env='CartPole-v1',
   demonstrations) achieves higher reward than a random policy.
 
   In other words, perform a basic check on the imitation learning
-  capabilities of AIRLTrainer.
+  capabilities of AIRL and GAIL.
   """
   env = util.make_vec_env(env, 32)
   trainer = init_trainer(env, use_expert_rollouts=True, use_gail=use_gail)
