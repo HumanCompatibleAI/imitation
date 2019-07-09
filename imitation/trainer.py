@@ -144,9 +144,9 @@ class Trainer:
     environment until `self._n_disc_samples_per_buffer` obs-act-obs samples are
     produced, and then stores these samples.
     """
-    gen_rollouts = rollout.flatten_trajectories(rollout.generate(
+    gen_rollouts = rollout.generate(
         self.gen_policy, self.env,
-        n_timesteps=self._n_disc_samples_per_buffer))[:3]
+        n_timesteps=self._n_disc_samples_per_buffer)[:3]
     self._gen_replay_buffer.store(*gen_rollouts)
 
   def train(self, *, n_epochs=100, n_gen_steps_per_epoch=None,
