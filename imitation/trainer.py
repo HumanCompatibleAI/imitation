@@ -8,8 +8,9 @@ from stable_baselines.common.vec_env import VecEnvWrapper
 import tensorflow as tf
 from tqdm import tqdm
 
-from imitation import summaries, util
+from imitation import summaries
 from imitation.discrim_net import DiscrimNet
+from imitation.util import maybe_load_env, rollout
 from imitation.util.buffer import ReplayBuffer
 
 
@@ -74,7 +75,7 @@ class Trainer:
     # TODO(adam): we're not guaranteed to use this session, see issue #31
     self._sess = tf.Session()
 
-    self.env = util.maybe_load_env(env, vectorize=True)
+    self.env = maybe_load_env(env, vectorize=True)
     self.gen_policy = gen_policy
     self.expert_policies = expert_policies
     self._n_disc_samples_per_buffer = n_disc_samples_per_buffer
@@ -107,7 +108,7 @@ class Trainer:
     self._gen_replay_buffer = ReplayBuffer(gen_replay_buffer_capacity, self.env)
     self._populate_gen_replay_buffer()
 
-    exp_rollouts = util.rollout.generate_multiple(
+    exp_rollouts = rollout.generate_multiple(
         self.expert_policies, self.env, n_expert_samples)[:3]
     self._exp_replay_buffer = ReplayBuffer.from_data(*exp_rollouts)
 
@@ -143,9 +144,9 @@ class Trainer:
     environment until `self._n_disc_samples_per_buffer` obs-act-obs samples are
     produced, and then stores these samples.
     """
-    gen_rollouts = util.rollout.generate(
+    gen_rollouts = rollout.flatten_trajectories(rollout.generate(
         self.gen_policy, self.env,
-        n_timesteps=self._n_disc_samples_per_buffer)[:3]
+        n_timesteps=self._n_disc_samples_per_buffer))[:3]
     self._gen_replay_buffer.store(*gen_rollouts)
 
   def train(self, *, n_epochs=100, n_gen_steps_per_epoch=None,
@@ -200,7 +201,7 @@ class Trainer:
             convert to a VecEnv before continuing.
     wrapped_env (VecEnv): The wrapped environment with a new reward.
     """
-    env = util.maybe_load_env(env, vectorize=True)
+    env = maybe_load_env(env, vectorize=True)
     if self.debug_use_ground_truth:
       return env
     else:
@@ -221,7 +222,7 @@ class Trainer:
     Returns:
         wrapped_env (VecEnv): The wrapped environment with a new reward.
     """
-    env = util.maybe_load_env(env, vectorize=True)
+    env = maybe_load_env(env, vectorize=True)
     if self.debug_use_ground_truth:
       return env
     else:

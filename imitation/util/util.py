@@ -79,7 +79,7 @@ def get_env_id(env_or_str):
 
 @gin.configurable
 class FeedForward32Policy(FeedForwardPolicy):
-  """A feed forward gaussian policy network with two hidden layers of 32 units.
+  """A feed forward policy network with two hidden layers of 32 units.
 
   This matches the IRL policies in the original AIRL paper.
   """
@@ -201,6 +201,14 @@ def load_policy(env, basedir, policy_model_class=stable_baselines.PPO2,
           this argument as None.
       **kwargs: Additional options for initializing the BaseRLModel class.
   """
+
+  # FIXME: Despite name, this does not actually load policies, it loads lists
+  # of pickled policy training algorithms ("RL models" in stable-baselines'
+  # terminology). Should fix the naming, or change it so that it actually loads
+  # policies (which is often what is really wanted, IMO).
+
+  # FIXME: a lot of code assumes that this function returns None on failure,
+  # which it does not. That upstream code also needs to be fixed.
 
   paths = _get_policy_paths(env, policy_model_class, basedir, n_experts)
 

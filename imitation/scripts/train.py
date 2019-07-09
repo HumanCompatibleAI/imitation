@@ -93,21 +93,18 @@ def train_and_plot(policy_dir, env='CartPole-v1',
     rand_policy = util.make_blank_policy(env)
     exp_policy = trainer.expert_policies[-1]
 
-    gen_rew = util.rollout.total_reward(
-        gen_policy, env, n_episodes=n_gen_plot_episodes
-    ) / n_gen_plot_episodes
-    rand_rew = util.rollout.total_reward(
-        rand_policy, env, n_episodes=n_gen_plot_episodes
-    ) / n_gen_plot_episodes
-    exp_rew = util.rollout.total_reward(
-        exp_policy, env, n_episodes=n_gen_plot_episodes
-    ) / n_gen_plot_episodes
-    gen_ep_reward[name].append(gen_rew)
-    rand_ep_reward[name].append(rand_rew)
-    exp_ep_reward[name].append(exp_rew)
-    tf.logging.info("generator reward: {}".format(gen_rew))
-    tf.logging.info("random reward: {}".format(rand_rew))
-    tf.logging.info("exp reward: {}".format(exp_rew))
+    gen_ret = util.rollout.mean_return(
+        gen_policy, env, n_episodes=n_gen_plot_episodes)
+    rand_ret = util.rollout.mean_return(
+        rand_policy, env, n_episodes=n_gen_plot_episodes)
+    exp_ret = util.rollout.mean_return(
+        exp_policy, env, n_episodes=n_gen_plot_episodes)
+    gen_ep_reward[name].append(gen_ret)
+    rand_ep_reward[name].append(rand_ret)
+    exp_ep_reward[name].append(exp_ret)
+    tf.logging.info("generator return: {}".format(gen_ret))
+    tf.logging.info("random return: {}".format(rand_ret))
+    tf.logging.info("exp return: {}".format(exp_ret))
 
   def show_plot_gen():
     if n_gen_plot_episodes <= 0:
