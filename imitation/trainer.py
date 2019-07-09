@@ -1,72 +1,110 @@
 import collections
-from typing import Optional
+from typing import Optional, Sequence, Union
 from warnings import warn
 
+import gym
 import numpy as np
+from stable_baselines.common.base_class import BaseRLModel
 from stable_baselines.common.vec_env import VecEnvWrapper
 import tensorflow as tf
 from tqdm import tqdm
 
-import imitation.summaries as summaries
-import imitation.util as util
+from imitation import summaries
+from imitation.discrim_net import DiscrimNet
+from imitation.util import maybe_load_env, rollout
 from imitation.util.buffer import ReplayBuffer
 
 
 class Trainer:
+  """Trainer for GAIL and AIRL."""
 
-  def __init__(self, env, gen_policy, discrim, expert_policies, *,
-               n_disc_samples_per_buffer=200, n_expert_samples=4000,
+  env: gym.Env
+  """The original environment."""
+
+  env_train: gym.Env
+  """Like `self.env`, but wrapped with train reward except in debug mode.
+
+  If `debug_use_ground_truth=True` was passed into the initializer then
+  `self.env_train` is the same as `self.env`.
+  """
+
+  env_test: gym.Env
+  """Like `self.env`, but wrapped with test reward except in debug mode.
+
+  If `debug_use_ground_truth=True` was passed into the initializer then
+  `self.env_test` is the same as `self.env`.
+  """
+
+  def __init__(self,
+               env: Union[gym.Env, str],
+               gen_policy: BaseRLModel,
+               discrim: DiscrimNet,
+               expert_policies: Sequence[BaseRLModel],
+               *,
+               disc_opt_cls: tf.train.Optimizer = tf.train.AdamOptimizer,
+               disc_opt_kwargs: dict = {},
+               n_disc_samples_per_buffer: int = 200,
+               n_expert_samples: int = 4000,
                gen_replay_buffer_capacity: Optional[int] = None,
-               init_tensorboard=False):
-    """Trainer for GAIL and AIRL.
+               init_tensorboard: bool = False,
+               debug_use_ground_truth: bool = False):
+    """Builds Trainer.
 
     Args:
-        env (gym.Env or str): A gym environment that the policy is trained on.
-        gen_policy (stable_baselines.BaseRLModel):
-            The generator policy that trained to maximize discriminator
-            confusion.
-        discrim (DiscrimNet): The discriminator network.
+        env: A Gym environment or ID that the policy is trained on.
+        gen_policy: The generator policy that trained to maximize discriminator
+                    confusion.
+        discrim: The discriminator network.
             For GAIL, use a DiscrimNetGAIL. For AIRL, use a DiscrimNetAIRL.
-        expert_policies (BaseRLModel or [BaseRLModel]): An expert policy
+        expert_policies: An expert policy
             or a list of expert policies that are used to generate example
             obs-action-obs triples.
 
             WARNING:
             Due to the way VecEnvs handle episode completion states, the last
             obs-act-obs triple in every episode is omitted. (See issue #1.)
-        n_disc_samples_per_buffer (int): The number of obs-act-obs triples
+        disc_opt_cls: The optimizer for discriminator training.
+        disc_opt_kwargs: Parameters for discriminator training.
+        n_disc_samples_per_buffer: The number of obs-act-obs triples
             sampled from each replay buffer (expert and generator) during each
             step of discriminator training. This is also the number of triples
             stored in the replay buffer after each epoch of generator training.
-        n_expert_samples (int): The number of expert obs-action-obs triples
+        n_expert_samples: The number of expert obs-action-obs triples
             that are generated. If the number of expert policies given
             doesn't divide this number evenly, then the last expert policy
             generates more timesteps.
-        gen_replay_buffer_capacity (Optional[int]): The capacity of the
+        gen_replay_buffer_capacity: The capacity of the
             generator replay buffer (the number of obs-action-obs samples from
             the generator that can be stored).
 
-            By default this is equal to `20 * n_disc_training_samples`.
-        init_tensorboard (bool): If True, makes various discriminator
+            By default this is equal to `20 * n_disc_samples_per_buffer`.
+        init_tensorboard: If True, makes various discriminator
             TensorBoard summaries. (Generator summaries appear under a
             different runname than the discriminator summaries because they
             are configured by initializing the stable_baselines policy).
+        debug_use_ground_truth: If True, use the ground truth reward for
+            `self.train_env`.
+            This disables the reward wrapping that would normally replace
+            the environment reward with the learned reward. This is useful for
+            sanity checking that the policy training is functional.
     """
+    # TODO(adam): we're not guaranteed to use this session, see issue #31
+    self._sess = tf.Session()
+    self._global_step = tf.train.create_global_step()
+
     if n_disc_samples_per_buffer > n_expert_samples:
       warn("The discriminator batch size is larger than the number of "
            "expert samples.")
-
-    self._sess = tf.Session()
-
-    self.env = util.maybe_load_env(env, vectorize=True)
-    self.gen_policy = gen_policy
-    if not isinstance(expert_policies, collections.abc.Sequence):
-        expert_policies = [expert_policies]
-    self.expert_policies = expert_policies
     self._n_disc_samples_per_buffer = n_disc_samples_per_buffer
+    self.debug_use_ground_truth = debug_use_ground_truth
 
-    self._global_step = tf.train.create_global_step()
+    self.env = maybe_load_env(env, vectorize=True)
+    # TODO(adam): make this wrapping configurable for debugging purposes
+    self.gen_policy = gen_policy
 
+    # Discriminator and reward output
+    self._disc_opt_cls = disc_opt_cls
+    self._disc_opt_kwargs = disc_opt_kwargs
     with tf.variable_scope("trainer"):
       with tf.variable_scope("discriminator"):
         self.discrim = discrim
@@ -77,20 +115,23 @@ class Trainer:
     if init_tensorboard:
       with tf.name_scope("summaries"):
         self._build_summarize()
-
     self._sess.run(tf.global_variables_initializer())
 
-    self.env_wrapped_train = self.wrap_env_train_reward(self.env)
-    self.env_wrapped_test = self.wrap_env_test_reward(self.env)
+    self.env_train = self.wrap_env_train_reward(self.env)
+    self.env_test = self.wrap_env_test_reward(self.env)
 
     if gen_replay_buffer_capacity is None:
         gen_replay_buffer_capacity = 20 * self._n_disc_samples_per_buffer
     self._gen_replay_buffer = ReplayBuffer(gen_replay_buffer_capacity,
                                            self.env)
-    exp_rollouts = util.rollout.generate_multiple(
+    self._populate_gen_replay_buffer()
+
+    if not isinstance(expert_policies, collections.abc.Sequence):
+        expert_policies = [expert_policies]
+    self.expert_policies = expert_policies
+    exp_rollouts = rollout.generate_multiple(
         self.expert_policies, self.env, n_expert_samples)[:3]
     self._exp_replay_buffer = ReplayBuffer.from_data(*exp_rollouts)
-    self._populate_gen_replay_buffer()
 
   def train_disc(self, n_steps=10, **kwargs):
     """Trains the discriminator to minimize classification cross-entropy.
@@ -109,20 +150,24 @@ class Trainer:
         self._summarize(fd, step)
 
   def train_gen(self, n_steps=10000):
-    self.gen_policy.set_env(self.env_wrapped_train)
-    self.gen_policy.learn(n_steps)
+    self.gen_policy.set_env(self.env_train)
+    # TODO(adam): learn was not intended to be called for each training batch
+    # It should work, but might incur unnecessary overhead: e.g. in PPO2
+    # a new Runner instance is created each time. Also a hotspot for errors:
+    # algorithms not tested for this use case, may reset state accidentally.
+    self.gen_policy.learn(n_steps, reset_num_timesteps=False)
     self._populate_gen_replay_buffer()
 
   def _populate_gen_replay_buffer(self) -> None:
     """Generate and store generator samples in the buffer.
 
     More specifically, rolls out generator-policy trajectories in the
-    environment until `self._n_disc_sample_per_buffer` obs-act-obs samples are
+    environment until `self._n_disc_samples_per_buffer` obs-act-obs samples are
     produced, and then stores these samples.
     """
-    gen_rollouts = util.rollout.generate(
-        self.gen_policy, self.env,
-        n_timesteps=self._n_disc_samples_per_buffer)[:3]
+    gen_rollouts = rollout.flatten_trajectories(rollout.generate(
+        self.gen_policy, self.env_train,
+        n_timesteps=self._n_disc_samples_per_buffer))[:3]
     self._gen_replay_buffer.store(*gen_rollouts)
 
   def train(self, *, n_epochs=100, n_gen_steps_per_epoch=None,
@@ -175,10 +220,13 @@ class Trainer:
         env (str, Env, or VecEnv): The Env that we want to wrap. If a
             string environment name is given or a Env is given, then we first
             convert to a VecEnv before continuing.
-    wrapped_env (VecEnv): The wrapped environment with a new reward.
+        wrapped_env (VecEnv): The wrapped environment with a new reward.
     """
-    env = util.maybe_load_env(env, vectorize=True)
-    return _RewardVecEnvWrapper(env, self._policy_train_reward_fn)
+    env = maybe_load_env(env, vectorize=True)
+    if self.debug_use_ground_truth:
+      return env
+    else:
+      return _RewardVecEnvWrapper(env, self._policy_train_reward_fn)
 
   def wrap_env_test_reward(self, env):
     """Returns the given Env wrapped with a reward function that returns
@@ -195,8 +243,11 @@ class Trainer:
     Returns:
         wrapped_env (VecEnv): The wrapped environment with a new reward.
     """
-    env = util.maybe_load_env(env, vectorize=True)
-    return _RewardVecEnvWrapper(env, self._test_reward_fn)
+    env = maybe_load_env(env, vectorize=True)
+    if self.debug_use_ground_truth:
+      return env
+    else:
+      return _RewardVecEnvWrapper(env, self._test_reward_fn)
 
   def _build_summarize(self):
     self._summary_writer = summaries.make_summary_writer(
@@ -210,8 +261,8 @@ class Trainer:
 
   def _build_disc_train(self):
     # Construct Train operation.
-    self._disc_opt = tf.train.AdamOptimizer()
-    self._disc_train_op = self._disc_opt.minimize(
+    disc_opt = self._disc_opt_cls(**self._disc_opt_kwargs)
+    self._disc_train_op = disc_opt.minimize(
         tf.reduce_mean(self.discrim.disc_loss),
         global_step=self._global_step)
 
@@ -225,13 +276,13 @@ class Trainer:
 
     Args:
         gen_old_obs (np.ndarray): A numpy array with shape
-            `[self.n_disc_training_samples_per_buffer] + env.observation_space.shape`.
+            `[self.n_disc_samples_per_buffer_per_buffer] + env.observation_space.shape`.
             The ith observation in this array is the observation seen when the
             generator chooses action `gen_act[i]`.
         gen_act (np.ndarray): A numpy array with shape
-            `[self.n_disc_training_samples_per_buffer] + env.action_space.shape`.
+            `[self.n_disc_samples_per_buffer_per_buffer] + env.action_space.shape`.
         gen_new_obs (np.ndarray): A numpy array with shape
-            `[self.n_disc_training_samples_per_buffer] + env.observation_space.shape`.
+            `[self.n_disc_samples_per_buffer_per_buffer] + env.observation_space.shape`.
             The ith observation in this array is from the transition state after
             the generator chooses action `gen_act[i]`.
     """  # noqa: E501
@@ -270,9 +321,10 @@ class Trainer:
                              np.ones(n_gen, dtype=int)])
 
     # Calculate generator-policy log probabilities.
-    log_act_prob = np.log(self.gen_policy.action_probability(
-        old_obs, actions=act)).flatten()  # (N,)
+    log_act_prob = self.gen_policy.action_probability(old_obs, actions=act,
+                                                      logp=True)
     assert len(log_act_prob) == N
+    log_act_prob = log_act_prob.reshape((N,))
 
     fd = {
         self.discrim.old_obs_ph: old_obs,
@@ -309,9 +361,10 @@ class Trainer:
       assert len(new_obs) == n_gen
 
       # Calculate generator-policy log probabilities.
-      log_act_prob = np.log(self.gen_policy.action_probability(
-          old_obs, actions=act)).flatten()  # (N,)
+      log_act_prob = self.gen_policy.action_probability(old_obs, actions=act,
+                                                        logp=True)
       assert len(log_act_prob) == n_gen
+      log_act_prob = log_act_prob.reshape((n_gen,))
 
       fd = {
           self.discrim.old_obs_ph: old_obs,

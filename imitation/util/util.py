@@ -1,3 +1,4 @@
+import functools
 import glob
 import os
 from typing import Iterable, Optional, Tuple
@@ -38,17 +39,23 @@ def maybe_load_env(env_or_str, vectorize=True):
   return env
 
 
-def make_vec_env(env_id, n_envs=8):
+# TODO(adam): performance enhancement -- make Dummy vs Subproc configurable
+def make_vec_env(env_id: str, n_envs: int = 8, seed: int = 0):
   """Returns a DummyVecEnv initialized with `n_envs` Envs.
 
   Args:
-      env_id (str): The Env's string id in Gym.
-      n_envs (int): The number of duplicate environments.
+      env_id: The Env's string id in Gym.
+      n_envs: The number of duplicate environments.
+      seed: The environment seed.
   """
-  # Use Monitor to support logging the episode reward and length.
-  def monitored_env():
-    return Monitor(gym.make(env_id), None, allow_early_resets=True)
-  return DummyVecEnv([monitored_env for _ in range(n_envs)])
+  def monitored_env(i):
+    env = gym.make(env_id)
+    env.seed(seed + i)
+    # Use Monitor to support logging the episode reward and length.
+    # TODO(adam): also log to disk -- can be useful for debugging occasionally?
+    return Monitor(env, None, allow_early_resets=True)
+  return DummyVecEnv([functools.partial(monitored_env, i)
+                      for i in range(n_envs)])
 
 
 def is_vec_env(env):
@@ -70,8 +77,9 @@ def get_env_id(env_or_str):
     return "UnknownEnv"
 
 
+@gin.configurable
 class FeedForward32Policy(FeedForwardPolicy):
-  """A feed forward gaussian policy network with two hidden layers of 32 units.
+  """A feed forward policy network with two hidden layers of 32 units.
 
   This matches the IRL policies in the original AIRL paper.
   """
@@ -82,9 +90,16 @@ class FeedForward32Policy(FeedForwardPolicy):
 
 
 @gin.configurable
+class FeedForward64Policy(FeedForwardPolicy):
+  def __init__(self, *args, **kwargs):
+    super().__init__(*args, **kwargs,
+                     net_arch=[64, 64], feature_extraction="mlp")
+
+
+@gin.configurable
 def make_blank_policy(env, policy_class=stable_baselines.PPO2,
                       init_tensorboard=False,
-                      policy_network_class=FeedForward32Policy, verbose=0,
+                      policy_network_class=FeedForward32Policy, verbose=1,
                       **kwargs):
   """Instantiates a policy for the provided environment.
 
@@ -102,7 +117,6 @@ def make_blank_policy(env, policy_class=stable_baselines.PPO2,
   policy (stable_baselines.BaseRLModel)
   """
   env = maybe_load_env(env)
-  tf.logging.info("kwargs %s", kwargs)
   return policy_class(policy_network_class, env, verbose=verbose,
                       tensorboard_log=_get_tb_log_dir(env, init_tensorboard),
                       **kwargs)
@@ -188,6 +202,14 @@ def load_policy(env, basedir, policy_model_class=stable_baselines.PPO2,
       **kwargs: Additional options for initializing the BaseRLModel class.
   """
 
+  # FIXME: Despite name, this does not actually load policies, it loads lists
+  # of pickled policy training algorithms ("RL models" in stable-baselines'
+  # terminology). Should fix the naming, or change it so that it actually loads
+  # policies (which is often what is really wanted, IMO).
+
+  # FIXME: a lot of code assumes that this function returns None on failure,
+  # which it does not. That upstream code also needs to be fixed.
+
   paths = _get_policy_paths(env, policy_model_class, basedir, n_experts)
 
   env = maybe_load_env(env)
@@ -238,7 +260,7 @@ def apply_ff(inputs: tf.Tensor,
 
 def build_inputs(observation_space: gym.Space,
                  action_space: gym.Space,
-                 scale: bool = True) -> Tuple[tf.Tensor, ...]:
+                 scale: bool = False) -> Tuple[tf.Tensor, ...]:
   """Builds placeholders and processed input Tensors.
 
   Observation `old_obs_*` and `new_obs_*` placeholders and processed input
@@ -260,7 +282,6 @@ def build_inputs(observation_space: gym.Space,
     act_inp: Network-ready float32 Tensor with processed actions.
     new_obs_inp: Network-ready float32 Tensor with processed new observations.
   """
-
   old_obs_ph, old_obs_inp = observation_input(observation_space,
                                               name="old_obs", scale=scale)
   act_ph, act_inp = observation_input(action_space, name="act", scale=scale)

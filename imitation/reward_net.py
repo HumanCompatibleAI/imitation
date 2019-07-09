@@ -1,7 +1,7 @@
 """Constructs deep network reward models."""
 
 from abc import ABC, abstractmethod
-from typing import List, Optional
+from typing import Iterable, Optional
 
 import gym
 import tensorflow as tf
@@ -23,18 +23,20 @@ class RewardNet(ABC):
     new_obs_ph (tf.Tensor): next observation placeholder.
   """
 
-  def __init__(self, observation_space: gym.Space, action_space: gym.Space):
+  def __init__(self, observation_space: gym.Space, action_space: gym.Space, *,
+               scale: bool = False):
     """Builds a reward network.
 
     Args:
         observation_space: The observation space.
         action_space: The action space.
+        scale: Whether to scale the input.
     """
 
     self.observation_space = observation_space
     self.action_space = action_space
 
-    inputs = util.build_inputs(observation_space, action_space, True)
+    inputs = util.build_inputs(observation_space, action_space, scale)
     self.old_obs_ph, self.act_ph, self.new_obs_ph = inputs[:3]
     self.old_obs_inp, self.act_inp, self.new_obs_inp = inputs[3:]
 
@@ -125,8 +127,8 @@ class RewardNetShaped(RewardNet):
   """
 
   def __init__(self, observation_space: gym.Space, action_space: gym.Space, *,
-               discount_factor: float = 0.99):
-    super().__init__(observation_space, action_space)
+               scale: bool = False, discount_factor: float = 0.99):
+    super().__init__(observation_space, action_space, scale=scale)
     self._discount_factor = discount_factor
 
     with tf.variable_scope("phi_network"):
@@ -189,8 +191,10 @@ class RewardNetShaped(RewardNet):
     tf.summary.histogram("shaping_new", self._new_shaping_output)
 
 
-def build_basic_theta_network(hid_sizes, old_obs_input, new_obs_input,
-                              act_input):
+def build_basic_theta_network(hid_sizes: Optional[Iterable[int]],
+                              old_obs_input: Optional[tf.Tensor],
+                              new_obs_input: Optional[tf.Tensor],
+                              act_input: Optional[tf.Tensor]):
   """Builds a reward network depending on specified observations and actions.
 
   All specified inputs will be preprocessed and then concatenated. If all
@@ -199,11 +203,10 @@ def build_basic_theta_network(hid_sizes, old_obs_input, new_obs_input,
   will depend just on the current observation: :math:`R(o)`.
 
   Arguments:
-    hid_sizes (Optional[List[int]]): Number of units at each hidden layer.
-        Default is [], i.e. linear.
-    old_obs_input (Optional[tf.Tensor]): Previous observation.
-    new_obs_input (Optional[tf.Tensor]): Next observation.
-    act_input (Optional[tf.Tensor]): Action.
+    hid_sizes: Number of units at each hidden layer. Default is [], i.e. linear.
+    old_obs_input: Previous observation.
+    new_obs_input: Next observation.
+    act_input: Action.
 
   Returns:
     tf.Tensor: Predicted reward.
@@ -236,8 +239,8 @@ class BasicRewardNet(RewardNet):
   """
 
   def __init__(self, observation_space: gym.Space, action_space: gym.Space, *,
-               state_only: bool = False,
-               theta_units: Optional[List[int]] = None):
+               scale: bool = False, state_only: bool = False,
+               theta_units: Optional[Iterable[int]] = None):
     """Builds a simple reward network.
 
     Args:
@@ -250,7 +253,7 @@ class BasicRewardNet(RewardNet):
     """
     self.state_only = state_only
     self.theta_units = theta_units
-    super().__init__(observation_space, action_space)
+    super().__init__(observation_space, action_space, scale=scale)
 
   def build_theta_network(self, obs_input, act_input):
     act_or_none = None if self.state_only else act_input
@@ -265,20 +268,21 @@ class BasicRewardNet(RewardNet):
     return self.reward_output_test
 
 
-def build_basic_phi_network(hid_sizes, old_obs_input, new_obs_input):
+def build_basic_phi_network(hid_sizes: Optional[Iterable[int]],
+                            old_obs_input: tf.Tensor,
+                            new_obs_input: tf.Tensor):
   """Builds a potential network depending on specified observation.
 
   Arguments:
-    hid_sizes (Optional[List[int]]): Number of units at each hidden layer.
-        Default is [32, 32].
-    old_obs_input (Optional[tf.Tensor]): Previous observation.
-    new_obs_input (Optional[tf.Tensor]): Next observation.
+    hid_sizes: Number of units at each hidden layer. Default is (32, 32).
+    old_obs_input: Previous observation.
+    new_obs_input: Next observation.
 
   Returns:
     Tuple[tf.Tensor, tf.Tensor]: potential for the old and new observations.
   """
   if hid_sizes is None:
-    hid_sizes = [32, 32]
+    hid_sizes = (32, 32)
 
   with tf.variable_scope("phi", reuse=tf.AUTO_REUSE):
     old_o = tf.layers.flatten(old_obs_input)
@@ -307,10 +311,10 @@ class BasicShapedRewardNet(RewardNetShaped):
   """
 
   def __init__(self, observation_space: gym.Space, action_space: gym.Space, *,
+               scale: bool = False, state_only: bool = False,
                discount_factor: float = 0.99,
-               state_only: bool = False,
-               theta_units: Optional[List[int]] = None,
-               phi_units: Optional[List[int]] = None):
+               theta_units: Optional[Iterable[int]] = None,
+               phi_units: Optional[Iterable[int]] = None):
     """Builds a simple shaped reward network.
 
     Args:
@@ -327,7 +331,7 @@ class BasicShapedRewardNet(RewardNetShaped):
     self.state_only = state_only
     self.theta_units = theta_units
     self.phi_units = phi_units
-    super().__init__(observation_space, action_space,
+    super().__init__(observation_space, action_space, scale=scale,
                      discount_factor=discount_factor)
 
   def build_theta_network(self, obs_input, act_input):

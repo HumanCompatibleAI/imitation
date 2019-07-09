@@ -3,7 +3,8 @@ import gin.tf
 import pytest
 import tensorflow as tf
 
-import imitation.util as util
+from imitation import util
+from imitation.util import rollout
 from imitation.util.trainer import init_trainer
 
 use_gail_vals = [True, False]
@@ -26,8 +27,8 @@ def test_init_no_crash(use_gail, env='CartPole-v1'):
 def test_train_disc_no_crash(use_gail, env='CartPole-v1', n_timesteps=200):
   trainer = init_trainer(env, use_gail=use_gail)
   trainer.train_disc()
-  obs_old, act, obs_new, _ = util.rollout.generate(
-      trainer.gen_policy, env, n_timesteps=n_timesteps)
+  obs_old, act, obs_new, _ = rollout.flatten_trajectories(rollout.generate(
+      trainer.gen_policy, env, n_timesteps=n_timesteps))
   trainer.train_disc(gen_old_obs=obs_old, gen_act=act,
                      gen_new_obs=obs_new)
 
@@ -43,8 +44,8 @@ def test_train_gen_no_crash(use_gail, env='CartPole-v1', n_steps=10):
 def test_train_disc_improve_D(use_gail, env='CartPole-v1', n_timesteps=200,
                               n_steps=1000):
   trainer = init_trainer(env, use_gail=use_gail)
-  obs_old, act, obs_new, _ = util.rollout.generate(
-      trainer.gen_policy, env, n_timesteps=n_timesteps)
+  obs_old, act, obs_new, _ = rollout.flatten_trajectories(rollout.generate(
+      trainer.gen_policy, env, n_timesteps=n_timesteps))
   kwargs = dict(gen_old_obs=obs_old, gen_act=act, gen_new_obs=obs_new)
   loss1 = trainer.eval_disc_loss(**kwargs)
   trainer.train_disc(n_steps=n_steps, **kwargs)
@@ -62,8 +63,8 @@ def test_train_gen_degrade_D(use_gail=False, env='CartPole-v1', n_timesteps=200,
   if use_gail:
     kwargs = {}
   else:
-    obs_old, act, obs_new, _ = util.rollout.generate(
-        trainer.gen_policy, env, n_timesteps=n_timesteps)
+    obs_old, act, obs_new, _ = rollout.flatten_trajectories(rollout.generate(
+        trainer.gen_policy, env, n_timesteps=n_timesteps))
     kwargs = dict(gen_old_obs=obs_old, gen_act=act, gen_new_obs=obs_new)
 
   loss1 = trainer.eval_disc_loss(**kwargs)
@@ -82,8 +83,8 @@ def test_train_disc_then_gen(use_gail=False, env='CartPole-v1', n_timesteps=200,
   if use_gail:
     kwargs = {}
   else:
-    obs_old, act, obs_new, _ = util.rollout.generate(
-        trainer.gen_policy, env, n_timesteps=n_timesteps)
+    obs_old, act, obs_new, _ = rollout.flatten_trajectories(rollout.generate(
+        trainer.gen_policy, env, n_timesteps=n_timesteps))
     kwargs = dict(gen_old_obs=obs_old, gen_act=act, gen_new_obs=obs_new)
 
   loss1 = trainer.eval_disc_loss(**kwargs)
@@ -127,18 +128,16 @@ def test_trained_policy_better_than_random(use_gail, env='CartPole-v1',
 
   # Idea: Plot n_epochs vs generator reward.
   for _ in range(4):
-    expert_rew = util.rollout.total_reward(expert_policy, env,
-                                           n_episodes=n_episodes)
-    gen_rew = util.rollout.total_reward(trainer.gen_policy, env,
-                                        n_episodes=n_episodes)
-    random_rew = util.rollout.total_reward(random_policy, env,
-                                           n_episodes=n_episodes)
+    expert_ret = rollout.mean_return(expert_policy, env, n_episodes=n_episodes)
+    gen_ret = rollout.mean_return(trainer.gen_policy, env,
+                                  n_episodes=n_episodes)
+    random_ret = rollout.mean_return(random_policy, env, n_episodes=n_episodes)
 
-    print("expert reward:", expert_rew)
-    print("generator reward:", gen_rew)
-    print("random reward:", random_rew)
-    assert expert_rew > random_rew
-    assert gen_rew > random_rew
+    print("expert return:", expert_ret)
+    print("generator return:", gen_ret)
+    print("random return:", random_ret)
+    assert expert_ret > random_ret
+    assert gen_ret > random_ret
 
 
 @pytest.mark.expensive
