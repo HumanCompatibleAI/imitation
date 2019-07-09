@@ -99,7 +99,6 @@ class Trainer:
     self.debug_use_ground_truth = debug_use_ground_truth
 
     self.env = maybe_load_env(env, vectorize=True)
-    # TODO(adam): make this wrapping configurable for debugging purposes
     self.gen_policy = gen_policy
 
     # Discriminator and reward output
@@ -117,6 +116,7 @@ class Trainer:
         self._build_summarize()
     self._sess.run(tf.global_variables_initializer())
 
+    # TODO(adam): make this wrapping configurable for debugging purposes
     self.env_train = self.wrap_env_train_reward(self.env)
     self.env_test = self.wrap_env_test_reward(self.env)
 
