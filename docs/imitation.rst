@@ -21,6 +21,14 @@ imitation.discrim\_net module
    :undoc-members:
    :show-inheritance:
 
+imitation.experiments module
+-----------------------------
+
+.. automodule:: imitation.experiments
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 imitation.model\_env module
 ---------------------------
 

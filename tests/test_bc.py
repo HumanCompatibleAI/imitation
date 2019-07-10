@@ -1,21 +1,14 @@
 """Tests for Behavioural Cloning (BC)."""
 
-import gin
-import tensorflow as tf
-
 # `init_trainer` import required for parsing configs/test.gin.
 from imitation import bc, util
 from imitation.util.trainer import init_trainer  # noqa: F401
 
-gin.parse_config_file("configs/test.gin")
-tf.logging.set_verbosity(tf.logging.INFO)
-
 
 def test_bc():
   env_id = 'CartPole-v1'
-  policy_dir = gin.query_parameter('init_trainer.policy_dir')
   env = util.make_vec_env(env_id, 2)
-  expert_algos = util.load_policy(env, basedir=policy_dir)
+  expert_algos = util.load_policy(env)
   if not expert_algos:
     raise ValueError(env)
   bc_trainer = bc.BCTrainer(

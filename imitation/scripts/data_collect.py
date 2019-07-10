@@ -1,9 +1,6 @@
-import argparse
-
-import gin
-import gin.tf
 import tensorflow as tf
 
+from imitation.experiments import data_collection_exp
 import imitation.util as util
 
 
@@ -16,7 +13,7 @@ def make_PPO2(env_name, num_vec):
   return policy
 
 
-@gin.configurable
+@data_collection_exp.automain
 def main(env_name, total_timesteps, num_vec=8):
   tf.logging.set_verbosity(tf.logging.INFO)
 
@@ -24,14 +21,3 @@ def main(env_name, total_timesteps, num_vec=8):
 
   callback = util.make_save_policy_callback("data/")
   policy.learn(total_timesteps, callback=callback)
-
-
-if __name__ == "__main__":
-  parser = argparse.ArgumentParser()
-  parser.add_argument(
-      "--gin_config", default='configs/cartpole_data_collect.gin')
-  args = parser.parse_args()
-
-  gin.parse_config_file(args.gin_config)
-
-  main()

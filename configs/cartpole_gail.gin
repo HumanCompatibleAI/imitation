@@ -1,4 +1,0 @@
-include "configs/classical_control.gin"
-
-train_and_plot.env = 'CartPole-v1'
-init_trainer.use_gail = True

@@ -5,17 +5,16 @@ Utility functions for manipulating Trainer.
 prevent cyclic imports between imitation.trainer and imitation.util)
 """
 
-import gin
-import gin.tf
-
 import imitation.discrim_net as discrim_net
+from imitation.experiments import train_exp
 from imitation.reward_net import BasicShapedRewardNet
 from imitation.trainer import Trainer
 import imitation.util as util
 
 
-@gin.configurable
-def init_trainer(env_id, policy_dir, use_gail, use_random_expert=True,
+@train_exp.capture(prefix="init_trainer_kwargs")
+def init_trainer(env_id, use_gail=False,
+                 use_random_expert=True,
                  num_vec=8, discrim_scale=False,
                  discrim_kwargs={}, reward_kwargs={}, trainer_kwargs={}):
   """Builds a Trainer, ready to be trained on a vectorized environment
@@ -41,7 +40,7 @@ def init_trainer(env_id, policy_dir, use_gail, use_random_expert=True,
   if use_random_expert:
     expert_policies = [gen_policy]
   else:
-    expert_policies = util.load_policy(env, basedir=policy_dir)
+    expert_policies = util.load_policy(env)
     if expert_policies is None:
       raise ValueError(env)
 

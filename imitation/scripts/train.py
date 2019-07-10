@@ -1,25 +1,24 @@
 """Train an IRL algorithm and plot its output.
 
 Can be used as a CLI script, or the `train_and_plot` function can be called
-directly."""
+directly.
+"""
 
-import argparse
 from collections import defaultdict
 import datetime
 import os
 
-import gin
-import gin.tf
 from matplotlib import pyplot as plt
 import tensorflow as tf
 import tqdm
 
+from imitation.experiments import train_exp
 import imitation.util as util
 from imitation.util.trainer import init_trainer
 
 
-@gin.configurable
-def train_and_plot(policy_dir, env='CartPole-v1',
+@train_exp.automain
+def train_and_plot(env='CartPole-v1',
                    n_epochs=100,
                    n_plots_each_per_epoch=0,
                    n_disc_steps_per_epoch=10,
@@ -41,7 +40,7 @@ def train_and_plot(policy_dir, env='CartPole-v1',
     - ...
   """
   if trainer is None:
-    trainer = init_trainer(env, policy_dir=policy_dir)
+    trainer = init_trainer(env)
   if trainer_hook_fn:
     trainer_hook_fn(trainer)
 
@@ -168,20 +167,3 @@ def _savefig_timestamp(prefix="", also_show=True):
   tf.logging.info("plot saved to {}".format(path))
   if also_show:
     plt.show()
-
-
-def main():
-  tf.logging.set_verbosity(tf.logging.INFO)
-
-  train_and_plot()
-
-
-if __name__ == "__main__":
-  parser = argparse.ArgumentParser()
-  parser.add_argument("--gin_config",
-                      default='configs/cartpole_airl.gin')
-  args = parser.parse_args()
-
-  gin.parse_config_file(args.gin_config)
-
-  main()

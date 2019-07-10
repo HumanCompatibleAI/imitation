@@ -1,4 +1,0 @@
-include "configs/classical_control.gin"
-
-train_and_plot.env = 'Pendulum-v0'
-init_trainer.use_gail = False

@@ -1,5 +1,3 @@
-import gin
-import gin.tf
 import pytest
 import tensorflow as tf
 
@@ -8,8 +6,6 @@ from imitation.util import rollout
 from imitation.util.trainer import init_trainer
 
 use_gail_vals = [True, False]
-gin.parse_config_file("configs/test.gin")
-tf.logging.set_verbosity(tf.logging.INFO)
 
 
 @pytest.fixture(autouse=True)
