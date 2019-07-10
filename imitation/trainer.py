@@ -108,7 +108,7 @@ class Trainer:
     self._gen_replay_buffer = ReplayBuffer(gen_replay_buffer_capacity, self.env)
     self._populate_gen_replay_buffer()
 
-    exp_rollouts = rollout.generate_multiple(
+    exp_rollouts = rollout.generate_transitions_multiple(
         self.expert_policies, self.env, n_expert_samples)[:3]
     self._exp_replay_buffer = ReplayBuffer.from_data(*exp_rollouts)
 
@@ -144,7 +144,7 @@ class Trainer:
     environment until `self._n_disc_samples_per_buffer` obs-act-obs samples are
     produced, and then stores these samples.
     """
-    gen_rollouts = rollout.generate(
+    gen_rollouts = rollout.generate_transitions(
         self.gen_policy, self.env,
         n_timesteps=self._n_disc_samples_per_buffer)[:3]
     self._gen_replay_buffer.store(*gen_rollouts)

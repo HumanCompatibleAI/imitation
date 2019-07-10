@@ -63,6 +63,7 @@ class _TrajectoryAccumulator:
 
   def finish_trajectory(self, idx) -> Dict[str, np.ndarray]:
     """Complete the trajectory labelled with `idx`.
+
     Return list of completed trajectories popped from
     `self.partial_trajectories`.
     """
@@ -79,16 +80,16 @@ class _TrajectoryAccumulator:
     return out_dict_stacked
 
   def add_step(self, idx, step_dict: Dict[str, np.ndarray]):
-    """Add a single step to the partial trajectory identified by `idx` (this
-    could correspond to, e.g., one environment managed by a vecenv)."""
+    """Add a single step to the partial trajectory identified by `idx`.
+
+    This could correspond to, e.g., one environment managed by a VecEnv.
+    """
     self.partial_trajectories[idx].append(step_dict)
 
 
 def generate_trajectories(policy, env, *, n_timesteps=None, n_episodes=None
                           ) -> List[Dict[str, np.ndarray]]:
-  """
-  Generate a list of old_obs-action-new_obs-reward trajectories from a policy
-  and an environment.
+  """Generate trajectory dictionaries from a policy and an environment.
 
   Args:
     policy (BasePolicy or BaseRLModel): A stable_baselines policy or RLModel,
@@ -297,11 +298,9 @@ def flatten_trajectories(trajectories: Sequence[Dict[str, np.ndarray]]
       cat_parts["rew"]
 
 
-def generate(policy, env, *, n_timesteps=None, n_episodes=None, truncate=True,
-             ) -> Tuple[np.ndarray, ...]:
-  """
-  Generate old_obs-action-new_obs-reward tuples from a policy and an
-  environment.
+def generate_transitions(policy, env, *, n_timesteps=None, n_episodes=None,
+                         truncate=True) -> Tuple[np.ndarray, ...]:
+  """Generate old_obs-action-new_obs-reward tuples.
 
   Args:
     policy (BasePolicy or BaseRLModel): A stable_baselines policy or RLModel,
@@ -322,7 +321,8 @@ def generate(policy, env, *, n_timesteps=None, n_episodes=None, truncate=True,
     rollout_obs_old (array): A numpy array with shape
         `[n_samples] + env.observation_space.shape`. The ith observation in
         this array is the observation seen with the agent chooses action
-        `rollout_act[i]`.
+        `rollout_act[i]`. `n_samples` is guaranteed to be at least
+        `n_timesteps`, if `n_timesteps` was provided.
     rollout_act (array): A numpy array with shape
         `[n_samples] + env.action_space.shape`.
     rollout_obs_new (array): A numpy array with shape
@@ -340,9 +340,9 @@ def generate(policy, env, *, n_timesteps=None, n_episodes=None, truncate=True,
   return rollout_arrays
 
 
-def generate_multiple(policies, env, n_timesteps, *, truncate=True
-                      ) -> Tuple[np.ndarray, ...]:
-  """Generate obs-act-obs-rew triples from several policies.
+def generate_transitions_multiple(policies, env, n_timesteps, *, truncate=True
+                                  ) -> Tuple[np.ndarray, ...]:
+  """Generate obs-act-obs triples from several policies.
 
   Splits the desired number of timesteps evenly between all the policies given.
 
@@ -369,7 +369,8 @@ def generate_multiple(policies, env, n_timesteps, *, truncate=True
       rollout_obs_old (array): A numpy array with shape
           `[n_samples] + env.observation_space.shape`. The ith observation in
           this array is the observation seen with the agent chooses action
-          `rollout_act[i]`.
+          `rollout_act[i]`. `n_samples` is guaranteed to be at least
+          `n_timesteps`.
       rollout_act (array): A numpy array with shape
           `[n_samples] + env.action_space.shape`.
       rollout_obs_new (array): A numpy array with shape
@@ -386,7 +387,7 @@ def generate_multiple(policies, env, n_timesteps, *, truncate=True
 
   n_policies = len(policies)
   quot, rem = n_timesteps // n_policies, n_timesteps % n_policies
-  tf.logging.debug("rollout.generate_multiple: quot={}, rem={}"
+  tf.logging.debug("rollout.generate_transitions_multiple: quot={}, rem={}"
                    .format(quot, rem))
 
   obs_old, act, obs_new = [], [], []
@@ -397,7 +398,8 @@ def generate_multiple(policies, env, n_timesteps, *, truncate=True
       # n_policies doesn't evenly divide n_timesteps.
       n_timesteps_ += rem
 
-    obs_old_, act_, obs_new_, _ = generate(pol, env, n_timesteps=n_timesteps_)
+    obs_old_, act_, obs_new_, _ = generate_transitions(
+        pol, env, n_timesteps=n_timesteps_)
     assert len(obs_new_) == len(act_), (len(obs_new_), len(act_))
     assert len(obs_old_) == len(act_), (len(obs_old_), len(act_))
 

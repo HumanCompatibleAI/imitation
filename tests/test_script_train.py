@@ -16,6 +16,3 @@ def test_train_and_plot_no_crash():
                  n_gen_steps_per_epoch=1,
                  interactive=False)
   tf.reset_default_graph()
-
-
-# TODO(shwang): edit notebooks to match new params
