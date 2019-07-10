@@ -129,7 +129,7 @@ class Trainer:
     if not isinstance(expert_policies, collections.abc.Sequence):
         expert_policies = [expert_policies]
     self.expert_policies = expert_policies
-    exp_rollouts = rollout.generate_multiple(
+    exp_rollouts = rollout.generate_transitions_multiple(
         self.expert_policies, self.env, n_expert_samples)[:3]
     self._exp_replay_buffer = ReplayBuffer.from_data(*exp_rollouts)
 
@@ -165,9 +165,9 @@ class Trainer:
     environment until `self._n_disc_samples_per_buffer` obs-act-obs samples are
     produced, and then stores these samples.
     """
-    gen_rollouts = rollout.flatten_trajectories(rollout.generate(
+    gen_rollouts = rollout.generate_transitions(
         self.gen_policy, self.env_train,
-        n_timesteps=self._n_disc_samples_per_buffer))[:3]
+        n_timesteps=self._n_disc_samples_per_buffer)[:3]
     self._gen_replay_buffer.store(*gen_rollouts)
 
   def train(self, *, n_epochs=100, n_gen_steps_per_epoch=None,

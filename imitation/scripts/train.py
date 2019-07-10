@@ -66,7 +66,6 @@ def train_and_plot(policy_dir: str = "expert_models",
   """
   assert n_epochs_per_plot is None or n_epochs_per_plot >= 1
   trainer = init_trainer(env, policy_dir=policy_dir)
-  env = trainer.env
 
   os.makedirs("output", exist_ok=True)
 
@@ -109,7 +108,7 @@ def train_and_plot(policy_dir: str = "expert_models",
   def ep_reward_plot_add_data(env, name):
     """Calculate and record the average episode reward from rollouts of env."""
     gen_policy = trainer.gen_policy
-    rand_policy = util.make_blank_policy(env)
+    rand_policy = util.make_blank_policy(trainer.env)
     exp_policy = trainer.expert_policies[-1]
 
     gen_ret = util.rollout.mean_return(
@@ -162,8 +161,8 @@ def train_and_plot(policy_dir: str = "expert_models",
   # Collect data for epoch 0.
   if n_epochs_per_plot is not None:
     disc_plot_add_data(False)
-    ep_reward_plot_add_data(env, "True Reward")
-    ep_reward_plot_add_data(trainer.env_wrapped_test, "Learned Reward")
+    ep_reward_plot_add_data(trainer.env, "Ground Truth Reward")
+    ep_reward_plot_add_data(trainer.env_test, "Test Reward")
 
   for epoch in tqdm.tqdm(range(1, n_epochs+1), desc="epoch"):
     trainer.train_disc(n_disc_steps_per_epoch)
@@ -173,8 +172,8 @@ def train_and_plot(policy_dir: str = "expert_models",
 
     if should_plot_now(epoch):
       disc_plot_show()
-      ep_reward_plot_add_data(env, "True Reward")
-      ep_reward_plot_add_data(trainer.env_wrapped_test, "Learned Reward")
+      ep_reward_plot_add_data(trainer.env, "Ground Truth Reward")
+      ep_reward_plot_add_data(trainer.env_test, "Test Reward")
       ep_reward_plot_show()
 
   return trainer, gen_data, disc_data, gen_ep_reward
