@@ -162,6 +162,7 @@ def train_and_plot(policy_dir: str = "expert_models",
   if n_epochs_per_plot is not None:
     disc_plot_add_data(False)
     ep_reward_plot_add_data(trainer.env, "Ground Truth Reward")
+    ep_reward_plot_add_data(trainer.env_test, "Train Reward")
     ep_reward_plot_add_data(trainer.env_test, "Test Reward")
 
   for epoch in tqdm.tqdm(range(1, n_epochs+1), desc="epoch"):
@@ -173,6 +174,7 @@ def train_and_plot(policy_dir: str = "expert_models",
     if should_plot_now(epoch):
       disc_plot_show()
       ep_reward_plot_add_data(trainer.env, "Ground Truth Reward")
+      ep_reward_plot_add_data(trainer.env_test, "Train Reward")
       ep_reward_plot_add_data(trainer.env_test, "Test Reward")
       ep_reward_plot_show()
 
