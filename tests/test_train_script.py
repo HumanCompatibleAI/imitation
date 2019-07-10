@@ -14,5 +14,6 @@ def test_train_and_plot_no_crash():
                  n_epochs_per_plot=1,
                  n_disc_steps_per_epoch=1,
                  n_gen_steps_per_epoch=1,
+                 n_episodes_per_reward_data=2,
                  interactive=False)
   tf.reset_default_graph()
