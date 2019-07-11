@@ -1,5 +1,4 @@
-import collections
-from typing import Optional, Sequence, Union
+from typing import Optional, Tuple, Union
 from warnings import warn
 
 import gym
@@ -39,12 +38,11 @@ class Trainer:
                env: Union[gym.Env, str],
                gen_policy: BaseRLModel,
                discrim: DiscrimNet,
-               expert_policies: Sequence[BaseRLModel],
+               expert_rollouts: Tuple[np.ndarray, np.ndarray, np.ndarray],
                *,
                disc_opt_cls: tf.train.Optimizer = tf.train.AdamOptimizer,
                disc_opt_kwargs: dict = {},
                n_disc_samples_per_buffer: int = 200,
-               n_expert_samples: int = 4000,
                gen_replay_buffer_capacity: Optional[int] = None,
                init_tensorboard: bool = False,
                debug_use_ground_truth: bool = False):
@@ -56,23 +54,14 @@ class Trainer:
                     confusion.
         discrim: The discriminator network.
             For GAIL, use a DiscrimNetGAIL. For AIRL, use a DiscrimNetAIRL.
-        expert_policies: An expert policy
-            or a list of expert policies that are used to generate example
-            obs-action-obs triples.
-
-            WARNING:
-            Due to the way VecEnvs handle episode completion states, the last
-            obs-act-obs triple in every episode is omitted. (See issue #1.)
+        expert_rollouts: A tuple of three arrays from expert rollouts,
+            `old_obs`, `act`, and `new_obs`.
         disc_opt_cls: The optimizer for discriminator training.
         disc_opt_kwargs: Parameters for discriminator training.
         n_disc_samples_per_buffer: The number of obs-act-obs triples
             sampled from each replay buffer (expert and generator) during each
             step of discriminator training. This is also the number of triples
             stored in the replay buffer after each epoch of generator training.
-        n_expert_samples: The number of expert obs-action-obs triples
-            that are generated. If the number of expert policies given
-            doesn't divide this number evenly, then the last expert policy
-            generates more timesteps.
         gen_replay_buffer_capacity: The capacity of the
             generator replay buffer (the number of obs-action-obs samples from
             the generator that can be stored).
@@ -87,14 +76,12 @@ class Trainer:
             This disables the reward wrapping that would normally replace
             the environment reward with the learned reward. This is useful for
             sanity checking that the policy training is functional.
+        expert_rollouts (Tuple[np.ndarray, np.ndarray, np.ndarray]):
     """
     # TODO(adam): we're not guaranteed to use this session, see issue #31
     self._sess = tf.Session()
     self._global_step = tf.train.create_global_step()
 
-    if n_disc_samples_per_buffer > n_expert_samples:
-      warn("The discriminator batch size is larger than the number of "
-           "expert samples.")
     self._n_disc_samples_per_buffer = n_disc_samples_per_buffer
     self.debug_use_ground_truth = debug_use_ground_truth
 
@@ -125,13 +112,10 @@ class Trainer:
     self._gen_replay_buffer = ReplayBuffer(gen_replay_buffer_capacity,
                                            self.env)
     self._populate_gen_replay_buffer()
-
-    if not isinstance(expert_policies, collections.abc.Sequence):
-        expert_policies = [expert_policies]
-    self.expert_policies = expert_policies
-    exp_rollouts = rollout.generate_transitions_multiple(
-        self.expert_policies, self.env, n_expert_samples)[:3]
-    self._exp_replay_buffer = ReplayBuffer.from_data(*exp_rollouts)
+    self._exp_replay_buffer = ReplayBuffer.from_data(*expert_rollouts)
+    if n_disc_samples_per_buffer > len(self._exp_replay_buffer):
+      warn("The discriminator batch size is larger than the number of "
+           "expert samples.")
 
   def train_disc(self, n_steps=10, **kwargs):
     """Trains the discriminator to minimize classification cross-entropy.

@@ -12,11 +12,13 @@ import imitation.discrim_net as discrim_net
 from imitation.reward_net import BasicShapedRewardNet
 from imitation.trainer import Trainer
 import imitation.util as util
+from imitation.util import rollout
 
 
 @gin.configurable
 def init_trainer(env_id, policy_dir, use_gail, use_random_expert=True,
                  num_vec=8, discrim_scale=False,
+                 n_expert_samples: int = 4000,
                  discrim_kwargs={}, reward_kwargs={}, trainer_kwargs={}):
   """Builds a Trainer, ready to be trained on a vectorized environment
   and either expert rollout data or random rollout data.
@@ -34,6 +36,8 @@ def init_trainer(env_id, policy_dir, use_gail, use_random_expert=True,
     trainer_kwargs (dict): Aguments for the Trainer constructor.
     reward_kwargs (dict): Arguments for the `*RewardNet` constructor.
     discrim_kwargs (dict): Arguments for the `DiscrimNet*` constructor.
+    n_expert_samples: The number of expert obs-action-obs triples
+        that are generated from pickled expert policies.
   """
   env = util.make_vec_env(env_id, num_vec)
   gen_policy = util.make_blank_policy(env, verbose=1)
@@ -44,6 +48,8 @@ def init_trainer(env_id, policy_dir, use_gail, use_random_expert=True,
     expert_policies = util.load_policy(env, basedir=policy_dir)
     if expert_policies is None:
       raise ValueError(env)
+  expert_rollouts = rollout.generate_transitions_multiple(
+      expert_policies, env, n_expert_samples)[:3]
 
   if use_gail:
     discrim = discrim_net.DiscrimNetGAIL(env.observation_space,
@@ -55,6 +61,6 @@ def init_trainer(env_id, policy_dir, use_gail, use_random_expert=True,
                               scale=discrim_scale, **reward_kwargs)
     discrim = discrim_net.DiscrimNetAIRL(rn, **discrim_kwargs)
 
-  trainer = Trainer(env, gen_policy, discrim,
-                    expert_policies=expert_policies, **trainer_kwargs)
+  trainer = Trainer(env, gen_policy, discrim, expert_rollouts,
+                    **trainer_kwargs)
   return trainer

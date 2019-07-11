@@ -31,6 +31,7 @@ def train_and_plot(policy_dir: str = "expert_models",
                    n_gen_steps_per_epoch: int = 10000,
                    n_episodes_per_reward_data: int = 5,
                    interactive: bool = True,
+                   expert_policy=None,
                    ):
   """Alternate between training the generator and discriminator.
 
@@ -38,7 +39,8 @@ def train_and_plot(policy_dir: str = "expert_models",
     - Plot discriminator loss during discriminator training steps in blue and
       discriminator loss during generator training steps in red.
     - Plot the performance of the generator policy versus the performance of
-      a random policy.
+      a random policy. Also plot the performance an expert policy if that is
+      provided in the arguments.
 
   Args:
       policy_dir: Path to a directory that holds pickled expert policies.
@@ -59,10 +61,12 @@ def train_and_plot(policy_dir: str = "expert_models",
       n_episodes_per_reward_data: The number of episodes to average over when
           calculating the average episode reward of a policy.
       interactive: Figures are always saved to "output/*.png". If `interactive`
-        is True, then also show plots as they are created.
+          is True, then also show plots as they are created.
       trainer: If this is provided, then train using this Trainer instead of
-        initializing a new one. Also, ignore the `env` argument.
+          initializing a new one. Also, ignore the `env` argument.
       trainer_kwargs: Passed to `init_trainer` when `trainer` is not specified.
+      expert_policy (BasePolicy or BaseRLModel, optional): If provided, then
+          also plot the performance of this expert policy.
   """
   assert n_epochs_per_plot is None or n_epochs_per_plot >= 1
   trainer = init_trainer(env, policy_dir=policy_dir)
@@ -108,21 +112,22 @@ def train_and_plot(policy_dir: str = "expert_models",
   def ep_reward_plot_add_data(env, name):
     """Calculate and record the average episode reward from rollouts of env."""
     gen_policy = trainer.gen_policy
-    rand_policy = util.make_blank_policy(trainer.env)
-    exp_policy = trainer.expert_policies[-1]
-
     gen_ret = util.rollout.mean_return(
         gen_policy, env, n_episodes=n_episodes_per_reward_data)
+    gen_ep_reward[name].append(gen_ret)
+    tf.logging.info("generator return: {}".format(gen_ret))
+
+    rand_policy = util.make_blank_policy(trainer.env)
     rand_ret = util.rollout.mean_return(
         rand_policy, env, n_episodes=n_episodes_per_reward_data)
-    exp_ret = util.rollout.mean_return(
-        exp_policy, env, n_episodes=n_episodes_per_reward_data)
-    gen_ep_reward[name].append(gen_ret)
     rand_ep_reward[name].append(rand_ret)
-    exp_ep_reward[name].append(exp_ret)
-    tf.logging.info("generator return: {}".format(gen_ret))
     tf.logging.info("random return: {}".format(rand_ret))
-    tf.logging.info("exp return: {}".format(exp_ret))
+
+    if expert_policy is not None:
+        exp_ret = util.rollout.mean_return(
+            expert_policy, env, n_episodes=n_episodes_per_reward_data)
+        exp_ep_reward[name].append(exp_ret)
+        tf.logging.info("exp return: {}".format(exp_ret))
 
   def ep_reward_plot_show():
     """Render and show average episode reward plots."""
