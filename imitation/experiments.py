@@ -37,8 +37,6 @@ def train_defaults():
             phi_units=[32, 32],
         ),
 
-        # Some environments (e.g. CartPole) have float max as limits, which
-        # breaks the scaling.
         trainer_kwargs=dict(
             n_disc_samples_per_buffer=1000,
             # Setting buffer capacity and disc samples to 1000 effectively
@@ -48,6 +46,8 @@ def train_defaults():
             n_expert_samples=1000,
         ),
 
+        # Some environments (e.g. CartPole) have float max as limits, which
+        # breaks the scaling.
         discrim_scale=False,
     )
 
@@ -180,7 +180,7 @@ def data_collect_defaults():
 
 @data_collection_exp.named_config
 def ant_data_collect():
-    env_name = "Pendulum"
+    env_name = "Ant-v2"
     total_timesteps = int(1e6)
 
 
