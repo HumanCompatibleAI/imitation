@@ -6,10 +6,12 @@ coverage:
         target: 80%
         paths:
           - "imitation/"
+          - "!imitation/experiments.py"
           - "!imitation/examples/"
           - "!imitation/scripts/"
       auxiliary:
         target: 0%
         paths:
+          - "imitation/experiments.py"
           - "imitation/examples/"
           - "imitation/scripts/"
