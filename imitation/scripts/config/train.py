@@ -3,8 +3,9 @@ import sacred
 from imitation.scripts.config.common import DEFAULT_BLANK_POLICY_KWARGS
 from imitation.util import FeedForward64Policy
 
-
 train_ex = sacred.Experiment("train", interactive=True)
+
+_init_trainer_kwargs = {}
 
 
 @train_ex.config
@@ -12,14 +13,9 @@ def train_defaults():
     n_epochs = 50
     n_disc_steps_per_epoch = 50
     n_gen_steps_per_epoch = 2048
-    policy_dir = "expert_models"
 
-    load_policy_kwargs = dict(n_experts=1)
-
-    # TODO: Account for me!
-    make_blank_policy_kwargs = DEFAULT_BLANK_POLICY_KWARGS
-
-    init_trainer_kwargs = dict(
+    init_trainer_kwargs = _init_trainer_kwargs
+    init_trainer_kwargs.update(dict(
         use_random_expert=False,
         num_vec=8,  # NOTE: changing this also changes the effective nsteps!
         reward_kwargs=dict(
@@ -39,78 +35,59 @@ def train_defaults():
         # Some environments (e.g. CartPole) have float max as limits, which
         # breaks the scaling.
         discrim_scale=False,
-    )
+
+        make_blank_policy_kwargs=DEFAULT_BLANK_POLICY_KWARGS
+    ))
 
 
 @train_ex.named_config
-def gail(init_trainer_kwargs):
+def gail():
+    init_trainer_kwargs = _init_trainer_kwargs
     init_trainer_kwargs.update(dict(
         use_gail=True,
     ))
 
 
 @train_ex.named_config
-def airl(init_trainer_kwargs):
+def airl():
+    init_trainer_kwargs = _init_trainer_kwargs
     init_trainer_kwargs.update(dict(
         use_gail=False,
     ))
 
 
 @train_ex.named_config
-def ant(init_trainer_kwargs):
+def ant():
     env_name = "Ant-v2"
     n_epochs = 2000
 
 
 @train_ex.named_config
-def cartpole(init_trainer_kwargs):
+def cartpole():
     env_name = "CartPole-v1"
 
 
 @train_ex.named_config
-def halfcheetah(init_trainer_kwargs):
+def halfcheetah():
     env_name = "HalfCheetah-v2"
     n_epochs = 1000
 
+    init_trainer_kwargs = _init_trainer_kwargs
     init_trainer_kwargs.update(dict(
         discrim_kwargs=dict(entropy_weight=0.1),
     ))
 
 
 @train_ex.named_config
-def pendulum(init_trainer_kwargs):
+def pendulum():
     env_name = "Pendulum-v0"
 
 
 @train_ex.named_config
-def swimmer(init_trainer_kwargs, make_blank_policy_kwargs):
+def swimmer():
     env_name = "Swimmer-v2"
     n_epochs = 1000
-    make_blank_policy_kwargs.update(dict(
+    init_trainer_kwargs = _init_trainer_kwargs
+    init_trainer_kwargs["make_blank_policy_kwargs"].update(dict(
         policy_network_class=FeedForward64Policy
     ))
-
-
-@train_ex.named_config
-def cartpole_orig_airl_repro(make_blank_policy_kwargs,
-                             init_trainer_kwargs,
-                             load_policy_kwargs):
-    env_name = "CartPole-v1"
-    policy_dir = "data"
-    n_epochs = 100
-    n_disc_steps_per_epoch = 10
-    n_gen_steps_per_epoch = 10000
-
-    make_blank_policy_kwargs.update(dict(
-        learning_rate=3e-3,
-        nminibatches=32,
-        noptepochs=10,
-        n_steps=2048,
-    ))
-
-    init_trainer_kwargs.update(dict(
-        use_gail=False,
-        use_random_expert=False,
-    ))
-
-    load_policy_kwargs.update(n_experts=5)

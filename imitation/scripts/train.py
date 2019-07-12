@@ -8,10 +8,11 @@ from collections import defaultdict
 import datetime
 import math
 import os
-from typing import Optional, Union
+import os.path as osp
+from typing import Optional
 
-import gym
 from matplotlib import pyplot as plt
+from sacred.observers import FileStorageObserver
 import tensorflow as tf
 import tqdm
 
@@ -21,7 +22,7 @@ from imitation.util.trainer import init_trainer
 
 
 @train_ex.main
-def train_and_plot(env: Union[gym.Env, str] = 'CartPole-v1',
+def train_and_plot(env_name: str = 'CartPole-v1',  # TODO update docs
                    *,
                    n_epochs: int = 100,
                    n_epochs_per_plot: Optional[float] = None,
@@ -29,8 +30,9 @@ def train_and_plot(env: Union[gym.Env, str] = 'CartPole-v1',
                    n_gen_steps_per_epoch: int = 10000,
                    n_episodes_per_reward_data: int = 5,
                    interactive: bool = True,
-                   make_blank_policy_kwargs: dict = {},
+                   load_policy_kwargs: dict = {},
                    init_trainer_kwargs: dict = {},
+                   # Add kwargs docs
                    ):
   """Alternate between training the generator and discriminator.
 
@@ -64,7 +66,7 @@ def train_and_plot(env: Union[gym.Env, str] = 'CartPole-v1',
         used to initialize the trainer.
   """
   assert n_epochs_per_plot is None or n_epochs_per_plot >= 1
-  trainer = init_trainer(env)
+  trainer = init_trainer(env_name, **init_trainer_kwargs)
 
   os.makedirs("output", exist_ok=True)
 
@@ -107,8 +109,7 @@ def train_and_plot(env: Union[gym.Env, str] = 'CartPole-v1',
   def ep_reward_plot_add_data(env, name):
     """Calculate and record the average episode reward from rollouts of env."""
     gen_policy = trainer.gen_policy
-    rand_policy = util.make_blank_policy(trainer.env,
-                                         **make_blank_policy_kwargs)
+    rand_policy = util.make_blank_policy(trainer.env)
     exp_policy = trainer.expert_policies[-1]
 
     gen_ret = util.rollout.mean_return(
@@ -192,3 +193,11 @@ def _savefig_timestamp(prefix="", also_show=True):
 if __name__ == "__main__":
     # TODO: Make observer.
     train_ex.run()
+
+
+if __name__ == "__main__":
+    # TODO: Add observer
+    observer = FileStorageObserver.create(
+        osp.join('output', 'sacred', 'train'))
+    train_ex.observers.append(observer)
+    train_ex.run_commandline()
