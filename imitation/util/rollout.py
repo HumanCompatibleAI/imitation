@@ -18,7 +18,7 @@ def get_action_policy(policy, observation, deterministic=False):
 
   This code was adapted from Stable Baselines' `BaseRLModel.predict()`.
 
-  Params:
+  Args:
     policy (stable_baselines.common.policies.BasePolicy): The policy.
     observation (np.ndarray): The input to the policy network. Can either
       be a single input with shape `policy.ob_space.shape` or a vectorized
@@ -28,10 +28,10 @@ def get_action_policy(policy, observation, deterministic=False):
 
   Returns:
     action (np.ndarray): The action output of the policy network. If
-      `observation` is not vectorized (has shape `policy.ob_space.shape`
-      instead of shape `(n_batch,) + policy.ob_space.shape`) then
-      `action` has shape `policy.ac_space.shape`.
-      Otherwise, `action` has shape `(n_batch,) + policy.ac_space.shape`.
+        `observation` is not vectorized (has shape `policy.ob_space.shape`
+        instead of shape `(n_batch,) + policy.ob_space.shape`) then
+        `action` has shape `policy.ac_space.shape`.
+        Otherwise, `action` has shape `(n_batch,) + policy.ac_space.shape`.
   """
   observation = np.array(observation)
   vectorized_env = BaseRLModel._is_vectorized_observation(observation,
@@ -108,7 +108,7 @@ def generate_trajectories(policy, env, *, n_timesteps=None, n_episodes=None
     trajectories: List of trajectory dictionaries. Each trajectory dictionary
         `traj` has the following keys and values:
          - traj["obs"] is an observations array with N+1 rows, where N depends
-          on the particular trajectory.
+           on the particular trajectory.
          - traj["act"] is an actions array with N rows.
          - traj["rew"] is a reward array with shape (N,).
   """
