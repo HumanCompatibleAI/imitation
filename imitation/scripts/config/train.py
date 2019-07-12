@@ -14,6 +14,8 @@ def train_defaults():
 
     init_trainer_kwargs = dict(
         n_expert_samples=1000,
+        rollouts_dir="data/rollouts",
+        n_rollout_dumps=1,
         use_random_expert=False,
         num_vec=8,  # NOTE: changing this also changes the effective n_steps!
         reward_kwargs=dict(

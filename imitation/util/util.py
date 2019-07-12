@@ -1,7 +1,7 @@
 import functools
 import glob
 import os
-from typing import Iterable, Optional, Tuple
+from typing import Iterable, List, Optional, Tuple, Union
 
 import gym
 import stable_baselines
@@ -117,62 +117,37 @@ def make_blank_policy(env, policy_class=stable_baselines.PPO2,
                       **kwargs)
 
 
-def save_trained_policy(policy, savedir="saved_models", filename=None):
-  """Saves a trained policy as a pickle file.
+def get_dump_paths(env,
+                   policy_class,
+                   basedir: str,
+                   n_dumps: int,
+                   suffix: str = "npz"
+                   ) -> List[str]:
+  """Finds `n_dumps` recent data dump files of a particular format.
 
   Args:
-      policy (BasePolicy): policy to save
-      savedir (str): The directory to save the file to.
-      filename (str): The the name of the pickle file. If None, then choose
-          a default name using the names of the policy model and the
-          environment.
+      env (gym.Env): The environment that generated the dump file.
+      policy_class: The policy_class that generated the dump file.
+      basedir: The directory containing dump files.
+      n_dumps: The number of paths to return.
+      suffix: The dump filename suffix.
+  Returns:
+      paths: A list containing paths to the `n_dumps` most recent dump files.
   """
-  os.makedirs(savedir, exist_ok=True)
-  path = os.path.join(savedir, filename)
-  policy.save(path)
-  tf.logging.info("Saved pickle to {}!".format(path))
+  assert n_dumps > 0
+  prefix = dump_prefix(policy_class, env, "[0-9]*")
+  filename = f"{prefix}.{suffix}"
+  glob_path = os.path.join(basedir, filename)
 
-
-def make_save_policy_callback(savedir, save_interval=1):
-  """Makes a policy.learn() callback that saves snapshots of the policy
-  to `{savedir}/{file_prefix}-{step}`, where step is the training
-  step.
-
-  Args:
-      savedir (str): The directory to save in.
-      file_prefix (str): The pickle file prefix.
-      save_interval (int): The number of training timesteps in between saves.
-  """
-  step = 0
-
-  def callback(locals_, _):
-    nonlocal step
-    step += 1
-    if step % save_interval == 0:
-      policy = locals_['self']
-      filename = _policy_filename(policy.__class__, policy.get_env(),
-                                  step)
-      save_trained_policy(policy, savedir, filename)
-    return True
-
-  return callback
-
-
-def _get_policy_paths(env, policy_model_class, basedir, n_experts):
-  assert n_experts > 0
-
-  path = os.path.join(basedir, _policy_filename(policy_model_class, env))
-  paths = glob.glob(path)
-
+  paths = glob.glob(glob_path)
   paths.sort(key=lambda f: int(''.join(filter(str.isdigit, f))))
 
-  if len(paths) < n_experts:
+  if len(paths) < n_dumps:
     raise ValueError(
-        "Wanted to load {} experts, but there were only {} experts at {}"
-        .format(n_experts, len(paths), path))
+        "Wanted to load {} data files, but there were only {} experts at {}"
+        .format(n_dumps, len(paths), glob_path))
 
-  paths = paths[-n_experts:]
-
+  paths = paths[-n_dumps:]
   return paths
 
 
@@ -205,7 +180,7 @@ def load_policy(env, basedir="expert_models",
   # FIXME: a lot of code assumes that this function returns None on failure,
   # which it does not. That upstream code also needs to be fixed.
 
-  paths = _get_policy_paths(env, policy_model_class, basedir, n_experts)
+  paths = get_dump_paths(env, policy_model_class, basedir, n_experts)
 
   env = maybe_load_env(env)
 
@@ -224,11 +199,16 @@ def load_policy(env, basedir="expert_models",
   return pols
 
 
-def _policy_filename(policy_class, env, n="[0-9]*"):
-  """Returns the .pkl filename that the policy instantiated with `policy_class`
-  and trained on env should be saved to.
+def dump_prefix(policy_class, env, n: Union[int, str]) -> str:
+  """Build the standard filename prefix of .pkl and .npz dumps.
+
+  Args:
+      policy_class (stable_baselines.BaseRLModel subclass): The policy class.
+      env: The environment.
+      n: Either the training step number, or a glob expression for matching dump
+          files in `get_dump_paths`.
   """
-  return "{}_{}_{}.pkl".format(policy_class.__name__, get_env_id(env), n)
+  return "{}_{}_{}".format(policy_class.__name__, get_env_id(env), n)
 
 
 def _get_tb_log_dir(env, init_tensorboard):

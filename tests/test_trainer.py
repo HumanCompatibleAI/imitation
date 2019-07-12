@@ -100,44 +100,6 @@ def test_train_no_crash(use_gail, env='CartPole-v1'):
 
 
 @pytest.mark.expensive
-@pytest.mark.xfail(
-    reason="Either AIRL train is broken or not enough epochs."
-    " Consider making a plot of episode reward over time to check.",
-    raises=AssertionError)
-@pytest.mark.skip
-def test_trained_policy_better_than_random(use_gail, env='CartPole-v1',
-                                           n_episodes=50):
-  """
-  Make sure that generator policy trained to mimick expert policy
-  demonstrations) achieves higher reward than a random policy.
-
-  In other words, perform a basic check on the imitation learning
-  capabilities of AIRL and GAIL.
-  """
-  env = util.make_vec_env(env, 32)
-  trainer = init_trainer(env, use_random_expert=True, use_gail=use_gail)
-  expert_policy = util.load_policy(env, basedir="expert_models")
-  random_policy = util.make_blank_policy(env)
-  if expert_policy is None:
-    pytest.fail("Couldn't load expert_policy!")
-
-  trainer.train(n_epochs=200)
-
-  # Idea: Plot n_epochs vs generator reward.
-  for _ in range(4):
-    expert_ret = rollout.mean_return(expert_policy, env, n_episodes=n_episodes)
-    gen_ret = rollout.mean_return(trainer.gen_policy, env,
-                                  n_episodes=n_episodes)
-    random_ret = rollout.mean_return(random_policy, env, n_episodes=n_episodes)
-
-    print("expert return:", expert_ret)
-    print("generator return:", gen_ret)
-    print("random return:", random_ret)
-    assert expert_ret > random_ret
-    assert gen_ret > random_ret
-
-
-@pytest.mark.expensive
 @pytest.mark.parametrize("use_gail", use_gail_vals)
 def test_wrap_learned_reward_no_crash(use_gail, env="CartPole-v1"):
   """
