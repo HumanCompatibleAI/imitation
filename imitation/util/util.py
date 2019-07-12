@@ -3,8 +3,6 @@ import glob
 import os
 from typing import Iterable, Optional, Tuple
 
-import gin
-import gin.tf
 import gym
 import stable_baselines
 from stable_baselines.bench import Monitor
@@ -77,7 +75,6 @@ def get_env_id(env_or_str):
     return "UnknownEnv"
 
 
-@gin.configurable
 class FeedForward32Policy(FeedForwardPolicy):
   """A feed forward policy network with two hidden layers of 32 units.
 
@@ -89,14 +86,12 @@ class FeedForward32Policy(FeedForwardPolicy):
                      net_arch=[32, 32], feature_extraction="mlp")
 
 
-@gin.configurable
 class FeedForward64Policy(FeedForwardPolicy):
   def __init__(self, *args, **kwargs):
     super().__init__(*args, **kwargs,
                      net_arch=[64, 64], feature_extraction="mlp")
 
 
-@gin.configurable
 def make_blank_policy(env, policy_class=stable_baselines.PPO2,
                       init_tensorboard=False,
                       policy_network_class=FeedForward32Policy, verbose=1,
@@ -181,8 +176,8 @@ def _get_policy_paths(env, policy_model_class, basedir, n_experts):
   return paths
 
 
-@gin.configurable
-def load_policy(env, basedir, policy_model_class=stable_baselines.PPO2,
+def load_policy(env, basedir="expert_models",
+                policy_model_class=stable_baselines.PPO2,
                 init_tensorboard=False, policy_network_class=None, n_experts=1,
                 **kwargs):
   """Loads and returns a pickled policy.

@@ -1,37 +1,34 @@
-import argparse
+import os.path as osp
 
-import gin
-import gin.tf
+from sacred.observers import FileStorageObserver
 import tensorflow as tf
 
+from imitation.scripts.config.data_collect import data_collect_ex
 import imitation.util as util
 
 
-def make_PPO2(env_name, num_vec):
+def make_PPO2(env_name, num_vec, **make_blank_policy_kwargs):
   env = util.make_vec_env(env_name, num_vec)
   # TODO(adam): add support for wrapping env with VecNormalize
   # (This is non-trivial since we'd need to make sure it's also applied
   # when the policy is re-loaded to generate rollouts.)
-  policy = util.make_blank_policy(env, verbose=1, init_tensorboard=True)
+  policy = util.make_blank_policy(env, verbose=1, init_tensorboard=True,
+                                  **make_blank_policy_kwargs)
   return policy
 
 
-@gin.configurable
-def main(env_name, total_timesteps, num_vec=8):
+@data_collect_ex.main
+def main(env_name, total_timesteps, num_vec=8, make_blank_policy_kwargs={}):
   tf.logging.set_verbosity(tf.logging.INFO)
 
-  policy = make_PPO2(env_name, num_vec)
+  policy = make_PPO2(env_name, num_vec, **make_blank_policy_kwargs)
 
   callback = util.make_save_policy_callback("data/")
   policy.learn(total_timesteps, callback=callback)
 
 
 if __name__ == "__main__":
-  parser = argparse.ArgumentParser()
-  parser.add_argument(
-      "--gin_config", default='configs/cartpole_data_collect.gin')
-  args = parser.parse_args()
-
-  gin.parse_config_file(args.gin_config)
-
-  main()
+    observer = FileStorageObserver.create(
+        osp.join('output', 'sacred', 'data_collect'))
+    data_collect_ex.observers.append(observer)
+    data_collect_ex.run_commandline()
