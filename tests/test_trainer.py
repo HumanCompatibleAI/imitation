@@ -23,8 +23,8 @@ def test_init_no_crash(use_gail, env='CartPole-v1'):
 def test_train_disc_no_crash(use_gail, env='CartPole-v1', n_timesteps=200):
   trainer = init_trainer(env, use_gail=use_gail)
   trainer.train_disc()
-  obs_old, act, obs_new, _ = rollout.flatten_trajectories(rollout.generate(
-      trainer.gen_policy, env, n_timesteps=n_timesteps))
+  obs_old, act, obs_new, _ = rollout.generate_transitions(
+      trainer.gen_policy, env, n_timesteps=n_timesteps)
   trainer.train_disc(gen_old_obs=obs_old, gen_act=act,
                      gen_new_obs=obs_new)
 
@@ -40,8 +40,8 @@ def test_train_gen_no_crash(use_gail, env='CartPole-v1', n_steps=10):
 def test_train_disc_improve_D(use_gail, env='CartPole-v1', n_timesteps=200,
                               n_steps=1000):
   trainer = init_trainer(env, use_gail=use_gail)
-  obs_old, act, obs_new, _ = rollout.flatten_trajectories(rollout.generate(
-      trainer.gen_policy, env, n_timesteps=n_timesteps))
+  obs_old, act, obs_new, _ = rollout.generate_transitions(
+      trainer.gen_policy, env, n_timesteps=n_timesteps)
   kwargs = dict(gen_old_obs=obs_old, gen_act=act, gen_new_obs=obs_new)
   loss1 = trainer.eval_disc_loss(**kwargs)
   trainer.train_disc(n_steps=n_steps, **kwargs)
@@ -59,8 +59,8 @@ def test_train_gen_degrade_D(use_gail=False, env='CartPole-v1', n_timesteps=200,
   if use_gail:
     kwargs = {}
   else:
-    obs_old, act, obs_new, _ = rollout.flatten_trajectories(rollout.generate(
-        trainer.gen_policy, env, n_timesteps=n_timesteps))
+    obs_old, act, obs_new, _ = rollout.generate_transitions(
+        trainer.gen_policy, env, n_timesteps=n_timesteps)
     kwargs = dict(gen_old_obs=obs_old, gen_act=act, gen_new_obs=obs_new)
 
   loss1 = trainer.eval_disc_loss(**kwargs)
@@ -79,8 +79,8 @@ def test_train_disc_then_gen(use_gail=False, env='CartPole-v1', n_timesteps=200,
   if use_gail:
     kwargs = {}
   else:
-    obs_old, act, obs_new, _ = rollout.flatten_trajectories(rollout.generate(
-        trainer.gen_policy, env, n_timesteps=n_timesteps))
+    obs_old, act, obs_new, _ = rollout.generate_transitions(
+        trainer.gen_policy, env, n_timesteps=n_timesteps)
     kwargs = dict(gen_old_obs=obs_old, gen_act=act, gen_new_obs=obs_new)
 
   loss1 = trainer.eval_disc_loss(**kwargs)
@@ -102,7 +102,8 @@ def test_train_no_crash(use_gail, env='CartPole-v1'):
 @pytest.mark.expensive
 @pytest.mark.xfail(
     reason="Either AIRL train is broken or not enough epochs."
-    " Consider making a plot of episode reward over time to check.")
+    " Consider making a plot of episode reward over time to check.",
+    raises=AssertionError)
 @pytest.mark.skip
 def test_trained_policy_better_than_random(use_gail, env='CartPole-v1',
                                            n_episodes=50):
@@ -114,7 +115,7 @@ def test_trained_policy_better_than_random(use_gail, env='CartPole-v1',
   capabilities of AIRL and GAIL.
   """
   env = util.make_vec_env(env, 32)
-  trainer = init_trainer(env, use_expert_rollouts=True, use_gail=use_gail)
+  trainer = init_trainer(env, use_random_expert=True, use_gail=use_gail)
   expert_policy = util.load_policy(env, basedir="expert_models")
   random_policy = util.make_blank_policy(env)
   if expert_policy is None:

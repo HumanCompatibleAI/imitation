@@ -1,3 +1,4 @@
+import collections
 from typing import Optional, Sequence, Union
 from warnings import warn
 
@@ -17,11 +18,29 @@ from imitation.util.buffer import ReplayBuffer
 class Trainer:
   """Trainer for GAIL and AIRL."""
 
+  env: gym.Env
+  """The original environment."""
+
+  env_train: gym.Env
+  """Like `self.env`, but wrapped with train reward except in debug mode.
+
+  If `debug_use_ground_truth=True` was passed into the initializer then
+  `self.env_train` is the same as `self.env`.
+  """
+
+  env_test: gym.Env
+  """Like `self.env`, but wrapped with test reward except in debug mode.
+
+  If `debug_use_ground_truth=True` was passed into the initializer then
+  `self.env_test` is the same as `self.env`.
+  """
+
   def __init__(self,
                env: Union[gym.Env, str],
                gen_policy: BaseRLModel,
                discrim: DiscrimNet,
-               expert_policies: Sequence[BaseRLModel], *,
+               expert_policies: Sequence[BaseRLModel],
+               *,
                disc_opt_cls: tf.train.Optimizer = tf.train.AdamOptimizer,
                disc_opt_kwargs: dict = {},
                n_disc_samples_per_buffer: int = 200,
@@ -63,25 +82,24 @@ class Trainer:
             TensorBoard summaries. (Generator summaries appear under a
             different runname than the discriminator summaries because they
             are configured by initializing the stable_baselines policy).
-        debug_use_ground_truth: If True, use the ground truth reward.
+        debug_use_ground_truth: If True, use the ground truth reward for
+            `self.train_env`.
             This disables the reward wrapping that would normally replace
             the environment reward with the learned reward. This is useful for
             sanity checking that the policy training is functional.
     """
+    # TODO(adam): we're not guaranteed to use this session, see issue #31
+    self._sess = tf.Session()
+    self._global_step = tf.train.create_global_step()
+
     if n_disc_samples_per_buffer > n_expert_samples:
       warn("The discriminator batch size is larger than the number of "
            "expert samples.")
-
-    # TODO(adam): we're not guaranteed to use this session, see issue #31
-    self._sess = tf.Session()
-
-    self.env = maybe_load_env(env, vectorize=True)
-    self.gen_policy = gen_policy
-    self.expert_policies = expert_policies
     self._n_disc_samples_per_buffer = n_disc_samples_per_buffer
     self.debug_use_ground_truth = debug_use_ground_truth
 
-    self._global_step = tf.train.create_global_step()
+    self.env = maybe_load_env(env, vectorize=True)
+    self.gen_policy = gen_policy
 
     # Discriminator and reward output
     self._disc_opt_cls = disc_opt_cls
@@ -96,19 +114,22 @@ class Trainer:
     if init_tensorboard:
       with tf.name_scope("summaries"):
         self._build_summarize()
-
     self._sess.run(tf.global_variables_initializer())
 
     # TODO(adam): make this wrapping configurable for debugging purposes
-    self.env = self.wrap_env_train_reward(self.env)
-    self.gen_policy.set_env(self.env)
+    self.env_train = self.wrap_env_train_reward(self.env)
+    self.env_test = self.wrap_env_test_reward(self.env)
 
     if gen_replay_buffer_capacity is None:
         gen_replay_buffer_capacity = 20 * self._n_disc_samples_per_buffer
-    self._gen_replay_buffer = ReplayBuffer(gen_replay_buffer_capacity, self.env)
+    self._gen_replay_buffer = ReplayBuffer(gen_replay_buffer_capacity,
+                                           self.env)
     self._populate_gen_replay_buffer()
 
-    exp_rollouts = rollout.generate_multiple(
+    if not isinstance(expert_policies, collections.abc.Sequence):
+        expert_policies = [expert_policies]
+    self.expert_policies = expert_policies
+    exp_rollouts = rollout.generate_transitions_multiple(
         self.expert_policies, self.env, n_expert_samples)[:3]
     self._exp_replay_buffer = ReplayBuffer.from_data(*exp_rollouts)
 
@@ -129,7 +150,7 @@ class Trainer:
         self._summarize(fd, step)
 
   def train_gen(self, n_steps=10000):
-    self.gen_policy.set_env(self.env)
+    self.gen_policy.set_env(self.env_train)
     # TODO(adam): learn was not intended to be called for each training batch
     # It should work, but might incur unnecessary overhead: e.g. in PPO2
     # a new Runner instance is created each time. Also a hotspot for errors:
@@ -144,9 +165,9 @@ class Trainer:
     environment until `self._n_disc_samples_per_buffer` obs-act-obs samples are
     produced, and then stores these samples.
     """
-    gen_rollouts = rollout.flatten_trajectories(rollout.generate(
-        self.gen_policy, self.env,
-        n_timesteps=self._n_disc_samples_per_buffer))[:3]
+    gen_rollouts = rollout.generate_transitions(
+        self.gen_policy, self.env_train,
+        n_timesteps=self._n_disc_samples_per_buffer)[:3]
     self._gen_replay_buffer.store(*gen_rollouts)
 
   def train(self, *, n_epochs=100, n_gen_steps_per_epoch=None,
@@ -199,7 +220,7 @@ class Trainer:
         env (str, Env, or VecEnv): The Env that we want to wrap. If a
             string environment name is given or a Env is given, then we first
             convert to a VecEnv before continuing.
-    wrapped_env (VecEnv): The wrapped environment with a new reward.
+        wrapped_env (VecEnv): The wrapped environment with a new reward.
     """
     env = maybe_load_env(env, vectorize=True)
     if self.debug_use_ground_truth:

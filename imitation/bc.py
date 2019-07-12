@@ -36,7 +36,7 @@ class BCTrainer:
     self.policy_class = policy_class
     self.expert_trainers = expert_trainers
     self.batch_size = batch_size
-    expert_obs, expert_acts, expert_nobs = rollout.generate_multiple(
+    expert_obs, expert_acts, _ = rollout.generate_transitions_multiple(
         expert_trainers, self.env, n_expert_timesteps, truncate=False)
     self.expert_dataset = Dataset(
         {
