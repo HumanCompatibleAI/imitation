@@ -39,5 +39,5 @@ def pendulum():
 def swimmer():
     env_name = "Swimmer-v2"
     make_blank_policy_kwargs = dict(
-        policy_network_class=FeedForward64Policy
+        policy_network_class=FeedForward64Policy,
     )
