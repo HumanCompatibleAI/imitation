@@ -11,8 +11,6 @@ from stable_baselines.common.policies import FeedForwardPolicy
 from stable_baselines.common.vec_env import DummyVecEnv, VecEnv
 import tensorflow as tf
 
-from imitation.experiments import data_collection_exp, train_exp
-
 
 def maybe_load_env(env_or_str, vectorize=True):
   """Load an environment if it isn't already loaded. Then optionally vectorize
@@ -94,8 +92,6 @@ class FeedForward64Policy(FeedForwardPolicy):
                      net_arch=[64, 64], feature_extraction="mlp")
 
 
-@train_exp.capture(prefix="make_blank_policy_kwargs")
-@data_collection_exp.capture(prefix="make_blank_policy_kwargs")
 def make_blank_policy(env, policy_class=stable_baselines.PPO2,
                       init_tensorboard=False,
                       policy_network_class=FeedForward32Policy, verbose=1,
@@ -180,7 +176,6 @@ def _get_policy_paths(env, policy_model_class, basedir, n_experts):
   return paths
 
 
-@train_exp.capture(prefix="expert_models")
 def load_policy(env, basedir="expert_models",
                 policy_model_class=stable_baselines.PPO2,
                 init_tensorboard=False, policy_network_class=None, n_experts=1,

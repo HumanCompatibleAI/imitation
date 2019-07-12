@@ -6,17 +6,16 @@ prevent cyclic imports between imitation.trainer and imitation.util)
 """
 
 import imitation.discrim_net as discrim_net
-from imitation.experiments import train_exp
 from imitation.reward_net import BasicShapedRewardNet
 from imitation.trainer import Trainer
 import imitation.util as util
 
 
-@train_exp.capture(prefix="init_trainer_kwargs")
 def init_trainer(env_id, use_gail=False,
                  use_random_expert=True,
                  num_vec=8, discrim_scale=False,
-                 discrim_kwargs={}, reward_kwargs={}, trainer_kwargs={}):
+                 discrim_kwargs={}, reward_kwargs={}, trainer_kwargs={},
+                 make_blank_policy_kwargs={}):
   """Builds a Trainer, ready to be trained on a vectorized environment
   and either expert rollout data or random rollout data.
 
@@ -33,6 +32,8 @@ def init_trainer(env_id, use_gail=False,
     trainer_kwargs (dict): Aguments for the Trainer constructor.
     reward_kwargs (dict): Arguments for the `*RewardNet` constructor.
     discrim_kwargs (dict): Arguments for the `DiscrimNet*` constructor.
+    make_blank_policy_kwargs: Keyword arguments passed to `make_blank_policy`,
+        used to initialize the trainer.
   """
   env = util.make_vec_env(env_id, num_vec)
   gen_policy = util.make_blank_policy(env, verbose=1)
