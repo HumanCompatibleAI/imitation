@@ -1,6 +1,8 @@
 # Recommended packages for development
 autopep8
 flake8
+flake8-isort
+flake8-debugger
 pytype
 sphinx
 sphinxcontrib-napoleon
