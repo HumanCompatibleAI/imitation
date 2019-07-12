@@ -5,8 +5,6 @@ from imitation.util import FeedForward64Policy
 
 train_ex = sacred.Experiment("train", interactive=True)
 
-_init_trainer_kwargs = {}
-
 
 @train_ex.config
 def train_defaults():
@@ -14,8 +12,7 @@ def train_defaults():
     n_disc_steps_per_epoch = 50
     n_gen_steps_per_epoch = 2048
 
-    init_trainer_kwargs = _init_trainer_kwargs
-    init_trainer_kwargs.update(dict(
+    init_trainer_kwargs = dict(
         use_random_expert=False,
         num_vec=8,  # NOTE: changing this also changes the effective nsteps!
         reward_kwargs=dict(
@@ -37,23 +34,21 @@ def train_defaults():
         discrim_scale=False,
 
         make_blank_policy_kwargs=DEFAULT_BLANK_POLICY_KWARGS
-    ))
+    )
 
 
 @train_ex.named_config
 def gail():
-    init_trainer_kwargs = _init_trainer_kwargs
-    init_trainer_kwargs.update(dict(
+    init_trainer_kwargs = dict(
         use_gail=True,
-    ))
+    )
 
 
 @train_ex.named_config
 def airl():
-    init_trainer_kwargs = _init_trainer_kwargs
-    init_trainer_kwargs.update(dict(
+    init_trainer_kwargs = dict(
         use_gail=False,
-    ))
+    )
 
 
 @train_ex.named_config
@@ -72,10 +67,9 @@ def halfcheetah():
     env_name = "HalfCheetah-v2"
     n_epochs = 1000
 
-    init_trainer_kwargs = _init_trainer_kwargs
-    init_trainer_kwargs.update(dict(
+    init_trainer_kwargs = dict(
         discrim_kwargs=dict(entropy_weight=0.1),
-    ))
+    )
 
 
 @train_ex.named_config
@@ -87,10 +81,11 @@ def pendulum():
 def swimmer():
     env_name = "Swimmer-v2"
     n_epochs = 1000
-    init_trainer_kwargs = _init_trainer_kwargs
-    init_trainer_kwargs["make_blank_policy_kwargs"].update(dict(
-        policy_network_class=FeedForward64Policy
-    ))
+    init_trainer_kwargs = dict(
+        make_blank_policy_kwargs=dict(
+            policy_network_class=FeedForward64Policy
+        )
+    )
 
 
 @train_ex.named_config
