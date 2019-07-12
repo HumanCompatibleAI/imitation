@@ -14,7 +14,7 @@ def train_defaults():
 
     init_trainer_kwargs = dict(
         use_random_expert=False,
-        num_vec=8,  # NOTE: changing this also changes the effective nsteps!
+        num_vec=8,  # NOTE: changing this also changes the effective n_steps!
         reward_kwargs=dict(
             theta_units=[32, 32],
             phi_units=[32, 32],
