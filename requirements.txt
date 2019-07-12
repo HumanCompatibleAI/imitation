@@ -1,11 +1,13 @@
 gym
 numpy>=1.15
-tensorflow>=1.13.1,<2  # Replace with tensorflow-gpu if you have a GPU
+# Replace with tensorflow-gpu if you have a GPU
+# 1.14.0 is not compatible with sacred because of a TF bug.
+tensorflow>=1.13.1,<2.0,!=1.14.0
 tqdm
 git+git://github.com/hill-a/stable-baselines.git@continuous-action-prob#egg=stable-baselines
 codecov
 pytest
 pytest-cov
-gin-config
 jax==0.1.37
 jaxlib==0.1.20
+sacred>=0.7.4,!=0.7.5  # sacred==0.7.5 build is broken without pymongo

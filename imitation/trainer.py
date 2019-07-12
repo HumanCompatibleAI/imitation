@@ -76,7 +76,6 @@ class Trainer:
             This disables the reward wrapping that would normally replace
             the environment reward with the learned reward. This is useful for
             sanity checking that the policy training is functional.
-        expert_rollouts (Tuple[np.ndarray, np.ndarray, np.ndarray]):
     """
     # TODO(adam): we're not guaranteed to use this session, see issue #31
     self._sess = tf.Session()

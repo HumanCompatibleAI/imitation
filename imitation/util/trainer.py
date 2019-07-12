@@ -5,9 +5,6 @@ Utility functions for manipulating Trainer.
 prevent cyclic imports between imitation.trainer and imitation.util)
 """
 
-import gin
-import gin.tf
-
 import imitation.discrim_net as discrim_net
 from imitation.reward_net import BasicShapedRewardNet
 from imitation.trainer import Trainer
@@ -15,11 +12,12 @@ import imitation.util as util
 from imitation.util import rollout
 
 
-@gin.configurable
-def init_trainer(env_id, policy_dir, use_gail, use_random_expert=True,
+def init_trainer(env_id, use_gail=False,
+                 use_random_expert=True,
                  num_vec=8, discrim_scale=False,
                  n_expert_samples: int = 4000,
-                 discrim_kwargs={}, reward_kwargs={}, trainer_kwargs={}):
+                 discrim_kwargs={}, reward_kwargs={}, trainer_kwargs={},
+                 make_blank_policy_kwargs={}):
   """Builds a Trainer, ready to be trained on a vectorized environment
   and either expert rollout data or random rollout data.
 
@@ -38,14 +36,17 @@ def init_trainer(env_id, policy_dir, use_gail, use_random_expert=True,
     discrim_kwargs (dict): Arguments for the `DiscrimNet*` constructor.
     n_expert_samples: The number of expert obs-action-obs triples
         that are generated from pickled expert policies.
+    make_blank_policy_kwargs: Keyword arguments passed to `make_blank_policy`,
+        used to initialize the trainer.
   """
   env = util.make_vec_env(env_id, num_vec)
-  gen_policy = util.make_blank_policy(env, verbose=1)
+  gen_policy = util.make_blank_policy(env, verbose=1,
+                                      **make_blank_policy_kwargs)
 
   if use_random_expert:
     expert_policies = [gen_policy]
   else:
-    expert_policies = util.load_policy(env, basedir=policy_dir)
+    expert_policies = util.load_policy(env)
     if expert_policies is None:
       raise ValueError(env)
   expert_rollouts = rollout.generate_transitions_multiple(

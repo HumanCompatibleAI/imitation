@@ -1,2 +1,0 @@
-init_trainer.policy_dir="expert_models"
-init_trainer.use_random_expert=False

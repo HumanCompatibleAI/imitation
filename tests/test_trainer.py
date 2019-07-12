@@ -1,5 +1,3 @@
-import gin
-import gin.tf
 import pytest
 import tensorflow as tf
 
@@ -8,8 +6,6 @@ from imitation.util import rollout
 from imitation.util.trainer import init_trainer
 
 use_gail_vals = [True, False]
-gin.parse_config_file("configs/test.gin")
-tf.logging.set_verbosity(tf.logging.INFO)
 
 
 @pytest.fixture(autouse=True)
@@ -106,7 +102,8 @@ def test_train_no_crash(use_gail, env='CartPole-v1'):
 @pytest.mark.expensive
 @pytest.mark.xfail(
     reason="Either AIRL train is broken or not enough epochs."
-    " Consider making a plot of episode reward over time to check.")
+    " Consider making a plot of episode reward over time to check.",
+    raises=AssertionError)
 @pytest.mark.skip
 def test_trained_policy_better_than_random(use_gail, env='CartPole-v1',
                                            n_episodes=50):
@@ -118,7 +115,7 @@ def test_trained_policy_better_than_random(use_gail, env='CartPole-v1',
   capabilities of AIRL and GAIL.
   """
   env = util.make_vec_env(env, 32)
-  trainer = init_trainer(env, use_expert_rollouts=True, use_gail=use_gail)
+  trainer = init_trainer(env, use_random_expert=True, use_gail=use_gail)
   expert_policy = util.load_policy(env, basedir="expert_models")
   random_policy = util.make_blank_policy(env)
   if expert_policy is None:

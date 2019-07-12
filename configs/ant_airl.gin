@@ -1,5 +1,0 @@
-include "configs/classical_control.gin"
-
-train_and_plot.env = 'Ant-v2'
-train_and_plot.n_epochs = 2000
-init_trainer.use_gail = False

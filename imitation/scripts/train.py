@@ -1,29 +1,28 @@
 """Train an IRL algorithm and plot its output.
 
 Can be used as a CLI script, or the `train_and_plot` function can be called
-directly."""
+directly.
+"""
 
-import argparse
 from collections import defaultdict
 import datetime
 import math
 import os
-from typing import Optional, Union
+import os.path as osp
+from typing import Optional
 
-import gin
-import gin.tf
-import gym
 from matplotlib import pyplot as plt
+from sacred.observers import FileStorageObserver
 import tensorflow as tf
 import tqdm
 
+from imitation.scripts.config.train import train_ex
 import imitation.util as util
 from imitation.util.trainer import init_trainer
 
 
-@gin.configurable
-def train_and_plot(policy_dir: str = "expert_models",
-                   env: Union[gym.Env, str] = 'CartPole-v1',
+@train_ex.main
+def train_and_plot(env_name: str = 'CartPole-v1',
                    *,
                    n_epochs: int = 100,
                    n_epochs_per_plot: Optional[float] = None,
@@ -32,6 +31,7 @@ def train_and_plot(policy_dir: str = "expert_models",
                    n_episodes_per_reward_data: int = 5,
                    interactive: bool = True,
                    expert_policy=None,
+                   init_trainer_kwargs: dict = {},
                    ):
   """Alternate between training the generator and discriminator.
 
@@ -43,10 +43,7 @@ def train_and_plot(policy_dir: str = "expert_models",
       provided in the arguments.
 
   Args:
-      policy_dir: Path to a directory that holds pickled expert policies.
-      env: The environment to train in, by default 'CartPole-v1'. This
-          argument is ignored if the `trainer` is manually provided via the
-          `trainer` argument.
+      env_name: The environment to train in, by default 'CartPole-v1'.
       n_epochs: The number of epochs to train. Each epoch consists of
           `n_disc_steps_per_epoch` discriminator steps followed by
           `n_gen_steps_per_epoch` generator steps.
@@ -62,14 +59,13 @@ def train_and_plot(policy_dir: str = "expert_models",
           calculating the average episode reward of a policy.
       interactive: Figures are always saved to `output/*.png`. If `interactive`
         is True, then also show plots as they are created.
-      trainer: If this is provided, then train using this Trainer instead of
-          initializing a new one. Also, ignore the `env` argument.
-      trainer_kwargs: Passed to `init_trainer` when `trainer` is not specified.
       expert_policy (BasePolicy or BaseRLModel, optional): If provided, then
           also plot the performance of this expert policy.
+      init_trainer_kwargs: Keyword arguments passed to `init_trainer`,
+        used to initialize the trainer.
   """
   assert n_epochs_per_plot is None or n_epochs_per_plot >= 1
-  trainer = init_trainer(env, policy_dir=policy_dir)
+  trainer = init_trainer(env_name, **init_trainer_kwargs)
 
   os.makedirs("output", exist_ok=True)
 
@@ -194,18 +190,8 @@ def _savefig_timestamp(prefix="", also_show=True):
     plt.show()
 
 
-def main():
-  tf.logging.set_verbosity(tf.logging.INFO)
-
-  train_and_plot()
-
-
 if __name__ == "__main__":
-  parser = argparse.ArgumentParser()
-  parser.add_argument("--gin_config",
-                      default='configs/cartpole_airl.gin')
-  args = parser.parse_args()
-
-  gin.parse_config_file(args.gin_config)
-
-  main()
+    observer = FileStorageObserver.create(
+        osp.join('output', 'sacred', 'train'))
+    train_ex.observers.append(observer)
+    train_ex.run_commandline()
