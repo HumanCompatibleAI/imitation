@@ -33,7 +33,7 @@ def train_defaults():
         # breaks the scaling.
         discrim_scale=False,
 
-        make_blank_policy_kwargs=DEFAULT_BLANK_POLICY_KWARGS
+        make_blank_policy_kwargs=DEFAULT_BLANK_POLICY_KWARGS,
     )
 
 
@@ -83,8 +83,8 @@ def swimmer():
     n_epochs = 1000
     init_trainer_kwargs = dict(
         make_blank_policy_kwargs=dict(
-            policy_network_class=FeedForward64Policy
-        )
+            policy_network_class=FeedForward64Policy,
+        ),
     )
 
 
