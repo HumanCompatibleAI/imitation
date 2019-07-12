@@ -130,7 +130,7 @@ class DiscrimNetAIRL(DiscrimNet):
     return tf.nn.sparse_softmax_cross_entropy_with_logits(
         labels=self.labels_ph,
         logits=self._presoftmax_disc_logits,
-        name="discrim_loss"
+        name="discrim_loss",
     )
 
   def build_policy_test_reward(self):
@@ -213,7 +213,7 @@ class DiscrimNetGAIL(DiscrimNet):
 
     disc_loss = tf.nn.sigmoid_cross_entropy_with_logits(
         logits=self._discrim_logits,
-        labels=tf.cast(self.labels_ph, tf.float32)
+        labels=tf.cast(self.labels_ph, tf.float32),
     )
 
     return disc_loss

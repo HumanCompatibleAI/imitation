@@ -60,8 +60,8 @@ def train_and_plot(policy_dir: str = "expert_models",
           generator epoch.
       n_episodes_per_reward_data: The number of episodes to average over when
           calculating the average episode reward of a policy.
-      interactive: Figures are always saved to "output/*.png". If `interactive`
-          is True, then also show plots as they are created.
+      interactive: Figures are always saved to `output/*.png`. If `interactive`
+        is True, then also show plots as they are created.
       trainer: If this is provided, then train using this Trainer instead of
           initializing a new one. Also, ignore the `env` argument.
       trainer_kwargs: Passed to `init_trainer` when `trainer` is not specified.

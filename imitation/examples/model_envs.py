@@ -213,7 +213,7 @@ class CliffWorld(ModelBasedEnv):
           # (x, y) coordinate scaled to (0,1)
           O_mat[state_id, :] = [
               float(col) / (width - 1),
-              float(row) / (height - 1)
+              float(row) / (height - 1),
           ]
         else:
           # our observation matrix is just the identity; observation

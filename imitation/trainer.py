@@ -253,7 +253,7 @@ class Trainer:
   def _build_disc_feed_dict(self, *,
                             gen_old_obs: Optional[np.ndarray] = None,
                             gen_act: Optional[np.ndarray] = None,
-                            gen_new_obs: Optional[np.ndarray] = None
+                            gen_new_obs: Optional[np.ndarray] = None,
                             ) -> dict:
     """Build a feed dict that holds the next training batch of generator
     and expert obs-act-obs triples.
