@@ -265,7 +265,7 @@ class LinearRewardModel(RewardModel):
       rng = np.random.RandomState(seed)
     else:
       rng = np.random
-    self._weights = rng.randn(obs_dim, )
+    self._weights = rng.randn(obs_dim)
 
   def out(self, inputs):
     assert inputs.shape[1:] == self._weights.shape

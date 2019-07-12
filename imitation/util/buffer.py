@@ -235,7 +235,7 @@ class ReplayBuffer:
     self._buffer = Buffer(capacity, sample_shapes=sample_shapes, dtypes=dtypes)
 
   @classmethod
-  def from_data(cls, old_obs: np.ndarray, act: np.ndarray, new_obs: np.ndarray
+  def from_data(cls, old_obs: np.ndarray, act: np.ndarray, new_obs: np.ndarray,
                 ) -> "ReplayBuffer":
     """Construct and return a ReplayBuffer containing only the provided data.
 

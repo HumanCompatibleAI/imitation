@@ -18,7 +18,7 @@ def get_action_policy(policy, observation, deterministic=False):
 
   This code was adapted from Stable Baselines' `BaseRLModel.predict()`.
 
-  Params:
+  Args:
     policy (stable_baselines.common.policies.BasePolicy): The policy.
     observation (np.ndarray): The input to the policy network. Can either
       be a single input with shape `policy.ob_space.shape` or a vectorized
@@ -28,10 +28,10 @@ def get_action_policy(policy, observation, deterministic=False):
 
   Returns:
     action (np.ndarray): The action output of the policy network. If
-      `observation` is not vectorized (has shape `policy.ob_space.shape`
-      instead of shape `(n_batch,) + policy.ob_space.shape`) then
-      `action` has shape `policy.ac_space.shape`.
-      Otherwise, `action` has shape `(n_batch,) + policy.ac_space.shape`.
+        `observation` is not vectorized (has shape `policy.ob_space.shape`
+        instead of shape `(n_batch,) + policy.ob_space.shape`) then
+        `action` has shape `policy.ac_space.shape`.
+        Otherwise, `action` has shape `(n_batch,) + policy.ac_space.shape`.
   """
   observation = np.array(observation)
   vectorized_env = BaseRLModel._is_vectorized_observation(observation,
@@ -87,7 +87,7 @@ class _TrajectoryAccumulator:
     self.partial_trajectories[idx].append(step_dict)
 
 
-def generate_trajectories(policy, env, *, n_timesteps=None, n_episodes=None
+def generate_trajectories(policy, env, *, n_timesteps=None, n_episodes=None,
                           ) -> List[Dict[str, np.ndarray]]:
   """Generate trajectory dictionaries from a policy and an environment.
 
@@ -108,7 +108,7 @@ def generate_trajectories(policy, env, *, n_timesteps=None, n_episodes=None
     trajectories: List of trajectory dictionaries. Each trajectory dictionary
         `traj` has the following keys and values:
          - traj["obs"] is an observations array with N+1 rows, where N depends
-          on the particular trajectory.
+           on the particular trajectory.
          - traj["act"] is an actions array with N rows.
          - traj["rew"] is a reward array with shape (N,).
   """
@@ -193,7 +193,7 @@ def generate_trajectories(policy, env, *, n_timesteps=None, n_episodes=None
               rew=rew,
               # this is in fact not the obs corresponding to `act`, but rather
               # the obs *after* `act` (see above)
-              obs=obs, ))
+              obs=obs))
 
   # Note that we just drop partial trajectories. This is not ideal for some
   # algos; e.g. BC can probably benefit from partial trajectories, too.
@@ -237,7 +237,7 @@ def rollout_stats(policy, env, **kwargs):
   out_stats = {"n_traj": len(trajectories)}
   traj_descriptors = {
     "return": np.asarray([sum(t["rew"]) for t in trajectories]),
-    "len": np.asarray([len(t["rew"]) for t in trajectories])
+    "len": np.asarray([len(t["rew"]) for t in trajectories]),
   }
   stat_names = ["min", "mean", "std", "max"]
   for desc_name, desc_vals in traj_descriptors.items():
@@ -256,7 +256,7 @@ def mean_return(*args, **kwargs) -> float:
   return rollout_stats(*args, **kwargs)["return_mean"]
 
 
-def flatten_trajectories(trajectories: Sequence[Dict[str, np.ndarray]]
+def flatten_trajectories(trajectories: Sequence[Dict[str, np.ndarray]],
                          ) -> Tuple[np.ndarray, ...]:
   """Flatten a series of trajectory dictionaries into arrays.
 
@@ -340,7 +340,7 @@ def generate_transitions(policy, env, *, n_timesteps=None, n_episodes=None,
   return rollout_arrays
 
 
-def generate_transitions_multiple(policies, env, n_timesteps, *, truncate=True
+def generate_transitions_multiple(policies, env, n_timesteps, *, truncate=True,
                                   ) -> Tuple[np.ndarray, ...]:
   """Generate obs-act-obs triples from several policies.
 
