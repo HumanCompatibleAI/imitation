@@ -22,7 +22,7 @@ from imitation.util.trainer import init_trainer
 
 
 @train_ex.main
-def train_and_plot(env_name: str = 'CartPole-v1',  # TODO update docs
+def train_and_plot(env_name: str = 'CartPole-v1',
                    *,
                    n_epochs: int = 100,
                    n_epochs_per_plot: Optional[float] = None,
@@ -30,9 +30,7 @@ def train_and_plot(env_name: str = 'CartPole-v1',  # TODO update docs
                    n_gen_steps_per_epoch: int = 10000,
                    n_episodes_per_reward_data: int = 5,
                    interactive: bool = True,
-                   load_policy_kwargs: dict = {},
                    init_trainer_kwargs: dict = {},
-                   # Add kwargs docs
                    ):
   """Alternate between training the generator and discriminator.
 
@@ -43,10 +41,7 @@ def train_and_plot(env_name: str = 'CartPole-v1',  # TODO update docs
       a random policy.
 
   Args:
-      policy_dir: Path to a directory that holds pickled expert policies.
-      env: The environment to train in, by default 'CartPole-v1'. This
-          argument is ignored if the `trainer` is manually provided via the
-          `trainer` argument.
+      env_name: The environment to train in, by default 'CartPole-v1'.
       n_epochs: The number of epochs to train. Each epoch consists of
           `n_disc_steps_per_epoch` discriminator steps followed by
           `n_gen_steps_per_epoch` generator steps.
@@ -62,7 +57,7 @@ def train_and_plot(env_name: str = 'CartPole-v1',  # TODO update docs
           calculating the average episode reward of a policy.
       interactive: Figures are always saved to "output/*.png". If `interactive`
         is True, then also show plots as they are created.
-      make_blank_policy_kwargs: Keyword arguments passed to `make_blank_policy`,
+      init_trainer_kwargs: Keyword arguments passed to `init_trainer`,
         used to initialize the trainer.
   """
   assert n_epochs_per_plot is None or n_epochs_per_plot >= 1
@@ -191,12 +186,6 @@ def _savefig_timestamp(prefix="", also_show=True):
 
 
 if __name__ == "__main__":
-    # TODO: Make observer.
-    train_ex.run()
-
-
-if __name__ == "__main__":
-    # TODO: Add observer
     observer = FileStorageObserver.create(
         osp.join('output', 'sacred', 'train'))
     train_ex.observers.append(observer)

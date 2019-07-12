@@ -91,3 +91,12 @@ def swimmer():
     init_trainer_kwargs["make_blank_policy_kwargs"].update(dict(
         policy_network_class=FeedForward64Policy
     ))
+
+
+@train_ex.named_config
+def debug():
+    n_epochs = 1
+    interactive = False
+    n_disc_steps_per_epoch = 1
+    n_gen_steps_per_epoch = 1
+    n_episodes_per_reward_data = 1
