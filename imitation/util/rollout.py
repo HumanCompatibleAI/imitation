@@ -87,7 +87,7 @@ class _TrajectoryAccumulator:
     self.partial_trajectories[idx].append(step_dict)
 
 
-def generate_trajectories(policy, env, *, n_timesteps=None, n_episodes=None
+def generate_trajectories(policy, env, *, n_timesteps=None, n_episodes=None,
                           ) -> List[Dict[str, np.ndarray]]:
   """Generate trajectory dictionaries from a policy and an environment.
 
@@ -193,7 +193,7 @@ def generate_trajectories(policy, env, *, n_timesteps=None, n_episodes=None
               rew=rew,
               # this is in fact not the obs corresponding to `act`, but rather
               # the obs *after* `act` (see above)
-              obs=obs, ))
+              obs=obs))
 
   # Note that we just drop partial trajectories. This is not ideal for some
   # algos; e.g. BC can probably benefit from partial trajectories, too.
@@ -237,7 +237,7 @@ def rollout_stats(policy, env, **kwargs):
   out_stats = {"n_traj": len(trajectories)}
   traj_descriptors = {
     "return": np.asarray([sum(t["rew"]) for t in trajectories]),
-    "len": np.asarray([len(t["rew"]) for t in trajectories])
+    "len": np.asarray([len(t["rew"]) for t in trajectories]),
   }
   stat_names = ["min", "mean", "std", "max"]
   for desc_name, desc_vals in traj_descriptors.items():
@@ -256,7 +256,7 @@ def mean_return(*args, **kwargs) -> float:
   return rollout_stats(*args, **kwargs)["return_mean"]
 
 
-def flatten_trajectories(trajectories: Sequence[Dict[str, np.ndarray]]
+def flatten_trajectories(trajectories: Sequence[Dict[str, np.ndarray]],
                          ) -> Tuple[np.ndarray, ...]:
   """Flatten a series of trajectory dictionaries into arrays.
 
@@ -340,7 +340,7 @@ def generate_transitions(policy, env, *, n_timesteps=None, n_episodes=None,
   return rollout_arrays
 
 
-def generate_transitions_multiple(policies, env, n_timesteps, *, truncate=True
+def generate_transitions_multiple(policies, env, n_timesteps, *, truncate=True,
                                   ) -> Tuple[np.ndarray, ...]:
   """Generate obs-act-obs triples from several policies.
 

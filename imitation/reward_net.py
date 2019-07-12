@@ -219,11 +219,11 @@ def build_basic_theta_network(hid_sizes: Optional[Iterable[int]],
 
   with tf.variable_scope("theta"):
     inputs = [old_obs_input, act_input, new_obs_input]
-    inputs = [input for input in inputs if input is not None]
+    inputs = [x for x in inputs if x is not None]
     if len(inputs) == 0:
       raise ValueError("Must specify at least one input")
 
-    inputs = [tf.layers.flatten(input) for input in inputs]
+    inputs = [tf.layers.flatten(x) for x in inputs]
     inputs = tf.concat(inputs, axis=1)
     theta_output = util.apply_ff(inputs, hid_sizes=hid_sizes)
 

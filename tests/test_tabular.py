@@ -107,7 +107,7 @@ class ReasonableMDP(ModelBasedEnv):
       # state 3 (middle, very low reward and so dominated by others)
       [-5, -1, 4, 1, 4, 1, 5, 3],
       # state 4 (final, all self loops, good reward)
-      [2, -5, 1, -5, 1, 4, 4, -3]
+      [2, -5, 1, -5, 1, 4, 4, -3],
   ])
   transition_matrix = np.array([
       # transitions out of state 0
@@ -126,7 +126,7 @@ class ReasonableMDP(ModelBasedEnv):
           # action 1: goes to state 3 (bad)
           [0, 0, 0, 1, 0],
           # action 2: goes to state 4 (good!)
-          [0, 0, 0, 0, 1]
+          [0, 0, 0, 0, 1],
       ],
       # transitions out of state 2 (basically the same)
       [
@@ -135,7 +135,7 @@ class ReasonableMDP(ModelBasedEnv):
           # action 1: goes to state 3 (bad)
           [0, 0, 0, 1, 0],
           # action 2: goes to state 4 (good!)
-          [0, 0, 0, 0, 1]
+          [0, 0, 0, 0, 1],
       ],
       # transitions out of state 3 (all go to state 4)
       [
@@ -144,7 +144,7 @@ class ReasonableMDP(ModelBasedEnv):
           # action 1
           [0, 0, 0, 0, 1],
           # action 2
-          [0, 0, 0, 0, 1]
+          [0, 0, 0, 0, 1],
       ],
       # transitions out of state 4 (all go back to state 0)
       [
@@ -153,7 +153,7 @@ class ReasonableMDP(ModelBasedEnv):
           # action 1
           [1, 0, 0, 0, 0],
           # action 2
-          [1, 0, 0, 0, 0]
+          [1, 0, 0, 0, 0],
       ],
   ])
   reward_matrix = np.array([
@@ -166,7 +166,7 @@ class ReasonableMDP(ModelBasedEnv):
       -20,
       # state 4 has pretty good reward (good enough that we should move out
       # of 1 & 2)
-      3
+      3,
   ])
   # always start in s0 or s4
   initial_state_dist = [0.5, 0, 0, 0, 0.5]

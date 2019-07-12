@@ -1,8 +1,11 @@
 # Recommended packages for development
 autopep8
 flake8
-flake8-isort
+flake8-blind-except
+flake8-builtins
+flake8-commas
 flake8-debugger
+flake8-isort
 pytype
 sphinx
 sphinxcontrib-napoleon
