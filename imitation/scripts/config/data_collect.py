@@ -5,12 +5,14 @@ from imitation.util import FeedForward64Policy
 
 data_collect_ex = sacred.Experiment("data_collect")
 
+_make_blank_policy_kwargs = dict(DEFAULT_BLANK_POLICY_KWARGS)
+
 
 @data_collect_ex.config
 def data_collect_defaults():
     total_timesteps = int(1e6)
     num_vec = 8
-    make_blank_policy_kwargs = DEFAULT_BLANK_POLICY_KWARGS
+    make_blank_policy_kwargs = _make_blank_policy_kwargs
 
 
 @data_collect_ex.named_config
@@ -36,8 +38,9 @@ def pendulum():
 
 
 @data_collect_ex.named_config
-def swimmer(make_blank_policy_kwargs):
+def swimmer():
     env_name = "Swimmer-v2"
+    make_blank_policy_kwargs = _make_blank_policy_kwargs
     make_blank_policy_kwargs.update(dict(
         policy_network_class=FeedForward64Policy
     ))
