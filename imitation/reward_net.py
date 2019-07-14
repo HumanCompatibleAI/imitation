@@ -3,7 +3,7 @@
 from abc import ABC, abstractmethod
 import os
 import pickle
-from typing import Iterable, Optional
+from typing import Iterable, Optional, Tuple
 
 import gym
 import tensorflow as tf
@@ -23,6 +23,10 @@ class RewardNet(ABC):
     old_obs_ph (tf.Tensor): previous observation placeholder.
     act_ph (tf.Tensor): action placeholder.
     new_obs_ph (tf.Tensor): next observation placeholder.
+    _params (dict): parameters to serialize in `save`, used as keyword
+        arguments for constructor by `load`.
+    _layers (dict): CheckpointableBase objects, e.g. a TensorFlow layer,
+        saved by `save` and restored by `load`.
   """
 
   def __init__(self, observation_space: gym.Space, action_space: gym.Space, *,
@@ -44,8 +48,16 @@ class RewardNet(ABC):
     self.old_obs_inp, self.act_inp, self.new_obs_inp = inputs[3:]
 
     with tf.variable_scope("theta_network"):
-      self._theta_output, self._theta_layers = self.build_theta_network(
+      self._theta_output, theta_layers = self.build_theta_network(
           self.old_obs_inp, self.act_inp)
+
+    self._params = {
+     'observation_space': self.observation_space,
+     'action_space': self.action_space,
+     'scale': self.scale,
+    }
+    self._layers = theta_layers
+    self._checkpoint = None
 
   @property
   @abstractmethod
@@ -91,22 +103,25 @@ class RewardNet(ABC):
     return self._theta_output
 
   @abstractmethod
-  def build_theta_network(self, obs_input, act_input):
+  def build_theta_network(self, obs_input: tf.Tensor, act_input: tf.Tensor,
+                          ) -> Tuple[tf.Tensor, util.Layers]:
     """Builds the test reward network.
 
     The output of the network is the same as the reward used for transfer
     learning, and is the Tensor returned by `self.reward_output_test()`.
 
     Args:
-      obs_input (tf.Tensor): The observation input. Its shape is
+      obs_input: The observation input. Its shape is
           `((None,) + self.env.observation_space.shape)`.
-      act_input (tf.Tensor): The action input. Its shape is
+      act_input: The action input. Its shape is
           `((None,) + self.env.action_space.shape)`. The None dimension is
           expected to be the same as None dimension from `obs_input`.
 
     Returns:
-      theta_output (tf.Tensor): A reward prediction for each of the
-          inputs. The shape is `(None,)`.
+      A tuple (theta_output, layers) where
+        * theta_output is a reward prediction for each of the inputs,
+          of shape `(None,)`;
+        * layers is a dictionary mapping to individual checkpointable layers.
     """
     pass
 
@@ -114,16 +129,40 @@ class RewardNet(ABC):
     tf.summary.histogram("train_reward", self.reward_output_train)
     tf.summary.histogram("test_reward", self.reward_output_test)
 
-  @classmethod
-  @abstractmethod
-  def load(cls, path):
-    """Load saved reward network from file."""
-    pass
+  # @classmethod
+  # @abstractmethod
+  # def load(cls, path):
+  #   """Load saved reward network from file."""
+  #   pass
+  #
+  # @abstractmethod
+  # def save(self, path):
+  #   """Save reward network to file."""
+  #   pass
 
-  @abstractmethod
+  @classmethod
+  def load(cls, path):
+    with open(os.path.join(path, 'args'), 'rb') as f:
+      params = pickle.load(f)
+
+    obj = cls(**params)
+
+    restore = obj._checkpoint.restore(tf.train.latest_checkpoint(path))
+    restore.assert_consumed().run_restore_ops()
+
+    return obj
+
   def save(self, path):
-    """Save reward network to file."""
-    pass
+    os.makedirs(path, exist_ok=True)
+
+    args_path = os.path.join(path, 'args')
+    if not os.path.exists(args_path):
+      # args should be static, no need to write multiple times.
+      # (Best to avoid it -- if we were to die in the middle of this,
+      # it would invalidate previous checkpoints.)
+      with open(args_path, 'wb') as f:
+        pickle.dump(self._params, f)
+    self._checkpoint.save(file_prefix=os.path.join(path, "weights"))
 
 
 class RewardNetShaped(RewardNet):
@@ -147,13 +186,16 @@ class RewardNetShaped(RewardNet):
 
     with tf.variable_scope("phi_network"):
       res = self.build_phi_network(self.old_obs_inp, self.new_obs_inp)
-      self._old_shaping_output, self._new_shaping_output = res
+      self._old_shaping_output, self._new_shaping_output, phi_layers = res
 
     with tf.variable_scope("f_network"):
       self._shaped_reward_output = (
         self._theta_output
         + self._discount_factor * self._new_shaping_output
         - self._old_shaping_output)
+
+    self._params.update({'discount_factor': discount_factor})
+    self._layers.update(**phi_layers)
 
   @property
   def reward_output_train(self):
@@ -174,7 +216,10 @@ class RewardNetShaped(RewardNet):
     return self._shaped_reward_output
 
   @abstractmethod
-  def build_phi_network(self, old_obs_input, new_obs_input):
+  def build_phi_network(self,
+                        old_obs_input: tf.Tensor,
+                        new_obs_input: tf.Tensor,
+                        ) -> Tuple[tf.Tensor, tf.Tensor, util.Layers]:
     """Build the reward shaping network (disentangles dynamics from reward).
 
     XXX: We could potentially make it easier on the subclasser by requiring
@@ -185,17 +230,19 @@ class RewardNetShaped(RewardNet):
     rank 3 obs_input with shape `(2, None) + self.env.observation_space`.
 
     Args:
-      old_obs_input (tf.Tensor): The old observations (corresponding to the
-          state at which the current action is made). The shape of this
-          Tensor should be `(None,) + self.env.observation_space.shape`.
-      new_obs_input (tf.Tensor): The new observations (corresponding to
-          the state that we transition to after this state-action pair.
+      old_obs_input: The old observations (corresponding to the state at which
+          the current action is made). The shape of this Tensor should be
+          `(None,) + self.env.observation_space.shape`.
+      new_obs_input: The new observations (corresponding to the state that we
+          transition to after this state-action pair.
 
     Returns:
-      old_shaping_output (tf.Tensor): A reward shaping prediction for
-          each of the old observation inputs. Has shape `(None,)`.
-      new_shaping_output (tf.Tensor): A reward shaping prediction for
-          each of the new observation inputs. Has shape `(None,)`
+      A tuple (old_shaping_output, new_shaping_output, layers) where
+        * old_shaping_output is a reward shaping prediction for each of the old
+          observation inputs, with shape `(None,)`.
+        * new_shaping_output is a reward shaping prediction for each of the new
+          observation inputs, with shape `(None,)`.
+        * layers is a dictionary mapping to individual checkpointable layers.
     """
     pass
 
@@ -231,7 +278,7 @@ def build_basic_theta_network(hid_sizes: Optional[Iterable[int]],
     ValueError: If all of old_obs_input, new_obs_input and act_input are None.
   """
   if hid_sizes is None:
-    hid_sizes = []
+    hid_sizes = [32, 32]
 
   with tf.variable_scope("theta"):
     inputs = [old_obs_input, act_input, new_obs_input]
@@ -241,10 +288,10 @@ def build_basic_theta_network(hid_sizes: Optional[Iterable[int]],
 
     inputs = [tf.layers.flatten(x) for x in inputs]
     inputs = tf.concat(inputs, axis=1)
-    theta_output, theta_layers = util.apply_ff(inputs, hid_sizes=hid_sizes,
-                                               **kwargs)
+    theta_mlp = util.build_mlp(hid_sizes=hid_sizes, name="reward", **kwargs)
+    theta_output = util.sequential(inputs, theta_mlp)
 
-    return theta_output, theta_layers
+    return theta_output, theta_mlp
 
 
 class BasicRewardNet(RewardNet):
@@ -274,10 +321,12 @@ class BasicRewardNet(RewardNet):
     self.theta_units = theta_units
     self.theta_kwargs = theta_kwargs or {}
     super().__init__(observation_space, action_space, scale=scale)
-    # TODO(adam): this is super hacky -- use Sonnet?
-    checkpoints = {f'theta_{i}': self._theta_layers[i]
-                   for i in range(len(self._theta_layers))}
-    self.checkpoint = tf.train.Checkpoint(**checkpoints)
+
+    self._params.update({
+        'theta_units': theta_units,
+        'theta_kwargs': theta_kwargs,
+    })
+    self.checkpoint = tf.train.Checkpoint(**self._layers)
 
   def build_theta_network(self, obs_input, act_input):
     act_or_none = None if self.state_only else act_input
@@ -291,33 +340,6 @@ class BasicRewardNet(RewardNet):
   def reward_output_train(self):
     """Training reward is the same as the test reward, since no shaping."""
     return self.reward_output_test
-
-  @classmethod
-  def load(cls, path):
-    with open(os.path.join(path, 'args'), 'rb') as f:
-      params = pickle.load(f)
-
-    obj = cls(**params)
-    restore = obj.checkpoint.restore(os.path.join(path, 'weights'))
-    # TODO(gleave): assert_consumed
-    # restore.assert_consumed().run_restore_ops()
-    restore.run_restore_ops()
-
-    return obj
-
-  def save(self, path):
-    # TODO(adam): more general than this?
-    params = {'observation_space': self.observation_space,
-              'action_space': self.action_space,
-              'scale': self.scale,
-              'state_only': self.state_only,
-              'theta_units': self.theta_units,
-              'theta_kwargs': self.theta_kwargs}
-
-    os.makedirs(path, exist_ok=True)
-    with open(os.path.join(path, 'args'), 'wb') as f:
-      pickle.dump(params, f)
-    self.checkpoint.write(file_prefix=os.path.join(path, 'weights'))
 
 
 def build_basic_phi_network(hid_sizes: Optional[Iterable[int]],
@@ -343,12 +365,11 @@ def build_basic_phi_network(hid_sizes: Optional[Iterable[int]],
     new_o = tf.layers.flatten(new_obs_input)
 
     # Weight share, just with different inputs old_o and new_o
-    old_shaping_output = util.apply_ff(old_o, hid_sizes=hid_sizes,
-                                       name="old_shaping_output", **kwargs)
-    new_shaping_output = util.apply_ff(new_o, hid_sizes=hid_sizes,
-                                       name="new_shaping_output", **kwargs)
+    phi_mlp = util.build_mlp(hid_sizes=hid_sizes, name="shaping", **kwargs)
+    old_shaping_output = util.sequential(old_o, phi_mlp)
+    new_shaping_output = util.sequential(new_o, phi_mlp)
 
-  return old_shaping_output, new_shaping_output
+  return old_shaping_output, new_shaping_output, phi_mlp
 
 
 class BasicShapedRewardNet(RewardNetShaped):
@@ -393,6 +414,15 @@ class BasicShapedRewardNet(RewardNetShaped):
     self.phi_kwargs = phi_kwargs or {}
     super().__init__(observation_space, action_space, scale=scale,
                      discount_factor=discount_factor)
+
+    self._params.update({
+        'theta_units': theta_units,
+        'theta_kwargs': theta_kwargs,
+        'phi_units': phi_units,
+        'phi_kwargs': phi_kwargs,
+    })
+    print('checkpointing: ', self._layers)
+    self.checkpoint = tf.train.Checkpoint(**self._layers)
 
   def build_theta_network(self, obs_input, act_input):
     act_or_none = None if self.state_only else act_input

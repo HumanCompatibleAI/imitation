@@ -1,7 +1,8 @@
+import collections
 import functools
 import glob
 import os
-from typing import Callable, Iterable, Optional, Tuple
+from typing import Callable, Dict, Iterable, Optional, Tuple
 
 import gym
 import stable_baselines
@@ -10,6 +11,10 @@ from stable_baselines.common.input import observation_input
 from stable_baselines.common.policies import FeedForwardPolicy
 from stable_baselines.common.vec_env import DummyVecEnv, VecEnv
 import tensorflow as tf
+
+# TODO(adam): this should really be OrderedDict but that breaks Python
+# See https://stackoverflow.com/questions/41207128/
+Layers = Dict[str, tf.layers.Layer]
 
 
 def maybe_load_env(env_or_str, vectorize=True):
@@ -238,27 +243,38 @@ def _get_tb_log_dir(env, init_tensorboard):
     return None
 
 
-def apply_ff(inputs: tf.Tensor,
-             hid_sizes: Iterable[int],
-             name: Optional[str] = None,
-             activation: Optional[Callable] = tf.nn.relu,
-             initializer: Optional[Callable] = None,
-             ) -> tf.Tensor:
-  """Applies a feed forward network on the inputs."""
+def build_mlp(hid_sizes: Iterable[int],
+              name: Optional[str] = None,
+              activation: Optional[Callable] = tf.nn.relu,
+              initializer: Optional[Callable] = None,
+              ) -> Layers:
+  """Constructs an MLP, returning an ordered list of layers."""
+  layers = collections.OrderedDict()
 
-  x = inputs
-  layers = []
+  # Hidden layers
   for i, size in enumerate(hid_sizes):
+    key = f"{name}_dense{i}"
     layer = tf.layers.Dense(size, activation=activation,
-                            kernel_initializer=initializer,
-                            name="dense" + str(i))
-    layers.append(layer)
-    x = layer(x)
-  layer = tf.layers.Dense(1, kernel_initializer=initializer, name="dense_final")
-  layers.append(layer)
-  x = layer(x)
-  return x, layers
-  # return tf.squeeze(x, axis=1, name=name)
+                            kernel_initializer=initializer, name=key)
+    layers[key] = layer
+
+  # Final layer
+  layer = tf.layers.Dense(1, kernel_initializer=initializer,
+                          name=f"{name}_dense_final")
+  layers[f"{name}_dense_final"] = layer
+
+  return layers
+
+
+def sequential(inputs: tf.Tensor,
+               layers: Layers,
+               ) -> tf.Tensor:
+  """Applies a sequence of layers to an input."""
+  output = inputs
+  for layer in layers.values():
+    output = layer(output)
+  output = tf.squeeze(output, axis=1)
+  return output
 
 
 def build_inputs(observation_space: gym.Space,

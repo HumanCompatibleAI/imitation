@@ -2,7 +2,8 @@
 
 import imitation.util.rollout
 from imitation.util.util import (FeedForward32Policy, FeedForward64Policy,
-                                 apply_ff, build_inputs, get_env_id, is_vec_env,
-                                 load_policy, make_blank_policy,
+                                 Layers, build_mlp, build_inputs, get_env_id,
+                                 is_vec_env, load_policy, make_blank_policy,
                                  make_save_policy_callback, make_vec_env,
-                                 maybe_load_env, save_trained_policy)
+                                 maybe_load_env, save_trained_policy,
+                                 sequential)

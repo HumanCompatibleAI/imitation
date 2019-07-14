@@ -194,7 +194,8 @@ class DiscrimNetGAIL(DiscrimNet):
     hid_sizes = self.hid_sizes
     if hid_sizes is None:
       hid_sizes = (32, 32)
-    discrim_logits = util.apply_ff(inputs, hid_sizes=hid_sizes)
+    discrim_mlp = util.build_mlp(hid_sizes=hid_sizes)
+    discrim_logits = util.sequential(inputs, discrim_mlp)
 
     return discrim_logits
 
