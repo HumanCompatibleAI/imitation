@@ -129,30 +129,26 @@ class RewardNet(ABC):
     tf.summary.histogram("train_reward", self.reward_output_train)
     tf.summary.histogram("test_reward", self.reward_output_test)
 
-  # @classmethod
-  # @abstractmethod
-  # def load(cls, path):
-  #   """Load saved reward network from file."""
-  #   pass
-  #
-  # @abstractmethod
-  # def save(self, path):
-  #   """Save reward network to file."""
-  #   pass
+  def _get_checkpoint(self):
+    if self._checkpoint is None:
+      self._checkpoint = tf.train.Checkpoint(**self._layers)
+    return self._checkpoint
 
   @classmethod
   def load(cls, path):
+    """Load reward network from path."""
     with open(os.path.join(path, 'args'), 'rb') as f:
       params = pickle.load(f)
 
     obj = cls(**params)
 
-    restore = obj._checkpoint.restore(tf.train.latest_checkpoint(path))
+    restore = obj._get_checkpoint().restore(tf.train.latest_checkpoint(path))
     restore.assert_consumed().run_restore_ops()
 
     return obj
 
   def save(self, path):
+    """Save reward network to path."""
     os.makedirs(path, exist_ok=True)
 
     args_path = os.path.join(path, 'args')
@@ -162,7 +158,8 @@ class RewardNet(ABC):
       # it would invalidate previous checkpoints.)
       with open(args_path, 'wb') as f:
         pickle.dump(self._params, f)
-    self._checkpoint.save(file_prefix=os.path.join(path, "weights"))
+
+    self._get_checkpoint().save(file_prefix=os.path.join(path, "weights"))
 
 
 class RewardNetShaped(RewardNet):
@@ -326,7 +323,6 @@ class BasicRewardNet(RewardNet):
         'theta_units': theta_units,
         'theta_kwargs': theta_kwargs,
     })
-    self.checkpoint = tf.train.Checkpoint(**self._layers)
 
   def build_theta_network(self, obs_input, act_input):
     act_or_none = None if self.state_only else act_input
@@ -421,8 +417,6 @@ class BasicShapedRewardNet(RewardNetShaped):
         'phi_units': phi_units,
         'phi_kwargs': phi_kwargs,
     })
-    print('checkpointing: ', self._layers)
-    self.checkpoint = tf.train.Checkpoint(**self._layers)
 
   def build_theta_network(self, obs_input, act_input):
     act_or_none = None if self.state_only else act_input
