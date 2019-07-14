@@ -1,6 +1,8 @@
 """Constructs deep network reward models."""
 
 from abc import ABC, abstractmethod
+import os
+import pickle
 from typing import Iterable, Optional
 
 import gym
@@ -35,13 +37,14 @@ class RewardNet(ABC):
 
     self.observation_space = observation_space
     self.action_space = action_space
+    self.scale = scale
 
     inputs = util.build_inputs(observation_space, action_space, scale)
     self.old_obs_ph, self.act_ph, self.new_obs_ph = inputs[:3]
     self.old_obs_inp, self.act_inp, self.new_obs_inp = inputs[3:]
 
     with tf.variable_scope("theta_network"):
-      self._theta_output = self.build_theta_network(
+      self._theta_output, self._theta_layers = self.build_theta_network(
           self.old_obs_inp, self.act_inp)
 
   @property
@@ -110,6 +113,17 @@ class RewardNet(ABC):
   def build_summaries(self):
     tf.summary.histogram("train_reward", self.reward_output_train)
     tf.summary.histogram("test_reward", self.reward_output_test)
+
+  @classmethod
+  @abstractmethod
+  def load(cls, path):
+    """Load saved reward network from file."""
+    pass
+
+  @abstractmethod
+  def save(self, path):
+    """Save reward network to file."""
+    pass
 
 
 class RewardNetShaped(RewardNet):
@@ -227,9 +241,10 @@ def build_basic_theta_network(hid_sizes: Optional[Iterable[int]],
 
     inputs = [tf.layers.flatten(x) for x in inputs]
     inputs = tf.concat(inputs, axis=1)
-    theta_output = util.apply_ff(inputs, hid_sizes=hid_sizes, **kwargs)
+    theta_output, theta_layers = util.apply_ff(inputs, hid_sizes=hid_sizes,
+                                               **kwargs)
 
-    return theta_output
+    return theta_output, theta_layers
 
 
 class BasicRewardNet(RewardNet):
@@ -259,6 +274,10 @@ class BasicRewardNet(RewardNet):
     self.theta_units = theta_units
     self.theta_kwargs = theta_kwargs or {}
     super().__init__(observation_space, action_space, scale=scale)
+    # TODO(adam): this is super hacky -- use Sonnet?
+    checkpoints = {f'theta_{i}': self._theta_layers[i]
+                   for i in range(len(self._theta_layers))}
+    self.checkpoint = tf.train.Checkpoint(**checkpoints)
 
   def build_theta_network(self, obs_input, act_input):
     act_or_none = None if self.state_only else act_input
@@ -272,6 +291,33 @@ class BasicRewardNet(RewardNet):
   def reward_output_train(self):
     """Training reward is the same as the test reward, since no shaping."""
     return self.reward_output_test
+
+  @classmethod
+  def load(cls, path):
+    with open(os.path.join(path, 'args'), 'rb') as f:
+      params = pickle.load(f)
+
+    obj = cls(**params)
+    restore = obj.checkpoint.restore(os.path.join(path, 'weights'))
+    # TODO(gleave): assert_consumed
+    # restore.assert_consumed().run_restore_ops()
+    restore.run_restore_ops()
+
+    return obj
+
+  def save(self, path):
+    # TODO(adam): more general than this?
+    params = {'observation_space': self.observation_space,
+              'action_space': self.action_space,
+              'scale': self.scale,
+              'state_only': self.state_only,
+              'theta_units': self.theta_units,
+              'theta_kwargs': self.theta_kwargs}
+
+    os.makedirs(path, exist_ok=True)
+    with open(os.path.join(path, 'args'), 'wb') as f:
+      pickle.dump(params, f)
+    self.checkpoint.write(file_prefix=os.path.join(path, 'weights'))
 
 
 def build_basic_phi_network(hid_sizes: Optional[Iterable[int]],

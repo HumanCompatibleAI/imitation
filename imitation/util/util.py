@@ -245,13 +245,20 @@ def apply_ff(inputs: tf.Tensor,
              initializer: Optional[Callable] = None,
              ) -> tf.Tensor:
   """Applies a feed forward network on the inputs."""
+
   x = inputs
+  layers = []
   for i, size in enumerate(hid_sizes):
-    x = tf.layers.dense(x, size, activation=activation,
-                        kernel_initializer=initializer, name="dense" + str(i))
-  x = tf.layers.dense(x, 1, kernel_initializer=initializer,
-                      name="dense_final")
-  return tf.squeeze(x, axis=1, name=name)
+    layer = tf.layers.Dense(size, activation=activation,
+                            kernel_initializer=initializer,
+                            name="dense" + str(i))
+    layers.append(layer)
+    x = layer(x)
+  layer = tf.layers.Dense(1, kernel_initializer=initializer, name="dense_final")
+  layers.append(layer)
+  x = layer(x)
+  return x, layers
+  # return tf.squeeze(x, axis=1, name=name)
 
 
 def build_inputs(observation_space: gym.Space,
