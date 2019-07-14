@@ -64,7 +64,7 @@ def init_trainer(env_id, rollouts_dir="data/rollouts", use_gail=False,
   return trainer
 
 
-def _joined_expert_rollouts(npz_paths: Sequence[str]
+def _joined_expert_rollouts(npz_paths: Sequence[str],
                             ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
   """From several .npz rollout dumps, generate rollout arrays for Trainer.
 
