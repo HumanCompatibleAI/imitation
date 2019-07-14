@@ -156,7 +156,7 @@ class Buffer:
     self._idx = idx_hi % self.capacity
     self._n_data = min(self._n_data + n_samples, self.capacity)
 
-  def sample(self, n_samples: int) -> np.ndarray:
+  def sample(self, n_samples: int) -> Dict[str, np.ndarray]:
     """Uniformly sample `n_samples` samples from the buffer with replacement.
 
     Args:
