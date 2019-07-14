@@ -8,6 +8,7 @@ from collections import defaultdict
 from typing import Sequence, Tuple
 
 import numpy as np
+import tensorflow as tf
 
 import imitation.discrim_net as discrim_net
 from imitation.reward_net import BasicShapedRewardNet
@@ -29,7 +30,7 @@ def init_trainer(env_id, rollouts_dir="data/rollouts", use_gail=False,
     use_gail (bool): If True, then train using GAIL. If False, then train
         using AIRL.
     policy_dir (str): The directory containing the pickled experts for
-        generating rollouts. Only applicable if `use_random_expert` is True.
+        generating rollouts.
     trainer_kwargs (dict): Aguments for the Trainer constructor.
     reward_kwargs (dict): Arguments for the `*RewardNet` constructor.
     discrim_kwargs (dict): Arguments for the `DiscrimNet*` constructor.
@@ -75,7 +76,10 @@ def _joined_expert_rollouts(npz_paths: Sequence[str]
 
   for path in npz_paths:
     with np.load(path) as npz:
+      tf.logging.info(f"Loaded rollouts from '{path}'.")
       for k, v in npz.items():
         shards[k].append(v)
 
-  return tuple(np.concatenate(shards[key]) for key in ["old_obs", "act", "obs"])
+  shards = dict(shards)  # Convert to dict to error on missing keys.
+  return tuple(np.concatenate(shards[key])
+               for key in ["obs_old", "act", "obs_new"])

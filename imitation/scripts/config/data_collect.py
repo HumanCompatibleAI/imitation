@@ -14,8 +14,8 @@ def data_collect_defaults():
     make_blank_policy_kwargs = DEFAULT_BLANK_POLICY_KWARGS
 
     rollout_save = True  # Whether to save rollout files.
-    rollout_save_interval = 5  # The number of training updates between saves.
-    rollout_save_n_samples = 500  # The number of timesteps saved per file.
+    rollout_save_interval = 50  # The number of training updates between saves.
+    rollout_save_n_samples = 2000  # The number of timesteps saved per file.
     rollout_dir = "data/rollouts"  # The directory that rollouts are saved in.
 
     policy_save = False  # Whether to save policy files.
@@ -32,7 +32,7 @@ def ant():
 @data_collect_ex.named_config
 def cartpole():
     env_name = "CartPole-v1"
-    total_timesteps = int(4e5)
+    total_timesteps = int(8e5)
 
 
 @data_collect_ex.named_config

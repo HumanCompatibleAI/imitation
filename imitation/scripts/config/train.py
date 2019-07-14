@@ -13,10 +13,8 @@ def train_defaults():
     n_gen_steps_per_epoch = 2048
 
     init_trainer_kwargs = dict(
-        n_expert_samples=1000,
         rollouts_dir="data/rollouts",
         n_rollout_dumps=1,
-        use_random_expert=False,
         num_vec=8,  # NOTE: changing this also changes the effective n_steps!
         reward_kwargs=dict(
             theta_units=[32, 32],
@@ -91,9 +89,17 @@ def swimmer():
 
 
 @train_ex.named_config
-def debug():
+def fast():
+    """Minimize the amount of computation. Useful for test cases."""
     n_epochs = 1
     interactive = False
     n_disc_steps_per_epoch = 1
     n_gen_steps_per_epoch = 1
     n_episodes_per_reward_data = 1
+
+@train_ex.named_config
+def test_data():
+    """Read data from test data directories, rather than the default."""
+    init_trainer_kwargs = dict(
+        rollouts_dir="tests/data/rollouts",
+    )

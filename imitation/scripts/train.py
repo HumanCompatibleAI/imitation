@@ -32,7 +32,7 @@ def train_and_plot(env_name: str = 'CartPole-v1',
                    interactive: bool = True,
                    expert_policy=None,
                    init_trainer_kwargs: dict = {},
-                   ):
+                   ) -> None:
   """Alternate between training the generator and discriminator.
 
   Every epoch:
@@ -178,8 +178,6 @@ def train_and_plot(env_name: str = 'CartPole-v1',
       ep_reward_plot_add_data(trainer.env_train, "Train Reward")
       ep_reward_plot_add_data(trainer.env_test, "Test Reward")
       ep_reward_plot_show()
-
-  return trainer, gen_data, disc_data, gen_ep_reward
 
 
 def _savefig_timestamp(prefix="", also_show=True):

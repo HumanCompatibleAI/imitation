@@ -25,23 +25,32 @@ def main(env_name, total_timesteps,
          *,
          num_vec=8,
          make_blank_policy_kwargs={},
-         **callback_kwargs,
+
+         rollout_save: bool = False,
+         rollout_save_interval: Optional[int] = None,
+         rollout_save_n_samples: Optional[int] = None,
+         rollout_dir: Optional[str] = None,
+
+         policy_save: bool = False,
+         policy_save_interval: Optional[int] = None,
+         policy_dir: Optional[str] = None,
          ):
   tf.logging.set_verbosity(tf.logging.INFO)
 
   policy = make_PPO2(env_name, num_vec, **make_blank_policy_kwargs)
 
-  callback = _make_callback(**callback_kwargs)
+  callback = _make_callback(
+    rollout_save, rollout_save_interval, rollout_save_n_samples,
+    rollout_dir, policy_save, policy_save_interval, policy_dir)
   policy.learn(total_timesteps, callback=callback)
 
 
-def _make_callback(*,
-                   rollout_save: bool,
+def _make_callback(rollout_save: bool = False,
                    rollout_save_interval: Optional[int] = None,
                    rollout_save_n_samples: Optional[int] = None,
                    rollout_dir: Optional[str] = None,
 
-                   policy_save: bool,
+                   policy_save: bool = False,
                    policy_save_interval: Optional[int] = None,
                    policy_dir: Optional[str] = None,
                    ) -> Callable:
@@ -85,6 +94,7 @@ def _make_callback(*,
         policy, env, n_timesteps=rollout_save_n_samples)
       np.savez_compressed(path,
                           obs_old=obs_old, act=act, obs_new=obs_new, rew=rew)
+      tf.logging.info("Dumped demonstrations to {}.".format(path))
 
     if policy_save and step % policy_save_interval == 0:
       filename = util.dump_prefix(policy.__class__, env, step) + ".pkl"
