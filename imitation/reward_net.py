@@ -1,17 +1,16 @@
 """Constructs deep network reward models."""
 
-from abc import ABC, abstractmethod
-import os
-import pickle
+from abc import abstractmethod
 from typing import Iterable, Optional, Tuple
 
 import gym
 import tensorflow as tf
 
 import imitation.util as util
+from imitation.util import serialize
 
 
-class RewardNet(ABC):
+class RewardNet(serialize.Serializable):
   """Abstract reward network.
 
   This class assumes that the caller will set the default TensorFlow Session
@@ -51,13 +50,7 @@ class RewardNet(ABC):
       self._theta_output, theta_layers = self.build_theta_network(
           self.old_obs_inp, self.act_inp)
 
-    self._params = {
-     'observation_space': self.observation_space,
-     'action_space': self.action_space,
-     'scale': self.scale,
-    }
     self._layers = theta_layers
-    self._checkpoint = None
 
   @property
   @abstractmethod
@@ -129,38 +122,6 @@ class RewardNet(ABC):
     tf.summary.histogram("train_reward", self.reward_output_train)
     tf.summary.histogram("test_reward", self.reward_output_test)
 
-  def _get_checkpoint(self):
-    if self._checkpoint is None:
-      self._checkpoint = tf.train.Checkpoint(**self._layers)
-    return self._checkpoint
-
-  @classmethod
-  def load(cls, path):
-    """Load reward network from path."""
-    with open(os.path.join(path, 'args'), 'rb') as f:
-      params = pickle.load(f)
-
-    obj = cls(**params)
-
-    restore = obj._get_checkpoint().restore(tf.train.latest_checkpoint(path))
-    restore.assert_consumed().run_restore_ops()
-
-    return obj
-
-  def save(self, path):
-    """Save reward network to path."""
-    os.makedirs(path, exist_ok=True)
-
-    args_path = os.path.join(path, 'args')
-    if not os.path.exists(args_path):
-      # args should be static, no need to write multiple times.
-      # (Best to avoid it -- if we were to die in the middle of this,
-      # it would invalidate previous checkpoints.)
-      with open(args_path, 'wb') as f:
-        pickle.dump(self._params, f)
-
-    self._get_checkpoint().save(file_prefix=os.path.join(path, "weights"))
-
 
 class RewardNetShaped(RewardNet):
   """Abstract reward network with a phi network to shape training reward.
@@ -191,7 +152,6 @@ class RewardNetShaped(RewardNet):
         + self._discount_factor * self._new_shaping_output
         - self._old_shaping_output)
 
-    self._params.update({'discount_factor': discount_factor})
     self._layers.update(**phi_layers)
 
   @property
@@ -291,7 +251,7 @@ def build_basic_theta_network(hid_sizes: Optional[Iterable[int]],
     return theta_output, theta_mlp
 
 
-class BasicRewardNet(RewardNet):
+class BasicRewardNet(RewardNet, serialize.LayersSerializable):
   """An unshaped reward net with simple, default settings.
 
   Intended to match the reward network trained for
@@ -317,12 +277,8 @@ class BasicRewardNet(RewardNet):
     self.state_only = state_only
     self.theta_units = theta_units
     self.theta_kwargs = theta_kwargs or {}
-    super().__init__(observation_space, action_space, scale=scale)
-
-    self._params.update({
-        'theta_units': theta_units,
-        'theta_kwargs': theta_kwargs,
-    })
+    RewardNet.__init__(self, observation_space, action_space, scale=scale)
+    serialize.LayersSerializable.__init__(**locals(), layers=self._layers)
 
   def build_theta_network(self, obs_input, act_input):
     act_or_none = None if self.state_only else act_input
@@ -368,7 +324,7 @@ def build_basic_phi_network(hid_sizes: Optional[Iterable[int]],
   return old_shaping_output, new_shaping_output, phi_mlp
 
 
-class BasicShapedRewardNet(RewardNetShaped):
+class BasicShapedRewardNet(RewardNetShaped, serialize.LayersSerializable):
   """A shaped reward network with simple, default settings.
 
   With default parameters this RewardNet has two hidden layers [32, 32]
@@ -408,15 +364,9 @@ class BasicShapedRewardNet(RewardNetShaped):
     self.phi_units = phi_units
     self.theta_kwargs = theta_kwargs or {}
     self.phi_kwargs = phi_kwargs or {}
-    super().__init__(observation_space, action_space, scale=scale,
-                     discount_factor=discount_factor)
-
-    self._params.update({
-        'theta_units': theta_units,
-        'theta_kwargs': theta_kwargs,
-        'phi_units': phi_units,
-        'phi_kwargs': phi_kwargs,
-    })
+    RewardNetShaped.__init__(self, observation_space, action_space,
+                             scale=scale, discount_factor=discount_factor)
+    serialize.LayersSerializable.__init__(**locals(), layers=self._layers)
 
   def build_theta_network(self, obs_input, act_input):
     act_or_none = None if self.state_only else act_input

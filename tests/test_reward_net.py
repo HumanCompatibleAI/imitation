@@ -33,6 +33,7 @@ def _make_feed_dict(reward_net, rollouts):
 @pytest.mark.parametrize("env_id", ENVS)
 @pytest.mark.parametrize("reward_net_cls", REWARD_NETS)
 def test_serialize_identity(session, env_id, reward_net_cls):
+  """Does output of deserialized reward network match that of original?"""
   env = gym.make(env_id)
   with tf.variable_scope("original"):
     original = reward_net_cls(env.observation_space, env.action_space)
