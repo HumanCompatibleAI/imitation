@@ -166,6 +166,7 @@ class DiscrimNetAIRL(DiscrimNet):
     return self._log_D - self.entropy_weight * self._log_D_compl
 
   def save(self, directory):
+    os.makedirs(directory, exist_ok=True)
     params = {
         "entropy_weight": self.entropy_weight,
         "reward_net_cls": type(self.reward_net),

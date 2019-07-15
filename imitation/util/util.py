@@ -1,4 +1,5 @@
 import collections
+import datetime
 import functools
 import glob
 import os
@@ -6,15 +7,20 @@ from typing import Callable, Dict, Iterable, Optional, Tuple
 
 import gym
 import stable_baselines
-from stable_baselines.bench import Monitor
+from stable_baselines import bench
 from stable_baselines.common.input import observation_input
 from stable_baselines.common.policies import FeedForwardPolicy
-from stable_baselines.common.vec_env import DummyVecEnv, VecEnv
+from stable_baselines.common.vec_env import DummyVecEnv, SubprocVecEnv, VecEnv
 import tensorflow as tf
 
 # TODO(adam): this should really be OrderedDict but that breaks Python
 # See https://stackoverflow.com/questions/41207128/
 Layers = Dict[str, tf.layers.Layer]
+
+
+def make_timestamp():
+  ISO_TIMESTAMP = "%Y%m%d_%H%M%S"
+  return datetime.datetime.now().strftime(ISO_TIMESTAMP)
 
 
 def maybe_load_env(env_or_str, vectorize=True):
@@ -42,23 +48,34 @@ def maybe_load_env(env_or_str, vectorize=True):
   return env
 
 
-# TODO(adam): performance enhancement -- make Dummy vs Subproc configurable
-def make_vec_env(env_id: str, n_envs: int = 8, seed: int = 0):
-  """Returns a DummyVecEnv initialized with `n_envs` Envs.
+def make_vec_env(env_id: str,
+                 n_envs: int = 8,
+                 seed: int = 0,
+                 parallel: bool = False,
+                 log_dir: Optional[str] = None) -> VecEnv:
+  """Returns a VecEnv initialized with `n_envs` Envs.
 
   Args:
       env_id: The Env's string id in Gym.
       n_envs: The number of duplicate environments.
       seed: The environment seed.
+      parallel: If True, uses SubprocVecEnv; otherwise, DummyVecEnv.
+      log_dir: If specified, saves Monitor output to this directory.
   """
-  def monitored_env(i):
+  def make_env(i):
     env = gym.make(env_id)
-    env.seed(seed + i)
-    # Use Monitor to support logging the episode reward and length.
-    # TODO(adam): also log to disk -- can be useful for debugging occasionally?
-    return Monitor(env, None, allow_early_resets=True)
-  return DummyVecEnv([functools.partial(monitored_env, i)
-                      for i in range(n_envs)])
+    env.seed(seed + i)  # seed each environment separately for diversity
+
+    # Use Monitor to record statistics needed for Baselines algorithms logging
+    # Optionally, save to disk
+    log_path = None
+    if log_dir is not None:
+      log_subdir = os.path.join(log_dir, 'mon')
+      os.makedirs(log_subdir, exist_ok=True)
+      log_path = os.path.join(log_subdir, f'mon{i:03d}')
+    return bench.Monitor(env, log_path, allow_early_resets=True)
+  cls = SubprocVecEnv if parallel else DummyVecEnv
+  return cls([functools.partial(make_env, i) for i in range(n_envs)])
 
 
 def is_vec_env(env):
@@ -188,8 +205,7 @@ def load_policy(env, basedir="expert_models",
   """Loads and returns a pickled policy.
 
   Args:
-      env (str or Env): The Env that this policy is meant to act in, or the
-          string name of the Gym environment.
+      env (str): The string name of the Gym environment the policy is acting in.
       policy_class (stable_baselines.BaseRLModel class): A policy constructor
           from the stable_baselines module.
       init_tensorboard (bool): Whether to initialize Tensorboard logging for

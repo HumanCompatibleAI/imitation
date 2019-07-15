@@ -1,5 +1,4 @@
 import pytest
-import tensorflow as tf
 
 from imitation import util
 from imitation.util import rollout
@@ -9,9 +8,9 @@ use_gail_vals = [True, False]
 
 
 @pytest.fixture(autouse=True)
-def setup_and_teardown():
+def setup_and_teardown(session):
+  # Uses conftest.session fixture for everything in this file
   yield
-  tf.reset_default_graph()
 
 
 @pytest.mark.parametrize("use_gail", use_gail_vals)
