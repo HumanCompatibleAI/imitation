@@ -78,9 +78,7 @@ class Trainer:
 
             By default this is equal to `20 * n_disc_samples_per_buffer`.
         init_tensorboard: If True, makes various discriminator
-            TensorBoard summaries. (Generator summaries appear under a
-            different runname than the discriminator summaries because they
-            are configured by initializing the stable_baselines policy).
+            TensorBoard summaries.
         debug_use_ground_truth: If True, use the ground truth reward for
             `self.train_env`.
             This disables the reward wrapping that would normally replace

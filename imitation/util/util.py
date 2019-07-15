@@ -115,7 +115,6 @@ class FeedForward64Policy(FeedForwardPolicy):
 
 
 def make_blank_policy(env, policy_class=stable_baselines.PPO2,
-                      init_tensorboard=False,
                       policy_network_class=FeedForward32Policy, verbose=1,
                       **kwargs):
   """Instantiates a policy for the provided environment.
@@ -126,17 +125,13 @@ def make_blank_policy(env, policy_class=stable_baselines.PPO2,
           constructor from the stable_baselines module.
       policy_class (stable_baselines.BaseRLModel subclass): A policy constructor
           from the stable_baselines module.
-      init_tensorboard (bool): Whether to make TensorBoard summary writes during
-          training.
       verbose (int): The verbosity level of the policy during training.
 
   Return:
   policy (stable_baselines.BaseRLModel)
   """
   env = maybe_load_env(env)
-  return policy_class(policy_network_class, env, verbose=verbose,
-                      tensorboard_log=_get_tb_log_dir(env, init_tensorboard),
-                      **kwargs)
+  return policy_class(policy_network_class, env, verbose=verbose, **kwargs)
 
 
 def save_trained_policy(policy, savedir="saved_models", filename=None):
@@ -172,9 +167,7 @@ def make_save_policy_callback(savedir, save_interval=1):
     step += 1
     if step % save_interval == 0:
       policy = locals_['self']
-      filename = _policy_filename(policy.__class__, policy.get_env(),
-                                  step)
-      save_trained_policy(policy, savedir, filename)
+      save_trained_policy(policy, savedir, f'{step:05d}')
     return True
 
   return callback
@@ -200,7 +193,7 @@ def _get_policy_paths(env, policy_model_class, basedir, n_experts):
 
 def load_policy(env, basedir="expert_models",
                 policy_model_class=stable_baselines.PPO2,
-                init_tensorboard=False, policy_network_class=None, n_experts=1,
+                policy_network_class=None, n_experts=1,
                 **kwargs):
   """Loads and returns a pickled policy.
 
@@ -208,8 +201,6 @@ def load_policy(env, basedir="expert_models",
       env (str): The string name of the Gym environment the policy is acting in.
       policy_class (stable_baselines.BaseRLModel class): A policy constructor
           from the stable_baselines module.
-      init_tensorboard (bool): Whether to initialize Tensorboard logging for
-          this policy.
       base_dir (str): The directory of the pickled file.
       policy_network_class (stable_baselines.BasePolicy): A policy network
           constructor. Unless we are using a custom BasePolicy (not builtin to
@@ -236,9 +227,7 @@ def load_policy(env, basedir="expert_models",
   pols = []
 
   for path in paths:
-    policy = policy_model_class.load(
-        path, env, tensorboard_log=_get_tb_log_dir(env, init_tensorboard),
-        **kwargs)
+    policy = policy_model_class.load(path, env, **kwargs)
     tf.logging.info("loaded policy from '{}'".format(path))
     pols.append(policy)
 
@@ -250,13 +239,6 @@ def _policy_filename(policy_class, env, n="[0-9]*"):
   and trained on env should be saved to.
   """
   return "{}_{}_{}.pkl".format(policy_class.__name__, get_env_id(env), n)
-
-
-def _get_tb_log_dir(env, init_tensorboard):
-  if init_tensorboard:
-    return "./output/{}/".format(get_env_id(env))
-  else:
-    return None
 
 
 def build_mlp(hid_sizes: Iterable[int],

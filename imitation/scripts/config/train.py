@@ -47,8 +47,8 @@ def train_defaults():
 
 @train_ex.config
 def logging(env_name):
-    log_dir = os.path.join("output", env_name.replace('/', '_'),
-                           util.make_timestamp())
+    log_dir = os.path.join("output", "train",
+                           env_name.replace('/', '_'), util.make_timestamp())
 
 
 @train_ex.named_config

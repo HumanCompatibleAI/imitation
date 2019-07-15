@@ -148,6 +148,6 @@ def test_wrap_learned_reward_no_crash(use_gail, env="CartPole-v1"):
   trainer.train(n_epochs=1)
 
   learned_reward_env = trainer.wrap_env_test_reward(env)
-  policy = util.make_blank_policy(env, init_tensorboard=False)
+  policy = util.make_blank_policy(env)
   policy.set_env(learned_reward_env)
   policy.learn(10)

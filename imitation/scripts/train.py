@@ -13,6 +13,7 @@ from typing import Optional
 
 from matplotlib import pyplot as plt
 from sacred.observers import FileStorageObserver
+from stable_baselines import logger as sb_logger
 import tensorflow as tf
 import tqdm
 
@@ -83,6 +84,8 @@ def train_and_plot(_seed: int,
 
     tf.logging.info("Logging to %s", log_dir)
     os.makedirs(log_dir, exist_ok=True)
+    sb_logger.configure(folder=osp.join(log_dir, 'generator'),
+                        format_strs=['tensorboard', 'stdout'])
 
     plot_idx = 0
     gen_data = ([], [])
