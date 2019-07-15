@@ -74,8 +74,12 @@ def make_vec_env(env_id: str,
       os.makedirs(log_subdir, exist_ok=True)
       log_path = os.path.join(log_subdir, f'mon{i:03d}')
     return bench.Monitor(env, log_path, allow_early_resets=True)
-  cls = SubprocVecEnv if parallel else DummyVecEnv
-  return cls([functools.partial(make_env, i) for i in range(n_envs)])
+  env_fns = [functools.partial(make_env, i) for i in range(n_envs)]
+  if parallel:
+    # See GH hill-a/stable-baselines issue #217
+    return SubprocVecEnv(env_fns, start_method='forkserver')
+  else:
+    return DummyVecEnv(env_fns)
 
 
 def is_vec_env(env):
