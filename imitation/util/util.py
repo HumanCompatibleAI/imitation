@@ -187,12 +187,12 @@ def load_policy(env, basedir="expert_models",
           string name of the Gym environment.
       policy_class (stable_baselines.BaseRLModel class): A policy constructor
           from the stable_baselines module.
-      init_tensorboard (bool): Whether to initialize Tensorboard logging for
+      init_tensorboard (bool): Whether to initialize TensorBoard logging for
           this policy.
       base_dir (str): The directory of the pickled file.
       policy_network_class (stable_baselines.BasePolicy): A policy network
           constructor. Unless we are using a custom BasePolicy (not builtin to
-          stable_baselines), this is automatically infered, and so we can leave
+          stable_baselines), this is automatically inferred, and so we can leave
           this argument as None.
       **kwargs: Additional options for initializing the BaseRLModel class.
   """

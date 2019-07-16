@@ -117,7 +117,7 @@ def generate_trajectories(policy, env, *, n_timesteps=None, n_episodes=None,
 
   if isinstance(policy, BaseRLModel):
     get_action = policy.predict
-    policy.set_env(env)  # This checks that env and policy are compatbile.
+    policy.set_env(env)  # This checks that env and policy are compatible.
   else:
     get_action = functools.partial(get_action_policy, policy)
 

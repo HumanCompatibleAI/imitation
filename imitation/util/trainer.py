@@ -29,7 +29,7 @@ def init_trainer(env_id, use_gail=False,
         If True, then use a blank (random) policy to generate rollouts.
         If False, then load an expert policy. Will crash if there is no expert
         policy in `policy_dir`.
-    trainer_kwargs (dict): Aguments for the Trainer constructor.
+    trainer_kwargs (dict): Arguments for the Trainer constructor.
     reward_kwargs (dict): Arguments for the `*RewardNet` constructor.
     discrim_kwargs (dict): Arguments for the `DiscrimNet*` constructor.
     make_blank_policy_kwargs: Keyword arguments passed to `make_blank_policy`,
