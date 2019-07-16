@@ -22,15 +22,14 @@ def init_trainer(env_id, seed=0, log_dir=None, use_gail=False,
   Args:
     env_id (str): The string id of a gym environment.
     seed (int): Random seed.
-    log_dir (Optoinal[str]): Directory for logging output.
+    log_dir (Optional[str]): Directory for logging output.
     use_gail (bool): If True, then train using GAIL. If False, then train
         using AIRL.
-    policy_dir (str): The directory containing the pickled experts for
-        generating rollouts. Only applicable if `use_random_expert` is True.
     use_random_expert (bool):
         If True, then use a blank (random) policy to generate rollouts.
         If False, then load an expert policy. Will crash if there is no expert
-        policy in `policy_dir`.
+        policy.
+    parallel (bool): If True, then use SubprocVecEnv; otherwise, DummyVecEnv.
     trainer_kwargs (dict): Aguments for the Trainer constructor.
     reward_kwargs (dict): Arguments for the `*RewardNet` constructor.
     discrim_kwargs (dict): Arguments for the `DiscrimNet*` constructor.

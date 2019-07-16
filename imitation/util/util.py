@@ -15,7 +15,7 @@ import tensorflow as tf
 
 # TODO(adam): this should really be OrderedDict but that breaks Python
 # See https://stackoverflow.com/questions/41207128/
-Layers = Dict[str, tf.layers.Layer]
+LayersDict = Dict[str, tf.layers.Layer]
 
 
 def make_timestamp():
@@ -70,7 +70,7 @@ def make_vec_env(env_id: str,
     # Optionally, save to disk
     log_path = None
     if log_dir is not None:
-      log_subdir = os.path.join(log_dir, 'mon')
+      log_subdir = os.path.join(log_dir, 'monitor')
       os.makedirs(log_subdir, exist_ok=True)
       log_path = os.path.join(log_subdir, f'mon{i:03d}')
     return bench.Monitor(env, log_path, allow_early_resets=True)
@@ -249,8 +249,8 @@ def build_mlp(hid_sizes: Iterable[int],
               name: Optional[str] = None,
               activation: Optional[Callable] = tf.nn.relu,
               initializer: Optional[Callable] = None,
-              ) -> Layers:
-  """Constructs an MLP, returning an ordered list of layers."""
+              ) -> LayersDict:
+  """Constructs an MLP, returning an ordered dict of layers."""
   layers = collections.OrderedDict()
 
   # Hidden layers
@@ -269,7 +269,7 @@ def build_mlp(hid_sizes: Iterable[int],
 
 
 def sequential(inputs: tf.Tensor,
-               layers: Layers,
+               layers: LayersDict,
                ) -> tf.Tensor:
   """Applies a sequence of layers to an input."""
   output = inputs

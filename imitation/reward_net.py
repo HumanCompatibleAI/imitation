@@ -97,7 +97,7 @@ class RewardNet(serialize.Serializable):
 
   @abstractmethod
   def build_theta_network(self, obs_input: tf.Tensor, act_input: tf.Tensor,
-                          ) -> Tuple[tf.Tensor, util.Layers]:
+                          ) -> Tuple[tf.Tensor, util.LayersDict]:
     """Builds the test reward network.
 
     The output of the network is the same as the reward used for transfer
@@ -176,7 +176,7 @@ class RewardNetShaped(RewardNet):
   def build_phi_network(self,
                         old_obs_input: tf.Tensor,
                         new_obs_input: tf.Tensor,
-                        ) -> Tuple[tf.Tensor, tf.Tensor, util.Layers]:
+                        ) -> Tuple[tf.Tensor, tf.Tensor, util.LayersDict]:
     """Build the reward shaping network (disentangles dynamics from reward).
 
     XXX: We could potentially make it easier on the subclasser by requiring

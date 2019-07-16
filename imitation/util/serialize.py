@@ -39,7 +39,7 @@ class LayersSerializable(Serializable):
       ```
   """
 
-  def __init__(self, *args, layers: util.Layers, **kwargs):
+  def __init__(self, *args, layers: util.LayersDict, **kwargs):
     self._args = args
     self._kwargs = kwargs
     self._checkpoint = tf.train.Checkpoint(**layers)
@@ -55,7 +55,7 @@ class LayersSerializable(Serializable):
     restore.assert_consumed().run_restore_ops()
 
   @classmethod
-  def load(cls, directory: str) -> None:
+  def load(cls, directory: str) -> "LayersSerializable":
     with open(os.path.join(directory, 'obj'), 'rb') as f:
       obj = pickle.load(f)
     obj.load_parameters(directory)

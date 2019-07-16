@@ -40,7 +40,6 @@ def test_serialize_identity(session, env_id, reward_net_cls):
   random = rollout.RandomPolicy(env.observation_space, env.action_space)
   session.run(tf.global_variables_initializer())
 
-  # TODO(gleave): is it going to break because different variable scope?
   with tempfile.TemporaryDirectory(prefix='imitation-serialize') as tmpdir:
     original.save(tmpdir)
     with tf.variable_scope("loaded"):
