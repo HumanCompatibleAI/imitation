@@ -1,15 +1,26 @@
+import collections
+import datetime
 import functools
 import glob
 import os
-from typing import Callable, Iterable, Optional, Tuple
+from typing import Callable, Dict, Iterable, Optional, Tuple
 
 import gym
 import stable_baselines
-from stable_baselines.bench import Monitor
+from stable_baselines import bench
 from stable_baselines.common.input import observation_input
 from stable_baselines.common.policies import FeedForwardPolicy
-from stable_baselines.common.vec_env import DummyVecEnv, VecEnv
+from stable_baselines.common.vec_env import DummyVecEnv, SubprocVecEnv, VecEnv
 import tensorflow as tf
+
+# TODO(adam): this should really be OrderedDict but that breaks Python
+# See https://stackoverflow.com/questions/41207128/
+LayersDict = Dict[str, tf.layers.Layer]
+
+
+def make_timestamp():
+  ISO_TIMESTAMP = "%Y%m%d_%H%M%S"
+  return datetime.datetime.now().strftime(ISO_TIMESTAMP)
 
 
 def maybe_load_env(env_or_str, vectorize=True):
@@ -37,23 +48,38 @@ def maybe_load_env(env_or_str, vectorize=True):
   return env
 
 
-# TODO(adam): performance enhancement -- make Dummy vs Subproc configurable
-def make_vec_env(env_id: str, n_envs: int = 8, seed: int = 0):
-  """Returns a DummyVecEnv initialized with `n_envs` Envs.
+def make_vec_env(env_id: str,
+                 n_envs: int = 8,
+                 seed: int = 0,
+                 parallel: bool = False,
+                 log_dir: Optional[str] = None) -> VecEnv:
+  """Returns a VecEnv initialized with `n_envs` Envs.
 
   Args:
       env_id: The Env's string id in Gym.
       n_envs: The number of duplicate environments.
       seed: The environment seed.
+      parallel: If True, uses SubprocVecEnv; otherwise, DummyVecEnv.
+      log_dir: If specified, saves Monitor output to this directory.
   """
-  def monitored_env(i):
+  def make_env(i):
     env = gym.make(env_id)
-    env.seed(seed + i)
-    # Use Monitor to support logging the episode reward and length.
-    # TODO(adam): also log to disk -- can be useful for debugging occasionally?
-    return Monitor(env, None, allow_early_resets=True)
-  return DummyVecEnv([functools.partial(monitored_env, i)
-                      for i in range(n_envs)])
+    env.seed(seed + i)  # seed each environment separately for diversity
+
+    # Use Monitor to record statistics needed for Baselines algorithms logging
+    # Optionally, save to disk
+    log_path = None
+    if log_dir is not None:
+      log_subdir = os.path.join(log_dir, 'monitor')
+      os.makedirs(log_subdir, exist_ok=True)
+      log_path = os.path.join(log_subdir, f'mon{i:03d}')
+    return bench.Monitor(env, log_path, allow_early_resets=True)
+  env_fns = [functools.partial(make_env, i) for i in range(n_envs)]
+  if parallel:
+    # See GH hill-a/stable-baselines issue #217
+    return SubprocVecEnv(env_fns, start_method='forkserver')
+  else:
+    return DummyVecEnv(env_fns)
 
 
 def is_vec_env(env):
@@ -93,7 +119,6 @@ class FeedForward64Policy(FeedForwardPolicy):
 
 
 def make_blank_policy(env, policy_class=stable_baselines.PPO2,
-                      init_tensorboard=False,
                       policy_network_class=FeedForward32Policy, verbose=1,
                       **kwargs):
   """Instantiates a policy for the provided environment.
@@ -104,17 +129,13 @@ def make_blank_policy(env, policy_class=stable_baselines.PPO2,
           constructor from the stable_baselines module.
       policy_class (stable_baselines.BaseRLModel subclass): A policy constructor
           from the stable_baselines module.
-      init_tensorboard (bool): Whether to make TensorBoard summary writes during
-          training.
       verbose (int): The verbosity level of the policy during training.
 
   Return:
   policy (stable_baselines.BaseRLModel)
   """
   env = maybe_load_env(env)
-  return policy_class(policy_network_class, env, verbose=verbose,
-                      tensorboard_log=_get_tb_log_dir(env, init_tensorboard),
-                      **kwargs)
+  return policy_class(policy_network_class, env, verbose=verbose, **kwargs)
 
 
 def save_trained_policy(policy, savedir="saved_models", filename=None):
@@ -150,9 +171,7 @@ def make_save_policy_callback(savedir, save_interval=1):
     step += 1
     if step % save_interval == 0:
       policy = locals_['self']
-      filename = _policy_filename(policy.__class__, policy.get_env(),
-                                  step)
-      save_trained_policy(policy, savedir, filename)
+      save_trained_policy(policy, savedir, f'{step:05d}')
     return True
 
   return callback
@@ -178,17 +197,14 @@ def _get_policy_paths(env, policy_model_class, basedir, n_experts):
 
 def load_policy(env, basedir="expert_models",
                 policy_model_class=stable_baselines.PPO2,
-                init_tensorboard=False, policy_network_class=None, n_experts=1,
+                policy_network_class=None, n_experts=1,
                 **kwargs):
   """Loads and returns a pickled policy.
 
   Args:
-      env (str or Env): The Env that this policy is meant to act in, or the
-          string name of the Gym environment.
+      env (str): The string name of the Gym environment the policy is acting in.
       policy_class (stable_baselines.BaseRLModel class): A policy constructor
           from the stable_baselines module.
-      init_tensorboard (bool): Whether to initialize Tensorboard logging for
-          this policy.
       base_dir (str): The directory of the pickled file.
       policy_network_class (stable_baselines.BasePolicy): A policy network
           constructor. Unless we are using a custom BasePolicy (not builtin to
@@ -215,9 +231,7 @@ def load_policy(env, basedir="expert_models",
   pols = []
 
   for path in paths:
-    policy = policy_model_class.load(
-        path, env, tensorboard_log=_get_tb_log_dir(env, init_tensorboard),
-        **kwargs)
+    policy = policy_model_class.load(path, env, **kwargs)
     tf.logging.info("loaded policy from '{}'".format(path))
     pols.append(policy)
 
@@ -231,27 +245,38 @@ def _policy_filename(policy_class, env, n="[0-9]*"):
   return "{}_{}_{}.pkl".format(policy_class.__name__, get_env_id(env), n)
 
 
-def _get_tb_log_dir(env, init_tensorboard):
-  if init_tensorboard:
-    return "./output/{}/".format(get_env_id(env))
-  else:
-    return None
+def build_mlp(hid_sizes: Iterable[int],
+              name: Optional[str] = None,
+              activation: Optional[Callable] = tf.nn.relu,
+              initializer: Optional[Callable] = None,
+              ) -> LayersDict:
+  """Constructs an MLP, returning an ordered dict of layers."""
+  layers = collections.OrderedDict()
 
-
-def apply_ff(inputs: tf.Tensor,
-             hid_sizes: Iterable[int],
-             name: Optional[str] = None,
-             activation: Optional[Callable] = tf.nn.relu,
-             initializer: Optional[Callable] = None,
-             ) -> tf.Tensor:
-  """Applies a feed forward network on the inputs."""
-  x = inputs
+  # Hidden layers
   for i, size in enumerate(hid_sizes):
-    x = tf.layers.dense(x, size, activation=activation,
-                        kernel_initializer=initializer, name="dense" + str(i))
-  x = tf.layers.dense(x, 1, kernel_initializer=initializer,
-                      name="dense_final")
-  return tf.squeeze(x, axis=1, name=name)
+    key = f"{name}_dense{i}"
+    layer = tf.layers.Dense(size, activation=activation,
+                            kernel_initializer=initializer, name=key)
+    layers[key] = layer
+
+  # Final layer
+  layer = tf.layers.Dense(1, kernel_initializer=initializer,
+                          name=f"{name}_dense_final")
+  layers[f"{name}_dense_final"] = layer
+
+  return layers
+
+
+def sequential(inputs: tf.Tensor,
+               layers: LayersDict,
+               ) -> tf.Tensor:
+  """Applies a sequence of layers to an input."""
+  output = inputs
+  for layer in layers.values():
+    output = layer(output)
+  output = tf.squeeze(output, axis=1)
+  return output
 
 
 def build_inputs(observation_space: gym.Space,

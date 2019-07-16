@@ -4,10 +4,28 @@ from typing import Dict, List, Sequence, Tuple
 
 import gym
 import numpy as np
-from stable_baselines.common import BaseRLModel
+from stable_baselines.common.base_class import BaseRLModel
+from stable_baselines.common.policies import BasePolicy
 import tensorflow as tf
 
 from . import util  # Relative import needed to prevent cycle with __init__.py
+
+
+class RandomPolicy(BasePolicy):
+  """Returns random actions."""
+  def __init__(self, ob_space: gym.Space, ac_space: gym.Space):
+    self.ob_space = ob_space
+    self.ac_space = ac_space
+
+  def step(self, obs, state=None, mask=None, deterministic=False):
+    actions = []
+    for ob in obs:
+      assert self.ob_space.contains(ob)
+      actions.append(self.ac_space.sample())
+    return actions, None, None, None
+
+  def proba_step(self, obs, state=None, mask=None):
+    raise NotImplementedError()
 
 
 def get_action_policy(policy, observation, deterministic=False):
