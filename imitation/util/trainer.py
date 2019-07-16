@@ -13,7 +13,7 @@ import imitation.util as util
 
 def init_trainer(env_id, seed=0, log_dir=None, use_gail=False,
                  use_random_expert=True,
-                 num_vec=8, parallel=True, discrim_scale=False,
+                 num_vec=8, parallel=False, discrim_scale=False,
                  discrim_kwargs={}, reward_kwargs={}, trainer_kwargs={},
                  make_blank_policy_kwargs={}):
   """Builds a Trainer, ready to be trained on a vectorized environment

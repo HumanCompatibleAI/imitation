@@ -77,131 +77,131 @@ def train_and_plot(_seed: int,
         used to initialize the trainer.
   """
   assert n_epochs_per_plot is None or n_epochs_per_plot >= 1
-  sess = tf.Session()
-  with sess.as_default():
-    trainer = init_trainer(env_name, seed=_seed, log_dir=log_dir,
-                           **init_trainer_kwargs)
+  with tf.Session() as sess:
+    with sess.as_default():
+      trainer = init_trainer(env_name, seed=_seed, log_dir=log_dir,
+                             **init_trainer_kwargs)
 
-    tf.logging.info("Logging to %s", log_dir)
-    os.makedirs(log_dir, exist_ok=True)
-    sb_logger.configure(folder=osp.join(log_dir, 'generator'),
-                        format_strs=['tensorboard', 'stdout'])
+      tf.logging.info("Logging to %s", log_dir)
+      os.makedirs(log_dir, exist_ok=True)
+      sb_logger.configure(folder=osp.join(log_dir, 'generator'),
+                          format_strs=['tensorboard', 'stdout'])
 
-    plot_idx = 0
-    gen_data = ([], [])
-    disc_data = ([], [])
+      plot_idx = 0
+      gen_data = ([], [])
+      disc_data = ([], [])
 
-    def disc_plot_add_data(gen_mode: bool = False):
-      """Evaluates and records the discriminator loss for plotting later.
+      def disc_plot_add_data(gen_mode: bool = False):
+        """Evaluates and records the discriminator loss for plotting later.
 
-      Args:
-          gen_mode: Whether the generator or the discriminator is active.
-              We use this to color the data points.
-      """
-      nonlocal plot_idx
-      mode = "gen" if gen_mode else "dis"
-      X, Y = gen_data if gen_mode else disc_data
-      # Divide by two since we get two data points (gen and disc) per epoch.
-      X.append(plot_idx / 2)
-      Y.append(trainer.eval_disc_loss())
-      tf.logging.info(
-          "plot idx ({}): {} disc loss: {}"
-          .format(mode, plot_idx, Y[-1]))
-      plot_idx += 1
+        Args:
+            gen_mode: Whether the generator or the discriminator is active.
+                We use this to color the data points.
+        """
+        nonlocal plot_idx
+        mode = "gen" if gen_mode else "dis"
+        X, Y = gen_data if gen_mode else disc_data
+        # Divide by two since we get two data points (gen and disc) per epoch.
+        X.append(plot_idx / 2)
+        Y.append(trainer.eval_disc_loss())
+        tf.logging.info(
+            "plot idx ({}): {} disc loss: {}"
+            .format(mode, plot_idx, Y[-1]))
+        plot_idx += 1
 
-    def disc_plot_show():
-      """Render a plot of discriminator loss vs. training epoch number."""
-      plt.scatter(disc_data[0], disc_data[1], c='g', alpha=0.7, s=4,
-                  label="discriminator loss (dis step)")
-      plt.scatter(gen_data[0], gen_data[1], c='r', alpha=0.7, s=4,
-                  label="discriminator loss (gen step)")
-      plt.title("Discriminator loss")
-      plt.legend()
-      _savefig_timestamp("plot_fight_loss_disc", interactive)
-
-    gen_ep_reward = defaultdict(list)
-    rand_ep_reward = defaultdict(list)
-    exp_ep_reward = defaultdict(list)
-
-    def ep_reward_plot_add_data(env, name):
-      """Calculate and record the mean episode reward from rollouts of env."""
-      gen_policy = trainer.gen_policy
-      rand_policy = util.make_blank_policy(trainer.env)
-      exp_policy = trainer.expert_policies[-1]
-
-      gen_ret = util.rollout.mean_return(
-          gen_policy, env, n_episodes=n_episodes_per_reward_data)
-      rand_ret = util.rollout.mean_return(
-          rand_policy, env, n_episodes=n_episodes_per_reward_data)
-      exp_ret = util.rollout.mean_return(
-          exp_policy, env, n_episodes=n_episodes_per_reward_data)
-      gen_ep_reward[name].append(gen_ret)
-      rand_ep_reward[name].append(rand_ret)
-      exp_ep_reward[name].append(exp_ret)
-      tf.logging.info("generator return: {}".format(gen_ret))
-      tf.logging.info("random return: {}".format(rand_ret))
-      tf.logging.info("exp return: {}".format(exp_ret))
-
-    def ep_reward_plot_show():
-      """Render and show average episode reward plots."""
-      for name in gen_ep_reward:
-        plt.title(name + " Performance")
-        plt.xlabel("epochs")
-        plt.ylabel("Average reward per episode (n={})"
-                   .format(n_episodes_per_reward_data))
-        plt.plot(gen_ep_reward[name], label="avg gen ep reward", c="red")
-        plt.plot(rand_ep_reward[name],
-                 label="avg random ep reward", c="black")
-        plt.plot(exp_ep_reward[name], label="avg exp ep reward", c="blue")
+      def disc_plot_show():
+        """Render a plot of discriminator loss vs. training epoch number."""
+        plt.scatter(disc_data[0], disc_data[1], c='g', alpha=0.7, s=4,
+                    label="discriminator loss (dis step)")
+        plt.scatter(gen_data[0], gen_data[1], c='r', alpha=0.7, s=4,
+                    label="discriminator loss (gen step)")
+        plt.title("Discriminator loss")
         plt.legend()
-        _savefig_timestamp("plot_fight_epreward_gen", interactive)
+        _savefig_timestamp("plot_fight_loss_disc", interactive)
 
-    if n_epochs_per_plot is not None:
-      n_plots_per_epoch = 1 / n_epochs_per_plot
-    else:
-      n_plots_per_epoch = None
+      gen_ep_reward = defaultdict(list)
+      rand_ep_reward = defaultdict(list)
+      exp_ep_reward = defaultdict(list)
 
-    def should_plot_now(epoch) -> bool:
-      """For positive epochs, returns True if a plot should be rendered now.
+      def ep_reward_plot_add_data(env, name):
+        """Calculate and record the mean episode reward from rollouts of env."""
+        gen_policy = trainer.gen_policy
+        rand_policy = util.make_blank_policy(trainer.env)
+        exp_policy = trainer.expert_policies[-1]
 
-      This also controls the frequency at which `ep_reward_plot_add_data` is
-      called, because generating those rollouts is too expensive to perform
-      every timestep.
-      """
-      assert epoch >= 1
-      if n_plots_per_epoch is None:
-        return False
-      plot_num = math.floor(n_plots_per_epoch * epoch)
-      prev_plot_num = math.floor(n_plots_per_epoch * (epoch - 1))
-      assert abs(plot_num - prev_plot_num) <= 1
-      return plot_num != prev_plot_num
+        gen_ret = util.rollout.mean_return(
+            gen_policy, env, n_episodes=n_episodes_per_reward_data)
+        rand_ret = util.rollout.mean_return(
+            rand_policy, env, n_episodes=n_episodes_per_reward_data)
+        exp_ret = util.rollout.mean_return(
+            exp_policy, env, n_episodes=n_episodes_per_reward_data)
+        gen_ep_reward[name].append(gen_ret)
+        rand_ep_reward[name].append(rand_ret)
+        exp_ep_reward[name].append(exp_ret)
+        tf.logging.info("generator return: {}".format(gen_ret))
+        tf.logging.info("random return: {}".format(rand_ret))
+        tf.logging.info("exp return: {}".format(exp_ret))
 
-    # Collect data for epoch 0.
-    if n_epochs_per_plot is not None:
-      disc_plot_add_data(False)
-      ep_reward_plot_add_data(trainer.env, "Ground Truth Reward")
-      ep_reward_plot_add_data(trainer.env_train, "Train Reward")
-      ep_reward_plot_add_data(trainer.env_test, "Test Reward")
+      def ep_reward_plot_show():
+        """Render and show average episode reward plots."""
+        for name in gen_ep_reward:
+          plt.title(name + " Performance")
+          plt.xlabel("epochs")
+          plt.ylabel("Average reward per episode (n={})"
+                     .format(n_episodes_per_reward_data))
+          plt.plot(gen_ep_reward[name], label="avg gen ep reward", c="red")
+          plt.plot(rand_ep_reward[name],
+                   label="avg random ep reward", c="black")
+          plt.plot(exp_ep_reward[name], label="avg exp ep reward", c="blue")
+          plt.legend()
+          _savefig_timestamp("plot_fight_epreward_gen", interactive)
 
-    for epoch in tqdm.tqdm(range(1, n_epochs+1), desc="epoch"):
-      trainer.train_disc(n_disc_steps_per_epoch)
-      disc_plot_add_data(False)
-      trainer.train_gen(n_gen_steps_per_epoch)
-      disc_plot_add_data(True)
+      if n_epochs_per_plot is not None:
+        n_plots_per_epoch = 1 / n_epochs_per_plot
+      else:
+        n_plots_per_epoch = None
 
-      if should_plot_now(epoch):
-        disc_plot_show()
+      def should_plot_now(epoch) -> bool:
+        """For positive epochs, returns True if a plot should be rendered now.
+
+        This also controls the frequency at which `ep_reward_plot_add_data` is
+        called, because generating those rollouts is too expensive to perform
+        every timestep.
+        """
+        assert epoch >= 1
+        if n_plots_per_epoch is None:
+          return False
+        plot_num = math.floor(n_plots_per_epoch * epoch)
+        prev_plot_num = math.floor(n_plots_per_epoch * (epoch - 1))
+        assert abs(plot_num - prev_plot_num) <= 1
+        return plot_num != prev_plot_num
+
+      # Collect data for epoch 0.
+      if n_epochs_per_plot is not None:
+        disc_plot_add_data(False)
         ep_reward_plot_add_data(trainer.env, "Ground Truth Reward")
         ep_reward_plot_add_data(trainer.env_train, "Train Reward")
         ep_reward_plot_add_data(trainer.env_test, "Test Reward")
-        ep_reward_plot_show()
 
-      if checkpoint_interval is not None and epoch % checkpoint_interval == 0:
-        save(trainer, os.path.join(log_dir, "checkpoints", f"{epoch:05d}"))
+      for epoch in tqdm.tqdm(range(1, n_epochs+1), desc="epoch"):
+        trainer.train_disc(n_disc_steps_per_epoch)
+        disc_plot_add_data(False)
+        trainer.train_gen(n_gen_steps_per_epoch)
+        disc_plot_add_data(True)
 
-    save(trainer, os.path.join(log_dir, "final"))
+        if should_plot_now(epoch):
+          disc_plot_show()
+          ep_reward_plot_add_data(trainer.env, "Ground Truth Reward")
+          ep_reward_plot_add_data(trainer.env_train, "Train Reward")
+          ep_reward_plot_add_data(trainer.env_test, "Test Reward")
+          ep_reward_plot_show()
 
-    return log_dir, gen_data, disc_data, gen_ep_reward
+        if checkpoint_interval is not None and epoch % checkpoint_interval == 0:
+          save(trainer, os.path.join(log_dir, "checkpoints", f"{epoch:05d}"))
+
+      save(trainer, os.path.join(log_dir, "final"))
+
+      return log_dir, gen_data, disc_data, gen_ep_reward
 
 
 def _savefig_timestamp(prefix="", also_show=True):
