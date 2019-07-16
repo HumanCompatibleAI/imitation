@@ -1,7 +1,7 @@
 import functools
 import glob
 import os
-from typing import Iterable, Optional, Tuple
+from typing import Callable, Iterable, Optional, Tuple
 
 import gym
 import stable_baselines
@@ -241,14 +241,15 @@ def _get_tb_log_dir(env, init_tensorboard):
 def apply_ff(inputs: tf.Tensor,
              hid_sizes: Iterable[int],
              name: Optional[str] = None,
+             activation: Optional[Callable] = tf.nn.relu,
+             initializer: Optional[Callable] = None,
              ) -> tf.Tensor:
   """Applies a feed forward network on the inputs."""
-  xavier = tf.contrib.layers.xavier_initializer
   x = inputs
   for i, size in enumerate(hid_sizes):
-    x = tf.layers.dense(x, size, activation='relu',
-                        kernel_initializer=xavier(), name="dense" + str(i))
-  x = tf.layers.dense(x, 1, kernel_initializer=xavier(),
+    x = tf.layers.dense(x, size, activation=activation,
+                        kernel_initializer=initializer, name="dense" + str(i))
+  x = tf.layers.dense(x, 1, kernel_initializer=initializer,
                       name="dense_final")
   return tf.squeeze(x, axis=1, name=name)
 
