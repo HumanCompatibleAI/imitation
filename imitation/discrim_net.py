@@ -1,13 +1,16 @@
-from abc import ABC, abstractmethod
+from abc import abstractmethod
+import os
+import pickle
 from typing import Iterable, Optional
 
 import gym
 import tensorflow as tf
 
 from imitation import reward_net, util
+from imitation.util import serialize
 
 
-class DiscrimNet(ABC):
+class DiscrimNet(serialize.Serializable):
   """Abstract base class for discriminator, used in multiple IRL methods."""
 
   def __init__(self):
@@ -40,15 +43,15 @@ class DiscrimNet(ABC):
     # Holds the label of every state-action pair that the discriminator
     # is being trained on. Use 0.0 for expert policy. Use 1.0 for generated
     # policy.
-    self.labels_ph = tf.placeholder(shape=(None,), dtype=tf.int32,
-                                    name="discrim_labels")
+    self._labels_ph = tf.placeholder(shape=(None,), dtype=tf.int32,
+                                     name="discrim_labels")
 
     # This placeholder holds the generator-policy log action probabilities,
     # $\log \pi(a \mid s)$, of each state-action pair. This includes both
     # actions taken by the generator *and* those by the expert (we can
     # ask our policy for action probabilities even if we don't take them).
     # TODO(adam): this is only used by AIRL; sad we have to always include it
-    self.log_policy_act_prob_ph = tf.placeholder(
+    self._log_policy_act_prob_ph = tf.placeholder(
         shape=(None,), dtype=tf.float32, name="log_ro_act_prob_ph")
 
   @abstractmethod
@@ -58,20 +61,30 @@ class DiscrimNet(ABC):
   @property
   @abstractmethod
   def old_obs_ph(self):
-    """Gets the old observation placeholder."""
+    """The old observation placeholder."""
     pass
 
   @property
   @abstractmethod
   def act_ph(self):
-    """Gets the action placeholder."""
+    """The action placeholder."""
     pass
 
   @property
   @abstractmethod
   def new_obs_ph(self):
-    """Gets the new observation placeholder."""
+    """The new observation placeholder."""
     pass
+
+  @property
+  def labels_ph(self):
+    """The expert (0.0) or generated (1.0) labels placeholder."""
+    return self._labels_ph
+
+  @property
+  def log_policy_act_prob_ph(self):
+    """The log-probability of policy actions placeholder."""
+    return self._log_policy_act_prob_ph
 
 
 class DiscrimNetAIRL(DiscrimNet):
@@ -152,8 +165,26 @@ class DiscrimNetAIRL(DiscrimNet):
     # Note self._log_D_compl is effectively an entropy term.
     return self._log_D - self.entropy_weight * self._log_D_compl
 
+  def save(self, directory):
+    os.makedirs(directory, exist_ok=True)
+    params = {
+        "entropy_weight": self.entropy_weight,
+        "reward_net_cls": type(self.reward_net),
+    }
+    with open(os.path.join(directory, "args"), "wb") as f:
+      pickle.dump(params, f)
+    return self.reward_net.save(os.path.join(directory, "reward_net"))
 
-class DiscrimNetGAIL(DiscrimNet):
+  @classmethod
+  def load(cls, directory):
+    with open(os.path.join(directory, "args"), "rb") as f:
+      params = pickle.load(f)
+    reward_net_cls = params.pop("reward_net_cls")
+    reward_net = reward_net_cls.load(os.path.join(directory, "reward_net"))
+    return cls(reward_net=reward_net, **params)
+
+
+class DiscrimNetGAIL(DiscrimNet, serialize.LayersSerializable):
   """The discriminator to use for GAIL."""
 
   def __init__(self,
@@ -161,16 +192,18 @@ class DiscrimNetGAIL(DiscrimNet):
                action_space: gym.Space,
                hid_sizes: Optional[Iterable[int]] = None,
                scale: bool = False):
+    args = locals()
     inputs = util.build_inputs(observation_space, action_space, scale=scale)
     self._old_obs_ph, self._act_ph, self._new_obs_ph = inputs[:3]
     self.old_obs_inp, self.act_inp, self.new_obs_inp = inputs[3:]
 
     self.hid_sizes = hid_sizes
     with tf.variable_scope("discrim_network"):
-      self._discrim_logits = self.build_discrm_network(
+      discrim_mlp, self._discrim_logits = self.build_discrm_network(
           self.old_obs_inp, self.act_inp)
 
-    super().__init__()
+    DiscrimNet.__init__(self)
+    serialize.LayersSerializable.__init__(**args, layers=discrim_mlp)
 
     tf.logging.info("using GAIL")
 
@@ -194,9 +227,10 @@ class DiscrimNetGAIL(DiscrimNet):
     hid_sizes = self.hid_sizes
     if hid_sizes is None:
       hid_sizes = (32, 32)
-    discrim_logits = util.apply_ff(inputs, hid_sizes=hid_sizes)
+    discrim_mlp = util.build_mlp(hid_sizes=hid_sizes)
+    discrim_logits = util.sequential(inputs, discrim_mlp)
 
-    return discrim_logits
+    return discrim_mlp, discrim_logits
 
   def build_policy_train_reward(self):
     super().build_policy_train_reward()

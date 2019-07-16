@@ -1,13 +1,18 @@
+"""Configuration for imitation.scripts.train."""
+
+import os
+
 import sacred
 
+from imitation import util
 from imitation.scripts.config.common import DEFAULT_BLANK_POLICY_KWARGS
-from imitation.util import FeedForward64Policy
 
 train_ex = sacred.Experiment("train", interactive=True)
 
 
 @train_ex.config
 def train_defaults():
+    env_name = "CartPole-v1"  # environment to train on
     n_epochs = 50
     n_disc_steps_per_epoch = 50
     n_gen_steps_per_epoch = 2048
@@ -15,6 +20,7 @@ def train_defaults():
     init_trainer_kwargs = dict(
         use_random_expert=False,
         num_vec=8,  # NOTE: changing this also changes the effective n_steps!
+        parallel=True,  # Use SubprocVecEnv (generally faster if num_vec>1)
         reward_kwargs=dict(
             theta_units=[32, 32],
             phi_units=[32, 32],
@@ -35,6 +41,14 @@ def train_defaults():
 
         make_blank_policy_kwargs=DEFAULT_BLANK_POLICY_KWARGS,
     )
+
+    checkpoint_interval = 5  # number of epochs at which to checkpoint
+
+
+@train_ex.config
+def logging(env_name):
+    log_dir = os.path.join("output", "train",
+                           env_name.replace('/', '_'), util.make_timestamp())
 
 
 @train_ex.named_config
@@ -83,7 +97,7 @@ def swimmer():
     n_epochs = 1000
     init_trainer_kwargs = dict(
         make_blank_policy_kwargs=dict(
-            policy_network_class=FeedForward64Policy,
+            policy_network_class=util.FeedForward64Policy,
         ),
     )
 
@@ -95,3 +109,6 @@ def debug():
     n_disc_steps_per_epoch = 1
     n_gen_steps_per_epoch = 1
     n_episodes_per_reward_data = 1
+    init_trainer_kwargs = dict(
+        parallel=False,  # easier to debug with everything in one process
+    )
