@@ -16,7 +16,6 @@ pip install -r requirements.txt -r requirements-dev.txt
 pip install -e .  # install `imitation` in developer mode
 ```
 
-# Update me.
 To run:
 ```
 # Train PPO2 agent on cartpole and collect expert demonstrations
