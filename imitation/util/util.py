@@ -121,7 +121,7 @@ def get_dump_paths(env,
                    policy_class,
                    basedir: str,
                    n_dumps: int,
-                   suffix: str = "npz"
+                   suffix: str = "npz",
                    ) -> List[str]:
   """Finds `n_dumps` recent data dump files of a particular format.
 

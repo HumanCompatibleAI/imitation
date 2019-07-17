@@ -1,21 +1,11 @@
 """Tests for Behavioural Cloning (BC)."""
-from typing import Tuple
-
-import numpy as np
-
-# `init_trainer` import required for parsing configs/test.gin.
 from imitation import bc, util
-from imitation.util.trainer import init_trainer  # noqa: F401
 
 
 def test_bc():
   env_id = 'CartPole-v1'
   env = util.make_vec_env(env_id, 2)
-  expert_algos = util.load_policy(env)
-  if not expert_algos:
-    raise ValueError(env)
-
-  rollouts = load_rollouts("tests/data/rollouts", env)
+  rollouts = util.rollout.load_transitions("tests/data/rollouts", env)
   bc_trainer = bc.BCTrainer(
       env, expert_rollouts=rollouts, n_expert_timesteps=2000)
   novice_stats = bc_trainer.test_policy()

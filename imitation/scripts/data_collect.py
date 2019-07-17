@@ -3,7 +3,6 @@ import os.path as osp
 from typing import Callable, Optional
 
 import numpy as np
-
 from sacred.observers import FileStorageObserver
 import tensorflow as tf
 

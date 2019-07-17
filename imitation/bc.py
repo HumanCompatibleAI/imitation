@@ -36,7 +36,6 @@ class BCTrainer:
                batch_size=32):
     self.env = env
     self.policy_class = policy_class
-    self.expert_trainers = expert_trainers
     self.batch_size = batch_size
     expert_obs, expert_acts, _ = expert_rollouts
     self.expert_dataset = Dataset(
