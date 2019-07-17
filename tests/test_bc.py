@@ -1,4 +1,7 @@
 """Tests for Behavioural Cloning (BC)."""
+from typing import Tuple
+
+import numpy as np
 
 # `init_trainer` import required for parsing configs/test.gin.
 from imitation import bc, util
@@ -11,8 +14,10 @@ def test_bc():
   expert_algos = util.load_policy(env)
   if not expert_algos:
     raise ValueError(env)
+
+  rollouts = load_rollouts("tests/data/rollouts", env)
   bc_trainer = bc.BCTrainer(
-      env, expert_trainers=expert_algos, n_expert_timesteps=2000)
+      env, expert_rollouts=rollouts, n_expert_timesteps=2000)
   novice_stats = bc_trainer.test_policy()
   bc_trainer.train(n_epochs=40)
   good_stats = bc_trainer.test_policy()

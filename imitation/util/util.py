@@ -127,7 +127,8 @@ def get_dump_paths(env,
 
   Args:
       env (gym.Env): The environment that generated the dump file.
-      policy_class: The policy_class that generated the dump file.
+      policy_class (stable_baselines.BaseRLModel class): The policy_class that
+          generated the dump file.
       basedir: The directory containing dump files.
       n_dumps: The number of paths to return.
       suffix: The dump filename suffix.
