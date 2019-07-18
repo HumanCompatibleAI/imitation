@@ -12,8 +12,7 @@ To install:
 sudo apt install libopenmpi-dev
 conda create -n imitation python=3.7  # py3.6 is also okay.
 conda activate imitation
-pip install -r requirements.txt -r requirements-dev.txt
-pip install -e .  # install `imitation` in developer mode
+pip install -e '.[dev]'  # install `imitation` in developer mode
 ```
 
 To run:
