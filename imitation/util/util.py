@@ -1,10 +1,11 @@
 import functools
 import os
-from typing import Iterable, List, Optional, Tuple, Union
+from typing import Iterable, Optional, Tuple, Union
 
 import gym
 import stable_baselines
 from stable_baselines.bench import Monitor
+from stable_baselines.common import BaseRLModel
 from stable_baselines.common.input import observation_input
 from stable_baselines.common.policies import FeedForwardPolicy
 from stable_baselines.common.vec_env import DummyVecEnv, VecEnv
@@ -94,7 +95,7 @@ class FeedForward64Policy(FeedForwardPolicy):
 def make_blank_policy(env, policy_class=stable_baselines.PPO2,
                       init_tensorboard=False,
                       policy_network_class=FeedForward32Policy, verbose=1,
-                      **kwargs):
+                      **policy_class_kwargs):
   """Instantiates a policy for the provided environment.
 
   Args:
@@ -106,18 +107,18 @@ def make_blank_policy(env, policy_class=stable_baselines.PPO2,
       init_tensorboard (bool): Whether to make TensorBoard summary writes during
           training.
       verbose (int): The verbosity level of the policy during training.
+      policy_class_kwargs (dict): Kwargs for `policy_class`.
 
   Return:
   policy (stable_baselines.BaseRLModel)
   """
   env = maybe_load_env(env)
   return policy_class(policy_network_class, env, verbose=verbose,
-                      tensorboard_log=_get_tb_log_dir(env, init_tensorboard),
-                      **kwargs)
+                      **policy_class_kwargs)
 
 
 def save_policy(policy_dir: str,
-                policy: stable_baselines.BaseRLModel,
+                policy: BaseRLModel,
                 step: Union[str, int]):
     """Save policy weights.
 
@@ -128,8 +129,8 @@ def save_policy(policy_dir: str,
         step: Either the integer training step or "final" to mark that training
           is finished. Used as a suffix in the save file's basename.
     """
-    filename = util.dump_prefix(policy.__class__, policy.env, step) + ".pkl"
-    path = osp.join(policy_dir, filename)
+    filename = dump_prefix(policy.__class__, policy.env, step) + ".pkl"
+    path = os.path.join(policy_dir, filename)
     policy.save(path)
     tf.logging.info("Saved policy pickle to {}.".format(path))
 
@@ -139,8 +140,8 @@ def load_policy(path: str,
                 policy_model_class=stable_baselines.PPO2,
                 init_tensorboard=False,
                 policy_network_class=None,
-                **kwargs) -> stable_baselines.BaseRLModel:
-  """Loads and returns an policy encapsulated in a RLModel.
+                **kwargs) -> BaseRLModel:
+  """Loads and returns an policy, encapsulated in a RLModel.
 
   Args:
       path (str): Path to the policy dump.

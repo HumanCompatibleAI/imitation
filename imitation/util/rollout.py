@@ -2,11 +2,10 @@ import collections
 import functools
 import glob
 import os
-from typing import Dict, List, Sequence, Tuple
+from typing import Dict, List, Optional, Sequence, Tuple, Union
 
 import gym
 import numpy as np
-import stable_baselines
 from stable_baselines.common import BaseRLModel
 import tensorflow as tf
 
@@ -425,7 +424,7 @@ def generate_transitions_multiple(policies, env, n_timesteps, *, truncate=True,
 
 
 def save_transitions(rollout_dir: str,
-                     policy: stable_baselines.BaseRLModel,
+                     policy: BaseRLModel,
                      step: Union[str, int],
                      n_timesteps: int) -> None:
     """Save obs-act-obs-rew transitions from rollouts of the policy.
@@ -439,9 +438,9 @@ def save_transitions(rollout_dir: str,
         n_timesteps: The number of rollout timesteps in the save file.
     """
     filename = util.dump_prefix(policy.__class__, policy.env, step) + ".npz"
-    path = osp.join(rollout_dir, filename)
-    obs_old, act, obs_new, rew = util.rollout.generate_transitions(
-      policy, env, n_timesteps)
+    path = os.path.join(rollout_dir, filename)
+    obs_old, act, obs_new, rew = generate_transitions(
+      policy, policy.get_env(), n_timesteps=n_timesteps)
     np.savez_compressed(path,
                         obs_old=obs_old, act=act, obs_new=obs_new, rew=rew)
     tf.logging.info("Dumped demonstrations to {}.".format(path))
@@ -467,10 +466,10 @@ def load_transitions(rollouts_glob: str,
   """
   ro_paths = glob.glob(rollouts_glob)
   if len(ro_paths) == 0:
-    raise ValueError(f"No files match glob '{ro_paths}'")
+    raise ValueError(f"No files match glob '{rollouts_glob}'")
   if max_n_files is not None:
     ro_paths.sort(key=os.path.getmtime)
-    ro_paths = ro_paths[-max_n_dumps:]
+    ro_paths = ro_paths[-max_n_files:]
   return _joined_rollouts(ro_paths)
 
 

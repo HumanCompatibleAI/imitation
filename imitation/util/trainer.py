@@ -4,6 +4,8 @@ Utility functions for manipulating Trainer.
 (The primary reason these functions are here instead of in utils.py is to
 prevent cyclic imports between imitation.trainer and imitation.util)
 """
+from typing import Optional
+
 import imitation.discrim_net as discrim_net
 from imitation.reward_net import BasicShapedRewardNet
 from imitation.trainer import Trainer
@@ -57,7 +59,7 @@ def init_trainer(env_id: str,
     discrim = discrim_net.DiscrimNetAIRL(rn, **discrim_kwargs)
 
   expert_rollouts = util.rollout.load_transitions(
-      rollouts_glob, env, max_n_files=max_n_files)
+      rollouts_glob, max_n_files=max_n_files)
   trainer = Trainer(env, gen_policy, discrim, expert_rollouts,
                     **trainer_kwargs)
   return trainer

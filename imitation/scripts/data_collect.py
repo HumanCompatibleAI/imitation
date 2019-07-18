@@ -2,9 +2,7 @@ import os
 import os.path as osp
 from typing import Callable, Optional
 
-import numpy as np
 from sacred.observers import FileStorageObserver
-import stable_baselines
 import tensorflow as tf
 
 from imitation.scripts.config.data_collect import data_collect_ex
@@ -75,9 +73,10 @@ def main(env_name: str,
   policy.learn(total_timesteps, callback=callback)
 
   if rollout_save:
-    save_rollouts(rollout_dir, policy, "final", rollout_save_n_samples)
+    util.rollout.save_transitions(
+      rollout_dir, policy, "final", rollout_save_n_samples)
   if policy_save:
-    save_policies(policy_dir, policy, "final")
+    util.save_policy(policy_dir, policy, "final")
 
 
 def _make_callback(rollout_save: bool = False,
