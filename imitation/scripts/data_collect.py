@@ -105,53 +105,13 @@ def _make_callback(rollout_save: bool = False,
     policy = locals_['self']
 
     if rollout_ok and step % rollout_save_interval == 0:
-      save_rollouts(rollout_dir, policy, step, rollout_save_n_samples)
+      util.rollout.save_transitions(
+        rollout_dir, policy, step, rollout_save_n_samples)
     if policy_ok and step % policy_save_interval == 0:
-      save_policies(policy_dir, policy, step)
+      util.save_policy(policy_dir, policy, step)
     return True
 
   return callback
-
-
-def save_rollouts(rollout_dir: str,
-                  policy: stable_baselines.BaseRLModel,
-                  step: Union[str, int],
-                  n_timesteps: int) -> None:
-    """Save obs-act-obs-rew transitions from rollouts of the policy.
-
-    Args:
-        rollout_dir: Path to the save directory.
-        policy: The stable baselines policy. Environment is inferred from
-          `policy.get_env()`.
-        step: Either the integer training step or "final" to mark that training
-          is finished. Used as a suffix in the save file's basename.
-        n_timesteps: The number of rollout timesteps in the save file.
-    """
-    filename = util.dump_prefix(policy.__class__, policy.env, step) + ".npz"
-    path = osp.join(rollout_dir, filename)
-    obs_old, act, obs_new, rew = util.rollout.generate_transitions(
-      policy, env, n_timesteps)
-    np.savez_compressed(path,
-                        obs_old=obs_old, act=act, obs_new=obs_new, rew=rew)
-    tf.logging.info("Dumped demonstrations to {}.".format(path))
-
-
-def save_policies(policy_dir: str,
-                  policy: stable_baselines.BaseRLModel,
-                  step: Union[str, int]):
-    """Save policy weights.
-
-    Args:
-        rollout_dir: Path to the save directory.
-        policy: The stable baselines policy. Environment is inferred from
-          `policy.get_env()`.
-        step: Either the integer training step or "final" to mark that training
-          is finished. Used as a suffix in the save file's basename.
-    """
-    filename = util.dump_prefix(policy.__class__, policy.env, step) + ".pkl"
-    path = osp.join(policy_dir, filename)
-    policy.save(path)
-    tf.logging.info("Saved policy pickle to {}.".format(path))
 
 
 if __name__ == "__main__":

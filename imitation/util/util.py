@@ -116,6 +116,24 @@ def make_blank_policy(env, policy_class=stable_baselines.PPO2,
                       **kwargs)
 
 
+def save_policy(policy_dir: str,
+                policy: stable_baselines.BaseRLModel,
+                step: Union[str, int]):
+    """Save policy weights.
+
+    Args:
+        rollout_dir: Path to the save directory.
+        policy: The stable baselines policy. Environment is inferred from
+          `policy.get_env()`.
+        step: Either the integer training step or "final" to mark that training
+          is finished. Used as a suffix in the save file's basename.
+    """
+    filename = util.dump_prefix(policy.__class__, policy.env, step) + ".pkl"
+    path = osp.join(policy_dir, filename)
+    policy.save(path)
+    tf.logging.info("Saved policy pickle to {}.".format(path))
+
+
 def load_policy(path: str,
                 env: gym.Env,
                 policy_model_class=stable_baselines.PPO2,
