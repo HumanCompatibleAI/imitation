@@ -119,7 +119,7 @@ def test_train_no_crash(use_gail, env='CartPole-v1'):
 def test_trained_policy_better_than_random(use_gail, env='CartPole-v1',
                                            n_episodes=50):
   """
-  Make sure that generator policy trained to mimick expert policy
+  Make sure that generator policy trained to mimic expert policy
   demonstrations) achieves higher reward than a random policy.
 
   In other words, perform a basic check on the imitation learning
