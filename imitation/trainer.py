@@ -51,8 +51,8 @@ class Trainer:
 
     Args:
         env: A Gym environment or ID that the policy is trained on.
-        gen_policy: The generator policy that trained to maximize discriminator
-                    confusion.
+        gen_policy: The generator policy that is trained to maximize
+                    discriminator confusion.
         discrim: The discriminator network.
             For GAIL, use a DiscrimNetGAIL. For AIRL, use a DiscrimNetAIRL.
         expert_policies: An expert policy
