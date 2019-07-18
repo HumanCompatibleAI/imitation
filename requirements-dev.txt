@@ -1,5 +1,6 @@
 # Recommended packages for development
 autopep8
+codespell
 flake8
 flake8-blind-except
 flake8-builtins
