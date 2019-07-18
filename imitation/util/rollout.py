@@ -1,5 +1,7 @@
 import collections
 import functools
+import glob
+import os
 from typing import Dict, List, Sequence, Tuple
 
 import gym
@@ -422,32 +424,31 @@ def generate_transitions_multiple(policies, env, n_timesteps, *, truncate=True,
   return tuple(np.array(x) for x in (obs_old, act, obs_new))
 
 
-def load_transitions(rollouts_dir: str,
-                     env: gym.Env,
-                     policy_class=stable_baselines.PPO2,
-                     n_dumps: int = 1,
+def load_transitions(rollouts_glob: str,
+                     max_n_files: Optional[int] = None,
                      ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
   """Load rollouts from the `data_collect` directory.
 
   Args:
-    rollouts_dir (str): Path to the directory where rollouts were saved.
-    env (gym.Env): The environment.
-    policy_class (stable_baselines.BaseRLModel class): The policy class that
-        generated the rollouts.
-    n_dumps: The number of rollout .npz files loaded and combined.
+      rollouts_glob: Glob path to `.npz` rollout files.
+      max_n_files: If provided, then only load the most recent `max_n_files`
+          files, as sorted by modification times.
 
   Returns:
-    old_obs: Old observations.
-    acts: Actions.
-    new_obs: New observations.
+      old_obs: Old observations.
+      acts: Actions.
+      new_obs: New observations.
+
+  Raises:
+      ValueError: No files match the glob.
   """
-  ro_paths = util.get_dump_paths(
-    env,
-    basedir=rollouts_dir,
-    policy_class=policy_class,
-    n_dumps=n_dumps)
-  rollouts = _joined_rollouts(ro_paths)
-  return rollouts
+  ro_paths = glob.glob(rollouts_glob)
+  if len(ro_paths) == 0:
+    raise ValueError(f"No files match glob '{ro_paths}'")
+  if max_n_files is not None:
+    ro_paths.sort(key=os.path.getmtime)
+    ro_paths = ro_paths[-max_n_dumps:]
+  return _joined_rollouts(ro_paths)
 
 
 def _joined_rollouts(npz_paths: Sequence[str]

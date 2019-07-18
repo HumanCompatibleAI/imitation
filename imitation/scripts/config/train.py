@@ -13,7 +13,6 @@ def train_defaults():
     n_gen_steps_per_epoch = 2048
 
     init_trainer_kwargs = dict(
-        rollouts_dir="data/rollouts",
         n_rollout_dumps=1,
         num_vec=8,  # NOTE: changing this also changes the effective n_steps!
         reward_kwargs=dict(

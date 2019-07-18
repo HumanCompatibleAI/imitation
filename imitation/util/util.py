@@ -1,5 +1,4 @@
 import functools
-import glob
 import os
 from typing import Iterable, List, Optional, Tuple, Union
 
@@ -117,48 +116,16 @@ def make_blank_policy(env, policy_class=stable_baselines.PPO2,
                       **kwargs)
 
 
-def get_dump_paths(env,
-                   policy_class,
-                   basedir: str,
-                   n_dumps: int,
-                   suffix: str = "npz",
-                   ) -> List[str]:
-  """Finds `n_dumps` recent data dump files of a particular format.
-
-  Args:
-      env (gym.Env): The environment that generated the dump file.
-      policy_class (stable_baselines.BaseRLModel class): The policy_class that
-          generated the dump file.
-      basedir: The directory containing dump files.
-      n_dumps: The number of paths to return.
-      suffix: The dump filename suffix.
-  Returns:
-      paths: A list containing paths to the `n_dumps` most recent dump files.
-  """
-  assert n_dumps > 0
-  prefix = dump_prefix(policy_class, env, "[0-9]*")
-  filename = f"{prefix}.{suffix}"
-  glob_path = os.path.join(basedir, filename)
-
-  paths = glob.glob(glob_path)
-  paths.sort(key=lambda f: int(''.join(filter(str.isdigit, f))))
-
-  if len(paths) < n_dumps:
-    raise ValueError(
-        "Wanted to load {} data files, but there were only {} experts at {}"
-        .format(n_dumps, len(paths), glob_path))
-
-  paths = paths[-n_dumps:]
-  return paths
-
-
-def load_policy(env, basedir="expert_models",
+def load_policy(path: str,
+                env: gym.Env,
                 policy_model_class=stable_baselines.PPO2,
-                init_tensorboard=False, policy_network_class=None, n_experts=1,
-                **kwargs):
-  """Loads and returns a pickled policy.
+                init_tensorboard=False,
+                policy_network_class=None,
+                **kwargs) -> stable_baselines.BaseRLModel:
+  """Loads and returns an policy encapsulated in a RLModel.
 
   Args:
+      path (str): Path to the policy dump.
       env (str or Env): The Env that this policy is meant to act in, or the
           string name of the Gym environment.
       policy_class (stable_baselines.BaseRLModel class): A policy constructor
@@ -178,26 +145,14 @@ def load_policy(env, basedir="expert_models",
   # terminology). Should fix the naming, or change it so that it actually loads
   # policies (which is often what is really wanted, IMO).
 
-  # FIXME: a lot of code assumes that this function returns None on failure,
-  # which it does not. That upstream code also needs to be fixed.
-
-  paths = get_dump_paths(env, policy_model_class, basedir, n_experts)
-
   env = maybe_load_env(env)
 
   if (policy_network_class is not None) and ("policy" not in kwargs):
     kwargs["policy"] = policy_network_class
 
-  pols = []
-
-  for path in paths:
-    policy = policy_model_class.load(
-        path, env, tensorboard_log=_get_tb_log_dir(env, init_tensorboard),
-        **kwargs)
-    tf.logging.info("loaded policy from '{}'".format(path))
-    pols.append(policy)
-
-  return pols
+  policy = policy_model_class.load(path, env, **kwargs)
+  tf.logging.info("loaded policy from '{}'".format(path))
+  return policy
 
 
 def dump_prefix(policy_class, env, n: Union[int, str]) -> str:
@@ -209,14 +164,7 @@ def dump_prefix(policy_class, env, n: Union[int, str]) -> str:
       n: Either the training step number, or a glob expression for matching dump
           files in `get_dump_paths`.
   """
-  return "{}_{}_{}".format(policy_class.__name__, get_env_id(env), n)
-
-
-def _get_tb_log_dir(env, init_tensorboard):
-  if init_tensorboard:
-    return "./output/{}/".format(get_env_id(env))
-  else:
-    return None
+  return "{}_{}_{}".format(get_env_id(env), policy_class.__name__, n)
 
 
 def apply_ff(inputs: tf.Tensor,
