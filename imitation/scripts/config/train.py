@@ -96,11 +96,3 @@ def fast():
     n_disc_steps_per_epoch = 1
     n_gen_steps_per_epoch = 1
     n_episodes_per_reward_data = 1
-
-
-@train_ex.named_config
-def test_data():
-    """Read data from test data directories, rather than the default."""
-    init_trainer_kwargs = dict(
-        rollouts_dir="tests/data/rollouts",
-    )

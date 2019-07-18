@@ -21,10 +21,11 @@ def make_PPO2(env_name, num_vec, **make_blank_policy_kwargs):
 
 
 @data_collect_ex.main
-def main(env_name, total_timesteps,
+def main(env_name: str,
+         total_timesteps: int,
          *,
-         num_vec=8,
-         make_blank_policy_kwargs={},
+         num_vec: int = 8,
+         make_blank_policy_kwargs: dict = {},
 
          rollout_save: bool = False,
          rollout_save_interval: Optional[int] = None,
@@ -84,9 +85,6 @@ def _make_callback(rollout_save: bool = False,
     env = policy.get_env()
     assert env is not None
 
-    # TODO(shwang): It's kinda gross that my rollout demonstration data,
-    # which is policy independent, has a filename that depends on the policy.
-    # Maybe I should make the prefix take the policy.__class__ optionally.
     if rollout_save and step % rollout_save_interval == 0:
       filename = util.dump_prefix(policy.__class__, env, step) + ".npz"
       path = osp.join(rollout_dir, filename)

@@ -8,7 +8,7 @@ data_collect_ex = sacred.Experiment("data_collect")
 
 @data_collect_ex.config
 def data_collect_defaults():
-    env_name = "FILL ME"  # The gym.Env name
+    env_name = "CartPole-v1"  # The gym.Env name
     total_timesteps = int(1e6)  # Number of training timesteps in model.learn()
     num_vec = 8  # Number of environments in DummyVecEnv
     make_blank_policy_kwargs = DEFAULT_BLANK_POLICY_KWARGS

@@ -39,7 +39,7 @@ def train_and_plot(env_name: str = 'CartPole-v1',
     - Plot discriminator loss during discriminator training steps in blue and
       discriminator loss during generator training steps in red.
     - Plot the performance of the generator policy versus the performance of
-      a random policy. Also plot the performance an expert policy if that is
+      a random policy. Also plot the performance of an expert policy if that is
       provided in the arguments.
 
   Args:
