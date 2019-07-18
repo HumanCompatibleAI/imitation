@@ -86,22 +86,30 @@ def _make_callback(rollout_save: bool = False,
     assert env is not None
 
     if rollout_save and step % rollout_save_interval == 0:
-      filename = util.dump_prefix(policy.__class__, env, step) + ".npz"
-      path = osp.join(rollout_dir, filename)
-      obs_old, act, obs_new, rew = util.rollout.generate_transitions(
-        policy, env, n_timesteps=rollout_save_n_samples)
-      np.savez_compressed(path,
-                          obs_old=obs_old, act=act, obs_new=obs_new, rew=rew)
-      tf.logging.info("Dumped demonstrations to {}.".format(path))
+      save_rollouts(rollout_dir, policy, step)
 
     if policy_save and step % policy_save_interval == 0:
-      filename = util.dump_prefix(policy.__class__, env, step) + ".pkl"
-      path = osp.join(policy_dir, filename)
-      policy.save(path)
-      tf.logging.info("Saved policy pickle to {}.".format(path))
+      save_policies(policy_dir, policy, step)
     return True
 
   return callback
+
+
+def save_rollouts(rollout_dir, policy, step):
+    filename = util.dump_prefix(policy.__class__, policy.env, step) + ".npz"
+    path = osp.join(rollout_dir, filename)
+    obs_old, act, obs_new, rew = util.rollout.generate_transitions(
+      policy, env, n_timesteps=rollout_save_n_samples)
+    np.savez_compressed(path,
+                        obs_old=obs_old, act=act, obs_new=obs_new, rew=rew)
+    tf.logging.info("Dumped demonstrations to {}.".format(path))
+
+
+def save_policies(policy_dir, policy, step):
+    filename = util.dump_prefix(policy.__class__, policy.env, step) + ".pkl"
+    path = osp.join(policy_dir, filename)
+    policy.save(path)
+    tf.logging.info("Saved policy pickle to {}.".format(path))
 
 
 if __name__ == "__main__":
