@@ -482,13 +482,13 @@ def save(rollout_dir: str,
     tf.logging.info("Dumped demonstrations to {}.".format(path))
 
 
-def load_trajectories(rollouts_glob: str,
+def load_trajectories(rollout_glob: str,
                       max_n_files: Optional[int] = None,
                       ) -> TrajectoryList:
   """Load trajectories from rollout pickles.
 
   Args:
-      rollouts_glob: Glob path to rollout pickles.
+      rollout_glob: Glob path to rollout pickles.
       max_n_files: If provided, then only load the most recent `max_n_files`
           files, as sorted by modification times.
 
@@ -498,9 +498,9 @@ def load_trajectories(rollouts_glob: str,
   Raises:
       ValueError: No files match the glob.
   """
-  ro_paths = glob.glob(rollouts_glob)
+  ro_paths = glob.glob(rollout_glob)
   if len(ro_paths) == 0:
-    raise ValueError(f"No files match glob '{rollouts_glob}'")
+    raise ValueError(f"No files match glob '{rollout_glob}'")
   if max_n_files is not None:
     ro_paths.sort(key=os.path.getmtime)
     ro_paths = ro_paths[-max_n_files:]
@@ -515,13 +515,13 @@ def load_trajectories(rollouts_glob: str,
   return traj_joined
 
 
-def load_transitions(rollouts_glob: str,
+def load_transitions(rollout_glob: str,
                      max_n_files: Optional[int] = None,
                      ) -> TransitionsTuple:
   """Load transitions from rollout pickles.
 
   Args:
-      rollouts_glob: Glob path to rollout pickles.
+      rollout_glob: Glob path to rollout pickles.
       max_n_files: If provided, then only load the most recent `max_n_files`
           files, as sorted by modification times.
 
@@ -534,5 +534,5 @@ def load_transitions(rollouts_glob: str,
   Raises:
       ValueError: No files match the glob.
   """
-  traj_list = load_trajectories(rollouts_glob, max_n_files)
+  traj_list = load_trajectories(rollout_glob, max_n_files)
   return flatten_trajectories(traj_list)

@@ -23,7 +23,7 @@ def setup_and_teardown(session):
 
 def init_test_trainer(env_id: str, use_gail: bool, parallel: bool = False):
   return init_trainer(env_id=env_id,
-                      rollouts_glob=f"tests/data/rollouts/{env_id}*.pkl",
+                      rollout_glob=f"tests/data/rollouts/{env_id}*.pkl",
                       use_gail=use_gail,
                       parallel=parallel)
 

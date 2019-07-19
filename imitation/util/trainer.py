@@ -13,7 +13,7 @@ import imitation.util as util
 
 
 def init_trainer(env_id: str,
-                 rollouts_glob: Optional[str] = None,
+                 rollout_glob: Optional[str] = None,
                  seed: int = 0,
                  log_dir: str = None,
                  use_gail: bool = False,
@@ -30,8 +30,8 @@ def init_trainer(env_id: str,
 
   Args:
     env_id: The string id of a gym environment.
-    rollouts_glob: A glob that matches rollout pickles.
-      If `rollouts_glob` is None, then use the default glob
+    rollout_glob: A glob that matches rollout pickles.
+      If `rollout_glob` is None, then use the default glob
       `f"data/rollouts/{env_id}_*.pkl"`.
     seed: Random seed.
     log_dir: Directory for logging output.
@@ -51,7 +51,7 @@ def init_trainer(env_id: str,
   """
   env = util.make_vec_env(env_id, num_vec, seed=seed, parallel=parallel,
                           log_dir=log_dir)
-  rollouts_glob = rollouts_glob or f"data/rollouts/{env_id}_*.pkl"
+  rollout_glob = rollout_glob or f"data/rollouts/{env_id}_*.pkl"
   gen_policy = util.make_blank_policy(env, verbose=1,
                                       **make_blank_policy_kwargs)
 
@@ -66,7 +66,7 @@ def init_trainer(env_id: str,
     discrim = discrim_net.DiscrimNetAIRL(rn, **discrim_kwargs)
 
   expert_rollouts = util.rollout.load_transitions(
-      rollouts_glob, max_n_files=max_n_files)[:3]
+      rollout_glob, max_n_files=max_n_files)[:3]
   trainer = Trainer(env, gen_policy, discrim, expert_rollouts,
                     **trainer_kwargs)
   return trainer

@@ -19,7 +19,7 @@ def test_train():
       'init_trainer_kwargs': {
           # codecov does not like parallel
           'parallel': False,
-          'rollouts_glob': "tests/data/rollouts/CartPole*.pkl",
+          'rollout_glob': "tests/data/rollouts/CartPole*.pkl",
       },
   }
   train_ex.run(
