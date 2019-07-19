@@ -60,3 +60,9 @@ def swimmer():
     make_blank_policy_kwargs = dict(
         policy_network_class=util.FeedForward64Policy,
     )
+
+
+@data_collect_ex.named_config
+def fast():
+    """Intended for testing purposes: small # of updates, ends quickly."""
+    total_timesteps = int(1e4)

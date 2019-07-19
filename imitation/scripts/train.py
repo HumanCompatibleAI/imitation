@@ -82,7 +82,7 @@ def train_and_plot(_seed: int,
   """
   assert n_epochs_per_plot is None or n_epochs_per_plot >= 1
 
-  with tf.Session().as_default():
+  with util.make_session():
     trainer = init_trainer(env_name, seed=_seed, log_dir=log_dir,
                            **init_trainer_kwargs)
 

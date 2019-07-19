@@ -57,29 +57,31 @@ def main(_seed: int,
           the same semantics are `rollout_save_interval`.
       policy_dir: The directory that policies are saved in.
   """
-  tf.logging.set_verbosity(tf.logging.INFO)
-  sb_logger.configure(folder=osp.join(log_dir, 'rl'),
-                      format_strs=['tensorboard', 'stdout'])
+  with util.make_session():
+    tf.logging.set_verbosity(tf.logging.INFO)
+    sb_logger.configure(folder=osp.join(log_dir, 'rl'),
+                        format_strs=['tensorboard', 'stdout'])
 
-  env = util.make_vec_env(env_name, num_vec, seed=_seed,
-                          parallel=parallel, log_dir=log_dir)
-  # TODO(adam): add support for wrapping env with VecNormalize
-  # (This is non-trivial since we'd need to make sure it's also applied
-  # when the policy is re-loaded to generate rollouts.)
-  policy = util.make_blank_policy(env, verbose=1, **make_blank_policy_kwargs)
+    env = util.make_vec_env(env_name, num_vec, seed=_seed,
+                            parallel=parallel, log_dir=log_dir)
+    # TODO(adam): add support for wrapping env with VecNormalize
+    # (This is non-trivial since we'd need to make sure it's also applied
+    # when the policy is re-loaded to generate rollouts.)
+    policy = util.make_blank_policy(env, verbose=1,
+                                    **make_blank_policy_kwargs)
 
-  callback = _make_callback(
-    env_name,
-    rollout_save, rollout_save_interval, rollout_save_n_samples,
-    rollout_dir, policy_save, policy_save_interval, policy_dir)
+    callback = _make_callback(
+      env_name,
+      rollout_save, rollout_save_interval, rollout_save_n_samples,
+      rollout_dir, policy_save, policy_save_interval, policy_dir)
 
-  policy.learn(total_timesteps, callback=callback)
+    policy.learn(total_timesteps, callback=callback)
 
-  if rollout_save:
-    util.rollout.save_transitions(
-      rollout_dir, policy, env_name, "final", rollout_save_n_samples)
-  if policy_save:
-    util.save_policy(policy_dir, policy, env_name, "final")
+    if rollout_save:
+      util.rollout.save_transitions(
+        rollout_dir, policy, env_name, "final", rollout_save_n_samples)
+    if policy_save:
+      util.save_policy(policy_dir, policy, env_name, "final")
 
 
 def _make_callback(env_name: str,

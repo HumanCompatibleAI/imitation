@@ -1,4 +1,5 @@
 import collections
+import contextlib
 import datetime
 import functools
 import os
@@ -257,3 +258,24 @@ def build_inputs(observation_space: gym.Space,
   new_obs_ph, new_obs_inp = observation_input(observation_space,
                                               name="new_obs", scale=scale)
   return old_obs_ph, act_ph, new_obs_ph, old_obs_inp, act_inp, new_obs_inp
+
+
+@contextlib.contextmanager
+def make_session(**kwargs):
+  """Context manager for a TensorFlow session.
+
+  The session is associated with a newly created graph. Both session and
+  graph are set as default. The session will be closed when exiting this
+  context manager.
+
+  Args:
+    kwargs: passed through to `tf.Session`.
+
+  Yields:
+    (graph, session) where graph is a `tf.Graph` and `session` a `tf.Session`.
+  """
+  graph = tf.Graph()
+  with graph.as_default():
+    with tf.Session(graph=graph, **kwargs) as session:
+      with session.as_default():
+        yield graph, session
