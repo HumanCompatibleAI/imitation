@@ -1,31 +1,44 @@
+"""Tests for imitation.trainer.Trainer and util.trainer.init_trainer."""
+import os
+
 import pytest
-import tensorflow as tf
 
 from imitation import util
 from imitation.util import rollout
 from imitation.util.trainer import init_trainer
 
-use_gail_vals = [True, False]
+USE_GAIL = [True, False]
+IN_CODECOV = 'COV_CORE_CONFIG' in os.environ
+if IN_CODECOV:  # multiprocessing breaks codecov, disable
+  PARALLEL = [False]
+else:
+  PARALLEL = [True, False]
 
 
 @pytest.fixture(autouse=True)
-def setup_and_teardown():
+def setup_and_teardown(session):
+  # Uses conftest.session fixture for everything in this file
   yield
-  tf.reset_default_graph()
 
 
-def init_test_trainer(env: str, use_gail: bool):
-    return init_trainer(env, f"tests/data/rollouts/{env}*.npz", use_gail)
+def init_test_trainer(env_id: str, use_gail: bool, parallel: bool = False):
+  return init_trainer(env_id=env_id,
+                      rollouts_glob=f"tests/data/rollouts/{env_id}*.npz",
+                      use_gail=use_gail,
+                      parallel=parallel)
 
 
-@pytest.mark.parametrize("use_gail", use_gail_vals)
-def test_init_no_crash(use_gail, env='CartPole-v1'):
-  init_test_trainer(env, use_gail)
+@pytest.mark.parametrize("use_gail", USE_GAIL)
+@pytest.mark.parametrize("parallel", PARALLEL)
+def test_init_no_crash(use_gail, parallel, env='CartPole-v1'):
+  init_test_trainer(env, use_gail=use_gail, parallel=parallel)
 
 
-@pytest.mark.parametrize("use_gail", use_gail_vals)
-def test_train_disc_no_crash(use_gail, env='CartPole-v1', n_timesteps=200):
-  trainer = init_test_trainer(env, use_gail)
+@pytest.mark.parametrize("use_gail", USE_GAIL)
+@pytest.mark.parametrize("parallel", PARALLEL)
+def test_train_disc_no_crash(use_gail, parallel,
+                             env='CartPole-v1', n_timesteps=200):
+  trainer = init_test_trainer(env, use_gail=use_gail, parallel=parallel)
   trainer.train_disc()
   obs_old, act, obs_new, _ = rollout.generate_transitions(
       trainer.gen_policy, env, n_timesteps=n_timesteps)
@@ -33,14 +46,15 @@ def test_train_disc_no_crash(use_gail, env='CartPole-v1', n_timesteps=200):
                      gen_new_obs=obs_new)
 
 
-@pytest.mark.parametrize("use_gail", use_gail_vals)
-def test_train_gen_no_crash(use_gail, env='CartPole-v1', n_steps=10):
-  trainer = init_test_trainer(env, use_gail)
+@pytest.mark.parametrize("use_gail", USE_GAIL)
+@pytest.mark.parametrize("parallel", PARALLEL)
+def test_train_gen_no_crash(use_gail, parallel, env='CartPole-v1', n_steps=10):
+  trainer = init_test_trainer(env, use_gail=use_gail, parallel=parallel)
   trainer.train_gen(n_steps)
 
 
 @pytest.mark.expensive
-@pytest.mark.parametrize("use_gail", use_gail_vals)
+@pytest.mark.parametrize("use_gail", USE_GAIL)
 def test_train_disc_improve_D(use_gail, env='CartPole-v1', n_timesteps=200,
                               n_steps=1000):
   trainer = init_test_trainer(env, use_gail)
@@ -97,14 +111,14 @@ def test_train_disc_then_gen(use_gail=False, env='CartPole-v1', n_timesteps=200,
 
 
 @pytest.mark.expensive
-@pytest.mark.parametrize("use_gail", use_gail_vals)
+@pytest.mark.parametrize("use_gail", USE_GAIL)
 def test_train_no_crash(use_gail, env='CartPole-v1'):
   trainer = init_test_trainer(env, use_gail)
   trainer.train(n_epochs=1)
 
 
 @pytest.mark.expensive
-@pytest.mark.parametrize("use_gail", use_gail_vals)
+@pytest.mark.parametrize("use_gail", USE_GAIL)
 def test_wrap_learned_reward_no_crash(use_gail, env="CartPole-v1"):
   """
   Briefly train with AIRL, and then used the learned reward to wrap
@@ -115,6 +129,6 @@ def test_wrap_learned_reward_no_crash(use_gail, env="CartPole-v1"):
   trainer.train(n_epochs=1)
 
   learned_reward_env = trainer.wrap_env_test_reward(env)
-  policy = util.make_blank_policy(env, init_tensorboard=False)
+  policy = util.make_blank_policy(env)
   policy.set_env(learned_reward_env)
   policy.learn(10)

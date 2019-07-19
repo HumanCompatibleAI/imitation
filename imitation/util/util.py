@@ -1,15 +1,26 @@
+import collections
+import datetime
 import functools
 import os
-from typing import Iterable, Optional, Tuple, Union
+from typing import Callable, Dict, Iterable, Optional, Tuple, Union
 
 import gym
 import stable_baselines
-from stable_baselines.bench import Monitor
+from stable_baselines import bench
 from stable_baselines.common import BaseRLModel
 from stable_baselines.common.input import observation_input
 from stable_baselines.common.policies import FeedForwardPolicy
-from stable_baselines.common.vec_env import DummyVecEnv, VecEnv
+from stable_baselines.common.vec_env import DummyVecEnv, SubprocVecEnv, VecEnv
 import tensorflow as tf
+
+# TODO(adam): this should really be OrderedDict but that breaks Python
+# See https://stackoverflow.com/questions/41207128/
+LayersDict = Dict[str, tf.layers.Layer]
+
+
+def make_timestamp():
+  ISO_TIMESTAMP = "%Y%m%d_%H%M%S"
+  return datetime.datetime.now().strftime(ISO_TIMESTAMP)
 
 
 def maybe_load_env(env_or_str, vectorize=True):
@@ -37,23 +48,38 @@ def maybe_load_env(env_or_str, vectorize=True):
   return env
 
 
-# TODO(adam): performance enhancement -- make Dummy vs Subproc configurable
-def make_vec_env(env_id: str, n_envs: int = 8, seed: int = 0):
-  """Returns a DummyVecEnv initialized with `n_envs` Envs.
+def make_vec_env(env_id: str,
+                 n_envs: int = 8,
+                 seed: int = 0,
+                 parallel: bool = False,
+                 log_dir: Optional[str] = None) -> VecEnv:
+  """Returns a VecEnv initialized with `n_envs` Envs.
 
   Args:
       env_id: The Env's string id in Gym.
       n_envs: The number of duplicate environments.
       seed: The environment seed.
+      parallel: If True, uses SubprocVecEnv; otherwise, DummyVecEnv.
+      log_dir: If specified, saves Monitor output to this directory.
   """
-  def monitored_env(i):
+  def make_env(i):
     env = gym.make(env_id)
-    env.seed(seed + i)
-    # Use Monitor to support logging the episode reward and length.
-    # TODO(adam): also log to disk -- can be useful for debugging occasionally?
-    return Monitor(env, None, allow_early_resets=True)
-  return DummyVecEnv([functools.partial(monitored_env, i)
-                      for i in range(n_envs)])
+    env.seed(seed + i)  # seed each environment separately for diversity
+
+    # Use Monitor to record statistics needed for Baselines algorithms logging
+    # Optionally, save to disk
+    log_path = None
+    if log_dir is not None:
+      log_subdir = os.path.join(log_dir, 'monitor')
+      os.makedirs(log_subdir, exist_ok=True)
+      log_path = os.path.join(log_subdir, f'mon{i:03d}')
+    return bench.Monitor(env, log_path, allow_early_resets=True)
+  env_fns = [functools.partial(make_env, i) for i in range(n_envs)]
+  if parallel:
+    # See GH hill-a/stable-baselines issue #217
+    return SubprocVecEnv(env_fns, start_method='forkserver')
+  else:
+    return DummyVecEnv(env_fns)
 
 
 def is_vec_env(env):
@@ -93,7 +119,6 @@ class FeedForward64Policy(FeedForwardPolicy):
 
 
 def make_blank_policy(env, policy_class=stable_baselines.PPO2,
-                      init_tensorboard=False,
                       policy_network_class=FeedForward32Policy, verbose=1,
                       **policy_class_kwargs):
   """Instantiates a policy for the provided environment.
@@ -104,8 +129,6 @@ def make_blank_policy(env, policy_class=stable_baselines.PPO2,
           constructor from the stable_baselines module.
       policy_class (stable_baselines.BaseRLModel subclass): A policy constructor
           from the stable_baselines module.
-      init_tensorboard (bool): Whether to make TensorBoard summary writes during
-          training.
       verbose (int): The verbosity level of the policy during training.
       policy_class_kwargs (dict): Kwargs for `policy_class`.
 
@@ -149,12 +172,10 @@ def load_policy(path: str,
           string name of the Gym environment.
       policy_class (stable_baselines.BaseRLModel class): A policy constructor
           from the stable_baselines module.
-      init_tensorboard (bool): Whether to initialize Tensorboard logging for
-          this policy.
       base_dir (str): The directory of the pickled file.
       policy_network_class (stable_baselines.BasePolicy): A policy network
           constructor. Unless we are using a custom BasePolicy (not builtin to
-          stable_baselines), this is automatically infered, and so we can leave
+          stable_baselines), this is automatically inferred, and so we can leave
           this argument as None.
       **kwargs: Additional options for initializing the BaseRLModel class.
   """
@@ -186,19 +207,38 @@ def dump_prefix(policy_class, env, n: Union[int, str]) -> str:
   return "{}_{}_{}".format(get_env_id(env), policy_class.__name__, n)
 
 
-def apply_ff(inputs: tf.Tensor,
-             hid_sizes: Iterable[int],
-             name: Optional[str] = None,
-             ) -> tf.Tensor:
-  """Applies a feed forward network on the inputs."""
-  xavier = tf.contrib.layers.xavier_initializer
-  x = inputs
+def build_mlp(hid_sizes: Iterable[int],
+              name: Optional[str] = None,
+              activation: Optional[Callable] = tf.nn.relu,
+              initializer: Optional[Callable] = None,
+              ) -> LayersDict:
+  """Constructs an MLP, returning an ordered dict of layers."""
+  layers = collections.OrderedDict()
+
+  # Hidden layers
   for i, size in enumerate(hid_sizes):
-    x = tf.layers.dense(x, size, activation='relu',
-                        kernel_initializer=xavier(), name="dense" + str(i))
-  x = tf.layers.dense(x, 1, kernel_initializer=xavier(),
-                      name="dense_final")
-  return tf.squeeze(x, axis=1, name=name)
+    key = f"{name}_dense{i}"
+    layer = tf.layers.Dense(size, activation=activation,
+                            kernel_initializer=initializer, name=key)
+    layers[key] = layer
+
+  # Final layer
+  layer = tf.layers.Dense(1, kernel_initializer=initializer,
+                          name=f"{name}_dense_final")
+  layers[f"{name}_dense_final"] = layer
+
+  return layers
+
+
+def sequential(inputs: tf.Tensor,
+               layers: LayersDict,
+               ) -> tf.Tensor:
+  """Applies a sequence of layers to an input."""
+  output = inputs
+  for layer in layers.values():
+    output = layer(output)
+  output = tf.squeeze(output, axis=1)
+  return output
 
 
 def build_inputs(observation_space: gym.Space,

@@ -6,10 +6,28 @@ from typing import Dict, List, Optional, Sequence, Tuple, Union
 
 import gym
 import numpy as np
-from stable_baselines.common import BaseRLModel
+from stable_baselines.common.base_class import BaseRLModel
+from stable_baselines.common.policies import BasePolicy
 import tensorflow as tf
 
 from . import util  # Relative import needed to prevent cycle with __init__.py
+
+
+class RandomPolicy(BasePolicy):
+  """Returns random actions."""
+  def __init__(self, ob_space: gym.Space, ac_space: gym.Space):
+    self.ob_space = ob_space
+    self.ac_space = ac_space
+
+  def step(self, obs, state=None, mask=None, deterministic=False):
+    actions = []
+    for ob in obs:
+      assert self.ob_space.contains(ob)
+      actions.append(self.ac_space.sample())
+    return actions, None, None, None
+
+  def proba_step(self, obs, state=None, mask=None):
+    raise NotImplementedError()
 
 
 def get_action_policy(policy, observation, deterministic=False):
@@ -119,7 +137,7 @@ def generate_trajectories(policy, env, *, n_timesteps=None, n_episodes=None,
 
   if isinstance(policy, BaseRLModel):
     get_action = policy.predict
-    policy.set_env(env)  # This checks that env and policy are compatbile.
+    policy.set_env(env)  # This checks that env and policy are compatible.
   else:
     get_action = functools.partial(get_action_policy, policy)
 
@@ -473,7 +491,7 @@ def load_transitions(rollouts_glob: str,
   return _joined_rollouts(ro_paths)
 
 
-def _joined_rollouts(npz_paths: Sequence[str]
+def _joined_rollouts(npz_paths: Sequence[str],
                      ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
   """From several .npz rollout dumps, generate rollout arrays for Trainer.
 

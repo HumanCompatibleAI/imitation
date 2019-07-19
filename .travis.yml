@@ -9,7 +9,7 @@ install:
   - pip install -r requirements.txt
   - pip install .
 script:
-  - pytest tests/
+  - pytest -vv tests/
 
 matrix:
   include:
@@ -25,7 +25,7 @@ matrix:
   - name: "3.7 Coverage Tests"
     python: "3.7"
     script:
-      - py.test --cov-report=xml --cov=${VIRTUAL_ENV}/lib/python3.7/site-packages/imitation tests/
+      - py.test -vv --cov-report=xml --cov=${VIRTUAL_ENV}/lib/python3.7/site-packages/imitation tests/
     after_success:
       - mv .coverage .coverage.imitation
       - coverage combine  # rewrite paths

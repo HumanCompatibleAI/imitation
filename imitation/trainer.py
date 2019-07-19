@@ -10,8 +10,7 @@ from tqdm import tqdm
 
 from imitation import summaries
 from imitation.discrim_net import DiscrimNet
-from imitation.util import maybe_load_env, rollout
-from imitation.util.buffer import ReplayBuffer
+from imitation.util import buffer, rollout, util
 
 
 class Trainer:
@@ -50,8 +49,8 @@ class Trainer:
 
     Args:
         env: A Gym environment or ID that the policy is trained on.
-        gen_policy: The generator policy that trained to maximize discriminator
-                    confusion.
+        gen_policy: The generator policy that is trained to maximize
+                    discriminator confusion.
         discrim: The discriminator network.
             For GAIL, use a DiscrimNetGAIL. For AIRL, use a DiscrimNetAIRL.
         expert_rollouts: A tuple of three arrays from expert rollouts,
@@ -68,31 +67,28 @@ class Trainer:
 
             By default this is equal to `20 * n_disc_samples_per_buffer`.
         init_tensorboard: If True, makes various discriminator
-            TensorBoard summaries. (Generator summaries appear under a
-            different runname than the discriminator summaries because they
-            are configured by initializing the stable_baselines policy).
+            TensorBoard summaries.
         debug_use_ground_truth: If True, use the ground truth reward for
             `self.train_env`.
             This disables the reward wrapping that would normally replace
             the environment reward with the learned reward. This is useful for
             sanity checking that the policy training is functional.
     """
-    # TODO(adam): we're not guaranteed to use this session, see issue #31
-    self._sess = tf.Session()
+    self._sess = tf.get_default_session()
     self._global_step = tf.train.create_global_step()
 
     self._n_disc_samples_per_buffer = n_disc_samples_per_buffer
     self.debug_use_ground_truth = debug_use_ground_truth
 
-    self.env = maybe_load_env(env, vectorize=True)
-    self.gen_policy = gen_policy
+    self.env = util.maybe_load_env(env, vectorize=True)
+    self._gen_policy = gen_policy
 
     # Discriminator and reward output
     self._disc_opt_cls = disc_opt_cls
     self._disc_opt_kwargs = disc_opt_kwargs
     with tf.variable_scope("trainer"):
       with tf.variable_scope("discriminator"):
-        self.discrim = discrim
+        self._discrim = discrim
         self._build_disc_train()
       self._build_policy_train_reward()
       self._build_test_reward()
@@ -108,13 +104,23 @@ class Trainer:
 
     if gen_replay_buffer_capacity is None:
         gen_replay_buffer_capacity = 20 * self._n_disc_samples_per_buffer
-    self._gen_replay_buffer = ReplayBuffer(gen_replay_buffer_capacity,
-                                           self.env)
+    self._gen_replay_buffer = buffer.ReplayBuffer(gen_replay_buffer_capacity,
+                                                  self.env)
     self._populate_gen_replay_buffer()
-    self._exp_replay_buffer = ReplayBuffer.from_data(*expert_rollouts)
+    self._exp_replay_buffer = buffer.ReplayBuffer.from_data(*expert_rollouts)
     if n_disc_samples_per_buffer > len(self._exp_replay_buffer):
       warn("The discriminator batch size is larger than the number of "
            "expert samples.")
+
+  @property
+  def discrim(self) -> DiscrimNet:
+    """Discriminator being trained, used to compute reward for policy."""
+    return self._discrim
+
+  @property
+  def gen_policy(self) -> BaseRLModel:
+    """Policy (i.e. the generator) being trained."""
+    return self._gen_policy
 
   def train_disc(self, n_steps=10, **kwargs):
     """Trains the discriminator to minimize classification cross-entropy.
@@ -133,12 +139,12 @@ class Trainer:
         self._summarize(fd, step)
 
   def train_gen(self, n_steps=10000):
-    self.gen_policy.set_env(self.env_train)
+    self._gen_policy.set_env(self.env_train)
     # TODO(adam): learn was not intended to be called for each training batch
     # It should work, but might incur unnecessary overhead: e.g. in PPO2
     # a new Runner instance is created each time. Also a hotspot for errors:
     # algorithms not tested for this use case, may reset state accidentally.
-    self.gen_policy.learn(n_steps, reset_num_timesteps=False)
+    self._gen_policy.learn(n_steps, reset_num_timesteps=False)
     self._populate_gen_replay_buffer()
 
   def _populate_gen_replay_buffer(self) -> None:
@@ -149,7 +155,7 @@ class Trainer:
     produced, and then stores these samples.
     """
     gen_rollouts = rollout.generate_transitions(
-        self.gen_policy, self.env_train,
+        self._gen_policy, self.env_train,
         n_timesteps=self._n_disc_samples_per_buffer)[:3]
     self._gen_replay_buffer.store(*gen_rollouts)
 
@@ -190,7 +196,7 @@ class Trainer:
             discriminator's classification.
     """
     fd = self._build_disc_feed_dict(**kwargs)
-    return np.mean(self._sess.run(self.discrim.disc_loss, feed_dict=fd))
+    return np.mean(self._sess.run(self._discrim.disc_loss, feed_dict=fd))
 
   def wrap_env_train_reward(self, env):
     """Returns the given Env wrapped with a reward function that returns
@@ -205,7 +211,7 @@ class Trainer:
             convert to a VecEnv before continuing.
         wrapped_env (VecEnv): The wrapped environment with a new reward.
     """
-    env = maybe_load_env(env, vectorize=True)
+    env = util.maybe_load_env(env, vectorize=True)
     if self.debug_use_ground_truth:
       return env
     else:
@@ -226,7 +232,7 @@ class Trainer:
     Returns:
         wrapped_env (VecEnv): The wrapped environment with a new reward.
     """
-    env = maybe_load_env(env, vectorize=True)
+    env = util.maybe_load_env(env, vectorize=True)
     if self.debug_use_ground_truth:
       return env
     else:
@@ -235,7 +241,7 @@ class Trainer:
   def _build_summarize(self):
     self._summary_writer = summaries.make_summary_writer(
         graph=self._sess.graph)
-    self.discrim.build_summaries()
+    self._discrim.build_summaries()
     self._summary_op = tf.summary.merge_all()
 
   def _summarize(self, fd, step):
@@ -246,7 +252,7 @@ class Trainer:
     # Construct Train operation.
     disc_opt = self._disc_opt_cls(**self._disc_opt_kwargs)
     self._disc_train_op = disc_opt.minimize(
-        tf.reduce_mean(self.discrim.disc_loss),
+        tf.reduce_mean(self._discrim.disc_loss),
         global_step=self._global_step)
 
   def _build_disc_feed_dict(self, *,
@@ -304,17 +310,17 @@ class Trainer:
                              np.ones(n_gen, dtype=int)])
 
     # Calculate generator-policy log probabilities.
-    log_act_prob = self.gen_policy.action_probability(old_obs, actions=act,
-                                                      logp=True)
+    log_act_prob = self._gen_policy.action_probability(old_obs, actions=act,
+                                                       logp=True)
     assert len(log_act_prob) == N
     log_act_prob = log_act_prob.reshape((N,))
 
     fd = {
-        self.discrim.old_obs_ph: old_obs,
-        self.discrim.act_ph: act,
-        self.discrim.new_obs_ph: new_obs,
-        self.discrim.labels_ph: labels,
-        self.discrim.log_policy_act_prob_ph: log_act_prob,
+        self._discrim.old_obs_ph: old_obs,
+        self._discrim.act_ph: act,
+        self._discrim.new_obs_ph: new_obs,
+        self._discrim.labels_ph: labels,
+        self._discrim.log_policy_act_prob_ph: log_act_prob,
     }
     return fd
 
@@ -344,19 +350,19 @@ class Trainer:
       assert len(new_obs) == n_gen
 
       # Calculate generator-policy log probabilities.
-      log_act_prob = self.gen_policy.action_probability(old_obs, actions=act,
-                                                        logp=True)
+      log_act_prob = self._gen_policy.action_probability(old_obs, actions=act,
+                                                         logp=True)
       assert len(log_act_prob) == n_gen
       log_act_prob = log_act_prob.reshape((n_gen,))
 
       fd = {
-          self.discrim.old_obs_ph: old_obs,
-          self.discrim.act_ph: act,
-          self.discrim.new_obs_ph: new_obs,
-          self.discrim.labels_ph: np.ones(n_gen),
-          self.discrim.log_policy_act_prob_ph: log_act_prob,
+          self._discrim.old_obs_ph: old_obs,
+          self._discrim.act_ph: act,
+          self._discrim.new_obs_ph: new_obs,
+          self._discrim.labels_ph: np.ones(n_gen),
+          self._discrim.log_policy_act_prob_ph: log_act_prob,
       }
-      rew = self._sess.run(self.discrim.policy_train_reward, feed_dict=fd)
+      rew = self._sess.run(self._discrim.policy_train_reward, feed_dict=fd)
       return rew.flatten()
 
     self._policy_train_reward_fn = R
@@ -365,11 +371,11 @@ class Trainer:
     """Sets self._test_reward_fn, the transfer reward function"""
     def R(old_obs, act, new_obs):
       fd = {
-          self.discrim.old_obs_ph: old_obs,
-          self.discrim.act_ph: act,
-          self.discrim.new_obs_ph: new_obs,
+          self._discrim.old_obs_ph: old_obs,
+          self._discrim.act_ph: act,
+          self._discrim.new_obs_ph: new_obs,
       }
-      rew = self._sess.run(self.discrim._policy_test_reward,
+      rew = self._sess.run(self._discrim._policy_test_reward,
                            feed_dict=fd)
       return rew.flatten()
 

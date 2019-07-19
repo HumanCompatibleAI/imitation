@@ -3,26 +3,20 @@ import os.path as osp
 from typing import Callable, Optional
 
 from sacred.observers import FileStorageObserver
+from stable_baselines import logger as sb_logger
 import tensorflow as tf
 
 from imitation.scripts.config.data_collect import data_collect_ex
 import imitation.util as util
 
 
-def make_PPO2(env_name, num_vec, **make_blank_policy_kwargs):
-  env = util.make_vec_env(env_name, num_vec)
-  # TODO(adam): add support for wrapping env with VecNormalize
-  # (This is non-trivial since we'd need to make sure it's also applied
-  # when the policy is re-loaded to generate rollouts.)
-  policy = util.make_blank_policy(env, verbose=1, init_tensorboard=True,
-                                  **make_blank_policy_kwargs)
-  return policy
-
-
 @data_collect_ex.main
-def main(env_name: str,
+def main(_seed: int,
+         env_name: str,
          total_timesteps: int,
          *,
+         log_dir: str = None,
+         parallel: bool = False,
          num_vec: int = 8,
          make_blank_policy_kwargs: dict = {},
 
@@ -46,6 +40,7 @@ def main(env_name: str,
       env_name: The gym.Env name. Loaded as VecEnv.
       total_timesteps: Number of training timesteps in `model.learn()`.
       num_vec: Number of environments in VecEnv.
+      parallel: If True, then use DummyVecEnv. Otherwise use SubprocVecEnv.
       make_blank_policy_kwargs: Kwargs for `make_blank_policy`.
       rollout_save: Whether to save rollout files. If rollout_save is False,
           then all the other `rollout_*` arguments are ignored.
@@ -63,8 +58,15 @@ def main(env_name: str,
       policy_dir: The directory that policies are saved in.
   """
   tf.logging.set_verbosity(tf.logging.INFO)
+  sb_logger.configure(folder=osp.join(log_dir, 'rl'),
+                      format_strs=['tensorboard', 'stdout'])
 
-  policy = make_PPO2(env_name, num_vec, **make_blank_policy_kwargs)
+  env = util.make_vec_env(env_name, num_vec, seed=_seed,
+                          parallel=parallel, log_dir=log_dir)
+  # TODO(adam): add support for wrapping env with VecNormalize
+  # (This is non-trivial since we'd need to make sure it's also applied
+  # when the policy is re-loaded to generate rollouts.)
+  policy = util.make_blank_policy(env, verbose=1, **make_blank_policy_kwargs)
 
   callback = _make_callback(
     rollout_save, rollout_save_interval, rollout_save_n_samples,
