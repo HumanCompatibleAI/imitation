@@ -4,8 +4,6 @@ Utility functions for manipulating Trainer.
 (The primary reason these functions are here instead of in utils.py is to
 prevent cyclic imports between imitation.trainer and imitation.util)
 """
-from typing import Optional
-
 import imitation.discrim_net as discrim_net
 from imitation.reward_net import BasicShapedRewardNet
 from imitation.trainer import Trainer

@@ -31,11 +31,12 @@ def main(_seed: int,
   """Train a policy from scratch, optionally saving the policy and rollouts.
 
   At applicable training steps `step` (where step is either an integer or
-  "final"),
-    - Policies are saved to
-      `{log_dir}/policies/{env_name}-{policy_name}-{step}.pkl`.
-    - Rollouts are saved to
-      `{log_dir}/rollouts/{env_name}-{policy_name}-{step}.pkl`.
+  "final"):
+
+      - Policies are saved to
+        `{log_dir}/policies/{env_name}-{policy_name}-{step}.pkl`.
+      - Rollouts are saved to
+        `{log_dir}/rollouts/{env_name}-{policy_name}-{step}.pkl`.
 
   Args:
       env_name: The gym.Env name. Loaded as VecEnv.
