@@ -23,18 +23,17 @@ def main(_seed: int,
          rollout_save: bool = False,
          rollout_save_interval: Optional[int] = None,
          rollout_save_n_samples: int = 2000,
-         rollout_dir: str = "data/rollouts",
 
          policy_save: bool = False,
          policy_save_interval: Optional[int] = None,
-         policy_dir: str = "data/policies",
          ):
   """Train a policy from scratch, optionally saving the policy and rollouts.
 
   At applicable training steps `step`,
     - Policies are saved to
-      `{policies_dir}/{env_name}-{policy_name}-{step}.pkl`.
-    - Rollouts are saved to `{rollout_dir}/{env_name}-{policy_name}-{step}.npz`.
+      `{log_dir}/policies/{env_name}-{policy_name}-{step}.pkl`.
+    - Rollouts are saved to
+      `{log_dir}/rollouts/{env_name}-{policy_name}-{step}.npz`.
 
   Args:
       env_name: The gym.Env name. Loaded as VecEnv.
@@ -50,15 +49,15 @@ def main(_seed: int,
           rollouts every `rollout_save_interval` updates and after the final
           update.
       rollout_save_n_samples: The number of timesteps saved in every file.
-      rollout_dir: The directory that rollouts are saved in.
       policy_save: Whether to save policy files. If policy_save is False,
           then all other `policy_*` arguments are ignored.
       policy_save_interval: The number of training updates between saves. Has
           the same semantics are `rollout_save_interval`.
-      policy_dir: The directory that policies are saved in.
   """
   with util.make_session():
     tf.logging.set_verbosity(tf.logging.INFO)
+    rollout_dir = osp.join(log_dir, "rollouts")
+    policy_dir = osp.join(log_dir, "policies")
     sb_logger.configure(folder=osp.join(log_dir, 'rl'),
                         format_strs=['tensorboard', 'stdout'])
 
@@ -70,6 +69,7 @@ def main(_seed: int,
     policy = util.make_blank_policy(env, verbose=1,
                                     **make_blank_policy_kwargs)
 
+    # The callback saves intermediate artifacts during training.
     callback = _make_callback(
       env_name,
       rollout_save, rollout_save_interval, rollout_save_n_samples,
@@ -77,6 +77,7 @@ def main(_seed: int,
 
     policy.learn(total_timesteps, callback=callback)
 
+    # Save final artifacts after training is complete.
     if rollout_save:
       util.rollout.save_transitions(
         rollout_dir, policy, env_name, "final", rollout_save_n_samples)

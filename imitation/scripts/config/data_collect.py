@@ -12,7 +12,7 @@ data_collect_ex = sacred.Experiment("data_collect")
 def data_collect_defaults():
     env_name = "CartPole-v1"  # The gym.Env name
     total_timesteps = int(1e6)  # Number of training timesteps in model.learn()
-    num_vec = 8  # Number of environments in DummyVecEnv
+    num_vec = 8  # Number of environments in VecEnv
     parallel = True  # Use SubprocVecEnv (generally faster if num_vec>1)
     make_blank_policy_kwargs = DEFAULT_BLANK_POLICY_KWARGS
 

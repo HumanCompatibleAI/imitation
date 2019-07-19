@@ -133,7 +133,7 @@ def save_policy(policy_dir: str,
     """Save policy weights.
 
     Args:
-        rollout_dir: Path to the save directory.
+        policy_dir: Path to the save directory.
         policy: The stable baselines policy.
         env_name: The environment name.
         step: Either the integer training step or "final" to mark that training

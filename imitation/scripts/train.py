@@ -73,6 +73,9 @@ def train_and_plot(_seed: int,
           generator epoch.
       n_episodes_per_reward_data: The number of episodes to average over when
           calculating the average episode reward of a policy.
+      checkpoint_interval: Save the discriminator and generator models every
+          `checkpoint_interval` epochs and after training is complete. If None,
+          then only save weights after training is complete.
       interactive: Figures are always saved to `output/*.png`. If `interactive`
         is True, then also show plots as they are created.
       expert_policy (BasePolicy or BaseRLModel, optional): If provided, then
@@ -200,6 +203,11 @@ def train_and_plot(_seed: int,
         ep_reward_plot_add_data(trainer.env_train, "Train Reward")
         ep_reward_plot_add_data(trainer.env_test, "Test Reward")
         ep_reward_plot_show()
+
+      if checkpoint_interval is not None and epoch % checkpoint_interval == 0:
+        save(trainer, os.path.join(log_dir, "checkpoints", f"{epoch:05d}"))
+
+    save(trainer, os.path.join(log_dir, "final"))
 
 
 def _savefig_timestamp(prefix="", also_show=True):
