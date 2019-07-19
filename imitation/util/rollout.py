@@ -12,6 +12,19 @@ import tensorflow as tf
 
 from . import util  # Relative import needed to prevent cycle with __init__.py
 
+TrajectoryList = List[Dict[str, np.ndarray]]
+"""A list of trajectory dicts.
+
+Each dict contains the keys 'act', 'obs', and 'rew'. For details on these
+key-value pairs, see the docstring for `generate_trajectories`.
+"""
+
+TransitionsTuple = Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]
+"""An tuple of obs-act-obs-rew values.
+
+For details see the docstring for `generate_transitions`.
+"""
+
 
 class RandomPolicy(BasePolicy):
   """Returns random actions."""
@@ -108,7 +121,7 @@ class _TrajectoryAccumulator:
 
 
 def generate_trajectories(policy, env, *, n_timesteps=None, n_episodes=None,
-                          ) -> List[Dict[str, np.ndarray]]:
+                          ) -> TrajectoryList
   """Generate trajectory dictionaries from a policy and an environment.
 
   Args:
@@ -276,8 +289,7 @@ def mean_return(*args, **kwargs) -> float:
   return rollout_stats(*args, **kwargs)["return_mean"]
 
 
-def flatten_trajectories(trajectories: Sequence[Dict[str, np.ndarray]],
-                         ) -> Tuple[np.ndarray, ...]:
+def flatten_trajectories(trajectories: TrajectoryList) -> TransitionsTuple:
   """Flatten a series of trajectory dictionaries into arrays.
 
   Returns observations, actions, next observations, rewards.
@@ -319,7 +331,7 @@ def flatten_trajectories(trajectories: Sequence[Dict[str, np.ndarray]],
 
 
 def generate_transitions(policy, env, *, n_timesteps=None, n_episodes=None,
-                         truncate=True) -> Tuple[np.ndarray, ...]:
+                         truncate=True) -> TransitionsTuple:
   """Generate old_obs-action-new_obs-reward tuples.
 
   Args:
@@ -361,8 +373,8 @@ def generate_transitions(policy, env, *, n_timesteps=None, n_episodes=None,
 
 
 def generate_transitions_multiple(policies, env, n_timesteps, *, truncate=True,
-                                  ) -> Tuple[np.ndarray, ...]:
-  """Generate obs-act-obs triples from several policies.
+                                  ) -> TransitionsTuple:
+  """Generate obs-act-obs-rew arrays from several policies.
 
   Splits the desired number of timesteps evenly between all the policies given.
 
