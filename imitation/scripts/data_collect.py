@@ -20,16 +20,18 @@ def main(_seed: int,
          num_vec: int = 8,
          make_blank_policy_kwargs: dict = {},
 
-         rollout_save: bool = False,
-         rollout_save_interval: Optional[int] = None,
+         rollout_save_interval: int = 0,
+         rollout_save_final: bool = False,
          rollout_save_n_samples: int = 2000,
 
          policy_save: bool = False,
          policy_save_interval: Optional[int] = None,
-         ):
+         policy_save_final: bool = False,
+         ) -> None:
   """Train a policy from scratch, optionally saving the policy and rollouts.
 
-  At applicable training steps `step`,
+  At applicable training steps `step` (where step is either an integer or
+  "final"),
     - Policies are saved to
       `{log_dir}/policies/{env_name}-{policy_name}-{step}.pkl`.
     - Rollouts are saved to
@@ -41,25 +43,26 @@ def main(_seed: int,
       num_vec: Number of environments in VecEnv.
       parallel: If True, then use DummyVecEnv. Otherwise use SubprocVecEnv.
       make_blank_policy_kwargs: Kwargs for `make_blank_policy`.
-      rollout_save: Whether to save rollout files. If rollout_save is False,
-          then all the other `rollout_*` arguments are ignored.
-      rollout_save_interval: The number of training updates in between saves
-          after the first save. If the argument is `None`, then only save the
-          final update. Otherwise if the argument is an integer, then save
-          rollouts every `rollout_save_interval` updates and after the final
-          update.
+
+      rollout_save_interval: The number of training updates in between
+          intermediate rollout saves. If the argument is nonpositive, then
+          don't save intermediate updates.
+      rollout_save_final: If True, then save rollouts right after training is
+          finished.
       rollout_save_n_samples: The number of timesteps saved in every file.
-      policy_save: Whether to save policy files. If policy_save is False,
-          then all other `policy_*` arguments are ignored.
+
       policy_save_interval: The number of training updates between saves. Has
           the same semantics are `rollout_save_interval`.
+      policy_save_final: If True, then save the policy right after training is
+          finished.
   """
   with util.make_session():
     tf.logging.set_verbosity(tf.logging.INFO)
-    rollout_dir = osp.join(log_dir, "rollouts")
-    policy_dir = osp.join(log_dir, "policies")
     sb_logger.configure(folder=osp.join(log_dir, 'rl'),
                         format_strs=['tensorboard', 'stdout'])
+
+    rollout_dir = osp.join(log_dir, "rollouts")
+    policy_dir = osp.join(log_dir, "policies")
 
     env = util.make_vec_env(env_name, num_vec, seed=_seed,
                             parallel=parallel, log_dir=log_dir)
@@ -72,27 +75,25 @@ def main(_seed: int,
     # The callback saves intermediate artifacts during training.
     callback = _make_callback(
       env_name,
-      rollout_save, rollout_save_interval, rollout_save_n_samples,
-      rollout_dir, policy_save, policy_save_interval, policy_dir)
+      rollout_save_interval, rollout_save_n_samples,
+      rollout_dir, policy_save_interval, policy_dir)
 
     policy.learn(total_timesteps, callback=callback)
 
     # Save final artifacts after training is complete.
-    if rollout_save:
+    if rollout_save_final:
       util.rollout.save(
         rollout_dir, policy, env_name, "final",
         n_timesteps=rollout_save_n_samples)
-    if policy_save:
+    if policy_save_final:
       util.save_policy(policy_dir, policy, env_name, "final")
 
 
 def _make_callback(env_name: str,
-                   rollout_save: bool = False,
                    rollout_save_interval: Optional[int] = None,
                    rollout_save_n_samples: Optional[int] = None,
                    rollout_dir: Optional[str] = None,
 
-                   policy_save: bool = False,
                    policy_save_interval: Optional[int] = None,
                    policy_dir: Optional[str] = None,
                    ) -> Callable:
@@ -101,10 +102,8 @@ def _make_callback(env_name: str,
   Arguments are the same as arguments in `main()`.
   """
   step = 0
-  rollout_ok = rollout_save and rollout_save_interval is not None
-  policy_ok = policy_save and policy_save_interval is not None
-  os.makedirs(rollout_dir, exist_ok=True)
-  os.makedirs(policy_dir, exist_ok=True)
+  rollout_ok = rollout_save_interval > 0
+  policy_ok = policy_save_interval > 0
 
   def callback(locals_: dict, _) -> bool:
     nonlocal step

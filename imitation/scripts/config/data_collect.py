@@ -16,14 +16,12 @@ def data_collect_defaults():
     parallel = True  # Use SubprocVecEnv (generally faster if num_vec>1)
     make_blank_policy_kwargs = DEFAULT_BLANK_POLICY_KWARGS
 
-    rollout_save = True  # Whether to save rollout files.
-    rollout_save_interval = 50  # The number of training updates between saves.
-    rollout_save_n_samples = 2000  # The number of timesteps saved per file.
-    rollout_dir = "data/rollouts"  # The directory that rollouts are saved in.
+    rollout_save_interval = 100  # Num train updates between intermediate saves.
+    rollout_save_final = True  # If True, save after training is finished.
+    rollout_save_n_samples = 2000  # Minimum number of timesteps saved per file.
 
-    policy_save = False  # Whether to save policy files.
-    policy_save_interval = 5  # The number of training updates between saves.
-    policy_dir = "data/policies"  # The directory that policies are saved in.
+    policy_save_interval = -1  # The number of training updates between saves.
+    policy_save_final = False  # If True, save after training is finished.
 
 
 @data_collect_ex.config
