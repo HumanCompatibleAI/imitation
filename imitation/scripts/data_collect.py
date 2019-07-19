@@ -69,6 +69,7 @@ def main(_seed: int,
   policy = util.make_blank_policy(env, verbose=1, **make_blank_policy_kwargs)
 
   callback = _make_callback(
+    env_name,
     rollout_save, rollout_save_interval, rollout_save_n_samples,
     rollout_dir, policy_save, policy_save_interval, policy_dir)
 
@@ -76,12 +77,13 @@ def main(_seed: int,
 
   if rollout_save:
     util.rollout.save_transitions(
-      rollout_dir, policy, "final", rollout_save_n_samples)
+      rollout_dir, policy, env_name, "final", rollout_save_n_samples)
   if policy_save:
-    util.save_policy(policy_dir, policy, "final")
+    util.save_policy(policy_dir, policy, env_name, "final")
 
 
-def _make_callback(rollout_save: bool = False,
+def _make_callback(env_name: str,
+                   rollout_save: bool = False,
                    rollout_save_interval: Optional[int] = None,
                    rollout_save_n_samples: Optional[int] = None,
                    rollout_dir: Optional[str] = None,
@@ -107,9 +109,9 @@ def _make_callback(rollout_save: bool = False,
 
     if rollout_ok and step % rollout_save_interval == 0:
       util.rollout.save_transitions(
-        rollout_dir, policy, step, rollout_save_n_samples)
+        rollout_dir, policy, env_name, step, rollout_save_n_samples)
     if policy_ok and step % policy_save_interval == 0:
-      util.save_policy(policy_dir, policy, step)
+      util.save_policy(policy_dir, env_name, policy, step)
     return True
 
   return callback

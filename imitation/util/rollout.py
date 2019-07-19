@@ -443,19 +443,20 @@ def generate_transitions_multiple(policies, env, n_timesteps, *, truncate=True,
 
 def save_transitions(rollout_dir: str,
                      policy: BaseRLModel,
+                     env_name: str,
                      step: Union[str, int],
                      n_timesteps: int) -> None:
     """Save obs-act-obs-rew transitions from rollouts of the policy.
 
     Args:
         rollout_dir: Path to the save directory.
-        policy: The stable baselines policy. Environment is inferred from
-          `policy.get_env()`.
+        policy: The stable baselines policy.
+        env_name: The environment name.
         step: Either the integer training step or "final" to mark that training
           is finished. Used as a suffix in the save file's basename.
         n_timesteps: The number of rollout timesteps in the save file.
     """
-    filename = util.dump_prefix(policy.__class__, policy.env, step) + ".npz"
+    filename = util.dump_prefix(policy.__class__, env_name, step) + ".npz"
     path = os.path.join(rollout_dir, filename)
     obs_old, act, obs_new, rew = generate_transitions(
       policy, policy.get_env(), n_timesteps=n_timesteps)

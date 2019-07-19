@@ -86,21 +86,6 @@ def is_vec_env(env):
   return isinstance(env, VecEnv)
 
 
-def get_env_id(env_or_str):
-  if isinstance(env_or_str, str):
-    return env_or_str
-
-  try:
-    env = maybe_load_env(env_or_str)
-    if is_vec_env(env):
-      env = env.envs[0]
-    return env.spec.id
-  except Exception as e:
-    tf.logging.warning("Couldn't find environment id, using 'UnknownEnv'")
-    tf.logging.warning(e)
-    return "UnknownEnv"
-
-
 class FeedForward32Policy(FeedForwardPolicy):
   """A feed forward policy network with two hidden layers of 32 units.
 
@@ -142,17 +127,18 @@ def make_blank_policy(env, policy_class=stable_baselines.PPO2,
 
 def save_policy(policy_dir: str,
                 policy: BaseRLModel,
+                env_name: str,
                 step: Union[str, int]):
     """Save policy weights.
 
     Args:
         rollout_dir: Path to the save directory.
-        policy: The stable baselines policy. Environment is inferred from
-          `policy.get_env()`.
+        policy: The stable baselines policy.
+        env_name: The environment name.
         step: Either the integer training step or "final" to mark that training
           is finished. Used as a suffix in the save file's basename.
     """
-    filename = dump_prefix(policy.__class__, policy.env, step) + ".pkl"
+    filename = dump_prefix(policy.__class__, env_name, step) + ".pkl"
     path = os.path.join(policy_dir, filename)
     policy.save(path)
     tf.logging.info("Saved policy pickle to {}.".format(path))
@@ -195,7 +181,7 @@ def load_policy(path: str,
   return policy
 
 
-def dump_prefix(policy_class, env, n: Union[int, str]) -> str:
+def dump_prefix(policy_class, env_name: str, n: Union[int, str]) -> str:
   """Build the standard filename prefix of .pkl and .npz dumps.
 
   Args:
@@ -204,7 +190,7 @@ def dump_prefix(policy_class, env, n: Union[int, str]) -> str:
       n: Either the training step number, or a glob expression for matching dump
           files in `get_dump_paths`.
   """
-  return "{}_{}_{}".format(get_env_id(env), policy_class.__name__, n)
+  return "{}_{}_{}".format(env_name, policy_class.__name__, n)
 
 
 def build_mlp(hid_sizes: Iterable[int],
