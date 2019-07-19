@@ -30,9 +30,9 @@ def init_trainer(env_id: str,
 
   Args:
     env_id: The string id of a gym environment.
-    rollouts_glob: A glob that matches .npz files containing demonstration
-      rollouts. If `rollouts_glob` is None, then use the default glob
-      `f"data/rollouts/{env_id}_*.npz"`.
+    rollouts_glob: A glob that matches rollout pickles.
+      If `rollouts_glob` is None, then use the default glob
+      `f"data/rollouts/{env_id}_*.pkl"`.
     seed: Random seed.
     log_dir: Directory for logging output.
     use_gail: If True, then train using GAIL. If False, then train
@@ -51,7 +51,7 @@ def init_trainer(env_id: str,
   """
   env = util.make_vec_env(env_id, num_vec, seed=seed, parallel=parallel,
                           log_dir=log_dir)
-  rollouts_glob = rollouts_glob or f"data/rollouts/{env_id}_*.npz"
+  rollouts_glob = rollouts_glob or f"data/rollouts/{env_id}_*.pkl"
   gen_policy = util.make_blank_policy(env, verbose=1,
                                       **make_blank_policy_kwargs)
 

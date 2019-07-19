@@ -33,7 +33,7 @@ def main(_seed: int,
     - Policies are saved to
       `{log_dir}/policies/{env_name}-{policy_name}-{step}.pkl`.
     - Rollouts are saved to
-      `{log_dir}/rollouts/{env_name}-{policy_name}-{step}.npz`.
+      `{log_dir}/rollouts/{env_name}-{policy_name}-{step}.pkl`.
 
   Args:
       env_name: The gym.Env name. Loaded as VecEnv.

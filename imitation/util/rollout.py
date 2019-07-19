@@ -487,7 +487,7 @@ def load_trajectories(rollouts_glob: str,
   """Load trajectories from rollout pickles.
 
   Args:
-      rollouts_glob: Glob path to pickled rollout files.
+      rollouts_glob: Glob path to rollout pickles.
       max_n_files: If provided, then only load the most recent `max_n_files`
           files, as sorted by modification times.
 
@@ -520,7 +520,7 @@ def load_transitions(rollouts_glob: str,
   """Load transitions from rollout pickles.
 
   Args:
-      rollouts_glob: Glob path to `.npz` rollout files.
+      rollouts_glob: Glob path to rollout pickles.
       max_n_files: If provided, then only load the most recent `max_n_files`
           files, as sorted by modification times.
 

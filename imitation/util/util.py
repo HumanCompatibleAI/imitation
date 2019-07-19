@@ -183,7 +183,7 @@ def load_policy(path: str,
 
 
 def dump_prefix(policy_class, env_name: str, n: Union[int, str]) -> str:
-  """Build the standard filename prefix of .pkl and .npz dumps.
+  """Build the standard filename prefix of policy and rollout dump files.
 
   Args:
       policy_class (stable_baselines.BaseRLModel subclass): The policy class.
