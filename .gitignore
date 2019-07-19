@@ -2,7 +2,6 @@
 .*/
 .#*
 *.html
-./data/
 output/
 saved_models/
 
