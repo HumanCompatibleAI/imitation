@@ -6,7 +6,7 @@ def test_bc():
   env_id = 'CartPole-v1'
   env = util.make_vec_env(env_id, 2)
   rollouts = util.rollout.load_transitions(
-      "tests/data/rollouts/CartPole-v1*.npz")
+    "tests/data/rollouts/CartPole-v1*.pkl")[:3]
   bc_trainer = bc.BCTrainer(
       env, expert_rollouts=rollouts, n_expert_timesteps=2000)
   novice_stats = bc_trainer.test_policy()

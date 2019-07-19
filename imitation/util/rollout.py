@@ -2,7 +2,8 @@ import collections
 import functools
 import glob
 import os
-from typing import Dict, List, Optional, Sequence, Tuple, Union
+import pickle
+from typing import Dict, List, Optional, Tuple, Union
 
 import gym
 import numpy as np
@@ -121,7 +122,7 @@ class _TrajectoryAccumulator:
 
 
 def generate_trajectories(policy, env, *, n_timesteps=None, n_episodes=None,
-                          ) -> TrajectoryList
+                          ) -> TrajectoryList:
   """Generate trajectory dictionaries from a policy and an environment.
 
   Args:
@@ -507,16 +508,16 @@ def load_trajectories(rollouts_glob: str,
   traj_joined = []  # type: TrajectoryList
   for path in ro_paths:
     with open(path, "rb") as f:
-      traj = pickle.load(path)  # type: TrajectoryList
+      traj = pickle.load(f)  # type: TrajectoryList
       tf.logging.info(f"Loaded rollouts from '{path}'.")
-      res.extend(traj)
+      traj_joined.extend(traj)
 
   return traj_joined
 
 
 def load_transitions(rollouts_glob: str,
                      max_n_files: Optional[int] = None,
-                     ) -> TransitionsTuple
+                     ) -> TransitionsTuple:
   """Load transitions from rollout pickles.
 
   Args:

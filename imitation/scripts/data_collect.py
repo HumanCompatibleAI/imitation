@@ -49,7 +49,9 @@ def main(_seed: int,
           don't save intermediate updates.
       rollout_save_final: If True, then save rollouts right after training is
           finished.
-      rollout_save_n_samples: The number of timesteps saved in every file.
+      rollout_save_n_samples: The minimum number of timesteps saved in every
+          file. Could be more than `rollout_save_n_samples` because trajectories
+          are saved by episode rather than by transition.
 
       policy_save_interval: The number of training updates between saves. Has
           the same semantics are `rollout_save_interval`.
@@ -63,6 +65,8 @@ def main(_seed: int,
 
     rollout_dir = osp.join(log_dir, "rollouts")
     policy_dir = osp.join(log_dir, "policies")
+    os.makedirs(rollout_dir, exist_ok=True)
+    os.makedirs(policy_dir, exist_ok=True)
 
     env = util.make_vec_env(env_name, num_vec, seed=_seed,
                             parallel=parallel, log_dir=log_dir)
@@ -111,8 +115,8 @@ def _make_callback(env_name: str,
     policy = locals_['self']
 
     if rollout_ok and step % rollout_save_interval == 0:
-      util.rollout.save_transitions(
-        rollout_dir, policy, env_name, step, rollout_save_n_samples)
+      util.rollout.save(
+        rollout_dir, policy, env_name, step, n_timesteps=rollout_save_n_samples)
     if policy_ok and step % policy_save_interval == 0:
       util.save_policy(policy_dir, env_name, policy, step)
     return True
