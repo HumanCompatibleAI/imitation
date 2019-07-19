@@ -79,8 +79,9 @@ def main(_seed: int,
 
     # Save final artifacts after training is complete.
     if rollout_save:
-      util.rollout.save_transitions(
-        rollout_dir, policy, env_name, "final", rollout_save_n_samples)
+      util.rollout.save(
+        rollout_dir, policy, env_name, "final",
+        n_timesteps=rollout_save_n_samples)
     if policy_save:
       util.save_policy(policy_dir, policy, env_name, "final")
 
