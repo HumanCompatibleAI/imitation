@@ -13,7 +13,8 @@ import imitation.util as util
 
 
 def init_trainer(env_id: str,
-                 rollout_glob: Optional[str] = None,
+                 rollout_glob: str,
+                 *,
                  seed: int = 0,
                  log_dir: str = None,
                  use_gail: bool = False,
@@ -30,9 +31,7 @@ def init_trainer(env_id: str,
 
   Args:
     env_id: The string id of a gym environment.
-    rollout_glob: A glob that matches rollout pickles.
-      If `rollout_glob` is None, then use the default glob
-      `f"data/rollouts/{env_id}_*.pkl"`.
+    rollout_glob: Argument for `imitation.util.rollout.load_transitions`.
     seed: Random seed.
     log_dir: Directory for logging output.
     use_gail: If True, then train using GAIL. If False, then train
@@ -51,7 +50,6 @@ def init_trainer(env_id: str,
   """
   env = util.make_vec_env(env_id, num_vec, seed=seed, parallel=parallel,
                           log_dir=log_dir)
-  rollout_glob = rollout_glob or f"data/rollouts/{env_id}_*.pkl"
   gen_policy = util.make_blank_policy(env, verbose=1,
                                       **make_blank_policy_kwargs)
 
