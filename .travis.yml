@@ -25,7 +25,7 @@ matrix:
   - name: "3.7 Coverage Tests"
     python: "3.7"
     script:
-      - pip uninstall imitation  # TODO(adam): hack -- remove!
+      - pip uninstall --yes imitation  # TODO(adam): hack -- remove!
       - pip install -e .
       - py.test -vv --cov-report=xml --cov=. tests/ 
     after_success:
