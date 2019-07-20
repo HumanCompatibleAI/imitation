@@ -11,23 +11,22 @@ import imitation.util as util
 
 
 @data_collect_ex.main
-def main(_seed: int,
-         env_name: str,
-         total_timesteps: int,
-         *,
-         log_dir: str = None,
-         parallel: bool = False,
-         num_vec: int = 8,
-         make_blank_policy_kwargs: dict = {},
+def data_collect(_seed: int,
+                 env_name: str,
+                 total_timesteps: int,
+                 *,
+                 log_dir: str = None,
+                 parallel: bool = False,
+                 num_vec: int = 8,
+                 make_blank_policy_kwargs: dict = {},
 
-         rollout_save_interval: int = 0,
-         rollout_save_final: bool = False,
-         rollout_save_n_samples: int = 2000,
+                 rollout_save_interval: int = 0,
+                 rollout_save_final: bool = False,
+                 rollout_save_n_samples: int = 2000,
 
-         policy_save: bool = False,
-         policy_save_interval: Optional[int] = None,
-         policy_save_final: bool = False,
-         ) -> None:
+                 policy_save_interval: int = -1,
+                 policy_save_final: bool = True,
+                 ) -> None:
   """Train a policy from scratch, optionally saving the policy and rollouts.
 
   At applicable training steps `step` (where step is either an integer or

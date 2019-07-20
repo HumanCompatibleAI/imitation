@@ -42,7 +42,7 @@ def train_defaults():
     )
 
     log_root = os.path.join("output", "train")  # output directory
-    checkpoint_interval = 5  # number of epochs at which to checkpoint
+    checkpoint_interval = 5  # num epochs between checkpoints (<=0 disables)
 
 
 @train_ex.config

@@ -460,7 +460,7 @@ def save(rollout_dir: str,
          step: Union[str, int],
          **kwargs,
          ) -> None:
-    """Generate policy rollouts and save them to as a pickled TrajectoryList.
+    """Generate policy rollouts and save them to a pickled TrajectoryList.
 
     Args:
         rollout_dir: Path to the save directory.
