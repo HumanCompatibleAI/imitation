@@ -32,10 +32,8 @@ def data_collect(_seed: int,
   At applicable training steps `step` (where step is either an integer or
   "final"):
 
-      - Policies are saved to
-        `{log_dir}/policies/{env_name}-{policy_name}-{step}.pkl`.
-      - Rollouts are saved to
-        `{log_dir}/rollouts/{env_name}-{policy_name}-{step}.pkl`.
+      - Policies are saved to `{log_dir}/policies/{step}.pkl`.
+      - Rollouts are saved to `{log_dir}/rollouts/{step}.pkl`.
 
   Args:
       env_name: The gym.Env name. Loaded as VecEnv.
