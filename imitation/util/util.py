@@ -128,19 +128,16 @@ def make_blank_policy(env, policy_class=stable_baselines.PPO2,
 
 def save_policy(policy_dir: str,
                 policy: BaseRLModel,
-                env_name: str,
                 step: Union[str, int]):
     """Save policy weights.
 
     Args:
         policy_dir: Path to the save directory.
         policy: The stable baselines policy.
-        env_name: The environment name.
         step: Either the integer training step or "final" to mark that training
           is finished. Used as a suffix in the save file's basename.
     """
-    filename = dump_prefix(policy.__class__, env_name, step) + ".pkl"
-    path = os.path.join(policy_dir, filename)
+    path = os.path.join(policy_dir, f'{step:5d}.pkl')
     policy.save(path)
     tf.logging.info("Saved policy pickle to {}.".format(path))
 
@@ -180,18 +177,6 @@ def load_policy(path: str,
   policy = policy_model_class.load(path, env, **kwargs)
   tf.logging.info("loaded policy from '{}'".format(path))
   return policy
-
-
-def dump_prefix(policy_class, env_name: str, n: Union[int, str]) -> str:
-  """Build the standard filename prefix of policy and rollout dump files.
-
-  Args:
-      policy_class (stable_baselines.BaseRLModel subclass): The policy class.
-      env: The environment.
-      n: Either the training step number, or a glob expression for matching dump
-          files in `get_dump_paths`.
-  """
-  return "{}_{}_{}".format(env_name, policy_class.__name__, n)
 
 
 def build_mlp(hid_sizes: Iterable[int],

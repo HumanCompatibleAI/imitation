@@ -87,10 +87,10 @@ def data_collect(_seed: int,
     # Save final artifacts after training is complete.
     if rollout_save_final:
       util.rollout.save(
-        rollout_dir, policy, env_name, "final",
+        rollout_dir, policy, "final",
         n_timesteps=rollout_save_n_samples)
     if policy_save_final:
-      util.save_policy(policy_dir, policy, env_name, "final")
+      util.save_policy(policy_dir, policy, "final")
 
 
 def _make_callback(env_name: str,
@@ -116,9 +116,9 @@ def _make_callback(env_name: str,
 
     if rollout_ok and step % rollout_save_interval == 0:
       util.rollout.save(
-        rollout_dir, policy, env_name, step, n_timesteps=rollout_save_n_samples)
+        rollout_dir, policy, step, n_timesteps=rollout_save_n_samples)
     if policy_ok and step % policy_save_interval == 0:
-      util.save_policy(policy_dir, env_name, policy, step)
+      util.save_policy(policy_dir, policy, step)
     return True
 
   return callback
