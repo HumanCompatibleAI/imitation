@@ -85,16 +85,6 @@ class Trainer:
             the environment reward with the learned reward. This is useful for
             sanity checking that the policy training is functional.
     """
-    if False:
-      print("I AM DEAD UNTESTED CODE MWUAHAHAHA!")
-      print("I AM DEAD UNTESTED CODE MWUAHAHAHA!")
-      print("I AM DEAD UNTESTED CODE MWUAHAHAHA!")
-    else:
-      print("BUT I AM TESTED, YAY!")
-      print("BUT I AM TESTED, YAY!")
-      print("BUT I AM TESTED, YAY!")
-      print("BUT I AM TESTED, YAY!")
-
     self._sess = tf.get_default_session()
     self._global_step = tf.train.create_global_step()
 
