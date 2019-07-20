@@ -7,9 +7,8 @@ def test_bc():
   env = util.make_vec_env(env_id, 2)
   rollouts = util.rollout.load_trajectories(
     "tests/data/rollouts/CartPole-v1*.pkl")[:3]
-  rollouts = util.rollout.flatten_trajectories(rollouts)
-  bc_trainer = bc.BCTrainer(
-      env, expert_rollouts=rollouts, n_expert_timesteps=2000)
+  rollouts = util.rollout.flatten_trajectories(rollouts)[:3]
+  bc_trainer = bc.BCTrainer(env, expert_rollouts=rollouts)
   novice_stats = bc_trainer.test_policy()
   bc_trainer.train(n_epochs=40)
   good_stats = bc_trainer.test_policy()

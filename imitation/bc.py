@@ -5,6 +5,7 @@ demonstrator."""
 from typing import Tuple
 
 import numpy as np
+from stable_baselines.common.policies import BasePolicy
 from stable_baselines.common.dataset import Dataset
 import tensorflow as tf
 from tqdm.autonotebook import tqdm, trange
@@ -22,8 +23,6 @@ class BCTrainer:
     expert_rollouts: A tuple of three arrays from expert rollouts,
         `old_obs`, `act`, and `new_obs`.
     policy_class (BasePolicy): used to instantiate imitation policy.
-    n_expert_timesteps (int): number of timesteps of expert environment
-        interaction to use for BC training.
     batch_size (int): batch size used for training.
     """
 
@@ -31,9 +30,8 @@ class BCTrainer:
                env,
                *,
                expert_rollouts: Tuple[np.ndarray, np.ndarray, np.ndarray],
-               policy_class=FeedForward32Policy,
-               n_expert_timesteps=4000,
-               batch_size=32):
+               policy_class: BasePolicy = FeedForward32Policy,
+               batch_size: int = 32):
     self.env = env
     self.policy_class = policy_class
     self.batch_size = batch_size
