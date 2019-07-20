@@ -61,8 +61,9 @@ def init_trainer(env_id: str,
                               **reward_kwargs)
     discrim = discrim_net.DiscrimNetAIRL(rn, **discrim_kwargs)
 
-  expert_rollouts = util.rollout.load_transitions(
+  expert_rollouts = util.rollout.load_tranjectories(
       rollout_glob, max_n_files=max_n_files)[:3]
+  expert_rollouts = util.rollout.flatten_trajectories(expert_rollouts)
   trainer = Trainer(env, gen_policy, discrim, expert_rollouts,
                     **trainer_kwargs)
   return trainer

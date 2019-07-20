@@ -510,26 +510,3 @@ def load_trajectories(rollout_glob: str,
       traj_joined.extend(traj)
 
   return traj_joined
-
-
-def load_transitions(rollout_glob: str,
-                     max_n_files: Optional[int] = None,
-                     ) -> TransitionsTuple:
-  """Load transitions from rollout pickles.
-
-  Args:
-      rollout_glob: Glob path to rollout pickles.
-      max_n_files: If provided, then only load the most recent `max_n_files`
-          files, as sorted by modification times.
-
-  Returns:
-      old_obs: Old observations.
-      acts: Actions.
-      new_obs: New observations.
-      rew: Rewards.
-
-  Raises:
-      ValueError: No files match the glob.
-  """
-  traj_list = load_trajectories(rollout_glob, max_n_files)
-  return flatten_trajectories(traj_list)
