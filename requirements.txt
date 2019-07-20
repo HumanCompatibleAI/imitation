@@ -4,7 +4,7 @@ numpy>=1.15
 # 1.14.0 is not compatible with sacred because of a TF bug.
 tensorflow>=1.13.1,<2.0,!=1.14.0
 tqdm
-git+git://github.com/hill-a/stable-baselines.git@master#egg=stable-baselines
+git+git://github.com/hill-a/stable-baselines.git#egg=stable-baselines
 codecov
 pytest
 pytest-cov

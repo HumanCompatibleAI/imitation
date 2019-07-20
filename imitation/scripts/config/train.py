@@ -41,13 +41,14 @@ def train_defaults():
         make_blank_policy_kwargs=DEFAULT_BLANK_POLICY_KWARGS,
     )
 
+    log_root = os.path.join("output", "train")  # output directory
     checkpoint_interval = 5  # number of epochs at which to checkpoint
 
 
 @train_ex.config
-def logging(env_name):
-    log_dir = os.path.join("output", "train",
-                           env_name.replace('/', '_'), util.make_timestamp())
+def logging(env_name, log_root):
+    log_dir = os.path.join(log_root, env_name.replace('/', '_'),
+                           util.make_timestamp())
 
 
 @train_ex.named_config
