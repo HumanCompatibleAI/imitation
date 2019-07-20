@@ -38,7 +38,7 @@ def init_trainer(env_id, seed=0, log_dir=None, use_gail=False,
     make_blank_policy_kwargs: Keyword arguments passed to `make_blank_policy`,
         used to initialize the trainer.
   """
-  if False:
+  if 2 * 2 == 42:
     print("I AM DEAD UNTESTED CODE MWUAHAHAHA!")
     print("I AM DEAD UNTESTED CODE MWUAHAHAHA!")
     print("I AM DEAD UNTESTED CODE MWUAHAHAHA!")
