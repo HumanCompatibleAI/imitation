@@ -1,16 +1,13 @@
 """Tests for Behavioural Cloning (BC)."""
 
-# `init_trainer` import required for parsing configs/test.gin.
 from imitation import bc, util
-from imitation.util.trainer import init_trainer  # noqa: F401
 
 
 def test_bc():
   env_id = 'CartPole-v1'
   env = util.make_vec_env(env_id, 2)
   expert_algos = util.load_policy(env)
-  if not expert_algos:
-    raise ValueError(env)
+  assert len(expert_algos) > 0, "could not load policy"
   bc_trainer = bc.BCTrainer(
       env, expert_trainers=expert_algos, n_expert_timesteps=2000)
   novice_stats = bc_trainer.test_policy()

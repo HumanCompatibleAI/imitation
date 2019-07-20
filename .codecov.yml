@@ -13,3 +13,23 @@ coverage:
         paths:
           - "imitation/examples/"
           - "imitation/scripts/"
+      tests:
+        # Should not have dead code in our tests
+        target: 100%
+        paths:
+          - "tests/"
+    patch:
+      default: false
+      main:
+        paths:
+          - "imitation/"
+          - "!imitation/examples/"
+          - "!imitation/scripts/"
+      auxiliary:
+        paths:
+          - "imitation/examples/"
+          - "imitation/scripts/"
+      tests:
+        target: 100%
+        paths:
+          - "tests/"
