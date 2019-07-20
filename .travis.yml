@@ -25,10 +25,11 @@ matrix:
   - name: "3.7 Coverage Tests"
     python: "3.7"
     script:
-      - py.test -vv --cov-report=xml --cov=${VIRTUAL_ENV}/lib/python3.7/site-packages/imitation tests/
+      - pip uninstall .  # TODO(adam): hack -- remove!
+      - py.test -vv --cov-report=xml --cov=. tests/ 
     after_success:
-      - mv .coverage .coverage.imitation
-      - coverage combine  # rewrite paths
+      #- mv .coverage .coverage.imitation
+      #- coverage combine  # rewrite paths
       - codecov
 
   - name: "3.7 Static Type Checking"

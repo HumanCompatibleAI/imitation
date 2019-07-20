@@ -19,7 +19,7 @@ import tqdm
 
 from imitation.scripts.config.train import train_ex
 import imitation.util as util
-from imitation.util.init_trainer import init_trainer
+from imitation.util.trainer import init_trainer
 
 
 def save(trainer, save_path):
