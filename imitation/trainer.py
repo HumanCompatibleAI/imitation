@@ -5,13 +5,12 @@ from warnings import warn
 import gym
 import numpy as np
 from stable_baselines.common.base_class import BaseRLModel
-from stable_baselines.common.vec_env import VecEnvWrapper
 import tensorflow as tf
 from tqdm import tqdm
 
 from imitation import summaries
 from imitation.discrim_net import DiscrimNet
-from imitation.util import buffer, rollout, util
+from imitation.util import RewardVecEnvWrapper, buffer, rollout, util
 
 
 class Trainer:
@@ -58,10 +57,6 @@ class Trainer:
         expert_policies: An expert policy
             or a list of expert policies that are used to generate example
             obs-action-obs triples.
-
-            WARNING:
-            Due to the way VecEnvs handle episode completion states, the last
-            obs-act-obs triple in every episode is omitted. (See issue #1.)
         disc_opt_cls: The optimizer for discriminator training.
         disc_opt_kwargs: Parameters for discriminator training.
         n_disc_samples_per_buffer: The number of obs-act-obs triples
@@ -232,7 +227,7 @@ class Trainer:
     if self.debug_use_ground_truth:
       return env
     else:
-      return _RewardVecEnvWrapper(env, self._policy_train_reward_fn)
+      return RewardVecEnvWrapper(env, self._policy_train_reward_fn)
 
   def wrap_env_test_reward(self, env):
     """Returns the given Env wrapped with a reward function that returns
@@ -253,7 +248,7 @@ class Trainer:
     if self.debug_use_ground_truth:
       return env
     else:
-      return _RewardVecEnvWrapper(env, self._test_reward_fn)
+      return RewardVecEnvWrapper(env, self._test_reward_fn)
 
   def _build_summarize(self):
     self._summary_writer = summaries.make_summary_writer(
@@ -397,47 +392,6 @@ class Trainer:
       return rew.flatten()
 
     self._test_reward_fn = R
-
-
-class _RewardVecEnvWrapper(VecEnvWrapper):
-
-  def __init__(self, venv, reward_fn):
-    """A RewardVecEnvWrapper uses a provided reward_fn to replace
-    the reward function returned by `step()`.
-
-    Automatically resets the inner VecEnv upon initialization.
-    A tricky part about this class keeping track of the most recent
-    observation from each environment.
-
-    Args:
-        venv (VecEnv): The VecEnv to wrap.
-        reward_fn (Callable): A function that wraps takes in arguments
-            (old_obs, act, new_obs) and returns a vector of rewards.
-    """
-    assert not isinstance(venv, _RewardVecEnvWrapper)
-    super().__init__(venv)
-    self.reward_fn = reward_fn
-    self.reset()
-
-  @property
-  def envs(self):
-    return self.venv.envs
-
-  def reset(self):
-    self._old_obs = self.venv.reset()
-    return self._old_obs
-
-  def step_async(self, actions):
-    self._actions = actions
-    return self.venv.step_async(actions)
-
-  def step_wait(self):
-    obs, rew, done, info = self.venv.step_wait()
-    rew = self.reward_fn(self._old_obs, self._actions, obs)
-    # XXX: We never get to see episode end. (See Issue #1).
-    # Therefore, the final obs of every episode is incorrect.
-    self._old_obs = obs
-    return obs, rew, done, info
 
 
 def _n_steps_if_not_none(n_steps):

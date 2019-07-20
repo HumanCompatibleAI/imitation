@@ -1,8 +1,6 @@
 """Tests for Behavioural Cloning (BC)."""
 
-# `init_trainer` import required for parsing configs/test.gin.
 from imitation import bc, util
-from imitation.util.trainer import init_trainer  # noqa: F401
 
 
 def test_bc():
@@ -11,8 +9,9 @@ def test_bc():
   expert_algos = util.load_policy(env)
   if not expert_algos:
     raise ValueError(env)
-  bc_trainer = bc.BCTrainer(
-      env, expert_trainers=expert_algos, n_expert_timesteps=2000)
+  bc_trainer = bc.BCTrainer(env,
+                            expert_trainers=expert_algos,
+                            n_expert_timesteps=2000)
   novice_stats = bc_trainer.test_policy()
   bc_trainer.train(n_epochs=40)
   good_stats = bc_trainer.test_policy()

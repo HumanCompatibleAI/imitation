@@ -56,6 +56,13 @@ setup(
         'test':
         TESTS_REQUIRE,
     },
+    entry_points={
+        'console_scripts': [
+            ('imitation-data-collect=imitation.scripts.data_collect'
+             ':main_console'),
+            'imitation-train=imitation.scripts.train:main_console',
+        ],
+    },
     url='https://github.com/HumanCompatibleAI/airl',
     license='MIT',
     classifiers=[
