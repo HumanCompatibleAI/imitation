@@ -76,6 +76,16 @@ def train_and_plot(_seed: int,
       init_trainer_kwargs: Keyword arguments passed to `init_trainer`,
         used to initialize the trainer.
   """
+  if False:
+    print("I AM DEAD UNTESTED CODE MWUAHAHAHA!")
+    print("I AM DEAD UNTESTED CODE MWUAHAHAHA!")
+    print("I AM DEAD UNTESTED CODE MWUAHAHAHA!")
+    print("I AM DEAD UNTESTED CODE MWUAHAHAHA!")
+    print("I AM DEAD UNTESTED CODE MWUAHAHAHA!")
+  else:
+    print("BUT I AM TESTED, YAY!")
+    print("BUT I AM TESTED, YAY!")
+
   assert n_epochs_per_plot is None or n_epochs_per_plot >= 1
   with tf.Session() as sess:
     with sess.as_default():
