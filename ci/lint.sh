@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-SOURCE_DIRS=("imitation/" "tests/")
+SOURCE_DIRS=("src/" "tests/")
 
 RET=0
 
