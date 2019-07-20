@@ -25,7 +25,3 @@ coverage:
           - "imitation/examples/"
           - "imitation/scripts/"
 
-fixes:
-  # Coverage report must match Git directory structure
-  # Since we restrict coverage to just installed package, map back here.
-  - "::imitation/"
