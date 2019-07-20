@@ -24,4 +24,3 @@ coverage:
         paths:
           - "imitation/examples/"
           - "imitation/scripts/"
-

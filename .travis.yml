@@ -24,13 +24,13 @@ matrix:
 
   - name: "3.7 Coverage Tests"
     python: "3.7"
-    script:
-      - pip uninstall --yes imitation  # TODO(adam): hack -- remove!
+    install:
+      - pip install -r requirements.txt
+      # Install in developer mode so codecov can match paths
       - pip install -e .
-      - py.test -vv --cov-report=xml --cov=. tests/ 
+    script:
+      - py.test -vv --cov-report=xml --cov=. tests/
     after_success:
-      #- mv .coverage .coverage.imitation
-      #- coverage combine  # rewrite paths
       - codecov
 
   - name: "3.7 Static Type Checking"
