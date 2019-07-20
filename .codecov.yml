@@ -13,3 +13,14 @@ coverage:
         paths:
           - "imitation/examples/"
           - "imitation/scripts/"
+    patch:
+      default: false
+      main:
+        paths:
+          - "imitation/"
+          - "!imitation/examples/"
+          - "!imitation/scripts/"
+      auxiliary:
+        paths:
+          - "imitation/examples/"
+          - "imitation/scripts/"
