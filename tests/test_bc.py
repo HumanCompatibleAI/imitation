@@ -1,8 +1,6 @@
 """Tests for Behavioural Cloning (BC)."""
 
-# `init_trainer` import required for parsing configs/test.gin.
 from imitation import bc, util
-from imitation.util.trainer import init_trainer  # noqa: F401
 
 
 def test_bc():
