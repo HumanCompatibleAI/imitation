@@ -9,10 +9,9 @@ from imitation.util.trainer import init_trainer
 
 USE_GAIL = [True, False]
 IN_CODECOV = 'COV_CORE_CONFIG' in os.environ
-if IN_CODECOV:  # multiprocessing breaks codecov, disable
-  PARALLEL = [False]
-else:
-  PARALLEL = [True, False]
+# Disable SubprocVecEnv tests for code coverage test since
+# multiprocessing support is flaky in py.test --cov
+PARALLEL = [False] if IN_CODECOV else [True, False]
 
 
 @pytest.fixture(autouse=True)
