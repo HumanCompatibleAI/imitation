@@ -7,11 +7,12 @@ from imitation.scripts.train import train_ex
 
 def test_data_collect():
   """Smoke test for imitation.scripts.data_collect"""
-  data_collect_ex.run(
+  run = data_collect_ex.run(
       named_configs=['cartpole', 'fast'],
       # codecov does not like parallel
       config_updates={'parallel': False},
   )
+  assert run.status == 'COMPLETED'
 
 
 def test_policy_eval():
@@ -36,7 +37,8 @@ def test_train():
       },
       'log_root': 'output/tests/train',
   }
-  train_ex.run(
+  run = train_ex.run(
       named_configs=['cartpole', 'gail', 'fast'],
       config_updates=config_updates,
   )
+  assert run.status == 'COMPLETED'
