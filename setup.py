@@ -2,6 +2,15 @@ from setuptools import find_packages, setup
 
 import imitation
 
+# TF 1.14.0 is not compatible with sacred because of a TF bug.
+TF_VERSION = '>=1.13.1,<2.0,!=1.14.0'
+TESTS_REQUIRE = [
+    'codecov',
+    'codespell',
+    'pytest',
+    'pytest-cov',
+]
+
 setup(
     name='imitation',
     version=imitation.__version__,
@@ -11,23 +20,42 @@ setup(
     python_requires='>=3.6.0',
     packages=find_packages(exclude=['test*']),
     install_requires=[
-        'gin-config',
         'gym',
-        'numpy',
-        'tensorflow',
+        'numpy>=1.15',
         'tqdm',
-        'stable-baselines',
-        'jax',
-        'jaxlib',
+        # FIXME: replace this with PyPI link once commit 2bc3c8722b9eb5 appears
+        # in a release (will probably happen in version 2.6.1 or 2.7, when they
+        # come out)
+        'stable-baselines @ git+https://github.com/hill-a/stable-baselines.git',
+        'jax!=0.1.37',
+        'jaxlib~=0.1.20',
+        # sacred==0.7.5 build is broken without pymongo
+        'sacred>=0.7.4,!=0.7.5',
     ],
-    tests_require=[
-        'codecov',
-        'pytest',
-        'pytest-cov',
-    ],
+    tests_require=TESTS_REQUIRE,
     extras_require={
-        'gpu':  ['tensorflow-gpu'],
-        'cpu': ['tensorflow']
+        'gpu': [f'tensorflow-gpu{TF_VERSION}'],
+        'cpu': [f'tensorflow{TF_VERSION}'],
+        # recommended packages for development
+        'dev': [
+            'autopep8',
+            'flake8',
+            'flake8-blind-except',
+            'flake8-builtins',
+            'flake8-commas',
+            'flake8-debugger',
+            'flake8-isort',
+            'sphinx',
+            'sphinxcontrib-napoleon',
+            'ipdb',
+            'isort',
+            'jupyter',
+            'pytype',
+            # for convenience
+            *TESTS_REQUIRE,
+        ],
+        'test':
+        TESTS_REQUIRE,
     },
     url='https://github.com/HumanCompatibleAI/imitation',
     license='MIT',
@@ -40,7 +68,6 @@ setup(
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: Implementation :: CPython',
-        'Programming Language :: Python :: Implementation :: PyPy'
+        'Programming Language :: Python :: Implementation :: PyPy',
     ],
-
 )
