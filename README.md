@@ -18,10 +18,10 @@ pip install -e .  # install `imitation` in developer mode
 
 To run:
 ```
-# Train AIRL on demonstrations from cartpole PPO2 expert
-python -m imitation.scripts.train with cartpole airl
-# Train expert policies via PPO (ability to train on the new policy coming soon)
+# Train PPO2 agent on cartpole and collect expert demonstrations
 python -m imitation.scripts.data_collect with cartpole
+# Train AIRL on from demonstrations
+python -m imitation.scripts.train with cartpole airl
 ```
 
 # Contributing

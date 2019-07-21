@@ -10,11 +10,18 @@ data_collect_ex = sacred.Experiment("data_collect")
 
 @data_collect_ex.config
 def data_collect_defaults():
-    env_name = "CartPole-v1"
-    total_timesteps = int(1e6)
-    num_vec = 8
+    env_name = "CartPole-v1"  # The gym.Env name
+    total_timesteps = int(1e6)  # Number of training timesteps in model.learn()
+    num_vec = 8  # Number of environments in VecEnv
     parallel = True  # Use SubprocVecEnv (generally faster if num_vec>1)
     make_blank_policy_kwargs = DEFAULT_BLANK_POLICY_KWARGS
+
+    rollout_save_interval = 100  # Num updates between saves (<=0 disables)
+    rollout_save_final = True  # If True, save after training is finished.
+    rollout_save_n_samples = 2000  # Minimum number of timesteps saved per file.
+
+    policy_save_interval = -1  # Num updates between saves (<=0 disables)
+    policy_save_final = True  # If True, save after training is finished.
 
 
 @data_collect_ex.config
@@ -32,7 +39,7 @@ def ant():
 @data_collect_ex.named_config
 def cartpole():
     env_name = "CartPole-v1"
-    total_timesteps = int(4e5)
+    total_timesteps = int(8e5)
 
 
 @data_collect_ex.named_config
@@ -51,3 +58,9 @@ def swimmer():
     make_blank_policy_kwargs = dict(
         policy_network_class=util.FeedForward64Policy,
     )
+
+
+@data_collect_ex.named_config
+def fast():
+    """Intended for testing purposes: small # of updates, ends quickly."""
+    total_timesteps = int(1e4)
