@@ -29,7 +29,7 @@ setup(
         'gpu':  ['tensorflow-gpu'],
         'cpu': ['tensorflow']
     },
-    url='https://github.com/HumanCompatibleAI/airl',
+    url='https://github.com/HumanCompatibleAI/imitation',
     license='MIT',
     classifiers=[
         # Trove classifiers

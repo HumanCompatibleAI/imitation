@@ -191,12 +191,13 @@ def build_mlp(hid_sizes: Iterable[int],
   for i, size in enumerate(hid_sizes):
     key = f"{name}_dense{i}"
     layer = tf.layers.Dense(size, activation=activation,
-                            kernel_initializer=initializer, name=key)
+                            kernel_initializer=initializer,
+                            name=key)  # type: tf.layers.Layer
     layers[key] = layer
 
   # Final layer
   layer = tf.layers.Dense(1, kernel_initializer=initializer,
-                          name=f"{name}_dense_final")
+                          name=f"{name}_dense_final")  # type: tf.layers.Layer
   layers[f"{name}_dense_final"] = layer
 
   return layers

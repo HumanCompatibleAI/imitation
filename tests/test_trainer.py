@@ -9,10 +9,9 @@ from imitation.util.trainer import init_trainer
 
 USE_GAIL = [True, False]
 IN_CODECOV = 'COV_CORE_CONFIG' in os.environ
-if IN_CODECOV:  # multiprocessing breaks codecov, disable
-  PARALLEL = [False]
-else:
-  PARALLEL = [True, False]
+# Disable SubprocVecEnv tests for code coverage test since
+# multiprocessing support is flaky in py.test --cov
+PARALLEL = [False] if IN_CODECOV else [True, False]
 
 
 @pytest.fixture(autouse=True)
@@ -65,49 +64,6 @@ def test_train_disc_improve_D(use_gail, env='CartPole-v1', n_timesteps=200,
   trainer.train_disc(n_steps=n_steps, **kwargs)
   loss2 = trainer.eval_disc_loss(**kwargs)
   assert loss2 < loss1
-
-
-@pytest.mark.expensive
-@pytest.mark.xfail(reason="(AIRL) With random seeding, this test passed 36 "
-                   "times out of 40.",
-                   raises=AssertionError)
-def test_train_gen_degrade_D(use_gail=False, env='CartPole-v1', n_timesteps=200,
-                             n_steps=10000):
-  trainer = init_test_trainer(env, use_gail)
-  if use_gail:
-    kwargs = {}
-  else:
-    obs_old, act, obs_new, _ = rollout.generate_transitions(
-        trainer.gen_policy, env, n_timesteps=n_timesteps)
-    kwargs = dict(gen_old_obs=obs_old, gen_act=act, gen_new_obs=obs_new)
-
-  loss1 = trainer.eval_disc_loss(**kwargs)
-  trainer.train_gen(n_steps=n_steps)
-  loss2 = trainer.eval_disc_loss(**kwargs)
-  assert loss2 > loss1
-
-
-@pytest.mark.expensive
-@pytest.mark.xfail(reason="(AIRL) With random seeding, this test passed 19 "
-                   "times out of 30.",
-                   raises=AssertionError)
-def test_train_disc_then_gen(use_gail=False, env='CartPole-v1', n_timesteps=200,
-                             n_steps=10000):
-  trainer = init_test_trainer(env, use_gail)
-  if use_gail:
-    kwargs = {}
-  else:
-    obs_old, act, obs_new, _ = rollout.generate_transitions(
-        trainer.gen_policy, env, n_timesteps=n_timesteps)
-    kwargs = dict(gen_old_obs=obs_old, gen_act=act, gen_new_obs=obs_new)
-
-  loss1 = trainer.eval_disc_loss(**kwargs)
-  trainer.train_disc(n_steps=n_steps, **kwargs)
-  loss2 = trainer.eval_disc_loss(**kwargs)
-  trainer.train_gen(n_steps=n_steps)
-  loss3 = trainer.eval_disc_loss(**kwargs)
-  assert loss2 < loss1
-  assert loss3 > loss2
 
 
 @pytest.mark.expensive
