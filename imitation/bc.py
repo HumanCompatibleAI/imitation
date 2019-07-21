@@ -5,8 +5,8 @@ demonstrator."""
 from typing import Tuple
 
 import numpy as np
-from stable_baselines.common.policies import BasePolicy
 from stable_baselines.common.dataset import Dataset
+from stable_baselines.common.policies import BasePolicy
 import tensorflow as tf
 from tqdm.autonotebook import tqdm, trange
 
