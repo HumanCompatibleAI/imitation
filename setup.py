@@ -6,6 +6,7 @@ import imitation
 TF_VERSION = '>=1.13.1,<2.0,!=1.14.0'
 TESTS_REQUIRE = [
     'codecov',
+    'codespell',
     'pytest',
     'pytest-cov',
 ]

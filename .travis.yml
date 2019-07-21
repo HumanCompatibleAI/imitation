@@ -22,9 +22,8 @@ matrix:
   - name: "3.7 Coverage Tests"
     python: "3.7"
     install:
-      - pip install -r requirements.txt
       # Install in developer mode so codecov can match paths
-      - pip install -e .
+      - pip install -e '.[test,cpu]'
     script:
       - py.test -vv --cov-report=xml --cov=. tests/
     after_success:
