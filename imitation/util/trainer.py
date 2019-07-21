@@ -29,8 +29,10 @@ def init_trainer(env_id, seed=0, log_dir=None, use_gail=False,
         If True, then use a blank (random) policy to generate rollouts.
         If False, then load an expert policy. Will crash if there is no expert
         policy.
+    trainer_kwargs (dict): Arguments for the Trainer constructor.
+        policy.
     parallel (bool): If True, then use SubprocVecEnv; otherwise, DummyVecEnv.
-    trainer_kwargs (dict): Aguments for the Trainer constructor.
+    trainer_kwargs (dict): Arguments for the Trainer constructor.
     reward_kwargs (dict): Arguments for the `*RewardNet` constructor.
     discrim_kwargs (dict): Arguments for the `DiscrimNet*` constructor.
     make_blank_policy_kwargs: Keyword arguments passed to `make_blank_policy`,

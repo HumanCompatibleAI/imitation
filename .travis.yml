@@ -21,11 +21,13 @@ matrix:
 
   - name: "3.7 Coverage Tests"
     python: "3.7"
+    install:
+      - pip install -r requirements.txt
+      # Install in developer mode so codecov can match paths
+      - pip install -e .
     script:
-      - py.test -vv --cov-report=xml --cov=${VIRTUAL_ENV}/lib/python3.7/site-packages/imitation tests/
+      - py.test -vv --cov-report=xml --cov=. tests/
     after_success:
-      - mv .coverage .coverage.imitation
-      - coverage combine  # rewrite paths
       - codecov
 
   - name: "3.7 Static Type Checking"

@@ -56,7 +56,7 @@ setup(
         'test':
         TESTS_REQUIRE,
     },
-    url='https://github.com/HumanCompatibleAI/airl',
+    url='https://github.com/HumanCompatibleAI/imitation',
     license='MIT',
     classifiers=[
         # Trove classifiers

@@ -208,7 +208,7 @@ def load_policy(env, basedir="expert_models",
       base_dir (str): The directory of the pickled file.
       policy_network_class (stable_baselines.BasePolicy): A policy network
           constructor. Unless we are using a custom BasePolicy (not builtin to
-          stable_baselines), this is automatically infered, and so we can leave
+          stable_baselines), this is automatically inferred, and so we can leave
           this argument as None.
       **kwargs: Additional options for initializing the BaseRLModel class.
   """
@@ -257,12 +257,13 @@ def build_mlp(hid_sizes: Iterable[int],
   for i, size in enumerate(hid_sizes):
     key = f"{name}_dense{i}"
     layer = tf.layers.Dense(size, activation=activation,
-                            kernel_initializer=initializer, name=key)
+                            kernel_initializer=initializer,
+                            name=key)  # type: tf.layers.Layer
     layers[key] = layer
 
   # Final layer
   layer = tf.layers.Dense(1, kernel_initializer=initializer,
-                          name=f"{name}_dense_final")
+                          name=f"{name}_dense_final")  # type: tf.layers.Layer
   layers[f"{name}_dense_final"] = layer
 
   return layers

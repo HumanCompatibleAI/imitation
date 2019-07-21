@@ -1,7 +1,0 @@
-[run]
-include=imitation/*
-
-[paths]
-imitation_source =
-	imitation/
-	*/lib/python*/site-packages/imitation
