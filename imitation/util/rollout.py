@@ -472,7 +472,7 @@ def save(rollout_dir: str,
             `generate_trajectories`.
         truncate (bool): `truncate` argument from `generate_trajectories`.
     """
-    path = os.path.join(rollout_dir, f'{step:5d}.pkl')
+    path = os.path.join(rollout_dir, f'{step}.pkl')
     traj_list = generate_trajectories(policy, policy.get_env(), **kwargs)
     with open(path, "wb") as f:
       pickle.dump(traj_list, f)

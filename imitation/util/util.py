@@ -137,7 +137,7 @@ def save_policy(policy_dir: str,
         step: Either the integer training step or "final" to mark that training
           is finished. Used as a suffix in the save file's basename.
     """
-    path = os.path.join(policy_dir, f'{step:5d}.pkl')
+    path = os.path.join(policy_dir, f'{step}.pkl')
     policy.save(path)
     tf.logging.info("Saved policy pickle to {}.".format(path))
 
