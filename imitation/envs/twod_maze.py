@@ -52,25 +52,3 @@ class TwoDMaze(TwoDEnv, utils.EzPickle):
 
   def viewer_setup(self):
     pass
-
-
-if __name__ == "__main__":
-  from imitation.utils.getch import getKey
-  env = TwoDMaze(verbose=True)
-
-  while True:
-    key = getKey()
-    a = np.array([0.0, 0.0])
-    if key == 'w':
-      a += np.array([0.0, 1.0])
-    elif key == 'a':
-      a += np.array([-1.0, 0.0])
-    elif key == 's':
-      a += np.array([0.0, -1.0])
-    elif key == 'd':
-      a += np.array([1.0, 0.0])
-    elif key == 'q':
-      break
-    a *= 0.2
-    env.step(a)
-    env.render()

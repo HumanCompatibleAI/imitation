@@ -162,26 +162,3 @@ class VisualPointMazeEnv(mujoco_env.MujocoEnv, utils.EzPickle):
                        interpolation=cv2.INTER_AREA)
     image = image.astype(np.float32) / 255.0
     return image
-
-
-if __name__ == "__main__":
-  from imitation.utils.getch import getKey
-  env = VisualPointMazeEnv()
-
-  while True:
-    key = getKey()
-    a = np.array([0.0, 0.0])
-    if key == 'w':
-      a += np.array([0.0, 1.0])
-    elif key == 'a':
-      a += np.array([-1.0, 0.0])
-    elif key == 's':
-      a += np.array([0.0, -1.0])
-    elif key == 'd':
-      a += np.array([1.0, 0.0])
-    elif key == 'q':
-      break
-    a *= 0.2
-    o, _, _, _ = env.step(a)
-    print(o.shape, o)
-    env.render()
