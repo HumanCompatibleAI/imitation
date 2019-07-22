@@ -1,8 +1,8 @@
 import numpy as np
 from gym import utils
 
-from airl.envs.env_utils import get_asset_xml
-from airl.envs.twod_mjc_env import TwoDEnv
+from imitation.envs.env_utils import get_asset_xml
+from imitation.envs.twod_mjc_env import TwoDEnv
 
 from rllab.misc import logger as logger
 
@@ -59,7 +59,7 @@ class TwoDMaze(TwoDEnv, utils.EzPickle):
 
 
 if __name__ == "__main__":
-    from airl.utils.getch import getKey
+    from imitation.utils.getch import getKey
     env = TwoDMaze(verbose=True)
 
     while True:
