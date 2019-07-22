@@ -151,8 +151,8 @@ class VisualPointMazeEnv(mujoco_env.MujocoEnv, utils.EzPickle):
     ])
 
   def _get_obs(self):
-    self._get_viewer().render()
-    data, width, height = self._get_viewer().get_image()
+    self._get_viewer('rgb_array').render()
+    data, width, height = self._get_viewer('rgb_array').get_image()
     image = np.fromstring(data, dtype='uint8').reshape(height, width,
                                                        3)[::-1, :, :]
     # rescale image to float
