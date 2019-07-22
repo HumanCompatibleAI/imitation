@@ -22,6 +22,7 @@ setup(
         'gym',
         'numpy>=1.15',
         'tqdm',
+        'scikit-learn>=0.21.2',
         # FIXME: replace this with PyPI link once commit 2bc3c8722b9eb5 appears
         # in a release (will probably happen in version 2.6.1 or 2.7, when they
         # come out)

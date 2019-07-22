@@ -32,8 +32,6 @@ class RewardVecEnvWrapper(VecEnvWrapper):
 
   @property
   def envs(self):
-    # FIXME(sam): is this property necessary? Seems like recursive __getattr__
-    # in VecEnvWrapper should suffice.
     return self.venv.envs
 
   def reset(self):
@@ -62,6 +60,7 @@ class RewardVecEnvWrapper(VecEnvWrapper):
                             steps=self._step_counter)
     else:
       rews = self.reward_fn(self._old_obs, self._actions, obs_fixed)
+    assert len(rews) == len(obs), "must return one rew for each env"
     self._step_counter += 1
     done_mask = np.asarray(dones, dtype='bool').reshape((len(dones), ))
     self._step_counter[done_mask] = 0

@@ -48,7 +48,8 @@ def test_density_reward(density_type, is_stationary):
                             obs_space=env.observation_space,
                             act_space=env.action_space,
                             is_stationary=is_stationary,
-                            standardise=True)
+                            kernel_bandwidth=0.2,
+                            standardise_inputs=True)
 
   # check that expert policy does better than a random policy under our reward
   # function
