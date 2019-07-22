@@ -1,13 +1,14 @@
 import collections
+import contextlib
 import datetime
 import functools
-import glob
 import os
-from typing import Callable, Dict, Iterable, Optional, Tuple
+from typing import Callable, Dict, Iterable, Optional, Tuple, Union
 
 import gym
 import stable_baselines
 from stable_baselines import bench
+from stable_baselines.common import BaseRLModel
 from stable_baselines.common.input import observation_input
 from stable_baselines.common.policies import FeedForwardPolicy
 from stable_baselines.common.vec_env import DummyVecEnv, SubprocVecEnv, VecEnv
@@ -86,21 +87,6 @@ def is_vec_env(env):
   return isinstance(env, VecEnv)
 
 
-def get_env_id(env_or_str):
-  if isinstance(env_or_str, str):
-    return env_or_str
-
-  try:
-    env = maybe_load_env(env_or_str)
-    if is_vec_env(env):
-      env = env.envs[0]
-    return env.spec.id
-  except Exception as e:
-    tf.logging.warning("Couldn't find environment id, using 'UnknownEnv'")
-    tf.logging.warning(e)
-    return "UnknownEnv"
-
-
 class FeedForward32Policy(FeedForwardPolicy):
   """A feed forward policy network with two hidden layers of 32 units.
 
@@ -120,7 +106,7 @@ class FeedForward64Policy(FeedForwardPolicy):
 
 def make_blank_policy(env, policy_class=stable_baselines.PPO2,
                       policy_network_class=FeedForward32Policy, verbose=1,
-                      **kwargs):
+                      **policy_class_kwargs):
   """Instantiates a policy for the provided environment.
 
   Args:
@@ -130,79 +116,44 @@ def make_blank_policy(env, policy_class=stable_baselines.PPO2,
       policy_class (stable_baselines.BaseRLModel subclass): A policy constructor
           from the stable_baselines module.
       verbose (int): The verbosity level of the policy during training.
+      policy_class_kwargs (dict): Kwargs for `policy_class`.
 
   Return:
   policy (stable_baselines.BaseRLModel)
   """
   env = maybe_load_env(env)
-  return policy_class(policy_network_class, env, verbose=verbose, **kwargs)
+  return policy_class(policy_network_class, env, verbose=verbose,
+                      **policy_class_kwargs)
 
 
-def save_trained_policy(policy, savedir="saved_models", filename=None):
-  """Saves a trained policy as a pickle file.
+def save_policy(policy_dir: str,
+                policy: BaseRLModel,
+                step: Union[str, int]):
+    """Save policy weights.
 
-  Args:
-      policy (BasePolicy): policy to save
-      savedir (str): The directory to save the file to.
-      filename (str): The the name of the pickle file. If None, then choose
-          a default name using the names of the policy model and the
-          environment.
-  """
-  os.makedirs(savedir, exist_ok=True)
-  path = os.path.join(savedir, filename)
-  policy.save(path)
-  tf.logging.info("Saved pickle to {}!".format(path))
-
-
-def make_save_policy_callback(savedir, save_interval=1):
-  """Makes a policy.learn() callback that saves snapshots of the policy
-  to `{savedir}/{file_prefix}-{step}`, where step is the training
-  step.
-
-  Args:
-      savedir (str): The directory to save in.
-      file_prefix (str): The pickle file prefix.
-      save_interval (int): The number of training timesteps in between saves.
-  """
-  step = 0
-
-  def callback(locals_, _):
-    nonlocal step
-    step += 1
-    if step % save_interval == 0:
-      policy = locals_['self']
-      save_trained_policy(policy, savedir, f'{step:05d}')
-    return True
-
-  return callback
+    Args:
+        policy_dir: Path to the save directory.
+        policy: The stable baselines policy.
+        step: Either the integer training step or "final" to mark that training
+          is finished. Used as a suffix in the save file's basename.
+    """
+    path = os.path.join(policy_dir, f'{step}.pkl')
+    policy.save(path)
+    tf.logging.info("Saved policy pickle to {}.".format(path))
 
 
-def _get_policy_paths(env, policy_model_class, basedir, n_experts):
-  assert n_experts > 0
-
-  path = os.path.join(basedir, _policy_filename(policy_model_class, env))
-  paths = glob.glob(path)
-
-  paths.sort(key=lambda f: int(''.join(filter(str.isdigit, f))))
-
-  if len(paths) < n_experts:
-    raise ValueError(
-        "Wanted to load {} experts, but there were only {} experts at {}"
-        .format(n_experts, len(paths), path))
-
-  paths = paths[-n_experts:]
-
-  return paths
-
-
-def load_policy(env, basedir="expert_models",
+def load_policy(path: str,
+                env: gym.Env,
                 policy_model_class=stable_baselines.PPO2,
-                policy_network_class=None, n_experts=1,
-                **kwargs):
-  """Loads and returns a pickled policy.
+                init_tensorboard=False,
+                policy_network_class=None,
+                **kwargs) -> BaseRLModel:
+  """Loads and returns an policy, encapsulated in a RLModel.
 
   Args:
-      env (str): The string name of the Gym environment the policy is acting in.
+      path (str): Path to the policy dump.
+      env (str or Env): The Env that this policy is meant to act in, or the
+          string name of the Gym environment.
       policy_class (stable_baselines.BaseRLModel class): A policy constructor
           from the stable_baselines module.
       base_dir (str): The directory of the pickled file.
@@ -218,31 +169,14 @@ def load_policy(env, basedir="expert_models",
   # terminology). Should fix the naming, or change it so that it actually loads
   # policies (which is often what is really wanted, IMO).
 
-  # FIXME: a lot of code assumes that this function returns None on failure,
-  # which it does not. That upstream code also needs to be fixed.
-
-  paths = _get_policy_paths(env, policy_model_class, basedir, n_experts)
-
   env = maybe_load_env(env)
 
   if (policy_network_class is not None) and ("policy" not in kwargs):
     kwargs["policy"] = policy_network_class
 
-  pols = []
-
-  for path in paths:
-    policy = policy_model_class.load(path, env, **kwargs)
-    tf.logging.info("loaded policy from '{}'".format(path))
-    pols.append(policy)
-
-  return pols
-
-
-def _policy_filename(policy_class, env, n="[0-9]*"):
-  """Returns the .pkl filename that the policy instantiated with `policy_class`
-  and trained on env should be saved to.
-  """
-  return "{}_{}_{}.pkl".format(policy_class.__name__, get_env_id(env), n)
+  policy = policy_model_class.load(path, env, **kwargs)
+  tf.logging.info("loaded policy from '{}'".format(path))
+  return policy
 
 
 def build_mlp(hid_sizes: Iterable[int],
@@ -257,12 +191,13 @@ def build_mlp(hid_sizes: Iterable[int],
   for i, size in enumerate(hid_sizes):
     key = f"{name}_dense{i}"
     layer = tf.layers.Dense(size, activation=activation,
-                            kernel_initializer=initializer, name=key)
+                            kernel_initializer=initializer,
+                            name=key)  # type: tf.layers.Layer
     layers[key] = layer
 
   # Final layer
   layer = tf.layers.Dense(1, kernel_initializer=initializer,
-                          name=f"{name}_dense_final")
+                          name=f"{name}_dense_final")  # type: tf.layers.Layer
   layers[f"{name}_dense_final"] = layer
 
   return layers
@@ -309,3 +244,24 @@ def build_inputs(observation_space: gym.Space,
   new_obs_ph, new_obs_inp = observation_input(observation_space,
                                               name="new_obs", scale=scale)
   return old_obs_ph, act_ph, new_obs_ph, old_obs_inp, act_inp, new_obs_inp
+
+
+@contextlib.contextmanager
+def make_session(**kwargs):
+  """Context manager for a TensorFlow session.
+
+  The session is associated with a newly created graph. Both session and
+  graph are set as default. The session will be closed when exiting this
+  context manager.
+
+  Args:
+    kwargs: passed through to `tf.Session`.
+
+  Yields:
+    (graph, session) where graph is a `tf.Graph` and `session` a `tf.Session`.
+  """
+  graph = tf.Graph()
+  with graph.as_default():
+    with tf.Session(graph=graph, **kwargs) as session:
+      with session.as_default():
+        yield graph, session
