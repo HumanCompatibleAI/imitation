@@ -1,6 +1,9 @@
 import collections
 import functools
-from typing import Dict, List, Sequence, Tuple
+import glob
+import os
+import pickle
+from typing import Dict, List, Optional, Tuple, Union
 
 import gym
 import numpy as np
@@ -9,6 +12,19 @@ from stable_baselines.common.policies import BasePolicy
 import tensorflow as tf
 
 from . import util  # Relative import needed to prevent cycle with __init__.py
+
+TrajectoryList = List[Dict[str, np.ndarray]]
+"""A list of trajectory dicts.
+
+Each dict contains the keys 'act', 'obs', and 'rew'. For details on these
+key-value pairs, see the docstring for `generate_trajectories`.
+"""
+
+TransitionsTuple = Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]
+"""An tuple of obs-act-obs-rew values.
+
+For details see the docstring for `generate_transitions`.
+"""
 
 
 class RandomPolicy(BasePolicy):
@@ -106,7 +122,7 @@ class _TrajectoryAccumulator:
 
 
 def generate_trajectories(policy, env, *, n_timesteps=None, n_episodes=None,
-                          ) -> List[Dict[str, np.ndarray]]:
+                          ) -> TrajectoryList:
   """Generate trajectory dictionaries from a policy and an environment.
 
   Args:
@@ -274,8 +290,7 @@ def mean_return(*args, **kwargs) -> float:
   return rollout_stats(*args, **kwargs)["return_mean"]
 
 
-def flatten_trajectories(trajectories: Sequence[Dict[str, np.ndarray]],
-                         ) -> Tuple[np.ndarray, ...]:
+def flatten_trajectories(trajectories: TrajectoryList) -> TransitionsTuple:
   """Flatten a series of trajectory dictionaries into arrays.
 
   Returns observations, actions, next observations, rewards.
@@ -317,7 +332,7 @@ def flatten_trajectories(trajectories: Sequence[Dict[str, np.ndarray]],
 
 
 def generate_transitions(policy, env, *, n_timesteps=None, n_episodes=None,
-                         truncate=True) -> Tuple[np.ndarray, ...]:
+                         truncate=True) -> TransitionsTuple:
   """Generate old_obs-action-new_obs-reward tuples.
 
   Args:
@@ -359,8 +374,8 @@ def generate_transitions(policy, env, *, n_timesteps=None, n_episodes=None,
 
 
 def generate_transitions_multiple(policies, env, n_timesteps, *, truncate=True,
-                                  ) -> Tuple[np.ndarray, ...]:
-  """Generate obs-act-obs triples from several policies.
+                                  ) -> TransitionsTuple:
+  """Generate obs-act-obs-rew arrays from several policies.
 
   Splits the desired number of timesteps evenly between all the policies given.
 
@@ -437,3 +452,61 @@ def generate_transitions_multiple(policies, env, n_timesteps, *, truncate=True,
     assert len(act) == n_timesteps
 
   return tuple(np.array(x) for x in (obs_old, act, obs_new))
+
+
+def save(rollout_dir: str,
+         policy: BaseRLModel,
+         step: Union[str, int],
+         **kwargs,
+         ) -> None:
+    """Generate policy rollouts and save them to a pickled TrajectoryList.
+
+    Args:
+        rollout_dir: Path to the save directory.
+        policy: The stable baselines policy.
+        step: Either the integer training step or "final" to mark that training
+            is finished. Used as a suffix in the save file's basename.
+        n_timesteps (Optional[int]): `n_timesteps` argument from
+            `generate_trajectories`.
+        n_episodes (Optional[int]): `n_episodes` argument from
+            `generate_trajectories`.
+        truncate (bool): `truncate` argument from `generate_trajectories`.
+    """
+    path = os.path.join(rollout_dir, f'{step}.pkl')
+    traj_list = generate_trajectories(policy, policy.get_env(), **kwargs)
+    with open(path, "wb") as f:
+      pickle.dump(traj_list, f)
+    tf.logging.info("Dumped demonstrations to {}.".format(path))
+
+
+def load_trajectories(rollout_glob: str,
+                      max_n_files: Optional[int] = None,
+                      ) -> TrajectoryList:
+  """Load trajectories from rollout pickles.
+
+  Args:
+      rollout_glob: Glob path to rollout pickles.
+      max_n_files: If provided, then only load the most recent `max_n_files`
+          files, as sorted by modification times.
+
+  Returns:
+      A list of trajectory dictionaries.
+
+  Raises:
+      ValueError: No files match the glob.
+  """
+  ro_paths = glob.glob(rollout_glob)
+  if len(ro_paths) == 0:
+    raise ValueError(f"No files match glob '{rollout_glob}'")
+  if max_n_files is not None:
+    ro_paths.sort(key=os.path.getmtime)
+    ro_paths = ro_paths[-max_n_files:]
+
+  traj_joined = []  # type: TrajectoryList
+  for path in ro_paths:
+    with open(path, "rb") as f:
+      traj = pickle.load(f)  # type: TrajectoryList
+      tf.logging.info(f"Loaded rollouts from '{path}'.")
+      traj_joined.extend(traj)
+
+  return traj_joined
