@@ -4,7 +4,6 @@ from gym.envs.mujoco import mujoco_env
 
 #import mujoco_py
 #from mujoco_py.mjlib import mjlib
-from rllab.misc import logger
 
 from imitation.envs.dynamic_mjc.mjc_models import pusher
 
@@ -95,13 +94,3 @@ class PusherEnv(mujoco_env.MujocoEnv, utils.EzPickle):
 
     def plot_trajs(self, *args, **kwargs):
         pass
-
-    def log_diagnostics(self, paths):
-        rew_near = np.array([traj['env_infos']['reward_near'] for traj in paths])
-        rew_dist = np.array([traj['env_infos']['reward_dist'] for traj in paths])
-        rew_ctrl = np.array([traj['env_infos']['reward_ctrl'] for traj in paths])
-
-        logger.record_tabular('AvgArmToObjectDist', -np.mean(rew_near))
-        logger.record_tabular('AvgObjectToGoalDist', -np.mean(rew_dist))
-        logger.record_tabular('AvgControlCost', -np.mean(rew_ctrl))
-

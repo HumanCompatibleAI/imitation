@@ -1,10 +1,8 @@
 import numpy as np
 from gym import utils
 
-from imitation.envs.env_utils import get_asset_xml
+from imitation.envs.common import get_asset_xml
 from imitation.envs.twod_mjc_env import TwoDEnv
-
-from rllab.misc import logger as logger
 
 INIT_POS = np.array([0.15,0.15])
 TARGET = np.array([0.15, -0.15])
@@ -49,13 +47,6 @@ class TwoDMaze(TwoDEnv, utils.EzPickle):
         v = self.viewer
         #v.cam.trackbodyid=0
         #v.cam.distance = v.model.stat.extent
-
-    def log_diagnostics(self, paths):
-        rew_dist = np.array([traj['env_infos']['distance'] for traj in paths])
-
-        logger.record_tabular('AvgObjectToGoalDist', np.mean(rew_dist))
-        logger.record_tabular('MinAvgObjectToGoalDist', np.mean(np.min(rew_dist, axis=1)))
-
 
 
 if __name__ == "__main__":

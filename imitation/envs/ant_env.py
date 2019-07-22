@@ -246,17 +246,6 @@ class CustomAntEnv(mujoco_env.MujocoEnv, utils.EzPickle):
     def viewer_setup(self):
         self.viewer.cam.distance = self.model.stat.extent * 0.5
 
-    def log_diagnostics(self, paths):
-        forward_rew = np.array([np.mean(traj['env_infos']['reward_forward']) for traj in paths])
-        reward_ctrl = np.array([np.mean(traj['env_infos']['reward_ctrl']) for traj in paths])
-        reward_cont = np.array([np.mean(traj['env_infos']['reward_contact']) for traj in paths])
-        reward_flip = np.array([np.mean(traj['env_infos']['reward_flipped']) for traj in paths])
-
-        logger.record_tabular('AvgRewardFwd', np.mean(forward_rew))
-        logger.record_tabular('AvgRewardCtrl', np.mean(reward_ctrl))
-        logger.record_tabular('AvgRewardContact', np.mean(reward_cont))
-        logger.record_tabular('AvgRewardFlipped', np.mean(reward_flip))
-
 
 if __name__ == "__main__":
     env = CustomAntEnv(disabled=True, gear=30)

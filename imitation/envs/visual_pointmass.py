@@ -8,11 +8,10 @@ from imitation.envs.dynamic_mjc.mjc_models import point_mass_maze
 from imitation.envs.env_utils import get_asset_xml
 from imitation.envs.twod_mjc_env import TwoDEnv
 
-from rllab.misc import logger as logger
-
 INIT_POS = np.array([0.15,0.15])
 TARGET = np.array([0.15, -0.15])
 DIST_THRESH = 0.12
+
 
 class VisualTwoDMaze(mujoco_env.MujocoEnv, utils.EzPickle):
     def __init__(self, verbose=False, width=64, height=64):
@@ -77,11 +76,6 @@ class VisualTwoDMaze(mujoco_env.MujocoEnv, utils.EzPickle):
         self.viewer.cam.distance = 1.0
         #v.cam.trackbodyid=0
         #v.cam.distance = v.model.stat.extent
-
-    def log_diagnostics(self, paths):
-        rew_dist = np.array([traj['env_infos']['distance'] for traj in paths])
-        logger.record_tabular('AvgObjectToGoalDist', np.mean(rew_dist))
-        logger.record_tabular('MinAvgObjectToGoalDist', np.mean(np.min(rew_dist, axis=1)))
 
 
 class VisualPointMazeEnv(mujoco_env.MujocoEnv, utils.EzPickle):
@@ -159,14 +153,6 @@ class VisualPointMazeEnv(mujoco_env.MujocoEnv, utils.EzPickle):
         image = cv2.resize(image, (self.width, self.height), interpolation=cv2.INTER_AREA)
         image = image.astype(np.float32)/255.0
         return image
-
-    def log_diagnostics(self, paths):
-        rew_dist = np.array([traj['env_infos']['reward_dist'] for traj in paths])
-        rew_ctrl = np.array([traj['env_infos']['reward_ctrl'] for traj in paths])
-
-        logger.record_tabular('AvgObjectToGoalDist', -np.mean(rew_dist.mean()))
-        logger.record_tabular('AvgControlCost', -np.mean(rew_ctrl.mean()))
-        logger.record_tabular('AvgMinToGoalDist', np.mean(np.min(-rew_dist, axis=1)))
 
 
 if __name__ == "__main__":

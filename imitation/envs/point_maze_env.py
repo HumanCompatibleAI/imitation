@@ -2,8 +2,6 @@ import numpy as np
 from gym import utils
 from gym.envs.mujoco import mujoco_env
 
-from rllab.misc import logger
-
 from imitation.envs.dynamic_mjc.mjc_models import point_mass_maze
 
 
@@ -63,12 +61,3 @@ class PointMazeEnv(mujoco_env.MujocoEnv, utils.EzPickle):
 
     def plot_trajs(self, *args, **kwargs):
         pass
-
-    def log_diagnostics(self, paths):
-        rew_dist = np.array([traj['env_infos']['reward_dist'] for traj in paths])
-        rew_ctrl = np.array([traj['env_infos']['reward_ctrl'] for traj in paths])
-
-        logger.record_tabular('AvgObjectToGoalDist', -np.mean(rew_dist.mean()))
-        logger.record_tabular('AvgControlCost', -np.mean(rew_ctrl.mean()))
-        logger.record_tabular('AvgMinToGoalDist', np.mean(np.min(-rew_dist, axis=1)))
-

@@ -1,23 +1,15 @@
-import numpy as np
-from rllab.core.serializable import Serializable
+from typing import NamedTuple
 
 from gym.envs.mujoco import mujoco_env
 from gym.spaces import Box
-
-from rllab.envs.base import Env
-from rllab.misc.overrides import overrides
+import numpy as np
 
 
-class MapConfig(Serializable):
-    def __init__(self, xs, ys, xres, yres):
-        Serializable.quick_init(self, locals())
-        self.xs = xs
-        self.ys = ys
-        self.xres = xres
-        self.yres=yres
-
-def map_config(xs=(-0.3,0.3), ys=(-0.3,0.3), xres=50, yres=50):
-    return MapConfig(xs,ys,xres,yres)
+class MapConfig(NamedTuple):
+    xs: Tuple[float, float] = (-0.3, 0.3)
+    ys: Tuple[float, float] = (-0.3, 0.3)
+    xres: float = 50
+    yres: float = 50
 
 def make_heat_map(eval_func, map_config):
     gps = get_dense_gridpoints(map_config)
@@ -74,8 +66,8 @@ class TwoDEnv(mujoco_env.MujocoEnv):
         super(TwoDEnv, self).__init__(model_path=model_path, frame_skip=frame_skip)
         assert isinstance(self.observation_space, Box)
         assert self.observation_space.shape == (2,)
-        self.__map_config = map_config(xs=(xbounds[0], xbounds[1]),
-                                       ys=(ybounds[0], ybounds[1]))
+        self.__map_config = MapConfig(xs=(xbounds[0], xbounds[1]),
+                                      ys=(ybounds[0], ybounds[1]))
 
     @property
     def map_config(self):
@@ -99,7 +91,3 @@ class TwoDEnv(mujoco_env.MujocoEnv):
 
     def get_viewer(self):
         return self._get_viewer()
-
-    @overrides
-    def log_diagnostics(self, paths):
-        pass
