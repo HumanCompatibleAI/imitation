@@ -185,15 +185,14 @@ class DensityReward:
 class DensityTrainer:
   def __init__(self,
                env,
+               rollouts,
                imitation_trainer,
-               expert_trainer,
                *,
                standardise_inputs=True,
                kernel='gaussian',
                kernel_bandwidth=0.5,
                density_type=STATE_ACTION_DENSITY,
-               is_stationary=False,
-               n_expert_trajectories=5):
+               is_stationary=False):
     r"""Family of simple imitation learning baseline algorithms that apply RL to
     maximise a rough density estimate of the demonstration trajectories.
     Specifically, it constructs a non-parametric estimate of `p(s)`, `p(s,s')`,
@@ -214,9 +213,7 @@ class DensityTrainer:
         refer to documentation for that class."""
     self.env = util.maybe_load_env(env, vectorize=True)
     self.imitation_trainer = imitation_trainer
-    expert_trajectories = rollout.generate_trajectories(
-        expert_trainer, self.env, n_episodes=n_expert_trajectories)
-    self.reward_fn = DensityReward(trajectories=expert_trajectories,
+    self.reward_fn = DensityReward(trajectories=rollouts,
                                    density_type=density_type,
                                    obs_space=self.env.observation_space,
                                    act_space=self.env.action_space,

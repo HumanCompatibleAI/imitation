@@ -37,12 +37,11 @@ def test_density_reward(density_type, is_stationary):
   env = util.make_vec_env(env_id, 2)
 
   # construct density-based reward from expert rollouts
-  expert_trainer, = util.load_policy(env)
-  n_episodes = 5
-  expert_trajectories = util.generate_trajectories(expert_trainer,
-                                                   env,
-                                                   n_episodes=n_episodes)
-  reward_fn = DensityReward(trajectories=expert_trajectories,
+  expert_trajectories_all = util.rollout.load_trajectories(
+    f"tests/data/rollouts/{env_id}_*.pkl")
+  n_experts = len(expert_trajectories_all)
+  expert_trajectories_train = expert_trajectories_all[:n_experts // 2]
+  reward_fn = DensityReward(trajectories=expert_trajectories_train,
                             density_type=density_type,
                             kernel='gaussian',
                             obs_space=env.observation_space,
@@ -56,12 +55,10 @@ def test_density_reward(density_type, is_stationary):
   random_policy = util.RandomPolicy(env.observation_space, env.action_space)
   random_trajectories = util.generate_trajectories(random_policy,
                                                    env,
-                                                   n_episodes=n_episodes)
-  unseen_expert_trajectories = util.generate_trajectories(expert_trainer,
-                                                          env,
-                                                          n_episodes=n_episodes)
+                                                   n_episodes=n_experts // 2)
+  expert_trajectories_test = expert_trajectories_all[n_experts // 2:]
   random_score = score_trajectories(random_trajectories, reward_fn)
-  expert_score = score_trajectories(unseen_expert_trajectories, reward_fn)
+  expert_score = score_trajectories(expert_trajectories_test, reward_fn)
   assert expert_score > random_score
 
 
@@ -69,13 +66,13 @@ def test_density_reward(density_type, is_stationary):
 @parametrize_density_stationary
 def test_density_trainer(density_type, is_stationary):
   env_id = 'Pendulum-v0'
+  rollouts = util.rollout.load_trajectories(
+    f"tests/data/rollouts/{env_id}_*.pkl")
   env = util.make_vec_env(env_id, 2)
-  expert_algo, = util.load_policy(env)
   imitation_trainer = util.make_blank_policy(env)
   density_trainer = DensityTrainer(env,
-                                   expert_trainer=expert_algo,
+                                   rollouts=rollouts,
                                    imitation_trainer=imitation_trainer,
-                                   n_expert_trajectories=5,
                                    density_type=density_type,
                                    is_stationary=is_stationary,
                                    kernel='gaussian')
