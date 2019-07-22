@@ -1,17 +1,14 @@
 """Tests for Behavioural Cloning (BC)."""
-
 from imitation import bc, util
 
 
 def test_bc():
   env_id = 'CartPole-v1'
   env = util.make_vec_env(env_id, 2)
-  expert_algos = util.load_policy(env)
-  if not expert_algos:
-    raise ValueError(env)
-  bc_trainer = bc.BCTrainer(env,
-                            expert_trainers=expert_algos,
-                            n_expert_timesteps=2000)
+  rollouts = util.rollout.load_trajectories(
+    "tests/data/rollouts/CartPole-v1*.pkl")
+  rollouts = util.rollout.flatten_trajectories(rollouts)[:3]
+  bc_trainer = bc.BCTrainer(env, expert_rollouts=rollouts)
   novice_stats = bc_trainer.test_policy()
   bc_trainer.train(n_epochs=40)
   good_stats = bc_trainer.test_policy()

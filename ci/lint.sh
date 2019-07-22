@@ -12,6 +12,14 @@ echo "flake8"
 flake8 ${SOURCE_DIRS[@]}
 RET=$(($RET + $?))
 
+echo "Check for common typos"
+echo "codespell --version"
+codespell --version
+
+echo "codespell"
+codespell -I .codespell.skip --skip='*.pyc,tests/data/*' ${SOURCE_DIRS[@]}
+RET=$((RET + $?))
+
 echo "Building docs (validates docstrings)"
 pushd docs/
 make clean

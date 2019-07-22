@@ -71,7 +71,7 @@ def test_replay_buffer(capacity, chunk_len, obs_shape, act_shape, dtype):
   `capacity * 3` observation-action-observation samples into the buffer in
   chunks of length `chunk_len`.
 
-  All chunks are of the appopriate observation or action shape, and contain
+  All chunks are of the appropriate observation or action shape, and contain
   the value fill_val.
 
   `len(buffer)` should increase until we reach capacity.

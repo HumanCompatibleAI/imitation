@@ -18,9 +18,13 @@ def train_defaults():
     n_gen_steps_per_epoch = 2048
 
     init_trainer_kwargs = dict(
-        use_random_expert=False,
         num_vec=8,  # NOTE: changing this also changes the effective n_steps!
         parallel=True,  # Use SubprocVecEnv (generally faster if num_vec>1)
+
+        discrim_kwargs=dict(
+            scale=True,
+        ),
+
         reward_kwargs=dict(
             theta_units=[32, 32],
             phi_units=[32, 32],
@@ -32,23 +36,19 @@ def train_defaults():
             # disables the replay buffer. This seems to improve convergence
             # speed, but may come at a cost of stability.
             gen_replay_buffer_capacity=1000,
-            n_expert_samples=1000,
         ),
-
-        # Some environments (e.g. CartPole) have float max as limits, which
-        # breaks the scaling.
-        discrim_scale=False,
 
         make_blank_policy_kwargs=DEFAULT_BLANK_POLICY_KWARGS,
     )
 
-    checkpoint_interval = 5  # number of epochs at which to checkpoint
+    log_root = os.path.join("output", "train")  # output directory
+    checkpoint_interval = 5  # num epochs between checkpoints (<=0 disables)
 
 
 @train_ex.config
-def logging(env_name):
-    log_dir = os.path.join("output", "train",
-                           env_name.replace('/', '_'), util.make_timestamp())
+def logging(env_name, log_root):
+    log_dir = os.path.join(log_root, env_name.replace('/', '_'),
+                           util.make_timestamp())
 
 
 @train_ex.named_config
@@ -103,7 +103,8 @@ def swimmer():
 
 
 @train_ex.named_config
-def debug():
+def fast():
+    """Minimize the amount of computation. Useful for test cases."""
     n_epochs = 1
     interactive = False
     n_disc_steps_per_epoch = 1

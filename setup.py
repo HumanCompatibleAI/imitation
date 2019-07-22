@@ -6,6 +6,7 @@ import imitation
 TF_VERSION = '>=1.13.1,<2.0,!=1.14.0'
 TESTS_REQUIRE = [
     'codecov',
+    'codespell',
     'pytest',
     'pytest-cov',
 ]
@@ -64,7 +65,7 @@ setup(
             'imitation-train=imitation.scripts.train:main_console',
         ],
     },
-    url='https://github.com/HumanCompatibleAI/airl',
+    url='https://github.com/HumanCompatibleAI/imitation',
     license='MIT',
     classifiers=[
         # Trove classifiers
