@@ -1,6 +1,6 @@
 from setuptools import find_packages, setup
 
-import imitation
+import src.imitation
 
 # TF 1.14.0 is not compatible with sacred because of a TF bug.
 TF_VERSION = '>=1.13.1,<2.0,!=1.14.0'
@@ -13,12 +13,13 @@ TESTS_REQUIRE = [
 
 setup(
     name='imitation',
-    version=imitation.__version__,
+    version=src.imitation.__version__,
     description=(
         'Implementation of modern IRL and imitation learning algorithms.'),
     author='Center for Human-Compatible AI and Google',
     python_requires='>=3.6.0',
-    packages=find_packages(exclude=['test*']),
+    packages=find_packages('src'),
+    package_dir={'': 'src'},
     install_requires=[
         'gym',
         'numpy>=1.15',
