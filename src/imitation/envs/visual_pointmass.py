@@ -1,3 +1,4 @@
+# pytype: skip-file
 import cv2
 from gym import utils
 from gym.envs.mujoco import mujoco_env

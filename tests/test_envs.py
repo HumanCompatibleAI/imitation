@@ -6,6 +6,7 @@ from imitation.util import make_vec_env
 
 PARALLEL = [False, True]
 
+
 @pytest.mark.parametrize("parallel", PARALLEL)
 def test_envs(parallel):
   """Check that our custom environments don't crash on `step`, and `reset`."""
