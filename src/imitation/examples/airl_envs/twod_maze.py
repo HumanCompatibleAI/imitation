@@ -1,8 +1,8 @@
 from gym import utils
 import numpy as np
 
-from imitation.envs.common import get_asset_xml
-from imitation.envs.twod_mjc_env import TwoDEnv
+from imitation.examples.airl_envs.common import get_asset_xml
+from imitation.examples.airl_envs.twod_mjc_env import TwoDEnv
 
 INIT_POS = np.array([0.15, 0.15])
 TARGET = np.array([0.15, -0.15])

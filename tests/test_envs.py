@@ -1,13 +1,12 @@
 import gym
 import pytest
 
-from imitation.envs import ENV_NAMES
-from imitation.util import make_vec_env
+from imitation.examples.airl_envs import ENV_NAMES
 
 PARALLEL = [False, True]
 
-try:
-  import mujoco_py as _
+try:  # pragma: no cover
+  import mujoco_py as _  # pytype: disable=import-error
   del _
   MUJOCO_OK = True
 except ImportError:
@@ -17,7 +16,7 @@ except ImportError:
 @pytest.mark.skipif(not MUJOCO_OK,
                     reason="Requires `mujoco_py`, which isn't installed.")
 @pytest.mark.parametrize("env_name", ENV_NAMES)
-def test_envs(env_name):
+def test_envs(env_name):  # pragma: no cover
   """Check that our custom environments don't crash on `step`, and `reset`."""
   for env_name in ENV_NAMES:
     env = gym.make(env_name)

@@ -5,8 +5,8 @@ from gym.envs.mujoco import mujoco_env
 from gym.spaces import Box
 import numpy as np
 
-from imitation.envs.common import get_asset_xml
-from imitation.envs.dynamic_mjc.mjc_models import point_mass_maze
+from imitation.examples.airl_envs.common import get_asset_xml
+from imitation.examples.airl_envs.dynamic_mjc.mjc_models import point_mass_maze
 
 INIT_POS = np.array([0.15, 0.15])
 TARGET = np.array([0.15, -0.15])
