@@ -6,7 +6,16 @@ from imitation.util import make_vec_env
 
 PARALLEL = [False, True]
 
+try:
+  import mujoco_py as _
+  del _
+  MUJOCO_OK = True
+except ImportError:
+  MUJOCO_OK = False
 
+
+@pytest.mark.skipif(not MUJOCO_OK,
+                    reason="Requires `mujoco_py`, which isn't installed.")
 @pytest.mark.parametrize("parallel", PARALLEL)
 def test_envs(parallel):
   """Check that our custom environments don't crash on `step`, and `reset`."""
