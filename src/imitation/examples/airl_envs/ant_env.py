@@ -594,11 +594,3 @@ class CustomAntEnv(mujoco_env.MujocoEnv, utils.EzPickle):
 
   def viewer_setup(self):
     self.viewer.cam.distance = self.model.stat.extent * 0.5
-
-
-if __name__ == "__main__":
-  env = CustomAntEnv(disabled=True, gear=30)
-
-  for _ in range(1000):
-    env.render()
-    env.step(env.action_space.sample())
