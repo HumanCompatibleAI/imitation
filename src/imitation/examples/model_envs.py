@@ -1,5 +1,6 @@
 """Example discrete MDPs for use with tabular MCE IRL."""
 
+import gym
 import numpy as np
 
 from imitation.model_env import ModelBasedEnv
@@ -264,3 +265,20 @@ class CliffWorld(ModelBasedEnv):
     grid = D.reshape(self.height, self.width)
     plt.imshow(grid)
     plt.gca().grid(False)
+
+
+def register_cliff(suffix, kwargs):
+  gym.register(f'imitation/CliffWorld{suffix}-v0',
+               entry_point='imitation.examples.model_envs:CliffWorld',
+               kwargs=kwargs)
+
+
+for size in [5, 10]:
+  for use_xy in [False, True]:
+    use_xy_str = "XY" if use_xy else ""
+    register_cliff(f'{size}{use_xy_str}', kwargs={
+        'width': size,
+        'height': size,
+        'use_xy_obs': use_xy,
+        'horizon': size * size * 4,
+    })
