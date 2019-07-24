@@ -60,3 +60,7 @@ def config():
 def logging(env_name, log_root):
   log_dir = osp.join(log_root, env_name.replace('/', '_'),
                      util.make_timestamp())
+
+@gail_benchmark_ex.named_config
+def fast():
+  train_ex_named_configs = ["fast"]
