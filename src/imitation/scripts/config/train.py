@@ -114,5 +114,6 @@ def fast():
     n_gen_steps_per_epoch = 1
     n_episodes_per_reward_data = 1
     init_trainer_kwargs = dict(
+        n_expert_demos=1,
         parallel=False,  # easier to debug with everything in one process
     )
