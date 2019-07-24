@@ -83,6 +83,7 @@ def swimmer():
   env_name = "Swimmer-v2"
 
 
+@data_collect_ex.named_config
 def mountaincar():
   env_name = "MountainCar-v0"
 
