@@ -16,6 +16,7 @@ train_ex = sacred.Experiment("train", interactive=True)
 def train_defaults():
     env_name = "CartPole-v1"  # environment to train on
     n_epochs = 50
+    n_episodes_eval = 50  # Num of episodes for final mean ground truth return
     n_disc_steps_per_epoch = 50
     n_gen_steps_per_epoch = 2048
 
@@ -109,6 +110,7 @@ def swimmer():
 def fast():
     """Minimize the amount of computation. Useful for test cases."""
     n_epochs = 1
+    n_episodes_eval = 1
     interactive = False
     n_disc_steps_per_epoch = 1
     n_gen_steps_per_epoch = 1

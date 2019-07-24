@@ -9,7 +9,7 @@ import datetime
 import math
 import os
 import os.path as osp
-from typing import Optional
+from typing import Dict, Optional
 
 from matplotlib import pyplot as plt
 from sacred.observers import FileStorageObserver
@@ -42,11 +42,12 @@ def train_and_plot(_seed: int,
                    n_disc_steps_per_epoch: int = 10,
                    n_gen_steps_per_epoch: int = 10000,
                    n_episodes_per_reward_data: int = 5,
+                   n_episodes_eval: int = 50,
                    checkpoint_interval: int = 5,
                    interactive: bool = True,
                    expert_policy=None,
                    init_trainer_kwargs: dict = {},
-                   ) -> None:
+                   ) -> Dict[str, float]:
   """Alternate between training the generator and discriminator.
 
   Every epoch:
@@ -71,8 +72,11 @@ def train_and_plot(_seed: int,
           every training epoch.
       n_gen_plot_episodes: The number of generator update steps during every
           generator epoch.
-      n_episodes_per_reward_data: The number of episodes to average over when
-          calculating the average episode reward of a policy.
+      n_episodes_per_reward_data: The number of episodes averaged over when
+          calculating the average episode reward of a policy for the performance
+          plots.
+      n_episodes_eval: The number of episodes to average over when calculating
+          the average ground truth reward return of the final policy.
       checkpoint_interval: Save the discriminator and generator models every
           `checkpoint_interval` epochs and after training is complete. If <=0,
           then only save weights after training is complete.
@@ -82,6 +86,11 @@ def train_and_plot(_seed: int,
           also plot the performance of this expert policy.
       init_trainer_kwargs: Keyword arguments passed to `init_trainer`,
         used to initialize the trainer.
+
+  Returns:
+      results: A dictionary with two keys, "mean" and "std_err". The
+          corresponding values are the mean and standard error of
+          ground truth episode return for the imitation learning algorithm.
   """
   assert n_epochs_per_plot is None or n_epochs_per_plot >= 1
 
@@ -191,6 +200,7 @@ def train_and_plot(_seed: int,
       ep_reward_plot_add_data(trainer.env_train, "Train Reward")
       ep_reward_plot_add_data(trainer.env_test, "Test Reward")
 
+    # Main training loop.
     for epoch in tqdm.tqdm(range(1, n_epochs+1), desc="epoch"):
       trainer.train_disc(n_disc_steps_per_epoch)
       disc_plot_add_data(False)
@@ -208,6 +218,16 @@ def train_and_plot(_seed: int,
         save(trainer, os.path.join(log_dir, "checkpoints", f"{epoch:05d}"))
 
     save(trainer, os.path.join(log_dir, "final"))
+
+    # Final evaluation of imitation policy.
+    stats = util.rollout.rollout_stats(trainer.gen_policy,
+                                       trainer.env,
+                                       n_episodes=n_episodes_eval)
+    assert stats["n_traj"] == n_episodes_eval
+    return {
+      "mean": stats["return_mean"],
+      "std_err": stats["return_std"] / math.sqrt(n_episodes_eval),
+    }
 
 
 def _savefig_timestamp(prefix="", also_show=True):
