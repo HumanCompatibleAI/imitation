@@ -3,12 +3,11 @@ import contextlib
 import datetime
 import functools
 import os
-from typing import Callable, Dict, Iterable, Optional, Tuple, Union
+from typing import Callable, Dict, Iterable, Optional, Tuple
 
 import gym
 import stable_baselines
 from stable_baselines import bench
-from stable_baselines.common import BaseRLModel
 from stable_baselines.common.input import observation_input
 from stable_baselines.common.policies import FeedForwardPolicy
 from stable_baselines.common.vec_env import DummyVecEnv, SubprocVecEnv, VecEnv
@@ -124,59 +123,6 @@ def make_blank_policy(env, policy_class=stable_baselines.PPO2,
   env = maybe_load_env(env)
   return policy_class(policy_network_class, env, verbose=verbose,
                       **policy_class_kwargs)
-
-
-def save_policy(policy_dir: str,
-                policy: BaseRLModel,
-                step: Union[str, int]):
-    """Save policy weights.
-
-    Args:
-        policy_dir: Path to the save directory.
-        policy: The stable baselines policy.
-        step: Either the integer training step or "final" to mark that training
-          is finished. Used as a suffix in the save file's basename.
-    """
-    path = os.path.join(policy_dir, f'{step}.pkl')
-    policy.save(path)
-    tf.logging.info("Saved policy pickle to {}.".format(path))
-
-
-def load_policy(path: str,
-                env: gym.Env,
-                policy_model_class=stable_baselines.PPO2,
-                init_tensorboard=False,
-                policy_network_class=None,
-                **kwargs) -> BaseRLModel:
-  """Loads and returns an policy, encapsulated in a RLModel.
-
-  Args:
-      path (str): Path to the policy dump.
-      env (str or Env): The Env that this policy is meant to act in, or the
-          string name of the Gym environment.
-      policy_class (stable_baselines.BaseRLModel class): A policy constructor
-          from the stable_baselines module.
-      base_dir (str): The directory of the pickled file.
-      policy_network_class (stable_baselines.BasePolicy): A policy network
-          constructor. Unless we are using a custom BasePolicy (not builtin to
-          stable_baselines), this is automatically inferred, and so we can leave
-          this argument as None.
-      **kwargs: Additional options for initializing the BaseRLModel class.
-  """
-
-  # FIXME: Despite name, this does not actually load policies, it loads lists
-  # of pickled policy training algorithms ("RL models" in stable-baselines'
-  # terminology). Should fix the naming, or change it so that it actually loads
-  # policies (which is often what is really wanted, IMO).
-
-  env = maybe_load_env(env)
-
-  if (policy_network_class is not None) and ("policy" not in kwargs):
-    kwargs["policy"] = policy_network_class
-
-  policy = policy_model_class.load(path, env, **kwargs)
-  tf.logging.info("loaded policy from '{}'".format(path))
-  return policy
 
 
 def build_mlp(hid_sizes: Iterable[int],

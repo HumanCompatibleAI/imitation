@@ -5,13 +5,14 @@ import os
 import pickle
 from typing import Dict, List, Optional, Tuple, Union
 
-import gym
 import numpy as np
 from stable_baselines.common.base_class import BaseRLModel
 from stable_baselines.common.policies import BasePolicy
 import tensorflow as tf
 
+from imitation.policies.base import get_action_policy
 from . import util  # Relative import needed to prevent cycle with __init__.py
+
 
 TrajectoryList = List[Dict[str, np.ndarray]]
 """A list of trajectory dicts.
@@ -25,64 +26,6 @@ TransitionsTuple = Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]
 
 For details see the docstring for `generate_transitions`.
 """
-
-
-class RandomPolicy(BasePolicy):
-  """Returns random actions."""
-  def __init__(self, ob_space: gym.Space, ac_space: gym.Space):
-    self.ob_space = ob_space
-    self.ac_space = ac_space
-
-  def step(self, obs, state=None, mask=None, deterministic=False):
-    actions = []
-    for ob in obs:
-      assert self.ob_space.contains(ob)
-      actions.append(self.ac_space.sample())
-    return actions, None, None, None
-
-  def proba_step(self, obs, state=None, mask=None):
-    raise NotImplementedError()
-
-
-def get_action_policy(policy, observation, deterministic=False):
-  """Gets an action from a Stable Baselines policy after some processing.
-
-  Specifically, clips actions to the action space associated with `policy` and
-  automatically accounts for vectorized environments inputs.
-
-  This code was adapted from Stable Baselines' `BaseRLModel.predict()`.
-
-  Args:
-    policy (stable_baselines.common.policies.BasePolicy): The policy.
-    observation (np.ndarray): The input to the policy network. Can either
-      be a single input with shape `policy.ob_space.shape` or a vectorized
-      input with shape `(n_batch,) + policy.ob_space.shape`.
-    deterministic (bool): Whether or not to return deterministic actions
-      (usually means argmax over policy's action distribution).
-
-  Returns:
-    action (np.ndarray): The action output of the policy network. If
-        `observation` is not vectorized (has shape `policy.ob_space.shape`
-        instead of shape `(n_batch,) + policy.ob_space.shape`) then
-        `action` has shape `policy.ac_space.shape`.
-        Otherwise, `action` has shape `(n_batch,) + policy.ac_space.shape`.
-  """
-  observation = np.array(observation)
-  vectorized_env = BaseRLModel._is_vectorized_observation(observation,
-                                                          policy.ob_space)
-
-  observation = observation.reshape((-1, ) + policy.ob_space.shape)
-  actions, _, states, _ = policy.step(observation, deterministic=deterministic)
-
-  clipped_actions = actions
-  if isinstance(policy.ac_space, gym.spaces.Box):
-    clipped_actions = np.clip(actions, policy.ac_space.low,
-                              policy.ac_space.high)
-
-  if not vectorized_env:
-    clipped_actions = clipped_actions[0]
-
-  return clipped_actions, states
 
 
 class _TrajectoryAccumulator:
