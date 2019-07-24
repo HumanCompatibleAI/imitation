@@ -14,10 +14,10 @@ def test_envs(env_name):
   """Check that our custom environments don't crash on `step`, and `reset`."""
   try:
     env = gym.make(env_name)
-  except gym.error.DependencyNotInstalled as e:
-    if e.args[0].find('mujoco_py') != -1:  # pragma: nocover
+  except gym.error.DependencyNotInstalled as e:  # pragma: no cover
+    if e.args[0].find('mujoco_py') != -1:
       pytest.skip("Requires `mujoco_py`, which isn't installed.")
-    else:  # pragma: nocover
+    else:
       raise
   env.reset()
   obs_space = env.observation_space
