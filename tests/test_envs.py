@@ -1,7 +1,10 @@
 import gym
 import pytest
 
-from imitation.examples.airl_envs import ENV_NAMES
+import imitation.examples.airl_envs  # noqa: F401
+
+ENV_NAMES = [env_spec.id for env_spec in gym.envs.registration.registry.all()
+             if env_spec.id.startswith('imitation/')]
 
 PARALLEL = [False, True]
 

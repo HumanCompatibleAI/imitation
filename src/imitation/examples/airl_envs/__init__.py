@@ -2,14 +2,12 @@ from typing import Optional
 
 from gym.envs import register as gym_register
 
-ENV_NAMES = []
 _ENTRY_POINT_PREFIX = 'imitation.examples.airl_envs'
 
 
 def _register(env_name: str, entry_point: str, kwargs: Optional[dict] = None):
     entry_point = f"{_ENTRY_POINT_PREFIX}.{entry_point}"
     gym_register(id=env_name, entry_point=entry_point, kwargs=kwargs)
-    ENV_NAMES.append(env_name)
 
 
 _register('imitation/ObjPusher-v0',
