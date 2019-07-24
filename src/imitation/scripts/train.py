@@ -59,7 +59,7 @@ def train_and_plot(_seed: int,
 
   Args:
       _seed: Random seed.
-      env_name: The environment to train in, by default 'CartPole-v1'.
+      env_name: The environment to train in.
       log_dir: Directory to save models and other logging to.
       n_epochs: The number of epochs to train. Each epoch consists of
           `n_disc_steps_per_epoch` discriminator steps followed by

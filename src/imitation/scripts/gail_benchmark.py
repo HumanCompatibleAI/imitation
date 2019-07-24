@@ -41,7 +41,7 @@ def gail_benchmark(
 
 
 if __name__ == "__main__":
-    observer = sacred.FileStorageObserver.create(
-        osp.join('output', 'sacred', 'gail_benchmark'))
-    gail_benchmark_ex.observers.append(observer)
-    gail_benchmark_ex.run_commandline()
+  observer = sacred.FileStorageObserver.create(
+      osp.join('output', 'sacred', 'gail_benchmark'))
+  gail_benchmark_ex.observers.append(observer)
+  gail_benchmark_ex.run_commandline()
