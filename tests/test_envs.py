@@ -10,11 +10,11 @@ ENV_NAMES = [env_spec.id for env_spec in gym.envs.registration.registry.all()
 
 
 @pytest.mark.parametrize("env_name", ENV_NAMES)
-def test_envs(env_name):  # pragma: no cover
+def test_envs(env_name):
   """Check that our custom environments don't crash on `step`, and `reset`."""
   try:
     env = gym.make(env_name)
-  except gym.error.DependencyNotInstalled as e:
+  except gym.error.DependencyNotInstalled as e:  # pragma: nocover
     if e.args[0].find('mujoco_py') != -1:
       pytest.skip("Requires `mujoco_py`, which isn't installed.")
     else:
