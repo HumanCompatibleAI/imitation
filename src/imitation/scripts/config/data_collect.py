@@ -14,6 +14,7 @@ def data_collect_defaults():
     total_timesteps = int(1e6)  # Number of training timesteps in model.learn()
     num_vec = 8  # Number of environments in VecEnv
     parallel = True  # Use SubprocVecEnv (generally faster if num_vec>1)
+    normalize = True  # Use VecNormalize
     make_blank_policy_kwargs = DEFAULT_BLANK_POLICY_KWARGS
 
     rollout_save_interval = 100  # Num updates between saves (<=0 disables)

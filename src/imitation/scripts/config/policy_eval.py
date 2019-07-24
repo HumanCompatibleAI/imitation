@@ -14,8 +14,8 @@ def replay_defaults():
   num_vec = 1  # number of environments in parallel
   parallel = False  # Use SubprocVecEnv (generally faster if num_vec>1)
   render = True  # render to screen
-  policy_type = "ppo2"  # class to load policy, see replay.POLICY_CLASSES
-  policy_path = "expert_models/PPO2_CartPole-v1_0.pkl"  # serialized policy
+  policy_type = "ppo2"  # class to load policy, see imitation.policies.loader
+  policy_path = "expert_models/PPO2_CartPole-v1_0"  # serialized policy
   log_root = os.path.join("output", "policy_eval")  # output directory
 
 

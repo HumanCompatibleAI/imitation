@@ -1,6 +1,7 @@
 import tempfile
 
 import gym
+import imitation.policies.base
 import numpy as np
 import pytest
 import tensorflow as tf
@@ -41,7 +42,7 @@ def test_serialize_identity(session, env_id, discrim_net_cls):
   """Does output of deserialized discriminator match that of original?"""
   env = gym.make(env_id)
   original = DISCRIM_NET_SETUPS[discrim_net_cls](env)
-  random = rollout.RandomPolicy(env.observation_space, env.action_space)
+  random = imitation.policies.base.RandomPolicy(env.observation_space, env.action_space)
   session.run(tf.global_variables_initializer())
 
   with tempfile.TemporaryDirectory(prefix='imitation-serialize') as tmpdir:

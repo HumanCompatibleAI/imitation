@@ -1,6 +1,6 @@
 import os
 import os.path as osp
-from typing import Callable, Optional, Sequence
+from typing import Callable, Optional
 
 from sacred.observers import FileStorageObserver
 from stable_baselines.common.vec_env import VecNormalize

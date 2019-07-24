@@ -65,6 +65,7 @@ class _TrajectoryAccumulator:
 
 
 def generate_trajectories(policy, env, *, n_timesteps=None, n_episodes=None,
+                          deterministic_policy=False,
                           ) -> TrajectoryList:
   """Generate trajectory dictionaries from a policy and an environment.
 
@@ -80,6 +81,10 @@ def generate_trajectories(policy, env, *, n_timesteps=None, n_episodes=None,
         episode is finished will not be returned.
         Set exactly one of `n_timesteps` and `n_episodes`, or this function will
         error.
+    deterministic_policy (bool): If True, asks policy to deterministically
+        return action. Note the trajectories might still be non-deterministic
+        if the environment has non-determinism!
+
 
   Returns:
     trajectories: List of trajectory dictionaries. Each trajectory dictionary
@@ -135,7 +140,7 @@ def generate_trajectories(policy, env, *, n_timesteps=None, n_episodes=None,
     trajectories_accum.add_step(env_idx, dict(obs=obs))
   while not rollout_done():
     obs_old_batch = obs_batch
-    act_batch, _ = get_action(obs_old_batch)
+    act_batch, _ = get_action(obs_old_batch, deterministic=deterministic_policy)
     obs_batch, rew_batch, done_batch, _ = env.step(act_batch)
 
     # Track episode count.
@@ -275,7 +280,7 @@ def flatten_trajectories(trajectories: TrajectoryList) -> TransitionsTuple:
 
 
 def generate_transitions(policy, env, *, n_timesteps=None, n_episodes=None,
-                         truncate=True) -> TransitionsTuple:
+                         truncate=True, **kwargs) -> TransitionsTuple:
   """Generate old_obs-action-new_obs-reward tuples.
 
   Args:
@@ -293,6 +298,7 @@ def generate_transitions(policy, env, *, n_timesteps=None, n_episodes=None,
     truncate (bool): If True and n_timesteps is not None, then drop any
         additional samples to ensure that exactly `n_timesteps` samples are
         returned.
+    kwargs (dict): Passed-through to generate_trajectories.
   Returns:
     rollout_obs_old (array): A numpy array with shape
         `[n_samples] + env.observation_space.shape`. The ith observation in
@@ -309,7 +315,7 @@ def generate_transitions(policy, env, *, n_timesteps=None, n_episodes=None,
         reward received on the ith timestep is `rollout_rewards[i]`.
   """
   traj = generate_trajectories(policy, env, n_timesteps=n_timesteps,
-                               n_episodes=n_episodes)
+                               n_episodes=n_episodes, **kwargs)
   rollout_arrays = flatten_trajectories(traj)
   if truncate and n_timesteps is not None:
     rollout_arrays = tuple(arr[:n_timesteps] for arr in rollout_arrays)
