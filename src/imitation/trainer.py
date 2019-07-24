@@ -159,7 +159,7 @@ class Trainer:
         n_timesteps=self._n_disc_samples_per_buffer)[:3]
     self._gen_replay_buffer.store(*gen_rollouts)
 
-  def train(self, *, n_epochs=100, n_gen_steps_per_epoch=None,
+  def train(self, n_epochs=100, *, n_gen_steps_per_epoch=None,
             n_disc_steps_per_epoch=None):
     """Trains the discriminator and generator against each other.
 
