@@ -12,12 +12,13 @@ from imitation.util import rollout, util
 
 SIMPLE_ENVS = [
     "CartPole-v0",  # Discrete(2) action space
-    "MountainCarContinuous-v0", # Box(1) action space
+    "MountainCarContinuous-v0",  # Box(1) action space
 ]
 HARDCODED_POLICIES = [base.RandomPolicy, base.ZeroPolicy]
 BASELINE_MODELS = [(name, cls)
                    for name, (cls, attr) in
                    serialize.STABLE_BASELINES_CLASSES.items()]
+
 
 @pytest.mark.parametrize("env_name", SIMPLE_ENVS)
 @pytest.mark.parametrize("policy_cls", HARDCODED_POLICIES)

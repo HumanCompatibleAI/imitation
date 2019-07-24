@@ -7,12 +7,11 @@ from typing import Dict, List, Optional, Tuple, Union
 
 import numpy as np
 from stable_baselines.common.base_class import BaseRLModel
-from stable_baselines.common.policies import BasePolicy
 import tensorflow as tf
 
 from imitation.policies.base import get_action_policy
-from . import util  # Relative import needed to prevent cycle with __init__.py
 
+from . import util  # Relative import needed to prevent cycle with __init__.py
 
 TrajectoryList = List[Dict[str, np.ndarray]]
 """A list of trajectory dicts.

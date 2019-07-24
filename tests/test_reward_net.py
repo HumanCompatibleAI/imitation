@@ -1,11 +1,11 @@
 import tempfile
 
 import gym
-import imitation.policies.base
 import numpy as np
 import pytest
 import tensorflow as tf
 
+from imitation.policies import base
 from imitation.reward_net import BasicRewardNet, BasicShapedRewardNet
 from imitation.util import rollout
 
@@ -38,7 +38,7 @@ def test_serialize_identity(session, env_id, reward_net_cls):
   env = gym.make(env_id)
   with tf.variable_scope("original"):
     original = reward_net_cls(env.observation_space, env.action_space)
-  random = imitation.policies.base.RandomPolicy(env.observation_space, env.action_space)
+  random = base.RandomPolicy(env.observation_space, env.action_space)
   session.run(tf.global_variables_initializer())
 
   with tempfile.TemporaryDirectory(prefix='imitation-serialize-rew') as tmpdir:

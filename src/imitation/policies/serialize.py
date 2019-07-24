@@ -98,9 +98,9 @@ def load_policy(policy_type: str, policy_path: str, env: gym.Env) -> BasePolicy:
 
 
 def save_stable_model(output_dir: str,
-                model: BaseRLModel,
-                vec_normalize: Optional[VecNormalize] = None,
-                ) -> None:
+                      model: BaseRLModel,
+                      vec_normalize: Optional[VecNormalize] = None,
+                      ) -> None:
     """Serialize policy.
 
     Args:

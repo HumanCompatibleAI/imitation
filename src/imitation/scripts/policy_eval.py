@@ -4,8 +4,8 @@ from sacred.observers import FileStorageObserver
 from stable_baselines.common.vec_env import VecEnvWrapper
 import tensorflow as tf
 
-from imitation.scripts.config.policy_eval import policy_eval_ex
 from imitation.policies import serialize
+from imitation.scripts.config.policy_eval import policy_eval_ex
 from imitation.util import rollout, util
 
 

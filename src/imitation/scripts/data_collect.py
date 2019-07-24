@@ -3,12 +3,12 @@ import os.path as osp
 from typing import Callable, Optional
 
 from sacred.observers import FileStorageObserver
-from stable_baselines.common.vec_env import VecNormalize
 from stable_baselines import logger as sb_logger
+from stable_baselines.common.vec_env import VecNormalize
 import tensorflow as tf
 
-from imitation.scripts.config.data_collect import data_collect_ex
 from imitation.policies import serialize
+from imitation.scripts.config.data_collect import data_collect_ex
 import imitation.util as util
 
 
@@ -72,7 +72,7 @@ def data_collect(_seed: int,
     os.makedirs(policy_dir, exist_ok=True)
 
     venv = util.make_vec_env(env_name, num_vec, seed=_seed,
-                            parallel=parallel, log_dir=log_dir)
+                             parallel=parallel, log_dir=log_dir)
     vec_normalize = None
     if normalize:
       venv = vec_normalize = VecNormalize(venv)

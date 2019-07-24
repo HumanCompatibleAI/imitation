@@ -8,7 +8,7 @@ from stable_baselines.common import BaseRLModel
 from stable_baselines.common.policies import BasePolicy
 
 
-class HardCodedPolicy(BasePolicy):
+class HardCodedPolicy(BasePolicy, abc.ABC):
   """Abstract class for hard-coded (non-trainable) policies."""
   def __init__(self, ob_space: gym.Space, ac_space: gym.Space):
     self.ob_space = ob_space
