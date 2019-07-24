@@ -273,12 +273,12 @@ def register_cliff(suffix, kwargs):
                kwargs=kwargs)
 
 
-for size in [5, 10]:
+for width, height, horizon in [(7, 4, 9), (15, 6, 18), (100, 20, 110)]:
   for use_xy in [False, True]:
     use_xy_str = "XY" if use_xy else ""
-    register_cliff(f'{size}{use_xy_str}', kwargs={
-        'width': size,
-        'height': size,
+    register_cliff(f'{width}x{height}{use_xy_str}', kwargs={
+        'width': width,
+        'height': height,
         'use_xy_obs': use_xy,
-        'horizon': size * size * 4,
+        'horizon': horizon,
     })
