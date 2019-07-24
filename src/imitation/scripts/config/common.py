@@ -4,4 +4,5 @@ DEFAULT_BLANK_POLICY_KWARGS = dict(
     noptepochs=10,
     # WARNING: this is actually 8*256=2048 due to 8 vector environments
     n_steps=256,
+    ent_coef=0.0,
 )

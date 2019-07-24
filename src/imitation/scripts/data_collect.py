@@ -77,8 +77,8 @@ def data_collect(_seed: int,
     if normalize:
       venv = vec_normalize = VecNormalize(venv)
 
-    policy = util.make_blank_policy(venv, verbose=1,
-                                    **make_blank_policy_kwargs)
+    policy = util.init_rl(venv, verbose=1,
+                          **make_blank_policy_kwargs)
 
     # The callback saves intermediate artifacts during training.
     callback = _make_callback(

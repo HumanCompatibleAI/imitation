@@ -138,7 +138,7 @@ def train_and_plot(_seed: int,
       gen_ep_reward[name].append(gen_ret)
       tf.logging.info("generator return: {}".format(gen_ret))
 
-      rand_policy = util.make_blank_policy(trainer.env)
+      rand_policy = util.init_rl(trainer.env)
       rand_ret = util.rollout.mean_return(
           rand_policy, env, n_episodes=n_episodes_per_reward_data)
       rand_ep_reward[name].append(rand_ret)

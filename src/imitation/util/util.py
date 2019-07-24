@@ -3,13 +3,14 @@ import contextlib
 import datetime
 import functools
 import os
-from typing import Callable, Dict, Iterable, Optional, Tuple
+from typing import Callable, Dict, Iterable, Optional, Tuple, Type, Union
 
 import gym
 import stable_baselines
 from stable_baselines import bench
+from stable_baselines.common.base_class import BaseRLModel
 from stable_baselines.common.input import observation_input
-from stable_baselines.common.policies import FeedForwardPolicy
+from stable_baselines.common.policies import BasePolicy, MlpPolicy
 from stable_baselines.common.vec_env import DummyVecEnv, SubprocVecEnv, VecEnv
 import tensorflow as tf
 
@@ -86,43 +87,24 @@ def is_vec_env(env):
   return isinstance(env, VecEnv)
 
 
-class FeedForward32Policy(FeedForwardPolicy):
-  """A feed forward policy network with two hidden layers of 32 units.
-
-  This matches the IRL policies in the original AIRL paper.
-  """
-
-  def __init__(self, *args, **kwargs):
-    super().__init__(*args, **kwargs,
-                     net_arch=[32, 32], feature_extraction="mlp")
-
-
-class FeedForward64Policy(FeedForwardPolicy):
-  def __init__(self, *args, **kwargs):
-    super().__init__(*args, **kwargs,
-                     net_arch=[64, 64], feature_extraction="mlp")
-
-
-def make_blank_policy(env, policy_class=stable_baselines.PPO2,
-                      policy_network_class=FeedForward32Policy, verbose=1,
-                      **policy_class_kwargs):
+def init_rl(env: Union[gym.Env, VecEnv],
+            model_class: Type[BaseRLModel] = stable_baselines.PPO2,
+            policy_class: Type[BasePolicy] = MlpPolicy,
+            **model_kwargs):
   """Instantiates a policy for the provided environment.
 
   Args:
-      env (str or Env): The Env or its string id in Gym.
-      policy_network_class (stable_baselines.BasePolicy): A policy network
-          constructor from the stable_baselines module.
-      policy_class (stable_baselines.BaseRLModel subclass): A policy constructor
-          from the stable_baselines module.
-      verbose (int): The verbosity level of the policy during training.
-      policy_class_kwargs (dict): Kwargs for `policy_class`.
+      env: The (vector) environment.
+      model_class: A Stable Baselines RL algorithm.
+      policy_class: A Stable Baselines compatible policy network class.
+      model_kwargs (dict): kwargs passed through to the algorithm.
+        Note: anything specified in `policy_kwargs` is passed through by the
+        algorithm to the policy network.
 
-  Return:
-  policy (stable_baselines.BaseRLModel)
+  Returns:
+    An RL algorithm.
   """
-  env = maybe_load_env(env)
-  return policy_class(policy_network_class, env, verbose=verbose,
-                      **policy_class_kwargs)
+  return model_class(policy_class, env, **model_kwargs)
 
 
 def build_mlp(hid_sizes: Iterable[int],

@@ -10,7 +10,8 @@ from stable_baselines.common.policies import ActorCriticPolicy
 import tensorflow as tf
 from tqdm.autonotebook import tqdm, trange
 
-from imitation.util import FeedForward32Policy, rollout
+from imitation.policies.base import FeedForward32Policy
+from imitation.util import rollout
 
 
 class BCTrainer:

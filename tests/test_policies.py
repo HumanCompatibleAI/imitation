@@ -7,25 +7,25 @@ import numpy as np
 import pytest
 from stable_baselines.common.vec_env import VecNormalize
 
-from imitation.policies import base, serialize
+from imitation.policies import serialize
 from imitation.util import rollout, util
 
 SIMPLE_ENVS = [
     "CartPole-v0",  # Discrete(2) action space
     "MountainCarContinuous-v0",  # Box(1) action space
 ]
-HARDCODED_POLICIES = [base.RandomPolicy, base.ZeroPolicy]
+HARDCODED_TYPES = ["random", "zero"]
 BASELINE_MODELS = [(name, cls)
                    for name, (cls, attr) in
                    serialize.STABLE_BASELINES_CLASSES.items()]
 
 
 @pytest.mark.parametrize("env_name", SIMPLE_ENVS)
-@pytest.mark.parametrize("policy_cls", HARDCODED_POLICIES)
-def test_actions_valid(env_name, policy_cls):
+@pytest.mark.parametrize("policy_type", HARDCODED_TYPES)
+def test_actions_valid(env_name, policy_type):
   """Test output actions of our custom policies always lie in action space."""
   env = gym.make(env_name)
-  policy = policy_cls(env.observation_space, env.action_space)
+  policy = serialize.load_policy(policy_type, "foobar", env)
   transitions = rollout.generate_transitions(policy, env, n_timesteps=100)
   old_obs, act, new_obs, rew = transitions
 
