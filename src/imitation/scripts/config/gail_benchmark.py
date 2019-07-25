@@ -43,9 +43,8 @@ experiment_specs = [
 
 @gail_benchmark_ex.config
 def config():
-  config_updates_list = []  # Different train_ex configs to train.
-
   # Build all permutations of config updates from `experiment_specs`.
+  config_updates_list = []  # Different train_ex configs to train.
   for env_name, n_demos_list in experiment_specs:
     for n_demonstrations in n_demos_list:
       config_updates_list.append(OrderedDict(
@@ -53,6 +52,7 @@ def config():
         n_demonstrations=n_demonstrations,
       ))
 
+  rollout_glob = "expert_models/{env_name}/.*/rollouts/final.pkl"
   log_root = osp.join("output", "gail_benchmark")  # output directory
 
 

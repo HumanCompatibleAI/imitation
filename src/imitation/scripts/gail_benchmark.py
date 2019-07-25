@@ -10,6 +10,7 @@ import sacred
 @gail_benchmark_ex.main
 def gail_benchmark(
   _seed: int,
+  rollout_glob: str = "expert_models/{env_name}/.*/rollouts/final.pkl",
   config_updates_list: Sequence[Dict[str, Any]],
   log_dir: str = "",
   train_ex_named_configs: Sequence[str] = (),
@@ -33,6 +34,8 @@ def gail_benchmark(
   for config_updates in config_updates_list:
     # TODO(shwang): This seems embarassingly parallellizable. (Ray later?)
     config_updates["seed"] = _seed
+    config_updates["rollout_glob"] = rollout_glob.format(
+        env_name=config_updates["env_name"])
     run = train_ex.run(config_updates=config_updates,
                        named_configs=train_ex_named_configs)
     key = tuple(config_updates.items())
