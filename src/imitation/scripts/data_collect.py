@@ -25,7 +25,7 @@ def data_collect(_seed: int,
 
                  rollout_save_interval: int = 0,
                  rollout_save_final: bool = False,
-                 rollout_save_n_samples: Optional[int] = None,
+                 rollout_save_n_timesteps: Optional[int] = None,
                  rollout_save_n_episodes: Optional[int] = None,
 
                  policy_save_interval: int = -1,
@@ -53,12 +53,12 @@ def data_collect(_seed: int,
           don't save intermediate updates.
       rollout_save_final: If True, then save rollouts right after training is
           finished.
-      rollout_save_n_samples: The minimum number of timesteps saved in every
-          file. Could be more than `rollout_save_n_samples` because trajectories
+      rollout_save_n_timesteps: The minimum number of timesteps saved in every
+          file. Could be more than `rollout_save_n_timesteps` because trajectories
           are saved by episode rather than by transition. Must set exactly one
-          of `rollout_save_n_samples` and `rollout_save_n_episodes`.
+          of `rollout_save_n_timesteps` and `rollout_save_n_episodes`.
       rollout_save_n_episodes: The number of episodes saved in every
-          file. Must set exactly one of `rollout_save_n_samples` and
+          file. Must set exactly one of `rollout_save_n_timesteps` and
           `rollout_save_n_episodes`.
       policy_save_interval: The number of training updates between saves. Has
           the same semantics are `rollout_save_interval`.
@@ -88,7 +88,7 @@ def data_collect(_seed: int,
     callback = _make_callback(
       vec_normalize,
       rollout_save_interval,
-      rollout_save_n_samples,
+      rollout_save_n_timesteps,
       rollout_save_n_episodes,
       rollout_dir, policy_save_interval, policy_dir)
 
@@ -98,7 +98,7 @@ def data_collect(_seed: int,
     if rollout_save_final:
       util.rollout.save(
         rollout_dir, policy, "final",
-        n_timesteps=rollout_save_n_samples,
+        n_timesteps=rollout_save_n_timesteps,
         n_episodes=rollout_save_n_episodes)
     if policy_save_final:
       output_dir = os.path.join(policy_dir, "final")
@@ -108,7 +108,7 @@ def data_collect(_seed: int,
 def _make_callback(vec_normalize: Optional[VecNormalize] = None,
 
                    rollout_save_interval: Optional[int] = None,
-                   rollout_save_n_samples: Optional[int] = None,
+                   rollout_save_n_timesteps: Optional[int] = None,
                    rollout_save_n_episodes: Optional[int] = None,
                    rollout_dir: Optional[str] = None,
 
@@ -131,7 +131,7 @@ def _make_callback(vec_normalize: Optional[VecNormalize] = None,
     if rollout_ok and step % rollout_save_interval == 0:
       util.rollout.save(
         rollout_dir, policy, step,
-        n_timesteps=rollout_save_n_samples,
+        n_timesteps=rollout_save_n_timesteps,
         n_episodes=rollout_save_n_episodes)
     if policy_ok and step % policy_save_interval == 0:
       output_dir = os.path.join(policy_dir, f'{step:5d}')
