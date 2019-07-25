@@ -404,7 +404,7 @@ def generate_transitions_multiple(policies, env, n_timesteps, *, truncate=True,
 
 def save(rollout_dir: str,
          policy: BaseRLModel,
-         step: Union[str, int],
+         basename: Union[str, int],
          **kwargs,
          ) -> None:
     """Generate policy rollouts and save them to a pickled TrajectoryList.
@@ -412,15 +412,15 @@ def save(rollout_dir: str,
     Args:
         rollout_dir: Path to the save directory.
         policy: The stable baselines policy.
-        step: Either the integer training step or "final" to mark that training
-            is finished. Used as a suffix in the save file's basename.
+        basename: The file is saved as `f"{basename}.pkl"`. Usually this is
+            the step number, or "final".
         n_timesteps (Optional[int]): `n_timesteps` argument from
             `generate_trajectories`.
         n_episodes (Optional[int]): `n_episodes` argument from
             `generate_trajectories`.
         truncate (bool): `truncate` argument from `generate_trajectories`.
     """
-    path = os.path.join(rollout_dir, f'{step}.pkl')
+    path = os.path.join(rollout_dir, f'{basename}.pkl')
     traj_list = generate_trajectories(policy, policy.get_env(), **kwargs)
     with open(path, "wb") as f:
       pickle.dump(traj_list, f)
