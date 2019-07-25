@@ -48,8 +48,8 @@ def init_trainer(env_id: str,
   """
   env = util.make_vec_env(env_id, num_vec, seed=seed, parallel=parallel,
                           log_dir=log_dir)
-  gen_policy = util.make_blank_policy(env, verbose=1,
-                                      **make_blank_policy_kwargs)
+  gen_policy = util.init_rl(env, verbose=1,
+                            **make_blank_policy_kwargs)
 
   if use_gail:
     discrim = discrim_net.DiscrimNetGAIL(env.observation_space,

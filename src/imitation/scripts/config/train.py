@@ -3,8 +3,10 @@
 import os
 
 import sacred
+from stable_baselines.common import policies
 
 from imitation import util
+from imitation.policies import base
 from imitation.scripts.config.common import DEFAULT_BLANK_POLICY_KWARGS
 
 train_ex = sacred.Experiment("train", interactive=True)
@@ -38,7 +40,8 @@ def train_defaults():
             gen_replay_buffer_capacity=1000,
         ),
 
-        make_blank_policy_kwargs=DEFAULT_BLANK_POLICY_KWARGS,
+        make_blank_policy_kwargs=dict(policy_class=base.FeedForward32Policy,
+                                      **DEFAULT_BLANK_POLICY_KWARGS),
     )
 
     log_root = os.path.join("output", "train")  # output directory
@@ -97,7 +100,7 @@ def swimmer():
     n_epochs = 1000
     init_trainer_kwargs = dict(
         make_blank_policy_kwargs=dict(
-            policy_network_class=util.FeedForward64Policy,
+            policy_network_class=policies.MlpPolicy,
         ),
     )
 

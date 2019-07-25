@@ -5,11 +5,11 @@ import os
 import pickle
 from typing import Dict, List, Optional, Tuple, Union
 
-import gym
 import numpy as np
 from stable_baselines.common.base_class import BaseRLModel
-from stable_baselines.common.policies import BasePolicy
 import tensorflow as tf
+
+from imitation.policies.base import get_action_policy
 
 from . import util  # Relative import needed to prevent cycle with __init__.py
 
@@ -25,64 +25,6 @@ TransitionsTuple = Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]
 
 For details see the docstring for `generate_transitions`.
 """
-
-
-class RandomPolicy(BasePolicy):
-  """Returns random actions."""
-  def __init__(self, ob_space: gym.Space, ac_space: gym.Space):
-    self.ob_space = ob_space
-    self.ac_space = ac_space
-
-  def step(self, obs, state=None, mask=None, deterministic=False):
-    actions = []
-    for ob in obs:
-      assert self.ob_space.contains(ob)
-      actions.append(self.ac_space.sample())
-    return actions, None, None, None
-
-  def proba_step(self, obs, state=None, mask=None):
-    raise NotImplementedError()
-
-
-def get_action_policy(policy, observation, deterministic=False):
-  """Gets an action from a Stable Baselines policy after some processing.
-
-  Specifically, clips actions to the action space associated with `policy` and
-  automatically accounts for vectorized environments inputs.
-
-  This code was adapted from Stable Baselines' `BaseRLModel.predict()`.
-
-  Args:
-    policy (stable_baselines.common.policies.BasePolicy): The policy.
-    observation (np.ndarray): The input to the policy network. Can either
-      be a single input with shape `policy.ob_space.shape` or a vectorized
-      input with shape `(n_batch,) + policy.ob_space.shape`.
-    deterministic (bool): Whether or not to return deterministic actions
-      (usually means argmax over policy's action distribution).
-
-  Returns:
-    action (np.ndarray): The action output of the policy network. If
-        `observation` is not vectorized (has shape `policy.ob_space.shape`
-        instead of shape `(n_batch,) + policy.ob_space.shape`) then
-        `action` has shape `policy.ac_space.shape`.
-        Otherwise, `action` has shape `(n_batch,) + policy.ac_space.shape`.
-  """
-  observation = np.array(observation)
-  vectorized_env = BaseRLModel._is_vectorized_observation(observation,
-                                                          policy.ob_space)
-
-  observation = observation.reshape((-1, ) + policy.ob_space.shape)
-  actions, _, states, _ = policy.step(observation, deterministic=deterministic)
-
-  clipped_actions = actions
-  if isinstance(policy.ac_space, gym.spaces.Box):
-    clipped_actions = np.clip(actions, policy.ac_space.low,
-                              policy.ac_space.high)
-
-  if not vectorized_env:
-    clipped_actions = clipped_actions[0]
-
-  return clipped_actions, states
 
 
 class _TrajectoryAccumulator:
@@ -122,6 +64,7 @@ class _TrajectoryAccumulator:
 
 
 def generate_trajectories(policy, env, *, n_timesteps=None, n_episodes=None,
+                          deterministic_policy=False,
                           ) -> TrajectoryList:
   """Generate trajectory dictionaries from a policy and an environment.
 
@@ -137,6 +80,10 @@ def generate_trajectories(policy, env, *, n_timesteps=None, n_episodes=None,
         episode is finished will not be returned.
         Set exactly one of `n_timesteps` and `n_episodes`, or this function will
         error.
+    deterministic_policy (bool): If True, asks policy to deterministically
+        return action. Note the trajectories might still be non-deterministic
+        if the environment has non-determinism!
+
 
   Returns:
     trajectories: List of trajectory dictionaries. Each trajectory dictionary
@@ -192,7 +139,7 @@ def generate_trajectories(policy, env, *, n_timesteps=None, n_episodes=None,
     trajectories_accum.add_step(env_idx, dict(obs=obs))
   while not rollout_done():
     obs_old_batch = obs_batch
-    act_batch, _ = get_action(obs_old_batch)
+    act_batch, _ = get_action(obs_old_batch, deterministic=deterministic_policy)
     obs_batch, rew_batch, done_batch, _ = env.step(act_batch)
 
     # Track episode count.
@@ -332,7 +279,7 @@ def flatten_trajectories(trajectories: TrajectoryList) -> TransitionsTuple:
 
 
 def generate_transitions(policy, env, *, n_timesteps=None, n_episodes=None,
-                         truncate=True) -> TransitionsTuple:
+                         truncate=True, **kwargs) -> TransitionsTuple:
   """Generate old_obs-action-new_obs-reward tuples.
 
   Args:
@@ -350,6 +297,7 @@ def generate_transitions(policy, env, *, n_timesteps=None, n_episodes=None,
     truncate (bool): If True and n_timesteps is not None, then drop any
         additional samples to ensure that exactly `n_timesteps` samples are
         returned.
+    kwargs (dict): Passed-through to generate_trajectories.
   Returns:
     rollout_obs_old (array): A numpy array with shape
         `[n_samples] + env.observation_space.shape`. The ith observation in
@@ -366,7 +314,7 @@ def generate_transitions(policy, env, *, n_timesteps=None, n_episodes=None,
         reward received on the ith timestep is `rollout_rewards[i]`.
   """
   traj = generate_trajectories(policy, env, n_timesteps=n_timesteps,
-                               n_episodes=n_episodes)
+                               n_episodes=n_episodes, **kwargs)
   rollout_arrays = flatten_trajectories(traj)
   if truncate and n_timesteps is not None:
     rollout_arrays = tuple(arr[:n_timesteps] for arr in rollout_arrays)

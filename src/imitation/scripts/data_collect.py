@@ -4,8 +4,10 @@ from typing import Callable, Optional
 
 from sacred.observers import FileStorageObserver
 from stable_baselines import logger as sb_logger
+from stable_baselines.common.vec_env import VecNormalize
 import tensorflow as tf
 
+from imitation.policies import serialize
 from imitation.scripts.config.data_collect import data_collect_ex
 import imitation.util as util
 
@@ -16,8 +18,9 @@ def data_collect(_seed: int,
                  total_timesteps: int,
                  *,
                  log_dir: str = None,
-                 parallel: bool = False,
                  num_vec: int = 8,
+                 parallel: bool = False,
+                 normalize: bool = True,
                  make_blank_policy_kwargs: dict = {},
 
                  rollout_save_interval: int = 0,
@@ -38,8 +41,10 @@ def data_collect(_seed: int,
   Args:
       env_name: The gym.Env name. Loaded as VecEnv.
       total_timesteps: Number of training timesteps in `model.learn()`.
+      log_dir: The root directory to save metrics and checkpoints to.
       num_vec: Number of environments in VecEnv.
       parallel: If True, then use DummyVecEnv. Otherwise use SubprocVecEnv.
+      normalize: If True, then rescale observations and reward.
       make_blank_policy_kwargs: Kwargs for `make_blank_policy`.
 
       rollout_save_interval: The number of training updates in between
@@ -66,17 +71,18 @@ def data_collect(_seed: int,
     os.makedirs(rollout_dir, exist_ok=True)
     os.makedirs(policy_dir, exist_ok=True)
 
-    env = util.make_vec_env(env_name, num_vec, seed=_seed,
-                            parallel=parallel, log_dir=log_dir)
-    # TODO(adam): add support for wrapping env with VecNormalize
-    # (This is non-trivial since we'd need to make sure it's also applied
-    # when the policy is re-loaded to generate rollouts.)
-    policy = util.make_blank_policy(env, verbose=1,
-                                    **make_blank_policy_kwargs)
+    venv = util.make_vec_env(env_name, num_vec, seed=_seed,
+                             parallel=parallel, log_dir=log_dir)
+    vec_normalize = None
+    if normalize:
+      venv = vec_normalize = VecNormalize(venv)
+
+    policy = util.init_rl(venv, verbose=1,
+                          **make_blank_policy_kwargs)
 
     # The callback saves intermediate artifacts during training.
     callback = _make_callback(
-      env_name,
+      vec_normalize,
       rollout_save_interval, rollout_save_n_samples,
       rollout_dir, policy_save_interval, policy_dir)
 
@@ -88,10 +94,12 @@ def data_collect(_seed: int,
         rollout_dir, policy, "final",
         n_timesteps=rollout_save_n_samples)
     if policy_save_final:
-      util.save_policy(policy_dir, policy, "final")
+      output_dir = os.path.join(policy_dir, "final")
+      serialize.save_stable_model(output_dir, policy, vec_normalize)
 
 
-def _make_callback(env_name: str,
+def _make_callback(vec_normalize: Optional[VecNormalize] = None,
+
                    rollout_save_interval: Optional[int] = None,
                    rollout_save_n_samples: Optional[int] = None,
                    rollout_dir: Optional[str] = None,
@@ -116,7 +124,8 @@ def _make_callback(env_name: str,
       util.rollout.save(
         rollout_dir, policy, step, n_timesteps=rollout_save_n_samples)
     if policy_ok and step % policy_save_interval == 0:
-      util.save_policy(policy_dir, policy, step)
+      output_dir = os.path.join(policy_dir, f'{step:5d}')
+      serialize.save_stable_model(output_dir, policy, vec_normalize)
     return True
 
   return callback
