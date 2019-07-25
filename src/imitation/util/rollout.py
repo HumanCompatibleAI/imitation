@@ -3,10 +3,11 @@ import functools
 import glob
 import os
 import pickle
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Sequence, Tuple, Union
 
 import numpy as np
 from stable_baselines.common.base_class import BaseRLModel
+from stable_baselines.common.policies import BasePolicy
 import tensorflow as tf
 
 from imitation.policies.base import get_action_policy
@@ -321,85 +322,58 @@ def generate_transitions(policy, env, *, n_timesteps=None, n_episodes=None,
   return rollout_arrays
 
 
-def generate_transitions_multiple(policies, env, n_timesteps, *, truncate=True,
-                                  ) -> TransitionsTuple:
-  """Generate obs-act-obs-rew arrays from several policies.
+def generate_trajectories_multiple(
+  policies: Sequence[BasePolicy],
+  env,
+  *,
+  n_timesteps=None,
+  n_episodes=None,
+  **other_kwargs,
+) -> TrajectoryList:
+  """Generate trajectories from a list of policies and an environment.
 
-  Splits the desired number of timesteps evenly between all the policies given.
+  Most arguments are the same as in `generate_trajectories`. If the
+  `n_timesteps` or the `n_episodes` arguments don't evenly divide by
+  `len(policies)`, then `policies[-1]` may generate more trajectories
+  than the others.
 
   Args:
-      policies (BasePolicy or [BasePolicy]): A policy
-          or a list of policies that will be used to generate
-          obs-action-obs triples.
-
-          WARNING:
-          Due to the way VecEnvs handle
-          episode completion states, the last obs-state-obs triple in every
-          episode is omitted. (See GitHub issue #1)
-      env (gym.Env): The environment the policy should act in.
-      n_timesteps (int): The minimum number of obs-action-obs-reward tuples to
-          collect (may collect more if episodes run too long). Set exactly one
-          of `n_timesteps` and `n_episodes`, or this function will error.
-          If the number of policies given doesn't divide this number evenly,
-          then the last policy generates more timesteps than the other policies.
-      truncate (bool): If True and n_timesteps is not None, then drop any
-          additional samples to ensure that exactly `n_timesteps` samples are
-          returned.
+    policies: A listlike of BasePolicies.
 
   Returns:
-      rollout_obs_old (array): A numpy array with shape
-          `[n_samples] + env.observation_space.shape`. The ith observation in
-          this array is the observation seen with the agent chooses action
-          `rollout_act[i]`. `n_samples` is guaranteed to be at least
-          `n_timesteps`.
-      rollout_act (array): A numpy array with shape
-          `[n_samples] + env.action_space.shape`.
-      rollout_obs_new (array): A numpy array with shape
-          `[n_samples] + env.observation_space.shape`. The ith observation in
-          this array is from the transition state after the agent chooses
-          action `rollout_act[i]`.
-      rollout_rew (array): A numpy array with shape `[n_samples]`. The
-          reward received on the ith timestep is `rew[i]`.
+    Same as generate_trajectories.
   """
-  try:
-    policies = list(policies)
-  except TypeError:
-    policies = [policies]
-
   n_policies = len(policies)
-  quot, rem = n_timesteps // n_policies, n_timesteps % n_policies
-  tf.logging.debug("rollout.generate_transitions_multiple: quot={}, rem={}"
-                   .format(quot, rem))
+  if n_timesteps is not None and n_episodes is not None:
+    raise ValueError("n_timesteps and n_episodes were both set")
+  elif n_timesteps is not None:
+    end_cond_key, end_cond_value = "n_timesteps", n_timesteps
+  elif n_episodes is not None:
+    end_cond_key, end_cond_value = "n_episodes", n_episodes
+  else:
+    raise ValueError("Set at least one of n_timesteps and n_episodes")
 
-  obs_old, act, obs_new = [], [], []
+  assert end_cond_value > 0
+  quot, rem = divmod(end_cond_value, n_policies)
+
+  # Set kwargs for every policy except the final.
+  inner_kwargs = {end_cond_key: quot}
+  inner_kwargs.update(other_kwargs)
+
+  # Set kwargs for the final policy.
+  inner_kwargs_final = {end_cond_key: quot + rem}
+  inner_kwargs_final.update(other_kwargs)
+
+  traj_list_all = []  # TrajectoryList
   for i, pol in enumerate(policies):
-    n_timesteps_ = quot
-    if i == n_policies - 1:
-      # The final policy also generates the remainder if
-      # n_policies doesn't evenly divide n_timesteps.
-      n_timesteps_ += rem
+    kwargs = inner_kwargs if i != (n_policies - 1) else inner_kwargs_final
+    traj_list = generate_trajectories(pol, env, **kwargs)
+    traj_list_all.extend(traj_list)
 
-    obs_old_, act_, obs_new_, _ = generate_transitions(
-        pol, env, n_timesteps=n_timesteps_)
-    assert len(obs_new_) == len(act_), (len(obs_new_), len(act_))
-    assert len(obs_old_) == len(act_), (len(obs_old_), len(act_))
+  if end_cond_key == "n_episodes":
+    assert len(traj_list_all) == n_episodes
 
-    if truncate:
-      # truncate to get exactly n_timesteps_
-      act_ = act_[:n_timesteps_]
-      obs_new_ = (obs_new_[:n_timesteps_])
-      obs_old_ = obs_old_[:n_timesteps_]
-
-    act.extend(act_)
-    obs_new.extend(obs_new_)
-    obs_old.extend(obs_old_)
-
-  assert len(obs_old) == len(obs_new)
-  assert len(act) >= n_timesteps, (len(act), n_timesteps)
-  if truncate:
-    assert len(act) == n_timesteps
-
-  return tuple(np.array(x) for x in (obs_old, act, obs_new))
+  return traj_list_all
 
 
 def save(rollout_dir: str,
