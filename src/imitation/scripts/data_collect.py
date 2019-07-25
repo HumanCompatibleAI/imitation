@@ -4,7 +4,7 @@ from typing import Callable, Optional
 
 from sacred.observers import FileStorageObserver
 from stable_baselines import logger as sb_logger
-from stable_baselines.common.vec_env import VecNormalize
+from stable_baselines.common.vec_env import VecEnv, VecNormalize
 import tensorflow as tf
 
 from imitation.policies import serialize
@@ -13,25 +13,26 @@ import imitation.util as util
 
 
 @data_collect_ex.main
-def data_collect(_seed: int,
-                 env_name: str,
-                 total_timesteps: int,
-                 *,
-                 log_dir: str = None,
-                 num_vec: int = 8,
-                 parallel: bool = False,
-                 normalize: bool = True,
-                 make_blank_policy_kwargs: dict = {},
+def rollouts_and_policy(
+  _seed: int,
+  env_name: str,
+  total_timesteps: int,
+  *,
+  log_dir: str = None,
+  num_vec: int = 8,
+  parallel: bool = False,
+  normalize: bool = True,
+  make_blank_policy_kwargs: dict = {},
 
-                 rollout_save_interval: int = 0,
-                 rollout_save_final: bool = False,
-                 rollout_save_n_timesteps: Optional[int] = None,
-                 rollout_save_n_episodes: Optional[int] = None,
+  rollout_save_interval: int = 0,
+  rollout_save_final: bool = False,
+  rollout_save_n_timesteps: Optional[int] = None,
+  rollout_save_n_episodes: Optional[int] = None,
 
-                 policy_save_interval: int = -1,
-                 policy_save_final: bool = True,
-                 ) -> None:
-  """Train a policy from scratch, optionally saving the policy and rollouts.
+  policy_save_interval: int = -1,
+  policy_save_final: bool = True,
+) -> None:
+  """Trains an expert policy from scratch and saves the rollouts and policy.
 
   At applicable training steps `step` (where step is either an integer or
   "final"):
@@ -47,16 +48,16 @@ def data_collect(_seed: int,
       parallel: If True, then use DummyVecEnv. Otherwise use SubprocVecEnv.
       normalize: If True, then rescale observations and reward.
       make_blank_policy_kwargs: Kwargs for `make_blank_policy`.
-
       rollout_save_interval: The number of training updates in between
           intermediate rollout saves. If the argument is nonpositive, then
           don't save intermediate updates.
       rollout_save_final: If True, then save rollouts right after training is
           finished.
       rollout_save_n_timesteps: The minimum number of timesteps saved in every
-          file. Could be more than `rollout_save_n_timesteps` because trajectories
-          are saved by episode rather than by transition. Must set exactly one
-          of `rollout_save_n_timesteps` and `rollout_save_n_episodes`.
+          file. Could be more than `rollout_save_n_timesteps` because
+          trajectories are saved by episode rather than by transition.
+          Must set exactly one of `rollout_save_n_timesteps`
+          and `rollout_save_n_episodes`.
       rollout_save_n_episodes: The number of episodes saved in every
           file. Must set exactly one of `rollout_save_n_timesteps` and
           `rollout_save_n_episodes`.
@@ -86,6 +87,7 @@ def data_collect(_seed: int,
 
     # The callback saves intermediate artifacts during training.
     callback = _make_callback(
+      venv,
       vec_normalize,
       rollout_save_interval,
       rollout_save_n_timesteps,
@@ -97,7 +99,7 @@ def data_collect(_seed: int,
     # Save final artifacts after training is complete.
     if rollout_save_final:
       util.rollout.save(
-        rollout_dir, policy, "final",
+        rollout_dir, policy, venv, "final",
         n_timesteps=rollout_save_n_timesteps,
         n_episodes=rollout_save_n_episodes)
     if policy_save_final:
@@ -105,16 +107,18 @@ def data_collect(_seed: int,
       serialize.save_stable_model(output_dir, policy, vec_normalize)
 
 
-def _make_callback(vec_normalize: Optional[VecNormalize] = None,
+def _make_callback(
+  venv: VecEnv,
+  vec_normalize: Optional[VecNormalize] = None,
 
-                   rollout_save_interval: Optional[int] = None,
-                   rollout_save_n_timesteps: Optional[int] = None,
-                   rollout_save_n_episodes: Optional[int] = None,
-                   rollout_dir: Optional[str] = None,
+  rollout_save_interval: Optional[int] = None,
+  rollout_save_n_timesteps: Optional[int] = None,
+  rollout_save_n_episodes: Optional[int] = None,
+  rollout_dir: Optional[str] = None,
 
-                   policy_save_interval: Optional[int] = None,
-                   policy_dir: Optional[str] = None,
-                   ) -> Callable:
+  policy_save_interval: Optional[int] = None,
+  policy_dir: Optional[str] = None,
+) -> Callable:
   """Make a callback that saves policy weights and rollouts during training.
 
   Arguments are the same as arguments in `main()`.
@@ -130,7 +134,7 @@ def _make_callback(vec_normalize: Optional[VecNormalize] = None,
 
     if rollout_ok and step % rollout_save_interval == 0:
       util.rollout.save(
-        rollout_dir, policy, step,
+        rollout_dir, policy, venv, step,
         n_timesteps=rollout_save_n_timesteps,
         n_episodes=rollout_save_n_episodes)
     if policy_ok and step % policy_save_interval == 0:
@@ -139,6 +143,43 @@ def _make_callback(vec_normalize: Optional[VecNormalize] = None,
     return True
 
   return callback
+
+
+@data_collect_ex.command
+@util.make_session()
+def rollouts_from_policy(
+  _seed: int,
+  *,
+  num_vec: int,
+  rollout_save_n_timesteps: int,
+  rollout_save_n_episodes: int,
+  log_dir: str,
+  policy_path: str,
+  policy_type: str = "ppo2",
+  env_name: str = "CartPole-v1",
+  parallel: bool = True,
+) -> None:
+  """Loads a saved policy and generates rollouts.
+
+  Save path is f"{log_dir}/rollouts/{env_name}.pkl". Unlisted arguments are the
+  same as in `data_collect()`.
+
+  Args:
+      policy_type: Argument to `imitation.policies.serialize.load_policy`.
+      policy_path: Argument to `imitation.policies.serialize.load_policy`.
+  """
+  venv = util.make_vec_env(env_name, num_vec, seed=_seed,
+                           parallel=parallel, log_dir=log_dir)
+  policy = serialize.load_policy(policy_type, policy_path, venv)
+
+  rollout_dir = osp.join(log_dir, "rollouts")
+  os.makedirs(rollout_dir, exist_ok=True)
+
+  util.rollout.save(rollout_dir, policy, venv,
+                    basename=env_name,
+                    n_timesteps=rollout_save_n_timesteps,
+                    n_episodes=rollout_save_n_episodes,
+                    )
 
 
 if __name__ == "__main__":

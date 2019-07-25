@@ -5,8 +5,11 @@ import os
 import pickle
 from typing import Dict, List, Optional, Tuple, Union
 
+import gym
 import numpy as np
 from stable_baselines.common.base_class import BaseRLModel
+from stable_baselines.common.policies import BasePolicy
+from stable_baselines.common.vec_env import VecEnv
 import tensorflow as tf
 
 from imitation.policies.base import get_action_policy
@@ -403,7 +406,8 @@ def generate_transitions_multiple(policies, env, n_timesteps, *, truncate=True,
 
 
 def save(rollout_dir: str,
-         policy: BaseRLModel,
+         policy: Union[BaseRLModel, BasePolicy],
+         env: Union[gym.Env, VecEnv],
          basename: Union[str, int],
          **kwargs,
          ) -> None:
@@ -412,6 +416,7 @@ def save(rollout_dir: str,
     Args:
         rollout_dir: Path to the save directory.
         policy: The stable baselines policy.
+        env: The environment.
         basename: The file is saved as `f"{basename}.pkl"`. Usually this is
             the step number, or "final".
         n_timesteps (Optional[int]): `n_timesteps` argument from
@@ -421,7 +426,7 @@ def save(rollout_dir: str,
         truncate (bool): `truncate` argument from `generate_trajectories`.
     """
     path = os.path.join(rollout_dir, f'{basename}.pkl')
-    traj_list = generate_trajectories(policy, policy.get_env(), **kwargs)
+    traj_list = generate_trajectories(policy, env, **kwargs)
     with open(path, "wb") as f:
       pickle.dump(traj_list, f)
     tf.logging.info("Dumped demonstrations to {}.".format(path))
