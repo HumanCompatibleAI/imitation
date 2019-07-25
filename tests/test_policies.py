@@ -56,6 +56,8 @@ def test_serialize_identity(env_name, model_cfg, normalize):
 
   with tempfile.TemporaryDirectory(prefix='imitation-serialize-pol') as tmpdir:
     serialize.save_stable_model(tmpdir, model, vec_normalize)
+    # We use `orig_venv` since `load_policy` automatically wraps `loaded`
+    # with a VecNormalize, when appropriate.
     loaded = serialize.load_policy(model_name, tmpdir, orig_venv)
 
   orig_venv.env_method('seed', 0)
