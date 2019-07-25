@@ -121,10 +121,14 @@ def save_stable_model(output_dir: str,
                       ) -> None:
     """Serialize policy.
 
+    Load later with `load_policy(..., policy_path=output_dir)`.
+
     Args:
         output_dir: Path to the save directory.
         policy: The stable baselines policy.
-        vec_normalize:  Optionally, a VecNormalize to save statistics for.
+        vec_normalize: Optionally, a VecNormalize to save statistics for.
+            `load_policy` automatically applies `NormalizePolicy` wrapper
+            when loading.
     """
     os.makedirs(output_dir, exist_ok=True)
     model.save(os.path.join(output_dir, 'model.pkl'))
