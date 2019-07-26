@@ -89,6 +89,11 @@ def mountaincar():
 
 
 @data_collect_ex.named_config
+def walker():
+  env_name = "Walker2d-v2"
+
+
+@data_collect_ex.named_config
 def fast():
   """Intended for testing purposes: small # of updates, ends quickly."""
   total_timesteps = int(1e4)
