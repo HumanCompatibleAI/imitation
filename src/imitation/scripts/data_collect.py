@@ -1,10 +1,10 @@
 import os
 import os.path as osp
-from typing import Callable, Optional
+from typing import Optional
 
 from sacred.observers import FileStorageObserver
 from stable_baselines import logger as sb_logger
-from stable_baselines.common.vec_env import VecEnv, VecNormalize
+from stable_baselines.common.vec_env import VecNormalize
 import tensorflow as tf
 
 from imitation.policies import serialize
@@ -85,14 +85,25 @@ def rollouts_and_policy(
     policy = util.init_rl(venv, verbose=1,
                           **make_blank_policy_kwargs)
 
-    # The callback saves intermediate artifacts during training.
-    callback = _make_callback(
-      venv,
-      vec_normalize,
-      rollout_save_interval,
-      rollout_save_n_timesteps,
-      rollout_save_n_episodes,
-      rollout_dir, policy_save_interval, policy_dir)
+    # Make callback to save intermediate artifacts during training.
+    step = 0
+    rollout_ok = rollout_save_interval > 0
+    policy_ok = policy_save_interval > 0
+
+    def callback(locals_: dict, _) -> bool:
+      nonlocal step
+      step += 1
+      policy = locals_['self']
+
+      if rollout_ok and step % rollout_save_interval == 0:
+        util.rollout.save(
+          rollout_dir, policy, venv, step,
+          n_timesteps=rollout_save_n_timesteps,
+          n_episodes=rollout_save_n_episodes)
+      if policy_ok and step % policy_save_interval == 0:
+        output_dir = os.path.join(policy_dir, f'{step:5d}')
+        serialize.save_stable_model(output_dir, policy, vec_normalize)
+      return True
 
     policy.learn(total_timesteps, callback=callback)
 
@@ -105,44 +116,6 @@ def rollouts_and_policy(
     if policy_save_final:
       output_dir = os.path.join(policy_dir, "final")
       serialize.save_stable_model(output_dir, policy, vec_normalize)
-
-
-def _make_callback(
-  venv: VecEnv,
-  vec_normalize: Optional[VecNormalize] = None,
-
-  rollout_save_interval: Optional[int] = None,
-  rollout_save_n_timesteps: Optional[int] = None,
-  rollout_save_n_episodes: Optional[int] = None,
-  rollout_dir: Optional[str] = None,
-
-  policy_save_interval: Optional[int] = None,
-  policy_dir: Optional[str] = None,
-) -> Callable:
-  """Make a callback that saves policy weights and rollouts during training.
-
-  Arguments are the same as arguments in `main()`.
-  """
-  step = 0
-  rollout_ok = rollout_save_interval > 0
-  policy_ok = policy_save_interval > 0
-
-  def callback(locals_: dict, _) -> bool:
-    nonlocal step
-    step += 1
-    policy = locals_['self']
-
-    if rollout_ok and step % rollout_save_interval == 0:
-      util.rollout.save(
-        rollout_dir, policy, venv, step,
-        n_timesteps=rollout_save_n_timesteps,
-        n_episodes=rollout_save_n_episodes)
-    if policy_ok and step % policy_save_interval == 0:
-      output_dir = os.path.join(policy_dir, f'{step:5d}')
-      serialize.save_stable_model(output_dir, policy, vec_normalize)
-    return True
-
-  return callback
 
 
 @data_collect_ex.command
