@@ -1,5 +1,7 @@
 """Smoke tests for CLI programs in imitation.scripts.*"""
 
+import pytest
+
 from imitation.scripts.data_collect import data_collect_ex
 from imitation.scripts.policy_eval import policy_eval_ex
 from imitation.scripts.train import train_ex
@@ -27,7 +29,8 @@ def test_policy_eval():
   assert isinstance(run.result, dict)
 
 
-def test_train():
+@pytest.mark.parametrize("method", ["gail", "airl"])
+def test_train(method):
   """Smoke test for imitation.scripts.train"""
   config_updates = {
       'init_trainer_kwargs': {
@@ -38,7 +41,7 @@ def test_train():
       'log_root': 'output/tests/train',
   }
   run = train_ex.run(
-      named_configs=['cartpole', 'gail', 'fast'],
+      named_configs=['cartpole', method, 'fast'],
       config_updates=config_updates,
   )
   assert run.status == 'COMPLETED'

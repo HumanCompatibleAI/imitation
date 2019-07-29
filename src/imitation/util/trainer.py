@@ -22,6 +22,7 @@ def init_trainer(env_id: str,
                  num_vec: int = 8,
                  parallel: bool = False,
                  max_n_files: int = 1,
+                 scale: bool = True,
                  discrim_kwargs: bool = {},
                  reward_kwargs: bool = {},
                  trainer_kwargs: bool = {},
@@ -50,6 +51,7 @@ def init_trainer(env_id: str,
         files, as sorted by modification times.
     policy_dir: The directory containing the pickled experts for
         generating rollouts.
+    scale: If True, then scale input Tensors to the interval [0, 1].
     trainer_kwargs: Arguments for the Trainer constructor.
     reward_kwargs: Arguments for the `*RewardNet` constructor.
     discrim_kwargs: Arguments for the `DiscrimNet*` constructor.
@@ -64,10 +66,12 @@ def init_trainer(env_id: str,
   if use_gail:
     discrim = discrim_net.DiscrimNetGAIL(env.observation_space,
                                          env.action_space,
+                                         scale=scale,
                                          **discrim_kwargs)
   else:
     rn = BasicShapedRewardNet(env.observation_space,
                               env.action_space,
+                              scale=scale,
                               **reward_kwargs)
     discrim = discrim_net.DiscrimNetAIRL(rn, **discrim_kwargs)
 
