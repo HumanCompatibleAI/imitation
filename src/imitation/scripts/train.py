@@ -223,11 +223,13 @@ def train_and_plot(_seed: int,
     stats = util.rollout.rollout_stats(trainer.gen_policy,
                                        trainer.env,
                                        n_episodes=n_episodes_eval)
-    assert stats["n_traj"] == n_episodes_eval
-    return {
-      "mean": stats["return_mean"],
-      "std_err": stats["return_std"] / math.sqrt(n_episodes_eval),
-    }
+    assert stats["n_traj"] >= n_episodes_eval
+    mean = stats["return_mean"]
+    std_err = stats["return_std"] / math.sqrt(n_episodes_eval)
+    print(f"[result] Mean Episode Return: {mean:.4g} ± {std_err:.3g} "
+          f"(n={stats['n_traj']})")
+
+    return dict(mean=mean, std_err=std_err)
 
 
 def _savefig_timestamp(prefix="", also_show=True):
