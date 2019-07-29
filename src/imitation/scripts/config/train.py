@@ -19,6 +19,8 @@ def train_defaults():
     n_episodes_eval = 50  # Num of episodes for final mean ground truth return
     n_disc_steps_per_epoch = 50
     n_gen_steps_per_epoch = 2048
+    use_gail = True
+    entropy_weight = 1.0
 
     init_trainer_kwargs = dict(
         num_vec=8,  # NOTE: changing this also changes the effective n_steps!
@@ -91,7 +93,7 @@ def half_cheetah():
     n_epochs = 1000
 
     init_trainer_kwargs = dict(
-        discrim_kwargs=dict(entropy_weight=0.1),
+        entropy_weight=0.1,
     )
 
 

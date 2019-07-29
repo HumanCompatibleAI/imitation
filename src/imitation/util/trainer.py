@@ -23,6 +23,7 @@ def init_trainer(env_id: str,
                  parallel: bool = False,
                  max_n_files: int = 1,
                  scale: bool = True,
+                 entropy_weight: float = 1.0,
                  discrim_kwargs: bool = {},
                  reward_kwargs: bool = {},
                  trainer_kwargs: bool = {},
@@ -52,6 +53,8 @@ def init_trainer(env_id: str,
     policy_dir: The directory containing the pickled experts for
         generating rollouts.
     scale: If True, then scale input Tensors to the interval [0, 1].
+    entropy_weight: Only applicable for AIRL. The entropy_weight argument of
+        `DiscrimNetAIRL.__init__`.
     trainer_kwargs: Arguments for the Trainer constructor.
     reward_kwargs: Arguments for the `*RewardNet` constructor.
     discrim_kwargs: Arguments for the `DiscrimNet*` constructor.
@@ -73,7 +76,9 @@ def init_trainer(env_id: str,
                               env.action_space,
                               scale=scale,
                               **reward_kwargs)
-    discrim = discrim_net.DiscrimNetAIRL(rn, **discrim_kwargs)
+    discrim = discrim_net.DiscrimNetAIRL(rn,
+                                         entropy_weight=entropy_weight,
+                                         **discrim_kwargs)
 
   expert_demos = util.rollout.load_trajectories(rollout_glob,
                                                 max_n_files=max_n_files)
