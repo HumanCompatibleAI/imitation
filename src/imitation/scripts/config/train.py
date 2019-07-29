@@ -75,6 +75,9 @@ def ant():
 @train_ex.named_config
 def cartpole():
     env_name = "CartPole-v1"
+    init_trainer_kwargs = dict(
+        scale=False,
+    )
 
 
 @train_ex.named_config
