@@ -76,7 +76,7 @@ def generate_trajectories(policy, env, *, n_timesteps=None, n_episodes=None,
     n_timesteps (int): The minimum number of obs-action-obs-reward tuples to
         collect (may collect more if episodes run too long). Set exactly one of
         `n_timesteps` and `n_episodes`, or this function will error.
-    n_episodes (int): The number of episodes to finish before returning
+    n_episodes (int): The minimum number of episodes to finish before returning
         collected tuples. Tuples from parallel episodes underway when the final
         episode is finished will not be returned.
         Set exactly one of `n_timesteps` and `n_episodes`, or this function will
@@ -181,6 +181,7 @@ def generate_trajectories(policy, env, *, n_timesteps=None, n_episodes=None,
   # algos; e.g. BC can probably benefit from partial trajectories, too.
 
   # Sanity checks.
+  assert n_episodes is None or len(trajectories) >= n_episodes
   for trajectory in trajectories:
     n_steps = len(trajectory["act"])
     # extra 1 for the end
@@ -205,7 +206,7 @@ def rollout_stats(policy, env, **kwargs):
           trained on the gym environment.
       env (VecEnv or Env or str): The environment(s) to interact with.
       n_timesteps (int): The number of rewards to collect.
-      n_episodes (int): The number of episodes to finish before we stop
+      n_episodes (int): The minimum number of episodes to finish before we stop
           collecting rewards. Rewards from parallel episodes that are underway
           when the final episode is finished are also included in the return.
 
@@ -290,7 +291,7 @@ def generate_transitions(policy, env, *, n_timesteps=None, n_episodes=None,
     n_timesteps (int): The minimum number of obs-action-obs-reward tuples to
         collect (may collect more if episodes run too long). Set exactly one of
         `n_timesteps` and `n_episodes`, or this function will error.
-    n_episodes (int): The number of episodes to finish before returning
+    n_episodes (int): The minimum number of episodes to finish before returning
         collected tuples. Tuples from parallel episodes underway when the final
         episode is finished will not be returned.
         Set exactly one of `n_timesteps` and `n_episodes`, or this function will
