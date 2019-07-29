@@ -27,10 +27,8 @@ class NormalizePolicy(BasePolicy):
   policy are not responsible for this implementation detail. WARNING: This
   trick will not work for fine-tuning / training policies."""
   def __init__(self, policy: BasePolicy, vec_normalize: VecNormalize):
-    # TODO(adam): set n_batch=policy.n_batch once
-    # hill-a/stable-baselines#418 is merged
     super().__init__(policy.sess, policy.ob_space, policy.ac_space,
-                     policy.n_env, policy.n_steps, n_batch=1)
+                     policy.n_env, policy.n_steps, policy.n_batch)
     self._policy = policy
     self.vec_normalize = vec_normalize
 
