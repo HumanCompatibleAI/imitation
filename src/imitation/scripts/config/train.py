@@ -73,6 +73,11 @@ def ant():
 
 
 @train_ex.named_config
+def acrobot():
+  env_name = "Acrobot-v1"
+
+
+@train_ex.named_config
 def cartpole():
     env_name = "CartPole-v1"
     init_trainer_kwargs = dict(
@@ -81,7 +86,7 @@ def cartpole():
 
 
 @train_ex.named_config
-def halfcheetah():
+def half_cheetah():
     env_name = "HalfCheetah-v2"
     n_epochs = 1000
 
@@ -91,8 +96,35 @@ def halfcheetah():
 
 
 @train_ex.named_config
+def hopper():
+  # TODO(adam): upgrade to Hopper-v3?
+  env_name = "Hopper-v2"
+
+
+@train_ex.named_config
+def humanoid():
+  env_name = "Humanoid-v2"
+  n_epochs = 2000
+
+
+@train_ex.named_config
+def mountain_car():
+  env_name = "MountainCar-v0"
+
+
+@train_ex.named_config
 def pendulum():
     env_name = "Pendulum-v0"
+
+
+@train_ex.named_config
+def reacher():
+  env_name = "Reacher-v2"
+
+
+@train_ex.named_config
+def walker():
+    env_name = "Walker2d-v2"
 
 
 @train_ex.named_config

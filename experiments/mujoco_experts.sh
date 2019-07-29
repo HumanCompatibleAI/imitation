@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-ENVS="acrobot cartpole mountaincar reacher halfcheetah hopper ant humanoid"
+ENVS="acrobot cartpole mountain_car reacher half_cheetah hopper ant humanoid"
 SEEDS="0 1 2"
 
 TIMESTAMP=$(date --iso-8601=seconds)
