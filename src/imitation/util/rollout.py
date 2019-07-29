@@ -322,60 +322,6 @@ def generate_transitions(policy, env, *, n_timesteps=None, n_episodes=None,
   return rollout_arrays
 
 
-def generate_trajectories_multiple(
-  policies: Sequence[BasePolicy],
-  env,
-  *,
-  n_timesteps=None,
-  n_episodes=None,
-  **other_kwargs,
-) -> TrajectoryList:
-  """Generate trajectories from a list of policies and an environment.
-
-  Most arguments are the same as in `generate_trajectories`. If the
-  `n_timesteps` or the `n_episodes` arguments don't evenly divide by
-  `len(policies)`, then `policies[-1]` may generate more trajectories
-  than the others.
-
-  Args:
-    policies: A listlike of BasePolicies.
-
-  Returns:
-    Same as generate_trajectories.
-  """
-  n_policies = len(policies)
-  if n_timesteps is not None and n_episodes is not None:
-    raise ValueError("n_timesteps and n_episodes were both set")
-  elif n_timesteps is not None:
-    end_cond_key, end_cond_value = "n_timesteps", n_timesteps
-  elif n_episodes is not None:
-    end_cond_key, end_cond_value = "n_episodes", n_episodes
-  else:
-    raise ValueError("Set at least one of n_timesteps and n_episodes")
-
-  assert end_cond_value > 0
-  quot, rem = divmod(end_cond_value, n_policies)
-
-  # Set kwargs for every policy except the final.
-  inner_kwargs = {end_cond_key: quot}
-  inner_kwargs.update(other_kwargs)
-
-  # Set kwargs for the final policy.
-  inner_kwargs_final = {end_cond_key: quot + rem}
-  inner_kwargs_final.update(other_kwargs)
-
-  traj_list_all = []  # TrajectoryList
-  for i, pol in enumerate(policies):
-    kwargs = inner_kwargs if i != (n_policies - 1) else inner_kwargs_final
-    traj_list = generate_trajectories(pol, env, **kwargs)
-    traj_list_all.extend(traj_list)
-
-  if end_cond_key == "n_episodes":
-    assert len(traj_list_all) == n_episodes
-
-  return traj_list_all
-
-
 def save(rollout_dir: str,
          policy: BaseRLModel,
          step: Union[str, int],
