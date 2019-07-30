@@ -66,6 +66,17 @@ class _TrajectoryAccumulator:
     self.partial_trajectories[idx].append(step_dict)
 
 
+def _validate_generate_params(n_timesteps, n_episodes):
+  if n_timesteps is not None and n_episodes is not None:
+    raise ValueError("n_timesteps and n_episodes were both set")
+  elif n_timesteps is not None:
+    assert n_timesteps > 0
+  elif n_episodes is not None:
+    assert n_episodes > 0
+  else:
+    raise ValueError("Set at least one of n_timesteps and n_episodes")
+
+
 def generate_trajectories(policy, env, *, n_timesteps=None, n_episodes=None,
                           deterministic_policy=False,
                           ) -> TrajectoryList:
@@ -106,17 +117,14 @@ def generate_trajectories(policy, env, *, n_timesteps=None, n_episodes=None,
     get_action = functools.partial(get_action_policy, policy)
 
   # Validate end condition arguments and initialize end conditions.
-  if n_timesteps is not None and n_episodes is not None:
-    raise ValueError("n_timesteps and n_episodes were both set")
-  elif n_timesteps is not None:
-    assert n_timesteps > 0
+  _validate_generate_params(n_timesteps, n_episodes)
+  if n_timesteps is not None:
     end_cond = "timesteps"
   elif n_episodes is not None:
-    assert n_episodes > 0
     end_cond = "episodes"
     episodes_elapsed = 0
   else:
-    raise ValueError("Set at least one of n_timesteps and n_episodes")
+    raise RuntimeError  # Should never reach this statement after validation.
 
   # Implements end-condition logic.
   def rollout_done():

@@ -10,6 +10,7 @@ import tensorflow as tf
 from imitation.policies import serialize
 from imitation.scripts.config.data_collect import data_collect_ex
 import imitation.util as util
+from imitation.util.rollout import _validate_generate_params
 
 
 @data_collect_ex.main
@@ -66,6 +67,8 @@ def rollouts_and_policy(
       policy_save_final: If True, then save the policy right after training is
           finished.
   """
+  _validate_generate_params(rollout_save_n_timesteps, rollout_save_n_episodes)
+
   with util.make_session():
     tf.logging.set_verbosity(tf.logging.INFO)
     sb_logger.configure(folder=osp.join(log_dir, 'rl'),
