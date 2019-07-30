@@ -14,7 +14,7 @@ def main(verbose=True):
     if "SSL" in str(e):
       print(
         "Suggestion: If on macOS, run "
-        r"`/Applications/Python\ 3.6/Install\ Certificates.command`"
+        r"`/Applications/Python\ 3.6/Install\ Certificates.command` "
         "(https://stackoverflow.com/a/13531310/1091722)")
     raise e
 
