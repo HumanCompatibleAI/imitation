@@ -87,6 +87,7 @@ def reacher():
 def swimmer():
   env_name = "Swimmer-v2"
 
+
 @data_collect_ex.named_config
 def walker():
     env_name = "Walker2d-v2"

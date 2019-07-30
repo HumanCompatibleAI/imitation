@@ -1,4 +1,3 @@
-import os
 import urllib.request
 import zipfile
 
@@ -7,6 +6,7 @@ experts_url = ("https://www.dl.dropboxusercontent.com/"
 
 experts_dest = "expert_models/"
 
+
 def main(verbose=True):
   try:
     zip_path, _ = urllib.request.urlretrieve(experts_url)
@@ -14,14 +14,14 @@ def main(verbose=True):
     if "SSL" in str(e):
       print(
         "Suggestion: If on macOS, run "
-        "`/Applications/Python\ 3.6/Install\ Certificates.command`"
+        r"`/Applications/Python\ 3.6/Install\ Certificates.command`"
         "(https://stackoverflow.com/a/13531310/1091722)")
     raise e
 
   if verbose:
     print("Downloaded expert_policies.zip")
 
-  with zipfile.ZipFile(zip_path,"r") as zip_ref:
+  with zipfile.ZipFile(zip_path, "r") as zip_ref:
     zip_ref.extractall("expert_models")
     if verbose:
       print(f"Extracted the following experts to {experts_dest}:")

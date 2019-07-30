@@ -3,11 +3,10 @@ import functools
 import glob
 import os
 import pickle
-from typing import Dict, List, Optional, Sequence, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 import numpy as np
 from stable_baselines.common.base_class import BaseRLModel
-from stable_baselines.common.policies import BasePolicy
 import tensorflow as tf
 
 from imitation.policies.base import get_action_policy
