@@ -126,30 +126,30 @@ def reacher():
 
 @train_ex.named_config
 def walker():
-    env_name = "Walker2d-v2"
+  env_name = "Walker2d-v2"
 
 
 @train_ex.named_config
 def swimmer():
-    env_name = "Swimmer-v2"
-    n_epochs = 1000
-    init_trainer_kwargs = dict(
-        make_blank_policy_kwargs=dict(
-            policy_network_class=policies.MlpPolicy,
-        ),
-    )
+  env_name = "Swimmer-v2"
+  n_epochs = 1000
+  init_trainer_kwargs = dict(
+      make_blank_policy_kwargs=dict(
+          policy_network_class=policies.MlpPolicy,
+      ),
+  )
 
 
 @train_ex.named_config
 def fast():
-    """Minimize the amount of computation. Useful for test cases."""
-    n_epochs = 1
-    n_episodes_eval = 1
-    interactive = False
-    n_disc_steps_per_epoch = 1
-    n_gen_steps_per_epoch = 1
-    n_episodes_per_reward_data = 1
-    init_trainer_kwargs = dict(
-        n_expert_demos=1,
-        parallel=False,  # easier to debug with everything in one process
-    )
+  """Minimize the amount of computation. Useful for test cases."""
+  n_epochs = 1
+  n_episodes_eval = 1
+  interactive = False
+  n_disc_steps_per_epoch = 1
+  n_gen_steps_per_epoch = 1
+  n_episodes_per_reward_data = 1
+  init_trainer_kwargs = dict(
+      n_expert_demos=1,
+      parallel=False,  # easier to debug with everything in one process
+  )

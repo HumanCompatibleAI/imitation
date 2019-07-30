@@ -90,7 +90,7 @@ def swimmer():
 
 @data_collect_ex.named_config
 def walker():
-    env_name = "Walker2d-v2"
+  env_name = "Walker2d-v2"
 
 
 @data_collect_ex.named_config

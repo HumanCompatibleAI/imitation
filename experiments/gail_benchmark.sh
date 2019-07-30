@@ -11,6 +11,7 @@
 #
 # NOTE: When regenerating csv, remember that each line needs to end with ',' to
 # work properly.
+# See https://stackoverflow.com/questions/57280651/gnu-parallel-doesnt-work-without-trailing-commas-in-csv
 
 if $(command -v gdate > /dev/null); then
   DATE_CMD=gdate  # macOS compatibility
