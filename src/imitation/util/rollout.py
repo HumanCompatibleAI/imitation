@@ -116,24 +116,18 @@ def generate_trajectories(policy, env, *, n_timesteps=None, n_episodes=None,
   else:
     get_action = functools.partial(get_action_policy, policy)
 
-  # Validate end condition arguments and initialize end conditions.
+  # Validate end condition arguments.
   _validate_generate_params(n_timesteps, n_episodes)
-  if n_timesteps is not None:
-    end_cond = "timesteps"
-  elif n_episodes is not None:
-    end_cond = "episodes"
-  else:
-    raise RuntimeError  # Should never reach this statement after validation.
 
   # Implements end-condition logic.
   def rollout_done():
-    if end_cond == "timesteps":
+    if n_timesteps is not None:
+      assert n_episodes is None
       # accidentallyquadratic.tumblr.com
       return sum(len(t["obs"]) - 1 for t in trajectories) >= n_timesteps
-    elif end_cond == "episodes":
-      return len(trajectories) >= n_episodes
     else:
-      raise RuntimeError(end_cond)
+      assert n_episodes is not None
+      return len(trajectories) >= n_episodes
 
   # Collect rollout tuples.
   trajectories = []
