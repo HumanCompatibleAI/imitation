@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-ENVS="acrobot cartpole mountain_car reacher half_cheetah hopper ant humanoid"
+ENVS="acrobot cartpole mountain_car reacher half_cheetah hopper ant humanoid swimmer walker"
 SEEDS="0 1 2"
 
 if $(command -v gdate > /dev/null); then
