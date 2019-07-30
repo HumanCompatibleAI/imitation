@@ -122,7 +122,6 @@ def generate_trajectories(policy, env, *, n_timesteps=None, n_episodes=None,
     end_cond = "timesteps"
   elif n_episodes is not None:
     end_cond = "episodes"
-    episodes_elapsed = 0
   else:
     raise RuntimeError  # Should never reach this statement after validation.
 
@@ -152,10 +151,6 @@ def generate_trajectories(policy, env, *, n_timesteps=None, n_episodes=None,
     obs_old_batch = obs_batch
     act_batch, _ = get_action(obs_old_batch, deterministic=deterministic_policy)
     obs_batch, rew_batch, done_batch, _ = env.step(act_batch)
-
-    # Track episode count.
-    if end_cond == "episodes":
-      episodes_elapsed += np.sum(done_batch)
 
     # Don't save tuples if there is a done. The new_obs for any environment
     # is incorrect for any timestep where there is an episode end.
