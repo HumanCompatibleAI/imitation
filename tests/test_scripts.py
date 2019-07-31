@@ -8,7 +8,7 @@ from imitation.scripts.train import train_ex
 
 
 def test_data_collect_main():
-  """Smoke test for imitation.scripts.data_collect"""
+  """Smoke test for imitation.scripts.data_collect.rollouts_and_policy"""
   run = data_collect_ex.run(
       named_configs=['cartpole', 'fast'],
       # codecov does not like parallel
@@ -18,8 +18,9 @@ def test_data_collect_main():
 
 
 def test_data_collect_rollouts_from_policy():
-  """Smoke test for imitation.scripts.data_collect"""
-  with tempfile.TemporaryDirectory(prefix='imitation-serialize') as tmpdir:
+  """Smoke test for imitation.scripts.data_collect.rollouts_from_policy"""
+  with tempfile.TemporaryDirectory(prefix='imitation-data_collect-policy',
+                                   ) as tmpdir:
     run = data_collect_ex.run(
         command_name="rollouts_from_policy",
         named_configs=['cartpole', 'fast'],

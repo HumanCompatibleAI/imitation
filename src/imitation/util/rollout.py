@@ -66,7 +66,7 @@ class _TrajectoryAccumulator:
     self.partial_trajectories[idx].append(step_dict)
 
 
-def _validate_generate_params(n_timesteps, n_episodes):
+def _validate_traj_generate_params(n_timesteps, n_episodes):
   if n_timesteps is not None and n_episodes is not None:
     raise ValueError("n_timesteps and n_episodes were both set")
   elif n_timesteps is not None:
@@ -117,7 +117,7 @@ def generate_trajectories(policy, env, *, n_timesteps=None, n_episodes=None,
     get_action = functools.partial(get_action_policy, policy)
 
   # Validate end condition arguments.
-  _validate_generate_params(n_timesteps, n_episodes)
+  _validate_traj_generate_params(n_timesteps, n_episodes)
 
   # Implements end-condition logic.
   def rollout_done():
