@@ -37,6 +37,9 @@ def logging(env_name, log_root):
 @data_collect_ex.named_config
 def ant():
   env_name = "Ant-v2"
+  make_blank_policy_kwargs = dict(
+      n_steps=2048,  # batch size of 2048*8=16384 due to num_vec
+  )
   total_timesteps = int(5e6)  # OK after 2e6, but continues improving
 
 
@@ -60,6 +63,9 @@ def halfcheetah():
 @data_collect_ex.named_config
 def humanoid():
   env_name = "Humanoid-v2"
+  make_blank_policy_kwargs = dict(
+      n_steps=2048,  # batch size of 2048*8=16384 due to num_vec
+  )
   total_timesteps = int(10e6)  # fairly discontinuous, needs at least 5e6
 
 
