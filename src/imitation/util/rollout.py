@@ -89,7 +89,7 @@ def generate_trajectories(policy, env, *, n_timesteps=None, n_episodes=None,
     n_timesteps (int): The minimum number of obs-action-obs-reward tuples to
         collect (may collect more if episodes run too long). Set exactly one of
         `n_timesteps` and `n_episodes`, or this function will error.
-    n_episodes (int): The number of episodes to finish before returning
+    n_episodes (int): The minimum number of episodes to finish before returning
         collected tuples. Tuples from parallel episodes underway when the final
         episode is finished will not be returned.
         Set exactly one of `n_timesteps` and `n_episodes`, or this function will
@@ -180,6 +180,7 @@ def generate_trajectories(policy, env, *, n_timesteps=None, n_episodes=None,
   # algos; e.g. BC can probably benefit from partial trajectories, too.
 
   # Sanity checks.
+  assert n_episodes is None or len(trajectories) >= n_episodes
   for trajectory in trajectories:
     n_steps = len(trajectory["act"])
     # extra 1 for the end
@@ -204,7 +205,7 @@ def rollout_stats(policy, env, **kwargs):
           trained on the gym environment.
       env (VecEnv or Env or str): The environment(s) to interact with.
       n_timesteps (int): The number of rewards to collect.
-      n_episodes (int): The number of episodes to finish before we stop
+      n_episodes (int): The minimum number of episodes to finish before we stop
           collecting rewards. Rewards from parallel episodes that are underway
           when the final episode is finished are also included in the return.
 
@@ -289,7 +290,7 @@ def generate_transitions(policy, env, *, n_timesteps=None, n_episodes=None,
     n_timesteps (int): The minimum number of obs-action-obs-reward tuples to
         collect (may collect more if episodes run too long). Set exactly one of
         `n_timesteps` and `n_episodes`, or this function will error.
-    n_episodes (int): The number of episodes to finish before returning
+    n_episodes (int): The minimum number of episodes to finish before returning
         collected tuples. Tuples from parallel episodes underway when the final
         episode is finished will not be returned.
         Set exactly one of `n_timesteps` and `n_episodes`, or this function will
@@ -319,87 +320,6 @@ def generate_transitions(policy, env, *, n_timesteps=None, n_episodes=None,
   if truncate and n_timesteps is not None:
     rollout_arrays = tuple(arr[:n_timesteps] for arr in rollout_arrays)
   return rollout_arrays
-
-
-def generate_transitions_multiple(policies, env, n_timesteps, *, truncate=True,
-                                  ) -> TransitionsTuple:
-  """Generate obs-act-obs-rew arrays from several policies.
-
-  Splits the desired number of timesteps evenly between all the policies given.
-
-  Args:
-      policies (BasePolicy or [BasePolicy]): A policy
-          or a list of policies that will be used to generate
-          obs-action-obs triples.
-
-          WARNING:
-          Due to the way VecEnvs handle
-          episode completion states, the last obs-state-obs triple in every
-          episode is omitted. (See GitHub issue #1)
-      env (gym.Env): The environment the policy should act in.
-      n_timesteps (int): The minimum number of obs-action-obs-reward tuples to
-          collect (may collect more if episodes run too long). Set exactly one
-          of `n_timesteps` and `n_episodes`, or this function will error.
-          If the number of policies given doesn't divide this number evenly,
-          then the last policy generates more timesteps than the other policies.
-      truncate (bool): If True and n_timesteps is not None, then drop any
-          additional samples to ensure that exactly `n_timesteps` samples are
-          returned.
-
-  Returns:
-      rollout_obs_old (array): A numpy array with shape
-          `[n_samples] + env.observation_space.shape`. The ith observation in
-          this array is the observation seen with the agent chooses action
-          `rollout_act[i]`. `n_samples` is guaranteed to be at least
-          `n_timesteps`.
-      rollout_act (array): A numpy array with shape
-          `[n_samples] + env.action_space.shape`.
-      rollout_obs_new (array): A numpy array with shape
-          `[n_samples] + env.observation_space.shape`. The ith observation in
-          this array is from the transition state after the agent chooses
-          action `rollout_act[i]`.
-      rollout_rew (array): A numpy array with shape `[n_samples]`. The
-          reward received on the ith timestep is `rew[i]`.
-  """
-  try:
-    policies = list(policies)
-  except TypeError:
-    policies = [policies]
-
-  n_policies = len(policies)
-  quot, rem = n_timesteps // n_policies, n_timesteps % n_policies
-  tf.logging.debug("rollout.generate_transitions_multiple: quot={}, rem={}"
-                   .format(quot, rem))
-
-  obs_old, act, obs_new = [], [], []
-  for i, pol in enumerate(policies):
-    n_timesteps_ = quot
-    if i == n_policies - 1:
-      # The final policy also generates the remainder if
-      # n_policies doesn't evenly divide n_timesteps.
-      n_timesteps_ += rem
-
-    obs_old_, act_, obs_new_, _ = generate_transitions(
-        pol, env, n_timesteps=n_timesteps_)
-    assert len(obs_new_) == len(act_), (len(obs_new_), len(act_))
-    assert len(obs_old_) == len(act_), (len(obs_old_), len(act_))
-
-    if truncate:
-      # truncate to get exactly n_timesteps_
-      act_ = act_[:n_timesteps_]
-      obs_new_ = (obs_new_[:n_timesteps_])
-      obs_old_ = obs_old_[:n_timesteps_]
-
-    act.extend(act_)
-    obs_new.extend(obs_new_)
-    obs_old.extend(obs_old_)
-
-  assert len(obs_old) == len(obs_new)
-  assert len(act) >= n_timesteps, (len(act), n_timesteps)
-  if truncate:
-    assert len(act) == n_timesteps
-
-  return tuple(np.array(x) for x in (obs_old, act, obs_new))
 
 
 def save(rollout_dir: str,
