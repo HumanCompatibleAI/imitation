@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 
-ENVS="acrobot cartpole mountain_car reacher half_cheetah hopper ant humanoid swimmer walker"
+ENVS+="acrobot cartpole mountain_car "
+ENVS+="reacher half_cheetah hopper ant humanoid swimmer walker "
+ENVS+="two_d_maze custom_ant disabled_ant "
 SEEDS="0 1 2"
 
 if $(command -v gdate > /dev/null); then
@@ -12,6 +14,12 @@ fi
 TIMESTAMP=$(${DATE_CMD} --iso-8601=seconds)
 OUTPUT_DIR=output/mujoco_experts/${TIMESTAMP}/
 
-parallel -j 25% --header : --results ${OUTPUT_DIR}/parallel/ \
-         python -m imitation.scripts.data_collect with log_root=${OUTPUT_DIR} {env} seed={seed} \
-         ::: env ${ENVS} ::: seed ${SEEDS}
+echo "Writing logs in ${OUTPUT_DIR}"
+
+parallel -j 25% --header : --progress --results ${OUTPUT_DIR}/parallel/ \
+  python -m imitation.scripts.data_collect \
+  with \
+  {env} \
+  seed={seed} \
+  log_root=${OUTPUT_DIR} \
+  ::: env ${ENVS} ::: seed ${SEEDS}

@@ -17,6 +17,7 @@ from stable_baselines import logger as sb_logger
 import tensorflow as tf
 import tqdm
 
+import imitation.examples.airl_envs
 from imitation.scripts.config.train import train_ex
 import imitation.util as util
 from imitation.util.trainer import init_trainer

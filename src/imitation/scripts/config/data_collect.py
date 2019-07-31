@@ -2,6 +2,7 @@ import os
 
 import sacred
 
+import imitation.examples.airl_envs
 from imitation.scripts.config.common import DEFAULT_BLANK_POLICY_KWARGS
 from imitation.util import util
 
@@ -106,19 +107,25 @@ def walker():
 
 @data_collect_ex.named_config
 def two_d_maze():
-  env_name = "imitation/TwoDMaze-v0
+  env_name = "imitation/TwoDMaze-v0"
 
 
 @data_collect_ex.named_config
 def custom_ant():
   env_name = "imitation/CustomAnt-v0"
+  make_blank_policy_kwargs = dict(
+      n_steps=2048,  # batch size of 2048*8=16384 due to num_vec
+  )
+  total_timesteps = int(5e6)
 
 
 @data_collect_ex.named_config
 def disabled_ant():
   env_name = "imitation/DisabledAnt-v0"
-  # TODO: Maybe use the same hyperparameters as `ant()`, both here and in
-  # config/train.py.
+  make_blank_policy_kwargs = dict(
+      n_steps=2048,  # batch size of 2048*8=16384 due to num_vec
+  )
+  total_timesteps = int(5e6)
 
 
 # Debug configs
