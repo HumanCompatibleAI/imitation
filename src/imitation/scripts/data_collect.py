@@ -130,28 +130,37 @@ def rollouts_from_policy(
   rollout_save_n_timesteps: int,
   rollout_save_n_episodes: int,
   log_dir: str,
-  policy_path: str,
+  policy_path: Optional[str] = None,
   policy_type: str = "ppo2",
   env_name: str = "CartPole-v1",
   parallel: bool = True,
+  rollout_save_dir: Optional[str] = None,
 ) -> None:
   """Loads a saved policy and generates rollouts.
 
-  Save path is f"{log_dir}/rollouts/{env_name}.pkl". Unlisted arguments are the
-  same as in `data_collect()`.
+  Default save path is f"{log_dir}/rollouts/{env_name}.pkl". Change to
+  f"{rollout_save_dir}/{env_name}.pkl" by setting the `rollout_save_dir` param.
+  Unlisted arguments are the same as in `data_collect()`.
 
   Args:
       policy_type: Argument to `imitation.policies.serialize.load_policy`.
-      policy_path: Argument to `imitation.policies.serialize.load_policy`.
+      policy_path: Argument to `imitation.policies.serialize.load_policy`. If
+          not provided, then defaults to f"expert_models/{env_name}".
+      rollout_save_dir: Rollout pickle is saved in this directory as
+          f"{env_name}.pkl".
   """
   venv = util.make_vec_env(env_name, num_vec, seed=_seed,
                            parallel=parallel, log_dir=log_dir)
+
+  if policy_path is None:
+    policy_path = f"expert_models/{env_name}"
   policy = serialize.load_policy(policy_type, policy_path, venv)
 
-  rollout_dir = osp.join(log_dir, "rollouts")
-  os.makedirs(rollout_dir, exist_ok=True)
+  if rollout_save_dir is None:
+    rollout_save_dir = osp.join(log_dir, "rollouts")
+  os.makedirs(rollout_save_dir, exist_ok=True)
 
-  util.rollout.save(rollout_dir, policy, venv,
+  util.rollout.save(rollout_save_dir, policy, venv,
                     basename=env_name,
                     n_timesteps=rollout_save_n_timesteps,
                     n_episodes=rollout_save_n_episodes,
