@@ -1,17 +1,34 @@
 """Smoke tests for CLI programs in imitation.scripts.*"""
 
+import tempfile
+
 from imitation.scripts.data_collect import data_collect_ex
 from imitation.scripts.policy_eval import policy_eval_ex
 from imitation.scripts.train import train_ex
 
 
-def test_data_collect():
-  """Smoke test for imitation.scripts.data_collect"""
+def test_data_collect_main():
+  """Smoke test for imitation.scripts.data_collect.rollouts_and_policy"""
   run = data_collect_ex.run(
       named_configs=['cartpole', 'fast'],
       # codecov does not like parallel
       config_updates={'parallel': False},
   )
+  assert run.status == 'COMPLETED'
+
+
+def test_data_collect_rollouts_from_policy():
+  """Smoke test for imitation.scripts.data_collect.rollouts_from_policy"""
+  with tempfile.TemporaryDirectory(prefix='imitation-data_collect-policy',
+                                   ) as tmpdir:
+    run = data_collect_ex.run(
+        command_name="rollouts_from_policy",
+        named_configs=['cartpole', 'fast'],
+        config_updates=dict(
+          parallel=False,  # codecov does not like parallel
+          rollout_save_dir=tmpdir,
+          policy_path="expert_models/PPO2_CartPole-v1_0",
+        ))
   assert run.status == 'COMPLETED'
 
 

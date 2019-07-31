@@ -5,8 +5,11 @@ import os
 import pickle
 from typing import Dict, List, Optional, Tuple, Union
 
+import gym
 import numpy as np
 from stable_baselines.common.base_class import BaseRLModel
+from stable_baselines.common.policies import BasePolicy
+from stable_baselines.common.vec_env import VecEnv
 import tensorflow as tf
 
 from imitation.policies.base import get_action_policy
@@ -63,6 +66,17 @@ class _TrajectoryAccumulator:
     self.partial_trajectories[idx].append(step_dict)
 
 
+def _validate_traj_generate_params(n_timesteps, n_episodes):
+  if n_timesteps is not None and n_episodes is not None:
+    raise ValueError("n_timesteps and n_episodes were both set")
+  elif n_timesteps is not None:
+    assert n_timesteps > 0
+  elif n_episodes is not None:
+    assert n_episodes > 0
+  else:
+    raise ValueError("Set at least one of n_timesteps and n_episodes")
+
+
 def generate_trajectories(policy, env, *, n_timesteps=None, n_episodes=None,
                           deterministic_policy=False,
                           ) -> TrajectoryList:
@@ -102,28 +116,18 @@ def generate_trajectories(policy, env, *, n_timesteps=None, n_episodes=None,
   else:
     get_action = functools.partial(get_action_policy, policy)
 
-  # Validate end condition arguments and initialize end conditions.
-  if n_timesteps is not None and n_episodes is not None:
-    raise ValueError("n_timesteps and n_episodes were both set")
-  elif n_timesteps is not None:
-    assert n_timesteps > 0
-    end_cond = "timesteps"
-  elif n_episodes is not None:
-    assert n_episodes > 0
-    end_cond = "episodes"
-    episodes_elapsed = 0
-  else:
-    raise ValueError("Set at least one of n_timesteps and n_episodes")
+  # Validate end condition arguments.
+  _validate_traj_generate_params(n_timesteps, n_episodes)
 
   # Implements end-condition logic.
   def rollout_done():
-    if end_cond == "timesteps":
+    if n_timesteps is not None:
+      assert n_episodes is None
       # accidentallyquadratic.tumblr.com
       return sum(len(t["obs"]) - 1 for t in trajectories) >= n_timesteps
-    elif end_cond == "episodes":
-      return len(trajectories) >= n_episodes
     else:
-      raise RuntimeError(end_cond)
+      assert n_episodes is not None
+      return len(trajectories) >= n_episodes
 
   # Collect rollout tuples.
   trajectories = []
@@ -141,10 +145,6 @@ def generate_trajectories(policy, env, *, n_timesteps=None, n_episodes=None,
     obs_old_batch = obs_batch
     act_batch, _ = get_action(obs_old_batch, deterministic=deterministic_policy)
     obs_batch, rew_batch, done_batch, _ = env.step(act_batch)
-
-    # Track episode count.
-    if end_cond == "episodes":
-      episodes_elapsed += np.sum(done_batch)
 
     # Don't save tuples if there is a done. The new_obs for any environment
     # is incorrect for any timestep where there is an episode end.
@@ -403,8 +403,9 @@ def generate_transitions_multiple(policies, env, n_timesteps, *, truncate=True,
 
 
 def save(rollout_dir: str,
-         policy: BaseRLModel,
-         step: Union[str, int],
+         policy: Union[BaseRLModel, BasePolicy],
+         env: Union[gym.Env, VecEnv],
+         basename: Union[str, int],
          **kwargs,
          ) -> None:
     """Generate policy rollouts and save them to a pickled TrajectoryList.
@@ -412,16 +413,17 @@ def save(rollout_dir: str,
     Args:
         rollout_dir: Path to the save directory.
         policy: The stable baselines policy.
-        step: Either the integer training step or "final" to mark that training
-            is finished. Used as a suffix in the save file's basename.
+        env: The environment.
+        basename: The file is saved as `f"{basename}.pkl"`. Usually this is
+            the step number, or "final".
         n_timesteps (Optional[int]): `n_timesteps` argument from
             `generate_trajectories`.
         n_episodes (Optional[int]): `n_episodes` argument from
             `generate_trajectories`.
         truncate (bool): `truncate` argument from `generate_trajectories`.
     """
-    path = os.path.join(rollout_dir, f'{step}.pkl')
-    traj_list = generate_trajectories(policy, policy.get_env(), **kwargs)
+    path = os.path.join(rollout_dir, f'{basename}.pkl')
+    traj_list = generate_trajectories(policy, env, **kwargs)
     with open(path, "wb") as f:
       pickle.dump(traj_list, f)
     tf.logging.info("Dumped demonstrations to {}.".format(path))
