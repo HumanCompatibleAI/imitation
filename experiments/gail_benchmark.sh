@@ -8,10 +8,6 @@
 #
 # The CSV configuration can be modified and regenerated from following spreadsheet:
 # https://docs.google.com/spreadsheets/d/1MZYTr23ddwhO2PrNI2EalKleoULXlsH5y9oqawt22pY/edit?usp=sharing
-#
-# NOTE: When regenerating csv, remember that each line needs to end with ',' to
-# work properly.
-# See https://stackoverflow.com/questions/57280651/gnu-parallel-doesnt-work-without-trailing-commas-in-csv
 
 if $(command -v gdate > /dev/null); then
   DATE_CMD=gdate  # macOS compatibility
@@ -37,7 +33,8 @@ parallel -j 25% --header : --results ${OUTPUT_DIR}/parallel/ --colsep , --progre
   init_trainer_kwargs.rollout_glob=expert_models/rollouts/{rollout_glob} \
   init_trainer_kwargs.n_expert_demos={n_demonstrations} \
   seed={seed} \
-  :::: experiments/gail_benchmark_config.csv ::: seed ${SEEDS}
+  :::: experiments/gail_benchmark_config.csv \
+  ::: seed ${SEEDS}
 
 
 # Directory path is really long. Enter the directory to shorten results output,
