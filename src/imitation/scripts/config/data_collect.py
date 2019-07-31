@@ -17,12 +17,12 @@ def data_collect_defaults():
   normalize = True  # Use VecNormalize
   make_blank_policy_kwargs = dict(DEFAULT_BLANK_POLICY_KWARGS)
 
-  rollout_save_interval = 100  # Num updates between saves (<=0 disables)
+  rollout_save_interval = -1  # Num updates between saves (<=0 disables)
   rollout_save_final = True  # If True, save after training is finished.
   rollout_save_n_timesteps = 2000  # Min timesteps saved per file, optional.
   rollout_save_n_episodes = None  # Num episodes saved per file, optional.
 
-  policy_save_interval = -1  # Num updates between saves (<=0 disables)
+  policy_save_interval = 100  # Num updates between saves (<=0 disables)
   policy_save_final = True  # If True, save after training is finished.
 
   log_root = os.path.join("output", "data_collect")  # output directory
