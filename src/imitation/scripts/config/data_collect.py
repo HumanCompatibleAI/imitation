@@ -102,6 +102,25 @@ def walker():
   env_name = "Walker2d-v2"
 
 
+# Custom env configs
+
+@data_collect_ex.named_config
+def two_d_maze():
+  env_name = "imitation/TwoDMaze-v0
+
+
+@data_collect_ex.named_config
+def custom_ant():
+  env_name = "imitation/CustomAnt-v0"
+
+
+@data_collect_ex.named_config
+def disabled_ant():
+  env_name = "imitation/DisabledAnt-v0"
+  # TODO: Maybe use the same hyperparameters as `ant()`, both here and in
+  # config/train.py.
+
+
 # Debug configs
 
 @data_collect_ex.named_config

@@ -145,6 +145,23 @@ def walker():
   env_name = "Walker2d-v2"
 
 
+# Custom env configs
+
+@train_ex.named_config
+def two_d_maze():
+  env_name = "imitation/TwoDMaze-v0
+
+
+@train_ex.named_config
+def custom_ant():
+  env_name = "imitation/CustomAnt-v0"
+
+
+@train_ex.named_config
+def disabled_ant():
+  env_name = "imitation/DisabledAnt-v0"
+
+
 # Debug configs
 
 @train_ex.named_config
