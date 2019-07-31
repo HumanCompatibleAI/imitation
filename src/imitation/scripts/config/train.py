@@ -54,6 +54,8 @@ def logging(env_name, log_root):
                            util.make_timestamp())
 
 
+# Training algorithm configs
+
 @train_ex.named_config
 def gail():
     init_trainer_kwargs = dict(
@@ -68,15 +70,18 @@ def airl():
     )
 
 
-@train_ex.named_config
-def ant():
-    env_name = "Ant-v2"
-    n_epochs = 2000
+# Standard Gym env configs
 
 
 @train_ex.named_config
 def acrobot():
   env_name = "Acrobot-v1"
+
+
+@train_ex.named_config
+def ant():
+    env_name = "Ant-v2"
+    n_epochs = 2000
 
 
 @train_ex.named_config
@@ -125,11 +130,6 @@ def reacher():
 
 
 @train_ex.named_config
-def walker():
-  env_name = "Walker2d-v2"
-
-
-@train_ex.named_config
 def swimmer():
   env_name = "Swimmer-v2"
   n_epochs = 1000
@@ -139,6 +139,13 @@ def swimmer():
       ),
   )
 
+
+@train_ex.named_config
+def walker():
+  env_name = "Walker2d-v2"
+
+
+# Debug configs
 
 @train_ex.named_config
 def fast():

@@ -34,6 +34,13 @@ def logging(env_name, log_root):
                          util.make_timestamp())
 
 
+# Standard Gym env configs
+
+@data_collect_ex.named_config
+def acrobot():
+  env_name = "Acrobot-v1"
+
+
 @data_collect_ex.named_config
 def ant():
   env_name = "Ant-v2"
@@ -41,11 +48,6 @@ def ant():
       n_steps=2048,  # batch size of 2048*8=16384 due to num_vec
   )
   total_timesteps = int(5e6)  # OK after 2e6, but continues improving
-
-
-@data_collect_ex.named_config
-def acrobot():
-  env_name = "Acrobot-v1"
 
 
 @data_collect_ex.named_config
@@ -61,15 +63,6 @@ def half_cheetah():
 
 
 @data_collect_ex.named_config
-def humanoid():
-  env_name = "Humanoid-v2"
-  make_blank_policy_kwargs = dict(
-      n_steps=2048,  # batch size of 2048*8=16384 due to num_vec
-  )
-  total_timesteps = int(10e6)  # fairly discontinuous, needs at least 5e6
-
-
-@data_collect_ex.named_config
 def hopper():
   # TODO(adam): upgrade to Hopper-v3?
   env_name = "Hopper-v2"
@@ -78,6 +71,15 @@ def hopper():
 @data_collect_ex.named_config
 def mountain_car():
   env_name = "MountainCar-v0"
+
+
+@data_collect_ex.named_config
+def humanoid():
+  env_name = "Humanoid-v2"
+  make_blank_policy_kwargs = dict(
+      n_steps=2048,  # batch size of 2048*8=16384 due to num_vec
+  )
+  total_timesteps = int(10e6)  # fairly discontinuous, needs at least 5e6
 
 
 @data_collect_ex.named_config
@@ -99,6 +101,8 @@ def swimmer():
 def walker():
   env_name = "Walker2d-v2"
 
+
+# Debug configs
 
 @data_collect_ex.named_config
 def fast():
