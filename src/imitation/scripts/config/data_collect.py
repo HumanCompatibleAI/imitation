@@ -2,7 +2,7 @@ import os
 
 import sacred
 
-import imitation.examples.airl_envs
+import imitation.examples.airl_envs  # noqa: F401
 from imitation.scripts.config.common import DEFAULT_BLANK_POLICY_KWARGS
 from imitation.util import util
 

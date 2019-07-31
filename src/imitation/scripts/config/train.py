@@ -6,6 +6,7 @@ import sacred
 from stable_baselines.common import policies
 
 from imitation import util
+import imitation.examples.airl_envs  # noqa: F401
 from imitation.policies import base
 from imitation.scripts.config.common import DEFAULT_BLANK_POLICY_KWARGS
 
@@ -149,7 +150,7 @@ def walker():
 
 @train_ex.named_config
 def two_d_maze():
-  env_name = "imitation/TwoDMaze-v0
+  env_name = "imitation/TwoDMaze-v0"
 
 
 @train_ex.named_config
