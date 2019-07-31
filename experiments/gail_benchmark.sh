@@ -30,6 +30,7 @@ parallel -j 25% --header : --results ${OUTPUT_DIR}/parallel/ --colsep , --progre
   gail \
   {env_config} \
   log_root="${OUTPUT_DIR}" \
+  n_gen_steps_per_epoch={n_gen_steps_per_epoch} \
   init_trainer_kwargs.rollout_glob=expert_models/rollouts/{rollout_glob} \
   init_trainer_kwargs.n_expert_demos={n_demonstrations} \
   seed={seed} \
