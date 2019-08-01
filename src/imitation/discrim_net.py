@@ -14,6 +14,7 @@ class DiscrimNet(serialize.Serializable):
   """Abstract base class for discriminator, used in multiple IRL methods."""
 
   def __init__(self):
+    self._sess = tf.get_default_session()
     self._disc_loss = self.build_disc_loss()
     self._policy_train_reward = self.build_policy_train_reward()
     self._policy_test_reward = self.build_policy_test_reward()
@@ -31,12 +32,87 @@ class DiscrimNet(serialize.Serializable):
     return self._policy_test_reward
 
   @abstractmethod
-  def build_policy_train_reward(self):
-    pass
+  def build_policy_train_reward(self) -> tf.Tensor:
+    """
+    Builds self._policy_train_reward, the reward to used during imitation
+    learning.
+    """
 
-  @abstractmethod
-  def build_policy_test_reward(self):
-    pass
+  def build_policy_test_reward(self) -> tf.Tensor:
+    """
+    Builds self._policy_train_reward, the reward used during transfer learning.
+
+    Subclasses should override this method if they have a transfer learning
+    reward. By default it simply returns self.build_policy_train_reward().
+    """
+    return self.build_policy_train_reward()
+
+  def reward_train(
+    self,
+    old_obs: np.ndarray,
+    act: np.ndarray,
+    new_obs: np.ndarray,
+  ) -> np.ndarray:
+    """Vectorized reward for training an imitation learning algorithm.
+
+    Args:
+        old_obs (array): The observation input. Its shape is
+            `((None,) + observation_space.shape)`.
+        act (array): The action input. Its shape is
+            `((None,) + action_space.shape)`. The None dimension is
+            expected to be the same as None dimension from `obs_input`.
+        new_obs (array): The observation input. Its shape is
+            `((None,) + observation_space.shape)`.
+    """
+    old_obs = np.atleast_1d(old_obs)
+    act = np.atleast_1d(act)
+    new_obs = np.atleast_1d(new_obs)
+
+    n_gen = len(old_obs)
+    assert len(act) == n_gen
+    assert len(new_obs) == n_gen
+
+    # Calculate generator-policy log probabilities.
+    log_act_prob = self._gen_policy.action_probability(old_obs, actions=act,
+                                                       logp=True)
+    assert len(log_act_prob) == n_gen
+    log_act_prob = log_act_prob.reshape((n_gen,))
+
+    fd = {
+        self._discrim.old_obs_ph: old_obs,
+        self._discrim.act_ph: act,
+        self._discrim.new_obs_ph: new_obs,
+        self._discrim.labels_ph: np.ones(n_gen),
+        self._discrim.log_policy_act_prob_ph: log_act_prob,
+    }
+    rew = self._sess.run(self._discrim.policy_train_reward, feed_dict=fd)
+    return rew.flatten()
+
+  def reward_test(
+    self,
+    old_obs: np.ndarray,
+    act: np.ndarray,
+    new_obs: np.ndarray,
+  ) -> np.ndarray:
+    """Vectorized reward for training an imitation learning algorithm.
+
+    Args:
+        old_obs (array): The observation input. Its shape is
+            `((None,) + observation_space.shape)`.
+        act (array): The action input. Its shape is
+            `((None,) + action_space.shape)`. The None dimension is
+            expected to be the same as None dimension from `obs_input`.
+        new_obs (array): The observation input. Its shape is
+            `((None,) + observation_space.shape)`.
+    """
+    fd = {
+      self._discrim.old_obs_ph: old_obs,
+      self._discrim.act_ph: act,
+      self._discrim.new_obs_ph: new_obs,
+    }
+    rew = self._sess.run(self._discrim._policy_test_reward,
+                         feed_dict=fd)
+    return rew.flatten()
 
   @abstractmethod
   def build_disc_loss(self):
@@ -151,10 +227,6 @@ class DiscrimNetAIRL(DiscrimNet):
     return self.reward_net.reward_output_test
 
   def build_policy_train_reward(self):
-    """
-    Sets self._policy_train_reward_fn, the reward function to use when
-    running a policy optimizer (e.g. PPO).
-    """
     # Construct generator reward:
     # \[\hat{r}(s,a) = \log(D_{\theta}(s,a)) - \log(1 - D_{\theta}(s,a)).\]
     # This simplifies to:
@@ -232,15 +304,10 @@ class DiscrimNetGAIL(DiscrimNet, serialize.LayersSerializable):
 
     return discrim_mlp, discrim_logits
 
-  def build_policy_train_reward(self):
+  def build_policy_train_reward(self) -> tf.Tensor:
     super().build_policy_train_reward()
     train_reward = -tf.log_sigmoid(self._discrim_logits)
-
     return train_reward
-
-  def build_policy_test_reward(self):
-    super().build_policy_test_reward()
-    return self.build_policy_train_reward()
 
   def build_disc_loss(self):
     super().build_disc_loss()

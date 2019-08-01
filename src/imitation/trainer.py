@@ -10,7 +10,7 @@ from tqdm import tqdm
 
 from imitation import summaries
 from imitation.discrim_net import DiscrimNet
-from imitation.util import buffer, rollout, util
+from imitation.util import buffer, rollout, reward_wrapper, util
 
 
 class Trainer:
@@ -20,18 +20,21 @@ class Trainer:
   """The original environment."""
 
   env_train: gym.Env
-  """Like `self.env`, but wrapped with train reward except in debug mode.
+  """Like `self.env`, but wrapped with train reward unless in debug mode.
 
   If `debug_use_ground_truth=True` was passed into the initializer then
   `self.env_train` is the same as `self.env`.
   """
 
   env_test: gym.Env
-  """Like `self.env`, but wrapped with test reward except in debug mode.
+  """Like `self.env`, but wrapped with test reward unless in debug mode.
 
   If `debug_use_ground_truth=True` was passed into the initializer then
   `self.env_test` is the same as `self.env`.
   """
+
+  discrim_net: DiscrimNet
+  """The network trained by this Trainer."""
 
   def __init__(self,
                env: Union[gym.Env, str],
@@ -84,11 +87,11 @@ class Trainer:
     self._gen_policy = gen_policy
 
     # Discriminator and reward output
+    self.discrim_net = discrim
     self._disc_opt_cls = disc_opt_cls
     self._disc_opt_kwargs = disc_opt_kwargs
     with tf.variable_scope("trainer"):
       with tf.variable_scope("discriminator"):
-        self._discrim = discrim
         self._build_disc_train()
       self._build_policy_train_reward()
       self._build_test_reward()
@@ -99,8 +102,13 @@ class Trainer:
     self._sess.run(tf.global_variables_initializer())
 
     # TODO(adam): make this wrapping configurable for debugging purposes
-    self.env_train = self.wrap_env_train_reward(self.env)
-    self.env_test = self.wrap_env_test_reward(self.env)
+    if debug_use_ground_truth:
+        self.env_train = self.env_test = self.env
+    else:
+        self.env_train = reward_wrapper.RewardVecEnvWrapper(
+            self.env, self.discrim_net.reward_train)
+        self.env_test = reward_wrapper.RewardVecEnvWrapper(
+            self.env, self.discrim_net.reward_test)
 
     if gen_replay_buffer_capacity is None:
         gen_replay_buffer_capacity = 20 * self._n_disc_samples_per_buffer
@@ -198,46 +206,6 @@ class Trainer:
     fd = self._build_disc_feed_dict(**kwargs)
     return np.mean(self._sess.run(self._discrim.disc_loss, feed_dict=fd))
 
-  def wrap_env_train_reward(self, env):
-    """Returns the given Env wrapped with a reward function that returns
-    the AIRL training reward (discriminator confusion).
-
-    The wrapped `Env`'s reward is directly evaluated from the reward network,
-    and therefore changes whenever `self.train()` is called.
-
-    Args:
-        env (str, Env, or VecEnv): The Env that we want to wrap. If a
-            string environment name is given or a Env is given, then we first
-            convert to a VecEnv before continuing.
-        wrapped_env (VecEnv): The wrapped environment with a new reward.
-    """
-    env = util.maybe_load_env(env, vectorize=True)
-    if self.debug_use_ground_truth:
-      return env
-    else:
-      return _RewardVecEnvWrapper(env, self._policy_train_reward_fn)
-
-  def wrap_env_test_reward(self, env):
-    """Returns the given Env wrapped with a reward function that returns
-    the reward learned by this Trainer.
-
-    The wrapped `Env`'s reward is directly evaluated from the reward network,
-    and therefore changes whenever `self.train()` is called.
-
-    Args:
-        env (str, Env, or VecEnv): The Env that should be wrapped. If a
-            string environment name is given or a Env is given, then we first
-            make a VecEnv before continuing.
-
-    Returns:
-        wrapped_env (VecEnv): The wrapped environment with a new reward.
-    """
-    env = util.maybe_load_env(env, vectorize=True)
-    if self.debug_use_ground_truth:
-      return env
-    else:
-      return _RewardVecEnvWrapper(env, self._test_reward_fn)
-
   def _build_summarize(self):
     self._summary_writer = summaries.make_summary_writer(
         graph=self._sess.graph)
@@ -323,104 +291,6 @@ class Trainer:
         self._discrim.log_policy_act_prob_ph: log_act_prob,
     }
     return fd
-
-  def _build_policy_train_reward(self):
-    """Sets self._policy_train_reward_fn, the reward function to use when
-    running a policy optimizer (e.g. PPO).
-    """
-
-    def R(old_obs, act, new_obs):
-      """Vectorized reward function.
-
-      Args:
-          old_obs (array): The observation input. Its shape is
-              `((None,) + self.env.observation_space.shape)`.
-          act (array): The action input. Its shape is
-              `((None,) + self.env.action_space.shape)`. The None dimension is
-              expected to be the same as None dimension from `obs_input`.
-          new_obs (array): The observation input. Its shape is
-              `((None,) + self.env.observation_space.shape)`.
-      """
-      old_obs = np.atleast_1d(old_obs)
-      act = np.atleast_1d(act)
-      new_obs = np.atleast_1d(new_obs)
-
-      n_gen = len(old_obs)
-      assert len(act) == n_gen
-      assert len(new_obs) == n_gen
-
-      # Calculate generator-policy log probabilities.
-      log_act_prob = self._gen_policy.action_probability(old_obs, actions=act,
-                                                         logp=True)
-      assert len(log_act_prob) == n_gen
-      log_act_prob = log_act_prob.reshape((n_gen,))
-
-      fd = {
-          self._discrim.old_obs_ph: old_obs,
-          self._discrim.act_ph: act,
-          self._discrim.new_obs_ph: new_obs,
-          self._discrim.labels_ph: np.ones(n_gen),
-          self._discrim.log_policy_act_prob_ph: log_act_prob,
-      }
-      rew = self._sess.run(self._discrim.policy_train_reward, feed_dict=fd)
-      return rew.flatten()
-
-    self._policy_train_reward_fn = R
-
-  def _build_test_reward(self):
-    """Sets self._test_reward_fn, the transfer reward function"""
-    def R(old_obs, act, new_obs):
-      fd = {
-          self._discrim.old_obs_ph: old_obs,
-          self._discrim.act_ph: act,
-          self._discrim.new_obs_ph: new_obs,
-      }
-      rew = self._sess.run(self._discrim._policy_test_reward,
-                           feed_dict=fd)
-      return rew.flatten()
-
-    self._test_reward_fn = R
-
-
-class _RewardVecEnvWrapper(VecEnvWrapper):
-
-  def __init__(self, venv, reward_fn):
-    """A RewardVecEnvWrapper uses a provided reward_fn to replace
-    the reward function returned by `step()`.
-
-    Automatically resets the inner VecEnv upon initialization.
-    A tricky part about this class keeping track of the most recent
-    observation from each environment.
-
-    Args:
-        venv (VecEnv): The VecEnv to wrap.
-        reward_fn (Callable): A function that wraps takes in arguments
-            (old_obs, act, new_obs) and returns a vector of rewards.
-    """
-    assert not isinstance(venv, _RewardVecEnvWrapper)
-    super().__init__(venv)
-    self.reward_fn = reward_fn
-    self.reset()
-
-  @property
-  def envs(self):
-    return self.venv.envs
-
-  def reset(self):
-    self._old_obs = self.venv.reset()
-    return self._old_obs
-
-  def step_async(self, actions):
-    self._actions = actions
-    return self.venv.step_async(actions)
-
-  def step_wait(self):
-    obs, rew, done, info = self.venv.step_wait()
-    rew = self.reward_fn(self._old_obs, self._actions, obs)
-    # XXX: We never get to see episode end. (See Issue #1).
-    # Therefore, the final obs of every episode is incorrect.
-    self._old_obs = obs
-    return obs, rew, done, info
 
 
 def _n_steps_if_not_none(n_steps):
