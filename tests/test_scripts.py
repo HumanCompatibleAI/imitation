@@ -1,4 +1,8 @@
-"""Smoke tests for CLI programs in imitation.scripts.*"""
+"""Smoke tests for CLI programs in imitation.scripts.*
+
+Parallelized VecEnvs are disabled throughout because they interacts poorly
+with codecov.
+"""
 
 import tempfile
 
@@ -11,7 +15,6 @@ def test_data_collect_main():
   """Smoke test for imitation.scripts.data_collect.rollouts_and_policy"""
   run = data_collect_ex.run(
       named_configs=['cartpole', 'fast'],
-      # codecov does not like parallel
       config_updates={'parallel': False},
   )
   assert run.status == 'COMPLETED'
@@ -25,7 +28,7 @@ def test_data_collect_rollouts_from_policy():
         command_name="rollouts_from_policy",
         named_configs=['cartpole', 'fast'],
         config_updates=dict(
-          parallel=False,  # codecov does not like parallel
+          parallel=False,
           rollout_save_dir=tmpdir,
           policy_path="expert_models/PPO2_CartPole-v1_0",
         ))
@@ -35,6 +38,7 @@ def test_data_collect_rollouts_from_policy():
 def test_policy_eval():
   """Smoke test for imitation.scripts.policy_eval"""
   config_updates = {
+      'parallel': False,
       'render': False,
       'log_root': 'output/tests/policy_eval',
   }
@@ -48,7 +52,6 @@ def test_train():
   """Smoke test for imitation.scripts.train"""
   config_updates = {
       'init_trainer_kwargs': {
-          # codecov does not like parallel
           'parallel': False,
           'rollout_glob': "tests/data/rollouts/CartPole*.pkl",
       },
