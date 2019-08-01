@@ -4,7 +4,6 @@ from warnings import warn
 import gym
 import numpy as np
 from stable_baselines.common.base_class import BaseRLModel
-from stable_baselines.common.vec_env import VecEnvWrapper
 import tensorflow as tf
 from tqdm import tqdm
 

@@ -4,6 +4,7 @@ import pickle
 from typing import Iterable, Optional
 
 import gym
+import numpy as np
 import tensorflow as tf
 
 from imitation import reward_net, util

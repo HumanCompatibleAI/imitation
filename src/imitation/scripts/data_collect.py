@@ -14,6 +14,7 @@ from imitation.policies import serialize
 from imitation.scripts.config.data_collect import data_collect_ex
 from imitation.trainer import Trainer
 import imitation.util as util
+from imitation.util.reward_wrapper import RewardVecEnvWrapper
 from imitation.util.rollout import _validate_traj_generate_params
 
 
@@ -28,7 +29,7 @@ def rollouts_and_policy(
   parallel: bool = False,
   normalize: bool = True,
   make_blank_policy_kwargs: dict = {},
-  test_reward_trainer_path: Optional[str] = None,
+  discrim_net_airl_path: Optional[str] = None,
 
   rollout_save_interval: int = 0,
   rollout_save_final: bool = False,
@@ -54,9 +55,9 @@ def rollouts_and_policy(
       parallel: If True, then use DummyVecEnv. Otherwise use SubprocVecEnv.
       normalize: If True, then rescale observations and reward.
       make_blank_policy_kwargs: Kwargs for `make_blank_policy`.
-      test_reward_trainer_path: If provided, then load the serialized Trainer
-        and wrap the environment in the trainer's test reward. This is
-        useful for AIRL transfer learning. Logs a warning if the Trainer
+      discrim_net_airl_path: If provided, then load the serialized
+        DiscrimNetAIRL and wrap the environment in the trainer's test reward.
+        This is useful for AIRL transfer learning. Logs a warning if the Trainer
         isn't properly configured for transfer learning (e.g.: in debug mode,
         or is a GAIL trainer).
 
@@ -98,18 +99,11 @@ def rollouts_and_policy(
     if normalize:
       venv = vec_normalize = VecNormalize(venv)
 
-    if test_reward_trainer_path is not None:
-      with open(test_reward_trainer_path, "rb") as f:
-        trainer = pickle.load(f)  # type: Trainer
-      if not isinstance(trainer._discrim, DiscrimNetAIRL):
-        warnings.warn("Using a non-AIRL trainer for transfer learning",
-                      RuntimeWarning)
-      if trainer.debug_use_ground_truth:
-        warnings.warn("Using a debug trainer for transfer learning.",
-                      RuntimeWarning)
-
-      venv = trainer.wrap_env_train_reward(venv)
-      tf.log(f"Wrapped env in test reward from {test_reward_trainer_path}.")
+    if discrim_net_airl_path is not None:
+      with open(discrim_net_airl_path, "rb") as f:
+        discrim_net = DiscrimNetAIRL.load(f)
+      venv = RewardVecEnvWrapper(venv, discrim_net.reward_test)
+      tf.log(f"Wrapped env in test reward from {discrim_net_airl_path}.")
 
     policy = util.init_rl(venv, verbose=1,
                           **make_blank_policy_kwargs)

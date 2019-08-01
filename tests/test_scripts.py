@@ -1,9 +1,6 @@
-"""Smoke tests for CLI programs in imitation.scripts.*
+"""Smoke tests for CLI programs in imitation.scripts.*"""
 
-Parallelized VecEnvs are disabled throughout because they interacts poorly
-with codecov.
-"""
-
+import os.path as osp
 import tempfile
 
 from imitation.scripts.data_collect import data_collect_ex
@@ -15,7 +12,6 @@ def test_data_collect_main():
   """Smoke test for imitation.scripts.data_collect.rollouts_and_policy"""
   run = data_collect_ex.run(
       named_configs=['cartpole', 'fast'],
-      config_updates={'parallel': False},
   )
   assert run.status == 'COMPLETED'
 
@@ -28,7 +24,6 @@ def test_data_collect_rollouts_from_policy():
         command_name="rollouts_from_policy",
         named_configs=['cartpole', 'fast'],
         config_updates=dict(
-          parallel=False,
           rollout_save_dir=tmpdir,
           policy_path="expert_models/PPO2_CartPole-v1_0",
         ))
@@ -38,7 +33,6 @@ def test_data_collect_rollouts_from_policy():
 def test_policy_eval():
   """Smoke test for imitation.scripts.policy_eval"""
   config_updates = {
-      'parallel': False,
       'render': False,
       'log_root': 'output/tests/policy_eval',
   }
@@ -52,7 +46,6 @@ def test_train():
   """Smoke test for imitation.scripts.train"""
   config_updates = {
       'init_trainer_kwargs': {
-          'parallel': False,
           'rollout_glob': "tests/data/rollouts/CartPole*.pkl",
       },
       'log_root': 'output/tests/train',
@@ -62,3 +55,33 @@ def test_train():
       config_updates=config_updates,
   )
   assert run.status == 'COMPLETED'
+
+
+def test_transfer_learning():
+  """Transfer learning smoke test.
+
+  Save a dummy AIRL test reward, then load it for transfer learning."""
+
+  with tempfile.TemporaryDirectory(prefix='imitation-transfer',
+                                   ) as tmpdir:
+    log_dir_train = osp.join(tmpdir, "train")
+    run = train_ex.run(
+        named_configs=['cartpole', 'airl', 'fast'],
+        config_updates = {
+          'init_trainer_kwargs': {
+            'rollout_glob': "tests/data/rollouts/CartPole*.pkl",
+          },
+          'log_root': log_dir_train,
+        },
+    )
+    assert run.status == 'COMPLETED'
+
+    log_dir_data = osp.join(tmpdir, "data_collect")
+    discrim_path = osp.join(tmpdir, "checkpoint", "discrim", "final")
+    run = data_collect_ex.run(
+        named_configs=['cartpole', 'fast'],
+        config_updates = {
+          'log_root': log_dir_data,
+          'discrim_net_airl_path': discrim_path,
+        }
+    assert run.status == 'COMPLETED'

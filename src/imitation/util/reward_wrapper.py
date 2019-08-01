@@ -1,3 +1,6 @@
+from stable_baselines.common.vec_env import VecEnvWrapper
+
+
 # TODO(shwang, qxcv): Keep Sam's version when merging #54.
 class RewardVecEnvWrapper(VecEnvWrapper):
 

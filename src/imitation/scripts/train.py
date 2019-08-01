@@ -33,21 +33,22 @@ def save(trainer, save_path):
 
 
 @train_ex.main
-def train_and_plot(_seed: int,
-                   env_name: str,
-                   log_dir: str,
-                   *,
-                   n_epochs: int = 100,
-                   n_epochs_per_plot: Optional[float] = None,
-                   n_disc_steps_per_epoch: int = 10,
-                   n_gen_steps_per_epoch: int = 10000,
-                   n_episodes_per_reward_data: int = 5,
-                   n_episodes_eval: int = 50,
-                   checkpoint_interval: int = 5,
-                   interactive: bool = True,
-                   expert_policy=None,
-                   init_trainer_kwargs: dict = {},
-                   ) -> Dict[str, float]:
+def train_and_plot(
+  _seed: int,
+  env_name: str,
+  log_dir: str,
+  *,
+  n_epochs: int = 100,
+  n_epochs_per_plot: Optional[float] = None,
+  n_disc_steps_per_epoch: int = 10,
+  n_gen_steps_per_epoch: int = 10000,
+  n_episodes_per_reward_data: int = 5,
+  n_episodes_eval: int = 50,
+  checkpoint_interval: int = 5,
+  interactive: bool = True,
+  expert_policy=None,
+  init_trainer_kwargs: dict = {},
+) -> Dict[str, float]:
   """Alternate between training the generator and discriminator.
 
   Every epoch:
@@ -56,6 +57,13 @@ def train_and_plot(_seed: int,
     - Plot the performance of the generator policy versus the performance of
       a random policy. Also plot the performance of an expert policy if that is
       provided in the arguments.
+
+  Checkpoints:
+      - DiscrimNets are saved to f"{log_dir}/checkpoints/discrim/{step}",
+        where step is either the training epoch or "final".
+      - Generator policies are saved to
+        f"{log_dir}/checkpoints/gen_policy/{step}".
+
 
   Args:
       _seed: Random seed.
@@ -100,6 +108,10 @@ def train_and_plot(_seed: int,
 
     tf.logging.info("Logging to %s", log_dir)
     os.makedirs(log_dir, exist_ok=True)
+
+    discrim_dir = osp.join(log_dir, "nets")
+    os.makedirs(discrim_dir, exist_ok=True)
+
     sb_logger.configure(folder=osp.join(log_dir, 'generator'),
                         format_strs=['tensorboard', 'stdout'])
 
@@ -217,6 +229,7 @@ def train_and_plot(_seed: int,
       if checkpoint_interval > 0 and epoch % checkpoint_interval == 0:
         save(trainer, os.path.join(log_dir, "checkpoints", f"{epoch:05d}"))
 
+    # Save final artifacts.
     save(trainer, os.path.join(log_dir, "final"))
 
     # Final evaluation of imitation policy.
