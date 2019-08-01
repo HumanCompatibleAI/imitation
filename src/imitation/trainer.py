@@ -9,7 +9,7 @@ from tqdm import tqdm
 
 from imitation import summaries
 from imitation.discrim_net import DiscrimNet
-from imitation.util import buffer, rollout, reward_wrapper, util
+from imitation.util import buffer, reward_wrapper, rollout, util
 
 
 class Trainer:
@@ -31,9 +31,6 @@ class Trainer:
   If `debug_use_ground_truth=True` was passed into the initializer then
   `self.env_test` is the same as `self.env`.
   """
-
-  discrim_net: DiscrimNet
-  """The network trained by this Trainer."""
 
   def __init__(self,
                env: Union[gym.Env, str],
@@ -86,14 +83,12 @@ class Trainer:
     self._gen_policy = gen_policy
 
     # Discriminator and reward output
-    self.discrim_net = discrim
+    self._discrim = discrim
     self._disc_opt_cls = disc_opt_cls
     self._disc_opt_kwargs = disc_opt_kwargs
     with tf.variable_scope("trainer"):
       with tf.variable_scope("discriminator"):
         self._build_disc_train()
-      self._build_policy_train_reward()
-      self._build_test_reward()
     self._init_tensorboard = init_tensorboard
     if init_tensorboard:
       with tf.name_scope("summaries"):
@@ -105,9 +100,9 @@ class Trainer:
         self.env_train = self.env_test = self.env
     else:
         self.env_train = reward_wrapper.RewardVecEnvWrapper(
-            self.env, self.discrim_net.reward_train)
+            self.env, self.discrim.reward_train)
         self.env_test = reward_wrapper.RewardVecEnvWrapper(
-            self.env, self.discrim_net.reward_test)
+            self.env, self.discrim.reward_test)
 
     if gen_replay_buffer_capacity is None:
         gen_replay_buffer_capacity = 20 * self._n_disc_samples_per_buffer
@@ -121,7 +116,7 @@ class Trainer:
 
   @property
   def discrim(self) -> DiscrimNet:
-    """Discriminator being trained, used to compute reward for policy."""
+    # TODO(shwang): Get back the old docstring.
     return self._discrim
 
   @property
@@ -203,12 +198,12 @@ class Trainer:
             discriminator's classification.
     """
     fd = self._build_disc_feed_dict(**kwargs)
-    return np.mean(self._sess.run(self._discrim.disc_loss, feed_dict=fd))
+    return np.mean(self._sess.run(self.discrim.disc_loss, feed_dict=fd))
 
   def _build_summarize(self):
     self._summary_writer = summaries.make_summary_writer(
         graph=self._sess.graph)
-    self._discrim.build_summaries()
+    self.discrim.build_summaries()
     self._summary_op = tf.summary.merge_all()
 
   def _summarize(self, fd, step):
@@ -219,7 +214,7 @@ class Trainer:
     # Construct Train operation.
     disc_opt = self._disc_opt_cls(**self._disc_opt_kwargs)
     self._disc_train_op = disc_opt.minimize(
-        tf.reduce_mean(self._discrim.disc_loss),
+        tf.reduce_mean(self.discrim.disc_loss),
         global_step=self._global_step)
 
   def _build_disc_feed_dict(self, *,
@@ -283,11 +278,11 @@ class Trainer:
     log_act_prob = log_act_prob.reshape((N,))
 
     fd = {
-        self._discrim.old_obs_ph: old_obs,
-        self._discrim.act_ph: act,
-        self._discrim.new_obs_ph: new_obs,
-        self._discrim.labels_ph: labels,
-        self._discrim.log_policy_act_prob_ph: log_act_prob,
+        self.discrim.old_obs_ph: old_obs,
+        self.discrim.act_ph: act,
+        self.discrim.new_obs_ph: new_obs,
+        self.discrim.labels_ph: labels,
+        self.discrim.log_policy_act_prob_ph: log_act_prob,
     }
     return fd
 

@@ -71,20 +71,3 @@ def test_train_disc_improve_D(use_gail, env='CartPole-v1', n_timesteps=200,
 def test_train_no_crash(use_gail, env='CartPole-v1'):
   trainer = init_test_trainer(env, use_gail)
   trainer.train(n_epochs=1)
-
-
-@pytest.mark.expensive
-@pytest.mark.parametrize("use_gail", USE_GAIL)
-def test_wrap_learned_reward_no_crash(use_gail, env="CartPole-v1"):
-  """
-  Briefly train with AIRL, and then used the learned reward to wrap
-  a duplicate environment. Finally, use that learned reward to train
-  a policy.
-  """
-  trainer = init_test_trainer(env, use_gail)
-  trainer.train(n_epochs=1)
-
-  learned_reward_env = trainer.wrap_env_test_reward(env)
-  policy = util.init_rl(env)
-  policy.set_env(learned_reward_env)
-  policy.learn(10)

@@ -1,8 +1,6 @@
 import os
 import os.path as osp
-import pickle
 from typing import Optional
-import warnings
 
 from sacred.observers import FileStorageObserver
 from stable_baselines import logger as sb_logger
@@ -12,7 +10,6 @@ import tensorflow as tf
 from imitation.discrim_net import DiscrimNetAIRL
 from imitation.policies import serialize
 from imitation.scripts.config.data_collect import data_collect_ex
-from imitation.trainer import Trainer
 import imitation.util as util
 from imitation.util.reward_wrapper import RewardVecEnvWrapper
 from imitation.util.rollout import _validate_traj_generate_params

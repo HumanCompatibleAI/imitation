@@ -67,12 +67,12 @@ def test_transfer_learning():
     log_dir_train = osp.join(tmpdir, "train")
     run = train_ex.run(
         named_configs=['cartpole', 'airl', 'fast'],
-        config_updates = {
-          'init_trainer_kwargs': {
-            'rollout_glob': "tests/data/rollouts/CartPole*.pkl",
-          },
-          'log_root': log_dir_train,
-        },
+        config_updates=dict(
+          init_trainer_kwargs=dict(
+            rollout_glob="tests/data/rollouts/CartPole*.pkl",
+          ),
+          log_root=log_dir_train,
+        ),
     )
     assert run.status == 'COMPLETED'
 
@@ -80,8 +80,9 @@ def test_transfer_learning():
     discrim_path = osp.join(tmpdir, "checkpoint", "discrim", "final")
     run = data_collect_ex.run(
         named_configs=['cartpole', 'fast'],
-        config_updates = {
-          'log_root': log_dir_data,
-          'discrim_net_airl_path': discrim_path,
-        }
+        config_updates=dict(
+          log_root=log_dir_data,
+          discrim_net_airl_path=discrim_path,
+        ),
+    )
     assert run.status == 'COMPLETED'
