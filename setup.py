@@ -1,5 +1,4 @@
 from setuptools import find_packages, setup
-
 import src.imitation
 
 # TF 1.14.0 is not compatible with sacred because of a TF bug.
@@ -25,10 +24,7 @@ setup(
         'numpy>=1.15',
         'tqdm',
         'scikit-learn>=0.21.2',
-        # FIXME: replace this with PyPI link once commit 2bc3c8722b9eb5 appears
-        # in a release (will probably happen in version 2.6.1 or 2.7, when they
-        # come out)
-        'stable-baselines @ git+https://github.com/hill-a/stable-baselines.git',
+        'stable-baselines>=2.7.0',
         'jax!=0.1.37',
         'jaxlib~=0.1.20',
         # sacred==0.7.5 build is broken without pymongo

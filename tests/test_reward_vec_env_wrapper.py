@@ -1,6 +1,7 @@
 import numpy as np
 
 from imitation import util
+from imitation.policies.base import RandomPolicy
 
 
 class FunkyReward:
@@ -16,7 +17,7 @@ def test_reward_overwrite():
   env = util.make_vec_env(env_id, num_envs)
   reward_fn = FunkyReward()
   wrapped_env = util.reward_wrapper.RewardVecEnvWrapper(env, reward_fn)
-  policy = util.rollout.RandomPolicy(env.observation_space, env.action_space)
+  policy = RandomPolicy(env.observation_space, env.action_space)
   default_stats = util.rollout.rollout_stats(policy, env, n_episodes=10)
   wrapped_stats = util.rollout.rollout_stats(policy, wrapped_env, n_episodes=10)
   # Pendulum-v0 always has negative rewards

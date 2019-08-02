@@ -4,6 +4,7 @@ import gym
 import numpy as np
 from stable_baselines.common.vec_env import DummyVecEnv
 
+from imitation.policies.base import RandomPolicy
 from imitation.util import rollout
 
 
@@ -33,7 +34,7 @@ def test_complete_trajectories():
   max_acts = 5
   num_envs = 4
   vec_env = DummyVecEnv([lambda: TerminalSentinelEnv(max_acts)] * num_envs)
-  policy = rollout.RandomPolicy(vec_env.observation_space, vec_env.action_space)
+  policy = RandomPolicy(vec_env.observation_space, vec_env.action_space)
   trajectories = rollout.generate_trajectories(policy,
                                                vec_env,
                                                n_episodes=n_episodes)

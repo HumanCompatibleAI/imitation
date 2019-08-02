@@ -4,11 +4,11 @@ import numpy as np
 import pytest
 
 from imitation import util
-from imitation.util import rollout
 from imitation.density_baselines import (STATE_ACTION_DENSITY, STATE_DENSITY,
                                          STATE_STATE_DENSITY, DensityReward,
                                          DensityTrainer)
-
+from imitation.policies.base import RandomPolicy
+from imitation.util import rollout
 
 parametrize_density_stationary = pytest.mark.parametrize(
   "density_type,is_stationary",
@@ -53,7 +53,7 @@ def test_density_reward(density_type, is_stationary):
 
   # check that expert policy does better than a random policy under our reward
   # function
-  random_policy = rollout.RandomPolicy(env.observation_space, env.action_space)
+  random_policy = RandomPolicy(env.observation_space, env.action_space)
   random_trajectories = rollout.generate_trajectories(random_policy,
                                                       env,
                                                       n_episodes=n_experts // 2)
@@ -70,7 +70,7 @@ def test_density_trainer(density_type, is_stationary):
   rollouts = rollout.load_trajectories(
     f"tests/data/rollouts/{env_id}_*.pkl")
   env = util.make_vec_env(env_id, 2)
-  imitation_trainer = util.make_blank_policy(env)
+  imitation_trainer = util.init_rl(env)
   density_trainer = DensityTrainer(env,
                                    rollouts=rollouts,
                                    imitation_trainer=imitation_trainer,

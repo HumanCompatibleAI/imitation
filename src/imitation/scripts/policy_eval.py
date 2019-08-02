@@ -1,17 +1,12 @@
 import os.path as osp
 
 from sacred.observers import FileStorageObserver
-import stable_baselines
 from stable_baselines.common.vec_env import VecEnvWrapper
 import tensorflow as tf
 
+from imitation.policies import serialize
 from imitation.scripts.config.policy_eval import policy_eval_ex
 from imitation.util import rollout, util
-
-POLICY_CLASSES = {
-    'ppo1': stable_baselines.PPO1,
-    'ppo2': stable_baselines.PPO2,
-}
 
 
 class InteractiveRender(VecEnvWrapper):
@@ -61,11 +56,7 @@ def policy_eval(_seed: int, env_name: str, timesteps: int, num_vec: int,
     venv = InteractiveRender(venv)
   # TODO(adam): add support for videos using VideoRecorder?
 
-  # TODO(adam): support for restoring other stats, e.g. VecNormalize.
-  policy_cls = POLICY_CLASSES[policy_type]
-  policy = policy_cls.load(policy_path)
-
-  # TODO(adam): add support for rendering
+  policy = serialize.load_policy(policy_type, policy_path, venv)
   stats = rollout.rollout_stats(policy, venv, n_timesteps=timesteps)
 
   return stats
