@@ -97,10 +97,10 @@ def rollouts_and_policy(
       venv = vec_normalize = VecNormalize(venv)
 
     if discrim_net_airl_path is not None:
-      with open(discrim_net_airl_path, "rb") as f:
-        discrim_net = DiscrimNetAIRL.load(f)
+      discrim_net = DiscrimNetAIRL.load(discrim_net_airl_path)
       venv = RewardVecEnvWrapper(venv, discrim_net.reward_test)
-      tf.log(f"Wrapped env in test reward from {discrim_net_airl_path}.")
+      tf.logging.info(
+        f"Wrapped env in test reward from {discrim_net_airl_path}.")
 
     policy = util.init_rl(venv, verbose=1,
                           **make_blank_policy_kwargs)

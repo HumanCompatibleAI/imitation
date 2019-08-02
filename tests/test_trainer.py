@@ -3,7 +3,6 @@ import os
 
 import pytest
 
-from imitation import util
 from imitation.util import rollout
 from imitation.util.trainer import init_trainer
 

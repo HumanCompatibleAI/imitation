@@ -48,54 +48,13 @@ class DiscrimNet(serialize.Serializable):
     """
     return self.build_policy_train_reward()
 
-  def reward_train(
-    self,
-    old_obs: np.ndarray,
-    act: np.ndarray,
-    new_obs: np.ndarray,
-  ) -> np.ndarray:
-    """Vectorized reward for training an imitation learning algorithm.
-
-    Args:
-        old_obs (array): The observation input. Its shape is
-            `((None,) + observation_space.shape)`.
-        act (array): The action input. Its shape is
-            `((None,) + action_space.shape)`. The None dimension is
-            expected to be the same as None dimension from `obs_input`.
-        new_obs (array): The observation input. Its shape is
-            `((None,) + observation_space.shape)`.
-    """
-    old_obs = np.atleast_1d(old_obs)
-    act = np.atleast_1d(act)
-    new_obs = np.atleast_1d(new_obs)
-
-    n_gen = len(old_obs)
-    assert len(act) == n_gen
-    assert len(new_obs) == n_gen
-
-    # Calculate generator-policy log probabilities.
-    log_act_prob = self._gen_policy.action_probability(old_obs, actions=act,
-                                                       logp=True)
-    assert len(log_act_prob) == n_gen
-    log_act_prob = log_act_prob.reshape((n_gen,))
-
-    fd = {
-        self._discrim.old_obs_ph: old_obs,
-        self._discrim.act_ph: act,
-        self._discrim.new_obs_ph: new_obs,
-        self._discrim.labels_ph: np.ones(n_gen),
-        self._discrim.log_policy_act_prob_ph: log_act_prob,
-    }
-    rew = self._sess.run(self._discrim.policy_train_reward, feed_dict=fd)
-    return rew.flatten()
-
   def reward_test(
     self,
     old_obs: np.ndarray,
     act: np.ndarray,
     new_obs: np.ndarray,
   ) -> np.ndarray:
-    """Vectorized reward for training an imitation learning algorithm.
+    """Vectorized reward for training an expert during transfer learning.
 
     Args:
         old_obs (array): The observation input. Its shape is
@@ -107,12 +66,11 @@ class DiscrimNet(serialize.Serializable):
             `((None,) + observation_space.shape)`.
     """
     fd = {
-      self._discrim.old_obs_ph: old_obs,
-      self._discrim.act_ph: act,
-      self._discrim.new_obs_ph: new_obs,
+      self.old_obs_ph: old_obs,
+      self.act_ph: act,
+      self.new_obs_ph: new_obs,
     }
-    rew = self._sess.run(self._discrim._policy_test_reward,
-                         feed_dict=fd)
+    rew = self._sess.run(self.policy_test_reward, feed_dict=fd)
     return rew.flatten()
 
   @abstractmethod

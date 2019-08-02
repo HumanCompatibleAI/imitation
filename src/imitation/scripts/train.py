@@ -109,9 +109,6 @@ def train_and_plot(
     tf.logging.info("Logging to %s", log_dir)
     os.makedirs(log_dir, exist_ok=True)
 
-    discrim_dir = osp.join(log_dir, "nets")
-    os.makedirs(discrim_dir, exist_ok=True)
-
     sb_logger.configure(folder=osp.join(log_dir, 'generator'),
                         format_strs=['tensorboard', 'stdout'])
 
@@ -230,7 +227,7 @@ def train_and_plot(
         save(trainer, os.path.join(log_dir, "checkpoints", f"{epoch:05d}"))
 
     # Save final artifacts.
-    save(trainer, os.path.join(log_dir, "final"))
+    save(trainer, os.path.join(log_dir, "checkpoints", "final"))
 
     # Final evaluation of imitation policy.
     stats = util.rollout.rollout_stats(trainer.gen_policy,

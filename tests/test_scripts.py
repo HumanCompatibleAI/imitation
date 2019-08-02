@@ -71,17 +71,17 @@ def test_transfer_learning():
           init_trainer_kwargs=dict(
             rollout_glob="tests/data/rollouts/CartPole*.pkl",
           ),
-          log_root=log_dir_train,
+          log_dir=log_dir_train,
         ),
     )
     assert run.status == 'COMPLETED'
 
     log_dir_data = osp.join(tmpdir, "data_collect")
-    discrim_path = osp.join(tmpdir, "checkpoint", "discrim", "final")
+    discrim_path = osp.join(log_dir_train, "checkpoints", "final", "discrim")
     run = data_collect_ex.run(
         named_configs=['cartpole', 'fast'],
         config_updates=dict(
-          log_root=log_dir_data,
+          log_dir=log_dir_data,
           discrim_net_airl_path=discrim_path,
         ),
     )
