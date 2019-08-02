@@ -9,7 +9,7 @@ from tqdm import tqdm
 
 from imitation import summaries
 from imitation.discrim_net import DiscrimNet
-from imitation.util import RewardVecEnvWrapper, buffer, rollout, util
+from imitation.util import buffer, reward_wrapper, rollout, util
 
 
 class Trainer:
@@ -214,7 +214,8 @@ class Trainer:
     if self.debug_use_ground_truth:
       return env
     else:
-      return RewardVecEnvWrapper(env, self._policy_train_reward_fn)
+      return reward_wrapper.RewardVecEnvWrapper(env,
+                                                self._policy_train_reward_fn)
 
   def wrap_env_test_reward(self, env):
     """Returns the given Env wrapped with a reward function that returns
@@ -235,7 +236,7 @@ class Trainer:
     if self.debug_use_ground_truth:
       return env
     else:
-      return RewardVecEnvWrapper(env, self._test_reward_fn)
+      return reward_wrapper.RewardVecEnvWrapper(env, self._test_reward_fn)
 
   def _build_summarize(self):
     self._summary_writer = summaries.make_summary_writer(

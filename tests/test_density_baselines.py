@@ -4,18 +4,18 @@ import numpy as np
 import pytest
 
 from imitation import util
+from imitation.util import rollout
 from imitation.density_baselines import (STATE_ACTION_DENSITY, STATE_DENSITY,
                                          STATE_STATE_DENSITY, DensityReward,
                                          DensityTrainer)
 
 
-def parametrize_density_stationary(fn):
-  decorator = pytest.mark.parametrize("density_type,is_stationary",
-                                      [(STATE_DENSITY, True),
-                                       (STATE_DENSITY, False),
-                                       (STATE_ACTION_DENSITY, True),
-                                       (STATE_STATE_DENSITY, True)])
-  return decorator(fn)
+parametrize_density_stationary = pytest.mark.parametrize(
+  "density_type,is_stationary",
+  [(STATE_DENSITY, True),
+   (STATE_DENSITY, False),
+   (STATE_ACTION_DENSITY, True),
+   (STATE_STATE_DENSITY, True)])
 
 
 def score_trajectories(trajectories, reward_fn):
@@ -32,12 +32,13 @@ def score_trajectories(trajectories, reward_fn):
 
 @parametrize_density_stationary
 def test_density_reward(density_type, is_stationary):
-  # use Pendulum b/c I don't handle termination correctly yet
+  # test on Pendulum rather than Cartpole because I don't handle episodes that
+  # terminate early yet (see issue #40)
   env_id = 'Pendulum-v0'
   env = util.make_vec_env(env_id, 2)
 
   # construct density-based reward from expert rollouts
-  expert_trajectories_all = util.rollout.load_trajectories(
+  expert_trajectories_all = rollout.load_trajectories(
     f"tests/data/rollouts/{env_id}_*.pkl")
   n_experts = len(expert_trajectories_all)
   expert_trajectories_train = expert_trajectories_all[:n_experts // 2]
@@ -52,10 +53,10 @@ def test_density_reward(density_type, is_stationary):
 
   # check that expert policy does better than a random policy under our reward
   # function
-  random_policy = util.RandomPolicy(env.observation_space, env.action_space)
-  random_trajectories = util.generate_trajectories(random_policy,
-                                                   env,
-                                                   n_episodes=n_experts // 2)
+  random_policy = rollout.RandomPolicy(env.observation_space, env.action_space)
+  random_trajectories = rollout.generate_trajectories(random_policy,
+                                                      env,
+                                                      n_episodes=n_experts // 2)
   expert_trajectories_test = expert_trajectories_all[n_experts // 2:]
   random_score = score_trajectories(random_trajectories, reward_fn)
   expert_score = score_trajectories(expert_trajectories_test, reward_fn)
@@ -66,7 +67,7 @@ def test_density_reward(density_type, is_stationary):
 @parametrize_density_stationary
 def test_density_trainer(density_type, is_stationary):
   env_id = 'Pendulum-v0'
-  rollouts = util.rollout.load_trajectories(
+  rollouts = rollout.load_trajectories(
     f"tests/data/rollouts/{env_id}_*.pkl")
   env = util.make_vec_env(env_id, 2)
   imitation_trainer = util.make_blank_policy(env)

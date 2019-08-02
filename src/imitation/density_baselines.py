@@ -8,7 +8,7 @@ from sklearn.neighbors import KernelDensity
 from sklearn.preprocessing import StandardScaler
 import tensorflow as tf
 
-from imitation.util import RewardVecEnvWrapper, rollout, util
+from imitation.util import reward_wrapper, rollout, util
 
 # Constants identifying different kinds of density we can use. Note that all
 # can be augmented to depend on the time step by passing `is_stationary = True`
@@ -221,9 +221,9 @@ class DensityTrainer:
                                    kernel=kernel,
                                    kernel_bandwidth=kernel_bandwidth,
                                    standardise_inputs=standardise_inputs)
-    self.wrapped_env = RewardVecEnvWrapper(self.env,
-                                           self.reward_fn,
-                                           include_steps=True)
+    self.wrapped_env = reward_wrapper.RewardVecEnvWrapper(self.env,
+                                                          self.reward_fn,
+                                                          include_steps=True)
     self.graph = tf.Graph()
     self.sess = tf.Session(graph=self.graph)
     with self.graph.as_default():
