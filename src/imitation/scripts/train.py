@@ -59,11 +59,10 @@ def train_and_plot(
       provided in the arguments.
 
   Checkpoints:
-      - DiscrimNets are saved to f"{log_dir}/checkpoints/discrim/{step}",
+      - DiscrimNets are saved to f"{log_dir}/checkpoints/{step}/discrim/",
         where step is either the training epoch or "final".
       - Generator policies are saved to
-        f"{log_dir}/checkpoints/gen_policy/{step}".
-
+        f"{log_dir}/checkpoints/{step}/gen_policy/".
 
   Args:
       _seed: Random seed.

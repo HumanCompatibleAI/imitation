@@ -54,9 +54,7 @@ def rollouts_and_policy(
       make_blank_policy_kwargs: Kwargs for `make_blank_policy`.
       discrim_net_airl_path: If provided, then load the serialized
         DiscrimNetAIRL and wrap the environment in the trainer's test reward.
-        This is useful for AIRL transfer learning. Logs a warning if the Trainer
-        isn't properly configured for transfer learning (e.g.: in debug mode,
-        or is a GAIL trainer).
+        This is useful for AIRL transfer learning.
 
       rollout_save_interval: The number of training updates in between
           intermediate rollout saves. If the argument is nonpositive, then

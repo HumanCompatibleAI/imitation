@@ -116,7 +116,7 @@ class Trainer:
 
   @property
   def discrim(self) -> DiscrimNet:
-    # TODO(shwang): Get back the old docstring.
+    """Discriminator being trained, used to compute reward for policy."""
     return self._discrim
 
   @property

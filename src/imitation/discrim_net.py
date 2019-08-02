@@ -35,7 +35,7 @@ class DiscrimNet(serialize.Serializable):
   @abstractmethod
   def build_policy_train_reward(self) -> tf.Tensor:
     """
-    Builds self._policy_train_reward, the reward to used during imitation
+    Builds self._policy_train_reward, the reward used during imitation
     learning.
     """
 
