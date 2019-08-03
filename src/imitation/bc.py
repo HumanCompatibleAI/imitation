@@ -21,8 +21,8 @@ class BCTrainer:
 
   Args:
     env (gym.Env): environment to train on.
-    expert_rollouts: A tuple of three arrays from expert rollouts,
-        `old_obs`, `act`, and `new_obs`.
+    expert_rollouts: A tuple of four arrays from expert rollouts,
+        `old_obs`, `act`, `new_obs`, `reward`.
     policy_class (BasePolicy): used to instantiate imitation policy.
     batch_size (int): batch size used for training.
     """
@@ -30,13 +30,13 @@ class BCTrainer:
   def __init__(self,
                env,
                *,
-               expert_rollouts: Tuple[np.ndarray, np.ndarray, np.ndarray],
+               expert_rollouts: Tuple[np.ndarray, ...],
                policy_class: Type[ActorCriticPolicy] = FeedForward32Policy,
                batch_size: int = 32):
     self.env = env
     self.policy_class = policy_class
     self.batch_size = batch_size
-    expert_obs, expert_acts, _ = expert_rollouts
+    expert_obs, expert_acts, _, _ = expert_rollouts
     self.expert_dataset = Dataset(
         {
             "obs": expert_obs,

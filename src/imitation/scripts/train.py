@@ -240,8 +240,12 @@ def _savefig_timestamp(prefix="", also_show=True):
     plt.show()
 
 
+def main_console():
+  observer = FileStorageObserver.create(
+      osp.join('output', 'sacred', 'train'))
+  train_ex.observers.append(observer)
+  train_ex.run_commandline()
+
+
 if __name__ == "__main__":
-    observer = FileStorageObserver.create(
-        osp.join('output', 'sacred', 'train'))
-    train_ex.observers.append(observer)
-    train_ex.run_commandline()
+  main_console()

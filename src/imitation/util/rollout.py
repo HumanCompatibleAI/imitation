@@ -144,37 +144,35 @@ def generate_trajectories(policy, env, *, n_timesteps=None, n_episodes=None,
   while not rollout_done():
     obs_old_batch = obs_batch
     act_batch, _ = get_action(obs_old_batch, deterministic=deterministic_policy)
-    obs_batch, rew_batch, done_batch, _ = env.step(act_batch)
+    obs_batch, rew_batch, done_batch, info_batch = env.step(act_batch)
 
     # Don't save tuples if there is a done. The new_obs for any environment
-    # is incorrect for any timestep where there is an episode end.
-    # (See GH Issue #1).
+    # is incorrect for any timestep where there is an episode end, so we fix it
+    # with returned state info.
     zip_iter = enumerate(
-        zip(obs_old_batch, act_batch, obs_batch, rew_batch, done_batch))
-    for env_idx, (obs_old, act, obs, rew, done) in zip_iter:
+        zip(obs_old_batch, act_batch, obs_batch, rew_batch, done_batch,
+            info_batch))
+    for env_idx, (obs_old, act, obs, rew, done, info) in zip_iter:
+      real_obs = obs
       if done:
-        # finish env_idx-th trajectory
-        # FIXME: this will break horribly if a trajectory ends after the first
-        # action, b/c the trajectory will consist of just a single obs. The
-        # "correct" fix for this is to PATCH STABLE BASELINES SO THAT ITS
-        # VECENV GIVES US A CORRECT FINAL OBSERVATION TO ADD (see
-        # bug #1 in our repo).
-        new_traj = trajectories_accum.finish_trajectory(env_idx)
-        if not ({'act', 'obs', 'rew'} <= new_traj.keys()):
-          raise ValueError("Trajectory does not have expected act/obs/rew "
-                           "keys; it probably ended on first step. You should "
-                           "PATCH STABLE BASELINES (see bug #1 in our repo).")
-        trajectories.append(new_traj)
-        trajectories_accum.add_step(env_idx, dict(obs=obs))
-        continue
+        # actual obs is inaccurate, so we use the one inserted into step info
+        # by stable baselines wrapper
+        real_obs = info['terminal_observation']
       trajectories_accum.add_step(
           env_idx,
           dict(
               act=act,
               rew=rew,
-              # this is in fact not the obs corresponding to `act`, but rather
-              # the obs *after* `act` (see above)
-              obs=obs))
+              # this is not the obs corresponding to `act`, but rather the obs
+              # *after* `act` (see above)
+              obs=real_obs))
+      if done:
+        # finish env_idx-th trajectory
+        new_traj = trajectories_accum.finish_trajectory(env_idx)
+        assert ({'act', 'obs', 'rew'} <= new_traj.keys())
+        trajectories.append(new_traj)
+        trajectories_accum.add_step(env_idx, dict(obs=obs))
+        continue
 
   # Note that we just drop partial trajectories. This is not ideal for some
   # algos; e.g. BC can probably benefit from partial trajectories, too.
