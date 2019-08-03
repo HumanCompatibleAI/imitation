@@ -1,3 +1,4 @@
+from functools import partial
 from typing import Optional, Tuple, Union
 from warnings import warn
 
@@ -97,15 +98,18 @@ class Trainer:
 
     # TODO(adam): make this wrapping configurable for debugging purposes
     if debug_use_ground_truth:
-        self.env_train = self.env_test = self.env
+      self.env_train = self.env_test = self.env
     else:
-        self.env_train = reward_wrapper.RewardVecEnvWrapper(
-            self.env, self.reward_train)
-        self.env_test = reward_wrapper.RewardVecEnvWrapper(
-            self.env, self.reward_test)
+      reward_train = partial(
+          self.discrim.reward_train,
+          gen_log_prob_fn=self._gen_policy.action_probability)
+      self.env_train = reward_wrapper.RewardVecEnvWrapper(
+          self.env, reward_train)
+      self.env_test = reward_wrapper.RewardVecEnvWrapper(
+          self.env, self.discrim.reward_test)
 
     if gen_replay_buffer_capacity is None:
-        gen_replay_buffer_capacity = 20 * self._n_disc_samples_per_buffer
+      gen_replay_buffer_capacity = 20 * self._n_disc_samples_per_buffer
     self._gen_replay_buffer = buffer.ReplayBuffer(gen_replay_buffer_capacity,
                                                   self.env)
     self._populate_gen_replay_buffer()
@@ -285,62 +289,6 @@ class Trainer:
         self.discrim.log_policy_act_prob_ph: log_act_prob,
     }
     return fd
-
-  def reward_train(
-    self,
-    old_obs: np.ndarray,
-    act: np.ndarray,
-    new_obs: np.ndarray,
-  ) -> np.ndarray:
-    """Vectorized reward for training an imitation learning algorithm.
-
-    Args:
-        old_obs: The observation input. Its shape is
-            `(batch_size,) + observation_space.shape`.
-        act: The action input. Its shape is
-            `(batch_size,) + action_space.shape`. The None dimension is
-            expected to be the same as None dimension from `obs_input`.
-        new_obs: The observation input. Its shape is
-            `(batch_size,) + observation_space.shape`.
-    Returns:
-        rew: The rewards. Its shape is `(batch_size,)`.
-    """
-    n_gen = len(old_obs)
-    assert old_obs.shape == new_obs.shape
-    assert old_obs.shape[1:] == self.env.observation_space.shape
-    assert act.shape == (n_gen, ) + self.env.action_space.shape
-
-    # Calculate generator-policy log probabilities.
-    log_act_prob = self._gen_policy.action_probability(old_obs, actions=act,
-                                                       logp=True)
-    assert len(log_act_prob) == n_gen
-    log_act_prob = log_act_prob.reshape((n_gen,))
-
-    fd = {
-        self.discrim.old_obs_ph: old_obs,
-        self.discrim.act_ph: act,
-        self.discrim.new_obs_ph: new_obs,
-        self.discrim.labels_ph: np.ones(n_gen),
-        self.discrim.log_policy_act_prob_ph: log_act_prob,
-    }
-    rew = self._sess.run(self._discrim.policy_train_reward, feed_dict=fd)
-    return np.squeeze(rew)
-
-  def reward_test(self, *args, **kwargs) -> np.ndarray:
-    """Vectorized reward for training an expert during transfer learning.
-
-    Args:
-        old_obs: The observation input. Its shape is
-            `(batch_size,) + observation_space.shape`.
-        act: The action input. Its shape is
-            `(batch_size,) + action_space.shape`. The None dimension is
-            expected to be the same as None dimension from `obs_input`.
-        new_obs: The observation input. Its shape is
-            `(batch_size,) + observation_space.shape`.
-    Returns:
-        rew: The rewards. Its shape is `(batch_size,)`.
-    """
-    return self.discrim.reward_test(*args, **kwargs)
 
 
 def _n_steps_if_not_none(n_steps):

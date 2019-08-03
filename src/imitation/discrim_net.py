@@ -1,7 +1,7 @@
 from abc import abstractmethod
 import os
 import pickle
-from typing import Iterable, Optional
+from typing import Callable, Iterable, Optional
 
 import gym
 import numpy as np
@@ -47,6 +47,52 @@ class DiscrimNet(serialize.Serializable):
     reward. By default it simply returns self.build_policy_train_reward().
     """
     return self._policy_train_reward
+
+  def reward_train(
+    self,
+    old_obs: np.ndarray,
+    act: np.ndarray,
+    new_obs: np.ndarray,
+    *,
+    gen_log_prob_fn: Callable[..., np.ndarray],
+  ) -> np.ndarray:
+    """Vectorized reward for training an imitation learning algorithm.
+
+    Args:
+        old_obs: The observation input. Its shape is
+            `(batch_size,) + observation_space.shape`.
+        act: The action input. Its shape is
+            `(batch_size,) + action_space.shape`. The None dimension is
+            expected to be the same as None dimension from `obs_input`.
+        new_obs: The observation input. Its shape is
+            `(batch_size,) + observation_space.shape`.
+        gen_log_prob_fn: The generator policy's action probabilities function.
+            A Callable such that
+            `log_act_prob_fn(observations=old_obs, actions=act, lopg=True)`
+            returns `log_act_prob`, the generator's log action probabilities.
+            `log_act_prob[i]` is equal to the generator's log probability of
+            choosing `act[i]` given `old_obs[i]`.
+            `np.squeeze(log_act_prob)` has shape `(batch_size,)`.
+    Returns:
+        rew: The rewards. Its shape is `(batch_size,)`.
+    """
+    log_act_prob = np.squeeze(
+      gen_log_prob_fn(observation=old_obs, actions=act, logp=True))
+
+    n_gen = len(old_obs)
+    assert old_obs.shape == new_obs.shape
+    assert len(act) == n_gen
+    assert log_act_prob.shape == (n_gen, )
+
+    fd = {
+        self.old_obs_ph: old_obs,
+        self.act_ph: act,
+        self.new_obs_ph: new_obs,
+        self.labels_ph: np.ones(n_gen),
+        self.log_policy_act_prob_ph: log_act_prob,
+    }
+    rew = self._sess.run(self.policy_train_reward, feed_dict=fd)
+    return np.squeeze(rew)
 
   def reward_test(
     self,
