@@ -41,12 +41,12 @@ class DiscrimNet(serialize.Serializable):
 
   def build_policy_test_reward(self) -> tf.Tensor:
     """
-    Builds self._policy_train_reward, the reward used during transfer learning.
+    Builds self._policy_test_reward, the reward used during transfer learning.
 
     Subclasses should override this method if they have a transfer learning
     reward. By default it simply returns self.build_policy_train_reward().
     """
-    return self.build_policy_train_reward()
+    return self._policy_train_reward
 
   def reward_test(
     self,
@@ -57,13 +57,15 @@ class DiscrimNet(serialize.Serializable):
     """Vectorized reward for training an expert during transfer learning.
 
     Args:
-        old_obs (array): The observation input. Its shape is
-            `((None,) + observation_space.shape)`.
-        act (array): The action input. Its shape is
-            `((None,) + action_space.shape)`. The None dimension is
+        old_obs: The observation input. Its shape is
+            `(batch_size,) + observation_space.shape`.
+        act: The action input. Its shape is
+            `(batch_size,) + action_space.shape`. The None dimension is
             expected to be the same as None dimension from `obs_input`.
-        new_obs (array): The observation input. Its shape is
-            `((None,) + observation_space.shape)`.
+        new_obs: The observation input. Its shape is
+            `(batch_size,) + observation_space.shape`.
+    Returns:
+        rew: The rewards. Its shape is `(batch_size,)`.
     """
     fd = {
       self.old_obs_ph: old_obs,
@@ -71,7 +73,7 @@ class DiscrimNet(serialize.Serializable):
       self.new_obs_ph: new_obs,
     }
     rew = self._sess.run(self.policy_test_reward, feed_dict=fd)
-    return rew.flatten()
+    return np.squeeze(rew)
 
   @abstractmethod
   def build_disc_loss(self):

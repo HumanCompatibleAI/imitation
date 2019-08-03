@@ -295,21 +295,20 @@ class Trainer:
     """Vectorized reward for training an imitation learning algorithm.
 
     Args:
-        old_obs (array): The observation input. Its shape is
-            `((None,) + observation_space.shape)`.
-        act (array): The action input. Its shape is
-            `((None,) + action_space.shape)`. The None dimension is
+        old_obs: The observation input. Its shape is
+            `(batch_size,) + observation_space.shape`.
+        act: The action input. Its shape is
+            `(batch_size,) + action_space.shape`. The None dimension is
             expected to be the same as None dimension from `obs_input`.
-        new_obs (array): The observation input. Its shape is
-            `((None,) + observation_space.shape)`.
+        new_obs: The observation input. Its shape is
+            `(batch_size,) + observation_space.shape`.
+    Returns:
+        rew: The rewards. Its shape is `(batch_size,)`.
     """
-    old_obs = np.atleast_1d(old_obs)
-    act = np.atleast_1d(act)
-    new_obs = np.atleast_1d(new_obs)
-
     n_gen = len(old_obs)
-    assert len(act) == n_gen
-    assert len(new_obs) == n_gen
+    assert old_obs.shape == new_obs.shape
+    assert old_obs.shape[1:] == self.env.observation_space.shape
+    assert act.shape == (n_gen, ) + self.env.action_space.shape
 
     # Calculate generator-policy log probabilities.
     log_act_prob = self._gen_policy.action_probability(old_obs, actions=act,
@@ -325,19 +324,21 @@ class Trainer:
         self.discrim.log_policy_act_prob_ph: log_act_prob,
     }
     rew = self._sess.run(self._discrim.policy_train_reward, feed_dict=fd)
-    return rew.flatten()
+    return np.squeeze(rew)
 
   def reward_test(self, *args, **kwargs) -> np.ndarray:
     """Vectorized reward for training an expert during transfer learning.
 
     Args:
-        old_obs (array): The observation input. Its shape is
-            `((None,) + observation_space.shape)`.
-        act (array): The action input. Its shape is
-            `((None,) + action_space.shape)`. The None dimension is
+        old_obs: The observation input. Its shape is
+            `(batch_size,) + observation_space.shape`.
+        act: The action input. Its shape is
+            `(batch_size,) + action_space.shape`. The None dimension is
             expected to be the same as None dimension from `obs_input`.
-        new_obs (array): The observation input. Its shape is
-            `((None,) + observation_space.shape)`.
+        new_obs: The observation input. Its shape is
+            `(batch_size,) + observation_space.shape`.
+    Returns:
+        rew: The rewards. Its shape is `(batch_size,)`.
     """
     return self.discrim.reward_test(*args, **kwargs)
 
