@@ -30,7 +30,7 @@ class BCTrainer:
   def __init__(self,
                env,
                *,
-               expert_rollouts: Tuple[np.ndarray, np.ndarray, np.ndarray],
+               expert_rollouts: Tuple[np.ndarray, ...],
                policy_class: Type[ActorCriticPolicy] = FeedForward32Policy,
                batch_size: int = 32):
     self.env = env

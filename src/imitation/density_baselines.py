@@ -69,7 +69,7 @@ class DensityReward:
     self._fit_models(trajectories)
 
   def _fit_models(self, trajectories):
-    flat_trajs = self._flatten_trajectories(trajectories)
+    flat_trajs = self._preprocess_trajectories(trajectories)
 
     # if requested, we'll scale demonstration transitions so that they have
     # zero mean and unit variance (i.e all components are equally important)
@@ -109,7 +109,21 @@ class DensityReward:
     density_model.fit(flat_transitions)
     return density_model
 
-  def _flatten_trajectories(self, trajectories):
+  def _preprocess_trajectories(self, trajectories):
+    """Preprocess a list of trajectories into atomic units that we can learn a
+    density function on. Depending on configuration, that could mean a sequence
+    state/state pairs, or state/action pairs, or single states, etc.
+
+    Args:
+      trajectories (TrajectoryList): list of trajectories to process.
+
+    Returns:
+      flat_trajectories (np.ndarray): a corresponding list of "flattened"
+        trajectories. Each element of a flattened trajectory is a
+        one-dimensional ndarray representing a (state,state) pair at a
+        particular time step, or (state,action) pair at that time step, or
+        whatever the class configuration calls for.
+    """
     flat_trajectories = []
     for traj in trajectories:
       obs_vec = traj['obs']
@@ -117,14 +131,14 @@ class DensityReward:
       assert len(obs_vec) == len(act_vec) + 1
       flat_traj = []
       for step_num in range(len(traj['act'])):
-        flat_trans = self._flatten_transition(obs_vec[step_num],
-                                              act_vec[step_num],
-                                              obs_vec[step_num + 1])
+        flat_trans = self._preprocess_transition(obs_vec[step_num],
+                                                 act_vec[step_num],
+                                                 obs_vec[step_num + 1])
         flat_traj.append(flat_trans)
       flat_trajectories.append(flat_traj)
     return flat_trajectories
 
-  def _flatten_transition(self, obs, act, next_obs):
+  def _preprocess_transition(self, obs, act, next_obs):
     if self.density_type == STATE_DENSITY:
       return flatten(self.obs_space, obs)
     elif self.density_type == STATE_ACTION_DENSITY:
@@ -160,8 +174,8 @@ class DensityReward:
     rew_list = []
     assert len(obs_b) == len(act_b) and len(obs_b) == len(next_obs_b)
     for idx, (obs, act, next_obs) in enumerate(zip(obs_b, act_b, next_obs_b)):
-      flat_trans = self._flatten_transition(obs, act, next_obs)
-      scaled_padded_trans = self._scaler.transform(flat_trans[None])
+      flat_trans = self._preprocess_transition(obs, act, next_obs)
+      scaled_padded_trans = self._scaler.transform(flat_trans[np.newaxis])
       if self.is_stationary:
         rew = self._density_model.score(scaled_padded_trans)
       else:
@@ -202,12 +216,9 @@ class DensityTrainer:
 
     Args:
       env (gym.Env or str): environment to train on.
+      rollouts (TrajectoryList): list of expert trajectories to imitate.
       imitation_trainer (BaseRLModel): RL algorithm & initial policy that will
         be used to train the imitation learner.
-      expert_trainer (BaseRLModel): snapshot of RL algorithm that has been
-        trained to solve `env`.
-      n_expert_trajectories (int): number of expert trajectories to sample and
-        use as demonstrations.
       kernel, kernel_bandwidth, density_type, is_stationary,
         n_expert_trajectories: these are passed directly to `DensityReward`;
         refer to documentation for that class."""
@@ -245,6 +256,8 @@ class DensityTrainer:
     # Monitor() that is being (incorrectly) used to wrap the underlying
     # environment.
     self.imitation_trainer.learn(n_timesteps,
+                                 # ensure we can see total steps for all
+                                 # learn() calls, not just for this call
                                  reset_num_timesteps=False,
                                  **kwargs)
 
@@ -254,6 +267,8 @@ class DensityTrainer:
 
     Args:
       n_trajectories (int): number of rolled-out trajectories.
+      true_reward (bool): should this use ground truth reward from underlying
+        environment (True), or imitation reward (False)?
 
     Returns:
       dict: rollout statistics collected by

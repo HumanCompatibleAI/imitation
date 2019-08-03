@@ -9,7 +9,7 @@ class RewardVecEnvWrapper(VecEnvWrapper):
     the reward function returned by `step()`.
 
     Automatically resets the inner VecEnv upon initialization. A tricky part
-    about this class keeping track of the most recent observation from each
+    about this class is keeping track of the most recent observation from each
     environment.
 
     Will also include the previous reward given by the inner VecEnv in the
