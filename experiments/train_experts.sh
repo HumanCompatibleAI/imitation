@@ -12,7 +12,7 @@ else
 fi
 
 TIMESTAMP=$(${DATE_CMD} --iso-8601=seconds)
-OUTPUT_DIR=output/mujoco_experts/${TIMESTAMP}/
+OUTPUT_DIR=output/train_experts/${TIMESTAMP}/
 
 echo "Writing logs in ${OUTPUT_DIR}"
 
