@@ -53,6 +53,8 @@ class RewardVecEnvWrapper(VecEnvWrapper):
       if single_done:
         single_obs = single_infos['terminal_observation']
       obs_fixed.append(single_obs)
+    obs_fixed = np.stack(obs_fixed)
+
     if self.include_steps:
       rews = self.reward_fn(self._old_obs,
                             self._actions,
