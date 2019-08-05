@@ -96,7 +96,6 @@ class Trainer:
         self._build_summarize()
     self._sess.run(tf.global_variables_initializer())
 
-    # TODO(adam): make this wrapping configurable for debugging purposes
     if debug_use_ground_truth:
       self.env_train = self.env_test = self.env
     else:

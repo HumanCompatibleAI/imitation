@@ -44,7 +44,7 @@ class DiscrimNet(serialize.Serializable):
     Builds self._policy_test_reward, the reward used during transfer learning.
 
     Subclasses should override this method if they have a transfer learning
-    reward. By default it simply returns self.build_policy_train_reward().
+    reward. By default it simply returns `self._policy_train_reward`.
     """
     return self._policy_train_reward
 
