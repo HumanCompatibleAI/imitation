@@ -24,7 +24,9 @@ setup(
         'gym',
         'numpy>=1.15',
         'tqdm',
-        'stable-baselines>=2.7.0',
+        # FIXME: Use stable release instead of tracking master once
+        # commit 9a760542 is released.
+        'stable-baselines @ git+https://github.com/hill-a/stable-baselines.git',
         'jax!=0.1.37',
         'jaxlib~=0.1.20',
         # sacred==0.7.5 build is broken without pymongo
