@@ -19,7 +19,9 @@ def test_data_collect_main():
                                    ) as tmpdir:
       run = data_collect_ex.run(
           named_configs=['cartpole', 'fast'],
-          log_root=tmpdir,
+          config_updates=dict(
+            log_root=tmpdir,
+          ),
       )
       assert run.status == 'COMPLETED'
 
