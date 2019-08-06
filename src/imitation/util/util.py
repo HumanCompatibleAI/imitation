@@ -104,7 +104,8 @@ def init_rl(env: Union[gym.Env, VecEnv],
   Returns:
     An RL algorithm.
   """
-  return model_class(policy_class, env, **model_kwargs)
+  return model_class(policy_class,
+                     env, **model_kwargs)  # pytype: disable=not-instantiable
 
 
 def build_mlp(hid_sizes: Iterable[int],
