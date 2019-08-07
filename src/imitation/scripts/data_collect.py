@@ -11,6 +11,7 @@ from imitation.policies import serialize
 from imitation.scripts.config.data_collect import data_collect_ex
 import imitation.util as util
 from imitation.util.rollout import _validate_traj_generate_params
+import imitation.examples.env_suite
 
 
 @data_collect_ex.main
