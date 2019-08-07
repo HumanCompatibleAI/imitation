@@ -4,6 +4,7 @@ import pytest
 # Import for side-effect of registering environment
 import imitation.examples.airl_envs  # noqa: F401
 import imitation.examples.model_envs  # noqa: F401
+import imitation.examples.env_suite # noqa: F401
 
 ENV_NAMES = [env_spec.id for env_spec in gym.envs.registration.registry.all()
              if env_spec.id.startswith('imitation/')]
