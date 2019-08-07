@@ -1,7 +1,9 @@
 """Environment where AIRL should infer the correct reward function."""
+
 import gym
 import numpy as np
 import tensorflow as tf
+
 
 class MnistEnv(gym.Env):
   """A simple gridworld where:
@@ -12,21 +14,21 @@ class MnistEnv(gym.Env):
   def __init__(self, map_size=2, nb_steps_per_ep=8):
     self.map_size = map_size
     self.nS = map_size ** 2
-    self.nA = 4 #left, right, up, down
+    self.nA = 4  # left, right, up, down
     self.nb_steps_per_ep = nb_steps_per_ep
     self.count_steps = 0
 
     # For gym
     self.action_space = gym.spaces.Discrete(self.nA)
-    self.observation_space = gym.spaces.Box(low=0, high=255, shape=(28,28))
+    self.observation_space = gym.spaces.Box(low=0, high=255, shape=(28, 28))
 
     # Loading as many digits as cells in the gridworld
     (x_train, y_train), _ = tf.keras.datasets.mnist.load_data()
     self.map = [
-      [x_train[j] for j in range (map_size * i, map_size * (i + 1))]
+      [x_train[j] for j in range(map_size * i, map_size * (i + 1))]
       for i in range(map_size)]
     self.ground_truth = [
-      [y_train[j] for j in range (map_size * i, map_size * (i + 1))]
+      [y_train[j] for j in range(map_size * i, map_size * (i + 1))]
       for i in range(map_size)]
     self.x, self.y = np.random.randint(map_size, size=2)
 

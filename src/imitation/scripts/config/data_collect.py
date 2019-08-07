@@ -105,6 +105,7 @@ def fast():
   """Intended for testing purposes: small # of updates, ends quickly."""
   total_timesteps = int(1e4)
 
+
 @data_collect_ex.named_config
 def mnist():
   env_name = "imitation/Mnist2x2-v0"
