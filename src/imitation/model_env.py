@@ -2,7 +2,6 @@
 are handy when you want to perform exact maxent policy optimisation."""
 
 import abc
-from typing import Optional
 
 import gym
 from gym import spaces
@@ -12,27 +11,30 @@ import numpy as np
 class ModelBasedEnv(gym.Env, abc.ABC):
   """ABC for environments with known dynamics."""
 
-  n_actions_taken: Optional[int]
-  """Number of steps taken so far"""
-
   def __init__(self):
-    self.n_actions_taken = None
+    self._state_space = None
+    self._observation_space = None
+    self._action_space = None
+    self._n_actions_taken = None
     self.seed()
 
   @property
   @abc.abstractmethod
   def state_space(self) -> gym.Space:
     """State space. Often same as observation_space, but differs in POMDPs."""
+    return self._state_space
 
   @property
   @abc.abstractmethod
   def observation_space(self) -> gym.Space:
     """Observation space. Return value of reset() and component of step()."""
+    return self._observation_space
 
   @property
   @abc.abstractmethod
   def action_space(self) -> gym.Space:
     """Action space. Parameter type of step()."""
+    return self._action_space
 
   @abc.abstractmethod
   def initial_state(self):
@@ -54,6 +56,11 @@ class ModelBasedEnv(gym.Env, abc.ABC):
   def obs_from_state(self, state):
     """Returns observation produced by a given state."""
 
+  @property
+  def n_actions_taken(self) -> int:
+    """Number of steps taken so far."""
+    return self._n_actions_taken
+
   def seed(self, seed=None):
     if seed is None:
       # Gym API wants list of seeds to be returned for some reason, so
@@ -64,19 +71,19 @@ class ModelBasedEnv(gym.Env, abc.ABC):
 
   def reset(self):
     self.cur_state = self.initial_state()
-    self.n_actions_taken = 0
+    self._n_actions_taken = 0
     return self.obs_from_state(self.cur_state)
 
   def step(self, action):
-    if self.cur_state is None or self.n_actions_taken is None:
+    if self.cur_state is None or self._n_actions_taken is None:
       raise ValueError("Need to call reset() before first step()")
 
     old_state = self.cur_state
     self.cur_state = self.transition(self.cur_state, action)
     obs = self.obs_from_state(self.cur_state)
     rew = self.reward(old_state, action, self.cur_state)
-    done = self.terminal(self.cur_state, self.n_actions_taken)
-    self.n_actions_taken += 1
+    done = self.terminal(self.cur_state, self._n_actions_taken)
+    self._n_actions_taken += 1
 
     infos = {"old_state": old_state, "new_state": self.cur_state}
     return obs, rew, done, infos
@@ -92,26 +99,18 @@ class TabularModelEnv(ModelBasedEnv, abc.ABC):
     cached observation/action space, and random seed for rollouts."""
     super().__init__()
     self.cur_state = None
-    self.n_actions_taken = None
-    # Constructing action & observation spaces requires self.n_actions and
-    # self.obs_dim, which are set in subclasses. If we constructed
-    # observation & action in this __init__ method, then subclasses would
-    # have to call super().__init__() last to give it access to
-    # obs_dim/n_actions. By constructing these lazily, we ensure that
-    # subclasses can call super().__init__() at any point & still have it
-    # succeed.
-    self._state_space = None
-    self._observation_space = None
-    self._action_space = None
+    self._n_actions_taken = None
 
   @property
   def state_space(self) -> gym.Space:
+    # Construct spaces lazily, so they can depend on properties in subclasses.
     if self._state_space is None:
       self._state_space = spaces.Discrete(self.state_dim)
     return self._state_space
 
   @property
   def observation_space(self) -> gym.Space:
+    # Construct spaces lazily, so they can depend on properties in subclasses.
     if self._observation_space is None:
       self._observation_space = spaces.Box(low=float('-inf'),
                                            high=float('inf'),
@@ -120,6 +119,7 @@ class TabularModelEnv(ModelBasedEnv, abc.ABC):
 
   @property
   def action_space(self) -> gym.Space:
+    # Construct spaces lazily, so they can depend on properties in subclasses.
     if self._action_space is None:
       self._action_space = spaces.Discrete(self.n_actions)
     return self._action_space
