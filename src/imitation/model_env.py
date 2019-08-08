@@ -16,7 +16,6 @@ class ModelBasedEnv(gym.Env, abc.ABC):
   """Number of steps taken so far"""
 
   def __init__(self):
-    # TODO(gleave): anything needed here?
     self.n_actions_taken = None
 
   def seed(self, seed=None):
