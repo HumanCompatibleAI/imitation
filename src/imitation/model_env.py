@@ -19,6 +19,26 @@ class ModelBasedEnv(gym.Env, abc.ABC):
     self.n_actions_taken = None
     self.seed()
 
+  @abc.abstractmethod
+  def initial_state(self):
+    """Samples from the initial state distribution."""
+
+  @abc.abstractmethod
+  def transition(self, old_state, action):
+    """Samples from transition distribution."""
+
+  @abc.abstractmethod
+  def reward(self, old_state, action, new_state):
+    """Computes reward for a given transition."""
+
+  @abc.abstractmethod
+  def terminal(self, state, step: int) -> bool:
+    """Is the state terminal?"""
+
+  @abc.abstractmethod
+  def obs_from_state(self, state):
+    """Returns observation produced by a given state."""
+
   def seed(self, seed=None):
     if seed is None:
       # Gym API wants list of seeds to be returned for some reason, so
@@ -26,26 +46,6 @@ class ModelBasedEnv(gym.Env, abc.ABC):
       seed = np.random.randint(0, 1 << 31)
     self.rand_state = np.random.RandomState(seed)
     return [seed]
-
-  @abc.abstractmethod
-  def initial_state(self):
-    """Samples from the initial state distribution."""
-
-  @abc.abstractmethod
-  def obs_from_state(self, state):
-    """Returns observation produced by a given state."""
-
-  @abc.abstractmethod
-  def reward(self, old_state, action, new_state):
-    """Computes reward for a given transition."""
-
-  @abc.abstractmethod
-  def transition(self, old_state, action):
-    """Samples from transition distribution."""
-
-  @abc.abstractmethod
-  def terminal(self, state, step: int) -> bool:
-    """Is the state terminal?"""
 
   def reset(self):
     self.cur_state = self.initial_state()
@@ -106,25 +106,25 @@ class TabularModelEnv(ModelBasedEnv, abc.ABC):
     return self.rand_state.choice(self.n_states,
                                   p=self.initial_state_dist)
 
+  def transition(self, old_state, action):
+    out_dist = self.transition_matrix[old_state, action]
+    choice_states = np.arange(self.n_states)
+    return int(self.rand_state.choice(choice_states, p=out_dist, size=()))
+
+  def reward(self, old_state, action, new_state):
+    reward = self.reward_matrix[old_state]
+    assert np.isscalar(reward), reward
+    return reward
+
+  def terminal(self, state, n_actions_taken):
+    return n_actions_taken >= self.horizon
+
   def obs_from_state(self, state):
     # Copy so it can't be mutated in-place (updates will be reflected in
     # self.observation_matrix!)
     obs = self.observation_matrix[state].copy()
     assert obs.ndim == 1, obs.shape
     return obs
-
-  def transition(self, old_state, action):
-    out_dist = self.transition_matrix[old_state, action]
-    choice_states = np.arange(self.n_states)
-    return int(self.rand_state.choice(choice_states, p=out_dist, size=()))
-
-  def terminal(self, state, n_actions_taken):
-    return n_actions_taken >= self.horizon
-
-  def reward(self, old_state, action, new_state):
-    reward = self.reward_matrix[old_state]
-    assert np.isscalar(reward), reward
-    return reward
 
   @property
   def n_states(self):
