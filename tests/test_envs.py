@@ -1,7 +1,6 @@
 import re
 
 import gym
-from gym.envs.mujoco import mujoco_env
 import numpy as np
 import pytest
 
@@ -66,7 +65,9 @@ def test_seed(env, env_name):
 
 @pytest.mark.parametrize("env_name", ENV_NAMES)
 def test_premature_step(env):
-  if isinstance(env, mujoco_env.MujocoEnv):
+  if hasattr(env, 'sim') and hasattr(env, 'model'):  # pragma: no cover
+    # We can't use isinstance since importing mujoco_py will fail on
+    # machines without MuJoCo installed
     pytest.skip("MuJoCo environments cannot perform this check.")
 
   act = env.action_space.sample()
