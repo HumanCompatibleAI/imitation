@@ -91,6 +91,3 @@ class TwoDEnv(mujoco_env.MujocoEnv):
 
   def predictions_to_heatmap(self, predictions):
     return predictions_to_heatmap(predictions, self.map_config)
-
-  def get_viewer(self):
-    return self._get_viewer()

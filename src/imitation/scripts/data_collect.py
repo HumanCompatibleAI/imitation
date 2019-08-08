@@ -169,8 +169,12 @@ def rollouts_from_policy(
                     )
 
 
+def main_console():
+  observer = FileStorageObserver.create(
+      osp.join('output', 'sacred', 'data_collect'))
+  data_collect_ex.observers.append(observer)
+  data_collect_ex.run_commandline()
+
+
 if __name__ == "__main__":
-    observer = FileStorageObserver.create(
-        osp.join('output', 'sacred', 'data_collect'))
-    data_collect_ex.observers.append(observer)
-    data_collect_ex.run_commandline()
+  main_console()

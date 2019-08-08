@@ -32,9 +32,9 @@ class NormalizePolicy(BasePolicy):
     self._policy = policy
     self.vec_normalize = vec_normalize
 
-  def _wrapper(self, fn, obs, state=None, mask=None, deterministic=False):
+  def _wrapper(self, fn, obs, state=None, mask=None, *args, **kwargs):
     norm_obs = self.vec_normalize._normalize_observation(obs)
-    return fn(norm_obs, state=state, mask=mask, deterministic=deterministic)
+    return fn(norm_obs, state=state, mask=mask, *args, **kwargs)
 
   def step(self, *args, **kwargs):
     return self._wrapper(self._policy.step, *args, **kwargs)
