@@ -17,6 +17,7 @@ class ModelBasedEnv(gym.Env, abc.ABC):
 
   def __init__(self):
     self.n_actions_taken = None
+    self.seed()
 
   def seed(self, seed=None):
     if seed is None:
@@ -86,7 +87,6 @@ class TabularModelEnv(ModelBasedEnv, abc.ABC):
     # succeed.
     self._action_space = None
     self._observation_space = None
-    self.seed()
 
   @property
   def action_space(self):

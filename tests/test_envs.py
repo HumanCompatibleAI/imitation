@@ -79,11 +79,6 @@ def test_premature_step(env):
 def test_rollout(env):
   """Check custom environments have correct types on `step` and `reset`."""
   obs_space = env.observation_space
-
-  seeds = env.seed()
-  assert isinstance(seeds, list)
-  assert len(seeds) > 0
-
   obs = env.reset()
   assert obs in obs_space
 
