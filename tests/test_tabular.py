@@ -1,5 +1,6 @@
 """Test tabular environments and tabular MCE IRL."""
 
+import gym
 import jax.experimental.optimizers as jaxopt
 import numpy as np
 import pytest
@@ -74,6 +75,7 @@ def test_random_mdp():
 def test_policy_om_random_mdp():
   """Test that optimal policy occupancy measure ("om") for a random MDP makes
   sense."""
+  mdp = gym.make('imitation/Random-v0')
   mdp = RandomMDP(n_states=16,
                   n_actions=3,
                   branch_factor=2,

@@ -282,3 +282,17 @@ for width, height, horizon in [(7, 4, 9), (15, 6, 18), (100, 20, 110)]:
         'use_xy_obs': use_xy,
         'horizon': horizon,
     })
+
+# These parameter choices are somewhat arbitrary.
+# We anticipate most users will want to construct RandomMDP directly.
+gym.register('imitation/Random-v0',
+             entry_point='imitation.examples.model_envs:RandomMDP',
+             kwargs={
+                 'n_states': 16,
+                 'n_actions': 3,
+                 'branch_factor': 2,
+                 'horizon': 20,
+                 'random_obs': True,
+                 'obs_dim': 5,
+                 'generator_seed': 42,
+             })
