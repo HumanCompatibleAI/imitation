@@ -19,6 +19,21 @@ class ModelBasedEnv(gym.Env, abc.ABC):
     self.n_actions_taken = None
     self.seed()
 
+  @property
+  @abc.abstractmethod
+  def state_space(self) -> gym.Space:
+    """State space. Often same as observation_space, but differs in POMDPs."""
+
+  @property
+  @abc.abstractmethod
+  def observation_space(self) -> gym.Space:
+    """Observation space. Return value of reset() and component of step()."""
+
+  @property
+  @abc.abstractmethod
+  def action_space(self) -> gym.Space:
+    """Action space. Parameter type of step()."""
+
   @abc.abstractmethod
   def initial_state(self):
     """Samples from the initial state distribution."""
@@ -85,22 +100,29 @@ class TabularModelEnv(ModelBasedEnv, abc.ABC):
     # obs_dim/n_actions. By constructing these lazily, we ensure that
     # subclasses can call super().__init__() at any point & still have it
     # succeed.
-    self._action_space = None
+    self._state_space = None
     self._observation_space = None
+    self._action_space = None
 
   @property
-  def action_space(self):
-    if self._action_space is None:
-      self._action_space = spaces.Discrete(self.n_actions)
-    return self._action_space
+  def state_space(self) -> gym.Space:
+    if self._state_space is None:
+      self._state_space = spaces.Discrete(self.state_dim)
+    return self._state_space
 
   @property
-  def observation_space(self):
+  def observation_space(self) -> gym.Space:
     if self._observation_space is None:
       self._observation_space = spaces.Box(low=float('-inf'),
                                            high=float('inf'),
                                            shape=(self.obs_dim, ))
     return self._observation_space
+
+  @property
+  def action_space(self) -> gym.Space:
+    if self._action_space is None:
+      self._action_space = spaces.Discrete(self.n_actions)
+    return self._action_space
 
   def initial_state(self):
     return self.rand_state.choice(self.n_states,
@@ -137,9 +159,14 @@ class TabularModelEnv(ModelBasedEnv, abc.ABC):
     return self.transition_matrix.shape[1]
 
   @property
+  def state_dim(self):
+    """Size of state vectors for this MDP."""
+    return self.observation_matrix.shape[0]
+
+  @property
   def obs_dim(self):
     """Size of observation vectors for this MDP."""
-    return self.observation_matrix.shape[-1]
+    return self.observation_matrix.shape[1]
 
   # ############################### #
   # METHODS THAT MUST BE OVERRIDDEN #

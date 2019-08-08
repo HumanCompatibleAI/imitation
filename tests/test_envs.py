@@ -4,9 +4,10 @@ import gym
 import numpy as np
 import pytest
 
-# Import for side-effect of registering environment
+# Unused imports are for side-effect of registering environments
 import imitation.examples.airl_envs  # noqa: F401
 import imitation.examples.model_envs  # noqa: F401
+import imitation.model_env
 
 ENV_NAMES = [env_spec.id for env_spec in gym.envs.registration.registry.all()
              if env_spec.id.startswith('imitation/')]
@@ -73,6 +74,29 @@ def test_premature_step(env):
   act = env.action_space.sample()
   with pytest.raises(Exception):  # need to call env.reset() first
     env.step(act)
+
+
+@pytest.mark.parametrize("env_name", ENV_NAMES)
+def test_model_based(env):
+  """Smoke test for each of the ModelBasedEnv methods with basic type checks."""
+  if not isinstance(env, imitation.model_env.ModelBasedEnv):
+    pytest.skip("This test is only for subclasses of ModelBasedEnv.")
+
+  old_state = env.initial_state()
+  assert env.state_space.contains(old_state)
+
+  action = env.action_space.sample()
+  new_state = env.transition(old_state, action)
+  assert env.state_space.contains(new_state)
+
+  reward = env.reward(old_state, action, new_state)
+  assert isinstance(reward, float)
+
+  done = env.terminal(old_state, 0)
+  assert isinstance(done, bool)
+
+  old_obs = env.obs_from_state(old_state)
+  assert env.observation_space.contains(old_obs)
 
 
 @pytest.mark.parametrize("env_name", ENV_NAMES)
