@@ -19,24 +19,6 @@ class ModelBasedEnv(gym.Env, abc.ABC):
     self._n_actions_taken = None
     self.seed()
 
-  @property
-  @abc.abstractmethod
-  def state_space(self) -> gym.Space:
-    """State space. Often same as observation_space, but differs in POMDPs."""
-    return self._state_space
-
-  @property
-  @abc.abstractmethod
-  def observation_space(self) -> gym.Space:
-    """Observation space. Return value of reset() and component of step()."""
-    return self._observation_space
-
-  @property
-  @abc.abstractmethod
-  def action_space(self) -> gym.Space:
-    """Action space. Parameter type of step()."""
-    return self._action_space
-
   @abc.abstractmethod
   def initial_state(self):
     """Samples from the initial state distribution."""
@@ -56,6 +38,21 @@ class ModelBasedEnv(gym.Env, abc.ABC):
   @abc.abstractmethod
   def obs_from_state(self, state):
     """Returns observation produced by a given state."""
+
+  @property
+  def state_space(self) -> gym.Space:
+    """State space. Often same as observation_space, but differs in POMDPs."""
+    return self._state_space
+
+  @property
+  def observation_space(self) -> gym.Space:
+    """Observation space. Return value of reset() and component of step()."""
+    return self._observation_space
+
+  @property
+  def action_space(self) -> gym.Space:
+    """Action space. Parameter type of step()."""
+    return self._action_space
 
   @property
   def n_actions_taken(self) -> int:
