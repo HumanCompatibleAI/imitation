@@ -1,6 +1,7 @@
 import re
 
 import gym
+from gym.envs.mujoco import mujoco_env
 import numpy as np
 import pytest
 
@@ -17,9 +18,8 @@ DETERMINISTIC_ENVS = [
 ]
 
 
-@pytest.fixture
-def is_deterministic(env_name):
-  for pattern in DETERMINISTIC_ENVS:
+def matches_list(env_name, patterns):
+  for pattern in patterns:
     if re.compile(pattern).match(env_name):
       return True
   return False
@@ -38,7 +38,7 @@ def env(env_name):
 
 
 @pytest.mark.parametrize("env_name", ENV_NAMES)
-def test_seed(env, is_deterministic):
+def test_seed(env, env_name):
   # With the same seed, should always give the same result
   seeds = env.seed(42)
   assert isinstance(seeds, list)
@@ -60,7 +60,18 @@ def test_seed(env, is_deterministic):
       same_obs = False
       break
 
+  is_deterministic = matches_list(env_name, DETERMINISTIC_ENVS)
   assert same_obs == is_deterministic
+
+
+@pytest.mark.parametrize("env_name", ENV_NAMES)
+def test_premature_step(env):
+  if isinstance(env, mujoco_env.MujocoEnv):
+    pytest.skip("MuJoCo environments cannot perform this check.")
+
+  act = env.action_space.sample()
+  with pytest.raises(Exception):  # need to call env.reset() first
+    env.step(act)
 
 
 @pytest.mark.parametrize("env_name", ENV_NAMES)
