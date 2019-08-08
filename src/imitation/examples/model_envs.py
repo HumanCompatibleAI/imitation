@@ -3,7 +3,7 @@
 import gym
 import numpy as np
 
-from imitation.model_env import ModelBasedEnv
+from imitation.model_env import TabularModelEnv
 
 
 def make_random_trans_mat(
@@ -79,7 +79,7 @@ def make_obs_mat(
   return obs_mat
 
 
-class RandomMDP(ModelBasedEnv):
+class RandomMDP(TabularModelEnv):
   """AN MDP with a random transition matrix.
 
   Random matrix is created by `make_random_trans_mat`."""
@@ -142,7 +142,7 @@ class RandomMDP(ModelBasedEnv):
     return self._horizon
 
 
-class CliffWorld(ModelBasedEnv):
+class CliffWorld(TabularModelEnv):
   """A grid world like this::
 
        0 1 2 3 4 5 6 7 8 9

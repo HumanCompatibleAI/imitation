@@ -2,6 +2,7 @@
 are handy when you want to perform exact maxent policy optimisation."""
 
 import abc
+from typing import Optional
 
 import gym
 from gym import spaces
@@ -9,6 +10,64 @@ import numpy as np
 
 
 class ModelBasedEnv(gym.Env, abc.ABC):
+  """ABC for environments with known dynamics."""
+
+  n_actions_taken: Optional[int]
+  """Number of steps taken so far"""
+
+  def __init__(self):
+    # TODO(gleave): anything needed here?
+    self.n_actions_taken = None
+
+  def seed(self, seed=None):
+    if seed is None:
+      # Gym API wants list of seeds to be returned for some reason, so
+      # generate a seed explicitly in this case
+      seed = np.random.randint(0, 1 << 31)
+    self.rand_state = np.random.RandomState(seed)
+    return [seed]
+
+  @abc.abstractmethod
+  def initial_state(self):
+    """Samples from the initial state distribution."""
+
+  @abc.abstractmethod
+  def obs_from_state(self, state):
+    """Returns observation produced by a given state."""
+
+  @abc.abstractmethod
+  def reward(self, old_state, action, new_state):
+    """Computes reward for a given transition."""
+
+  @abc.abstractmethod
+  def transition(self, old_state, action):
+    """Samples from transition distribution."""
+
+  @abc.abstractmethod
+  def terminal(self, state, step: int) -> bool:
+    """Is the state terminal?"""
+
+  def reset(self):
+    self.cur_state = self.initial_state()
+    self.n_actions_taken = 0
+    return self.obs_from_state(self.cur_state)
+
+  def step(self, action):
+    if self.cur_state is None or self.n_actions_taken is None:
+      raise ValueError("Need to call reset() before first step()")
+
+    old_state = self.cur_state
+    self.cur_state = self.transition(self.cur_state, action)
+    obs = self.obs_from_state(self.cur_state)
+    rew = self.reward(old_state, action, self.cur_state)
+    done = self.terminal(self.cur_state, self.n_actions_taken)
+    self.n_actions_taken += 1
+
+    infos = {"old_state": old_state, "new_state": self.cur_state}
+    return obs, rew, done, infos
+
+
+class TabularModelEnv(ModelBasedEnv, abc.ABC):
   """ABC for tabular environments with known dynamics."""
 
   def __init__(self):
@@ -16,6 +75,7 @@ class ModelBasedEnv(gym.Env, abc.ABC):
     including current state & number of actions taken so far (initial None,
     so that error can be thrown if reset() is not called), attributes for
     cached observation/action space, and random seed for rollouts."""
+    super().__init__()
     self.cur_state = None
     self.n_actions_taken = None
     # Constructing action & observation spaces requires self.n_actions and
@@ -43,41 +103,29 @@ class ModelBasedEnv(gym.Env, abc.ABC):
                                            shape=(self.obs_dim, ))
     return self._observation_space
 
-  def seed(self, seed=None):
-    if seed is None:
-      # Gym API wants list of seeds to be returned for some reason, so
-      # generate a seed explicitly in this case
-      seed = np.random.randint(0, 1 << 31)
-    self.rand_state = np.random.RandomState(seed)
-    return [seed]
+  def initial_state(self):
+    return self.rand_state.choice(self.n_states,
+                                  p=self.initial_state_dist)
 
-  def reset(self):
-    self.cur_state = self.rand_state.choice(self.n_states,
-                                            p=self.initial_state_dist)
-    self.n_actions_taken = 0
-    # as in step(), we copy so that it can't be mutated in-place (updates
-    # will be reflected in self.observation_matrix!)
-    return self.observation_matrix[self.cur_state].copy()
+  def obs_from_state(self, state):
+    # Copy so it can't be mutated in-place (updates will be reflected in
+    # self.observation_matrix!)
+    obs = self.observation_matrix[state].copy()
+    assert obs.ndim == 1, obs.shape
+    return obs
 
-  def step(self, action):
-    assert self.cur_state is not None \
-        and self.n_actions_taken is not None, \
-        "remember to call reset() before first step()"
-    old_state = self.cur_state
+  def transition(self, old_state, action):
     out_dist = self.transition_matrix[old_state, action]
     choice_states = np.arange(self.n_states)
-    next_state = int(
-        self.rand_state.choice(choice_states, p=out_dist, size=()))
-    self.cur_state = next_state
-    self.n_actions_taken += 1
-    done = self.n_actions_taken >= self.horizon
+    return int(self.rand_state.choice(choice_states, p=out_dist, size=()))
+
+  def terminal(self, state, n_actions_taken):
+    return n_actions_taken >= self.horizon
+
+  def reward(self, old_state, action, new_state):
     reward = self.reward_matrix[old_state]
     assert np.isscalar(reward), reward
-    # copy so that it can't be mutated in-place
-    obs = self.observation_matrix[next_state].copy()
-    assert obs.ndim == 1, obs.shape
-    infos = {"old_state": old_state, "new_state": next_state}
-    return obs, reward, done, infos
+    return reward
 
   @property
   def n_states(self):
