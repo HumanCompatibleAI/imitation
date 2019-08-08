@@ -7,7 +7,6 @@ import pytest
 # Unused imports are for side-effect of registering environments
 import imitation.examples.airl_envs  # noqa: F401
 import imitation.examples.model_envs  # noqa: F401
-import imitation.model_env
 
 ENV_NAMES = [env_spec.id for env_spec in gym.envs.registration.registry.all()
              if env_spec.id.startswith('imitation/')]
@@ -79,7 +78,7 @@ def test_premature_step(env):
 @pytest.mark.parametrize("env_name", ENV_NAMES)
 def test_model_based(env):
   """Smoke test for each of the ModelBasedEnv methods with basic type checks."""
-  if not isinstance(env, imitation.model_env.ModelBasedEnv):
+  if not hasattr(env, 'state_space'):  # pragma: no cover
     pytest.skip("This test is only for subclasses of ModelBasedEnv.")
 
   old_state = env.initial_state()
