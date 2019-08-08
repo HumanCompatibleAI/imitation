@@ -15,6 +15,7 @@ class ModelBasedEnv(gym.Env, abc.ABC):
     self._state_space = None
     self._observation_space = None
     self._action_space = None
+    self.cur_state = None
     self._n_actions_taken = None
     self.seed()
 
@@ -98,8 +99,6 @@ class TabularModelEnv(ModelBasedEnv, abc.ABC):
     so that error can be thrown if reset() is not called), attributes for
     cached observation/action space, and random seed for rollouts."""
     super().__init__()
-    self.cur_state = None
-    self._n_actions_taken = None
 
   @property
   def state_space(self) -> gym.Space:
