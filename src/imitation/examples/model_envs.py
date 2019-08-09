@@ -3,7 +3,7 @@
 import gym
 import numpy as np
 
-from imitation.model_env import TabularModelEnv
+from imitation.resettable_env import TabularModelEnv
 
 
 def make_random_trans_mat(

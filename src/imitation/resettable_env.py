@@ -8,8 +8,13 @@ from gym import spaces
 import numpy as np
 
 
-class ModelBasedEnv(gym.Env, abc.ABC):
-  """ABC for environments with known dynamics."""
+class ResettableEnv(gym.Env, abc.ABC):
+  """ABC for environments that are resettable.
+
+  Specifically, these environments provide oracle access to sample from
+  the initial state distribution and transition dynamics, and compute the
+  reward and termination condition. Almost all simulated environments can
+  meet these criteria."""
 
   def __init__(self):
     self._state_space = None
@@ -46,7 +51,7 @@ class ModelBasedEnv(gym.Env, abc.ABC):
 
   @property
   def observation_space(self) -> gym.Space:
-    """Observation space. Return value of reset() and component of step()."""
+    """Observation space. Return type of reset() and component of step()."""
     return self._observation_space
 
   @property
@@ -87,7 +92,7 @@ class ModelBasedEnv(gym.Env, abc.ABC):
     return obs, rew, done, infos
 
 
-class TabularModelEnv(ModelBasedEnv, abc.ABC):
+class TabularModelEnv(ResettableEnv, abc.ABC):
   """ABC for tabular environments with known dynamics."""
 
   def __init__(self):

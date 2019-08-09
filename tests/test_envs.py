@@ -11,15 +11,12 @@ import imitation.examples.model_envs  # noqa: F401
 ENV_NAMES = [env_spec.id for env_spec in gym.envs.registration.registry.all()
              if env_spec.id.startswith('imitation/')]
 
-DETERMINISTIC_ENVS = [
-    r"imitation/CliffWorld.*-v0",
-    r"imitation/PointMaze.*-v0",
-]
+DETERMINISTIC_ENVS = []
 
 
 def matches_list(env_name, patterns):
   for pattern in patterns:
-    if re.compile(pattern).match(env_name):
+    if re.match(pattern, env_name):
       return True
   return False
 
@@ -36,17 +33,37 @@ def env(env_name):
   return env
 
 
+def rollout(env, actions):
+  ret = [(env.reset(), None, None, None)]
+  for act in actions:
+    ret.append(env.step(act))
+  return ret
+
+
+def assert_equal_rollout(rollout_a, rollout_b):
+  for step_a, step_b in zip(rollout_a, rollout_b):
+    ob_a, rew_a, done_a, info_a = step_a
+    ob_b, rew_b, done_b, info_b = step_b
+    assert np.all(ob_a == ob_b)
+    assert rew_a == rew_b
+    assert done_a == done_b
+    assert info_a == info_b
+
+
 @pytest.mark.parametrize("env_name", ENV_NAMES)
 def test_seed(env, env_name):
-  # With the same seed, should always give the same result
+  actions = [env.action_space.sample() for _ in range(10)]
+
+  # With the same seed, should always get the same result
   seeds = env.seed(42)
   assert isinstance(seeds, list)
   assert len(seeds) > 0
+  rollout_a = rollout(env, actions)
 
-  first_obs = env.reset()
   env.seed(42)
-  second_obs = env.reset()
-  assert np.all(first_obs == second_obs)
+  rollout_b = rollout(env, actions)
+
+  assert_equal_rollout(rollout_a, rollout_b)
 
   # For non-deterministic environments, if we try enough seeds we should
   # eventually get a different result. For deterministic environments, all
@@ -54,10 +71,12 @@ def test_seed(env, env_name):
   same_obs = True
   for i in range(10):
     env.seed(i)
-    obs = env.reset()
-    if not np.all(obs == first_obs):
-      same_obs = False
-      break
+    new_rollout = rollout(env, actions)
+    for step_a, step_new in zip(rollout_a, new_rollout):
+      obs_a = step_a[0]
+      obs_new = step_new[0]
+      if np.any(obs_a != obs_new):
+        same_obs = False
 
   is_deterministic = matches_list(env_name, DETERMINISTIC_ENVS)
   assert same_obs == is_deterministic
