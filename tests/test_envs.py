@@ -15,7 +15,7 @@ DETERMINISTIC_ENVS = []
 
 
 def matches_list(env_name, patterns):
-  for pattern in patterns:
+  for pattern in patterns:  # pragma: no cover
     if re.match(pattern, env_name):
       return True
   return False
