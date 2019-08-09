@@ -153,3 +153,26 @@ def fast():
       n_expert_demos=1,
       parallel=False,  # easier to debug with everything in one process
   )
+
+
+@train_ex.named_config
+def mnist():
+  env_name = "imitation/Mnist-v0"
+  n_gen_steps_per_epoch = 10000
+  n_disc_steps_per_epoch = 10
+  n_epochs = 100
+  init_trainer_kwargs = dict(
+    make_blank_policy_kwargs=dict(
+      policy_class=policies.MlpPolicy,
+    ),
+    rollout_glob="expert_models/Mnist-v0-absorbing.pkl",
+  )
+
+
+@train_ex.named_config
+def mnistcnn():
+  init_trainer_kwargs = dict(
+    make_blank_policy_kwargs=dict(
+      policy_class=base.MnistCnnPolicy,
+    ),
+  )

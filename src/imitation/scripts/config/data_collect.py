@@ -108,5 +108,6 @@ def fast():
 
 @data_collect_ex.named_config
 def mnist():
-  env_name = "imitation/Mnist2x2-v0"
-  total_timesteps = int(8e4)
+  env_name = "imitation/Mnist-v0"
+  total_timesteps = int(1e4)
+  rollout_save_n_timesteps = int(1e3)

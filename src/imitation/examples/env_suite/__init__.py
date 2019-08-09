@@ -10,8 +10,4 @@ def _register(env_name: str, entry_point: str, kwargs: Optional[dict] = None):
     gym_register(id=env_name, entry_point=entry_point, kwargs=kwargs)
 
 
-# hopefully will test for other sizes
-for map_size in [2]:
-    _register(f'imitation/Mnist{map_size}x{map_size}-v0',
-              entry_point=f'mnist:MnistEnv',
-              kwargs={'map_size': map_size})
+_register(f'imitation/Mnist-v0', entry_point=f'mnist:MnistEnv')

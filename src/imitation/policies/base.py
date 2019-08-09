@@ -4,8 +4,28 @@ import abc
 
 import gym
 import numpy as np
+from stable_baselines.a2c.utils import conv, conv_to_fc, linear
 from stable_baselines.common import BaseRLModel
 from stable_baselines.common.policies import BasePolicy, FeedForwardPolicy
+import tensorflow as tf
+
+
+def mnist_cnn(scaled_images, **kwargs):
+  """
+  Tweakeable CNN.
+  :param scaled_images: (TensorFlow Tensor) Image input placeholder
+  :param kwargs: (dict) Extra keywords parameters
+  :return: (TensorFlow Tensor) The CNN output layer
+  """
+  activ = tf.nn.relu
+  layer_1 = activ(conv(scaled_images, 'c1', n_filters=32, filter_size=3,
+                  stride=1, **kwargs))
+  layer_2 = activ(conv(layer_1, 'c2', n_filters=64, filter_size=3, stride=2,
+                  **kwargs))
+  layer_3 = activ(conv(layer_2, 'c3', n_filters=64, filter_size=3, stride=1,
+                  **kwargs))
+  layer_3 = conv_to_fc(layer_3)
+  return activ(linear(layer_3, 'fc1', n_hidden=128))
 
 
 class HardCodedPolicy(BasePolicy, abc.ABC):
@@ -101,3 +121,24 @@ def get_action_policy(policy, observation, deterministic=True):
     clipped_actions = clipped_actions[0]
 
   return clipped_actions, states
+
+
+class MnistCnnPolicy(FeedForwardPolicy):
+  """
+  Policy object that implements actor critic, using a CNN (the Mnist CNN)
+  :param sess: (TensorFlow session) The current TensorFlow session
+  :param ob_space: (Gym Space) The observation space of the environment
+  :param ac_space: (Gym Space) The action space of the environment
+  :param n_env: (int) The number of environments to run
+  :param n_steps: (int) The number of steps to run for each environment
+  :param n_batch: (int) The number of batch to run (n_envs * n_steps)
+  :param reuse: (bool) If the policy is reusable or not
+  :param _kwargs: (dict) Extra keyword arguments for feature extraction
+  """
+
+  def __init__(self, sess, ob_space, ac_space, n_env, n_steps, n_batch,
+               reuse=False, **_kwargs):
+      super(MnistCnnPolicy, self).__init__(sess, ob_space, ac_space, n_env,
+                                           n_steps, n_batch, reuse,
+                                           feature_extraction="cnn",
+                                           cnn_extractor=mnist_cnn, **_kwargs)
