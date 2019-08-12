@@ -176,7 +176,7 @@ def build_inputs(observation_space: gym.Space,
 
 
 @contextlib.contextmanager
-def make_session(**kwargs):
+def make_session(close_on_exit: bool = True, **kwargs):
   """Context manager for a TensorFlow session.
 
   The session is associated with a newly created graph. Both session and
@@ -184,6 +184,7 @@ def make_session(**kwargs):
   context manager.
 
   Args:
+    close_on_exit: If True, closes the session upon leaving the context manager.
     kwargs: passed through to `tf.Session`.
 
   Yields:
@@ -191,6 +192,10 @@ def make_session(**kwargs):
   """
   graph = tf.Graph()
   with graph.as_default():
-    with tf.Session(graph=graph, **kwargs) as session:
+    session = tf.Session(graph=graph, **kwargs)
+    try:
       with session.as_default():
         yield graph, session
+    finally:
+      if close_on_exit:
+        session.close()
