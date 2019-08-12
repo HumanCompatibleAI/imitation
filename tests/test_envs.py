@@ -77,6 +77,9 @@ def test_seed(env, env_name):
       obs_new = step_new[0]
       if np.any(obs_a != obs_new):
         same_obs = False
+        break
+    if not same_obs:
+      break
 
   is_deterministic = matches_list(env_name, DETERMINISTIC_ENVS)
   assert same_obs == is_deterministic
