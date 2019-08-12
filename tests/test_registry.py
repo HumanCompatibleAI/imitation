@@ -17,6 +17,9 @@ def test_lazy():
   with pytest.raises(AttributeError):
     reg.get('noattribute')
 
+  with pytest.raises(ValueError, match="exactly one of"):
+    reg.register(key='wrongargs', value=3.14, indirect='math:pi')
+
   reg.register('exists', indirect='math:pi')
   val = reg.get('exists')
   import math
