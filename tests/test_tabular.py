@@ -1,11 +1,12 @@
 """Test tabular environments and tabular MCE IRL."""
 
+import gym
 import jax.experimental.optimizers as jaxopt
 import numpy as np
 import pytest
 
 from imitation.examples.model_envs import RandomMDP
-from imitation.model_env import ModelBasedEnv
+from imitation.resettable_env import TabularModelEnv
 from imitation.tabular_irl import (LinearRewardModel, MLPRewardModel, mce_irl,
                                    mce_occupancy_measures, mce_partition_fh)
 
@@ -74,13 +75,7 @@ def test_random_mdp():
 def test_policy_om_random_mdp():
   """Test that optimal policy occupancy measure ("om") for a random MDP makes
   sense."""
-  mdp = RandomMDP(n_states=16,
-                  n_actions=3,
-                  branch_factor=2,
-                  horizon=20,
-                  random_obs=True,
-                  obs_dim=5,
-                  generator_seed=42)
+  mdp = gym.make('imitation/Random-v0')
   V, Q, pi = mce_partition_fh(mdp)
   assert np.all(np.isfinite(V))
   assert np.all(np.isfinite(Q))
@@ -97,7 +92,7 @@ def test_policy_om_random_mdp():
   assert np.allclose(np.sum(D), mdp.horizon)
 
 
-class ReasonableMDP(ModelBasedEnv):
+class ReasonableMDP(TabularModelEnv):
   observation_matrix = np.array([
       [3, -5, -1, -1, -4, 5, 3, 0],
       # state 1 (top)

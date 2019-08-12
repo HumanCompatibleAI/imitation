@@ -3,7 +3,7 @@
 import gym
 import numpy as np
 
-from imitation.model_env import ModelBasedEnv
+from imitation.resettable_env import TabularModelEnv
 
 
 def make_random_trans_mat(
@@ -79,7 +79,7 @@ def make_obs_mat(
   return obs_mat
 
 
-class RandomMDP(ModelBasedEnv):
+class RandomMDP(TabularModelEnv):
   """AN MDP with a random transition matrix.
 
   Random matrix is created by `make_random_trans_mat`."""
@@ -142,7 +142,7 @@ class RandomMDP(ModelBasedEnv):
     return self._horizon
 
 
-class CliffWorld(ModelBasedEnv):
+class CliffWorld(TabularModelEnv):
   """A grid world like this::
 
        0 1 2 3 4 5 6 7 8 9
@@ -282,3 +282,17 @@ for width, height, horizon in [(7, 4, 9), (15, 6, 18), (100, 20, 110)]:
         'use_xy_obs': use_xy,
         'horizon': horizon,
     })
+
+# These parameter choices are somewhat arbitrary.
+# We anticipate most users will want to construct RandomMDP directly.
+gym.register('imitation/Random-v0',
+             entry_point='imitation.examples.model_envs:RandomMDP',
+             kwargs={
+                 'n_states': 16,
+                 'n_actions': 3,
+                 'branch_factor': 2,
+                 'horizon': 20,
+                 'random_obs': True,
+                 'obs_dim': 5,
+                 'generator_seed': 42,
+             })
