@@ -193,7 +193,9 @@ def make_session(close_on_exit: bool = True, **kwargs):
   graph = tf.Graph()
   with graph.as_default():
     session = tf.Session(graph=graph, **kwargs)
-    with session.as_default():
-      yield graph, session
-    if close_on_exit:
-      session.close()
+    try:
+      with session.as_default():
+        yield graph, session
+    finally:
+      if close_on_exit:
+        session.close()
