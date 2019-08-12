@@ -1,11 +1,10 @@
 import importlib
-from typing import Callable, Generic, Optional, Type, TypeVar, Union
+from typing import Callable, Generic, Optional, Type, TypeVar
 
-import gym
 from stable_baselines.common.vec_env import VecEnv
 
 T = TypeVar("T")
-LoaderFn = Callable[[str, Union[gym.Env, VecEnv]], T]
+LoaderFn = Callable[[str, VecEnv], T]
 """The type stored in Registry is commonly an instance of LoaderFn."""
 
 
@@ -65,13 +64,13 @@ class Registry(Generic[T]):
 
 def env_to_space(cls: Type[T], **kwargs) -> LoaderFn:
   """Converts a factory taking observation and action space into a LoaderFn."""
-  def f(path: str, env: Union[gym.Env, VecEnv]) -> T:
-    return cls(env.observation_space, env.action_space, **kwargs)
+  def f(path: str, venv: VecEnv) -> T:
+    return cls(venv.observation_space, venv.action_space, **kwargs)
   return f
 
 
 def env_only(policy_cls: Type[T], **kwargs) -> LoaderFn:
   """Converts a factory taking an environment into a LoaderFn."""
-  def f(path: str, env: gym.Env) -> T:
-    return policy_cls(env, **kwargs)
+  def f(path: str, venv: VecEnv) -> T:
+    return policy_cls(venv, **kwargs)
   return f

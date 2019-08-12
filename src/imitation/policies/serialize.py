@@ -1,7 +1,7 @@
 """Load serialized policies of different types."""
 
 import os
-from typing import Callable, Optional, Type, Union
+from typing import Callable, Optional, Type
 
 import gym
 import stable_baselines
@@ -13,7 +13,7 @@ import tensorflow as tf
 from imitation.policies.base import RandomPolicy, ZeroPolicy
 from imitation.util import registry
 
-PolicyLoaderFn = Callable[[str, Union[gym.Env, VecEnv]], BasePolicy]
+PolicyLoaderFn = Callable[[str, VecEnv], BasePolicy]
 
 policy_registry: registry.Registry[PolicyLoaderFn] = registry.Registry()
 
@@ -93,16 +93,16 @@ for k, (cls, attr) in STABLE_BASELINES_CLASSES.items():
 
 
 def load_policy(policy_type: str, policy_path: str,
-                env: Union[gym.Env, VecEnv]) -> BasePolicy:
+                venv: VecEnv) -> BasePolicy:
   """Load serialized policy.
 
   Args:
     policy_type: A key in `policy_registry`, e.g. `ppo2`.
     policy_path: A path on disk where the policy is stored.
-    env: An environment that the policy is to be used with.
+    venv: An environment that the policy is to be used with.
   """
   agent_loader = policy_registry.get(policy_type)
-  return agent_loader(policy_path, env)
+  return agent_loader(policy_path, venv)
 
 
 def save_stable_model(output_dir: str,
