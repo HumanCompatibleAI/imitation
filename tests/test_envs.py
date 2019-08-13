@@ -52,6 +52,7 @@ def assert_equal_rollout(rollout_a, rollout_b):
 
 @pytest.mark.parametrize("env_name", ENV_NAMES)
 def test_seed(env, env_name):
+  env.action_space.seed(0)
   actions = [env.action_space.sample() for _ in range(10)]
 
   # With the same seed, should always get the same result
@@ -69,7 +70,7 @@ def test_seed(env, env_name):
   # eventually get a different result. For deterministic environments, all
   # seeds will produce the same starting state.
   same_obs = True
-  for i in range(10):
+  for i in range(20):
     env.seed(i)
     new_rollout = rollout(env, actions)
     for step_a, step_new in zip(rollout_a, new_rollout):
