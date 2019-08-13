@@ -12,7 +12,7 @@ import tensorflow as tf
 
 def mnist_cnn(scaled_images, **kwargs):
   """
-  Tweakeable CNN.
+  Tweakable CNN.
   :param scaled_images: (TensorFlow Tensor) Image input placeholder
   :param kwargs: (dict) Extra keywords parameters
   :return: (TensorFlow Tensor) The CNN output layer
@@ -133,12 +133,12 @@ class MnistCnnPolicy(FeedForwardPolicy):
   :param n_steps: (int) The number of steps to run for each environment
   :param n_batch: (int) The number of batch to run (n_envs * n_steps)
   :param reuse: (bool) If the policy is reusable or not
-  :param _kwargs: (dict) Extra keyword arguments for feature extraction
+  :param kwargs: (dict) Extra keyword arguments for feature extraction
   """
 
   def __init__(self, sess, ob_space, ac_space, n_env, n_steps, n_batch,
-               reuse=False, **_kwargs):
+               reuse=False, **kwargs):
       super(MnistCnnPolicy, self).__init__(sess, ob_space, ac_space, n_env,
                                            n_steps, n_batch, reuse,
                                            feature_extraction="cnn",
-                                           cnn_extractor=mnist_cnn, **_kwargs)
+                                           cnn_extractor=mnist_cnn, **kwargs)

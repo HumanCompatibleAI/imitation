@@ -14,6 +14,8 @@ from stable_baselines.common.policies import BasePolicy, MlpPolicy
 from stable_baselines.common.vec_env import DummyVecEnv, SubprocVecEnv, VecEnv
 import tensorflow as tf
 
+import imitation.examples.env_suite  # noqa: F401
+
 # TODO(adam): this should really be OrderedDict but that breaks Python
 # See https://stackoverflow.com/questions/41207128/
 LayersDict = Dict[str, tf.layers.Layer]
@@ -64,7 +66,6 @@ def make_vec_env(env_id: str,
       log_dir: If specified, saves Monitor output to this directory.
   """
   def make_env(i):
-    import imitation.examples.env_suite  # noqa: F401
     env = gym.make(env_id)
     env.seed(seed + i)  # seed each environment separately for diversity
 

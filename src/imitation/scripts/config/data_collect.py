@@ -109,5 +109,5 @@ def fast():
 @data_collect_ex.named_config
 def mnist():
   env_name = "imitation/Mnist-v0"
-  total_timesteps = int(1e4)
+  total_timesteps = int(1e6)
   rollout_save_n_timesteps = int(1e3)
