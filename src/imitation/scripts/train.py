@@ -35,6 +35,7 @@ def save(trainer, save_path):
 @train_ex.main
 def train_and_plot(_seed: int,
                    env_name: str,
+                   rollout_glob: str,
                    log_dir: str,
                    *,
                    n_epochs: int = 100,
@@ -95,7 +96,8 @@ def train_and_plot(_seed: int,
   assert n_epochs_per_plot is None or n_epochs_per_plot >= 1
 
   with util.make_session():
-    trainer = init_trainer(env_name, seed=_seed, log_dir=log_dir,
+    trainer = init_trainer(env_name, rollout_glob=rollout_glob,
+                           seed=_seed, log_dir=log_dir,
                            **init_trainer_kwargs)
 
     tf.logging.info("Logging to %s", log_dir)

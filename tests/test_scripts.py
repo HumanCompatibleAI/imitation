@@ -50,9 +50,9 @@ def test_train():
       'init_trainer_kwargs': {
           # codecov does not like parallel
           'parallel': False,
-          'rollout_glob': "tests/data/rollouts/CartPole*.pkl",
       },
       'log_root': 'output/tests/train',
+      'rollout_glob': "tests/data/rollouts/CartPole*.pkl",
   }
   run = train_ex.run(
       named_configs=['cartpole', 'gail', 'fast'],
