@@ -117,7 +117,7 @@ def rollouts_and_policy(
           n_timesteps=rollout_save_n_timesteps,
           n_episodes=rollout_save_n_episodes)
       if policy_save_interval > 0 and step % policy_save_interval == 0:
-        output_dir = os.path.join(policy_dir, f'{step:5d}')
+        output_dir = os.path.join(policy_dir, f'{step:05d}')
         serialize.save_stable_model(output_dir, policy, vec_normalize)
       return True  # Continue training.
 
