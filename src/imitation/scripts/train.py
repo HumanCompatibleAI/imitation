@@ -17,6 +17,7 @@ from stable_baselines import logger as sb_logger
 import tensorflow as tf
 import tqdm
 
+from imitation.policies import serialize
 from imitation.scripts.config.train import train_ex
 import imitation.util as util
 from imitation.util.trainer import init_trainer
@@ -29,7 +30,8 @@ def save(trainer, save_path):
   trainer.discrim.save(os.path.join(save_path, "discrim"))
   # TODO(gleave): unify this with the saving logic in data_collect?
   # (Needs #43 to be merged before attempting.)
-  trainer._gen_policy.save(os.path.join(save_path, "gen_policy"))
+  serialize.save_stable_model(os.path.join(save_path, "gen_policy"),
+                              trainer._gen_policy)
 
 
 @train_ex.main
