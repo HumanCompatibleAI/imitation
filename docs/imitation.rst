@@ -21,10 +21,10 @@ imitation.discrim\_net module
    :undoc-members:
    :show-inheritance:
 
-imitation.model\_env module
----------------------------
+imitation.resettable\_env module
+--------------------------------
 
-.. automodule:: imitation.model_env
+.. automodule:: imitation.resettable_env
    :members:
    :undoc-members:
    :show-inheritance:
