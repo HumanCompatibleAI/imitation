@@ -2,7 +2,10 @@ import os
 
 import sacred
 
-from imitation.scripts.config.common import DEFAULT_BLANK_POLICY_KWARGS
+from imitation.scripts.config.common import (
+  ATARI_CNN_BLANK_POLICY_KWARGS,
+  DEFAULT_BLANK_POLICY_KWARGS,
+)
 from imitation.util import util
 
 data_collect_ex = sacred.Experiment("data_collect")
@@ -109,5 +112,6 @@ def fast():
 @data_collect_ex.named_config
 def mnist():
   env_name = "imitation/Mnist-v0"
-  total_timesteps = int(1e6)
+  total_timesteps = int(1e7)
   rollout_save_n_timesteps = int(1e3)
+  make_blank_policy_kwargs = dict(ATARI_CNN_BLANK_POLICY_KWARGS)
