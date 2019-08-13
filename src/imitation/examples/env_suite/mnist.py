@@ -17,15 +17,20 @@ class MnistEnv(gym.Env):
     self.observation_space = gym.spaces.Box(low=0, high=1, shape=(28, 28, 1))
     (self.digits, self.labels), _ = tf.keras.datasets.mnist.load_data()
     self.digits = self.digits.reshape(self.digits.shape[0], 28, 28, 1) / 255
-    self._sample_digit()
+    self.idx = None
 
   def _sample_digit(self):
     self.idx = np.random.randint(len(self.labels))
 
   def step(self, a):
-    rew = (a == self.labels[self.idx])
+    assert self.idx is not None, "Cannot call env.step() before calling reset()"
+    rew = float(a == self.labels[self.idx])
     return (np.zeros((28, 28, 1)), rew, True, {})
 
   def reset(self):
     self._sample_digit()
     return self.digits[self.idx]
+
+  def seed(self, seed=None):
+    np.random.seed(seed)
+    return [seed]
