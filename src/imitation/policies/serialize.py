@@ -4,13 +4,13 @@ import os
 from typing import Callable, Dict, Optional, Type, Union
 
 import gym
-import stable_baselines
 from stable_baselines.common.base_class import BaseRLModel
 from stable_baselines.common.policies import BasePolicy
 from stable_baselines.common.vec_env import VecEnv, VecNormalize
 import tensorflow as tf
 
 from imitation.policies.base import RandomPolicy, ZeroPolicy
+from imitation.util import registry
 
 PolicyLoaderFn = Callable[[str, Union[gym.Env, VecEnv]], BasePolicy]
 
@@ -85,8 +85,8 @@ def _load_zero(path: str, env: gym.Env) -> ZeroPolicy:
 
 
 STABLE_BASELINES_CLASSES = {
-    'ppo1': (stable_baselines.PPO1, 'policy_pi'),
-    'ppo2': (stable_baselines.PPO2, 'act_model'),
+    'ppo1': ('stable_baselines:PPO1', 'policy_pi'),
+    'ppo2': ('stable_baselines:PPO2', 'act_model'),
 }
 
 
@@ -94,8 +94,12 @@ AGENT_LOADERS: Dict[str, PolicyLoaderFn] = {
     'random': _load_random,
     'zero': _load_zero,
 }
-for k, (cls, attr) in STABLE_BASELINES_CLASSES.items():
-  AGENT_LOADERS[k] = _load_stable_baselines(cls, attr)
+for k, (cls_name, attr) in STABLE_BASELINES_CLASSES.items():
+  try:
+    cls = registry.load_attr(cls_name)
+    AGENT_LOADERS[k] = _load_stable_baselines(cls, attr)
+  except (AttributeError, ImportError):
+    tf.logging.debug(f"Couldn't load {cls_name}. Skipping...")
 
 
 def load_policy(policy_type: str, policy_path: str,
