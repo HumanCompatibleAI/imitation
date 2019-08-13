@@ -3,6 +3,7 @@
 from abc import ABC, abstractmethod
 import os
 import pickle
+from typing import Type, TypeVar
 
 import tensorflow as tf
 
@@ -23,6 +24,9 @@ class Serializable(ABC):
   @abstractmethod
   def save(self, directory):
     """Save object and weights to directory."""
+
+
+T = TypeVar('T')
 
 
 class LayersSerializable(Serializable):
@@ -55,9 +59,10 @@ class LayersSerializable(Serializable):
     restore.assert_consumed().run_restore_ops()
 
   @classmethod
-  def load(cls, directory: str) -> "LayersSerializable":
+  def load(cls: Type[T], directory: str) -> T:
     with open(os.path.join(directory, 'obj'), 'rb') as f:
       obj = pickle.load(f)
+    assert isinstance(obj, cls)
     obj.load_parameters(directory)
     return obj
 

@@ -1,5 +1,4 @@
 from setuptools import find_packages, setup
-
 import src.imitation
 
 # TF 1.14.0 is not compatible with sacred because of a TF bug.
@@ -24,6 +23,7 @@ setup(
         'gym',
         'numpy>=1.15',
         'tqdm',
+        'scikit-learn>=0.21.2',
         # FIXME: Use stable release instead of tracking master once
         # commit 9a760542 is released.
         'stable-baselines @ git+https://github.com/hill-a/stable-baselines.git',
@@ -56,6 +56,13 @@ setup(
         ],
         'test':
         TESTS_REQUIRE,
+    },
+    entry_points={
+        'console_scripts': [
+            ('imitation-data-collect=imitation.scripts.data_collect'
+             ':main_console'),
+            'imitation-train=imitation.scripts.train:main_console',
+        ],
     },
     url='https://github.com/HumanCompatibleAI/imitation',
     license='MIT',

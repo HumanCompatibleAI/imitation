@@ -105,7 +105,7 @@ def rollouts_and_policy(
           n_timesteps=rollout_save_n_timesteps,
           n_episodes=rollout_save_n_episodes)
       if policy_ok and step % policy_save_interval == 0:
-        output_dir = os.path.join(policy_dir, f'{step:5d}')
+        output_dir = os.path.join(policy_dir, f'{step:05d}')
         serialize.save_stable_model(output_dir, policy, vec_normalize)
       return True
 
@@ -168,8 +168,12 @@ def rollouts_from_policy(
                     )
 
 
+def main_console():
+  observer = FileStorageObserver.create(
+      osp.join('output', 'sacred', 'data_collect'))
+  data_collect_ex.observers.append(observer)
+  data_collect_ex.run_commandline()
+
+
 if __name__ == "__main__":
-    observer = FileStorageObserver.create(
-        osp.join('output', 'sacred', 'data_collect'))
-    data_collect_ex.observers.append(observer)
-    data_collect_ex.run_commandline()
+  main_console()
