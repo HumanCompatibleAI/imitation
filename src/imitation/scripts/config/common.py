@@ -20,5 +20,5 @@ ATARI_CNN_BLANK_POLICY_KWARGS = dict(
     vf_coef=0.5,
     ent_coef=0.01,
     cliprange_vf=-1,
-    policy_class=MnistCnnPolicy
+    policy_class=MnistCnnPolicy,
 )

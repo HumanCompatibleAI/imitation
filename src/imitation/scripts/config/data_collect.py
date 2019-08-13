@@ -2,10 +2,8 @@ import os
 
 import sacred
 
-from imitation.scripts.config.common import (
-  ATARI_CNN_BLANK_POLICY_KWARGS,
-  DEFAULT_BLANK_POLICY_KWARGS,
-)
+from imitation.scripts.config.common import (ATARI_CNN_BLANK_POLICY_KWARGS,
+                                             DEFAULT_BLANK_POLICY_KWARGS)
 from imitation.util import util
 
 data_collect_ex = sacred.Experiment("data_collect")
@@ -107,6 +105,12 @@ def walker():
 def fast():
   """Intended for testing purposes: small # of updates, ends quickly."""
   total_timesteps = int(1e4)
+
+
+@data_collect_ex.named_config
+def really_fast():
+  """Intended for testing purposes: small # of updates, ends quickly."""
+  total_timesteps = int(1e2)
 
 
 @data_collect_ex.named_config

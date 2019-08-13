@@ -1,5 +1,6 @@
 """Smoke tests for CLI programs in imitation.scripts.*"""
 
+import glob
 import tempfile
 
 from imitation.scripts.data_collect import data_collect_ex
@@ -56,6 +57,36 @@ def test_train():
   }
   run = train_ex.run(
       named_configs=['cartpole', 'gail', 'fast'],
+      config_updates=config_updates,
+  )
+  assert run.status == 'COMPLETED'
+
+
+def test_mnist_data_collect():
+  """Smoke test for data collection with MNIST environment"""
+  run = data_collect_ex.run(
+    command_name="rollouts_and_policy",
+    named_configs=['mnist', 'really_fast'],
+    config_updates=dict(
+      parallel=False,  # codecov does not like parallel
+    ),
+  )
+  assert run.status == 'COMPLETED'
+
+
+def test_mnist_train():
+  """Smoke test for training with MNIST environment"""
+  files = glob.glob('output/data_collect/imitation_Mnist-v0/*/rollouts/*.pkl')
+  config_updates = {
+      'init_trainer_kwargs': {
+          # codecov does not like parallel
+          'parallel': False,
+          'rollout_glob': files[-1],
+      },
+      'log_root': 'output/tests/train',
+  }
+  run = train_ex.run(
+      named_configs=['mnist', 'mnistcnn', 'fast'],
       config_updates=config_updates,
   )
   assert run.status == 'COMPLETED'
