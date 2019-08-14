@@ -60,6 +60,12 @@ def train_and_plot(_seed: int,
       a random policy. Also plot the performance of an expert policy if that is
       provided in the arguments.
 
+  Checkpoints:
+      - DiscrimNets are saved to f"{log_dir}/checkpoints/{step}/discrim/",
+        where step is either the training epoch or "final".
+      - Generator policies are saved to
+        f"{log_dir}/checkpoints/{step}/gen_policy/".
+
   Args:
       _seed: Random seed.
       env_name: The environment to train in.
@@ -221,7 +227,8 @@ def train_and_plot(_seed: int,
       if checkpoint_interval > 0 and epoch % checkpoint_interval == 0:
         save(trainer, os.path.join(log_dir, "checkpoints", f"{epoch:05d}"))
 
-    save(trainer, os.path.join(log_dir, "final"))
+    # Save final artifacts.
+    save(trainer, os.path.join(log_dir, "checkpoints", "final"))
 
     # Final evaluation of imitation policy.
     stats = util.rollout.rollout_stats(trainer.gen_policy,
