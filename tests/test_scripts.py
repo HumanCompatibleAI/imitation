@@ -1,6 +1,6 @@
 """Smoke tests for CLI programs in imitation.scripts.*
 
-Every test in this file should us `parallel=False` to turn off multiprocessing
+Every test in this file should use `parallel=False` to turn off multiprocessing
 because codecov might interact poorly with multiprocessing. The 'fast'
 named_config for each experiment implicitly sets parallel=False.
 """
@@ -61,9 +61,13 @@ def test_train():
                                    ) as tmpdir:
       config_updates = {
           'init_trainer_kwargs': {
-              'rollout_glob': "tests/data/rollouts/CartPole*.pkl",
+              # Rollouts are small, decrease size of buffer to avoid warning
+              'trainer_kwargs': {
+                  'n_disc_samples_per_buffer': 50,
+              },
           },
           'log_root': tmpdir,
+          'rollout_glob': "tests/data/rollouts/CartPole*.pkl",
       }
       run = train_ex.run(
           named_configs=['cartpole', 'gail', 'fast'],
@@ -83,9 +87,7 @@ def test_transfer_learning():
     run = train_ex.run(
         named_configs=['cartpole', 'airl', 'fast'],
         config_updates=dict(
-          init_trainer_kwargs=dict(
-            rollout_glob="tests/data/rollouts/CartPole*.pkl",
-          ),
+          rollout_glob="tests/data/rollouts/CartPole*.pkl",
           log_dir=log_dir_train,
         ),
     )

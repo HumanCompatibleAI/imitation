@@ -17,6 +17,7 @@ from stable_baselines import logger as sb_logger
 import tensorflow as tf
 import tqdm
 
+from imitation.policies import serialize
 from imitation.scripts.config.train import train_ex
 import imitation.util as util
 from imitation.util.trainer import init_trainer
@@ -29,26 +30,27 @@ def save(trainer, save_path):
   trainer.discrim.save(os.path.join(save_path, "discrim"))
   # TODO(gleave): unify this with the saving logic in data_collect?
   # (Needs #43 to be merged before attempting.)
-  trainer._gen_policy.save(os.path.join(save_path, "gen_policy"))
+  serialize.save_stable_model(os.path.join(save_path, "gen_policy"),
+                              trainer._gen_policy)
 
 
 @train_ex.main
-def train_and_plot(
-  _seed: int,
-  env_name: str,
-  log_dir: str,
-  *,
-  n_epochs: int = 100,
-  n_epochs_per_plot: Optional[float] = None,
-  n_disc_steps_per_epoch: int = 10,
-  n_gen_steps_per_epoch: int = 10000,
-  n_episodes_per_reward_data: int = 5,
-  n_episodes_eval: int = 50,
-  checkpoint_interval: int = 5,
-  interactive: bool = True,
-  expert_policy=None,
-  init_trainer_kwargs: dict = {},
-) -> Dict[str, float]:
+def train_and_plot(_seed: int,
+                   env_name: str,
+                   rollout_glob: str,
+                   log_dir: str,
+                   *,
+                   n_epochs: int = 100,
+                   n_epochs_per_plot: Optional[float] = None,
+                   n_disc_steps_per_epoch: int = 10,
+                   n_gen_steps_per_epoch: int = 10000,
+                   n_episodes_per_reward_data: int = 5,
+                   n_episodes_eval: int = 50,
+                   checkpoint_interval: int = 5,
+                   interactive: bool = True,
+                   expert_policy=None,
+                   init_trainer_kwargs: dict = {},
+                   ) -> Dict[str, float]:
   """Alternate between training the generator and discriminator.
 
   Every epoch:
@@ -102,12 +104,12 @@ def train_and_plot(
   assert n_epochs_per_plot is None or n_epochs_per_plot >= 1
 
   with util.make_session():
-    trainer = init_trainer(env_name, seed=_seed, log_dir=log_dir,
+    trainer = init_trainer(env_name, rollout_glob=rollout_glob,
+                           seed=_seed, log_dir=log_dir,
                            **init_trainer_kwargs)
 
     tf.logging.info("Logging to %s", log_dir)
     os.makedirs(log_dir, exist_ok=True)
-
     sb_logger.configure(folder=osp.join(log_dir, 'generator'),
                         format_strs=['tensorboard', 'stdout'])
 
