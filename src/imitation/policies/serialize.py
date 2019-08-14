@@ -99,6 +99,8 @@ for k, (cls_name, attr) in STABLE_BASELINES_CLASSES.items():
     cls = registry.load_attr(cls_name)
     AGENT_LOADERS[k] = _load_stable_baselines(cls, attr)
   except (AttributeError, ImportError):
+    # We expect PPO1 load to fail if mpi4py isn't installed.
+    # Stable Baselines can be installed without mpi4py.
     tf.logging.debug(f"Couldn't load {cls_name}. Skipping...")
 
 
