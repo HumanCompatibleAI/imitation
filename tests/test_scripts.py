@@ -50,9 +50,13 @@ def test_train():
       'init_trainer_kwargs': {
           # codecov does not like parallel
           'parallel': False,
-          'rollout_glob': "tests/data/rollouts/CartPole*.pkl",
+          # Rollouts are small, decrease size of buffer to avoid warning
+          'trainer_kwargs': {
+              'n_disc_samples_per_buffer': 50,
+          },
       },
       'log_root': 'output/tests/train',
+      'rollout_glob': "tests/data/rollouts/CartPole*.pkl",
   }
   run = train_ex.run(
       named_configs=['cartpole', 'gail', 'fast'],
