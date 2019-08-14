@@ -1,4 +1,4 @@
-"""Train an IRL algorithm and plot its output.
+"""Train GAIL or AIRL and plot its output.
 
 Can be used as a CLI script, or the `train_and_plot` function can be called
 directly.
@@ -18,7 +18,7 @@ import tensorflow as tf
 import tqdm
 
 from imitation.policies import serialize
-from imitation.scripts.config.train import train_ex
+from imitation.scripts.config.train_adversarial import train_ex
 import imitation.util as util
 from imitation.util.trainer import init_trainer
 

@@ -1,21 +1,36 @@
 imitation.scripts package
 =========================
 
+Subpackages
+-----------
+
+.. toctree::
+
+   imitation.scripts.config
+
 Submodules
 ----------
 
-imitation.scripts.data\_collect module
---------------------------------------
+imitation.scripts.eval\_policy module
+-------------------------------------
 
-.. automodule:: imitation.scripts.data_collect
+.. automodule:: imitation.scripts.eval_policy
    :members:
    :undoc-members:
    :show-inheritance:
 
-imitation.scripts.train module
-------------------------------
+imitation.scripts.expert\_demos module
+--------------------------------------
 
-.. automodule:: imitation.scripts.train
+.. automodule:: imitation.scripts.expert_demos
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+imitation.scripts.train\_adversarial module
+-------------------------------------------
+
+.. automodule:: imitation.scripts.train_adversarial
    :members:
    :undoc-members:
    :show-inheritance:

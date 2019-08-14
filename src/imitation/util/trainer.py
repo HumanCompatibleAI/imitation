@@ -1,14 +1,14 @@
 """
-Utility functions for manipulating Trainer.
+Utility functions for manipulating AdversarialTrainer.
 
 (The primary reason these functions are here instead of in utils.py is to
 prevent cyclic imports between imitation.trainer and imitation.util)
 """
 from typing import Optional
 
-import imitation.discrim_net as discrim_net
-from imitation.reward_net import BasicShapedRewardNet
-from imitation.trainer import Trainer
+from imitation.algorithms.adversarial import AdversarialTrainer
+import imitation.rewards.discrim_net as discrim_net
+from imitation.rewards.reward_net import BasicShapedRewardNet
 import imitation.util as util
 
 
@@ -29,8 +29,8 @@ def init_trainer(env_id: str,
                  trainer_kwargs: bool = {},
                  make_blank_policy_kwargs: bool = {},
                  ):
-  """Builds a Trainer, ready to be trained on a vectorized environment
-  and expert demonstrations.
+  """Builds an AdversarialTrainer, ready to be trained on a vectorized
+    environment and expert demonstrations.
 
   Args:
     env_id: The string id of a gym environment.
@@ -87,6 +87,6 @@ def init_trainer(env_id: str,
       expert_demos = expert_demos[:n_expert_demos]
 
   expert_rollouts = util.rollout.flatten_trajectories(expert_demos)[:3]
-  trainer = Trainer(env, gen_policy, discrim, expert_rollouts,
-                    **trainer_kwargs)
+  trainer = AdversarialTrainer(env, gen_policy, discrim, expert_rollouts,
+                               **trainer_kwargs)
   return trainer

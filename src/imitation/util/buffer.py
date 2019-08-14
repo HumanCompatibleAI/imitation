@@ -181,8 +181,7 @@ class Buffer:
 
 
 class ReplayBuffer:
-  """Wrapper around 3 `Buffer`s used to store and sample obs-act-obs triples.
-  """
+  """Wrapper around 3 `Buffer` objects to store & sample obs-act-obs tuples."""
 
   capacity: int
   """The number of data samples that can be stored in this buffer."""

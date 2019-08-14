@@ -3,7 +3,7 @@
 import gym
 import numpy as np
 
-from imitation.resettable_env import TabularModelEnv
+from imitation.envs.resettable_env import TabularModelEnv
 
 
 def make_random_trans_mat(
@@ -269,7 +269,7 @@ class CliffWorld(TabularModelEnv):
 
 def register_cliff(suffix, kwargs):
   gym.register(f'imitation/CliffWorld{suffix}-v0',
-               entry_point='imitation.examples.model_envs:CliffWorld',
+               entry_point='imitation.envs.examples.model_envs:CliffWorld',
                kwargs=kwargs)
 
 
@@ -286,7 +286,7 @@ for width, height, horizon in [(7, 4, 9), (15, 6, 18), (100, 20, 110)]:
 # These parameter choices are somewhat arbitrary.
 # We anticipate most users will want to construct RandomMDP directly.
 gym.register('imitation/Random-v0',
-             entry_point='imitation.examples.model_envs:RandomMDP',
+             entry_point='imitation.envs.examples.model_envs:RandomMDP',
              kwargs={
                  'n_states': 16,
                  'n_actions': 3,

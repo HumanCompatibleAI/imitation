@@ -9,11 +9,11 @@ import tensorflow as tf
 from tqdm import tqdm
 
 from imitation import summaries
-from imitation.discrim_net import DiscrimNet
+from imitation.rewards.discrim_net import DiscrimNet
 from imitation.util import buffer, reward_wrapper, rollout, util
 
 
-class Trainer:
+class AdversarialTrainer:
   """Trainer for GAIL and AIRL."""
 
   env: gym.Env

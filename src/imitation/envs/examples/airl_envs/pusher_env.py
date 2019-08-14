@@ -2,7 +2,7 @@ from gym import utils
 from gym.envs.mujoco import mujoco_env
 import numpy as np
 
-from imitation.examples.airl_envs.dynamic_mjc.mjc_models import pusher
+from imitation.envs.examples.airl_envs.dynamic_mjc.mjc_models import pusher
 
 
 class PusherEnv(mujoco_env.MujocoEnv, utils.EzPickle):

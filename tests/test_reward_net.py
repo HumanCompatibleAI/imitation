@@ -6,7 +6,7 @@ import pytest
 import tensorflow as tf
 
 from imitation.policies import base
-from imitation.reward_net import BasicRewardNet, BasicShapedRewardNet
+from imitation.rewards.reward_net import BasicRewardNet, BasicShapedRewardNet
 from imitation.util import rollout
 
 ENVS = ['FrozenLake-v0', 'CartPole-v1', 'Pendulum-v0']

@@ -2,7 +2,8 @@ from gym import utils
 from gym.envs.mujoco import mujoco_env
 import numpy as np
 
-from imitation.examples.airl_envs.dynamic_mjc.mjc_models import point_mass_maze
+from imitation.envs.examples.airl_envs.dynamic_mjc.mjc_models import \
+    point_mass_maze
 
 
 class PointMazeEnv(mujoco_env.MujocoEnv, utils.EzPickle):

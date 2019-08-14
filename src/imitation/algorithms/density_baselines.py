@@ -251,7 +251,7 @@ class DensityTrainer:
         details."""
     self.imitation_trainer.set_env(self.wrapped_env)
     # FIXME: learn() is not meant to be called frequently; there are
-    # significant per-call overheads (see Adam's comment in trainer.py)
+    # significant per-call overheads (see Adam's comment in adversarial.py)
     # FIXME: the ep_reward_mean reported by SB is wrong; it comes from a
     # Monitor() that is being (incorrectly) used to wrap the underlying
     # environment.
