@@ -4,7 +4,8 @@ import gym
 import numpy as np
 import pytest
 
-# Unused imports are for side-effect of registering environments
+# Unused imports is for side-effect of registering environments
+from imitation.envs import examples  # noqa: F401
 
 ENV_NAMES = [env_spec.id for env_spec in gym.envs.registration.registry.all()
              if env_spec.id.startswith('imitation/')]
