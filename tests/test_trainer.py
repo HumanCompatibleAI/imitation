@@ -3,8 +3,8 @@ import os
 
 import pytest
 
+from imitation.algorithms.adversarial import init_trainer
 from imitation.util import rollout
-from imitation.util.trainer import init_trainer
 
 USE_GAIL = [True, False]
 IN_CODECOV = 'COV_CORE_CONFIG' in os.environ

@@ -36,14 +36,6 @@ imitation.util.serialize module
    :undoc-members:
    :show-inheritance:
 
-imitation.util.trainer module
------------------------------
-
-.. automodule:: imitation.util.trainer
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 imitation.util.util module
 --------------------------
 

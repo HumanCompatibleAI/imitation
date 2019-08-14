@@ -17,10 +17,10 @@ from stable_baselines import logger as sb_logger
 import tensorflow as tf
 import tqdm
 
+from imitation.algorithms.adversarial import init_trainer
 from imitation.policies import serialize
 from imitation.scripts.config.train_adversarial import train_ex
 import imitation.util as util
-from imitation.util.trainer import init_trainer
 
 
 def save(trainer, save_path):
