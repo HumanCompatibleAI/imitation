@@ -34,14 +34,16 @@ class DiscrimNet(serialize.Serializable):
 
   @abstractmethod
   def build_policy_train_reward(self) -> tf.Tensor:
-    """
-    Builds self._policy_train_reward, the reward used during imitation
-    learning.
+    """Builds the reward used during imitation learning.
+
+    Saved as self._policy_train_reward. Should be a rank-1 Tensor.
     """
 
   def build_policy_test_reward(self) -> tf.Tensor:
     """
     Builds self._policy_test_reward, the reward used during transfer learning.
+
+    Should be a rank-1 Tensor.
 
     Subclasses should override this method if they have a transfer learning
     reward. By default it simply returns `self._policy_train_reward`.
@@ -92,7 +94,8 @@ class DiscrimNet(serialize.Serializable):
         self.log_policy_act_prob_ph: log_act_prob,
     }
     rew = self._sess.run(self.policy_train_reward, feed_dict=fd)
-    return np.squeeze(rew)
+    assert rew.shape == (n_gen,)
+    return rew
 
   def reward_test(
     self,
@@ -119,7 +122,8 @@ class DiscrimNet(serialize.Serializable):
       self.new_obs_ph: new_obs,
     }
     rew = self._sess.run(self.policy_test_reward, feed_dict=fd)
-    return np.squeeze(rew)
+    assert rew.shape == (len(old_obs),)
+    return rew
 
   @abstractmethod
   def build_disc_loss(self):
@@ -230,7 +234,6 @@ class DiscrimNetAIRL(DiscrimNet):
     )
 
   def build_policy_test_reward(self):
-    super().build_policy_test_reward()
     return self.reward_net.reward_output_test
 
   def build_policy_train_reward(self):
@@ -312,7 +315,6 @@ class DiscrimNetGAIL(DiscrimNet, serialize.LayersSerializable):
     return discrim_mlp, discrim_logits
 
   def build_policy_train_reward(self) -> tf.Tensor:
-    super().build_policy_train_reward()
     train_reward = -tf.log_sigmoid(self._discrim_logits)
     return train_reward
 
