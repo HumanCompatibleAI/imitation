@@ -45,7 +45,7 @@ class Registry(Generic[T]):
       self._values[key] = load(self._indirect[key])
     return self._values[key]
 
-  def register(self, key: str,
+  def register(self, key: str, *,
                value: Optional[T] = None,
                indirect: Optional[str] = None):
     if key in self._values or key in self._indirect:
@@ -62,15 +62,15 @@ class Registry(Generic[T]):
       self._indirect[key] = indirect
 
 
-def env_to_space(cls: Type[T], **kwargs) -> LoaderFn:
+def build_loader_fn_require_space(cls: Type[T], **kwargs) -> LoaderFn:
   """Converts a factory taking observation and action space into a LoaderFn."""
   def f(path: str, venv: VecEnv) -> T:
     return cls(venv.observation_space, venv.action_space, **kwargs)
   return f
 
 
-def env_only(policy_cls: Type[T], **kwargs) -> LoaderFn:
+def build_loader_fn_require_env(cls: Type[T], **kwargs) -> LoaderFn:
   """Converts a factory taking an environment into a LoaderFn."""
   def f(path: str, venv: VecEnv) -> T:
-    return policy_cls(venv, **kwargs)
+    return cls(venv, **kwargs)
   return f

@@ -79,8 +79,12 @@ def _load_stable_baselines(cls: Type[BaseRLModel],
   return f
 
 
-policy_registry.register('random', value=registry.env_to_space(RandomPolicy))
-policy_registry.register('zero', value=registry.env_to_space(ZeroPolicy))
+policy_registry.register(
+    'random',
+    value=registry.build_loader_fn_require_space(RandomPolicy))
+policy_registry.register(
+    'zero',
+    value=registry.build_loader_fn_require_space(ZeroPolicy))
 
 STABLE_BASELINES_CLASSES = {
     'ppo1': (stable_baselines.PPO1, 'policy_pi'),
