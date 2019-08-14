@@ -74,7 +74,7 @@ class DiscrimNet(serialize.Serializable):
             choosing `act[i]` given `old_obs[i]`.
             `np.squeeze(log_act_prob)` has shape `(batch_size,)`.
     Returns:
-        rew: The rewards. Its shape is `(batch_size,)`.
+        The rewards. Its shape is `(batch_size,)`.
     """
     log_act_prob = np.squeeze(
       gen_log_prob_fn(observation=old_obs, actions=act, logp=True))
@@ -111,7 +111,7 @@ class DiscrimNet(serialize.Serializable):
         new_obs: The observation input. Its shape is
             `(batch_size,) + observation_space.shape`.
     Returns:
-        rew: The rewards. Its shape is `(batch_size,)`.
+        The rewards. Its shape is `(batch_size,)`.
     """
     fd = {
       self.old_obs_ph: old_obs,

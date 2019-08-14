@@ -68,7 +68,7 @@ class RewardNet(serialize.Serializable):
     ```
 
     Returns:
-      _reward_output_train: (tf.Tensor) A (None,) shaped Tensor holding
+      tf.Tensor: A (None,) shaped Tensor holding
           the training reward associated with each timestep.
     """
     pass
@@ -90,7 +90,7 @@ class RewardNet(serialize.Serializable):
     ```
 
     Returns:
-      _reward_output_test: (tf.Tensor) A (None,) shaped Tensor holding
+      tf.Tensor: A (None,) shaped Tensor holding
         the test reward associated with each timestep.
     """
     return self._theta_output
@@ -167,7 +167,7 @@ class RewardNetShaped(RewardNet):
     ```
 
     Returns:
-      _reward_output_train: (tf.Tensor) A (None,) shaped Tensor holding
+      tf.Tensor: A (None,) shaped Tensor holding
           the training reward associated with each timestep.
     """
     return self._shaped_reward_output
