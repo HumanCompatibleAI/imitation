@@ -22,10 +22,11 @@ def _add_reward_net_loaders(classes):
     reward_net_registry.register(key=name, value=loader)
 
 
-_add_reward_net_loaders({
+REWARD_NETS = {
     "BasicRewardNet": reward_net.BasicRewardNet,
     "BasicShapedRewardNet": reward_net.BasicShapedRewardNet,
-})
+}
+_add_reward_net_loaders(REWARD_NETS)
 
 
 def _load_discrim_net(cls):
@@ -50,11 +51,12 @@ _add_discrim_net_loaders({
 def load_reward_net_as_fn(path: str, env: VecEnv) -> RewardFn:
   reward_type, shaped, reward_path = path.split(':')
   reward_net_loader = reward_net_registry.get(reward_type)
-  shaped = bool(shaped)
+  assert shaped in ["True", "False"]
+  shaped = shaped == "True"
 
   # TODO(adam): leaks session
-  with util.make_session(close_on_exit=False) as sess:
-    net = reward_net_loader(path, env)
+  with util.make_session(close_on_exit=False) as (graph, sess):
+    net = reward_net_loader(reward_path, env)
     reward = net.reward_output_train if shaped else net.reward_output_test
 
     def f(old_obs: np.ndarray,

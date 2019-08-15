@@ -6,20 +6,28 @@ import pytest
 import tensorflow as tf
 
 from imitation.policies import base
-from imitation.rewards.reward_net import BasicRewardNet, BasicShapedRewardNet
-from imitation.util import rollout
+from imitation.rewards import serialize
+from imitation.util import rollout, util
 
 ENVS = ['FrozenLake-v0', 'CartPole-v1', 'Pendulum-v0']
-REWARD_NETS = [BasicRewardNet, BasicShapedRewardNet]
+HARDCODED_TYPES = ['zero']
 
 
 @pytest.mark.parametrize("env_id", ENVS)
-@pytest.mark.parametrize("reward_net_cls", REWARD_NETS)
+@pytest.mark.parametrize("reward_net_cls", serialize.REWARD_NETS.values())
 def test_init_no_crash(session, env_id, reward_net_cls):
   env = gym.make(env_id)
   for i in range(3):
     with tf.variable_scope(env_id + str(i) + "shaped"):
       reward_net_cls(env.observation_space, env.action_space)
+
+
+@pytest.mark.parametrize("env_name", ENVS)
+@pytest.mark.parametrize("reward_type", HARDCODED_TYPES)
+def test_reward_valid(env_name, reward_type):
+  """Test output of reward function is scalar."""
+  venv = util.make_vec_env(env_name, n_envs=1, parallel=False)
+  serialize.load_reward(reward_type, "foobar", venv)
 
 
 def _make_feed_dict(reward_net, rollouts):
@@ -31,25 +39,33 @@ def _make_feed_dict(reward_net, rollouts):
   }
 
 
-@pytest.mark.parametrize("env_id", ENVS)
-@pytest.mark.parametrize("reward_net_cls", REWARD_NETS)
-def test_serialize_identity(session, env_id, reward_net_cls):
+@pytest.mark.parametrize("env_name", ENVS)
+@pytest.mark.parametrize("reward_net", serialize.REWARD_NETS.items())
+def test_serialize_identity(session, env_name, reward_net):
   """Does output of deserialized reward network match that of original?"""
-  env = gym.make(env_id)
+  net_name, net_cls = reward_net
+  print(f"Testing {net_name}")
+
+  venv = util.make_vec_env(env_name, n_envs=1, parallel=False)
   with tf.variable_scope("original"):
-    original = reward_net_cls(env.observation_space, env.action_space)
-  random = base.RandomPolicy(env.observation_space, env.action_space)
+    original = net_cls(venv.observation_space, venv.action_space)
+  random = base.RandomPolicy(venv.observation_space, venv.action_space)
   session.run(tf.global_variables_initializer())
 
   with tempfile.TemporaryDirectory(prefix='imitation-serialize-rew') as tmpdir:
     original.save(tmpdir)
     with tf.variable_scope("loaded"):
-      loaded = reward_net_cls.load(tmpdir)
+      loaded = net_cls.load(tmpdir)
+
+    unshaped_fn = serialize.load_reward("RewardNet",
+                                        f"{net_name}:False:{tmpdir}", venv)
+    shaped_fn = serialize.load_reward("RewardNet",
+                                      f"{net_name}:True:{tmpdir}", venv)
 
   assert original.observation_space == loaded.observation_space
   assert original.action_space == loaded.action_space
 
-  rollouts = rollout.generate_transitions(random, env, n_timesteps=100)
+  rollouts = rollout.generate_transitions(random, venv, n_timesteps=100)
   feed_dict = {}
   outputs = {'train': [], 'test': []}
   for net in [original, loaded]:
@@ -59,6 +75,11 @@ def test_serialize_identity(session, env_id, reward_net_cls):
 
   rewards = session.run(outputs, feed_dict=feed_dict)
 
+  old_obs, actions, new_obs, _ = rollouts
+  rewards['train'].append(shaped_fn(old_obs, actions, new_obs))
+  rewards['test'].append(unshaped_fn(old_obs, actions, new_obs))
+
   for key, predictions in rewards.items():
-    assert len(predictions) == 2
+    assert len(predictions) == 3
     assert np.allclose(predictions[0], predictions[1])
+    assert np.allclose(predictions[0], predictions[2])
