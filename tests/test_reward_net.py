@@ -1,3 +1,4 @@
+import numbers
 import tempfile
 
 import gym
@@ -22,12 +23,25 @@ def test_init_no_crash(session, env_id, reward_net_cls):
       reward_net_cls(env.observation_space, env.action_space)
 
 
+def _sample(space, n):
+  return np.array([space.sample() for _ in range(n)])
+
+
 @pytest.mark.parametrize("env_name", ENVS)
 @pytest.mark.parametrize("reward_type", HARDCODED_TYPES)
 def test_reward_valid(env_name, reward_type):
-  """Test output of reward function is scalar."""
+  """Test output of reward function is appropriate shape and type."""
   venv = util.make_vec_env(env_name, n_envs=1, parallel=False)
-  serialize.load_reward(reward_type, "foobar", venv)
+  reward_fn = serialize.load_reward(reward_type, "foobar", venv)
+
+  TRAJECTORY_LEN = 10
+  old_obs = _sample(venv.observation_space, TRAJECTORY_LEN)
+  actions = _sample(venv.action_space, TRAJECTORY_LEN)
+  new_obs = _sample(venv.observation_space, TRAJECTORY_LEN)
+
+  pred_reward = reward_fn(old_obs, actions, new_obs)
+  assert pred_reward.shape == (TRAJECTORY_LEN, )
+  assert isinstance(pred_reward[0], numbers.Number)
 
 
 def _make_feed_dict(reward_net, rollouts):
