@@ -42,16 +42,23 @@ find . -name stdout | xargs tail -n 15 | grep -E '(==|ep_reward_mean)' | tee ${R
 tmp_dir=$(mktemp -d "${TMPDIR:-/tmp}/train_experts.XXX")
 
 for env_name in */; do
-  env_name=${env_name::-1}  # Remove trailing "/"
+  env_name=$(echo ${env_name} | sed -e 's|/$||')  # Remove trailing slash
   if [ $env_name == "parallel" ]; then
     # Not actually an env name; this is a log dir for the parallel command.
     continue
   fi
 
-  for policy_dir in ${env_name}/*/policies/final; do
-    ln -s "$(pwd)/${policy_dir}" "${tmp_dir}/${env_name}"
-    break  # Only use the first expert.
+  pushd ${env_name} > /dev/null
+  mkdir -p ${tmp_dir}/${env_name}
+
+  for uuid in */; do
+    uuid=$(echo ${uuid} | sed -e 's|/$||')  # Remove trailing slash
+    pushd ${uuid} > /dev/null
+    ln -s "$(pwd)/policies/final" "${tmp_dir}/${env_name}/${uuid}"
+    popd > /dev/null
   done
+
+  popd > /dev/null
 done
 
 # Build zipfile using the directory structure corresponding to the symlinks
