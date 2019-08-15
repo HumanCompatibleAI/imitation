@@ -130,6 +130,7 @@ def two_d_maze():
 
 # Debug configs
 
+@expert_demos_ex.named_config
 def fast():
   """Intended for testing purposes: small # of updates, ends quickly."""
   total_timesteps = int(1e4)
