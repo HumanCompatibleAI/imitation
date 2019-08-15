@@ -57,7 +57,7 @@ def _load_stable_baselines(cls: Type[BaseRLModel],
 
   Returns:
     A function loading policies trained via cls."""
-  def f(path: str, env: gym.Env) -> BasePolicy:
+  def f(path: str, env: VecEnv) -> BasePolicy:
     """Loads a policy saved to path, for environment env."""
     tf.logging.info(f"Loading Stable Baselines policy for '{cls}' "
                     f"from '{path}'")
