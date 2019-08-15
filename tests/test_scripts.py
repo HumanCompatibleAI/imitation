@@ -8,16 +8,16 @@ named_config for each experiment implicitly sets parallel=False.
 import os.path as osp
 import tempfile
 
-from imitation.scripts.data_collect import data_collect_ex
-from imitation.scripts.policy_eval import policy_eval_ex
-from imitation.scripts.train import train_ex
+from imitation.scripts.eval_policy import eval_policy_ex
+from imitation.scripts.expert_demos import expert_demos_ex
+from imitation.scripts.train_adversarial import train_ex
 
 
-def test_data_collect_main():
-  """Smoke test for imitation.scripts.data_collect.rollouts_and_policy"""
+def test_expert_demos_main():
+  """Smoke test for imitation.scripts.expert_demos.rollouts_and_policy"""
   with tempfile.TemporaryDirectory(prefix='imitation-data_collect-main',
                                    ) as tmpdir:
-      run = data_collect_ex.run(
+      run = expert_demos_ex.run(
           named_configs=['cartpole', 'fast'],
           config_updates=dict(
             log_root=tmpdir,
@@ -26,11 +26,11 @@ def test_data_collect_main():
       assert run.status == 'COMPLETED'
 
 
-def test_data_collect_rollouts_from_policy():
-  """Smoke test for imitation.scripts.data_collect.rollouts_from_policy"""
+def test_expert_demos_rollouts_from_policy():
+  """Smoke test for imitation.scripts.expert_demos.rollouts_from_policy"""
   with tempfile.TemporaryDirectory(prefix='imitation-data_collect-policy',
                                    ) as tmpdir:
-    run = data_collect_ex.run(
+    run = expert_demos_ex.run(
         command_name="rollouts_from_policy",
         named_configs=['cartpole', 'fast'],
         config_updates=dict(
@@ -41,22 +41,22 @@ def test_data_collect_rollouts_from_policy():
   assert run.status == 'COMPLETED'
 
 
-def test_policy_eval():
-  """Smoke test for imitation.scripts.policy_eval"""
+def test_eval_policy():
+  """Smoke test for imitation.scripts.eval_policy"""
   with tempfile.TemporaryDirectory(prefix='imitation-policy_eval',
                                    ) as tmpdir:
       config_updates = {
           'render': False,
           'log_root': tmpdir,
       }
-      run = policy_eval_ex.run(config_updates=config_updates,
+      run = eval_policy_ex.run(config_updates=config_updates,
                                named_configs=['fast'])
       assert run.status == 'COMPLETED'
       assert isinstance(run.result, dict)
 
 
-def test_train():
-  """Smoke test for imitation.scripts.train"""
+def test_train_adversarial():
+  """Smoke test for imitation.scripts.train_adversarial"""
   with tempfile.TemporaryDirectory(prefix='imitation-train',
                                    ) as tmpdir:
       config_updates = {
@@ -93,9 +93,9 @@ def test_transfer_learning():
     )
     assert run.status == 'COMPLETED'
 
-    log_dir_data = osp.join(tmpdir, "data_collect")
+    log_dir_data = osp.join(tmpdir, "expert_demos")
     discrim_path = osp.join(log_dir_train, "checkpoints", "final", "discrim")
-    run = data_collect_ex.run(
+    run = expert_demos_ex.run(
         named_configs=['cartpole', 'fast'],
         config_updates=dict(
           log_dir=log_dir_data,

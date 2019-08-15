@@ -7,15 +7,15 @@ from stable_baselines import logger as sb_logger
 from stable_baselines.common.vec_env import VecNormalize
 import tensorflow as tf
 
-from imitation.discrim_net import DiscrimNetAIRL
 from imitation.policies import serialize
-from imitation.scripts.config.data_collect import data_collect_ex
+from imitation.rewards.discrim_net import DiscrimNetAIRL
+from imitation.scripts.config.expert_demos import expert_demos_ex
 import imitation.util as util
 from imitation.util.reward_wrapper import RewardVecEnvWrapper
 from imitation.util.rollout import _validate_traj_generate_params
 
 
-@data_collect_ex.main
+@expert_demos_ex.main
 def rollouts_and_policy(
   _seed: int,
   env_name: str,
@@ -134,7 +134,7 @@ def rollouts_and_policy(
       serialize.save_stable_model(output_dir, policy, vec_normalize)
 
 
-@data_collect_ex.command
+@expert_demos_ex.command
 @util.make_session()
 def rollouts_from_policy(
   _seed: int,
@@ -153,7 +153,7 @@ def rollouts_from_policy(
 
   Default save path is f"{log_dir}/rollouts/{env_name}.pkl". Change to
   f"{rollout_save_dir}/{env_name}.pkl" by setting the `rollout_save_dir` param.
-  Unlisted arguments are the same as in `data_collect()`.
+  Unlisted arguments are the same as in `rollouts_and_policy()`.
 
   Args:
       policy_type: Argument to `imitation.policies.serialize.load_policy`.
@@ -182,9 +182,9 @@ def rollouts_from_policy(
 
 def main_console():
   observer = FileStorageObserver.create(
-      osp.join('output', 'sacred', 'data_collect'))
-  data_collect_ex.observers.append(observer)
-  data_collect_ex.run_commandline()
+      osp.join('output', 'sacred', 'expert_deoms'))
+  expert_demos_ex.observers.append(observer)
+  expert_demos_ex.run_commandline()
 
 
 if __name__ == "__main__":

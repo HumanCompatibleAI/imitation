@@ -7,7 +7,8 @@ import gym
 import numpy as np
 import tensorflow as tf
 
-from imitation import reward_net, util
+from imitation import util
+from imitation.rewards import reward_net
 from imitation.util import serialize
 
 

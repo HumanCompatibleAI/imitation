@@ -1,5 +1,6 @@
 """Tests for Behavioural Cloning (BC)."""
-from imitation import bc, util
+from imitation import util
+from imitation.algorithms import bc
 
 
 def test_bc():

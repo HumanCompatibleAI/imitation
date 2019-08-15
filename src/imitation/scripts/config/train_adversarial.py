@@ -1,4 +1,4 @@
-"""Configuration for imitation.scripts.train."""
+"""Configuration for imitation.scripts.train_adversarial."""
 
 import os
 
@@ -9,7 +9,7 @@ from imitation import util
 from imitation.policies import base
 from imitation.scripts.config.common import DEFAULT_BLANK_POLICY_KWARGS
 
-train_ex = sacred.Experiment("train", interactive=True)
+train_ex = sacred.Experiment("train_adversarial", interactive=True)
 
 
 @train_ex.config
@@ -44,7 +44,7 @@ def train_defaults():
                                       **DEFAULT_BLANK_POLICY_KWARGS),
     )
 
-    log_root = os.path.join("output", "train")  # output directory
+    log_root = os.path.join("output", "train_adversarial")  # output directory
     checkpoint_interval = 5  # num epochs between checkpoints (<=0 disables)
 
 
@@ -53,7 +53,7 @@ def paths(env_name, log_root):
     log_dir = os.path.join(log_root, env_name.replace('/', '_'),
                            util.make_unique_timestamp())
     # Recommended user sets rollout_glob manually
-    rollout_glob = os.path.join("output", "data_collect",
+    rollout_glob = os.path.join("output", "expert_demos",
                                 env_name.replace('/', '_'),
                                 "*", "rollouts", "final.pkl")
 

@@ -4,9 +4,11 @@ import numpy as np
 import pytest
 
 from imitation import util
-from imitation.density_baselines import (STATE_ACTION_DENSITY, STATE_DENSITY,
-                                         STATE_STATE_DENSITY, DensityReward,
-                                         DensityTrainer)
+from imitation.algorithms.density_baselines import (STATE_ACTION_DENSITY,
+                                                    STATE_DENSITY,
+                                                    STATE_STATE_DENSITY,
+                                                    DensityReward,
+                                                    DensityTrainer)
 from imitation.policies.base import RandomPolicy
 from imitation.util import rollout
 
