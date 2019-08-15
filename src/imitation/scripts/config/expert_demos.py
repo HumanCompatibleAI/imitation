@@ -34,18 +34,27 @@ def logging(env_name, log_root):
                          util.make_unique_timestamp())
 
 
-@expert_demos_ex.named_config
-def ant():
-  env_name = "Ant-v2"
-  make_blank_policy_kwargs = dict(
-      n_steps=2048,  # batch size of 2048*8=16384 due to num_vec
-  )
-  total_timesteps = int(5e6)  # OK after 2e6, but continues improving
+# Shared settings
 
+ant_shared_locals = dict(
+    make_blank_policy_kwargs=dict(
+        n_steps=2048,  # batch size of 2048*8=16384 due to num_vec
+    ),
+    total_timesteps=int(5e6),
+)
+
+
+# Standard Gym env configs
 
 @expert_demos_ex.named_config
 def acrobot():
   env_name = "Acrobot-v1"
+
+
+@expert_demos_ex.named_config
+def ant():
+  env_name = "Ant-v2"
+  locals().update(**ant_shared_locals)
 
 
 @expert_demos_ex.named_config
@@ -61,18 +70,18 @@ def half_cheetah():
 
 
 @expert_demos_ex.named_config
+def hopper():
+  # TODO(adam): upgrade to Hopper-v3?
+  env_name = "Hopper-v2"
+
+
+@expert_demos_ex.named_config
 def humanoid():
   env_name = "Humanoid-v2"
   make_blank_policy_kwargs = dict(
       n_steps=2048,  # batch size of 2048*8=16384 due to num_vec
   )
   total_timesteps = int(10e6)  # fairly discontinuous, needs at least 5e6
-
-
-@expert_demos_ex.named_config
-def hopper():
-  # TODO(adam): upgrade to Hopper-v3?
-  env_name = "Hopper-v2"
 
 
 @expert_demos_ex.named_config
@@ -99,6 +108,27 @@ def swimmer():
 def walker():
   env_name = "Walker2d-v2"
 
+
+# Custom env configs
+
+@expert_demos_ex.named_config
+def custom_ant():
+  env_name = "imitation/CustomAnt-v0"
+  locals().update(**ant_shared_locals)
+
+
+@expert_demos_ex.named_config
+def disabled_ant():
+  env_name = "imitation/DisabledAnt-v0"
+  locals().update(**ant_shared_locals)
+
+
+@expert_demos_ex.named_config
+def two_d_maze():
+  env_name = "imitation/TwoDMaze-v0"
+
+
+# Debug configs
 
 @expert_demos_ex.named_config
 def fast():

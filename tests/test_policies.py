@@ -8,15 +8,15 @@ import pytest
 from stable_baselines.common.vec_env import VecNormalize
 
 from imitation.policies import serialize
-from imitation.util import rollout, util
+from imitation.util import registry, rollout, util
 
 SIMPLE_ENVS = [
     "CartPole-v0",  # Discrete(2) action space
     "MountainCarContinuous-v0",  # Box(1) action space
 ]
 HARDCODED_TYPES = ["random", "zero"]
-BASELINE_MODELS = [(name, cls)
-                   for name, (cls, attr) in
+BASELINE_MODELS = [(name, cls_name)
+                   for name, (cls_name, attr) in
                    serialize.STABLE_BASELINES_CLASSES.items()]
 
 
@@ -42,7 +42,14 @@ def test_serialize_identity(env_name, model_cfg, normalize):
   vec_normalize = None
   if normalize:
     venv = vec_normalize = VecNormalize(venv)
-  model_name, model_cls = model_cfg
+
+  model_name, model_cls_name = model_cfg
+  try:
+    model_cls = registry.load_attr(model_cls_name)
+  except (AttributeError, ImportError):
+    pytest.skip("Couldn't load stable baselines class. "
+                "(Probably because mpi4py not installed.)")
+
   model = model_cls('MlpPolicy', venv)
   model.learn(1000)
 

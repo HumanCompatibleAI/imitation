@@ -7,6 +7,7 @@ from stable_baselines import logger as sb_logger
 from stable_baselines.common.vec_env import VecNormalize
 import tensorflow as tf
 
+import imitation.envs.examples  # noqa: F401
 from imitation.policies import serialize
 from imitation.rewards.discrim_net import DiscrimNetAIRL
 from imitation.scripts.config.expert_demos import expert_demos_ex
@@ -143,7 +144,7 @@ def rollouts_from_policy(
   rollout_save_n_timesteps: int,
   rollout_save_n_episodes: int,
   log_dir: str,
-  policy_path: Optional[str] = None,
+  policy_path: str,
   policy_type: str = "ppo2",
   env_name: str = "CartPole-v1",
   parallel: bool = True,
@@ -164,9 +165,6 @@ def rollouts_from_policy(
   """
   venv = util.make_vec_env(env_name, num_vec, seed=_seed,
                            parallel=parallel, log_dir=log_dir)
-
-  if policy_path is None:
-    policy_path = f"expert_models/{env_name}"
   policy = serialize.load_policy(policy_type, policy_path, venv)
 
   if rollout_save_dir is None:
