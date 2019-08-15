@@ -31,7 +31,7 @@ def expert_demos_defaults():
 @expert_demos_ex.config
 def logging(env_name, log_root):
   log_dir = os.path.join(log_root, env_name.replace('/', '_'),
-                         util.make_timestamp())
+                         util.make_unique_timestamp())
 
 
 @expert_demos_ex.named_config
