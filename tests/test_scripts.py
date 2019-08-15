@@ -99,7 +99,8 @@ def test_transfer_learning():
         named_configs=['cartpole', 'fast'],
         config_updates=dict(
           log_dir=log_dir_data,
-          discrim_net_airl_path=discrim_path,
+          reward_type='DiscrimNetAIRL',
+          reward_path=discrim_path,
         ),
     )
     assert run.status == 'COMPLETED'
