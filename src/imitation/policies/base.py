@@ -14,7 +14,7 @@ class HardCodedPolicy(BasePolicy, abc.ABC):
     self.ob_space = ob_space
     self.ac_space = ac_space
 
-  def step(self, obs, state=None, mask=None, deterministic=False) -> np.ndarray:
+  def step(self, obs, state=None, mask=None, deterministic=False):
     actions = []
     for ob in obs:
       assert self.ob_space.contains(ob)
