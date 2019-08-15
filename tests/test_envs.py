@@ -4,9 +4,8 @@ import gym
 import numpy as np
 import pytest
 
-# Unused imports are for side-effect of registering environments
-import imitation.examples.airl_envs  # noqa: F401
-import imitation.examples.model_envs  # noqa: F401
+# Unused imports is for side-effect of registering environments
+from imitation.envs import examples  # noqa: F401
 
 ENV_NAMES = [env_spec.id for env_spec in gym.envs.registration.registry.all()
              if env_spec.id.startswith('imitation/')]
@@ -52,6 +51,7 @@ def assert_equal_rollout(rollout_a, rollout_b):
 
 @pytest.mark.parametrize("env_name", ENV_NAMES)
 def test_seed(env, env_name):
+  env.action_space.seed(0)
   actions = [env.action_space.sample() for _ in range(10)]
 
   # With the same seed, should always get the same result
@@ -69,7 +69,7 @@ def test_seed(env, env_name):
   # eventually get a different result. For deterministic environments, all
   # seeds will produce the same starting state.
   same_obs = True
-  for i in range(10):
+  for i in range(20):
     env.seed(i)
     new_rollout = rollout(env, actions)
     for step_a, step_new in zip(rollout_a, new_rollout):

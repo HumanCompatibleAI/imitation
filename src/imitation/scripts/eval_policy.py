@@ -4,8 +4,9 @@ from sacred.observers import FileStorageObserver
 from stable_baselines.common.vec_env import VecEnvWrapper
 import tensorflow as tf
 
+import imitation.envs.examples  # noqa: F401
 from imitation.policies import serialize
-from imitation.scripts.config.policy_eval import policy_eval_ex
+from imitation.scripts.config.eval_policy import eval_policy_ex
 from imitation.util import rollout, util
 
 
@@ -24,8 +25,8 @@ class InteractiveRender(VecEnvWrapper):
     return ob
 
 
-@policy_eval_ex.main
-def policy_eval(_seed: int, env_name: str, timesteps: int, num_vec: int,
+@eval_policy_ex.main
+def eval_policy(_seed: int, env_name: str, timesteps: int, num_vec: int,
                 parallel: bool, render: bool, policy_type: str,
                 policy_path: str, log_dir: str):
   """Rolls a policy out in an environment, collecting statistics.
@@ -64,6 +65,6 @@ def policy_eval(_seed: int, env_name: str, timesteps: int, num_vec: int,
 
 if __name__ == "__main__":
   observer = FileStorageObserver.create(
-      osp.join('output', 'sacred', 'policy_eval'))
-  policy_eval_ex.observers.append(observer)
-  policy_eval_ex.run_commandline()
+      osp.join('output', 'sacred', 'eval_policy'))
+  eval_policy_ex.observers.append(observer)
+  eval_policy_ex.run_commandline()

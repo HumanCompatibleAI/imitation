@@ -4,6 +4,7 @@ import datetime
 import functools
 import os
 from typing import Callable, Dict, Iterable, Optional, Tuple, Type, Union
+import uuid
 
 import gym
 import stable_baselines
@@ -19,9 +20,12 @@ import tensorflow as tf
 LayersDict = Dict[str, tf.layers.Layer]
 
 
-def make_timestamp():
+def make_unique_timestamp():
+  """Timestamp, with random value added to avoid collisions."""
   ISO_TIMESTAMP = "%Y%m%d_%H%M%S"
-  return datetime.datetime.now().strftime(ISO_TIMESTAMP)
+  timestamp = datetime.datetime.now().strftime(ISO_TIMESTAMP)
+  random_uuid = uuid.uuid4().hex
+  return f"{timestamp}_{random_uuid}"
 
 
 def maybe_load_env(env_or_str, vectorize=True):

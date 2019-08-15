@@ -1,6 +1,6 @@
 import numpy as np
 
-from imitation.examples.airl_envs.dynamic_mjc.model_builder import MJCModel
+from imitation.envs.examples.airl_envs.dynamic_mjc.model_builder import MJCModel
 
 
 def block_push(object_pos=(0, 0, 0), goal_pos=(0, 0, 0)):

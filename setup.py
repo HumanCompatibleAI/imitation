@@ -59,9 +59,9 @@ setup(
     },
     entry_points={
         'console_scripts': [
-            ('imitation-data-collect=imitation.scripts.data_collect'
+            ('imitation-expert-demos=imitation.scripts.expert_demos'
              ':main_console'),
-            'imitation-train=imitation.scripts.train:main_console',
+            'imitation-train=imitation.scripts.train_adversarial:main_console',
         ],
     },
     url='https://github.com/HumanCompatibleAI/imitation',

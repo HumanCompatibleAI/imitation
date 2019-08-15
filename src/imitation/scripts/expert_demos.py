@@ -7,13 +7,16 @@ from stable_baselines import logger as sb_logger
 from stable_baselines.common.vec_env import VecNormalize
 import tensorflow as tf
 
+import imitation.envs.examples  # noqa: F401
 from imitation.policies import serialize
-from imitation.scripts.config.data_collect import data_collect_ex
+from imitation.rewards.discrim_net import DiscrimNetAIRL
+from imitation.scripts.config.expert_demos import expert_demos_ex
 import imitation.util as util
+from imitation.util.reward_wrapper import RewardVecEnvWrapper
 from imitation.util.rollout import _validate_traj_generate_params
 
 
-@data_collect_ex.main
+@expert_demos_ex.main
 def rollouts_and_policy(
   _seed: int,
   env_name: str,
@@ -24,6 +27,7 @@ def rollouts_and_policy(
   parallel: bool = False,
   normalize: bool = True,
   make_blank_policy_kwargs: dict = {},
+  discrim_net_airl_path: Optional[str] = None,
 
   rollout_save_interval: int = 0,
   rollout_save_final: bool = False,
@@ -49,6 +53,10 @@ def rollouts_and_policy(
       parallel: If True, then use DummyVecEnv. Otherwise use SubprocVecEnv.
       normalize: If True, then rescale observations and reward.
       make_blank_policy_kwargs: Kwargs for `make_blank_policy`.
+      discrim_net_airl_path: If provided, then load the serialized
+        DiscrimNetAIRL and wrap the environment in the trainer's test reward.
+        This is useful for AIRL transfer learning.
+
       rollout_save_interval: The number of training updates in between
           intermediate rollout saves. If the argument is nonpositive, then
           don't save intermediate updates.
@@ -62,6 +70,7 @@ def rollouts_and_policy(
       rollout_save_n_episodes: The number of episodes saved in every
           file. Must set exactly one of `rollout_save_n_timesteps` and
           `rollout_save_n_episodes`.
+
       policy_save_interval: The number of training updates between saves. Has
           the same semantics are `rollout_save_interval`.
       policy_save_final: If True, then save the policy right after training is
@@ -86,28 +95,32 @@ def rollouts_and_policy(
     if normalize:
       venv = vec_normalize = VecNormalize(venv)
 
+    if discrim_net_airl_path is not None:
+      discrim_net = DiscrimNetAIRL.load(discrim_net_airl_path)
+      venv = RewardVecEnvWrapper(venv, discrim_net.reward_test)
+      tf.logging.info(
+        f"Wrapped env in test reward from {discrim_net_airl_path}.")
+
     policy = util.init_rl(venv, verbose=1,
                           **make_blank_policy_kwargs)
 
     # Make callback to save intermediate artifacts during training.
     step = 0
-    rollout_ok = rollout_save_interval > 0
-    policy_ok = policy_save_interval > 0
 
     def callback(locals_: dict, _) -> bool:
       nonlocal step
       step += 1
       policy = locals_['self']
 
-      if rollout_ok and step % rollout_save_interval == 0:
+      if rollout_save_interval > 0 and step % rollout_save_interval == 0:
         util.rollout.save(
           rollout_dir, policy, venv, step,
           n_timesteps=rollout_save_n_timesteps,
           n_episodes=rollout_save_n_episodes)
-      if policy_ok and step % policy_save_interval == 0:
+      if policy_save_interval > 0 and step % policy_save_interval == 0:
         output_dir = os.path.join(policy_dir, f'{step:05d}')
         serialize.save_stable_model(output_dir, policy, vec_normalize)
-      return True
+      return True  # Continue training.
 
     policy.learn(total_timesteps, callback=callback)
 
@@ -122,7 +135,7 @@ def rollouts_and_policy(
       serialize.save_stable_model(output_dir, policy, vec_normalize)
 
 
-@data_collect_ex.command
+@expert_demos_ex.command
 @util.make_session()
 def rollouts_from_policy(
   _seed: int,
@@ -141,7 +154,7 @@ def rollouts_from_policy(
 
   Default save path is f"{log_dir}/rollouts/{env_name}.pkl". Change to
   f"{rollout_save_dir}/{env_name}.pkl" by setting the `rollout_save_dir` param.
-  Unlisted arguments are the same as in `data_collect()`.
+  Unlisted arguments are the same as in `rollouts_and_policy()`.
 
   Args:
       policy_type: Argument to `imitation.policies.serialize.load_policy`.
@@ -170,9 +183,9 @@ def rollouts_from_policy(
 
 def main_console():
   observer = FileStorageObserver.create(
-      osp.join('output', 'sacred', 'data_collect'))
-  data_collect_ex.observers.append(observer)
-  data_collect_ex.run_commandline()
+      osp.join('output', 'sacred', 'expert_deoms'))
+  expert_demos_ex.observers.append(observer)
+  expert_demos_ex.run_commandline()
 
 
 if __name__ == "__main__":

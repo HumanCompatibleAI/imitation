@@ -34,13 +34,12 @@ class LayersSerializable(Serializable):
 
   Subclsases must call the constructor with all arguments needed by `__init__`,
   and a dictionary mapping from strings to `tf.layers.Layer` objects.
-  In most cases, you can use the following idiom:
-      ```
+  In most cases, you can use the following idiom::
+
       args = locals()
       # ... your normal constructor
       layers = # ... gather your TensorFlow objects
       LayersSerializable.__init__(**args, layers=layers)
-      ```
   """
 
   def __init__(self, *args, layers: util.LayersDict, **kwargs):

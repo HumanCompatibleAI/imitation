@@ -1,7 +1,7 @@
 """Load serialized policies of different types."""
 
 import os
-from typing import Callable, Dict, Optional, Type, Union
+from typing import Callable, Optional, Type
 
 import gym
 from stable_baselines.common.base_class import BaseRLModel
@@ -12,7 +12,9 @@ import tensorflow as tf
 from imitation.policies.base import RandomPolicy, ZeroPolicy
 from imitation.util import registry
 
-PolicyLoaderFn = Callable[[str, Union[gym.Env, VecEnv]], BasePolicy]
+PolicyLoaderFn = Callable[[str, VecEnv], BasePolicy]
+
+policy_registry: registry.Registry[PolicyLoaderFn] = registry.Registry()
 
 
 class NormalizePolicy(BasePolicy):
@@ -76,28 +78,23 @@ def _load_stable_baselines(cls: Type[BaseRLModel],
   return f
 
 
-def _load_random(path: str, env: gym.Env) -> RandomPolicy:
-  return RandomPolicy(env.observation_space, env.action_space)
-
-
-def _load_zero(path: str, env: gym.Env) -> ZeroPolicy:
-  return ZeroPolicy(env.observation_space, env.action_space)
-
+policy_registry.register(
+    'random',
+    value=registry.build_loader_fn_require_space(RandomPolicy))
+policy_registry.register(
+    'zero',
+    value=registry.build_loader_fn_require_space(ZeroPolicy))
 
 STABLE_BASELINES_CLASSES = {
     'ppo1': ('stable_baselines:PPO1', 'policy_pi'),
     'ppo2': ('stable_baselines:PPO2', 'act_model'),
 }
 
-
-AGENT_LOADERS: Dict[str, PolicyLoaderFn] = {
-    'random': _load_random,
-    'zero': _load_zero,
-}
 for k, (cls_name, attr) in STABLE_BASELINES_CLASSES.items():
   try:
     cls = registry.load_attr(cls_name)
-    AGENT_LOADERS[k] = _load_stable_baselines(cls, attr)
+    fn = _load_stable_baselines(cls, attr)
+    policy_registry.register(k, value=fn)
   except (AttributeError, ImportError):
     # We expect PPO1 load to fail if mpi4py isn't installed.
     # Stable Baselines can be installed without mpi4py.
@@ -105,18 +102,16 @@ for k, (cls_name, attr) in STABLE_BASELINES_CLASSES.items():
 
 
 def load_policy(policy_type: str, policy_path: str,
-                env: Union[gym.Env, VecEnv]) -> BasePolicy:
+                venv: VecEnv) -> BasePolicy:
   """Load serialized policy.
 
   Args:
-    policy_type: A key in `AGENT_LOADERS`, e.g. `ppo2`.
+    policy_type: A key in `policy_registry`, e.g. `ppo2`.
     policy_path: A path on disk where the policy is stored.
-    env: An environment that the policy is to be used with.
+    venv: An environment that the policy is to be used with.
   """
-  agent_loader = AGENT_LOADERS.get(policy_type)
-  if agent_loader is None:
-    raise ValueError(f"Unrecognized agent type '{policy_type}'")
-  return agent_loader(policy_path, env)
+  agent_loader = policy_registry.get(policy_type)
+  return agent_loader(policy_path, venv)
 
 
 def save_stable_model(output_dir: str,

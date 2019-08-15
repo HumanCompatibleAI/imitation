@@ -17,7 +17,7 @@ OUTPUT_DIR=output/train_experts/${TIMESTAMP}/
 echo "Writing logs in ${OUTPUT_DIR}"
 
 parallel -j 25% --header : --progress --results ${OUTPUT_DIR}/parallel/ \
-  python -m imitation.scripts.data_collect \
+  python -m imitation.scripts.expert_demos \
   with \
   {env} \
   seed={seed} \

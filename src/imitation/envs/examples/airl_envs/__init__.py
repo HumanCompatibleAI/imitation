@@ -2,7 +2,7 @@ from typing import Optional
 
 from gym.envs import register as gym_register
 
-_ENTRY_POINT_PREFIX = 'imitation.examples.airl_envs'
+_ENTRY_POINT_PREFIX = 'imitation.envs.examples.airl_envs'
 
 
 def _register(env_name: str, entry_point: str, kwargs: Optional[dict] = None):

@@ -18,9 +18,9 @@ pip install -e '.[dev]'  # install `imitation` in developer mode
 To run:
 ```
 # Train PPO2 agent on cartpole and collect expert demonstrations
-python -m imitation.scripts.data_collect with cartpole
+python -m imitation.scripts.expert_demos with cartpole
 # Train AIRL on from demonstrations
-python -m imitation.scripts.train with cartpole airl
+python -m imitation.scripts.train_adversarial with cartpole airl
 ```
 
 # Contributing

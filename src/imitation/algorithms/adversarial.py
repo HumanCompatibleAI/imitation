@@ -1,3 +1,4 @@
+from functools import partial
 from typing import Optional, Tuple, Union
 from warnings import warn
 
@@ -8,25 +9,27 @@ import tensorflow as tf
 from tqdm import tqdm
 
 from imitation import summaries
-from imitation.discrim_net import DiscrimNet
-from imitation.util import buffer, reward_wrapper, rollout, util
+import imitation.rewards.discrim_net as discrim_net
+from imitation.rewards.reward_net import BasicShapedRewardNet
+import imitation.util as util
+from imitation.util import buffer, reward_wrapper
 
 
-class Trainer:
+class AdversarialTrainer:
   """Trainer for GAIL and AIRL."""
 
   env: gym.Env
   """The original environment."""
 
   env_train: gym.Env
-  """Like `self.env`, but wrapped with train reward except in debug mode.
+  """Like `self.env`, but wrapped with train reward unless in debug mode.
 
   If `debug_use_ground_truth=True` was passed into the initializer then
   `self.env_train` is the same as `self.env`.
   """
 
   env_test: gym.Env
-  """Like `self.env`, but wrapped with test reward except in debug mode.
+  """Like `self.env`, but wrapped with test reward unless in debug mode.
 
   If `debug_use_ground_truth=True` was passed into the initializer then
   `self.env_test` is the same as `self.env`.
@@ -35,7 +38,7 @@ class Trainer:
   def __init__(self,
                env: Union[gym.Env, str],
                gen_policy: BaseRLModel,
-               discrim: DiscrimNet,
+               discrim: discrim_net.DiscrimNet,
                expert_rollouts: Tuple[np.ndarray, np.ndarray, np.ndarray],
                *,
                disc_opt_cls: tf.train.Optimizer = tf.train.AdamOptimizer,
@@ -83,26 +86,31 @@ class Trainer:
     self._gen_policy = gen_policy
 
     # Discriminator and reward output
+    self._discrim = discrim
     self._disc_opt_cls = disc_opt_cls
     self._disc_opt_kwargs = disc_opt_kwargs
     with tf.variable_scope("trainer"):
       with tf.variable_scope("discriminator"):
-        self._discrim = discrim
         self._build_disc_train()
-      self._build_policy_train_reward()
-      self._build_test_reward()
     self._init_tensorboard = init_tensorboard
     if init_tensorboard:
       with tf.name_scope("summaries"):
         self._build_summarize()
     self._sess.run(tf.global_variables_initializer())
 
-    # TODO(adam): make this wrapping configurable for debugging purposes
-    self.env_train = self.wrap_env_train_reward(self.env)
-    self.env_test = self.wrap_env_test_reward(self.env)
+    if debug_use_ground_truth:
+      self.env_train = self.env_test = self.env
+    else:
+      reward_train = partial(
+          self.discrim.reward_train,
+          gen_log_prob_fn=self._gen_policy.action_probability)
+      self.env_train = reward_wrapper.RewardVecEnvWrapper(
+          self.env, reward_train)
+      self.env_test = reward_wrapper.RewardVecEnvWrapper(
+          self.env, self.discrim.reward_test)
 
     if gen_replay_buffer_capacity is None:
-        gen_replay_buffer_capacity = 20 * self._n_disc_samples_per_buffer
+      gen_replay_buffer_capacity = 20 * self._n_disc_samples_per_buffer
     self._gen_replay_buffer = buffer.ReplayBuffer(gen_replay_buffer_capacity,
                                                   self.env)
     self._populate_gen_replay_buffer()
@@ -112,7 +120,7 @@ class Trainer:
            "expert samples.")
 
   @property
-  def discrim(self) -> DiscrimNet:
+  def discrim(self) -> discrim_net.DiscrimNet:
     """Discriminator being trained, used to compute reward for policy."""
     return self._discrim
 
@@ -153,7 +161,7 @@ class Trainer:
     environment until `self._n_disc_samples_per_buffer` obs-act-obs samples are
     produced, and then stores these samples.
     """
-    gen_rollouts = rollout.generate_transitions(
+    gen_rollouts = util.rollout.generate_transitions(
         self._gen_policy, self.env_train,
         n_timesteps=self._n_disc_samples_per_buffer)[:3]
     self._gen_replay_buffer.store(*gen_rollouts)
@@ -195,53 +203,12 @@ class Trainer:
             discriminator's classification.
     """
     fd = self._build_disc_feed_dict(**kwargs)
-    return np.mean(self._sess.run(self._discrim.disc_loss, feed_dict=fd))
-
-  def wrap_env_train_reward(self, env):
-    """Returns the given Env wrapped with a reward function that returns
-    the AIRL training reward (discriminator confusion).
-
-    The wrapped `Env`'s reward is directly evaluated from the reward network,
-    and therefore changes whenever `self.train()` is called.
-
-    Args:
-        env (str, Env, or VecEnv): The Env that we want to wrap. If a
-            string environment name is given or a Env is given, then we first
-            convert to a VecEnv before continuing.
-        wrapped_env (VecEnv): The wrapped environment with a new reward.
-    """
-    env = util.maybe_load_env(env, vectorize=True)
-    if self.debug_use_ground_truth:
-      return env
-    else:
-      return reward_wrapper.RewardVecEnvWrapper(env,
-                                                self._policy_train_reward_fn)
-
-  def wrap_env_test_reward(self, env):
-    """Returns the given Env wrapped with a reward function that returns
-    the reward learned by this Trainer.
-
-    The wrapped `Env`'s reward is directly evaluated from the reward network,
-    and therefore changes whenever `self.train()` is called.
-
-    Args:
-        env (str, Env, or VecEnv): The Env that should be wrapped. If a
-            string environment name is given or a Env is given, then we first
-            make a VecEnv before continuing.
-
-    Returns:
-        wrapped_env (VecEnv): The wrapped environment with a new reward.
-    """
-    env = util.maybe_load_env(env, vectorize=True)
-    if self.debug_use_ground_truth:
-      return env
-    else:
-      return reward_wrapper.RewardVecEnvWrapper(env, self._test_reward_fn)
+    return np.mean(self._sess.run(self.discrim.disc_loss, feed_dict=fd))
 
   def _build_summarize(self):
     self._summary_writer = summaries.make_summary_writer(
         graph=self._sess.graph)
-    self._discrim.build_summaries()
+    self.discrim.build_summaries()
     self._summary_op = tf.summary.merge_all()
 
   def _summarize(self, fd, step):
@@ -252,7 +219,7 @@ class Trainer:
     # Construct Train operation.
     disc_opt = self._disc_opt_cls(**self._disc_opt_kwargs)
     self._disc_train_op = disc_opt.minimize(
-        tf.reduce_mean(self._discrim.disc_loss),
+        tf.reduce_mean(self.discrim.disc_loss),
         global_step=self._global_step)
 
   def _build_disc_feed_dict(self, *,
@@ -316,70 +283,13 @@ class Trainer:
     log_act_prob = log_act_prob.reshape((N,))
 
     fd = {
-        self._discrim.old_obs_ph: old_obs,
-        self._discrim.act_ph: act,
-        self._discrim.new_obs_ph: new_obs,
-        self._discrim.labels_ph: labels,
-        self._discrim.log_policy_act_prob_ph: log_act_prob,
+        self.discrim.old_obs_ph: old_obs,
+        self.discrim.act_ph: act,
+        self.discrim.new_obs_ph: new_obs,
+        self.discrim.labels_ph: labels,
+        self.discrim.log_policy_act_prob_ph: log_act_prob,
     }
     return fd
-
-  def _build_policy_train_reward(self):
-    """Sets self._policy_train_reward_fn, the reward function to use when
-    running a policy optimizer (e.g. PPO).
-    """
-
-    def R(old_obs, act, new_obs):
-      """Vectorized reward function.
-
-      Args:
-          old_obs (array): The observation input. Its shape is
-              `((None,) + self.env.observation_space.shape)`.
-          act (array): The action input. Its shape is
-              `((None,) + self.env.action_space.shape)`. The None dimension is
-              expected to be the same as None dimension from `obs_input`.
-          new_obs (array): The observation input. Its shape is
-              `((None,) + self.env.observation_space.shape)`.
-      """
-      old_obs = np.atleast_1d(old_obs)
-      act = np.atleast_1d(act)
-      new_obs = np.atleast_1d(new_obs)
-
-      n_gen = len(old_obs)
-      assert len(act) == n_gen
-      assert len(new_obs) == n_gen
-
-      # Calculate generator-policy log probabilities.
-      log_act_prob = self._gen_policy.action_probability(old_obs, actions=act,
-                                                         logp=True)
-      assert len(log_act_prob) == n_gen
-      log_act_prob = log_act_prob.reshape((n_gen,))
-
-      fd = {
-          self._discrim.old_obs_ph: old_obs,
-          self._discrim.act_ph: act,
-          self._discrim.new_obs_ph: new_obs,
-          self._discrim.labels_ph: np.ones(n_gen),
-          self._discrim.log_policy_act_prob_ph: log_act_prob,
-      }
-      rew = self._sess.run(self._discrim.policy_train_reward, feed_dict=fd)
-      return rew.flatten()
-
-    self._policy_train_reward_fn = R
-
-  def _build_test_reward(self):
-    """Sets self._test_reward_fn, the transfer reward function"""
-    def R(old_obs, act, new_obs):
-      fd = {
-          self._discrim.old_obs_ph: old_obs,
-          self._discrim.act_ph: act,
-          self._discrim.new_obs_ph: new_obs,
-      }
-      rew = self._sess.run(self._discrim._policy_test_reward,
-                           feed_dict=fd)
-      return rew.flatten()
-
-    self._test_reward_fn = R
 
 
 def _n_steps_if_not_none(n_steps):
@@ -387,3 +297,83 @@ def _n_steps_if_not_none(n_steps):
     return {}
   else:
     return dict(n_steps=n_steps)
+
+
+def init_trainer(env_id: str,
+                 rollout_glob: str,
+                 *,
+                 n_expert_demos: Optional[int] = None,
+                 seed: int = 0,
+                 log_dir: str = None,
+                 use_gail: bool = False,
+                 num_vec: int = 8,
+                 parallel: bool = False,
+                 max_n_files: int = 1,
+                 scale: bool = True,
+                 airl_entropy_weight: float = 1.0,
+                 discrim_kwargs: bool = {},
+                 reward_kwargs: bool = {},
+                 trainer_kwargs: bool = {},
+                 make_blank_policy_kwargs: bool = {},
+                 ):
+  """Builds an AdversarialTrainer, ready to be trained on a vectorized
+    environment and expert demonstrations.
+
+  Args:
+    env_id: The string id of a gym environment.
+    rollout_glob: Argument for `imitation.util.rollout.load_trajectories`.
+    n_expert_demos: The number of expert trajectories to actually use
+        after loading them via `load_trajectories`.
+        If None, then use all available trajectories.
+        If `n_expert_demos` is an `int`, then use
+        exactly `n_expert_demos` trajectories, erroring if there aren't
+        enough trajectories. If there are surplus trajectories, then use the
+        first `n_expert_demos` trajectories and drop the rest.
+    seed: Random seed.
+    log_dir: Directory for logging output.
+    use_gail: If True, then train using GAIL. If False, then train
+        using AIRL.
+    num_vec: The number of vectorized environments.
+    parallel: If True, then use SubprocVecEnv; otherwise, DummyVecEnv.
+    max_n_files: If provided, then only load the most recent `max_n_files`
+        files, as sorted by modification times.
+    policy_dir: The directory containing the pickled experts for
+        generating rollouts.
+    scale: If True, then scale input Tensors to the interval [0, 1].
+    airl_entropy_weight: Only applicable for AIRL. The `entropy_weight`
+        argument of `DiscrimNetAIRL.__init__`.
+    trainer_kwargs: Arguments for the Trainer constructor.
+    reward_kwargs: Arguments for the `*RewardNet` constructor.
+    discrim_kwargs: Arguments for the `DiscrimNet*` constructor.
+    make_blank_policy_kwargs: Keyword arguments passed to `make_blank_policy`,
+        used to initialize the trainer.
+  """
+  env = util.make_vec_env(env_id, num_vec, seed=seed, parallel=parallel,
+                          log_dir=log_dir)
+  gen_policy = util.init_rl(env, verbose=1,
+                            **make_blank_policy_kwargs)
+
+  if use_gail:
+    discrim = discrim_net.DiscrimNetGAIL(env.observation_space,
+                                         env.action_space,
+                                         scale=scale,
+                                         **discrim_kwargs)
+  else:
+    rn = BasicShapedRewardNet(env.observation_space,
+                              env.action_space,
+                              scale=scale,
+                              **reward_kwargs)
+    discrim = discrim_net.DiscrimNetAIRL(rn,
+                                         entropy_weight=airl_entropy_weight,
+                                         **discrim_kwargs)
+
+  expert_demos = util.rollout.load_trajectories(rollout_glob,
+                                                max_n_files=max_n_files)
+  if n_expert_demos is not None:
+    assert len(expert_demos) >= n_expert_demos
+    expert_demos = expert_demos[:n_expert_demos]
+
+  expert_rollouts = util.rollout.flatten_trajectories(expert_demos)[:3]
+  trainer = AdversarialTrainer(env, gen_policy, discrim, expert_rollouts,
+                               **trainer_kwargs)
+  return trainer

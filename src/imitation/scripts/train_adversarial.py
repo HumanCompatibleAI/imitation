@@ -1,4 +1,4 @@
-"""Train an IRL algorithm and plot its output.
+"""Train GAIL or AIRL and plot its output.
 
 Can be used as a CLI script, or the `train_and_plot` function can be called
 directly.
@@ -17,9 +17,11 @@ from stable_baselines import logger as sb_logger
 import tensorflow as tf
 import tqdm
 
-from imitation.scripts.config.train import train_ex
+from imitation.algorithms.adversarial import init_trainer
+import imitation.envs.examples  # noqa: F401
+from imitation.policies import serialize
+from imitation.scripts.config.train_adversarial import train_ex
 import imitation.util as util
-from imitation.util.trainer import init_trainer
 
 
 def save(trainer, save_path):
@@ -29,12 +31,14 @@ def save(trainer, save_path):
   trainer.discrim.save(os.path.join(save_path, "discrim"))
   # TODO(gleave): unify this with the saving logic in data_collect?
   # (Needs #43 to be merged before attempting.)
-  trainer._gen_policy.save(os.path.join(save_path, "gen_policy"))
+  serialize.save_stable_model(os.path.join(save_path, "gen_policy"),
+                              trainer._gen_policy)
 
 
 @train_ex.main
 def train_and_plot(_seed: int,
                    env_name: str,
+                   rollout_glob: str,
                    log_dir: str,
                    *,
                    n_epochs: int = 100,
@@ -56,6 +60,12 @@ def train_and_plot(_seed: int,
     - Plot the performance of the generator policy versus the performance of
       a random policy. Also plot the performance of an expert policy if that is
       provided in the arguments.
+
+  Checkpoints:
+      - DiscrimNets are saved to f"{log_dir}/checkpoints/{step}/discrim/",
+        where step is either the training epoch or "final".
+      - Generator policies are saved to
+        f"{log_dir}/checkpoints/{step}/gen_policy/".
 
   Args:
       _seed: Random seed.
@@ -95,7 +105,8 @@ def train_and_plot(_seed: int,
   assert n_epochs_per_plot is None or n_epochs_per_plot >= 1
 
   with util.make_session():
-    trainer = init_trainer(env_name, seed=_seed, log_dir=log_dir,
+    trainer = init_trainer(env_name, rollout_glob=rollout_glob,
+                           seed=_seed, log_dir=log_dir,
                            **init_trainer_kwargs)
 
     tf.logging.info("Logging to %s", log_dir)
@@ -217,7 +228,8 @@ def train_and_plot(_seed: int,
       if checkpoint_interval > 0 and epoch % checkpoint_interval == 0:
         save(trainer, os.path.join(log_dir, "checkpoints", f"{epoch:05d}"))
 
-    save(trainer, os.path.join(log_dir, "final"))
+    # Save final artifacts.
+    save(trainer, os.path.join(log_dir, "checkpoints", "final"))
 
     # Final evaluation of imitation policy.
     stats = util.rollout.rollout_stats(trainer.gen_policy,

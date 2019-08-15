@@ -24,7 +24,7 @@ echo "Logging to: ${OUTPUT_DIR}"
 SEEDS="0 1 2"
 
 parallel -j 25% --header : --results ${OUTPUT_DIR}/parallel/ --colsep , --progress \
-  python -m imitation.scripts.train \
+  python -m imitation.scripts.train_adversarial \
   with \
   "$@" \
   gail \

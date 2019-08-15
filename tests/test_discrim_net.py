@@ -5,9 +5,9 @@ import numpy as np
 import pytest
 import tensorflow as tf
 
-from imitation.discrim_net import DiscrimNetAIRL, DiscrimNetGAIL
 from imitation.policies import base
-from imitation.reward_net import BasicRewardNet
+from imitation.rewards.discrim_net import DiscrimNetAIRL, DiscrimNetGAIL
+from imitation.rewards.reward_net import BasicRewardNet
 from imitation.util import rollout
 
 ENVS = ['FrozenLake-v0', 'CartPole-v1', 'Pendulum-v0']

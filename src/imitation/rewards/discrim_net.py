@@ -1,12 +1,14 @@
 from abc import abstractmethod
 import os
 import pickle
-from typing import Iterable, Optional
+from typing import Callable, Iterable, Optional
 
 import gym
+import numpy as np
 import tensorflow as tf
 
-from imitation import reward_net, util
+from imitation import util
+from imitation.rewards import reward_net
 from imitation.util import serialize
 
 
@@ -14,6 +16,7 @@ class DiscrimNet(serialize.Serializable):
   """Abstract base class for discriminator, used in multiple IRL methods."""
 
   def __init__(self):
+    self._sess = tf.get_default_session()
     self._disc_loss = self.build_disc_loss()
     self._policy_train_reward = self.build_policy_train_reward()
     self._policy_test_reward = self.build_policy_test_reward()
@@ -31,12 +34,97 @@ class DiscrimNet(serialize.Serializable):
     return self._policy_test_reward
 
   @abstractmethod
-  def build_policy_train_reward(self):
-    pass
+  def build_policy_train_reward(self) -> tf.Tensor:
+    """Builds the reward used during imitation learning.
 
-  @abstractmethod
-  def build_policy_test_reward(self):
-    pass
+    Saved as self._policy_train_reward. Should be a rank-1 Tensor.
+    """
+
+  def build_policy_test_reward(self) -> tf.Tensor:
+    """
+    Builds self._policy_test_reward, the reward used during transfer learning.
+
+    Should be a rank-1 Tensor.
+
+    Subclasses should override this method if they have a transfer learning
+    reward. By default it simply returns `self._policy_train_reward`.
+    """
+    return self._policy_train_reward
+
+  def reward_train(
+    self,
+    old_obs: np.ndarray,
+    act: np.ndarray,
+    new_obs: np.ndarray,
+    *,
+    gen_log_prob_fn: Callable[..., np.ndarray],
+  ) -> np.ndarray:
+    """Vectorized reward for training an imitation learning algorithm.
+
+    Args:
+        old_obs: The observation input. Its shape is
+            `(batch_size,) + observation_space.shape`.
+        act: The action input. Its shape is
+            `(batch_size,) + action_space.shape`. The None dimension is
+            expected to be the same as None dimension from `obs_input`.
+        new_obs: The observation input. Its shape is
+            `(batch_size,) + observation_space.shape`.
+        gen_log_prob_fn: The generator policy's action probabilities function.
+            A Callable such that
+            `log_act_prob_fn(observations=old_obs, actions=act, lopg=True)`
+            returns `log_act_prob`, the generator's log action probabilities.
+            `log_act_prob[i]` is equal to the generator's log probability of
+            choosing `act[i]` given `old_obs[i]`.
+            `np.squeeze(log_act_prob)` has shape `(batch_size,)`.
+    Returns:
+        The rewards. Its shape is `(batch_size,)`.
+    """
+    log_act_prob = np.squeeze(
+      gen_log_prob_fn(observation=old_obs, actions=act, logp=True))
+
+    n_gen = len(old_obs)
+    assert old_obs.shape == new_obs.shape
+    assert len(act) == n_gen
+    assert log_act_prob.shape == (n_gen, )
+
+    fd = {
+        self.old_obs_ph: old_obs,
+        self.act_ph: act,
+        self.new_obs_ph: new_obs,
+        self.labels_ph: np.ones(n_gen),
+        self.log_policy_act_prob_ph: log_act_prob,
+    }
+    rew = self._sess.run(self.policy_train_reward, feed_dict=fd)
+    assert rew.shape == (n_gen,)
+    return rew
+
+  def reward_test(
+    self,
+    old_obs: np.ndarray,
+    act: np.ndarray,
+    new_obs: np.ndarray,
+  ) -> np.ndarray:
+    """Vectorized reward for training an expert during transfer learning.
+
+    Args:
+        old_obs: The observation input. Its shape is
+            `(batch_size,) + observation_space.shape`.
+        act: The action input. Its shape is
+            `(batch_size,) + action_space.shape`. The None dimension is
+            expected to be the same as None dimension from `obs_input`.
+        new_obs: The observation input. Its shape is
+            `(batch_size,) + observation_space.shape`.
+    Returns:
+        The rewards. Its shape is `(batch_size,)`.
+    """
+    fd = {
+      self.old_obs_ph: old_obs,
+      self.act_ph: act,
+      self.new_obs_ph: new_obs,
+    }
+    rew = self._sess.run(self.policy_test_reward, feed_dict=fd)
+    assert rew.shape == (len(old_obs),)
+    return rew
 
   @abstractmethod
   def build_disc_loss(self):
@@ -147,14 +235,9 @@ class DiscrimNetAIRL(DiscrimNet):
     )
 
   def build_policy_test_reward(self):
-    super().build_policy_test_reward()
     return self.reward_net.reward_output_test
 
   def build_policy_train_reward(self):
-    """
-    Sets self._policy_train_reward_fn, the reward function to use when
-    running a policy optimizer (e.g. PPO).
-    """
     # Construct generator reward:
     # \[\hat{r}(s,a) = \log(D_{\theta}(s,a)) - \log(1 - D_{\theta}(s,a)).\]
     # This simplifies to:
@@ -232,15 +315,9 @@ class DiscrimNetGAIL(DiscrimNet, serialize.LayersSerializable):
 
     return discrim_mlp, discrim_logits
 
-  def build_policy_train_reward(self):
-    super().build_policy_train_reward()
+  def build_policy_train_reward(self) -> tf.Tensor:
     train_reward = -tf.log_sigmoid(self._discrim_logits)
-
     return train_reward
-
-  def build_policy_test_reward(self):
-    super().build_policy_test_reward()
-    return self.build_policy_train_reward()
 
   def build_disc_loss(self):
     super().build_disc_loss()

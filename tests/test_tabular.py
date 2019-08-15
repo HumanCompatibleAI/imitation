@@ -5,10 +5,11 @@ import jax.experimental.optimizers as jaxopt
 import numpy as np
 import pytest
 
-from imitation.examples.model_envs import RandomMDP
-from imitation.resettable_env import TabularModelEnv
-from imitation.tabular_irl import (LinearRewardModel, MLPRewardModel, mce_irl,
-                                   mce_occupancy_measures, mce_partition_fh)
+from imitation.algorithms.tabular_irl import (LinearRewardModel, MLPRewardModel,
+                                              mce_irl, mce_occupancy_measures,
+                                              mce_partition_fh)
+from imitation.envs.examples.model_envs import RandomMDP
+from imitation.envs.resettable_env import TabularModelEnv
 
 
 def rollouts(env, n=10, seed=None):

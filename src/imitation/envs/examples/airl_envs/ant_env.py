@@ -2,7 +2,7 @@ from gym import utils
 from gym.envs.mujoco import mujoco_env
 import numpy as np
 
-from imitation.examples.airl_envs.dynamic_mjc.model_builder import MJCModel
+from imitation.envs.examples.airl_envs.dynamic_mjc.model_builder import MJCModel
 
 
 def ant_env(gear=150, eyes=True):
