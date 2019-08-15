@@ -15,8 +15,8 @@ SIMPLE_ENVS = [
     "MountainCarContinuous-v0",  # Box(1) action space
 ]
 HARDCODED_TYPES = ["random", "zero"]
-BASELINE_MODELS = [(name, cls)
-                   for name, (cls, attr) in
+BASELINE_MODELS = [(name, cls_name)
+                   for name, (cls_name, attr) in
                    serialize.STABLE_BASELINES_CLASSES.items()]
 
 
