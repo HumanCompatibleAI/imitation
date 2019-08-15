@@ -129,7 +129,7 @@ def fast():
 
 # Shared settings
 ant_shared_locals = dict(
-  make_blank_policy_kwargs = dict(
+  make_blank_policy_kwargs=dict(
       n_steps=2048,  # batch size of 2048*8=16384 due to num_vec
   ),
   total_timesteps=int(5e6),
