@@ -156,11 +156,13 @@ def two_d_maze():
 @train_ex.named_config
 def custom_ant():
   env_name = "imitation/CustomAnt-v0"
+  n_epochs = 2000
 
 
 @train_ex.named_config
 def disabled_ant():
   env_name = "imitation/DisabledAnt-v0"
+  n_epochs = 2000
 
 
 # Debug configs

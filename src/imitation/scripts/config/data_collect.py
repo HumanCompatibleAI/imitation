@@ -45,10 +45,7 @@ def acrobot():
 @data_collect_ex.named_config
 def ant():
   env_name = "Ant-v2"
-  make_blank_policy_kwargs = dict(
-      n_steps=2048,  # batch size of 2048*8=16384 due to num_vec
-  )
-  total_timesteps = int(5e6)  # OK after 2e6, but continues improving
+  locals().update(**ant_shared_locals)
 
 
 @data_collect_ex.named_config
@@ -113,19 +110,13 @@ def two_d_maze():
 @data_collect_ex.named_config
 def custom_ant():
   env_name = "imitation/CustomAnt-v0"
-  make_blank_policy_kwargs = dict(
-      n_steps=2048,  # batch size of 2048*8=16384 due to num_vec
-  )
-  total_timesteps = int(5e6)
+  locals().update(**ant_shared_locals)
 
 
 @data_collect_ex.named_config
 def disabled_ant():
   env_name = "imitation/DisabledAnt-v0"
-  make_blank_policy_kwargs = dict(
-      n_steps=2048,  # batch size of 2048*8=16384 due to num_vec
-  )
-  total_timesteps = int(5e6)
+  locals().update(**ant_shared_locals)
 
 
 # Debug configs
@@ -134,3 +125,12 @@ def disabled_ant():
 def fast():
   """Intended for testing purposes: small # of updates, ends quickly."""
   total_timesteps = int(1e4)
+
+
+# Shared settings
+ant_shared_locals = dict(
+  make_blank_policy_kwargs = dict(
+      n_steps=2048,  # batch size of 2048*8=16384 due to num_vec
+  ),
+  total_timesteps=int(5e6),
+)
