@@ -45,7 +45,7 @@ def test_serialize_identity(env_name, model_cfg, normalize):
   model_name, model_cls_name = model_cfg
   try:
     model_cls = registry.load_attr(model_cls_name)
-  except (AttributeError, ImportError):
+  except (AttributeError, ImportError):  # pragma: no cover
     pytest.skip("Couldn't load stable baselines class. "
                 "(Probably because mpi4py not installed.)")
 
