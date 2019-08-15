@@ -17,6 +17,10 @@ def expert_demos_defaults():
   normalize = True  # Use VecNormalize
   make_blank_policy_kwargs = dict(DEFAULT_BLANK_POLICY_KWARGS)
 
+  # If specified, overrides the ground-truth environment reward
+  reward_type = None  # override reward type
+  reward_path = None   # override reward path
+
   rollout_save_interval = -1  # Num updates between saves (<=0 disables)
   rollout_save_final = True  # If True, save after training is finished.
   rollout_save_n_timesteps = 2000  # Min timesteps saved per file, optional.

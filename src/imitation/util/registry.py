@@ -1,6 +1,7 @@
 import importlib
-from typing import Callable, Generic, Optional, Type, TypeVar
+from typing import Callable, Generic, Optional, TypeVar
 
+import gym
 from stable_baselines.common.vec_env import VecEnv
 
 T = TypeVar("T")
@@ -8,7 +9,7 @@ LoaderFn = Callable[[str, VecEnv], T]
 """The type stored in Registry is commonly an instance of LoaderFn."""
 
 
-def load(name):
+def load_attr(name):
   """Load an attribute in format path.to.module:attribute."""
   module_name, attr_name = name.split(":")
   module = importlib.import_module(module_name)
@@ -42,7 +43,7 @@ class Registry(Generic[T]):
       raise KeyError(f"Key '{key}' is not registered.")
 
     if key not in self._values:
-      self._values[key] = load(self._indirect[key])
+      self._values[key] = load_attr(self._indirect[key])
     return self._values[key]
 
   def register(self, key: str, *,
@@ -62,15 +63,25 @@ class Registry(Generic[T]):
       self._indirect[key] = indirect
 
 
-def build_loader_fn_require_space(cls: Type[T], **kwargs) -> LoaderFn:
+def build_loader_fn_require_space(fn: Callable[[gym.Space, gym.Space], T],
+                                  **kwargs) -> LoaderFn:
   """Converts a factory taking observation and action space into a LoaderFn."""
   def f(path: str, venv: VecEnv) -> T:
-    return cls(venv.observation_space, venv.action_space, **kwargs)
+    return fn(venv.observation_space, venv.action_space, **kwargs)
   return f
 
 
-def build_loader_fn_require_env(cls: Type[T], **kwargs) -> LoaderFn:
+def build_loader_fn_require_env(fn: Callable[[VecEnv], T],
+                                **kwargs) -> LoaderFn:
   """Converts a factory taking an environment into a LoaderFn."""
   def f(path: str, venv: VecEnv) -> T:
-    return cls(venv, **kwargs)
+    return fn(venv, **kwargs)
+  return f
+
+
+def build_loader_fn_require_path(fn: Callable[[str], T],
+                                 **kwargs) -> LoaderFn:
+  """Converts a factory taking an environment into a LoaderFn."""
+  def f(path: str, venv: VecEnv) -> T:
+    return fn(path, **kwargs)
   return f
