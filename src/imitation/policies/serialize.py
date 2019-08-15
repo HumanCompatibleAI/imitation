@@ -3,7 +3,6 @@
 import os
 from typing import Callable, Optional, Type
 
-import gym
 import stable_baselines
 from stable_baselines.common.base_class import BaseRLModel
 from stable_baselines.common.policies import BasePolicy

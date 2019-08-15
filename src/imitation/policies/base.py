@@ -34,8 +34,8 @@ class RandomPolicy(HardCodedPolicy):
   def __init__(self, ob_space: gym.Space, ac_space: gym.Space):
     super().__init__(ob_space, ac_space)
 
-    def _choose_action(self, obs: np.ndarray) -> np.ndarray:
-      return self.ac_space.sample()
+  def _choose_action(self, obs: np.ndarray) -> np.ndarray:
+    return self.ac_space.sample()
 
 
 class ZeroPolicy(HardCodedPolicy):
