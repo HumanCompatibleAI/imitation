@@ -8,7 +8,7 @@ LoaderFn = Callable[[str, VecEnv], T]
 """The type stored in Registry is commonly an instance of LoaderFn."""
 
 
-def load(name):
+def load_attr(name):
   """Load an attribute in format path.to.module:attribute."""
   module_name, attr_name = name.split(":")
   module = importlib.import_module(module_name)
@@ -42,7 +42,7 @@ class Registry(Generic[T]):
       raise KeyError(f"Key '{key}' is not registered.")
 
     if key not in self._values:
-      self._values[key] = load(self._indirect[key])
+      self._values[key] = load_attr(self._indirect[key])
     return self._values[key]
 
   def register(self, key: str, *,

@@ -7,6 +7,7 @@ from stable_baselines import logger as sb_logger
 from stable_baselines.common.vec_env import VecNormalize
 import tensorflow as tf
 
+import imitation.envs.examples  # noqa: F401
 from imitation.policies import serialize
 from imitation.rewards.discrim_net import DiscrimNetAIRL
 from imitation.scripts.config.expert_demos import expert_demos_ex
