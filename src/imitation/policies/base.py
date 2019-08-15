@@ -14,15 +14,15 @@ class HardCodedPolicy(BasePolicy, abc.ABC):
     self.ob_space = ob_space
     self.ac_space = ac_space
 
-  def step(self, obs, state=None, mask=None, deterministic=False):
+  def step(self, obs, state=None, mask=None, deterministic=False) -> np.ndarray:
     actions = []
     for ob in obs:
       assert self.ob_space.contains(ob)
       actions.append(self._choose_action(obs))
-    return actions, None, None, None
+    return np.array(actions), None, None, None
 
   @abc.abstractmethod
-  def _choose_action(self, obs):
+  def _choose_action(self, obs: np.ndarray) -> np.ndarray:
     """Chooses an action, optionally based on observation obs."""
 
   def proba_step(self, obs, state=None, mask=None):
@@ -34,8 +34,8 @@ class RandomPolicy(HardCodedPolicy):
   def __init__(self, ob_space: gym.Space, ac_space: gym.Space):
     super().__init__(ob_space, ac_space)
 
-  def _choose_action(self, obs):
-    return self.ac_space.sample()
+    def _choose_action(self, obs: np.ndarray) -> np.ndarray:
+      return self.ac_space.sample()
 
 
 class ZeroPolicy(HardCodedPolicy):
@@ -43,7 +43,7 @@ class ZeroPolicy(HardCodedPolicy):
   def __init__(self, ob_space: gym.Space, ac_space: gym.Space):
     super().__init__(ob_space, ac_space)
 
-  def _choose_action(self, obs):
+  def _choose_action(self, obs: np.ndarray) -> np.ndarray:
     return np.zeros(self.ac_space.shape, dtype=self.ac_space.dtype)
 
 
