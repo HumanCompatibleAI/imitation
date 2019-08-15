@@ -31,7 +31,7 @@ def data_collect_defaults():
 @data_collect_ex.config
 def logging(env_name, log_root):
   log_dir = os.path.join(log_root, env_name.replace('/', '_'),
-                         util.make_timestamp())
+                         util.make_unique_timestamp())
 
 
 @data_collect_ex.named_config

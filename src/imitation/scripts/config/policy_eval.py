@@ -22,7 +22,7 @@ def replay_defaults():
 @policy_eval_ex.config
 def logging(log_root, env_name):
   log_dir = os.path.join(log_root, env_name.replace("/", "_"),
-                         util.make_timestamp())
+                         util.make_unique_timestamp())
 
 
 @policy_eval_ex.named_config
