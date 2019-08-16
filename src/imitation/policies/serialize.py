@@ -3,7 +3,6 @@
 import os
 from typing import Callable, Optional, Type
 
-import gym
 from stable_baselines.common.base_class import BaseRLModel
 from stable_baselines.common.policies import BasePolicy
 from stable_baselines.common.vec_env import VecEnv, VecNormalize
@@ -56,7 +55,7 @@ def _load_stable_baselines(cls: Type[BaseRLModel],
 
   Returns:
     A function loading policies trained via cls."""
-  def f(path: str, env: gym.Env) -> BasePolicy:
+  def f(path: str, env: VecEnv) -> BasePolicy:
     """Loads a policy saved to path, for environment env."""
     tf.logging.info(f"Loading Stable Baselines policy for '{cls}' "
                     f"from '{path}'")

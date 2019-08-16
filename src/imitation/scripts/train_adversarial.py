@@ -18,6 +18,7 @@ import tensorflow as tf
 import tqdm
 
 from imitation.algorithms.adversarial import init_trainer
+import imitation.envs.examples  # noqa: F401
 from imitation.policies import serialize
 from imitation.scripts.config.train_adversarial import train_ex
 import imitation.util as util
