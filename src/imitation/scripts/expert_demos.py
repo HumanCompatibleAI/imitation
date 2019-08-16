@@ -57,9 +57,11 @@ def rollouts_and_policy(
 
       reward_type: If provided, then load the serialized reward of this type,
           wrapping the environment in this reward. This is useful to test
-          whether a reward model transfers.
+          whether a reward model transfers. For more information, see
+          `imitation.rewards.serialize.load_reward`.
       reward_path: A specifier, such as a path to a file on disk, used by
-          reward_type to load the reward model.
+          reward_type to load the reward model. For more information, see
+          `imitation.rewards.serialize.load_reward`.
 
       rollout_save_interval: The number of training updates in between
           intermediate rollout saves. If the argument is nonpositive, then

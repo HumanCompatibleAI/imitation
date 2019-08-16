@@ -6,8 +6,7 @@ from typing import Iterable, Optional, Tuple
 import gym
 import tensorflow as tf
 
-import imitation.util as util
-from imitation.util import serialize
+from imitation.util import serialize, util
 
 
 class RewardNet(serialize.Serializable):

@@ -233,8 +233,7 @@ class DensityTrainer:
                                    kernel_bandwidth=kernel_bandwidth,
                                    standardise_inputs=standardise_inputs)
     self.wrapped_env = reward_wrapper.RewardVecEnvWrapper(self.env,
-                                                          self.reward_fn,
-                                                          include_steps=True)
+                                                          self.reward_fn)
     self.graph = tf.Graph()
     self.sess = tf.Session(graph=self.graph)
     with self.graph.as_default():

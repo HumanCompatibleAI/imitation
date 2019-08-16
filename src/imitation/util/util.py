@@ -203,3 +203,11 @@ def make_session(close_on_exit: bool = True, **kwargs):
     finally:
       if close_on_exit:
         session.close()
+
+
+def docstring_parameter(*args, **kwargs):
+  """Treats the docstring as a format string, substituting in the arguments."""
+  def helper(obj):
+    obj.__doc__ = obj.__doc__.format(*args, **kwargs)
+    return obj
+  return helper

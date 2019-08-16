@@ -1,5 +1,5 @@
 import importlib
-from typing import Callable, Generic, Optional, TypeVar
+from typing import Callable, Generic, Iterable, Optional, TypeVar
 
 import gym
 from stable_baselines.common.vec_env import VecEnv
@@ -46,6 +46,9 @@ class Registry(Generic[T]):
       self._values[key] = load_attr(self._indirect[key])
     return self._values[key]
 
+  def keys(self) -> Iterable[str]:
+    return set(self._values.keys()).union(self._indirect.keys())
+
   def register(self, key: str, *,
                value: Optional[T] = None,
                indirect: Optional[str] = None):
@@ -81,7 +84,7 @@ def build_loader_fn_require_env(fn: Callable[[VecEnv], T],
 
 def build_loader_fn_require_path(fn: Callable[[str], T],
                                  **kwargs) -> LoaderFn:
-  """Converts a factory taking an environment into a LoaderFn."""
+  """Converts a factory taking a path into a LoaderFn."""
   def f(path: str, venv: VecEnv) -> T:
     return fn(path, **kwargs)
   return f

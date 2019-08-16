@@ -71,10 +71,8 @@ def test_serialize_identity(session, env_name, reward_net):
     with tf.variable_scope("loaded"):
       loaded = net_cls.load(tmpdir)
 
-    unshaped_fn = serialize.load_reward("RewardNet",
-                                        f"{net_name}:False:{tmpdir}", venv)
-    shaped_fn = serialize.load_reward("RewardNet",
-                                      f"{net_name}:True:{tmpdir}", venv)
+    unshaped_fn = serialize.load_reward(f"{net_name}_unshaped", tmpdir, venv)
+    shaped_fn = serialize.load_reward(f"{net_name}_shaped", tmpdir, venv)
 
   assert original.observation_space == loaded.observation_space
   assert original.action_space == loaded.action_space
