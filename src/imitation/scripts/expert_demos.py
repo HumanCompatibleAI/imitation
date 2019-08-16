@@ -98,15 +98,16 @@ def rollouts_and_policy(
 
     venv = util.make_vec_env(env_name, num_vec, seed=_seed,
                              parallel=parallel, log_dir=log_dir)
-    vec_normalize = None
-    if normalize:
-      venv = vec_normalize = VecNormalize(venv)
 
     if reward_type is not None:
       reward_fn = load_reward(reward_type, reward_path, venv)
       venv = RewardVecEnvWrapper(venv, reward_fn)
       tf.logging.info(
-        f"Wrapped env in reward {reward_type} from {reward_path}.")
+          f"Wrapped env in reward {reward_type} from {reward_path}.")
+
+    vec_normalize = None
+    if normalize:
+      venv = vec_normalize = VecNormalize(venv)
 
     policy = util.init_rl(venv, verbose=1,
                           **make_blank_policy_kwargs)
