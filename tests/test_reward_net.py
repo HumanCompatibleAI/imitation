@@ -38,8 +38,9 @@ def test_reward_valid(env_name, reward_type):
   old_obs = _sample(venv.observation_space, TRAJECTORY_LEN)
   actions = _sample(venv.action_space, TRAJECTORY_LEN)
   new_obs = _sample(venv.observation_space, TRAJECTORY_LEN)
+  steps = np.arange(0, TRAJECTORY_LEN)
 
-  pred_reward = reward_fn(old_obs, actions, new_obs)
+  pred_reward = reward_fn(old_obs, actions, new_obs, steps)
   assert pred_reward.shape == (TRAJECTORY_LEN, )
   assert isinstance(pred_reward[0], numbers.Number)
 
@@ -88,8 +89,9 @@ def test_serialize_identity(session, env_name, reward_net):
   rewards = session.run(outputs, feed_dict=feed_dict)
 
   old_obs, actions, new_obs, _ = rollouts
-  rewards['train'].append(shaped_fn(old_obs, actions, new_obs))
-  rewards['test'].append(unshaped_fn(old_obs, actions, new_obs))
+  steps = np.zeros((old_obs.shape[0], ))
+  rewards['train'].append(shaped_fn(old_obs, actions, new_obs, steps))
+  rewards['test'].append(unshaped_fn(old_obs, actions, new_obs, steps))
 
   for key, predictions in rewards.items():
     assert len(predictions) == 3

@@ -154,7 +154,7 @@ class DensityReward:
     else:
       raise ValueError(f"Unknown density type {self.density_type}")
 
-  def __call__(self, obs_b, act_b, next_obs_b, *, steps=None):
+  def __call__(self, obs_b, act_b, next_obs_b, steps=None):
     r"""Compute reward from given (s,a,s') transition batch. This handles
     *batches* of observations, since it's designed to work with VecEnvs.
 
