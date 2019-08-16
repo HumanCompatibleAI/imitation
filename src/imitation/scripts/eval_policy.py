@@ -26,7 +26,7 @@ class InteractiveRender(VecEnvWrapper):
   def step_wait(self):
     ob = self.venv.step_wait()
     if self.render_fps > 0:
-      time.sleep(self.render_fps)
+      time.sleep(1 / self.render_fps)
     self.venv.render()
     return ob
 
