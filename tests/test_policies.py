@@ -2,7 +2,6 @@
 
 import tempfile
 
-import gym
 import numpy as np
 import pytest
 from stable_baselines.common.vec_env import VecNormalize
@@ -24,13 +23,13 @@ BASELINE_MODELS = [(name, cls_name)
 @pytest.mark.parametrize("policy_type", HARDCODED_TYPES)
 def test_actions_valid(env_name, policy_type):
   """Test output actions of our custom policies always lie in action space."""
-  env = gym.make(env_name)
-  policy = serialize.load_policy(policy_type, "foobar", env)
-  transitions = rollout.generate_transitions(policy, env, n_timesteps=100)
+  venv = util.make_vec_env(env_name, n_envs=1, parallel=False)
+  policy = serialize.load_policy(policy_type, "foobar", venv)
+  transitions = rollout.generate_transitions(policy, venv, n_timesteps=100)
   old_obs, act, new_obs, rew = transitions
 
   for a in act:
-    assert env.action_space.contains(a)
+    assert venv.action_space.contains(a)
 
 
 @pytest.mark.parametrize("env_name", SIMPLE_ENVS)
@@ -46,7 +45,7 @@ def test_serialize_identity(env_name, model_cfg, normalize):
   model_name, model_cls_name = model_cfg
   try:
     model_cls = registry.load_attr(model_cls_name)
-  except (AttributeError, ImportError):
+  except (AttributeError, ImportError):  # pragma: no cover
     pytest.skip("Couldn't load stable baselines class. "
                 "(Probably because mpi4py not installed.)")
 

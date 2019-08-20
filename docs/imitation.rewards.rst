@@ -20,6 +20,14 @@ imitation.rewards.reward\_net module
    :undoc-members:
    :show-inheritance:
 
+imitation.rewards.serialize
+---------------------------
+
+.. automodule:: imitation.rewards.serialize
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 
 Module contents
 ---------------

@@ -9,7 +9,7 @@ import tensorflow as tf
 
 import imitation.envs.examples  # noqa: F401
 from imitation.policies import serialize
-from imitation.rewards.discrim_net import DiscrimNetAIRL
+from imitation.rewards.serialize import load_reward
 from imitation.scripts.config.expert_demos import expert_demos_ex
 import imitation.util as util
 from imitation.util.reward_wrapper import RewardVecEnvWrapper
@@ -27,7 +27,9 @@ def rollouts_and_policy(
   parallel: bool = False,
   normalize: bool = True,
   make_blank_policy_kwargs: dict = {},
-  discrim_net_airl_path: Optional[str] = None,
+
+  reward_type: Optional[str] = None,
+  reward_path: Optional[str] = None,
 
   rollout_save_interval: int = 0,
   rollout_save_final: bool = False,
@@ -53,9 +55,14 @@ def rollouts_and_policy(
       parallel: If True, then use DummyVecEnv. Otherwise use SubprocVecEnv.
       normalize: If True, then rescale observations and reward.
       make_blank_policy_kwargs: Kwargs for `make_blank_policy`.
-      discrim_net_airl_path: If provided, then load the serialized
-        DiscrimNetAIRL and wrap the environment in the trainer's test reward.
-        This is useful for AIRL transfer learning.
+
+      reward_type: If provided, then load the serialized reward of this type,
+          wrapping the environment in this reward. This is useful to test
+          whether a reward model transfers. For more information, see
+          `imitation.rewards.serialize.load_reward`.
+      reward_path: A specifier, such as a path to a file on disk, used by
+          reward_type to load the reward model. For more information, see
+          `imitation.rewards.serialize.load_reward`.
 
       rollout_save_interval: The number of training updates in between
           intermediate rollout saves. If the argument is nonpositive, then
@@ -91,15 +98,16 @@ def rollouts_and_policy(
 
     venv = util.make_vec_env(env_name, num_vec, seed=_seed,
                              parallel=parallel, log_dir=log_dir)
+
+    if reward_type is not None:
+      reward_fn = load_reward(reward_type, reward_path, venv)
+      venv = RewardVecEnvWrapper(venv, reward_fn)
+      tf.logging.info(
+          f"Wrapped env in reward {reward_type} from {reward_path}.")
+
     vec_normalize = None
     if normalize:
       venv = vec_normalize = VecNormalize(venv)
-
-    if discrim_net_airl_path is not None:
-      discrim_net = DiscrimNetAIRL.load(discrim_net_airl_path)
-      venv = RewardVecEnvWrapper(venv, discrim_net.reward_test)
-      tf.logging.info(
-        f"Wrapped env in test reward from {discrim_net_airl_path}.")
 
     policy = util.init_rl(venv, verbose=1,
                           **make_blank_policy_kwargs)

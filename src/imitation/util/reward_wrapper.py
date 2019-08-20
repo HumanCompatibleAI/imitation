@@ -1,10 +1,17 @@
 """Common wrapper for adding custom reward values to an environment."""
+from typing import Callable
+
 import numpy as np
-from stable_baselines.common.vec_env import VecEnvWrapper
+from stable_baselines.common import vec_env
+
+RewardFn = Callable[[np.ndarray, np.ndarray, np.ndarray, np.ndarray],
+                    np.ndarray]
 
 
-class RewardVecEnvWrapper(VecEnvWrapper):
-  def __init__(self, venv, reward_fn, *, include_steps=False):
+class RewardVecEnvWrapper(vec_env.VecEnvWrapper):
+  def __init__(self,
+               venv: vec_env.VecEnv,
+               reward_fn: RewardFn):
     """A RewardVecEnvWrapper uses a provided reward_fn to replace
     the reward function returned by `step()`.
 
@@ -16,17 +23,12 @@ class RewardVecEnvWrapper(VecEnvWrapper):
     returned info dict under the `wrapped_env_rew` key.
 
     Args:
-        venv (VecEnv): The VecEnv to wrap.
-        reward_fn (Callable): A function that wraps takes in arguments
-            (old_obs, act, new_obs) and returns a vector of rewards.
-        include_steps (bool): should reward_fn be passed an extra keyword
-            argument `steps` indicating the number of actions that have been
-            taken in each environment since the last reset? Useful for
-            time-dependent reward functions.
+        venv: The VecEnv to wrap.
+        reward_fn: A function that wraps takes in an (old_obs, act, new_obs)
+            triple and returns a vector of rewards.
     """
     assert not isinstance(venv, RewardVecEnvWrapper)
     super().__init__(venv)
-    self.include_steps = include_steps
     self.reward_fn = reward_fn
     self.reset()
 
@@ -55,13 +57,10 @@ class RewardVecEnvWrapper(VecEnvWrapper):
       obs_fixed.append(single_obs)
     obs_fixed = np.stack(obs_fixed)
 
-    if self.include_steps:
-      rews = self.reward_fn(self._old_obs,
-                            self._actions,
-                            obs_fixed,
-                            steps=self._step_counter)
-    else:
-      rews = self.reward_fn(self._old_obs, self._actions, obs_fixed)
+    rews = self.reward_fn(self._old_obs,
+                          self._actions,
+                          obs_fixed,
+                          self._step_counter)
     assert len(rews) == len(obs), "must return one rew for each env"
     self._step_counter += 1
     done_mask = np.asarray(dones, dtype='bool').reshape((len(dones), ))

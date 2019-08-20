@@ -84,20 +84,24 @@ policy_registry.register(
     'zero',
     value=registry.build_loader_fn_require_space(ZeroPolicy))
 
+
+def _add_stable_baselines_policies(classes):
+  for k, (cls_name, attr) in classes.items():
+    try:
+      cls = registry.load_attr(cls_name)
+      fn = _load_stable_baselines(cls, attr)
+      policy_registry.register(k, value=fn)
+    except (AttributeError, ImportError):
+      # We expect PPO1 load to fail if mpi4py isn't installed.
+      # Stable Baselines can be installed without mpi4py.
+      tf.logging.debug(f"Couldn't load {cls_name}. Skipping...")
+
+
 STABLE_BASELINES_CLASSES = {
     'ppo1': ('stable_baselines:PPO1', 'policy_pi'),
     'ppo2': ('stable_baselines:PPO2', 'act_model'),
 }
-
-for k, (cls_name, attr) in STABLE_BASELINES_CLASSES.items():
-  try:
-    cls = registry.load_attr(cls_name)
-    fn = _load_stable_baselines(cls, attr)
-    policy_registry.register(k, value=fn)
-  except (AttributeError, ImportError):
-    # We expect PPO1 load to fail if mpi4py isn't installed.
-    # Stable Baselines can be installed without mpi4py.
-    tf.logging.debug(f"Couldn't load {cls_name}. Skipping...")
+_add_stable_baselines_policies(STABLE_BASELINES_CLASSES)
 
 
 def load_policy(policy_type: str, policy_path: str,

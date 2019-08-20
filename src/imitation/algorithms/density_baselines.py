@@ -154,7 +154,7 @@ class DensityReward:
     else:
       raise ValueError(f"Unknown density type {self.density_type}")
 
-  def __call__(self, obs_b, act_b, next_obs_b, *, steps=None):
+  def __call__(self, obs_b, act_b, next_obs_b, steps=None):
     r"""Compute reward from given (s,a,s') transition batch. This handles
     *batches* of observations, since it's designed to work with VecEnvs.
 
@@ -233,8 +233,7 @@ class DensityTrainer:
                                    kernel_bandwidth=kernel_bandwidth,
                                    standardise_inputs=standardise_inputs)
     self.wrapped_env = reward_wrapper.RewardVecEnvWrapper(self.env,
-                                                          self.reward_fn,
-                                                          include_steps=True)
+                                                          self.reward_fn)
     self.graph = tf.Graph()
     self.sess = tf.Session(graph=self.graph)
     with self.graph.as_default():

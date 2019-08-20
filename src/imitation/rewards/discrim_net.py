@@ -56,6 +56,7 @@ class DiscrimNet(serialize.Serializable):
     old_obs: np.ndarray,
     act: np.ndarray,
     new_obs: np.ndarray,
+    steps: np.ndarray,
     *,
     gen_log_prob_fn: Callable[..., np.ndarray],
   ) -> np.ndarray:
@@ -69,6 +70,7 @@ class DiscrimNet(serialize.Serializable):
             expected to be the same as None dimension from `obs_input`.
         new_obs: The observation input. Its shape is
             `(batch_size,) + observation_space.shape`.
+        steps: The number of timesteps elapsed. Its shape is `(batch_size,)`.
         gen_log_prob_fn: The generator policy's action probabilities function.
             A Callable such that
             `log_act_prob_fn(observations=old_obs, actions=act, lopg=True)`
@@ -103,6 +105,7 @@ class DiscrimNet(serialize.Serializable):
     old_obs: np.ndarray,
     act: np.ndarray,
     new_obs: np.ndarray,
+    steps: np.ndarray,
   ) -> np.ndarray:
     """Vectorized reward for training an expert during transfer learning.
 
@@ -114,6 +117,7 @@ class DiscrimNet(serialize.Serializable):
             expected to be the same as None dimension from `obs_input`.
         new_obs: The observation input. Its shape is
             `(batch_size,) + observation_space.shape`.
+        steps: The number of timesteps elapsed. Its shape is `(batch_size,)`.
     Returns:
         The rewards. Its shape is `(batch_size,)`.
     """

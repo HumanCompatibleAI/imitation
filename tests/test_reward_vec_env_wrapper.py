@@ -5,7 +5,7 @@ from imitation.policies.base import RandomPolicy
 
 
 class FunkyReward:
-  def __call__(self, obs, act, next_obs, *, steps=None):
+  def __call__(self, obs, act, next_obs, steps=None):
     # give each environment number from 1 to num_envs
     return (np.arange(len(obs)) + 1).astype('float32')
 
