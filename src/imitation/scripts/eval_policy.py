@@ -17,7 +17,7 @@ from imitation.util import reward_wrapper, rollout, util
 class InteractiveRender(VecEnvWrapper):
   def __init__(self, venv, fps):
     super().__init__(venv)
-    self.fps = fps
+    self.render_fps = fps
 
   def reset(self):
     ob = self.venv.reset()
