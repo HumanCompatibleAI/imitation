@@ -74,25 +74,28 @@ class Registry(Generic[T]):
 def build_loader_fn_require_space(fn: Callable[[gym.Space, gym.Space], T],
                                   **kwargs) -> LoaderFn:
   """Converts a factory taking observation and action space into a LoaderFn."""
-  def f(path: str, venv: VecEnv) -> T:
+  @functools.wraps(fn)
+  def wrapper(path: str, venv: VecEnv) -> T:
     return fn(venv.observation_space, venv.action_space, **kwargs)
-  return f
+  return wrapper
 
 
 def build_loader_fn_require_env(fn: Callable[[VecEnv], T],
                                 **kwargs) -> LoaderFn:
   """Converts a factory taking an environment into a LoaderFn."""
-  def f(path: str, venv: VecEnv) -> T:
+  @functools.wraps(fn)
+  def wrapper(path: str, venv: VecEnv) -> T:
     return fn(venv, **kwargs)
-  return f
+  return wrapper
 
 
 def build_loader_fn_require_path(fn: Callable[[str], T],
                                  **kwargs) -> LoaderFn:
   """Converts a factory taking a path into a LoaderFn."""
-  def f(path: str, venv: VecEnv) -> T:
+  @functools.wraps(fn)
+  def wrapper(path: str, venv: VecEnv) -> T:
     return fn(path, **kwargs)
-  return f
+  return wrapper
 
 
 def dummy_context(fn: Callable[..., T]) -> Callable[..., ContextManager[T]]:
