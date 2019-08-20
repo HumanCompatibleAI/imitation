@@ -117,7 +117,7 @@ _add_stable_baselines_policies(STABLE_BASELINES_CLASSES)
 
 
 def load_policy(policy_type: str, policy_path: str,
-                venv: VecEnv) -> BasePolicy:
+                venv: VecEnv) -> ContextManager[BasePolicy]:
   """Load serialized policy.
 
   Args:
