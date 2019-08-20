@@ -1,4 +1,5 @@
 import contextlib
+import functools
 import importlib
 from typing import (Callable, ContextManager, Generic, Iterable, Iterator,
                     Optional, TypeVar)
@@ -95,15 +96,17 @@ def build_loader_fn_require_path(fn: Callable[[str], T],
 
 
 def dummy_context(fn: Callable[..., T]) -> Callable[..., ContextManager[T]]:
+  @functools.wraps(fn)
   @contextlib.contextmanager
-  def f(*args, **kwargs) -> Iterator[T]:
+  def wrapper(*args, **kwargs) -> Iterator[T]:
     yield fn(*args, **kwargs)
-  return f
+  return wrapper
 
 
 def sess_context(fn: Callable[..., T]) -> Callable[..., ContextManager[T]]:
+  @functools.wraps(fn)
   @contextlib.contextmanager
-  def f(*args, **kwargs) -> Iterator[T]:
+  def wrapper(*args, **kwargs) -> Iterator[T]:
     with util.make_session():
       yield fn(*args, **kwargs)
-  return f
+  return wrapper
