@@ -32,15 +32,15 @@ def _sample(space, n):
 def test_reward_valid(env_name, reward_type):
   """Test output of reward function is appropriate shape and type."""
   venv = util.make_vec_env(env_name, n_envs=1, parallel=False)
-  reward_fn = serialize.load_reward(reward_type, "foobar", venv)
-
   TRAJECTORY_LEN = 10
   old_obs = _sample(venv.observation_space, TRAJECTORY_LEN)
   actions = _sample(venv.action_space, TRAJECTORY_LEN)
   new_obs = _sample(venv.observation_space, TRAJECTORY_LEN)
   steps = np.arange(0, TRAJECTORY_LEN)
 
-  pred_reward = reward_fn(old_obs, actions, new_obs, steps)
+  with serialize.load_reward(reward_type, "foobar", venv) as reward_fn:
+    pred_reward = reward_fn(old_obs, actions, new_obs, steps)
+
   assert pred_reward.shape == (TRAJECTORY_LEN, )
   assert isinstance(pred_reward[0], numbers.Number)
 
@@ -72,26 +72,27 @@ def test_serialize_identity(session, env_name, reward_net):
     with tf.variable_scope("loaded"):
       loaded = net_cls.load(tmpdir)
 
-    unshaped_fn = serialize.load_reward(f"{net_name}_unshaped", tmpdir, venv)
-    shaped_fn = serialize.load_reward(f"{net_name}_shaped", tmpdir, venv)
+    assert original.observation_space == loaded.observation_space
+    assert original.action_space == loaded.action_space
 
-  assert original.observation_space == loaded.observation_space
-  assert original.action_space == loaded.action_space
+    rollouts = rollout.generate_transitions(random, venv, n_timesteps=100)
+    feed_dict = {}
+    outputs = {'train': [], 'test': []}
+    for net in [original, loaded]:
+      feed_dict.update(_make_feed_dict(net, rollouts))
+      outputs['train'].append(net.reward_output_train)
+      outputs['test'].append(net.reward_output_test)
 
-  rollouts = rollout.generate_transitions(random, venv, n_timesteps=100)
-  feed_dict = {}
-  outputs = {'train': [], 'test': []}
-  for net in [original, loaded]:
-    feed_dict.update(_make_feed_dict(net, rollouts))
-    outputs['train'].append(net.reward_output_train)
-    outputs['test'].append(net.reward_output_test)
+    unshaped_name = f"{net_name}_unshaped"
+    shaped_name = f"{net_name}_shaped"
+    with serialize.load_reward(unshaped_name, tmpdir, venv) as unshaped_fn:
+      with serialize.load_reward(shaped_name, tmpdir, venv) as shaped_fn:
+        rewards = session.run(outputs, feed_dict=feed_dict)
 
-  rewards = session.run(outputs, feed_dict=feed_dict)
-
-  old_obs, actions, new_obs, _ = rollouts
-  steps = np.zeros((old_obs.shape[0], ))
-  rewards['train'].append(shaped_fn(old_obs, actions, new_obs, steps))
-  rewards['test'].append(unshaped_fn(old_obs, actions, new_obs, steps))
+        old_obs, actions, new_obs, _ = rollouts
+        steps = np.zeros((old_obs.shape[0], ))
+        rewards['train'].append(shaped_fn(old_obs, actions, new_obs, steps))
+        rewards['test'].append(unshaped_fn(old_obs, actions, new_obs, steps))
 
   for key, predictions in rewards.items():
     assert len(predictions) == 3
