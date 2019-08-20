@@ -99,9 +99,11 @@ def rollouts_and_policy(
     venv = util.make_vec_env(env_name, num_vec, seed=_seed,
                              parallel=parallel, log_dir=log_dir)
 
+    log_callbacks = []
     if reward_type is not None:
       reward_fn = load_reward(reward_type, reward_path, venv)
       venv = RewardVecEnvWrapper(venv, reward_fn)
+      log_callbacks.append(venv.log_callback)
       tf.logging.info(
           f"Wrapped env in reward {reward_type} from {reward_path}.")
 
@@ -119,6 +121,10 @@ def rollouts_and_policy(
       nonlocal step
       step += 1
       policy = locals_['self']
+
+      # TODO(adam): make logging frequency configurable
+      for callback in log_callbacks:
+        callback(sb_logger)
 
       if rollout_save_interval > 0 and step % rollout_save_interval == 0:
         util.rollout.save(

@@ -8,6 +8,8 @@ named_config for each experiment implicitly sets parallel=False.
 import os.path as osp
 import tempfile
 
+import pytest
+
 from imitation.scripts.eval_policy import eval_policy_ex
 from imitation.scripts.expert_demos import expert_demos_ex
 from imitation.scripts.train_adversarial import train_ex
@@ -41,7 +43,14 @@ def test_expert_demos_rollouts_from_policy():
   assert run.status == 'COMPLETED'
 
 
-def test_eval_policy():
+EVAL_POLICY_CONFIGS = [
+    {},
+    {'reward_type': 'zero', 'reward_path': 'foobar'},
+]
+
+
+@pytest.mark.parametrize('config', EVAL_POLICY_CONFIGS)
+def test_eval_policy(config):
   """Smoke test for imitation.scripts.eval_policy"""
   with tempfile.TemporaryDirectory(prefix='imitation-policy_eval',
                                    ) as tmpdir:
@@ -49,6 +58,7 @@ def test_eval_policy():
           'render': False,
           'log_root': tmpdir,
       }
+      config_updates.update(config)
       run = eval_policy_ex.run(config_updates=config_updates,
                                named_configs=['fast'])
       assert run.status == 'COMPLETED'
