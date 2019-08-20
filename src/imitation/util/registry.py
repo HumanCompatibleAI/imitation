@@ -6,6 +6,8 @@ from typing import (Callable, ContextManager, Generic, Iterable, Iterator,
 import gym
 from stable_baselines.common.vec_env import VecEnv
 
+from imitation.util import util
+
 T = TypeVar("T")
 LoaderFn = Callable[[str, VecEnv], T]
 """The type stored in Registry is commonly an instance of LoaderFn."""
@@ -96,4 +98,12 @@ def dummy_context(fn: Callable[..., T]) -> Callable[..., ContextManager[T]]:
   @contextlib.contextmanager
   def f(*args, **kwargs) -> Iterator[T]:
     yield fn(*args, **kwargs)
+  return f
+
+
+def sess_context(fn: Callable[..., T]) -> Callable[..., ContextManager[T]]:
+  @contextlib.contextmanager
+  def f(*args, **kwargs) -> Iterator[T]:
+    with util.make_session():
+      yield fn(*args, **kwargs)
   return f

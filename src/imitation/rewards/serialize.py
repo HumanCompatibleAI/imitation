@@ -31,13 +31,11 @@ _add_reward_net_loaders(REWARD_NETS)
 
 
 def _load_discrim_net(cls):
-  @contextlib.contextmanager
   def f(path: str, venv: VecEnv):
-    with util.make_session():
       discrim_net = cls.load(path)
       # TODO(gleave): expose train reward as well? (hard due to action probs?)
-      yield discrim_net.reward_test
-  return f
+      return discrim_net.reward_test
+  return registry.sess_context(f)
 
 
 def _add_discrim_net_loaders(classes):
