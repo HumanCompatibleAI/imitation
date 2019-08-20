@@ -57,8 +57,8 @@ def eval_policy(_seed: int, env_name: str, timesteps: int, num_vec: int,
     venv = InteractiveRender(venv)
   # TODO(adam): add support for videos using VideoRecorder?
 
-  policy = serialize.load_policy(policy_type, policy_path, venv)
-  stats = rollout.rollout_stats(policy, venv, n_timesteps=timesteps)
+  with serialize.load_policy(policy_type, policy_path, venv) as policy:
+    stats = rollout.rollout_stats(policy, venv, n_timesteps=timesteps)
 
   return stats
 

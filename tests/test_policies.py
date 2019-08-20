@@ -24,8 +24,8 @@ BASELINE_MODELS = [(name, cls_name)
 def test_actions_valid(env_name, policy_type):
   """Test output actions of our custom policies always lie in action space."""
   venv = util.make_vec_env(env_name, n_envs=1, parallel=False)
-  policy = serialize.load_policy(policy_type, "foobar", venv)
-  transitions = rollout.generate_transitions(policy, venv, n_timesteps=100)
+  with serialize.load_policy(policy_type, "foobar", venv) as policy:
+    transitions = rollout.generate_transitions(policy, venv, n_timesteps=100)
   old_obs, act, new_obs, rew = transitions
 
   for a in act:
@@ -64,13 +64,12 @@ def test_serialize_identity(env_name, model_cfg, normalize):
     serialize.save_stable_model(tmpdir, model, vec_normalize)
     # We use `orig_venv` since `load_policy` automatically wraps `loaded`
     # with a VecNormalize, when appropriate.
-    loaded = serialize.load_policy(model_name, tmpdir, orig_venv)
-
-  orig_venv.env_method('seed', 0)
-  orig_venv.reset()
-  new_rollout = rollout.generate_transitions(loaded, orig_venv,
-                                             n_timesteps=1000,
-                                             deterministic_policy=True)
+    with serialize.load_policy(model_name, tmpdir, orig_venv) as loaded:
+      orig_venv.env_method('seed', 0)
+      orig_venv.reset()
+      new_rollout = rollout.generate_transitions(loaded, orig_venv,
+                                                 n_timesteps=1000,
+                                                 deterministic_policy=True)
 
   orig_acts = orig_rollout[1]
   new_acts = new_rollout[1]

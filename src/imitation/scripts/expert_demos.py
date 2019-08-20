@@ -171,19 +171,19 @@ def rollouts_from_policy(
       rollout_save_dir: Rollout pickle is saved in this directory as
           f"{env_name}.pkl".
   """
-  venv = util.make_vec_env(env_name, num_vec, seed=_seed,
-                           parallel=parallel, log_dir=log_dir)
-  policy = serialize.load_policy(policy_type, policy_path, venv)
-
   if rollout_save_dir is None:
     rollout_save_dir = osp.join(log_dir, "rollouts")
-  os.makedirs(rollout_save_dir, exist_ok=True)
 
-  util.rollout.save(rollout_save_dir, policy, venv,
-                    basename=env_name,
-                    n_timesteps=rollout_save_n_timesteps,
-                    n_episodes=rollout_save_n_episodes,
-                    )
+  venv = util.make_vec_env(env_name, num_vec, seed=_seed,
+                           parallel=parallel, log_dir=log_dir)
+
+  with serialize.load_policy(policy_type, policy_path, venv) as policy:
+    os.makedirs(rollout_save_dir, exist_ok=True)
+    util.rollout.save(rollout_save_dir, policy, venv,
+                      basename=env_name,
+                      n_timesteps=rollout_save_n_timesteps,
+                      n_episodes=rollout_save_n_episodes,
+                      )
 
 
 def main_console():

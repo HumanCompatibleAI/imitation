@@ -1,5 +1,7 @@
+import contextlib
 import importlib
-from typing import Callable, Generic, Iterable, Optional, TypeVar
+from typing import (Callable, ContextManager, Generic, Iterable, Iterator,
+                    Optional, TypeVar)
 
 import gym
 from stable_baselines.common.vec_env import VecEnv
@@ -87,4 +89,11 @@ def build_loader_fn_require_path(fn: Callable[[str], T],
   """Converts a factory taking a path into a LoaderFn."""
   def f(path: str, venv: VecEnv) -> T:
     return fn(path, **kwargs)
+  return f
+
+
+def dummy_context(fn: Callable[..., T]) -> Callable[..., ContextManager[T]]:
+  @contextlib.contextmanager
+  def f(*args, **kwargs) -> Iterator[T]:
+    yield fn(*args, **kwargs)
   return f
