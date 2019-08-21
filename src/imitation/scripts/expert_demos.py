@@ -1,3 +1,4 @@
+import contextlib
 import os
 import os.path as osp
 from typing import Optional
@@ -105,53 +106,55 @@ def rollouts_and_policy(
                              max_episode_steps=max_episode_steps)
 
     log_callbacks = []
-    if reward_type is not None:
-      reward_fn = load_reward(reward_type, reward_path, venv)
-      venv = RewardVecEnvWrapper(venv, reward_fn)
-      log_callbacks.append(venv.log_callback)
-      tf.logging.info(
-          f"Wrapped env in reward {reward_type} from {reward_path}.")
+    with contextlib.ExitStack() as stack:
+      if reward_type is not None:
+        reward_fn_ctx = load_reward(reward_type, reward_path, venv)
+        reward_fn = stack.enter_context(reward_fn_ctx)
+        venv = RewardVecEnvWrapper(venv, reward_fn)
+        log_callbacks.append(venv.log_callback)
+        tf.logging.info(
+            f"Wrapped env in reward {reward_type} from {reward_path}.")
 
-    vec_normalize = None
-    if normalize:
-      venv = vec_normalize = VecNormalize(venv)
+      vec_normalize = None
+      if normalize:
+        venv = vec_normalize = VecNormalize(venv)
 
-    policy = util.init_rl(venv, verbose=1,
-                          **make_blank_policy_kwargs)
+      policy = util.init_rl(venv, verbose=1,
+                            **make_blank_policy_kwargs)
 
-    # Make callback to save intermediate artifacts during training.
-    step = 0
+      # Make callback to save intermediate artifacts during training.
+      step = 0
 
-    def callback(locals_: dict, _) -> bool:
-      nonlocal step
-      step += 1
-      policy = locals_['self']
+      def callback(locals_: dict, _) -> bool:
+        nonlocal step
+        step += 1
+        policy = locals_['self']
 
-      # TODO(adam): make logging frequency configurable
-      for callback in log_callbacks:
-        callback(sb_logger)
+        # TODO(adam): make logging frequency configurable
+        for callback in log_callbacks:
+          callback(sb_logger)
 
-      if rollout_save_interval > 0 and step % rollout_save_interval == 0:
+        if rollout_save_interval > 0 and step % rollout_save_interval == 0:
+          util.rollout.save(
+            rollout_dir, policy, venv, step,
+            n_timesteps=rollout_save_n_timesteps,
+            n_episodes=rollout_save_n_episodes)
+        if policy_save_interval > 0 and step % policy_save_interval == 0:
+          output_dir = os.path.join(policy_dir, f'{step:05d}')
+          serialize.save_stable_model(output_dir, policy, vec_normalize)
+        return True  # Continue training.
+
+      policy.learn(total_timesteps, callback=callback)
+
+      # Save final artifacts after training is complete.
+      if rollout_save_final:
         util.rollout.save(
-          rollout_dir, policy, venv, step,
+          rollout_dir, policy, venv, "final",
           n_timesteps=rollout_save_n_timesteps,
           n_episodes=rollout_save_n_episodes)
-      if policy_save_interval > 0 and step % policy_save_interval == 0:
-        output_dir = os.path.join(policy_dir, f'{step:05d}')
+      if policy_save_final:
+        output_dir = os.path.join(policy_dir, "final")
         serialize.save_stable_model(output_dir, policy, vec_normalize)
-      return True  # Continue training.
-
-    policy.learn(total_timesteps, callback=callback)
-
-    # Save final artifacts after training is complete.
-    if rollout_save_final:
-      util.rollout.save(
-        rollout_dir, policy, venv, "final",
-        n_timesteps=rollout_save_n_timesteps,
-        n_episodes=rollout_save_n_episodes)
-    if policy_save_final:
-      output_dir = os.path.join(policy_dir, "final")
-      serialize.save_stable_model(output_dir, policy, vec_normalize)
 
 
 @expert_demos_ex.command
@@ -183,20 +186,20 @@ def rollouts_from_policy(
       rollout_save_dir: Rollout pickle is saved in this directory as
           f"{env_name}.pkl".
   """
+  if rollout_save_dir is None:
+    rollout_save_dir = osp.join(log_dir, "rollouts")
+
   venv = util.make_vec_env(env_name, num_vec, seed=_seed,
                            parallel=parallel, log_dir=log_dir,
                            max_episode_steps=max_episode_steps)
-  policy = serialize.load_policy(policy_type, policy_path, venv)
 
-  if rollout_save_dir is None:
-    rollout_save_dir = osp.join(log_dir, "rollouts")
-  os.makedirs(rollout_save_dir, exist_ok=True)
-
-  util.rollout.save(rollout_save_dir, policy, venv,
-                    basename=env_name,
-                    n_timesteps=rollout_save_n_timesteps,
-                    n_episodes=rollout_save_n_episodes,
-                    )
+  with serialize.load_policy(policy_type, policy_path, venv) as policy:
+    os.makedirs(rollout_save_dir, exist_ok=True)
+    util.rollout.save(rollout_save_dir, policy, venv,
+                      basename=env_name,
+                      n_timesteps=rollout_save_n_timesteps,
+                      n_episodes=rollout_save_n_episodes,
+                      )
 
 
 def main_console():

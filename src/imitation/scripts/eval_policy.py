@@ -1,3 +1,4 @@
+import contextlib
 import os.path as osp
 import time
 from typing import Optional
@@ -16,7 +17,7 @@ from imitation.util import reward_wrapper, rollout, util
 class InteractiveRender(VecEnvWrapper):
   def __init__(self, venv, fps):
     super().__init__(venv)
-    self.fps = fps
+    self.render_fps = fps
 
   def reset(self):
     ob = self.venv.reset()
@@ -86,14 +87,16 @@ def eval_policy(_seed: int,
     venv = InteractiveRender(venv, render_fps)
   # TODO(adam): add support for videos using VideoRecorder?
 
-  if reward_type is not None:
-    reward_fn = load_reward(reward_type, reward_path, venv)
-    venv = reward_wrapper.RewardVecEnvWrapper(venv, reward_fn)
-    tf.logging.info(
-        f"Wrapped env in reward {reward_type} from {reward_path}.")
+  with contextlib.ExitStack() as stack:
+    if reward_type is not None:
+      reward_fn_ctx = load_reward(reward_type, reward_path, venv)
+      reward_fn = stack.enter_context(reward_fn_ctx)
+      venv = reward_wrapper.RewardVecEnvWrapper(venv, reward_fn)
+      tf.logging.info(
+          f"Wrapped env in reward {reward_type} from {reward_path}.")
 
-  policy = serialize.load_policy(policy_type, policy_path, venv)
-  stats = rollout.rollout_stats(policy, venv, n_timesteps=timesteps)
+    with serialize.load_policy(policy_type, policy_path, venv) as policy:
+      stats = rollout.rollout_stats(policy, venv, n_timesteps=timesteps)
 
   return stats
 
