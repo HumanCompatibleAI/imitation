@@ -15,6 +15,7 @@ def expert_demos_defaults():
   num_vec = 8  # Number of environments in VecEnv
   parallel = True  # Use SubprocVecEnv (generally faster if num_vec>1)
   normalize = True  # Use VecNormalize
+  max_episode_steps = None  # Set to positive int to limit episode horizons
   make_blank_policy_kwargs = dict(DEFAULT_BLANK_POLICY_KWARGS)
 
   # If specified, overrides the ground-truth environment reward

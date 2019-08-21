@@ -25,6 +25,7 @@ def rollouts_and_policy(
   log_dir: str = None,
   num_vec: int = 8,
   parallel: bool = False,
+  max_episode_steps: Optional[int] = None,
   normalize: bool = True,
   make_blank_policy_kwargs: dict = {},
 
@@ -53,6 +54,9 @@ def rollouts_and_policy(
       log_dir: The root directory to save metrics and checkpoints to.
       num_vec: Number of environments in VecEnv.
       parallel: If True, then use DummyVecEnv. Otherwise use SubprocVecEnv.
+      max_episode_steps: If not None, then environments are wrapped by
+          TimeLimit so that they have at most `max_episode_steps` steps per
+          episode.
       normalize: If True, then rescale observations and reward.
       make_blank_policy_kwargs: Kwargs for `make_blank_policy`.
 
@@ -63,6 +67,9 @@ def rollouts_and_policy(
       reward_path: A specifier, such as a path to a file on disk, used by
           reward_type to load the reward model. For more information, see
           `imitation.rewards.serialize.load_reward`.
+      discrim_net_airl_path: If provided, then load the serialized
+          DiscrimNetAIRL and wrap the environment in the trainer's test reward.
+          This is useful for AIRL transfer learning.
 
       rollout_save_interval: The number of training updates in between
           intermediate rollout saves. If the argument is nonpositive, then
@@ -97,7 +104,8 @@ def rollouts_and_policy(
     os.makedirs(policy_dir, exist_ok=True)
 
     venv = util.make_vec_env(env_name, num_vec, seed=_seed,
-                             parallel=parallel, log_dir=log_dir)
+                             parallel=parallel, log_dir=log_dir,
+                             max_episode_steps=max_episode_steps)
 
     log_callbacks = []
     if reward_type is not None:
@@ -163,6 +171,7 @@ def rollouts_from_policy(
   env_name: str = "CartPole-v1",
   parallel: bool = True,
   rollout_save_dir: Optional[str] = None,
+  max_episode_steps: Optional[int] = None,
 ) -> None:
   """Loads a saved policy and generates rollouts.
 
@@ -178,7 +187,8 @@ def rollouts_from_policy(
           f"{env_name}.pkl".
   """
   venv = util.make_vec_env(env_name, num_vec, seed=_seed,
-                           parallel=parallel, log_dir=log_dir)
+                           parallel=parallel, log_dir=log_dir,
+                           max_episode_steps=max_episode_steps)
   policy = serialize.load_policy(policy_type, policy_path, venv)
 
   if rollout_save_dir is None:

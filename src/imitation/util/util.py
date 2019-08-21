@@ -57,7 +57,8 @@ def make_vec_env(env_id: str,
                  n_envs: int = 8,
                  seed: int = 0,
                  parallel: bool = False,
-                 log_dir: Optional[str] = None) -> VecEnv:
+                 log_dir: Optional[str] = None,
+                 max_episode_steps: Optional[int] = None) -> VecEnv:
   """Returns a VecEnv initialized with `n_envs` Envs.
 
   Args:
@@ -66,10 +67,15 @@ def make_vec_env(env_id: str,
       seed: The environment seed.
       parallel: If True, uses SubprocVecEnv; otherwise, DummyVecEnv.
       log_dir: If specified, saves Monitor output to this directory.
+      max_episode_steps: If specified, wraps VecEnv in TimeLimit wrapper with
+          this episode length before returning.
   """
   def make_env(i):
     env = gym.make(env_id)
     env.seed(seed + i)  # seed each environment separately for diversity
+
+    if time_limit is not None:
+      env = TimeLimit(max_episode_steps=max_episode_steps)
 
     # Use Monitor to record statistics needed for Baselines algorithms logging
     # Optionally, save to disk
