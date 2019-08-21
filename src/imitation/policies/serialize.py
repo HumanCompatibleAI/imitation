@@ -62,6 +62,7 @@ def _load_stable_baselines(cls: Type[BaseRLModel],
     tf.logging.info(f"Loading Stable Baselines policy for '{cls}' "
                     f"from '{path}'")
     model_path = os.path.join(path, 'model.pkl')
+    model = None
     try:
       model = cls.load(model_path, env=env)
       policy = getattr(model, policy_attr)
@@ -77,7 +78,7 @@ def _load_stable_baselines(cls: Type[BaseRLModel],
 
       yield policy
     finally:
-      if model.sess is not None:
+      if model is not None and model.sess is not None:
         model.sess.close()
 
   return f
