@@ -39,16 +39,6 @@ def logging(env_name, log_root):
                          util.make_unique_timestamp())
 
 
-# Shared settings
-
-ant_shared_locals = dict(
-    make_blank_policy_kwargs=dict(
-        n_steps=2048,  # batch size of 2048*8=16384 due to num_vec
-    ),
-    total_timesteps=int(5e6),
-)
-
-
 # Standard Gym env configs
 
 @expert_demos_ex.named_config
@@ -140,3 +130,14 @@ def fast():
   """Intended for testing purposes: small # of updates, ends quickly."""
   total_timesteps = int(1e4)
   max_episode_steps = int(1e4)
+
+
+# Shared settings
+
+ant_shared_locals = dict(
+    make_blank_policy_kwargs=dict(
+        n_steps=2048,  # batch size of 2048*8=16384 due to num_vec
+    ),
+    total_timesteps=int(5e6),
+    max_episode_steps=500,  # To match `inverse_rl` settings.
+)
