@@ -47,7 +47,7 @@ def eval_policy(_seed: int,
 
                 reward_type: Optional[str] = None,
                 reward_path: Optional[str] = None,
-                max_episode_steps: Optional[int] = None
+                max_episode_steps: Optional[int] = None,
                 ):
   """Rolls a policy out in an environment, collecting statistics.
 
