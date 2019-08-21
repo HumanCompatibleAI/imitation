@@ -72,8 +72,7 @@ def eval_policy(_seed: int,
         a reward of this.
     reward_path: If reward_type is specified, the path to a serialized reward
         of `reward_type` to override the environment reward with.
-    log_dir: The directory to log intermediate output to. (As of 2019-07-19
-        this is just episode-by-episode reward from bench.Monitor.)
+
   Returns:
     Statistics returned by `imitation.util.rollout.rollout_stats`.
   """
