@@ -139,3 +139,4 @@ def two_d_maze():
 def fast():
   """Intended for testing purposes: small # of updates, ends quickly."""
   total_timesteps = int(1e4)
+  max_episode_steps = int(1e4)

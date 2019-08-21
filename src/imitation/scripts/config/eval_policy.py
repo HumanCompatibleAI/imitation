@@ -35,3 +35,4 @@ def logging(log_root, env_name):
 @eval_policy_ex.named_config
 def fast():
   timesteps = int(1e2)
+  max_episode_steps = int(1e2)

@@ -76,7 +76,7 @@ def make_vec_env(env_id: str,
     env.seed(seed + i)  # seed each environment separately for diversity
 
     if max_episode_steps is not None:
-      env = TimeLimit(max_episode_steps=max_episode_steps)
+      env = TimeLimit(env, max_episode_steps)
 
     # Use Monitor to record statistics needed for Baselines algorithms logging
     # Optionally, save to disk
