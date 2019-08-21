@@ -48,6 +48,7 @@ def eval_policy(_seed: int,
 
                 reward_type: Optional[str] = None,
                 reward_path: Optional[str] = None,
+                max_episode_steps: Optional[int] = None,
                 ):
   """Rolls a policy out in an environment, collecting statistics.
 
@@ -58,6 +59,9 @@ def eval_policy(_seed: int,
     num_vec: Number of environments to run simultaneously.
     parallel: If True, use `SubprocVecEnv` for true parallelism; otherwise,
         uses `DummyVecEnv`.
+    max_episode_steps: If not None, then environments are wrapped by
+        TimeLimit so that they have at most `max_episode_steps` steps per
+        episode.
     render: If True, renders interactively to the screen.
     log_dir: The directory to log intermediate output to. (As of 2019-07-19
         this is just episode-by-episode reward from bench.Monitor.)
@@ -76,7 +80,8 @@ def eval_policy(_seed: int,
   tf.logging.info('Logging to %s', log_dir)
 
   venv = util.make_vec_env(env_name, num_vec, seed=_seed,
-                           parallel=parallel, log_dir=log_dir)
+                           parallel=parallel, log_dir=log_dir,
+                           max_episode_steps=max_episode_steps)
   if render:
     venv = InteractiveRender(venv, render_fps)
   # TODO(adam): add support for videos using VideoRecorder?

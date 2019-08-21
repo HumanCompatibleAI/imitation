@@ -13,6 +13,7 @@ def replay_defaults():
   timesteps = int(1e4)  # number of timesteps to evaluate
   num_vec = 1  # number of environments in parallel
   parallel = False  # Use SubprocVecEnv (generally faster if num_vec>1)
+  max_episode_steps = None  # Set to positive int to limit episode horizons
 
   render = True  # render to screen
   render_fps = 60  # -1 to render at full speed
@@ -34,3 +35,4 @@ def logging(log_root, env_name):
 @eval_policy_ex.named_config
 def fast():
   timesteps = int(1e2)
+  max_episode_steps = int(1e2)

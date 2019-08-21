@@ -7,6 +7,7 @@ from typing import Callable, Dict, Iterable, Optional, Tuple, Type, Union
 import uuid
 
 import gym
+from gym.wrappers import TimeLimit
 import stable_baselines
 from stable_baselines import bench
 from stable_baselines.common.base_class import BaseRLModel
@@ -57,7 +58,8 @@ def make_vec_env(env_id: str,
                  n_envs: int = 8,
                  seed: int = 0,
                  parallel: bool = False,
-                 log_dir: Optional[str] = None) -> VecEnv:
+                 log_dir: Optional[str] = None,
+                 max_episode_steps: Optional[int] = None) -> VecEnv:
   """Returns a VecEnv initialized with `n_envs` Envs.
 
   Args:
@@ -66,10 +68,15 @@ def make_vec_env(env_id: str,
       seed: The environment seed.
       parallel: If True, uses SubprocVecEnv; otherwise, DummyVecEnv.
       log_dir: If specified, saves Monitor output to this directory.
+      max_episode_steps: If specified, wraps VecEnv in TimeLimit wrapper with
+          this episode length before returning.
   """
   def make_env(i):
     env = gym.make(env_id)
     env.seed(seed + i)  # seed each environment separately for diversity
+
+    if max_episode_steps is not None:
+      env = TimeLimit(env, max_episode_steps)
 
     # Use Monitor to record statistics needed for Baselines algorithms logging
     # Optionally, save to disk

@@ -15,6 +15,7 @@ def expert_demos_defaults():
   num_vec = 8  # Number of environments in VecEnv
   parallel = True  # Use SubprocVecEnv (generally faster if num_vec>1)
   normalize = True  # Use VecNormalize
+  max_episode_steps = None  # Set to positive int to limit episode horizons
   make_blank_policy_kwargs = dict(DEFAULT_BLANK_POLICY_KWARGS)
 
   # If specified, overrides the ground-truth environment reward
@@ -36,16 +37,6 @@ def expert_demos_defaults():
 def logging(env_name, log_root):
   log_dir = os.path.join(log_root, env_name.replace('/', '_'),
                          util.make_unique_timestamp())
-
-
-# Shared settings
-
-ant_shared_locals = dict(
-    make_blank_policy_kwargs=dict(
-        n_steps=2048,  # batch size of 2048*8=16384 due to num_vec
-    ),
-    total_timesteps=int(5e6),
-)
 
 
 # Standard Gym env configs
@@ -138,3 +129,15 @@ def two_d_maze():
 def fast():
   """Intended for testing purposes: small # of updates, ends quickly."""
   total_timesteps = int(1e4)
+  max_episode_steps = int(1e4)
+
+
+# Shared settings
+
+ant_shared_locals = dict(
+    make_blank_policy_kwargs=dict(
+        n_steps=2048,  # batch size of 2048*8=16384 due to num_vec
+    ),
+    total_timesteps=int(5e6),
+    max_episode_steps=500,  # To match `inverse_rl` settings.
+)
