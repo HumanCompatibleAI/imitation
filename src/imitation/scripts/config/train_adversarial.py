@@ -183,5 +183,5 @@ def fast():
   init_trainer_kwargs = dict(
       n_expert_demos=1,
       parallel=False,  # easier to debug with everything in one process
+      max_episode_steps=int(1e2),
   )
-  max_episode_steps = int(1e2)
