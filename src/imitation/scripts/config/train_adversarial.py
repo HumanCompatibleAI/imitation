@@ -25,7 +25,7 @@ def train_defaults():
     init_trainer_kwargs = dict(
         num_vec=8,  # NOTE: changing this also changes the effective n_steps!
         parallel=True,  # Use SubprocVecEnv (generally faster if num_vec>1)
-        max_episode_steps = None,  # Set to positive int to limit episode horizons
+        max_episode_steps=None,  # Set to positive int to limit episode horizons
         scale=True,
 
         reward_kwargs=dict(

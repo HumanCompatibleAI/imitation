@@ -7,6 +7,7 @@ from typing import Callable, Dict, Iterable, Optional, Tuple, Type, Union
 import uuid
 
 import gym
+from gym.wrappers import TimeLimit
 import stable_baselines
 from stable_baselines import bench
 from stable_baselines.common.base_class import BaseRLModel
@@ -74,7 +75,7 @@ def make_vec_env(env_id: str,
     env = gym.make(env_id)
     env.seed(seed + i)  # seed each environment separately for diversity
 
-    if time_limit is not None:
+    if max_episode_steps is not None:
       env = TimeLimit(max_episode_steps=max_episode_steps)
 
     # Use Monitor to record statistics needed for Baselines algorithms logging

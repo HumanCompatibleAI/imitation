@@ -308,6 +308,7 @@ def init_trainer(env_id: str,
                  use_gail: bool = False,
                  num_vec: int = 8,
                  parallel: bool = False,
+                 max_episode_steps: Optional[int] = None,
                  max_n_files: int = 1,
                  scale: bool = True,
                  airl_entropy_weight: float = 1.0,
@@ -335,6 +336,8 @@ def init_trainer(env_id: str,
         using AIRL.
     num_vec: The number of vectorized environments.
     parallel: If True, then use SubprocVecEnv; otherwise, DummyVecEnv.
+    max_episode_steps: If specified, wraps VecEnv in TimeLimit wrapper with
+        this episode length before returning.
     max_n_files: If provided, then only load the most recent `max_n_files`
         files, as sorted by modification times.
     policy_dir: The directory containing the pickled experts for
@@ -349,7 +352,7 @@ def init_trainer(env_id: str,
         used to initialize the trainer.
   """
   env = util.make_vec_env(env_id, num_vec, seed=seed, parallel=parallel,
-                          log_dir=log_dir)
+                          log_dir=log_dir, max_episode_steps=max_episode_steps)
   gen_policy = util.init_rl(env, verbose=1,
                             **make_blank_policy_kwargs)
 
