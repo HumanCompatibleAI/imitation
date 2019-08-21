@@ -67,9 +67,6 @@ def rollouts_and_policy(
       reward_path: A specifier, such as a path to a file on disk, used by
           reward_type to load the reward model. For more information, see
           `imitation.rewards.serialize.load_reward`.
-      discrim_net_airl_path: If provided, then load the serialized
-          DiscrimNetAIRL and wrap the environment in the trainer's test reward.
-          This is useful for AIRL transfer learning.
 
       rollout_save_interval: The number of training updates in between
           intermediate rollout saves. If the argument is nonpositive, then
