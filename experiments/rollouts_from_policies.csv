@@ -1,0 +1,10 @@
+config_name,env_name,n_demonstrations
+cartpole,CartPole-v1,10
+mountain_car,MountainCar-v0,10
+acrobot,Acrobot-v1,10
+half_cheetah,HalfCheetah-v2.pkl,25
+hopper,Hopper-v2,25
+walker,Walker2d-v2,25
+ant,Ant-v2,25
+humanoid,Humanoid-v2,240
+reacher,Reacher-v2,25
