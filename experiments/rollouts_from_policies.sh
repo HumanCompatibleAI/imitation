@@ -53,7 +53,7 @@ pushd ${EXPERT_MODELS_DIR} > /dev/null
 # associated with {env_name}.
 #
 # The inner parallel reads in values of {uuid} from STDIN and executes
-# `python -m imitation.scripts.expert_demos` with the appropriate Sacred brewoptions.
+# `python -m imitation.scripts.expert_demos` with the appropriate Sacred options.
 
 parallel -j 25% --header : --results ${output_dir_abs}/parallel/ --colsep , \
   "${FIND_CMD} policies -mindepth 2 -maxdepth 2 -type d -path '*{env_name}/*' \
