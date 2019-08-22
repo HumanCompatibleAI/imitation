@@ -106,7 +106,7 @@ def load_reward(reward_type: str, reward_path: str,
   """Load serialized policy.
 
   Args:
-    reward_type: A key in `reward_registry`, e.g. `RewardNet`. Valid types
+    reward_type: A key in `reward_registry`. Valid types
         include {reward_types}.
     reward_path: A path specifying the reward.
     venv: An environment that the policy is to be used with.
