@@ -183,7 +183,7 @@ class DiscrimNetAIRL(DiscrimNet):
   r"""The AIRL discriminator for a given RewardNet.
 
   The AIRL discriminator is of the form
-  .. math:: D_{\theta} = \frac{\exp(f_{\theta}(s,a)}{\exp(f_{\theta}(s,a) + \pi(a \mid s)}
+  .. math:: D_{\theta}(s,a) = \frac{\exp(f_{\theta}(s,a)}{\exp(f_{\theta}(s,a) + \pi(a \mid s)}
 
   where :math:`f_{\theta}` is `self.reward_net`.
   """  # noqa: E501
