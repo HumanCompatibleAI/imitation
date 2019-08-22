@@ -64,7 +64,7 @@ parallel -j 25% --header : --results ${output_dir_abs}/parallel/ --colsep , \
     {config_name} \
     log_root='${output_dir_abs}' \
     policy_path='policies/{env_name}/{uuid}' \
-    rollout_save_dir='rollouts/{env_name}/{uuid}.pkl' \
+    rollout_save_dir='rollouts/{env_name}/{uuid}' \
     rollout_save_n_episodes='{n_demonstrations}' " \
   :::: ${config_csv_abs}
 
