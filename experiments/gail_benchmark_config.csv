@@ -1,4 +1,4 @@
-env_config,rollout_glob,n_gen_steps_per_epoch,n_epochs,n_demonstrations
+env_config,rollout_glob,n_gen_steps_per_epoch,n_epochs,n_expert_demos
 cartpole,CartPole-v1.pkl,5000,300,1
 cartpole,CartPole-v1.pkl,5000,300,4
 cartpole,CartPole-v1.pkl,5000,300,7
