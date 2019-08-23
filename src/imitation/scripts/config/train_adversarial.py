@@ -77,7 +77,6 @@ def airl():
 
 # Standard Gym env configs
 
-
 @train_ex.named_config
 def acrobot():
   env_name = "Acrobot-v1"
