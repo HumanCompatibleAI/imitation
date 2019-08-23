@@ -62,10 +62,10 @@ def train_and_plot(_seed: int,
       provided in the arguments.
 
   Checkpoints:
-      - DiscrimNets are saved to f"{log_dir}/checkpoints/{step}/discrim/",
-        where step is either the training epoch or "final".
-      - Generator policies are saved to
-        f"{log_dir}/checkpoints/{step}/gen_policy/".
+    - DiscrimNets are saved to f"{log_dir}/checkpoints/{step}/discrim/",
+      where step is either the training epoch or "final".
+    - Generator policies are saved to
+      f"{log_dir}/checkpoints/{step}/gen_policy/".
 
   Args:
       _seed: Random seed.
@@ -253,8 +253,7 @@ def _savefig_timestamp(prefix="", also_show=True):
 
 
 def main_console():
-  observer = FileStorageObserver.create(
-      osp.join('output', 'sacred', 'train'))
+  observer = FileStorageObserver.create(osp.join('output', 'sacred', 'train'))
   train_ex.observers.append(observer)
   train_ex.run_commandline()
 
