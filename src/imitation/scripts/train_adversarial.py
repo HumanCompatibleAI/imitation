@@ -241,7 +241,7 @@ def train_and_plot(_seed: int,
     print(f"[result] Mean Episode Return: {mean:.4g} ± {std_err:.3g} "
           f"(n={stats['n_traj']})")
 
-    return dict(mean=mean, std_err=std_err)
+    return dict(ep_reward_mean=mean, ep_reward_std_err=std_err, log_dir=log_dir)
 
 
 def _savefig_timestamp(prefix="", also_show=True):

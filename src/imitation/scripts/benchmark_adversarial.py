@@ -112,13 +112,15 @@ def benchmark_adversarial_from_csv(
   with mp.Pool(n_workers) as pool:
     with open(csv_output_path, 'w', newline='') as csv_file:
       writer = None
-      for row, seed, result in pool.imap_unordered(_job, job_args):
+      for row, seed, results in pool.imap_unordered(_job, job_args):
         if writer is None:
-          fieldnames = list(row.keys()) + ["seed"] + list(result.keys())
+          fieldnames = list(row.keys()) + ["seed"] + list(results.keys())
           writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
           writer.writeheader()
 
-        writer.writerow(dict(**row, seed=seed, **result))
+        results["phase_3_train_advers_log_dir"] = results["log_dir"]
+        del results["log_dir"]
+        writer.writerow(dict(**row, seed=seed, **results))
         tf.logging.info(f"Completed job row={row} seed={seed}.")
 
 
