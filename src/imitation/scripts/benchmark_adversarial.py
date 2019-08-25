@@ -1,7 +1,7 @@
 """Multiprocessed version of train_adversarial."""
 from collections import OrderedDict
 import csv
-import multiprocessing
+import multiprocessing.dummy
 import os.path as osp
 from typing import Iterable, List, Optional, Tuple
 
@@ -29,6 +29,9 @@ def _job(
       be 'env_config' (str), n_gen_steps_per_epoch (int), and
       'n_expert_demos' (int).
     seed: A seed for the job.
+    log_dir: Logs are written in this directory.
+    extra_named_configs: Extra named configs to pass to this sacred run.
+    extra_config_updates: Extra config updates to pass to this sacred run.
 
   Returns:
     `row` (same as argument), `seed` (same as argument), and `result` (the
@@ -61,6 +64,7 @@ def benchmark_adversarial_from_csv(
   seeds: Iterable[int] = range(3),
   extra_named_configs: Optional[Iterable[str]] = None,
   extra_config_updates: Optional[dict] = None,
+  parallel: bool = True,
 ) -> None:
   """Start several runs of `scripts.train_adversarial` from a CSV file.
 
@@ -71,6 +75,7 @@ def benchmark_adversarial_from_csv(
 
   Params:
     log_dir: Main logging directory.
+    n_workers: The number of jobs that are processed simultaneously.
     csv_config_path: Path to CSV configuration. Expected columns are
       "config_name", "n_expert_demos", and "n_gen_steps_per_epoch".
     seeds: Every row in `csv_config_path` is run using each of these seeds.
@@ -78,11 +83,17 @@ def benchmark_adversarial_from_csv(
       `train_adversarial.run(...)`.
     extra_config_updates: Extra config updates to apply to every call of
       `train_adversarial.run(...)`.
+    parallel: If True, then uses `n_workers` processes. If False, then use
+      n_workers threads (mostly useful for debugging purposes).
   """
   if extra_named_configs is None:
     extra_named_configs = []
   if extra_config_updates is None:
     extra_config_updates = {}
+  if parallel:
+    mp = multiprocessing
+  else:
+    mp = multiprocessing.dummy
 
   # Construct job args for `Pool.imap_unnordered`.
   # There is one job for every combination of seed and CSV row.
@@ -98,7 +109,7 @@ def benchmark_adversarial_from_csv(
 
   # Run all jobs and write results to "results.csv".
   csv_output_path = osp.join(log_dir, "results.csv")
-  with multiprocessing.Pool(n_workers) as pool:
+  with mp.Pool(n_workers) as pool:
     with open(csv_output_path, 'w', newline='') as csv_file:
       writer = None
       for row, seed, result in pool.imap_unordered(_job, job_args):

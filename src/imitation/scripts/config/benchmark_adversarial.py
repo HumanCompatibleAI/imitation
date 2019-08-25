@@ -15,6 +15,7 @@ def config():
     multiprocessing.cpu_count() / 4)  # Number of jobs to run simultaneously
   log_root = osp.join("output", "gail_benchmark")
   csv_config_path = "experiments/gail_benchmark_config.csv"  # Config file
+  parallel = True  # If True, then use multiple processes. Otherwise threads.
 
 
 @benchmark_adversarial_ex.config
@@ -39,3 +40,4 @@ def fast():
     n_workers = 1
     seeds = [666]
     extra_named_configs = ["fast"]
+    parallel = False  # False may be necessary for proper code coverage.
