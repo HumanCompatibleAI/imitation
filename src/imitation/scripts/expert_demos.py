@@ -201,6 +201,8 @@ def rollouts_from_policy(
                       n_episodes=rollout_save_n_episodes,
                       )
 
+  return dict(log_dir=log_dir)
+
 
 def main_console():
   observer = FileStorageObserver.create(
