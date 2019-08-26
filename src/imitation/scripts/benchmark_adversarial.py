@@ -20,7 +20,7 @@ def _job(
   log_dir: str,
   extra_named_configs: Iterable[str],
   extra_config_updates: dict,
-) -> Tuple[OrderedDict, int, dict]:
+) -> Tuple[OrderedDict, dict]:
   """Start a `train_ex` run.
 
   Params:
@@ -45,7 +45,6 @@ def _job(
     "n_gen_steps_per_epoch": int(row['n_gen_steps_per_epoch']),
     "init_trainer_kwargs.n_expert_demos": int(row['n_expert_demos']),
   }
-  assert "log_dir" not in extra_config_updates
   config_updates.update(**extra_config_updates)
 
   result = run(

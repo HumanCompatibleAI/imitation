@@ -20,6 +20,7 @@ import tqdm
 from imitation.algorithms.adversarial import init_trainer
 import imitation.envs.examples  # noqa: F401
 from imitation.policies import serialize
+from imitation.rewards.discrim_net import DiscrimNetAIRL, DiscrimNetGAIL
 from imitation.scripts.config.train_adversarial import train_ex
 import imitation.util as util
 
@@ -241,7 +242,21 @@ def train_and_plot(_seed: int,
     print(f"[result] Mean Episode Return: {mean:.4g} ± {std_err:.3g} "
           f"(n={stats['n_traj']})")
 
-    return dict(ep_reward_mean=mean, ep_reward_std_err=std_err, log_dir=log_dir)
+    reward_path = os.path.join(log_dir, "checkpoints", "final", "discrim")
+    # TODO(shwang): I think Serializable should store the save_type, and
+    # Serializable.save() should return save_type.
+    if isinstance(trainer.discrim, DiscrimNetAIRL):
+      reward_type = DiscrimNetAIRL
+    elif isinstance(trainer.discrim, DiscrimNetGAIL):
+      reward_type = DiscrimNetGAIL
+    else:
+      raise RuntimeError(f"Unknown reward type for {trainer.discrim}")
+
+    return dict(ep_reward_mean=mean,
+                ep_reward_std_err=std_err,
+                log_dir=log_dir,
+                transfer_reward_path=reward_path,
+                transfer_reward_type=reward_type)
 
 
 def _savefig_timestamp(prefix="", also_show=True):
