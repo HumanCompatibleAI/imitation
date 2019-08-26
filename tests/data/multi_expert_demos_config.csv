@@ -1,0 +1,3 @@
+env_config,transfer_reward_path,transfer_reward_type,phase4_seed
+cartpole,foobar,zero,1
+cartpole,garfield,zero,4
