@@ -61,7 +61,7 @@ def benchmark_adversarial_from_csv(
   extra_named_configs: Optional[Iterable[str]] = None,
   extra_config_updates: Optional[dict] = None,
   parallel: bool = True,
-) -> None:
+) -> str:
   """Start several runs of `scripts.train_adversarial` from a CSV file.
 
   Results are written as a CSV to `f"{log_dir}/results.csv"`.
@@ -83,6 +83,9 @@ def benchmark_adversarial_from_csv(
       `train_adversarial.run(...)`.
     parallel: If True, then uses `n_workers` processes. If False, then use
       n_workers threads (mostly useful for debugging purposes).
+
+  Returns:
+    Path to the output CSV file, `f"{log_dir}/results.csv"`.
   """
   if extra_named_configs is None:
     extra_named_configs = []
@@ -126,6 +129,7 @@ def benchmark_adversarial_from_csv(
 
         writer.writerow(dict(**row, **results))
         tf.logging.info(f"Completed job row={row}.")
+    return csv_output_path
 
 
 def main_console():

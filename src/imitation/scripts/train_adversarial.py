@@ -247,9 +247,9 @@ def train_and_plot(_seed: int,
     # TODO(shwang): I think Serializable should store the save_type, and
     # Serializable.save() should return save_type.
     if isinstance(trainer.discrim, DiscrimNetAIRL):
-      reward_type = DiscrimNetAIRL
+      reward_type = "DiscrimNetAIRL"
     elif isinstance(trainer.discrim, DiscrimNetGAIL):
-      reward_type = DiscrimNetGAIL
+      reward_type = "DiscrimNetGAIL"
     else:
       raise RuntimeError(f"Unknown reward type for {trainer.discrim}")
 
