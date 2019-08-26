@@ -8,8 +8,7 @@ from typing import Iterable, List, Optional, Tuple
 from sacred.observers import FileStorageObserver
 import tensorflow as tf
 
-from imitation.scripts.config.benchmark_adversarial import \
-    benchmark_adversarial_ex
+from imitation.scripts.config.multi_train_adversarial import multi_train_ex
 from imitation.scripts.train_adversarial import train_ex
 import imitation.util.multi as multi_util
 
@@ -52,7 +51,7 @@ def _job(
   return row, result
 
 
-@benchmark_adversarial_ex.main
+@multi_train_ex.main
 def benchmark_adversarial_from_csv(
   log_dir: str,
   n_workers: int,
@@ -125,15 +124,15 @@ def benchmark_adversarial_from_csv(
 
 
 def main_console():
-  obs_path = osp.join('output', 'sacred', 'benchmark_adversarial')
+  obs_path = osp.join('output', 'sacred', 'multi_train_adversarial')
   job_obs_path = osp.join(obs_path, 'jobs')
 
-  benchmark_adversarial_ex.observers.append(
+  multi_train_ex.observers.append(
     FileStorageObserver.create(obs_path))
   train_ex.observers.append(
     FileStorageObserver.create(job_obs_path))
 
-  benchmark_adversarial_ex.run_commandline()
+  multi_train_ex.run_commandline()
 
 
 if __name__ == "__main__":

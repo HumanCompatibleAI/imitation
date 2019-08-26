@@ -10,7 +10,7 @@ import tempfile
 
 import pytest
 
-from imitation.scripts.benchmark_adversarial import benchmark_adversarial_ex
+from imitation.scripts.multi_train_adversarial import multi_train_ex
 from imitation.scripts.eval_policy import eval_policy_ex
 from imitation.scripts.expert_demos import expert_demos_ex
 from imitation.scripts.train_adversarial import train_ex
@@ -117,11 +117,11 @@ def test_transfer_learning():
     assert run.status == 'COMPLETED'
 
 
-def test_benchmark_adversarial_from_csv():
+def test_multi_train_from_csv():
   """Smoke test for imitation.scripts.benchmark-adversarial"""
   with tempfile.TemporaryDirectory(prefix='imitation-benchmark-adversarial',
                                    ) as tmpdir:
-    run = benchmark_adversarial_ex.run(
+    run = multi_train_ex.run(
       named_configs=['fast'],
       config_updates=dict(
         log_dir=tmpdir,
