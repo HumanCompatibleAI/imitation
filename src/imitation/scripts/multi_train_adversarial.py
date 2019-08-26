@@ -25,7 +25,7 @@ def _job(
   Params:
     row: A CSV row encoding config settings for this run. Its fields should
       include 'env_config' (str), n_gen_steps_per_epoch (int),
-      'n_expert_demos' (int), and 'phase_3_seed' (int).
+      'n_expert_demos' (int), and 'phase3_seed' (int).
     log_dir: Logs are written in this directory.
     extra_named_configs: Extra named configs to pass to this sacred run.
     extra_config_updates: Extra config updates to pass to this sacred run.
@@ -43,6 +43,7 @@ def _job(
     "log_dir": log_dir,
     "n_gen_steps_per_epoch": int(row['n_gen_steps_per_epoch']),
     "init_trainer_kwargs.n_expert_demos": int(row['n_expert_demos']),
+    "seed": int(row['phase3_seed']),
   }
   config_updates.update(**extra_config_updates)
 
@@ -98,10 +99,10 @@ def benchmark_adversarial_from_csv(
   with open(csv_config_path, newline='') as csv_file:
     for row in csv.DictReader(csv_file):
       for seed in seeds:
-        new_row = row.copy()
-        new_row["phase3_seed"] = seed
+        new_row = row.copy()  # type: OrderedDict
+        new_row["phase3_seed"] = str(seed)
         job_log_dir = osp.join(log_dir,
-                               multi_util.path_from_ordered_dict(row))
+                               multi_util.path_from_ordered_dict(new_row))
         job_args.append(
           (new_row, job_log_dir, extra_named_configs, extra_config_updates))
 
