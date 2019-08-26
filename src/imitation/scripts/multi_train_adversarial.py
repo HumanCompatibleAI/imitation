@@ -112,8 +112,12 @@ def benchmark_adversarial_from_csv(
     with open(csv_output_path, 'w', newline='') as csv_file:
       writer = None
       for row, results in pool.imap_unordered(_job, job_args):
-        results["phase3_log_dir"] = results["log_dir"]
-        del results["log_dir"]
+        row = multi_util.ordered_dict_rename(
+          row,
+          {"log_dir": "phase4_log_dir",
+           "ep_reward_mean": "imit_ep_reward_mean",
+           "ep_reward_std_err": "imit_ep_reward_std_err",
+           })
 
         if writer is None:
           fieldnames = list(row.keys()) + list(results.keys())

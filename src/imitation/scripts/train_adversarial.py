@@ -9,7 +9,7 @@ import datetime
 import math
 import os
 import os.path as osp
-from typing import Dict, Optional
+from typing import Optional
 
 from matplotlib import pyplot as plt
 from sacred.observers import FileStorageObserver
@@ -52,7 +52,7 @@ def train_and_plot(_seed: int,
                    interactive: bool = True,
                    expert_policy=None,
                    init_trainer_kwargs: dict = {},
-                   ) -> Dict[str, float]:
+                   ) -> dict:
   """Alternate between training the generator and discriminator.
 
   Every epoch:
@@ -99,9 +99,9 @@ def train_and_plot(_seed: int,
         used to initialize the trainer.
 
   Returns:
-      results: A dictionary with two keys, "mean" and "std_err". The
-          corresponding values are the mean and standard error of
-          ground truth episode return for the imitation learning algorithm.
+      A dictionary with the following keys: "ep_reward_mean" and
+      "ep_reward_std_err", "log_dir", "transfer_reward_path",
+      "transfer_reward_type".
   """
   assert n_epochs_per_plot is None or n_epochs_per_plot >= 1
 
@@ -237,9 +237,10 @@ def train_and_plot(_seed: int,
                                        trainer.env,
                                        n_episodes=n_episodes_eval)
     assert stats["n_traj"] >= n_episodes_eval
-    mean = stats["return_mean"]
-    std_err = stats["return_std"] / math.sqrt(n_episodes_eval)
-    print(f"[result] Mean Episode Return: {mean:.4g} ± {std_err:.3g} "
+    ep_reward_mean = stats["return_mean"]
+    ep_reward_std_err = stats["return_std"] / math.sqrt(n_episodes_eval)
+    print("[result] Mean Episode Return: "
+          f"{ep_reward_mean:.4g} ± {ep_reward_std_err:.3g} "
           f"(n={stats['n_traj']})")
 
     reward_path = os.path.join(log_dir, "checkpoints", "final", "discrim")
@@ -252,8 +253,8 @@ def train_and_plot(_seed: int,
     else:
       raise RuntimeError(f"Unknown reward type for {trainer.discrim}")
 
-    return dict(ep_reward_mean=mean,
-                ep_reward_std_err=std_err,
+    return dict(ep_reward_mean=ep_reward_mean,
+                ep_reward_std_err=ep_reward_std_err,
                 log_dir=log_dir,
                 transfer_reward_path=reward_path,
                 transfer_reward_type=reward_type)

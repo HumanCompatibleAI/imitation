@@ -36,8 +36,7 @@ def airl():
 
 @multi_train_ex.named_config
 def fast():
-    """Minimize computation for debugging purposes."""
-    n_workers = 1
-    seeds = [666]
-    extra_named_configs = ["fast"]
-    parallel = False  # False may be necessary for proper code coverage.
+  """Minimize computation for debugging purposes."""
+  seeds = [666]
+  extra_named_configs = ["fast"]
+  parallel = False  # False may be necessary for proper code coverage.

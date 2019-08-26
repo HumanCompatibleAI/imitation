@@ -10,9 +10,10 @@ import tempfile
 
 import pytest
 
-from imitation.scripts.multi_train_adversarial import multi_train_ex
 from imitation.scripts.eval_policy import eval_policy_ex
 from imitation.scripts.expert_demos import expert_demos_ex
+from imitation.scripts.multi_expert_demos import multi_expert_demos_ex
+from imitation.scripts.multi_train_adversarial import multi_train_ex
 from imitation.scripts.train_adversarial import train_ex
 
 
@@ -118,17 +119,31 @@ def test_transfer_learning():
 
 
 def test_multi_train_from_csv():
-  """Smoke test for imitation.scripts.benchmark-adversarial"""
+  """Smoke test for imitation.scripts.multi_train_adversarial"""
   with tempfile.TemporaryDirectory(prefix='imitation-benchmark-adversarial',
                                    ) as tmpdir:
     run = multi_train_ex.run(
       named_configs=['fast'],
       config_updates=dict(
         log_dir=tmpdir,
-        csv_config_path="tests/data/adv_benchmark_config.csv",
+        csv_config_path="tests/data/multi_train_adv_config.csv",
         extra_config_updates=dict(
           rollout_glob="tests/data/rollouts/CartPole*.pkl",
         ),
+      ),
+    )
+    assert run.status == 'COMPLETED'
+
+
+def test_multi_expert_demos_from_csv():
+  """Smoke test for imitation.scripts.multi_expert_demos."""
+  with tempfile.TemporaryDirectory(prefix='imitation-multi-expert-demos',
+                                   ) as tmpdir:
+    run = multi_expert_demos_ex.run(
+      named_configs=['fast'],
+      config_updates=dict(
+        log_dir=tmpdir,
+        csv_config_path="tests/data/multi_expert_demos_config.csv",
       ),
     )
     assert run.status == 'COMPLETED'

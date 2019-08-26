@@ -1,4 +1,5 @@
 import contextlib
+import math
 import os
 import os.path as osp
 from typing import Optional
@@ -30,6 +31,8 @@ def rollouts_and_policy(
   normalize: bool = True,
   make_blank_policy_kwargs: dict = {},
 
+  n_episodes_eval: int = 50,
+
   reward_type: Optional[str] = None,
   reward_path: Optional[str] = None,
 
@@ -40,7 +43,7 @@ def rollouts_and_policy(
 
   policy_save_interval: int = -1,
   policy_save_final: bool = True,
-) -> None:
+) -> dict:
   """Trains an expert policy from scratch and saves the rollouts and policy.
 
   At applicable training steps `step` (where step is either an integer or
@@ -60,6 +63,9 @@ def rollouts_and_policy(
           episode.
       normalize: If True, then rescale observations and reward.
       make_blank_policy_kwargs: Kwargs for `make_blank_policy`.
+
+      n_episodes_eval: The number of episodes to average over when calculating
+          the average ground truth reward return of the final policy.
 
       reward_type: If provided, then load the serialized reward of this type,
           wrapping the environment in this reward. This is useful to test
@@ -87,6 +93,10 @@ def rollouts_and_policy(
           the same semantics are `rollout_save_interval`.
       policy_save_final: If True, then save the policy right after training is
           finished.
+
+  Returns:
+      A dictionary with the following keys: "ep_reward_mean" and
+      "ep_reward_std_err", "log_dir".
   """
   _validate_traj_generate_params(rollout_save_n_timesteps,
                                  rollout_save_n_episodes)
@@ -156,6 +166,21 @@ def rollouts_and_policy(
         output_dir = os.path.join(policy_dir, "final")
         serialize.save_stable_model(output_dir, policy, vec_normalize)
 
+      # Final evaluation of expert policy.
+      stats = util.rollout.rollout_stats(policy,
+                                         venv,
+                                         n_episodes=n_episodes_eval)
+      assert stats["n_traj"] >= n_episodes_eval
+      ep_reward_mean = stats["return_mean"]
+      ep_reward_std_err = stats["return_std"] / math.sqrt(n_episodes_eval)
+      print("[result] Mean Episode Return: "
+            f"{ep_reward_mean:.4g} ± {ep_reward_std_err:.3g} "
+            f"(n={stats['n_traj']})")
+
+  return dict(ep_reward_mean=ep_reward_mean,
+              ep_reward_std_err=ep_reward_std_err,
+              log_dir=log_dir)
+
 
 @expert_demos_ex.command
 @util.make_session()
@@ -200,8 +225,6 @@ def rollouts_from_policy(
                       n_timesteps=rollout_save_n_timesteps,
                       n_episodes=rollout_save_n_episodes,
                       )
-
-  return dict(log_dir=log_dir)
 
 
 def main_console():

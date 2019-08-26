@@ -19,6 +19,22 @@ def path_from_ordered_dict(d: OrderedDict) -> str:
   return os.path.join(*itertools.chain.from_iterable(d.items()))
 
 
+def ordered_dict_rename(d: dict, key_changes: dict) -> OrderedDict:
+  """Return an OrderedDict copy of `d` with some keys renamed.
+
+  Preserves order if `d` is an OrderedDict.
+
+  Params:
+      d: An ordered dictionary.
+      key_changes: Contains mappings old_key=>new_key. The returned dictionary
+          has every key `old_key` replaced with `new_key`.
+  """
+  items = []
+  for k, v in d.items():
+    items.append((key_changes.get(k, k), v))
+  return OrderedDict(items)
+
+
 @contextmanager
 def redirect_stdout(path):
   temp = sys.stdout
