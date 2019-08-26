@@ -73,8 +73,9 @@ def multi_expert_demos(
   Params:
     log_dir: Main logging directory.
     n_workers: The number of jobs that are processed simultaneously.
-    csv_config_path: Path to CSV configuration. Expected columns are
-      "config_name", "n_expert_demos", and "n_gen_steps_per_epoch".
+    csv_config_path: Path to CSV configuration. Columns should
+      include 'env_config' (str), 'reward_path' (str), 'reward_type' (str),
+      and 'phase4_seed' (int).
     seeds: Every row in `csv_config_path` is run using each of these seeds.
       The seed associated with each row in the output CSV,
       `f"{log_dir}/results.csv"`, is saved in a column called "phase3_seed".
