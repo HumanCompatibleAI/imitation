@@ -118,7 +118,7 @@ def benchmark_adversarial_from_csv(
       for row, results in pool.imap_unordered(_job, job_args):
         row = multi_util.ordered_dict_rename(
           row,
-          {"log_dir": "phase4_log_dir",
+          {"log_dir": "phase3_log_dir",
            "ep_reward_mean": "imit_ep_reward_mean",
            "ep_reward_std_err": "imit_ep_reward_std_err",
            })

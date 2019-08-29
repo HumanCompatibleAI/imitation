@@ -95,8 +95,8 @@ def rollouts_and_policy(
           finished.
 
   Returns:
-      A dictionary with the following keys: "ep_reward_mean" and
-      "ep_reward_std_err", "log_dir".
+      A dictionary with the following keys: "ep_reward_mean",
+      "ep_reward_std_err", and "log_dir".
   """
   _validate_traj_generate_params(rollout_save_n_timesteps,
                                  rollout_save_n_episodes)
