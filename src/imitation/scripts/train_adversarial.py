@@ -49,7 +49,7 @@ def train(_seed: int,
 
           enable_plots: bool = False,
           n_epochs_per_plot: float = 1,
-          n_episodes_per_reward_data: int = 5,
+          n_episodes_plot: int = 5,
           expert_policy_plot=None,
           show_plots: bool = True,
 
@@ -89,7 +89,7 @@ def train(_seed: int,
       (possibly fractional) number of epochs between each plot. The first
       plot is at epoch 0, after the first discrim and generator steps.
       If `n_epochs_per_plot is None`, then don't make any plots.
-    n_episodes_per_reward_data: The number of episodes averaged over when
+    n_episodes_plot: The number of episodes averaged over when
       calculating the average episode reward of a policy for the performance
       plots.
     expert_policy_plot (BasePolicy or BaseRLModel, optional): If provided,
@@ -121,7 +121,7 @@ def train(_seed: int,
                         format_strs=['tensorboard', 'stdout'])
 
     visualizer = _TrainVisualizer(
-      trainer, show_plots, n_episodes_per_reward_data, n_epochs_per_plot,
+      trainer, show_plots, n_episodes_plot, n_epochs_per_plot,
       expert_policy_plot)
 
     # Main training loop.

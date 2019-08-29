@@ -24,7 +24,7 @@ def train_defaults():
 
   enable_plots = False  # Set to True to turn on plotting
   n_epochs_per_plot = 1  # Number of epochs in between plots
-  n_episodes_per_reward_data = 5  # Number of rollouts for each mean_ep_rew data
+  n_episodes_plot = 5  # Number of rollouts for each mean_ep_rew data
   show_plots = True  # Show plots in addition to saving them
 
   init_trainer_kwargs = dict(
