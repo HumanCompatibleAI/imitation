@@ -20,13 +20,14 @@ from imitation.scripts.train_adversarial import train_ex
 def test_expert_demos_main():
   """Smoke test for imitation.scripts.expert_demos.rollouts_and_policy"""
   with TemporaryDirectory(prefix='imitation-data_collect-main') as tmpdir:
-      run = expert_demos_ex.run(
-          named_configs=['cartpole', 'fast'],
-          config_updates=dict(
-            log_root=tmpdir,
-          ),
-      )
-      assert run.status == 'COMPLETED'
+    run = expert_demos_ex.run(
+        named_configs=['cartpole', 'fast'],
+        config_updates=dict(
+          log_root=tmpdir,
+        ),
+    )
+    assert run.status == 'COMPLETED'
+    assert isinstance(run.result, dict)
 
 
 def test_expert_demos_rollouts_from_policy():
