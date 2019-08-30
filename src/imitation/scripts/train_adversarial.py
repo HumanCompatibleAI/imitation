@@ -8,7 +8,7 @@ from collections import defaultdict
 import math
 import os
 import os.path as osp
-from warning import warn
+from warnings import warn
 
 from matplotlib import pyplot as plt
 import ray.tune
@@ -22,8 +22,8 @@ import imitation.envs.examples  # noqa: F401
 from imitation.policies import serialize
 from imitation.rewards.discrim_net import DiscrimNetAIRL, DiscrimNetGAIL
 from imitation.scripts.config.train_adversarial import train_ex
-from imitation.scripts.util.multi import ray_tune_active
 import imitation.util as util
+from imitation.util.multi import ray_tune_active
 
 
 def save(trainer, save_path):

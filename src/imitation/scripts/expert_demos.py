@@ -3,7 +3,7 @@ import math
 import os
 import os.path as osp
 from typing import Optional
-from warning import warn
+from warnings import warn
 
 import ray.tune
 from sacred.observers import FileStorageObserver
@@ -16,7 +16,7 @@ from imitation.policies import serialize
 from imitation.rewards.serialize import load_reward
 from imitation.scripts.config.expert_demos import expert_demos_ex
 import imitation.util as util
-from imitation.scripts.util.multi import ray_tune_active
+from imitation.util.multi import ray_tune_active
 from imitation.util.reward_wrapper import RewardVecEnvWrapper
 from imitation.util.rollout import _validate_traj_generate_params
 
