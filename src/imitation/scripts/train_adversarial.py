@@ -8,6 +8,7 @@ from collections import defaultdict
 import math
 import os
 import os.path as osp
+from warning import warn
 
 from matplotlib import pyplot as plt
 import ray.tune
@@ -21,6 +22,7 @@ import imitation.envs.examples  # noqa: F401
 from imitation.policies import serialize
 from imitation.rewards.discrim_net import DiscrimNetAIRL, DiscrimNetGAIL
 from imitation.scripts.config.train_adversarial import train_ex
+from imitation.scripts.util.multi import ray_tune_active
 import imitation.util as util
 
 
@@ -118,6 +120,10 @@ def train(_seed: int,
     "ep_reward_std_err", "log_dir", "transfer_reward_path",
     "transfer_reward_type".
   """
+  if ray_tune_interval <= 0 and ray_tune_active():
+    warn("This Sacred run isn't configured for Ray Tune "
+         "even though Ray Tune is active!")
+
   with util.make_session():
     trainer = init_trainer(env_name, rollout_glob=rollout_glob,
                            seed=_seed, log_dir=log_dir,

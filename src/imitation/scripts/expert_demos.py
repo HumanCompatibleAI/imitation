@@ -3,6 +3,7 @@ import math
 import os
 import os.path as osp
 from typing import Optional
+from warning import warn
 
 import ray.tune
 from sacred.observers import FileStorageObserver
@@ -15,6 +16,7 @@ from imitation.policies import serialize
 from imitation.rewards.serialize import load_reward
 from imitation.scripts.config.expert_demos import expert_demos_ex
 import imitation.util as util
+from imitation.scripts.util.multi import ray_tune_active
 from imitation.util.reward_wrapper import RewardVecEnvWrapper
 from imitation.util.rollout import _validate_traj_generate_params
 
@@ -97,11 +99,11 @@ def rollouts_and_policy(
           file. Must set exactly one of `rollout_save_n_timesteps` and
           `rollout_save_n_episodes`.
 
-      enable_ray_tune: If True, then enable hooks that call `ray.tune.track` to
-        track the imitation policy's mean episode reward over time. The script
-        will crash unless `ray.tune` was externally initialized.
-      n_epochs_per_ray_tune: The number of epochs between calls to
-        `ray.tune.track`.
+      ray_tune_interval: The number of epochs between calls to `ray.tune.track`.
+        If nonpositive, disables ray tune. Otherwise, enables hooks
+        that call `ray.tune.track` to track the imitation policy's mean episode
+        reward over time. The script will crash unless `ray.tune` was
+        externally initialized.
 
       policy_save_interval: The number of training updates between saves. Has
           the same semantics are `rollout_save_interval`.
@@ -114,6 +116,10 @@ def rollouts_and_policy(
   """
   _validate_traj_generate_params(rollout_save_n_timesteps,
                                  rollout_save_n_episodes)
+
+  if ray_tune_interval <= 0 and ray_tune_active():
+    warn("This Sacred run isn't configured for Ray Tune "
+         "even though Ray Tune is active!")
 
   with util.make_session():
     tf.logging.set_verbosity(tf.logging.INFO)
