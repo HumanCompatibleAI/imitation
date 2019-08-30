@@ -5,7 +5,6 @@ directly.
 """
 
 from collections import defaultdict
-import datetime
 import math
 import os
 import os.path as osp
@@ -122,8 +121,12 @@ def train(_seed: int,
 
     if enable_plots:
       visualizer = _TrainVisualizer(
-        trainer, show_plots, n_episodes_plot, n_epochs_per_plot,
-        expert_policy_plot)
+        trainer=trainer,
+        show_plots=show_plots,
+        n_episodes_per_reward_data=n_episodes_plot,
+        n_epochs_per_plot=n_epochs_per_plot,
+        log_dir=log_dir,
+        expert_policy=expert_policy_plot)
     else:
       visualizer = None
 
@@ -171,6 +174,7 @@ class _TrainVisualizer:
                show_plots: bool,
                n_episodes_per_reward_data: int,
                n_epochs_per_plot: float,
+               log_dir: str,
                expert_policy=None):
     """
     Args:
@@ -188,6 +192,7 @@ class _TrainVisualizer:
     self.trainer = trainer
     self.show_plots = show_plots
     self.n_episodes_per_reward_data = n_episodes_per_reward_data
+    self.log_dir = log_dir
     self.expert_policy = expert_policy
     self.plot_idx = 0
     assert n_epochs_per_plot >= 1
@@ -243,7 +248,7 @@ class _TrainVisualizer:
                 label="discriminator loss (gen step)")
     plt.title("Discriminator loss")
     plt.legend()
-    _savefig_timestamp("plot_fight_loss_disc", self.show_plots)
+    self._savefig("plot_fight_loss_disc", self.show_plots)
 
   def ep_reward_plot_add_data(self, env, name):
     """Calculate and record average episode returns."""
@@ -278,15 +283,14 @@ class _TrainVisualizer:
       if self.expert_policy is not None:
         plt.plot(self.exp_ep_reward[name], label="avg exp ep reward", c="blue")
       plt.legend()
-      _savefig_timestamp("plot_fight_epreward_gen", self.show_plots)
+      self._savefig("plot_fight_epreward_gen", self.show_plots)
 
-
-def _savefig_timestamp(prefix="", also_show=True):
-  path = "output/{}_{}.png".format(prefix, datetime.datetime.now())
-  plt.savefig(path)
-  tf.logging.info("plot saved to {}".format(path))
-  if also_show:
-    plt.show()
+  def _savefig(self, prefix="", also_show=True):
+    path = osp.join(self.log_dir, f"{prefix}_{self.plot_idx}")
+    plt.savefig(path)
+    tf.logging.info("plot saved to {}".format(path))
+    if also_show:
+      plt.show()
 
 
 def main_console():

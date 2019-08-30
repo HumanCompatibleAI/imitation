@@ -188,7 +188,7 @@ def fast():
   show_plots = False
   n_disc_steps_per_epoch = 1
   n_gen_steps_per_epoch = 1
-  n_episodes_per_reward_data = 1
+  n_episodes_plot = 1
   init_trainer_kwargs = dict(
       n_expert_demos=1,
       parallel=False,  # easier to debug with everything in one process
