@@ -10,6 +10,7 @@ import os
 import os.path as osp
 
 from matplotlib import pyplot as plt
+import ray.tune
 from sacred.observers import FileStorageObserver
 from stable_baselines import logger as sb_logger
 import tensorflow as tf
@@ -46,22 +47,27 @@ def train(_seed: int,
           init_trainer_kwargs: dict = {},
           n_episodes_eval: int = 50,
 
-          enable_plots: bool = False,
-          n_epochs_per_plot: float = 1,
-          n_episodes_plot: int = 5,
+          plot_interval: int = -1,
+          n_plot_episodes: int = 5,
           expert_policy_plot=None,
           show_plots: bool = True,
+
+          ray_tune_interval: int = -1,
 
           checkpoint_interval: int = 5,
           ) -> dict:
   """Train an adversarial-network-based imitation learning algorithm.
 
-  Plots (turn on using `enable_plots`):
+  Plots (turn on using `plot_interval > 0`):
     - Plot discriminator loss during discriminator training steps in blue and
       discriminator loss during generator training steps in red.
     - Plot the performance of the generator policy versus the performance of
       a random policy. Also plot the performance of an expert policy if that is
       provided in the arguments.
+
+  Ray Tune (turn on using `ray_tune_interval > 0`):
+    - Track the episode reward mean of the imitation policy by performing
+      rollouts every `ray_tune_interval` epochs.
 
   Checkpoints:
     - DiscrimNets are saved to f"{log_dir}/checkpoints/{step}/discrim/",
@@ -82,12 +88,8 @@ def train(_seed: int,
     n_disc_steps_per_epoch: The number of discriminator update steps during
       every training epoch.
 
-    enable_plots: If True, then enable plotting. If False, then plotting is
-      disabled and all the subsequent plot arguments are ignored.
-    n_epochs_per_plot: An optional number, greater than or equal to 1. The
-      (possibly fractional) number of epochs between each plot. The first
-      plot is at epoch 0, after the first discrim and generator steps.
-      If `n_epochs_per_plot is None`, then don't make any plots.
+    plot_interval: The number of epochs between each plot. (If nonpositive,
+      then plots are disabled).
     n_episodes_plot: The number of episodes averaged over when
       calculating the average episode reward of a policy for the performance
       plots.
@@ -96,8 +98,15 @@ def train(_seed: int,
     show_plots: Figures are always saved to `output/*.png`. If `show_plots`
       is True, then also show plots as they are created.
 
+    ray_tune_interval: The number of epochs between calls to `ray.tune.track`.
+      If nonpositive, disables ray tune. Otherwise, enables hooks
+      that call `ray.tune.track` to track the imitation policy's mean episode
+      reward over time. The script will crash unless `ray.tune` was
+      externally initialized.
+
     n_episodes_eval: The number of episodes to average over when calculating
-      the average ground truth reward return of the final policy.
+      the average ground truth reward return of the imitation policy for return
+      and for `ray.tune.track`.
     checkpoint_interval: Save the discriminator and generator models every
       `checkpoint_interval` epochs and after training is complete. If <=0,
       then only save weights after training is complete.
@@ -119,12 +128,11 @@ def train(_seed: int,
     sb_logger.configure(folder=osp.join(log_dir, 'generator'),
                         format_strs=['tensorboard', 'stdout'])
 
-    if enable_plots:
+    if plot_interval > 0:
       visualizer = _TrainVisualizer(
         trainer=trainer,
         show_plots=show_plots,
-        n_episodes_per_reward_data=n_episodes_plot,
-        n_epochs_per_plot=n_epochs_per_plot,
+        n_episodes_per_reward_data=n_plot_episodes,
         log_dir=log_dir,
         expert_policy=expert_policy_plot)
     else:
@@ -140,12 +148,17 @@ def train(_seed: int,
       if visualizer:
         visualizer.disc_plot_add_data(True)
 
-      if visualizer and visualizer.should_plot_now(epoch):
+      if visualizer and epoch % plot_interval == 0:
         visualizer.disc_plot_show()
         visualizer.ep_reward_plot_add_data(trainer.env, "Ground Truth Reward")
         visualizer.ep_reward_plot_add_data(trainer.env_train, "Train Reward")
         visualizer.ep_reward_plot_add_data(trainer.env_test, "Test Reward")
         visualizer.ep_reward_plot_show()
+
+      if ray_tune_interval > 0 and epoch % ray_tune_interval == 0:
+        gen_ret = util.rollout.mean_return(
+            trainer.gen_policy, trainer.env, n_episodes=n_episodes_eval)
+        ray.tune.track.log(episode_reward_mean=gen_ret)
 
       if checkpoint_interval > 0 and epoch % checkpoint_interval == 0:
         save(trainer, os.path.join(log_dir, "checkpoints", f"{epoch:05d}"))
@@ -186,7 +199,6 @@ class _TrainVisualizer:
                trainer: "imitation.algorithms.adversarial.AdversarialTrainer",
                show_plots: bool,
                n_episodes_per_reward_data: int,
-               n_epochs_per_plot: float,
                log_dir: str,
                expert_policy=None):
     """
@@ -208,8 +220,6 @@ class _TrainVisualizer:
     self.log_dir = log_dir
     self.expert_policy = expert_policy
     self.plot_idx = 0
-    assert n_epochs_per_plot >= 1
-    self.n_epochs_per_plot = n_epochs_per_plot
     self.gen_data = ([], [])
     self.disc_data = ([], [])
 
@@ -222,19 +232,6 @@ class _TrainVisualizer:
     self.ep_reward_plot_add_data(self.trainer.env, "Ground Truth Reward")
     self.ep_reward_plot_add_data(self.trainer.env_train, "Train Reward")
     self.ep_reward_plot_add_data(self.trainer.env_test, "Test Reward")
-
-  def should_plot_now(self, epoch: int) -> bool:
-    """For positive epochs, returns True if a plot should be rendered now.
-
-    This also controls the frequency at which `ep_reward_plot_add_data` is
-    called, because generating those rollouts is too expensive to perform
-    every timestep.
-    """
-    assert epoch >= 1
-    plot_num = math.floor(epoch / self.n_epochs_per_plot)
-    prev_plot_num = math.floor((epoch - 1) / self.n_epochs_per_plot)
-    assert abs(plot_num - prev_plot_num) <= 1
-    return plot_num != prev_plot_num
 
   def disc_plot_add_data(self, gen_mode: bool = False):
     """Evaluates and records the discriminator loss for plotting later.
