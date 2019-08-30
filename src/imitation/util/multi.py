@@ -1,5 +1,5 @@
 """Utilities for distributed experiments."""
-import ray.tune
+import ray.tune.track
 
 
 def ray_tune_active() -> bool:
