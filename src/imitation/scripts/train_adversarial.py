@@ -133,14 +133,14 @@ def train(_seed: int,
     # Main training loop.
     for epoch in tqdm.tqdm(range(1, n_epochs+1), desc="epoch"):
       trainer.train_disc(n_disc_steps_per_epoch)
-      if enable_plots:
+      if visualizer:
         visualizer.disc_plot_add_data(False)
 
       trainer.train_gen(n_gen_steps_per_epoch)
-      if enable_plots:
+      if visualizer:
         visualizer.disc_plot_add_data(True)
 
-      if enable_plots and visualizer.should_plot_now(epoch):
+      if visualizer and visualizer.should_plot_now(epoch):
         visualizer.disc_plot_show()
         visualizer.ep_reward_plot_add_data(trainer.env, "Ground Truth Reward")
         visualizer.ep_reward_plot_add_data(trainer.env_train, "Train Reward")
