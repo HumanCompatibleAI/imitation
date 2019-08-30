@@ -65,24 +65,29 @@ def test_eval_policy(config):
       assert isinstance(run.result, dict)
 
 
-def test_train_adversarial():
+@pytest.mark.parametrize("plots", [True, False])
+def test_train_adversarial(plots: bool):
   """Smoke test for imitation.scripts.train_adversarial"""
   with TemporaryDirectory(prefix='imitation-train') as tmpdir:
-      config_updates = {
-          'init_trainer_kwargs': {
-              # Rollouts are small, decrease size of buffer to avoid warning
-              'trainer_kwargs': {
-                  'n_disc_samples_per_buffer': 50,
-              },
-          },
-          'log_root': tmpdir,
-          'rollout_glob': "tests/data/rollouts/CartPole*.pkl",
-      }
-      run = train_ex.run(
-          named_configs=['cartpole', 'gail', 'fast'],
-          config_updates=config_updates,
-      )
-      assert run.status == 'COMPLETED'
+    named_configs = ['cartpole', 'gail', 'fast']
+    if plots:
+      named_configs.append("plots")
+    config_updates = {
+        'init_trainer_kwargs': {
+            # Rollouts are small, decrease size of buffer to avoid warning
+            'trainer_kwargs': {
+                'n_disc_samples_per_buffer': 50,
+            },
+        },
+        'log_root': tmpdir,
+        'rollout_glob': "tests/data/rollouts/CartPole*.pkl",
+    }
+    run = train_ex.run(
+        named_configs=named_configs,
+        config_updates=config_updates,
+    )
+    assert run.status == 'COMPLETED'
+    assert isinstance(run.result, dict)
 
 
 def test_transfer_learning():
@@ -100,6 +105,7 @@ def test_transfer_learning():
         ),
     )
     assert run.status == 'COMPLETED'
+    assert isinstance(run.result, dict)
 
     log_dir_data = osp.join(tmpdir, "expert_demos")
     discrim_path = osp.join(log_dir_train, "checkpoints", "final", "discrim")
@@ -112,6 +118,7 @@ def test_transfer_learning():
         ),
     )
     assert run.status == 'COMPLETED'
+    assert isinstance(run.result, dict)
 
 
 def test_multi_train_from_csv():

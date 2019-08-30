@@ -22,6 +22,11 @@ def train_defaults():
   use_gail = True
   airl_entropy_weight = 1.0
 
+  enable_plots = False  # Set to True to turn on plotting
+  n_epochs_per_plot = 1  # Number of epochs in between plots
+  n_episodes_plot = 5  # Number of rollouts for each mean_ep_rew data
+  show_plots = True  # Show plots in addition to saving them
+
   init_trainer_kwargs = dict(
       num_vec=8,  # NOTE: changing this also changes the effective n_steps!
       parallel=True,  # Use SubprocVecEnv (generally faster if num_vec>1)
@@ -73,6 +78,11 @@ def airl():
   init_trainer_kwargs = dict(
       use_gail=False,
   )
+
+
+@train_ex.named_config
+def plots():
+  enable_plots = True
 
 
 # Standard Gym env configs
@@ -175,10 +185,10 @@ def fast():
   """Minimize the amount of computation. Useful for test cases."""
   n_epochs = 1
   n_episodes_eval = 1
-  interactive = False
+  show_plots = False
   n_disc_steps_per_epoch = 1
   n_gen_steps_per_epoch = 1
-  n_episodes_per_reward_data = 1
+  n_episodes_plot = 1
   init_trainer_kwargs = dict(
       n_expert_demos=1,
       parallel=False,  # easier to debug with everything in one process
