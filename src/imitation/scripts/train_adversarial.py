@@ -120,9 +120,12 @@ def train(_seed: int,
     sb_logger.configure(folder=osp.join(log_dir, 'generator'),
                         format_strs=['tensorboard', 'stdout'])
 
-    visualizer = _TrainVisualizer(
-      trainer, show_plots, n_episodes_plot, n_epochs_per_plot,
-      expert_policy_plot)
+    if enable_plots:
+      visualizer = _TrainVisualizer(
+        trainer, show_plots, n_episodes_plot, n_epochs_per_plot,
+        expert_policy_plot)
+    else:
+      visualizer = None
 
     # Main training loop.
     for epoch in tqdm.tqdm(range(1, n_epochs+1), desc="epoch"):
