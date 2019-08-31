@@ -24,8 +24,8 @@ def config():
 
 # Debug named configs
 @tune_ex.named_config
-def debug_log_root(search_space):
-  search_space["config_updates"]["log_root"] = "/tmp"
+def debug_log_root():
+  search_space = {"config_updates": {"log_root": "/tmp"}}
 
 
 # Each named config that follows describes a hyperparameter tuning experiments.
@@ -35,12 +35,11 @@ def proto_cartpole_expert():
   """Not an actual hyperparameter tuning experiment. Just a prototype."""
   inner_experiment_name = "expert_demos"
   search_space = {
-    "named_configs": ["cartpole", "fast"],
+    "named_configs": ["cartpole"],
     "config_updates": {
-      # "seed": tune.grid_search([0, 1, 2, 3]),
-      # "seed": tune.grid_search([0, 1, 2, 3]),
+      "seed": tune.grid_search([0, 1, 2, 3]),
       "make_blank_policy_kwargs": {
         "learning_rate": tune.grid_search([3e-4, 2e-4, 1e-4]),
+        "nminibatches": tune.grid_search([16, 32, 64]),
       },
-      # "nminibatches": tune.grid_search([16, 32, 64]),
     }}

@@ -26,7 +26,8 @@ def train_defaults():
   n_episodes_plot = 5  # Number of rollouts for each mean_ep_rew data
   show_plots = True  # Show plots in addition to saving them
 
-  ray_tune_interval = -1  # num epochs between `ray.track.log` (<=0 disables)
+  ray_tune_reporter = None  # Used by tune script to enable hp tuning.
+  ray_tune_interval = 10  # num epochs between `ray.track.log` (<=0 disables)
 
   init_trainer_kwargs = dict(
       num_vec=8,  # NOTE: changing this also changes the effective n_steps!
@@ -84,12 +85,6 @@ def airl():
 @train_ex.named_config
 def plots():
   plot_interval = 10
-
-
-@train_ex.named_config
-def ray_tune():
-  ray_tune_interval = 10
-  checkpoint_interval = -1
 
 
 # Standard Gym env configs

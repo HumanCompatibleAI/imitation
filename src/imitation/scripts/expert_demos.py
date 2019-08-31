@@ -3,9 +3,7 @@ import math
 import os
 import os.path as osp
 from typing import Optional
-from warnings import warn
 
-import ray.tune
 from sacred.observers import FileStorageObserver
 from stable_baselines import logger as sb_logger
 from stable_baselines.common.vec_env import VecNormalize
@@ -16,7 +14,6 @@ from imitation.policies import serialize
 from imitation.rewards.serialize import load_reward
 from imitation.scripts.config.expert_demos import expert_demos_ex
 import imitation.util as util
-from imitation.util.multi import ray_tune_active
 from imitation.util.reward_wrapper import RewardVecEnvWrapper
 from imitation.util.rollout import _validate_traj_generate_params
 
@@ -44,6 +41,7 @@ def rollouts_and_policy(
   rollout_save_n_timesteps: Optional[int] = None,
   rollout_save_n_episodes: Optional[int] = None,
 
+  ray_tune_reporter=None,
   ray_tune_interval: int = -1,
 
   policy_save_interval: int = -1,
@@ -51,9 +49,9 @@ def rollouts_and_policy(
 ) -> dict:
   """Trains an expert policy from scratch and saves the rollouts and policy.
 
-  Ray Tune (turn on using `ray_tune_interval > 0`):
+  Ray Tune (turn on by setting `ray_tune_reporter`)
     - Track the episode reward mean of the imitation policy by performing
-      rollouts every `ray_tune_interval` updates.
+      rollouts every `ray_tune_interval` epochs.
 
   Checkpoints:
     At applicable training steps `step` (where step is either an integer or
@@ -117,11 +115,6 @@ def rollouts_and_policy(
   _validate_traj_generate_params(rollout_save_n_timesteps,
                                  rollout_save_n_episodes)
 
-  ray_tune_interval = 1
-  if ray_tune_interval <= 0 and ray_tune_active():
-    warn("This Sacred run isn't configured for Ray Tune "
-         "even though Ray Tune is active!")
-
   with util.make_session():
     tf.logging.set_verbosity(tf.logging.INFO)
     sb_logger.configure(folder=osp.join(log_dir, 'rl'),
@@ -173,13 +166,13 @@ def rollouts_and_policy(
         if policy_save_interval > 0 and step % policy_save_interval == 0:
           output_dir = os.path.join(policy_dir, f'{step:05d}')
           serialize.save_stable_model(output_dir, policy, vec_normalize)
-        if ray_tune_interval > 0 and step % ray_tune_interval == 0:
+        if ray_tune_reporter and step % ray_tune_interval == 0:
           # TODO(shwang): Not sure if `venv` has the ground truth reward
           # after it is wrapped in VecNormalize (does VecNormalize normalize
           # both rewards and observations?) Check this with Adam.
           mean_return = util.rollout.mean_return(policy, venv,
                                                  n_episodes=n_episodes_eval)
-          ray.tune.track.log(episode_reward_mean=mean_return)
+          ray_tune_reporter(episode_reward_mean=mean_return)
 
         return True  # Continue training.
 
@@ -207,9 +200,8 @@ def rollouts_and_policy(
             f"(n={stats['n_traj']})")
 
       print(f"tune interval {ray_tune_interval}")
-      if ray_tune_interval > 0:
-        print("tracking THING!")
-        ray.tune.track.log(episode_reward_mean=ep_reward_mean, done=True)
+      if ray_tune_reporter:
+        ray_tune_reporter(episode_reward_mean=ep_reward_mean, done=True)
 
   return dict(ep_reward_mean=ep_reward_mean,
               ep_reward_std_err=ep_reward_std_err,

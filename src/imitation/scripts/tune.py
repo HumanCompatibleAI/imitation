@@ -1,13 +1,11 @@
-import functools
 from typing import Callable
 
 import ray
 import ray.tune
 import ray.tune.track
-import sacred
 
-import imitation.util as util
 from imitation.scripts.config.tune import tune_ex
+import imitation.util as util
 
 
 @tune_ex.main
@@ -20,14 +18,14 @@ def tune(inner_experiment_name: str, search_space: dict) -> None:
     search_space: `config` argument to `ray.tune.run(trainable, config)`.
   """
   ray.init()
-  search_space["named_configs"].append("ray_tune")
   trainable = _ray_tune_sacred_wrapper(inner_experiment_name)
   ray.tune.run(trainable, config=search_space)
+  ray.shutdown()
 
 
 def _ray_tune_sacred_wrapper(
   inner_experiment_name: str,
-) -> Callable[[dict], dict]:
+) -> Callable:
   """From an Experiment build a wrapped run function suitable for Ray Tune.
 
   `ray.tune.run(...)` expects a trainable function that takes a single dict
@@ -47,7 +45,9 @@ def _ray_tune_sacred_wrapper(
     A function that takes a single argument, `config` (used as keyword args for
     `ex.run`), and returns the run result.
   """
-  def inner(config: dict, reporter):
+  def inner(config: dict, reporter) -> dict:
+    config["config_updates"]["ray_tune_reporter"] = reporter
+
     # Import inside function rather than in module because Sacred experiments
     # are not picklable, and Ray requires this function to be picklable.
     from imitation.scripts.expert_demos import expert_demos_ex

@@ -8,7 +8,6 @@ from collections import defaultdict
 import math
 import os
 import os.path as osp
-from warnings import warn
 
 from matplotlib import pyplot as plt
 import ray.tune
@@ -23,7 +22,6 @@ from imitation.policies import serialize
 from imitation.rewards.discrim_net import DiscrimNetAIRL, DiscrimNetGAIL
 from imitation.scripts.config.train_adversarial import train_ex
 import imitation.util as util
-from imitation.util.multi import ray_tune_active
 
 
 def save(trainer, save_path):
@@ -54,6 +52,7 @@ def train(_seed: int,
           expert_policy_plot=None,
           show_plots: bool = True,
 
+          ray_tune_reporter=None,
           ray_tune_interval: int = -1,
 
           checkpoint_interval: int = 5,
@@ -67,7 +66,7 @@ def train(_seed: int,
       a random policy. Also plot the performance of an expert policy if that is
       provided in the arguments.
 
-  Ray Tune (turn on using `ray_tune_interval > 0`):
+  Ray Tune (turn on by setting `ray_tune_reporter`)
     - Track the episode reward mean of the imitation policy by performing
       rollouts every `ray_tune_interval` epochs.
 
@@ -100,6 +99,7 @@ def train(_seed: int,
     show_plots: Figures are always saved to `output/*.png`. If `show_plots`
       is True, then also show plots as they are created.
 
+    ray_tune_reporter: A report object for tracking hyperparameter performance.
     ray_tune_interval: The number of epochs between calls to `ray.tune.track`.
       If nonpositive, disables ray tune. Otherwise, enables hooks
       that call `ray.tune.track` to track the imitation policy's mean episode
@@ -120,10 +120,6 @@ def train(_seed: int,
     "ep_reward_std_err", "log_dir", "transfer_reward_path",
     "transfer_reward_type".
   """
-  if ray_tune_interval <= 0 and ray_tune_active():
-    warn("This Sacred run isn't configured for Ray Tune "
-         "even though Ray Tune is active!")
-
   with util.make_session():
     trainer = init_trainer(env_name, rollout_glob=rollout_glob,
                            seed=_seed, log_dir=log_dir,
@@ -161,10 +157,10 @@ def train(_seed: int,
         visualizer.ep_reward_plot_add_data(trainer.env_test, "Test Reward")
         visualizer.ep_reward_plot_show()
 
-      if ray_tune_interval > 0 and epoch % ray_tune_interval == 0:
+      if ray_tune_reporter and epoch % ray_tune_interval == 0:
         gen_ret = util.rollout.mean_return(
             trainer.gen_policy, trainer.env, n_episodes=n_episodes_eval)
-        ray.tune.track.log(episode_reward_mean=gen_ret)
+        ray_tune_reporter(episode_reward_mean=gen_ret)
 
       if checkpoint_interval > 0 and epoch % checkpoint_interval == 0:
         save(trainer, os.path.join(log_dir, "checkpoints", f"{epoch:05d}"))
@@ -182,6 +178,8 @@ def train(_seed: int,
     print("[result] Mean Episode Return: "
           f"{ep_reward_mean:.4g} ± {ep_reward_std_err:.3g} "
           f"(n={stats['n_traj']})")
+    if ray_tune_reporter:
+      ray_tune_reporter(episode_reward_mean=ep_reward_mean)
 
     reward_path = os.path.join(log_dir, "checkpoints", "final", "discrim")
     # TODO(shwang): I think Serializable should store the save_type, and
