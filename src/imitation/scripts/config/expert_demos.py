@@ -44,6 +44,7 @@ def logging(env_name, log_root):
 @expert_demos_ex.named_config
 def ray_tune():
   ray_tune_interval = 100
+  policy_save_interval = -1
 
 
 # Standard Gym env configs

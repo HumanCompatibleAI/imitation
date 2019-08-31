@@ -89,6 +89,7 @@ def plots():
 @train_ex.named_config
 def ray_tune():
   ray_tune_interval = 10
+  checkpoint_interval = -1
 
 
 # Standard Gym env configs
