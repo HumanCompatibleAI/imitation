@@ -44,7 +44,7 @@ def rollouts_and_policy(
   rollout_save_n_timesteps: Optional[int] = None,
   rollout_save_n_episodes: Optional[int] = None,
 
-  ray_tune_interval: int = 1,
+  ray_tune_interval: int = -1,
 
   policy_save_interval: int = -1,
   policy_save_final: bool = True,
@@ -117,6 +117,7 @@ def rollouts_and_policy(
   _validate_traj_generate_params(rollout_save_n_timesteps,
                                  rollout_save_n_episodes)
 
+  ray_tune_interval = 1
   if ray_tune_interval <= 0 and ray_tune_active():
     warn("This Sacred run isn't configured for Ray Tune "
          "even though Ray Tune is active!")
@@ -204,6 +205,11 @@ def rollouts_and_policy(
       print("[result] Mean Episode Return: "
             f"{ep_reward_mean:.4g} ± {ep_reward_std_err:.3g} "
             f"(n={stats['n_traj']})")
+
+      print(f"tune interval {ray_tune_interval}")
+      if ray_tune_interval > 0:
+        print("tracking THING!")
+        ray.tune.track.log(episode_reward_mean=ep_reward_mean, done=True)
 
   return dict(ep_reward_mean=ep_reward_mean,
               ep_reward_std_err=ep_reward_std_err,

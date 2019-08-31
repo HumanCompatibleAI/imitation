@@ -3,16 +3,11 @@ from typing import Callable
 
 import ray
 import ray.tune
+import ray.tune.track
 import sacred
 
+import imitation.util as util
 from imitation.scripts.config.tune import tune_ex
-from imitation.scripts.expert_demos import expert_demos_ex
-from imitation.scripts.train_adversarial import train_ex
-
-experiments = {
-  "expert_demos": expert_demos_ex,
-  "train_adversarial": train_ex,
-}
 
 
 @tune_ex.main
@@ -25,12 +20,13 @@ def tune(inner_experiment_name: str, search_space: dict) -> None:
     search_space: `config` argument to `ray.tune.run(trainable, config)`.
   """
   ray.init()
-  trainable = _ray_tune_sacred_wrapper(experiments[inner_experiment_name])
+  search_space["named_configs"].append("ray_tune")
+  trainable = _ray_tune_sacred_wrapper(inner_experiment_name)
   ray.tune.run(trainable, config=search_space)
 
 
 def _ray_tune_sacred_wrapper(
-  ex: sacred.Experiment,
+  inner_experiment_name: str,
 ) -> Callable[[dict], dict]:
   """From an Experiment build a wrapped run function suitable for Ray Tune.
 
@@ -43,19 +39,27 @@ def _ray_tune_sacred_wrapper(
   hooks are enabled in the Experiment run).
 
   Args:
-    ex: The Sacred Experiment.
+    inner_experiment_name: The experiment to tune. Either "expert_demos" or
+      "train_adversarial".
     command_name: If provided, then run this particular command. Otherwise, run
       the Sacred Experiment's main command.
   Returns:
     A function that takes a single argument, `config` (used as keyword args for
     `ex.run`), and returns the run result.
   """
-  @functools.wraps(ex.run)
-  def inner(config: dict):
-    named_configs = config.get("named_configs", [])
-    assert "ray_tune" in named_configs
+  def inner(config: dict, reporter):
+    # Import inside function rather than in module because Sacred experiments
+    # are not picklable, and Ray requires this function to be picklable.
+    from imitation.scripts.expert_demos import expert_demos_ex
+    from imitation.scripts.train_adversarial import train_ex
+    experiments = {
+      "expert_demos": expert_demos_ex,
+      "train_adversarial": train_ex,
+    }
+    ex = experiments[inner_experiment_name]
 
-    run = ex.run(**config)
+    with util.make_session():
+      run = ex.run(**config)
     assert run.status == 'COMPLETED'
     return run.result
   return inner

@@ -13,6 +13,7 @@ import pytest
 from imitation.scripts.eval_policy import eval_policy_ex
 from imitation.scripts.expert_demos import expert_demos_ex
 from imitation.scripts.train_adversarial import train_ex
+from imitation.scripts.tune import tune_ex
 
 
 def test_expert_demos_main():
@@ -117,3 +118,11 @@ def test_transfer_learning():
     )
     assert run.status == 'COMPLETED'
     assert isinstance(run.result, dict)
+
+
+def test_tune():
+  """Hyperparam tuning smoke test."""
+  # No need for temp log dir because the hyperparameter tuning script
+  # itself generates no artifacts.
+  run = tune_ex.run(named_configs=["proto_cartpole_expert", "debug_log_root"])
+  assert run.status == 'COMPLETED'
