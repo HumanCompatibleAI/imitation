@@ -51,7 +51,7 @@ def rollouts_and_policy(
 
   Ray Tune (turn on by setting `ray_tune_reporter`)
     - Track the episode reward mean of the imitation policy by performing
-      rollouts every `ray_tune_interval` epochs.
+      rollouts every `ray_tune_interval` updates.
 
   Checkpoints:
     At applicable training steps `step` (where step is either an integer or
@@ -97,6 +97,8 @@ def rollouts_and_policy(
           file. Must set exactly one of `rollout_save_n_timesteps` and
           `rollout_save_n_episodes`.
 
+      ray_tune_reporter: A report object for tracking hyperparameter
+          performance.
       ray_tune_interval: The number of epochs between calls to `ray.tune.track`.
         If nonpositive, disables ray tune. Otherwise, enables hooks
         that call `ray.tune.track` to track the imitation policy's mean episode

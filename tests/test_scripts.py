@@ -8,8 +8,8 @@ named_config for each experiment implicitly sets parallel=False.
 import os.path as osp
 from tempfile import TemporaryDirectory
 
-import ray.tune as tune
 import pytest
+import ray.tune as tune
 
 from imitation.scripts.eval_policy import eval_policy_ex
 from imitation.scripts.expert_demos import expert_demos_ex
@@ -151,6 +151,7 @@ TUNE_CONFIG_UPDATES = [
       }},
   ),
 ]
+
 
 @pytest.mark.parametrize("config_updates", TUNE_CONFIG_UPDATES)
 def test_tune(config_updates):

@@ -28,7 +28,7 @@ def _ray_tune_sacred_wrapper(
 ) -> Callable:
   """From an Experiment build a wrapped run function suitable for Ray Tune.
 
-  `ray.tune.run(...)` expects a trainable function that takes a single dict
+  `ray.tune.run(...)` expects a trainable function that takes a dict
   argument `config`. The wrapped function uses `config` as keyword args for
   `ex.run(...)` because we want to be able to hyperparameter tune over both the
   `named_configs` and `config_updates` arguments.
@@ -42,8 +42,8 @@ def _ray_tune_sacred_wrapper(
     command_name: If provided, then run this particular command. Otherwise, run
       the Sacred Experiment's main command.
   Returns:
-    A function that takes a single argument, `config` (used as keyword args for
-    `ex.run`), and returns the run result.
+    A function that takes two arguments, `config` (used as keyword args for
+    `ex.run`) and `reporter`. The function returns the run result.
   """
   def inner(config: dict, reporter) -> dict:
     config["config_updates"]["ray_tune_reporter"] = reporter

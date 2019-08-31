@@ -10,7 +10,6 @@ import os
 import os.path as osp
 
 from matplotlib import pyplot as plt
-import ray.tune
 from sacred.observers import FileStorageObserver
 from stable_baselines import logger as sb_logger
 import tensorflow as tf
