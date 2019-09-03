@@ -1,3 +1,4 @@
+import logging
 import numbers
 import tempfile
 
@@ -7,15 +8,17 @@ import pytest
 import tensorflow as tf
 
 from imitation.policies import base
-from imitation.rewards import serialize
+from imitation.rewards import reward_net, serialize
 from imitation.util import rollout, util
 
 ENVS = ['FrozenLake-v0', 'CartPole-v1', 'Pendulum-v0']
 HARDCODED_TYPES = ['zero']
 
+REWARD_NETS = [reward_net.BasicRewardNet, reward_net.BasicShapedRewardNet]
+
 
 @pytest.mark.parametrize("env_id", ENVS)
-@pytest.mark.parametrize("reward_net_cls", serialize.REWARD_NETS.values())
+@pytest.mark.parametrize("reward_net_cls", REWARD_NETS)
 def test_init_no_crash(session, env_id, reward_net_cls):
   env = gym.make(env_id)
   for i in range(3):
@@ -55,11 +58,10 @@ def _make_feed_dict(reward_net, rollouts):
 
 
 @pytest.mark.parametrize("env_name", ENVS)
-@pytest.mark.parametrize("reward_net", serialize.REWARD_NETS.items())
-def test_serialize_identity(session, env_name, reward_net):
+@pytest.mark.parametrize("net_cls", REWARD_NETS)
+def test_serialize_identity(session, env_name, net_cls):
   """Does output of deserialized reward network match that of original?"""
-  net_name, net_cls = reward_net
-  print(f"Testing {net_name}")
+  logging.info(f"Testing {net_cls}")
 
   venv = util.make_vec_env(env_name, n_envs=1, parallel=False)
   with tf.variable_scope("original"):
@@ -70,7 +72,7 @@ def test_serialize_identity(session, env_name, reward_net):
   with tempfile.TemporaryDirectory(prefix='imitation-serialize-rew') as tmpdir:
     original.save(tmpdir)
     with tf.variable_scope("loaded"):
-      loaded = net_cls.load(tmpdir)
+      loaded = reward_net.RewardNet.load(tmpdir)
 
     assert original.observation_space == loaded.observation_space
     assert original.action_space == loaded.action_space
@@ -83,10 +85,10 @@ def test_serialize_identity(session, env_name, reward_net):
       outputs['train'].append(net.reward_output_train)
       outputs['test'].append(net.reward_output_test)
 
-    unshaped_name = f"{net_name}_unshaped"
-    shaped_name = f"{net_name}_shaped"
-    with serialize.load_reward(unshaped_name, tmpdir, venv) as unshaped_fn:
-      with serialize.load_reward(shaped_name, tmpdir, venv) as shaped_fn:
+    with serialize.load_reward("RewardNet_unshaped",
+                               tmpdir, venv) as unshaped_fn:
+      with serialize.load_reward("RewardNet_shaped",
+                                 tmpdir, venv) as shaped_fn:
         rewards = session.run(outputs, feed_dict=feed_dict)
 
         old_obs, actions, new_obs, _ = rollouts

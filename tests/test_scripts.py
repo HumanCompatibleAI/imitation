@@ -109,7 +109,7 @@ def test_transfer_learning():
         named_configs=['cartpole', 'fast'],
         config_updates=dict(
           log_dir=log_dir_data,
-          reward_type='DiscrimNetAIRL',
+          reward_type='DiscrimNet',
           reward_path=discrim_path,
         ),
     )

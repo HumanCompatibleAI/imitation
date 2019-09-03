@@ -20,10 +20,20 @@ class Serializable(ABC):
   @abstractmethod
   def load(cls, directory):
     """Load object plus weights from directory."""
+    with open(os.path.join(directory, 'loader'), 'rb') as f:
+      load_cls = pickle.load(f)
+    return load_cls.load(directory)
 
   @abstractmethod
   def save(self, directory):
     """Save object and weights to directory."""
+    os.makedirs(directory, exist_ok=True)
+
+    load_path = os.path.join(directory, 'loader')
+    with open(load_path + '.tmp', 'wb') as f:
+      pickle.dump(type(self), f)
+    # Ensure atomic write
+    os.replace(load_path + '.tmp', load_path)
 
 
 T = TypeVar('T')
@@ -66,15 +76,14 @@ class LayersSerializable(Serializable):
     return obj
 
   def save(self, directory: str) -> None:
-    os.makedirs(directory, exist_ok=True)
+    super().save(directory)
 
     obj_path = os.path.join(directory, 'obj')
+    # obj is static, so no need to write them multiple times.
+    # (Best to avoid it -- if we were die in the middle of save, it could
+    # cause data corruption invalidating previous checkpoints.)
     if not os.path.exists(obj_path):
-      # TODO(gleave): it'd be nice to support Python state changing too
-      # obj should be static (since it just consists of _args and _kwargs,
-      # set at construction). So no need to write this file multiple times.
-      # (In fact, best to avoid it -- if we were to die in the middle of this,
-      # it would invalidate previous checkpoints.)
+      # TODO(gleave): it'd be nice to support mutable Python state
       with open(obj_path, 'wb') as f:
         pickle.dump(self, f)
 
