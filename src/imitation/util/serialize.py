@@ -9,24 +9,23 @@ import tensorflow as tf
 
 from imitation.util import util
 
-
-def make_cls(cls, args, kwargs):
-  return cls(*args, **kwargs)
+T = TypeVar('T')
 
 
 class Serializable(ABC):
   """Abstract mix-in defining methods to load/save model."""
   @classmethod
   @abstractmethod
-  def load(cls, directory):
+  def load(cls: Type[T], directory: str) -> T:
     """Load object plus weights from directory."""
 
   @abstractmethod
-  def save(self, directory):
+  def save(self, directory: str) -> None:
     """Save object and weights to directory."""
 
 
-T = TypeVar('T')
+def make_cls(cls, args, kwargs):
+  return cls(*args, **kwargs)
 
 
 class LayersSerializable(Serializable):
