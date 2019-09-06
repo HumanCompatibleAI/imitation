@@ -15,15 +15,22 @@ T = TypeVar('T')
 class Serializable(ABC):
   """Abstract mix-in defining methods to load/save model."""
   @classmethod
+  @abstractmethod
   def load(cls: Type[T], directory: str) -> T:
-    """Load object plus weights from directory."""
+    """Load object plus weights from directory.
+
+    Concrete subclasses must override this, and must not call it via super()
+    (this would trigger an infinite loop.)
+    """
     with open(os.path.join(directory, 'loader'), 'rb') as f:
       load_cls = pickle.load(f)
     return load_cls.load(directory)
 
   @abstractmethod
   def save(self, directory: str) -> None:
-    """Save object and weights to directory."""
+    """Save object and weights to directory.
+
+    Concrete subclasses must override this, and must call it via super()."""
     os.makedirs(directory, exist_ok=True)
 
     load_path = os.path.join(directory, 'loader')
