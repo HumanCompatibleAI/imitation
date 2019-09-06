@@ -1,4 +1,4 @@
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 import os
 import pickle
 from typing import Callable, Iterable, Optional
@@ -12,7 +12,7 @@ from imitation.rewards import reward_net
 from imitation.util import serialize
 
 
-class DiscrimNet(serialize.Serializable):
+class DiscrimNet(serialize.Serializable, ABC):
   """Abstract base class for discriminator, used in multiple IRL methods."""
 
   def __init__(self):
@@ -265,7 +265,7 @@ class DiscrimNetAIRL(DiscrimNet):
     return self.reward_net.save(os.path.join(directory, "reward_net"))
 
   @classmethod
-  def load(cls, directory):
+  def _load(cls, directory):
     with open(os.path.join(directory, "args"), "rb") as f:
       params = pickle.load(f)
     reward_net_cls = params.pop("reward_net_cls")

@@ -9,23 +9,25 @@ import tensorflow as tf
 
 from imitation.util import util
 
-T = TypeVar('T')
+T = TypeVar('T', bound='Serializable')
 
 
 class Serializable(ABC):
   """Abstract mix-in defining methods to load/save model."""
-  @classmethod
-  @abstractmethod
-  def load(cls: Type[T], directory: str) -> T:
-    """Load object plus weights from directory.
 
-    Concrete subclasses must override this, and must not call it via super()
-    (this would trigger an infinite loop.)
-    """
+  @classmethod
+  def load(cls: Type[T], directory: str) -> T:
+    """Load object plus weights from directory."""
     with open(os.path.join(directory, 'loader'), 'rb') as f:
       load_cls = pickle.load(f)
-    return load_cls.load(directory)
+    return load_cls._load(directory)
 
+  @classmethod
+  @abstractmethod
+  def _load(cls: Type[T], directory: str) -> T:
+    pass
+
+  @classmethod
   @abstractmethod
   def save(self, directory: str) -> None:
     """Save object and weights to directory.
@@ -47,7 +49,7 @@ def make_cls(cls, args, kwargs):
 class LayersSerializable(Serializable):
   """Serialization mix-in based on `__init__` then rehydration.
 
-  Subclsases must call the constructor with all arguments needed by `__init__`,
+  Subclasses must call the constructor with all arguments needed by `__init__`,
   and a dictionary mapping from strings to `tf.layers.Layer` objects.
   In most cases, you can use the following idiom::
 
@@ -73,7 +75,7 @@ class LayersSerializable(Serializable):
     restore.assert_consumed().run_restore_ops()
 
   @classmethod
-  def load(cls: Type[T], directory: str) -> T:
+  def _load(cls: Type[T], directory: str) -> T:
     with open(os.path.join(directory, 'obj'), 'rb') as f:
       obj = pickle.load(f)
     assert isinstance(obj, cls)
