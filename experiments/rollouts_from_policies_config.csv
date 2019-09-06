@@ -6,5 +6,8 @@ half_cheetah,HalfCheetah-v2.pkl,25
 hopper,Hopper-v2,25
 walker,Walker2d-v2,25
 ant,Ant-v2,25
+custom_ant,imitation_CustomAnt-v0,25
+disabled_ant,imitation_DisabledAnt-v0,25
 humanoid,Humanoid-v2,240
 reacher,Reacher-v2,25
+two_d_maze,imitation_TwoDMaze-v0,25
