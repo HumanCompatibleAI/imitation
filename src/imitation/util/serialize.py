@@ -27,7 +27,6 @@ class Serializable(ABC):
   def _load(cls: Type[T], directory: str) -> T:
     pass
 
-  @classmethod
   @abstractmethod
   def save(self, directory: str) -> None:
     """Save object and weights to directory.
