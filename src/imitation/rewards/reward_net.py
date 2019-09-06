@@ -225,7 +225,7 @@ def build_basic_theta_network(hid_sizes: Optional[Iterable[int]],
     old_obs_input: Previous observation.
     new_obs_input: Next observation.
     act_input: Action.
-    kwargs: Passed through to `util.apply_ff`.
+    **kwargs: Passed through to `util.build_mlp`.
 
   Returns:
     tf.Tensor: Predicted reward.
@@ -303,7 +303,7 @@ def build_basic_phi_network(hid_sizes: Optional[Iterable[int]],
     hid_sizes: Number of units at each hidden layer. Default is (32, 32).
     old_obs_input: Previous observation.
     new_obs_input: Next observation.
-    kwargs: Passed through to `util.apply_ff`.
+    **kwargs: Passed through to `util.build_mlp`.
 
   Returns:
     Tuple[tf.Tensor, tf.Tensor]: potential for the old and new observations.

@@ -9,22 +9,20 @@ import tensorflow as tf
 
 from imitation.util import util
 
-
-def make_cls(cls, args, kwargs):
-  return cls(*args, **kwargs)
+T = TypeVar('T')
 
 
 class Serializable(ABC):
   """Abstract mix-in defining methods to load/save model."""
   @classmethod
-  def load(cls, directory):
+  def load(cls: Type[T], directory: str) -> T:
     """Load object plus weights from directory."""
     with open(os.path.join(directory, 'loader'), 'rb') as f:
       load_cls = pickle.load(f)
     return load_cls.load(directory)
 
   @abstractmethod
-  def save(self, directory):
+  def save(self, directory: str) -> None:
     """Save object and weights to directory."""
     os.makedirs(directory, exist_ok=True)
 
@@ -35,7 +33,8 @@ class Serializable(ABC):
     os.replace(load_path + '.tmp', load_path)
 
 
-T = TypeVar('T')
+def make_cls(cls, args, kwargs):
+  return cls(*args, **kwargs)
 
 
 class LayersSerializable(Serializable):
