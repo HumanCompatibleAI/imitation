@@ -18,44 +18,42 @@ from . import util  # Relative import needed to prevent cycle with __init__.py
 
 
 class Trajectory(NamedTuple):
-  """A trajectory."""
+  """A trajectory.
+
+   Attributes:
+    obs: Observations, shape (trajectory_len+1, ) + observation_shape.
+    act: Actions, shape (trajectory_len, ) + action_shape.
+    rew: Reward, shape (trajectory_len, ).
+  """
 
   act: np.ndarray
-  """Actions: shape (trajectory_len, ) + action_shape."""
   obs: np.ndarray
-  """Observations: shape (trajectory_len+1, ) + observation_shape."""
   rew: np.ndarray
-  """Reward: shape (trajectory_len, )"""
 
 
 class Transitions(NamedTuple):
-  """A batch of transition obs-act-obs-rew transitions."""
+  """A batch of transition obs-act-obs-rew transitions.
+
+   Attributes:
+    old_obs: Old observations. Shape: (batch_size, ) + observation_shape.
+        The i'th observation `old_obs[i]` in this array is the observation seen
+        by the agent when choosing action `act[i]`.
+    act: Actions. Shape: (batch_size, ) + action_shape.
+    new_obs: New observation. Shape: (batch_size, ) + observation_shape.
+        The i'th observation `new_obs[i]` in this array is the observation after
+        the agent has taken action `act[i]`.
+    rew: Reward. Shape: (batch_size, ).
+        The reward `rew[i]` at the i'th timestep is received after the agent has
+        taken action `act[i]`.
+    done: Boolean array indicating episode termination. Shape: (batch_size, ).
+        `done[i]` is true iff `new_obs[i]` the last observatoin of an episode.
+  """
+
   old_obs: np.ndarray
-  """Old observations. Shape: (batch_size, ) + observation_shape.
-
-  The i'th observation old_obs[i] in this array is the observation seen by the
-  agent when choosing action act[i].
-  """
   act: np.ndarray
-  """Actions. Shape: (batch_size, ) + action_shape.
-  """
   new_obs: np.ndarray
-  """New observation. Shape: (batch_size, ) + observation_shape.
-
-  The i'th observation new_obs[i] in this array is the observation after
-  the agent has taken action act[i].
-  """
   rew: np.ndarray
-  """Reward. Shape: (batch_size, ).
-
-  The reward rew[i] at the i'th timestep is received after the agent has
-  taken action act[i].
-  """
   done: np.ndarray
-  """Boolean array indicating episode termination. Shape: (batch_size, ).
-
-  done[i] is true iff new_obs[i] the last observatoin of an episode.
-  """
 
 
 class _TrajectoryAccumulator:
