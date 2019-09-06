@@ -17,7 +17,6 @@ def make_cls(cls, args, kwargs):
 class Serializable(ABC):
   """Abstract mix-in defining methods to load/save model."""
   @classmethod
-  @abstractmethod
   def load(cls, directory):
     """Load object plus weights from directory."""
     with open(os.path.join(directory, 'loader'), 'rb') as f:

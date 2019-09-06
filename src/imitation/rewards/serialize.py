@@ -10,10 +10,9 @@ from imitation.rewards import discrim_net, reward_net
 from imitation.util import registry, util
 from imitation.util.reward_wrapper import RewardFn
 
-RewardLoaderFn = Callable[[str, VecEnv], ContextManager[RewardFn]]
-RewardNetLoaderFn = Callable[[str, VecEnv], reward_net.RewardNet]
+RewardFnLoaderFn = Callable[[str, VecEnv], ContextManager[RewardFn]]
 
-reward_registry: registry.Registry[RewardLoaderFn] = registry.Registry()
+reward_registry: registry.Registry[RewardFnLoaderFn] = registry.Registry()
 
 
 @registry.sess_context
@@ -25,7 +24,7 @@ def _load_discrim_net(path: str, venv: VecEnv) -> RewardFn:
   return discriminator.reward_test
 
 
-def _load_reward_net_as_fn(shaped: bool) -> RewardLoaderFn:
+def _load_reward_net_as_fn(shaped: bool) -> RewardFnLoaderFn:
   @contextlib.contextmanager
   def loader(path: str,
              venv: VecEnv,
