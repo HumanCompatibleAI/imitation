@@ -3,7 +3,7 @@ import functools
 import glob
 import os
 import pickle
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, NamedTuple, Optional, Union
 
 import gym
 import numpy as np
@@ -16,18 +16,46 @@ from imitation.policies.base import get_action_policy
 
 from . import util  # Relative import needed to prevent cycle with __init__.py
 
-TrajectoryList = List[Dict[str, np.ndarray]]
-"""A list of trajectory dicts.
 
-Each dict contains the keys 'act', 'obs', and 'rew'. For details on these
-key-value pairs, see the docstring for `generate_trajectories`.
-"""
+class Trajectory(NamedTuple):
+  """A trajectory."""
 
-TransitionsTuple = Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]
-"""An tuple of obs-act-obs-rew values.
+  act: np.ndarray
+  """Actions: shape (trajectory_len, ) + action_shape."""
+  obs: np.ndarray
+  """Observations: shape (trajectory_len+1, ) + observation_shape."""
+  rew: np.ndarray
+  """Reward: shape (trajectory_len, )"""
 
-For details see the docstring for `generate_transitions`.
-"""
+
+class Transitions(NamedTuple):
+  """A batch of transition obs-act-obs-rew transitions."""
+  old_obs: np.ndarray
+  """Old observations. Shape: (batch_size, ) + observation_shape.
+
+  The i'th observation old_obs[i] in this array is the observation seen by the
+  agent when choosing action act[i].
+  """
+  act: np.ndarray
+  """Actions. Shape: (batch_size, ) + action_shape.
+  """
+  new_obs: np.ndarray
+  """New observation. Shape: (batch_size, ) + observation_shape.
+
+  The i'th observation new_obs[i] in this array is the observation after
+  the agent has taken action act[i].
+  """
+  rew: np.ndarray
+  """Reward. Shape: (batch_size, ).
+
+  The reward rew[i] at the i'th timestep is received after the agent has
+  taken action act[i].
+  """
+  done: np.ndarray
+  """Boolean array indicating episode termination. Shape: (batch_size, ).
+
+  done[i] is true iff new_obs[i] the last observatoin of an episode.
+  """
 
 
 class _TrajectoryAccumulator:
@@ -40,7 +68,7 @@ class _TrajectoryAccumulator:
   def __init__(self):
     self.partial_trajectories = collections.defaultdict(list)
 
-  def finish_trajectory(self, idx) -> Dict[str, np.ndarray]:
+  def finish_trajectory(self, idx) -> Trajectory:
     """Complete the trajectory labelled with `idx`.
 
     Return list of completed trajectories popped from
@@ -56,7 +84,7 @@ class _TrajectoryAccumulator:
         key: np.stack(arr_list, axis=0)
         for key, arr_list in out_dict_unstacked.items()
     }
-    return out_dict_stacked
+    return Trajectory(**out_dict_stacked)
 
   def add_step(self, idx, step_dict: Dict[str, np.ndarray]):
     """Add a single step to the partial trajectory identified by `idx`.
@@ -79,7 +107,7 @@ def _validate_traj_generate_params(n_timesteps, n_episodes):
 
 def generate_trajectories(policy, env, *, n_timesteps=None, n_episodes=None,
                           deterministic_policy=False,
-                          ) -> TrajectoryList:
+                          ) -> List[Trajectory]:
   """Generate trajectory dictionaries from a policy and an environment.
 
   Args:
@@ -100,12 +128,7 @@ def generate_trajectories(policy, env, *, n_timesteps=None, n_episodes=None,
 
 
   Returns:
-    trajectories: List of trajectory dictionaries. Each trajectory dictionary
-        `traj` has the following keys and values:
-         - traj["obs"] is an observations array with N+1 rows, where N depends
-           on the particular trajectory.
-         - traj["act"] is an actions array with N rows.
-         - traj["rew"] is a reward array with shape (N,).
+    List of Trajectory tuples.
   """
   env = util.maybe_load_env(env, vectorize=True)
   assert util.is_vec_env(env)
@@ -124,7 +147,7 @@ def generate_trajectories(policy, env, *, n_timesteps=None, n_episodes=None,
     if n_timesteps is not None:
       assert n_episodes is None
       # accidentallyquadratic.tumblr.com
-      return sum(len(t["obs"]) - 1 for t in trajectories) >= n_timesteps
+      return sum(len(t.obs) - 1 for t in trajectories) >= n_timesteps
     else:
       assert n_episodes is not None
       return len(trajectories) >= n_episodes
@@ -169,7 +192,6 @@ def generate_trajectories(policy, env, *, n_timesteps=None, n_episodes=None,
       if done:
         # finish env_idx-th trajectory
         new_traj = trajectories_accum.finish_trajectory(env_idx)
-        assert ({'act', 'obs', 'rew'} <= new_traj.keys())
         trajectories.append(new_traj)
         trajectories_accum.add_step(env_idx, dict(obs=obs))
         continue
@@ -180,16 +202,16 @@ def generate_trajectories(policy, env, *, n_timesteps=None, n_episodes=None,
   # Sanity checks.
   assert n_episodes is None or len(trajectories) >= n_episodes
   for trajectory in trajectories:
-    n_steps = len(trajectory["act"])
+    n_steps = len(trajectory.act)
     # extra 1 for the end
     exp_obs = (n_steps + 1, ) + env.observation_space.shape
-    real_obs = trajectory["obs"].shape
+    real_obs = trajectory.obs.shape
     assert real_obs == exp_obs, f"expected shape {exp_obs}, got {real_obs}"
     exp_act = (n_steps, ) + env.action_space.shape
-    real_act = trajectory["act"].shape
+    real_act = trajectory.act.shape
     assert real_act == exp_act, f"expected shape {exp_act}, got {real_act}"
     exp_rew = (n_steps,)
-    real_rew = trajectory["rew"].shape
+    real_rew = trajectory.rew.shape
     assert real_rew == exp_rew, f"expected shape {exp_rew}, got {real_rew}"
 
   return trajectories
@@ -216,8 +238,8 @@ def rollout_stats(policy, env, **kwargs):
   trajectories = generate_trajectories(policy, env, **kwargs)
   out_stats = {"n_traj": len(trajectories)}
   traj_descriptors = {
-    "return": np.asarray([sum(t["rew"]) for t in trajectories]),
-    "len": np.asarray([len(t["rew"]) for t in trajectories]),
+    "return": np.asarray([sum(t.rew) for t in trajectories]),
+    "len": np.asarray([len(t.rew) for t in trajectories]),
   }
   stat_names = ["min", "mean", "std", "max"]
   for desc_name, desc_vals in traj_descriptors.items():
@@ -236,49 +258,39 @@ def mean_return(*args, **kwargs) -> float:
   return rollout_stats(*args, **kwargs)["return_mean"]
 
 
-def flatten_trajectories(trajectories: TrajectoryList) -> TransitionsTuple:
+def flatten_trajectories(trajectories: List[Trajectory]) -> Transitions:
   """Flatten a series of trajectory dictionaries into arrays.
 
   Returns observations, actions, next observations, rewards.
 
   Args:
-      trajectories ([dict]): list of dictionaries returned by `generate`, each
-        representing a trajectory and each with "obs", "rew", and "act" keys.
+      trajectories: list of trajectories.
 
   Returns:
-      obs_old (array): A numpy array with shape
-          `[n_timesteps] + env.observation_space.shape`. The ith observation in
-          this array is the observation seen with the agent chooses action
-          `rollout_act[i]`.
-      act (array): A numpy array with shape
-          `[n_timesteps] + env.action_space.shape`.
-      obs_new (array): A numpy array with shape
-          `[n_timesteps] + env.observation_space.shape`. The ith observation in
-          this array is from the transition state after the agent chooses action
-          `rollout_act[i]`.
-      rew (array): A numpy array with shape `[n_timesteps]`. The
-          reward received on the ith timestep is `rew[i]`.
+    The trajectories flattened into a single batch of Transitions.
   """
-  keys = ["obs_old", "obs_new", "act", "rew"]
+  keys = ["old_obs", "new_obs", "act", "rew", "done"]
   parts = {key: [] for key in keys}
-  for traj_dict in trajectories:
-    parts["act"].append(traj_dict["act"])
-    parts["rew"].append(traj_dict["rew"])
-    obs = traj_dict["obs"]
-    parts["obs_old"].append(obs[:-1])
-    parts["obs_new"].append(obs[1:])
+  for traj in trajectories:
+    parts["act"].append(traj.act)
+    parts["rew"].append(traj.rew)
+    obs = traj.obs
+    parts["old_obs"].append(obs[:-1])
+    parts["new_obs"].append(obs[1:])
+    done = np.zeros_like(traj.rew, dtype=np.bool)
+    done[-1] = True
+    parts["done"].append(done)
   cat_parts = {
     key: np.concatenate(part_list, axis=0)
     for key, part_list in parts.items()
   }
   lengths = set(map(len, cat_parts.values()))
   assert len(lengths) == 1, f"expected one length, got {lengths}"
-  return cat_parts["obs_old"], cat_parts["act"], cat_parts["obs_new"], \
-      cat_parts["rew"]
+  return Transitions(**cat_parts)
 
 
 def generate_transitions(policy, env, *, n_timesteps=None, n_episodes=None,
-                         truncate=True, **kwargs) -> TransitionsTuple:
+                         truncate=True, **kwargs) -> Transitions:
   """Generate old_obs-action-new_obs-reward tuples.
 
   Args:
@@ -298,26 +310,16 @@ def generate_transitions(policy, env, *, n_timesteps=None, n_episodes=None,
         returned.
     kwargs (dict): Passed-through to generate_trajectories.
   Returns:
-    rollout_obs_old (array): A numpy array with shape
-        `[n_samples] + env.observation_space.shape`. The ith observation in
-        this array is the observation seen with the agent chooses action
-        `rollout_act[i]`. `n_samples` is guaranteed to be at least
-        `n_timesteps`, if `n_timesteps` was provided.
-    rollout_act (array): A numpy array with shape
-        `[n_samples] + env.action_space.shape`.
-    rollout_obs_new (array): A numpy array with shape
-        `[n_samples] + env.observation_space.shape`. The ith observation in
-        this array is from the transition state after the agent chooses action
-        `rollout_act[i]`.
-    rollout_rewards (array): A numpy array with shape `[n_samples]`. The
-        reward received on the ith timestep is `rollout_rewards[i]`.
+    A batch of Transitions. The length of the constituent arrays is guaranteed
+    to be at least `n_timesteps` (if specified), but may be greater unless
+    `truncate` is provided as we collect data until the end of each episode.
   """
   traj = generate_trajectories(policy, env, n_timesteps=n_timesteps,
                                n_episodes=n_episodes, **kwargs)
-  rollout_arrays = flatten_trajectories(traj)
+  transitions = flatten_trajectories(traj)
   if truncate and n_timesteps is not None:
-    rollout_arrays = tuple(arr[:n_timesteps] for arr in rollout_arrays)
-  return rollout_arrays
+    transitions = Transitions(*(arr[:n_timesteps] for arr in transitions))
+  return transitions
 
 
 def save(rollout_dir: str,
@@ -326,7 +328,7 @@ def save(rollout_dir: str,
          basename: Union[str, int],
          **kwargs,
          ) -> None:
-    """Generate policy rollouts and save them to a pickled TrajectoryList.
+    """Generate policy rollouts and save them to a pickled List[Trajectory].
 
     Args:
         rollout_dir: Path to the save directory.
@@ -349,7 +351,7 @@ def save(rollout_dir: str,
 
 def load_trajectories(rollout_glob: str,
                       max_n_files: Optional[int] = None,
-                      ) -> TrajectoryList:
+                      ) -> List[Trajectory]:
   """Load trajectories from rollout pickles.
 
   Args:
@@ -370,10 +372,10 @@ def load_trajectories(rollout_glob: str,
     ro_paths.sort(key=os.path.getmtime)
     ro_paths = ro_paths[-max_n_files:]
 
-  traj_joined = []  # type: TrajectoryList
+  traj_joined = []  # type: List[Trajectory]
   for path in ro_paths:
     with open(path, "rb") as f:
-      traj = pickle.load(f)  # type: TrajectoryList
+      traj = pickle.load(f)  # type: List[Trajectory]
       tf.logging.info(f"Loaded rollouts from '{path}'.")
       traj_joined.extend(traj)
 

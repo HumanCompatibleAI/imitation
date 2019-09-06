@@ -50,18 +50,18 @@ def test_serialize_identity(session, env_id, discrim_net_cls):
     with tf.variable_scope("loaded"):
       loaded = discrim_net.DiscrimNet.load(tmpdir)
 
-  old_obs, act, new_obs, _rew = rollout.generate_transitions(random, env,
-                                                             n_timesteps=100)
-  labels = np.random.randint(2, size=len(old_obs)).astype(np.float32)
-  log_prob = np.random.randn(len(old_obs))
+  transitions = rollout.generate_transitions(random, env, n_timesteps=100)
+  length = len(transitions.old_obs)  # n_timesteps is only a lower bound
+  labels = np.random.randint(2, size=length).astype(np.float32)
+  log_prob = np.random.randn(length)
 
   feed_dict = {}
   outputs = {'train': [], 'test': []}
   for net in [original, loaded]:
     feed_dict.update({
-        net.old_obs_ph: old_obs,
-        net.act_ph: act,
-        net.new_obs_ph: new_obs,
+        net.old_obs_ph: transitions.old_obs,
+        net.act_ph: transitions.act,
+        net.new_obs_ph: transitions.new_obs,
         net.labels_ph: labels,
         net.log_policy_act_prob_ph: log_prob,
     })

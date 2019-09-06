@@ -2,10 +2,14 @@
 learns a density estimate on some aspect of the demonstrations, then rewards
 the agent for following that estimate."""
 
+from typing import List, Union
+
 from gym.spaces.utils import flatten
 import numpy as np
 from sklearn.neighbors import KernelDensity
 from sklearn.preprocessing import StandardScaler
+from stable_baselines.common.base_class import BaseRLModel
+from stable_baselines.common.vec_env import VecEnv
 import tensorflow as tf
 
 from imitation.util import reward_wrapper, rollout, util
@@ -109,13 +113,13 @@ class DensityReward:
     density_model.fit(flat_transitions)
     return density_model
 
-  def _preprocess_trajectories(self, trajectories):
+  def _preprocess_trajectories(self, trajectories: List[rollout.Trajectory]):
     """Preprocess a list of trajectories into atomic units that we can learn a
     density function on. Depending on configuration, that could mean a sequence
     state/state pairs, or state/action pairs, or single states, etc.
 
     Args:
-      trajectories (TrajectoryList): list of trajectories to process.
+      trajectories: trajectories to process.
 
     Returns:
       flat_trajectories (np.ndarray): a corresponding list of "flattened"
@@ -126,11 +130,11 @@ class DensityReward:
     """
     flat_trajectories = []
     for traj in trajectories:
-      obs_vec = traj['obs']
-      act_vec = traj['act']
+      obs_vec = traj.obs
+      act_vec = traj.act
       assert len(obs_vec) == len(act_vec) + 1
       flat_traj = []
-      for step_num in range(len(traj['act'])):
+      for step_num in range(len(traj.act)):
         flat_trans = self._preprocess_transition(obs_vec[step_num],
                                                  act_vec[step_num],
                                                  obs_vec[step_num + 1])
@@ -198,15 +202,15 @@ class DensityReward:
 
 class DensityTrainer:
   def __init__(self,
-               env,
-               rollouts,
-               imitation_trainer,
+               venv: Union[str, VecEnv],
+               rollouts: List[rollout.Trajectory],
+               imitation_trainer: BaseRLModel,
                *,
-               standardise_inputs=True,
-               kernel='gaussian',
-               kernel_bandwidth=0.5,
-               density_type=STATE_ACTION_DENSITY,
-               is_stationary=False):
+               standardise_inputs: bool = True,
+               kernel: str = 'gaussian',
+               kernel_bandwidth: float = 0.5,
+               density_type: str = STATE_ACTION_DENSITY,
+               is_stationary: bool = False):
     r"""Family of simple imitation learning baseline algorithms that apply RL to
     maximise a rough density estimate of the demonstration trajectories.
     Specifically, it constructs a non-parametric estimate of `p(s)`, `p(s,s')`,
@@ -215,24 +219,24 @@ class DensityTrainer:
     user wants the model to condition on).
 
     Args:
-      env (gym.Env or str): environment to train on.
-      rollouts (TrajectoryList): list of expert trajectories to imitate.
+      venv: environment to train on.
+      rollouts: list of expert trajectories to imitate.
       imitation_trainer (BaseRLModel): RL algorithm & initial policy that will
         be used to train the imitation learner.
       kernel, kernel_bandwidth, density_type, is_stationary,
         n_expert_trajectories: these are passed directly to `DensityReward`;
         refer to documentation for that class."""
-    self.env = util.maybe_load_env(env, vectorize=True)
+    self.venv = util.maybe_load_env(venv, vectorize=True)
     self.imitation_trainer = imitation_trainer
     self.reward_fn = DensityReward(trajectories=rollouts,
                                    density_type=density_type,
-                                   obs_space=self.env.observation_space,
-                                   act_space=self.env.action_space,
+                                   obs_space=self.venv.observation_space,
+                                   act_space=self.venv.action_space,
                                    is_stationary=is_stationary,
                                    kernel=kernel,
                                    kernel_bandwidth=kernel_bandwidth,
                                    standardise_inputs=standardise_inputs)
-    self.wrapped_env = reward_wrapper.RewardVecEnvWrapper(self.env,
+    self.wrapped_env = reward_wrapper.RewardVecEnvWrapper(self.venv,
                                                           self.reward_fn)
     self.graph = tf.Graph()
     self.sess = tf.Session(graph=self.graph)
@@ -273,9 +277,9 @@ class DensityTrainer:
       dict: rollout statistics collected by
         `imitation.utils.rollout.rollout_stats()`.
     """
-    self.imitation_trainer.set_env(self.env)
+    self.imitation_trainer.set_env(self.venv)
     reward_stats = rollout.rollout_stats(
         self.imitation_trainer,
-        self.env if true_reward else self.wrapped_env,
+        self.venv if true_reward else self.wrapped_env,
         n_episodes=n_trajectories)
     return reward_stats

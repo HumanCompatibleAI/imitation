@@ -1,5 +1,5 @@
 from functools import partial
-from typing import Optional, Tuple, Union
+from typing import Optional, Union
 from warnings import warn
 
 import gym
@@ -12,7 +12,7 @@ from imitation import summaries
 import imitation.rewards.discrim_net as discrim_net
 from imitation.rewards.reward_net import BasicShapedRewardNet
 import imitation.util as util
-from imitation.util import buffer, reward_wrapper
+from imitation.util import buffer, reward_wrapper, rollout
 
 
 class AdversarialTrainer:
@@ -39,7 +39,7 @@ class AdversarialTrainer:
                env: Union[gym.Env, str],
                gen_policy: BaseRLModel,
                discrim: discrim_net.DiscrimNet,
-               expert_rollouts: Tuple[np.ndarray, np.ndarray, np.ndarray],
+               expert_demos: rollout.Transitions,
                *,
                disc_opt_cls: tf.train.Optimizer = tf.train.AdamOptimizer,
                disc_opt_kwargs: dict = {},
@@ -55,8 +55,7 @@ class AdversarialTrainer:
                     discriminator confusion.
         discrim: The discriminator network.
             For GAIL, use a DiscrimNetGAIL. For AIRL, use a DiscrimNetAIRL.
-        expert_rollouts: A tuple of three arrays from expert rollouts,
-            `old_obs`, `act`, and `new_obs`.
+        expert_demos: Transitions from an expert dataset.
         disc_opt_cls: The optimizer for discriminator training.
         disc_opt_kwargs: Parameters for discriminator training.
         n_disc_samples_per_buffer: The number of obs-act-obs triples
@@ -114,7 +113,7 @@ class AdversarialTrainer:
     self._gen_replay_buffer = buffer.ReplayBuffer(gen_replay_buffer_capacity,
                                                   self.env)
     self._populate_gen_replay_buffer()
-    self._exp_replay_buffer = buffer.ReplayBuffer.from_data(*expert_rollouts)
+    self._exp_replay_buffer = buffer.ReplayBuffer.from_data(expert_demos)
     if n_disc_samples_per_buffer > len(self._exp_replay_buffer):
       warn("The discriminator batch size is larger than the number of "
            "expert samples.")
@@ -163,8 +162,8 @@ class AdversarialTrainer:
     """
     gen_rollouts = util.rollout.generate_transitions(
         self._gen_policy, self.env_train,
-        n_timesteps=self._n_disc_samples_per_buffer)[:3]
-    self._gen_replay_buffer.store(*gen_rollouts)
+        n_timesteps=self._n_disc_samples_per_buffer)
+    self._gen_replay_buffer.store(gen_rollouts)
 
   def train(self, n_epochs=100, *, n_gen_steps_per_epoch=None,
             n_disc_steps_per_epoch=None):
@@ -251,28 +250,31 @@ class AdversarialTrainer:
       tf.logging.debug("_build_disc_feed_dict: No generator rollout "
                        "parameters were "
                        "provided, so we are generating them now.")
-      gen_old_obs, gen_act, gen_new_obs = self._gen_replay_buffer.sample(
+      gen_sample = self._gen_replay_buffer.sample(
           self._n_disc_samples_per_buffer)
+      gen_old_obs = gen_sample.old_obs
+      gen_act = gen_sample.act
+      gen_new_obs = gen_sample.new_obs
     elif none_count != 0:
       raise ValueError("Gave some but not all of the generator params.")
 
     # Sample expert training batch from replay buffer.
-    expert_old_obs, expert_act, expert_new_obs = self._exp_replay_buffer.sample(
+    expert_sample = self._exp_replay_buffer.sample(
         self._n_disc_samples_per_buffer)
 
     # Check dimensions.
-    n_expert = len(expert_old_obs)
+    n_expert = len(expert_sample.old_obs)
     n_gen = len(gen_old_obs)
     N = n_expert + n_gen
-    assert n_expert == len(expert_act)
-    assert n_expert == len(expert_new_obs)
+    assert n_expert == len(expert_sample.act)
+    assert n_expert == len(expert_sample.new_obs)
     assert n_gen == len(gen_act)
     assert n_gen == len(gen_new_obs)
 
     # Concatenate rollouts, and label each row as expert or generator.
-    old_obs = np.concatenate([expert_old_obs, gen_old_obs])
-    act = np.concatenate([expert_act, gen_act])
-    new_obs = np.concatenate([expert_new_obs, gen_new_obs])
+    old_obs = np.concatenate([expert_sample.old_obs, gen_old_obs])
+    act = np.concatenate([expert_sample.act, gen_act])
+    new_obs = np.concatenate([expert_sample.new_obs, gen_new_obs])
     labels = np.concatenate([np.zeros(n_expert, dtype=int),
                              np.ones(n_gen, dtype=int)])
 
@@ -376,7 +378,7 @@ def init_trainer(env_id: str,
     assert len(expert_demos) >= n_expert_demos
     expert_demos = expert_demos[:n_expert_demos]
 
-  expert_rollouts = util.rollout.flatten_trajectories(expert_demos)[:3]
+  expert_rollouts = util.rollout.flatten_trajectories(expert_demos)
   trainer = AdversarialTrainer(env, gen_policy, discrim, expert_rollouts,
                                **trainer_kwargs)
   return trainer
