@@ -3,7 +3,7 @@ import functools
 import glob
 import os
 import pickle
-from typing import Dict, List, NamedTuple, Optional, Union
+from typing import Dict, List, NamedTuple, Optional, Sequence, Union
 
 import gym
 import numpy as np
@@ -108,7 +108,7 @@ def _validate_traj_generate_params(n_timesteps, n_episodes):
 
 def generate_trajectories(policy, env, *, n_timesteps=None, n_episodes=None,
                           deterministic_policy=False,
-                          ) -> List[Trajectory]:
+                          ) -> Sequence[Trajectory]:
   """Generate trajectory dictionaries from a policy and an environment.
 
   Args:
@@ -127,7 +127,7 @@ def generate_trajectories(policy, env, *, n_timesteps=None, n_episodes=None,
         if the environment has non-determinism!
 
   Returns:
-    List of `Trajectory` named tuples.
+    Sequence of `Trajectory` named tuples.
   """
   env = util.maybe_load_env(env, vectorize=True)
   assert util.is_vec_env(env)
@@ -257,7 +257,7 @@ def mean_return(*args, **kwargs) -> float:
   return rollout_stats(*args, **kwargs)["return_mean"]
 
 
-def flatten_trajectories(trajectories: List[Trajectory]) -> Transitions:
+def flatten_trajectories(trajectories: Sequence[Trajectory]) -> Transitions:
   """Flatten a series of trajectory dictionaries into arrays.
 
   Returns observations, actions, next observations, rewards.
@@ -327,7 +327,7 @@ def save(rollout_dir: str,
          basename: Union[str, int],
          **kwargs,
          ) -> None:
-    """Generate policy rollouts and save them to a pickled List[Trajectory].
+    """Generate policy rollouts and save them to a pickled Sequence[Trajectory].
 
     Args:
         rollout_dir: Path to the save directory.
@@ -350,7 +350,7 @@ def save(rollout_dir: str,
 
 def load_trajectories(rollout_glob: str,
                       max_n_files: Optional[int] = None,
-                      ) -> List[Trajectory]:
+                      ) -> Sequence[Trajectory]:
   """Load trajectories from rollout pickles.
 
   Args:
@@ -374,7 +374,7 @@ def load_trajectories(rollout_glob: str,
   traj_joined = []  # type: List[Trajectory]
   for path in ro_paths:
     with open(path, "rb") as f:
-      traj = pickle.load(f)  # type: List[Trajectory]
+      traj = pickle.load(f)  # type: Sequence[Trajectory]
       tf.logging.info(f"Loaded rollouts from '{path}'.")
       traj_joined.extend(traj)
 

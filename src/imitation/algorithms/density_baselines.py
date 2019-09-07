@@ -2,7 +2,7 @@
 learns a density estimate on some aspect of the demonstrations, then rewards
 the agent for following that estimate."""
 
-from typing import List, Union
+from typing import Sequence, Union
 
 from gym.spaces.utils import flatten
 import numpy as np
@@ -113,7 +113,8 @@ class DensityReward:
     density_model.fit(flat_transitions)
     return density_model
 
-  def _preprocess_trajectories(self, trajectories: List[rollout.Trajectory]):
+  def _preprocess_trajectories(self,
+                               trajectories: Sequence[rollout.Trajectory]):
     """Preprocess a list of trajectories into atomic units that we can learn a
     density function on. Depending on configuration, that could mean a sequence
     state/state pairs, or state/action pairs, or single states, etc.
@@ -203,7 +204,7 @@ class DensityReward:
 class DensityTrainer:
   def __init__(self,
                venv: Union[str, VecEnv],
-               rollouts: List[rollout.Trajectory],
+               rollouts: Sequence[rollout.Trajectory],
                imitation_trainer: BaseRLModel,
                *,
                standardise_inputs: bool = True,

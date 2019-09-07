@@ -1,6 +1,6 @@
 """Testing simple density estimation baselines for IRL."""
 
-from typing import List
+from typing import Sequence
 
 import numpy as np
 import pytest
@@ -12,7 +12,7 @@ from imitation.algorithms.density_baselines import (STATE_ACTION_DENSITY,
                                                     DensityReward,
                                                     DensityTrainer)
 from imitation.policies.base import RandomPolicy
-from imitation.util import rollout
+from imitation.util import reward_wrapper, rollout
 
 parametrize_density_stationary = pytest.mark.parametrize(
   "density_type,is_stationary",
@@ -22,7 +22,8 @@ parametrize_density_stationary = pytest.mark.parametrize(
    (STATE_STATE_DENSITY, True)])
 
 
-def score_trajectories(trajectories: List[rollout.Trajectory], reward_fn):
+def score_trajectories(trajectories: Sequence[rollout.Trajectory],
+                       reward_fn: reward_wrapper.RewardFn):
   # score trajectories under given reward function w/o discount
   returns = []
   for traj in trajectories:
