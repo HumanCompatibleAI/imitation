@@ -42,19 +42,19 @@ class Transitions(NamedTuple):
         The i'th observation `obs[i]` in this array is the observation seen
         by the agent when choosing action `act[i]`.
     act: Actions. Shape: (batch_size, ) + action_shape.
-    new_obs: New observation. Shape: (batch_size, ) + observation_shape.
-        The i'th observation `new_obs[i]` in this array is the observation after
-        the agent has taken action `act[i]`.
+    next_obs: New observation. Shape: (batch_size, ) + observation_shape.
+        The i'th observation `next_obs[i]` in this array is the observation
+        after the agent has taken action `act[i]`.
     rew: Reward. Shape: (batch_size, ).
         The reward `rew[i]` at the i'th timestep is received after the agent has
         taken action `act[i]`.
     done: Boolean array indicating episode termination. Shape: (batch_size, ).
-        `done[i]` is true iff `new_obs[i]` the last observation of an episode.
+        `done[i]` is true iff `next_obs[i]` the last observation of an episode.
   """
 
   obs: np.ndarray
   act: np.ndarray
-  new_obs: np.ndarray
+  next_obs: np.ndarray
   rew: np.ndarray
   done: np.ndarray
 
@@ -168,7 +168,7 @@ def generate_trajectories(policy, env, *, n_timesteps=None, n_episodes=None,
     act_batch, _ = get_action(obs_old_batch, deterministic=deterministic_policy)
     obs_batch, rew_batch, done_batch, info_batch = env.step(act_batch)
 
-    # Don't save tuples if there is a done. The new_obs for any environment
+    # Don't save tuples if there is a done. The next_obs for any environment
     # is incorrect for any timestep where there is an episode end, so we fix it
     # with returned state info.
     zip_iter = enumerate(
@@ -268,14 +268,14 @@ def flatten_trajectories(trajectories: List[Trajectory]) -> Transitions:
   Returns:
     The trajectories flattened into a single batch of Transitions.
   """
-  keys = ["obs", "new_obs", "act", "rew", "done"]
+  keys = ["obs", "next_obs", "act", "rew", "done"]
   parts = {key: [] for key in keys}
   for traj in trajectories:
     parts["act"].append(traj.act)
     parts["rew"].append(traj.rew)
     obs = traj.obs
     parts["obs"].append(obs[:-1])
-    parts["new_obs"].append(obs[1:])
+    parts["next_obs"].append(obs[1:])
     done = np.zeros_like(traj.rew, dtype=np.bool)
     done[-1] = True
     parts["done"].append(done)
@@ -290,7 +290,7 @@ def flatten_trajectories(trajectories: List[Trajectory]) -> Transitions:
 
 def generate_transitions(policy, env, *, n_timesteps=None, n_episodes=None,
                          truncate=True, **kwargs) -> Transitions:
-  """Generate obs-action-new_obs-reward tuples.
+  """Generate obs-action-next_obs-reward tuples.
 
   Args:
     policy (BasePolicy or BaseRLModel): A stable_baselines policy or RLModel,

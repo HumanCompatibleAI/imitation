@@ -41,7 +41,7 @@ def test_train_disc_no_crash(use_gail, parallel,
   transitions = rollout.generate_transitions(trainer.gen_policy,
                                              env, n_timesteps=n_timesteps)
   trainer.train_disc(gen_obs=transitions.obs, gen_act=transitions.act,
-                     gen_new_obs=transitions.new_obs)
+                     gen_next_obs=transitions.next_obs)
 
 
 @pytest.mark.parametrize("use_gail", USE_GAIL)
@@ -60,7 +60,7 @@ def test_train_disc_improve_D(use_gail, env='CartPole-v1', n_timesteps=200,
                                              n_timesteps=n_timesteps)
   kwargs = dict(gen_obs=transitions.obs,
                 gen_act=transitions.act,
-                gen_new_obs=transitions.new_obs)
+                gen_next_obs=transitions.next_obs)
   loss1 = trainer.eval_disc_loss(**kwargs)
   trainer.train_disc(n_steps=n_steps, **kwargs)
   loss2 = trainer.eval_disc_loss(**kwargs)

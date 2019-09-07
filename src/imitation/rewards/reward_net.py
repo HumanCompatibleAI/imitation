@@ -16,11 +16,11 @@ class RewardNet(serialize.Serializable, ABC):
   and initialize the network's variables.
 
   Attributes:
-    observation_space: The observation space of `obs_ph` and `new_obs_ph`.
+    observation_space: The observation space of `obs_ph` and `next_obs_ph`.
     action_space: The action space of `act_ph`.
     obs_ph (tf.Tensor): previous observation placeholder.
     act_ph (tf.Tensor): action placeholder.
-    new_obs_ph (tf.Tensor): next observation placeholder.
+    next_obs_ph (tf.Tensor): next observation placeholder.
     _params (dict): parameters to serialize in `save`, used as keyword
         arguments for constructor by `load`.
     _layers (dict): CheckpointableBase objects, e.g. a TensorFlow layer,
@@ -42,8 +42,8 @@ class RewardNet(serialize.Serializable, ABC):
     self.scale = scale
 
     inputs = util.build_inputs(observation_space, action_space, scale)
-    self.obs_ph, self.act_ph, self.new_obs_ph = inputs[:3]
-    self.obs_inp, self.act_inp, self.new_obs_inp = inputs[3:]
+    self.obs_ph, self.act_ph, self.next_obs_ph = inputs[:3]
+    self.obs_inp, self.act_inp, self.next_obs_inp = inputs[3:]
 
     with tf.variable_scope("theta_network"):
       self._theta_output, theta_layers = self.build_theta_network(
@@ -63,7 +63,7 @@ class RewardNet(serialize.Serializable, ABC):
     ```
     self.obs_ph
     self.act_ph
-    self.new_obs_ph
+    self.next_obs_ph
     ```
 
     Returns:
@@ -85,7 +85,7 @@ class RewardNet(serialize.Serializable, ABC):
     ```
     self.obs_ph
     self.act_ph
-    self.new_obs_ph
+    self.next_obs_ph
     ```
 
     Returns:
@@ -142,7 +142,7 @@ class RewardNetShaped(RewardNet):
     self._discount_factor = discount_factor
 
     with tf.variable_scope("phi_network"):
-      res = self.build_phi_network(self.obs_inp, self.new_obs_inp)
+      res = self.build_phi_network(self.obs_inp, self.next_obs_inp)
       self._old_shaping_output, self._new_shaping_output, phi_layers = res
 
     with tf.variable_scope("f_network"):
@@ -162,7 +162,7 @@ class RewardNetShaped(RewardNet):
     ```
     self.obs_ph
     self.act_ph
-    self.new_obs_ph
+    self.next_obs_ph
     ```
 
     Returns:
@@ -174,7 +174,7 @@ class RewardNetShaped(RewardNet):
   @abstractmethod
   def build_phi_network(self,
                         obs_input: tf.Tensor,
-                        new_obs_input: tf.Tensor,
+                        next_obs_input: tf.Tensor,
                         ) -> Tuple[tf.Tensor, tf.Tensor, util.LayersDict]:
     """Build the reward shaping network (disentangles dynamics from reward).
 
@@ -189,7 +189,7 @@ class RewardNetShaped(RewardNet):
       obs_input: The old observations (corresponding to the state at which
           the current action is made). The shape of this Tensor should be
           `(None,) + self.env.observation_space.shape`.
-      new_obs_input: The new observations (corresponding to the state that we
+      next_obs_input: The new observations (corresponding to the state that we
           transition to after this state-action pair.
 
     Returns:
@@ -210,20 +210,20 @@ class RewardNetShaped(RewardNet):
 
 def build_basic_theta_network(hid_sizes: Optional[Iterable[int]],
                               obs_input: Optional[tf.Tensor],
-                              new_obs_input: Optional[tf.Tensor],
+                              next_obs_input: Optional[tf.Tensor],
                               act_input: Optional[tf.Tensor],
                               **kwargs: dict):
   """Builds a reward network depending on specified observations and actions.
 
   All specified inputs will be preprocessed and then concatenated. If all
   inputs are specified, then it will be a :math:`R(o,a,o')` network.
-  Conversely, if `new_obs_input` and `act_input` are both set to `None`, it
+  Conversely, if `next_obs_input` and `act_input` are both set to `None`, it
   will depend just on the current observation: :math:`R(o)`.
 
   Arguments:
     hid_sizes: Number of units at each hidden layer. Default is [], i.e. linear.
     obs_input: Previous observation.
-    new_obs_input: Next observation.
+    next_obs_input: Next observation.
     act_input: Action.
     **kwargs: Passed through to `util.build_mlp`.
 
@@ -231,13 +231,13 @@ def build_basic_theta_network(hid_sizes: Optional[Iterable[int]],
     tf.Tensor: Predicted reward.
 
   Raises:
-    ValueError: If all of obs_input, new_obs_input and act_input are None.
+    ValueError: If all of obs_input, next_obs_input and act_input are None.
   """
   if hid_sizes is None:
     hid_sizes = [32, 32]
 
   with tf.variable_scope("theta"):
-    inputs = [obs_input, act_input, new_obs_input]
+    inputs = [obs_input, act_input, next_obs_input]
     inputs = [x for x in inputs if x is not None]
     if len(inputs) == 0:
       raise ValueError("Must specify at least one input")
@@ -284,7 +284,7 @@ class BasicRewardNet(RewardNet, serialize.LayersSerializable):
     return build_basic_theta_network(self.theta_units,
                                      obs_input=obs_input,
                                      act_input=act_or_none,
-                                     new_obs_input=None,
+                                     next_obs_input=None,
                                      **self.theta_kwargs)
 
   @property
@@ -295,14 +295,14 @@ class BasicRewardNet(RewardNet, serialize.LayersSerializable):
 
 def build_basic_phi_network(hid_sizes: Optional[Iterable[int]],
                             obs_input: tf.Tensor,
-                            new_obs_input: tf.Tensor,
+                            next_obs_input: tf.Tensor,
                             **kwargs: dict):
   """Builds a potential network depending on specified observation.
 
   Arguments:
     hid_sizes: Number of units at each hidden layer. Default is (32, 32).
     obs_input: Previous observation.
-    new_obs_input: Next observation.
+    next_obs_input: Next observation.
     **kwargs: Passed through to `util.build_mlp`.
 
   Returns:
@@ -313,7 +313,7 @@ def build_basic_phi_network(hid_sizes: Optional[Iterable[int]],
 
   with tf.variable_scope("phi", reuse=tf.AUTO_REUSE):
     old_o = tf.layers.flatten(obs_input)
-    new_o = tf.layers.flatten(new_obs_input)
+    new_o = tf.layers.flatten(next_obs_input)
 
     # Weight share, just with different inputs old_o and new_o
     phi_mlp = util.build_mlp(hid_sizes=hid_sizes, name="shaping", **kwargs)
@@ -372,9 +372,9 @@ class BasicShapedRewardNet(RewardNetShaped, serialize.LayersSerializable):
     return build_basic_theta_network(self.theta_units,
                                      obs_input=obs_input,
                                      act_input=act_or_none,
-                                     new_obs_input=None,
+                                     next_obs_input=None,
                                      **self.theta_kwargs)
 
-  def build_phi_network(self, obs_input, new_obs_input):
+  def build_phi_network(self, obs_input, next_obs_input):
     return build_basic_phi_network(self.phi_units, obs_input,
-                                   new_obs_input, **self.phi_kwargs)
+                                   next_obs_input, **self.phi_kwargs)

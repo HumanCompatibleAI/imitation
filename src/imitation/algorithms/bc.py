@@ -21,7 +21,7 @@ class BCTrainer:
   Args:
     env (gym.Env): environment to train on.
     expert_rollouts: A tuple of four arrays from expert rollouts,
-        `obs`, `act`, `new_obs`, `reward`.
+        `obs`, `act`, `next_obs`, `reward`.
     policy_class (BasePolicy): used to instantiate imitation policy.
     batch_size (int): batch size used for training.
     """

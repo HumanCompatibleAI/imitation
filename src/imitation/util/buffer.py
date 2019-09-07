@@ -226,14 +226,14 @@ class ReplayBuffer:
     sample_shapes = {
         'obs': obs_shape,
         'act': act_shape,
-        'new_obs': obs_shape,
+        'next_obs': obs_shape,
         'rew': (),
         'done': (),
     }
     dtypes = {
         'obs': obs_dtype,
         'act': act_dtype,
-        'new_obs': obs_dtype,
+        'next_obs': obs_dtype,
         'rew': np.float32,
         'done': np.bool,
     }
@@ -252,10 +252,10 @@ class ReplayBuffer:
         A new ReplayBuffer.
 
     Raises:
-        ValueError: obs and new_obs have a different dtype.
+        ValueError: obs and next_obs have a different dtype.
     """
-    if transitions.obs.dtype != transitions.new_obs.dtype:
-      raise ValueError("obs and new_obs must have the same dtype.")
+    if transitions.obs.dtype != transitions.next_obs.dtype:
+      raise ValueError("obs and next_obs must have the same dtype.")
 
     capacity, *obs_shape = transitions.obs.shape
     _, *act_shape = transitions.act.shape

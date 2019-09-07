@@ -118,8 +118,8 @@ def test_model_based(env):
 
   obs = env.obs_from_state(state)
   assert env.observation_space.contains(obs)
-  new_obs = env.obs_from_state(new_state)
-  assert env.observation_space.contains(new_obs)
+  next_obs = env.obs_from_state(new_state)
+  assert env.observation_space.contains(next_obs)
 
 
 @pytest.mark.parametrize("env_name", ENV_NAMES)

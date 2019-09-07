@@ -135,7 +135,7 @@ class AdversarialTrainer:
         n_steps (int): The number of training steps.
         gen_obs (np.ndarray): See `_build_disc_feed_dict`.
         gen_act (np.ndarray): See `_build_disc_feed_dict`.
-        gen_new_obs (np.ndarray): See `_build_disc_feed_dict`.
+        gen_next_obs (np.ndarray): See `_build_disc_feed_dict`.
     """
     for _ in range(n_steps):
       fd = self._build_disc_feed_dict(**kwargs)
@@ -195,7 +195,7 @@ class AdversarialTrainer:
     Args:
         gen_obs (np.ndarray): See `_build_disc_feed_dict`.
         gen_act (np.ndarray): See `_build_disc_feed_dict`.
-        gen_new_obs (np.ndarray): See `_build_disc_feed_dict`.
+        gen_next_obs (np.ndarray): See `_build_disc_feed_dict`.
 
     Returns:
         discriminator_loss (float): The total cross-entropy error in the
@@ -224,7 +224,7 @@ class AdversarialTrainer:
   def _build_disc_feed_dict(self, *,
                             gen_obs: Optional[np.ndarray] = None,
                             gen_act: Optional[np.ndarray] = None,
-                            gen_new_obs: Optional[np.ndarray] = None,
+                            gen_next_obs: Optional[np.ndarray] = None,
                             ) -> dict:
     """Build a feed dict that holds the next training batch of generator
     and expert obs-act-obs triples.
@@ -236,7 +236,7 @@ class AdversarialTrainer:
             generator chooses action `gen_act[i]`.
         gen_act (np.ndarray): A numpy array with shape
             `[self.n_disc_samples_per_buffer_per_buffer] + env.action_space.shape`.
-        gen_new_obs (np.ndarray): A numpy array with shape
+        gen_next_obs (np.ndarray): A numpy array with shape
             `[self.n_disc_samples_per_buffer_per_buffer] + env.observation_space.shape`.
             The ith observation in this array is from the transition state after
             the generator chooses action `gen_act[i]`.
@@ -245,7 +245,7 @@ class AdversarialTrainer:
     # Sample generator training batch from replay buffers, unless provided
     # in argument.
     none_count = sum(int(x is None)
-                     for x in (gen_obs, gen_act, gen_new_obs))
+                     for x in (gen_obs, gen_act, gen_next_obs))
     if none_count == 3:
       tf.logging.debug("_build_disc_feed_dict: No generator rollout "
                        "parameters were "
@@ -254,7 +254,7 @@ class AdversarialTrainer:
           self._n_disc_samples_per_buffer)
       gen_obs = gen_sample.obs
       gen_act = gen_sample.act
-      gen_new_obs = gen_sample.new_obs
+      gen_next_obs = gen_sample.next_obs
     elif none_count != 0:
       raise ValueError("Gave some but not all of the generator params.")
 
@@ -267,14 +267,14 @@ class AdversarialTrainer:
     n_gen = len(gen_obs)
     N = n_expert + n_gen
     assert n_expert == len(expert_sample.act)
-    assert n_expert == len(expert_sample.new_obs)
+    assert n_expert == len(expert_sample.next_obs)
     assert n_gen == len(gen_act)
-    assert n_gen == len(gen_new_obs)
+    assert n_gen == len(gen_next_obs)
 
     # Concatenate rollouts, and label each row as expert or generator.
     obs = np.concatenate([expert_sample.obs, gen_obs])
     act = np.concatenate([expert_sample.act, gen_act])
-    new_obs = np.concatenate([expert_sample.new_obs, gen_new_obs])
+    next_obs = np.concatenate([expert_sample.next_obs, gen_next_obs])
     labels = np.concatenate([np.zeros(n_expert, dtype=int),
                              np.ones(n_gen, dtype=int)])
 
@@ -287,7 +287,7 @@ class AdversarialTrainer:
     fd = {
         self.discrim.obs_ph: obs,
         self.discrim.act_ph: act,
-        self.discrim.new_obs_ph: new_obs,
+        self.discrim.next_obs_ph: next_obs,
         self.discrim.labels_ph: labels,
         self.discrim.log_policy_act_prob_ph: log_act_prob,
     }

@@ -37,13 +37,13 @@ def _load_reward_net_as_fn(shaped: bool) -> RewardFnLoaderFn:
 
       def rew_fn(obs: np.ndarray,
                  act: np.ndarray,
-                 new_obs: np.ndarray,
+                 next_obs: np.ndarray,
                  steps: np.ndarray) -> np.ndarray:
         del steps
         fd = {
             net.obs_ph: obs,
             net.act_ph: act,
-            net.new_obs_ph: new_obs,
+            net.next_obs_ph: next_obs,
         }
         rew = sess.run(reward, feed_dict=fd)
         assert rew.shape == (len(obs),)
@@ -59,9 +59,9 @@ def load_zero(path: str, venv: VecEnv) -> RewardFn:
 
   def f(obs: np.ndarray,
         act: np.ndarray,
-        new_obs: np.ndarray,
+        next_obs: np.ndarray,
         steps: np.ndarray) -> np.ndarray:
-    del act, new_obs, steps
+    del act, next_obs, steps
     return np.zeros(obs.shape[0])
 
   return f
