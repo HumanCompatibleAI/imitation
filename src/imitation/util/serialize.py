@@ -38,7 +38,6 @@ class Serializable(ABC):
   @abstractmethod
   def _load(cls: Type[T], directory: str) -> T:
     """Class-specific loading logic."""
-    pass
 
   @abstractmethod
   def _save(self, directory: str) -> None:
