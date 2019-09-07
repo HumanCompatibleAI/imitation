@@ -22,16 +22,8 @@ class Serializable(ABC):
       load_cls = pickle.load(f)
     return load_cls._load(directory)
 
-  @classmethod
-  @abstractmethod
-  def _load(cls: Type[T], directory: str) -> T:
-    pass
-
-  @abstractmethod
   def save(self, directory: str) -> None:
-    """Save object and weights to directory.
-
-    Concrete subclasses must override this, and must call it via super()."""
+    """Save object and weights to directory."""
     os.makedirs(directory, exist_ok=True)
 
     load_path = os.path.join(directory, 'loader')
@@ -39,6 +31,18 @@ class Serializable(ABC):
       pickle.dump(type(self), f)
     # Ensure atomic write
     os.replace(load_path + '.tmp', load_path)
+
+    self._save(directory)
+
+  @classmethod
+  @abstractmethod
+  def _load(cls: Type[T], directory: str) -> T:
+    """Class-specific loading logic."""
+    pass
+
+  @abstractmethod
+  def _save(self, directory: str) -> None:
+    """Class-specific saving logic."""
 
 
 def make_cls(cls, args, kwargs):
@@ -81,9 +85,7 @@ class LayersSerializable(Serializable):
     obj.load_parameters(directory)
     return obj
 
-  def save(self, directory: str) -> None:
-    super().save(directory)
-
+  def _save(self, directory: str) -> None:
     obj_path = os.path.join(directory, 'obj')
     # obj is static, so no need to write them multiple times.
     # (Best to avoid it -- if we were die in the middle of save, it could

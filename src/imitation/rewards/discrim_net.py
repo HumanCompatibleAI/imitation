@@ -81,6 +81,7 @@ class DiscrimNet(serialize.Serializable, ABC):
     Returns:
         The rewards. Its shape is `(batch_size,)`.
     """
+    del steps
     log_act_prob = np.squeeze(
       gen_log_prob_fn(observation=old_obs, actions=act, logp=True))
 
@@ -121,6 +122,7 @@ class DiscrimNet(serialize.Serializable, ABC):
     Returns:
         The rewards. Its shape is `(batch_size,)`.
     """
+    del steps
     fd = {
       self.old_obs_ph: old_obs,
       self.act_ph: act,
@@ -252,9 +254,7 @@ class DiscrimNetAIRL(DiscrimNet):
     # Note self._log_D_compl is effectively an entropy term.
     return self._log_D - self.entropy_weight * self._log_D_compl
 
-  def save(self, directory):
-    super().save(directory)
-
+  def _save(self, directory):
     os.makedirs(directory, exist_ok=True)
     params = {
         "entropy_weight": self.entropy_weight,
