@@ -221,7 +221,7 @@ class DensityTrainer:
     Args:
       venv: environment to train on.
       rollouts: list of expert trajectories to imitate.
-      imitation_trainer (BaseRLModel): RL algorithm & initial policy that will
+       imitation_trainer: RL algorithm & initial policy that will
         be used to train the imitation learner.
       kernel, kernel_bandwidth, density_type, is_stationary,
         n_expert_trajectories: these are passed directly to `DensityReward`;

@@ -126,7 +126,8 @@ def test_replay_buffer(capacity, chunk_len, obs_shape, act_shape, dtype):
     assert np.all(new_obs_fill - old_obs_fill == 3 * capacity), "out of order"
     assert np.all(act_fill - new_obs_fill == 3 * capacity), "out of order"
     assert np.all(sample.rew - act_fill == 3 * capacity), "out of order"
-    # can't do much other than parity check for boolean values
+    # Can't do much other than parity check for boolean values.
+    # `samples.done` has the same parity as `old_obs_fill` by construction.
     assert np.all(old_obs_fill % 2 == sample.done), "out of order"
 
 
