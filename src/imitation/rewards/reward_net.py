@@ -1,6 +1,6 @@
 """Constructs deep network reward models."""
 
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from typing import Iterable, Optional, Tuple
 
 import gym
@@ -9,7 +9,7 @@ import tensorflow as tf
 from imitation.util import serialize, util
 
 
-class RewardNet(serialize.Serializable):
+class RewardNet(serialize.Serializable, ABC):
   """Abstract reward network.
 
   This class assumes that the caller will set the default TensorFlow Session

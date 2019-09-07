@@ -6,26 +6,26 @@ import pytest
 import tensorflow as tf
 
 from imitation.policies import base
-from imitation.rewards.discrim_net import DiscrimNetAIRL, DiscrimNetGAIL
+from imitation.rewards import discrim_net
 from imitation.rewards.reward_net import BasicRewardNet
 from imitation.util import rollout
 
 ENVS = ['FrozenLake-v0', 'CartPole-v1', 'Pendulum-v0']
-DISCRIM_NETS = [DiscrimNetAIRL, DiscrimNetGAIL]
+DISCRIM_NETS = [discrim_net.DiscrimNetAIRL, discrim_net.DiscrimNetGAIL]
 
 
 def _setup_airl(env):
   reward_net = BasicRewardNet(env.observation_space, env.action_space)
-  return DiscrimNetAIRL(reward_net)
+  return discrim_net.DiscrimNetAIRL(reward_net)
 
 
 def _setup_gail(env):
-  return DiscrimNetGAIL(env.observation_space, env.action_space)
+  return discrim_net.DiscrimNetGAIL(env.observation_space, env.action_space)
 
 
 DISCRIM_NET_SETUPS = {
-    DiscrimNetAIRL: _setup_airl,
-    DiscrimNetGAIL: _setup_gail,
+    discrim_net.DiscrimNetAIRL: _setup_airl,
+    discrim_net.DiscrimNetGAIL: _setup_gail,
 }
 
 
@@ -48,7 +48,7 @@ def test_serialize_identity(session, env_id, discrim_net_cls):
   with tempfile.TemporaryDirectory(prefix='imitation-serialize') as tmpdir:
     original.save(tmpdir)
     with tf.variable_scope("loaded"):
-      loaded = discrim_net_cls.load(tmpdir)
+      loaded = discrim_net.DiscrimNet.load(tmpdir)
 
   old_obs, act, new_obs, _rew = rollout.generate_transitions(random, env,
                                                              n_timesteps=100)

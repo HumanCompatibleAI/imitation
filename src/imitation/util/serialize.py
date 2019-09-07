@@ -9,19 +9,39 @@ import tensorflow as tf
 
 from imitation.util import util
 
-T = TypeVar('T')
+T = TypeVar('T', bound='Serializable')
 
 
 class Serializable(ABC):
   """Abstract mix-in defining methods to load/save model."""
+
   @classmethod
-  @abstractmethod
   def load(cls: Type[T], directory: str) -> T:
     """Load object plus weights from directory."""
+    with open(os.path.join(directory, 'loader'), 'rb') as f:
+      load_cls = pickle.load(f)
+    return load_cls._load(directory)
 
-  @abstractmethod
   def save(self, directory: str) -> None:
     """Save object and weights to directory."""
+    os.makedirs(directory, exist_ok=True)
+
+    load_path = os.path.join(directory, 'loader')
+    with open(load_path + '.tmp', 'wb') as f:
+      pickle.dump(type(self), f)
+    # Ensure atomic write
+    os.replace(load_path + '.tmp', load_path)
+
+    self._save(directory)
+
+  @classmethod
+  @abstractmethod
+  def _load(cls: Type[T], directory: str) -> T:
+    """Class-specific loading logic."""
+
+  @abstractmethod
+  def _save(self, directory: str) -> None:
+    """Class-specific saving logic."""
 
 
 def make_cls(cls, args, kwargs):
@@ -31,7 +51,7 @@ def make_cls(cls, args, kwargs):
 class LayersSerializable(Serializable):
   """Serialization mix-in based on `__init__` then rehydration.
 
-  Subclsases must call the constructor with all arguments needed by `__init__`,
+  Subclasses must call the constructor with all arguments needed by `__init__`,
   and a dictionary mapping from strings to `tf.layers.Layer` objects.
   In most cases, you can use the following idiom::
 
@@ -57,23 +77,20 @@ class LayersSerializable(Serializable):
     restore.assert_consumed().run_restore_ops()
 
   @classmethod
-  def load(cls: Type[T], directory: str) -> T:
+  def _load(cls: Type[T], directory: str) -> T:
     with open(os.path.join(directory, 'obj'), 'rb') as f:
       obj = pickle.load(f)
     assert isinstance(obj, cls)
     obj.load_parameters(directory)
     return obj
 
-  def save(self, directory: str) -> None:
-    os.makedirs(directory, exist_ok=True)
-
+  def _save(self, directory: str) -> None:
     obj_path = os.path.join(directory, 'obj')
+    # obj is static, so no need to write them multiple times.
+    # (Best to avoid it -- if we were die in the middle of save, it could
+    # cause data corruption invalidating previous checkpoints.)
     if not os.path.exists(obj_path):
-      # TODO(gleave): it'd be nice to support Python state changing too
-      # obj should be static (since it just consists of _args and _kwargs,
-      # set at construction). So no need to write this file multiple times.
-      # (In fact, best to avoid it -- if we were to die in the middle of this,
-      # it would invalidate previous checkpoints.)
+      # TODO(gleave): it'd be nice to support mutable Python state
       with open(obj_path, 'wb') as f:
         pickle.dump(self, f)
 
