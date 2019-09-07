@@ -224,14 +224,14 @@ class ReplayBuffer:
 
     self.capacity = capacity
     sample_shapes = {
-        'old_obs': obs_shape,
+        'obs': obs_shape,
         'act': act_shape,
         'new_obs': obs_shape,
         'rew': (),
         'done': (),
     }
     dtypes = {
-        'old_obs': obs_dtype,
+        'obs': obs_dtype,
         'act': act_dtype,
         'new_obs': obs_dtype,
         'rew': np.float32,
@@ -252,15 +252,15 @@ class ReplayBuffer:
         A new ReplayBuffer.
 
     Raises:
-        ValueError: old_obs and new_obs have a different dtype.
+        ValueError: obs and new_obs have a different dtype.
     """
-    if transitions.old_obs.dtype != transitions.new_obs.dtype:
-      raise ValueError("old_obs and new_obs must have the same dtype.")
+    if transitions.obs.dtype != transitions.new_obs.dtype:
+      raise ValueError("obs and new_obs must have the same dtype.")
 
-    capacity, *obs_shape = transitions.old_obs.shape
+    capacity, *obs_shape = transitions.obs.shape
     _, *act_shape = transitions.act.shape
     instance = cls(capacity=capacity, obs_shape=obs_shape, act_shape=act_shape,
-                   obs_dtype=transitions.old_obs.dtype,
+                   obs_dtype=transitions.obs.dtype,
                    act_dtype=transitions.act.dtype)
     instance.store(transitions)
     return instance
@@ -272,9 +272,7 @@ class ReplayBuffer:
         n_samples: The number of samples.
 
     Returns:
-        old_obs: Old observations.
-        act: Actions.
-        new_obs: New observations.
+        A Transitions named tuple containing n_samples transitions.
     """
     sample = self._buffer.sample(n_samples)
     return rollout.Transitions(**sample)

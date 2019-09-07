@@ -21,7 +21,7 @@ class BCTrainer:
   Args:
     env (gym.Env): environment to train on.
     expert_rollouts: A tuple of four arrays from expert rollouts,
-        `old_obs`, `act`, `new_obs`, `reward`.
+        `obs`, `act`, `new_obs`, `reward`.
     policy_class (BasePolicy): used to instantiate imitation policy.
     batch_size (int): batch size used for training.
     """
@@ -37,7 +37,7 @@ class BCTrainer:
     self.batch_size = batch_size
     self.expert_dataset = Dataset(
         {
-            "obs": expert_demos.old_obs,
+            "obs": expert_demos.obs,
             "act": expert_demos.act,
         }, shuffle=True)
     self.graph = tf.Graph()

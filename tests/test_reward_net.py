@@ -36,13 +36,13 @@ def test_reward_valid(env_name, reward_type):
   """Test output of reward function is appropriate shape and type."""
   venv = util.make_vec_env(env_name, n_envs=1, parallel=False)
   TRAJECTORY_LEN = 10
-  old_obs = _sample(venv.observation_space, TRAJECTORY_LEN)
+  obs = _sample(venv.observation_space, TRAJECTORY_LEN)
   actions = _sample(venv.action_space, TRAJECTORY_LEN)
   new_obs = _sample(venv.observation_space, TRAJECTORY_LEN)
   steps = np.arange(0, TRAJECTORY_LEN)
 
   with serialize.load_reward(reward_type, "foobar", venv) as reward_fn:
-    pred_reward = reward_fn(old_obs, actions, new_obs, steps)
+    pred_reward = reward_fn(obs, actions, new_obs, steps)
 
   assert pred_reward.shape == (TRAJECTORY_LEN, )
   assert isinstance(pred_reward[0], numbers.Number)
@@ -51,7 +51,7 @@ def test_reward_valid(env_name, reward_type):
 def _make_feed_dict(reward_net: reward_net.RewardNet,
                     transitions: rollout.Transitions):
   return {
-      reward_net.old_obs_ph: transitions.old_obs,
+      reward_net.obs_ph: transitions.obs,
       reward_net.act_ph: transitions.act,
       reward_net.new_obs_ph: transitions.new_obs,
   }
@@ -91,8 +91,8 @@ def test_serialize_identity(session, env_name, net_cls):
                                  tmpdir, venv) as shaped_fn:
         rewards = session.run(outputs, feed_dict=feed_dict)
 
-        steps = np.zeros((transitions.old_obs.shape[0], ))
-        args = (transitions.old_obs, transitions.act,
+        steps = np.zeros((transitions.obs.shape[0],))
+        args = (transitions.obs, transitions.act,
                 transitions.new_obs, steps)
         rewards['train'].append(shaped_fn(*args))
         rewards['test'].append(unshaped_fn(*args))

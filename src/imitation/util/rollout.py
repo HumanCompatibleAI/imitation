@@ -38,8 +38,8 @@ class Transitions(NamedTuple):
   `flatten_trajectory()`.
 
   Attributes:
-    old_obs: Old observations. Shape: (batch_size, ) + observation_shape.
-        The i'th observation `old_obs[i]` in this array is the observation seen
+    obs: Previous observations. Shape: (batch_size, ) + observation_shape.
+        The i'th observation `obs[i]` in this array is the observation seen
         by the agent when choosing action `act[i]`.
     act: Actions. Shape: (batch_size, ) + action_shape.
     new_obs: New observation. Shape: (batch_size, ) + observation_shape.
@@ -52,7 +52,7 @@ class Transitions(NamedTuple):
         `done[i]` is true iff `new_obs[i]` the last observation of an episode.
   """
 
-  old_obs: np.ndarray
+  obs: np.ndarray
   act: np.ndarray
   new_obs: np.ndarray
   rew: np.ndarray
@@ -268,13 +268,13 @@ def flatten_trajectories(trajectories: List[Trajectory]) -> Transitions:
   Returns:
     The trajectories flattened into a single batch of Transitions.
   """
-  keys = ["old_obs", "new_obs", "act", "rew", "done"]
+  keys = ["obs", "new_obs", "act", "rew", "done"]
   parts = {key: [] for key in keys}
   for traj in trajectories:
     parts["act"].append(traj.act)
     parts["rew"].append(traj.rew)
     obs = traj.obs
-    parts["old_obs"].append(obs[:-1])
+    parts["obs"].append(obs[:-1])
     parts["new_obs"].append(obs[1:])
     done = np.zeros_like(traj.rew, dtype=np.bool)
     done[-1] = True
@@ -290,7 +290,7 @@ def flatten_trajectories(trajectories: List[Trajectory]) -> Transitions:
 
 def generate_transitions(policy, env, *, n_timesteps=None, n_episodes=None,
                          truncate=True, **kwargs) -> Transitions:
-  """Generate old_obs-action-new_obs-reward tuples.
+  """Generate obs-action-new_obs-reward tuples.
 
   Args:
     policy (BasePolicy or BaseRLModel): A stable_baselines policy or RLModel,

@@ -51,7 +51,7 @@ def test_serialize_identity(session, env_id, discrim_net_cls):
       loaded = discrim_net.DiscrimNet.load(tmpdir)
 
   transitions = rollout.generate_transitions(random, env, n_timesteps=100)
-  length = len(transitions.old_obs)  # n_timesteps is only a lower bound
+  length = len(transitions.obs)  # n_timesteps is only a lower bound
   labels = np.random.randint(2, size=length).astype(np.float32)
   log_prob = np.random.randn(length)
 
@@ -59,7 +59,7 @@ def test_serialize_identity(session, env_id, discrim_net_cls):
   outputs = {'train': [], 'test': []}
   for net in [original, loaded]:
     feed_dict.update({
-        net.old_obs_ph: transitions.old_obs,
+        net.obs_ph: transitions.obs,
         net.act_ph: transitions.act,
         net.new_obs_ph: transitions.new_obs,
         net.labels_ph: labels,

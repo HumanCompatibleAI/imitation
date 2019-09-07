@@ -26,7 +26,7 @@ class RewardVecEnvWrapper(vec_env.VecEnvWrapper):
 
     Args:
         venv: The VecEnv to wrap.
-        reward_fn: A function that wraps takes in an (old_obs, act, new_obs)
+        reward_fn: A function that wraps takes in an (obs, act, new_obs)
             triple and returns a vector of rewards.
         ep_history: The number of episode rewards to retain for computing
             mean reward.

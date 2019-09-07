@@ -103,21 +103,23 @@ def test_model_based(env):
   if not hasattr(env, 'state_space'):  # pragma: no cover
     pytest.skip("This test is only for subclasses of ModelBasedEnv.")
 
-  old_state = env.initial_state()
-  assert env.state_space.contains(old_state)
+  state = env.initial_state()
+  assert env.state_space.contains(state)
 
   action = env.action_space.sample()
-  new_state = env.transition(old_state, action)
+  new_state = env.transition(state, action)
   assert env.state_space.contains(new_state)
 
-  reward = env.reward(old_state, action, new_state)
+  reward = env.reward(state, action, new_state)
   assert isinstance(reward, float)
 
-  done = env.terminal(old_state, 0)
+  done = env.terminal(state, 0)
   assert isinstance(done, bool)
 
-  old_obs = env.obs_from_state(old_state)
-  assert env.observation_space.contains(old_obs)
+  obs = env.obs_from_state(state)
+  assert env.observation_space.contains(obs)
+  new_obs = env.obs_from_state(new_state)
+  assert env.observation_space.contains(new_obs)
 
 
 @pytest.mark.parametrize("env_name", ENV_NAMES)
