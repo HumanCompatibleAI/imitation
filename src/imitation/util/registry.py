@@ -76,6 +76,7 @@ def build_loader_fn_require_space(fn: Callable[[gym.Space, gym.Space], T],
   """Converts a factory taking observation and action space into a LoaderFn."""
   @functools.wraps(fn)
   def wrapper(path: str, venv: VecEnv) -> T:
+    del path
     return fn(venv.observation_space, venv.action_space, **kwargs)
   return wrapper
 
@@ -85,16 +86,8 @@ def build_loader_fn_require_env(fn: Callable[[VecEnv], T],
   """Converts a factory taking an environment into a LoaderFn."""
   @functools.wraps(fn)
   def wrapper(path: str, venv: VecEnv) -> T:
+    del path
     return fn(venv, **kwargs)
-  return wrapper
-
-
-def build_loader_fn_require_path(fn: Callable[[str], T],
-                                 **kwargs) -> LoaderFn:
-  """Converts a factory taking a path into a LoaderFn."""
-  @functools.wraps(fn)
-  def wrapper(path: str, venv: VecEnv) -> T:
-    return fn(path, **kwargs)
   return wrapper
 
 
