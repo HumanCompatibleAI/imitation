@@ -372,13 +372,13 @@ def init_trainer(env_id: str,
                                          entropy_weight=airl_entropy_weight,
                                          **discrim_kwargs)
 
-  expert_demos = util.rollout.load_trajectories(rollout_glob,
-                                                max_n_files=max_n_files)
+  expert_trajectories = util.rollout.load_trajectories(rollout_glob,
+                                                       max_n_files=max_n_files)
   if n_expert_demos is not None:
-    assert len(expert_demos) >= n_expert_demos
-    expert_demos = expert_demos[:n_expert_demos]
+    assert len(expert_trajectories) >= n_expert_demos
+    expert_trajectories = expert_trajectories[:n_expert_demos]
 
-  expert_rollouts = util.rollout.flatten_trajectories(expert_demos)
-  trainer = AdversarialTrainer(env, gen_policy, discrim, expert_rollouts,
+  expert_demos = util.rollout.flatten_trajectories(expert_trajectories)
+  trainer = AdversarialTrainer(env, gen_policy, discrim, expert_demos,
                                **trainer_kwargs)
   return trainer
