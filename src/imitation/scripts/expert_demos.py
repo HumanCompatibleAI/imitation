@@ -46,7 +46,7 @@ def rollouts_and_policy(
   At applicable training steps `step` (where step is either an integer or
   "final"):
 
-      - Policies are saved to `{log_dir}/policies/{step}.pkl`.
+      - Policies are saved to `{log_dir}/policies/{step}/`.
       - Rollouts are saved to `{log_dir}/rollouts/{step}.pkl`.
 
   Args:
@@ -181,8 +181,7 @@ def rollouts_from_policy(
 
   Args:
       policy_type: Argument to `imitation.policies.serialize.load_policy`.
-      policy_path: Argument to `imitation.policies.serialize.load_policy`. If
-          not provided, then defaults to f"expert_models/{env_name}".
+      policy_path: Argument to `imitation.policies.serialize.load_policy`.
       rollout_save_dir: Rollout pickle is saved in this directory as
           f"{env_name}.pkl".
   """
@@ -204,7 +203,7 @@ def rollouts_from_policy(
 
 def main_console():
   observer = FileStorageObserver.create(
-      osp.join('output', 'sacred', 'expert_deoms'))
+      osp.join('output', 'sacred', 'expert_demos'))
   expert_demos_ex.observers.append(observer)
   expert_demos_ex.run_commandline()
 
