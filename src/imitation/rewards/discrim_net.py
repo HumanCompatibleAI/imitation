@@ -53,9 +53,9 @@ class DiscrimNet(serialize.Serializable, ABC):
 
   def reward_train(
     self,
-    old_obs: np.ndarray,
+    obs: np.ndarray,
     act: np.ndarray,
-    new_obs: np.ndarray,
+    next_obs: np.ndarray,
     steps: np.ndarray,
     *,
     gen_log_prob_fn: Callable[..., np.ndarray],
@@ -63,37 +63,37 @@ class DiscrimNet(serialize.Serializable, ABC):
     """Vectorized reward for training an imitation learning algorithm.
 
     Args:
-        old_obs: The observation input. Its shape is
+        obs: The observation input. Its shape is
             `(batch_size,) + observation_space.shape`.
         act: The action input. Its shape is
             `(batch_size,) + action_space.shape`. The None dimension is
             expected to be the same as None dimension from `obs_input`.
-        new_obs: The observation input. Its shape is
+        next_obs: The observation input. Its shape is
             `(batch_size,) + observation_space.shape`.
         steps: The number of timesteps elapsed. Its shape is `(batch_size,)`.
         gen_log_prob_fn: The generator policy's action probabilities function.
             A Callable such that
-            `log_act_prob_fn(observations=old_obs, actions=act, lopg=True)`
+            `log_act_prob_fn(observations=obs, actions=act, lopg=True)`
             returns `log_act_prob`, the generator's log action probabilities.
             `log_act_prob[i]` is equal to the generator's log probability of
-            choosing `act[i]` given `old_obs[i]`.
+            choosing `act[i]` given `obs[i]`.
             `np.squeeze(log_act_prob)` has shape `(batch_size,)`.
     Returns:
         The rewards. Its shape is `(batch_size,)`.
     """
     del steps
     log_act_prob = np.squeeze(
-      gen_log_prob_fn(observation=old_obs, actions=act, logp=True))
+      gen_log_prob_fn(observation=obs, actions=act, logp=True))
 
-    n_gen = len(old_obs)
-    assert old_obs.shape == new_obs.shape
+    n_gen = len(obs)
+    assert obs.shape == next_obs.shape
     assert len(act) == n_gen
     assert log_act_prob.shape == (n_gen, )
 
     fd = {
-        self.old_obs_ph: old_obs,
+        self.obs_ph: obs,
         self.act_ph: act,
-        self.new_obs_ph: new_obs,
+        self.next_obs_ph: next_obs,
         self.labels_ph: np.ones(n_gen),
         self.log_policy_act_prob_ph: log_act_prob,
     }
@@ -103,20 +103,20 @@ class DiscrimNet(serialize.Serializable, ABC):
 
   def reward_test(
     self,
-    old_obs: np.ndarray,
+    obs: np.ndarray,
     act: np.ndarray,
-    new_obs: np.ndarray,
+    next_obs: np.ndarray,
     steps: np.ndarray,
   ) -> np.ndarray:
     """Vectorized reward for training an expert during transfer learning.
 
     Args:
-        old_obs: The observation input. Its shape is
+        obs: The observation input. Its shape is
             `(batch_size,) + observation_space.shape`.
         act: The action input. Its shape is
             `(batch_size,) + action_space.shape`. The None dimension is
             expected to be the same as None dimension from `obs_input`.
-        new_obs: The observation input. Its shape is
+        next_obs: The observation input. Its shape is
             `(batch_size,) + observation_space.shape`.
         steps: The number of timesteps elapsed. Its shape is `(batch_size,)`.
     Returns:
@@ -124,12 +124,12 @@ class DiscrimNet(serialize.Serializable, ABC):
     """
     del steps
     fd = {
-      self.old_obs_ph: old_obs,
+      self.obs_ph: obs,
       self.act_ph: act,
-      self.new_obs_ph: new_obs,
+      self.next_obs_ph: next_obs,
     }
     rew = self._sess.run(self.policy_test_reward, feed_dict=fd)
-    assert rew.shape == (len(old_obs),)
+    assert rew.shape == (len(obs),)
     return rew
 
   @abstractmethod
@@ -154,8 +154,8 @@ class DiscrimNet(serialize.Serializable, ABC):
 
   @property
   @abstractmethod
-  def old_obs_ph(self):
-    """The old observation placeholder."""
+  def obs_ph(self):
+    """The previous observation placeholder."""
     pass
 
   @property
@@ -166,7 +166,7 @@ class DiscrimNet(serialize.Serializable, ABC):
 
   @property
   @abstractmethod
-  def new_obs_ph(self):
+  def next_obs_ph(self):
     """The new observation placeholder."""
     pass
 
@@ -207,16 +207,16 @@ class DiscrimNetAIRL(DiscrimNet):
     tf.logging.info("Using AIRL")
 
   @property
-  def old_obs_ph(self):
-    return self.reward_net.old_obs_ph
+  def obs_ph(self):
+    return self.reward_net.obs_ph
 
   @property
   def act_ph(self):
     return self.reward_net.act_ph
 
   @property
-  def new_obs_ph(self):
-    return self.reward_net.new_obs_ph
+  def next_obs_ph(self):
+    return self.reward_net.next_obs_ph
 
   def build_summaries(self):
     self.reward_net.build_summaries()
@@ -283,13 +283,13 @@ class DiscrimNetGAIL(DiscrimNet, serialize.LayersSerializable):
                scale: bool = False):
     args = locals()
     inputs = util.build_inputs(observation_space, action_space, scale=scale)
-    self._old_obs_ph, self._act_ph, self._new_obs_ph = inputs[:3]
-    self.old_obs_inp, self.act_inp, self.new_obs_inp = inputs[3:]
+    self._obs_ph, self._act_ph, self._next_obs_ph = inputs[:3]
+    self.obs_inp, self.act_inp, self.next_obs_inp = inputs[3:]
 
     self.hid_sizes = hid_sizes
     with tf.variable_scope("discrim_network"):
       discrim_mlp, self._discrim_logits = self.build_discrm_network(
-          self.old_obs_inp, self.act_inp)
+          self.obs_inp, self.act_inp)
 
     DiscrimNet.__init__(self)
     serialize.LayersSerializable.__init__(**args, layers=discrim_mlp)
@@ -297,16 +297,16 @@ class DiscrimNetGAIL(DiscrimNet, serialize.LayersSerializable):
     tf.logging.info("using GAIL")
 
   @property
-  def old_obs_ph(self):
-    return self._old_obs_ph
+  def obs_ph(self):
+    return self._obs_ph
 
   @property
   def act_ph(self):
     return self._act_ph
 
   @property
-  def new_obs_ph(self):
-    return self._new_obs_ph
+  def next_obs_ph(self):
+    return self._next_obs_ph
 
   def build_discrm_network(self, obs_input, act_input):
     inputs = tf.concat([

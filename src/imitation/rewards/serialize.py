@@ -35,18 +35,18 @@ def _load_reward_net_as_fn(shaped: bool) -> RewardFnLoaderFn:
       net = reward_net.RewardNet.load(path)
       reward = net.reward_output_train if shaped else net.reward_output_test
 
-      def rew_fn(old_obs: np.ndarray,
+      def rew_fn(obs: np.ndarray,
                  act: np.ndarray,
-                 new_obs: np.ndarray,
+                 next_obs: np.ndarray,
                  steps: np.ndarray) -> np.ndarray:
         del steps
         fd = {
-            net.old_obs_ph: old_obs,
+            net.obs_ph: obs,
             net.act_ph: act,
-            net.new_obs_ph: new_obs,
+            net.next_obs_ph: next_obs,
         }
         rew = sess.run(reward, feed_dict=fd)
-        assert rew.shape == (len(old_obs), )
+        assert rew.shape == (len(obs),)
         return rew
 
       yield rew_fn
@@ -57,12 +57,12 @@ def _load_reward_net_as_fn(shaped: bool) -> RewardFnLoaderFn:
 def load_zero(path: str, venv: VecEnv) -> RewardFn:
   del path, venv
 
-  def f(old_obs: np.ndarray,
+  def f(obs: np.ndarray,
         act: np.ndarray,
-        new_obs: np.ndarray,
+        next_obs: np.ndarray,
         steps: np.ndarray) -> np.ndarray:
-    del act, new_obs, steps
-    return np.zeros(old_obs.shape[0])
+    del act, next_obs, steps
+    return np.zeros(obs.shape[0])
 
   return f
 

@@ -3,6 +3,8 @@ from typing import Dict, Optional, Tuple
 import gym
 import numpy as np
 
+from imitation.util import rollout
+
 
 class Buffer:
   """A FIFO ring buffer for NumPy arrays of a fixed shape and dtype.
@@ -181,7 +183,7 @@ class Buffer:
 
 
 class ReplayBuffer:
-  """Wrapper around 3 `Buffer` objects to store & sample obs-act-obs tuples."""
+  """Buffer for Transitions."""
 
   capacity: int
   """The number of data samples that can be stored in this buffer."""
@@ -222,78 +224,72 @@ class ReplayBuffer:
 
     self.capacity = capacity
     sample_shapes = {
-        'old_obs': obs_shape,
+        'obs': obs_shape,
         'act': act_shape,
-        'new_obs': obs_shape,
+        'next_obs': obs_shape,
+        'rew': (),
+        'done': (),
     }
     dtypes = {
-        'old_obs': obs_dtype,
+        'obs': obs_dtype,
         'act': act_dtype,
-        'new_obs': obs_dtype,
+        'next_obs': obs_dtype,
+        'rew': np.float32,
+        'done': np.bool,
     }
     self._buffer = Buffer(capacity, sample_shapes=sample_shapes, dtypes=dtypes)
 
   @classmethod
-  def from_data(cls, old_obs: np.ndarray, act: np.ndarray, new_obs: np.ndarray,
-                ) -> "ReplayBuffer":
+  def from_data(cls, transitions: rollout.Transitions) -> "ReplayBuffer":
     """Construct and return a ReplayBuffer containing only the provided data.
 
     The returned ReplayBuffer is at full capacity and ready for sampling.
 
     Args:
-        old_obs: Old observations.
-        act: Actions.
-        new_obs: New observations.
+        transitions: Transitions to store.
 
     Returns:
         A new ReplayBuffer.
 
     Raises:
-        ValueError: old_obs and new_obs have a different dtype.
+        ValueError: obs and next_obs have a different dtype.
     """
-    if old_obs.dtype != new_obs.dtype:
-      raise ValueError("old_obs and new_obs must have the same dtype.")
+    if transitions.obs.dtype != transitions.next_obs.dtype:
+      raise ValueError("obs and next_obs must have the same dtype.")
 
-    capacity, *obs_shape = old_obs.shape
-    _, *act_shape = act.shape
+    capacity, *obs_shape = transitions.obs.shape
+    _, *act_shape = transitions.act.shape
     instance = cls(capacity=capacity, obs_shape=obs_shape, act_shape=act_shape,
-                   obs_dtype=old_obs.dtype, act_dtype=act.dtype)
-    instance.store(old_obs, act, new_obs)
+                   obs_dtype=transitions.obs.dtype,
+                   act_dtype=transitions.act.dtype)
+    instance.store(transitions)
     return instance
 
-  def sample(self, n_samples: int) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+  def sample(self, n_samples: int) -> rollout.Transitions:
     """Sample obs-act-obs triples.
 
     Args:
         n_samples: The number of samples.
 
     Returns:
-        old_obs: Old observations.
-        act: Actions.
-        new_obs: New observations.
+        A Transitions named tuple containing n_samples transitions.
     """
     sample = self._buffer.sample(n_samples)
-    return sample['old_obs'], sample['act'], sample['new_obs']
+    return rollout.Transitions(**sample)
 
-  def store(self, old_obs: np.ndarray, act: np.ndarray, new_obs: np.ndarray):
+  def store(self, transitions: rollout.Transitions) -> None:
     """Store obs-act-obs triples.
 
     Args:
-        old_obs: Old observations.
-        act: Actions.
-        new_obs: New observations.
+      transitions: Transitions to store.
 
     Raises:
         ValueError: The arguments didn't have the same length.
     """
-    if not len(old_obs) == len(act) == len(new_obs):
+    lengths = [len(arr) for arr in transitions]
+    if len(set(lengths)) != 1:
       raise ValueError("Arguments must have the same length.")
-    data = {
-        'old_obs': old_obs,
-        'act': act,
-        'new_obs': new_obs,
-    }
-    self._buffer.store(data)
+    self._buffer.store(transitions._asdict())
 
   def __len__(self):
     return len(self._buffer)

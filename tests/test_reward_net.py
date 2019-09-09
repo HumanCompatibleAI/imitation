@@ -36,24 +36,24 @@ def test_reward_valid(env_name, reward_type):
   """Test output of reward function is appropriate shape and type."""
   venv = util.make_vec_env(env_name, n_envs=1, parallel=False)
   TRAJECTORY_LEN = 10
-  old_obs = _sample(venv.observation_space, TRAJECTORY_LEN)
+  obs = _sample(venv.observation_space, TRAJECTORY_LEN)
   actions = _sample(venv.action_space, TRAJECTORY_LEN)
-  new_obs = _sample(venv.observation_space, TRAJECTORY_LEN)
+  next_obs = _sample(venv.observation_space, TRAJECTORY_LEN)
   steps = np.arange(0, TRAJECTORY_LEN)
 
   with serialize.load_reward(reward_type, "foobar", venv) as reward_fn:
-    pred_reward = reward_fn(old_obs, actions, new_obs, steps)
+    pred_reward = reward_fn(obs, actions, next_obs, steps)
 
   assert pred_reward.shape == (TRAJECTORY_LEN, )
   assert isinstance(pred_reward[0], numbers.Number)
 
 
-def _make_feed_dict(reward_net, rollouts):
-  old_obs, act, new_obs, _rew = rollouts
+def _make_feed_dict(reward_net: reward_net.RewardNet,
+                    transitions: rollout.Transitions):
   return {
-      reward_net.old_obs_ph: old_obs,
-      reward_net.act_ph: act,
-      reward_net.new_obs_ph: new_obs,
+      reward_net.obs_ph: transitions.obs,
+      reward_net.act_ph: transitions.act,
+      reward_net.next_obs_ph: transitions.next_obs,
   }
 
 
@@ -77,11 +77,11 @@ def test_serialize_identity(session, env_name, net_cls):
     assert original.observation_space == loaded.observation_space
     assert original.action_space == loaded.action_space
 
-    rollouts = rollout.generate_transitions(random, venv, n_timesteps=100)
+    transitions = rollout.generate_transitions(random, venv, n_timesteps=100)
     feed_dict = {}
     outputs = {'train': [], 'test': []}
     for net in [original, loaded]:
-      feed_dict.update(_make_feed_dict(net, rollouts))
+      feed_dict.update(_make_feed_dict(net, transitions))
       outputs['train'].append(net.reward_output_train)
       outputs['test'].append(net.reward_output_test)
 
@@ -91,10 +91,11 @@ def test_serialize_identity(session, env_name, net_cls):
                                  tmpdir, venv) as shaped_fn:
         rewards = session.run(outputs, feed_dict=feed_dict)
 
-        old_obs, actions, new_obs, _ = rollouts
-        steps = np.zeros((old_obs.shape[0], ))
-        rewards['train'].append(shaped_fn(old_obs, actions, new_obs, steps))
-        rewards['test'].append(unshaped_fn(old_obs, actions, new_obs, steps))
+        steps = np.zeros((transitions.obs.shape[0],))
+        args = (transitions.obs, transitions.act,
+                transitions.next_obs, steps)
+        rewards['train'].append(shaped_fn(*args))
+        rewards['test'].append(unshaped_fn(*args))
 
   for key, predictions in rewards.items():
     assert len(predictions) == 3

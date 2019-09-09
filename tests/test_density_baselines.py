@@ -1,5 +1,7 @@
 """Testing simple density estimation baselines for IRL."""
 
+from typing import Sequence
+
 import numpy as np
 import pytest
 
@@ -10,7 +12,7 @@ from imitation.algorithms.density_baselines import (STATE_ACTION_DENSITY,
                                                     DensityReward,
                                                     DensityTrainer)
 from imitation.policies.base import RandomPolicy
-from imitation.util import rollout
+from imitation.util import reward_wrapper, rollout
 
 parametrize_density_stationary = pytest.mark.parametrize(
   "density_type,is_stationary",
@@ -20,14 +22,14 @@ parametrize_density_stationary = pytest.mark.parametrize(
    (STATE_STATE_DENSITY, True)])
 
 
-def score_trajectories(trajectories, reward_fn):
+def score_trajectories(trajectories: Sequence[rollout.Trajectory],
+                       reward_fn: reward_wrapper.RewardFn):
   # score trajectories under given reward function w/o discount
   returns = []
   for traj in trajectories:
-    traj_zip = zip(traj['obs'], traj['act'], traj['obs'][1:])
-    ret = 0.0
-    for step, (obs, act, next_obs) in enumerate(traj_zip):
-      ret += reward_fn([obs], [act], [next_obs], steps=[step])
+    steps = np.arange(0, len(traj.act))
+    rewards = reward_fn(traj.obs[:-1], traj.act, traj.obs[1:], steps)
+    ret = np.sum(rewards)
     returns.append(ret)
   return np.mean(returns)
 
@@ -40,8 +42,8 @@ def test_density_reward(density_type, is_stationary):
   env = util.make_vec_env(env_id, 2)
 
   # construct density-based reward from expert rollouts
-  expert_trajectories_all = rollout.load_trajectories(
-    f"tests/data/rollouts/{env_id}_*.pkl")
+  pattern = f"tests/data/rollouts/{env_id}_*.pkl"
+  expert_trajectories_all = rollout.load_trajectories(pattern)
   n_experts = len(expert_trajectories_all)
   expert_trajectories_train = expert_trajectories_all[:n_experts // 2]
   reward_fn = DensityReward(trajectories=expert_trajectories_train,
@@ -69,8 +71,8 @@ def test_density_reward(density_type, is_stationary):
 @parametrize_density_stationary
 def test_density_trainer(density_type, is_stationary):
   env_id = 'Pendulum-v0'
-  rollouts = rollout.load_trajectories(
-    f"tests/data/rollouts/{env_id}_*.pkl")
+  pattern = f"tests/data/rollouts/{env_id}_*.pkl"
+  rollouts = rollout.load_trajectories(pattern)
   env = util.make_vec_env(env_id, 2)
   imitation_trainer = util.init_rl(env)
   density_trainer = DensityTrainer(env,
