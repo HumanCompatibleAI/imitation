@@ -3,7 +3,7 @@ import functools
 import glob
 import os
 import pickle
-from typing import Dict, List, NamedTuple, Optional, Sequence, Union
+from typing import Callable, Dict, List, NamedTuple, Optional, Sequence, Union
 
 import gym
 import numpy as np
@@ -95,19 +95,37 @@ class _TrajectoryAccumulator:
     self.partial_trajectories[idx].append(step_dict)
 
 
-def _validate_traj_generate_params(n_timesteps, n_episodes):
-  if n_timesteps is not None and n_episodes is not None:
-    raise ValueError("n_timesteps and n_episodes were both set")
-  elif n_timesteps is not None:
-    assert n_timesteps > 0
-  elif n_episodes is not None:
-    assert n_episodes > 0
-  else:
-    raise ValueError("Set at least one of n_timesteps and n_episodes")
+GenTrajTerminationFn = Callable[[Sequence[Trajectory]], bool]
 
 
-def generate_trajectories(policy, env, *, n_timesteps=None, n_episodes=None,
-                          deterministic_policy=False,
+def n_episodes(n: int) -> GenTrajTerminationFn:
+  """Terminate after collecting n episodes of data."""
+  def f(trajectories):
+    return len(trajectories) >= n
+  return f
+
+
+def min_timesteps(n: int) -> GenTrajTerminationFn:
+  """Terminate at the first episode after collecting n timesteps of data.
+
+  Arguments:
+    n: Minimum number of timesteps of data to collect.
+        May overshoot to nearest episode boundary.
+
+  Returns:
+    A function implementing this termination condition.
+  """
+  def f(trajectories):
+    timesteps = sum(len(t.obs) - 1 for t in trajectories)
+    return timesteps >= n
+  return f
+
+
+def generate_trajectories(policy,
+                          env,
+                          sample_until: GenTrajTerminationFn,
+                          *,
+                          deterministic_policy: bool = False,
                           ) -> Sequence[Trajectory]:
   """Generate trajectory dictionaries from a policy and an environment.
 
@@ -115,16 +133,12 @@ def generate_trajectories(policy, env, *, n_timesteps=None, n_episodes=None,
     policy (BasePolicy or BaseRLModel): A stable_baselines policy or RLModel,
         trained on the gym environment.
     env (VecEnv or Env or str): The environment(s) to interact with.
-    n_timesteps (int): The minimum number of obs-action-obs-reward tuples to
-        collect (may collect more if episodes run too long). Set exactly one of
-        `n_timesteps` and `n_episodes`, or this function will error.
-    n_episodes (int): The minimum number of episodes to finish before returning
-        collected tuples. Tuples from parallel episodes underway when the final
-        episode is finished will not be returned. Set exactly one of
-        `n_timesteps` and `n_episodes`, or this function will error.
-    deterministic_policy (bool): If True, asks policy to deterministically
-        return action. Note the trajectories might still be non-deterministic
-        if the environment has non-determinism!
+    sample_until: A function determining the termination condition.
+        It takes a sequence of trajectories, and returns a bool.
+        Most users will want to use one of `n_episodes` or `n_timesteps`.
+    deterministic_policy: If True, asks policy to deterministically return
+        action. Note the trajectories might still be non-deterministic if the
+        environment has non-determinism!
 
   Returns:
     Sequence of `Trajectory` named tuples.
@@ -138,19 +152,6 @@ def generate_trajectories(policy, env, *, n_timesteps=None, n_episodes=None,
   else:
     get_action = functools.partial(get_action_policy, policy)
 
-  # Validate end condition arguments.
-  _validate_traj_generate_params(n_timesteps, n_episodes)
-
-  # Implements end-condition logic.
-  def rollout_done():
-    if n_timesteps is not None:
-      assert n_episodes is None
-      # accidentallyquadratic.tumblr.com
-      return sum(len(t.obs) - 1 for t in trajectories) >= n_timesteps
-    else:
-      assert n_episodes is not None
-      return len(trajectories) >= n_episodes
-
   # Collect rollout tuples.
   trajectories = []
   # accumulator for incomplete trajectories
@@ -163,7 +164,7 @@ def generate_trajectories(policy, env, *, n_timesteps=None, n_episodes=None,
     # "previous obs" (this matters for, e.g., Atari, where observations are
     # really big).
     trajectories_accum.add_step(env_idx, dict(obs=obs))
-  while not rollout_done():
+  while not sample_until(trajectories):
     obs_old_batch = obs_batch
     act_batch, _ = get_action(obs_old_batch, deterministic=deterministic_policy)
     obs_batch, rew_batch, done_batch, info_batch = env.step(act_batch)
@@ -199,7 +200,6 @@ def generate_trajectories(policy, env, *, n_timesteps=None, n_episodes=None,
   # algos; e.g. BC can probably benefit from partial trajectories, too.
 
   # Sanity checks.
-  assert n_episodes is None or len(trajectories) >= n_episodes
   for trajectory in trajectories:
     n_steps = len(trajectory.act)
     # extra 1 for the end
@@ -216,7 +216,7 @@ def generate_trajectories(policy, env, *, n_timesteps=None, n_episodes=None,
   return trajectories
 
 
-def rollout_stats(policy, env, **kwargs):
+def rollout_stats(policy, env, sample_until: GenTrajTerminationFn, **kwargs):
   """Rolls out trajectories under the policy and returns various statistics.
 
   Args:
@@ -227,6 +227,7 @@ def rollout_stats(policy, env, **kwargs):
       n_episodes (int): The minimum number of episodes to finish before we stop
           collecting rewards. Rewards from parallel episodes that are underway
           when the final episode is finished are also included in the return.
+      **kwargs: passed through to `generate_trajectories`.
 
   Returns:
       Dictionary containing `n_traj` collected (int), along with return
@@ -234,7 +235,7 @@ def rollout_stats(policy, env, **kwargs):
       trajectory length statistics (keys: `len_{min,mean,std,max}`, float
       values).
   """
-  trajectories = generate_trajectories(policy, env, **kwargs)
+  trajectories = generate_trajectories(policy, env, sample_until, **kwargs)
   out_stats = {"n_traj": len(trajectories)}
   traj_descriptors = {
     "return": np.asarray([sum(t.rew) for t in trajectories]),
@@ -288,33 +289,31 @@ def flatten_trajectories(trajectories: Sequence[Trajectory]) -> Transitions:
   return Transitions(**cat_parts)
 
 
-def generate_transitions(policy, env, *, n_timesteps=None, n_episodes=None,
-                         truncate=True, **kwargs) -> Transitions:
+def generate_transitions(policy,
+                         env,
+                         n_timesteps: int,
+                         *,
+                         truncate: bool = True,
+                         **kwargs) -> Transitions:
   """Generate obs-action-next_obs-reward tuples.
 
   Args:
     policy (BasePolicy or BaseRLModel): A stable_baselines policy or RLModel,
         trained on the gym environment.
     env (VecEnv or Env or str): The environment(s) to interact with.
-    n_timesteps (int): The minimum number of obs-action-obs-reward tuples to
-        collect (may collect more if episodes run too long). Set exactly one of
-        `n_timesteps` and `n_episodes`, or this function will error.
-    n_episodes (int): The minimum number of episodes to finish before returning
-        collected tuples. Tuples from parallel episodes underway when the final
-        episode is finished will not be returned.
-        Set exactly one of `n_timesteps` and `n_episodes`, or this function will
-        error.
-    truncate (bool): If True and n_timesteps is not None, then drop any
-        additional samples to ensure that exactly `n_timesteps` samples are
-        returned.
-    kwargs (dict): Passed-through to generate_trajectories.
+    n_timesteps: The minimum number of timesteps to sample.
+    truncate: If True and `n_timesteps` is not None, then drop any additional
+        samples to ensure that exactly `n_timesteps` samples are returned.
+    **kwargs: Passed-through to generate_trajectories.
+
   Returns:
     A batch of Transitions. The length of the constituent arrays is guaranteed
     to be at least `n_timesteps` (if specified), but may be greater unless
     `truncate` is provided as we collect data until the end of each episode.
   """
-  traj = generate_trajectories(policy, env, n_timesteps=n_timesteps,
-                               n_episodes=n_episodes, **kwargs)
+  traj = generate_trajectories(policy, env,
+                               sample_until=min_timesteps(n_timesteps),
+                               **kwargs)
   transitions = flatten_trajectories(traj)
   if truncate and n_timesteps is not None:
     transitions = Transitions(*(arr[:n_timesteps] for arr in transitions))
@@ -324,6 +323,7 @@ def generate_transitions(policy, env, *, n_timesteps=None, n_episodes=None,
 def save(rollout_dir: str,
          policy: Union[BaseRLModel, BasePolicy],
          env: Union[gym.Env, VecEnv],
+         sample_until: GenTrajTerminationFn,
          basename: Union[str, int],
          **kwargs,
          ) -> None:
@@ -342,7 +342,7 @@ def save(rollout_dir: str,
         truncate (bool): `truncate` argument from `generate_trajectories`.
     """
     path = os.path.join(rollout_dir, f'{basename}.pkl')
-    traj_list = generate_trajectories(policy, env, **kwargs)
+    traj_list = generate_trajectories(policy, env, sample_until, **kwargs)
     with open(path, "wb") as f:
       pickle.dump(traj_list, f)
     tf.logging.info("Dumped demonstrations to {}.".format(path))

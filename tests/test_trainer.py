@@ -38,8 +38,8 @@ def test_train_disc_no_crash(use_gail, parallel,
                              env='CartPole-v1', n_timesteps=200):
   trainer = init_test_trainer(env, use_gail=use_gail, parallel=parallel)
   trainer.train_disc()
-  transitions = rollout.generate_transitions(trainer.gen_policy,
-                                             env, n_timesteps=n_timesteps)
+  transitions = rollout.generate_transitions(trainer.gen_policy, env,
+                                             n_timesteps=n_timesteps)
   trainer.train_disc(gen_obs=transitions.obs, gen_act=transitions.act,
                      gen_next_obs=transitions.next_obs)
 

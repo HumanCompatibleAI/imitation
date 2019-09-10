@@ -9,7 +9,7 @@ import tensorflow as tf
 
 from imitation.util import util
 
-T = TypeVar('T', bound='Serializable')
+T = TypeVar('T')
 
 
 class Serializable(ABC):

@@ -282,5 +282,5 @@ class DensityTrainer:
     reward_stats = rollout.rollout_stats(
         self.imitation_trainer,
         self.venv if true_reward else self.wrapped_env,
-        n_episodes=n_trajectories)
+        sample_until=rollout.n_episodes(n_trajectories))
     return reward_stats
