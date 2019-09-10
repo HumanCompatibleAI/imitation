@@ -302,8 +302,8 @@ def generate_transitions(policy,
         trained on the gym environment.
     env (VecEnv or Env or str): The environment(s) to interact with.
     n_timesteps: The minimum number of timesteps to sample.
-    truncate: If True and `n_timesteps` is not None, then drop any additional
-        samples to ensure that exactly `n_timesteps` samples are returned.
+    truncate: If True, then drop any additional samples to ensure that exactly
+        `n_timesteps` samples are returned.
     **kwargs: Passed-through to generate_trajectories.
 
   Returns:
