@@ -100,7 +100,7 @@ GenTrajTerminationFn = Callable[[Sequence[Trajectory]], bool]
 
 def n_episodes(n: int) -> GenTrajTerminationFn:
   """Terminate after collecting n episodes of data."""
-  def f(trajectories):
+  def f(trajectories: Sequence[Trajectory]):
     return len(trajectories) >= n
   return f
 
@@ -115,7 +115,7 @@ def min_timesteps(n: int) -> GenTrajTerminationFn:
   Returns:
     A function implementing this termination condition.
   """
-  def f(trajectories):
+  def f(trajectories: Sequence[Trajectory]):
     timesteps = sum(len(t.obs) - 1 for t in trajectories)
     return timesteps >= n
   return f
