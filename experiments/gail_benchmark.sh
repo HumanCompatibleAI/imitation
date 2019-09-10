@@ -28,10 +28,10 @@ parallel -j 25% --header : --results ${OUTPUT_DIR}/parallel/ --colsep , --progre
   with \
   "$@" \
   gail \
-  {env_config} \
+  {env_config_name} \
   log_root="${OUTPUT_DIR}" \
   n_gen_steps_per_epoch={n_gen_steps_per_epoch} \
-  init_trainer_kwargs.rollout_glob=expert_models/rollouts/{env_name}/*.pkl \
+  init_trainer_kwargs.rollout_glob=expert_models/{env_config_name}_0/rollouts/auto.pkl \
   init_trainer_kwargs.n_expert_demos={n_demonstrations} \
   seed={seed} \
   :::: experiments/gail_benchmark_config.csv \
