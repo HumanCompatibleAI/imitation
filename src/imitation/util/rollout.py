@@ -337,6 +337,7 @@ def save(path: str,
             `generate_trajectories`.
         truncate (bool): `truncate` argument from `generate_trajectories`.
     """
+    os.makedirs(os.path.dirname(path), exist_ok=True)
     trajs = generate_trajectories(policy, env, **kwargs)
     with open(path, "wb") as f:
       pickle.dump(trajs, f)
