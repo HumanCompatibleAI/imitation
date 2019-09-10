@@ -37,7 +37,7 @@ def test_expert_demos_rollouts_from_policy():
         named_configs=['cartpole', 'fast'],
         config_updates=dict(
           log_root=tmpdir,
-          rollout_save_dir=osp.join(tmpdir, "rollouts"),
+          rollout_save_path=osp.join(tmpdir, "rollouts", "test.pkl"),
           policy_path="toy_models/cartpole_0/policies/final/",
         ))
   assert run.status == 'COMPLETED'
