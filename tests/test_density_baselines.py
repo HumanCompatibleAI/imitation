@@ -42,8 +42,8 @@ def test_density_reward(density_type, is_stationary):
   env = util.make_vec_env(env_id, 2)
 
   # construct density-based reward from expert rollouts
-  pattern = "toy_models/pendulum_0/rollouts/final.pkl"
-  expert_trajectories_all = rollout.load_trajectories(pattern)
+  expert_trajectories_all = rollout.load_trajectories(
+      "toy_models/pendulum_0/rollouts/final.pkl")
   n_experts = len(expert_trajectories_all)
   expert_trajectories_train = expert_trajectories_all[:n_experts // 2]
   reward_fn = DensityReward(trajectories=expert_trajectories_train,
@@ -71,8 +71,8 @@ def test_density_reward(density_type, is_stationary):
 @parametrize_density_stationary
 def test_density_trainer(density_type, is_stationary):
   env_id = 'Pendulum-v0'
-  pattern = "toy_models/pendulum_0/rollouts/final.pkl"
-  rollouts = rollout.load_trajectories(pattern)
+  rollouts = rollout.load_trajectories(
+      "toy_models/pendulum_0/rollouts/final.pkl")
   env = util.make_vec_env(env_id, 2)
   imitation_trainer = util.init_rl(env)
   density_trainer = DensityTrainer(env,

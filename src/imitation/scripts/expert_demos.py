@@ -151,7 +151,7 @@ def rollouts_and_policy(
       # Save final artifacts after training is complete.
       if rollout_save_final:
         util.rollout.save(
-          osp.join(rollout_dir, f"final.pkl"),
+          osp.join(rollout_dir, "final.pkl"),
           policy,
           venv,
           n_timesteps=rollout_save_n_timesteps,
