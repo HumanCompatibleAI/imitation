@@ -20,7 +20,7 @@ def replay_defaults():
   log_root = os.path.join("output", "eval_policy")  # output directory
 
   policy_type = "ppo2"  # class to load policy, see imitation.policies.loader
-  policy_path = "expert_models/PPO2_CartPole-v1_0"  # serialized policy
+  policy_path = "toy_models/cartpole_0/policies/final/",
 
   reward_type = None  # Optional: override with reward of this type
   reward_path = None  # Path of serialized reward to load
