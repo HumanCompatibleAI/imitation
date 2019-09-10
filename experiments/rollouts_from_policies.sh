@@ -22,9 +22,17 @@ else
 fi
 
 TIMESTAMP=$(${DATE_CMD} --iso-8601=seconds)
-EXPERT_MODELS_DIR=${EXPERT_MODELS_DIR:-./expert_models}
-CONFIG_CSV=${CONFIG_CSV:-experiments/rollouts_from_policies.csv}
+EXPERT_MODELS_DIR=${EXPERT_MODELS_DIR:-expert_models}
+CONFIG_CSV=${CONFIG_CSV:-experiments/rollouts_from_policies_config.csv}
 OUTPUT_DIR="output/train_experts/${TIMESTAMP}"
+
+# Fast mode
+while getopts "f" arg; do
+  if [[ $arg == "f" ]]; then
+    CONFIG_CSV="toy_models/rollouts_from_policies_config.csv"
+    EXPERT_MODELS_DIR="toy_models"
+  fi
+done
 
 echo "Loading config from ${CONFIG_CSV}"
 echo "Loading expert models from ${EXPERT_MODELS_DIR}"
@@ -33,9 +41,10 @@ echo "Writing logs in ${OUTPUT_DIR}"
 parallel -j 25% --header : --results ${OUTPUT_DIR}/parallel/ --colsep , \
   python -m imitation.scripts.expert_demos rollouts_from_policy \
   with \
-  {config_name} \
-  log_root='${OUTPUT_DIR}' \
-  policy_path='${EXPERT_MODELS_DIR}/{env_config_name}_0/policies/final/' \
-  rollout_save_path='${EXPERT_MODELS_DIR}/{env_config_name}_0/rollouts/auto.pkl' \
-  rollout_save_n_episodes='{n_demonstrations}' " \
+  {env_config_name} \
+  log_root="${OUTPUT_DIR}" \
+  policy_path="${EXPERT_MODELS_DIR}/{env_config_name}_0/policies/final/" \
+  rollout_save_path="${EXPERT_MODELS_DIR}/{env_config_name}_0/rollouts/auto.pkl" \
+  rollout_save_n_episodes="{n_demonstrations}" \
+  rollout_save_n_timesteps=None \
   :::: ${CONFIG_CSV}

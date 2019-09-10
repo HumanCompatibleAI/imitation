@@ -321,30 +321,25 @@ def generate_transitions(policy, env, *, n_timesteps=None, n_episodes=None,
   return transitions
 
 
-def save(rollout_dir: str,
+def save(path: str,
          policy: Union[BaseRLModel, BasePolicy],
          env: Union[gym.Env, VecEnv],
-         basename: Union[str, int],
          **kwargs,
          ) -> None:
     """Generate policy rollouts and save them to a pickled Sequence[Trajectory].
 
     Args:
-        rollout_dir: Path to the save directory.
-        policy: The stable baselines policy.
+        save_path: Rollouts are saved to this path.
         env: The environment.
-        basename: The file is saved as `f"{basename}.pkl"`. Usually this is
-            the step number, or "final".
         n_timesteps (Optional[int]): `n_timesteps` argument from
             `generate_trajectories`.
         n_episodes (Optional[int]): `n_episodes` argument from
             `generate_trajectories`.
         truncate (bool): `truncate` argument from `generate_trajectories`.
     """
-    path = os.path.join(rollout_dir, f'{basename}.pkl')
-    traj_list = generate_trajectories(policy, env, **kwargs)
+    trajs = generate_trajectories(policy, env, **kwargs)
     with open(path, "wb") as f:
-      pickle.dump(traj_list, f)
+      pickle.dump(trajs, f)
     tf.logging.info("Dumped demonstrations to {}.".format(path))
 
 

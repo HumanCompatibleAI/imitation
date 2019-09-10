@@ -20,13 +20,23 @@ fi
 TIMESTAMP=$(${DATE_CMD} --iso-8601=seconds)
 OUTPUT_DIR="output/train_experts/${TIMESTAMP}"
 RESULTS_FILE="results.txt"
+extra_configs=""
+
+# Fast mode (debug)
+while getopts "f" arg; do
+  if [[ $arg == "f" ]]; then
+    ENVS="acrobot cartpole"
+    extra_configs="fast"
+    SEEDS="0"
+  fi
+done
 
 echo "Writing logs in ${OUTPUT_DIR}"
 # Train experts.
 parallel -j 25% --header : --progress --results ${OUTPUT_DIR}/parallel/ \
   python -m imitation.scripts.expert_demos \
   with \
-  {env} \
+  {env} ${extra_configs} \
   seed={seed} \
   log_dir="${OUTPUT_DIR}/{env}_{seed}" \
   ::: env ${ENVS} ::: seed ${SEEDS}

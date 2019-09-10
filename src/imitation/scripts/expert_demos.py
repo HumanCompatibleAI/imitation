@@ -136,7 +136,9 @@ def rollouts_and_policy(
 
         if rollout_save_interval > 0 and step % rollout_save_interval == 0:
           util.rollout.save(
-            rollout_dir, policy, venv, step,
+            osp.join(rollout_dir, f"{step}.pkl"),
+            policy,
+            venv,
             n_timesteps=rollout_save_n_timesteps,
             n_episodes=rollout_save_n_episodes)
         if policy_save_interval > 0 and step % policy_save_interval == 0:
@@ -149,7 +151,9 @@ def rollouts_and_policy(
       # Save final artifacts after training is complete.
       if rollout_save_final:
         util.rollout.save(
-          rollout_dir, policy, venv, "final",
+          osp.join(rollout_dir, f"final.pkl"),
+          policy,
+          venv,
           n_timesteps=rollout_save_n_timesteps,
           n_episodes=rollout_save_n_episodes)
       if policy_save_final:
@@ -175,8 +179,6 @@ def rollouts_from_policy(
 ) -> None:
   """Loads a saved policy and generates rollouts.
 
-  Default save path is f"{log_dir}/rollouts/{env_name}.pkl". Change to
-  f"{rollout_save_path}/{env_name}.pkl" by setting the `rollout_save_dir` param.
   Unlisted arguments are the same as in `rollouts_and_policy()`.
 
   Args:
@@ -189,9 +191,7 @@ def rollouts_from_policy(
                            max_episode_steps=max_episode_steps)
 
   with serialize.load_policy(policy_type, policy_path, venv) as policy:
-    os.makedirs(rollout_save_dir, exist_ok=True)
     util.rollout.save(rollout_save_path, policy, venv,
-                      basename=env_name,
                       n_timesteps=rollout_save_n_timesteps,
                       n_episodes=rollout_save_n_episodes,
                       )
