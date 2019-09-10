@@ -47,8 +47,6 @@ parallel -j 25% --header : --results ${OUTPUT_DIR}/parallel/ --colsep , --progre
   :::: $CONFIG_CSV \
   ::: seed ${SEEDS}
 
-exit
-
 # Directory path is really long. Enter the directory to shorten results output,
 # which includes directory of each stdout file.
 pushd ${OUTPUT_DIR}/parallel
