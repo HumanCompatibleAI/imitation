@@ -18,7 +18,7 @@ def test_reward_overwrite():
   reward_fn = FunkyReward()
   wrapped_env = util.reward_wrapper.RewardVecEnvWrapper(env, reward_fn)
   policy = RandomPolicy(env.observation_space, env.action_space)
-  sample_until = util.rollout.n_episodes(10)
+  sample_until = util.rollout.min_episodes(10)
   default_stats = util.rollout.rollout_stats(policy, env, sample_until)
   wrapped_stats = util.rollout.rollout_stats(policy, wrapped_env, sample_until)
   # Pendulum-v0 always has negative rewards

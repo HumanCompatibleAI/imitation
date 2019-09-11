@@ -153,7 +153,7 @@ def train_and_plot(_seed: int,
     def ep_reward_plot_add_data(env, name):
       """Calculate and record average episode returns."""
       gen_policy = trainer.gen_policy
-      sample_until_data = util.rollout.n_episodes(n_episodes_per_reward_data)
+      sample_until_data = util.rollout.min_episodes(n_episodes_per_reward_data)
       gen_ret = util.rollout.mean_return(
           gen_policy, env, sample_until=sample_until_data)
       gen_ep_reward[name].append(gen_ret)

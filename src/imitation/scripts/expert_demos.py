@@ -39,7 +39,7 @@ def traj_sample_until(n_timesteps: Optional[int],
     return util.rollout.min_timesteps(n_timesteps)
   elif n_episodes is not None:
     assert n_episodes > 0
-    return util.rollout.n_episodes(n_episodes)
+    return util.rollout.min_episodes(n_episodes)
   else:
     raise ValueError("Set at least one of n_timesteps and n_episodes")
 

@@ -98,8 +98,16 @@ class _TrajectoryAccumulator:
 GenTrajTerminationFn = Callable[[Sequence[Trajectory]], bool]
 
 
-def n_episodes(n: int) -> GenTrajTerminationFn:
-  """Terminate after collecting n episodes of data."""
+def min_episodes(n: int) -> GenTrajTerminationFn:
+  """Terminate after collecting n episodes of data.
+
+  Argument:
+    n: Minimum number of episodes of data to collect.
+        May overshoot if two episodes complete simultaneously (unlikely).
+
+  Returns:
+    A function implementing this termination condition.
+  """
   def f(trajectories: Sequence[Trajectory]):
     return len(trajectories) >= n
   return f
@@ -135,7 +143,7 @@ def generate_trajectories(policy,
     env (VecEnv or Env or str): The environment(s) to interact with.
     sample_until: A function determining the termination condition.
         It takes a sequence of trajectories, and returns a bool.
-        Most users will want to use one of `n_episodes` or `n_timesteps`.
+        Most users will want to use one of `min_episodes` or `min_timesteps`.
     deterministic_policy: If True, asks policy to deterministically return
         action. Note the trajectories might still be non-deterministic if the
         environment has non-determinism!
