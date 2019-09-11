@@ -79,13 +79,15 @@ def train(_seed: int,
   Args:
     _seed: Random seed.
     env_name: The environment to train in.
+    rollout_glob: A bash-style regex pattern from which rollout pickles are
+      loaded.
     log_dir: Directory to save models and other logging to.
 
     n_epochs: The number of epochs to train. Each epoch consists of
       `n_disc_steps_per_epoch` discriminator steps followed by
       `n_gen_steps_per_epoch` generator steps.
     n_gen_steps_per_epoch: The number of generator update steps during every
-      generator epoch.
+      training epoch.
     n_disc_steps_per_epoch: The number of discriminator update steps during
       every training epoch.
     init_trainer_kwargs: Keyword arguments passed to `init_trainer`,
@@ -115,7 +117,7 @@ def train(_seed: int,
       then only save weights after training is complete.
 
   Returns:
-    A dictionary with the following keys: "ep_reward_mean" and
+    A dictionary with the following keys: "ep_reward_mean",
     "ep_reward_std_err", "log_dir", "transfer_reward_path",
     "transfer_reward_type".
   """
