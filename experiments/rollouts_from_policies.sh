@@ -25,18 +25,12 @@ TIMESTAMP=$(${DATE_CMD} --iso-8601=seconds)
 EXPERT_MODELS_DIR=${EXPERT_MODELS_DIR:-expert_models}
 CONFIG_CSV=${CONFIG_CSV:-experiments/rollouts_from_policies_config.csv}
 OUTPUT_DIR="output/train_experts/${TIMESTAMP}"
-SAVE_NAME=${SAVE_NAME:auto.pkl}
 
 while getopts "fr" arg; do
+  # f: Fast mode (debug)
   if [[ $arg == "f" ]]; then
-    # Fast mode (debug)
-    CONFIG_CSV="tests/data/rollouts_from_policies_config_fast.csv"
-    EXPERT_MODELS_DIR="tests/data"
-  elif [[ $arg == "r" ]]; then
-    # Regenerate toy models
     CONFIG_CSV="tests/data/rollouts_from_policies_config.csv"
     EXPERT_MODELS_DIR="tests/data"
-    SAVE_NAME="final.pkl"
   fi
 done
 
@@ -50,7 +44,7 @@ parallel -j 25% --header : --results ${OUTPUT_DIR}/parallel/ --colsep , \
   {env_config_name} \
   log_root="${OUTPUT_DIR}" \
   policy_path="${EXPERT_MODELS_DIR}/{env_config_name}_0/policies/final/" \
-  rollout_save_path="${EXPERT_MODELS_DIR}/{env_config_name}_0/rollouts/${SAVE_NAME}" \
+  rollout_save_path="${EXPERT_MODELS_DIR}/{env_config_name}_0/rollouts/final.pkl" \
   rollout_save_n_episodes="{n_demonstrations}" \
   rollout_save_n_timesteps=None \
   :::: ${CONFIG_CSV}

@@ -25,12 +25,16 @@ extra_configs=""
 while getopts "fr" arg; do
   if [[ $arg == "f" ]]; then
     # Fast mode (debug)
-    ENVS="acrobot cartpole"
+    ENVS="cartpole pendulum"
     SEEDS="0"
     extra_configs="fast"
   elif [[ $arg == "r" ]]; then
-    # Regenerate test data
-    ENVS="acrobot cartpole"
+    # Regenerate test data (policies and rollouts).
+    #
+    # Combine with fast mode flag to generate low-computation versions of
+    # test data.
+    # Use `git clean -df tests/data` to remove extra log files.
+    ENVS="cartpole pendulum"
     SEEDS="0"
     OUTPUT_DIR="tests/data"
   fi
