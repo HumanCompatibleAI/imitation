@@ -20,56 +20,46 @@ fi
 TIMESTAMP=$(${DATE_CMD} --iso-8601=seconds)
 OUTPUT_DIR="output/train_experts/${TIMESTAMP}"
 RESULTS_FILE="results.txt"
+extra_configs=""
+
+while getopts "fr" arg; do
+  if [[ $arg == "f" ]]; then
+    # Fast mode (debug)
+    ENVS="cartpole pendulum"
+    SEEDS="0"
+    extra_configs="fast"
+  elif [[ $arg == "r" ]]; then
+    # Regenerate test data (policies and rollouts).
+    #
+    # Combine with fast mode flag to generate low-computation versions of
+    # test data.
+    # Use `git clean -df tests/data` to remove extra log files.
+    ENVS="cartpole pendulum"
+    SEEDS="0"
+    OUTPUT_DIR="tests/data"
+  fi
+done
 
 echo "Writing logs in ${OUTPUT_DIR}"
 # Train experts.
 parallel -j 25% --header : --progress --results ${OUTPUT_DIR}/parallel/ \
   python -m imitation.scripts.expert_demos \
   with \
-  {env} \
+  {env} ${extra_configs} \
   seed={seed} \
-  log_root=${OUTPUT_DIR} \
+  log_dir="${OUTPUT_DIR}/{env}_{seed}" \
   ::: env ${ENVS} ::: seed ${SEEDS}
 
 pushd $OUTPUT_DIR
-shopt -s failglob  # Catch obvious errors by reporting glob match fails.
 
 # Display and save mean episode reward to ${RESULTS_FILE}.
 find . -name stdout | xargs tail -n 15 | grep -E '(==|ep_reward_mean)' | tee ${RESULTS_FILE}
 
-# For easy zip archiving into the correct format, build symlinks to the
-# first experts corresponding to each ${env_name}.
-tmp_dir=$(mktemp -d "${TMPDIR:-/tmp}/train_experts.XXX")
-
-for env_name in */; do
-  env_name=$(echo ${env_name} | sed -e 's|/$||')  # Remove trailing slash
-  if [ $env_name == "parallel" ]; then
-    # Not actually an env name; this is a log dir for the parallel command.
-    continue
-  fi
-
-  pushd ${env_name} > /dev/null
-  mkdir -p ${tmp_dir}/${env_name}
-
-  for uuid in */; do
-    uuid=$(echo ${uuid} | sed -e 's|/$||')  # Remove trailing slash
-    pushd ${uuid} > /dev/null
-    ln -s "$(pwd)/policies/final" "${tmp_dir}/${env_name}/${uuid}"
-    popd > /dev/null
-  done
-
-  popd > /dev/null
-done
-
 # Build zipfile using the directory structure corresponding to the symlinks
 # from before.
-ZIP_FILE=$(pwd)/experts.zip
-zip -v ${ZIP_FILE} ${RESULTS_FILE}
+ZIP_FILE="expert_models.zip"
+zip --exclude 'rollouts/*' -rv ${ZIP_FILE} ${RESULTS_FILE} */
 
-pushd ${tmp_dir}
-zip -rv ${ZIP_FILE} */
-popd
-echo "Expert zip saved to ${ZIP_FILE}"
+echo "Expert zip saved to $(pwd)/${ZIP_FILE}"
 
-shopt -u failglob
 popd

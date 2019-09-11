@@ -73,7 +73,7 @@ def rollouts_and_policy(
   At applicable training steps `step` (where step is either an integer or
   "final"):
 
-      - Policies are saved to `{log_dir}/policies/{step}.pkl`.
+      - Policies are saved to `{log_dir}/policies/{step}/`.
       - Rollouts are saved to `{log_dir}/rollouts/{step}.pkl`.
 
   Args:
@@ -162,7 +162,8 @@ def rollouts_and_policy(
           callback(sb_logger)
 
         if rollout_save_interval > 0 and step % rollout_save_interval == 0:
-          util.rollout.save(rollout_dir, policy, venv, sample_until, step)
+          save_path = osp.join(rollout_dir, f"{step}.pkl")
+          util.rollout.save(save_path, policy, venv, sample_until)
         if policy_save_interval > 0 and step % policy_save_interval == 0:
           output_dir = os.path.join(policy_dir, f'{step:05d}')
           serialize.save_stable_model(output_dir, policy, vec_normalize)
@@ -172,7 +173,8 @@ def rollouts_and_policy(
 
       # Save final artifacts after training is complete.
       if rollout_save_final:
-        util.rollout.save(rollout_dir, policy, venv, sample_until, "final")
+        save_path = osp.join(rollout_dir, "final.pkl")
+        util.rollout.save(save_path, policy, venv, sample_until)
       if policy_save_final:
         output_dir = os.path.join(policy_dir, "final")
         serialize.save_stable_model(output_dir, policy, vec_normalize)
@@ -191,41 +193,32 @@ def rollouts_from_policy(
   policy_type: str = "ppo2",
   env_name: str = "CartPole-v1",
   parallel: bool = True,
-  rollout_save_dir: Optional[str] = None,
+  rollout_save_path: str,
   max_episode_steps: Optional[int] = None,
 ) -> None:
   """Loads a saved policy and generates rollouts.
 
-  Default save path is f"{log_dir}/rollouts/{env_name}.pkl". Change to
-  f"{rollout_save_dir}/{env_name}.pkl" by setting the `rollout_save_dir` param.
   Unlisted arguments are the same as in `rollouts_and_policy()`.
 
   Args:
       policy_type: Argument to `imitation.policies.serialize.load_policy`.
-      policy_path: Argument to `imitation.policies.serialize.load_policy`. If
-          not provided, then defaults to f"expert_models/{env_name}".
-      rollout_save_dir: Rollout pickle is saved in this directory as
-          f"{env_name}.pkl".
+      policy_path: Argument to `imitation.policies.serialize.load_policy`.
+      rollout_save_path: Rollout pickle is saved to this path.
   """
   sample_until = traj_sample_until(rollout_save_n_timesteps,
                                    rollout_save_n_episodes)
-
-  if rollout_save_dir is None:
-    rollout_save_dir = osp.join(log_dir, "rollouts")
 
   venv = util.make_vec_env(env_name, num_vec, seed=_seed,
                            parallel=parallel, log_dir=log_dir,
                            max_episode_steps=max_episode_steps)
 
   with serialize.load_policy(policy_type, policy_path, venv) as policy:
-    os.makedirs(rollout_save_dir, exist_ok=True)
-    util.rollout.save(rollout_save_dir, policy, venv, sample_until,
-                      basename=env_name)
+    util.rollout.save(rollout_save_path, policy, venv, sample_until)
 
 
 def main_console():
   observer = FileStorageObserver.create(
-      osp.join('output', 'sacred', 'expert_deoms'))
+      osp.join('output', 'sacred', 'expert_demos'))
   expert_demos_ex.observers.append(observer)
   expert_demos_ex.run_commandline()
 

@@ -37,8 +37,8 @@ def test_expert_demos_rollouts_from_policy():
         named_configs=['cartpole', 'fast'],
         config_updates=dict(
           log_root=tmpdir,
-          rollout_save_dir=osp.join(tmpdir, "rollouts"),
-          policy_path="expert_models/PPO2_CartPole-v1_0",
+          rollout_save_path=osp.join(tmpdir, "rollouts", "test.pkl"),
+          policy_path="tests/data/cartpole_0/policies/final/",
         ))
   assert run.status == 'COMPLETED'
 
@@ -77,7 +77,7 @@ def test_train_adversarial():
               },
           },
           'log_root': tmpdir,
-          'rollout_glob': "tests/data/rollouts/CartPole*.pkl",
+          'rollout_glob': "tests/data/cartpole_0/rollouts/final.pkl",
       }
       run = train_ex.run(
           named_configs=['cartpole', 'gail', 'fast'],
@@ -97,7 +97,7 @@ def test_transfer_learning():
     run = train_ex.run(
         named_configs=['cartpole', 'airl', 'fast'],
         config_updates=dict(
-          rollout_glob="tests/data/rollouts/CartPole*.pkl",
+          rollout_glob="tests/data/cartpole_0/rollouts/final.pkl",
           log_dir=log_dir_train,
         ),
     )
