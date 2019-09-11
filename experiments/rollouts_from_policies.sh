@@ -26,9 +26,9 @@ EXPERT_MODELS_DIR=${EXPERT_MODELS_DIR:-expert_models}
 CONFIG_CSV=${CONFIG_CSV:-experiments/rollouts_from_policies_config.csv}
 OUTPUT_DIR="output/train_experts/${TIMESTAMP}"
 
-while getopts "fr" arg; do
-  # f: Fast mode (debug)
+while getopts "f" arg; do
   if [[ $arg == "f" ]]; then
+    # Fast mode (debug)
     CONFIG_CSV="tests/data/rollouts_from_policies_config.csv"
     EXPERT_MODELS_DIR="tests/data"
   fi
