@@ -1,3 +1,0 @@
-env_config,n_gen_steps_per_epoch,n_epochs,n_expert_demos
-cartpole,1,1,1
-cartpole,1,1,4
