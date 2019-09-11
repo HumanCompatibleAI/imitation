@@ -281,7 +281,7 @@ class DiscrimNetGAIL(DiscrimNet, serialize.LayersSerializable):
                action_space: gym.Space,
                hid_sizes: Optional[Iterable[int]] = None,
                scale: bool = False):
-    args = locals()
+    args = dict(locals())
     inputs = util.build_inputs(observation_space, action_space, scale=scale)
     self._obs_ph, self._act_ph, self._next_obs_ph = inputs[:3]
     self.obs_inp, self.act_inp, self.next_obs_inp = inputs[3:]
