@@ -156,10 +156,10 @@ def train(_seed: int,
 
       if visualizer and epoch % plot_interval == 0:
         visualizer.disc_plot_show()
-        visualizer.ep_reward_plot_add_data(trainer.env, "Ground Truth Reward")
-        visualizer.ep_reward_plot_add_data(trainer.env_train, "Train Reward")
-        visualizer.ep_reward_plot_add_data(trainer.env_test, "Test Reward")
-        visualizer.ep_reward_plot_show()
+        visualizer.add_data_ep_reward(trainer.env, "Ground Truth Reward")
+        visualizer.add_data_ep_reward(trainer.env_train, "Train Reward")
+        visualizer.add_data_ep_reward(trainer.env_test, "Test Reward")
+        visualizer.plot_ep_reward()
 
       if ray_tune_interval > 0 and epoch % ray_tune_interval == 0:
         gen_ret = util.rollout.mean_return(
@@ -234,20 +234,21 @@ class _TrainVisualizer:
     self.exp_ep_reward = defaultdict(list)
 
     # Collect data for epoch 0.
-    self.disc_plot_add_data(False)
-    self.ep_reward_plot_add_data(self.trainer.env, "Ground Truth Reward")
-    self.ep_reward_plot_add_data(self.trainer.env_train, "Train Reward")
-    self.ep_reward_plot_add_data(self.trainer.env_test, "Test Reward")
+    self.add_data_disc_loss(False)
+    self.add_data_ep_reward(self.trainer.env, "Ground Truth Reward")
+    self.add_data_ep_reward(self.trainer.env_train, "Train Reward")
+    self.add_data_ep_reward(self.trainer.env_test, "Test Reward")
 
-  def disc_plot_add_data(self, gen_mode: bool = False):
+  def add_data_disc_loss(self, generator_active: bool = False):
     """Evaluates and records the discriminator loss for plotting later.
 
     Args:
-        gen_mode: Whether the generator or the discriminator is active.
-            We use this to color the data points.
+        generator_active: True if the generator is being trained. Otherwise, the
+            discriminator is being trained.  We use this to color the data
+            points.
     """
-    mode = "gen" if gen_mode else "dis"
-    X, Y = self.gen_data if gen_mode else self.disc_data
+    mode = "gen" if generator_active else "dis"
+    X, Y = self.gen_data if generator_active else self.disc_data
     # Divide by two since we get two data points (gen and disc) per epoch.
     X.append(self.plot_idx / 2)
     Y.append(self.trainer.eval_disc_loss())
@@ -256,7 +257,7 @@ class _TrainVisualizer:
         .format(mode, self.plot_idx, Y[-1]))
     self.plot_idx += 1
 
-  def disc_plot_show(self):
+  def plot_disc_loss(self):
     """Render a plot of discriminator loss vs. training epoch number."""
     plt.scatter(self.disc_data[0], self.disc_data[1], c='g', alpha=0.7, s=4,
                 label="discriminator loss (dis step)")
@@ -266,7 +267,7 @@ class _TrainVisualizer:
     plt.legend()
     self._savefig("plot_fight_loss_disc", self.show_plots)
 
-  def ep_reward_plot_add_data(self, env, name):
+  def add_data_ep_reward(self, env, name):
     """Calculate and record average episode returns."""
     gen_policy = self.trainer.gen_policy
     gen_ret = util.rollout.mean_return(
@@ -286,7 +287,7 @@ class _TrainVisualizer:
       self.exp_ep_reward[name].append(exp_ret)
       tf.logging.info("exp return: {}".format(exp_ret))
 
-  def ep_reward_plot_show(self):
+  def plot_ep_reward(self):
     """Render and show average episode reward plots."""
     for name in self.gen_ep_reward:
       plt.title(name + " Performance")
