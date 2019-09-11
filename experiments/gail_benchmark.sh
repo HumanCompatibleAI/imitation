@@ -27,8 +27,8 @@ SEEDS="0 1 2"
 # Fast mode (debug)
 while getopts "f" arg; do
   if [[ $arg == "f" ]]; then
-    CONFIG_CSV="toy_models/gail_benchmark_config.csv"
-    EXPERT_MODELS_DIR="toy_models"
+    CONFIG_CSV="tests/data/gail_benchmark_config.csv"
+    EXPERT_MODELS_DIR="tests/data"
     SEEDS="0"
   fi
 done

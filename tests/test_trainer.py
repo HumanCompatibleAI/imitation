@@ -21,7 +21,7 @@ def setup_and_teardown(session):
 
 def init_test_trainer(use_gail: bool, parallel: bool = False):
   return init_trainer(env_id="CartPole-v1",
-                      rollout_glob="toy_models/cartpole_0/rollouts/final.pkl",
+                      rollout_glob="tests/data/cartpole_0/rollouts/final.pkl",
                       use_gail=use_gail,
                       parallel=parallel)
 

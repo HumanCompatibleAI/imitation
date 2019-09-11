@@ -17,7 +17,7 @@ echo "codespell --version"
 codespell --version
 
 echo "codespell"
-codespell -I .codespell.skip --skip='*.pyc,toy_models/*,*.ipynb,*.csv' ${SOURCE_DIRS[@]}
+codespell -I .codespell.skip --skip='*.pyc,tests/data/*,*.ipynb,*.csv' ${SOURCE_DIRS[@]}
 RET=$((RET + $?))
 
 echo "Building docs (validates docstrings)"

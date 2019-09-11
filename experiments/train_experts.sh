@@ -22,12 +22,17 @@ OUTPUT_DIR="output/train_experts/${TIMESTAMP}"
 RESULTS_FILE="results.txt"
 extra_configs=""
 
-# Fast mode (debug)
-while getopts "f" arg; do
+while getopts "fr" arg; do
   if [[ $arg == "f" ]]; then
+    # Fast mode (debug)
     ENVS="acrobot cartpole"
-    extra_configs="fast"
     SEEDS="0"
+    extra_configs="fast"
+  elif [[ $arg == "r" ]]; then
+    # Regenerate test data
+    ENVS="acrobot cartpole"
+    SEEDS="0"
+    OUTPUT_DIR="tests/data"
   fi
 done
 
