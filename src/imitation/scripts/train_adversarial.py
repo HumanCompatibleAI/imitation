@@ -17,7 +17,7 @@ from stable_baselines import logger as sb_logger
 import tensorflow as tf
 import tqdm
 
-from imitation.algorithms.adversarial import init_trainer
+from imitation.algorithms.adversarial import AdversarialTrainer, init_trainer
 import imitation.envs.examples  # noqa: F401
 from imitation.policies import serialize
 from imitation.rewards.discrim_net import DiscrimNetAIRL, DiscrimNetGAIL
@@ -202,7 +202,7 @@ def train(_seed: int,
 
 class _TrainVisualizer:
   def __init__(self,
-               trainer: "imitation.algorithms.adversarial.AdversarialTrainer",
+               trainer: AdversarialTrainer,
                show_plots: bool,
                n_episodes_per_reward_data: int,
                log_dir: str,
