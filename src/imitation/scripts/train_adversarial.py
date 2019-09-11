@@ -23,7 +23,6 @@ from imitation.policies import serialize
 from imitation.rewards.discrim_net import DiscrimNetAIRL, DiscrimNetGAIL
 from imitation.scripts.config.train_adversarial import train_ex
 import imitation.util as util
-from imitation.util.multi import ray_tune_active
 
 
 def save(trainer, save_path):
@@ -89,16 +88,21 @@ def train(_seed: int,
       generator epoch.
     n_disc_steps_per_epoch: The number of discriminator update steps during
       every training epoch.
+    init_trainer_kwargs: Keyword arguments passed to `init_trainer`,
+      used to initialize the trainer.
+    n_episodes_eval: The number of episodes to average over when calculating
+      the average ground truth reward return of the imitation policy for return
+      and for `ray.tune.track`.
 
     plot_interval: The number of epochs between each plot. (If nonpositive,
       then plots are disabled).
-    n_episodes_plot: The number of episodes averaged over when
+    n_plot_episodes: The number of episodes averaged over when
       calculating the average episode reward of a policy for the performance
       plots.
     expert_policy_plot (BasePolicy or BaseRLModel, optional): If provided,
       then also plot the performance of this expert policy.
-    show_plots: Figures are always saved to `output/*.png`. If `show_plots`
-      is True, then also show plots as they are created.
+    show_plots: Figures are always saved to `f"{log_dir}/plots/*.png"`. If
+      `show_plots` is True, then also show plots as they are created.
 
     ray_tune_interval: The number of epochs between calls to `ray.tune.track`.
       If nonpositive, disables ray tune. Otherwise, enables hooks
@@ -106,14 +110,9 @@ def train(_seed: int,
       reward over time. The script will crash unless `ray.tune` was
       externally initialized.
 
-    n_episodes_eval: The number of episodes to average over when calculating
-      the average ground truth reward return of the imitation policy for return
-      and for `ray.tune.track`.
     checkpoint_interval: Save the discriminator and generator models every
       `checkpoint_interval` epochs and after training is complete. If <=0,
       then only save weights after training is complete.
-    init_trainer_kwargs: Keyword arguments passed to `init_trainer`,
-      used to initialize the trainer.
 
   Returns:
     A dictionary with the following keys: "ep_reward_mean" and
@@ -303,7 +302,9 @@ class _TrainVisualizer:
       self._savefig("plot_fight_epreward_gen", self.show_plots)
 
   def _savefig(self, prefix="", also_show=True):
-    path = osp.join(self.log_dir, f"{prefix}_{self.plot_idx}")
+    plot_dir = osp.join(self.log_dir, "plots")
+    os.makedirs(plot_dir, exist_ok=True)
+    path = osp.join(plot_dir, f"{prefix}_{self.plot_idx}")
     plt.savefig(path)
     tf.logging.info("plot saved to {}".format(path))
     if also_show:
