@@ -14,7 +14,34 @@ from imitation.rewards.serialize import load_reward
 from imitation.scripts.config.expert_demos import expert_demos_ex
 import imitation.util as util
 from imitation.util.reward_wrapper import RewardVecEnvWrapper
-from imitation.util.rollout import _validate_traj_generate_params
+
+
+def traj_sample_until(n_timesteps: Optional[int],
+                      n_episodes: Optional[int],
+                      ) -> util.rollout.GenTrajTerminationFn:
+  """Returns a termination condition sampling until n_timesteps or n_episodes.
+
+  Arguments:
+    n_timesteps: Minimum number of timesteps to sample.
+    n_episodes: Number of episodes to sample.
+
+  Returns:
+    A termination condition.
+
+  Raises:
+    ValueError if both or neither of n_timesteps and n_episodes are set,
+    or if either are non-positive.
+  """
+  if n_timesteps is not None and n_episodes is not None:
+    raise ValueError("n_timesteps and n_episodes were both set")
+  elif n_timesteps is not None:
+    assert n_timesteps > 0
+    return util.rollout.min_timesteps(n_timesteps)
+  elif n_episodes is not None:
+    assert n_episodes > 0
+    return util.rollout.min_episodes(n_episodes)
+  else:
+    raise ValueError("Set at least one of n_timesteps and n_episodes")
 
 
 @expert_demos_ex.main
@@ -88,8 +115,8 @@ def rollouts_and_policy(
       policy_save_final: If True, then save the policy right after training is
           finished.
   """
-  _validate_traj_generate_params(rollout_save_n_timesteps,
-                                 rollout_save_n_episodes)
+  sample_until = traj_sample_until(rollout_save_n_timesteps,
+                                   rollout_save_n_episodes)
 
   with util.make_session():
     tf.logging.set_verbosity(tf.logging.INFO)
@@ -135,12 +162,8 @@ def rollouts_and_policy(
           callback(sb_logger)
 
         if rollout_save_interval > 0 and step % rollout_save_interval == 0:
-          util.rollout.save(
-            osp.join(rollout_dir, f"{step}.pkl"),
-            policy,
-            venv,
-            n_timesteps=rollout_save_n_timesteps,
-            n_episodes=rollout_save_n_episodes)
+          save_path = osp.join(rollout_dir, f"{step}.pkl")
+          util.rollout.save(save_path, policy, venv, sample_until)
         if policy_save_interval > 0 and step % policy_save_interval == 0:
           output_dir = os.path.join(policy_dir, f'{step:05d}')
           serialize.save_stable_model(output_dir, policy, vec_normalize)
@@ -150,12 +173,8 @@ def rollouts_and_policy(
 
       # Save final artifacts after training is complete.
       if rollout_save_final:
-        util.rollout.save(
-          osp.join(rollout_dir, "final.pkl"),
-          policy,
-          venv,
-          n_timesteps=rollout_save_n_timesteps,
-          n_episodes=rollout_save_n_episodes)
+        save_path = osp.join(rollout_dir, "final.pkl")
+        util.rollout.save(save_path, policy, venv, sample_until)
       if policy_save_final:
         output_dir = os.path.join(policy_dir, "final")
         serialize.save_stable_model(output_dir, policy, vec_normalize)
@@ -186,15 +205,15 @@ def rollouts_from_policy(
       policy_path: Argument to `imitation.policies.serialize.load_policy`.
       rollout_save_path: Rollout pickle is saved to this path.
   """
+  sample_until = traj_sample_until(rollout_save_n_timesteps,
+                                   rollout_save_n_episodes)
+
   venv = util.make_vec_env(env_name, num_vec, seed=_seed,
                            parallel=parallel, log_dir=log_dir,
                            max_episode_steps=max_episode_steps)
 
   with serialize.load_policy(policy_type, policy_path, venv) as policy:
-    util.rollout.save(rollout_save_path, policy, venv,
-                      n_timesteps=rollout_save_n_timesteps,
-                      n_episodes=rollout_save_n_episodes,
-                      )
+    util.rollout.save(rollout_save_path, policy, venv, sample_until)
 
 
 def main_console():

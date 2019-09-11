@@ -58,9 +58,10 @@ def test_density_reward(density_type, is_stationary):
   # check that expert policy does better than a random policy under our reward
   # function
   random_policy = RandomPolicy(env.observation_space, env.action_space)
+  sample_until = rollout.min_episodes(n_experts // 2)
   random_trajectories = rollout.generate_trajectories(random_policy,
                                                       env,
-                                                      n_episodes=n_experts // 2)
+                                                      sample_until=sample_until)
   expert_trajectories_test = expert_trajectories_all[n_experts // 2:]
   random_score = score_trajectories(random_trajectories, reward_fn)
   expert_score = score_trajectories(expert_trajectories_test, reward_fn)

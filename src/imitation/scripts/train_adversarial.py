@@ -153,20 +153,21 @@ def train_and_plot(_seed: int,
     def ep_reward_plot_add_data(env, name):
       """Calculate and record average episode returns."""
       gen_policy = trainer.gen_policy
+      sample_until_data = util.rollout.min_episodes(n_episodes_per_reward_data)
       gen_ret = util.rollout.mean_return(
-          gen_policy, env, n_episodes=n_episodes_per_reward_data)
+          gen_policy, env, sample_until=sample_until_data)
       gen_ep_reward[name].append(gen_ret)
       tf.logging.info("generator return: {}".format(gen_ret))
 
       rand_policy = util.init_rl(trainer.env)
       rand_ret = util.rollout.mean_return(
-          rand_policy, env, n_episodes=n_episodes_per_reward_data)
+          rand_policy, env, sample_until=sample_until_data)
       rand_ep_reward[name].append(rand_ret)
       tf.logging.info("random return: {}".format(rand_ret))
 
       if expert_policy is not None:
           exp_ret = util.rollout.mean_return(
-              expert_policy, env, n_episodes=n_episodes_per_reward_data)
+              expert_policy, env, sample_until=sample_until_data)
           exp_ep_reward[name].append(exp_ret)
           tf.logging.info("exp return: {}".format(exp_ret))
 
@@ -232,9 +233,10 @@ def train_and_plot(_seed: int,
     save(trainer, os.path.join(log_dir, "checkpoints", "final"))
 
     # Final evaluation of imitation policy.
+    sample_until_eval = util.rollout.min_timesteps(n_episodes_eval)
     stats = util.rollout.rollout_stats(trainer.gen_policy,
                                        trainer.env,
-                                       n_episodes=n_episodes_eval)
+                                       sample_until=sample_until_eval)
     assert stats["n_traj"] >= n_episodes_eval
     mean = stats["return_mean"]
     std_err = stats["return_std"] / math.sqrt(n_episodes_eval)
