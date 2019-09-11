@@ -22,7 +22,7 @@ def train_defaults():
   use_gail = True
   airl_entropy_weight = 1.0
 
-  plot_interval = 1  # Number of epochs in between plots (<=0 disables)
+  plot_interval = -1  # Number of epochs in between plots (<=0 disables)
   n_episodes_plot = 5  # Number of rollouts for each mean_ep_rew data
   show_plots = True  # Show plots in addition to saving them
 

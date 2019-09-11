@@ -63,13 +63,10 @@ def test_eval_policy(config):
       assert isinstance(run.result, dict)
 
 
-@pytest.mark.parametrize("plots", [True, False])
-def test_train_adversarial(plots: bool):
+def test_train_adversarial():
   """Smoke test for imitation.scripts.train_adversarial"""
   with TemporaryDirectory(prefix='imitation-train') as tmpdir:
-    named_configs = ['cartpole', 'gail', 'fast']
-    if plots:
-      named_configs.append("plots")
+    named_configs = ['cartpole', 'gail', 'fast', 'plots']
     config_updates = {
         'init_trainer_kwargs': {
             # Rollouts are small, decrease size of buffer to avoid warning
