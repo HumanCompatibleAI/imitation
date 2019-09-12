@@ -18,9 +18,11 @@ def tune(inner_experiment_name: str, search_space: dict) -> None:
     search_space: `config` argument to `ray.tune.run(trainable, config)`.
   """
   ray.init()
-  trainable = _ray_tune_sacred_wrapper(inner_experiment_name)
-  ray.tune.run(trainable, config=search_space)
-  ray.shutdown()
+  try:
+    trainable = _ray_tune_sacred_wrapper(inner_experiment_name)
+    ray.tune.run(trainable, config=search_space)
+  finally:
+    ray.shutdown()
 
 
 def _ray_tune_sacred_wrapper(inner_experiment_name: str) -> Callable:
@@ -31,8 +33,7 @@ def _ray_tune_sacred_wrapper(inner_experiment_name: str) -> Callable:
   `ex.run(...)` because we want to be able to hyperparameter tune over both the
   `named_configs` and `config_updates` arguments.
 
-  `config["named_configs"]` must contain "ray_tune". (Ensures that Ray Tune
-  hooks are enabled in the Experiment run).
+  The Ray Tune `reporter` is not passed to the inner experiment.
 
   Args:
     inner_experiment_name: The experiment to tune. Either "expert_demos" or
@@ -44,8 +45,6 @@ def _ray_tune_sacred_wrapper(inner_experiment_name: str) -> Callable:
     `ex.run`) and `reporter`. The function returns the run result.
   """
   def inner(config: dict, reporter) -> dict:
-    config["config_updates"]["ray_tune_reporter"] = reporter
-
     # Import inside function rather than in module because Sacred experiments
     # are not picklable, and Ray requires this function to be picklable.
     from imitation.scripts.expert_demos import expert_demos_ex
@@ -58,6 +57,11 @@ def _ray_tune_sacred_wrapper(inner_experiment_name: str) -> Callable:
 
     with util.make_session():
       run = ex.run(**config)
+
+    # Ray Tune has a string formatting error if raylet completes without
+    # any calls to `reporter`.
+    reporter(done=True)
+
     assert run.status == 'COMPLETED'
     return run.result
   return inner
