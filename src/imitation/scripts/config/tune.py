@@ -7,6 +7,7 @@ via CLI. For example, a user should add a new
 Adding custom named configs is necessary because the CLI interface can't add
 search spaces to the config like `"seed": tune.grid_search([0, 1, 2, 3])`.
 """
+
 import ray.tune as tune
 import sacred
 
@@ -25,13 +26,13 @@ def config():
 # Debug named configs
 @tune_ex.named_config
 def debug_log_root():
-  search_space = {"config_updates": {"log_root": "/tmp"}}
+  search_space = {"config_updates": {"log_root": "/tmp/debug_tune_ex"}}
 
 
 # Each named config that follows describes a hyperparameter tuning experiments.
 
 @tune_ex.named_config
-def proto_cartpole_expert():
+def example_cartpole_rl():
   """Not an actual hyperparameter tuning experiment. Just a prototype."""
   inner_experiment_name = "expert_demos"
   search_space = {

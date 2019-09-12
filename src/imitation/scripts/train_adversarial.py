@@ -51,9 +51,6 @@ def train(_seed: int,
           expert_policy_plot=None,
           show_plots: bool = True,
 
-          ray_tune_reporter=None,
-          ray_tune_interval: int = -1,
-
           checkpoint_interval: int = 5,
           ) -> dict:
   """Train an adversarial-network-based imitation learning algorithm.
@@ -64,10 +61,6 @@ def train(_seed: int,
     - Plot the performance of the generator policy versus the performance of
       a random policy. Also plot the performance of an expert policy if that is
       provided in the arguments.
-
-  Ray Tune (turn on by setting `ray_tune_reporter`)
-    - Track the episode reward mean of the imitation policy by performing
-      rollouts every `ray_tune_interval` epochs.
 
   Checkpoints:
     - DiscrimNets are saved to f"{log_dir}/checkpoints/{step}/discrim/",
@@ -97,13 +90,6 @@ def train(_seed: int,
       then also plot the performance of this expert policy.
     show_plots: Figures are always saved to `output/*.png`. If `show_plots`
       is True, then also show plots as they are created.
-
-    ray_tune_reporter: A report object for tracking hyperparameter performance.
-    ray_tune_interval: The number of epochs between calls to `ray.tune.track`.
-      If nonpositive, disables ray tune. Otherwise, enables hooks
-      that call `ray.tune.track` to track the imitation policy's mean episode
-      reward over time. The script will crash unless `ray.tune` was
-      externally initialized.
 
     n_episodes_eval: The number of episodes to average over when calculating
       the average ground truth reward return of the imitation policy for return
@@ -156,11 +142,6 @@ def train(_seed: int,
         visualizer.ep_reward_plot_add_data(trainer.env_test, "Test Reward")
         visualizer.ep_reward_plot_show()
 
-      if ray_tune_reporter and epoch % ray_tune_interval == 0:
-        gen_ret = util.rollout.mean_return(
-            trainer.gen_policy, trainer.env, n_episodes=n_episodes_eval)
-        ray_tune_reporter(episode_reward_mean=gen_ret)
-
       if checkpoint_interval > 0 and epoch % checkpoint_interval == 0:
         save(trainer, os.path.join(log_dir, "checkpoints", f"{epoch:05d}"))
 
@@ -177,8 +158,6 @@ def train(_seed: int,
     print("[result] Mean Episode Return: "
           f"{ep_reward_mean:.4g} ± {ep_reward_std_err:.3g} "
           f"(n={stats['n_traj']})")
-    if ray_tune_reporter:
-      ray_tune_reporter(episode_reward_mean=ep_reward_mean)
 
     reward_path = os.path.join(log_dir, "checkpoints", "final", "discrim")
     # TODO(shwang): I think Serializable should store the save_type, and

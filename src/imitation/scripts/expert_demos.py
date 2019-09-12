@@ -41,17 +41,10 @@ def rollouts_and_policy(
   rollout_save_n_timesteps: Optional[int] = None,
   rollout_save_n_episodes: Optional[int] = None,
 
-  ray_tune_reporter=None,
-  ray_tune_interval: int = -1,
-
   policy_save_interval: int = -1,
   policy_save_final: bool = True,
 ) -> dict:
   """Trains an expert policy from scratch and saves the rollouts and policy.
-
-  Ray Tune (turn on by setting `ray_tune_reporter`)
-    - Track the episode reward mean of the imitation policy by performing
-      rollouts every `ray_tune_interval` updates.
 
   Checkpoints:
     At applicable training steps `step` (where step is either an integer or
@@ -96,14 +89,6 @@ def rollouts_and_policy(
       rollout_save_n_episodes: The number of episodes saved in every
           file. Must set exactly one of `rollout_save_n_timesteps` and
           `rollout_save_n_episodes`.
-
-      ray_tune_reporter: A report object for tracking hyperparameter
-          performance.
-      ray_tune_interval: The number of epochs between calls to `ray.tune.track`.
-        If nonpositive, disables ray tune. Otherwise, enables hooks
-        that call `ray.tune.track` to track the imitation policy's mean episode
-        reward over time. The script will crash unless `ray.tune` was
-        externally initialized.
 
       policy_save_interval: The number of training updates between saves. Has
           the same semantics are `rollout_save_interval`.
@@ -168,15 +153,6 @@ def rollouts_and_policy(
         if policy_save_interval > 0 and step % policy_save_interval == 0:
           output_dir = os.path.join(policy_dir, f'{step:05d}')
           serialize.save_stable_model(output_dir, policy, vec_normalize)
-        if ray_tune_reporter and step % ray_tune_interval == 0:
-          # TODO(shwang): Not sure if `venv` has the ground truth reward
-          # after it is wrapped in VecNormalize (does VecNormalize normalize
-          # both rewards and observations?) Check this with Adam.
-          mean_return = util.rollout.mean_return(policy, venv,
-                                                 n_episodes=n_episodes_eval)
-          ray_tune_reporter(episode_reward_mean=mean_return)
-
-        return True  # Continue training.
 
       policy.learn(total_timesteps, callback=callback)
 
@@ -200,10 +176,6 @@ def rollouts_and_policy(
       print("[result] Mean Episode Return: "
             f"{ep_reward_mean:.4g} ± {ep_reward_std_err:.3g} "
             f"(n={stats['n_traj']})")
-
-      print(f"tune interval {ray_tune_interval}")
-      if ray_tune_reporter:
-        ray_tune_reporter(episode_reward_mean=ep_reward_mean, done=True)
 
   return dict(ep_reward_mean=ep_reward_mean,
               ep_reward_std_err=ep_reward_std_err,
