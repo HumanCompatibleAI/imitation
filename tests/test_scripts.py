@@ -139,14 +139,11 @@ TUNE_CONFIG_UPDATES = [
       "named_configs": ["cartpole", "gail", "fast"],
       "config_updates": {
         'init_trainer_kwargs': {
-          # Rollouts are small, decrease size of buffer to avoid warning
           'reward_kwargs': {
             'phi_units': tune.grid_search([[16, 16], [7, 9]]),
           },
         },
         # Need absolute path because raylet runs in different working directory.
-        # If we were running Ray distributed instead of locally, we wouldn't be
-        # able to reference this file directly at all.
         'rollout_glob': osp.abspath("tests/data/rollouts/CartPole*.pkl"),
       }},
   ),

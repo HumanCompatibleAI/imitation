@@ -23,9 +23,7 @@ def tune(inner_experiment_name: str, search_space: dict) -> None:
   ray.shutdown()
 
 
-def _ray_tune_sacred_wrapper(
-  inner_experiment_name: str,
-) -> Callable:
+def _ray_tune_sacred_wrapper(inner_experiment_name: str) -> Callable:
   """From an Experiment build a wrapped run function suitable for Ray Tune.
 
   `ray.tune.run(...)` expects a trainable function that takes a dict
