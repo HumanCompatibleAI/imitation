@@ -3,13 +3,13 @@ from typing import Callable
 import ray
 import ray.tune
 
-from imitation.scripts.config.tune import tune_ex
+from imitation.scripts.config.parallel import parallel_ex
 import imitation.util as util
 
 
-@tune_ex.main
-def tune(inner_experiment_name: str, search_space: dict) -> None:
-  """Start a hyperparameter tuning experiment.
+@parallel_ex.main
+def parallel(inner_experiment_name: str, search_space: dict) -> None:
+  """Parallelize multiple runs of another Sacred Experiment using Ray Tune.
 
   Args:
     inner_experiment_name: The experiment to tune. Either "expert_demos" or

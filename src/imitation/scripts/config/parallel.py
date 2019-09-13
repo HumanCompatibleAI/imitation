@@ -1,8 +1,8 @@
-"""Config files for hyperparameter tuning experiments.
+"""Config files for parallel experiments.
 
-Hyperparameter experiments are intended to be defined in Python rather than
+Parallel experiments are intended to be defined in Python rather than
 via CLI. For example, a user should add a new
-`@tune_ex.named_config` to define a new hyperparameter experiment.
+`@parallel_ex.named_config` to define a new parallel experiment.
 
 Adding custom named configs is necessary because the CLI interface can't add
 search spaces to the config like `"seed": tune.grid_search([0, 1, 2, 3])`.
@@ -11,12 +11,12 @@ search spaces to the config like `"seed": tune.grid_search([0, 1, 2, 3])`.
 import ray.tune as tune
 import sacred
 
-tune_ex = sacred.Experiment("tune")
+parallel_ex = sacred.Experiment("parallel")
 
 
-@tune_ex.config
+@parallel_ex.config
 def config():
-  inner_experiment_name = "expert_demos"  # The experiment to tune
+  inner_experiment_name = "expert_demos"  # The experiment to parallelize
   search_space = {
     "named_configs": [],
     "config_updates": {},
@@ -24,16 +24,16 @@ def config():
 
 
 # Debug named configs
-@tune_ex.named_config
+@parallel_ex.named_config
 def debug_log_root():
-  search_space = {"config_updates": {"log_root": "/tmp/debug_tune_ex"}}
+  search_space = {"config_updates": {"log_root": "/tmp/debug_parallel_ex"}}
 
 
 # Each named config that follows describes a hyperparameter tuning experiments.
 
-@tune_ex.named_config
+@parallel_ex.named_config
 def example_cartpole_rl():
-  """Not an actual hyperparameter tuning experiment. Just a prototype."""
+  """Example config that spins up 4*4*3 different training runs of cartpole."""
   inner_experiment_name = "expert_demos"
   search_space = {
     "named_configs": ["cartpole"],

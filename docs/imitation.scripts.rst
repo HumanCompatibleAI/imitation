@@ -27,10 +27,10 @@ imitation.scripts.expert\_demos module
    :undoc-members:
    :show-inheritance:
 
-imitation.scripts.tune module
+imitation.scripts.parallel module
 -------------------------------------------
 
-.. automodule:: imitation.scripts.tune
+.. automodule:: imitation.scripts.parallel
    :members:
    :undoc-members:
    :show-inheritance:

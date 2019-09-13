@@ -13,8 +13,8 @@ import ray.tune as tune
 
 from imitation.scripts.eval_policy import eval_policy_ex
 from imitation.scripts.expert_demos import expert_demos_ex
+from imitation.scripts.parallel import parallel_ex
 from imitation.scripts.train_adversarial import train_ex
-from imitation.scripts.tune import tune_ex
 
 
 def test_expert_demos_main():
@@ -118,7 +118,7 @@ def test_transfer_learning():
     assert isinstance(run.result, dict)
 
 
-TUNE_CONFIG_UPDATES = [
+PARALLEL_CONFIG_UPDATES = [
   dict(
     inner_experiment_name="expert_demos",
     search_space={
@@ -147,12 +147,12 @@ TUNE_CONFIG_UPDATES = [
 ]
 
 
-@pytest.mark.parametrize("config_updates", TUNE_CONFIG_UPDATES)
-def test_tune(config_updates):
+@pytest.mark.parametrize("config_updates", PARALLEL_CONFIG_UPDATES)
+def test_parallel(config_updates):
   """Hyperparam tuning smoke test."""
   # No need for TemporaryDirectory because the hyperparameter tuning script
   # itself generates no artifacts, and "debug_log_root" sets inner experiment's
   # log_root="/tmp".
-  run = tune_ex.run(named_configs=["debug_log_root"],
-                    config_updates=config_updates)
+  run = parallel_ex.run(named_configs=["debug_log_root"],
+                        config_updates=config_updates)
   assert run.status == 'COMPLETED'
