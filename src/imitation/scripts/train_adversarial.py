@@ -47,7 +47,6 @@ def train(_seed: int,
 
           plot_interval: int,
           n_plot_episodes: int,
-          expert_policy_plot,
           show_plots: bool,
 
           checkpoint_interval: int = 5,
@@ -91,8 +90,6 @@ def train(_seed: int,
     n_plot_episodes: The number of episodes averaged over when
       calculating the average episode reward of a policy for the performance
       plots.
-    expert_policy_plot (BasePolicy or BaseRLModel, optional): If provided,
-      then also plot the performance of this expert policy.
     show_plots: Figures are always saved to `f"{log_dir}/plots/*.png"`. If
       `show_plots` is True, then also show plots as they are created.
 
@@ -116,12 +113,14 @@ def train(_seed: int,
                         format_strs=['tensorboard', 'stdout'])
 
     if plot_interval > 0:
+      expert_mean_ep_reward = np.asarray(
+        sum(t.rew) for t in trainer.expert_demos).mean
       visualizer = _TrainVisualizer(
         trainer=trainer,
         show_plots=show_plots,
         n_episodes_per_reward_data=n_plot_episodes,
         log_dir=log_dir,
-        expert_policy=expert_policy_plot)
+        expert_mean_ep_reward=expert_mean_ep_reward)
     else:
       visualizer = None
 
@@ -175,7 +174,7 @@ class _TrainVisualizer:
                show_plots: bool,
                n_episodes_per_reward_data: int,
                log_dir: str,
-               expert_policy=None):
+               expert_mean_ep_reward: Optional[float] = None):
     """
     Args:
       trainer: AdversarialTrainer used to perform rollouts.
@@ -186,14 +185,14 @@ class _TrainVisualizer:
         (possibly fractional) number of epochs between each plot. The first
         plot is at epoch 0, after the first discrim and generator steps.
         If `n_epochs_per_plot is None`, then don't make any plots.
-      expert_policy (BasePolicy or BaseRLModel, optional): If provided,
-          then also plot the performance of this expert policy.
+      expert_mean_ep_reward: If provided, then also plot the performance of
+        the expert policy.
     """
     self.trainer = trainer
     self.show_plots = show_plots
     self.n_episodes_per_reward_data = n_episodes_per_reward_data
     self.log_dir = log_dir
-    self.expert_policy = expert_policy
+    self.expert_mean_ep_reward = expert_mean_ep_reward
     self.plot_idx = 0
     self.gen_data = ([], [])
     self.disc_data = ([], [])
@@ -250,11 +249,6 @@ class _TrainVisualizer:
     self.rand_ep_reward[name].append(rand_ret)
     tf.logging.info("random return: {}".format(rand_ret))
 
-    if self.expert_policy is not None:
-      exp_ret = util.rollout.mean_return(self.expert_policy, env, sample_until)
-      self.exp_ep_reward[name].append(exp_ret)
-      tf.logging.info("exp return: {}".format(exp_ret))
-
   def plot_ep_reward(self):
     """Render and show average episode reward plots."""
     for name in self.gen_ep_reward:
@@ -265,8 +259,11 @@ class _TrainVisualizer:
       plt.plot(self.gen_ep_reward[name], label="avg gen ep reward", c="red")
       plt.plot(self.rand_ep_reward[name],
                label="avg random ep reward", c="black")
-      if self.expert_policy is not None:
-        plt.plot(self.exp_ep_reward[name], label="avg exp ep reward", c="blue")
+      if self.expert_mean_ep_reward is not None:
+        plt.hlines(y=self.expert_mean_ep_reward,
+                   linestyles='dashed',
+                   label="expert (return={self.expert_mean_ep_reward:.2g})",
+                   c="black")
       plt.legend()
       self._savefig("plot_fight_epreward_gen", self.show_plots)
 

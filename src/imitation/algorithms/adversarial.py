@@ -82,6 +82,7 @@ class AdversarialTrainer:
     self.debug_use_ground_truth = debug_use_ground_truth
 
     self.env = util.maybe_load_env(env, vectorize=True)
+    self._expert_demos = expert_demos
     self._gen_policy = gen_policy
 
     # Discriminator and reward output
@@ -122,6 +123,11 @@ class AdversarialTrainer:
   def discrim(self) -> discrim_net.DiscrimNet:
     """Discriminator being trained, used to compute reward for policy."""
     return self._discrim
+
+  @property
+  def expert_demos(self) -> util.rollouts.Trajectories:
+    """The expert demonstrations that are being imitated."""
+    return self._expert_demos
 
   @property
   def gen_policy(self) -> BaseRLModel:
