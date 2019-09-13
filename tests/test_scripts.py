@@ -77,7 +77,7 @@ def test_train_adversarial():
             },
         },
         'log_root': tmpdir,
-        'rollout_glob': "tests/data/rollouts/CartPole*.pkl",
+        'rollout_glob': "tests/data/cartpole_0/rollouts/final.pkl",
     }
     run = train_ex.run(
         named_configs=named_configs,
@@ -141,7 +141,7 @@ TUNE_CONFIG_UPDATES = [
           },
         },
         # Need absolute path because raylet runs in different working directory.
-        'rollout_glob': osp.abspath("tests/data/rollouts/CartPole*.pkl"),
+        'rollout_glob': osp.abspath("tests/data/cartpole_0/rollouts/final.pkl"),
       }},
   ),
 ]

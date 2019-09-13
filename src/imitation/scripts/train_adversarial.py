@@ -129,14 +129,14 @@ def train(_seed: int,
     for epoch in tqdm.tqdm(range(1, n_epochs+1), desc="epoch"):
       trainer.train_disc(n_disc_steps_per_epoch)
       if visualizer:
-        visualizer.disc_plot_add_data(False)
+        visualizer.add_data_disc_loss(False)
 
       trainer.train_gen(n_gen_steps_per_epoch)
       if visualizer:
-        visualizer.disc_plot_add_data(True)
+        visualizer.add_data_disc_loss(True)
 
       if visualizer and epoch % plot_interval == 0:
-        visualizer.disc_plot_show()
+        visualizer.plot_disc_loss()
         visualizer.add_data_ep_reward(trainer.env, "Ground Truth Reward")
         visualizer.add_data_ep_reward(trainer.env_train, "Train Reward")
         visualizer.add_data_ep_reward(trainer.env_test, "Test Reward")
@@ -238,21 +238,20 @@ class _TrainVisualizer:
 
   def add_data_ep_reward(self, env, name):
     """Calculate and record average episode returns."""
+    sample_until = util.rollout.min_episodes(self.n_episodes_per_reward_data)
+
     gen_policy = self.trainer.gen_policy
-    gen_ret = util.rollout.mean_return(
-        gen_policy, env, n_episodes=self.n_episodes_per_reward_data)
+    gen_ret = util.rollout.mean_return(gen_policy, env, sample_until)
     self.gen_ep_reward[name].append(gen_ret)
     tf.logging.info("generator return: {}".format(gen_ret))
 
     rand_policy = util.init_rl(self.trainer.env)
-    rand_ret = util.rollout.mean_return(
-        rand_policy, env, n_episodes=self.n_episodes_per_reward_data)
+    rand_ret = util.rollout.mean_return(rand_policy, env, sample_until)
     self.rand_ep_reward[name].append(rand_ret)
     tf.logging.info("random return: {}".format(rand_ret))
 
     if self.expert_policy is not None:
-      exp_ret = util.rollout.mean_return(
-          self.expert_policy, env, n_episodes=self.n_episodes_per_reward_data)
+      exp_ret = util.rollout.mean_return(self.expert_policy, env, sample_until)
       self.exp_ep_reward[name].append(exp_ret)
       tf.logging.info("exp return: {}".format(exp_ret))
 
