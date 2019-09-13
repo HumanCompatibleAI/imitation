@@ -19,46 +19,50 @@ def setup_and_teardown(session):
   yield
 
 
-def init_test_trainer(env_id: str, use_gail: bool, parallel: bool = False):
-  return init_trainer(env_id=env_id,
-                      rollout_glob=f"tests/data/rollouts/{env_id}*.pkl",
+def init_test_trainer(use_gail: bool, parallel: bool = False):
+  return init_trainer(env_id="CartPole-v1",
+                      rollout_glob="tests/data/cartpole_0/rollouts/final.pkl",
                       use_gail=use_gail,
                       parallel=parallel)
 
 
 @pytest.mark.parametrize("use_gail", USE_GAIL)
 @pytest.mark.parametrize("parallel", PARALLEL)
-def test_init_no_crash(use_gail, parallel, env='CartPole-v1'):
-  init_test_trainer(env, use_gail=use_gail, parallel=parallel)
+def test_init_no_crash(use_gail, parallel):
+  init_test_trainer(use_gail=use_gail, parallel=parallel)
 
 
 @pytest.mark.parametrize("use_gail", USE_GAIL)
 @pytest.mark.parametrize("parallel", PARALLEL)
 def test_train_disc_no_crash(use_gail, parallel,
-                             env='CartPole-v1', n_timesteps=200):
-  trainer = init_test_trainer(env, use_gail=use_gail, parallel=parallel)
+                             n_timesteps=200):
+  trainer = init_test_trainer(use_gail=use_gail, parallel=parallel)
   trainer.train_disc()
-  obs_old, act, obs_new, _ = rollout.generate_transitions(
-      trainer.gen_policy, env, n_timesteps=n_timesteps)
-  trainer.train_disc(gen_old_obs=obs_old, gen_act=act,
-                     gen_new_obs=obs_new)
+  transitions = rollout.generate_transitions(trainer.gen_policy,
+                                             trainer.env,
+                                             n_timesteps=n_timesteps)
+  trainer.train_disc(gen_obs=transitions.obs, gen_act=transitions.act,
+                     gen_next_obs=transitions.next_obs)
 
 
 @pytest.mark.parametrize("use_gail", USE_GAIL)
 @pytest.mark.parametrize("parallel", PARALLEL)
-def test_train_gen_no_crash(use_gail, parallel, env='CartPole-v1', n_steps=10):
-  trainer = init_test_trainer(env, use_gail=use_gail, parallel=parallel)
+def test_train_gen_no_crash(use_gail, parallel, n_steps=10):
+  trainer = init_test_trainer(use_gail=use_gail, parallel=parallel)
   trainer.train_gen(n_steps)
 
 
 @pytest.mark.expensive
 @pytest.mark.parametrize("use_gail", USE_GAIL)
-def test_train_disc_improve_D(use_gail, env='CartPole-v1', n_timesteps=200,
+def test_train_disc_improve_D(use_gail, n_timesteps=200,
                               n_steps=1000):
-  trainer = init_test_trainer(env, use_gail)
-  obs_old, act, obs_new, _ = rollout.generate_transitions(
-      trainer.gen_policy, env, n_timesteps=n_timesteps)
-  kwargs = dict(gen_old_obs=obs_old, gen_act=act, gen_new_obs=obs_new)
+  trainer = init_test_trainer(use_gail)
+  transitions = rollout.generate_transitions(trainer.gen_policy,
+                                             trainer.env,
+                                             n_timesteps=n_timesteps)
+  kwargs = dict(gen_obs=transitions.obs,
+                gen_act=transitions.act,
+                gen_next_obs=transitions.next_obs)
   loss1 = trainer.eval_disc_loss(**kwargs)
   trainer.train_disc(n_steps=n_steps, **kwargs)
   loss2 = trainer.eval_disc_loss(**kwargs)
@@ -67,6 +71,6 @@ def test_train_disc_improve_D(use_gail, env='CartPole-v1', n_timesteps=200,
 
 @pytest.mark.expensive
 @pytest.mark.parametrize("use_gail", USE_GAIL)
-def test_train_no_crash(use_gail, env='CartPole-v1'):
-  trainer = init_test_trainer(env, use_gail)
+def test_train_no_crash(use_gail):
+  trainer = init_test_trainer(use_gail)
   trainer.train(n_epochs=1)

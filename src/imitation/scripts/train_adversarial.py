@@ -18,7 +18,6 @@ import tqdm
 from imitation.algorithms.adversarial import AdversarialTrainer, init_trainer
 import imitation.envs.examples  # noqa: F401
 from imitation.policies import serialize
-from imitation.rewards.discrim_net import DiscrimNetAIRL, DiscrimNetGAIL
 from imitation.scripts.config.train_adversarial import train_ex
 import imitation.util as util
 
@@ -150,9 +149,10 @@ def train(_seed: int,
     save(trainer, os.path.join(log_dir, "checkpoints", "final"))
 
     # Final evaluation of imitation policy.
+    sample_until_eval = util.rollout.min_timesteps(n_episodes_eval)
     stats = util.rollout.rollout_stats(trainer.gen_policy,
                                        trainer.env,
-                                       n_episodes=n_episodes_eval)
+                                       sample_until=sample_until_eval)
     assert stats["n_traj"] >= n_episodes_eval
     ep_reward_mean = stats["return_mean"]
     ep_reward_std_err = stats["return_std"] / math.sqrt(n_episodes_eval)

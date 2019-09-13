@@ -29,11 +29,11 @@ class ResettableEnv(gym.Env, abc.ABC):
     """Samples from the initial state distribution."""
 
   @abc.abstractmethod
-  def transition(self, old_state, action):
+  def transition(self, state, action):
     """Samples from transition distribution."""
 
   @abc.abstractmethod
-  def reward(self, old_state, action, new_state):
+  def reward(self, state, action, new_state):
     """Computes reward for a given transition."""
 
   @abc.abstractmethod
@@ -129,13 +129,13 @@ class TabularModelEnv(ResettableEnv, abc.ABC):
     return self.rand_state.choice(self.n_states,
                                   p=self.initial_state_dist)
 
-  def transition(self, old_state, action):
-    out_dist = self.transition_matrix[old_state, action]
+  def transition(self, state, action):
+    out_dist = self.transition_matrix[state, action]
     choice_states = np.arange(self.n_states)
     return int(self.rand_state.choice(choice_states, p=out_dist, size=()))
 
-  def reward(self, old_state, action, new_state):
-    reward = self.reward_matrix[old_state]
+  def reward(self, state, action, new_state):
+    reward = self.reward_matrix[state]
     assert np.isscalar(reward), reward
     return reward
 

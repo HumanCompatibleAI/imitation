@@ -159,7 +159,7 @@ def build_inputs(observation_space: gym.Space,
                  scale: bool = False) -> Tuple[tf.Tensor, ...]:
   """Builds placeholders and processed input Tensors.
 
-  Observation `old_obs_*` and `new_obs_*` placeholders and processed input
+  Observation `obs_*` and `next_obs_*` placeholders and processed input
   tensors have shape `(None,) + obs_space.shape`.
   The action `act_*` placeholder and processed input tensors have shape
   `(None,) + act_space.shape`.
@@ -171,19 +171,19 @@ def build_inputs(observation_space: gym.Space,
       processed input Tensors are automatically scaled to the interval [0, 1].
 
   Returns:
-    old_obs_ph: Placeholder for old observations.
+    obs_ph: Placeholder for old observations.
     act_ph: Placeholder for actions.
-    new_obs_ph: Placeholder for new observations.
-    old_obs_inp: Network-ready float32 Tensor with processed old observations.
+    next_obs_ph: Placeholder for new observations.
+    obs_inp: Network-ready float32 Tensor with processed old observations.
     act_inp: Network-ready float32 Tensor with processed actions.
-    new_obs_inp: Network-ready float32 Tensor with processed new observations.
+    next_obs_inp: Network-ready float32 Tensor with processed new observations.
   """
-  old_obs_ph, old_obs_inp = observation_input(observation_space,
-                                              name="old_obs", scale=scale)
+  obs_ph, obs_inp = observation_input(observation_space,
+                                      name="obs", scale=scale)
   act_ph, act_inp = observation_input(action_space, name="act", scale=scale)
-  new_obs_ph, new_obs_inp = observation_input(observation_space,
-                                              name="new_obs", scale=scale)
-  return old_obs_ph, act_ph, new_obs_ph, old_obs_inp, act_inp, new_obs_inp
+  next_obs_ph, next_obs_inp = observation_input(observation_space,
+                                                name="next_obs", scale=scale)
+  return obs_ph, act_ph, next_obs_ph, obs_inp, act_inp, next_obs_inp
 
 
 @contextlib.contextmanager

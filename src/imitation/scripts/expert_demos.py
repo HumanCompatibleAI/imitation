@@ -15,7 +15,34 @@ from imitation.rewards.serialize import load_reward
 from imitation.scripts.config.expert_demos import expert_demos_ex
 import imitation.util as util
 from imitation.util.reward_wrapper import RewardVecEnvWrapper
-from imitation.util.rollout import _validate_traj_generate_params
+
+
+def traj_sample_until(n_timesteps: Optional[int],
+                      n_episodes: Optional[int],
+                      ) -> util.rollout.GenTrajTerminationFn:
+  """Returns a termination condition sampling until n_timesteps or n_episodes.
+
+  Arguments:
+    n_timesteps: Minimum number of timesteps to sample.
+    n_episodes: Number of episodes to sample.
+
+  Returns:
+    A termination condition.
+
+  Raises:
+    ValueError if both or neither of n_timesteps and n_episodes are set,
+    or if either are non-positive.
+  """
+  if n_timesteps is not None and n_episodes is not None:
+    raise ValueError("n_timesteps and n_episodes were both set")
+  elif n_timesteps is not None:
+    assert n_timesteps > 0
+    return util.rollout.min_timesteps(n_timesteps)
+  elif n_episodes is not None:
+    assert n_episodes > 0
+    return util.rollout.min_episodes(n_episodes)
+  else:
+    raise ValueError("Set at least one of n_timesteps and n_episodes")
 
 
 @expert_demos_ex.main
@@ -50,7 +77,7 @@ def rollouts_and_policy(
     At applicable training steps `step` (where step is either an integer or
     "final"):
 
-      - Policies are saved to `{log_dir}/policies/{step}.pkl`.
+      - Policies are saved to `{log_dir}/policies/{step}/`.
       - Rollouts are saved to `{log_dir}/rollouts/{step}.pkl`.
 
   Args:
@@ -99,8 +126,8 @@ def rollouts_and_policy(
       A dictionary with the following keys: "ep_reward_mean",
       "ep_reward_std_err", and "log_dir".
   """
-  _validate_traj_generate_params(rollout_save_n_timesteps,
-                                 rollout_save_n_episodes)
+  sample_until = traj_sample_until(rollout_save_n_timesteps,
+                                   rollout_save_n_episodes)
 
   with util.make_session():
     tf.logging.set_verbosity(tf.logging.INFO)
@@ -146,10 +173,8 @@ def rollouts_and_policy(
           callback(sb_logger)
 
         if rollout_save_interval > 0 and step % rollout_save_interval == 0:
-          util.rollout.save(
-            rollout_dir, policy, venv, step,
-            n_timesteps=rollout_save_n_timesteps,
-            n_episodes=rollout_save_n_episodes)
+          save_path = osp.join(rollout_dir, f"{step}.pkl")
+          util.rollout.save(save_path, policy, venv, sample_until)
         if policy_save_interval > 0 and step % policy_save_interval == 0:
           output_dir = os.path.join(policy_dir, f'{step:05d}')
           serialize.save_stable_model(output_dir, policy, vec_normalize)
@@ -158,18 +183,15 @@ def rollouts_and_policy(
 
       # Save final artifacts after training is complete.
       if rollout_save_final:
-        util.rollout.save(
-          rollout_dir, policy, venv, "final",
-          n_timesteps=rollout_save_n_timesteps,
-          n_episodes=rollout_save_n_episodes)
+        save_path = osp.join(rollout_dir, "final.pkl")
+        util.rollout.save(save_path, policy, venv, sample_until)
       if policy_save_final:
         output_dir = os.path.join(policy_dir, "final")
         serialize.save_stable_model(output_dir, policy, vec_normalize)
 
       # Final evaluation of expert policy.
-      stats = util.rollout.rollout_stats(policy,
-                                         venv,
-                                         n_episodes=n_episodes_eval)
+      sample_until = util.rollout.min_episodes(n_episodes_eval)
+      stats = util.rollout.rollout_stats(policy, venv, sample_until)
       assert stats["n_traj"] >= n_episodes_eval
       ep_reward_mean = stats["return_mean"]
       ep_reward_std_err = stats["return_std"] / math.sqrt(n_episodes_eval)
@@ -195,41 +217,32 @@ def rollouts_from_policy(
   policy_type: str = "ppo2",
   env_name: str = "CartPole-v1",
   parallel: bool = True,
-  rollout_save_dir: Optional[str] = None,
+  rollout_save_path: str,
   max_episode_steps: Optional[int] = None,
 ) -> None:
   """Loads a saved policy and generates rollouts.
 
-  Default save path is f"{log_dir}/rollouts/{env_name}.pkl". Change to
-  f"{rollout_save_dir}/{env_name}.pkl" by setting the `rollout_save_dir` param.
   Unlisted arguments are the same as in `rollouts_and_policy()`.
 
   Args:
       policy_type: Argument to `imitation.policies.serialize.load_policy`.
-      policy_path: Argument to `imitation.policies.serialize.load_policy`. If
-          not provided, then defaults to f"expert_models/{env_name}".
-      rollout_save_dir: Rollout pickle is saved in this directory as
-          f"{env_name}.pkl".
+      policy_path: Argument to `imitation.policies.serialize.load_policy`.
+      rollout_save_path: Rollout pickle is saved to this path.
   """
-  if rollout_save_dir is None:
-    rollout_save_dir = osp.join(log_dir, "rollouts")
+  sample_until = traj_sample_until(rollout_save_n_timesteps,
+                                   rollout_save_n_episodes)
 
   venv = util.make_vec_env(env_name, num_vec, seed=_seed,
                            parallel=parallel, log_dir=log_dir,
                            max_episode_steps=max_episode_steps)
 
   with serialize.load_policy(policy_type, policy_path, venv) as policy:
-    os.makedirs(rollout_save_dir, exist_ok=True)
-    util.rollout.save(rollout_save_dir, policy, venv,
-                      basename=env_name,
-                      n_timesteps=rollout_save_n_timesteps,
-                      n_episodes=rollout_save_n_episodes,
-                      )
+    util.rollout.save(rollout_save_path, policy, venv, sample_until)
 
 
 def main_console():
   observer = FileStorageObserver.create(
-      osp.join('output', 'sacred', 'expert_deoms'))
+      osp.join('output', 'sacred', 'expert_demos'))
   expert_demos_ex.observers.append(observer)
   expert_demos_ex.run_commandline()
 

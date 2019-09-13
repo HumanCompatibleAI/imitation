@@ -39,6 +39,12 @@ def logging(env_name, log_root):
                          util.make_unique_timestamp())
 
 
+@expert_demos_ex.config
+def rollouts_from_policy_only_defaults(log_dir):
+    rollout_save_path = os.path.join(
+        log_dir, "rollout.pkl")  # Save path for `rollouts_from_policy` only.
+
+
 # Standard Gym env configs
 
 @expert_demos_ex.named_config
