@@ -185,20 +185,12 @@ def train(_seed: int,
           f"(n={stats['n_traj']})")
 
     reward_path = os.path.join(log_dir, "checkpoints", "final", "discrim")
-    # TODO(shwang): I think Serializable should store the save_type, and
-    # Serializable.save() should return save_type.
-    if isinstance(trainer.discrim, DiscrimNetAIRL):
-      reward_type = "DiscrimNetAIRL"
-    elif isinstance(trainer.discrim, DiscrimNetGAIL):
-      reward_type = "DiscrimNetGAIL"
-    else:
-      raise RuntimeError(f"Unknown reward type for {trainer.discrim}")
 
     return dict(ep_reward_mean=ep_reward_mean,
                 ep_reward_std_err=ep_reward_std_err,
                 log_dir=log_dir,
                 transfer_reward_path=reward_path,
-                transfer_reward_type=reward_type)
+                transfer_reward_type="DiscrimNet")
 
 
 class _TrainVisualizer:
