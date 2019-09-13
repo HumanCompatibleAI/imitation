@@ -8,10 +8,8 @@ from collections import defaultdict
 import math
 import os
 import os.path as osp
-from warnings import warn
 
 from matplotlib import pyplot as plt
-import ray.tune
 from sacred.observers import FileStorageObserver
 from stable_baselines import logger as sb_logger
 import tensorflow as tf
@@ -53,8 +51,6 @@ def train(_seed: int,
           expert_policy_plot=None,
           show_plots: bool = True,
 
-          ray_tune_interval: int = -1,
-
           checkpoint_interval: int = 5,
           ) -> dict:
   """Train an adversarial-network-based imitation learning algorithm.
@@ -65,10 +61,6 @@ def train(_seed: int,
     - Plot the performance of the generator policy versus the performance of
       a random policy. Also plot the performance of an expert policy if that is
       provided in the arguments.
-
-  Ray Tune (turn on using `ray_tune_interval > 0`):
-    - Track the episode reward mean of the imitation policy by performing
-      rollouts every `ray_tune_interval` epochs.
 
   Checkpoints:
     - DiscrimNets are saved to f"{log_dir}/checkpoints/{step}/discrim/",
@@ -93,8 +85,7 @@ def train(_seed: int,
     init_trainer_kwargs: Keyword arguments passed to `init_trainer`,
       used to initialize the trainer.
     n_episodes_eval: The number of episodes to average over when calculating
-      the average ground truth reward return of the imitation policy for return
-      and for `ray.tune.track`.
+      the average episode reward of the imitation policy for return.
 
     plot_interval: The number of epochs between each plot. (If nonpositive,
       then plots are disabled).
@@ -106,25 +97,15 @@ def train(_seed: int,
     show_plots: Figures are always saved to `f"{log_dir}/plots/*.png"`. If
       `show_plots` is True, then also show plots as they are created.
 
-    ray_tune_interval: The number of epochs between calls to `ray.tune.track`.
-      If nonpositive, disables ray tune. Otherwise, enables hooks
-      that call `ray.tune.track` to track the imitation policy's mean episode
-      reward over time. The script will crash unless `ray.tune` was
-      externally initialized.
-
     checkpoint_interval: Save the discriminator and generator models every
       `checkpoint_interval` epochs and after training is complete. If <=0,
       then only save weights after training is complete.
 
   Returns:
     A dictionary with the following keys: "ep_reward_mean",
-    "ep_reward_std_err", "log_dir", "transfer_reward_path",
-    "transfer_reward_type".
+      "ep_reward_std_err", "log_dir", "transfer_reward_path",
+      "transfer_reward_type".
   """
-  if ray_tune_interval <= 0 and ray_tune_active():
-    warn("This Sacred run isn't configured for Ray Tune "
-         "even though Ray Tune is active!")
-
   with util.make_session():
     trainer = init_trainer(env_name, rollout_glob=rollout_glob,
                            seed=_seed, log_dir=log_dir,
@@ -161,11 +142,6 @@ def train(_seed: int,
         visualizer.add_data_ep_reward(trainer.env_train, "Train Reward")
         visualizer.add_data_ep_reward(trainer.env_test, "Test Reward")
         visualizer.plot_ep_reward()
-
-      if ray_tune_interval > 0 and epoch % ray_tune_interval == 0:
-        gen_ret = util.rollout.mean_return(
-            trainer.gen_policy, trainer.env, n_episodes=n_episodes_eval)
-        ray.tune.track.log(episode_reward_mean=gen_ret)
 
       if checkpoint_interval > 0 and epoch % checkpoint_interval == 0:
         save(trainer, os.path.join(log_dir, "checkpoints", f"{epoch:05d}"))

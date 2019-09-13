@@ -27,8 +27,6 @@ def expert_demos_defaults():
   rollout_save_n_timesteps = 2000  # Min timesteps saved per file, optional.
   rollout_save_n_episodes = None  # Num episodes saved per file, optional.
 
-  ray_tune_interval = -1  # Num updates between `ray.track.log`. (<=0 disables)
-
   policy_save_interval = 100  # Num updates between saves (<=0 disables)
   policy_save_final = True  # If True, save after training is finished.
 
@@ -39,11 +37,6 @@ def expert_demos_defaults():
 def logging(env_name, log_root):
   log_dir = os.path.join(log_root, env_name.replace('/', '_'),
                          util.make_unique_timestamp())
-
-
-@expert_demos_ex.named_config
-def ray_tune():
-  ray_tune_interval = 100
 
 
 # Standard Gym env configs

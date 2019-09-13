@@ -9,10 +9,12 @@ import os.path as osp
 from tempfile import TemporaryDirectory
 
 import pytest
+import ray.tune as tune
 
 from imitation.scripts.eval_policy import eval_policy_ex
 from imitation.scripts.expert_demos import expert_demos_ex
 from imitation.scripts.train_adversarial import train_ex
+from imitation.scripts.tune import tune_ex
 
 
 def test_expert_demos_main():
@@ -114,3 +116,43 @@ def test_transfer_learning():
     )
     assert run.status == 'COMPLETED'
     assert isinstance(run.result, dict)
+
+
+TUNE_CONFIG_UPDATES = [
+  dict(
+    inner_experiment_name="expert_demos",
+    search_space={
+      "named_configs": ["cartpole", "fast"],
+      "config_updates": {
+        "seed": tune.grid_search([0, 1]),
+        "make_blank_policy_kwargs": {
+          "learning_rate": tune.grid_search([3e-4, 1e-4]),
+        },
+      }},
+  ),
+  dict(
+    inner_experiment_name="train_adversarial",
+    search_space={
+      "named_configs": ["cartpole", "gail", "fast"],
+      "config_updates": {
+        'init_trainer_kwargs': {
+          'reward_kwargs': {
+            'phi_units': tune.grid_search([[16, 16], [7, 9]]),
+          },
+        },
+        # Need absolute path because raylet runs in different working directory.
+        'rollout_glob': osp.abspath("tests/data/rollouts/CartPole*.pkl"),
+      }},
+  ),
+]
+
+
+@pytest.mark.parametrize("config_updates", TUNE_CONFIG_UPDATES)
+def test_tune(config_updates):
+  """Hyperparam tuning smoke test."""
+  # No need for TemporaryDirectory because the hyperparameter tuning script
+  # itself generates no artifacts, and "debug_log_root" sets inner experiment's
+  # log_root="/tmp".
+  run = tune_ex.run(named_configs=["debug_log_root"],
+                    config_updates=config_updates)
+  assert run.status == 'COMPLETED'
