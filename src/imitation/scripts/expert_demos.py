@@ -51,25 +51,25 @@ def rollouts_and_policy(
   env_name: str,
   total_timesteps: int,
   *,
-  log_dir: str = None,
-  num_vec: int = 8,
-  parallel: bool = False,
-  max_episode_steps: Optional[int] = None,
-  normalize: bool = True,
-  make_blank_policy_kwargs: dict = {},
+  log_dir: str,
+  num_vec: int,
+  parallel: bool,
+  max_episode_steps: Optional[int],
+  normalize: bool,
+  make_blank_policy_kwargs: dict,
 
-  n_episodes_eval: int = 50,
+  n_episodes_eval: int,
 
-  reward_type: Optional[str] = None,
-  reward_path: Optional[str] = None,
+  reward_type: Optional[str],
+  reward_path: Optional[str],
 
-  rollout_save_interval: int = 0,
-  rollout_save_final: bool = False,
-  rollout_save_n_timesteps: Optional[int] = None,
-  rollout_save_n_episodes: Optional[int] = None,
+  rollout_save_interval: int,
+  rollout_save_final: bool,
+  rollout_save_n_timesteps: Optional[int],
+  rollout_save_n_episodes: Optional[int],
 
-  policy_save_interval: int = -1,
-  policy_save_final: bool = True,
+  policy_save_interval: int,
+  policy_save_final: bool,
 ) -> dict:
   """Trains an expert policy from scratch and saves the rollouts and policy.
 
@@ -214,11 +214,11 @@ def rollouts_from_policy(
   rollout_save_n_episodes: int,
   log_dir: str,
   policy_path: str,
-  policy_type: str = "ppo2",
-  env_name: str = "CartPole-v1",
-  parallel: bool = True,
+  policy_type: str,
+  env_name: str,
+  parallel: bool,
   rollout_save_path: str,
-  max_episode_steps: Optional[int] = None,
+  max_episode_steps: Optional[int],
 ) -> None:
   """Loads a saved policy and generates rollouts.
 
