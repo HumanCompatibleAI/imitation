@@ -57,10 +57,13 @@ def train_defaults():
 def paths(env_name, log_root):
   log_dir = os.path.join(log_root, env_name.replace('/', '_'),
                          util.make_unique_timestamp())
-  # Recommended user sets rollout_glob manually
-  rollout_glob = os.path.join("output", "expert_demos",
-                              env_name.replace('/', '_'),
-                              "*", "rollouts", "final.pkl")
+  # Recommended that user sets rollout_glob manually.
+  # By default we guess the `env_config_name` associated with the `env_name`
+  # and attempt to load rollouts from `tests/data`.
+  rollout_glob = os.path.join("tests", "data",
+                              "{guess_env_config_name}_0".format(
+                                  env_name.split("-")[0]),
+                              "rollouts", "final.pkl")
 
 
 # Training algorithm configs
