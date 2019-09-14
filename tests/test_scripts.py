@@ -62,7 +62,10 @@ def test_eval_policy(config):
       run = eval_policy_ex.run(config_updates=config_updates,
                                named_configs=['fast'])
       assert run.status == 'COMPLETED'
-      assert isinstance(run.result, dict)
+      result = run.result
+      assert isinstance(results.get('orig'), dict)
+      if 'reward_path' in config:
+        assert isinstance(results.get('transfer'), dict)
 
 
 def test_train_adversarial():
