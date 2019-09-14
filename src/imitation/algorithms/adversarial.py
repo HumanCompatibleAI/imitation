@@ -125,7 +125,7 @@ class AdversarialTrainer:
     return self._discrim
 
   @property
-  def expert_demos(self) -> util.rollouts.Trajectories:
+  def expert_demos(self) -> util.rollout.Transitions:
     """The expert demonstrations that are being imitated."""
     return self._expert_demos
 

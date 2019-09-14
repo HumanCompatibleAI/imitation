@@ -29,8 +29,6 @@ def debug_log_root():
   search_space = {"config_updates": {"log_root": "/tmp/debug_parallel_ex"}}
 
 
-# Each named config that follows describes a hyperparameter tuning experiments.
-
 @parallel_ex.named_config
 def example_cartpole_rl():
   """Example config that spins up 4*4*3 different training runs of cartpole."""

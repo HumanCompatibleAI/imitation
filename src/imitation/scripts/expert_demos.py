@@ -128,6 +128,7 @@ def rollouts_and_policy(
   """
   sample_until = traj_sample_until(rollout_save_n_timesteps,
                                    rollout_save_n_episodes)
+  eval_sample_until = util.rollout.min_episodes(n_episodes_eval)
 
   with util.make_session():
     tf.logging.set_verbosity(tf.logging.INFO)
@@ -190,14 +191,10 @@ def rollouts_and_policy(
         serialize.save_stable_model(output_dir, policy, vec_normalize)
 
       # Final evaluation of expert policy.
-      sample_until = util.rollout.min_episodes(n_episodes_eval)
-      stats = util.rollout.rollout_stats(policy, venv, sample_until)
+      stats = util.rollout.rollout_stats(policy, venv, eval_sample_until)
       assert stats["n_traj"] >= n_episodes_eval
       ep_reward_mean = stats["return_mean"]
       ep_reward_std_err = stats["return_std"] / math.sqrt(n_episodes_eval)
-      print("[result] Mean Episode Return: "
-            f"{ep_reward_mean:.4g} ± {ep_reward_std_err:.3g} "
-            f"(n={stats['n_traj']})")
 
   return dict(ep_reward_mean=ep_reward_mean,
               ep_reward_std_err=ep_reward_std_err,

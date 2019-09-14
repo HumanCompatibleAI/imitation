@@ -17,10 +17,17 @@ def expert_demos_defaults():
   normalize = True  # Use VecNormalize
   max_episode_steps = None  # Set to positive int to limit episode horizons
   make_blank_policy_kwargs = dict(DEFAULT_BLANK_POLICY_KWARGS)
+  # TODO(shwang): We should make it so that we always evaluate rewards
+  # relative to ground truth reward. (or maybe evaluate relative to both
+  # ground truth reward and custom reward when possible)
+  n_episodes_eval = 50  # Num of episodes for final ep reward mean evaluation
 
   # If specified, overrides the ground-truth environment reward
   reward_type = None  # override reward type
   reward_path = None   # override reward path
+
+  policy_path = None  # policy path for rollouts_from_policy command only
+  policy_type = "ppo2"  # policy type for rollouts from_policy command only
 
   rollout_save_interval = -1  # Num updates between saves (<=0 disables)
   rollout_save_final = True  # If True, save after training is finished.

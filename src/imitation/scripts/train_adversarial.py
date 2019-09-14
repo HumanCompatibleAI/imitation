@@ -8,6 +8,7 @@ from collections import defaultdict
 import math
 import os
 import os.path as osp
+from typing import Optional
 
 from matplotlib import pyplot as plt
 from sacred.observers import FileStorageObserver
@@ -113,8 +114,16 @@ def train(_seed: int,
                         format_strs=['tensorboard', 'stdout'])
 
     if plot_interval > 0:
-      expert_mean_ep_reward = np.asarray(
-        sum(t.rew) for t in trainer.expert_demos).mean
+      # If `n_expert_demos` was provided, then we have enough information
+      # to determine the expert's mean episode reward just from inspecting
+      # the `trainer.expert_demos` (Transitions). Kind of sad that there isn't
+      # a clean way to pull the raw `List[Trajectory]` out of `init_trainer`.
+      n_expert_demos = init_trainer_kwargs.get("n_expert_demos")
+      if n_expert_demos is not None:
+        expert_mean_ep_reward = trainer.expert_demos.rew / n_expert_demos
+      else:
+        expert_mean_ep_reward = None
+
       visualizer = _TrainVisualizer(
         trainer=trainer,
         show_plots=show_plots,

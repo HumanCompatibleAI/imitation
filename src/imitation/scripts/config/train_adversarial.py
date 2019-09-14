@@ -23,7 +23,7 @@ def train_defaults():
   airl_entropy_weight = 1.0
 
   plot_interval = -1  # Number of epochs in between plots (<=0 disables)
-  n_episodes_plot = 5  # Number of rollouts for each mean_ep_rew data
+  n_plot_episodes = 5  # Number of rollouts for each mean_ep_rew data
   show_plots = True  # Show plots in addition to saving them
 
   init_trainer_kwargs = dict(
@@ -58,11 +58,11 @@ def paths(env_name, log_root):
   log_dir = os.path.join(log_root, env_name.replace('/', '_'),
                          util.make_unique_timestamp())
   # Recommended that user sets rollout_glob manually.
-  # By default we guess the `env_config_name` associated with the `env_name`
+  # By default we guess the named config associated with `env_name`
   # and attempt to load rollouts from `tests/data`.
   rollout_glob = os.path.join("tests", "data",
-                              "{guess_env_config_name}_0".format(
-                                  env_name.split("-")[0]),
+                              "{named_config}_0".format(
+                                  named_config=env_name.split("-")[0]),
                               "rollouts", "final.pkl")
 
 
@@ -190,7 +190,7 @@ def fast():
   show_plots = False
   n_disc_steps_per_epoch = 1
   n_gen_steps_per_epoch = 1
-  n_episodes_plot = 1
+  n_plot_episodes = 1
   init_trainer_kwargs = dict(
       n_expert_demos=1,
       parallel=False,  # easier to debug with everything in one process
