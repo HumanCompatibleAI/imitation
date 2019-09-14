@@ -157,7 +157,7 @@ def train(_seed: int,
     save(trainer, os.path.join(log_dir, "checkpoints", "final"))
 
     # Final evaluation of imitation policy.
-    sample_until_eval = util.rollout.min_timesteps(n_episodes_eval)
+    sample_until_eval = util.rollout.min_episodes(n_episodes_eval)
     stats = util.rollout.rollout_stats(trainer.gen_policy,
                                        trainer.env,
                                        sample_until=sample_until_eval)
