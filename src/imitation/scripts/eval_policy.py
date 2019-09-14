@@ -97,6 +97,8 @@ def eval_policy(_seed: int,
     with serialize.load_policy(policy_type, policy_path, venv) as policy:
       stats = rollout.rollout_stats(policy, venv,
                                     rollout.min_timesteps(timesteps))
+      stats = rollout.rollout_stats(policy, venv,
+                                    rollout.min_timesteps(timesteps))
 
   return stats
 
