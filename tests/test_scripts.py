@@ -152,7 +152,7 @@ def test_parallel(config_updates):
   """Hyperparam tuning smoke test."""
   # No need for TemporaryDirectory because the hyperparameter tuning script
   # itself generates no artifacts, and "debug_log_root" sets inner experiment's
-  # log_root="/tmp".
+  # log_root="/tmp/parallel_debug/".
   run = parallel_ex.run(named_configs=["debug_log_root"],
                         config_updates=config_updates)
   assert run.status == 'COMPLETED'

@@ -208,7 +208,6 @@ class _TrainVisualizer:
 
     self.gen_ep_reward = defaultdict(list)
     self.rand_ep_reward = defaultdict(list)
-    self.exp_ep_reward = defaultdict(list)
 
     # Collect data for epoch 0.
     self.add_data_disc_loss(False)

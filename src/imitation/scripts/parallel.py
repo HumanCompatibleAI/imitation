@@ -16,8 +16,8 @@ def parallel(inner_experiment_name: str, search_space: dict) -> None:
       "train_adversarial".
     search_space: `config` argument to `ray.tune.run(trainable, config)`.
   """
-  ray.init()
   try:
+    ray.init()
     trainable = _ray_tune_sacred_wrapper(inner_experiment_name)
     ray.tune.run(trainable, config=search_space)
   finally:

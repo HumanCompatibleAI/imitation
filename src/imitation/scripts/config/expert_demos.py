@@ -26,9 +26,6 @@ def expert_demos_defaults():
   reward_type = None  # override reward type
   reward_path = None   # override reward path
 
-  policy_path = None  # policy path for rollouts_from_policy command only
-  policy_type = "ppo2"  # policy type for rollouts from_policy command only
-
   rollout_save_interval = -1  # Num updates between saves (<=0 disables)
   rollout_save_final = True  # If True, save after training is finished.
   rollout_save_n_timesteps = 2000  # Min timesteps saved per file, optional.
@@ -48,8 +45,10 @@ def logging(env_name, log_root):
 
 @expert_demos_ex.config
 def rollouts_from_policy_only_defaults(log_dir):
-    rollout_save_path = os.path.join(
-        log_dir, "rollout.pkl")  # Save path for `rollouts_from_policy` only.
+  policy_path = None  # Policy path for rollouts_from_policy command only
+  policy_type = "ppo2"  # Policy type for rollouts_from_policy command only
+  rollout_save_path = os.path.join(
+      log_dir, "rollout.pkl")  # Save path for `rollouts_from_policy` only.
 
 
 # Standard Gym env configs
