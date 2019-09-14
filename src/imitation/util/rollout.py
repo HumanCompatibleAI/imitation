@@ -129,6 +129,34 @@ def min_timesteps(n: int) -> GenTrajTerminationFn:
   return f
 
 
+def make_sample_until(n_timesteps: Optional[int],
+                      n_episodes: Optional[int],
+                      ) -> GenTrajTerminalFn:
+  """Returns a termination condition sampling until n_timesteps or n_episodes.
+
+  Arguments:
+    n_timesteps: Minimum number of timesteps to sample.
+    n_episodes: Number of episodes to sample.
+
+  Returns:
+    A termination condition.
+
+  Raises:
+    ValueError if both or neither of n_timesteps and n_episodes are set,
+    or if either are non-positive.
+  """
+  if n_timesteps is not None and n_episodes is not None:
+    raise ValueError("n_timesteps and n_episodes were both set")
+  elif n_timesteps is not None:
+    assert n_timesteps > 0
+    return min_timesteps(n_timesteps)
+  elif n_episodes is not None:
+    assert n_episodes > 0
+    return min_episodes(n_episodes)
+  else:
+    raise ValueError("Set at least one of n_timesteps and n_episodes")
+
+
 def generate_trajectories(policy,
                           env,
                           sample_until: GenTrajTerminationFn,
