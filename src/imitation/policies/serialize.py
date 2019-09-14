@@ -68,7 +68,7 @@ def _load_stable_baselines(cls: Type[BaseRLModel],
       policy = getattr(model, policy_attr)
 
       try:
-        vec_normalize = VecNormalize(env, training=False)
+        vec_normalize = VecNormalize(env, training=False, norm_reward=False)
         vec_normalize.load_running_average(path)
         policy = NormalizePolicy(policy, vec_normalize)
         tf.logging.info(f"Loaded normalization statistics from '{path}'")
