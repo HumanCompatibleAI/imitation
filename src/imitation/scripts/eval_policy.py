@@ -100,18 +100,18 @@ def eval_policy(_seed: int,
       tf.logging.info(
           f"Wrapped env in reward {reward_type} from {reward_path}.")
 
-    results = {}
+    result = {}
 
     def _get_stats(venv_eval):
       with serialize.load_policy(policy_type, policy_path, venv_eval) as policy:
         return rollout.rollout_stats(policy, venv, sample_until)
 
     # TODO(shwang): Add docs for these new results.
-    results["orig_stats"] = _get_stats(venv_orig)
+    result["orig_stats"] = _get_stats(venv_orig)
     if venv_transfer is not None:
-      results["transfer_stats"] = _get_stats(venv_transfer)
+      result["transfer_stats"] = _get_stats(venv_transfer)
 
-  return results
+  return result
 
 
 if __name__ == "__main__":

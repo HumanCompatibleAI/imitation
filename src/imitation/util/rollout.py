@@ -21,7 +21,7 @@ class Trajectory(NamedTuple):
     obs: Observations, shape (trajectory_len+1, ) + observation_shape.
     act: Actions, shape (trajectory_len, ) + action_shape.
     rew: Reward, shape (trajectory_len, ).
-    info: A list of info dicts, length (trajectory_len, ).
+    infos: A list of info dicts, length (trajectory_len, ).
   """
 
   # TODO(shwang): IN this and Transitions, act=>acts, rew=>rews (matches
@@ -223,7 +223,7 @@ def generate_trajectories(policy,
               # this is not the obs corresponding to `act`, but rather the obs
               # *after* `act` (see above)
               obs=real_obs,
-              info=info))
+              infos=info))
       if done:
         # finish env_idx-th trajectory
         new_traj = trajectories_accum.finish_trajectory(env_idx)
