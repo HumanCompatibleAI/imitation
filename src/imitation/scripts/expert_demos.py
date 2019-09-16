@@ -98,8 +98,8 @@ def rollouts_and_policy(
       A dictionary with the following keys: "ep_reward_mean",
       "ep_reward_std_err", and "log_dir".
   """
-  sample_until = util.rollouts.make_sample_until(rollout_save_n_timesteps,
-                                                 rollout_save_n_episodes)
+  sample_until = util.rollout.make_sample_until(rollout_save_n_timesteps,
+                                                rollout_save_n_episodes)
   eval_sample_until = util.rollout.min_episodes(n_episodes_eval)
 
   with util.make_session():
@@ -203,8 +203,8 @@ def rollouts_from_policy(
       policy_path: Argument to `imitation.policies.serialize.load_policy`.
       rollout_save_path: Rollout pickle is saved to this path.
   """
-  sample_until = util.rollouts.make_sample_until(rollout_save_n_timesteps,
-                                                 rollout_save_n_episodes)
+  sample_until = util.rollout.make_sample_until(rollout_save_n_timesteps,
+                                                rollout_save_n_episodes)
 
   venv = util.make_vec_env(env_name, num_vec, seed=_seed,
                            parallel=parallel, log_dir=log_dir,

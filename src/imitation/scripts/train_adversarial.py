@@ -5,7 +5,6 @@ directly.
 """
 
 from collections import defaultdict
-import math
 import os
 import os.path as osp
 from typing import Optional

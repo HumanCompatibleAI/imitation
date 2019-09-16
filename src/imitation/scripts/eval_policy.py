@@ -82,8 +82,7 @@ def eval_policy(_seed: int,
   """
   tf.logging.set_verbosity(tf.logging.INFO)
   tf.logging.info('Logging to %s', log_dir)
-  sample_until = util.rollouts.make_sample_until(eval_n_timesteps,
-                                                 eval_n_episodes)
+  sample_until = rollout.make_sample_until(eval_n_timesteps, eval_n_episodes)
   venv_orig = venv = util.make_vec_env(env_name, num_vec, seed=_seed,
                                        parallel=parallel, log_dir=log_dir,
                                        max_episode_steps=max_episode_steps)
