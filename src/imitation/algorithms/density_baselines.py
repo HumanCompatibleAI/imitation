@@ -132,10 +132,10 @@ class DensityReward:
     flat_trajectories = []
     for traj in trajectories:
       obs_vec = traj.obs
-      act_vec = traj.act
+      act_vec = traj.acts
       assert len(obs_vec) == len(act_vec) + 1
       flat_traj = []
-      for step_num in range(len(traj.act)):
+      for step_num in range(len(traj.acts)):
         flat_trans = self._preprocess_transition(obs_vec[step_num],
                                                  act_vec[step_num],
                                                  obs_vec[step_num + 1])

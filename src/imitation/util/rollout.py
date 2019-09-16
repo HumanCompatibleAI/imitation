@@ -26,9 +26,9 @@ class Trajectory(NamedTuple):
 
   # TODO(shwang): IN this and Transitions, act=>acts, rew=>rews (matches
   # Baselines). done=>dones
-  act: np.ndarray
+  acts: np.ndarray
   obs: np.ndarray
-  rew: np.ndarray
+  rews: np.ndarray
   infos: List[dict]
 
 
@@ -54,10 +54,10 @@ class Transitions(NamedTuple):
   """
 
   obs: np.ndarray
-  act: np.ndarray
+  acts: np.ndarray
   next_obs: np.ndarray
-  rew: np.ndarray
-  done: np.ndarray
+  rews: np.ndarray
+  dones: np.ndarray
 
 
 class _TrajectoryAccumulator:
@@ -218,12 +218,12 @@ def generate_trajectories(policy,
       trajectories_accum.add_step(
           env_idx,
           dict(
-              act=act,
-              rew=rew,
+              acts=act,
+              rews=rew,
               # this is not the obs corresponding to `act`, but rather the obs
               # *after* `act` (see above)
               obs=real_obs,
-              info=info))
+              infos=info))
       if done:
         # finish env_idx-th trajectory
         new_traj = trajectories_accum.finish_trajectory(env_idx)
@@ -236,16 +236,16 @@ def generate_trajectories(policy,
 
   # Sanity checks.
   for trajectory in trajectories:
-    n_steps = len(trajectory.act)
+    n_steps = len(trajectory.acts)
     # extra 1 for the end
     exp_obs = (n_steps + 1, ) + venv.observation_space.shape
     real_obs = trajectory.obs.shape
     assert real_obs == exp_obs, f"expected shape {exp_obs}, got {real_obs}"
     exp_act = (n_steps, ) + venv.action_space.shape
-    real_act = trajectory.act.shape
+    real_act = trajectory.acts.shape
     assert real_act == exp_act, f"expected shape {exp_act}, got {real_act}"
     exp_rew = (n_steps,)
-    real_rew = trajectory.rew.shape
+    real_rew = trajectory.rews.shape
     assert real_rew == exp_rew, f"expected shape {exp_rew}, got {real_rew}"
 
   return trajectories
@@ -279,8 +279,8 @@ def rollout_stats(policy, venv, sample_until: GenTrajTerminationFn, **kwargs):
   assert len(trajectories) > 0
   out_stats = {"n_traj": len(trajectories)}
   traj_descriptors = {
-    "return": np.asarray([sum(t.rew) for t in trajectories]),
-    "len": np.asarray([len(t.rew) for t in trajectories]),
+    "return": np.asarray([sum(t.rews) for t in trajectories]),
+    "len": np.asarray([len(t.rews) for t in trajectories]),
   }
   if "epinfo" in trajectories[0].infos[0]:
     monitor_ep_rewards = [[info["epinfo"]["r"] for info in t.infos]
@@ -319,14 +319,14 @@ def flatten_trajectories(trajectories: Sequence[Trajectory]) -> Transitions:
   keys = ["obs", "next_obs", "act", "rew", "done"]
   parts = {key: [] for key in keys}
   for traj in trajectories:
-    parts["act"].append(traj.act)
-    parts["rew"].append(traj.rew)
+    parts["acts"].append(traj.acts)
+    parts["rews"].append(traj.rews)
     obs = traj.obs
     parts["obs"].append(obs[:-1])
     parts["next_obs"].append(obs[1:])
-    done = np.zeros_like(traj.rew, dtype=np.bool)
-    done[-1] = True
-    parts["done"].append(done)
+    dones = np.zeros_like(traj.rews, dtype=np.bool)
+    dones[-1] = True
+    parts["dones"].append(dones)
   cat_parts = {
     key: np.concatenate(part_list, axis=0)
     for key, part_list in parts.items()

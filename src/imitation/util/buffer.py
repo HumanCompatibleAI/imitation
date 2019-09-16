@@ -225,17 +225,17 @@ class ReplayBuffer:
     self.capacity = capacity
     sample_shapes = {
         'obs': obs_shape,
-        'act': act_shape,
+        'acts': act_shape,
         'next_obs': obs_shape,
-        'rew': (),
-        'done': (),
+        'rews': (),
+        'dones': (),
     }
     dtypes = {
         'obs': obs_dtype,
-        'act': act_dtype,
+        'acts': act_dtype,
         'next_obs': obs_dtype,
-        'rew': np.float32,
-        'done': np.bool,
+        'rews': np.float32,
+        'dones': np.bool,
     }
     self._buffer = Buffer(capacity, sample_shapes=sample_shapes, dtypes=dtypes)
 
@@ -258,10 +258,10 @@ class ReplayBuffer:
       raise ValueError("obs and next_obs must have the same dtype.")
 
     capacity, *obs_shape = transitions.obs.shape
-    _, *act_shape = transitions.act.shape
+    _, *act_shape = transitions.acts.shape
     instance = cls(capacity=capacity, obs_shape=obs_shape, act_shape=act_shape,
                    obs_dtype=transitions.obs.dtype,
-                   act_dtype=transitions.act.dtype)
+                   act_dtype=transitions.acts.dtype)
     instance.store(transitions)
     return instance
 

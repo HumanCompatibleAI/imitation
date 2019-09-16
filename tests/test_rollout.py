@@ -44,6 +44,6 @@ def test_complete_trajectories():
   expected_obs = np.array([[0]] * max_acts + [[1]])
   for trajectory in trajectories:
     obs = trajectory.obs
-    act = trajectory.act
-    assert len(obs) == len(act) + 1
+    acts = trajectory.acts
+    assert len(obs) == len(acts) + 1
     assert np.all(obs == expected_obs)

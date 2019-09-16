@@ -38,7 +38,7 @@ class BCTrainer:
     self.expert_dataset = Dataset(
         {
             "obs": expert_demos.obs,
-            "act": expert_demos.act,
+            "act": expert_demos.acts,
         }, shuffle=True)
     self.graph = tf.Graph()
     self.sess = tf.Session(graph=self.graph)
