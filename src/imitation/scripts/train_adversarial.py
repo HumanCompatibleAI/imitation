@@ -165,6 +165,7 @@ def train(_seed: int,
 
     reward_path = os.path.join(log_dir, "checkpoints", "final", "discrim")
 
+    # TODO(shwang): Add docs for rollout_stats.
     return dict(rollout_stats=stats,
                 log_dir=log_dir,
                 transfer_reward_path=reward_path,

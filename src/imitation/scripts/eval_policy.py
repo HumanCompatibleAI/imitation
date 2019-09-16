@@ -107,9 +107,10 @@ def eval_policy(_seed: int,
       with serialize.load_policy(policy_type, policy_path, venv_eval) as policy:
         return rollout.rollout_stats(policy, venv, sample_until)
 
-    results["orig"] = _get_stats(venv_orig)
+    # TODO(shwang): Add docs for these new results.
+    results["orig_stats"] = _get_stats(venv_orig)
     if venv_transfer is not None:
-      results["transfer"] = _get_stats(venv_transfer)
+      results["transfer_stats"] = _get_stats(venv_transfer)
 
   return results
 
