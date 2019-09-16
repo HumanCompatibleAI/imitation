@@ -4,7 +4,6 @@ import ray
 import ray.tune
 
 from imitation.scripts.config.parallel import parallel_ex
-import imitation.util as util
 
 
 @parallel_ex.main
@@ -53,9 +52,7 @@ def _ray_tune_sacred_wrapper(inner_experiment_name: str) -> Callable:
       "train_adversarial": train_ex,
     }
     ex = experiments[inner_experiment_name]
-
-    with util.make_session():
-      run = ex.run(**config)
+    run = ex.run(**config)
 
     # Ray Tune has a string formatting error if raylet completes without
     # any calls to `reporter`.

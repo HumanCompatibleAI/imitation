@@ -191,6 +191,8 @@ def rollouts_and_policy(
         serialize.save_stable_model(output_dir, policy, vec_normalize)
 
       # Final evaluation of expert policy.
+      # TODO(shwang): Remove reward normalization if applicable: VecNormalize
+      # also normalizes rewards by default.
       stats = util.rollout.rollout_stats(policy, venv, eval_sample_until)
       assert stats["n_traj"] >= n_episodes_eval
       ep_reward_mean = stats["return_mean"]
