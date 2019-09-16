@@ -95,6 +95,8 @@ def eval_policy(_seed: int,
           f"Wrapped env in reward {reward_type} from {reward_path}.")
 
     with serialize.load_policy(policy_type, policy_path, venv) as policy:
+      # TODO(shwang): Remove reward normalization if applicable:
+      # NormalizePolicy/VecNormalize also normalizes rewards by default.
       stats = rollout.rollout_stats(policy, venv,
                                     rollout.min_timesteps(timesteps))
 
