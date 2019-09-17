@@ -282,10 +282,8 @@ def rollout_stats(policy, venv, sample_until: GenTrajTerminationFn, **kwargs):
     "return": np.asarray([sum(t.rew) for t in trajectories]),
     "len": np.asarray([len(t.rew) for t in trajectories]),
   }
-  if "epinfo" in trajectories[0].infos[0]:
-    monitor_ep_rewards = [[info["epinfo"]["r"] for info in t.infos]
-                          for t in trajectories]  # type: List[List[float]]
-    monitor_ep_returns = [sum(ep_rewards) for ep_rewards in monitor_ep_rewards]
+  if "episode" in trajectories[0].infos[-1]:
+    monitor_ep_returns = [t.infos[-1]["episode"]["r"] for t in trajectories]
     traj_descriptors["monitor_return"] = np.asarray(monitor_ep_returns)
 
   stat_names = ["min", "mean", "std", "max"]

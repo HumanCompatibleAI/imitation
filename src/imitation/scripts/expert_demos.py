@@ -1,5 +1,4 @@
 import contextlib
-import math
 import os
 import os.path as osp
 from typing import Optional
@@ -162,19 +161,13 @@ def rollouts_and_policy(
         output_dir = os.path.join(policy_dir, "final")
         serialize.save_stable_model(output_dir, policy, vec_normalize)
 
-      # Disable vec_normalize reward normalization and training.
-      # No longer useful now that we are finished with training.
-      vec_normalize.training = False
-      vec_normalize.norm_reward = False
-
       # Final evaluation of expert policy (unnormalized rewards).
       stats = util.rollout.rollout_stats(policy, venv, eval_sample_until)
       assert stats["n_traj"] >= n_episodes_eval
-      ep_reward_mean = stats["return_mean"]
-      ep_reward_std_err = stats["return_std"] / math.sqrt(n_episodes_eval)
 
-  return dict(ep_reward_mean=ep_reward_mean,
-              ep_reward_std_err=ep_reward_std_err,
+  # TODO(shwang): BEFORE REVIEW Update return docs for this and
+  # train_adversarial and expert_demos.
+  return dict(rollout_stats=stats,
               log_dir=log_dir)
 
 

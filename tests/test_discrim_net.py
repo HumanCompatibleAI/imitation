@@ -1,6 +1,5 @@
 import tempfile
 
-import gym
 import numpy as np
 import pytest
 import tensorflow as tf

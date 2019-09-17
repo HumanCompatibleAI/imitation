@@ -158,7 +158,7 @@ def train(_seed: int,
     # Final evaluation of imitation policy.
     sample_until_eval = util.rollout.min_episodes(n_episodes_eval)
     stats = util.rollout.rollout_stats(trainer.gen_policy,
-                                       trainer.env,
+                                       trainer.env_test,
                                        sample_until=sample_until_eval)
     assert stats["n_traj"] >= n_episodes_eval
 

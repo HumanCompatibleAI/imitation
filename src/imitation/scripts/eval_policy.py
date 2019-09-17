@@ -83,10 +83,9 @@ def eval_policy(_seed: int,
   tf.logging.set_verbosity(tf.logging.INFO)
   tf.logging.info('Logging to %s', log_dir)
   sample_until = rollout.make_sample_until(eval_n_timesteps, eval_n_episodes)
-  venv_orig = venv = util.make_vec_env(env_name, num_vec, seed=_seed,
-                                       parallel=parallel, log_dir=log_dir,
-                                       max_episode_steps=max_episode_steps)
-  venv_transfer = None
+  venv = util.make_vec_env(env_name, num_vec, seed=_seed,
+                           parallel=parallel, log_dir=log_dir,
+                           max_episode_steps=max_episode_steps)
 
   if render:
     venv = InteractiveRender(venv, render_fps)
@@ -96,20 +95,15 @@ def eval_policy(_seed: int,
     if reward_type is not None:
       reward_fn_ctx = load_reward(reward_type, reward_path, venv)
       reward_fn = stack.enter_context(reward_fn_ctx)
-      venv_transfer = venv = reward_wrapper.RewardVecEnvWrapper(venv, reward_fn)
+      venv = reward_wrapper.RewardVecEnvWrapper(venv, reward_fn)
       tf.logging.info(
           f"Wrapped env in reward {reward_type} from {reward_path}.")
 
     result = {}
 
-    def _get_stats(venv_eval):
-      with serialize.load_policy(policy_type, policy_path, venv_eval) as policy:
-        return rollout.rollout_stats(policy, venv, sample_until)
-
-    # TODO(shwang): Add docs for these new results.
-    result["orig_stats"] = _get_stats(venv_orig)
-    if venv_transfer is not None:
-      result["transfer_stats"] = _get_stats(venv_transfer)
+    with serialize.load_policy(policy_type, policy_path, venv) as policy:
+      result["rollout_stats"] = rollout.rollout_stats(
+        policy, venv, sample_until)
 
   return result
 
