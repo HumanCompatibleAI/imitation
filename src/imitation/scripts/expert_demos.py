@@ -94,8 +94,8 @@ def rollouts_and_policy(
           finished.
 
   Returns:
-      A dictionary with the following keys: "ep_reward_mean",
-      "ep_reward_std_err", and "log_dir".
+      A dictionary with the following keys: "rollout_stats" (return value of
+      `rollout_stats()`), and "log_dir".
   """
   sample_until = util.rollout.make_sample_until(rollout_save_n_timesteps,
                                                 rollout_save_n_episodes)
@@ -165,10 +165,7 @@ def rollouts_and_policy(
       stats = util.rollout.rollout_stats(policy, venv, eval_sample_until)
       assert stats["n_traj"] >= n_episodes_eval
 
-  # TODO(shwang): BEFORE REVIEW Update return docs for this and
-  # train_adversarial and expert_demos.
-  return dict(rollout_stats=stats,
-              log_dir=log_dir)
+  return dict(rollout_stats=stats, log_dir=log_dir)
 
 
 @expert_demos_ex.command

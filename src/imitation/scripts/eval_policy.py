@@ -78,7 +78,7 @@ def eval_policy(_seed: int,
         of `reward_type` to override the environment reward with.
 
   Returns:
-    Statistics returned by `imitation.util.rollout.rollout_stats`.
+    Return value of `imitation.util.rollout.rollout_stats()`.
   """
   tf.logging.set_verbosity(tf.logging.INFO)
   tf.logging.info('Logging to %s', log_dir)
