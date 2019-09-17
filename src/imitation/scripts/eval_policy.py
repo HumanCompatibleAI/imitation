@@ -102,8 +102,8 @@ def eval_policy(_seed: int,
     result = {}
 
     with serialize.load_policy(policy_type, policy_path, venv) as policy:
-      result["rollout_stats"] = rollout.rollout_stats(
-        policy, venv, sample_until)
+      result["rollout_stats"] = rollout.rollout_stats(policy, venv,
+                                                      sample_until)
 
   return result
 

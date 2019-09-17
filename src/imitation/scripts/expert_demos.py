@@ -161,7 +161,7 @@ def rollouts_and_policy(
         output_dir = os.path.join(policy_dir, "final")
         serialize.save_stable_model(output_dir, policy, vec_normalize)
 
-      # Final evaluation of expert policy (unnormalized rewards).
+      # Final evaluation of expert policy.
       stats = util.rollout.rollout_stats(policy, venv, eval_sample_until)
       assert stats["n_traj"] >= n_episodes_eval
 
