@@ -316,7 +316,7 @@ def flatten_trajectories(trajectories: Sequence[Trajectory]) -> Transitions:
   Returns:
     The trajectories flattened into a single batch of Transitions.
   """
-  keys = ["obs", "next_obs", "act", "rew", "done"]
+  keys = ["obs", "next_obs", "acts", "rews", "dones"]
   parts = {key: [] for key in keys}
   for traj in trajectories:
     parts["acts"].append(traj.acts)
