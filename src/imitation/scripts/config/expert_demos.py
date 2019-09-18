@@ -153,6 +153,12 @@ def fast():
   max_episode_steps = int(1e3)
 
 
+# @expert_demos_ex.named_config
+# def tensorboard():
+#   init_tensorboard
+# 
+# 
+# 
 # Shared settings
 
 ant_shared_locals = dict(

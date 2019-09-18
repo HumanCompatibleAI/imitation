@@ -53,7 +53,7 @@ def example_cartpole_rl():
   """Example config that spins up 4*4*3 different training runs of cartpole."""
   inner_experiment_name = "expert_demos"
   search_space = {
-    "named_configs": ["cartpole", "fast"],
+    "named_configs": ["cartpole", "fast", "tensorboard"],
     "config_updates": {
       "seed": tune.grid_search([0, 1, 2, 3]),
       "init_rl_kwargs": {
