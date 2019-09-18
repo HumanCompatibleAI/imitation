@@ -12,7 +12,7 @@ def test_bc():
   bc_trainer = bc.BCTrainer(env, expert_demos=rollouts)
   novice_stats = bc_trainer.test_policy()
   bc_trainer.train(n_epochs=40)
-  good_stats = bc_trainer.test_policy()
+  good_stats = bc_trainer.test_policy(n_episodes=25)
   # novice is bad
   assert novice_stats["return_mean"] < 80.0
   # bc is okay but isn't perfect (for the purpose of this test)
