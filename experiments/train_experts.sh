@@ -37,7 +37,7 @@ while getopts "fr" arg; do
     ENVS="cartpole pendulum"
     SEEDS="0"
     OUTPUT_DIR="tests/data"
-    extra_configs="rollout_save_n_episodes=50 rollout_save_n_timesteps=None"
+    extra_configs="rollout_save_n_episodes=50"
   fi
 done
 

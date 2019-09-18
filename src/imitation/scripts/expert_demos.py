@@ -1,5 +1,4 @@
 import contextlib
-import math
 import os
 import os.path as osp
 from typing import Optional
@@ -95,8 +94,8 @@ def rollouts_and_policy(
           finished.
 
   Returns:
-      A dictionary with the following keys: "ep_reward_mean",
-      "ep_reward_std_err", and "log_dir".
+      A dictionary with the following keys: "rollout_stats" (return value of
+      `rollout_stats()`), and "log_dir".
   """
   sample_until = util.rollout.make_sample_until(rollout_save_n_timesteps,
                                                 rollout_save_n_episodes)
@@ -162,20 +161,11 @@ def rollouts_and_policy(
         output_dir = os.path.join(policy_dir, "final")
         serialize.save_stable_model(output_dir, policy, vec_normalize)
 
-      # Disable vec_normalize reward normalization and training.
-      # No longer useful now that we are finished with training.
-      vec_normalize.training = False
-      vec_normalize.norm_reward = False
-
-      # Final evaluation of expert policy (unnormalized rewards).
+      # Final evaluation of expert policy.
       stats = util.rollout.rollout_stats(policy, venv, eval_sample_until)
       assert stats["n_traj"] >= n_episodes_eval
-      ep_reward_mean = stats["return_mean"]
-      ep_reward_std_err = stats["return_std"] / math.sqrt(n_episodes_eval)
 
-  return dict(ep_reward_mean=ep_reward_mean,
-              ep_reward_std_err=ep_reward_std_err,
-              log_dir=log_dir)
+  return dict(rollout_stats=stats, log_dir=log_dir)
 
 
 @expert_demos_ex.command

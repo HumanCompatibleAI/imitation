@@ -62,10 +62,24 @@ def test_eval_policy(config):
       run = eval_policy_ex.run(config_updates=config_updates,
                                named_configs=['fast'])
       assert run.status == 'COMPLETED'
-      assert isinstance(run.results, dict)
-      assert isinstance(run.results.get('orig_stats'), dict)
-      if 'reward_path' in config:  # Transfer learning using loaded reward.
-        assert isinstance(run.results.get('transfer_stats'), dict)
+      wrapped_reward = 'reward_type' in config
+      _check_result_rollout_stats(run.result, wrapped_reward)
+
+
+def _check_result_rollout_stats(result: dict,
+                                wrapped_reward: bool = True):
+  """Common assertions for results["rollout_stats"]."""
+  assert isinstance(result, dict)
+  stats = result.get("rollout_stats")
+  assert isinstance(stats, dict)
+  assert "return_mean" in stats
+  assert "monitor_return_mean" in stats
+  if wrapped_reward:
+    # If the reward is wrapped, then we expect the monitor return
+    # to differ.
+    assert stats.get("return_mean") != stats.get("monitor_return_mean")
+  else:
+    assert stats.get("return_mean") == stats.get("monitor_return_mean")
 
 
 def test_train_adversarial():
@@ -87,7 +101,7 @@ def test_train_adversarial():
         config_updates=config_updates,
     )
     assert run.status == 'COMPLETED'
-    assert isinstance(run.result, dict)
+    _check_result_rollout_stats(run.result)
 
 
 def test_transfer_learning():
@@ -118,7 +132,7 @@ def test_transfer_learning():
         ),
     )
     assert run.status == 'COMPLETED'
-    assert isinstance(run.result, dict)
+    _check_result_rollout_stats(run.result)
 
 
 PARALLEL_CONFIG_UPDATES = [
