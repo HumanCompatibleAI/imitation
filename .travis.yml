@@ -8,7 +8,7 @@ before_install:
 install:
   - pip install '.[test,cpu]'
 script:
-  - pytest -vv src/imitation/tests/
+  - pytest -vv tests/
 
 matrix:
   include:
@@ -25,7 +25,7 @@ matrix:
       # Install in developer mode so codecov can match paths
       - pip install -e '.[test,cpu]'
     script:
-      - py.test -vv --cov-report=xml --cov=. src/imitation/tests/
+      - py.test -vv --cov-report=xml --cov=. tests/
     after_success:
       - codecov
 
