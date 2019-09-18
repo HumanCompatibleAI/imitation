@@ -6,6 +6,7 @@ import pytest
 
 # Unused imports is for side-effect of registering environments
 from imitation.envs import examples  # noqa: F401
+from imitation.testing import envs
 
 ENV_NAMES = [env_spec.id for env_spec in gym.envs.registration.registry.all()
              if env_spec.id.startswith('imitation/')]
@@ -18,18 +19,6 @@ def matches_list(env_name, patterns):
     if re.match(pattern, env_name):
       return True
   return False
-
-
-@pytest.fixture
-def env(env_name):
-  try:
-    env = gym.make(env_name)
-  except gym.error.DependencyNotInstalled as e:  # pragma: no cover
-    if e.args[0].find('mujoco_py') != -1:
-      pytest.skip("Requires `mujoco_py`, which isn't installed.")
-    else:
-      raise
-  return env
 
 
 def rollout(env, actions):
@@ -49,46 +38,26 @@ def assert_equal_rollout(rollout_a, rollout_b):
     assert info_a == info_b
 
 
-class GenericTestEnvs:
-  """Battery of simple tests for environments.
+@pytest.fixture
+def env(env_name):
+  try:
+    env = gym.make(env_name)
+  except gym.error.DependencyNotInstalled as e:  # pragma: no cover
+    if e.args[0].find('mujoco_py') != -1:
+      pytest.skip("Requires `mujoco_py`, which isn't installed.")
+    else:
+      raise
+  return env
 
-  You must apply `pytest.mark.parametrize` to this class, see `TestEnvs`
-  below for an example of usage."""
+
+@pytest.mark.parametrize("env_name", ENV_NAMES)
+class TestEnvs:
+  """Battery of simple tests for environments."""
   def test_seed(self, env, env_name):
-    env.action_space.seed(0)
-    actions = [env.action_space.sample() for _ in range(10)]
-
-    # With the same seed, should always get the same result
-    seeds = env.seed(42)
-    assert isinstance(seeds, list)
-    assert len(seeds) > 0
-    rollout_a = rollout(env, actions)
-
-    env.seed(42)
-    rollout_b = rollout(env, actions)
-
-    assert_equal_rollout(rollout_a, rollout_b)
-
-    # For non-deterministic environments, if we try enough seeds we should
-    # eventually get a different result. For deterministic environments, all
-    # seeds will produce the same starting state.
-    same_obs = True
-    for i in range(20):
-      env.seed(i)
-      new_rollout = rollout(env, actions)
-      for step_a, step_new in zip(rollout_a, new_rollout):
-        obs_a = step_a[0]
-        obs_new = step_new[0]
-        if np.any(obs_a != obs_new):
-          same_obs = False
-          break
-      if not same_obs:
-        break
-
-    is_deterministic = matches_list(env_name, DETERMINISTIC_ENVS)
-    assert same_obs == is_deterministic
+    envs.test_seed(env, env_name, DETERMINISTIC_ENVS)
 
   def test_premature_step(self, env):
+    """Test that you must call reset() before calling step()."""
     if hasattr(env, 'sim') and hasattr(env, 'model'):  # pragma: no cover
       # We can't use isinstance since importing mujoco_py will fail on
       # machines without MuJoCo installed
@@ -103,37 +72,7 @@ class GenericTestEnvs:
     if not hasattr(env, 'state_space'):  # pragma: no cover
       pytest.skip("This test is only for subclasses of ModelBasedEnv.")
 
-    state = env.initial_state()
-    assert env.state_space.contains(state)
-
-    action = env.action_space.sample()
-    new_state = env.transition(state, action)
-    assert env.state_space.contains(new_state)
-
-    reward = env.reward(state, action, new_state)
-    assert isinstance(reward, float)
-
-    done = env.terminal(state, 0)
-    assert isinstance(done, bool)
-
-    obs = env.obs_from_state(state)
-    assert env.observation_space.contains(obs)
-    next_obs = env.obs_from_state(new_state)
-    assert env.observation_space.contains(next_obs)
+    envs.test_model_based(env)
 
   def test_rollout(self, env):
-    """Check custom environments have correct types on `step` and `reset`."""
-    obs_space = env.observation_space
-    obs = env.reset()
-    assert obs in obs_space
-
-    for _ in range(4):
-      act = env.action_space.sample()
-      obs, rew, done, info = env.step(act)
-      assert obs in obs_space
-      assert isinstance(rew, float)
-      assert isinstance(done, bool)
-      assert isinstance(info, dict)
-
-
-TestEnvs = pytest.mark.parametrize("env_name", ENV_NAMES)(GenericTestEnvs)
+    envs.test_rollout(env)
