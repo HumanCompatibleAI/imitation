@@ -1,25 +1,35 @@
-from typing import Callable
+import os.path as osp
+from typing import Callable, Optional
 
 import ray
 import ray.tune
+from sacred.observers import FileStorageObserver
 
 from imitation.scripts.config.parallel import parallel_ex
 import imitation.util as util
 
 
 @parallel_ex.main
-def parallel(inner_experiment_name: str, search_space: dict) -> None:
+def parallel(inner_experiment_name: str,
+             search_space: dict,
+             upload_dir: Optional[str],
+             ) -> None:
   """Parallelize multiple runs of another Sacred Experiment using Ray Tune.
+
+  A Sacred FileObserver is attached to the inner experiment and writes Sacred
+  logs to "{RAY_LOCAL_DIR}/sacred/". These files are automatically copied over
+  to `upload_dir` if that argument is provided.
 
   Args:
     inner_experiment_name: The experiment to tune. Either "expert_demos" or
       "train_adversarial".
-    search_space: `config` argument to `ray.tune.run(trainable, config)`.
+    search_space: `config` argument to `ray.tune.run()`.
+    upload_dir: `upload_dir` argument to `ray.tune.run()`.
   """
+  trainable = _ray_tune_sacred_wrapper(inner_experiment_name)
+  ray.init()
   try:
-    ray.init()
-    trainable = _ray_tune_sacred_wrapper(inner_experiment_name)
-    ray.tune.run(trainable, config=search_space)
+    ray.tune.run(trainable, config=search_space, upload_dir=upload_dir)
   finally:
     ray.shutdown()
 
@@ -54,6 +64,9 @@ def _ray_tune_sacred_wrapper(inner_experiment_name: str) -> Callable:
     }
     ex = experiments[inner_experiment_name]
 
+    observer = FileStorageObserver.create('sacred')
+    ex.observers.append(observer)
+
     with util.make_session():
       run = ex.run(**config)
 
@@ -64,3 +77,10 @@ def _ray_tune_sacred_wrapper(inner_experiment_name: str) -> Callable:
     assert run.status == 'COMPLETED'
     return run.result
   return inner
+
+
+if __name__ == '__main__':
+  observer = FileStorageObserver.create(
+      osp.join('output', 'sacred', 'parallel'))
+  parallel_ex.observers.append(observer)
+  parallel_ex.run_commandline()
