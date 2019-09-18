@@ -98,9 +98,9 @@ def train(_seed: int,
       then only save weights after training is complete.
 
   Returns:
-    A dictionary with the following keys: "ep_reward_mean",
-      "ep_reward_std_err", "log_dir", "transfer_reward_path",
-      "transfer_reward_type".
+    A dictionary with the following keys: "rollout_stats" (return value of
+      `rollout_stats()` on the test reward wrapped environment),
+      "log_dir", "transfer_reward_path", "transfer_reward_type".
   """
   with util.make_session():
     trainer = init_trainer(env_name, rollout_glob=rollout_glob,
@@ -158,13 +158,12 @@ def train(_seed: int,
     # Final evaluation of imitation policy.
     sample_until_eval = util.rollout.min_episodes(n_episodes_eval)
     stats = util.rollout.rollout_stats(trainer.gen_policy,
-                                       trainer.env,
+                                       trainer.env_test,
                                        sample_until=sample_until_eval)
     assert stats["n_traj"] >= n_episodes_eval
 
     reward_path = os.path.join(log_dir, "checkpoints", "final", "discrim")
 
-    # TODO(shwang): Add docs for rollout_stats.
     return dict(rollout_stats=stats,
                 log_dir=log_dir,
                 transfer_reward_path=reward_path,
