@@ -14,6 +14,6 @@ def test_bc():
   bc_trainer.train(n_epochs=40)
   good_stats = bc_trainer.test_policy()
   # novice is bad
-  assert novice_stats["return_mean"] < 100.0
+  assert novice_stats["return_mean"] < 50.0
   # bc is okay but isn't perfect (for the purpose of this test)
-  assert good_stats["return_mean"] > 200.0
+  assert good_stats["return_mean"] > 100.0
