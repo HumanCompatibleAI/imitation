@@ -56,7 +56,7 @@ def example_cartpole_rl():
     "named_configs": ["cartpole", "fast"],
     "config_updates": {
       "seed": tune.grid_search([0, 1, 2, 3]),
-      "make_blank_policy_kwargs": {
+      "init_rl_kwargs": {
         "learning_rate": tune.grid_search([3e-4, 2e-4, 1e-4]),
         "nminibatches": tune.grid_search([16, 32, 64]),
       },

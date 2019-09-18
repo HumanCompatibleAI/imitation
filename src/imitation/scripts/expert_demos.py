@@ -27,7 +27,7 @@ def rollouts_and_policy(
   parallel: bool,
   max_episode_steps: Optional[int],
   normalize: bool,
-  make_blank_policy_kwargs: dict,
+  init_rl_kwargs: dict,
 
   n_episodes_eval: int,
 
@@ -61,7 +61,7 @@ def rollouts_and_policy(
           TimeLimit so that they have at most `max_episode_steps` steps per
           episode.
       normalize: If True, then rescale observations and reward.
-      make_blank_policy_kwargs: Kwargs for `make_blank_policy`.
+      init_rl_kwargs: Kwargs for `make_blank_policy`.
 
       n_episodes_eval: The number of episodes to average over when calculating
           the average ground truth reward return of the final policy.
@@ -129,8 +129,7 @@ def rollouts_and_policy(
       if normalize:
         venv = vec_normalize = VecNormalize(venv)
 
-      policy = util.init_rl(venv, verbose=1,
-                            **make_blank_policy_kwargs)
+      policy = util.init_rl(venv, verbose=1, **init_rl_kwargs)
 
       # Make callback to save intermediate artifacts during training.
       step = 0

@@ -142,7 +142,7 @@ PARALLEL_CONFIG_UPDATES = [
       "named_configs": ["cartpole", "fast"],
       "config_updates": {
         "seed": tune.grid_search([0, 1]),
-        "make_blank_policy_kwargs": {
+        "init_rl_kwargs": {
           "learning_rate": tune.grid_search([3e-4, 1e-4]),
         },
       }},

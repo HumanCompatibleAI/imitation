@@ -7,7 +7,7 @@ from stable_baselines.common import policies
 
 from imitation import util
 from imitation.policies import base
-from imitation.scripts.config.common import DEFAULT_BLANK_POLICY_KWARGS
+from imitation.scripts.config.common import DEFAULT_INIT_RL_KWARGS
 
 train_ex = sacred.Experiment("train_adversarial", interactive=True)
 
@@ -45,8 +45,8 @@ def train_defaults():
           gen_replay_buffer_capacity=1000,
       ),
 
-      make_blank_policy_kwargs=dict(policy_class=base.FeedForward32Policy,
-                                    **DEFAULT_BLANK_POLICY_KWARGS),
+      init_rl_kwargs=dict(policy_class=base.FeedForward32Policy,
+                   **DEFAULT_INIT_RL_KWARGS),
   )
 
   log_root = os.path.join("output", "train_adversarial")  # output directory
@@ -150,7 +150,7 @@ def swimmer():
   env_name = "Swimmer-v2"
   n_epochs = 1000
   init_trainer_kwargs = dict(
-      make_blank_policy_kwargs=dict(
+      init_rl_kwargs=dict(
           policy_network_class=policies.MlpPolicy,
       ),
   )
@@ -203,7 +203,7 @@ def fast():
 ant_shared_locals = dict(
     n_epochs=2000,
     init_trainer_kwargs=dict(
-        make_blank_policy_kwargs=dict(
+        init_rl_kwargs=dict(
             n_steps=2048,  # batch size of 2048*8=16384 due to num_vec
         ),
         max_episode_steps=500,  # To match `inverse_rl` settings.

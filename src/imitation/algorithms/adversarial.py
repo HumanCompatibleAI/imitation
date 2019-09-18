@@ -323,7 +323,7 @@ def init_trainer(env_id: str,
                  discrim_kwargs: bool = {},
                  reward_kwargs: bool = {},
                  trainer_kwargs: bool = {},
-                 make_blank_policy_kwargs: bool = {},
+                 init_rl_kwargs: bool = {},
                  ):
   """Builds an AdversarialTrainer, ready to be trained on a vectorized
     environment and expert demonstrations.
@@ -356,13 +356,13 @@ def init_trainer(env_id: str,
     trainer_kwargs: Arguments for the Trainer constructor.
     reward_kwargs: Arguments for the `*RewardNet` constructor.
     discrim_kwargs: Arguments for the `DiscrimNet*` constructor.
-    make_blank_policy_kwargs: Keyword arguments passed to `make_blank_policy`,
-        used to initialize the trainer.
+    init_rl_kwargs: Keyword arguments passed to `init_rl`,
+        used to initialize the RL algorithm.
   """
   env = util.make_vec_env(env_id, num_vec, seed=seed, parallel=parallel,
                           log_dir=log_dir, max_episode_steps=max_episode_steps)
   gen_policy = util.init_rl(env, verbose=1,
-                            **make_blank_policy_kwargs)
+                            **init_rl_kwargs)
 
   if use_gail:
     discrim = discrim_net.DiscrimNetGAIL(env.observation_space,
