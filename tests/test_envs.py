@@ -49,90 +49,91 @@ def assert_equal_rollout(rollout_a, rollout_b):
     assert info_a == info_b
 
 
-@pytest.mark.parametrize("env_name", ENV_NAMES)
-def test_seed(env, env_name):
-  env.action_space.seed(0)
-  actions = [env.action_space.sample() for _ in range(10)]
+class GenericTestEnvs:
+  """Battery of simple tests for environments.
 
-  # With the same seed, should always get the same result
-  seeds = env.seed(42)
-  assert isinstance(seeds, list)
-  assert len(seeds) > 0
-  rollout_a = rollout(env, actions)
+  You must apply `pytest.mark.parametrize` to this class, see `TestEnvs`
+  below for an example of usage."""
+  def test_seed(self, env, env_name):
+    env.action_space.seed(0)
+    actions = [env.action_space.sample() for _ in range(10)]
 
-  env.seed(42)
-  rollout_b = rollout(env, actions)
+    # With the same seed, should always get the same result
+    seeds = env.seed(42)
+    assert isinstance(seeds, list)
+    assert len(seeds) > 0
+    rollout_a = rollout(env, actions)
 
-  assert_equal_rollout(rollout_a, rollout_b)
+    env.seed(42)
+    rollout_b = rollout(env, actions)
 
-  # For non-deterministic environments, if we try enough seeds we should
-  # eventually get a different result. For deterministic environments, all
-  # seeds will produce the same starting state.
-  same_obs = True
-  for i in range(20):
-    env.seed(i)
-    new_rollout = rollout(env, actions)
-    for step_a, step_new in zip(rollout_a, new_rollout):
-      obs_a = step_a[0]
-      obs_new = step_new[0]
-      if np.any(obs_a != obs_new):
-        same_obs = False
+    assert_equal_rollout(rollout_a, rollout_b)
+
+    # For non-deterministic environments, if we try enough seeds we should
+    # eventually get a different result. For deterministic environments, all
+    # seeds will produce the same starting state.
+    same_obs = True
+    for i in range(20):
+      env.seed(i)
+      new_rollout = rollout(env, actions)
+      for step_a, step_new in zip(rollout_a, new_rollout):
+        obs_a = step_a[0]
+        obs_new = step_new[0]
+        if np.any(obs_a != obs_new):
+          same_obs = False
+          break
+      if not same_obs:
         break
-    if not same_obs:
-      break
 
-  is_deterministic = matches_list(env_name, DETERMINISTIC_ENVS)
-  assert same_obs == is_deterministic
+    is_deterministic = matches_list(env_name, DETERMINISTIC_ENVS)
+    assert same_obs == is_deterministic
 
+  def test_premature_step(self, env):
+    if hasattr(env, 'sim') and hasattr(env, 'model'):  # pragma: no cover
+      # We can't use isinstance since importing mujoco_py will fail on
+      # machines without MuJoCo installed
+      pytest.skip("MuJoCo environments cannot perform this check.")
 
-@pytest.mark.parametrize("env_name", ENV_NAMES)
-def test_premature_step(env):
-  if hasattr(env, 'sim') and hasattr(env, 'model'):  # pragma: no cover
-    # We can't use isinstance since importing mujoco_py will fail on
-    # machines without MuJoCo installed
-    pytest.skip("MuJoCo environments cannot perform this check.")
-
-  act = env.action_space.sample()
-  with pytest.raises(Exception):  # need to call env.reset() first
-    env.step(act)
-
-
-@pytest.mark.parametrize("env_name", ENV_NAMES)
-def test_model_based(env):
-  """Smoke test for each of the ModelBasedEnv methods with basic type checks."""
-  if not hasattr(env, 'state_space'):  # pragma: no cover
-    pytest.skip("This test is only for subclasses of ModelBasedEnv.")
-
-  state = env.initial_state()
-  assert env.state_space.contains(state)
-
-  action = env.action_space.sample()
-  new_state = env.transition(state, action)
-  assert env.state_space.contains(new_state)
-
-  reward = env.reward(state, action, new_state)
-  assert isinstance(reward, float)
-
-  done = env.terminal(state, 0)
-  assert isinstance(done, bool)
-
-  obs = env.obs_from_state(state)
-  assert env.observation_space.contains(obs)
-  next_obs = env.obs_from_state(new_state)
-  assert env.observation_space.contains(next_obs)
-
-
-@pytest.mark.parametrize("env_name", ENV_NAMES)
-def test_rollout(env):
-  """Check custom environments have correct types on `step` and `reset`."""
-  obs_space = env.observation_space
-  obs = env.reset()
-  assert obs in obs_space
-
-  for _ in range(4):
     act = env.action_space.sample()
-    obs, rew, done, info = env.step(act)
-    assert obs in obs_space
-    assert isinstance(rew, float)
+    with pytest.raises(Exception):  # need to call env.reset() first
+      env.step(act)
+
+  def test_model_based(self, env):
+    """Smoke test for each of the ModelBasedEnv methods with type checks."""
+    if not hasattr(env, 'state_space'):  # pragma: no cover
+      pytest.skip("This test is only for subclasses of ModelBasedEnv.")
+
+    state = env.initial_state()
+    assert env.state_space.contains(state)
+
+    action = env.action_space.sample()
+    new_state = env.transition(state, action)
+    assert env.state_space.contains(new_state)
+
+    reward = env.reward(state, action, new_state)
+    assert isinstance(reward, float)
+
+    done = env.terminal(state, 0)
     assert isinstance(done, bool)
-    assert isinstance(info, dict)
+
+    obs = env.obs_from_state(state)
+    assert env.observation_space.contains(obs)
+    next_obs = env.obs_from_state(new_state)
+    assert env.observation_space.contains(next_obs)
+
+  def test_rollout(self, env):
+    """Check custom environments have correct types on `step` and `reset`."""
+    obs_space = env.observation_space
+    obs = env.reset()
+    assert obs in obs_space
+
+    for _ in range(4):
+      act = env.action_space.sample()
+      obs, rew, done, info = env.step(act)
+      assert obs in obs_space
+      assert isinstance(rew, float)
+      assert isinstance(done, bool)
+      assert isinstance(info, dict)
+
+
+TestEnvs = pytest.mark.parametrize("env_name", ENV_NAMES)(GenericTestEnvs)
