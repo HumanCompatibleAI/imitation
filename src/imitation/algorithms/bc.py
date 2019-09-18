@@ -88,7 +88,7 @@ class BCTrainer:
         `imitation.utils.rollout.rollout_stats()`.
     """
     reward_stats = rollout.rollout_stats(
-        self.policy, self.env, n_episodes=n_episodes)
+        self.policy, self.env, sample_until=rollout.min_episodes(n_episodes))
     return reward_stats
 
   def _build_tf_graph(self):

@@ -29,16 +29,18 @@ class TerminalSentinelEnv(gym.Env):
 
 def test_complete_trajectories():
   """Check that complete trajectories are returned by vecenv wrapper,
-  including the terminal observation."""
-  n_episodes = 13
+     including the terminal observation.
+  """
+  min_episodes = 13
   max_acts = 5
   num_envs = 4
   vec_env = DummyVecEnv([lambda: TerminalSentinelEnv(max_acts)] * num_envs)
   policy = RandomPolicy(vec_env.observation_space, vec_env.action_space)
+  sample_until = rollout.min_episodes(min_episodes)
   trajectories = rollout.generate_trajectories(policy,
                                                vec_env,
-                                               n_episodes=n_episodes)
-  assert len(trajectories) >= n_episodes
+                                               sample_until=sample_until)
+  assert len(trajectories) >= min_episodes
   expected_obs = np.array([[0]] * max_acts + [[1]])
   for trajectory in trajectories:
     obs = trajectory.obs

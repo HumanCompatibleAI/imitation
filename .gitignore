@@ -4,6 +4,7 @@
 *.html
 output/
 expert_models/
+auto.pkl
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
