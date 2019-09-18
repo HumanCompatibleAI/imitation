@@ -25,7 +25,7 @@ def config():
     "named_configs": [],
     "config_updates": {},
   }  # `config` argument to `ray.tune.run(trainable, config)`
-  s3_bucket = None  # None disables.
+  s3_bucket = None  # Used to create default `upload_dir` if not None.
 
 
 @parallel_ex.config
@@ -34,7 +34,7 @@ def ray_upload_dir(inner_experiment_name, s3_bucket):
     upload_dir = "s3://{}".format(
       osp.join(s3_bucket, inner_experiment_name, util.make_unique_timestamp()))
   else:
-    upload_dir = None
+    upload_dir = None  # `upload_dir` param from `ray.tune.run`
 
 
 @parallel_ex.named_config
