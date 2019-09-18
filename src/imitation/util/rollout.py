@@ -24,8 +24,6 @@ class Trajectory(NamedTuple):
     infos: A list of info dicts, length (trajectory_len, ).
   """
 
-  # TODO(shwang): IN this and Transitions, act=>acts, rew=>rews (matches
-  # Baselines). done=>dones
   acts: np.ndarray
   obs: np.ndarray
   rews: np.ndarray
