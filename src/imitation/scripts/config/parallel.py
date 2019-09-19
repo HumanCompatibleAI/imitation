@@ -64,4 +64,3 @@ def example_cartpole_rl():
     }}
   base_named_configs = ["cartpole", "fast"]
   base_config_updates = {"init_tensorboard": True}
-
