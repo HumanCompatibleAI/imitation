@@ -28,6 +28,14 @@ imitation.scripts.config.expert\_demos module
    :undoc-members:
    :show-inheritance:
 
+imitation.scripts.config.parallel module
+--------------------------------------------------
+
+.. automodule:: imitation.scripts.config.parallel
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 imitation.scripts.config.train\_adversarial module
 --------------------------------------------------
 

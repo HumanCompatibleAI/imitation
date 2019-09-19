@@ -22,6 +22,10 @@ def train_defaults():
   use_gail = True
   airl_entropy_weight = 1.0
 
+  plot_interval = -1  # Number of epochs in between plots (<=0 disables)
+  n_plot_episodes = 5  # Number of rollouts for each mean_ep_rew data
+  show_plots = True  # Show plots in addition to saving them
+
   init_trainer_kwargs = dict(
       num_vec=8,  # NOTE: changing this also changes the effective n_steps!
       parallel=True,  # Use SubprocVecEnv (generally faster if num_vec>1)
@@ -53,10 +57,13 @@ def train_defaults():
 def paths(env_name, log_root):
   log_dir = os.path.join(log_root, env_name.replace('/', '_'),
                          util.make_unique_timestamp())
-  # Recommended user sets rollout_glob manually
-  rollout_glob = os.path.join("output", "expert_demos",
-                              env_name.replace('/', '_'),
-                              "*", "rollouts", "final.pkl")
+  # Recommended that user sets rollout_glob manually.
+  # By default we guess the named config associated with `env_name`
+  # and attempt to load rollouts from `tests/data`.
+  rollout_glob = os.path.join("tests", "data",
+                              "{named_config}_0".format(
+                                  named_config=env_name.split("-")[0]),
+                              "rollouts", "final.pkl")
 
 
 # Training algorithm configs
@@ -73,6 +80,11 @@ def airl():
   init_trainer_kwargs = dict(
       use_gail=False,
   )
+
+
+@train_ex.named_config
+def plots():
+  plot_interval = 10
 
 
 # Standard Gym env configs
@@ -175,10 +187,10 @@ def fast():
   """Minimize the amount of computation. Useful for test cases."""
   n_epochs = 1
   n_episodes_eval = 1
-  interactive = False
+  show_plots = False
   n_disc_steps_per_epoch = 1
   n_gen_steps_per_epoch = 1
-  n_episodes_per_reward_data = 1
+  n_plot_episodes = 1
   init_trainer_kwargs = dict(
       n_expert_demos=1,
       parallel=False,  # easier to debug with everything in one process

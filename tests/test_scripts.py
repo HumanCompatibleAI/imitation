@@ -6,32 +6,33 @@ named_config for each experiment implicitly sets parallel=False.
 """
 
 import os.path as osp
-import tempfile
+from tempfile import TemporaryDirectory
 
 import pytest
+import ray.tune as tune
 
 from imitation.scripts.eval_policy import eval_policy_ex
 from imitation.scripts.expert_demos import expert_demos_ex
+from imitation.scripts.parallel import parallel_ex
 from imitation.scripts.train_adversarial import train_ex
 
 
 def test_expert_demos_main():
   """Smoke test for imitation.scripts.expert_demos.rollouts_and_policy"""
-  with tempfile.TemporaryDirectory(prefix='imitation-data_collect-main',
-                                   ) as tmpdir:
-      run = expert_demos_ex.run(
-          named_configs=['cartpole', 'fast'],
-          config_updates=dict(
-            log_root=tmpdir,
-          ),
-      )
-      assert run.status == 'COMPLETED'
+  with TemporaryDirectory(prefix='imitation-data_collect-main') as tmpdir:
+    run = expert_demos_ex.run(
+        named_configs=['cartpole', 'fast'],
+        config_updates=dict(
+          log_root=tmpdir,
+        ),
+    )
+    assert run.status == 'COMPLETED'
+    assert isinstance(run.result, dict)
 
 
 def test_expert_demos_rollouts_from_policy():
   """Smoke test for imitation.scripts.expert_demos.rollouts_from_policy"""
-  with tempfile.TemporaryDirectory(prefix='imitation-data_collect-policy',
-                                   ) as tmpdir:
+  with TemporaryDirectory(prefix='imitation-data_collect-policy') as tmpdir:
     run = expert_demos_ex.run(
         command_name="rollouts_from_policy",
         named_configs=['cartpole', 'fast'],
@@ -52,8 +53,7 @@ EVAL_POLICY_CONFIGS = [
 @pytest.mark.parametrize('config', EVAL_POLICY_CONFIGS)
 def test_eval_policy(config):
   """Smoke test for imitation.scripts.eval_policy"""
-  with tempfile.TemporaryDirectory(prefix='imitation-policy_eval',
-                                   ) as tmpdir:
+  with TemporaryDirectory(prefix='imitation-policy_eval') as tmpdir:
       config_updates = {
           'render': False,
           'log_root': tmpdir,
@@ -67,23 +67,24 @@ def test_eval_policy(config):
 
 def test_train_adversarial():
   """Smoke test for imitation.scripts.train_adversarial"""
-  with tempfile.TemporaryDirectory(prefix='imitation-train',
-                                   ) as tmpdir:
-      config_updates = {
-          'init_trainer_kwargs': {
-              # Rollouts are small, decrease size of buffer to avoid warning
-              'trainer_kwargs': {
-                  'n_disc_samples_per_buffer': 50,
-              },
-          },
-          'log_root': tmpdir,
-          'rollout_glob': "tests/data/cartpole_0/rollouts/final.pkl",
-      }
-      run = train_ex.run(
-          named_configs=['cartpole', 'gail', 'fast'],
-          config_updates=config_updates,
-      )
-      assert run.status == 'COMPLETED'
+  with TemporaryDirectory(prefix='imitation-train') as tmpdir:
+    named_configs = ['cartpole', 'gail', 'fast', 'plots']
+    config_updates = {
+        'init_trainer_kwargs': {
+            # Rollouts are small, decrease size of buffer to avoid warning
+            'trainer_kwargs': {
+                'n_disc_samples_per_buffer': 50,
+            },
+        },
+        'log_root': tmpdir,
+        'rollout_glob': "tests/data/cartpole_0/rollouts/final.pkl",
+    }
+    run = train_ex.run(
+        named_configs=named_configs,
+        config_updates=config_updates,
+    )
+    assert run.status == 'COMPLETED'
+    assert isinstance(run.result, dict)
 
 
 def test_transfer_learning():
@@ -91,8 +92,7 @@ def test_transfer_learning():
 
   Save a dummy AIRL test reward, then load it for transfer learning."""
 
-  with tempfile.TemporaryDirectory(prefix='imitation-transfer',
-                                   ) as tmpdir:
+  with TemporaryDirectory(prefix='imitation-transfer') as tmpdir:
     log_dir_train = osp.join(tmpdir, "train")
     run = train_ex.run(
         named_configs=['cartpole', 'airl', 'fast'],
@@ -102,6 +102,7 @@ def test_transfer_learning():
         ),
     )
     assert run.status == 'COMPLETED'
+    assert isinstance(run.result, dict)
 
     log_dir_data = osp.join(tmpdir, "expert_demos")
     discrim_path = osp.join(log_dir_train, "checkpoints", "final", "discrim")
@@ -114,3 +115,44 @@ def test_transfer_learning():
         ),
     )
     assert run.status == 'COMPLETED'
+    assert isinstance(run.result, dict)
+
+
+PARALLEL_CONFIG_UPDATES = [
+  dict(
+    inner_experiment_name="expert_demos",
+    search_space={
+      "named_configs": ["cartpole", "fast"],
+      "config_updates": {
+        "seed": tune.grid_search([0, 1]),
+        "make_blank_policy_kwargs": {
+          "learning_rate": tune.grid_search([3e-4, 1e-4]),
+        },
+      }},
+  ),
+  dict(
+    inner_experiment_name="train_adversarial",
+    search_space={
+      "named_configs": ["cartpole", "gail", "fast"],
+      "config_updates": {
+        'init_trainer_kwargs': {
+          'reward_kwargs': {
+            'phi_units': tune.grid_search([[16, 16], [7, 9]]),
+          },
+        },
+        # Need absolute path because raylet runs in different working directory.
+        'rollout_glob': osp.abspath("tests/data/cartpole_0/rollouts/final.pkl"),
+      }},
+  ),
+]
+
+
+@pytest.mark.parametrize("config_updates", PARALLEL_CONFIG_UPDATES)
+def test_parallel(config_updates):
+  """Hyperparam tuning smoke test."""
+  # No need for TemporaryDirectory because the hyperparameter tuning script
+  # itself generates no artifacts, and "debug_log_root" sets inner experiment's
+  # log_root="/tmp/parallel_debug/".
+  run = parallel_ex.run(named_configs=["debug_log_root"],
+                        config_updates=config_updates)
+  assert run.status == 'COMPLETED'
