@@ -34,6 +34,8 @@ def expert_demos_defaults():
   policy_save_interval = 100  # Num updates between saves (<=0 disables)
   policy_save_final = True  # If True, save after training is finished.
 
+  init_tensorboard = False  # If True, then write Tensorboard logs.
+
   log_root = os.path.join("output", "expert_demos")  # output directory
 
 
@@ -153,12 +155,6 @@ def fast():
   max_episode_steps = int(1e3)
 
 
-# @expert_demos_ex.named_config
-# def tensorboard():
-#   init_tensorboard
-# 
-# 
-# 
 # Shared settings
 
 ant_shared_locals = dict(

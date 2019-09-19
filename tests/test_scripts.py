@@ -24,6 +24,7 @@ def test_expert_demos_main():
         named_configs=['cartpole', 'fast'],
         config_updates=dict(
           log_root=tmpdir,
+          init_tensorboard=True,
         ),
     )
     assert run.status == 'COMPLETED'
@@ -95,6 +96,7 @@ def test_train_adversarial():
         },
         'log_root': tmpdir,
         'rollout_glob': "tests/data/cartpole_0/rollouts/final.pkl",
+        'init_tensorboard': True,
     }
     run = train_ex.run(
         named_configs=named_configs,
@@ -138,8 +140,8 @@ def test_transfer_learning():
 PARALLEL_CONFIG_UPDATES = [
   dict(
     inner_experiment_name="expert_demos",
+    base_named_configs=["cartpole", "fast"],
     search_space={
-      "named_configs": ["cartpole", "fast"],
       "config_updates": {
         "seed": tune.grid_search([0, 1]),
         "init_rl_kwargs": {
@@ -149,16 +151,18 @@ PARALLEL_CONFIG_UPDATES = [
   ),
   dict(
     inner_experiment_name="train_adversarial",
+    base_named_configs=["cartpole", "gail", "fast"],
+    base_config_updates={
+      # Need absolute path because raylet runs in different working directory.
+      'rollout_glob': osp.abspath("tests/data/cartpole_0/rollouts/final.pkl"),
+    },
     search_space={
-      "named_configs": ["cartpole", "gail", "fast"],
       "config_updates": {
         'init_trainer_kwargs': {
           'reward_kwargs': {
             'phi_units': tune.grid_search([[16, 16], [7, 9]]),
           },
         },
-        # Need absolute path because raylet runs in different working directory.
-        'rollout_glob': osp.abspath("tests/data/cartpole_0/rollouts/final.pkl"),
       }},
   ),
 ]

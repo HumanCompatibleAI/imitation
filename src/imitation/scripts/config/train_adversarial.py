@@ -46,11 +46,12 @@ def train_defaults():
       ),
 
       init_rl_kwargs=dict(policy_class=base.FeedForward32Policy,
-                   **DEFAULT_INIT_RL_KWARGS),
+                          **DEFAULT_INIT_RL_KWARGS),
   )
 
   log_root = os.path.join("output", "train_adversarial")  # output directory
   checkpoint_interval = 5  # num epochs between checkpoints (<=0 disables)
+  init_tensorboard = False  # If True, then write Tensorboard logs.
 
 
 @train_ex.config
