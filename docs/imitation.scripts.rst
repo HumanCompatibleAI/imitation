@@ -27,6 +27,15 @@ imitation.scripts.expert\_demos module
    :undoc-members:
    :show-inheritance:
 
+imitation.scripts.parallel module
+-------------------------------------------
+
+.. automodule:: imitation.scripts.parallel
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+
 imitation.scripts.train\_adversarial module
 -------------------------------------------
 

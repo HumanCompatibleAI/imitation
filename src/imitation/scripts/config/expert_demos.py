@@ -17,6 +17,10 @@ def expert_demos_defaults():
   normalize = True  # Use VecNormalize
   max_episode_steps = None  # Set to positive int to limit episode horizons
   make_blank_policy_kwargs = dict(DEFAULT_BLANK_POLICY_KWARGS)
+  # TODO(shwang): We should make it so that we always evaluate rewards
+  # relative to ground truth reward. (or maybe evaluate relative to both
+  # ground truth reward and custom reward when possible)
+  n_episodes_eval = 50  # Num of episodes for final ep reward mean evaluation
 
   # If specified, overrides the ground-truth environment reward
   reward_type = None  # override reward type
@@ -41,8 +45,10 @@ def logging(env_name, log_root):
 
 @expert_demos_ex.config
 def rollouts_from_policy_only_defaults(log_dir):
-    rollout_save_path = os.path.join(
-        log_dir, "rollout.pkl")  # Save path for `rollouts_from_policy` only.
+  policy_path = None  # Policy path for rollouts_from_policy command only
+  policy_type = "ppo2"  # Policy type for rollouts_from_policy command only
+  rollout_save_path = os.path.join(
+      log_dir, "rollout.pkl")  # Save path for `rollouts_from_policy` only.
 
 
 # Standard Gym env configs
@@ -134,8 +140,8 @@ def two_d_maze():
 @expert_demos_ex.named_config
 def fast():
   """Intended for testing purposes: small # of updates, ends quickly."""
-  total_timesteps = int(1e4)
-  max_episode_steps = int(1e4)
+  total_timesteps = int(1e3)
+  max_episode_steps = int(1e3)
 
 
 # Shared settings

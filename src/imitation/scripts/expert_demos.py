@@ -1,4 +1,5 @@
 import contextlib
+import math
 import os
 import os.path as osp
 from typing import Optional
@@ -50,28 +51,31 @@ def rollouts_and_policy(
   env_name: str,
   total_timesteps: int,
   *,
-  log_dir: str = None,
-  num_vec: int = 8,
-  parallel: bool = False,
-  max_episode_steps: Optional[int] = None,
-  normalize: bool = True,
-  make_blank_policy_kwargs: dict = {},
+  log_dir: str,
+  num_vec: int,
+  parallel: bool,
+  max_episode_steps: Optional[int],
+  normalize: bool,
+  make_blank_policy_kwargs: dict,
 
-  reward_type: Optional[str] = None,
-  reward_path: Optional[str] = None,
+  n_episodes_eval: int,
 
-  rollout_save_interval: int = 0,
-  rollout_save_final: bool = False,
-  rollout_save_n_timesteps: Optional[int] = None,
-  rollout_save_n_episodes: Optional[int] = None,
+  reward_type: Optional[str],
+  reward_path: Optional[str],
 
-  policy_save_interval: int = -1,
-  policy_save_final: bool = True,
-) -> None:
+  rollout_save_interval: int,
+  rollout_save_final: bool,
+  rollout_save_n_timesteps: Optional[int],
+  rollout_save_n_episodes: Optional[int],
+
+  policy_save_interval: int,
+  policy_save_final: bool,
+) -> dict:
   """Trains an expert policy from scratch and saves the rollouts and policy.
 
-  At applicable training steps `step` (where step is either an integer or
-  "final"):
+  Checkpoints:
+    At applicable training steps `step` (where step is either an integer or
+    "final"):
 
       - Policies are saved to `{log_dir}/policies/{step}/`.
       - Rollouts are saved to `{log_dir}/rollouts/{step}.pkl`.
@@ -87,6 +91,9 @@ def rollouts_and_policy(
           episode.
       normalize: If True, then rescale observations and reward.
       make_blank_policy_kwargs: Kwargs for `make_blank_policy`.
+
+      n_episodes_eval: The number of episodes to average over when calculating
+          the average ground truth reward return of the final policy.
 
       reward_type: If provided, then load the serialized reward of this type,
           wrapping the environment in this reward. This is useful to test
@@ -114,9 +121,14 @@ def rollouts_and_policy(
           the same semantics are `rollout_save_interval`.
       policy_save_final: If True, then save the policy right after training is
           finished.
+
+  Returns:
+      A dictionary with the following keys: "ep_reward_mean",
+      "ep_reward_std_err", and "log_dir".
   """
   sample_until = traj_sample_until(rollout_save_n_timesteps,
                                    rollout_save_n_episodes)
+  eval_sample_until = util.rollout.min_episodes(n_episodes_eval)
 
   with util.make_session():
     tf.logging.set_verbosity(tf.logging.INFO)
@@ -167,7 +179,6 @@ def rollouts_and_policy(
         if policy_save_interval > 0 and step % policy_save_interval == 0:
           output_dir = os.path.join(policy_dir, f'{step:05d}')
           serialize.save_stable_model(output_dir, policy, vec_normalize)
-        return True  # Continue training.
 
       policy.learn(total_timesteps, callback=callback)
 
@@ -178,6 +189,18 @@ def rollouts_and_policy(
       if policy_save_final:
         output_dir = os.path.join(policy_dir, "final")
         serialize.save_stable_model(output_dir, policy, vec_normalize)
+
+      # Final evaluation of expert policy.
+      # TODO(shwang): Remove reward normalization if applicable: VecNormalize
+      # also normalizes rewards by default.
+      stats = util.rollout.rollout_stats(policy, venv, eval_sample_until)
+      assert stats["n_traj"] >= n_episodes_eval
+      ep_reward_mean = stats["return_mean"]
+      ep_reward_std_err = stats["return_std"] / math.sqrt(n_episodes_eval)
+
+  return dict(ep_reward_mean=ep_reward_mean,
+              ep_reward_std_err=ep_reward_std_err,
+              log_dir=log_dir)
 
 
 @expert_demos_ex.command
@@ -190,11 +213,11 @@ def rollouts_from_policy(
   rollout_save_n_episodes: int,
   log_dir: str,
   policy_path: str,
-  policy_type: str = "ppo2",
-  env_name: str = "CartPole-v1",
-  parallel: bool = True,
+  policy_type: str,
+  env_name: str,
+  parallel: bool,
   rollout_save_path: str,
-  max_episode_steps: Optional[int] = None,
+  max_episode_steps: Optional[int],
 ) -> None:
   """Loads a saved policy and generates rollouts.
 
