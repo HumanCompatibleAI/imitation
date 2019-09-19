@@ -60,7 +60,7 @@ def test_serialize_identity(session, env_id, discrim_net_cls):
   for net in [original, loaded]:
     feed_dict.update({
         net.obs_ph: transitions.obs,
-        net.act_ph: transitions.act,
+        net.act_ph: transitions.acts,
         net.next_obs_ph: transitions.next_obs,
         net.labels_ph: labels,
         net.log_policy_act_prob_ph: log_prob,

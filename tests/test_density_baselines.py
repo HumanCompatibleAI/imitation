@@ -27,8 +27,8 @@ def score_trajectories(trajectories: Sequence[rollout.Trajectory],
   # score trajectories under given reward function w/o discount
   returns = []
   for traj in trajectories:
-    steps = np.arange(0, len(traj.act))
-    rewards = reward_fn(traj.obs[:-1], traj.act, traj.obs[1:], steps)
+    steps = np.arange(0, len(traj.acts))
+    rewards = reward_fn(traj.obs[:-1], traj.acts, traj.obs[1:], steps)
     ret = np.sum(rewards)
     returns.append(ret)
   return np.mean(returns)
