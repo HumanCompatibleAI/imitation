@@ -62,5 +62,5 @@ def example_cartpole_rl():
         "nminibatches": tune.grid_search([16, 32]),
       },
     }}
-  base_named_configs = ["cartpole", "fast"]
+  base_named_configs = ["cartpole"]
   base_config_updates = {"init_tensorboard": True}
