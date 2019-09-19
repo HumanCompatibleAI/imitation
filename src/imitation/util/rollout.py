@@ -29,7 +29,7 @@ class Trajectory(NamedTuple):
   act: np.ndarray
   obs: np.ndarray
   rew: np.ndarray
-  infos: List[dict]
+  infos: Optional[List[dict]]
 
 
 class Transitions(NamedTuple):
@@ -252,7 +252,7 @@ def generate_trajectories(policy,
 
 
 def rollout_stats(policy, venv: VecEnv, sample_until: GenTrajTerminationFn,
-                  **kwargs):
+                  **kwargs) -> dict:
   """Rolls out trajectories under the policy and returns various statistics.
 
   Args:
@@ -370,18 +370,27 @@ def save(path: str,
          policy: Union[BaseRLModel, BasePolicy],
          venv: VecEnv,
          sample_until: GenTrajTerminationFn,
+         *,
+         exclude_infos: bool = True,
          **kwargs,
          ) -> None:
     """Generate policy rollouts and save them to a pickled Sequence[Trajectory].
+
+    The `.infos` field of each Trajectory is set to `None` to save space.
 
     Args:
       path: Rollouts are saved to this path.
       venv: The vectorized environments.
       sample_until: End condition for rollout sampling.
+      exclude_infos: If True, then exclude `infos` from pickle by setting
+        this field to None. Excluding `infos` can save a lot of space during
+        pickles.
       deterministic_policy: Argument from `generate_trajectories`.
     """
     os.makedirs(os.path.dirname(path), exist_ok=True)
     trajs = generate_trajectories(policy, venv, sample_until, **kwargs)
+    if exclude_infos:
+      trajs = [traj._replace(infos=None) for traj in trajs]
     with open(path, "wb") as f:
       pickle.dump(trajs, f)
     tf.logging.info("Dumped demonstrations to {}.".format(path))

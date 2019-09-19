@@ -63,14 +63,11 @@ def test_eval_policy(config):
                                named_configs=['fast'])
       assert run.status == 'COMPLETED'
       wrapped_reward = 'reward_type' in config
-      _check_result_rollout_stats(run.result, wrapped_reward)
+      _check_rollout_stats(run.result, wrapped_reward)
 
 
-def _check_result_rollout_stats(result: dict,
-                                wrapped_reward: bool = True):
+def _check_rollout_stats(stats: dict, wrapped_reward: bool = True):
   """Common assertions for results["rollout_stats"]."""
-  assert isinstance(result, dict)
-  stats = result.get("rollout_stats")
   assert isinstance(stats, dict)
   assert "return_mean" in stats
   assert "monitor_return_mean" in stats
@@ -101,7 +98,7 @@ def test_train_adversarial():
         config_updates=config_updates,
     )
     assert run.status == 'COMPLETED'
-    _check_result_rollout_stats(run.result)
+    _check_rollout_stats(run.result)
 
 
 def test_transfer_learning():
@@ -132,7 +129,7 @@ def test_transfer_learning():
         ),
     )
     assert run.status == 'COMPLETED'
-    _check_result_rollout_stats(run.result)
+    _check_rollout_stats(run.result)
 
 
 PARALLEL_CONFIG_UPDATES = [

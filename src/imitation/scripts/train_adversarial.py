@@ -98,9 +98,8 @@ def train(_seed: int,
       then only save weights after training is complete.
 
   Returns:
-    A dictionary with the following keys: "rollout_stats" (return value of
-      `rollout_stats()` on the test reward wrapped environment),
-      "log_dir", "transfer_reward_path", "transfer_reward_type".
+    The return value of `rollout_stats()` on the test-reward-wrapped
+    environment, using the final policy.
   """
   with util.make_session():
     trainer = init_trainer(env_name, rollout_glob=rollout_glob,
@@ -160,14 +159,7 @@ def train(_seed: int,
     stats = util.rollout.rollout_stats(trainer.gen_policy,
                                        trainer.venv_test,
                                        sample_until=sample_until_eval)
-    assert stats["n_traj"] >= n_episodes_eval
-
-    reward_path = os.path.join(log_dir, "checkpoints", "final", "discrim")
-
-    return dict(rollout_stats=stats,
-                log_dir=log_dir,
-                transfer_reward_path=reward_path,
-                transfer_reward_type="DiscrimNet")
+    return stats
 
 
 class _TrainVisualizer:

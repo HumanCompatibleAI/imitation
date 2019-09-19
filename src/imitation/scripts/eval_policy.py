@@ -99,13 +99,8 @@ def eval_policy(_seed: int,
       tf.logging.info(
           f"Wrapped env in reward {reward_type} from {reward_path}.")
 
-    result = {}
-
     with serialize.load_policy(policy_type, policy_path, venv) as policy:
-      result["rollout_stats"] = rollout.rollout_stats(policy, venv,
-                                                      sample_until)
-
-  return result
+      return rollout.rollout_stats(policy, venv, sample_until)
 
 
 if __name__ == "__main__":

@@ -94,8 +94,7 @@ def rollouts_and_policy(
           finished.
 
   Returns:
-      A dictionary with the following keys: "rollout_stats" (return value of
-      `rollout_stats()`), and "log_dir".
+    The return value of `rollout_stats()` using the final policy.
   """
   sample_until = util.rollout.make_sample_until(rollout_save_n_timesteps,
                                                 rollout_save_n_episodes)
@@ -163,9 +162,8 @@ def rollouts_and_policy(
 
       # Final evaluation of expert policy.
       stats = util.rollout.rollout_stats(policy, venv, eval_sample_until)
-      assert stats["n_traj"] >= n_episodes_eval
 
-  return dict(rollout_stats=stats, log_dir=log_dir)
+  return stats
 
 
 @expert_demos_ex.command
