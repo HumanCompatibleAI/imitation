@@ -36,7 +36,6 @@ def _ray_tune_sacred_wrapper(inner_experiment_name: str) -> Callable:
   Args:
     inner_experiment_name: The experiment to tune. Either "expert_demos" or
       "train_adversarial".
-    command_name: If provided, then run this particular command. Otherwise, run
   Returns:
     A function that takes two arguments, `config` (used as keyword args for
     `ex.run`) and `reporter`. The function returns the run result.
