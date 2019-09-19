@@ -63,7 +63,7 @@ def rollouts_and_policy(
           TimeLimit so that they have at most `max_episode_steps` steps per
           episode.
       normalize: If True, then rescale observations and reward.
-      init_rl_kwargs: Kwargs for `make_blank_policy`.
+      init_rl_kwargs: kwargs for `init_rl`.
 
       n_episodes_eval: The number of episodes to average over when calculating
           the average ground truth reward return of the final policy.
