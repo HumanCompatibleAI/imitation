@@ -118,7 +118,7 @@ def train(_seed: int,
       # a clean way to pull the raw `List[Trajectory]` out of `init_trainer`.
       n_expert_demos = init_trainer_kwargs.get("n_expert_demos")
       if n_expert_demos is not None:
-        expert_mean_ep_reward = trainer.expert_demos.rew / n_expert_demos
+        expert_mean_ep_reward = trainer.expert_demos.rews / n_expert_demos
       else:
         expert_mean_ep_reward = None
 

@@ -140,7 +140,7 @@ class AdversarialTrainer:
     Args:
         n_steps (int): The number of training steps.
         gen_obs (np.ndarray): See `_build_disc_feed_dict`.
-        gen_act (np.ndarray): See `_build_disc_feed_dict`.
+        gen_acts (np.ndarray): See `_build_disc_feed_dict`.
         gen_next_obs (np.ndarray): See `_build_disc_feed_dict`.
     """
     for _ in range(n_steps):
@@ -200,7 +200,7 @@ class AdversarialTrainer:
 
     Args:
         gen_obs (np.ndarray): See `_build_disc_feed_dict`.
-        gen_act (np.ndarray): See `_build_disc_feed_dict`.
+        gen_acts (np.ndarray): See `_build_disc_feed_dict`.
         gen_next_obs (np.ndarray): See `_build_disc_feed_dict`.
 
     Returns:
@@ -229,7 +229,7 @@ class AdversarialTrainer:
 
   def _build_disc_feed_dict(self, *,
                             gen_obs: Optional[np.ndarray] = None,
-                            gen_act: Optional[np.ndarray] = None,
+                            gen_acts: Optional[np.ndarray] = None,
                             gen_next_obs: Optional[np.ndarray] = None,
                             ) -> dict:
     """Build a feed dict that holds the next training batch of generator
@@ -239,19 +239,19 @@ class AdversarialTrainer:
         gen_obs (np.ndarray): A numpy array with shape
             `[self.n_disc_samples_per_buffer_per_buffer] + env.observation_space.shape`.
             The ith observation in this array is the observation seen when the
-            generator chooses action `gen_act[i]`.
-        gen_act (np.ndarray): A numpy array with shape
+            generator chooses action `gen_acts[i]`.
+        gen_acts (np.ndarray): A numpy array with shape
             `[self.n_disc_samples_per_buffer_per_buffer] + env.action_space.shape`.
         gen_next_obs (np.ndarray): A numpy array with shape
             `[self.n_disc_samples_per_buffer_per_buffer] + env.observation_space.shape`.
             The ith observation in this array is from the transition state after
-            the generator chooses action `gen_act[i]`.
+            the generator chooses action `gen_acts[i]`.
     """  # noqa: E501
 
     # Sample generator training batch from replay buffers, unless provided
     # in argument.
     none_count = sum(int(x is None)
-                     for x in (gen_obs, gen_act, gen_next_obs))
+                     for x in (gen_obs, gen_acts, gen_next_obs))
     if none_count == 3:
       tf.logging.debug("_build_disc_feed_dict: No generator rollout "
                        "parameters were "
@@ -259,7 +259,7 @@ class AdversarialTrainer:
       gen_sample = self._gen_replay_buffer.sample(
           self._n_disc_samples_per_buffer)
       gen_obs = gen_sample.obs
-      gen_act = gen_sample.act
+      gen_acts = gen_sample.acts
       gen_next_obs = gen_sample.next_obs
     elif none_count != 0:
       raise ValueError("Gave some but not all of the generator params.")
@@ -272,27 +272,27 @@ class AdversarialTrainer:
     n_expert = len(expert_sample.obs)
     n_gen = len(gen_obs)
     N = n_expert + n_gen
-    assert n_expert == len(expert_sample.act)
+    assert n_expert == len(expert_sample.acts)
     assert n_expert == len(expert_sample.next_obs)
-    assert n_gen == len(gen_act)
+    assert n_gen == len(gen_acts)
     assert n_gen == len(gen_next_obs)
 
     # Concatenate rollouts, and label each row as expert or generator.
     obs = np.concatenate([expert_sample.obs, gen_obs])
-    act = np.concatenate([expert_sample.act, gen_act])
+    acts = np.concatenate([expert_sample.acts, gen_acts])
     next_obs = np.concatenate([expert_sample.next_obs, gen_next_obs])
     labels = np.concatenate([np.zeros(n_expert, dtype=int),
                              np.ones(n_gen, dtype=int)])
 
     # Calculate generator-policy log probabilities.
-    log_act_prob = self._gen_policy.action_probability(obs, actions=act,
+    log_act_prob = self._gen_policy.action_probability(obs, actions=acts,
                                                        logp=True)
     assert len(log_act_prob) == N
     log_act_prob = log_act_prob.reshape((N,))
 
     fd = {
         self.discrim.obs_ph: obs,
-        self.discrim.act_ph: act,
+        self.discrim.act_ph: acts,
         self.discrim.next_obs_ph: next_obs,
         self.discrim.labels_ph: labels,
         self.discrim.log_policy_act_prob_ph: log_act_prob,

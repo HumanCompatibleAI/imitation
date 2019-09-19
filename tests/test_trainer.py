@@ -41,7 +41,7 @@ def test_train_disc_no_crash(use_gail, parallel,
   transitions = rollout.generate_transitions(trainer.gen_policy,
                                              trainer.venv,
                                              n_timesteps=n_timesteps)
-  trainer.train_disc(gen_obs=transitions.obs, gen_act=transitions.act,
+  trainer.train_disc(gen_obs=transitions.obs, gen_acts=transitions.acts,
                      gen_next_obs=transitions.next_obs)
 
 
@@ -61,7 +61,7 @@ def test_train_disc_improve_D(use_gail, n_timesteps=200,
                                              trainer.venv,
                                              n_timesteps=n_timesteps)
   kwargs = dict(gen_obs=transitions.obs,
-                gen_act=transitions.act,
+                gen_acts=transitions.acts,
                 gen_next_obs=transitions.next_obs)
   loss1 = trainer.eval_disc_loss(**kwargs)
   trainer.train_disc(n_steps=n_steps, **kwargs)
