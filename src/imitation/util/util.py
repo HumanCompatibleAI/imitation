@@ -29,31 +29,6 @@ def make_unique_timestamp():
   return f"{timestamp}_{random_uuid}"
 
 
-def maybe_load_env(env_or_str, vectorize=True):
-  """Load an environment if it isn't already loaded. Then optionally vectorize
-  it as a DummyVecEnv, if it isn't already vectorized.
-
-  Args:
-      env_or_str (str or gym.Env): If `env_or_str` is a str, it's loaded
-          before returning.
-      vectorize (bool): If True, then vectorize the environment before
-          returning, if it isn't already vectorized.
-
-  Return:
-      env (gym.Env): Either the original argument if it was an Env or an
-          instantiated gym Env if it was a string.
-  """
-  if isinstance(env_or_str, str):
-    env = gym.make(env_or_str)
-  else:
-    env = env_or_str
-
-  if not is_vec_env(env) and vectorize:
-    env = DummyVecEnv([lambda: env])
-
-  return env
-
-
 def make_vec_env(env_id: str,
                  n_envs: int = 8,
                  seed: int = 0,
@@ -92,10 +67,6 @@ def make_vec_env(env_id: str,
     return SubprocVecEnv(env_fns, start_method='forkserver')
   else:
     return DummyVecEnv(env_fns)
-
-
-def is_vec_env(env):
-  return isinstance(env, VecEnv)
 
 
 def init_rl(env: Union[gym.Env, VecEnv],

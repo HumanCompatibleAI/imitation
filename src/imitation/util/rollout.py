@@ -251,7 +251,8 @@ def generate_trajectories(policy,
   return trajectories
 
 
-def rollout_stats(policy, venv, sample_until: GenTrajTerminationFn, **kwargs):
+def rollout_stats(policy, venv: VecEnv, sample_until: GenTrajTerminationFn,
+                  **kwargs):
   """Rolls out trajectories under the policy and returns various statistics.
 
   Args:

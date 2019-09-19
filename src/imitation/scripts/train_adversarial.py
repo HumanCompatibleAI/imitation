@@ -144,9 +144,9 @@ def train(_seed: int,
 
       if visualizer and epoch % plot_interval == 0:
         visualizer.plot_disc_loss()
-        visualizer.add_data_ep_reward(trainer.env, "Ground Truth Reward")
-        visualizer.add_data_ep_reward(trainer.env_train, "Train Reward")
-        visualizer.add_data_ep_reward(trainer.env_test, "Test Reward")
+        visualizer.add_data_ep_reward(trainer.venv, "Ground Truth Reward")
+        visualizer.add_data_ep_reward(trainer.venv_train, "Train Reward")
+        visualizer.add_data_ep_reward(trainer.venv_test, "Test Reward")
         visualizer.plot_ep_reward()
 
       if checkpoint_interval > 0 and epoch % checkpoint_interval == 0:
@@ -158,7 +158,7 @@ def train(_seed: int,
     # Final evaluation of imitation policy.
     sample_until_eval = util.rollout.min_episodes(n_episodes_eval)
     stats = util.rollout.rollout_stats(trainer.gen_policy,
-                                       trainer.env_test,
+                                       trainer.venv_test,
                                        sample_until=sample_until_eval)
     assert stats["n_traj"] >= n_episodes_eval
 
@@ -204,9 +204,9 @@ class _TrainVisualizer:
 
     # Collect data for epoch 0.
     self.add_data_disc_loss(False)
-    self.add_data_ep_reward(self.trainer.env, "Ground Truth Reward")
-    self.add_data_ep_reward(self.trainer.env_train, "Train Reward")
-    self.add_data_ep_reward(self.trainer.env_test, "Test Reward")
+    self.add_data_ep_reward(self.trainer.venv, "Ground Truth Reward")
+    self.add_data_ep_reward(self.trainer.venv_train, "Train Reward")
+    self.add_data_ep_reward(self.trainer.venv_test, "Test Reward")
 
   def add_data_disc_loss(self, generator_active: bool = False):
     """Evaluates and records the discriminator loss for plotting later.
@@ -245,7 +245,7 @@ class _TrainVisualizer:
     self.gen_ep_reward[name].append(gen_ret)
     tf.logging.info("generator return: {}".format(gen_ret))
 
-    rand_policy = util.init_rl(self.trainer.env)
+    rand_policy = util.init_rl(self.trainer.venv)
     rand_ret = util.rollout.mean_return(rand_policy, env, sample_until)
     self.rand_ep_reward[name].append(rand_ret)
     tf.logging.info("random return: {}".format(rand_ret))
