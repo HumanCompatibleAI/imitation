@@ -1,7 +1,6 @@
-import re
+"""Test imitation.envs.*."""
 
 import gym
-import numpy as np
 import pytest
 
 # Unused imports is for side-effect of registering environments
@@ -12,30 +11,6 @@ ENV_NAMES = [env_spec.id for env_spec in gym.envs.registration.registry.all()
              if env_spec.id.startswith('imitation/')]
 
 DETERMINISTIC_ENVS = []
-
-
-def matches_list(env_name, patterns):
-  for pattern in patterns:  # pragma: no cover
-    if re.match(pattern, env_name):
-      return True
-  return False
-
-
-def rollout(env, actions):
-  ret = [(env.reset(), None, None, None)]
-  for act in actions:
-    ret.append(env.step(act))
-  return ret
-
-
-def assert_equal_rollout(rollout_a, rollout_b):
-  for step_a, step_b in zip(rollout_a, rollout_b):
-    ob_a, rew_a, done_a, info_a = step_a
-    ob_b, rew_b, done_b, info_b = step_b
-    assert np.all(ob_a == ob_b)
-    assert rew_a == rew_b
-    assert done_a == done_b
-    assert info_a == info_b
 
 
 @pytest.fixture
