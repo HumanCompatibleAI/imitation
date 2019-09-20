@@ -26,6 +26,8 @@ class TerminalSentinelEnv(gym.Env):
     rew = 0.0
     return observation, rew, done, {}
 
+class WrapRewardsForty(gym.Wrapper)
+
 
 def test_complete_trajectories():
   """Check that complete trajectories are returned by vecenv wrapper,

@@ -29,20 +29,25 @@ class Trajectory(NamedTuple):
   rews: np.ndarray
   infos: Optional[List[dict]]
 
-  def unwrap(self) -> "Trajectory":
-    """Uses `MonitorPlus`-captured `obs` and `rews` to replace fields.
+def unwrap_traj(traj: Trajectory) -> Trajectory:
+  """Uses `MonitorPlus`-captured `obs` and `rews` to replace fields.
 
-    This can be useful for bypassing other wrappers to retrieve the original
-    `obs` and `rews`.
+  This can be useful for bypassing other wrappers to retrieve the original
+  `obs` and `rews`.
 
-    Fails if `infos` is None or if Trajectory was generated from an environment
-    without imitation.util.MonitorPlus.
-    """
-    ep_info = self.infos[-1]["episode"]
-    res = self._replace(obs=ep_info["obs"], rews=ep_info["rews"])
-    assert len(res.obs) == len(res.acts) + 1
-    assert len(res.acts) == len(res.rews)
-    return res
+  Fails if `infos` is None or if the Trajectory was generated from an
+  environment without imitation.util.MonitorPlus.
+
+  Args:
+    traj: A Trajectory generated from `MonitorPlus`-wrapped Environments.
+  Returns:
+    A copy of `traj` with replaced `obs` and `rews` fields.
+  """
+  ep_info = traj.infos[-1]["episode"]
+  res = traj._replace(obs=ep_info["obs"], rews=ep_info["rews"])
+  assert len(res.obs) == len(res.acts) + 1
+  assert len(res.acts) == len(res.rews)
+  return res
 
 
 class Transitions(NamedTuple):
@@ -407,7 +412,7 @@ def save(path: str,
     os.makedirs(os.path.dirname(path), exist_ok=True)
     trajs = generate_trajectories(policy, venv, sample_until, **kwargs)
     if unwrap:
-      trajs = [traj.unwrap() for traj in trajs]
+      trajs = [unwrap_traj(traj) for traj in trajs]
     if exclude_infos:
       trajs = [traj._replace(infos=None) for traj in trajs]
 
