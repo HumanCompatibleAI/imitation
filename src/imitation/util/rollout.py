@@ -29,6 +29,7 @@ class Trajectory(NamedTuple):
   rews: np.ndarray
   infos: Optional[List[dict]]
 
+
 def unwrap_traj(traj: Trajectory) -> Trajectory:
   """Uses `MonitorPlus`-captured `obs` and `rews` to replace fields.
 
