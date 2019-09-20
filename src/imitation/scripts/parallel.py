@@ -3,7 +3,6 @@ from typing import Callable, Optional
 
 import ray
 import ray.tune
-import ray.tune.logger as tune_logger
 from sacred.observers import FileStorageObserver
 
 from imitation.scripts.config.parallel import parallel_ex
