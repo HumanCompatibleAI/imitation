@@ -41,13 +41,14 @@ def unwrap_traj(traj: Trajectory) -> Trajectory:
 
   Args:
     traj: A Trajectory generated from `MonitorPlus`-wrapped Environments.
+
   Returns:
     A copy of `traj` with replaced `obs` and `rews` fields.
   """
   ep_info = traj.infos[-1]["episode"]
   res = traj._replace(obs=ep_info["obs"], rews=ep_info["rews"])
   assert len(res.obs) == len(res.acts) + 1
-  assert len(res.acts) == len(res.rews)
+  assert len(res.rews) == len(res.acts)
   return res
 
 
@@ -404,7 +405,7 @@ def save(path: str,
       sample_until: End condition for rollout sampling.
       unwrap: If True, then save original observations and rewards (instead of
         potentially wrapped observations and rewards) by calling
-        Trajectory.unwrap_monitor_plus().
+        `unwrap_traj()`.
       exclude_infos: If True, then exclude `infos` from pickle by setting
         this field to None. Excluding `infos` can save a lot of space during
         pickles.

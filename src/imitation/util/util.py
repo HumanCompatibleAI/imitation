@@ -196,7 +196,7 @@ class MonitorPlus(bench.Monitor):
   """Augments Monitor by recording raw rewards and observations.
 
   Adds two new keys to `info["episode"]` (which is returned whenever done=True),
-  "obs"` and "rews", which hold the raw observations and rewards seen during
+  "obs" and "rews", which hold the raw observations and rewards seen during
   this episode.
   """
   def __init__(self, *args, **kwargs):
