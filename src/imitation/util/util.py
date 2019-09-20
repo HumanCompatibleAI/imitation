@@ -60,7 +60,7 @@ def make_vec_env(env_id: str,
       log_subdir = os.path.join(log_dir, 'monitor')
       os.makedirs(log_subdir, exist_ok=True)
       log_path = os.path.join(log_subdir, f'mon{i:03d}')
-    return bench.Monitor(env, log_path, allow_early_resets=True)
+    return MonitorPlus(env, log_path, allow_early_resets=True)
   env_fns = [functools.partial(make_env, i) for i in range(n_envs)]
   if parallel:
     # See GH hill-a/stable-baselines issue #217
@@ -189,3 +189,33 @@ def docstring_parameter(*args, **kwargs):
     obj.__doc__ = obj.__doc__.format(*args, **kwargs)
     return obj
   return helper
+
+
+class MonitorPlus(Monitor):
+  """Augments Monitor by recording raw rewards and observations.
+
+  Adds two new keys to `info["episode"]` (which is returned whenever done=True),
+  "obs" and "rews", which hold the raw observations and rewards seen during this
+  episode.
+  """
+  def __init__(*args, **kwargs):
+    super.__init__(*args, **kwargs)
+    self._obs = None
+    self._rews = None
+
+  def reset(self, **kwargs):
+    self._obs = [super.reset()]
+    self._rews = []
+
+  def step(self, action):
+    obs, rew, done, info = super().step(action)
+    self._obs.append(obs)
+    self._rews.append(rew)
+
+    if done:
+      ep_info = info.get('episode')
+      assert isinstance(ep_info, dict)
+      ep_info["obs"] = np.stack(self._obs)
+      ep_info["rews"] = np.stack(self._rews)
+
+    return obs, rew, done, info

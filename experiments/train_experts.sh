@@ -27,7 +27,7 @@ while getopts "fr" arg; do
     # Fast mode (debug)
     ENVS="cartpole pendulum"
     SEEDS="0"
-    extra_configs="fast"
+    extra_configs+="fast "
   elif [[ $arg == "r" ]]; then
     # Regenerate test data (policies and rollouts).
     #
@@ -37,7 +37,7 @@ while getopts "fr" arg; do
     ENVS="cartpole pendulum"
     SEEDS="0"
     OUTPUT_DIR="tests/data"
-    extra_configs="rollout_save_n_episodes=50"
+    extra_configs+="rollout_save_n_episodes=50 "
   fi
 done
 
