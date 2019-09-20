@@ -26,8 +26,30 @@ class Trajectory(NamedTuple):
 
   acts: np.ndarray
   obs: np.ndarray
-  rew: np.ndarray
+  rews: np.ndarray
   infos: Optional[List[dict]]
+
+
+def unwrap_traj(traj: Trajectory) -> Trajectory:
+  """Uses `MonitorPlus`-captured `obs` and `rews` to replace fields.
+
+  This can be useful for bypassing other wrappers to retrieve the original
+  `obs` and `rews`.
+
+  Fails if `infos` is None or if the Trajectory was generated from an
+  environment without imitation.util.MonitorPlus.
+
+  Args:
+    traj: A Trajectory generated from `MonitorPlus`-wrapped Environments.
+
+  Returns:
+    A copy of `traj` with replaced `obs` and `rews` fields.
+  """
+  ep_info = traj.infos[-1]["episode"]
+  res = traj._replace(obs=ep_info["obs"], rews=ep_info["rews"])
+  assert len(res.obs) == len(res.acts) + 1
+  assert len(res.rews) == len(res.acts)
+  return res
 
 
 class Transitions(NamedTuple):
@@ -369,6 +391,7 @@ def save(path: str,
          venv: VecEnv,
          sample_until: GenTrajTerminationFn,
          *,
+         unwrap: bool = True,
          exclude_infos: bool = True,
          **kwargs,
          ) -> None:
@@ -380,6 +403,9 @@ def save(path: str,
       path: Rollouts are saved to this path.
       venv: The vectorized environments.
       sample_until: End condition for rollout sampling.
+      unwrap: If True, then save original observations and rewards (instead of
+        potentially wrapped observations and rewards) by calling
+        `unwrap_traj()`.
       exclude_infos: If True, then exclude `infos` from pickle by setting
         this field to None. Excluding `infos` can save a lot of space during
         pickles.
@@ -387,8 +413,11 @@ def save(path: str,
     """
     os.makedirs(os.path.dirname(path), exist_ok=True)
     trajs = generate_trajectories(policy, venv, sample_until, **kwargs)
+    if unwrap:
+      trajs = [unwrap_traj(traj) for traj in trajs]
     if exclude_infos:
       trajs = [traj._replace(infos=None) for traj in trajs]
+
     with open(path, "wb") as f:
       pickle.dump(trajs, f)
     tf.logging.info("Dumped demonstrations to {}.".format(path))
