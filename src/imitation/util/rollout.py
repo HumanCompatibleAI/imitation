@@ -26,8 +26,23 @@ class Trajectory(NamedTuple):
 
   acts: np.ndarray
   obs: np.ndarray
-  rew: np.ndarray
+  rews: np.ndarray
   infos: Optional[List[dict]]
+
+  def unwrap(self) -> "Trajectory":
+    """Uses `MonitorPlus`-captured `obs` and `rews` to replace fields.
+
+    This can be useful for bypassing other wrappers to retrieve the original
+    `obs` and `rews`.
+
+    Fails if `infos` is None or if Trajectory was generated from an environment
+    without imitation.util.MonitorPlus.
+    """
+    ep_info = self.infos[-1]["episode"]
+    res = self._replace(obs=ep_info["obs"], rews=ep_info["rews"])
+    assert len(res.obs) == len(res.acts) + 1
+    assert len(res.acts) == len(res.rews)
+    return res
 
 
 class Transitions(NamedTuple):
@@ -369,6 +384,7 @@ def save(path: str,
          venv: VecEnv,
          sample_until: GenTrajTerminationFn,
          *,
+         unwrap: bool = True,
          exclude_infos: bool = True,
          **kwargs,
          ) -> None:
@@ -380,6 +396,9 @@ def save(path: str,
       path: Rollouts are saved to this path.
       venv: The vectorized environments.
       sample_until: End condition for rollout sampling.
+      unwrap: If True, then save original observations and rewards (instead of
+        potentially wrapped observations and rewards) by calling
+        Trajectory.unwrap_monitor_plus().
       exclude_infos: If True, then exclude `infos` from pickle by setting
         this field to None. Excluding `infos` can save a lot of space during
         pickles.
@@ -387,8 +406,11 @@ def save(path: str,
     """
     os.makedirs(os.path.dirname(path), exist_ok=True)
     trajs = generate_trajectories(policy, venv, sample_until, **kwargs)
+    if unwrap:
+      trajs = [traj.unwrap() for traj in trajs]
     if exclude_infos:
       trajs = [traj._replace(infos=None) for traj in trajs]
+
     with open(path, "wb") as f:
       pickle.dump(trajs, f)
     tf.logging.info("Dumped demonstrations to {}.".format(path))
