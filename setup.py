@@ -20,6 +20,7 @@ setup(
     packages=find_packages('src'),
     package_dir={'': 'src'},
     install_requires=[
+        'awscli',
         'gym',
         'numpy>=1.15',
         'ray[debug]==0.7.4',
