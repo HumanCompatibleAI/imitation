@@ -1,5 +1,5 @@
 from functools import partial
-from typing import Optional, Tuple, Union
+from typing import Optional, Union
 from warnings import warn
 
 import gym
@@ -12,7 +12,7 @@ from imitation import summaries
 import imitation.rewards.discrim_net as discrim_net
 from imitation.rewards.reward_net import BasicShapedRewardNet
 import imitation.util as util
-from imitation.util import buffer, reward_wrapper
+from imitation.util import buffer, reward_wrapper, rollout
 
 
 class AdversarialTrainer:
@@ -39,7 +39,7 @@ class AdversarialTrainer:
                env: Union[gym.Env, str],
                gen_policy: BaseRLModel,
                discrim: discrim_net.DiscrimNet,
-               expert_rollouts: Tuple[np.ndarray, np.ndarray, np.ndarray],
+               expert_demos: rollout.Transitions,
                *,
                disc_opt_cls: tf.train.Optimizer = tf.train.AdamOptimizer,
                disc_opt_kwargs: dict = {},
@@ -55,8 +55,7 @@ class AdversarialTrainer:
                     discriminator confusion.
         discrim: The discriminator network.
             For GAIL, use a DiscrimNetGAIL. For AIRL, use a DiscrimNetAIRL.
-        expert_rollouts: A tuple of three arrays from expert rollouts,
-            `old_obs`, `act`, and `new_obs`.
+        expert_demos: Transitions from an expert dataset.
         disc_opt_cls: The optimizer for discriminator training.
         disc_opt_kwargs: Parameters for discriminator training.
         n_disc_samples_per_buffer: The number of obs-act-obs triples
@@ -83,6 +82,7 @@ class AdversarialTrainer:
     self.debug_use_ground_truth = debug_use_ground_truth
 
     self.env = util.maybe_load_env(env, vectorize=True)
+    self._expert_demos = expert_demos
     self._gen_policy = gen_policy
 
     # Discriminator and reward output
@@ -114,7 +114,7 @@ class AdversarialTrainer:
     self._gen_replay_buffer = buffer.ReplayBuffer(gen_replay_buffer_capacity,
                                                   self.env)
     self._populate_gen_replay_buffer()
-    self._exp_replay_buffer = buffer.ReplayBuffer.from_data(*expert_rollouts)
+    self._exp_replay_buffer = buffer.ReplayBuffer.from_data(expert_demos)
     if n_disc_samples_per_buffer > len(self._exp_replay_buffer):
       warn("The discriminator batch size is larger than the number of "
            "expert samples.")
@@ -123,6 +123,11 @@ class AdversarialTrainer:
   def discrim(self) -> discrim_net.DiscrimNet:
     """Discriminator being trained, used to compute reward for policy."""
     return self._discrim
+
+  @property
+  def expert_demos(self) -> util.rollout.Transitions:
+    """The expert demonstrations that are being imitated."""
+    return self._expert_demos
 
   @property
   def gen_policy(self) -> BaseRLModel:
@@ -134,9 +139,9 @@ class AdversarialTrainer:
 
     Args:
         n_steps (int): The number of training steps.
-        gen_old_obs (np.ndarray): See `_build_disc_feed_dict`.
+        gen_obs (np.ndarray): See `_build_disc_feed_dict`.
         gen_act (np.ndarray): See `_build_disc_feed_dict`.
-        gen_new_obs (np.ndarray): See `_build_disc_feed_dict`.
+        gen_next_obs (np.ndarray): See `_build_disc_feed_dict`.
     """
     for _ in range(n_steps):
       fd = self._build_disc_feed_dict(**kwargs)
@@ -163,8 +168,8 @@ class AdversarialTrainer:
     """
     gen_rollouts = util.rollout.generate_transitions(
         self._gen_policy, self.env_train,
-        n_timesteps=self._n_disc_samples_per_buffer)[:3]
-    self._gen_replay_buffer.store(*gen_rollouts)
+        n_timesteps=self._n_disc_samples_per_buffer)
+    self._gen_replay_buffer.store(gen_rollouts)
 
   def train(self, n_epochs=100, *, n_gen_steps_per_epoch=None,
             n_disc_steps_per_epoch=None):
@@ -194,9 +199,9 @@ class AdversarialTrainer:
     is generated on the fly.
 
     Args:
-        gen_old_obs (np.ndarray): See `_build_disc_feed_dict`.
+        gen_obs (np.ndarray): See `_build_disc_feed_dict`.
         gen_act (np.ndarray): See `_build_disc_feed_dict`.
-        gen_new_obs (np.ndarray): See `_build_disc_feed_dict`.
+        gen_next_obs (np.ndarray): See `_build_disc_feed_dict`.
 
     Returns:
         discriminator_loss (float): The total cross-entropy error in the
@@ -223,21 +228,21 @@ class AdversarialTrainer:
         global_step=self._global_step)
 
   def _build_disc_feed_dict(self, *,
-                            gen_old_obs: Optional[np.ndarray] = None,
+                            gen_obs: Optional[np.ndarray] = None,
                             gen_act: Optional[np.ndarray] = None,
-                            gen_new_obs: Optional[np.ndarray] = None,
+                            gen_next_obs: Optional[np.ndarray] = None,
                             ) -> dict:
     """Build a feed dict that holds the next training batch of generator
     and expert obs-act-obs triples.
 
     Args:
-        gen_old_obs (np.ndarray): A numpy array with shape
+        gen_obs (np.ndarray): A numpy array with shape
             `[self.n_disc_samples_per_buffer_per_buffer] + env.observation_space.shape`.
             The ith observation in this array is the observation seen when the
             generator chooses action `gen_act[i]`.
         gen_act (np.ndarray): A numpy array with shape
             `[self.n_disc_samples_per_buffer_per_buffer] + env.action_space.shape`.
-        gen_new_obs (np.ndarray): A numpy array with shape
+        gen_next_obs (np.ndarray): A numpy array with shape
             `[self.n_disc_samples_per_buffer_per_buffer] + env.observation_space.shape`.
             The ith observation in this array is from the transition state after
             the generator chooses action `gen_act[i]`.
@@ -246,46 +251,49 @@ class AdversarialTrainer:
     # Sample generator training batch from replay buffers, unless provided
     # in argument.
     none_count = sum(int(x is None)
-                     for x in (gen_old_obs, gen_act, gen_new_obs))
+                     for x in (gen_obs, gen_act, gen_next_obs))
     if none_count == 3:
       tf.logging.debug("_build_disc_feed_dict: No generator rollout "
                        "parameters were "
                        "provided, so we are generating them now.")
-      gen_old_obs, gen_act, gen_new_obs = self._gen_replay_buffer.sample(
+      gen_sample = self._gen_replay_buffer.sample(
           self._n_disc_samples_per_buffer)
+      gen_obs = gen_sample.obs
+      gen_act = gen_sample.act
+      gen_next_obs = gen_sample.next_obs
     elif none_count != 0:
       raise ValueError("Gave some but not all of the generator params.")
 
     # Sample expert training batch from replay buffer.
-    expert_old_obs, expert_act, expert_new_obs = self._exp_replay_buffer.sample(
+    expert_sample = self._exp_replay_buffer.sample(
         self._n_disc_samples_per_buffer)
 
     # Check dimensions.
-    n_expert = len(expert_old_obs)
-    n_gen = len(gen_old_obs)
+    n_expert = len(expert_sample.obs)
+    n_gen = len(gen_obs)
     N = n_expert + n_gen
-    assert n_expert == len(expert_act)
-    assert n_expert == len(expert_new_obs)
+    assert n_expert == len(expert_sample.act)
+    assert n_expert == len(expert_sample.next_obs)
     assert n_gen == len(gen_act)
-    assert n_gen == len(gen_new_obs)
+    assert n_gen == len(gen_next_obs)
 
     # Concatenate rollouts, and label each row as expert or generator.
-    old_obs = np.concatenate([expert_old_obs, gen_old_obs])
-    act = np.concatenate([expert_act, gen_act])
-    new_obs = np.concatenate([expert_new_obs, gen_new_obs])
+    obs = np.concatenate([expert_sample.obs, gen_obs])
+    act = np.concatenate([expert_sample.act, gen_act])
+    next_obs = np.concatenate([expert_sample.next_obs, gen_next_obs])
     labels = np.concatenate([np.zeros(n_expert, dtype=int),
                              np.ones(n_gen, dtype=int)])
 
     # Calculate generator-policy log probabilities.
-    log_act_prob = self._gen_policy.action_probability(old_obs, actions=act,
+    log_act_prob = self._gen_policy.action_probability(obs, actions=act,
                                                        logp=True)
     assert len(log_act_prob) == N
     log_act_prob = log_act_prob.reshape((N,))
 
     fd = {
-        self.discrim.old_obs_ph: old_obs,
+        self.discrim.obs_ph: obs,
         self.discrim.act_ph: act,
-        self.discrim.new_obs_ph: new_obs,
+        self.discrim.next_obs_ph: next_obs,
         self.discrim.labels_ph: labels,
         self.discrim.log_policy_act_prob_ph: log_act_prob,
     }
@@ -308,6 +316,7 @@ def init_trainer(env_id: str,
                  use_gail: bool = False,
                  num_vec: int = 8,
                  parallel: bool = False,
+                 max_episode_steps: Optional[int] = None,
                  max_n_files: int = 1,
                  scale: bool = True,
                  airl_entropy_weight: float = 1.0,
@@ -335,6 +344,8 @@ def init_trainer(env_id: str,
         using AIRL.
     num_vec: The number of vectorized environments.
     parallel: If True, then use SubprocVecEnv; otherwise, DummyVecEnv.
+    max_episode_steps: If specified, wraps VecEnv in TimeLimit wrapper with
+        this episode length before returning.
     max_n_files: If provided, then only load the most recent `max_n_files`
         files, as sorted by modification times.
     policy_dir: The directory containing the pickled experts for
@@ -349,7 +360,7 @@ def init_trainer(env_id: str,
         used to initialize the trainer.
   """
   env = util.make_vec_env(env_id, num_vec, seed=seed, parallel=parallel,
-                          log_dir=log_dir)
+                          log_dir=log_dir, max_episode_steps=max_episode_steps)
   gen_policy = util.init_rl(env, verbose=1,
                             **make_blank_policy_kwargs)
 
@@ -367,13 +378,13 @@ def init_trainer(env_id: str,
                                          entropy_weight=airl_entropy_weight,
                                          **discrim_kwargs)
 
-  expert_demos = util.rollout.load_trajectories(rollout_glob,
-                                                max_n_files=max_n_files)
+  expert_trajectories = util.rollout.load_trajectories(rollout_glob,
+                                                       max_n_files=max_n_files)
   if n_expert_demos is not None:
-    assert len(expert_demos) >= n_expert_demos
-    expert_demos = expert_demos[:n_expert_demos]
+    assert len(expert_trajectories) >= n_expert_demos
+    expert_trajectories = expert_trajectories[:n_expert_demos]
 
-  expert_rollouts = util.rollout.flatten_trajectories(expert_demos)[:3]
-  trainer = AdversarialTrainer(env, gen_policy, discrim, expert_rollouts,
+  expert_demos = util.rollout.flatten_trajectories(expert_trajectories)
+  trainer = AdversarialTrainer(env, gen_policy, discrim, expert_demos,
                                **trainer_kwargs)
   return trainer

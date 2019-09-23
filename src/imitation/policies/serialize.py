@@ -1,7 +1,8 @@
 """Load serialized policies of different types."""
 
+import contextlib
 import os
-from typing import Callable, Optional, Type
+from typing import Callable, ContextManager, Iterator, Optional, Type
 
 from stable_baselines.common.base_class import BaseRLModel
 from stable_baselines.common.policies import BasePolicy
@@ -11,7 +12,7 @@ import tensorflow as tf
 from imitation.policies.base import RandomPolicy, ZeroPolicy
 from imitation.util import registry
 
-PolicyLoaderFn = Callable[[str, VecEnv], BasePolicy]
+PolicyLoaderFn = Callable[[str, VecEnv], ContextManager[BasePolicy]]
 
 policy_registry: registry.Registry[PolicyLoaderFn] = registry.Registry()
 
@@ -55,53 +56,69 @@ def _load_stable_baselines(cls: Type[BaseRLModel],
 
   Returns:
     A function loading policies trained via cls."""
-  def f(path: str, env: VecEnv) -> BasePolicy:
+  @contextlib.contextmanager
+  def f(path: str, env: VecEnv) -> Iterator[BasePolicy]:
     """Loads a policy saved to path, for environment env."""
     tf.logging.info(f"Loading Stable Baselines policy for '{cls}' "
                     f"from '{path}'")
     model_path = os.path.join(path, 'model.pkl')
-    model = cls.load(model_path, env=env)
-    policy = getattr(model, policy_attr)
-
+    model = None
     try:
-      vec_normalize = VecNormalize(env, training=False)
-      vec_normalize.load_running_average(path)
-      policy = NormalizePolicy(policy, vec_normalize)
-      tf.logging.info(f"Loaded normalization statistics from '{path}'")
-    except FileNotFoundError:
-      # We did not use VecNormalize during training, skip
-      pass
+      model = cls.load(model_path, env=env)
+      policy = getattr(model, policy_attr)
 
-    return policy
+      try:
+        vec_normalize = VecNormalize(env, training=False)
+        vec_normalize.load_running_average(path)
+        policy = NormalizePolicy(policy, vec_normalize)
+        tf.logging.info(f"Loaded normalization statistics from '{path}'")
+      except FileNotFoundError:
+        # We did not use VecNormalize during training, skip
+        pass
+
+      yield policy
+    finally:
+      if model is not None and model.sess is not None:
+        model.sess.close()
 
   return f
 
 
 policy_registry.register(
     'random',
-    value=registry.build_loader_fn_require_space(RandomPolicy))
+    value=registry.build_loader_fn_require_space(
+        registry.dummy_context(RandomPolicy),
+    ),
+)
 policy_registry.register(
     'zero',
-    value=registry.build_loader_fn_require_space(ZeroPolicy))
+    value=registry.build_loader_fn_require_space(
+        registry.dummy_context(ZeroPolicy),
+    ),
+)
+
+
+def _add_stable_baselines_policies(classes):
+  for k, (cls_name, attr) in classes.items():
+    try:
+      cls = registry.load_attr(cls_name)
+      fn = _load_stable_baselines(cls, attr)
+      policy_registry.register(k, value=fn)
+    except (AttributeError, ImportError):
+      # We expect PPO1 load to fail if mpi4py isn't installed.
+      # Stable Baselines can be installed without mpi4py.
+      tf.logging.debug(f"Couldn't load {cls_name}. Skipping...")
+
 
 STABLE_BASELINES_CLASSES = {
     'ppo1': ('stable_baselines:PPO1', 'policy_pi'),
     'ppo2': ('stable_baselines:PPO2', 'act_model'),
 }
-
-for k, (cls_name, attr) in STABLE_BASELINES_CLASSES.items():
-  try:
-    cls = registry.load_attr(cls_name)
-    fn = _load_stable_baselines(cls, attr)
-    policy_registry.register(k, value=fn)
-  except (AttributeError, ImportError):
-    # We expect PPO1 load to fail if mpi4py isn't installed.
-    # Stable Baselines can be installed without mpi4py.
-    tf.logging.debug(f"Couldn't load {cls_name}. Skipping...")
+_add_stable_baselines_policies(STABLE_BASELINES_CLASSES)
 
 
 def load_policy(policy_type: str, policy_path: str,
-                venv: VecEnv) -> BasePolicy:
+                venv: VecEnv) -> ContextManager[BasePolicy]:
   """Load serialized policy.
 
   Args:

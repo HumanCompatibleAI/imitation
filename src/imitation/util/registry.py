@@ -1,7 +1,13 @@
+import contextlib
+import functools
 import importlib
-from typing import Callable, Generic, Optional, Type, TypeVar
+from typing import (Callable, ContextManager, Generic, Iterable, Iterator,
+                    Optional, TypeVar)
 
+import gym
 from stable_baselines.common.vec_env import VecEnv
+
+from imitation.util import util
 
 T = TypeVar("T")
 LoaderFn = Callable[[str, VecEnv], T]
@@ -45,6 +51,9 @@ class Registry(Generic[T]):
       self._values[key] = load_attr(self._indirect[key])
     return self._values[key]
 
+  def keys(self) -> Iterable[str]:
+    return set(self._values.keys()).union(self._indirect.keys())
+
   def register(self, key: str, *,
                value: Optional[T] = None,
                indirect: Optional[str] = None):
@@ -62,15 +71,38 @@ class Registry(Generic[T]):
       self._indirect[key] = indirect
 
 
-def build_loader_fn_require_space(cls: Type[T], **kwargs) -> LoaderFn:
+def build_loader_fn_require_space(fn: Callable[[gym.Space, gym.Space], T],
+                                  **kwargs) -> LoaderFn:
   """Converts a factory taking observation and action space into a LoaderFn."""
-  def f(path: str, venv: VecEnv) -> T:
-    return cls(venv.observation_space, venv.action_space, **kwargs)
-  return f
+  @functools.wraps(fn)
+  def wrapper(path: str, venv: VecEnv) -> T:
+    del path
+    return fn(venv.observation_space, venv.action_space, **kwargs)
+  return wrapper
 
 
-def build_loader_fn_require_env(cls: Type[T], **kwargs) -> LoaderFn:
+def build_loader_fn_require_env(fn: Callable[[VecEnv], T],
+                                **kwargs) -> LoaderFn:
   """Converts a factory taking an environment into a LoaderFn."""
-  def f(path: str, venv: VecEnv) -> T:
-    return cls(venv, **kwargs)
-  return f
+  @functools.wraps(fn)
+  def wrapper(path: str, venv: VecEnv) -> T:
+    del path
+    return fn(venv, **kwargs)
+  return wrapper
+
+
+def dummy_context(fn: Callable[..., T]) -> Callable[..., ContextManager[T]]:
+  @functools.wraps(fn)
+  @contextlib.contextmanager
+  def wrapper(*args, **kwargs) -> Iterator[T]:
+    yield fn(*args, **kwargs)
+  return wrapper
+
+
+def sess_context(fn: Callable[..., T]) -> Callable[..., ContextManager[T]]:
+  @functools.wraps(fn)
+  @contextlib.contextmanager
+  def wrapper(*args, **kwargs) -> Iterator[T]:
+    with util.make_session():
+      yield fn(*args, **kwargs)
+  return wrapper

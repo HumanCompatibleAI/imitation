@@ -20,15 +20,34 @@ fi
 TIMESTAMP=$(${DATE_CMD} --iso-8601=seconds)
 OUTPUT_DIR="output/train_experts/${TIMESTAMP}"
 RESULTS_FILE="results.txt"
+extra_configs=""
+
+while getopts "fr" arg; do
+  if [[ $arg == "f" ]]; then
+    # Fast mode (debug)
+    ENVS="cartpole pendulum"
+    SEEDS="0"
+    extra_configs="fast"
+  elif [[ $arg == "r" ]]; then
+    # Regenerate test data (policies and rollouts).
+    #
+    # Combine with fast mode flag to generate low-computation versions of
+    # test data.
+    # Use `git clean -df tests/data` to remove extra log files.
+    ENVS="cartpole pendulum"
+    SEEDS="0"
+    OUTPUT_DIR="tests/data"
+  fi
+done
 
 echo "Writing logs in ${OUTPUT_DIR}"
 # Train experts.
 parallel -j 25% --header : --progress --results ${OUTPUT_DIR}/parallel/ \
   python -m imitation.scripts.expert_demos \
   with \
-  {env} \
+  {env} ${extra_configs} \
   seed={seed} \
-  log_root=${OUTPUT_DIR} \
+  log_dir="${OUTPUT_DIR}/{env}_{seed}" \
   ::: env ${ENVS} ::: seed ${SEEDS}
 
 pushd $OUTPUT_DIR

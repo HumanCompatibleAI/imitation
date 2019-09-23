@@ -7,6 +7,7 @@ from typing import Callable, Dict, Iterable, Optional, Tuple, Type, Union
 import uuid
 
 import gym
+from gym.wrappers import TimeLimit
 import stable_baselines
 from stable_baselines import bench
 from stable_baselines.common.base_class import BaseRLModel
@@ -57,7 +58,8 @@ def make_vec_env(env_id: str,
                  n_envs: int = 8,
                  seed: int = 0,
                  parallel: bool = False,
-                 log_dir: Optional[str] = None) -> VecEnv:
+                 log_dir: Optional[str] = None,
+                 max_episode_steps: Optional[int] = None) -> VecEnv:
   """Returns a VecEnv initialized with `n_envs` Envs.
 
   Args:
@@ -66,10 +68,15 @@ def make_vec_env(env_id: str,
       seed: The environment seed.
       parallel: If True, uses SubprocVecEnv; otherwise, DummyVecEnv.
       log_dir: If specified, saves Monitor output to this directory.
+      max_episode_steps: If specified, wraps VecEnv in TimeLimit wrapper with
+          this episode length before returning.
   """
   def make_env(i):
     env = gym.make(env_id)
     env.seed(seed + i)  # seed each environment separately for diversity
+
+    if max_episode_steps is not None:
+      env = TimeLimit(env, max_episode_steps)
 
     # Use Monitor to record statistics needed for Baselines algorithms logging
     # Optionally, save to disk
@@ -152,7 +159,7 @@ def build_inputs(observation_space: gym.Space,
                  scale: bool = False) -> Tuple[tf.Tensor, ...]:
   """Builds placeholders and processed input Tensors.
 
-  Observation `old_obs_*` and `new_obs_*` placeholders and processed input
+  Observation `obs_*` and `next_obs_*` placeholders and processed input
   tensors have shape `(None,) + obs_space.shape`.
   The action `act_*` placeholder and processed input tensors have shape
   `(None,) + act_space.shape`.
@@ -164,19 +171,19 @@ def build_inputs(observation_space: gym.Space,
       processed input Tensors are automatically scaled to the interval [0, 1].
 
   Returns:
-    old_obs_ph: Placeholder for old observations.
+    obs_ph: Placeholder for old observations.
     act_ph: Placeholder for actions.
-    new_obs_ph: Placeholder for new observations.
-    old_obs_inp: Network-ready float32 Tensor with processed old observations.
+    next_obs_ph: Placeholder for new observations.
+    obs_inp: Network-ready float32 Tensor with processed old observations.
     act_inp: Network-ready float32 Tensor with processed actions.
-    new_obs_inp: Network-ready float32 Tensor with processed new observations.
+    next_obs_inp: Network-ready float32 Tensor with processed new observations.
   """
-  old_obs_ph, old_obs_inp = observation_input(observation_space,
-                                              name="old_obs", scale=scale)
+  obs_ph, obs_inp = observation_input(observation_space,
+                                      name="obs", scale=scale)
   act_ph, act_inp = observation_input(action_space, name="act", scale=scale)
-  new_obs_ph, new_obs_inp = observation_input(observation_space,
-                                              name="new_obs", scale=scale)
-  return old_obs_ph, act_ph, new_obs_ph, old_obs_inp, act_inp, new_obs_inp
+  next_obs_ph, next_obs_inp = observation_input(observation_space,
+                                                name="next_obs", scale=scale)
+  return obs_ph, act_ph, next_obs_ph, obs_inp, act_inp, next_obs_inp
 
 
 @contextlib.contextmanager
@@ -203,3 +210,11 @@ def make_session(close_on_exit: bool = True, **kwargs):
     finally:
       if close_on_exit:
         session.close()
+
+
+def docstring_parameter(*args, **kwargs):
+  """Treats the docstring as a format string, substituting in the arguments."""
+  def helper(obj):
+    obj.__doc__ = obj.__doc__.format(*args, **kwargs)
+    return obj
+  return helper

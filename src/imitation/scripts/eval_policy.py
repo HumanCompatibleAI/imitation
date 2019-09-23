@@ -1,4 +1,7 @@
+import contextlib
 import os.path as osp
+import time
+from typing import Optional
 
 from sacred.observers import FileStorageObserver
 from stable_baselines.common.vec_env import VecEnvWrapper
@@ -6,13 +9,15 @@ import tensorflow as tf
 
 import imitation.envs.examples  # noqa: F401
 from imitation.policies import serialize
+from imitation.rewards.serialize import load_reward
 from imitation.scripts.config.eval_policy import eval_policy_ex
-from imitation.util import rollout, util
+from imitation.util import reward_wrapper, rollout, util
 
 
 class InteractiveRender(VecEnvWrapper):
-  def __init__(self, venv):
+  def __init__(self, venv, fps):
     super().__init__(venv)
+    self.render_fps = fps
 
   def reset(self):
     ob = self.venv.reset()
@@ -21,14 +26,30 @@ class InteractiveRender(VecEnvWrapper):
 
   def step_wait(self):
     ob = self.venv.step_wait()
+    if self.render_fps > 0:
+      time.sleep(1 / self.render_fps)
     self.venv.render()
     return ob
 
 
 @eval_policy_ex.main
-def eval_policy(_seed: int, env_name: str, timesteps: int, num_vec: int,
-                parallel: bool, render: bool, policy_type: str,
-                policy_path: str, log_dir: str):
+def eval_policy(_seed: int,
+                env_name: str,
+                timesteps: int,
+                num_vec: int,
+                parallel: bool,
+
+                render: bool,
+                render_fps: int,
+                log_dir: str,
+
+                policy_type: str,
+                policy_path: str,
+
+                reward_type: Optional[str] = None,
+                reward_path: Optional[str] = None,
+                max_episode_steps: Optional[int] = None,
+                ):
   """Rolls a policy out in an environment, collecting statistics.
 
   Args:
@@ -38,12 +59,19 @@ def eval_policy(_seed: int, env_name: str, timesteps: int, num_vec: int,
     num_vec: Number of environments to run simultaneously.
     parallel: If True, use `SubprocVecEnv` for true parallelism; otherwise,
         uses `DummyVecEnv`.
+    max_episode_steps: If not None, then environments are wrapped by
+        TimeLimit so that they have at most `max_episode_steps` steps per
+        episode.
     render: If True, renders interactively to the screen.
+    log_dir: The directory to log intermediate output to. (As of 2019-07-19
+        this is just episode-by-episode reward from bench.Monitor.)
     policy_type: A unique identifier for the saved policy,
         defined in POLICY_CLASSES.
     policy_path: A path to the serialized policy.
-    log_dir: The directory to log intermediate output to. (As of 2019-07-19
-        this is just episode-by-episode reward from bench.Monitor.)
+    reward_type: If specified, overrides the environment reward with
+        a reward of this.
+    reward_path: If reward_type is specified, the path to a serialized reward
+        of `reward_type` to override the environment reward with.
 
   Returns:
     Statistics returned by `imitation.util.rollout.rollout_stats`.
@@ -52,13 +80,23 @@ def eval_policy(_seed: int, env_name: str, timesteps: int, num_vec: int,
   tf.logging.info('Logging to %s', log_dir)
 
   venv = util.make_vec_env(env_name, num_vec, seed=_seed,
-                           parallel=parallel, log_dir=log_dir)
+                           parallel=parallel, log_dir=log_dir,
+                           max_episode_steps=max_episode_steps)
   if render:
-    venv = InteractiveRender(venv)
+    venv = InteractiveRender(venv, render_fps)
   # TODO(adam): add support for videos using VideoRecorder?
 
-  policy = serialize.load_policy(policy_type, policy_path, venv)
-  stats = rollout.rollout_stats(policy, venv, n_timesteps=timesteps)
+  with contextlib.ExitStack() as stack:
+    if reward_type is not None:
+      reward_fn_ctx = load_reward(reward_type, reward_path, venv)
+      reward_fn = stack.enter_context(reward_fn_ctx)
+      venv = reward_wrapper.RewardVecEnvWrapper(venv, reward_fn)
+      tf.logging.info(
+          f"Wrapped env in reward {reward_type} from {reward_path}.")
+
+    with serialize.load_policy(policy_type, policy_path, venv) as policy:
+      stats = rollout.rollout_stats(policy, venv,
+                                    rollout.min_timesteps(timesteps))
 
   return stats
 

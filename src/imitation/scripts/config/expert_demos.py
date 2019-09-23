@@ -15,7 +15,16 @@ def expert_demos_defaults():
   num_vec = 8  # Number of environments in VecEnv
   parallel = True  # Use SubprocVecEnv (generally faster if num_vec>1)
   normalize = True  # Use VecNormalize
+  max_episode_steps = None  # Set to positive int to limit episode horizons
   make_blank_policy_kwargs = dict(DEFAULT_BLANK_POLICY_KWARGS)
+  # TODO(shwang): We should make it so that we always evaluate rewards
+  # relative to ground truth reward. (or maybe evaluate relative to both
+  # ground truth reward and custom reward when possible)
+  n_episodes_eval = 50  # Num of episodes for final ep reward mean evaluation
+
+  # If specified, overrides the ground-truth environment reward
+  reward_type = None  # override reward type
+  reward_path = None   # override reward path
 
   rollout_save_interval = -1  # Num updates between saves (<=0 disables)
   rollout_save_final = True  # If True, save after training is finished.
@@ -34,14 +43,12 @@ def logging(env_name, log_root):
                          util.make_unique_timestamp())
 
 
-# Shared settings
-
-ant_shared_locals = dict(
-    make_blank_policy_kwargs=dict(
-        n_steps=2048,  # batch size of 2048*8=16384 due to num_vec
-    ),
-    total_timesteps=int(5e6),
-)
+@expert_demos_ex.config
+def rollouts_from_policy_only_defaults(log_dir):
+  policy_path = None  # Policy path for rollouts_from_policy command only
+  policy_type = "ppo2"  # Policy type for rollouts_from_policy command only
+  rollout_save_path = os.path.join(
+      log_dir, "rollout.pkl")  # Save path for `rollouts_from_policy` only.
 
 
 # Standard Gym env configs
@@ -133,4 +140,16 @@ def two_d_maze():
 @expert_demos_ex.named_config
 def fast():
   """Intended for testing purposes: small # of updates, ends quickly."""
-  total_timesteps = int(1e4)
+  total_timesteps = int(1e3)
+  max_episode_steps = int(1e3)
+
+
+# Shared settings
+
+ant_shared_locals = dict(
+    make_blank_policy_kwargs=dict(
+        n_steps=2048,  # batch size of 2048*8=16384 due to num_vec
+    ),
+    total_timesteps=int(5e6),
+    max_episode_steps=500,  # To match `inverse_rl` settings.
+)
