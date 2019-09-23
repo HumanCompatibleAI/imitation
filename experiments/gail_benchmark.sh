@@ -41,7 +41,7 @@ parallel -j 25% --header : --results ${OUTPUT_DIR}/parallel/ --colsep , --progre
   {env_config_name} \
   log_root="${OUTPUT_DIR}" \
   n_gen_steps_per_epoch={n_gen_steps_per_epoch} \
-  rollout_glob=${EXPERT_MODELS_DIR}/{env_config_name}_0/rollouts/auto.pkl \
+  rollout_path=${EXPERT_MODELS_DIR}/{env_config_name}_0/rollouts/auto.pkl \
   init_trainer_kwargs.n_expert_demos={n_expert_demos} \
   seed={seed} \
   :::: $CONFIG_CSV \

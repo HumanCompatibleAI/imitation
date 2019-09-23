@@ -73,7 +73,7 @@ def test_train_adversarial(tmpdir):
           },
       },
       'log_root': tmpdir,
-      'rollout_glob': "tests/data/cartpole_0/rollouts/final.pkl",
+      'rollout_path': "tests/data/cartpole_0/rollouts/final.pkl",
   }
   run = train_ex.run(
       named_configs=named_configs,
@@ -91,7 +91,7 @@ def test_transfer_learning(tmpdir):
   run = train_ex.run(
       named_configs=['cartpole', 'airl', 'fast'],
       config_updates=dict(
-          rollout_glob="tests/data/cartpole_0/rollouts/final.pkl",
+          rollout_path="tests/data/cartpole_0/rollouts/final.pkl",
           log_dir=log_dir_train,
       ),
   )
@@ -136,7 +136,7 @@ PARALLEL_CONFIG_UPDATES = [
           },
         },
         # Need absolute path because raylet runs in different working directory.
-        'rollout_glob': osp.abspath("tests/data/cartpole_0/rollouts/final.pkl"),
+        'rollout_path': osp.abspath("tests/data/cartpole_0/rollouts/final.pkl"),
       },
     },
   ),

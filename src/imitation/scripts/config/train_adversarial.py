@@ -57,10 +57,10 @@ def train_defaults():
 def paths(env_name, log_root):
   log_dir = os.path.join(log_root, env_name.replace('/', '_'),
                          util.make_unique_timestamp())
-  # Recommended that user sets rollout_glob manually.
+  # Recommended that user sets rollout_path manually.
   # By default we guess the named config associated with `env_name`
   # and attempt to load rollouts from `tests/data`.
-  rollout_glob = os.path.join("tests", "data",
+  rollout_path = os.path.join("tests", "data",
                               "{named_config}_0".format(
                                   named_config=env_name.split("-")[0]),
                               "rollouts", "final.pkl")

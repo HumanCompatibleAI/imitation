@@ -1,4 +1,5 @@
 from functools import partial
+import pickle
 from typing import Optional
 from warnings import warn
 
@@ -308,7 +309,7 @@ def _n_steps_if_not_none(n_steps):
 
 
 def init_trainer(env_id: str,
-                 rollout_glob: str,
+                 rollout_path: str,
                  *,
                  n_expert_demos: Optional[int] = None,
                  seed: int = 0,
@@ -330,9 +331,9 @@ def init_trainer(env_id: str,
 
   Args:
     env_id: The string id of a gym environment.
-    rollout_glob: Argument for `imitation.util.rollout.load_trajectories`.
+    rollout_path: Path to pickle file containing list of Trajectory.
     n_expert_demos: The number of expert trajectories to actually use
-        after loading them via `load_trajectories`.
+        after loading them from `rollout_path`.
         If None, then use all available trajectories.
         If `n_expert_demos` is an `int`, then use
         exactly `n_expert_demos` trajectories, erroring if there aren't
@@ -346,8 +347,6 @@ def init_trainer(env_id: str,
     parallel: If True, then use SubprocVecEnv; otherwise, DummyVecEnv.
     max_episode_steps: If specified, wraps VecEnv in TimeLimit wrapper with
         this episode length before returning.
-    max_n_files: If provided, then only load the most recent `max_n_files`
-        files, as sorted by modification times.
     policy_dir: The directory containing the pickled experts for
         generating rollouts.
     scale: If True, then scale input Tensors to the interval [0, 1].
@@ -378,8 +377,9 @@ def init_trainer(env_id: str,
                                          entropy_weight=airl_entropy_weight,
                                          **discrim_kwargs)
 
-  expert_trajectories = util.rollout.load_trajectories(rollout_glob,
-                                                       max_n_files=max_n_files)
+  with open(rollout_path, "rb") as f:
+    expert_trajectories = pickle.load(f)
+
   if n_expert_demos is not None:
     assert len(expert_trajectories) >= n_expert_demos
     expert_trajectories = expert_trajectories[:n_expert_demos]
