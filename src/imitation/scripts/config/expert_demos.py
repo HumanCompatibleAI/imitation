@@ -17,9 +17,6 @@ def expert_demos_defaults():
   normalize = True  # Use VecNormalize
   max_episode_steps = None  # Set to positive int to limit episode horizons
   make_blank_policy_kwargs = dict(DEFAULT_BLANK_POLICY_KWARGS)
-  # TODO(shwang): We should make it so that we always evaluate rewards
-  # relative to ground truth reward. (or maybe evaluate relative to both
-  # ground truth reward and custom reward when possible)
   n_episodes_eval = 50  # Num of episodes for final ep reward mean evaluation
 
   # If specified, overrides the ground-truth environment reward

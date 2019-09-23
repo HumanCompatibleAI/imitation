@@ -6,7 +6,6 @@ import ray.tune
 from sacred.observers import FileStorageObserver
 
 from imitation.scripts.config.parallel import parallel_ex
-import imitation.util as util
 
 
 @parallel_ex.main
@@ -47,8 +46,6 @@ def _ray_tune_sacred_wrapper(inner_experiment_name: str) -> Callable:
   Args:
     inner_experiment_name: The experiment to tune. Either "expert_demos" or
       "train_adversarial".
-    command_name: If provided, then run this particular command. Otherwise, run
-      the Sacred Experiment's main command.
   Returns:
     A function that takes two arguments, `config` (used as keyword args for
     `ex.run`) and `reporter`. The function returns the run result.
@@ -67,8 +64,7 @@ def _ray_tune_sacred_wrapper(inner_experiment_name: str) -> Callable:
     observer = FileStorageObserver.create('sacred')
     ex.observers.append(observer)
 
-    with util.make_session():
-      run = ex.run(**config)
+    run = ex.run(**config)
 
     # Ray Tune has a string formatting error if raylet completes without
     # any calls to `reporter`.
