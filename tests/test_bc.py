@@ -13,7 +13,8 @@ def test_bc():
   novice_stats = bc_trainer.test_policy()
   bc_trainer.train(n_epochs=40)
   good_stats = bc_trainer.test_policy(n_episodes=25)
+  import pdb; pdb.set_trace()
   # novice is bad
   assert novice_stats["return_mean"] < 80.0
   # bc is okay but isn't perfect (for the purpose of this test)
-  assert good_stats["return_mean"] > 150.0
+  assert good_stats["return_mean"] > 350.0

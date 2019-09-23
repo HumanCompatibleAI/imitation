@@ -1,6 +1,5 @@
 import logging
 import numbers
-import tempfile
 
 import gym
 import numpy as np
@@ -59,7 +58,7 @@ def _make_feed_dict(reward_net: reward_net.RewardNet,
 
 @pytest.mark.parametrize("env_name", ENVS)
 @pytest.mark.parametrize("net_cls", REWARD_NETS)
-def test_serialize_identity(session, env_name, net_cls):
+def test_serialize_identity(session, env_name, net_cls, tmpdir):
   """Does output of deserialized reward network match that of original?"""
   logging.info(f"Testing {net_cls}")
 
@@ -69,33 +68,32 @@ def test_serialize_identity(session, env_name, net_cls):
   random = base.RandomPolicy(venv.observation_space, venv.action_space)
   session.run(tf.global_variables_initializer())
 
-  with tempfile.TemporaryDirectory(prefix='imitation-serialize-rew') as tmpdir:
-    original.save(tmpdir)
-    with tf.variable_scope("loaded"):
-      loaded = reward_net.RewardNet.load(tmpdir)
+  original.save(tmpdir)
+  with tf.variable_scope("loaded"):
+    loaded = reward_net.RewardNet.load(tmpdir)
 
-    assert original.observation_space == loaded.observation_space
-    assert original.action_space == loaded.action_space
+  assert original.observation_space == loaded.observation_space
+  assert original.action_space == loaded.action_space
 
-    transitions = rollout.generate_transitions(random, venv, n_timesteps=100)
-    feed_dict = {}
-    outputs = {'train': [], 'test': []}
-    for net in [original, loaded]:
-      feed_dict.update(_make_feed_dict(net, transitions))
-      outputs['train'].append(net.reward_output_train)
-      outputs['test'].append(net.reward_output_test)
+  transitions = rollout.generate_transitions(random, venv, n_timesteps=100)
+  feed_dict = {}
+  outputs = {'train': [], 'test': []}
+  for net in [original, loaded]:
+    feed_dict.update(_make_feed_dict(net, transitions))
+    outputs['train'].append(net.reward_output_train)
+    outputs['test'].append(net.reward_output_test)
 
-    with serialize.load_reward("RewardNet_unshaped",
-                               tmpdir, venv) as unshaped_fn:
-      with serialize.load_reward("RewardNet_shaped",
-                                 tmpdir, venv) as shaped_fn:
-        rewards = session.run(outputs, feed_dict=feed_dict)
+  with serialize.load_reward("RewardNet_unshaped",
+                             tmpdir, venv) as unshaped_fn:
+    with serialize.load_reward("RewardNet_shaped",
+                               tmpdir, venv) as shaped_fn:
+      rewards = session.run(outputs, feed_dict=feed_dict)
 
-        steps = np.zeros((transitions.obs.shape[0],))
-        args = (transitions.obs, transitions.acts,
-                transitions.next_obs, steps)
-        rewards['train'].append(shaped_fn(*args))
-        rewards['test'].append(unshaped_fn(*args))
+      steps = np.zeros((transitions.obs.shape[0],))
+      args = (transitions.obs, transitions.acts,
+              transitions.next_obs, steps)
+      rewards['train'].append(shaped_fn(*args))
+      rewards['test'].append(unshaped_fn(*args))
 
   for key, predictions in rewards.items():
     assert len(predictions) == 3

@@ -22,7 +22,7 @@ setup(
     install_requires=[
         'gym',
         'numpy>=1.15',
-        'ray[debug]==0.7.3',
+        'ray[debug]==0.7.4',
         'tqdm',
         'scikit-learn>=0.21.2',
         # FIXME: Use stable release instead of tracking master once
