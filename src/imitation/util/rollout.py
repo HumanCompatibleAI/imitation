@@ -5,7 +5,6 @@ import os
 import pickle
 from typing import Callable, Dict, List, NamedTuple, Optional, Sequence, Union
 
-import gym
 import numpy as np
 from stable_baselines.common.base_class import BaseRLModel
 from stable_baselines.common.policies import BasePolicy
@@ -13,8 +12,6 @@ from stable_baselines.common.vec_env import VecEnv
 import tensorflow as tf
 
 from imitation.policies.base import get_action_policy
-
-from . import util  # Relative import needed to prevent cycle with __init__.py
 
 
 class Trajectory(NamedTuple):
@@ -24,11 +21,35 @@ class Trajectory(NamedTuple):
     obs: Observations, shape (trajectory_len+1, ) + observation_shape.
     act: Actions, shape (trajectory_len, ) + action_shape.
     rew: Reward, shape (trajectory_len, ).
+    infos: A list of info dicts, length (trajectory_len, ).
   """
 
-  act: np.ndarray
+  acts: np.ndarray
   obs: np.ndarray
-  rew: np.ndarray
+  rews: np.ndarray
+  infos: Optional[List[dict]]
+
+
+def unwrap_traj(traj: Trajectory) -> Trajectory:
+  """Uses `MonitorPlus`-captured `obs` and `rews` to replace fields.
+
+  This can be useful for bypassing other wrappers to retrieve the original
+  `obs` and `rews`.
+
+  Fails if `infos` is None or if the Trajectory was generated from an
+  environment without imitation.util.MonitorPlus.
+
+  Args:
+    traj: A Trajectory generated from `MonitorPlus`-wrapped Environments.
+
+  Returns:
+    A copy of `traj` with replaced `obs` and `rews` fields.
+  """
+  ep_info = traj.infos[-1]["episode"]
+  res = traj._replace(obs=ep_info["obs"], rews=ep_info["rews"])
+  assert len(res.obs) == len(res.acts) + 1
+  assert len(res.rews) == len(res.acts)
+  return res
 
 
 class Transitions(NamedTuple):
@@ -53,10 +74,10 @@ class Transitions(NamedTuple):
   """
 
   obs: np.ndarray
-  act: np.ndarray
+  acts: np.ndarray
   next_obs: np.ndarray
-  rew: np.ndarray
-  done: np.ndarray
+  rews: np.ndarray
+  dones: np.ndarray
 
 
 class _TrajectoryAccumulator:
@@ -129,8 +150,36 @@ def min_timesteps(n: int) -> GenTrajTerminationFn:
   return f
 
 
+def make_sample_until(n_timesteps: Optional[int],
+                      n_episodes: Optional[int],
+                      ) -> GenTrajTerminationFn:
+  """Returns a termination condition sampling until n_timesteps or n_episodes.
+
+  Arguments:
+    n_timesteps: Minimum number of timesteps to sample.
+    n_episodes: Number of episodes to sample.
+
+  Returns:
+    A termination condition.
+
+  Raises:
+    ValueError if both or neither of n_timesteps and n_episodes are set,
+    or if either are non-positive.
+  """
+  if n_timesteps is not None and n_episodes is not None:
+    raise ValueError("n_timesteps and n_episodes were both set")
+  elif n_timesteps is not None:
+    assert n_timesteps > 0
+    return min_timesteps(n_timesteps)
+  elif n_episodes is not None:
+    assert n_episodes > 0
+    return min_episodes(n_episodes)
+  else:
+    raise ValueError("Set at least one of n_timesteps and n_episodes")
+
+
 def generate_trajectories(policy,
-                          env,
+                          venv: VecEnv,
                           sample_until: GenTrajTerminationFn,
                           *,
                           deterministic_policy: bool = False,
@@ -140,7 +189,7 @@ def generate_trajectories(policy,
   Args:
     policy (BasePolicy or BaseRLModel): A stable_baselines policy or RLModel,
         trained on the gym environment.
-    env (VecEnv or Env or str): The environment(s) to interact with.
+    venv: The vectorized environments to interact with.
     sample_until: A function determining the termination condition.
         It takes a sequence of trajectories, and returns a bool.
         Most users will want to use one of `min_episodes` or `min_timesteps`.
@@ -151,12 +200,9 @@ def generate_trajectories(policy,
   Returns:
     Sequence of `Trajectory` named tuples.
   """
-  env = util.maybe_load_env(env, vectorize=True)
-  assert util.is_vec_env(env)
-
   if isinstance(policy, BaseRLModel):
     get_action = policy.predict
-    policy.set_env(env)  # This checks that env and policy are compatible.
+    policy.set_env(venv)
   else:
     get_action = functools.partial(get_action_policy, policy)
 
@@ -164,7 +210,7 @@ def generate_trajectories(policy,
   trajectories = []
   # accumulator for incomplete trajectories
   trajectories_accum = _TrajectoryAccumulator()
-  obs_batch = env.reset()
+  obs_batch = venv.reset()
   for env_idx, obs in enumerate(obs_batch):
     # Seed with first obs only. Inside loop, we'll only add second obs from
     # each (s,a,r,s') tuple, under the same "obs" key again. That way we still
@@ -175,7 +221,7 @@ def generate_trajectories(policy,
   while not sample_until(trajectories):
     obs_old_batch = obs_batch
     act_batch, _ = get_action(obs_old_batch, deterministic=deterministic_policy)
-    obs_batch, rew_batch, done_batch, info_batch = env.step(act_batch)
+    obs_batch, rew_batch, done_batch, info_batch = venv.step(act_batch)
 
     # Don't save tuples if there is a done. The next_obs for any environment
     # is incorrect for any timestep where there is an episode end, so we fix it
@@ -192,11 +238,12 @@ def generate_trajectories(policy,
       trajectories_accum.add_step(
           env_idx,
           dict(
-              act=act,
-              rew=rew,
+              acts=act,
+              rews=rew,
               # this is not the obs corresponding to `act`, but rather the obs
               # *after* `act` (see above)
-              obs=real_obs))
+              obs=real_obs,
+              infos=info))
       if done:
         # finish env_idx-th trajectory
         new_traj = trajectories_accum.finish_trajectory(env_idx)
@@ -209,28 +256,29 @@ def generate_trajectories(policy,
 
   # Sanity checks.
   for trajectory in trajectories:
-    n_steps = len(trajectory.act)
+    n_steps = len(trajectory.acts)
     # extra 1 for the end
-    exp_obs = (n_steps + 1, ) + env.observation_space.shape
+    exp_obs = (n_steps + 1, ) + venv.observation_space.shape
     real_obs = trajectory.obs.shape
     assert real_obs == exp_obs, f"expected shape {exp_obs}, got {real_obs}"
-    exp_act = (n_steps, ) + env.action_space.shape
-    real_act = trajectory.act.shape
+    exp_act = (n_steps, ) + venv.action_space.shape
+    real_act = trajectory.acts.shape
     assert real_act == exp_act, f"expected shape {exp_act}, got {real_act}"
     exp_rew = (n_steps,)
-    real_rew = trajectory.rew.shape
+    real_rew = trajectory.rews.shape
     assert real_rew == exp_rew, f"expected shape {exp_rew}, got {real_rew}"
 
   return trajectories
 
 
-def rollout_stats(policy, env, sample_until: GenTrajTerminationFn, **kwargs):
+def rollout_stats(policy, venv: VecEnv, sample_until: GenTrajTerminationFn,
+                  **kwargs) -> dict:
   """Rolls out trajectories under the policy and returns various statistics.
 
   Args:
       policy (stable_baselines.BasePolicy): A stable_baselines Model,
           trained on the gym environment.
-      env (VecEnv or Env or str): The environment(s) to interact with.
+      venv: The vectorized environment to interact with.
       n_timesteps (int): The number of rewards to collect.
       n_episodes (int): The minimum number of episodes to finish before we stop
           collecting rewards. Rewards from parallel episodes that are underway
@@ -238,17 +286,27 @@ def rollout_stats(policy, env, sample_until: GenTrajTerminationFn, **kwargs):
       **kwargs: passed through to `generate_trajectories`.
 
   Returns:
-      Dictionary containing `n_traj` collected (int), along with return
-      statistics (keys: `return_{min,mean,std,max}`, float values) and
-      trajectory length statistics (keys: `len_{min,mean,std,max}`, float
+      Dictionary containing `n_traj` collected (int), along with episode return
+      statistics (keys: `{monitor_,}return_{min,mean,std,max}`, float values)
+      and trajectory length statistics (keys: `len_{min,mean,std,max}`, float
       values).
+
+      `return_*` values are calculated from environment rewards.
+      `monitor_return_*` values are calculated using the `infos['epinfo']['r']`
+      rewards generated by a Monitor wrapper (this can be useful for bypassing
+      wrappers that modify the reward).
   """
-  trajectories = generate_trajectories(policy, env, sample_until, **kwargs)
+  trajectories = generate_trajectories(policy, venv, sample_until, **kwargs)
+  assert len(trajectories) > 0
   out_stats = {"n_traj": len(trajectories)}
   traj_descriptors = {
-    "return": np.asarray([sum(t.rew) for t in trajectories]),
-    "len": np.asarray([len(t.rew) for t in trajectories]),
+    "return": np.asarray([sum(t.rews) for t in trajectories]),
+    "len": np.asarray([len(t.rews) for t in trajectories]),
   }
+  if "episode" in trajectories[0].infos[-1]:
+    monitor_ep_returns = [t.infos[-1]["episode"]["r"] for t in trajectories]
+    traj_descriptors["monitor_return"] = np.asarray(monitor_ep_returns)
+
   stat_names = ["min", "mean", "std", "max"]
   for desc_name, desc_vals in traj_descriptors.items():
     for stat_name in stat_names:
@@ -277,17 +335,17 @@ def flatten_trajectories(trajectories: Sequence[Trajectory]) -> Transitions:
   Returns:
     The trajectories flattened into a single batch of Transitions.
   """
-  keys = ["obs", "next_obs", "act", "rew", "done"]
+  keys = ["obs", "next_obs", "acts", "rews", "dones"]
   parts = {key: [] for key in keys}
   for traj in trajectories:
-    parts["act"].append(traj.act)
-    parts["rew"].append(traj.rew)
+    parts["acts"].append(traj.acts)
+    parts["rews"].append(traj.rews)
     obs = traj.obs
     parts["obs"].append(obs[:-1])
     parts["next_obs"].append(obs[1:])
-    done = np.zeros_like(traj.rew, dtype=np.bool)
-    done[-1] = True
-    parts["done"].append(done)
+    dones = np.zeros_like(traj.rews, dtype=np.bool)
+    dones[-1] = True
+    parts["dones"].append(dones)
   cat_parts = {
     key: np.concatenate(part_list, axis=0)
     for key, part_list in parts.items()
@@ -298,7 +356,7 @@ def flatten_trajectories(trajectories: Sequence[Trajectory]) -> Transitions:
 
 
 def generate_transitions(policy,
-                         env,
+                         venv,
                          n_timesteps: int,
                          *,
                          truncate: bool = True,
@@ -308,7 +366,7 @@ def generate_transitions(policy,
   Args:
     policy (BasePolicy or BaseRLModel): A stable_baselines policy or RLModel,
         trained on the gym environment.
-    env (VecEnv or Env or str): The environment(s) to interact with.
+    venv: The vectorized environments to interact with.
     n_timesteps: The minimum number of timesteps to sample.
     truncate: If True, then drop any additional samples to ensure that exactly
         `n_timesteps` samples are returned.
@@ -319,7 +377,7 @@ def generate_transitions(policy,
     to be at least `n_timesteps` (if specified), but may be greater unless
     `truncate` is provided as we collect data until the end of each episode.
   """
-  traj = generate_trajectories(policy, env,
+  traj = generate_trajectories(policy, venv,
                                sample_until=min_timesteps(n_timesteps),
                                **kwargs)
   transitions = flatten_trajectories(traj)
@@ -330,20 +388,36 @@ def generate_transitions(policy,
 
 def save(path: str,
          policy: Union[BaseRLModel, BasePolicy],
-         env: Union[gym.Env, VecEnv],
+         venv: VecEnv,
          sample_until: GenTrajTerminationFn,
+         *,
+         unwrap: bool = True,
+         exclude_infos: bool = True,
          **kwargs,
          ) -> None:
     """Generate policy rollouts and save them to a pickled Sequence[Trajectory].
 
+    The `.infos` field of each Trajectory is set to `None` to save space.
+
     Args:
       path: Rollouts are saved to this path.
-      env: The environment.
+      venv: The vectorized environments.
       sample_until: End condition for rollout sampling.
+      unwrap: If True, then save original observations and rewards (instead of
+        potentially wrapped observations and rewards) by calling
+        `unwrap_traj()`.
+      exclude_infos: If True, then exclude `infos` from pickle by setting
+        this field to None. Excluding `infos` can save a lot of space during
+        pickles.
       deterministic_policy: Argument from `generate_trajectories`.
     """
     os.makedirs(os.path.dirname(path), exist_ok=True)
-    trajs = generate_trajectories(policy, env, sample_until, **kwargs)
+    trajs = generate_trajectories(policy, venv, sample_until, **kwargs)
+    if unwrap:
+      trajs = [unwrap_traj(traj) for traj in trajs]
+    if exclude_infos:
+      trajs = [traj._replace(infos=None) for traj in trajs]
+
     with open(path, "wb") as f:
       pickle.dump(trajs, f)
     tf.logging.info("Dumped demonstrations to {}.".format(path))

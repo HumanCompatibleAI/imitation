@@ -1,10 +1,10 @@
 from functools import partial
-from typing import Optional, Union
+from typing import Optional
 from warnings import warn
 
-import gym
 import numpy as np
 from stable_baselines.common.base_class import BaseRLModel
+from stable_baselines.common.vec_env import VecEnv
 import tensorflow as tf
 from tqdm import tqdm
 
@@ -18,25 +18,25 @@ from imitation.util import buffer, reward_wrapper, rollout
 class AdversarialTrainer:
   """Trainer for GAIL and AIRL."""
 
-  env: gym.Env
-  """The original environment."""
+  venv: VecEnv
+  """The original vectorized environment."""
 
-  env_train: gym.Env
-  """Like `self.env`, but wrapped with train reward unless in debug mode.
+  venv_train: VecEnv
+  """Like `self.venv`, but wrapped with train reward unless in debug mode.
 
   If `debug_use_ground_truth=True` was passed into the initializer then
-  `self.env_train` is the same as `self.env`.
+  `self.venv_train` is the same as `self.venv`.
   """
 
-  env_test: gym.Env
-  """Like `self.env`, but wrapped with test reward unless in debug mode.
+  venv_test: VecEnv
+  """Like `self.venv`, but wrapped with test reward unless in debug mode.
 
   If `debug_use_ground_truth=True` was passed into the initializer then
-  `self.env_test` is the same as `self.env`.
+  `self.venv_test` is the same as `self.venv`.
   """
 
   def __init__(self,
-               env: Union[gym.Env, str],
+               venv: VecEnv,
                gen_policy: BaseRLModel,
                discrim: discrim_net.DiscrimNet,
                expert_demos: rollout.Transitions,
@@ -50,7 +50,7 @@ class AdversarialTrainer:
     """Builds Trainer.
 
     Args:
-        env: A Gym environment or ID that the policy is trained on.
+        venv: The vectorized environment to train in.
         gen_policy: The generator policy that is trained to maximize
                     discriminator confusion.
         discrim: The discriminator network.
@@ -81,7 +81,7 @@ class AdversarialTrainer:
     self._n_disc_samples_per_buffer = n_disc_samples_per_buffer
     self.debug_use_ground_truth = debug_use_ground_truth
 
-    self.env = util.maybe_load_env(env, vectorize=True)
+    self.venv = venv
     self._expert_demos = expert_demos
     self._gen_policy = gen_policy
 
@@ -99,20 +99,20 @@ class AdversarialTrainer:
     self._sess.run(tf.global_variables_initializer())
 
     if debug_use_ground_truth:
-      self.env_train = self.env_test = self.env
+      self.venv_train = self.venv_test = self.venv
     else:
       reward_train = partial(
           self.discrim.reward_train,
           gen_log_prob_fn=self._gen_policy.action_probability)
-      self.env_train = reward_wrapper.RewardVecEnvWrapper(
-          self.env, reward_train)
-      self.env_test = reward_wrapper.RewardVecEnvWrapper(
-          self.env, self.discrim.reward_test)
+      self.venv_train = reward_wrapper.RewardVecEnvWrapper(
+          self.venv, reward_train)
+      self.venv_test = reward_wrapper.RewardVecEnvWrapper(
+          self.venv, self.discrim.reward_test)
 
     if gen_replay_buffer_capacity is None:
       gen_replay_buffer_capacity = 20 * self._n_disc_samples_per_buffer
     self._gen_replay_buffer = buffer.ReplayBuffer(gen_replay_buffer_capacity,
-                                                  self.env)
+                                                  self.venv)
     self._populate_gen_replay_buffer()
     self._exp_replay_buffer = buffer.ReplayBuffer.from_data(expert_demos)
     if n_disc_samples_per_buffer > len(self._exp_replay_buffer):
@@ -140,7 +140,7 @@ class AdversarialTrainer:
     Args:
         n_steps (int): The number of training steps.
         gen_obs (np.ndarray): See `_build_disc_feed_dict`.
-        gen_act (np.ndarray): See `_build_disc_feed_dict`.
+        gen_acts (np.ndarray): See `_build_disc_feed_dict`.
         gen_next_obs (np.ndarray): See `_build_disc_feed_dict`.
     """
     for _ in range(n_steps):
@@ -151,7 +151,7 @@ class AdversarialTrainer:
         self._summarize(fd, step)
 
   def train_gen(self, n_steps=10000):
-    self._gen_policy.set_env(self.env_train)
+    self._gen_policy.set_env(self.venv_train)
     # TODO(adam): learn was not intended to be called for each training batch
     # It should work, but might incur unnecessary overhead: e.g. in PPO2
     # a new Runner instance is created each time. Also a hotspot for errors:
@@ -167,7 +167,7 @@ class AdversarialTrainer:
     produced, and then stores these samples.
     """
     gen_rollouts = util.rollout.generate_transitions(
-        self._gen_policy, self.env_train,
+        self._gen_policy, self.venv_train,
         n_timesteps=self._n_disc_samples_per_buffer)
     self._gen_replay_buffer.store(gen_rollouts)
 
@@ -200,7 +200,7 @@ class AdversarialTrainer:
 
     Args:
         gen_obs (np.ndarray): See `_build_disc_feed_dict`.
-        gen_act (np.ndarray): See `_build_disc_feed_dict`.
+        gen_acts (np.ndarray): See `_build_disc_feed_dict`.
         gen_next_obs (np.ndarray): See `_build_disc_feed_dict`.
 
     Returns:
@@ -229,7 +229,7 @@ class AdversarialTrainer:
 
   def _build_disc_feed_dict(self, *,
                             gen_obs: Optional[np.ndarray] = None,
-                            gen_act: Optional[np.ndarray] = None,
+                            gen_acts: Optional[np.ndarray] = None,
                             gen_next_obs: Optional[np.ndarray] = None,
                             ) -> dict:
     """Build a feed dict that holds the next training batch of generator
@@ -239,19 +239,19 @@ class AdversarialTrainer:
         gen_obs (np.ndarray): A numpy array with shape
             `[self.n_disc_samples_per_buffer_per_buffer] + env.observation_space.shape`.
             The ith observation in this array is the observation seen when the
-            generator chooses action `gen_act[i]`.
-        gen_act (np.ndarray): A numpy array with shape
+            generator chooses action `gen_acts[i]`.
+        gen_acts (np.ndarray): A numpy array with shape
             `[self.n_disc_samples_per_buffer_per_buffer] + env.action_space.shape`.
         gen_next_obs (np.ndarray): A numpy array with shape
             `[self.n_disc_samples_per_buffer_per_buffer] + env.observation_space.shape`.
             The ith observation in this array is from the transition state after
-            the generator chooses action `gen_act[i]`.
+            the generator chooses action `gen_acts[i]`.
     """  # noqa: E501
 
     # Sample generator training batch from replay buffers, unless provided
     # in argument.
     none_count = sum(int(x is None)
-                     for x in (gen_obs, gen_act, gen_next_obs))
+                     for x in (gen_obs, gen_acts, gen_next_obs))
     if none_count == 3:
       tf.logging.debug("_build_disc_feed_dict: No generator rollout "
                        "parameters were "
@@ -259,7 +259,7 @@ class AdversarialTrainer:
       gen_sample = self._gen_replay_buffer.sample(
           self._n_disc_samples_per_buffer)
       gen_obs = gen_sample.obs
-      gen_act = gen_sample.act
+      gen_acts = gen_sample.acts
       gen_next_obs = gen_sample.next_obs
     elif none_count != 0:
       raise ValueError("Gave some but not all of the generator params.")
@@ -272,27 +272,27 @@ class AdversarialTrainer:
     n_expert = len(expert_sample.obs)
     n_gen = len(gen_obs)
     N = n_expert + n_gen
-    assert n_expert == len(expert_sample.act)
+    assert n_expert == len(expert_sample.acts)
     assert n_expert == len(expert_sample.next_obs)
-    assert n_gen == len(gen_act)
+    assert n_gen == len(gen_acts)
     assert n_gen == len(gen_next_obs)
 
     # Concatenate rollouts, and label each row as expert or generator.
     obs = np.concatenate([expert_sample.obs, gen_obs])
-    act = np.concatenate([expert_sample.act, gen_act])
+    acts = np.concatenate([expert_sample.acts, gen_acts])
     next_obs = np.concatenate([expert_sample.next_obs, gen_next_obs])
     labels = np.concatenate([np.zeros(n_expert, dtype=int),
                              np.ones(n_gen, dtype=int)])
 
     # Calculate generator-policy log probabilities.
-    log_act_prob = self._gen_policy.action_probability(obs, actions=act,
+    log_act_prob = self._gen_policy.action_probability(obs, actions=acts,
                                                        logp=True)
     assert len(log_act_prob) == N
     log_act_prob = log_act_prob.reshape((N,))
 
     fd = {
         self.discrim.obs_ph: obs,
-        self.discrim.act_ph: act,
+        self.discrim.act_ph: acts,
         self.discrim.next_obs_ph: next_obs,
         self.discrim.labels_ph: labels,
         self.discrim.log_policy_act_prob_ph: log_act_prob,

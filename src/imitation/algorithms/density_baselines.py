@@ -2,7 +2,7 @@
 learns a density estimate on some aspect of the demonstrations, then rewards
 the agent for following that estimate."""
 
-from typing import Sequence, Union
+from typing import Sequence
 
 from gym.spaces.utils import flatten
 import numpy as np
@@ -12,7 +12,7 @@ from stable_baselines.common.base_class import BaseRLModel
 from stable_baselines.common.vec_env import VecEnv
 import tensorflow as tf
 
-from imitation.util import reward_wrapper, rollout, util
+from imitation.util import reward_wrapper, rollout
 
 # Constants identifying different kinds of density we can use. Note that all
 # can be augmented to depend on the time step by passing `is_stationary = True`
@@ -132,10 +132,10 @@ class DensityReward:
     flat_trajectories = []
     for traj in trajectories:
       obs_vec = traj.obs
-      act_vec = traj.act
+      act_vec = traj.acts
       assert len(obs_vec) == len(act_vec) + 1
       flat_traj = []
-      for step_num in range(len(traj.act)):
+      for step_num in range(len(traj.acts)):
         flat_trans = self._preprocess_transition(obs_vec[step_num],
                                                  act_vec[step_num],
                                                  obs_vec[step_num + 1])
@@ -203,7 +203,7 @@ class DensityReward:
 
 class DensityTrainer:
   def __init__(self,
-               venv: Union[str, VecEnv],
+               venv: VecEnv,
                rollouts: Sequence[rollout.Trajectory],
                imitation_trainer: BaseRLModel,
                *,
@@ -227,7 +227,7 @@ class DensityTrainer:
       kernel, kernel_bandwidth, density_type, is_stationary,
         n_expert_trajectories: these are passed directly to `DensityReward`;
         refer to documentation for that class."""
-    self.venv = util.maybe_load_env(venv, vectorize=True)
+    self.venv = venv
     self.imitation_trainer = imitation_trainer
     self.reward_fn = DensityReward(trajectories=rollouts,
                                    density_type=density_type,

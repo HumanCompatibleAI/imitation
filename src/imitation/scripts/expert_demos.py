@@ -1,5 +1,4 @@
 import contextlib
-import math
 import os
 import os.path as osp
 from typing import Optional
@@ -15,34 +14,6 @@ from imitation.rewards.serialize import load_reward
 from imitation.scripts.config.expert_demos import expert_demos_ex
 import imitation.util as util
 from imitation.util.reward_wrapper import RewardVecEnvWrapper
-
-
-def traj_sample_until(n_timesteps: Optional[int],
-                      n_episodes: Optional[int],
-                      ) -> util.rollout.GenTrajTerminationFn:
-  """Returns a termination condition sampling until n_timesteps or n_episodes.
-
-  Arguments:
-    n_timesteps: Minimum number of timesteps to sample.
-    n_episodes: Number of episodes to sample.
-
-  Returns:
-    A termination condition.
-
-  Raises:
-    ValueError if both or neither of n_timesteps and n_episodes are set,
-    or if either are non-positive.
-  """
-  if n_timesteps is not None and n_episodes is not None:
-    raise ValueError("n_timesteps and n_episodes were both set")
-  elif n_timesteps is not None:
-    assert n_timesteps > 0
-    return util.rollout.min_timesteps(n_timesteps)
-  elif n_episodes is not None:
-    assert n_episodes > 0
-    return util.rollout.min_episodes(n_episodes)
-  else:
-    raise ValueError("Set at least one of n_timesteps and n_episodes")
 
 
 @expert_demos_ex.main
@@ -123,11 +94,10 @@ def rollouts_and_policy(
           finished.
 
   Returns:
-      A dictionary with the following keys: "ep_reward_mean",
-      "ep_reward_std_err", and "log_dir".
+    The return value of `rollout_stats()` using the final policy.
   """
-  sample_until = traj_sample_until(rollout_save_n_timesteps,
-                                   rollout_save_n_episodes)
+  sample_until = util.rollout.make_sample_until(rollout_save_n_timesteps,
+                                                rollout_save_n_episodes)
   eval_sample_until = util.rollout.min_episodes(n_episodes_eval)
 
   with util.make_session():
@@ -191,16 +161,9 @@ def rollouts_and_policy(
         serialize.save_stable_model(output_dir, policy, vec_normalize)
 
       # Final evaluation of expert policy.
-      # TODO(shwang): Remove reward normalization if applicable: VecNormalize
-      # also normalizes rewards by default.
       stats = util.rollout.rollout_stats(policy, venv, eval_sample_until)
-      assert stats["n_traj"] >= n_episodes_eval
-      ep_reward_mean = stats["return_mean"]
-      ep_reward_std_err = stats["return_std"] / math.sqrt(n_episodes_eval)
 
-  return dict(ep_reward_mean=ep_reward_mean,
-              ep_reward_std_err=ep_reward_std_err,
-              log_dir=log_dir)
+  return stats
 
 
 @expert_demos_ex.command
@@ -228,8 +191,8 @@ def rollouts_from_policy(
       policy_path: Argument to `imitation.policies.serialize.load_policy`.
       rollout_save_path: Rollout pickle is saved to this path.
   """
-  sample_until = traj_sample_until(rollout_save_n_timesteps,
-                                   rollout_save_n_episodes)
+  sample_until = util.rollout.make_sample_until(rollout_save_n_timesteps,
+                                                rollout_save_n_episodes)
 
   venv = util.make_vec_env(env_name, num_vec, seed=_seed,
                            parallel=parallel, log_dir=log_dir,

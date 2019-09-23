@@ -25,7 +25,7 @@ def test_actions_valid(env_name, policy_type):
   with serialize.load_policy(policy_type, "foobar", venv) as policy:
     transitions = rollout.generate_transitions(policy, venv, n_timesteps=100)
 
-  for a in transitions.act:
+  for a in transitions.acts:
     assert venv.action_space.contains(a)
 
 
@@ -67,4 +67,4 @@ def test_serialize_identity(env_name, model_cfg, normalize, tmpdir):
                                                n_timesteps=1000,
                                                deterministic_policy=True)
 
-  assert np.allclose(orig_rollout.act, new_rollout.act)
+  assert np.allclose(orig_rollout.acts, new_rollout.acts)

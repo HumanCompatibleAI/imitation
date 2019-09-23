@@ -1,4 +1,3 @@
-import gym
 import numpy as np
 import pytest
 import tensorflow as tf
@@ -6,19 +5,19 @@ import tensorflow as tf
 from imitation.policies import base
 from imitation.rewards import discrim_net
 from imitation.rewards.reward_net import BasicRewardNet
-from imitation.util import rollout
+import imitation.util as util
 
 ENVS = ['FrozenLake-v0', 'CartPole-v1', 'Pendulum-v0']
 DISCRIM_NETS = [discrim_net.DiscrimNetAIRL, discrim_net.DiscrimNetGAIL]
 
 
-def _setup_airl(env):
-  reward_net = BasicRewardNet(env.observation_space, env.action_space)
+def _setup_airl(venv):
+  reward_net = BasicRewardNet(venv.observation_space, venv.action_space)
   return discrim_net.DiscrimNetAIRL(reward_net)
 
 
-def _setup_gail(env):
-  return discrim_net.DiscrimNetGAIL(env.observation_space, env.action_space)
+def _setup_gail(venv):
+  return discrim_net.DiscrimNetGAIL(venv.observation_space, venv.action_space)
 
 
 DISCRIM_NET_SETUPS = {
@@ -30,24 +29,25 @@ DISCRIM_NET_SETUPS = {
 @pytest.mark.parametrize("env_id", ENVS)
 @pytest.mark.parametrize("discrim_net_cls", DISCRIM_NETS)
 def test_discrim_net_no_crash(session, env_id, discrim_net_cls):
-  env = gym.make(env_id)
-  DISCRIM_NET_SETUPS[discrim_net_cls](env)
+  # If parallel=True, codecov sometimes acts up.
+  venv = util.make_vec_env(env_id, parallel=False)
+  DISCRIM_NET_SETUPS[discrim_net_cls](venv)
 
 
 @pytest.mark.parametrize("env_id", ENVS)
 @pytest.mark.parametrize("discrim_net_cls", DISCRIM_NETS)
 def test_serialize_identity(session, env_id, discrim_net_cls, tmpdir):
   """Does output of deserialized discriminator match that of original?"""
-  env = gym.make(env_id)
-  original = DISCRIM_NET_SETUPS[discrim_net_cls](env)
-  random = base.RandomPolicy(env.observation_space, env.action_space)
+  venv = util.make_vec_env(env_id, parallel=False)
+  original = DISCRIM_NET_SETUPS[discrim_net_cls](venv)
+  random = base.RandomPolicy(venv.observation_space, venv.action_space)
   session.run(tf.global_variables_initializer())
 
   original.save(tmpdir)
   with tf.variable_scope("loaded"):
     loaded = discrim_net.DiscrimNet.load(tmpdir)
 
-  transitions = rollout.generate_transitions(random, env, n_timesteps=100)
+  transitions = util.rollout.generate_transitions(random, venv, n_timesteps=100)
   length = len(transitions.obs)  # n_timesteps is only a lower bound
   labels = np.random.randint(2, size=length).astype(np.float32)
   log_prob = np.random.randn(length)
@@ -57,7 +57,7 @@ def test_serialize_identity(session, env_id, discrim_net_cls, tmpdir):
   for net in [original, loaded]:
     feed_dict.update({
         net.obs_ph: transitions.obs,
-        net.act_ph: transitions.act,
+        net.act_ph: transitions.acts,
         net.next_obs_ph: transitions.next_obs,
         net.labels_ph: labels,
         net.log_policy_act_prob_ph: log_prob,

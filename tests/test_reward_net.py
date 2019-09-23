@@ -51,7 +51,7 @@ def _make_feed_dict(reward_net: reward_net.RewardNet,
                     transitions: rollout.Transitions):
   return {
       reward_net.obs_ph: transitions.obs,
-      reward_net.act_ph: transitions.act,
+      reward_net.act_ph: transitions.acts,
       reward_net.next_obs_ph: transitions.next_obs,
   }
 
@@ -90,7 +90,7 @@ def test_serialize_identity(session, env_name, net_cls, tmpdir):
       rewards = session.run(outputs, feed_dict=feed_dict)
 
       steps = np.zeros((transitions.obs.shape[0],))
-      args = (transitions.obs, transitions.act,
+      args = (transitions.obs, transitions.acts,
               transitions.next_obs, steps)
       rewards['train'].append(shaped_fn(*args))
       rewards['test'].append(unshaped_fn(*args))

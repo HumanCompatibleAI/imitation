@@ -17,9 +17,6 @@ def expert_demos_defaults():
   normalize = True  # Use VecNormalize
   max_episode_steps = None  # Set to positive int to limit episode horizons
   make_blank_policy_kwargs = dict(DEFAULT_BLANK_POLICY_KWARGS)
-  # TODO(shwang): We should make it so that we always evaluate rewards
-  # relative to ground truth reward. (or maybe evaluate relative to both
-  # ground truth reward and custom reward when possible)
   n_episodes_eval = 50  # Num of episodes for final ep reward mean evaluation
 
   # If specified, overrides the ground-truth environment reward
@@ -28,13 +25,22 @@ def expert_demos_defaults():
 
   rollout_save_interval = -1  # Num updates between saves (<=0 disables)
   rollout_save_final = True  # If True, save after training is finished.
-  rollout_save_n_timesteps = 2000  # Min timesteps saved per file, optional.
+  rollout_save_n_timesteps = None  # Min timesteps saved per file, optional.
   rollout_save_n_episodes = None  # Num episodes saved per file, optional.
 
   policy_save_interval = 100  # Num updates between saves (<=0 disables)
   policy_save_final = True  # If True, save after training is finished.
 
   log_root = os.path.join("output", "expert_demos")  # output directory
+
+
+@expert_demos_ex.config
+def default_end_cond(rollout_save_n_timesteps, rollout_save_n_episodes):
+  # Only set default if both end cond options are None.
+  # This way the Sacred CLI caller can set `rollout_save_n_episodes` only
+  # without getting an error that `rollout_save_n_timesteps is not None`.
+  if rollout_save_n_timesteps is None and rollout_save_n_episodes is None:
+    rollout_save_n_timesteps = 2000  # Min timesteps saved per file, optional.
 
 
 @expert_demos_ex.config

@@ -8,6 +8,7 @@ import uuid
 
 import gym
 from gym.wrappers import TimeLimit
+import numpy as np
 import stable_baselines
 from stable_baselines import bench
 from stable_baselines.common.base_class import BaseRLModel
@@ -27,31 +28,6 @@ def make_unique_timestamp():
   timestamp = datetime.datetime.now().strftime(ISO_TIMESTAMP)
   random_uuid = uuid.uuid4().hex
   return f"{timestamp}_{random_uuid}"
-
-
-def maybe_load_env(env_or_str, vectorize=True):
-  """Load an environment if it isn't already loaded. Then optionally vectorize
-  it as a DummyVecEnv, if it isn't already vectorized.
-
-  Args:
-      env_or_str (str or gym.Env): If `env_or_str` is a str, it's loaded
-          before returning.
-      vectorize (bool): If True, then vectorize the environment before
-          returning, if it isn't already vectorized.
-
-  Return:
-      env (gym.Env): Either the original argument if it was an Env or an
-          instantiated gym Env if it was a string.
-  """
-  if isinstance(env_or_str, str):
-    env = gym.make(env_or_str)
-  else:
-    env = env_or_str
-
-  if not is_vec_env(env) and vectorize:
-    env = DummyVecEnv([lambda: env])
-
-  return env
 
 
 def make_vec_env(env_id: str,
@@ -85,17 +61,13 @@ def make_vec_env(env_id: str,
       log_subdir = os.path.join(log_dir, 'monitor')
       os.makedirs(log_subdir, exist_ok=True)
       log_path = os.path.join(log_subdir, f'mon{i:03d}')
-    return bench.Monitor(env, log_path, allow_early_resets=True)
+    return MonitorPlus(env, log_path, allow_early_resets=True)
   env_fns = [functools.partial(make_env, i) for i in range(n_envs)]
   if parallel:
     # See GH hill-a/stable-baselines issue #217
     return SubprocVecEnv(env_fns, start_method='forkserver')
   else:
     return DummyVecEnv(env_fns)
-
-
-def is_vec_env(env):
-  return isinstance(env, VecEnv)
 
 
 def init_rl(env: Union[gym.Env, VecEnv],
@@ -218,3 +190,35 @@ def docstring_parameter(*args, **kwargs):
     obj.__doc__ = obj.__doc__.format(*args, **kwargs)
     return obj
   return helper
+
+
+class MonitorPlus(bench.Monitor):
+  """Augments Monitor by recording raw rewards and observations.
+
+  Adds two new keys to `info["episode"]` (which is returned whenever done=True),
+  "obs" and "rews", which hold the raw observations and rewards seen during
+  this episode.
+  """
+  def __init__(self, *args, **kwargs):
+    super().__init__(*args, **kwargs)
+    self._obs = None
+    self._rews = None
+
+  def reset(self, **kwargs):
+    new_obs = super().reset()
+    self._obs = [new_obs]
+    self._rews = []
+    return new_obs
+
+  def step(self, action):
+    obs, rew, done, info = super().step(action)
+    self._obs.append(obs)
+    self._rews.append(rew)
+
+    if done:
+      ep_info = info.get('episode')
+      assert isinstance(ep_info, dict)
+      ep_info["obs"] = np.stack(self._obs)
+      ep_info["rews"] = np.stack(self._rews)
+
+    return obs, rew, done, info
