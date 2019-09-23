@@ -76,19 +76,20 @@ class BCTrainer:
           loss_ewma = 0.9 * loss_ewma + 0.1 * loss
       epoch_iter.set_postfix(loss_ewma='% 3.4f' % loss_ewma)
 
-  def test_policy(self, *, n_episodes=10):
+  def test_policy(self, *, min_episodes=10):
     """Test current imitation policy on environment & give some rollout
     stats.
 
     Args:
-      n_episodes (int): number of rolled-out episodes.
+      min_episodes (int): Minimum number of rolled-out episodes.
 
     Returns:
       dict: rollout statistics collected by
         `imitation.utils.rollout.rollout_stats()`.
     """
-    reward_stats = rollout.rollout_stats(
-        self.policy, self.env, sample_until=rollout.min_episodes(n_episodes))
+    trajs = rollout.generate_trajectories(
+        self.policy, self.env, sample_until=rollout.min_episodes(min_episodes))
+    reward_stats = rollout.rollout_stats(trajs)
     return reward_stats
 
   def _build_tf_graph(self):
