@@ -106,6 +106,11 @@ def train(_seed: int,
       return value of `rollout_stats()` on the expert demonstrations loaded from
       `rollout_path`.
   """
+  # Calculate stats for expert rollouts. Used for plot and return value.
+  with open(rollout_path, "rb") as f:
+    expert_trajs = pickle.load(f)
+  expert_stats = util.rollout.rollout_stats(expert_trajs)
+
   with util.make_session():
     trainer = init_trainer(env_name, rollout_path,
                            seed=_seed, log_dir=log_dir,
@@ -117,22 +122,12 @@ def train(_seed: int,
                         format_strs=['tensorboard', 'stdout'])
 
     if plot_interval > 0:
-      # If `n_expert_demos` was provided, then we have enough information
-      # to determine the expert's mean episode reward just from inspecting
-      # the `trainer.expert_demos` (Transitions). Kind of sad that there isn't
-      # a clean way to pull the raw `List[Trajectory]` out of `init_trainer`.
-      n_expert_demos = init_trainer_kwargs.get("n_expert_demos")
-      if n_expert_demos is not None:
-        expert_mean_ep_reward = trainer.expert_demos.rews / n_expert_demos
-      else:
-        expert_mean_ep_reward = None
-
       visualizer = _TrainVisualizer(
         trainer=trainer,
         show_plots=show_plots,
         n_episodes_per_reward_data=n_plot_episodes,
         log_dir=log_dir,
-        expert_mean_ep_reward=expert_mean_ep_reward)
+        expert_mean_ep_reward=expert_stats["return_mean"])
     else:
       visualizer = None
 
@@ -166,11 +161,7 @@ def train(_seed: int,
                                                trainer.venv_test,
                                                sample_until=sample_until_eval)
     results["imit_stats"] = util.rollout.rollout_stats(trajs)
-
-    # Calculate stats for expert rollouts.
-    with open(rollout_path, "rb") as f:
-      expert_trajs = pickle.load(f)
-    results["expert_stats"] = util.rollout.rollout_stats(expert_trajs)
+    results["expert_stats"] = expert_stats
 
     return results
 
