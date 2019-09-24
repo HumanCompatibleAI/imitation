@@ -7,6 +7,7 @@ directly.
 from collections import defaultdict
 import os
 import os.path as osp
+import pickle
 from typing import Optional
 
 from matplotlib import pyplot as plt
@@ -36,7 +37,7 @@ def save(trainer, save_path):
 @train_ex.main
 def train(_seed: int,
           env_name: str,
-          rollout_glob: str,
+          rollout_path: str,
           log_dir: str,
           *,
           n_epochs: int,
@@ -70,8 +71,8 @@ def train(_seed: int,
   Args:
     _seed: Random seed.
     env_name: The environment to train in.
-    rollout_glob: A bash-style regex pattern from which rollout pickles are
-      loaded.
+    rollout_path: Path to pickle containing list of Trajectories. Used as
+      expert demonstrations.
     log_dir: Directory to save models and other logging to.
 
     n_epochs: The number of epochs to train. Each epoch consists of
@@ -100,11 +101,19 @@ def train(_seed: int,
       then only save weights after training is complete.
 
   Returns:
-    The return value of `rollout_stats()` on the test-reward-wrapped
-    environment, using the final policy.
+    A dictionary with two keys. "imit_stats" gives the return value of
+      `rollout_stats()` on rollouts test-reward-wrapped
+      environment, using the final policy (remember that the ground-truth reward
+      can be recovered from the "monitor_return" key). "expert_stats" gives the
+      return value of `rollout_stats()` on the expert demonstrations loaded from
+      `rollout_path`.
   """
-  with util.make_session():
+  # Calculate stats for expert rollouts. Used for plot and return value.
+  with open(rollout_path, "rb") as f:
+    expert_trajs = pickle.load(f)
+  expert_stats = util.rollout.rollout_stats(expert_trajs)
 
+  with util.make_session():
     tf.logging.info("Logging to %s", log_dir)
     os.makedirs(log_dir, exist_ok=True)
     sb_logger.configure(folder=osp.join(log_dir, 'generator'),
@@ -116,26 +125,16 @@ def train(_seed: int,
       kwargs["init_rl_kwargs"] = kwargs.get("init_rl_kwargs", {})
       kwargs["init_rl_kwargs"]["tensorboard_log"] = sb_tensorboard_dir
 
-    trainer = init_trainer(env_name, rollout_glob=rollout_glob,
+    trainer = init_trainer(env_name, rollout_path,
                            seed=_seed, log_dir=log_dir,
                            **init_trainer_kwargs)
     if plot_interval > 0:
-      # If `n_expert_demos` was provided, then we have enough information
-      # to determine the expert's mean episode reward just from inspecting
-      # the `trainer.expert_demos` (Transitions). Kind of sad that there isn't
-      # a clean way to pull the raw `List[Trajectory]` out of `init_trainer`.
-      n_expert_demos = init_trainer_kwargs.get("n_expert_demos")
-      if n_expert_demos is not None:
-        expert_mean_ep_reward = trainer.expert_demos.rews / n_expert_demos
-      else:
-        expert_mean_ep_reward = None
-
       visualizer = _TrainVisualizer(
         trainer=trainer,
         show_plots=show_plots,
         n_episodes_per_reward_data=n_plot_episodes,
         log_dir=log_dir,
-        expert_mean_ep_reward=expert_mean_ep_reward)
+        expert_mean_ep_reward=expert_stats["return_mean"])
     else:
       visualizer = None
 
@@ -163,11 +162,15 @@ def train(_seed: int,
     save(trainer, os.path.join(log_dir, "checkpoints", "final"))
 
     # Final evaluation of imitation policy.
+    results = {}
     sample_until_eval = util.rollout.min_episodes(n_episodes_eval)
-    stats = util.rollout.rollout_stats(trainer.gen_policy,
-                                       trainer.venv_test,
-                                       sample_until=sample_until_eval)
-    return stats
+    trajs = util.rollout.generate_trajectories(trainer.gen_policy,
+                                               trainer.venv_test,
+                                               sample_until=sample_until_eval)
+    results["imit_stats"] = util.rollout.rollout_stats(trajs)
+    results["expert_stats"] = expert_stats
+
+    return results
 
 
 class _TrainVisualizer:

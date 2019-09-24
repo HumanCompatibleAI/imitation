@@ -100,9 +100,8 @@ def eval_policy(_seed: int,
           f"Wrapped env in reward {reward_type} from {reward_path}.")
 
     with serialize.load_policy(policy_type, policy_path, venv) as policy:
-      stats = rollout.rollout_stats(policy, venv, sample_until)
-
-  return stats
+      trajs = rollout.generate_trajectories(policy, venv, sample_until)
+  return rollout.rollout_stats(trajs)
 
 
 if __name__ == "__main__":

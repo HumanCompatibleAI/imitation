@@ -19,8 +19,10 @@ def test_reward_overwrite():
   wrapped_env = util.reward_wrapper.RewardVecEnvWrapper(env, reward_fn)
   policy = RandomPolicy(env.observation_space, env.action_space)
   sample_until = util.rollout.min_episodes(10)
-  default_stats = util.rollout.rollout_stats(policy, env, sample_until)
-  wrapped_stats = util.rollout.rollout_stats(policy, wrapped_env, sample_until)
+  default_stats = util.rollout.rollout_stats(
+      util.rollout.generate_trajectories(policy, env, sample_until))
+  wrapped_stats = util.rollout.rollout_stats(
+      util.rollout.generate_trajectories(policy, wrapped_env, sample_until))
   # Pendulum-v0 always has negative rewards
   assert default_stats['return_max'] < 0
   # ours gives between 1 * traj_len and num_envs * traj_len reward

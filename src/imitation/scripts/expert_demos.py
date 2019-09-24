@@ -172,8 +172,9 @@ def rollouts_and_policy(
         serialize.save_stable_model(output_dir, policy, vec_normalize)
 
       # Final evaluation of expert policy.
-      stats = util.rollout.rollout_stats(policy, venv, eval_sample_until)
-      assert stats["n_traj"] >= n_episodes_eval
+      trajs = util.rollout.generate_trajectories(
+          policy, venv, eval_sample_until)
+      stats = util.rollout.rollout_stats(trajs)
 
   return stats
 

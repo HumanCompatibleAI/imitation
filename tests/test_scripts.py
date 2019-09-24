@@ -60,11 +60,10 @@ def test_eval_policy(config, tmpdir):
                            named_configs=['fast'])
   assert run.status == 'COMPLETED'
   wrapped_reward = 'reward_type' in config
-  _check_result_rollout_stats(run.result, wrapped_reward)
+  _check_rollout_stats(run.result, wrapped_reward)
 
 
-def _check_result_rollout_stats(stats: dict,
-                                wrapped_reward: bool = True):
+def _check_rollout_stats(stats: dict, wrapped_reward: bool = True):
   """Common assertions for rollout_stats."""
   assert isinstance(stats, dict)
   assert "return_mean" in stats
@@ -75,6 +74,16 @@ def _check_result_rollout_stats(stats: dict,
     assert stats.get("return_mean") != stats.get("monitor_return_mean")
   else:
     assert stats.get("return_mean") == stats.get("monitor_return_mean")
+
+
+def _check_train_ex_result(result: dict):
+  expert_stats = result.get("expert_stats")
+  assert isinstance(expert_stats, dict)
+  assert "return_mean" in expert_stats
+  assert "monitor_return_mean" not in expert_stats
+
+  imit_stats = result.get("imit_stats")
+  _check_rollout_stats(imit_stats)
 
 
 def test_train_adversarial(tmpdir):
@@ -88,7 +97,7 @@ def test_train_adversarial(tmpdir):
           },
       },
       'log_root': tmpdir,
-      'rollout_glob': "tests/data/cartpole_0/rollouts/final.pkl",
+      'rollout_path': "tests/data/cartpole_0/rollouts/final.pkl",
       'init_tensorboard': True,
   }
   run = train_ex.run(
@@ -96,7 +105,7 @@ def test_train_adversarial(tmpdir):
       config_updates=config_updates,
   )
   assert run.status == 'COMPLETED'
-  _check_result_rollout_stats(run.result)
+  _check_train_ex_result(run.result)
 
 
 def test_transfer_learning(tmpdir):
@@ -107,12 +116,14 @@ def test_transfer_learning(tmpdir):
   run = train_ex.run(
     named_configs=['cartpole', 'airl', 'fast'],
     config_updates=dict(
-      rollout_glob="tests/data/cartpole_0/rollouts/final.pkl",
+      rollout_path="tests/data/cartpole_0/rollouts/final.pkl",
       log_dir=log_dir_train,
     ),
   )
   assert run.status == 'COMPLETED'
-  assert isinstance(run.result, dict)
+  _check_train_ex_result(run.result)
+
+  _check_rollout_stats(run.result["imit_stats"])
 
   log_dir_data = osp.join(tmpdir, "expert_demos")
   discrim_path = osp.join(log_dir_train, "checkpoints", "final", "discrim")
@@ -125,7 +136,7 @@ def test_transfer_learning(tmpdir):
     ),
   )
   assert run.status == 'COMPLETED'
-  _check_result_rollout_stats(run.result)
+  _check_rollout_stats(run.result)
 
 
 PARALLEL_CONFIG_UPDATES = [
@@ -145,7 +156,7 @@ PARALLEL_CONFIG_UPDATES = [
     base_named_configs=["cartpole", "gail", "fast"],
     base_config_updates={
       # Need absolute path because raylet runs in different working directory.
-      'rollout_glob': osp.abspath("tests/data/cartpole_0/rollouts/final.pkl"),
+      'rollout_path': osp.abspath("tests/data/cartpole_0/rollouts/final.pkl"),
     },
     search_space={
       "config_updates": {

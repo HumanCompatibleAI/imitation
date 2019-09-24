@@ -74,7 +74,9 @@ def test_rollout_stats():
   venv = DummyVecEnv([lambda: env])
 
   with serialize.load_policy("zero", "UNUSED", venv) as policy:
-    s = rollout.rollout_stats(policy, venv, rollout.min_episodes(10))
+    trajs = rollout.generate_trajectories(policy, venv,
+                                          rollout.min_episodes(10))
+  s = rollout.rollout_stats(trajs)
 
   np.testing.assert_allclose(s["return_mean"], s["monitor_return_mean"] / 2)
   np.testing.assert_allclose(s["return_std"], s["monitor_return_std"] / 2)
