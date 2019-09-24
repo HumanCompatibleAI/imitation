@@ -68,6 +68,9 @@ def rollouts_and_policy(
       n_episodes_eval: The number of episodes to average over when calculating
           the average ground truth reward return of the final policy.
 
+      n_episodes_eval: The number of episodes to average over when calculating
+          the average ground truth reward return of the final policy.
+
       reward_type: If provided, then load the serialized reward of this type,
           wrapping the environment in this reward. This is useful to test
           whether a reward model transfers. For more information, see
@@ -99,8 +102,7 @@ def rollouts_and_policy(
           and "output/summary/...".
 
   Returns:
-      A dictionary with the following keys: "rollout_stats" (return value of
-      `rollout_stats()`), and "log_dir".
+    The return value of `rollout_stats()` using the final policy.
   """
   sample_until = util.rollout.make_sample_until(rollout_save_n_timesteps,
                                                 rollout_save_n_episodes)
@@ -173,7 +175,7 @@ def rollouts_and_policy(
       stats = util.rollout.rollout_stats(policy, venv, eval_sample_until)
       assert stats["n_traj"] >= n_episodes_eval
 
-  return dict(rollout_stats=stats, log_dir=log_dir)
+  return stats
 
 
 @expert_demos_ex.command

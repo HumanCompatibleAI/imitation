@@ -1,5 +1,3 @@
-import tempfile
-
 import numpy as np
 import pytest
 import tensorflow as tf
@@ -38,17 +36,16 @@ def test_discrim_net_no_crash(session, env_id, discrim_net_cls):
 
 @pytest.mark.parametrize("env_id", ENVS)
 @pytest.mark.parametrize("discrim_net_cls", DISCRIM_NETS)
-def test_serialize_identity(session, env_id, discrim_net_cls):
+def test_serialize_identity(session, env_id, discrim_net_cls, tmpdir):
   """Does output of deserialized discriminator match that of original?"""
   venv = util.make_vec_env(env_id, parallel=False)
   original = DISCRIM_NET_SETUPS[discrim_net_cls](venv)
   random = base.RandomPolicy(venv.observation_space, venv.action_space)
   session.run(tf.global_variables_initializer())
 
-  with tempfile.TemporaryDirectory(prefix='imitation-serialize') as tmpdir:
-    original.save(tmpdir)
-    with tf.variable_scope("loaded"):
-      loaded = discrim_net.DiscrimNet.load(tmpdir)
+  original.save(tmpdir)
+  with tf.variable_scope("loaded"):
+    loaded = discrim_net.DiscrimNet.load(tmpdir)
 
   transitions = util.rollout.generate_transitions(random, venv, n_timesteps=100)
   length = len(transitions.obs)  # n_timesteps is only a lower bound

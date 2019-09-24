@@ -16,11 +16,9 @@ def expert_demos_defaults():
   parallel = True  # Use SubprocVecEnv (generally faster if num_vec>1)
   normalize = True  # Use VecNormalize
   max_episode_steps = None  # Set to positive int to limit episode horizons
-  init_rl_kwargs = dict(DEFAULT_INIT_RL_KWARGS)
-  # TODO(shwang): We should make it so that we always evaluate rewards
-  # relative to ground truth reward. (or maybe evaluate relative to both
-  # ground truth reward and custom reward when possible)
   n_episodes_eval = 50  # Num of episodes for final ep reward mean evaluation
+
+  init_rl_kwargs = dict(DEFAULT_INIT_RL_KWARGS)
 
   # If specified, overrides the ground-truth environment reward
   reward_type = None  # override reward type

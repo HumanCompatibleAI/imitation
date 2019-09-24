@@ -1,10 +1,10 @@
 from functools import partial
-from typing import Optional, Union
+from typing import Optional
 from warnings import warn
 
-import gym
 import numpy as np
 from stable_baselines.common.base_class import BaseRLModel
+from stable_baselines.common.vec_env import VecEnv
 import tensorflow as tf
 from tqdm import tqdm
 
@@ -18,25 +18,25 @@ from imitation.util import buffer, reward_wrapper, rollout
 class AdversarialTrainer:
   """Trainer for GAIL and AIRL."""
 
-  env: gym.Env
-  """The original environment."""
+  venv: VecEnv
+  """The original vectorized environment."""
 
-  env_train: gym.Env
-  """Like `self.env`, but wrapped with train reward unless in debug mode.
+  venv_train: VecEnv
+  """Like `self.venv`, but wrapped with train reward unless in debug mode.
 
   If `debug_use_ground_truth=True` was passed into the initializer then
-  `self.env_train` is the same as `self.env`.
+  `self.venv_train` is the same as `self.venv`.
   """
 
-  env_test: gym.Env
-  """Like `self.env`, but wrapped with test reward unless in debug mode.
+  venv_test: VecEnv
+  """Like `self.venv`, but wrapped with test reward unless in debug mode.
 
   If `debug_use_ground_truth=True` was passed into the initializer then
-  `self.env_test` is the same as `self.env`.
+  `self.venv_test` is the same as `self.venv`.
   """
 
   def __init__(self,
-               env: Union[gym.Env, str],
+               venv: VecEnv,
                gen_policy: BaseRLModel,
                discrim: discrim_net.DiscrimNet,
                expert_demos: rollout.Transitions,
@@ -51,7 +51,7 @@ class AdversarialTrainer:
     """Builds Trainer.
 
     Args:
-        env: A Gym environment or ID that the policy is trained on.
+        venv: The vectorized environment to train in.
         gen_policy: The generator policy that is trained to maximize
                     discriminator confusion.
         discrim: The discriminator network.
@@ -84,7 +84,7 @@ class AdversarialTrainer:
     self._n_disc_samples_per_buffer = n_disc_samples_per_buffer
     self.debug_use_ground_truth = debug_use_ground_truth
 
-    self.env = util.maybe_load_env(env, vectorize=True)
+    self.venv = venv
     self._expert_demos = expert_demos
     self._gen_policy = gen_policy
 
@@ -103,20 +103,20 @@ class AdversarialTrainer:
     self._sess.run(tf.global_variables_initializer())
 
     if debug_use_ground_truth:
-      self.env_train = self.env_test = self.env
+      self.venv_train = self.venv_test = self.venv
     else:
       reward_train = partial(
           self.discrim.reward_train,
           gen_log_prob_fn=self._gen_policy.action_probability)
-      self.env_train = reward_wrapper.RewardVecEnvWrapper(
-          self.env, reward_train)
-      self.env_test = reward_wrapper.RewardVecEnvWrapper(
-          self.env, self.discrim.reward_test)
+      self.venv_train = reward_wrapper.RewardVecEnvWrapper(
+          self.venv, reward_train)
+      self.venv_test = reward_wrapper.RewardVecEnvWrapper(
+          self.venv, self.discrim.reward_test)
 
     if gen_replay_buffer_capacity is None:
       gen_replay_buffer_capacity = 20 * self._n_disc_samples_per_buffer
     self._gen_replay_buffer = buffer.ReplayBuffer(gen_replay_buffer_capacity,
-                                                  self.env)
+                                                  self.venv)
     self._populate_gen_replay_buffer()
     self._exp_replay_buffer = buffer.ReplayBuffer.from_data(expert_demos)
     if n_disc_samples_per_buffer > len(self._exp_replay_buffer):
@@ -155,7 +155,7 @@ class AdversarialTrainer:
         self._summarize(fd, step)
 
   def train_gen(self, n_steps=10000):
-    self._gen_policy.set_env(self.env_train)
+    self._gen_policy.set_env(self.venv_train)
     # TODO(adam): learn was not intended to be called for each training batch
     # It should work, but might incur unnecessary overhead: e.g. in PPO2
     # a new Runner instance is created each time. Also a hotspot for errors:
@@ -171,7 +171,7 @@ class AdversarialTrainer:
     produced, and then stores these samples.
     """
     gen_rollouts = util.rollout.generate_transitions(
-        self._gen_policy, self.env_train,
+        self._gen_policy, self.venv_train,
         n_timesteps=self._n_disc_samples_per_buffer)
     self._gen_replay_buffer.store(gen_rollouts)
 

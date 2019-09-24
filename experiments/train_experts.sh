@@ -27,7 +27,7 @@ while getopts "fr" arg; do
     # Fast mode (debug)
     ENVS="cartpole pendulum"
     SEEDS="0"
-    extra_configs="fast"
+    extra_configs+="fast "
   elif [[ $arg == "r" ]]; then
     # Regenerate test data (policies and rollouts).
     #
@@ -37,7 +37,7 @@ while getopts "fr" arg; do
     ENVS="cartpole pendulum"
     SEEDS="0"
     OUTPUT_DIR="tests/data"
-    extra_configs="rollout_save_n_episodes=50"
+    extra_configs+="rollout_save_n_episodes=50 "
   fi
 done
 
@@ -56,11 +56,7 @@ pushd $OUTPUT_DIR
 # Display and save mean episode reward to ${RESULTS_FILE}.
 find . -name stdout | xargs tail -n 15 | grep -E '(==|ep_reward_mean)' | tee ${RESULTS_FILE}
 
-# Build zipfile using the directory structure corresponding to the symlinks
-# from before.
-ZIP_FILE="expert_models.zip"
-zip --exclude 'rollouts/*' -rv ${ZIP_FILE} ${RESULTS_FILE} */
-
-echo "Expert zip saved to $(pwd)/${ZIP_FILE}"
-
 popd
+
+echo "[Optional] Upload new experts to S3 (replacing old ones) using:"
+echo "aws s3 sync --delete '${OUTPUT_DIR}' s3://shwang-chai/public/expert_models"
