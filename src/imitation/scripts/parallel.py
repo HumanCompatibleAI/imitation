@@ -11,6 +11,8 @@ from imitation.scripts.config.parallel import parallel_ex
 @parallel_ex.main
 def parallel(inner_experiment_name: str,
              search_space: dict,
+             base_named_configs: list,
+             base_config_updates: dict,
              upload_dir: Optional[str],
              ) -> None:
   """Parallelize multiple runs of another Sacred Experiment using Ray Tune.
@@ -23,17 +25,37 @@ def parallel(inner_experiment_name: str,
     inner_experiment_name: The experiment to tune. Either "expert_demos" or
       "train_adversarial".
     search_space: `config` argument to `ray.tune.run()`.
+    base_named_configs: `search_space["named_configs"]` is appended to this list
+      before it is passed to the inner experiment's `run()`. Notably,
+      `base_named_configs` doesn't appear in the automatically generated
+      Ray directory name.
+    base_config_updates: `search_space["config_updates"]` is applied to this
+      dict before it is passed to the inner experiment's `run()`.
     upload_dir: `upload_dir` argument to `ray.tune.run()`.
   """
-  trainable = _ray_tune_sacred_wrapper(inner_experiment_name)
+  trainable = _ray_tune_sacred_wrapper(inner_experiment_name,
+                                       base_named_configs,
+                                       base_config_updates)
+
+  # Disable all Ray Loggers.
+  #
+  # JSON and CSV loggers are redundant now that we have Sacred logs.
+  # TensorBoard logs don't contain useful information (inner experiment never
+  # gets access to `reporter`), and clog up the TensorBoard Runs dashboard.
+  ray_loggers = ()
+
   ray.init()
   try:
-    ray.tune.run(trainable, config=search_space, upload_dir=upload_dir)
+    ray.tune.run(trainable, config=search_space, upload_dir=upload_dir,
+                 loggers=ray_loggers)
   finally:
     ray.shutdown()
 
 
-def _ray_tune_sacred_wrapper(inner_experiment_name: str) -> Callable:
+def _ray_tune_sacred_wrapper(inner_experiment_name: str,
+                             base_named_configs: list,
+                             base_config_updates: dict,
+                             ) -> Callable:
   """From an Experiment build a wrapped run function suitable for Ray Tune.
 
   `ray.tune.run(...)` expects a trainable function that takes a dict
@@ -46,6 +68,13 @@ def _ray_tune_sacred_wrapper(inner_experiment_name: str) -> Callable:
   Args:
     inner_experiment_name: The experiment to tune. Either "expert_demos" or
       "train_adversarial".
+    base_named_configs: `search_space["named_configs"]` is appended to this list
+      before it is passed to the inner experiment's `run()`. Notably,
+      `base_named_configs` doesn't appear in the automatically generated
+      Ray directory name.
+    base_config_updates: `search_space["config_updates"]` is applied to this
+      dict before it is passed to the inner experiment's `run()`.
+
   Returns:
     A function that takes two arguments, `config` (used as keyword args for
     `ex.run`) and `reporter`. The function returns the run result.
@@ -64,6 +93,13 @@ def _ray_tune_sacred_wrapper(inner_experiment_name: str) -> Callable:
     observer = FileStorageObserver.create('sacred')
     ex.observers.append(observer)
 
+    # Apply base configs
+    base_named_configs.extend(config.get("named_configs", []))
+    base_config_updates.update(config.get("config_updates", {}))
+    config["named_configs"] = base_named_configs
+    config["config_updates"] = base_config_updates
+
+    run = ex.run(**config)
     run = ex.run(**config)
 
     # Ray Tune has a string formatting error if raylet completes without

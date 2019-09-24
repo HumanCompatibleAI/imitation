@@ -59,7 +59,31 @@ def test_eval_policy(config, tmpdir):
   run = eval_policy_ex.run(config_updates=config_updates,
                            named_configs=['fast'])
   assert run.status == 'COMPLETED'
-  assert isinstance(run.result, dict)
+  wrapped_reward = 'reward_type' in config
+  _check_rollout_stats(run.result, wrapped_reward)
+
+
+def _check_rollout_stats(stats: dict, wrapped_reward: bool = True):
+  """Common assertions for rollout_stats."""
+  assert isinstance(stats, dict)
+  assert "return_mean" in stats
+  assert "monitor_return_mean" in stats
+  if wrapped_reward:
+    # If the reward is wrapped, then we expect the monitor return
+    # to differ.
+    assert stats.get("return_mean") != stats.get("monitor_return_mean")
+  else:
+    assert stats.get("return_mean") == stats.get("monitor_return_mean")
+
+
+def _check_train_ex_result(result: dict):
+  expert_stats = result.get("expert_stats")
+  assert isinstance(expert_stats, dict)
+  assert "return_mean" in expert_stats
+  assert "monitor_return_mean" not in expert_stats
+
+  imit_stats = result.get("imit_stats")
+  _check_rollout_stats(imit_stats)
 
 
 def test_train_adversarial(tmpdir):
@@ -74,13 +98,14 @@ def test_train_adversarial(tmpdir):
       },
       'log_root': tmpdir,
       'rollout_path': "tests/data/cartpole_0/rollouts/final.pkl",
+      'init_tensorboard': True,
   }
   run = train_ex.run(
       named_configs=named_configs,
       config_updates=config_updates,
   )
   assert run.status == 'COMPLETED'
-  assert isinstance(run.result, dict)
+  _check_train_ex_result(run.result)
 
 
 def test_transfer_learning(tmpdir):
@@ -89,56 +114,58 @@ def test_transfer_learning(tmpdir):
   Save a dummy AIRL test reward, then load it for transfer learning."""
   log_dir_train = osp.join(tmpdir, "train")
   run = train_ex.run(
-      named_configs=['cartpole', 'airl', 'fast'],
-      config_updates=dict(
-          rollout_path="tests/data/cartpole_0/rollouts/final.pkl",
-          log_dir=log_dir_train,
-      ),
+    named_configs=['cartpole', 'airl', 'fast'],
+    config_updates=dict(
+      rollout_path="tests/data/cartpole_0/rollouts/final.pkl",
+      log_dir=log_dir_train,
+    ),
   )
   assert run.status == 'COMPLETED'
-  assert isinstance(run.result, dict)
+  _check_train_ex_result(run.result)
+
+  _check_rollout_stats(run.result["imit_stats"])
 
   log_dir_data = osp.join(tmpdir, "expert_demos")
   discrim_path = osp.join(log_dir_train, "checkpoints", "final", "discrim")
   run = expert_demos_ex.run(
-      named_configs=['cartpole', 'fast'],
-      config_updates=dict(
-          log_dir=log_dir_data,
-          reward_type='DiscrimNet',
-          reward_path=discrim_path,
-      ),
+    named_configs=['cartpole', 'fast'],
+    config_updates=dict(
+      log_dir=log_dir_data,
+      reward_type='DiscrimNet',
+      reward_path=discrim_path,
+    ),
   )
   assert run.status == 'COMPLETED'
-  assert isinstance(run.result, dict)
+  _check_rollout_stats(run.result)
 
 
 PARALLEL_CONFIG_UPDATES = [
   dict(
     inner_experiment_name="expert_demos",
+    base_named_configs=["cartpole", "fast"],
     search_space={
-      "named_configs": ["cartpole", "fast"],
       "config_updates": {
         "seed": tune.grid_search([0, 1]),
-        "make_blank_policy_kwargs": {
+        "init_rl_kwargs": {
           "learning_rate": tune.grid_search([3e-4, 1e-4]),
         },
-      },
-    },
+      }},
   ),
   dict(
     inner_experiment_name="train_adversarial",
+    base_named_configs=["cartpole", "gail", "fast"],
+    base_config_updates={
+      # Need absolute path because raylet runs in different working directory.
+      'rollout_path': osp.abspath("tests/data/cartpole_0/rollouts/final.pkl"),
+    },
     search_space={
-      "named_configs": ["cartpole", "gail", "fast"],
       "config_updates": {
         'init_trainer_kwargs': {
           'reward_kwargs': {
             'phi_units': tune.grid_search([[16, 16], [7, 9]]),
           },
         },
-        # Need absolute path because raylet runs in different working directory.
-        'rollout_path': osp.abspath("tests/data/cartpole_0/rollouts/final.pkl"),
-      },
-    },
+      }},
   ),
 ]
 

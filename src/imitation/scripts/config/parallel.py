@@ -21,6 +21,8 @@ parallel_ex = sacred.Experiment("parallel")
 @parallel_ex.config
 def config():
   inner_experiment_name = "expert_demos"  # The experiment to parallelize
+  base_named_configs = []  # Background settings before search_space is applied
+  base_config_updates = {}  # Background settings before search_space is applied
   search_space = {
     "named_configs": [],
     "config_updates": {},
@@ -50,14 +52,16 @@ def debug_log_root():
 
 @parallel_ex.named_config
 def example_cartpole_rl():
-  """Example config that spins up 4*4*3 different training runs of cartpole."""
+  """Example config that spins up 8 different training runs of cartpole."""
   inner_experiment_name = "expert_demos"
   search_space = {
-    "named_configs": ["cartpole", "fast"],
+    "named_configs": [],
     "config_updates": {
-      "seed": tune.grid_search([0, 1, 2, 3]),
-      "make_blank_policy_kwargs": {
-        "learning_rate": tune.grid_search([3e-4, 2e-4, 1e-4]),
-        "nminibatches": tune.grid_search([16, 32, 64]),
+      "seed": tune.grid_search([0, 1]),
+      "init_rl_kwargs": {
+        "learning_rate": tune.grid_search([3e-4, 2e-4]),
+        "nminibatches": tune.grid_search([16, 32]),
       },
     }}
+  base_named_configs = ["cartpole"]
+  base_config_updates = {"init_tensorboard": True}

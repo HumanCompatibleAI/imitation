@@ -49,6 +49,7 @@ def train(_seed: int,
           plot_interval: int,
           n_plot_episodes: int,
           show_plots: bool,
+          init_tensorboard: bool,
 
           checkpoint_interval: int = 5,
           ) -> dict:
@@ -93,6 +94,7 @@ def train(_seed: int,
       plots.
     show_plots: Figures are always saved to `f"{log_dir}/plots/*.png"`. If
       `show_plots` is True, then also show plots as they are created.
+    init_tensorboard: If True, then write tensorboard logs to `{log_dir}/sb_tb`.
 
     checkpoint_interval: Save the discriminator and generator models every
       `checkpoint_interval` epochs and after training is complete. If <=0,
@@ -112,15 +114,20 @@ def train(_seed: int,
   expert_stats = util.rollout.rollout_stats(expert_trajs)
 
   with util.make_session():
-    trainer = init_trainer(env_name, rollout_path,
-                           seed=_seed, log_dir=log_dir,
-                           **init_trainer_kwargs)
-
     tf.logging.info("Logging to %s", log_dir)
     os.makedirs(log_dir, exist_ok=True)
     sb_logger.configure(folder=osp.join(log_dir, 'generator'),
                         format_strs=['tensorboard', 'stdout'])
 
+    if init_tensorboard:
+      sb_tensorboard_dir = osp.join(log_dir, "sb_tb")
+      kwargs = init_trainer_kwargs
+      kwargs["init_rl_kwargs"] = kwargs.get("init_rl_kwargs", {})
+      kwargs["init_rl_kwargs"]["tensorboard_log"] = sb_tensorboard_dir
+
+    trainer = init_trainer(env_name, rollout_path,
+                           seed=_seed, log_dir=log_dir,
+                           **init_trainer_kwargs)
     if plot_interval > 0:
       visualizer = _TrainVisualizer(
         trainer=trainer,

@@ -2,7 +2,7 @@ import os
 
 import sacred
 
-from imitation.scripts.config.common import DEFAULT_BLANK_POLICY_KWARGS
+from imitation.scripts.config.common import DEFAULT_INIT_RL_KWARGS
 from imitation.util import util
 
 expert_demos_ex = sacred.Experiment("expert_demos")
@@ -16,8 +16,9 @@ def expert_demos_defaults():
   parallel = True  # Use SubprocVecEnv (generally faster if num_vec>1)
   normalize = True  # Use VecNormalize
   max_episode_steps = None  # Set to positive int to limit episode horizons
-  make_blank_policy_kwargs = dict(DEFAULT_BLANK_POLICY_KWARGS)
   n_episodes_eval = 50  # Num of episodes for final ep reward mean evaluation
+
+  init_rl_kwargs = dict(DEFAULT_INIT_RL_KWARGS)
 
   # If specified, overrides the ground-truth environment reward
   reward_type = None  # override reward type
@@ -30,6 +31,8 @@ def expert_demos_defaults():
 
   policy_save_interval = 100  # Num updates between saves (<=0 disables)
   policy_save_final = True  # If True, save after training is finished.
+
+  init_tensorboard = False  # If True, then write Tensorboard logs.
 
   log_root = os.path.join("output", "expert_demos")  # output directory
 
@@ -91,7 +94,7 @@ def hopper():
 @expert_demos_ex.named_config
 def humanoid():
   env_name = "Humanoid-v2"
-  make_blank_policy_kwargs = dict(
+  init_rl_kwargs = dict(
       n_steps=2048,  # batch size of 2048*8=16384 due to num_vec
   )
   total_timesteps = int(10e6)  # fairly discontinuous, needs at least 5e6
@@ -153,7 +156,7 @@ def fast():
 # Shared settings
 
 ant_shared_locals = dict(
-    make_blank_policy_kwargs=dict(
+    init_rl_kwargs=dict(
         n_steps=2048,  # batch size of 2048*8=16384 due to num_vec
     ),
     total_timesteps=int(5e6),

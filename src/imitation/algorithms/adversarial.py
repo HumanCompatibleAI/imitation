@@ -47,6 +47,7 @@ class AdversarialTrainer:
                n_disc_samples_per_buffer: int = 200,
                gen_replay_buffer_capacity: Optional[int] = None,
                init_tensorboard: bool = False,
+               init_tensorboard_graph: bool = False,
                debug_use_ground_truth: bool = False):
     """Builds Trainer.
 
@@ -70,6 +71,8 @@ class AdversarialTrainer:
             By default this is equal to `20 * n_disc_samples_per_buffer`.
         init_tensorboard: If True, makes various discriminator
             TensorBoard summaries.
+        init_tensorboard_graph: If both this and `init_tensorboard` are True,
+            then write a Tensorboard graph summary to disk.
         debug_use_ground_truth: If True, use the ground truth reward for
             `self.train_env`.
             This disables the reward wrapping that would normally replace
@@ -94,6 +97,7 @@ class AdversarialTrainer:
       with tf.variable_scope("discriminator"):
         self._build_disc_train()
     self._init_tensorboard = init_tensorboard
+    self._init_tensorboard_graph = init_tensorboard_graph
     if init_tensorboard:
       with tf.name_scope("summaries"):
         self._build_summarize()
@@ -212,8 +216,8 @@ class AdversarialTrainer:
     return np.mean(self._sess.run(self.discrim.disc_loss, feed_dict=fd))
 
   def _build_summarize(self):
-    self._summary_writer = summaries.make_summary_writer(
-        graph=self._sess.graph)
+    graph = self._sess.graph if self._init_tensorboard_graph else None
+    self._summary_writer = summaries.make_summary_writer(graph=graph)
     self.discrim.build_summaries()
     self._summary_op = tf.summary.merge_all()
 
@@ -323,7 +327,7 @@ def init_trainer(env_id: str,
                  discrim_kwargs: bool = {},
                  reward_kwargs: bool = {},
                  trainer_kwargs: bool = {},
-                 make_blank_policy_kwargs: bool = {},
+                 init_rl_kwargs: bool = {},
                  ):
   """Builds an AdversarialTrainer, ready to be trained on a vectorized
     environment and expert demonstrations.
@@ -354,13 +358,13 @@ def init_trainer(env_id: str,
     trainer_kwargs: Arguments for the Trainer constructor.
     reward_kwargs: Arguments for the `*RewardNet` constructor.
     discrim_kwargs: Arguments for the `DiscrimNet*` constructor.
-    make_blank_policy_kwargs: Keyword arguments passed to `make_blank_policy`,
-        used to initialize the trainer.
+    init_rl_kwargs: Keyword arguments passed to `init_rl`,
+        used to initialize the RL algorithm.
   """
   env = util.make_vec_env(env_id, num_vec, seed=seed, parallel=parallel,
                           log_dir=log_dir, max_episode_steps=max_episode_steps)
   gen_policy = util.init_rl(env, verbose=1,
-                            **make_blank_policy_kwargs)
+                            **init_rl_kwargs)
 
   if use_gail:
     discrim = discrim_net.DiscrimNetGAIL(env.observation_space,
