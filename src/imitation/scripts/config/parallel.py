@@ -28,13 +28,17 @@ def config():
     "config_updates": {},
   }  # `config` argument to `ray.tune.run(trainable, config)`
   s3_bucket = None  # Used to create default `upload_dir` if not None.
+  upload_dir_uuid_prefix = None  # Optional prefix for timestamp directory
 
 
 @parallel_ex.config
-def ray_upload_dir(inner_experiment_name, s3_bucket):
+def ray_upload_dir(inner_experiment_name, s3_bucket, upload_dir_uuid_prefix):
   if s3_bucket is not None:
+    uuid = util.make_unique_timestamp()
+    if upload_dir_uuid_prefix is not None:
+      uuid = f"{upload_dir_uuid_prefix}_{uuid}"
     upload_dir = "s3://{}".format(
-      osp.join(s3_bucket, inner_experiment_name, util.make_unique_timestamp()))
+      osp.join(s3_bucket, inner_experiment_name, uuid))
   else:
     upload_dir = None  # `upload_dir` param from `ray.tune.run`
 
