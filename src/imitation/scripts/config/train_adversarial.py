@@ -1,5 +1,6 @@
 """Configuration for imitation.scripts.train_adversarial."""
 
+import functools
 import os
 
 import sacred
@@ -53,17 +54,20 @@ def train_defaults():
   checkpoint_interval = 5  # num epochs between checkpoints (<=0 disables)
   init_tensorboard = False  # If True, then write Tensorboard logs.
 
+  rollout_hint = None  # Used to generate default rollout_path
+
 
 @train_ex.config
-def paths(env_name, log_root):
+def paths(env_name, log_root, rollout_hint):
   log_dir = os.path.join(log_root, env_name.replace('/', '_'),
                          util.make_unique_timestamp())
   # Recommended that user sets rollout_path manually.
   # By default we guess the named config associated with `env_name`
-  # and attempt to load rollouts from `tests/data`.
-  rollout_path = os.path.join("tests", "data",
-                              "{named_config}_0".format(
-                                  named_config=env_name.split("-")[0]),
+  # and attempt to load rollouts from `expert_models/`.
+  if rollout_hint is None:
+    rollout_hint = env_name.split("-")[0].lower()
+  rollout_path = os.path.join("expert_models",
+                              f"{rollout_hint}_0",
                               "rollouts", "final.pkl")
 
 
@@ -88,22 +92,23 @@ def plots():
   plot_interval = 10
 
 
-# Standard Gym env configs
-
 @train_ex.named_config
 def acrobot():
   env_name = "Acrobot-v1"
+  rollout_hint = "acrobot"
 
 
 @train_ex.named_config
 def ant():
   env_name = "Ant-v2"
+  rollout_hint = "ant"
   locals().update(**ant_shared_locals)
 
 
 @train_ex.named_config
 def cartpole():
   env_name = "CartPole-v1"
+  rollout_hint = "cartpole"
   init_trainer_kwargs = dict(
       scale=False,
   )
@@ -112,6 +117,7 @@ def cartpole():
 @train_ex.named_config
 def half_cheetah():
   env_name = "HalfCheetah-v2"
+  rollout_hint = "half_cheetah"
   n_epochs = 1000
 
   init_trainer_kwargs = dict(
@@ -123,32 +129,38 @@ def half_cheetah():
 def hopper():
   # TODO(adam): upgrade to Hopper-v3?
   env_name = "Hopper-v2"
+  rollout_hint = "hopper"
 
 
 @train_ex.named_config
 def humanoid():
   env_name = "Humanoid-v2"
+  rollout_hint = "humanoid"
   n_epochs = 2000
 
 
 @train_ex.named_config
 def mountain_car():
   env_name = "MountainCar-v0"
+  rollout_hint = "mountain_car"
 
 
 @train_ex.named_config
 def pendulum():
   env_name = "Pendulum-v0"
+  rollout_hint = "pendulum"
 
 
 @train_ex.named_config
 def reacher():
   env_name = "Reacher-v2"
+  rollout_hint = "reacher"
 
 
 @train_ex.named_config
 def swimmer():
   env_name = "Swimmer-v2"
+  rollout_hint = "swimmer"
   n_epochs = 1000
   init_trainer_kwargs = dict(
       init_rl_kwargs=dict(
@@ -160,6 +172,7 @@ def swimmer():
 @train_ex.named_config
 def walker():
   env_name = "Walker2d-v2"
+  rollout_hint = "walker"
 
 
 # Custom env configs
@@ -167,17 +180,20 @@ def walker():
 @train_ex.named_config
 def two_d_maze():
   env_name = "imitation/TwoDMaze-v0"
+  rollout_hint = "two_d_maze"
 
 
 @train_ex.named_config
 def custom_ant():
   env_name = "imitation/CustomAnt-v0"
+  rollout_hint = "custom_ant"
   locals().update(**ant_shared_locals)
 
 
 @train_ex.named_config
 def disabled_ant():
   env_name = "imitation/DisabledAnt-v0"
+  rollout_hint = "disabled_ant"
   locals().update(**ant_shared_locals)
 
 
