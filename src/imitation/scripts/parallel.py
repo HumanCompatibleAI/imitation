@@ -13,6 +13,7 @@ def parallel(inner_experiment_name: str,
              search_space: dict,
              base_named_configs: list,
              base_config_updates: dict,
+             resources_per_trial: dict,
              upload_dir: Optional[str],
              ) -> None:
   """Parallelize multiple runs of another Sacred Experiment using Ray Tune.
@@ -24,6 +25,10 @@ def parallel(inner_experiment_name: str,
   Args:
     inner_experiment_name: The experiment to tune. Either "expert_demos" or
       "train_adversarial".
+    outer_experiment_name: A name describing this parallelizing experiment.
+      Added to each inner experiment's `meta_info`, and can be found in
+      'sacred/run.json' under the 'meta.outer_experiment_name' key.
+      Offline analysis jobs can use this argument to group similar data.
     search_space: `config` argument to `ray.tune.run()`.
     base_named_configs: `search_space["named_configs"]` is appended to this list
       before it is passed to the inner experiment's `run()`. Notably,
@@ -31,9 +36,11 @@ def parallel(inner_experiment_name: str,
       Ray directory name.
     base_config_updates: `search_space["config_updates"]` is applied to this
       dict before it is passed to the inner experiment's `run()`.
+    resource_per_trial: Argument to `ray.tune.run()`.
     upload_dir: `upload_dir` argument to `ray.tune.run()`.
   """
   trainable = _ray_tune_sacred_wrapper(inner_experiment_name,
+                                       outer_experiment_name,
                                        base_named_configs,
                                        base_config_updates)
 
@@ -47,7 +54,7 @@ def parallel(inner_experiment_name: str,
   ray.init()
   try:
     ray.tune.run(trainable, config=search_space, upload_dir=upload_dir,
-                 loggers=ray_loggers)
+                 loggers=ray_loggers, resources_per_trial=resources_per_trial)
   finally:
     ray.shutdown()
 
@@ -65,15 +72,7 @@ def _ray_tune_sacred_wrapper(inner_experiment_name: str,
 
   The Ray Tune `reporter` is not passed to the inner experiment.
 
-  Args:
-    inner_experiment_name: The experiment to tune. Either "expert_demos" or
-      "train_adversarial".
-    base_named_configs: `search_space["named_configs"]` is appended to this list
-      before it is passed to the inner experiment's `run()`. Notably,
-      `base_named_configs` doesn't appear in the automatically generated
-      Ray directory name.
-    base_config_updates: `search_space["config_updates"]` is applied to this
-      dict before it is passed to the inner experiment's `run()`.
+  Args have the same meanings as arguments described in `parallel`.
 
   Returns:
     A function that takes two arguments, `config` (used as keyword args for
@@ -99,8 +98,8 @@ def _ray_tune_sacred_wrapper(inner_experiment_name: str,
     config["named_configs"] = base_named_configs
     config["config_updates"] = base_config_updates
 
-    run = ex.run(**config)
-    run = ex.run(**config)
+    run = ex.run(**config,
+                 meta_info=dict(outer_experiment_name=outer_experiment_name))
 
     # Ray Tune has a string formatting error if raylet completes without
     # any calls to `reporter`.
