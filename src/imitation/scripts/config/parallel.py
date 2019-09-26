@@ -103,4 +103,6 @@ def example_gail_easy():
         },
       },
     }}
-  base_config_updates = {"init_tensorboard": True, "use_gail": True}
+  base_config_updates = {"init_tensorboard": True,
+                         "init_trainer_kwargs": {"use_gail": True},
+                         }

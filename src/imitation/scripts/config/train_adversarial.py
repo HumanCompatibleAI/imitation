@@ -21,7 +21,6 @@ def train_defaults():
   n_episodes_eval = 50  # Num of episodes for final mean ground truth return
   n_disc_steps_per_epoch = 50
   n_gen_steps_per_epoch = 2048
-  use_gail = True
   airl_entropy_weight = 1.0
 
   plot_interval = -1  # Number of epochs in between plots (<=0 disables)
