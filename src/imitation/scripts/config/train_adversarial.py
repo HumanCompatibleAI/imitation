@@ -17,6 +17,7 @@ train_ex = sacred.Experiment("train_adversarial", interactive=True)
 def train_defaults():
   env_name = "CartPole-v1"  # environment to train on
   n_epochs = 50
+  n_expert_demos = None  # Num demos used. None uses every demo possible
   n_episodes_eval = 50  # Num of episodes for final mean ground truth return
   n_disc_steps_per_epoch = 50
   n_gen_steps_per_epoch = 2048
@@ -203,13 +204,13 @@ def disabled_ant():
 def fast():
   """Minimize the amount of computation. Useful for test cases."""
   n_epochs = 1
+  n_expert_demos = 1
   n_episodes_eval = 1
   show_plots = False
   n_disc_steps_per_epoch = 1
   n_gen_steps_per_epoch = 1
   n_plot_episodes = 1
   init_trainer_kwargs = dict(
-      n_expert_demos=1,
       parallel=False,  # easier to debug with everything in one process
       max_episode_steps=int(1e2),
   )

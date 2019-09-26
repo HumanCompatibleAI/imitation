@@ -1,6 +1,6 @@
 from functools import partial
 import pickle
-from typing import Optional
+from typing import Optional, Sequence
 from warnings import warn
 
 import numpy as np
@@ -313,9 +313,8 @@ def _n_steps_if_not_none(n_steps):
 
 
 def init_trainer(env_id: str,
-                 rollout_path: str,
+                 expert_trajectories: Sequence[rollout.Trajectory],
                  *,
-                 n_expert_demos: Optional[int] = None,
                  seed: int = 0,
                  log_dir: str = None,
                  use_gail: bool = False,
@@ -334,14 +333,7 @@ def init_trainer(env_id: str,
 
   Args:
     env_id: The string id of a gym environment.
-    rollout_path: Path to pickle file containing list of Trajectory.
-    n_expert_demos: The number of expert trajectories to actually use
-        after loading them from `rollout_path`.
-        If None, then use all available trajectories.
-        If `n_expert_demos` is an `int`, then use
-        exactly `n_expert_demos` trajectories, erroring if there aren't
-        enough trajectories. If there are surplus trajectories, then use the
-        first `n_expert_demos` trajectories and drop the rest.
+    expert_trajectories: Demonstrations from expert.
     seed: Random seed.
     log_dir: Directory for logging output.
     use_gail: If True, then train using GAIL. If False, then train
@@ -379,13 +371,6 @@ def init_trainer(env_id: str,
     discrim = discrim_net.DiscrimNetAIRL(rn,
                                          entropy_weight=airl_entropy_weight,
                                          **discrim_kwargs)
-
-  with open(rollout_path, "rb") as f:
-    expert_trajectories = pickle.load(f)
-
-  if n_expert_demos is not None:
-    assert len(expert_trajectories) >= n_expert_demos
-    expert_trajectories = expert_trajectories[:n_expert_demos]
 
   expert_demos = util.rollout.flatten_trajectories(expert_trajectories)
   trainer = AdversarialTrainer(env, gen_policy, discrim, expert_demos,
