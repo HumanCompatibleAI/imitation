@@ -6,10 +6,13 @@ named_config for each experiment implicitly sets parallel=False.
 """
 
 import os.path as osp
+from typing import Optional
 
+import pandas as pd
 import pytest
 import ray.tune as tune
 
+from imitation.scripts.analyze import anal_ex
 from imitation.scripts.eval_policy import eval_policy_ex
 from imitation.scripts.expert_demos import expert_demos_ex
 from imitation.scripts.parallel import parallel_ex
@@ -179,3 +182,22 @@ def test_parallel(config_updates):
   run = parallel_ex.run(named_configs=["debug_log_root"],
                         config_updates=config_updates)
   assert run.status == 'COMPLETED'
+
+
+@pytest.mark.parametrize("run_name,expected_entries",
+                         [("FOO", 1), ("BAR", 2), (None, 3)])
+def test_analyze_imitation(tmpdir: int,
+                           run_name: Optional[str],
+                           expected_entries: int):
+  run = anal_ex.rundf(
+    command_name="analyze_imitation",
+    config_updates=dict(
+      source_dir="tests/data/sacred",
+      run_name=run_name,
+      csv_output_path=osp.join(tmpdir, "analysis.csv"),
+      verbose=True,
+    )
+  )
+  assert run.status == 'COMPLETED'
+  df = pd.DataFrame(run.results)
+  assert df.shape[0] == expected_entries
