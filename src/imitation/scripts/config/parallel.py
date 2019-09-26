@@ -21,7 +21,7 @@ parallel_ex = sacred.Experiment("parallel")
 @parallel_ex.config
 def config():
   inner_experiment_name = "expert_demos"  # The experiment to parallelize
-  outer_experiment_name = "DEFAULT"  # Put in config.json for analysis grouping
+  inner_run_name = "DEFAULT"  # CLI --name option. Used for analysis grouping.
   resources_per_trial = {}  # Argument to `tune.run`
   base_named_configs = []  # Background settings before search_space is applied
   base_config_updates = {}  # Background settings before search_space is applied

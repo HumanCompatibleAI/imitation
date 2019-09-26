@@ -10,6 +10,7 @@ from imitation.scripts.config.parallel import parallel_ex
 
 @parallel_ex.main
 def parallel(inner_experiment_name: str,
+             run_name: str,
              search_space: dict,
              base_named_configs: list,
              base_config_updates: dict,
@@ -25,10 +26,11 @@ def parallel(inner_experiment_name: str,
   Args:
     inner_experiment_name: The experiment to tune. Either "expert_demos" or
       "train_adversarial".
-    outer_experiment_name: A name describing this parallelizing experiment.
-      Added to each inner experiment's `meta_info`, and can be found in
-      'sacred/run.json' under the 'meta.outer_experiment_name' key.
-      Offline analysis jobs can use this argument to group similar data.
+    inner_run_name: A name describing this parallelizing experiment.
+      Added to each 'sacred/run.json' under the 'experiment.name' key.
+      This is equivalent to using the Sacred CLI '--name' option on the
+      inner experiment. Offline analysis jobs can use this argument to group
+      similar data.
     search_space: `config` argument to `ray.tune.run()`.
     base_named_configs: `search_space["named_configs"]` is appended to this list
       before it is passed to the inner experiment's `run()`. Notably,
@@ -60,6 +62,7 @@ def parallel(inner_experiment_name: str,
 
 
 def _ray_tune_sacred_wrapper(inner_experiment_name: str,
+                             inner_run_name: str,
                              base_named_configs: list,
                              base_config_updates: dict,
                              ) -> Callable:
@@ -99,7 +102,7 @@ def _ray_tune_sacred_wrapper(inner_experiment_name: str,
     config["config_updates"] = base_config_updates
 
     run = ex.run(**config,
-                 meta_info=dict(outer_experiment_name=outer_experiment_name))
+                 options={"--run": inner_run_name})
 
     # Ray Tune has a string formatting error if raylet completes without
     # any calls to `reporter`.
