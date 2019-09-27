@@ -1,9 +1,9 @@
 import sacred
 
-anal_ex = sacred.Experiment("analyze")
+analysis_ex = sacred.Experiment("analyze")
 
 
-@anal_ex.config
+@analysis_ex.config
 def config():
   source_dir = None  # Recursively search in this directory to find Sacred dirs
   run_name = None  # Restricts analysis to sacred logs with a certain run name

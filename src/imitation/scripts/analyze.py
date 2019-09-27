@@ -5,11 +5,11 @@ from typing import Optional
 import pandas as pd
 from sacred.observers import FileStorageObserver
 
-from imitation.scripts.config.analyze import anal_ex
+from imitation.scripts.config.analyze import analysis_ex
 import imitation.util.sacred as sacred_util
 
 
-@anal_ex.main
+@analysis_ex.main
 def analyze_imitation(source_dir: str,
                       run_name: Optional[str],
                       csv_output_path: Optional[str],
@@ -76,8 +76,8 @@ def _make_return_summary(stats: dict, prefix="") -> str:
 def main_console():
   observer = FileStorageObserver.create(
     osp.join('output', 'sacred', 'analyze'))
-  anal_ex.observers.append(observer)
-  anal_ex.run_commandline()
+  analysis_ex.observers.append(observer)
+  analysis_ex.run_commandline()
 
 
 if __name__ == "__main__":

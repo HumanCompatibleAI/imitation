@@ -12,7 +12,7 @@ import pandas as pd
 import pytest
 import ray.tune as tune
 
-from imitation.scripts.analyze import anal_ex
+from imitation.scripts.analyze import analysis_ex
 from imitation.scripts.eval_policy import eval_policy_ex
 from imitation.scripts.expert_demos import expert_demos_ex
 from imitation.scripts.parallel import parallel_ex
@@ -189,7 +189,7 @@ def test_parallel(config_updates):
 def test_analyze_imitation(tmpdir: str,
                            run_name: Optional[str],
                            expected_entries: int):
-  run = anal_ex.run(
+  run = analysis_ex.run(
     command_name="analyze_imitation",
     config_updates=dict(
       source_dir="tests/data/imit_benchmark",
