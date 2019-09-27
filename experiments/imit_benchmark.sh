@@ -76,7 +76,7 @@ parallel -j 25% --header : --results ${LOG_ROOT}/parallel/ --colsep , --progress
   log_root="${LOG_ROOT}" \
   n_gen_steps_per_epoch={n_gen_steps_per_epoch} \
   rollout_path=${EXPERT_MODELS_DIR}/{env_config_name}_0/rollouts/final.pkl \
-  n_expert_demos={n_demonstrations} \
+  n_expert_demos={n_expert_demos} \
   init_trainer_kwargs.use_gail=${USE_GAIL} \
   seed={seed} \
   :::: $CONFIG_CSV \
