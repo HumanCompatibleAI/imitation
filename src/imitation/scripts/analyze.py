@@ -13,6 +13,7 @@ from imitation.util.sacred import dict_get_nested as get
 @analysis_ex.main
 def analyze_imitation(source_dir: str,
                       run_name: Optional[str],
+                      skip_failed_runs: bool,
                       csv_output_path: Optional[str],
                       verbose: bool,
                       ) -> pd.DataFrame:
@@ -25,6 +26,7 @@ def analyze_imitation(source_dir: str,
     run_name: If provided, then only analyze results from Sacred directories
       associated with this run name. `run_name` is compared against the
       "experiment.name" key in `run.json`.
+    skip_failed_runs: If True, then filter out runs where the status is FAILED.
     csv_output_path: If provided, then save a CSV output file to this path.
     verbose: If True, then print the dataframe.
 
@@ -38,6 +40,11 @@ def analyze_imitation(source_dir: str,
   if run_name is not None:
     sacred_dicts = filter(
       lambda sd: get(sd.run, "experiment.name") == run_name,
+      sacred_dicts)
+
+  if skip_failed_runs:
+    sacred_dicts = filter(
+      lambda sd: get(sd.run, "status") != "FAILED",
       sacred_dicts)
 
   rows = []
@@ -68,7 +75,7 @@ def analyze_imitation(source_dir: str,
   df.to_csv(csv_output_path)
 
   if verbose:
-    print(df)
+    print(df.to_string())
   return rows
 
 
