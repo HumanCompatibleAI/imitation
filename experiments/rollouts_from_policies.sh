@@ -15,13 +15,7 @@
 # mean return of each policy, then use this to choose the best seed rather
 # than hardcoding seed 0.
 
-if $(command -v gdate > /dev/null); then
-  DATE_CMD=gdate  # macOS compatibility
-else
-  DATE_CMD=date
-fi
-
-TIMESTAMP=$(${DATE_CMD} --iso-8601=seconds)
+TIMESTAMP=$(date --iso-8601=seconds)
 EXPERT_MODELS_DIR=${EXPERT_MODELS_DIR:-expert_models}
 CONFIG_CSV=${CONFIG_CSV:-experiments/rollouts_from_policies_config.csv}
 OUTPUT_DIR="output/train_experts/${TIMESTAMP}"
