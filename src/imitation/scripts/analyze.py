@@ -66,10 +66,8 @@ def analyze_imitation(source_dir: str,
       # formatted correctly.
       row["expert_return_summary"] = _make_return_summary(expert_stats)
       row["imit_return_summary"] = _make_return_summary(imit_stats, "monitor_")
-      row["imit_vs_expert_return"] = (expert_stats["return_mean"] /
-                                      imit_stats["monitor_return_mean"])
-      row["imit_return_mean"] = imit_stats["monitor_return_mean"]
-      row["imit_return_std_dev"] = imit_stats["monitor_return_std"]
+      row["imit_expert_ratio"] = (imit_stats["monitor_return_mean"] /
+                                  expert_stats["return_mean"])
 
   df = pd.DataFrame(rows)
   df.to_csv(csv_output_path)
