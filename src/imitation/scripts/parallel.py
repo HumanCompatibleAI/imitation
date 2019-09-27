@@ -10,7 +10,7 @@ from imitation.scripts.config.parallel import parallel_ex
 
 @parallel_ex.main
 def parallel(inner_experiment_name: str,
-             run_name: str,
+             inner_run_name: str,
              search_space: dict,
              base_named_configs: list,
              base_config_updates: dict,
@@ -42,7 +42,7 @@ def parallel(inner_experiment_name: str,
     upload_dir: `upload_dir` argument to `ray.tune.run()`.
   """
   trainable = _ray_tune_sacred_wrapper(inner_experiment_name,
-                                       run_name,
+                                       inner_run_name,
                                        base_named_configs,
                                        base_config_updates)
 

@@ -106,6 +106,7 @@ def rollouts_and_policy(
   Returns:
     The return value of `rollout_stats()` using the final policy.
   """
+  os.makedirs(log_dir, exist_ok=True)
   sacred_util.build_sacred_symlink(log_dir, _run)
 
   sample_until = util.rollout.make_sample_until(rollout_save_n_timesteps,
@@ -209,6 +210,7 @@ def rollouts_from_policy(
       policy_path: Argument to `imitation.policies.serialize.load_policy`.
       rollout_save_path: Rollout pickle is saved to this path.
   """
+  os.makedirs(log_dir, exist_ok=True)
   sacred_util.build_sacred_symlink(log_dir, _run)
 
   sample_until = util.rollout.make_sample_until(rollout_save_n_timesteps,

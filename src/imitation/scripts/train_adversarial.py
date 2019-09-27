@@ -118,6 +118,8 @@ def train(_run,
       return value of `rollout_stats()` on the expert demonstrations loaded from
       `rollout_path`.
   """
+  tf.logging.info("Logging to %s", log_dir)
+  os.makedirs(log_dir, exist_ok=True)
   sacred_util.build_sacred_symlink(log_dir, _run)
 
   with open(rollout_path, "rb") as f:
@@ -131,8 +133,6 @@ def train(_run,
   expert_stats = util.rollout.rollout_stats(expert_trajs)
 
   with util.make_session():
-    tf.logging.info("Logging to %s", log_dir)
-    os.makedirs(log_dir, exist_ok=True)
     sb_logger.configure(folder=osp.join(log_dir, 'generator'),
                         format_strs=['tensorboard', 'stdout'])
 

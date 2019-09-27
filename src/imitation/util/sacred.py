@@ -83,11 +83,12 @@ def build_sacred_symlink(log_dir: str, run: sacred.run.Run) -> None:
 def get_sacred_dir_from_run(run: sacred.run.Run) -> Union[str, None]:
   """Returns path to the sacred directory, or None if not found."""
   for obs in run.observers:
-    if isinstance(obs, sacred.FileStorageObserver):
+    if isinstance(obs, sacred.observers.FileStorageObserver):
       return obs.dir
   return None
 
 
+# TODO(now): Also add Sphinx doc references to this file and other new files.
 # TODO(now): Maybe move to util.py, if we keep this at all!
 def dict_get_nested(d: dict, nested_key: str, *, sep=".", default=None) -> Any:
   curr = d
