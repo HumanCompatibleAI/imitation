@@ -7,6 +7,7 @@ from sacred.observers import FileStorageObserver
 
 from imitation.scripts.config.analyze import analysis_ex
 import imitation.util.sacred as sacred_util
+from imitation.util.sacred import dict_get_nested as get
 
 
 @analysis_ex.main
@@ -36,8 +37,7 @@ def analyze_imitation(source_dir: str,
 
   if run_name is not None:
     sacred_dicts = filter(
-      lambda sd: (
-        sacred_util.dict_get_nested(sd.run, "experiment.name") == run_name),
+      lambda sd: get(sd.run, "experiment.name") == run_name,
       sacred_dicts)
 
   rows = []
@@ -45,18 +45,24 @@ def analyze_imitation(source_dir: str,
     row = OrderedDict()
     rows.append(row)
 
-    imit_stats = sd.run["result"]["imit_stats"]
-    expert_stats = sd.run["result"]["expert_stats"]
-    row["use_gail"] = sd.config["init_trainer_kwargs"]["use_gail"]
-    row["env_name"] = sd.config["env_name"]
-    row["n_expert_demos"] = sd.config["n_expert_demos"]
-    row["run_name"] = sd.run["experiment"]["name"]
-    row["expert_return_summary"] = _make_return_summary(expert_stats)
-    row["imit_return_summary"] = _make_return_summary(imit_stats, "monitor_")
-    row["imit_vs_expert_return"] = (expert_stats["return_mean"] /
-                                    imit_stats["monitor_return_mean"])
-    row["imit_return_mean"] = imit_stats["monitor_return_mean"]
-    row["imit_return_std_dev"] = imit_stats["monitor_return_std"]
+    # Use get to prevent exceptions when reading in-progress experiments.
+    row["status"] = get(sd.run, "status")
+    row["use_gail"] = get(sd.config, "init_trainer_kwargs.use_gail")
+    row["env_name"] = get(sd.config, "env_name")
+    row["n_expert_demos"] = get(sd.config, "n_expert_demos")
+    row["run_name"] = get(sd.run, "experiment.name")
+
+    imit_stats = get(sd.run, "result.imit_stats")
+    expert_stats = get(sd.run, "result.expert_stats")
+    if imit_stats is not None and expert_stats is not None:
+      # Assume that `result.imit_stats` and `result.expert_stats` are
+      # formatted correctly.
+      row["expert_return_summary"] = _make_return_summary(expert_stats)
+      row["imit_return_summary"] = _make_return_summary(imit_stats, "monitor_")
+      row["imit_vs_expert_return"] = (expert_stats["return_mean"] /
+                                      imit_stats["monitor_return_mean"])
+      row["imit_return_mean"] = imit_stats["monitor_return_mean"]
+      row["imit_return_std_dev"] = imit_stats["monitor_return_std"]
 
   df = pd.DataFrame(rows)
   df.to_csv(csv_output_path)

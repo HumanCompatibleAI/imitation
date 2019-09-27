@@ -89,7 +89,7 @@ def get_sacred_dir_from_run(run: sacred.run.Run) -> Union[str, None]:
 def dict_get_nested(d: dict, nested_key: str, *, sep=".", default=None) -> Any:
   curr = d
   for key in nested_key.split(sep):
-    if key in curr:
+    if isinstance(curr, dict) and key in curr:
       curr = curr[key]
     else:
       return default
