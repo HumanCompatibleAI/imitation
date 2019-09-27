@@ -129,7 +129,9 @@ def train(_run,
     assert len(expert_trajs) >= n_expert_demos
     expert_trajs = expert_trajs[:n_expert_demos]
 
-  # Expert stats are used for performance plots and this fn's return value.
+  # Calculate stats for expert rollouts. Used for plot and return value.
+  with open(rollout_path, "rb") as f:
+    expert_trajs = pickle.load(f)
   expert_stats = util.rollout.rollout_stats(expert_trajs)
 
   with util.make_session():
