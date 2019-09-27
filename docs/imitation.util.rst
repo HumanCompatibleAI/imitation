@@ -28,6 +28,14 @@ imitation.util.rollout module
    :undoc-members:
    :show-inheritance:
 
+imitation.util.sacred module
+-------------------------------
+
+.. automodule:: imitation.util.sacred
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 imitation.util.serialize module
 -------------------------------
 

@@ -4,6 +4,14 @@ imitation.scripts.config package
 Submodules
 ----------
 
+imitation.scripts.config.analyze module
+----------------------------------------
+
+.. automodule:: imitation.scripts.config.analyze
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 imitation.scripts.config.common module
 --------------------------------------
 
@@ -29,7 +37,7 @@ imitation.scripts.config.expert\_demos module
    :show-inheritance:
 
 imitation.scripts.config.parallel module
---------------------------------------------------
+----------------------------------------
 
 .. automodule:: imitation.scripts.config.parallel
    :members:

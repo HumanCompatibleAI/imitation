@@ -18,7 +18,7 @@ class SacredDicts(NamedTuple):
   @classmethod
   def load_from_dir(cls, sacred_dir: str):
     args = []
-    for field in SacredDicts._fields:
+    for field in cls._fields:
       if field == "sacred_dir":
         args.append(sacred_dir)
       else:
@@ -40,7 +40,7 @@ def filter_subdirs(
   *,
   nested_ok: bool = False,
 ) -> List[str]:
-  """Walks through a directory tree, return paths to filtered directories.
+  """Walks through a directory tree, returning paths to filtered subdirectories.
 
   Args:
     root_dir: The start of the directory tree walk.
@@ -84,8 +84,6 @@ def get_sacred_dir_from_run(run: sacred.run.Run) -> Union[str, None]:
   return None
 
 
-# TODO(now): Also add Sphinx doc references to this file and other new files.
-# TODO(now): Maybe move to util.py, if we keep this at all!
 def dict_get_nested(d: dict, nested_key: str, *, sep=".", default=None) -> Any:
   curr = d
   for key in nested_key.split(sep):

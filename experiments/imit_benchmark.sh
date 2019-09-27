@@ -6,7 +6,6 @@
 # The benchmark tasks are defined in the CSV config file
 # `experiments/imit_benchmark_config.csv`.
 
-RUN_NAME=${RUN_NAME:-no_run_name}
 USE_GAIL=${USE_GAIL:-True}
 CONFIG_CSV="experiments/imit_benchmark_config.csv"
 EXPERT_MODELS_DIR="expert_models"
@@ -42,7 +41,7 @@ while true; do
       shift
       ;;
     --run_name)
-      RUN_NAME="$2"
+      extra_options+="--name $2 "
       shift 2
       ;;
     --log_root)
@@ -58,7 +57,6 @@ while true; do
       break
       ;;
     *)
-      echo "$1"
       echo "Parsing error" >&2
       exit 1
       ;;
@@ -67,7 +65,6 @@ done
 
 parallel -j 25% --header : --results ${LOG_ROOT}/parallel/ --colsep , --progress \
   python -m imitation.scripts.train_adversarial \
-  --name ${RUN_NAME} \
   ${extra_options} \
   with \
   gail \
