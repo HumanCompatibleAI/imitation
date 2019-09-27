@@ -3,7 +3,7 @@
 
 import json
 import os
-from typing import Callable, List, NamedTuple
+from typing import Any, Callable, List, NamedTuple, Union
 import warnings
 
 import sacred
@@ -21,10 +21,10 @@ class SacredDicts(NamedTuple):
     args = []
     for field in SacredDicts._fields:
       if field == "sacred_dir":
-        args.append(dir)
+        args.append(sacred_dir)
       else:
-        json_path = os.path.join(dir, "sacred", f"{field}.json")
-        if field == "result" and not os.path.is_file(json_path):
+        json_path = os.path.join(sacred_dir, "sacred", f"{field}.json")
+        if field == "result" and not os.path.isfile(json_path):
           args.append({})  # "result.json" isn't written if it's empty.
         else:
           with open(json_path, "r") as f:
@@ -80,8 +80,20 @@ def build_sacred_symlink(log_dir: str, run: sacred.run.Run) -> None:
   os.symlink(sacred_dir, symlink_path)
 
 
-def get_sacred_dir_from_run(run: sacred.run.Run) -> str:
+def get_sacred_dir_from_run(run: sacred.run.Run) -> Union[str, None]:
+  """Returns path to the sacred directory, or None if not found."""
   for obs in run.observers:
     if isinstance(obs, sacred.FileStorageObserver):
       return obs.dir
   return None
+
+
+# TODO(now): Maybe move to util.py, if we keep this at all!
+def dict_get_nested(d: dict, nested_key: str, *, sep=".", default=None) -> Any:
+  curr = d
+  for key in nested_key.split(sep):
+    if key in curr:
+      curr = curr[key]
+    else:
+      return default
+  return curr

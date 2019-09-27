@@ -5,7 +5,7 @@ from typing import Optional
 import pandas as pd
 from sacred.observers import FileStorageObserver
 
-from imitation.config.analyze import anal_ex
+from imitation.scripts.config.analyze import anal_ex
 import imitation.util.sacred as sacred_util
 
 

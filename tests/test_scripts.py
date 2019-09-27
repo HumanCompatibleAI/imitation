@@ -186,7 +186,7 @@ def test_parallel(config_updates):
 
 @pytest.mark.parametrize("run_name,expected_entries",
                          [("FOO", 1), ("BAR", 2), (None, 3)])
-def test_analyze_imitation(tmpdir: int,
+def test_analyze_imitation(tmpdir: str,
                            run_name: Optional[str],
                            expected_entries: int):
   run = anal_ex.run(
@@ -196,8 +196,7 @@ def test_analyze_imitation(tmpdir: int,
       run_name=run_name,
       csv_output_path=osp.join(tmpdir, "analysis.csv"),
       verbose=True,
-    )
-  )
+    ))
   assert run.status == 'COMPLETED'
   df = pd.DataFrame(run.results)
   assert df.shape[0] == expected_entries
