@@ -6,15 +6,12 @@
 # The benchmark tasks are defined in the CSV config file
 # `experiments/imit_benchmark_config.csv`.
 
-USE_GAIL=${USE_GAIL:-True}
 CONFIG_CSV="experiments/imit_benchmark_config.csv"
 EXPERT_MODELS_DIR="expert_models"
 TIMESTAMP=$(date --iso-8601=seconds)
 LOG_ROOT="output/imit_benchmark/${TIMESTAMP}"
 extra_configs=""
 extra_options=""
-mkdir -p "${LOG_ROOT}"
-echo "Logging to: ${LOG_ROOT}"
 
 SEEDS="0 1 2"
 
@@ -33,11 +30,11 @@ while true; do
       shift
       ;;
     --gail)
-      USE_GAIL="True"
+      extra_configs+="gail "
       shift
       ;;
     --airl)
-      USE_GAIL="False"
+      extra_configs+="airl "
       shift
       ;;
     --run_name)
@@ -63,18 +60,19 @@ while true; do
   esac
 done
 
+mkdir -p "${LOG_ROOT}"
+echo "Logging to: ${LOG_ROOT}"
+
 parallel -j 25% --header : --results ${LOG_ROOT}/parallel/ --colsep , --progress \
   python -m imitation.scripts.train_adversarial \
   ${extra_options} \
   with \
-  gail \
   ${extra_configs} \
   {env_config_name} \
   log_root="${LOG_ROOT}" \
   n_gen_steps_per_epoch={n_gen_steps_per_epoch} \
   rollout_path=${EXPERT_MODELS_DIR}/{env_config_name}_0/rollouts/final.pkl \
   n_expert_demos={n_expert_demos} \
-  init_trainer_kwargs.use_gail=${USE_GAIL} \
   seed={seed} \
   :::: $CONFIG_CSV \
   ::: seed ${SEEDS}
