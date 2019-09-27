@@ -21,6 +21,7 @@ import imitation.envs.examples  # noqa: F401
 from imitation.policies import serialize
 from imitation.scripts.config.train_adversarial import train_ex
 import imitation.util as util
+import imitation.util.sacred as sacred_util
 
 
 def save(trainer, save_path):
@@ -116,6 +117,8 @@ def train(_seed: int,
       return value of `rollout_stats()` on the expert demonstrations loaded from
       `rollout_path`.
   """
+  sacred_util.build_sacred_symlink(log_dir, _run)
+
   with open(rollout_path, "rb") as f:
     expert_trajs = pickle.load(f)
 

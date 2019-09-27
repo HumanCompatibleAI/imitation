@@ -68,3 +68,20 @@ def filter_subdirs(
         if prefix in expert_dirs:
           raise ValueError(f"Parent {prefix} to {dir} also a dir directory")
   return list(filtered_dirs)
+
+
+def build_sacred_symlink(log_dir: str, _run: sacred.Run) -> None:
+  """Constructs a symlink "{log_dir}/sacred" => "${SACRED_PATH}"."""
+  sacred_dir = get_sacred_dir(_run)
+  if sacred_dir is None:
+    warning.warn(RuntimeWarning("Couldn't find sacred directory."))
+    return
+  symlink_path = osp.join(log_dir, "sacred")
+  os.symlink(sacred_dir, symlink_path)
+
+
+def get_sacred_dir_from_run(run: sacred.Run) -> str:
+  for obs in run.observers:
+    if isinstance(file_obs, sacred.FileStorageObserver):
+      return obs.dir
+  return None

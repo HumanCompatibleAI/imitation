@@ -14,6 +14,7 @@ from imitation.rewards.serialize import load_reward
 from imitation.scripts.config.expert_demos import expert_demos_ex
 import imitation.util as util
 from imitation.util.reward_wrapper import RewardVecEnvWrapper
+import imitation.util.sacred as sacred_util
 
 
 @expert_demos_ex.main
@@ -104,6 +105,8 @@ def rollouts_and_policy(
   Returns:
     The return value of `rollout_stats()` using the final policy.
   """
+  sacred_util.build_sacred_symlink(log_dir, _run)
+
   sample_until = util.rollout.make_sample_until(rollout_save_n_timesteps,
                                                 rollout_save_n_episodes)
   eval_sample_until = util.rollout.min_episodes(n_episodes_eval)
@@ -204,6 +207,8 @@ def rollouts_from_policy(
       policy_path: Argument to `imitation.policies.serialize.load_policy`.
       rollout_save_path: Rollout pickle is saved to this path.
   """
+  sacred_util.build_sacred_symlink(log_dir, _run)
+
   sample_until = util.rollout.make_sample_until(rollout_save_n_timesteps,
                                                 rollout_save_n_episodes)
 
