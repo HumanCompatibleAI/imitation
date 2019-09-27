@@ -189,7 +189,7 @@ def test_parallel(config_updates):
 def test_analyze_imitation(tmpdir: int,
                            run_name: Optional[str],
                            expected_entries: int):
-  run = anal_ex.rundf(
+  run = anal_ex.run(
     command_name="analyze_imitation",
     config_updates=dict(
       source_dir="tests/data/sacred",

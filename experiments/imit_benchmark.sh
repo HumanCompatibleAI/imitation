@@ -17,19 +17,19 @@ USE_GAIL=${USE_GAIL:-True}
 CONFIG_CSV="experiments/imit_benchmark_config.csv"
 EXPERT_MODELS_DIR="expert_models"
 TIMESTAMP=$(${DATE_CMD} --iso-8601=seconds)
-OUTPUT_DIR="output/imit_benchmark/${TIMESTAMP}"
+LOG_DIR="output/imit_benchmark/${TIMESTAMP}"
 mkdir -p "${OUTPUT_DIR}"
 echo "Logging to: ${OUTPUT_DIR}"
 
 SEEDS="0 1 2"
 
-getopt -o f -l fast,gail,airl,run-name:
+getopt -o f -l fast,gail,airl,run_name:,log_dir:
 if [[ $? != 0 ]]; exit 1; fi
 eval set -- "$TEMP"
 
-# Fast mode (debug)
 while true; do
   case "$1" in
+    # Fast mode (debug)
     -f | --fast)
       CONFIG_CSV="tests/data/imit_benchmark_config.csv"
       EXPERT_MODELS_DIR="tests/data"
@@ -44,8 +44,12 @@ while true; do
       USE_GAIL="False"
       shift
       ;;
-    --run-name)
+    --run_name)
       RUN_NAME="$2"
+      shift 2
+      ;;
+    --log_dir)
+      LOG_DIR="$2"
       shift 2
       ;;
     --)
