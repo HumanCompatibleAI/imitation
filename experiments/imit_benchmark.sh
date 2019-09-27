@@ -1,13 +1,10 @@
 #!/usr/bin/env bash
 
 # This script finds the the mean and standard error of episode return after
-# training GAIL on benchmark tasks.
+# training GAIL or AIRL on benchmark tasks.
 #
 # The benchmark tasks are defined in the CSV config file
-# `experiments/gail_benchmark_config.csv`.
-#
-# The CSV configuration can be modified and regenerated from following spreadsheet:
-# https://docs.google.com/spreadsheets/d/1MZYTr23ddwhO2PrNI2EalKleoULXlsH5y9oqawt22pY/edit?usp=sharing
+# `experiments/imit_benchmark_config.csv`.
 
 if $(command -v gdate > /dev/null); then
   DATE_CMD=gdate  # macOS compatibility
@@ -15,22 +12,51 @@ else
   DATE_CMD=date
 fi
 
-CONFIG_CSV="experiments/gail_benchmark_config.csv"
+RUN_NAME=${RUN_NAME:-no_run_name}
+USE_GAIL=${USE_GAIL:-True}
+CONFIG_CSV="experiments/imit_benchmark_config.csv"
 EXPERT_MODELS_DIR="expert_models"
 TIMESTAMP=$(${DATE_CMD} --iso-8601=seconds)
-OUTPUT_DIR="output/gail_benchmark/${TIMESTAMP}"
+OUTPUT_DIR="output/imit_benchmark/${TIMESTAMP}"
 mkdir -p "${OUTPUT_DIR}"
 echo "Logging to: ${OUTPUT_DIR}"
 
 SEEDS="0 1 2"
 
+getopt -o f -l fast,gail,airl,run-name:
+if [[ $? != 0 ]]; exit 1; fi
+eval set -- "$TEMP"
+
 # Fast mode (debug)
-while getopts "f" arg; do
-  if [[ $arg == "f" ]]; then
-    CONFIG_CSV="tests/data/gail_benchmark_config.csv"
-    EXPERT_MODELS_DIR="tests/data"
-    SEEDS="0"
-  fi
+while true; do
+  case "$1" in
+    -f | --fast)
+      CONFIG_CSV="tests/data/imit_benchmark_config.csv"
+      EXPERT_MODELS_DIR="tests/data"
+      SEEDS="0"
+      shift
+      ;;
+    --gail)
+      USE_GAIL="True"
+      shift
+      ;;
+    --airl)
+      USE_GAIL="False"
+      shift
+      ;;
+    --run-name)
+      RUN_NAME="$2"
+      shift 2
+      ;;
+    --)
+      shift
+      break
+      ;;
+    *)
+      echo "Parsing error" > &2
+      exit 1
+      ;;
+  esac
 done
 
 parallel -j 25% --header : --results ${OUTPUT_DIR}/parallel/ --colsep , --progress \
@@ -43,6 +69,7 @@ parallel -j 25% --header : --results ${OUTPUT_DIR}/parallel/ --colsep , --progre
   n_gen_steps_per_epoch={n_gen_steps_per_epoch} \
   rollout_path=${EXPERT_MODELS_DIR}/{env_config_name}_0/rollouts/auto.pkl \
   n_expert_demos={n_expert_demos} \
+  init_trainer_kwargs.use_gail=${USE_GAIL} \
   seed={seed} \
   :::: $CONFIG_CSV \
   ::: seed ${SEEDS}
