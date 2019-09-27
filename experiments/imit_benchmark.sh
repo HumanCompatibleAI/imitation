@@ -13,6 +13,7 @@ EXPERT_MODELS_DIR="expert_models"
 TIMESTAMP=$(date --iso-8601=seconds)
 LOG_ROOT="output/imit_benchmark/${TIMESTAMP}"
 extra_configs=""
+extra_options=""
 mkdir -p "${LOG_ROOT}"
 echo "Logging to: ${LOG_ROOT}"
 
@@ -48,6 +49,10 @@ while true; do
       LOG_ROOT="$2"
       shift 2
       ;;
+    --file_storage)
+      extra_options+="--file_storage $2 "
+      shift 2
+      ;;
     --)
       shift
       break
@@ -63,6 +68,7 @@ done
 parallel -j 25% --header : --results ${LOG_ROOT}/parallel/ --colsep , --progress \
   python -m imitation.scripts.train_adversarial \
   --name ${RUN_NAME} \
+  ${extra_options} \
   with \
   gail \
   ${extra_configs} \
