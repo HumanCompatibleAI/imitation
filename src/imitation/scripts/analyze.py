@@ -1,19 +1,12 @@
+from collections import OrderedDict
 import os.path as osp
+from typing import Optional
 
 import pandas as pd
-import sacred
+from sacred.observers import FileStorageObserver
+
 from imitation.config.analyze import anal_ex
 import imitation.util.sacred as sacred_util
-
-anal_ex = sacred.Experiment("analyze")
-
-
-@anal_ex.config
-def config():
-  source_dir = None  # Recursively search in this directory to find Sacred dirs
-  run_name = None  # Restricts analysis to sacred logs with a certain run name
-  csv_output_path = None  # Write output CSV to this path
-  verbose = True  # Set to True to print analysis to stdout
 
 
 @anal_ex.main
@@ -37,7 +30,7 @@ def analyze_imitation(source_dir: str,
   Returns:
     A list of dictionaries used to generate the analysis DataFrame.
   """
-  sacred_dirs = sacred_util.filter_subdirs(sacred_root_dir)
+  sacred_dirs = sacred_util.filter_subdirs(source_dir)
   sacred_dicts = (sacred_util.SacredDicts.load_from_dir(sacred_dir)
                   for sacred_dir in sacred_dirs)
   if run_name is not None:
@@ -45,16 +38,17 @@ def analyze_imitation(source_dir: str,
       lambda sd: sacred_util.dict_get_nested(sd, "experiment.name") == run_name,
       sacred_dicts)
 
+  rows = []
   for sd in sacred_dicts:
     row = OrderedDict()
     rows.append(row)
 
     imit_stats = sd.result["imit_stats"]
     expert_stats = sd.result["expert_stats"]
-    row["use_gail"] = dict_get_nested(sd.config, "init_trainer_kwargs.use_gail")
+    row["use_gail"] = sd.config["init_trainer_kwargs"]["use_gail"]
     row["env_name"] = sd.config["env_name"]
     row["n_expert_demos"] = sd.config["n_expert_demos"]
-    row["run_name"] = dict_get_nested(sd.run, "experiment.name")
+    row["run_name"] = sd.run["experiment"]["name"]
     row["expert_return_summary"] = _make_reward_summary(expert_stats)
     row["imit_return_summary"] = _make_reward_summary(imit_stats, "monitor")
     row["imit_vs_expert_return"] = (expert_stats["reward_mean"] /
@@ -68,6 +62,13 @@ def analyze_imitation(source_dir: str,
   if verbose:
     print(df)
   return rows
+
+
+def _make_reward_summary(stats: dict, prefix="") -> str:
+  return "{:3g} ± {:3g} (n={})".format(
+    stats[f"{prefix}reward_mean"],
+    stats[f"{prefix}reward_std"],
+    stats["n_traj"])
 
 
 def main_console():

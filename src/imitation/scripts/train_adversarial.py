@@ -36,7 +36,8 @@ def save(trainer, save_path):
 
 
 @train_ex.main
-def train(_seed: int,
+def train(_run,
+          _seed: int,
           env_name: str,
           rollout_path: str,
           n_expert_demos: Optional[int],
@@ -123,7 +124,7 @@ def train(_seed: int,
     expert_trajs = pickle.load(f)
 
   if n_expert_demos is not None:
-    assert len(expert_trajectories) >= n_expert_demos
+    assert len(expert_trajs) >= n_expert_demos
     expert_trajs = expert_trajs[:n_expert_demos]
 
   # Expert stats are used for performance plots and this fn's return value.

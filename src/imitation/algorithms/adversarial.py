@@ -1,5 +1,4 @@
 from functools import partial
-import pickle
 from typing import Optional, Sequence
 from warnings import warn
 

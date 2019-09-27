@@ -1,6 +1,5 @@
 """Configuration for imitation.scripts.train_adversarial."""
 
-import functools
 import os
 
 import sacred

@@ -42,7 +42,7 @@ def parallel(inner_experiment_name: str,
     upload_dir: `upload_dir` argument to `ray.tune.run()`.
   """
   trainable = _ray_tune_sacred_wrapper(inner_experiment_name,
-                                       outer_experiment_name,
+                                       run_name,
                                        base_named_configs,
                                        base_config_updates)
 

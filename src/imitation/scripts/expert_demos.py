@@ -19,6 +19,7 @@ import imitation.util.sacred as sacred_util
 
 @expert_demos_ex.main
 def rollouts_and_policy(
+  _run,
   _seed: int,
   env_name: str,
   total_timesteps: int,
@@ -185,6 +186,7 @@ def rollouts_and_policy(
 @expert_demos_ex.command
 @util.make_session()
 def rollouts_from_policy(
+  _run,
   _seed: int,
   *,
   num_vec: int,

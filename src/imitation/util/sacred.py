@@ -3,8 +3,10 @@
 
 import json
 import os
-from typing import Dict, List
-import warning
+from typing import Callable, List, NamedTuple
+import warnings
+
+import sacred
 
 
 class SacredDicts(NamedTuple):
@@ -25,14 +27,14 @@ class SacredDicts(NamedTuple):
         if field == "result" and not os.path.is_file(json_path):
           args.append({})  # "result.json" isn't written if it's empty.
         else:
-          with open(config_path, "r") as f:
+          with open(json_path, "r") as f:
             args.append(json.load(f))
     return cls(*args)
 
 
 def dir_contains_sacred_jsons(dir_path: str) -> bool:
   run_path = os.path.join(dir_path, "run.json")
-  config_path = os.path.join(config_path, "config.json")
+  config_path = os.path.join(dir_path, "config.json")
   return os.path.isfile(run_path) and os.path.isfile(config_path)
 
 
@@ -59,27 +61,27 @@ def filter_subdirs(
       filtered_dirs.add(root)
 
   if not nested_ok:
-    for dirpath in exper_dirs:
+    for dirpath in filtered_dirs:
       components = os.path.split(dirpath)
       for i in range(1, len(components)):
         prefix = os.path.join(*components[0:i])
-        if prefix in expert_dirs:
+        if prefix in filtered_dirs:
           raise ValueError(f"Parent {prefix} to {dir} also a dir directory")
   return list(filtered_dirs)
 
 
-def build_sacred_symlink(log_dir: str, _run: sacred.Run) -> None:
+def build_sacred_symlink(log_dir: str, run: sacred.run.Run) -> None:
   """Constructs a symlink "{log_dir}/sacred" => "${SACRED_PATH}"."""
-  sacred_dir = get_sacred_dir(_run)
+  sacred_dir = get_sacred_dir_from_run(run)
   if sacred_dir is None:
-    warning.warn(RuntimeWarning("Couldn't find sacred directory."))
+    warnings.warn(RuntimeWarning("Couldn't find sacred directory."))
     return
-  symlink_path = osp.join(log_dir, "sacred")
+  symlink_path = os.path.join(log_dir, "sacred")
   os.symlink(sacred_dir, symlink_path)
 
 
-def get_sacred_dir_from_run(run: sacred.Run) -> str:
+def get_sacred_dir_from_run(run: sacred.run.Run) -> str:
   for obs in run.observers:
-    if isinstance(file_obs, sacred.FileStorageObserver):
+    if isinstance(obs, sacred.FileStorageObserver):
       return obs.dir
   return None

@@ -8,12 +8,8 @@ Adding custom named configs is necessary because the CLI interface can't add
 search spaces to the config like `"seed": tune.grid_search([0, 1, 2, 3])`.
 """
 
-import os.path as osp
-
 import ray.tune as tune
 import sacred
-
-import imitation.util as util
 
 parallel_ex = sacred.Experiment("parallel")
 
@@ -65,10 +61,11 @@ def example_cartpole_rl():
     }}
   base_named_configs = ["cartpole"]
   base_config_updates = {"init_tensorboard": True}
-  resources_per_trial=dict(cpu=4)
+  resources_per_trial = dict(cpu=4)
 
 
 EASY_ENVS = ["cartpole", "pendulum", "mountain_car"]
+
 
 @parallel_ex.named_config
 def example_rl_easy():
@@ -84,7 +81,7 @@ def example_rl_easy():
       },
     }}
   base_config_updates = {"init_tensorboard": True}
-  resources_per_trial=dict(cpu=4)
+  resources_per_trial = dict(cpu=4)
 
 
 @parallel_ex.named_config
