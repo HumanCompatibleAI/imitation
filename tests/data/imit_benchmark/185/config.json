@@ -2,7 +2,7 @@
   "__doc__": "Minimize the amount of computation. Useful for test cases.",
   "airl_entropy_weight": 1.0,
   "checkpoint_interval": 5,
-  "env_name": "Pendulum-v0",
+  "env_name": "CartPole-v1",
   "init_tensorboard": false,
   "init_trainer_kwargs": {
     "init_rl_kwargs": {
@@ -28,15 +28,15 @@
         32
       ]
     },
-    "scale": true,
+    "scale": false,
     "trainer_kwargs": {
       "gen_replay_buffer_capacity": 1000,
       "n_disc_samples_per_buffer": 1000
     },
     "use_gail": true
   },
-  "log_dir": "/tmp/tmp.ZZsM9Bc93F/3/Pendulum-v0/20190926_204940_9d3191003da948f38bdffa16762311c1",
-  "log_root": "/tmp/tmp.ZZsM9Bc93F/3",
+  "log_dir": "/tmp/tmp.n0x0WYSA5l/CartPole-v1/20190927_143843_6c8f210e44f4401596d8971153b09dc8",
+  "log_root": "/tmp/tmp.n0x0WYSA5l",
   "n_disc_steps_per_epoch": 1,
   "n_episodes_eval": 1,
   "n_epochs": 1,
@@ -44,8 +44,8 @@
   "n_gen_steps_per_epoch": 5,
   "n_plot_episodes": 1,
   "plot_interval": -1,
-  "rollout_hint": "pendulum",
-  "rollout_path": "tests/data/pendulum_0/rollouts/final.pkl",
+  "rollout_hint": "cartpole",
+  "rollout_path": "tests/data/cartpole_0/rollouts/final.pkl",
   "seed": 0,
   "show_plots": false
 }

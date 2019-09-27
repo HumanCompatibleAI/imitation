@@ -19,7 +19,7 @@
       ]
     ]
   },
-  "heartbeat": "2019-09-27T03:49:37.857350",
+  "heartbeat": "2019-09-27T21:38:44.987090",
   "host": {
     "ENV": {},
     "cpu": "Intel(R) Core(TM) i9-7940X CPU @ 3.10GHz",
@@ -38,7 +38,7 @@
       "--comment": null,
       "--debug": false,
       "--enforce_clean": false,
-      "--file_storage": null,
+      "--file_storage": "tests/data/imit_benchmark",
       "--force": false,
       "--help": false,
       "--loglevel": null,
@@ -56,7 +56,7 @@
         "gail",
         "fast",
         "pendulum",
-        "log_root=/tmp/tmp.ZZsM9Bc93F/2",
+        "log_root=/tmp/tmp.n0x0WYSA5l",
         "n_gen_steps_per_epoch=5",
         "rollout_path=tests/data/pendulum_0/rollouts/final.pkl",
         "n_expert_demos=1",
@@ -74,29 +74,29 @@
       "len_mean": 200.0,
       "len_min": 200,
       "len_std": 0.0,
-      "n_traj": 1,
-      "return_max": -893.9713893726777,
-      "return_mean": -893.9713893726777,
-      "return_min": -893.9713893726777,
-      "return_std": 0.0
+      "n_traj": 56,
+      "return_max": -788.1657404403462,
+      "return_mean": -966.5230493043197,
+      "return_min": -1461.24354588854,
+      "return_std": 115.7906938761026
     },
     "imit_stats": {
       "len_max": 100,
       "len_mean": 100.0,
       "len_min": 100,
       "len_std": 0.0,
-      "monitor_return_max": -373.321819,
-      "monitor_return_mean": -544.815713375,
-      "monitor_return_min": -775.550021,
-      "monitor_return_std": 137.62785070813274,
+      "monitor_return_max": -251.234844,
+      "monitor_return_mean": -516.551246625,
+      "monitor_return_min": -731.569857,
+      "monitor_return_std": 142.44475242295997,
       "n_traj": 8,
-      "return_max": 61.450031042099,
-      "return_mean": 60.53417929261923,
-      "return_min": 59.612810015678406,
-      "return_std": 0.5549436073180983
+      "return_max": 61.957749128341675,
+      "return_mean": 58.200735203921795,
+      "return_min": 56.60517358779907,
+      "return_std": 1.6757722662198604
     }
   },
-  "start_time": "2019-09-27T03:49:36.523948",
+  "start_time": "2019-09-27T21:38:43.175627",
   "status": "COMPLETED",
-  "stop_time": "2019-09-27T03:49:37.856248"
+  "stop_time": "2019-09-27T21:38:44.985739"
 }

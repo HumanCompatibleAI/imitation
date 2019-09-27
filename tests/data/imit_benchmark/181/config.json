@@ -35,8 +35,8 @@
     },
     "use_gail": false
   },
-  "log_dir": "/tmp/tmp.ZZsM9Bc93F/1/Pendulum-v0/20190926_204932_2513b3d76c034ff6931a6273d1a3da7c",
-  "log_root": "/tmp/tmp.ZZsM9Bc93F/1",
+  "log_dir": "/tmp/tmp.n0x0WYSA5l/Pendulum-v0/20190927_143831_2c80a8cb625448c8be9792b7c283acd5",
+  "log_root": "/tmp/tmp.n0x0WYSA5l",
   "n_disc_steps_per_epoch": 1,
   "n_episodes_eval": 1,
   "n_epochs": 1,

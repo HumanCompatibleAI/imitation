@@ -33,10 +33,10 @@
       "gen_replay_buffer_capacity": 1000,
       "n_disc_samples_per_buffer": 1000
     },
-    "use_gail": false
+    "use_gail": true
   },
-  "log_dir": "/tmp/tmp.ZZsM9Bc93F/1/CartPole-v1/20190926_204932_ea29f4c9e22049c0a12bfa23d6ca6974",
-  "log_root": "/tmp/tmp.ZZsM9Bc93F/1",
+  "log_dir": "/tmp/tmp.n0x0WYSA5l/CartPole-v1/20190927_143837_5cb6637e0d7c474195cd95e9517ecb53",
+  "log_root": "/tmp/tmp.n0x0WYSA5l",
   "n_disc_steps_per_epoch": 1,
   "n_episodes_eval": 1,
   "n_epochs": 1,

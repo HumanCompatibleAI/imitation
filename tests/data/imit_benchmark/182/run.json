@@ -19,7 +19,7 @@
       ]
     ]
   },
-  "heartbeat": "2019-09-27T03:49:33.964041",
+  "heartbeat": "2019-09-27T21:38:33.636028",
   "host": {
     "ENV": {},
     "cpu": "Intel(R) Core(TM) i9-7940X CPU @ 3.10GHz",
@@ -38,7 +38,7 @@
       "--comment": null,
       "--debug": false,
       "--enforce_clean": false,
-      "--file_storage": null,
+      "--file_storage": "tests/data/imit_benchmark",
       "--force": false,
       "--help": false,
       "--loglevel": null,
@@ -55,10 +55,10 @@
       "UPDATE": [
         "gail",
         "fast",
-        "pendulum",
-        "log_root=/tmp/tmp.ZZsM9Bc93F/1",
+        "cartpole",
+        "log_root=/tmp/tmp.n0x0WYSA5l",
         "n_gen_steps_per_epoch=5",
-        "rollout_path=tests/data/pendulum_0/rollouts/final.pkl",
+        "rollout_path=tests/data/cartpole_0/rollouts/final.pkl",
         "n_expert_demos=1",
         "init_trainer_kwargs.use_gail=False",
         "seed=0"
@@ -70,33 +70,33 @@
   "resources": [],
   "result": {
     "expert_stats": {
-      "len_max": 200,
-      "len_mean": 200.0,
-      "len_min": 200,
-      "len_std": 0.0,
-      "n_traj": 1,
-      "return_max": -893.9713893726777,
-      "return_mean": -893.9713893726777,
-      "return_min": -893.9713893726777,
-      "return_std": 0.0
+      "len_max": 500,
+      "len_mean": 499.57142857142856,
+      "len_min": 476,
+      "len_std": 3.1783707801838545,
+      "n_traj": 56,
+      "return_max": 500.0,
+      "return_mean": 499.57142857142856,
+      "return_min": 476.0,
+      "return_std": 3.1783707801838545
     },
     "imit_stats": {
-      "len_max": 100,
-      "len_mean": 100.0,
-      "len_min": 100,
+      "len_max": 10,
+      "len_mean": 10.0,
+      "len_min": 10,
       "len_std": 0.0,
-      "monitor_return_max": -363.126233,
-      "monitor_return_mean": -540.653277375,
-      "monitor_return_min": -774.279828,
-      "monitor_return_std": 126.74078431807666,
-      "n_traj": 8,
-      "return_max": 4.121656226110645,
-      "return_mean": 1.9964485858508851,
-      "return_min": -4.01654280803632,
-      "return_std": 2.8556352795446194
+      "monitor_return_max": 10.0,
+      "monitor_return_mean": 10.0,
+      "monitor_return_min": 10.0,
+      "monitor_return_std": 0.0,
+      "n_traj": 1,
+      "return_max": -1.40872523188591,
+      "return_mean": -1.40872523188591,
+      "return_min": -1.40872523188591,
+      "return_std": 0.0
     }
   },
-  "start_time": "2019-09-27T03:49:32.367988",
+  "start_time": "2019-09-27T21:38:31.989742",
   "status": "COMPLETED",
-  "stop_time": "2019-09-27T03:49:33.962950"
+  "stop_time": "2019-09-27T21:38:33.634844"
 }

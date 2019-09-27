@@ -19,7 +19,7 @@ echo "Logging to: ${LOG_ROOT}"
 
 SEEDS="0 1 2"
 
-TEMP=$(getopt -o f -l fast,gail,airl,run_name:,log_root: -- $@)
+TEMP=$(getopt -o f -l fast,gail,airl,run_name:,log_root:,file_storage: -- $@)
 if [[ $? != 0 ]]; then exit 1; fi
 eval set -- "$TEMP"
 
