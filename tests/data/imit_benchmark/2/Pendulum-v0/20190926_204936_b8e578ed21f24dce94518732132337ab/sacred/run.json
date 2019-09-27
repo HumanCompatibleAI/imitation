@@ -1,0 +1,102 @@
+{
+  "artifacts": [],
+  "command": "train",
+  "experiment": {
+    "base_dir": "/home/steven/imitation/src/imitation/scripts/config",
+    "dependencies": [
+      "imitation==0.1",
+      "numpy==1.16.2",
+      "sacred==0.7.4",
+      "stable-baselines==2.7.0"
+    ],
+    "mainfile": "train_adversarial.py",
+    "name": "BAR",
+    "repositories": [],
+    "sources": [
+      [
+        "train_adversarial.py",
+        "_sources/train_adversarial_1daa2d1984c0d7cf162b0ad13b5173be.py"
+      ]
+    ]
+  },
+  "heartbeat": "2019-09-27T03:49:37.857350",
+  "host": {
+    "ENV": {},
+    "cpu": "Intel(R) Core(TM) i9-7940X CPU @ 3.10GHz",
+    "hostname": "astar",
+    "os": [
+      "Linux",
+      "Linux-4.15.0-58-generic-x86_64-with-Ubuntu-18.04-bionic"
+    ],
+    "python_version": "3.6.8"
+  },
+  "meta": {
+    "command": "train",
+    "options": {
+      "--beat_interval": null,
+      "--capture": null,
+      "--comment": null,
+      "--debug": false,
+      "--enforce_clean": false,
+      "--file_storage": null,
+      "--force": false,
+      "--help": false,
+      "--loglevel": null,
+      "--mongo_db": null,
+      "--name": "BAR",
+      "--pdb": false,
+      "--print_config": false,
+      "--priority": null,
+      "--queue": false,
+      "--sql": null,
+      "--tiny_db": null,
+      "--unobserved": false,
+      "COMMAND": null,
+      "UPDATE": [
+        "gail",
+        "fast",
+        "pendulum",
+        "log_root=/tmp/tmp.ZZsM9Bc93F/2",
+        "n_gen_steps_per_epoch=5",
+        "rollout_path=tests/data/pendulum_0/rollouts/final.pkl",
+        "n_expert_demos=1",
+        "init_trainer_kwargs.use_gail=True",
+        "seed=0"
+      ],
+      "help": false,
+      "with": true
+    }
+  },
+  "resources": [],
+  "result": {
+    "expert_stats": {
+      "len_max": 200,
+      "len_mean": 200.0,
+      "len_min": 200,
+      "len_std": 0.0,
+      "n_traj": 1,
+      "return_max": -893.9713893726777,
+      "return_mean": -893.9713893726777,
+      "return_min": -893.9713893726777,
+      "return_std": 0.0
+    },
+    "imit_stats": {
+      "len_max": 100,
+      "len_mean": 100.0,
+      "len_min": 100,
+      "len_std": 0.0,
+      "monitor_return_max": -373.321819,
+      "monitor_return_mean": -544.815713375,
+      "monitor_return_min": -775.550021,
+      "monitor_return_std": 137.62785070813274,
+      "n_traj": 8,
+      "return_max": 61.450031042099,
+      "return_mean": 60.53417929261923,
+      "return_min": 59.612810015678406,
+      "return_std": 0.5549436073180983
+    }
+  },
+  "start_time": "2019-09-27T03:49:36.523948",
+  "status": "COMPLETED",
+  "stop_time": "2019-09-27T03:49:37.856248"
+}
