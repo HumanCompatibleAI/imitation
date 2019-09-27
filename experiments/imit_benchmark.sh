@@ -6,17 +6,11 @@
 # The benchmark tasks are defined in the CSV config file
 # `experiments/imit_benchmark_config.csv`.
 
-if $(command -v gdate > /dev/null); then
-  DATE_CMD=gdate  # macOS compatibility
-else
-  DATE_CMD=date
-fi
-
 RUN_NAME=${RUN_NAME:-no_run_name}
 USE_GAIL=${USE_GAIL:-True}
 CONFIG_CSV="experiments/imit_benchmark_config.csv"
 EXPERT_MODELS_DIR="expert_models"
-TIMESTAMP=$(${DATE_CMD} --iso-8601=seconds)
+TIMESTAMP=$(date --iso-8601=seconds)
 LOG_ROOT="output/imit_benchmark/${TIMESTAMP}"
 extra_configs=""
 mkdir -p "${LOG_ROOT}"
