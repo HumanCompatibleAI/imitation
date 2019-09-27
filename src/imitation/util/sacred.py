@@ -13,7 +13,6 @@ class SacredDicts(NamedTuple):
   """Each dict `foo` is loaded from `f"{sacred_dir}/foo.json"`."""
   sacred_dir: str
   config: dict
-  result: dict
   run: dict
 
   @classmethod
@@ -23,12 +22,9 @@ class SacredDicts(NamedTuple):
       if field == "sacred_dir":
         args.append(sacred_dir)
       else:
-        json_path = os.path.join(sacred_dir, "sacred", f"{field}.json")
-        if field == "result" and not os.path.isfile(json_path):
-          args.append({})  # "result.json" isn't written if it's empty.
-        else:
-          with open(json_path, "r") as f:
-            args.append(json.load(f))
+        json_path = os.path.join(sacred_dir, f"{field}.json")
+        with open(json_path, "r") as f:
+          args.append(json.load(f))
     return cls(*args)
 
 
@@ -77,7 +73,7 @@ def build_sacred_symlink(log_dir: str, run: sacred.run.Run) -> None:
     warnings.warn(RuntimeWarning("Couldn't find sacred directory."))
     return
   symlink_path = os.path.join(log_dir, "sacred")
-  os.symlink(sacred_dir, symlink_path)
+  os.symlink(os.path.abspath(sacred_dir), symlink_path)
 
 
 def get_sacred_dir_from_run(run: sacred.run.Run) -> Union[str, None]:

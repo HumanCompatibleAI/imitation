@@ -31,11 +31,12 @@ def analyze_imitation(source_dir: str,
     A list of dictionaries used to generate the analysis DataFrame.
   """
   sacred_dirs = sacred_util.filter_subdirs(source_dir)
-  sacred_dicts = (sacred_util.SacredDicts.load_from_dir(sacred_dir)
-                  for sacred_dir in sacred_dirs)
+  sacred_dicts = [sacred_util.SacredDicts.load_from_dir(sacred_dir)
+                  for sacred_dir in sacred_dirs]
+
   if run_name is not None:
     sacred_dicts = filter(
-      lambda sd: sacred_util.dict_get_nested(sd, "experiment.name") == run_name,
+      lambda sd: sacred_util.dict_get_nested(sd.run, "experiment.name") == run_name,
       sacred_dicts)
 
   rows = []
@@ -43,18 +44,18 @@ def analyze_imitation(source_dir: str,
     row = OrderedDict()
     rows.append(row)
 
-    imit_stats = sd.result["imit_stats"]
-    expert_stats = sd.result["expert_stats"]
+    imit_stats = sd.run["result"]["imit_stats"]
+    expert_stats = sd.run["result"]["expert_stats"]
     row["use_gail"] = sd.config["init_trainer_kwargs"]["use_gail"]
     row["env_name"] = sd.config["env_name"]
     row["n_expert_demos"] = sd.config["n_expert_demos"]
     row["run_name"] = sd.run["experiment"]["name"]
-    row["expert_return_summary"] = _make_reward_summary(expert_stats)
-    row["imit_return_summary"] = _make_reward_summary(imit_stats, "monitor")
-    row["imit_vs_expert_return"] = (expert_stats["reward_mean"] /
-                                    imit_stats["monitor_reward_mean"])
-    row["imit_return_mean"] = imit_stats["monitor_reward_mean"]
-    row["imit_return_std_dev"] = imit_stats["monitor_reward_std"]
+    row["expert_return_summary"] = _make_return_summary(expert_stats)
+    row["imit_return_summary"] = _make_return_summary(imit_stats, "monitor_")
+    row["imit_vs_expert_return"] = (expert_stats["return_mean"] /
+                                    imit_stats["monitor_return_mean"])
+    row["imit_return_mean"] = imit_stats["monitor_return_mean"]
+    row["imit_return_std_dev"] = imit_stats["monitor_return_std"]
 
   df = pd.DataFrame(rows)
   df.to_csv(csv_output_path)
@@ -64,10 +65,10 @@ def analyze_imitation(source_dir: str,
   return rows
 
 
-def _make_reward_summary(stats: dict, prefix="") -> str:
+def _make_return_summary(stats: dict, prefix="") -> str:
   return "{:3g} ± {:3g} (n={})".format(
-    stats[f"{prefix}reward_mean"],
-    stats[f"{prefix}reward_std"],
+    stats[f"{prefix}return_mean"],
+    stats[f"{prefix}return_std"],
     stats["n_traj"])
 
 

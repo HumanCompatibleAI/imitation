@@ -185,15 +185,14 @@ def test_parallel(config_updates):
 
 
 @pytest.mark.parametrize("run_name,expected_entries",
-                         [("FOO", 1), ("BAR", 2), (None, 3)])
-@pytest.mark.xfail
+                         [("FOO", 2), ("BAR", 4), (None, 6)])
 def test_analyze_imitation(tmpdir: str,
                            run_name: Optional[str],
                            expected_entries: int):
   run = anal_ex.run(
     command_name="analyze_imitation",
     config_updates=dict(
-      source_dir="tests/data/sacred",
+      source_dir="tests/data/imit_benchmark",
       run_name=run_name,
       csv_output_path=osp.join(tmpdir, "analysis.csv"),
       verbose=True,
