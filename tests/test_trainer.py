@@ -1,7 +1,7 @@
 """Tests for imitation.trainer.Trainer and util.trainer.init_trainer."""
 import os
-
 import pickle
+
 import pytest
 
 from imitation.algorithms.adversarial import init_trainer

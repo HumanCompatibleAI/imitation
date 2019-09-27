@@ -36,7 +36,8 @@ def analyze_imitation(source_dir: str,
 
   if run_name is not None:
     sacred_dicts = filter(
-      lambda sd: sacred_util.dict_get_nested(sd.run, "experiment.name") == run_name,
+      lambda sd: (
+        sacred_util.dict_get_nested(sd.run, "experiment.name") == run_name),
       sacred_dicts)
 
   rows = []
