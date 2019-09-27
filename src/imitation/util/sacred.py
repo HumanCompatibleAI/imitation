@@ -22,25 +22,23 @@ class SacredDicts(NamedTuple):
         args.append(dir)
       else:
         json_path = os.path.join(dir, "sacred", f"{field}.json")
-        if not os.path.is_file(json_path):
-          args.append({})
-          if field != "result":  # All other {field}.json are guaranteed.
-            warning.warn(
-              RuntimeWarning(f"Couldn't load {json_path}. Skipping."))
+        if field == "result" and not os.path.is_file(json_path):
+          args.append({})  # "result.json" isn't written if it's empty.
         else:
           with open(config_path, "r") as f:
             args.append(json.load(f))
     return cls(*args)
 
 
-def dir_contains_metrics_json(dir_path: str) -> bool:
-  metrics_path = os.path.join(dir_path, "metrics.json")
-  return os.path.isfile(metrics_path)
+def dir_contains_sacred_jsons(dir_path: str) -> bool:
+  run_path = os.path.join(dir_path, "run.json")
+  config_path = os.path.join(config_path, "config.json")
+  return os.path.isfile(run_path) and os.path.isfile(config_path)
 
 
 def filter_subdirs(
   root_dir: str,
-  filter_fn: Callable[[str], bool] = dir_contains_metrics_json,
+  filter_fn: Callable[[str], bool] = dir_contains_sacred_jsons,
   *,
   nested_ok: bool = False,
 ) -> List[str]:
