@@ -4,15 +4,58 @@ from typing import Optional
 
 import pandas as pd
 from sacred.observers import FileStorageObserver
+import tensorboard as tf
 
 from imitation.scripts.config.analyze import analysis_ex
 import imitation.util.sacred as sacred_util
 from imitation.util.sacred import dict_get_nested as get
 
 
-@analysis_ex.main
+@analysis_ex.command
+def gather_tb_directories(source_dir: str,
+                          run_name: Optional[str],
+                          env_name: Optional[str],
+                          skip_failed_runs: bool,
+                          verbose: bool,
+                          ) -> str:
+  """Gather Tensorboard directories from a `parallel_ex` run.
+  The directories are copied to a unique directory in `/tmp/analysis_tb/` under
+  subdirectories matching the Tensorboard events' Ray Tune trial names.
+
+  Unlisted arguments are the same as in `analyze_imitation()`.
+
+  Args:
+    source_dir: A local_dir for Ray. For example, `~/ray_results/`.
+    verbose: Doesn't do anything.
+
+  Return:
+    Path to a /tmp/ directory containing all the TensorBoard runs filtered from
+    `source_dir`.
+  """
+  sacred_dicts = _get_sacred_dicts(
+    source_dir, run_name, env_name, skip_failed_runs)
+  tmp_dir = tempfile.mkdtemp(dir="/tmp/analysis_tb/")
+
+  tb_dirs_count = 0
+  for sd in sacred_dicts:
+    # Expecting a path like "~/ray_results/{run_name}/sacred".
+    assert osp.basename(sd.sacred_dir) == "sacred"
+    run_dir = osp.dirname(sd.sacred_dir.rstrip("/"))
+    run_name = osp.basename(run_dir)
+    for tb_src_dir in sacred_util.filter_subdirs(run_dir, _is_tensorboard_dir):
+      tb_dest_dir = osp.join(run_dir, run_name)
+      os.symlink(tb_src_dir, tb_dest_dir)
+      tb_dirs_count += 1
+
+  tf.logging.info(f"Symlinked {tb_dirs_count} TensorBoard dirs to {tmp_dir}.")
+  tf.logging.info(f"Start Tensorboard with `tensorboard --logdir {tmp_dir}`.")
+  return tmp_dir
+
+
+@analysis_ex.command
 def analyze_imitation(source_dir: str,
                       run_name: Optional[str],
+                      env_name: Optional[str],
                       skip_failed_runs: bool,
                       csv_output_path: Optional[str],
                       verbose: bool,
@@ -34,12 +77,17 @@ def analyze_imitation(source_dir: str,
     A list of dictionaries used to generate the analysis DataFrame.
   """
   sacred_dirs = sacred_util.filter_subdirs(source_dir)
-  sacred_dicts = [sacred_util.SacredDicts.load_from_dir(sacred_dir)
-                  for sacred_dir in sacred_dirs]
+  sacred_dicts = _get_sacred_dicts(
+    source_dir, run_name, env_name, skip_failed_runs)
 
   if run_name is not None:
     sacred_dicts = filter(
       lambda sd: get(sd.run, "experiment.name") == run_name,
+      sacred_dicts)
+
+  if env_name is not None:
+    sacred_dicts = filter(
+      lambda sd: get(sd.config, "env_name") == env_name,
       sacred_dicts)
 
   if skip_failed_runs:
@@ -82,6 +130,37 @@ def _make_return_summary(stats: dict, prefix="") -> str:
     stats[f"{prefix}return_mean"],
     stats[f"{prefix}return_std"],
     stats["n_traj"])
+
+
+def _get_sacred_dicts(source_dir: str,
+                      run_name: str,
+                      env_name: str,
+                      skip_failed_runs: bool) -> List[sacred_util.SacredDict]:
+  sacred_dirs = sacred_util.filter_subdirs(source_dir)
+  sacred_dicts = [sacred_util.SacredDicts.load_from_dir(sacred_dir)
+                  for sacred_dir in sacred_dirs]
+
+  if run_name is not None:
+    sacred_dicts = filter(
+      lambda sd: get(sd.run, "experiment.name") == run_name,
+      sacred_dicts)
+
+  if env_name is not None:
+    sacred_dicts = filter(
+      lambda sd: get(sd.config, "env_name") == env_name,
+      sacred_dicts)
+
+  if skip_failed_runs:
+    sacred_dicts = filter(
+      lambda sd: get(sd.run, "status") != "FAILED",
+      sacred_dicts)
+
+  return sacred_dicts
+
+
+def _is_tensorboard_dir(path: str):
+  path = path.rstrip("/")
+  return osp.basename(path) in ["tb", "sb_tb"]
 
 
 def main_console():
