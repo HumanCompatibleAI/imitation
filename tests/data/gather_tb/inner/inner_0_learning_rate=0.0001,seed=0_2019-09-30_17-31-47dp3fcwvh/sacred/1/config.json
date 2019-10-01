@@ -1,0 +1,32 @@
+{
+  "__doc__": "Intended for testing purposes: small # of updates, ends quickly.",
+  "env_name": "CartPole-v1",
+  "init_rl_kwargs": {
+    "ent_coef": 0.0,
+    "learning_rate": 9.999999999999999e-05,
+    "n_steps": 256,
+    "nminibatches": 32,
+    "noptepochs": 10
+  },
+  "init_tensorboard": true,
+  "log_dir": "output/expert_demos/CartPole-v1/20190930_173149_3cfb211d1af64068a6540984d8056d43",
+  "log_root": "output/expert_demos",
+  "max_episode_steps": 1000,
+  "n_episodes_eval": 50,
+  "normalize": true,
+  "num_vec": 8,
+  "parallel": true,
+  "policy_path": null,
+  "policy_save_final": false,
+  "policy_save_interval": -1,
+  "policy_type": "ppo2",
+  "reward_path": null,
+  "reward_type": null,
+  "rollout_save_final": false,
+  "rollout_save_interval": -1,
+  "rollout_save_n_episodes": null,
+  "rollout_save_n_timesteps": 2000,
+  "rollout_save_path": "output/expert_demos/CartPole-v1/20190930_173149_3cfb211d1af64068a6540984d8056d43/rollout.pkl",
+  "seed": 0,
+  "total_timesteps": 1000
+}

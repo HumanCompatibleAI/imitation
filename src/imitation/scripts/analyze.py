@@ -1,10 +1,12 @@
 from collections import OrderedDict
+import os
 import os.path as osp
-from typing import Optional
+import tempfile
+from typing import List, Optional
 
 import pandas as pd
 from sacred.observers import FileStorageObserver
-import tensorboard as tf
+import tensorflow as tf
 
 from imitation.scripts.config.analyze import analysis_ex
 import imitation.util.sacred as sacred_util
@@ -16,31 +18,33 @@ def gather_tb_directories(source_dir: str,
                           run_name: Optional[str],
                           env_name: Optional[str],
                           skip_failed_runs: bool,
-                          verbose: bool,
-                          ) -> str:
+                          ) -> dict:
   """Gather Tensorboard directories from a `parallel_ex` run.
   The directories are copied to a unique directory in `/tmp/analysis_tb/` under
   subdirectories matching the Tensorboard events' Ray Tune trial names.
 
-  Unlisted arguments are the same as in `analyze_imitation()`.
+  Undocumented arguments are the same as in `analyze_imitation()`.
 
   Args:
     source_dir: A local_dir for Ray. For example, `~/ray_results/`.
-    verbose: Doesn't do anything.
 
-  Return:
-    Path to a /tmp/ directory containing all the TensorBoard runs filtered from
-    `source_dir`.
+  Returns:
+    A dict with two keys. "gather_dir"'s (str) is a path to a /tmp/
+    directory containing all the TensorBoard runs filtered from `source_dir`.
+    "n_tb_dirs" (int) is the number of TensorBoard directories that were
+    filtered.
   """
   sacred_dicts = _get_sacred_dicts(
     source_dir, run_name, env_name, skip_failed_runs)
+  os.makedirs("/tmp/analysis_tb", exist_ok=True)
   tmp_dir = tempfile.mkdtemp(dir="/tmp/analysis_tb/")
 
   tb_dirs_count = 0
   for sd in sacred_dicts:
-    # Expecting a path like "~/ray_results/{run_name}/sacred".
-    assert osp.basename(sd.sacred_dir) == "sacred"
-    run_dir = osp.dirname(sd.sacred_dir.rstrip("/"))
+    # Expecting a path like "~/ray_results/{run_name}/sacred/1".
+    sacred_dir = sd.sacred_dir.rstrip("/")
+    assert sacred_dir.endswith("sacred/1")
+    run_dir = osp.dirname(osp.dirname(sacred_dir))
     run_name = osp.basename(run_dir)
     for tb_src_dir in sacred_util.filter_subdirs(run_dir, _is_tensorboard_dir):
       tb_dest_dir = osp.join(run_dir, run_name)
@@ -76,7 +80,6 @@ def analyze_imitation(source_dir: str,
   Returns:
     A list of dictionaries used to generate the analysis DataFrame.
   """
-  sacred_dirs = sacred_util.filter_subdirs(source_dir)
   sacred_dicts = _get_sacred_dicts(
     source_dir, run_name, env_name, skip_failed_runs)
 
@@ -135,7 +138,7 @@ def _make_return_summary(stats: dict, prefix="") -> str:
 def _get_sacred_dicts(source_dir: str,
                       run_name: str,
                       env_name: str,
-                      skip_failed_runs: bool) -> List[sacred_util.SacredDict]:
+                      skip_failed_runs: bool) -> List[sacred_util.SacredDicts]:
   sacred_dirs = sacred_util.filter_subdirs(source_dir)
   sacred_dicts = [sacred_util.SacredDicts.load_from_dir(sacred_dir)
                   for sacred_dir in sacred_dirs]
@@ -155,7 +158,7 @@ def _get_sacred_dicts(source_dir: str,
       lambda sd: get(sd.run, "status") != "FAILED",
       sacred_dicts)
 
-  return sacred_dicts
+  return list(sacred_dicts)
 
 
 def _is_tensorboard_dir(path: str):

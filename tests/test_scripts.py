@@ -200,3 +200,18 @@ def test_analyze_imitation(tmpdir: str,
   assert run.status == 'COMPLETED'
   df = pd.DataFrame(run.result)
   assert df.shape[0] == expected_entries
+
+
+def test_analyze_gather_tb(tmpdir: str):
+  run = analysis_ex.run(
+    command_name="gather_tb_directories",
+    config_updates=dict(
+      source_dir="tests/data/imit_benchmark",
+      run_name="TEST",
+    ))
+  assert run.status == 'COMPLETED'
+  assert isinstance(run.result, dict)
+
+  # Test data is generated using `config/parallel/generate_test_data.py`.
+  # Should contain data for two expert_demos runs, each with 
+  assert run.result["n_tb_dirs"] == 4

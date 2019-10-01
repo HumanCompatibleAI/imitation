@@ -1,0 +1,4 @@
+2019-09-30 17:31:49.409595: I tensorflow/core/platform/cpu_feature_guard.cc:141] Your CPU supports instructions that this TensorFlow binary was not compiled to use: AVX2 AVX512F FMA
+2019-09-30 17:31:49.420819: I tensorflow/core/platform/profile_utils/cpu_utils.cc:94] CPU Frequency: 3100000000 Hz
+2019-09-30 17:31:49.423104: I tensorflow/compiler/xla/service/service.cc:150] XLA service 0x7f7206822120 executing computations on platform Host. Devices:
+2019-09-30 17:31:49.423138: I tensorflow/compiler/xla/service/service.cc:158]   StreamExecutor device (0): <undefined>, <undefined>

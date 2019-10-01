@@ -42,6 +42,8 @@ def filter_subdirs(
 ) -> List[str]:
   """Walks through a directory tree, returning paths to filtered subdirectories.
 
+  Does not follow symlinks.
+
   Args:
     root_dir: The start of the directory tree walk.
     filter_fn: A function with takes a directory path and returns True if

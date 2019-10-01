@@ -1,0 +1,75 @@
+{
+  "artifacts": [],
+  "command": "rollouts_and_policy",
+  "experiment": {
+    "base_dir": "/home/steven/imitation/src/imitation/scripts/config",
+    "dependencies": [
+      "imitation==0.1a0",
+      "numpy==1.16.2",
+      "sacred==0.7.4"
+    ],
+    "mainfile": "expert_demos.py",
+    "name": "expert_demos",
+    "repositories": [],
+    "sources": [
+      [
+        "expert_demos.py",
+        "_sources/expert_demos_95d51d0c23a9d95dfa5212763654caa4.py"
+      ]
+    ]
+  },
+  "heartbeat": "2019-10-01T00:31:54.103068",
+  "host": {
+    "ENV": {},
+    "cpu": "Intel(R) Core(TM) i9-7940X CPU @ 3.10GHz",
+    "hostname": "astar",
+    "os": [
+      "Linux",
+      "Linux-4.15.0-58-generic-x86_64-with-Ubuntu-18.04-bionic"
+    ],
+    "python_version": "3.6.8"
+  },
+  "meta": {
+    "command": "rollouts_and_policy",
+    "options": {
+      "--beat_interval": null,
+      "--capture": null,
+      "--comment": null,
+      "--debug": false,
+      "--enforce_clean": false,
+      "--file_storage": null,
+      "--force": false,
+      "--help": false,
+      "--loglevel": null,
+      "--mongo_db": null,
+      "--name": null,
+      "--pdb": false,
+      "--print_config": false,
+      "--priority": null,
+      "--queue": false,
+      "--run": "example-cartpole",
+      "--sql": null,
+      "--tiny_db": null,
+      "--unobserved": false
+    }
+  },
+  "resources": [],
+  "result": {
+    "len_max": 56,
+    "len_mean": 22.88,
+    "len_min": 9,
+    "len_std": 11.576942601568,
+    "monitor_return_max": 56.0,
+    "monitor_return_mean": 22.88,
+    "monitor_return_min": 9.0,
+    "monitor_return_std": 11.576942601568,
+    "n_traj": 50,
+    "return_max": 21.955733792703548,
+    "return_mean": 5.826436205098905,
+    "return_min": 1.4439350698589752,
+    "return_std": 5.918990331009086
+  },
+  "start_time": "2019-10-01T00:31:49.414449",
+  "status": "COMPLETED",
+  "stop_time": "2019-10-01T00:31:53.100393"
+}

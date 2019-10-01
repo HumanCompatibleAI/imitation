@@ -15,6 +15,7 @@ def parallel(inner_experiment_name: str,
              base_named_configs: list,
              base_config_updates: dict,
              resources_per_trial: dict,
+             local_dir: Optional[str],
              upload_dir: Optional[str],
              ) -> None:
   """Parallelize multiple runs of another Sacred Experiment using Ray Tune.
@@ -39,6 +40,7 @@ def parallel(inner_experiment_name: str,
     base_config_updates: `search_space["config_updates"]` is applied to this
       dict before it is passed to the inner experiment's `run()`.
     resource_per_trial: Argument to `ray.tune.run()`.
+    local_dir: `local_dir` argument to `ray.tune.run()`.
     upload_dir: `upload_dir` argument to `ray.tune.run()`.
   """
   trainable = _ray_tune_sacred_wrapper(inner_experiment_name,
@@ -55,7 +57,8 @@ def parallel(inner_experiment_name: str,
 
   ray.init()
   try:
-    ray.tune.run(trainable, config=search_space, upload_dir=upload_dir,
+    ray.tune.run(trainable, config=search_space,
+                 local_dir=local_dir, upload_dir=upload_dir,
                  loggers=ray_loggers, resources_per_trial=resources_per_trial)
   finally:
     ray.shutdown()

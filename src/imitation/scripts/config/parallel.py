@@ -26,6 +26,7 @@ def config():
     "config_updates": {},
   }  # `config` argument to `ray.tune.run(trainable, config)`
 
+  local_dir = None  # `local_dir` arg for `ray.tune.run`
   upload_dir = None  # `upload_dir` arg for `ray.tune.run`
   n_seeds = 3  # Number of seeds to search over by default
 
@@ -48,9 +49,32 @@ def debug_log_root():
 
 
 @parallel_ex.named_config
+def generate_test_data():
+  """Used by tests/generate_test_data.sh to generate tests/data/gather_tb/
+
+  "tests/data/gather_tb/" should contain 4 Tensorboard run directories ("sb_tb/"
+  and "tb/" for each of two trials in the search space below).
+  """
+  inner_experiment_name = "expert_demos"
+  inner_run_name = "example-cartpole"
+  n_seeds = 1
+  search_space = {
+    "config_updates": {
+      "init_rl_kwargs": {
+        "learning_rate": tune.grid_search([3e-4 * x for x in (1/3, 1/2)]),
+      },
+    }}
+  base_named_configs = ["cartpole", "fast", "no_save"]
+  base_config_updates = {
+    "init_tensorboard": True,
+    "rollout_save_final": False,
+  }
+
+
+@parallel_ex.named_config
 def example_cartpole_rl():
   inner_experiment_name = "expert_demos"
-  outer_experiment_name = "example-cartpole"
+  inner_run_name = "example-cartpole"
   n_seeds = 2
   search_space = {
     "config_updates": {
@@ -70,7 +94,7 @@ EASY_ENVS = ["cartpole", "pendulum", "mountain_car"]
 @parallel_ex.named_config
 def example_rl_easy():
   inner_experiment_name = "expert_demos"
-  outer_experiment_name = "example-rl-easy"
+  inner_run_name = "example-rl-easy"
   n_seeds = 2
   search_space = {
     "named_configs": tune.grid_search([[env] for env in EASY_ENVS]),
@@ -87,7 +111,7 @@ def example_rl_easy():
 @parallel_ex.named_config
 def example_gail_easy():
   inner_experiment_name = "train_adversarial"
-  outer_experiment_name = "example-gail-easy"
+  inner_run_name = "example-gail-easy"
   n_seeds = 1
   search_space = {
     "named_configs": tune.grid_search([[env] for env in EASY_ENVS]),

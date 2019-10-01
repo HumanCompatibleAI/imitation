@@ -7,7 +7,7 @@ set -e
 experiments/train_experts.sh -r
 
 
-# Regenerate tests/data/imit_benchmark (for analysis tests).
+# Regenerate tests/data/imit_benchmark (for analyze.analyze_imitation tests).
 save_dir=tests/data/imit_benchmark
 if [[ -d ${save_dir} ]]; then
   rm -r ${save_dir}
@@ -22,3 +22,12 @@ shopt -s expand_aliases
 imit_benchmark --airl --run_name FOO
 imit_benchmark --gail --run_name BAR
 imit_benchmark --gail --run_name BAR
+
+
+# Regenerate tests/data/gather_tb (for analyze.gather_tb_directories tests).
+save_dir=tests/data/gather_tb
+if [[ -d ${save_dir} ]]; then
+  rm -r ${save_dir}
+fi
+mkdir -p ${save_dir}
+python -m imitation.scripts.parallel with local_dir=${save_dir} generate_test_data
