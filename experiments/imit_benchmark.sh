@@ -12,6 +12,7 @@ TIMESTAMP=$(date --iso-8601=seconds)
 LOG_ROOT="output/imit_benchmark/${TIMESTAMP}"
 extra_configs=""
 extra_options=""
+ALGORITHM="gail"
 
 SEEDS="0 1 2"
 
@@ -30,11 +31,11 @@ while true; do
       shift
       ;;
     --gail)
-      extra_configs+="gail "
+      ALGORITHM="gail"
       shift
       ;;
     --airl)
-      extra_configs+="airl "
+      ALGORITHM="airl"
       shift
       ;;
     --run_name)
@@ -55,7 +56,7 @@ while true; do
       break
       ;;
     *)
-      echo "Parsing error" >&2
+      echo "Invalid argument or parsing error" >&2
       exit 1
       ;;
   esac
@@ -68,9 +69,10 @@ parallel -j 25% --header : --results ${LOG_ROOT}/parallel/ --colsep , --progress
   python -m imitation.scripts.train_adversarial \
   ${extra_options} \
   with \
+  ${ALGORITHM} \
   ${extra_configs} \
   {env_config_name} \
-  log_root="${LOG_ROOT}" \
+  log_dir="${LOG_ROOT}/${ALGORITHM}/{env_config_name}_{seed}" \
   n_gen_steps_per_epoch={n_gen_steps_per_epoch} \
   rollout_path=${EXPERT_MODELS_DIR}/{env_config_name}_0/rollouts/final.pkl \
   n_expert_demos={n_expert_demos} \
@@ -83,3 +85,7 @@ parallel -j 25% --header : --results ${LOG_ROOT}/parallel/ --colsep , --progress
 pushd ${LOG_ROOT}/parallel
 find . -name stdout | sort | xargs tail -n 15 | grep -E '==|\[result\]'
 popd
+
+
+echo "[Optional] Upload new reward models to S3 (replacing old ones) using:"
+echo "aws s3 sync --delete '${LOG_ROOT}' s3://shwang-chai/public/reward_models/${ALGORITHM}/"
