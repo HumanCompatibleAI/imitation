@@ -70,8 +70,8 @@ def analyze_imitation(source_dir: str,
                                   expert_stats["return_mean"])
 
   df = pd.DataFrame(rows)
-  df.to_csv(csv_output_path)
-
+  if csv_output_path is not None:
+    df.to_csv(csv_output_path)
   if verbose:
     print(df.to_string())
   return rows
