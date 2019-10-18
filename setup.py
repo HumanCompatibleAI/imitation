@@ -19,6 +19,7 @@ setup(
     python_requires='>=3.6.0',
     packages=find_packages('src'),
     package_dir={'': 'src'},
+    package_data={'evaluating_rewards': ['py.typed']},
     install_requires=[
         'awscli',
         'gym',
