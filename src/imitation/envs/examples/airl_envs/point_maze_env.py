@@ -56,9 +56,8 @@ class PointMazeEnv(mujoco_env.MujocoEnv, utils.EzPickle):
 
   def reset_model(self):
     qpos = self.init_qpos
-    self.episode_length = 0
-    qvel = self.init_qvel + \
-        self.np_random.uniform(size=self.model.nv, low=-0.01, high=0.01)
+    qvel = (self.init_qvel +
+            self.np_random.uniform(size=self.model.nv, low=-0.01, high=0.01))
     self.set_state(qpos, qvel)
     self.episode_length = 0
     return self._get_obs()
