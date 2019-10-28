@@ -75,6 +75,7 @@ def _load_stable_baselines(cls: Type[BaseRLModel],
           vec_normalize = pickle.load(f)
         vec_normalize.training = False
         vec_normalize.set_venv(venv)
+        policy = NormalizePolicy(policy, vec_normalize)
         tf.logging.info(f"Loaded VecNormalize from '{normalize_path}'")
       except FileNotFoundError:
         # We did not use VecNormalize during training, skip
