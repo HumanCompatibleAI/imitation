@@ -4,6 +4,7 @@ import contextlib
 import os
 import pickle
 from typing import Callable, ContextManager, Iterator, Optional, Type
+import warnings
 
 from stable_baselines.common.base_class import BaseRLModel
 from stable_baselines.common.policies import BasePolicy
@@ -83,8 +84,8 @@ def _load_stable_baselines(cls: Type[BaseRLModel],
       try:
         vec_normalize = VecNormalize(venv, training=False)
         vec_normalize.load_running_average(path)
-        warnings.warn("Loading VecNormalize with deprecated way of saving statistics.",
-                      DeprecationWarning)
+        warnings.warn("Loading VecNormalize with deprecated way of "
+                      " saving statistics.", DeprecationWarning)
         policy = NormalizePolicy(policy, vec_normalize)
         tf.logging.info(f"Loaded normalization statistics from '{path}'")
       except FileNotFoundError:
