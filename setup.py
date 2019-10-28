@@ -29,7 +29,7 @@ setup(
         'scikit-learn>=0.21.2',
         # FIXME: Use stable release instead of tracking master once
         # commit 9a760542 is released.
-        'stable-baselines @ git+https://github.com/hill-a/stable-baselines.git',
+        'stable-baselines @ git+https://github.com/hill-a/stable-baselines.git@vec-normalize-pickle',
         'jax!=0.1.37',
         'jaxlib~=0.1.20',
         # sacred==0.7.5 build is broken without pymongo

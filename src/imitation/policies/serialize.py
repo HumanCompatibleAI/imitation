@@ -2,6 +2,7 @@
 
 import contextlib
 import os
+import pickle
 from typing import Callable, ContextManager, Iterator, Optional, Type
 
 from stable_baselines.common.base_class import BaseRLModel
@@ -57,19 +58,33 @@ def _load_stable_baselines(cls: Type[BaseRLModel],
   Returns:
     A function loading policies trained via cls."""
   @contextlib.contextmanager
-  def f(path: str, env: VecEnv) -> Iterator[BasePolicy]:
+  def f(path: str, venv: VecEnv) -> Iterator[BasePolicy]:
     """Loads a policy saved to path, for environment env."""
     tf.logging.info(f"Loading Stable Baselines policy for '{cls}' "
                     f"from '{path}'")
     model_path = os.path.join(path, 'model.pkl')
     model = None
     try:
-      model = cls.load(model_path, env=env)
+      model = cls.load(model_path, env=venv)
       policy = getattr(model, policy_attr)
 
       try:
-        vec_normalize = VecNormalize(env, training=False)
+        normalize_path = os.path.join(path, 'vec_normalize.pkl')
+        with open(normalize_path, 'rb') as f:
+          vec_normalize = pickle.load(f)
+        vec_normalize.training = False
+        vec_normalize.set_venv(venv)
+        tf.logging.info(f"Loaded VecNormalize from '{normalize_path}'")
+      except FileNotFoundError:
+        # We did not use VecNormalize during training, skip
+        pass
+
+      # TODO(adam): remove this try-except once we have updated all policies
+      try:
+        vec_normalize = VecNormalize(venv, training=False)
         vec_normalize.load_running_average(path)
+        warnings.warn("Loading VecNormalize with deprecated way of saving statistics.",
+                      DeprecationWarning)
         policy = NormalizePolicy(policy, vec_normalize)
         tf.logging.info(f"Loaded normalization statistics from '{path}'")
       except FileNotFoundError:
@@ -148,5 +163,6 @@ def save_stable_model(output_dir: str,
     os.makedirs(output_dir, exist_ok=True)
     model.save(os.path.join(output_dir, 'model.pkl'))
     if vec_normalize is not None:
-      vec_normalize.save_running_average(output_dir)
+      with open(os.path.join(output_dir, 'vec_normalize.pkl'), 'wb') as f:
+        pickle.dump(vec_normalize, f)
     tf.logging.info("Saved policy to %s", output_dir)

@@ -27,6 +27,7 @@ def rollouts_and_policy(
   parallel: bool,
   max_episode_steps: Optional[int],
   normalize: bool,
+  normalize_kwargs: dict,
   init_rl_kwargs: dict,
 
   n_episodes_eval: int,
@@ -63,6 +64,7 @@ def rollouts_and_policy(
           TimeLimit so that they have at most `max_episode_steps` steps per
           episode.
       normalize: If True, then rescale observations and reward.
+      normalize_kwargs: kwargs for `VecNormalize`.
       init_rl_kwargs: kwargs for `init_rl`.
 
       n_episodes_eval: The number of episodes to average over when calculating
@@ -138,7 +140,7 @@ def rollouts_and_policy(
 
       vec_normalize = None
       if normalize:
-        venv = vec_normalize = VecNormalize(venv)
+        venv = vec_normalize = VecNormalize(venv, **normalize_kwargs)
 
       policy = util.init_rl(venv, verbose=1, **init_rl_kwargs)
 
