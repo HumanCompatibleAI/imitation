@@ -1,0 +1,156 @@
+{
+  "checkpoints": [
+    {
+      "trainable_name": "inner",
+      "trial_id": "9e18ba50",
+      "config": {
+        "config_updates": {
+          "seed": 0,
+          "init_rl_kwargs": {
+            "learning_rate": 9.999999999999999e-05
+          }
+        },
+        "named_configs": []
+      },
+      "local_dir": "/home/steven/imitation/tests/data/gather_tb/inner",
+      "experiment_tag": "0_learning_rate=0.0001,seed=0",
+      "resources": {
+        "cpu": 1,
+        "gpu": 0,
+        "memory": 0,
+        "object_store_memory": 0,
+        "extra_cpu": 0,
+        "extra_gpu": 0,
+        "extra_memory": 0,
+        "extra_object_store_memory": 0,
+        "custom_resources": {},
+        "extra_custom_resources": {}
+      },
+      "stopping_criterion": {},
+      "loggers": "8004950200000000000000292e",
+      "sync_to_driver_fn": "80049502000000000000004e2e",
+      "verbose": true,
+      "max_failures": 3,
+      "last_result": {},
+      "last_update_time": -Infinity,
+      "checkpoint_freq": 0,
+      "checkpoint_at_end": false,
+      "history": [],
+      "keep_checkpoints_num": null,
+      "_cmp_greater": true,
+      "best_checkpoint_attr_value": -Infinity,
+      "checkpoint_score_attr": "training_iteration",
+      "_checkpoint": "80049553000000000000008c0e7261792e74756e652e747269616c948c0a436865636b706f696e749493942981947d94288c0773746f72616765948c046469736b948c0576616c7565944e8c0b6c6173745f726573756c74947d9475622e",
+      "export_formats": [],
+      "status": "RUNNING",
+      "logdir": "/home/steven/imitation/tests/data/gather_tb/inner/inner_0_learning_rate=0.0001,seed=0_2019-09-30_20-29-0489472thu",
+      "runner": null,
+      "result_logger": null,
+      "last_debug": 0,
+      "error_file": null,
+      "error_msg": null,
+      "num_failures": 0,
+      "custom_trial_name": null,
+      "results": "80049502000000000000004e2e",
+      "best_result": "80049502000000000000004e2e",
+      "param_config": "80049502000000000000004e2e",
+      "extra_arg": "80049502000000000000004e2e",
+      "_nonjson_fields": [
+        "_checkpoint",
+        "loggers",
+        "sync_to_driver_fn",
+        "results",
+        "best_result",
+        "param_config",
+        "extra_arg"
+      ],
+      "__logger_started__": true
+    },
+    {
+      "trainable_name": "inner",
+      "trial_id": "9e18ba51",
+      "config": {
+        "config_updates": {
+          "seed": 0,
+          "init_rl_kwargs": {
+            "learning_rate": 0.00015
+          }
+        },
+        "named_configs": []
+      },
+      "local_dir": "/home/steven/imitation/tests/data/gather_tb/inner",
+      "experiment_tag": "1_learning_rate=0.00015,seed=0",
+      "resources": {
+        "cpu": 1,
+        "gpu": 0,
+        "memory": 0,
+        "object_store_memory": 0,
+        "extra_cpu": 0,
+        "extra_gpu": 0,
+        "extra_memory": 0,
+        "extra_object_store_memory": 0,
+        "custom_resources": {},
+        "extra_custom_resources": {}
+      },
+      "stopping_criterion": {},
+      "loggers": "8004950200000000000000292e",
+      "sync_to_driver_fn": "80049502000000000000004e2e",
+      "verbose": true,
+      "max_failures": 3,
+      "last_result": {},
+      "last_update_time": -Infinity,
+      "checkpoint_freq": 0,
+      "checkpoint_at_end": false,
+      "history": [],
+      "keep_checkpoints_num": null,
+      "_cmp_greater": true,
+      "best_checkpoint_attr_value": -Infinity,
+      "checkpoint_score_attr": "training_iteration",
+      "_checkpoint": "80049553000000000000008c0e7261792e74756e652e747269616c948c0a436865636b706f696e749493942981947d94288c0773746f72616765948c046469736b948c0576616c7565944e8c0b6c6173745f726573756c74947d9475622e",
+      "export_formats": [],
+      "status": "PENDING",
+      "logdir": null,
+      "runner": null,
+      "result_logger": null,
+      "last_debug": 0,
+      "error_file": null,
+      "error_msg": null,
+      "num_failures": 0,
+      "custom_trial_name": null,
+      "results": "80049502000000000000004e2e",
+      "best_result": "80049502000000000000004e2e",
+      "param_config": "80049502000000000000004e2e",
+      "extra_arg": "80049502000000000000004e2e",
+      "_nonjson_fields": [
+        "_checkpoint",
+        "loggers",
+        "sync_to_driver_fn",
+        "results",
+        "best_result",
+        "param_config",
+        "extra_arg"
+      ],
+      "__logger_started__": false
+    }
+  ],
+  "runner_data": {
+    "_global_time_limit": Infinity,
+    "_total_time": 0,
+    "_iteration": 0,
+    "_verbose": true,
+    "_server_port": 4321,
+    "_local_checkpoint_dir": "/home/steven/imitation/tests/data/gather_tb/inner",
+    "_remote_checkpoint_dir": null,
+    "_resumed": false,
+    "_start_time": 1569900544.0085726,
+    "_last_checkpoint_time": 1569900544.0486023,
+    "_checkpoint_period": 10,
+    "_session_str": "2019-09-30_20-29-04",
+    "checkpoint_file": "/home/steven/imitation/tests/data/gather_tb/inner/experiment_state-2019-09-30_20-29-04.json",
+    "launch_web_server": false
+  },
+  "stats": {
+    "start_time": 1569900544.0085726,
+    "timestamp": 1569900544.0486023
+  }
+}

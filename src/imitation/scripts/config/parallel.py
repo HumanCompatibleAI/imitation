@@ -56,7 +56,7 @@ def generate_test_data():
   and "tb/" for each of two trials in the search space below).
   """
   inner_experiment_name = "expert_demos"
-  inner_run_name = "example-cartpole"
+  inner_run_name = "TEST"
   n_seeds = 1
   search_space = {
     "config_updates": {

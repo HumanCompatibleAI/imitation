@@ -153,14 +153,6 @@ def fast():
   max_episode_steps = int(1e3)
 
 
-@expert_demos_ex.named_config
-def no_save():
-  rollout_save_interval = -1
-  rollout_save_final = False
-  policy_save_interval = -1
-  policy_save_final = False
-
-
 # Shared settings
 
 ant_shared_locals = dict(

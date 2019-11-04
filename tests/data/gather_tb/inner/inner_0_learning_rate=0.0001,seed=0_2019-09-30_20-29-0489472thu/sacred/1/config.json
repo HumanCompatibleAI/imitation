@@ -9,7 +9,7 @@
     "noptepochs": 10
   },
   "init_tensorboard": true,
-  "log_dir": "output/expert_demos/CartPole-v1/20190930_173149_3cfb211d1af64068a6540984d8056d43",
+  "log_dir": "output/expert_demos/CartPole-v1/20190930_202906_2c6204efa3ee4c6ca9f1bf487a47d6fa",
   "log_root": "output/expert_demos",
   "max_episode_steps": 1000,
   "n_episodes_eval": 50,
@@ -26,7 +26,7 @@
   "rollout_save_interval": -1,
   "rollout_save_n_episodes": null,
   "rollout_save_n_timesteps": 2000,
-  "rollout_save_path": "output/expert_demos/CartPole-v1/20190930_173149_3cfb211d1af64068a6540984d8056d43/rollout.pkl",
+  "rollout_save_path": "output/expert_demos/CartPole-v1/20190930_202906_2c6204efa3ee4c6ca9f1bf487a47d6fa/rollout.pkl",
   "seed": 0,
   "total_timesteps": 1000
 }

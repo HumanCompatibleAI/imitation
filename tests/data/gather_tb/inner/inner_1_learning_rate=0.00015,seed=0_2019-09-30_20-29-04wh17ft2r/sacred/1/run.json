@@ -14,11 +14,11 @@
     "sources": [
       [
         "expert_demos.py",
-        "_sources/expert_demos_95d51d0c23a9d95dfa5212763654caa4.py"
+        "_sources/expert_demos_9fb1353cb8ffb2e5272593520569c4af.py"
       ]
     ]
   },
-  "heartbeat": "2019-10-01T00:31:54.220840",
+  "heartbeat": "2019-10-01T03:29:11.021981",
   "host": {
     "ENV": {},
     "cpu": "Intel(R) Core(TM) i9-7940X CPU @ 3.10GHz",
@@ -47,7 +47,7 @@
       "--print_config": false,
       "--priority": null,
       "--queue": false,
-      "--run": "example-cartpole",
+      "--run": "TEST",
       "--sql": null,
       "--tiny_db": null,
       "--unobserved": false
@@ -55,21 +55,21 @@
   },
   "resources": [],
   "result": {
-    "len_max": 73,
-    "len_mean": 21.02,
-    "len_min": 9,
-    "len_std": 12.394337416739953,
-    "monitor_return_max": 73.0,
-    "monitor_return_mean": 21.02,
-    "monitor_return_min": 9.0,
-    "monitor_return_std": 12.394337416739953,
+    "len_max": 61,
+    "len_mean": 22.18,
+    "len_min": 10,
+    "len_std": 12.067626112869092,
+    "monitor_return_max": 61.0,
+    "monitor_return_mean": 22.18,
+    "monitor_return_min": 10.0,
+    "monitor_return_std": 12.067626112869092,
     "n_traj": 50,
-    "return_max": 25.94207754553655,
-    "return_mean": 5.0711131070970445,
-    "return_min": 0.8556760044353954,
-    "return_std": 7.112619991601521
+    "return_max": 21.71687173751363,
+    "return_mean": 5.534037879915218,
+    "return_min": 1.03684073453733,
+    "return_std": 6.3055466203343915
   },
-  "start_time": "2019-10-01T00:31:49.403184",
+  "start_time": "2019-10-01T03:29:06.222114",
   "status": "COMPLETED",
-  "stop_time": "2019-10-01T00:31:53.218526"
+  "stop_time": "2019-10-01T03:29:10.019324"
 }
