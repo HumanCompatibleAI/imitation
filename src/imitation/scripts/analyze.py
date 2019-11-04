@@ -15,6 +15,7 @@ def analyze_imitation(source_dir: str,
                       run_name: Optional[str],
                       skip_failed_runs: bool,
                       csv_output_path: Optional[str],
+                      verbose: bool,
                       ) -> pd.DataFrame:
   """Parse Sacred logs generate a DataFrame for imitation learning results.
 

@@ -55,7 +55,7 @@ while true; do
       break
       ;;
     *)
-      echo "Parsing error" >&2
+      echo "Unrecognized flag $1" >&2
       exit 1
       ;;
   esac
@@ -83,3 +83,5 @@ parallel -j 25% --header : --results ${LOG_ROOT}/parallel/ --colsep , --progress
 pushd ${LOG_ROOT}/parallel
 find . -name stdout | sort | xargs tail -n 15 | grep -E '==|\[result\]'
 popd
+
+echo 'Generate results table using `python -m imitation.scripts.analyze`'
