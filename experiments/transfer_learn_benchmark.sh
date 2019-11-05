@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Train PPO2 experts using reward models from experiments/imit_benchmark.sh
 
-TIMESTAMP=$(gdate --iso-8601=seconds)
+TIMESTAMP=$(date --iso-8601=seconds)
 REWARD_MODELS_DIR=reward_models
 LOG_ROOT="output/train_experts/${TIMESTAMP}"
 RESULTS_FILE="results.txt"
@@ -23,7 +23,6 @@ while true; do
     # Fast mode (debug)
     -f | --fast)
       ENVS="cartpole mountain_car"
-      REWARD_MODELS_DIR="tests/data"
       SEEDS="0"
       extra_configs+="fast "
       shift
@@ -49,7 +48,7 @@ while true; do
       break
       ;;
     *)
-      echo "Invalid argument or parsing error" >&2
+      echo "Unrecognized argument $1"
       exit 1
       ;;
   esac
