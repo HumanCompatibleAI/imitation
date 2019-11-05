@@ -1,3 +1,0 @@
-env_config_name,n_gen_steps_per_epoch,n_epochs,n_demonstrations
-cartpole,5,3,1
-pendulum,5,3,1

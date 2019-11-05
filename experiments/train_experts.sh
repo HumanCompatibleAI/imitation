@@ -11,13 +11,7 @@ ENVS+="two_d_maze custom_ant disabled_ant "
 
 SEEDS="0 1 2"
 
-if $(command -v gdate > /dev/null); then
-  DATE_CMD=gdate  # macOS compatibility
-else
-  DATE_CMD=date
-fi
-
-TIMESTAMP=$(${DATE_CMD} --iso-8601=seconds)
+TIMESTAMP=$(date --iso-8601=seconds)
 OUTPUT_DIR="output/train_experts/${TIMESTAMP}"
 RESULTS_FILE="results.txt"
 extra_configs=""

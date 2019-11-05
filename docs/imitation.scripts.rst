@@ -11,6 +11,14 @@ Subpackages
 Submodules
 ----------
 
+imitation.scripts.analyze module
+--------------------------------
+
+.. automodule:: imitation.scripts.analyze
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 imitation.scripts.eval\_policy module
 -------------------------------------
 
