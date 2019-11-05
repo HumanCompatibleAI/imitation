@@ -39,7 +39,7 @@ def test_expert_demos_rollouts_from_policy(tmpdir):
       config_updates=dict(
         log_root=tmpdir,
         rollout_save_path=osp.join(tmpdir, "rollouts", "test.pkl"),
-        policy_path="tests/data/cartpole_0/policies/final/",
+        policy_path="tests/data/experts/cartpole_0/policies/final/",
       ),
   )
   assert run.status == 'COMPLETED'
@@ -100,7 +100,7 @@ def test_train_adversarial(tmpdir):
           },
       },
       'log_root': tmpdir,
-      'rollout_path': "tests/data/cartpole_0/rollouts/final.pkl",
+      'rollout_path': "tests/data/experts/cartpole_0/rollouts/final.pkl",
       'init_tensorboard': True,
   }
   run = train_ex.run(
@@ -119,7 +119,7 @@ def test_transfer_learning(tmpdir):
   run = train_ex.run(
     named_configs=['cartpole', 'airl', 'fast'],
     config_updates=dict(
-      rollout_path="tests/data/cartpole_0/rollouts/final.pkl",
+      rollout_path="tests/data/experts/cartpole_0/rollouts/final.pkl",
       log_dir=log_dir_train,
     ),
   )
@@ -159,7 +159,8 @@ PARALLEL_CONFIG_UPDATES = [
     base_named_configs=["cartpole", "gail", "fast"],
     base_config_updates={
       # Need absolute path because raylet runs in different working directory.
-      'rollout_path': osp.abspath("tests/data/cartpole_0/rollouts/final.pkl"),
+      'rollout_path': osp.abspath(
+          "tests/data/experts/cartpole_0/rollouts/final.pkl"),
     },
     search_space={
       "config_updates": {
@@ -203,11 +204,14 @@ def test_analyze_imitation(tmpdir: str,
 
 
 def test_analyze_gather_tb(tmpdir: str):
+  # TODO: Don't look inside imit_benchmark. Instead, look inside a temporary
+  # directory, which is generated via a call to Sacred parallel_ex, where we
+  # change the local_dir to our convenience. (That's why I added the local_dir
+  # in the first place).
   run = analysis_ex.run(
     command_name="gather_tb_directories",
     config_updates=dict(
-      source_dir="tests/data/imit_benchmark",
-      run_name="TEST",
+      source_dir="tests/data/imit_benchmark",  ## WRONG!
     ))
   assert run.status == 'COMPLETED'
   assert isinstance(run.result, dict)

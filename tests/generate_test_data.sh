@@ -4,7 +4,7 @@ set -e
 
 
 # Regenerate rollouts and policies
-experiments/train_experts.sh -r
+# experiments/train_experts.sh -r
 
 
 # Regenerate tests/data/imit_benchmark (for analyze.analyze_imitation tests).
@@ -18,6 +18,7 @@ tmp_dir="$(mktemp -d)"
 
 alias imit_benchmark="experiments/imit_benchmark.sh -f --log_root ${tmp_dir} \
   --file_storage=${save_dir}"
+
 shopt -s expand_aliases
 imit_benchmark --airl --run_name FOO
 imit_benchmark --gail --run_name BAR

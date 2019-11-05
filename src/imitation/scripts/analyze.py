@@ -29,7 +29,7 @@ def gather_tb_directories(source_dir: str,
     source_dir: A local_dir for Ray. For example, `~/ray_results/`.
 
   Returns:
-    A dict with two keys. "gather_dir"'s (str) is a path to a /tmp/
+    A dict with two keys. "gather_dir" (str) is a path to a /tmp/
     directory containing all the TensorBoard runs filtered from `source_dir`.
     "n_tb_dirs" (int) is the number of TensorBoard directories that were
     filtered.
@@ -42,18 +42,19 @@ def gather_tb_directories(source_dir: str,
   tb_dirs_count = 0
   for sd in sacred_dicts:
     # Expecting a path like "~/ray_results/{run_name}/sacred/1".
+    # Want to search for all Tensorboard dirs inside "~/ray_results/{run_name}".
     sacred_dir = sd.sacred_dir.rstrip("/")
-    assert sacred_dir.endswith("sacred/1")
     run_dir = osp.dirname(osp.dirname(sacred_dir))
     run_name = osp.basename(run_dir)
+    print(sacred_dir)
     for tb_src_dir in sacred_util.filter_subdirs(run_dir, _is_tensorboard_dir):
-      tb_dest_dir = osp.join(run_dir, run_name)
+      tb_dest_dir = osp.join(tmp_dir, run_name)
       os.symlink(tb_src_dir, tb_dest_dir)
       tb_dirs_count += 1
 
   tf.logging.info(f"Symlinked {tb_dirs_count} TensorBoard dirs to {tmp_dir}.")
   tf.logging.info(f"Start Tensorboard with `tensorboard --logdir {tmp_dir}`.")
-  return tmp_dir
+  return {"n_tb_dirs": tb_dirs_count, "gather_dir": tmp_dir}
 
 
 @analysis_ex.command

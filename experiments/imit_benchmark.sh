@@ -24,7 +24,7 @@ while true; do
     # Fast mode (debug)
     -f | --fast)
       CONFIG_CSV="tests/data/imit_benchmark_config.csv"
-      EXPERT_MODELS_DIR="tests/data"
+      EXPERT_MODELS_DIR="tests/data/experts"
       SEEDS="0"
       extra_configs+="fast "
       shift

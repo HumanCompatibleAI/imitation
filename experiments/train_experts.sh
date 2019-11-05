@@ -30,7 +30,12 @@ while getopts "fr" arg; do
     # Use `git clean -df tests/data` to remove extra log files.
     ENVS="cartpole pendulum"
     SEEDS="0"
-    OUTPUT_DIR="tests/data"
+    OUTPUT_DIR="tests/data/experts"
+    if [[ -d ${OUTPUT_DIR} ]]; then
+      echo "Overwriting old test data"
+      rm -r ${OUTPUT_DIR}
+    fi
+    mkdir -p ${OUTPUT_DIR}
     extra_configs+="rollout_save_n_episodes=50 "
   fi
 done
