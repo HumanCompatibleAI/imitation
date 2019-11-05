@@ -204,14 +204,14 @@ def test_analyze_imitation(tmpdir: str,
 
 
 def test_analyze_gather_tb(tmpdir: str):
-  # TODO: Don't look inside imit_benchmark. Instead, look inside a temporary
-  # directory, which is generated via a call to Sacred parallel_ex, where we
-  # change the local_dir to our convenience. (That's why I added the local_dir
-  # in the first place).
+  parallel_run = parallel_ex.run(named_configs=["_generate_test_data"],
+                                 config_updates=dict(local_dir=tmpdir))
+  assert parallel_run.status == 'COMPLETED'
+
   run = analysis_ex.run(
     command_name="gather_tb_directories",
     config_updates=dict(
-      source_dir="tests/data/imit_benchmark",  ## WRONG!
+      source_dir=tmpdir,
     ))
   assert run.status == 'COMPLETED'
   assert isinstance(run.result, dict)

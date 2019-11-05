@@ -54,7 +54,7 @@ def debug_log_root():
 
 
 @parallel_ex.named_config
-def generate_test_data():
+def _generate_test_data():
   """Used by tests/generate_test_data.sh to generate tests/data/gather_tb/
 
   "tests/data/gather_tb/" should contain 4 Tensorboard run directories ("sb_tb/"
@@ -69,7 +69,7 @@ def generate_test_data():
         "learning_rate": tune.grid_search([3e-4 * x for x in (1/3, 1/2)]),
       },
     }}
-  base_named_configs = ["cartpole", "fast", "no_save"]
+  base_named_configs = ["cartpole", "fast"]
   base_config_updates = {
     "init_tensorboard": True,
     "rollout_save_final": False,
