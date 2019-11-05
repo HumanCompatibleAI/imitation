@@ -8,7 +8,8 @@ from imitation.algorithms import bc
 def test_bc():
   env_id = 'CartPole-v1'
   env = util.make_vec_env(env_id, 2)
-  with open("tests/data/cartpole_0/rollouts/final.pkl", "rb") as f:
+  with open("tests/data/expert_models/cartpole_0/rollouts/final.pkl",
+            "rb") as f:
     rollouts = pickle.load(f)
   rollouts = util.rollout.flatten_trajectories(rollouts)
   bc_trainer = bc.BCTrainer(env, expert_demos=rollouts)

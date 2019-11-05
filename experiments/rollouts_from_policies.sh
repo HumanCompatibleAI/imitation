@@ -5,7 +5,7 @@
 # and generates rollouts. The rollouts are saved to
 # `${EXPERT_MODELS_DIR}/{env_config_name}_0/rollouts/final.pkl`
 #
-# EXPERT_MODELS_DIR is "./expert_models" by default, but can be configured
+# EXPERT_MODELS_DIR is "data/expert_models" by default, but can be configured
 # via `export EXPERT_MODELS_DIR=foobar`.
 #
 # The values of {env_config_name} are defined in the config file
@@ -16,7 +16,7 @@
 # than hardcoding seed 0.
 
 TIMESTAMP=$(date --iso-8601=seconds)
-EXPERT_MODELS_DIR=${EXPERT_MODELS_DIR:-expert_models}
+EXPERT_MODELS_DIR=${EXPERT_MODELS_DIR:-data/expert_models}
 CONFIG_CSV=${CONFIG_CSV:-experiments/rollouts_from_policies_config.csv}
 OUTPUT_DIR="output/train_experts/${TIMESTAMP}"
 

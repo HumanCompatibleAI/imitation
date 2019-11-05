@@ -17,7 +17,7 @@ def analyze_imitation(source_dir: str,
                       csv_output_path: Optional[str],
                       verbose: bool,
                       ) -> pd.DataFrame:
-  """Parse Sacred logs generate a DataFrame for imitation learning results.
+  """Parse Sacred logs and generates a DataFrame for imitation learning results.
 
   Args:
     source_dir: A directory containing Sacred FileObserver subdirectories

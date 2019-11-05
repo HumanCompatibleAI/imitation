@@ -21,7 +21,8 @@ def setup_and_teardown(session):
 
 
 def init_test_trainer(use_gail: bool, parallel: bool = False):
-  with open("tests/data/cartpole_0/rollouts/final.pkl", "rb") as f:
+  with open("tests/data/expert_models/cartpole_0/rollouts/final.pkl",
+            "rb") as f:
     trajs = pickle.load(f)
   return init_trainer("CartPole-v1", trajs,
                       use_gail=use_gail,
