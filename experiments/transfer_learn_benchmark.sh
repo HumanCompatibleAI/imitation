@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 # Train PPO2 experts using reward models from experiments/imit_benchmark.sh
 
-# TIMESTAMP=$(date --iso-8601=seconds)
-TIMESTAMP=$(gdate --iso-8601=seconds)  ## DEBUG
+TIMESTAMP=$(gdate --iso-8601=seconds)
 REWARD_MODELS_DIR=reward_models
 LOG_ROOT="output/train_experts/${TIMESTAMP}"
 RESULTS_FILE="results.txt"
