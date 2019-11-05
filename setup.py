@@ -27,9 +27,8 @@ setup(
         'ray[debug]==0.7.4',
         'tqdm',
         'scikit-learn>=0.21.2',
-        # FIXME: Use stable release instead of tracking master once
-        # commit 9a760542 is released.
-        'stable-baselines @ git+https://github.com/hill-a/stable-baselines.git@vec-normalize-pickle',
+        # TODO(adam): Change to >=2.9.0 once 2.9.0 is released, until then track master
+        'stable-baselines @ git+https://github.com/hill-a/stable-baselines.git',
         'jax!=0.1.37',
         'jaxlib~=0.1.20',
         # sacred==0.7.5 build is broken without pymongo
