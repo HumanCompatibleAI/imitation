@@ -70,9 +70,6 @@ def rollouts_and_policy(
       n_episodes_eval: The number of episodes to average over when calculating
           the average ground truth reward return of the final policy.
 
-      n_episodes_eval: The number of episodes to average over when calculating
-          the average ground truth reward return of the final policy.
-
       reward_type: If provided, then load the serialized reward of this type,
           wrapping the environment in this reward. This is useful to test
           whether a reward model transfers. For more information, see
