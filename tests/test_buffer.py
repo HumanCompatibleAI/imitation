@@ -178,7 +178,7 @@ def test_buffer_init_errors():
 
 def test_replay_buffer_init_errors():
   with pytest.raises(ValueError, match=r"Specified.* and environment"):
-    ReplayBuffer(15, env="MockEnv", obs_shape=(10, 10))
+    ReplayBuffer(15, venv="MockEnv", obs_shape=(10, 10))
   with pytest.raises(ValueError, match=r"Shape or dtype missing.*"):
     ReplayBuffer(15, obs_shape=(10, 10), act_shape=(15,), obs_dtype=bool)
   with pytest.raises(ValueError, match=r"Shape or dtype missing.*"):
