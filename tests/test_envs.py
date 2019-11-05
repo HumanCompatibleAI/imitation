@@ -13,16 +13,7 @@ ENV_NAMES = [env_spec.id for env_spec in gym.envs.registration.registry.all()
 DETERMINISTIC_ENVS = []
 
 
-@pytest.fixture
-def env(env_name):
-  try:
-    env = gym.make(env_name)
-  except gym.error.DependencyNotInstalled as e:  # pragma: no cover
-    if e.args[0].find('mujoco_py') != -1:
-      pytest.skip("Requires `mujoco_py`, which isn't installed.")
-    else:
-      raise
-  return env
+env = pytest.fixture(envs.make_env_fixture(skip_fn=pytest.skip))
 
 
 @pytest.mark.parametrize("env_name", ENV_NAMES)

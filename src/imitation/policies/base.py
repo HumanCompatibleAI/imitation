@@ -13,6 +13,9 @@ class HardCodedPolicy(BasePolicy, abc.ABC):
   def __init__(self, ob_space: gym.Space, ac_space: gym.Space):
     self.ob_space = ob_space
     self.ac_space = ac_space
+    self.n_env = None
+    self.n_steps = None
+    self.n_batch = None
 
   def step(self, obs, state=None, mask=None, deterministic=False):
     actions = []

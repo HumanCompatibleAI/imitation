@@ -17,7 +17,8 @@ def analyze_imitation(source_dir: str,
                       csv_output_path: Optional[str],
                       verbose: bool,
                       ) -> pd.DataFrame:
-  """
+  """Parse Sacred logs and generates a DataFrame for imitation learning results.
+
   Args:
     source_dir: A directory containing Sacred FileObserver subdirectories
       associated with the `train_adversarial` Sacred script. Behavior is
@@ -28,10 +29,10 @@ def analyze_imitation(source_dir: str,
       "experiment.name" key in `run.json`.
     skip_failed_runs: If True, then filter out runs where the status is FAILED.
     csv_output_path: If provided, then save a CSV output file to this path.
-    verbose: If True, then print the dataframe.
+    verbose: If True, then print the entire DataFrame.
 
   Returns:
-    A list of dictionaries used to generate the analysis DataFrame.
+    A DataFrame summarizing Sacred logs.
   """
   sacred_dirs = sacred_util.filter_subdirs(source_dir)
   sacred_dicts = [sacred_util.SacredDicts.load_from_dir(sacred_dir)
@@ -70,11 +71,11 @@ def analyze_imitation(source_dir: str,
                                   expert_stats["return_mean"])
 
   df = pd.DataFrame(rows)
-  df.to_csv(csv_output_path)
-
+  if csv_output_path is not None:
+    df.to_csv(csv_output_path)
   if verbose:
     print(df.to_string())
-  return rows
+  return df
 
 
 def _make_return_summary(stats: dict, prefix="") -> str:

@@ -1,7 +1,7 @@
 from typing import Dict, Optional, Tuple
 
-import gym
 import numpy as np
+from stable_baselines.common import vec_env
 
 from imitation.util import rollout
 
@@ -189,7 +189,7 @@ class ReplayBuffer:
   """The number of data samples that can be stored in this buffer."""
 
   def __init__(self, capacity: int,
-               env: Optional[gym.Env] = None, *,
+               venv: Optional[vec_env.VecEnv] = None, *,
                obs_shape: Optional[Tuple[int, ...]] = None,
                act_shape: Optional[Tuple[int, ...]] = None,
                obs_dtype: Optional[np.dtype] = None,
@@ -198,7 +198,7 @@ class ReplayBuffer:
 
     Args:
         capacity: The number of samples that can be stored.
-        env: The environment whose action and observation
+        venv: The environment whose action and observation
             spaces can be used to determine the data shapes of the underlying
             buffers. Overrides all the following arguments.
         obs_shape: The shape of the observation space.
@@ -211,13 +211,13 @@ class ReplayBuffer:
             from the arguments.
     """
     params = [obs_shape, act_shape, obs_dtype, act_dtype]
-    if env is not None:
+    if venv is not None:
       if np.any([x is not None for x in params]):
         raise ValueError("Specified shape or dtype and environment.")
-      obs_shape = tuple(env.observation_space.shape)
-      act_shape = tuple(env.action_space.shape)
-      obs_dtype = env.observation_space.dtype
-      act_dtype = env.action_space.dtype
+      obs_shape = tuple(venv.observation_space.shape)
+      act_shape = tuple(venv.action_space.shape)
+      obs_dtype = venv.observation_space.dtype
+      act_dtype = venv.action_space.dtype
     else:
       if np.any([x is None for x in params]):
         raise ValueError("Shape or dtype missing and no environment specified.")

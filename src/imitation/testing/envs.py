@@ -6,7 +6,21 @@ of this library.
 
 import re
 
+import gym
 import numpy as np
+
+
+def make_env_fixture(skip_fn):
+  def f(env_name):
+    try:
+      env = gym.make(env_name)
+    except gym.error.DependencyNotInstalled as e:  # pragma: no cover
+      if e.args[0].find('mujoco_py') != -1:
+        skip_fn("Requires `mujoco_py`, which isn't installed.")
+      else:
+        raise
+    return env
+  return f
 
 
 def matches_list(env_name, patterns):
