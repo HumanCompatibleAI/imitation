@@ -62,10 +62,10 @@ def paths(env_name, log_root, rollout_hint):
                          util.make_unique_timestamp())
   # Recommended that user sets rollout_path manually.
   # By default we guess the named config associated with `env_name`
-  # and attempt to load rollouts from `expert_models/`.
+  # and attempt to load rollouts from `data/expert_models/`.
   if rollout_hint is None:
     rollout_hint = env_name.split("-")[0].lower()
-  rollout_path = os.path.join("expert_models",
+  rollout_path = os.path.join("data/expert_models",
                               f"{rollout_hint}_0",
                               "rollouts", "final.pkl")
 

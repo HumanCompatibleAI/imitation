@@ -39,7 +39,7 @@ def test_expert_demos_rollouts_from_policy(tmpdir):
       config_updates=dict(
         log_root=tmpdir,
         rollout_save_path=osp.join(tmpdir, "rollouts", "test.pkl"),
-        policy_path="tests/data/cartpole_0/policies/final/",
+        policy_path="tests/data/expert_models/cartpole_0/policies/final/",
       ),
   )
   assert run.status == 'COMPLETED'
@@ -100,7 +100,7 @@ def test_train_adversarial(tmpdir):
           },
       },
       'log_root': tmpdir,
-      'rollout_path': "tests/data/cartpole_0/rollouts/final.pkl",
+      'rollout_path': "tests/data/expert_models/cartpole_0/rollouts/final.pkl",
       'init_tensorboard': True,
   }
   run = train_ex.run(
@@ -119,7 +119,7 @@ def test_transfer_learning(tmpdir):
   run = train_ex.run(
     named_configs=['cartpole', 'airl', 'fast'],
     config_updates=dict(
-      rollout_path="tests/data/cartpole_0/rollouts/final.pkl",
+      rollout_path="tests/data/expert_models/cartpole_0/rollouts/final.pkl",
       log_dir=log_dir_train,
     ),
   )
@@ -159,7 +159,8 @@ PARALLEL_CONFIG_UPDATES = [
     base_named_configs=["cartpole", "gail", "fast"],
     base_config_updates={
       # Need absolute path because raylet runs in different working directory.
-      'rollout_path': osp.abspath("tests/data/cartpole_0/rollouts/final.pkl"),
+      'rollout_path': osp.abspath(
+          "tests/data/expert_models/cartpole_0/rollouts/final.pkl"),
     },
     search_space={
       "config_updates": {

@@ -30,7 +30,7 @@ while getopts "fr" arg; do
     # Use `git clean -df tests/data` to remove extra log files.
     ENVS="cartpole pendulum"
     SEEDS="0"
-    OUTPUT_DIR="tests/data"
+    OUTPUT_DIR="tests/data/expert_models"
     extra_configs+="rollout_save_n_episodes=50 "
   fi
 done
