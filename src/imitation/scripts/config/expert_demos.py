@@ -15,7 +15,7 @@ def expert_demos_defaults():
   num_vec = 8  # Number of environments in VecEnv
   parallel = True  # Use SubprocVecEnv (generally faster if num_vec>1)
   normalize = True  # Use VecNormalize
-  normalize_kwargs = dict()
+  normalize_kwargs = dict()  # kwargs for `VecNormalize`
   max_episode_steps = None  # Set to positive int to limit episode horizons
   n_episodes_eval = 50  # Num of episodes for final ep reward mean evaluation
 
