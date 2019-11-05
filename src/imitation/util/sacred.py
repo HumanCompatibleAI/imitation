@@ -1,6 +1,3 @@
-# Copyright 2019 Google LLC.
-# SPDX-License-Identifier: Apache-2.0
-
 import json
 import os
 from typing import Any, Callable, List, NamedTuple, Union
@@ -50,6 +47,7 @@ def filter_subdirs(
       we should include the directory path in this function's return value.
     nested_ok: If False, then error if in the return value, one of the
       directory paths is a subdirectory of another.
+
   Returns:
     A list of all subdirectory paths where `filter_fn(path) == True`.
   """

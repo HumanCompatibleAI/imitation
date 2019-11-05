@@ -1,0 +1,51 @@
+{
+  "__doc__": "Minimize the amount of computation. Useful for test cases.",
+  "airl_entropy_weight": 1.0,
+  "checkpoint_interval": 5,
+  "env_name": "Pendulum-v0",
+  "init_tensorboard": false,
+  "init_trainer_kwargs": {
+    "init_rl_kwargs": {
+      "ent_coef": 0.0,
+      "learning_rate": 0.0003,
+      "n_steps": 256,
+      "nminibatches": 32,
+      "noptepochs": 10,
+      "policy_class": {
+        "py/type": "imitation.policies.base.FeedForward32Policy"
+      }
+    },
+    "max_episode_steps": 100,
+    "num_vec": 8,
+    "parallel": false,
+    "reward_kwargs": {
+      "phi_units": [
+        32,
+        32
+      ],
+      "theta_units": [
+        32,
+        32
+      ]
+    },
+    "scale": true,
+    "trainer_kwargs": {
+      "gen_replay_buffer_capacity": 1000,
+      "n_disc_samples_per_buffer": 1000
+    },
+    "use_gail": false
+  },
+  "log_dir": "/tmp/tmp.n0x0WYSA5l/Pendulum-v0/20190927_143831_2c80a8cb625448c8be9792b7c283acd5",
+  "log_root": "/tmp/tmp.n0x0WYSA5l",
+  "n_disc_steps_per_epoch": 1,
+  "n_episodes_eval": 1,
+  "n_epochs": 1,
+  "n_expert_demos": 1,
+  "n_gen_steps_per_epoch": 5,
+  "n_plot_episodes": 1,
+  "plot_interval": -1,
+  "rollout_hint": "pendulum",
+  "rollout_path": "tests/data/pendulum_0/rollouts/final.pkl",
+  "seed": 0,
+  "show_plots": false
+}

@@ -12,10 +12,12 @@ class PointMazeEnv(mujoco_env.MujocoEnv, utils.EzPickle):
                maze_length=0.6,
                sparse_reward=False,
                no_reward=False,
+               include_vel=False,
                episode_length=100):
     utils.EzPickle.__init__(self)
     self.sparse_reward = sparse_reward
     self.no_reward = no_reward
+    self.include_vel = include_vel
     self.max_episode_length = episode_length
     self.direction = direction
     self.length = maze_length
@@ -62,10 +64,10 @@ class PointMazeEnv(mujoco_env.MujocoEnv, utils.EzPickle):
     return self._get_obs()
 
   def _get_obs(self):
-    return np.concatenate([
-        self.get_body_com("particle"),
-        # self.get_body_com("target"),
-    ])
+    obs = [self.get_body_com("particle")]
+    if self.include_vel:
+      obs.append(self.sim.data.get_body_xvelp("particle"))
+    return np.concatenate(obs)
 
   def plot_trajs(self, *args, **kwargs):
     pass
