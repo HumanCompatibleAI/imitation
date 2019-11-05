@@ -12,6 +12,7 @@ extra_configs=""
 SEEDS="0 1 2"
 ENVS="cartpole mountain_car acrobot half_cheetah "
 ENVS+="hopper walker ant humanoid reacher "
+ENVS+="two_d_maze custom_ant disabled_ant "
 
 
 TEMP=$(getopt -o f -l fast,gail,airl,run_name:,log_root: -- $@)
