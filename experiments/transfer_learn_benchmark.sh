@@ -38,6 +38,7 @@ while true; do
       shift
       ;;
     --run_name)
+      # Used by analysis scripts to filter runs later.
       extra_options+="--name $2 "
       shift 2
       ;;
@@ -57,8 +58,9 @@ while true; do
 done
 
 echo "Writing logs in ${LOG_ROOT}"
-parallel -j 25% --header : --results ${LOG_ROOT}/parallel/ --colsep , --progress \
+parallel -j 25% --header : --results ${LOG_ROOT}/parallel/ --progress \
   python -m imitation.scripts.expert_demos \
+  ${extra_options} \
   with \
   {env_config_name} ${extra_configs} \
   seed={seed} \
