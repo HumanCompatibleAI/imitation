@@ -30,7 +30,7 @@ while getopts "fr" arg; do
     # Use `git clean -df tests/data` to remove extra log files.
     ENVS="cartpole pendulum"
     SEEDS="0"
-    OUTPUT_DIR="tests/data/experts"
+    OUTPUT_DIR="tests/data/expert_models"
     if [[ -d ${OUTPUT_DIR} ]]; then
       echo "Overwriting old test data"
       rm -r ${OUTPUT_DIR}
