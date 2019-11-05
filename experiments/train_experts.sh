@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
 
-# This script trains experts for AIRL and GAIL benchmark scripts.
+# This script trains experts for experiments/imit_benchmark.sh.
 # When training is finished, it reports the mean episode reward of each
-# expert and builds a zip file of expert models that can be used for
-# `experiments/gail_benchmark.sh`.
+# expert.
 
 ENVS+="acrobot cartpole mountain_car "
 ENVS+="reacher half_cheetah hopper ant humanoid swimmer walker "

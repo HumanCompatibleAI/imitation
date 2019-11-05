@@ -10,8 +10,9 @@ extra_configs=""
 
 
 SEEDS="0 1 2"
-ENVS="cartpole mountain_car acrobot half_cheetah "
-ENVS+="hopper walker ant humanoid reacher "
+
+ENVS+="acrobot cartpole mountain_car "
+ENVS+="reacher half_cheetah hopper ant humanoid swimmer walker "
 ENVS+="two_d_maze custom_ant disabled_ant "
 
 

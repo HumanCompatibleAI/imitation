@@ -23,6 +23,10 @@ walker,50000,500,4
 walker,50000,500,11
 walker,50000,500,18
 walker,50000,500,25
+swimmer,50000,500,4
+swimmer,50000,500,11
+swimmer,50000,500,18
+swimmer,50000,500,25
 ant,50000,500,4
 ant,50000,500,11
 ant,50000,500,18
@@ -34,3 +38,15 @@ reacher,50000,200,4
 reacher,50000,200,11
 reacher,50000,200,18
 reacher,50000,200,25
+two_d_maze,50000,200,4
+two_d_maze,50000,200,11
+two_d_maze,50000,200,18
+two_d_maze,50000,200,25
+custom_ant,50000,200,4
+custom_ant,50000,200,11
+custom_ant,50000,200,18
+custom_ant,50000,200,25
+disabled_ant,50000,200,4
+disabled_ant,50000,200,11
+disabled_ant,50000,200,18
+disabled_ant,50000,200,25
