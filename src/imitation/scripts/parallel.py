@@ -31,7 +31,8 @@ def parallel(inner_experiment_name: str,
       Added to each 'sacred/run.json' under the 'experiment.name' key.
       This is equivalent to using the Sacred CLI '--name' option on the
       inner experiment. Offline analysis jobs can use this argument to group
-      similar data.
+      similar data. This argument is also passed to `ray.tune.run` as the
+      `name` argument.
     search_space: `config` argument to `ray.tune.run()`.
     base_named_configs: `search_space["named_configs"]` is appended to this list
       before it is passed to the inner experiment's `run()`. Notably,
@@ -58,6 +59,7 @@ def parallel(inner_experiment_name: str,
   ray.init()
   try:
     ray.tune.run(trainable, config=search_space,
+                 name=inner_run_name,
                  local_dir=local_dir, upload_dir=upload_dir,
                  loggers=ray_loggers, resources_per_trial=resources_per_trial)
   finally:

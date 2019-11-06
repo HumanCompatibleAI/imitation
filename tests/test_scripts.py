@@ -205,7 +205,10 @@ def test_analyze_imitation(tmpdir: str,
 
 def test_analyze_gather_tb(tmpdir: str):
   parallel_run = parallel_ex.run(named_configs=["_generate_test_data"],
-                                 config_updates=dict(local_dir=tmpdir))
+                                 config_updates=dict(
+                                     local_dir=tmpdir,
+                                     inner_run_name="test",
+                                 ))
   assert parallel_run.status == 'COMPLETED'
 
   run = analysis_ex.run(
