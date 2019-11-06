@@ -40,19 +40,24 @@ def gather_tb_directories(source_dir: str,
   tmp_dir = tempfile.mkdtemp(dir="/tmp/analysis_tb/")
 
   tb_dirs_count = 0
-  for basename in ["tb", "sb_tb"]:
-    os.mkdir(osp.join(tmp_dir, basename))  # Build symlinks in the directory.
-    for sd in sacred_dicts:
-      # Expecting a path like "~/ray_results/{run_name}/sacred/1".
-      # Want to search for all Tensorboard dirs inside
-      # "~/ray_results/{run_name}".
-      sacred_dir = sd.sacred_dir.rstrip("/")
-      run_dir = osp.dirname(osp.dirname(sacred_dir))
-      run_name = osp.basename(run_dir)
+  for sd in sacred_dicts:
+    # Expecting a path like "~/ray_results/{run_name}/sacred/1".
+    # Want to search for all Tensorboard dirs inside
+    # "~/ray_results/{run_name}".
+    sacred_dir = sd.sacred_dir.rstrip("/")
+    run_dir = osp.dirname(osp.dirname(sacred_dir))
+    run_name = osp.basename(run_dir)
+    # "tb" is TensorBoard directory built by our codebase. "sb_tb" is Stable
+    # Baselines TensorBoard directory.
+    for basename in ["tb", "sb_tb"]:
+      # Search for Tensorboard directories inside `run_dir`.
       for tb_src_dir in sacred_util.filter_subdirs(
           run_dir, lambda path: osp.basename(path) == basename):  # noqa: E125
-        tb_dest_dir = osp.join(tmp_dir, basename, run_name)
-        os.symlink(tb_src_dir, tb_dest_dir)
+        # Build symlink tb_symlink => tb_src_dir.
+        symlinks_dir = osp.join(tmp_dir, basename)
+        tb_symlink = osp.join(symlinks_dir, run_name)
+        os.makedirs(symlinks_dir, exist_ok=True)
+        os.symlink(tb_src_dir, tb_symlink)
         tb_dirs_count += 1
 
   tf.logging.info(f"Symlinked {tb_dirs_count} TensorBoard dirs to {tmp_dir}.")
