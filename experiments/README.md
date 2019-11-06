@@ -1,20 +1,32 @@
-Experiment scripts are only compatible with Linux. Phase 1 requires [AWS CLI](https://aws.amazon.com/cli/) because it downloads data from AWS S3.
+Experiment scripts are only compatible with Linux.
 
-### Phase 1 Download RL (PPO2) expert policies and AIRL/GAIL reward models.
+### Setup
+
+Phase 1 requires [AWS CLI](https://aws.amazon.com/cli/) because it downloads data from AWS S3.
+
+### Phase 1: Download RL (PPO2) expert policies and AIRL/GAIL reward models.
 
 Use `experiments/download_models.sh`. (Downloads to `data/{expert,reward}_models/`).
+Expert policies are used in Phase 2 to generate demonstrations.
+Reward models are used in Phase 4 for transfer learning.
 
-### Phase 2 Generate expert demonstrations from models.
+Want to use other policies or reward models for Phase 2 or 4? 
+  * New policies can be trained using `experiments/train_experts.sh`. Enter the optional command suggested at the end of the script to upload new files to S3. Or, manually patch `data/expert_models` using the script's output files.
+  * New reward models are generated in Phase 3 `experiments/imit_benchmark.sh`. Enter the optional command suggested at the end of the script to upload new files to S3. Or, manually overwrite `data/reward_models` using the script's output files.
+Either follow the command printed by the script to update S3 or manually overwrite `data/{expert,reward}_models/`.
 
-Run `experiments/rollouts_from_policies.sh`. (Rollouts saved in `data/expert_models/`)
+### Phase 2: Generate expert demonstrations from models.
 
-### Phase 3 Train imitation learning.
+Run `experiments/rollouts_from_policies.sh`. (Rollouts saved in `data/expert_models/`).
+Demonstrations are used in Phase 3 for imitation learning.
+
+### Phase 3: Train imitation learning.
 
 Run `experiments/imit_benchmark.sh --run_name RUN_NAME`. To choose AIRL or GAIL, add the `--airl` and `--gail` flags.
 
 To analyze these results, run `python -m imitation.scripts.analyze with run_name=RUN_NAME`. Analysis can be run even while training is midway (will only show completed imitation learner's results). [Example output.](https://gist.github.com/shwang/4049cd4fb5cab72f2eeb7f3d15a7ab47)
 
-### Phase 4 Transfer learning.
+### Phase 4: Transfer learning.
 
 Run `experiments/transfer_benchmark.sh`. To choose AIRL or GAIL, add the `--airl` and `--gail` flags. Transfer rewards are loaded from `data/reward_models`.
 
