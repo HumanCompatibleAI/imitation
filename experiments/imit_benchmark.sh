@@ -86,7 +86,8 @@ pushd ${LOG_ROOT}/parallel
 find . -name stdout | sort | xargs tail -n 15 | grep -E '==|\[result\]'
 popd
 
-echo "[Optional] Upload new reward models to S3 (replacing old ones) using:"
-echo "aws s3 sync --delete '${LOG_ROOT}' s3://shwang-chai/public/reward_models/${ALGORITHM}/"
+echo "[Optional] Upload new reward models to S3 (replacing old ones) using the commands:"
+echo "aws s3 rm s3://shwang-chai/public/reward_models/${ALGORITHM}/"
+echo "aws s3 sync --exclude '*/rollouts/*' --exclude '*/policies/*' --include '*/policies/final/*' ''${LOG_ROOT}' s3://shwang-chai/public/reward_models/${ALGORITHM}/"
 echo
 echo 'Generate results table using `python -m imitation.scripts.analyze`'
