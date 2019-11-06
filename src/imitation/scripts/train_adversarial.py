@@ -21,6 +21,7 @@ import imitation.envs.examples  # noqa: F401
 from imitation.policies import serialize
 from imitation.scripts.config.train_adversarial import train_ex
 import imitation.util as util
+import imitation.util.sacred as sacred_util
 
 
 def save(trainer, save_path):
@@ -35,9 +36,11 @@ def save(trainer, save_path):
 
 
 @train_ex.main
-def train(_seed: int,
+def train(_run,
+          _seed: int,
           env_name: str,
           rollout_path: str,
+          n_expert_demos: Optional[int],
           log_dir: str,
           *,
           n_epochs: int,
@@ -73,6 +76,13 @@ def train(_seed: int,
     env_name: The environment to train in.
     rollout_path: Path to pickle containing list of Trajectories. Used as
       expert demonstrations.
+    n_expert_demos: The number of expert trajectories to actually use
+      after loading them from `rollout_path`.
+      If None, then use all available trajectories.
+      If `n_expert_demos` is an `int`, then use exactly `n_expert_demos`
+      trajectories, erroring if there aren't enough trajectories. If there are
+      surplus trajectories, then use the
+      first `n_expert_demos` trajectories and drop the rest.
     log_dir: Directory to save models and other logging to.
 
     n_epochs: The number of epochs to train. Each epoch consists of
@@ -108,14 +118,21 @@ def train(_seed: int,
       return value of `rollout_stats()` on the expert demonstrations loaded from
       `rollout_path`.
   """
+  tf.logging.info("Logging to %s", log_dir)
+  os.makedirs(log_dir, exist_ok=True)
+  sacred_util.build_sacred_symlink(log_dir, _run)
+
   # Calculate stats for expert rollouts. Used for plot and return value.
   with open(rollout_path, "rb") as f:
     expert_trajs = pickle.load(f)
+
+  if n_expert_demos is not None:
+    assert len(expert_trajs) >= n_expert_demos
+    expert_trajs = expert_trajs[:n_expert_demos]
+
   expert_stats = util.rollout.rollout_stats(expert_trajs)
 
   with util.make_session():
-    tf.logging.info("Logging to %s", log_dir)
-    os.makedirs(log_dir, exist_ok=True)
     sb_logger.configure(folder=osp.join(log_dir, 'generator'),
                         format_strs=['tensorboard', 'stdout'])
 
@@ -125,9 +142,10 @@ def train(_seed: int,
       kwargs["init_rl_kwargs"] = kwargs.get("init_rl_kwargs", {})
       kwargs["init_rl_kwargs"]["tensorboard_log"] = sb_tensorboard_dir
 
-    trainer = init_trainer(env_name, rollout_path,
+    trainer = init_trainer(env_name, expert_trajs,
                            seed=_seed, log_dir=log_dir,
                            **init_trainer_kwargs)
+
     if plot_interval > 0:
       visualizer = _TrainVisualizer(
         trainer=trainer,

@@ -19,6 +19,7 @@ setup(
     python_requires='>=3.6.0',
     packages=find_packages('src'),
     package_dir={'': 'src'},
+    package_data={'evaluating_rewards': ['py.typed']},
     install_requires=[
         'awscli',
         'gym',
@@ -26,13 +27,13 @@ setup(
         'ray[debug]==0.7.4',
         'tqdm',
         'scikit-learn>=0.21.2',
-        # FIXME: Use stable release instead of tracking master once
-        # commit 9a760542 is released.
+        # TODO(adam): Change to >=2.9.0 once 2.9.0 is released, until then track master
         'stable-baselines @ git+https://github.com/hill-a/stable-baselines.git',
         'jax!=0.1.37',
         'jaxlib~=0.1.20',
         # sacred==0.7.5 build is broken without pymongo
-        'sacred>=0.7.4,!=0.7.5',
+        # sacred>0.7.4 have non-picklable config objects (see GH #109)
+        'sacred==0.7.4',
     ],
     tests_require=TESTS_REQUIRE,
     extras_require={

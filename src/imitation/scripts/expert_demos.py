@@ -14,10 +14,12 @@ from imitation.rewards.serialize import load_reward
 from imitation.scripts.config.expert_demos import expert_demos_ex
 import imitation.util as util
 from imitation.util.reward_wrapper import RewardVecEnvWrapper
+import imitation.util.sacred as sacred_util
 
 
 @expert_demos_ex.main
 def rollouts_and_policy(
+  _run,
   _seed: int,
   env_name: str,
   total_timesteps: int,
@@ -27,6 +29,7 @@ def rollouts_and_policy(
   parallel: bool,
   max_episode_steps: Optional[int],
   normalize: bool,
+  normalize_kwargs: dict,
   init_rl_kwargs: dict,
 
   n_episodes_eval: int,
@@ -63,10 +66,8 @@ def rollouts_and_policy(
           TimeLimit so that they have at most `max_episode_steps` steps per
           episode.
       normalize: If True, then rescale observations and reward.
+      normalize_kwargs: kwargs for `VecNormalize`.
       init_rl_kwargs: kwargs for `init_rl`.
-
-      n_episodes_eval: The number of episodes to average over when calculating
-          the average ground truth reward return of the final policy.
 
       n_episodes_eval: The number of episodes to average over when calculating
           the average ground truth reward return of the final policy.
@@ -104,6 +105,9 @@ def rollouts_and_policy(
   Returns:
     The return value of `rollout_stats()` using the final policy.
   """
+  os.makedirs(log_dir, exist_ok=True)
+  sacred_util.build_sacred_symlink(log_dir, _run)
+
   sample_until = util.rollout.make_sample_until(rollout_save_n_timesteps,
                                                 rollout_save_n_episodes)
   eval_sample_until = util.rollout.min_episodes(n_episodes_eval)
@@ -138,7 +142,7 @@ def rollouts_and_policy(
 
       vec_normalize = None
       if normalize:
-        venv = vec_normalize = VecNormalize(venv)
+        venv = vec_normalize = VecNormalize(venv, **normalize_kwargs)
 
       policy = util.init_rl(venv, verbose=1, **init_rl_kwargs)
 
@@ -182,6 +186,7 @@ def rollouts_and_policy(
 @expert_demos_ex.command
 @util.make_session()
 def rollouts_from_policy(
+  _run,
   _seed: int,
   *,
   num_vec: int,
@@ -204,6 +209,9 @@ def rollouts_from_policy(
       policy_path: Argument to `imitation.policies.serialize.load_policy`.
       rollout_save_path: Rollout pickle is saved to this path.
   """
+  os.makedirs(log_dir, exist_ok=True)
+  sacred_util.build_sacred_symlink(log_dir, _run)
+
   sample_until = util.rollout.make_sample_until(rollout_save_n_timesteps,
                                                 rollout_save_n_episodes)
 

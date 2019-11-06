@@ -8,12 +8,11 @@ Adding custom named configs is necessary because the CLI interface can't add
 search spaces to the config like `"seed": tune.grid_search([0, 1, 2, 3])`.
 """
 
-import os.path as osp
-
+import numpy as np
 import ray.tune as tune
 import sacred
 
-import imitation.util as util
+from imitation.util.util import make_unique_timestamp
 
 parallel_ex = sacred.Experiment("parallel")
 
@@ -21,27 +20,30 @@ parallel_ex = sacred.Experiment("parallel")
 @parallel_ex.config
 def config():
   inner_experiment_name = "expert_demos"  # The experiment to parallelize
+  _uuid = make_unique_timestamp()
+  inner_run_name = (
+      f"DEFAULT_{_uuid}")  # CLI --name option. For analysis grouping.
+  resources_per_trial = {}  # Argument to `tune.run`
   base_named_configs = []  # Background settings before search_space is applied
   base_config_updates = {}  # Background settings before search_space is applied
   search_space = {
     "named_configs": [],
     "config_updates": {},
   }  # `config` argument to `ray.tune.run(trainable, config)`
-  s3_bucket = None  # Used to create default `upload_dir` if not None.
+
+  upload_dir = None  # `upload_dir` arg for `ray.tune.run`
+  n_seeds = 3  # Number of seeds to search over by default
 
 
 @parallel_ex.config
-def ray_upload_dir(inner_experiment_name, s3_bucket):
-  if s3_bucket is not None:
-    upload_dir = "s3://{}".format(
-      osp.join(s3_bucket, inner_experiment_name, util.make_unique_timestamp()))
-  else:
-    upload_dir = None  # `upload_dir` param from `ray.tune.run`
+def seeds(n_seeds):
+  search_space = {"config_updates": {
+    "seed": tune.grid_search(list(range(n_seeds)))}}
 
 
 @parallel_ex.named_config
 def s3():
-  s3_bucket = "shwang-chai"
+  upload_dir = "s3://shwang-chai/private"
 
 
 # Debug named configs
@@ -52,15 +54,56 @@ def debug_log_root():
 
 @parallel_ex.named_config
 def example_cartpole_rl():
-  """Example config that spins up 8 different training runs of cartpole."""
   inner_experiment_name = "expert_demos"
+  outer_experiment_name = "example-cartpole"
+  n_seeds = 2
   search_space = {
     "config_updates": {
-      "seed": tune.grid_search([0, 1]),
       "init_rl_kwargs": {
-        "learning_rate": tune.grid_search([3e-4, 2e-4]),
-        "nminibatches": tune.grid_search([16, 32]),
+        "learning_rate": tune.grid_search(np.logspace(3e-6, 1e-1, num=3)),
+        "nminibatches": tune.grid_search([16, 32, 64]),
       },
     }}
   base_named_configs = ["cartpole"]
   base_config_updates = {"init_tensorboard": True}
+  resources_per_trial = dict(cpu=4)
+
+
+EASY_ENVS = ["cartpole", "pendulum", "mountain_car"]
+
+
+@parallel_ex.named_config
+def example_rl_easy():
+  inner_experiment_name = "expert_demos"
+  outer_experiment_name = "example-rl-easy"
+  n_seeds = 2
+  search_space = {
+    "named_configs": tune.grid_search([[env] for env in EASY_ENVS]),
+    "config_updates": {
+      "init_rl_kwargs": {
+        "learning_rate": tune.grid_search(np.logspace(3e-6, 1e-1, num=3)),
+        "nminibatches": tune.grid_search([16, 32, 64]),
+      },
+    }}
+  base_config_updates = {"init_tensorboard": True}
+  resources_per_trial = dict(cpu=4)
+
+
+@parallel_ex.named_config
+def example_gail_easy():
+  inner_experiment_name = "train_adversarial"
+  outer_experiment_name = "example-gail-easy"
+  n_seeds = 1
+  search_space = {
+    "named_configs": tune.grid_search([[env] for env in EASY_ENVS]),
+    "config_updates": {
+      "init_trainer_kwargs": {
+        "init_rl_kwargs": {
+          "learning_rate": tune.grid_search(np.logspace(3e-6, 1e-1, num=3)),
+          "nminibatches": tune.grid_search([16, 32, 64]),
+        },
+      },
+    }}
+  base_config_updates = {"init_tensorboard": True,
+                         "init_trainer_kwargs": {"use_gail": True},
+                         }

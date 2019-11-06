@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
 
-# This script trains experts for AIRL and GAIL benchmark scripts.
+# This script trains experts for experiments/imit_benchmark.sh.
 # When training is finished, it reports the mean episode reward of each
-# expert and builds a zip file of expert models that can be used for
-# `experiments/gail_benchmark.sh`.
+# expert.
 
 ENVS+="acrobot cartpole mountain_car "
 ENVS+="reacher half_cheetah hopper ant humanoid swimmer walker "
@@ -11,13 +10,7 @@ ENVS+="two_d_maze custom_ant disabled_ant "
 
 SEEDS="0 1 2"
 
-if $(command -v gdate > /dev/null); then
-  DATE_CMD=gdate  # macOS compatibility
-else
-  DATE_CMD=date
-fi
-
-TIMESTAMP=$(${DATE_CMD} --iso-8601=seconds)
+TIMESTAMP=$(date --iso-8601=seconds)
 OUTPUT_DIR="output/train_experts/${TIMESTAMP}"
 RESULTS_FILE="results.txt"
 extra_configs=""
@@ -36,7 +29,7 @@ while getopts "fr" arg; do
     # Use `git clean -df tests/data` to remove extra log files.
     ENVS="cartpole pendulum"
     SEEDS="0"
-    OUTPUT_DIR="tests/data"
+    OUTPUT_DIR="tests/data/expert_models"
     extra_configs+="rollout_save_n_episodes=50 "
   fi
 done
