@@ -51,5 +51,6 @@ find . -name stdout | xargs tail -n 15 | grep -E '(==|ep_reward_mean)' | tee ${R
 
 popd
 
-echo "[Optional] Upload new experts to S3 (replacing old ones) using:"
-echo "aws s3 sync --delete '${OUTPUT_DIR}' s3://shwang-chai/public/expert_models"
+echo "[Optional] Upload new experts to S3 (replacing old ones) using the commands:"
+echo "aws s3 rm --recursive s3://shwang-chai/public/data/expert_models"
+echo "aws s3 sync --exclude '*/rollouts/*' --exclude '*/policies/*' --include '*/policies/final/*' '${OUTPUT_DIR}' s3://shwang-chai/public/data/expert_models"
