@@ -81,18 +81,6 @@ def _load_stable_baselines(cls: Type[BaseRLModel],
         # We did not use VecNormalize during training, skip
         pass
 
-      # TODO(adam): remove this try-except once we have updated all policies
-      try:
-        vec_normalize = VecNormalize(venv, training=False)
-        vec_normalize.load_running_average(path)
-        warnings.warn("Loading VecNormalize with deprecated way of "
-                      " saving statistics.", DeprecationWarning)
-        policy = NormalizePolicy(policy, vec_normalize)
-        tf.logging.info(f"Loaded normalization statistics from '{path}'")
-      except FileNotFoundError:
-        # We did not use VecNormalize during training, skip
-        pass
-
       yield policy
     finally:
       if model is not None and model.sess is not None:
