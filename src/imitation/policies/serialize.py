@@ -4,7 +4,6 @@ import contextlib
 import os
 import pickle
 from typing import Callable, ContextManager, Iterator, Optional, Type
-import warnings
 
 from stable_baselines.common.base_class import BaseRLModel
 from stable_baselines.common.policies import BasePolicy
