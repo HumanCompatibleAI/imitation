@@ -4,7 +4,7 @@ set -e
 
 
 # Regenerate rollouts and policies
-# experiments/train_experts.sh -r
+experiments/train_experts.sh -r
 
 
 # Regenerate tests/data/imit_benchmark (for analyze.analyze_imitation tests).

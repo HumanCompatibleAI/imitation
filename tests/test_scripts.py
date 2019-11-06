@@ -215,7 +215,4 @@ def test_analyze_gather_tb(tmpdir: str):
     ))
   assert run.status == 'COMPLETED'
   assert isinstance(run.result, dict)
-
-  # Test data is generated using `config/parallel/generate_test_data.py`.
-  # Should contain data for two expert_demos runs, each with two TB dirs.
   assert run.result["n_tb_dirs"] == 4

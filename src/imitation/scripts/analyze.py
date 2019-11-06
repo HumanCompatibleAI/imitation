@@ -166,11 +166,6 @@ def _get_sacred_dicts(source_dir: str,
   return list(sacred_dicts)
 
 
-def _is_tensorboard_dir(path: str):
-  path = path.rstrip("/")
-  return osp.basename(path) in ["tb", "sb_tb"]
-
-
 def main_console():
   observer = FileStorageObserver.create(
     osp.join('output', 'sacred', 'analyze'))
