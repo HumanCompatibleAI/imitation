@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Train PPO2 experts using reward models from experiments/imit_benchmark.sh
 
+CONFIG_CSV="experiments/imit_benchmark_config.csv"
 TIMESTAMP=$(date --iso-8601=seconds)
-REWARD_MODELS_DIR=reward_models
+REWARD_MODELS_DIR="data/reward_models"
 LOG_ROOT="output/train_experts/${TIMESTAMP}"
 RESULTS_FILE="results.txt"
 ALGORITHM="gail"
@@ -10,10 +11,6 @@ extra_configs=""
 
 
 SEEDS="0 1 2"
-
-ENVS+="acrobot cartpole mountain_car "
-ENVS+="reacher half_cheetah hopper ant humanoid swimmer walker "
-ENVS+="two_d_maze custom_ant disabled_ant "
 
 
 TEMP=$(getopt -o f -l fast,gail,airl,run_name:,log_root: -- $@)
@@ -24,7 +21,7 @@ while true; do
   case "$1" in
     # Fast mode (debug)
     -f | --fast)
-      ENVS="cartpole mountain_car"
+      CONFIG_CSV="tests/data/imit_benchmark_config.csv"
       SEEDS="0"
       extra_configs+="fast "
       shift
@@ -58,7 +55,7 @@ while true; do
 done
 
 echo "Writing logs in ${LOG_ROOT}"
-parallel -j 25% --header : --results ${LOG_ROOT}/parallel/ --progress \
+parallel -j 25% --header : --results ${LOG_ROOT}/parallel/ --colsep , --progress \
   python -m imitation.scripts.expert_demos \
   ${extra_options} \
   with \
@@ -66,8 +63,8 @@ parallel -j 25% --header : --results ${LOG_ROOT}/parallel/ --progress \
   seed={seed} \
   log_dir="${LOG_ROOT}/${ALGORITHM}/{env_config_name}_{seed}" \
   reward_type="DiscrimNet" \
-  reward_path="${REWARD_MODELS_DIR}/${ALGORITHM}/{env_config_name}_0/checkpoints/final/discrim/" \
-  ::: seed ${SEEDS} ::: env_config_name ${ENVS}
+  reward_path="${REWARD_MODELS_DIR}/${ALGORITHM}/{env_config_name}_0/n_expert_demos_{n_expert_demos}/checkpoints/final/discrim/" \
+  ::: seed ${SEEDS} :::: ${CONFIG_CSV}
 
 
 pushd $LOG_ROOT
