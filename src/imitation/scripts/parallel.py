@@ -44,7 +44,7 @@ def parallel(sacred_ex_name: str,
     local_dir: `local_dir` argument to `ray.tune.run()`.
     upload_dir: `upload_dir` argument to `ray.tune.run()`.
   """
-  trainable = _ray_tune_sacred_wrapper(experiment_name,
+  trainable = _ray_tune_sacred_wrapper(sacred_ex_name,
                                        run_name,
                                        base_named_configs,
                                        base_config_updates)
@@ -52,8 +52,9 @@ def parallel(sacred_ex_name: str,
   # Disable all Ray Loggers.
   #
   # JSON and CSV loggers are redundant now that we have Sacred logs.
-  # TensorBoard logs don't contain useful information (inner experiment never
-  # gets access to `reporter`), and clog up the TensorBoard Runs dashboard.
+  # TensorBoard logs don't contain useful information (inner Sacred experiment
+  # never gets access to `reporter`), and clog up the TensorBoard Runs
+  # dashboard.
   ray_loggers = ()
 
   ray.init()
@@ -66,7 +67,7 @@ def parallel(sacred_ex_name: str,
     ray.shutdown()
 
 
-def _ray_tune_sacred_wrapper(experiment_name: str,
+def _ray_tune_sacred_wrapper(sacred_ex_name: str,
                              run_name: str,
                              base_named_configs: list,
                              base_config_updates: dict,

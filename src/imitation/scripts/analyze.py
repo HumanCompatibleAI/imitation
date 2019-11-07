@@ -47,16 +47,21 @@ def gather_tb_directories(source_dir: str,
     sacred_dir = sd.sacred_dir.rstrip("/")
     run_dir = osp.dirname(osp.dirname(sacred_dir))
     run_name = osp.basename(run_dir)
+
     # "tb" is TensorBoard directory built by our codebase. "sb_tb" is Stable
-    # Baselines TensorBoard directory.
+    # Baselines TensorBoard directory. There should be at most one of each
+    # directory.
     for basename in ["tb", "sb_tb"]:
-      # Search for Tensorboard directories inside `run_dir`.
-      for tb_src_dir in sacred_util.filter_subdirs(
-          run_dir, lambda path: osp.basename(path) == basename):  # noqa: E125
-        # Build symlink tb_symlink => tb_src_dir.
+      tb_src_dirs = tuple(sacred_util.filter_subdirs(
+          run_dir, lambda path: osp.basename(path) == basename))
+      if tb_src_dirs:
+        assert len(tb_src_dirs) == 1, "expect at most one TB dir of each type"
+        tb_src_dir = tb_src_dirs[0]
+
         symlinks_dir = osp.join(tmp_dir, basename)
-        tb_symlink = osp.join(symlinks_dir, run_name)
         os.makedirs(symlinks_dir, exist_ok=True)
+
+        tb_symlink = osp.join(symlinks_dir, run_name)
         os.symlink(tb_src_dir, tb_symlink)
         tb_dirs_count += 1
 
