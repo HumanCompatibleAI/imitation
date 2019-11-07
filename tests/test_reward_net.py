@@ -16,12 +16,12 @@ HARDCODED_TYPES = ['zero']
 REWARD_NETS = [reward_net.BasicRewardNet, reward_net.BasicShapedRewardNet]
 
 
-@pytest.mark.parametrize("env_id", ENVS)
+@pytest.mark.parametrize("env_name", ENVS)
 @pytest.mark.parametrize("reward_net_cls", REWARD_NETS)
-def test_init_no_crash(session, env_id, reward_net_cls):
-  env = gym.make(env_id)
+def test_init_no_crash(session, env_name, reward_net_cls):
+  env = gym.make(env_name)
   for i in range(3):
-    with tf.variable_scope(env_id + str(i) + "shaped"):
+    with tf.variable_scope(env_name + str(i) + "shaped"):
       reward_net_cls(env.observation_space, env.action_space)
 
 
