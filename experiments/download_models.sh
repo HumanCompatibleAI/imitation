@@ -8,4 +8,4 @@ DATA_DIR="${PROJECT_DIR}/data"
 if [[ -d ${DATA_DIR} ]]; then
   rm -r ${DATA_DIR}
 fi
-aws s3 sync --exclude '*/rollouts/*' --exclude '*/checkpoints/*' --exclude '*/policies/*' --include "*/checkpoints/final/*" --include "*/policies/final/*" s3://shwang-chai/public/data/ ${DATA_DIR}
+aws s3 sync s3://shwang-chai/public/data/ ${DATA_DIR}
