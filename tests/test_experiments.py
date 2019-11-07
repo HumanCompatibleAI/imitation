@@ -1,6 +1,7 @@
 """Smoke tests for bash scripts in experiments/"""
-import pytest
 import subprocess
+
+import pytest
 
 
 @pytest.mark.parametrize("script_name", ["imit_benchmark.sh",
