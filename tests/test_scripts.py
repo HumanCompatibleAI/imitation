@@ -144,7 +144,7 @@ def test_transfer_learning(tmpdir):
 
 PARALLEL_CONFIG_UPDATES = [
   dict(
-    inner_experiment_name="expert_demos",
+    sacred_ex_name="expert_demos",
     base_named_configs=["cartpole", "fast"],
     search_space={
       "config_updates": {
@@ -155,7 +155,7 @@ PARALLEL_CONFIG_UPDATES = [
       }},
   ),
   dict(
-    inner_experiment_name="train_adversarial",
+    sacred_ex_name="train_adversarial",
     base_named_configs=["cartpole", "gail", "fast"],
     base_config_updates={
       # Need absolute path because raylet runs in different working directory.
@@ -204,10 +204,10 @@ def test_analyze_imitation(tmpdir: str,
 
 
 def test_analyze_gather_tb(tmpdir: str):
-  parallel_run = parallel_ex.run(named_configs=["_generate_test_data"],
+  parallel_run = parallel_ex.run(named_configs=["generate_test_data"],
                                  config_updates=dict(
                                      local_dir=tmpdir,
-                                     inner_run_name="test",
+                                     run_name="test",
                                  ))
   assert parallel_run.status == 'COMPLETED'
 

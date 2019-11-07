@@ -93,21 +93,6 @@ def analyze_imitation(source_dir: str,
   sacred_dicts = _get_sacred_dicts(
     source_dir, run_name, env_name, skip_failed_runs)
 
-  if run_name is not None:
-    sacred_dicts = filter(
-      lambda sd: get(sd.run, "experiment.name") == run_name,
-      sacred_dicts)
-
-  if env_name is not None:
-    sacred_dicts = filter(
-      lambda sd: get(sd.config, "env_name") == env_name,
-      sacred_dicts)
-
-  if skip_failed_runs:
-    sacred_dicts = filter(
-      lambda sd: get(sd.run, "status") != "FAILED",
-      sacred_dicts)
-
   rows = []
   for sd in sacred_dicts:
     row = OrderedDict()
