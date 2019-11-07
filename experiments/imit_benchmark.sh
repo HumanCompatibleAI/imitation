@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -e
 
 # This script finds the the mean and standard error of episode return after
 # training GAIL or AIRL on benchmark tasks.
@@ -7,7 +8,7 @@
 # `experiments/imit_benchmark_config.csv`.
 
 CONFIG_CSV="experiments/imit_benchmark_config.csv"
-EXPERT_MODELS_DIR="expert_models"
+EXPERT_MODELS_DIR="data/expert_models"
 TIMESTAMP=$(date --iso-8601=seconds)
 LOG_ROOT="output/imit_benchmark/${TIMESTAMP}"
 extra_configs=""
@@ -25,7 +26,7 @@ while true; do
     # Fast mode (debug)
     -f | --fast)
       CONFIG_CSV="tests/data/imit_benchmark_config.csv"
-      EXPERT_MODELS_DIR="tests/data"
+      EXPERT_MODELS_DIR="tests/data/expert_models"
       SEEDS="0"
       extra_configs+="fast "
       shift
@@ -72,7 +73,7 @@ parallel -j 25% --header : --results ${LOG_ROOT}/parallel/ --colsep , --progress
   ${ALGORITHM} \
   ${extra_configs} \
   {env_config_name} \
-  log_dir="${LOG_ROOT}/${ALGORITHM}/{env_config_name}_{seed}" \
+  log_dir="${LOG_ROOT}/${ALGORITHM}/{env_config_name}_{seed}/n_expert_demos_{n_expert_demos}" \
   n_gen_steps_per_epoch={n_gen_steps_per_epoch} \
   rollout_path=${EXPERT_MODELS_DIR}/{env_config_name}_0/rollouts/final.pkl \
   n_expert_demos={n_expert_demos} \
@@ -88,6 +89,6 @@ popd
 
 echo "[Optional] Upload new reward models to S3 (replacing old ones) using the commands:"
 echo "aws s3 rm s3://shwang-chai/public/data/reward_models/${ALGORITHM}/"
-echo "aws s3 sync --exclude '*/rollouts/*' --exclude '*/policies/*' --include '*/policies/final/*' ''${LOG_ROOT}' s3://shwang-chai/public/data/reward_models/${ALGORITHM}/"
+echo "aws s3 sync --exclude '*/rollouts/*' --exclude '*/checkpoints/*' --include '*/checkpoints/final/*' ''${LOG_ROOT}' s3://shwang-chai/public/data/reward_models/${ALGORITHM}/"
 
 echo 'Generate results table using `python -m imitation.scripts.analyze`'

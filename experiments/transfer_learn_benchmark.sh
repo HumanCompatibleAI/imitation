@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+set -e
+
 # Train PPO2 experts using reward models from experiments/imit_benchmark.sh
 
 TIMESTAMP=$(date --iso-8601=seconds)
@@ -25,6 +27,7 @@ while true; do
     # Fast mode (debug)
     -f | --fast)
       ENVS="cartpole mountain_car"
+      REWARD_MODELS_DIR="tests/data/reward_models"
       SEEDS="0"
       extra_configs+="fast "
       shift
