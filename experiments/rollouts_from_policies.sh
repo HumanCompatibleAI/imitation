@@ -24,7 +24,7 @@ while getopts "f" arg; do
   if [[ $arg == "f" ]]; then
     # Fast mode (debug)
     CONFIG_CSV="tests/data/rollouts_from_policies_config.csv"
-    EXPERT_MODELS_DIR="tests/data"
+    EXPERT_MODELS_DIR="tests/data/expert_models"
   fi
 done
 
