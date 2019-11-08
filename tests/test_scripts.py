@@ -144,7 +144,7 @@ def test_transfer_learning(tmpdir):
 
 PARALLEL_CONFIG_UPDATES = [
   dict(
-    inner_experiment_name="expert_demos",
+    sacred_ex_name="expert_demos",
     base_named_configs=["cartpole", "fast"],
     search_space={
       "config_updates": {
@@ -155,7 +155,7 @@ PARALLEL_CONFIG_UPDATES = [
       }},
   ),
   dict(
-    inner_experiment_name="train_adversarial",
+    sacred_ex_name="train_adversarial",
     base_named_configs=["cartpole", "gail", "fast"],
     base_config_updates={
       # Need absolute path because raylet runs in different working directory.
@@ -201,3 +201,21 @@ def test_analyze_imitation(tmpdir: str,
   assert run.status == 'COMPLETED'
   df = pd.DataFrame(run.result)
   assert df.shape[0] == expected_entries
+
+
+def test_analyze_gather_tb(tmpdir: str):
+  parallel_run = parallel_ex.run(named_configs=["generate_test_data"],
+                                 config_updates=dict(
+                                     local_dir=tmpdir,
+                                     run_name="test",
+                                 ))
+  assert parallel_run.status == 'COMPLETED'
+
+  run = analysis_ex.run(
+    command_name="gather_tb_directories",
+    config_updates=dict(
+      source_dir=tmpdir,
+    ))
+  assert run.status == 'COMPLETED'
+  assert isinstance(run.result, dict)
+  assert run.result["n_tb_dirs"] == 4

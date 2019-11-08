@@ -30,6 +30,11 @@ while getopts "fr" arg; do
     ENVS="cartpole pendulum"
     SEEDS="0"
     OUTPUT_DIR="tests/data/expert_models"
+    if [[ -d ${OUTPUT_DIR} ]]; then
+      echo "Overwriting old test data"
+      rm -r ${OUTPUT_DIR}
+    fi
+    mkdir -p ${OUTPUT_DIR}
     extra_configs+="rollout_save_n_episodes=50 "
   fi
 done
