@@ -39,8 +39,8 @@ def score_trajectories(trajectories: Sequence[rollout.Trajectory],
 def test_density_reward(density_type, is_stationary):
   # test on Pendulum rather than Cartpole because I don't handle episodes that
   # terminate early yet (see issue #40)
-  env_id = 'Pendulum-v0'
-  env = util.make_vec_env(env_id, 2)
+  env_name = 'Pendulum-v0'
+  env = util.make_vec_env(env_name, 2)
 
   # construct density-based reward from expert rollouts
   with open("tests/data/expert_models/pendulum_0/rollouts/final.pkl",
@@ -73,11 +73,11 @@ def test_density_reward(density_type, is_stationary):
 @pytest.mark.expensive
 @parametrize_density_stationary
 def test_density_trainer(density_type, is_stationary):
-  env_id = 'Pendulum-v0'
+  env_name = 'Pendulum-v0'
   with open("tests/data/expert_models/pendulum_0/rollouts/final.pkl",
             "rb") as f:
     rollouts = pickle.load(f)
-  env = util.make_vec_env(env_id, 2)
+  env = util.make_vec_env(env_name, 2)
   imitation_trainer = util.init_rl(env)
   density_trainer = DensityTrainer(env,
                                    rollouts=rollouts,

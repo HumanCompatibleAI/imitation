@@ -30,7 +30,7 @@ def make_unique_timestamp():
   return f"{timestamp}_{random_uuid}"
 
 
-def make_vec_env(env_id: str,
+def make_vec_env(env_name: str,
                  n_envs: int = 8,
                  seed: int = 0,
                  parallel: bool = False,
@@ -39,7 +39,7 @@ def make_vec_env(env_id: str,
   """Returns a VecEnv initialized with `n_envs` Envs.
 
   Args:
-      env_id: The Env's string id in Gym.
+      env_name: The Env's string id in Gym.
       n_envs: The number of duplicate environments.
       seed: The environment seed.
       parallel: If True, uses SubprocVecEnv; otherwise, DummyVecEnv.
@@ -48,7 +48,7 @@ def make_vec_env(env_id: str,
           this episode length before returning.
   """
   def make_env(i):
-    env = gym.make(env_id)
+    env = gym.make(env_name)
     env.seed(seed + i)  # seed each environment separately for diversity
 
     if max_episode_steps is not None:

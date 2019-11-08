@@ -311,7 +311,7 @@ def _n_steps_if_not_none(n_steps):
     return dict(n_steps=n_steps)
 
 
-def init_trainer(env_id: str,
+def init_trainer(env_name: str,
                  expert_trajectories: Sequence[rollout.Trajectory],
                  *,
                  seed: int = 0,
@@ -331,7 +331,7 @@ def init_trainer(env_id: str,
     environment and expert demonstrations.
 
   Args:
-    env_id: The string id of a gym environment.
+    env_name: The string id of a gym environment.
     expert_trajectories: Demonstrations from expert.
     seed: Random seed.
     log_dir: Directory for logging output.
@@ -352,7 +352,7 @@ def init_trainer(env_id: str,
     init_rl_kwargs: Keyword arguments passed to `init_rl`,
         used to initialize the RL algorithm.
   """
-  env = util.make_vec_env(env_id, num_vec, seed=seed, parallel=parallel,
+  env = util.make_vec_env(env_name, num_vec, seed=seed, parallel=parallel,
                           log_dir=log_dir, max_episode_steps=max_episode_steps)
   gen_policy = util.init_rl(env, verbose=1,
                             **init_rl_kwargs)

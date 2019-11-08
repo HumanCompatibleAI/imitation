@@ -26,19 +26,19 @@ DISCRIM_NET_SETUPS = {
 }
 
 
-@pytest.mark.parametrize("env_id", ENVS)
+@pytest.mark.parametrize("env_name", ENVS)
 @pytest.mark.parametrize("discrim_net_cls", DISCRIM_NETS)
-def test_discrim_net_no_crash(session, env_id, discrim_net_cls):
+def test_discrim_net_no_crash(session, env_name, discrim_net_cls):
   # If parallel=True, codecov sometimes acts up.
-  venv = util.make_vec_env(env_id, parallel=False)
+  venv = util.make_vec_env(env_name, parallel=False)
   DISCRIM_NET_SETUPS[discrim_net_cls](venv)
 
 
-@pytest.mark.parametrize("env_id", ENVS)
+@pytest.mark.parametrize("env_name", ENVS)
 @pytest.mark.parametrize("discrim_net_cls", DISCRIM_NETS)
-def test_serialize_identity(session, env_id, discrim_net_cls, tmpdir):
+def test_serialize_identity(session, env_name, discrim_net_cls, tmpdir):
   """Does output of deserialized discriminator match that of original?"""
-  venv = util.make_vec_env(env_id, parallel=False)
+  venv = util.make_vec_env(env_name, parallel=False)
   original = DISCRIM_NET_SETUPS[discrim_net_cls](venv)
   random = base.RandomPolicy(venv.observation_space, venv.action_space)
   session.run(tf.global_variables_initializer())
