@@ -6,9 +6,7 @@ PROJECT_DIR="$(dirname ${SCRIPT_DIR})"
 DATA_DIR="${PROJECT_DIR}/data"
 
 DRY_RUN_MODE=false
-EXCLUDE_MODE=true
-EXCLUDE_FLAGS="--exclude '*/monitor/*' --exclude '*/parallel/*' --exclude '*/sacred/*' --exclude 'events.out.tfevents*'"
-FLAGS=""
+ALL_MODE=false
 TEMP=$(getopt -o '' -l all,dryrun -- $@)
 
 if [[ $? != 0 ]]; then exit 1; fi
@@ -23,7 +21,7 @@ while true; do
     --all)
       # Download all data (by default, skips large meta-data/log files).
       # As of 2019.Nov.12, the difference in download size was 77MB vs ~800MB.
-      EXCLUDE_MODE=false
+      ALL_MODE=true
       shift
       ;;
     --)
@@ -39,7 +37,7 @@ done
 
 FLAGS=""
 
-if $EXCLUDE_MODE; then
+if not $ALL_MODE; then
   FLAGS+="--exclude '*/monitor/*' \
     --exclude '*/parallel/*' \
     --exclude '*/sacred/*' \
@@ -53,4 +51,4 @@ elif [[ -d ${DATA_DIR} ]]; then
 fi
 
 command="aws s3 sync ${FLAGS} s3://shwang-chai/public/data/ ${DATA_DIR}"
-eval $command  # Required for correct interpretation of EXCLUDE_MODE flags.
+eval $command  # Required for correct interpretation of ALL_MODE flags.
