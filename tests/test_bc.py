@@ -6,8 +6,8 @@ from imitation.algorithms import bc
 
 
 def test_bc():
-  env_id = 'CartPole-v1'
-  env = util.make_vec_env(env_id, 2)
+  env_name = 'CartPole-v1'
+  env = util.make_vec_env(env_name, 2)
   with open("tests/data/expert_models/cartpole_0/rollouts/final.pkl",
             "rb") as f:
     rollouts = pickle.load(f)

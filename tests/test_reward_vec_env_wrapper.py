@@ -12,9 +12,9 @@ class FunkyReward:
 
 def test_reward_overwrite():
   """Test that reward wrapper actually overwrites base rewards."""
-  env_id = 'Pendulum-v0'
+  env_name = 'Pendulum-v0'
   num_envs = 3
-  env = util.make_vec_env(env_id, num_envs)
+  env = util.make_vec_env(env_name, num_envs)
   reward_fn = FunkyReward()
   wrapped_env = util.reward_wrapper.RewardVecEnvWrapper(env, reward_fn)
   policy = RandomPolicy(env.observation_space, env.action_space)

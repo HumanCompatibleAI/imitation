@@ -1,6 +1,10 @@
 sudo: required
 dist: xenial
 
+branches:
+  only:
+    - master
+
 language: python
 cache: pip
 before_install:
