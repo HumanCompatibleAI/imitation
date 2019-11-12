@@ -25,7 +25,7 @@ while true; do
     # Fast mode (debug)
     -f | --fast)
       CONFIG_CSV="tests/data/imit_benchmark_config.csv"
-      EXPERT_MODELS_DIR="tests/data"
+      EXPERT_MODELS_DIR="tests/data/expert_models"
       SEEDS="0"
       extra_configs+="fast "
       shift
@@ -72,9 +72,10 @@ parallel -j 25% --header : --results ${LOG_ROOT}/parallel/ --colsep , --progress
   ${ALGORITHM} \
   ${extra_configs} \
   {env_config_name} \
-  log_dir="${LOG_ROOT}/${ALGORITHM}/{env_config_name}_{seed}/n_expert_demos_{n_expert_demos}" \
+  log_dir="${LOG_ROOT}/{env_config_name}_{seed}/n_expert_demos_{n_expert_demos}" \
   n_gen_steps_per_epoch={n_gen_steps_per_epoch} \
   rollout_path=${EXPERT_MODELS_DIR}/{env_config_name}_0/rollouts/final.pkl \
+  checkpoint_interval=-1 \
   n_expert_demos={n_expert_demos} \
   seed={seed} \
   :::: $CONFIG_CSV \
@@ -87,7 +88,7 @@ find . -name stdout | sort | xargs tail -n 15 | grep -E '==|\[result\]'
 popd
 
 echo "[Optional] Upload new reward models to S3 (replacing old ones) using the commands:"
-echo "aws s3 rm s3://shwang-chai/public/data/reward_models/${ALGORITHM}/"
-echo "aws s3 sync --exclude '*/rollouts/*' --exclude '*/checkpoints/*' --include '*/checkpoints/final/*' ''${LOG_ROOT}' s3://shwang-chai/public/data/reward_models/${ALGORITHM}/"
+echo "aws s3 rm --recursive s3://shwang-chai/public/data/reward_models/${ALGORITHM}/"
+echo "aws s3 sync --exclude '*/rollouts/*' --exclude '*/checkpoints/*' --include '*/checkpoints/final/*' '${LOG_ROOT}' s3://shwang-chai/public/data/reward_models/${ALGORITHM}/"
 
 echo 'Generate results table using `python -m imitation.scripts.analyze`'

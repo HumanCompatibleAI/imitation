@@ -193,7 +193,7 @@ def test_analyze_imitation(tmpdir: str,
   run = analysis_ex.run(
     command_name="analyze_imitation",
     config_updates=dict(
-      source_dir="tests/data/imit_benchmark",
+      source_dir="tests/data/imit_benchmark_sacred",
       run_name=run_name,
       csv_output_path=osp.join(tmpdir, "analysis.csv"),
       verbose=True,

@@ -22,6 +22,7 @@ while true; do
     # Fast mode (debug)
     -f | --fast)
       CONFIG_CSV="tests/data/imit_benchmark_config.csv"
+      REWARD_MODELS_DIR="tests/data/reward_models"
       SEEDS="0"
       extra_configs+="fast "
       shift
@@ -61,7 +62,7 @@ parallel -j 25% --header : --results ${LOG_ROOT}/parallel/ --colsep , --progress
   with \
   {env_config_name} ${extra_configs} \
   seed={seed} \
-  log_dir="${LOG_ROOT}/${ALGORITHM}/{env_config_name}_{seed}" \
+  log_dir="${LOG_ROOT}/${ALGORITHM}/{env_config_name}_{seed}/n_expert_demos_{n_expert_demos}" \
   reward_type="DiscrimNet" \
   reward_path="${REWARD_MODELS_DIR}/${ALGORITHM}/{env_config_name}_0/n_expert_demos_{n_expert_demos}/checkpoints/final/discrim/" \
   ::: seed ${SEEDS} :::: ${CONFIG_CSV}

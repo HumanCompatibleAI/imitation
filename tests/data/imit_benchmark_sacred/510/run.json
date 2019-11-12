@@ -7,26 +7,26 @@
       "imitation==0.1",
       "numpy==1.16.2",
       "sacred==0.7.4",
-      "stable-baselines==2.7.0"
+      "stable-baselines==2.9.0a0"
     ],
     "mainfile": "train_adversarial.py",
-    "name": "BAR",
+    "name": "FOO",
     "repositories": [],
     "sources": [
       [
         "train_adversarial.py",
-        "_sources/train_adversarial_1daa2d1984c0d7cf162b0ad13b5173be.py"
+        "_sources/train_adversarial_f38331938ea5f46b627d6454fab2b6e7.py"
       ]
     ]
   },
-  "heartbeat": "2019-09-27T21:38:39.528670",
+  "heartbeat": "2019-11-12T22:46:20.425432",
   "host": {
     "ENV": {},
     "cpu": "Intel(R) Core(TM) i9-7940X CPU @ 3.10GHz",
     "hostname": "astar",
     "os": [
       "Linux",
-      "Linux-4.15.0-58-generic-x86_64-with-Ubuntu-18.04-bionic"
+      "Linux-4.15.0-65-generic-x86_64-with-Ubuntu-18.04-bionic"
     ],
     "python_version": "3.6.8"
   },
@@ -38,12 +38,12 @@
       "--comment": null,
       "--debug": false,
       "--enforce_clean": false,
-      "--file_storage": "tests/data/imit_benchmark",
+      "--file_storage": "tests/data/imit_benchmark_sacred",
       "--force": false,
       "--help": false,
       "--loglevel": null,
       "--mongo_db": null,
-      "--name": "BAR",
+      "--name": "FOO",
       "--pdb": false,
       "--print_config": false,
       "--priority": null,
@@ -53,14 +53,14 @@
       "--unobserved": false,
       "COMMAND": null,
       "UPDATE": [
-        "gail",
+        "airl",
         "fast",
-        "pendulum",
-        "log_root=/tmp/tmp.n0x0WYSA5l",
+        "cartpole",
+        "log_dir=/tmp/tmp.Q3HzEGnLw1/cartpole_0/n_expert_demos_1",
         "n_gen_steps_per_epoch=5",
-        "rollout_path=tests/data/pendulum_0/rollouts/final.pkl",
+        "rollout_path=tests/data/expert_models/cartpole_0/rollouts/final.pkl",
+        "checkpoint_interval=-1",
         "n_expert_demos=1",
-        "init_trainer_kwargs.use_gail=True",
         "seed=0"
       ],
       "help": false,
@@ -70,33 +70,33 @@
   "resources": [],
   "result": {
     "expert_stats": {
-      "len_max": 200,
-      "len_mean": 200.0,
-      "len_min": 200,
+      "len_max": 500,
+      "len_mean": 500.0,
+      "len_min": 500,
       "len_std": 0.0,
-      "n_traj": 56,
-      "return_max": -788.1657404403462,
-      "return_mean": -966.5230493043197,
-      "return_min": -1461.24354588854,
-      "return_std": 115.7906938761026
+      "n_traj": 1,
+      "return_max": 500.0,
+      "return_mean": 500.0,
+      "return_min": 500.0,
+      "return_std": 0.0
     },
     "imit_stats": {
-      "len_max": 100,
-      "len_mean": 100.0,
-      "len_min": 100,
+      "len_max": 12,
+      "len_mean": 12.0,
+      "len_min": 12,
       "len_std": 0.0,
-      "monitor_return_max": -366.392564,
-      "monitor_return_mean": -520.5258041249999,
-      "monitor_return_min": -740.470595,
-      "monitor_return_std": 116.1832382589241,
-      "n_traj": 8,
-      "return_max": 70.11387205123901,
-      "return_mean": 67.97881834954023,
-      "return_min": 66.54750859737396,
-      "return_std": 0.9593673951115428
+      "monitor_return_max": 12.0,
+      "monitor_return_mean": 12.0,
+      "monitor_return_min": 12.0,
+      "monitor_return_std": 0.0,
+      "n_traj": 3,
+      "return_max": 0.8000813163816929,
+      "return_mean": 0.4344479168454806,
+      "return_min": -0.22764477506279945,
+      "return_std": 0.4690211891334645
     }
   },
-  "start_time": "2019-09-27T21:38:37.697018",
+  "start_time": "2019-11-12T22:46:19.108707",
   "status": "COMPLETED",
-  "stop_time": "2019-09-27T21:38:39.527305"
+  "stop_time": "2019-11-12T22:46:20.423872"
 }

@@ -1,7 +1,7 @@
 {
   "__doc__": "Minimize the amount of computation. Useful for test cases.",
   "airl_entropy_weight": 1.0,
-  "checkpoint_interval": 5,
+  "checkpoint_interval": -1,
   "env_name": "Pendulum-v0",
   "init_tensorboard": false,
   "init_trainer_kwargs": {
@@ -33,10 +33,10 @@
       "gen_replay_buffer_capacity": 1000,
       "n_disc_samples_per_buffer": 1000
     },
-    "use_gail": true
+    "use_gail": false
   },
-  "log_dir": "/tmp/tmp.n0x0WYSA5l/Pendulum-v0/20190927_143837_620bcff1b1814af99665518c8ca38eaa",
-  "log_root": "/tmp/tmp.n0x0WYSA5l",
+  "log_dir": "/tmp/tmp.Q3HzEGnLw1/pendulum_0/n_expert_demos_1",
+  "log_root": "output/train_adversarial",
   "n_disc_steps_per_epoch": 1,
   "n_episodes_eval": 1,
   "n_epochs": 1,
@@ -45,7 +45,7 @@
   "n_plot_episodes": 1,
   "plot_interval": -1,
   "rollout_hint": "pendulum",
-  "rollout_path": "tests/data/pendulum_0/rollouts/final.pkl",
+  "rollout_path": "tests/data/expert_models/pendulum_0/rollouts/final.pkl",
   "seed": 0,
   "show_plots": false
 }
