@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -e
 
 # This script finds the the mean and standard error of episode return after
 # training GAIL or AIRL on benchmark tasks.

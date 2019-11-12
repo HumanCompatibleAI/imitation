@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -e
 
 # This script trains experts for experiments/imit_benchmark.sh.
 # When training is finished, it reports the mean episode reward of each
@@ -15,23 +16,40 @@ OUTPUT_DIR="output/train_experts/${TIMESTAMP}"
 RESULTS_FILE="results.txt"
 extra_configs=""
 
-while getopts "fr" arg; do
-  if [[ $arg == "f" ]]; then
-    # Fast mode (debug)
-    ENVS="cartpole pendulum"
-    SEEDS="0"
-    extra_configs+="fast "
-  elif [[ $arg == "r" ]]; then
-    # Regenerate test data (policies and rollouts).
-    #
-    # Combine with fast mode flag to generate low-computation versions of
-    # test data.
-    # Use `git clean -df tests/data` to remove extra log files.
-    ENVS="cartpole pendulum"
-    SEEDS="0"
-    OUTPUT_DIR="tests/data/expert_models"
-    extra_configs+="rollout_save_n_episodes=50 "
-  fi
+TEMP=$(getopt -o fr -l fast,regenerate -- $@)
+if [[ $? != 0 ]]; then exit 1; fi
+eval set -- "$TEMP"
+
+while true; do
+  case "$1" in
+    -f | --fast)
+      # Fast mode (debug)
+      ENVS="cartpole pendulum"
+      SEEDS="0"
+      extra_configs+="fast "
+      shift
+      ;;
+    -r | --regenerate)
+      # Regenerate test data (policies and rollouts).
+      #
+      # Combine with fast mode flag to generate low-computation versions of
+      # test data.
+      # Use `git clean -df tests/data` to remove extra log files.
+      ENVS="cartpole pendulum"
+      SEEDS="0"
+      OUTPUT_DIR="tests/data/expert_models"
+      extra_configs+="rollout_save_n_episodes=50 "
+      shift
+      ;;
+    --)
+      shift
+      break
+      ;;
+    *)
+      echo "Unrecognized flag $1" >&2
+      exit 1
+      ;;
+  esac
 done
 
 echo "Writing logs in ${OUTPUT_DIR}"
