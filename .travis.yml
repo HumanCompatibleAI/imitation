@@ -8,7 +8,7 @@ branches:
 language: python
 cache: pip
 before_install:
-  - sudo apt-get install -y libopenmpi-dev
+  - sudo apt-get install -y parallel
 install:
   - pip install '.[test,cpu]'
 script:
