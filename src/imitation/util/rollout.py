@@ -51,6 +51,24 @@ def unwrap_traj(traj: Trajectory) -> Trajectory:
   return res
 
 
+def convert_trajs_to_sb(trajs: List[Trajectory]) -> dict:
+  """Converts Trajectories into the dict format used by Stable Baselines GAIL.
+
+  Skips the "rewards" key because it isn't used by the Stable Baselines GAIL
+  algorithm.
+  """
+  trans = flatten_trajectories(trajs)
+  assert trans.dones[-1], "Dangling transitions (will never be used)."
+
+  return dict(
+    actions=trans.acts,
+    obs=trans.obs,
+    rewards=trans.rews,
+    episode_starts=np.concatenate([[True], trans.dones[:-1]]),
+    episode_returns=np.array([np.sum(t.rews) for t in trajs]),
+  )
+
+
 class Transitions(NamedTuple):
   """A batch of obs-act-obs-rew-done transitions.
 

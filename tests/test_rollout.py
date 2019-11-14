@@ -2,6 +2,7 @@
 
 import gym
 import numpy as np
+import numpy.testing as npt
 from stable_baselines.bench import Monitor
 from stable_baselines.common.vec_env import DummyVecEnv
 
@@ -78,10 +79,10 @@ def test_rollout_stats():
                                           rollout.min_episodes(10))
   s = rollout.rollout_stats(trajs)
 
-  np.testing.assert_allclose(s["return_mean"], s["monitor_return_mean"] / 2)
-  np.testing.assert_allclose(s["return_std"], s["monitor_return_std"] / 2)
-  np.testing.assert_allclose(s["return_min"], s["monitor_return_min"] / 2)
-  np.testing.assert_allclose(s["return_max"], s["monitor_return_max"] / 2)
+  npt.assert_allclose(s["return_mean"], s["monitor_return_mean"] / 2)
+  npt.assert_allclose(s["return_std"], s["monitor_return_std"] / 2)
+  npt.assert_allclose(s["return_min"], s["monitor_return_min"] / 2)
+  npt.assert_allclose(s["return_max"], s["monitor_return_max"] / 2)
 
 
 def test_unwrap_traj():
@@ -100,11 +101,40 @@ def test_unwrap_traj():
   trajs_unwrapped_twice = [rollout.unwrap_traj(t) for t in trajs_unwrapped]
 
   for t, t_unwrapped in zip(trajs, trajs_unwrapped):
-    np.testing.assert_allclose(t.acts, t_unwrapped.acts)
-    np.testing.assert_allclose(t.obs, t_unwrapped.obs / 2)
-    np.testing.assert_allclose(t.rews, t_unwrapped.rews / 2)
+    npt.assert_allclose(t.acts, t_unwrapped.acts)
+    npt.assert_allclose(t.obs, t_unwrapped.obs / 2)
+    npt.assert_allclose(t.rews, t_unwrapped.rews / 2)
 
   for t1, t2 in zip(trajs_unwrapped, trajs_unwrapped_twice):
-    np.testing.assert_equal(t1.acts, t2.acts)
-    np.testing.assert_equal(t1.obs, t2.obs)
-    np.testing.assert_equal(t1.rews, t2.rews)
+    npt.assert_equal(t1.acts, t2.acts)
+    npt.assert_equal(t1.obs, t2.obs)
+    npt.assert_equal(t1.rews, t2.rews)
+
+
+def test_convert_trajs_to_sb():
+  """Sanity check for converting to SB GAIL data format."""
+  obs = [np.array([[i], [i*2], [i*3]]) for i in range(5)]
+  acts = [np.array([[i], [i+1]]) for i in range(5)]
+  rews = [np.array([-5, 10]) for _ in range(5)]
+  infos = [np.array([None, None]) for i in range(5)]
+
+  trajs = []
+  for i in range(5):
+    traj = rollout.Trajectory(
+      obs=obs[i],
+      acts=acts[i],
+      rews=rews[i],
+      infos=infos[i],
+    )
+    trajs.append(traj)
+
+  expect_obs = np.concatenate([np.array([[i], [i*2]]) for i in range(5)])
+  expect_acts = np.concatenate(acts)
+  expect_returns = [5 for _ in range(5)]
+  expect_starts = [True, False] * 5
+
+  d = rollout.convert_trajs_to_sb(trajs)
+  npt.assert_equal(d["obs"], expect_obs)
+  npt.assert_equal(d["actions"], expect_acts)
+  npt.assert_equal(d["episode_returns"], expect_returns)
+  npt.assert_equal(d["episode_starts"], expect_starts)
