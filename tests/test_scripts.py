@@ -79,18 +79,31 @@ def _check_rollout_stats(stats: dict, wrapped_reward: bool = True):
     assert stats.get("return_mean") == stats.get("monitor_return_mean")
 
 
-def _check_train_ex_result(result: dict):
+def _check_train_ex_result(result: dict, wrapped_reward: bool = True):
   expert_stats = result.get("expert_stats")
   assert isinstance(expert_stats, dict)
   assert "return_mean" in expert_stats
   assert "monitor_return_mean" not in expert_stats
 
   imit_stats = result.get("imit_stats")
-  _check_rollout_stats(imit_stats)
+  _check_rollout_stats(imit_stats, wrapped_reward)
+
+  assert "algorithm" in result
 
 
-def test_train_adversarial(tmpdir):
+@pytest.mark.parametrize("command", ["train", "train_sb_gail"])
+def test_train_adversarial(tmpdir: str, command: str):
   """Smoke test for imitation.scripts.train_adversarial"""
+  if command == "train_sb_gail":
+    try:
+      from stable_baselines import GAIL as _  # noqa: F401
+    except ImportError:
+      pytest.skip(
+        "Stable Baselines disables GAIL by default when OpenMPI isn't "
+        "configured in your python environment. Hint: install mpi4py via "
+        "`pip install mpi4py`.")
+    del _
+
   named_configs = ['cartpole', 'gail', 'fast', 'plots']
   config_updates = {
       'init_trainer_kwargs': {
@@ -104,11 +117,13 @@ def test_train_adversarial(tmpdir):
       'init_tensorboard': True,
   }
   run = train_ex.run(
+      command_name=command,
       named_configs=named_configs,
       config_updates=config_updates,
   )
   assert run.status == 'COMPLETED'
-  _check_train_ex_result(run.result)
+  wrapped_reward = (command == "train")
+  _check_train_ex_result(run.result, wrapped_reward=wrapped_reward)
 
 
 def test_transfer_learning(tmpdir):

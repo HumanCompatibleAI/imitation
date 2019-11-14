@@ -111,18 +111,19 @@ def train(_run,
       then only save weights after training is complete.
 
   Returns:
-    A dictionary with two keys. "imit_stats" gives the return value of
-      `rollout_stats()` on rollouts test-reward-wrapped
-      environment, using the final policy (remember that the ground-truth reward
-      can be recovered from the "monitor_return" key). "expert_stats" gives the
-      return value of `rollout_stats()` on the expert demonstrations loaded from
-      `rollout_path`.
+    A dictionary with three keys.
+      "imit_stats" gives the return value of `rollout_stats()` on rollouts
+        test-reward-wrapped environment, using the final policy (remember that
+        the ground-truth reward can be recovered from the "monitor_return" key).
+      "expert_stats" gives the return value of `rollout_stats()` on the expert
+        demonstrations loaded from `rollout_path`.
+      "algorithm" describes the imitation. This command always returns "gail"
+        or "airl". `train_sb()` always returns "sb_gail".
   """
   tf.logging.info("Logging to %s", log_dir)
   os.makedirs(log_dir, exist_ok=True)
   sacred_util.build_sacred_symlink(log_dir, _run)
 
-  # Calculate stats for expert rollouts. Used for plot and return value.
   with open(rollout_path, "rb") as f:
     expert_trajs = pickle.load(f)
 
@@ -130,6 +131,7 @@ def train(_run,
     assert len(expert_trajs) >= n_expert_demos
     expert_trajs = expert_trajs[:n_expert_demos]
 
+  # Calculate stats for expert rollouts. Used for plot and return value.
   expert_stats = util.rollout.rollout_stats(expert_trajs)
 
   with util.make_session():
@@ -187,8 +189,92 @@ def train(_run,
                                                sample_until=sample_until_eval)
     results["imit_stats"] = util.rollout.rollout_stats(trajs)
     results["expert_stats"] = expert_stats
+    use_gail = init_trainer_kwargs.get("use_gail", False)
+    results["algorithm"] = "gail" if use_gail else "airl"
 
     return results
+
+
+@train_ex.command
+def train_sb_gail(_run,
+                  _seed: int,
+                  env_name: str,
+                  rollout_path: str,
+                  n_expert_demos: Optional[int],
+                  log_dir: str,
+                  *,
+                  n_epochs: int,
+                  n_episodes_eval: int,
+
+                  init_tensorboard: bool,
+                  ) -> dict:
+  """Train Stable Baselines's GAIL implementation to imitate an expert.
+
+  Unlike `train`, this function does not checkpoint or plot. Nor does it
+  accept most hyperparameters (for now).
+
+  Parameters and returns are the same as in `train()`.
+  """
+
+  try:
+    from stable_baselines import gail as sb_gail
+  except ImportError:
+    print("Stable Baselines disables GAIL by default when OpenMPI isn't "
+          "configured in your python environment. Hint: install mpi4py via "
+          "`pip install mpi4py`.")
+    raise
+
+  # TODO(shwang): Figure out hyperparameters.
+  tf.logging.info("Logging to %s", log_dir)
+  os.makedirs(log_dir, exist_ok=True)
+  sacred_util.build_sacred_symlink(log_dir, _run)
+
+  # Calculate stats for expert rollouts
+  with open(rollout_path, "rb") as f:
+    expert_trajs = pickle.load(f)
+
+  if n_expert_demos is not None:
+    assert len(expert_trajs) >= n_expert_demos
+    expert_trajs = expert_trajs[:n_expert_demos]
+
+  traj_data = util.rollout.convert_trajs_to_sb(expert_trajs)
+  expert_dataset = sb_gail.ExpertDataset(traj_data=traj_data)
+
+  # Calculate stats for expert rollouts. Used for return value.
+  expert_stats = util.rollout.rollout_stats(expert_trajs)
+  with util.make_session():
+    sb_logger.configure(folder=osp.join(log_dir, 'generator'),
+                        format_strs=['tensorboard', 'stdout'])
+
+    if init_tensorboard:
+      sb_tensorboard_dir = osp.join(log_dir, "sb_tb")
+    else:
+      sb_tensorboard_dir = None
+
+    # SB's GAIL is OpenMPI based and therefore only allows n_envs=1.
+    venv = util.make_vec_env(env_name, n_envs=1)
+    # TODO(shwang): Allow for customization of GAIL model parameters,
+    # including policy.
+    model = sb_gail.GAIL(
+      "MlpPolicy",
+      venv,
+      expert_dataset=expert_dataset,
+      seed=_seed,
+      tensorboard_log=sb_tensorboard_dir)
+    # TODO(shwang): Refactor train configs to specify the total_timesteps
+    # instead of the number of epochs. Number of epochs is calculated
+    # dynamically.
+    model.learn(total_timesteps=n_epochs*100)
+
+    results = {}
+    sample_until_eval = util.rollout.min_episodes(n_episodes_eval)
+    trajs = util.rollout.generate_trajectories(model, venv,
+                                               sample_until=sample_until_eval)
+    results["imit_stats"] = util.rollout.rollout_stats(trajs)
+    results["expert_stats"] = expert_stats
+    results["algorithm"] = "sb_gail"
+
+  return results
 
 
 class _TrainVisualizer:

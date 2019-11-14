@@ -91,6 +91,8 @@ def plots():
   plot_interval = 10
 
 
+# Standard env configs
+
 @train_ex.named_config
 def acrobot():
   env_name = "Acrobot-v1"
