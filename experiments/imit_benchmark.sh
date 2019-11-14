@@ -17,7 +17,7 @@ ALGORITHM="gail"
 
 SEEDS="0 1 2"
 
-TEMP=$(getopt -o f -l fast,gail,airl,run_name:,log_root:,file_storage: -- $@)
+TEMP=$(getopt -o f -l fast,gail,airl,sb_gail,run_name:,log_root:,file_storage: -- $@)
 if [[ $? != 0 ]]; then exit 1; fi
 eval set -- "$TEMP"
 
@@ -37,6 +37,10 @@ while true; do
       ;;
     --airl)
       ALGORITHM="airl"
+      shift
+      ;;
+    --sb_gail)
+      extra_options+="train_sb_gail "
       shift
       ;;
     --run_name)
