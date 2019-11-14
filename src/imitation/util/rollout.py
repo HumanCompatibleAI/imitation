@@ -17,9 +17,9 @@ class Trajectory(NamedTuple):
   """A trajectory, e.g. a one episode rollout from an expert policy.
 
    Attributes:
+    acts: Actions, shape (trajectory_len, ) + action_shape.
     obs: Observations, shape (trajectory_len+1, ) + observation_shape.
-    act: Actions, shape (trajectory_len, ) + action_shape.
-    rew: Reward, shape (trajectory_len, ).
+    rews: Reward, shape (trajectory_len, ).
     infos: A list of info dicts, length (trajectory_len, ).
   """
 
