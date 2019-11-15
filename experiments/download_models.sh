@@ -37,14 +37,14 @@ done
 
 FLAGS=""
 
-if not $ALL_MODE; then
+if [[ $ALL_MODE != "true" ]]; then
   FLAGS+="--exclude '*/monitor/*' \
     --exclude '*/parallel/*' \
     --exclude '*/sacred/*' \
     --exclude '*events.out.tfevents*' "
 fi
 
-if $DRY_RUN_MODE; then
+if [[ $DRY_RUN_MODE == "true" ]]; then
   FLAGS+='--dryrun '
 elif [[ -d ${DATA_DIR} ]]; then
   rm -r ${DATA_DIR}
