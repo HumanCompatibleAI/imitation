@@ -35,20 +35,18 @@ while true; do
   esac
 done
 
-FLAGS=""
+FLAGS=()
 
 if [[ $ALL_MODE != "true" ]]; then
-  FLAGS+="--exclude '*/monitor/*' \
-    --exclude '*/parallel/*' \
-    --exclude '*/sacred/*' \
-    --exclude '*events.out.tfevents*' "
+  for excl_pat in '*/monitor/*' '*/parallel/*' '*/sacred/*' '*events.out.tfevents*'; do
+    FLAGS=("${FLAGS[@]}" "--exclude" "${excl_pat}")
+  done
 fi
 
 if [[ $DRY_RUN_MODE == "true" ]]; then
-  FLAGS+='--dryrun '
-elif [[ -d ${DATA_DIR} ]]; then
-  rm -r ${DATA_DIR}
+  FLAGS=("${FLAGS[@]}" "--dryrun")
+elif [[ -d "${DATA_DIR}" ]]; then
+  rm -r "${DATA_DIR}"
 fi
 
-command="aws s3 sync ${FLAGS} s3://shwang-chai/public/data/ ${DATA_DIR}"
-eval $command  # Required for correct interpretation of ALL_MODE flags.
+aws s3 sync "${FLAGS[@]}" s3://shwang-chai/public/data/ "${DATA_DIR}"
