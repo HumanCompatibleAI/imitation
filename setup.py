@@ -1,7 +1,7 @@
 from setuptools import find_packages, setup
 import src.imitation
 
-TF_VERSION = '>=1.15.0'
+TF_VERSION = '>=1.15.0,<2.0'
 TESTS_REQUIRE = [
     'codecov',
     'codespell',
