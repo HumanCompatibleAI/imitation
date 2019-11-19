@@ -21,7 +21,12 @@ setup(
     python_requires='>=3.7.0',
     packages=find_packages('src'),
     package_dir={'': 'src'},
-    package_data={'imitation': ['py.typed']},
+    package_data={
+        'imitation': [
+            'py.typed',
+            'envs/examples/airl_envs/assets/*.xml',
+        ],
+    },
     install_requires=[
         'awscli',
         'gym[classic_control]',
