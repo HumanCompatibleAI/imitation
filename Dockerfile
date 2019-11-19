@@ -50,9 +50,10 @@ ENV LD_LIBRARY_PATH /usr/local/nvidia/lib64:/root/.mujoco/mujoco200/bin:${LD_LIB
 FROM base as python-req
 
 WORKDIR /imitation
-# Copy over just requirements.txt at first. That way, the Docker cache doesn't
-# expire until we actually change the requirements.
+# Copy over just setup.py and __init__.py (including version)
+# to avoid rebuilding venv when requirements have not changed.
 COPY ./setup.py /imitation/setup.py
+COPY ./src/imitation/__init__.py /imitation/src/imitation/__init__.py
 COPY ./ci/build_venv.sh /imitation/ci/build_venv.sh
 # mjkey.txt needs to exist for build, but doesn't need to be a real key
 RUN    mkdir -p /imitation/src/imitation \

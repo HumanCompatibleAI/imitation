@@ -8,6 +8,7 @@ TESTS_REQUIRE = [
     'codespell',
     'pytest',
     'pytest-cov',
+    'pytest-shard',
 ]
 
 setup(
@@ -16,7 +17,7 @@ setup(
     description=(
         'Implementation of modern IRL and imitation learning algorithms.'),
     author='Center for Human-Compatible AI and Google',
-    python_requires='>=3.6.0',
+    python_requires='>=3.7.0',
     packages=find_packages('src'),
     package_dir={'': 'src'},
     package_data={'evaluating_rewards': ['py.typed']},
@@ -75,8 +76,8 @@ setup(
         'License :: OSI Approved :: MIT License',
         'Programming Language :: Python',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
         'Programming Language :: Python :: Implementation :: CPython',
         'Programming Language :: Python :: Implementation :: PyPy',
     ],
