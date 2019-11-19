@@ -1,5 +1,7 @@
 # Based on OpenAI's mujoco-py Dockerfile
 
+# base stage contains just binary dependencies.
+# This is used in the CI build.
 FROM nvidia/cuda:10.0-runtime-ubuntu18.04 AS base
 ARG DEBIAN_FRONTEND=noninteractive
 
@@ -46,20 +48,24 @@ RUN    mkdir -p /root/.mujoco \
 ENV PATH="/imitation/venv/bin:$PATH"
 ENV LD_LIBRARY_PATH /usr/local/nvidia/lib64:/root/.mujoco/mjpro150/bin:${LD_LIBRARY_PATH}
 
+# python-req stage contains Python venv, but not code.
+# It is useful for development purposes: you can mount
+# code from outside the Docker container.
 FROM base as python-req
 
 WORKDIR /imitation
 # Copy over just setup.py and __init__.py (including version)
 # to avoid rebuilding venv when requirements have not changed.
-COPY ./setup.py /imitation/setup.py
-COPY ./src/imitation/__init__.py /imitation/src/imitation/__init__.py
-COPY ./ci/build_venv.sh /imitation/ci/build_venv.sh
+COPY ./setup.py ./setup.py
+COPY ./src/imitation/__init__.py ./src/imitation/__init__.py
+COPY ./ci/build_venv.sh ./ci/build_venv.sh
 # mjkey.txt needs to exist for build, but doesn't need to be a real key
-RUN    mkdir -p /imitation/src/imitation \
-    && touch /root/.mujoco/mjkey.txt \
+RUN    touch /root/.mujoco/mjkey.txt \
     && ci/build_venv.sh \
     && rm -rf $HOME/.cache/pip
 
+# full stage contains everything.
+# Can be used for deployment and local testing.
 FROM python-req as full
 
 # Delay copying (and installing) the code until the very end
