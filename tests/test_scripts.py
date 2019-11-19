@@ -177,6 +177,8 @@ PARALLEL_CONFIG_UPDATES = [
 @pytest.mark.parametrize("config_updates", PARALLEL_CONFIG_UPDATES)
 def test_parallel(config_updates):
   """Hyperparam tuning smoke test."""
+  # CI server only has 2 cores
+  config_updates.setdefault("init_kwargs", {}).setdefault("num_cpus", 2)
   # No need for TemporaryDirectory because the hyperparameter tuning script
   # itself generates no artifacts, and "debug_log_root" sets inner experiment's
   # log_root="/tmp/parallel_debug/".
@@ -208,6 +210,8 @@ def test_analyze_gather_tb(tmpdir: str):
                                  config_updates=dict(
                                      local_dir=tmpdir,
                                      run_name="test",
+                                     # CI server only has 2 cores
+                                     init_kwargs={"num_cpus": 2},
                                  ))
   assert parallel_run.status == 'COMPLETED'
 
