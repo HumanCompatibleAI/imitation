@@ -23,7 +23,7 @@ setup(
     package_data={'evaluating_rewards': ['py.typed']},
     install_requires=[
         'awscli',
-        'gym',
+        'gym[classic_control]',
         'numpy>=1.15',
         'ray[debug]==0.7.4',
         'tqdm',
@@ -38,6 +38,7 @@ setup(
     ],
     tests_require=TESTS_REQUIRE,
     extras_require={
+        'mujoco': ['gym[mujoco]'],
         'gpu': [f'tensorflow-gpu{TF_VERSION}'],
         'cpu': [f'tensorflow{TF_VERSION}'],
         # recommended packages for development
