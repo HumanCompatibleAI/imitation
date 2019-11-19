@@ -13,6 +13,7 @@ extra_configs=""
 
 
 SEEDS="0 1 2"
+NEED_TEST_FILES="false"
 
 
 TEMP=$(getopt -o f -l fast,gail,airl,run_name:,log_root: -- $@)
@@ -25,6 +26,7 @@ while true; do
     -f | --fast)
       CONFIG_CSV="tests/data/imit_benchmark_config.csv"
       REWARD_MODELS_DIR="tests/data/reward_models"
+      NEED_TEST_FILES="true"
       SEEDS="0"
       extra_configs+="fast "
       shift
@@ -56,6 +58,21 @@ while true; do
       ;;
   esac
 done
+
+
+if [[ $NEED_TEST_FILES == "true" ]]; then
+  # Generate quick reward models for test.
+  save_dir=tests/data/reward_models/${ALGORITHM}
+
+  # Wipe directories for writing later.
+  if [[ -d ${save_dir} ]]; then
+    rm -r ${save_dir}
+  fi
+  mkdir -p ${save_dir}
+
+  experiments/imit_benchmark.sh -f --${ALGORITHM} --log_root ${save_dir}
+fi
+
 
 echo "Writing logs in ${LOG_ROOT}"
 parallel -j 25% --header : --results ${LOG_ROOT}/parallel/ --colsep , --progress \

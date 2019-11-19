@@ -39,6 +39,11 @@ while true; do
       SEEDS="0"
       OUTPUT_DIR="tests/data/expert_models"
       extra_configs+="rollout_save_n_episodes=50 "
+
+      if [[ -d ${OUTPUT_DIR} ]]; then
+        rm -r ${OUTPUT_DIR}
+      fi
+
       shift
       ;;
     --)
