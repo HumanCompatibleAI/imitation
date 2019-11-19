@@ -9,7 +9,7 @@ executors:
       - image: humancompatibleai/imitation:base
     working_directory: /imitation
     environment:
-      # If you change these, also change scripts/lint.sh
+      # If you change these, also change ci/code_checks.sh
       SRC_FILES: src/ tests/ setup.py
 
 commands:
