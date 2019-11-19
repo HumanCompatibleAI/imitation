@@ -1,5 +1,5 @@
 from setuptools import find_packages, setup
-import src.imitation
+import src.imitation  # pytype:disable=unused-import
 
 # TF 1.14.0 is not compatible with sacred because of a TF bug.
 TF_VERSION = '>=1.13.1,<2.0,!=1.14.0'

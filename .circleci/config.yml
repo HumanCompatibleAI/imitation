@@ -10,7 +10,7 @@ executors:
     working_directory: /imitation
     environment:
       # If you change these, also change ci/code_checks.sh
-      SRC_FILES: src/ tests/ setup.py
+      SRC_FILES: src/ tests/ experiments/ setup.py
 
 commands:
   dependencies:
