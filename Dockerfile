@@ -36,16 +36,15 @@ RUN curl -o /usr/local/bin/patchelf https://s3-us-west-2.amazonaws.com/openai-sc
 ENV LANG C.UTF-8
 
 RUN    mkdir -p /root/.mujoco \
-    && curl -o mujoco200.zip https://www.roboti.us/download/mujoco200_linux.zip \
-    && unzip mujoco200.zip -d /root/.mujoco \
-    && mv /root/.mujoco/mujoco200_linux /root/.mujoco/mujoco200 \
-    && rm mujoco200.zip
+    && curl -o mjpro150.zip https://www.roboti.us/download/mjpro150_linux.zip \
+    && unzip mjpro150.zip -d /root/.mujoco \
+    && rm mjpro150.zip
 
 # Set the PATH to the venv before we create the venv, so it's visible in base.
 # This is since we may create the venv outside of Docker, e.g. in CI
 # or by binding it in for local development.
 ENV PATH="/imitation/venv/bin:$PATH"
-ENV LD_LIBRARY_PATH /usr/local/nvidia/lib64:/root/.mujoco/mujoco200/bin:${LD_LIBRARY_PATH}
+ENV LD_LIBRARY_PATH /usr/local/nvidia/lib64:/root/.mujoco/mjpro150/bin:${LD_LIBRARY_PATH}
 
 FROM base as python-req
 

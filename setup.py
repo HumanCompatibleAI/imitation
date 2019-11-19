@@ -38,7 +38,6 @@ setup(
     ],
     tests_require=TESTS_REQUIRE,
     extras_require={
-        'mujoco': ['gym[mujoco]'],
         'gpu': [f'tensorflow-gpu{TF_VERSION}'],
         'cpu': [f'tensorflow{TF_VERSION}'],
         # recommended packages for development
