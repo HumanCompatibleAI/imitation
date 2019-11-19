@@ -1,5 +1,5 @@
 from setuptools import find_packages, setup
-import src.imitation
+import src.imitation  # pytype:disable=import-error
 
 # TF 1.14.0 is not compatible with sacred because of a TF bug.
 TF_VERSION = '>=1.13.1,<2.0,!=1.14.0'
@@ -8,6 +8,8 @@ TESTS_REQUIRE = [
     'codespell',
     'pytest',
     'pytest-cov',
+    'pytest-shard',
+    'pytest-xdist',
 ]
 
 setup(
@@ -16,18 +18,23 @@ setup(
     description=(
         'Implementation of modern IRL and imitation learning algorithms.'),
     author='Center for Human-Compatible AI and Google',
-    python_requires='>=3.6.0',
+    python_requires='>=3.7.0',
     packages=find_packages('src'),
     package_dir={'': 'src'},
-    package_data={'evaluating_rewards': ['py.typed']},
+    package_data={
+        'imitation': [
+            'py.typed',
+            'envs/examples/airl_envs/assets/*.xml',
+        ],
+    },
     install_requires=[
         'awscli',
-        'gym',
+        'gym[classic_control]',
         'numpy>=1.15',
         'ray[debug]==0.7.4',
         'tqdm',
         'scikit-learn>=0.21.2',
-        # TODO(adam): Change to >=2.9.0 once 2.9.0 is released, until then track master
+        # TODO(adam): Change to >=2.9.0 once 2.9.0 released
         'stable-baselines @ git+https://github.com/hill-a/stable-baselines.git',
         'jax!=0.1.37',
         'jaxlib~=0.1.20',
@@ -75,8 +82,8 @@ setup(
         'License :: OSI Approved :: MIT License',
         'Programming Language :: Python',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
         'Programming Language :: Python :: Implementation :: CPython',
         'Programming Language :: Python :: Implementation :: PyPy',
     ],

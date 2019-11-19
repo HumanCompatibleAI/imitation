@@ -174,9 +174,20 @@ PARALLEL_CONFIG_UPDATES = [
 ]
 
 
+PARALLEL_CONFIG_LOW_RESOURCE = {
+    # CI server only has 2 cores.
+    "init_kwargs": {"num_cpus": 2},
+    # Memory is low enough we only want to run one job at a time.
+    "resources_per_trial": {"cpu": 2},
+}
+
+
 @pytest.mark.parametrize("config_updates", PARALLEL_CONFIG_UPDATES)
 def test_parallel(config_updates):
   """Hyperparam tuning smoke test."""
+  # CI server only has 2 cores
+  config_updates = dict(config_updates)
+  config_updates.update(PARALLEL_CONFIG_LOW_RESOURCE)
   # No need for TemporaryDirectory because the hyperparameter tuning script
   # itself generates no artifacts, and "debug_log_root" sets inner experiment's
   # log_root="/tmp/parallel_debug/".
@@ -204,11 +215,10 @@ def test_analyze_imitation(tmpdir: str,
 
 
 def test_analyze_gather_tb(tmpdir: str):
+  config_updates = dict(local_dir=tmpdir, run_name="test")
+  config_updates.update(PARALLEL_CONFIG_LOW_RESOURCE)
   parallel_run = parallel_ex.run(named_configs=["generate_test_data"],
-                                 config_updates=dict(
-                                     local_dir=tmpdir,
-                                     run_name="test",
-                                 ))
+                                 config_updates=config_updates)
   assert parallel_run.status == 'COMPLETED'
 
   run = analysis_ex.run(
