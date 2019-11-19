@@ -9,6 +9,7 @@ TESTS_REQUIRE = [
     'pytest',
     'pytest-cov',
     'pytest-shard',
+    'pytest-xdist',
 ]
 
 setup(
@@ -20,7 +21,7 @@ setup(
     python_requires='>=3.7.0',
     packages=find_packages('src'),
     package_dir={'': 'src'},
-    package_data={'evaluating_rewards': ['py.typed']},
+    package_data={'imitation': ['py.typed']},
     install_requires=[
         'awscli',
         'gym[classic_control]',
