@@ -67,7 +67,7 @@ FROM python-req as full
 COPY . /imitation
 # Build a wheel then install to avoid copying whole directory (pip issue #2195)
 RUN python3 setup.py sdist bdist_wheel
-RUN pip install dist/aprl-*.whl
+RUN pip install dist/imitation-*.whl
 
 # Default entrypoints
 CMD ["pytest -n auto -vv tests/"]
