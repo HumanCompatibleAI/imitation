@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-SOURCE_DIRS=(src/ tests/ experiments/)
+SOURCE_DIRS=(src/ tests/ experiments/ setup.py)
 
 RET=0
 
