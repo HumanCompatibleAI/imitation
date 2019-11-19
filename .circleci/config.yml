@@ -39,7 +39,7 @@ commands:
       - save_cache:
           paths:
             - ./venv
-          key: v1-dependencies-{{ checksum "requirements-build.txt" }}-{{ checksum "requirements.txt" }}-{{ checksum "requirements-dev.txt" }}
+          key: v1-dependencies-{{ checksum "setup.py" }}
 
       - run:
           name: install imitation
