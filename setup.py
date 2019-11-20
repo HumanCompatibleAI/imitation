@@ -1,8 +1,7 @@
 from setuptools import find_packages, setup
 import src.imitation  # pytype:disable=import-error
 
-# TF 1.14.0 is not compatible with sacred because of a TF bug.
-TF_VERSION = '>=1.13.1,<2.0,!=1.14.0'
+TF_VERSION = '>=1.15.0,<2.0'
 TESTS_REQUIRE = [
     'codecov',
     'codespell',

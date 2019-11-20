@@ -2,7 +2,7 @@
 .#*
 *.html
 output/
-data/
+./data/
 auto.pkl
 
 # Byte-compiled / optimized / DLL files
