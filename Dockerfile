@@ -2,7 +2,7 @@
 
 # base stage contains just binary dependencies.
 # This is used in the CI build.
-FROM nvidia/cuda:10.0-runtime-ubuntu18.04 AS base
+FROM nvidia/cuda:10.0-cudnn7-runtime-ubuntu18.04 AS base
 ARG DEBIAN_FRONTEND=noninteractive
 
 RUN echo ttf-mscorefonts-installer msttcorefonts/accepted-mscorefonts-eula select true | debconf-set-selections \

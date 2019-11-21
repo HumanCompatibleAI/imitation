@@ -54,7 +54,7 @@ setup(
             'flake8-commas',
             'flake8-debugger',
             'flake8-isort',
-            'ntfy',
+            'ntfy[slack]',
             'sphinx',
             'sphinxcontrib-napoleon',
             'ipdb',
