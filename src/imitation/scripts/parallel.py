@@ -1,5 +1,5 @@
 import os.path as osp
-from typing import Callable, Optional
+from typing import Any, Callable, Dict, Optional
 
 import ray
 import ray.tune
@@ -15,6 +15,7 @@ def parallel(sacred_ex_name: str,
              base_named_configs: list,
              base_config_updates: dict,
              resources_per_trial: dict,
+             init_kwargs: Dict[str, Any],
              local_dir: Optional[str],
              upload_dir: Optional[str],
              ) -> None:
@@ -57,7 +58,7 @@ def parallel(sacred_ex_name: str,
   # dashboard.
   ray_loggers = ()
 
-  ray.init()
+  ray.init(**init_kwargs)
   try:
     ray.tune.run(trainable, config=search_space,
                  name=run_name,

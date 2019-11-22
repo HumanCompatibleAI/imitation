@@ -5,8 +5,10 @@ because codecov might interact poorly with multiprocessing. The 'fast'
 named_config for each experiment implicitly sets parallel=False.
 """
 
+from collections import Counter
 import os.path as osp
-from typing import Optional
+import tempfile
+from typing import List, Optional
 
 import pandas as pd
 import pytest
@@ -174,9 +176,20 @@ PARALLEL_CONFIG_UPDATES = [
 ]
 
 
+PARALLEL_CONFIG_LOW_RESOURCE = {
+    # CI server only has 2 cores.
+    "init_kwargs": {"num_cpus": 2},
+    # Memory is low enough we only want to run one job at a time.
+    "resources_per_trial": {"cpu": 2},
+}
+
+
 @pytest.mark.parametrize("config_updates", PARALLEL_CONFIG_UPDATES)
 def test_parallel(config_updates):
   """Hyperparam tuning smoke test."""
+  # CI server only has 2 cores
+  config_updates = dict(config_updates)
+  config_updates.update(PARALLEL_CONFIG_LOW_RESOURCE)
   # No need for TemporaryDirectory because the hyperparameter tuning script
   # itself generates no artifacts, and "debug_log_root" sets inner experiment's
   # log_root="/tmp/parallel_debug/".
@@ -185,30 +198,49 @@ def test_parallel(config_updates):
   assert run.status == 'COMPLETED'
 
 
-@pytest.mark.parametrize("run_name,expected_entries",
-                         [("FOO", 2), ("BAR", 4), (None, 6)])
-def test_analyze_imitation(tmpdir: str,
-                           run_name: Optional[str],
-                           expected_entries: int):
-  run = analysis_ex.run(
-    command_name="analyze_imitation",
-    config_updates=dict(
-      source_dir="tests/data/imit_benchmark",
-      run_name=run_name,
-      csv_output_path=osp.join(tmpdir, "analysis.csv"),
-      verbose=True,
-    ))
-  assert run.status == 'COMPLETED'
-  df = pd.DataFrame(run.result)
-  assert df.shape[0] == expected_entries
+@pytest.mark.parametrize("run_names", ([], list("adab")))
+def test_analyze_imitation(tmpdir: str, run_names: List[str]):
+  sacred_logs_dir = tmpdir
+
+  # Generate sacred logs (other logs are put in separate tmpdir for deletion).
+  for i, run_name in enumerate(run_names):
+    with tempfile.TemporaryDirectory(prefix="junk") as junkdir:
+      run = train_ex.run(
+        named_configs=["fast", "cartpole"],
+        config_updates=dict(
+          rollout_path="tests/data/expert_models/cartpole_0/rollouts/final.pkl",
+          log_dir=junkdir,
+          checkpoint_interval=-1,
+        ),
+        options={"--name": run_name, "--file_storage": sacred_logs_dir},
+      )
+      assert run.status == 'COMPLETED'
+
+  # Check that analyze script finds the correct number of logs.
+  def check(run_name: Optional[str], count: int) -> None:
+    run = analysis_ex.run(
+      command_name="analyze_imitation",
+      config_updates=dict(
+        source_dir=sacred_logs_dir,
+        run_name=run_name,
+        csv_output_path=osp.join(tmpdir, "analysis.csv"),
+        verbose=True,
+      ))
+    assert run.status == 'COMPLETED'
+    df = pd.DataFrame(run.result)
+    assert df.shape[0] == count
+
+  for run_name, count in Counter(run_names).items():
+    check(run_name, count)
+
+  check(None, len(run_names))  # Check total number of logs.
 
 
 def test_analyze_gather_tb(tmpdir: str):
+  config_updates = dict(local_dir=tmpdir, run_name="test")
+  config_updates.update(PARALLEL_CONFIG_LOW_RESOURCE)
   parallel_run = parallel_ex.run(named_configs=["generate_test_data"],
-                                 config_updates=dict(
-                                     local_dir=tmpdir,
-                                     run_name="test",
-                                 ))
+                                 config_updates=config_updates)
   assert parallel_run.status == 'COMPLETED'
 
   run = analysis_ex.run(
