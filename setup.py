@@ -34,6 +34,7 @@ setup(
         # sacred==0.7.5 build is broken without pymongo
         # sacred>0.7.4 have non-picklable config objects (see GH #109)
         'sacred==0.7.4',
+        'cloudpickle>=0.5.5',
     ],
     tests_require=TESTS_REQUIRE,
     extras_require={
@@ -54,6 +55,7 @@ setup(
             'isort',
             'jupyter',
             'pytype',
+            'codespell',
             # for convenience
             *TESTS_REQUIRE,
         ],
