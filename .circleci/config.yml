@@ -91,7 +91,7 @@ jobs:
           name: run tests
           command: |
             export DISPLAY=:0
-            pytest --cov=venv/lib/python3.7/site-packages/imitation --cov=tests \
+            pytest --cov=/venv/lib/python3.7/site-packages/imitation --cov=tests \
                    --junitxml=/tmp/test-reports/junit.xml \
                    --shard-id=${CIRCLE_NODE_INDEX} --num-shards=${CIRCLE_NODE_TOTAL} \
                     -vv tests/
