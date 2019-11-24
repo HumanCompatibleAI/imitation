@@ -9,6 +9,7 @@ TESTS_REQUIRE = [
     'pytest-cov',
     'pytest-shard',
     'pytest-xdist',
+    'pytype',
 ]
 
 setup(
@@ -60,7 +61,6 @@ setup(
             'ipdb',
             'isort',
             'jupyter',
-            'pytype',
             # for convenience
             *TESTS_REQUIRE,
         ],
