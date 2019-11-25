@@ -5,10 +5,19 @@ TF_VERSION = '>=1.15.0,<2.0'
 TESTS_REQUIRE = [
     'codecov',
     'codespell',
+    'flake8',
+    'flake8-blind-except',
+    'flake8-builtins',
+    'flake8-commas',
+    'flake8-debugger',
+    'flake8-isort',
     'pytest',
     'pytest-cov',
     'pytest-shard',
     'pytest-xdist',
+    'pytype',
+    'sphinx',
+    'sphinxcontrib-napoleon',
 ]
 
 setup(
@@ -48,24 +57,13 @@ setup(
         # recommended packages for development
         'dev': [
             'autopep8',
-            'flake8',
-            'flake8-blind-except',
-            'flake8-builtins',
-            'flake8-commas',
-            'flake8-debugger',
-            'flake8-isort',
             'ntfy[slack]',
-            'sphinx',
-            'sphinxcontrib-napoleon',
             'ipdb',
             'isort',
             'jupyter',
-            'pytype',
-            # for convenience
             *TESTS_REQUIRE,
         ],
-        'test':
-        TESTS_REQUIRE,
+        'test': TESTS_REQUIRE,
     },
     entry_points={
         'console_scripts': [
