@@ -45,7 +45,7 @@ RUN    mkdir -p /root/.mujoco \
 # Set the PATH to the venv before we create the venv, so it's visible in base.
 # This is since we may create the venv outside of Docker, e.g. in CI
 # or by binding it in for local development.
-ENV PATH="/imitation/venv/bin:$PATH"
+ENV PATH="/venv/bin:$PATH"
 ENV LD_LIBRARY_PATH /usr/local/nvidia/lib64:/root/.mujoco/mjpro150/bin:${LD_LIBRARY_PATH}
 
 # python-req stage contains Python venv, but not code.
@@ -61,7 +61,7 @@ COPY ./src/imitation/__init__.py ./src/imitation/__init__.py
 COPY ./ci/build_venv.sh ./ci/build_venv.sh
 # mjkey.txt needs to exist for build, but doesn't need to be a real key
 RUN    touch /root/.mujoco/mjkey.txt \
-    && ci/build_venv.sh \
+    && ci/build_venv.sh /venv \
     && rm -rf $HOME/.cache/pip
 
 # full stage contains everything.
