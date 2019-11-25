@@ -114,6 +114,10 @@ class _TrajectoryAccumulator:
     """
     self.partial_trajectories[idx].append(step_dict)
 
+  def reset(self, idx):
+    if idx in self.partial_trajectories:
+      del self.partial_trajectories[idx]
+
 
 GenTrajTerminationFn = Callable[[Sequence[Trajectory]], bool]
 
