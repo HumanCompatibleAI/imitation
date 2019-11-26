@@ -5,9 +5,10 @@ acrobot,10
 half_cheetah,25
 hopper,25
 walker,25
+swimmer,25
 ant,25
-custom_ant,25
-disabled_ant,25
 humanoid,240
 reacher,25
 two_d_maze,25
+custom_ant,25
+disabled_ant,25
