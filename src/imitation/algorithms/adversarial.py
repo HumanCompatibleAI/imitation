@@ -4,7 +4,7 @@ from warnings import warn
 
 import numpy as np
 from stable_baselines.common.base_class import BaseRLModel
-from stable_baselines.common.vec_env import VecEnv
+from stable_baselines.common.vec_env import VecEnv, VecNormalize
 import tensorflow as tf
 from tqdm import tqdm
 
@@ -103,7 +103,7 @@ class AdversarialTrainer:
     self._sess.run(tf.global_variables_initializer())
 
     if debug_use_ground_truth:
-      self.venv_train = self.venv_test = self.venv
+      self.venv_train = self.venv_test = self.venv_train_norm = self.venv
     else:
       reward_train = partial(
           self.discrim.reward_train,
@@ -112,6 +112,9 @@ class AdversarialTrainer:
           self.venv, reward_train)
       self.venv_test = reward_wrapper.RewardVecEnvWrapper(
           self.venv, self.discrim.reward_test)
+
+      self.venv_train_norm = VecNormalize(
+          self.venv_train, norm_obs=False, norm_reward=True)
 
     if gen_replay_buffer_capacity is None:
       gen_replay_buffer_capacity = 20 * self._n_disc_samples_per_buffer
@@ -155,7 +158,7 @@ class AdversarialTrainer:
         self._summarize(fd, step)
 
   def train_gen(self, n_steps=10000):
-    self._gen_policy.set_env(self.venv_train)
+    self._gen_policy.set_env(self.venv_train_norm)
     # TODO(adam): learn was not intended to be called for each training batch
     # It should work, but might incur unnecessary overhead: e.g. in PPO2
     # a new Runner instance is created each time. Also a hotspot for errors:
