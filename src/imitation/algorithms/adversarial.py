@@ -103,16 +103,18 @@ class AdversarialTrainer:
     self._sess.run(tf.global_variables_initializer())
 
     if debug_use_ground_truth:
-      self.venv_train = self.venv_test = self.venv_train_norm = self.venv
+      self.venv_train = self.venv_test = self.venv
     else:
       reward_train = partial(
           self.discrim.reward_train,
           gen_log_prob_fn=self._gen_policy.action_probability)
+
       self.venv_train = reward_wrapper.RewardVecEnvWrapper(
           self.venv, reward_train)
       self.venv_test = reward_wrapper.RewardVecEnvWrapper(
           self.venv, self.discrim.reward_test)
-      self.venv_train_norm = VecNormalize(self.venv_train)
+
+    self.venv_train_norm = VecNormalize(self.venv_train)
 
     if gen_replay_buffer_capacity is None:
       gen_replay_buffer_capacity = 20 * self._n_disc_samples_per_buffer
@@ -282,8 +284,13 @@ class AdversarialTrainer:
     assert n_gen == len(gen_acts)
     assert n_gen == len(gen_next_obs)
 
+    # Normalize expert observations to match generator observations.
+    assert isinstance(self.venv_train_norm, VecNormalize)
+    expert_obs_norm = self.venv_train_norm._normalize_observation(
+      expert_sample.obs)
+
     # Concatenate rollouts, and label each row as expert or generator.
-    obs = np.concatenate([expert_sample.obs, gen_obs])
+    obs = np.concatenate([expert_obs_norm, gen_obs])
     acts = np.concatenate([expert_sample.acts, gen_acts])
     next_obs = np.concatenate([expert_sample.next_obs, gen_next_obs])
     labels = np.concatenate([np.zeros(n_expert, dtype=int),
