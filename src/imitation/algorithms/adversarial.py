@@ -112,9 +112,7 @@ class AdversarialTrainer:
           self.venv, reward_train)
       self.venv_test = reward_wrapper.RewardVecEnvWrapper(
           self.venv, self.discrim.reward_test)
-
-      self.venv_train_norm = VecNormalize(
-          self.venv_train, norm_obs=False, norm_reward=True)
+      self.venv_train_norm = VecNormalize(self.venv_train)
 
     if gen_replay_buffer_capacity is None:
       gen_replay_buffer_capacity = 20 * self._n_disc_samples_per_buffer
