@@ -13,6 +13,7 @@ from typing import Optional
 from matplotlib import pyplot as plt
 from sacred.observers import FileStorageObserver
 from stable_baselines import logger as sb_logger
+from stable_baselines.common.vec_env import VecNormalize
 import tensorflow as tf
 import tqdm
 
@@ -168,9 +169,8 @@ def train(_run,
 
       if visualizer and epoch % plot_interval == 0:
         visualizer.plot_disc_loss()
-        visualizer.add_data_ep_reward(trainer.venv, "Ground Truth Reward")
-        visualizer.add_data_ep_reward(trainer.venv_train, "Train Reward")
-        visualizer.add_data_ep_reward(trainer.venv_test, "Test Reward")
+        # Add episode mean rewards only at plot time because it is expensive.
+        visualizer.add_data_ep_reward()
         visualizer.plot_ep_reward()
 
       if checkpoint_interval > 0 and epoch % checkpoint_interval == 0:
@@ -211,6 +211,15 @@ class _TrainVisualizer:
       expert_mean_ep_reward: If provided, then also plot the performance of
         the expert policy.
     """
+    def normalize_obs_only(venv):
+      assert not isinstance(venv, VecNormalize)
+      return util.reapply_vec_normalize(
+        venv, trainer.venv_train_norm, disable_norm_reward=True)
+
+    self.venv_norm_obs = normalize_obs_only(trainer.venv)
+    self.venv_train_norm_obs = normalize_obs_only(trainer.venv_train)
+    self.venv_test_norm_obs = normalize_obs_only(trainer.venv_test)
+
     self.trainer = trainer
     self.show_plots = show_plots
     self.n_episodes_per_reward_data = n_episodes_per_reward_data
@@ -225,9 +234,6 @@ class _TrainVisualizer:
 
     # Collect data for epoch 0.
     self.add_data_disc_loss(False)
-    self.add_data_ep_reward(self.trainer.venv, "Ground Truth Reward")
-    self.add_data_ep_reward(self.trainer.venv_train, "Train Reward")
-    self.add_data_ep_reward(self.trainer.venv_test, "Test Reward")
 
   def add_data_disc_loss(self, generator_active: bool = False):
     """Evaluates and records the discriminator loss for plotting later.
@@ -257,8 +263,13 @@ class _TrainVisualizer:
     plt.legend()
     self._savefig("plot_fight_loss_disc", self.show_plots)
 
-  def add_data_ep_reward(self, env, name):
+  def add_data_ep_reward(self):
     """Calculate and record average episode returns."""
+    self._add_data_ep_reward(self.venv_norm_obs, "Ground Truth Reward")
+    self._add_data_ep_reward(self.venv_train_norm_obs, "Train Reward")
+    self._add_data_ep_reward(self.venv_test_norm_obs, "Test Reward")
+
+  def _add_data_ep_reward(self, env, name):
     sample_until = util.rollout.min_episodes(self.n_episodes_per_reward_data)
 
     gen_policy = self.trainer.gen_policy
