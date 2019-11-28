@@ -100,4 +100,4 @@ class LayersSerializable(Serializable):
       with open(obj_path, 'wb') as f:
         pickle.dump(self, f)
 
-    self._checkpoint.save(file_prefix=os.path.join(directory, "weights"))
+    self.save_parameters(directory)
