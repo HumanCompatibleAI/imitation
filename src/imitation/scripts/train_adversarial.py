@@ -280,6 +280,9 @@ class _TrainVisualizer:
 
   def add_data_ep_reward(self, epoch):
     """Calculate and record average episode returns."""
+    if epoch in self.ep_reward_X:
+      # Don't calculate ep reward twice.
+      return
     self.ep_reward_X.append(epoch)
     self._add_data_ep_reward(self.venv_norm_obs, "Ground Truth Reward")
     self._add_data_ep_reward(self.venv_train_norm_obs, "Train Reward")
