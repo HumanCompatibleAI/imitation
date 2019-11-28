@@ -73,7 +73,9 @@ def build_sacred_symlink(log_dir: str, run: sacred.run.Run) -> None:
     warnings.warn(RuntimeWarning("Couldn't find sacred directory."))
     return
   symlink_path = os.path.join(log_dir, "sacred")
-  os.symlink(os.path.abspath(sacred_dir), symlink_path)
+  # Use relative paths so we can mount the output directory at different paths
+  # (e.g. when copying across machines).
+  os.symlink(os.path.relpath(sacred_dir), symlink_path)
 
 
 def get_sacred_dir_from_run(run: sacred.run.Run) -> Union[str, None]:
