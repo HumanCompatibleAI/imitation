@@ -52,6 +52,7 @@ def train(_run,
 
           plot_interval: int,
           n_plot_episodes: int,
+          extra_episode_data_interval: int,
           show_plots: bool,
           init_tensorboard: bool,
 
@@ -98,11 +99,15 @@ def train(_run,
     n_episodes_eval: The number of episodes to average over when calculating
       the average episode reward of the imitation policy for return.
 
-    plot_interval: The number of epochs between each plot. (If nonpositive,
-      then plots are disabled).
+    plot_interval: The number of epochs between each plot. If negative,
+      then plots are disabled. If zero, then only plot at the end of training.
     n_plot_episodes: The number of episodes averaged over when
       calculating the average episode reward of a policy for the performance
       plots.
+    extra_episode_data_interval: Usually mean episode rewards are calculated
+      immediately before every plot. Set this parameter to a nonnegative number
+      to also add episode reward data points every
+      `extra_episodes_data_interval` epochs.
     show_plots: Figures are always saved to `f"{log_dir}/plots/*.png"`. If
       `show_plots` is True, then also show plots as they are created.
     init_tensorboard: If True, then write tensorboard logs to `{log_dir}/sb_tb`.
@@ -147,7 +152,7 @@ def train(_run,
                            seed=_seed, log_dir=log_dir,
                            **init_trainer_kwargs)
 
-    if plot_interval > 0:
+    if plot_interval >= 0:
       visualizer = _TrainVisualizer(
         trainer=trainer,
         show_plots=show_plots,
@@ -161,23 +166,32 @@ def train(_run,
     for epoch in tqdm.tqdm(range(1, n_epochs+1), desc="epoch"):
       trainer.train_disc(n_disc_steps_per_epoch)
       if visualizer:
-        visualizer.add_data_disc_loss(False)
+        visualizer.add_data_disc_loss(False, epoch)
 
       trainer.train_gen(n_gen_steps_per_epoch)
       if visualizer:
-        visualizer.add_data_disc_loss(True)
+        visualizer.add_data_disc_loss(True, epoch)
 
-      if visualizer and epoch % plot_interval == 0:
-        visualizer.plot_disc_loss()
-        # Add episode mean rewards only at plot time because it is expensive.
-        visualizer.add_data_ep_reward()
-        visualizer.plot_ep_reward()
+        if (extra_episode_data_interval > 0
+            and epoch % extra_episode_data_interval == 0):  # noqa: E129
+          visualizer.add_data_ep_reward(epoch)
+
+        if plot_interval > 0 and epoch % plot_interval == 0:
+          visualizer.plot_disc_loss()
+          visualizer.add_data_ep_reward(epoch)
+          # Add episode mean rewards only at plot time because it is expensive.
+          visualizer.plot_ep_reward()
 
       if checkpoint_interval > 0 and epoch % checkpoint_interval == 0:
         save(trainer, os.path.join(log_dir, "checkpoints", f"{epoch:05d}"))
 
     # Save final artifacts.
     save(trainer, os.path.join(log_dir, "checkpoints", "final"))
+
+    if visualizer:
+      visualizer.plot_disc_loss()
+      visualizer.add_data_ep_reward(epoch)
+      visualizer.plot_ep_reward()
 
     # Final evaluation of imitation policy.
     results = {}
@@ -229,13 +243,15 @@ class _TrainVisualizer:
     self.gen_data = ([], [])
     self.disc_data = ([], [])
 
+    self.ep_reward_X = []
     self.gen_ep_reward = defaultdict(list)
     self.rand_ep_reward = defaultdict(list)
 
     # Collect data for epoch 0.
-    self.add_data_disc_loss(False)
+    self.add_data_disc_loss(False, 0)
+    self.add_data_ep_reward(0)
 
-  def add_data_disc_loss(self, generator_active: bool = False):
+  def add_data_disc_loss(self, generator_active: bool, epoch: int):
     """Evaluates and records the discriminator loss for plotting later.
 
     Args:
@@ -245,13 +261,12 @@ class _TrainVisualizer:
     """
     mode = "gen" if generator_active else "dis"
     X, Y = self.gen_data if generator_active else self.disc_data
-    # Divide by two since we get two data points (gen and disc) per epoch.
-    X.append(self.plot_idx / 2)
+    if not generator_active:
+      X.append(epoch)
+    else:
+      X.append(epoch + 0.5)
     Y.append(self.trainer.eval_disc_loss())
-    tf.logging.info(
-        "plot idx ({}): {} disc loss: {}"
-        .format(mode, self.plot_idx, Y[-1]))
-    self.plot_idx += 1
+    tf.logging.info("epoch ({}): {} disc loss: {}".format(mode, epoch, Y[-1]))
 
   def plot_disc_loss(self):
     """Render a plot of discriminator loss vs. training epoch number."""
@@ -263,8 +278,9 @@ class _TrainVisualizer:
     plt.legend()
     self._savefig("plot_fight_loss_disc", self.show_plots)
 
-  def add_data_ep_reward(self):
+  def add_data_ep_reward(self, epoch):
     """Calculate and record average episode returns."""
+    self.ep_reward_X.append(epoch)
     self._add_data_ep_reward(self.venv_norm_obs, "Ground Truth Reward")
     self._add_data_ep_reward(self.venv_train_norm_obs, "Train Reward")
     self._add_data_ep_reward(self.venv_test_norm_obs, "Test Reward")
@@ -289,8 +305,9 @@ class _TrainVisualizer:
       plt.xlabel("epochs")
       plt.ylabel("Average reward per episode (n={})"
                  .format(self.n_episodes_per_reward_data))
-      plt.plot(self.gen_ep_reward[name], label="avg gen ep reward", c="red")
-      plt.plot(self.rand_ep_reward[name],
+      X = self.ep_reward_X
+      plt.plot(X, self.gen_ep_reward[name], label="avg gen ep reward", c="red")
+      plt.plot(X, self.rand_ep_reward[name],
                label="avg random ep reward", c="black")
       if self.expert_mean_ep_reward is not None:
         plt.hlines(y=self.expert_mean_ep_reward,
