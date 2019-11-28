@@ -75,7 +75,8 @@ def build_sacred_symlink(log_dir: str, run: sacred.run.Run) -> None:
   symlink_path = os.path.join(log_dir, "sacred")
   # Use relative paths so we can mount the output directory at different paths
   # (e.g. when copying across machines).
-  os.symlink(os.path.relpath(sacred_dir), symlink_path)
+  os.symlink(os.path.relpath(sacred_dir), symlink_path,
+             target_is_directory=True)
 
 
 def get_sacred_dir_from_run(run: sacred.run.Run) -> Union[str, None]:
