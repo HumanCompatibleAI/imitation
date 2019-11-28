@@ -70,7 +70,13 @@ class LayersSerializable(Serializable):
     return (make_cls, (type(self), self._args, self._kwargs))
 
   def save_parameters(self, directory: str) -> None:
-    self._checkpoint.save(file_prefix=os.path.join(directory, "weights"))
+    file_prefix = os.path.join(directory, "weights")
+    # TensorFlow stores a path to the latest checkpoint. It will use a relative
+    # path if you give a relative `file_prefix`, otherwise it will use
+    # absolute paths. We want it to use relative paths so saved models are
+    # portable across machines. See TF issue #2973.
+    file_prefix = os.path.relpath(file_prefix)
+    self._checkpoint.save(file_prefix=file_prefix)
 
   def load_parameters(self, directory: str) -> None:
     restore = self._checkpoint.restore(tf.train.latest_checkpoint(directory))
