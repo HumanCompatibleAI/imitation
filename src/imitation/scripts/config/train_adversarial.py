@@ -90,11 +90,6 @@ def airl():
 
 
 @train_ex.named_config
-def plots():
-  plot_interval = 10
-
-
-@train_ex.named_config
 def acrobot():
   env_name = "Acrobot-v1"
   rollout_hint = "acrobot"

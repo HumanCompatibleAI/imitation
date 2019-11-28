@@ -103,8 +103,8 @@ def reapply_vec_normalize(venv: VecEnv,
   if disable_norm_reward:
     state['norm_reward'] = False
 
-  result = VecNormalize(venv=None)
-  result.__set_state__(state)
+  result = VecNormalize.__new__(VecNormalize)
+  result.__setstate__(state)
   result.set_venv(venv)
   return result
 
