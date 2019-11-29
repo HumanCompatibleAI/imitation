@@ -134,7 +134,7 @@ class InteractiveTrajectoryCollector:
       timestamp = util.make_unique_timestamp()
       trajectory_path = os.path.join(
           self.save_dir, 'dagger-demo-' + timestamp + '.npz')
-      print(f"Saving demo at '{trajectory_path}'")
+      tf.logging.info(f"Saving demo at '{trajectory_path}'")
       _save_trajectory(trajectory_path, trajectory)
 
     if done:
@@ -210,7 +210,8 @@ class DAggerTrainer:
     self.env = env
     self.round_num = 0
     self.bc_kwargs = bc_kwargs
-    self._loaded_demos = False
+    self._last_loaded_round = -1
+    self._all_demos = []
 
     self._build_graph()
 
@@ -226,13 +227,13 @@ class DAggerTrainer:
 
   def _load_all_demos(self):
     num_demos_by_round = []
-    all_demos = []
-    for round_num in range(self.round_num + 1):
+    for round_num in range(self._last_loaded_round + 1, self.round_num + 1):
       round_dir = self._demo_dir_path_for_round(round_num)
       demo_paths = self._get_demo_paths(round_dir)
-      all_demos.extend(_load_trajectory(p) for p in demo_paths)
+      self._all_demos.extend(_load_trajectory(p) for p in demo_paths)
       num_demos_by_round.append(len(demo_paths))
-    demo_transitions = rollout.flatten_trajectories(all_demos)
+    tf.logging.info(f"Loaded {len(self._all_demos)} total")
+    demo_transitions = rollout.flatten_trajectories(self._all_demos)
     return demo_transitions, num_demos_by_round
 
   def _get_demo_paths(self, round_dir):
@@ -258,11 +259,12 @@ class DAggerTrainer:
 
   def _try_load_demos(self):
     self._check_has_latest_demos()
-    if not self._loaded_demos:
+    if self._last_loaded_round < self.round_num:
       transitions, num_demos = self._load_all_demos()
-      print(f"Loaded {sum(num_demos)} demos from {len(num_demos)} rounds")
+      tf.logging.info(
+        f"Loaded {sum(num_demos)} new demos from {len(num_demos)} rounds")
       self.bc_trainer.set_expert_dataset(transitions)
-      self._loaded_demos = True
+      self._last_loaded_round = self.round_num
 
   @property
   def _sess(self):
@@ -286,12 +288,12 @@ class DAggerTrainer:
 
     Returns:
         round_num: new round number after advancing the round counter."""
-    print("Loading demonstrations")
+    tf.logging.info("Loading demonstrations")
     self._try_load_demos()
-    print(f"Training at round {self.round_num}")
+    tf.logging.info(f"Training at round {self.round_num}")
     self.bc_trainer.train(**train_kwargs)
     self.round_num += 1
-    print(f"New round number is {self.round_num}")
+    tf.logging.info(f"New round number is {self.round_num}")
     return self.round_num
 
   def get_trajectory_collector(self) -> InteractiveTrajectoryCollector:
