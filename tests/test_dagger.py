@@ -38,13 +38,14 @@ def test_traj_collector(tmpdir):
       beta=0.5,
       save_dir=tmpdir)
   collector.reset()
-  obs, rew, done, info = collector.step(0)
+  zero_action = np.zeros((), dtype='int')
+  obs, rew, done, info = collector.step(zero_action)
   assert rew != 0
   assert not done
   assert isinstance(info, dict)
   # roll out ~5 episodes
   for i in range(999):
-    _, _, done, _ = collector.step(0)
+    _, _, done, _ = collector.step(zero_action)
     if done:
         collector.reset()
 
