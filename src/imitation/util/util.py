@@ -47,9 +47,12 @@ def make_vec_env(env_name: str,
       max_episode_steps: If specified, wraps VecEnv in TimeLimit wrapper with
           this episode length before returning.
   """
-  def make_env(i):
+  def make_env(i, this_seed):
     env = gym.make(env_name)
-    env.seed(seed + i)  # seed each environment separately for diversity
+    # Seed each environment with a different, non-sequential seed for diversity
+    # (even if caller is passing us sequentially-assigned base seeds). int() is
+    # necessary to work around gym bug where it chokes on numpy int64s.
+    env.seed(int(this_seed))
 
     if max_episode_steps is not None:
       env = TimeLimit(env, max_episode_steps)
@@ -62,7 +65,10 @@ def make_vec_env(env_name: str,
       os.makedirs(log_subdir, exist_ok=True)
       log_path = os.path.join(log_subdir, f'mon{i:03d}')
     return MonitorPlus(env, log_path, allow_early_resets=True)
-  env_fns = [functools.partial(make_env, i) for i in range(n_envs)]
+  rng = np.random.RandomState(seed)
+  env_seeds = rng.randint(0, (1 << 31) - 1, (n_envs, ))
+  env_fns = [functools.partial(make_env, i, s)
+             for i, s in enumerate(env_seeds)]
   if parallel:
     # See GH hill-a/stable-baselines issue #217
     return SubprocVecEnv(env_fns, start_method='forkserver')

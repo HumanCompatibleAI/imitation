@@ -38,7 +38,8 @@ def set_tf_vars(*,
     tf_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=scope)
   else:
     assert tf_vars is not None, "must give either `tf_vars` xor `scope` kwargs"
-  assert len(tf_vars) == len(values)
+  assert len(tf_vars) == len(values), f"{len(tf_vars)} tf variables but " \
+                                      f"{len(values)} values supplied"
   sess = sess or tf.get_default_session()
   assert sess is not None, "must supply session or have one in context"
   placeholders = [
@@ -56,11 +57,14 @@ class BCTrainer:
   Recovers only a policy.
 
   Args:
-    env (gym.Env): environment to train on.
-    expert_rollouts: A tuple of four arrays from expert rollouts,
-        `obs`, `act`, `next_obs`, `reward`.
-    policy_class (BasePolicy): used to instantiate imitation policy.
-    batch_size (int): batch size used for training.
+    env: environment to train on.
+    expert_rollouts: A tuple of four arrays from expert rollouts, `obs`, `act`,
+        `next_obs`, `reward`.
+    policy_class: used to instantiate imitation policy.
+    batch_size: batch size used for training.
+    optimiser_cls: optimiser to use for supervised training.
+    optimiser_kwargs: keyword arguments to pass to optimiser when constructing
+        it.
     """
 
   def __init__(self,
@@ -70,7 +74,9 @@ class BCTrainer:
                policy_class: Type[ActorCriticPolicy] = FeedForward32Policy,
                batch_size: int = 32,
                optimiser_cls: Type[tf.train.Optimizer] = tf.train.AdamOptimizer,
-               optimiser_kwargs: Optional[dict] = None):
+               optimiser_kwargs: Optional[dict] = None,
+               name_scope: Optional[str] = None,
+               reuse: bool = False):
     self.env = env
     self.policy_class = policy_class
     self.batch_size = batch_size
@@ -78,11 +84,10 @@ class BCTrainer:
       self.set_expert_dataset(expert_demos)
     else:
       self.expert_dataset = None
-    self.graph = tf.Graph()
-    self.sess = tf.Session(graph=self.graph)
-    with self.graph.as_default():
-      self._build_tf_graph()
-      self.sess.run(tf.global_variables_initializer())
+    self.sess = tf.get_default_session()
+    assert self.sess is not None, "need to construct this within a session scope"
+    self._build_tf_graph()
+    self.sess.run(tf.global_variables_initializer())
 
   def set_expert_dataset(self, expert_demos: rollout.Transitions):
     """Replace the current expert dataset with a new one. Useful for DAgger and
@@ -208,11 +213,12 @@ class BCTrainer:
     # construct the policy class
     klass = loaded_pickle['class']
     kwargs = loaded_pickle['kwargs']
-    rv_pol = klass(sess=sess, **kwargs)
+    with tf.variable_scope('reconstructed_policy'):
+      rv_pol = klass(sess=sess, **kwargs)
+      inner_scope = tf.get_variable_scope().name
 
     # set values for the new policy's parameters
     param_values = loaded_pickle['params']
-    inner_scope = tf.get_variable_scope().name
     set_tf_vars(values=param_values, scope=inner_scope, sess=sess)
 
     return rv_pol

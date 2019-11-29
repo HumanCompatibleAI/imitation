@@ -3,7 +3,6 @@ BC, collecting more demonstrations, doing BC again, etc. Initially the
 demonstrations just come from the expert's policy; over time, they shift to be
 drawn more and more from the imitator's policy."""
 
-import datetime
 import os
 from typing import Callable, Tuple
 
@@ -14,7 +13,7 @@ from stable_baselines.common.policies import BasePolicy
 import tensorflow as tf
 
 from imitation.algorithms.bc import BCTrainer, set_tf_vars
-from imitation.util import rollout
+from imitation.util import rollout, util
 
 
 def linear_beta_schedule(rampdown_rounds: int) -> Callable[[int], float]:
@@ -59,7 +58,7 @@ class InteractiveTrajectoryCollector:
   automatically save trajectories."""
   def __init__(self, env: gym.Env,
                get_robot_act: Callable[[np.ndarray], np.ndarray], beta: float,
-               save_dir: str, save_suffix: str):
+               save_dir: str):
     """Trajectory collector constructor.
 
     Args:
@@ -69,15 +68,13 @@ class InteractiveTrajectoryCollector:
             single action.
         beta: fraction of the time to use action given to .step() instead of
             robot action.
-        save_dir: directory to save collected trajectories in.
-        save_suffix: suffix to append to training files (e.g. `.pkl.gz`)"""
+        save_dir: directory to save collected trajectories in."""
     self.get_robot_act = get_robot_act
     assert 0 <= beta <= 1
     self.beta = beta
     self.env = env
-    self.traj_accum = rollout._TrajectoryAccumulator()
+    self.traj_accum = rollout.TrajectoryAccumulator()
     self.done_before = False
-    self.save_suffix = save_suffix
     self.save_dir = save_dir
     self._last_obs = None
     self._done_before = True
@@ -92,10 +89,10 @@ class InteractiveTrajectoryCollector:
 
     Returns:
         obs: first observation of a new trajectory."""
-    self.traj_accum.reset(0)
+    self.traj_accum.reset()
     obs = self.env.reset()
     self._last_obs = obs
-    self.traj_accum.add_step(0, {'obs': obs})
+    self.traj_accum.add_step({'obs': obs})
     self._done_before = False
     self._is_reset = True
     return obs
@@ -124,7 +121,7 @@ class InteractiveTrajectoryCollector:
     # actually step the env & record data as appropriate
     next_obs, reward, done, info = self.env.step(actual_act)
     self._last_obs = next_obs
-    self.traj_accum.add_step(0, {
+    self.traj_accum.add_step({
         'acts': user_action,
         'obs': next_obs,
         'rews': reward,
@@ -133,11 +130,10 @@ class InteractiveTrajectoryCollector:
 
     # if we're finished, then save the trajectory & print a message
     if done and not self._done_before:
-      trajectory = self.traj_accum.finish_trajectory(0)
-      now = datetime.datetime.now()
-      date_str = now.strftime('%FT%k:%M:%S')
+      trajectory = self.traj_accum.finish_trajectory()
+      timestamp = util.make_unique_timestamp()
       trajectory_path = os.path.join(
-          self.save_dir, 'dagger-demo-' + date_str + self.save_suffix)
+          self.save_dir, 'dagger-demo-' + timestamp + '.npz')
       print(f"Saving demo at '{trajectory_path}'")
       _save_trajectory(trajectory_path, trajectory)
 
@@ -202,10 +198,10 @@ class DAggerTrainer:
         **bc_kwargs: additional arguments for constructing the `BCTrainer` that
             will be used to train the underlying policy."""
     # for pickling
-    self.__init_args = locals()
-    self.__init_args.update(bc_kwargs)
-    del self.__init_args['self']
-    del self.__init_args['bc_kwargs']
+    self._init_args = locals()
+    self._init_args.update(bc_kwargs)
+    del self._init_args['self']
+    del self._init_args['bc_kwargs']
 
     if beta_schedule is None:
       beta_schedule = linear_beta_schedule(15)
@@ -223,8 +219,10 @@ class DAggerTrainer:
       self.bc_trainer = BCTrainer(self.env,
                                   expert_demos=None,
                                   **self.bc_kwargs)
-      self.__vars = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES,
-                                      scope=tf.get_variable_scope().name)
+      with self._graph.as_default():
+        self._vars = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES,
+                                       scope=tf.get_variable_scope().name)
+      assert len(self._vars) > 0
 
   def _load_all_demos(self):
     num_demos_by_round = []
@@ -270,6 +268,10 @@ class DAggerTrainer:
   def _sess(self):
     return self.bc_trainer.sess
 
+  @property
+  def _graph(self):
+    return self.bc_trainer.sess.graph
+
   def extend_and_update(self, **train_kwargs) -> int:
     """Load new transitions (if necessary), train the model for a while, and
     advance the round counter. If there are no fresh demonstrations in the
@@ -311,8 +313,7 @@ class DAggerTrainer:
     collector = InteractiveTrajectoryCollector(env=self.env,
                                                get_robot_act=get_robot_act,
                                                beta=beta,
-                                               save_dir=save_dir,
-                                               save_suffix=self.DEMO_SUFFIX)
+                                               save_dir=save_dir)
 
     return collector
 
@@ -337,8 +338,8 @@ class DAggerTrainer:
         for attr_name in self.SAVE_ATTRS
     }
     snapshot_dict = {
-        'init_args': self.__init_args,
-        'variable_values': self._sess.run(self.__vars),
+        'init_args': self._init_args,
+        'variable_values': self._sess.run(self._vars),
         'saved_attrs': saved_attrs,
     }
     for checkpoint_path in checkpoint_paths:
@@ -375,7 +376,7 @@ class DAggerTrainer:
     trainer = cls(**saved_trainer['init_args'])
     # set TF variables
     set_tf_vars(values=saved_trainer['variable_values'],
-                tf_vars=trainer.__vars,
+                tf_vars=trainer._vars,
                 sess=trainer.bc_trainer.sess)
     for attr_name in cls.SAVE_ATTRS:
       attr_value = saved_trainer['saved_attrs'][attr_name]

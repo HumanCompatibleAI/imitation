@@ -20,7 +20,7 @@ def make_trainer():
   return bc.BCTrainer(env, expert_demos=rollouts)
 
 
-def test_bc():
+def test_bc(session):
   bc_trainer = make_trainer()
   novice_stats = bc_trainer.test_policy()
   bc_trainer.train(n_epochs=40)
@@ -31,7 +31,7 @@ def test_bc():
   assert good_stats["return_mean"] > 350.0
 
 
-def test_save_reload(tmpdir):
+def test_save_reload(tmpdir, session):
   bc_trainer = make_trainer()
   pol_path = os.path.join(tmpdir, 'policy.pkl')
   # just to change the values a little
