@@ -85,7 +85,8 @@ class BCTrainer:
     else:
       self.expert_dataset = None
     self.sess = tf.get_default_session()
-    assert self.sess is not None, "need to construct this within a session scope"
+    assert self.sess is not None, \
+        "need to construct this within a session scope"
     self._build_tf_graph()
     self.sess.run(tf.global_variables_initializer())
 
