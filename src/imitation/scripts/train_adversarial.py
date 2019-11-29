@@ -281,13 +281,16 @@ class _TrainVisualizer:
       plt.plot(self.gen_ep_reward[name], label="avg gen ep reward", c="red")
       plt.plot(self.rand_ep_reward[name],
                label="avg random ep reward", c="black")
-      if self.expert_mean_ep_reward is not None:
-        plt.hlines(y=self.expert_mean_ep_reward,
-                   linestyles='dashed',
-                   label="expert (return={self.expert_mean_ep_reward:.2g})",
-                   c="black")
+
+      name = name.lower().replace(' ', '-')
+      if (self.expert_mean_ep_reward is not None and
+              name == "ground-truth-reward"):
+          plt.axhline(y=self.expert_mean_ep_reward,
+                      linestyle='dashed',
+                      label=f"expert (return={self.expert_mean_ep_reward:.2g})",
+                      color="black")
       plt.legend()
-      self._savefig("plot_fight_epreward_gen", self.show_plots)
+      self._savefig(f"plot_fight_epreward_gen_{name}", self.show_plots)
 
   def _savefig(self, prefix="", also_show=True):
     plot_dir = osp.join(self.log_dir, "plots")
@@ -297,6 +300,7 @@ class _TrainVisualizer:
     tf.logging.info("plot saved to {}".format(path))
     if also_show:
       plt.show()
+    plt.clf()
 
 
 def main_console():
