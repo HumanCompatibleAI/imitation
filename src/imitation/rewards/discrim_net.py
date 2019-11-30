@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 import os
 import pickle
-from typing import Callable, Iterable, Optional
+from typing import Callable, Iterable, Tuple
 
 import gym
 import numpy as np
@@ -13,7 +13,7 @@ from imitation.util import serialize
 
 
 class DiscrimNet(serialize.Serializable, ABC):
-  """Abstract base class for discriminator, used in multiple IRL methods."""
+  """Abstract base class for discriminator, used in AIRL and GAIL."""
 
   def __init__(self):
     self._sess = tf.get_default_session()
@@ -273,22 +273,69 @@ class DiscrimNetAIRL(DiscrimNet):
     return cls(reward_net=reward_net, **params)
 
 
+DiscrimNetBuilder = Callable[[tf.Tensor, tf.Tensor],
+                             Tuple[util.LayersDict, tf.Tensor]]
+"""Type alias for function that takes an observation and action tensor and
+produces a tuple containing (1) a list of used TF layers, and (2) output logits
+for GAIL."""
+
+
+class build_mlp_discrim_net:
+  # This should be a function that returns a closure, but that would make
+  # Pickle throw a fit when we try to serialise DiscrimNetGAIL, so instead it's
+  # a class.
+  # FIXME: consider refactoring all uses of this to use tf.keras.Model instead
+  # of passing in constructor functions. May be able to avoid
+  # LayersSerializable that way & just pickle (or .save()) models directly.
+  def __init__(self, hid_sizes: Iterable[int] = (32, 32)):
+    """Build a callable that creates a simple MLP-based discriminator for GAIL.
+    The returned function can be passed into the `build_discrim_net` argument of
+    `DiscrimNetGAIL`.
+
+    Args:
+        hid_sizes: list of layer sizes for each hidden layer of the network."""
+    self.hid_sizes = hid_sizes
+
+  def __call__(self, obs_input, act_input):
+    inputs = tf.concat([
+        tf.layers.flatten(obs_input),
+        tf.layers.flatten(act_input)], axis=1)
+
+    discrim_mlp = util.build_mlp(hid_sizes=self.hid_sizes)
+    discrim_logits = util.sequential(inputs, discrim_mlp)
+
+    return discrim_mlp, discrim_logits
+
+
 class DiscrimNetGAIL(DiscrimNet, serialize.LayersSerializable):
   """The discriminator to use for GAIL."""
 
-  def __init__(self,
-               observation_space: gym.Space,
-               action_space: gym.Space,
-               hid_sizes: Optional[Iterable[int]] = None,
-               scale: bool = False):
+  def __init__(
+        self,
+        observation_space: gym.Space,
+        action_space: gym.Space,
+        build_discrim_net: DiscrimNetBuilder = build_mlp_discrim_net(),
+        scale: bool = False):
+    """Construct discriminator network.
+
+    Args:
+        observation_space: observation space for this environment.
+        action_space: action space for this environment:
+        build_discrim_net: a callable that takes an observation input tensor
+            and action input tensor as input, then computes the logits
+            necessary to feed to GAIL. When called, the function should return
+            *both* a `LayersDict` containing all the layers used in
+            construction of the discriminator network, and a `tf.Tensor`
+            representing the desired discriminator logits.
+        scale: should inputs be rescaled according to declared observation
+            space bounds?"""
     args = dict(locals())
     inputs = util.build_inputs(observation_space, action_space, scale=scale)
     self._obs_ph, self._act_ph, self._next_obs_ph = inputs[:3]
     self.obs_inp, self.act_inp, self.next_obs_inp = inputs[3:]
 
-    self.hid_sizes = hid_sizes
     with tf.variable_scope("discrim_network"):
-      discrim_mlp, self._discrim_logits = self.build_discrm_network(
+      discrim_mlp, self._discrim_logits = build_discrim_net(
           self.obs_inp, self.act_inp)
 
     DiscrimNet.__init__(self)
@@ -307,19 +354,6 @@ class DiscrimNetGAIL(DiscrimNet, serialize.LayersSerializable):
   @property
   def next_obs_ph(self):
     return self._next_obs_ph
-
-  def build_discrm_network(self, obs_input, act_input):
-    inputs = tf.concat([
-        tf.layers.flatten(obs_input),
-        tf.layers.flatten(act_input)], axis=1)
-
-    hid_sizes = self.hid_sizes
-    if hid_sizes is None:
-      hid_sizes = (32, 32)
-    discrim_mlp = util.build_mlp(hid_sizes=hid_sizes)
-    discrim_logits = util.sequential(inputs, discrim_mlp)
-
-    return discrim_mlp, discrim_logits
 
   def build_policy_train_reward(self) -> tf.Tensor:
     train_reward = -tf.log_sigmoid(self._discrim_logits)
