@@ -2,7 +2,8 @@ import collections
 import functools
 import os
 import pickle
-from typing import Callable, Dict, List, NamedTuple, Optional, Sequence, Union
+from typing import (Callable, Dict, Hashable, List, NamedTuple, Optional,
+                    Sequence, Union)
 
 import numpy as np
 from stable_baselines.common.base_class import BaseRLModel
@@ -79,24 +80,29 @@ class Transitions(NamedTuple):
   dones: np.ndarray
 
 
-class _TrajectoryAccumulator:
-  """Accumulates trajectories step-by-step.
-
-  Used in `generate_trajectories()` only, for collecting completed trajectories
-  while ignoring partially-completed trajectories.
-  """
+class TrajectoryAccumulator:
+  """Accumulates trajectories step-by-step. Useful for collecting completed
+  trajectories while ignoring partially-completed trajectories (e.g. when
+  rolling out a vec env to collect a set number of transitions). Each
+  in-progress trajectory is identified by a 'key', which enables several
+  independent trajectories to be collected at once. They key can also be left
+  at its default value of `None` if you only wish to collect one trajectory."""
 
   def __init__(self):
+    """Initialise the trajectory accumulator."""
     self.partial_trajectories = collections.defaultdict(list)
 
-  def finish_trajectory(self, idx) -> Trajectory:
-    """Complete the trajectory labelled with `idx`.
+  def finish_trajectory(self, key: Hashable = None) -> Trajectory:
+    """Complete the trajectory labelled with `key`.
 
-    Return list of completed trajectories popped from
-    `self.partial_trajectories`.
-    """
-    part_dicts = self.partial_trajectories[idx]
-    del self.partial_trajectories[idx]
+    Args:
+        key: key uniquely identifying which in-progress trajectory to remove.
+
+    Returns:
+        traj: list of completed trajectories popped from
+            `self.partial_trajectories`."""
+    part_dicts = self.partial_trajectories[key]
+    del self.partial_trajectories[key]
     out_dict_unstacked = collections.defaultdict(list)
     for part_dict in part_dicts:
       for key, array in part_dict.items():
@@ -105,18 +111,28 @@ class _TrajectoryAccumulator:
         key: np.stack(arr_list, axis=0)
         for key, arr_list in out_dict_unstacked.items()
     }
-    return Trajectory(**out_dict_stacked)
+    traj = Trajectory(**out_dict_stacked)
+    return traj
 
-  def add_step(self, idx, step_dict: Dict[str, np.ndarray]):
-    """Add a single step to the partial trajectory identified by `idx`.
+  def add_step(self, step_dict: Dict[str, np.ndarray], key: Hashable = None):
+    """Add a single step to the partial trajectory identified by `key`. This
+    could correspond to, e.g., one environment managed by a VecEnv.
 
-    This could correspond to, e.g., one environment managed by a VecEnv.
-    """
-    self.partial_trajectories[idx].append(step_dict)
+    Args:
+        step_dict: dictionary containing information for the current step. Its
+            keys could include any (or all) attributes of a `Trajectory` (e.g.
+            "obs", "acts", etc.).
+        key: key to uniquely identify the trajectory to append to, if working
+            with multiple partial trajectories."""
+    self.partial_trajectories[key].append(step_dict)
 
-  def reset(self, idx):
-    if idx in self.partial_trajectories:
-      del self.partial_trajectories[idx]
+  def reset(self, key: Hashable = None):
+    """Remove a partially-completed trajectory.
+
+    Args:
+        key: if given, identifies which trajectory to move by its key."""
+    if key in self.partial_trajectories:
+      del self.partial_trajectories[key]
 
 
 GenTrajTerminationFn = Callable[[Sequence[Trajectory]], bool]
@@ -212,7 +228,7 @@ def generate_trajectories(policy,
   # Collect rollout tuples.
   trajectories = []
   # accumulator for incomplete trajectories
-  trajectories_accum = _TrajectoryAccumulator()
+  trajectories_accum = TrajectoryAccumulator()
   obs_batch = venv.reset()
   for env_idx, obs in enumerate(obs_batch):
     # Seed with first obs only. Inside loop, we'll only add second obs from
@@ -220,7 +236,7 @@ def generate_trajectories(policy,
     # get all observations, but they're not duplicated into "next obs" and
     # "previous obs" (this matters for, e.g., Atari, where observations are
     # really big).
-    trajectories_accum.add_step(env_idx, dict(obs=obs))
+    trajectories_accum.add_step(dict(obs=obs), env_idx)
   while not sample_until(trajectories):
     obs_old_batch = obs_batch
     act_batch, _ = get_action(obs_old_batch, deterministic=deterministic_policy)
@@ -239,19 +255,19 @@ def generate_trajectories(policy,
         # by stable baselines wrapper
         real_obs = info['terminal_observation']
       trajectories_accum.add_step(
-          env_idx,
           dict(
               acts=act,
               rews=rew,
               # this is not the obs corresponding to `act`, but rather the obs
               # *after* `act` (see above)
               obs=real_obs,
-              infos=info))
+              infos=info),
+          env_idx)
       if done:
         # finish env_idx-th trajectory
         new_traj = trajectories_accum.finish_trajectory(env_idx)
         trajectories.append(new_traj)
-        trajectories_accum.add_step(env_idx, dict(obs=obs))
+        trajectories_accum.add_step(dict(obs=obs), env_idx)
         continue
 
   # Note that we just drop partial trajectories. This is not ideal for some
