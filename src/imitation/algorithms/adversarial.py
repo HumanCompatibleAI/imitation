@@ -77,7 +77,7 @@ class AdversarialTrainer:
         init_tensorboard_graph: If both this and `init_tensorboard` are True,
             then write a Tensorboard graph summary to disk.
         debug_use_ground_truth: If True, use the ground truth reward for
-            `self.train_env`.
+           `self.train_env`.
             This disables the reward wrapping that would normally replace
             the environment reward with the learned reward. This is useful for
             sanity checking that the policy training is functional.
@@ -97,14 +97,9 @@ class AdversarialTrainer:
     self._discrim = discrim
     self._disc_opt_cls = disc_opt_cls
     self._disc_opt_kwargs = disc_opt_kwargs
-    with tf.variable_scope("trainer"):
-      with tf.variable_scope("discriminator"):
-        self._build_disc_train()
     self._init_tensorboard = init_tensorboard
     self._init_tensorboard_graph = init_tensorboard_graph
-    if init_tensorboard:
-      with tf.name_scope("summaries"):
-        self._build_summarize()
+    self._build_graph()
     self._sess.run(tf.global_variables_initializer())
 
     if debug_use_ground_truth:
@@ -153,11 +148,23 @@ class AdversarialTrainer:
         gen_next_obs (np.ndarray): See `_build_disc_feed_dict`.
     """
     for _ in range(n_steps):
+
+      # optionally write summaries
+      step = self._sess.run(self._global_step)
+      write_summaries = self._init_tensorboard and step % 20 == 0
+      fetches = {
+        'step': self._global_step,
+        'train_op_out': self._disc_train_op,
+      }
+      if write_summaries:
+        fetches['events'] = self._summary_op
+
+      # do actual update
       fd = self._build_disc_feed_dict(**kwargs)
-      step, _ = self._sess.run([self._global_step, self._disc_train_op],
-                               feed_dict=fd)
-      if self._init_tensorboard and step % 20 == 0:
-        self._summarize(fd, step)
+      fetched = self._sess.run(fetches, feed_dict=fd)
+
+      if write_summaries:
+        self._summary_writer.add_summary(fetched['events'], fetched['step'])
 
   def train_gen(self, n_steps=10000):
     self._gen_policy.set_env(self.venv_train)
@@ -219,25 +226,23 @@ class AdversarialTrainer:
     fd = self._build_disc_feed_dict(**kwargs)
     return np.mean(self._sess.run(self.discrim.disc_loss, feed_dict=fd))
 
-  def _build_summarize(self):
-    graph = self._sess.graph if self._init_tensorboard_graph else None
-    summary_dir = os.path.join(self._log_dir, 'summary')
-    self._summary_writer = summaries.make_summary_writer(summary_dir,
-                                                         graph=graph)
-    self.discrim.build_summaries()
-    self._summary_op = tf.summary.merge_all()
+  def _build_graph(self):
+    # Build necessary parts of the TF graph. Most of the real action happens in
+    # constructors for self.discrim and self.gen_policy.
+    with tf.variable_scope("trainer"):
+      with tf.variable_scope("discriminator"):
+        disc_opt = self._disc_opt_cls(**self._disc_opt_kwargs)
+        self._disc_train_op = disc_opt.minimize(
+            tf.reduce_mean(self.discrim.disc_loss),
+            global_step=self._global_step)
 
-  def _summarize(self, fd, step):
-    # FIXME: run this during update, not afterwards
-    events = self._sess.run(self._summary_op, feed_dict=fd)
-    self._summary_writer.add_summary(events, step)
-
-  def _build_disc_train(self):
-    # Construct Train operation.
-    disc_opt = self._disc_opt_cls(**self._disc_opt_kwargs)
-    self._disc_train_op = disc_opt.minimize(
-        tf.reduce_mean(self.discrim.disc_loss),
-        global_step=self._global_step)
+    if self._init_tensorboard:
+      with tf.name_scope("summaries"):
+        graph = self._sess.graph if self._init_tensorboard_graph else None
+        summary_dir = os.path.join(self._log_dir, 'summary')
+        self._summary_writer = summaries.make_summary_writer(summary_dir,
+                                                             graph=graph)
+        self._summary_op = tf.summary.merge_all()
 
   def _build_disc_feed_dict(self, *,
                             gen_obs: Optional[np.ndarray] = None,

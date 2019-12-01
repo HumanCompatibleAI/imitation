@@ -17,9 +17,30 @@ class DiscrimNet(serialize.Serializable, ABC):
 
   def __init__(self):
     self._sess = tf.get_default_session()
-    self._disc_loss = self.build_disc_loss()
-    self._policy_train_reward = self.build_policy_train_reward()
-    self._policy_test_reward = self.build_policy_test_reward()
+
+    # Build necessary placeholders, then construct rest of the graph.
+    # _labels_ph holds the label of every state-action pair that the
+    # discriminator is being trained on. Use 0.0 for expert policy. Use 1.0 for
+    # generated policy.
+    self._labels_ph = tf.placeholder(shape=(None,), dtype=tf.int32,
+                                     name="discrim_labels")
+    # This placeholder holds the generator-policy log action probabilities,
+    # $\log \pi(a \mid s)$, of each state-action pair. This includes both
+    # actions taken by the generator *and* those by the expert (we can
+    # ask our policy for action probabilities even if we don't take them).
+    # TODO(adam): this is only used by AIRL; sad we have to always include it
+    self._log_policy_act_prob_ph = tf.placeholder(
+        shape=(None,), dtype=tf.float32, name="log_ro_act_prob_ph")
+    self.build_graph()
+
+    # check that required attributes have been set
+    required_attrs = [
+      '_disc_loss', '_policy_train_reward', '_policy_test_reward',
+    ]
+    for req_attr in required_attrs:
+      assert hasattr(self, req_attr), \
+        f"required attr .{req_attr} not added by {type(self)}" \
+        ".build_graph()"
 
   @property
   def disc_loss(self):
@@ -34,22 +55,19 @@ class DiscrimNet(serialize.Serializable, ABC):
     return self._policy_test_reward
 
   @abstractmethod
-  def build_policy_train_reward(self) -> tf.Tensor:
-    """Builds the reward used during imitation learning.
+  def build_graph(self):
+    """Builds forward prop graph, reward, loss, and summary ops. Gets called
+    once during construction. Should create the following attributes:
 
-    Saved as self._policy_train_reward. Should be a rank-1 Tensor.
+    - `self._policy_train_reward`: reward used during imitation learning,
+      should be a rank-1 Tensor.
+    - `self._policy_test_reward`: reward used during testing, should be rank-1
+      Tensor. This is useful for AIRL, where it can be used to drop shaping
+      terms, but for GAIL it will just be an alias for _policy_train_reward.
+    - `self._disc_loss`: discriminator loss to be optimised.
+
+    FIXME(sam): remove train reward/test reward distinction.
     """
-
-  def build_policy_test_reward(self) -> tf.Tensor:
-    """
-    Builds self._policy_test_reward, the reward used during transfer learning.
-
-    Should be a rank-1 Tensor.
-
-    Subclasses should override this method if they have a transfer learning
-    reward. By default it simply returns `self._policy_train_reward`.
-    """
-    return self._policy_train_reward
 
   def reward_train(
     self,
@@ -132,26 +150,6 @@ class DiscrimNet(serialize.Serializable, ABC):
     assert rew.shape == (len(obs),)
     return rew
 
-  @abstractmethod
-  def build_disc_loss(self):
-    # Holds the label of every state-action pair that the discriminator
-    # is being trained on. Use 0.0 for expert policy. Use 1.0 for generated
-    # policy.
-    self._labels_ph = tf.placeholder(shape=(None,), dtype=tf.int32,
-                                     name="discrim_labels")
-
-    # This placeholder holds the generator-policy log action probabilities,
-    # $\log \pi(a \mid s)$, of each state-action pair. This includes both
-    # actions taken by the generator *and* those by the expert (we can
-    # ask our policy for action probabilities even if we don't take them).
-    # TODO(adam): this is only used by AIRL; sad we have to always include it
-    self._log_policy_act_prob_ph = tf.placeholder(
-        shape=(None,), dtype=tf.float32, name="log_ro_act_prob_ph")
-
-  @abstractmethod
-  def build_summaries(self):
-    pass
-
   @property
   @abstractmethod
   def obs_ph(self):
@@ -218,12 +216,7 @@ class DiscrimNetAIRL(DiscrimNet):
   def next_obs_ph(self):
     return self.reward_net.next_obs_ph
 
-  def build_summaries(self):
-    self.reward_net.build_summaries()
-
-  def build_disc_loss(self):
-    super().build_disc_loss()
-
+  def build_graph(self):
     # The AIRL discriminator is trained with the cross-entropy loss between
     # expert demonstrations and generated samples.
 
@@ -234,16 +227,14 @@ class DiscrimNetAIRL(DiscrimNet):
         axis=1, name="presoftmax_discriminator_logits")  # (None, 2)
 
     # Construct discriminator loss.
-    return tf.nn.sparse_softmax_cross_entropy_with_logits(
+    self._disc_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(
         labels=self.labels_ph,
         logits=self._presoftmax_disc_logits,
         name="discrim_loss",
     )
 
-  def build_policy_test_reward(self):
-    return self.reward_net.reward_output_test
+    self._policy_test_reward = self.reward_net.reward_output_test
 
-  def build_policy_train_reward(self):
     # Construct generator reward:
     # \[\hat{r}(s,a) = \log(D_{\theta}(s,a)) - \log(1 - D_{\theta}(s,a)).\]
     # This simplifies to:
@@ -252,7 +243,10 @@ class DiscrimNetAIRL(DiscrimNet):
     self._log_D = tf.nn.log_softmax(self.reward_net.reward_output_train)
     self._log_D_compl = tf.nn.log_softmax(self.log_policy_act_prob_ph)
     # Note self._log_D_compl is effectively an entropy term.
-    return self._log_D - self.entropy_weight * self._log_D_compl
+    ent_bonus = self.entropy_weight * self._log_D_compl
+    self._policy_train_reward = self._log_D - ent_bonus
+
+    self.reward_net.build_summaries()
 
   def _save(self, directory):
     os.makedirs(directory, exist_ok=True)
@@ -281,16 +275,13 @@ for GAIL."""
 
 
 class build_mlp_discrim_net:
-  # This should be a function that returns a closure, but that would make
-  # Pickle throw a fit when we try to serialise DiscrimNetGAIL, so instead it's
-  # a class.
-  # FIXME: consider refactoring all uses of this to use tf.keras.Model instead
-  # of passing in constructor functions. May be able to avoid
-  # LayersSerializable that way & just pickle (or .save()) models directly.
+  # this could be rewritten as a function that returns a closure instead of a
+  # functor class, but that would break pickle; instead I'm just pretending
+  # that build_mlp_discrim_net is a function that returns a closure :-)
   def __init__(self, hid_sizes: Iterable[int] = (32, 32)):
-    """Build a callable that creates a simple MLP-based discriminator for GAIL.
-    The returned function can be passed into the `build_discrim_net` argument of
-    `DiscrimNetGAIL`.
+    """Construct a functor that builds a simple MLP-based discriminator for
+    GAIL. The returned function can be passed into the `build_discrim_net`
+    argument of `DiscrimNetGAIL`.
 
     Args:
         hid_sizes: list of layer sizes for each hidden layer of the network."""
@@ -329,17 +320,19 @@ class DiscrimNetGAIL(DiscrimNet, serialize.LayersSerializable):
             representing the desired discriminator logits.
         scale: should inputs be rescaled according to declared observation
             space bounds?"""
+    # for serialisation
     args = dict(locals())
-    inputs = util.build_inputs(observation_space, action_space, scale=scale)
-    self._obs_ph, self._act_ph, self._next_obs_ph = inputs[:3]
-    self.obs_inp, self.act_inp, self.next_obs_inp = inputs[3:]
 
-    with tf.variable_scope("discrim_network"):
-      discrim_mlp, self._discrim_logits = build_discrim_net(
-          self.obs_inp, self.act_inp)
+    # things we'll need in .build_graph()
+    self._observation_space = observation_space
+    self._action_space = action_space
+    self._scale = scale
+    self._build_discrim_net = build_discrim_net
 
+    # builds graph
     DiscrimNet.__init__(self)
-    serialize.LayersSerializable.__init__(**args, layers=discrim_mlp)
+    # records args for un-pickling as well as newly-created model
+    serialize.LayersSerializable.__init__(**args, layers=self._discrim_mlp)
 
     tf.logging.info("using GAIL")
 
@@ -355,20 +348,20 @@ class DiscrimNetGAIL(DiscrimNet, serialize.LayersSerializable):
   def next_obs_ph(self):
     return self._next_obs_ph
 
-  def build_policy_train_reward(self) -> tf.Tensor:
-    train_reward = -tf.log_sigmoid(self._discrim_logits)
-    return train_reward
+  def build_graph(self):
+    inputs = util.build_inputs(self._observation_space, self._action_space,
+                               scale=self._scale)
+    self._obs_ph, self._act_ph, self._next_obs_ph = inputs[:3]
+    self.obs_inp, self.act_inp, self.next_obs_inp = inputs[3:]
 
-  def build_disc_loss(self):
-    super().build_disc_loss()
+    with tf.variable_scope("discrim_network"):
+      self._discrim_mlp, self._discrim_logits = self._build_discrim_net(
+          self.obs_inp, self.act_inp)
+    self._policy_test_reward = self._policy_train_reward \
+        = -tf.log_sigmoid(self._discrim_logits)
 
-    disc_loss = tf.nn.sigmoid_cross_entropy_with_logits(
+    self._disc_loss = tf.nn.sigmoid_cross_entropy_with_logits(
         logits=self._discrim_logits,
-        labels=tf.cast(self.labels_ph, tf.float32),
-    )
+        labels=tf.cast(self.labels_ph, tf.float32))
 
-    return disc_loss
-
-  def build_summaries(self):
-    super().build_summaries()
     tf.summary.histogram("discrim_logits", self._discrim_logits)
