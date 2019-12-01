@@ -1,4 +1,6 @@
+import datetime
 from functools import partial
+import os
 from typing import Optional, Sequence
 from warnings import warn
 
@@ -41,6 +43,7 @@ class AdversarialTrainer:
                discrim: discrim_net.DiscrimNet,
                expert_demos: rollout.Transitions,
                *,
+               log_dir: str = 'output/',
                disc_opt_cls: tf.train.Optimizer = tf.train.AdamOptimizer,
                disc_opt_kwargs: dict = {},
                n_disc_samples_per_buffer: int = 200,
@@ -57,6 +60,7 @@ class AdversarialTrainer:
         discrim: The discriminator network.
             For GAIL, use a DiscrimNetGAIL. For AIRL, use a DiscrimNetAIRL.
         expert_demos: Transitions from an expert dataset.
+        log_dir: Directory to store TensorBoard logs, plots, etc. in.
         disc_opt_cls: The optimizer for discriminator training.
         disc_opt_kwargs: Parameters for discriminator training.
         n_disc_samples_per_buffer: The number of obs-act-obs triples
@@ -89,6 +93,7 @@ class AdversarialTrainer:
     self._gen_policy = gen_policy
 
     # Discriminator and reward output
+    self._log_dir = log_dir
     self._discrim = discrim
     self._disc_opt_cls = disc_opt_cls
     self._disc_opt_kwargs = disc_opt_kwargs
@@ -216,11 +221,14 @@ class AdversarialTrainer:
 
   def _build_summarize(self):
     graph = self._sess.graph if self._init_tensorboard_graph else None
-    self._summary_writer = summaries.make_summary_writer(graph=graph)
+    summary_dir = os.path.join(self._log_dir, 'summary')
+    self._summary_writer = summaries.make_summary_writer(summary_dir,
+                                                         graph=graph)
     self.discrim.build_summaries()
     self._summary_op = tf.summary.merge_all()
 
   def _summarize(self, fd, step):
+    # FIXME: run this during update, not afterwards
     events = self._sess.run(self._summary_op, feed_dict=fd)
     self._summary_writer.add_summary(events, step)
 
@@ -334,7 +342,8 @@ def init_trainer(env_name: str,
     env_name: The string id of a gym environment.
     expert_trajectories: Demonstrations from expert.
     seed: Random seed.
-    log_dir: Directory for logging output.
+    log_dir: Directory for logging output. Will generate a unique sub-directory
+        within this directory for all output.
     use_gail: If True, then train using GAIL. If False, then train
         using AIRL.
     num_vec: The number of vectorized environments.
@@ -352,10 +361,28 @@ def init_trainer(env_name: str,
     init_rl_kwargs: Keyword arguments passed to `init_rl`,
         used to initialize the RL algorithm.
   """
+  # come up with an informative, unique name for this expt
+  log_prefix = log_dir if log_dir is not None else 'output'
+  date_str = datetime.datetime.now().strftime('%Y-%m-%dT%H:%M')
+  method_name = 'gail' if use_gail else 'airl'
+  log_base = os.path.join(
+    log_prefix, f'{method_name}_{env_name}_{date_str}')
+  os.makedirs(os.path.dirname(log_base), exist_ok=True)
+  i = 0
+  while True:
+    # find a short, unique suffix
+    full_log_dir = log_base + f"_run{i:02d}/"
+    try:
+      os.makedirs(full_log_dir, exist_ok=False)
+      break
+    except FileExistsError:
+      pass
+    i += 1
+  log_dir = full_log_dir
+
   env = util.make_vec_env(env_name, num_vec, seed=seed, parallel=parallel,
                           log_dir=log_dir, max_episode_steps=max_episode_steps)
-  gen_policy = util.init_rl(env, verbose=1,
-                            **init_rl_kwargs)
+  gen_policy = util.init_rl(env, verbose=1, **init_rl_kwargs)
 
   if use_gail:
     discrim = discrim_net.DiscrimNetGAIL(env.observation_space,
@@ -373,5 +400,5 @@ def init_trainer(env_name: str,
 
   expert_demos = util.rollout.flatten_trajectories(expert_trajectories)
   trainer = AdversarialTrainer(env, gen_policy, discrim, expert_demos,
-                               **trainer_kwargs)
+                               log_dir=log_dir, **trainer_kwargs)
   return trainer
