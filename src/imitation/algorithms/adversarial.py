@@ -7,6 +7,7 @@ from warnings import warn
 import numpy as np
 from stable_baselines.common.base_class import BaseRLModel
 from stable_baselines.common.vec_env import VecEnv
+from stable_baselines.logger import Logger, make_output_format
 import tensorflow as tf
 from tqdm import tqdm
 
@@ -92,8 +93,17 @@ class AdversarialTrainer:
     self._expert_demos = expert_demos
     self._gen_policy = gen_policy
 
-    # Discriminator and reward output
     self._log_dir = log_dir
+    disc_log_dir = os.path.join(self._log_dir, 'disc')
+    # only log CSV & TB for discriminator stats; human output is too verbose
+    # since this gets called every time discriminator weights are updated (!!)
+    log_fmt_strs = ['csv', 'tensorboard']
+    log_fmts = [
+      make_output_format(s, disc_log_dir) for s in log_fmt_strs
+    ]
+    self._disc_logger = Logger(disc_log_dir, log_fmts)
+
+    # Create graph for optimising/recording stats on discriminator
     self._discrim = discrim
     self._disc_opt_cls = disc_opt_cls
     self._disc_opt_kwargs = disc_opt_kwargs
@@ -146,15 +156,23 @@ class AdversarialTrainer:
         gen_obs (np.ndarray): See `_build_disc_feed_dict`.
         gen_acts (np.ndarray): See `_build_disc_feed_dict`.
         gen_next_obs (np.ndarray): See `_build_disc_feed_dict`.
+
+    Returns:
+        mean_stats: dictionary of training statistics, recorded at each step
+            and then averaged over all steps. Keys depend on whether this is
+            GAIL or AIRL.
     """
+    stat_dict_accum = {}
+
     for _ in range(n_steps):
 
-      # optionally write summaries
+      # optionally write TB summaries for collected ops
       step = self._sess.run(self._global_step)
       write_summaries = self._init_tensorboard and step % 20 == 0
       fetches = {
         'step': self._global_step,
         'train_op_out': self._disc_train_op,
+        'train_stats': self._discrim.train_stats,
       }
       if write_summaries:
         fetches['events'] = self._summary_op
@@ -165,6 +183,17 @@ class AdversarialTrainer:
 
       if write_summaries:
         self._summary_writer.add_summary(fetched['events'], fetched['step'])
+
+      for k, v in fetched['train_stats'].items():
+        self._disc_logger.log(k, v)
+        stat_dict_accum.setdefault(k, []).append(v)
+      self._disc_logger.dumpkvs()
+
+    # return only averaged stats (useful for, e.g., updating progress bars)
+    mean_stats = {
+      k: np.mean(v) for k, v in stat_dict_accum.items()
+    }
+    return mean_stats
 
   def train_gen(self, n_steps=10000):
     self._gen_policy.set_env(self.venv_train)

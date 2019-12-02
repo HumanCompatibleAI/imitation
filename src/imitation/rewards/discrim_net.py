@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+import collections
 import os
 import pickle
 from typing import Callable, Iterable, Tuple
@@ -18,6 +19,7 @@ class DiscrimNet(serialize.Serializable, ABC):
   def __init__(self):
     self._sess = tf.get_default_session()
 
+    self._train_stats = collections.OrderedDict()
     # Build necessary placeholders, then construct rest of the graph.
     # _labels_ph holds the label of every state-action pair that the
     # discriminator is being trained on. Use 0.0 for expert policy. Use 1.0 for
@@ -53,6 +55,10 @@ class DiscrimNet(serialize.Serializable, ABC):
   @property
   def policy_test_reward(self):
     return self._policy_test_reward
+
+  @property
+  def train_stats(self):
+    return self._train_stats
 
   @abstractmethod
   def build_graph(self):
@@ -363,5 +369,52 @@ class DiscrimNetGAIL(DiscrimNet, serialize.LayersSerializable):
     self._disc_loss = tf.nn.sigmoid_cross_entropy_with_logits(
         logits=self._discrim_logits,
         labels=tf.cast(self.labels_ph, tf.float32))
+
+    # TODO(sam): push all this stuff into DiscrimNetwork, since it's not
+    # GAIL-specific (only diff is in AIRL we need to convert softmax logits to
+    # Bernoulli logits first; just do bern_logits = softmax_logits[:, 1] -
+    # softmax_logits[:, 0]).
+
+    # Compute debugging stats. For labels, expert (exp) = 0, and generated
+    # (gen) = 1.
+    bin_is_generated_pred = self._discrim_logits > 0
+    bin_is_generated_true = self._labels_ph > 0
+    bin_is_expert_true = tf.logical_not(bin_is_generated_true)
+    int_is_generated_pred = tf.cast(bin_is_generated_pred, tf.int32)
+    int_is_generated_true = tf.cast(bin_is_generated_true, tf.int32)
+    n_generated = tf.reduce_sum(int_is_generated_true)
+    n_labels = tf.size(self._labels_ph)
+    n_expert = n_labels - n_generated
+    pct_expert = tf.cast(n_expert, tf.float32) / tf.cast(n_labels, tf.float32)
+    n_expert_pred = tf.size(bin_is_generated_pred) \
+        - tf.reduce_sum(int_is_generated_pred)
+    pct_expert_pred = tf.cast(n_expert_pred, tf.float32) \
+        / tf.cast(n_labels, tf.float32)
+    correct_vec = tf.equal(bin_is_generated_pred, bin_is_generated_true)
+    acc = tf.reduce_mean(tf.cast(correct_vec, tf.float32))
+    expert_acc = tf.reduce_sum(tf.cast(
+      tf.logical_and(bin_is_expert_true, correct_vec), tf.float32)) \
+        / tf.cast(tf.maximum(1, n_expert), tf.float32)
+    generated_acc = tf.reduce_sum(tf.cast(
+      tf.logical_and(bin_is_generated_true, correct_vec), tf.float32)) \
+        / tf.cast(tf.maximum(1, n_generated), tf.float32)
+    label_dist = tf.distributions.Bernoulli(logits=self._discrim_logits)
+    entropy = tf.reduce_mean(label_dist.entropy())
+
+    self._train_stats.update([
+      # basic xent loss
+      ('disc_xent', self._disc_loss),
+      # accuracy, as well as accuracy on *just* expert examples and *just*
+      # generated examples
+      ('disc_acc', acc),
+      ('disc_acc_exp', expert_acc),
+      ('disc_acc_gen', generated_acc),
+      # entropy of the predicted label distribution, averaged equally across
+      # both classes (if this collapses then disc is very good or has given up)
+      ('disc_ent', entropy),
+      # true number of expert demos vs. predicted number of expert demos
+      ('disc_pct_exp_true', pct_expert),
+      ('disc_pct_exp_pred', pct_expert_pred),
+    ])
 
     tf.summary.histogram("discrim_logits", self._discrim_logits)
