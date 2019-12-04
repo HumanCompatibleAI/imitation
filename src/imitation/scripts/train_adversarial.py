@@ -32,7 +32,7 @@ def save(trainer, save_path):
   # TODO(gleave): unify this with the saving logic in data_collect?
   # (Needs #43 to be merged before attempting.)
   serialize.save_stable_model(os.path.join(save_path, "gen_policy"),
-                              trainer._gen_policy)
+                              trainer.gen_policy)
 
 
 @train_ex.main
@@ -156,13 +156,19 @@ def train(_run,
     else:
       visualizer = None
 
+    # Use callback in `PPO2.train()` to turn this method into a generator
+    # (train() now `yield`s after every batch).
+    #
+    # Sort of overkill, but this is a clean way to insert plotting and
+    # discriminator logic before and after each PPO2 update.
+    train_gen = trainer.train_gen_as_py_generator()
+
     # Main training loop.
     for epoch in tqdm.tqdm(range(1, n_epochs+1), desc="epoch"):
-      trainer.train_disc(n_disc_steps_per_epoch)
+      trainer.train_disc()
       if visualizer:
         visualizer.add_data_disc_loss(False)
-
-      trainer.train_gen(n_gen_steps_per_epoch)
+      next(train_gen)
       if visualizer:
         visualizer.add_data_disc_loss(True)
 
