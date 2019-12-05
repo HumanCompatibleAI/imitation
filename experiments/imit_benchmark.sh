@@ -74,6 +74,8 @@ parallel -j 25% --header : --results ${LOG_ROOT}/parallel/ --colsep , --progress
   ${extra_configs} \
   {env_config_name} \
   log_dir="${LOG_ROOT}/{env_config_name}_{seed}/n_expert_demos_{n_expert_demos}" \
+  init_trainer_kwargs.num_vec=10 \
+  init_trainer_kwargs.init_rl_kwargs.nminibatches=5 \
   batch_size={batch_size} \
   rollout_path=${EXPERT_MODELS_DIR}/{env_config_name}_0/rollouts/final.pkl \
   checkpoint_interval=-1 \

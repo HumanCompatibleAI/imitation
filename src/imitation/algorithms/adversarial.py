@@ -1,6 +1,6 @@
 from contextlib import contextmanager
 from functools import partial
-from queue import Queue
+import queue
 from threading import Thread
 from typing import Optional, Sequence
 from warnings import warn
@@ -226,48 +226,60 @@ class AdversarialTrainer:
     # TODO(shwang): Getting the details right turned out more complicated than
     # I thought and increased the complexity of this function. Should discuss
     # whether to replace with something simpler.
-    queue = Queue(1)
+    q = queue.Queue(1)
     job_finished = object()
 
     def callback(_locals, _globals):
       if populate_replay_buffer:
         self._populate_gen_replay_buffer()
-      queue.put((_locals, _globals))
-      queue.join()
+      q.put((_locals, _globals))
+      q.join()  # Blocks until `generator()` calls `q.task_done()`
 
     def job():
       self.gen_policy.set_env(self.venv_train)
       self.gen_policy.learn(total_timesteps,
                             reset_num_timesteps=False,
                             callback=callback)
-      queue.put(job_finished)
+      q.put(job_finished)
+      q.join()
 
     def generator():
-      t = Thread(target=job)
+      """Yields (_locals, _globals) from RL algorithm after every update.
+
+      Pauses `callback` and `job` until another call to `next(generator())`.
+      """
+      t = Thread(target=job, daemon=True)
       t.start()
 
       while True:
-        item = queue.get()
-        if item is not job_finished:
-          yield item
-          queue.task_done()
+        try:
+          item = q.get(timeout=1)
+        except queue.Empty:  # Triggered on q.get() timeout.
+          # Check if the worker thread died, likely because of PPO2 exception.
+          if not t.is_alive():
+            # Kill the main thread too (otherwise we hang).
+            raise RuntimeError("RL algorithm died, quitting train_gen_by_batch")
         else:
-          queue.task_done()
+          continue
+
+        yield item
+        q.task_done()  # Unblock `callback` or `job` after item is consumed.
+        if item is job_finished:
           break
+
       t.join(timeout=1)
       assert not t.is_alive()
 
     gen = generator()
-    try:
-      yield lambda: next(gen)
-    finally:
-      # To complete the call to `PPO2.learn` (and allow job() to exit),
-      # we need to call `next(generator)` one final time after the final
-      # `yield`, triggering a StopIteratorException. Otherwise Thread `t`
-      # hangs forever in the background.
-      default = object()
-      assert next(gen, default) is default, (
-        "self.gen_policy.learn() did not run to completion")
+
+    def train_gen_step():
+      item = next(gen)
+      assert item is not job_finished
+    yield lambda: next(gen)
+
+    # Need to advance generator one last time, beyond generator's yield, to
+    # exit RL algorithm.
+    next(gen, None)
 
   def train(self, total_timesteps: int) -> None:
     """Trains the discriminator and generator against each other.
