@@ -222,8 +222,3 @@ class MonitorPlus(bench.Monitor):
       ep_info["rews"] = np.stack(self._rews)
 
     return obs, rew, done, info
-
-
-def iterator_exhausted(it) -> bool:
-  default = object()
-  return next(it, default) is default

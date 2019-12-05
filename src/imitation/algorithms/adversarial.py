@@ -2,7 +2,7 @@ from contextlib import contextmanager
 from functools import partial
 from queue import Queue
 from threading import Thread
-from typing import Generator, Optional, Sequence, Tuple, ContextManager, Callable
+from typing import Callable, ContextManager, Optional, Sequence, Tuple
 from warnings import warn
 
 import numpy as np
@@ -218,14 +218,9 @@ class AdversarialTrainer:
     #
     # `PPO2.learn(total_timesteps, callback)` calls callback after each update.
     # We use the callback and a Thread to tie `PPO2.learn` to a generator that
-    # yields after each update.
+    # yields and puts `PPO2.learn` on hold after each update.
     #
     # Based on: https://stackoverflow.com/a/9968886/1091722
-    #
-    # Builds a Python Generator (not to be confused with a GAN
-    # Generator from a GAN) that yields the state `(_locals, _globals)` of
-    # `self.gen_policy.learn(total_timesteps)` after every training update.
-    # Generator is exhausted.
     #
     # TODO(shwang): Getting the details right turned out more complicated than
     # I thought and increased the complexity of this function. Should discuss
@@ -265,8 +260,12 @@ class AdversarialTrainer:
     try:
       yield lambda: next(gen)
     finally:
-      assert _iterator_exhausted(gen)
-
+      # To complete the call to `PPO2.learn` (and allow job() to exit),
+      # we need to call `next(generator)` one final time after the final
+      # `yield`, triggering a StopIteratorException. Otherwise Thread `t`
+      # hangs forever in the background.
+      default = object()
+      assert next(gen, default) is default
 
   def train(self, total_timesteps: int) -> None:
     """Trains the discriminator and generator against each other.
@@ -472,8 +471,3 @@ def init_trainer(env_name: str,
   trainer = AdversarialTrainer(env, gen_policy, discrim, expert_demos,
                                **trainer_kwargs)
   return trainer
-
-
-def _iterator_exhausted(it) -> bool:
-  default = object()
-  return next(it, default) is default
