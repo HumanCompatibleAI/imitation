@@ -20,14 +20,15 @@ def train_defaults():
   airl_entropy_weight = 1.0
 
   batch_size = 2048  # Batch size for both generator and discrim updates.
-  n_epochs = 50  # Number of batches to update generator and discrim.
+  # Num times to generate a batch and update both generator and discrim.
+  n_epochs = 50
 
   plot_interval = -1  # Number of epochs in between plots (<=0 disables)
   n_plot_episodes = 5  # Number of rollouts for each mean_ep_rew data
   show_plots = True  # Show plots in addition to saving them
 
   init_trainer_kwargs = dict(
-      num_vec=8,  # NOTE: changing this also changes the effective n_steps!
+      num_vec=8,  # Must evenly divide batch_size
       parallel=True,  # Use SubprocVecEnv (generally faster if num_vec>1)
       max_episode_steps=None,  # Set to positive int to limit episode horizons
       scale=True,
@@ -65,8 +66,7 @@ def timesteps(n_epochs, batch_size):
 def batch_size_to_n_steps(total_timesteps, init_trainer_kwargs, batch_size):
   _num_vec = init_trainer_kwargs["num_vec"]
   assert batch_size % _num_vec == 0, "num_vec must evenly divide batch_size"
-  _gen_n_steps = batch_size // _num_vec
-  init_trainer_kwargs["init_rl_kwargs"]["n_steps"] = _gen_n_steps
+  init_trainer_kwargs["init_rl_kwargs"]["n_steps"] = batch_size // _num_vec
 
 
 @train_ex.config
@@ -220,11 +220,14 @@ def fast():
   n_epochs = 1
   n_expert_demos = 1
   n_episodes_eval = 1
+  num_vec = 2
+  batch_size = 2
   show_plots = False
   n_plot_episodes = 1
   init_trainer_kwargs = dict(
       parallel=False,  # easier to debug with everything in one process
       max_episode_steps=int(1e2),
+      num_vec=2,
   )
 
 
