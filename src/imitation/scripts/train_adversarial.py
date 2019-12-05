@@ -43,9 +43,6 @@ def train(_run,
           n_expert_demos: Optional[int],
           log_dir: str,
           *,
-          n_epochs: int,
-          n_gen_steps_per_epoch: int,
-          n_disc_steps_per_epoch: int,
           init_trainer_kwargs: dict,
           n_episodes_eval: int,
 
@@ -53,6 +50,7 @@ def train(_run,
           n_plot_episodes: int,
           show_plots: bool,
           init_tensorboard: bool,
+          total_timesteps: int,  # TODO(shwang): Move me somewhere and stuff.
 
           checkpoint_interval: int = 5,
           ) -> dict:
@@ -85,13 +83,6 @@ def train(_run,
       first `n_expert_demos` trajectories and drop the rest.
     log_dir: Directory to save models and other logging to.
 
-    n_epochs: The number of epochs to train. Each epoch consists of
-      `n_disc_steps_per_epoch` discriminator steps followed by
-      `n_gen_steps_per_epoch` generator steps.
-    n_gen_steps_per_epoch: The number of generator update steps during every
-      training epoch.
-    n_disc_steps_per_epoch: The number of discriminator update steps during
-      every training epoch.
     init_trainer_kwargs: Keyword arguments passed to `init_trainer`,
       used to initialize the trainer.
     n_episodes_eval: The number of episodes to average over when calculating
@@ -156,31 +147,27 @@ def train(_run,
     else:
       visualizer = None
 
-    # Use callback in `PPO2.train()` to turn this method into a generator
-    # (train() now `yield`s after every batch).
-    #
-    # Sort of overkill, but this is a clean way to insert plotting and
-    # discriminator logic before and after each PPO2 update.
-    train_gen = trainer.train_gen_as_py_generator()
-
     # Main training loop.
-    for epoch in tqdm.tqdm(range(1, n_epochs+1), desc="epoch"):
-      trainer.train_disc()
-      if visualizer:
-        visualizer.add_data_disc_loss(False)
-      next(train_gen)
-      if visualizer:
-        visualizer.add_data_disc_loss(True)
+    with trainer.train_gen_by_batch(total_timesteps) as train_gen:
+      n_epochs = total_timesteps // trainer.batch_size
 
-      if visualizer and epoch % plot_interval == 0:
-        visualizer.plot_disc_loss()
-        visualizer.add_data_ep_reward(trainer.venv, "Ground Truth Reward")
-        visualizer.add_data_ep_reward(trainer.venv_train, "Train Reward")
-        visualizer.add_data_ep_reward(trainer.venv_test, "Test Reward")
-        visualizer.plot_ep_reward()
+      for epoch in tqdm.tqdm(range(1, n_epochs+1), desc="epoch"):
+        trainer.train_disc(trainer.batch_size)
+        if visualizer:
+          visualizer.add_data_disc_loss(False)
+        train_gen()
+        if visualizer:
+          visualizer.add_data_disc_loss(True)
 
-      if checkpoint_interval > 0 and epoch % checkpoint_interval == 0:
-        save(trainer, os.path.join(log_dir, "checkpoints", f"{epoch:05d}"))
+        if visualizer and epoch % plot_interval == 0:
+          visualizer.plot_disc_loss()
+          visualizer.add_data_ep_reward(trainer.venv, "Ground Truth Reward")
+          visualizer.add_data_ep_reward(trainer.venv_train, "Train Reward")
+          visualizer.add_data_ep_reward(trainer.venv_test, "Test Reward")
+          visualizer.plot_ep_reward()
+
+        if checkpoint_interval > 0 and epoch % checkpoint_interval == 0:
+          save(trainer, os.path.join(log_dir, "checkpoints", f"{epoch:05d}"))
 
     # Save final artifacts.
     save(trainer, os.path.join(log_dir, "checkpoints", "final"))

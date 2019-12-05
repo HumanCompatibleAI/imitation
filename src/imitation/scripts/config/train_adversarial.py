@@ -17,12 +17,9 @@ def train_defaults():
   env_name = "CartPole-v1"  # environment to train on
   n_expert_demos = None  # Num demos used. None uses every demo possible
   n_episodes_eval = 50  # Num of episodes for final mean ground truth return
-  n_disc_steps_per_epoch = 50  # TODO erase?
-  # n_gen_steps_per_epoch = 2048  # TODO erase?
   airl_entropy_weight = 1.0
 
-  ## NEW SHIT:
-  batch_size = 2048  # Batch size for both generator and discrim updates
+  batch_size = 2048  # Batch size for both generator and discrim updates.
   n_epochs = 50  # Number of batches to update generator and discrim.
 
   plot_interval = -1  # Number of epochs in between plots (<=0 disables)
@@ -41,11 +38,11 @@ def train_defaults():
       ),
 
       trainer_kwargs=dict(
-          n_disc_samples_per_buffer=1000,
-          # Setting buffer capacity and disc samples to 1000 effectively
-          # disables the replay buffer. This seems to improve convergence
-          # speed, but may come at a cost of stability.
-          gen_replay_buffer_capacity=1000,
+          # Setting generator buffer capacity and discriminator batch size to
+          # the same number is equivalent to not using a replay buffer at all.
+          # This seems to improve convergence speed, but may come at a cost of
+          # stability.
+          gen_replay_buffer_capacity=batch_size,
       ),
 
       init_rl_kwargs=dict(policy_class=base.FeedForward32Policy,
@@ -58,17 +55,15 @@ def train_defaults():
 
   rollout_hint = None  # Used to generate default rollout_path
 
+@train_ex.config
+def timesteps(n_epochs, batch_size):
+  total_timesteps = n_epochs * batch_size
 
 @train_ex.config
-def timesteps(n_epochs, gen_batch_size):
-  total_timesteps = n_epochs * gen_batch_size
-
-
-@train_ex.config
-def batches(total_timesteps, init_trainer_kwargs, gen_batch_size):
-  _gen_n_steps = (total_timesteps
-                  / init_trainer_kwargs["num_vec"]
-                  / gen_batch_size)
+def batch_size_to_n_steps(total_timesteps, init_trainer_kwargs, batch_size):
+  _num_vec = init_trainer_kwargs["num_vec"]
+  assert batch_size % _num_vec == 0, "num_vec must evenly divide batch_size"
+  _gen_n_steps = batch_size // _num_vec
   init_trainer_kwargs["init_rl_kwargs"]["n_steps"] = _gen_n_steps
 
 
@@ -106,6 +101,8 @@ def airl():
 def plots():
   plot_interval = 10
 
+
+# Standard env configs
 
 @train_ex.named_config
 def acrobot():
@@ -222,8 +219,6 @@ def fast():
   n_expert_demos = 1
   n_episodes_eval = 1
   show_plots = False
-  n_disc_steps_per_epoch = 1
-  n_gen_steps_per_epoch = 1
   n_plot_episodes = 1
   init_trainer_kwargs = dict(
       parallel=False,  # easier to debug with everything in one process
