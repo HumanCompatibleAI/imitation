@@ -56,7 +56,7 @@ class AdversarialTrainer:
         venv: The vectorized environment to train in.
         gen_policy: The generator policy that is trained to maximize
                     discriminator confusion. The discriminator batch size is
-                    inferred from `gen_policy.batch_size`.
+                    inferred from `gen_policy.n_batch`.
         discrim: The discriminator network.
             For GAIL, use a DiscrimNetGAIL. For AIRL, use a DiscrimNetAIRL.
         expert_demos: Transitions from an expert dataset.
@@ -147,7 +147,7 @@ class AdversarialTrainer:
     each of the expert and generator replay buffers.
 
     Args:
-        total_timesteps: The number of training steps.
+      total_timesteps: The number of transitions to sample from self.venv_train.
     """
     n_epochs = total_timesteps // self.batch_size
     assert n_epochs >= 1, "should have at least one update"
@@ -164,9 +164,9 @@ class AdversarialTrainer:
     Uses the provided samples to perform a single discriminator update.
 
     Args:
-        gen_obs (np.ndarray): See `_build_disc_feed_dict`.
-        gen_acts (np.ndarray): See `_build_disc_feed_dict`.
-        gen_next_obs (np.ndarray): See `_build_disc_feed_dict`.
+      gen_obs (np.ndarray): See `_build_disc_feed_dict`.
+      gen_acts (np.ndarray): See `_build_disc_feed_dict`.
+      gen_next_obs (np.ndarray): See `_build_disc_feed_dict`.
     """
     fd = self._build_disc_feed_dict(**kwargs)
     step, _ = self._sess.run([self._global_step, self._disc_train_op],
@@ -177,8 +177,8 @@ class AdversarialTrainer:
   def train_gen(self, total_timesteps: int, callback=None):
     """Trains the generator (via PPO2) to maximize the discriminator loss.
 
-    Applies `self._gen_policy.n_minibatch` updates to the generator policy,
-    using a total of `self._gen_policy.n_batch` new updates.
+    Args:
+      total_timesteps: The number of transitions to sample from self.venv_train.
     """
     self.gen_policy.set_env(self.venv_train)
     # TODO(adam): learn was not intended to be called for each training batch
@@ -217,8 +217,9 @@ class AdversarialTrainer:
     # Details:
     #
     # `PPO2.learn(total_timesteps, callback)` calls callback after each update.
-    # We use the callback and a Thread to tie `PPO2.learn` to a generator that
-    # yields and puts `PPO2.learn` on hold after each update.
+    # We use the callback and a Queue to tie `PPO2.learn` running on a different
+    # thread to a generator that yields and puts `PPO2.learn` on hold after
+    # each update.
     #
     # Based on: https://stackoverflow.com/a/9968886/1091722
     #
@@ -235,10 +236,10 @@ class AdversarialTrainer:
       queue.join()
 
     def job():
-      self._gen_policy.set_env(self.venv_train)
-      self._gen_policy.learn(total_timesteps,
-                             reset_num_timesteps=False,
-                             callback=callback)
+      self.gen_policy.set_env(self.venv_train)
+      self.gen_policy.learn(total_timesteps,
+                            reset_num_timesteps=False,
+                            callback=callback)
       queue.put(job_finished)
 
     def generator():
@@ -265,7 +266,8 @@ class AdversarialTrainer:
       # `yield`, triggering a StopIteratorException. Otherwise Thread `t`
       # hangs forever in the background.
       default = object()
-      assert next(gen, default) is default
+      assert next(gen, default) is default, (
+        "self.gen_policy.learn() did not run to completion")
 
   def train(self, total_timesteps: int) -> None:
     """Trains the discriminator and generator against each other.

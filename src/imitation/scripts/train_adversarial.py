@@ -42,15 +42,14 @@ def train(_run,
           rollout_path: str,
           n_expert_demos: Optional[int],
           log_dir: str,
-          *,
           init_trainer_kwargs: dict,
+          total_timesteps: int,
           n_episodes_eval: int,
 
           plot_interval: int,
           n_plot_episodes: int,
           show_plots: bool,
           init_tensorboard: bool,
-          total_timesteps: int,  # TODO(shwang): Move me somewhere and stuff.
 
           checkpoint_interval: int = 5,
           ) -> dict:
@@ -85,6 +84,8 @@ def train(_run,
 
     init_trainer_kwargs: Keyword arguments passed to `init_trainer`,
       used to initialize the trainer.
+    total_timesteps: The number of transitions to sample from the environment
+      during training.
     n_episodes_eval: The number of episodes to average over when calculating
       the average episode reward of the imitation policy for return.
 

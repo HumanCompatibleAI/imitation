@@ -15,13 +15,13 @@ train_ex = sacred.Experiment("train_adversarial", interactive=True)
 @train_ex.config
 def train_defaults():
   env_name = "CartPole-v1"  # environment to train on
+  # Num times to generate a batch and update both generator and discrim.
+  n_epochs = 50
   n_expert_demos = None  # Num demos used. None uses every demo possible
   n_episodes_eval = 50  # Num of episodes for final mean ground truth return
   airl_entropy_weight = 1.0
 
   batch_size = 2048  # Batch size for both generator and discrim updates.
-  # Num times to generate a batch and update both generator and discrim.
-  n_epochs = 50
 
   plot_interval = -1  # Number of epochs in between plots (<=0 disables)
   n_plot_episodes = 5  # Number of rollouts for each mean_ep_rew data
@@ -213,14 +213,12 @@ def disabled_ant():
 
 # Debug configs
 
-# TODO Fix me
 @train_ex.named_config
 def fast():
   """Minimize the amount of computation. Useful for test cases."""
   n_epochs = 1
   n_expert_demos = 1
   n_episodes_eval = 1
-  num_vec = 2
   batch_size = 2
   show_plots = False
   n_plot_episodes = 1
