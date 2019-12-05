@@ -2,7 +2,7 @@ from contextlib import contextmanager
 from functools import partial
 from queue import Queue
 from threading import Thread
-from typing import Callable, ContextManager, Optional, Sequence, Tuple
+from typing import Optional, Sequence
 from warnings import warn
 
 import numpy as np
@@ -194,7 +194,7 @@ class AdversarialTrainer:
   def train_gen_by_batch(self,
                          total_timesteps: int,
                          populate_replay_buffer: bool = True,
-                         ) -> ContextManager[Callable[[], Tuple[dict, dict]]]:
+                         ):
     """Train the generator batch-by-batch without exitting `gen_policy.learn()`.
 
     Useful for adding discriminator training and plotting code in between
