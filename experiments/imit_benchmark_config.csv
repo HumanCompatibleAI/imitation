@@ -1,4 +1,4 @@
-env_config_name,n_gen_steps_per_epoch,n_epochs,n_expert_demos
+env_config_name,batch_size,n_epochs,n_expert_demos
 cartpole,5000,300,1
 cartpole,5000,300,4
 cartpole,5000,300,7
