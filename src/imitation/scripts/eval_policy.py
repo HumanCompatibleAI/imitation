@@ -1,4 +1,5 @@
 import contextlib
+import os
 import os.path as osp
 import time
 from typing import Optional
@@ -12,6 +13,7 @@ from imitation.policies import serialize
 from imitation.rewards.serialize import load_reward
 from imitation.scripts.config.eval_policy import eval_policy_ex
 from imitation.util import reward_wrapper, rollout, util
+import imitation.util.sacred as sacred_util
 
 
 class InteractiveRender(VecEnvWrapper):
@@ -33,7 +35,8 @@ class InteractiveRender(VecEnvWrapper):
 
 
 @eval_policy_ex.main
-def eval_policy(_seed: int,
+def eval_policy(_run,
+                _seed: int,
                 env_name: str,
                 eval_n_timesteps: Optional[int],
                 eval_n_episodes: Optional[int],
@@ -80,6 +83,9 @@ def eval_policy(_seed: int,
   Returns:
     Return value of `imitation.util.rollout.rollout_stats()`.
   """
+  os.makedirs(log_dir, exist_ok=True)
+  sacred_util.build_sacred_symlink(log_dir, _run)
+
   tf.logging.set_verbosity(tf.logging.INFO)
   tf.logging.info('Logging to %s', log_dir)
   sample_until = rollout.make_sample_until(eval_n_timesteps, eval_n_episodes)

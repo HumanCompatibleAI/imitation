@@ -12,14 +12,18 @@ import numpy as np
 
 def make_env_fixture(skip_fn):
   def f(env_name):
+    env = None
     try:
       env = gym.make(env_name)
+      yield env
     except gym.error.DependencyNotInstalled as e:  # pragma: no cover
       if e.args[0].find('mujoco_py') != -1:
         skip_fn("Requires `mujoco_py`, which isn't installed.")
       else:
         raise
-    return env
+    finally:
+      if env is not None:
+        env.close()
   return f
 
 

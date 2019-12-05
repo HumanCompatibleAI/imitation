@@ -1,0 +1,119 @@
+version: 2.1
+
+orbs:
+  codecov: codecov/codecov@1.0.5
+
+executors:
+  my-executor:
+    docker:
+      - image: humancompatibleai/imitation:base
+    working_directory: /imitation
+    environment:
+      # If you change these, also change ci/code_checks.sh
+      SRC_FILES: src/ tests/ experiments/ setup.py
+
+commands:
+  dependencies:
+    # You must still manually update the Docker image if any
+    # binary (non-Python) dependencies change.
+    description: "Check out and update Python dependencies."
+    steps:
+      - checkout
+      # Download and cache dependencies
+      - restore_cache:
+          keys:
+            - v1-dependencies-{{ checksum "setup.py" }}
+
+      - run:
+          name: install dependencies
+          # MUJOCO_KEY is defined in a CircleCI context
+          # Do some sanity checks to make sure key works
+          command: |
+            curl -o /root/.mujoco/mjkey.txt ${MUJOCO_KEY}
+            md5sum /root/.mujoco/mjkey.txt
+            # Only create venv if it's not been restored from cache
+            [[ -d /venv ]] || USE_MPI=True ./ci/build_venv.sh /venv
+            python -c "import mujoco_py"
+
+      - save_cache:
+          paths:
+            - /venv
+          key: v1-dependencies-{{ checksum "setup.py" }}
+
+      - run:
+          name: install imitation
+          # Build a wheel then install to avoid copying whole directory (pip issue #2195)
+          command: |
+            python setup.py sdist bdist_wheel
+            pip install --upgrade dist/imitation-*.whl
+
+jobs:
+  lintandtype:
+    executor: my-executor
+
+    steps:
+      - dependencies
+      - run:
+          name: flake8
+          command: flake8 ${SRC_FILES}
+
+      - run:
+          name: codespell
+          command: codespell -I .codespell.skip --skip='*.pyc,tests/data/*,*.ipynb,*.csv' ${SRC_FILES}
+
+      - run:
+          name: sphinx
+          command: pushd docs/ && make clean && make html && popd
+
+      - run:
+          name: pytype
+          command: pytype ${SRC_FILES}
+
+  unit-test:
+    executor: my-executor
+    parallelism: 3
+    steps:
+      - dependencies
+
+      - run:
+          name: Memory Monitor
+          command: |
+            mkdir /tmp/resource-usage
+            export FILE=/tmp/resource-usage/memory.txt
+            while true; do
+              ps -u root eo pid,%cpu,%mem,args,uname --sort=-%mem >> $FILE
+              echo "----------" >> $FILE
+              sleep 1
+            done
+          background: true
+
+      - run:
+          name: run tests
+          command: |
+            export DISPLAY=:0
+            pytest --cov=/venv/lib/python3.7/site-packages/imitation --cov=tests \
+                   --junitxml=/tmp/test-reports/junit.xml \
+                   --shard-id=${CIRCLE_NODE_INDEX} --num-shards=${CIRCLE_NODE_TOTAL} \
+                    -vv tests/
+            mv .coverage .coverage.imitation
+            coverage combine  # rewrite paths from virtualenv to src/
+      - codecov/upload
+
+      - store_artifacts:
+          path: /tmp/test-reports
+          destination: test-reports
+      - store_test_results:
+          path: /tmp/test-reports
+          unit-test:
+      - store_artifacts:
+          path: /tmp/resource-usage
+          destination: resource-usage
+
+workflows:
+  version: 2
+  test:
+    jobs:
+      - lintandtype:
+          context: MuJoCo
+      - unit-test:
+          context: MuJoCo
