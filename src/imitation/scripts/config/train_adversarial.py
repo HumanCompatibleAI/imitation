@@ -22,6 +22,8 @@ def train_defaults():
   airl_entropy_weight = 1.0
 
   batch_size = 2048  # Batch size for both generator and discrim updates.
+  # Batch_size must be a multiple of both `init_trainer_kwargs.num_vec`
+  # and `init_trainer_kwargs.init_rl_kwargs.nminibatch`.
 
   plot_interval = -1  # Number of epochs in between plots (<=0 disables)
   n_plot_episodes = 5  # Number of rollouts for each mean_ep_rew data
@@ -223,9 +225,10 @@ def fast():
   show_plots = False
   n_plot_episodes = 1
   init_trainer_kwargs = dict(
-      parallel=False,  # easier to debug with everything in one process
-      max_episode_steps=int(1e2),
-      num_vec=2,
+    parallel=False,  # easier to debug with everything in one process
+    max_episode_steps=int(1e2),
+    num_vec=2,
+    init_rl_kwargs=dict(nminibatches=1),
   )
 
 
