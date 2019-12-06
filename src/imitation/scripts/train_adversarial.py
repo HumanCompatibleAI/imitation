@@ -297,8 +297,8 @@ class _TrainVisualizer:
         trajs_gen = [util.rollout.rewrite_rewards_traj(t, reward_fn)
                      for t in trajs_gen_orig_rew]
 
-      gen_ret = util.rollout.rollout_stats(trajs_gen)["mean"]
-      rand_ret = util.rollout.rollout_stats(trajs_rand)["mean"]
+      gen_ret = util.rollout.rollout_stats(trajs_gen)["return_mean"]
+      rand_ret = util.rollout.rollout_stats(trajs_rand)["return_mean"]
       self.gen_ep_reward[reward_name].append(gen_ret)
       self.rand_ep_reward[reward_name].append(rand_ret)
       tf.logging.info(f"{reward_name} generator return: {gen_ret}")
