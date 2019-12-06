@@ -11,6 +11,7 @@ from stable_baselines.common.vec_env import VecEnv
 import tensorflow as tf
 
 from imitation.policies.base import get_action_policy
+from imitation.util.reward_wrapper import RewardFn
 
 
 class Trajectory(NamedTuple):
@@ -49,6 +50,13 @@ def unwrap_traj(traj: Trajectory) -> Trajectory:
   assert len(res.obs) == len(res.acts) + 1
   assert len(res.rews) == len(res.acts)
   return res
+
+
+def rewrite_rewards_traj(traj: Trajectory, reward_fn: RewardFn) -> Trajectory:
+  """Returns a copy of `traj` with modified rewards."""
+  steps = np.arange(len(traj.rews))
+  new_rew = reward_fn(traj.obs[:-1], traj.acts, traj.obs[1:], steps)
+  return traj._replace(rews=new_rew)
 
 
 class Transitions(NamedTuple):

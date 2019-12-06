@@ -103,16 +103,18 @@ class AdversarialTrainer:
     self._sess.run(tf.global_variables_initializer())
 
     if debug_use_ground_truth:
+      # Would use an identity reward fn here, but RewardFns can't see rewards.
+      self.reward_train = self.reward_test = None
       self.venv_train = self.venv_test = self.venv
     else:
-      reward_train = partial(
+      self.reward_train = partial(
           self.discrim.reward_train,
           gen_log_prob_fn=self._gen_policy.action_probability)
-
+      self.reward_test = self.discrim.reward_test
       self.venv_train = reward_wrapper.RewardVecEnvWrapper(
-          self.venv, reward_train)
+          self.venv, self.reward_train)
       self.venv_test = reward_wrapper.RewardVecEnvWrapper(
-          self.venv, self.discrim.reward_test)
+          self.venv, self.reward_test)
 
     self.venv_train_norm = VecNormalize(self.venv_train)
 
@@ -285,9 +287,9 @@ class AdversarialTrainer:
     assert n_gen == len(gen_next_obs)
 
     # Normalize expert observations to match generator observations.
-    assert isinstance(self.venv_train_norm, VecNormalize)
-    expert_obs_norm = self.venv_train_norm._normalize_observation(
-      expert_sample.obs)
+    with util.vec_norm_disable_training(self.venv_train_norm):
+      expert_obs_norm = self.venv_train_norm._normalize_observation(
+        expert_sample.obs)
 
     # Concatenate rollouts, and label each row as expert or generator.
     obs = np.concatenate([expert_obs_norm, gen_obs])

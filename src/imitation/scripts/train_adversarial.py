@@ -13,7 +13,6 @@ from typing import Optional
 from matplotlib import pyplot as plt
 from sacred.observers import FileStorageObserver
 from stable_baselines import logger as sb_logger
-from stable_baselines.common.vec_env import VecNormalize
 import tensorflow as tf
 import tqdm
 
@@ -225,20 +224,14 @@ class _TrainVisualizer:
       expert_mean_ep_reward: If provided, then also plot the performance of
         the expert policy.
     """
-    def normalize_obs_only(venv):
-      assert not isinstance(venv, VecNormalize)
-      return util.reapply_vec_normalize(
-        venv, trainer.venv_train_norm, disable_norm_reward=True)
-
-    self.venv_norm_obs = normalize_obs_only(trainer.venv)
-    self.venv_train_norm_obs = normalize_obs_only(trainer.venv_train)
-    self.venv_test_norm_obs = normalize_obs_only(trainer.venv_test)
-
     self.trainer = trainer
     self.show_plots = show_plots
     self.n_episodes_per_reward_data = n_episodes_per_reward_data
     self.log_dir = log_dir
     self.expert_mean_ep_reward = expert_mean_ep_reward
+
+    self.venv_norm_obs = util.reapply_vec_normalize(
+      trainer.venv, trainer.venv_train_norm, disable_norm_reward=True)
     self.plot_idx = 0
     self.gen_data = ([], [])
     self.disc_data = ([], [])
@@ -284,22 +277,32 @@ class _TrainVisualizer:
       # Don't calculate ep reward twice.
       return
     self.ep_reward_X.append(epoch)
-    self._add_data_ep_reward(self.venv_norm_obs, "Ground Truth Reward")
-    self._add_data_ep_reward(self.venv_train_norm_obs, "Train Reward")
-    self._add_data_ep_reward(self.venv_test_norm_obs, "Test Reward")
-
-  def _add_data_ep_reward(self, env, name):
-    sample_until = util.rollout.min_episodes(self.n_episodes_per_reward_data)
 
     gen_policy = self.trainer.gen_policy
-    gen_ret = util.rollout.mean_return(gen_policy, env, sample_until)
-    self.gen_ep_reward[name].append(gen_ret)
-    tf.logging.info("generator return: {}".format(gen_ret))
-
     rand_policy = util.init_rl(self.trainer.venv)
-    rand_ret = util.rollout.mean_return(rand_policy, env, sample_until)
-    self.rand_ep_reward[name].append(rand_ret)
-    tf.logging.info("random return: {}".format(rand_ret))
+    sample_until = util.rollout.min_episodes(self.n_episodes_per_reward_data)
+    trajs_rand_orig_rew = util.rollout.generate_trajectories(
+      rand_policy, self.venv_norm_obs, sample_until)
+    trajs_gen_orig_rew = util.rollout.generate_trajectories(
+      gen_policy, self.venv_norm_obs, sample_until)
+
+    for reward_fn, reward_name in [(None, "Ground Truth Reward"),
+                                   (self.trainer.reward_train, "Train Reward"),
+                                   (self.trainer.reward_test, "Test Reward")]:
+      if reward_fn is None:
+        trajs_rand, trajs_gen = trajs_rand_orig_rew, trajs_gen_orig_rew
+      else:
+        trajs_rand = [util.rollout.rewrite_rewards_traj(t, reward_fn)
+                      for t in trajs_rand_orig_rew]
+        trajs_gen = [util.rollout.rewrite_rewards_traj(t, reward_fn)
+                     for t in trajs_gen_orig_rew]
+
+      gen_ret = util.rollout.rollout_stats(trajs_gen)["mean"]
+      rand_ret = util.rollout.rollout_stats(trajs_rand)["mean"]
+      self.gen_ep_reward[reward_name].append(gen_ret)
+      self.rand_ep_reward[reward_name].append(rand_ret)
+      tf.logging.info(f"{reward_name} generator return: {gen_ret}")
+      tf.logging.info(f"{reward_name} random return: {rand_ret}")
 
   def plot_ep_reward(self):
     """Render and show average episode reward plots."""
