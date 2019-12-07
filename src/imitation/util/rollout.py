@@ -52,11 +52,10 @@ def unwrap_traj(traj: Trajectory) -> Trajectory:
   return res
 
 
-def rewrite_rewards_traj(traj: Trajectory, reward_fn: RewardFn) -> Trajectory:
-  """Returns a copy of `traj` with modified rewards."""
+def recalc_rewards_traj(traj: Trajectory, reward_fn: RewardFn) -> np.ndarray:
+  """Returns the rewards of the trajectory calculated under a diff reward fn."""
   steps = np.arange(len(traj.rews))
-  new_rew = reward_fn(traj.obs[:-1], traj.acts, traj.obs[1:], steps)
-  return traj._replace(rews=new_rew)
+  return reward_fn(traj.obs[:-1], traj.acts, traj.obs[1:], steps)
 
 
 class Transitions(NamedTuple):

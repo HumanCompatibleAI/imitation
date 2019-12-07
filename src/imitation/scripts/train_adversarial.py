@@ -11,6 +11,7 @@ import pickle
 from typing import Optional
 
 from matplotlib import pyplot as plt
+import numpy as np
 from sacred.observers import FileStorageObserver
 from stable_baselines import logger as sb_logger
 import tensorflow as tf
@@ -281,24 +282,27 @@ class _TrainVisualizer:
     gen_policy = self.trainer.gen_policy
     rand_policy = util.init_rl(self.trainer.venv)
     sample_until = util.rollout.min_episodes(self.n_episodes_per_reward_data)
-    trajs_rand_orig_rew = util.rollout.generate_trajectories(
+    trajs_rand = util.rollout.generate_trajectories(
       rand_policy, self.venv_norm_obs, sample_until)
-    trajs_gen_orig_rew = util.rollout.generate_trajectories(
+    trajs_gen = util.rollout.generate_trajectories(
       gen_policy, self.venv_norm_obs, sample_until)
 
     for reward_fn, reward_name in [(None, "Ground Truth Reward"),
                                    (self.trainer.reward_train, "Train Reward"),
                                    (self.trainer.reward_test, "Test Reward")]:
       if reward_fn is None:
-        trajs_rand, trajs_gen = trajs_rand_orig_rew, trajs_gen_orig_rew
+        trajs_rand_rets = [np.sum(traj.rews) for traj in trajs_rand]
+        trajs_gen_rets = [np.sum(traj.rews) for traj in trajs_gen]
       else:
-        trajs_rand = [util.rollout.rewrite_rewards_traj(t, reward_fn)
-                      for t in trajs_rand_orig_rew]
-        trajs_gen = [util.rollout.rewrite_rewards_traj(t, reward_fn)
-                     for t in trajs_gen_orig_rew]
+        trajs_rand_rets = [
+            np.sum(util.rollout.recalc_rewards_traj(traj, reward_fn))
+            for traj in trajs_rand]
+        trajs_gen_rets = [
+            np.sum(util.rollout.recalc_rewards_traj(traj, reward_fn))
+            for traj in trajs_gen]
 
-      gen_ret = util.rollout.rollout_stats(trajs_gen)["return_mean"]
-      rand_ret = util.rollout.rollout_stats(trajs_rand)["return_mean"]
+      gen_ret = np.mean(trajs_gen_rets)
+      rand_ret = np.mean(trajs_rand_rets)
       self.gen_ep_reward[reward_name].append(gen_ret)
       self.rand_ep_reward[reward_name].append(rand_ret)
       tf.logging.info(f"{reward_name} generator return: {gen_ret}")
