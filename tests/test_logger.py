@@ -39,23 +39,20 @@ def test_no_accum(tmpdir):
 def test_hard(tmpdir):
   logger.configure(tmpdir)
 
-  def check():
-    print(sb_logger.Logger.CURRENT)
-
-  with logger.accumulate("disc"):
+  with logger.accumulate_means("disc"):
     sb_logger.logkv("C", 2)
     sb_logger.logkv("D", 2)
     sb_logger.dumpkvs()
     sb_logger.logkv("C", 4)
     sb_logger.dumpkvs()
 
-  with logger.accumulate("gen"):
+  with logger.accumulate_means("gen"):
     sb_logger.logkv("E", 2)
     sb_logger.dumpkvs()
     sb_logger.logkv("E", 0)
     sb_logger.dumpkvs()
 
-  with logger.accumulate("disc"):
+  with logger.accumulate_means("disc"):
     sb_logger.logkv("C", 3)
     sb_logger.dumpkvs()
 
@@ -77,7 +74,7 @@ def test_hard(tmpdir):
   # Part Two:
   # Check that we append to the same logs after the first means dump.
 
-  with logger.accumulate("disc"):
+  with logger.accumulate_means("disc"):
     sb_logger.logkv("D", 100)
     sb_logger.dumpkvs()
 

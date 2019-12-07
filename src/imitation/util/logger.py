@@ -21,7 +21,10 @@ _format_strs = None
 
 
 def configure(folder: str, format_strs: Optional[Sequence[str]] = None) -> None:
-  """Configure the Stable Baselines logger to be `accumulate()`-compatible.
+  """Configure Stable Baselines logger to be `accumulate_means()`-compatible.
+
+  After this function is called, `stable_baselines.logger.{configure,reset}()`
+  are replaced with stubs that raise errors (not yet implemented).
 
   Args:
       folder: Argument from `stable_baselines.logger.configure`.
@@ -42,7 +45,7 @@ def configure(folder: str, format_strs: Optional[Sequence[str]] = None) -> None:
 
 
 @contextlib.contextmanager
-def accumulate(subdir_name: str):
+def accumulate_means(subdir_name: str):
   """Temporarily redirect logkv() to a different logger and auto-track kvmeans.
 
   Within this context, the default logger is swapped out for a special logger
@@ -81,7 +84,7 @@ class _AccumulatingLogger(sb_logger.Logger):
                output_formats,
                *,
                subdir: str):
-    """Like Logger, except also accumulates logkv_mean on target_logger."""
+    """Like Logger, except also accumulates logkv_mean on default logger."""
     super().__init__(folder, output_formats)
     self.subdir = subdir
 
