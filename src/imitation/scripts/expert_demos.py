@@ -4,8 +4,8 @@ import os.path as osp
 from typing import Optional
 
 from sacred.observers import FileStorageObserver
-from stable_baselines import logger as sb_logger
 from stable_baselines.common.vec_env import VecNormalize
+import stable_baselines.logger as sb_logger
 import tensorflow as tf
 
 import imitation.envs.examples  # noqa: F401
@@ -114,8 +114,8 @@ def rollouts_and_policy(
 
   with util.make_session():
     tf.logging.set_verbosity(tf.logging.INFO)
-    sb_logger.configure(folder=osp.join(log_dir, 'rl'),
-                        format_strs=['tensorboard', 'stdout'])
+    util.logger.configure(folder=osp.join(log_dir, 'rl'),
+                          format_strs=['tensorboard', 'stdout'])
 
     rollout_dir = osp.join(log_dir, "rollouts")
     policy_dir = osp.join(log_dir, "policies")
