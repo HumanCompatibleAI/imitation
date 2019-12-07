@@ -22,8 +22,11 @@ def train_defaults():
   n_gen_steps_per_epoch = 2048
   airl_entropy_weight = 1.0
 
-  plot_interval = -1  # Number of epochs in between plots (<=0 disables)
+  # Number of epochs in between plots (<0 disables) (=0 means final plot only)
+  plot_interval = -1
   n_plot_episodes = 5  # Number of rollouts for each mean_ep_rew data
+  # Interval for extra episode rew data. (<=0 disables)
+  extra_episode_data_interval = -1
   show_plots = True  # Show plots in addition to saving them
 
   init_trainer_kwargs = dict(
@@ -84,11 +87,6 @@ def airl():
   init_trainer_kwargs = dict(
       use_gail=False,
   )
-
-
-@train_ex.named_config
-def plots():
-  plot_interval = 10
 
 
 @train_ex.named_config
