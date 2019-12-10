@@ -1,5 +1,5 @@
 from setuptools import find_packages, setup
-import src.imitation  # pytype:disable=import-error
+import src.imitation  # pytype: disable=import-error
 
 TF_VERSION = '>=1.15.0,<2.0'
 TESTS_REQUIRE = [
