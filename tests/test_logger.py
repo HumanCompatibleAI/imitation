@@ -1,8 +1,9 @@
 from collections import defaultdict
 import os.path as osp
-from typing import List
-import imitation.util.logger as logger
+
 import stable_baselines.logger as sb_logger
+
+import imitation.util.logger as logger
 
 
 def _read_csv_lines(lines) -> dict:
