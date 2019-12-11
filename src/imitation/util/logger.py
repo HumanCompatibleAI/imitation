@@ -96,9 +96,11 @@ class _AccumulatingLogger(sb_logger.Logger):
     self.subdir = subdir
 
   def logkv(self, key, val):
-    super().logkv(key, val)
-    accumulate_key = os.path.join("mean", self.subdir, key)
-    sb_logger.Logger.DEFAULT.logkv_mean(accumulate_key, val)
+    raw_key = os.path.join("raw", self.subdir, key)
+    super().logkv(raw_key, val)
+
+    mean_key = os.path.join("mean", self.subdir, key)
+    sb_logger.Logger.DEFAULT.logkv_mean(mean_key, val)
 
   @classmethod
   def from_subdir(cls, subdir: str):
