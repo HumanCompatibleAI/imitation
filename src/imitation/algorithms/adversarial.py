@@ -1,3 +1,5 @@
+import contextlib
+
 from functools import partial
 from typing import Optional, Sequence
 from warnings import warn
@@ -12,7 +14,7 @@ from imitation import summaries
 import imitation.rewards.discrim_net as discrim_net
 from imitation.rewards.reward_net import BasicShapedRewardNet
 import imitation.util as util
-from imitation.util import buffer, reward_wrapper, rollout
+from imitation.util import buffer, logger, reward_wrapper, rollout
 
 
 class AdversarialTrainer:
@@ -47,42 +49,49 @@ class AdversarialTrainer:
                gen_replay_buffer_capacity: Optional[int] = None,
                init_tensorboard: bool = False,
                init_tensorboard_graph: bool = False,
-               debug_use_ground_truth: bool = False):
+               debug_use_ground_truth: bool = False,
+               use_custom_log: bool = False,
+               ):
     """Builds Trainer.
 
     Args:
         venv: The vectorized environment to train in.
         gen_policy: The generator policy that is trained to maximize
-                    discriminator confusion.
+          discriminator confusion.
         discrim: The discriminator network.
-            For GAIL, use a DiscrimNetGAIL. For AIRL, use a DiscrimNetAIRL.
+          For GAIL, use a DiscrimNetGAIL. For AIRL, use a DiscrimNetAIRL.
         expert_demos: Transitions from an expert dataset.
         disc_opt_cls: The optimizer for discriminator training.
         disc_opt_kwargs: Parameters for discriminator training.
         n_disc_samples_per_buffer: The number of obs-act-obs triples
-            sampled from each replay buffer (expert and generator) during each
-            step of discriminator training. This is also the number of triples
-            stored in the replay buffer after each epoch of generator training.
+          sampled from each replay buffer (expert and generator) during each
+          step of discriminator training. This is also the number of triples
+          stored in the replay buffer after each epoch of generator training.
         gen_replay_buffer_capacity: The capacity of the
-            generator replay buffer (the number of obs-action-obs samples from
-            the generator that can be stored).
+          generator replay buffer (the number of obs-action-obs samples from
+          the generator that can be stored).
 
-            By default this is equal to `20 * n_disc_samples_per_buffer`.
+          By default this is equal to `20 * n_disc_samples_per_buffer`.
         init_tensorboard: If True, makes various discriminator
-            TensorBoard summaries.
+          TensorBoard summaries.
         init_tensorboard_graph: If both this and `init_tensorboard` are True,
-            then write a Tensorboard graph summary to disk.
+          then write a Tensorboard graph summary to disk.
         debug_use_ground_truth: If True, use the ground truth reward for
-            `self.train_env`.
-            This disables the reward wrapping that would normally replace
-            the environment reward with the learned reward. This is useful for
-            sanity checking that the policy training is functional.
+          `self.train_env`.
+          This disables the reward wrapping that would normally replace
+          the environment reward with the learned reward. This is useful for
+          sanity checking that the policy training is functional.
+        use_custom_log: If True, then automatically enter
+          `imitation.logger.accumulate_means()` contexts for discriminator
+          and generator training. Also log the discriminator and generator
+          means after every epoch in train.
     """
     self._sess = tf.get_default_session()
     self._global_step = tf.train.create_global_step()
 
     self._n_disc_samples_per_buffer = n_disc_samples_per_buffer
     self.debug_use_ground_truth = debug_use_ground_truth
+    self.use_custom_log = use_custom_log
 
     self.venv = venv
     self._expert_demos = expert_demos
@@ -143,6 +152,12 @@ class AdversarialTrainer:
     """Policy (i.e. the generator) being trained."""
     return self._gen_policy
 
+  def _log_context(self, name):
+    if self.use_custom_log:
+      return logger.accumulate_means(name)
+    else:
+      return contextlib.nullcontext()
+
   def train_disc(self, n_steps=10, **kwargs):
     """Trains the discriminator to minimize classification cross-entropy.
 
@@ -152,21 +167,23 @@ class AdversarialTrainer:
         gen_acts (np.ndarray): See `_build_disc_feed_dict`.
         gen_next_obs (np.ndarray): See `_build_disc_feed_dict`.
     """
-    for _ in range(n_steps):
-      fd = self._build_disc_feed_dict(**kwargs)
-      step, _ = self._sess.run([self._global_step, self._disc_train_op],
-                               feed_dict=fd)
-      if self._init_tensorboard and step % 20 == 0:
-        self._summarize(fd, step)
+    with self._log_context("discriminator"):
+      for _ in range(n_steps):
+        fd = self._build_disc_feed_dict(**kwargs)
+        step, _ = self._sess.run([self._global_step, self._disc_train_op],
+                                 feed_dict=fd)
+        if self._init_tensorboard and step % 20 == 0:
+          self._summarize(fd, step)
 
   def train_gen(self, n_steps=10000):
-    self._gen_policy.set_env(self.venv_train_norm)
-    # TODO(adam): learn was not intended to be called for each training batch
-    # It should work, but might incur unnecessary overhead: e.g. in PPO2
-    # a new Runner instance is created each time. Also a hotspot for errors:
-    # algorithms not tested for this use case, may reset state accidentally.
-    self._gen_policy.learn(n_steps, reset_num_timesteps=False)
-    self._populate_gen_replay_buffer()
+    with self._log_context("generator"):
+      self._gen_policy.set_env(self.venv_train_norm)
+      # TODO(adam): learn was not intended to be called for each training batch
+      # It should work, but might incur unnecessary overhead: e.g. in PPO2
+      # a new Runner instance is created each time. Also a hotspot for errors:
+      # algorithms not tested for this use case, may reset state accidentally.
+      self._gen_policy.learn(n_steps, reset_num_timesteps=False)
+      self._populate_gen_replay_buffer()
 
   def _populate_gen_replay_buffer(self) -> None:
     """Generate and store generator samples in the buffer.
@@ -332,6 +349,7 @@ def init_trainer(env_name: str,
                  max_episode_steps: Optional[int] = None,
                  scale: bool = True,
                  airl_entropy_weight: float = 1.0,
+                 use_custom_log: bool = False,
                  discrim_kwargs: bool = {},
                  reward_kwargs: bool = {},
                  trainer_kwargs: bool = {},
@@ -356,6 +374,7 @@ def init_trainer(env_name: str,
     scale: If True, then scale input Tensors to the interval [0, 1].
     airl_entropy_weight: Only applicable for AIRL. The `entropy_weight`
         argument of `DiscrimNetAIRL.__init__`.
+    use_custom_log: The use_custom_log argument to AdversarialTrainer.__init__.
     trainer_kwargs: Arguments for the Trainer constructor.
     reward_kwargs: Arguments for the `*RewardNet` constructor.
     discrim_kwargs: Arguments for the `DiscrimNet*` constructor.
@@ -383,5 +402,6 @@ def init_trainer(env_name: str,
 
   expert_demos = util.rollout.flatten_trajectories(expert_trajectories)
   trainer = AdversarialTrainer(env, gen_policy, discrim, expert_demos,
+                               use_custom_log=use_custom_log,
                                **trainer_kwargs)
   return trainer

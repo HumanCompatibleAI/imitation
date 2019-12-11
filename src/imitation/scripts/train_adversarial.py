@@ -149,6 +149,7 @@ def train(_run,
 
     trainer = init_trainer(env_name, expert_trajs,
                            seed=_seed, log_dir=log_dir,
+                           use_custom_log=True,
                            **init_trainer_kwargs)
 
     if plot_interval >= 0:
@@ -168,6 +169,9 @@ def train(_run,
         visualizer.add_data_disc_loss(False, epoch)
 
       trainer.train_gen(n_gen_steps_per_epoch)
+
+      util.logger.dumpkvs()
+
       if visualizer:
         visualizer.add_data_disc_loss(True, epoch)
 
