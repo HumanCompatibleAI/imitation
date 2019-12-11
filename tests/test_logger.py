@@ -40,6 +40,8 @@ def test_no_accum(tmpdir):
 def test_hard(tmpdir):
   logger.configure(tmpdir)
 
+  sb_logger.logkv("no_context", 1)
+
   with logger.accumulate_means("disc"):
     sb_logger.logkv("C", 2)
     sb_logger.logkv("D", 2)
@@ -59,18 +61,21 @@ def test_hard(tmpdir):
 
   sb_logger.dumpkvs()  # Writes 1 mean each from "gen" and "disc".
 
-  expect_raw_gen = {"E": [2, 0]}
-  expect_raw_disc = {"C": [2, 4, 3], "D": [2, '', '']}
-  expect_default = {"accumul_mean/gen/E": [1],
-                    "accumul_mean/disc/C": [3],
-                    "accumul_mean/disc/D": [2],
+  expect_raw_gen = {"raw/gen/E": [2, 0]}
+  expect_raw_disc = {"raw/disc/C": [2, 4, 3],
+                     "raw/disc/D": [2, '', ''],
+                     }
+  expect_default = {"mean/gen/E": [1],
+                    "mean/disc/C": [3],
+                    "mean/disc/D": [2],
+                    "no_context": [1],
                     }
 
   _compare_csv_lines(osp.join(tmpdir, "progress.csv"), expect_default)
   _compare_csv_lines(
-    osp.join(tmpdir, "accumul_raw", "gen", "progress.csv"), expect_raw_gen)
+    osp.join(tmpdir, "raw", "gen", "progress.csv"), expect_raw_gen)
   _compare_csv_lines(
-    osp.join(tmpdir, "accumul_raw", "disc", "progress.csv"), expect_raw_disc)
+    osp.join(tmpdir, "raw", "disc", "progress.csv"), expect_raw_disc)
 
   # Part Two:
   # Check that we append to the same logs after the first means dump.
@@ -79,17 +84,22 @@ def test_hard(tmpdir):
     sb_logger.logkv("D", 100)
     sb_logger.dumpkvs()
 
+  sb_logger.logkv("no_context", 2)
+
   sb_logger.dumpkvs()  # Writes 1 mean from "disc". "gen" is blank.
 
-  expect_raw_gen = {"E": [2, 0]}
-  expect_raw_disc = {"C": [2, 4, 3, ''], "D": [2, '', '', 100]}
-  expect_default = {"accumul_mean/gen/E": [1, ''],
-                    "accumul_mean/disc/C": [3, ''],
-                    "accumul_mean/disc/D": [2, 100],
+  expect_raw_gen = {"raw/gen/E": [2, 0]}
+  expect_raw_disc = {"raw/disc/C": [2, 4, 3, ''],
+                     "raw/disc/D": [2, '', '', 100],
+                     }
+  expect_default = {"mean/gen/E": [1, ''],
+                    "mean/disc/C": [3, ''],
+                    "mean/disc/D": [2, 100],
+                    "no_context": [1, 2],
                     }
 
   _compare_csv_lines(osp.join(tmpdir, "progress.csv"), expect_default)
   _compare_csv_lines(
-    osp.join(tmpdir, "accumul_raw", "gen", "progress.csv"), expect_raw_gen)
+    osp.join(tmpdir, "raw", "gen", "progress.csv"), expect_raw_gen)
   _compare_csv_lines(
-    osp.join(tmpdir, "accumul_raw", "disc", "progress.csv"), expect_raw_disc)
+    osp.join(tmpdir, "raw", "disc", "progress.csv"), expect_raw_disc)
