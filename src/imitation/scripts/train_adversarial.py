@@ -11,8 +11,8 @@ import pickle
 from typing import Optional
 
 from matplotlib import pyplot as plt
+import numpy as np
 from sacred.observers import FileStorageObserver
-from stable_baselines import logger as sb_logger
 import tensorflow as tf
 import tqdm
 
@@ -48,6 +48,7 @@ def train(_run,
 
           plot_interval: int,
           n_plot_episodes: int,
+          extra_episode_data_interval: int,
           show_plots: bool,
           init_tensorboard: bool,
 
@@ -89,11 +90,15 @@ def train(_run,
     n_episodes_eval: The number of episodes to average over when calculating
       the average episode reward of the imitation policy for return.
 
-    plot_interval: The number of epochs between each plot. (If nonpositive,
-      then plots are disabled).
+    plot_interval: The number of epochs between each plot. If negative,
+      then plots are disabled. If zero, then only plot at the end of training.
     n_plot_episodes: The number of episodes averaged over when
       calculating the average episode reward of a policy for the performance
       plots.
+    extra_episode_data_interval: Usually mean episode rewards are calculated
+      immediately before every plot. Set this parameter to a nonnegative number
+      to also add episode reward data points every
+      `extra_episodes_data_interval` epochs.
     show_plots: Figures are always saved to `f"{log_dir}/plots/*.png"`. If
       `show_plots` is True, then also show plots as they are created.
     init_tensorboard: If True, then write tensorboard logs to `{log_dir}/sb_tb`.
@@ -125,8 +130,8 @@ def train(_run,
   expert_stats = util.rollout.rollout_stats(expert_trajs)
 
   with util.make_session():
-    sb_logger.configure(folder=osp.join(log_dir, 'generator'),
-                        format_strs=['tensorboard', 'stdout'])
+    util.logger.configure(folder=osp.join(log_dir, 'generator'),
+                          format_strs=['tensorboard', 'stdout'])
 
     if init_tensorboard:
       sb_tensorboard_dir = osp.join(log_dir, "sb_tb")
@@ -136,9 +141,10 @@ def train(_run,
 
     trainer = init_trainer(env_name, expert_trajs,
                            seed=_seed, log_dir=log_dir,
+                           use_custom_log=True,
                            **init_trainer_kwargs)
 
-    if plot_interval > 0:
+    if plot_interval >= 0:
       visualizer = _TrainVisualizer(
         trainer=trainer,
         show_plots=show_plots,
@@ -154,23 +160,34 @@ def train(_run,
     for epoch in tqdm.tqdm(range(1, n_epochs+1), desc="epoch"):
       trainer.train_disc(trainer.batch_size)
       if visualizer:
-        visualizer.add_data_disc_loss(False)
+        visualizer.add_data_disc_loss(False, epoch)
       trainer.train_gen(trainer.batch_size)
-      if visualizer:
-        visualizer.add_data_disc_loss(True)
 
-      if visualizer and epoch % plot_interval == 0:
-        visualizer.plot_disc_loss()
-        visualizer.add_data_ep_reward(trainer.venv, "Ground Truth Reward")
-        visualizer.add_data_ep_reward(trainer.venv_train, "Train Reward")
-        visualizer.add_data_ep_reward(trainer.venv_test, "Test Reward")
-        visualizer.plot_ep_reward()
+      util.logger.dumpkvs()
+
+      if visualizer:
+        visualizer.add_data_disc_loss(True, epoch)
+
+        if (extra_episode_data_interval > 0
+            and epoch % extra_episode_data_interval == 0):  # noqa: E129
+          visualizer.add_data_ep_reward(epoch)
+
+        if plot_interval > 0 and epoch % plot_interval == 0:
+          visualizer.plot_disc_loss()
+          visualizer.add_data_ep_reward(epoch)
+          # Add episode mean rewards only at plot time because it is expensive.
+          visualizer.plot_ep_reward()
 
       if checkpoint_interval > 0 and epoch % checkpoint_interval == 0:
         save(trainer, os.path.join(log_dir, "checkpoints", f"{epoch:05d}"))
 
     # Save final artifacts.
     save(trainer, os.path.join(log_dir, "checkpoints", "final"))
+
+    if visualizer:
+      visualizer.plot_disc_loss()
+      visualizer.add_data_ep_reward(epoch)
+      visualizer.plot_ep_reward()
 
     # Final evaluation of imitation policy.
     results = {}
@@ -209,20 +226,22 @@ class _TrainVisualizer:
     self.n_episodes_per_reward_data = n_episodes_per_reward_data
     self.log_dir = log_dir
     self.expert_mean_ep_reward = expert_mean_ep_reward
+
+    self.venv_norm_obs = util.reapply_vec_normalize(
+      trainer.venv, trainer.venv_train_norm, disable_norm_reward=True)
     self.plot_idx = 0
     self.gen_data = ([], [])
     self.disc_data = ([], [])
 
+    self.ep_reward_X = []
     self.gen_ep_reward = defaultdict(list)
     self.rand_ep_reward = defaultdict(list)
 
     # Collect data for epoch 0.
-    self.add_data_disc_loss(False)
-    self.add_data_ep_reward(self.trainer.venv, "Ground Truth Reward")
-    self.add_data_ep_reward(self.trainer.venv_train, "Train Reward")
-    self.add_data_ep_reward(self.trainer.venv_test, "Test Reward")
+    self.add_data_disc_loss(False, 0)
+    self.add_data_ep_reward(0)
 
-  def add_data_disc_loss(self, generator_active: bool = False):
+  def add_data_disc_loss(self, generator_active: bool, epoch: int):
     """Evaluates and records the discriminator loss for plotting later.
 
     Args:
@@ -232,13 +251,12 @@ class _TrainVisualizer:
     """
     mode = "gen" if generator_active else "dis"
     X, Y = self.gen_data if generator_active else self.disc_data
-    # Divide by two since we get two data points (gen and disc) per epoch.
-    X.append(self.plot_idx / 2)
+    if not generator_active:
+      X.append(epoch)
+    else:
+      X.append(epoch + 0.5)
     Y.append(self.trainer.eval_disc_loss())
-    tf.logging.info(
-        "plot idx ({}): {} disc loss: {}"
-        .format(mode, self.plot_idx, Y[-1]))
-    self.plot_idx += 1
+    tf.logging.info("epoch ({}): {} disc loss: {}".format(mode, epoch, Y[-1]))
 
   def plot_disc_loss(self):
     """Render a plot of discriminator loss vs. training epoch number."""
@@ -250,19 +268,41 @@ class _TrainVisualizer:
     plt.legend()
     self._savefig("plot_fight_loss_disc", self.show_plots)
 
-  def add_data_ep_reward(self, env, name):
+  def add_data_ep_reward(self, epoch):
     """Calculate and record average episode returns."""
-    sample_until = util.rollout.min_episodes(self.n_episodes_per_reward_data)
+    if epoch in self.ep_reward_X:
+      # Don't calculate ep reward twice.
+      return
+    self.ep_reward_X.append(epoch)
 
     gen_policy = self.trainer.gen_policy
-    gen_ret = util.rollout.mean_return(gen_policy, env, sample_until)
-    self.gen_ep_reward[name].append(gen_ret)
-    tf.logging.info("generator return: {}".format(gen_ret))
-
     rand_policy = util.init_rl(self.trainer.venv)
-    rand_ret = util.rollout.mean_return(rand_policy, env, sample_until)
-    self.rand_ep_reward[name].append(rand_ret)
-    tf.logging.info("random return: {}".format(rand_ret))
+    sample_until = util.rollout.min_episodes(self.n_episodes_per_reward_data)
+    trajs_rand = util.rollout.generate_trajectories(
+      rand_policy, self.venv_norm_obs, sample_until)
+    trajs_gen = util.rollout.generate_trajectories(
+      gen_policy, self.venv_norm_obs, sample_until)
+
+    for reward_fn, reward_name in [(None, "Ground Truth Reward"),
+                                   (self.trainer.reward_train, "Train Reward"),
+                                   (self.trainer.reward_test, "Test Reward")]:
+      if reward_fn is None:
+        trajs_rand_rets = [np.sum(traj.rews) for traj in trajs_rand]
+        trajs_gen_rets = [np.sum(traj.rews) for traj in trajs_gen]
+      else:
+        trajs_rand_rets = [
+            np.sum(util.rollout.recalc_rewards_traj(traj, reward_fn))
+            for traj in trajs_rand]
+        trajs_gen_rets = [
+            np.sum(util.rollout.recalc_rewards_traj(traj, reward_fn))
+            for traj in trajs_gen]
+
+      gen_ret = np.mean(trajs_gen_rets)
+      rand_ret = np.mean(trajs_rand_rets)
+      self.gen_ep_reward[reward_name].append(gen_ret)
+      self.rand_ep_reward[reward_name].append(rand_ret)
+      tf.logging.info(f"{reward_name} generator return: {gen_ret}")
+      tf.logging.info(f"{reward_name} random return: {rand_ret}")
 
   def plot_ep_reward(self):
     """Render and show average episode reward plots."""
@@ -271,8 +311,9 @@ class _TrainVisualizer:
       plt.xlabel("epochs")
       plt.ylabel("Average reward per episode (n={})"
                  .format(self.n_episodes_per_reward_data))
-      plt.plot(self.gen_ep_reward[name], label="avg gen ep reward", c="red")
-      plt.plot(self.rand_ep_reward[name],
+      X = self.ep_reward_X
+      plt.plot(X, self.gen_ep_reward[name], label="avg gen ep reward", c="red")
+      plt.plot(X, self.rand_ep_reward[name],
                label="avg random ep reward", c="black")
 
       name = name.lower().replace(' ', '-')

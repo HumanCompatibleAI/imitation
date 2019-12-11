@@ -25,8 +25,11 @@ def train_defaults():
   # Batch_size must be a multiple of both `init_trainer_kwargs.num_vec`
   # and `init_trainer_kwargs.init_rl_kwargs.nminibatch`.
 
-  plot_interval = -1  # Number of epochs in between plots (<=0 disables)
+  # Number of epochs in between plots (<0 disables) (=0 means final plot only)
+  plot_interval = -1
   n_plot_episodes = 5  # Number of rollouts for each mean_ep_rew data
+  # Interval for extra episode rew data. (<=0 disables)
+  extra_episode_data_interval = -1
   show_plots = True  # Show plots in addition to saving them
 
   init_trainer_kwargs = dict(
@@ -100,13 +103,6 @@ def airl():
       use_gail=False,
   )
 
-
-@train_ex.named_config
-def plots():
-  plot_interval = 10
-
-
-# Standard env configs
 
 @train_ex.named_config
 def acrobot():

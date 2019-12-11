@@ -1,10 +1,11 @@
+import contextlib
 from functools import partial
 from typing import Optional, Sequence
 from warnings import warn
 
 import numpy as np
 from stable_baselines.common.base_class import BaseRLModel
-from stable_baselines.common.vec_env import VecEnv
+from stable_baselines.common.vec_env import VecEnv, VecNormalize
 import tensorflow as tf
 from tqdm import tqdm
 
@@ -12,7 +13,7 @@ from imitation import summaries
 import imitation.rewards.discrim_net as discrim_net
 from imitation.rewards.reward_net import BasicShapedRewardNet
 import imitation.util as util
-from imitation.util import buffer, reward_wrapper, rollout
+from imitation.util import buffer, logger, reward_wrapper, rollout
 
 
 class AdversarialTrainer:
@@ -46,38 +47,45 @@ class AdversarialTrainer:
                gen_replay_buffer_capacity: Optional[int] = None,
                init_tensorboard: bool = False,
                init_tensorboard_graph: bool = False,
-               debug_use_ground_truth: bool = False):
+               debug_use_ground_truth: bool = False,
+               use_custom_log: bool = False,
+               ):
     """Builds Trainer.
 
     Args:
         venv: The vectorized environment to train in.
         gen_policy: The generator policy that is trained to maximize
-                    discriminator confusion. The discriminator batch size is
-                    inferred from `gen_policy.n_batch`.
+          discriminator confusion. The discriminator batch size is
+          inferred from `gen_policy.n_batch`.
         discrim: The discriminator network.
-            For GAIL, use a DiscrimNetGAIL. For AIRL, use a DiscrimNetAIRL.
+          For GAIL, use a DiscrimNetGAIL. For AIRL, use a DiscrimNetAIRL.
         expert_demos: Transitions from an expert dataset.
         disc_opt_cls: The optimizer for discriminator training.
         disc_opt_kwargs: Parameters for discriminator training.
         gen_replay_buffer_capacity: The capacity of the
-            generator replay buffer (the number of obs-action-obs samples from
-            the generator that can be stored).
+          generator replay buffer (the number of obs-action-obs samples from
+          the generator that can be stored).
 
-            By default this is equal to `batch_size`.
+          By default this is equal to `batch_size`.
         init_tensorboard: If True, makes various discriminator
-            TensorBoard summaries.
+          TensorBoard summaries.
         init_tensorboard_graph: If both this and `init_tensorboard` are True,
-            then write a Tensorboard graph summary to disk.
+          then write a Tensorboard graph summary to disk.
         debug_use_ground_truth: If True, use the ground truth reward for
-            `self.train_env`.
-            This disables the reward wrapping that would normally replace
-            the environment reward with the learned reward. This is useful for
-            sanity checking that the policy training is functional.
+          `self.train_env`.
+          This disables the reward wrapping that would normally replace
+          the environment reward with the learned reward. This is useful for
+          sanity checking that the policy training is functional.
+        use_custom_log: If True, then automatically enter
+          `imitation.logger.accumulate_means()` contexts for discriminator
+          and generator training. Also log the discriminator and generator
+          means after every epoch in train.
     """
     self._sess = tf.get_default_session()
     self._global_step = tf.train.create_global_step()
 
     self.debug_use_ground_truth = debug_use_ground_truth
+    self.use_custom_log = use_custom_log
 
     self.venv = venv
     self._expert_demos = expert_demos
@@ -98,15 +106,20 @@ class AdversarialTrainer:
     self._sess.run(tf.global_variables_initializer())
 
     if debug_use_ground_truth:
+      # Would use an identity reward fn here, but RewardFns can't see rewards.
+      self.reward_train = self.reward_test = None
       self.venv_train = self.venv_test = self.venv
     else:
-      reward_train = partial(
+      self.reward_train = partial(
           self.discrim.reward_train,
           gen_log_prob_fn=self._gen_policy.action_probability)
+      self.reward_test = self.discrim.reward_test
       self.venv_train = reward_wrapper.RewardVecEnvWrapper(
-          self.venv, reward_train)
+          self.venv, self.reward_train)
       self.venv_test = reward_wrapper.RewardVecEnvWrapper(
-          self.venv, self.discrim.reward_test)
+          self.venv, self.reward_test)
+
+    self.venv_train_norm = VecNormalize(self.venv_train)
 
     if gen_replay_buffer_capacity is None:
       gen_replay_buffer_capacity = self.batch_size
@@ -137,6 +150,12 @@ class AdversarialTrainer:
     """Policy (i.e. the generator) being trained."""
     return self._gen_policy
 
+  def _log_context(self, name):
+    if self.use_custom_log:
+      return logger.accumulate_means(name)
+    else:
+      return contextlib.nullcontext()
+
   def train_disc(self, total_timesteps: int, **kwargs):
     """Trains the discriminator to minimize classification cross-entropy.
 
@@ -148,12 +167,13 @@ class AdversarialTrainer:
     """
     n_epochs = total_timesteps // self.batch_size
     assert n_epochs >= 1, "should have at least one update"
-    for _ in tqdm(range(n_epochs),  desc="Adversarial train discriminator"):
-      fd = self._build_disc_feed_dict()
-      step, _ = self._sess.run([self._global_step, self._disc_train_op],
-                               feed_dict=fd)
-      if self._init_tensorboard and step % 20 == 0:
-        self._summarize(fd, step)
+    with self._log_context("disc"):
+      for _ in tqdm(range(n_epochs), desc="Adversarial train discriminator"):
+        fd = self._build_disc_feed_dict()
+        step, _ = self._sess.run([self._global_step, self._disc_train_op],
+                                 feed_dict=fd)
+        if self._init_tensorboard and step % 20 == 0:
+          self._summarize(fd, step)
 
   def train_disc_on_samples(self, **kwargs):
     """Trains the discriminator to minimize classification cross-entropy.
@@ -165,11 +185,12 @@ class AdversarialTrainer:
       gen_acts (np.ndarray): See `_build_disc_feed_dict`.
       gen_next_obs (np.ndarray): See `_build_disc_feed_dict`.
     """
-    fd = self._build_disc_feed_dict(**kwargs)
-    step, _ = self._sess.run([self._global_step, self._disc_train_op],
-                             feed_dict=fd)
-    if self._init_tensorboard and step % 20 == 0:
-      self._summarize(fd, step)
+    with self._log_context("disc"):
+      fd = self._build_disc_feed_dict(**kwargs)
+      step, _ = self._sess.run([self._global_step, self._disc_train_op],
+                               feed_dict=fd)
+      if self._init_tensorboard and step % 20 == 0:
+        self._summarize(fd, step)
 
   def train_gen(self, total_timesteps: int, callback=None):
     """Trains the generator (via PPO2) to maximize the discriminator loss.
@@ -179,15 +200,16 @@ class AdversarialTrainer:
       callback: Callback argument to the Stable Baselines `RLModel.learn()`
         method.
     """
-    self.gen_policy.set_env(self.venv_train)
-    # TODO(adam): learn was not intended to be called for each training batch
-    # It should work, but might incur unnecessary overhead: e.g. in PPO2
-    # a new Runner instance is created each time. Also a hotspot for errors:
-    # algorithms not tested for this use case, may reset state accidentally.
-    self.gen_policy.learn(total_timesteps=total_timesteps,
-                          reset_num_timesteps=False,
-                          callback=callback)
-    self._populate_gen_replay_buffer()
+    with self._log_context("gen"):
+      self.gen_policy.set_env(self.venv_train_norm)
+      # TODO(adam): learn was not intended to be called for each training batch
+      # It should work, but might incur unnecessary overhead: e.g. in PPO2
+      # a new Runner instance is created each time. Also a hotspot for errors:
+      # algorithms not tested for this use case, may reset state accidentally.
+      self.gen_policy.learn(total_timesteps=total_timesteps,
+                            reset_num_timesteps=False,
+                            callback=callback)
+      self._populate_gen_replay_buffer()
 
   def train(self, total_timesteps: int) -> None:
     """Trains the discriminator and generator against each other.
@@ -305,8 +327,13 @@ class AdversarialTrainer:
     assert n_gen == len(gen_acts)
     assert n_gen == len(gen_next_obs)
 
+    # Normalize expert observations to match generator observations.
+    with util.vec_norm_disable_training(self.venv_train_norm):
+      expert_obs_norm = self.venv_train_norm._normalize_observation(
+        expert_sample.obs)
+
     # Concatenate rollouts, and label each row as expert or generator.
-    obs = np.concatenate([expert_sample.obs, gen_obs])
+    obs = np.concatenate([expert_obs_norm, gen_obs])
     acts = np.concatenate([expert_sample.acts, gen_acts])
     next_obs = np.concatenate([expert_sample.next_obs, gen_next_obs])
     labels = np.concatenate([np.zeros(n_expert, dtype=int),
@@ -339,6 +366,7 @@ def init_trainer(env_name: str,
                  max_episode_steps: Optional[int] = None,
                  scale: bool = True,
                  airl_entropy_weight: float = 1.0,
+                 use_custom_log: bool = False,
                  discrim_kwargs: bool = {},
                  reward_kwargs: bool = {},
                  trainer_kwargs: bool = {},
@@ -363,6 +391,7 @@ def init_trainer(env_name: str,
     scale: If True, then scale input Tensors to the interval [0, 1].
     airl_entropy_weight: Only applicable for AIRL. The `entropy_weight`
         argument of `DiscrimNetAIRL.__init__`.
+    use_custom_log: The use_custom_log argument to AdversarialTrainer.__init__.
     trainer_kwargs: Arguments for the Trainer constructor.
     reward_kwargs: Arguments for the `*RewardNet` constructor.
     discrim_kwargs: Arguments for the `DiscrimNet*` constructor.
@@ -390,5 +419,6 @@ def init_trainer(env_name: str,
 
   expert_demos = util.rollout.flatten_trajectories(expert_trajectories)
   trainer = AdversarialTrainer(env, gen_policy, discrim, expert_demos,
+                               use_custom_log=use_custom_log,
                                **trainer_kwargs)
   return trainer
