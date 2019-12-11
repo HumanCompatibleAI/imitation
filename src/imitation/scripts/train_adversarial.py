@@ -149,26 +149,25 @@ def train(_run,
       visualizer = None
 
     # Main training loop.
-    with trainer.train_gen_by_batch(total_timesteps) as train_gen:
-      n_epochs = total_timesteps // trainer.batch_size
+    n_epochs = total_timesteps // trainer.batch_size
 
-      for epoch in tqdm.tqdm(range(1, n_epochs+1), desc="epoch"):
-        trainer.train_disc(trainer.batch_size)
-        if visualizer:
-          visualizer.add_data_disc_loss(False)
-        train_gen()
-        if visualizer:
-          visualizer.add_data_disc_loss(True)
+    for epoch in tqdm.tqdm(range(1, n_epochs+1), desc="epoch"):
+      trainer.train_disc(trainer.batch_size)
+      if visualizer:
+        visualizer.add_data_disc_loss(False)
+      trainer.train_gen(trainer.batch_size)
+      if visualizer:
+        visualizer.add_data_disc_loss(True)
 
-        if visualizer and epoch % plot_interval == 0:
-          visualizer.plot_disc_loss()
-          visualizer.add_data_ep_reward(trainer.venv, "Ground Truth Reward")
-          visualizer.add_data_ep_reward(trainer.venv_train, "Train Reward")
-          visualizer.add_data_ep_reward(trainer.venv_test, "Test Reward")
-          visualizer.plot_ep_reward()
+      if visualizer and epoch % plot_interval == 0:
+        visualizer.plot_disc_loss()
+        visualizer.add_data_ep_reward(trainer.venv, "Ground Truth Reward")
+        visualizer.add_data_ep_reward(trainer.venv_train, "Train Reward")
+        visualizer.add_data_ep_reward(trainer.venv_test, "Test Reward")
+        visualizer.plot_ep_reward()
 
-        if checkpoint_interval > 0 and epoch % checkpoint_interval == 0:
-          save(trainer, os.path.join(log_dir, "checkpoints", f"{epoch:05d}"))
+      if checkpoint_interval > 0 and epoch % checkpoint_interval == 0:
+        save(trainer, os.path.join(log_dir, "checkpoints", f"{epoch:05d}"))
 
     # Save final artifacts.
     save(trainer, os.path.join(log_dir, "checkpoints", "final"))

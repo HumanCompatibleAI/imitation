@@ -1,7 +1,4 @@
-from contextlib import contextmanager
 from functools import partial
-import queue
-from threading import Thread
 from typing import Optional, Sequence
 from warnings import warn
 
@@ -179,106 +176,18 @@ class AdversarialTrainer:
 
     Args:
       total_timesteps: The number of transitions to sample from self.venv_train.
+      callback: Callback argument to the Stable Baselines `RLModel.learn()`
+        method.
     """
     self.gen_policy.set_env(self.venv_train)
     # TODO(adam): learn was not intended to be called for each training batch
     # It should work, but might incur unnecessary overhead: e.g. in PPO2
     # a new Runner instance is created each time. Also a hotspot for errors:
     # algorithms not tested for this use case, may reset state accidentally.
-    self.gen_policy.learn(total_timesteps=self.batch_size,
+    self.gen_policy.learn(total_timesteps=total_timesteps,
                           reset_num_timesteps=False,
                           callback=callback)
     self._populate_gen_replay_buffer()
-
-  @contextmanager
-  def train_gen_by_batch(self,
-                         total_timesteps: int,
-                         populate_replay_buffer: bool = True,
-                         ):
-    """Train the generator batch-by-batch without exitting `gen_policy.learn()`.
-
-    Useful for adding discriminator training and plotting code in between
-    `gen_policy.learn()` updates without relying on a callback.
-
-    Args:
-      total_timesteps: Argument to `self.gen_policy.learn`. (An upper bound on
-        the number of timesteps in `self.venv_train` to use during training.)
-      populate_replay_buffer: If True, then automatically generator samples to
-        the generator replay buffer after each policy update.
-
-    Returns:
-      A ContextManager for a function `train_gen_part` which performs a single
-      PPO2 update and which returns the state `(_locals, _globals)` inside PPO2.
-      It must be called exactly `total_timesteps // self.batch_size` times
-      before the ContextManager exits (otherwise `self.gen_policy.learn()` was
-      not run to completion, and an error is thrown).
-    """
-
-    # Details:
-    #
-    # `PPO2.learn(total_timesteps, callback)` calls callback after each update.
-    # We use the callback and a Queue to tie `PPO2.learn` running on a different
-    # thread to a generator that yields and puts `PPO2.learn` on hold after
-    # each update.
-    #
-    # Based on: https://stackoverflow.com/a/9968886/1091722
-    #
-    # TODO(shwang): Getting the details right turned out more complicated than
-    # I thought and increased the complexity of this function. Should discuss
-    # whether to replace with something simpler.
-    q = queue.Queue(1)
-    job_finished = object()
-
-    def callback(_locals, _globals):
-      if populate_replay_buffer:
-        self._populate_gen_replay_buffer()
-      q.put((_locals, _globals))
-      q.join()  # Blocks until `generator()` calls `q.task_done()`
-
-    def job():
-      self.gen_policy.set_env(self.venv_train)
-      self.gen_policy.learn(total_timesteps,
-                            reset_num_timesteps=False,
-                            callback=callback)
-      q.put(job_finished)
-      q.join()
-
-    def generator():
-      """Yields (_locals, _globals) from RL algorithm after every update.
-
-      Pauses `callback` and `job` until another call to `next(generator())`.
-      """
-      t = Thread(target=job, daemon=True)
-      t.start()
-
-      while True:
-        try:
-          item = q.get(timeout=1)
-        except queue.Empty:  # Triggered on q.get() timeout.
-          # Check if the worker thread died, likely because of PPO2 exception.
-          if not t.is_alive():
-            # Kill the main thread too (otherwise we hang).
-            raise RuntimeError("RL algorithm died, quitting train_gen_by_batch")
-          continue
-        else:
-          yield item
-          q.task_done()  # Unblock `callback` or `job` after item is consumed.
-          if item is job_finished:
-            break
-
-      t.join(timeout=1)
-      assert not t.is_alive()
-
-    gen = generator()
-
-    def train_gen_step():
-      item = next(gen)
-      assert item is not job_finished
-    yield lambda: next(gen)
-
-    # Need to advance generator one last time, beyond generator's yield, to
-    # exit RL algorithm.
-    next(gen, None)
 
   def train(self, total_timesteps: int) -> None:
     """Trains the discriminator and generator against each other.
@@ -294,10 +203,9 @@ class AdversarialTrainer:
           `total_timesteps // self.n_batch * self.n_batch`).
     """
     n_epochs = total_timesteps // self.batch_size
-    with self.train_gen_by_batch(total_timesteps) as train_gen:
-      for i in tqdm(range(n_epochs), desc="Adversarial train"):
-        self.train_disc(total_timesteps=self.batch_size)
-        train_gen()
+    for i in tqdm(range(n_epochs), desc="Adversarial train"):
+      self.train_disc(self.batch_size)
+      self.train_gen(self.batch_size)
 
   def _populate_gen_replay_buffer(self) -> None:
     """Generate and store generator samples in the buffer.
