@@ -1,5 +1,4 @@
 import contextlib
-
 from functools import partial
 from typing import Optional, Sequence
 from warnings import warn
@@ -167,7 +166,7 @@ class AdversarialTrainer:
         gen_acts (np.ndarray): See `_build_disc_feed_dict`.
         gen_next_obs (np.ndarray): See `_build_disc_feed_dict`.
     """
-    with self._log_context("discriminator"):
+    with self._log_context("disc"):
       for _ in range(n_steps):
         fd = self._build_disc_feed_dict(**kwargs)
         step, _ = self._sess.run([self._global_step, self._disc_train_op],
@@ -176,7 +175,7 @@ class AdversarialTrainer:
           self._summarize(fd, step)
 
   def train_gen(self, n_steps=10000):
-    with self._log_context("generator"):
+    with self._log_context("gen"):
       self._gen_policy.set_env(self.venv_train_norm)
       # TODO(adam): learn was not intended to be called for each training batch
       # It should work, but might incur unnecessary overhead: e.g. in PPO2

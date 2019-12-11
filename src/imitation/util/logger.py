@@ -54,11 +54,11 @@ def accumulate_means(subdir_name: str):
   """Temporarily redirect logkv() to a different logger and auto-track kvmeans.
 
   Within this context, the original logger is swapped out for a special logger
-  in directory `"{current_logging_dir}/accumul_raw/{subdir_name}"`.
+  in directory `"{current_logging_dir}/raw/{subdir_name}"`.
 
   The special logger's `stable_baselines.logger.logkv(key, val)`, in addition
   to tracking its own logs, also forwards the log to the original logger's
-  `.logkv_mean()` under the key `accumul_mean/{subdir_name}/{key}`.
+  `.logkv_mean()` under the key `mean/{subdir_name}/{key}`.
 
   After the context exits, these means can be dumped as usual using
   `stable_baselines.logger.dumpkvs()` or `imitation.util.logger.dumpkvs()`.
@@ -97,7 +97,7 @@ class _AccumulatingLogger(sb_logger.Logger):
 
   def logkv(self, key, val):
     super().logkv(key, val)
-    accumulate_key = os.path.join("accumul_mean", self.subdir, key)
+    accumulate_key = os.path.join("mean", self.subdir, key)
     sb_logger.Logger.DEFAULT.logkv_mean(accumulate_key, val)
 
   @classmethod
@@ -106,7 +106,7 @@ class _AccumulatingLogger(sb_logger.Logger):
       return cls._cached_loggers[subdir]
     else:
       default_log = sb_logger.Logger.DEFAULT
-      folder = os.path.join(default_log.dir, "accumul_raw", subdir)
+      folder = os.path.join(default_log.dir, "raw", subdir)
       os.makedirs(folder, exist_ok=True)
       output_formats = _build_output_formats(folder, _format_strs)
       result = cls(folder, output_formats, subdir=subdir)
