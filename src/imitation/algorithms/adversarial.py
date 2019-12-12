@@ -213,6 +213,8 @@ class AdversarialTrainer:
     for i in tqdm(range(n_epochs), desc="AIRL train"):
       self.train_disc(**_n_steps_if_not_none(n_disc_steps_per_epoch))
       self.train_gen(**_n_steps_if_not_none(n_gen_steps_per_epoch))
+      if self.use_custom_log:
+        logger.dumpkvs()
 
   def eval_disc_loss(self, **kwargs):
     """Evaluates the discriminator loss.
