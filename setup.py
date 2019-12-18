@@ -3,6 +3,8 @@ import src.imitation  # pytype:disable=import-error
 
 TF_VERSION = '>=1.15.0,<2.0'
 TESTS_REQUIRE = [
+    # remove pin once https://github.com/nedbat/coveragepy/issues/881 fixed
+    'coverage==4.5.4',
     'codecov',
     'codespell',
     'flake8',
