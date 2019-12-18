@@ -39,6 +39,7 @@ setup(
     },
     install_requires=[
         'awscli',
+        'cloudpickle>=0.5.5',
         'gym[classic_control]',
         'numpy>=1.15',
         'ray[debug]==0.7.4',
