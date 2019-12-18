@@ -1,14 +1,25 @@
 from setuptools import find_packages, setup
-import src.imitation  # pytype:disable=import-error
+import src.imitation  # pytype: disable=import-error
 
 TF_VERSION = '>=1.15.0,<2.0'
 TESTS_REQUIRE = [
+    # remove pin once https://github.com/nedbat/coveragepy/issues/881 fixed
+    'coverage==4.5.4',
     'codecov',
     'codespell',
+    'flake8',
+    'flake8-blind-except',
+    'flake8-builtins',
+    'flake8-commas',
+    'flake8-debugger',
+    'flake8-isort',
     'pytest',
     'pytest-cov',
     'pytest-shard',
     'pytest-xdist',
+    'pytype',
+    'sphinx',
+    'sphinxcontrib-napoleon',
 ]
 
 setup(
@@ -28,6 +39,7 @@ setup(
     },
     install_requires=[
         'awscli',
+        'cloudpickle>=0.5.5',
         'gym[classic_control]',
         'numpy>=1.15',
         'ray[debug]==0.7.4',
@@ -40,7 +52,8 @@ setup(
         # sacred==0.7.5 build is broken without pymongo
         # sacred>0.7.4 have non-picklable config objects (see GH #109)
         'sacred==0.7.4',
-        'cloudpickle>=0.5.5',
+        # Remove this version pin once scipy/#11237 is fixed
+        'scipy==1.3.3',
     ],
     tests_require=TESTS_REQUIRE,
     extras_require={
@@ -49,25 +62,13 @@ setup(
         # recommended packages for development
         'dev': [
             'autopep8',
-            'flake8',
-            'flake8-blind-except',
-            'flake8-builtins',
-            'flake8-commas',
-            'flake8-debugger',
-            'flake8-isort',
             'ntfy[slack]',
-            'sphinx',
-            'sphinxcontrib-napoleon',
             'ipdb',
             'isort',
             'jupyter',
-            'pytype',
-            'codespell',
-            # for convenience
             *TESTS_REQUIRE,
         ],
-        'test':
-        TESTS_REQUIRE,
+        'test': TESTS_REQUIRE,
     },
     entry_points={
         'console_scripts': [

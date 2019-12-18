@@ -14,7 +14,8 @@ from stable_baselines import bench
 from stable_baselines.common.base_class import BaseRLModel
 from stable_baselines.common.input import observation_input
 from stable_baselines.common.policies import BasePolicy, MlpPolicy
-from stable_baselines.common.vec_env import DummyVecEnv, SubprocVecEnv, VecEnv
+from stable_baselines.common.vec_env import (DummyVecEnv, SubprocVecEnv, VecEnv,
+                                             VecNormalize)
 import tensorflow as tf
 
 # TODO(adam): this should really be OrderedDict but that breaks Python
@@ -68,6 +69,53 @@ def make_vec_env(env_name: str,
     return SubprocVecEnv(env_fns, start_method='forkserver')
   else:
     return DummyVecEnv(env_fns)
+
+
+@contextlib.contextmanager
+def vec_norm_disable_training(vec_norm: VecNormalize):
+  """ContextManager that temporarily sets vec_norm.training to False."""
+  # TODO: Remove once hill-a/stable-baselines#602 is resolved.
+  prev_training, vec_norm.training = vec_norm.training, False
+  yield
+  vec_norm.training = prev_training
+
+
+def reapply_vec_normalize(venv: VecEnv,
+                          src_vec_norm: VecNormalize,
+                          *,
+                          disable_training: bool = True,
+                          disable_norm_obs: bool = False,
+                          disable_norm_reward: bool = False,
+                          ) -> VecNormalize:
+  """Returns `venv` wrapped in a VecNormalize similar to `src_vec_norm`.
+
+  The new VecNormalize has the same running mean and standard deviation as
+  before, but will disable training, observation normalization, and reward
+  normalization if certain parameters to this function are True.
+
+  Args:
+    venv: A VecEnv.
+    src_vec_norm: A VecNormalize that wraps a VecEnv with the same
+      observation and actions space as `venv`.
+    disable_norm_training: If True, then disable training in the returned
+      VecNormalize.
+    disable_norm_obs: If True, then disable observation normalization
+      in the returned VecNormalize.
+    disable_norm_reward: If False, then disable reward normalization
+      in the returned VecNormalize.
+  """
+  state = src_vec_norm.__getstate__()
+  if disable_training:
+    state['training'] = False
+  if disable_norm_obs:
+    state['norm_obs'] = False
+  if disable_norm_reward:
+    state['norm_reward'] = False
+
+  result = VecNormalize.__new__(VecNormalize)
+  result.__setstate__(state)
+  result.set_venv(venv)
+  return result
 
 
 def init_rl(env: Union[gym.Env, VecEnv],
