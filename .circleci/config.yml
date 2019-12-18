@@ -32,7 +32,7 @@ commands:
             curl -o /root/.mujoco/mjkey.txt ${MUJOCO_KEY}
             md5sum /root/.mujoco/mjkey.txt
             # Only create venv if it's not been restored from cache
-            [[ -d /venv ]] || USE_MPI=True ./ci/build_venv.sh /venv
+            [[ -d /venv ]] || ./ci/build_venv.sh /venv
             python -c "import mujoco_py"
 
       - save_cache:
