@@ -1,5 +1,6 @@
 import contextlib
 from functools import partial
+import os.path as osp
 from typing import Optional, Sequence
 from warnings import warn
 
@@ -49,7 +50,6 @@ class AdversarialTrainer:
                init_tensorboard: bool = False,
                init_tensorboard_graph: bool = False,
                debug_use_ground_truth: bool = False,
-               use_custom_log: bool = False,
                ):
     """Builds Trainer.
 
@@ -80,17 +80,14 @@ class AdversarialTrainer:
           This disables the reward wrapping that would normally replace
           the environment reward with the learned reward. This is useful for
           sanity checking that the policy training is functional.
-        use_custom_log: If True, then automatically enter
-          `imitation.logger.accumulate_means()` contexts for discriminator
-          and generator training. Also log the discriminator and generator
-          means after every epoch in train.
     """
+    assert util.logger.is_configured(), ("Requires call to "
+                                         "imitation.util.logger.configure")
     self._sess = tf.get_default_session()
     self._global_step = tf.train.create_global_step()
 
     self._n_disc_samples_per_buffer = n_disc_samples_per_buffer
     self.debug_use_ground_truth = debug_use_ground_truth
-    self.use_custom_log = use_custom_log
 
     self.venv = venv
     self._expert_demos = expert_demos
@@ -213,8 +210,7 @@ class AdversarialTrainer:
     for i in tqdm(range(n_epochs), desc="AIRL train"):
       self.train_disc(**_n_steps_if_not_none(n_disc_steps_per_epoch))
       self.train_gen(**_n_steps_if_not_none(n_gen_steps_per_epoch))
-      if self.use_custom_log:
-        logger.dumpkvs()
+      logger.dumpkvs()
 
   def eval_disc_loss(self, **kwargs):
     """Evaluates the discriminator loss.
@@ -350,11 +346,10 @@ def init_trainer(env_name: str,
                  max_episode_steps: Optional[int] = None,
                  scale: bool = True,
                  airl_entropy_weight: float = 1.0,
-                 use_custom_log: bool = False,
-                 discrim_kwargs: bool = {},
-                 reward_kwargs: bool = {},
-                 trainer_kwargs: bool = {},
-                 init_rl_kwargs: bool = {},
+                 discrim_kwargs: dict = {},
+                 reward_kwargs: dict = {},
+                 trainer_kwargs: dict = {},
+                 init_rl_kwargs: dict = {},
                  ):
   """Builds an AdversarialTrainer, ready to be trained on a vectorized
     environment and expert demonstrations.
@@ -375,13 +370,14 @@ def init_trainer(env_name: str,
     scale: If True, then scale input Tensors to the interval [0, 1].
     airl_entropy_weight: Only applicable for AIRL. The `entropy_weight`
         argument of `DiscrimNetAIRL.__init__`.
-    use_custom_log: The use_custom_log argument to AdversarialTrainer.__init__.
     trainer_kwargs: Arguments for the Trainer constructor.
     reward_kwargs: Arguments for the `*RewardNet` constructor.
     discrim_kwargs: Arguments for the `DiscrimNet*` constructor.
     init_rl_kwargs: Keyword arguments passed to `init_rl`,
         used to initialize the RL algorithm.
   """
+  util.logger.configure(folder=osp.join(log_dir, 'generator'),
+                        format_strs=['tensorboard', 'stdout'])
   env = util.make_vec_env(env_name, num_vec, seed=seed, parallel=parallel,
                           log_dir=log_dir, max_episode_steps=max_episode_steps)
   gen_policy = util.init_rl(env, verbose=1,
@@ -403,6 +399,5 @@ def init_trainer(env_name: str,
 
   expert_demos = util.rollout.flatten_trajectories(expert_trajectories)
   trainer = AdversarialTrainer(env, gen_policy, discrim, expert_demos,
-                               use_custom_log=use_custom_log,
                                **trainer_kwargs)
   return trainer
