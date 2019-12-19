@@ -1,4 +1,3 @@
-import contextlib
 from functools import partial
 import os.path as osp
 from typing import Optional, Sequence
