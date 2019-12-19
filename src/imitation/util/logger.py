@@ -8,15 +8,26 @@ import stable_baselines.logger as sb_logger
 class _AccumulatingLogger(sb_logger.Logger):
 
   def __init__(self,
-               folder: str,
-               output_formats: Sequence[sb_logger.KVWriter],
+               format_strs: Sequence[str],
                *,
                mean_logger: sb_logger.Logger,
                subdir: str):
-    """Like Logger, except also accumulates logkv_mean on the mean_logger."""
-    super().__init__(folder, output_formats)
+    """Like Logger, except also accumulates logkv_mean on the mean_logger.
+
+    Args:
+      format_strs: An list of output format strings. For details on available
+        output formats see `stable_baselines.logger.make_output_format`.
+      mean_logger: A background logger that is used to keep track of log
+        means.
+      subdir: Used to build the logging directory. Also used in the logging
+        prefix for every key written to both this logger and `mean_logger`.
+    """
     self.subdir = subdir
     self.mean_logger = mean_logger
+    folder = os.path.join(self.mean_logger.dir, "raw", subdir)
+    output_formats = _build_output_formats(folder, format_strs)
+    os.makedirs(folder, exist_ok=True)
+    super().__init__(folder, output_formats)
 
   def logkv(self, key, val):
     raw_key = os.path.join("raw", self.subdir, key)
@@ -57,9 +68,9 @@ class _HierarchicalLogger(sb_logger.Logger):
 
     Args:
         subdir: A string key for the _AccumulatingLogger which determines
-          its `folder`. All `_AccumulatingLogger` are cached, so if this
-          method is called again with the same `subdir` argument, then we load
-          the same `_AccumulatingLogger` from last time.
+          its `folder` and logging prefix. All `_AccumulatingLogger` are cached,
+          so if this method is called again with the same `subdir` argument,
+          then we load the same `_AccumulatingLogger` from last time.
     """
     if self.current_logger is not None:
       raise RuntimeError("Nested `accumulate_means` context")
@@ -67,11 +78,8 @@ class _HierarchicalLogger(sb_logger.Logger):
     if subdir in self._cached_loggers:
       logger = self._cached_loggers[subdir]
     else:
-      folder = os.path.join(self.default_logger.dir, "raw", subdir)
-      os.makedirs(folder, exist_ok=True)
-      output_formats = _build_output_formats(folder, self.format_strs)
       logger = _AccumulatingLogger(
-        folder, output_formats, mean_logger=self.default_logger, subdir=subdir)
+        self.format_strs, mean_logger=self.default_logger, subdir=subdir)
       self._cached_loggers[subdir] = logger
 
     try:
