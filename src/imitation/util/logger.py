@@ -62,8 +62,8 @@ class _HierarchicalLogger(sb_logger.Logger):
 
     `self.current_logger` is higher priority than `default_logger` when it
     is not None. At initialization, `self.current_logger = None`. Use
-    `self.accumulate_means` to temporarily set `self.current_logger`
-    to an `_AccumulatingLogger`.
+    the `self.accumulate_means()` context to temporarily set
+    `self.current_logger` to an `_AccumulatingLogger`.
 
     Args:
       default_logger: The logger to forward logging requests to when
