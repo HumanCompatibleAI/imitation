@@ -15,15 +15,19 @@ train_ex = sacred.Experiment("train_adversarial", interactive=True)
 @train_ex.config
 def train_defaults():
   env_name = "CartPole-v1"  # environment to train on
-  # Num times to generate a batch and update both generator and discrim.
-  n_epochs = 50
-  n_expert_demos = None  # Num demos used. None uses every demo possible
-  n_episodes_eval = 50  # Num of episodes for final mean ground truth return
-  airl_entropy_weight = 1.0
 
   batch_size = 2048  # Batch size for both generator and discrim updates.
   # Batch_size must be a multiple of both `init_trainer_kwargs.num_vec`
   # and `init_trainer_kwargs.init_rl_kwargs.nminibatch`.
+
+  # Num times to generate a batch and update both generator and discrim.
+  # Set total_timesteps to None.
+  n_epochs = 50
+  # Total timesteps taken in env during training. Set n_epochs to None.
+  total_timesteps = None
+  n_expert_demos = None  # Num demos used. None uses every demo possible
+  n_episodes_eval = 50  # Num of episodes for final mean ground truth return
+  airl_entropy_weight = 1.0
 
   # Number of epochs in between plots (<0 disables) (=0 means final plot only)
   plot_interval = -1
@@ -63,8 +67,13 @@ def train_defaults():
 
 
 @train_ex.config
-def timesteps(n_epochs, batch_size):
-  total_timesteps = n_epochs * batch_size
+def calc_timesteps(n_epochs, total_timesteps, batch_size):
+  if total_timesteps is None and n_epochs is not None:
+    total_timesteps = n_epochs * batch_size
+  else:
+    assert total_timesteps is not None and n_epochs is None, (
+        "Must set exactly one of n_epochs={} and total_timesteps={} to non-None"
+        .format(n_epochs, total_timesteps))
 
 
 @train_ex.config
@@ -72,6 +81,7 @@ def batch_size_to_n_steps(total_timesteps, init_trainer_kwargs, batch_size):
   _num_vec = init_trainer_kwargs["num_vec"]
   assert batch_size % _num_vec == 0, "num_vec must evenly divide batch_size"
   init_trainer_kwargs["init_rl_kwargs"]["n_steps"] = batch_size // _num_vec
+  del _num_vec
 
 
 @train_ex.config
@@ -232,10 +242,8 @@ def fast():
 
 ant_shared_locals = dict(
     n_epochs=2000,
+    batch_size=2048*8,
     init_trainer_kwargs=dict(
-        init_rl_kwargs=dict(
-            n_steps=2048,  # batch size of 2048*8=16384 due to num_vec
-        ),
         max_episode_steps=500,  # To match `inverse_rl` settings.
     ),
 )
