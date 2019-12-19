@@ -5,6 +5,22 @@ from typing import ContextManager, Optional, Sequence
 import stable_baselines.logger as sb_logger
 
 
+def _build_output_formats(folder: str,
+                          format_strs: Sequence[str] = None,
+                          ) -> Sequence[sb_logger.KVWriter]:
+  """Build output formats for initializing a Stable Baselines Logger.
+
+  Args:
+    folder: Path to directory that logs are written to.
+    format_strs: An list of output format strings. For details on available
+      output formats see `stable_baselines.logger.make_output_format`.
+  """
+  os.makedirs(folder, exist_ok=True)
+  output_formats = [sb_logger.make_output_format(f, folder)
+                    for f in format_strs]
+  return output_formats
+
+
 class _AccumulatingLogger(sb_logger.Logger):
 
   def __init__(self,
@@ -122,22 +138,6 @@ def _sb_logger_configure_replacement(*args, **kwargs):
 def _sb_logger_reset_replacement():
   raise RuntimeError("Shouldn't call stable_baselines.logger.reset "
                      "once imitation.logger.configure() has been called")
-
-
-def _build_output_formats(folder: str,
-                          format_strs: Sequence[str] = None,
-                          ) -> Sequence[sb_logger.KVWriter]:
-  """Build output formats for initializing a Stable Baselines logger.
-
-  Args:
-    folder: Path to directory that logs are written to.
-    format_strs: An list of output format strings. For details on available
-      output formats see `stable_baselines.logger.make_output_format`.
-  """
-  os.makedirs(folder, exist_ok=True)
-  output_formats = [sb_logger.make_output_format(f, folder)
-                    for f in format_strs]
-  return output_formats
 
 
 def is_configured() -> bool:
