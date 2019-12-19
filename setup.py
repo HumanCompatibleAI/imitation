@@ -3,6 +3,8 @@ import src.imitation  # pytype: disable=import-error
 
 TF_VERSION = '>=1.15.0,<2.0'
 TESTS_REQUIRE = [
+    # remove pin once https://github.com/nedbat/coveragepy/issues/881 fixed
+    'coverage==4.5.4',
     'codecov',
     'codespell',
     'flake8',
@@ -49,6 +51,8 @@ setup(
         # sacred==0.7.5 build is broken without pymongo
         # sacred>0.7.4 have non-picklable config objects (see GH #109)
         'sacred==0.7.4',
+        # Remove this version pin once scipy/#11237 is fixed
+        'scipy==1.3.3',
     ],
     tests_require=TESTS_REQUIRE,
     extras_require={
