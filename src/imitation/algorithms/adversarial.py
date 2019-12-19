@@ -288,7 +288,7 @@ class AdversarialTrainer:
 
     # Normalize expert observations to match generator observations.
     with util.vec_norm_disable_training(self.venv_train_norm):
-      expert_obs_norm = self.venv_train_norm.normalize_observation(
+      expert_obs_norm = self.venv_train_norm.normalize_obs(
         expert_sample.obs)
 
     # Concatenate rollouts, and label each row as expert or generator.
