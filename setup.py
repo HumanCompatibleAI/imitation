@@ -3,6 +3,8 @@ import src.imitation  # pytype: disable=import-error
 
 TF_VERSION = '>=1.15.0,<2.0'
 TESTS_REQUIRE = [
+    # remove pin once https://github.com/nedbat/coveragepy/issues/881 fixed
+    'coverage==4.5.4',
     'codecov',
     'codespell',
     'flake8',
@@ -37,19 +39,22 @@ setup(
     },
     install_requires=[
         'awscli',
+        'cloudpickle>=0.5.5',
         'gym[classic_control]',
         'matplotlib',
         'numpy>=1.15',
         'ray[debug]==0.7.4',
         'tqdm',
         'scikit-learn>=0.21.2',
-        # TODO(adam): Change to >=2.9.0 once 2.9.0 released
+        # TODO(adam): Change to >=2.10.0 once 2.10.0 released
         'stable-baselines @ git+https://github.com/hill-a/stable-baselines.git',
         'jax!=0.1.37',
         'jaxlib~=0.1.20',
         # sacred==0.7.5 build is broken without pymongo
         # sacred>0.7.4 have non-picklable config objects (see GH #109)
         'sacred==0.7.4',
+        # Remove this version pin once scipy/#11237 is fixed
+        'scipy==1.3.3',
     ],
     tests_require=TESTS_REQUIRE,
     extras_require={
