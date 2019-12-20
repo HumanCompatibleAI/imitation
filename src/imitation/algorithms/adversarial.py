@@ -4,7 +4,7 @@ from warnings import warn
 
 import numpy as np
 from stable_baselines.common.base_class import BaseRLModel
-from stable_baselines.common.vec_env import VecEnv
+from stable_baselines.common.vec_env import VecEnv, VecNormalize
 import tensorflow as tf
 from tqdm import tqdm
 
@@ -103,15 +103,20 @@ class AdversarialTrainer:
     self._sess.run(tf.global_variables_initializer())
 
     if debug_use_ground_truth:
+      # Would use an identity reward fn here, but RewardFns can't see rewards.
+      self.reward_train = self.reward_test = None
       self.venv_train = self.venv_test = self.venv
     else:
-      reward_train = partial(
+      self.reward_train = partial(
           self.discrim.reward_train,
           gen_log_prob_fn=self._gen_policy.action_probability)
+      self.reward_test = self.discrim.reward_test
       self.venv_train = reward_wrapper.RewardVecEnvWrapper(
-          self.venv, reward_train)
+          self.venv, self.reward_train)
       self.venv_test = reward_wrapper.RewardVecEnvWrapper(
-          self.venv, self.discrim.reward_test)
+          self.venv, self.reward_test)
+
+    self.venv_train_norm = VecNormalize(self.venv_train)
 
     if gen_replay_buffer_capacity is None:
       gen_replay_buffer_capacity = 20 * self._n_disc_samples_per_buffer
@@ -155,7 +160,7 @@ class AdversarialTrainer:
         self._summarize(fd, step)
 
   def train_gen(self, n_steps=10000):
-    self._gen_policy.set_env(self.venv_train)
+    self._gen_policy.set_env(self.venv_train_norm)
     # TODO(adam): learn was not intended to be called for each training batch
     # It should work, but might incur unnecessary overhead: e.g. in PPO2
     # a new Runner instance is created each time. Also a hotspot for errors:
@@ -281,8 +286,13 @@ class AdversarialTrainer:
     assert n_gen == len(gen_acts)
     assert n_gen == len(gen_next_obs)
 
+    # Normalize expert observations to match generator observations.
+    with util.vec_norm_disable_training(self.venv_train_norm):
+      expert_obs_norm = self.venv_train_norm.normalize_obs(
+        expert_sample.obs)
+
     # Concatenate rollouts, and label each row as expert or generator.
-    obs = np.concatenate([expert_sample.obs, gen_obs])
+    obs = np.concatenate([expert_obs_norm, gen_obs])
     acts = np.concatenate([expert_sample.acts, gen_acts])
     next_obs = np.concatenate([expert_sample.next_obs, gen_next_obs])
     labels = np.concatenate([np.zeros(n_expert, dtype=int),

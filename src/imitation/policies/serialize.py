@@ -36,7 +36,7 @@ class NormalizePolicy(BasePolicy):
     self.vec_normalize = vec_normalize
 
   def _wrapper(self, fn, obs, state=None, mask=None, *args, **kwargs):
-    norm_obs = self.vec_normalize._normalize_observation(obs)
+    norm_obs = self.vec_normalize.normalize_obs(obs)
     return fn(norm_obs, state=state, mask=mask, *args, **kwargs)
 
   def step(self, *args, **kwargs):

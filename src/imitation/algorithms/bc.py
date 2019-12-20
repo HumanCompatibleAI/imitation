@@ -206,7 +206,10 @@ class BCTrainer:
 
     Returns:
         policy (BasePolicy): policy with reloaded weights."""
-    sess = sess or tf.get_default_session()
+    if sess is None:
+      sess = tf.get_default_session()
+      assert sess is not None, "must supply session via kwarg or context mgr"
+
     # re-read data from dict
     with open(policy_path, 'rb') as fp:
       loaded_pickle = cloudpickle.load(fp)
