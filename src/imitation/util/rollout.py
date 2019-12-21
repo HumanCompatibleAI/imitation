@@ -90,7 +90,7 @@ class Transitions(NamedTuple):
 class TrajectoryAccumulator:
   """Accumulates trajectories step-by-step. Useful for collecting completed
   trajectories while ignoring partially-completed trajectories (e.g. when
-  rolling out a vec env to collect a set number of transitions). Each
+  rolling out a VecEnv to collect a set number of transitions). Each
   in-progress trajectory is identified by a 'key', which enables several
   independent trajectories to be collected at once. They key can also be left
   at its default value of `None` if you only wish to collect one trajectory."""

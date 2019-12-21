@@ -51,7 +51,7 @@ def _load_trajectory(npz_path):
   return rollout.Trajectory(**dict(np_data.items()))
 
 
-class InteractiveTrajectoryCollector:
+class InteractiveTrajectoryCollector(gym.Wrapper):
   """Wrapper around the `.step()` and `.reset()` of an env that allows DAgger
   to inject a "robot" action (i.e. an action from of the imitation policy) that
   overrides the action given to `.step()` when necessary. Will also
@@ -74,7 +74,6 @@ class InteractiveTrajectoryCollector:
     self.beta = beta
     self.env = env
     self.traj_accum = rollout.TrajectoryAccumulator()
-    self.done_before = False
     self.save_dir = save_dir
     self._last_obs = None
     self._done_before = True
@@ -148,7 +147,6 @@ class InteractiveTrajectoryCollector:
 class NeedDemosException(Exception):
   """Raised when demonstrations need to be collected for the current round
   before continuing."""
-  pass
 
 
 class DAggerTrainer:
@@ -252,7 +250,7 @@ class DAggerTrainer:
     demo_paths = self._get_demo_paths(demo_dir) \
         if os.path.isdir(demo_dir) else []
     if len(demo_paths) == 0:
-      raise NeedDemosException(
+      raise NeedsDemosException(
           f"No demos found for round {self.round_num} in dir '{demo_dir}'. "
           f"Maybe you need to collect some demos? See "
           f".get_trajectory_collector()")
