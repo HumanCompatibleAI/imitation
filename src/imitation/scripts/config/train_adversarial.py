@@ -64,13 +64,6 @@ def train_defaults():
 
 @train_ex.config
 def aliases_default_gen_batch_size(gen_batch_size):
-  # TODO(shwang): Check that this actually does what I expect.
-  # `python -m imitation.scripts.train_adversarial print_config
-  #  with thing disc_batch_size=4096`
-  #
-  #  OR `with thing gen_batch_size=4096`
-  #
-  # Does it change init_train_kwargs...?
   disc_batch_size = gen_batch_size  # Batch size for discriminator updates.
 
   # Setting generator buffer capacity and discriminator batch size to
