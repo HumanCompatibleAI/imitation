@@ -42,8 +42,8 @@ class AdversarialTrainer:
                discrim: discrim_net.DiscrimNet,
                expert_demos: rollout.Transitions,
                *,
-               disc_batch_size: int,
-               n_disc_mini_batch: int,
+               disc_batch_size: int = 2048,
+               n_disc_minibatch: int = 4,
                disc_opt_cls: tf.train.Optimizer = tf.train.AdamOptimizer,
                disc_opt_kwargs: dict = {},
                gen_replay_buffer_capacity: Optional[int] = None,
@@ -92,7 +92,7 @@ class AdversarialTrainer:
     self._global_step = tf.train.create_global_step()
 
     self.disc_batch_size = disc_batch_size
-    self.n_disc_mini_batch = n_disc_mini_batch
+    self.n_disc_minibatch = n_disc_minibatch
 
     self.debug_use_ground_truth = debug_use_ground_truth
     self.use_custom_log = use_custom_log
@@ -385,10 +385,10 @@ def init_trainer(env_name: str,
                  scale: bool = True,
                  airl_entropy_weight: float = 1.0,
                  use_custom_log: bool = False,
-                 discrim_kwargs: bool = {},
-                 reward_kwargs: bool = {},
-                 trainer_kwargs: bool = {},
-                 init_rl_kwargs: bool = {},
+                 discrim_kwargs: dict = {},
+                 reward_kwargs: dict = {},
+                 trainer_kwargs: dict = {},
+                 init_rl_kwargs: dict = {},
                  ):
   """Builds an AdversarialTrainer, ready to be trained on a vectorized
     environment and expert demonstrations.
