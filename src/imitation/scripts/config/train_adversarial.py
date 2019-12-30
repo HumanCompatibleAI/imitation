@@ -16,15 +16,14 @@ train_ex = sacred.Experiment("train_adversarial", interactive=True)
 def train_defaults():
   env_name = "CartPole-v1"  # environment to train on
 
-  batch_size = 2048  # Batch size for both generator and discrim updates.
-  # Batch_size must be a multiple of both `init_trainer_kwargs.num_vec`
-  # and `init_trainer_kwargs.init_rl_kwargs.nminibatch`.
-
   # Num times to generate a batch and update both generator and discrim.
-  # Set total_timesteps to None.
+  # Set `total_timesteps` to None when using `n_epochs`.
   n_epochs = 50
-  # Total timesteps taken in env during training. Set n_epochs to None.
+
+  # Total timesteps taken in env during training.
+  # Set `n_epochs` to None when using `total_timesteps`.
   total_timesteps = None
+
   n_expert_demos = None  # Num demos used. None uses every demo possible
   n_episodes_eval = 50  # Num of episodes for final mean ground truth return
   airl_entropy_weight = 1.0
@@ -47,14 +46,6 @@ def train_defaults():
           phi_units=[32, 32],
       ),
 
-      trainer_kwargs=dict(
-          # Setting generator buffer capacity and discriminator batch size to
-          # the same number is equivalent to not using a replay buffer at all.
-          # This seems to improve convergence speed, but may come at a cost of
-          # stability.
-          gen_replay_buffer_capacity=batch_size,
-      ),
-
       init_rl_kwargs=dict(policy_class=base.FeedForward32Policy,
                           **DEFAULT_INIT_RL_KWARGS),
   )
@@ -62,14 +53,49 @@ def train_defaults():
   log_root = os.path.join("output", "train_adversarial")  # output directory
   checkpoint_interval = 5  # num epochs between checkpoints (<=0 disables)
   init_tensorboard = False  # If True, then write Tensorboard logs.
-
   rollout_hint = None  # Used to generate default rollout_path
+
+  # Batch_size must be a multiple of `init_trainer_kwargs.num_vec`.
+  # (If using PPO2, then also must be a multiple of
+  # `init_trainer_kwargs.init_rl_kwargs.nminibatch`).
+  gen_batch_size = 2048  # Batch size for both generator updates.
+  n_disc_minibatch = 4  # Num discriminator minibatches
 
 
 @train_ex.config
-def calc_timesteps(n_epochs, total_timesteps, batch_size):
+def aliases_default_gen_batch_size(gen_batch_size):
+  # TODO(shwang): Check that this actually does what I expect.
+  # `python -m imitation.scripts.train_adversarial print_config
+  #  with thing disc_batch_size=4096`
+  #
+  #  OR `with thing gen_batch_size=4096`
+  #
+  # Does it change init_train_kwargs...?
+  disc_batch_size = gen_batch_size  # Batch size for discriminator updates.
+
+  # Setting generator buffer capacity and discriminator batch size to
+  # the same number is equivalent to not using a replay buffer at all.
+  # "Disabling" the replay buffer seems to improve convergence speed, but may
+  # come at a cost of stability.
+  gen_replay_buffer_size = gen_batch_size  # Num generator transitions stored
+
+
+@train_ex.config
+def apply_init_trainer_kwargs_aliases(n_disc_minibatch,
+                                      disc_batch_size,
+                                      gen_replay_buffer_size):
+  init_trainer_kwargs = dict(
+    train_kwargs=dict(
+      n_disc_minibatch=n_disc_minibatch,
+      gen_replay_buffer_capacity=gen_replay_buffer_size,
+      disc_batch_size=disc_batch_size,
+    ))
+
+
+@train_ex.config
+def calc_timesteps(n_epochs, total_timesteps, gen_batch_size):
   if total_timesteps is None and n_epochs is not None:
-    total_timesteps = n_epochs * batch_size
+    total_timesteps = n_epochs * gen_batch_size
   else:
     assert total_timesteps is not None and n_epochs is None, (
         "Must set exactly one of n_epochs={} and total_timesteps={} to non-None"
@@ -77,10 +103,10 @@ def calc_timesteps(n_epochs, total_timesteps, batch_size):
 
 
 @train_ex.config
-def batch_size_to_n_steps(total_timesteps, init_trainer_kwargs, batch_size):
+def calc_n_steps(init_trainer_kwargs, gen_batch_size):
   _num_vec = init_trainer_kwargs["num_vec"]
-  assert batch_size % _num_vec == 0, "num_vec must evenly divide batch_size"
-  init_trainer_kwargs["init_rl_kwargs"]["n_steps"] = batch_size // _num_vec
+  assert gen_batch_size % _num_vec == 0, "num_vec must evenly divide batch_size"
+  init_trainer_kwargs["init_rl_kwargs"]["n_steps"] = gen_batch_size // _num_vec
   del _num_vec
 
 
@@ -242,7 +268,7 @@ def fast():
 
 ant_shared_locals = dict(
     n_epochs=2000,
-    batch_size=2048*8,
+    gen_batch_size=2048*8,
     init_trainer_kwargs=dict(
         max_episode_steps=500,  # To match `inverse_rl` settings.
     ),

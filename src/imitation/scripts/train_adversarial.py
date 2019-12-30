@@ -52,7 +52,7 @@ def train(_run,
           show_plots: bool,
           init_tensorboard: bool,
 
-          checkpoint_interval: int = 5,
+          checkpoint_interval: int,
           ) -> dict:
   """Train an adversarial-network-based imitation learning algorithm.
 
@@ -155,13 +155,13 @@ def train(_run,
       visualizer = None
 
     # Main training loop.
-    n_epochs = total_timesteps // trainer.batch_size
+    n_epochs = total_timesteps // trainer.gen_batch_size
 
     for epoch in tqdm.tqdm(range(1, n_epochs+1), desc="epoch"):
-      trainer.train_disc(trainer.batch_size)
+      trainer.train_disc(trainer.disc_batch_size)
       if visualizer:
         visualizer.add_data_disc_loss(False, epoch)
-      trainer.train_gen(trainer.batch_size)
+      trainer.train_gen(trainer.gen_batch_size)
 
       util.logger.dumpkvs()
 
