@@ -173,21 +173,20 @@ class AdversarialTrainer:
     Args:
       total_timesteps: The number of transitions to sample from the generator
         replay buffer and the expert demonstrations (each).
-        By default, `self.disc_batch_size`.
+        By default, `self.disc_batch_size`. The number of optimizer updates
+        performed is `total_timesteps // self.n_disc_minibatch`.
     """
     if total_timesteps is None:
       total_timesteps = self.disc_batch_size
     n_epochs = total_timesteps // self.disc_batch_size
     assert n_epochs >= 1, "should have at least one update"
     for _ in tqdm(range(n_epochs), desc="Adversarial train discriminator"):
-      minibatch_size = self.disc_batch_size // self.n_disc_minibatch
+      minibatch_size = total_timesteps // self.n_disc_minibatch
       for _ in range(minibatch_size):
         self.train_disc_step(disc_batch_size=minibatch_size)
 
   def train_disc_step(self, **kwargs):
-    """Trains the discriminator a single step.
-
-    Uses the provided samples to perform a single discriminator update.
+    """Perform a single discriminator update, optionally using provided samples.
 
     Args:
       disc_batch_size (Optional[int]): See `_build_disc_feed_dict`.
@@ -301,19 +300,25 @@ class AdversarialTrainer:
     """Build a feed dict that holds the next training batch of generator
     and expert obs-act-obs triples.
 
+    The `gen_*` arguments must either all be `None` or all be non-`None`.
+
     Args:
-        disc_batch_size (int): Discriminator batch size. By default,
+        disc_batch_size: Discriminator batch size. By default,
             `self.disc_batch_size`.
-        gen_obs (np.ndarray): A numpy array with shape
+        gen_obs: A numpy array with shape
             `(disc_batch_size,) + env.observation_space.shape`.
             The ith observation in this array is the observation seen when the
-            generator chooses action `gen_acts[i]`.
-        gen_acts (np.ndarray): A numpy array with shape
-            `(disc_batch_size,) + env.action_space.shape`.
-        gen_next_obs (np.ndarray): A numpy array with shape
+            generator chooses action `gen_acts[i]`. If not provided, then
+            this is sampled from the generator replay buffer.
+        gen_acts: A numpy array with shape
+            `(disc_batch_size,) + env.action_space.shape`. If not provided,
+            then this is sampled from the generator replay buffer.
+        gen_next_obs: A numpy array with shape
             `(disc_batch_size,) + env.observation_space.shape`.
             The ith observation in this array is from the transition state after
             the generator chooses action `gen_acts[i]`.
+            If not provided, then this is sampled from the generator replay
+            buffer.
     """
     if disc_batch_size is None:
       disc_batch_size = self.disc_batch_size
@@ -323,7 +328,7 @@ class AdversarialTrainer:
     none_count = sum(int(x is None)
                      for x in (gen_obs, gen_acts, gen_next_obs))
     if none_count == 3:
-      tf.logging.debug("_build_disc_feed_dict: No generator rollout "
+      tf.logging.debug("_build_disc_feed_dict: No `gen_*`"
                        "parameters were "
                        "provided, so we are generating them now.")
       gen_sample = self._gen_replay_buffer.sample(disc_batch_size)
