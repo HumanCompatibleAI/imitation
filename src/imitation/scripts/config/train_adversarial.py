@@ -36,7 +36,7 @@ def train_defaults():
   show_plots = True  # Show plots in addition to saving them
 
   init_trainer_kwargs = dict(
-      num_vec=8,  # Must evenly divide batch_size
+      num_vec=8,  # Must evenly divide gen_batch_size
       parallel=True,  # Use SubprocVecEnv (generally faster if num_vec>1)
       max_episode_steps=None,  # Set to positive int to limit episode horizons
       scale=True,
@@ -99,7 +99,8 @@ def calc_timesteps(n_epochs, total_timesteps, gen_batch_size):
 @train_ex.config
 def calc_n_steps(init_trainer_kwargs, gen_batch_size):
   _num_vec = init_trainer_kwargs["num_vec"]
-  assert gen_batch_size % _num_vec == 0, "num_vec must evenly divide batch_size"
+  assert gen_batch_size % _num_vec == 0, ("num_vec must evenly divide "
+                                          "gen_batch_size")
   init_trainer_kwargs["init_rl_kwargs"]["n_steps"] = gen_batch_size // _num_vec
   del _num_vec
 
