@@ -124,7 +124,7 @@ def paths(env_name, log_root, rollout_hint):
                               "rollouts", "final.pkl")
 
 
-# Training algorithm configs
+# Training algorithm named configs
 
 @train_ex.named_config
 def gail():
@@ -139,6 +139,8 @@ def airl():
       use_gail=False,
   )
 
+
+# Standard Gym environment named configs
 
 @train_ex.named_config
 def acrobot():
@@ -223,7 +225,7 @@ def walker():
   rollout_hint = "walker"
 
 
-# Custom env configs
+# Custom Gym environment named configs
 
 @train_ex.named_config
 def two_d_maze():
