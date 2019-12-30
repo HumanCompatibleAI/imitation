@@ -64,7 +64,8 @@ def train_defaults():
 
 @train_ex.config
 def aliases_default_gen_batch_size(gen_batch_size):
-  disc_batch_size = gen_batch_size  # Batch size for discriminator updates.
+  # Batch size for discriminator updates. Defaults to `gen_batch_size`.
+  disc_batch_size = gen_batch_size
 
   # Setting generator buffer capacity and discriminator batch size to
   # the same number is equivalent to not using a replay buffer at all.
@@ -78,7 +79,7 @@ def apply_init_trainer_kwargs_aliases(n_disc_minibatch,
                                       disc_batch_size,
                                       gen_replay_buffer_size):
   init_trainer_kwargs = dict(
-    train_kwargs=dict(
+    trainer_kwargs=dict(
       n_disc_minibatch=n_disc_minibatch,
       gen_replay_buffer_capacity=gen_replay_buffer_size,
       disc_batch_size=disc_batch_size,
@@ -248,7 +249,7 @@ def fast():
   n_epochs = 1
   n_expert_demos = 1
   n_episodes_eval = 1
-  batch_size = 2
+  gen_batch_size = 2
   show_plots = False
   n_plot_episodes = 1
   init_trainer_kwargs = dict(

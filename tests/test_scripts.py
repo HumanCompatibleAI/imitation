@@ -97,7 +97,7 @@ def test_train_adversarial(tmpdir):
   config_updates = {
       # Rollouts are small, decrease size of buffer (via batch_size) to avoid
       # warning.
-      'batch_size': 64,
+      'gen_batch_size': 64,
       'log_root': tmpdir,
       'rollout_path': "tests/data/expert_models/cartpole_0/rollouts/final.pkl",
       'init_tensorboard': True,
