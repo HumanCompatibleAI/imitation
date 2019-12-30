@@ -57,15 +57,15 @@ class AdversarialTrainer:
     Args:
         venv: The vectorized environment to train in.
         gen_policy: The generator policy that is trained to maximize
-          discriminator confusion. The discriminator batch size is
-          inferred from `gen_policy.n_batch`.
+          discriminator confusion. The generator batch size
+          `self.gen_batch_size` is inferred from `gen_policy.n_batch`.
         discrim: The discriminator network.
           For GAIL, use a DiscrimNetGAIL. For AIRL, use a DiscrimNetAIRL.
         expert_demos: Transitions from an expert dataset.
         disc_batch_size: The number of expert and generator transitions samples
           (each) to feed to the discriminator in `self.train_disc`.
-        n_disc_mini_batch: The number of discriminator updates to apply on
-          each discriminator batch. (Batch is split into `n_disc_mini_batch`
+        n_disc_minibatch: The number of discriminator updates to apply on
+          each discriminator batch. (Batch is split into `n_disc_minibatch`
           mini-batches).
         disc_opt_cls: The optimizer for discriminator training.
         disc_opt_kwargs: Parameters for discriminator training.
