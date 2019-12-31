@@ -13,7 +13,7 @@ imitation.util.buffer module
    :show-inheritance:
 
 imitation.util.buffering_wrapper module
-----------------------------
+---------------------------------------
 
 .. automodule:: imitation.util.buffering_wrapper
    :members:
