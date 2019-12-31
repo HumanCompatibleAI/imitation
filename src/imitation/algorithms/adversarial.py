@@ -134,7 +134,10 @@ class AdversarialTrainer:
           self.venv, self.reward_test)
 
     self.venv_train_norm = VecNormalize(self.venv_train)
-    self.venv_train_norm_buffering = BufferingWrapper(self.venv_train_norm)
+    # TODO(shwang): Set `error_on_premature_reset=True` once
+    # hill-a/stable_baselines#619 is resolved.
+    self.venv_train_norm_buffering = BufferingWrapper(
+      self.venv_train_norm, error_on_premature_reset=False)
 
     if gen_replay_buffer_capacity is None:
       gen_replay_buffer_capacity = 20 * self.gen_batch_size
