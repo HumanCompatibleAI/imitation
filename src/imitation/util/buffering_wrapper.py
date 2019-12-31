@@ -48,12 +48,12 @@ class BufferingWrapper(VecEnvWrapper):
     assert len(self.obs_list) == len(self.acts_list) + 1
     obs = np.stack(self.obs_list[:-1])
     acts = np.stack(self.acts_list)
-    new_obs = np.stack(self.obs_list[1:])
+    next_obs = np.stack(self.obs_list[1:])
 
     self.obs_list = [self.obs_list[-1]]
     self.acts_list = []
 
-    return rollout.Transitions(obs=obs, acts=acts, new_obs=new_obs)
+    return rollout.Transitions(obs=obs, acts=acts, next_obs=next_obs)
 
   def step_wait(self):
     return self.venv.step_wait()

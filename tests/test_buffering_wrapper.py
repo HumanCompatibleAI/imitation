@@ -3,7 +3,7 @@ import numpy as np
 import pytest
 from stable_baselines.common.vec_env import DummyVecEnv
 
-from imitation.util.test_buffer_wrapper import BufferingWrapper
+from imitation.util.buffering_wrapper import BufferingWrapper
 
 
 class CountingEnv(gym.Env):
@@ -57,7 +57,7 @@ def test_buffering_wrapper_pop_transitions():
     samples = venv.pop_transitions()
     np.testing.assert_array_equal(samples.obs, expect_obs_list[:-1])
     np.testing.assert_array_equal(samples.acts, expect_acts_list)
-    np.testing.assert_array_equal(samples.new_obs, expect_obs_list[1:])
+    np.testing.assert_array_equal(samples.next_obs, expect_obs_list[1:])
 
 
 def test_vec_env_recording_error():
