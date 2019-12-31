@@ -1,5 +1,5 @@
-import contextlib
 from functools import partial
+import os.path as osp
 from typing import Optional, Sequence
 from warnings import warn
 
@@ -50,7 +50,6 @@ class AdversarialTrainer:
                init_tensorboard: bool = False,
                init_tensorboard_graph: bool = False,
                debug_use_ground_truth: bool = False,
-               use_custom_log: bool = False,
                ):
     """Builds Trainer.
 
@@ -85,11 +84,9 @@ class AdversarialTrainer:
           This disables the reward wrapping that would normally replace
           the environment reward with the learned reward. This is useful for
           sanity checking that the policy training is functional.
-        use_custom_log: If True, then automatically enter
-          `imitation.logger.accumulate_means()` contexts for discriminator
-          and generator training. Also log the discriminator and generator
-          means after every epoch in train.
     """
+    assert util.logger.is_configured(), ("Requires call to "
+                                         "imitation.util.logger.configure")
     self._sess = tf.get_default_session()
     self._global_step = tf.train.create_global_step()
 
@@ -98,7 +95,6 @@ class AdversarialTrainer:
     self.n_disc_minibatch = n_disc_minibatch
 
     self.debug_use_ground_truth = debug_use_ground_truth
-    self.use_custom_log = use_custom_log
 
     self.venv = venv
     self._expert_demos = expert_demos
@@ -164,12 +160,6 @@ class AdversarialTrainer:
     """Policy (i.e. the generator) being trained."""
     return self._gen_policy
 
-  def _log_context(self, name):
-    if self.use_custom_log:
-      return logger.accumulate_means(name)
-    else:
-      return contextlib.nullcontext()
-
   def train_disc(self, total_timesteps: Optional[int] = None) -> None:
     """Trains the discriminator to minimize classification cross-entropy.
 
@@ -204,7 +194,7 @@ class AdversarialTrainer:
         provided, then take `n_gen` expert samples from the expert
         dataset, where `n_gen` is the number of samples in `gen_samples`.
     """
-    with self._log_context("disc"):
+    with logger.accumulate_means("disc"):
       fd = self._build_disc_feed_dict(gen_samples=gen_samples,
                                       expert_samples=expert_samples)
       step, _ = self._sess.run([self._global_step, self._disc_train_op],
@@ -228,8 +218,12 @@ class AdversarialTrainer:
     if total_timesteps is None:
       total_timesteps = self.gen_batch_size
 
-    with self._log_context("gen"):
+    with logger.accumulate_means("gen"):
       self.gen_policy.set_env(self.venv_train_norm)
+      # TODO(adam): learn was not intended to be called for each training batch
+      # It should work, but might incur unnecessary overhead: e.g. in PPO2
+      # a new Runner instance is created each time. Also a hotspot for errors:
+      # algorithms not tested for this use case, may reset state accidentally.
       self.gen_policy.learn(total_timesteps=total_timesteps,
                             reset_num_timesteps=False,
                             callback=callback)
@@ -258,7 +252,9 @@ class AdversarialTrainer:
     produced, and then stores these samples.
     """
     gen_samples = util.rollout.generate_transitions(
-      self.gen_policy, self.venv_train, n_timesteps=self.disc_batch_size // 2)
+      self.gen_policy,
+      self.venv_train_norm,
+      n_timesteps=self.disc_batch_size // 2)
     self._gen_replay_buffer.store(gen_samples)
 
   def eval_disc_loss(self, **kwargs) -> float:
@@ -353,15 +349,14 @@ class AdversarialTrainer:
 def init_trainer(env_name: str,
                  expert_trajectories: Sequence[rollout.Trajectory],
                  *,
+                 log_dir: str,
                  seed: int = 0,
-                 log_dir: str = None,
                  use_gail: bool = False,
                  num_vec: int = 8,
                  parallel: bool = False,
                  max_episode_steps: Optional[int] = None,
                  scale: bool = True,
                  airl_entropy_weight: float = 1.0,
-                 use_custom_log: bool = False,
                  discrim_kwargs: dict = {},
                  reward_kwargs: dict = {},
                  trainer_kwargs: dict = {},
@@ -386,13 +381,14 @@ def init_trainer(env_name: str,
     scale: If True, then scale input Tensors to the interval [0, 1].
     airl_entropy_weight: Only applicable for AIRL. The `entropy_weight`
         argument of `DiscrimNetAIRL.__init__`.
-    use_custom_log: The use_custom_log argument to AdversarialTrainer.__init__.
     trainer_kwargs: Arguments for the Trainer constructor.
     reward_kwargs: Arguments for the `*RewardNet` constructor.
     discrim_kwargs: Arguments for the `DiscrimNet*` constructor.
     init_rl_kwargs: Keyword arguments passed to `init_rl`,
         used to initialize the RL algorithm.
   """
+  util.logger.configure(folder=osp.join(log_dir, 'generator'),
+                        format_strs=['tensorboard', 'stdout'])
   env = util.make_vec_env(env_name, num_vec, seed=seed, parallel=parallel,
                           log_dir=log_dir, max_episode_steps=max_episode_steps)
   gen_policy = util.init_rl(env, verbose=1,
@@ -414,6 +410,5 @@ def init_trainer(env_name: str,
 
   expert_demos = util.rollout.flatten_trajectories(expert_trajectories)
   trainer = AdversarialTrainer(env, gen_policy, discrim, expert_demos,
-                               use_custom_log=use_custom_log,
                                **trainer_kwargs)
   return trainer

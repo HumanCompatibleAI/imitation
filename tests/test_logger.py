@@ -1,4 +1,5 @@
 from collections import defaultdict
+import csv
 import os.path as osp
 
 import stable_baselines.logger as sb_logger
@@ -6,21 +7,19 @@ import stable_baselines.logger as sb_logger
 import imitation.util.logger as logger
 
 
-def _read_csv_lines(lines) -> dict:
-  keys = lines[0].split(",")
-  expect = defaultdict(list)
-  for line in lines[1:]:
-    for k, v in zip(keys, line.split(",")):
-      if v != '':
-        v = float(v)
-      expect[k].append(v)
-  return expect
+def _csv_to_dict(csv_path: str) -> dict:
+  result = defaultdict(list)
+  with open(csv_path, "r") as f:
+    for row in csv.DictReader(f):
+      for k, v in row.items():
+        if v != '':
+          v = float(v)
+        result[k].append(v)
+  return result
 
 
 def _compare_csv_lines(csv_path: str, expect: dict):
-  with open(csv_path, "r") as f:
-    lines = [line.rstrip("\n") for line in f]
-  observed = _read_csv_lines(lines)
+  observed = _csv_to_dict(csv_path)
   assert expect == observed
 
 
@@ -39,6 +38,9 @@ def test_no_accum(tmpdir):
 
 def test_hard(tmpdir):
   logger.configure(tmpdir)
+
+  # Part One: Test logging outside of the accumulating scope, and within scopes
+  # with two different different logging keys (including a repeat).
 
   sb_logger.logkv("no_context", 1)
 
@@ -78,7 +80,7 @@ def test_hard(tmpdir):
     osp.join(tmpdir, "raw", "disc", "progress.csv"), expect_raw_disc)
 
   # Part Two:
-  # Check that we append to the same logs after the first means dump.
+  # Check that we append to the same logs after the first dump to "means/*".
 
   with logger.accumulate_means("disc"):
     sb_logger.logkv("D", 100)
