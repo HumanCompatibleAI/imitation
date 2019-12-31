@@ -34,8 +34,8 @@ def _make_recording_venv(error_on_premature_reset: bool,
   return venv
 
 
-def test_buffering_wrapper_pop_transitions():
-  """Check transitions_pop() result for BufferWrapper.
+def test_pop_transitions():
+  """Check pop_transitions() result for BufferWrapper.
 
   To make things easy to check, we use a dummy environment where the observation
   is simply the timestep.
@@ -66,7 +66,7 @@ def test_buffering_wrapper_pop_transitions():
                                   np.concatenate(expect_obs_list[1:]))
 
 
-def test_vec_env_recording_error():
+def test_reset_error():
   # Resetting before a `step()` is okay.
   for flag in [True, False]:
     venv = _make_recording_venv(flag)

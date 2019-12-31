@@ -27,8 +27,8 @@ class BufferingWrapper(VecEnvWrapper):
 
   def reset(self, **kwargs):
     if self.error_on_premature_reset and len(self.acts_list) != 0:
-      raise RuntimeError("TransitionsRecordingWrapper reset() before samples "
-                         "were accessed")
+      raise RuntimeError(
+        "BufferingWrapper reset() before samples were accessed")
     obs = self.venv.reset(**kwargs)
     self.obs_list = [obs]
     self.acts_list = []

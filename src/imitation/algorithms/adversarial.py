@@ -141,7 +141,7 @@ class AdversarialTrainer:
     self._gen_replay_buffer = buffer.ReplayBuffer(gen_replay_buffer_capacity,
                                                   self.venv)
     gen_samples = rollout.generate_transitions(
-      self._gen_policy,
+      self.gen_policy,
       self.venv_train_norm,
       n_timesteps=self.gen_batch_size // 2)
     self._gen_replay_buffer.store(gen_samples)
@@ -218,10 +218,11 @@ class AdversarialTrainer:
         self._summarize(fd, step)
 
   def train_gen(self, total_timesteps: Optional[int] = None, callback=None):
-    """Trains the generator (via PPO2) to maximize the discriminator loss.
+    """Trains the generator to maximize the discriminator loss.
 
     After the end of training populates the generator replay buffer with
-    every normalized training environment transition.
+    the same environment samples used by the generator's underlying RL
+    algorithm.
 
     Args:
       total_timesteps: The number of transitions to sample from
