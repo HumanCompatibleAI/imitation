@@ -58,9 +58,12 @@ def test_buffering_wrapper_pop_transitions():
       expect_obs_list.append(obs)
 
     samples = venv.pop_transitions()
-    np.testing.assert_array_equal(samples.obs, expect_obs_list[:-1])
-    np.testing.assert_array_equal(samples.acts, expect_acts_list)
-    np.testing.assert_array_equal(samples.next_obs, expect_obs_list[1:])
+    np.testing.assert_array_equal(samples.obs,
+                                  np.concatenate(expect_obs_list[:-1]))
+    np.testing.assert_array_equal(samples.acts,
+                                  np.concatenate(expect_acts_list))
+    np.testing.assert_array_equal(samples.next_obs,
+                                  np.concatenate(expect_obs_list[1:]))
 
 
 def test_vec_env_recording_error():

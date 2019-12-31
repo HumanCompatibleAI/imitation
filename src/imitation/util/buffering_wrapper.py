@@ -55,11 +55,11 @@ class BufferingWrapper(VecEnvWrapper):
     """Pops recorded transitions, returning them as an instance of Transitions.
     """
     assert len(self.obs_list) == len(self.acts_list) + 1
-    obs = np.stack(self.obs_list[:-1])
-    acts = np.stack(self.acts_list)
-    next_obs = np.stack(self.obs_list[1:])
-    rews = np.stack(self.rews_list)
-    dones = np.stack(self.dones_list)
+    obs = np.concatenate(self.obs_list[:-1])
+    acts = np.concatenate(self.acts_list)
+    next_obs = np.concatenate(self.obs_list[1:])
+    rews = np.concatenate(self.rews_list)
+    dones = np.concatenate(self.dones_list)
 
     self.obs_list = [self.obs_list[-1]]
     self.acts_list = []

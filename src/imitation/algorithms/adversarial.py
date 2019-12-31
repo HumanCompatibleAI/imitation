@@ -243,7 +243,6 @@ class AdversarialTrainer:
                             callback=callback)
       gen_samples = self.venv_train_norm_buffering.pop_transitions()
       self._gen_replay_buffer.store(gen_samples)
-      self._populate_gen_replay_buffer()
 
   def train(self, total_timesteps: int) -> None:
     """Trains the discriminator and generator against each other.
