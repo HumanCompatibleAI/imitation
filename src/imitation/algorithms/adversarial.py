@@ -63,9 +63,9 @@ class AdversarialTrainer:
           For GAIL, use a DiscrimNetGAIL. For AIRL, use a DiscrimNetAIRL.
         expert_demos: Transitions from an expert dataset.
         disc_batch_size: The number of expert and generator transitions samples
-          to feed to the discriminator in `self.train_disc`. (Half of the
-          samples are expert and half of the samples are generator). Must be
-          an even number.
+          to feed to the discriminator in each iteration of `self.train()`.
+          (Half of the samples are expert and half of the samples are
+          generator). Must be an even number.
         n_disc_minibatch: The number of discriminator updates to apply on
           each discriminator batch. (Batch is split into `n_disc_minibatch`
           mini-batches).
@@ -186,8 +186,9 @@ class AdversarialTrainer:
     assert n_epochs >= 1, "should have at least one update"
     for _ in range(n_epochs):
       minibatch_size = total_timesteps // self.n_disc_minibatch
-      for _ in range(minibatch_size):
-        self.train_disc_step()
+      for _ in range(self.n_disc_minibatch):
+        gen_samples = self._gen_replay_buffer.sample(minibatch_size)
+        self.train_disc_step(gen_samples=gen_samples)
 
   def train_disc_step(self, *,
                       gen_samples: Optional[rollout.Transitions] = None,
@@ -241,7 +242,7 @@ class AdversarialTrainer:
     in a loop `total_timesteps // self.gen_batch_size` times.
 
     Args:
-        total_timesteps (int): The number of transitions to sample from
+        total_timesteps: The number of transitions to sample from
           `self.venv_train_norm` during generator training.
     """
     n_epochs = total_timesteps // self.gen_batch_size
