@@ -44,9 +44,7 @@ def test_train_disc_no_crash(use_gail, parallel,
   transitions = rollout.generate_transitions(trainer.gen_policy,
                                              trainer.venv,
                                              n_timesteps=n_timesteps)
-  trainer.train_disc_step(gen_obs=transitions.obs,
-                          gen_acts=transitions.acts,
-                          gen_next_obs=transitions.next_obs)
+  trainer.train_disc_step(gen_samples=transitions)
 
 
 @pytest.mark.parametrize("use_gail", USE_GAIL)
@@ -61,16 +59,13 @@ def test_train_gen_no_crash(use_gail, parallel, n_updates=2):
 def test_train_disc_improve_D(use_gail, n_timesteps=200,
                               n_steps=1000):
   trainer = init_test_trainer(use_gail)
-  transitions = rollout.generate_transitions(trainer.gen_policy,
-                                             trainer.venv,
+  gen_samples = rollout.generate_transitions(trainer.gen_policy,
+                                             trainer.venv_train,
                                              n_timesteps=n_timesteps)
-  kwargs = dict(gen_obs=transitions.obs,
-                gen_acts=transitions.acts,
-                gen_next_obs=transitions.next_obs)
-  loss1 = trainer.eval_disc_loss(**kwargs)
+  loss1 = trainer.eval_disc_loss(gen_samples=gen_samples)
   for _ in range(n_steps):
-      trainer.train_disc_step(**kwargs)
-  loss2 = trainer.eval_disc_loss(**kwargs)
+      trainer.train_disc_step(gen_samples=gen_samples)
+  loss2 = trainer.eval_disc_loss(gen_samples=gen_samples)
   assert loss2 < loss1
 
 

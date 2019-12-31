@@ -71,15 +71,6 @@ def make_vec_env(env_name: str,
     return DummyVecEnv(env_fns)
 
 
-@contextlib.contextmanager
-def vec_norm_disable_training(vec_norm: VecNormalize):
-  """ContextManager that temporarily sets vec_norm.training to False."""
-  # TODO: Remove once hill-a/stable-baselines#602 is resolved.
-  prev_training, vec_norm.training = vec_norm.training, False
-  yield
-  vec_norm.training = prev_training
-
-
 def reapply_vec_normalize(venv: VecEnv,
                           src_vec_norm: VecNormalize,
                           *,
