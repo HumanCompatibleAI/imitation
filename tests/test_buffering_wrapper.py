@@ -12,15 +12,18 @@ class CountingEnv(gym.Env):
   def __init__(self):
     self.observation_space = gym.spaces.Box(low=0, high=np.inf, shape=())
     self.action_space = gym.spaces.Box(low=0, high=np.inf, shape=())
-    self.timestep = None
+    self.timestep = 0
 
   def reset(self):
-    self.timestep = 0
+    self.timestep = 1
+    return 0
 
   def step(self, action):
     assert self.timestep is not None
-    assert action in self.action_space
-    return self.timestep, self.timestep, False, {}
+    assert np.array(action) in self.action_space
+    t = self.timestep
+    self.timestep += 1
+    return t, t, False, {}
 
 
 def _make_recording_venv(error_on_premature_reset: bool,
@@ -37,9 +40,9 @@ def test_buffering_wrapper_pop_transitions():
   To make things easy to check, we use a dummy environment where the observation
   is simply the timestep.
   """
-  venv = _make_recording_venv
+  venv = _make_recording_venv(True)
   for _ in range(3):
-    expect_obs_list = [0]
+    expect_obs_list = []
     expect_acts_list = []
 
     obs = venv.reset()
@@ -69,26 +72,26 @@ def test_vec_env_recording_error():
 
   # Resetting after a `step()` is not okay if error flag is True.
   venv = _make_recording_venv(True)
-  venv.step()
-  with pytest.raises(RuntimeError, matches="TransitionsRecordingWrapper"):
+  venv.step([0, 0])
+  with pytest.raises(RuntimeError, match="before samples were accessed"):
     venv.reset()
 
   # Same as previous case, but insert a `pop_transitions()` in between.
   venv = _make_recording_venv(True)
-  venv.step()
+  venv.step([0, 0])
   venv.pop_transitions()
-  venv.step()
-  with pytest.raises(RuntimeError, matches="TransitionsRecordingWrapper"):
+  venv.step([0, 0])
+  with pytest.raises(RuntimeError, match="before samples were accessed"):
     venv.reset()
 
   # Resetting after a `step()` is ok if error flag is False.
   venv = _make_recording_venv(False)
-  venv.step()
+  venv.step([0, 0])
   venv.reset()
 
   # Resetting after a `step()` is ok if transitions are first collected.
   for flag in [True, False]:
     venv = _make_recording_venv(flag)
-    venv.step()
+    venv.step([0, 0])
     venv.pop_transitions()
     venv.reset()
