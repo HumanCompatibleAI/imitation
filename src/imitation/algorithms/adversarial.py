@@ -14,6 +14,7 @@ import imitation.rewards.discrim_net as discrim_net
 from imitation.rewards.reward_net import BasicShapedRewardNet
 import imitation.util as util
 from imitation.util import buffer, logger, reward_wrapper, rollout
+from imitation.util.buffering_wrapper import BufferingWrapper
 
 
 class AdversarialTrainer:
@@ -133,12 +134,17 @@ class AdversarialTrainer:
           self.venv, self.reward_test)
 
     self.venv_train_norm = VecNormalize(self.venv_train)
+    self.venv_train_norm_buffering = BufferingWrapper(self.venv_train_norm)
 
     if gen_replay_buffer_capacity is None:
       gen_replay_buffer_capacity = 20 * self.gen_batch_size
     self._gen_replay_buffer = buffer.ReplayBuffer(gen_replay_buffer_capacity,
                                                   self.venv)
-    self._populate_gen_replay_buffer()
+    gen_samples = rollout.generate_transitions(
+      self._gen_policy,
+      self.venv_train_norm,
+      n_timesteps=self.gen_batch_size // 2)
+    self._gen_replay_buffer.store(gen_samples)
     self._exp_replay_buffer = buffer.ReplayBuffer.from_data(expert_demos)
     if self.disc_batch_size // 2 > len(self._exp_replay_buffer):
       warn("The discriminator batch size is more than twice the number of "
@@ -214,8 +220,8 @@ class AdversarialTrainer:
   def train_gen(self, total_timesteps: Optional[int] = None, callback=None):
     """Trains the generator (via PPO2) to maximize the discriminator loss.
 
-    After the end of training populates the generator replay buffer (used in
-    discriminator training) with `self.disc_batch_size` transitions.
+    After the end of training populates the generator replay buffer with
+    every normalized training environment transition.
 
     Args:
       total_timesteps: The number of transitions to sample from
@@ -228,10 +234,12 @@ class AdversarialTrainer:
       total_timesteps = self.gen_batch_size
 
     with self._log_context("gen"):
-      self.gen_policy.set_env(self.venv_train_norm)
+      self.gen_policy.set_env(self.venv_train_norm_buffering)
       self.gen_policy.learn(total_timesteps=total_timesteps,
                             reset_num_timesteps=False,
                             callback=callback)
+      gen_samples = self.venv_train_norm_buffering.pop_transitions()
+      self._gen_replay_buffer.store(gen_samples)
       self._populate_gen_replay_buffer()
 
   def train(self, total_timesteps: int) -> None:
@@ -248,17 +256,6 @@ class AdversarialTrainer:
     for _ in tqdm(range(n_epochs), desc="Adversarial train"):
       self.train_disc()
       self.train_gen()
-
-  def _populate_gen_replay_buffer(self) -> None:
-    """Generate and store generator samples in the buffer.
-
-    More specifically, rolls out generator-policy trajectories in the
-    environment until `self.disc_batch_size` obs-act-obs samples are
-    produced, and then stores these samples.
-    """
-    gen_samples = util.rollout.generate_transitions(
-      self.gen_policy, self.venv_train, n_timesteps=self.disc_batch_size // 2)
-    self._gen_replay_buffer.store(gen_samples)
 
   def eval_disc_loss(self, **kwargs) -> float:
     """Evaluates the discriminator loss.
