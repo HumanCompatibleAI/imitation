@@ -1,6 +1,8 @@
 import numpy as np
-from imitation.util import rollout
 from stable_baselines.common.vec_env import VecEnv, VecEnvWrapper
+
+from imitation.util import rollout
+
 
 class BufferingWrapper(VecEnvWrapper):
   """Saves transitions of underlying VecEnv.
@@ -55,4 +57,3 @@ class BufferingWrapper(VecEnvWrapper):
 
   def step_wait(self):
     return self.venv.step_wait()
-

@@ -1,8 +1,8 @@
 import gym
 import numpy as np
 import pytest
-
 from stable_baselines.common.vec_env import DummyVecEnv
+
 from imitation.util.test_buffer_wrapper import BufferingWrapper
 
 
