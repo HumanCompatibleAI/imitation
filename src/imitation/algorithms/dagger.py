@@ -22,12 +22,12 @@ def linear_beta_schedule(rampdown_rounds: int) -> Callable[[int], float]:
   """Linearly-decreasing schedule for beta (% of time that user act is used).
 
   Args:
-      rampdown_rounds: number of rounds over which to anneal beta. Rounds
-        are assumed to be numbered 0, 1, 2, ….
+    rampdown_rounds: number of rounds over which to anneal beta. Rounds
+      are assumed to be numbered 0, 1, 2, ….
 
   Returns:
-      schedule: function that takes current round number (0, or 1, or 2, etc.)
-        as input & returns current beta as float."""
+    schedule: function that takes current round number (0, or 1, or 2, etc.)
+      as input & returns current beta as float."""
   assert rampdown_rounds > 0
 
   def schedule(i: int) -> float:
@@ -57,19 +57,21 @@ class InteractiveTrajectoryCollector(gym.Wrapper):
   to inject a "robot" action (i.e. an action from of the imitation policy) that
   overrides the action given to `.step()` when necessary. Will also
   automatically save trajectories."""
-  def __init__(self, env: gym.Env,
-               get_robot_act: Callable[[np.ndarray], np.ndarray], beta: float,
+  def __init__(self,
+               env: gym.Env,
+               get_robot_act: Callable[[np.ndarray], np.ndarray],
+               beta: float,
                save_dir: str):
     """Trajectory collector constructor.
 
     Args:
-        env: environment to sample trajectories from.
-        get_robot_act: get a single robot action that can be substituted for
-            human action. Takes a single observation as input & returns a
-            single action.
-        beta: fraction of the time to use action given to .step() instead of
-            robot action.
-        save_dir: directory to save collected trajectories in."""
+      env: environment to sample trajectories from.
+      get_robot_act: get a single robot action that can be substituted for
+          human action. Takes a single observation as input & returns a
+          single action.
+      beta: fraction of the time to use action given to .step() instead of
+          robot action.
+      save_dir: directory to save collected trajectories in."""
     super().__init__(env)
     self.get_robot_act = get_robot_act
     assert 0 <= beta <= 1
@@ -102,13 +104,13 @@ class InteractiveTrajectoryCollector(gym.Wrapper):
     "robot" (i.e. imitation policy) action if necessary.
 
     Args:
-        user_action: the _intended_ demonstrator action for the current
-            state. This will be executed with probability `self.beta`.
-            Otherwise, a "robot" action will be sampled and executed
-            instead.
+      user_action: the _intended_ demonstrator action for the current
+        state. This will be executed with probability `self.beta`.
+        Otherwise, a "robot" action will be sampled and executed
+        instead.
 
     Returns:
-        next_obs, reward, done, info: unchanged output of `self.env.step()`."""
+      next_obs, reward, done, info: unchanged output of `self.env.step()`."""
     assert self._is_reset, "call .reset() before .step()"
 
     # Replace the given action with a robot action 100*(1-beta)% of the time.
@@ -187,14 +189,14 @@ class DAggerTrainer:
     """Trainer constructor.
 
     Args:
-        env: environment to train in.
-        scratch_dir: directory to use to store intermediate training
-            information (e.g. for resuming training).
-        beta_schedule: provides a value of `beta` (the probability of taking
-            expert action in any given state) at each round of training. If
-            `None`, then `linear_beta_schedule` will be used instead.
-        **bc_kwargs: additional arguments for constructing the `BCTrainer` that
-            will be used to train the underlying policy."""
+      env: environment to train in.
+      scratch_dir: directory to use to store intermediate training
+          information (e.g. for resuming training).
+      beta_schedule: provides a value of `beta` (the probability of taking
+          expert action in any given state) at each round of training. If
+          `None`, then `linear_beta_schedule` will be used instead.
+      **bc_kwargs: additional arguments for constructing the `BCTrainer` that
+          will be used to train the underlying policy."""
     # for pickling
     self._init_args = locals()
     self._init_args.update(bc_kwargs)
@@ -285,10 +287,10 @@ class DAggerTrainer:
     the current interaction round.
 
     Arguments:
-        **train_kwargs: arguments to pass to `BCTrainer.train()`.
+      **train_kwargs: arguments to pass to `BCTrainer.train()`.
 
     Returns:
-        round_num: new round number after advancing the round counter."""
+      round_num: new round number after advancing the round counter."""
     tf.logging.info("Loading demonstrations")
     self._try_load_demos()
     tf.logging.info(f"Training at round {self.round_num}")
@@ -301,10 +303,10 @@ class DAggerTrainer:
     """Create trajectory collector to extend current round's demonstration set.
 
     Returns:
-        collector: an `InteractiveTrajectoryCollector` configured with the
-            appropriate beta, appropriate imitator policy, etc. for the current
-            round. Refer to the documentation for
-            `InteractiveTrajectoryCollector` to see how to use this."""
+      collector: an `InteractiveTrajectoryCollector` configured with the
+        appropriate beta, appropriate imitator policy, etc. for the current
+        round. Refer to the documentation for
+        `InteractiveTrajectoryCollector` to see how to use this."""
     save_dir = self._demo_dir_path_for_round()
     beta = self.beta_schedule(self.round_num)
 
@@ -328,8 +330,8 @@ class DAggerTrainer:
     algorithms.
 
     Returns:
-        checkpoint_path: a path to one of the created `DAggerTrainer`
-            checkpoints."""
+      checkpoint_path: a path to one of the created `DAggerTrainer`
+        checkpoints."""
     os.makedirs(self.scratch_dir, exist_ok=True)
     # save full trainer checkpoints
     checkpoint_paths = [
@@ -364,13 +366,13 @@ class DAggerTrainer:
     """Reconstruct trainer from the latest snapshot in some working directory.
 
     Args:
-        scratch_dir: path to the working directory created by a previous run of
-            this algorithm. The directory should contain a
-            `checkpoint-latest.pkl` file.
+      scratch_dir: path to the working directory created by a previous run of
+        this algorithm. The directory should contain a
+        `checkpoint-latest.pkl` file.
 
     Returns:
-        trainer: a reconstructed `DAggerTrainer` with the same state as the
-            previously-saved one."""
+      trainer: a reconstructed `DAggerTrainer` with the same state as the
+        previously-saved one."""
     checkpoint_path = os.path.join(scratch_dir, 'checkpoint-latest.pkl')
     with open(checkpoint_path, 'rb') as fp:
       saved_trainer = cloudpickle.load(fp)
