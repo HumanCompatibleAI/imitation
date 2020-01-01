@@ -317,7 +317,7 @@ class DiscrimNetGAIL(DiscrimNet, serialize.LayersSerializable):
 
     Args:
         observation_space: observation space for this environment.
-        action_space: action space for this environment:
+        action_space: action space for this environment.
         build_discrim_net: a callable that takes an observation input tensor
             and action input tensor as input, then computes the logits
             necessary to feed to GAIL. When called, the function should return
