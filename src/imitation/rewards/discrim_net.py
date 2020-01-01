@@ -46,15 +46,15 @@ class DiscrimNet(serialize.Serializable, ABC):
 
   @property
   def disc_loss(self):
-    return self._disc_loss
+    return self._disc_loss  # pytype: disable=attribute-error
 
   @property
   def policy_train_reward(self):
-    return self._policy_train_reward
+    return self._policy_train_reward  # pytype: disable=attribute-error
 
   @property
   def policy_test_reward(self):
-    return self._policy_test_reward
+    return self._policy_test_reward  # pytype: disable=attribute-error
 
   @property
   def train_stats(self):
