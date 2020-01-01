@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 import collections
 import os
 import pickle
-from typing import Callable, Iterable, Tuple
+from typing import Callable, Iterable, Optional, Tuple
 
 import gym
 import numpy as np
@@ -312,6 +312,7 @@ class DiscrimNetGAIL(DiscrimNet, serialize.LayersSerializable):
         observation_space: gym.Space,
         action_space: gym.Space,
         build_discrim_net: DiscrimNetBuilder = build_mlp_discrim_net(),
+        build_discrim_net_kwargs: Optional[dict] = None,
         scale: bool = False):
     """Construct discriminator network.
 
@@ -324,6 +325,8 @@ class DiscrimNetGAIL(DiscrimNet, serialize.LayersSerializable):
             *both* a `LayersDict` containing all the layers used in
             construction of the discriminator network, and a `tf.Tensor`
             representing the desired discriminator logits.
+        build_discrim_net_kwargs: optional extra keyword arguments for
+            `build_discrim_net()`.
         scale: should inputs be rescaled according to declared observation
             space bounds?"""
     # for serialisation
@@ -334,6 +337,7 @@ class DiscrimNetGAIL(DiscrimNet, serialize.LayersSerializable):
     self._action_space = action_space
     self._scale = scale
     self._build_discrim_net = build_discrim_net
+    self._build_discrim_net_kwargs = build_discrim_net_kwargs or {}
 
     # builds graph
     DiscrimNet.__init__(self)
@@ -362,7 +366,7 @@ class DiscrimNetGAIL(DiscrimNet, serialize.LayersSerializable):
 
     with tf.variable_scope("discrim_network"):
       self._discrim_mlp, self._discrim_logits = self._build_discrim_net(
-          self.obs_inp, self.act_inp)
+          self.obs_inp, self.act_inp, **self._build_discrim_net_kwargs)
     self._policy_test_reward = self._policy_train_reward \
         = -tf.log_sigmoid(self._discrim_logits)
 

@@ -1,4 +1,4 @@
-import datetime
+from collections import defaultdict
 from functools import partial
 import os
 from typing import Optional, Sequence
@@ -11,7 +11,6 @@ from stable_baselines.logger import Logger, make_output_format
 import tensorflow as tf
 from tqdm import tqdm
 
-from imitation import summaries
 import imitation.rewards.discrim_net as discrim_net
 from imitation.rewards.reward_net import BasicShapedRewardNet
 import imitation.util as util
@@ -167,7 +166,7 @@ class AdversarialTrainer:
             and then averaged over all steps. Keys depend on whether this is
             GAIL or AIRL.
     """
-    stat_dict_accum = {}
+    stat_dict_accum = defaultdict(lambda: [])
 
     for _ in range(n_steps):
 
@@ -191,10 +190,12 @@ class AdversarialTrainer:
 
       for k, v in fetched['train_stats'].items():
         self._disc_logger.log(k, v)
-        stat_dict_accum.setdefault(k, []).append(v)
+        stat_dict_accum[k].append(v)
       self._disc_logger.dumpkvs()
 
     # return only averaged stats (useful for, e.g., updating progress bars)
+    # NOTE(sam): this is fine to remove when merging #135 (the nested logger
+    # thing); I'll handle any downstream breakage in my code.
     mean_stats = {
       k: np.mean(v) for k, v in stat_dict_accum.items()
     }
@@ -272,10 +273,11 @@ class AdversarialTrainer:
 
     if self._init_tensorboard:
       with tf.name_scope("summaries"):
+        tf.logging.info("building summary directory at " + self._log_dir)
         graph = self._sess.graph if self._init_tensorboard_graph else None
         summary_dir = os.path.join(self._log_dir, 'summary')
-        self._summary_writer = summaries.make_summary_writer(summary_dir,
-                                                             graph=graph)
+        os.makedirs(summary_dir, exist_ok=True)
+        self._summary_writer = tf.summary.FileWriter(summary_dir, graph=graph)
         self._summary_op = tf.summary.merge_all()
 
   def _build_disc_feed_dict(self, *,
@@ -365,9 +367,9 @@ def _n_steps_if_not_none(n_steps):
 
 def init_trainer(env_name: str,
                  expert_trajectories: Sequence[rollout.Trajectory],
+                 log_dir: str,
                  *,
                  seed: int = 0,
-                 log_dir: str = None,
                  use_gail: bool = False,
                  num_vec: int = 8,
                  parallel: bool = False,
@@ -405,24 +407,7 @@ def init_trainer(env_name: str,
     init_rl_kwargs: Keyword arguments passed to `init_rl`,
         used to initialize the RL algorithm.
   """
-  # come up with an informative, unique name for this expt
-  log_prefix = log_dir if log_dir is not None else 'output'
-  date_str = datetime.datetime.now().strftime('%Y-%m-%dT%H:%M')
-  method_name = 'gail' if use_gail else 'airl'
-  log_base = os.path.join(
-    log_prefix, f'{method_name}_{env_name}_{date_str}')
-  os.makedirs(os.path.dirname(log_base), exist_ok=True)
-  i = 0
-  while True:
-    # find a short, unique suffix
-    full_log_dir = log_base + f"_run{i:02d}/"
-    try:
-      os.makedirs(full_log_dir, exist_ok=False)
-      break
-    except FileExistsError:
-      pass
-    i += 1
-  log_dir = full_log_dir
+  os.makedirs(log_dir, exist_ok=True)
 
   env = util.make_vec_env(env_name, num_vec, seed=seed, parallel=parallel,
                           log_dir=log_dir, max_episode_steps=max_episode_steps)
