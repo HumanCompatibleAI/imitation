@@ -78,7 +78,7 @@ class AdversarialTrainer:
         init_tensorboard_graph: If both this and `init_tensorboard` are True,
             then write a Tensorboard graph summary to disk.
         debug_use_ground_truth: If True, use the ground truth reward for
-           `self.train_env`.
+            `self.train_env`.
             This disables the reward wrapping that would normally replace
             the environment reward with the learned reward. This is useful for
             sanity checking that the policy training is functional.
