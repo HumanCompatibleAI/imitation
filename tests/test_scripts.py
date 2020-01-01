@@ -93,7 +93,7 @@ def _check_train_ex_result(result: dict):
 
 def test_train_adversarial(tmpdir):
   """Smoke test for imitation.scripts.train_adversarial"""
-  named_configs = ['cartpole', 'gail', 'fast', 'plots']
+  named_configs = ['cartpole', 'gail', 'fast']
   config_updates = {
       'init_trainer_kwargs': {
           # Rollouts are small, decrease size of buffer to avoid warning
@@ -104,6 +104,8 @@ def test_train_adversarial(tmpdir):
       'log_root': tmpdir,
       'rollout_path': "tests/data/expert_models/cartpole_0/rollouts/final.pkl",
       'init_tensorboard': True,
+      'plot_interval': 1,
+      'extra_episode_data_interval': 1,
   }
   run = train_ex.run(
       named_configs=named_configs,

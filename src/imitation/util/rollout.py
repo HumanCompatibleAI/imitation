@@ -12,6 +12,7 @@ from stable_baselines.common.vec_env import VecEnv
 import tensorflow as tf
 
 from imitation.policies.base import get_action_policy
+from imitation.util.reward_wrapper import RewardFn
 
 
 class Trajectory(NamedTuple):
@@ -52,6 +53,12 @@ def unwrap_traj(traj: Trajectory) -> Trajectory:
   return res
 
 
+def recalc_rewards_traj(traj: Trajectory, reward_fn: RewardFn) -> np.ndarray:
+  """Returns the rewards of the trajectory calculated under a diff reward fn."""
+  steps = np.arange(len(traj.rews))
+  return reward_fn(traj.obs[:-1], traj.acts, traj.obs[1:], steps)
+
+
 class Transitions(NamedTuple):
   """A batch of obs-act-obs-rew-done transitions.
 
@@ -81,12 +88,14 @@ class Transitions(NamedTuple):
 
 
 class TrajectoryAccumulator:
-  """Accumulates trajectories step-by-step. Useful for collecting completed
-  trajectories while ignoring partially-completed trajectories (e.g. when
-  rolling out a vec env to collect a set number of transitions). Each
-  in-progress trajectory is identified by a 'key', which enables several
-  independent trajectories to be collected at once. They key can also be left
-  at its default value of `None` if you only wish to collect one trajectory."""
+  """Accumulates trajectories step-by-step.
+
+  Useful for collecting completed trajectories while ignoring
+  partially-completed trajectories (e.g. when rolling out a VecEnv to collect a
+  set number of transitions). Each in-progress trajectory is identified by a
+  'key', which enables several independent trajectories to be collected at
+  once. They key can also be left at its default value of `None` if you only
+  wish to collect one trajectory."""
 
   def __init__(self):
     """Initialise the trajectory accumulator."""
@@ -115,8 +124,10 @@ class TrajectoryAccumulator:
     return traj
 
   def add_step(self, step_dict: Dict[str, np.ndarray], key: Hashable = None):
-    """Add a single step to the partial trajectory identified by `key`. This
-    could correspond to, e.g., one environment managed by a VecEnv.
+    """Add a single step to the partial trajectory identified by `key`.
+
+    Generally a single step could correspond to, e.g., one environment managed
+    by a VecEnv.
 
     Args:
         step_dict: dictionary containing information for the current step. Its
@@ -131,8 +142,7 @@ class TrajectoryAccumulator:
 
     Args:
         key: if given, identifies which trajectory to move by its key."""
-    if key in self.partial_trajectories:
-      del self.partial_trajectories[key]
+    self.partial_trajectories.pop(key, None)
 
 
 GenTrajTerminationFn = Callable[[Sequence[Trajectory]], bool]

@@ -4,6 +4,7 @@ import os
 
 import gym
 import numpy as np
+import pytest
 from stable_baselines.common.policies import BasePolicy
 import tensorflow as tf
 
@@ -70,11 +71,8 @@ def make_trainer(tmpdir):
 def test_trainer_makes_progress(tmpdir, session):
   venv = util.make_vec_env(ENV_NAME, 10)
   trainer = make_trainer(tmpdir)
-  try:
+  with pytest.raises(dagger.NeedsDemosException):
     trainer.extend_and_update()
-    assert False, "trainer.train() should not succeed"
-  except dagger.NeedDemosException:
-      pass
   assert trainer.round_num == 0
   pre_train_rew_mean = rollout.mean_return(
       trainer.bc_trainer.policy, venv, sample_until=rollout.min_episodes(20),
