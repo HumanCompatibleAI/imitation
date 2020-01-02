@@ -31,7 +31,7 @@ class _AccumulatingLogger(sb_logger.Logger):
     """Like Logger, except also accumulates logkv_mean on the mean_logger.
 
     Args:
-      format_strs: An list of output format strings. For details on available
+      format_strs: A list of output format strings. For details on available
         output formats see `stable_baselines.logger.make_output_format`.
       mean_logger: A background logger that is used to keep track of log
         means.
@@ -68,7 +68,7 @@ class _HierarchicalLogger(sb_logger.Logger):
     Args:
       default_logger: The logger to forward logging requests to when
         `self.current_logger` is None.
-      format_strs: An list of output format strings that should be used by
+      format_strs: A list of output format strings that should be used by
         every `self.current_logger`. For details on available
         output formats see `stable_baselines.logger.make_output_format`.
     """
@@ -84,7 +84,7 @@ class _HierarchicalLogger(sb_logger.Logger):
 
     Args:
         subdir: A string key for the _AccumulatingLogger which determines
-          its `folder` and logging prefix. All `_AccumulatingLogger` are cached,
+          its `folder` and logging prefix. All `_AccumulatingLogger` instances are cached,
           so if this method is called again with the same `subdir` argument,
           then we load the same `_AccumulatingLogger` from last time.
     """
