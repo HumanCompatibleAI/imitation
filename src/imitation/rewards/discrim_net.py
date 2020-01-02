@@ -87,21 +87,21 @@ class DiscrimNet(serialize.Serializable, ABC):
     """Vectorized reward for training an imitation learning algorithm.
 
     Args:
-        obs: The observation input. Its shape is
-            `(batch_size,) + observation_space.shape`.
-        act: The action input. Its shape is
-            `(batch_size,) + action_space.shape`. The None dimension is
-            expected to be the same as None dimension from `obs_input`.
-        next_obs: The observation input. Its shape is
-            `(batch_size,) + observation_space.shape`.
-        steps: The number of timesteps elapsed. Its shape is `(batch_size,)`.
-        gen_log_prob_fn: The generator policy's action probabilities function.
-            A Callable such that
-            `log_act_prob_fn(observations=obs, actions=act, lopg=True)`
-            returns `log_act_prob`, the generator's log action probabilities.
-            `log_act_prob[i]` is equal to the generator's log probability of
-            choosing `act[i]` given `obs[i]`.
-            `np.squeeze(log_act_prob)` has shape `(batch_size,)`.
+      obs: The observation input. Its shape is
+        `(batch_size,) + observation_space.shape`.
+      act: The action input. Its shape is
+        `(batch_size,) + action_space.shape`. The None dimension is
+        expected to be the same as None dimension from `obs_input`.
+      next_obs: The observation input. Its shape is
+        `(batch_size,) + observation_space.shape`.
+      steps: The number of timesteps elapsed. Its shape is `(batch_size,)`.
+      gen_log_prob_fn: The generator policy's action probabilities function.
+        A Callable such that
+        `log_act_prob_fn(observations=obs, actions=act, lopg=True)`
+        returns `log_act_prob`, the generator's log action probabilities.
+        `log_act_prob[i]` is equal to the generator's log probability of
+        choosing `act[i]` given `obs[i]`.
+        `np.squeeze(log_act_prob)` has shape `(batch_size,)`.
     Returns:
         The rewards. Its shape is `(batch_size,)`.
     """
@@ -135,16 +135,16 @@ class DiscrimNet(serialize.Serializable, ABC):
     """Vectorized reward for training an expert during transfer learning.
 
     Args:
-        obs: The observation input. Its shape is
-            `(batch_size,) + observation_space.shape`.
-        act: The action input. Its shape is
-            `(batch_size,) + action_space.shape`. The None dimension is
-            expected to be the same as None dimension from `obs_input`.
-        next_obs: The observation input. Its shape is
-            `(batch_size,) + observation_space.shape`.
-        steps: The number of timesteps elapsed. Its shape is `(batch_size,)`.
+      obs: The observation input. Its shape is
+        `(batch_size,) + observation_space.shape`.
+      act: The action input. Its shape is
+        `(batch_size,) + action_space.shape`. The None dimension is
+        expected to be the same as None dimension from `obs_input`.
+      next_obs: The observation input. Its shape is
+        `(batch_size,) + observation_space.shape`.
+      steps: The number of timesteps elapsed. Its shape is `(batch_size,)`.
     Returns:
-        The rewards. Its shape is `(batch_size,)`.
+      The rewards. Its shape is `(batch_size,)`.
     """
     del steps
     fd = {
@@ -275,9 +275,11 @@ class DiscrimNetAIRL(DiscrimNet):
 
 DiscrimNetBuilder = Callable[[tf.Tensor, tf.Tensor],
                              Tuple[util.LayersDict, tf.Tensor]]
-"""Type alias for function that takes an observation and action tensor and
-produces a tuple containing (1) a list of used TF layers, and (2) output logits
-for GAIL."""
+"""Type alias for function that builds a discriminator network.
+
+Takes an observation and action tensor and produces a tuple containing
+(1) a list of used TF layers, and (2) output logits.
+"""
 
 
 class build_mlp_discrim_net:
@@ -290,7 +292,8 @@ class build_mlp_discrim_net:
     argument of `DiscrimNetGAIL`.
 
     Args:
-        hid_sizes: list of layer sizes for each hidden layer of the network."""
+      hid_sizes: list of layer sizes for each hidden layer of the network.
+    """
     self.hid_sizes = hid_sizes
 
   def __call__(self, obs_input, act_input):
@@ -317,18 +320,19 @@ class DiscrimNetGAIL(DiscrimNet, serialize.LayersSerializable):
     """Construct discriminator network.
 
     Args:
-        observation_space: observation space for this environment.
-        action_space: action space for this environment.
-        build_discrim_net: a callable that takes an observation input tensor
-            and action input tensor as input, then computes the logits
-            necessary to feed to GAIL. When called, the function should return
-            *both* a `LayersDict` containing all the layers used in
-            construction of the discriminator network, and a `tf.Tensor`
-            representing the desired discriminator logits.
-        build_discrim_net_kwargs: optional extra keyword arguments for
-            `build_discrim_net()`.
-        scale: should inputs be rescaled according to declared observation
-            space bounds?"""
+      observation_space: observation space for this environment.
+      action_space: action space for this environment:
+      build_discrim_net: a callable that takes an observation input tensor
+        and action input tensor as input, then computes the logits
+        necessary to feed to GAIL. When called, the function should return
+        *both* a `LayersDict` containing all the layers used in
+        construction of the discriminator network, and a `tf.Tensor`
+        representing the desired discriminator logits.
+      build_discrim_net_kwargs: optional extra keyword arguments for
+        `build_discrim_net()`.
+      scale: should inputs be rescaled according to declared observation
+        space bounds?
+    """
     # for serialisation
     args = dict(locals())
 
