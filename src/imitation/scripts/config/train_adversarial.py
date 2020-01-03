@@ -15,14 +15,7 @@ train_ex = sacred.Experiment("train_adversarial", interactive=True)
 @train_ex.config
 def train_defaults():
   env_name = "CartPole-v1"  # environment to train on
-
-  # Num times to generate a batch and update both generator and discrim.
-  # Set `total_timesteps` to None when using `n_epochs`.
-  n_epochs = 50
-
-  # Total timesteps taken in env during training.
-  # Set `n_epochs` to None when using `total_timesteps`.
-  total_timesteps = None
+  total_timesteps = 1e5  # Num of environment transitions to sample
 
   n_expert_demos = None  # Num demos used. None uses every demo possible
   n_episodes_eval = 50  # Num of episodes for final mean ground truth return
@@ -55,18 +48,16 @@ def train_defaults():
   init_tensorboard = False  # If True, then write Tensorboard logs.
   rollout_hint = None  # Used to generate default rollout_path
 
-  # Batch_size must be a multiple of `init_trainer_kwargs.num_vec`.
+  # `gen_batch_size` must be a multiple of `init_trainer_kwargs.num_vec`.
   # (If using PPO2, then also must be a multiple of
   # `init_trainer_kwargs.init_rl_kwargs.nminibatch`).
-  gen_batch_size = 2048  # Batch size for both generator updates.
-  n_disc_minibatch = 4  # Num discriminator minibatches
+  disc_batch_size = 2048  # Batch size for discriminator updates.
+  disc_minibatch_size = 512  # Num discriminator updates per batch
+  gen_batch_size = 2048  # Batch size for generator updates.
 
 
 @train_ex.config
 def aliases_default_gen_batch_size(gen_batch_size):
-  # Batch size for discriminator updates. Defaults to `gen_batch_size`.
-  disc_batch_size = gen_batch_size
-
   # Setting generator buffer capacity and discriminator batch size to
   # the same number is equivalent to not using a replay buffer at all.
   # "Disabling" the replay buffer seems to improve convergence speed, but may
@@ -80,20 +71,10 @@ def apply_init_trainer_kwargs_aliases(n_disc_minibatch,
                                       gen_replay_buffer_size):
   init_trainer_kwargs = dict(
     trainer_kwargs=dict(
-      n_disc_minibatch=n_disc_minibatch,
+      disc_minibatch_size=disc_minibatch_size,
       gen_replay_buffer_capacity=gen_replay_buffer_size,
       disc_batch_size=disc_batch_size,
     ))
-
-
-@train_ex.config
-def calc_timesteps(n_epochs, total_timesteps, gen_batch_size):
-  if total_timesteps is None and n_epochs is not None:
-    total_timesteps = n_epochs * gen_batch_size
-  else:
-    assert total_timesteps is not None and n_epochs is None, (
-        "Must set exactly one of n_epochs={} and total_timesteps={} to non-None"
-        .format(n_epochs, total_timesteps))
 
 
 @train_ex.config
@@ -163,7 +144,7 @@ def cartpole():
 def half_cheetah():
   env_name = "HalfCheetah-v2"
   rollout_hint = "half_cheetah"
-  n_epochs = 1000
+  total_timesteps = 2e6
 
   init_trainer_kwargs = dict(
       airl_entropy_weight=0.1,
@@ -181,7 +162,7 @@ def hopper():
 def humanoid():
   env_name = "Humanoid-v2"
   rollout_hint = "humanoid"
-  n_epochs = 2000
+  total_timesteps = 4e6
 
 
 @train_ex.named_config
@@ -206,7 +187,7 @@ def reacher():
 def swimmer():
   env_name = "Swimmer-v2"
   rollout_hint = "swimmer"
-  n_epochs = 1000
+  total_timesteps = 2e6
   init_trainer_kwargs = dict(
       init_rl_kwargs=dict(
           policy_network_class=policies.MlpPolicy,
@@ -247,10 +228,11 @@ def disabled_ant():
 @train_ex.named_config
 def fast():
   """Minimize the amount of computation. Useful for test cases."""
-  n_epochs = 1
+  total_timesteps = 10
   n_expert_demos = 1
   n_episodes_eval = 1
   gen_batch_size = 2
+  disc_batch_size = 2
   show_plots = False
   n_plot_episodes = 1
   init_trainer_kwargs = dict(
@@ -259,13 +241,15 @@ def fast():
     num_vec=2,
     init_rl_kwargs=dict(nminibatches=1),
   )
+  n_disc_minibatch = 1
 
 
 # Shared settings
 
 ant_shared_locals = dict(
-    n_epochs=2000,
+    timesteps=3e7,
     gen_batch_size=2048*8,
+    disc_batch_size=2048*8,
     init_trainer_kwargs=dict(
         max_episode_steps=500,  # To match `inverse_rl` settings.
     ),

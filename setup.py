@@ -53,8 +53,6 @@ setup(
         # sacred==0.7.5 build is broken without pymongo
         # sacred>0.7.4 have non-picklable config objects (see GH #109)
         'sacred==0.7.4',
-        # Remove this version pin once scipy/#11237 is fixed
-        'scipy==1.3.3',
     ],
     tests_require=TESTS_REQUIRE,
     extras_require={

@@ -130,9 +130,6 @@ def train(_run,
   expert_stats = util.rollout.rollout_stats(expert_trajs)
 
   with util.make_session():
-    util.logger.configure(folder=osp.join(log_dir, 'generator'),
-                          format_strs=['tensorboard', 'stdout'])
-
     if init_tensorboard:
       sb_tensorboard_dir = osp.join(log_dir, "sb_tb")
       kwargs = init_trainer_kwargs
@@ -141,7 +138,6 @@ def train(_run,
 
     trainer = init_trainer(env_name, expert_trajs,
                            seed=_seed, log_dir=log_dir,
-                           use_custom_log=True,
                            **init_trainer_kwargs)
 
     if plot_interval >= 0:

@@ -130,15 +130,13 @@ def min_episodes(n: int) -> GenTrajTerminationFn:
 
   Argument:
     n: Minimum number of episodes of data to collect.
-        May overshoot if two episodes complete simultaneously (unlikely).
+      May overshoot if two episodes complete simultaneously (unlikely).
 
   Returns:
     A function implementing this termination condition.
   """
-  def f(trajectories: Sequence[Trajectory]):
-    return len(trajectories) >= n
   assert n >= 1
-  return f
+  return lambda trajectories: len(trajectories) >= n
 
 
 def min_timesteps(n: int) -> GenTrajTerminationFn:
@@ -146,15 +144,16 @@ def min_timesteps(n: int) -> GenTrajTerminationFn:
 
   Arguments:
     n: Minimum number of timesteps of data to collect.
-        May overshoot to nearest episode boundary.
+      May overshoot to nearest episode boundary.
 
   Returns:
     A function implementing this termination condition.
   """
+  assert n >= 1
+
   def f(trajectories: Sequence[Trajectory]):
     timesteps = sum(len(t.obs) - 1 for t in trajectories)
     return timesteps >= n
-  assert n >= 1
   return f
 
 
