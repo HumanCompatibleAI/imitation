@@ -20,13 +20,14 @@ class BufferingWrapper(VecEnvWrapper):
     super().__init__(venv)
     self.error_on_premature_reset = error_on_premature_reset
     self._did_reset = False
-    self.obs_list = []
-    self.acts_list = []
-    self.rews_list = []
-    self.dones_list = []
+    self.obs_list = None
+    self.acts_list = None
+    self.rews_list = None
+    self.dones_list = None
 
   def reset(self, **kwargs):
-    if self.error_on_premature_reset and len(self.acts_list) != 0:
+    if (self.error_on_premature_reset and
+        self._did_reset and len(self.acts_list) != 0):
       raise RuntimeError(
         "BufferingWrapper reset() before samples were accessed")
     obs = self.venv.reset(**kwargs)
@@ -37,15 +38,20 @@ class BufferingWrapper(VecEnvWrapper):
     self._did_reset = True
     return obs
 
-  def step(self, actions):
+  def step_async(self, actions):
     assert self._did_reset
-    obs, rews, dones, infos = self.venv.step(actions)
+    self.acts_list.append(actions)
+    self.venv.step_async()
+
+  def step_wait(self):
+    assert self._did_reset
+    actions = self.acts_list[-1]
+    obs, rews, dones, infos = self.venv.step_wait(actions)
     real_obs = np.copy(obs)
     for i, done in enumerate(dones):
       if done:
         real_obs[i] = infos[i]['terminal_observation']
     self.obs_list.append(real_obs)
-    self.acts_list.append(actions)
     self.rews_list.append(rews)
     self.dones_list.append(dones)
     assert len(self.obs_list) == len(self.acts_list) + 1
