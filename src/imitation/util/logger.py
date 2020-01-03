@@ -30,6 +30,12 @@ class _AccumulatingLogger(sb_logger.Logger):
                subdir: str):
     """Like Logger, except also accumulates logkv_mean on the mean_logger.
 
+    `self.logkv(key, value)` writes the "raw" values in
+    "{self.mean_logger.log_dir}/subdir" under the key "raw/{subdir}/{key}".
+    At the same time, `self.logkv` will accumulate mean values on the
+    `mean_logger` by calling
+    `mean_logger.logkv_mean(f"mean/{subdir}/{key}", value)`.
+
     Args:
       format_strs: A list of output format strings. For details on available
         output formats see `stable_baselines.logger.make_output_format`.
@@ -81,6 +87,13 @@ class _HierarchicalLogger(sb_logger.Logger):
   @contextlib.contextmanager
   def accumulate_means(self, subdir: str):
     """Temporarily use an _AccumulatingLogger as the current logger.
+
+    During the context, `self.logkv(key, value)` will write the "raw" values in
+    `"{self.default_logger.log_dir}/subdir"` under the key "raw/{subdir}/key".
+
+    After the context exits, calling `self.dumpkvs()` will write the means
+    of all the "raw" values accumulated during this context to
+    `self.default_logger` under keys with the prefix `mean/{subdir}/`
 
     Args:
         subdir: A string key for the _AccumulatingLogger which determines
