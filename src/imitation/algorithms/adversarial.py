@@ -162,22 +162,25 @@ class AdversarialTrainer:
     """Policy (i.e. the generator) being trained."""
     return self._gen_policy
 
-  def train_disc(self, total_timesteps: Optional[int] = None) -> None:
+  def train_disc(self, n_samples: Optional[int] = None) -> None:
     """Trains the discriminator to minimize classification cross-entropy.
 
     Args:
-      total_timesteps: The number of transitions to sample from the generator
+      n_samples: A number of transitions to sample from the generator
         replay buffer and the expert demonstration dataset. (Half of the
-        samples are from each source).
-        By default, `self.disc_batch_size`. The number of optimizer updates
-        performed is `total_timesteps // self.n_disc_minibatch`.
+        samples are from each source). By default, `self.disc_batch_size`.
+
+        To keep minibatches the same size, internally `n_samples` is rounded
+        down to the nearest multiple of `self.disc_batch_size`. The number of
+        optimizer updates performed is
+        `n_samples_rounded_down // self.n_disc_minibatch`.
     """
-    if total_timesteps is None:
-      total_timesteps = self.disc_batch_size
-    n_epochs = total_timesteps // self.disc_batch_size
+    if n_samples is None:
+      n_samples = self.disc_batch_size
+    n_epochs = n_samples // self.disc_batch_size
     assert n_epochs >= 1, "should have at least one update"
     for _ in range(n_epochs):
-      minibatch_size = total_timesteps // self.n_disc_minibatch
+      minibatch_size = n_samples // self.n_disc_minibatch
       for _ in range(self.n_disc_minibatch):
         gen_samples = self._gen_replay_buffer.sample(minibatch_size)
         self.train_disc_step(gen_samples=gen_samples)
