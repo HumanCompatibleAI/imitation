@@ -43,7 +43,7 @@ class AdversarialTrainer:
                expert_demos: rollout.Transitions,
                *,
                disc_batch_size: int = 2048,
-               n_disc_minibatch: int = 4,
+               disc_minibatch_size: int = 256,
                disc_opt_cls: tf.train.Optimizer = tf.train.AdamOptimizer,
                disc_opt_kwargs: dict = {},
                gen_replay_buffer_capacity: Optional[int] = None,
@@ -61,13 +61,14 @@ class AdversarialTrainer:
         discrim: The discriminator network.
           For GAIL, use a DiscrimNetGAIL. For AIRL, use a DiscrimNetAIRL.
         expert_demos: Transitions from an expert dataset.
-        disc_batch_size: The number of expert and generator transitions samples
-          to feed to the discriminator in each iteration of `self.train()`.
-          (Half of the samples are expert and half of the samples are
-          generator). Must be an even number.
-        n_disc_minibatch: The number of discriminator updates to apply on
-          each discriminator batch. (Batch is split into `n_disc_minibatch`
-          mini-batches).
+        disc_batch_size: The default number of expert and generator transitions
+          samples to feed to the discriminator in each call to
+          `self.train_disc()`. (Half of the samples are expert and half of the
+          samples are generator).
+        disc_minibatch_size: The discriminator minibatch size. Each
+          discriminator batch is split into minibatches and an Adam update is
+          applied on the gradient resulting form each minibatch. Must evenly
+          divide `disc_batch_size`. Must be an even number.
         disc_opt_cls: The optimizer for discriminator training.
         disc_opt_kwargs: Parameters for discriminator training.
         gen_replay_buffer_capacity: The capacity of the
@@ -90,11 +91,12 @@ class AdversarialTrainer:
     self._sess = tf.get_default_session()
     self._global_step = tf.train.create_global_step()
 
-    assert disc_batch_size % 2 == 0, \
-        "discriminator batch size must be even " \
-        "(equal split between generator and expert samples)"
+    assert disc_batch_size % self.disc_minibatch_size == 0
+    assert disc_minibatch_size % 2 == 0, \
+      "discriminator minibatch size must be even " \
+      "(equal split between generator and expert samples)"
     self.disc_batch_size = disc_batch_size
-    self.n_disc_minibatch = n_disc_minibatch
+    self.disc_minibatch_size = disc_minibatch_size
 
     self.debug_use_ground_truth = debug_use_ground_truth
 
@@ -169,21 +171,16 @@ class AdversarialTrainer:
       n_samples: A number of transitions to sample from the generator
         replay buffer and the expert demonstration dataset. (Half of the
         samples are from each source). By default, `self.disc_batch_size`.
-
-        To keep minibatches the same size, internally `n_samples` is rounded
-        down to the nearest multiple of `self.disc_batch_size`. The number of
-        optimizer updates performed is
-        `n_samples_rounded_down // self.n_disc_minibatch`.
+        `n_samples` must be a positive multiple of `self.disc_minibatch_size`.
     """
     if n_samples is None:
       n_samples = self.disc_batch_size
-    n_epochs = n_samples // self.disc_batch_size
-    assert n_epochs >= 1, "should have at least one update"
-    for _ in range(n_epochs):
-      minibatch_size = n_samples // self.n_disc_minibatch
-      for _ in range(self.n_disc_minibatch):
-        gen_samples = self._gen_replay_buffer.sample(minibatch_size)
-        self.train_disc_step(gen_samples=gen_samples)
+    n_updates = n_samples // self.disc_minibatch_size
+    assert n_samples % self.disc_minibatch_size == 0
+    assert n_updates >= 1
+    for _ in range(n_updates):
+      gen_samples = self._gen_replay_buffer.sample(self.disc_minibatch_size)
+      self.train_disc_step(gen_samples=gen_samples)
 
   def train_disc_step(self, *,
                       gen_samples: Optional[rollout.Transitions] = None,
@@ -233,21 +230,6 @@ class AdversarialTrainer:
                             reset_num_timesteps=False,
                             callback=callback)
       self._populate_gen_replay_buffer()
-
-  def train(self, total_timesteps: int) -> None:
-    """Trains the discriminator and generator against each other.
-
-    Equivalent to calling `self.train_disc()` followed by `self.train_gen()`
-    in a loop `total_timesteps // self.gen_batch_size` times.
-
-    Args:
-        total_timesteps: The number of transitions to sample from
-          `self.venv_train_norm` during generator training.
-    """
-    n_epochs = total_timesteps // self.gen_batch_size
-    for _ in tqdm(range(n_epochs), desc="Adversarial train"):
-      self.train_disc()
-      self.train_gen()
 
   def _populate_gen_replay_buffer(self) -> None:
     """Generate and store generator samples in the buffer.
