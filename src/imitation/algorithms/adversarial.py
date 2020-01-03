@@ -140,11 +140,6 @@ class AdversarialTrainer:
       gen_replay_buffer_capacity = 20 * self.gen_batch_size
     self._gen_replay_buffer = buffer.ReplayBuffer(gen_replay_buffer_capacity,
                                                   self.venv)
-    gen_samples = rollout.generate_transitions(
-      self.gen_policy,
-      self.venv_train_norm,
-      n_timesteps=self.gen_batch_size // 2)
-    self._gen_replay_buffer.store(gen_samples)
     self._exp_replay_buffer = buffer.ReplayBuffer.from_data(expert_demos)
     if self.disc_batch_size // 2 > len(self._exp_replay_buffer):
       warn("The discriminator batch size is more than twice the number of "
@@ -173,12 +168,19 @@ class AdversarialTrainer:
   def train_disc(self, n_samples: Optional[int] = None) -> None:
     """Trains the discriminator to minimize classification cross-entropy.
 
+    Must call `train_gen` first (otherwise there will be no saved generator
+    samples for training, and will error).
+
     Args:
       n_samples: A number of transitions to sample from the generator
         replay buffer and the expert demonstration dataset. (Half of the
         samples are from each source). By default, `self.disc_batch_size`.
         `n_samples` must be a positive multiple of `self.disc_minibatch_size`.
     """
+    if len(self._gen_replay_buffer) == 0:
+      raise RuntimeError("No generator samples for training. "
+                         "Call `train_gen()` first.")
+
     if n_samples is None:
       n_samples = self.disc_batch_size
     n_updates = n_samples // self.disc_minibatch_size
