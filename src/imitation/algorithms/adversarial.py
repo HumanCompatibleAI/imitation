@@ -90,7 +90,9 @@ class AdversarialTrainer:
     self._sess = tf.get_default_session()
     self._global_step = tf.train.create_global_step()
 
-    assert disc_batch_size % 2 == 0
+    assert disc_batch_size % 2 == 0, \
+        "discriminator batch size must be even " \
+        "(equal split between generator and expert samples)"
     self.disc_batch_size = disc_batch_size
     self.n_disc_minibatch = n_disc_minibatch
 
