@@ -135,9 +135,9 @@ def min_episodes(n: int) -> GenTrajTerminationFn:
   Returns:
     A function implementing this termination condition.
   """
+  assert n >= 1
   def f(trajectories: Sequence[Trajectory]):
     return len(trajectories) >= n
-  assert n >= 1
   return f
 
 
@@ -151,10 +151,10 @@ def min_timesteps(n: int) -> GenTrajTerminationFn:
   Returns:
     A function implementing this termination condition.
   """
+  assert n >= 1
   def f(trajectories: Sequence[Trajectory]):
     timesteps = sum(len(t.obs) - 1 for t in trajectories)
     return timesteps >= n
-  assert n >= 1
   return f
 
 
