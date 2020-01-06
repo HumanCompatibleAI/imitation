@@ -7,7 +7,6 @@ import numpy as np
 from stable_baselines.common.base_class import BaseRLModel
 from stable_baselines.common.vec_env import VecEnv, VecNormalize
 import tensorflow as tf
-from tqdm import tqdm
 
 from imitation import summaries
 import imitation.rewards.discrim_net as discrim_net
@@ -91,10 +90,10 @@ class AdversarialTrainer:
     self._sess = tf.get_default_session()
     self._global_step = tf.train.create_global_step()
 
-    assert disc_batch_size % self.disc_minibatch_size == 0
-    assert disc_minibatch_size % 2 == 0, \
-      "discriminator minibatch size must be even " \
-      "(equal split between generator and expert samples)"
+    assert disc_batch_size % disc_minibatch_size == 0
+    assert disc_minibatch_size % 2 == 0, (
+      "discriminator minibatch size must be even "
+      "(equal split between generator and expert samples)")
     self.disc_batch_size = disc_batch_size
     self.disc_minibatch_size = disc_minibatch_size
 

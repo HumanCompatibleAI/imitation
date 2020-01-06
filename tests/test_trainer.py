@@ -68,10 +68,3 @@ def test_train_disc_improve_D(tmpdir, use_gail, n_timesteps=200, n_steps=1000):
       trainer.train_disc_step(gen_samples=gen_samples)
   loss2 = trainer.eval_disc_loss(gen_samples=gen_samples)
   assert loss2 < loss1
-
-
-@pytest.mark.expensive
-@pytest.mark.parametrize("use_gail", USE_GAIL)
-def test_train_no_crash(tmpdir, use_gail):
-  trainer = init_test_trainer(tmpdir, use_gail)
-  trainer.train(total_timesteps=trainer.gen_batch_size)

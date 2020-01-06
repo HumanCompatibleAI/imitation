@@ -152,6 +152,9 @@ def train(_run,
 
     # Main training loop.
     n_epochs = total_timesteps // trainer.gen_batch_size
+    assert n_epochs >= 1, ("No updates (need at least "
+                           f"{trainer.gen_batch_size} timesteps, have only "
+                           f"total_timesteps={total_timesteps})!")
 
     for epoch in tqdm.tqdm(range(1, n_epochs+1), desc="epoch"):
       trainer.train_disc(trainer.disc_batch_size)

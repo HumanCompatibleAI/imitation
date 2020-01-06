@@ -95,9 +95,6 @@ def test_train_adversarial(tmpdir):
   """Smoke test for imitation.scripts.train_adversarial"""
   named_configs = ['cartpole', 'gail', 'fast']
   config_updates = {
-      # Rollouts are small, decrease size of buffer (via batch_size) to avoid
-      # warning.
-      'gen_batch_size': 64,
       'log_root': tmpdir,
       'rollout_path': "tests/data/expert_models/cartpole_0/rollouts/final.pkl",
       'init_tensorboard': True,

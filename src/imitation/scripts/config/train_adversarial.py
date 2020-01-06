@@ -66,7 +66,7 @@ def aliases_default_gen_batch_size(gen_batch_size):
 
 
 @train_ex.config
-def apply_init_trainer_kwargs_aliases(n_disc_minibatch,
+def apply_init_trainer_kwargs_aliases(disc_minibatch_size,
                                       disc_batch_size,
                                       gen_replay_buffer_size):
   init_trainer_kwargs = dict(
@@ -233,6 +233,7 @@ def fast():
   n_episodes_eval = 1
   gen_batch_size = 2
   disc_batch_size = 2
+  disc_minibatch_size = 2
   show_plots = False
   n_plot_episodes = 1
   init_trainer_kwargs = dict(
@@ -241,7 +242,6 @@ def fast():
     num_vec=2,
     init_rl_kwargs=dict(nminibatches=1),
   )
-  n_disc_minibatch = 1
 
 
 # Shared settings
