@@ -1,5 +1,4 @@
 from functools import partial
-import os.path as osp
 from typing import Optional, Sequence
 from warnings import warn
 
@@ -7,7 +6,6 @@ import numpy as np
 from stable_baselines.common.base_class import BaseRLModel
 from stable_baselines.common.vec_env import VecEnv, VecNormalize
 import tensorflow as tf
-from tqdm import tqdm
 
 from imitation import summaries
 import imitation.rewards.discrim_net as discrim_net
@@ -92,10 +90,10 @@ class AdversarialTrainer:
     self._sess = tf.get_default_session()
     self._global_step = tf.train.create_global_step()
 
-    assert disc_batch_size % self.disc_minibatch_size == 0
-    assert disc_minibatch_size % 2 == 0, \
-      "discriminator minibatch size must be even " \
-      "(equal split between generator and expert samples)"
+    assert disc_batch_size % disc_minibatch_size == 0
+    assert disc_minibatch_size % 2 == 0, (
+      "discriminator minibatch size must be even "
+      "(equal split between generator and expert samples)")
     self.disc_batch_size = disc_batch_size
     self.disc_minibatch_size = disc_minibatch_size
 
@@ -371,12 +369,10 @@ def init_trainer(env_name: str,
     init_rl_kwargs: Keyword arguments passed to `init_rl`,
         used to initialize the RL algorithm.
   """
-  util.logger.configure(folder=osp.join(log_dir, 'generator'),
-                        format_strs=['tensorboard', 'stdout'])
+  util.logger.configure(folder=log_dir, format_strs=['tensorboard', 'stdout'])
   env = util.make_vec_env(env_name, num_vec, seed=seed, parallel=parallel,
                           log_dir=log_dir, max_episode_steps=max_episode_steps)
-  gen_policy = util.init_rl(env, verbose=1,
-                            **init_rl_kwargs)
+  gen_policy = util.init_rl(env, verbose=1, **init_rl_kwargs)
 
   if use_gail:
     discrim = discrim_net.DiscrimNetGAIL(env.observation_space,

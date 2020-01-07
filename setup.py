@@ -48,7 +48,9 @@ setup(
         'scikit-learn>=0.21.2',
         # TODO(adam): Change to >=2.10.0 once 2.10.0 released
         'stable-baselines @ git+https://github.com/hill-a/stable-baselines.git',
-        'jax!=0.1.37',
+        # TODO(shwang): Change to PyPI release once >0.1.55 is released.
+        # Needs https://github.com/google/jax/pull/1931
+        'jax @ git+https://github.com/google/jax',
         'jaxlib~=0.1.20',
         # sacred==0.7.5 build is broken without pymongo
         # sacred>0.7.4 have non-picklable config objects (see GH #109)
@@ -65,6 +67,9 @@ setup(
             'ipdb',
             'isort',
             'jupyter',
+            'pytype',
+            'codespell',
+            # for convenience
             *TESTS_REQUIRE,
         ],
         'test': TESTS_REQUIRE,

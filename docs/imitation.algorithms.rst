@@ -20,6 +20,14 @@ imitation.algorithms.bc module
    :undoc-members:
    :show-inheritance:
 
+imitation.algorithms.dagger module
+----------------------------------
+
+.. automodule:: imitation.algorithms.dagger
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 imitation.algorithms.density\_baselines module
 ----------------------------------------------
 
