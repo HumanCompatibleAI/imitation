@@ -1,5 +1,4 @@
 from functools import partial
-import os.path as osp
 from typing import Optional, Sequence
 from warnings import warn
 
@@ -373,12 +372,10 @@ def init_trainer(env_name: str,
     init_rl_kwargs: Keyword arguments passed to `init_rl`,
         used to initialize the RL algorithm.
   """
-  util.logger.configure(folder=osp.join(log_dir, 'generator'),
-                        format_strs=['tensorboard', 'stdout'])
+  util.logger.configure(folder=log_dir, format_strs=['tensorboard', 'stdout'])
   env = util.make_vec_env(env_name, num_vec, seed=seed, parallel=parallel,
                           log_dir=log_dir, max_episode_steps=max_episode_steps)
-  gen_policy = util.init_rl(env, verbose=1,
-                            **init_rl_kwargs)
+  gen_policy = util.init_rl(env, verbose=1, **init_rl_kwargs)
 
   if use_gail:
     discrim = discrim_net.DiscrimNetGAIL(env.observation_space,

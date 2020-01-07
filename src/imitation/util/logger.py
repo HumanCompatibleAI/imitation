@@ -21,72 +21,52 @@ def _build_output_formats(folder: str,
   return output_formats
 
 
-class _AccumulatingLogger(sb_logger.Logger):
-
-  def __init__(self,
-               format_strs: Sequence[str],
-               *,
-               mean_logger: sb_logger.Logger,
-               subdir: str):
-    """Like Logger, except also accumulates logkv_mean on the mean_logger.
-
-    Args:
-      format_strs: An list of output format strings. For details on available
-        output formats see `stable_baselines.logger.make_output_format`.
-      mean_logger: A background logger that is used to keep track of log
-        means.
-      subdir: Used to build the logging directory. Also used in the logging
-        prefix for every key written to both this logger and `mean_logger`.
-    """
-    self.subdir = subdir
-    self.mean_logger = mean_logger
-    folder = os.path.join(self.mean_logger.dir, "raw", subdir)
-    output_formats = _build_output_formats(folder, format_strs)
-    os.makedirs(folder, exist_ok=True)
-    super().__init__(folder, output_formats)
-
-  def logkv(self, key, val):
-    raw_key = os.path.join("raw", self.subdir, key)
-    super().logkv(raw_key, val)
-
-    mean_key = os.path.join("mean", self.subdir, key)
-    self.mean_logger.logkv_mean(mean_key, val)
-
-
 class _HierarchicalLogger(sb_logger.Logger):
 
   def __init__(self,
                default_logger: sb_logger.Logger,
                format_strs: Sequence[str] = ('stdout', 'log', 'csv')):
-    """A logger that forwards logging requests to one of two loggers.
-
-    `self.current_logger` is higher priority than `default_logger` when it
-    is not None. At initialization, `self.current_logger = None`. Use
-    the `self.accumulate_means()` context to temporarily set
-    `self.current_logger` to an `_AccumulatingLogger`.
+    """A logger with a context for accumulating mean values.
 
     Args:
-      default_logger: The logger to forward logging requests to when
-        `self.current_logger` is None.
+      default_logger: The default logger when not in the a `accumulate_means`
+        context. Also the logger to which mean values are written to when
+        contexts are over.
       format_strs: An list of output format strings that should be used by
-        every `self.current_logger`. For details on available
-        output formats see `stable_baselines.logger.make_output_format`.
+        every Logger initialized by this class during an `AccumulatingMeans`
+        context. For details on available output formats see
+        `stable_baselines.logger.make_output_format`.
     """
     self.default_logger = default_logger
     self.current_logger = None
     self._cached_loggers = {}
+    self._subdir = None
     self.format_strs = format_strs
     super().__init__(folder=self.default_logger.dir, output_formats=None)
 
   @contextlib.contextmanager
   def accumulate_means(self, subdir: str):
-    """Temporarily use an _AccumulatingLogger as the current logger.
+    """Temporarily modifies this _HierarchicalLogger to accumulate means values.
+
+    During this context, `self.logkv(key, value)` writes the "raw" values in
+    "{self.default_logger.log_dir}/{subdir}" under the key "raw/{subdir}/{key}".
+    At the same time, any call to `self.logkv` will also accumulate mean values
+    on the default logger by calling
+    `self.default_logger.logkv_mean(f"mean/{subdir}/{key}", value)`.
+
+    During the context, `self.logkv(key, value)` will write the "raw" values in
+    `"{self.default_logger.log_dir}/subdir"` under the key "raw/{subdir}/key".
+
+    After the context exits, calling `self.dumpkvs()` will write the means
+    of all the "raw" values accumulated during this context to
+    `self.default_logger` under keys with the prefix `mean/{subdir}/`
 
     Args:
-        subdir: A string key for the _AccumulatingLogger which determines
-          its `folder` and logging prefix. All `_AccumulatingLogger` are cached,
-          so if this method is called again with the same `subdir` argument,
-          then we load the same `_AccumulatingLogger` from last time.
+      subdir: A string key which determines the `folder` where raw data is
+        written and temporary logging prefixes for raw and mean data. Entering
+        an `accumulate_means` context in the future with the same `subdir`
+        will safely append to logs written in this folder rather than
+        overwrite.
     """
     if self.current_logger is not None:
       raise RuntimeError("Nested `accumulate_means` context")
@@ -94,15 +74,30 @@ class _HierarchicalLogger(sb_logger.Logger):
     if subdir in self._cached_loggers:
       logger = self._cached_loggers[subdir]
     else:
-      logger = _AccumulatingLogger(
-        self.format_strs, mean_logger=self.default_logger, subdir=subdir)
+      folder = os.path.join(self.default_logger.dir, "raw", subdir)
+      os.makedirs(folder)
+      output_formats = _build_output_formats(folder, self.format_strs)
+      logger = sb_logger.Logger(folder, output_formats)
       self._cached_loggers[subdir] = logger
 
     try:
       self.current_logger = logger
+      self._subdir = subdir
       yield
     finally:
       self.current_logger = None
+      self._subdir = None
+
+  def logkv(self, key, val):
+    if self.current_logger is not None:
+      assert self._subdir is not None
+      raw_key = os.path.join("raw", self._subdir, key)
+      self.current_logger.logkv(raw_key, val)
+
+      mean_key = os.path.join("mean", self._subdir, key)
+      self.default_logger.logkv_mean(mean_key, val)
+    else:
+      self.default_logger.logkv_mean(key, val)
 
   @property
   def _logger(self):
@@ -110,9 +105,6 @@ class _HierarchicalLogger(sb_logger.Logger):
       return self.current_logger
     else:
       return self.default_logger
-
-  def logkv(self, key, val):
-    self._logger.logkv(key, val)
 
   def logkv_mean(self, key, val):
     self._logger.logkv_mean(key, val)

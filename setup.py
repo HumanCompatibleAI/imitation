@@ -67,6 +67,9 @@ setup(
             'ipdb',
             'isort',
             'jupyter',
+            'pytype',
+            'codespell',
+            # for convenience
             *TESTS_REQUIRE,
         ],
         'test': TESTS_REQUIRE,
