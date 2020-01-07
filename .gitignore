@@ -146,3 +146,6 @@ dmypy.json
 
 # Line profiler
 *.lprof
+
+# yapf (code formatter)
+.style.yapf
