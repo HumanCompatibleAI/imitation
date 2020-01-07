@@ -40,6 +40,7 @@ class _HierarchicalLogger(sb_logger.Logger):
     self.default_logger = default_logger
     self.current_logger = None
     self._cached_loggers = {}
+    self._subdir = None
     self.format_strs = format_strs
     super().__init__(folder=self.default_logger.dir, output_formats=None)
 
@@ -73,7 +74,7 @@ class _HierarchicalLogger(sb_logger.Logger):
     if subdir in self._cached_loggers:
       logger = self._cached_loggers[subdir]
     else:
-      folder = os.path.join(self.mean_logger.dir, "raw", subdir)
+      folder = os.path.join(self.default_logger.dir, "raw", subdir)
       os.makedirs(folder)
       output_formats = _build_output_formats(folder, self.format_strs)
       logger = sb_logger.Logger(folder, output_formats)
@@ -81,20 +82,22 @@ class _HierarchicalLogger(sb_logger.Logger):
 
     try:
       self.current_logger = logger
+      self._subdir = subdir
       yield
     finally:
       self.current_logger = None
+      self._subdir = None
 
   def logkv(self, key, val):
     if self.current_logger is not None:
-      raw_key = os.path.join("raw", self.subdir, key)
-      super().logkv(raw_key, val)
+      assert self._subdir is not None
+      raw_key = os.path.join("raw", self._subdir, key)
+      self.current_logger.logkv(raw_key, val)
 
-      mean_key = os.path.join("mean", self.subdir, key)
-      self.mean_logger.logkv_mean(mean_key, val)
-      return self.current_logger
+      mean_key = os.path.join("mean", self._subdir, key)
+      self.default_logger.logkv_mean(mean_key, val)
     else:
-      return self.default_logger
+      self.default_logger.logkv_mean(key, val)
 
   @property
   def _logger(self):
