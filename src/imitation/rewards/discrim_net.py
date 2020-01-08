@@ -282,29 +282,24 @@ Takes an observation and action tensor and produces a tuple containing
 """
 
 
-class build_mlp_discrim_net:
-  # this could be rewritten as a function that returns a closure instead of a
-  # functor class, but that would break pickle; instead I'm just pretending
-  # that build_mlp_discrim_net is a function that returns a closure :-)
-  def __init__(self, hid_sizes: Iterable[int] = (32, 32)):
-    """Construct a functor that builds a simple MLP-based discriminator for
-    GAIL. The returned function can be passed into the `build_discrim_net`
-    argument of `DiscrimNetGAIL`.
+def build_mlp_discrim_net(obs_input: tf.Tensor, act_input: tf.Tensor,
+                          *, hidden_sizes: Iterable[int] = (32, 32)):
+  """Builds a simple MLP-based discriminator for GAIL. The returned function
+  can be passed into the `build_discrim_net` argument of `DiscrimNetGAIL`.
 
-    Args:
-      hid_sizes: list of layer sizes for each hidden layer of the network.
-    """
-    self.hid_sizes = hid_sizes
+  Args:
+    obs_input: observation seen at this time step.
+    act_input: action taken at this time step.
+    hid_sizes: list of layer sizes for each hidden layer of the network.
+  """
+  inputs = tf.concat([
+    tf.layers.flatten(obs_input),
+    tf.layers.flatten(act_input)], axis=1)
 
-  def __call__(self, obs_input, act_input):
-    inputs = tf.concat([
-        tf.layers.flatten(obs_input),
-        tf.layers.flatten(act_input)], axis=1)
+  discrim_mlp = util.build_mlp(hid_sizes=hidden_sizes)
+  discrim_logits = util.sequential(inputs, discrim_mlp)
 
-    discrim_mlp = util.build_mlp(hid_sizes=self.hid_sizes)
-    discrim_logits = util.sequential(inputs, discrim_mlp)
-
-    return discrim_mlp, discrim_logits
+  return discrim_mlp, discrim_logits
 
 
 class DiscrimNetGAIL(DiscrimNet, serialize.LayersSerializable):
@@ -314,7 +309,7 @@ class DiscrimNetGAIL(DiscrimNet, serialize.LayersSerializable):
         self,
         observation_space: gym.Space,
         action_space: gym.Space,
-        build_discrim_net: DiscrimNetBuilder = build_mlp_discrim_net(),
+        build_discrim_net: DiscrimNetBuilder = build_mlp_discrim_net,
         build_discrim_net_kwargs: Optional[dict] = None,
         scale: bool = False):
     """Construct discriminator network.
