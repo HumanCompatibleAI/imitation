@@ -13,18 +13,6 @@ Subpackages
    imitation.scripts
    imitation.util
 
-Submodules
-----------
-
-imitation.summaries module
---------------------------
-
-.. automodule:: imitation.summaries
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-
 Module contents
 ---------------
 

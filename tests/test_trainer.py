@@ -33,8 +33,8 @@ def init_test_trainer(tmpdir: str, use_gail: bool, parallel: bool = False):
 
 @pytest.mark.parametrize("use_gail", USE_GAIL)
 @pytest.mark.parametrize("parallel", PARALLEL)
-def test_init_no_crash(tmpdir, use_gail, parallel):
-  init_test_trainer(tmpdir, use_gail=use_gail, parallel=parallel)
+def test_init_no_crash(tmp_path, use_gail, parallel):
+  init_test_trainer(tmp_path, use_gail=use_gail, parallel=parallel)
 
 
 @pytest.mark.parametrize("use_gail", USE_GAIL)
