@@ -1,14 +1,16 @@
+from collections import defaultdict
 from functools import partial
+import os
 from typing import Optional, Sequence
 from warnings import warn
 
 import numpy as np
 from stable_baselines.common.base_class import BaseRLModel
 from stable_baselines.common.vec_env import VecEnv, VecNormalize
+from stable_baselines.logger import Logger, make_output_format
 import tensorflow as tf
 from tqdm import tqdm
 
-from imitation import summaries
 import imitation.rewards.discrim_net as discrim_net
 from imitation.rewards.reward_net import BasicShapedRewardNet
 import imitation.util as util
@@ -41,6 +43,7 @@ class AdversarialTrainer:
                discrim: discrim_net.DiscrimNet,
                expert_demos: rollout.Transitions,
                *,
+               log_dir: str = 'output/',
                disc_opt_cls: tf.train.Optimizer = tf.train.AdamOptimizer,
                disc_opt_kwargs: dict = {},
                n_disc_samples_per_buffer: int = 200,
@@ -57,6 +60,7 @@ class AdversarialTrainer:
         discrim: The discriminator network.
             For GAIL, use a DiscrimNetGAIL. For AIRL, use a DiscrimNetAIRL.
         expert_demos: Transitions from an expert dataset.
+        log_dir: Directory to store TensorBoard logs, plots, etc. in.
         disc_opt_cls: The optimizer for discriminator training.
         disc_opt_kwargs: Parameters for discriminator training.
         n_disc_samples_per_buffer: The number of obs-act-obs triples
@@ -88,18 +92,23 @@ class AdversarialTrainer:
     self._expert_demos = expert_demos
     self._gen_policy = gen_policy
 
-    # Discriminator and reward output
+    self._log_dir = log_dir
+    disc_log_dir = os.path.join(self._log_dir, 'disc')
+    # only log CSV & TB for discriminator stats; human output is too verbose
+    # since this gets called every time discriminator weights are updated (!!)
+    log_fmt_strs = ['csv', 'tensorboard']
+    log_fmts = [
+      make_output_format(s, disc_log_dir) for s in log_fmt_strs
+    ]
+    self._disc_logger = Logger(disc_log_dir, log_fmts)
+
+    # Create graph for optimising/recording stats on discriminator
     self._discrim = discrim
     self._disc_opt_cls = disc_opt_cls
     self._disc_opt_kwargs = disc_opt_kwargs
-    with tf.variable_scope("trainer"):
-      with tf.variable_scope("discriminator"):
-        self._build_disc_train()
     self._init_tensorboard = init_tensorboard
     self._init_tensorboard_graph = init_tensorboard_graph
-    if init_tensorboard:
-      with tf.name_scope("summaries"):
-        self._build_summarize()
+    self._build_graph()
     self._sess.run(tf.global_variables_initializer())
 
     if debug_use_ground_truth:
@@ -151,13 +160,46 @@ class AdversarialTrainer:
         gen_obs (np.ndarray): See `_build_disc_feed_dict`.
         gen_acts (np.ndarray): See `_build_disc_feed_dict`.
         gen_next_obs (np.ndarray): See `_build_disc_feed_dict`.
+
+    Returns:
+        mean_stats: dictionary of training statistics, recorded at each step
+            and then averaged over all steps. Keys depend on whether this is
+            GAIL or AIRL.
     """
+    stat_dict_accum = defaultdict(lambda: [])
+
     for _ in range(n_steps):
+
+      # optionally write TB summaries for collected ops
+      step = self._sess.run(self._global_step)
+      write_summaries = self._init_tensorboard and step % 20 == 0
+      fetches = {
+        'step': self._global_step,
+        'train_op_out': self._disc_train_op,
+        'train_stats': self._discrim.train_stats,
+      }
+      if write_summaries:
+        fetches['events'] = self._summary_op
+
+      # do actual update
       fd = self._build_disc_feed_dict(**kwargs)
-      step, _ = self._sess.run([self._global_step, self._disc_train_op],
-                               feed_dict=fd)
-      if self._init_tensorboard and step % 20 == 0:
-        self._summarize(fd, step)
+      fetched = self._sess.run(fetches, feed_dict=fd)
+
+      if write_summaries:
+        self._summary_writer.add_summary(fetched['events'], fetched['step'])
+
+      for k, v in fetched['train_stats'].items():
+        self._disc_logger.log(k, v)
+        stat_dict_accum[k].append(v)
+      self._disc_logger.dumpkvs()
+
+    # return only averaged stats (useful for, e.g., updating progress bars)
+    # NOTE(sam): this is fine to remove when merging #135 (the nested logger
+    # thing); I'll handle any downstream breakage in my code.
+    mean_stats = {
+      k: np.mean(v) for k, v in stat_dict_accum.items()
+    }
+    return mean_stats
 
   def train_gen(self, n_steps=10000):
     self._gen_policy.set_env(self.venv_train_norm)
@@ -219,22 +261,24 @@ class AdversarialTrainer:
     fd = self._build_disc_feed_dict(**kwargs)
     return np.mean(self._sess.run(self.discrim.disc_loss, feed_dict=fd))
 
-  def _build_summarize(self):
-    graph = self._sess.graph if self._init_tensorboard_graph else None
-    self._summary_writer = summaries.make_summary_writer(graph=graph)
-    self.discrim.build_summaries()
-    self._summary_op = tf.summary.merge_all()
+  def _build_graph(self):
+    # Build necessary parts of the TF graph. Most of the real action happens in
+    # constructors for self.discrim and self.gen_policy.
+    with tf.variable_scope("trainer"):
+      with tf.variable_scope("discriminator"):
+        disc_opt = self._disc_opt_cls(**self._disc_opt_kwargs)
+        self._disc_train_op = disc_opt.minimize(
+            tf.reduce_mean(self.discrim.disc_loss),
+            global_step=self._global_step)
 
-  def _summarize(self, fd, step):
-    events = self._sess.run(self._summary_op, feed_dict=fd)
-    self._summary_writer.add_summary(events, step)
-
-  def _build_disc_train(self):
-    # Construct Train operation.
-    disc_opt = self._disc_opt_cls(**self._disc_opt_kwargs)
-    self._disc_train_op = disc_opt.minimize(
-        tf.reduce_mean(self.discrim.disc_loss),
-        global_step=self._global_step)
+    if self._init_tensorboard:
+      with tf.name_scope("summaries"):
+        tf.logging.info("building summary directory at " + self._log_dir)
+        graph = self._sess.graph if self._init_tensorboard_graph else None
+        summary_dir = os.path.join(self._log_dir, 'summary')
+        os.makedirs(summary_dir, exist_ok=True)
+        self._summary_writer = tf.summary.FileWriter(summary_dir, graph=graph)
+        self._summary_op = tf.summary.merge_all()
 
   def _build_disc_feed_dict(self, *,
                             gen_obs: Optional[np.ndarray] = None,
@@ -323,9 +367,9 @@ def _n_steps_if_not_none(n_steps):
 
 def init_trainer(env_name: str,
                  expert_trajectories: Sequence[rollout.Trajectory],
+                 log_dir: str,
                  *,
                  seed: int = 0,
-                 log_dir: str = None,
                  use_gail: bool = False,
                  num_vec: int = 8,
                  parallel: bool = False,
@@ -344,7 +388,8 @@ def init_trainer(env_name: str,
     env_name: The string id of a gym environment.
     expert_trajectories: Demonstrations from expert.
     seed: Random seed.
-    log_dir: Directory for logging output.
+    log_dir: Directory for logging output. Will generate a unique sub-directory
+        within this directory for all output.
     use_gail: If True, then train using GAIL. If False, then train
         using AIRL.
     num_vec: The number of vectorized environments.
@@ -362,10 +407,11 @@ def init_trainer(env_name: str,
     init_rl_kwargs: Keyword arguments passed to `init_rl`,
         used to initialize the RL algorithm.
   """
+  os.makedirs(log_dir, exist_ok=True)
+
   env = util.make_vec_env(env_name, num_vec, seed=seed, parallel=parallel,
                           log_dir=log_dir, max_episode_steps=max_episode_steps)
-  gen_policy = util.init_rl(env, verbose=1,
-                            **init_rl_kwargs)
+  gen_policy = util.init_rl(env, verbose=1, **init_rl_kwargs)
 
   if use_gail:
     discrim = discrim_net.DiscrimNetGAIL(env.observation_space,
@@ -383,5 +429,5 @@ def init_trainer(env_name: str,
 
   expert_demos = util.rollout.flatten_trajectories(expert_trajectories)
   trainer = AdversarialTrainer(env, gen_policy, discrim, expert_demos,
-                               **trainer_kwargs)
+                               log_dir=log_dir, **trainer_kwargs)
   return trainer
