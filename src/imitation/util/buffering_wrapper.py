@@ -42,15 +42,14 @@ class BufferingWrapper(VecEnvWrapper):
   def step_async(self, actions):
     assert self._init_reset
     assert self._saved_acts is None
-    self.acts_list.append(actions)
-    self.venv.step_async()
+    self.venv.step_async(actions)
     self._saved_acts = actions
 
   def step_wait(self):
     assert self._init_reset
     assert self._saved_acts is not None
-    acts = self._saved_acts
-    obs, rews, dones, infos = self.venv.step_wait(acts)
+    acts, self._saved_acts = self._saved_acts, None
+    obs, rews, dones, infos = self.venv.step_wait()
     finished_trajs = self._traj_accum.add_steps_and_auto_finish(
       acts, obs, rews, dones, infos)
     self._trajectories.extend(finished_trajs)
@@ -77,7 +76,7 @@ class BufferingWrapper(VecEnvWrapper):
     """
     partial_trajs = self._finish_partial_trajectories()
     self._trajectories.extend(partial_trajs)
-    transitions = rollout.flatten_trajectories(self.trajectories)
+    transitions = rollout.flatten_trajectories(self._trajectories)
     assert len(transitions.obs) == self.n_transitions
     self._trajectories = []
     self.n_transitions = 0
