@@ -406,7 +406,7 @@ class DiscrimNetGAIL(DiscrimNet, serialize.LayersSerializable):
 
     self._train_stats.update([
       # basic xent loss
-      ('disc_xent', self._disc_loss),
+      ('disc_xent', tf.reduce_mean(self._disc_loss)),
       # accuracy, as well as accuracy on *just* expert examples and *just*
       # generated examples
       ('disc_acc', acc),

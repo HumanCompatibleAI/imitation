@@ -39,41 +39,32 @@ def test_init_no_crash(tmp_path, use_gail, parallel):
 
 @pytest.mark.parametrize("use_gail", USE_GAIL)
 @pytest.mark.parametrize("parallel", PARALLEL)
-def test_train_disc_no_crash(tmpdir, use_gail, parallel, n_timesteps=200):
+def test_train_disc_step_no_crash(tmpdir, use_gail, parallel, n_timesteps=200):
   trainer = init_test_trainer(tmpdir, use_gail=use_gail, parallel=parallel)
-  trainer.train_disc()
   transitions = rollout.generate_transitions(trainer.gen_policy,
                                              trainer.venv,
                                              n_timesteps=n_timesteps)
-  trainer.train_disc(gen_obs=transitions.obs, gen_acts=transitions.acts,
-                     gen_next_obs=transitions.next_obs)
+  trainer.train_disc_step(gen_samples=transitions)
 
 
 @pytest.mark.parametrize("use_gail", USE_GAIL)
 @pytest.mark.parametrize("parallel", PARALLEL)
-def test_train_gen_no_crash(tmpdir, use_gail, parallel, n_steps=10):
-  trainer = init_test_trainer(tmpdir, use_gail=use_gail, parallel=parallel)
-  trainer.train_gen(n_steps)
+def test_train_gen_train_disc_no_crash(tmpdir, use_gail, parallel, n_updates=2):
+  trainer = init_test_trainer(
+    tmpdir=tmpdir, use_gail=use_gail, parallel=parallel)
+  trainer.train_gen(n_updates * trainer.gen_batch_size)
+  trainer.train_disc()
 
 
 @pytest.mark.expensive
 @pytest.mark.parametrize("use_gail", USE_GAIL)
 def test_train_disc_improve_D(tmpdir, use_gail, n_timesteps=200, n_steps=1000):
   trainer = init_test_trainer(tmpdir, use_gail)
-  transitions = rollout.generate_transitions(trainer.gen_policy,
-                                             trainer.venv,
+  gen_samples = rollout.generate_transitions(trainer.gen_policy,
+                                             trainer.venv_train_norm,
                                              n_timesteps=n_timesteps)
-  kwargs = dict(gen_obs=transitions.obs,
-                gen_acts=transitions.acts,
-                gen_next_obs=transitions.next_obs)
-  loss1 = trainer.eval_disc_loss(**kwargs)
-  trainer.train_disc(n_steps=n_steps, **kwargs)
-  loss2 = trainer.eval_disc_loss(**kwargs)
+  loss1 = trainer.eval_disc_loss(gen_samples=gen_samples)
+  for _ in range(n_steps):
+    trainer.train_disc_step(gen_samples=gen_samples)
+  loss2 = trainer.eval_disc_loss(gen_samples=gen_samples)
   assert loss2 < loss1
-
-
-@pytest.mark.expensive
-@pytest.mark.parametrize("use_gail", USE_GAIL)
-def test_train_no_crash(tmpdir, use_gail):
-  trainer = init_test_trainer(tmpdir, use_gail)
-  trainer.train(n_epochs=1)

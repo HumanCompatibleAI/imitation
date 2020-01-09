@@ -7,7 +7,6 @@ import numpy as np
 from stable_baselines.common.base_class import BaseRLModel
 from stable_baselines.common.vec_env import VecEnv, VecNormalize
 import tensorflow as tf
-from tqdm import tqdm
 
 import imitation.rewards.discrim_net as discrim_net
 from imitation.rewards.reward_net import BasicShapedRewardNet
@@ -42,9 +41,10 @@ class AdversarialTrainer:
                expert_demos: rollout.Transitions,
                *,
                log_dir: str = 'output/',
+               disc_batch_size: int = 2048,
+               disc_minibatch_size: int = 256,
                disc_opt_cls: tf.train.Optimizer = tf.train.AdamOptimizer,
                disc_opt_kwargs: dict = {},
-               n_disc_samples_per_buffer: int = 200,
                gen_replay_buffer_capacity: Optional[int] = None,
                init_tensorboard: bool = False,
                init_tensorboard_graph: bool = False,
@@ -55,22 +55,27 @@ class AdversarialTrainer:
     Args:
         venv: The vectorized environment to train in.
         gen_policy: The generator policy that is trained to maximize
-          discriminator confusion.
+          discriminator confusion. The generator batch size
+          `self.gen_batch_size` is inferred from `gen_policy.n_batch`.
         discrim: The discriminator network.
           For GAIL, use a DiscrimNetGAIL. For AIRL, use a DiscrimNetAIRL.
         expert_demos: Transitions from an expert dataset.
         log_dir: Directory to store TensorBoard logs, plots, etc. in.
+        disc_batch_size: The default number of expert and generator transitions
+          samples to feed to the discriminator in each call to
+          `self.train_disc()`. (Half of the samples are expert and half of the
+          samples are generator).
+        disc_minibatch_size: The discriminator minibatch size. Each
+          discriminator batch is split into minibatches and an Adam update is
+          applied on the gradient resulting form each minibatch. Must evenly
+          divide `disc_batch_size`. Must be an even number.
         disc_opt_cls: The optimizer for discriminator training.
         disc_opt_kwargs: Parameters for discriminator training.
-        n_disc_samples_per_buffer: The number of obs-act-obs triples
-          sampled from each replay buffer (expert and generator) during each
-          step of discriminator training. This is also the number of triples
-          stored in the replay buffer after each epoch of generator training.
         gen_replay_buffer_capacity: The capacity of the
           generator replay buffer (the number of obs-action-obs samples from
           the generator that can be stored).
 
-          By default this is equal to `20 * n_disc_samples_per_buffer`.
+          By default this is equal to `20 * self.gen_batch_size`.
         init_tensorboard: If True, makes various discriminator
           TensorBoard summaries.
         init_tensorboard_graph: If both this and `init_tensorboard` are True,
@@ -86,7 +91,13 @@ class AdversarialTrainer:
     self._sess = tf.get_default_session()
     self._global_step = tf.train.create_global_step()
 
-    self._n_disc_samples_per_buffer = n_disc_samples_per_buffer
+    assert disc_batch_size % disc_minibatch_size == 0
+    assert disc_minibatch_size % 2 == 0, (
+      "discriminator minibatch size must be even "
+      "(equal split between generator and expert samples)")
+    self.disc_batch_size = disc_batch_size
+    self.disc_minibatch_size = disc_minibatch_size
+
     self.debug_use_ground_truth = debug_use_ground_truth
 
     self.venv = venv
@@ -121,14 +132,18 @@ class AdversarialTrainer:
     self.venv_train_norm = VecNormalize(self.venv_train)
 
     if gen_replay_buffer_capacity is None:
-      gen_replay_buffer_capacity = 20 * self._n_disc_samples_per_buffer
+      gen_replay_buffer_capacity = 20 * self.gen_batch_size
     self._gen_replay_buffer = buffer.ReplayBuffer(gen_replay_buffer_capacity,
                                                   self.venv)
-    self._populate_gen_replay_buffer()
     self._exp_replay_buffer = buffer.ReplayBuffer.from_data(expert_demos)
-    if n_disc_samples_per_buffer > len(self._exp_replay_buffer):
-      warn("The discriminator batch size is larger than the number of "
-           "expert samples.")
+    if self.disc_batch_size // 2 > len(self._exp_replay_buffer):
+      warn("The discriminator batch size is more than twice the number of "
+           "expert samples. This means that we will be reusing samples every "
+           "discrim batch.")
+
+  @property
+  def gen_batch_size(self) -> int:
+    return self.gen_policy.n_batch
 
   @property
   def discrim(self) -> discrim_net.DiscrimNet:
@@ -145,86 +160,97 @@ class AdversarialTrainer:
     """Policy (i.e. the generator) being trained."""
     return self._gen_policy
 
-  def train_disc(self, n_steps=10, **kwargs):
+  def train_disc(self, n_samples: Optional[int] = None) -> None:
     """Trains the discriminator to minimize classification cross-entropy.
 
     Args:
-        n_steps (int): The number of training steps.
-        gen_obs (np.ndarray): See `_build_disc_feed_dict`.
-        gen_acts (np.ndarray): See `_build_disc_feed_dict`.
-        gen_next_obs (np.ndarray): See `_build_disc_feed_dict`.
+      n_samples: A number of transitions to sample from the generator
+        replay buffer and the expert demonstration dataset. (Half of the
+        samples are from each source). By default, `self.disc_batch_size`.
+        `n_samples` must be a positive multiple of `self.disc_minibatch_size`.
+    """
+    if len(self._gen_replay_buffer) == 0:
+      raise RuntimeError("No generator samples for training. "
+                         "Call `train_gen()` first.")
+    if n_samples is None:
+      n_samples = self.disc_batch_size
+    n_updates = n_samples // self.disc_minibatch_size
+    assert n_samples % self.disc_minibatch_size == 0
+    assert n_updates >= 1
+    for _ in range(n_updates):
+      gen_samples = self._gen_replay_buffer.sample(self.disc_minibatch_size)
+      self.train_disc_step(gen_samples=gen_samples)
 
-    Returns:
-        mean_stats: dictionary of training statistics, recorded at each step
-            and then averaged over all steps. Keys depend on whether this is
-            GAIL or AIRL.
+  def train_disc_step(self, *,
+                      gen_samples: Optional[rollout.Transitions] = None,
+                      expert_samples: Optional[rollout.Transitions] = None,
+                      ) -> None:
+    """Perform a single discriminator update, optionally using provided samples.
+
+    Args:
+      gen_samples: Transition samples from the generator policy. If not
+        provided, then take `self.disc_batch_size // 2` samples from the
+        generator replay buffer.
+      expert_samples: Transition samples from the expert. If not
+        provided, then take `n_gen` expert samples from the expert
+        dataset, where `n_gen` is the number of samples in `gen_samples`.
     """
     with logger.accumulate_means("disc"):
-      for _ in range(n_steps):
-        fetches = {
-          'train_op_out': self._disc_train_op,
-          'train_stats': self._discrim.train_stats,
-        }
-        # optionally write TB summaries for collected ops
-        step = self._sess.run(self._global_step)
-        write_summaries = self._init_tensorboard and step % 20 == 0
-        if write_summaries:
-          fetches['events'] = self._summary_op
+      fetches = {
+        'train_op_out': self._disc_train_op,
+        'train_stats': self._discrim.train_stats,
+      }
+      # optionally write TB summaries for collected ops
+      step = self._sess.run(self._global_step)
+      write_summaries = self._init_tensorboard and step % 20 == 0
+      if write_summaries:
+        fetches['events'] = self._summary_op
 
-        # do actual update
-        fd = self._build_disc_feed_dict(**kwargs)
-        fetched = self._sess.run(fetches, feed_dict=fd)
+      # do actual update
+      fd = self._build_disc_feed_dict(gen_samples=gen_samples,
+                                      expert_samples=expert_samples)
+      fetched = self._sess.run(fetches, feed_dict=fd)
 
-        if write_summaries:
-          self._summary_writer.add_summary(fetched['events'], fetched['step'])
+      if write_summaries:
+        self._summary_writer.add_summary(fetched['events'], fetched['step'])
 
-        logger.logkv("step", step)
-        for k, v in fetched['train_stats'].items():
-          logger.logkv(k, v)
-        logger.dumpkvs()
+      logger.logkv("step", step)
+      for k, v in fetched['train_stats'].items():
+        logger.logkv(k, v)
+      logger.dumpkvs()
 
-  def train_gen(self, n_steps=10000):
+  def train_gen(self, total_timesteps: Optional[int] = None, callback=None):
+    """Trains the generator (via PPO2) to maximize the discriminator loss.
+
+    After the end of training populates the generator replay buffer (used in
+    discriminator training) with `self.disc_batch_size` transitions.
+
+    Args:
+      total_timesteps: The number of transitions to sample from
+        `self.venv_train_norm` during training. By default,
+        `self.gen_batch_size`.
+      callback: Callback argument to the Stable Baselines `RLModel.learn()`
+        method.
+    """
+    if total_timesteps is None:
+      total_timesteps = self.gen_batch_size
+
     with logger.accumulate_means("gen"):
-      self._gen_policy.set_env(self.venv_train_norm)
+      self.gen_policy.set_env(self.venv_train_norm)
       # TODO(adam): learn was not intended to be called for each training batch
       # It should work, but might incur unnecessary overhead: e.g. in PPO2
       # a new Runner instance is created each time. Also a hotspot for errors:
       # algorithms not tested for this use case, may reset state accidentally.
-      self._gen_policy.learn(n_steps, reset_num_timesteps=False)
-      self._populate_gen_replay_buffer()
+      self.gen_policy.learn(total_timesteps=total_timesteps,
+                            reset_num_timesteps=False,
+                            callback=callback)
+    gen_samples = util.rollout.generate_transitions(
+      self.gen_policy,
+      self.venv_train_norm,
+      n_timesteps=self.disc_batch_size // 2)
+    self._gen_replay_buffer.store(gen_samples)
 
-  def _populate_gen_replay_buffer(self) -> None:
-    """Generate and store generator samples in the buffer.
-
-    More specifically, rolls out generator-policy trajectories in the
-    environment until `self._n_disc_samples_per_buffer` obs-act-obs samples are
-    produced, and then stores these samples.
-    """
-    gen_rollouts = util.rollout.generate_transitions(
-        self._gen_policy, self.venv_train,
-        n_timesteps=self._n_disc_samples_per_buffer)
-    self._gen_replay_buffer.store(gen_rollouts)
-
-  def train(self, n_epochs=100, *, n_gen_steps_per_epoch=None,
-            n_disc_steps_per_epoch=None):
-    """Trains the discriminator and generator against each other.
-
-    Args:
-        n_epochs (int): The number of epochs to train. Every epoch consists
-            of training the discriminator and then training the generator.
-        n_disc_steps_per_epoch (int): The number of steps to train the
-            discriminator every epoch. More precisely, the number of full batch
-            Adam optimizer steps to perform.
-        n_gen_steps_per_epoch (int): The number of generator training steps
-            during each epoch. (ie, the timesteps argument in in
-            `policy.learn(timesteps)`).
-    """
-    for i in tqdm(range(n_epochs), desc="AIRL train"):
-      self.train_disc(**_n_steps_if_not_none(n_disc_steps_per_epoch))
-      self.train_gen(**_n_steps_if_not_none(n_gen_steps_per_epoch))
-      logger.dumpkvs()
-
-  def eval_disc_loss(self, **kwargs):
+  def eval_disc_loss(self, **kwargs) -> float:
     """Evaluates the discriminator loss.
 
     The generator rollout parameters of the form "gen_*" are optional,
@@ -234,13 +260,12 @@ class AdversarialTrainer:
     is generated on the fly.
 
     Args:
-        gen_obs (np.ndarray): See `_build_disc_feed_dict`.
-        gen_acts (np.ndarray): See `_build_disc_feed_dict`.
-        gen_next_obs (np.ndarray): See `_build_disc_feed_dict`.
+      gen_samples (Optional[rollout.Transitions]): Same as in `train_disc_step`.
+      expert_samples (Optional[rollout.Transitions]): Same as in
+        `train_disc_step`.
 
     Returns:
-        discriminator_loss (float): The total cross-entropy error in the
-            discriminator's classification.
+      The total cross-entropy error in the discriminator's classification.
     """
     fd = self._build_disc_feed_dict(**kwargs)
     return np.mean(self._sess.run(self.discrim.disc_loss, feed_dict=fd))
@@ -264,73 +289,50 @@ class AdversarialTrainer:
         self._summary_writer = tf.summary.FileWriter(summary_dir, graph=graph)
         self._summary_op = tf.summary.merge_all()
 
-  def _build_disc_feed_dict(self, *,
-                            gen_obs: Optional[np.ndarray] = None,
-                            gen_acts: Optional[np.ndarray] = None,
-                            gen_next_obs: Optional[np.ndarray] = None,
-                            ) -> dict:
-    """Build a feed dict that holds the next training batch of generator
-    and expert obs-act-obs triples.
+  def _build_disc_feed_dict(
+      self, *,
+      gen_samples: Optional[rollout.Transitions] = None,
+      expert_samples: Optional[rollout.Transitions] = None,
+  ) -> dict:
+    """Build and return feed dict for the next discriminator training update.
 
     Args:
-        gen_obs (np.ndarray): A numpy array with shape
-            `[self.n_disc_samples_per_buffer_per_buffer] + env.observation_space.shape`.
-            The ith observation in this array is the observation seen when the
-            generator chooses action `gen_acts[i]`.
-        gen_acts (np.ndarray): A numpy array with shape
-            `[self.n_disc_samples_per_buffer_per_buffer] + env.action_space.shape`.
-        gen_next_obs (np.ndarray): A numpy array with shape
-            `[self.n_disc_samples_per_buffer_per_buffer] + env.observation_space.shape`.
-            The ith observation in this array is from the transition state after
-            the generator chooses action `gen_acts[i]`.
-    """  # noqa: E501
+      gen_samples: Same as in `train_disc_step`.
+      expert_samples: Same as in `train_disc_step`.
+    """
+    if gen_samples is None:
+      if len(self._gen_replay_buffer) == 0:
+        raise RuntimeError("No generator samples for training. "
+                           "Call `train_gen()` first.")
+      gen_samples = self._gen_replay_buffer.sample(self.disc_batch_size // 2)
+    n_gen = len(gen_samples.obs)
 
-    # Sample generator training batch from replay buffers, unless provided
-    # in argument.
-    none_count = sum(int(x is None)
-                     for x in (gen_obs, gen_acts, gen_next_obs))
-    if none_count == 3:
-      tf.logging.debug("_build_disc_feed_dict: No generator rollout "
-                       "parameters were "
-                       "provided, so we are generating them now.")
-      gen_sample = self._gen_replay_buffer.sample(
-          self._n_disc_samples_per_buffer)
-      gen_obs = gen_sample.obs
-      gen_acts = gen_sample.acts
-      gen_next_obs = gen_sample.next_obs
-    elif none_count != 0:
-      raise ValueError("Gave some but not all of the generator params.")
-
-    # Sample expert training batch from replay buffer.
-    expert_sample = self._exp_replay_buffer.sample(
-        self._n_disc_samples_per_buffer)
+    if expert_samples is None:
+      expert_samples = self._exp_replay_buffer.sample(n_gen)
+    n_expert = len(expert_samples.obs)
 
     # Check dimensions.
-    n_expert = len(expert_sample.obs)
-    n_gen = len(gen_obs)
-    N = n_expert + n_gen
-    assert n_expert == len(expert_sample.acts)
-    assert n_expert == len(expert_sample.next_obs)
-    assert n_gen == len(gen_acts)
-    assert n_gen == len(gen_next_obs)
+    n_samples = n_expert + n_gen
+    assert n_expert == len(expert_samples.acts)
+    assert n_expert == len(expert_samples.next_obs)
+    assert n_gen == len(gen_samples.acts)
+    assert n_gen == len(gen_samples.next_obs)
 
     # Normalize expert observations to match generator observations.
-    with util.vec_norm_disable_training(self.venv_train_norm):
-      expert_obs_norm = self.venv_train_norm.normalize_obs(
-        expert_sample.obs)
+    expert_obs_norm = self.venv_train_norm.normalize_obs(expert_samples.obs)
 
     # Concatenate rollouts, and label each row as expert or generator.
-    obs = np.concatenate([expert_obs_norm, gen_obs])
-    acts = np.concatenate([expert_sample.acts, gen_acts])
-    next_obs = np.concatenate([expert_sample.next_obs, gen_next_obs])
+    obs = np.concatenate([expert_obs_norm, gen_samples.obs])
+    acts = np.concatenate([expert_samples.acts, gen_samples.acts])
+    next_obs = np.concatenate([expert_samples.next_obs, gen_samples.next_obs])
     labels = np.concatenate([np.zeros(n_expert, dtype=int),
                              np.ones(n_gen, dtype=int)])
 
     # Calculate generator-policy log probabilities.
     log_act_prob = self._gen_policy.action_probability(obs, actions=acts,
                                                        logp=True)
-    assert len(log_act_prob) == N
-    log_act_prob = log_act_prob.reshape((N,))
+    assert len(log_act_prob) == n_samples
+    log_act_prob = log_act_prob.reshape((n_samples,))
 
     fd = {
         self.discrim.obs_ph: obs,
@@ -340,13 +342,6 @@ class AdversarialTrainer:
         self.discrim.log_policy_act_prob_ph: log_act_prob,
     }
     return fd
-
-
-def _n_steps_if_not_none(n_steps):
-  if n_steps is None:
-    return {}
-  else:
-    return dict(n_steps=n_steps)
 
 
 def init_trainer(env_name: str,
