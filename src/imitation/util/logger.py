@@ -61,6 +61,9 @@ class _HierarchicalLogger(sb_logger.Logger):
     of all the "raw" values accumulated during this context to
     `self.default_logger` under keys with the prefix `mean/{subdir}/`
 
+    Note that the behavior of other logging methods, `log` and `logkv_mean`
+    are unmodified and will go straight to the default logger.
+
     Args:
       subdir: A string key which determines the `folder` where raw data is
         written and temporary logging prefixes for raw and mean data. Entering
@@ -106,20 +109,20 @@ class _HierarchicalLogger(sb_logger.Logger):
     else:
       return self.default_logger
 
-  def logkv_mean(self, key, val):
-    self._logger.logkv_mean(key, val)
-
   def dumpkvs(self):
     self._logger.dumpkvs()
-
-  def log(self, *args, **kwargs):
-    self._logger.log(*args, **kwargs)
 
   def get_dir(self) -> str:
     return self._logger.get_dir()
 
+  def log(self, *args, **kwargs):
+    self.default_logger.log(*args, **kwargs)
+
+  def logkv_mean(self, key, val):
+    self.default_logger.logkv_mean(key, val)
+
   def close(self):
-    self._logger.close(self)
+    raise NotImplementedError
 
 
 def _sb_logger_configure_replacement(*args, **kwargs):
@@ -148,6 +151,8 @@ def configure(folder: str, format_strs: Optional[Sequence[str]] = None) -> None:
       format_strs: An list of output format strings. For details on available
         output formats see `stable_baselines.logger.make_output_format`.
   """
+  # Replace `stable_baselines.logger` methods with erroring stubs to
+  # prevent unexpected logging state from mixed logging configuration.
   sb_logger.configure = _sb_logger_configure_replacement
   sb_logger.reset = _sb_logger_reset_replacement
 
@@ -183,6 +188,9 @@ def accumulate_means(subdir_name: str) -> ContextManager:
 
   After the context exits, these means can be dumped as usual using
   `stable_baselines.logger.dumpkvs()` or `imitation.util.logger.dumpkvs()`.
+
+  Note that the behavior of other logging methods, `log` and `logkv_mean`
+  are unmodified and will go straight to the original logger.
 
   This context cannot be nested.
 
