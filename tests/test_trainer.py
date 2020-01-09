@@ -39,9 +39,8 @@ def test_init_no_crash(tmp_path, use_gail, parallel):
 
 @pytest.mark.parametrize("use_gail", USE_GAIL)
 @pytest.mark.parametrize("parallel", PARALLEL)
-def test_train_disc_no_crash(tmpdir, use_gail, parallel, n_timesteps=200):
+def test_train_disc_step_no_crash(tmpdir, use_gail, parallel, n_timesteps=200):
   trainer = init_test_trainer(tmpdir, use_gail=use_gail, parallel=parallel)
-  trainer.train_disc()
   transitions = rollout.generate_transitions(trainer.gen_policy,
                                              trainer.venv,
                                              n_timesteps=n_timesteps)
@@ -50,10 +49,11 @@ def test_train_disc_no_crash(tmpdir, use_gail, parallel, n_timesteps=200):
 
 @pytest.mark.parametrize("use_gail", USE_GAIL)
 @pytest.mark.parametrize("parallel", PARALLEL)
-def test_train_gen_no_crash(tmpdir, use_gail, parallel, n_updates=2):
+def test_train_gen_train_disc_no_crash(tmpdir, use_gail, parallel, n_updates=2):
   trainer = init_test_trainer(
     tmpdir=tmpdir, use_gail=use_gail, parallel=parallel)
   trainer.train_gen(n_updates * trainer.gen_batch_size)
+  trainer.train_disc()
 
 
 @pytest.mark.expensive
