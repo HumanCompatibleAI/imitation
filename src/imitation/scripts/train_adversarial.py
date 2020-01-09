@@ -13,7 +13,6 @@ from typing import Optional
 from matplotlib import pyplot as plt
 import numpy as np
 from sacred.observers import FileStorageObserver
-from stable_baselines import logger as sb_logger
 import tensorflow as tf
 import tqdm
 
@@ -139,9 +138,6 @@ def train(_run,
   expert_stats = util.rollout.rollout_stats(expert_trajs)
 
   with util.make_session():
-    sb_logger.configure(folder=osp.join(log_dir, 'generator'),
-                        format_strs=['tensorboard', 'stdout'])
-
     if init_tensorboard:
       sb_tensorboard_dir = osp.join(log_dir, "sb_tb")
       kwargs = init_trainer_kwargs
@@ -169,6 +165,9 @@ def train(_run,
         visualizer.add_data_disc_loss(False, epoch)
 
       trainer.train_gen(n_gen_steps_per_epoch)
+
+      util.logger.dumpkvs()
+
       if visualizer:
         visualizer.add_data_disc_loss(True, epoch)
 

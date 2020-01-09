@@ -1,4 +1,3 @@
-from collections import defaultdict
 from functools import partial
 import os
 from typing import Optional, Sequence
@@ -7,14 +6,13 @@ from warnings import warn
 import numpy as np
 from stable_baselines.common.base_class import BaseRLModel
 from stable_baselines.common.vec_env import VecEnv, VecNormalize
-from stable_baselines.logger import Logger, make_output_format
 import tensorflow as tf
 from tqdm import tqdm
 
 import imitation.rewards.discrim_net as discrim_net
 from imitation.rewards.reward_net import BasicShapedRewardNet
 import imitation.util as util
-from imitation.util import buffer, reward_wrapper, rollout
+from imitation.util import buffer, logger, reward_wrapper, rollout
 
 
 class AdversarialTrainer:
@@ -50,38 +48,41 @@ class AdversarialTrainer:
                gen_replay_buffer_capacity: Optional[int] = None,
                init_tensorboard: bool = False,
                init_tensorboard_graph: bool = False,
-               debug_use_ground_truth: bool = False):
+               debug_use_ground_truth: bool = False,
+               ):
     """Builds Trainer.
 
     Args:
         venv: The vectorized environment to train in.
         gen_policy: The generator policy that is trained to maximize
-                    discriminator confusion.
+          discriminator confusion.
         discrim: The discriminator network.
-            For GAIL, use a DiscrimNetGAIL. For AIRL, use a DiscrimNetAIRL.
+          For GAIL, use a DiscrimNetGAIL. For AIRL, use a DiscrimNetAIRL.
         expert_demos: Transitions from an expert dataset.
         log_dir: Directory to store TensorBoard logs, plots, etc. in.
         disc_opt_cls: The optimizer for discriminator training.
         disc_opt_kwargs: Parameters for discriminator training.
         n_disc_samples_per_buffer: The number of obs-act-obs triples
-            sampled from each replay buffer (expert and generator) during each
-            step of discriminator training. This is also the number of triples
-            stored in the replay buffer after each epoch of generator training.
+          sampled from each replay buffer (expert and generator) during each
+          step of discriminator training. This is also the number of triples
+          stored in the replay buffer after each epoch of generator training.
         gen_replay_buffer_capacity: The capacity of the
-            generator replay buffer (the number of obs-action-obs samples from
-            the generator that can be stored).
+          generator replay buffer (the number of obs-action-obs samples from
+          the generator that can be stored).
 
-            By default this is equal to `20 * n_disc_samples_per_buffer`.
+          By default this is equal to `20 * n_disc_samples_per_buffer`.
         init_tensorboard: If True, makes various discriminator
-            TensorBoard summaries.
+          TensorBoard summaries.
         init_tensorboard_graph: If both this and `init_tensorboard` are True,
-            then write a Tensorboard graph summary to disk.
+          then write a Tensorboard graph summary to disk.
         debug_use_ground_truth: If True, use the ground truth reward for
-            `self.train_env`.
-            This disables the reward wrapping that would normally replace
-            the environment reward with the learned reward. This is useful for
-            sanity checking that the policy training is functional.
+          `self.train_env`.
+          This disables the reward wrapping that would normally replace
+          the environment reward with the learned reward. This is useful for
+          sanity checking that the policy training is functional.
     """
+    assert util.logger.is_configured(), ("Requires call to "
+                                         "imitation.util.logger.configure")
     self._sess = tf.get_default_session()
     self._global_step = tf.train.create_global_step()
 
@@ -93,14 +94,6 @@ class AdversarialTrainer:
     self._gen_policy = gen_policy
 
     self._log_dir = log_dir
-    disc_log_dir = os.path.join(self._log_dir, 'disc')
-    # only log CSV & TB for discriminator stats; human output is too verbose
-    # since this gets called every time discriminator weights are updated (!!)
-    log_fmt_strs = ['csv', 'tensorboard']
-    log_fmts = [
-      make_output_format(s, disc_log_dir) for s in log_fmt_strs
-    ]
-    self._disc_logger = Logger(disc_log_dir, log_fmts)
 
     # Create graph for optimising/recording stats on discriminator
     self._discrim = discrim
@@ -166,49 +159,39 @@ class AdversarialTrainer:
             and then averaged over all steps. Keys depend on whether this is
             GAIL or AIRL.
     """
-    stat_dict_accum = defaultdict(lambda: [])
+    with logger.accumulate_means("disc"):
+      for _ in range(n_steps):
+        fetches = {
+          'train_op_out': self._disc_train_op,
+          'train_stats': self._discrim.train_stats,
+        }
+        # optionally write TB summaries for collected ops
+        step = self._sess.run(self._global_step)
+        write_summaries = self._init_tensorboard and step % 20 == 0
+        if write_summaries:
+          fetches['events'] = self._summary_op
 
-    for _ in range(n_steps):
+        # do actual update
+        fd = self._build_disc_feed_dict(**kwargs)
+        fetched = self._sess.run(fetches, feed_dict=fd)
 
-      # optionally write TB summaries for collected ops
-      step = self._sess.run(self._global_step)
-      write_summaries = self._init_tensorboard and step % 20 == 0
-      fetches = {
-        'step': self._global_step,
-        'train_op_out': self._disc_train_op,
-        'train_stats': self._discrim.train_stats,
-      }
-      if write_summaries:
-        fetches['events'] = self._summary_op
+        if write_summaries:
+          self._summary_writer.add_summary(fetched['events'], fetched['step'])
 
-      # do actual update
-      fd = self._build_disc_feed_dict(**kwargs)
-      fetched = self._sess.run(fetches, feed_dict=fd)
-
-      if write_summaries:
-        self._summary_writer.add_summary(fetched['events'], fetched['step'])
-
-      for k, v in fetched['train_stats'].items():
-        self._disc_logger.log(k, v)
-        stat_dict_accum[k].append(v)
-      self._disc_logger.dumpkvs()
-
-    # return only averaged stats (useful for, e.g., updating progress bars)
-    # NOTE(sam): this is fine to remove when merging #135 (the nested logger
-    # thing); I'll handle any downstream breakage in my code.
-    mean_stats = {
-      k: np.mean(v) for k, v in stat_dict_accum.items()
-    }
-    return mean_stats
+        logger.logkv("step", step)
+        for k, v in fetched['train_stats'].items():
+          logger.logkv(k, v)
+        logger.dumpkvs()
 
   def train_gen(self, n_steps=10000):
-    self._gen_policy.set_env(self.venv_train_norm)
-    # TODO(adam): learn was not intended to be called for each training batch
-    # It should work, but might incur unnecessary overhead: e.g. in PPO2
-    # a new Runner instance is created each time. Also a hotspot for errors:
-    # algorithms not tested for this use case, may reset state accidentally.
-    self._gen_policy.learn(n_steps, reset_num_timesteps=False)
-    self._populate_gen_replay_buffer()
+    with logger.accumulate_means("gen"):
+      self._gen_policy.set_env(self.venv_train_norm)
+      # TODO(adam): learn was not intended to be called for each training batch
+      # It should work, but might incur unnecessary overhead: e.g. in PPO2
+      # a new Runner instance is created each time. Also a hotspot for errors:
+      # algorithms not tested for this use case, may reset state accidentally.
+      self._gen_policy.learn(n_steps, reset_num_timesteps=False)
+      self._populate_gen_replay_buffer()
 
   def _populate_gen_replay_buffer(self) -> None:
     """Generate and store generator samples in the buffer.
@@ -239,6 +222,7 @@ class AdversarialTrainer:
     for i in tqdm(range(n_epochs), desc="AIRL train"):
       self.train_disc(**_n_steps_if_not_none(n_disc_steps_per_epoch))
       self.train_gen(**_n_steps_if_not_none(n_gen_steps_per_epoch))
+      logger.dumpkvs()
 
   def eval_disc_loss(self, **kwargs):
     """Evaluates the discriminator loss.
@@ -367,8 +351,8 @@ def _n_steps_if_not_none(n_steps):
 
 def init_trainer(env_name: str,
                  expert_trajectories: Sequence[rollout.Trajectory],
-                 log_dir: str,
                  *,
+                 log_dir: str,
                  seed: int = 0,
                  use_gail: bool = False,
                  num_vec: int = 8,
@@ -376,10 +360,10 @@ def init_trainer(env_name: str,
                  max_episode_steps: Optional[int] = None,
                  scale: bool = True,
                  airl_entropy_weight: float = 1.0,
-                 discrim_kwargs: bool = {},
-                 reward_kwargs: bool = {},
-                 trainer_kwargs: bool = {},
-                 init_rl_kwargs: bool = {},
+                 discrim_kwargs: dict = {},
+                 reward_kwargs: dict = {},
+                 trainer_kwargs: dict = {},
+                 init_rl_kwargs: dict = {},
                  ):
   """Builds an AdversarialTrainer, ready to be trained on a vectorized
     environment and expert demonstrations.
@@ -407,8 +391,7 @@ def init_trainer(env_name: str,
     init_rl_kwargs: Keyword arguments passed to `init_rl`,
         used to initialize the RL algorithm.
   """
-  os.makedirs(log_dir, exist_ok=True)
-
+  util.logger.configure(folder=log_dir, format_strs=['tensorboard', 'stdout'])
   env = util.make_vec_env(env_name, num_vec, seed=seed, parallel=parallel,
                           log_dir=log_dir, max_episode_steps=max_episode_steps)
   gen_policy = util.init_rl(env, verbose=1, **init_rl_kwargs)

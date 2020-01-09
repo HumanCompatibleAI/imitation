@@ -20,11 +20,13 @@ def setup_and_teardown(session):
   yield
 
 
-def init_test_trainer(log_dir: str, use_gail: bool, parallel: bool = False):
+def init_test_trainer(tmpdir: str, use_gail: bool, parallel: bool = False):
   with open("tests/data/expert_models/cartpole_0/rollouts/final.pkl",
             "rb") as f:
     trajs = pickle.load(f)
-  return init_trainer("CartPole-v1", trajs, log_dir,
+  return init_trainer("CartPole-v1",
+                      trajs,
+                      log_dir=tmpdir,
                       use_gail=use_gail,
                       parallel=parallel)
 
@@ -32,15 +34,13 @@ def init_test_trainer(log_dir: str, use_gail: bool, parallel: bool = False):
 @pytest.mark.parametrize("use_gail", USE_GAIL)
 @pytest.mark.parametrize("parallel", PARALLEL)
 def test_init_no_crash(tmp_path, use_gail, parallel):
-  init_test_trainer(log_dir=tmp_path, use_gail=use_gail, parallel=parallel)
+  init_test_trainer(tmp_path, use_gail=use_gail, parallel=parallel)
 
 
 @pytest.mark.parametrize("use_gail", USE_GAIL)
 @pytest.mark.parametrize("parallel", PARALLEL)
-def test_train_disc_no_crash(tmp_path, use_gail, parallel,
-                             n_timesteps=200):
-  trainer = init_test_trainer(log_dir=tmp_path, use_gail=use_gail,
-                              parallel=parallel)
+def test_train_disc_no_crash(tmpdir, use_gail, parallel, n_timesteps=200):
+  trainer = init_test_trainer(tmpdir, use_gail=use_gail, parallel=parallel)
   trainer.train_disc()
   transitions = rollout.generate_transitions(trainer.gen_policy,
                                              trainer.venv,
@@ -51,17 +51,15 @@ def test_train_disc_no_crash(tmp_path, use_gail, parallel,
 
 @pytest.mark.parametrize("use_gail", USE_GAIL)
 @pytest.mark.parametrize("parallel", PARALLEL)
-def test_train_gen_no_crash(tmp_path, use_gail, parallel, n_steps=10):
-  trainer = init_test_trainer(log_dir=tmp_path, use_gail=use_gail,
-                              parallel=parallel)
+def test_train_gen_no_crash(tmpdir, use_gail, parallel, n_steps=10):
+  trainer = init_test_trainer(tmpdir, use_gail=use_gail, parallel=parallel)
   trainer.train_gen(n_steps)
 
 
 @pytest.mark.expensive
 @pytest.mark.parametrize("use_gail", USE_GAIL)
-def test_train_disc_improve_D(tmp_path, use_gail, n_timesteps=200,
-                              n_steps=1000):
-  trainer = init_test_trainer(log_dir=tmp_path, use_gail=use_gail)
+def test_train_disc_improve_D(tmpdir, use_gail, n_timesteps=200, n_steps=1000):
+  trainer = init_test_trainer(tmpdir, use_gail)
   transitions = rollout.generate_transitions(trainer.gen_policy,
                                              trainer.venv,
                                              n_timesteps=n_timesteps)
@@ -76,6 +74,6 @@ def test_train_disc_improve_D(tmp_path, use_gail, n_timesteps=200,
 
 @pytest.mark.expensive
 @pytest.mark.parametrize("use_gail", USE_GAIL)
-def test_train_no_crash(tmp_path, use_gail):
-  trainer = init_test_trainer(log_dir=tmp_path, use_gail=use_gail)
+def test_train_no_crash(tmpdir, use_gail):
+  trainer = init_test_trainer(tmpdir, use_gail)
   trainer.train(n_epochs=1)
