@@ -1,4 +1,4 @@
-from typing import Sequence
+from typing import List, Sequence
 
 import gym
 import numpy as np
@@ -43,7 +43,7 @@ class _CountingEnv(gym.Env):
 
     t, self.timestep = self.timestep, self.timestep + 1
     done = (t == self.episode_length)
-    return t, t, done, {}
+    return t, t * 10, done, {}
 
 
 def _make_buffering_venv(error_on_premature_reset: bool,
@@ -58,24 +58,28 @@ def _assert_equal_scrambled_vectors(a: np.ndarray, b: np.ndarray) -> bool:
   """Returns True if `a` and `b` are identical up to sorting."""
   assert a.shape == b.shape
   assert a.ndim == 1
-  np.testing.assert_equal(np.sort(a), np.sort(b))
+  np.testing.assert_allclose(np.sort(a), np.sort(b))
 
 
 def _join_transitions(trans_list: Sequence[rollout.Transitions],
                       ) -> rollout.Transitions:
 
-  obs = np.concatenate(t.obs for t in trans_list)
-  next_obs = np.concatenate(t.next_obs for t in trans_list)
-  rews = np.concatenate(t.rews for t in trans_list)
-  acts = np.concatenate(t.acts for t in trans_list)
-  dones = np.concatenate(t.dones for t in trans_list)
+  def concat(x): return np.concatenate(list(x))
+  obs = concat(t.obs for t in trans_list)
+  next_obs = concat(t.next_obs for t in trans_list)
+  rews = concat(t.rews for t in trans_list)
+  acts = concat(t.acts for t in trans_list)
+  dones = concat(t.dones for t in trans_list)
   return rollout.Transitions(
     obs=obs, next_obs=next_obs, rews=rews, acts=acts, dones=dones)
 
 
-def test_pop(episode_lengths: Sequence[int] = (5, 6),
-             n_steps: int = 10,
-             extra_pop_timesteps: Sequence[int] = ()):
+@pytest.mark.parametrize("episode_lengths", [(1,), (6, 5, 1, 2), (2, 2)])
+@pytest.mark.parametrize("n_steps", [1, 2, 20, 21])
+@pytest.mark.parametrize("extra_pop_timesteps", [(), (1,), (4, 8)])
+def test_pop(episode_lengths: Sequence[int],
+             n_steps: int,
+             extra_pop_timesteps: Sequence[int]):
   """Check pop_transitions() results for BufferWrapper.
 
   To make things easier to test, we use _CountingEnv where the observation
@@ -108,22 +112,27 @@ def test_pop(episode_lengths: Sequence[int] = (5, 6),
       calls to `step()`. For every unique positive `x` in `extra_pop_timesteps`,
       we also call `pop_*()` after the `x`th call to `step()`. All popped
       samples are concatenated before validating results at the end of this
-      test case.
+      test case. All `x` in `extra_pop_timesteps` must be in range(1, n_steps).
+      (`x == 0` is not valid because there are no transitions to pop at timestep
+      0).
   """
   if not n_steps >= 1:
     raise ValueError(n_steps)
   for t in extra_pop_timesteps:
-    if not 1 <= t <= n_steps:
+    if t < 1:
       raise ValueError(t)
+    if not 1 <= t < n_steps:
+      pytest.skip("pop timesteps out of bounds for this test case")
 
-  venv = DummyVecEnv([lambda: _CountingEnv(episode_length=n)
-                      for n in episode_lengths])
+  def make_env(ep_len):
+    return lambda: _CountingEnv(episode_length=ep_len)
+  venv = DummyVecEnv([make_env(ep_len) for ep_len in episode_lengths])
   venv_buffer = BufferingWrapper(venv)
 
   # To test `pop_transitions`, we will check that every obs, act, and rew
   # returned by `.reset()` and `.step()` is also returned by one of the
   # calls to `pop_transitions()`.
-  transitions_list = []
+  transitions_list = []  # type: List[rollout.Transitions]
 
   # Initial observation (only matters for pop_transitions()).
   obs = venv_buffer.reset()
@@ -135,16 +144,16 @@ def test_pop(episode_lengths: Sequence[int] = (5, 6),
     obs, *_ = venv_buffer.step_wait()
 
     if t in extra_pop_timesteps:
-      transitions_list.extend(venv_buffer.pop_transitions())
+      transitions_list.append(venv_buffer.pop_transitions())
 
-  transitions_list.extend(venv_buffer.pop_transitions())
+  transitions_list.append(venv_buffer.pop_transitions())
 
   # Build expected transitions
   expect_obs = []
   for ep_len in episode_lengths:
     n_complete, remainder = divmod(n_steps, ep_len)
     expect_obs.extend([np.arange(ep_len)] * n_complete)
-    expect_obs.append([np.arange(remainder)])
+    expect_obs.append(np.arange(remainder))
 
   expect_obs = np.concatenate(expect_obs)
   expect_next_obs = expect_obs + 1
@@ -153,6 +162,7 @@ def test_pop(episode_lengths: Sequence[int] = (5, 6),
 
   # Check `pop_transitions()`
   trans = _join_transitions(transitions_list)
+
   _assert_equal_scrambled_vectors(trans.obs, expect_obs)
   _assert_equal_scrambled_vectors(trans.next_obs, expect_next_obs)
   _assert_equal_scrambled_vectors(trans.acts, expect_acts)
@@ -193,37 +203,13 @@ def test_reset_error():
     venv.reset()
 
 
-def test_mixed_pop_error():
+def test_n_transitions_and_empty_error():
   venv = _make_buffering_venv(True)
   venv.step([0, 0])
+  assert venv.n_transitions == 2
+  venv.step([0, 0])
+  assert venv.n_transitions == 4
   venv.pop_transitions()
-  venv.step([0, 0])
-  with pytest.raises(RuntimeError, match=r".* pop types .*"):
-    venv.pop_trajectories()
-
-  venv = _make_buffering_venv(True)
-  venv.step([0, 0])
-  venv.pop_trajectories()
-  venv.step([0, 0])
-  with pytest.raises(RuntimeError, match=r".* pop types .*"):
+  assert venv.n_transitions == 0
+  with pytest.raises(RuntimeError, match=".* empty .*"):
     venv.pop_transitions()
-
-
-def test_transitions_empty_after_pop():
-  venv = _make_buffering_venv(True)
-  venv.step([0, 0])
-  venv.pop_transitions()
-  result = venv.pop_transitions()
-  assert len(result.obs) == 0
-  assert len(result.rews) == 0
-  assert len(result.acts) == 0
-  assert len(result.rews) == 0
-  assert len(result.dones) == 0
-
-
-def test_trajectories_empty_after_pop():
-  venv = _make_buffering_venv(True)
-  venv.step([0, 0])
-  venv.pop_trajectories()
-  result = venv.pop_trajectories()
-  assert len(result) == 0

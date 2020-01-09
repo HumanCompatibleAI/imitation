@@ -68,12 +68,19 @@ class BufferingWrapper(VecEnvWrapper):
         trajs.append(traj)
 
         # Reinitialize a partial trajectory starting with the final observation.
-        self._traj_accum.add_step({'obs': traj.obs[-1]})
+        self._traj_accum.add_step({'obs': traj.obs[-1]}, key=i)
     return trajs
 
   def pop_transitions(self) -> rollout.Transitions:
     """Pops recorded transitions, returning them as an instance of Transitions.
+
+    Raises a RuntimeError if called when `self.n_transitions == 0`.
     """
+    if self.n_transitions == 0:
+      # It would be better to return an empty `Transitions`, but we would need
+      # to get the non-zero dimensions of every np.ndarray attribute correct to
+      # avoid downstream errors. This is easier and sufficient for now.
+      raise RuntimeError("Called pop_transitions on an empty BufferingWrapper")
     partial_trajs = self._finish_partial_trajectories()
     self._trajectories.extend(partial_trajs)
     transitions = rollout.flatten_trajectories(self._trajectories)
