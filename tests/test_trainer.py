@@ -65,6 +65,6 @@ def test_train_disc_improve_D(tmpdir, use_gail, n_timesteps=200, n_steps=1000):
                                              n_timesteps=n_timesteps)
   loss1 = trainer.eval_disc_loss(gen_samples=gen_samples)
   for _ in range(n_steps):
-      trainer.train_disc_step(gen_samples=gen_samples)
+    trainer.train_disc_step(gen_samples=gen_samples)
   loss2 = trainer.eval_disc_loss(gen_samples=gen_samples)
   assert loss2 < loss1
