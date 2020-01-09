@@ -228,9 +228,8 @@ class AdversarialTrainer:
   def train_gen(self, total_timesteps: Optional[int] = None, callback=None):
     """Trains the generator to maximize the discriminator loss.
 
-    After the end of training populates the generator replay buffer with
-    the same environment samples used by the generator's underlying RL
-    algorithm.
+    After the end of training populates the generator replay buffer (used in
+    discriminator training) with `self.disc_batch_size` transitions.
 
     Args:
       total_timesteps: The number of transitions to sample from

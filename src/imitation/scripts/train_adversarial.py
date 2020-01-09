@@ -157,15 +157,15 @@ def train(_run,
                            f"total_timesteps={total_timesteps})!")
 
     for epoch in tqdm.tqdm(range(1, n_epochs+1), desc="epoch"):
-      trainer.train_disc(trainer.disc_batch_size)
-      if visualizer:
-        visualizer.add_data_disc_loss(False, epoch)
       trainer.train_gen(trainer.gen_batch_size)
+      if visualizer:
+        visualizer.add_data_disc_loss(True, epoch)
+      trainer.train_disc(trainer.disc_batch_size)
 
       util.logger.dumpkvs()
 
       if visualizer:
-        visualizer.add_data_disc_loss(True, epoch)
+        visualizer.add_data_disc_loss(False, epoch)
 
         if (extra_episode_data_interval > 0
             and epoch % extra_episode_data_interval == 0):  # noqa: E129
@@ -248,6 +248,10 @@ class _TrainVisualizer:
             discriminator is being trained.  We use this to color the data
             points.
     """
+    if not generator_active and len(self.gen_data[0]) == 0:
+      # Skip because `eval_disc_loss()` doesn't have generator samples
+      # available. (`trainer.train_gen()` hasn't been called yet)
+      return
     mode = "gen" if generator_active else "dis"
     X, Y = self.gen_data if generator_active else self.disc_data
     if not generator_active:
