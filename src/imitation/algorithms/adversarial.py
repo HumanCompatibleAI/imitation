@@ -135,7 +135,6 @@ class AdversarialTrainer:
       gen_replay_buffer_capacity = 20 * self.gen_batch_size
     self._gen_replay_buffer = buffer.ReplayBuffer(gen_replay_buffer_capacity,
                                                   self.venv)
-    self._populate_gen_replay_buffer()
     self._exp_replay_buffer = buffer.ReplayBuffer.from_data(expert_demos)
     if self.disc_batch_size // 2 > len(self._exp_replay_buffer):
       warn("The discriminator batch size is more than twice the number of "
@@ -170,6 +169,9 @@ class AdversarialTrainer:
         samples are from each source). By default, `self.disc_batch_size`.
         `n_samples` must be a positive multiple of `self.disc_minibatch_size`.
     """
+    if len(self._gen_replay_buffer) == 0:
+      raise RuntimeError("No generator samples for training. "
+                         "Call `train_gen()` first.")
     if n_samples is None:
       n_samples = self.disc_batch_size
     n_updates = n_samples // self.disc_minibatch_size
@@ -242,15 +244,6 @@ class AdversarialTrainer:
       self.gen_policy.learn(total_timesteps=total_timesteps,
                             reset_num_timesteps=False,
                             callback=callback)
-      self._populate_gen_replay_buffer()
-
-  def _populate_gen_replay_buffer(self) -> None:
-    """Generate and store generator samples in the buffer.
-
-    More specifically, rolls out generator-policy trajectories in the
-    environment until `self.disc_batch_size` obs-act-obs samples are
-    produced, and then stores these samples.
-    """
     gen_samples = util.rollout.generate_transitions(
       self.gen_policy,
       self.venv_train_norm,
@@ -308,6 +301,9 @@ class AdversarialTrainer:
       expert_samples: Same as in `train_disc_step`.
     """
     if gen_samples is None:
+      if len(self._gen_replay_buffer) == 0:
+        raise RuntimeError("No generator samples for training. "
+                           "Call `train_gen()` first.")
       gen_samples = self._gen_replay_buffer.sample(self.disc_batch_size // 2)
     n_gen = len(gen_samples.obs)
 
