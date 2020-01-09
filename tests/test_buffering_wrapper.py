@@ -26,7 +26,7 @@ class CountingEnv(gym.Env):
     assert t < self.episode_length, "Should have reset by now."
     done = (t == self.episode_length - 1)
     self.timestep += 1
-    return t, t, False, {}
+    return t, t, done, {}
 
 
 def _make_buffering_venv(error_on_premature_reset: bool,

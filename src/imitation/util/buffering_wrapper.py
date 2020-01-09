@@ -1,4 +1,5 @@
-import numpy as np
+from typing import List
+
 from stable_baselines.common.vec_env import VecEnv, VecEnvWrapper
 
 from imitation.util import rollout
@@ -14,68 +15,70 @@ class BufferingWrapper(VecEnvWrapper):
     """
     Args:
       venv: The wrapped VecEnv.
-      error_premature_reset: Error if `reset()` is called on this wrapper
+      error_on_premature_reset: Error if `reset()` is called on this wrapper
         and there are saved samples that haven't yet been accessed.
     """
     super().__init__(venv)
     self.error_on_premature_reset = error_on_premature_reset
-    self._did_reset = False
-    self.obs_list = None
-    self.acts_list = None
-    self.rews_list = None
-    self.dones_list = None
+    self._trajectories = []
+    self._init_reset = False
+    self._traj_accum = None
+    self._saved_acts = None
+    self.n_transitions = None
 
   def reset(self, **kwargs):
-    if (self.error_on_premature_reset and
-        self._did_reset and len(self.acts_list) != 0):
+    if (self._init_reset and self.error_on_premature_reset
+        and self.n_transitions > 0):  # noqa: E127
       raise RuntimeError(
         "BufferingWrapper reset() before samples were accessed")
+    self._init_reset = True
+    self.n_transitions = 0
     obs = self.venv.reset(**kwargs)
-    self.obs_list = [obs]
-    self.acts_list = []
-    self.rews_list = []
-    self.dones_list = []
-    self._did_reset = True
+    self._traj_accum = rollout.TrajectoryAccumulator()
+    for i, ob in enumerate(obs):
+      self._traj_accum.add_step({"obs": ob}, key=i)
     return obs
 
   def step_async(self, actions):
-    assert self._did_reset
+    assert self._init_reset
+    assert self._saved_acts is None
     self.acts_list.append(actions)
     self.venv.step_async()
+    self._saved_acts = actions
 
   def step_wait(self):
-    assert self._did_reset
-    actions = self.acts_list[-1]
-    obs, rews, dones, infos = self.venv.step_wait(actions)
-    real_obs = np.copy(obs)
-    for i, done in enumerate(dones):
-      if done:
-        real_obs[i] = infos[i]['terminal_observation']
-    self.obs_list.append(real_obs)
-    self.rews_list.append(rews)
-    self.dones_list.append(dones)
-    assert len(self.obs_list) == len(self.acts_list) + 1
+    assert self._init_reset
+    assert self._saved_acts is not None
+    acts = self._saved_acts
+    obs, rews, dones, infos = self.venv.step_wait(acts)
+    finished_trajs = self._traj_accum.add_steps_and_auto_finish(
+      acts, obs, rews, dones, infos)
+    self._trajectories.extend(finished_trajs)
+    self.n_transitions += self.num_envs
     return obs, rews, dones, infos
+
+  def _finish_partial_trajectories(self) -> List[rollout.Trajectory]:
+    """Finishes and returns partial trajectories in `self._traj_accum`."""
+    trajs = []
+    for i in range(self.num_envs):
+      # Check that we have any transitions at all.
+      n_transitions = len(self._traj_accum.partial_trajectories[i]) - 1
+      assert n_transitions >= 0, "Invalid TrajectoryAccumulator state"
+      if n_transitions >= 1:
+        traj = self._traj_accum.finish_trajectory(i)
+        trajs.append(traj)
+
+        # Reinitialize a partial trajectory starting with the final observation.
+        self._traj_accum.add_step({'obs': traj.obs[-1]})
+    return trajs
 
   def pop_transitions(self) -> rollout.Transitions:
     """Pops recorded transitions, returning them as an instance of Transitions.
     """
-    assert len(self.obs_list) == len(self.acts_list) + 1
-    obs = np.concatenate(self.obs_list[:-1])
-    acts = np.concatenate(self.acts_list)
-    next_obs = np.concatenate(self.obs_list[1:])
-    rews = np.concatenate(self.rews_list)
-    dones = np.concatenate(self.dones_list)
-
-    self.obs_list = [self.obs_list[-1]]
-    self.acts_list = []
-    self.rews_list = []
-
-    assert rews.shape[0] == acts.shape[0] == obs.shape[0] == dones.shape[0]
-    assert obs.shape == next_obs.shape
-
-    return rollout.Transitions(
-      obs=obs, acts=acts, next_obs=next_obs, rews=rews, dones=dones)
-
-  def step_wait(self):
-    return self.venv.step_wait()
+    partial_trajs = self._finish_partial_trajectories()
+    self._trajectories.extend(partial_trajs)
+    transitions = rollout.flatten_trajectories(self.trajectories)
+    assert len(transitions.obs) == self.n_transitions
+    self._trajectories = []
+    self.n_transitions = 0
+    return transitions

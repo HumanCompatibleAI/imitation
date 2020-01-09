@@ -76,7 +76,7 @@ class InteractiveTrajectoryCollector(gym.Wrapper):
     self.get_robot_act = get_robot_act
     assert 0 <= beta <= 1
     self.beta = beta
-    self.traj_accum = rollout.TrajectoryAccumulator()
+    self.traj_accum = None
     self.save_dir = save_dir
     self._last_obs = None
     self._done_before = True
@@ -87,7 +87,7 @@ class InteractiveTrajectoryCollector(gym.Wrapper):
 
     Returns:
         obs: first observation of a new trajectory."""
-    self.traj_accum.reset()
+    self.traj_accum = rollout.TrajectoryAccumulator()
     obs = self.env.reset()
     self._last_obs = obs
     self.traj_accum.add_step({'obs': obs})
