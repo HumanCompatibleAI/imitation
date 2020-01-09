@@ -305,6 +305,9 @@ class AdversarialTrainer:
       expert_samples: Same as in `train_disc_step`.
     """
     if gen_samples is None:
+      if len(self._gen_replay_buffer) == 0:
+        raise RuntimeError("No generator samples for training. "
+                           "Call `train_gen()` first.")
       gen_samples = self._gen_replay_buffer.sample(self.disc_batch_size // 2)
     n_gen = len(gen_samples.obs)
 
