@@ -149,3 +149,6 @@ dmypy.json
 
 # yapf (code formatter)
 .style.yapf
+
+# cruft produced by one of the adversarial tests
+tests/data/reward_models

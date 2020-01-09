@@ -1,4 +1,5 @@
 from functools import partial
+import os
 from typing import Optional, Sequence
 from warnings import warn
 
@@ -7,7 +8,6 @@ from stable_baselines.common.base_class import BaseRLModel
 from stable_baselines.common.vec_env import VecEnv, VecNormalize
 import tensorflow as tf
 
-from imitation import summaries
 import imitation.rewards.discrim_net as discrim_net
 from imitation.rewards.reward_net import BasicShapedRewardNet
 import imitation.util as util
@@ -41,6 +41,7 @@ class AdversarialTrainer:
                discrim: discrim_net.DiscrimNet,
                expert_demos: rollout.Transitions,
                *,
+               log_dir: str = 'output/',
                disc_batch_size: int = 2048,
                disc_minibatch_size: int = 256,
                disc_opt_cls: tf.train.Optimizer = tf.train.AdamOptimizer,
@@ -60,6 +61,7 @@ class AdversarialTrainer:
         discrim: The discriminator network.
           For GAIL, use a DiscrimNetGAIL. For AIRL, use a DiscrimNetAIRL.
         expert_demos: Transitions from an expert dataset.
+        log_dir: Directory to store TensorBoard logs, plots, etc. in.
         disc_batch_size: The default number of expert and generator transitions
           samples to feed to the discriminator in each call to
           `self.train_disc()`. (Half of the samples are expert and half of the
@@ -103,18 +105,15 @@ class AdversarialTrainer:
     self._expert_demos = expert_demos
     self._gen_policy = gen_policy
 
-    # Discriminator and reward output
+    self._log_dir = log_dir
+
+    # Create graph for optimising/recording stats on discriminator
     self._discrim = discrim
     self._disc_opt_cls = disc_opt_cls
     self._disc_opt_kwargs = disc_opt_kwargs
-    with tf.variable_scope("trainer"):
-      with tf.variable_scope("discriminator"):
-        self._build_disc_train()
     self._init_tensorboard = init_tensorboard
     self._init_tensorboard_graph = init_tensorboard_graph
-    if init_tensorboard:
-      with tf.name_scope("summaries"):
-        self._build_summarize()
+    self._build_graph()
     self._sess.run(tf.global_variables_initializer())
 
     if debug_use_ground_truth:
@@ -203,12 +202,28 @@ class AdversarialTrainer:
         dataset, where `n_gen` is the number of samples in `gen_samples`.
     """
     with logger.accumulate_means("disc"):
+      fetches = {
+        'train_op_out': self._disc_train_op,
+        'train_stats': self._discrim.train_stats,
+      }
+      # optionally write TB summaries for collected ops
+      step = self._sess.run(self._global_step)
+      write_summaries = self._init_tensorboard and step % 20 == 0
+      if write_summaries:
+        fetches['events'] = self._summary_op
+
+      # do actual update
       fd = self._build_disc_feed_dict(gen_samples=gen_samples,
                                       expert_samples=expert_samples)
-      step, _ = self._sess.run([self._global_step, self._disc_train_op],
-                               feed_dict=fd)
-      if self._init_tensorboard and step % 20 == 0:
-        self._summarize(fd, step)
+      fetched = self._sess.run(fetches, feed_dict=fd)
+
+      if write_summaries:
+        self._summary_writer.add_summary(fetched['events'], fetched['step'])
+
+      logger.logkv("step", step)
+      for k, v in fetched['train_stats'].items():
+        logger.logkv(k, v)
+      logger.dumpkvs()
 
   def train_gen(self, total_timesteps: Optional[int] = None, callback=None):
     """Trains the generator to maximize the discriminator loss.
@@ -259,22 +274,24 @@ class AdversarialTrainer:
     fd = self._build_disc_feed_dict(**kwargs)
     return np.mean(self._sess.run(self.discrim.disc_loss, feed_dict=fd))
 
-  def _build_summarize(self):
-    graph = self._sess.graph if self._init_tensorboard_graph else None
-    self._summary_writer = summaries.make_summary_writer(graph=graph)
-    self.discrim.build_summaries()
-    self._summary_op = tf.summary.merge_all()
+  def _build_graph(self):
+    # Build necessary parts of the TF graph. Most of the real action happens in
+    # constructors for self.discrim and self.gen_policy.
+    with tf.variable_scope("trainer"):
+      with tf.variable_scope("discriminator"):
+        disc_opt = self._disc_opt_cls(**self._disc_opt_kwargs)
+        self._disc_train_op = disc_opt.minimize(
+            tf.reduce_mean(self.discrim.disc_loss),
+            global_step=self._global_step)
 
-  def _summarize(self, fd, step):
-    events = self._sess.run(self._summary_op, feed_dict=fd)
-    self._summary_writer.add_summary(events, step)
-
-  def _build_disc_train(self):
-    # Construct Train operation.
-    disc_opt = self._disc_opt_cls(**self._disc_opt_kwargs)
-    self._disc_train_op = disc_opt.minimize(
-        tf.reduce_mean(self.discrim.disc_loss),
-        global_step=self._global_step)
+    if self._init_tensorboard:
+      with tf.name_scope("summaries"):
+        tf.logging.info("building summary directory at " + self._log_dir)
+        graph = self._sess.graph if self._init_tensorboard_graph else None
+        summary_dir = os.path.join(self._log_dir, 'summary')
+        os.makedirs(summary_dir, exist_ok=True)
+        self._summary_writer = tf.summary.FileWriter(summary_dir, graph=graph)
+        self._summary_op = tf.summary.merge_all()
 
   def _build_disc_feed_dict(
       self, *,
@@ -351,7 +368,8 @@ def init_trainer(env_name: str,
     env_name: The string id of a gym environment.
     expert_trajectories: Demonstrations from expert.
     seed: Random seed.
-    log_dir: Directory for logging output.
+    log_dir: Directory for logging output. Will generate a unique sub-directory
+        within this directory for all output.
     use_gail: If True, then train using GAIL. If False, then train
         using AIRL.
     num_vec: The number of vectorized environments.
@@ -390,5 +408,5 @@ def init_trainer(env_name: str,
 
   expert_demos = util.rollout.flatten_trajectories(expert_trajectories)
   trainer = AdversarialTrainer(env, gen_policy, discrim, expert_demos,
-                               **trainer_kwargs)
+                               log_dir=log_dir, **trainer_kwargs)
   return trainer

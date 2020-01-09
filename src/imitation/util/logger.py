@@ -161,6 +161,11 @@ def configure(folder: str, format_strs: Optional[Sequence[str]] = None) -> None:
   assert is_configured()
 
 
+def logkv(key, val) -> None:
+  """Alias for `stable_baselines.logger.logkv`."""
+  sb_logger.logkv(key, val)
+
+
 def dumpkvs() -> None:
   """Alias for `stable_baselines.logger.dumpkvs`."""
   sb_logger.dumpkvs()
