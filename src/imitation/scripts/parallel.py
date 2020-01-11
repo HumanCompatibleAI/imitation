@@ -1,4 +1,4 @@
-import os.path as osp
+import os
 from typing import Any, Callable, Dict, Optional
 
 import ray
@@ -48,7 +48,8 @@ def parallel(sacred_ex_name: str,
   trainable = _ray_tune_sacred_wrapper(sacred_ex_name,
                                        run_name,
                                        base_named_configs,
-                                       base_config_updates)
+                                       base_config_updates,
+                                       working_directory=os.getcwd())
 
   # Disable all Ray Loggers.
   #
@@ -72,6 +73,7 @@ def _ray_tune_sacred_wrapper(sacred_ex_name: str,
                              run_name: str,
                              base_named_configs: list,
                              base_config_updates: dict,
+                             working_directory: str,
                              ) -> Callable:
   """From an Experiment build a wrapped run function suitable for Ray Tune.
 
@@ -102,6 +104,12 @@ def _ray_tune_sacred_wrapper(sacred_ex_name: str,
     observer = FileStorageObserver.create('sacred')
     ex.observers.append(observer)
 
+    # Add working directory hint if parallelizing `train_adversarial`.
+    # We need this to automatically find rollout pickles Ray will automatically
+    # change the working directory for each Raylet.
+    if sacred_ex_name == "train_adversarial":
+      base_config_updates["working_dir_hint"] = working_directory
+
     # Apply base configs
     base_named_configs.extend(config.get("named_configs", []))
     base_config_updates.update(config.get("config_updates", {}))
@@ -122,6 +130,6 @@ def _ray_tune_sacred_wrapper(sacred_ex_name: str,
 
 if __name__ == '__main__':
   observer = FileStorageObserver.create(
-      osp.join('output', 'sacred', 'parallel'))
+      os.path.join('output', 'sacred', 'parallel'))
   parallel_ex.observers.append(observer)
   parallel_ex.run_commandline()
