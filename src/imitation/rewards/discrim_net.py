@@ -237,20 +237,28 @@ class DiscrimNetAIRL(DiscrimNet):
         labels=self.labels_ph,
         logits=self._presoftmax_disc_logits,
         name="discrim_loss",
-    )
-
-    self._policy_test_reward = self.reward_net.reward_output_test
+    )  # (None,)
 
     # Construct generator reward:
     # \[\hat{r}(s,a) = \log(D_{\theta}(s,a)) - \log(1 - D_{\theta}(s,a)).\]
     # This simplifies to:
     # \[\hat{r}(s,a) = f_{\theta}(s,a) - \log \pi(a \mid s).\]
     # This is just an entropy-regularized objective.
-    self._log_D = tf.nn.log_softmax(self.reward_net.reward_output_train)
-    self._log_D_compl = tf.nn.log_softmax(self.log_policy_act_prob_ph)
+
+    # Log softmax across each row.
+    # The 0th column becomes $\log(D_{\theta}(s,a))$ and the 1st column becomes
+    # $\log(1 - D_{\theta}(s,a))$.
+    self._log_softmax_logits = tf.nn.log_softmax(self._presoftmax_disc_logits,
+                                                 )  # (None, 2)
+
+    self._log_D = self._log_softmax_logits[:, 0]  # (None,)
+    self._log_D_complement = self._log_softmax_logits[:, 1]  # (None,)
+
     # Note self._log_D_compl is effectively an entropy term.
-    ent_bonus = self.entropy_weight * self._log_D_compl
-    self._policy_train_reward = self._log_D - ent_bonus
+    ent_bonus = self.entropy_weight * self._log_D_complement  # (None,)
+
+    self._policy_train_reward = self._log_D - ent_bonus  # (None,)
+    self._policy_test_reward = self.reward_net.reward_output_test  # (None,)
 
     self.reward_net.build_summaries()
 
