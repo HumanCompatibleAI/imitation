@@ -12,6 +12,7 @@ import imitation.rewards.discrim_net as discrim_net
 from imitation.rewards.reward_net import BasicShapedRewardNet
 import imitation.util as util
 from imitation.util import buffer, logger, reward_wrapper, rollout
+from imitation.util.buffering_wrapper import BufferingWrapper
 
 
 class AdversarialTrainer:
@@ -130,6 +131,7 @@ class AdversarialTrainer:
           self.venv, self.reward_test)
 
     self.venv_train_norm = VecNormalize(self.venv_train)
+    self.venv_train_norm_buffering = BufferingWrapper(self.venv_train_norm)
 
     if gen_replay_buffer_capacity is None:
       gen_replay_buffer_capacity = 20 * self.gen_batch_size
@@ -163,6 +165,9 @@ class AdversarialTrainer:
   def train_disc(self, n_samples: Optional[int] = None) -> None:
     """Trains the discriminator to minimize classification cross-entropy.
 
+    Must call `train_gen` first (otherwise there will be no saved generator
+    samples for training, and will error).
+
     Args:
       n_samples: A number of transitions to sample from the generator
         replay buffer and the expert demonstration dataset. (Half of the
@@ -172,6 +177,7 @@ class AdversarialTrainer:
     if len(self._gen_replay_buffer) == 0:
       raise RuntimeError("No generator samples for training. "
                          "Call `train_gen()` first.")
+
     if n_samples is None:
       n_samples = self.disc_batch_size
     n_updates = n_samples // self.disc_minibatch_size
@@ -220,7 +226,7 @@ class AdversarialTrainer:
       logger.dumpkvs()
 
   def train_gen(self, total_timesteps: Optional[int] = None, callback=None):
-    """Trains the generator (via PPO2) to maximize the discriminator loss.
+    """Trains the generator to maximize the discriminator loss.
 
     After the end of training populates the generator replay buffer (used in
     discriminator training) with `self.disc_batch_size` transitions.
@@ -236,7 +242,7 @@ class AdversarialTrainer:
       total_timesteps = self.gen_batch_size
 
     with logger.accumulate_means("gen"):
-      self.gen_policy.set_env(self.venv_train_norm)
+      self.gen_policy.set_env(self.venv_train_norm_buffering)
       # TODO(adam): learn was not intended to be called for each training batch
       # It should work, but might incur unnecessary overhead: e.g. in PPO2
       # a new Runner instance is created each time. Also a hotspot for errors:
@@ -244,11 +250,8 @@ class AdversarialTrainer:
       self.gen_policy.learn(total_timesteps=total_timesteps,
                             reset_num_timesteps=False,
                             callback=callback)
-    gen_samples = util.rollout.generate_transitions(
-      self.gen_policy,
-      self.venv_train_norm,
-      n_timesteps=self.disc_batch_size // 2)
-    self._gen_replay_buffer.store(gen_samples)
+      gen_samples = self.venv_train_norm_buffering.pop_transitions()
+      self._gen_replay_buffer.store(gen_samples)
 
   def eval_disc_loss(self, **kwargs) -> float:
     """Evaluates the discriminator loss.

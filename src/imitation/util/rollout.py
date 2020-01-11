@@ -19,12 +19,11 @@ class Trajectory(NamedTuple):
   """A trajectory, e.g. a one episode rollout from an expert policy.
 
    Attributes:
+    acts: Actions, shape (trajectory_len, ) + action_shape.
     obs: Observations, shape (trajectory_len+1, ) + observation_shape.
-    act: Actions, shape (trajectory_len, ) + action_shape.
-    rew: Reward, shape (trajectory_len, ).
+    rews: Reward, shape (trajectory_len, ).
     infos: A list of info dicts, length (trajectory_len, ).
   """
-
   acts: np.ndarray
   obs: np.ndarray
   rews: np.ndarray
@@ -101,6 +100,20 @@ class TrajectoryAccumulator:
     """Initialise the trajectory accumulator."""
     self.partial_trajectories = collections.defaultdict(list)
 
+  def add_step(self, step_dict: Dict[str, np.ndarray], key: Hashable = None):
+    """Add a single step to the partial trajectory identified by `key`.
+
+    Generally a single step could correspond to, e.g., one environment managed
+    by a VecEnv.
+
+    Args:
+        step_dict: dictionary containing information for the current step. Its
+            keys could include any (or all) attributes of a `Trajectory` (e.g.
+            "obs", "acts", etc.).
+        key: key to uniquely identify the trajectory to append to, if working
+            with multiple partial trajectories."""
+    self.partial_trajectories[key].append(step_dict)
+
   def finish_trajectory(self, key: Hashable = None) -> Trajectory:
     """Complete the trajectory labelled with `key`.
 
@@ -117,32 +130,68 @@ class TrajectoryAccumulator:
       for key, array in part_dict.items():
         out_dict_unstacked[key].append(array)
     out_dict_stacked = {
-        key: np.stack(arr_list, axis=0)
-        for key, arr_list in out_dict_unstacked.items()
+      key: np.stack(arr_list, axis=0)
+      for key, arr_list in out_dict_unstacked.items()
     }
     traj = Trajectory(**out_dict_stacked)
+    assert traj.rews.shape[0] == traj.acts.shape[0] == traj.obs.shape[0] - 1
     return traj
 
-  def add_step(self, step_dict: Dict[str, np.ndarray], key: Hashable = None):
-    """Add a single step to the partial trajectory identified by `key`.
+  def add_steps_and_auto_finish(self,
+                                acts: np.ndarray,
+                                obs: np.ndarray,
+                                rews: np.ndarray,
+                                dones: np.ndarray,
+                                infos: List[dict]) -> List[Trajectory]:
+    """Calls `add_step` repeatedly using acts and the returns from `venv.step`.
 
-    Generally a single step could correspond to, e.g., one environment managed
-    by a VecEnv.
+    Also automatically calls `finish_trajectory()` for each `done == True`.
+    Before calling this method, each environment index key needs to be
+    initialized with the initial observation (usually from `venv.reset()`).
 
-    Args:
-        step_dict: dictionary containing information for the current step. Its
-            keys could include any (or all) attributes of a `Trajectory` (e.g.
-            "obs", "acts", etc.).
-        key: key to uniquely identify the trajectory to append to, if working
-            with multiple partial trajectories."""
-    self.partial_trajectories[key].append(step_dict)
-
-  def reset(self, key: Hashable = None):
-    """Remove a partially-completed trajectory.
+    See the body of `util.rollout.generate_trajectory` for an example.
 
     Args:
-        key: if given, identifies which trajectory to move by its key."""
-    self.partial_trajectories.pop(key, None)
+        acts: Actions passed into `VecEnv.step()`.
+        obs: Return value from `VecEnv.step(acts)`.
+        rews: Return value from `VecEnv.step(acts)`.
+        dones: Return value from `VecEnv.step(acts)`.
+        infos: Return value from `VecEnv.step(acts)`.
+    Returns:
+        A list of completed trajectories. There should be one Trajectory for
+        each `True` in the `dones` argument.
+    """
+    trajs = []
+    for env_idx in range(len(obs)):
+      assert env_idx in self.partial_trajectories
+      assert list(self.partial_trajectories[env_idx][0].keys()) == ["obs"], (
+        "Need to first initialize partial trajectory using "
+        "self._traj_accum.add_step({'obs': ob}, key=env_idx)")
+
+    zip_iter = enumerate(zip(acts, obs, rews, dones, infos))
+    for env_idx, (act, ob, rew, done, info) in zip_iter:
+      if done:
+        # actual obs is inaccurate, so we use the one inserted into step info
+        # by stable baselines wrapper
+        real_ob = info['terminal_observation']
+      else:
+        real_ob = ob
+
+      self.add_step(
+        dict(
+          acts=act,
+          rews=rew,
+          # this is not the obs corresponding to `act`, but rather the obs
+          # *after* `act` (see above)
+          obs=real_ob,
+          infos=info),
+        env_idx)
+      if done:
+        # finish env_idx-th trajectory
+        new_traj = self.finish_trajectory(env_idx)
+        trajs.append(new_traj)
+        self.add_step(dict(obs=ob), env_idx)
+    return trajs
 
 
 GenTrajTerminationFn = Callable[[Sequence[Trajectory]], bool]
@@ -240,46 +289,22 @@ def generate_trajectories(policy,
   trajectories = []
   # accumulator for incomplete trajectories
   trajectories_accum = TrajectoryAccumulator()
-  obs_batch = venv.reset()
-  for env_idx, obs in enumerate(obs_batch):
+  obs = venv.reset()
+  for env_idx, ob in enumerate(obs):
     # Seed with first obs only. Inside loop, we'll only add second obs from
     # each (s,a,r,s') tuple, under the same "obs" key again. That way we still
     # get all observations, but they're not duplicated into "next obs" and
     # "previous obs" (this matters for, e.g., Atari, where observations are
     # really big).
-    trajectories_accum.add_step(dict(obs=obs), env_idx)
-  while not sample_until(trajectories):
-    obs_old_batch = obs_batch
-    act_batch, _ = get_action(obs_old_batch, deterministic=deterministic_policy)
-    obs_batch, rew_batch, done_batch, info_batch = venv.step(act_batch)
+    trajectories_accum.add_step(dict(obs=ob), env_idx)
 
-    # Don't save tuples if there is a done. The next_obs for any environment
-    # is incorrect for any timestep where there is an episode end, so we fix it
-    # with returned state info.
-    zip_iter = enumerate(
-        zip(obs_old_batch, act_batch, obs_batch, rew_batch, done_batch,
-            info_batch))
-    for env_idx, (obs_old, act, obs, rew, done, info) in zip_iter:
-      real_obs = obs
-      if done:
-        # actual obs is inaccurate, so we use the one inserted into step info
-        # by stable baselines wrapper
-        real_obs = info['terminal_observation']
-      trajectories_accum.add_step(
-          dict(
-              acts=act,
-              rews=rew,
-              # this is not the obs corresponding to `act`, but rather the obs
-              # *after* `act` (see above)
-              obs=real_obs,
-              infos=info),
-          env_idx)
-      if done:
-        # finish env_idx-th trajectory
-        new_traj = trajectories_accum.finish_trajectory(env_idx)
-        trajectories.append(new_traj)
-        trajectories_accum.add_step(dict(obs=obs), env_idx)
-        continue
+  while not sample_until(trajectories):
+    acts, _ = get_action(obs, deterministic=deterministic_policy)
+    obs, rews, dones, infos = venv.step(acts)
+
+    new_trajs = trajectories_accum.add_steps_and_auto_finish(
+      acts, obs, rews, dones, infos)
+    trajectories.extend(new_trajs)
 
   # Note that we just drop partial trajectories. This is not ideal for some
   # algos; e.g. BC can probably benefit from partial trajectories, too.
