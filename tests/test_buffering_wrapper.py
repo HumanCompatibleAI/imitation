@@ -116,9 +116,9 @@ def test_pop(episode_lengths: Sequence[int],
       (`x == 0` is not valid because there are no transitions to pop at timestep
       0).
   """
-  if not n_steps >= 1:
+  if not n_steps >= 1:  # pragma: no cover
     raise ValueError(n_steps)
-  for t in extra_pop_timesteps:
+  for t in extra_pop_timesteps:  # pragma: no cover
     if t < 1:
       raise ValueError(t)
     if not 1 <= t < n_steps:

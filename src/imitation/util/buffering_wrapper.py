@@ -61,6 +61,10 @@ class BufferingWrapper(VecEnvWrapper):
     trajs = []
     for i in range(self.num_envs):
       # Check that we have any transitions at all.
+      # The number of "transitions" or "timesteps" stored for the ith
+      # environment is the number of step dicts stored in
+      # `partial_trajectories[i]` minus one. We need to offset by one because
+      # the first step dict is comes from `reset()`, not from `step()`.
       n_transitions = len(self._traj_accum.partial_trajectories[i]) - 1
       assert n_transitions >= 0, "Invalid TrajectoryAccumulator state"
       if n_transitions >= 1:
