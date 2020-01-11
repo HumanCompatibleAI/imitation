@@ -9,7 +9,7 @@ from imitation.util import rollout
 from imitation.util.buffering_wrapper import BufferingWrapper
 
 
-class _CountingEnv(gym.Env):
+class _CountingEnv(gym.Env):  # pragma: no cover
   """At timestep `t` of each episode, has `reward / 10 == obs == t`.
 
   Episodes finish after `episode_length` calls to `step()`. As an example,
