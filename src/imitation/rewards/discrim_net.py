@@ -245,20 +245,9 @@ class DiscrimNetAIRL(DiscrimNet):
     # \[\hat{r}(s,a) = f_{\theta}(s,a) - \log \pi(a \mid s).\]
     # This is just an entropy-regularized objective.
 
-    # Log softmax across each row.
-    # The 0th column becomes $\log(D_{\theta}(s,a))$ and the 1st column becomes
-    # $\log(1 - D_{\theta}(s,a))$.
-    self._log_softmax_logits = tf.nn.log_softmax(self._presoftmax_disc_logits,
-                                                 )  # (None, 2)
-
-    self._log_D = self._log_softmax_logits[:, 0]  # (None,)
-    self._log_D_complement = self._log_softmax_logits[:, 1]  # (None,)
-
-    # Note self._log_D_compl is effectively an entropy term.
-    ent_bonus = self.entropy_weight * self._log_D_complement  # (None,)
-
-    self._policy_train_reward = self._log_D - ent_bonus  # (None,)
-    self._policy_test_reward = self.reward_net.reward_output_test  # (None,)
+    ent_bonus = -self.entropy_weight * self.log_policy_act_prob_ph
+    self._policy_train_reward = self.reward_net.reward_output_train + ent_bonus
+    self._policy_test_reward = self.reward_net.reward_output_test
 
     self.reward_net.build_summaries()
 
