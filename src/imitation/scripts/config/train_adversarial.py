@@ -251,7 +251,7 @@ def fast():
 # Shared settings
 
 ant_shared_locals = dict(
-    timesteps=3e7,
+    total_timesteps=3e7,
     gen_batch_size=2048*8,
     disc_batch_size=2048*8,
     init_trainer_kwargs=dict(
