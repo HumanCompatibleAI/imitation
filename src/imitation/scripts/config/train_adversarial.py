@@ -15,7 +15,7 @@ train_ex = sacred.Experiment("train_adversarial", interactive=True)
 @train_ex.config
 def train_defaults():
   env_name = "CartPole-v1"  # environment to train on
-  total_timesteps = int(1e5)  # Num of environment transitions to sample
+  total_timesteps = 1e5  # Num of environment transitions to sample
 
   n_expert_demos = None  # Num demos used. None uses every demo possible
   n_episodes_eval = 50  # Num of episodes for final mean ground truth return
@@ -47,7 +47,7 @@ def train_defaults():
   checkpoint_interval = 5  # num epochs between checkpoints (<=0 disables)
   init_tensorboard = False  # If True, then write Tensorboard logs.
   rollout_hint = None  # Used to generate default rollout_path
-  working_dir_hint = ""  # Automatically set to working dir by `parallel.py`
+  data_dir = "data/"  # Default data directory
 
   # `gen_batch_size` must be a multiple of `init_trainer_kwargs.num_vec`.
   # (If using PPO2, then also must be a multiple of
@@ -88,7 +88,7 @@ def calc_n_steps(init_trainer_kwargs, gen_batch_size):
 
 
 @train_ex.config
-def paths(env_name, log_root, rollout_hint, working_dir_hint):
+def paths(env_name, log_root, rollout_hint, working_dir_hint, data_dir):
   log_dir = os.path.join(log_root, env_name.replace('/', '_'),
                          util.make_unique_timestamp())
 
@@ -97,8 +97,7 @@ def paths(env_name, log_root, rollout_hint, working_dir_hint):
   # and attempt to load rollouts from `data/expert_models/`.
   if rollout_hint is None:
     rollout_hint = env_name.split("-")[0].lower()
-  rollout_path = os.path.join(working_dir_hint,
-                              "data/expert_models",
+  rollout_path = os.path.join(data_dir,
                               f"{rollout_hint}_0",
                               "rollouts", "final.pkl")
 
@@ -149,7 +148,7 @@ def cartpole():
 def half_cheetah():
   env_name = "HalfCheetah-v2"
   rollout_hint = "half_cheetah"
-  total_timesteps = int(2e6)
+  total_timesteps = 2e6
 
   init_trainer_kwargs = dict(
       airl_entropy_weight=0.1,
@@ -167,7 +166,7 @@ def hopper():
 def humanoid():
   env_name = "Humanoid-v2"
   rollout_hint = "humanoid"
-  total_timesteps = int(4e6)
+  total_timesteps = 4e6
 
 
 @train_ex.named_config
@@ -192,7 +191,7 @@ def reacher():
 def swimmer():
   env_name = "Swimmer-v2"
   rollout_hint = "swimmer"
-  total_timesteps = int(2e6)
+  total_timesteps = 2e6
   init_trainer_kwargs = dict(
       init_rl_kwargs=dict(
           policy_network_class=policies.MlpPolicy,
@@ -243,7 +242,7 @@ def fast():
   n_plot_episodes = 1
   init_trainer_kwargs = dict(
     parallel=False,  # easier to debug with everything in one process
-    max_episode_steps=int(1e2),
+    max_episode_steps=1e2,
     num_vec=2,
     init_rl_kwargs=dict(nminibatches=1),
   )
@@ -252,7 +251,7 @@ def fast():
 # Shared settings
 
 ant_shared_locals = dict(
-    timesteps=int(3e7),
+    timesteps=3e7,
     gen_batch_size=2048*8,
     disc_batch_size=2048*8,
     init_trainer_kwargs=dict(

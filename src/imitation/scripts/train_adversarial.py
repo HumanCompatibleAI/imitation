@@ -115,6 +115,8 @@ def train(_run,
       return value of `rollout_stats()` on the expert demonstrations loaded from
       `rollout_path`.
   """
+  total_timesteps = int(total_timesteps)
+
   tf.logging.info("Logging to %s", log_dir)
   os.makedirs(log_dir, exist_ok=True)
   sacred_util.build_sacred_symlink(log_dir, _run)

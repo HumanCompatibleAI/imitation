@@ -45,11 +45,17 @@ def parallel(sacred_ex_name: str,
     local_dir: `local_dir` argument to `ray.tune.run()`.
     upload_dir: `upload_dir` argument to `ray.tune.run()`.
   """
+  # Explicitly set `data_dir` if parallelizing `train_adversarial`.
+  # We need this to automatically find rollout pickles Ray will automatically
+  # change the working directory for each Raylet.
+  if sacred_ex_name == "train_adversarial":
+    if "data_dir" not in base_config_updates:
+      base_config_updates["data_dir"] = os.path.join(os.getcwd(), "data/")
+
   trainable = _ray_tune_sacred_wrapper(sacred_ex_name,
                                        run_name,
                                        base_named_configs,
-                                       base_config_updates,
-                                       working_directory=os.getcwd())
+                                       base_config_updates)
 
   # Disable all Ray Loggers.
   #
@@ -73,7 +79,6 @@ def _ray_tune_sacred_wrapper(sacred_ex_name: str,
                              run_name: str,
                              base_named_configs: list,
                              base_config_updates: dict,
-                             working_directory: str,
                              ) -> Callable:
   """From an Experiment build a wrapped run function suitable for Ray Tune.
 
@@ -103,12 +108,6 @@ def _ray_tune_sacred_wrapper(sacred_ex_name: str,
 
     observer = FileStorageObserver.create('sacred')
     ex.observers.append(observer)
-
-    # Add working directory hint if parallelizing `train_adversarial`.
-    # We need this to automatically find rollout pickles Ray will automatically
-    # change the working directory for each Raylet.
-    if sacred_ex_name == "train_adversarial":
-      base_config_updates["working_dir_hint"] = working_directory
 
     # Apply base configs
     base_named_configs.extend(config.get("named_configs", []))
