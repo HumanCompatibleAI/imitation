@@ -88,7 +88,7 @@ def calc_n_steps(init_trainer_kwargs, gen_batch_size):
 
 
 @train_ex.config
-def paths(env_name, log_root, rollout_hint, working_dir_hint, data_dir):
+def paths(env_name, log_root, rollout_hint, data_dir):
   log_dir = os.path.join(log_root, env_name.replace('/', '_'),
                          util.make_unique_timestamp())
 
