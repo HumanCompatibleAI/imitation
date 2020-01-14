@@ -1,4 +1,4 @@
-import os.path as osp
+import os
 from typing import Any, Callable, Dict, Optional
 
 import ray
@@ -45,6 +45,13 @@ def parallel(sacred_ex_name: str,
     local_dir: `local_dir` argument to `ray.tune.run()`.
     upload_dir: `upload_dir` argument to `ray.tune.run()`.
   """
+  # Explicitly set `data_dir` if parallelizing `train_adversarial`.
+  # We need this to automatically find rollout pickles Ray will automatically
+  # change the working directory for each Raylet.
+  if sacred_ex_name == "train_adversarial":
+    if "data_dir" not in base_config_updates:
+      base_config_updates["data_dir"] = os.path.join(os.getcwd(), "data/")
+
   trainable = _ray_tune_sacred_wrapper(sacred_ex_name,
                                        run_name,
                                        base_named_configs,
@@ -122,6 +129,6 @@ def _ray_tune_sacred_wrapper(sacred_ex_name: str,
 
 if __name__ == '__main__':
   observer = FileStorageObserver.create(
-      osp.join('output', 'sacred', 'parallel'))
+      os.path.join('output', 'sacred', 'parallel'))
   parallel_ex.observers.append(observer)
   parallel_ex.run_commandline()

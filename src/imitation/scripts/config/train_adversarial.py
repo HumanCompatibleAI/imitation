@@ -47,6 +47,7 @@ def train_defaults():
   checkpoint_interval = 5  # num epochs between checkpoints (<=0 disables)
   init_tensorboard = False  # If True, then write Tensorboard logs.
   rollout_hint = None  # Used to generate default rollout_path
+  data_dir = "data/"  # Default data directory
 
   # `gen_batch_size` must be a multiple of `init_trainer_kwargs.num_vec`.
   # (If using PPO2, then also must be a multiple of
@@ -87,17 +88,20 @@ def calc_n_steps(init_trainer_kwargs, gen_batch_size):
 
 
 @train_ex.config
-def paths(env_name, log_root, rollout_hint):
+def paths(env_name, log_root, rollout_hint, data_dir):
   log_dir = os.path.join(log_root, env_name.replace('/', '_'),
                          util.make_unique_timestamp())
+
   # Recommended that user sets rollout_path manually.
   # By default we guess the named config associated with `env_name`
   # and attempt to load rollouts from `data/expert_models/`.
   if rollout_hint is None:
     rollout_hint = env_name.split("-")[0].lower()
-  rollout_path = os.path.join("data/expert_models",
+  rollout_path = os.path.join(data_dir,
                               f"{rollout_hint}_0",
                               "rollouts", "final.pkl")
+
+  assert os.path.exists(rollout_path), rollout_path
 
 
 # Training algorithm named configs
@@ -238,7 +242,7 @@ def fast():
   n_plot_episodes = 1
   init_trainer_kwargs = dict(
     parallel=False,  # easier to debug with everything in one process
-    max_episode_steps=int(1e2),
+    max_episode_steps=1e2,
     num_vec=2,
     init_rl_kwargs=dict(nminibatches=1),
   )
