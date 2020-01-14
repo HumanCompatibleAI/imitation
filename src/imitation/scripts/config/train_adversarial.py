@@ -98,6 +98,7 @@ def paths(env_name, log_root, rollout_hint, data_dir):
   if rollout_hint is None:
     rollout_hint = env_name.split("-")[0].lower()
   rollout_path = os.path.join(data_dir,
+                              "expert_models",
                               f"{rollout_hint}_0",
                               "rollouts", "final.pkl")
 
