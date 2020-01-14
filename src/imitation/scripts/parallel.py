@@ -100,6 +100,7 @@ def _ray_tune_sacred_wrapper(sacred_ex_name: str,
     # are not picklable, and Ray requires this function to be picklable.
     from imitation.scripts.expert_demos import expert_demos_ex
     from imitation.scripts.train_adversarial import train_ex
+    import imitation.envs.examples  # noqa: F401
     experiments = {
       "expert_demos": expert_demos_ex,
       "train_adversarial": train_ex,
