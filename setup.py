@@ -60,6 +60,7 @@ setup(
     extras_require={
         'gpu': [f'tensorflow-gpu{TF_VERSION}'],
         'cpu': [f'tensorflow{TF_VERSION}'],
+        'mujoco': ['gym[mujoco]'],
         # recommended packages for development
         'dev': [
             'autopep8',
