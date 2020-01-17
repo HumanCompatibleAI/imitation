@@ -241,7 +241,7 @@ class AdversarialTrainer:
     return np.mean(self._sess.run(self.discrim.disc_loss, feed_dict=fd))
 
   def train_gen(self, total_timesteps: Optional[int] = None,
-                learn_kwargs: dict = None):
+                learn_kwargs: Optional[dict] = None):
     """Trains the generator to maximize the discriminator loss.
 
     After the end of training populates the generator replay buffer (used in
@@ -251,11 +251,13 @@ class AdversarialTrainer:
       total_timesteps: The number of transitions to sample from
         `self.venv_train_norm` during training. By default,
         `self.gen_batch_size`.
-      callback: Callback argument to the Stable Baselines `RLModel.learn()`
+      learn_kwargs: **kwargs for the Stable Baselines `RLModel.learn()`
         method.
     """
     if total_timesteps is None:
       total_timesteps = self.gen_batch_size
+    if learn_kwargs is None:
+      learn_kwargs = {}
 
     with logger.accumulate_means("gen"):
       self.gen_policy.set_env(self.venv_train_norm_buffering)
