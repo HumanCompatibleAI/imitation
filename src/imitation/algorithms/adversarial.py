@@ -229,12 +229,6 @@ class AdversarialTrainer:
   def eval_disc_loss(self, **kwargs) -> float:
     """Evaluates the discriminator loss.
 
-    The generator rollout parameters of the form "gen_*" are optional,
-    but if one is given, then all such parameters must be filled (otherwise
-    this method will error). If none of the generator rollout parameters are
-    given, then a rollout with the same length as the expert rollout
-    is generated on the fly.
-
     Args:
       gen_samples (Optional[rollout.Transitions]): Same as in `train_disc_step`.
       expert_samples (Optional[rollout.Transitions]): Same as in
@@ -272,7 +266,7 @@ class AdversarialTrainer:
 
   def train(self,
             total_timesteps: int,
-            callback: Optional[Callable[[bool], None]] = None,
+            callback: Optional[Callable[[int], None]] = None,
             ) -> None:
     """Alternates between training the generator and discriminator.
 
