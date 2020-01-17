@@ -76,7 +76,7 @@ parallel -j 25% --header : --results ${LOG_ROOT}/parallel/ --colsep , --progress
   log_dir="${LOG_ROOT}/{env_config_name}_{seed}/n_expert_demos_{n_expert_demos}" \
   gen_batch_size={gen_batch_size} \
   rollout_path=${EXPERT_MODELS_DIR}/{env_config_name}_0/rollouts/final.pkl \
-  checkpoint_interval=-1 \
+  checkpoint_interval=0 \
   n_expert_demos={n_expert_demos} \
   seed={seed} \
   :::: $CONFIG_CSV \
