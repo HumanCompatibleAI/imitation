@@ -41,10 +41,10 @@ class DiscrimNet(serialize.Serializable, ABC):
 
     self.build_graph()
 
-    assert self._disc_loss is not ...
-    assert self._policy_train_reward is not ...
-    assert self._policy_test_reward is not ...
-    assert self._disc_logits is not ...
+    assert self._disc_loss is not None
+    assert self._policy_train_reward is not None
+    assert self._policy_test_reward is not None
+    assert self._disc_logits is not None
 
     self._add_default_train_stats()
 
@@ -64,7 +64,7 @@ class DiscrimNet(serialize.Serializable, ABC):
     """
 
   def _add_default_train_stats(self) -> None:
-    """Updates `self._train_stats` with several default summary Tensors.
+    """Updates `self._train_stats` with several default scalar logging Tensors.
 
     Also creates a `tf.summary.histogram` for the `disc_logits`
     argument.
@@ -109,14 +109,14 @@ class DiscrimNet(serialize.Serializable, ABC):
       # accuracy, as well as accuracy on *just* expert examples and *just*
       # generated examples
       ('disc_acc', acc),
-      ('disc_acc_exp', expert_acc),
+      ('disc_acc_expert', expert_acc),
       ('disc_acc_gen', generated_acc),
       # entropy of the predicted label distribution, averaged equally across
       # both classes (if this collapses then disc is very good or has given up)
-      ('disc_ent', entropy),
-      # true number of expert demos vs. predicted number of expert demos
-      ('disc_pct_exp_true', pct_expert),
-      ('disc_pct_exp_pred', pct_expert_pred),
+      ('disc_entropy', entropy),
+      # true number of expert demos and predicted number of expert demos
+      ('disc_proportion_expert_true', pct_expert),
+      ('disc_proportion_expert_pred', pct_expert_pred),
     ])
 
   @property
