@@ -243,10 +243,6 @@ class AdversarialTrainer:
 
     with logger.accumulate_means("gen"):
       self.gen_policy.set_env(self.venv_train_norm_buffering)
-      # TODO(adam): learn was not intended to be called for each training batch
-      # It should work, but might incur unnecessary overhead: e.g. in PPO2
-      # a new Runner instance is created each time. Also a hotspot for errors:
-      # algorithms not tested for this use case, may reset state accidentally.
       self.gen_policy.learn(total_timesteps=total_timesteps,
                             reset_num_timesteps=False,
                             callback=callback)

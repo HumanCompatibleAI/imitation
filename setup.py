@@ -47,7 +47,11 @@ setup(
         'tqdm',
         'scikit-learn>=0.21.2',
         # TODO(adam): Change to >=2.10.0 once 2.10.0 released
-        'stable-baselines @ git+https://github.com/hill-a/stable-baselines.git',
+        # TODO(shwang): Point to hill-a/stable-baselines master branch once
+        # hill-a/stable-baselines#639 is merged.
+        ('stable-baselines @'
+         'git+https://github.com/shwang/baselines'
+         '@fix_low_timesteps_learn_SAFE'),
         # TODO(shwang): Change to PyPI release once >0.1.55 is released.
         # Needs https://github.com/google/jax/pull/1931
         'jax @ git+https://github.com/google/jax',
