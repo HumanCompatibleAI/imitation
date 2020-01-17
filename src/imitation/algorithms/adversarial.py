@@ -251,7 +251,7 @@ class AdversarialTrainer:
       total_timesteps: The number of transitions to sample from
         `self.venv_train_norm` during training. By default,
         `self.gen_batch_size`.
-      learn_kwargs: **kwargs for the Stable Baselines `RLModel.learn()`
+      learn_kwargs: kwargs for the Stable Baselines `RLModel.learn()`
         method.
     """
     if total_timesteps is None:
