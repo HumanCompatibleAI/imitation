@@ -49,8 +49,20 @@ def make_vec_env(env_name: str,
       max_episode_steps: If specified, wraps VecEnv in TimeLimit wrapper with
           this episode length before returning.
   """
+  # Resolve the spec outside of the subprocess first, so that it is available to
+  # subprocesses via automatic pickling.
+  spec = gym.spec(env_name)
+
   def make_env(i, this_seed):
-    env = gym.make(env_name)
+    # Previously, we directly called `gym.make(env_name)`.
+    #
+    # That direct approach was problematic (especially in combination with Ray)
+    # because the forkserver from which subprocesses are forked might have been
+    # spawned before `env_name` was registered in the main process,
+    # causing `env_name` to never exist in the Gym registry of the forked
+    # subprocess that is running `make_env(env_name)`.
+    env = spec.make()
+
     # Seed each environment with a different, non-sequential seed for diversity
     # (even if caller is passing us sequentially-assigned base seeds). int() is
     # necessary to work around gym bug where it chokes on numpy int64s.
