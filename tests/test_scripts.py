@@ -144,9 +144,9 @@ PARALLEL_CONFIG_UPDATES = [
   dict(
     sacred_ex_name="expert_demos",
     base_named_configs=["cartpole", "fast"],
+    n_seeds=2,
     search_space={
       "config_updates": {
-        "seed": tune.grid_search([0, 1]),
         "init_rl_kwargs": {
           "learning_rate": tune.grid_search([3e-4, 1e-4]),
         },
@@ -169,8 +169,17 @@ PARALLEL_CONFIG_UPDATES = [
         },
       }},
   ),
+  # Test that custom environments are passed to SubprocVecEnv in Ray workers.
+  dict(
+    sacred_ex_name="train_adversarial",
+    base_named_configs=["custom_ant", "fast"],
+    base_config_updates=dict(
+      init_trainer_kwargs=dict(
+        parallel=True,
+        num_vec=2,
+      )),
+  ),
 ]
-
 
 PARALLEL_CONFIG_LOW_RESOURCE = {
     # CI server only has 2 cores.
