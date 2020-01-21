@@ -50,17 +50,18 @@ def make_vec_env(env_name: str,
           this episode length before returning.
   """
   # Resolve the spec outside of the subprocess first, so that it is available to
-  # subprocesses via automatic pickling.
+  # subprocesses running `make_env` via automatic pickling.
   spec = gym.spec(env_name)
 
   def make_env(i, this_seed):
-    # Previously, we directly called `gym.make(env_name)`.
-    #
-    # That direct approach was problematic (especially in combination with Ray)
-    # because the forkserver from which subprocesses are forked might have been
-    # spawned before `env_name` was registered in the main process,
-    # causing `env_name` to never exist in the Gym registry of the forked
-    # subprocess that is running `make_env(env_name)`.
+    # Previously, we directly called `gym.make(env_name)`, but running
+    # `imitation.scripts.train_adversarial` within `imitation.scripts.parallel`
+    # created a weird interaction between Gym and Ray -- `gym.make` would fail
+    # inside this function for any of our custom environment unless those
+    # environments were also `gym.register()`ed inside `make_env`. Even
+    # registering the custom environment in the scope of `make_vec_env` didn't
+    # work. For more discussion and hypotheses on this issue see PR #160:
+    # https://github.com/HumanCompatibleAI/imitation/pull/160.
     env = spec.make()
 
     # Seed each environment with a different, non-sequential seed for diversity
