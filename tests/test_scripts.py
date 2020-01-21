@@ -193,7 +193,7 @@ def test_parallel(config_updates):
   assert run.status == 'COMPLETED'
 
 
-def _generate_custom_data(tmpdir: str, env_named_config: str) -> str:
+def _generate_test_rollouts(tmpdir: str, env_named_config: str) -> str:
   expert_demos_ex.run(
     named_configs=[env_named_config, "fast"],
     config_updates=dict(
@@ -206,7 +206,7 @@ def _generate_custom_data(tmpdir: str, env_named_config: str) -> str:
 
 def test_parallel_train_adversarial_custom_env(tmpdir):
   env_named_config = "custom_ant"
-  rollout_path = _generate_custom_data(tmpdir, env_named_config)
+  rollout_path = _generate_test_rollouts(tmpdir, env_named_config)
 
   config_updates = dict(
     sacred_ex_name="train_adversarial",
