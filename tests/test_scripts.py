@@ -144,9 +144,9 @@ PARALLEL_CONFIG_UPDATES = [
   dict(
     sacred_ex_name="expert_demos",
     base_named_configs=["cartpole", "fast"],
+    n_seeds=2,
     search_space={
       "config_updates": {
-        "seed": tune.grid_search([0, 1]),
         "init_rl_kwargs": {
           "learning_rate": tune.grid_search([3e-4, 1e-4]),
         },
@@ -171,7 +171,6 @@ PARALLEL_CONFIG_UPDATES = [
   ),
 ]
 
-
 PARALLEL_CONFIG_LOW_RESOURCE = {
     # CI server only has 2 cores.
     "init_kwargs": {"num_cpus": 2},
@@ -189,6 +188,39 @@ def test_parallel(config_updates):
   # No need for TemporaryDirectory because the hyperparameter tuning script
   # itself generates no artifacts, and "debug_log_root" sets inner experiment's
   # log_root="/tmp/parallel_debug/".
+  run = parallel_ex.run(named_configs=["debug_log_root"],
+                        config_updates=config_updates)
+  assert run.status == 'COMPLETED'
+
+
+def _generate_test_rollouts(tmpdir: str, env_named_config: str) -> str:
+  expert_demos_ex.run(
+    named_configs=[env_named_config, "fast"],
+    config_updates=dict(
+      rollout_save_interval=0,
+      log_dir=tmpdir,
+    ))
+  rollout_path = osp.abspath(f"{tmpdir}/rollouts/final.pkl")
+  return rollout_path
+
+
+def test_parallel_train_adversarial_custom_env(tmpdir):
+  env_named_config = "custom_ant"
+  rollout_path = _generate_test_rollouts(tmpdir, env_named_config)
+
+  config_updates = dict(
+    sacred_ex_name="train_adversarial",
+    n_seeds=1,
+    base_named_configs=[env_named_config, "fast"],
+    base_config_updates=dict(
+      init_trainer_kwargs=dict(
+        parallel=True,
+        num_vec=2,
+      ),
+      rollout_path=rollout_path,
+    ),
+  )
+  config_updates.update(PARALLEL_CONFIG_LOW_RESOURCE)
   run = parallel_ex.run(named_configs=["debug_log_root"],
                         config_updates=config_updates)
   assert run.status == 'COMPLETED'

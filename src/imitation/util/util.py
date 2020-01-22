@@ -45,11 +45,28 @@ def make_vec_env(env_name: str,
       seed: The environment seed.
       parallel: If True, uses SubprocVecEnv; otherwise, DummyVecEnv.
       log_dir: If specified, saves Monitor output to this directory.
-      max_episode_steps: If specified, wraps VecEnv in TimeLimit wrapper with
-          this episode length before returning.
+      max_episode_steps: If specified, wraps each env in a TimeLimit wrapper
+          with this episode length. If not specified and `max_episode_steps`
+          exists for this `env_name` in the Gym registry, uses the registry
+          `max_episode_steps` for every TimeLimit wrapper (this automatic
+          wrapper is the default behavior when calling `gym.make`). Otherwise
+          the environments are passed into the VecEnv unwrapped.
   """
+  # Resolve the spec outside of the subprocess first, so that it is available to
+  # subprocesses running `make_env` via automatic pickling.
+  spec = gym.spec(env_name)
+
   def make_env(i, this_seed):
-    env = gym.make(env_name)
+    # Previously, we directly called `gym.make(env_name)`, but running
+    # `imitation.scripts.train_adversarial` within `imitation.scripts.parallel`
+    # created a weird interaction between Gym and Ray -- `gym.make` would fail
+    # inside this function for any of our custom environment unless those
+    # environments were also `gym.register()`ed inside `make_env`. Even
+    # registering the custom environment in the scope of `make_vec_env` didn't
+    # work. For more discussion and hypotheses on this issue see PR #160:
+    # https://github.com/HumanCompatibleAI/imitation/pull/160.
+    env = spec.make()
+
     # Seed each environment with a different, non-sequential seed for diversity
     # (even if caller is passing us sequentially-assigned base seeds). int() is
     # necessary to work around gym bug where it chokes on numpy int64s.
@@ -57,6 +74,8 @@ def make_vec_env(env_name: str,
 
     if max_episode_steps is not None:
       env = TimeLimit(env, max_episode_steps)
+    elif spec.max_episode_steps is not None:
+      env = TimeLimit(env, max_episode_steps=spec.max_episode_steps)
 
     # Use Monitor to record statistics needed for Baselines algorithms logging
     # Optionally, save to disk
