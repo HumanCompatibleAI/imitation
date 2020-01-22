@@ -21,17 +21,17 @@ class BufferingWrapper(VecEnvWrapper):
     super().__init__(venv)
     self.error_on_premature_reset = error_on_premature_reset
     self._trajectories = []
-    self.n_resets = 0
+    self._init_reset = False
     self._traj_accum = None
     self._saved_acts = None
     self.n_transitions = None
 
   def reset(self, **kwargs):
-    if (self.n_resets > 0 and self.error_on_premature_reset
+    if (self._init_reset and self.error_on_premature_reset
         and self.n_transitions > 0):  # noqa: E127
       raise RuntimeError(
         "BufferingWrapper reset() before samples were accessed")
-    self.n_resets += 1
+    self._init_reset = True
     self.n_transitions = 0
     obs = self.venv.reset(**kwargs)
     self._traj_accum = rollout.TrajectoryAccumulator()
@@ -40,13 +40,13 @@ class BufferingWrapper(VecEnvWrapper):
     return obs
 
   def step_async(self, actions):
-    assert self.n_resets > 0
+    assert self._init_reset
     assert self._saved_acts is None
     self.venv.step_async(actions)
     self._saved_acts = actions
 
   def step_wait(self):
-    assert self.n_resets > 0
+    assert self._init_reset
     assert self._saved_acts is not None
     acts, self._saved_acts = self._saved_acts, None
     obs, rews, dones, infos = self.venv.step_wait()

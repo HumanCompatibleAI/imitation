@@ -51,7 +51,6 @@ class AdversarialTrainer:
                init_tensorboard: bool = False,
                init_tensorboard_graph: bool = False,
                debug_use_ground_truth: bool = False,
-               error_on_unexpected_policy_change: bool = True,
                ):
     """Builds Trainer.
 
@@ -88,19 +87,6 @@ class AdversarialTrainer:
           This disables the reward wrapping that would normally replace
           the environment reward with the learned reward. This is useful for
           sanity checking that the policy training is functional.
-        error_on_unexpected_policy_change: If True, then enable training
-          error that reports potentially harmful changes to the state of
-          `self.gen_policy.env`. Specifically, raise `ValueError`s if
-          `self.gen_policy.env`
-          has changed from `self.venv_train_norm_buffering` since
-          initialization or if `self.venv_train_norm_buffering` has
-          unexpectedly reset since initialization.
-
-          Note that these assertions
-          will fail if the user calls any rollout utility with a `venv` argument
-          (e.g.: `imitation.util.rollout.generate_transitions`) on
-          `self.gen_policy` and then continues to train this
-          `AdversarialTrainer`.
     """
     assert util.logger.is_configured(), ("Requires call to "
                                          "imitation.util.logger.configure")
@@ -115,7 +101,6 @@ class AdversarialTrainer:
     self.disc_minibatch_size = disc_minibatch_size
 
     self.debug_use_ground_truth = debug_use_ground_truth
-    self.error_on_unexpected_policy_change = error_on_unexpected_policy_change
 
     self.venv = venv
     self._expert_demos = expert_demos
@@ -269,13 +254,6 @@ class AdversarialTrainer:
       callback: Callback argument to the Stable Baselines `RLModel.learn()`
         method.
     """
-    if self.error_on_unexpected_policy_change:
-      if self.gen_policy.env is not self.venv_train_norm_buffering:
-        raise ValueError("Unexpected change to self.gen_policy.env")
-      if self.venv_train_norm_buffering.n_resets > 1:
-        raise ValueError("Unexpected extra reset detected in "
-                         "self.venv_train_norm_buffering")
-
     if total_timesteps is None:
       total_timesteps = self.gen_batch_size
 

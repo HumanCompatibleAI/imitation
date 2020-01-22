@@ -1,5 +1,4 @@
 """Tests for imitation.trainer.Trainer and util.trainer.init_trainer."""
-from contextlib import nullcontext
 import os
 import pickle
 
@@ -7,7 +6,6 @@ import pytest
 
 from imitation.algorithms.adversarial import init_trainer
 from imitation.util import rollout
-from imitation.util.buffering_wrapper import BufferingWrapper
 
 USE_GAIL = [True, False]
 IN_CODECOV = 'COV_CORE_CONFIG' in os.environ
@@ -22,10 +20,7 @@ def setup_and_teardown(session):
   yield
 
 
-def init_test_trainer(tmpdir: str,
-                      use_gail: bool = True,
-                      parallel: bool = False,
-                      **kwargs):
+def init_test_trainer(tmpdir: str, use_gail: bool, parallel: bool = False):
   with open("tests/data/expert_models/cartpole_0/rollouts/final.pkl",
             "rb") as f:
     trajs = pickle.load(f)
@@ -33,8 +28,7 @@ def init_test_trainer(tmpdir: str,
                       trajs,
                       log_dir=tmpdir,
                       use_gail=use_gail,
-                      parallel=parallel,
-                      **kwargs)
+                      parallel=parallel)
 
 
 @pytest.mark.parametrize("use_gail", USE_GAIL)
@@ -74,31 +68,3 @@ def test_train_disc_improve_D(tmpdir, use_gail, n_timesteps=200, n_steps=1000):
     trainer.train_disc_step(gen_samples=gen_samples)
   loss2 = trainer.eval_disc_loss(gen_samples=gen_samples)
   assert loss2 < loss1
-
-
-def test_error_on_unexpected_env_change(tmpdir):
-  # No `error_on_unexpected_policy_change=False` case because leads to
-  # other error.
-  trainer = init_test_trainer(
-    tmpdir=tmpdir,
-    trainer_kwargs=dict(error_on_unexpected_policy_change=True))
-
-  trainer.gen_policy.set_env(BufferingWrapper(trainer.venv_train_norm))
-  with pytest.raises(ValueError, match="Unexpected change to .*"):
-    trainer.train(1024)
-
-
-@pytest.mark.parametrize("errors_enabled", [True, False])
-def test_error_on_unexpected_env_reset(tmpdir, errors_enabled):
-  if errors_enabled:
-    ctx = pytest.raises(ValueError, match="Unexpected extra reset .*")
-  else:
-    ctx = nullcontext()
-
-  trainer = init_test_trainer(
-    tmpdir=tmpdir,
-    trainer_kwargs=dict(error_on_unexpected_policy_change=errors_enabled))
-  trainer.train(1024)
-  trainer.venv_train_norm_buffering.reset()
-  with ctx:
-    trainer.train(1024)
