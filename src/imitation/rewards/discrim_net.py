@@ -19,7 +19,10 @@ class DiscrimNet(serialize.Serializable, ABC):
   def __init__(self):
     self._sess = tf.get_default_session()
 
-    self._train_stats = collections.OrderedDict()
+    # Dict from names to scalar Tensors that are logged by
+    # `AdversarialTrainer.train_disc_step`.
+    self._train_stats = collections.OrderedDict()  # type: Dict[str, tf.Tensor]
+
     # Build necessary placeholders, then construct rest of the graph.
     # _labels_ph holds the label of every state-action pair that the
     # discriminator is being trained on. Use 0.0 for expert policy. Use 1.0 for
@@ -103,9 +106,14 @@ class DiscrimNet(serialize.Serializable, ABC):
     label_dist = tf.distributions.Bernoulli(logits=self._disc_logits)
     entropy = tf.reduce_mean(label_dist.entropy())
 
+    disc_xent = tf.reduce_mean(
+      tf.nn.sigmoid_cross_entropy_with_logits(
+        logits=self._disc_logits,
+        labels=tf.cast(self.labels_ph, tf.float32)))
+
     self._train_stats.update([
-      # basic xent loss
-      ('disc_xent', tf.reduce_mean(self._disc_loss)),
+      ('disc_loss', tf.reduce_mean(self._disc_loss)),
+      ('disc_xent', disc_xent),
       # accuracy, as well as accuracy on *just* expert examples and *just*
       # generated examples
       ('disc_acc', acc),
@@ -399,8 +407,8 @@ class DiscrimNetGAIL(DiscrimNet, serialize.LayersSerializable):
     self._build_discrim_net = build_discrim_net
     self._build_discrim_net_kwargs = build_discrim_net_kwargs or {}
 
-    # builds graph
     self._disc_mlp = None
+    # Builds graph via call to `self.build_graph()`.
     DiscrimNet.__init__(self)
     assert self._disc_mlp is not None
 
