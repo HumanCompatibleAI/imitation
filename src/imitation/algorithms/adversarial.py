@@ -133,6 +133,7 @@ class AdversarialTrainer:
 
     self.venv_train_norm = VecNormalize(self.venv_train)
     self.venv_train_norm_buffering = BufferingWrapper(self.venv_train_norm)
+    self.gen_policy.set_env(self.venv_train_norm_buffering)
 
     if gen_replay_buffer_capacity is None:
       gen_replay_buffer_capacity = 20 * self.gen_batch_size
@@ -260,7 +261,6 @@ class AdversarialTrainer:
       learn_kwargs = {}
 
     with logger.accumulate_means("gen"):
-      self.gen_policy.set_env(self.venv_train_norm_buffering)
       self.gen_policy.learn(total_timesteps=total_timesteps,
                             reset_num_timesteps=False,
                             **learn_kwargs)
