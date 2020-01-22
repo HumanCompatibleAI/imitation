@@ -46,8 +46,12 @@ def make_vec_env(env_name: str,
       seed: The environment seed.
       parallel: If True, uses SubprocVecEnv; otherwise, DummyVecEnv.
       log_dir: If specified, saves Monitor output to this directory.
-      max_episode_steps: If specified, wraps VecEnv in TimeLimit wrapper with
-          this episode length before returning.
+      max_episode_steps: If specified, wraps each env in a TimeLimit wrapper
+          with this episode length. If not specified and `max_episode_steps`
+          exists for this VecEnv in the Gym registry, uses the registry value
+          for every TimeLimit wrapper (this is the default behavior when calling
+          `gym.make`). Otherwise the environments are passed into the VecEnv
+          unwrapped.
   """
   # Resolve the spec outside of the subprocess first, so that it is available to
   # subprocesses running `make_env` via automatic pickling.
