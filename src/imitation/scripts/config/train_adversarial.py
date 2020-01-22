@@ -44,7 +44,7 @@ def train_defaults():
   )
 
   log_root = os.path.join("output", "train_adversarial")  # output directory
-  checkpoint_interval = 5  # num epochs between checkpoints (<=0 disables)
+  checkpoint_interval = 0  # num epochs between checkpoints (<0 disables)
   init_tensorboard = False  # If True, then write Tensorboard logs.
   rollout_hint = None  # Used to generate default rollout_path
   data_dir = "data/"  # Default data directory

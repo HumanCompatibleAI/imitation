@@ -241,7 +241,8 @@ class AdversarialTrainer:
     fd = self._build_disc_feed_dict(**kwargs)
     return np.mean(self._sess.run(self.discrim.disc_loss, feed_dict=fd))
 
-  def train_gen(self, total_timesteps: Optional[int] = None, callback=None):
+  def train_gen(self, total_timesteps: Optional[int] = None,
+                learn_kwargs: Optional[dict] = None):
     """Trains the generator to maximize the discriminator loss.
 
     After the end of training populates the generator replay buffer (used in
@@ -251,16 +252,18 @@ class AdversarialTrainer:
       total_timesteps: The number of transitions to sample from
         `self.venv_train_norm` during training. By default,
         `self.gen_batch_size`.
-      callback: Callback argument to the Stable Baselines `RLModel.learn()`
+      learn_kwargs: kwargs for the Stable Baselines `RLModel.learn()`
         method.
     """
     if total_timesteps is None:
       total_timesteps = self.gen_batch_size
+    if learn_kwargs is None:
+      learn_kwargs = {}
 
     with logger.accumulate_means("gen"):
       self.gen_policy.learn(total_timesteps=total_timesteps,
                             reset_num_timesteps=False,
-                            callback=callback)
+                            **learn_kwargs)
       gen_samples = self.venv_train_norm_buffering.pop_transitions()
       self._gen_replay_buffer.store(gen_samples)
 
@@ -291,7 +294,7 @@ class AdversarialTrainer:
     for epoch in tqdm.tqdm(range(0, n_epochs), desc="epoch"):
       self.train_gen(self.gen_batch_size)
       self.train_disc(self.disc_batch_size)
-      if callback is not None:
+      if callback:
         callback(epoch)
       util.logger.dumpkvs()
 

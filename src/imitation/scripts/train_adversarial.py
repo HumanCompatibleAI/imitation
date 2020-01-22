@@ -94,8 +94,9 @@ def train(_run,
     init_tensorboard: If True, then write tensorboard logs to `{log_dir}/sb_tb`.
 
     checkpoint_interval: Save the discriminator and generator models every
-      `checkpoint_interval` epochs and after training is complete. If <=0,
-      then only save weights after training is complete.
+      `checkpoint_interval` epochs and after training is complete. If 0,
+      then only save weights after training is complete. If <0, then don't
+      save weights at all.
 
   Returns:
     A dictionary with two keys. "imit_stats" gives the return value of
@@ -139,7 +140,8 @@ def train(_run,
     trainer.train(total_timesteps, callback)
 
     # Save final artifacts.
-    save(trainer, os.path.join(log_dir, "checkpoints", "final"))
+    if checkpoint_interval >= 0:
+      save(trainer, os.path.join(log_dir, "checkpoints", "final"))
 
     # Final evaluation of imitation policy.
     results = {}
