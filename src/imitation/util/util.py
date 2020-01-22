@@ -71,7 +71,7 @@ def make_vec_env(env_name: str,
 
     if max_episode_steps is not None:
       env = TimeLimit(env, max_episode_steps)
-    elif (spec.max_episode_steps is not None) and not spec.tags.get('vnc'):
+    elif spec.max_episode_steps is not None:
       env = TimeLimit(env, max_episode_steps=spec.max_episode_steps)
 
     # Use Monitor to record statistics needed for Baselines algorithms logging
