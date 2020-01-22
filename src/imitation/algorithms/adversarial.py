@@ -1,12 +1,13 @@
 from functools import partial
 import os
-from typing import Optional, Sequence
+from typing import Callable, Optional, Sequence
 from warnings import warn
 
 import numpy as np
 from stable_baselines.common.base_class import BaseRLModel
 from stable_baselines.common.vec_env import VecEnv, VecNormalize
 import tensorflow as tf
+import tqdm
 
 import imitation.rewards.discrim_net as discrim_net
 from imitation.rewards.reward_net import BasicShapedRewardNet
@@ -225,42 +226,8 @@ class AdversarialTrainer:
         logger.logkv(k, v)
       logger.dumpkvs()
 
-  def train_gen(self, total_timesteps: Optional[int] = None, callback=None):
-    """Trains the generator to maximize the discriminator loss.
-
-    After the end of training populates the generator replay buffer (used in
-    discriminator training) with `self.disc_batch_size` transitions.
-
-    Args:
-      total_timesteps: The number of transitions to sample from
-        `self.venv_train_norm` during training. By default,
-        `self.gen_batch_size`.
-      callback: Callback argument to the Stable Baselines `RLModel.learn()`
-        method.
-    """
-    if total_timesteps is None:
-      total_timesteps = self.gen_batch_size
-
-    with logger.accumulate_means("gen"):
-      self.gen_policy.set_env(self.venv_train_norm_buffering)
-      # TODO(adam): learn was not intended to be called for each training batch
-      # It should work, but might incur unnecessary overhead: e.g. in PPO2
-      # a new Runner instance is created each time. Also a hotspot for errors:
-      # algorithms not tested for this use case, may reset state accidentally.
-      self.gen_policy.learn(total_timesteps=total_timesteps,
-                            reset_num_timesteps=False,
-                            callback=callback)
-      gen_samples = self.venv_train_norm_buffering.pop_transitions()
-      self._gen_replay_buffer.store(gen_samples)
-
   def eval_disc_loss(self, **kwargs) -> float:
     """Evaluates the discriminator loss.
-
-    The generator rollout parameters of the form "gen_*" are optional,
-    but if one is given, then all such parameters must be filled (otherwise
-    this method will error). If none of the generator rollout parameters are
-    given, then a rollout with the same length as the expert rollout
-    is generated on the fly.
 
     Args:
       gen_samples (Optional[rollout.Transitions]): Same as in `train_disc_step`.
@@ -272,6 +239,64 @@ class AdversarialTrainer:
     """
     fd = self._build_disc_feed_dict(**kwargs)
     return np.mean(self._sess.run(self.discrim.disc_loss, feed_dict=fd))
+
+  def train_gen(self, total_timesteps: Optional[int] = None,
+                learn_kwargs: Optional[dict] = None):
+    """Trains the generator to maximize the discriminator loss.
+
+    After the end of training populates the generator replay buffer (used in
+    discriminator training) with `self.disc_batch_size` transitions.
+
+    Args:
+      total_timesteps: The number of transitions to sample from
+        `self.venv_train_norm` during training. By default,
+        `self.gen_batch_size`.
+      learn_kwargs: kwargs for the Stable Baselines `RLModel.learn()`
+        method.
+    """
+    if total_timesteps is None:
+      total_timesteps = self.gen_batch_size
+    if learn_kwargs is None:
+      learn_kwargs = {}
+
+    with logger.accumulate_means("gen"):
+      self.gen_policy.set_env(self.venv_train_norm_buffering)
+      self.gen_policy.learn(total_timesteps=total_timesteps,
+                            reset_num_timesteps=False,
+                            **learn_kwargs)
+      gen_samples = self.venv_train_norm_buffering.pop_transitions()
+      self._gen_replay_buffer.store(gen_samples)
+
+  def train(self,
+            total_timesteps: int,
+            callback: Optional[Callable[[int], None]] = None,
+            ) -> None:
+    """Alternates between training the generator and discriminator.
+
+    Every epoch consists of a call to `train_gen(self.gen_batch_size)`,
+    a call to `train_disc(self.disc_batch_size)`, and
+    finally a call to `callback(epoch)`.
+
+    Training ends once an additional epoch would cause the number of transitions
+    sampled from the environment to exceed `total_timesteps`.
+
+    Params:
+      total_timesteps: An upper bound on the number of transitions to sample
+        from the environment during training.
+      callback: A function called at the end of every epoch which takes in a
+        single argument, the epoch number. Epoch numbers are in
+        `range(total_timesteps // self.gen_batch_size)`.
+    """
+    n_epochs = total_timesteps // self.gen_batch_size
+    assert n_epochs >= 1, ("No updates (need at least "
+                           f"{self.gen_batch_size} timesteps, have only "
+                           f"total_timesteps={total_timesteps})!")
+    for epoch in tqdm.tqdm(range(0, n_epochs), desc="epoch"):
+      self.train_gen(self.gen_batch_size)
+      self.train_disc(self.disc_batch_size)
+      if callback:
+        callback(epoch)
+      util.logger.dumpkvs()
 
   def _build_graph(self):
     # Build necessary parts of the TF graph. Most of the real action happens in

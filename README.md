@@ -7,20 +7,26 @@ This project aims to provide clean implementations of imitation learning algorit
 Currently we have implementations of [AIRL](https://arxiv.org/abs/1710.11248) and 
 [GAIL](https://arxiv.org/abs/1606.03476), and intend to add more in the future.
 
-To install:
+### To install:
 ```
 conda create -n imitation python=3.8  # python 3.7 and virtualenv are also okay.
 conda activate imitation
 pip install -e '.[dev]'  # install `imitation` in developer mode
 ```
 
-To run:
+### Optional Mujoco Dependency:
+
+Follow instructions to install [mujoco_py v1.5 here](https://github.com/openai/mujoco-py/tree/498b451a03fb61e5bdfcb6956d8d7c881b1098b5#install-mujoco).
+
+### To run:
 ```
 # Train PPO2 agent on cartpole and collect expert demonstrations
 python -m imitation.scripts.expert_demos with cartpole
 # Train AIRL on from demonstrations
 python -m imitation.scripts.train_adversarial with cartpole airl
 ```
+View Tensorboard with `tensorboard --logdir output/`.
+
 
 # Contributing
   * Follow the [Google Python Style Guide](http://google.github.io/styleguide/pyguide.html). Examples of Google-style
