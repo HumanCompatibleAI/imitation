@@ -24,11 +24,11 @@ class DiscrimNet(serialize.Serializable, ABC):
     self._train_stats = collections.OrderedDict()  # type: Dict[str, tf.Tensor]
 
     # Build necessary placeholders, then construct rest of the graph.
-    # _labels_ph holds the label of every state-action pair that the
+    # _labels_gen_is_one_ph holds the label of every state-action pair that the
     # discriminator is being trained on. Use 0.0 for expert policy. Use 1.0 for
     # generated policy.
-    self._labels_ph = tf.placeholder(shape=(None,), dtype=tf.int32,
-                                     name="discrim_labels")
+    self._labels_gen_is_one_ph = tf.placeholder(
+      shape=(None,), dtype=tf.int32, name="discrim_labels_gen_is_one")
     # This placeholder holds the generator-policy log action probabilities,
     # $\log \pi(a \mid s)$, of each state-action pair. This includes both
     # actions taken by the generator *and* those by the expert (we can
@@ -40,16 +40,17 @@ class DiscrimNet(serialize.Serializable, ABC):
     self._disc_loss = None  # type: tf.Tensor
     self._policy_train_reward = None  # type: tf.Tensor
     self._policy_test_reward = None  # type: tf.Tensor
-    self._disc_logits = None  # type: tf.Tensor
+    self._disc_logits_gen_is_high = None  # type: tf.Tensor
 
     self.build_graph()
 
     assert self._disc_loss is not None
     assert self._policy_train_reward is not None
     assert self._policy_test_reward is not None
-    assert self._disc_logits is not None
+    assert self._disc_logits_gen_is_high is not None
 
     self._add_default_train_stats()
+    tf.summary.histogram("disc_logits", self.disc_logits_gen_is_high)
 
   @property
   @abstractmethod
@@ -70,14 +71,23 @@ class DiscrimNet(serialize.Serializable, ABC):
     pass
 
   @property
-  def labels_ph(self):
+  def labels_gen_is_one_ph(self):
     """The expert (0.0) or generated (1.0) labels placeholder."""
-    return self._labels_ph
+    return self._labels_gen_is_one_ph
 
   @property
   def log_policy_act_prob_ph(self):
     """The log-probability of policy actions placeholder."""
     return self._log_policy_act_prob_ph
+
+  @property
+  def disc_logits_gen_is_high(self) -> tf.Tensor:
+    """The discriminator's logits for each state-action sample.
+
+    A high value corresponds to predicting generator, and a low value
+    corresponds to predicting expert.
+    """
+    return self._disc_logits_gen_is_high
 
   @property
   def disc_loss(self) -> tf.Tensor:
@@ -113,22 +123,14 @@ class DiscrimNet(serialize.Serializable, ABC):
 
   def _add_default_train_stats(self) -> None:
     """Updates `self._train_stats` with several default scalar logging Tensors.
-
-    Also creates a `tf.summary.histogram` for the `disc_logits`
-    argument.
-
-    Params:
-      disc_logits: A rank-1 Tensor containing binary logit for expert
-        (positive value) versus generator (negative values).
     """
-    tf.summary.histogram("disc_logits", self._disc_logits)
-    bin_is_generated_pred = self._disc_logits > 0
-    bin_is_generated_true = self._labels_ph > 0
+    bin_is_generated_pred = self.disc_logits_gen_is_high > 0
+    bin_is_generated_true = self.labels_gen_is_one_ph > 0
     bin_is_expert_true = tf.logical_not(bin_is_generated_true)
     int_is_generated_pred = tf.cast(bin_is_generated_pred, tf.int32)
     int_is_generated_true = tf.cast(bin_is_generated_true, tf.int32)
     n_generated = tf.reduce_sum(int_is_generated_true)
-    n_labels = tf.size(self._labels_ph)
+    n_labels = tf.size(self.labels_gen_is_one_ph)
     n_expert = n_labels - n_generated
     pct_expert = tf.cast(n_expert, tf.float32) / tf.cast(n_labels, tf.float32)
     n_expert_pred = (tf.size(bin_is_generated_pred)
@@ -148,13 +150,13 @@ class DiscrimNet(serialize.Serializable, ABC):
     _n_gen_or_1 = tf.cast(tf.maximum(1, n_generated), tf.float32)
     generated_acc = _n_pred_gen / _n_gen_or_1
 
-    label_dist = tf.distributions.Bernoulli(logits=self._disc_logits)
+    label_dist = tf.distributions.Bernoulli(logits=self.disc_logits_gen_is_high)
     entropy = tf.reduce_mean(label_dist.entropy())
 
     disc_xent = tf.reduce_mean(
       tf.nn.sigmoid_cross_entropy_with_logits(
-        logits=self._disc_logits,
-        labels=tf.cast(self.labels_ph, tf.float32)))
+        logits=self.disc_logits_gen_is_high,
+        labels=tf.cast(self.labels_gen_is_one_ph, tf.float32)))
 
     self._train_stats.update([
       ('disc_loss', tf.reduce_mean(self._disc_loss)),
@@ -215,7 +217,7 @@ class DiscrimNet(serialize.Serializable, ABC):
         self.obs_ph: obs,
         self.act_ph: act,
         self.next_obs_ph: next_obs,
-        self.labels_ph: np.ones(n_gen),
+        self.labels_gen_is_one_ph: np.ones(n_gen),
         self.log_policy_act_prob_ph: log_act_prob,
     }
     rew = self._sess.run(self.policy_train_reward, feed_dict=fd)
@@ -294,22 +296,26 @@ class DiscrimNetAIRL(DiscrimNet):
   def build_graph(self):
     # The AIRL discriminator is trained with the cross-entropy loss between
     # expert demonstrations and generated samples.
-
-    # Construct discriminator logits: $f_{\theta}(s,a)$, predicted rewards,
-    # and $\log \pi(a \mid s)$, generator-policy log action probabilities.
-    _presoftmax_disc_logits = tf.stack(
-        [self.reward_net.reward_output_train, self.log_policy_act_prob_ph],
-        axis=1, name="presoftmax_discriminator_logits")  # (None, 2)
+    self._disc_logits_gen_is_high = (
+      self.log_policy_act_prob_ph - self.reward_net.reward_output_train)
 
     # Construct discriminator loss.
-    self._disc_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(
-        labels=self.labels_ph,
-        logits=_presoftmax_disc_logits,
-        name="disc_loss",
+    self._disc_loss = tf.nn.sigmoid_cross_entropy_with_logits(
+      labels=tf.cast(self.labels_gen_is_one_ph, tf.float32),
+      logits=self._disc_logits_gen_is_high,
+      name="disc_loss",
     )  # (None,)
 
-    softmax_disc_logits = tf.nn.log_softmax(_presoftmax_disc_logits)
-    self._disc_logits = softmax_disc_logits[:, 0] - softmax_disc_logits[:, 1]
+    # Doesn't seem necessary, actually. (These flipped labels don't
+    # carry over to `self._policy_*_reward` because we cancelled out the
+    # discriminator terms.)
+    disc_logits_expert_is_high = 1 - self._disc_logits_gen_is_high
+    labels_expert_is_one = 1 - self.labels_gen_is_one_ph
+    disc_loss_paper_order = tf.nn.sigmoid_cross_entropy_with_logits(  # noqa: F841, E501
+      labels=tf.cast(labels_expert_is_one, tf.float32),
+      logits=disc_logits_expert_is_high,
+      name="disc_loss",
+    )
 
     # Construct generator reward:
     # \[\hat{r}(s,a) = \log(D_{\theta}(s,a)) - \log(1 - D_{\theta}(s,a)).\]
@@ -433,14 +439,15 @@ class DiscrimNetGAIL(DiscrimNet, serialize.LayersSerializable):
     inputs = util.build_inputs(self._observation_space, self._action_space,
                                scale=self._scale)
     self._obs_ph, self._act_ph, self._next_obs_ph = inputs[:3]
-    self.obs_inp, self.act_inp, self.next_obs_inp = inputs[3:]
+    self.obs_input, self.act_input, _ = inputs[3:]
 
     with tf.variable_scope("discrim_network"):
-      self._disc_mlp, self._disc_logits = self._build_discrim_net(
-          self.obs_inp, self.act_inp, **self._build_discrim_net_kwargs)
+      self._disc_mlp, self._disc_logits_gen_is_high = self._build_discrim_net(
+          self.obs_input, self.act_input, **self._build_discrim_net_kwargs)
     self._policy_test_reward = self._policy_train_reward \
-        = -tf.log_sigmoid(self._disc_logits)
+        = -tf.log_sigmoid(self._disc_logits_gen_is_high)
 
     self._disc_loss = tf.nn.sigmoid_cross_entropy_with_logits(
-        logits=self._disc_logits,
-        labels=tf.cast(self.labels_ph, tf.float32))
+        logits=self._disc_logits_gen_is_high,
+        labels=tf.cast(self.labels_gen_is_one_ph, tf.float32),
+    )

@@ -353,8 +353,8 @@ class AdversarialTrainer:
     obs = np.concatenate([expert_obs_norm, gen_samples.obs])
     acts = np.concatenate([expert_samples.acts, gen_samples.acts])
     next_obs = np.concatenate([expert_samples.next_obs, gen_samples.next_obs])
-    labels = np.concatenate([np.zeros(n_expert, dtype=int),
-                             np.ones(n_gen, dtype=int)])
+    labels_gen_is_one = np.concatenate([np.zeros(n_expert, dtype=int),
+                                        np.ones(n_gen, dtype=int)])
 
     # Calculate generator-policy log probabilities.
     log_act_prob = self._gen_policy.action_probability(obs, actions=acts,
@@ -366,7 +366,7 @@ class AdversarialTrainer:
         self.discrim.obs_ph: obs,
         self.discrim.act_ph: acts,
         self.discrim.next_obs_ph: next_obs,
-        self.discrim.labels_ph: labels,
+        self.discrim.labels_gen_is_one_ph: labels_gen_is_one,
         self.discrim.log_policy_act_prob_ph: log_act_prob,
     }
     return fd
