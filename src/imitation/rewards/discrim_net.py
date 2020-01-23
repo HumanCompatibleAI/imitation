@@ -294,8 +294,6 @@ class DiscrimNetAIRL(DiscrimNet):
     return self.reward_net.next_obs_ph
 
   def build_graph(self):
-    # The AIRL discriminator is trained with the cross-entropy loss between
-    # expert demonstrations and generated samples.
     self._disc_logits_gen_is_high = (
       self.log_policy_act_prob_ph - self.reward_net.reward_output_train)
 
@@ -305,17 +303,6 @@ class DiscrimNetAIRL(DiscrimNet):
       logits=self._disc_logits_gen_is_high,
       name="disc_loss",
     )  # (None,)
-
-    # Doesn't seem necessary, actually. (These flipped labels don't
-    # carry over to `self._policy_*_reward` because we cancelled out the
-    # discriminator terms.)
-    disc_logits_expert_is_high = 1 - self._disc_logits_gen_is_high
-    labels_expert_is_one = 1 - self.labels_gen_is_one_ph
-    disc_loss_paper_order = tf.nn.sigmoid_cross_entropy_with_logits(  # noqa: F841, E501
-      labels=tf.cast(labels_expert_is_one, tf.float32),
-      logits=disc_logits_expert_is_high,
-      name="disc_loss",
-    )
 
     # Construct generator reward:
     # \[\hat{r}(s,a) = \log(D_{\theta}(s,a)) - \log(1 - D_{\theta}(s,a)).\]
