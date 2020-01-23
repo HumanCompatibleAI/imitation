@@ -51,6 +51,51 @@ class DiscrimNet(serialize.Serializable, ABC):
 
     self._add_default_train_stats()
 
+  @property
+  @abstractmethod
+  def obs_ph(self):
+    """The previous observation placeholder."""
+    pass
+
+  @property
+  @abstractmethod
+  def act_ph(self):
+    """The action placeholder."""
+    pass
+
+  @property
+  @abstractmethod
+  def next_obs_ph(self):
+    """The new observation placeholder."""
+    pass
+
+  @property
+  def labels_ph(self):
+    """The expert (0.0) or generated (1.0) labels placeholder."""
+    return self._labels_ph
+
+  @property
+  def log_policy_act_prob_ph(self):
+    """The log-probability of policy actions placeholder."""
+    return self._log_policy_act_prob_ph
+
+  @property
+  def disc_loss(self) -> tf.Tensor:
+    return self._disc_loss  # pytype: disable=attribute-error
+
+  @property
+  def policy_train_reward(self) -> tf.Tensor:
+    return self._policy_train_reward  # pytype: disable=attribute-error
+
+  @property
+  def policy_test_reward(self) -> tf.Tensor:
+    return self._policy_test_reward  # pytype: disable=attribute-error
+
+  @property
+  def train_stats(self) -> Dict[str, tf.Tensor]:
+    """A feed dictionary of scalar Tensors to be logged during training."""
+    return self._train_stats
+
   @abstractmethod
   def build_graph(self):
     """Builds forward prop graph, reward, loss, and summary ops. Gets called
@@ -126,23 +171,6 @@ class DiscrimNet(serialize.Serializable, ABC):
       ('disc_proportion_expert_true', pct_expert),
       ('disc_proportion_expert_pred', pct_expert_pred),
     ])
-
-  @property
-  def disc_loss(self) -> tf.Tensor:
-    return self._disc_loss  # pytype: disable=attribute-error
-
-  @property
-  def policy_train_reward(self) -> tf.Tensor:
-    return self._policy_train_reward  # pytype: disable=attribute-error
-
-  @property
-  def policy_test_reward(self) -> tf.Tensor:
-    return self._policy_test_reward  # pytype: disable=attribute-error
-
-  @property
-  def train_stats(self) -> Dict[str, tf.Tensor]:
-    """A feed dictionary of scalar Tensors to be logged during training."""
-    return self._train_stats
 
   def reward_train(
     self,
@@ -224,34 +252,6 @@ class DiscrimNet(serialize.Serializable, ABC):
     rew = self._sess.run(self.policy_test_reward, feed_dict=fd)
     assert rew.shape == (len(obs),)
     return rew
-
-  @property
-  @abstractmethod
-  def obs_ph(self):
-    """The previous observation placeholder."""
-    pass
-
-  @property
-  @abstractmethod
-  def act_ph(self):
-    """The action placeholder."""
-    pass
-
-  @property
-  @abstractmethod
-  def next_obs_ph(self):
-    """The new observation placeholder."""
-    pass
-
-  @property
-  def labels_ph(self):
-    """The expert (0.0) or generated (1.0) labels placeholder."""
-    return self._labels_ph
-
-  @property
-  def log_policy_act_prob_ph(self):
-    """The log-probability of policy actions placeholder."""
-    return self._log_policy_act_prob_ph
 
 
 class DiscrimNetAIRL(DiscrimNet):
