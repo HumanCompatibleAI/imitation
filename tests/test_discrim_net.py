@@ -59,7 +59,7 @@ def test_serialize_identity(session, env_name, discrim_net_cls, tmpdir):
         net.obs_ph: transitions.obs,
         net.act_ph: transitions.acts,
         net.next_obs_ph: transitions.next_obs,
-        net.labels_ph: labels,
+        net.labels_gen_is_one_ph: labels,
         net.log_policy_act_prob_ph: log_prob,
     })
     outputs['train'].append(net.policy_train_reward)
