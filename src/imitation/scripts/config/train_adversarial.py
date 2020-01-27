@@ -121,19 +121,30 @@ def airl():
   )
 
 
-# Standard Gym environment named configs
+# Shared settings
+
+MUJOCO_SHARED_LOCALS = dict(
+  init_trainer_kwargs=dict(
+    airl_entropy_weight=0.1,
+  ),
+)
+
+ANT_SHARED_LOCALS = dict(
+  total_timesteps=3e7,
+  gen_batch_size=2048*8,
+  disc_batch_size=2048*8,
+  init_trainer_kwargs=dict(
+    max_episode_steps=500,  # To match `inverse_rl` settings.
+  ),
+)
+
+
+# Classic RL Gym environment named configs
 
 @train_ex.named_config
 def acrobot():
   env_name = "Acrobot-v1"
   rollout_hint = "acrobot"
-
-
-@train_ex.named_config
-def ant():
-  env_name = "Ant-v2"
-  rollout_hint = "ant"
-  locals().update(**ant_shared_locals)
 
 
 @train_ex.named_config
@@ -143,31 +154,6 @@ def cartpole():
   init_trainer_kwargs = dict(
       scale=False,
   )
-
-
-@train_ex.named_config
-def half_cheetah():
-  env_name = "HalfCheetah-v2"
-  rollout_hint = "half_cheetah"
-  total_timesteps = 2e6
-
-  init_trainer_kwargs = dict(
-      airl_entropy_weight=0.1,
-  )
-
-
-@train_ex.named_config
-def hopper():
-  # TODO(adam): upgrade to Hopper-v3?
-  env_name = "Hopper-v2"
-  rollout_hint = "hopper"
-
-
-@train_ex.named_config
-def humanoid():
-  env_name = "Humanoid-v2"
-  rollout_hint = "humanoid"
-  total_timesteps = 4e6
 
 
 @train_ex.named_config
@@ -182,14 +168,43 @@ def pendulum():
   rollout_hint = "pendulum"
 
 
+# Standard MuJoCo Gym environment named configs
+
 @train_ex.named_config
-def reacher():
-  env_name = "Reacher-v2"
-  rollout_hint = "reacher"
+def ant():
+  locals().update(**MUJOCO_SHARED_LOCALS)
+  locals().update(**ANT_SHARED_LOCALS)
+  env_name = "Ant-v2"
+  rollout_hint = "ant"
+
+
+@train_ex.named_config
+def half_cheetah():
+  locals().update(**MUJOCO_SHARED_LOCALS)
+  env_name = "HalfCheetah-v2"
+  rollout_hint = "half_cheetah"
+  total_timesteps = 2e6
+
+
+@train_ex.named_config
+def hopper():
+  locals().update(**MUJOCO_SHARED_LOCALS)
+  # TODO(adam): upgrade to Hopper-v3?
+  env_name = "Hopper-v2"
+  rollout_hint = "hopper"
+
+
+@train_ex.named_config
+def humanoid():
+  locals().update(**MUJOCO_SHARED_LOCALS)
+  env_name = "Humanoid-v2"
+  rollout_hint = "humanoid"
+  total_timesteps = 4e6
 
 
 @train_ex.named_config
 def swimmer():
+  locals().update(**MUJOCO_SHARED_LOCALS)
   env_name = "Swimmer-v2"
   rollout_hint = "swimmer"
   total_timesteps = 2e6
@@ -202,6 +217,7 @@ def swimmer():
 
 @train_ex.named_config
 def walker():
+  locals().update(**MUJOCO_SHARED_LOCALS)
   env_name = "Walker2d-v2"
   rollout_hint = "walker"
 
@@ -210,22 +226,25 @@ def walker():
 
 @train_ex.named_config
 def two_d_maze():
+  locals().update(**MUJOCO_SHARED_LOCALS)
   env_name = "imitation/TwoDMaze-v0"
   rollout_hint = "two_d_maze"
 
 
 @train_ex.named_config
 def custom_ant():
+  locals().update(**MUJOCO_SHARED_LOCALS)
+  locals().update(**ANT_SHARED_LOCALS)
   env_name = "imitation/CustomAnt-v0"
   rollout_hint = "custom_ant"
-  locals().update(**ant_shared_locals)
 
 
 @train_ex.named_config
 def disabled_ant():
+  locals().update(**MUJOCO_SHARED_LOCALS)
+  locals().update(**ANT_SHARED_LOCALS)
   env_name = "imitation/DisabledAnt-v0"
   rollout_hint = "disabled_ant"
-  locals().update(**ant_shared_locals)
 
 
 # Debug configs
@@ -247,15 +266,3 @@ def fast():
     num_vec=2,
     init_rl_kwargs=dict(nminibatches=1),
   )
-
-
-# Shared settings
-
-ant_shared_locals = dict(
-    total_timesteps=3e7,
-    gen_batch_size=2048*8,
-    disc_batch_size=2048*8,
-    init_trainer_kwargs=dict(
-        max_episode_steps=500,  # To match `inverse_rl` settings.
-    ),
-)
