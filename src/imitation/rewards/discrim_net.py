@@ -153,14 +153,8 @@ class DiscrimNet(serialize.Serializable, ABC):
     label_dist = tf.distributions.Bernoulli(logits=self.disc_logits_gen_is_high)
     entropy = tf.reduce_mean(label_dist.entropy())
 
-    disc_xent = tf.reduce_mean(
-      tf.nn.sigmoid_cross_entropy_with_logits(
-        logits=self.disc_logits_gen_is_high,
-        labels=tf.cast(self.labels_gen_is_one_ph, tf.float32)))
-
     self._train_stats.update([
-      ('disc_loss', tf.reduce_mean(self._disc_loss)),
-      ('disc_xent', disc_xent),
+      ('disc_xent_loss', tf.reduce_mean(self._disc_loss)),
       # accuracy, as well as accuracy on *just* expert examples and *just*
       # generated examples
       ('disc_acc', acc),
