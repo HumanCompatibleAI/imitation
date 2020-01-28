@@ -203,6 +203,12 @@ def humanoid():
 
 
 @train_ex.named_config
+def reacher():
+  env_name = "Reacher-v2"
+  rollout_hint = "reacher"
+
+
+@train_ex.named_config
 def swimmer():
   locals().update(**MUJOCO_SHARED_LOCALS)
   env_name = "Swimmer-v2"
