@@ -28,7 +28,8 @@ def save(trainer, save_path):
   # TODO(gleave): unify this with the saving logic in data_collect?
   # (Needs #43 to be merged before attempting.)
   serialize.save_stable_model(os.path.join(save_path, "gen_policy"),
-                              trainer.gen_policy)
+                              trainer.gen_policy,
+                              trainer.venv_train_norm)
 
 
 @train_ex.main
