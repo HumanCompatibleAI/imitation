@@ -166,6 +166,8 @@ class DiscrimNet(serialize.Serializable, ABC):
       # true number of expert demos and predicted number of expert demos
       ('disc_proportion_expert_true', pct_expert),
       ('disc_proportion_expert_pred', pct_expert_pred),
+      ('n_expert', n_expert),
+      ('n_generated', n_generated),
     ])
 
   def reward_train(
