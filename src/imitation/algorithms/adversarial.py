@@ -274,10 +274,11 @@ class AdversarialTrainer:
       # This is useful for getting some statistics for unnormalized rewards.
       # (The rewards logged during the call to `.learn()` are the ground truth
       # rewards, retrieved from Monitor.).
-      stats = rollout.rollout_stats(
-        self.venv_train_norm_buffering._trajectories)
-      for k, v in stats.items():
-        util.logger.logkv(k, v)
+      trajs = self.venv_train_norm_buffering._trajectories
+      if len(trajs) > 0:
+        stats = rollout.rollout_stats(trajs)
+        for k, v in stats.items():
+          util.logger.logkv(k, v)
 
     gen_samples = self.venv_train_norm_buffering.pop_transitions()
     self._gen_replay_buffer.store(gen_samples)
