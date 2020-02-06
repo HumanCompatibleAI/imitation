@@ -8,12 +8,14 @@ from typing import Callable, ContextManager, Iterator, Optional, Type
 from stable_baselines.common.base_class import BaseRLModel
 from stable_baselines.common.policies import BasePolicy
 from stable_baselines.common.vec_env import VecEnv, VecNormalize
+from stable_baselines.sac.policies import SACPolicy
 import tensorflow as tf
 
 from imitation.policies.base import RandomPolicy, ZeroPolicy
 from imitation.util import registry
 
 PolicyLoaderFn = Callable[[str, VecEnv], ContextManager[BasePolicy]]
+PolicyWrapperFn = Callable[[BasePolicy], BasePolicy]
 
 policy_registry: registry.Registry[PolicyLoaderFn] = registry.Registry()
 
@@ -46,8 +48,26 @@ class NormalizePolicy(BasePolicy):
     return self._wrapper(self._policy.proba_step, *args, **kwargs)
 
 
+class SACToCanonicalPolicy(BasePolicy):
+    """Adaptor for SACPolicy to match usual signature of BasePolicy."""
+
+    def __init__(self, policy: SACPolicy):
+        super().__init__(policy.sess, policy.ob_space, policy.ac_space,
+                         policy.n_env, policy.n_steps, policy.n_batch)
+        self._policy = policy
+
+    def step(self, *args, **kwargs):
+        actions = self._policy.step(*args, **kwargs)
+        return actions, None, None, None
+
+    def proba_step(self, *args, **kwargs):
+        return self._policy.proba_step(*args, **kwargs)
+
+
 def _load_stable_baselines(cls: Type[BaseRLModel],
-                           policy_attr: str) -> PolicyLoaderFn:
+                           policy_attr: str,
+                           policy_wrapper: Optional[PolicyWrapperFn],
+                           ) -> PolicyLoaderFn:
   """Higher-order function, returning a policy loading function.
 
   Args:
@@ -67,6 +87,8 @@ def _load_stable_baselines(cls: Type[BaseRLModel],
     try:
       model = cls.load(model_path, env=venv)
       policy = getattr(model, policy_attr)
+      if policy_wrapper:
+          policy = policy_wrapper(policy)
 
       try:
         normalize_path = os.path.join(path, 'vec_normalize.pkl')
@@ -103,10 +125,10 @@ policy_registry.register(
 
 
 def _add_stable_baselines_policies(classes):
-  for k, (cls_name, attr) in classes.items():
+  for k, (cls_name, attr, wrapper) in classes.items():
     try:
       cls = registry.load_attr(cls_name)
-      fn = _load_stable_baselines(cls, attr)
+      fn = _load_stable_baselines(cls, attr, policy_wrapper=wrapper)
       policy_registry.register(k, value=fn)
     except (AttributeError, ImportError):
       # We expect PPO1 load to fail if mpi4py isn't installed.
@@ -115,8 +137,9 @@ def _add_stable_baselines_policies(classes):
 
 
 STABLE_BASELINES_CLASSES = {
-    'ppo1': ('stable_baselines:PPO1', 'policy_pi'),
-    'ppo2': ('stable_baselines:PPO2', 'act_model'),
+    'ppo1': ('stable_baselines:PPO1', 'policy_pi', None),
+    'ppo2': ('stable_baselines:PPO2', 'act_model', None),
+    'sac': ('stable_baselines:SAC', 'policy_tf', SACToCanonicalPolicy),
 }
 _add_stable_baselines_policies(STABLE_BASELINES_CLASSES)
 

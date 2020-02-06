@@ -13,7 +13,7 @@ SIMPLE_ENVS = [
 ]
 HARDCODED_TYPES = ["random", "zero"]
 BASELINE_MODELS = [(name, cls_name)
-                   for name, (cls_name, attr) in
+                   for name, (cls_name, _attr, _wrapper) in
                    serialize.STABLE_BASELINES_CLASSES.items()]
 
 
