@@ -135,9 +135,9 @@ class AdversarialTrainer:
       self.venv_test = reward_wrapper.RewardVecEnvWrapper(
           self.venv, self.reward_test)
 
-    self.venv_train_norm = VecNormalize(self.venv_train)
-    self.venv_train_norm_buffering = BufferingWrapper(self.venv_train_norm)
-    self.gen_policy.set_env(self.venv_train_norm_buffering)
+    self.venv_train_buffering = BufferingWrapper(self.venv_train)
+    self.venv_train_norm = VecNormalize(self.venv_train_buffering)
+    self.gen_policy.set_env(self.venv_train_norm)
 
     if gen_replay_buffer_capacity is None:
       gen_replay_buffer_capacity = 20 * self.gen_batch_size
@@ -214,10 +214,11 @@ class AdversarialTrainer:
     Args:
       gen_samples: Transition samples from the generator policy. If not
         provided, then take `self.disc_batch_size // 2` samples from the
-        generator replay buffer.
+        generator replay buffer. Observations should not be normalized.
       expert_samples: Transition samples from the expert. If not
         provided, then take `n_gen` expert samples from the expert
         dataset, where `n_gen` is the number of samples in `gen_samples`.
+        Observations should not be normalized.
     """
     with logger.accumulate_means("disc"):
       fetches = {
@@ -290,13 +291,13 @@ class AdversarialTrainer:
       # This is useful for getting some statistics for unnormalized rewards.
       # (The rewards logged during the call to `.learn()` are the ground truth
       # rewards, retrieved from Monitor.).
-      trajs = self.venv_train_norm_buffering._trajectories
+      trajs = self.venv_train_buffering._trajectories
       if len(trajs) > 0:
         stats = rollout.rollout_stats(trajs)
         for k, v in stats.items():
           util.logger.logkv(k, v)
 
-    gen_samples = self.venv_train_norm_buffering.pop_transitions()
+    gen_samples = self.venv_train_buffering.pop_transitions()
     self._gen_replay_buffer.store(gen_samples)
 
   def train(self,
@@ -378,11 +379,12 @@ class AdversarialTrainer:
     assert n_gen == len(gen_samples.acts)
     assert n_gen == len(gen_samples.next_obs)
 
-    # Normalize expert observations to match generator observations.
+    # Policy and reward network were trained on normalized observations.
     expert_obs_norm = self.venv_train_norm.normalize_obs(expert_samples.obs)
+    gen_obs_norm = self.venv_train_norm.normalize_obs(gen_samples.obs)
 
     # Concatenate rollouts, and label each row as expert or generator.
-    obs = np.concatenate([expert_obs_norm, gen_samples.obs])
+    obs = np.concatenate([expert_obs_norm, gen_obs_norm])
     acts = np.concatenate([expert_samples.acts, gen_samples.acts])
     next_obs = np.concatenate([expert_samples.next_obs, gen_samples.next_obs])
     labels_gen_is_one = np.concatenate([np.zeros(n_expert, dtype=int),
