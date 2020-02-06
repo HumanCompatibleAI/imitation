@@ -124,7 +124,11 @@ class AdversarialTrainer:
     else:
       self.reward_train = partial(
           self.discrim.reward_train,
-          gen_log_prob_fn=self._gen_policy.action_probability)
+          # The generator policy uses normalized observations
+          # but the reward function and discriminator receive unnormalized
+          # observations. Therefore to get the right log action probs
+          # for AIRL's ent bonus, we need to normalize.
+          gen_log_prob_fn=self._gen_log_action_prob_from_unnormalized)
       self.reward_test = self.discrim.reward_test
       self.venv_train = reward_wrapper.RewardVecEnvWrapper(
           self.venv, self.reward_train)
@@ -163,6 +167,18 @@ class AdversarialTrainer:
   def gen_policy(self) -> BaseRLModel:
     """Policy (i.e. the generator) being trained."""
     return self._gen_policy
+
+  def _gen_log_action_prob_from_unnormalized(
+      self, observation: np.ndarray, *, actions: np.ndarray, logp=True,
+  ) -> np.ndarray:
+    """Calculate generator log action probabilility.
+
+    Params:
+      observation: Unnormalized observation.
+      actions: action.
+    """
+    obs = self.venv_train_norm.normalize_obs(observation)
+    return self.gen_policy.action_probability(obs, actions=actions, logp=logp)
 
   def train_disc(self, n_samples: Optional[int] = None) -> None:
     """Trains the discriminator to minimize classification cross-entropy.
