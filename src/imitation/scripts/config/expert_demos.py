@@ -19,7 +19,7 @@ def expert_demos_defaults():
   max_episode_steps = None  # Set to positive int to limit episode horizons
   n_episodes_eval = 50  # Num of episodes for final ep reward mean evaluation
 
-  init_rl_kwargs = dict(DEFAULT_INIT_RL_KWARGS)
+  init_rl_kwargs = dict()
 
   # If specified, overrides the ground-truth environment reward
   reward_type = None  # override reward type
@@ -36,6 +36,13 @@ def expert_demos_defaults():
   init_tensorboard = False  # If True, then write Tensorboard logs.
 
   log_root = os.path.join("output", "expert_demos")  # output directory
+
+
+@expert_demos_ex.config
+def expert_demos_dicts(init_rl_kwargs):
+  # Workaround IDSIA/sacred issue #238
+  if not init_rl_kwargs:
+    init_rl_kwargs = dict(DEFAULT_INIT_RL_KWARGS)
 
 
 @expert_demos_ex.config
