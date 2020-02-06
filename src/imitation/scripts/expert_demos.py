@@ -37,6 +37,7 @@ def rollouts_and_policy(
   reward_type: Optional[str],
   reward_path: Optional[str],
 
+  log_interval: int,
   rollout_save_interval: int,
   rollout_save_final: bool,
   rollout_save_n_timesteps: Optional[int],
@@ -154,15 +155,15 @@ def rollouts_and_policy(
         step += 1
         policy = locals_['self']
 
-        # TODO(adam): make logging frequency configurable
-        for callback in log_callbacks:
-          callback(sb_logger)
+        if log_interval > 0 and step % log_interval == 0:
+          for callback in log_callbacks:
+            callback(sb_logger)
 
         if rollout_save_interval > 0 and step % rollout_save_interval == 0:
-          save_path = osp.join(rollout_dir, f"{step}.pkl")
+          save_path = osp.join(rollout_dir, f"{step:09d}.pkl")
           util.rollout.save(save_path, policy, venv, sample_until)
         if policy_save_interval > 0 and step % policy_save_interval == 0:
-          output_dir = os.path.join(policy_dir, f'{step:05d}')
+          output_dir = os.path.join(policy_dir, f'{step:09d}')
           serialize.save_stable_model(output_dir, policy, vec_normalize)
 
       policy.learn(total_timesteps, callback=callback)

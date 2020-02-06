@@ -25,6 +25,7 @@ def expert_demos_defaults():
   reward_type = None  # override reward type
   reward_path = None   # override reward path
 
+  log_interval = 1  # Num updates between custom log callbacks (<=0 disables)
   rollout_save_interval = -1  # Num updates between saves (<=0 disables)
   rollout_save_final = True  # If True, save after training is finished.
   rollout_save_n_timesteps = None  # Min timesteps saved per file, optional.
