@@ -81,6 +81,8 @@ def rollouts_and_policy(
           reward_type to load the reward model. For more information, see
           `imitation.rewards.serialize.load_reward`.
 
+      log_interval: The number of training updates in between custom
+          logging callbacks.
       rollout_save_interval: The number of training updates in between
           intermediate rollout saves. If the argument is nonpositive, then
           don't save intermediate updates.
