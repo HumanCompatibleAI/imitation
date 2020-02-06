@@ -125,9 +125,9 @@ class AdversarialTrainer:
       self.reward_train = partial(
           self.discrim.reward_train,
           # The generator policy uses normalized observations
-          # but the reward function and discriminator receive unnormalized
-          # observations. Therefore to get the right log action probs
-          # for AIRL's ent bonus, we need to normalize.
+          # but the reward function (self.reward_train) and discriminator use
+          # and receive unnormalized observations. Therefore to get the right
+          # log action probs for AIRL's ent bonus, we need to normalize obs.
           gen_log_prob_fn=self._gen_log_action_prob_from_unnormalized)
       self.reward_test = self.discrim.reward_test
       self.venv_train = reward_wrapper.RewardVecEnvWrapper(
