@@ -1,11 +1,12 @@
 """Test imitation.envs.*."""
 
+from benchmark_environments.testing import envs as bench_test
 import gym
 import pytest
 
 # Unused imports is for side-effect of registering environments
 from imitation.envs import examples  # noqa: F401
-from imitation.testing import envs
+from imitation.testing import envs as imitation_test
 
 ENV_NAMES = [env_spec.id for env_spec in gym.envs.registration.registry.all()
              if env_spec.id.startswith('imitation/')]
@@ -13,32 +14,27 @@ ENV_NAMES = [env_spec.id for env_spec in gym.envs.registration.registry.all()
 DETERMINISTIC_ENVS = []
 
 
-env = pytest.fixture(envs.make_env_fixture(skip_fn=pytest.skip))
+env = pytest.fixture(bench_test.make_env_fixture(skip_fn=pytest.skip))
 
 
 @pytest.mark.parametrize("env_name", ENV_NAMES)
 class TestEnvs:
   """Battery of simple tests for environments."""
   def test_seed(self, env, env_name):
-    envs.test_seed(env, env_name, DETERMINISTIC_ENVS)
+    bench_test.test_seed(env, env_name, DETERMINISTIC_ENVS)
 
   def test_premature_step(self, env):
     """Test that you must call reset() before calling step()."""
-    if hasattr(env, 'sim') and hasattr(env, 'model'):  # pragma: no cover
-      # We can't use isinstance since importing mujoco_py will fail on
-      # machines without MuJoCo installed
-      pytest.skip("MuJoCo environments cannot perform this check.")
-
-    act = env.action_space.sample()
-    with pytest.raises(Exception):  # need to call env.reset() first
-      env.step(act)
+    bench_test.test_premature_step(
+      env, skip_fn=pytest.skip, raises_fn=pytest.raises,
+    )
 
   def test_model_based(self, env):
     """Smoke test for each of the ModelBasedEnv methods with type checks."""
     if not hasattr(env, 'state_space'):  # pragma: no cover
       pytest.skip("This test is only for subclasses of ModelBasedEnv.")
 
-    envs.test_model_based(env)
+    imitation_test.test_model_based(env)
 
-  def test_rollout(self, env):
-    envs.test_rollout(env)
+  def test_rollout_schema(self, env):
+    bench_test.test_rollout_schema(env)
