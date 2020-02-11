@@ -3,7 +3,7 @@ import src.imitation  # pytype: disable=import-error
 
 TF_VERSION = '>=1.15.0,<2.0'
 TESTS_REQUIRE = [
-    # TODO(adam): change to PyPi once we make first release
+    # TODO(adam): use PyPi rather than Git once we make first release
     ('benchmark-environments @ '
      'git+https://github.com/HumanCompatibleAI/benchmark-environments.git'),
     # remove pin once https://github.com/nedbat/coveragepy/issues/881 fixed
