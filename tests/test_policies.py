@@ -1,5 +1,6 @@
 """Test imitation.policies."""
 
+import gym
 import numpy as np
 import pytest
 from stable_baselines.common.vec_env import VecNormalize
@@ -16,12 +17,17 @@ BASELINE_MODELS = [(name, cls_name)
                    for name, (cls_name, _attr, _wrapper) in
                    serialize.STABLE_BASELINES_CLASSES.items()]
 
+def _skip_on_invalid_sac(policy_type, venv) -> None:
+  if policy_type == "sac" and not isinstance(venv.action_space, gym.spaces.Box):
+    pytest.skip("SAC is only compatible with Box action space.")
+
 
 @pytest.mark.parametrize("env_name", SIMPLE_ENVS)
 @pytest.mark.parametrize("policy_type", HARDCODED_TYPES)
 def test_actions_valid(env_name, policy_type):
   """Test output actions of our custom policies always lie in action space."""
   venv = util.make_vec_env(env_name, n_envs=1, parallel=False)
+  _skip_on_invalid_sac(policy_type, venv)
   with serialize.load_policy(policy_type, "foobar", venv) as policy:
     transitions = rollout.generate_transitions(policy, venv, n_timesteps=100)
 
@@ -45,6 +51,7 @@ def test_serialize_identity(env_name, model_cfg, normalize, tmpdir):
   except (AttributeError, ImportError):  # pragma: no cover
     pytest.skip("Couldn't load stable baselines class. "
                 "(Probably because mpi4py not installed.)")
+  _skip_on_invalid_sac(model_name, venv)
 
   model = model_cls('MlpPolicy', venv)
   model.learn(1000)
