@@ -11,6 +11,7 @@ from imitation.util import registry, rollout, util
 SIMPLE_ENVS = [
     "CartPole-v0",  # Discrete(2) action space
     "MountainCarContinuous-v0",  # Box(1) action space
+    "Pendulum-v0",  # Box(1) action space
 ]
 HARDCODED_TYPES = ["random", "zero"]
 BASELINE_MODELS = [(name, cls_name)
