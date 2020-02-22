@@ -282,7 +282,7 @@ class AdversarialTrainer:
                             reset_num_timesteps=False,
                             **learn_kwargs)
 
-    gen_samples = self.venv_train_norm_buffering.pop_transitions()
+    gen_samples = self.venv_train_norm.pop_transitions()
     self._gen_replay_buffer.store(gen_samples)
 
   def train(self,
