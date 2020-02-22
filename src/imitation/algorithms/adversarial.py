@@ -124,16 +124,20 @@ class AdversarialTrainer:
     else:
       self.reward_train = partial(
           self.discrim.reward_train,
-          gen_log_prob_fn=self._gen_policy.action_probability)
+          # The generator policy uses normalized observations
+          # but the reward function (self.reward_train) and discriminator use
+          # and receive unnormalized observations. Therefore to get the right
+          # log action probs for AIRL's ent bonus, we need to normalize obs.
+          gen_log_prob_fn=self._gen_log_action_prob_from_unnormalized)
       self.reward_test = self.discrim.reward_test
       self.venv_train = reward_wrapper.RewardVecEnvWrapper(
           self.venv, self.reward_train)
       self.venv_test = reward_wrapper.RewardVecEnvWrapper(
           self.venv, self.reward_test)
 
-    self.venv_train_norm = VecNormalize(self.venv_train)
-    self.venv_train_norm_buffering = BufferingWrapper(self.venv_train_norm)
-    self.gen_policy.set_env(self.venv_train_norm_buffering)
+    self.venv_train_buffering = BufferingWrapper(self.venv_train)
+    self.venv_train_norm = VecNormalize(self.venv_train_buffering)
+    self.gen_policy.set_env(self.venv_train_norm)
 
     if gen_replay_buffer_capacity is None:
       gen_replay_buffer_capacity = 20 * self.gen_batch_size
@@ -163,6 +167,18 @@ class AdversarialTrainer:
   def gen_policy(self) -> BaseRLModel:
     """Policy (i.e. the generator) being trained."""
     return self._gen_policy
+
+  def _gen_log_action_prob_from_unnormalized(
+      self, observation: np.ndarray, *, actions: np.ndarray, logp=True,
+  ) -> np.ndarray:
+    """Calculate generator log action probabilility.
+
+    Params:
+      observation: Unnormalized observation.
+      actions: action.
+    """
+    obs = self.venv_train_norm.normalize_obs(observation)
+    return self.gen_policy.action_probability(obs, actions=actions, logp=logp)
 
   def train_disc(self, n_samples: Optional[int] = None) -> None:
     """Trains the discriminator to minimize classification cross-entropy.
@@ -198,10 +214,11 @@ class AdversarialTrainer:
     Args:
       gen_samples: Transition samples from the generator policy. If not
         provided, then take `self.disc_batch_size // 2` samples from the
-        generator replay buffer.
+        generator replay buffer. Observations should not be normalized.
       expert_samples: Transition samples from the expert. If not
         provided, then take `n_gen` expert samples from the expert
         dataset, where `n_gen` is the number of samples in `gen_samples`.
+        Observations should not be normalized.
     """
     with logger.accumulate_means("disc"):
       fetches = {
@@ -265,7 +282,7 @@ class AdversarialTrainer:
                             reset_num_timesteps=False,
                             **learn_kwargs)
 
-    gen_samples = self.venv_train_norm_buffering.pop_transitions()
+    gen_samples = self.venv_train_norm.pop_transitions()
     self._gen_replay_buffer.store(gen_samples)
 
   def train(self,
@@ -347,11 +364,12 @@ class AdversarialTrainer:
     assert n_gen == len(gen_samples.acts)
     assert n_gen == len(gen_samples.next_obs)
 
-    # Normalize expert observations to match generator observations.
+    # Policy and reward network were trained on normalized observations.
     expert_obs_norm = self.venv_train_norm.normalize_obs(expert_samples.obs)
+    gen_obs_norm = self.venv_train_norm.normalize_obs(gen_samples.obs)
 
     # Concatenate rollouts, and label each row as expert or generator.
-    obs = np.concatenate([expert_obs_norm, gen_samples.obs])
+    obs = np.concatenate([expert_obs_norm, gen_obs_norm])
     acts = np.concatenate([expert_samples.acts, gen_samples.acts])
     next_obs = np.concatenate([expert_samples.next_obs, gen_samples.next_obs])
     labels_gen_is_one = np.concatenate([np.zeros(n_expert, dtype=int),
