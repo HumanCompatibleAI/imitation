@@ -277,11 +277,17 @@ class ReplayBuffer:
     sample = self._buffer.sample(n_samples)
     return rollout.Transitions(**sample)
 
-  def store(self, transitions: rollout.Transitions) -> None:
+  def store(self,
+            transitions: rollout.Transitions,
+            truncate_ok: bool = True,
+            ) -> None:
     """Store obs-act-obs triples.
 
     Args:
       transitions: Transitions to store.
+      truncate_ok: If False, then error if the length of `transitions` is
+        greater than `self.capacity`. Otherwise, store only the final
+        `self.capacity` transitions.
 
     Raises:
         ValueError: The arguments didn't have the same length.
@@ -289,7 +295,13 @@ class ReplayBuffer:
     lengths = [len(arr) for arr in transitions]
     if len(set(lengths)) != 1:
       raise ValueError("Arguments must have the same length.")
-    self._buffer.store(transitions._asdict())
+
+    trans_dict = transitions._asdict()
+    if lengths[0] > self.capacity and truncate_ok:
+      for k, v in trans_dict.items():
+        trans_dict[k] = v[-self.capacity:]
+
+    self._buffer.store(trans_dict)
 
   def __len__(self):
     return len(self._buffer)
