@@ -282,22 +282,7 @@ class AdversarialTrainer:
                             reset_num_timesteps=False,
                             **learn_kwargs)
 
-    with logger.accumulate_means("gen_buffer"):
-      # Log stats for finished trajectories stored in the BufferingWrapper. This
-      # will bias toward shorter trajectories because trajectories that
-      # are partially finished at the time of this log are popped from
-      # the buffer a few lines down.
-      #
-      # This is useful for getting some statistics for unnormalized rewards.
-      # (The rewards logged during the call to `.learn()` are the ground truth
-      # rewards, retrieved from Monitor.).
-      trajs = self.venv_train_buffering._trajectories
-      if len(trajs) > 0:
-        stats = rollout.rollout_stats(trajs)
-        for k, v in stats.items():
-          util.logger.logkv(k, v)
-
-    gen_samples = self.venv_train_buffering.pop_transitions()
+    gen_samples = self.venv_train_norm_buffering.pop_transitions()
     self._gen_replay_buffer.store(gen_samples)
 
   def train(self,
