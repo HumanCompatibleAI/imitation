@@ -442,6 +442,7 @@ def save(path: str,
          *,
          unwrap: bool = True,
          exclude_infos: bool = True,
+         verbose: bool = True,
          **kwargs,
          ) -> None:
     """Generate policy rollouts and save them to a pickled Sequence[Trajectory].
@@ -458,6 +459,7 @@ def save(path: str,
       exclude_infos: If True, then exclude `infos` from pickle by setting
         this field to None. Excluding `infos` can save a lot of space during
         pickles.
+      verbose: If True, then print out rollout stats before saving.
       deterministic_policy: Argument from `generate_trajectories`.
     """
     os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -466,6 +468,9 @@ def save(path: str,
       trajs = [unwrap_traj(traj) for traj in trajs]
     if exclude_infos:
       trajs = [traj._replace(infos=None) for traj in trajs]
+    if verbose:
+      stats = rollout_stats(trajs)
+      tf.logging.info(f"Rollout stats: {stats}")
 
     with open(path, "wb") as f:
       pickle.dump(trajs, f)
