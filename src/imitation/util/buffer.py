@@ -298,7 +298,7 @@ class ReplayBuffer:
 
     trans_dict = transitions._asdict()
     if lengths[0] > self.capacity and truncate_ok:
-      for k, v in trans_dict.items():
+      trans_dict = {k: v[-self.capacity:] for k, v in trans_dict.items()}
         trans_dict[k] = v[-self.capacity:]
 
     self._buffer.store(trans_dict)
