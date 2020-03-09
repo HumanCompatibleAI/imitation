@@ -77,7 +77,8 @@ class AdversarialTrainer:
           generator replay buffer (the number of obs-action-obs samples from
           the generator that can be stored).
 
-          By default this is equal to `20 * self.gen_batch_size`.
+          By default this is equal to `self.gen_batch_size`, meaning that we
+          sample only from the most recent batch of generator samples.
         init_tensorboard: If True, makes various discriminator
           TensorBoard summaries.
         init_tensorboard_graph: If both this and `init_tensorboard` are True,
@@ -140,7 +141,7 @@ class AdversarialTrainer:
     self.gen_policy.set_env(self.venv_train_norm)
 
     if gen_replay_buffer_capacity is None:
-      gen_replay_buffer_capacity = 20 * self.gen_batch_size
+      gen_replay_buffer_capacity = self.gen_batch_size
     self._gen_replay_buffer = buffer.ReplayBuffer(gen_replay_buffer_capacity,
                                                   self.venv)
     self._exp_replay_buffer = buffer.ReplayBuffer.from_data(expert_demos)
