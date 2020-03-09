@@ -196,13 +196,11 @@ class DiscrimNet(serialize.Serializable, ABC):
         returns `log_act_prob`, the generator's log action probabilities.
         `log_act_prob[i]` is equal to the generator's log probability of
         choosing `act[i]` given `obs[i]`.
-        `np.squeeze(log_act_prob)` has shape `(batch_size,)`.
     Returns:
         The rewards. Its shape is `(batch_size,)`.
     """
     del steps
-    log_act_prob = np.squeeze(
-      gen_log_prob_fn(observation=obs, actions=act, logp=True))
+    log_act_prob = gen_log_prob_fn(observation=obs, actions=act, logp=True).reshape(-1)
 
     n_gen = len(obs)
     assert obs.shape == next_obs.shape
