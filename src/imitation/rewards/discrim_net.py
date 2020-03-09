@@ -200,7 +200,8 @@ class DiscrimNet(serialize.Serializable, ABC):
         The rewards. Its shape is `(batch_size,)`.
     """
     del steps
-    log_act_prob = gen_log_prob_fn(observation=obs, actions=act, logp=True).reshape(-1)
+    log_act_prob = np.reshape(
+      gen_log_prob_fn(observation=obs, actions=act, logp=True), (-1,))
 
     n_gen = len(obs)
     assert obs.shape == next_obs.shape
