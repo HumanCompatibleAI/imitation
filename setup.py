@@ -3,9 +3,6 @@ import src.imitation  # pytype: disable=import-error
 
 TF_VERSION = '>=1.15.0,<2.0'
 TESTS_REQUIRE = [
-    # TODO(adam): use PyPi rather than Git once we make first release
-    ('benchmark-environments @ '
-     'git+https://github.com/HumanCompatibleAI/benchmark-environments.git'),
     # remove pin once https://github.com/nedbat/coveragepy/issues/881 fixed
     'coverage==4.5.4',
     'codecov',
@@ -42,6 +39,9 @@ setup(
     },
     install_requires=[
         'awscli',
+        # TODO(adam): use PyPi rather than Git once we make first release
+        ('benchmark-environments @ '
+         'git+https://github.com/HumanCompatibleAI/benchmark-environments.git'),
         'cloudpickle>=0.5.5',
         'gym[classic_control]',
         'matplotlib',
