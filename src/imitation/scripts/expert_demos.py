@@ -3,6 +3,7 @@ import os
 import os.path as osp
 from typing import Optional
 
+import benchmark_environments.classic_control  # noqa: F401
 from sacred.observers import FileStorageObserver
 from stable_baselines.common.vec_env import VecNormalize
 import stable_baselines.logger as sb_logger

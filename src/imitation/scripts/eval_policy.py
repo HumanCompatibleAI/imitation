@@ -4,6 +4,7 @@ import os.path as osp
 import time
 from typing import Optional
 
+import benchmark_environments.classic_control  # noqa: F401
 from sacred.observers import FileStorageObserver
 from stable_baselines.common.vec_env import VecEnvWrapper
 import tensorflow as tf
