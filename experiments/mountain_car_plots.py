@@ -22,8 +22,6 @@ MC_POS_MIN, MC_POS_MAX = -1.2, 0.6
 MC_VEL_MIN, MC_VEL_MAX = -0.07, 0.07
 MC_GOAL_POS = 0.5
 
-UNUSED_STEPS = np.array([])
-
 
 # Utility for calculating the next observation s'.
 # Required for evaluating AIRL reward at arbitrary (s, a) points.
@@ -103,7 +101,7 @@ def make_heatmap(
   acts_vec = np.array(acts_vec)
   next_obs_vec = make_next_obs(obs_vec, acts_vec)
 
-  R = reward_fn(obs_vec, acts_vec, next_obs_vec, UNUSED_STEPS)
+  R = reward_fn(obs_vec, acts_vec, next_obs_vec, None)
 
   df = pd.DataFrame()
   df["position"] = np.round(obs_vec[:, 0], 5)
@@ -218,7 +216,7 @@ def plot_reward_vs_time(
     for traj in traj_list:
       T = len(traj.rews)
       X.extend(range(T))
-      rews = reward_fn(traj.obs[:-1], traj.acts, traj.obs[1:], UNUSED_STEPS)
+      rews = reward_fn(traj.obs[:-1], traj.acts, traj.obs[1:], None)
       Y.extend(rews)
     if i < len(colors):
       color = colors[i]

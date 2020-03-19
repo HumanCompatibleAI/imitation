@@ -1,11 +1,11 @@
 """Common wrapper for adding custom reward values to an environment."""
 import collections
-from typing import Callable
+from typing import Callable, Optional
 
 import numpy as np
 from stable_baselines.common import vec_env
 
-RewardFn = Callable[[np.ndarray, np.ndarray, np.ndarray, np.ndarray],
+RewardFn = Callable[[np.ndarray, np.ndarray, np.ndarray, Optional[np.ndarray]],
                     np.ndarray]
 
 
