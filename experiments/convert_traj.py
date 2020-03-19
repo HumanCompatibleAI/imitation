@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 """
-Convert trajectories from imitation List[Trajectory] format to transitions.
-
-Then save as npz in the correct format.
+Convert trajectories from `imitation` format to openai/baselines GAIL format.
 """
 
 from typing import List
