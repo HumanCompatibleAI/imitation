@@ -44,7 +44,7 @@ def main():
     with open(dst_path, "wb") as f:
       np.savez_compressed(f, **dst_trajs)
 
-    print(f"Dumped files to {dst_path}")
+    print(f"Dumped rollouts to {dst_path}")
 
 
 if __name__ == "__main__":
