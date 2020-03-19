@@ -4,7 +4,7 @@ from functools import partial
 import os
 from pathlib import Path
 import pickle
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Sequence, Union
 
 import gym
 from matplotlib import pyplot as plt
@@ -161,7 +161,7 @@ def batch_reward_heatmaps(
       checkpoints_dir: Path to `checkpoint` directory from AIRL or GAIL output
           directory. Should contain "gen_policy" and "discrim" directories.
       output_dir: Heatmap output directory.
-      exp_trajs: List[Trajectory]: Expert trajectories for scatterplotting.
+      exp_trajs: Expert trajectories for scatterplotting.
           Generator trajectories
           are dynamically generated from generator checkpoints.
   """
@@ -199,7 +199,7 @@ def batch_reward_heatmaps(
 def plot_reward_vs_time(
     trajs_dict: Dict[str, List[util.rollout.Trajectory]],
     reward_fn: RewardFn,
-    colors=("tab:blue", "tab:orange"),
+    colors: Sequence[str] = ("tab:blue", "tab:orange"),
 ):
   """Plots rewards received by many trajectories from many agents over time.
 
@@ -207,6 +207,7 @@ def plot_reward_vs_time(
       trajs_dict: Dictionary mapping rollout labels (e.g. "expert" or
         "gen policy") to rollouts associated with those labels.
       reward_fn: Reward function for evaluating rollout rewards.
+      colors: Custom colors for plotted rewards.
   """
   plt.clf()
   for i, (traj_name, traj_list) in enumerate(trajs_dict.items()):
