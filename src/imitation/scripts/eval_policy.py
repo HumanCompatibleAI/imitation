@@ -8,7 +8,6 @@ from sacred.observers import FileStorageObserver
 from stable_baselines.common.vec_env import VecEnvWrapper
 import tensorflow as tf
 
-import imitation.envs.examples  # noqa: F401
 from imitation.policies import serialize
 from imitation.rewards.serialize import load_reward
 from imitation.scripts.config.eval_policy import eval_policy_ex
