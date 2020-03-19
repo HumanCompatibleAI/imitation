@@ -55,37 +55,36 @@ def make_policy_rollout(policy_path, env_name="MountainCar-v0",
 
 def make_heatmap(
     act: int,
-    reward_fn,
+    reward_fn: RewardFn,
     pos_step_size: float = 0.1,
     velocity_step_size: float = 1e-2,
-    mark_goal=True,
-    gen_trajs=None,
-    exp_trajs=None,
-    legend_on=True,
-    title=None,
-    heatmap=True,
-    filter_trans_by_act=True,
+    mark_goal: bool = True,
+    gen_trajs: Optional[List[util.rollout.Trajectory]] = None,
+    exp_trajs: Optional[List[util.rollout.Trajectory]] = None,
+    legend_on: bool = True,
+    title: bool = None,
+    heatmap: bool = True,
+    filter_trans_by_act: bool = True,
 ) -> None:
   """
   Make a MountainCar heatmap of rewards for a particular action. X axis
   is position. Y axis is velocity.
 
   Args:
-    act (int): The MountainCar action number whose reward we are evaluating.
+    act: The MountainCar action number whose reward we are evaluating.
       Should be 0, 1, or 2.
-    reward_fn (RewardFn): Reward function. Should accept unnormed inputs
-      (obs, acts, next_obs).
-    pos_step_size (float): The x axis granularity.
-    velocity_step_size (float): The y axis granularity.
-    mark_goal (bool): If True then plot a line for goal position.
-    gen_trajs (List[Trajectory]): A list of generator trajectories to
+    reward_fn: Reward function. Should accept unnormalized inputs.
+    pos_step_size: The x axis granularity.
+    velocity_step_size: The y axis granularity.
+    mark_goal: If True then plot a line for goal position.
+    gen_trajs: A list of generator trajectories to
       scatterplot on top of the heatmap.
-    exp_trajs (List[Trajectory]): A list of exp trajectories to scatterplot on
+    exp_trajs: A list of exp trajectories to scatterplot on
       top of the heatmap.
-    legend_on (bool): Whether to plot the legend.
-    title (str): Custom title.
-    heatmap (bool): Whether to plot the heatmap.
-    filter_trans_by_act (bool): If True, then filter out transitions from
+    legend_on: Whether to plot the legend.
+    title: Custom title.
+    heatmap: Whether to plot the heatmap.
+    filter_trans_by_act: If True, then filter out transitions from
       `gen_trajs` and `exp_trajs` that don't use action `act` before
       scatterplotting.
   """
