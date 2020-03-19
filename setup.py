@@ -47,6 +47,8 @@ setup(
         'matplotlib',
         'numpy>=1.15',
         'ray[debug]==0.7.4',
+        'pandas',
+        'seaborn',
         'tqdm',
         'scikit-learn>=0.21.2',
         # TODO(adam): Change to >=2.10.0 once 2.10.0 released
