@@ -1,6 +1,5 @@
 """Heatmaps and reward plotting code for debugging MountainCar."""
 
-import functools
 import os
 from pathlib import Path
 import pickle
@@ -13,8 +12,7 @@ from stable_baselines.common.vec_env import DummyVecEnv, VecNormalize
 
 from imitation import util
 from imitation.policies.serialize import load_policy
-from imitation.rewards import common
-from imitation.rewards.serialize import load_reward
+from imitation.rewards import common, serialize as rewards_serialize
 
 MC_POS_MIN, MC_POS_MAX = -1.2, 0.6
 MC_VEL_MIN, MC_VEL_MAX = -0.07, 0.07
@@ -210,10 +208,11 @@ def batch_reward_heatmaps(
       vec_normalize = pickle.load(f)  # type: VecNormalize
     vec_normalize.training = False
 
-    reward_fn_ctx = load_reward("DiscrimNet", discrim_path, venv=None)
+    reward_fn_ctx = rewards_serialize.load_reward(
+      "DiscrimNet", discrim_path, venv)
     with reward_fn_ctx as reward_fn:
-      norm_rew_fn = build_norm_reward_fn(reward_fn=reward_fn,
-                                         vec_normalize=vec_normalize)
+      norm_rew_fn = common.build_norm_reward_fn(reward_fn=reward_fn,
+                                                vec_normalize=vec_normalize)
       for i in range(MC_NUM_ACTS):
         make_heatmap(act=i, reward_fn=norm_rew_fn, gen_trajs=gen_trajs,
                      exp_trajs=exp_trajs)
@@ -231,7 +230,7 @@ def batch_reward_heatmaps(
 
 def plot_reward_vs_time(
     trajs_dict: Dict[str, List[util.rollout.Trajectory]],
-    reward_fn: RewardFn,
+    reward_fn: common.RewardFn,
     colors: Sequence[str] = ("tab:blue", "tab:orange"),
 ) -> plt.Figure:
   """Plots rewards received by many trajectories from many agents over time.
