@@ -13,8 +13,8 @@ from stable_baselines.common.vec_env import DummyVecEnv, VecNormalize
 
 from imitation import util
 from imitation.policies.serialize import load_policy
+from imitation.rewards import common
 from imitation.rewards.serialize import load_reward
-from imitation.util.reward_wrapper import RewardFn
 
 MC_POS_MIN, MC_POS_MAX = -1.2, 0.6
 MC_VEL_MIN, MC_VEL_MAX = -0.07, 0.07
@@ -94,7 +94,7 @@ def make_policy_rollout(policy_path, env_name="MountainCar-v0",
 
 def make_heatmap(
     act: int,
-    reward_fn: RewardFn,
+    reward_fn: common.RewardFn,
     n_pos_step: int = 18,
     n_vel_step: int = 14,
     mark_goal: bool = True,

@@ -8,17 +8,17 @@ from stable_baselines.common.vec_env import VecEnv
 
 from imitation.rewards import discrim_net, reward_net
 from imitation.util import registry, util
-from imitation.util.reward_wrapper import RewardFn
+from imitation.rewards import common
 
-RewardFnLoaderFn = Callable[[str, VecEnv], ContextManager[RewardFn]]
+RewardFnLoaderFn = Callable[[str, VecEnv], ContextManager[common.RewardFn]]
 
 reward_registry: registry.Registry[RewardFnLoaderFn] = registry.Registry()
 
 
 @registry.sess_context
-def _load_discrim_net(path: str, venv: VecEnv) -> RewardFn:
+def _load_discrim_net(path: str, venv: VecEnv) -> common.RewardFn:
   """Load test reward output from discriminator."""
-  del venv
+  del venv  # Unused.
   discriminator = discrim_net.DiscrimNet.load(path)
   # TODO(gleave): expose train reward as well? (hard due to action probs?)
   return discriminator.reward_test
@@ -28,9 +28,9 @@ def _load_reward_net_as_fn(shaped: bool) -> RewardFnLoaderFn:
   @contextlib.contextmanager
   def loader(path: str,
              venv: VecEnv,
-             ) -> Iterator[RewardFn]:
+             ) -> Iterator[common.RewardFn]:
     """Load train (shaped) or test (not shaped) reward from path."""
-    del venv
+    del venv  # Unused.
     with util.make_session() as (graph, sess):
       net = reward_net.RewardNet.load(path)
       reward = net.reward_output_train if shaped else net.reward_output_test
@@ -54,14 +54,14 @@ def _load_reward_net_as_fn(shaped: bool) -> RewardFnLoaderFn:
   return loader
 
 
-def load_zero(path: str, venv: VecEnv) -> RewardFn:
+def load_zero(path: str, venv: VecEnv) -> common.RewardFn:
   del path, venv
 
   def f(obs: np.ndarray,
         act: np.ndarray,
         next_obs: np.ndarray,
         steps: np.ndarray) -> np.ndarray:
-    del act, next_obs, steps
+    del act, next_obs, steps  # Unused.
     return np.zeros(obs.shape[0])
 
   return f
@@ -77,7 +77,7 @@ reward_registry.register(key='zero', value=registry.dummy_context(load_zero))
 
 @util.docstring_parameter(reward_types=", ".join(reward_registry.keys()))
 def load_reward(reward_type: str, reward_path: str,
-                venv: VecEnv) -> ContextManager[RewardFn]:
+                venv: VecEnv) -> ContextManager[common.RewardFn]:
   """Load serialized policy.
 
   Args:

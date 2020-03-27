@@ -1,18 +1,16 @@
 """Common wrapper for adding custom reward values to an environment."""
 import collections
-from typing import Callable
 
 import numpy as np
 from stable_baselines.common import vec_env
 
-RewardFn = Callable[[np.ndarray, np.ndarray, np.ndarray, np.ndarray],
-                    np.ndarray]
+from imitation.rewards import common
 
 
 class RewardVecEnvWrapper(vec_env.VecEnvWrapper):
   def __init__(self,
                venv: vec_env.VecEnv,
-               reward_fn: RewardFn,
+               reward_fn: common.RewardFn,
                ep_history: int = 100):
     """A RewardVecEnvWrapper uses a provided reward_fn to replace
     the reward function returned by `step()`.
