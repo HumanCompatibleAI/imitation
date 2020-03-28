@@ -1,6 +1,6 @@
 """Heatmaps and reward plotting code for debugging MountainCar."""
 
-from pathlib import Path
+import pathlib
 import pickle
 from typing import Dict, List, Optional, Union
 
@@ -123,10 +123,10 @@ def make_heatmap(
 
 
 def batch_reward_heatmaps(
-    checkpoints_dir: Union[str, Path],
+    checkpoints_dir: Union[str, pathlib.Path],
     n_gen_trajs: int = 50,
     exp_trajs: Optional[List[rollout.Trajectory]] = None,
-) -> Dict[Path, plt.Figure]:
+) -> Dict[pathlib.Path, plt.Figure]:
   """Build multiple mountain car reward heatmaps from a checkpoint directory.
 
   One plot is generated for every combination of action and checkpoint timestep.
@@ -148,7 +148,7 @@ def batch_reward_heatmaps(
   """
   result = {}
   venv = vec_env.DummyVecEnv([lambda: gym.make("MountainCar-v0")])
-  checkpoints_dir = Path(checkpoints_dir)
+  checkpoints_dir = pathlib.Path(checkpoints_dir)
   for checkpoint_dir in sorted(checkpoints_dir.iterdir()):
     vec_normalize_path = checkpoint_dir / "gen_policy" / "vec_normalize.pkl"
     discrim_path = checkpoint_dir / "discrim"
@@ -178,7 +178,7 @@ def batch_reward_heatmaps(
       for act in range(MC_NUM_ACTS):
         fig = make_heatmap(act=act, reward_fn=norm_rew_fn, gen_trajs=gen_trajs,
                            exp_trajs=exp_trajs)
-        path = Path(ACT_NAMES[act], checkpoint_dir.name)
+        path = pathlib.Path(ACT_NAMES[act], checkpoint_dir.name)
         result[path] = fig
   return result
 

@@ -1,6 +1,7 @@
 """Smoke tests for imitation.analysis.mountain_car_plots module."""
 
-from pathlib import Path
+import pathlib
+import pickle
 
 from matplotlib import pyplot as plt
 import pytest
@@ -58,18 +59,23 @@ def test_smoke_plot_reward_vs_time(trajs):
 
 def test_batch_reward_heatmaps(trajs, tmpdir, rand_policy):
   """Check that `batch_reward_heatmaps` builds a figure for each checkpoint."""
-  tmpdir = Path(tmpdir)
+  tmpdir = pathlib.Path(tmpdir)
 
-  # Save dummy mountain car expert.
+  # Save dummy mountain car expert and rollouts.
   expert_policy = rand_policy
   expert_policy_path = tmpdir / "expert_policy"
   serialize.save_stable_model(str(expert_policy_path), expert_policy)
+
+  rollout_path = tmpdir / "rollout.pkl"
+  with open(rollout_path, "wb") as f:
+    pickle.dump(trajs, f)
 
   # Generate reward function and generator policy checkpoints.
   log_dir = tmpdir / "train_adversarial"
   run = train_adversarial.train_ex.run(
     named_configs=["mountain_car"],
     config_updates=dict(
+      rollout_path=rollout_path,
       checkpoint_interval=1,
       log_dir=(tmpdir / "train_adversarial"),
       total_timesteps=5000,
