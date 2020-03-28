@@ -1,4 +1,4 @@
-from setuptools import find_namespace_packages, setup
+from setuptools import find_packages, setup
 import src.imitation  # pytype: disable=import-error
 
 TF_VERSION = '>=1.15.0,<2.0'
@@ -32,7 +32,7 @@ setup(
         'Implementation of modern IRL and imitation learning algorithms.'),
     author='Center for Human-Compatible AI and Google',
     python_requires='>=3.7.0',
-    packages=find_namespace_packages('src'),
+    packages=find_packages('src'),
     package_dir={'': 'src'},
     package_data={
         'imitation': [
