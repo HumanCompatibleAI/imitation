@@ -1,69 +1,29 @@
 """Heatmaps and reward plotting code for debugging MountainCar."""
 
-import os
 from pathlib import Path
 import pickle
-from typing import Dict, List, Optional, Sequence, Union
+from typing import Dict, List, Optional, Union
 
 import gym
 from matplotlib import pyplot as plt
 import numpy as np
-from stable_baselines.common.vec_env import DummyVecEnv, VecNormalize
+from stable_baselines.common import vec_env
 
-from imitation import util
-from imitation.policies.serialize import load_policy
-from imitation.rewards import common, serialize as rewards_serialize
+from imitation.policies import serialize as policies_serialize
+from imitation.rewards import common
+from imitation.rewards import serialize as rewards_serialize
+from imitation.util import rollout
 
 MC_POS_MIN, MC_POS_MAX = -1.2, 0.6
 MC_VEL_MIN, MC_VEL_MAX = -0.07, 0.07
 MC_GOAL_POS = 0.5
 MC_NUM_ACTS = 3
 
-
-def _reward_fn_normalize_inputs(obs: np.ndarray,
-                                acts: np.ndarray,
-                                next_obs: np.ndarray,
-                                steps: Optional[np.ndarray] = None,
-                                *,
-                                reward_fn: RewardFn,
-                                vec_normalize: VecNormalize,
-                                norm_reward: bool = True,
-                                verbose: bool = True,
-                                ) -> np.ndarray:
-  """Combine with `functools.partial` to create an input-normalizing RewardFn.
-
-  Args:
-    reward_fn: The reward function that normalized inputs are evaluated on.
-    vec_normalize: Instance of VecNormalize used to normalize inputs and
-     rewards.
-    norm_reward: If True, then also normalize reward before returning.
-  Returns:
-    The possibly normalized reward.
-  """
-  norm_obs = vec_normalize.norm_obs(obs)
-  norm_next_obs = vec_normalize.norm_obs(next_obs)
-  rew = reward_fn(norm_obs, acts, norm_next_obs, steps)
-  if norm_reward:
-    rew = vec_normalize.normalize_reward(rew)
-  if verbose:
-    print("rew normed min:", rew.min())
-    print("rew normed max:", rew.max())
-  return rew
+ACT_NAMES = ["left", "neutral", "right"]
 
 
-def build_norm_reward_fn(*, reward_fn, vec_normalize, **kwargs) -> RewardFn:
-  """Reward function that automatically normalizes inputs.
-
-  See _reward_fn_normalize_inputs for argument documentation.
-  """
-  return functools.partial(_reward_fn_normalize_inputs, reward_fn=reward_fn,
-                           vec_normalize=vec_normalize, **kwargs)
-
-
-# Utility for calculating the next observation s'.
-# Required for evaluating AIRL reward at arbitrary (s, a) points.
-def make_next_obs(obs, acts) -> np.ndarray:
-  """Utility for calculating the next observation s'.
+def _make_next_mc_obs(obs, acts) -> np.ndarray:
+  """Utility for calculating the MountainCar-v0 next observation s'.
 
   Required for evaluating AIRL reward at arbitrary (s, a) points.
   """
@@ -80,24 +40,14 @@ def make_next_obs(obs, acts) -> np.ndarray:
   return np.array(next_obs)
 
 
-def make_policy_rollout(policy_path, env_name="MountainCar-v0",
-                        ) -> List[util.rollout.Trajectory]:
-  """Load policy from path and return a list of Trajectories."""
-  venv = DummyVecEnv([lambda: gym.make(env_name)])
-  with load_policy("ppo2", str(policy_path), venv) as gen_policy:
-    trajs = util.rollout.generate_trajectories(
-      gen_policy, venv, sample_until=util.rollout.min_episodes(50))
-  return list(trajs)
-
-
 def make_heatmap(
     act: int,
     reward_fn: common.RewardFn,
     n_pos_step: int = 18,
     n_vel_step: int = 14,
     mark_goal: bool = True,
-    gen_trajs: Optional[List[util.rollout.Trajectory]] = None,
-    exp_trajs: Optional[List[util.rollout.Trajectory]] = None,
+    gen_trajs: Optional[List[rollout.Trajectory]] = None,
+    exp_trajs: Optional[List[rollout.Trajectory]] = None,
     legend_on: bool = True,
     title: bool = None,
     heatmap: bool = True,
@@ -133,14 +83,14 @@ def make_heatmap(
 
   obs_vec = np.array([[p, v] for p in pos_space for v in vel_space])
   acts_vec = np.array([act] * len(obs_vec))
-  next_obs_vec = make_next_obs(obs_vec, acts_vec)
+  next_obs_vec = _make_next_mc_obs(obs_vec, acts_vec)
   steps = np.arange(len(acts_vec))
 
   rew = reward_fn(obs_vec, acts_vec, next_obs_vec, steps)
   rew_matrix = rew.reshape(n_pos_step, n_vel_step)
 
   def convert_traj_to_coords_filtered(trajs):
-    trans = util.rollout.flatten_trajectories(trajs)
+    trans = rollout.flatten_trajectories(trajs)
     obs = trans.obs
     if filter_trans_by_act:
       obs = obs[trans.acts == act]
@@ -174,38 +124,50 @@ def make_heatmap(
 
 def batch_reward_heatmaps(
     checkpoints_dir: Union[str, Path],
-    output_dir: Union[str, Path] = Path("/tmp/default"),
-    exp_trajs: Optional[List[util.rollout.Trajectory]] = None,
-) -> None:
-  """Save mountain car reward heatmaps for every action and every checkpoint.
+    n_gen_trajs: int = 50,
+    exp_trajs: Optional[List[rollout.Trajectory]] = None,
+) -> Dict[Path, plt.Figure]:
+  """Build multiple mountain car reward heatmaps from a checkpoint directory.
 
-  Plots with rollout transitions scatterplotted on top are saved in
-  "{output_dir}/act_{i}".
-  Plots without rollout transitions are saved in
-  "{output_dir}/no_rollout_act_{i}".
+  One plot is generated for every combination of action and checkpoint timestep.
 
   Args:
-      checkpoints_dir: Path to `checkpoint` directory from AIRL or GAIL output
-          directory. Should contain "gen_policy" and "discrim" directories.
-      output_dir: Heatmap output directory.
-      exp_trajs: Expert trajectories for scatterplotting.
-          Generator trajectories
-          are dynamically generated from generator checkpoints.
+    checkpoints_dir: Path to `checkpoint/` directory from AIRL or GAIL output
+      directory.
+    n_gen_trajs: The number of trajectories to rollout using each generator
+      checkpoint. The transitions in the trajectory are scatterplotted on top of
+      the heatmap from the same checkpoint timestamp. Nonpositive indicates that
+      no trajectories should be plotted.
+    exp_trajs: Expert trajectories for scatterplotting. Generator trajectories
+      are dynamically generated from generator checkpoints.
+
+  Returns:
+    A dictionary mapping relative paths to `plt.Figure`. Every key is of the
+    form "{action_name}/{checkpoint_step}" where action_name is "left",
+    "neutral", or "right".
   """
+  result = {}
+  venv = vec_env.DummyVecEnv([lambda: gym.make("MountainCar-v0")])
   checkpoints_dir = Path(checkpoints_dir)
   for checkpoint_dir in sorted(checkpoints_dir.iterdir()):
     vec_normalize_path = checkpoint_dir / "gen_policy" / "vec_normalize.pkl"
     discrim_path = checkpoint_dir / "discrim"
     policy_path = checkpoint_dir / "gen_policy"
 
-    # Automatically loads VecNormalize for policy evaluation.
-    # `gen_trajs` contains unnormalized observations.
-    gen_trajs = make_policy_rollout(policy_path)
+    if n_gen_trajs > 0:
+      # `load_policy` automatically loads VecNormalize for policy evaluation.
+      with policies_serialize.load_policy(
+            "ppo2", str(policy_path), venv) as gen_policy:
+        gen_trajs = rollout.generate_trajectories(
+          gen_policy, venv, sample_until=rollout.min_episodes(50))
+    else:
+      gen_trajs = None
 
+    # `gen_trajs` contains unnormalized observations.
     # Load VecNormalize for use in RewardFn, which doesn't automatically
     # normalize input observations.
     with open(vec_normalize_path, "rb") as f:
-      vec_normalize = pickle.load(f)  # type: VecNormalize
+      vec_normalize = pickle.load(f)  # type: vec_env.VecNormalize
     vec_normalize.training = False
 
     reward_fn_ctx = rewards_serialize.load_reward(
@@ -213,36 +175,33 @@ def batch_reward_heatmaps(
     with reward_fn_ctx as reward_fn:
       norm_rew_fn = common.build_norm_reward_fn(reward_fn=reward_fn,
                                                 vec_normalize=vec_normalize)
-      for i in range(MC_NUM_ACTS):
-        make_heatmap(act=i, reward_fn=norm_rew_fn, gen_trajs=gen_trajs,
-                     exp_trajs=exp_trajs)
-        save_path = Path(output_dir, f"act_{i}", checkpoint_dir.name)
-        os.makedirs(save_path.parent, exist_ok=True)
-        plt.savefig(save_path)
-
-        make_heatmap(act=i, reward_fn=norm_rew_fn)
-        save_path = Path(output_dir, f"no_rollout_act_{i}",
-                         checkpoint_dir.name)
-        os.makedirs(save_path.parent, exist_ok=True)
-        plt.savefig(save_path)
-        print(f"saved to {save_path}")
+      for act in range(MC_NUM_ACTS):
+        fig = make_heatmap(act=act, reward_fn=norm_rew_fn, gen_trajs=gen_trajs,
+                           exp_trajs=exp_trajs)
+        path = Path(ACT_NAMES[act], checkpoint_dir.name)
+        result[path] = fig
+  return result
 
 
 def plot_reward_vs_time(
-    trajs_dict: Dict[str, List[util.rollout.Trajectory]],
+    trajs_dict: Dict[str, List[rollout.Trajectory]],
     reward_fn: common.RewardFn,
-    colors: Sequence[str] = ("tab:blue", "tab:orange"),
+    preferred_colors: Optional[Dict[str, str]] = None,
 ) -> plt.Figure:
-  """Plots rewards received by many trajectories from many agents over time.
+  """Plots a reward versus timestep line for each Trajectory.
 
   Args:
-      trajs_dict: Dictionary mapping rollout labels (e.g. "expert" or
+      trajs_dict: A dictionary mapping rollout labels (e.g. "expert" or
         "gen policy") to rollouts associated with those labels.
       reward_fn: Reward function for evaluating rollout rewards.
-      colors: Custom colors for plotted rewards.
+      preferred_colors: An optional dictionary mapping rollout labels to
+        preferred line colors.
+
+  Returns:
+    The figure.
   """
   fig, ax = plt.subplots()
-  for i, (traj_name, traj_list) in enumerate(trajs_dict.items()):
+  for i, (traj_label, traj_list) in enumerate(trajs_dict.items()):
     X = []
     Y = []
     for traj in traj_list:
@@ -251,11 +210,8 @@ def plot_reward_vs_time(
       steps = np.arange(len(traj.acts))
       rews = reward_fn(traj.obs[:-1], traj.acts, traj.obs[1:], steps)
       Y.extend(rews)
-    if i < len(colors):
-      color = colors[i]
-    else:
-      color = None
-    ax.plot(X, Y, alpha=1.0, c=color, label=traj_name)
+    color = preferred_colors.get(traj_label, None)
+    ax.plot(X, Y, label=traj_label, c=color)
   ax.xlabel("timestep")
   ax.ylabel("test reward")
   ax.legend()

@@ -6,9 +6,8 @@ from typing import Callable, ContextManager, Iterator
 import numpy as np
 from stable_baselines.common.vec_env import VecEnv
 
-from imitation.rewards import discrim_net, reward_net
+from imitation.rewards import common, discrim_net, reward_net
 from imitation.util import registry, util
-from imitation.rewards import common
 
 RewardFnLoaderFn = Callable[[str, VecEnv], ContextManager[common.RewardFn]]
 

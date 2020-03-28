@@ -1,8 +1,9 @@
 """Utilities and definitions shared by reward-related code."""
 
 import functools
-import numpy as np
 from typing import Callable, Optional
+
+import numpy as np
 from stable_baselines.common import vec_env
 
 RewardFn = Callable[[np.ndarray, np.ndarray, np.ndarray, np.ndarray],

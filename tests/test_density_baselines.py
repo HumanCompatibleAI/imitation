@@ -6,7 +6,6 @@ from typing import Sequence
 import numpy as np
 import pytest
 
-import imitation.rewards.common
 from imitation import util
 from imitation.algorithms.density_baselines import (STATE_ACTION_DENSITY,
                                                     STATE_DENSITY,
@@ -14,7 +13,8 @@ from imitation.algorithms.density_baselines import (STATE_ACTION_DENSITY,
                                                     DensityReward,
                                                     DensityTrainer)
 from imitation.policies.base import RandomPolicy
-from imitation.util import reward_wrapper, rollout
+from imitation.rewards import common
+from imitation.util import rollout
 
 parametrize_density_stationary = pytest.mark.parametrize(
   "density_type,is_stationary",
@@ -25,7 +25,7 @@ parametrize_density_stationary = pytest.mark.parametrize(
 
 
 def score_trajectories(trajectories: Sequence[rollout.Trajectory],
-                       reward_fn: imitation.rewards.common.RewardFn):
+                       reward_fn: common.RewardFn):
   # score trajectories under given reward function w/o discount
   returns = []
   for traj in trajectories:
