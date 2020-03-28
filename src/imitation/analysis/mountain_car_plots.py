@@ -78,17 +78,6 @@ def make_heatmap(
   """
   assert 0 <= act < MC_NUM_ACTS
 
-  pos_space = np.linspace(MC_POS_MIN, MC_POS_MAX, n_pos_step, endpoint=True)
-  vel_space = np.linspace(MC_VEL_MIN, MC_VEL_MAX, n_vel_step, endpoint=True)
-
-  obs_vec = np.array([[p, v] for p in pos_space for v in vel_space])
-  acts_vec = np.array([act] * len(obs_vec))
-  next_obs_vec = _make_next_mc_obs(obs_vec, acts_vec)
-  steps = np.arange(len(acts_vec))
-
-  rew = reward_fn(obs_vec, acts_vec, next_obs_vec, steps)
-  rew_matrix = rew.reshape(n_pos_step, n_vel_step)
-
   def convert_traj_to_coords_filtered(trajs):
     trans = rollout.flatten_trajectories(trajs)
     obs = trans.obs
@@ -98,6 +87,17 @@ def make_heatmap(
 
   fig, ax = plt.subplots()
   if heatmap:
+    pos_space = np.linspace(MC_POS_MIN, MC_POS_MAX, n_pos_step, endpoint=True)
+    vel_space = np.linspace(MC_VEL_MIN, MC_VEL_MAX, n_vel_step, endpoint=True)
+    obs_vec = np.array([[p, v] for p in pos_space for v in vel_space])
+    acts_vec = np.array([act] * len(obs_vec))
+    next_obs_vec = _make_next_mc_obs(obs_vec, acts_vec)
+    steps = np.arange(len(acts_vec))
+
+    rew = reward_fn(obs_vec, acts_vec, next_obs_vec, steps)
+    # Transpose because `pcolor` (confusingly) expects its first two arguments
+    # to be XY, but its matrix argument to be in RC format.
+    rew_matrix = rew.reshape(n_pos_step, n_vel_step).T
     c = ax.pcolor(pos_space, vel_space, rew_matrix)
     fig.colorbar(c, ax=ax)
 
@@ -200,19 +200,22 @@ def plot_reward_vs_time(
   Returns:
     The figure.
   """
+  if preferred_colors is None:
+    preferred_colors = {}
   fig, ax = plt.subplots()
-  for i, (traj_label, traj_list) in enumerate(trajs_dict.items()):
+
+  for i, (trajs_label, trajs_list) in enumerate(trajs_dict.items()):
     X = []
     Y = []
-    for traj in traj_list:
+    for traj in trajs_list:
       T = len(traj.rews)
       X.extend(range(T))
       steps = np.arange(len(traj.acts))
       rews = reward_fn(traj.obs[:-1], traj.acts, traj.obs[1:], steps)
       Y.extend(rews)
-    color = preferred_colors.get(traj_label, None)
-    ax.plot(X, Y, label=traj_label, c=color)
-  ax.xlabel("timestep")
-  ax.ylabel("test reward")
+    color = preferred_colors.get(trajs_label, None)
+    ax.plot(X, Y, label=trajs_label, c=color)
+  ax.set_xlabel("timestep")
+  ax.set_ylabel("test reward")
   ax.legend()
   return fig

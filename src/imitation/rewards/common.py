@@ -29,8 +29,8 @@ def _reward_fn_normalize_inputs(obs: np.ndarray,
   Returns:
     The possibly normalized reward.
   """
-  norm_obs = vec_normalize.norm_obs(obs)
-  norm_next_obs = vec_normalize.norm_obs(next_obs)
+  norm_obs = vec_normalize.normalize_obs(obs)
+  norm_next_obs = vec_normalize.normalize_obs(next_obs)
   rew = reward_fn(norm_obs, acts, norm_next_obs, steps)
   if norm_reward:
     rew = vec_normalize.normalize_reward(rew)
