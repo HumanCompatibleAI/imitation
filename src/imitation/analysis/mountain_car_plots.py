@@ -112,9 +112,8 @@ def make_heatmap(
     ax.scatter(X, Y, marker="o", c="yellow", label="policy samples",
                alpha=0.2)
 
-  act_names = ["left", "neutral", "right"]
   if title is None:
-    title = f"Action {act_names[act]}"
+    title = f"Action {ACT_NAMES[act]}"
   ax.set_title(title)
   if legend_on:
     ax.legend(loc="center left", bbox_to_anchor=(0, 1.3))
@@ -159,7 +158,7 @@ def batch_reward_heatmaps(
       with policies_serialize.load_policy(
             "ppo2", str(policy_path), venv) as gen_policy:
         gen_trajs = rollout.generate_trajectories(
-          gen_policy, venv, sample_until=rollout.min_episodes(50))
+          gen_policy, venv, sample_until=rollout.min_episodes(n_gen_trajs))
     else:
       gen_trajs = None
 
