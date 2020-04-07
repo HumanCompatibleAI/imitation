@@ -26,6 +26,7 @@ def _reward_fn_normalize_inputs(obs: np.ndarray,
     vec_normalize: Instance of VecNormalize used to normalize inputs and
      rewards.
     norm_reward: If True, then also normalize reward before returning.
+
   Returns:
     The possibly normalized reward.
   """
