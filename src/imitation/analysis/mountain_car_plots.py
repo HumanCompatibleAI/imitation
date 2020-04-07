@@ -102,7 +102,7 @@ def make_heatmap(
     fig.colorbar(c, ax=ax)
 
   if mark_goal:
-    ax.axvline(x=MC_GOAL_POS, linestyle='--',
+    ax.axvline(x=MC_GOAL_POS, linestyle="--",
                label=f"goal state (pos={MC_GOAL_POS})")
   if exp_trajs is not None:
     X, Y = convert_traj_to_coords_filtered(exp_trajs)
