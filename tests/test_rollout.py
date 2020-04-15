@@ -89,7 +89,7 @@ def test_unwrap_traj():
 
   Also check that unwrapping twice is a no-op."""
   env = gym.make("CartPole-v1")
-  env = util.MonitorPlus(env, None)
+  env = util.rollout.RolloutInfoWrapper(env)
   env = ObsRewHalveWrapper(env)
   venv = DummyVecEnv([lambda: env])
 
