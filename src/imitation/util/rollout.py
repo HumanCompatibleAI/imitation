@@ -27,7 +27,7 @@ class Trajectory(NamedTuple):
   """Reward, shape (trajectory_len, )."""
 
   infos: Optional[List[dict]]
-  """A list of info dicts, length(trajectory_len, )."""
+  """A list of info dicts, length trajectory_len."""
 
 
 def unwrap_traj(traj: Trajectory) -> Trajectory:
