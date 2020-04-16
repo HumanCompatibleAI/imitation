@@ -63,3 +63,27 @@ html_theme = 'alabaster'
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = []
+
+# -- Customization -----------------------------------------------------------
+
+def no_namedtuple_attrib_docstring(app, what, name,
+                                   obj, options, lines):
+  """Remove redundant documentation in named tuples.
+
+  Worksaround https://github.com/sphinx-doc/sphinx/issues/7353
+  Adapted from https://chrisdown.name/2015/09/20/removing-namedtuple-docstrings-from-sphinx.html
+  """
+  is_namedtuple_docstring = (
+    1 <= len(lines) <= 2 and
+    lines[0].startswith('Alias for field number')
+  )
+  if is_namedtuple_docstring:
+    # We don't return, so we need to purge in-place
+    del lines[:]
+
+
+def setup(app):
+  app.connect(
+    'autodoc-process-docstring',
+    no_namedtuple_attrib_docstring,
+  )
