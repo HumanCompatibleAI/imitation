@@ -21,7 +21,7 @@ class Trajectory(NamedTuple):
   """Actions, shape (trajectory_len, ) + action_shape."""
 
   obs: np.ndarray
-  """Observations, shape(trajectory_len + 1, ) + observation_shape."""
+  """Observations, shape (trajectory_len + 1, ) + observation_shape."""
 
   rews: np.ndarray
   """Reward, shape(trajectory_len, )."""
