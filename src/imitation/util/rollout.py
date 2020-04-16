@@ -18,7 +18,7 @@ from imitation.util.reward_wrapper import RewardFn
 class Trajectory(NamedTuple):
   """A trajectory, e.g. a one episode rollout from an expert policy."""
   acts: np.ndarray
-  """Actions, shape(trajectory_len, ) + action_shape."""
+  """Actions, shape (trajectory_len, ) + action_shape."""
 
   obs: np.ndarray
   """Observations, shape(trajectory_len + 1, ) + observation_shape."""
