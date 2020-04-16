@@ -64,16 +64,16 @@ class RolloutInfoWrapper(gym.Wrapper):
 
 
 def unwrap_traj(traj: Trajectory) -> Trajectory:
-  """Uses `MonitorPlus`-captured `obs` and `rews` to replace fields.
+  """Uses `RolloutInfoWrapper`-captured `obs` and `rews` to replace fields.
 
   This can be useful for bypassing other wrappers to retrieve the original
   `obs` and `rews`.
 
   Fails if `infos` is None or if the Trajectory was generated from an
-  environment without imitation.util.MonitorPlus.
+  environment without imitation.util.rollout.RolloutInfoWrapper
 
   Args:
-    traj: A Trajectory generated from `MonitorPlus`-wrapped Environments.
+    traj: A Trajectory generated from `RolloutInfoWrapper`-wrapped Environments.
 
   Returns:
     A copy of `traj` with replaced `obs` and `rews` fields.
