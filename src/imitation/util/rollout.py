@@ -24,7 +24,7 @@ class Trajectory(NamedTuple):
   """Observations, shape (trajectory_len + 1, ) + observation_shape."""
 
   rews: np.ndarray
-  """Reward, shape(trajectory_len, )."""
+  """Reward, shape (trajectory_len, )."""
 
   infos: Optional[List[dict]]
   """A list of info dicts, length(trajectory_len, )."""
