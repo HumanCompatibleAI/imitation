@@ -5,6 +5,7 @@ import pickle
 from typing import (Callable, Dict, Hashable, List, NamedTuple, Optional,
                     Sequence, Union)
 
+import gym
 import numpy as np
 from stable_baselines.common.base_class import BaseRLModel
 from stable_baselines.common.policies import BasePolicy
@@ -30,22 +31,54 @@ class Trajectory(NamedTuple):
   """A list of info dicts, length trajectory_len."""
 
 
+class RolloutInfoWrapper(gym.Wrapper):
+  """Add the entire episode's rewards and observations to `info` at episode end.
+
+  Whenever done=True, `info["rollouts"]` is a dict with keys
+  "obs" and "rews", whose corresponding values hold the Numpy arrays containing
+  the raw observations and rewards seen during this episode.
+  """
+  def __init__(self, env):
+    super().__init__(env)
+    self._obs = None
+    self._rews = None
+
+  def reset(self, **kwargs):
+    new_obs = super().reset()
+    self._obs = [new_obs]
+    self._rews = []
+    return new_obs
+
+  def step(self, action):
+    obs, rew, done, info = self.env.step(action)
+    self._obs.append(obs)
+    self._rews.append(rew)
+
+    if done:
+      assert "rollout" not in info
+      info["rollout"] = {
+        "obs": np.stack(self._obs),
+        "rews": np.stack(self._rews),
+      }
+    return obs, rew, done, info
+
+
 def unwrap_traj(traj: Trajectory) -> Trajectory:
-  """Uses `MonitorPlus`-captured `obs` and `rews` to replace fields.
+  """Uses `RolloutInfoWrapper`-captured `obs` and `rews` to replace fields.
 
   This can be useful for bypassing other wrappers to retrieve the original
   `obs` and `rews`.
 
   Fails if `infos` is None or if the Trajectory was generated from an
-  environment without imitation.util.MonitorPlus.
+  environment without imitation.util.rollout.RolloutInfoWrapper
 
   Args:
-    traj: A Trajectory generated from `MonitorPlus`-wrapped Environments.
+    traj: A Trajectory generated from `RolloutInfoWrapper`-wrapped Environments.
 
   Returns:
     A copy of `traj` with replaced `obs` and `rews` fields.
   """
-  ep_info = traj.infos[-1]["episode"]
+  ep_info = traj.infos[-1]["rollout"]
   res = traj._replace(obs=ep_info["obs"], rews=ep_info["rews"])
   assert len(res.obs) == len(res.acts) + 1
   assert len(res.rews) == len(res.acts)

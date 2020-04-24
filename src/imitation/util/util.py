@@ -17,6 +17,8 @@ from stable_baselines.common.policies import BasePolicy, MlpPolicy
 from stable_baselines.common.vec_env import DummyVecEnv, SubprocVecEnv, VecEnv
 import tensorflow as tf
 
+import imitation.util.rollout as rollout
+
 # TODO(adam): this should really be OrderedDict but that breaks Python
 # See https://stackoverflow.com/questions/41207128/
 LayersDict = Dict[str, tf.layers.Layer]
@@ -84,7 +86,10 @@ def make_vec_env(env_name: str,
       log_subdir = os.path.join(log_dir, 'monitor')
       os.makedirs(log_subdir, exist_ok=True)
       log_path = os.path.join(log_subdir, f'mon{i:03d}')
-    return MonitorPlus(env, log_path, allow_early_resets=True)
+
+    env = bench.Monitor(env, log_path)
+    env = rollout.RolloutInfoWrapper(env)
+    return env
   rng = np.random.RandomState(seed)
   env_seeds = rng.randint(0, (1 << 31) - 1, (n_envs, ))
   env_fns = [functools.partial(make_env, i, s)
@@ -216,35 +221,3 @@ def docstring_parameter(*args, **kwargs):
     obj.__doc__ = obj.__doc__.format(*args, **kwargs)
     return obj
   return helper
-
-
-class MonitorPlus(bench.Monitor):
-  """Augments Monitor by recording raw rewards and observations.
-
-  Adds two new keys to `info["episode"]` (which is returned whenever done=True),
-  "obs" and "rews", which hold the raw observations and rewards seen during
-  this episode.
-  """
-  def __init__(self, *args, **kwargs):
-    super().__init__(*args, **kwargs)
-    self._obs = None
-    self._rews = None
-
-  def reset(self, **kwargs):
-    new_obs = super().reset()
-    self._obs = [new_obs]
-    self._rews = []
-    return new_obs
-
-  def step(self, action):
-    obs, rew, done, info = super().step(action)
-    self._obs.append(obs)
-    self._rews.append(rew)
-
-    if done:
-      ep_info = info.get('episode')
-      assert isinstance(ep_info, dict)
-      ep_info["obs"] = np.stack(self._obs)
-      ep_info["rews"] = np.stack(self._rews)
-
-    return obs, rew, done, info
