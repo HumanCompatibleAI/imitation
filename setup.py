@@ -9,6 +9,7 @@ TESTS_REQUIRE = [
         "git+https://github.com/HumanCompatibleAI/benchmark-environments.git"
     ),
     # remove pin once https://github.com/nedbat/coveragepy/issues/881 fixed
+    "black",
     "coverage==4.5.4",
     "codecov",
     "codespell",
