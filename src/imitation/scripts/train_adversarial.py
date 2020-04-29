@@ -14,7 +14,7 @@ import tensorflow as tf
 from imitation.algorithms.adversarial import init_trainer
 from imitation.policies import serialize
 from imitation.scripts.config.train_adversarial import train_ex
-from imitation.util import rollout
+from imitation.util import data, rollout
 from imitation.util import sacred as sacred_util
 from imitation.util import util
 
@@ -113,7 +113,7 @@ def train(_run,
   sacred_util.build_sacred_symlink(log_dir, _run)
 
   # Calculate stats for expert rollouts. Used for plot and return value.
-  expert_trajs = rollout.load(rollout_path)
+  expert_trajs = data.load(rollout_path)
 
   if n_expert_demos is not None:
     assert len(expert_trajs) >= n_expert_demos

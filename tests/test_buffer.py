@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from imitation.util import rollout
+from imitation.util import data
 from imitation.util.buffer import Buffer, ReplayBuffer
 
 
@@ -86,7 +86,7 @@ def test_replay_buffer(capacity, chunk_len, obs_shape, act_shape, dtype):
     assert len(buf) == min(i, capacity)
     assert buf._buffer._idx == i % capacity
 
-    batch = rollout.TransitionsNoRew(
+    batch = data.TransitionsNoRew(
         obs=_fill_chunk(i, chunk_len, obs_shape, dtype=dtype),
         next_obs=_fill_chunk(3 * capacity + i, chunk_len,
                              obs_shape, dtype=dtype),
@@ -193,7 +193,7 @@ def test_replay_buffer_store_errors():
     with pytest.raises(ValueError, match=".* same length.*"):
       transition = {k: np.ones(3 if k == odd_field else 4, dtype=dtype)
                     for k, dtype in dtypes.items()}
-      transition = rollout.TransitionsNoRew(**transition)
+      transition = data.TransitionsNoRew(**transition)
       b.store(transition)
 
 
@@ -216,24 +216,24 @@ def test_replay_buffer_from_data():
     assert np.array_equal(buf._buffer._arrays['next_obs'], next_obs)
     assert np.array_equal(buf._buffer._arrays['acts'], acts)
 
-  buf_std = ReplayBuffer.from_data(rollout.TransitionsNoRew(
+  buf_std = ReplayBuffer.from_data(data.TransitionsNoRew(
       obs=obs, acts=acts, next_obs=next_obs, dones=dones,
   ))
   _check_buf(buf_std)
 
   rews = np.array([0.5, 1.0], dtype=float)
-  buf_rew = ReplayBuffer.from_data(rollout.TransitionsWithRew(
+  buf_rew = ReplayBuffer.from_data(data.TransitionsWithRew(
     obs=obs, acts=acts, next_obs=next_obs, rews=rews, dones=dones,
   ))
   _check_buf(buf_rew)
 
   with pytest.raises(ValueError, match=r".*same length."):
     next_obs_toolong = np.array([7, 8, 9], dtype=int)
-    ReplayBuffer.from_data(rollout.TransitionsNoRew(
+    ReplayBuffer.from_data(data.TransitionsNoRew(
         obs=obs, acts=acts, next_obs=next_obs_toolong, dones=dones,
     ))
   with pytest.raises(ValueError, match=r".*same dtype."):
     next_obs_float = np.array(next_obs, dtype=float)
-    ReplayBuffer.from_data(rollout.TransitionsNoRew(
+    ReplayBuffer.from_data(data.TransitionsNoRew(
         obs=obs, acts=acts, next_obs=next_obs_float, dones=dones,
     ))

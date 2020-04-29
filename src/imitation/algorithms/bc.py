@@ -14,7 +14,7 @@ import tensorflow as tf
 from tqdm.autonotebook import tqdm, trange
 
 from imitation.policies.base import FeedForward32Policy
-from imitation.util import rollout
+from imitation.util import data, rollout
 
 
 def set_tf_vars(*,
@@ -72,7 +72,7 @@ class BCTrainer:
   def __init__(self,
                env,
                *,
-               expert_demos: rollout.TransitionsNoRew,
+               expert_demos: data.TransitionsNoRew,
                policy_class: Type[ActorCriticPolicy] = FeedForward32Policy,
                batch_size: int = 32,
                optimiser_cls: Type[tf.train.Optimizer] = tf.train.AdamOptimizer,
@@ -92,7 +92,7 @@ class BCTrainer:
     self._build_tf_graph()
     self.sess.run(tf.global_variables_initializer())
 
-  def set_expert_dataset(self, expert_demos: rollout.TransitionsNoRew):
+  def set_expert_dataset(self, expert_demos: data.TransitionsNoRew):
     """Replace the current expert dataset with a new one.
 
     Useful for DAgger and other interactive algorithms.

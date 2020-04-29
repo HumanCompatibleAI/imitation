@@ -12,7 +12,7 @@ from stable_baselines.common import vec_env
 from imitation.policies import serialize as policies_serialize
 from imitation.rewards import common
 from imitation.rewards import serialize as rewards_serialize
-from imitation.util import rollout
+from imitation.util import data, rollout
 
 MC_POS_MIN, MC_POS_MAX = -1.2, 0.6
 MC_VEL_MIN, MC_VEL_MAX = -0.07, 0.07
@@ -46,8 +46,8 @@ def make_heatmap(
     n_pos_step: int = 18,
     n_vel_step: int = 14,
     mark_goal: bool = True,
-    gen_trajs: Optional[List[rollout.TrajectoryNoRew]] = None,
-    exp_trajs: Optional[List[rollout.TrajectoryNoRew]] = None,
+    gen_trajs: Optional[List[data.TrajectoryNoRew]] = None,
+    exp_trajs: Optional[List[data.TrajectoryNoRew]] = None,
     legend_on: bool = True,
     title: bool = None,
     heatmap: bool = True,
@@ -78,7 +78,7 @@ def make_heatmap(
   """
   assert 0 <= act < MC_NUM_ACTS
 
-  def convert_traj_to_coords_filtered(trajs: Sequence[rollout.TrajectoryNoRew]):
+  def convert_traj_to_coords_filtered(trajs: Sequence[data.TrajectoryNoRew]):
     trans = rollout.flatten_trajectories_no_rew(trajs)
     obs = trans.obs
     if filter_trans_by_act:
@@ -124,7 +124,7 @@ def make_heatmap(
 def batch_reward_heatmaps(
     checkpoints_dir: Union[str, pathlib.Path],
     n_gen_trajs: int = 50,
-    exp_trajs: Optional[List[rollout.TrajectoryNoRew]] = None,
+    exp_trajs: Optional[List[data.TrajectoryNoRew]] = None,
 ) -> Dict[pathlib.Path, plt.Figure]:
   """Build multiple mountain car reward heatmaps from a checkpoint directory.
 
@@ -183,7 +183,7 @@ def batch_reward_heatmaps(
 
 
 def plot_reward_vs_time(
-    trajs_dict: Dict[str, List[rollout.TrajectoryNoRew]],
+    trajs_dict: Dict[str, List[data.TrajectoryNoRew]],
     reward_fn: common.RewardFn,
     preferred_colors: Optional[Dict[str, str]] = None,
 ) -> plt.Figure:

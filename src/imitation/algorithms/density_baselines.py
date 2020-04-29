@@ -12,7 +12,7 @@ from stable_baselines.common.base_class import BaseRLModel
 from stable_baselines.common.vec_env import VecEnv
 import tensorflow as tf
 
-from imitation.util import reward_wrapper, rollout
+from imitation.util import data, reward_wrapper, rollout
 
 # Constants identifying different kinds of density we can use. Note that all
 # can be augmented to depend on the time step by passing `is_stationary = True`
@@ -114,7 +114,7 @@ class DensityReward:
     return density_model
 
   def _preprocess_trajectories(self,
-                               trajectories: Sequence[rollout.TrajectoryNoRew]):
+                               trajectories: Sequence[data.TrajectoryNoRew]):
     """Preprocess a list of trajectories into atomic units that we can learn a
     density function on. Depending on configuration, that could mean a sequence
     state/state pairs, or state/action pairs, or single states, etc.
@@ -204,7 +204,7 @@ class DensityReward:
 class DensityTrainer:
   def __init__(self,
                venv: VecEnv,
-               rollouts: Sequence[rollout.TrajectoryNoRew],
+               rollouts: Sequence[data.TrajectoryNoRew],
                imitation_trainer: BaseRLModel,
                *,
                standardise_inputs: bool = True,

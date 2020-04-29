@@ -4,7 +4,7 @@ from typing import Dict, Optional, Tuple
 import numpy as np
 from stable_baselines.common import vec_env
 
-from imitation.util import rollout
+from imitation.util import data
 
 
 class Buffer:
@@ -239,7 +239,7 @@ class ReplayBuffer:
     self._buffer = Buffer(capacity, sample_shapes=sample_shapes, dtypes=dtypes)
 
   @classmethod
-  def from_data(cls, transitions: rollout.TransitionsNoRew) -> "ReplayBuffer":
+  def from_data(cls, transitions: data.TransitionsNoRew) -> "ReplayBuffer":
     """Construct and return a ReplayBuffer containing only the provided data.
 
     The returned ReplayBuffer is at full capacity and ready for sampling.
@@ -264,7 +264,7 @@ class ReplayBuffer:
     instance.store(transitions)
     return instance
 
-  def sample(self, n_samples: int) -> rollout.TransitionsNoRew:
+  def sample(self, n_samples: int) -> data.TransitionsNoRew:
     """Sample obs-act-obs triples.
 
     Args:
@@ -274,10 +274,10 @@ class ReplayBuffer:
         A Transitions named tuple containing n_samples transitions.
     """
     sample = self._buffer.sample(n_samples)
-    return rollout.TransitionsNoRew(**sample)
+    return data.TransitionsNoRew(**sample)
 
   def store(self,
-            transitions: rollout.TransitionsNoRew,
+            transitions: data.TransitionsNoRew,
             truncate_ok: bool = True,
             ) -> None:
     """Store obs-act-obs triples.

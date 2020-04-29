@@ -8,7 +8,7 @@ import tensorflow as tf
 
 from imitation.policies import base
 from imitation.rewards import reward_net, serialize
-from imitation.util import rollout, util
+from imitation.util import data, rollout, util
 
 ENVS = ['FrozenLake-v0', 'CartPole-v1', 'Pendulum-v0']
 HARDCODED_TYPES = ['zero']
@@ -48,7 +48,7 @@ def test_reward_valid(env_name, reward_type):
 
 
 def _make_feed_dict(reward_net: reward_net.RewardNet,
-                    transitions: rollout.TransitionsNoRew):
+                    transitions: data.TransitionsNoRew):
   return {
       reward_net.obs_ph: transitions.obs,
       reward_net.act_ph: transitions.acts,

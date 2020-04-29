@@ -10,10 +10,10 @@ from typing import Sequence
 
 import numpy as np
 
-from imitation.util import rollout
+from imitation.util import data, rollout
 
 
-def convert_trajs_to_sb(trajs: Sequence[rollout.TrajectoryWithRew]) -> dict:
+def convert_trajs_to_sb(trajs: Sequence[data.TrajectoryWithRew]) -> dict:
   """Converts Trajectories into the dict format used by Stable Baselines GAIL.
   """
   trans = rollout.flatten_trajectories_with_rew(trajs)
@@ -35,7 +35,7 @@ def main():
   dst_path = Path(args.dst_path)
 
   assert src_path.is_file()
-  src_trajs = rollout.load(str(src_path))
+  src_trajs = data.load(str(src_path))
   dst_trajs = convert_trajs_to_sb(src_trajs)
   os.makedirs(dst_path.parent, exist_ok=True)
   with open(dst_path, "wb") as f:
