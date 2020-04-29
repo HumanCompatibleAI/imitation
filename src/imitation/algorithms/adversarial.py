@@ -40,7 +40,7 @@ class AdversarialTrainer:
                venv: VecEnv,
                gen_policy: BaseRLModel,
                discrim: discrim_net.DiscrimNet,
-               expert_demos: rollout.Transitions,
+               expert_demos: rollout.TransitionsNoRew,
                *,
                log_dir: str = 'output/',
                disc_batch_size: int = 2048,
@@ -160,7 +160,7 @@ class AdversarialTrainer:
     return self._discrim
 
   @property
-  def expert_demos(self) -> util.rollout.Transitions:
+  def expert_demos(self) -> util.rollout.TransitionsNoRew:
     """The expert demonstrations that are being imitated."""
     return self._expert_demos
 
@@ -207,8 +207,8 @@ class AdversarialTrainer:
       self.train_disc_step(gen_samples=gen_samples)
 
   def train_disc_step(self, *,
-                      gen_samples: Optional[rollout.Transitions] = None,
-                      expert_samples: Optional[rollout.Transitions] = None,
+                      gen_samples: Optional[rollout.TransitionsNoRew] = None,
+                      expert_samples: Optional[rollout.TransitionsNoRew] = None,
                       ) -> None:
     """Perform a single discriminator update, optionally using provided samples.
 
@@ -338,8 +338,8 @@ class AdversarialTrainer:
 
   def _build_disc_feed_dict(
       self, *,
-      gen_samples: Optional[rollout.Transitions] = None,
-      expert_samples: Optional[rollout.Transitions] = None,
+      gen_samples: Optional[rollout.TransitionsNoRew] = None,
+      expert_samples: Optional[rollout.TransitionsNoRew] = None,
   ) -> dict:
     """Build and return feed dict for the next discriminator training update.
 
@@ -393,7 +393,7 @@ class AdversarialTrainer:
 
 
 def init_trainer(env_name: str,
-                 expert_trajectories: Sequence[rollout.Trajectory],
+                 expert_trajectories: Sequence[rollout.TrajectoryNoRew],
                  *,
                  log_dir: str,
                  seed: int = 0,
@@ -453,7 +453,7 @@ def init_trainer(env_name: str,
                                          entropy_weight=airl_entropy_weight,
                                          **discrim_kwargs)
 
-  expert_demos = util.rollout.flatten_trajectories(expert_trajectories)
+  expert_demos = util.rollout.flatten_trajectories_no_rew(expert_trajectories)
   trainer = AdversarialTrainer(env, gen_policy, discrim, expert_demos,
                                log_dir=log_dir, **trainer_kwargs)
   return trainer

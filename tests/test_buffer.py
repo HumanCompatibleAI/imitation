@@ -86,14 +86,12 @@ def test_replay_buffer(capacity, chunk_len, obs_shape, act_shape, dtype):
     assert len(buf) == min(i, capacity)
     assert buf._buffer._idx == i % capacity
 
-    batch = rollout.Transitions(
+    batch = rollout.TransitionsNoRew(
         obs=_fill_chunk(i, chunk_len, obs_shape, dtype=dtype),
         next_obs=_fill_chunk(3 * capacity + i, chunk_len,
                              obs_shape, dtype=dtype),
         acts=_fill_chunk(6 * capacity + i, chunk_len,
                          act_shape, dtype=dtype),
-        rews=np.arange(9 * capacity + i, 9 * capacity + i + chunk_len,
-                       dtype=np.float32),
         dones=np.arange(i, i + chunk_len, dtype=np.int32) % 2,
     )
     buf.store(batch)
@@ -102,21 +100,18 @@ def test_replay_buffer(capacity, chunk_len, obs_shape, act_shape, dtype):
     sample = buf.sample(100)
     assert sample.obs.shape == sample.next_obs.shape == (100,) + obs_shape
     assert sample.acts.shape == (100,) + act_shape
-    assert sample.rews.shape == (100,)
     assert sample.dones.shape == (100,)
 
     # Are samples right data type?
     assert sample.obs.dtype == dtype
     assert sample.acts.dtype == dtype
     assert sample.next_obs.dtype == dtype
-    assert sample.rews.dtype == np.float32
     assert sample.dones.dtype == np.bool
 
     # Are samples in range?
     _check_bound(i + chunk_len, capacity, sample.obs)
     _check_bound(i + chunk_len, capacity, sample.next_obs, 3 * capacity)
     _check_bound(i + chunk_len, capacity, sample.acts, 6 * capacity)
-    _check_bound(i + chunk_len, capacity, sample.rews, 9 * capacity)
 
     # Are samples in-order?
     obs_fill = _get_fill_from_chunk(sample.obs)
@@ -125,7 +120,6 @@ def test_replay_buffer(capacity, chunk_len, obs_shape, act_shape, dtype):
 
     assert np.all(next_obs_fill - obs_fill == 3 * capacity), "out of order"
     assert np.all(act_fill - next_obs_fill == 3 * capacity), "out of order"
-    assert np.all(sample.rews - act_fill == 3 * capacity), "out of order"
     # Can't do much other than parity check for boolean values.
     # `samples.done` has the same parity as `obs_fill` by construction.
     assert np.all(obs_fill % 2 == sample.dones), "out of order"
@@ -193,14 +187,13 @@ def test_replay_buffer_store_errors():
       'obs': np.float32,
       'next_obs': np.float32,
       'acts': np.float32,
-      'rews': np.float32,
       'dones': np.bool,
   }
   for odd_field in dtypes.keys():
     with pytest.raises(ValueError, match=".* same length.*"):
       transition = {k: np.ones(3 if k == odd_field else 4, dtype=dtype)
                     for k, dtype in dtypes.items()}
-      transition = rollout.Transitions(**transition)
+      transition = rollout.TransitionsNoRew(**transition)
       b.store(transition)
 
 
@@ -216,22 +209,31 @@ def test_replay_buffer_from_data():
   obs = np.array([5, 2], dtype=int)
   acts = np.ones((2, 6), dtype=float)
   next_obs = np.array([7, 8], dtype=int)
-  rews = np.array([0.5, 1.0], dtype=float)
   dones = np.array([True, False])
-  buf = ReplayBuffer.from_data(rollout.Transitions(
-      obs=obs, acts=acts, next_obs=next_obs, rews=rews, dones=dones,
+
+  def _check_buf(buf):
+    assert np.array_equal(buf._buffer._arrays['obs'], obs)
+    assert np.array_equal(buf._buffer._arrays['next_obs'], next_obs)
+    assert np.array_equal(buf._buffer._arrays['acts'], acts)
+
+  buf_std = ReplayBuffer.from_data(rollout.TransitionsNoRew(
+      obs=obs, acts=acts, next_obs=next_obs, dones=dones,
   ))
-  assert np.array_equal(buf._buffer._arrays['obs'], obs)
-  assert np.array_equal(buf._buffer._arrays['next_obs'], next_obs)
-  assert np.array_equal(buf._buffer._arrays['acts'], acts)
+  _check_buf(buf_std)
+
+  rews = np.array([0.5, 1.0], dtype=float)
+  buf_rew = ReplayBuffer.from_data(rollout.TransitionsWithRew(
+    obs=obs, acts=acts, next_obs=next_obs, rews=rews, dones=dones,
+  ))
+  _check_buf(buf_rew)
 
   with pytest.raises(ValueError, match=r".*same length."):
     next_obs_toolong = np.array([7, 8, 9], dtype=int)
-    ReplayBuffer.from_data(rollout.Transitions(
-        obs=obs, acts=acts, next_obs=next_obs_toolong, rews=rews, dones=dones,
+    ReplayBuffer.from_data(rollout.TransitionsNoRew(
+        obs=obs, acts=acts, next_obs=next_obs_toolong, dones=dones,
     ))
   with pytest.raises(ValueError, match=r".*same dtype."):
     next_obs_float = np.array(next_obs, dtype=float)
-    ReplayBuffer.from_data(rollout.Transitions(
-        obs=obs, acts=acts, next_obs=next_obs_float, rews=rews, dones=dones,
+    ReplayBuffer.from_data(rollout.TransitionsNoRew(
+        obs=obs, acts=acts, next_obs=next_obs_float, dones=dones,
     ))

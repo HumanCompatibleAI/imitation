@@ -48,7 +48,7 @@ def test_reward_valid(env_name, reward_type):
 
 
 def _make_feed_dict(reward_net: reward_net.RewardNet,
-                    transitions: rollout.Transitions):
+                    transitions: rollout.TransitionsNoRew):
   return {
       reward_net.obs_ph: transitions.obs,
       reward_net.act_ph: transitions.acts,

@@ -61,8 +61,8 @@ def _assert_equal_scrambled_vectors(a: np.ndarray, b: np.ndarray) -> bool:
   np.testing.assert_allclose(np.sort(a), np.sort(b))
 
 
-def _join_transitions(trans_list: Sequence[rollout.Transitions],
-                      ) -> rollout.Transitions:
+def _join_transitions(trans_list: Sequence[rollout.TransitionsWithRew],
+                      ) -> rollout.TransitionsWithRew:
 
   def concat(x): return np.concatenate(list(x))
   obs = concat(t.obs for t in trans_list)
@@ -70,7 +70,7 @@ def _join_transitions(trans_list: Sequence[rollout.Transitions],
   rews = concat(t.rews for t in trans_list)
   acts = concat(t.acts for t in trans_list)
   dones = concat(t.dones for t in trans_list)
-  return rollout.Transitions(
+  return rollout.TransitionsWithRew(
     obs=obs, next_obs=next_obs, rews=rews, acts=acts, dones=dones)
 
 
@@ -132,7 +132,7 @@ def test_pop(episode_lengths: Sequence[int],
   # To test `pop_transitions`, we will check that every obs, act, and rew
   # returned by `.reset()` and `.step()` is also returned by one of the
   # calls to `pop_transitions()`.
-  transitions_list = []  # type: List[rollout.Transitions]
+  transitions_list = []  # type: List[rollout.TransitionsWithRew]
 
   # Initial observation (only matters for pop_transitions()).
   obs = venv_buffer.reset()

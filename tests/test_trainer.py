@@ -1,6 +1,6 @@
 """Tests for imitation.trainer.Trainer and util.trainer.init_trainer."""
+
 import os
-import pickle
 
 import pytest
 
@@ -21,9 +21,7 @@ def setup_and_teardown(session):
 
 
 def init_test_trainer(tmpdir: str, use_gail: bool, parallel: bool = False):
-  with open("tests/data/expert_models/cartpole_0/rollouts/final.pkl",
-            "rb") as f:
-    trajs = pickle.load(f)
+  trajs = rollout.load("tests/data/expert_models/cartpole_0/rollouts/final.pkl")
   return init_trainer("CartPole-v1",
                       trajs,
                       log_dir=tmpdir,

@@ -2,7 +2,7 @@
 
 import pathlib
 import pickle
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Sequence, Union
 
 import gym
 from matplotlib import pyplot as plt
@@ -46,8 +46,8 @@ def make_heatmap(
     n_pos_step: int = 18,
     n_vel_step: int = 14,
     mark_goal: bool = True,
-    gen_trajs: Optional[List[rollout.Trajectory]] = None,
-    exp_trajs: Optional[List[rollout.Trajectory]] = None,
+    gen_trajs: Optional[List[rollout.TrajectoryNoRew]] = None,
+    exp_trajs: Optional[List[rollout.TrajectoryNoRew]] = None,
     legend_on: bool = True,
     title: bool = None,
     heatmap: bool = True,
@@ -78,8 +78,8 @@ def make_heatmap(
   """
   assert 0 <= act < MC_NUM_ACTS
 
-  def convert_traj_to_coords_filtered(trajs):
-    trans = rollout.flatten_trajectories(trajs)
+  def convert_traj_to_coords_filtered(trajs: Sequence[rollout.TrajectoryNoRew]):
+    trans = rollout.flatten_trajectories_no_rew(trajs)
     obs = trans.obs
     if filter_trans_by_act:
       obs = obs[trans.acts == act]
@@ -124,7 +124,7 @@ def make_heatmap(
 def batch_reward_heatmaps(
     checkpoints_dir: Union[str, pathlib.Path],
     n_gen_trajs: int = 50,
-    exp_trajs: Optional[List[rollout.Trajectory]] = None,
+    exp_trajs: Optional[List[rollout.TrajectoryNoRew]] = None,
 ) -> Dict[pathlib.Path, plt.Figure]:
   """Build multiple mountain car reward heatmaps from a checkpoint directory.
 
@@ -183,7 +183,7 @@ def batch_reward_heatmaps(
 
 
 def plot_reward_vs_time(
-    trajs_dict: Dict[str, List[rollout.Trajectory]],
+    trajs_dict: Dict[str, List[rollout.TrajectoryNoRew]],
     reward_fn: common.RewardFn,
     preferred_colors: Optional[Dict[str, str]] = None,
 ) -> plt.Figure:

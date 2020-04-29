@@ -5,6 +5,7 @@ collecting more demonstrations, doing BC again, etc. Initially the
 demonstrations just come from the expert's policy; over time, they shift to be
 drawn more and more from the imitator's policy."""
 
+import dataclasses
 import os
 from typing import Callable, Tuple
 
@@ -37,19 +38,23 @@ def linear_beta_schedule(rampdown_rounds: int) -> Callable[[int], float]:
   return schedule
 
 
-def _save_trajectory(npz_path, trajectory):
+def _save_trajectory(
+  npz_path: str, trajectory: rollout.TrajectoryNoRew,
+) -> None:
   """Save a trajectory as a compressed Numpy file."""
   save_dir = os.path.dirname(npz_path)
   if save_dir:
     os.makedirs(save_dir, exist_ok=True)
-  assert isinstance(trajectory, rollout.Trajectory)
-  np.savez_compressed(npz_path, **trajectory._asdict())
+  assert isinstance(trajectory, rollout.TrajectoryNoRew)
+  np.savez_compressed(npz_path, **dataclasses.asdict(trajectory))
 
 
-def _load_trajectory(npz_path):
+def _load_trajectory(npz_path: str) -> rollout.TrajectoryNoRew:
   """Load a single trajectory from a compressed Numpy file."""
   np_data = np.load(npz_path, allow_pickle=True)
-  return rollout.Trajectory(**dict(np_data.items()))
+  has_rew = 'rews' in np_data
+  cls = rollout.TrajectoryWithRew if has_rew else rollout.TrajectoryNoRew
+  return cls(**dict(np_data.items()))
 
 
 class InteractiveTrajectoryCollector(gym.Wrapper):
@@ -233,7 +238,7 @@ class DAggerTrainer:
       self._all_demos.extend(_load_trajectory(p) for p in demo_paths)
       num_demos_by_round.append(len(demo_paths))
     tf.logging.info(f"Loaded {len(self._all_demos)} total")
-    demo_transitions = rollout.flatten_trajectories(self._all_demos)
+    demo_transitions = rollout.flatten_trajectories_no_rew(self._all_demos)
     return demo_transitions, num_demos_by_round
 
   def _get_demo_paths(self, round_dir):

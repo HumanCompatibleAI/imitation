@@ -6,18 +6,17 @@ Convert trajectories from `imitation` format to openai/baselines GAIL format.
 import argparse
 import os
 from pathlib import Path
-import pickle
-from typing import List
+from typing import Sequence
 
 import numpy as np
 
 from imitation.util import rollout
 
 
-def convert_trajs_to_sb(trajs: List[rollout.Trajectory]) -> dict:
+def convert_trajs_to_sb(trajs: Sequence[rollout.TrajectoryWithRew]) -> dict:
   """Converts Trajectories into the dict format used by Stable Baselines GAIL.
   """
-  trans = rollout.flatten_trajectories(trajs)
+  trans = rollout.flatten_trajectories_with_rew(trajs)
   return dict(
     acs=trans.acts,
     rews=trans.rews,
@@ -36,9 +35,7 @@ def main():
   dst_path = Path(args.dst_path)
 
   assert src_path.is_file()
-  with open(src_path, "rb") as f:
-    src_trajs = pickle.load(f)  # type: List[rollout.Trajectory]
-
+  src_trajs = rollout.load(str(src_path))
   dst_trajs = convert_trajs_to_sb(src_trajs)
   os.makedirs(dst_path.parent, exist_ok=True)
   with open(dst_path, "wb") as f:

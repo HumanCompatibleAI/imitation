@@ -114,7 +114,7 @@ class DensityReward:
     return density_model
 
   def _preprocess_trajectories(self,
-                               trajectories: Sequence[rollout.Trajectory]):
+                               trajectories: Sequence[rollout.TrajectoryNoRew]):
     """Preprocess a list of trajectories into atomic units that we can learn a
     density function on. Depending on configuration, that could mean a sequence
     state/state pairs, or state/action pairs, or single states, etc.
@@ -204,7 +204,7 @@ class DensityReward:
 class DensityTrainer:
   def __init__(self,
                venv: VecEnv,
-               rollouts: Sequence[rollout.Trajectory],
+               rollouts: Sequence[rollout.TrajectoryNoRew],
                imitation_trainer: BaseRLModel,
                *,
                standardise_inputs: bool = True,
