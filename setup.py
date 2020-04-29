@@ -13,7 +13,6 @@ TESTS_REQUIRE = [
     'flake8',
     'flake8-blind-except',
     'flake8-builtins',
-    'flake8-commas',
     'flake8-debugger',
     'flake8-isort',
     'pytest',
