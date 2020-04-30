@@ -15,7 +15,7 @@ def make_trainer():
   env_name = 'CartPole-v1'
   env = util.make_vec_env(env_name, 2)
   rollouts = data.load(ROLLOUT_PATH)
-  rollouts = util.rollout.flatten_trajectories_no_rew(rollouts)
+  rollouts = util.rollout.flatten_trajectories(rollouts)
   return bc.BCTrainer(env, expert_demos=rollouts)
 
 

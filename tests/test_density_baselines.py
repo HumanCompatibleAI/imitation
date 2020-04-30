@@ -23,7 +23,7 @@ parametrize_density_stationary = pytest.mark.parametrize(
    (STATE_STATE_DENSITY, True)])
 
 
-def score_trajectories(trajectories: Sequence[data.TrajectoryNoRew],
+def score_trajectories(trajectories: Sequence[data.Trajectory],
                        reward_fn: common.RewardFn):
   # score trajectories under given reward function w/o discount
   returns = []

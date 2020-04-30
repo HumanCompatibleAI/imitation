@@ -39,21 +39,21 @@ def linear_beta_schedule(rampdown_rounds: int) -> Callable[[int], float]:
 
 
 def _save_trajectory(
-  npz_path: str, trajectory: data.TrajectoryNoRew,
+  npz_path: str, trajectory: data.Trajectory,
 ) -> None:
   """Save a trajectory as a compressed Numpy file."""
   save_dir = os.path.dirname(npz_path)
   if save_dir:
     os.makedirs(save_dir, exist_ok=True)
-  assert isinstance(trajectory, data.TrajectoryNoRew)
+  assert isinstance(trajectory, data.Trajectory)
   np.savez_compressed(npz_path, **dataclasses.asdict(trajectory))
 
 
-def _load_trajectory(npz_path: str) -> data.TrajectoryNoRew:
+def _load_trajectory(npz_path: str) -> data.Trajectory:
   """Load a single trajectory from a compressed Numpy file."""
   np_data = np.load(npz_path, allow_pickle=True)
   has_rew = 'rews' in np_data
-  cls = data.TrajectoryWithRew if has_rew else data.TrajectoryNoRew
+  cls = data.TrajectoryWithRew if has_rew else data.Trajectory
   return cls(**dict(np_data.items()))
 
 
@@ -238,7 +238,7 @@ class DAggerTrainer:
       self._all_demos.extend(_load_trajectory(p) for p in demo_paths)
       num_demos_by_round.append(len(demo_paths))
     tf.logging.info(f"Loaded {len(self._all_demos)} total")
-    demo_transitions = rollout.flatten_trajectories_no_rew(self._all_demos)
+    demo_transitions = rollout.flatten_trajectories(self._all_demos)
     return demo_transitions, num_demos_by_round
 
   def _get_demo_paths(self, round_dir):

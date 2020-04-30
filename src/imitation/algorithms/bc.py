@@ -72,7 +72,7 @@ class BCTrainer:
   def __init__(self,
                env,
                *,
-               expert_demos: data.TransitionsNoRew,
+               expert_demos: data.Transitions,
                policy_class: Type[ActorCriticPolicy] = FeedForward32Policy,
                batch_size: int = 32,
                optimiser_cls: Type[tf.train.Optimizer] = tf.train.AdamOptimizer,
@@ -92,7 +92,7 @@ class BCTrainer:
     self._build_tf_graph()
     self.sess.run(tf.global_variables_initializer())
 
-  def set_expert_dataset(self, expert_demos: data.TransitionsNoRew):
+  def set_expert_dataset(self, expert_demos: data.Transitions):
     """Replace the current expert dataset with a new one.
 
     Useful for DAgger and other interactive algorithms.

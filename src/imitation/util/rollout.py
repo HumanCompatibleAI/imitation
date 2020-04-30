@@ -70,7 +70,7 @@ def unwrap_traj(traj: data.TrajectoryWithRew) -> data.TrajectoryWithRew:
   return res
 
 
-def calc_rewards_traj(traj: data.TrajectoryNoRew, reward_fn: common.RewardFn,
+def calc_rewards_traj(traj: data.Trajectory, reward_fn: common.RewardFn,
                       ) -> np.ndarray:
   """Returns the reward of a trajectory calculated under `reward_fn`."""
   steps = np.arange(len(traj.acts))
@@ -366,9 +366,9 @@ def mean_return(*args, **kwargs) -> float:
   return rollout_stats(trajectories)["return_mean"]
 
 
-def flatten_trajectories_no_rew(
-  trajectories: Sequence[data.TrajectoryNoRew],
-) -> data.TransitionsNoRew:
+def flatten_trajectories(
+  trajectories: Sequence[data.Trajectory],
+) -> data.Transitions:
   """Flatten a series of trajectory dictionaries into arrays.
 
   Returns observations, actions, next observations, rewards.
@@ -395,13 +395,13 @@ def flatten_trajectories_no_rew(
   }
   lengths = set(map(len, cat_parts.values()))
   assert len(lengths) == 1, f"expected one length, got {lengths}"
-  return data.TransitionsNoRew(**cat_parts)
+  return data.Transitions(**cat_parts)
 
 
 def flatten_trajectories_with_rew(
   trajectories: Sequence[data.TrajectoryWithRew],
 ) -> data.TransitionsWithRew:
-  transitions = flatten_trajectories_no_rew(trajectories)
+  transitions = flatten_trajectories(trajectories)
   rews = np.concatenate([traj.rews for traj in trajectories])
   return data.TransitionsWithRew(**dataclasses.asdict(transitions), rews=rews)
 
