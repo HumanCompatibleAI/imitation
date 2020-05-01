@@ -12,7 +12,7 @@ import tqdm
 import imitation.rewards.discrim_net as discrim_net
 from imitation.rewards.reward_net import BasicShapedRewardNet
 import imitation.util as util
-from imitation.util import buffer, logger, reward_wrapper, rollout
+from imitation.util import buffer, data, logger, reward_wrapper
 from imitation.util.buffering_wrapper import BufferingWrapper
 
 
@@ -40,7 +40,7 @@ class AdversarialTrainer:
                venv: VecEnv,
                gen_policy: BaseRLModel,
                discrim: discrim_net.DiscrimNet,
-               expert_demos: rollout.Transitions,
+               expert_demos: data.Transitions,
                *,
                log_dir: str = 'output/',
                disc_batch_size: int = 2048,
@@ -160,7 +160,7 @@ class AdversarialTrainer:
     return self._discrim
 
   @property
-  def expert_demos(self) -> util.rollout.Transitions:
+  def expert_demos(self) -> data.Transitions:
     """The expert demonstrations that are being imitated."""
     return self._expert_demos
 
@@ -207,8 +207,8 @@ class AdversarialTrainer:
       self.train_disc_step(gen_samples=gen_samples)
 
   def train_disc_step(self, *,
-                      gen_samples: Optional[rollout.Transitions] = None,
-                      expert_samples: Optional[rollout.Transitions] = None,
+                      gen_samples: Optional[data.Transitions] = None,
+                      expert_samples: Optional[data.Transitions] = None,
                       ) -> None:
     """Perform a single discriminator update, optionally using provided samples.
 
@@ -338,8 +338,8 @@ class AdversarialTrainer:
 
   def _build_disc_feed_dict(
       self, *,
-      gen_samples: Optional[rollout.Transitions] = None,
-      expert_samples: Optional[rollout.Transitions] = None,
+      gen_samples: Optional[data.Transitions] = None,
+      expert_samples: Optional[data.Transitions] = None,
   ) -> dict:
     """Build and return feed dict for the next discriminator training update.
 
@@ -393,7 +393,7 @@ class AdversarialTrainer:
 
 
 def init_trainer(env_name: str,
-                 expert_trajectories: Sequence[rollout.Trajectory],
+                 expert_trajectories: Sequence[data.Trajectory],
                  *,
                  log_dir: str,
                  seed: int = 0,

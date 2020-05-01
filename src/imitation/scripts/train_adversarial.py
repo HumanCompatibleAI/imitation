@@ -6,7 +6,6 @@ directly.
 
 import os
 import os.path as osp
-import pickle
 from typing import Optional
 
 from sacred.observers import FileStorageObserver
@@ -15,8 +14,9 @@ import tensorflow as tf
 from imitation.algorithms.adversarial import init_trainer
 from imitation.policies import serialize
 from imitation.scripts.config.train_adversarial import train_ex
-import imitation.util as util
-import imitation.util.sacred as sacred_util
+from imitation.util import data, rollout
+from imitation.util import sacred as sacred_util
+from imitation.util import util
 
 
 def save(trainer, save_path):
@@ -113,14 +113,13 @@ def train(_run,
   sacred_util.build_sacred_symlink(log_dir, _run)
 
   # Calculate stats for expert rollouts. Used for plot and return value.
-  with open(rollout_path, "rb") as f:
-    expert_trajs = pickle.load(f)
+  expert_trajs = data.load(rollout_path)
 
   if n_expert_demos is not None:
     assert len(expert_trajs) >= n_expert_demos
     expert_trajs = expert_trajs[:n_expert_demos]
 
-  expert_stats = util.rollout.rollout_stats(expert_trajs)
+  expert_stats = rollout.rollout_stats(expert_trajs)
 
   with util.make_session():
     if init_tensorboard:
@@ -145,11 +144,11 @@ def train(_run,
 
     # Final evaluation of imitation policy.
     results = {}
-    sample_until_eval = util.rollout.min_episodes(n_episodes_eval)
-    trajs = util.rollout.generate_trajectories(trainer.gen_policy,
-                                               trainer.venv_test,
-                                               sample_until=sample_until_eval)
-    results["imit_stats"] = util.rollout.rollout_stats(trajs)
+    sample_until_eval = rollout.min_episodes(n_episodes_eval)
+    trajs = rollout.generate_trajectories(trainer.gen_policy,
+                                          trainer.venv_test,
+                                          sample_until=sample_until_eval)
+    results["imit_stats"] = rollout.rollout_stats(trajs)
     results["expert_stats"] = expert_stats
     return results
 

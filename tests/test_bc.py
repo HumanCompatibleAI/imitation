@@ -1,12 +1,12 @@
 """Tests for Behavioural Cloning (BC)."""
+
 import os
-import pickle
 
 import numpy as np
 import tensorflow as tf
 
-from imitation import util
 from imitation.algorithms import bc
+from imitation.util import data, util
 
 ROLLOUT_PATH = "tests/data/expert_models/cartpole_0/rollouts/final.pkl"
 
@@ -14,8 +14,7 @@ ROLLOUT_PATH = "tests/data/expert_models/cartpole_0/rollouts/final.pkl"
 def make_trainer():
   env_name = 'CartPole-v1'
   env = util.make_vec_env(env_name, 2)
-  with open(ROLLOUT_PATH, "rb") as f:
-      rollouts = pickle.load(f)
+  rollouts = data.load(ROLLOUT_PATH)
   rollouts = util.rollout.flatten_trajectories(rollouts)
   return bc.BCTrainer(env, expert_demos=rollouts)
 

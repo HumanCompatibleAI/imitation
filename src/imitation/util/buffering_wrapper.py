@@ -2,7 +2,7 @@ from typing import List
 
 from stable_baselines.common.vec_env import VecEnv, VecEnvWrapper
 
-from imitation.util import rollout
+from imitation.util import data, rollout
 
 
 class BufferingWrapper(VecEnvWrapper):
@@ -56,7 +56,7 @@ class BufferingWrapper(VecEnvWrapper):
     self.n_transitions += self.num_envs
     return obs, rews, dones, infos
 
-  def _finish_partial_trajectories(self) -> List[rollout.Trajectory]:
+  def _finish_partial_trajectories(self) -> List[data.TrajectoryWithRew]:
     """Finishes and returns partial trajectories in `self._traj_accum`."""
     trajs = []
     for i in range(self.num_envs):
@@ -75,7 +75,7 @@ class BufferingWrapper(VecEnvWrapper):
         self._traj_accum.add_step({'obs': traj.obs[-1]}, key=i)
     return trajs
 
-  def pop_transitions(self) -> rollout.Transitions:
+  def pop_transitions(self) -> data.TransitionsWithRew:
     """Pops recorded transitions, returning them as an instance of Transitions.
 
     Raises a RuntimeError if called when `self.n_transitions == 0`.
@@ -87,7 +87,7 @@ class BufferingWrapper(VecEnvWrapper):
       raise RuntimeError("Called pop_transitions on an empty BufferingWrapper")
     partial_trajs = self._finish_partial_trajectories()
     self._trajectories.extend(partial_trajs)
-    transitions = rollout.flatten_trajectories(self._trajectories)
+    transitions = rollout.flatten_trajectories_with_rew(self._trajectories)
     assert len(transitions.obs) == self.n_transitions
     self._trajectories = []
     self.n_transitions = 0
