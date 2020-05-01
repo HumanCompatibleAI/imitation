@@ -8,6 +8,7 @@ set -e  # quit immediately on error
 
 echo "Source format checking"
 flake8 ${SRC_FILES[@]}
+black --check ${SRC_FILES[@]}
 codespell -I .codespell.skip --skip='*.pyc,tests/data/*,*.ipynb,*.csv' ${SRC_FILES[@]}
 
 if [ -x "`which circleci`" ]; then

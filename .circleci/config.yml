@@ -58,6 +58,10 @@ jobs:
           command: flake8 ${SRC_FILES}
 
       - run:
+          name: black
+          command: black --check ${SRC_FILES}
+
+      - run:
           name: codespell
           command: codespell -I .codespell.skip --skip='*.pyc,tests/data/*,*.ipynb,*.csv' ${SRC_FILES}
 
