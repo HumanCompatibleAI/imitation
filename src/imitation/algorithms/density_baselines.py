@@ -1,7 +1,7 @@
 """Density-based baselines for imitation learning.
 
-Each of these algorithms learns a density estimate on some aspect of the
-demonstrations, then rewards the agent for following that estimate.
+Each of these algorithms learns a density estimate on some aspect of the demonstrations,
+then rewards the agent for following that estimate.
 """
 
 from typing import Sequence
@@ -14,7 +14,7 @@ from sklearn.preprocessing import StandardScaler
 from stable_baselines.common.base_class import BaseRLModel
 from stable_baselines.common.vec_env import VecEnv
 
-from imitation.util import reward_wrapper, rollout
+from imitation.util import data, reward_wrapper, rollout
 
 # Constants identifying different kinds of density we can use. Note that all
 # can be augmented to depend on the time step by passing `is_stationary = True`
@@ -121,11 +121,10 @@ class DensityReward:
         density_model.fit(flat_transitions)
         return density_model
 
-    def _preprocess_trajectories(self, trajectories: Sequence[rollout.Trajectory]):
-        """Preprocess a list of trajectories into atomic units that we can
-        learn a density function on. Depending on configuration, that could
-        mean a sequence state/state pairs, or state/action pairs, or single
-        states, etc.
+    def _preprocess_trajectories(self, trajectories: Sequence[data.Trajectory]):
+        """Preprocess a list of trajectories into atomic units that we can learn a
+        density function on. Depending on configuration, that could mean a sequence
+        state/state pairs, or state/action pairs, or single states, etc.
 
         Args:
           trajectories: trajectories to process.
@@ -212,7 +211,7 @@ class DensityTrainer:
     def __init__(
         self,
         venv: VecEnv,
-        rollouts: Sequence[rollout.Trajectory],
+        rollouts: Sequence[data.Trajectory],
         imitation_trainer: BaseRLModel,
         *,
         standardise_inputs: bool = True,
@@ -255,8 +254,8 @@ class DensityTrainer:
             self.sess.run(tf.global_variables_initializer())
 
     def train_policy(self, n_timesteps=int(1e6), **kwargs):
-        """Train the imitation policy for a given number of timesteps. Does not
-        return anything.
+        """Train the imitation policy for a given number of timesteps. Does not return
+        anything.
 
         Args:
           n_timesteps (int): number of timesteps to train the policy for.
@@ -279,8 +278,7 @@ class DensityTrainer:
         )
 
     def test_policy(self, *, n_trajectories=10, true_reward=True):
-        """Test current imitation policy on environment & give some rollout
-        stats.
+        """Test current imitation policy on environment & give some rollout stats.
 
         Args:
           n_trajectories (int): number of rolled-out trajectories.

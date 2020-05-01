@@ -1,7 +1,7 @@
 """Helper methods for tests of custom Gym environments.
 
-This is used in the imitation test suite and may also be useful for
-users of this library.
+This is used in the imitation test suite and may also be useful for users of this
+library.
 """
 
 import gym

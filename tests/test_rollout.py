@@ -30,8 +30,8 @@ class TerminalSentinelEnv(gym.Env):
 
 
 def test_complete_trajectories():
-    """Check that complete trajectories are returned by vecenv wrapper, including
-  the terminal observation."""
+    """Check that complete trajectories are returned by vecenv wrapper, including the
+    terminal observation."""
     min_episodes = 13
     max_acts = 5
     num_envs = 4
@@ -65,8 +65,8 @@ class ObsRewHalveWrapper(gym.Wrapper):
 def test_rollout_stats():
     """Applying `ObsRewIncrementWrapper` halves the reward mean.
 
-  `rollout_stats` should reflect this.
-  """
+    `rollout_stats` should reflect this.
+    """
     env = gym.make("CartPole-v1")
     env = Monitor(env, None)
     env = ObsRewHalveWrapper(env)
@@ -85,8 +85,8 @@ def test_rollout_stats():
 def test_unwrap_traj():
     """Check that unwrap_traj reverses `ObsRewIncrementWrapper`.
 
-  Also check that unwrapping twice is a no-op.
-  """
+    Also check that unwrapping twice is a no-op.
+    """
     env = gym.make("CartPole-v1")
     env = util.rollout.RolloutInfoWrapper(env)
     env = ObsRewHalveWrapper(env)

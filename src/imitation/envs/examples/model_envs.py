@@ -31,8 +31,8 @@ def make_random_trans_mat(n_states, n_actions, max_branch_factor, rand_state=np.
 
 
 def make_random_state_dist(n_avail, n_states, rand_state=np.random):
-    """Make a random initial state distribution over n_states in which
-    n_avail<=n_states of the states are supported."""
+    """Make a random initial state distribution over n_states in which n_avail<=n_states
+    of the states are supported."""
     assert 0 < n_avail <= n_states
     init_dist = np.zeros((n_states,))
     next_states = rand_state.choice(n_states, size=(n_avail,), replace=False)
@@ -185,8 +185,7 @@ class CliffWorld(TabularModelEnv):
         self._horizon = horizon
 
         def to_id_clamp(row, col):
-            """Convert (x,y) state to state ID, after clamp x & y to lie in
-            grid."""
+            """Convert (x,y) state to state ID, after clamp x & y to lie in grid."""
             row = min(max(row, 0), height - 1)
             col = min(max(col, 0), width - 1)
             state_id = row * width + col
@@ -261,8 +260,7 @@ class CliffWorld(TabularModelEnv):
     def draw_value_vec(self, D):
         """Use matplotlib a vector of values for each state.
 
-        The vector could represent things like reward, occupancy
-        measure, etc.
+        The vector could represent things like reward, occupancy measure, etc.
         """
         import matplotlib.pyplot as plt
 

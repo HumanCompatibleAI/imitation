@@ -1,11 +1,12 @@
 """DAgger (https://arxiv.org/pdf/1011.0686.pdf).
 
-Interactively trains policy by collecting some demonstrations, doing BC,
-collecting more demonstrations, doing BC again, etc. Initially the
-demonstrations just come from the expert's policy; over time, they shift
-to be drawn more and more from the imitator's policy.
+Interactively trains policy by collecting some demonstrations, doing BC, collecting more
+demonstrations, doing BC again, etc. Initially the demonstrations just come from the
+expert's policy; over time, they shift to be drawn more and more from the imitator's
+policy.
 """
 
+import dataclasses
 import os
 from typing import Callable, Tuple
 
@@ -16,7 +17,7 @@ import tensorflow as tf
 from stable_baselines.common.policies import BasePolicy
 
 from imitation.algorithms.bc import BCTrainer, set_tf_vars
-from imitation.util import rollout, util
+from imitation.util import data, rollout, util
 
 
 def linear_beta_schedule(rampdown_rounds: int) -> Callable[[int], float]:
@@ -39,25 +40,27 @@ def linear_beta_schedule(rampdown_rounds: int) -> Callable[[int], float]:
     return schedule
 
 
-def _save_trajectory(npz_path, trajectory):
+def _save_trajectory(npz_path: str, trajectory: data.Trajectory,) -> None:
     """Save a trajectory as a compressed Numpy file."""
     save_dir = os.path.dirname(npz_path)
     if save_dir:
         os.makedirs(save_dir, exist_ok=True)
-    assert isinstance(trajectory, rollout.Trajectory)
-    np.savez_compressed(npz_path, **trajectory._asdict())
+    assert isinstance(trajectory, data.Trajectory)
+    np.savez_compressed(npz_path, **dataclasses.asdict(trajectory))
 
 
-def _load_trajectory(npz_path):
+def _load_trajectory(npz_path: str) -> data.Trajectory:
     """Load a single trajectory from a compressed Numpy file."""
     np_data = np.load(npz_path, allow_pickle=True)
-    return rollout.Trajectory(**dict(np_data.items()))
+    has_rew = "rews" in np_data
+    cls = data.TrajectoryWithRew if has_rew else data.Trajectory
+    return cls(**dict(np_data.items()))
 
 
 class InteractiveTrajectoryCollector(gym.Wrapper):
-    """Wrapper around the `.step()` and `.reset()` of an env that allows DAgger
-    to inject a "robot" action (i.e. an action from of the imitation policy)
-    that overrides the action given to `.step()` when necessary.
+    """Wrapper around the `.step()` and `.reset()` of an env that allows DAgger to
+    inject a "robot" action (i.e. an action from of the imitation policy) that overrides
+    the action given to `.step()` when necessary.
 
     Will also automatically save trajectories.
     """
@@ -154,8 +157,7 @@ class InteractiveTrajectoryCollector(gym.Wrapper):
 
 
 class NeedsDemosException(Exception):
-    """Signals demos need to be collected for current round before
-    continuing."""
+    """Signals demos need to be collected for current round before continuing."""
 
 
 class DAggerTrainer:
@@ -315,8 +317,7 @@ class DAggerTrainer:
         return self.round_num
 
     def get_trajectory_collector(self) -> InteractiveTrajectoryCollector:
-        """Create trajectory collector to extend current round's demonstration
-        set.
+        """Create trajectory collector to extend current round's demonstration set.
 
         Returns:
           collector: an `InteractiveTrajectoryCollector` configured with the
@@ -379,8 +380,7 @@ class DAggerTrainer:
 
     @classmethod
     def reconstruct_trainer(cls, scratch_dir: str) -> "DAggerTrainer":
-        """Reconstruct trainer from the latest snapshot in some working
-        directory.
+        """Reconstruct trainer from the latest snapshot in some working directory.
 
         Args:
           scratch_dir: path to the working directory created by a previous run of

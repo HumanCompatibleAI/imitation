@@ -25,8 +25,8 @@ LayersDict = Dict[str, tf.layers.Layer]
 
 
 def make_unique_timestamp() -> str:
-    """Timestamp, with random value added to avoid collisions (like human-
-    readable uuid1)."""
+    """Timestamp, with random value added to avoid collisions (like human-readable
+    uuid1)."""
     ISO_TIMESTAMP = "%Y%m%d_%H%M%S"
     timestamp = datetime.datetime.now().strftime(ISO_TIMESTAMP)
     random_uuid = uuid.uuid4().hex
@@ -221,8 +221,7 @@ def make_session(close_on_exit: bool = True, **kwargs):
 
 
 def docstring_parameter(*args, **kwargs):
-    """Treats the docstring as a format string, substituting in the
-    arguments."""
+    """Treats the docstring as a format string, substituting in the arguments."""
 
     def helper(obj):
         obj.__doc__ = obj.__doc__.format(*args, **kwargs)

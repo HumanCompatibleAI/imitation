@@ -69,8 +69,8 @@ def mce_partition_fh(env, *, R=None):
 
 
 def mce_occupancy_measures(env, *, R=None, pi=None):
-    """Calculate state visitation frequency Ds for each state s under a given
-    policy pi. You can get pi from `mce_partition_fh`.
+    """Calculate state visitation frequency Ds for each state s under a given policy pi.
+    You can get pi from `mce_partition_fh`.
 
     Args:
         env (ModelBasedEnv): a tabular MDP.
@@ -197,8 +197,8 @@ def mce_irl(
 
 
 class RewardModel(abc.ABC):
-    """Abstract model for reward functions (which might be linear, MLPs,
-    nearest-neighbour, etc.)"""
+    """Abstract model for reward functions (which might be linear, MLPs, nearest-
+    neighbour, etc.)"""
 
     @abc.abstractmethod
     def out(self, inputs):
@@ -229,8 +229,8 @@ class RewardModel(abc.ABC):
         """
 
     def out_grads(self, inputs):
-        """Combination method to do forward-prop AND back-prop. This is trivial
-        for linear models, but might provide some cost saving for deep ones.
+        """Combination method to do forward-prop AND back-prop. This is trivial for
+        linear models, but might provide some cost saving for deep ones.
 
         Args:
             inputs (np.ndarray): 2D matrix of observations, like .out().
@@ -265,8 +265,8 @@ class LinearRewardModel(RewardModel):
     """Linear reward model (without bias)."""
 
     def __init__(self, obs_dim, *, seed=None):
-        """Construct linear reward model for `obs_dim`-dimensional observation
-        space. Initial values are generated from given seed (int or None).
+        """Construct linear reward model for `obs_dim`-dimensional observation space.
+        Initial values are generated from given seed (int or None).
 
         Args:
             obs_dim (int): dimensionality of observation space.
@@ -302,8 +302,8 @@ class JaxRewardModel(RewardModel, abc.ABC):
     """
 
     def __init__(self, obs_dim, *, seed=None):
-        """Internal setup for Jax-based reward models. Initialises reward model
-        using given seed & input size (`obs_dim`).
+        """Internal setup for Jax-based reward models. Initialises reward model using
+        given seed & input size (`obs_dim`).
 
         Args:
             obs_dim (int): dimensionality of observation space.
@@ -324,8 +324,8 @@ class JaxRewardModel(RewardModel, abc.ABC):
 
     @abc.abstractmethod
     def make_stax_model(self):
-        """Build the stax model that this thing is meant to optimise. Should
-        return (net_init, net_apply) pair, just like Stax modules.
+        """Build the stax model that this thing is meant to optimise. Should return
+        (net_init, net_apply) pair, just like Stax modules.
 
         Args: empty.
 
@@ -341,8 +341,8 @@ class JaxRewardModel(RewardModel, abc.ABC):
         return jnp.concatenate(out_vecs)
 
     def _flatten_batch(self, matrix_tups):
-        """Flatten all except leading dim & concatenate results together in
-        channel dim (i.e whatever the dim after the leading dim is)."""
+        """Flatten all except leading dim & concatenate results together in channel dim
+        (i.e whatever the dim after the leading dim is)."""
         out_vecs = []
         for t in matrix_tups:
             for v in t:

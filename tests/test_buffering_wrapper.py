@@ -5,22 +5,22 @@ import numpy as np
 import pytest
 from stable_baselines.common.vec_env import DummyVecEnv
 
-from imitation.util import rollout
+from imitation.util import data
 from imitation.util.buffering_wrapper import BufferingWrapper
 
 
 class _CountingEnv(gym.Env):  # pragma: no cover
     """At timestep `t` of each episode, has `reward / 10 == obs == t`.
 
-  Episodes finish after `episode_length` calls to `step()`. As an example,
-  if we have `episode_length=5`, then an episode is to have the
-  following observations and rewards:
+    Episodes finish after `episode_length` calls to `step()`. As an example,
+    if we have `episode_length=5`, then an episode is to have the
+    following observations and rewards:
 
-  ```
-  obs = [0, 1, 2, 3, 4, 5]
-  rews = [10, 20, 30, 40, 50]
-  ```
-  """
+    ```
+    obs = [0, 1, 2, 3, 4, 5]
+    rews = [10, 20, 30, 40, 50]
+    ```
+    """
 
     def __init__(self, episode_length=5):
         assert episode_length >= 1
@@ -61,8 +61,8 @@ def _assert_equal_scrambled_vectors(a: np.ndarray, b: np.ndarray) -> bool:
 
 
 def _join_transitions(
-    trans_list: Sequence[rollout.Transitions],
-) -> rollout.Transitions:
+    trans_list: Sequence[data.TransitionsWithRew],
+) -> data.TransitionsWithRew:
     def concat(x):
         return np.concatenate(list(x))
 
@@ -71,7 +71,7 @@ def _join_transitions(
     rews = concat(t.rews for t in trans_list)
     acts = concat(t.acts for t in trans_list)
     dones = concat(t.dones for t in trans_list)
-    return rollout.Transitions(
+    return data.TransitionsWithRew(
         obs=obs, next_obs=next_obs, rews=rews, acts=acts, dones=dones
     )
 
@@ -84,40 +84,40 @@ def test_pop(
 ):
     """Check pop_transitions() results for BufferWrapper.
 
-  To make things easier to test, we use _CountingEnv where the observation
-  is simply the episode timestep. The reward is 10x the timestep. Our action
-  is 2.1x the timestep. There is an confusing offset for the observation because
-  it has timestep 0 (due to reset()) and the other quantities don't, so here is
-  an example of environment outputs and associated actions:
+    To make things easier to test, we use _CountingEnv where the observation
+    is simply the episode timestep. The reward is 10x the timestep. Our action
+    is 2.1x the timestep. There is an confusing offset for the observation because
+    it has timestep 0 (due to reset()) and the other quantities don't, so here is
+    an example of environment outputs and associated actions:
 
-  ```
-  episode_length = 5
-  obs = [0, 1, 2, 3, 4, 5]  (len=6)
-  acts = [0, 2.1, 4.2, ..., 8.4]  (len=5)
-  rews = [10, ..., 50]  (len=5)
-  ```
+    ```
+    episode_length = 5
+    obs = [0, 1, 2, 3, 4, 5]  (len=6)
+    acts = [0, 2.1, 4.2, ..., 8.4]  (len=5)
+    rews = [10, ..., 50]  (len=5)
+    ```
 
-  Converted to `Transition`-format, this looks like:
-  ```
-  episode_length = 5
-  obs = [0, 1, 2, 3, 4, 5]  (len=5)
-  next_obs = [1, 2, 3, 4, 5]  (len=5)
-  acts = [0, 2.1, 4.2, ..., 8.4]  (len=5)
-  rews = [10, ..., 50]  (len=5)
-  ```
+    Converted to `Transition`-format, this looks like:
+    ```
+    episode_length = 5
+    obs = [0, 1, 2, 3, 4, 5]  (len=5)
+    next_obs = [1, 2, 3, 4, 5]  (len=5)
+    acts = [0, 2.1, 4.2, ..., 8.4]  (len=5)
+    rews = [10, ..., 50]  (len=5)
+    ```
 
-  Args:
-    episode_lengths: The number of timesteps before episode end in each dummy
-      environment.
-    n_steps: Number of times to call `step()` on the dummy environment.
-    extra_pop_timesteps: By default, we only call `pop_*()` after `n_steps`
-      calls to `step()`. For every unique positive `x` in `extra_pop_timesteps`,
-      we also call `pop_*()` after the `x`th call to `step()`. All popped
-      samples are concatenated before validating results at the end of this
-      test case. All `x` in `extra_pop_timesteps` must be in range(1, n_steps).
-      (`x == 0` is not valid because there are no transitions to pop at timestep
-      0).
-  """
+    Args:
+      episode_lengths: The number of timesteps before episode end in each dummy
+        environment.
+      n_steps: Number of times to call `step()` on the dummy environment.
+      extra_pop_timesteps: By default, we only call `pop_*()` after `n_steps`
+        calls to `step()`. For every unique positive `x` in `extra_pop_timesteps`,
+        we also call `pop_*()` after the `x`th call to `step()`. All popped
+        samples are concatenated before validating results at the end of this
+        test case. All `x` in `extra_pop_timesteps` must be in range(1, n_steps).
+        (`x == 0` is not valid because there are no transitions to pop at timestep
+        0).
+    """
     if not n_steps >= 1:  # pragma: no cover
         raise ValueError(n_steps)
     for t in extra_pop_timesteps:  # pragma: no cover
@@ -135,7 +135,7 @@ def test_pop(
     # To test `pop_transitions`, we will check that every obs, act, and rew
     # returned by `.reset()` and `.step()` is also returned by one of the
     # calls to `pop_transitions()`.
-    transitions_list = []  # type: List[rollout.Transitions]
+    transitions_list = []  # type: List[data.TransitionsWithRew]
 
     # Initial observation (only matters for pop_transitions()).
     obs = venv_buffer.reset()

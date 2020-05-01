@@ -56,9 +56,8 @@ def debug_log_root():
 def generate_test_data():
     """Used by tests/generate_test_data.sh to generate tests/data/gather_tb/.
 
-    "tests/data/gather_tb/" should contain 4 Tensorboard run directories
-    ("sb_tb/" and "tb/" for each of two trials in the search space
-    below).
+    "tests/data/gather_tb/" should contain 4 Tensorboard run directories ("sb_tb/" and
+    "tb/" for each of two trials in the search space below).
     """
     sacred_ex_name = "expert_demos"
     run_name = "TEST"

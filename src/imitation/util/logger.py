@@ -46,8 +46,7 @@ class _HierarchicalLogger(sb_logger.Logger):
 
     @contextlib.contextmanager
     def accumulate_means(self, subdir: str):
-        """Temporarily modifies this _HierarchicalLogger to accumulate means
-        values.
+        """Temporarily modifies this _HierarchicalLogger to accumulate means values.
 
         During this context, `self.logkv(key, value)` writes the "raw" values in
         "{self.default_logger.log_dir}/{subdir}" under the key "raw/{subdir}/{key}".
@@ -182,8 +181,7 @@ def dumpkvs() -> None:
 
 
 def accumulate_means(subdir_name: str) -> ContextManager:
-    """Temporarily redirect logkv() to a different logger and auto-track
-    kvmeans.
+    """Temporarily redirect logkv() to a different logger and auto-track kvmeans.
 
     Within this context, the original logger is swapped out for a special logger
     in directory `"{current_logging_dir}/raw/{subdir_name}"`.

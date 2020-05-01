@@ -83,8 +83,7 @@ class Registry(Generic[T]):
 def build_loader_fn_require_space(
     fn: Callable[[gym.Space, gym.Space], T], **kwargs
 ) -> LoaderFn:
-    """Converts a factory taking observation and action space into a
-    LoaderFn."""
+    """Converts a factory taking observation and action space into a LoaderFn."""
 
     @functools.wraps(fn)
     def wrapper(path: str, venv: VecEnv) -> T:

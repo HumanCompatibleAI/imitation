@@ -1,5 +1,4 @@
-"""model_builder.py A small library for programmatically building MuJoCo XML
-files."""
+"""model_builder.py A small library for programmatically building MuJoCo XML files."""
 import tempfile
 from contextlib import contextmanager
 
@@ -21,8 +20,7 @@ def default_model(name):
 
 
 def pointmass_model(name):
-    """Get a model with basic settings such as gravity and Euler
-    integration."""
+    """Get a model with basic settings such as gravity and Euler integration."""
     model = MJCModel(name)
     root = model.root
 

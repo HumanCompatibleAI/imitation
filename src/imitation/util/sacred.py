@@ -38,8 +38,7 @@ def filter_subdirs(
     *,
     nested_ok: bool = False,
 ) -> List[str]:
-    """Walks through a directory tree, returning paths to filtered
-    subdirectories.
+    """Walks through a directory tree, returning paths to filtered subdirectories.
 
     Does not follow symlinks.
 

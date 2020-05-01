@@ -189,8 +189,7 @@ class RewardNetShaped(RewardNet):
     def build_phi_network(
         self, obs_input: tf.Tensor, next_obs_input: tf.Tensor,
     ) -> Tuple[tf.Tensor, tf.Tensor, util.LayersDict]:
-        """Build the reward shaping network (disentangles dynamics from
-        reward).
+        """Build the reward shaping network (disentangles dynamics from reward).
 
         XXX: We could potentially make it easier on the subclasser by requiring
         only one input. ie build_phi_network(obs_input). Later in
@@ -269,9 +268,9 @@ def build_basic_theta_network(
 class BasicRewardNet(RewardNet, serialize.LayersSerializable):
     """An unshaped reward net with simple, default settings.
 
-    Intended to match the reward network trained for the original AIRL
-    pendulum experiments. Right now it has a linear function
-    approximator for the theta network, not sure if this is what I want.
+    Intended to match the reward network trained for the original AIRL pendulum
+    experiments. Right now it has a linear function approximator for the theta network,
+    not sure if this is what I want.
     """
 
     def __init__(

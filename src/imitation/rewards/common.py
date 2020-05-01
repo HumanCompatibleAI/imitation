@@ -19,8 +19,7 @@ def _reward_fn_normalize_inputs(
     vec_normalize: vec_env.VecNormalize,
     norm_reward: bool = True,
 ) -> np.ndarray:
-    """Combine with `functools.partial` to create an input-normalizing
-    RewardFn.
+    """Combine with `functools.partial` to create an input-normalizing RewardFn.
 
     Args:
       reward_fn: The reward function that normalized inputs are evaluated on.

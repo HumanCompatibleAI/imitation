@@ -611,8 +611,8 @@ def angry_ant_crippled(gear=150):
 
 
 class CustomAntEnv(mujoco_env.MujocoEnv, utils.EzPickle):
-    """A modified ant env with lower joint gear ratios so it flips less often
-    and learns faster."""
+    """A modified ant env with lower joint gear ratios so it flips less often and learns
+    faster."""
 
     def __init__(self, max_timesteps=1000, disabled=False, gear=150):
         self.timesteps = 0

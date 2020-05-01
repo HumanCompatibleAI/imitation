@@ -162,7 +162,7 @@ def rollouts_and_policy(
 
                 if rollout_save_interval > 0 and step % rollout_save_interval == 0:
                     save_path = osp.join(rollout_dir, f"{step}.pkl")
-                    util.rollout.save(save_path, policy, venv, sample_until)
+                    util.rollout.rollout_and_save(save_path, policy, venv, sample_until)
                 if policy_save_interval > 0 and step % policy_save_interval == 0:
                     output_dir = os.path.join(policy_dir, f"{step:05d}")
                     serialize.save_stable_model(output_dir, policy, vec_normalize)
@@ -172,7 +172,7 @@ def rollouts_and_policy(
             # Save final artifacts after training is complete.
             if rollout_save_final:
                 save_path = osp.join(rollout_dir, "final.pkl")
-                util.rollout.save(save_path, policy, venv, sample_until)
+                util.rollout.rollout_and_save(save_path, policy, venv, sample_until)
             if policy_save_final:
                 output_dir = os.path.join(policy_dir, "final")
                 serialize.save_stable_model(output_dir, policy, vec_normalize)
@@ -227,7 +227,7 @@ def rollouts_from_policy(
     )
 
     with serialize.load_policy(policy_type, policy_path, venv) as policy:
-        util.rollout.save(rollout_save_path, policy, venv, sample_until)
+        util.rollout.rollout_and_save(rollout_save_path, policy, venv, sample_until)
 
 
 def main_console():

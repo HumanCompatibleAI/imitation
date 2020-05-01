@@ -20,9 +20,9 @@ def gather_tb_directories(
     env_name: Optional[str],
     skip_failed_runs: bool,
 ) -> dict:
-    """Gather Tensorboard directories from a `parallel_ex` run. The directories
-    are copied to a unique directory in `/tmp/analysis_tb/` under
-    subdirectories matching the Tensorboard events' Ray Tune trial names.
+    """Gather Tensorboard directories from a `parallel_ex` run. The directories are
+    copied to a unique directory in `/tmp/analysis_tb/` under subdirectories matching
+    the Tensorboard events' Ray Tune trial names.
 
     Undocumented arguments are the same as in `analyze_imitation()`.
 
@@ -82,8 +82,7 @@ def analyze_imitation(
     csv_output_path: Optional[str],
     verbose: bool,
 ) -> pd.DataFrame:
-    """Parse Sacred logs and generate a DataFrame for imitation learning
-    results.
+    """Parse Sacred logs and generate a DataFrame for imitation learning results.
 
     Args:
       source_dir: A directory containing Sacred FileObserver subdirectories

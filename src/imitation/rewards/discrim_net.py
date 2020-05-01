@@ -86,8 +86,8 @@ class DiscrimNet(serialize.Serializable, ABC):
     def disc_logits_gen_is_high(self) -> tf.Tensor:
         """The discriminator's logits for each state-action sample.
 
-        A high value corresponds to predicting generator, and a low
-        value corresponds to predicting expert.
+        A high value corresponds to predicting generator, and a low value corresponds to
+        predicting expert.
         """
         return self._disc_logits_gen_is_high
 
@@ -110,9 +110,8 @@ class DiscrimNet(serialize.Serializable, ABC):
 
     @abstractmethod
     def build_graph(self):
-        """Builds forward prop graph, reward, loss, and summary ops. Gets
-        called once during construction. Should create the following
-        attributes:
+        """Builds forward prop graph, reward, loss, and summary ops. Gets called once
+        during construction. Should create the following attributes:
 
         - `self._policy_train_reward`: reward used during imitation learning,
           should be a rank-1 Tensor.
@@ -125,8 +124,7 @@ class DiscrimNet(serialize.Serializable, ABC):
         """
 
     def _add_default_train_stats(self) -> None:
-        """Updates `self._train_stats` with several default scalar logging
-        Tensors."""
+        """Updates `self._train_stats` with several default scalar logging Tensors."""
         bin_is_generated_pred = self.disc_logits_gen_is_high > 0
         bin_is_generated_true = self.labels_gen_is_one_ph > 0
         bin_is_expert_true = tf.logical_not(bin_is_generated_true)
@@ -169,7 +167,7 @@ class DiscrimNet(serialize.Serializable, ABC):
                 ("disc_acc_expert", expert_acc),
                 ("disc_acc_gen", generated_acc),
                 # entropy of the predicted label distribution, averaged equally across
-                # both classes (if this is low then disc is very good or has given up)
+                # both classes (if this drops then disc is very good or has given up)
                 ("disc_entropy", entropy),
                 # true number of expert demos and predicted number of expert demos
                 ("disc_proportion_expert_true", pct_expert),
@@ -349,8 +347,8 @@ def build_mlp_discrim_net(
     *,
     hidden_sizes: Iterable[int] = (32, 32),
 ):
-    """Builds a simple MLP-based discriminator for GAIL. The returned function
-    can be passed into the `build_discrim_net` argument of `DiscrimNetGAIL`.
+    """Builds a simple MLP-based discriminator for GAIL. The returned function can be
+    passed into the `build_discrim_net` argument of `DiscrimNetGAIL`.
 
     Args:
       obs_input: observation seen at this time step.

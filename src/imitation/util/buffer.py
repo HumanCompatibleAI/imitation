@@ -1,9 +1,10 @@
+import dataclasses
 from typing import Dict, Optional, Tuple
 
 import numpy as np
 from stable_baselines.common import vec_env
 
-from imitation.util import rollout
+from imitation.util import data
 
 
 class Buffer:
@@ -24,15 +25,15 @@ class Buffer:
     _n_data: int
     """The number of samples currently stored in this buffer.
 
-    An integer in `range(0, self.capacity + 1)`. This attribute is the return
-    value of `self.__len__`.
-    """
+  An integer in `range(0, self.capacity + 1)`. This attribute is the return
+  value of `self.__len__`.
+  """
 
     _idx: int
     """The index of the first row that new data should be written to.
 
-    An integer in `range(0, self.capacity)`.
-    """
+  An integer in `range(0, self.capacity)`.
+  """
 
     def __init__(
         self,
@@ -164,8 +165,7 @@ class Buffer:
         self._n_data = min(self._n_data + n_samples, self.capacity)
 
     def sample(self, n_samples: int) -> Dict[str, np.ndarray]:
-        """Uniformly sample `n_samples` samples from the buffer with
-        replacement.
+        """Uniformly sample `n_samples` samples from the buffer with replacement.
 
         Args:
             n_samples: The number of samples to randomly sample.
@@ -237,22 +237,19 @@ class ReplayBuffer:
             "obs": obs_shape,
             "acts": act_shape,
             "next_obs": obs_shape,
-            "rews": (),
             "dones": (),
         }
         dtypes = {
             "obs": obs_dtype,
             "acts": act_dtype,
             "next_obs": obs_dtype,
-            "rews": np.float32,
             "dones": np.bool,
         }
         self._buffer = Buffer(capacity, sample_shapes=sample_shapes, dtypes=dtypes)
 
     @classmethod
-    def from_data(cls, transitions: rollout.Transitions) -> "ReplayBuffer":
-        """Construct and return a ReplayBuffer containing only the provided
-        data.
+    def from_data(cls, transitions: data.Transitions) -> "ReplayBuffer":
+        """Construct and return a ReplayBuffer containing only the provided data.
 
         The returned ReplayBuffer is at full capacity and ready for sampling.
 
@@ -280,7 +277,7 @@ class ReplayBuffer:
         instance.store(transitions)
         return instance
 
-    def sample(self, n_samples: int) -> rollout.Transitions:
+    def sample(self, n_samples: int) -> data.Transitions:
         """Sample obs-act-obs triples.
 
         Args:
@@ -290,11 +287,9 @@ class ReplayBuffer:
             A Transitions named tuple containing n_samples transitions.
         """
         sample = self._buffer.sample(n_samples)
-        return rollout.Transitions(**sample)
+        return data.Transitions(**sample)
 
-    def store(
-        self, transitions: rollout.Transitions, truncate_ok: bool = True,
-    ) -> None:
+    def store(self, transitions: data.Transitions, truncate_ok: bool = True,) -> None:
         """Store obs-act-obs triples.
 
         Args:
@@ -306,11 +301,14 @@ class ReplayBuffer:
         Raises:
             ValueError: The arguments didn't have the same length.
         """
-        lengths = [len(arr) for arr in transitions]
+        trans_dict = dataclasses.asdict(transitions)
+        # Remove unnecessary fields
+        trans_dict = {k: trans_dict[k] for k in self._buffer.sample_shapes.keys()}
+
+        lengths = [len(arr) for arr in trans_dict.values()]
         if len(set(lengths)) != 1:
             raise ValueError("Arguments must have the same length.")
 
-        trans_dict = transitions._asdict()
         if lengths[0] > self.capacity and truncate_ok:
             trans_dict = {k: v[-self.capacity :] for k, v in trans_dict.items()}
 
