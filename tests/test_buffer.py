@@ -186,25 +186,6 @@ def test_replay_buffer_init_errors():
         ReplayBuffer(15, obs_shape=(10, 10), obs_dtype=bool, act_dtype=bool)
 
 
-def test_replay_buffer_store_errors():
-    b = ReplayBuffer(10, obs_shape=(), obs_dtype=bool, act_shape=(), act_dtype=float)
-
-    dtypes = {
-        "obs": np.float32,
-        "next_obs": np.float32,
-        "acts": np.float32,
-        "dones": np.bool,
-    }
-    for odd_field in dtypes.keys():
-        with pytest.raises(ValueError, match=".* same length.*"):
-            transition = {
-                k: np.ones(3 if k == odd_field else 4, dtype=dtype)
-                for k, dtype in dtypes.items()
-            }
-            transition = data.Transitions(**transition)
-            b.store(transition)
-
-
 def test_buffer_from_data():
     data = np.ndarray([50, 30], dtype=bool)
     buf = Buffer.from_data({"k": data})
@@ -236,16 +217,3 @@ def test_replay_buffer_from_data():
         )
     )
     _check_buf(buf_rew)
-
-    with pytest.raises(ValueError, match=r".*same length."):
-        next_obs_toolong = np.array([7, 8, 9], dtype=int)
-        ReplayBuffer.from_data(
-            data.Transitions(
-                obs=obs, acts=acts, next_obs=next_obs_toolong, dones=dones,
-            )
-        )
-    with pytest.raises(ValueError, match=r".*same dtype."):
-        next_obs_float = np.array(next_obs, dtype=float)
-        ReplayBuffer.from_data(
-            data.Transitions(obs=obs, acts=acts, next_obs=next_obs_float, dones=dones,)
-        )
