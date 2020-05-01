@@ -38,7 +38,7 @@ class Trajectory:
             )
         if self.infos is not None and len(self.infos) != len(self.acts):
             raise ValueError(
-                "infos when present must be present for each action:"
+                "infos when present must be present for each action: "
                 f"{len(self.infos)} != {len(self.acts)}"
             )
 
@@ -46,7 +46,7 @@ class Trajectory:
 def _rews_validation(rews: np.ndarray, acts: np.ndarray):
     if rews.shape != (len(acts),):
         raise ValueError(
-            "rewards must be 1D array, one for each action:"
+            "rewards must be 1D array, one for each action: "
             f"{rews.shape} != ({len(acts)},)"
         )
     if rews.dtype not in [np.float32, np.float64, np.float128]:
@@ -105,22 +105,22 @@ class Transitions:
         """Performs input validation: check shapes & dtypes match docstring."""
         if self.obs.shape != self.next_obs.shape:
             raise ValueError(
-                "obs and next_obs must have same shape:"
+                "obs and next_obs must have same shape: "
                 f"{self.obs.shape} != {self.next_obs.shape}"
             )
         if self.obs.dtype != self.next_obs.dtype:
             raise ValueError(
-                "obs and next_obs must have the same dtype:"
+                "obs and next_obs must have the same dtype: "
                 f"{self.obs.dtype} != {self.next_obs.dtype}"
             )
         if len(self.obs) != len(self.acts):
             raise ValueError(
-                "obs and acts must have same number of timesteps:"
+                "obs and acts must have same number of timesteps: "
                 f"{len(self.obs)} != {len(self.acts)}"
             )
         if self.dones.shape != (len(self.acts),):
             raise ValueError(
-                "dones must be 1D array, one for each timestep:"
+                "dones must be 1D array, one for each timestep: "
                 f"{self.dones.shape} != ({len(self.acts)},)"
             )
         if self.dones.dtype != np.bool:
