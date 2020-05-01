@@ -62,11 +62,11 @@ def test_invalid_trajectories(
 
     for cls in [data.Trajectory, functools.partial(data.TrajectoryWithRew, rews=rews)]:
         with pytest.raises(
-            ValueError, match=r"expected one more observation than actions.*"
+            ValueError, match=r"expected one more observations than actions.*"
         ):
             cls(obs=obs[:-1], acts=acts, infos=None)
         with pytest.raises(
-            ValueError, match=r"expected one more observation than actions.*"
+            ValueError, match=r"expected one more observations than actions.*"
         ):
             cls(obs=obs, acts=acts[:-1], infos=None)
 

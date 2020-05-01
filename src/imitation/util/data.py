@@ -33,7 +33,7 @@ class Trajectory:
         """Performs input validation: check shapes are as specified in docstring."""
         if len(self.obs) != len(self.acts) + 1:
             raise ValueError(
-                "expected one more observation than actions: "
+                "expected one more observations than actions: "
                 f"{len(self.obs)} != {len(self.acts)} + 1"
             )
         if self.infos is not None and len(self.infos) != len(self.acts):
@@ -46,7 +46,7 @@ class Trajectory:
 def _rews_validation(rews: np.ndarray, acts: np.ndarray):
     if rews.shape != (len(acts),):
         raise ValueError(
-            "rewards must be 1D array, one for each action: "
+            "rewards must be 1D array, one entry for each action: "
             f"{rews.shape} != ({len(acts)},)"
         )
     if rews.dtype not in [np.float32, np.float64, np.float128]:
@@ -59,7 +59,7 @@ class TrajectoryWithRew(Trajectory):
     """Reward, shape (trajectory_len, ). dtype float."""
 
     def __post_init__(self):
-        """Performs input validation on shapes, including for rews."""
+        """Performs input validation, including for rews."""
         super().__post_init__()
         _rews_validation(self.rews, self.acts)
 
@@ -77,7 +77,9 @@ class Transitions:
     Previous observations. Shape: (batch_size, ) + observation_shape.
 
     The i'th observation `obs[i]` in this array is the observation seen
-    by the agent when choosing action `acts[i]`. obs.dtype == next_obs.dtype.
+    by the agent when choosing action `acts[i]`.
+
+    Invariant: obs.dtype == next_obs.dtype.
     """
 
     acts: np.ndarray
@@ -87,7 +89,9 @@ class Transitions:
     """New observation. Shape: (batch_size, ) + observation_shape.
 
     The i'th observation `next_obs[i]` in this array is the observation
-    after the agent has taken action `acts[i]`. next_obs.dtype == obs.dtype.
+    after the agent has taken action `acts[i]`.
+
+    Invariant: next_obs.dtype == obs.dtype.
     """
 
     dones: np.ndarray
@@ -120,7 +124,7 @@ class Transitions:
             )
         if self.dones.shape != (len(self.acts),):
             raise ValueError(
-                "dones must be 1D array, one for each timestep: "
+                "dones must be 1D array, one entry for each timestep: "
                 f"{self.dones.shape} != ({len(self.acts)},)"
             )
         if self.dones.dtype != np.bool:
@@ -140,7 +144,7 @@ class TransitionsWithRew(Transitions):
     """
 
     def __post_init__(self):
-        """Performs input validation on shapes, including for rews."""
+        """Performs input validation, including for rews."""
         super().__post_init__()
         _rews_validation(self.rews, self.acts)
 
