@@ -62,7 +62,6 @@ def unwrap_traj(traj: data.TrajectoryWithRew) -> data.TrajectoryWithRew:
     A copy of `traj` with replaced `obs` and `rews` fields.
   """
   ep_info = traj.infos[-1]["rollout"]
-  # no need to replace next_obs since that is never changed by VecEnv auto-reset
   res = dataclasses.replace(traj, obs=ep_info["obs"], rews=ep_info["rews"])
   assert len(res.obs) == len(res.acts) + 1
   assert len(res.rews) == len(res.acts)
