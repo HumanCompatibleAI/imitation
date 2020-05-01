@@ -95,11 +95,13 @@ def test_replay_buffer(capacity, chunk_len, obs_shape, act_shape, dtype):
         assert len(buf) == min(i, capacity)
         assert buf._buffer._idx == i % capacity
 
+        dones = np.arange(i, i + chunk_len, dtype=np.int32) % 2
+        dones = dones.astype(np.bool)
         batch = data.Transitions(
             obs=_fill_chunk(i, chunk_len, obs_shape, dtype=dtype),
             next_obs=_fill_chunk(3 * capacity + i, chunk_len, obs_shape, dtype=dtype),
             acts=_fill_chunk(6 * capacity + i, chunk_len, act_shape, dtype=dtype),
-            dones=np.arange(i, i + chunk_len, dtype=np.int32) % 2,
+            dones=dones,
         )
         buf.store(batch)
 
