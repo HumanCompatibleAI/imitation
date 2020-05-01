@@ -22,13 +22,13 @@ def _reward_fn_normalize_inputs(
     """Combine with `functools.partial` to create an input-normalizing RewardFn.
 
     Args:
-      reward_fn: The reward function that normalized inputs are evaluated on.
-      vec_normalize: Instance of VecNormalize used to normalize inputs and
-       rewards.
-      norm_reward: If True, then also normalize reward before returning.
+        reward_fn: The reward function that normalized inputs are evaluated on.
+        vec_normalize: Instance of VecNormalize used to normalize inputs and
+            rewards.
+        norm_reward: If True, then also normalize reward before returning.
 
     Returns:
-      The possibly normalized reward.
+        The possibly normalized reward.
     """
     norm_obs = vec_normalize.normalize_obs(obs)
     norm_next_obs = vec_normalize.normalize_obs(next_obs)

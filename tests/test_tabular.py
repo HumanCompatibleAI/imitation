@@ -82,8 +82,7 @@ def test_random_mdp():
 
 
 def test_policy_om_random_mdp():
-    """Test that optimal policy occupancy measure ("om") for a random MDP makes
-    sense."""
+    """Test that optimal policy occupancy measure ("om") for a random MDP is sane."""
     mdp = gym.make("imitation/Random-v0")
     V, Q, pi = mce_partition_fh(mdp)
     assert np.all(np.isfinite(V))

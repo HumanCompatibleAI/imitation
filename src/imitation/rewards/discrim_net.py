@@ -110,8 +110,10 @@ class DiscrimNet(serialize.Serializable, ABC):
 
     @abstractmethod
     def build_graph(self):
-        """Builds forward prop graph, reward, loss, and summary ops. Gets called once
-        during construction. Should create the following attributes:
+        """Builds forward prop graph, reward, loss, and summary ops.
+
+        Gets called once during construction. Should create the following
+        attributes:
 
         - `self._policy_train_reward`: reward used during imitation learning,
           should be a rank-1 Tensor.
@@ -189,20 +191,20 @@ class DiscrimNet(serialize.Serializable, ABC):
         """Vectorized reward for training an imitation learning algorithm.
 
         Args:
-          obs: The observation input. Its shape is
-            `(batch_size,) + observation_space.shape`.
-          act: The action input. Its shape is
-            `(batch_size,) + action_space.shape`. The None dimension is
-            expected to be the same as None dimension from `obs_input`.
-          next_obs: The observation input. Its shape is
-            `(batch_size,) + observation_space.shape`.
-          steps: The number of timesteps elapsed. Its shape is `(batch_size,)`.
-          gen_log_prob_fn: The generator policy's action probabilities function.
-            A Callable such that
-            `log_act_prob_fn(observations=obs, actions=act, lopg=True)`
-            returns `log_act_prob`, the generator's log action probabilities.
-            `log_act_prob[i]` is equal to the generator's log probability of
-            choosing `act[i]` given `obs[i]`.
+            obs: The observation input. Its shape is
+                `(batch_size,) + observation_space.shape`.
+            act: The action input. Its shape is
+                `(batch_size,) + action_space.shape`. The None dimension is
+                expected to be the same as None dimension from `obs_input`.
+            next_obs: The observation input. Its shape is
+                `(batch_size,) + observation_space.shape`.
+            steps: The number of timesteps elapsed. Its shape is `(batch_size,)`.
+            gen_log_prob_fn: The generator policy's action probabilities function.
+                A Callable such that
+                `log_act_prob_fn(observations=obs, actions=act, lopg=True)`
+                returns `log_act_prob`, the generator's log action probabilities.
+                `log_act_prob[i]` is equal to the generator's log probability of
+                choosing `act[i]` given `obs[i]`.
         Returns:
             The rewards. Its shape is `(batch_size,)`.
         """
@@ -233,16 +235,16 @@ class DiscrimNet(serialize.Serializable, ABC):
         """Vectorized reward for training an expert during transfer learning.
 
         Args:
-          obs: The observation input. Its shape is
-            `(batch_size,) + observation_space.shape`.
-          act: The action input. Its shape is
-            `(batch_size,) + action_space.shape`. The None dimension is
-            expected to be the same as None dimension from `obs_input`.
-          next_obs: The observation input. Its shape is
-            `(batch_size,) + observation_space.shape`.
-          steps: The number of timesteps elapsed. Its shape is `(batch_size,)`.
+            obs: The observation input. Its shape is
+                `(batch_size,) + observation_space.shape`.
+            act: The action input. Its shape is
+                `(batch_size,) + action_space.shape`. The None dimension is
+                expected to be the same as None dimension from `obs_input`.
+            next_obs: The observation input. Its shape is
+                `(batch_size,) + observation_space.shape`.
+            steps: The number of timesteps elapsed. Its shape is `(batch_size,)`.
         Returns:
-          The rewards. Its shape is `(batch_size,)`.
+            The rewards. Its shape is `(batch_size,)`.
         """
         del steps
         fd = {
@@ -258,11 +260,11 @@ class DiscrimNet(serialize.Serializable, ABC):
 class DiscrimNetAIRL(DiscrimNet):
     r"""The AIRL discriminator for a given RewardNet.
 
-  The AIRL discriminator is of the form
-  .. math:: D_{\theta}(s,a) = \frac{\exp(f_{\theta}(s,a)}{\exp(f_{\theta}(s,a) + \pi(a \mid s)}
+    The AIRL discriminator is of the form
+    .. math:: D_{\theta}(s,a) = \frac{\exp(f_{\theta}(s,a)}{\exp(f_{\theta}(s,a) + \pi(a \mid s)}
 
-  where :math:`f_{\theta}` is `self.reward_net`.
-  """  # noqa: E501
+    where :math:`f_{\theta}` is `self.reward_net`.
+    """  # noqa: E501
 
     def __init__(self, reward_net: reward_net.RewardNet, entropy_weight: float = 1.0):
         """Builds a DiscrimNetAIRL.
@@ -351,9 +353,9 @@ def build_mlp_discrim_net(
     passed into the `build_discrim_net` argument of `DiscrimNetGAIL`.
 
     Args:
-      obs_input: observation seen at this time step.
-      act_input: action taken at this time step.
-      hidden_sizes: list of layer sizes for each hidden layer of the network.
+        obs_input: observation seen at this time step.
+        act_input: action taken at this time step.
+        hidden_sizes: list of layer sizes for each hidden layer of the network.
     """
     inputs = tf.concat(
         [tf.layers.flatten(obs_input), tf.layers.flatten(act_input)], axis=1

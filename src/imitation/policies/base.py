@@ -76,19 +76,19 @@ def get_action_policy(policy, observation, deterministic=True):
     This code was adapted from Stable Baselines' `BaseRLModel.predict()`.
 
     Args:
-      policy (stable_baselines.common.policies.BasePolicy): The policy.
-      observation (np.ndarray): The input to the policy network. Can either
-        be a single input with shape `policy.ob_space.shape` or a vectorized
-        input with shape `(n_batch,) + policy.ob_space.shape`.
-      deterministic (bool): Whether or not to return deterministic actions
-        (usually means argmax over policy's action distribution).
+        policy (stable_baselines.common.policies.BasePolicy): The policy.
+        observation (np.ndarray): The input to the policy network. Can either
+            be a single input with shape `policy.ob_space.shape` or a vectorized
+            input with shape `(n_batch,) + policy.ob_space.shape`.
+        deterministic (bool): Whether or not to return deterministic actions
+            (usually means argmax over policy's action distribution).
 
     Returns:
-      action (np.ndarray): The action output of the policy network. If
-          `observation` is not vectorized (has shape `policy.ob_space.shape`
-          instead of shape `(n_batch,) + policy.ob_space.shape`) then
-          `action` has shape `policy.ac_space.shape`.
-          Otherwise, `action` has shape `(n_batch,) + policy.ac_space.shape`.
+       action (np.ndarray): The action output of the policy network. If
+           `observation` is not vectorized (has shape `policy.ob_space.shape`
+           instead of shape `(n_batch,) + policy.ob_space.shape`) then
+           `action` has shape `policy.ac_space.shape`.
+           Otherwise, `action` has shape `(n_batch,) + policy.ac_space.shape`.
     """
     observation = np.array(observation)
     vectorized_env = BaseRLModel._is_vectorized_observation(

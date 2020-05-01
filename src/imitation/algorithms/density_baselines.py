@@ -165,22 +165,24 @@ class DensityReward:
             raise ValueError(f"Unknown density type {self.density_type}")
 
     def __call__(self, obs_b, act_b, next_obs_b, steps=None):
-        r"""Compute reward from given (s,a,s') transition batch. This handles
-    *batches* of observations, since it's designed to work with VecEnvs.
+        r"""Compute reward from given (s,a,s') transition batch.
 
-    Args:
-      obs_b (np.ndarray): current batch of observations.
-      act_b (np.ndarray): batch of actions that agent took in response to those
-        observations.
-      next_obs_b (np.ndarray): batch of observations encountered after the
-        agent took those actions.
-      steps (np.ndarray): number of time steps elapsed in each environment.
+        This handles *batches* of observations, since it's designed to work with
+        VecEnvs.
 
-    Returns:
-      rew_array (np.ndarray): array of scalar rewards of the form `r_t(s,a,s')
-        = \log \hat p_t(s,a,s')` (one for each environment), where `\log \hat
-        p` is the underlying density model (and may be independent of s', a, or
-        t, depending on options passed to constructor)."""
+        Args:
+          obs_b (np.ndarray): current batch of observations.
+          act_b (np.ndarray): batch of actions that agent took in response to those
+            observations.
+          next_obs_b (np.ndarray): batch of observations encountered after the
+            agent took those actions.
+          steps (np.ndarray): number of time steps elapsed in each environment.
+
+        Returns:
+          rew_array (np.ndarray): array of scalar rewards of the form `r_t(s,a,s')
+            = \log \hat p_t(s,a,s')` (one for each environment), where `\log \hat
+            p` is the underlying density model (and may be independent of s', a, or
+            t, depending on options passed to constructor)."""
         rew_list = []
         assert len(obs_b) == len(act_b) and len(obs_b) == len(next_obs_b)
         for idx, (obs, act, next_obs) in enumerate(zip(obs_b, act_b, next_obs_b)):
@@ -221,20 +223,20 @@ class DensityTrainer:
         is_stationary: bool = False,
     ):
         r"""Family of simple imitation learning baseline algorithms that apply RL to
-    maximise a rough density estimate of the demonstration trajectories.
-    Specifically, it constructs a non-parametric estimate of `p(s)`, `p(s,s')`,
-    `p_t(s,a)`, etc. (depending on options), then rewards the imitation learner
-    with `r_t(s,a,s')=\log p_t(s,a,s')` (or `\log p(s,s')`, or whatever the
-    user wants the model to condition on).
+         maximise a rough density estimate of the demonstration trajectories.
+         Specifically, it constructs a non-parametric estimate of `p(s)`, `p(s,s')`,
+         `p_t(s,a)`, etc. (depending on options), then rewards the imitation learner
+         with `r_t(s,a,s')=\log p_t(s,a,s')` (or `\log p(s,s')`, or whatever the
+         user wants the model to condition on).
 
-    Args:
-      venv: environment to train on.
-      rollouts: list of expert trajectories to imitate.
-       imitation_trainer: RL algorithm & initial policy that will
-        be used to train the imitation learner.
-      kernel, kernel_bandwidth, density_type, is_stationary,
-        n_expert_trajectories: these are passed directly to `DensityReward`;
-        refer to documentation for that class."""
+         Args:
+             venv: environment to train on.
+             rollouts: list of expert trajectories to imitate.
+             imitation_trainer: RL algorithm & initial policy that will
+                 be used to train the imitation learner.
+             kernel, kernel_bandwidth, density_type, is_stationary,
+                 n_expert_trajectories: these are passed directly to `DensityReward`;
+                 refer to documentation for that class."""
         self.venv = venv
         self.imitation_trainer = imitation_trainer
         self.reward_fn = DensityReward(
@@ -254,14 +256,13 @@ class DensityTrainer:
             self.sess.run(tf.global_variables_initializer())
 
     def train_policy(self, n_timesteps=int(1e6), **kwargs):
-        """Train the imitation policy for a given number of timesteps. Does not return
-        anything.
+        """Train the imitation policy for a given number of timesteps.
 
         Args:
-          n_timesteps (int): number of timesteps to train the policy for.
-          kwargs (dict): extra arguments that will be passed to the `learn()`
-            method of the imitation RL model. Refer to Stable Baselines docs for
-            details.
+            n_timesteps (int): number of timesteps to train the policy for.
+            kwargs (dict): extra arguments that will be passed to the `learn()`
+                method of the imitation RL model. Refer to Stable Baselines docs for
+                details.
         """
         self.imitation_trainer.set_env(self.wrapped_env)
         # FIXME: learn() is not meant to be called frequently; there are
@@ -281,13 +282,13 @@ class DensityTrainer:
         """Test current imitation policy on environment & give some rollout stats.
 
         Args:
-          n_trajectories (int): number of rolled-out trajectories.
-          true_reward (bool): should this use ground truth reward from underlying
-            environment (True), or imitation reward (False)?
+            n_trajectories (int): number of rolled-out trajectories.
+            true_reward (bool): should this use ground truth reward from underlying
+                environment (True), or imitation reward (False)?
 
         Returns:
-          dict: rollout statistics collected by
-            `imitation.utils.rollout.rollout_stats()`.
+            dict: rollout statistics collected by
+                `imitation.utils.rollout.rollout_stats()`.
         """
         self.imitation_trainer.set_env(self.venv)
         trajs = rollout.generate_trajectories(

@@ -105,7 +105,7 @@ def test_train_adversarial(tmpdir):
 def test_transfer_learning(tmpdir):
     """Transfer learning smoke test.
 
-    Save a dummy AIRL test reward, then load it for transfer learning.
+    Saves a dummy AIRL test reward, then loads it for transfer learning.
     """
     log_dir_train = osp.join(tmpdir, "train")
     run = train_ex.run(

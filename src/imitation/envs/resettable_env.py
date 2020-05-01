@@ -107,10 +107,11 @@ class TabularModelEnv(ResettableEnv, abc.ABC):
     """ABC for tabular environments with known dynamics."""
 
     def __init__(self):
-        """Initialise common attributes of all model-based environments, including
-        current state & number of actions taken so far (initial None, so that error can
-        be thrown if reset() is not called), attributes for cached observation/action
-        space, and random seed for rollouts."""
+        """Initialise common attributes of all model-based environments.
+
+        Attributes include current state & number of actions taken so far (initial
+        None, so that error can be thrown if reset() is not called), attributes for
+        cached observation/action space, and random seed for rollouts."""
         super().__init__()
 
     @property
@@ -186,8 +187,9 @@ class TabularModelEnv(ResettableEnv, abc.ABC):
     @property
     @abc.abstractmethod
     def transition_matrix(self):
-        """3D transition matrix with dimensions corresponding to current state, current
-        action, and next state (in that order).
+        """3D transition matrix.
+
+        Dimensions correspond to current state, current action, and next state.
 
         In other words, if `T` is our returned matrix, then `T[s,a,sprime]` is the
         chance of transitioning into state `sprime` after taking action `a` in state
@@ -197,8 +199,10 @@ class TabularModelEnv(ResettableEnv, abc.ABC):
     @property
     @abc.abstractmethod
     def observation_matrix(self):
-        """2D observation matrix with dimensions corresponding to current state (first
-        dim) and elements of observation (second dim)."""
+        """2D observation matrix.
+
+        Dimensions correspond to current state (first dim) and elements of observation
+        (second dim)."""
 
     @property
     @abc.abstractmethod

@@ -25,16 +25,14 @@ class AdversarialTrainer:
     venv_train: VecEnv
     """Like `self.venv`, but wrapped with train reward unless in debug mode.
 
-  If `debug_use_ground_truth=True` was passed into the initializer then
-  `self.venv_train` is the same as `self.venv`.
-  """
+    If `debug_use_ground_truth=True` was passed into the initializer then
+    `self.venv_train` is the same as `self.venv`."""
 
     venv_test: VecEnv
     """Like `self.venv`, but wrapped with test reward unless in debug mode.
 
-  If `debug_use_ground_truth=True` was passed into the initializer then
-  `self.venv_test` is the same as `self.venv`.
-  """
+    If `debug_use_ground_truth=True` was passed into the initializer then
+    `self.venv_test` is the same as `self.venv`."""
 
     def __init__(
         self,
@@ -429,8 +427,7 @@ def init_trainer(
     trainer_kwargs: dict = {},
     init_rl_kwargs: dict = {},
 ):
-    """Builds an AdversarialTrainer, ready to be trained on a vectorized environment and
-    expert demonstrations.
+    """Builds an AdversarialTrainer, ready to be trained on expert demonstrations.
 
     Args:
       env_name: The string id of a gym environment.

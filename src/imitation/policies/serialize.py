@@ -58,12 +58,12 @@ def _load_stable_baselines(cls: Type[BaseRLModel], policy_attr: str) -> PolicyLo
     """Higher-order function, returning a policy loading function.
 
     Args:
-      cls: The RL algorithm, e.g. `stable_baselines.PPO2`.
-      policy_attr: The attribute of the RL algorithm containing the policy,
-          e.g. `act_model`.
+        cls: The RL algorithm, e.g. `stable_baselines.PPO2`.
+        policy_attr: The attribute of the RL algorithm containing the policy,
+            e.g. `act_model`.
 
     Returns:
-      A function loading policies trained via cls.
+        A function loading policies trained via cls.
     """
 
     @contextlib.contextmanager
@@ -133,9 +133,9 @@ def load_policy(
     """Load serialized policy.
 
     Args:
-      policy_type: A key in `policy_registry`, e.g. `ppo2`.
-      policy_path: A path on disk where the policy is stored.
-      venv: An environment that the policy is to be used with.
+        policy_type: A key in `policy_registry`, e.g. `ppo2`.
+        policy_path: A path on disk where the policy is stored.
+        venv: An environment that the policy is to be used with.
     """
     agent_loader = policy_registry.get(policy_type)
     return agent_loader(policy_path, venv)

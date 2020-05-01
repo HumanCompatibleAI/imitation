@@ -23,18 +23,18 @@ import tensorflow as tf
 def mce_partition_fh(env, *, R=None):
     r"""Performs the soft Bellman backup for a finite-horizon, undiscounted MDP.
 
-  Calculates V^{soft}, Q^{soft}, and pi using recurrences (9.1), (9.2), and
-  (9.3) from Ziebart (2010).
+    Calculates V^{soft}, Q^{soft}, and pi using recurrences (9.1), (9.2), and
+    (9.3) from Ziebart (2010).
 
-  Args:
-      env (ModelBasedEnv): a tabular, known-dynamics MDP.
-      R (None or np.array): a reward matrix. Defaults to env.reward_matrix.
+    Args:
+        env (ModelBasedEnv): a tabular, known-dynamics MDP.
+        R (None or np.array): a reward matrix. Defaults to env.reward_matrix.
 
-  Returns:
-      (V, Q, \pi) corresponding to the soft values, Q-values and MCE policy.
-      V is a 2d array, indexed V[t,s]. Q is a 3d array, indexed Q[t,s,a].
-      \pi is a 3d array, indexed \pi[t,s,a].
-  """
+    Returns:
+        (V, Q, \pi) corresponding to the soft values, Q-values and MCE policy.
+        V is a 2d array, indexed V[t,s]. Q is a 3d array, indexed Q[t,s,a].
+        \pi is a 3d array, indexed \pi[t,s,a].
+    """
 
     # shorthand
     horizon = env.horizon
@@ -70,6 +70,7 @@ def mce_partition_fh(env, *, R=None):
 
 def mce_occupancy_measures(env, *, R=None, pi=None):
     """Calculate state visitation frequency Ds for each state s under a given policy pi.
+
     You can get pi from `mce_partition_fh`.
 
     Args:
@@ -116,25 +117,25 @@ def mce_irl(
 ):
     r"""Tabular MCE IRL.
 
-  Args:
-      env (ModelBasedEnv): a tabular MDP.
-      optimiser_tuple (tuple): a tuple of `(optim_init_fn, optim_update_fn,
-          get_params_fn)` produced by a Jax optimiser.
-      rmodel (RewardModel): a reward function to be optimised.
-      demo_state_om (np.ndarray): matrix representing state occupancy measure
-          for demonstrator.
-      linf_eps (float): optimisation terminates if the $l_{\infty}$ distance
-          between the demonstrator's state occupancy measure and the state
-          occupancy measure for the current reward falls below this value.
-      grad_l2_eps (float): optimisation also terminates if the $\ell_2$ norm
-          of the MCE IRL gradient falls below this value.
-      print_interval (int or None): how often to log current loss stats
-          (using tf.logging). None to disable.
+    Args:
+        env (ModelBasedEnv): a tabular MDP.
+        optimiser_tuple (tuple): a tuple of `(optim_init_fn, optim_update_fn,
+            get_params_fn)` produced by a Jax optimiser.
+        rmodel (RewardModel): a reward function to be optimised.
+        demo_state_om (np.ndarray): matrix representing state occupancy measure
+            for demonstrator.
+        linf_eps (float): optimisation terminates if the $l_{\infty}$ distance
+            between the demonstrator's state occupancy measure and the state
+            occupancy measure for the current reward falls below this value.
+        grad_l2_eps (float): optimisation also terminates if the $\ell_2$ norm
+            of the MCE IRL gradient falls below this value.
+        print_interval (int or None): how often to log current loss stats
+            (using tf.logging). None to disable.
 
-  Returns:
-      (np.ndarray, np.ndarray): tuple of final parameters found by optimiser
-      and state occupancy measure for the final reward function. Note that
-      rmodel will also be updated with the latest parameters."""
+    Returns:
+        (np.ndarray, np.ndarray): tuple of final parameters found by optimiser
+        and state occupancy measure for the final reward function. Note that
+        rmodel will also be updated with the latest parameters."""
 
     obs_mat = env.observation_matrix
     # l_\infty distance between demonstrator occupancy measure (OM) and OM for
@@ -197,8 +198,7 @@ def mce_irl(
 
 
 class RewardModel(abc.ABC):
-    """Abstract model for reward functions (which might be linear, MLPs, nearest-
-    neighbour, etc.)"""
+    """Abstract model for reward functions (linear, MLPs, nearest-neighbour, etc.)"""
 
     @abc.abstractmethod
     def out(self, inputs):
@@ -266,6 +266,7 @@ class LinearRewardModel(RewardModel):
 
     def __init__(self, obs_dim, *, seed=None):
         """Construct linear reward model for `obs_dim`-dimensional observation space.
+
         Initial values are generated from given seed (int or None).
 
         Args:
@@ -302,8 +303,9 @@ class JaxRewardModel(RewardModel, abc.ABC):
     """
 
     def __init__(self, obs_dim, *, seed=None):
-        """Internal setup for Jax-based reward models. Initialises reward model using
-        given seed & input size (`obs_dim`).
+        """Internal setup for Jax-based reward models.
+
+        Initialises reward model using given seed & input size (`obs_dim`).
 
         Args:
             obs_dim (int): dimensionality of observation space.
@@ -324,10 +326,9 @@ class JaxRewardModel(RewardModel, abc.ABC):
 
     @abc.abstractmethod
     def make_stax_model(self):
-        """Build the stax model that this thing is meant to optimise. Should return
-        (net_init, net_apply) pair, just like Stax modules.
+        """Build the stax model that this thing is meant to optimise.
 
-        Args: empty.
+        Should return (net_init, net_apply) pair, just like Stax modules.
 
         Returns:
             tuple of net_init(rng, input_shape) function to initialise the
@@ -341,8 +342,9 @@ class JaxRewardModel(RewardModel, abc.ABC):
         return jnp.concatenate(out_vecs)
 
     def _flatten_batch(self, matrix_tups):
-        """Flatten all except leading dim & concatenate results together in channel dim
-        (i.e whatever the dim after the leading dim is)."""
+        """Flatten all except leading dim & concatenate results together in channel dim.
+
+        (Channel dim is whatever the dim after the leading dim is)."""
         out_vecs = []
         for t in matrix_tups:
             for v in t:

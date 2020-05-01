@@ -25,8 +25,7 @@ LayersDict = Dict[str, tf.layers.Layer]
 
 
 def make_unique_timestamp() -> str:
-    """Timestamp, with random value added to avoid collisions (like human-readable
-    uuid1)."""
+    """Timestamp, with random uuid added to avoid collisions."""
     ISO_TIMESTAMP = "%Y%m%d_%H%M%S"
     timestamp = datetime.datetime.now().strftime(ISO_TIMESTAMP)
     random_uuid = uuid.uuid4().hex

@@ -13,11 +13,11 @@ class BufferingWrapper(VecEnvWrapper):
 
     def __init__(self, venv: VecEnv, error_on_premature_reset: bool = True):
         """
-    Args:
-      venv: The wrapped VecEnv.
-      error_on_premature_reset: Error if `reset()` is called on this wrapper
-        and there are saved samples that haven't yet been accessed.
-    """
+        Args:
+          venv: The wrapped VecEnv.
+          error_on_premature_reset: Error if `reset()` is called on this wrapper
+            and there are saved samples that haven't yet been accessed.
+        """
         super().__init__(venv)
         self.error_on_premature_reset = error_on_premature_reset
         self._trajectories = []

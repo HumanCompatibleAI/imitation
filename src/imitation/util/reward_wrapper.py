@@ -11,8 +11,7 @@ class RewardVecEnvWrapper(vec_env.VecEnvWrapper):
     def __init__(
         self, venv: vec_env.VecEnv, reward_fn: common.RewardFn, ep_history: int = 100
     ):
-        """A RewardVecEnvWrapper uses a provided reward_fn to replace the reward
-        function returned by `step()`.
+        """Uses a provided reward_fn to replace the reward function returned by `step()`.
 
         Automatically resets the inner VecEnv upon initialization. A tricky part
         about this class is keeping track of the most recent observation from each

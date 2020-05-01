@@ -29,15 +29,16 @@ def _check_bound(end, capacity, samples, offset=0):
 @pytest.mark.parametrize("sample_shape", [(), (1, 2), (5, 4, 4)])
 def test_buffer(capacity, chunk_len, sample_shape):
     """Builds a Buffer with the provided `capacity` and insert `capacity * 3`
-  samples into the buffer in chunks of shape `(chunk_len,) + sample_shape`.
-  We always insert chunks with consecutive integers.
+    samples into the buffer in chunks of shape `(chunk_len,) + sample_shape`.
 
-  * `len(buffer)` should increase until we reach capacity.
-  * `buffer._idx` should loop between 0 and `capacity - 1`.
-  * After every insertion, samples should be in expected range, verifying
-    FIFO insertion.
-  * Mutating the inserted chunk shouldn't mutate the buffer.
-  """
+    We always insert chunks with consecutive integers.
+
+    * `len(buffer)` should increase until we reach capacity.
+    * `buffer._idx` should loop between 0 and `capacity - 1`.
+    * After every insertion, samples should be in expected range, verifying
+      FIFO insertion.
+    * Mutating the inserted chunk shouldn't mutate the buffer.
+    """
     buf = Buffer(
         capacity,
         sample_shapes={"a": sample_shape, "b": sample_shape},

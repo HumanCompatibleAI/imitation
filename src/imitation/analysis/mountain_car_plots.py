@@ -53,27 +53,28 @@ def make_heatmap(
     heatmap: bool = True,
     filter_trans_by_act: bool = True,
 ) -> plt.Figure:
-    """Make a MountainCar heatmap of rewards for a particular action. X axis is
-    position. Y axis is velocity.
+    """Make a MountainCar heatmap of rewards for a particular action.
+
+    X axis is position. Y axis is velocity.
 
     Args:
-      act: The MountainCar action number whose reward we are evaluating.
-        Should be 0, 1, or 2.
-      reward_fn: Reward function. Should accept unnormalized inputs.
-      n_pos_step: The number of squares that the x axis of the heatmap is divided
-        into.
-      n_vel_step: The number of squares that the y axis of the heatmap is divided
-        into.
-      gen_trajs: A list of generator trajectories to
-        scatterplot on top of the heatmap.
-      exp_trajs: A list of exp trajectories to scatterplot on
-        top of the heatmap.
-      legend_on: Whether to plot the legend.
-      title: Custom title.
-      heatmap: Whether to plot the heatmap.
-      filter_trans_by_act: If True, then filter out transitions from
-        `gen_trajs` and `exp_trajs` that don't use action `act` before
-        scatterplotting.
+        act: The MountainCar action number whose reward we are evaluating.
+            Should be 0, 1, or 2.
+        reward_fn: Reward function. Should accept unnormalized inputs.
+        n_pos_step: The number of squares that the x axis of the heatmap is divided
+            into.
+        n_vel_step: The number of squares that the y axis of the heatmap is divided
+            into.
+        gen_trajs: A list of generator trajectories to
+            scatterplot on top of the heatmap.
+        exp_trajs: A list of exp trajectories to scatterplot on
+            top of the heatmap.
+        legend_on: Whether to plot the legend.
+        title: Custom title.
+        heatmap: Whether to plot the heatmap.
+        filter_trans_by_act: If True, then filter out transitions from
+            `gen_trajs` and `exp_trajs` that don't use action `act` before
+            scatterplotting.
     """
     assert 0 <= act < MC_NUM_ACTS
 
@@ -130,19 +131,19 @@ def batch_reward_heatmaps(
     One plot is generated for every combination of action and checkpoint timestep.
 
     Args:
-      checkpoints_dir: Path to `checkpoint/` directory from AIRL or GAIL output
-        directory.
-      n_gen_trajs: The number of trajectories to rollout using each generator
-        checkpoint. The transitions in the trajectory are scatterplotted on top of
-        the heatmap from the same checkpoint timestamp. Nonpositive indicates that
-        no trajectories should be plotted.
-      exp_trajs: Expert trajectories for scatterplotting. Generator trajectories
-        are dynamically generated from generator checkpoints.
+        checkpoints_dir: Path to `checkpoint/` directory from AIRL or GAIL output
+            directory.
+        n_gen_trajs: The number of trajectories to rollout using each generator
+            checkpoint. The transitions in the trajectory are scatterplotted on top of
+            the heatmap from the same checkpoint timestamp. Nonpositive indicates that
+            no trajectories should be plotted.
+        exp_trajs: Expert trajectories for scatterplotting. Generator trajectories
+            are dynamically generated from generator checkpoints.
 
     Returns:
-      A dictionary mapping relative paths to `plt.Figure`. Every key is of the
-      form "{action_name}/{checkpoint_step}" where action_name is "left",
-      "neutral", or "right".
+        A dictionary mapping relative paths to `plt.Figure`. Every key is of the
+        form "{action_name}/{checkpoint_step}" where action_name is "left",
+        "neutral", or "right".
     """
     result = {}
     venv = vec_env.DummyVecEnv([lambda: gym.make("MountainCar-v0")])
@@ -196,13 +197,13 @@ def plot_reward_vs_time(
 
     Args:
         trajs_dict: A dictionary mapping rollout labels (e.g. "expert" or
-          "gen policy") to rollouts associated with those labels.
+            "gen policy") to rollouts associated with those labels.
         reward_fn: Reward function for evaluating rollout rewards.
         preferred_colors: An optional dictionary mapping rollout labels to
-          preferred line colors.
+            preferred line colors.
 
     Returns:
-      The figure.
+        The figure.
     """
     if preferred_colors is None:
         preferred_colors = {}

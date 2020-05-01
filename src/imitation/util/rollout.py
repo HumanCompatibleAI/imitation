@@ -190,7 +190,7 @@ GenTrajTerminationFn = Callable[[Sequence[data.TrajectoryWithRew]], bool]
 def min_episodes(n: int) -> GenTrajTerminationFn:
     """Terminate after collecting n episodes of data.
 
-    Argument:
+    Arguments:
       n: Minimum number of episodes of data to collect.
          May overshoot if two episodes complete simultaneously (unlikely).
 
@@ -444,6 +444,8 @@ def rollout_and_save(
     **kwargs,
 ) -> None:
     """Generate policy rollouts and save them to a pickled list of trajectories.
+
+    The `.infos` field of each Trajectory is set to `None` to save space.
 
     Args:
       path: Rollouts are saved to this path.
