@@ -11,7 +11,6 @@ from stable_baselines.common.vec_env import VecEnv
 import tensorflow as tf
 
 from imitation.policies.base import get_action_policy
-from imitation.rewards import common
 from imitation.util import data
 
 
@@ -68,13 +67,6 @@ def unwrap_traj(traj: data.TrajectoryWithRew) -> data.TrajectoryWithRew:
   assert len(res.obs) == len(res.acts) + 1
   assert len(res.rews) == len(res.acts)
   return res
-
-
-def calc_rewards_traj(traj: data.Trajectory, reward_fn: common.RewardFn,
-                      ) -> np.ndarray:
-  """Returns the reward of a trajectory calculated under `reward_fn`."""
-  steps = np.arange(len(traj.acts))
-  return reward_fn(traj.obs[:-1], traj.acts, traj.obs[1:], steps)
 
 
 class TrajectoryAccumulator:
