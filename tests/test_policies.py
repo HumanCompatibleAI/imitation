@@ -58,7 +58,11 @@ def test_serialize_identity(env_name, model_cfg, normalize, tmpdir):
         # don't want statistics to change as we collect rollouts
         vec_normalize.training = False
     orig_rollout = rollout.generate_transitions(
-        model, venv, n_timesteps=1000, deterministic_policy=True
+        model,
+        venv,
+        n_timesteps=1000,
+        deterministic_policy=True,
+        rng=np.random.RandomState(0),
     )
 
     serialize.save_stable_model(tmpdir, model, vec_normalize)
@@ -68,7 +72,11 @@ def test_serialize_identity(env_name, model_cfg, normalize, tmpdir):
         orig_venv.env_method("seed", 0)
         orig_venv.reset()
         new_rollout = rollout.generate_transitions(
-            loaded, orig_venv, n_timesteps=1000, deterministic_policy=True
+            loaded,
+            orig_venv,
+            n_timesteps=1000,
+            deterministic_policy=True,
+            rng=np.random.RandomState(0),
         )
 
     assert np.allclose(orig_rollout.acts, new_rollout.acts)
