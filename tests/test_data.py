@@ -2,7 +2,7 @@
 
 Mostly checks input validation."""
 
-import functools
+import dataclasses
 from typing import Any, Callable
 
 import gym
@@ -20,7 +20,8 @@ SPACES = [
 ]
 OBS_SPACES = SPACES
 ACT_SPACES = SPACES
-LENGTHS = [0, 1, 2, 10]
+INVALID_LENGTHS = [1, 2, 10]
+VALID_LENGTHS = [0] + INVALID_LENGTHS
 
 
 def _check_1d_shape(fn: Callable[[np.ndarray], Any], length: float, expected_msg: str):
@@ -29,166 +30,162 @@ def _check_1d_shape(fn: Callable[[np.ndarray], Any], length: float, expected_msg
             fn(np.zeros(shape))
 
 
+@pytest.fixture
+def trajectory(
+    obs_space: gym.Space, act_space: gym.Space, length: int
+) -> data.Trajectory:
+    """Fixture to generate trajectory of length `length` iid sampled from spaces."""
+    obs = np.array([obs_space.sample() for _ in range(length + 1)])
+    acts = np.array([act_space.sample() for _ in range(length)])
+    infos = [{} for _ in range(length)]
+    return data.Trajectory(obs=obs, acts=acts, infos=infos)
+
+
+@pytest.fixture
+def trajectory_rew(trajectory: data.Trajectory) -> data.TrajectoryWithRew:
+    """Like `trajectory` but with reward randomly sampled from a Gaussian."""
+    rews = np.random.randn(len(trajectory))
+    return data.TrajectoryWithRew(**dataclasses.asdict(trajectory), rews=rews)
+
+
+@pytest.fixture
+def transitions(
+    obs_space: gym.Space, act_space: gym.Space, length: int
+) -> data.Transitions:
+    """Fixture to generate transitions of length `length` iid sampled from spaces."""
+    obs = np.array([obs_space.sample() for _ in range(length)])
+    next_obs = np.array([obs_space.sample() for _ in range(length)])
+    acts = np.array([act_space.sample() for _ in range(length)])
+    dones = np.zeros(length, dtype=np.bool)
+    return data.Transitions(obs=obs, acts=acts, next_obs=next_obs, dones=dones)
+
+
+@pytest.fixture
+def transitions_rew(transitions: data.Transitions) -> data.TransitionsWithRew:
+    """Like `transitions` but with reward randomly sampled from a Gaussian."""
+    rews = np.random.randn(len(transitions))
+    return data.TransitionsWithRew(**dataclasses.asdict(transitions), rews=rews)
+
+
 @pytest.mark.parametrize("obs_space", OBS_SPACES)
 @pytest.mark.parametrize("act_space", ACT_SPACES)
-@pytest.mark.parametrize("length", [0, 1, 2, 10])
 class TestData:
+    """Tests of imitation.util.data.
+
+    Grouped in a class since parametrized over common set of spaces.
+    """
+
+    @pytest.mark.parametrize("length", VALID_LENGTHS)
     def test_valid_trajectories(
-        self, obs_space: gym.Space, act_space: gym.Space, length: int
+        self,
+        trajectory: data.Trajectory,
+        trajectory_rew: data.TrajectoryWithRew,
+        length: int,
     ) -> None:
         """Checks trajectories can be created for a variety of lengths and spaces."""
-        obs = np.array([obs_space.sample() for _ in range(length + 1)])
-        acts = np.array([act_space.sample() for _ in range(length)])
-        infos = [{} for _ in range(length)]
-        rews = np.random.randn(length)
-
-        traja = data.Trajectory(obs=obs, acts=acts, infos=None)
-        trajb = data.Trajectory(obs=obs, acts=acts, infos=infos)
-        trajc = data.TrajectoryWithRew(obs=obs, acts=acts, infos=None, rews=rews)
-        trajd = data.TrajectoryWithRew(obs=obs, acts=acts, infos=infos, rews=rews)
-        for traj in [traja, trajb, trajc, trajd]:
+        trajs = [trajectory, trajectory_rew]
+        trajs += [dataclasses.replace(traj, infos=None) for traj in trajs]
+        for traj in trajs:
             assert len(traj) == length
 
+    @pytest.mark.parametrize("length", INVALID_LENGTHS)
     def test_invalid_trajectories(
-        self, obs_space: gym.Space, act_space: gym.Space, length: int
+        self, trajectory: data.Trajectory, trajectory_rew: data.TrajectoryWithRew,
     ) -> None:
         """Checks input validation catches space and dtype related errors."""
-        if length == 0:
-            pytest.skip("Need length>0.")
-
-        obs = np.array([obs_space.sample() for _ in range(length + 1)])
-        acts = np.array([act_space.sample() for _ in range(length)])
-        infos = [{} for _ in range(length)]
-        rews = np.random.randn(length)
-
-        for cls in [
-            data.Trajectory,
-            functools.partial(data.TrajectoryWithRew, rews=rews),
-        ]:
+        trajs = [trajectory, trajectory_rew]
+        for traj in trajs:
             with pytest.raises(
                 ValueError, match=r"expected one more observations than actions.*"
             ):
-                cls(obs=obs[:-1], acts=acts, infos=None)
+                dataclasses.replace(traj, obs=traj.obs[:-1])
             with pytest.raises(
                 ValueError, match=r"expected one more observations than actions.*"
             ):
-                cls(obs=obs, acts=acts[:-1], infos=None)
+                dataclasses.replace(traj, acts=traj.acts[:-1])
 
             with pytest.raises(
                 ValueError,
                 match=r"infos when present must be present for each action.*",
             ):
-                cls(obs=obs, acts=acts, infos=infos[:-1])
+                dataclasses.replace(traj, infos=traj.infos[:-1])
             with pytest.raises(
                 ValueError,
                 match=r"infos when present must be present for each action.*",
             ):
-                cls(obs=obs[:-1], acts=acts[:-1], infos=infos)
+                dataclasses.replace(traj, obs=traj.obs[:-1], acts=traj.acts[:-1])
 
         _check_1d_shape(
-            fn=lambda rews: data.TrajectoryWithRew(
-                obs=obs, acts=acts, infos=infos, rews=rews
-            ),
-            length=length,
+            fn=lambda rews: dataclasses.replace(trajectory_rew, rews=rews),
+            length=len(trajectory_rew),
             expected_msg=r"rewards must be 1D array.*",
         )
 
         with pytest.raises(ValueError, match=r"rewards dtype.* not a float"):
-            data.TrajectoryWithRew(
-                obs=obs, acts=acts, infos=infos, rews=np.zeros(length, dtype=np.int)
+            dataclasses.replace(
+                trajectory_rew, rews=np.zeros(len(trajectory_rew), dtype=np.int)
             )
 
+    @pytest.mark.parametrize("length", VALID_LENGTHS)
     def test_valid_transitions(
-        self, obs_space: gym.Space, act_space: gym.Space, length: int
+        self,
+        transitions: data.Transitions,
+        transitions_rew: data.TransitionsWithRew,
+        length: int,
     ) -> None:
         """Checks trajectories can be created for a variety of lengths and spaces."""
-        obs = np.array([obs_space.sample() for _ in range(length)])
-        next_obs = np.array([obs_space.sample() for _ in range(length)])
-        acts = np.array([act_space.sample() for _ in range(length)])
-        dones = np.zeros(length, dtype=np.bool)
-        rews = np.random.randn(length)
+        assert len(transitions) == length
+        assert len(transitions_rew) == length
 
-        trans = data.Transitions(obs=obs, acts=acts, next_obs=next_obs, dones=dones)
-        trans_rew = data.TransitionsWithRew(
-            obs=obs, acts=acts, next_obs=next_obs, dones=dones, rews=rews
-        )
-        for traj in [trans, trans_rew]:
-            assert len(traj) == length
-
+    @pytest.mark.parametrize("length", INVALID_LENGTHS)
     def test_invalid_transitions(
-        self, obs_space: gym.Space, act_space: gym.Space, length: int
+        self, transitions: data.Transitions, transitions_rew: data.TransitionsWithRew,
     ) -> None:
         """Checks input validation catches space and dtype related errors."""
-        if length == 0:
-            pytest.skip("Need length>0.")
-
-        obs = np.array([obs_space.sample() for _ in range(length)])
-        next_obs = np.array([obs_space.sample() for _ in range(length)])
-        acts = np.array([act_space.sample() for _ in range(length)])
-        dones = np.zeros(length, dtype=np.bool)
-        rews = np.random.randn(length)
-
-        for cls in [
-            data.Transitions,
-            functools.partial(data.TransitionsWithRew, rews=rews),
-        ]:
+        for trans in [transitions, transitions_rew]:
             with pytest.raises(
                 ValueError, match=r"obs and next_obs must have same shape:.*"
             ):
-                cls(obs=obs[:-1], acts=acts, next_obs=next_obs, dones=dones)
+                dataclasses.replace(trans, obs=trans.obs[:-1])
             with pytest.raises(
                 ValueError, match=r"obs and next_obs must have same shape:.*"
             ):
-                cls(obs=obs, acts=acts, next_obs=np.zeros((length, 4, 2)), dones=dones)
+                dataclasses.replace(trans, next_obs=np.zeros((len(trans), 4, 2)))
 
             with pytest.raises(
                 ValueError, match=r"obs and next_obs must have the same dtype:.*"
             ):
-                cls(
-                    obs=obs,
-                    acts=acts,
-                    next_obs=np.zeros_like(obs, dtype=np.bool),
-                    dones=dones,
-                )
+                dataclasses.replace(
+                    trans, next_obs=np.zeros_like(trans.obs, dtype=np.bool)
+                ),
 
             with pytest.raises(
                 ValueError, match=r"obs and acts must have same number of timesteps:.*"
             ):
-                cls(obs=obs[:-1], acts=acts, next_obs=next_obs[:-1], dones=dones)
+                dataclasses.replace(
+                    trans, obs=trans.obs[:-1], next_obs=trans.next_obs[:-1]
+                )
             with pytest.raises(
                 ValueError, match=r"obs and acts must have same number of timesteps:.*"
             ):
-                cls(obs=obs, acts=acts[:-1], next_obs=next_obs, dones=dones)
+                dataclasses.replace(trans, acts=trans.acts[:-1])
 
             _check_1d_shape(
-                fn=lambda bogus_dones: cls(
-                    obs=obs, acts=acts, next_obs=next_obs, dones=bogus_dones,
-                ),
-                length=length,
+                fn=lambda bogus_dones: dataclasses.replace(trans, dones=bogus_dones),
+                length=len(trans),
                 expected_msg=r"dones must be 1D array.*",
             )
 
             with pytest.raises(ValueError, match=r"dones must be boolean"):
-                cls(
-                    obs=obs,
-                    acts=acts,
-                    next_obs=next_obs,
-                    dones=np.zeros(length, dtype=np.int),
-                )
+                dataclasses.replace(trans, dones=np.zeros(len(trans), dtype=np.int))
 
         _check_1d_shape(
-            fn=lambda bogus_rews: data.TransitionsWithRew(
-                obs=obs, acts=acts, next_obs=next_obs, dones=dones, rews=bogus_rews
-            ),
-            length=length,
+            fn=lambda bogus_rews: dataclasses.replace(trans, rews=bogus_rews),
+            length=len(transitions_rew),
             expected_msg=r"rewards must be 1D array.*",
         )
 
         with pytest.raises(ValueError, match=r"rewards dtype.* not a float"):
-            data.TransitionsWithRew(
-                obs=obs,
-                acts=acts,
-                next_obs=next_obs,
-                dones=dones,
-                rews=np.zeros(length, dtype=np.int),
+            dataclasses.replace(
+                transitions_rew, rews=np.zeros(len(transitions_rew), dtype=np.int)
             )
