@@ -25,8 +25,8 @@ class Trajectory:
     def __len__(self):
         """Returns number of transitions, `trajectory_len` in attribute docstrings.
 
-        This is equal to the number of actions. So this is zero when there is a
-        single observation."""
+        This is equal to the number of actions, and is always positive.
+        """
         return len(self.acts)
 
     def __post_init__(self):
@@ -36,6 +36,8 @@ class Trajectory:
                 "expected one more observations than actions: "
                 f"{len(self.obs)} != {len(self.acts)} + 1"
             )
+        if len(self.acts) == 0:
+            raise ValueError("Degenerate trajectory: must have at least one action.")
         if self.infos is not None and len(self.infos) != len(self.acts):
             raise ValueError(
                 "infos when present must be present for each action: "
@@ -102,7 +104,7 @@ class Transitions:
     """
 
     def __len__(self):
-        """Returns number of transitions."""
+        """Returns number of transitions. Always positive."""
         return len(self.obs)
 
     def __post_init__(self):
@@ -122,6 +124,8 @@ class Transitions:
                 "obs and acts must have same number of timesteps: "
                 f"{len(self.obs)} != {len(self.acts)}"
             )
+        if len(self.obs) == 0:
+            raise ValueError("Must have non-zero number of observations.")
         if self.dones.shape != (len(self.acts),):
             raise ValueError(
                 "dones must be 1D array, one entry for each timestep: "

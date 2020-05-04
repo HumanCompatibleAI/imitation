@@ -20,8 +20,7 @@ SPACES = [
 ]
 OBS_SPACES = SPACES
 ACT_SPACES = SPACES
-INVALID_LENGTHS = [1, 2, 10]
-VALID_LENGTHS = [0] + INVALID_LENGTHS
+LENGTHS = [1, 2, 10]
 
 
 def _check_1d_shape(fn: Callable[[np.ndarray], Any], length: float, expected_msg: str):
@@ -69,13 +68,13 @@ def transitions_rew(transitions: data.Transitions) -> data.TransitionsWithRew:
 
 @pytest.mark.parametrize("obs_space", OBS_SPACES)
 @pytest.mark.parametrize("act_space", ACT_SPACES)
+@pytest.mark.parametrize("length", LENGTHS)
 class TestData:
     """Tests of imitation.util.data.
 
     Grouped in a class since parametrized over common set of spaces.
     """
 
-    @pytest.mark.parametrize("length", VALID_LENGTHS)
     def test_valid_trajectories(
         self,
         trajectory: data.Trajectory,
@@ -88,7 +87,6 @@ class TestData:
         for traj in trajs:
             assert len(traj) == length
 
-    @pytest.mark.parametrize("length", INVALID_LENGTHS)
     def test_invalid_trajectories(
         self, trajectory: data.Trajectory, trajectory_rew: data.TrajectoryWithRew,
     ) -> None:
@@ -126,7 +124,6 @@ class TestData:
                 trajectory_rew, rews=np.zeros(len(trajectory_rew), dtype=np.int)
             )
 
-    @pytest.mark.parametrize("length", VALID_LENGTHS)
     def test_valid_transitions(
         self,
         transitions: data.Transitions,
@@ -137,7 +134,6 @@ class TestData:
         assert len(transitions) == length
         assert len(transitions_rew) == length
 
-    @pytest.mark.parametrize("length", INVALID_LENGTHS)
     def test_invalid_transitions(
         self, transitions: data.Transitions, transitions_rew: data.TransitionsWithRew,
     ) -> None:
@@ -189,3 +185,12 @@ class TestData:
             dataclasses.replace(
                 transitions_rew, rews=np.zeros(len(transitions_rew), dtype=np.int)
             )
+
+
+def test_zero_length_fails():
+    """Check zero-length trajectory and transitions fail."""
+    empty = np.array([])
+    with pytest.raises(ValueError, match=r"Degenerate trajectory.*"):
+        data.Trajectory(obs=np.array([42]), acts=empty, infos=None)
+    with pytest.raises(ValueError, match=r"Must have non-zero number of.*"):
+        data.Transitions(obs=empty, acts=empty, next_obs=empty, dones=empty)
