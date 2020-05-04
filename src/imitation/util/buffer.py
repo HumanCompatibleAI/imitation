@@ -258,13 +258,7 @@ class ReplayBuffer:
 
         Returns:
             A new ReplayBuffer.
-
-        Raises:
-            ValueError: obs and next_obs have a different dtype.
         """
-        if transitions.obs.dtype != transitions.next_obs.dtype:
-            raise ValueError("obs and next_obs must have the same dtype.")
-
         capacity, *obs_shape = transitions.obs.shape
         _, *act_shape = transitions.acts.shape
         instance = cls(
@@ -305,11 +299,7 @@ class ReplayBuffer:
         # Remove unnecessary fields
         trans_dict = {k: trans_dict[k] for k in self._buffer.sample_shapes.keys()}
 
-        lengths = [len(arr) for arr in trans_dict.values()]
-        if len(set(lengths)) != 1:
-            raise ValueError("Arguments must have the same length.")
-
-        if lengths[0] > self.capacity and truncate_ok:
+        if len(transitions) > self.capacity and truncate_ok:
             trans_dict = {k: v[-self.capacity :] for k, v in trans_dict.items()}
 
         self._buffer.store(trans_dict)
