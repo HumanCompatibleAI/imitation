@@ -76,7 +76,7 @@ class Transitions:
 
     obs: np.ndarray
     """
-    Previous observations. Shape: (batch_siz4e, ) + observation_shape.
+    Previous observations. Shape: (batch_size, ) + observation_shape.
 
     The i'th observation `obs[i]` in this array is the observation seen
     by the agent when choosing action `acts[i]`.
