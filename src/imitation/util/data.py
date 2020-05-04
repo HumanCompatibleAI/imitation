@@ -36,13 +36,13 @@ class Trajectory:
                 "expected one more observations than actions: "
                 f"{len(self.obs)} != {len(self.acts)} + 1"
             )
-        if len(self.acts) == 0:
-            raise ValueError("Degenerate trajectory: must have at least one action.")
         if self.infos is not None and len(self.infos) != len(self.acts):
             raise ValueError(
                 "infos when present must be present for each action: "
                 f"{len(self.infos)} != {len(self.acts)}"
             )
+        if len(self.acts) == 0:
+            raise ValueError("Degenerate trajectory: must have at least one action.")
 
 
 def _rews_validation(rews: np.ndarray, acts: np.ndarray):
@@ -76,7 +76,7 @@ class Transitions:
 
     obs: np.ndarray
     """
-    Previous observations. Shape: (batch_size, ) + observation_shape.
+    Previous observations. Shape: (batch_siz4e, ) + observation_shape.
 
     The i'th observation `obs[i]` in this array is the observation seen
     by the agent when choosing action `acts[i]`.
@@ -124,8 +124,6 @@ class Transitions:
                 "obs and acts must have same number of timesteps: "
                 f"{len(self.obs)} != {len(self.acts)}"
             )
-        if len(self.obs) == 0:
-            raise ValueError("Must have non-zero number of observations.")
         if self.dones.shape != (len(self.acts),):
             raise ValueError(
                 "dones must be 1D array, one entry for each timestep: "
@@ -133,6 +131,8 @@ class Transitions:
             )
         if self.dones.dtype != np.bool:
             raise ValueError(f"dones must be boolean, not {self.dones.dtype}")
+        if len(self.obs) == 0:
+            raise ValueError("Must have non-zero number of observations.")
 
 
 @dataclasses.dataclass(frozen=True)

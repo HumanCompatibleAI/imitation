@@ -193,4 +193,6 @@ def test_zero_length_fails():
     with pytest.raises(ValueError, match=r"Degenerate trajectory.*"):
         data.Trajectory(obs=np.array([42]), acts=empty, infos=None)
     with pytest.raises(ValueError, match=r"Must have non-zero number of.*"):
-        data.Transitions(obs=empty, acts=empty, next_obs=empty, dones=empty)
+        data.Transitions(
+            obs=empty, acts=empty, next_obs=empty, dones=empty.astype(np.bool),
+        )
