@@ -95,11 +95,13 @@ def test_replay_buffer(capacity, chunk_len, obs_shape, act_shape, dtype):
         assert len(buf) == min(i, capacity)
         assert buf._buffer._idx == i % capacity
 
+        dones = np.arange(i, i + chunk_len, dtype=np.int32) % 2
+        dones = dones.astype(np.bool)
         batch = data.Transitions(
             obs=_fill_chunk(i, chunk_len, obs_shape, dtype=dtype),
             next_obs=_fill_chunk(3 * capacity + i, chunk_len, obs_shape, dtype=dtype),
             acts=_fill_chunk(6 * capacity + i, chunk_len, act_shape, dtype=dtype),
-            dones=np.arange(i, i + chunk_len, dtype=np.int32) % 2,
+            dones=dones,
         )
         buf.store(batch)
 
@@ -186,25 +188,6 @@ def test_replay_buffer_init_errors():
         ReplayBuffer(15, obs_shape=(10, 10), obs_dtype=bool, act_dtype=bool)
 
 
-def test_replay_buffer_store_errors():
-    b = ReplayBuffer(10, obs_shape=(), obs_dtype=bool, act_shape=(), act_dtype=float)
-
-    dtypes = {
-        "obs": np.float32,
-        "next_obs": np.float32,
-        "acts": np.float32,
-        "dones": np.bool,
-    }
-    for odd_field in dtypes.keys():
-        with pytest.raises(ValueError, match=".* same length.*"):
-            transition = {
-                k: np.ones(3 if k == odd_field else 4, dtype=dtype)
-                for k, dtype in dtypes.items()
-            }
-            transition = data.Transitions(**transition)
-            b.store(transition)
-
-
 def test_buffer_from_data():
     data = np.ndarray([50, 30], dtype=bool)
     buf = Buffer.from_data({"k": data})
@@ -236,16 +219,3 @@ def test_replay_buffer_from_data():
         )
     )
     _check_buf(buf_rew)
-
-    with pytest.raises(ValueError, match=r".*same length."):
-        next_obs_toolong = np.array([7, 8, 9], dtype=int)
-        ReplayBuffer.from_data(
-            data.Transitions(
-                obs=obs, acts=acts, next_obs=next_obs_toolong, dones=dones,
-            )
-        )
-    with pytest.raises(ValueError, match=r".*same dtype."):
-        next_obs_float = np.array(next_obs, dtype=float)
-        ReplayBuffer.from_data(
-            data.Transitions(obs=obs, acts=acts, next_obs=next_obs_float, dones=dones,)
-        )
