@@ -254,6 +254,7 @@ def generate_trajectories(
     sample_until: GenTrajTerminationFn,
     *,
     deterministic_policy: bool = False,
+    rng: np.random.RandomState = np.random,
 ) -> Sequence[data.TrajectoryWithRew]:
     """Generate trajectory dictionaries from a policy and an environment.
 
@@ -267,9 +268,12 @@ def generate_trajectories(
       deterministic_policy: If True, asks policy to deterministically return
           action. Note the trajectories might still be non-deterministic if the
           environment has non-determinism!
+      rng: used for shuffling trajectories.
 
     Returns:
-      Sequence of trajectories.
+      Sequence of trajectories, satisfying `sample_until`. Additional trajectories
+      may be collected to avoid biasing process towards short episodes; the user
+      should truncate if required.
     """
     if isinstance(policy, BaseRLModel):
         get_action = policy.predict
@@ -290,17 +294,42 @@ def generate_trajectories(
         # really big).
         trajectories_accum.add_step(dict(obs=ob), env_idx)
 
-    while not sample_until(trajectories):
+    # Now, we sample until `sample_until(trajectories)` is true.
+    # If we just stopped then this would introduce a bias towards shorter episodes,
+    # since longer episodes are more likely to still be active, i.e. in the process
+    # of being sampled from. To avoid this, we continue sampling until all epsiodes
+    # are complete.
+    #
+    # To start with, all environments are active.
+    active = np.ones(venv.num_envs, dtype=np.bool)
+    while np.any(active):
         acts, _ = get_action(obs, deterministic=deterministic_policy)
         obs, rews, dones, infos = venv.step(acts)
+
+        # If an environment is inactive, i.e. the episode completed for that
+        # environment after `sample_until(trajectories)` was true, then we do
+        # *not* want to add any subsequent trajectories from it. We avoid this
+        # by just making it never done.
+        dones &= active
 
         new_trajs = trajectories_accum.add_steps_and_auto_finish(
             acts, obs, rews, dones, infos
         )
         trajectories.extend(new_trajs)
 
+        if sample_until(trajectories):
+            # Termination condition has been reached. Mark as inactive any environments
+            # where a trajectory was completed this timestep.
+            active &= ~dones
+
     # Note that we just drop partial trajectories. This is not ideal for some
     # algos; e.g. BC can probably benefit from partial trajectories, too.
+
+    # Each trajectory is sampled i.i.d.; however, shorter episodes are added to
+    # `trajectories` sooner. Shuffle to avoid bias in order. This is important
+    # when callees end up truncating the number of trajectories or transitions.
+    # It is also cheap, since we're just shuffling pointers.
+    rng.shuffle(trajectories)
 
     # Sanity checks.
     for trajectory in trajectories:

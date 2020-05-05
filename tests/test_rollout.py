@@ -1,13 +1,17 @@
 """Tests for code that generates trajectory rollouts."""
 
+import functools
+from typing import Mapping, Sequence
+
 import gym
 import numpy as np
-from stable_baselines.bench import Monitor
-from stable_baselines.common.vec_env import DummyVecEnv
+import pytest
+from stable_baselines import bench
+from stable_baselines.common import vec_env
 
 from imitation.policies import serialize
 from imitation.policies.base import RandomPolicy
-from imitation.util import rollout, util
+from imitation.util import data, rollout, util
 
 
 class TerminalSentinelEnv(gym.Env):
@@ -29,17 +33,31 @@ class TerminalSentinelEnv(gym.Env):
         return observation, rew, done, {}
 
 
+def _sample_fixed_length_trajectories(
+    episode_lengths: Sequence[int], min_episodes: int, **kwargs,
+) -> Sequence[data.Trajectory]:
+    venv = vec_env.DummyVecEnv(
+        [functools.partial(TerminalSentinelEnv, length) for length in episode_lengths]
+    )
+    policy = RandomPolicy(venv.observation_space, venv.action_space)
+    sample_until = rollout.min_episodes(min_episodes)
+    trajectories = rollout.generate_trajectories(
+        policy, venv, sample_until=sample_until, **kwargs,
+    )
+    return trajectories
+
+
 def test_complete_trajectories():
-    """Check that complete trajectories are returned by vecenv wrapper, including the
-    terminal observation."""
+    """Checks trajectories include the terminal observation.
+
+    This is hidden by default by VecEnv's auto-reset; we add it back in using
+    `rollout.RolloutInfoWrapper`.
+    """
     min_episodes = 13
     max_acts = 5
     num_envs = 4
-    vec_env = DummyVecEnv([lambda: TerminalSentinelEnv(max_acts)] * num_envs)
-    policy = RandomPolicy(vec_env.observation_space, vec_env.action_space)
-    sample_until = rollout.min_episodes(min_episodes)
-    trajectories = rollout.generate_trajectories(
-        policy, vec_env, sample_until=sample_until
+    trajectories = _sample_fixed_length_trajectories(
+        [max_acts] * num_envs, min_episodes
     )
     assert len(trajectories) >= min_episodes
     expected_obs = np.array([[0]] * max_acts + [[1]])
@@ -48,6 +66,65 @@ def test_complete_trajectories():
         acts = trajectory.acts
         assert len(obs) == len(acts) + 1
         assert np.all(obs == expected_obs)
+
+
+@pytest.mark.parametrize(
+    "episode_lengths,min_episodes,expected_counts",
+    [
+        # Do we keep on sampling from the 1st (len 3) environment that remains 'alive'?
+        ([3, 5], 2, {3: 2, 5: 1}),
+        # Do we keep on sampling from the 2nd (len 7) environment that remains 'alive'?
+        ([3, 7], 2, {3: 2, 7: 1}),
+        # Similar, but more extreme case with num environments > num episodes
+        ([3, 3, 3, 7], 2, {3: 3, 7: 1}),
+        # Do we stop sampling at 2 episodes if we get two equal-length episodes?
+        ([3, 3], 2, {3: 2}),
+        ([5, 5], 2, {5: 2}),
+        ([7, 7], 2, {7: 2}),
+    ],
+)
+def test_unbiased_trajectories(
+    episode_lengths: Sequence[int],
+    min_episodes: int,
+    expected_counts: Mapping[int, int],
+):
+    """Checks trajectories are sampled without bias towards shorter episodes.
+
+    Specifically, we create a VecEnv consisting of environments with fixed-length
+    `episode_lengths`. This is unrealistic and breaks the i.i.d. assumption, but lets
+    us test things deterministically.
+
+    If we hit `min_episodes` exactly and all environments are done at the same time,
+    we should stop and not sample any more trajectories. Otherwise, we should keep
+    sampling from any in-flight environments, but not add trajectories from any other
+    environments.
+
+    The different test cases check each of these cases.
+    """
+    trajectories = _sample_fixed_length_trajectories(episode_lengths, min_episodes)
+    assert len(trajectories) == sum(expected_counts.values())
+    traj_lens = np.array([len(traj) for traj in trajectories])
+    for length, count in expected_counts.items():
+        assert np.sum(traj_lens == length) == count
+
+
+def test_seed_trajectories():
+    """Check trajectory order deterministic given seed and that seed is not no-op.
+
+    Note in general environments and policies are stochastic, so the trajectory
+    order *will* differ unless environment/policy seeds are also set.
+
+    However, `TerminalSentinelEnv` is fixed-length deterministic, so there are no
+    such confounders in this test.
+    """
+    rng_a1 = np.random.RandomState(0)
+    rng_a2 = np.random.RandomState(0)
+    rng_b = np.random.RandomState(1)
+    traj_a1 = _sample_fixed_length_trajectories([3, 5], 2, rng=rng_a1)
+    traj_a2 = _sample_fixed_length_trajectories([3, 5], 2, rng=rng_a2)
+    traj_b = _sample_fixed_length_trajectories([3, 5], 2, rng=rng_b)
+    assert [len(traj) for traj in traj_a1] == [len(traj) for traj in traj_a2]
+    assert [len(traj) for traj in traj_a1] != [len(traj) for traj in traj_b]
 
 
 class ObsRewHalveWrapper(gym.Wrapper):
@@ -68,9 +145,9 @@ def test_rollout_stats():
     `rollout_stats` should reflect this.
     """
     env = gym.make("CartPole-v1")
-    env = Monitor(env, None)
+    env = bench.Monitor(env, None)
     env = ObsRewHalveWrapper(env)
-    venv = DummyVecEnv([lambda: env])
+    venv = vec_env.DummyVecEnv([lambda: env])
 
     with serialize.load_policy("zero", "UNUSED", venv) as policy:
         trajs = rollout.generate_trajectories(policy, venv, rollout.min_episodes(10))
@@ -90,7 +167,7 @@ def test_unwrap_traj():
     env = gym.make("CartPole-v1")
     env = util.rollout.RolloutInfoWrapper(env)
     env = ObsRewHalveWrapper(env)
-    venv = DummyVecEnv([lambda: env])
+    venv = vec_env.DummyVecEnv([lambda: env])
 
     with serialize.load_policy("zero", "UNUSED", venv) as policy:
         trajs = rollout.generate_trajectories(policy, venv, rollout.min_episodes(10))
