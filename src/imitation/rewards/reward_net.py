@@ -1,7 +1,7 @@
 """Constructs deep network reward models."""
 
 from abc import ABC, abstractmethod
-from typing import Iterable, Optional, Tuple
+from typing import Iterable, Optional, Sequence, Tuple
 
 import gym
 import tensorflow as tf
@@ -221,25 +221,18 @@ class RewardNetShaped(RewardNet):
         tf.summary.histogram("shaping_new", self._new_shaping_output)
 
 
-def build_basic_theta_network(
-    hid_sizes: Optional[Iterable[int]],
-    obs_input: Optional[tf.Tensor],
-    next_obs_input: Optional[tf.Tensor],
-    act_input: Optional[tf.Tensor],
+def build_mlp(
+    inputs: Sequence[tf.Tensor],
+    hid_sizes: Optional[Iterable[int]] = None,
     **kwargs: dict,
 ):
     """Builds a reward network depending on specified observations and actions.
 
-    All specified inputs will be preprocessed and then concatenated. If all
-    inputs are specified, then it will be a :math:`R(o,a,o')` network.
-    Conversely, if `next_obs_input` and `act_input` are both set to `None`, it
-    will depend just on the current observation: :math:`R(o)`.
+    All specified inputs will be preprocessed and then concatenated.
 
     Arguments:
       hid_sizes: Number of units at each hidden layer. Default is [], i.e. linear.
-      obs_input: Previous observation.
-      next_obs_input: Next observation.
-      act_input: Action.
+      inputs: Sequence of tensor inputs to flatten and concatenate.
       **kwargs: Passed through to `util.build_mlp`.
 
     Returns:
@@ -248,21 +241,19 @@ def build_basic_theta_network(
     Raises:
       ValueError: If all of obs_input, next_obs_input and act_input are None.
     """
+    if len(inputs) == 0:
+        raise ValueError("Must specify at least one input")
+
     if hid_sizes is None:
-        hid_sizes = [32, 32]
+        hid_sizes = (32, 32)
 
     with tf.variable_scope("theta"):
-        inputs = [obs_input, act_input, next_obs_input]
-        inputs = [x for x in inputs if x is not None]
-        if len(inputs) == 0:
-            raise ValueError("Must specify at least one input")
-
         inputs = [tf.layers.flatten(x) for x in inputs]
         inputs = tf.concat(inputs, axis=1)
-        theta_mlp = util.build_mlp(hid_sizes=hid_sizes, name="reward", **kwargs)
-        theta_output = util.sequential(inputs, theta_mlp)
+        mlp = util.build_mlp(hid_sizes=hid_sizes, name="reward", **kwargs)
+        output = util.sequential(inputs, mlp)
 
-        return theta_output, theta_mlp
+        return output, mlp
 
 
 class BasicRewardNet(RewardNet, serialize.LayersSerializable):
@@ -301,14 +292,10 @@ class BasicRewardNet(RewardNet, serialize.LayersSerializable):
         serialize.LayersSerializable.__init__(**locals(), layers=self._layers)
 
     def build_theta_network(self, obs_input, act_input):
-        act_or_none = None if self.state_only else act_input
-        return build_basic_theta_network(
-            self.theta_units,
-            obs_input=obs_input,
-            act_input=act_or_none,
-            next_obs_input=None,
-            **self.theta_kwargs,
-        )
+        inputs = [obs_input]
+        if not self.state_only:
+            inputs.append(act_input)
+        return build_mlp(inputs, self.theta_units, **self.theta_kwargs)
 
     @property
     def reward_output_train(self):
@@ -404,14 +391,10 @@ class BasicShapedRewardNet(RewardNetShaped, serialize.LayersSerializable):
         serialize.LayersSerializable.__init__(**locals(), layers=self._layers)
 
     def build_theta_network(self, obs_input, act_input):
-        act_or_none = None if self.state_only else act_input
-        return build_basic_theta_network(
-            self.theta_units,
-            obs_input=obs_input,
-            act_input=act_or_none,
-            next_obs_input=None,
-            **self.theta_kwargs,
-        )
+        inputs = [obs_input]
+        if not self.state_only:
+            inputs.append(act_input)
+        return build_mlp(inputs, self.theta_units, **self.theta_kwargs)
 
     def build_phi_network(self, obs_input, next_obs_input):
         return build_basic_phi_network(
