@@ -23,5 +23,5 @@ if [ "$skipexpensive" != "true" ]; then
   popd
 
   echo "Type checking"
-  pytype ${SRC_FILES[@]}
+  pytype -P src/:. ${SRC_FILES[@]}
 fi
