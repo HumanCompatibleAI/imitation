@@ -7,7 +7,7 @@ import numpy as np
 from stable_baselines.common.vec_env import VecEnv
 
 from imitation.rewards import common, discrim_net, reward_net
-from imitation.util import registry, util
+from imitation.util import networks, registry, util
 
 RewardFnLoaderFn = Callable[[str, VecEnv], ContextManager[common.RewardFn]]
 
@@ -25,10 +25,10 @@ def _load_discrim_net(path: str, venv: VecEnv) -> common.RewardFn:
 
 def _load_reward_net_as_fn(shaped: bool) -> RewardFnLoaderFn:
     @contextlib.contextmanager
-    def loader(path: str, venv: VecEnv,) -> Iterator[common.RewardFn]:
+    def loader(path: str, venv: VecEnv) -> Iterator[common.RewardFn]:
         """Load train (shaped) or test (not shaped) reward from path."""
         del venv  # Unused.
-        with util.make_session() as (graph, sess):
+        with networks.make_session() as (graph, sess):
             net = reward_net.RewardNet.load(path)
             reward = net.reward_output_train if shaped else net.reward_output_test
 

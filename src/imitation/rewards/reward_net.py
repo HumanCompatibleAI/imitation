@@ -1,12 +1,12 @@
 """Constructs deep network reward models."""
 
 from abc import ABC, abstractmethod
-from typing import Iterable, Optional, Sequence, Tuple
+from typing import Iterable, Optional, Tuple
 
 import gym
 import tensorflow as tf
 
-from imitation.util import serialize, util
+from imitation.util import networks, serialize
 
 
 class RewardNet(serialize.Serializable, ABC):
@@ -103,7 +103,7 @@ class RewardNet(serialize.Serializable, ABC):
     @abstractmethod
     def build_theta_network(
         self, obs_input: tf.Tensor, act_input: tf.Tensor,
-    ) -> Tuple[tf.Tensor, util.LayersDict]:
+    ) -> Tuple[tf.Tensor, networks.LayersDict]:
         """Builds the test reward network.
 
         The output of the network is the same as the reward used for transfer
@@ -188,7 +188,7 @@ class RewardNetShaped(RewardNet):
     @abstractmethod
     def build_phi_network(
         self, obs_input: tf.Tensor, next_obs_input: tf.Tensor,
-    ) -> Tuple[tf.Tensor, tf.Tensor, util.LayersDict]:
+    ) -> Tuple[tf.Tensor, tf.Tensor, networks.LayersDict]:
         """Build the reward shaping network (disentangles dynamics from reward).
 
         XXX: We could potentially make it easier on the subclasser by requiring
@@ -219,41 +219,6 @@ class RewardNetShaped(RewardNet):
         super().build_summaries()
         tf.summary.histogram("shaping_old", self._old_shaping_output)
         tf.summary.histogram("shaping_new", self._new_shaping_output)
-
-
-def build_mlp(
-    inputs: Sequence[tf.Tensor],
-    hid_sizes: Optional[Iterable[int]] = None,
-    **kwargs: dict,
-):
-    """Builds a reward network depending on specified observations and actions.
-
-    All specified inputs will be preprocessed and then concatenated.
-
-    Arguments:
-      hid_sizes: Number of units at each hidden layer. Default is [], i.e. linear.
-      inputs: Sequence of tensor inputs to flatten and concatenate.
-      **kwargs: Passed through to `util.build_mlp`.
-
-    Returns:
-      tf.Tensor: Predicted reward.
-
-    Raises:
-      ValueError: If all of obs_input, next_obs_input and act_input are None.
-    """
-    if len(inputs) == 0:
-        raise ValueError("Must specify at least one input")
-
-    if hid_sizes is None:
-        hid_sizes = (32, 32)
-
-    with tf.variable_scope("theta"):
-        inputs = [tf.layers.flatten(x) for x in inputs]
-        inputs = tf.concat(inputs, axis=1)
-        mlp = util.build_mlp(hid_sizes=hid_sizes, name="reward", **kwargs)
-        output = util.sequential(inputs, mlp)
-
-        return output, mlp
 
 
 class BasicRewardNet(RewardNet, serialize.LayersSerializable):
@@ -295,7 +260,9 @@ class BasicRewardNet(RewardNet, serialize.LayersSerializable):
         inputs = [obs_input]
         if not self.state_only:
             inputs.append(act_input)
-        return build_mlp(inputs, self.theta_units, **self.theta_kwargs)
+        return networks.build_and_apply_mlp(
+            inputs, self.theta_units, **self.theta_kwargs
+        )
 
     @property
     def reward_output_train(self):
@@ -328,9 +295,9 @@ def build_basic_phi_network(
         new_o = tf.layers.flatten(next_obs_input)
 
         # Weight share, just with different inputs old_o and new_o
-        phi_mlp = util.build_mlp(hid_sizes=hid_sizes, name="shaping", **kwargs)
-        old_shaping_output = util.sequential(old_o, phi_mlp)
-        new_shaping_output = util.sequential(new_o, phi_mlp)
+        phi_mlp = networks.build_mlp(hid_sizes=hid_sizes, name="shaping", **kwargs)
+        old_shaping_output = networks.sequential(old_o, phi_mlp)
+        new_shaping_output = networks.sequential(new_o, phi_mlp)
 
     return old_shaping_output, new_shaping_output, phi_mlp
 
@@ -394,7 +361,9 @@ class BasicShapedRewardNet(RewardNetShaped, serialize.LayersSerializable):
         inputs = [obs_input]
         if not self.state_only:
             inputs.append(act_input)
-        return build_mlp(inputs, self.theta_units, **self.theta_kwargs)
+        return networks.build_and_apply_mlp(
+            inputs, self.theta_units, **self.theta_kwargs
+        )
 
     def build_phi_network(self, obs_input, next_obs_input):
         return build_basic_phi_network(

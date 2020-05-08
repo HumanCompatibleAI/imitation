@@ -2,15 +2,14 @@ import collections
 import os
 import pickle
 from abc import ABC, abstractmethod
-from typing import Callable, Dict, Iterable, Optional, Tuple
+from typing import Callable, Dict, Optional, Sequence, Tuple
 
 import gym
 import numpy as np
 import tensorflow as tf
 
-from imitation import util
 from imitation.rewards import reward_net
-from imitation.util import serialize
+from imitation.util import networks, serialize
 
 
 class DiscrimNet(serialize.Serializable, ABC):
@@ -335,36 +334,14 @@ class DiscrimNetAIRL(DiscrimNet):
         return cls(reward_net=reward_net, **params)
 
 
-DiscrimNetBuilder = Callable[[tf.Tensor, tf.Tensor], Tuple[util.LayersDict, tf.Tensor]]
+DiscrimNetBuilder = Callable[
+    [Sequence[tf.Tensor]], Tuple[tf.Tensor, networks.LayersDict]
+]
 """Type alias for function that builds a discriminator network.
 
 Takes an observation and action tensor and produces a tuple containing
 (1) a list of used TF layers, and (2) output logits.
 """
-
-
-def build_mlp_discrim_net(
-    obs_input: tf.Tensor,
-    act_input: tf.Tensor,
-    *,
-    hidden_sizes: Iterable[int] = (32, 32),
-):
-    """Builds a simple MLP-based discriminator for GAIL. The returned function can be
-    passed into the `build_discrim_net` argument of `DiscrimNetGAIL`.
-
-    Args:
-        obs_input: observation seen at this time step.
-        act_input: action taken at this time step.
-        hidden_sizes: list of layer sizes for each hidden layer of the network.
-    """
-    inputs = tf.concat(
-        [tf.layers.flatten(obs_input), tf.layers.flatten(act_input)], axis=1
-    )
-
-    disc_mlp = util.build_mlp(hid_sizes=hidden_sizes)
-    disc_logits = util.sequential(inputs, disc_mlp)
-
-    return disc_mlp, disc_logits
 
 
 class DiscrimNetGAIL(DiscrimNet, serialize.LayersSerializable):
@@ -374,7 +351,7 @@ class DiscrimNetGAIL(DiscrimNet, serialize.LayersSerializable):
         self,
         observation_space: gym.Space,
         action_space: gym.Space,
-        build_discrim_net: DiscrimNetBuilder = build_mlp_discrim_net,
+        build_discrim_net: DiscrimNetBuilder = networks.build_and_apply_mlp,
         build_discrim_net_kwargs: Optional[dict] = None,
         scale: bool = False,
     ):
@@ -434,8 +411,8 @@ class DiscrimNetGAIL(DiscrimNet, serialize.LayersSerializable):
         self.obs_input, self.act_input, _ = inputs[3:]
 
         with tf.variable_scope("discrim_network"):
-            self._disc_mlp, self._disc_logits_gen_is_high = self._build_discrim_net(
-                self.obs_input, self.act_input, **self._build_discrim_net_kwargs
+            self._disc_logits_gen_is_high, self._disc_mlp = self._build_discrim_net(
+                [self.obs_input, self.act_input], **self._build_discrim_net_kwargs
             )
         self._policy_test_reward = self._policy_train_reward = -tf.log_sigmoid(
             self._disc_logits_gen_is_high

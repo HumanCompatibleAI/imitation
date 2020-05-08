@@ -7,7 +7,7 @@ from typing import Type, TypeVar
 
 import tensorflow as tf
 
-from imitation.util import util
+from imitation.util import networks
 
 T = TypeVar("T", bound="Serializable")
 
@@ -61,7 +61,7 @@ class LayersSerializable(Serializable):
         LayersSerializable.__init__(**args, layers=layers)
     """
 
-    def __init__(self, *args, layers: util.LayersDict, **kwargs):
+    def __init__(self, *args, layers: networks.LayersDict, **kwargs):
         self._args = args
         self._kwargs = kwargs
         self._checkpoint = tf.train.Checkpoint(**layers)

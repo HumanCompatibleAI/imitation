@@ -1,27 +1,19 @@
-import collections
-import contextlib
 import datetime
 import functools
 import os
 import uuid
-from typing import Callable, Dict, Iterable, Optional, Tuple, Type, Union
+from typing import Optional, Type, Union
 
 import gym
 import numpy as np
 import stable_baselines
-import tensorflow as tf
 from gym.wrappers import TimeLimit
 from stable_baselines import bench
 from stable_baselines.common.base_class import BaseRLModel
-from stable_baselines.common.input import observation_input
 from stable_baselines.common.policies import BasePolicy, MlpPolicy
 from stable_baselines.common.vec_env import DummyVecEnv, SubprocVecEnv, VecEnv
 
 import imitation.util.rollout as rollout
-
-# TODO(adam): this should really be OrderedDict but that breaks Python
-# See https://stackoverflow.com/questions/41207128/
-LayersDict = Dict[str, tf.layers.Layer]
 
 
 def make_unique_timestamp() -> str:
@@ -124,99 +116,6 @@ def init_rl(
     return model_class(
         policy_class, env, **model_kwargs
     )  # pytype: disable=not-instantiable
-
-
-def build_mlp(
-    hid_sizes: Iterable[int],
-    name: Optional[str] = None,
-    activation: Optional[Callable] = tf.nn.relu,
-    initializer: Optional[Callable] = None,
-) -> LayersDict:
-    """Constructs an MLP, returning an ordered dict of layers."""
-    layers = collections.OrderedDict()
-
-    # Hidden layers
-    for i, size in enumerate(hid_sizes):
-        key = f"{name}_dense{i}"
-        layer = tf.layers.Dense(
-            size, activation=activation, kernel_initializer=initializer, name=key
-        )  # type: tf.layers.Layer
-        layers[key] = layer
-
-    # Final layer
-    layer = tf.layers.Dense(
-        1, kernel_initializer=initializer, name=f"{name}_dense_final"
-    )  # type: tf.layers.Layer
-    layers[f"{name}_dense_final"] = layer
-
-    return layers
-
-
-def sequential(inputs: tf.Tensor, layers: LayersDict,) -> tf.Tensor:
-    """Applies a sequence of layers to an input."""
-    output = inputs
-    for layer in layers.values():
-        output = layer(output)
-    output = tf.squeeze(output, axis=1)
-    return output
-
-
-def build_inputs(
-    observation_space: gym.Space, action_space: gym.Space, scale: bool = False
-) -> Tuple[tf.Tensor, ...]:
-    """Builds placeholders and processed input Tensors.
-
-    Observation `obs_*` and `next_obs_*` placeholders and processed input
-    tensors have shape `(None,) + obs_space.shape`.
-    The action `act_*` placeholder and processed input tensors have shape
-    `(None,) + act_space.shape`.
-
-    Args:
-      observation_space: The observation space.
-      action_space: The action space.
-      scale: Only relevant for environments with Box spaces. If True, then
-        processed input Tensors are automatically scaled to the interval [0, 1].
-
-    Returns:
-      obs_ph: Placeholder for old observations.
-      act_ph: Placeholder for actions.
-      next_obs_ph: Placeholder for new observations.
-      obs_inp: Network-ready float32 Tensor with processed old observations.
-      act_inp: Network-ready float32 Tensor with processed actions.
-      next_obs_inp: Network-ready float32 Tensor with processed new observations.
-    """
-    obs_ph, obs_inp = observation_input(observation_space, name="obs", scale=scale)
-    act_ph, act_inp = observation_input(action_space, name="act", scale=scale)
-    next_obs_ph, next_obs_inp = observation_input(
-        observation_space, name="next_obs", scale=scale
-    )
-    return obs_ph, act_ph, next_obs_ph, obs_inp, act_inp, next_obs_inp
-
-
-@contextlib.contextmanager
-def make_session(close_on_exit: bool = True, **kwargs):
-    """Context manager for a TensorFlow session.
-
-    The session is associated with a newly created graph. Both session and
-    graph are set as default. The session will be closed when exiting this
-    context manager.
-
-    Args:
-      close_on_exit: If True, closes the session upon leaving the context manager.
-      kwargs: passed through to `tf.Session`.
-
-    Yields:
-      (graph, session) where graph is a `tf.Graph` and `session` a `tf.Session`.
-    """
-    graph = tf.Graph()
-    with graph.as_default():
-        session = tf.Session(graph=graph, **kwargs)
-        try:
-            with session.as_default():
-                yield graph, session
-        finally:
-            if close_on_exit:
-                session.close()
 
 
 def docstring_parameter(*args, **kwargs):

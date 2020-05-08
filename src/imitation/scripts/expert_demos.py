@@ -13,6 +13,7 @@ import imitation.util.sacred as sacred_util
 from imitation.policies import serialize
 from imitation.rewards.serialize import load_reward
 from imitation.scripts.config.expert_demos import expert_demos_ex
+from imitation.util import networks
 from imitation.util.reward_wrapper import RewardVecEnvWrapper
 
 
@@ -107,7 +108,7 @@ def rollouts_and_policy(
     )
     eval_sample_until = util.rollout.min_episodes(n_episodes_eval)
 
-    with util.make_session():
+    with networks.make_session():
         tf.logging.set_verbosity(tf.logging.INFO)
         util.logger.configure(
             folder=osp.join(log_dir, "rl"), format_strs=["tensorboard", "stdout"]
@@ -185,7 +186,7 @@ def rollouts_and_policy(
 
 
 @expert_demos_ex.command
-@util.make_session()
+@networks.make_session()
 def rollouts_from_policy(
     _run,
     _seed: int,
