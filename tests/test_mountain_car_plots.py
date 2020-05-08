@@ -7,9 +7,10 @@ import pytest
 from matplotlib import pyplot as plt
 
 from imitation.analysis import mountain_car_plots
+from imitation.data import rollout
 from imitation.policies import serialize
 from imitation.scripts import train_adversarial
-from imitation.util import rollout, util
+from imitation.util import util
 
 
 @pytest.fixture

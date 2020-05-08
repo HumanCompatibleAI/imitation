@@ -13,7 +13,7 @@ from stable_baselines.common.base_class import BaseRLModel
 from stable_baselines.common.policies import BasePolicy, MlpPolicy
 from stable_baselines.common.vec_env import DummyVecEnv, SubprocVecEnv, VecEnv
 
-import imitation.util.rollout as rollout
+from imitation.data import wrappers
 
 
 def make_unique_timestamp() -> str:
@@ -81,7 +81,7 @@ def make_vec_env(
             log_path = os.path.join(log_subdir, f"mon{i:03d}")
 
         env = bench.Monitor(env, log_path)
-        env = rollout.RolloutInfoWrapper(env)
+        env = wrappers.RolloutInfoWrapper(env)
         return env
 
     rng = np.random.RandomState(seed)

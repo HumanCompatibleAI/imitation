@@ -9,8 +9,9 @@ import tensorflow as tf
 from stable_baselines.common.policies import BasePolicy
 
 from imitation.algorithms import dagger
+from imitation.data import rollout
 from imitation.policies import serialize
-from imitation.util import rollout, util
+from imitation.util import util
 
 ENV_NAME = "CartPole-v1"
 EXPERT_POLICY_PATH = "tests/data/expert_models/cartpole_0/policies/final/"

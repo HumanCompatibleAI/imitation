@@ -1,8 +1,8 @@
 import numpy as np
 import pytest
 
-from imitation.util import data
-from imitation.util.buffer import Buffer, ReplayBuffer
+from imitation.data import types
+from imitation.data.buffer import Buffer, ReplayBuffer
 
 
 def _fill_chunk(start, chunk_len, sample_shape, dtype=np.float):
@@ -97,7 +97,7 @@ def test_replay_buffer(capacity, chunk_len, obs_shape, act_shape, dtype):
 
         dones = np.arange(i, i + chunk_len, dtype=np.int32) % 2
         dones = dones.astype(np.bool)
-        batch = data.Transitions(
+        batch = types.Transitions(
             obs=_fill_chunk(i, chunk_len, obs_shape, dtype=dtype),
             next_obs=_fill_chunk(3 * capacity + i, chunk_len, obs_shape, dtype=dtype),
             acts=_fill_chunk(6 * capacity + i, chunk_len, act_shape, dtype=dtype),
@@ -208,13 +208,13 @@ def test_replay_buffer_from_data():
         assert np.array_equal(buf._buffer._arrays["acts"], acts)
 
     buf_std = ReplayBuffer.from_data(
-        data.Transitions(obs=obs, acts=acts, next_obs=next_obs, dones=dones,)
+        types.Transitions(obs=obs, acts=acts, next_obs=next_obs, dones=dones,)
     )
     _check_buf(buf_std)
 
     rews = np.array([0.5, 1.0], dtype=float)
     buf_rew = ReplayBuffer.from_data(
-        data.TransitionsWithRew(
+        types.TransitionsWithRew(
             obs=obs, acts=acts, next_obs=next_obs, rews=rews, dones=dones,
         )
     )

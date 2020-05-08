@@ -6,7 +6,8 @@ import numpy as np
 import tensorflow as tf
 
 from imitation.algorithms import bc
-from imitation.util import data, util
+from imitation.data import rollout, types
+from imitation.util import util
 
 ROLLOUT_PATH = "tests/data/expert_models/cartpole_0/rollouts/final.pkl"
 
@@ -14,8 +15,8 @@ ROLLOUT_PATH = "tests/data/expert_models/cartpole_0/rollouts/final.pkl"
 def make_trainer():
     env_name = "CartPole-v1"
     env = util.make_vec_env(env_name, 2)
-    rollouts = data.load(ROLLOUT_PATH)
-    rollouts = util.rollout.flatten_trajectories(rollouts)
+    rollouts = types.load(ROLLOUT_PATH)
+    rollouts = rollout.flatten_trajectories(rollouts)
     return bc.BCTrainer(env, expert_demos=rollouts)
 
 

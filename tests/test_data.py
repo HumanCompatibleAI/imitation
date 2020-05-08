@@ -9,7 +9,7 @@ import gym
 import numpy as np
 import pytest
 
-from imitation.util import data
+from imitation.data import types
 
 SPACES = [
     gym.spaces.Discrete(3),
@@ -32,38 +32,38 @@ def _check_1d_shape(fn: Callable[[np.ndarray], Any], length: float, expected_msg
 @pytest.fixture
 def trajectory(
     obs_space: gym.Space, act_space: gym.Space, length: int
-) -> data.Trajectory:
+) -> types.Trajectory:
     """Fixture to generate trajectory of length `length` iid sampled from spaces."""
     obs = np.array([obs_space.sample() for _ in range(length + 1)])
     acts = np.array([act_space.sample() for _ in range(length)])
     infos = [{} for _ in range(length)]
-    return data.Trajectory(obs=obs, acts=acts, infos=infos)
+    return types.Trajectory(obs=obs, acts=acts, infos=infos)
 
 
 @pytest.fixture
-def trajectory_rew(trajectory: data.Trajectory) -> data.TrajectoryWithRew:
+def trajectory_rew(trajectory: types.Trajectory) -> types.TrajectoryWithRew:
     """Like `trajectory` but with reward randomly sampled from a Gaussian."""
     rews = np.random.randn(len(trajectory))
-    return data.TrajectoryWithRew(**dataclasses.asdict(trajectory), rews=rews)
+    return types.TrajectoryWithRew(**dataclasses.asdict(trajectory), rews=rews)
 
 
 @pytest.fixture
 def transitions(
     obs_space: gym.Space, act_space: gym.Space, length: int
-) -> data.Transitions:
+) -> types.Transitions:
     """Fixture to generate transitions of length `length` iid sampled from spaces."""
     obs = np.array([obs_space.sample() for _ in range(length)])
     next_obs = np.array([obs_space.sample() for _ in range(length)])
     acts = np.array([act_space.sample() for _ in range(length)])
     dones = np.zeros(length, dtype=np.bool)
-    return data.Transitions(obs=obs, acts=acts, next_obs=next_obs, dones=dones)
+    return types.Transitions(obs=obs, acts=acts, next_obs=next_obs, dones=dones)
 
 
 @pytest.fixture
-def transitions_rew(transitions: data.Transitions) -> data.TransitionsWithRew:
+def transitions_rew(transitions: types.Transitions) -> types.TransitionsWithRew:
     """Like `transitions` but with reward randomly sampled from a Gaussian."""
     rews = np.random.randn(len(transitions))
-    return data.TransitionsWithRew(**dataclasses.asdict(transitions), rews=rews)
+    return types.TransitionsWithRew(**dataclasses.asdict(transitions), rews=rews)
 
 
 @pytest.mark.parametrize("obs_space", OBS_SPACES)
@@ -77,8 +77,8 @@ class TestData:
 
     def test_valid_trajectories(
         self,
-        trajectory: data.Trajectory,
-        trajectory_rew: data.TrajectoryWithRew,
+        trajectory: types.Trajectory,
+        trajectory_rew: types.TrajectoryWithRew,
         length: int,
     ) -> None:
         """Checks trajectories can be created for a variety of lengths and spaces."""
@@ -88,7 +88,7 @@ class TestData:
             assert len(traj) == length
 
     def test_invalid_trajectories(
-        self, trajectory: data.Trajectory, trajectory_rew: data.TrajectoryWithRew,
+        self, trajectory: types.Trajectory, trajectory_rew: types.TrajectoryWithRew,
     ) -> None:
         """Checks input validation catches space and dtype related errors."""
         trajs = [trajectory, trajectory_rew]
@@ -126,8 +126,8 @@ class TestData:
 
     def test_valid_transitions(
         self,
-        transitions: data.Transitions,
-        transitions_rew: data.TransitionsWithRew,
+        transitions: types.Transitions,
+        transitions_rew: types.TransitionsWithRew,
         length: int,
     ) -> None:
         """Checks trajectories can be created for a variety of lengths and spaces."""
@@ -135,7 +135,7 @@ class TestData:
         assert len(transitions_rew) == length
 
     def test_invalid_transitions(
-        self, transitions: data.Transitions, transitions_rew: data.TransitionsWithRew,
+        self, transitions: types.Transitions, transitions_rew: types.TransitionsWithRew,
     ) -> None:
         """Checks input validation catches space and dtype related errors."""
         for trans in [transitions, transitions_rew]:
@@ -191,8 +191,8 @@ def test_zero_length_fails():
     """Check zero-length trajectory and transitions fail."""
     empty = np.array([])
     with pytest.raises(ValueError, match=r"Degenerate trajectory.*"):
-        data.Trajectory(obs=np.array([42]), acts=empty, infos=None)
+        types.Trajectory(obs=np.array([42]), acts=empty, infos=None)
     with pytest.raises(ValueError, match=r"Must have non-zero number of.*"):
-        data.Transitions(
+        types.Transitions(
             obs=empty, acts=empty, next_obs=empty, dones=empty.astype(np.bool),
         )

@@ -5,9 +5,9 @@ import os
 import sacred
 from stable_baselines.common import policies
 
-from imitation import util
 from imitation.policies import base
 from imitation.scripts.config.common import DEFAULT_INIT_RL_KWARGS
+from imitation.util import util
 
 train_ex = sacred.Experiment("train_adversarial", interactive=True)
 

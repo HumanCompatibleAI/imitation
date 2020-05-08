@@ -5,7 +5,6 @@ from typing import Sequence
 import numpy as np
 import pytest
 
-from imitation import util
 from imitation.algorithms.density_baselines import (
     STATE_ACTION_DENSITY,
     STATE_DENSITY,
@@ -13,9 +12,10 @@ from imitation.algorithms.density_baselines import (
     DensityReward,
     DensityTrainer,
 )
+from imitation.data import rollout, types
 from imitation.policies.base import RandomPolicy
 from imitation.rewards import common
-from imitation.util import data, rollout
+from imitation.util import util
 
 parametrize_density_stationary = pytest.mark.parametrize(
     "density_type,is_stationary",
@@ -29,7 +29,7 @@ parametrize_density_stationary = pytest.mark.parametrize(
 
 
 def score_trajectories(
-    trajectories: Sequence[data.Trajectory], reward_fn: common.RewardFn
+    trajectories: Sequence[types.Trajectory], reward_fn: common.RewardFn
 ):
     # score trajectories under given reward function w/o discount
     returns = []
@@ -50,7 +50,7 @@ def test_density_reward(density_type, is_stationary):
 
     # construct density-based reward from expert rollouts
     rollout_path = "tests/data/expert_models/pendulum_0/rollouts/final.pkl"
-    expert_trajectories_all = data.load(rollout_path)
+    expert_trajectories_all = types.load(rollout_path)
     n_experts = len(expert_trajectories_all)
     expert_trajectories_train = expert_trajectories_all[: n_experts // 2]
     reward_fn = DensityReward(
@@ -82,7 +82,7 @@ def test_density_reward(density_type, is_stationary):
 def test_density_trainer(density_type, is_stationary):
     env_name = "Pendulum-v0"
     rollout_path = "tests/data/expert_models/pendulum_0/rollouts/final.pkl"
-    rollouts = data.load(rollout_path)
+    rollouts = types.load(rollout_path)
     env = util.make_vec_env(env_name, 2)
     imitation_trainer = util.init_rl(env)
     density_trainer = DensityTrainer(

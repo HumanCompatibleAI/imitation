@@ -6,9 +6,10 @@ import numpy as np
 import pytest
 import tensorflow as tf
 
+from imitation.data import rollout, types
 from imitation.policies import base
 from imitation.rewards import reward_net, serialize
-from imitation.util import data, rollout, util
+from imitation.util import util
 
 ENVS = ["FrozenLake-v0", "CartPole-v1", "Pendulum-v0"]
 HARDCODED_TYPES = ["zero"]
@@ -47,7 +48,7 @@ def test_reward_valid(env_name, reward_type):
     assert isinstance(pred_reward[0], numbers.Number)
 
 
-def _make_feed_dict(reward_net: reward_net.RewardNet, transitions: data.Transitions):
+def _make_feed_dict(reward_net: reward_net.RewardNet, transitions: types.Transitions):
     return {
         reward_net.obs_ph: transitions.obs,
         reward_net.act_ph: transitions.acts,

@@ -1,8 +1,10 @@
 from typing import List
 
+import gym
+import numpy as np
 from stable_baselines.common.vec_env import VecEnv, VecEnvWrapper
 
-from imitation.util import data, rollout
+from imitation.data import rollout, types
 
 
 class BufferingWrapper(VecEnvWrapper):
@@ -59,7 +61,7 @@ class BufferingWrapper(VecEnvWrapper):
         self.n_transitions += self.num_envs
         return obs, rews, dones, infos
 
-    def _finish_partial_trajectories(self) -> List[data.TrajectoryWithRew]:
+    def _finish_partial_trajectories(self) -> List[types.TrajectoryWithRew]:
         """Finishes and returns partial trajectories in `self._traj_accum`."""
         trajs = []
         for i in range(self.num_envs):
@@ -78,7 +80,7 @@ class BufferingWrapper(VecEnvWrapper):
                 self._traj_accum.add_step({"obs": traj.obs[-1]}, key=i)
         return trajs
 
-    def pop_transitions(self) -> data.TransitionsWithRew:
+    def pop_transitions(self) -> types.TransitionsWithRew:
         """Pops recorded transitions, returning them as an instance of Transitions.
 
         Raises a RuntimeError if called when `self.n_transitions == 0`.
@@ -95,3 +97,36 @@ class BufferingWrapper(VecEnvWrapper):
         self._trajectories = []
         self.n_transitions = 0
         return transitions
+
+
+class RolloutInfoWrapper(gym.Wrapper):
+    """Add the entire episode's rewards and observations to `info` at episode end.
+
+    Whenever done=True, `info["rollouts"]` is a dict with keys "obs" and "rews", whose
+    corresponding values hold the Numpy arrays containing the raw observations and
+    rewards seen during this episode.
+    """
+
+    def __init__(self, env):
+        super().__init__(env)
+        self._obs = None
+        self._rews = None
+
+    def reset(self, **kwargs):
+        new_obs = super().reset()
+        self._obs = [new_obs]
+        self._rews = []
+        return new_obs
+
+    def step(self, action):
+        obs, rew, done, info = self.env.step(action)
+        self._obs.append(obs)
+        self._rews.append(rew)
+
+        if done:
+            assert "rollout" not in info
+            info["rollout"] = {
+                "obs": np.stack(self._obs),
+                "rews": np.stack(self._rews),
+            }
+        return obs, rew, done, info

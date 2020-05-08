@@ -5,7 +5,7 @@ import os
 import pytest
 
 from imitation.algorithms.adversarial import init_trainer
-from imitation.util import data, rollout
+from imitation.data import rollout, types
 
 USE_GAIL = [True, False]
 IN_CODECOV = "COV_CORE_CONFIG" in os.environ
@@ -21,7 +21,7 @@ def setup_and_teardown(session):
 
 
 def init_test_trainer(tmpdir: str, use_gail: bool, parallel: bool = False):
-    trajs = data.load("tests/data/expert_models/cartpole_0/rollouts/final.pkl")
+    trajs = types.load("tests/data/expert_models/cartpole_0/rollouts/final.pkl")
     return init_trainer(
         "CartPole-v1", trajs, log_dir=tmpdir, use_gail=use_gail, parallel=parallel
     )

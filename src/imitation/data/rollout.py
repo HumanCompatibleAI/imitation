@@ -3,51 +3,17 @@ import dataclasses
 import functools
 from typing import Callable, Dict, Hashable, List, Optional, Sequence, Union
 
-import gym
 import numpy as np
 import tensorflow as tf
 from stable_baselines.common.base_class import BaseRLModel
 from stable_baselines.common.policies import BasePolicy
 from stable_baselines.common.vec_env import VecEnv
 
+from imitation.data import types
 from imitation.policies.base import get_action_policy
-from imitation.util import data
 
 
-class RolloutInfoWrapper(gym.Wrapper):
-    """Add the entire episode's rewards and observations to `info` at episode end.
-
-    Whenever done=True, `info["rollouts"]` is a dict with keys "obs" and "rews", whose
-    corresponding values hold the Numpy arrays containing the raw observations and
-    rewards seen during this episode.
-    """
-
-    def __init__(self, env):
-        super().__init__(env)
-        self._obs = None
-        self._rews = None
-
-    def reset(self, **kwargs):
-        new_obs = super().reset()
-        self._obs = [new_obs]
-        self._rews = []
-        return new_obs
-
-    def step(self, action):
-        obs, rew, done, info = self.env.step(action)
-        self._obs.append(obs)
-        self._rews.append(rew)
-
-        if done:
-            assert "rollout" not in info
-            info["rollout"] = {
-                "obs": np.stack(self._obs),
-                "rews": np.stack(self._rews),
-            }
-        return obs, rew, done, info
-
-
-def unwrap_traj(traj: data.TrajectoryWithRew) -> data.TrajectoryWithRew:
+def unwrap_traj(traj: types.TrajectoryWithRew) -> types.TrajectoryWithRew:
     """Uses `RolloutInfoWrapper`-captured `obs` and `rews` to replace fields.
 
     This can be useful for bypassing other wrappers to retrieve the original
@@ -98,7 +64,7 @@ class TrajectoryAccumulator:
         """
         self.partial_trajectories[key].append(step_dict)
 
-    def finish_trajectory(self, key: Hashable = None) -> data.TrajectoryWithRew:
+    def finish_trajectory(self, key: Hashable = None) -> types.TrajectoryWithRew:
         """Complete the trajectory labelled with `key`.
 
         Args:
@@ -118,7 +84,7 @@ class TrajectoryAccumulator:
             key: np.stack(arr_list, axis=0)
             for key, arr_list in out_dict_unstacked.items()
         }
-        traj = data.TrajectoryWithRew(**out_dict_stacked)
+        traj = types.TrajectoryWithRew(**out_dict_stacked)
         assert traj.rews.shape[0] == traj.acts.shape[0] == traj.obs.shape[0] - 1
         return traj
 
@@ -129,7 +95,7 @@ class TrajectoryAccumulator:
         rews: np.ndarray,
         dones: np.ndarray,
         infos: List[dict],
-    ) -> List[data.TrajectoryWithRew]:
+    ) -> List[types.TrajectoryWithRew]:
         """Calls `add_step` repeatedly using acts and the returns from `venv.step`.
 
         Also automatically calls `finish_trajectory()` for each `done == True`.
@@ -184,7 +150,7 @@ class TrajectoryAccumulator:
         return trajs
 
 
-GenTrajTerminationFn = Callable[[Sequence[data.TrajectoryWithRew]], bool]
+GenTrajTerminationFn = Callable[[Sequence[types.TrajectoryWithRew]], bool]
 
 
 def min_episodes(n: int) -> GenTrajTerminationFn:
@@ -213,7 +179,7 @@ def min_timesteps(n: int) -> GenTrajTerminationFn:
     """
     assert n >= 1
 
-    def f(trajectories: Sequence[data.TrajectoryWithRew]):
+    def f(trajectories: Sequence[types.TrajectoryWithRew]):
         timesteps = sum(len(t.obs) - 1 for t in trajectories)
         return timesteps >= n
 
@@ -255,7 +221,7 @@ def generate_trajectories(
     *,
     deterministic_policy: bool = False,
     rng: np.random.RandomState = np.random,
-) -> Sequence[data.TrajectoryWithRew]:
+) -> Sequence[types.TrajectoryWithRew]:
     """Generate trajectory dictionaries from a policy and an environment.
 
     Args:
@@ -348,7 +314,7 @@ def generate_trajectories(
     return trajectories
 
 
-def rollout_stats(trajectories: Sequence[data.TrajectoryWithRew]) -> dict:
+def rollout_stats(trajectories: Sequence[types.TrajectoryWithRew]) -> dict:
     """Calculates various stats for a sequence of trajectories.
 
     Args:
@@ -394,7 +360,9 @@ def mean_return(*args, **kwargs) -> float:
     return rollout_stats(trajectories)["return_mean"]
 
 
-def flatten_trajectories(trajectories: Sequence[data.Trajectory],) -> data.Transitions:
+def flatten_trajectories(
+    trajectories: Sequence[types.Trajectory],
+) -> types.Transitions:
     """Flatten a series of trajectory dictionaries into arrays.
 
     Returns observations, actions, next observations, rewards.
@@ -420,20 +388,20 @@ def flatten_trajectories(trajectories: Sequence[data.Trajectory],) -> data.Trans
     }
     lengths = set(map(len, cat_parts.values()))
     assert len(lengths) == 1, f"expected one length, got {lengths}"
-    return data.Transitions(**cat_parts)
+    return types.Transitions(**cat_parts)
 
 
 def flatten_trajectories_with_rew(
-    trajectories: Sequence[data.TrajectoryWithRew],
-) -> data.TransitionsWithRew:
+    trajectories: Sequence[types.TrajectoryWithRew],
+) -> types.TransitionsWithRew:
     transitions = flatten_trajectories(trajectories)
     rews = np.concatenate([traj.rews for traj in trajectories])
-    return data.TransitionsWithRew(**dataclasses.asdict(transitions), rews=rews)
+    return types.TransitionsWithRew(**dataclasses.asdict(transitions), rews=rews)
 
 
 def generate_transitions(
     policy, venv, n_timesteps: int, *, truncate: bool = True, **kwargs
-) -> data.TransitionsWithRew:
+) -> types.TransitionsWithRew:
     """Generate obs-action-next_obs-reward tuples.
 
     Args:
@@ -457,7 +425,7 @@ def generate_transitions(
     if truncate and n_timesteps is not None:
         as_dict = dataclasses.asdict(transitions)
         truncated = {k: arr[:n_timesteps] for k, arr in as_dict.items()}
-        transitions = data.TransitionsWithRew(**truncated)
+        transitions = types.TransitionsWithRew(**truncated)
     return transitions
 
 
@@ -498,4 +466,4 @@ def rollout_and_save(
         stats = rollout_stats(trajs)
         tf.logging.info(f"Rollout stats: {stats}")
 
-    data.save(path, trajs)
+    types.save(path, trajs)
