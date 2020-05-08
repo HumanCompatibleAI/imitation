@@ -8,8 +8,6 @@ import gym
 import tensorflow as tf
 from stable_baselines.common.input import observation_input
 
-# TODO(adam): we should use typing.OrderedDict introduced in Python 3.7.2
-# As of 2020-05-07, pytype does not understand OrderedDict; worth retrying.
 LayersDict = Dict[str, tf.layers.Layer]
 
 
@@ -39,7 +37,7 @@ def build_mlp(
     return layers
 
 
-def sequential(inputs: tf.Tensor, layers: LayersDict,) -> tf.Tensor:
+def sequential(inputs: tf.Tensor, layers: LayersDict) -> tf.Tensor:
     """Applies a sequence of layers to an input."""
     output = inputs
     for layer in layers.values():
@@ -125,7 +123,9 @@ def build_and_apply_mlp(
     applied using `sequential` to an MLP built using `build_mlp`.
 
     Arguments:
-      hid_sizes: Number of units at each hidden layer. Default is [], i.e. linear.
+        hid_sizes: Number of units at each hidden layer.
+            Default is (32, 32), i.e. two hidden layers with 32 units.
+            () represents linear.
       inputs: Sequence of tensor inputs to flatten and concatenate.
       **kwargs: Passed through to `util.build_mlp`.
 
