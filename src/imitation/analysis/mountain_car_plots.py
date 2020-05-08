@@ -92,9 +92,9 @@ def make_heatmap(
         obs_vec = np.array([[p, v] for p in pos_space for v in vel_space])
         acts_vec = np.array([act] * len(obs_vec))
         next_obs_vec = _make_next_mc_obs(obs_vec, acts_vec)
-        steps = np.arange(len(acts_vec))
+        dones = np.zeros(len(acts_vec), dtype=np.bool)
 
-        rew = reward_fn(obs_vec, acts_vec, next_obs_vec, steps)
+        rew = reward_fn(obs_vec, acts_vec, next_obs_vec, dones)
         # Transpose because `pcolor` (confusingly) expects its first two arguments
         # to be XY, but its matrix argument to be in RC format.
         rew_matrix = rew.reshape(n_pos_step, n_vel_step).T
@@ -215,8 +215,9 @@ def plot_reward_vs_time(
         for traj in trajs_list:
             T = len(traj.rews)
             X.extend(range(T))
-            steps = np.arange(len(traj.acts))
-            rews = reward_fn(traj.obs[:-1], traj.acts, traj.obs[1:], steps)
+            dones = np.zeros(T, dtype=np.bool)
+            dones[-1] = True
+            rews = reward_fn(traj.obs[:-1], traj.acts, traj.obs[1:], dones)
             Y.extend(rews)
         color = preferred_colors.get(trajs_label, None)
         ax.plot(X, Y, label=trajs_label, c=color)

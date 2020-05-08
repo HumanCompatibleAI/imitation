@@ -48,7 +48,6 @@ class RewardVecEnvWrapper(vec_env.VecEnvWrapper):
 
     def reset(self):
         self._old_obs = self.venv.reset()
-        self._step_counter = np.zeros((self.num_envs,), dtype="int")
         return self._old_obs
 
     def step_async(self, actions):
@@ -69,13 +68,9 @@ class RewardVecEnvWrapper(vec_env.VecEnvWrapper):
             obs_fixed.append(single_obs)
         obs_fixed = np.stack(obs_fixed)
 
-        rews = self.reward_fn(
-            self._old_obs, self._actions, obs_fixed, self._step_counter
-        )
+        rews = self.reward_fn(self._old_obs, self._actions, obs_fixed, np.array(dones),)
         assert len(rews) == len(obs), "must return one rew for each env"
         done_mask = np.asarray(dones, dtype="bool").reshape((len(dones),))
-        self._step_counter += 1
-        self._step_counter[done_mask] = 0
 
         # Update statistics
         self._cumulative_rew += rews

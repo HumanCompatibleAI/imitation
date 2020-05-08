@@ -1,7 +1,7 @@
 """Constructs deep network reward models."""
 
 from abc import ABC, abstractmethod
-from typing import Iterable, Optional, Tuple
+from typing import Iterable, Optional, Sequence, Tuple
 
 import gym
 import tensorflow as tf
@@ -33,6 +33,10 @@ class RewardNet(serialize.Serializable, ABC):
         action_space: gym.Space,
         *,
         scale: bool = False,
+        use_state: bool = True,
+        use_action: bool = True,
+        use_next_state: bool = False,
+        use_done: bool = False,
     ):
         """Builds a reward network.
 
@@ -40,20 +44,33 @@ class RewardNet(serialize.Serializable, ABC):
             observation_space: The observation space.
             action_space: The action space.
             scale: Whether to scale the input.
+            use_state: Whether state is included in inputs to network.
+            use_action: Whether action is included in inputs to network.
+            use_next_state: Whether next state is included in inputs to network.
+            use_done: Whether episode termination is included in inputs to network.
         """
 
         self.observation_space = observation_space
         self.action_space = action_space
         self.scale = scale
 
-        inputs = util.build_inputs(observation_space, action_space, scale)
-        self.obs_ph, self.act_ph, self.next_obs_ph = inputs[:3]
-        self.obs_inp, self.act_inp, self.next_obs_inp = inputs[3:]
+        phs, inps = networks.build_inputs(observation_space, action_space, scale)
+        self.obs_ph, self.act_ph, self.next_obs_ph, self.done_ph = phs
+        self.obs_inp, self.act_inp, self.next_obs_inp, self.done_inp = inps
+
+        inputs = []
+        inputs += [self.obs_inp] if use_state else []
+        inputs += [self.act_inp] if use_action else []
+        inputs += [self.next_obs_inp] if use_next_state else []
+        if len(inputs) == 0:
+            raise ValueError(
+                "At least one of `use_state`, `use_action` and `use_next_state` "
+                "must be true."
+            )
+        inputs += [self.done_inp] if use_done else []
 
         with tf.variable_scope("theta_network"):
-            self._theta_output, theta_layers = self.build_theta_network(
-                self.obs_inp, self.act_inp
-            )
+            self._theta_output, theta_layers = self.build_theta_network(inputs)
 
         self._layers = theta_layers
 
@@ -102,7 +119,7 @@ class RewardNet(serialize.Serializable, ABC):
 
     @abstractmethod
     def build_theta_network(
-        self, obs_input: tf.Tensor, act_input: tf.Tensor,
+        self, inputs: Sequence[tf.Tensor]
     ) -> Tuple[tf.Tensor, networks.LayersDict]:
         """Builds the test reward network.
 
@@ -148,10 +165,10 @@ class RewardNetShaped(RewardNet):
         observation_space: gym.Space,
         action_space: gym.Space,
         *,
-        scale: bool = False,
         discount_factor: float = 0.99,
+        **kwargs,
     ):
-        super().__init__(observation_space, action_space, scale=scale)
+        super().__init__(observation_space, action_space, **kwargs)
         self._discount_factor = discount_factor
 
         with tf.variable_scope("phi_network"):
@@ -159,9 +176,10 @@ class RewardNetShaped(RewardNet):
             self._old_shaping_output, self._new_shaping_output, phi_layers = res
 
         with tf.variable_scope("f_network"):
+            alive = 1 - self.done_inp
             self._shaped_reward_output = (
                 self._theta_output
-                + self._discount_factor * self._new_shaping_output
+                + self._discount_factor * alive * self._new_shaping_output
                 - self._old_shaping_output
             )
 
@@ -234,32 +252,30 @@ class BasicRewardNet(RewardNet, serialize.LayersSerializable):
         observation_space: gym.Space,
         action_space: gym.Space,
         *,
-        scale: bool = False,
-        state_only: bool = False,
         theta_units: Optional[Iterable[int]] = None,
         theta_kwargs: Optional[dict] = None,
+        **kwargs,
     ):
         """Builds a simple reward network.
 
         Args:
           observation_space: The observation space.
           action_space: The action space.
-          state_only: If True, then ignore the action when predicting
-              and training the reward network theta.
           theta_units: Number of hidden units at each layer of the feedforward
               reward network theta.
           theta_kwargs: Arguments passed to `build_basic_theta_network`.
+          kwargs: Passed through to RewardNet.
         """
-        self.state_only = state_only
+        params = locals()
+        del params["kwargs"]
+        params.update(kwargs)
+
         self.theta_units = theta_units
         self.theta_kwargs = theta_kwargs or {}
-        RewardNet.__init__(self, observation_space, action_space, scale=scale)
-        serialize.LayersSerializable.__init__(**locals(), layers=self._layers)
+        RewardNet.__init__(self, observation_space, action_space, **kwargs)
+        serialize.LayersSerializable.__init__(**params, layers=self._layers)
 
-    def build_theta_network(self, obs_input, act_input):
-        inputs = [obs_input]
-        if not self.state_only:
-            inputs.append(act_input)
+    def build_theta_network(self, inputs: Sequence[tf.Tensor]):
         return networks.build_and_apply_mlp(
             inputs, self.theta_units, **self.theta_kwargs
         )
@@ -320,47 +336,39 @@ class BasicShapedRewardNet(RewardNetShaped, serialize.LayersSerializable):
         observation_space: gym.Space,
         action_space: gym.Space,
         *,
-        scale: bool = False,
-        state_only: bool = False,
-        discount_factor: float = 0.99,
         theta_units: Optional[Iterable[int]] = None,
         theta_kwargs: Optional[dict] = None,
         phi_units: Optional[Iterable[int]] = None,
         phi_kwargs: Optional[dict] = None,
+        **kwargs,
     ):
         """Builds a simple shaped reward network.
 
         Args:
           observation_space: The observation space.
           action_space: The action space.
-          discount_factor: A number in the range [0, 1].
-          state_only: If True, then ignore the action when predicting and training
-              the reward network theta.
           theta_units: Number of hidden units at each layer of the feedforward
               reward network theta.
           theta_kwargs: Arguments passed to `build_basic_theta_network`.
           phi_units: Number of hidden units at each layer of the feedforward
               potential network phi.
           phi_kwargs: Arguments passed to `build_basic_phi_network`.
+          kwargs: Passed through to `RewardNetShaped`.
         """
-        self.state_only = state_only
+        params = locals()
+        del params["kwargs"]
+        params.update(kwargs)
+
         self.theta_units = theta_units
         self.phi_units = phi_units
         self.theta_kwargs = theta_kwargs or {}
         self.phi_kwargs = phi_kwargs or {}
         RewardNetShaped.__init__(
-            self,
-            observation_space,
-            action_space,
-            scale=scale,
-            discount_factor=discount_factor,
+            self, observation_space, action_space, **kwargs,
         )
-        serialize.LayersSerializable.__init__(**locals(), layers=self._layers)
+        serialize.LayersSerializable.__init__(**params, layers=self._layers)
 
-    def build_theta_network(self, obs_input, act_input):
-        inputs = [obs_input]
-        if not self.state_only:
-            inputs.append(act_input)
+    def build_theta_network(self, inputs):
         return networks.build_and_apply_mlp(
             inputs, self.theta_units, **self.theta_kwargs
         )

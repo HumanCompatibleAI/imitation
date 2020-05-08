@@ -69,7 +69,7 @@ def build_inputs(
             obs_ph: Placeholder for old observations.
             act_ph: Placeholder for actions.
             next_obs_ph: Placeholder for new observations.
-            dones_ph: Placeholder for boolean episode termination.
+            done_ph: Placeholder for boolean episode termination.
         and inps is a tuple of:
             obs_inp: Network-ready float32 Tensor with processed old observations.
             act_inp: Network-ready float32 Tensor with processed actions.

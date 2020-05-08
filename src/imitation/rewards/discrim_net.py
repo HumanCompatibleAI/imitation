@@ -57,19 +57,21 @@ class DiscrimNet(serialize.Serializable, ABC):
     @abstractmethod
     def obs_ph(self):
         """The previous observation placeholder."""
-        pass
 
     @property
     @abstractmethod
     def act_ph(self):
         """The action placeholder."""
-        pass
 
     @property
     @abstractmethod
     def next_obs_ph(self):
         """The new observation placeholder."""
-        pass
+
+    @property
+    @abstractmethod
+    def done_ph(self):
+        """The episode termination placeholder."""
 
     @property
     def labels_gen_is_one_ph(self):
@@ -183,7 +185,7 @@ class DiscrimNet(serialize.Serializable, ABC):
         obs: np.ndarray,
         act: np.ndarray,
         next_obs: np.ndarray,
-        steps: np.ndarray,
+        dones: np.ndarray,
         *,
         gen_log_prob_fn: Callable[..., np.ndarray],
     ) -> np.ndarray:
@@ -197,7 +199,7 @@ class DiscrimNet(serialize.Serializable, ABC):
                 expected to be the same as None dimension from `obs_input`.
             next_obs: The observation input. Its shape is
                 `(batch_size,) + observation_space.shape`.
-            steps: The number of timesteps elapsed. Its shape is `(batch_size,)`.
+            dones: Whether the episode has terminated. Its shape is `(batch_size,)`.
             gen_log_prob_fn: The generator policy's action probabilities function.
                 A Callable such that
                 `log_act_prob_fn(observations=obs, actions=act, lopg=True)`
@@ -207,7 +209,6 @@ class DiscrimNet(serialize.Serializable, ABC):
         Returns:
             The rewards. Its shape is `(batch_size,)`.
         """
-        del steps
         log_act_prob = gen_log_prob_fn(
             observation=obs, actions=act, logp=True
         ).flatten()
@@ -221,6 +222,7 @@ class DiscrimNet(serialize.Serializable, ABC):
             self.obs_ph: obs,
             self.act_ph: act,
             self.next_obs_ph: next_obs,
+            self.done_ph: dones,
             self.labels_gen_is_one_ph: np.ones(n_gen),
             self.log_policy_act_prob_ph: log_act_prob,
         }
@@ -229,7 +231,7 @@ class DiscrimNet(serialize.Serializable, ABC):
         return rew
 
     def reward_test(
-        self, obs: np.ndarray, act: np.ndarray, next_obs: np.ndarray, steps: np.ndarray,
+        self, obs: np.ndarray, act: np.ndarray, next_obs: np.ndarray, dones: np.ndarray,
     ) -> np.ndarray:
         """Vectorized reward for training an expert during transfer learning.
 
@@ -241,15 +243,15 @@ class DiscrimNet(serialize.Serializable, ABC):
                 expected to be the same as None dimension from `obs_input`.
             next_obs: The observation input. Its shape is
                 `(batch_size,) + observation_space.shape`.
-            steps: The number of timesteps elapsed. Its shape is `(batch_size,)`.
+            dones: Whether the episode has terminated. Its shape is `(batch_size,)`.
         Returns:
             The rewards. Its shape is `(batch_size,)`.
         """
-        del steps
         fd = {
             self.obs_ph: obs,
             self.act_ph: act,
             self.next_obs_ph: next_obs,
+            self.done_ph: dones,
         }
         rew = self._sess.run(self.policy_test_reward, feed_dict=fd)
         assert rew.shape == (len(obs),)
@@ -290,6 +292,10 @@ class DiscrimNetAIRL(DiscrimNet):
     @property
     def next_obs_ph(self):
         return self.reward_net.next_obs_ph
+
+    @property
+    def done_ph(self):
+        return self.reward_net.done_ph
 
     def build_graph(self):
         self._disc_logits_gen_is_high = (
@@ -403,12 +409,16 @@ class DiscrimNetGAIL(DiscrimNet, serialize.LayersSerializable):
     def next_obs_ph(self):
         return self._next_obs_ph
 
+    @property
+    def done_ph(self):
+        return self._done_ph
+
     def build_graph(self):
-        inputs = util.build_inputs(
+        phs, inps = networks.build_inputs(
             self._observation_space, self._action_space, scale=self._scale
         )
-        self._obs_ph, self._act_ph, self._next_obs_ph = inputs[:3]
-        self.obs_input, self.act_input, _ = inputs[3:]
+        self._obs_ph, self._act_ph, self._next_obs_ph, self._done_ph = phs
+        self.obs_input, self.act_input, _, self.done_input = inps
 
         with tf.variable_scope("discrim_network"):
             self._disc_logits_gen_is_high, self._disc_mlp = self._build_discrim_net(
