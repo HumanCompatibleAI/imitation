@@ -14,7 +14,7 @@ from typing import (
 import gym
 from stable_baselines.common.vec_env import VecEnv
 
-from imitation.util import util
+from imitation.util import networks
 
 T = TypeVar("T")
 LoaderFn = Callable[[str, VecEnv], T]
@@ -117,7 +117,7 @@ def sess_context(fn: Callable[..., T]) -> Callable[..., ContextManager[T]]:
     @functools.wraps(fn)
     @contextlib.contextmanager
     def wrapper(*args, **kwargs) -> Iterator[T]:
-        with util.make_session():
+        with networks.make_session():
             yield fn(*args, **kwargs)
 
     return wrapper

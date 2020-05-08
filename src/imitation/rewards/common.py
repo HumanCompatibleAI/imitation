@@ -1,7 +1,7 @@
 """Utilities and definitions shared by reward-related code."""
 
 import functools
-from typing import Callable, Optional
+from typing import Callable
 
 import numpy as np
 from stable_baselines.common import vec_env
@@ -13,7 +13,7 @@ def _reward_fn_normalize_inputs(
     obs: np.ndarray,
     acts: np.ndarray,
     next_obs: np.ndarray,
-    steps: Optional[np.ndarray] = None,
+    dones: np.ndarray,
     *,
     reward_fn: RewardFn,
     vec_normalize: vec_env.VecNormalize,
@@ -32,7 +32,7 @@ def _reward_fn_normalize_inputs(
     """
     norm_obs = vec_normalize.normalize_obs(obs)
     norm_next_obs = vec_normalize.normalize_obs(next_obs)
-    rew = reward_fn(norm_obs, acts, norm_next_obs, steps)
+    rew = reward_fn(norm_obs, acts, norm_next_obs, dones)
     if norm_reward:
         rew = vec_normalize.normalize_reward(rew)
     return rew

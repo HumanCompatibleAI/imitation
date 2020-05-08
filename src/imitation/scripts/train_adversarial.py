@@ -13,9 +13,8 @@ from sacred.observers import FileStorageObserver
 from imitation.algorithms.adversarial import init_trainer
 from imitation.policies import serialize
 from imitation.scripts.config.train_adversarial import train_ex
-from imitation.util import data, rollout
+from imitation.util import data, networks, rollout
 from imitation.util import sacred as sacred_util
-from imitation.util import util
 
 
 def save(trainer, save_path):
@@ -123,7 +122,7 @@ def train(
 
     expert_stats = rollout.rollout_stats(expert_trajs)
 
-    with util.make_session():
+    with networks.make_session():
         if init_tensorboard:
             sb_tensorboard_dir = osp.join(log_dir, "sb_tb")
             kwargs = init_trainer_kwargs
