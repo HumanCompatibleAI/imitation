@@ -173,17 +173,29 @@ class RewardNetShaped(RewardNet):
 
         with tf.variable_scope("phi_network"):
             res = self.build_phi_network(self.obs_inp, self.next_obs_inp)
+            # end_potential is the potential when the episode terminates.
+            if discount_factor == 1.0:
+                # If undiscounted, terminal state must have potential 0.
+                end_potential = tf.constant(0.0)
+            else:
+                # Otherwise, it can be arbitrary, so make a trainable variable.
+                end_potential = tf.Variable(
+                    name="end_phi", shape=(), dtype=tf.float32, initial_value=0.0
+                )
+                self._layers.update(end_potential=end_potential)
             self._old_shaping_output, self._new_shaping_output, phi_layers = res
+            self._layers.update(**phi_layers)
 
         with tf.variable_scope("f_network"):
-            alive = 1 - self.done_inp
+            new_shaping = (
+                self.done_inp * end_potential
+                + (1 - self.done_inp) * self._new_shaping_output
+            )
             self._shaped_reward_output = (
                 self._theta_output
-                + self._discount_factor * alive * self._new_shaping_output
+                + self._discount_factor * new_shaping
                 - self._old_shaping_output
             )
-
-        self._layers.update(**phi_layers)
 
     @property
     def reward_output_train(self):
