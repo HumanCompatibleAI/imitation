@@ -334,13 +334,10 @@ class BasicShapedRewardNet(RewardNetShaped, serialize.LayersSerializable):
     """A shaped reward network with simple, default settings.
 
     With default parameters this RewardNet has two hidden layers [32, 32]
-    for the reward shaping phi network, and a linear function approximator
-    for the theta network. These settings match the network architectures for
-    continuous control experiments described in Appendix D.1 of the
-    AIRL paper.
+    for the theta network and reward shaping phi network.
 
-    This network flattens inputs. So it isn't suitable for training on
-    pixel observations.
+    This network is feed-forward and flattens inputs, so is a poor choice for
+    training on pixel observations.
     """
 
     def __init__(
