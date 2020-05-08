@@ -8,12 +8,12 @@ import tensorflow as tf
 from sacred.observers import FileStorageObserver
 from stable_baselines.common.vec_env import VecNormalize
 
-import imitation.util as util
 import imitation.util.sacred as sacred_util
+from imitation.data import rollout
 from imitation.policies import serialize
 from imitation.rewards.serialize import load_reward
 from imitation.scripts.config.expert_demos import expert_demos_ex
-from imitation.util import networks
+from imitation.util import logger, networks, util
 from imitation.util.reward_wrapper import RewardVecEnvWrapper
 
 
@@ -103,14 +103,14 @@ def rollouts_and_policy(
     os.makedirs(log_dir, exist_ok=True)
     sacred_util.build_sacred_symlink(log_dir, _run)
 
-    sample_until = util.rollout.make_sample_until(
+    sample_until = rollout.make_sample_until(
         rollout_save_n_timesteps, rollout_save_n_episodes
     )
-    eval_sample_until = util.rollout.min_episodes(n_episodes_eval)
+    eval_sample_until = rollout.min_episodes(n_episodes_eval)
 
     with networks.make_session():
         tf.logging.set_verbosity(tf.logging.INFO)
-        util.logger.configure(
+        logger.configure(
             folder=osp.join(log_dir, "rl"), format_strs=["tensorboard", "stdout"]
         )
 
@@ -163,7 +163,7 @@ def rollouts_and_policy(
 
                 if rollout_save_interval > 0 and step % rollout_save_interval == 0:
                     save_path = osp.join(rollout_dir, f"{step}.pkl")
-                    util.rollout.rollout_and_save(save_path, policy, venv, sample_until)
+                    rollout.rollout_and_save(save_path, policy, venv, sample_until)
                 if policy_save_interval > 0 and step % policy_save_interval == 0:
                     output_dir = os.path.join(policy_dir, f"{step:05d}")
                     serialize.save_stable_model(output_dir, policy, vec_normalize)
@@ -173,14 +173,14 @@ def rollouts_and_policy(
             # Save final artifacts after training is complete.
             if rollout_save_final:
                 save_path = osp.join(rollout_dir, "final.pkl")
-                util.rollout.rollout_and_save(save_path, policy, venv, sample_until)
+                rollout.rollout_and_save(save_path, policy, venv, sample_until)
             if policy_save_final:
                 output_dir = os.path.join(policy_dir, "final")
                 serialize.save_stable_model(output_dir, policy, vec_normalize)
 
             # Final evaluation of expert policy.
-            trajs = util.rollout.generate_trajectories(policy, venv, eval_sample_until)
-            stats = util.rollout.rollout_stats(trajs)
+            trajs = rollout.generate_trajectories(policy, venv, eval_sample_until)
+            stats = rollout.rollout_stats(trajs)
 
     return stats
 
@@ -214,7 +214,7 @@ def rollouts_from_policy(
     os.makedirs(log_dir, exist_ok=True)
     sacred_util.build_sacred_symlink(log_dir, _run)
 
-    sample_until = util.rollout.make_sample_until(
+    sample_until = rollout.make_sample_until(
         rollout_save_n_timesteps, rollout_save_n_episodes
     )
 
@@ -228,7 +228,7 @@ def rollouts_from_policy(
     )
 
     with serialize.load_policy(policy_type, policy_path, venv) as policy:
-        util.rollout.rollout_and_save(rollout_save_path, policy, venv, sample_until)
+        rollout.rollout_and_save(rollout_save_path, policy, venv, sample_until)
 
 
 def main_console():

@@ -11,9 +11,10 @@ import tensorflow as tf
 from sacred.observers import FileStorageObserver
 
 from imitation.algorithms.adversarial import init_trainer
+from imitation.data import rollout, types
 from imitation.policies import serialize
 from imitation.scripts.config.train_adversarial import train_ex
-from imitation.util import data, networks, rollout
+from imitation.util import networks
 from imitation.util import sacred as sacred_util
 
 
@@ -114,7 +115,7 @@ def train(
     sacred_util.build_sacred_symlink(log_dir, _run)
 
     # Calculate stats for expert rollouts. Used for plot and return value.
-    expert_trajs = data.load(rollout_path)
+    expert_trajs = types.load(rollout_path)
 
     if n_expert_demos is not None:
         assert len(expert_trajs) >= n_expert_demos

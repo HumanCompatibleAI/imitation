@@ -9,9 +9,9 @@ import pytest
 from stable_baselines import bench
 from stable_baselines.common import vec_env
 
+from imitation.data import rollout, types, wrappers
 from imitation.policies import serialize
 from imitation.policies.base import RandomPolicy
-from imitation.util import data, rollout, util
 
 
 class TerminalSentinelEnv(gym.Env):
@@ -35,7 +35,7 @@ class TerminalSentinelEnv(gym.Env):
 
 def _sample_fixed_length_trajectories(
     episode_lengths: Sequence[int], min_episodes: int, **kwargs,
-) -> Sequence[data.Trajectory]:
+) -> Sequence[types.Trajectory]:
     venv = vec_env.DummyVecEnv(
         [functools.partial(TerminalSentinelEnv, length) for length in episode_lengths]
     )
@@ -165,7 +165,7 @@ def test_unwrap_traj():
     Also check that unwrapping twice is a no-op.
     """
     env = gym.make("CartPole-v1")
-    env = util.rollout.RolloutInfoWrapper(env)
+    env = wrappers.RolloutInfoWrapper(env)
     env = ObsRewHalveWrapper(env)
     venv = vec_env.DummyVecEnv([lambda: env])
 

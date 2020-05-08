@@ -9,11 +9,10 @@ import tqdm
 from stable_baselines.common.base_class import BaseRLModel
 from stable_baselines.common.vec_env import VecEnv, VecNormalize
 
-import imitation.rewards.discrim_net as discrim_net
-import imitation.util as util
+from imitation.data import buffer, rollout, types, wrappers
+from imitation.rewards import discrim_net
 from imitation.rewards.reward_net import BasicShapedRewardNet
-from imitation.util import buffer, data, logger, reward_wrapper
-from imitation.util.buffering_wrapper import BufferingWrapper
+from imitation.util import logger, reward_wrapper, util
 
 
 class AdversarialTrainer:
@@ -39,7 +38,7 @@ class AdversarialTrainer:
         venv: VecEnv,
         gen_policy: BaseRLModel,
         discrim: discrim_net.DiscrimNet,
-        expert_demos: data.Transitions,
+        expert_demos: types.Transitions,
         *,
         log_dir: str = "output/",
         disc_batch_size: int = 2048,
@@ -88,9 +87,9 @@ class AdversarialTrainer:
               the environment reward with the learned reward. This is useful for
               sanity checking that the policy training is functional.
         """
-        assert util.logger.is_configured(), (
-            "Requires call to " "imitation.util.logger.configure"
-        )
+        assert (
+            logger.is_configured()
+        ), "Requires call to imitation.util.logger.configure"
         self._sess = tf.get_default_session()
         self._global_step = tf.train.create_global_step()
 
@@ -140,7 +139,7 @@ class AdversarialTrainer:
                 self.venv, self.reward_test
             )
 
-        self.venv_train_buffering = BufferingWrapper(self.venv_train)
+        self.venv_train_buffering = wrappers.BufferingWrapper(self.venv_train)
         self.venv_train_norm = VecNormalize(self.venv_train_buffering)
         self.gen_policy.set_env(self.venv_train_norm)
 
@@ -167,7 +166,7 @@ class AdversarialTrainer:
         return self._discrim
 
     @property
-    def expert_demos(self) -> data.Transitions:
+    def expert_demos(self) -> types.Transitions:
         """The expert demonstrations that are being imitated."""
         return self._expert_demos
 
@@ -217,8 +216,8 @@ class AdversarialTrainer:
     def train_disc_step(
         self,
         *,
-        gen_samples: Optional[data.Transitions] = None,
-        expert_samples: Optional[data.Transitions] = None,
+        gen_samples: Optional[types.Transitions] = None,
+        expert_samples: Optional[types.Transitions] = None,
     ) -> None:
         """Perform a single discriminator update, optionally using provided samples.
 
@@ -330,7 +329,7 @@ class AdversarialTrainer:
             self.train_disc(self.disc_batch_size)
             if callback:
                 callback(epoch)
-            util.logger.dumpkvs()
+            logger.dumpkvs()
 
     def _build_graph(self):
         # Build necessary parts of the TF graph. Most of the real action happens in
@@ -355,8 +354,8 @@ class AdversarialTrainer:
     def _build_disc_feed_dict(
         self,
         *,
-        gen_samples: Optional[data.Transitions] = None,
-        expert_samples: Optional[data.Transitions] = None,
+        gen_samples: Optional[types.Transitions] = None,
+        expert_samples: Optional[types.Transitions] = None,
     ) -> dict:
         """Build and return feed dict for the next discriminator training update.
 
@@ -414,7 +413,7 @@ class AdversarialTrainer:
 
 def init_trainer(
     env_name: str,
-    expert_trajectories: Sequence[data.Trajectory],
+    expert_trajectories: Sequence[types.Trajectory],
     *,
     log_dir: str,
     seed: int = 0,
@@ -454,7 +453,7 @@ def init_trainer(
       init_rl_kwargs: Keyword arguments passed to `init_rl`,
           used to initialize the RL algorithm.
     """
-    util.logger.configure(folder=log_dir, format_strs=["tensorboard", "stdout"])
+    logger.configure(folder=log_dir, format_strs=["tensorboard", "stdout"])
     env = util.make_vec_env(
         env_name,
         num_vec,
@@ -477,7 +476,7 @@ def init_trainer(
             rn, entropy_weight=airl_entropy_weight, **discrim_kwargs
         )
 
-    expert_demos = util.rollout.flatten_trajectories(expert_trajectories)
+    expert_demos = rollout.flatten_trajectories(expert_trajectories)
     trainer = AdversarialTrainer(
         env, gen_policy, discrim, expert_demos, log_dir=log_dir, **trainer_kwargs
     )

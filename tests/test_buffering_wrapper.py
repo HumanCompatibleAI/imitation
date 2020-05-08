@@ -5,8 +5,8 @@ import numpy as np
 import pytest
 from stable_baselines.common.vec_env import DummyVecEnv
 
-from imitation.util import data
-from imitation.util.buffering_wrapper import BufferingWrapper
+from imitation.data import types
+from imitation.data.wrappers import BufferingWrapper
 
 
 class _CountingEnv(gym.Env):  # pragma: no cover
@@ -61,8 +61,8 @@ def _assert_equal_scrambled_vectors(a: np.ndarray, b: np.ndarray) -> bool:
 
 
 def _join_transitions(
-    trans_list: Sequence[data.TransitionsWithRew],
-) -> data.TransitionsWithRew:
+    trans_list: Sequence[types.TransitionsWithRew],
+) -> types.TransitionsWithRew:
     def concat(x):
         return np.concatenate(list(x))
 
@@ -71,7 +71,7 @@ def _join_transitions(
     rews = concat(t.rews for t in trans_list)
     acts = concat(t.acts for t in trans_list)
     dones = concat(t.dones for t in trans_list)
-    return data.TransitionsWithRew(
+    return types.TransitionsWithRew(
         obs=obs, next_obs=next_obs, rews=rews, acts=acts, dones=dones
     )
 
@@ -135,7 +135,7 @@ def test_pop(
     # To test `pop_transitions`, we will check that every obs, act, and rew
     # returned by `.reset()` and `.step()` is also returned by one of the
     # calls to `pop_transitions()`.
-    transitions_list = []  # type: List[data.TransitionsWithRew]
+    transitions_list = []  # type: List[types.TransitionsWithRew]
 
     # Initial observation (only matters for pop_transitions()).
     obs = venv_buffer.reset()

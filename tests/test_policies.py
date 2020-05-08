@@ -4,8 +4,9 @@ import numpy as np
 import pytest
 from stable_baselines.common.vec_env import VecNormalize
 
+from imitation.data import rollout
 from imitation.policies import serialize
-from imitation.util import registry, rollout, util
+from imitation.util import registry, util
 
 SIMPLE_ENVS = [
     "CartPole-v0",  # Discrete(2) action space

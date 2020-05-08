@@ -3,10 +3,12 @@
 import dataclasses
 import os
 import pickle
-from typing import List, NamedTuple, Optional, Sequence
+from typing import Optional, Sequence
 
 import numpy as np
 import tensorflow as tf
+
+from imitation.data import old_types
 
 
 @dataclasses.dataclass(frozen=True)
@@ -153,39 +155,25 @@ class TransitionsWithRew(Transitions):
         _rews_validation(self.rews, self.acts)
 
 
-class _TrajectoryBackwardCompatible(NamedTuple):
-    """A trajectory, e.g. a one episode rollout from an expert policy."""
-
-    acts: np.ndarray
-    """Actions, shape (trajectory_len, ) + action_shape."""
-
-    obs: np.ndarray
-    """Observations, shape (trajectory_len + 1, ) + observation_shape."""
-
-    rews: np.ndarray
-    """Reward, shape (trajectory_len, )."""
-
-    infos: Optional[List[dict]]
-    """A list of info dicts, length trajectory_len."""
-
-
 def load(path: str) -> Sequence[TrajectoryWithRew]:
     """Loads a sequence of trajectories saved by `save()` from `path`."""
     # TODO(adam): remove backwards compatibility logic eventually (2021?)
-    from unittest import mock
+    import sys
 
-    with mock.patch(
-        "imitation.util.rollout.Trajectory",
-        new=_TrajectoryBackwardCompatible,
-        create=True,
-    ):
+    try:
+        assert "imitation.util.rollout" not in sys.modules
+        sys.modules["imitation.util.rollout"] = old_types
         with open(path, "rb") as f:
             trajectories = pickle.load(f)
-        if len(trajectories) > 0:
-            if isinstance(trajectories[0], _TrajectoryBackwardCompatible):
-                trajectories = [
-                    TrajectoryWithRew(**traj._asdict()) for traj in trajectories
-                ]
+    finally:
+        del sys.modules["imitation.util.rollout"]
+
+    if len(trajectories) > 0:
+        if isinstance(trajectories[0], old_types.Trajectory):
+            trajectories = [
+                TrajectoryWithRew(**traj._asdict()) for traj in trajectories
+            ]
+
     return trajectories
 
 

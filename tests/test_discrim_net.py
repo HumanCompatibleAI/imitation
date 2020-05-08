@@ -2,10 +2,11 @@ import numpy as np
 import pytest
 import tensorflow as tf
 
-import imitation.util as util
+from imitation.data import rollout
 from imitation.policies import base
 from imitation.rewards import discrim_net
 from imitation.rewards.reward_net import BasicRewardNet
+from imitation.util import util
 
 ENVS = ["FrozenLake-v0", "CartPole-v1", "Pendulum-v0"]
 DISCRIM_NETS = [discrim_net.DiscrimNetAIRL, discrim_net.DiscrimNetGAIL]
@@ -47,7 +48,7 @@ def test_serialize_identity(session, env_name, discrim_net_cls, tmpdir):
     with tf.variable_scope("loaded"):
         loaded = discrim_net.DiscrimNet.load(tmpdir)
 
-    transitions = util.rollout.generate_transitions(random, venv, n_timesteps=100)
+    transitions = rollout.generate_transitions(random, venv, n_timesteps=100)
     length = len(transitions.obs)  # n_timesteps is only a lower bound
     labels = np.random.randint(2, size=length).astype(np.float32)
     log_prob = np.random.randn(length)

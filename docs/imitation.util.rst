@@ -4,22 +4,6 @@ imitation.util package
 Submodules
 ----------
 
-imitation.util.buffer module
-----------------------------
-
-.. automodule:: imitation.util.buffer
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-imitation.util.buffering_wrapper module
----------------------------------------
-
-.. automodule:: imitation.util.buffering_wrapper
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 imitation.util.logger module
 ----------------------------
 
@@ -32,14 +16,6 @@ imitation.util.reward\_wrapper module
 -------------------------------------
 
 .. automodule:: imitation.util.reward_wrapper
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-imitation.util.rollout module
------------------------------
-
-.. automodule:: imitation.util.rollout
    :members:
    :undoc-members:
    :show-inheritance:
