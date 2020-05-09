@@ -29,13 +29,22 @@ View Tensorboard with `tensorboard --logdir output/`.
 
 
 # Contributing
-  * Follow the [Google Python Style Guide](http://google.github.io/styleguide/pyguide.html). Examples of Google-style
-docstrings can be found [here](https://sphinxcontrib-napoleon.readthedocs.io/en/latest/example_google.html).
-  * Add units tests covering any new features, or bugs that are being fixed.
-  * PEP8 guidelines with line width 80 and 2-space indents are enforced by `ci/lint.sh`,
-which is automatically run by Travis CI.
-  * Static type checking via `pytype` is automatically run in `ci/type_check.sh`.
-  * Code coverage is automatically enforced by CodeCov.
-    The exact coverage required by CodeCov depends on the previous
-    code coverage %. Files in `imitation/{examples,scripts}/` have no
-    coverage requirements.
+
+All PRs should include unit tests for any new features, using `pytest`.
+We use `pytype` for static type checking. Please add type annotations where possible.
+It is OK to omit annotations when it would make the code significantly more complex.
+
+Code coverage is automatically enforced by CodeCov.
+The exact coverage required by CodeCov depends on the previous code coverage %.
+Files in `imitation/{examples,scripts}/` have no coverage requirements.
+
+Please follow a coding style of:
+  * PEP8, with line width 88.
+  * Use the `black` autoformatter.
+  * Follow the [Google Python Style Guide](http://google.github.io/styleguide/pyguide.html) unless
+    it conflicts with the above. Examples of Google-style docstrings can be found
+    [here](https://sphinxcontrib-napoleon.readthedocs.io/en/latest/example_google.html).
+
+Run `ci/code_checks.sh` to run linting and static type checks, and `pytest tests/` for unit tests.
+These also run on CircleCI and are required to pass before merging. You may wish to configure
+`ci/code_checks.sh` as a Git commit hook.
