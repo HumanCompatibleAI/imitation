@@ -1,6 +1,8 @@
 [![CircleCI](https://circleci.com/gh/HumanCompatibleAI/imitation.svg?style=svg)](https://circleci.com/gh/HumanCompatibleAI/imitation)
 [![Documentation Status](https://readthedocs.org/projects/imitation/badge/?version=latest)](https://imitation.readthedocs.io/en/latest/?badge=latest)
 [![codecov](https://codecov.io/gh/HumanCompatibleAI/imitation/branch/master/graph/badge.svg)](https://codecov.io/gh/HumanCompatibleAI/imitation)
+[![PyPI version](https://badge.fury.io/py/imitation.svg)](https://badge.fury.io/py/imitation)
+
 
 # Imitation Learning Baseline Implementations
 
@@ -30,13 +32,23 @@ View Tensorboard with `tensorboard --logdir output/`.
 
 
 # Contributing
-  * Follow the [Google Python Style Guide](http://google.github.io/styleguide/pyguide.html). Examples of Google-style
-docstrings can be found [here](https://sphinxcontrib-napoleon.readthedocs.io/en/latest/example_google.html).
-  * Add units tests covering any new features, or bugs that are being fixed.
-  * PEP8 guidelines with line width 80 and 2-space indents are enforced by `ci/lint.sh`,
-which is automatically run by Travis CI.
-  * Static type checking via `pytype` is automatically run in `ci/type_check.sh`.
-  * Code coverage is automatically enforced by CodeCov.
-    The exact coverage required by CodeCov depends on the previous
-    code coverage %. Files in `imitation/{examples,scripts}/` have no
-    coverage requirements.
+
+Please follow a coding style of:
+  * PEP8, with line width 88.
+  * Use the `black` autoformatter.
+  * Follow the [Google Python Style Guide](http://google.github.io/styleguide/pyguide.html) unless
+    it conflicts with the above. Examples of Google-style docstrings can be found
+    [here](https://sphinxcontrib-napoleon.readthedocs.io/en/latest/example_google.html).
+
+PRs should include unit tests for any new features, and add type annotations where possible. 
+It is OK to omit annotations when it would make the code significantly more complex.
+
+We use `pytest` for unit testing: run `pytest tests/` to run the test suite.
+We use `pytype` for static type analysis.
+You should run `ci/code_checks.sh` to run linting and static type checks, and may wish
+to configure this as a Git pre-commit hook.
+
+These checks are run on CircleCI and are required to pass before merging.
+Additionally, we track test coverage by CodeCov, and mandate that code coverage
+should not decrease. This can be overridden by maintainers in exceptional cases.
+Files in `imitation/{examples,scripts}/` have no coverage requirements.

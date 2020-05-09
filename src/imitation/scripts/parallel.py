@@ -42,7 +42,8 @@ def parallel(
         Ray directory name.
       base_config_updates: `search_space["config_updates"]` is applied to this
         dict before it is passed to the inner experiment's `run()`.
-      resource_per_trial: Argument to `ray.tune.run()`.
+      resources_per_trial: Argument to `ray.tune.run()`.
+      init_kwargs: Arguments to pass to `ray.init`.
       local_dir: `local_dir` argument to `ray.tune.run()`.
       upload_dir: `upload_dir` argument to `ray.tune.run()`.
     """

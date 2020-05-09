@@ -3,7 +3,6 @@ coverage:
     project:
       default: false
       main:
-        target: 80%
         paths:
           - "src/imitation/"
           - "!src/imitation/envs/examples/"

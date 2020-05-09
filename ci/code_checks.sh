@@ -23,9 +23,5 @@ if [ "$skipexpensive" != "true" ]; then
   popd
 
   echo "Type checking"
-  # Tell pytype Python path explicitly using -P: otherwise it gets lost
-  # when the package is installed in editable mode (`pip -e .`). Note CI
-  # checks still run using full install (`pip .`) which is more robust
-  # but cumbersome for a Git commit hook.
-  pytype -P src/:. ${SRC_FILES[@]}
+  pytype ${SRC_FILES[@]}
 fi

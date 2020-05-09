@@ -4,8 +4,8 @@ from setuptools import find_packages, setup
 TF_VERSION = ">=1.15.0,<2.0"
 TESTS_REQUIRE = [
     "seals~=0.1.0",
-    # remove pin once https://github.com/nedbat/coveragepy/issues/881 fixed
     "black",
+    # remove pin once https://github.com/nedbat/coveragepy/issues/881 fixed
     "coverage==4.5.4",
     "codecov",
     "codespell",
@@ -24,11 +24,21 @@ DOCS_REQUIRE = [
     "sphinx",
     "sphinxcontrib-napoleon",
 ]
+PARALLEL_REQUIRE = ["ray[debug,tune]~=0.8.5"]
+
+
+def get_readme() -> str:
+    """Retrieve content from README."""
+    with open("README.md", "r") as f:
+        return f.read()
+
 
 setup(
     name="imitation",
     version=src.imitation.__version__,
-    description=("Implementation of modern IRL and imitation learning algorithms."),
+    description="Implementation of modern IRL and imitation learning algorithms.",
+    long_description=get_readme(),
+    long_description_content_type="text/markdown",
     author="Center for Human-Compatible AI and Google",
     python_requires=">=3.7.0",
     packages=find_packages("src"),
@@ -40,15 +50,11 @@ setup(
         "gym[classic_control]",
         "matplotlib",
         "numpy>=1.15",
-        "ray[debug]==0.7.4",
         "tqdm",
         "scikit-learn>=0.21.2",
-        # TODO(adam): Change to >=2.10.0 once 2.10.0 released
-        "stable-baselines @ git+https://github.com/hill-a/stable-baselines.git",
-        # TODO(shwang): Change to PyPI release once >0.1.55 is released.
-        # Needs https://github.com/google/jax/pull/1931
-        "jax @ git+https://github.com/google/jax",
-        "jaxlib~=0.1.20",
+        "stable-baselines~=2.10.0",
+        "jax~=0.1.66",
+        "jaxlib~=0.1.47",
         # sacred==0.7.5 build is broken without pymongo
         # sacred>0.7.4 have non-picklable config objects (see GH #109)
         "sacred==0.7.4",
@@ -72,6 +78,7 @@ setup(
         ],
         "test": TESTS_REQUIRE,
         "docs": DOCS_REQUIRE,
+        "parallel": PARALLEL_REQUIRE,
     },
     entry_points={
         "console_scripts": [
