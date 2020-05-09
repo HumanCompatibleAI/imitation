@@ -19,6 +19,8 @@ TESTS_REQUIRE = [
     "pytest-shard",
     "pytest-xdist",
     "pytype",
+]
+DOCS_REQUIRE = [
     "sphinx",
     "sphinxcontrib-napoleon",
 ]
@@ -72,8 +74,10 @@ setup(
             "codespell",
             # for convenience
             *TESTS_REQUIRE,
+            *DOCS_REQUIRE,
         ],
         "test": TESTS_REQUIRE,
+        "docs": DOCS_REQUIRE,
     },
     entry_points={
         "console_scripts": [
