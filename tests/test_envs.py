@@ -2,7 +2,7 @@
 
 import gym
 import pytest
-from benchmark_environments.testing import envs as bench_test
+from seals.testing import envs as bench_test
 
 # Unused imports is for side-effect of registering environments
 from imitation.envs import examples  # noqa: F401

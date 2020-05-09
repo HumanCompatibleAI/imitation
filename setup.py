@@ -3,11 +3,7 @@ from setuptools import find_packages, setup
 
 TF_VERSION = ">=1.15.0,<2.0"
 TESTS_REQUIRE = [
-    # TODO(adam): use PyPi rather than Git once we make first release
-    (
-        "benchmark-environments @ "
-        "git+https://github.com/HumanCompatibleAI/benchmark-environments.git"
-    ),
+    "seals~=0.1.0",
     # remove pin once https://github.com/nedbat/coveragepy/issues/881 fixed
     "black",
     "coverage==4.5.4",
