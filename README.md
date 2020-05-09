@@ -12,7 +12,7 @@ Currently we have implementations of [AIRL](https://arxiv.org/abs/1710.11248) an
 
 ### To install:
 ```
-conda create -n imitation python=3.8  # python 3.7 and virtualenv are also okay.
+conda create -n imitation python=3.7
 conda activate imitation
 pip install -e '.[dev]'  # install `imitation` in developer mode
 ```
