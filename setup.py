@@ -24,6 +24,7 @@ DOCS_REQUIRE = [
     "sphinx",
     "sphinxcontrib-napoleon",
 ]
+PARALLEL_REQUIRE = ["ray[debug,tune]~=0.8.5"]
 
 
 def get_readme() -> str:
@@ -49,7 +50,6 @@ setup(
         "gym[classic_control]",
         "matplotlib",
         "numpy>=1.15",
-        "ray[debug]==0.7.4",
         "tqdm",
         "scikit-learn>=0.21.2",
         "stable-baselines~=2.10.0",
@@ -78,6 +78,7 @@ setup(
         ],
         "test": TESTS_REQUIRE,
         "docs": DOCS_REQUIRE,
+        "parallel": PARALLEL_REQUIRE,
     },
     entry_points={
         "console_scripts": [
