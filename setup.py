@@ -55,9 +55,9 @@ setup(
         "stable-baselines~=2.10.0",
         "jax~=0.1.66",
         "jaxlib~=0.1.47",
-        # sacred==0.7.5 build is broken without pymongo
-        # sacred>0.7.4 have non-picklable config objects (see GH #109)
-        "sacred==0.7.4",
+        # Install from IDSIA/sacred@master once
+        # https://github.com/IDSIA/sacred/pull/737 is merged.
+        "sacred @ git+https://github.com/HumanCompatibleAI/sacred@0.8.1-with-imit-compat",  # noqa: E501
     ],
     tests_require=TESTS_REQUIRE,
     extras_require={

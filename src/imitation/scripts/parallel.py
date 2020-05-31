@@ -52,7 +52,9 @@ def parallel(
     # change the working directory for each Raylet.
     if sacred_ex_name == "train_adversarial":
         if "data_dir" not in base_config_updates:
-            base_config_updates["data_dir"] = os.path.join(os.getcwd(), "data/")
+            data_dir = os.path.join(os.getcwd(), "data/")
+            base_config_update = dict(base_config_updates)
+            base_config_update["data_dir"] = data_dir
 
     trainable = _ray_tune_sacred_wrapper(
         sacred_ex_name, run_name, base_named_configs, base_config_updates
@@ -119,10 +121,13 @@ def _ray_tune_sacred_wrapper(
         ex.observers.append(observer)
 
         # Apply base configs
-        base_named_configs.extend(config.get("named_configs", []))
-        base_config_updates.update(config.get("config_updates", {}))
-        config["named_configs"] = base_named_configs
-        config["config_updates"] = base_config_updates
+        config["named_configs"] = []
+        config["named_configs"].extend(base_named_configs)
+        config["named_configs"].extend(config.get("named_config", []))
+
+        config["config_updates"] = {}
+        config["config_updates"].update(base_config_updates)
+        config["config_updates"].update(config.get("config_updates", {}))
 
         run = ex.run(**config, options={"--run": run_name})
 
