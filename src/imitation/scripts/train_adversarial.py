@@ -3,6 +3,7 @@
 Can be used as a CLI script, or the `train_and_plot` function can be called directly.
 """
 
+import copy
 import os
 import os.path as osp
 from typing import Optional
@@ -126,7 +127,7 @@ def train(
     with networks.make_session():
         if init_tensorboard:
             sb_tensorboard_dir = osp.join(log_dir, "sb_tb")
-            kwargs = init_trainer_kwargs
+            kwargs = copy.deepcopy(init_trainer_kwargs)
             kwargs["init_rl_kwargs"] = kwargs.get("init_rl_kwargs", {})
             kwargs["init_rl_kwargs"]["tensorboard_log"] = sb_tensorboard_dir
 

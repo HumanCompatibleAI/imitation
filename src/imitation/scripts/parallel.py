@@ -1,3 +1,4 @@
+import copy
 import os
 from typing import Any, Callable, Dict, Optional
 
@@ -106,6 +107,13 @@ def _ray_tune_sacred_wrapper(
     """
 
     def inner(config: dict, reporter) -> dict:
+        """Trainable function with the correct signature for `ray.tune`.
+
+        Args:
+            config: Keyword arguments for `ex.run()`, where `ex` is the
+                `sacred.Experiment` instance associated with `sacred_ex_name`.
+        """
+        run_kwargs = copy.deepcopy(config)
         # Import inside function rather than in module because Sacred experiments
         # are not picklable, and Ray requires this function to be picklable.
         from imitation.scripts.expert_demos import expert_demos_ex
@@ -120,14 +128,13 @@ def _ray_tune_sacred_wrapper(
         observer = FileStorageObserver("sacred")
         ex.observers.append(observer)
 
-        # Apply base configs
-        config["named_configs"] = []
-        config["named_configs"].extend(base_named_configs)
-        config["named_configs"].extend(config.get("named_config", []))
+        # Apply base configs.
+        run_kwargs.setdefault("named_configs", [])
+        run_kwargs["named_configs"].extend(base_named_configs)
 
-        config["config_updates"] = {}
-        config["config_updates"].update(base_config_updates)
-        config["config_updates"].update(config.get("config_updates", {}))
+        run_kwargs = copy.deepcopy(base_config_updates)
+        run_kwargs.update(run_kwargs.get("config_updates", {}))
+        run_kwargs["config_updates"] = run_kwargs
 
         run = ex.run(**config, options={"--run": run_name})
 
