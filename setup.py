@@ -55,7 +55,7 @@ setup(
         "stable-baselines~=2.10.0",
         "jax~=0.1.66",
         "jaxlib~=0.1.47",
-        # Install from IDSIA/sacred@master once
+        # TODO(shwang): Install from IDSIA/sacred@master once
         # https://github.com/IDSIA/sacred/pull/737 and
         # https://github.com/IDSIA/sacred/pull/740 are merged.
         "sacred @ git+https://github.com/HumanCompatibleAI/sacred@0.8.1-with-imit-compat",  # noqa: E501
