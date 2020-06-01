@@ -117,7 +117,7 @@ def _ray_tune_sacred_wrapper(
         }
         ex = experiments[sacred_ex_name]
 
-        observer = FileStorageObserver.create("sacred")
+        observer = FileStorageObserver("sacred")
         ex.observers.append(observer)
 
         # Apply base configs
@@ -142,6 +142,6 @@ def _ray_tune_sacred_wrapper(
 
 
 if __name__ == "__main__":
-    observer = FileStorageObserver.create(os.path.join("output", "sacred", "parallel"))
+    observer = FileStorageObserver(os.path.join("output", "sacred", "parallel"))
     parallel_ex.observers.append(observer)
     parallel_ex.run_commandline()

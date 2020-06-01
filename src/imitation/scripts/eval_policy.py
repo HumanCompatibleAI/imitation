@@ -113,6 +113,6 @@ def eval_policy(
 
 
 if __name__ == "__main__":
-    observer = FileStorageObserver.create(osp.join("output", "sacred", "eval_policy"))
+    observer = FileStorageObserver(osp.join("output", "sacred", "eval_policy"))
     eval_policy_ex.observers.append(observer)
     eval_policy_ex.run_commandline()

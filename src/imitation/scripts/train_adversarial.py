@@ -156,7 +156,7 @@ def train(
 
 
 def main_console():
-    observer = FileStorageObserver.create(osp.join("output", "sacred", "train"))
+    observer = FileStorageObserver(osp.join("output", "sacred", "train"))
     train_ex.observers.append(observer)
     train_ex.run_commandline()
 
