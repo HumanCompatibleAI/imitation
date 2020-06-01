@@ -66,7 +66,8 @@ def parallel(
             base_config_update["data_dir"] = data_dir
 
     trainable = _ray_tune_sacred_wrapper(
-        sacred_ex_name, run_name,
+        sacred_ex_name,
+        run_name,
         copy.deepcopy(base_named_configs),
         copy.deepcopy(base_config_updates),
     )
