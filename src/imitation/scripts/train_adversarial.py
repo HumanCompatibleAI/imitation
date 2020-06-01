@@ -115,14 +115,12 @@ def train(
     os.makedirs(log_dir, exist_ok=True)
     sacred_util.build_sacred_symlink(log_dir, _run)
 
-    # Calculate stats for expert rollouts. Used for plot and return value.
+    # Calculate stats for expert rollouts. Used for return value.
     expert_trajs = types.load(rollout_path)
 
     if n_expert_demos is not None:
         assert len(expert_trajs) >= n_expert_demos
         expert_trajs = expert_trajs[:n_expert_demos]
-
-    expert_stats = rollout.rollout_stats(expert_trajs)
 
     with networks.make_session():
         if init_tensorboard:
@@ -151,8 +149,8 @@ def train(
         trajs = rollout.generate_trajectories(
             trainer.gen_policy, trainer.venv_test, sample_until=sample_until_eval
         )
+        results["expert_stats"] = rollout.rollout_stats(expert_trajs)
         results["imit_stats"] = rollout.rollout_stats(trajs)
-        results["expert_stats"] = expert_stats
         return results
 
 
