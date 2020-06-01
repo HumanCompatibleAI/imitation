@@ -314,7 +314,7 @@ def generate_trajectories(
     return trajectories
 
 
-def rollout_stats(trajectories: Sequence[types.TrajectoryWithRew]) -> dict:
+def rollout_stats(trajectories: Sequence[types.TrajectoryWithRew]) -> Dict[str, float]:
     """Calculates various stats for a sequence of trajectories.
 
     Args:
@@ -331,7 +331,7 @@ def rollout_stats(trajectories: Sequence[types.TrajectoryWithRew]) -> dict:
         are only included if the `trajectories` contain Monitor infos.
     """
     assert len(trajectories) > 0
-    out_stats = {"n_traj": len(trajectories)}
+    out_stats: Dict[str, float] = {"n_traj": len(trajectories)}
     traj_descriptors = {
         "return": np.asarray([sum(t.rews) for t in trajectories]),
         "len": np.asarray([len(t.rews) for t in trajectories]),
@@ -345,8 +345,9 @@ def rollout_stats(trajectories: Sequence[types.TrajectoryWithRew]) -> dict:
     stat_names = ["min", "mean", "std", "max"]
     for desc_name, desc_vals in traj_descriptors.items():
         for stat_name in stat_names:
-            stat_value = getattr(np, stat_name)(desc_vals)
-            out_stats[f"{desc_name}_{stat_name}"] = stat_value
+            stat_value: np.generic = getattr(np, stat_name)(desc_vals)
+            out_stats[f"{desc_name}_{stat_name}"] = stat_value.item()
+
     return out_stats
 
 

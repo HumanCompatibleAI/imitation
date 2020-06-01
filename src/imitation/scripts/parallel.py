@@ -48,6 +48,14 @@ def parallel(
       local_dir: `local_dir` argument to `ray.tune.run()`.
       upload_dir: `upload_dir` argument to `ray.tune.run()`.
     """
+    # Basic validation for config options before we enter parallel jobs.
+    for name in base_named_configs:
+        assert isinstance(name, str)
+    for k, v in base_config_updates.items():
+        assert isinstance(k, str)
+    assert isinstance(search_space["named_configs"], list)
+    assert isinstance(search_space["config_updates"], dict)
+
     # Explicitly set `data_dir` if parallelizing `train_adversarial`.
     # We need this to automatically find rollout pickles Ray will automatically
     # change the working directory for each Raylet.
@@ -58,7 +66,9 @@ def parallel(
             base_config_update["data_dir"] = data_dir
 
     trainable = _ray_tune_sacred_wrapper(
-        sacred_ex_name, run_name, base_named_configs, base_config_updates
+        sacred_ex_name, run_name,
+        copy.deepcopy(base_named_configs),
+        copy.deepcopy(base_config_updates),
     )
 
     # Disable all Ray Loggers.
@@ -73,7 +83,7 @@ def parallel(
     try:
         ray.tune.run(
             trainable,
-            config=search_space,
+            config=copy.deepcopy(search_space),
             name=run_name,
             local_dir=local_dir,
             upload_dir=upload_dir,
@@ -113,7 +123,7 @@ def _ray_tune_sacred_wrapper(
             config: Keyword arguments for `ex.run()`, where `ex` is the
                 `sacred.Experiment` instance associated with `sacred_ex_name`.
         """
-        run_kwargs = copy.deepcopy(config)
+        run_kwargs = config
         # Import inside function rather than in module because Sacred experiments
         # are not picklable, and Ray requires this function to be picklable.
         from imitation.scripts.expert_demos import expert_demos_ex
@@ -129,14 +139,17 @@ def _ray_tune_sacred_wrapper(
         ex.observers.append(observer)
 
         # Apply base configs.
-        run_kwargs.setdefault("named_configs", [])
-        run_kwargs["named_configs"].extend(base_named_configs)
+        named_configs = []
+        named_configs.extend(base_named_configs)
+        named_configs.extend(run_kwargs["named_configs"])
+        run_kwargs["named_configs"] = named_configs
 
-        run_kwargs = copy.deepcopy(base_config_updates)
-        run_kwargs.update(run_kwargs.get("config_updates", {}))
-        run_kwargs["config_updates"] = run_kwargs
+        config_updates = {}
+        config_updates.update(base_config_updates)
+        config_updates.update(run_kwargs["config_updates"])
+        run_kwargs["config_updates"] = config_updates
 
-        run = ex.run(**config, options={"--run": run_name})
+        run = ex.run(**run_kwargs, options={"--run": run_name})
 
         # Ray Tune has a string formatting error if raylet completes without
         # any calls to `reporter`.
