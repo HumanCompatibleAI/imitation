@@ -116,9 +116,7 @@ def train(
     os.makedirs(log_dir, exist_ok=True)
     sacred_util.build_sacred_symlink(log_dir, _run)
 
-    # Calculate stats for expert rollouts. Used for return value.
     expert_trajs = types.load(rollout_path)
-
     if n_expert_demos is not None:
         assert len(expert_trajs) >= n_expert_demos
         expert_trajs = expert_trajs[:n_expert_demos]
