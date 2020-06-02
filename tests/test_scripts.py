@@ -256,7 +256,7 @@ def test_analyze_imitation(tmpdir: str, run_names: List[str]):
             command_name="analyze_imitation",
             config_updates=dict(
                 source_dir=sacred_logs_dir,
-                env_name="CartPole-v0",
+                env_name="CartPole-v1",
                 run_name=run_name,
                 csv_output_path=osp.join(tmpdir, "analysis.csv"),
                 verbose=True,
