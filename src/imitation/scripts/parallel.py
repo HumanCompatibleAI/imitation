@@ -162,7 +162,11 @@ def _ray_tune_sacred_wrapper(
     return inner
 
 
-if __name__ == "__main__":
+def main_console():
     observer = FileStorageObserver(os.path.join("output", "sacred", "parallel"))
     parallel_ex.observers.append(observer)
     parallel_ex.run_commandline()
+
+
+if __name__ == "__main__":  # pragma: no cover
+    main_console()
