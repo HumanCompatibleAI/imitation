@@ -152,7 +152,7 @@ def _ray_tune_sacred_wrapper(
         config_updates.update(run_kwargs["config_updates"])
         updated_run_kwargs["config_updates"] = config_updates
 
-        # Apply
+        # Add other run_kwargs items to updated_run_kwargs.
         for k, v in run_kwargs.items():
             if k not in updated_run_kwargs:
                 updated_run_kwargs[k] = v
