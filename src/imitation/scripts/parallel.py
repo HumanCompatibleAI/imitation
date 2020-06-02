@@ -1,3 +1,4 @@
+import collections.abc
 import copy
 import os
 from typing import Any, Callable, Dict, Optional
@@ -51,14 +52,14 @@ def parallel(
     # Basic validation for config options before we enter parallel jobs.
     for name in base_named_configs:
         assert isinstance(name, str)
-    for k, v in base_config_updates.items():
+    for k in base_config_updates:
         assert isinstance(k, str)
-    assert isinstance(search_space["named_configs"], list)
-    assert isinstance(search_space["config_updates"], dict)
+    assert isinstance(search_space["named_configs"], collections.abc.Sequence)
+    assert isinstance(search_space["config_updates"], collections.abc.Mapping)
 
     # Explicitly set `data_dir` if parallelizing `train_adversarial`.
-    # We need this to automatically find rollout pickles Ray will automatically
-    # change the working directory for each Raylet.
+    # We need this to automatically find rollout pickles because Ray
+    # sets a new working directory for each Raylet.
     if sacred_ex_name == "train_adversarial":
         if "data_dir" not in base_config_updates:
             data_dir = os.path.join(os.getcwd(), "data/")
@@ -125,6 +126,7 @@ def _ray_tune_sacred_wrapper(
                 `sacred.Experiment` instance associated with `sacred_ex_name`.
         """
         run_kwargs = config
+        updated_run_kwargs = {}
         # Import inside function rather than in module because Sacred experiments
         # are not picklable, and Ray requires this function to be picklable.
         from imitation.scripts.expert_demos import expert_demos_ex
@@ -139,18 +141,23 @@ def _ray_tune_sacred_wrapper(
         observer = FileStorageObserver("sacred")
         ex.observers.append(observer)
 
-        # Apply base configs.
+        # Apply base configs to get modified `named_configs` and `config_updates`.
         named_configs = []
         named_configs.extend(base_named_configs)
         named_configs.extend(run_kwargs["named_configs"])
-        run_kwargs["named_configs"] = named_configs
+        updated_run_kwargs["named_configs"] = named_configs
 
         config_updates = {}
         config_updates.update(base_config_updates)
         config_updates.update(run_kwargs["config_updates"])
-        run_kwargs["config_updates"] = config_updates
+        updated_run_kwargs["config_updates"] = config_updates
 
-        run = ex.run(**run_kwargs, options={"--run": run_name})
+        # Apply
+        for k, v in run_kwargs.items():
+            if k not in updated_run_kwargs:
+                updated_run_kwargs[k] = v
+
+        run = ex.run(**updated_run_kwargs, options={"--run": run_name})
 
         # Ray Tune has a string formatting error if raylet completes without
         # any calls to `reporter`.

@@ -109,6 +109,7 @@ def train(
         return value of `rollout_stats()` on the expert demonstrations loaded from
         `rollout_path`.
     """
+    assert os.path.exists(rollout_path)
     total_timesteps = int(total_timesteps)
 
     tf.logging.info("Logging to %s", log_dir)
