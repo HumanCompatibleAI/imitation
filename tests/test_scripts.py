@@ -171,7 +171,8 @@ PARALLEL_CONFIG_UPDATES = [
         search_space={
             "config_updates": {
                 "init_rl_kwargs": {"learning_rate": tune.grid_search([3e-4, 1e-4])},
-            }
+            },
+            "meta_info": {"asdf": "I exist for coverage purposes"},
         },
     ),
     dict(
