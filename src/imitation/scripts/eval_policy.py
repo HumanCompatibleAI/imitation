@@ -112,7 +112,11 @@ def eval_policy(
     return rollout.rollout_stats(trajs)
 
 
-if __name__ == "__main__":
+def main_console():
     observer = FileStorageObserver.create(osp.join("output", "sacred", "eval_policy"))
     eval_policy_ex.observers.append(observer)
     eval_policy_ex.run_commandline()
+
+
+if __name__ == "__main__":  # pragma: no cover
+    main_console()

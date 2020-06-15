@@ -237,5 +237,5 @@ def main_console():
     expert_demos_ex.run_commandline()
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     main_console()
