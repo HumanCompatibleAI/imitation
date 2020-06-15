@@ -77,6 +77,7 @@ fi
 echo "Writing logs in ${LOG_ROOT}"
 parallel -j 25% --header : --results ${LOG_ROOT}/parallel/ --colsep , --progress \
   python -m imitation.scripts.expert_demos \
+  --capture=sys \
   ${extra_options} \
   with \
   {env_config_name} ${extra_configs} \

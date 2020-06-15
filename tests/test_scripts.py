@@ -12,10 +12,10 @@ from collections import Counter
 from typing import List, Optional
 from unittest import mock
 
-import sacred
 import pandas as pd
 import pytest
 import ray.tune as tune
+import sacred
 
 from imitation.scripts import (
     analyze,
@@ -26,6 +26,7 @@ from imitation.scripts import (
 )
 
 ALL_SCRIPTS_MODS = [analyze, eval_policy, expert_demos, parallel, train_adversarial]
+
 
 @pytest.fixture(autouse=True)
 def sacred_capture_use_sys():
