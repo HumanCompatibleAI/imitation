@@ -30,6 +30,9 @@ ALL_SCRIPTS_MODS = [analyze, eval_policy, expert_demos, parallel, train_adversar
 
 @pytest.fixture(autouse=True)
 def sacred_capture_use_sys():
+    """Set Sacred capture mode to "sys" because default "fd" option leads to error.
+
+    See https://github.com/IDSIA/sacred/issues/289."""
     temp = sacred.SETTINGS["CAPTURE_MODE"]
     sacred.SETTINGS.CAPTURE_MODE = "sys"
     yield
@@ -46,6 +49,7 @@ def test_main_console(script_mod):
 
 def test_expert_demos_main(tmpdir):
     """Smoke test for imitation.scripts.expert_demos.rollouts_and_policy."""
+    # sacred.SETTINGS["CAPTURE_MODE"] = "no"
     run = expert_demos.expert_demos_ex.run(
         named_configs=["cartpole", "fast"], config_updates=dict(log_root=tmpdir,),
     )
@@ -201,10 +205,7 @@ PARALLEL_CONFIG_LOW_RESOURCE = {
 
 @pytest.mark.parametrize("config_updates", PARALLEL_CONFIG_UPDATES)
 def test_parallel(config_updates):
-    """Hyperparam tuning smoke test.
-
-    Sometimes this will fail due to https://github.com/IDSIA/sacred/issues/289.
-    Seems to be OS- and Sacred-version-dependent."""
+    """Hyperparam tuning smoke test."""
     # CI server only has 2 cores
     config_updates = dict(config_updates)
     config_updates.update(PARALLEL_CONFIG_LOW_RESOURCE)

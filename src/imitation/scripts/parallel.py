@@ -28,32 +28,34 @@ def parallel(
     A Sacred FileObserver is attached to the inner experiment and writes Sacred
     logs to "{RAY_LOCAL_DIR}/sacred/". These files are automatically copied over
     to `upload_dir` if that argument is provided.
-    sacred.SETTINGS.CAPTURE_MODE = "sys"
-
-    WARNING: Sometimes this method will fail upon Sacred cleanup due to
-    https://github.com/IDSIA/sacred/issues/289. Seems to be OS- and
-    Sacred-version-dependent.
 
     Args:
-      sacred_ex_name: The Sacred experiment to tune. Either "expert_demos" or
-        "train_adversarial".
-      run_name: A name describing this parallelizing experiment.
-        This argument is also passed to `ray.tune.run` as the `name` argument.
-        It is also saved in 'sacred/run.json' of each inner Sacred experiment
-        under the 'experiment.name' key. This is equivalent to using the Sacred
-        CLI '--name' option on the inner experiment. Offline analysis jobs can use
-        this argument to group similar data.
-      search_space: `config` argument to `ray.tune.run()`.
-      base_named_configs: `search_space["named_configs"]` is appended to this list
-        before it is passed to the inner experiment's `run()`. Notably,
-        `base_named_configs` doesn't appear in the automatically generated
-        Ray directory name.
-      base_config_updates: `search_space["config_updates"]` is applied to this
-        dict before it is passed to the inner experiment's `run()`.
-      resources_per_trial: Argument to `ray.tune.run()`.
-      init_kwargs: Arguments to pass to `ray.init`.
-      local_dir: `local_dir` argument to `ray.tune.run()`.
-      upload_dir: `upload_dir` argument to `ray.tune.run()`.
+        sacred_ex_name: The Sacred experiment to tune. Either "expert_demos" or
+            "train_adversarial".
+        run_name: A name describing this parallelizing experiment.
+            This argument is also passed to `ray.tune.run` as the `name` argument.
+            It is also saved in 'sacred/run.json' of each inner Sacred experiment
+            under the 'experiment.name' key. This is equivalent to using the Sacred
+            CLI '--name' option on the inner experiment. Offline analysis jobs can use
+            this argument to group similar data.
+        search_space: `config` argument to `ray.tune.run()`.
+        base_named_configs: Default Sacred Run named configs. Any named configs
+            taken from `search_space` are higher priority than the base_named_configs.
+            This is done by appending named configs taken from search space to the run's
+            named configs after `base_named_configs` are added.
+
+            Named configs in `base_named_configs` doesn't appear in the automatically
+            generated Ray directory name, unlike named configs from `search_space`.
+
+        base_config_updates: Default Sacred Run config updates. Any config updates taken
+            from `search_space` are higher priority than `base_config_updates`.
+
+            Config updates in `base_config_updates` don't appear in the automatically
+            generated Ray directory name, unlike config updates from `search_space`.
+        resources_per_trial: Argument to `ray.tune.run()`.
+        init_kwargs: Arguments to pass to `ray.init`.
+        local_dir: `local_dir` argument to `ray.tune.run()`.
+        upload_dir: `upload_dir` argument to `ray.tune.run()`.
     """
     # Basic validation for config options before we enter parallel jobs.
     for name in base_named_configs:
@@ -63,20 +65,24 @@ def parallel(
     assert isinstance(search_space["named_configs"], collections.abc.Sequence)
     assert isinstance(search_space["config_updates"], collections.abc.Mapping)
 
-    # Explicitly set `data_dir` if parallelizing `train_adversarial`.
-    # We need this to automatically find rollout pickles because Ray
-    # sets a new working directory for each Raylet.
+    # Convert Sacred's ReadOnlyList to List because not picklable.
+    base_named_configs = list(base_named_configs)
+
+    # Convert Sacred's ReadOnlyDict (and recursively convert ReadOnlyContainer values)
+    # to regular python variants because not picklable.
+    base_config_updates = copy.deepcopy(base_config_updates)
+    search_space = copy.deepcopy(search_space)
+
+    # Explicitly set `data_dir` if parallelizing `train_adversarial`. We need this to
+    # automatically find rollout pickles because Ray sets a new working directory for
+    # each Raylet.
     if sacred_ex_name == "train_adversarial":
         if "data_dir" not in base_config_updates:
             data_dir = os.path.join(os.getcwd(), "data/")
-            base_config_update = dict(base_config_updates)
-            base_config_update["data_dir"] = data_dir
+            base_config_updates["data_dir"] = data_dir
 
     trainable = _ray_tune_sacred_wrapper(
-        sacred_ex_name,
-        run_name,
-        copy.deepcopy(base_named_configs),
-        copy.deepcopy(base_config_updates),
+        sacred_ex_name, run_name, base_named_configs, base_config_updates,
     )
 
     # Disable all Ray Loggers.
@@ -91,7 +97,7 @@ def parallel(
     try:
         ray.tune.run(
             trainable,
-            config=copy.deepcopy(search_space),
+            config=search_space,
             name=run_name,
             local_dir=local_dir,
             upload_dir=upload_dir,
@@ -131,6 +137,8 @@ def _ray_tune_sacred_wrapper(
             config: Keyword arguments for `ex.run()`, where `ex` is the
                 `sacred.Experiment` instance associated with `sacred_ex_name`.
         """
+        # Set Sacred capture mode to "sys" because default "fd" option leads to error.
+        # See https://github.com/IDSIA/sacred/issues/289.
         sacred.SETTINGS.CAPTURE_MODE = "sys"
 
         run_kwargs = config

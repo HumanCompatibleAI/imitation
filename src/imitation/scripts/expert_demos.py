@@ -121,7 +121,8 @@ def rollouts_and_policy(
 
         if init_tensorboard:
             sb_tensorboard_dir = osp.join(log_dir, "sb_tb")
-            init_rl_kwargs = dict(init_rl_kwargs)  # Cast sacred's ReadOnlyDict to dict.
+            # Convert sacred's ReadOnlyDict to dict so we can modify on next line.
+            init_rl_kwargs = dict(init_rl_kwargs)
             init_rl_kwargs["tensorboard_log"] = sb_tensorboard_dir
 
         venv = util.make_vec_env(
