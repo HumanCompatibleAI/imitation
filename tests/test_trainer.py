@@ -4,10 +4,11 @@ import os
 
 import pytest
 
-from imitation.algorithms.adversarial import init_trainer
-from imitation.data import rollout, types
+from imitation.algorithms import adversarial
+from imitation.data import dataset, rollout, types
+from imitation.util import logger, util
 
-USE_GAIL = [True, False]
+ALGORITHM_CLS = [adversarial.AIRL, adversarial.GAIL]
 IN_CODECOV = "COV_CORE_CONFIG" in os.environ
 # Disable SubprocVecEnv tests for code coverage test since
 # multiprocessing support is flaky in py.test --cov
@@ -20,18 +21,47 @@ def setup_and_teardown(session):
     yield
 
 
-def init_test_trainer(tmpdir: str, use_gail: bool, parallel: bool = False):
+@pytest.fixture(params=PARALLEL)
+def _parallel(request):
+    # Auto-parametrizes `_parallel` for the trainer fixture. This way we don't have to
+    # add a @pytest.mark.parametrize("_parallel", ... ) decorator in front of
+    # every test.
+    return request.param
+
+
+@pytest.fixture(params=ALGORITHM_CLS)
+def _algorithm_cls(request):
+    # Auto-parametrizes `_algorithm_cls` for the trainer fixture.
+    return request.param
+
+
+# TODO(shwang): Consider renaming AdversarialTrainer to just Adversarial?
+@pytest.fixture
+def trainer(_algorithm_cls, _parallel: bool, tmpdir: str):
     trajs = types.load("tests/data/expert_models/cartpole_0/rollouts/final.pkl")
-    return init_trainer(
-        "CartPole-v1", trajs, log_dir=tmpdir, use_gail=use_gail, parallel=parallel
+    expert_trans = rollout.flatten_trajectories(trajs)
+    expert_dataset = dataset.SimpleDataset(data_map=dataclasses.asdict(expert_trans))
+    logger.configure(tmpdir, ["tensorboard", "stdout"])
+
+    venv = util.make_vec_env(
+        "CartPole-v1",
+        n_envs=2,
+        parallel=_parallel,
+        log_dir=tmpdir,
+    )
+
+    gen_policy = util.init_rl(venv, verbose=1)
+
+    return _algorithm_cls(
+        venv=venv,
+        expert_dataset=expert_dataset,
+        gen_policy=gen_policy,
+        log_dir=tmpdir,
     )
 
 
-@pytest.mark.parametrize("use_gail", USE_GAIL)
-@pytest.mark.parametrize("parallel", PARALLEL)
-def test_init_no_crash(tmp_path, use_gail, parallel):
-    init_test_trainer(tmp_path, use_gail=use_gail, parallel=parallel)
-
+def test_init_trainer_no_crash(trainer):
+    """Smoke tests `trainer` fixture which initializes GAIL or AIRL."""
 
 @pytest.mark.parametrize("use_gail", USE_GAIL)
 @pytest.mark.parametrize("parallel", PARALLEL)

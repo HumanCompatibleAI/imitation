@@ -10,11 +10,11 @@ from typing import Optional
 import tensorflow as tf
 from sacred.observers import FileStorageObserver
 
-from imitation.algorithms.adversarial import init_trainer
-from imitation.data import rollout, types
+from imitation.algorithms import adversarial
+from imitation.data import dataset, rollout, types
 from imitation.policies import serialize
 from imitation.scripts.config.train_adversarial import train_ex
-from imitation.util import networks
+from imitation.util import logger, networks, util
 from imitation.util import sacred as sacred_util
 
 
@@ -40,20 +40,23 @@ def train(
     rollout_path: str,
     n_expert_demos: Optional[int],
     log_dir: str,
-    init_trainer_kwargs: dict,
     total_timesteps: int,
     n_episodes_eval: int,
     init_tensorboard: bool,
     checkpoint_interval: int,
+
+    airl_entropy_weight: float,
+    num_vec: int,
+    parallel: bool,
+    max_episode_steps: Optional[int],
+    scale: bool,
+    trainer_kwargs: dict,
+    discrim_kwargs: dict,
+    reward_kwargs: dict,
+    init_rl_kwargs: dict,
+    algorithm: str,
 ) -> dict:
     """Train an adversarial-network-based imitation learning algorithm.
-
-    Plots (turn on using `plot_interval > 0`):
-      - Plot discriminator loss during discriminator training steps in blue and
-        discriminator loss during generator training steps in red.
-      - Plot the performance of the generator policy versus the performance of
-        a random policy. Also plot the performance of an expert policy if that is
-        provided in the arguments.
 
     Checkpoints:
       - DiscrimNets are saved to f"{log_dir}/checkpoints/{step}/discrim/",
@@ -82,17 +85,6 @@ def train(
       n_episodes_eval: The number of episodes to average over when calculating
         the average episode reward of the imitation policy for return.
 
-      plot_interval: The number of epochs between each plot. If negative,
-        then plots are disabled. If zero, then only plot at the end of training.
-      n_plot_episodes: The number of episodes averaged over when
-        calculating the average episode reward of a policy for the performance
-        plots.
-      extra_episode_data_interval: Usually mean episode rewards are calculated
-        immediately before every plot. Set this parameter to a nonnegative number
-        to also add episode reward data points every
-        `extra_episodes_data_interval` epochs.
-      show_plots: Figures are always saved to `f"{log_dir}/plots/*.png"`. If
-        `show_plots` is True, then also show plots as they are created.
       init_tensorboard: If True, then write tensorboard logs to `{log_dir}/sb_tb`.
 
       checkpoint_interval: Save the discriminator and generator models every
@@ -108,30 +100,67 @@ def train(
         return value of `rollout_stats()` on the expert demonstrations loaded from
         `rollout_path`.
     """
+    assert os.path.exists(rollout_path)
     total_timesteps = int(total_timesteps)
 
     tf.logging.info("Logging to %s", log_dir)
+    logger.configure(log_dir, ["tensorboard", "stdout"])
     os.makedirs(log_dir, exist_ok=True)
     sacred_util.build_sacred_symlink(log_dir, _run)
 
-    # Calculate stats for expert rollouts. Used for plot and return value.
     expert_trajs = types.load(rollout_path)
-
     if n_expert_demos is not None:
         assert len(expert_trajs) >= n_expert_demos
         expert_trajs = expert_trajs[:n_expert_demos]
 
-    expert_stats = rollout.rollout_stats(expert_trajs)
-
     with networks.make_session():
         if init_tensorboard:
-            sb_tensorboard_dir = osp.join(log_dir, "sb_tb")
-            kwargs = init_trainer_kwargs
-            kwargs["init_rl_kwargs"] = kwargs.get("init_rl_kwargs", {})
-            kwargs["init_rl_kwargs"]["tensorboard_log"] = sb_tensorboard_dir
+            tensorboard_log = osp.join(log_dir, "sb_tb")
+        else:
+            tensorboard_log = None
 
-        trainer = init_trainer(
-            env_name, expert_trajs, seed=_seed, log_dir=log_dir, **init_trainer_kwargs
+        import dataclasses
+        expert_trans = rollout.flatten_trajectories(expert_trajs)
+        expert_dataset = dataset.SimpleDataset(data_map=dataclasses.asdict(expert_trans))
+
+        venv = util.make_vec_env(
+            env_name,
+            num_vec,
+            seed=_seed,
+            parallel=parallel,
+            log_dir=log_dir,
+            max_episode_steps=max_episode_steps,
+        )
+
+        # TODO(shwang): Let's get rid of init_rl later on?
+        # It's really just a stub function now.
+        gen_policy = util.init_rl(venv, verbose=1, tensorboard_log=tensorboard_log,
+                                  **init_rl_kwargs)
+
+        other_algo_kwargs = {}
+        if algorithm == "gail":
+            algo_cls = adversarial.GAIL
+        elif algorithm == "airl":
+            algo_cls = adversarial.AIRL
+            other_algo_kwargs["reward_kwargs"] = reward_kwargs
+            other_algo_kwargs["airl_entropy_weight"] = airl_entropy_weight
+        else:
+            raise ValueError(algorithm)
+
+        trainer = algo_cls(
+            venv=venv,
+            expert_dataset=expert_dataset,
+            gen_policy=gen_policy,
+            log_dir=log_dir,
+            scale=scale,
+            # TODO(shwang): Consider using capture instead of repeating these arguments?
+            # I'm a bit reluctant becuase it might mean that it's harder to call the
+            # __init__ directly, but I'm not sure if that's actually true.
+            discrim_kwargs=discrim_kwargs,
+            trainer_kwargs=trainer_kwargs,
+
+            # pytype is confused by the branching `if algorithm ==`.
+            **other_algo_kwargs,  # pytype: disable=wrong-keyword-args
         )
 
         def callback(epoch):
@@ -150,8 +179,8 @@ def train(
         trajs = rollout.generate_trajectories(
             trainer.gen_policy, trainer.venv_test, sample_until=sample_until_eval
         )
+        results["expert_stats"] = rollout.rollout_stats(expert_trajs)
         results["imit_stats"] = rollout.rollout_stats(trajs)
-        results["expert_stats"] = expert_stats
         return results
 
 

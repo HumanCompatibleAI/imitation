@@ -1,12 +1,12 @@
 import os
 from functools import partial
-from typing import Callable, Optional, Sequence
+from typing import Callable, Optional, Sequence, Union
 from warnings import warn
 
 import numpy as np
 import tensorflow as tf
 import tqdm
-from stable_baselines.common.base_class import BaseRLModel
+from stable_baselines.common import base_class
 from stable_baselines.common.vec_env import VecEnv, VecNormalize
 
 from imitation.data import buffer, rollout, types, wrappers
@@ -36,7 +36,7 @@ class AdversarialTrainer:
     def __init__(
         self,
         venv: VecEnv,
-        gen_policy: BaseRLModel,
+        gen_policy: base_class.BaseRLModel,
         discrim: discrim_net.DiscrimNet,
         expert_demos: types.Transitions,
         *,
@@ -411,73 +411,58 @@ class AdversarialTrainer:
         return fd
 
 
-def init_trainer(
-    env_name: str,
-    expert_trajectories: Sequence[types.Trajectory],
-    *,
-    log_dir: str,
-    seed: int = 0,
-    use_gail: bool = False,
-    num_vec: int = 8,
-    parallel: bool = False,
-    max_episode_steps: Optional[int] = None,
-    scale: bool = True,
-    airl_entropy_weight: float = 1.0,
-    discrim_kwargs: dict = {},
-    reward_kwargs: dict = {},
-    trainer_kwargs: dict = {},
-    init_rl_kwargs: dict = {},
-):
-    """Builds an AdversarialTrainer, ready to be trained on expert demonstrations.
+class GAIL(AdversarialTrainer):
+    def __init__(
+        self,
+        venv: VecEnv,
+        expert_dataset: dataset.Dataset,
+        gen_policy: base_class.BaseRLModel,
+        *,
+        log_dir: str,
+        scale: bool = True,
+        discrim_kwargs: Optional[dict] = None,
+        trainer_kwargs: Optional[dict] = None,  # TODO(shwang): Simply use **kwargs.
+    ):
+        discrim_kwargs = discrim_kwargs or {}
+        trainer_kwargs = trainer_kwargs or {}
 
-    Args:
-      env_name: The string id of a gym environment.
-      expert_trajectories: Demonstrations from expert.
-      seed: Random seed.
-      log_dir: Directory for logging output. Will generate a unique sub-directory
-          within this directory for all output.
-      use_gail: If True, then train using GAIL. If False, then train
-          using AIRL.
-      num_vec: The number of vectorized environments.
-      parallel: If True, then use SubprocVecEnv; otherwise, DummyVecEnv.
-      max_episode_steps: If specified, wraps VecEnv in TimeLimit wrapper with
-          this episode length before returning.
-      policy_dir: The directory containing the pickled experts for
-          generating rollouts.
-      scale: If True, then scale input Tensors to the interval [0, 1].
-      airl_entropy_weight: Only applicable for AIRL. The `entropy_weight`
-          argument of `DiscrimNetAIRL.__init__`.
-      trainer_kwargs: Arguments for the Trainer constructor.
-      reward_kwargs: Arguments for the `*RewardNet` constructor.
-      discrim_kwargs: Arguments for the `DiscrimNet*` constructor.
-      init_rl_kwargs: Keyword arguments passed to `init_rl`,
-          used to initialize the RL algorithm.
-    """
-    logger.configure(folder=log_dir, format_strs=["tensorboard", "stdout"])
-    env = util.make_vec_env(
-        env_name,
-        num_vec,
-        seed=seed,
-        parallel=parallel,
-        log_dir=log_dir,
-        max_episode_steps=max_episode_steps,
-    )
-    gen_policy = util.init_rl(env, verbose=1, **init_rl_kwargs)
-
-    if use_gail:
         discrim = discrim_net.DiscrimNetGAIL(
-            env.observation_space, env.action_space, scale=scale, **discrim_kwargs
-        )
-    else:
+            venv.observation_space, venv.action_space, scale=scale, **discrim_kwargs)
+
+        super().__init__(venv, expert_dataset, discrim, gen_policy,
+                         log_dir=log_dir, **trainer_kwargs)
+
+class AIRL(AdversarialTrainer):
+    def __init__(
+        self,
+        venv: VecEnv,
+        expert_demos: types.Transitions,
+        gen_policy: base_class.BaseRLModel,
+        *,
+        log_dir: str,
+        airl_entropy_weight: float = 1.0,
+        scale: bool = True,
+        discrim_kwargs: Optional[dict] = None,
+        trainer_kwargs: Optional[dict] = None,  # TODO(shwang): Simply use **kwargs.
+        reward_kwargs: Optional[dict] = None,
+        # TODO(shwang): Rename to reward_net... Likewise change discrim_net_kwargs.
+    ):
+        discrim_kwargs = discrim_kwargs or {}
+        trainer_kwargs = trainer_kwargs or {}
+        reward_kwargs = reward_kwargs or {}
+
         rn = BasicShapedRewardNet(
-            env.observation_space, env.action_space, scale=scale, **reward_kwargs
+            venv.observation_space, venv.action_space, scale=scale, **reward_kwargs
         )
         discrim = discrim_net.DiscrimNetAIRL(
-            rn, entropy_weight=airl_entropy_weight, **discrim_kwargs
+            rn, entropy_weight=airl_entropy_weight, **discrim_kwargs,
         )
+        # TODO(shwang): We can't just subsume airl_ent... into discrim_kwargs
+        # because it's not relevant for GAIL. Here's a better plan.
+        # Leave airl_entropy_weight as a config field for Sacred-train_adversarial.
+        # Then, only if we are running with `use_gail` do we add airl_entr...
+        # into discrim_kwargs.
 
-    expert_demos = rollout.flatten_trajectories(expert_trajectories)
-    trainer = AdversarialTrainer(
-        env, gen_policy, discrim, expert_demos, log_dir=log_dir, **trainer_kwargs
-    )
-    return trainer
+        super().__init__(venv, gen_policy, discrim, expert_demos,
+                         log_dir=log_dir, **trainer_kwargs)
+
