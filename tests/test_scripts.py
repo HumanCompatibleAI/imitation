@@ -49,7 +49,6 @@ def test_main_console(script_mod):
 
 def test_expert_demos_main(tmpdir):
     """Smoke test for imitation.scripts.expert_demos.rollouts_and_policy."""
-    # sacred.SETTINGS["CAPTURE_MODE"] = "no"
     run = expert_demos.expert_demos_ex.run(
         named_configs=["cartpole", "fast"], config_updates=dict(log_root=tmpdir,),
     )

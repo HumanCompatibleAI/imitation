@@ -47,10 +47,10 @@ def parallel(
             to `sacred.Experiment.run()` are okay.
         base_named_configs: Default Sacred Run named configs. Any named configs
             taken from `search_space` are higher priority than the base_named_configs.
-            This is done by appending named configs taken from `search_space` to the
-            run's named configs after `base_named_configs` are added.
+            Concretely, this priority is implemented by appending named configs taken
+            from `search_space` to the run's named configs after `base_named_configs`.
 
-            Named configs in `base_named_configs` doesn't appear in the automatically
+            Named configs in `base_named_configs` don't appear in the automatically
             generated Ray directory name, unlike named configs from `search_space`.
 
         base_config_updates: Default Sacred Run config updates. Any config updates taken
