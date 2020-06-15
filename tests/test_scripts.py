@@ -30,15 +30,16 @@ ALL_SCRIPTS_MODS = [analyze, eval_policy, expert_demos, parallel, train_adversar
 @pytest.fixture(autouse=True)
 def sacred_capture_use_sys():
     temp = sacred.SETTINGS["CAPTURE_MODE"]
-    sacred.SETTINGS["CAPTURE_MODE"] = "sys"
+    sacred.SETTINGS.CAPTURE_MODE = "sys"
     yield
-    sacred.SETTINGS["CAPTURE_MODE"] = temp
+    sacred.SETTINGS.CAPTURE_MODE = temp
 
 
 @pytest.mark.parametrize("script_mod", ALL_SCRIPTS_MODS)
 def test_main_console(script_mod):
     """Smoke tests of main entry point for some cheap coverage."""
-    with mock.patch.object(sys, "argv", ["sacred-pytest-stub", "print_config"]):
+    argv = ["sacred-pytest-stub", "print_config"]
+    with mock.patch.object(sys, "argv", argv):
         script_mod.main_console()
 
 

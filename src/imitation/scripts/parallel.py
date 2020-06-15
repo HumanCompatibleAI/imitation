@@ -5,6 +5,7 @@ from typing import Any, Callable, Dict, Optional
 
 import ray
 import ray.tune
+import sacred
 from sacred.observers import FileStorageObserver
 
 from imitation.scripts.config.parallel import parallel_ex
@@ -27,6 +28,7 @@ def parallel(
     A Sacred FileObserver is attached to the inner experiment and writes Sacred
     logs to "{RAY_LOCAL_DIR}/sacred/". These files are automatically copied over
     to `upload_dir` if that argument is provided.
+    sacred.SETTINGS.CAPTURE_MODE = "sys"
 
     WARNING: Sometimes this method will fail upon Sacred cleanup due to
     https://github.com/IDSIA/sacred/issues/289. Seems to be OS- and
@@ -129,6 +131,8 @@ def _ray_tune_sacred_wrapper(
             config: Keyword arguments for `ex.run()`, where `ex` is the
                 `sacred.Experiment` instance associated with `sacred_ex_name`.
         """
+        sacred.SETTINGS.CAPTURE_MODE = "sys"
+
         run_kwargs = config
         updated_run_kwargs = {}
         # Import inside function rather than in module because Sacred experiments

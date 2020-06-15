@@ -122,11 +122,16 @@ def train(
         expert_trajs = expert_trajs[:n_expert_demos]
 
     with networks.make_session():
+        # This deep copy converts unpicklable, unmodifiable Sacred ReadOnlyContainers
+        # into regular dicts and lists. This is necessary to modify
+        # `init_trainer_kwargs` in the `if init_tensorboard` block and to
+        # properly serialize RewardNet parameters.
+        init_trainer_kwargs = copy.deepcopy(init_trainer_kwargs)
+
         if init_tensorboard:
             sb_tensorboard_dir = osp.join(log_dir, "sb_tb")
-            kwargs = copy.deepcopy(init_trainer_kwargs)
-            kwargs["init_rl_kwargs"] = kwargs.get("init_rl_kwargs", {})
-            kwargs["init_rl_kwargs"]["tensorboard_log"] = sb_tensorboard_dir
+            init_rl_kwargs = init_trainer_kwargs["init_rl_kwargs"]
+            init_rl_kwargs["tensorboard_log"] = sb_tensorboard_dir
 
         trainer = init_trainer(
             env_name, expert_trajs, seed=_seed, log_dir=log_dir, **init_trainer_kwargs
