@@ -12,6 +12,7 @@ from collections import Counter
 from typing import List, Optional
 from unittest import mock
 
+import sacred
 import pandas as pd
 import pytest
 import ray.tune as tune
@@ -25,6 +26,13 @@ from imitation.scripts import (
 )
 
 ALL_SCRIPTS_MODS = [analyze, eval_policy, expert_demos, parallel, train_adversarial]
+
+@pytest.fixture(autouse=True)
+def sacred_capture_use_sys():
+    temp = sacred.SETTINGS["CAPTURE_MODE"]
+    sacred.SETTINGS["CAPTURE_MODE"] = "sys"
+    yield
+    sacred.SETTINGS["CAPTURE_MODE"] = temp
 
 
 @pytest.mark.parametrize("script_mod", ALL_SCRIPTS_MODS)
