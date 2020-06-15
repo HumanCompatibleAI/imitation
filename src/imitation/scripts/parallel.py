@@ -28,6 +28,10 @@ def parallel(
     logs to "{RAY_LOCAL_DIR}/sacred/". These files are automatically copied over
     to `upload_dir` if that argument is provided.
 
+    WARNING: Sometimes this method will fail upon Sacred cleanup due to
+    https://github.com/IDSIA/sacred/issues/289. Seems to be OS- and
+    Sacred-version-dependent.
+
     Args:
       sacred_ex_name: The Sacred experiment to tune. Either "expert_demos" or
         "train_adversarial".

@@ -191,7 +191,10 @@ PARALLEL_CONFIG_LOW_RESOURCE = {
 
 @pytest.mark.parametrize("config_updates", PARALLEL_CONFIG_UPDATES)
 def test_parallel(config_updates):
-    """Hyperparam tuning smoke test."""
+    """Hyperparam tuning smoke test.
+
+    Sometimes this will fail due to https://github.com/IDSIA/sacred/issues/289.
+    Seems to be OS- and Sacred-version-dependent."""
     # CI server only has 2 cores
     config_updates = dict(config_updates)
     config_updates.update(PARALLEL_CONFIG_LOW_RESOURCE)
