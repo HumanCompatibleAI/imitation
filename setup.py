@@ -55,7 +55,7 @@ setup(
         "stable-baselines~=2.10.0",
         "jax~=0.1.66",
         "jaxlib~=0.1.47",
-        "sacred",
+        "sacred~=0.8.1",
     ],
     tests_require=TESTS_REQUIRE,
     extras_require={
