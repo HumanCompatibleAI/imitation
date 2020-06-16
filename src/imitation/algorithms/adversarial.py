@@ -1,3 +1,4 @@
+import collections
 import os
 from functools import partial
 from typing import Callable, Optional, Sequence, Union
@@ -10,8 +11,7 @@ from stable_baselines.common import base_class
 from stable_baselines.common.vec_env import VecEnv, VecNormalize
 
 from imitation.data import buffer, rollout, types, wrappers
-from imitation.rewards import discrim_net
-from imitation.rewards.reward_net import BasicShapedRewardNet
+from imitation.rewards import discrim_net, reward_net
 from imitation.util import logger, reward_wrapper, util
 
 
@@ -37,7 +37,7 @@ class AdversarialTrainer:
         self,
         venv: VecEnv,
         gen_policy: base_class.BaseRLModel,
-        discrim: discrim_net.DiscrimNet,
+        discrim: rewards.discrim_net.DiscrimNet,
         expert_demos: types.Transitions,
         *,
         log_dir: str = "output/",
@@ -415,7 +415,7 @@ class GAIL(AdversarialTrainer):
     def __init__(
         self,
         venv: VecEnv,
-        expert_dataset: dataset.Dataset,
+        expert_demos: types.Transitions,
         gen_policy: base_class.BaseRLModel,
         *,
         log_dir: str,
@@ -429,7 +429,7 @@ class GAIL(AdversarialTrainer):
         discrim = discrim_net.DiscrimNetGAIL(
             venv.observation_space, venv.action_space, scale=scale, **discrim_kwargs)
 
-        super().__init__(venv, expert_dataset, discrim, gen_policy,
+        super().__init__(venv, expert_demos, discrim, gen_policy,
                          log_dir=log_dir, **trainer_kwargs)
 
 class AIRL(AdversarialTrainer):
@@ -439,23 +439,26 @@ class AIRL(AdversarialTrainer):
         expert_demos: types.Transitions,
         gen_policy: base_class.BaseRLModel,
         *,
+        reward_network_cls: reward_net.RewardNet = reward_net.BasicShapedRewardNet,
+        reward_network_kwargs: Optional[dict] = None,
         log_dir: str,
         airl_entropy_weight: float = 1.0,
-        scale: bool = True,
+        scale: bool = True,  # TODO(shwang): STop using this, just pass into reward_network_kwaargs
         discrim_kwargs: Optional[dict] = None,
         trainer_kwargs: Optional[dict] = None,  # TODO(shwang): Simply use **kwargs.
-        reward_kwargs: Optional[dict] = None,
         # TODO(shwang): Rename to reward_net... Likewise change discrim_net_kwargs.
     ):
         discrim_kwargs = discrim_kwargs or {}
         trainer_kwargs = trainer_kwargs or {}
-        reward_kwargs = reward_kwargs or {}
 
-        rn = BasicShapedRewardNet(
-            venv.observation_space, venv.action_space, scale=scale, **reward_kwargs
+        # TODO(shwang): Maybe offer str=>Type[RewardNet] conversion like
+        #  stable_baselines does with policy classes.
+        reward_network = reward_network_cls(
+            v
         )
+
         discrim = discrim_net.DiscrimNetAIRL(
-            rn, entropy_weight=airl_entropy_weight, **discrim_kwargs,
+            reward_network, entropy_weight=airl_entropy_weight, **discrim_kwargs,
         )
         # TODO(shwang): We can't just subsume airl_ent... into discrim_kwargs
         # because it's not relevant for GAIL. Here's a better plan.

@@ -142,7 +142,11 @@ def train(
             algo_cls = adversarial.GAIL
         elif algorithm == "airl":
             algo_cls = adversarial.AIRL
+
+            # TODO(shwang): Let's do custom reward_net_cls
             other_algo_kwargs["reward_kwargs"] = reward_kwargs
+            other_algo_kwargs["reward_net_cls"] = reward_net.BasicShapedRewardNet(
+                venv.observation_space, venv.action_space, scale=scale)
             other_algo_kwargs["airl_entropy_weight"] = airl_entropy_weight
         else:
             raise ValueError(algorithm)
