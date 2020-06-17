@@ -116,11 +116,13 @@ def paths(env_name, log_root, rollout_hint, data_dir):
 
 @train_ex.named_config
 def gail():
+    """Quick alias for algorithm=gail"""
     algorithm = "gail"
 
 
 @train_ex.named_config
 def airl():
+    """Quick alias for algorithm=airl"""
     algorithm = "airl"
 
 

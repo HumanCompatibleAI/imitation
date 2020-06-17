@@ -106,6 +106,21 @@ def test_train_adversarial(tmpdir):
     _check_train_ex_result(run.result)
 
 
+def test_train_adversarial_algorithm_config_error(tmpdir):
+    """Error on bad algorithm arguments."""
+    named_configs = ["cartpole", "fast"]
+    config_updates = {
+        "log_root": tmpdir,
+        "rollout_path": "tests/data/expert_models/cartpole_0/rollouts/final.pkl",
+        "init_tensorboard": True,
+        "algorithm": "BAD_VALUE",
+    }
+    with pytest.raises(ValueError, match=".*BAD_VALUE.*"):
+        train_adversarial.train_ex.run(
+            named_configs=named_configs, config_updates=config_updates,
+        )
+
+
 def test_transfer_learning(tmpdir):
     """Transfer learning smoke test.
 
@@ -157,8 +172,8 @@ PARALLEL_CONFIG_UPDATES = [
             ),
         },
         search_space={
-            "named_configs": tune.grid_search([["gail"], ["airl"]]),
             "config_updates": {
+                "algorithm": tune.grid_search(["gail", "airl"]),
                 "airl_reward_net_kwargs": {
                     "phi_units": tune.grid_search([[16, 16], [7, 9]]),
                 },

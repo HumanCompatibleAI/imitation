@@ -171,7 +171,7 @@ def train(
             auto_algorithm_kwargs["reward_net_cls"] = airl_reward_net_cls
             auto_algorithm_kwargs["reward_net_kwargs"] = airl_reward_net_kwargs
         else:
-            raise ValueError(algorithm)
+            raise ValueError(f"Invalid value algorithm={algorithm}.")
 
         trainer = algo_cls(
             venv=venv,
