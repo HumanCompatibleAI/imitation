@@ -34,7 +34,7 @@ def test_expert_demos_main(tmpdir):
 
 def test_expert_demos_rollouts_from_policy(tmpdir):
     """Smoke test for imitation.scripts.expert_demos.rollouts_from_policy."""
-    run = expert_demos_ex.run(
+    run = expert_demos.expert_demos_ex.run(
         command_name="rollouts_from_policy",
         named_configs=["cartpole", "fast"],
         config_updates=dict(
@@ -60,7 +60,9 @@ def test_eval_policy(config, tmpdir):
         "log_root": tmpdir,
     }
     config_updates.update(config)
-    run = eval_policy_ex.run(config_updates=config_updates, named_configs=["fast"])
+    run = eval_policy.eval_policy_ex.run(
+        config_updates=config_updates, named_configs=["fast"]
+    )
     assert run.status == "COMPLETED"
     wrapped_reward = "reward_type" in config
     _check_rollout_stats(run.result, wrapped_reward)
@@ -155,11 +157,12 @@ PARALLEL_CONFIG_UPDATES = [
             ),
         },
         search_space={
+            "named_configs": tune.grid_search([["gail"], ["airl"]]),
             "config_updates": {
-                "reward_kwargs": {
+                "airl_reward_net_kwargs": {
                     "phi_units": tune.grid_search([[16, 16], [7, 9]]),
                 },
-            }
+            },
         },
     ),
 ]
@@ -204,11 +207,7 @@ def test_parallel_train_adversarial_custom_env(tmpdir):
         sacred_ex_name="train_adversarial",
         n_seeds=1,
         base_named_configs=[env_named_config, "fast"],
-        base_config_updates=dict(
-            parallel=True,
-            num_vec=2,
-            rollout_path=rollout_path,
-        ),
+        base_config_updates=dict(parallel=True, num_vec=2, rollout_path=rollout_path,),
     )
     config_updates.update(PARALLEL_CONFIG_LOW_RESOURCE)
     run = parallel.parallel_ex.run(

@@ -6,6 +6,7 @@ import sacred
 from stable_baselines.common import policies
 
 from imitation.policies import base
+from imitation.rewards import reward_net
 from imitation.scripts.config.common import DEFAULT_INIT_RL_KWARGS
 from imitation.util import util
 
@@ -34,11 +35,18 @@ def train_defaults():
     # Use SubprocVecEnv rather than DummyVecEnv (generally faster if num_vec>1)
     parallel = True
     max_episode_steps = None  # Set to positive int to limit episode horizons
-    scale = True
 
-    # Modifies the __init__ arguments for AIRL if applicable.
-    reward_kwargs = dict(theta_units=[32, 32], phi_units=[32, 32],)
-    airl_entropy_weight = 1.0
+    # AIRL-specific options
+    airl_reward_net_cls = reward_net.BasicShapedRewardNet  # AIRL reward net class
+    airl_reward_net_kwargs = dict()  # AIRL reward net class init kwargs
+    airl_entropy_weight = 1.0  # Entropy weight in AIRL training reward
+
+    # GAIL-specific options
+    gail_discrim_net_scale = True
+
+    # Shared kwargs between GAIL and AIRL
+    algorithm_kwargs = dict()  # Other kwargs to GAIL/AIRL/Adversarial constructor
+    discrim_kwargs = dict()  # Kwargs for initializing {GAIL,AIRL}DiscrimNet
 
     # Modifies the __init__ arguments for GAIL and AIRL.
     # Really, I should just make these into real arguments. Since init_rl_kwargs
@@ -46,17 +54,16 @@ def train_defaults():
     init_rl_kwargs = dict(
         policy_class=base.FeedForward32Policy, **DEFAULT_INIT_RL_KWARGS
     )
-    discrim_kwargs = {}
 
     log_root = os.path.join("output", "train_adversarial")  # output directory
-    checkpoint_interval = 0  # num epochs between checkpoints (<0 disables)
-    init_tensorboard = False  # If True, then write Tensorboard logs.
+    checkpoint_interval = 0  # Num epochs between checkpoints (<0 disables)
+    init_tensorboard = False  # If True, then write Tensorboard logs
     rollout_hint = None  # Used to generate default rollout_path
     data_dir = "data/"  # Default data directory
 
     disc_batch_size = 2048  # Batch size for discriminator updates
     disc_minibatch_size = 512  # Num discriminator updates per batch
-    gen_batch_size = 2048  # Batch size for generator updates.
+    gen_batch_size = 2048  # Batch size for generator updates
 
 
 @train_ex.config
@@ -70,10 +77,10 @@ def aliases_default_gen_batch_size(gen_batch_size):
 
 
 @train_ex.config
-def apply_init_trainer_kwargs_aliases(
+def apply_init_algorithm_kwargs_aliases(
     disc_minibatch_size, disc_batch_size, gen_replay_buffer_size
 ):
-    trainer_kwargs = dict(
+    algorithm_kwargs = dict(
         disc_minibatch_size=disc_minibatch_size,
         gen_replay_buffer_capacity=gen_replay_buffer_size,
         disc_batch_size=disc_batch_size,
@@ -82,9 +89,7 @@ def apply_init_trainer_kwargs_aliases(
 
 @train_ex.config
 def calc_n_steps(num_vec, init_rl_kwargs, gen_batch_size):
-    assert gen_batch_size % num_vec == 0, (
-        "num_vec must evenly divide " "gen_batch_size"
-    )
+    assert gen_batch_size % num_vec == 0, "num_vec must evenly divide " "gen_batch_size"
     init_rl_kwargs = dict(n_steps=gen_batch_size // num_vec)
 
 
@@ -144,7 +149,7 @@ def acrobot():
 def cartpole():
     env_name = "CartPole-v1"
     rollout_hint = "cartpole"
-    scale = False
+    gail_discrim_net_scale = False
 
 
 @train_ex.named_config

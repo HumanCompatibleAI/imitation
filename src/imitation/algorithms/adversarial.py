@@ -1,7 +1,6 @@
-import collections
 import os
 from functools import partial
-from typing import Callable, Optional, Sequence, Union
+from typing import Callable, Optional, Type
 from warnings import warn
 
 import numpy as np
@@ -10,9 +9,9 @@ import tqdm
 from stable_baselines.common import base_class
 from stable_baselines.common.vec_env import VecEnv, VecNormalize
 
-from imitation.data import buffer, rollout, types, wrappers
+from imitation.data import buffer, types, wrappers
 from imitation.rewards import discrim_net, reward_net
-from imitation.util import logger, reward_wrapper, util
+from imitation.util import logger, reward_wrapper
 
 
 class AdversarialTrainer:
@@ -37,7 +36,7 @@ class AdversarialTrainer:
         self,
         venv: VecEnv,
         gen_policy: base_class.BaseRLModel,
-        discrim: rewards.discrim_net.DiscrimNet,
+        discrim: discrim_net.DiscrimNet,
         expert_demos: types.Transitions,
         *,
         log_dir: str = "output/",
@@ -58,7 +57,6 @@ class AdversarialTrainer:
               discriminator confusion. The generator batch size
               `self.gen_batch_size` is inferred from `gen_policy.n_batch`.
             discrim: The discriminator network.
-              For GAIL, use a DiscrimNetGAIL. For AIRL, use a DiscrimNetAIRL.
             expert_demos: Transitions from an expert dataset.
             log_dir: Directory to store TensorBoard logs, plots, etc. in.
             disc_batch_size: The default number of expert and generator transitions
@@ -171,7 +169,7 @@ class AdversarialTrainer:
         return self._expert_demos
 
     @property
-    def gen_policy(self) -> BaseRLModel:
+    def gen_policy(self) -> base_class.BaseRLModel:
         """Policy (i.e. the generator) being trained."""
         return self._gen_policy
 
@@ -418,19 +416,30 @@ class GAIL(AdversarialTrainer):
         expert_demos: types.Transitions,
         gen_policy: base_class.BaseRLModel,
         *,
-        log_dir: str,
-        scale: bool = True,
         discrim_kwargs: Optional[dict] = None,
-        trainer_kwargs: Optional[dict] = None,  # TODO(shwang): Simply use **kwargs.
+        **kwargs,
     ):
+        """Generative Adversarial Imitation Learning.
+
+        Most parameters are described in and passed to `AdversarialTrainer.__init__`.
+        Additional parameters that `GAIL` adds on top of its superclass initializer are
+        as follows:
+
+        Args:
+            reward_net_cls: Reward network constructor. The reward network is part of
+                the AIRL discriminator.
+            reward_net_kwargs: Optional keyword arguments to use while constructing
+                the reward network.
+            discrim_kwargs: Optional keyword arguments to use while constructing the
+                DiscrimNetGAIL.
+
+        """
         discrim_kwargs = discrim_kwargs or {}
-        trainer_kwargs = trainer_kwargs or {}
-
         discrim = discrim_net.DiscrimNetGAIL(
-            venv.observation_space, venv.action_space, scale=scale, **discrim_kwargs)
+            venv.observation_space, venv.action_space, **discrim_kwargs
+        )
+        super().__init__(venv, gen_policy, discrim, expert_demos, **kwargs)
 
-        super().__init__(venv, expert_demos, discrim, gen_policy,
-                         log_dir=log_dir, **trainer_kwargs)
 
 class AIRL(AdversarialTrainer):
     def __init__(
@@ -439,33 +448,36 @@ class AIRL(AdversarialTrainer):
         expert_demos: types.Transitions,
         gen_policy: base_class.BaseRLModel,
         *,
-        reward_network_cls: reward_net.RewardNet = reward_net.BasicShapedRewardNet,
-        reward_network_kwargs: Optional[dict] = None,
-        log_dir: str,
-        airl_entropy_weight: float = 1.0,
-        scale: bool = True,  # TODO(shwang): STop using this, just pass into reward_network_kwaargs
+        reward_net_cls: Type[reward_net.RewardNet] = reward_net.BasicShapedRewardNet,
+        reward_net_kwargs: Optional[dict] = None,
         discrim_kwargs: Optional[dict] = None,
-        trainer_kwargs: Optional[dict] = None,  # TODO(shwang): Simply use **kwargs.
-        # TODO(shwang): Rename to reward_net... Likewise change discrim_net_kwargs.
+        **kwargs,
     ):
-        discrim_kwargs = discrim_kwargs or {}
-        trainer_kwargs = trainer_kwargs or {}
+        """Adversarial Inverse Reinforcement Learning.
 
+        Most parameters are described in and passed to `AdversarialTrainer.__init__`.
+        Additional parameters that `AIRL` adds on top of its superclass initializer are
+        as follows:
+
+        Args:
+            reward_net_cls: Reward network constructor. The reward network is part of
+                the AIRL discriminator.
+            reward_net_kwargs: Optional keyword arguments to use while constructing
+                the reward network.
+            discrim_kwargs: Optional keyword arguments to use while constructing the
+                DiscrimNetAIRL.
+        """
         # TODO(shwang): Maybe offer str=>Type[RewardNet] conversion like
         #  stable_baselines does with policy classes.
-        reward_network = reward_network_cls(
-            v
+        reward_net_kwargs = reward_net_kwargs or {}
+        reward_network = reward_net_cls(
+            action_space=venv.action_space,
+            observation_space=venv.observation_space,
+            **reward_net_kwargs,  # pytype: disable=not-instantiable
         )
+        # pytype is afraid that we'll directly call RewardNet() which is an abstract
+        # class, hence the disable.
 
-        discrim = discrim_net.DiscrimNetAIRL(
-            reward_network, entropy_weight=airl_entropy_weight, **discrim_kwargs,
-        )
-        # TODO(shwang): We can't just subsume airl_ent... into discrim_kwargs
-        # because it's not relevant for GAIL. Here's a better plan.
-        # Leave airl_entropy_weight as a config field for Sacred-train_adversarial.
-        # Then, only if we are running with `use_gail` do we add airl_entr...
-        # into discrim_kwargs.
-
-        super().__init__(venv, gen_policy, discrim, expert_demos,
-                         log_dir=log_dir, **trainer_kwargs)
-
+        discrim_kwargs = discrim_kwargs or {}
+        discrim = discrim_net.DiscrimNetAIRL(reward_network, **discrim_kwargs)
+        super().__init__(venv, gen_policy, discrim, expert_demos, **kwargs)

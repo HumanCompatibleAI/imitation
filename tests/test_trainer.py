@@ -5,7 +5,7 @@ import os
 import pytest
 
 from imitation.algorithms import adversarial
-from imitation.data import dataset, rollout, types
+from imitation.data import rollout, types
 from imitation.util import logger, util
 
 ALGORITHM_CLS = [adversarial.AIRL, adversarial.GAIL]
@@ -25,7 +25,8 @@ def setup_and_teardown(session):
 def _parallel(request):
     # Auto-parametrizes `_parallel` for the trainer fixture. This way we don't have to
     # add a @pytest.mark.parametrize("_parallel", ... ) decorator in front of
-    # every test.
+    # every test. I couldn't find a better way to do this that didn't involve the
+    # aforementioned `parameterize` duplication.
     return request.param
 
 
@@ -35,56 +36,37 @@ def _algorithm_cls(request):
     return request.param
 
 
-# TODO(shwang): Consider renaming AdversarialTrainer to just Adversarial?
 @pytest.fixture
 def trainer(_algorithm_cls, _parallel: bool, tmpdir: str):
     trajs = types.load("tests/data/expert_models/cartpole_0/rollouts/final.pkl")
-    expert_trans = rollout.flatten_trajectories(trajs)
-    expert_dataset = dataset.SimpleDataset(data_map=dataclasses.asdict(expert_trans))
+    expert_demos = rollout.flatten_trajectories(trajs)
     logger.configure(tmpdir, ["tensorboard", "stdout"])
 
     venv = util.make_vec_env(
-        "CartPole-v1",
-        n_envs=2,
-        parallel=_parallel,
-        log_dir=tmpdir,
+        "CartPole-v1", n_envs=2, parallel=_parallel, log_dir=tmpdir,
     )
 
     gen_policy = util.init_rl(venv, verbose=1)
 
     return _algorithm_cls(
-        venv=venv,
-        expert_dataset=expert_dataset,
-        gen_policy=gen_policy,
-        log_dir=tmpdir,
+        venv=venv, expert_demos=expert_demos, gen_policy=gen_policy, log_dir=tmpdir,
     )
 
 
-def test_init_trainer_no_crash(trainer):
-    """Smoke tests `trainer` fixture which initializes GAIL or AIRL."""
-
-@pytest.mark.parametrize("use_gail", USE_GAIL)
-@pytest.mark.parametrize("parallel", PARALLEL)
-def test_train_disc_step_no_crash(tmpdir, use_gail, parallel, n_timesteps=200):
-    trainer = init_test_trainer(tmpdir, use_gail=use_gail, parallel=parallel)
+def test_train_disc_step_no_crash(tmpdir, trainer, n_timesteps=200):
     transitions = rollout.generate_transitions(
         trainer.gen_policy, trainer.venv, n_timesteps=n_timesteps
     )
     trainer.train_disc_step(gen_samples=transitions)
 
 
-@pytest.mark.parametrize("use_gail", USE_GAIL)
-@pytest.mark.parametrize("parallel", PARALLEL)
-def test_train_gen_train_disc_no_crash(tmpdir, use_gail, parallel, n_updates=2):
-    trainer = init_test_trainer(tmpdir=tmpdir, use_gail=use_gail, parallel=parallel)
+def test_train_gen_train_disc_no_crash(tmpdir, trainer, n_updates=2):
     trainer.train_gen(n_updates * trainer.gen_batch_size)
     trainer.train_disc()
 
 
 @pytest.mark.expensive
-@pytest.mark.parametrize("use_gail", USE_GAIL)
-def test_train_disc_improve_D(tmpdir, use_gail, n_timesteps=200, n_steps=1000):
-    trainer = init_test_trainer(tmpdir, use_gail)
+def test_train_disc_improve_D(tmpdir, trainer, n_timesteps=200, n_steps=1000):
     gen_samples = rollout.generate_transitions(
         trainer.gen_policy, trainer.venv_train_norm, n_timesteps=n_timesteps
     )
