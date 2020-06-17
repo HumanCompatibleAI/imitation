@@ -17,7 +17,7 @@ train_ex = sacred.Experiment("train_adversarial", interactive=True)
 def train_defaults():
     env_name = "CartPole-v1"  # environment to train on
     total_timesteps = 1e5  # Num of environment transitions to sample
-    algorithm = "gail"
+    algorithm = "gail"  # Either "airl" or "gail"
 
     n_expert_demos = None  # Num demos used. None uses every demo possible
     n_episodes_eval = 50  # Num of episodes for final mean ground truth return
@@ -42,15 +42,13 @@ def train_defaults():
     airl_entropy_weight = 1.0  # Entropy weight in AIRL training reward
 
     # GAIL-specific options
-    gail_discrim_net_scale = True
+    gail_discrim_net_scale = True  # Whether to scale observation inputs to discrim net
 
     # Shared kwargs between GAIL and AIRL
     algorithm_kwargs = dict()  # Other kwargs to GAIL/AIRL/Adversarial constructor
     discrim_kwargs = dict()  # Kwargs for initializing {GAIL,AIRL}DiscrimNet
 
-    # Modifies the __init__ arguments for GAIL and AIRL.
-    # Really, I should just make these into real arguments. Since init_rl_kwargs
-    # is just a stub.
+    # Modifies the __init__ arguments for the imitation policy.
     init_rl_kwargs = dict(
         policy_class=base.FeedForward32Policy, **DEFAULT_INIT_RL_KWARGS
     )

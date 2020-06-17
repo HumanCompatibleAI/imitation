@@ -428,10 +428,6 @@ class GAIL(AdversarialTrainer):
         as follows:
 
         Args:
-            reward_net_cls: Reward network constructor. The reward network is part of
-                the AIRL discriminator.
-            reward_net_kwargs: Optional keyword arguments to use while constructing
-                the reward network.
             discrim_kwargs: Optional keyword arguments to use while constructing the
                 DiscrimNetGAIL.
 

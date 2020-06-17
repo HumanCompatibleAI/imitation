@@ -23,16 +23,17 @@ def setup_and_teardown(session):
 
 @pytest.fixture(params=PARALLEL)
 def _parallel(request):
-    # Auto-parametrizes `_parallel` for the trainer fixture. This way we don't have to
-    # add a @pytest.mark.parametrize("_parallel", ... ) decorator in front of
-    # every test. I couldn't find a better way to do this that didn't involve the
-    # aforementioned `parameterize` duplication.
+    """Auto-parametrizes `_parallel` for the `trainer` fixture.
+
+    This way we don't have to add a @pytest.mark.parametrize("_parallel", ... )
+    decorator in front of every test. I couldn't find a better way to do this that
+    didn't involve the aforementioned `parameterize` duplication."""
     return request.param
 
 
 @pytest.fixture(params=ALGORITHM_CLS)
 def _algorithm_cls(request):
-    # Auto-parametrizes `_algorithm_cls` for the trainer fixture.
+    """Auto-parametrizes `_algorithm_cls` for the `trainer` fixture."""
     return request.param
 
 

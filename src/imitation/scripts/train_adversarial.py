@@ -83,8 +83,8 @@ def train(
             If None, then use all available trajectories.
             If `n_expert_demos` is an `int`, then use exactly `n_expert_demos`
             trajectories, erroring if there aren't enough trajectories. If there are
-            surplus trajectories, then use the
-            first `n_expert_demos` trajectories and drop the rest.
+            surplus trajectories, then use the first `n_expert_demos` trajectories and
+            drop the rest.
         log_dir: Directory to save models and other logging to.
         total_timesteps: The number of transitions to sample from the environment
             during training.
@@ -95,32 +95,33 @@ def train(
             `checkpoint_interval` epochs and after training is complete. If 0,
             then only save weights after training is complete. If <0, then don't
             save weights at all.
-        gail_discrim_net_scale: If True, then scale observation inputs coming into the
-            `DiscrimNetGAIL` by the bounds of the environment's observation. Argument is
-            ignored when training AIRL.
+        gail_discrim_net_scale: If True, then normalize observation inputs coming into
+            the `DiscrimNetGAIL` using the bounds of the environment's observation
+            space. Argument is ignored when training AIRL.
         airl_entropy_weight: The entropy weight for AIRL training reward. Argument is
             ignored when training GAIL.
         airl_reward_net_cls: The `RewardNet` class to instantiate when initializing the
             `DiscrimNetAIRL`. Argument is ignored when training GAIL.
-        airl_reward_net_kwargs: Additional keyword arguments to pass into the
-            `RewardNet` constructor. `action_space` and `observation_space` are
-            automatically inferred.
+        airl_reward_net_kwargs: Keyword arguments to pass into the
+            `RewardNet` constructor. Passing in `action_space` and `observation_space`
+            results in error because they are automatically inferred from `venv`.
         init_rl_kwargs: Keyword arguments for `init_rl`, the RL algorithm initialization
             utility function.
         algorithm_kwargs: Keyword arguments for the `GAIL` or `AIRL` constructor that
             can apply to either constructor, likely keyword arguments inherited from
-            the superclass constructor, `Adversarial.__init__`. Putting a keyword
-            argument that is specific to either algorithm will result in an error
-            from duplicate keyword arguments.
+            the superclass constructor, `Adversarial.__init__`. Adding a keyword
+            argument that is specific to either algorithm results in an error
+            from duplicate keyword arguments because algorithm-specific keyword
+            arguments are already set by the `gail_*` and `airl_*` parameters
+            to this function.
         discrim_kwargs: Keyword arguments for the `DiscrimNet` constructor.
 
     Returns:
         A dictionary with two keys. "imit_stats" gives the return value of
-            `rollout_stats()` on rollouts test-reward-wrapped
-            environment, using the final policy (remember that the ground-truth reward
-            can be recovered from the "monitor_return" key). "expert_stats" gives the
-            return value of `rollout_stats()` on the expert demonstrations loaded from
-            `rollout_path`.
+        `rollout_stats()` on rollouts test-reward-wrapped environment, using the final
+        policy (remember that the ground-truth reward can be recovered from the
+        "monitor_return" key). "expert_stats" gives the return value of
+        `rollout_stats()` on the expert demonstrations loaded from `rollout_path`.
     """
     assert os.path.exists(rollout_path)
     total_timesteps = int(total_timesteps)
