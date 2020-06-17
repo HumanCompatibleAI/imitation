@@ -1,6 +1,6 @@
 import os
 from functools import partial
-from typing import Callable, Optional, Type
+from typing import Callable, Mapping, Optional, Type
 from warnings import warn
 
 import numpy as np
@@ -43,7 +43,7 @@ class AdversarialTrainer:
         disc_batch_size: int = 2048,
         disc_minibatch_size: int = 256,
         disc_opt_cls: tf.train.Optimizer = tf.train.AdamOptimizer,
-        disc_opt_kwargs: dict = {},
+        disc_opt_kwargs: Optional[Mapping] = None,
         gen_replay_buffer_capacity: Optional[int] = None,
         init_tensorboard: bool = False,
         init_tensorboard_graph: bool = False,
@@ -110,7 +110,7 @@ class AdversarialTrainer:
         # Create graph for optimising/recording stats on discriminator
         self._discrim = discrim
         self._disc_opt_cls = disc_opt_cls
-        self._disc_opt_kwargs = disc_opt_kwargs
+        self._disc_opt_kwargs = disc_opt_kwargs or {}
         self._init_tensorboard = init_tensorboard
         self._init_tensorboard_graph = init_tensorboard_graph
         self._build_graph()
@@ -268,7 +268,9 @@ class AdversarialTrainer:
         return np.mean(self._sess.run(self.discrim.disc_loss, feed_dict=fd))
 
     def train_gen(
-        self, total_timesteps: Optional[int] = None, learn_kwargs: Optional[dict] = None
+        self,
+        total_timesteps: Optional[int] = None,
+        learn_kwargs: Optional[Mapping] = None,
     ):
         """Trains the generator to maximize the discriminator loss.
 
@@ -416,7 +418,7 @@ class GAIL(AdversarialTrainer):
         expert_demos: types.Transitions,
         gen_policy: base_class.BaseRLModel,
         *,
-        discrim_kwargs: Optional[dict] = None,
+        discrim_kwargs: Optional[Mapping] = None,
         **kwargs,
     ):
         """Generative Adversarial Imitation Learning.
@@ -449,8 +451,8 @@ class AIRL(AdversarialTrainer):
         gen_policy: base_class.BaseRLModel,
         *,
         reward_net_cls: Type[reward_net.RewardNet] = reward_net.BasicShapedRewardNet,
-        reward_net_kwargs: Optional[dict] = None,
-        discrim_kwargs: Optional[dict] = None,
+        reward_net_kwargs: Optional[Mapping] = None,
+        discrim_kwargs: Optional[Mapping] = None,
         **kwargs,
     ):
         """Adversarial Inverse Reinforcement Learning.
