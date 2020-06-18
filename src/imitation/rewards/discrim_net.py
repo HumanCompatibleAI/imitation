@@ -360,22 +360,28 @@ class DiscrimNetGAIL(DiscrimNet, serialize.LayersSerializable):
         build_discrim_net: DiscrimNetBuilder = networks.build_and_apply_mlp,
         build_discrim_net_kwargs: Optional[dict] = None,
         scale: bool = False,
+        positive_rewards: bool = True,
     ):
         """Construct discriminator network.
 
         Args:
-          observation_space: observation space for this environment.
-          action_space: action space for this environment:
-          build_discrim_net: a callable that takes an observation input tensor
-            and action input tensor as input, then computes the logits
-            necessary to feed to GAIL. When called, the function should return
-            *both* a `LayersDict` containing all the layers used in
-            construction of the discriminator network, and a `tf.Tensor`
-            representing the desired discriminator logits.
-          build_discrim_net_kwargs: optional extra keyword arguments for
-            `build_discrim_net()`.
-          scale: should inputs be rescaled according to declared observation
-            space bounds?
+            observation_space: Observation space for this environment.
+            action_space: Action space for this environment:
+            build_discrim_net: A callable that takes an observation input tensor
+                and action input tensor as input, then computes the logits
+                necessary to feed to GAIL. When called, the function should return
+                *both* a `LayersDict` containing all the layers used in
+                construction of the discriminator network, and a `tf.Tensor`
+                representing the desired discriminator logits.
+            build_discrim_net_kwargs: Optional extra keyword arguments for
+                `build_discrim_net()`.
+            scale: If True, then normalize observations to numbers between 0 and 1 by
+                scaling them by observation space bounds.
+            positive_rewards: In the default formulation, all GAIL rewards are positive,
+                which can lead to episode-length maximizing behavior in environments
+                with variable-length episodes. Use False to flip the sign of the reward,
+                as the original authors did for their MountainCar-v0 results (a
+                variable-episode-length environment with only negative rewards).
         """
         # for serialisation
         args = dict(locals())
@@ -384,6 +390,7 @@ class DiscrimNetGAIL(DiscrimNet, serialize.LayersSerializable):
         self._observation_space = observation_space
         self._action_space = action_space
         self._scale = scale
+        self._positive_rewards = positive_rewards
         self._build_discrim_net = build_discrim_net
         self._build_discrim_net_kwargs = build_discrim_net_kwargs or {}
 
@@ -424,11 +431,14 @@ class DiscrimNetGAIL(DiscrimNet, serialize.LayersSerializable):
             self._disc_logits_gen_is_high, self._disc_mlp = self._build_discrim_net(
                 [self.obs_input, self.act_input], **self._build_discrim_net_kwargs
             )
-        self._policy_test_reward = self._policy_train_reward = -tf.log_sigmoid(
-            self._disc_logits_gen_is_high
-        )
 
         self._disc_loss = tf.nn.sigmoid_cross_entropy_with_logits(
             logits=self._disc_logits_gen_is_high,
             labels=tf.cast(self.labels_gen_is_one_ph, tf.float32),
         )
+
+        reward = tf.log_sigmoid(self._disc_logits_gen_is_high)
+        if self._positive_rewards:
+            reward *= -1
+
+        self._policy_test_reward = self._policy_train_reward = reward
