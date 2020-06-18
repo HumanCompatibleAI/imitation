@@ -1,13 +1,13 @@
 import dataclasses
-from typing import Dict, Optional, Tuple
+from typing import Dict, Mapping, Optional, Tuple
 
 import numpy as np
 from stable_baselines.common import vec_env
 
-from imitation.data import types
+from imitation.data import dataset, types
 
 
-class Buffer:
+class Buffer(dataset.Dataset[Dict[str, np.ndarray]]):
     """A FIFO ring buffer for NumPy arrays of a fixed shape and dtype.
 
     Supports random sampling with replacement.
@@ -24,22 +24,22 @@ class Buffer:
 
     _n_data: int
     """The number of samples currently stored in this buffer.
-
-  An integer in `range(0, self.capacity + 1)`. This attribute is the return
-  value of `self.__len__`.
-  """
+    
+    An integer in `range(0, self.capacity + 1)`. This attribute is the return
+    value of `self.__len__`.
+    """
 
     _idx: int
     """The index of the first row that new data should be written to.
 
-  An integer in `range(0, self.capacity)`.
-  """
+    An integer in `range(0, self.capacity)`.
+    """
 
     def __init__(
         self,
         capacity: int,
-        sample_shapes: Dict[str, Tuple[int, ...]],
-        dtypes: Dict[str, np.dtype],
+        sample_shapes: Mapping[str, Tuple[int, ...]],
+        dtypes: Mapping[str, np.dtype],
     ):
         """Constructs a Buffer.
 
@@ -188,7 +188,7 @@ class Buffer:
         return self._n_data
 
 
-class ReplayBuffer:
+class ReplayBuffer(dataset.Dataset[types.Transitions]):
     """Buffer for Transitions."""
 
     capacity: int

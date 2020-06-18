@@ -10,11 +10,10 @@ from typing import Callable, List, Optional, Type
 import cloudpickle
 import numpy as np
 import tensorflow as tf
-from stable_baselines.common.dataset import Dataset
 from stable_baselines.common.policies import ActorCriticPolicy, BasePolicy
 from tqdm.autonotebook import tqdm, trange
 
-from imitation.data import rollout, types
+from imitation.data import dataset, rollout, types
 from imitation.policies.base import FeedForward32Policy
 
 
@@ -105,7 +104,7 @@ class BCTrainer:
           expert_rollouts: A tuple of four arrays from expert rollouts,
               `obs`, `act`, `next_obs`, `reward`.
         """
-        self.expert_dataset = Dataset(
+        self.expert_dataset = dataset.SimpleTransitionsDataset(
             {"obs": expert_demos.obs, "act": expert_demos.acts}, shuffle=True
         )
 

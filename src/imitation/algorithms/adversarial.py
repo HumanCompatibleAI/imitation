@@ -1,6 +1,6 @@
 import os
 from functools import partial
-from typing import Callable, Mapping, Optional, Type
+from typing import Callable, Mapping, Optional, Type, Union
 from warnings import warn
 
 import numpy as np
@@ -9,7 +9,7 @@ import tqdm
 from stable_baselines.common import base_class
 from stable_baselines.common.vec_env import VecEnv, VecNormalize
 
-from imitation.data import buffer, types, wrappers
+from imitation.data import buffer, dataset, types, wrappers
 from imitation.rewards import discrim_net, reward_net
 from imitation.util import logger, reward_wrapper
 
@@ -37,12 +37,12 @@ class AdversarialTrainer:
         venv: VecEnv,
         gen_policy: base_class.BaseRLModel,
         discrim: discrim_net.DiscrimNet,
-        expert_demos: types.Transitions,
+        expert_dataset: Union[types.Transitions, dataset.Dataset[types.Transitions]],
         *,
         log_dir: str = "output/",
         disc_batch_size: int = 2048,
         disc_minibatch_size: int = 256,
-        disc_opt_cls: tf.train.Optimizer = tf.train.AdamOptimizer,
+        disc_opt_cls: Type[tf.train.Optimizer] = tf.train.AdamOptimizer,
         disc_opt_kwargs: Optional[Mapping] = None,
         gen_replay_buffer_capacity: Optional[int] = None,
         init_tensorboard: bool = False,
@@ -98,13 +98,9 @@ class AdversarialTrainer:
         )
         self.disc_batch_size = disc_batch_size
         self.disc_minibatch_size = disc_minibatch_size
-
         self.debug_use_ground_truth = debug_use_ground_truth
-
         self.venv = venv
-        self._expert_demos = expert_demos
         self._gen_policy = gen_policy
-
         self._log_dir = log_dir
 
         # Create graph for optimising/recording stats on discriminator
@@ -146,12 +142,15 @@ class AdversarialTrainer:
         self._gen_replay_buffer = buffer.ReplayBuffer(
             gen_replay_buffer_capacity, self.venv
         )
-        self._exp_replay_buffer = buffer.ReplayBuffer.from_data(expert_demos)
-        if self.disc_batch_size // 2 > len(self._exp_replay_buffer):
+
+        if isinstance(expert_dataset, types.Transitions):
+            expert_dataset = dataset.SimpleTransitionsDataset(expert_dataset)
+        self._expert_dataset: dataset.Dataset[types.Transitions] = expert_dataset
+        if self.disc_batch_size // 2 > len(self._expert_dataset):
             warn(
                 "The discriminator batch size is more than twice the number of "
-                "expert samples. This means that we will be reusing samples every "
-                "discrim batch."
+                "expert samples. This means that we will be reusing expert samples "
+                "every discrim batch."
             )
 
     @property
@@ -164,9 +163,9 @@ class AdversarialTrainer:
         return self._discrim
 
     @property
-    def expert_demos(self) -> types.Transitions:
-        """The expert demonstrations that are being imitated."""
-        return self._expert_demos
+    def expert_dataset(self) -> dataset.Dataset[types.Transitions]:
+        """Dataset containing expert demonstrations that are being imitated."""
+        return self._expert_dataset
 
     @property
     def gen_policy(self) -> base_class.BaseRLModel:
@@ -372,7 +371,7 @@ class AdversarialTrainer:
         n_gen = len(gen_samples.obs)
 
         if expert_samples is None:
-            expert_samples = self._exp_replay_buffer.sample(n_gen)
+            expert_samples = self._expert_dataset.sample(n_gen)
         n_expert = len(expert_samples.obs)
 
         # Check dimensions.
@@ -415,7 +414,7 @@ class GAIL(AdversarialTrainer):
     def __init__(
         self,
         venv: VecEnv,
-        expert_demos: types.Transitions,
+        expert_dataset: Union[types.Transitions, dataset.Dataset[types.Transitions]],
         gen_policy: base_class.BaseRLModel,
         *,
         discrim_kwargs: Optional[Mapping] = None,
@@ -436,14 +435,14 @@ class GAIL(AdversarialTrainer):
         discrim = discrim_net.DiscrimNetGAIL(
             venv.observation_space, venv.action_space, **discrim_kwargs
         )
-        super().__init__(venv, gen_policy, discrim, expert_demos, **kwargs)
+        super().__init__(venv, gen_policy, discrim, expert_dataset, **kwargs)
 
 
 class AIRL(AdversarialTrainer):
     def __init__(
         self,
         venv: VecEnv,
-        expert_demos: types.Transitions,
+        expert_dataset: Union[types.Transitions, dataset.Dataset[types.Transitions]],
         gen_policy: base_class.BaseRLModel,
         *,
         reward_net_cls: Type[reward_net.RewardNet] = reward_net.BasicShapedRewardNet,
@@ -478,4 +477,4 @@ class AIRL(AdversarialTrainer):
 
         discrim_kwargs = discrim_kwargs or {}
         discrim = discrim_net.DiscrimNetAIRL(reward_network, **discrim_kwargs)
-        super().__init__(venv, gen_policy, discrim, expert_demos, **kwargs)
+        super().__init__(venv, gen_policy, discrim, expert_dataset, **kwargs)
