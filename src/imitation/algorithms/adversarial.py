@@ -1,33 +1,31 @@
 import os
 from functools import partial
-from typing import Callable, Optional, Sequence
+from typing import Callable, Mapping, Optional, Type
 from warnings import warn
 
 import numpy as np
 import tensorflow as tf
 import tqdm
-from stable_baselines.common.base_class import BaseRLModel
-from stable_baselines.common.vec_env import VecEnv, VecNormalize
+from stable_baselines.common import base_class, vec_env
 
-from imitation.data import buffer, rollout, types, wrappers
-from imitation.rewards import discrim_net
-from imitation.rewards.reward_net import BasicShapedRewardNet
-from imitation.util import logger, reward_wrapper, util
+from imitation.data import buffer, types, wrappers
+from imitation.rewards import discrim_net, reward_net
+from imitation.util import logger, reward_wrapper
 
 
 class AdversarialTrainer:
-    """Trainer for GAIL and AIRL."""
+    """Base class for adversarial imitation learning algorithms like GAIL and AIRL."""
 
-    venv: VecEnv
+    venv: vec_env.VecEnv
     """The original vectorized environment."""
 
-    venv_train: VecEnv
+    venv_train: vec_env.VecEnv
     """Like `self.venv`, but wrapped with train reward unless in debug mode.
 
     If `debug_use_ground_truth=True` was passed into the initializer then
     `self.venv_train` is the same as `self.venv`."""
 
-    venv_test: VecEnv
+    venv_test: vec_env.VecEnv
     """Like `self.venv`, but wrapped with test reward unless in debug mode.
 
     If `debug_use_ground_truth=True` was passed into the initializer then
@@ -35,8 +33,8 @@ class AdversarialTrainer:
 
     def __init__(
         self,
-        venv: VecEnv,
-        gen_policy: BaseRLModel,
+        venv: vec_env.VecEnv,
+        gen_policy: base_class.BaseRLModel,
         discrim: discrim_net.DiscrimNet,
         expert_demos: types.Transitions,
         *,
@@ -44,13 +42,13 @@ class AdversarialTrainer:
         disc_batch_size: int = 2048,
         disc_minibatch_size: int = 256,
         disc_opt_cls: tf.train.Optimizer = tf.train.AdamOptimizer,
-        disc_opt_kwargs: dict = {},
+        disc_opt_kwargs: Optional[Mapping] = None,
         gen_replay_buffer_capacity: Optional[int] = None,
         init_tensorboard: bool = False,
         init_tensorboard_graph: bool = False,
         debug_use_ground_truth: bool = False,
     ):
-        """Builds Trainer.
+        """Builds AdversarialTrainer.
 
         Args:
             venv: The vectorized environment to train in.
@@ -58,7 +56,6 @@ class AdversarialTrainer:
               discriminator confusion. The generator batch size
               `self.gen_batch_size` is inferred from `gen_policy.n_batch`.
             discrim: The discriminator network.
-              For GAIL, use a DiscrimNetGAIL. For AIRL, use a DiscrimNetAIRL.
             expert_demos: Transitions from an expert dataset.
             log_dir: Directory to store TensorBoard logs, plots, etc. in.
             disc_batch_size: The default number of expert and generator transitions
@@ -112,7 +109,7 @@ class AdversarialTrainer:
         # Create graph for optimising/recording stats on discriminator
         self._discrim = discrim
         self._disc_opt_cls = disc_opt_cls
-        self._disc_opt_kwargs = disc_opt_kwargs
+        self._disc_opt_kwargs = disc_opt_kwargs or {}
         self._init_tensorboard = init_tensorboard
         self._init_tensorboard_graph = init_tensorboard_graph
         self._build_graph()
@@ -140,7 +137,7 @@ class AdversarialTrainer:
             )
 
         self.venv_train_buffering = wrappers.BufferingWrapper(self.venv_train)
-        self.venv_train_norm = VecNormalize(self.venv_train_buffering)
+        self.venv_train_norm = vec_env.VecNormalize(self.venv_train_buffering)
         self.gen_policy.set_env(self.venv_train_norm)
 
         if gen_replay_buffer_capacity is None:
@@ -148,7 +145,7 @@ class AdversarialTrainer:
         self._gen_replay_buffer = buffer.ReplayBuffer(
             gen_replay_buffer_capacity, self.venv
         )
-        self._exp_replay_buffer = buffer.ReplayBuffer.from_data(expert_demos)
+        self._exp_replay_buffer = buffer.ReplayBuffer.from_data(self.expert_demos)
         if self.disc_batch_size // 2 > len(self._exp_replay_buffer):
             warn(
                 "The discriminator batch size is more than twice the number of "
@@ -171,7 +168,7 @@ class AdversarialTrainer:
         return self._expert_demos
 
     @property
-    def gen_policy(self) -> BaseRLModel:
+    def gen_policy(self) -> base_class.BaseRLModel:
         """Policy (i.e. the generator) being trained."""
         return self._gen_policy
 
@@ -270,7 +267,9 @@ class AdversarialTrainer:
         return np.mean(self._sess.run(self.discrim.disc_loss, feed_dict=fd))
 
     def train_gen(
-        self, total_timesteps: Optional[int] = None, learn_kwargs: Optional[dict] = None
+        self,
+        total_timesteps: Optional[int] = None,
+        learn_kwargs: Optional[Mapping] = None,
     ):
         """Trains the generator to maximize the discriminator loss.
 
@@ -411,73 +410,71 @@ class AdversarialTrainer:
         return fd
 
 
-def init_trainer(
-    env_name: str,
-    expert_trajectories: Sequence[types.Trajectory],
-    *,
-    log_dir: str,
-    seed: int = 0,
-    use_gail: bool = False,
-    num_vec: int = 8,
-    parallel: bool = False,
-    max_episode_steps: Optional[int] = None,
-    scale: bool = True,
-    airl_entropy_weight: float = 1.0,
-    discrim_kwargs: dict = {},
-    reward_kwargs: dict = {},
-    trainer_kwargs: dict = {},
-    init_rl_kwargs: dict = {},
-):
-    """Builds an AdversarialTrainer, ready to be trained on expert demonstrations.
+class GAIL(AdversarialTrainer):
+    def __init__(
+        self,
+        venv: vec_env.VecEnv,
+        expert_demos: types.Transitions,
+        gen_policy: base_class.BaseRLModel,
+        *,
+        discrim_kwargs: Optional[Mapping] = None,
+        **kwargs,
+    ):
+        """Generative Adversarial Imitation Learning.
 
-    Args:
-      env_name: The string id of a gym environment.
-      expert_trajectories: Demonstrations from expert.
-      seed: Random seed.
-      log_dir: Directory for logging output. Will generate a unique sub-directory
-          within this directory for all output.
-      use_gail: If True, then train using GAIL. If False, then train
-          using AIRL.
-      num_vec: The number of vectorized environments.
-      parallel: If True, then use SubprocVecEnv; otherwise, DummyVecEnv.
-      max_episode_steps: If specified, wraps VecEnv in TimeLimit wrapper with
-          this episode length before returning.
-      policy_dir: The directory containing the pickled experts for
-          generating rollouts.
-      scale: If True, then scale input Tensors to the interval [0, 1].
-      airl_entropy_weight: Only applicable for AIRL. The `entropy_weight`
-          argument of `DiscrimNetAIRL.__init__`.
-      trainer_kwargs: Arguments for the Trainer constructor.
-      reward_kwargs: Arguments for the `*RewardNet` constructor.
-      discrim_kwargs: Arguments for the `DiscrimNet*` constructor.
-      init_rl_kwargs: Keyword arguments passed to `init_rl`,
-          used to initialize the RL algorithm.
-    """
-    logger.configure(folder=log_dir, format_strs=["tensorboard", "stdout"])
-    env = util.make_vec_env(
-        env_name,
-        num_vec,
-        seed=seed,
-        parallel=parallel,
-        log_dir=log_dir,
-        max_episode_steps=max_episode_steps,
-    )
-    gen_policy = util.init_rl(env, verbose=1, **init_rl_kwargs)
+        Most parameters are described in and passed to `AdversarialTrainer.__init__`.
+        Additional parameters that `GAIL` adds on top of its superclass initializer are
+        as follows:
 
-    if use_gail:
+        Args:
+            discrim_kwargs: Optional keyword arguments to use while constructing the
+                DiscrimNetGAIL.
+
+        """
+        discrim_kwargs = discrim_kwargs or {}
         discrim = discrim_net.DiscrimNetGAIL(
-            env.observation_space, env.action_space, scale=scale, **discrim_kwargs
+            venv.observation_space, venv.action_space, **discrim_kwargs
         )
-    else:
-        rn = BasicShapedRewardNet(
-            env.observation_space, env.action_space, scale=scale, **reward_kwargs
-        )
-        discrim = discrim_net.DiscrimNetAIRL(
-            rn, entropy_weight=airl_entropy_weight, **discrim_kwargs
+        super().__init__(venv, gen_policy, discrim, expert_demos, **kwargs)
+
+
+class AIRL(AdversarialTrainer):
+    def __init__(
+        self,
+        venv: vec_env.VecEnv,
+        expert_demos: types.Transitions,
+        gen_policy: base_class.BaseRLModel,
+        *,
+        reward_net_cls: Type[reward_net.RewardNet] = reward_net.BasicShapedRewardNet,
+        reward_net_kwargs: Optional[Mapping] = None,
+        discrim_kwargs: Optional[Mapping] = None,
+        **kwargs,
+    ):
+        """Adversarial Inverse Reinforcement Learning.
+
+        Most parameters are described in and passed to `AdversarialTrainer.__init__`.
+        Additional parameters that `AIRL` adds on top of its superclass initializer are
+        as follows:
+
+        Args:
+            reward_net_cls: Reward network constructor. The reward network is part of
+                the AIRL discriminator.
+            reward_net_kwargs: Optional keyword arguments to use while constructing
+                the reward network.
+            discrim_kwargs: Optional keyword arguments to use while constructing the
+                DiscrimNetAIRL.
+        """
+        # TODO(shwang): Maybe offer str=>Type[RewardNet] conversion like
+        #  stable_baselines does with policy classes.
+        reward_net_kwargs = reward_net_kwargs or {}
+        reward_network = reward_net_cls(
+            action_space=venv.action_space,
+            observation_space=venv.observation_space,
+            # pytype is afraid that we'll directly call RewardNet() which is an abstract
+            # class, hence the disable.
+            **reward_net_kwargs,  # pytype: disable=not-instantiable
         )
 
-    expert_demos = rollout.flatten_trajectories(expert_trajectories)
-    trainer = AdversarialTrainer(
-        env, gen_policy, discrim, expert_demos, log_dir=log_dir, **trainer_kwargs
-    )
-    return trainer
+        discrim_kwargs = discrim_kwargs or {}
+        discrim = discrim_net.DiscrimNetAIRL(reward_network, **discrim_kwargs)
+        super().__init__(venv, gen_policy, discrim, expert_demos, **kwargs)

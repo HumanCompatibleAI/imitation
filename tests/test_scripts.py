@@ -123,14 +123,26 @@ def test_train_adversarial(tmpdir):
         "log_root": tmpdir,
         "rollout_path": "tests/data/expert_models/cartpole_0/rollouts/final.pkl",
         "init_tensorboard": True,
-        "plot_interval": 1,
-        "extra_episode_data_interval": 1,
     }
     run = train_adversarial.train_ex.run(
         named_configs=named_configs, config_updates=config_updates,
     )
     assert run.status == "COMPLETED"
     _check_train_ex_result(run.result)
+
+
+def test_train_adversarial_algorithm_config_error(tmpdir):
+    """Error on bad algorithm arguments."""
+    named_configs = ["cartpole", "fast"]
+    config_updates = {
+        "log_root": tmpdir,
+        "rollout_path": "tests/data/expert_models/cartpole_0/rollouts/final.pkl",
+        "algorithm": "BAD_VALUE",
+    }
+    with pytest.raises(ValueError, match=".*BAD_VALUE.*"):
+        train_adversarial.train_ex.run(
+            named_configs=named_configs, config_updates=config_updates,
+        )
 
 
 def test_transfer_learning(tmpdir):
@@ -186,12 +198,15 @@ PARALLEL_CONFIG_UPDATES = [
         },
         search_space={
             "config_updates": {
-                "init_trainer_kwargs": {
-                    "reward_kwargs": {
-                        "phi_units": tune.grid_search([[16, 16], [7, 9]]),
-                    },
+                "algorithm": tune.grid_search(["gail", "airl"]),
+                "algorithm_kwargs": {
+                    "airl": {
+                        "reward_net_kwargs": {
+                            "phi_units": tune.grid_search([[16, 16], [7, 9]]),
+                        }
+                    }
                 },
-            }
+            },
         },
     ),
 ]
@@ -236,10 +251,7 @@ def test_parallel_train_adversarial_custom_env(tmpdir):
         sacred_ex_name="train_adversarial",
         n_seeds=1,
         base_named_configs=[env_named_config, "fast"],
-        base_config_updates=dict(
-            init_trainer_kwargs=dict(parallel=True, num_vec=2,),
-            rollout_path=rollout_path,
-        ),
+        base_config_updates=dict(parallel=True, num_vec=2, rollout_path=rollout_path,),
     )
     config_updates.update(PARALLEL_CONFIG_LOW_RESOURCE)
     run = parallel.parallel_ex.run(
