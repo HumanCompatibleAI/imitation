@@ -38,14 +38,15 @@ def parallel(
             under the 'experiment.name' key. This is equivalent to using the Sacred
             CLI '--name' option on the inner experiment. Offline analysis jobs can use
             this argument to group similar data.
-        search_space: A dictionary which can contain `ray.tune.grid_search` and is
+        search_space: A dictionary which can contain Ray Tune search objects like
+            `ray.tune.grid_search` and `ray.tune.sample_from`, and is
             passed as the `config` argument to `ray.tune.run()`. After the
             `search_space` is transformed by Ray, it passed into
             `sacred_ex.run(**run_kwargs)` as `run_kwargs` (`sacred_ex` is the Sacred
             Experiment selected via `sacred_ex_name`). Usually `search_space` only has
             the keys "named_configs" and "config_updates", but any parameter names
             to `sacred.Experiment.run()` are okay.
-        base_named_configs: Default Sacred Run named configs. Any named configs
+        base_named_configs: Default Sacred named configs. Any named configs
             taken from `search_space` are higher priority than the base_named_configs.
             Concretely, this priority is implemented by appending named configs taken
             from `search_space` to the run's named configs after `base_named_configs`.
@@ -53,7 +54,7 @@ def parallel(
             Named configs in `base_named_configs` don't appear in the automatically
             generated Ray directory name, unlike named configs from `search_space`.
 
-        base_config_updates: Default Sacred Run config updates. Any config updates taken
+        base_config_updates: Default Sacred config updates. Any config updates taken
             from `search_space` are higher priority than `base_config_updates`.
 
             Config updates in `base_config_updates` don't appear in the automatically
@@ -145,6 +146,7 @@ def _ray_tune_sacred_wrapper(
         """
         # Set Sacred capture mode to "sys" because default "fd" option leads to error.
         # See https://github.com/IDSIA/sacred/issues/289.
+        # TODO(shwang): Stop modifying CAPTURE_MODE once the issue is fixed.
         sacred.SETTINGS.CAPTURE_MODE = "sys"
 
         run_kwargs = config

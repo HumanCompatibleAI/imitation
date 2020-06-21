@@ -33,6 +33,7 @@ def sacred_capture_use_sys():
     """Set Sacred capture mode to "sys" because default "fd" option leads to error.
 
     See https://github.com/IDSIA/sacred/issues/289."""
+    # TODO(shwang): Stop using non-default "sys" mode once the issue is fixed.
     temp = sacred.SETTINGS["CAPTURE_MODE"]
     sacred.SETTINGS.CAPTURE_MODE = "sys"
     yield

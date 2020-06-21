@@ -346,6 +346,9 @@ def rollout_stats(trajectories: Sequence[types.TrajectoryWithRew]) -> Dict[str, 
     for desc_name, desc_vals in traj_descriptors.items():
         for stat_name in stat_names:
             stat_value: np.generic = getattr(np, stat_name)(desc_vals)
+            # Convert numpy type to float or int. The numpy operators always return
+            # a numpy type, but we want to return type float. (int satisfies
+            # float type for the purposes of static-typing).
             out_stats[f"{desc_name}_{stat_name}"] = stat_value.item()
 
     for v in out_stats.values():
