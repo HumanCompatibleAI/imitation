@@ -55,9 +55,7 @@ setup(
         "stable-baselines~=2.10.0",
         "jax~=0.1.66",
         "jaxlib~=0.1.47",
-        # sacred==0.7.5 build is broken without pymongo
-        # sacred>0.7.4 have non-picklable config objects (see GH #109)
-        "sacred==0.7.4",
+        "sacred~=0.8.1",
     ],
     tests_require=TESTS_REQUIRE,
     extras_require={
