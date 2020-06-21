@@ -34,6 +34,7 @@ echo "Writing logs in ${OUTPUT_DIR}"
 
 parallel -j 25% --header : --results ${OUTPUT_DIR}/parallel/ --colsep , \
   python -m imitation.scripts.expert_demos rollouts_from_policy \
+  --capture=sys \
   with \
   {env_config_name} \
   log_root="${OUTPUT_DIR}" \

@@ -6,24 +6,51 @@ experiment implicitly sets parallel=False.
 """
 
 import os.path as osp
+import sys
 import tempfile
 from collections import Counter
 from typing import List, Optional
+from unittest import mock
 
 import pandas as pd
 import pytest
 import ray.tune as tune
+import sacred
 
-from imitation.scripts.analyze import analysis_ex
-from imitation.scripts.eval_policy import eval_policy_ex
-from imitation.scripts.expert_demos import expert_demos_ex
-from imitation.scripts.parallel import parallel_ex
-from imitation.scripts.train_adversarial import train_ex
+from imitation.scripts import (
+    analyze,
+    eval_policy,
+    expert_demos,
+    parallel,
+    train_adversarial,
+)
+
+ALL_SCRIPTS_MODS = [analyze, eval_policy, expert_demos, parallel, train_adversarial]
+
+
+@pytest.fixture(autouse=True)
+def sacred_capture_use_sys():
+    """Set Sacred capture mode to "sys" because default "fd" option leads to error.
+
+    See https://github.com/IDSIA/sacred/issues/289."""
+    # TODO(shwang): Stop using non-default "sys" mode once the issue is fixed.
+    temp = sacred.SETTINGS["CAPTURE_MODE"]
+    sacred.SETTINGS.CAPTURE_MODE = "sys"
+    yield
+    sacred.SETTINGS.CAPTURE_MODE = temp
+
+
+@pytest.mark.parametrize("script_mod", ALL_SCRIPTS_MODS)
+def test_main_console(script_mod):
+    """Smoke tests of main entry point for some cheap coverage."""
+    argv = ["sacred-pytest-stub", "print_config"]
+    with mock.patch.object(sys, "argv", argv):
+        script_mod.main_console()
 
 
 def test_expert_demos_main(tmpdir):
     """Smoke test for imitation.scripts.expert_demos.rollouts_and_policy."""
-    run = expert_demos_ex.run(
+    run = expert_demos.expert_demos_ex.run(
         named_configs=["cartpole", "fast"], config_updates=dict(log_root=tmpdir,),
     )
     assert run.status == "COMPLETED"
@@ -32,7 +59,7 @@ def test_expert_demos_main(tmpdir):
 
 def test_expert_demos_rollouts_from_policy(tmpdir):
     """Smoke test for imitation.scripts.expert_demos.rollouts_from_policy."""
-    run = expert_demos_ex.run(
+    run = expert_demos.expert_demos_ex.run(
         command_name="rollouts_from_policy",
         named_configs=["cartpole", "fast"],
         config_updates=dict(
@@ -58,7 +85,9 @@ def test_eval_policy(config, tmpdir):
         "log_root": tmpdir,
     }
     config_updates.update(config)
-    run = eval_policy_ex.run(config_updates=config_updates, named_configs=["fast"])
+    run = eval_policy.eval_policy_ex.run(
+        config_updates=config_updates, named_configs=["fast"]
+    )
     assert run.status == "COMPLETED"
     wrapped_reward = "reward_type" in config
     _check_rollout_stats(run.result, wrapped_reward)
@@ -94,12 +123,26 @@ def test_train_adversarial(tmpdir):
         "log_root": tmpdir,
         "rollout_path": "tests/data/expert_models/cartpole_0/rollouts/final.pkl",
         "init_tensorboard": True,
-        "plot_interval": 1,
-        "extra_episode_data_interval": 1,
     }
-    run = train_ex.run(named_configs=named_configs, config_updates=config_updates,)
+    run = train_adversarial.train_ex.run(
+        named_configs=named_configs, config_updates=config_updates,
+    )
     assert run.status == "COMPLETED"
     _check_train_ex_result(run.result)
+
+
+def test_train_adversarial_algorithm_config_error(tmpdir):
+    """Error on bad algorithm arguments."""
+    named_configs = ["cartpole", "fast"]
+    config_updates = {
+        "log_root": tmpdir,
+        "rollout_path": "tests/data/expert_models/cartpole_0/rollouts/final.pkl",
+        "algorithm": "BAD_VALUE",
+    }
+    with pytest.raises(ValueError, match=".*BAD_VALUE.*"):
+        train_adversarial.train_ex.run(
+            named_configs=named_configs, config_updates=config_updates,
+        )
 
 
 def test_transfer_learning(tmpdir):
@@ -108,7 +151,7 @@ def test_transfer_learning(tmpdir):
     Saves a dummy AIRL test reward, then loads it for transfer learning.
     """
     log_dir_train = osp.join(tmpdir, "train")
-    run = train_ex.run(
+    run = train_adversarial.train_ex.run(
         named_configs=["cartpole", "airl", "fast"],
         config_updates=dict(
             rollout_path="tests/data/expert_models/cartpole_0/rollouts/final.pkl",
@@ -122,7 +165,7 @@ def test_transfer_learning(tmpdir):
 
     log_dir_data = osp.join(tmpdir, "expert_demos")
     discrim_path = osp.join(log_dir_train, "checkpoints", "final", "discrim")
-    run = expert_demos_ex.run(
+    run = expert_demos.expert_demos_ex.run(
         named_configs=["cartpole", "fast"],
         config_updates=dict(
             log_dir=log_dir_data, reward_type="DiscrimNet", reward_path=discrim_path,
@@ -140,7 +183,8 @@ PARALLEL_CONFIG_UPDATES = [
         search_space={
             "config_updates": {
                 "init_rl_kwargs": {"learning_rate": tune.grid_search([3e-4, 1e-4])},
-            }
+            },
+            "meta_info": {"asdf": "I exist for coverage purposes"},
         },
     ),
     dict(
@@ -154,12 +198,15 @@ PARALLEL_CONFIG_UPDATES = [
         },
         search_space={
             "config_updates": {
-                "init_trainer_kwargs": {
-                    "reward_kwargs": {
-                        "phi_units": tune.grid_search([[16, 16], [7, 9]]),
-                    },
+                "algorithm": tune.grid_search(["gail", "airl"]),
+                "algorithm_kwargs": {
+                    "airl": {
+                        "reward_net_kwargs": {
+                            "phi_units": tune.grid_search([[16, 16], [7, 9]]),
+                        }
+                    }
                 },
-            }
+            },
         },
     ),
 ]
@@ -181,14 +228,14 @@ def test_parallel(config_updates):
     # No need for TemporaryDirectory because the hyperparameter tuning script
     # itself generates no artifacts, and "debug_log_root" sets inner experiment's
     # log_root="/tmp/parallel_debug/".
-    run = parallel_ex.run(
+    run = parallel.parallel_ex.run(
         named_configs=["debug_log_root"], config_updates=config_updates
     )
     assert run.status == "COMPLETED"
 
 
 def _generate_test_rollouts(tmpdir: str, env_named_config: str) -> str:
-    expert_demos_ex.run(
+    expert_demos.expert_demos_ex.run(
         named_configs=[env_named_config, "fast"],
         config_updates=dict(rollout_save_interval=0, log_dir=tmpdir,),
     )
@@ -204,13 +251,10 @@ def test_parallel_train_adversarial_custom_env(tmpdir):
         sacred_ex_name="train_adversarial",
         n_seeds=1,
         base_named_configs=[env_named_config, "fast"],
-        base_config_updates=dict(
-            init_trainer_kwargs=dict(parallel=True, num_vec=2,),
-            rollout_path=rollout_path,
-        ),
+        base_config_updates=dict(parallel=True, num_vec=2, rollout_path=rollout_path,),
     )
     config_updates.update(PARALLEL_CONFIG_LOW_RESOURCE)
-    run = parallel_ex.run(
+    run = parallel.parallel_ex.run(
         named_configs=["debug_log_root"], config_updates=config_updates
     )
     assert run.status == "COMPLETED"
@@ -224,7 +268,7 @@ def test_analyze_imitation(tmpdir: str, run_names: List[str]):
     for i, run_name in enumerate(run_names):
         with tempfile.TemporaryDirectory(prefix="junk") as junkdir:
             rollout_path = "tests/data/expert_models/cartpole_0/rollouts/final.pkl"
-            run = train_ex.run(
+            run = train_adversarial.train_ex.run(
                 named_configs=["fast", "cartpole"],
                 config_updates=dict(
                     rollout_path=rollout_path, log_dir=junkdir, checkpoint_interval=-1,
@@ -235,10 +279,11 @@ def test_analyze_imitation(tmpdir: str, run_names: List[str]):
 
     # Check that analyze script finds the correct number of logs.
     def check(run_name: Optional[str], count: int) -> None:
-        run = analysis_ex.run(
+        run = analyze.analysis_ex.run(
             command_name="analyze_imitation",
             config_updates=dict(
                 source_dir=sacred_logs_dir,
+                env_name="CartPole-v1",
                 run_name=run_name,
                 csv_output_path=osp.join(tmpdir, "analysis.csv"),
                 verbose=True,
@@ -257,12 +302,12 @@ def test_analyze_imitation(tmpdir: str, run_names: List[str]):
 def test_analyze_gather_tb(tmpdir: str):
     config_updates = dict(local_dir=tmpdir, run_name="test")
     config_updates.update(PARALLEL_CONFIG_LOW_RESOURCE)
-    parallel_run = parallel_ex.run(
+    parallel_run = parallel.parallel_ex.run(
         named_configs=["generate_test_data"], config_updates=config_updates
     )
     assert parallel_run.status == "COMPLETED"
 
-    run = analysis_ex.run(
+    run = analyze.analysis_ex.run(
         command_name="gather_tb_directories", config_updates=dict(source_dir=tmpdir,)
     )
     assert run.status == "COMPLETED"

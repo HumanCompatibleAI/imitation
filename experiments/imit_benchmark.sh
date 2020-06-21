@@ -68,6 +68,7 @@ echo "Logging to: ${LOG_ROOT}"
 
 parallel -j 25% --header : --results ${LOG_ROOT}/parallel/ --colsep , --progress \
   python -m imitation.scripts.train_adversarial \
+  --capture=sys \
   ${extra_options} \
   with \
   ${ALGORITHM} \
