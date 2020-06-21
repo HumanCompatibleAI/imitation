@@ -145,7 +145,7 @@ class AdversarialTrainer:
         self._gen_replay_buffer = buffer.ReplayBuffer(
             gen_replay_buffer_capacity, self.venv
         )
-        self._exp_replay_buffer = buffer.ReplayBuffer.from_data(expert_demos)
+        self._exp_replay_buffer = buffer.ReplayBuffer.from_data(self.expert_demos)
         if self.disc_batch_size // 2 > len(self._exp_replay_buffer):
             warn(
                 "The discriminator batch size is more than twice the number of "
