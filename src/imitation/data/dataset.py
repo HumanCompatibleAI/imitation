@@ -14,14 +14,15 @@ class Dataset(abc.ABC, Generic[T]):
     def sample(self, n_samples: int) -> T:
         """Return a batch of data."""
 
-    def __len__(self):
-        """Number of samples in this dataset. ie the epoch size."""
+    def size(self) -> Optional[int]:
+        """Number of samples in this dataset, ie the epoch size."""
+        return None
 
 
-class SimpleDataset(Dataset[Dict[str, np.ndarray]]):
+class DictDataset(Dataset[Dict[str, np.ndarray]]):
 
     def __init__(self, data_map: Mapping[str, np.ndarray]):
-        """Abstract base class for sampling data from in-memory dictionary.
+        """Abstract base class for sampling data from an in-memory dictionary.
 
         The return value of `.sample(n_samples)` is a dictionary with the same keys as
         `data_map` and whose values are `n_samples` stacked rows selected from the
@@ -46,11 +47,11 @@ class SimpleDataset(Dataset[Dict[str, np.ndarray]]):
         self._n_data = next(iter(n_samples_set))
         self._next_id = 0
 
-    def __len__(self):
+    def size(self):
         return self._n_data
 
 
-class EpochOrderSimpleDataset(SimpleDataset):
+class EpochOrderDictDataset(DictDataset):
 
     def __init__(self, data_map: Mapping[str, np.ndarray], shuffle: bool = True):
         """In-memory data sampler that samples in epoch-order.
@@ -75,7 +76,7 @@ class EpochOrderSimpleDataset(SimpleDataset):
 
     def shuffle_dataset(self):
         """Shuffles the data_map in place."""
-        perm = np.arange(len(self))
+        perm = np.arange(self.size())
         np.random.shuffle(perm)
         for key in self.data_map:
             self.data_map[key] = self.data_map[key][perm]
@@ -96,13 +97,13 @@ class EpochOrderSimpleDataset(SimpleDataset):
     def _sample_bounded(self, n_samples: int) -> Dict[str, np.ndarray]:
         """Like `.sample()`, but allowed to return fewer samples on epoch boundaries."""
         assert n_samples > 0
-        if self._next_id >= len(self):
+        if self._next_id >= self.size():
             self._next_id = 0
             if self._shuffle:
                 self.shuffle_dataset()
 
         cur_id = self._next_id
-        cur_batch_size = min(n_samples, len(self) - self._next_id)
+        cur_batch_size = min(n_samples, self.size() - self._next_id)
         assert cur_batch_size > 0
         self._next_id += cur_batch_size
 
@@ -113,31 +114,30 @@ class EpochOrderSimpleDataset(SimpleDataset):
         return cur_batch_size, result
 
 
-class RandomSimpleDataset(SimpleDataset):
+class RandomDictDataset(EpochOrderDictDataset):
     """In-memory data sampler that uniformly samples with replacement."""
 
     def sample(self, n_samples: int) -> Dict[str, np.ndarray]:
-        inds = np.random.randint(len(self), size=n_samples)
+        inds = np.random.randint(self.size(), size=n_samples)
         return {k: v[inds] for k, v in self.data_map}
 
 
-class SimpleTransitionsDataset(Dataset[types.Transitions]):
+class TransitionsDictDatasetAdaptor(Dataset[types.Transitions]):
 
     def __init__(self,
                  transistions: types.Transitions,
-                 simple_dataset_cls: Type[SimpleDataset] = RandomSimpleDataset,
+                 simple_dataset_cls: Type[DictDataset] = RandomDictDataset,
                  simple_dataset_cls_kwargs: Optional[Mapping] = None,
                  ):
-        """One strategy for expert dataset."""
         data_map: Dict[str, np.ndarray] = dataclasses.asdict(transistions)
         kwargs = simple_dataset_cls_kwargs or {}
         self.simple_dataset = simple_dataset_cls(data_map, **kwargs)
 
-    def sample(self, n_samples):
+    def sample(self, n_samples) -> types.Transitions:
         dict_samples = self.simple_dataset.sample(n_samples)
         result = types.Transitions(**dict_samples)
         assert len(result) == len(n_samples)
         return result
 
-    def __len__(self):
-        return len(self.simple_dataset)
+    def size(self):
+        return self.simple_dataset.size()
