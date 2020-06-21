@@ -20,7 +20,7 @@ def make_unique_timestamp() -> str:
     """Timestamp, with random uuid added to avoid collisions."""
     ISO_TIMESTAMP = "%Y%m%d_%H%M%S"
     timestamp = datetime.datetime.now().strftime(ISO_TIMESTAMP)
-    random_uuid = uuid.uuid4().hex
+    random_uuid = uuid.uuid4().hex[:6]
     return f"{timestamp}_{random_uuid}"
 
 
