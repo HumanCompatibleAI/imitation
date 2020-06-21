@@ -101,11 +101,11 @@ def train(
             `algorithm_kwargs["gail"]` is passed to the `GAIL` constructor when
             `algorithm == "gail"`. `algorithm_kwargs["shared"]`, if provided, is passed
             to both the `AIRL` and `GAIL` constructors. Duplicate keyword argument keys
-            between `algorithm_kwargs["global"]` and `algorithm_kwargs["airl"]` (or
+            between `algorithm_kwargs["shared"]` and `algorithm_kwargs["airl"]` (or
             "gail") leads to an error.
         discrim_net_kwargs: Keyword arguments for the `DiscrimNet` constructor. Unlike a
             regular kwargs argument, this argument can only have the following keys:
-            "global", "airl", "gail". These keys have the same meaning as they do in
+            "shared", "airl", "gail". These keys have the same meaning as they do in
             `algorithm_kwargs`.
 
     Returns:
@@ -162,7 +162,7 @@ def train(
         algorithm_kwargs_shared = algorithm_kwargs.get("shared", {})
         algorithm_kwargs_algo = algorithm_kwargs.get(algorithm, {})
         final_algorithm_kwargs = dict(
-            **algorithm_kwargs_shared, **algorithm_kwargs_algo
+            **algorithm_kwargs_shared, **algorithm_kwargs_algo,
         )
 
         if algorithm.lower() == "gail":

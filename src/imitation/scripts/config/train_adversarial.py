@@ -46,7 +46,7 @@ def train_defaults():
     )
 
     # Kwargs for initializing {GAIL,AIRL}DiscrimNet
-    discrim_net_kwargs = dict(shared={}, airl={}, gail={},)
+    discrim_net_kwargs = dict(shared={}, airl={}, gail={})
 
     # Modifies the __init__ arguments for the imitation policy
     init_rl_kwargs = dict(
@@ -110,12 +110,12 @@ def airl():
 
 # Shared settings
 
-MUJOCO_SHARED_LOCALS = dict(discrim_net_kwargs=dict(airl=dict(entropy_weight=0.1),))
+MUJOCO_SHARED_LOCALS = dict(discrim_net_kwargs=dict(airl=dict(entropy_weight=0.1)))
 
 ANT_SHARED_LOCALS = dict(
     total_timesteps=3e7,
     max_episode_steps=500,  # To match `inverse_rl` settings.
-    algorithm_kwargs=dict(shared=dict(disc_batch_size=2048 * 8,),),
+    algorithm_kwargs=dict(shared=dict(disc_batch_size=2048 * 8)),
     gen_batch_size=2048 * 8,
 )
 
@@ -246,7 +246,7 @@ def fast():
     total_timesteps = 10
     n_expert_demos = 1
     n_episodes_eval = 1
-    algorithm_kwargs = dict(shared=dict(disc_batch_size=2, disc_minibatch_size=2,),)
+    algorithm_kwargs = dict(shared=dict(disc_batch_size=2, disc_minibatch_size=2))
     gen_batch_size = 2
     parallel = False  # easier to debug with everything in one process
     max_episode_steps = 100

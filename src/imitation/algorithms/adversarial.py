@@ -14,7 +14,7 @@ from imitation.util import logger, reward_wrapper
 
 
 class AdversarialTrainer:
-    """Trainer for GAIL and AIRL."""
+    """Base class for adversarial imitation learning algorithms like GAIL and AIRL."""
 
     venv: vec_env.VecEnv
     """The original vectorized environment."""
@@ -48,7 +48,7 @@ class AdversarialTrainer:
         init_tensorboard_graph: bool = False,
         debug_use_ground_truth: bool = False,
     ):
-        """Builds Trainer.
+        """Builds AdversarialTrainer.
 
         Args:
             venv: The vectorized environment to train in.
