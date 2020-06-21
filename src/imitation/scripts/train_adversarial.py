@@ -3,6 +3,7 @@
 Can be used as a CLI script, or the `train_and_plot` function can be called directly.
 """
 
+import copy
 import os
 import os.path as osp
 from typing import Optional
@@ -108,27 +109,29 @@ def train(
         return value of `rollout_stats()` on the expert demonstrations loaded from
         `rollout_path`.
     """
+    assert os.path.exists(rollout_path)
     total_timesteps = int(total_timesteps)
 
     tf.logging.info("Logging to %s", log_dir)
     os.makedirs(log_dir, exist_ok=True)
     sacred_util.build_sacred_symlink(log_dir, _run)
 
-    # Calculate stats for expert rollouts. Used for plot and return value.
     expert_trajs = types.load(rollout_path)
-
     if n_expert_demos is not None:
         assert len(expert_trajs) >= n_expert_demos
         expert_trajs = expert_trajs[:n_expert_demos]
 
-    expert_stats = rollout.rollout_stats(expert_trajs)
-
     with networks.make_session():
+        # This deep copy converts unpicklable, unmodifiable Sacred ReadOnlyContainers
+        # into regular dicts and lists. This is necessary to modify
+        # `init_trainer_kwargs` in the `if init_tensorboard` block and to
+        # properly serialize RewardNet parameters.
+        init_trainer_kwargs = copy.deepcopy(init_trainer_kwargs)
+
         if init_tensorboard:
             sb_tensorboard_dir = osp.join(log_dir, "sb_tb")
-            kwargs = init_trainer_kwargs
-            kwargs["init_rl_kwargs"] = kwargs.get("init_rl_kwargs", {})
-            kwargs["init_rl_kwargs"]["tensorboard_log"] = sb_tensorboard_dir
+            init_rl_kwargs = init_trainer_kwargs["init_rl_kwargs"]
+            init_rl_kwargs["tensorboard_log"] = sb_tensorboard_dir
 
         trainer = init_trainer(
             env_name, expert_trajs, seed=_seed, log_dir=log_dir, **init_trainer_kwargs
@@ -150,16 +153,16 @@ def train(
         trajs = rollout.generate_trajectories(
             trainer.gen_policy, trainer.venv_test, sample_until=sample_until_eval
         )
+        results["expert_stats"] = rollout.rollout_stats(expert_trajs)
         results["imit_stats"] = rollout.rollout_stats(trajs)
-        results["expert_stats"] = expert_stats
         return results
 
 
 def main_console():
-    observer = FileStorageObserver.create(osp.join("output", "sacred", "train"))
+    observer = FileStorageObserver(osp.join("output", "sacred", "train"))
     train_ex.observers.append(observer)
     train_ex.run_commandline()
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     main_console()

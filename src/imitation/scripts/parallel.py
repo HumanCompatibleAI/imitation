@@ -1,8 +1,11 @@
+import collections.abc
+import copy
 import os
 from typing import Any, Callable, Dict, Optional
 
 import ray
 import ray.tune
+import sacred
 from sacred.observers import FileStorageObserver
 
 from imitation.scripts.config.parallel import parallel_ex
@@ -27,35 +30,66 @@ def parallel(
     to `upload_dir` if that argument is provided.
 
     Args:
-      sacred_ex_name: The Sacred experiment to tune. Either "expert_demos" or
-        "train_adversarial".
-      run_name: A name describing this parallelizing experiment.
-        This argument is also passed to `ray.tune.run` as the `name` argument.
-        It is also saved in 'sacred/run.json' of each inner Sacred experiment
-        under the 'experiment.name' key. This is equivalent to using the Sacred
-        CLI '--name' option on the inner experiment. Offline analysis jobs can use
-        this argument to group similar data.
-      search_space: `config` argument to `ray.tune.run()`.
-      base_named_configs: `search_space["named_configs"]` is appended to this list
-        before it is passed to the inner experiment's `run()`. Notably,
-        `base_named_configs` doesn't appear in the automatically generated
-        Ray directory name.
-      base_config_updates: `search_space["config_updates"]` is applied to this
-        dict before it is passed to the inner experiment's `run()`.
-      resources_per_trial: Argument to `ray.tune.run()`.
-      init_kwargs: Arguments to pass to `ray.init`.
-      local_dir: `local_dir` argument to `ray.tune.run()`.
-      upload_dir: `upload_dir` argument to `ray.tune.run()`.
+        sacred_ex_name: The Sacred experiment to tune. Either "expert_demos" or
+            "train_adversarial".
+        run_name: A name describing this parallelizing experiment.
+            This argument is also passed to `ray.tune.run` as the `name` argument.
+            It is also saved in 'sacred/run.json' of each inner Sacred experiment
+            under the 'experiment.name' key. This is equivalent to using the Sacred
+            CLI '--name' option on the inner experiment. Offline analysis jobs can use
+            this argument to group similar data.
+        search_space: A dictionary which can contain Ray Tune search objects like
+            `ray.tune.grid_search` and `ray.tune.sample_from`, and is
+            passed as the `config` argument to `ray.tune.run()`. After the
+            `search_space` is transformed by Ray, it passed into
+            `sacred_ex.run(**run_kwargs)` as `run_kwargs` (`sacred_ex` is the Sacred
+            Experiment selected via `sacred_ex_name`). Usually `search_space` only has
+            the keys "named_configs" and "config_updates", but any parameter names
+            to `sacred.Experiment.run()` are okay.
+        base_named_configs: Default Sacred named configs. Any named configs
+            taken from `search_space` are higher priority than the base_named_configs.
+            Concretely, this priority is implemented by appending named configs taken
+            from `search_space` to the run's named configs after `base_named_configs`.
+
+            Named configs in `base_named_configs` don't appear in the automatically
+            generated Ray directory name, unlike named configs from `search_space`.
+
+        base_config_updates: Default Sacred config updates. Any config updates taken
+            from `search_space` are higher priority than `base_config_updates`.
+
+            Config updates in `base_config_updates` don't appear in the automatically
+            generated Ray directory name, unlike config updates from `search_space`.
+        resources_per_trial: Argument to `ray.tune.run()`.
+        init_kwargs: Arguments to pass to `ray.init`.
+        local_dir: `local_dir` argument to `ray.tune.run()`.
+        upload_dir: `upload_dir` argument to `ray.tune.run()`.
     """
-    # Explicitly set `data_dir` if parallelizing `train_adversarial`.
-    # We need this to automatically find rollout pickles Ray will automatically
-    # change the working directory for each Raylet.
+    # Basic validation for config options before we enter parallel jobs.
+    for name in base_named_configs:
+        assert isinstance(name, str)
+    for k in base_config_updates:
+        assert isinstance(k, str)
+    assert isinstance(search_space["named_configs"], collections.abc.Sequence)
+    assert isinstance(search_space["config_updates"], collections.abc.Mapping)
+
+    # Convert Sacred's ReadOnlyList to List because not picklable.
+    base_named_configs = list(base_named_configs)
+
+    # Convert Sacred's ReadOnlyDict (and recursively convert ReadOnlyContainer values)
+    # to regular python variants because not picklable.
+    base_config_updates = copy.deepcopy(base_config_updates)
+    search_space = copy.deepcopy(search_space)
+
+    # Explicitly set `data_dir` if parallelizing `train_adversarial`. We need this to
+    # automatically find rollout pickles because Ray sets a new working directory for
+    # each Raylet.
     if sacred_ex_name == "train_adversarial":
         if "data_dir" not in base_config_updates:
-            base_config_updates["data_dir"] = os.path.join(os.getcwd(), "data/")
+            data_dir = os.path.join(os.getcwd(), "data/")
+            base_config_updates["data_dir"] = data_dir
 
     trainable = _ray_tune_sacred_wrapper(
-        sacred_ex_name, run_name, base_named_configs, base_config_updates
+        sacred_ex_name, run_name, base_named_configs, base_config_updates,
     )
 
     # Disable all Ray Loggers.
@@ -104,6 +138,19 @@ def _ray_tune_sacred_wrapper(
     """
 
     def inner(config: dict, reporter) -> dict:
+        """Trainable function with the correct signature for `ray.tune`.
+
+        Args:
+            config: Keyword arguments for `ex.run()`, where `ex` is the
+                `sacred.Experiment` instance associated with `sacred_ex_name`.
+        """
+        # Set Sacred capture mode to "sys" because default "fd" option leads to error.
+        # See https://github.com/IDSIA/sacred/issues/289.
+        # TODO(shwang): Stop modifying CAPTURE_MODE once the issue is fixed.
+        sacred.SETTINGS.CAPTURE_MODE = "sys"
+
+        run_kwargs = config
+        updated_run_kwargs = {}
         # Import inside function rather than in module because Sacred experiments
         # are not picklable, and Ray requires this function to be picklable.
         from imitation.scripts.expert_demos import expert_demos_ex
@@ -115,16 +162,26 @@ def _ray_tune_sacred_wrapper(
         }
         ex = experiments[sacred_ex_name]
 
-        observer = FileStorageObserver.create("sacred")
+        observer = FileStorageObserver("sacred")
         ex.observers.append(observer)
 
-        # Apply base configs
-        base_named_configs.extend(config.get("named_configs", []))
-        base_config_updates.update(config.get("config_updates", {}))
-        config["named_configs"] = base_named_configs
-        config["config_updates"] = base_config_updates
+        # Apply base configs to get modified `named_configs` and `config_updates`.
+        named_configs = []
+        named_configs.extend(base_named_configs)
+        named_configs.extend(run_kwargs["named_configs"])
+        updated_run_kwargs["named_configs"] = named_configs
 
-        run = ex.run(**config, options={"--run": run_name})
+        config_updates = {}
+        config_updates.update(base_config_updates)
+        config_updates.update(run_kwargs["config_updates"])
+        updated_run_kwargs["config_updates"] = config_updates
+
+        # Add other run_kwargs items to updated_run_kwargs.
+        for k, v in run_kwargs.items():
+            if k not in updated_run_kwargs:
+                updated_run_kwargs[k] = v
+
+        run = ex.run(**updated_run_kwargs, options={"--run": run_name})
 
         # Ray Tune has a string formatting error if raylet completes without
         # any calls to `reporter`.
@@ -136,7 +193,11 @@ def _ray_tune_sacred_wrapper(
     return inner
 
 
-if __name__ == "__main__":
-    observer = FileStorageObserver.create(os.path.join("output", "sacred", "parallel"))
+def main_console():
+    observer = FileStorageObserver(os.path.join("output", "sacred", "parallel"))
     parallel_ex.observers.append(observer)
     parallel_ex.run_commandline()
+
+
+if __name__ == "__main__":  # pragma: no cover
+    main_console()
