@@ -112,7 +112,6 @@ def test_train_adversarial_algorithm_config_error(tmpdir):
     config_updates = {
         "log_root": tmpdir,
         "rollout_path": "tests/data/expert_models/cartpole_0/rollouts/final.pkl",
-        "init_tensorboard": True,
         "algorithm": "BAD_VALUE",
     }
     with pytest.raises(ValueError, match=".*BAD_VALUE.*"):
@@ -174,8 +173,12 @@ PARALLEL_CONFIG_UPDATES = [
         search_space={
             "config_updates": {
                 "algorithm": tune.grid_search(["gail", "airl"]),
-                "airl_reward_net_kwargs": {
-                    "phi_units": tune.grid_search([[16, 16], [7, 9]]),
+                "algorithm_kwargs": {
+                    "airl": {
+                        "reward_net_kwargs": {
+                            "phi_units": tune.grid_search([[16, 16], [7, 9]]),
+                        }
+                    }
                 },
             },
         },
