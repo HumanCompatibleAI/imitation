@@ -417,7 +417,7 @@ class GAIL(AdversarialTrainer):
         expert_demos: types.Transitions,
         gen_policy: base_class.BaseRLModel,
         *,
-        discrim_kwargs: Optional[Mapping] = None,
+        discrim_net_kwargs: Optional[Mapping] = None,
         **kwargs,
     ):
         """Generative Adversarial Imitation Learning.
@@ -427,13 +427,13 @@ class GAIL(AdversarialTrainer):
         as follows:
 
         Args:
-            discrim_kwargs: Optional keyword arguments to use while constructing the
+            discrim_net_kwargs: Optional keyword arguments to use while constructing the
                 DiscrimNetGAIL.
 
         """
-        discrim_kwargs = discrim_kwargs or {}
+        discrim_net_kwargs = discrim_net_kwargs or {}
         discrim = discrim_net.DiscrimNetGAIL(
-            venv.observation_space, venv.action_space, **discrim_kwargs
+            venv.observation_space, venv.action_space, **discrim_net_kwargs
         )
         super().__init__(venv, gen_policy, discrim, expert_demos, **kwargs)
 
@@ -447,7 +447,7 @@ class AIRL(AdversarialTrainer):
         *,
         reward_net_cls: Type[reward_net.RewardNet] = reward_net.BasicShapedRewardNet,
         reward_net_kwargs: Optional[Mapping] = None,
-        discrim_kwargs: Optional[Mapping] = None,
+        discrim_net_kwargs: Optional[Mapping] = None,
         **kwargs,
     ):
         """Adversarial Inverse Reinforcement Learning.
@@ -461,7 +461,7 @@ class AIRL(AdversarialTrainer):
                 the AIRL discriminator.
             reward_net_kwargs: Optional keyword arguments to use while constructing
                 the reward network.
-            discrim_kwargs: Optional keyword arguments to use while constructing the
+            discrim_net_kwargs: Optional keyword arguments to use while constructing the
                 DiscrimNetAIRL.
         """
         # TODO(shwang): Maybe offer str=>Type[RewardNet] conversion like
@@ -475,6 +475,6 @@ class AIRL(AdversarialTrainer):
             **reward_net_kwargs,  # pytype: disable=not-instantiable
         )
 
-        discrim_kwargs = discrim_kwargs or {}
-        discrim = discrim_net.DiscrimNetAIRL(reward_network, **discrim_kwargs)
+        discrim_net_kwargs = discrim_net_kwargs or {}
+        discrim = discrim_net.DiscrimNetAIRL(reward_network, **discrim_net_kwargs)
         super().__init__(venv, gen_policy, discrim, expert_demos, **kwargs)

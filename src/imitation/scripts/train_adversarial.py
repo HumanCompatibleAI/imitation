@@ -155,9 +155,11 @@ def train(
         assert discrim_net_kwargs.keys() <= allowed_keys
         assert algorithm_kwargs.keys() <= allowed_keys
 
-        discrim_kwargs_shared = discrim_net_kwargs.get("shared", {})
-        discrim_kwargs_algo = discrim_net_kwargs.get(algorithm, {})
-        final_discrim_kwargs = dict(**discrim_kwargs_shared, **discrim_kwargs_algo)
+        discrim_net_kwargs_shared = discrim_net_kwargs.get("shared", {})
+        discrim_net_kwargs_algo = discrim_net_kwargs.get(algorithm, {})
+        final_discrim_net_kwargs = dict(
+            **discrim_net_kwargs_shared, **discrim_net_kwargs_algo
+        )
 
         algorithm_kwargs_shared = algorithm_kwargs.get("shared", {})
         algorithm_kwargs_algo = algorithm_kwargs.get(algorithm, {})
@@ -177,7 +179,7 @@ def train(
             expert_demos=expert_transitions,
             gen_policy=gen_policy,
             log_dir=log_dir,
-            discrim_kwargs=final_discrim_kwargs,
+            discrim_net_kwargs=final_discrim_net_kwargs,
             **final_algorithm_kwargs,
         )
 
