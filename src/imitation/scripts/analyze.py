@@ -166,10 +166,10 @@ def _get_sacred_dicts(
 
 
 def main_console():
-    observer = FileStorageObserver.create(osp.join("output", "sacred", "analyze"))
+    observer = FileStorageObserver(osp.join("output", "sacred", "analyze"))
     analysis_ex.observers.append(observer)
     analysis_ex.run_commandline()
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     main_console()

@@ -92,8 +92,6 @@ def paths(env_name, log_root, rollout_hint, data_dir):
         data_dir, "expert_models", f"{rollout_hint}_0", "rollouts", "final.pkl"
     )
 
-    assert os.path.exists(rollout_path), rollout_path
-
 
 # Training algorithm named configs
 

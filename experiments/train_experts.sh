@@ -61,6 +61,7 @@ echo "Writing logs in ${OUTPUT_DIR}"
 # Train experts.
 parallel -j 25% --header : --progress --results ${OUTPUT_DIR}/parallel/ \
   python -m imitation.scripts.expert_demos \
+  --capture=sys \
   with \
   {env} ${extra_configs} \
   seed={seed} \

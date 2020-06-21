@@ -6,13 +6,16 @@ experiment implicitly sets parallel=False.
 """
 
 import os.path as osp
+import sys
 import tempfile
 from collections import Counter
 from typing import List, Optional
+from unittest import mock
 
 import pandas as pd
 import pytest
 import ray.tune as tune
+import sacred
 
 from imitation.scripts import (
     analyze,
@@ -21,6 +24,28 @@ from imitation.scripts import (
     parallel,
     train_adversarial,
 )
+
+ALL_SCRIPTS_MODS = [analyze, eval_policy, expert_demos, parallel, train_adversarial]
+
+
+@pytest.fixture(autouse=True)
+def sacred_capture_use_sys():
+    """Set Sacred capture mode to "sys" because default "fd" option leads to error.
+
+    See https://github.com/IDSIA/sacred/issues/289."""
+    # TODO(shwang): Stop using non-default "sys" mode once the issue is fixed.
+    temp = sacred.SETTINGS["CAPTURE_MODE"]
+    sacred.SETTINGS.CAPTURE_MODE = "sys"
+    yield
+    sacred.SETTINGS.CAPTURE_MODE = temp
+
+
+@pytest.mark.parametrize("script_mod", ALL_SCRIPTS_MODS)
+def test_main_console(script_mod):
+    """Smoke tests of main entry point for some cheap coverage."""
+    argv = ["sacred-pytest-stub", "print_config"]
+    with mock.patch.object(sys, "argv", argv):
+        script_mod.main_console()
 
 
 def test_expert_demos_main(tmpdir):
@@ -158,7 +183,8 @@ PARALLEL_CONFIG_UPDATES = [
         search_space={
             "config_updates": {
                 "init_rl_kwargs": {"learning_rate": tune.grid_search([3e-4, 1e-4])},
-            }
+            },
+            "meta_info": {"asdf": "I exist for coverage purposes"},
         },
     ),
     dict(
