@@ -140,6 +140,9 @@ def cartpole():
 def mountain_car():
     env_name = "MountainCar-v0"
     rollout_hint = "mountain_car"
+    # Original paper used negative rewards, as this is a variable-length episode
+    # environment with only negative rewards.
+    discrim_net_kwargs = {"gail": {"positive_rewards": False}}
 
 
 @train_ex.named_config
