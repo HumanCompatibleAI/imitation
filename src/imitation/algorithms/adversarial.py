@@ -152,7 +152,7 @@ class AdversarialTrainer:
         else:
             self._expert_dataset = expert_data
 
-        expert_ds_size = self._expert_dataset.size()
+        expert_ds_size = self.expert_dataset.size()
         if expert_ds_size is not None and self.disc_batch_size // 2 > expert_ds_size:
             warnings.warn(
                 "The discriminator batch size is more than twice the number of "

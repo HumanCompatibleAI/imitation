@@ -21,6 +21,27 @@ def setup_and_teardown(session):
     yield
 
 
+@pytest.fixture(params=ALGORITHM_CLS)
+def _algorithm_cls(request):
+    """Auto-parametrizes `_algorithm_cls` for the `trainer` fixture."""
+    return request.param
+
+
+def test_train_disc_small_expert_data_warning(tmpdir, _algorithm_cls):
+    logger.configure(tmpdir, ["tensorboard", "stdout"])
+    venv = util.make_vec_env(
+        "CartPole-v1", n_envs=2, parallel=_parallel, log_dir=tmpdir,
+    )
+
+    gen_policy = util.init_rl(venv, verbose=1)
+    small_data = rollout.generate_transitions(gen_policy, venv, n_timesteps=20)
+
+    with pytest.warns(RuntimeWarning, match="discriminator batch size"):
+        _algorithm_cls(
+            venv=venv, expert_data=small_data, gen_policy=gen_policy, log_dir=tmpdir,
+        )
+
+
 @pytest.fixture(params=PARALLEL)
 def _parallel(request):
     """Auto-parametrizes `_parallel` for the `trainer` fixture.
@@ -28,12 +49,6 @@ def _parallel(request):
     This way we don't have to add a @pytest.mark.parametrize("_parallel", ... )
     decorator in front of every test. I couldn't find a better way to do this that
     didn't involve the aforementioned `parameterize` duplication."""
-    return request.param
-
-
-@pytest.fixture(params=ALGORITHM_CLS)
-def _algorithm_cls(request):
-    """Auto-parametrizes `_algorithm_cls` for the `trainer` fixture."""
     return request.param
 
 
@@ -64,14 +79,21 @@ def trainer(_algorithm_cls, _parallel: bool, tmpdir: str, _convert_dataset: bool
     )
 
 
-def test_train_disc_step_no_crash(tmpdir, trainer, n_timesteps=200):
+def test_train_disc_no_samples_error(trainer: adversarial.AdversarialTrainer):
+    with pytest.raises(RuntimeError, match="No generator samples"):
+        trainer.train_disc(100)
+    with pytest.raises(RuntimeError, match="No generator samples"):
+        trainer.train_disc_step()
+
+
+def test_train_disc_step_no_crash(trainer, n_timesteps=200):
     transitions = rollout.generate_transitions(
         trainer.gen_policy, trainer.venv, n_timesteps=n_timesteps
     )
     trainer.train_disc_step(gen_samples=transitions)
 
 
-def test_train_gen_train_disc_no_crash(tmpdir, trainer, n_updates=2):
+def test_train_gen_train_disc_no_crash(trainer, n_updates=2):
     trainer.train_gen(n_updates * trainer.gen_batch_size)
     trainer.train_disc()
 

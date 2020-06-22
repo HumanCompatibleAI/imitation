@@ -10,7 +10,7 @@ T = TypeVar("T")
 
 
 class Dataset(abc.ABC, Generic[T]):
-    def sample(self, n_samples: int) -> T:
+    def sample(self: "Dataset[T]", n_samples: int) -> T:
         """Return a batch of data.
 
         Args:
@@ -19,7 +19,7 @@ class Dataset(abc.ABC, Generic[T]):
             ValueError: If n_samples is nonpositive.
         """
 
-    def size(self) -> Optional[int]:
+    def size(self: "Dataset[T]") -> Optional[int]:
         """Returns the number of samples in this dataset, ie the epoch size.
 
         Returns None if not known or undefined.
