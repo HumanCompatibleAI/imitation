@@ -20,7 +20,10 @@ class Dataset(abc.ABC, Generic[T]):
         """
 
     def size(self) -> Optional[int]:
-        """Number of samples in this dataset, ie the epoch size."""
+        """Returns the number of samples in this dataset, ie the epoch size.
+
+        Returns None if not known or undefined.
+        """
         return None
 
 
@@ -44,13 +47,11 @@ class DictDataset(Dataset[Dict[str, np.ndarray]]):
         if len(data_map) == 0:
             raise ValueError("Empty data_map not allowed.")
         self.data_map = {k: v.copy() for k, v in data_map.items()}
-        n_samples_set = set(len(v) for v in data_map.values())
+        n_rows_set = set(len(v) for v in data_map.values())
 
-        if len(n_samples_set) != 1:
-            raise ValueError(
-                f"Unequal number of rows in data_map values: {n_samples_set}"
-            )
-        self._n_data = next(iter(n_samples_set))
+        if len(n_rows_set) != 1:
+            raise ValueError(f"Unequal number of rows in data_map values: {n_rows_set}")
+        self._n_data = next(iter(n_rows_set))
 
     def size(self):
         return self._n_data
@@ -58,7 +59,7 @@ class DictDataset(Dataset[Dict[str, np.ndarray]]):
 
 class EpochOrderDictDataset(DictDataset):
     def __init__(self, data_map: Mapping[str, np.ndarray], shuffle: bool = True):
-        """In-memory data sampler that samples in epoch-order.
+        """In-memory dict data sampler that samples in epoch-order.
 
         No sample from `data_map` can be returned an X+1th time by `sample()` until
         every other sample has been returned X times.
@@ -76,7 +77,7 @@ class EpochOrderDictDataset(DictDataset):
         if shuffle:
             self.shuffle_dataset()
 
-    def shuffle_dataset(self):
+    def shuffle_dataset(self) -> None:
         """Shuffles the data_map in place."""
         perm = np.arange(self.size())
         np.random.shuffle(perm)
@@ -131,22 +132,30 @@ class RandomDictDataset(EpochOrderDictDataset):
         return {k: v[inds] for k, v in self.data_map.items()}
 
 
-S = TypeVar("S", bound=type(types.Transitions))  # Must be subclass of Transitions
-
-
-class TransitionsDictDatasetAdaptor(Dataset[S]):
+class TransitionsDictDatasetAdaptor(Dataset[types.Transitions]):
     def __init__(
         self,
-        transitions: S,
-        simple_dataset_cls: Type[DictDataset] = RandomDictDataset,
-        simple_dataset_cls_kwargs: Optional[Mapping] = None,
+        transitions: types.Transitions,
+        dict_dataset_cls: Type[DictDataset] = RandomDictDataset,
+        dict_dataset_cls_kwargs: Optional[Mapping] = None,
     ):
-        data_map: Dict[str, np.ndarray] = dataclasses.asdict(transitions)
-        kwargs = simple_dataset_cls_kwargs or {}
-        self.transitions_cls: Type[S] = type(transitions)
-        self.simple_dataset = simple_dataset_cls(data_map, **kwargs)
+        """Adapts a `DictDataset` class to build `Transitions` `Dataset`.
 
-    def sample(self, n_samples) -> S:
+        Args:
+            transitions: An `Transitions` instance to be sampled from and stored
+                internally as a `dict` of copied arrays. Note that `sample` will return
+                the same type of `Transitions` as the type of this arg. In other words,
+                if `transitions` is an instance of `TransitionsWithRew`, then
+                `.sample()` also returns `TransitionsWithRew`.
+            dict_dataset_cls: `DictDataset` class to be adapted.
+            dict_dataset_kwargs: Optional kwargs for initializing `DictDataset` class.
+        """
+        data_map: Dict[str, np.ndarray] = dataclasses.asdict(transitions)
+        kwargs = dict_dataset_cls_kwargs or {}
+        self.transitions_cls: Type[types.Transitions] = type(transitions)
+        self.simple_dataset = dict_dataset_cls(data_map, **kwargs)
+
+    def sample(self, n_samples: int) -> types.Transitions:
         dict_samples = self.simple_dataset.sample(n_samples)
         result = self.transitions_cls(**dict_samples)
         assert len(result) == n_samples

@@ -36,7 +36,7 @@ class AdversarialTrainer:
         venv: vec_env.VecEnv,
         gen_policy: base_class.BaseRLModel,
         discrim: discrim_net.DiscrimNet,
-        expert_dataset: Union[types.Transitions, dataset.Dataset[types.Transitions]],
+        expert_data: Union[dataset.Dataset[types.Transitions], types.Transitions],
         *,
         log_dir: str = "output/",
         disc_batch_size: int = 2048,
@@ -56,7 +56,9 @@ class AdversarialTrainer:
               discriminator confusion. The generator batch size
               `self.gen_batch_size` is inferred from `gen_policy.n_batch`.
             discrim: The discriminator network.
-            expert_dataset: Transitions from an expert dataset.
+            expert_data: Either a `Dataset` of expert `Transitions`, or an instance of
+                `Transitions` to be automatically converted into a
+                `Dataset[Transitions]`.
             log_dir: Directory to store TensorBoard logs, plots, etc. in.
             disc_batch_size: The default number of expert and generator transitions
               samples to feed to the discriminator in each call to
@@ -142,12 +144,13 @@ class AdversarialTrainer:
             gen_replay_buffer_capacity, self.venv
         )
 
-        if isinstance(expert_dataset, types.Transitions):
+        if isinstance(expert_data, types.Transitions):
             # Somehow, pytype doesn't recognize that `expert_dataset` is Transitions.
-            expert_dataset = dataset.TransitionsDictDatasetAdaptor(
-                expert_dataset,  # pytype: disable=wrong-arg-types
+            self._expert_dataset = dataset.TransitionsDictDatasetAdaptor(
+                expert_data,  # pytype: disable=wrong-arg-types
             )
-        self._expert_dataset: dataset.Dataset[types.Transitions] = expert_dataset
+        else:
+            self._expert_dataset = expert_data
 
         expert_ds_size = self._expert_dataset.size()
         if expert_ds_size is not None and self.disc_batch_size // 2 > expert_ds_size:
@@ -201,7 +204,7 @@ class AdversarialTrainer:
             samples are from each source). By default, `self.disc_batch_size`.
             `n_samples` must be a positive multiple of `self.disc_minibatch_size`.
         """
-        if len(self._gen_replay_buffer) == 0:
+        if self._gen_replay_buffer.size() == 0:
             raise RuntimeError(
                 "No generator samples for training. " "Call `train_gen()` first."
             )
@@ -368,7 +371,7 @@ class AdversarialTrainer:
           expert_samples: Same as in `train_disc_step`.
         """
         if gen_samples is None:
-            if len(self._gen_replay_buffer) == 0:
+            if self._gen_replay_buffer.size() == 0:
                 raise RuntimeError(
                     "No generator samples for training. " "Call `train_gen()` first."
                 )
@@ -419,7 +422,7 @@ class GAIL(AdversarialTrainer):
     def __init__(
         self,
         venv: vec_env.VecEnv,
-        expert_dataset: Union[types.Transitions, dataset.Dataset[types.Transitions]],
+        expert_data: Union[types.Transitions, dataset.Dataset[types.Transitions]],
         gen_policy: base_class.BaseRLModel,
         *,
         discrim_kwargs: Optional[Mapping] = None,
@@ -440,14 +443,14 @@ class GAIL(AdversarialTrainer):
         discrim = discrim_net.DiscrimNetGAIL(
             venv.observation_space, venv.action_space, **discrim_kwargs
         )
-        super().__init__(venv, gen_policy, discrim, expert_dataset, **kwargs)
+        super().__init__(venv, gen_policy, discrim, expert_data, **kwargs)
 
 
 class AIRL(AdversarialTrainer):
     def __init__(
         self,
         venv: vec_env.VecEnv,
-        expert_dataset: Union[types.Transitions, dataset.Dataset[types.Transitions]],
+        expert_data: Union[types.Transitions, dataset.Dataset[types.Transitions]],
         gen_policy: base_class.BaseRLModel,
         *,
         reward_net_cls: Type[reward_net.RewardNet] = reward_net.BasicShapedRewardNet,
@@ -484,4 +487,4 @@ class AIRL(AdversarialTrainer):
 
         discrim_kwargs = discrim_kwargs or {}
         discrim = discrim_net.DiscrimNetAIRL(reward_network, **discrim_kwargs)
-        super().__init__(venv, gen_policy, discrim, expert_dataset, **kwargs)
+        super().__init__(venv, gen_policy, discrim, expert_data, **kwargs)

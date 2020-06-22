@@ -5,7 +5,7 @@ import os
 import pytest
 
 from imitation.algorithms import adversarial
-from imitation.data import rollout, types
+from imitation.data import dataset, rollout, types
 from imitation.util import logger, util
 
 ALGORITHM_CLS = [adversarial.AIRL, adversarial.GAIL]
@@ -37,11 +37,21 @@ def _algorithm_cls(request):
     return request.param
 
 
+@pytest.fixture(params=[True, False])
+def _convert_dataset(request):
+    """Auto-parametrizes `_convert_dataset` for the `trainer` fixture."""
+    return request.param
+
+
 @pytest.fixture
-def trainer(_algorithm_cls, _parallel: bool, tmpdir: str):
-    trajs = types.load("tests/data/expert_models/cartpole_0/rollouts/final.pkl")
-    expert_demos = rollout.flatten_trajectories(trajs)
+def trainer(_algorithm_cls, _parallel: bool, tmpdir: str, _convert_dataset: bool):
     logger.configure(tmpdir, ["tensorboard", "stdout"])
+    trajs = types.load("tests/data/expert_models/cartpole_0/rollouts/final.pkl")
+    if _convert_dataset:
+        trans = rollout.flatten_trajectories(trajs)
+        expert_data = dataset.TransitionsDictDatasetAdaptor(trans)
+    else:
+        expert_data = rollout.flatten_trajectories(trajs)
 
     venv = util.make_vec_env(
         "CartPole-v1", n_envs=2, parallel=_parallel, log_dir=tmpdir,
@@ -50,7 +60,7 @@ def trainer(_algorithm_cls, _parallel: bool, tmpdir: str):
     gen_policy = util.init_rl(venv, verbose=1)
 
     return _algorithm_cls(
-        venv=venv, expert_dataset=expert_demos, gen_policy=gen_policy, log_dir=tmpdir,
+        venv=venv, expert_data=expert_data, gen_policy=gen_policy, log_dir=tmpdir,
     )
 
 

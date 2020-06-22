@@ -61,58 +61,58 @@ class BCTrainer:
         env,
         *,
         policy_class: Type[ActorCriticPolicy] = FeedForward32Policy,
-        expert_dataset_or_trans: Union[
-            types.Transitions, dataset.DictDataset, None
-        ] = None,  # noqa: E501
+        expert_data: Union[types.Transitions, dataset.DictDataset, None] = None,
         batch_size: int = 32,
         optimiser_cls: Type[tf.train.Optimizer] = tf.train.AdamOptimizer,
         optimiser_kwargs: Optional[dict] = None,
         name_scope: Optional[str] = None,
         reuse: bool = False,
     ):
-        """Simple behavioural cloning (BC).
+        """Behavioral cloning (BC).
 
-        Recovers only a policy.
+        Recovers a policy via supervised learning on a Dataset of observation-action
+        pairs.
 
         Args:
-          env: environment to train on.
-          expert_dataset_or_trans:
-          policy_class: used to instantiate imitation policy.
-          batch_size: batch size used for training.
-          optimiser_cls: optimiser to use for supervised training.
-          optimiser_kwargs: keyword arguments to pass to optimiser when constructing
-              it.
+            env: environment to train on.
+            policy_class: used to instantiate imitation policy.
+            expert_data: If not None, then immediately call
+                  `self.set_expert_dataset(expert_data)` during initialization.
+            batch_size: batch size used for training.
+            optimiser_cls: optimiser to use for supervised training.
+            optimiser_kwargs: keyword arguments for optimiser construction.
         """
         self.env = env
         self.policy_class = policy_class
         assert batch_size >= 1
         self.batch_size = batch_size
         self.expert_dataset: Optional[dataset.DictDataset] = None
-        if expert_dataset_or_trans is not None:
-            self.set_expert_dataset(expert_dataset_or_trans)
         self.sess = tf.get_default_session()
         assert self.sess is not None, "need to construct this within a session scope"
         self._build_tf_graph()
         self.sess.run(tf.global_variables_initializer())
+        if expert_data is not None:
+            self.set_expert_dataset(expert_data)
 
     def set_expert_dataset(
-        self, expert_dataset_or_trans: Union[types.Transitions, dataset.DictDataset],
+        self, expert_data: Union[types.Transitions, dataset.DictDataset],
     ):
         """Replace the current expert dataset with a new one.
 
         Useful for DAgger and other interactive algorithms.
 
         Args:
-             expert_dataset: Either a `DictDataset` whose keys include "obs" and "act"
-                 and for which `.size()` is not None, or a
+             expert_data: Either a `DictDataset` whose keys include "obs" and "act"
+                 and for which `.size()` is not None, or a instance `Transitions`, which
+                 is automatically converted to a shuffled `EpochOrderDictDataset`.
         """
-        if isinstance(expert_dataset_or_trans, types.Transitions):
-            trans = expert_dataset_or_trans
+        if isinstance(expert_data, types.Transitions):
+            trans = expert_data
             expert_dataset = dataset.EpochOrderDictDataset(
                 {"obs": trans.obs, "act": trans.acts}, shuffle=True,
             )
         else:
-            expert_dataset = expert_dataset_or_trans
+            expert_dataset = expert_data
         assert expert_dataset.size() is not None
         self.expert_dataset = expert_dataset
 

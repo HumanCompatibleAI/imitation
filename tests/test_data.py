@@ -1,18 +1,6 @@
 """Tests of `imitation.data.{dataset,types}`."""
 
 
-# Tests:
-# 2a. All DictDataset classes don't accept empty data_map or unequal datamap. OK
-# 2aa. All DictDataset classes raise ValueError on zero samples.
-# 2b. All DictDataset classes maintain parallel row property.  OK
-# 2c. All DictDataset classes return the same type back.  OK
-# 2d. All DictDataset classes copy params.  OK
-# 2e  All DictDataset sample smoke test, with correct return lens.  OK
-# 3a. Check EpochOrderDictDataset sampling preserve order iff not shuffling.  OK
-# 3b. Check EpochOrderDictDataset sampling yields each sample with epoch order
-#     property. OK
-# 4. Check that TransitionsDictDatasetAdaptor correct return shapes and dtypes.  OK
-
 import collections
 import copy
 import dataclasses
@@ -256,6 +244,7 @@ def test_dict_dataset_copy_data_map(dict_dataset: dataset.DictDataset, data_map)
 
 
 def test_dict_dataset_dtypes(dict_dataset, data_map, max_batch_size=80, n_checks=20):
+    """Check that DictDataset preserves array dtype."""
     for _ in range(n_checks):
         n_samples = np.random.randint(max_batch_size) + 1
         sample = dict_dataset.sample(n_samples)
@@ -265,11 +254,13 @@ def test_dict_dataset_dtypes(dict_dataset, data_map, max_batch_size=80, n_checks
 
 @pytest.mark.parametrize("n_samples", [-i for i in range(4)])
 def test_dict_dataset_nonpositive_samples_error(dict_dataset, n_samples):
+    """Check that DictDataset errors on n_samples<=0"""
     with pytest.raises(ValueError, match="n_samples"):
         dict_dataset.sample(n_samples)
 
 
 def test_dict_dataset_data_map_error(dict_dataset_params):
+    """Check that DictDataset errors on unequal number of data_map rows."""
     dataset_cls, kwargs = dict_dataset_params
     with pytest.raises(ValueError, match="Empty.*"):
         dataset_cls({}, **kwargs)
@@ -353,15 +344,14 @@ class TestEpochOrderDictDataset:
                 if len(counts) == 1:
                     # Only happens if on epoch boundary.
                     assert n_samples_total % arange_dataset.size() == 0
-                    continue
                 else:
                     assert len(counts) == 2
                     assert min(counts) == max(counts) - 1
 
 
 class TestTransitionsDictDatasetAdaptor(TestData):
-    # Subclassing TestData gives access to parametrized transitions fixture because
-    # this class shares `pytest.mark.parametrized` with superclass.
+    # Subclassing TestData gives access to parametrized `transitions.*` fixtures
+    # because this class shares `pytest.mark.parametrized` with superclass.
 
     @pytest.fixture
     def trans_ds(self, transitions, dict_dataset_params):
@@ -378,6 +368,7 @@ class TestTransitionsDictDatasetAdaptor(TestData):
         )
 
     def test_size(self, trans_ds, transitions, trans_ds_rew, transitions_rew):
+        """Check for correct the correct size()."""
         assert len(transitions) == len(transitions_rew)  # Sanity check...
         assert trans_ds.size() == trans_ds_rew.size() == len(transitions)
 
@@ -390,6 +381,7 @@ class TestTransitionsDictDatasetAdaptor(TestData):
         max_batch_size=50,
         n_checks=30,
     ):
+        """Check for correct sample shapes and dtypes."""
         for ds, trans in [(trans_ds, transitions), (trans_ds_rew, transitions_rew)]:
             trans_dict = dataclasses.asdict(trans)
             for _ in range(n_checks):
