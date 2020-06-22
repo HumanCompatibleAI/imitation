@@ -284,7 +284,7 @@ def test_dict_dataset_parallel_rows(
     """
     dataset_cls, kwargs = dict_dataset_params
     range_data_map = {k: np.arange(50,) for k in "abcd"}
-    dict_dataset: dataset.DictDataset = dataset_cls(range_data_map, **kwargs)
+    dict_dataset = dataset_cls(range_data_map, **kwargs)
     for _ in range(n_checks):
         n_samples = np.random.randint(max_batch_size) + 1
         sample = dict_dataset.sample(n_samples)
