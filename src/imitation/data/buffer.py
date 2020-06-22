@@ -24,7 +24,7 @@ class Buffer(dataset.Dataset[Dict[str, np.ndarray]]):
 
     _n_data: int
     """The number of samples currently stored in this buffer.
-    
+
     An integer in `range(0, self.capacity + 1)`. This attribute is the return
     value of `self.__len__`.
     """

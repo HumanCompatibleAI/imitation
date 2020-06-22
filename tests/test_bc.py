@@ -17,7 +17,7 @@ def make_trainer():
     env = util.make_vec_env(env_name, 2)
     rollouts = types.load(ROLLOUT_PATH)
     rollouts = rollout.flatten_trajectories(rollouts)
-    return bc.BCTrainer(env, expert_demos=rollouts)
+    return bc.BCTrainer(env, expert_dataset_or_trans=rollouts)
 
 
 def test_bc(session):

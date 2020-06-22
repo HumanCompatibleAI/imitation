@@ -144,7 +144,10 @@ class AdversarialTrainer:
         )
 
         if isinstance(expert_dataset, types.Transitions):
-            expert_dataset = dataset.SimpleTransitionsDataset(expert_dataset)
+            # Somehow, pytype doesn't recognize that `expert_dataset` is Transitions.
+            expert_dataset = dataset.TransitionsDictDatasetAdaptor(
+                expert_dataset,  # pytype: disable=wrong-arg-types
+            )
         self._expert_dataset: dataset.Dataset[types.Transitions] = expert_dataset
         if self.disc_batch_size // 2 > len(self._expert_dataset):
             warn(

@@ -233,7 +233,7 @@ class DAggerTrainer:
 
     def _build_graph(self):
         with tf.variable_scope("dagger"):
-            self.bc_trainer = BCTrainer(self.env, expert_demos=None, **self.bc_kwargs)
+            self.bc_trainer = BCTrainer(self.env, **self.bc_kwargs)
             with self._graph.as_default():
                 self._vars = tf.get_collection(
                     tf.GraphKeys.GLOBAL_VARIABLES, scope=tf.get_variable_scope().name

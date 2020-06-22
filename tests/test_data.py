@@ -1,15 +1,29 @@
-"""Tests of imitation.util.data.
+"""Tests of `imitation.data.{dataset,types}`."""
 
-Mostly checks input validation."""
 
+# Tests:
+# 2a. All DictDataset classes don't accept empty data_map or unequal datamap. OK
+# 2aa. All DictDataset classes raise ValueError on zero samples.
+# 2b. All DictDataset classes maintain parallel row property.  OK
+# 2c. All DictDataset classes return the same type back.  OK
+# 2d. All DictDataset classes copy params.  OK
+# 2e  All DictDataset sample smoke test, with correct return lens.  OK
+# 3a. Check EpochOrderDictDataset sampling preserve order iff not shuffling.  OK
+# 3b. Check EpochOrderDictDataset sampling yields each sample with epoch order
+#     property. OK
+# 4. Check that TransitionsDictDatasetAdaptor correct return shapes and dtypes.  OK
+
+import collections
+import copy
 import dataclasses
 from typing import Any, Callable
 
 import gym
 import numpy as np
+import numpy.testing as npt
 import pytest
 
-from imitation.data import types
+from imitation.data import dataset, types
 
 SPACES = [
     gym.spaces.Discrete(3),
@@ -196,3 +210,194 @@ def test_zero_length_fails():
         types.Transitions(
             obs=empty, acts=empty, next_obs=empty, dones=empty.astype(np.bool),
         )
+
+
+DICT_DATASET_PARAMS = [
+    (dataset.EpochOrderDictDataset, {"shuffle": False}),
+    (dataset.EpochOrderDictDataset, {"shuffle": True}),
+    (dataset.RandomDictDataset, {}),
+]
+
+DATA_MAP = [
+    {"a": np.zeros([10, 2], dtype=int), "b": np.random.standard_normal([10])},
+    {"asdf": np.zeros([100, 2, 4])},
+    {"asdf": np.zeros([97, 2, 4]), "foo": np.ones([97, 1], dtype=bool)},
+]
+
+
+@pytest.fixture(params=DICT_DATASET_PARAMS)
+def dict_dataset_params(request):
+    return request.param
+
+
+@pytest.fixture(params=DATA_MAP)
+def data_map(request):
+    return copy.deepcopy(request.param)
+
+
+@pytest.fixture
+def dict_dataset(dict_dataset_params, data_map):
+    dataset_cls, kwargs = dict_dataset_params
+    return dataset_cls(data_map, **kwargs)
+
+
+def test_dict_dataset_copy_data_map(dict_dataset: dataset.DictDataset, data_map):
+    """Check that `dict_dataset.data_map` is unchanged by writes to `data_map` param.
+
+    Note that the `data_map` fixture supplies the same instance `data_map` that was used
+    to initialize the `dict_dataset` fixture.
+    """
+    backup_map = copy.deepcopy(dict_dataset.data_map)
+    npt.assert_equal(backup_map, dict_dataset.data_map)
+    for v in data_map.values():
+        # Multiply array in-place by 2.
+        np.multiply(v, v.dtype.type(2), out=v)
+    npt.assert_equal(backup_map, dict_dataset.data_map)
+
+
+def test_dict_dataset_dtypes(dict_dataset, data_map, max_batch_size=80, n_checks=20):
+    for _ in range(n_checks):
+        n_samples = np.random.randint(max_batch_size) + 1
+        sample = dict_dataset.sample(n_samples)
+        for k in data_map.keys():
+            assert data_map[k].dtype == sample[k].dtype
+
+
+@pytest.mark.parametrize("n_samples", [-i for i in range(4)])
+def test_dict_dataset_nonpositive_samples_error(dict_dataset, n_samples):
+    with pytest.raises(ValueError, match="n_samples"):
+        dict_dataset.sample(n_samples)
+
+
+def test_dict_dataset_data_map_error(dict_dataset_params):
+    dataset_cls, kwargs = dict_dataset_params
+    with pytest.raises(ValueError, match="Empty.*"):
+        dataset_cls({}, **kwargs)
+
+    unequal_data_map = {
+        "a": np.zeros([10]),
+        "b": np.zeros([10, 1]),
+        "c": np.zeros([10, 2]),
+        "d": np.zeros([2, 10]),
+    }
+    with pytest.raises(ValueError, match="Unequal.*"):
+        dataset_cls(unequal_data_map, **kwargs)
+
+
+def test_dict_dataset_parallel_rows(
+    dict_dataset_params, max_batch_size=80, n_checks=20
+):
+    """Check that 'parallel rows' among different key-value pairs remain parallel.
+
+    Nontrivially, shuffled datasets should maintain this order.
+    """
+    dataset_cls, kwargs = dict_dataset_params
+    range_data_map = {k: np.arange(50,) for k in "abcd"}
+    dict_dataset: dataset.DictDataset = dataset_cls(range_data_map, **kwargs)
+    for _ in range(n_checks):
+        n_samples = np.random.randint(max_batch_size) + 1
+        sample = dict_dataset.sample(n_samples)
+        for v in sample.values():
+            np.testing.assert_array_equal(sample["a"], v)
+
+
+def test_dict_dataset_correct_sample_len(dict_dataset, max_batch_size=80):
+    """Check that DictDataset returns samples of the right length."""
+    batch_sizes = np.arange(max_batch_size) + 1
+    np.random.shuffle(batch_sizes)
+    for n_samples in batch_sizes:
+        sample = dict_dataset.sample(n_samples)
+        for v in sample.values():
+            assert len(v) == n_samples
+
+
+@pytest.mark.parametrize("shuffle", [False, True])
+@pytest.mark.parametrize("dataset_size", [1, 30, 100, 200])
+class TestEpochOrderDictDataset:
+    @pytest.fixture
+    def arange_dataset(self, shuffle, dataset_size):
+        data_map = {"a": np.arange(dataset_size)}
+        ds = dataset.EpochOrderDictDataset(data_map, shuffle=shuffle)
+        return ds
+
+    def test_epoch_order_dict_dataset_shuffle_order(
+        self, arange_dataset, shuffle, dataset_size, n_checks=3,
+    ):
+        """Check that epoch order is deterministic iff not shuffled.
+
+        The check has `factorial(dataset_size)` chance of false negative when shuffle
+        is True, so we skip on smaller dataset_sizes.
+        """
+        if dataset_size < 100 and shuffle:
+            pytest.skip("False negative chance too high.")
+        for _ in range(n_checks):
+            first = arange_dataset.sample(dataset_size)
+            second = arange_dataset.sample(dataset_size)
+            assert len(first.keys()) == len(second.keys())
+            same_order = np.all(np.equal(first[k], second[k]) for k in first.keys())
+            assert same_order != shuffle
+
+    def test_epoch_order_dict_dataset_order_property(
+        self, arange_dataset, max_batch_size=31, n_epochs=4,
+    ):
+        """No sample should be returned n+1 times until others are returned n times."""
+        counter = collections.Counter({i: 0 for i in range(arange_dataset.size())})
+        n_samples_total = 0
+        for epoch_num in range(n_epochs):
+            while n_samples_total < (epoch_num + 1) * arange_dataset.size():
+                n_samples = np.random.randint(max_batch_size) + 1
+                sample = arange_dataset.sample(n_samples)
+                n_samples_total += n_samples
+                counter.update(list(sample["a"]))
+                counts = set(counter.values())
+                if len(counts) == 1:
+                    # Only happens if on epoch boundary.
+                    assert n_samples_total % arange_dataset.size() == 0
+                    continue
+                else:
+                    assert len(counts) == 2
+                    assert min(counts) == max(counts) - 1
+
+
+class TestTransitionsDictDatasetAdaptor(TestData):
+    # Subclassing TestData gives access to parametrized transitions fixture because
+    # this class shares `pytest.mark.parametrized` with superclass.
+
+    @pytest.fixture
+    def trans_ds(self, transitions, dict_dataset_params):
+        dict_dataset_cls, dict_dataset_kwargs = dict_dataset_params
+        return dataset.TransitionsDictDatasetAdaptor(
+            transitions, dict_dataset_cls, dict_dataset_kwargs
+        )
+
+    @pytest.fixture
+    def trans_ds_rew(self, transitions_rew, dict_dataset_params):
+        dict_dataset_cls, dict_dataset_kwargs = dict_dataset_params
+        return dataset.TransitionsDictDatasetAdaptor(
+            transitions_rew, dict_dataset_cls, dict_dataset_kwargs
+        )
+
+    def test_size(self, trans_ds, transitions, trans_ds_rew, transitions_rew):
+        assert len(transitions) == len(transitions_rew)  # Sanity check...
+        assert trans_ds.size() == trans_ds_rew.size() == len(transitions)
+
+    def test_sample_sizes_and_types(
+        self,
+        trans_ds,
+        transitions,
+        trans_ds_rew,
+        transitions_rew,
+        max_batch_size=50,
+        n_checks=30,
+    ):
+        for ds, trans in [(trans_ds, transitions), (trans_ds_rew, transitions_rew)]:
+            trans_dict = dataclasses.asdict(trans)
+            for _ in range(n_checks):
+                n_samples = np.random.randint(max_batch_size) + 1
+                sample = ds.sample(n_samples)
+                assert isinstance(sample, type(trans))
+                for k, v in dataclasses.asdict(sample).items():
+                    trans_v: np.ndarray = trans_dict[k]
+                    assert v.dtype == trans_v.dtype
+                    assert v.shape[1:] == trans_v.shape[1:]
+                    assert v.shape[0] == n_samples
