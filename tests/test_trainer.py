@@ -50,7 +50,7 @@ def trainer(_algorithm_cls, _parallel: bool, tmpdir: str):
     gen_policy = util.init_rl(venv, verbose=1)
 
     return _algorithm_cls(
-        venv=venv, expert_demos=expert_demos, gen_policy=gen_policy, log_dir=tmpdir,
+        venv=venv, expert_dataset=expert_demos, gen_policy=gen_policy, log_dir=tmpdir,
     )
 
 

@@ -1,7 +1,7 @@
 import os
+import warnings
 from functools import partial
 from typing import Callable, Mapping, Optional, Type, Union
-import warnings
 
 import numpy as np
 import tensorflow as tf
