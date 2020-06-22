@@ -1,11 +1,11 @@
-"""Train GAIL or AIRL and plot its output.
+"""Train GAIL or AIRL.
 
 Can be used as a CLI script, or the `train_and_plot` function can be called directly.
 """
 
 import os
 import os.path as osp
-from typing import Mapping, Optional, Type
+from typing import Mapping, Optional
 
 import tensorflow as tf
 from sacred.observers import FileStorageObserver
@@ -13,7 +13,6 @@ from sacred.observers import FileStorageObserver
 from imitation.algorithms import adversarial
 from imitation.data import rollout, types
 from imitation.policies import serialize
-from imitation.rewards import reward_net
 from imitation.scripts.config.train_adversarial import train_ex
 from imitation.util import logger, networks
 from imitation.util import sacred as sacred_util
@@ -50,13 +49,9 @@ def train(
     n_episodes_eval: int,
     init_tensorboard: bool,
     checkpoint_interval: int,
-    gail_discrim_net_scale: bool,
-    airl_entropy_weight: float,
-    airl_reward_net_cls: Type[reward_net.RewardNet],
-    airl_reward_net_kwargs: Mapping,
     init_rl_kwargs: Mapping,
-    algorithm_kwargs: Mapping,
-    discrim_kwargs: Mapping,
+    algorithm_kwargs: Mapping[str, Mapping],
+    discrim_net_kwargs: Mapping[str, Mapping],
 ) -> dict:
     """Train an adversarial-network-based imitation learning algorithm.
 
@@ -95,26 +90,23 @@ def train(
             `checkpoint_interval` epochs and after training is complete. If 0,
             then only save weights after training is complete. If <0, then don't
             save weights at all.
-        gail_discrim_net_scale: If True, then normalize observation inputs coming into
-            the `DiscrimNetGAIL` using the bounds of the environment's observation
-            space. Argument is ignored when training AIRL.
-        airl_entropy_weight: The entropy weight for AIRL training reward. Argument is
-            ignored when training GAIL.
-        airl_reward_net_cls: The `RewardNet` class to instantiate when initializing the
-            `DiscrimNetAIRL`. Argument is ignored when training GAIL.
-        airl_reward_net_kwargs: Keyword arguments to pass into the
-            `RewardNet` constructor. Passing in `action_space` and `observation_space`
-            results in error because they are automatically inferred from `venv`.
         init_rl_kwargs: Keyword arguments for `init_rl`, the RL algorithm initialization
             utility function.
-        algorithm_kwargs: Keyword arguments for the `GAIL` or `AIRL` constructor that
-            can apply to either constructor, likely keyword arguments inherited from
-            the superclass constructor, `Adversarial.__init__`. Adding a keyword
-            argument that is specific to either algorithm results in an error
-            from duplicate keyword arguments because algorithm-specific keyword
-            arguments are already set by the `gail_*` and `airl_*` parameters
-            to this function.
-        discrim_kwargs: Keyword arguments for the `DiscrimNet` constructor.
+        algorithm_kwargs: Keyword arguments for the `GAIL` or `AIRL` constructor
+            that can apply to either constructor. Unlike a regular kwargs argument, this
+            argument can only have the following keys: "shared", "airl", and "gail".
+
+            `algorithm_kwargs["airl"]`, if it is provided, is a kwargs `Mapping` passed
+            to the `AIRL` constructor when `algorithm == "airl"`. Likewise
+            `algorithm_kwargs["gail"]` is passed to the `GAIL` constructor when
+            `algorithm == "gail"`. `algorithm_kwargs["shared"]`, if provided, is passed
+            to both the `AIRL` and `GAIL` constructors. Duplicate keyword argument keys
+            between `algorithm_kwargs["shared"]` and `algorithm_kwargs["airl"]` (or
+            "gail") leads to an error.
+        discrim_net_kwargs: Keyword arguments for the `DiscrimNet` constructor. Unlike a
+            regular kwargs argument, this argument can only have the following keys:
+            "shared", "airl", "gail". These keys have the same meaning as they do in
+            `algorithm_kwargs`.
 
     Returns:
         A dictionary with two keys. "imit_stats" gives the return value of
@@ -159,30 +151,34 @@ def train(
         )
 
         # Convert Sacred's ReadOnlyDict to dict so we can modify it.
-        discrim_kwargs = dict(discrim_kwargs)
-        auto_algorithm_kwargs = {}
+        allowed_keys = {"shared", "gail", "airl"}
+        assert discrim_net_kwargs.keys() <= allowed_keys
+        assert algorithm_kwargs.keys() <= allowed_keys
+
+        discrim_kwargs_shared = discrim_net_kwargs.get("shared", {})
+        discrim_kwargs_algo = discrim_net_kwargs.get(algorithm, {})
+        final_discrim_kwargs = dict(**discrim_kwargs_shared, **discrim_kwargs_algo)
+
+        algorithm_kwargs_shared = algorithm_kwargs.get("shared", {})
+        algorithm_kwargs_algo = algorithm_kwargs.get(algorithm, {})
+        final_algorithm_kwargs = dict(
+            **algorithm_kwargs_shared, **algorithm_kwargs_algo,
+        )
+
         if algorithm.lower() == "gail":
             algo_cls = adversarial.GAIL
-            discrim_kwargs["scale"] = gail_discrim_net_scale
         elif algorithm.lower() == "airl":
             algo_cls = adversarial.AIRL
-            assert "entropy_weight" not in discrim_kwargs
-            discrim_kwargs["entropy_weight"] = airl_entropy_weight
-
-            auto_algorithm_kwargs["reward_net_cls"] = airl_reward_net_cls
-            auto_algorithm_kwargs["reward_net_kwargs"] = airl_reward_net_kwargs
         else:
             raise ValueError(f"Invalid value algorithm={algorithm}.")
 
         trainer = algo_cls(
             venv=venv,
-            expert_demos=expert_transitions,
+            expert_dataset=expert_transitions,
             gen_policy=gen_policy,
             log_dir=log_dir,
-            discrim_kwargs=discrim_kwargs,
-            # pytype is confused by the branching `if algorithm ==`.
-            **auto_algorithm_kwargs,  # pytype: disable=wrong-keyword-args
-            **algorithm_kwargs,
+            discrim_kwargs=final_discrim_kwargs,
+            **final_algorithm_kwargs,
         )
 
         def callback(epoch):
@@ -207,10 +203,10 @@ def train(
 
 
 def main_console():
-    observer = FileStorageObserver.create(osp.join("output", "sacred", "train"))
+    observer = FileStorageObserver(osp.join("output", "sacred", "train"))
     train_ex.observers.append(observer)
     train_ex.run_commandline()
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     main_console()

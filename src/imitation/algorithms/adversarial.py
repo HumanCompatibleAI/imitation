@@ -1,13 +1,12 @@
 import os
 from functools import partial
 from typing import Callable, Mapping, Optional, Type, Union
-from warnings import warn
+import warnings
 
 import numpy as np
 import tensorflow as tf
 import tqdm
-from stable_baselines.common import base_class
-from stable_baselines.common.vec_env import VecEnv, VecNormalize
+from stable_baselines.common import base_class, vec_env
 
 from imitation.data import buffer, dataset, types, wrappers
 from imitation.rewards import discrim_net, reward_net
@@ -15,18 +14,18 @@ from imitation.util import logger, reward_wrapper
 
 
 class AdversarialTrainer:
-    """Trainer for GAIL and AIRL."""
+    """Base class for adversarial imitation learning algorithms like GAIL and AIRL."""
 
-    venv: VecEnv
+    venv: vec_env.VecEnv
     """The original vectorized environment."""
 
-    venv_train: VecEnv
+    venv_train: vec_env.VecEnv
     """Like `self.venv`, but wrapped with train reward unless in debug mode.
 
     If `debug_use_ground_truth=True` was passed into the initializer then
     `self.venv_train` is the same as `self.venv`."""
 
-    venv_test: VecEnv
+    venv_test: vec_env.VecEnv
     """Like `self.venv`, but wrapped with test reward unless in debug mode.
 
     If `debug_use_ground_truth=True` was passed into the initializer then
@@ -34,7 +33,7 @@ class AdversarialTrainer:
 
     def __init__(
         self,
-        venv: VecEnv,
+        venv: vec_env.VecEnv,
         gen_policy: base_class.BaseRLModel,
         discrim: discrim_net.DiscrimNet,
         expert_dataset: Union[types.Transitions, dataset.Dataset[types.Transitions]],
@@ -49,7 +48,7 @@ class AdversarialTrainer:
         init_tensorboard_graph: bool = False,
         debug_use_ground_truth: bool = False,
     ):
-        """Builds Trainer.
+        """Builds AdversarialTrainer.
 
         Args:
             venv: The vectorized environment to train in.
@@ -57,7 +56,7 @@ class AdversarialTrainer:
               discriminator confusion. The generator batch size
               `self.gen_batch_size` is inferred from `gen_policy.n_batch`.
             discrim: The discriminator network.
-            expert_demos: Transitions from an expert dataset.
+            expert_dataset: Transitions from an expert dataset.
             log_dir: Directory to store TensorBoard logs, plots, etc. in.
             disc_batch_size: The default number of expert and generator transitions
               samples to feed to the discriminator in each call to
@@ -134,7 +133,7 @@ class AdversarialTrainer:
             )
 
         self.venv_train_buffering = wrappers.BufferingWrapper(self.venv_train)
-        self.venv_train_norm = VecNormalize(self.venv_train_buffering)
+        self.venv_train_norm = vec_env.VecNormalize(self.venv_train_buffering)
         self.gen_policy.set_env(self.venv_train_norm)
 
         if gen_replay_buffer_capacity is None:
@@ -149,11 +148,14 @@ class AdversarialTrainer:
                 expert_dataset,  # pytype: disable=wrong-arg-types
             )
         self._expert_dataset: dataset.Dataset[types.Transitions] = expert_dataset
-        if self.disc_batch_size // 2 > len(self._expert_dataset):
-            warn(
+
+        expert_ds_size = self._expert_dataset.size()
+        if expert_ds_size is not None and self.disc_batch_size // 2 > expert_ds_size:
+            warnings.warn(
                 "The discriminator batch size is more than twice the number of "
                 "expert samples. This means that we will be reusing expert samples "
-                "every discrim batch."
+                "every discrim batch.",
+                category=RuntimeWarning,
             )
 
     @property
@@ -416,7 +418,7 @@ class AdversarialTrainer:
 class GAIL(AdversarialTrainer):
     def __init__(
         self,
-        venv: VecEnv,
+        venv: vec_env.VecEnv,
         expert_dataset: Union[types.Transitions, dataset.Dataset[types.Transitions]],
         gen_policy: base_class.BaseRLModel,
         *,
@@ -444,7 +446,7 @@ class GAIL(AdversarialTrainer):
 class AIRL(AdversarialTrainer):
     def __init__(
         self,
-        venv: VecEnv,
+        venv: vec_env.VecEnv,
         expert_dataset: Union[types.Transitions, dataset.Dataset[types.Transitions]],
         gen_policy: base_class.BaseRLModel,
         *,
@@ -473,6 +475,8 @@ class AIRL(AdversarialTrainer):
         reward_network = reward_net_cls(
             action_space=venv.action_space,
             observation_space=venv.observation_space,
+            # pytype is afraid that we'll directly call RewardNet() which is an abstract
+            # class, hence the disable.
             **reward_net_kwargs,  # pytype: disable=not-instantiable
         )
         # pytype is afraid that we'll directly call RewardNet() which is an abstract

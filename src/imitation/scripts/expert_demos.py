@@ -121,6 +121,8 @@ def rollouts_and_policy(
 
         if init_tensorboard:
             sb_tensorboard_dir = osp.join(log_dir, "sb_tb")
+            # Convert sacred's ReadOnlyDict to dict so we can modify on next line.
+            init_rl_kwargs = dict(init_rl_kwargs)
             init_rl_kwargs["tensorboard_log"] = sb_tensorboard_dir
 
         venv = util.make_vec_env(
@@ -232,10 +234,10 @@ def rollouts_from_policy(
 
 
 def main_console():
-    observer = FileStorageObserver.create(osp.join("output", "sacred", "expert_demos"))
+    observer = FileStorageObserver(osp.join("output", "sacred", "expert_demos"))
     expert_demos_ex.observers.append(observer)
     expert_demos_ex.run_commandline()
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     main_console()

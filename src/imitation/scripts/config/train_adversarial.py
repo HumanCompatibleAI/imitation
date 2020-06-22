@@ -6,7 +6,6 @@ import sacred
 from stable_baselines.common import policies
 
 from imitation.policies import base
-from imitation.rewards import reward_net
 from imitation.scripts.config.common import DEFAULT_INIT_RL_KWARGS
 from imitation.util import util
 
@@ -36,22 +35,24 @@ def train_defaults():
     parallel = True
     max_episode_steps = None  # Set to positive int to limit episode horizons
 
-    # AIRL-specific options
-    airl_reward_net_cls = reward_net.BasicShapedRewardNet  # AIRL reward net class
-    airl_reward_net_kwargs = dict()  # AIRL reward net class init kwargs
-    airl_entropy_weight = 1.0  # Entropy weight in AIRL training reward
-
-    # GAIL-specific options
-    gail_discrim_net_scale = True  # Whether to scale observation inputs to discrim net
-
-    # Shared kwargs between GAIL and AIRL
-    algorithm_kwargs = dict()  # Other kwargs to GAIL/AIRL/Adversarial constructor
-    discrim_kwargs = dict()  # Kwargs for initializing {GAIL,AIRL}DiscrimNet
-
-    # Modifies the __init__ arguments for the imitation policy.
-    init_rl_kwargs = dict(
-        policy_class=base.FeedForward32Policy, **DEFAULT_INIT_RL_KWARGS
+    # Kwargs for initializing GAIL and AIRL
+    algorithm_kwargs = dict(
+        shared=dict(
+            disc_batch_size=2048,  # Batch size for discriminator updates
+            disc_minibatch_size=512,  # Num discriminator updates per batch
+        ),
+        airl={},
+        gail={},
     )
+
+    # Kwargs for initializing {GAIL,AIRL}DiscrimNet
+    discrim_net_kwargs = dict(shared={}, airl={}, gail={})
+
+    # Modifies the __init__ arguments for the imitation policy
+    init_rl_kwargs = dict(
+        policy_class=base.FeedForward32Policy, **DEFAULT_INIT_RL_KWARGS,
+    )
+    gen_batch_size = 2048  # Batch size for generator updates
 
     log_root = os.path.join("output", "train_adversarial")  # output directory
     checkpoint_interval = 0  # Num epochs between checkpoints (<0 disables)
@@ -59,35 +60,20 @@ def train_defaults():
     rollout_hint = None  # Used to generate default rollout_path
     data_dir = "data/"  # Default data directory
 
-    disc_batch_size = 2048  # Batch size for discriminator updates
-    disc_minibatch_size = 512  # Num discriminator updates per batch
-    gen_batch_size = 2048  # Batch size for generator updates
-
 
 @train_ex.config
-def aliases_default_gen_batch_size(gen_batch_size):
+def aliases_default_gen_batch_size(algorithm_kwargs, gen_batch_size):
     # Setting generator buffer capacity and discriminator batch size to
     # the same number is equivalent to not using a replay buffer at all.
     # "Disabling" the replay buffer seems to improve convergence speed, but may
     # come at a cost of stability.
 
-    gen_replay_buffer_size = gen_batch_size  # Num generator transitions stored
+    algorithm_kwargs["shared"]["gen_replay_buffer_capacity"] = gen_batch_size
 
 
 @train_ex.config
-def apply_init_algorithm_kwargs_aliases(
-    disc_minibatch_size, disc_batch_size, gen_replay_buffer_size
-):
-    algorithm_kwargs = dict(
-        disc_minibatch_size=disc_minibatch_size,
-        gen_replay_buffer_capacity=gen_replay_buffer_size,
-        disc_batch_size=disc_batch_size,
-    )
-
-
-@train_ex.config
-def calc_n_steps(num_vec, init_rl_kwargs, gen_batch_size):
-    assert gen_batch_size % num_vec == 0, "num_vec must evenly divide " "gen_batch_size"
+def calc_n_steps(num_vec, gen_batch_size):
+    assert gen_batch_size % num_vec == 0, "num_vec must evenly divide gen_batch_size"
     init_rl_kwargs = dict(n_steps=gen_batch_size // num_vec)
 
 
@@ -105,8 +91,6 @@ def paths(env_name, log_root, rollout_hint, data_dir):
     rollout_path = os.path.join(
         data_dir, "expert_models", f"{rollout_hint}_0", "rollouts", "final.pkl"
     )
-
-    assert os.path.exists(rollout_path), rollout_path
 
 
 # Training algorithm named configs
@@ -126,13 +110,13 @@ def airl():
 
 # Shared settings
 
-MUJOCO_SHARED_LOCALS = dict(airl_entropy_weight=0.1)
+MUJOCO_SHARED_LOCALS = dict(discrim_net_kwargs=dict(airl=dict(entropy_weight=0.1)))
 
 ANT_SHARED_LOCALS = dict(
     total_timesteps=3e7,
-    gen_batch_size=2048 * 8,
-    disc_batch_size=2048 * 8,
     max_episode_steps=500,  # To match `inverse_rl` settings.
+    algorithm_kwargs=dict(shared=dict(disc_batch_size=2048 * 8)),
+    gen_batch_size=2048 * 8,
 )
 
 
@@ -149,7 +133,7 @@ def acrobot():
 def cartpole():
     env_name = "CartPole-v1"
     rollout_hint = "cartpole"
-    gail_discrim_net_scale = False
+    discrim_net_kwargs = {"gail": {"scale": False}}
 
 
 @train_ex.named_config
@@ -211,7 +195,7 @@ def swimmer():
     env_name = "Swimmer-v2"
     rollout_hint = "swimmer"
     total_timesteps = 2e6
-    init_rl_kwargs = dict(policy_network_class=policies.MlpPolicy,)
+    init_rl_kwargs = dict(policy_network_class=policies.MlpPolicy)
 
 
 @train_ex.named_config
@@ -234,6 +218,9 @@ def two_d_maze():
 @train_ex.named_config
 def custom_ant():
     locals().update(**MUJOCO_SHARED_LOCALS)
+    # Watch out -- ANT_SHARED_LOCALS could erroneously erase nested dict keys from
+    # MUJOCO_SHARED_LOCALS because `locals().update()` doesn't merge dicts
+    # "Sacred-style".
     locals().update(**ANT_SHARED_LOCALS)
     env_name = "imitation/CustomAnt-v0"
     rollout_hint = "custom_ant"
@@ -259,11 +246,8 @@ def fast():
     total_timesteps = 10
     n_expert_demos = 1
     n_episodes_eval = 1
+    algorithm_kwargs = dict(shared=dict(disc_batch_size=2, disc_minibatch_size=2))
     gen_batch_size = 2
-    disc_batch_size = 2
-    disc_minibatch_size = 2
-    show_plots = False
-    n_plot_episodes = 1
     parallel = False  # easier to debug with everything in one process
     max_episode_steps = 100
     num_vec = 2
