@@ -96,6 +96,7 @@ def test_train_disc_step_no_crash(trainer, n_timesteps=200):
 def test_train_gen_train_disc_no_crash(trainer, n_updates=2):
     trainer.train_gen(n_updates * trainer.gen_batch_size)
     trainer.train_disc()
+    trainer.train_disc_step()
 
 
 @pytest.mark.expensive

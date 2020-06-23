@@ -10,6 +10,7 @@ T = TypeVar("T")
 
 
 class Dataset(abc.ABC, Generic[T]):
+    @abc.abstractmethod
     def sample(self: "Dataset[T]", n_samples: int) -> T:
         """Return a batch of data.
 
@@ -19,12 +20,12 @@ class Dataset(abc.ABC, Generic[T]):
             ValueError: If n_samples is nonpositive.
         """
 
+    @abc.abstractmethod
     def size(self: "Dataset[T]") -> Optional[int]:
         """Returns the number of samples in this dataset, ie the epoch size.
 
         Returns None if not known or undefined.
         """
-        return None
 
 
 class DictDataset(Dataset[Dict[str, np.ndarray]]):
@@ -153,7 +154,9 @@ class TransitionsDictDatasetAdaptor(Dataset[types.Transitions]):
         data_map: Dict[str, np.ndarray] = dataclasses.asdict(transitions)
         kwargs = dict_dataset_cls_kwargs or {}
         self.transitions_cls: Type[types.Transitions] = type(transitions)
-        self.simple_dataset = dict_dataset_cls(data_map, **kwargs)
+        self.simple_dataset = dict_dataset_cls(
+            data_map, **kwargs  # pytype: disable=not-instantiable
+        )
 
     def sample(self, n_samples: int) -> types.Transitions:
         dict_samples = self.simple_dataset.sample(n_samples)
