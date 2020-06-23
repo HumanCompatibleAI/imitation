@@ -59,7 +59,7 @@ jobs:
 
       - run:
           name: black
-          command: black --check ${SRC_FILES}
+          command: black --check --diff ${SRC_FILES}
 
       - run:
           name: codespell
