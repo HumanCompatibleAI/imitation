@@ -8,12 +8,14 @@ import os
 from typing import Callable, List, Optional, Type, Union
 
 import cloudpickle
+import gym
 import numpy as np
 import tensorflow as tf
+from stable_baselines import logger
 from stable_baselines.common.policies import ActorCriticPolicy, BasePolicy
 from tqdm.autonotebook import trange
 
-from imitation.data import dataset, rollout, types
+from imitation.data import dataset, types
 from imitation.policies.base import FeedForward32Policy
 
 
@@ -58,13 +60,16 @@ def set_tf_vars(
 class BCTrainer:
     def __init__(
         self,
-        env,
+        observation_space: gym.Space,
+        action_space: gym.Space,
         *,
         policy_class: Type[ActorCriticPolicy] = FeedForward32Policy,
         expert_data: Union[types.Transitions, dataset.DictDataset, None] = None,
         batch_size: int = 32,
-        optimiser_cls: Type[tf.train.Optimizer] = tf.train.AdamOptimizer,
-        optimiser_kwargs: Optional[dict] = None,
+        optimizer_cls: Type[tf.train.Optimizer] = tf.train.AdamOptimizer,
+        optimizer_kwargs: Optional[dict] = None,
+        ent_weight: float = 1e-3,
+        l2_weight: float = 0.0,
         name_scope: Optional[str] = None,
         reuse: bool = False,
     ):
@@ -79,16 +84,23 @@ class BCTrainer:
             expert_data: If not None, then immediately call
                   `self.set_expert_dataset(expert_data)` during initialization.
             batch_size: batch size used for training.
-            optimiser_cls: optimiser to use for supervised training.
-            optimiser_kwargs: keyword arguments for optimiser construction.
+            optimizer_cls: optimiser to use for supervised training.
+            optimizer_kwargs: keyword arguments for optimiser construction.
         """
-        self.env = env
+        self.action_space = action_space
+        self.observation_space = observation_space
         self.policy_class = policy_class
         assert batch_size >= 1
         self.batch_size = batch_size
         self.expert_dataset: Optional[dataset.DictDataset] = None
         self.sess = tf.get_default_session()
         assert self.sess is not None, "need to construct this within a session scope"
+        self.ent_weight = ent_weight
+        self.l2_weight = l2_weight
+
+        self.optimizer_cls = optimizer_cls
+        self.optimizer_kwargs = optimizer_kwargs or {}
+
         self._build_tf_graph()
         self.sess.run(tf.global_variables_initializer())
         if expert_data is not None:
@@ -116,58 +128,12 @@ class BCTrainer:
         assert expert_dataset.size() is not None
         self.expert_dataset = expert_dataset
 
-    def train(
-        self, *, n_epochs: int = 100, on_epoch_end: Callable[[dict], None] = None
-    ):
-        """Train with supervised learning for some number of epochs.
-
-        Here an 'epoch' is just a complete pass through the expert transition
-        dataset.
-
-        Args:
-          n_epochs: number of complete passes made through dataset.
-          on_epoch_end: optional callback to run at
-            the end of each epoch. Will receive all locals from this function as
-            dictionary argument (!!).
-        """
-        assert self.batch_size >= 1
-        samples_so_far = 0
-        for epoch_num in trange(n_epochs, desc="BC epoch"):
-            while samples_so_far < (epoch_num + 1) * self.expert_dataset.size():
-                batch_dict = self.expert_dataset.sample(self.batch_size)
-                assert len(batch_dict["obs"]) == self.batch_size
-                samples_so_far += self.batch_size
-                feed_dict = {
-                    self._true_acts_ph: batch_dict["act"],
-                    self.policy.obs_ph: batch_dict["obs"],
-                }
-                _, loss = self.sess.run(
-                    [self._train_op, self._log_loss], feed_dict=feed_dict
-                )
-            if on_epoch_end is not None:
-                on_epoch_end(locals())
-
-    def test_policy(self, *, min_episodes: int = 10) -> dict:
-        """Test current imitation policy on environment & give some rollout stats.
-
-        Args:
-          min_episodes: Minimum number of rolled-out episodes.
-
-        Returns:
-          rollout statistics collected by `imitation.utils.rollout.rollout_stats()`.
-        """
-        trajs = rollout.generate_trajectories(
-            self.policy, self.env, sample_until=rollout.min_episodes(min_episodes)
-        )
-        reward_stats = rollout.rollout_stats(trajs)
-        return reward_stats
-
     def _build_tf_graph(self):
         with tf.variable_scope("bc_supervised_loss"):
-            with tf.variable_scope("model"):
+            with tf.variable_scope("model") as model_scope:
                 self.policy_kwargs = dict(
-                    ob_space=self.env.observation_space,
-                    ac_space=self.env.action_space,
+                    ob_space=self.observation_space,
+                    ac_space=self.action_space,
                     n_batch=None,
                     n_env=1,
                     n_steps=1000,
@@ -182,13 +148,81 @@ class BCTrainer:
             self._true_acts_ph = self.policy.pdtype.sample_placeholder(
                 [None], name="ref_acts_ph"
             )
-            self._log_loss = tf.reduce_mean(
+            self._entropy = tf.reduce_mean(self.policy.proba_distribution.entropy())
+            self._ent_loss = -self.ent_weight * self._entropy
+            self._neglogp = tf.reduce_mean(
                 self.policy.proba_distribution.neglogp(self._true_acts_ph)
             )
-            # FIXME: it should be possible to customise both optimiser class and
-            # optimiser arguments
-            opt = tf.train.AdamOptimizer()
-            self._train_op = opt.minimize(self._log_loss)
+
+            _l2_norms = [
+                tf.reduce_mean(tf.norm(w)) for w in model_scope.trainable_variables()
+            ]
+            self._l2_norm = tf.reduce_sum(_l2_norms)
+            self._l2_loss = self._l2_norm * self.l2_weight
+
+            self._loss = self._neglogp + self._ent_loss + self._l2_loss
+            opt = self.optimizer_cls(**self.optimizer_kwargs)
+            self._train_op = opt.minimize(self._loss)
+
+            self._prob_true_act = tf.reduce_mean(
+                tf.exp(-self.policy.proba_distribution.neglogp(self._true_acts_ph))
+            )
+            self._stats_dict = dict(
+                neglopp=self._neglogp,
+                loss=self._loss,
+                entropy=self._entropy,
+                ent_loss=self._ent_loss,
+                prob_true_act=self._prob_true_act,
+                l2_norm=self._l2_norm,
+                l2_loss=self._l2_loss,
+            )
+
+    def train(
+        self,
+        *,
+        n_epochs: int = 100,
+        on_epoch_end: Callable[[dict], None] = None,
+        log_interval: int = 100,
+    ):
+        """Train with supervised learning for some number of epochs.
+
+        Here an 'epoch' is just a complete pass through the expert transition
+        dataset.
+
+        Args:
+          n_epochs: number of complete passes made through dataset.
+          on_epoch_end: optional callback to run at
+            the end of each epoch. Will receive all locals from this function as
+            dictionary argument (!!).
+        """
+        assert self.batch_size >= 1
+        samples_so_far = 0
+        batch_num = 0
+        for epoch_num in trange(n_epochs, desc="BC epoch"):
+            while samples_so_far < (epoch_num + 1) * self.expert_dataset.size():
+                batch_num += 1
+                batch_dict = self.expert_dataset.sample(self.batch_size)
+                assert len(batch_dict["obs"]) == self.batch_size
+                samples_so_far += self.batch_size
+                feed_dict = {
+                    self._true_acts_ph: batch_dict["act"],
+                    self.policy.obs_ph: batch_dict["obs"],
+                }
+                _, stats_dict = self.sess.run(
+                    [self._train_op, self._stats_dict], feed_dict=feed_dict
+                )
+                stats_dict["epoch_num"] = epoch_num
+                stats_dict["n_updates"] = batch_num
+                stats_dict["batch_size"] = len(batch_dict["obs"])
+
+                if batch_num % log_interval == 0:
+                    for k, v in stats_dict.items():
+                        logger.logkv(k, v)
+                    logger.dumpkvs()
+                batch_num += 1
+
+            if on_epoch_end is not None:
+                on_epoch_end(locals())
 
     def save_policy(self, policy_path: str):
         """Save a policy to a pickle. Can be reloaded by `.reconstruct_policy()`.

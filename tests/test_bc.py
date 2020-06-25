@@ -23,7 +23,7 @@ def trainer(request, session):
     if convert_dataset:
         data_map = {"obs": data.obs, "act": data.acts}
         data = dataset.RandomDictDataset(data_map)
-    return bc.BCTrainer(env, expert_data=data)
+    return bc.BCTrainer(env.observation_space, env.action_space, expert_data=data)
 
 
 def test_bc(trainer):
