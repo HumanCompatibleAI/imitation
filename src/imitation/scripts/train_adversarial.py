@@ -174,7 +174,7 @@ def train(
 
         trainer = algo_cls(
             venv=venv,
-            expert_demos=expert_transitions,
+            expert_data=expert_transitions,
             gen_policy=gen_policy,
             log_dir=log_dir,
             discrim_kwargs=final_discrim_kwargs,

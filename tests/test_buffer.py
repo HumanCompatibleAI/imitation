@@ -47,7 +47,7 @@ def test_buffer(capacity, chunk_len, sample_shape):
 
     to_insert = 3 * capacity
     for i in range(0, to_insert, chunk_len):
-        assert len(buf) == min(i, capacity)
+        assert buf.size() == min(i, capacity)
         assert buf._idx == i % capacity
         chunk_a = _fill_chunk(i, chunk_len, sample_shape)
         chunk_b = _fill_chunk(i + to_insert, chunk_len, sample_shape)
@@ -92,7 +92,7 @@ def test_replay_buffer(capacity, chunk_len, obs_shape, act_shape, dtype):
     )
 
     for i in range(0, capacity * 3, chunk_len):
-        assert len(buf) == min(i, capacity)
+        assert buf.size() == min(i, capacity)
         assert buf._buffer._idx == i % capacity
 
         dones = np.arange(i, i + chunk_len, dtype=np.int32) % 2

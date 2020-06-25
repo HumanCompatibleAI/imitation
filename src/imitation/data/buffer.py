@@ -1,13 +1,13 @@
 import dataclasses
-from typing import Dict, Optional, Tuple
+from typing import Dict, Mapping, Optional, Tuple
 
 import numpy as np
 from stable_baselines.common import vec_env
 
-from imitation.data import types
+from imitation.data import dataset, types
 
 
-class Buffer:
+class Buffer(dataset.Dataset[Dict[str, np.ndarray]]):
     """A FIFO ring buffer for NumPy arrays of a fixed shape and dtype.
 
     Supports random sampling with replacement.
@@ -25,21 +25,21 @@ class Buffer:
     _n_data: int
     """The number of samples currently stored in this buffer.
 
-  An integer in `range(0, self.capacity + 1)`. This attribute is the return
-  value of `self.__len__`.
-  """
+    An integer in `range(0, self.capacity + 1)`. This attribute is the return
+    value of `self.size()`.
+    """
 
     _idx: int
     """The index of the first row that new data should be written to.
 
-  An integer in `range(0, self.capacity)`.
-  """
+    An integer in `range(0, self.capacity)`.
+    """
 
     def __init__(
         self,
         capacity: int,
-        sample_shapes: Dict[str, Tuple[int, ...]],
-        dtypes: Dict[str, np.dtype],
+        sample_shapes: Mapping[str, Tuple[int, ...]],
+        dtypes: Mapping[str, np.dtype],
     ):
         """Constructs a Buffer.
 
@@ -142,7 +142,8 @@ class Buffer:
     def _store_easy(self, data: Dict[str, np.ndarray]) -> None:
         """Stores new data samples, replacing old samples with FIFO priority.
 
-        Requires that `len(data) <= self.capacity - self._idx`. Updates `self._idx`
+        Requires that `size(data) <= self.capacity - self._idx`, where `size(data)` is
+        the number of rows in every array in `data.values()`. Updates `self._idx`
         to be the insertion point of the next call to `_store_easy` call,
         looping back to `self._idx = 0` if necessary.
 
@@ -150,7 +151,7 @@ class Buffer:
 
         Args:
             data: Same as in `self.store`'s docstring, except with the additional
-                constraint `len(data) <= self.capacity - self._idx`.
+                constraint `size(data) <= self.capacity - self._idx`.
         """
         n_samples = [arr.shape[0] for arr in data.values()]
         n_samples = np.unique(n_samples)
@@ -177,18 +178,18 @@ class Buffer:
         Raises:
             ValueError: The buffer is empty.
         """
-        if len(self) == 0:
+        if self.size() == 0:
             raise ValueError("Buffer is empty")
-        ind = np.random.randint(len(self), size=n_samples)
+        ind = np.random.randint(self.size(), size=n_samples)
         return {k: buffer[ind] for k, buffer in self._arrays.items()}
 
-    def __len__(self) -> int:
+    def size(self) -> Optional[int]:
         """Returns the number of samples stored in the buffer."""
         assert 0 <= self._n_data <= self.capacity
         return self._n_data
 
 
-class ReplayBuffer:
+class ReplayBuffer(dataset.Dataset[types.Transitions]):
     """Buffer for Transitions."""
 
     capacity: int
@@ -283,7 +284,7 @@ class ReplayBuffer:
         sample = self._buffer.sample(n_samples)
         return types.Transitions(**sample)
 
-    def store(self, transitions: types.Transitions, truncate_ok: bool = True,) -> None:
+    def store(self, transitions: types.Transitions, truncate_ok: bool = True) -> None:
         """Store obs-act-obs triples.
 
         Args:
@@ -304,5 +305,6 @@ class ReplayBuffer:
 
         self._buffer.store(trans_dict)
 
-    def __len__(self):
-        return len(self._buffer)
+    def size(self) -> Optional[int]:
+        """Returns the number of samples stored in the buffer."""
+        return self._buffer.size()
