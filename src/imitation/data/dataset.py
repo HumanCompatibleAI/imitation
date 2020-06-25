@@ -48,8 +48,8 @@ class DictDataset(Dataset[Dict[str, np.ndarray]]):
         if len(data_map) == 0:
             raise ValueError("Empty data_map not allowed.")
         self.data_map = {k: v.copy() for k, v in data_map.items()}
-        n_rows_set = set(len(v) for v in data_map.values())
 
+        n_rows_set = set(len(v) for v in data_map.values())
         if len(n_rows_set) != 1:
             raise ValueError(f"Unequal number of rows in data_map values: {n_rows_set}")
         self._n_data = next(iter(n_rows_set))
@@ -96,7 +96,7 @@ class EpochOrderDictDataset(DictDataset):
             for k, v in sample.items():
                 samples_accum[k].append(v)
 
-        result = {k: np.concatenate(v) for k, v in samples_accum.items()}
+        result = {k: np.copy(np.concatenate(v)) for k, v in samples_accum.items()}
         assert all(len(v) == n_samples for v in result.values())
         return result
 
@@ -123,7 +123,7 @@ class EpochOrderDictDataset(DictDataset):
         return n_samples_actual, result
 
 
-class RandomDictDataset(EpochOrderDictDataset):
+class RandomDictDataset(DictDataset):
     """In-memory data sampler that uniformly samples with replacement."""
 
     def sample(self, n_samples: int) -> Dict[str, np.ndarray]:

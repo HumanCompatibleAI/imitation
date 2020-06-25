@@ -145,12 +145,11 @@ class AdversarialTrainer:
         )
 
         if isinstance(expert_data, types.Transitions):
-            # Somehow, pytype doesn't recognize that `expert_dataset` is Transitions.
-            self._expert_dataset = dataset.TransitionsDictDatasetAdaptor(
+            # Somehow, pytype doesn't recognize that `expert_data` is Transitions.
+            expert_data = dataset.TransitionsDictDatasetAdaptor(
                 expert_data,  # pytype: disable=wrong-arg-types
             )
-        else:
-            self._expert_dataset = expert_data
+        self._expert_dataset = expert_data
 
         expert_ds_size = self.expert_dataset.size()
         if expert_ds_size is not None and self.disc_batch_size // 2 > expert_ds_size:
@@ -482,8 +481,6 @@ class AIRL(AdversarialTrainer):
             # class, hence the disable.
             **reward_net_kwargs,  # pytype: disable=not-instantiable
         )
-        # pytype is afraid that we'll directly call RewardNet() which is an abstract
-        # class, hence the disable.
 
         discrim_kwargs = discrim_kwargs or {}
         discrim = discrim_net.DiscrimNetAIRL(reward_network, **discrim_kwargs)

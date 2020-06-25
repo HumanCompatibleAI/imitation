@@ -238,7 +238,8 @@ def test_dict_dataset_copy_data_map(dict_dataset: dataset.DictDataset, data_map)
     backup_map = copy.deepcopy(dict_dataset.data_map)
     npt.assert_equal(backup_map, dict_dataset.data_map)
     for v in data_map.values():
-        # Multiply array in-place by 2.
+        # Modify array in-place.
+        np.add(v, v.dtype.type(3), out=v)
         np.multiply(v, v.dtype.type(2), out=v)
     npt.assert_equal(backup_map, dict_dataset.data_map)
 
@@ -283,13 +284,13 @@ def test_dict_dataset_parallel_rows(
     Nontrivially, shuffled datasets should maintain this order.
     """
     dataset_cls, kwargs = dict_dataset_params
-    range_data_map = {k: np.arange(50,) for k in "abcd"}
+    range_data_map = {k: i + np.arange(50,) for i, k in enumerate("abcd")}
     dict_dataset = dataset_cls(range_data_map, **kwargs)
     for _ in range(n_checks):
         n_samples = np.random.randint(max_batch_size) + 1
         sample = dict_dataset.sample(n_samples)
-        for v in sample.values():
-            np.testing.assert_array_equal(sample["a"], v)
+        for i, k in enumerate("abcd"):
+            np.testing.assert_array_equal(sample[k], i + sample["a"])
 
 
 def test_dict_dataset_correct_sample_len(dict_dataset, max_batch_size=80):
@@ -316,10 +317,10 @@ class TestEpochOrderDictDataset:
     ):
         """Check that epoch order is deterministic iff not shuffled.
 
-        The check has `factorial(dataset_size)` chance of false negative when shuffle
-        is True, so we skip on smaller dataset_sizes.
+        The check has `1 / factorial(dataset_size)` chance of false negative when
+        shuffle is True, so we skip on smaller dataset_sizes.
         """
-        if dataset_size < 100 and shuffle:
+        if dataset_size < 20 and shuffle:
             pytest.skip("False negative chance too high.")
         for _ in range(n_checks):
             first = arange_dataset.sample(dataset_size)
@@ -368,7 +369,7 @@ class TestTransitionsDictDatasetAdaptor(TestData):
         )
 
     def test_size(self, trans_ds, transitions, trans_ds_rew, transitions_rew):
-        """Check for correct the correct size()."""
+        """Check for the correct size()."""
         assert len(transitions) == len(transitions_rew)  # Sanity check...
         assert trans_ds.size() == trans_ds_rew.size() == len(transitions)
 
