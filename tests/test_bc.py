@@ -23,7 +23,7 @@ def trainer(request, session):
     if convert_dataset:
         data_map = {"obs": data.obs, "act": data.acts}
         data = dataset.RandomDictDataset(data_map)
-    return bc.BCTrainer(env.observation_space, env.action_space, expert_data=data)
+    return bc.BC(env.observation_space, env.action_space, expert_data=data)
 
 
 def test_bc(trainer):
@@ -45,7 +45,7 @@ def test_save_reload(trainer, tmpdir):
     with tf.Session() as sess:
         # just make sure it doesn't die
         with tf.variable_scope("new"):
-            bc.BCTrainer.reconstruct_policy(pol_path)
+            bc.BC.reconstruct_policy(pol_path)
         new_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope="new")
         new_values = sess.run(new_vars)
         assert len(var_values) == len(new_values)

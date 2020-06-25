@@ -57,7 +57,7 @@ def set_tf_vars(
     )
 
 
-class BCTrainer:
+class BC:
     def __init__(
         self,
         observation_space: gym.Space,
