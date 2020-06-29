@@ -74,8 +74,6 @@ class BC:
         optimizer_kwargs: Optional[dict] = None,
         ent_weight: float = 1e-3,
         l2_weight: float = 0.0,
-        name_scope: Optional[str] = None,
-        reuse: bool = False,
     ):
         """Behavioral cloning (BC).
 
@@ -101,8 +99,9 @@ class BC:
             n_env=1,
             n_steps=1000,
         )
-        self.policy_kwargs = collections.ChainMap(policy_kwargs or {},
-                                                  policy_kwargs_defaults)
+        self.policy_kwargs = collections.ChainMap(
+            policy_kwargs or {}, policy_kwargs_defaults
+        )
 
         assert batch_size >= 1
         self.batch_size = batch_size
