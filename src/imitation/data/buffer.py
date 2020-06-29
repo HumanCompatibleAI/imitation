@@ -65,41 +65,56 @@ class Buffer(dataset.Dataset[Dict[str, np.ndarray]]):
         self._idx = 0
 
     @classmethod
-    def from_data(cls, data: Dict[str, np.ndarray]) -> "Buffer":
-        """Constructs and return a Buffer containing only the provided data.
+    def from_data(
+        cls,
+        data: Dict[str, np.ndarray],
+        capacity: Optional[int] = None,
+        truncate_ok: bool = False,
+    ) -> "Buffer":
+        """Constructs and return a Buffer containing the provided data.
 
-        The returned Buffer is at full capacity and ready for sampling.
+        Shapes and dtypes are automatically inferred.
 
         Args:
             data: A dictionary mapping keys to data arrays. The arrays may differ
                 in their shape, but should agree in the first axis.
+            capacity: The Buffer capacity. If not provided, then this is automatically
+                set to the size of the data, so that the returned Buffer is at full
+                capacity.
+            truncate_ok: Whether to error if `capacity` < the number of samples in
+                `data`. If False, then only store the last `capacity` samples from
+                `data` when overcapacity.
 
         Raises:
             ValueError: `data` is empty.
             ValueError: `data` has items mapping to arrays differing in the
                 length of their first axis.
         """
-        capacities = [arr.shape[0] for arr in data.values()]
-        capacities = np.unique(capacities)
+        data_capacities = [arr.shape[0] for arr in data.values()]
+        data_capacities = np.unique(data_capacities)
         if len(data) == 0:
             raise ValueError("No keys in data.")
-        if len(capacities) > 1:
+        if len(data_capacities) > 1:
             raise ValueError("Keys map to different length values")
-        capacity = capacities[0]
+        if capacity is None:
+            capacity = data_capacities[0]
 
         sample_shapes = {k: arr.shape[1:] for k, arr in data.items()}
         dtypes = {k: arr.dtype for k, arr in data.items()}
         buf = cls(capacity, sample_shapes, dtypes)
-        buf.store(data)
+        buf.store(data, truncate_ok=truncate_ok)
         return buf
 
-    def store(self, data: Dict[str, np.ndarray]) -> None:
+    def store(self, data: Dict[str, np.ndarray], truncate_ok: bool = False) -> None:
         """Stores new data samples, replacing old samples with FIFO priority.
 
         Args:
             data: A dictionary mapping keys `k` to arrays with shape
                 `(n_samples,) + self.sample_shapes[k]`, where `n_samples` is less
                 than or equal to `self.capacity`.
+            truncate_ok: If False, then error if the length of `transitions` is
+              greater than `self.capacity`. Otherwise, store only the final
+              `self.capacity` transitions.
 
         Raises:
             ValueError: `data` is empty.
@@ -123,7 +138,10 @@ class Buffer(dataset.Dataset[Dict[str, np.ndarray]]):
         if n_samples == 0:
             raise ValueError("Trying to store empty data.")
         if n_samples > self.capacity:
-            raise ValueError("Not enough capacity to store data.")
+            if not truncate_ok:
+                raise ValueError("Not enough capacity to store data.")
+            else:
+                data = {k: arr[-self.capacity :] for k, arr in data.items()}
 
         for k, arr in data.items():
             if arr.shape[1:] != self.sample_shapes[k]:
@@ -249,18 +267,32 @@ class ReplayBuffer(dataset.Dataset[types.Transitions]):
         self._buffer = Buffer(capacity, sample_shapes=sample_shapes, dtypes=dtypes)
 
     @classmethod
-    def from_data(cls, transitions: types.Transitions) -> "ReplayBuffer":
-        """Construct and return a ReplayBuffer containing only the provided data.
+    def from_data(
+        cls,
+        transitions: types.Transitions,
+        capacity: Optional[int] = None,
+        truncate_ok: bool = False,
+    ) -> "ReplayBuffer":
+        """Construct and return a ReplayBuffer containing the provided data.
 
-        The returned ReplayBuffer is at full capacity and ready for sampling.
+        Shapes and dtypes are automatically inferred, and the returned ReplayBuffer is
+        ready for sampling.
 
         Args:
             transitions: Transitions to store.
+            capacity: The ReplayBuffer capacity. If not provided, then this is
+                automatically set to the size of the data, so that the returned Buffer
+                is at full capacity.
+            truncate_ok: Whether to error if `capacity` < the number of samples in
+                `data`. If False, then only store the last `capacity` samples from
+                `data` when overcapacity.
 
         Returns:
             A new ReplayBuffer.
         """
-        capacity, *obs_shape = transitions.obs.shape
+        data_capacity, *obs_shape = transitions.obs.shape
+        if capacity is None:
+            capacity = data_capacity
         _, *act_shape = transitions.acts.shape
         instance = cls(
             capacity=capacity,
@@ -269,7 +301,7 @@ class ReplayBuffer(dataset.Dataset[types.Transitions]):
             obs_dtype=transitions.obs.dtype,
             act_dtype=transitions.acts.dtype,
         )
-        instance.store(transitions)
+        instance.store(transitions, truncate_ok=truncate_ok)
         return instance
 
     def sample(self, n_samples: int) -> types.Transitions:
@@ -299,11 +331,7 @@ class ReplayBuffer(dataset.Dataset[types.Transitions]):
         trans_dict = dataclasses.asdict(transitions)
         # Remove unnecessary fields
         trans_dict = {k: trans_dict[k] for k in self._buffer.sample_shapes.keys()}
-
-        if len(transitions) > self.capacity and truncate_ok:
-            trans_dict = {k: v[-self.capacity :] for k, v in trans_dict.items()}
-
-        self._buffer.store(trans_dict)
+        self._buffer.store(trans_dict, truncate_ok=truncate_ok)
 
     def size(self) -> Optional[int]:
         """Returns the number of samples stored in the buffer."""
