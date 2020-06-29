@@ -186,8 +186,8 @@ class BC:
 
     def train(
         self,
-        *,
         n_epochs: int = 100,
+        *,
         on_epoch_end: Callable[[dict], None] = None,
         log_interval: int = 100,
     ):
