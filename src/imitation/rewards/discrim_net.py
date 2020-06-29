@@ -377,11 +377,10 @@ class DiscrimNetGAIL(DiscrimNet, serialize.LayersSerializable):
                 `build_discrim_net()`.
             scale: If True, then normalize observations to numbers between 0 and 1 by
                 scaling them by observation space bounds.
-            positive_rewards: In the default formulation, all GAIL rewards are positive,
-                which can lead to episode-length maximizing behavior in environments
-                with variable-length episodes. Use False to flip the sign of the reward,
-                as the original authors did for their MountainCar-v0 results (a
-                variable-episode-length environment with only negative rewards).
+            positive_rewards: In the default formulation, all GAIL rewards are negative,
+                which can lead to episode-length minimizing behavior in environments
+                with variable-length episodes. Use True to use a alternate formulation
+                of rewards that is strictly positive instead.
         """
         # for serialisation
         args = dict(locals())
@@ -437,8 +436,15 @@ class DiscrimNetGAIL(DiscrimNet, serialize.LayersSerializable):
             labels=tf.cast(self.labels_gen_is_one_ph, tf.float32),
         )
 
-        reward = tf.log_sigmoid(self._disc_logits_gen_is_high)
         if self._positive_rewards:
-            reward *= -1
+            # Generator reward tends toward infinity as "is generator" logit decreases
+            # and tends toward zero as logit increases.
+            reward = -tf.log_sigmoid(self._disc_logits_gen_is_high)
+        else:
+            # Generator reward tends toward -infinity as "is expert" logit decreases and
+            # tends toward zero as logit decreases. This is the reward formulation
+            # from the GAIL paper.
+            disc_logits_expert_is_high = -self._disc_logits_gen_is_high
+            reward = tf.log_sigmoid(disc_logits_expert_is_high)
 
         self._policy_test_reward = self._policy_train_reward = reward
