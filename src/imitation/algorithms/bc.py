@@ -161,7 +161,7 @@ class BC:
             )
 
             _l2_norms = [
-                tf.reduce_mean(tf.nn.l2_loss(w))
+                tf.reduce_sum(tf.nn.l2_loss(w))
                 for w in model_scope.trainable_variables()
             ]
             self._l2_norm = tf.reduce_sum(_l2_norms)
