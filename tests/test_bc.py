@@ -13,27 +13,33 @@ from imitation.util import util
 ROLLOUT_PATH = "tests/data/expert_models/cartpole_0/rollouts/final.pkl"
 
 
-@pytest.fixture(params=[False, True])
-def trainer(request, session):
-    convert_dataset = request.param
+@pytest.fixture
+def venv():
     env_name = "CartPole-v1"
-    env = util.make_vec_env(env_name, 2)
+    venv = util.make_vec_env(env_name, 2)
+    return venv
+
+
+@pytest.fixture(params=[False, True])
+def trainer(request, session, venv):
+    convert_dataset = request.param
     rollouts = types.load(ROLLOUT_PATH)
     data = rollout.flatten_trajectories(rollouts)
     if convert_dataset:
-        data_map = {"obs": data.obs, "act": data.acts}
+        data_map = {"obs": data.obs, "acts": data.acts}
         data = dataset.RandomDictDataset(data_map)
-    return bc.BCTrainer(env, expert_data=data)
+    return bc.BC(venv.observation_space, venv.action_space, expert_data=data)
 
 
-def test_bc(trainer):
-    novice_stats = trainer.test_policy()
+def test_bc(trainer: bc.BC, venv):
+    sample_until = rollout.min_episodes(25)
+    novice_ret_mean = rollout.mean_return(trainer.policy, venv, sample_until)
     trainer.train(n_epochs=40)
-    good_stats = trainer.test_policy(min_episodes=25)
+    trained_ret_mean = rollout.mean_return(trainer.policy, venv, sample_until)
     # novice is bad
-    assert novice_stats["return_mean"] < 80.0
+    assert novice_ret_mean < 80.0
     # bc is okay but isn't perfect (for the purpose of this test)
-    assert good_stats["return_mean"] > 350.0
+    assert trained_ret_mean > 350.0
 
 
 def test_save_reload(trainer, tmpdir):
@@ -45,7 +51,7 @@ def test_save_reload(trainer, tmpdir):
     with tf.Session() as sess:
         # just make sure it doesn't die
         with tf.variable_scope("new"):
-            bc.BCTrainer.reconstruct_policy(pol_path)
+            bc.BC.reconstruct_policy(pol_path)
         new_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope="new")
         new_values = sess.run(new_vars)
         assert len(var_values) == len(new_values)
