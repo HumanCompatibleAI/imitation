@@ -304,7 +304,7 @@ class ReplayBuffer(dataset.Dataset[types.Transitions]):
         Examples:
             `ReplayBuffer` with same capacity as arrays in `data`::
 
-                RepayBuffer.from_data(data)
+                ReplayBuffer.from_data(data)
 
             `ReplayBuffer` with larger capacity than arrays in `data`::
 
