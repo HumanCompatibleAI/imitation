@@ -160,10 +160,7 @@ class BC:
                 self.policy.proba_distribution.neglogp(self._true_acts_ph)
             )
 
-            _l2_norms = [
-                tf.reduce_sum(tf.nn.l2_loss(w))
-                for w in model_scope.trainable_variables()
-            ]
+            _l2_norms = [tf.nn.l2_loss(w) for w in model_scope.trainable_variables()]
             self._l2_norm = tf.reduce_sum(_l2_norms)
             self._l2_loss = self._l2_norm * self.l2_weight
 
