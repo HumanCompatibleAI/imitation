@@ -85,6 +85,20 @@ class Buffer(dataset.Dataset[Dict[str, np.ndarray]]):
                 `data`. If False, then only store the last `capacity` samples from
                 `data` when overcapacity.
 
+        Examples:
+            `Buffer` with same capacity as arrays in `data`::
+
+                Buffer.from_data(data)
+
+            `Buffer` with larger capacity than arrays in `data`::
+
+                Buffer.from_data(data, 10000)
+
+            `Buffer with smaller capacity than arrays in `data`. Without
+            `truncate_ok=True`, `from_data` will error::
+
+                Buffer.from_data(data, 5, truncate_ok=True)
+
         Raises:
             ValueError: `data` is empty.
             ValueError: `data` has items mapping to arrays differing in the
@@ -286,6 +300,20 @@ class ReplayBuffer(dataset.Dataset[types.Transitions]):
             truncate_ok: Whether to error if `capacity` < the number of samples in
                 `data`. If False, then only store the last `capacity` samples from
                 `data` when overcapacity.
+
+        Examples:
+            `ReplayBuffer` with same capacity as arrays in `data`::
+
+                RepayBuffer.from_data(data)
+
+            `ReplayBuffer` with larger capacity than arrays in `data`::
+
+                ReplayBuffer.from_data(data, 10000)
+
+            `ReplayBuffer with smaller capacity than arrays in `data`. Without
+            `truncate_ok=True`, `from_data` will error::
+
+                ReplayBuffer.from_data(data, 5, truncate_ok=True)
 
         Returns:
             A new ReplayBuffer.
