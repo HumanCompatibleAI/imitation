@@ -86,6 +86,8 @@ class Buffer(dataset.Dataset[Dict[str, np.ndarray]]):
                 `data` when overcapacity.
 
         Examples:
+            In this example, suppose the arrays in `data` are length-1000.
+            
             `Buffer` with same capacity as arrays in `data`::
 
                 Buffer.from_data(data)
