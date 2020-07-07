@@ -1,6 +1,7 @@
 import os
 import warnings
 from functools import partial
+import logging
 from typing import Callable, Mapping, Optional, Type, Union
 
 import numpy as np
@@ -350,7 +351,7 @@ class AdversarialTrainer:
 
         if self._init_tensorboard:
             with tf.name_scope("summaries"):
-                tf.logging.info("building summary directory at " + self._log_dir)
+                logging.info("building summary directory at " + self._log_dir)
                 graph = self._sess.graph if self._init_tensorboard_graph else None
                 summary_dir = os.path.join(self._log_dir, "summary")
                 os.makedirs(summary_dir, exist_ok=True)

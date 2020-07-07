@@ -1,6 +1,7 @@
 """Load serialized policies of different types."""
 
 import contextlib
+import logging
 import os
 import pickle
 from typing import Callable, ContextManager, Iterator, Optional, Type
@@ -69,7 +70,7 @@ def _load_stable_baselines(cls: Type[BaseRLModel], policy_attr: str) -> PolicyLo
     @contextlib.contextmanager
     def f(path: str, venv: VecEnv) -> Iterator[BasePolicy]:
         """Loads a policy saved to path, for environment env."""
-        tf.logging.info(
+        logging.info(
             f"Loading Stable Baselines policy for '{cls}' " f"from '{path}'"
         )
         model_path = os.path.join(path, "model.pkl")
@@ -85,7 +86,7 @@ def _load_stable_baselines(cls: Type[BaseRLModel], policy_attr: str) -> PolicyLo
                 vec_normalize.training = False
                 vec_normalize.set_venv(venv)
                 policy = NormalizePolicy(policy, vec_normalize)
-                tf.logging.info(f"Loaded VecNormalize from '{normalize_path}'")
+                logging.info(f"Loaded VecNormalize from '{normalize_path}'")
             except FileNotFoundError:
                 # We did not use VecNormalize during training, skip
                 pass
@@ -117,7 +118,7 @@ def _add_stable_baselines_policies(classes):
         except (AttributeError, ImportError):
             # We expect PPO1 load to fail if mpi4py isn't installed.
             # Stable Baselines can be installed without mpi4py.
-            tf.logging.debug(f"Couldn't load {cls_name}. Skipping...")
+            logging.debug(f"Couldn't load {cls_name}. Skipping...")
 
 
 STABLE_BASELINES_CLASSES = {
@@ -160,4 +161,4 @@ def save_stable_model(
     if vec_normalize is not None:
         with open(os.path.join(output_dir, "vec_normalize.pkl"), "wb") as f:
             pickle.dump(vec_normalize, f)
-    tf.logging.info("Saved policy to %s", output_dir)
+    logging.info("Saved policy to %s", output_dir)

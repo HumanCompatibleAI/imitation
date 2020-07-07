@@ -3,11 +3,11 @@
 Can be used as a CLI script, or the `train_and_plot` function can be called directly.
 """
 
+import logging
 import os
 import os.path as osp
 from typing import Mapping, Optional
 
-import tensorflow as tf
 from sacred.observers import FileStorageObserver
 
 from imitation.algorithms import adversarial
@@ -118,7 +118,7 @@ def train(
     assert os.path.exists(rollout_path)
     total_timesteps = int(total_timesteps)
 
-    tf.logging.info("Logging to %s", log_dir)
+    logging.info("Logging to %s", log_dir)
     logger.configure(log_dir, ["tensorboard", "stdout"])
     os.makedirs(log_dir, exist_ok=True)
     sacred_util.build_sacred_symlink(log_dir, _run)

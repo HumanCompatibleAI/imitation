@@ -1,10 +1,10 @@
 import contextlib
+import logging
 import os
 import os.path as osp
 from typing import Optional
 
 import stable_baselines.logger as sb_logger
-import tensorflow as tf
 from sacred.observers import FileStorageObserver
 from stable_baselines.common.vec_env import VecNormalize
 
@@ -109,7 +109,7 @@ def rollouts_and_policy(
     eval_sample_until = rollout.min_episodes(n_episodes_eval)
 
     with networks.make_session():
-        tf.logging.set_verbosity(tf.logging.INFO)
+        logging.set_verbosity(logging.INFO)
         logger.configure(
             folder=osp.join(log_dir, "rl"), format_strs=["tensorboard", "stdout"]
         )
@@ -141,7 +141,7 @@ def rollouts_and_policy(
                 reward_fn = stack.enter_context(reward_fn_ctx)
                 venv = RewardVecEnvWrapper(venv, reward_fn)
                 log_callbacks.append(venv.log_callback)
-                tf.logging.info(
+                logging.info(
                     f"Wrapped env in reward {reward_type} from {reward_path}."
                 )
 

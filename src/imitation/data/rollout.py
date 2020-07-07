@@ -1,10 +1,10 @@
 import collections
 import dataclasses
 import functools
+import logging
 from typing import Callable, Dict, Hashable, List, Optional, Sequence, Union
 
 import numpy as np
-import tensorflow as tf
 from stable_baselines.common.base_class import BaseRLModel
 from stable_baselines.common.policies import BasePolicy
 from stable_baselines.common.vec_env import VecEnv
@@ -470,6 +470,6 @@ def rollout_and_save(
         trajs = [dataclasses.replace(traj, infos=None) for traj in trajs]
     if verbose:
         stats = rollout_stats(trajs)
-        tf.logging.info(f"Rollout stats: {stats}")
+        logging.info(f"Rollout stats: {stats}")
 
     types.save(path, trajs)

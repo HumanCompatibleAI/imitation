@@ -1,4 +1,5 @@
 import collections
+import logging
 import os
 import pickle
 from abc import ABC, abstractmethod
@@ -279,7 +280,7 @@ class DiscrimNetAIRL(DiscrimNet):
         self.reward_net = reward_net
         self.entropy_weight = entropy_weight
         super().__init__()
-        tf.logging.info("Using AIRL")
+        logging.info("Using AIRL")
 
     @property
     def obs_ph(self):
@@ -395,7 +396,7 @@ class DiscrimNetGAIL(DiscrimNet, serialize.LayersSerializable):
         # records args for un-pickling as well as newly-created model
         serialize.LayersSerializable.__init__(**args, layers=self._disc_mlp)
 
-        tf.logging.info("using GAIL")
+        logging.info("using GAIL")
 
     @property
     def obs_ph(self):

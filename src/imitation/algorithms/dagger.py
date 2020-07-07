@@ -7,6 +7,7 @@ policy.
 """
 
 import dataclasses
+import logging
 import os
 from typing import Callable, Tuple
 
@@ -146,7 +147,7 @@ class InteractiveTrajectoryCollector(gym.Wrapper):
             trajectory_path = os.path.join(
                 self.save_dir, "dagger-demo-" + timestamp + ".npz"
             )
-            tf.logging.info(f"Saving demo at '{trajectory_path}'")
+            logging.info(f"Saving demo at '{trajectory_path}'")
             _save_trajectory(trajectory_path, trajectory)
 
         if done:
@@ -249,7 +250,7 @@ class DAggerTrainer:
             demo_paths = self._get_demo_paths(round_dir)
             self._all_demos.extend(_load_trajectory(p) for p in demo_paths)
             num_demos_by_round.append(len(demo_paths))
-        tf.logging.info(f"Loaded {len(self._all_demos)} total")
+        logging.info(f"Loaded {len(self._all_demos)} total")
         demo_transitions = rollout.flatten_trajectories(self._all_demos)
         return demo_transitions, num_demos_by_round
 
@@ -279,7 +280,7 @@ class DAggerTrainer:
         self._check_has_latest_demos()
         if self._last_loaded_round < self.round_num:
             transitions, num_demos = self._load_all_demos()
-            tf.logging.info(
+            logging.info(
                 f"Loaded {sum(num_demos)} new demos from {len(num_demos)} rounds"
             )
             self.bc_trainer.set_expert_dataset(transitions)
@@ -311,12 +312,12 @@ class DAggerTrainer:
         Returns:
           round_num: new round number after advancing the round counter.
         """
-        tf.logging.info("Loading demonstrations")
+        logging.info("Loading demonstrations")
         self._try_load_demos()
-        tf.logging.info(f"Training at round {self.round_num}")
+        logging.info(f"Training at round {self.round_num}")
         self.bc_trainer.train(**train_kwargs)
         self.round_num += 1
-        tf.logging.info(f"New round number is {self.round_num}")
+        logging.info(f"New round number is {self.round_num}")
         return self.round_num
 
     def get_trajectory_collector(self) -> InteractiveTrajectoryCollector:

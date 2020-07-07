@@ -1,10 +1,10 @@
 import contextlib
+import logging
 import os
 import os.path as osp
 import time
 from typing import Optional
 
-import tensorflow as tf
 from sacred.observers import FileStorageObserver
 from stable_baselines.common.vec_env import VecEnvWrapper
 
@@ -84,8 +84,8 @@ def eval_policy(
     os.makedirs(log_dir, exist_ok=True)
     sacred_util.build_sacred_symlink(log_dir, _run)
 
-    tf.logging.set_verbosity(tf.logging.INFO)
-    tf.logging.info("Logging to %s", log_dir)
+    logging.basicConfig(level=logging.INFO)
+    logging.info("Logging to %s", log_dir)
     sample_until = rollout.make_sample_until(eval_n_timesteps, eval_n_episodes)
     venv = util.make_vec_env(
         env_name,
@@ -105,7 +105,7 @@ def eval_policy(
             reward_fn_ctx = load_reward(reward_type, reward_path, venv)
             reward_fn = stack.enter_context(reward_fn_ctx)
             venv = reward_wrapper.RewardVecEnvWrapper(venv, reward_fn)
-            tf.logging.info(f"Wrapped env in reward {reward_type} from {reward_path}.")
+            logging.info(f"Wrapped env in reward {reward_type} from {reward_path}.")
 
         with serialize.load_policy(policy_type, policy_path, venv) as policy:
             trajs = rollout.generate_trajectories(policy, venv, sample_until)

@@ -1,12 +1,12 @@
 """Types and helper methods for transitions and trajectories."""
 
 import dataclasses
+import logging
 import os
 import pickle
 from typing import Optional, Sequence
 
 import numpy as np
-import tensorflow as tf
 
 from imitation.data import old_types
 
@@ -200,4 +200,4 @@ def save(path: str, trajectories: Sequence[TrajectoryWithRew]) -> None:
         pickle.dump(trajectories, f)
     # Ensure atomic write
     os.replace(path + ".tmp", path)
-    tf.logging.info("Dumped demonstrations to {}.".format(path))
+    logging.info("Dumped demonstrations to {}.".format(path))
