@@ -83,11 +83,14 @@ class BC:
         Args:
             env: environment to train on.
             policy_class: used to instantiate imitation policy.
+            policy_kwargs: keyword arguments passed to policy's constructor.
             expert_data: If not None, then immediately call
                   `self.set_expert_dataset(expert_data)` during initialization.
             batch_size: batch size used for training.
             optimizer_cls: optimiser to use for supervised training.
             optimizer_kwargs: keyword arguments for optimiser construction.
+            ent_weight: scaling applied to the policy's entropy regularization.
+            l2_weight: scaling applied to the policy's L2 regularization.
         """
         self.action_space = action_space
         self.observation_space = observation_space
@@ -128,7 +131,7 @@ class BC:
 
         Args:
              expert_data: Either a `DictDataset` whose keys include "obs" and "act"
-                 and for which `.size()` is not None, or a instance `Transitions`, which
+                 and for which `.size()` is not None, or a `Transitions` instance, which
                  is automatically converted to a shuffled `EpochOrderDictDataset`.
         """
         if isinstance(expert_data, types.Transitions):
@@ -223,7 +226,6 @@ class BC:
                     for k, v in stats_dict.items():
                         logger.logkv(k, v)
                     logger.dumpkvs()
-                batch_num += 1
 
             if on_epoch_end is not None:
                 on_epoch_end(locals())

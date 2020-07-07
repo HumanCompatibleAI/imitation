@@ -5,6 +5,7 @@ from typing import Callable, Dict, Hashable, List, Optional, Sequence, Union
 
 import numpy as np
 import tensorflow as tf
+from stable_baselines3.common.policies import BasePolicy as BasePolicy3
 from stable_baselines.common.base_class import BaseRLModel
 from stable_baselines.common.policies import BasePolicy
 from stable_baselines.common.vec_env import VecEnv
@@ -244,6 +245,8 @@ def generate_trajectories(
     if isinstance(policy, BaseRLModel):
         get_action = policy.predict
         policy.set_env(venv)
+    elif isinstance(policy, BasePolicy3):
+        get_action = policy.predict
     else:
         get_action = functools.partial(get_action_policy, policy)
 
