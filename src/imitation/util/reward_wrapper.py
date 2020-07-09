@@ -2,7 +2,7 @@
 import collections
 
 import numpy as np
-from stable_baselines.common import vec_env
+from stable_baselines3.common import vec_env
 
 from imitation.rewards import common
 

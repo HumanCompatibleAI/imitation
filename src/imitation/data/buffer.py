@@ -2,7 +2,7 @@ import dataclasses
 from typing import Dict, Mapping, Optional, Tuple
 
 import numpy as np
-from stable_baselines.common import vec_env
+from stable_baselines3.common import vec_env
 
 from imitation.data import dataset, types
 

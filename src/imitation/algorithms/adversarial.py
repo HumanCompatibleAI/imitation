@@ -1,7 +1,7 @@
+import logging
 import os
 import warnings
 from functools import partial
-import logging
 from typing import Callable, Mapping, Optional, Type, Union
 
 import numpy as np

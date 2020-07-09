@@ -8,10 +8,10 @@ import gym
 import numpy as np
 import stable_baselines
 from gym.wrappers import TimeLimit
-from stable_baselines import bench
-from stable_baselines.common.base_class import BaseRLModel
-from stable_baselines.common.policies import BasePolicy, MlpPolicy
-from stable_baselines.common.vec_env import DummyVecEnv, SubprocVecEnv, VecEnv
+from stable_baselines3.common import monitor
+from stable_baselines3.common.base_class import BaseAlgorithm
+from stable_baselines3.common.policies import ActorCriticPolicy, BasePolicy
+from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecEnv
 
 from imitation.data import wrappers
 
@@ -80,7 +80,7 @@ def make_vec_env(
             os.makedirs(log_subdir, exist_ok=True)
             log_path = os.path.join(log_subdir, f"mon{i:03d}")
 
-        env = bench.Monitor(env, log_path)
+        env = monitor.Monitor(env, log_path)
         env = wrappers.RolloutInfoWrapper(env)
         return env
 
@@ -96,8 +96,8 @@ def make_vec_env(
 
 def init_rl(
     env: Union[gym.Env, VecEnv],
-    model_class: Type[BaseRLModel] = stable_baselines.PPO2,
-    policy_class: Type[BasePolicy] = MlpPolicy,
+    model_class: Type[BaseAlgorithm] = stable_baselines.PPO2,
+    policy_class: Type[BasePolicy] = ActorCriticPolicy,
     **model_kwargs,
 ):
     """Instantiates a policy for the provided environment.

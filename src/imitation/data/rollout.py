@@ -5,9 +5,9 @@ import logging
 from typing import Callable, Dict, Hashable, List, Optional, Sequence, Union
 
 import numpy as np
-from stable_baselines.common.base_class import BaseRLModel
-from stable_baselines.common.policies import BasePolicy
-from stable_baselines.common.vec_env import VecEnv
+from stable_baselines3.common.base_class import BaseAlgorithm
+from stable_baselines3.common.policies import BasePolicy
+from stable_baselines3.common.vec_env import VecEnv
 
 from imitation.data import types
 from imitation.policies.base import get_action_policy
@@ -225,7 +225,7 @@ def generate_trajectories(
     """Generate trajectory dictionaries from a policy and an environment.
 
     Args:
-      policy (BasePolicy or BaseRLModel): A stable_baselines policy or RLModel,
+      policy (BasePolicy or BaseAlgorithm): A stable_baselines policy or RLModel,
           trained on the gym environment.
       venv: The vectorized environments to interact with.
       sample_until: A function determining the termination condition.
@@ -241,7 +241,7 @@ def generate_trajectories(
       may be collected to avoid biasing process towards short episodes; the user
       should truncate if required.
     """
-    if isinstance(policy, BaseRLModel):
+    if isinstance(policy, BaseAlgorithm):
         get_action = policy.predict
         policy.set_env(venv)
     else:
@@ -411,7 +411,7 @@ def generate_transitions(
     """Generate obs-action-next_obs-reward tuples.
 
     Args:
-      policy (BasePolicy or BaseRLModel): A stable_baselines policy or RLModel,
+      policy (BasePolicy or BaseAlgorithm): A stable_baselines policy or RLModel,
           trained on the gym environment.
       venv: The vectorized environments to interact with.
       n_timesteps: The minimum number of timesteps to sample.
@@ -437,7 +437,7 @@ def generate_transitions(
 
 def rollout_and_save(
     path: str,
-    policy: Union[BaseRLModel, BasePolicy],
+    policy: Union[BaseAlgorithm, BasePolicy],
     venv: VecEnv,
     sample_until: GenTrajTerminationFn,
     *,
