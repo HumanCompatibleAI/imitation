@@ -231,8 +231,8 @@ class BC:
                 assert len(batch_dict["obs"]) == self.batch_size
                 samples_so_far += self.batch_size
 
-                obs_tensor = th.tensor(batch_dict["obs"])
-                acts_tensor = th.tensor(batch_dict["acts"])
+                obs_tensor = th.as_tensor(batch_dict["obs"]).to(self.policy.device)
+                acts_tensor = th.as_tensor(batch_dict["acts"]).to(self.policy.device)
                 loss, stats_dict = self._calculate_loss(obs_tensor, acts_tensor)
 
                 self.policy.optimizer.zero_grad()
@@ -258,6 +258,13 @@ class BC:
             policy_path: path to save policy to.
         """
         self.policy.save(policy_path)
+
+    def load_policy(self, *args, **kwargs) -> None:
+        """Load policy that `.save_policy()` previously saved.
+
+        The `args` and `kwargs` are passed to `.reconstruct_policy()`.
+        """
+        self.policy = self.reconstruct_policy(*args, **kwargs)
 
     @staticmethod
     def reconstruct_policy(
