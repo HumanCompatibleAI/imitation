@@ -6,7 +6,6 @@ import gym
 import numpy as np
 import torch as th
 from stable_baselines3.common.policies import ActorCriticPolicy, BasePolicy
-from stable_baselines3.common.utils import is_vectorized_observation
 
 
 class HardCodedPolicy(BasePolicy, abc.ABC):
@@ -62,50 +61,23 @@ class FeedForward32Policy(ActorCriticPolicy):
         super().__init__(*args, **kwargs, net_arch=[32, 32])
 
 
-def get_action_policy(policy, observation, deterministic=True):
-    """Gets an action from a Stable Baselines policy after some processing.
+# TODO(scottemmons) remove the use of this helper function to complete Stable
+# Baselines 3 port
+def get_action_policy(policy, *args, **kwargs):
+    """Gets an action from a Stable Baselines policy.
 
-    Specifically, clips actions to the action space associated with `policy` and
-    automatically accounts for vectorized environments inputs.
-
-    This code was adapted from Stable Baselines' `BaseAlgorithm.predict()`.
+    In a previous version of Stable Baselines, this helper function was needed to do
+    processing of the policy's output. However, Stable Baselines 3 handles the
+    processing automatically, so this function is now simply an alias for
+    policy.predict().
 
     Args:
         policy (stable_baselines.common.policies.BasePolicy): The policy.
-        observation (np.ndarray): The input to the policy network. Can either
-            be a single input with shape `policy.observation_space.shape` or a
-            vectorized input with shape `(n_batch,) +
-            policy.observation_space.shape`.
-        deterministic (bool): Whether or not to return deterministic actions
-            (usually means argmax over policy's action distribution).
+        *args: Positional arguments to pass to policy.predict()
+        **kwargs: Keywords arguments to pass to policy.predict()
 
     Returns:
-       action (np.ndarray): The action output of the policy network. If
-           `observation` is not vectorized (has shape `policy.observation_space.shape`
-           instead of shape `(n_batch,) + policy.observation_space.shape`) then
-           `action` has shape `policy.action_space.shape`.
-           Otherwise, `action` has shape `(n_batch,) + policy.action_space.shape`.
-       states(np.ndarray or None): if this policy is recurrent, this will
-            return the internal LSTM state at the end of the supplied observation
-            sequence. Otherwise, it returns None. As of 2020-07-08, SB3 doesn't
-            support RNN policies, so this value is always None.
+        (Tuple[np.ndarray, Optional[np.ndarray]]) the model's action and the next state
+            (used in recurrent policies)
     """
-    # TODO: automate type conversions. There is probably something in SB3 to do
-    # this.
-    is_vec_obs = is_vectorized_observation(observation, policy.observation_space)
-
-    observation = observation.reshape((-1,) + policy.observation_space.shape)
-    with th.no_grad():
-        # returns (actions, values, log_prob)
-        actions, states = policy.predict(observation, deterministic=deterministic)
-
-    clipped_actions = actions
-    if isinstance(policy.action_space, gym.spaces.Box):
-        clipped_actions = np.clip(
-            actions, policy.action_space.low, policy.action_space.high
-        )
-
-    if not is_vec_obs:
-        clipped_actions = clipped_actions[0]
-
-    return clipped_actions, states
+    return policy.predict(*args, **kwargs)

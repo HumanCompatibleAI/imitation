@@ -5,8 +5,8 @@ import os
 import gym
 import numpy as np
 import pytest
-import tensorflow as tf
-from stable_baselines.common.policies import BasePolicy
+from stable_baselines3.common.policies import ActorCriticPolicy
+from stable_baselines3.common.utils import get_schedule_fn
 
 from imitation.algorithms import dagger
 from imitation.data import rollout
@@ -67,7 +67,7 @@ def make_trainer(tmpdir):
         env,
         tmpdir,
         dagger.linear_beta_schedule(1),
-        optimizer_kwargs=dict(learning_rate=1e-3),
+        policy_kwargs=dict(lr_schedule=get_schedule_fn(1e-3)),
     )
 
 
@@ -86,7 +86,7 @@ def test_trainer_makes_progress(tmpdir, session):
     # checking that the initial policy is poor can be flaky; sometimes the
     # randomly initialised policy performs very well, and it's not clear why
     # assert pre_train_rew_mean < 100
-    with serialize.load_policy("ppo2", EXPERT_POLICY_PATH, venv) as expert_policy:
+    with serialize.load_policy("ppo", EXPERT_POLICY_PATH, venv) as expert_policy:
         for i in range(5):
             # roll out a few trajectories for dataset, then train for a few steps
             collector = trainer.get_trajectory_collector()
@@ -94,7 +94,7 @@ def test_trainer_makes_progress(tmpdir, session):
                 obs = collector.reset()
                 done = False
                 while not done:
-                    (expert_action,), _, _, _ = expert_policy.step(
+                    (expert_action,), _ = expert_policy.step(
                         obs[None], deterministic=True
                     )
                     obs, _, done, _ = collector.step(expert_action)
@@ -113,29 +113,29 @@ def test_trainer_makes_progress(tmpdir, session):
 
 
 def test_trainer_save_reload(tmpdir, session):
-    with tf.variable_scope("orig_trainer"):
-        trainer = make_trainer(tmpdir)
+    trainer = make_trainer(tmpdir)
     trainer.round_num = 3
     trainer.save_trainer()
-    with tf.variable_scope("reload_trainer"):
-        new_trainer = trainer.reconstruct_trainer(tmpdir)
+    new_trainer = trainer.reconstruct_trainer(tmpdir)
     assert new_trainer.round_num == trainer.round_num
 
+    # TODO(scottemmons): BasePolicy.state_dict() doesn't capture the optimizer state.
+    #  Do we want it to?
     # old trainer and reloaded trainer should have same variable values
-    old_vars = trainer._sess.run(trainer._vars)
-    new_vars = trainer._sess.run(new_trainer._vars)
-    assert len(old_vars) == len(new_vars)
-    for v1, v2 in zip(old_vars, new_vars):
-        assert np.allclose(v1, v2)
+    old_vars = trainer.bc_trainer.policy.state_dict()
+    new_vars = new_trainer.bc_trainer.policy.state_dict()
+    assert len(new_vars) == len(old_vars)
+    for var, values in new_vars.items():
+        assert values.equal(old_vars[var])
 
     # also those values should be different from a newly created trainer
-    with tf.variable_scope("third_trainer"):
-        third_trainer = make_trainer(tmpdir)
-    third_vars = trainer._sess.run(third_trainer._vars)
-    all_same = True
-    for v1, v3 in zip(old_vars, third_vars):
-        all_same = all_same and np.allclose(v1, v3)
-    assert not all_same
+    third_trainer = make_trainer(tmpdir)
+    third_vars = third_trainer.bc_trainer.policy.state_dict()
+    assert len(third_vars) == len(old_vars)
+    difference = False
+    for var, values in third_vars.items():
+        difference = difference or not values.equal(old_vars[var])
+    assert difference
 
 
 def test_policy_save_reload(tmpdir, session):
@@ -144,4 +144,5 @@ def test_policy_save_reload(tmpdir, session):
     trainer = make_trainer(tmpdir)
     trainer.save_policy(policy_path)
     pol = trainer.reconstruct_policy(policy_path)
-    assert isinstance(pol, BasePolicy)
+    assert isinstance(pol, ActorCriticPolicy)
+    trainer.load_policy(policy_path)

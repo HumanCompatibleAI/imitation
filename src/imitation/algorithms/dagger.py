@@ -14,10 +14,9 @@ from typing import Callable, Tuple
 import cloudpickle
 import gym
 import numpy as np
-import tensorflow as tf
-from stable_baselines.common.policies import BasePolicy
+from stable_baselines3.common.policies import ActorCriticPolicy
 
-from imitation.algorithms.bc import BC, set_tf_vars
+from imitation.algorithms.bc import BC
 from imitation.data import rollout, types
 from imitation.util import util
 
@@ -230,18 +229,9 @@ class DAggerTrainer:
         self._last_loaded_round = -1
         self._all_demos = []
 
-        self._build_graph()
-
-    def _build_graph(self):
-        with tf.variable_scope("dagger"):
-            self.bc_trainer = BC(
-                self.env.observation_space, self.env.action_space, **self.bc_kwargs
-            )
-            with self._graph.as_default():
-                self._vars = tf.get_collection(
-                    tf.GraphKeys.GLOBAL_VARIABLES, scope=tf.get_variable_scope().name
-                )
-            assert len(self._vars) > 0
+        self.bc_trainer = BC(
+            self.env.observation_space, self.env.action_space, **self.bc_kwargs
+        )
 
     def _load_all_demos(self):
         num_demos_by_round = []
@@ -286,14 +276,6 @@ class DAggerTrainer:
             self.bc_trainer.set_expert_dataset(transitions)
             self._last_loaded_round = self.round_num
 
-    @property
-    def _sess(self):
-        return self.bc_trainer.sess
-
-    @property
-    def _graph(self):
-        return self.bc_trainer.sess.graph
-
     def extend_and_update(self, **train_kwargs) -> int:
         """Extend internal batch of data and train.
 
@@ -333,7 +315,7 @@ class DAggerTrainer:
         beta = self.beta_schedule(self.round_num)
 
         def get_robot_act(obs):
-            (act,), _, _, _ = self.bc_trainer.policy.step(obs[None])
+            (act,), _, = self.bc_trainer.policy.predict(obs[None])
             return act
 
         collector = InteractiveTrajectoryCollector(
@@ -342,17 +324,18 @@ class DAggerTrainer:
 
         return collector
 
-    def save_trainer(self) -> str:
+    def save_trainer(self) -> Tuple[str, str]:
         """Create a snapshot of trainer in the scratch/working directory.
 
         The created snapshot can also be reloaded with `.reconstruct_trainer()`.
-        For convenience, this method will also create a separate snapshot of the
-        current policy, which can then be passed to evaluation routines for other
-        algorithms.
+        For convenience, this method creates the snapshot in two parts. One part saves
+        data associated with the trainer object. The other part saves data associated
+        with the current policy, which can then be passed to evaluation routines for
+        other algorithms.
 
         Returns:
-          checkpoint_path: a path to one of the created `DAggerTrainer`
-            checkpoints.
+          checkpoint_path: a path to one of the created `DAggerTrainer` checkpoints.
+          policy_path: a path to one of the created `DAggerTrainer` policies.
         """
         os.makedirs(self.scratch_dir, exist_ok=True)
         # save full trainer checkpoints
@@ -363,9 +346,16 @@ class DAggerTrainer:
         saved_attrs = {
             attr_name: getattr(self, attr_name) for attr_name in self.SAVE_ATTRS
         }
+        # TODO(scottemmons): I removed what the tf version called `variable_values`.
+        #  Now, the two parts of the snapshot are nonoverlapping; both are needed fully
+        #  to reconstruct the trainer.
+        #  Do we want to stick with this design decision? Or was it important that the
+        #  previous version of the trainer object could be loaded solely from a single
+        #  snapshot file?
+        #  Furthermore, the tf version seemed to capture the Adam optimizer state.
+        #  Do we want this version to capture the optimizer state?
         snapshot_dict = {
             "init_args": self._init_args,
-            "variable_values": self._sess.run(self._vars),
             "saved_attrs": saved_attrs,
         }
         for checkpoint_path in checkpoint_paths:
@@ -374,13 +364,13 @@ class DAggerTrainer:
 
         # save policies separately for convenience
         policy_paths = [
-            os.path.join(self.scratch_dir, f"policy-{self.round_num:03d}.pkl"),
-            os.path.join(self.scratch_dir, "policy-latest.pkl"),
+            os.path.join(self.scratch_dir, f"policy-{self.round_num:03d}.pt"),
+            os.path.join(self.scratch_dir, "policy-latest.pt"),
         ]
         for policy_path in policy_paths:
             self.save_policy(policy_path)
 
-        return checkpoint_paths[-1]
+        return checkpoint_paths[-1], policy_paths[-1]
 
     @classmethod
     def reconstruct_trainer(cls, scratch_dir: str) -> "DAggerTrainer":
@@ -388,38 +378,43 @@ class DAggerTrainer:
 
         Args:
           scratch_dir: path to the working directory created by a previous run of
-            this algorithm. The directory should contain a
-            `checkpoint-latest.pkl` file.
+            this algorithm. The directory should contain `checkpoint-latest.pkl` and
+            `policy-latest.pkl` files.
 
         Returns:
           trainer: a reconstructed `DAggerTrainer` with the same state as the
             previously-saved one.
         """
         checkpoint_path = os.path.join(scratch_dir, "checkpoint-latest.pkl")
+        policy_path = os.path.join(scratch_dir, "policy-latest.pt")
         with open(checkpoint_path, "rb") as fp:
             saved_trainer = cloudpickle.load(fp)
         # reconstruct from old init args
         trainer = cls(**saved_trainer["init_args"])
-        # set TF variables
-        set_tf_vars(
-            values=saved_trainer["variable_values"],
-            tf_vars=trainer._vars,
-            sess=trainer.bc_trainer.sess,
-        )
+        # load policy variables
+        trainer.load_policy(policy_path)
+        # set trainer attributes
         for attr_name in cls.SAVE_ATTRS:
             attr_value = saved_trainer["saved_attrs"][attr_name]
             setattr(trainer, attr_name, attr_value)
         return trainer
 
-    def save_policy(self, *args, **kwargs):
-        """Save the current policy only, (and not the rest of the trainer).
+    def save_policy(self, *args, **kwargs) -> None:
+        """Save the current policy only (and not the rest of the trainer).
 
         Refer to docs for `BC.save_policy`.
         """
         self.bc_trainer.save_policy(*args, **kwargs)
 
+    def load_policy(self, *args, **kwargs) -> None:
+        """Load a saved policy only (and not the rest of the trainer).
+
+        Refer to docs for `BC.load_policy`.
+        """
+        self.bc_trainer.load_policy(*args, **kwargs)
+
     @staticmethod
-    def reconstruct_policy(*args, **kwargs) -> BasePolicy:
+    def reconstruct_policy(*args, **kwargs) -> ActorCriticPolicy:
         """Reconstruct a policy saved with `save_policy()`.
 
         This is an alias for `BC.reconstruct_policy()`.

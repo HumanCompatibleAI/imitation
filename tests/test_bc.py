@@ -2,9 +2,8 @@
 
 import os
 
-import numpy as np
 import pytest
-import tensorflow as tf
+import torch as th
 
 from imitation.algorithms import bc
 from imitation.data import dataset, rollout, types
@@ -43,17 +42,13 @@ def test_bc(trainer: bc.BC, venv):
 
 
 def test_save_reload(trainer, tmpdir):
-    pol_path = os.path.join(tmpdir, "policy.pkl")
+    pol_path = os.path.join(tmpdir, "policy.pt")
     # just to change the values a little
     trainer.train(n_epochs=1)
-    var_values = trainer.sess.run(trainer.policy_variables)
+    var_values = [param for param in trainer.policy.parameters()]
     trainer.save_policy(pol_path)
-    with tf.Session() as sess:
-        # just make sure it doesn't die
-        with tf.variable_scope("new"):
-            bc.BC.reconstruct_policy(pol_path)
-        new_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope="new")
-        new_values = sess.run(new_vars)
-        assert len(var_values) == len(new_values)
-        for old, new in zip(var_values, new_values):
-            assert np.allclose(old, new)
+    new_policy = bc.BC.reconstruct_policy(pol_path)
+    new_values = [param for param in new_policy.parameters()]
+    assert len(var_values) == len(new_values)
+    for old, new in zip(var_values, new_values):
+        assert th.all(th.eq(old, new))
