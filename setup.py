@@ -50,6 +50,7 @@ setup(
         "gym[classic_control]",
         "matplotlib",
         "numpy>=1.15",
+        "torch>=1.4.0",
         "tqdm",
         "scikit-learn>=0.21.2",
         "stable-baselines~=2.10.0",

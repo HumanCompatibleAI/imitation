@@ -244,6 +244,8 @@ def generate_trajectories(
     if isinstance(policy, BaseAlgorithm):
         get_action = policy.predict
         policy.set_env(venv)
+    elif isinstance(policy, BasePolicy):
+        get_action = policy.predict
     else:
         get_action = functools.partial(get_action_policy, policy)
 
