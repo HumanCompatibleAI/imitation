@@ -14,7 +14,7 @@ from imitation.policies import serialize
 from imitation.util import util
 
 ENV_NAME = "CartPole-v1"
-EXPERT_POLICY_PATH = "tests/data/expert_models/cartpole_0/policies/final/"
+EXPERT_POLICY_PATH = "tests/data/expert_models/cartpole_0/policies/zoo/"
 
 
 def test_beta_schedule():
@@ -86,19 +86,19 @@ def test_trainer_makes_progress(tmpdir, session):
     # checking that the initial policy is poor can be flaky; sometimes the
     # randomly initialised policy performs very well, and it's not clear why
     # assert pre_train_rew_mean < 100
-    with serialize.load_policy("ppo", EXPERT_POLICY_PATH, venv) as expert_policy:
-        for i in range(5):
-            # roll out a few trajectories for dataset, then train for a few steps
-            collector = trainer.get_trajectory_collector()
-            for _ in range(10):
-                obs = collector.reset()
-                done = False
-                while not done:
-                    (expert_action,), _ = expert_policy.step(
-                        obs[None], deterministic=True
-                    )
-                    obs, _, done, _ = collector.step(expert_action)
-            trainer.extend_and_update(n_epochs=10)
+    expert_policy = serialize.load_policy("ppo", EXPERT_POLICY_PATH, venv)
+    for i in range(5):
+        # roll out a few trajectories for dataset, then train for a few steps
+        collector = trainer.get_trajectory_collector()
+        for _ in range(10):
+            obs = collector.reset()
+            done = False
+            while not done:
+                (expert_action,), _ = expert_policy.predict(
+                    obs[None], deterministic=True
+                )
+                obs, _, done, _ = collector.step(expert_action)
+        trainer.extend_and_update(n_epochs=10)
     # make sure we're doing better than a random policy would
     post_train_rew_mean = rollout.mean_return(
         trainer.bc_trainer.policy,
@@ -120,7 +120,7 @@ def test_trainer_save_reload(tmpdir, session):
     assert new_trainer.round_num == trainer.round_num
 
     # TODO(scottemmons): BasePolicy.state_dict() doesn't capture the optimizer state.
-    #  Do we want it to?
+    #  Do we want to capture the optimizer state?
     # old trainer and reloaded trainer should have same variable values
     old_vars = trainer.bc_trainer.policy.state_dict()
     new_vars = new_trainer.bc_trainer.policy.state_dict()

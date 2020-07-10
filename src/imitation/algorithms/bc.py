@@ -10,7 +10,7 @@ from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple, Type, Un
 import gym
 import numpy as np
 import torch as th
-from stable_baselines import logger
+from stable_baselines3.common import logger
 from stable_baselines3.common.policies import ActorCriticPolicy
 from stable_baselines3.common.utils import get_schedule_fn, update_learning_rate
 from tqdm.autonotebook import trange
@@ -242,11 +242,10 @@ class BC:
                 stats_dict["n_updates"] = batch_num
                 stats_dict["batch_size"] = len(batch_dict["obs"])
 
-                # TODO convert logging to stable_baselines 3?
                 if batch_num % log_interval == 0:
                     for k, v in stats_dict.items():
-                        logger.logkv(k, v)
-                    logger.dumpkvs()
+                        logger.record(k, v)
+                    logger.dump()
 
             if on_epoch_end is not None:
                 on_epoch_end(locals())

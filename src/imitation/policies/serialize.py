@@ -96,10 +96,23 @@ def _load_stable_baselines(
         A function loading policies trained via cls.
     """
 
+    def get_model_path(path: str) -> str:
+        """Returns the model file in a path directory."""
+        model_path_pkl = os.path.join(path, "model.pkl")
+        model_path_zip = os.path.join(path, "model.zip")
+        assert (
+            os.path.exists(model_path_pkl) + os.path.exists(model_path_zip) == 1
+        ), f"Expected one model but found two:\n- {model_path_pkl}\n- {model_path_zip}"
+        if os.path.exists(model_path_pkl):
+            model_path = model_path_pkl
+        if os.path.exists(model_path_zip):
+            model_path = model_path_zip
+        return model_path
+
     def f(path: str, venv: VecEnv) -> BasePolicy:
         """Loads a policy saved to path, for environment env."""
         logging.info(f"Loading Stable Baselines policy for '{cls}' " f"from '{path}'")
-        model_path = os.path.join(path, "model.pkl")
+        model_path = get_model_path(path)
         model = cls.load(model_path, env=venv)
         policy = getattr(model, policy_attr)
 
@@ -151,7 +164,7 @@ def load_policy(policy_type: str, policy_path: str, venv: VecEnv) -> BasePolicy:
     """Load serialized policy.
 
     Args:
-        policy_type: A key in `policy_registry`, e.g. `ppo2`.
+        policy_type: A key in `policy_registry`, e.g. `ppo`.
         policy_path: A path on disk where the policy is stored.
         venv: An environment that the policy is to be used with.
     """
