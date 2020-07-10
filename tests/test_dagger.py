@@ -64,7 +64,10 @@ def make_trainer(tmpdir):
     env = gym.make(ENV_NAME)
     env.seed(42)
     return dagger.DAggerTrainer(
-        env, tmpdir, dagger.linear_beta_schedule(1), optimiser_kwargs=dict(lr=1e-3)
+        env,
+        tmpdir,
+        dagger.linear_beta_schedule(1),
+        optimizer_kwargs=dict(learning_rate=1e-3),
     )
 
 

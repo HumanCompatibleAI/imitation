@@ -16,7 +16,7 @@ import numpy as np
 import tensorflow as tf
 from stable_baselines.common.policies import BasePolicy
 
-from imitation.algorithms.bc import BCTrainer, set_tf_vars
+from imitation.algorithms.bc import BC, set_tf_vars
 from imitation.data import rollout, types
 from imitation.util import util
 
@@ -164,10 +164,10 @@ class NeedsDemosException(Exception):
 class DAggerTrainer:
     """Helper class for interactively training with DAgger.
 
-    In essence, this is just BCTrainer with some helpers for incrementally
+    In essence, this is just BC with some helpers for incrementally
     resuming training and interpolating between demonstrator/learnt policies.
     Interaction proceeds in "rounds" in which the demonstrator first provides a
-    fresh set of demonstrations, and then an underlying `BCTrainer` is invoked to
+    fresh set of demonstrations, and then an underlying `BC` is invoked to
     fine-tune the policy on the entire set of demonstrations collected in all
     rounds so far. Demonstrations and policy/trainer checkpoints are stored in a
     directory with the following structure::
@@ -210,7 +210,7 @@ class DAggerTrainer:
           beta_schedule: provides a value of `beta` (the probability of taking
               expert action in any given state) at each round of training. If
               `None`, then `linear_beta_schedule` will be used instead.
-          **bc_kwargs: additional arguments for constructing the `BCTrainer` that
+          **bc_kwargs: additional arguments for constructing the `BC` that
               will be used to train the underlying policy.
         """
         # for pickling
@@ -233,7 +233,9 @@ class DAggerTrainer:
 
     def _build_graph(self):
         with tf.variable_scope("dagger"):
-            self.bc_trainer = BCTrainer(self.env, **self.bc_kwargs)
+            self.bc_trainer = BC(
+                self.env.observation_space, self.env.action_space, **self.bc_kwargs
+            )
             with self._graph.as_default():
                 self._vars = tf.get_collection(
                     tf.GraphKeys.GLOBAL_VARIABLES, scope=tf.get_variable_scope().name
@@ -304,7 +306,7 @@ class DAggerTrainer:
         the current interaction round.
 
         Arguments:
-          **train_kwargs: arguments to pass to `BCTrainer.train()`.
+          **train_kwargs: arguments to pass to `BC.train()`.
 
         Returns:
           round_num: new round number after advancing the round counter.
@@ -411,7 +413,7 @@ class DAggerTrainer:
     def save_policy(self, *args, **kwargs):
         """Save the current policy only, (and not the rest of the trainer).
 
-        Refer to docs for `BCTrainer.save_policy`.
+        Refer to docs for `BC.save_policy`.
         """
         self.bc_trainer.save_policy(*args, **kwargs)
 
@@ -419,6 +421,6 @@ class DAggerTrainer:
     def reconstruct_policy(*args, **kwargs) -> BasePolicy:
         """Reconstruct a policy saved with `save_policy()`.
 
-        This is an alias for `BCTrainer.reconstruct_policy()`.
+        This is an alias for `BC.reconstruct_policy()`.
         """
-        return BCTrainer.reconstruct_policy(*args, **kwargs)
+        return BC.reconstruct_policy(*args, **kwargs)
