@@ -1,30 +1,30 @@
 """Constructs deep network reward models."""
 
 from abc import ABC, abstractmethod
-from typing import Iterable, Optional, Sequence, Tuple
+from typing import Callable, Dict, Optional
 
 import gym
-import tensorflow as tf
+import numpy as np
+import torch as th
+from stable_baselines3.common.preprocessing import get_flattened_obs_dim, preprocess_obs
+from torch import nn
 
-from imitation.util import networks, serialize
+from imitation.util import networks
 
 
-class RewardNet(serialize.Serializable, ABC):
+class RewardNet(nn.Module, ABC):
     """Abstract reward network.
 
-    This class assumes that the caller will set the default TensorFlow Session
-    and initialize the network's variables.
-
     Attributes:
-      observation_space: The observation space of `obs_ph` and `next_obs_ph`.
-      action_space: The action space of `act_ph`.
-      obs_ph (tf.Tensor): previous observation placeholder.
-      act_ph (tf.Tensor): action placeholder.
-      next_obs_ph (tf.Tensor): next observation placeholder.
-      _params (dict): parameters to serialize in `save`, used as keyword
-          arguments for constructor by `load`.
-      _layers (dict): CheckpointableBase objects, e.g. a TensorFlow layer,
-          saved by `save` and restored by `load`.
+      observation_space: The observation space.
+      action_space: The action space.
+      base_reward_network (nn.Module): neural network taking state, action, next
+        state and dones, and producing a reward value.
+      use_state: should `base_reward_network` pay attention to current state?
+      use_next_state: should `base_reward_network` pay attention to next state?
+      use_action: should `base_reward_network` pay attention to action?
+      use_done: should `base_reward_network` pay attention to done flags?
+      scale: should inputs be scaled to lie in [0,1] using space bounds?
     """
 
     def __init__(
@@ -49,101 +49,159 @@ class RewardNet(serialize.Serializable, ABC):
             use_next_state: Whether next state is included in inputs to network.
             use_done: Whether episode termination is included in inputs to network.
         """
+        super().__init__()
 
         self.observation_space = observation_space
         self.action_space = action_space
         self.scale = scale
+        self.use_state = use_state
+        self.use_action = use_action
+        self.use_next_state = use_next_state
+        self.use_done = use_done
 
-        phs, inps = networks.build_inputs(observation_space, action_space, scale)
-        self.obs_ph, self.act_ph, self.next_obs_ph, self.done_ph = phs
-        self.obs_inp, self.act_inp, self.next_obs_inp, self.done_inp = inps
-
-        inputs = []
-        inputs += [self.obs_inp] if use_state else []
-        inputs += [self.act_inp] if use_action else []
-        inputs += [self.next_obs_inp] if use_next_state else []
-        if len(inputs) == 0:
+        if not (self.use_state or self.use_action or self.use_next_state):
             raise ValueError(
-                "At least one of `use_state`, `use_action` and `use_next_state` "
-                "must be true."
+                "At least one of use_state, use_action, or use_next_state "
+                "must be True"
             )
-        inputs += [self.done_inp] if use_done else []
 
-        with tf.variable_scope("theta_network"):
-            self._theta_output, theta_layers = self.build_theta_network(inputs)
+        self.base_reward_network = self.build_base_reward_network()
 
-        self._layers = theta_layers
-
-    @property
     @abstractmethod
-    def reward_output_train(self):
+    def _reward_train(
+        self,
+        state: th.Tensor,
+        action: th.Tensor,
+        next_state: th.Tensor,
+        done: th.Tensor,
+    ) -> th.Tensor:
         """A Tensor holding the training reward associated with each timestep.
 
-        Different concrete subclasses will require different placeholders to be
-        filled to calculate this output, but for all subclasses, filling the
-        following placeholders will be sufficient:
+        This performs inner logic for `self.reward_train()`. See
+        `reward_train()` docs for explanation of arguments and return values.
+        """
 
-        ```
-        self.obs_ph
-        self.act_ph
-        self.next_obs_ph
-        ```
+    def _reward_test(
+        self,
+        state: th.Tensor,
+        action: th.Tensor,
+        next_state: th.Tensor,
+        done: th.Tensor,
+    ) -> th.Tensor:
+        """A Tensor holding the test reward associated with each timestep.
+
+        This performs inner logic for `self.reward_test()`. See
+        `reward_test()` docs for explanation of arguments and return values.
+        """
+        return self._reward_train(state, action, next_state, done)
+
+    def reward_train(
+        self,
+        state: np.ndarray,
+        action: np.ndarray,
+        next_state: np.ndarray,
+        done: np.ndarray,
+    ) -> np.ndarray:
+        """Compute the train reward with raw ndarrays, including preprocessing.
+
+        Params:
+          state: current state.
+          action: action associated with `state`.
+          next_state: next state.
+          done: 0/1 value indicating whether episode terminates on transition
+            to `next_state`.
 
         Returns:
-          tf.Tensor: A (None,) shaped Tensor holding
+          np.ndarray: A (None,) shaped ndarray holding
               the training reward associated with each timestep.
         """
-        pass
+        # FIXME(sam): reward_train/reward_test are ugly. Moving ndarrays to
+        # devices and preprocessing them should not be the responsibility of
+        # a reward network. Going to keep this for compat for now, but I want
+        # to remove these methods in the future and push all the tensor/ndarray
+        # conversion and preprocessing logic back up the call stack.
+        return self._eval_reward(self._reward_train, state, action, next_state, done)
 
-    @property
-    def reward_output_test(self):
-        """A Tensor holding the test reward associated with each timestep.
+    def reward_test(
+        self,
+        state: np.ndarray,
+        action: np.ndarray,
+        next_state: np.ndarray,
+        done: np.ndarray,
+    ) -> np.ndarray:
+        """Compute the test reward with raw ndarrays, including preprocessing.
 
         Note this is the reward we use for transfer learning.
 
-        Different concrete subclasses will require different
-        placeholders to be filled to calculate this output, but for all
-        subclasses, filling the following placeholders will be sufficient:
-
-        ```
-        self.obs_ph
-        self.act_ph
-        self.next_obs_ph
-        ```
+        Params:
+          state: current state.
+          action: action associated with `state`.
+          next_state: next state.
+          done: 0/1 value indicating whether episode terminates on transition
+            to `next_state`.
 
         Returns:
-          tf.Tensor: A (None,) shaped Tensor holding
-            the test reward associated with each timestep.
+          np.ndarray: A (None,) shaped ndarray holding the test reward
+            associated with each timestep.
         """
-        return self._theta_output
+        return self._eval_reward(self._reward_test, state, action, next_state, done)
+
+    def _eval_reward(
+        self,
+        method: Callable[[th.Tensor] * 4, th.Tensor],
+        state: np.ndarray,
+        action: np.ndarray,
+        next_state: np.ndarray,
+        done: np.ndarray,
+    ) -> np.ndarray:
+        """Evaluates either train or test reward, given appropriate method."""
+        # torchify
+        dev = self.device()
+        state_th = th.as_tensor(state, device=dev)
+        action_th = th.as_tensor(action, device=dev)
+        next_state_th = th.as_tensor(next_state, device=dev)
+        done_th = th.as_tensor(done, device=dev)
+
+        # preprocess observations/actions
+        state_th = preprocess_obs(state_th, self.observation_space, self.scale)
+        action_th = preprocess_obs(action_th, self.action_space, self.scale)
+        next_state_th = preprocess_obs(
+            next_state_th, self.observation_space, self.scale
+        )
+        done_th = done_th.to(th.float32)
+
+        with th.no_grad():
+            th_reward = self._reward_test(state_th, action_th, next_state_th, done_th)
+
+        return th_reward.detach().cpu().numpy().flatten()
 
     @abstractmethod
-    def build_theta_network(
-        self, inputs: Sequence[tf.Tensor]
-    ) -> Tuple[tf.Tensor, networks.LayersDict]:
+    def build_base_reward_network(self) -> nn.Module:
         """Builds the test reward network.
 
-        The output of the network is the same as the reward used for transfer
-        learning, and is the Tensor returned by `self.reward_output_test()`.
+        The output of the network is treated as a reward suitable for transfer
+        learning. The network will be provided with the current observation,
+        current action, next observation, and done flag, as indicated by
+        self.{use_state, use_action, use_next_state, use_done}.
 
-        Args:
-          obs_input: The observation input. Its shape is
-              `((None,) + self.env.observation_space.shape)`.
-          act_input: The action input. Its shape is
-              `((None,) + self.env.action_space.shape)`. The None dimension is
-              expected to be the same as None dimension from `obs_input`.
-
-        Returns:
-          A tuple (theta_output, layers) where
-            * theta_output is a reward prediction for each of the inputs,
-              of shape `(None,)`;
-            * layers is a dictionary mapping to individual checkpointable layers.
+        Returns: an `nn.Module` which takes the appropriate inputs (described
+            above) and returns a scalar reward for each batch element.
         """
-        pass
 
-    def build_summaries(self):
-        tf.summary.histogram("train_reward", self.reward_output_train)
-        tf.summary.histogram("test_reward", self.reward_output_test)
+    def device(self) -> th.device:
+        """Use a heuristic to determine which device this module is on.
+
+        Returns: device that parameters for this module (probably) exist on."""
+        # FIXME(sam): this is ugly too. Remove it when/if I remove
+        # reward_test()/reward_train().
+        first_param = next(self.parameters())
+        return first_param.device
+
+    # TODO(sam): add these summaries back using
+    # torch.util.tensorboard.SummaryWriter.
+    # def build_summaries(self):
+    #     tf.summary.histogram("train_reward", self._reward_train)
+    #     tf.summary.histogram("test_reward", self._reward_test)
 
 
 class RewardNetShaped(RewardNet):
@@ -156,8 +214,8 @@ class RewardNetShaped(RewardNet):
     (See original implementation of Pendulum experiment's reward function at
     https://github.com/justinjfu/inverse_rl/blob/master/inverse_rl/models/imitation_learning.py#L374)
 
-    To make a concrete subclass, implement `build_phi_network()` and
-    `build_theta_network()`.
+    To make a concrete subclass, implement `build_potential_network()` and
+    `build_base_reward_network()`.
     """
 
     def __init__(
@@ -171,101 +229,135 @@ class RewardNetShaped(RewardNet):
         super().__init__(observation_space, action_space, **kwargs)
         self._discount_factor = discount_factor
 
-        with tf.variable_scope("phi_network"):
-            res = self.build_phi_network(self.obs_inp, self.next_obs_inp)
-            # end_potential is the potential when the episode terminates.
-            if discount_factor == 1.0:
-                # If undiscounted, terminal state must have potential 0.
-                end_potential = tf.constant(0.0)
-            else:
-                # Otherwise, it can be arbitrary, so make a trainable variable.
-                end_potential = tf.Variable(
-                    name="end_phi", shape=(), dtype=tf.float32, initial_value=0.0
-                )
-                self._layers.update(end_potential=end_potential)
-            self._old_shaping_output, self._new_shaping_output, phi_layers = res
-            self._layers.update(**phi_layers)
+        self.potential_network = self.build_potential_network()
+        # end_potential is the potential when the episode terminates.
+        if discount_factor == 1.0:
+            # If undiscounted, terminal state must have potential 0.
+            self.end_potential = 0.0
+        else:
+            # Otherwise, it can be arbitrary, so make a trainable variable.
+            self.end_potential = nn.Parameter(th.zeros(()))
 
-        with tf.variable_scope("f_network"):
-            new_shaping = (
-                self.done_inp * end_potential
-                + (1 - self.done_inp) * self._new_shaping_output
-            )
-            self._shaped_reward_output = (
-                self._theta_output
-                + self._discount_factor * new_shaping
-                - self._old_shaping_output
-            )
+    def _reward_train(
+        self,
+        state: th.Tensor,
+        action: th.Tensor,
+        next_state: th.Tensor,
+        done: th.Tensor,
+    ) -> th.Tensor:
+        """Compute the (shaped) training reward of each timestep."""
+        base_reward_net_output = self.base_reward_network(
+            state, action, next_state, done
+        )
+        # TODO(sam): batch potential_network calls
+        new_shaping_output = self.potential_network(next_state)
+        old_shaping_output = self.potential_network(state)
+        new_shaping = done * self._end_potential + (1 - done) * new_shaping_output
+        return (
+            base_reward_net_output
+            + self._discount_factor * new_shaping
+            - old_shaping_output
+        )
 
-    @property
-    def reward_output_train(self):
-        """A Tensor holding the (shaped) training reward of each timestep.
-
-        Requires the following placeholders to be filled:
-
-        ```
-        self.obs_ph
-        self.act_ph
-        self.next_obs_ph
-        ```
-
-        Returns:
-          tf.Tensor: A (None,) shaped Tensor holding
-              the training reward associated with each timestep.
-        """
-        return self._shaped_reward_output
+    def _reward_test(
+        self,
+        state: th.Tensor,
+        action: th.Tensor,
+        next_state: th.Tensor,
+        done: th.Tensor,
+    ) -> th.Tensor:
+        """Compute the (unshaped) test reward associated with each timestep."""
+        return self.base_reward_network(state, action, next_state, done)
 
     @abstractmethod
-    def build_phi_network(
-        self, obs_input: tf.Tensor, next_obs_input: tf.Tensor,
-    ) -> Tuple[tf.Tensor, tf.Tensor, networks.LayersDict]:
+    def build_potential_network(self) -> nn.Module:
         """Build the reward shaping network (disentangles dynamics from reward).
 
-        XXX: We could potentially make it easier on the subclasser by requiring
-        only one input. ie build_phi_network(obs_input). Later in
-        _build_f_network, I could stack Tensors of old and new observations,
-        pass them simulatenously through the network, and then unstack the
-        outputs. Another way to do this would be to pass in a single
-        rank 3 obs_input with shape `(2, None) + self.env.observation_space`.
-
-        Args:
-          obs_input: The old observations (corresponding to the state at which
-              the current action is made). The shape of this Tensor should be
-              `(None,) + self.env.observation_space.shape`.
-          next_obs_input: The new observations (corresponding to the state that we
-              transition to after this state-action pair.
-
         Returns:
-          A tuple (old_shaping_output, new_shaping_output, layers) where
-            * old_shaping_output is a reward shaping prediction for each of the old
-              observation inputs, with shape `(None,)`.
-            * new_shaping_output is a reward shaping prediction for each of the new
-              observation inputs, with shape `(None,)`.
-            * layers is a dictionary mapping to individual checkpointable layers.
+          An `nn.Module` mapping from observations to potential values.
         """
-        pass
 
-    def build_summaries(self):
-        super().build_summaries()
-        tf.summary.histogram("shaping_old", self._old_shaping_output)
-        tf.summary.histogram("shaping_new", self._new_shaping_output)
+    # TODO(sam): add back these summary histograms too
+    # def build_summaries(self):
+    #     super().build_summaries()
+    #     tf.summary.histogram("shaping_old", self._old_shaping_output)
+    #     tf.summary.histogram("shaping_new", self._new_shaping_output)
 
 
-class BasicRewardNet(RewardNet, serialize.LayersSerializable):
-    """An unshaped reward net with simple, default settings.
+class BasicRewardMLP(nn.Module):
+    """MLP that flattens and concatenates current state, current action, next state, and
+    done flag, depending on given `use_*` keyword arguments."""
 
-    Intended to match the reward network trained for the original AIRL pendulum
-    experiments. Right now it has a linear function approximator for the theta network,
-    not sure if this is what I want.
-    """
+    def __init__(
+        self,
+        observation_space,
+        action_space,
+        use_state,
+        use_action,
+        use_next_state,
+        use_done,
+        build_mlp_kwargs: Optional[Dict] = None,
+    ):
+        # XXX(sam): need docstring
+        super().__init__()
+        combined_size = 0
+
+        self.use_state = use_state
+        if self.use_state:
+            combined_size += get_flattened_obs_dim(observation_space)
+
+        self.use_action = use_action
+        if self.use_action:
+            combined_size += get_flattened_obs_dim(action_space)
+
+        self.use_next_state = use_next_state
+        if self.use_next_state:
+            combined_size += get_flattened_obs_dim(observation_space)
+
+        self.use_done = use_done
+        if self.use_done:
+            combined_size += 1
+
+        full_build_mlp_kwargs = {
+            "in_size": combined_size,
+            "hid_sizes": (32, 32),
+        }
+        full_build_mlp_kwargs.update(build_mlp_kwargs)
+
+        self.mlp = networks.build_mlp(**full_build_mlp_kwargs)
+
+        # XXX
+        self.combined_size = combined_size
+        self.observation_space = observation_space
+        self.action_space = action_space
+
+    def forward(self, state, action, next_state, done):
+        inputs = []
+        if self.use_state:
+            inputs.append(th.flatten(state, 1))
+        if self.use_action:
+            inputs.append(th.flatten(action, 1))
+        if self.use_next_state:
+            inputs.append(th.flatten(next_state, 1))
+        if self.use_done:
+            inputs.append(th.flatten(done, 1))
+
+        inputs_concat = th.cat(inputs, dim=1)
+
+        outputs = self.mlp(inputs_concat)
+
+        return outputs
+
+
+class BasicRewardNet(RewardNet):
+    """An unshaped reward net with simple, default settings."""
 
     def __init__(
         self,
         observation_space: gym.Space,
         action_space: gym.Space,
         *,
-        theta_units: Optional[Iterable[int]] = None,
-        theta_kwargs: Optional[dict] = None,
+        base_reward_net_kwargs: Optional[dict] = None,
         **kwargs,
     ):
         """Builds a simple reward network.
@@ -273,68 +365,42 @@ class BasicRewardNet(RewardNet, serialize.LayersSerializable):
         Args:
           observation_space: The observation space.
           action_space: The action space.
-          theta_units: Number of hidden units at each layer of the feedforward
-              reward network theta.
-          theta_kwargs: Arguments passed to `build_basic_theta_network`.
+          base_reward_net_kwargs: Arguments passed to `build_mlp_base_reward_network`.
           kwargs: Passed through to RewardNet.
         """
-        params = locals()
-        del params["kwargs"]
-        params.update(kwargs)
-
-        self.theta_units = theta_units
-        self.theta_kwargs = theta_kwargs or {}
+        self.base_reward_net_kwargs = {
+            "hid_sizes": (32, 32),
+            **(base_reward_net_kwargs or {}),
+        }
         RewardNet.__init__(self, observation_space, action_space, **kwargs)
-        serialize.LayersSerializable.__init__(**params, layers=self._layers)
 
-    def build_theta_network(self, inputs: Sequence[tf.Tensor]):
-        return networks.build_and_apply_mlp(
-            inputs, self.theta_units, **self.theta_kwargs
+    def _reward_train(
+        self,
+        state: th.Tensor,
+        action: th.Tensor,
+        next_state: th.Tensor,
+        done: th.Tensor,
+    ) -> th.Tensor:
+        """Compute the train reward associated with each timestep."""
+        return self.base_reward_network(state, action, next_state, done)
+
+    def build_base_reward_network(self) -> nn.Module:
+        return BasicRewardMLP(
+            observation_space=self.observation_space,
+            action_space=self.action_space,
+            use_state=self.use_state,
+            use_action=self.use_action,
+            use_next_state=self.use_next_state,
+            use_done=self.use_done,
+            build_mlp_kwargs=self.base_reward_net_kwargs,
         )
 
-    @property
-    def reward_output_train(self):
-        """Training reward is the same as the test reward, since no shaping."""
-        return self.reward_output_test
 
-
-def build_basic_phi_network(
-    hid_sizes: Optional[Iterable[int]],
-    obs_input: tf.Tensor,
-    next_obs_input: tf.Tensor,
-    **kwargs: dict,
-):
-    """Builds a potential network depending on specified observation.
-
-    Arguments:
-      hid_sizes: Number of units at each hidden layer. Default is (32, 32).
-      obs_input: Previous observation.
-      next_obs_input: Next observation.
-      **kwargs: Passed through to `util.build_mlp`.
-
-    Returns:
-      Tuple[tf.Tensor, tf.Tensor]: potential for the old and new observations.
-    """
-    if hid_sizes is None:
-        hid_sizes = (32, 32)
-
-    with tf.variable_scope("phi", reuse=tf.AUTO_REUSE):
-        old_o = tf.layers.flatten(obs_input)
-        new_o = tf.layers.flatten(next_obs_input)
-
-        # Weight share, just with different inputs old_o and new_o
-        phi_mlp = networks.build_mlp(hid_sizes=hid_sizes, name="shaping", **kwargs)
-        old_shaping_output = networks.sequential(old_o, phi_mlp)
-        new_shaping_output = networks.sequential(new_o, phi_mlp)
-
-    return old_shaping_output, new_shaping_output, phi_mlp
-
-
-class BasicShapedRewardNet(RewardNetShaped, serialize.LayersSerializable):
+class BasicShapedRewardNet(RewardNetShaped):
     """A shaped reward network with simple, default settings.
 
     With default parameters this RewardNet has two hidden layers [32, 32]
-    for the theta network and reward shaping phi network.
+    for the base reward network and shaping network.
 
     This network is feed-forward and flattens inputs, so is a poor choice for
     training on pixel observations.
@@ -345,10 +411,8 @@ class BasicShapedRewardNet(RewardNetShaped, serialize.LayersSerializable):
         observation_space: gym.Space,
         action_space: gym.Space,
         *,
-        theta_units: Optional[Iterable[int]] = None,
-        theta_kwargs: Optional[dict] = None,
-        phi_units: Optional[Iterable[int]] = None,
-        phi_kwargs: Optional[dict] = None,
+        base_reward_net_kwargs: Optional[dict] = None,
+        shaping_net_kwargs: Optional[dict] = None,
         **kwargs,
     ):
         """Builds a simple shaped reward network.
@@ -356,33 +420,34 @@ class BasicShapedRewardNet(RewardNetShaped, serialize.LayersSerializable):
         Args:
           observation_space: The observation space.
           action_space: The action space.
-          theta_units: Number of hidden units at each layer of the feedforward
-              reward network theta.
-          theta_kwargs: Arguments passed to `build_basic_theta_network`.
-          phi_units: Number of hidden units at each layer of the feedforward
-              potential network phi.
-          phi_kwargs: Arguments passed to `build_basic_phi_network`.
+          base_reward_net_kwargs: Arguments passed to
+            `build_mlp_base_reward_network`.
+          shaping_net_kwargs: Arguments passed to `build_mlp_potential_network`.
           kwargs: Passed through to `RewardNetShaped`.
         """
-        params = locals()
-        del params["kwargs"]
-        params.update(kwargs)
-
-        self.theta_units = theta_units
-        self.phi_units = phi_units
-        self.theta_kwargs = theta_kwargs or {}
-        self.phi_kwargs = phi_kwargs or {}
+        self.base_reward_net_kwargs = {
+            "hid_sizes": (32, 32),
+            **(base_reward_net_kwargs or {}),
+        }
+        self.shaping_net_kwargs = {
+            "hid_sizes": (32, 32),
+            **(base_reward_net_kwargs or {}),
+        }
         RewardNetShaped.__init__(
             self, observation_space, action_space, **kwargs,
         )
-        serialize.LayersSerializable.__init__(**params, layers=self._layers)
 
-    def build_theta_network(self, inputs):
-        return networks.build_and_apply_mlp(
-            inputs, self.theta_units, **self.theta_kwargs
+    def build_base_reward_network(self):
+        return BasicRewardMLP(
+            observation_space=self.observation_space,
+            action_space=self.action_space,
+            use_state=self.use_state,
+            use_action=self.use_action,
+            use_next_state=self.use_next_state,
+            use_done=self.use_done,
+            build_mlp_kwargs=self.base_reward_net_kwargs,
         )
 
-    def build_phi_network(self, obs_input, next_obs_input):
-        return build_basic_phi_network(
-            self.phi_units, obs_input, next_obs_input, **self.phi_kwargs
-        )
+    def build_potential_network(self):
+        in_size = get_flattened_obs_dim(self.observation_space)
+        return networks.build_mlp(in_size=in_size, **self.shaping_net_kwargs)

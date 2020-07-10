@@ -4,7 +4,7 @@ import functools
 from typing import Callable
 
 import numpy as np
-from stable_baselines.common import vec_env
+from stable_baselines3.common import vec_env
 
 RewardFn = Callable[[np.ndarray, np.ndarray, np.ndarray, np.ndarray], np.ndarray]
 

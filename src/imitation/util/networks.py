@@ -22,8 +22,7 @@ def build_mlp(
         layers[f"{name}_dense{i}"] = nn.Linear(prev_size, size)  # type: nn.Module
         prev_size = size
         if activation:
-            layers[f"{name}_act{i}"] = activation
-            layers.append(activation)
+            layers[f"{name}_act{i}"] = activation()
 
     # Final layer
     layers[f"{name}_dense_final"] = nn.Linear(prev_size, 1)  # type: nn.Module

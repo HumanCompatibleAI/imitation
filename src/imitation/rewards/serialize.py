@@ -1,20 +1,22 @@
 """Load serialized reward functions of different types."""
 
-import contextlib
-from typing import Callable, ContextManager, Iterator
+from typing import Callable
 
 import numpy as np
+import torch as th
 from stable_baselines.common.vec_env import VecEnv
 
-from imitation.rewards import common, discrim_net, reward_net
-from imitation.util import networks, registry, util
+from imitation.rewards import common, discrim_net
+from imitation.util import registry, util
 
-RewardFnLoaderFn = Callable[[str, VecEnv], ContextManager[common.RewardFn]]
+# TODO(sam): I suspect this whole file can be replaced with th.load calls. Try
+# that refactoring once I have things running.
+
+RewardFnLoaderFn = Callable[[str, VecEnv], common.RewardFn]
 
 reward_registry: registry.Registry[RewardFnLoaderFn] = registry.Registry()
 
 
-@registry.sess_context
 def _load_discrim_net(path: str, venv: VecEnv) -> common.RewardFn:
     """Load test reward output from discriminator."""
     del venv  # Unused.
@@ -24,31 +26,20 @@ def _load_discrim_net(path: str, venv: VecEnv) -> common.RewardFn:
 
 
 def _load_reward_net_as_fn(shaped: bool) -> RewardFnLoaderFn:
-    @contextlib.contextmanager
-    def loader(path: str, venv: VecEnv) -> Iterator[common.RewardFn]:
+    def loader(path: str, venv: VecEnv) -> common.RewardFn:
         """Load train (shaped) or test (not shaped) reward from path."""
         del venv  # Unused.
-        with networks.make_session() as (graph, sess):
-            net = reward_net.RewardNet.load(path)
-            reward = net.reward_output_train if shaped else net.reward_output_test
+        net = th.load(str(path))
+        reward = net.reward_train if shaped else net.reward_test
 
-            def rew_fn(
-                obs: np.ndarray,
-                act: np.ndarray,
-                next_obs: np.ndarray,
-                dones: np.ndarray,
-            ) -> np.ndarray:
-                fd = {
-                    net.obs_ph: obs,
-                    net.act_ph: act,
-                    net.next_obs_ph: next_obs,
-                    net.done_ph: dones,
-                }
-                rew = sess.run(reward, feed_dict=fd)
-                assert rew.shape == (len(obs),)
-                return rew
+        def rew_fn(
+            obs: np.ndarray, act: np.ndarray, next_obs: np.ndarray, dones: np.ndarray,
+        ) -> np.ndarray:
+            rew = reward(obs, act, next_obs, dones)
+            assert rew.shape == (len(obs),)
+            return rew
 
-            yield rew_fn
+        return rew_fn
 
     return loader
 
@@ -72,13 +63,11 @@ reward_registry.register(
 reward_registry.register(
     key="RewardNet_unshaped", value=_load_reward_net_as_fn(shaped=False)
 )
-reward_registry.register(key="zero", value=registry.dummy_context(load_zero))
+reward_registry.register(key="zero", value=load_zero)
 
 
 @util.docstring_parameter(reward_types=", ".join(reward_registry.keys()))
-def load_reward(
-    reward_type: str, reward_path: str, venv: VecEnv
-) -> ContextManager[common.RewardFn]:
+def load_reward(reward_type: str, reward_path: str, venv: VecEnv) -> common.RewardFn:
     """Load serialized policy.
 
     Args:

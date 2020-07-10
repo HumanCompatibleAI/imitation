@@ -7,21 +7,20 @@ from typing import Callable, Dict, Optional, Sequence, Tuple
 
 import gym
 import numpy as np
-import tensorflow as tf
+import torch as th
+from torch import nn
 
 from imitation.rewards import reward_net
-from imitation.util import networks, serialize
+from imitation.util import networks
 
 
-class DiscrimNet(serialize.Serializable, ABC):
+class DiscrimNet(nn.Module, ABC):
     """Abstract base class for discriminator, used in AIRL and GAIL."""
 
     def __init__(self):
-        self._sess = tf.get_default_session()
-
         # Dict from names to scalar Tensors that are logged by
         # `AdversarialTrainer.train_disc_step`.
-        self._train_stats = collections.OrderedDict()  # type: Dict[str, tf.Tensor]
+        self._train_stats = collections.OrderedDict()  # type: Dict[str, th.Tensor]
 
         # Build necessary placeholders, then construct rest of the graph.
         # _labels_gen_is_one_ph holds the label of every state-action pair that the
@@ -39,10 +38,10 @@ class DiscrimNet(serialize.Serializable, ABC):
             shape=(None,), dtype=tf.float32, name="log_ro_act_prob_ph"
         )
 
-        self._disc_loss = None  # type: tf.Tensor
-        self._policy_train_reward = None  # type: tf.Tensor
-        self._policy_test_reward = None  # type: tf.Tensor
-        self._disc_logits_gen_is_high = None  # type: tf.Tensor
+        self._disc_loss = None  # type: th.Tensor
+        self._policy_train_reward = None  # type: th.Tensor
+        self._policy_test_reward = None  # type: th.Tensor
+        self._disc_logits_gen_is_high = None  # type: th.Tensor
 
         self.build_graph()
 
@@ -85,7 +84,7 @@ class DiscrimNet(serialize.Serializable, ABC):
         return self._log_policy_act_prob_ph
 
     @property
-    def disc_logits_gen_is_high(self) -> tf.Tensor:
+    def disc_logits_gen_is_high(self) -> th.Tensor:
         """The discriminator's logits for each state-action sample.
 
         A high value corresponds to predicting generator, and a low value corresponds to
@@ -94,19 +93,19 @@ class DiscrimNet(serialize.Serializable, ABC):
         return self._disc_logits_gen_is_high
 
     @property
-    def disc_loss(self) -> tf.Tensor:
+    def disc_loss(self) -> th.Tensor:
         return self._disc_loss  # pytype: disable=attribute-error
 
     @property
-    def policy_train_reward(self) -> tf.Tensor:
+    def policy_train_reward(self) -> th.Tensor:
         return self._policy_train_reward  # pytype: disable=attribute-error
 
     @property
-    def policy_test_reward(self) -> tf.Tensor:
+    def policy_test_reward(self) -> th.Tensor:
         return self._policy_test_reward  # pytype: disable=attribute-error
 
     @property
-    def train_stats(self) -> Dict[str, tf.Tensor]:
+    def train_stats(self) -> Dict[str, th.Tensor]:
         """A feed dictionary of scalar Tensors to be logged during training."""
         return self._train_stats
 
@@ -341,9 +340,7 @@ class DiscrimNetAIRL(DiscrimNet):
         return cls(reward_net=reward_net, **params)
 
 
-DiscrimNetBuilder = Callable[
-    [Sequence[tf.Tensor]], Tuple[tf.Tensor, networks.LayersDict]
-]
+DiscrimNetBuilder = Callable[[Sequence[th.Tensor]], Tuple[th.Tensor, nn.Module]]
 """Type alias for function that builds a discriminator network.
 
 Takes an observation and action tensor and produces a tuple containing
@@ -351,14 +348,14 @@ Takes an observation and action tensor and produces a tuple containing
 """
 
 
-class DiscrimNetGAIL(DiscrimNet, serialize.LayersSerializable):
+class DiscrimNetGAIL(DiscrimNet):
     """The discriminator to use for GAIL."""
 
     def __init__(
         self,
         observation_space: gym.Space,
         action_space: gym.Space,
-        build_discrim_net: DiscrimNetBuilder = networks.build_and_apply_mlp,
+        build_discrim_net: DiscrimNetBuilder = networks.build_mlp,
         build_discrim_net_kwargs: Optional[dict] = None,
         scale: bool = False,
     ):
@@ -371,16 +368,13 @@ class DiscrimNetGAIL(DiscrimNet, serialize.LayersSerializable):
             and action input tensor as input, then computes the logits
             necessary to feed to GAIL. When called, the function should return
             *both* a `LayersDict` containing all the layers used in
-            construction of the discriminator network, and a `tf.Tensor`
+            construction of the discriminator network, and a `th.Tensor`
             representing the desired discriminator logits.
           build_discrim_net_kwargs: optional extra keyword arguments for
             `build_discrim_net()`.
           scale: should inputs be rescaled according to declared observation
             space bounds?
         """
-        # for serialisation
-        args = dict(locals())
-
         # things we'll need in .build_graph()
         self._observation_space = observation_space
         self._action_space = action_space
@@ -392,9 +386,6 @@ class DiscrimNetGAIL(DiscrimNet, serialize.LayersSerializable):
         # Builds graph via call to `self.build_graph()`.
         DiscrimNet.__init__(self)
         assert self._disc_mlp is not None
-
-        # records args for un-pickling as well as newly-created model
-        serialize.LayersSerializable.__init__(**args, layers=self._disc_mlp)
 
         logging.info("using GAIL")
 

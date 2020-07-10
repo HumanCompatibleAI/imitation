@@ -1,10 +1,11 @@
 import logging
 import numbers
+import os
 
 import gym
 import numpy as np
 import pytest
-import tensorflow as tf
+import torch as th
 
 from imitation.data import rollout, types
 from imitation.policies import base
@@ -19,11 +20,10 @@ REWARD_NETS = [reward_net.BasicRewardNet, reward_net.BasicShapedRewardNet]
 
 @pytest.mark.parametrize("env_name", ENVS)
 @pytest.mark.parametrize("reward_net_cls", REWARD_NETS)
-def test_init_no_crash(session, env_name, reward_net_cls):
+def test_init_no_crash(env_name, reward_net_cls):
     env = gym.make(env_name)
     for i in range(3):
-        with tf.variable_scope(env_name + str(i) + "shaped"):
-            reward_net_cls(env.observation_space, env.action_space)
+        reward_net_cls(env.observation_space, env.action_space)
 
 
 def _sample(space, n):
@@ -41,8 +41,8 @@ def test_reward_valid(env_name, reward_type):
     next_obs = _sample(venv.observation_space, TRAJECTORY_LEN)
     steps = np.arange(0, TRAJECTORY_LEN)
 
-    with serialize.load_reward(reward_type, "foobar", venv) as reward_fn:
-        pred_reward = reward_fn(obs, actions, next_obs, steps)
+    reward_fn = serialize.load_reward(reward_type, "foobar", venv)
+    pred_reward = reward_fn(obs, actions, next_obs, steps)
 
     assert pred_reward.shape == (TRAJECTORY_LEN,)
     assert isinstance(pred_reward[0], numbers.Number)
@@ -59,43 +59,47 @@ def _make_feed_dict(reward_net: reward_net.RewardNet, transitions: types.Transit
 
 @pytest.mark.parametrize("env_name", ENVS)
 @pytest.mark.parametrize("net_cls", REWARD_NETS)
-def test_serialize_identity(session, env_name, net_cls, tmpdir):
+def test_serialize_identity(env_name, net_cls, tmpdir):
     """Does output of deserialized reward network match that of original?"""
     logging.info(f"Testing {net_cls}")
 
     venv = util.make_vec_env(env_name, n_envs=1, parallel=False)
-    with tf.variable_scope("original"):
-        original = net_cls(venv.observation_space, venv.action_space)
+    original = net_cls(venv.observation_space, venv.action_space)
     random = base.RandomPolicy(venv.observation_space, venv.action_space)
-    session.run(tf.global_variables_initializer())
 
-    original.save(tmpdir)
-    with tf.variable_scope("loaded"):
-        loaded = reward_net.RewardNet.load(tmpdir)
+    tmppath = os.path.join(tmpdir, "reward.pt")
+    th.save(original, tmppath)
+    loaded = th.load(tmppath)
 
     assert original.observation_space == loaded.observation_space
     assert original.action_space == loaded.action_space
 
     transitions = rollout.generate_transitions(random, venv, n_timesteps=100)
-    feed_dict = {}
-    outputs = {"train": [], "test": []}
+
+    unshaped_fn = serialize.load_reward("RewardNet_unshaped", tmppath, venv)
+    shaped_fn = serialize.load_reward("RewardNet_shaped", tmppath, venv)
+    rewards = {
+        "train": [],
+        "test": [],
+    }
     for net in [original, loaded]:
-        feed_dict.update(_make_feed_dict(net, transitions))
-        outputs["train"].append(net.reward_output_train)
-        outputs["test"].append(net.reward_output_test)
+        trans_args = (
+            transitions.obs,
+            transitions.acts,
+            transitions.next_obs,
+            transitions.dones,
+        )
+        rewards["train"].append(net.reward_train(*trans_args))
+        rewards["test"].append(net.reward_test(*trans_args))
 
-    with serialize.load_reward("RewardNet_unshaped", tmpdir, venv) as unshaped_fn:
-        with serialize.load_reward("RewardNet_shaped", tmpdir, venv) as shaped_fn:
-            rewards = session.run(outputs, feed_dict=feed_dict)
-
-            args = (
-                transitions.obs,
-                transitions.acts,
-                transitions.next_obs,
-                transitions.dones,
-            )
-            rewards["train"].append(shaped_fn(*args))
-            rewards["test"].append(unshaped_fn(*args))
+    args = (
+        transitions.obs,
+        transitions.acts,
+        transitions.next_obs,
+        transitions.dones,
+    )
+    rewards["train"].append(shaped_fn(*args))
+    rewards["test"].append(unshaped_fn(*args))
 
     for key, predictions in rewards.items():
         assert len(predictions) == 3
