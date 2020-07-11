@@ -1,7 +1,7 @@
 import collections
 import dataclasses
 import functools
-from typing import Callable, Dict, Hashable, List, Optional, Sequence, Union
+from typing import Callable, Dict, Hashable, List, Optional, Sequence, Type, Union
 
 import numpy as np
 import tensorflow as tf
@@ -368,27 +368,48 @@ def mean_return(*args, **kwargs) -> float:
 
 def flatten_trajectories(
     trajectories: Sequence[types.Trajectory],
-) -> types.Transitions:
-    """Flatten a series of trajectory dictionaries into arrays.
-
-    Returns observations, actions, next observations, rewards.
+    transitions_cls: Type[types.TransitionsMinimal] = types.Transitions,
+) -> types.TransitionsMinimal:
+    """Flatten a sequence of `Trajectory` into `Transitions`.
 
     Args:
-        trajectories: list of trajectories.
+        trajectories: List of trajectories.
+        transitions_cls: The TransitionsMinimal subclass to instantiate as the return
+            value. Note that using the `TransitionsWithRew` class will require that
+            all trajectories be `TrajectoriesWithRew`.
 
     Returns:
-      The trajectories flattened into a single batch of Transitions.
+        The trajectories flattened into a single instance of Transitions. Could
+        be a different instance of a subclass of TransitionsMinimal if `transitions_cls`
+        is set.
     """
-    keys = ["obs", "next_obs", "acts", "dones"]
-    parts = {key: [] for key in keys}
+    field_names = [f.name for f in dataclasses.fields(transitions_cls)]
+    parts = {key: [] for key in field_names}
+    if "rews" in parts:
+        assert all(isinstance(traj, types.TrajectoryWithRew) for traj in trajectories)
+
     for traj in trajectories:
-        parts["acts"].append(traj.acts)
         obs = traj.obs
         parts["obs"].append(obs[:-1])
-        parts["next_obs"].append(obs[1:])
-        dones = np.zeros(len(traj.acts), dtype=np.bool)
-        dones[-1] = True
-        parts["dones"].append(dones)
+        parts["acts"].append(traj.acts)
+
+        if traj.infos is None:
+            infos = np.array([{}] * len(traj))
+        else:
+            infos = traj.infos
+        parts["infos"].append(infos)
+
+        if "next_obs" in parts:
+            parts["next_obs"].append(obs[1:])
+
+        if "dones" in parts:
+            dones = np.zeros(len(traj.acts), dtype=np.bool)
+            dones[-1] = True
+            parts["dones"].append(dones)
+
+        if "rews" in parts:
+            parts["rews"].append(traj.rews)  # pytype: disable=attribute-error
+
     cat_parts = {
         key: np.concatenate(part_list, axis=0) for key, part_list in parts.items()
     }

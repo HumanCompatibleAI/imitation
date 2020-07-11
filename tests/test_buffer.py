@@ -97,38 +97,49 @@ def test_replay_buffer(capacity, chunk_len, obs_shape, act_shape, dtype):
 
         dones = np.arange(i, i + chunk_len, dtype=np.int32) % 2
         dones = dones.astype(np.bool)
+        infos = _fill_chunk(9 * capacity + i, chunk_len, (), dtype=dtype)
+        infos = np.array([{"a": val} for val in infos])
         batch = types.Transitions(
             obs=_fill_chunk(i, chunk_len, obs_shape, dtype=dtype),
             next_obs=_fill_chunk(3 * capacity + i, chunk_len, obs_shape, dtype=dtype),
             acts=_fill_chunk(6 * capacity + i, chunk_len, act_shape, dtype=dtype),
             dones=dones,
+            infos=infos,
         )
         buf.store(batch)
 
         # Are samples right shape?
         sample = buf.sample(100)
+        info_vals = np.array([info["a"] for info in sample.infos])
+
         assert sample.obs.shape == sample.next_obs.shape == (100,) + obs_shape
         assert sample.acts.shape == (100,) + act_shape
         assert sample.dones.shape == (100,)
+        assert info_vals.shape == (100,)
 
         # Are samples right data type?
         assert sample.obs.dtype == dtype
         assert sample.acts.dtype == dtype
         assert sample.next_obs.dtype == dtype
+        assert info_vals.dtype == dtype
         assert sample.dones.dtype == np.bool
+        assert sample.infos.dtype == np.object
 
         # Are samples in range?
         _check_bound(i + chunk_len, capacity, sample.obs)
         _check_bound(i + chunk_len, capacity, sample.next_obs, 3 * capacity)
         _check_bound(i + chunk_len, capacity, sample.acts, 6 * capacity)
+        _check_bound(i + chunk_len, capacity, info_vals, 9 * capacity)
 
         # Are samples in-order?
         obs_fill = _get_fill_from_chunk(sample.obs)
         next_obs_fill = _get_fill_from_chunk(sample.next_obs)
         act_fill = _get_fill_from_chunk(sample.acts)
+        info_vals_fill = _get_fill_from_chunk(info_vals)
 
         assert np.all(next_obs_fill - obs_fill == 3 * capacity), "out of order"
         assert np.all(act_fill - next_obs_fill == 3 * capacity), "out of order"
+        assert np.all(info_vals_fill - act_fill == 3 * capacity), "out of order"
         # Can't do much other than parity check for boolean values.
         # `samples.done` has the same parity as `obs_fill` by construction.
         assert np.all(obs_fill % 2 == sample.dones), "out of order"
@@ -201,21 +212,25 @@ def test_replay_buffer_from_data():
     acts = np.ones((2, 6), dtype=float)
     next_obs = np.array([7, 8], dtype=int)
     dones = np.array([True, False])
+    infos = np.array([{}, {"a": "sdf"}])
 
     def _check_buf(buf):
         assert np.array_equal(buf._buffer._arrays["obs"], obs)
         assert np.array_equal(buf._buffer._arrays["next_obs"], next_obs)
         assert np.array_equal(buf._buffer._arrays["acts"], acts)
+        assert np.array_equal(buf._buffer._arrays["infos"], infos)
 
     buf_std = ReplayBuffer.from_data(
-        types.Transitions(obs=obs, acts=acts, next_obs=next_obs, dones=dones,)
+        types.Transitions(
+            obs=obs, acts=acts, next_obs=next_obs, dones=dones, infos=infos
+        )
     )
     _check_buf(buf_std)
 
     rews = np.array([0.5, 1.0], dtype=float)
     buf_rew = ReplayBuffer.from_data(
         types.TransitionsWithRew(
-            obs=obs, acts=acts, next_obs=next_obs, rews=rews, dones=dones,
+            obs=obs, acts=acts, next_obs=next_obs, rews=rews, dones=dones, infos=infos,
         )
     )
     _check_buf(buf_rew)

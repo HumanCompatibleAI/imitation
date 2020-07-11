@@ -273,12 +273,14 @@ class ReplayBuffer(dataset.Dataset[types.Transitions]):
             "acts": act_shape,
             "next_obs": obs_shape,
             "dones": (),
+            "infos": (),
         }
         dtypes = {
             "obs": obs_dtype,
             "acts": act_dtype,
             "next_obs": obs_dtype,
             "dones": np.bool,
+            "infos": np.object,
         }
         self._buffer = Buffer(capacity, sample_shapes=sample_shapes, dtypes=dtypes)
 

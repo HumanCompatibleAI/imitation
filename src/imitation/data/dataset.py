@@ -133,32 +133,37 @@ class RandomDictDataset(DictDataset):
         return {k: v[inds] for k, v in self.data_map.items()}
 
 
-class TransitionsDictDatasetAdaptor(Dataset[types.Transitions]):
+S = TypeVar("S", bound=types.TransitionsMinimal)
+
+
+class TransitionsDictDatasetAdaptor(Dataset[S]):
     def __init__(
         self,
-        transitions: types.Transitions,
+        transitions: S,
         dict_dataset_cls: Type[DictDataset] = RandomDictDataset,
         dict_dataset_cls_kwargs: Optional[Mapping] = None,
     ):
         """Adapts a `DictDataset` class to build `Transitions` `Dataset`.
 
         Args:
-            transitions: An `Transitions` instance to be sampled from and stored
+            transitions: An `TransitionsMinimal` instance to be sampled from and stored
                 internally as a `dict` of copied arrays. Note that `sample` will return
-                the same type of `Transitions` as the type of this arg. In other words,
-                if `transitions` is an instance of `TransitionsWithRew`, then
-                `.sample()` also returns `TransitionsWithRew`.
+                the same subclass type of `TransitionsMinimal` as the type of this arg.
             dict_dataset_cls: `DictDataset` class to be adapted.
             dict_dataset_kwargs: Optional kwargs for initializing `DictDataset` class.
         """
         data_map: Dict[str, np.ndarray] = dataclasses.asdict(transitions)
+        if data_map["infos"] is None:
+            data_map["infos"] = [{}] * len(transitions)
+        data_map["infos"] = np.array(data_map["infos"])
+
         kwargs = dict_dataset_cls_kwargs or {}
-        self.transitions_cls: Type[types.Transitions] = type(transitions)
+        self.transitions_cls: Type[S] = type(transitions)
         self.simple_dataset = dict_dataset_cls(
             data_map, **kwargs  # pytype: disable=not-instantiable
         )
 
-    def sample(self, n_samples: int) -> types.Transitions:
+    def sample(self, n_samples: int) -> S:
         dict_samples = self.simple_dataset.sample(n_samples)
         result = self.transitions_cls(**dict_samples)
         assert len(result) == n_samples

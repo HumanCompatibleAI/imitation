@@ -26,8 +26,9 @@ def trainer(request, session, venv):
     rollouts = types.load(ROLLOUT_PATH)
     data = rollout.flatten_trajectories(rollouts)
     if convert_dataset:
-        data_map = {"obs": data.obs, "acts": data.acts}
-        data = dataset.RandomDictDataset(data_map)
+        data = dataset.TransitionsDictDatasetAdaptor(
+            data, dataset.EpochOrderDictDataset
+        )
     return bc.BC(venv.observation_space, venv.action_space, expert_data=data)
 
 
