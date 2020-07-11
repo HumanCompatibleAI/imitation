@@ -68,11 +68,6 @@ class TrajectoryWithRew(Trajectory):
         _rews_validation(self.rews, self.acts)
 
 
-REQUIRED = ...
-"""This field is required even though a field with a default value due to inheritance.
-"""
-
-
 @dataclasses.dataclass(frozen=True)
 class TransitionsMinimal:
     """A batch of obs-act transitions."""
@@ -98,9 +93,6 @@ class TransitionsMinimal:
 
     def __post_init__(self):
         """Performs input validation: check shapes & dtypes match docstring."""
-        for k, v in dataclasses.asdict(self).items():
-            if v is REQUIRED:
-                raise TypeError(f"Missing required argument: '{k}'")
         if len(self.obs) != len(self.acts):
             raise ValueError(
                 "obs and acts must have same number of timesteps: "
@@ -124,7 +116,7 @@ class Transitions(TransitionsMinimal):
     `flatten_trajectories()`.
     """
 
-    next_obs: np.ndarray = REQUIRED
+    next_obs: np.ndarray
     """New observation. Shape: (batch_size, ) + observation_shape.
 
     The i'th observation `next_obs[i]` in this array is the observation
@@ -133,7 +125,7 @@ class Transitions(TransitionsMinimal):
     Invariant: next_obs.dtype == obs.dtype.
     """
 
-    dones: np.ndarray = REQUIRED
+    dones: np.ndarray
     """
     Boolean array indicating episode termination. Shape: (batch_size, ).
 
@@ -166,7 +158,7 @@ class Transitions(TransitionsMinimal):
 class TransitionsWithRew(Transitions):
     """A batch of obs-act-obs-rew-done transitions."""
 
-    rews: np.ndarray = REQUIRED
+    rews: np.ndarray
     """
     Reward. Shape: (batch_size, ). dtype float.
 

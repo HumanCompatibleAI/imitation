@@ -80,14 +80,6 @@ def transitions_rew(
     return types.TransitionsWithRew(**dataclasses.asdict(transitions), rews=rews)
 
 
-def _check_missing_arg_error(dataclass_obj, arg_name: str) -> None:
-    cls = type(dataclass_obj)
-    kwargs = dataclasses.asdict(dataclass_obj)
-    del kwargs[arg_name]
-    with pytest.raises(TypeError, match=f"(M|m)issing.*{arg_name}"):
-        cls(**kwargs)
-
-
 @pytest.mark.parametrize("obs_space", OBS_SPACES)
 @pytest.mark.parametrize("act_space", ACT_SPACES)
 @pytest.mark.parametrize("length", LENGTHS)
@@ -167,9 +159,6 @@ class TestData:
     ) -> None:
 
         for trans in [transitions_min, transitions, transitions_rew]:
-            for k in ["obs", "acts"]:
-                _check_missing_arg_error(trans, k)
-
             with pytest.raises(
                 ValueError, match=r"obs and acts must have same number of timesteps:.*"
             ):
@@ -181,9 +170,6 @@ class TestData:
 
         """Checks input validation catches space and dtype related errors."""
         for trans in [transitions, transitions_rew]:
-            for k in ["next_obs", "dones"]:
-                _check_missing_arg_error(trans, k)
-
             with pytest.raises(
                 ValueError, match=r"obs and next_obs must have same shape:.*"
             ):
@@ -204,8 +190,6 @@ class TestData:
 
             with pytest.raises(ValueError, match=r"dones must be boolean"):
                 dataclasses.replace(trans, dones=np.zeros(len(trans), dtype=np.int))
-
-        _check_missing_arg_error(transitions_rew, "rews")
 
         _check_1d_shape(
             fn=lambda bogus_rews: dataclasses.replace(trans, rews=bogus_rews),
