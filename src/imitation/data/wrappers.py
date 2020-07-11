@@ -92,7 +92,9 @@ class BufferingWrapper(VecEnvWrapper):
             raise RuntimeError("Called pop_transitions on an empty BufferingWrapper")
         partial_trajs = self._finish_partial_trajectories()
         self._trajectories.extend(partial_trajs)
-        transitions = rollout.flatten_trajectories_with_rew(self._trajectories)
+        transitions = rollout.flatten_trajectories(
+            self._trajectories, types.TransitionsWithRew
+        )
         assert len(transitions.obs) == self.n_transitions
         self._trajectories = []
         self.n_transitions = 0

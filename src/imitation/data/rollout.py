@@ -1,7 +1,17 @@
 import collections
 import dataclasses
 import functools
-from typing import Callable, Dict, Hashable, List, Optional, Sequence, Type, Union
+from typing import (
+    Callable,
+    Dict,
+    Hashable,
+    List,
+    Optional,
+    Sequence,
+    Type,
+    TypeVar,
+    Union,
+)
 
 import numpy as np
 import tensorflow as tf
@@ -366,10 +376,13 @@ def mean_return(*args, **kwargs) -> float:
     return rollout_stats(trajectories)["return_mean"]
 
 
+T = TypeVar("T", bound=types.TransitionsMinimal)
+
+
 def flatten_trajectories(
     trajectories: Sequence[types.Trajectory],
-    transitions_cls: Type[types.TransitionsMinimal] = types.Transitions,
-) -> types.TransitionsMinimal:
+    transitions_cls: Type[T] = types.Transitions,
+) -> T:
     """Flatten a sequence of `Trajectory` into `Transitions`.
 
     Args:
@@ -415,15 +428,7 @@ def flatten_trajectories(
     }
     lengths = set(map(len, cat_parts.values()))
     assert len(lengths) == 1, f"expected one length, got {lengths}"
-    return types.Transitions(**cat_parts)
-
-
-def flatten_trajectories_with_rew(
-    trajectories: Sequence[types.TrajectoryWithRew],
-) -> types.TransitionsWithRew:
-    transitions = flatten_trajectories(trajectories)
-    rews = np.concatenate([traj.rews for traj in trajectories])
-    return types.TransitionsWithRew(**dataclasses.asdict(transitions), rews=rews)
+    return transitions_cls(**cat_parts)
 
 
 def generate_transitions(
@@ -448,7 +453,7 @@ def generate_transitions(
     traj = generate_trajectories(
         policy, venv, sample_until=min_timesteps(n_timesteps), **kwargs
     )
-    transitions = flatten_trajectories_with_rew(traj)
+    transitions = flatten_trajectories(traj, types.TransitionsWithRew)
     if truncate and n_timesteps is not None:
         as_dict = dataclasses.asdict(transitions)
         truncated = {k: arr[:n_timesteps] for k, arr in as_dict.items()}

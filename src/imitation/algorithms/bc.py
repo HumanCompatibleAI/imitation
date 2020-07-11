@@ -66,7 +66,9 @@ class BC:
         *,
         policy_class: Type[ActorCriticPolicy] = FeedForward32Policy,
         policy_kwargs: Optional[Mapping[str, Any]] = None,
-        expert_data: Optional[types.TransitionsMinimal] = None,
+        expert_data: Union[
+            types.TransitionsMinimal, dataset.Dataset[types.TransitionsMinimal], None,
+        ] = None,
         batch_size: int = 32,
         optimizer_cls: Type[tf.train.Optimizer] = tf.train.AdamOptimizer,
         optimizer_kwargs: Optional[dict] = None,
@@ -120,7 +122,7 @@ class BC:
     def set_expert_dataset(
         self,
         expert_data: Union[
-            types.TransitionsMinimal, dataset.Dataset[types.TransitionsMinimal]
+            types.TransitionsMinimal, dataset.Dataset[types.TransitionsMinimal],
         ],
     ):
         """Replace the current expert dataset with a new one.
