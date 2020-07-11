@@ -132,7 +132,8 @@ class BC:
         Args:
              expert_data: Either a `Dataset[types.TransitionsMinimal]` for which
                  `.size()` is not None, or a instance of `TransitionsMinimal`, which
-                 is automatically converted to a shuffled, epoch-order `Dataset`.
+                 is automatically converted to a shuffled, epoch-order
+                 `Dataset[types.TransitionsMinimal]`.
         """
         if isinstance(expert_data, types.Transitions):
             trans = expert_data

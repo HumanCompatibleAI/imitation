@@ -383,18 +383,16 @@ def flatten_trajectories(
     trajectories: Sequence[types.Trajectory],
     transitions_cls: Type[T] = types.Transitions,
 ) -> T:
-    """Flatten a sequence of `Trajectory` into `Transitions`.
+    """Flatten a sequence of `Trajectory` into an instance of `transitions_cls`.
 
     Args:
         trajectories: List of trajectories.
-        transitions_cls: The TransitionsMinimal subclass to instantiate as the return
+        transitions_cls: A `TransitionsMinimal` subclass to instantiate as the return
             value. Note that using the `TransitionsWithRew` class will require that
             all trajectories be `TrajectoriesWithRew`.
 
     Returns:
-        The trajectories flattened into a single instance of Transitions. Could
-        be a different instance of a subclass of TransitionsMinimal if `transitions_cls`
-        is set.
+        The trajectories flattened into a single instance of `transitions_cls`.
     """
     field_names = [f.name for f in dataclasses.fields(transitions_cls)]
     parts = {key: [] for key in field_names}

@@ -153,8 +153,6 @@ class TransitionsDictDatasetAdaptor(Dataset[S]):
             dict_dataset_kwargs: Optional kwargs for initializing `DictDataset` class.
         """
         data_map: Dict[str, np.ndarray] = dataclasses.asdict(transitions)
-        if data_map["infos"] is None:
-            data_map["infos"] = [{}] * len(transitions)
         data_map["infos"] = np.array(data_map["infos"])
 
         kwargs = dict_dataset_cls_kwargs or {}
