@@ -11,7 +11,7 @@ import numpy as np
 import numpy.testing as npt
 import pytest
 
-from imitation.data import dataset, types
+from imitation.data import datasets, types
 
 SPACES = [
     gym.spaces.Discrete(3),
@@ -223,9 +223,9 @@ def test_zero_length_fails():
 
 
 DICT_DATASET_PARAMS = [
-    (dataset.EpochOrderDictDataset, {"shuffle": False}),
-    (dataset.EpochOrderDictDataset, {"shuffle": True}),
-    (dataset.RandomDictDataset, {}),
+    (datasets.EpochOrderDictDataset, {"shuffle": False}),
+    (datasets.EpochOrderDictDataset, {"shuffle": True}),
+    (datasets.RandomDictDataset, {}),
 ]
 
 DATA_MAP = [
@@ -251,7 +251,7 @@ def dict_dataset(dict_dataset_params, data_map):
     return dataset_cls(data_map, **kwargs)
 
 
-def test_dict_dataset_copy_data_map(dict_dataset: dataset.DictDataset, data_map):
+def test_dict_dataset_copy_data_map(dict_dataset: datasets.DictDataset, data_map):
     """Check that `dict_dataset.data_map` is unchanged by writes to `data_map` param.
     Note that the `data_map` fixture supplies the same instance `data_map` that was used
     to initialize the `dict_dataset` fixture.
@@ -330,7 +330,7 @@ class TestEpochOrderDictDataset:
     @pytest.fixture
     def arange_dataset(self, shuffle, dataset_size):
         data_map = {"a": np.arange(dataset_size)}
-        ds = dataset.EpochOrderDictDataset(data_map, shuffle=shuffle)
+        ds = datasets.EpochOrderDictDataset(data_map, shuffle=shuffle)
         return ds
 
     def test_epoch_order_dict_dataset_shuffle_order(
@@ -378,14 +378,14 @@ class TestTransitionsDictDatasetAdaptor(TestData):
     @pytest.fixture
     def trans_ds(self, transitions, dict_dataset_params):
         dict_dataset_cls, dict_dataset_kwargs = dict_dataset_params
-        return dataset.TransitionsDictDatasetAdaptor(
+        return datasets.TransitionsDictDatasetAdaptor(
             transitions, dict_dataset_cls, dict_dataset_kwargs
         )
 
     @pytest.fixture
     def trans_ds_rew(self, transitions_rew, dict_dataset_params):
         dict_dataset_cls, dict_dataset_kwargs = dict_dataset_params
-        return dataset.TransitionsDictDatasetAdaptor(
+        return datasets.TransitionsDictDatasetAdaptor(
             transitions_rew, dict_dataset_cls, dict_dataset_kwargs
         )
 

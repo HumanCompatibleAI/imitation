@@ -4,10 +4,10 @@ from typing import Dict, Mapping, Optional, Tuple
 import numpy as np
 from stable_baselines.common import vec_env
 
-from imitation.data import dataset, types
+from imitation.data import datasets, types
 
 
-class Buffer(dataset.Dataset[Dict[str, np.ndarray]]):
+class Buffer(datasets.Dataset[Dict[str, np.ndarray]]):
     """A FIFO ring buffer for NumPy arrays of a fixed shape and dtype.
 
     Supports random sampling with replacement.
@@ -223,7 +223,7 @@ class Buffer(dataset.Dataset[Dict[str, np.ndarray]]):
         return self._n_data
 
 
-class ReplayBuffer(dataset.Dataset[types.Transitions]):
+class ReplayBuffer(datasets.Dataset[types.Transitions]):
     """Buffer for Transitions."""
 
     capacity: int

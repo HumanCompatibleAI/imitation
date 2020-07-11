@@ -5,7 +5,7 @@ import os
 import pytest
 
 from imitation.algorithms import adversarial
-from imitation.data import dataset, rollout, types
+from imitation.data import datasets, rollout, types
 from imitation.util import logger, util
 
 ALGORITHM_CLS = [adversarial.AIRL, adversarial.GAIL]
@@ -64,7 +64,7 @@ def trainer(_algorithm_cls, _parallel: bool, tmpdir: str, _convert_dataset: bool
     trajs = types.load("tests/data/expert_models/cartpole_0/rollouts/final.pkl")
     if _convert_dataset:
         trans = rollout.flatten_trajectories(trajs)
-        expert_data = dataset.TransitionsDictDatasetAdaptor(trans)
+        expert_data = datasets.TransitionsDictDatasetAdaptor(trans)
     else:
         expert_data = rollout.flatten_trajectories(trajs)
 

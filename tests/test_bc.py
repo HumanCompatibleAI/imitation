@@ -7,7 +7,7 @@ import pytest
 import tensorflow as tf
 
 from imitation.algorithms import bc
-from imitation.data import dataset, rollout, types
+from imitation.data import datasets, rollout, types
 from imitation.util import util
 
 ROLLOUT_PATH = "tests/data/expert_models/cartpole_0/rollouts/final.pkl"
@@ -26,8 +26,8 @@ def trainer(request, session, venv):
     rollouts = types.load(ROLLOUT_PATH)
     data = rollout.flatten_trajectories(rollouts)
     if convert_dataset:
-        data = dataset.TransitionsDictDatasetAdaptor(
-            data, dataset.EpochOrderDictDataset
+        data = datasets.TransitionsDictDatasetAdaptor(
+            data, datasets.EpochOrderDictDataset
         )
     return bc.BC(venv.observation_space, venv.action_space, expert_data=data)
 

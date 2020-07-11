@@ -16,7 +16,7 @@ from stable_baselines import logger
 from stable_baselines.common.policies import ActorCriticPolicy, BasePolicy
 from tqdm.autonotebook import trange
 
-from imitation.data import dataset, types
+from imitation.data import datasets, types
 from imitation.policies.base import FeedForward32Policy
 
 
@@ -67,7 +67,7 @@ class BC:
         policy_class: Type[ActorCriticPolicy] = FeedForward32Policy,
         policy_kwargs: Optional[Mapping[str, Any]] = None,
         expert_data: Union[
-            types.TransitionsMinimal, dataset.Dataset[types.TransitionsMinimal], None,
+            types.TransitionsMinimal, datasets.Dataset[types.TransitionsMinimal], None,
         ] = None,
         batch_size: int = 32,
         optimizer_cls: Type[tf.train.Optimizer] = tf.train.AdamOptimizer,
@@ -105,7 +105,7 @@ class BC:
 
         assert batch_size >= 1
         self.batch_size = batch_size
-        self.expert_dataset: Optional[dataset.Dataset[types.TransitionsMinimal]] = None
+        self.expert_dataset: Optional[datasets.Dataset[types.TransitionsMinimal]] = None
         self.sess = tf.get_default_session()
         assert self.sess is not None, "need to construct this within a session scope"
         self.ent_weight = ent_weight
@@ -122,7 +122,7 @@ class BC:
     def set_expert_dataset(
         self,
         expert_data: Union[
-            types.TransitionsMinimal, dataset.Dataset[types.TransitionsMinimal],
+            types.TransitionsMinimal, datasets.Dataset[types.TransitionsMinimal],
         ],
     ):
         """Replace the current expert dataset with a new one.
@@ -137,11 +137,11 @@ class BC:
         """
         if isinstance(expert_data, types.Transitions):
             trans = expert_data
-            expert_dataset = dataset.TransitionsDictDatasetAdaptor(
-                trans, dataset.EpochOrderDictDataset
+            expert_dataset = datasets.TransitionsDictDatasetAdaptor(
+                trans, datasets.EpochOrderDictDataset
             )
         else:
-            assert isinstance(expert_data, dataset.Dataset)
+            assert isinstance(expert_data, datasets.Dataset)
             expert_dataset = expert_data
         assert expert_dataset.size() is not None
         self.expert_dataset = expert_dataset
