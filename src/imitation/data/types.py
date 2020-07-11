@@ -178,22 +178,11 @@ def load(path: str) -> Sequence[TrajectoryWithRew]:
 
 
 def save(path: str, trajectories: Sequence[TrajectoryWithRew]) -> None:
-    """Generate policy rollouts and save them to a pickled list of trajectories.
-
-    The `.infos` field of each Trajectory is set to `None` to save space.
+    """Save a sequence of Trajectories to disk.
 
     Args:
-      path: Rollouts are saved to this path.
-      venv: The vectorized environments.
-      sample_until: End condition for rollout sampling.
-      unwrap: If True, then save original observations and rewards (instead of
-        potentially wrapped observations and rewards) by calling
-        `unwrap_traj()`.
-      exclude_infos: If True, then exclude `infos` from pickle by setting
-        this field to None. Excluding `infos` can save a lot of space during
-        pickles.
-      verbose: If True, then print out rollout stats before saving.
-      deterministic_policy: Argument from `generate_trajectories`.
+        path: Trajectories are saved to this path.
+        trajectories: The trajectories to save.
     """
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path + ".tmp", "wb") as f:
