@@ -13,7 +13,7 @@ from imitation.data import rollout, types
 
 def convert_trajs_to_sb(trajs: Sequence[types.TrajectoryWithRew]) -> dict:
     """Converts Trajectories into the dict format used by Stable Baselines GAIL."""
-    trans = rollout.flatten_trajectories(trajs, types.TransitionsWithRew)
+    trans = rollout.flatten_trajectories_with_rew(trajs)
     return dict(
         acs=trans.acts,
         rews=trans.rews,
