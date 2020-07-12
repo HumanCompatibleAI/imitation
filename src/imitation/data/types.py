@@ -89,7 +89,7 @@ class TransitionsMinimal:
     """Actions. Shape: (batch_size,) + action_shape."""
 
     infos: np.ndarray
-    """Optional array of info dicts. Shape: (batch_size,)."""
+    """Array of info dicts. Shape: (batch_size,)."""
 
     def __len__(self):
         """Returns number of transitions. Always positive."""

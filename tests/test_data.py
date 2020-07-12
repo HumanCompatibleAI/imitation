@@ -411,10 +411,10 @@ class TestTransitionsDictDatasetAdaptor(TestData):
                 sample = ds.sample(n_samples)
                 assert isinstance(sample, type(trans))
                 for k, v in dataclasses.asdict(sample).items():
+                    trans_v = trans_dict[k]
                     if k == "infos":
-                        trans_v: np.ndarray = np.array(trans_dict[k])
-                    else:
-                        trans_v: np.ndarray = trans_dict[k]
+                        trans_v = np.array(trans_v)
+                    assert isinstance(trans_v, np.ndarray)
                     assert v.dtype == trans_v.dtype
                     assert v.shape[1:] == trans_v.shape[1:]
                     assert v.shape[0] == n_samples

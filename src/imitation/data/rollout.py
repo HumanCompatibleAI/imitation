@@ -1,17 +1,7 @@
 import collections
 import dataclasses
 import functools
-from typing import (
-    Callable,
-    Dict,
-    Hashable,
-    List,
-    Optional,
-    Sequence,
-    Type,
-    TypeVar,
-    Union,
-)
+from typing import Callable, Dict, Hashable, List, Optional, Sequence, Union
 
 import numpy as np
 import tensorflow as tf
@@ -376,33 +366,28 @@ def mean_return(*args, **kwargs) -> float:
     return rollout_stats(trajectories)["return_mean"]
 
 
-T = TypeVar("T", bound=types.TransitionsMinimal)
-
-
 def flatten_trajectories(
     trajectories: Sequence[types.Trajectory],
-    transitions_cls: Type[T] = types.Transitions,
-) -> T:
-    """Flatten a sequence of `Trajectory` into an instance of `transitions_cls`.
-
+) -> types.Transitions:
+    """Flatten a series of trajectory dictionaries into arrays.
+    Returns observations, actions, next observations, rewards.
     Args:
-        trajectories: List of trajectories.
-        transitions_cls: A `TransitionsMinimal` subclass to instantiate as the return
-            value. Note that using the `TransitionsWithRew` class will require that
-            all trajectories be `TrajectoriesWithRew`.
-
+        trajectories: list of trajectories.
     Returns:
-        The trajectories flattened into a single instance of `transitions_cls`.
+      The trajectories flattened into a single batch of Transitions.
     """
-    field_names = [f.name for f in dataclasses.fields(transitions_cls)]
-    parts = {key: [] for key in field_names}
-    if "rews" in parts:
-        assert all(isinstance(traj, types.TrajectoryWithRew) for traj in trajectories)
-
+    keys = ["obs", "next_obs", "acts", "dones", "infos"]
+    parts = {key: [] for key in keys}
     for traj in trajectories:
+        parts["acts"].append(traj.acts)
+
         obs = traj.obs
         parts["obs"].append(obs[:-1])
-        parts["acts"].append(traj.acts)
+        parts["next_obs"].append(obs[1:])
+
+        dones = np.zeros(len(traj.acts), dtype=np.bool)
+        dones[-1] = True
+        parts["dones"].append(dones)
 
         if traj.infos is None:
             infos = np.array([{}] * len(traj))
@@ -410,23 +395,20 @@ def flatten_trajectories(
             infos = traj.infos
         parts["infos"].append(infos)
 
-        if "next_obs" in parts:
-            parts["next_obs"].append(obs[1:])
-
-        if "dones" in parts:
-            dones = np.zeros(len(traj.acts), dtype=np.bool)
-            dones[-1] = True
-            parts["dones"].append(dones)
-
-        if "rews" in parts:
-            parts["rews"].append(traj.rews)  # pytype: disable=attribute-error
-
     cat_parts = {
         key: np.concatenate(part_list, axis=0) for key, part_list in parts.items()
     }
     lengths = set(map(len, cat_parts.values()))
     assert len(lengths) == 1, f"expected one length, got {lengths}"
-    return transitions_cls(**cat_parts)
+    return types.Transitions(**cat_parts)
+
+
+def flatten_trajectories_with_rew(
+    trajectories: Sequence[types.TrajectoryWithRew],
+) -> types.TransitionsWithRew:
+    transitions = flatten_trajectories(trajectories)
+    rews = np.concatenate([traj.rews for traj in trajectories])
+    return types.TransitionsWithRew(**dataclasses.asdict(transitions), rews=rews)
 
 
 def generate_transitions(
@@ -451,7 +433,7 @@ def generate_transitions(
     traj = generate_trajectories(
         policy, venv, sample_until=min_timesteps(n_timesteps), **kwargs
     )
-    transitions = flatten_trajectories(traj, types.TransitionsWithRew)
+    transitions = flatten_trajectories_with_rew(traj)
     if truncate and n_timesteps is not None:
         as_dict = dataclasses.asdict(transitions)
         truncated = {k: arr[:n_timesteps] for k, arr in as_dict.items()}
