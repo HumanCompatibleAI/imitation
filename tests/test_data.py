@@ -140,7 +140,7 @@ class TestData:
 
     def test_valid_transitions(
         self,
-        transitions_min: types.Transitions,
+        transitions_min: types.TransitionsMinimal,
         transitions: types.Transitions,
         transitions_rew: types.TransitionsWithRew,
         length: int,
