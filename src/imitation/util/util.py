@@ -6,7 +6,7 @@ from typing import Optional, Type, Union
 
 import gym
 import numpy as np
-import stable_baselines
+import stable_baselines3
 from gym.wrappers import TimeLimit
 from stable_baselines3.common import monitor
 from stable_baselines3.common.base_class import BaseAlgorithm
@@ -96,7 +96,7 @@ def make_vec_env(
 
 def init_rl(
     env: Union[gym.Env, VecEnv],
-    model_class: Type[BaseAlgorithm] = stable_baselines.PPO2,
+    model_class: Type[BaseAlgorithm] = stable_baselines3.PPO,
     policy_class: Type[BasePolicy] = ActorCriticPolicy,
     **model_kwargs,
 ):

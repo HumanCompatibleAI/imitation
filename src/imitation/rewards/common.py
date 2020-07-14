@@ -2,7 +2,7 @@
 
 import collections
 import functools
-from typing import Callable, Dict
+from typing import Callable, Dict, List, Tuple
 
 import numpy as np
 import torch as th
@@ -57,7 +57,7 @@ def compute_train_stats(
     disc_logits_gen_is_high: th.Tensor,
     labels_gen_is_one: th.Tensor,
     disc_loss: th.Tensor,
-) -> Dict[float, str]:
+) -> Dict[str, float]:
     """Train statistics for GAIL/AIRL discriminator, or other binary classifiers.
 
     Args:
@@ -110,10 +110,10 @@ def compute_train_stats(
         ("disc_proportion_expert_pred", pct_expert_pred),
         ("n_expert", n_expert),
         ("n_generated", n_generated),
-    ]
+    ]  # type: List[Tuple[str, th.Tensor]]
     # convert to float
     pairs = [
-        (key, value.item() if isinstance(value, th.Tensor) else value)
+        (key, float(value.item()) if isinstance(value, th.Tensor) else value)
         for key, value in pairs
     ]
     stats = collections.OrderedDict(pairs)

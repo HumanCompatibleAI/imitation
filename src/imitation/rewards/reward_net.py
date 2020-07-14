@@ -151,7 +151,7 @@ class RewardNet(nn.Module, ABC):
 
     def _eval_reward(
         self,
-        method: Callable[[th.Tensor] * 4, th.Tensor],
+        method: Callable[[th.Tensor, th.Tensor, th.Tensor, th.Tensor], th.Tensor],
         state: np.ndarray,
         action: np.ndarray,
         next_state: np.ndarray,

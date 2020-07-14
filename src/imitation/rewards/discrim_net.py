@@ -259,7 +259,7 @@ class DiscrimNetAIRL(DiscrimNet):
         return self.reward_net._reward_train(state, action, next_state, done)
 
 
-DiscrimNetBuilder = Callable[[Sequence[th.Tensor]], Tuple[th.Tensor, nn.Module]]
+DiscrimNetBuilder = Callable[..., nn.Module]
 """Type alias for function that builds a discriminator network.
 
 Takes an observation and action tensor and produces a tuple containing

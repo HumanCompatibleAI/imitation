@@ -11,7 +11,7 @@ def build_mlp(
     hid_sizes: Iterable[int],
     out_size: int = 1,
     name: Optional[str] = None,
-    activation: Optional[Callable] = nn.ReLU,
+    activation: Callable = nn.ReLU,
     initializer: Optional[Callable] = None,
 ) -> nn.Module:
     """Constructs an MLP, returning an ordered dict of layers."""
@@ -30,13 +30,13 @@ def build_mlp(
     # Hidden layers
     prev_size = in_size
     for i, size in enumerate(hid_sizes):
-        layers[f"{prefix}dense{i}"] = nn.Linear(prev_size, size)  # type: nn.Module
+        layers[f"{prefix}dense{i}"] = nn.Linear(prev_size, size)
         prev_size = size
         if activation:
             layers[f"{prefix}act{i}"] = activation()
 
     # Final layer
-    layers[f"{prefix}dense_final"] = nn.Linear(prev_size, out_size)  # type: nn.Module
+    layers[f"{prefix}dense_final"] = nn.Linear(prev_size, out_size)
 
     model = nn.Sequential(layers)
 
