@@ -47,7 +47,7 @@ setup(
     install_requires=[
         "awscli",
         "cloudpickle>=0.5.5",
-        "gym[classic_control]",
+        "gym[atari,classic_control]",
         "matplotlib",
         "numpy>=1.15",
         "torch>=1.4.0",

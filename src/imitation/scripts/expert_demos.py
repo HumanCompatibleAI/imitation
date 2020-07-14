@@ -4,8 +4,8 @@ import os
 import os.path as osp
 from typing import Optional
 
-import stable_baselines.logger as sb_logger
 from sacred.observers import FileStorageObserver
+from stable_baselines3.common import logger as sb_logger
 from stable_baselines3.common.vec_env import VecNormalize
 
 import imitation.util.sacred as sacred_util
