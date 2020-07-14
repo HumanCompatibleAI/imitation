@@ -95,6 +95,9 @@ class RewardNet(nn.Module, ABC):
         """
         return self._reward_train(state, action, next_state, done)
 
+    # FIXME(sam): rename this and the following method to predict_reward_train
+    # and predict_reward_test, respectively. After that, remove underscores
+    # from the names of the two methods above.
     def reward_train(
         self,
         state: np.ndarray,
@@ -104,7 +107,7 @@ class RewardNet(nn.Module, ABC):
     ) -> np.ndarray:
         """Compute the train reward with raw ndarrays, including preprocessing.
 
-        Params:
+        Args:
           state: current state.
           action: action associated with `state`.
           next_state: next state.
@@ -133,7 +136,7 @@ class RewardNet(nn.Module, ABC):
 
         Note this is the reward we use for transfer learning.
 
-        Params:
+        Args:
           state: current state.
           action: action associated with `state`.
           next_state: next state.
@@ -173,7 +176,7 @@ class RewardNet(nn.Module, ABC):
         with th.no_grad():
             th_reward = self._reward_test(state_th, action_th, next_state_th, done_th)
 
-        return th_reward.detach().cpu().numpy().flatten()
+        return th_reward.detach().cpu().numpy().squeeze(1)
 
     @abstractmethod
     def build_base_reward_network(self) -> nn.Module:
@@ -189,9 +192,7 @@ class RewardNet(nn.Module, ABC):
         """
 
     def device(self) -> th.device:
-        """Use a heuristic to determine which device this module is on.
-
-        Returns: device that parameters for this module (probably) exist on."""
+        """Use a heuristic to determine which device this module is on."""
         # FIXME(sam): this is ugly too. Remove it when/if I remove
         # reward_test()/reward_train().
         first_param = next(self.parameters())

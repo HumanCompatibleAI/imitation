@@ -88,7 +88,7 @@ def _load_stable_baselines(
     """Higher-order function, returning a policy loading function.
 
     Args:
-        cls: The RL algorithm, e.g. `stable_baselines.PPO2`.
+        cls: The RL algorithm, e.g. `stable_baselines3.PPO`.
         policy_attr: The attribute of the RL algorithm containing the policy,
             e.g. `act_model`.
 
