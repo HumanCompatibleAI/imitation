@@ -1,15 +1,18 @@
 import logging
 import os
 import warnings
-from functools import partial
-from typing import Callable, Mapping, Optional, Type, Union
+from typing import Callable, Dict, Mapping, Optional, Type, Union
 
+import gym
 import numpy as np
-import tensorflow as tf
+import torch as th
+import torch.utils.tensorboard as thboard
 import tqdm
-from stable_baselines.common import base_class, vec_env
+from stable_baselines3.common import base_class, vec_env
+from stable_baselines3.common.preprocessing import preprocess_obs
 
 from imitation.data import buffer, dataset, types, wrappers
+from imitation.rewards import common as rew_common
 from imitation.rewards import discrim_net, reward_net
 from imitation.util import logger, reward_wrapper
 
@@ -35,14 +38,14 @@ class AdversarialTrainer:
     def __init__(
         self,
         venv: vec_env.VecEnv,
-        gen_policy: base_class.BaseRLModel,
+        gen_algo: base_class.BaseAlgorithm,
         discrim: discrim_net.DiscrimNet,
         expert_data: Union[dataset.Dataset[types.Transitions], types.Transitions],
         *,
         log_dir: str = "output/",
         disc_batch_size: int = 2048,
         disc_minibatch_size: int = 256,
-        disc_opt_cls: Type[tf.train.Optimizer] = tf.train.AdamOptimizer,
+        disc_opt_cls: Type[th.optim.Optimizer] = th.optim.Adam,
         disc_opt_kwargs: Optional[Mapping] = None,
         gen_replay_buffer_capacity: Optional[int] = None,
         init_tensorboard: bool = False,
@@ -53,9 +56,9 @@ class AdversarialTrainer:
 
         Args:
             venv: The vectorized environment to train in.
-            gen_policy: The generator policy that is trained to maximize
+            gen_algo: The generator RL algorithm that is trained to maximize
               discriminator confusion. The generator batch size
-              `self.gen_batch_size` is inferred from `gen_policy.n_batch`.
+              `self.gen_batch_size` is inferred from `gen_algo.n_steps`.
             discrim: The discriminator network.
             expert_data: Either a `Dataset` of expert `Transitions`, or an instance of
                 `Transitions` to be automatically converted into a
@@ -90,8 +93,7 @@ class AdversarialTrainer:
         assert (
             logger.is_configured()
         ), "Requires call to imitation.util.logger.configure"
-        self._sess = tf.get_default_session()
-        self._global_step = tf.train.create_global_step()
+        self._global_step = 0
 
         assert disc_batch_size % disc_minibatch_size == 0
         assert disc_minibatch_size % 2 == 0, (
@@ -102,42 +104,39 @@ class AdversarialTrainer:
         self.disc_minibatch_size = disc_minibatch_size
         self.debug_use_ground_truth = debug_use_ground_truth
         self.venv = venv
-        self._gen_policy = gen_policy
+        self.gen_algo = gen_algo
         self._log_dir = log_dir
 
         # Create graph for optimising/recording stats on discriminator
-        self._discrim = discrim
+        self.discrim = discrim
         self._disc_opt_cls = disc_opt_cls
         self._disc_opt_kwargs = disc_opt_kwargs or {}
         self._init_tensorboard = init_tensorboard
         self._init_tensorboard_graph = init_tensorboard_graph
-        self._build_graph()
-        self._sess.run(tf.global_variables_initializer())
+        self._disc_opt = self._disc_opt_cls(
+            self.discrim.parameters(), **self._disc_opt_kwargs
+        )
+
+        if self._init_tensorboard:
+            logging.info("building summary directory at " + self._log_dir)
+            summary_dir = os.path.join(self._log_dir, "summary")
+            os.makedirs(summary_dir, exist_ok=True)
+            self._summary_writer = thboard.SummaryWriter(summary_dir)
 
         if debug_use_ground_truth:
             # Would use an identity reward fn here, but RewardFns can't see rewards.
-            self.reward_train = self.reward_test = None
             self.venv_train = self.venv_test = self.venv
         else:
-            self.reward_train = partial(
-                self.discrim.reward_train,
-                # The generator policy uses normalized observations
-                # but the reward function (self.reward_train) and discriminator use
-                # and receive unnormalized observations. Therefore to get the right
-                # log action probs for AIRL's ent bonus, we need to normalize obs.
-                gen_log_prob_fn=self._gen_log_action_prob_from_unnormalized,
-            )
-            self.reward_test = self.discrim.reward_test
             self.venv_train = reward_wrapper.RewardVecEnvWrapper(
-                self.venv, self.reward_train
+                self.venv, self.discrim.reward_train
             )
             self.venv_test = reward_wrapper.RewardVecEnvWrapper(
-                self.venv, self.reward_test
+                self.venv, self.discrim.reward_test
             )
 
         self.venv_train_buffering = wrappers.BufferingWrapper(self.venv_train)
         self.venv_train_norm = vec_env.VecNormalize(self.venv_train_buffering)
-        self.gen_policy.set_env(self.venv_train_norm)
+        self.gen_algo.set_env(self.venv_train_norm)
 
         if gen_replay_buffer_capacity is None:
             gen_replay_buffer_capacity = self.gen_batch_size
@@ -150,7 +149,7 @@ class AdversarialTrainer:
             expert_data = dataset.TransitionsDictDatasetAdaptor(
                 expert_data,  # pytype: disable=wrong-arg-types
             )
-        self._expert_dataset = expert_data
+        self.expert_dataset = expert_data
 
         expert_ds_size = self.expert_dataset.size()
         if expert_ds_size is not None and self.disc_batch_size // 2 > expert_ds_size:
@@ -163,22 +162,7 @@ class AdversarialTrainer:
 
     @property
     def gen_batch_size(self) -> int:
-        return self.gen_policy.n_batch
-
-    @property
-    def discrim(self) -> discrim_net.DiscrimNet:
-        """Discriminator being trained, used to compute reward for policy."""
-        return self._discrim
-
-    @property
-    def expert_dataset(self) -> dataset.Dataset[types.Transitions]:
-        """Dataset containing expert demonstrations that are being imitated."""
-        return self._expert_dataset
-
-    @property
-    def gen_policy(self) -> base_class.BaseRLModel:
-        """Policy (i.e. the generator) being trained."""
-        return self._gen_policy
+        return self.gen_algo.n_steps
 
     def _gen_log_action_prob_from_unnormalized(
         self, observation: np.ndarray, *, actions: np.ndarray, logp=True,
@@ -190,7 +174,7 @@ class AdversarialTrainer:
           actions: action.
         """
         obs = self.venv_train_norm.normalize_obs(observation)
-        return self.gen_policy.action_probability(obs, actions=actions, logp=logp)
+        return self.gen_algo.action_probability(obs, actions=actions, logp=logp)
 
     def train_disc(self, n_samples: Optional[int] = None) -> None:
         """Trains the discriminator to minimize classification cross-entropy.
@@ -223,7 +207,7 @@ class AdversarialTrainer:
         *,
         gen_samples: Optional[types.Transitions] = None,
         expert_samples: Optional[types.Transitions] = None,
-    ) -> None:
+    ) -> Dict[str, float]:
         """Perform a single discriminator update, optionally using provided samples.
 
         Args:
@@ -234,45 +218,47 @@ class AdversarialTrainer:
             provided, then take `n_gen` expert samples from the expert
             dataset, where `n_gen` is the number of samples in `gen_samples`.
             Observations should not be normalized.
-        """
-        with logger.accumulate_means("disc"):
-            fetches = {
-                "train_op_out": self._disc_train_op,
-                "train_stats": self._discrim.train_stats,
-            }
-            # optionally write TB summaries for collected ops
-            step = self._sess.run(self._global_step)
-            write_summaries = self._init_tensorboard and step % 20 == 0
-            if write_summaries:
-                fetches["events"] = self._summary_op
-
-            # do actual update
-            fd = self._build_disc_feed_dict(
-                gen_samples=gen_samples, expert_samples=expert_samples
-            )
-            fetched = self._sess.run(fetches, feed_dict=fd)
-
-            if write_summaries:
-                self._summary_writer.add_summary(fetched["events"], fetched["step"])
-
-            logger.logkv("step", step)
-            for k, v in fetched["train_stats"].items():
-                logger.logkv(k, v)
-            logger.dumpkvs()
-
-    def eval_disc_loss(self, **kwargs) -> float:
-        """Evaluates the discriminator loss.
-
-        Args:
-          gen_samples (Optional[rollout.Transitions]): Same as in `train_disc_step`.
-          expert_samples (Optional[rollout.Transitions]): Same as in
-            `train_disc_step`.
 
         Returns:
-          The total cross-entropy error in the discriminator's classification.
+           dict: Loss, accuracy, etc. statistics for discriminator.
         """
-        fd = self._build_disc_feed_dict(**kwargs)
-        return np.mean(self._sess.run(self.discrim.disc_loss, feed_dict=fd))
+        with logger.accumulate_means("disc"):
+            # optionally write TB summaries for collected ops
+            step = self._global_step
+            write_summaries = self._init_tensorboard and step % 20 == 0
+
+            # compute loss
+            # TODO(sam): try to JIT this step (marginal gain, but might help)
+            batch = self._gen_train_batch(
+                gen_samples=gen_samples, expert_samples=expert_samples
+            )
+            disc_logits = self.discrim.logits_gen_is_high(
+                batch["state"],
+                batch["action"],
+                batch["next_state"],
+                batch["done"],
+                batch["log_policy_act_prob"],
+            )
+            loss = self.discrim.disc_loss(disc_logits, batch["labels_gen_is_one"])
+
+            # do gradient step
+            self._disc_opt.zero_grad()
+            loss.backward()
+            self._disc_opt.step()
+
+            # compute/write stats and TensorBoard data
+            with th.no_grad():
+                train_stats = rew_common.compute_train_stats(
+                    disc_logits, batch["labels_gen_is_one"], loss
+                )
+            logger.logkv("step", step)
+            for k, v in train_stats.items():
+                logger.logkv(k, v)
+            logger.dumpkvs()
+            if write_summaries:
+                self._summary_writer.add_histogram("disc_logits", disc_logits.detach())
+
+        return train_stats
 
     def train_gen(
         self,
@@ -297,7 +283,7 @@ class AdversarialTrainer:
             learn_kwargs = {}
 
         with logger.accumulate_means("gen"):
-            self.gen_policy.learn(
+            self.gen_algo.learn(
                 total_timesteps=total_timesteps,
                 reset_num_timesteps=False,
                 **learn_kwargs,
@@ -338,27 +324,22 @@ class AdversarialTrainer:
                 callback(epoch)
             logger.dumpkvs()
 
-    def _build_graph(self):
-        # Build necessary parts of the TF graph. Most of the real action happens in
-        # constructors for self.discrim and self.gen_policy.
-        with tf.variable_scope("trainer"):
-            with tf.variable_scope("discriminator"):
-                disc_opt = self._disc_opt_cls(**self._disc_opt_kwargs)
-                self._disc_train_op = disc_opt.minimize(
-                    tf.reduce_mean(self.discrim.disc_loss),
-                    global_step=self._global_step,
-                )
+    def _torchify_array(self, ndarray: np.ndarray, **kwargs) -> th.Tensor:
+        return th.as_tensor(ndarray, device=self.discrim.device(), **kwargs)
 
-        if self._init_tensorboard:
-            with tf.name_scope("summaries"):
-                logging.info("building summary directory at " + self._log_dir)
-                graph = self._sess.graph if self._init_tensorboard_graph else None
-                summary_dir = os.path.join(self._log_dir, "summary")
-                os.makedirs(summary_dir, exist_ok=True)
-                self._summary_writer = tf.summary.FileWriter(summary_dir, graph=graph)
-                self._summary_op = tf.summary.merge_all()
+    def _torchify_with_space(
+        self, ndarray: np.ndarray, space: gym.Space, **kwargs
+    ) -> th.Tensor:
+        tensor = th.as_tensor(ndarray, device=self.discrim.device(), **kwargs)
+        preprocessed = preprocess_obs(
+            tensor,
+            space,
+            # TODO(sam): can I remove "scale" kwarg in DiscrimNet etc.?
+            normalize_images=self.discrim.scale,
+        )
+        return preprocessed
 
-    def _build_disc_feed_dict(
+    def _gen_train_batch(
         self,
         *,
         gen_samples: Optional[types.Transitions] = None,
@@ -379,7 +360,7 @@ class AdversarialTrainer:
         n_gen = len(gen_samples.obs)
 
         if expert_samples is None:
-            expert_samples = self._expert_dataset.sample(n_gen)
+            expert_samples = self.expert_dataset.sample(n_gen)
         n_expert = len(expert_samples.obs)
 
         # Check dimensions.
@@ -403,19 +384,29 @@ class AdversarialTrainer:
         )
 
         # Calculate generator-policy log probabilities.
-        log_act_prob = self._gen_policy.action_probability(obs, actions=acts, logp=True)
+        with th.no_grad():
+            obs_th = th.as_tensor(obs, device=self.gen_algo.device)
+            acts_th = th.as_tensor(acts, device=self.gen_algo.device)
+            _, log_act_prob_th, _ = self.gen_algo.policy.evaluate_actions(
+                obs_th, acts_th
+            )
+            log_act_prob = log_act_prob_th.detach().cpu().numpy()
+            del obs_th, acts_th, log_act_prob_th  # unneeded
         assert len(log_act_prob) == n_samples
         log_act_prob = log_act_prob.reshape((n_samples,))
 
-        fd = {
-            self.discrim.obs_ph: obs,
-            self.discrim.act_ph: acts,
-            self.discrim.next_obs_ph: next_obs,
-            self.discrim.done_ph: dones,
-            self.discrim.labels_gen_is_one_ph: labels_gen_is_one,
-            self.discrim.log_policy_act_prob_ph: log_act_prob,
+        batch_dict = {
+            "state": self._torchify_with_space(obs, self.discrim.observation_space),
+            "action": self._torchify_with_space(acts, self.discrim.action_space),
+            "next_state": self._torchify_with_space(
+                next_obs, self.discrim.observation_space
+            ),
+            "done": self._torchify_array(dones),
+            "labels_gen_is_one": self._torchify_array(labels_gen_is_one),
+            "log_policy_act_prob": self._torchify_array(log_act_prob),
         }
-        return fd
+
+        return batch_dict
 
 
 class GAIL(AdversarialTrainer):
@@ -423,8 +414,9 @@ class GAIL(AdversarialTrainer):
         self,
         venv: vec_env.VecEnv,
         expert_data: Union[types.Transitions, dataset.Dataset[types.Transitions]],
-        gen_policy: base_class.BaseRLModel,
+        gen_algo: base_class.BaseAlgorithm,
         *,
+        # FIXME(sam) pass in discrim net directly; don't ask for kwargs indirectly
         discrim_kwargs: Optional[Mapping] = None,
         **kwargs,
     ):
@@ -443,7 +435,7 @@ class GAIL(AdversarialTrainer):
         discrim = discrim_net.DiscrimNetGAIL(
             venv.observation_space, venv.action_space, **discrim_kwargs
         )
-        super().__init__(venv, gen_policy, discrim, expert_data, **kwargs)
+        super().__init__(venv, gen_algo, discrim, expert_data, **kwargs)
 
 
 class AIRL(AdversarialTrainer):
@@ -451,8 +443,9 @@ class AIRL(AdversarialTrainer):
         self,
         venv: vec_env.VecEnv,
         expert_data: Union[types.Transitions, dataset.Dataset[types.Transitions]],
-        gen_policy: base_class.BaseRLModel,
+        gen_algo: base_class.BaseAlgorithm,
         *,
+        # FIXME(sam): pass in reward net directly, not via _cls and _kwargs
         reward_net_cls: Type[reward_net.RewardNet] = reward_net.BasicShapedRewardNet,
         reward_net_kwargs: Optional[Mapping] = None,
         discrim_kwargs: Optional[Mapping] = None,
@@ -485,4 +478,4 @@ class AIRL(AdversarialTrainer):
 
         discrim_kwargs = discrim_kwargs or {}
         discrim = discrim_net.DiscrimNetAIRL(reward_network, **discrim_kwargs)
-        super().__init__(venv, gen_policy, discrim, expert_data, **kwargs)
+        super().__init__(venv, gen_algo, discrim, expert_data, **kwargs)

@@ -198,12 +198,6 @@ class RewardNet(nn.Module, ABC):
         first_param = next(self.parameters())
         return first_param.device
 
-    # TODO(sam): add these summaries back using
-    # torch.util.tensorboard.SummaryWriter.
-    # def build_summaries(self):
-    #     tf.summary.histogram("train_reward", self._reward_train)
-    #     tf.summary.histogram("test_reward", self._reward_test)
-
 
 class RewardNetShaped(RewardNet):
     """Abstract reward network with a phi network to shape training reward.
@@ -251,14 +245,17 @@ class RewardNetShaped(RewardNet):
             state, action, next_state, done
         )
         # TODO(sam): batch potential_network calls
-        new_shaping_output = self.potential_network(next_state)
-        old_shaping_output = self.potential_network(state)
-        new_shaping = done * self._end_potential + (1 - done) * new_shaping_output
-        return (
+        new_shaping_output = self.potential_network(next_state).flatten()
+        old_shaping_output = self.potential_network(state).flatten()
+        done_f = done.float()
+        new_shaping = done_f * old_shaping_output + (1 - done_f) * new_shaping_output
+        final_rew = (
             base_reward_net_output
             + self._discount_factor * new_shaping
             - old_shaping_output
         )
+        assert final_rew.shape == state.shape[:1]
+        return final_rew
 
     def _reward_test(
         self,
@@ -277,12 +274,6 @@ class RewardNetShaped(RewardNet):
         Returns:
           An `nn.Module` mapping from observations to potential values.
         """
-
-    # TODO(sam): add back these summary histograms too
-    # def build_summaries(self):
-    #     super().build_summaries()
-    #     tf.summary.histogram("shaping_old", self._old_shaping_output)
-    #     tf.summary.histogram("shaping_new", self._new_shaping_output)
 
 
 class BasicRewardMLP(nn.Module):
@@ -327,11 +318,6 @@ class BasicRewardMLP(nn.Module):
 
         self.mlp = networks.build_mlp(**full_build_mlp_kwargs)
 
-        # XXX
-        self.combined_size = combined_size
-        self.observation_space = observation_space
-        self.action_space = action_space
-
     def forward(self, state, action, next_state, done):
         inputs = []
         if self.use_state:
@@ -346,8 +332,10 @@ class BasicRewardMLP(nn.Module):
         inputs_concat = th.cat(inputs, dim=1)
 
         outputs = self.mlp(inputs_concat)
+        flat_outputs = outputs.squeeze(1)
+        assert flat_outputs.shape == state.shape[:1]
 
-        return outputs
+        return flat_outputs
 
 
 class BasicRewardNet(RewardNet):

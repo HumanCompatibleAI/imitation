@@ -3,7 +3,6 @@
 import os
 
 import sacred
-from stable_baselines.common import policies
 
 from imitation.policies import base
 from imitation.scripts.config.common import DEFAULT_INIT_RL_KWARGS
@@ -195,7 +194,6 @@ def swimmer():
     env_name = "Swimmer-v2"
     rollout_hint = "swimmer"
     total_timesteps = 2e6
-    init_rl_kwargs = dict(policy_network_class=policies.MlpPolicy)
 
 
 @train_ex.named_config

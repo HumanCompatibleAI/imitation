@@ -80,7 +80,7 @@ def compute_train_stats(
         n_expert = n_labels - n_generated
         pct_expert = n_expert / float(n_labels)
         n_expert_pred = int(len(bin_is_generated_pred) - th.sum(int_is_generated_pred))
-        pct_expert_pred = n_expert_pred / float(len(n_labels))
+        pct_expert_pred = n_expert_pred / float(n_labels)
         correct_vec = th.eq(bin_is_generated_pred, bin_is_generated_true)
         acc = th.mean(correct_vec.float())
 

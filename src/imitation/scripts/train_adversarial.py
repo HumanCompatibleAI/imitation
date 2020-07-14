@@ -14,7 +14,7 @@ from imitation.algorithms import adversarial
 from imitation.data import rollout, types
 from imitation.policies import serialize
 from imitation.scripts.config.train_adversarial import train_ex
-from imitation.util import logger, networks
+from imitation.util import logger
 from imitation.util import sacred as sacred_util
 from imitation.util import util
 
@@ -28,7 +28,7 @@ def save(trainer, save_path):
     # (Needs #43 to be merged before attempting.)
     serialize.save_stable_model(
         os.path.join(save_path, "gen_policy"),
-        trainer.gen_policy,
+        trainer.gen_algo,
         trainer.venv_train_norm,
     )
 
@@ -129,77 +129,74 @@ def train(
         expert_trajs = expert_trajs[:n_expert_demos]
     expert_transitions = rollout.flatten_trajectories(expert_trajs)
 
-    with networks.make_session():
-        if init_tensorboard:
-            tensorboard_log = osp.join(log_dir, "sb_tb")
-        else:
-            tensorboard_log = None
+    if init_tensorboard:
+        tensorboard_log = osp.join(log_dir, "sb_tb")
+    else:
+        tensorboard_log = None
 
-        venv = util.make_vec_env(
-            env_name,
-            num_vec,
-            seed=_seed,
-            parallel=parallel,
-            log_dir=log_dir,
-            max_episode_steps=max_episode_steps,
-        )
+    venv = util.make_vec_env(
+        env_name,
+        num_vec,
+        seed=_seed,
+        parallel=parallel,
+        log_dir=log_dir,
+        max_episode_steps=max_episode_steps,
+    )
 
-        # TODO(shwang): Let's get rid of init_rl later on?
-        # It's really just a stub function now.
-        gen_policy = util.init_rl(
-            venv, verbose=1, tensorboard_log=tensorboard_log, **init_rl_kwargs
-        )
+    # TODO(shwang): Let's get rid of init_rl later on?
+    # It's really just a stub function now.
+    gen_algo = util.init_rl(
+        venv, verbose=1, tensorboard_log=tensorboard_log, **init_rl_kwargs
+    )
 
-        # Convert Sacred's ReadOnlyDict to dict so we can modify it.
-        allowed_keys = {"shared", "gail", "airl"}
-        assert discrim_net_kwargs.keys() <= allowed_keys
-        assert algorithm_kwargs.keys() <= allowed_keys
+    # Convert Sacred's ReadOnlyDict to dict so we can modify it.
+    allowed_keys = {"shared", "gail", "airl"}
+    assert discrim_net_kwargs.keys() <= allowed_keys
+    assert algorithm_kwargs.keys() <= allowed_keys
 
-        discrim_kwargs_shared = discrim_net_kwargs.get("shared", {})
-        discrim_kwargs_algo = discrim_net_kwargs.get(algorithm, {})
-        final_discrim_kwargs = dict(**discrim_kwargs_shared, **discrim_kwargs_algo)
+    discrim_kwargs_shared = discrim_net_kwargs.get("shared", {})
+    discrim_kwargs_algo = discrim_net_kwargs.get(algorithm, {})
+    final_discrim_kwargs = dict(**discrim_kwargs_shared, **discrim_kwargs_algo)
 
-        algorithm_kwargs_shared = algorithm_kwargs.get("shared", {})
-        algorithm_kwargs_algo = algorithm_kwargs.get(algorithm, {})
-        final_algorithm_kwargs = dict(
-            **algorithm_kwargs_shared, **algorithm_kwargs_algo,
-        )
+    algorithm_kwargs_shared = algorithm_kwargs.get("shared", {})
+    algorithm_kwargs_algo = algorithm_kwargs.get(algorithm, {})
+    final_algorithm_kwargs = dict(**algorithm_kwargs_shared, **algorithm_kwargs_algo,)
 
-        if algorithm.lower() == "gail":
-            algo_cls = adversarial.GAIL
-        elif algorithm.lower() == "airl":
-            algo_cls = adversarial.AIRL
-        else:
-            raise ValueError(f"Invalid value algorithm={algorithm}.")
+    if algorithm.lower() == "gail":
+        algo_cls = adversarial.GAIL
+    elif algorithm.lower() == "airl":
+        algo_cls = adversarial.AIRL
+    else:
+        raise ValueError(f"Invalid value algorithm={algorithm}.")
 
-        trainer = algo_cls(
-            venv=venv,
-            expert_data=expert_transitions,
-            gen_policy=gen_policy,
-            log_dir=log_dir,
-            discrim_kwargs=final_discrim_kwargs,
-            **final_algorithm_kwargs,
-        )
+    trainer = algo_cls(
+        venv=venv,
+        expert_data=expert_transitions,
+        gen_algo=gen_algo,
+        log_dir=log_dir,
+        discrim_kwargs=final_discrim_kwargs,
+        **final_algorithm_kwargs,
+    )
 
-        def callback(epoch):
-            if checkpoint_interval > 0 and epoch % checkpoint_interval == 0:
-                save(trainer, os.path.join(log_dir, "checkpoints", f"{epoch:05d}"))
+    def callback(epoch):
+        if checkpoint_interval > 0 and epoch % checkpoint_interval == 0:
+            save(trainer, os.path.join(log_dir, "checkpoints", f"{epoch:05d}"))
 
-        trainer.train(total_timesteps, callback)
+    trainer.train(total_timesteps, callback)
 
-        # Save final artifacts.
-        if checkpoint_interval >= 0:
-            save(trainer, os.path.join(log_dir, "checkpoints", "final"))
+    # Save final artifacts.
+    if checkpoint_interval >= 0:
+        save(trainer, os.path.join(log_dir, "checkpoints", "final"))
 
-        # Final evaluation of imitation policy.
-        results = {}
-        sample_until_eval = rollout.min_episodes(n_episodes_eval)
-        trajs = rollout.generate_trajectories(
-            trainer.gen_policy, trainer.venv_test, sample_until=sample_until_eval
-        )
-        results["expert_stats"] = rollout.rollout_stats(expert_trajs)
-        results["imit_stats"] = rollout.rollout_stats(trajs)
-        return results
+    # Final evaluation of imitation policy.
+    results = {}
+    sample_until_eval = rollout.min_episodes(n_episodes_eval)
+    trajs = rollout.generate_trajectories(
+        trainer.gen_algo, trainer.venv_test, sample_until=sample_until_eval
+    )
+    results["expert_stats"] = rollout.rollout_stats(expert_trajs)
+    results["imit_stats"] = rollout.rollout_stats(trajs)
+    return results
 
 
 def main_console():

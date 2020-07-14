@@ -1,6 +1,6 @@
 import logging
 from abc import ABC, abstractmethod
-from typing import Callable, Optional, Sequence, Tuple
+from typing import Callable, Optional
 
 import gym
 import numpy as np
@@ -70,7 +70,7 @@ class DiscrimNet(nn.Module, ABC):
         Returns:
             loss: scalar-valued discriminator loss."""
         return F.binary_cross_entropy_with_logits(
-            disc_logits_gen_is_high, labels_gen_is_one
+            disc_logits_gen_is_high, labels_gen_is_one.float()
         )
 
     # TODO(sam): rename these to reward_train() and reward_test() after I've
@@ -245,7 +245,9 @@ class DiscrimNetAIRL(DiscrimNet):
         next_state: th.Tensor,
         done: th.Tensor,
     ) -> th.Tensor:
-        return self.reward_net._reward_test(state, action, next_state, done)
+        rew = self.reward_net._reward_test(state, action, next_state, done)
+        assert rew.shape == state.shape[:1]
+        return rew
 
     def reward_train(
         self,
@@ -256,7 +258,9 @@ class DiscrimNetAIRL(DiscrimNet):
     ) -> th.Tensor:
         """Compute train reward. This reward does *not* include an entropy
         bonus; the entropy bonus should be added directly to PPO, SAC, etc."""
-        return self.reward_net._reward_train(state, action, next_state, done)
+        rew = self.reward_net._reward_train(state, action, next_state, done)
+        assert rew.shape == state.shape[:1]
+        return rew
 
 
 DiscrimNetBuilder = Callable[..., nn.Module]
@@ -285,7 +289,8 @@ class ActObsMLP(nn.Module):
 
     def forward(self, obs: th.Tensor, acts: th.Tensor) -> th.Tensor:
         cat_inputs = th.cat((obs, acts), dim=1)
-        return self.mlp(cat_inputs)
+        outputs = self.mlp(cat_inputs)
+        return outputs.squeeze(1)
 
 
 class DiscrimNetGAIL(DiscrimNet):
@@ -363,7 +368,9 @@ class DiscrimNetGAIL(DiscrimNet):
         next_state: th.Tensor,
         done: th.Tensor,
     ) -> th.Tensor:
-        return self.reward_train(state, action, next_state, done)
+        rew = self.reward_train(state, action, next_state, done)
+        assert rew.shape == state.shape[:1]
+        return rew
 
     def reward_train(
         self,
@@ -373,4 +380,6 @@ class DiscrimNetGAIL(DiscrimNet):
         done: th.Tensor,
     ) -> th.Tensor:
         logits = self.logits_gen_is_high(state, action, next_state, done)
-        return -F.logsigmoid(logits)
+        rew = -F.logsigmoid(logits)
+        assert rew.shape == state.shape[:1]
+        return rew

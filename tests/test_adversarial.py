@@ -15,12 +15,6 @@ IN_CODECOV = "COV_CORE_CONFIG" in os.environ
 PARALLEL = [False] if IN_CODECOV else [True, False]
 
 
-@pytest.fixture(autouse=True)
-def setup_and_teardown(session):
-    # Uses conftest.session fixture for everything in this file
-    yield
-
-
 @pytest.fixture(params=ALGORITHM_CLS)
 def _algorithm_cls(request):
     """Auto-parametrizes `_algorithm_cls` for the `trainer` fixture."""
@@ -33,12 +27,12 @@ def test_train_disc_small_expert_data_warning(tmpdir, _algorithm_cls):
         "CartPole-v1", n_envs=2, parallel=_parallel, log_dir=tmpdir,
     )
 
-    gen_policy = util.init_rl(venv, verbose=1)
-    small_data = rollout.generate_transitions(gen_policy, venv, n_timesteps=20)
+    gen_algo = util.init_rl(venv, verbose=1)
+    small_data = rollout.generate_transitions(gen_algo, venv, n_timesteps=20)
 
     with pytest.warns(RuntimeWarning, match="discriminator batch size"):
         _algorithm_cls(
-            venv=venv, expert_data=small_data, gen_policy=gen_policy, log_dir=tmpdir,
+            venv=venv, expert_data=small_data, gen_algo=gen_algo, log_dir=tmpdir,
         )
 
 
@@ -72,10 +66,10 @@ def trainer(_algorithm_cls, _parallel: bool, tmpdir: str, _convert_dataset: bool
         "CartPole-v1", n_envs=2, parallel=_parallel, log_dir=tmpdir,
     )
 
-    gen_policy = util.init_rl(venv, verbose=1)
+    gen_algo = util.init_rl(venv, verbose=1)
 
     return _algorithm_cls(
-        venv=venv, expert_data=expert_data, gen_policy=gen_policy, log_dir=tmpdir,
+        venv=venv, expert_data=expert_data, gen_algo=gen_algo, log_dir=tmpdir,
     )
 
 
@@ -88,7 +82,7 @@ def test_train_disc_no_samples_error(trainer: adversarial.AdversarialTrainer):
 
 def test_train_disc_step_no_crash(trainer, n_timesteps=200):
     transitions = rollout.generate_transitions(
-        trainer.gen_policy, trainer.venv, n_timesteps=n_timesteps
+        trainer.gen_algo, trainer.venv, n_timesteps=n_timesteps
     )
     trainer.train_disc_step(gen_samples=transitions)
 
@@ -102,10 +96,12 @@ def test_train_gen_train_disc_no_crash(trainer, n_updates=2):
 @pytest.mark.expensive
 def test_train_disc_improve_D(tmpdir, trainer, n_timesteps=200, n_steps=1000):
     gen_samples = rollout.generate_transitions(
-        trainer.gen_policy, trainer.venv_train_norm, n_timesteps=n_timesteps
+        trainer.gen_algo, trainer.venv_train_norm, n_timesteps=n_timesteps
     )
-    loss1 = trainer.eval_disc_loss(gen_samples=gen_samples)
+    init_stats = None
+    final_stats = None
     for _ in range(n_steps):
-        trainer.train_disc_step(gen_samples=gen_samples)
-    loss2 = trainer.eval_disc_loss(gen_samples=gen_samples)
-    assert loss2 < loss1
+        final_stats = trainer.train_disc_step(gen_samples=gen_samples)
+        if init_stats is None:
+            init_stats = final_stats
+    assert final_stats["loss"] < init_stats["loss"]

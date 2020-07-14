@@ -71,7 +71,7 @@ def make_trainer(tmpdir):
     )
 
 
-def test_trainer_makes_progress(tmpdir, session):
+def test_trainer_makes_progress(tmpdir):
     venv = util.make_vec_env(ENV_NAME, 10)
     trainer = make_trainer(tmpdir)
     with pytest.raises(dagger.NeedsDemosException):
@@ -112,7 +112,7 @@ def test_trainer_makes_progress(tmpdir, session):
     )
 
 
-def test_trainer_save_reload(tmpdir, session):
+def test_trainer_save_reload(tmpdir):
     trainer = make_trainer(tmpdir)
     trainer.round_num = 3
     trainer.save_trainer()
@@ -138,7 +138,7 @@ def test_trainer_save_reload(tmpdir, session):
     assert difference
 
 
-def test_policy_save_reload(tmpdir, session):
+def test_policy_save_reload(tmpdir):
     # just make sure the methods run; we already test them in test_bc.py
     policy_path = os.path.join(tmpdir, "policy.pkl")
     trainer = make_trainer(tmpdir)

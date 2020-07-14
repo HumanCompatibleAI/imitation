@@ -20,7 +20,7 @@ def venv():
 
 
 @pytest.fixture(params=[False, True])
-def trainer(request, session, venv):
+def trainer(request, venv):
     convert_dataset = request.param
     rollouts = types.load(ROLLOUT_PATH)
     data = rollout.flatten_trajectories(rollouts)

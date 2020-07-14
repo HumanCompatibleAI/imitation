@@ -12,15 +12,9 @@ def build_mlp(
     out_size: int = 1,
     name: Optional[str] = None,
     activation: Callable = nn.ReLU,
-    initializer: Optional[Callable] = None,
 ) -> nn.Module:
-    """Constructs an MLP, returning an ordered dict of layers."""
+    """Constructs a Torch MLP."""
     layers = collections.OrderedDict()
-
-    if initializer is not None:
-        # FIXME(sam): should either remove "initializer" argument or add
-        # support for custom init before committing this
-        raise NotImplementedError("build_mlp doesn't yet support custom init")
 
     if name is None:
         prefix = ""
