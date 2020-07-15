@@ -94,7 +94,7 @@ def test_train_gen_train_disc_no_crash(trainer, n_updates=2):
 
 
 @pytest.mark.expensive
-def test_train_disc_improve_D(tmpdir, trainer, n_timesteps=200, n_steps=1000):
+def test_train_disc_improve_D(tmpdir, trainer, n_timesteps=200, n_steps=100):
     gen_samples = rollout.generate_transitions(
         trainer.gen_algo, trainer.venv_train_norm, n_timesteps=n_timesteps
     )
@@ -104,4 +104,4 @@ def test_train_disc_improve_D(tmpdir, trainer, n_timesteps=200, n_steps=1000):
         final_stats = trainer.train_disc_step(gen_samples=gen_samples)
         if init_stats is None:
             init_stats = final_stats
-    assert final_stats["loss"] < init_stats["loss"]
+    assert final_stats["disc_loss"] < init_stats["disc_loss"]

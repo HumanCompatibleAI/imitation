@@ -128,10 +128,10 @@ class AdversarialTrainer:
             self.venv_train = self.venv_test = self.venv
         else:
             self.venv_train = reward_wrapper.RewardVecEnvWrapper(
-                self.venv, self.discrim.reward_train
+                self.venv, self.discrim.predict_reward_train
             )
             self.venv_test = reward_wrapper.RewardVecEnvWrapper(
-                self.venv, self.discrim.reward_test
+                self.venv, self.discrim.predict_reward_test
             )
 
         self.venv_train_buffering = wrappers.BufferingWrapper(self.venv_train)

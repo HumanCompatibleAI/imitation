@@ -22,7 +22,7 @@ def _load_discrim_net(path: str, venv: VecEnv) -> common.RewardFn:
     del venv  # Unused.
     discriminator = discrim_net.DiscrimNet.load(path)
     # TODO(gleave): expose train reward as well? (hard due to action probs?)
-    return discriminator.reward_test
+    return discriminator.predict_reward_test
 
 
 def _load_reward_net_as_fn(shaped: bool) -> RewardFnLoaderFn:

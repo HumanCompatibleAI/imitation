@@ -176,7 +176,9 @@ class RewardNet(nn.Module, ABC):
         with th.no_grad():
             th_reward = self._reward_test(state_th, action_th, next_state_th, done_th)
 
-        return th_reward.detach().cpu().numpy().squeeze(1)
+        rew = th_reward.detach().cpu().numpy().flatten()
+        assert rew.shape == state.shape[:1]
+        return rew
 
     @abstractmethod
     def build_base_reward_network(self) -> nn.Module:

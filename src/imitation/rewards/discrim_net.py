@@ -188,7 +188,7 @@ class DiscrimNet(nn.Module, ABC):
             else:
                 rew_th = self.reward_test(state_th, action_th, next_state_th, done_th)
 
-        rew = rew_th.detach().cpu().numpy().squeeze(1)
+        rew = rew_th.detach().cpu().numpy().flatten()
         assert rew.shape == (n_gen,)
 
         return rew
