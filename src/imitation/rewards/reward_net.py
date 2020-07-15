@@ -1,7 +1,8 @@
 """Constructs deep network reward models."""
 
+import collections
 from abc import ABC, abstractmethod
-from typing import Callable, Dict, Optional
+from typing import Callable, Mapping, Optional
 
 import gym
 import numpy as np
@@ -290,7 +291,7 @@ class BasicRewardMLP(nn.Module):
         use_action,
         use_next_state,
         use_done,
-        build_mlp_kwargs: Optional[Dict] = None,
+        build_mlp_kwargs: Optional[Mapping] = None,
     ):
         # XXX(sam): need docstring
         super().__init__()
@@ -348,7 +349,7 @@ class BasicRewardNet(RewardNet):
         observation_space: gym.Space,
         action_space: gym.Space,
         *,
-        base_reward_net_kwargs: Optional[dict] = None,
+        base_reward_net_kwargs: Optional[Mapping] = None,
         **kwargs,
     ):
         """Builds a simple reward network.
@@ -402,8 +403,9 @@ class BasicShapedRewardNet(RewardNetShaped):
         observation_space: gym.Space,
         action_space: gym.Space,
         *,
-        base_reward_net_kwargs: Optional[dict] = None,
-        shaping_net_kwargs: Optional[dict] = None,
+        base_reward_net_kwargs: Optional[Mapping] = None,
+        shaping_net_kwargs: Optional[Mapping] = None,
+        build_mlp_kwargs: Optional[Mapping] = None,
         **kwargs,
     ):
         """Builds a simple shaped reward network.
@@ -414,16 +416,19 @@ class BasicShapedRewardNet(RewardNetShaped):
           base_reward_net_kwargs: Arguments passed to
             `build_mlp_base_reward_network`.
           shaping_net_kwargs: Arguments passed to `build_mlp_potential_network`.
+          build_mlp_kwargs: Arguments passed to both base reward and potential
+            network constructors. Values in this dict will be overridden by
+            base_reward_net_kwargs and shaping_net_kwargs.
           kwargs: Passed through to `RewardNetShaped`.
         """
-        self.base_reward_net_kwargs = {
-            "hid_sizes": (32, 32),
-            **(base_reward_net_kwargs or {}),
-        }
-        self.shaping_net_kwargs = {
-            "hid_sizes": (32, 32),
-            **(base_reward_net_kwargs or {}),
-        }
+        self.base_reward_net_kwargs = collections.ChainMap(
+            base_reward_net_kwargs or {},
+            build_mlp_kwargs or {},
+            {"hid_sizes": (32, 32)},
+        )
+        self.shaping_net_kwargs = collections.ChainMap(
+            shaping_net_kwargs or {}, build_mlp_kwargs or {}, {"hid_sizes": (32, 32)}
+        )
         RewardNetShaped.__init__(
             self, observation_space, action_space, **kwargs,
         )

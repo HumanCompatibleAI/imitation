@@ -7,7 +7,7 @@ from typing import Dict, List, Optional, Sequence, Union
 import gym
 import numpy as np
 from matplotlib import pyplot as plt
-from stable_baselines.common import vec_env
+from stable_baselines3.common import vec_env
 
 from imitation.data import rollout, types
 from imitation.policies import serialize as policies_serialize
@@ -155,9 +155,7 @@ def batch_reward_heatmaps(
 
         if n_gen_trajs > 0:
             # `load_policy` automatically loads VecNormalize for policy evaluation.
-            gen_policy = policies_serialize.load_policy(
-                "ppo", str(policy_path), venv
-            )
+            gen_policy = policies_serialize.load_policy("ppo", str(policy_path), venv)
             gen_trajs = rollout.generate_trajectories(
                 gen_policy, venv, sample_until=rollout.min_episodes(n_gen_trajs)
             )

@@ -1,4 +1,3 @@
-import contextlib
 import logging
 import os
 import os.path as osp
@@ -6,7 +5,7 @@ import time
 from typing import Optional
 
 from sacred.observers import FileStorageObserver
-from stable_baselines.common.vec_env import VecEnvWrapper
+from stable_baselines3.common.vec_env import VecEnvWrapper
 
 import imitation.util.sacred as sacred_util
 from imitation.data import rollout

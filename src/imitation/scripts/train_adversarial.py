@@ -131,11 +131,6 @@ def train(
         expert_trajs = expert_trajs[:n_expert_demos]
     expert_transitions = rollout.flatten_trajectories(expert_trajs)
 
-    if init_tensorboard:
-        tensorboard_log = osp.join(log_dir, "sb_tb")
-    else:
-        tensorboard_log = None
-
     venv = util.make_vec_env(
         env_name,
         num_vec,
@@ -147,8 +142,20 @@ def train(
 
     # TODO(shwang): Let's get rid of init_rl later on?
     # It's really just a stub function now.
+
+    # if init_tensorboard:
+    #     tensorboard_log = osp.join(log_dir, "sb_tb")
+    # else:
+    #     tensorboard_log = None
+
     gen_algo = util.init_rl(
-        venv, verbose=1, tensorboard_log=tensorboard_log, **init_rl_kwargs
+        # FIXME(sam): supplying verbose=1 and tensorboard_log=None is a hack to
+        # prevent SB3 from re-configuring the logger when calling learn().
+        # Should remove this once relevant SB3 issue is fixed.
+        venv,
+        verbose=1,
+        tensorboard_log=None,
+        **init_rl_kwargs,
     )
 
     # Convert Sacred's ReadOnlyDict to dict so we can modify it.

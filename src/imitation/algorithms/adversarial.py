@@ -251,10 +251,10 @@ class AdversarialTrainer:
                 train_stats = rew_common.compute_train_stats(
                     disc_logits, batch["labels_gen_is_one"], loss
                 )
-            logger.logkv("step", step)
+            logger.record("step", step)
             for k, v in train_stats.items():
-                logger.logkv(k, v)
-            logger.dumpkvs()
+                logger.record(k, v)
+            logger.dump()
             if write_summaries:
                 self._summary_writer.add_histogram("disc_logits", disc_logits.detach())
 
@@ -322,7 +322,7 @@ class AdversarialTrainer:
             self.train_disc(self.disc_batch_size)
             if callback:
                 callback(epoch)
-            logger.dumpkvs()
+            logger.dump()
 
     def _torchify_array(self, ndarray: np.ndarray, **kwargs) -> th.Tensor:
         return th.as_tensor(ndarray, device=self.discrim.device(), **kwargs)
@@ -466,7 +466,7 @@ class AIRL(AdversarialTrainer):
                 DiscrimNetAIRL.
         """
         # TODO(shwang): Maybe offer str=>Type[RewardNet] conversion like
-        #  stable_baselines does with policy classes.
+        #  stable_baselines3 does with policy classes.
         reward_net_kwargs = reward_net_kwargs or {}
         reward_network = reward_net_cls(
             action_space=venv.action_space,

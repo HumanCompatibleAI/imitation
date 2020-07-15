@@ -45,6 +45,9 @@ class NormalizePolicy(BasePolicy):
         self._policy = policy
         self.vec_normalize = vec_normalize
 
+    def _predict(self, *args, **kwargs):
+        raise NotImplementedError()
+
     def predict(
         self, obs: np.ndarray, *args, **kwargs
     ) -> Tuple[np.ndarray, Optional[np.ndarray]]:

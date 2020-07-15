@@ -4,7 +4,7 @@ from typing import Callable
 
 import numpy as np
 import torch as th
-from stable_baselines.common.vec_env import VecEnv
+from stable_baselines3.common.vec_env import VecEnv
 
 from imitation.rewards import common
 from imitation.util import registry, util

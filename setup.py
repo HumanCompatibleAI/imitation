@@ -1,7 +1,6 @@
 import src.imitation  # pytype: disable=import-error
 from setuptools import find_packages, setup
 
-TF_VERSION = ">=1.15.0,<2.0"
 TESTS_REQUIRE = [
     "seals~=0.1.0",
     "black",
@@ -53,7 +52,6 @@ setup(
         "torch>=1.4.0",
         "tqdm",
         "scikit-learn>=0.21.2",
-        "stable-baselines~=2.10.0",
         "stable-baselines3~=0.8.0a2",
         "torch>=1.4.0",
         "jax~=0.1.66",
@@ -62,8 +60,6 @@ setup(
     ],
     tests_require=TESTS_REQUIRE,
     extras_require={
-        "gpu": [f"tensorflow-gpu{TF_VERSION}"],
-        "cpu": [f"tensorflow{TF_VERSION}"],
         # recommended packages for development
         "dev": [
             "autopep8",

@@ -202,7 +202,9 @@ PARALLEL_CONFIG_UPDATES = [
                 "algorithm_kwargs": {
                     "airl": {
                         "reward_net_kwargs": {
-                            "phi_units": tune.grid_search([[16, 16], [7, 9]]),
+                            "build_mlp_kwargs": {
+                                "hid_sizes": tune.grid_search([[16, 16], [7, 9]]),
+                            },
                         }
                     }
                 },
@@ -244,6 +246,12 @@ def _generate_test_rollouts(tmpdir: str, env_named_config: str) -> str:
 
 
 def test_parallel_train_adversarial_custom_env(tmpdir):
+    import gym
+
+    try:
+        gym.make("Ant-v3")
+    except gym.error.DependencyNotInstalled:
+        pytest.skip("mujoco_py not available")
     env_named_config = "custom_ant"
     rollout_path = _generate_test_rollouts(tmpdir, env_named_config)
 
@@ -312,4 +320,4 @@ def test_analyze_gather_tb(tmpdir: str):
     )
     assert run.status == "COMPLETED"
     assert isinstance(run.result, dict)
-    assert run.result["n_tb_dirs"] == 4
+    assert run.result["n_tb_dirs"] == 2

@@ -1,6 +1,6 @@
 import logging
 from abc import ABC, abstractmethod
-from typing import Callable, Optional
+from typing import Callable, Mapping, Optional
 
 import gym
 import numpy as np
@@ -303,7 +303,7 @@ class DiscrimNetGAIL(DiscrimNet):
         # FIXME(sam): replace build_discrim_net/build_discrim_net_kwargs with
         # just passing a discrim net straight in
         build_discrim_net: Optional[DiscrimNetBuilder] = None,
-        build_discrim_net_kwargs: Optional[dict] = None,
+        build_discrim_net_kwargs: Optional[Mapping] = None,
         scale: bool = False,
     ):
         """Construct discriminator network.

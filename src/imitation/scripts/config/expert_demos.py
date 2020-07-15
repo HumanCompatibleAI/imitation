@@ -30,7 +30,7 @@ def expert_demos_defaults():
     rollout_save_n_timesteps = None  # Min timesteps saved per file, optional.
     rollout_save_n_episodes = None  # Num episodes saved per file, optional.
 
-    policy_save_interval = 100  # Num updates between saves (<=0 disables)
+    policy_save_interval = 2000  # Num updates between saves (<=0 disables)
     policy_save_final = True  # If True, save after training is finished.
 
     init_tensorboard = False  # If True, then write Tensorboard logs.
