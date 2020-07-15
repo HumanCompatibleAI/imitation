@@ -6,39 +6,86 @@ expert's policy; over time, they shift to be drawn more and more from the imitat
 policy.
 """
 
+import abc
 import dataclasses
 import logging
 import os
-from typing import Callable, Tuple
+from typing import Callable, Tuple, Union
 
-import cloudpickle
 import gym
 import numpy as np
-from stable_baselines3.common.policies import ActorCriticPolicy
+import torch as th
+from stable_baselines3.common import utils
 
-from imitation.algorithms.bc import BC
+from imitation.algorithms import bc
 from imitation.data import rollout, types
 from imitation.util import util
 
 
-def linear_beta_schedule(rampdown_rounds: int) -> Callable[[int], float]:
-    """Linearly-decreasing schedule for beta (% of time that user act is used).
+class BetaSchedule(abc.ABC):
+    """
+    Determines the value of beta (% of time that demonstrator action is used) over the
+    progression of training rounds.
+    """
+
+    @abc.abstractmethod
+    def __call__(self, round_num: int) -> float:
+        """Gives the value of beta for the current round.
+
+        Args:
+            round: the current round number. Rounds are assumed to be numbered 0, 1, 2,
+              etc.
+
+        Returns:
+            beta: the fraction of the time to sample a demonstrator action. Robot
+              actions will be sampled the remainder of the time.
+        """
+
+
+class LinearBetaSchedule(BetaSchedule):
+    """
+    Linearly-decreasing schedule for beta (% of time that demonstrator action is used).
+    """
+
+    def __init__(self, rampdown_rounds: int):
+        """
+        Args:
+            rampdown_rounds: number of rounds over which to anneal beta.
+        """
+        self.rampdown_rounds = rampdown_rounds
+
+    def __call__(self, round_num: int) -> float:
+        """Gives the value of beta for the current round.
+
+        Args:
+            round: the current round number. Rounds are assumed to be numbered 0, 1, 2,
+              etc.
+
+        Returns:
+            beta: the fraction of the time to sample a demonstrator action. Robot
+              actions will be sampled the remainder of the time.
+        """
+        assert round_num >= 0
+        return min(1, max(0, (self.rampdown_rounds - round_num) / self.rampdown_rounds))
+
+
+def reconstruct_trainer(
+    scratch_dir: str, device: Union[th.device, str] = "auto"
+) -> "DAggerTrainer":
+    """Reconstruct trainer from the latest snapshot in some working directory.
 
     Args:
-      rampdown_rounds: number of rounds over which to anneal beta. Rounds
-        are assumed to be numbered 0, 1, 2, ….
+      scratch_dir: path to the working directory created by a previous run of
+        this algorithm. The directory should contain `checkpoint-latest.pt` and
+        `policy-latest.pt` files.
+      device: device on which to load the trainer.
 
     Returns:
-      schedule: function that takes current round number (0, or 1, or 2, etc.)
-        as input & returns current beta as float.
+      trainer: a reconstructed `DAggerTrainer` with the same state as the
+        previously-saved one.
     """
-    assert rampdown_rounds > 0
-
-    def schedule(i: int) -> float:
-        assert i >= 0
-        return min(1, max(0, (rampdown_rounds - i) / rampdown_rounds))
-
-    return schedule
+    checkpoint_path = os.path.join(scratch_dir, "checkpoint-latest.pt")
+    return th.load(checkpoint_path, map_location=utils.get_device(device))
 
 
 def _save_trajectory(npz_path: str, trajectory: types.Trajectory,) -> None:
@@ -220,7 +267,7 @@ class DAggerTrainer:
         del self._init_args["bc_kwargs"]
 
         if beta_schedule is None:
-            beta_schedule = linear_beta_schedule(15)
+            beta_schedule = LinearBetaSchedule(15)
         self.beta_schedule = beta_schedule
         self.scratch_dir = scratch_dir
         self.env = env
@@ -229,7 +276,7 @@ class DAggerTrainer:
         self._last_loaded_round = -1
         self._all_demos = []
 
-        self.bc_trainer = BC(
+        self.bc_trainer = bc.BC(
             self.env.observation_space, self.env.action_space, **self.bc_kwargs
         )
 
@@ -338,29 +385,14 @@ class DAggerTrainer:
           policy_path: a path to one of the created `DAggerTrainer` policies.
         """
         os.makedirs(self.scratch_dir, exist_ok=True)
+
         # save full trainer checkpoints
         checkpoint_paths = [
-            os.path.join(self.scratch_dir, f"checkpoint-{self.round_num:03d}.pkl"),
-            os.path.join(self.scratch_dir, "checkpoint-latest.pkl"),
+            os.path.join(self.scratch_dir, f"checkpoint-{self.round_num:03d}.pt"),
+            os.path.join(self.scratch_dir, "checkpoint-latest.pt"),
         ]
-        saved_attrs = {
-            attr_name: getattr(self, attr_name) for attr_name in self.SAVE_ATTRS
-        }
-        # TODO(scottemmons): I removed what the tf version called `variable_values`.
-        #  Now, the two parts of the snapshot are nonoverlapping; both are needed fully
-        #  to reconstruct the trainer.
-        #  Do we want to stick with this design decision? Or was it important that the
-        #  previous version of the trainer object could be loaded solely from a single
-        #  snapshot file?
-        #  Furthermore, the tf version seemed to capture the Adam optimizer state.
-        #  Do we want this version to capture the optimizer state?
-        snapshot_dict = {
-            "init_args": self._init_args,
-            "saved_attrs": saved_attrs,
-        }
         for checkpoint_path in checkpoint_paths:
-            with open(checkpoint_path, "wb") as fp:
-                cloudpickle.dump(snapshot_dict, fp)
+            th.save(self, checkpoint_path)
 
         # save policies separately for convenience
         policy_paths = [
@@ -372,51 +404,9 @@ class DAggerTrainer:
 
         return checkpoint_paths[-1], policy_paths[-1]
 
-    @classmethod
-    def reconstruct_trainer(cls, scratch_dir: str) -> "DAggerTrainer":
-        """Reconstruct trainer from the latest snapshot in some working directory.
-
-        Args:
-          scratch_dir: path to the working directory created by a previous run of
-            this algorithm. The directory should contain `checkpoint-latest.pkl` and
-            `policy-latest.pkl` files.
-
-        Returns:
-          trainer: a reconstructed `DAggerTrainer` with the same state as the
-            previously-saved one.
-        """
-        checkpoint_path = os.path.join(scratch_dir, "checkpoint-latest.pkl")
-        policy_path = os.path.join(scratch_dir, "policy-latest.pt")
-        with open(checkpoint_path, "rb") as fp:
-            saved_trainer = cloudpickle.load(fp)
-        # reconstruct from old init args
-        trainer = cls(**saved_trainer["init_args"])
-        # load policy variables
-        trainer.load_policy(policy_path)
-        # set trainer attributes
-        for attr_name in cls.SAVE_ATTRS:
-            attr_value = saved_trainer["saved_attrs"][attr_name]
-            setattr(trainer, attr_name, attr_value)
-        return trainer
-
     def save_policy(self, *args, **kwargs) -> None:
         """Save the current policy only (and not the rest of the trainer).
 
         Refer to docs for `BC.save_policy`.
         """
         self.bc_trainer.save_policy(*args, **kwargs)
-
-    def load_policy(self, *args, **kwargs) -> None:
-        """Load a saved policy only (and not the rest of the trainer).
-
-        Refer to docs for `BC.load_policy`.
-        """
-        self.bc_trainer.load_policy(*args, **kwargs)
-
-    @staticmethod
-    def reconstruct_policy(*args, **kwargs) -> ActorCriticPolicy:
-        """Reconstruct a policy saved with `save_policy()`.
-
-        This is an alias for `BC.reconstruct_policy()`.
-        """
-        return BC.reconstruct_policy(*args, **kwargs)

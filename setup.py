@@ -47,7 +47,7 @@ setup(
     install_requires=[
         "awscli",
         "cloudpickle>=0.5.5",
-        "gym[atari,classic_control]",
+        "gym[classic_control]",
         "matplotlib",
         "numpy>=1.15",
         "torch>=1.4.0",
@@ -55,7 +55,6 @@ setup(
         "scikit-learn>=0.21.2",
         "stable-baselines~=2.10.0",
         "stable-baselines3~=0.8.0a2",
-        "torch>=1.4.0",
         "jax~=0.1.66",
         "jaxlib~=0.1.47",
         "sacred~=0.8.1",
