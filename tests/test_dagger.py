@@ -5,21 +5,20 @@ import os
 import gym
 import numpy as np
 import pytest
-from stable_baselines3.common.policies import ActorCriticPolicy
-from stable_baselines3.common.utils import get_schedule_fn
+from stable_baselines3.common import policies
 
-from imitation.algorithms import dagger
+from imitation.algorithms import bc, dagger
 from imitation.data import rollout
 from imitation.policies import serialize
 from imitation.util import util
 
 ENV_NAME = "CartPole-v1"
-EXPERT_POLICY_PATH = "tests/data/expert_models/cartpole_0/policies/zoo/"
+EXPERT_POLICY_PATH = "tests/data/expert_models/cartpole_0/policies/final/"
 
 
 def test_beta_schedule():
-    one_step_sched = dagger.linear_beta_schedule(1)
-    three_step_sched = dagger.linear_beta_schedule(3)
+    one_step_sched = dagger.LinearBetaSchedule(1)
+    three_step_sched = dagger.LinearBetaSchedule(3)
     for i in range(10):
         assert np.allclose(one_step_sched(i), 1 if i == 0 else 0)
         assert np.allclose(three_step_sched(i), (3 - i) / 3 if i <= 2 else 0)
@@ -64,10 +63,7 @@ def make_trainer(tmpdir):
     env = gym.make(ENV_NAME)
     env.seed(42)
     return dagger.DAggerTrainer(
-        env,
-        tmpdir,
-        dagger.linear_beta_schedule(1),
-        policy_kwargs=dict(lr_schedule=get_schedule_fn(1e-3)),
+        env, tmpdir, dagger.LinearBetaSchedule(1), optimizer_kwargs=dict(lr=1e-3),
     )
 
 
@@ -116,11 +112,9 @@ def test_trainer_save_reload(tmpdir):
     trainer = make_trainer(tmpdir)
     trainer.round_num = 3
     trainer.save_trainer()
-    new_trainer = trainer.reconstruct_trainer(tmpdir)
+    new_trainer = dagger.reconstruct_trainer(tmpdir)
     assert new_trainer.round_num == trainer.round_num
 
-    # TODO(scottemmons): BasePolicy.state_dict() doesn't capture the optimizer state.
-    #  Do we want to capture the optimizer state?
     # old trainer and reloaded trainer should have same variable values
     old_vars = trainer.bc_trainer.policy.state_dict()
     new_vars = new_trainer.bc_trainer.policy.state_dict()
@@ -140,9 +134,8 @@ def test_trainer_save_reload(tmpdir):
 
 def test_policy_save_reload(tmpdir):
     # just make sure the methods run; we already test them in test_bc.py
-    policy_path = os.path.join(tmpdir, "policy.pkl")
+    policy_path = os.path.join(tmpdir, "policy.pt")
     trainer = make_trainer(tmpdir)
     trainer.save_policy(policy_path)
-    pol = trainer.reconstruct_policy(policy_path)
-    assert isinstance(pol, ActorCriticPolicy)
-    trainer.load_policy(policy_path)
+    pol = bc.reconstruct_policy(policy_path)
+    assert isinstance(pol, policies.BasePolicy)

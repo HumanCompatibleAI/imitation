@@ -1,4 +1,6 @@
 """Load serialized policies of different types."""
+# TODO(scottemmons): Only import packages and modules to adhere to style guide:
+#  https://google.github.io/styleguide/pyguide.html#22-imports
 
 # FIXME(sam): it seems like this module could mostly be replaced with a few
 # torch.load() and torch.save() calls
@@ -102,23 +104,10 @@ def _load_stable_baselines(
         A function loading policies trained via cls.
     """
 
-    def get_model_path(path: str) -> str:
-        """Returns the model file in a path directory."""
-        model_path_pkl = os.path.join(path, "model.pkl")
-        model_path_zip = os.path.join(path, "model.zip")
-        assert (
-            os.path.exists(model_path_pkl) + os.path.exists(model_path_zip) == 1
-        ), f"Expected one model but found two:\n- {model_path_pkl}\n- {model_path_zip}"
-        if os.path.exists(model_path_pkl):
-            model_path = model_path_pkl
-        if os.path.exists(model_path_zip):
-            model_path = model_path_zip
-        return model_path
-
     def f(path: str, venv: VecEnv) -> BasePolicy:
         """Loads a policy saved to path, for environment env."""
         logging.info(f"Loading Stable Baselines policy for '{cls}' " f"from '{path}'")
-        model_path = get_model_path(path)
+        model_path = os.path.join(path, "model.pkl")
         model = cls.load(model_path, env=venv)
         policy = getattr(model, policy_attr)
 

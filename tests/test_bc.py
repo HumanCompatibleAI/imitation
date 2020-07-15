@@ -45,10 +45,10 @@ def test_save_reload(trainer, tmpdir):
     pol_path = os.path.join(tmpdir, "policy.pt")
     # just to change the values a little
     trainer.train(n_epochs=1)
-    var_values = [param for param in trainer.policy.parameters()]
+    var_values = list(trainer.policy.parameters())
     trainer.save_policy(pol_path)
-    new_policy = bc.BC.reconstruct_policy(pol_path)
-    new_values = [param for param in new_policy.parameters()]
+    new_policy = bc.reconstruct_policy(pol_path)
+    new_values = list(new_policy.parameters())
     assert len(var_values) == len(new_values)
     for old, new in zip(var_values, new_values):
-        assert th.all(th.eq(old, new))
+        assert th.allclose(old, new)

@@ -5,10 +5,10 @@ import abc
 import gym
 import numpy as np
 import torch as th
-from stable_baselines3.common.policies import ActorCriticPolicy, BasePolicy
+from stable_baselines3.common import policies
 
 
-class HardCodedPolicy(BasePolicy, abc.ABC):
+class HardCodedPolicy(policies.BasePolicy, abc.ABC):
     """Abstract class for hard-coded (non-trainable) policies."""
 
     def __init__(self, observation_space: gym.Space, action_space: gym.Space):
@@ -47,7 +47,7 @@ class ZeroPolicy(HardCodedPolicy):
         return np.zeros(self.action_space.shape, dtype=self.action_space.dtype)
 
 
-class FeedForward32Policy(ActorCriticPolicy):
+class FeedForward32Policy(policies.ActorCriticPolicy):
     """A feed forward policy network with two hidden layers of 32 units.
 
     This matches the IRL policies in the original AIRL paper.
@@ -61,8 +61,8 @@ class FeedForward32Policy(ActorCriticPolicy):
         super().__init__(*args, **kwargs, net_arch=[32, 32])
 
 
-# TODO(scottemmons) remove the use of this helper function to complete Stable
-# Baselines 3 port
+# TODO(scottemmons): remove the use of this helper function
+#  to complete Stable Baselines3 port
 def get_action_policy(policy, *args, **kwargs):
     """Gets an action from a Stable Baselines policy.
 
