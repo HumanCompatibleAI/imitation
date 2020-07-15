@@ -83,6 +83,8 @@ class TransitionsMinimal:
     The i'th observation `obs[i]` in this array is the observation seen
     by the agent when choosing action `acts[i]`. `obs[i]` is not required to
     be from the timestep preceding `obs[i+1]`.
+
+    Invariant: obs.dtype == next_obs.dtype.
     """
 
     acts: np.ndarray
@@ -96,7 +98,14 @@ class TransitionsMinimal:
         return len(self.obs)
 
     def __post_init__(self):
-        """Performs input validation: check shapes & dtypes match docstring."""
+        """Performs input validation: check shapes & dtypes match docstring.
+
+        Also make array values read-only.
+        """
+        for val in vars(self).values():
+            if isinstance(val, np.ndarray):
+                val.setflags(write=False)
+
         if len(self.obs) != len(self.acts):
             raise ValueError(
                 "obs and acts must have same number of timesteps: "

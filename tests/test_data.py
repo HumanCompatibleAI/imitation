@@ -157,7 +157,7 @@ class TestData:
         transitions_rew: types.TransitionsWithRew,
         length: int,
     ) -> None:
-
+        """Checks input validation catches space and dtype related errors."""
         for trans in [transitions_min, transitions, transitions_rew]:
             with pytest.raises(
                 ValueError, match=r"obs and acts must have same number of timesteps:.*"
@@ -168,7 +168,6 @@ class TestData:
             ):
                 dataclasses.replace(trans, infos=[{}] * (length - 1))
 
-        """Checks input validation catches space and dtype related errors."""
         for trans in [transitions, transitions_rew]:
             with pytest.raises(
                 ValueError, match=r"obs and next_obs must have same shape:.*"
