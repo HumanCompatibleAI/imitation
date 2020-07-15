@@ -225,8 +225,8 @@ def rollouts_from_policy(
         max_episode_steps=max_episode_steps,
     )
 
-    with serialize.load_policy(policy_type, policy_path, venv) as policy:
-        rollout.rollout_and_save(rollout_save_path, policy, venv, sample_until)
+    policy = serialize.load_policy(policy_type, policy_path, venv)
+    rollout.rollout_and_save(rollout_save_path, policy, venv, sample_until)
 
 
 def main_console():

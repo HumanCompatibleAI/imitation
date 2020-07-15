@@ -1,5 +1,8 @@
 """Load serialized policies of different types."""
 
+# FIXME(sam): it seems like this module could mostly be replaced with a few
+# torch.load() and torch.save() calls
+
 import logging
 import os
 import pickle

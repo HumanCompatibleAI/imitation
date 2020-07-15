@@ -57,7 +57,7 @@ def logging(env_name, log_root):
 @expert_demos_ex.config
 def rollouts_from_policy_only_defaults(log_dir):
     policy_path = None  # Policy path for rollouts_from_policy command only
-    policy_type = "ppo2"  # Policy type for rollouts_from_policy command only
+    policy_type = "ppo"  # Policy type for rollouts_from_policy command only
     rollout_save_path = os.path.join(
         log_dir, "rollout.pkl"
     )  # Save path for `rollouts_from_policy` only.

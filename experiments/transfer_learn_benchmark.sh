@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
-# Train PPO2 experts using reward models from experiments/imit_benchmark.sh
+# Train PPO experts using reward models from experiments/imit_benchmark.sh
 
 CONFIG_CSV="experiments/imit_benchmark_config.csv"
 TIMESTAMP=$(date --iso-8601=seconds)

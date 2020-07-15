@@ -20,7 +20,7 @@ def replay_defaults():
     render_fps = 60  # -1 to render at full speed
     log_root = os.path.join("output", "eval_policy")  # output directory
 
-    policy_type = "ppo2"  # class to load policy, see imitation.policies.loader
+    policy_type = "ppo"  # class to load policy, see imitation.policies.loader
     policy_path = (
         "tests/data/expert_models/" "cartpole_0/policies/final/"
     )  # serialized policy

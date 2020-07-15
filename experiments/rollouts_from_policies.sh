@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# This script loads expert PPO2 policies of the form
+# This script loads expert PPO policies of the form
 # `${EXPERT_MODELS_DIR}/{env_config_name}_0/policies/final/`
 # and generates rollouts. The rollouts are saved to
 # `${EXPERT_MODELS_DIR}/{env_config_name}_0/rollouts/final.pkl`
