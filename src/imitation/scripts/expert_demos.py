@@ -134,52 +134,50 @@ def rollouts_and_policy(
     )
 
     log_callbacks = []
-    with contextlib.ExitStack() as stack:
-        if reward_type is not None:
-            reward_fn_ctx = load_reward(reward_type, reward_path, venv)
-            reward_fn = stack.enter_context(reward_fn_ctx)
-            venv = RewardVecEnvWrapper(venv, reward_fn)
-            log_callbacks.append(venv.log_callback)
-            logging.info(f"Wrapped env in reward {reward_type} from {reward_path}.")
+    if reward_type is not None:
+        reward_fn = load_reward(reward_type, reward_path, venv)
+        venv = RewardVecEnvWrapper(venv, reward_fn)
+        log_callbacks.append(venv.log_callback)
+        logging.info(f"Wrapped env in reward {reward_type} from {reward_path}.")
 
-        vec_normalize = None
-        if normalize:
-            venv = vec_normalize = VecNormalize(venv, **normalize_kwargs)
+    vec_normalize = None
+    if normalize:
+        venv = vec_normalize = VecNormalize(venv, **normalize_kwargs)
 
-        policy = util.init_rl(venv, verbose=1, **init_rl_kwargs)
+    policy = util.init_rl(venv, verbose=1, **init_rl_kwargs)
 
-        # Make callback to save intermediate artifacts during training.
-        step = 0
+    # Make callback to save intermediate artifacts during training.
+    step = 0
 
-        def callback(locals_: dict, _) -> bool:
-            nonlocal step
-            step += 1
-            policy = locals_["self"]
+    def callback(locals_: dict, _) -> bool:
+        nonlocal step
+        step += 1
+        policy = locals_["self"]
 
-            # TODO(adam): make logging frequency configurable
-            for callback in log_callbacks:
-                callback(sb_logger)
+        # TODO(adam): make logging frequency configurable
+        for callback in log_callbacks:
+            callback(sb_logger)
 
-            if rollout_save_interval > 0 and step % rollout_save_interval == 0:
-                save_path = osp.join(rollout_dir, f"{step}.pkl")
-                rollout.rollout_and_save(save_path, policy, venv, sample_until)
-            if policy_save_interval > 0 and step % policy_save_interval == 0:
-                output_dir = os.path.join(policy_dir, f"{step:05d}")
-                serialize.save_stable_model(output_dir, policy, vec_normalize)
-
-        policy.learn(total_timesteps, callback=callback)
-
-        # Save final artifacts after training is complete.
-        if rollout_save_final:
-            save_path = osp.join(rollout_dir, "final.pkl")
+        if rollout_save_interval > 0 and step % rollout_save_interval == 0:
+            save_path = osp.join(rollout_dir, f"{step}.pkl")
             rollout.rollout_and_save(save_path, policy, venv, sample_until)
-        if policy_save_final:
-            output_dir = os.path.join(policy_dir, "final")
+        if policy_save_interval > 0 and step % policy_save_interval == 0:
+            output_dir = os.path.join(policy_dir, f"{step:05d}")
             serialize.save_stable_model(output_dir, policy, vec_normalize)
 
-        # Final evaluation of expert policy.
-        trajs = rollout.generate_trajectories(policy, venv, eval_sample_until)
-        stats = rollout.rollout_stats(trajs)
+    policy.learn(total_timesteps, callback=callback)
+
+    # Save final artifacts after training is complete.
+    if rollout_save_final:
+        save_path = osp.join(rollout_dir, "final.pkl")
+        rollout.rollout_and_save(save_path, policy, venv, sample_until)
+    if policy_save_final:
+        output_dir = os.path.join(policy_dir, "final")
+        serialize.save_stable_model(output_dir, policy, vec_normalize)
+
+    # Final evaluation of expert policy.
+    trajs = rollout.generate_trajectories(policy, venv, eval_sample_until)
+    stats = rollout.rollout_stats(trajs)
 
     return stats
 

@@ -164,7 +164,7 @@ def test_transfer_learning(tmpdir):
     _check_rollout_stats(run.result["imit_stats"])
 
     log_dir_data = osp.join(tmpdir, "expert_demos")
-    discrim_path = osp.join(log_dir_train, "checkpoints", "final", "discrim")
+    discrim_path = osp.join(log_dir_train, "checkpoints", "final", "discrim.pt")
     run = expert_demos.expert_demos_ex.run(
         named_configs=["cartpole", "fast"],
         config_updates=dict(

@@ -3,7 +3,7 @@ from typing import List, Sequence
 import gym
 import numpy as np
 import pytest
-from stable_baselines.common.vec_env import DummyVecEnv
+from stable_baselines3.common.vec_env import DummyVecEnv
 
 from imitation.data import types
 from imitation.data.wrappers import BufferingWrapper

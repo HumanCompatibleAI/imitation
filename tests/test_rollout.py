@@ -6,8 +6,7 @@ from typing import Mapping, Sequence
 import gym
 import numpy as np
 import pytest
-from stable_baselines import bench
-from stable_baselines.common import vec_env
+from stable_baselines3.common import monitor, vec_env
 
 from imitation.data import rollout, types, wrappers
 from imitation.policies import serialize
@@ -145,7 +144,7 @@ def test_rollout_stats():
     `rollout_stats` should reflect this.
     """
     env = gym.make("CartPole-v1")
-    env = bench.Monitor(env, None)
+    env = monitor.Monitor(env, None)
     env = ObsRewHalveWrapper(env)
     venv = vec_env.DummyVecEnv([lambda: env])
 

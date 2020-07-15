@@ -249,4 +249,4 @@ def fast():
     parallel = False  # easier to debug with everything in one process
     max_episode_steps = 100
     num_vec = 2
-    init_rl_kwargs = dict(nminibatches=1)
+    init_rl_kwargs = dict(batch_size=2)
