@@ -150,7 +150,7 @@ def batch_reward_heatmaps(
     checkpoints_dir = pathlib.Path(checkpoints_dir)
     for checkpoint_dir in sorted(checkpoints_dir.iterdir()):
         vec_normalize_path = checkpoint_dir / "gen_policy" / "vec_normalize.pkl"
-        discrim_path = checkpoint_dir / "discrim"
+        discrim_path = checkpoint_dir / "discrim.pt"
         policy_path = checkpoint_dir / "gen_policy"
 
         if n_gen_trajs > 0:
@@ -169,20 +169,19 @@ def batch_reward_heatmaps(
             vec_normalize = pickle.load(f)  # type: vec_env.VecNormalize
         vec_normalize.training = False
 
-        reward_fn_ctx = rewards_serialize.load_reward("DiscrimNet", discrim_path, venv)
-        with reward_fn_ctx as reward_fn:
-            norm_rew_fn = common.build_norm_reward_fn(
-                reward_fn=reward_fn, vec_normalize=vec_normalize
+        reward_fn = rewards_serialize.load_reward("DiscrimNet", discrim_path, venv)
+        norm_rew_fn = common.build_norm_reward_fn(
+            reward_fn=reward_fn, vec_normalize=vec_normalize
+        )
+        for act in range(MC_NUM_ACTS):
+            fig = make_heatmap(
+                act=act,
+                reward_fn=norm_rew_fn,
+                gen_trajs=gen_trajs,
+                exp_trajs=exp_trajs,
             )
-            for act in range(MC_NUM_ACTS):
-                fig = make_heatmap(
-                    act=act,
-                    reward_fn=norm_rew_fn,
-                    gen_trajs=gen_trajs,
-                    exp_trajs=exp_trajs,
-                )
-                path = pathlib.Path(ACT_NAMES[act], checkpoint_dir.name)
-                result[path] = fig
+            path = pathlib.Path(ACT_NAMES[act], checkpoint_dir.name)
+            result[path] = fig
     return result
 
 

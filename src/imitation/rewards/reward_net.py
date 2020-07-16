@@ -247,7 +247,6 @@ class RewardNetShaped(RewardNet):
         base_reward_net_output = self.base_reward_network(
             state, action, next_state, done
         )
-        # TODO(sam): batch potential_network calls
         new_shaping_output = self.potential_network(next_state).flatten()
         old_shaping_output = self.potential_network(state).flatten()
         done_f = done.float()
@@ -285,15 +284,25 @@ class BasicRewardMLP(nn.Module):
 
     def __init__(
         self,
-        observation_space,
-        action_space,
-        use_state,
-        use_action,
-        use_next_state,
-        use_done,
+        observation_space: gym.Space,
+        action_space: gym.Space,
+        use_state: bool,
+        use_action: bool,
+        use_next_state: bool,
+        use_done: bool,
         build_mlp_kwargs: Optional[Mapping] = None,
     ):
-        # XXX(sam): need docstring
+        """Builds reward MLP.
+
+        Args:
+          observation_space: The observation space.
+          action_space: The action space.
+          use_state: should the current state be included as an input to the MLP?
+          use_action: should the current action be included as an input to the MLP?
+          use_next_state: should the next state be included as an input to the MLP?
+          use_done: should the "done" flag be included as an input to the MLP?
+          build_mlp_kwargs: Arguments passed to `build_mlp`.
+        """
         super().__init__()
         combined_size = 0
 
