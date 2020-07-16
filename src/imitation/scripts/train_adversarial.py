@@ -149,12 +149,9 @@ def train(
     #     tensorboard_log = None
 
     gen_algo = util.init_rl(
-        # FIXME(sam): supplying verbose=1 and tensorboard_log=None is a hack to
-        # prevent SB3 from re-configuring the logger when calling learn().
-        # Should remove this once relevant SB3 issue is fixed.
+        # FIXME(sam): ignoring tensorboard_log is a hack to prevent SB3 from
+        # re-configuring the logger. See init_rl() for details.
         venv,
-        verbose=1,
-        tensorboard_log=None,
         **init_rl_kwargs,
     )
 
