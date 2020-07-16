@@ -56,6 +56,7 @@ setup(
         "jax~=0.1.66",
         "jaxlib~=0.1.47",
         "sacred~=0.8.1",
+        "tensorboard>=1.14",
     ],
     tests_require=TESTS_REQUIRE,
     extras_require={
