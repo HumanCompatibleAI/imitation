@@ -32,6 +32,11 @@ class HardCodedPolicy(policies.BasePolicy, abc.ABC):
     def _choose_action(self, obs: np.ndarray) -> np.ndarray:
         """Chooses an action, optionally based on observation obs."""
 
+    def forward(self, *args):
+        # technically BasePolicy is a Torch module, so this needs a forward()
+        # method
+        raise NotImplementedError()
+
 
 class RandomPolicy(HardCodedPolicy):
     """Returns random actions."""

@@ -105,6 +105,10 @@ class BC:
         self.policy = self.policy_class(
             **self.policy_kwargs
         )  # pytype: disable=not-instantiable
+        # FIXME(sam): this is to get around SB3 bug that fails to put
+        # action_net, value_net, etc. on the same device as mlp_extractor in
+        # ActorCriticPolicy. Remove this once that issue is fixed.
+        self.policy = self.policy.to(self.policy.device)
         optimizer_kwargs = optimizer_kwargs or {}
         self.optimizer = optimizer_cls(self.policy.parameters(), **optimizer_kwargs)
 
