@@ -30,7 +30,7 @@ def _load_reward_net_as_fn(shaped: bool) -> RewardFnLoaderFn:
         """Load train (shaped) or test (not shaped) reward from path."""
         del venv  # Unused.
         net = th.load(str(path))
-        reward = net.reward_train if shaped else net.reward_test
+        reward = net.predict_reward_train if shaped else net.predict_reward_test
 
         def rew_fn(
             obs: np.ndarray, act: np.ndarray, next_obs: np.ndarray, dones: np.ndarray,

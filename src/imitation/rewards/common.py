@@ -4,9 +4,11 @@ import collections
 import functools
 from typing import Callable, Dict, List, Tuple
 
+import gym
 import numpy as np
 import torch as th
 from stable_baselines3.common import vec_env
+from stable_baselines3.common.preprocessing import preprocess_obs
 
 RewardFn = Callable[[np.ndarray, np.ndarray, np.ndarray, np.ndarray], np.ndarray]
 
@@ -51,6 +53,36 @@ def build_norm_reward_fn(*, reward_fn, vec_normalize, **kwargs) -> RewardFn:
         vec_normalize=vec_normalize,
         **kwargs,
     )
+
+
+def disc_rew_preprocess_inputs(
+    observation_space: gym.Space,
+    action_space: gym.Space,
+    state: np.ndarray,
+    action: np.ndarray,
+    next_state: np.ndarray,
+    done: np.ndarray,
+    device: th.device,
+    scale: bool = False,
+) -> Tuple[th.Tensor, th.Tensor, th.Tensor, th.Tensor]:
+    state_th = th.as_tensor(state, device=device)
+    action_th = th.as_tensor(action, device=device)
+    next_state_th = th.as_tensor(next_state, device=device)
+    done_th = th.as_tensor(done, device=device)
+
+    del state, action, next_state, done  # unused
+
+    # preprocess
+    state_th = preprocess_obs(state_th, observation_space, scale)
+    action_th = preprocess_obs(action_th, action_space, scale)
+    next_state_th = preprocess_obs(next_state_th, observation_space, scale)
+    done_th = done_th.to(th.float32)
+
+    n_gen = len(state_th)
+    assert state_th.shape == next_state_th.shape
+    assert len(action_th) == n_gen
+
+    return state_th, action_th, next_state_th, done_th
 
 
 def compute_train_stats(

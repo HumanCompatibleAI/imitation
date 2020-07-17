@@ -228,7 +228,6 @@ class AdversarialTrainer:
             write_summaries = self._init_tensorboard and step % 20 == 0
 
             # compute loss
-            # TODO(sam): try to JIT this step (marginal gain, but might help)
             batch = self._gen_train_batch(
                 gen_samples=gen_samples, expert_samples=expert_samples
             )

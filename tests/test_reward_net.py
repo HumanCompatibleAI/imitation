@@ -89,8 +89,8 @@ def test_serialize_identity(env_name, net_cls, tmpdir):
             transitions.next_obs,
             transitions.dones,
         )
-        rewards["train"].append(net.reward_train(*trans_args))
-        rewards["test"].append(net.reward_test(*trans_args))
+        rewards["train"].append(net.predict_reward_train(*trans_args))
+        rewards["test"].append(net.predict_reward_test(*trans_args))
 
     args = (
         transitions.obs,

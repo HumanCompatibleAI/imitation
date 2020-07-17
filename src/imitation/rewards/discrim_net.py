@@ -6,9 +6,10 @@ import gym
 import numpy as np
 import torch as th
 import torch.nn.functional as F
-from stable_baselines3.common.preprocessing import get_flattened_obs_dim, preprocess_obs
+from stable_baselines3.common.preprocessing import get_flattened_obs_dim
 from torch import nn
 
+from imitation.rewards import common as rewards_common
 from imitation.rewards import reward_net
 from imitation.util import networks
 
@@ -73,9 +74,11 @@ class DiscrimNet(nn.Module, ABC):
             disc_logits_gen_is_high, labels_gen_is_one.float()
         )
 
-    # TODO(sam): rename these to reward_train() and reward_test() after I've
-    # renamed methods below. Also go and rename the RewardNet methods to use
-    # the same scheme.
+    def device(self) -> th.device:
+        """Heuristic to determine which device this module is on."""
+        first_param = next(self.parameters())
+        return first_param.device
+
     @abstractmethod
     def reward_test(
         self,
@@ -95,11 +98,6 @@ class DiscrimNet(nn.Module, ABC):
         done: th.Tensor,
     ) -> th.Tensor:
         pass
-
-    def device(self) -> th.device:
-        """Heuristic to determine which device this module is on."""
-        first_param = next(self.parameters())
-        return first_param.device
 
     def predict_reward_train(
         self,
@@ -159,28 +157,21 @@ class DiscrimNet(nn.Module, ABC):
         next_state: th.Tensor,
         done: th.Tensor,
     ):
-        # TODO(sam): the preprocessing code below is identical to
-        # RewardNet._eval_reward(). I should rewrite both this method and that
-        # one to use the same code underneath.
-        dev = self.device()
-        state_th = th.as_tensor(state, device=dev)
-        action_th = th.as_tensor(action, device=dev)
-        next_state_th = th.as_tensor(next_state, device=dev)
-        done_th = th.as_tensor(done, device=dev)
-
-        del state, action, next_state, done  # unused
-
-        # preprocess
-        state_th = preprocess_obs(state_th, self.observation_space, self.scale)
-        action_th = preprocess_obs(action_th, self.action_space, self.scale)
-        next_state_th = preprocess_obs(
-            next_state_th, self.observation_space, self.scale
+        (
+            state_th,
+            action_th,
+            next_state_th,
+            done_th,
+        ) = rewards_common.disc_rew_preprocess_inputs(
+            observation_space=self.observation_space,
+            action_space=self.action_space,
+            state=state,
+            action=action,
+            next_state=next_state,
+            done=done,
+            device=self.device(),
+            scale=self.scale,
         )
-        done_th = done_th.to(th.float32)
-
-        n_gen = len(state_th)
-        assert state_th.shape == next_state_th.shape
-        assert len(action_th) == n_gen
 
         with th.no_grad():
             if is_train:
@@ -189,7 +180,7 @@ class DiscrimNet(nn.Module, ABC):
                 rew_th = self.reward_test(state_th, action_th, next_state_th, done_th)
 
         rew = rew_th.detach().cpu().numpy().flatten()
-        assert rew.shape == (n_gen,)
+        assert rew.shape == (len(state),)
 
         return rew
 
@@ -233,7 +224,7 @@ class DiscrimNetAIRL(DiscrimNet):
         A high value corresponds to predicting generator, and a low value corresponds to
         predicting expert.
         """
-        reward_output_train = self.reward_net._reward_train(
+        reward_output_train = self.reward_net.reward_train(
             state, action, next_state, done
         )
         return log_policy_act_prob - reward_output_train
@@ -245,7 +236,7 @@ class DiscrimNetAIRL(DiscrimNet):
         next_state: th.Tensor,
         done: th.Tensor,
     ) -> th.Tensor:
-        rew = self.reward_net._reward_test(state, action, next_state, done)
+        rew = self.reward_net.reward_test(state, action, next_state, done)
         assert rew.shape == state.shape[:1]
         return rew
 
@@ -258,7 +249,7 @@ class DiscrimNetAIRL(DiscrimNet):
     ) -> th.Tensor:
         """Compute train reward. This reward does *not* include an entropy
         bonus; the entropy bonus should be added directly to PPO, SAC, etc."""
-        rew = self.reward_net._reward_train(state, action, next_state, done)
+        rew = self.reward_net.reward_train(state, action, next_state, done)
         assert rew.shape == state.shape[:1]
         return rew
 

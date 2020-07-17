@@ -2,14 +2,15 @@
 
 import collections
 from abc import ABC, abstractmethod
-from typing import Callable, Mapping, Optional
+from typing import Mapping, Optional
 
 import gym
 import numpy as np
 import torch as th
-from stable_baselines3.common.preprocessing import get_flattened_obs_dim, preprocess_obs
+from stable_baselines3.common.preprocessing import get_flattened_obs_dim
 from torch import nn
 
+import imitation.rewards.common as rewards_common
 from imitation.util import networks
 
 
@@ -69,7 +70,7 @@ class RewardNet(nn.Module, ABC):
         self.base_reward_network = self.build_base_reward_network()
 
     @abstractmethod
-    def _reward_train(
+    def reward_train(
         self,
         state: th.Tensor,
         action: th.Tensor,
@@ -82,7 +83,7 @@ class RewardNet(nn.Module, ABC):
         `reward_train()` docs for explanation of arguments and return values.
         """
 
-    def _reward_test(
+    def reward_test(
         self,
         state: th.Tensor,
         action: th.Tensor,
@@ -94,12 +95,9 @@ class RewardNet(nn.Module, ABC):
         This performs inner logic for `self.reward_test()`. See
         `reward_test()` docs for explanation of arguments and return values.
         """
-        return self._reward_train(state, action, next_state, done)
+        return self.reward_train(state, action, next_state, done)
 
-    # FIXME(sam): rename this and the following method to predict_reward_train
-    # and predict_reward_test, respectively. After that, remove underscores
-    # from the names of the two methods above.
-    def reward_train(
+    def predict_reward_train(
         self,
         state: np.ndarray,
         action: np.ndarray,
@@ -119,14 +117,9 @@ class RewardNet(nn.Module, ABC):
           np.ndarray: A (None,) shaped ndarray holding
               the training reward associated with each timestep.
         """
-        # FIXME(sam): reward_train/reward_test are ugly. Moving ndarrays to
-        # devices and preprocessing them should not be the responsibility of
-        # a reward network. Going to keep this for compat for now, but I want
-        # to remove these methods in the future and push all the tensor/ndarray
-        # conversion and preprocessing logic back up the call stack.
-        return self._eval_reward(self._reward_train, state, action, next_state, done)
+        return self._eval_reward(self.reward_train, state, action, next_state, done)
 
-    def reward_test(
+    def predict_reward_test(
         self,
         state: np.ndarray,
         action: np.ndarray,
@@ -148,36 +141,40 @@ class RewardNet(nn.Module, ABC):
           np.ndarray: A (None,) shaped ndarray holding the test reward
             associated with each timestep.
         """
-        return self._eval_reward(self._reward_test, state, action, next_state, done)
+        return self._eval_reward(self.reward_test, state, action, next_state, done)
 
     def _eval_reward(
         self,
-        method: Callable[[th.Tensor, th.Tensor, th.Tensor, th.Tensor], th.Tensor],
+        is_train: bool,
         state: np.ndarray,
         action: np.ndarray,
         next_state: np.ndarray,
         done: np.ndarray,
     ) -> np.ndarray:
         """Evaluates either train or test reward, given appropriate method."""
-        # torchify
-        dev = self.device()
-        state_th = th.as_tensor(state, device=dev)
-        action_th = th.as_tensor(action, device=dev)
-        next_state_th = th.as_tensor(next_state, device=dev)
-        done_th = th.as_tensor(done, device=dev)
-
-        # preprocess observations/actions
-        state_th = preprocess_obs(state_th, self.observation_space, self.scale)
-        action_th = preprocess_obs(action_th, self.action_space, self.scale)
-        next_state_th = preprocess_obs(
-            next_state_th, self.observation_space, self.scale
+        (
+            state_th,
+            action_th,
+            next_state_th,
+            done_th,
+        ) = rewards_common.disc_rew_preprocess_inputs(
+            observation_space=self.observation_space,
+            action_space=self.action_space,
+            state=state,
+            action=action,
+            next_state=next_state,
+            done=done,
+            device=self.device(),
+            scale=self.scale,
         )
-        done_th = done_th.to(th.float32)
 
         with th.no_grad():
-            th_reward = self._reward_test(state_th, action_th, next_state_th, done_th)
+            if is_train:
+                rew_th = self.reward_train(state_th, action_th, next_state_th, done_th)
+            else:
+                rew_th = self.reward_test(state_th, action_th, next_state_th, done_th)
 
-        rew = th_reward.detach().cpu().numpy().flatten()
+        rew = rew_th.detach().cpu().numpy().flatten()
         assert rew.shape == state.shape[:1]
         return rew
 
@@ -196,8 +193,6 @@ class RewardNet(nn.Module, ABC):
 
     def device(self) -> th.device:
         """Use a heuristic to determine which device this module is on."""
-        # FIXME(sam): this is ugly too. Remove it when/if I remove
-        # reward_test()/reward_train().
         first_param = next(self.parameters())
         return first_param.device
 
@@ -236,7 +231,7 @@ class RewardNetShaped(RewardNet):
             # Otherwise, it can be arbitrary, so make a trainable variable.
             self.end_potential = nn.Parameter(th.zeros(()))
 
-    def _reward_train(
+    def reward_train(
         self,
         state: th.Tensor,
         action: th.Tensor,
@@ -259,7 +254,7 @@ class RewardNetShaped(RewardNet):
         assert final_rew.shape == state.shape[:1]
         return final_rew
 
-    def _reward_test(
+    def reward_test(
         self,
         state: th.Tensor,
         action: th.Tensor,
@@ -375,7 +370,7 @@ class BasicRewardNet(RewardNet):
         }
         RewardNet.__init__(self, observation_space, action_space, **kwargs)
 
-    def _reward_train(
+    def reward_train(
         self,
         state: th.Tensor,
         action: th.Tensor,
