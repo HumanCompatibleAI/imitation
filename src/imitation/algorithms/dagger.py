@@ -55,16 +55,6 @@ class LinearBetaSchedule(BetaSchedule):
         self.rampdown_rounds = rampdown_rounds
 
     def __call__(self, round_num: int) -> float:
-        """Gives the value of beta for the current round.
-
-        Args:
-            round: the current round number. Rounds are assumed to be numbered 0, 1, 2,
-              etc.
-
-        Returns:
-            beta: the fraction of the time to sample a demonstrator action. Robot
-              actions will be sampled the remainder of the time.
-        """
         assert round_num >= 0
         return min(1, max(0, (self.rampdown_rounds - round_num) / self.rampdown_rounds))
 
