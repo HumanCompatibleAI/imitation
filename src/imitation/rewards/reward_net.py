@@ -1,8 +1,7 @@
 """Constructs deep network reward models."""
 
-import collections
 from abc import ABC, abstractmethod
-from typing import Mapping, Optional
+from typing import Optional
 
 import gym
 import numpy as np
@@ -20,12 +19,10 @@ class RewardNet(nn.Module, ABC):
     Attributes:
       observation_space: The observation space.
       action_space: The action space.
-      base_reward_network (nn.Module): neural network taking state, action, next
-        state and dones, and producing a reward value.
-      use_state: should `base_reward_network` pay attention to current state?
-      use_next_state: should `base_reward_network` pay attention to next state?
-      use_action: should `base_reward_network` pay attention to action?
-      use_done: should `base_reward_network` pay attention to done flags?
+      use_state: should `base_reward_net` pay attention to current state?
+      use_next_state: should `base_reward_net` pay attention to next state?
+      use_action: should `base_reward_net` pay attention to action?
+      use_done: should `base_reward_net` pay attention to done flags?
       scale: should inputs be scaled to lie in [0,1] using space bounds?
     """
 
@@ -69,7 +66,12 @@ class RewardNet(nn.Module, ABC):
                 "must be True"
             )
 
-        self.base_reward_network = self.build_base_reward_network()
+    @property
+    @abstractmethod
+    def base_reward_net(self) -> nn.Module:
+        """Neural network taking state, action, next state and dones, and
+        producing a reward value."""
+        pass
 
     @abstractmethod
     def reward_train(
@@ -180,19 +182,6 @@ class RewardNet(nn.Module, ABC):
         assert rew.shape == state.shape[:1]
         return rew
 
-    @abstractmethod
-    def build_base_reward_network(self) -> nn.Module:
-        """Builds the test reward network.
-
-        The output of the network is treated as a reward suitable for transfer
-        learning. The network will be provided with the current observation,
-        current action, next observation, and done flag, as indicated by
-        self.{use_state, use_action, use_next_state, use_done}.
-
-        Returns: an `nn.Module` which takes the appropriate inputs (described
-            above) and returns a scalar reward for each batch element.
-        """
-
     def device(self) -> th.device:
         """Use a heuristic to determine which device this module is on."""
         first_param = next(self.parameters())
@@ -209,8 +198,8 @@ class RewardNetShaped(RewardNet):
     (See original implementation of Pendulum experiment's reward function at
     https://github.com/justinjfu/inverse_rl/blob/master/inverse_rl/models/imitation_learning.py#L374)
 
-    To make a concrete subclass, implement `build_potential_network()` and
-    `build_base_reward_network()`.
+    To make a concrete subclass, implement `build_potential_net()` and
+    `build_base_reward_net()`.
     """
 
     def __init__(
@@ -224,7 +213,6 @@ class RewardNetShaped(RewardNet):
         super().__init__(observation_space, action_space, **kwargs)
         self._discount_factor = discount_factor
 
-        self.potential_network = self.build_potential_network()
         # end_potential is the potential when the episode terminates.
         if discount_factor == 1.0:
             # If undiscounted, terminal state must have potential 0.
@@ -232,6 +220,14 @@ class RewardNetShaped(RewardNet):
         else:
             # Otherwise, it can be arbitrary, so make a trainable variable.
             self.end_potential = nn.Parameter(th.zeros(()))
+
+    @property
+    @abstractmethod
+    def potential_net(self) -> nn.Module:
+        """The reward shaping network (disentangles dynamics from reward).
+
+        Returned `nn.Module` should map batches of observations to batches of
+        scalar potential values."""
 
     def reward_train(
         self,
@@ -241,11 +237,9 @@ class RewardNetShaped(RewardNet):
         done: th.Tensor,
     ) -> th.Tensor:
         """Compute the (shaped) training reward of each timestep."""
-        base_reward_net_output = self.base_reward_network(
-            state, action, next_state, done
-        )
-        new_shaping_output = self.potential_network(next_state).flatten()
-        old_shaping_output = self.potential_network(state).flatten()
+        base_reward_net_output = self.base_reward_net(state, action, next_state, done)
+        new_shaping_output = self.potential_net(next_state).flatten()
+        old_shaping_output = self.potential_net(state).flatten()
         done_f = done.float()
         new_shaping = done_f * old_shaping_output + (1 - done_f) * new_shaping_output
         final_rew = (
@@ -264,15 +258,7 @@ class RewardNetShaped(RewardNet):
         done: th.Tensor,
     ) -> th.Tensor:
         """Compute the (unshaped) test reward associated with each timestep."""
-        return self.base_reward_network(state, action, next_state, done)
-
-    @abstractmethod
-    def build_potential_network(self) -> nn.Module:
-        """Build the reward shaping network (disentangles dynamics from reward).
-
-        Returns:
-          An `nn.Module` mapping from observations to potential values.
-        """
+        return self.base_reward_net(state, action, next_state, done)
 
 
 class BasicRewardMLP(nn.Module):
@@ -287,7 +273,7 @@ class BasicRewardMLP(nn.Module):
         use_action: bool,
         use_next_state: bool,
         use_done: bool,
-        build_mlp_kwargs: Optional[Mapping] = None,
+        **kwargs,
     ):
         """Builds reward MLP.
 
@@ -298,7 +284,7 @@ class BasicRewardMLP(nn.Module):
           use_action: should the current action be included as an input to the MLP?
           use_next_state: should the next state be included as an input to the MLP?
           use_done: should the "done" flag be included as an input to the MLP?
-          build_mlp_kwargs: Arguments passed to `build_mlp`.
+          kwargs: passed straight through to build_mlp.
         """
         super().__init__()
         combined_size = 0
@@ -322,8 +308,10 @@ class BasicRewardMLP(nn.Module):
         full_build_mlp_kwargs = {
             "in_size": combined_size,
             "hid_sizes": (32, 32),
+            "out_size": 1,
+            "squeeze_output": True,
         }
-        full_build_mlp_kwargs.update(build_mlp_kwargs)
+        full_build_mlp_kwargs.update(kwargs)
 
         self.mlp = networks.build_mlp(**full_build_mlp_kwargs)
 
@@ -341,10 +329,9 @@ class BasicRewardMLP(nn.Module):
         inputs_concat = th.cat(inputs, dim=1)
 
         outputs = self.mlp(inputs_concat)
-        flat_outputs = outputs.squeeze(1)
-        assert flat_outputs.shape == state.shape[:1]
+        assert outputs.shape == state.shape[:1]
 
-        return flat_outputs
+        return outputs
 
 
 class BasicRewardNet(RewardNet):
@@ -355,7 +342,7 @@ class BasicRewardNet(RewardNet):
         observation_space: gym.Space,
         action_space: gym.Space,
         *,
-        base_reward_net_kwargs: Optional[Mapping] = None,
+        base_reward_net: Optional[nn.Module] = None,
         **kwargs,
     ):
         """Builds a simple reward network.
@@ -363,14 +350,26 @@ class BasicRewardNet(RewardNet):
         Args:
           observation_space: The observation space.
           action_space: The action space.
-          base_reward_net_kwargs: Arguments passed to `build_mlp_base_reward_network`.
+          base_reward_net: Reward network.
           kwargs: Passed through to RewardNet.
         """
-        self.base_reward_net_kwargs = {
-            "hid_sizes": (32, 32),
-            **(base_reward_net_kwargs or {}),
-        }
-        RewardNet.__init__(self, observation_space, action_space, **kwargs)
+        super().__init__(observation_space, action_space, **kwargs)
+        if base_reward_net is None:
+            self._base_reward_net = BasicRewardMLP(
+                observation_space=self.observation_space,
+                action_space=self.action_space,
+                use_state=self.use_state,
+                use_action=self.use_action,
+                use_next_state=self.use_next_state,
+                use_done=self.use_done,
+                hid_sizes=(32, 32),
+            )
+        else:
+            self._base_reward_net = base_reward_net
+
+    @property
+    def base_reward_net(self):
+        return self._base_reward_net
 
     def reward_train(
         self,
@@ -380,18 +379,7 @@ class BasicRewardNet(RewardNet):
         done: th.Tensor,
     ) -> th.Tensor:
         """Compute the train reward associated with each timestep."""
-        return self.base_reward_network(state, action, next_state, done)
-
-    def build_base_reward_network(self) -> nn.Module:
-        return BasicRewardMLP(
-            observation_space=self.observation_space,
-            action_space=self.action_space,
-            use_state=self.use_state,
-            use_action=self.use_action,
-            use_next_state=self.use_next_state,
-            use_done=self.use_done,
-            build_mlp_kwargs=self.base_reward_net_kwargs,
-        )
+        return self.base_reward_net(state, action, next_state, done)
 
 
 class BasicShapedRewardNet(RewardNetShaped):
@@ -409,9 +397,8 @@ class BasicShapedRewardNet(RewardNetShaped):
         observation_space: gym.Space,
         action_space: gym.Space,
         *,
-        base_reward_net_kwargs: Optional[Mapping] = None,
-        shaping_net_kwargs: Optional[Mapping] = None,
-        build_mlp_kwargs: Optional[Mapping] = None,
+        base_reward_net: Optional[nn.Module] = None,
+        potential_net: Optional[nn.Module] = None,
         **kwargs,
     ):
         """Builds a simple shaped reward network.
@@ -419,37 +406,41 @@ class BasicShapedRewardNet(RewardNetShaped):
         Args:
           observation_space: The observation space.
           action_space: The action space.
-          base_reward_net_kwargs: Arguments passed to
-            `build_mlp_base_reward_network`.
-          shaping_net_kwargs: Arguments passed to `build_mlp_potential_network`.
-          build_mlp_kwargs: Arguments passed to both base reward and potential
-            network constructors. Values in this dict will be overridden by
-            base_reward_net_kwargs and shaping_net_kwargs.
+          base_reward_net: Network responsible for computing "base" reward.
+          potential_net: Net work responsible for computing a potential
+            function that will be used to provide additional potential-based
+            shaping, in addition to the reward produced by `base_reward_net`.
           kwargs: Passed through to `RewardNetShaped`.
         """
-        self.base_reward_net_kwargs = collections.ChainMap(
-            base_reward_net_kwargs or {},
-            build_mlp_kwargs or {},
-            {"hid_sizes": (32, 32)},
-        )
-        self.shaping_net_kwargs = collections.ChainMap(
-            shaping_net_kwargs or {}, build_mlp_kwargs or {}, {"hid_sizes": (32, 32)}
-        )
-        RewardNetShaped.__init__(
-            self, observation_space, action_space, **kwargs,
+        super().__init__(
+            observation_space, action_space, **kwargs,
         )
 
-    def build_base_reward_network(self):
-        return BasicRewardMLP(
-            observation_space=self.observation_space,
-            action_space=self.action_space,
-            use_state=self.use_state,
-            use_action=self.use_action,
-            use_next_state=self.use_next_state,
-            use_done=self.use_done,
-            build_mlp_kwargs=self.base_reward_net_kwargs,
-        )
+        if base_reward_net is None:
+            self._base_reward_net = BasicRewardMLP(
+                observation_space=self.observation_space,
+                action_space=self.action_space,
+                use_state=self.use_state,
+                use_action=self.use_action,
+                use_next_state=self.use_next_state,
+                use_done=self.use_done,
+                hid_sizes=(32, 32),
+            )
+        else:
+            self._base_reward_net = base_reward_net
 
-    def build_potential_network(self):
-        in_size = get_flattened_obs_dim(self.observation_space)
-        return networks.build_mlp(in_size=in_size, **self.shaping_net_kwargs)
+        if potential_net is None:
+            potential_in_size = get_flattened_obs_dim(self.observation_space)
+            self._potential_net = networks.build_mlp(
+                in_size=potential_in_size, hid_sizes=(32, 32), squeeze_output=True
+            )
+        else:
+            self._potential_net = potential_net
+
+    @property
+    def base_reward_net(self):
+        return self._base_reward_net
+
+    @property
+    def potential_net(self):
+        return self._potential_net

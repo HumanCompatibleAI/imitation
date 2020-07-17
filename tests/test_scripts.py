@@ -199,15 +199,21 @@ PARALLEL_CONFIG_UPDATES = [
         search_space={
             "config_updates": {
                 "algorithm": tune.grid_search(["gail", "airl"]),
-                "algorithm_kwargs": {
-                    "airl": {
-                        "reward_net_kwargs": {
-                            "build_mlp_kwargs": {
-                                "hid_sizes": tune.grid_search([[16, 16], [7, 9]]),
-                            },
-                        }
-                    }
-                },
+                # FIXME(sam): this method of searching for hidden sizes won't
+                # work now that I've changed the API for reward/discriminator
+                # networks. I think we need a nicer API for building such
+                # networks, analogous to the one Stable Baselines has for
+                # policies. We should add back architecture search support once
+                # we have that new API.
+                # "algorithm_kwargs": {
+                #     "airl": {
+                #         "reward_net_kwargs": {
+                #             "build_mlp_kwargs": {
+                #                 "hid_sizes": tune.grid_search([[16, 16], [7, 9]]),
+                #             },
+                #         }
+                #     }
+                # },
             },
         },
     ),

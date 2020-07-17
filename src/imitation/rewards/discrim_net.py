@@ -1,6 +1,6 @@
 import logging
 from abc import ABC, abstractmethod
-from typing import Callable, Mapping, Optional
+from typing import Optional
 
 import gym
 import numpy as np
@@ -254,14 +254,6 @@ class DiscrimNetAIRL(DiscrimNet):
         return rew
 
 
-DiscrimNetBuilder = Callable[..., nn.Module]
-"""Type alias for function that builds a discriminator network.
-
-Takes an observation and action tensor and produces a tuple containing
-(1) a list of used TF layers, and (2) output logits.
-"""
-
-
 class ActObsMLP(nn.Module):
     """Simple MLP that takes an action and observation and produces a single
     output."""
@@ -291,10 +283,7 @@ class DiscrimNetGAIL(DiscrimNet):
         self,
         observation_space: gym.Space,
         action_space: gym.Space,
-        # FIXME(sam): replace build_discrim_net/build_discrim_net_kwargs with
-        # just passing a discrim net straight in
-        build_discrim_net: Optional[DiscrimNetBuilder] = None,
-        build_discrim_net_kwargs: Optional[Mapping] = None,
+        discrim_net: Optional[nn.Module] = None,
         scale: bool = False,
     ):
         """Construct discriminator network.
@@ -302,14 +291,8 @@ class DiscrimNetGAIL(DiscrimNet):
         Args:
           observation_space: observation space for this environment.
           action_space: action space for this environment:
-          build_discrim_net: a callable that takes an observation input tensor
-            and action input tensor as input, then computes the logits
-            necessary to feed to GAIL. When called, the function should return
-            *both* a `LayersDict` containing all the layers used in
-            construction of the discriminator network, and a `th.Tensor`
-            representing the desired discriminator logits.
-          build_discrim_net_kwargs: optional extra keyword arguments for
-            `build_discrim_net()`.
+          discrim_net: a Torch module that takes an observation and action
+            tensor as input, then computes the logits for GAIL.
           scale: should inputs be rescaled according to declared observation
             space bounds?
         """
@@ -317,22 +300,14 @@ class DiscrimNetGAIL(DiscrimNet):
             observation_space=observation_space, action_space=action_space, scale=scale
         )
 
-        if build_discrim_net is None:
-            if build_discrim_net_kwargs is not None:
-                raise ValueError(
-                    "must supply build_discrim_net if using " "build_discrim_net_kwargs"
-                )
+        if discrim_net is None:
             self.discriminator = ActObsMLP(
                 action_space=action_space,
                 observation_space=observation_space,
                 hid_sizes=(32, 32),
             )
         else:
-            if build_discrim_net_kwargs is None:
-                raise ValueError(
-                    "must supply build_discrim_net_kwargs if " "using build_discrim_net"
-                )
-            self.discriminator = build_discrim_net(**build_discrim_net_kwargs)
+            self.discriminator = discrim_net
 
         logging.info("using GAIL")
 
