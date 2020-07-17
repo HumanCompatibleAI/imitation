@@ -61,9 +61,11 @@ class RewardNet(nn.Module, ABC):
         self.use_next_state = use_next_state
         self.use_done = use_done
 
-        if not (self.use_state or self.use_action or self.use_next_state):
+        if not (
+            self.use_state or self.use_action or self.use_next_state or self.use_done
+        ):
             raise ValueError(
-                "At least one of use_state, use_action, or use_next_state "
+                "At least one of use_state, use_action, use_next_state or use_done "
                 "must be True"
             )
 
@@ -107,17 +109,17 @@ class RewardNet(nn.Module, ABC):
         """Compute the train reward with raw ndarrays, including preprocessing.
 
         Args:
-          state: current state.
+          state: current state. Leading dimension should be batch size B.
           action: action associated with `state`.
           next_state: next state.
           done: 0/1 value indicating whether episode terminates on transition
             to `next_state`.
 
         Returns:
-          np.ndarray: A (None,) shaped ndarray holding
+          np.ndarray: A (B,)-shaped ndarray holding
               the training reward associated with each timestep.
         """
-        return self._eval_reward(self.reward_train, state, action, next_state, done)
+        return self._eval_reward(True, state, action, next_state, done)
 
     def predict_reward_test(
         self,
@@ -131,17 +133,17 @@ class RewardNet(nn.Module, ABC):
         Note this is the reward we use for transfer learning.
 
         Args:
-          state: current state.
+          state: current state. Lead dimension should be batch size B.
           action: action associated with `state`.
           next_state: next state.
           done: 0/1 value indicating whether episode terminates on transition
             to `next_state`.
 
         Returns:
-          np.ndarray: A (None,) shaped ndarray holding the test reward
+          np.ndarray: A (B,)-shaped ndarray holding the test reward
             associated with each timestep.
         """
-        return self._eval_reward(self.reward_test, state, action, next_state, done)
+        return self._eval_reward(False, state, action, next_state, done)
 
     def _eval_reward(
         self,

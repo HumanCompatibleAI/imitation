@@ -149,9 +149,9 @@ class AdversarialTrainer:
             expert_data = dataset.TransitionsDictDatasetAdaptor(
                 expert_data,  # pytype: disable=wrong-arg-types
             )
-        self.expert_dataset = expert_data
+        self._expert_dataset = expert_data
 
-        expert_ds_size = self.expert_dataset.size()
+        expert_ds_size = self._expert_dataset.size()
         if expert_ds_size is not None and self.disc_batch_size // 2 > expert_ds_size:
             warnings.warn(
                 "The discriminator batch size is more than twice the number of "
@@ -359,7 +359,7 @@ class AdversarialTrainer:
         n_gen = len(gen_samples.obs)
 
         if expert_samples is None:
-            expert_samples = self.expert_dataset.sample(n_gen)
+            expert_samples = self._expert_dataset.sample(n_gen)
         n_expert = len(expert_samples.obs)
 
         # Check dimensions.

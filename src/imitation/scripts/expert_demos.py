@@ -123,8 +123,8 @@ def rollouts_and_policy(
         init_rl_kwargs = dict(init_rl_kwargs)
         # init_rl_kwargs["tensorboard_log"] = sb_tensorboard_dir
         # FIXME(sam): this is another hack to prevent SB3 from configuring the
-        # logger on the first .learn() call. Remove it once that bug is fixed
-        # upstream.
+        # logger on the first .learn() call. Remove it once SB3 issue #109 is
+        # fixed.
         init_rl_kwargs["tensorboard_log"] = None
 
     venv = util.make_vec_env(

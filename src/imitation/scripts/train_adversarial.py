@@ -150,7 +150,7 @@ def train(
 
     gen_algo = util.init_rl(
         # FIXME(sam): ignoring tensorboard_log is a hack to prevent SB3 from
-        # re-configuring the logger. See init_rl() for details.
+        # re-configuring the logger (SB3 issue #109). See init_rl() for details.
         venv,
         **init_rl_kwargs,
     )

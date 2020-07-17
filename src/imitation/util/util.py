@@ -115,7 +115,8 @@ def init_rl(
     """
     # FIXME(sam): verbose=1 and tensorboard_log=None is a hack to prevent SB3
     # from reconfiguring the logger after we've already configured it. Should
-    # remove once relevant issue is fixed.
+    # remove once SB3 issue #109 is fixed (there are also >=2 other comments to
+    # this effect elsewhere; worth grepping for "#109").
     all_kwargs = {
         "verbose": 1,
         "tensorboard_log": None,

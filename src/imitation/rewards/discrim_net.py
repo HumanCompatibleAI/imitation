@@ -156,7 +156,7 @@ class DiscrimNet(nn.Module, ABC):
         action: th.Tensor,
         next_state: th.Tensor,
         done: th.Tensor,
-    ):
+    ) -> np.ndarray:
         (
             state_th,
             action_th,
