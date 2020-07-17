@@ -241,12 +241,16 @@ def fast():
 
     Useful for test cases.
     """
-    total_timesteps = 10
+    total_timesteps = 1
     n_expert_demos = 1
     n_episodes_eval = 1
+    # tests fail if we take disc_batch_size and disc_minibatch_size down to 1,
+    # since a size-1 batch can't contain both a positive and a negative
     algorithm_kwargs = dict(shared=dict(disc_batch_size=2, disc_minibatch_size=2))
     gen_batch_size = 2
     parallel = False  # easier to debug with everything in one process
-    max_episode_steps = 100
+    max_episode_steps = 1
+    # SB3 RL seems to need batch size of 2, otherwise it runs into numeric
+    # issues when computing multinomial distribution during predict()
     num_vec = 2
     init_rl_kwargs = dict(batch_size=2)

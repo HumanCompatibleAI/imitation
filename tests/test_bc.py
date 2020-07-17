@@ -19,32 +19,35 @@ def venv():
     return venv
 
 
-@pytest.fixture(params=[False, True])
-def trainer(request, venv):
-    convert_dataset = request.param
+@pytest.fixture
+def trainer(venv):
     rollouts = types.load(ROLLOUT_PATH)
     data = rollout.flatten_trajectories(rollouts)
-    if convert_dataset:
-        data_map = {"obs": data.obs, "acts": data.acts}
-        data = dataset.RandomDictDataset(data_map)
     return bc.BC(venv.observation_space, venv.action_space, expert_data=data)
 
 
 def test_bc(trainer: bc.BC, venv):
-    sample_until = rollout.min_episodes(25)
+    sample_until = rollout.min_episodes(15)
     novice_ret_mean = rollout.mean_return(trainer.policy, venv, sample_until)
-    trainer.train(n_epochs=40)
+    trainer.train(n_epochs=1)
     trained_ret_mean = rollout.mean_return(trainer.policy, venv, sample_until)
-    # novice is bad
-    assert novice_ret_mean < 80.0
-    # bc is okay but isn't perfect (for the purpose of this test)
-    assert trained_ret_mean > 350.0
+    # Typically <80 score is bad, >350 is okay. We want an improvement of at
+    # least 50 points, which seems like it's not noise.
+    assert trained_ret_mean - novice_ret_mean > 50
+
+
+def test_train_from_random_dict_dataset(venv):
+    # make sure that we can construct BC instance & train from a RandomDictDataset
+    rollouts = types.load(ROLLOUT_PATH)
+    data = rollout.flatten_trajectories(rollouts)
+    data_map = {"obs": data.obs, "acts": data.acts}
+    data = dataset.RandomDictDataset(data_map)
+    trainer = bc.BC(venv.observation_space, venv.action_space, expert_data=data)
+    trainer.train(n_epochs=1)
 
 
 def test_save_reload(trainer, tmpdir):
     pol_path = os.path.join(tmpdir, "policy.pt")
-    # just to change the values a little
-    trainer.train(n_epochs=1)
     var_values = list(trainer.policy.parameters())
     trainer.save_policy(pol_path)
     new_policy = bc.reconstruct_policy(pol_path)

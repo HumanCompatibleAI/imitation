@@ -153,8 +153,8 @@ def two_d_maze():
 @expert_demos_ex.named_config
 def fast():
     """Intended for testing purposes: small # of updates, ends quickly."""
-    total_timesteps = int(1e3)
-    max_episode_steps = int(1e3)
+    total_timesteps = int(1)
+    max_episode_steps = int(1)
 
 
 # Shared settings
