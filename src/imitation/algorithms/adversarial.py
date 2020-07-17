@@ -464,7 +464,7 @@ class AIRL(AdversarialTrainer):
             discrim_kwargs: Optional keyword arguments to use while constructing the
                 DiscrimNetAIRL.
         """
-        # TODO(shwang): Maybe offer str=>Type[RewardNet] conversion like
+        # TODO(shwang): Maybe offer str=>RewardNet conversion like
         #  stable_baselines3 does with policy classes.
         reward_net_kwargs = reward_net_kwargs or {}
         reward_network = reward_net_cls(

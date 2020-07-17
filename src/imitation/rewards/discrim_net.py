@@ -28,10 +28,6 @@ class DiscrimNet(nn.Module, ABC):
         self.action_space = action_space
         self.scale = scale
 
-        # TODO(sam): add back in these histograms, etc. (correct place might be
-        # AdversarialTrainer.train_disc_step)
-        # tf.summary.histogram("disc_logits", self.disc_logits_gen_is_high)
-
     @abstractmethod
     def logits_gen_is_high(
         self,
