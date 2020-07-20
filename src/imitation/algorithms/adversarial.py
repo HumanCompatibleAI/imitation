@@ -220,7 +220,7 @@ class AdversarialTrainer:
             Observations should not be normalized.
 
         Returns:
-           dict: Loss, accuracy, etc. statistics for discriminator.
+           dict: Statistics for discriminator (e.g. loss, accuracy).
         """
         with logger.accumulate_means("disc"):
             # optionally write TB summaries for collected ops
