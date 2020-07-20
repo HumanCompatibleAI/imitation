@@ -7,8 +7,7 @@ from typing import Callable, Dict, List, Tuple
 import gym
 import numpy as np
 import torch as th
-from stable_baselines3.common import vec_env
-from stable_baselines3.common.preprocessing import preprocess_obs
+from stable_baselines3.common import preprocessing, vec_env
 
 RewardFn = Callable[[np.ndarray, np.ndarray, np.ndarray, np.ndarray], np.ndarray]
 
@@ -73,9 +72,11 @@ def disc_rew_preprocess_inputs(
     del state, action, next_state, done  # unused
 
     # preprocess
-    state_th = preprocess_obs(state_th, observation_space, scale)
-    action_th = preprocess_obs(action_th, action_space, scale)
-    next_state_th = preprocess_obs(next_state_th, observation_space, scale)
+    state_th = preprocessing.preprocess_obs(state_th, observation_space, scale)
+    action_th = preprocessing.preprocess_obs(action_th, action_space, scale)
+    next_state_th = preprocessing.preprocess_obs(
+        next_state_th, observation_space, scale
+    )
     done_th = done_th.to(th.float32)
 
     n_gen = len(state_th)
@@ -117,8 +118,10 @@ def compute_train_stats(
         acc = th.mean(correct_vec.float())
 
         _n_pred_expert = th.sum(th.logical_and(bin_is_expert_true, correct_vec))
-        _n_expert_or_1 = max(1, n_expert)
-        expert_acc = _n_pred_expert / _n_expert_or_1
+        if n_expert < 1:
+            expert_acc = th.tensor(float("NaN"), device=_n_pred_expert.device)
+        else:
+            expert_acc = _n_pred_expert / n_expert
 
         _n_pred_gen = th.sum(th.logical_and(bin_is_generated_true, correct_vec))
         _n_gen_or_1 = max(1, n_generated)
@@ -148,6 +151,4 @@ def compute_train_stats(
         (key, float(value.item()) if isinstance(value, th.Tensor) else value)
         for key, value in pairs
     ]
-    stats = collections.OrderedDict(pairs)
-
-    return stats
+    return collections.OrderedDict(pairs)

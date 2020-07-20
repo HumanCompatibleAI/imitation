@@ -133,6 +133,7 @@ class BC:
                  and for which `.size()` is not None, or a `Transitions` instance, which
                  is automatically converted to a shuffled `EpochOrderDictDataset`.
         """
+        # FIXME(sam): I think docstring is wrong, should be "acts".
         if isinstance(expert_data, types.Transitions):
             trans = expert_data
             expert_dataset = dataset.EpochOrderDictDataset(
@@ -224,7 +225,7 @@ class BC:
                 if batch_num % log_interval == 0:
                     for k, v in stats_dict.items():
                         logger.record(k, v)
-                    logger.dump()
+                    logger.dump(batch_num)
 
             if on_epoch_end is not None:
                 on_epoch_end(locals())

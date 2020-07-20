@@ -8,8 +8,7 @@ import numpy as np
 import torch as th
 import torch.utils.tensorboard as thboard
 import tqdm
-from stable_baselines3.common import base_class, vec_env
-from stable_baselines3.common.preprocessing import preprocess_obs
+from stable_baselines3.common import base_class, preprocessing, vec_env
 
 from imitation.data import buffer, dataset, types, wrappers
 from imitation.rewards import common as rew_common
@@ -228,7 +227,7 @@ class AdversarialTrainer:
             write_summaries = self._init_tensorboard and step % 20 == 0
 
             # compute loss
-            batch = self._gen_train_batch(
+            batch = self._make_disc_train_batch(
                 gen_samples=gen_samples, expert_samples=expert_samples
             )
             disc_logits = self.discrim.logits_gen_is_high(
@@ -253,7 +252,7 @@ class AdversarialTrainer:
             logger.record("step", step)
             for k, v in train_stats.items():
                 logger.record(k, v)
-            logger.dump()
+            logger.dump(self._global_step)
             if write_summaries:
                 self._summary_writer.add_histogram("disc_logits", disc_logits.detach())
 
@@ -321,7 +320,7 @@ class AdversarialTrainer:
             self.train_disc(self.disc_batch_size)
             if callback:
                 callback(epoch)
-            logger.dump()
+            logger.dump(self._global_step)
 
     def _torchify_array(self, ndarray: np.ndarray, **kwargs) -> th.Tensor:
         return th.as_tensor(ndarray, device=self.discrim.device(), **kwargs)
@@ -330,7 +329,7 @@ class AdversarialTrainer:
         self, ndarray: np.ndarray, space: gym.Space, **kwargs
     ) -> th.Tensor:
         tensor = th.as_tensor(ndarray, device=self.discrim.device(), **kwargs)
-        preprocessed = preprocess_obs(
+        preprocessed = preprocessing.preprocess_obs(
             tensor,
             space,
             # TODO(sam): can I remove "scale" kwarg in DiscrimNet etc.?
@@ -338,13 +337,13 @@ class AdversarialTrainer:
         )
         return preprocessed
 
-    def _gen_train_batch(
+    def _make_disc_train_batch(
         self,
         *,
         gen_samples: Optional[types.Transitions] = None,
         expert_samples: Optional[types.Transitions] = None,
     ) -> dict:
-        """Build and return feed dict for the next discriminator training update.
+        """Build and return training batch for the next discriminator update.
 
         Args:
           gen_samples: Same as in `train_disc_step`.

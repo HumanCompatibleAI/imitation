@@ -95,6 +95,4 @@ def test_density_trainer_smoke():
         is_stationary=False,
         kernel="gaussian",
     )
-    # novice_stats = density_trainer.test_policy()
     density_trainer.train_policy(10)
-    # good_stats = density_trainer.test_policy()

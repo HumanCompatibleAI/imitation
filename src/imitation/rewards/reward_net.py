@@ -1,19 +1,19 @@
 """Constructs deep network reward models."""
 
-from abc import ABC, abstractmethod
+import abc
 from typing import Optional
 
 import gym
 import numpy as np
 import torch as th
-from stable_baselines3.common.preprocessing import get_flattened_obs_dim
+from stable_baselines3.common import preprocessing
 from torch import nn
 
 import imitation.rewards.common as rewards_common
 from imitation.util import networks
 
 
-class RewardNet(nn.Module, ABC):
+class RewardNet(nn.Module, abc.ABC):
     """Abstract reward network.
 
     Attributes:
@@ -67,13 +67,12 @@ class RewardNet(nn.Module, ABC):
             )
 
     @property
-    @abstractmethod
+    @abc.abstractmethod
     def base_reward_net(self) -> nn.Module:
         """Neural network taking state, action, next state and dones, and
         producing a reward value."""
-        pass
 
-    @abstractmethod
+    @abc.abstractmethod
     def reward_train(
         self,
         state: th.Tensor,
@@ -83,8 +82,8 @@ class RewardNet(nn.Module, ABC):
     ) -> th.Tensor:
         """A Tensor holding the training reward associated with each timestep.
 
-        This performs inner logic for `self.reward_train()`. See
-        `reward_train()` docs for explanation of arguments and return values.
+        This performs inner logic for `self.predict_reward_train()`. See
+        `predict_reward_train()` docs for explanation of arguments and return values.
         """
 
     def reward_test(
@@ -96,8 +95,9 @@ class RewardNet(nn.Module, ABC):
     ) -> th.Tensor:
         """A Tensor holding the test reward associated with each timestep.
 
-        This performs inner logic for `self.reward_test()`. See
-        `reward_test()` docs for explanation of arguments and return values.
+        This performs inner logic for `self.predict_reward_test()`. See
+        `predict_reward_test()` docs for explanation of arguments and return
+        values.
         """
         return self.reward_train(state, action, next_state, done)
 
@@ -222,7 +222,7 @@ class RewardNetShaped(RewardNet):
             self.end_potential = nn.Parameter(th.zeros(()))
 
     @property
-    @abstractmethod
+    @abc.abstractmethod
     def potential_net(self) -> nn.Module:
         """The reward shaping network (disentangles dynamics from reward).
 
@@ -291,27 +291,32 @@ class BasicRewardMLP(nn.Module):
 
         self.use_state = use_state
         if self.use_state:
-            combined_size += get_flattened_obs_dim(observation_space)
+            combined_size += preprocessing.get_flattened_obs_dim(observation_space)
 
         self.use_action = use_action
         if self.use_action:
-            combined_size += get_flattened_obs_dim(action_space)
+            combined_size += preprocessing.get_flattened_obs_dim(action_space)
 
         self.use_next_state = use_next_state
         if self.use_next_state:
-            combined_size += get_flattened_obs_dim(observation_space)
+            combined_size += preprocessing.get_flattened_obs_dim(observation_space)
 
         self.use_done = use_done
         if self.use_done:
             combined_size += 1
 
         full_build_mlp_kwargs = {
-            "in_size": combined_size,
             "hid_sizes": (32, 32),
-            "out_size": 1,
-            "squeeze_output": True,
         }
         full_build_mlp_kwargs.update(kwargs)
+        full_build_mlp_kwargs.update(
+            {
+                # we do not want these overridden
+                "in_size": combined_size,
+                "out_size": 1,
+                "squeeze_output": True,
+            }
+        )
 
         self.mlp = networks.build_mlp(**full_build_mlp_kwargs)
 
@@ -430,7 +435,9 @@ class BasicShapedRewardNet(RewardNetShaped):
             self._base_reward_net = base_reward_net
 
         if potential_net is None:
-            potential_in_size = get_flattened_obs_dim(self.observation_space)
+            potential_in_size = preprocessing.get_flattened_obs_dim(
+                self.observation_space
+            )
             self._potential_net = networks.build_mlp(
                 in_size=potential_in_size, hid_sizes=(32, 32), squeeze_output=True
             )

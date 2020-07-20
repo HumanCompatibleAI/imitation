@@ -1,12 +1,12 @@
+import abc
 import logging
-from abc import ABC, abstractmethod
 from typing import Optional
 
 import gym
 import numpy as np
 import torch as th
 import torch.nn.functional as F
-from stable_baselines3.common.preprocessing import get_flattened_obs_dim
+from stable_baselines3.common import preprocessing
 from torch import nn
 
 from imitation.rewards import common as rewards_common
@@ -14,7 +14,7 @@ from imitation.rewards import reward_net
 from imitation.util import networks
 
 
-class DiscrimNet(nn.Module, ABC):
+class DiscrimNet(nn.Module, abc.ABC):
     """Abstract base class for discriminator, used in AIRL and GAIL."""
 
     def __init__(
@@ -28,7 +28,7 @@ class DiscrimNet(nn.Module, ABC):
         self.action_space = action_space
         self.scale = scale
 
-    @abstractmethod
+    @abc.abstractmethod
     def logits_gen_is_high(
         self,
         state: th.Tensor,
@@ -75,7 +75,7 @@ class DiscrimNet(nn.Module, ABC):
         first_param = next(self.parameters())
         return first_param.device
 
-    @abstractmethod
+    @abc.abstractmethod
     def reward_test(
         self,
         state: th.Tensor,
@@ -83,9 +83,9 @@ class DiscrimNet(nn.Module, ABC):
         next_state: th.Tensor,
         done: th.Tensor,
     ) -> th.Tensor:
-        pass
+        """Test-time reward for given states/actions."""
 
-    @abstractmethod
+    @abc.abstractmethod
     def reward_train(
         self,
         state: th.Tensor,
@@ -93,7 +93,7 @@ class DiscrimNet(nn.Module, ABC):
         next_state: th.Tensor,
         done: th.Tensor,
     ) -> th.Tensor:
-        pass
+        """Train-time reward for given states/actions."""
 
     def predict_reward_train(
         self,
@@ -223,6 +223,17 @@ class DiscrimNetAIRL(DiscrimNet):
         reward_output_train = self.reward_net.reward_train(
             state, action, next_state, done
         )
+        # In Fu's AIRL paper (https://arxiv.org/pdf/1710.11248.pdf), the
+        # discriminator output was given as exp(r_theta(s,a)) /
+        # (exp(r_theta(s,a)) - log pi(a|s)), with a high value corresponding to
+        # expert and a low value corresponding to generator (the opposite of
+        # our convention).
+        #
+        # Observe that sigmoid(log pi(a|s) - r(s,a)) = exp(log pi(a|s) -
+        # r(s,a)) / (1 + exp(log pi(a|s) - r(s,a))). If we multiply through by
+        # exp(r(s,a)), we get pi(a|s) / (pi(a|s) + exp(r(s,a))). This is the
+        # original AIRL discriminator expression with reversed logits to match
+        # our convention of low = expert and high = generator (like GAIL).
         return log_policy_act_prob - reward_output_train
 
     def reward_test(
@@ -243,8 +254,10 @@ class DiscrimNetAIRL(DiscrimNet):
         next_state: th.Tensor,
         done: th.Tensor,
     ) -> th.Tensor:
-        """Compute train reward. This reward does *not* include an entropy
-        bonus; the entropy bonus should be added directly to PPO, SAC, etc."""
+        """Compute train reward.
+
+        Computed reward does *not* include an entropy bonus. Instead, the
+        entropy bonus should be added directly to PPO, SAC, etc."""
         rew = self.reward_net.reward_train(state, action, next_state, done)
         assert rew.shape == state.shape[:1]
         return rew
@@ -259,9 +272,9 @@ class ActObsMLP(nn.Module):
     ):
         super().__init__()
 
-        in_size = get_flattened_obs_dim(observation_space) + get_flattened_obs_dim(
-            action_space
-        )
+        in_size = preprocessing.get_flattened_obs_dim(
+            observation_space
+        ) + preprocessing.get_flattened_obs_dim(action_space)
         self.mlp = networks.build_mlp(
             **{"in_size": in_size, "out_size": 1, **mlp_kwargs}
         )

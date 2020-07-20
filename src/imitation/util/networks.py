@@ -38,7 +38,10 @@ def build_mlp(
     Returns:
         nn.Module: an MLP mapping from inputs of size (batch_size, in_size) to
             (batch_size, out_size), unless out_size=1 and squeeze_output=True,
-            in which case the output is of size (batch_size, )."""
+            in which case the output is of size (batch_size, ).
+
+    Raises:
+        ValueError: if squeeze_output was supplied with out_size!=1."""
     layers = collections.OrderedDict()
 
     if name is None:
