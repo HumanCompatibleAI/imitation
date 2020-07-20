@@ -241,7 +241,7 @@ class RewardNetShaped(RewardNet):
         new_shaping_output = self.potential_net(next_state).flatten()
         old_shaping_output = self.potential_net(state).flatten()
         done_f = done.float()
-        new_shaping = done_f * old_shaping_output + (1 - done_f) * new_shaping_output
+        new_shaping = done_f * self.end_potential + (1 - done_f) * new_shaping_output
         final_rew = (
             base_reward_net_output
             + self._discount_factor * new_shaping
