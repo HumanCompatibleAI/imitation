@@ -6,7 +6,7 @@ from typing import Optional, Type, Union
 
 import gym
 import numpy as np
-import stable_baselines
+import stable_baselines3
 from gym.wrappers import TimeLimit
 from stable_baselines3.common import monitor
 from stable_baselines3.common.base_class import BaseAlgorithm
@@ -96,7 +96,7 @@ def make_vec_env(
 
 def init_rl(
     env: Union[gym.Env, VecEnv],
-    model_class: Type[BaseAlgorithm] = stable_baselines.PPO2,
+    model_class: Type[BaseAlgorithm] = stable_baselines3.PPO,
     policy_class: Type[BasePolicy] = ActorCriticPolicy,
     **model_kwargs,
 ):
@@ -113,8 +113,17 @@ def init_rl(
     Returns:
       An RL algorithm.
     """
+    # FIXME(sam): verbose=1 and tensorboard_log=None is a hack to prevent SB3
+    # from reconfiguring the logger after we've already configured it. Should
+    # remove once SB3 issue #109 is fixed (there are also >=2 other comments to
+    # this effect elsewhere; worth grepping for "#109").
+    all_kwargs = {
+        "verbose": 1,
+        "tensorboard_log": None,
+    }
+    all_kwargs.update(model_kwargs)
     return model_class(
-        policy_class, env, **model_kwargs
+        policy_class, env, **all_kwargs
     )  # pytype: disable=not-instantiable
 
 

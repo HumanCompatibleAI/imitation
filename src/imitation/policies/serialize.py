@@ -2,6 +2,9 @@
 # TODO(scottemmons): Only import packages and modules to adhere to style guide:
 #  https://google.github.io/styleguide/pyguide.html#22-imports
 
+# FIXME(sam): it seems like this module could mostly be replaced with a few
+# torch.load() and torch.save() calls
+
 import logging
 import os
 import pickle
@@ -43,6 +46,9 @@ class NormalizePolicy(BasePolicy):
         )
         self._policy = policy
         self.vec_normalize = vec_normalize
+
+    def _predict(self, *args, **kwargs):
+        raise NotImplementedError()
 
     def predict(
         self, obs: np.ndarray, *args, **kwargs
@@ -90,7 +96,7 @@ def _load_stable_baselines(
     """Higher-order function, returning a policy loading function.
 
     Args:
-        cls: The RL algorithm, e.g. `stable_baselines.PPO2`.
+        cls: The RL algorithm, e.g. `stable_baselines3.PPO`.
         policy_attr: The attribute of the RL algorithm containing the policy,
             e.g. `act_model`.
 

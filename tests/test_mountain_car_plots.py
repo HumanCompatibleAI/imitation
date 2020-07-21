@@ -83,7 +83,7 @@ def test_batch_reward_heatmaps(trajs, tmpdir, rand_policy):
             rollout_path=rollout_path,
             checkpoint_interval=1,
             log_dir=(tmpdir / "train_adversarial"),
-            total_timesteps=5000,
+            total_timesteps=256,
         ),
     )
     assert run.status == "COMPLETED"

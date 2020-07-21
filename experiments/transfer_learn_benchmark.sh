@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
-# Train PPO2 experts using reward models from experiments/imit_benchmark.sh
+# Train PPO experts using reward models from experiments/imit_benchmark.sh
 
 CONFIG_CSV="experiments/imit_benchmark_config.csv"
 TIMESTAMP=$(date --iso-8601=seconds)
@@ -84,7 +84,7 @@ parallel -j 25% --header : --results ${LOG_ROOT}/parallel/ --colsep , --progress
   seed={seed} \
   log_dir="${LOG_ROOT}/${ALGORITHM}/{env_config_name}_{seed}/n_expert_demos_{n_expert_demos}" \
   reward_type="DiscrimNet" \
-  reward_path="${REWARD_MODELS_DIR}/${ALGORITHM}/{env_config_name}_0/n_expert_demos_{n_expert_demos}/checkpoints/final/discrim/" \
+  reward_path="${REWARD_MODELS_DIR}/${ALGORITHM}/{env_config_name}_0/n_expert_demos_{n_expert_demos}/checkpoints/final/discrim.pt" \
   ::: seed ${SEEDS} :::: ${CONFIG_CSV}
 
 

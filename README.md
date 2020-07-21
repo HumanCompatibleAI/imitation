@@ -23,7 +23,7 @@ Follow instructions to install [mujoco_py v1.5 here](https://github.com/openai/m
 
 ### To run:
 ```
-# Train PPO2 agent on cartpole and collect expert demonstrations
+# Train PPO agent on cartpole and collect expert demonstrations
 python -m imitation.scripts.expert_demos with cartpole
 # Train AIRL on from demonstrations
 python -m imitation.scripts.train_adversarial with cartpole airl

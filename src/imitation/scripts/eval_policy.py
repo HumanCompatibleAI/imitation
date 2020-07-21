@@ -1,4 +1,3 @@
-import contextlib
 import logging
 import os
 import os.path as osp
@@ -6,7 +5,7 @@ import time
 from typing import Optional
 
 from sacred.observers import FileStorageObserver
-from stable_baselines.common.vec_env import VecEnvWrapper
+from stable_baselines3.common.vec_env import VecEnvWrapper
 
 import imitation.util.sacred as sacred_util
 from imitation.data import rollout
@@ -100,15 +99,13 @@ def eval_policy(
         venv = InteractiveRender(venv, render_fps)
     # TODO(adam): add support for videos using VideoRecorder?
 
-    with contextlib.ExitStack() as stack:
-        if reward_type is not None:
-            reward_fn_ctx = load_reward(reward_type, reward_path, venv)
-            reward_fn = stack.enter_context(reward_fn_ctx)
-            venv = reward_wrapper.RewardVecEnvWrapper(venv, reward_fn)
-            logging.info(f"Wrapped env in reward {reward_type} from {reward_path}.")
+    if reward_type is not None:
+        reward_fn = load_reward(reward_type, reward_path, venv)
+        venv = reward_wrapper.RewardVecEnvWrapper(venv, reward_fn)
+        logging.info(f"Wrapped env in reward {reward_type} from {reward_path}.")
 
-        with serialize.load_policy(policy_type, policy_path, venv) as policy:
-            trajs = rollout.generate_trajectories(policy, venv, sample_until)
+    policy = serialize.load_policy(policy_type, policy_path, venv)
+    trajs = rollout.generate_trajectories(policy, venv, sample_until)
     return rollout.rollout_stats(trajs)
 
 

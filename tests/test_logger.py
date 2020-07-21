@@ -2,7 +2,7 @@ import csv
 import os.path as osp
 from collections import defaultdict
 
-import stable_baselines.logger as sb_logger
+import stable_baselines3.common.logger as sb_logger
 
 import imitation.util.logger as logger
 
@@ -25,13 +25,13 @@ def _compare_csv_lines(csv_path: str, expect: dict):
 
 def test_no_accum(tmpdir):
     logger.configure(tmpdir, ["csv"])
-    sb_logger.logkv("A", 1)
-    sb_logger.logkv("B", 1)
-    sb_logger.dumpkvs()
-    sb_logger.logkv("A", 2)
-    sb_logger.dumpkvs()
-    sb_logger.logkv("B", 3)
-    sb_logger.dumpkvs()
+    sb_logger.record("A", 1)
+    sb_logger.record("B", 1)
+    sb_logger.dump()
+    sb_logger.record("A", 2)
+    sb_logger.dump()
+    sb_logger.record("B", 3)
+    sb_logger.dump()
     expect = {"A": [1, 2, ""], "B": [1, "", 3]}
     _compare_csv_lines(osp.join(tmpdir, "progress.csv"), expect)
 
@@ -42,26 +42,26 @@ def test_hard(tmpdir):
     # Part One: Test logging outside of the accumulating scope, and within scopes
     # with two different different logging keys (including a repeat).
 
-    sb_logger.logkv("no_context", 1)
+    sb_logger.record("no_context", 1)
 
     with logger.accumulate_means("disc"):
-        sb_logger.logkv("C", 2)
-        sb_logger.logkv("D", 2)
-        sb_logger.dumpkvs()
-        sb_logger.logkv("C", 4)
-        sb_logger.dumpkvs()
+        sb_logger.record("C", 2)
+        sb_logger.record("D", 2)
+        sb_logger.dump()
+        sb_logger.record("C", 4)
+        sb_logger.dump()
 
     with logger.accumulate_means("gen"):
-        sb_logger.logkv("E", 2)
-        sb_logger.dumpkvs()
-        sb_logger.logkv("E", 0)
-        sb_logger.dumpkvs()
+        sb_logger.record("E", 2)
+        sb_logger.dump()
+        sb_logger.record("E", 0)
+        sb_logger.dump()
 
     with logger.accumulate_means("disc"):
-        sb_logger.logkv("C", 3)
-        sb_logger.dumpkvs()
+        sb_logger.record("C", 3)
+        sb_logger.dump()
 
-    sb_logger.dumpkvs()  # Writes 1 mean each from "gen" and "disc".
+    sb_logger.dump()  # Writes 1 mean each from "gen" and "disc".
 
     expect_raw_gen = {"raw/gen/E": [2, 0]}
     expect_raw_disc = {
@@ -83,12 +83,12 @@ def test_hard(tmpdir):
     # Check that we append to the same logs after the first dump to "means/*".
 
     with logger.accumulate_means("disc"):
-        sb_logger.logkv("D", 100)
-        sb_logger.dumpkvs()
+        sb_logger.record("D", 100)
+        sb_logger.dump()
 
-    sb_logger.logkv("no_context", 2)
+    sb_logger.record("no_context", 2)
 
-    sb_logger.dumpkvs()  # Writes 1 mean from "disc". "gen" is blank.
+    sb_logger.dump()  # Writes 1 mean from "disc". "gen" is blank.
 
     expect_raw_gen = {"raw/gen/E": [2, 0]}
     expect_raw_disc = {

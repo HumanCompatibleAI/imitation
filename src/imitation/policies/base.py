@@ -32,6 +32,11 @@ class HardCodedPolicy(policies.BasePolicy, abc.ABC):
     def _choose_action(self, obs: np.ndarray) -> np.ndarray:
         """Chooses an action, optionally based on observation obs."""
 
+    def forward(self, *args):
+        # technically BasePolicy is a Torch module, so this needs a forward()
+        # method
+        raise NotImplementedError()
+
 
 class RandomPolicy(HardCodedPolicy):
     """Returns random actions."""
@@ -52,9 +57,9 @@ class FeedForward32Policy(policies.ActorCriticPolicy):
 
     This matches the IRL policies in the original AIRL paper.
 
-    Note: This differs from stable_baselines MlpPolicy in two ways: by having
-    32 rather than 64 units, and by having policy and value networks share weights
-    except at the final layer.
+    Note: This differs from stable_baselines3 ActorCriticPolicy in two ways: by
+    having 32 rather than 64 units, and by having policy and value networks
+    share weights except at the final layer.
     """
 
     def __init__(self, *args, **kwargs):
@@ -72,7 +77,7 @@ def get_action_policy(policy, *args, **kwargs):
     policy.predict().
 
     Args:
-        policy (stable_baselines.common.policies.BasePolicy): The policy.
+        policy (stable_baselines3.common.policies.BasePolicy): The policy.
         *args: Positional arguments to pass to policy.predict()
         **kwargs: Keywords arguments to pass to policy.predict()
 

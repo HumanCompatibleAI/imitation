@@ -322,10 +322,10 @@ class ReplayBuffer(datasets.Dataset[types.Transitions]):
         Returns:
             A new ReplayBuffer.
         """
-        data_capacity, *obs_shape = transitions.obs.shape
+        obs_shape = transitions.obs.shape[1:]
+        act_shape = transitions.acts.shape[1:]
         if capacity is None:
-            capacity = data_capacity
-        _, *act_shape = transitions.acts.shape
+            capacity = transitions.obs.shape[0]
         instance = cls(
             capacity=capacity,
             obs_shape=obs_shape,

@@ -3,7 +3,6 @@
 import os
 
 import sacred
-from stable_baselines.common import policies
 
 from imitation.policies import base
 from imitation.scripts.config.common import DEFAULT_INIT_RL_KWARGS
@@ -195,7 +194,6 @@ def swimmer():
     env_name = "Swimmer-v2"
     rollout_hint = "swimmer"
     total_timesteps = 2e6
-    init_rl_kwargs = dict(policy_network_class=policies.MlpPolicy)
 
 
 @train_ex.named_config
@@ -243,12 +241,17 @@ def fast():
 
     Useful for test cases.
     """
-    total_timesteps = 10
+    # need a minimum of 5 total_timesteps for adversarial training code to run
+    total_timesteps = 5
     n_expert_demos = 1
     n_episodes_eval = 1
+    # tests fail if we take disc_batch_size and disc_minibatch_size down to 1,
+    # since a size-1 batch can't contain both a positive and a negative
     algorithm_kwargs = dict(shared=dict(disc_batch_size=2, disc_minibatch_size=2))
     gen_batch_size = 2
     parallel = False  # easier to debug with everything in one process
-    max_episode_steps = 100
+    max_episode_steps = 5
+    # SB3 RL seems to need batch size of 2, otherwise it runs into numeric
+    # issues when computing multinomial distribution during predict()
     num_vec = 2
-    init_rl_kwargs = dict(nminibatches=1)
+    init_rl_kwargs = dict(batch_size=2)

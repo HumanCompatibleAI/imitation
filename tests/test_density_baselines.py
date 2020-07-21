@@ -50,7 +50,8 @@ def test_density_reward(density_type, is_stationary):
 
     # construct density-based reward from expert rollouts
     rollout_path = "tests/data/expert_models/pendulum_0/rollouts/final.pkl"
-    expert_trajectories_all = types.load(rollout_path)
+    # use only a subset of trajectories
+    expert_trajectories_all = types.load(rollout_path)[:8]
     n_experts = len(expert_trajectories_all)
     expert_trajectories_train = expert_trajectories_all[: n_experts // 2]
     reward_fn = DensityReward(
@@ -67,7 +68,7 @@ def test_density_reward(density_type, is_stationary):
     # check that expert policy does better than a random policy under our reward
     # function
     random_policy = RandomPolicy(env.observation_space, env.action_space)
-    sample_until = rollout.min_episodes(n_experts // 2)
+    sample_until = rollout.min_episodes(15)
     random_trajectories = rollout.generate_trajectories(
         random_policy, env, sample_until=sample_until
     )
@@ -78,26 +79,20 @@ def test_density_reward(density_type, is_stationary):
 
 
 @pytest.mark.expensive
-@parametrize_density_stationary
-def test_density_trainer(density_type, is_stationary):
+def test_density_trainer_smoke():
+    # tests whether density trainer runs, not whether it's good
+    # (it's actually really poor)
     env_name = "Pendulum-v0"
     rollout_path = "tests/data/expert_models/pendulum_0/rollouts/final.pkl"
-    rollouts = types.load(rollout_path)
+    rollouts = types.load(rollout_path)[:8]
     env = util.make_vec_env(env_name, 2)
     imitation_trainer = util.init_rl(env)
     density_trainer = DensityTrainer(
         env,
         rollouts=rollouts,
         imitation_trainer=imitation_trainer,
-        density_type=density_type,
-        is_stationary=is_stationary,
+        density_type=STATE_ACTION_DENSITY,
+        is_stationary=False,
         kernel="gaussian",
     )
-    novice_stats = density_trainer.test_policy()
-    density_trainer.train_policy(2000)
-    good_stats = density_trainer.test_policy()
-    # Novice is bad
-    assert novice_stats["return_mean"] < -500
-    # Density is also pretty bad, but shouldn't make things more than 50% worse.
-    # It would be nice to have a less flaky/more meaningful test here.
-    assert good_stats["return_mean"] > 1.5 * novice_stats["return_mean"]
+    density_trainer.train_policy(10)

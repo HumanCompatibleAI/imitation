@@ -225,7 +225,7 @@ def generate_trajectories(
     """Generate trajectory dictionaries from a policy and an environment.
 
     Args:
-      policy (BasePolicy or BaseAlgorithm): A stable_baselines policy or RLModel,
+      policy (BasePolicy or BaseAlgorithm): A stable_baselines3 policy or RLModel,
           trained on the gym environment.
       venv: The vectorized environments to interact with.
       sample_until: A function determining the termination condition.
@@ -419,8 +419,8 @@ def generate_transitions(
     """Generate obs-action-next_obs-reward tuples.
 
     Args:
-      policy (BasePolicy or BaseAlgorithm): A stable_baselines policy or RLModel,
-          trained on the gym environment.
+      policy (BasePolicy or BaseAlgorithm): A stable_baselines3 policy or
+          algorithm, trained on the gym environment.
       venv: The vectorized environments to interact with.
       n_timesteps: The minimum number of timesteps to sample.
       truncate: If True, then drop any additional samples to ensure that exactly

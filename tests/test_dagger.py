@@ -67,7 +67,7 @@ def make_trainer(tmpdir):
     )
 
 
-def test_trainer_makes_progress(tmpdir, session):
+def test_trainer_makes_progress(tmpdir):
     venv = util.make_vec_env(ENV_NAME, 10)
     trainer = make_trainer(tmpdir)
     with pytest.raises(dagger.NeedsDemosException):
@@ -76,17 +76,17 @@ def test_trainer_makes_progress(tmpdir, session):
     pre_train_rew_mean = rollout.mean_return(
         trainer.bc_trainer.policy,
         venv,
-        sample_until=rollout.min_episodes(20),
+        sample_until=rollout.min_episodes(15),
         deterministic_policy=True,
     )
     # checking that the initial policy is poor can be flaky; sometimes the
     # randomly initialised policy performs very well, and it's not clear why
     # assert pre_train_rew_mean < 100
     expert_policy = serialize.load_policy("ppo", EXPERT_POLICY_PATH, venv)
-    for i in range(5):
+    for i in range(2):
         # roll out a few trajectories for dataset, then train for a few steps
         collector = trainer.get_trajectory_collector()
-        for _ in range(10):
+        for _ in range(5):
             obs = collector.reset()
             done = False
             while not done:
@@ -94,21 +94,21 @@ def test_trainer_makes_progress(tmpdir, session):
                     obs[None], deterministic=True
                 )
                 obs, _, done, _ = collector.step(expert_action)
-        trainer.extend_and_update(n_epochs=10)
+        trainer.extend_and_update(n_epochs=1)
     # make sure we're doing better than a random policy would
     post_train_rew_mean = rollout.mean_return(
         trainer.bc_trainer.policy,
         venv,
-        sample_until=rollout.min_episodes(20),
+        sample_until=rollout.min_episodes(15),
         deterministic_policy=True,
     )
-    assert post_train_rew_mean > 150, (
+    assert post_train_rew_mean - pre_train_rew_mean > 50, (
         f"pre-train mean {pre_train_rew_mean}, post-train mean "
         f"{post_train_rew_mean}"
     )
 
 
-def test_trainer_save_reload(tmpdir, session):
+def test_trainer_save_reload(tmpdir):
     trainer = make_trainer(tmpdir)
     trainer.round_num = 3
     trainer.save_trainer()
@@ -129,7 +129,7 @@ def test_trainer_save_reload(tmpdir, session):
     assert not all(values.equal(old_vars[var]) for var, values in third_vars.items())
 
 
-def test_policy_save_reload(tmpdir, session):
+def test_policy_save_reload(tmpdir):
     # just make sure the methods run; we already test them in test_bc.py
     policy_path = os.path.join(tmpdir, "policy.pt")
     trainer = make_trainer(tmpdir)

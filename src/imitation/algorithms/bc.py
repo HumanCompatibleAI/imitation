@@ -106,6 +106,10 @@ class BC:
         self.policy = self.policy_class(
             **self.policy_kwargs
         )  # pytype: disable=not-instantiable
+        # FIXME(sam): this is to get around SB3 bug that fails to put
+        # action_net, value_net, etc. on the same device as mlp_extractor in
+        # ActorCriticPolicy. Remove this once SB3 issue #111 is fixed.
+        self.policy = self.policy.to(self.policy.device)
         optimizer_kwargs = optimizer_kwargs or {}
         self.optimizer = optimizer_cls(self.policy.parameters(), **optimizer_kwargs)
 
@@ -134,6 +138,7 @@ class BC:
                  is automatically converted to a shuffled, epoch-order
                  `Dataset[types.TransitionsMinimal]`.
         """
+        # FIXME(sam): I think docstring is wrong, should be "acts".
         if isinstance(expert_data, types.Transitions):
             trans = expert_data
             expert_dataset = datasets.TransitionsDictDatasetAdaptor(
@@ -226,7 +231,7 @@ class BC:
                 if batch_num % log_interval == 0:
                     for k, v in stats_dict.items():
                         logger.record(k, v)
-                    logger.dump()
+                    logger.dump(batch_num)
 
             if on_epoch_end is not None:
                 on_epoch_end(locals())
