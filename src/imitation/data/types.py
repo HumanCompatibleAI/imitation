@@ -83,8 +83,6 @@ class TransitionsMinimal:
     The i'th observation `obs[i]` in this array is the observation seen
     by the agent when choosing action `acts[i]`. `obs[i]` is not required to
     be from the timestep preceding `obs[i+1]`.
-
-    Invariant: obs.dtype == next_obs.dtype.
     """
 
     acts: np.ndarray
@@ -131,7 +129,9 @@ class Transitions(TransitionsMinimal):
     The i'th observation `next_obs[i]` in this array is the observation
     after the agent has taken action `acts[i]`.
 
-    Invariant: next_obs.dtype == obs.dtype.
+    Invariants:
+        * `next_obs.dtype == obs.dtype`
+        * `len(next_obs) == len(obs)`
     """
 
     dones: np.ndarray
