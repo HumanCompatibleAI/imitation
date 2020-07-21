@@ -6,7 +6,7 @@ import pytest
 import torch as th
 
 from imitation.algorithms import bc
-from imitation.data import dataset, rollout, types
+from imitation.data import datasets, rollout, types
 from imitation.util import util
 
 ROLLOUT_PATH = "tests/data/expert_models/cartpole_0/rollouts/final.pkl"
@@ -25,8 +25,9 @@ def trainer(request, session, venv):
     rollouts = types.load(ROLLOUT_PATH)
     data = rollout.flatten_trajectories(rollouts)
     if convert_dataset:
-        data_map = {"obs": data.obs, "acts": data.acts}
-        data = dataset.RandomDictDataset(data_map)
+        data = datasets.TransitionsDictDatasetAdaptor(
+            data, datasets.EpochOrderDictDataset
+        )
     return bc.BC(venv.observation_space, venv.action_space, expert_data=data)
 
 
