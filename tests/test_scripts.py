@@ -256,7 +256,7 @@ def test_parallel_train_adversarial_custom_env(tmpdir):
 
     try:
         gym.make("Ant-v3")
-    except gym.error.DependencyNotInstalled:
+    except gym.error.DependencyNotInstalled:  # pragma: no cover
         pytest.skip("mujoco_py not available")
     env_named_config = "custom_ant"
     rollout_path = _generate_test_rollouts(tmpdir, env_named_config)

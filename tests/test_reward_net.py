@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 import torch as th
 
-from imitation.data import rollout, types
+from imitation.data import rollout
 from imitation.policies import base
 from imitation.rewards import reward_net, serialize
 from imitation.util import util
@@ -46,15 +46,6 @@ def test_reward_valid(env_name, reward_type):
 
     assert pred_reward.shape == (TRAJECTORY_LEN,)
     assert isinstance(pred_reward[0], numbers.Number)
-
-
-def _make_feed_dict(reward_net: reward_net.RewardNet, transitions: types.Transitions):
-    return {
-        reward_net.obs_ph: transitions.obs,
-        reward_net.act_ph: transitions.acts,
-        reward_net.next_obs_ph: transitions.next_obs,
-        reward_net.done_ph: transitions.dones,
-    }
 
 
 @pytest.mark.parametrize("env_name", ENVS)
