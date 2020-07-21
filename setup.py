@@ -53,7 +53,10 @@ setup(
         "torch>=1.4.0",
         "tqdm",
         "scikit-learn>=0.21.2",
-        "stable-baselines~=2.10.0",
+        # TODO(shwang): Stop using GitHub pointer once
+        # https://github.com/hill-a/stable-baselines/pull/935 is part of Stable
+        # Baselines release.
+        "stable-baselines @ git+https://github.com/hill-a/stable-baselines.git",
         "stable-baselines3~=0.8.0a2",
         "jax~=0.1.66",
         "jaxlib~=0.1.47",
