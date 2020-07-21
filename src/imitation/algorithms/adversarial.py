@@ -8,7 +8,7 @@ import tensorflow as tf
 import tqdm
 from stable_baselines.common import base_class, vec_env
 
-from imitation.data import buffer, dataset, types, wrappers
+from imitation.data import buffer, datasets, types, wrappers
 from imitation.rewards import discrim_net, reward_net
 from imitation.util import logger, reward_wrapper
 
@@ -36,7 +36,7 @@ class AdversarialTrainer:
         venv: vec_env.VecEnv,
         gen_policy: base_class.BaseRLModel,
         discrim: discrim_net.DiscrimNet,
-        expert_data: Union[dataset.Dataset[types.Transitions], types.Transitions],
+        expert_data: Union[datasets.Dataset[types.Transitions], types.Transitions],
         *,
         log_dir: str = "output/",
         disc_batch_size: int = 2048,
@@ -146,7 +146,7 @@ class AdversarialTrainer:
 
         if isinstance(expert_data, types.Transitions):
             # Somehow, pytype doesn't recognize that `expert_data` is Transitions.
-            expert_data = dataset.TransitionsDictDatasetAdaptor(
+            expert_data = datasets.TransitionsDictDatasetAdaptor(
                 expert_data,  # pytype: disable=wrong-arg-types
             )
         self._expert_dataset = expert_data
@@ -170,7 +170,7 @@ class AdversarialTrainer:
         return self._discrim
 
     @property
-    def expert_dataset(self) -> dataset.Dataset[types.Transitions]:
+    def expert_dataset(self) -> datasets.Dataset[types.Transitions]:
         """Dataset containing expert demonstrations that are being imitated."""
         return self._expert_dataset
 
@@ -421,7 +421,7 @@ class GAIL(AdversarialTrainer):
     def __init__(
         self,
         venv: vec_env.VecEnv,
-        expert_data: Union[types.Transitions, dataset.Dataset[types.Transitions]],
+        expert_data: Union[types.Transitions, datasets.Dataset[types.Transitions]],
         gen_policy: base_class.BaseRLModel,
         *,
         discrim_kwargs: Optional[Mapping] = None,
@@ -449,7 +449,7 @@ class AIRL(AdversarialTrainer):
     def __init__(
         self,
         venv: vec_env.VecEnv,
-        expert_data: Union[types.Transitions, dataset.Dataset[types.Transitions]],
+        expert_data: Union[types.Transitions, datasets.Dataset[types.Transitions]],
         gen_policy: base_class.BaseRLModel,
         *,
         reward_net_cls: Type[reward_net.RewardNet] = reward_net.BasicShapedRewardNet,
