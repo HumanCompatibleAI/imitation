@@ -10,7 +10,7 @@ import torch.utils.tensorboard as thboard
 import tqdm
 from stable_baselines3.common import base_class, preprocessing, vec_env
 
-from imitation.data import buffer, dataset, types, wrappers
+from imitation.data import buffer, datasets, types, wrappers
 from imitation.rewards import common as rew_common
 from imitation.rewards import discrim_net, reward_net
 from imitation.util import logger, reward_wrapper
@@ -39,7 +39,7 @@ class AdversarialTrainer:
         venv: vec_env.VecEnv,
         gen_algo: base_class.BaseAlgorithm,
         discrim: discrim_net.DiscrimNet,
-        expert_data: Union[dataset.Dataset[types.Transitions], types.Transitions],
+        expert_data: Union[datasets.Dataset[types.Transitions], types.Transitions],
         *,
         log_dir: str = "output/",
         disc_batch_size: int = 2048,
@@ -145,7 +145,7 @@ class AdversarialTrainer:
 
         if isinstance(expert_data, types.Transitions):
             # Somehow, pytype doesn't recognize that `expert_data` is Transitions.
-            expert_data = dataset.TransitionsDictDatasetAdaptor(
+            expert_data = datasets.TransitionsDictDatasetAdaptor(
                 expert_data,  # pytype: disable=wrong-arg-types
             )
         self._expert_dataset = expert_data
@@ -411,7 +411,7 @@ class GAIL(AdversarialTrainer):
     def __init__(
         self,
         venv: vec_env.VecEnv,
-        expert_data: Union[types.Transitions, dataset.Dataset[types.Transitions]],
+        expert_data: Union[types.Transitions, datasets.Dataset[types.Transitions]],
         gen_algo: base_class.BaseAlgorithm,
         *,
         # FIXME(sam) pass in discrim net directly; don't ask for kwargs indirectly
@@ -440,7 +440,7 @@ class AIRL(AdversarialTrainer):
     def __init__(
         self,
         venv: vec_env.VecEnv,
-        expert_data: Union[types.Transitions, dataset.Dataset[types.Transitions]],
+        expert_data: Union[types.Transitions, datasets.Dataset[types.Transitions]],
         gen_algo: base_class.BaseAlgorithm,
         *,
         # FIXME(sam): pass in reward net directly, not via _cls and _kwargs

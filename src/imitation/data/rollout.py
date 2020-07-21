@@ -372,25 +372,31 @@ def flatten_trajectories(
     trajectories: Sequence[types.Trajectory],
 ) -> types.Transitions:
     """Flatten a series of trajectory dictionaries into arrays.
-
     Returns observations, actions, next observations, rewards.
-
     Args:
         trajectories: list of trajectories.
-
     Returns:
       The trajectories flattened into a single batch of Transitions.
     """
-    keys = ["obs", "next_obs", "acts", "dones"]
+    keys = ["obs", "next_obs", "acts", "dones", "infos"]
     parts = {key: [] for key in keys}
     for traj in trajectories:
         parts["acts"].append(traj.acts)
+
         obs = traj.obs
         parts["obs"].append(obs[:-1])
         parts["next_obs"].append(obs[1:])
+
         dones = np.zeros(len(traj.acts), dtype=np.bool)
         dones[-1] = True
         parts["dones"].append(dones)
+
+        if traj.infos is None:
+            infos = np.array([{}] * len(traj))
+        else:
+            infos = traj.infos
+        parts["infos"].append(infos)
+
     cat_parts = {
         key: np.concatenate(part_list, axis=0) for key, part_list in parts.items()
     }

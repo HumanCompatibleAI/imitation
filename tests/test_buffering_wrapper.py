@@ -71,8 +71,9 @@ def _join_transitions(
     rews = concat(t.rews for t in trans_list)
     acts = concat(t.acts for t in trans_list)
     dones = concat(t.dones for t in trans_list)
+    infos = concat(t.infos for t in trans_list)
     return types.TransitionsWithRew(
-        obs=obs, next_obs=next_obs, rews=rews, acts=acts, dones=dones
+        obs=obs, next_obs=next_obs, rews=rews, acts=acts, dones=dones, infos=infos,
     )
 
 

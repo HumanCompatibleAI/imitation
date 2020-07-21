@@ -126,10 +126,7 @@ def test_trainer_save_reload(tmpdir):
     third_trainer = make_trainer(tmpdir)
     third_vars = third_trainer.bc_trainer.policy.state_dict()
     assert len(third_vars) == len(old_vars)
-    difference = False
-    for var, values in third_vars.items():
-        difference = difference or not values.equal(old_vars[var])
-    assert difference
+    assert not all(values.equal(old_vars[var]) for var, values in third_vars.items())
 
 
 def test_policy_save_reload(tmpdir):
