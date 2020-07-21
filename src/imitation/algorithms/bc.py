@@ -28,7 +28,9 @@ def reconstruct_policy(
     Returns:
         policy: policy with reloaded weights.
     """
-    return th.load(policy_path, map_location=utils.get_device(device))
+    policy = th.load(policy_path, map_location=utils.get_device(device))
+    assert isinstance(policy, policies.BasePolicy)
+    return policy
 
 
 class ConstantLRSchedule:

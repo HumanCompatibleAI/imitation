@@ -363,12 +363,11 @@ class DAggerTrainer:
 
     def save_trainer(self) -> Tuple[str, str]:
         """Create a snapshot of trainer in the scratch/working directory.
-
-        The created snapshot can also be reloaded with `.reconstruct_trainer()`.
-        For convenience, this method creates the snapshot in two parts. One part saves
-        data associated with the trainer object. The other part saves data associated
-        with the current policy, which can then be passed to evaluation routines for
-        other algorithms.
+        The created snapshot can be reloaded with `.reconstruct_trainer()`.
+        In addition to saving one copy of the policy in the trainer snapshot, this
+        method saves a second copy of the policy in its own file. Having a second copy
+        of the policy is convenient because it can be loaded on its own and passed to
+        evaluation routines for other algorithms.
 
         Returns:
           checkpoint_path: a path to one of the created `DAggerTrainer` checkpoints.
