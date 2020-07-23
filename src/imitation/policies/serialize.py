@@ -139,14 +139,9 @@ policy_registry.register(
 
 def _add_stable_baselines_policies(classes):
     for k, (cls_name, attr) in classes.items():
-        try:
-            cls = registry.load_attr(cls_name)
-            fn = _load_stable_baselines(cls, attr)
-            policy_registry.register(k, value=fn)
-        except (AttributeError, ImportError):
-            # We expect PPO1 load to fail if mpi4py isn't installed.
-            # Stable Baselines can be installed without mpi4py.
-            logging.debug(f"Couldn't load {cls_name}. Skipping...")
+        cls = registry.load_attr(cls_name)
+        fn = _load_stable_baselines(cls, attr)
+        policy_registry.register(k, value=fn)
 
 
 STABLE_BASELINES_CLASSES = {
