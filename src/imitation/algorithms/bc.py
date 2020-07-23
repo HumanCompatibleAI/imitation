@@ -135,7 +135,7 @@ class BC:
                  is automatically converted to a shuffled, epoch-order
                  `Dataset[types.TransitionsMinimal]`.
         """
-        if isinstance(expert_data, types.Transitions):
+        if isinstance(expert_data, types.TransitionsMinimal):
             trans = expert_data
             expert_dataset = datasets.TransitionsDictDatasetAdaptor(
                 trans, datasets.EpochOrderDictDataset
