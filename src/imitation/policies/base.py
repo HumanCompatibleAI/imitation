@@ -23,7 +23,7 @@ class HardCodedPolicy(policies.BasePolicy, abc.ABC):
         np_obs = obs.detach().cpu().numpy()
         for np_ob in np_obs:
             assert self.observation_space.contains(np_ob)
-            np_actions.append(self._choose_action(np_obs))
+            np_actions.append(self._choose_action(np_ob))
         np_actions = np.stack(np_actions, axis=0)
         th_actions = th.as_tensor(np_actions, device=self.device)
         return th_actions
