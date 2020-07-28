@@ -109,7 +109,7 @@ def compute_train_stats(
         int_is_generated_pred = bin_is_generated_pred.long()
         int_is_generated_true = bin_is_generated_true.long()
         n_generated = th.sum(int_is_generated_true).item()
-        n_labels = labels_gen_is_one.size(0)
+        n_labels = len(labels_gen_is_one)
         n_expert = n_labels - n_generated
         pct_expert = n_expert / float(n_labels)
         n_expert_pred = int(n_labels - th.sum(int_is_generated_pred))
@@ -131,18 +131,18 @@ def compute_train_stats(
         entropy = th.mean(label_dist.entropy())
 
     pairs = [
-        ("disc_loss", th.mean(disc_loss).item()),
+        ("disc_loss", th.mean(disc_loss)),
         # accuracy, as well as accuracy on *just* expert examples and *just*
         # generated examples
-        ("disc_acc", acc.item()),
-        ("disc_acc_expert", expert_acc.item()),
-        ("disc_acc_gen", generated_acc.item()),
+        ("disc_acc", float(acc)),
+        ("disc_acc_expert", float(expert_acc)),
+        ("disc_acc_gen", float(generated_acc)),
         # entropy of the predicted label distribution, averaged equally across
         # both classes (if this drops then disc is very good or has given up)
-        ("disc_entropy", entropy.item()),
+        ("disc_entropy", float(entropy)),
         # true number of expert demos and predicted number of expert demos
-        ("disc_proportion_expert_true", pct_expert.item()),
-        ("disc_proportion_expert_pred", pct_expert_pred),
+        ("disc_proportion_expert_true", float(pct_expert)),
+        ("disc_proportion_expert_pred", float(pct_expert_pred)),
         ("n_expert", float(n_expert)),
         ("n_generated", float(n_generated)),
     ]  # type: List[Tuple[str, float]]
