@@ -225,7 +225,7 @@ def generate_trajectories(
     """Generate trajectory dictionaries from a policy and an environment.
 
     Args:
-      policy (BasePolicy or BaseAlgorithm): A stable_baselines3 policy or RLModel,
+      policy (BasePolicy or BaseAlgorithm): A stable_baselines3 policy or algorithm
           trained on the gym environment.
       venv: The vectorized environments to interact with.
       sample_until: A function determining the termination condition.

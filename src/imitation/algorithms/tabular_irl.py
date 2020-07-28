@@ -130,7 +130,7 @@ def mce_irl(
         grad_l2_eps (float): optimisation also terminates if the $\ell_2$ norm
             of the MCE IRL gradient falls below this value.
         print_interval (int or None): how often to log current loss stats
-            (using logging). None to disable.
+            (using `logging`). None to disable.
 
     Returns:
         (np.ndarray, np.ndarray): tuple of final parameters found by optimiser

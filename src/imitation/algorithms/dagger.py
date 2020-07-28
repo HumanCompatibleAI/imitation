@@ -363,6 +363,7 @@ class DAggerTrainer:
 
     def save_trainer(self) -> Tuple[str, str]:
         """Create a snapshot of trainer in the scratch/working directory.
+
         The created snapshot can be reloaded with `.reconstruct_trainer()`.
         In addition to saving one copy of the policy in the trainer snapshot, this
         method saves a second copy of the policy in its own file. Having a second copy

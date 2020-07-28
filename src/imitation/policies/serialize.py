@@ -106,7 +106,7 @@ def _load_stable_baselines(
 
     def f(path: str, venv: VecEnv) -> BasePolicy:
         """Loads a policy saved to path, for environment env."""
-        logging.info(f"Loading Stable Baselines policy for '{cls}' " f"from '{path}'")
+        logging.info(f"Loading Stable Baselines policy for '{cls}' from '{path}'")
         model_path = os.path.join(path, "model.pkl")
         model = cls.load(model_path, env=venv)
         policy = getattr(model, policy_attr)

@@ -2,7 +2,7 @@
 
 import collections
 import functools
-from typing import Callable, Dict, List, Tuple
+from typing import Callable, Dict, List, Tuple, Union
 
 import gym
 import numpy as np
@@ -112,7 +112,7 @@ def compute_train_stats(
         n_labels = labels_gen_is_one.size(0)
         n_expert = n_labels - n_generated
         pct_expert = n_expert / float(n_labels)
-        n_expert_pred = int(len(bin_is_generated_pred) - th.sum(int_is_generated_pred))
+        n_expert_pred = int(n_labels - th.sum(int_is_generated_pred))
         pct_expert_pred = n_expert_pred / float(n_labels)
         correct_vec = th.eq(bin_is_generated_pred, bin_is_generated_true)
         acc = th.mean(correct_vec.float())
@@ -145,7 +145,7 @@ def compute_train_stats(
         ("disc_proportion_expert_pred", pct_expert_pred),
         ("n_expert", n_expert),
         ("n_generated", n_generated),
-    ]  # type: List[Tuple[str, th.Tensor]]
+    ]  # type: List[Tuple[str, Union[th.Tensor, float]]]
     # convert to float
     pairs = [
         (key, float(value.item()) if isinstance(value, th.Tensor) else value)
