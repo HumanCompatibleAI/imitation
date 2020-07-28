@@ -138,7 +138,6 @@ class BC:
                  is automatically converted to a shuffled, epoch-order
                  `Dataset[types.TransitionsMinimal]`.
         """
-        # FIXME(sam): I think docstring is wrong, should be "acts".
         if isinstance(expert_data, types.Transitions):
             trans = expert_data
             expert_dataset = datasets.TransitionsDictDatasetAdaptor(
