@@ -1,6 +1,5 @@
 import collections
 import dataclasses
-import functools
 import logging
 from typing import Callable, Dict, Hashable, List, Optional, Sequence, Union
 

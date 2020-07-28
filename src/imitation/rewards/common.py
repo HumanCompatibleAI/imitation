@@ -2,7 +2,7 @@
 
 import collections
 import functools
-from typing import Callable, Dict, List, Tuple, Union
+from typing import Callable, Dict, List, Tuple
 
 import gym
 import numpy as np
@@ -131,24 +131,19 @@ def compute_train_stats(
         entropy = th.mean(label_dist.entropy())
 
     pairs = [
-        ("disc_loss", th.mean(disc_loss)),
+        ("disc_loss", th.mean(disc_loss).item()),
         # accuracy, as well as accuracy on *just* expert examples and *just*
         # generated examples
-        ("disc_acc", acc),
-        ("disc_acc_expert", expert_acc),
-        ("disc_acc_gen", generated_acc),
+        ("disc_acc", acc.item()),
+        ("disc_acc_expert", expert_acc.item()),
+        ("disc_acc_gen", generated_acc.item()),
         # entropy of the predicted label distribution, averaged equally across
         # both classes (if this drops then disc is very good or has given up)
-        ("disc_entropy", entropy),
+        ("disc_entropy", entropy.item()),
         # true number of expert demos and predicted number of expert demos
-        ("disc_proportion_expert_true", pct_expert),
+        ("disc_proportion_expert_true", pct_expert.item()),
         ("disc_proportion_expert_pred", pct_expert_pred),
-        ("n_expert", n_expert),
-        ("n_generated", n_generated),
-    ]  # type: List[Tuple[str, Union[th.Tensor, float]]]
-    # convert to float
-    pairs = [
-        (key, float(value.item()) if isinstance(value, th.Tensor) else value)
-        for key, value in pairs
-    ]
+        ("n_expert", float(n_expert)),
+        ("n_generated", float(n_generated)),
+    ]  # type: List[Tuple[str, float]]
     return collections.OrderedDict(pairs)
