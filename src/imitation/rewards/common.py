@@ -108,8 +108,8 @@ def compute_train_stats(
         bin_is_expert_true = th.logical_not(bin_is_generated_true)
         int_is_generated_pred = bin_is_generated_pred.long()
         int_is_generated_true = bin_is_generated_true.long()
-        n_generated = th.sum(int_is_generated_true).item()
-        n_labels = len(labels_gen_is_one)
+        n_generated = float(th.sum(int_is_generated_true))
+        n_labels = float(len(labels_gen_is_one))
         n_expert = n_labels - n_generated
         pct_expert = n_expert / float(n_labels)
         n_expert_pred = int(n_labels - th.sum(int_is_generated_pred))
@@ -121,7 +121,9 @@ def compute_train_stats(
         if n_expert < 1:
             expert_acc = th.tensor(float("NaN"), device=_n_pred_expert.device)
         else:
-            expert_acc = _n_pred_expert / n_expert
+            # float() is defensive, since we cannot divide Torch tensors by
+            # Python ints
+            expert_acc = _n_pred_expert / float(n_expert)
 
         _n_pred_gen = th.sum(th.logical_and(bin_is_generated_true, correct_vec))
         _n_gen_or_1 = max(1, n_generated)
