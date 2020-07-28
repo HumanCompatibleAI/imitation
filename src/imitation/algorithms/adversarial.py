@@ -92,7 +92,7 @@ class AdversarialTrainer:
         assert (
             logger.is_configured()
         ), "Requires call to imitation.util.logger.configure"
-        self._global_step = 0
+        self._step = 0
 
         assert disc_batch_size % disc_minibatch_size == 0
         assert disc_minibatch_size % 2 == 0, (
@@ -223,8 +223,7 @@ class AdversarialTrainer:
         """
         with logger.accumulate_means("disc"):
             # optionally write TB summaries for collected ops
-            step = self._global_step
-            write_summaries = self._init_tensorboard and step % 20 == 0
+            write_summaries = self._init_tensorboard and self._step % 20 == 0
 
             # compute loss
             batch = self._make_disc_train_batch(
@@ -243,16 +242,17 @@ class AdversarialTrainer:
             self._disc_opt.zero_grad()
             loss.backward()
             self._disc_opt.step()
+            self._step += 1
 
             # compute/write stats and TensorBoard data
             with th.no_grad():
                 train_stats = rew_common.compute_train_stats(
                     disc_logits, batch["labels_gen_is_one"], loss
                 )
-            logger.record("step", step)
+            logger.record("step", self._step)
             for k, v in train_stats.items():
                 logger.record(k, v)
-            logger.dump(self._global_step)
+            logger.dump(self._step)
             if write_summaries:
                 self._summary_writer.add_histogram("disc_logits", disc_logits.detach())
 
@@ -286,6 +286,7 @@ class AdversarialTrainer:
                 reset_num_timesteps=False,
                 **learn_kwargs,
             )
+            self._step += 1
 
         gen_samples = self.venv_train_norm.pop_transitions()
         self._gen_replay_buffer.store(gen_samples)
@@ -320,7 +321,7 @@ class AdversarialTrainer:
             self.train_disc(self.disc_batch_size)
             if callback:
                 callback(epoch)
-            logger.dump(self._global_step)
+            logger.dump(self._step)
 
     def _torchify_array(self, ndarray: np.ndarray, **kwargs) -> th.Tensor:
         return th.as_tensor(ndarray, device=self.discrim.device(), **kwargs)

@@ -10,7 +10,6 @@ from stable_baselines3.common.policies import BasePolicy
 from stable_baselines3.common.vec_env import VecEnv
 
 from imitation.data import types
-from imitation.policies.base import get_action_policy
 
 
 def unwrap_traj(traj: types.TrajectoryWithRew) -> types.TrajectoryWithRew:
@@ -241,13 +240,9 @@ def generate_trajectories(
       may be collected to avoid biasing process towards short episodes; the user
       should truncate if required.
     """
+    get_action = policy.predict
     if isinstance(policy, BaseAlgorithm):
-        get_action = policy.predict
         policy.set_env(venv)
-    elif isinstance(policy, BasePolicy):
-        get_action = policy.predict
-    else:
-        get_action = functools.partial(get_action_policy, policy)
 
     # Collect rollout tuples.
     trajectories = []

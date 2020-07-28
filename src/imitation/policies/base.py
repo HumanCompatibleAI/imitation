@@ -64,25 +64,3 @@ class FeedForward32Policy(policies.ActorCriticPolicy):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs, net_arch=[32, 32])
-
-
-# TODO(scottemmons): remove the use of this helper function
-#  to complete Stable Baselines3 port
-def get_action_policy(policy, *args, **kwargs):
-    """Gets an action from a Stable Baselines policy.
-
-    In a previous version of Stable Baselines, this helper function was needed to do
-    processing of the policy's output. However, Stable Baselines 3 handles the
-    processing automatically, so this function is now simply an alias for
-    policy.predict().
-
-    Args:
-        policy (stable_baselines3.common.policies.BasePolicy): The policy.
-        *args: Positional arguments to pass to policy.predict()
-        **kwargs: Keywords arguments to pass to policy.predict()
-
-    Returns:
-        (Tuple[np.ndarray, Optional[np.ndarray]]) the model's action and the next state
-            (used in recurrent policies)
-    """
-    return policy.predict(*args, **kwargs)
