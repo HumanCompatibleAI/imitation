@@ -133,7 +133,7 @@ def compute_train_stats(
         entropy = th.mean(label_dist.entropy())
 
     pairs = [
-        ("disc_loss", th.mean(disc_loss)),
+        ("disc_loss", float(th.mean(disc_loss))),
         # accuracy, as well as accuracy on *just* expert examples and *just*
         # generated examples
         ("disc_acc", float(acc)),
