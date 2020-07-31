@@ -84,7 +84,7 @@ def test_density_trainer_smoke():
     # (it's actually really poor)
     env_name = "Pendulum-v0"
     rollout_path = "tests/data/expert_models/pendulum_0/rollouts/final.pkl"
-    rollouts = types.load(rollout_path)[:8]
+    rollouts = types.load(rollout_path)[:2]
     env = util.make_vec_env(env_name, 2)
     imitation_trainer = util.init_rl(env)
     density_trainer = DensityTrainer(
@@ -95,4 +95,5 @@ def test_density_trainer_smoke():
         is_stationary=False,
         kernel="gaussian",
     )
-    density_trainer.train_policy(10)
+    density_trainer.train_policy(n_timesteps=2)
+    density_trainer.test_policy(n_trajectories=2)
