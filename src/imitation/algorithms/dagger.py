@@ -97,7 +97,7 @@ def _load_trajectory(npz_path: str) -> types.Trajectory:
 
 class InteractiveTrajectoryCollector(gym.Wrapper):
     """Wrapper around the `.step()` and `.reset()` of an env that allows DAgger to
-    inject a "robot" action (i.e. an action from of the imitation policy) that overrides
+    inject a "robot" action (i.e. an action from the imitation policy) that overrides
     the action given to `.step()` when necessary.
 
     Will also automatically save trajectories.
@@ -326,10 +326,10 @@ class DAggerTrainer:
         the current interaction round.
 
         Arguments:
-          **train_kwargs: arguments to pass to `BC.train()`.
+            **train_kwargs: arguments to pass to `BC.train()`.
 
         Returns:
-          round_num: new round number after advancing the round counter.
+            round_num: new round number after advancing the round counter.
         """
         logging.info("Loading demonstrations")
         self._try_load_demos()
@@ -343,10 +343,10 @@ class DAggerTrainer:
         """Create trajectory collector to extend current round's demonstration set.
 
         Returns:
-          collector: an `InteractiveTrajectoryCollector` configured with the
-            appropriate beta, appropriate imitator policy, etc. for the current
-            round. Refer to the documentation for
-            `InteractiveTrajectoryCollector` to see how to use this.
+            collector: an `InteractiveTrajectoryCollector` configured with the
+                appropriate beta, appropriate imitator policy, etc. for the current
+                round. Refer to the documentation for
+                `InteractiveTrajectoryCollector` to see how to use this.
         """
         save_dir = self._demo_dir_path_for_round()
         beta = self.beta_schedule(self.round_num)
@@ -371,8 +371,8 @@ class DAggerTrainer:
         evaluation routines for other algorithms.
 
         Returns:
-          checkpoint_path: a path to one of the created `DAggerTrainer` checkpoints.
-          policy_path: a path to one of the created `DAggerTrainer` policies.
+            checkpoint_path: a path to one of the created `DAggerTrainer` checkpoints.
+            policy_path: a path to one of the created `DAggerTrainer` policies.
         """
         os.makedirs(self.scratch_dir, exist_ok=True)
 
@@ -394,9 +394,10 @@ class DAggerTrainer:
 
         return checkpoint_paths[0], policy_paths[0]
 
-    def save_policy(self, *args, **kwargs) -> None:
+    def save_policy(self, policy_path: str) -> None:
         """Save the current policy only (and not the rest of the trainer).
 
-        Refer to docs for `BC.save_policy`.
+        Args:
+            policy_path: path to save policy to.
         """
-        self.bc_trainer.save_policy(*args, **kwargs)
+        self.bc_trainer.save_policy(policy_path)
