@@ -67,6 +67,7 @@ class BC:
         optimizer_kwargs: Optional[Dict[str, Any]] = None,
         ent_weight: float = 1e-3,
         l2_weight: float = 0.0,
+        device: Union[str, th.device] = "auto",
     ):
         """Behavioral cloning (BC).
 
@@ -86,6 +87,7 @@ class BC:
                   weight decay, for optimiser construction.
             ent_weight: scaling applied to the policy's entropy regularization.
             l2_weight: scaling applied to the policy's L2 regularization.
+            device: name/identity of device to place policy on.
         """
         if optimizer_kwargs:
             if "weight_decay" in optimizer_kwargs:
@@ -102,14 +104,11 @@ class BC:
             lr_schedule=ConstantLRSchedule(),
         )
         self.policy_kwargs.update(policy_kwargs or {})
+        self.device = device = utils.get_device(device)
 
-        self.policy = self.policy_class(
-            **self.policy_kwargs
+        self.policy = self.policy_class(**self.policy_kwargs).to(
+            self.device
         )  # pytype: disable=not-instantiable
-        # FIXME(sam): this is to get around SB3 bug that fails to put
-        # action_net, value_net, etc. on the same device as mlp_extractor in
-        # ActorCriticPolicy. Remove this once SB3 issue #111 is fixed.
-        self.policy = self.policy.to(self.policy.device)
         optimizer_kwargs = optimizer_kwargs or {}
         self.optimizer = optimizer_cls(self.policy.parameters(), **optimizer_kwargs)
 

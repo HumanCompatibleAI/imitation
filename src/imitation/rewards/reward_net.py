@@ -439,7 +439,10 @@ class BasicShapedRewardNet(RewardNetShaped):
                 self.observation_space
             )
             self._potential_net = networks.build_mlp(
-                in_size=potential_in_size, hid_sizes=(32, 32), squeeze_output=True
+                in_size=potential_in_size,
+                hid_sizes=(32, 32),
+                squeeze_output=True,
+                flatten_input=True,
             )
         else:
             self._potential_net = potential_net

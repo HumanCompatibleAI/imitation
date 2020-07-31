@@ -96,3 +96,43 @@ def test_serialize_identity(env_name, net_cls, tmpdir):
         assert len(predictions) == 3
         assert np.allclose(predictions[0], predictions[1])
         assert np.allclose(predictions[0], predictions[2])
+
+
+class Env2D(gym.Env):
+    """Mock environment with 2D observations."""
+
+    def __init__(self):
+        super().__init__()
+        self.observation_space = gym.spaces.Box(shape=(5, 5), low=-1.0, high=1.0)
+        self.action_space = gym.spaces.Discrete(2)
+
+    def step(self, action):
+        obs = self.observation_space.sample()
+        rew = 0.0
+        done = False
+        info = {}
+        return obs, rew, done, info
+
+    def reset(self):
+        return self.observation_space.sample()
+
+
+def test_potential_net_2d_obs():
+    """Test potential net can do forward-prop with 2D observation.
+
+    This is a regression test for a problem identified Eric. Previously, reward
+    nets would not properly flatten N-dimensional states before passing them to
+    potential networks, leading to shape mismatches."""
+    # instantiate environment & get batch observations, actions, etc.
+    env = Env2D()
+    obs = env.reset()
+    action = env.action_space.sample()
+    next_obs, _, done, _ = env.step(action)
+    obs_b = obs[None]
+    action_b = np.array([action], dtype="int")
+    next_obs_b = next_obs[None]
+    done_b = np.array([done], dtype="bool")
+
+    net = reward_net.BasicShapedRewardNet(env.observation_space, env.action_space)
+    rew_batch = net.predict_reward_train(obs_b, action_b, next_obs_b, done_b)
+    assert rew_batch.shape == (1,)

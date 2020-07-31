@@ -50,6 +50,7 @@ class AdversarialTrainer:
         init_tensorboard: bool = False,
         init_tensorboard_graph: bool = False,
         debug_use_ground_truth: bool = False,
+        device: Union[str, th.device] = "auto",
     ):
         """Builds AdversarialTrainer.
 
@@ -58,10 +59,11 @@ class AdversarialTrainer:
             gen_algo: The generator RL algorithm that is trained to maximize
               discriminator confusion. The generator batch size
               `self.gen_batch_size` is inferred from `gen_algo.n_steps`.
-            discrim: The discriminator network.
+            discrim: The discriminator network. This will be moved to the same
+              device as `gen_algo`.
             expert_data: Either a `Dataset` of expert `Transitions`, or an instance of
-                `Transitions` to be automatically converted into a
-                `Dataset[Transitions]`.
+              `Transitions` to be automatically converted into a
+              `Dataset[Transitions]`.
             log_dir: Directory to store TensorBoard logs, plots, etc. in.
             disc_batch_size: The default number of expert and generator transitions
               samples to feed to the discriminator in each call to
@@ -108,7 +110,7 @@ class AdversarialTrainer:
         self._log_dir = log_dir
 
         # Create graph for optimising/recording stats on discriminator
-        self.discrim = discrim
+        self.discrim = discrim.to(self.gen_algo.device)
         self._disc_opt_cls = disc_opt_cls
         self._disc_opt_kwargs = disc_opt_kwargs or {}
         self._init_tensorboard = init_tensorboard

@@ -23,6 +23,7 @@ def build_mlp(
     name: Optional[str] = None,
     activation: Type[nn.Module] = nn.ReLU,
     squeeze_output=False,
+    flatten_input=False,
 ) -> nn.Module:
     """Constructs a Torch MLP.
 
@@ -34,6 +35,8 @@ def build_mlp(
         activation: activation to apply after hidden layers.
         squeeze_output: if out_size=1, then squeeze_input=True ensures that MLP
             output is of size (B,) instead of (B,1).
+        flatten_input: should input be flattened along axes 1, 2, 3, …? Useful
+            if you want to, e.g., process small images inputs with an MLP.
 
     Returns:
         nn.Module: an MLP mapping from inputs of size (batch_size, in_size) to
@@ -48,6 +51,9 @@ def build_mlp(
         prefix = ""
     else:
         prefix = f"{name}_"
+
+    if flatten_input:
+        layers[f"{prefix}flatten"] = nn.Flatten()
 
     # Hidden layers
     prev_size = in_size
