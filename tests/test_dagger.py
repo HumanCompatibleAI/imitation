@@ -77,7 +77,7 @@ def test_trainer_makes_progress(tmpdir):
         trainer.bc_trainer.policy,
         venv,
         sample_until=rollout.min_episodes(15),
-        deterministic_policy=True,
+        deterministic_policy=False,
     )
     # checking that the initial policy is poor can be flaky; sometimes the
     # randomly initialised policy performs very well, and it's not clear why
