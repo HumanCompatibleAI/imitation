@@ -98,13 +98,14 @@ class BC:
         self.action_space = action_space
         self.observation_space = observation_space
         self.policy_class = policy_class
+        self.device = device = utils.get_device(device)
         self.policy_kwargs = dict(
             observation_space=self.observation_space,
             action_space=self.action_space,
             lr_schedule=ConstantLRSchedule(),
+            device=self.device
         )
         self.policy_kwargs.update(policy_kwargs or {})
-        self.device = device = utils.get_device(device)
 
         self.policy = self.policy_class(**self.policy_kwargs).to(
             self.device
