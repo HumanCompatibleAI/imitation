@@ -32,7 +32,7 @@ def trainer(request, venv):
 
 
 def test_weight_decay_init_error(venv):
-    with pytest.raises(TypeError, "weight_decay"):
+    with pytest.raises(ValueError, match=".*weight_decay.*"):
         bc.BC(
             venv.observation_space,
             venv.action_space,
