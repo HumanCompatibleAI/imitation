@@ -15,7 +15,7 @@ from imitation.scripts.config.eval_policy import eval_policy_ex
 from imitation.util import reward_wrapper, util
 
 
-class InteractiveRender(VecEnvWrapper):
+class InteractiveRender(VecEnvWrapper):  # pragma: no cover
     def __init__(self, venv, fps):
         super().__init__(venv)
         self.render_fps = fps
@@ -95,7 +95,9 @@ def eval_policy(
         max_episode_steps=max_episode_steps,
     )
 
-    if render:
+    if render:  # pragma: no cover
+        # As of July 31, 2020, DummyVecEnv rendering only works with num_vec=1
+        # due to a bug on Stable Baselines 3.
         venv = InteractiveRender(venv, render_fps)
     # TODO(adam): add support for videos using VideoRecorder?
 

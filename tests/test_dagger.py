@@ -59,17 +59,22 @@ def test_traj_collector(tmpdir):
     assert nonzero_acts == 0
 
 
-def make_trainer(tmpdir):
+def make_trainer(tmpdir, beta_schedule=dagger.LinearBetaSchedule(1)):
     env = gym.make(ENV_NAME)
     env.seed(42)
     return dagger.DAggerTrainer(
-        env, tmpdir, dagger.LinearBetaSchedule(1), optimizer_kwargs=dict(lr=1e-3),
+        env, tmpdir, beta_schedule, optimizer_kwargs=dict(lr=1e-3),
     )
 
 
-def test_trainer_makes_progress(tmpdir):
+@pytest.fixture(params=[None, dagger.LinearBetaSchedule(1)])
+def trainer(request, tmpdir):
+    beta_sched = request.param
+    return make_trainer(tmpdir, beta_sched)
+
+
+def test_trainer_makes_progress(trainer):
     venv = util.make_vec_env(ENV_NAME, 10)
-    trainer = make_trainer(tmpdir)
     with pytest.raises(dagger.NeedsDemosException):
         trainer.extend_and_update()
     assert trainer.round_num == 0
@@ -108,8 +113,7 @@ def test_trainer_makes_progress(tmpdir):
     )
 
 
-def test_trainer_save_reload(tmpdir):
-    trainer = make_trainer(tmpdir)
+def test_trainer_save_reload(tmpdir, trainer):
     trainer.round_num = 3
     trainer.save_trainer()
     new_trainer = dagger.reconstruct_trainer(tmpdir)

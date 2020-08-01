@@ -10,7 +10,7 @@ from stable_baselines3.common import preprocessing
 from torch import nn
 
 from imitation.rewards import common as rewards_common
-from imitation.rewards import reward_net
+from imitation.rewards import reward_nets
 from imitation.util import networks
 
 
@@ -190,7 +190,7 @@ class DiscrimNetAIRL(DiscrimNet):
     where :math:`f_{\theta}` is `self.reward_net`.
     """  # noqa: E501
 
-    def __init__(self, reward_net: reward_net.RewardNet, entropy_weight: float = 1.0):
+    def __init__(self, reward_net: reward_nets.RewardNet, entropy_weight: float = 1.0):
         """Builds a DiscrimNetAIRL.
 
         Args:

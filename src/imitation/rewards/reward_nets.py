@@ -329,7 +329,7 @@ class BasicRewardMLP(nn.Module):
         if self.use_next_state:
             inputs.append(th.flatten(next_state, 1))
         if self.use_done:
-            inputs.append(th.flatten(done, 1))
+            inputs.append(th.reshape(done, [-1, 1]))
 
         inputs_concat = th.cat(inputs, dim=1)
 

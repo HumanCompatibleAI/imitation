@@ -12,7 +12,7 @@ from stable_baselines3.common import base_class, preprocessing, vec_env
 
 from imitation.data import buffer, datasets, types, wrappers
 from imitation.rewards import common as rew_common
-from imitation.rewards import discrim_net, reward_net
+from imitation.rewards import discrim_nets, reward_nets
 from imitation.util import logger, reward_wrapper
 
 
@@ -38,7 +38,7 @@ class AdversarialTrainer:
         self,
         venv: vec_env.VecEnv,
         gen_algo: base_class.BaseAlgorithm,
-        discrim: discrim_net.DiscrimNet,
+        discrim: discrim_nets.DiscrimNet,
         expert_data: Union[datasets.Dataset[types.Transitions], types.Transitions],
         *,
         log_dir: str = "output/",
@@ -434,7 +434,7 @@ class GAIL(AdversarialTrainer):
 
         """
         discrim_kwargs = discrim_kwargs or {}
-        discrim = discrim_net.DiscrimNetGAIL(
+        discrim = discrim_nets.DiscrimNetGAIL(
             venv.observation_space, venv.action_space, **discrim_kwargs
         )
         super().__init__(venv, gen_algo, discrim, expert_data, **kwargs)
@@ -448,7 +448,7 @@ class AIRL(AdversarialTrainer):
         gen_algo: base_class.BaseAlgorithm,
         *,
         # FIXME(sam): pass in reward net directly, not via _cls and _kwargs
-        reward_net_cls: Type[reward_net.RewardNet] = reward_net.BasicShapedRewardNet,
+        reward_net_cls: Type[reward_nets.RewardNet] = reward_nets.BasicShapedRewardNet,
         reward_net_kwargs: Optional[Mapping] = None,
         discrim_kwargs: Optional[Mapping] = None,
         **kwargs,
@@ -479,5 +479,5 @@ class AIRL(AdversarialTrainer):
         )
 
         discrim_kwargs = discrim_kwargs or {}
-        discrim = discrim_net.DiscrimNetAIRL(reward_network, **discrim_kwargs)
+        discrim = discrim_nets.DiscrimNetAIRL(reward_network, **discrim_kwargs)
         super().__init__(venv, gen_algo, discrim, expert_data, **kwargs)

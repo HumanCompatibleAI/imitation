@@ -92,7 +92,7 @@ class BC:
         if optimizer_kwargs:
             if "weight_decay" in optimizer_kwargs:
                 raise ValueError(
-                    "Use the parameter l2_weight to specify the weight decay."
+                    "Use the parameter l2_weight insteand of weight_decay."
                 )
 
         self.action_space = action_space
@@ -106,6 +106,7 @@ class BC:
             device=self.device,
         )
         self.policy_kwargs.update(policy_kwargs or {})
+        self.device = utils.get_device(device)
 
         self.policy = self.policy_class(**self.policy_kwargs).to(
             self.device

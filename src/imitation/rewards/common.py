@@ -111,15 +111,18 @@ def compute_train_stats(
         n_generated = float(th.sum(int_is_generated_true))
         n_labels = float(len(labels_gen_is_one))
         n_expert = n_labels - n_generated
-        pct_expert = n_expert / float(n_labels)
+        pct_expert = n_expert / float(n_labels) if n_labels > 0 else float("NaN")
         n_expert_pred = int(n_labels - th.sum(int_is_generated_pred))
-        pct_expert_pred = n_expert_pred / float(n_labels)
+        if n_labels > 0:
+            pct_expert_pred = n_expert_pred / float(n_labels)
+        else:
+            pct_expert_pred = float("NaN")
         correct_vec = th.eq(bin_is_generated_pred, bin_is_generated_true)
         acc = th.mean(correct_vec.float())
 
         _n_pred_expert = th.sum(th.logical_and(bin_is_expert_true, correct_vec))
         if n_expert < 1:
-            expert_acc = th.tensor(float("NaN"), device=_n_pred_expert.device)
+            expert_acc = float("NaN")
         else:
             # float() is defensive, since we cannot divide Torch tensors by
             # Python ints
@@ -127,7 +130,7 @@ def compute_train_stats(
 
         _n_pred_gen = th.sum(th.logical_and(bin_is_generated_true, correct_vec))
         _n_gen_or_1 = max(1, n_generated)
-        generated_acc = _n_pred_gen / _n_gen_or_1
+        generated_acc = _n_pred_gen / float(_n_gen_or_1)
 
         label_dist = th.distributions.Bernoulli(disc_logits_gen_is_high)
         entropy = th.mean(label_dist.entropy())

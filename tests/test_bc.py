@@ -31,10 +31,20 @@ def trainer(request, venv):
     return bc.BC(venv.observation_space, venv.action_space, expert_data=data)
 
 
+def test_weight_decay_init_error(venv):
+    with pytest.raises(TypeError, "weight_decay"):
+        bc.BC(
+            venv.observation_space,
+            venv.action_space,
+            expert_data=None,
+            optimizer_kwargs=dict(weight_decay=1e-4),
+        )
+
+
 def test_bc(trainer: bc.BC, venv):
     sample_until = rollout.min_episodes(15)
     novice_ret_mean = rollout.mean_return(trainer.policy, venv, sample_until)
-    trainer.train(n_epochs=1)
+    trainer.train(n_epochs=1, on_epoch_end=lambda _: print("epoch end"))
     trained_ret_mean = rollout.mean_return(trainer.policy, venv, sample_until)
     # Typically <80 score is bad, >350 is okay. We want an improvement of at
     # least 50 points, which seems like it's not noise.

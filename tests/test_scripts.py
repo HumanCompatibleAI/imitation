@@ -65,6 +65,7 @@ def test_expert_demos_rollouts_from_policy(tmpdir):
         config_updates=dict(
             log_root=tmpdir,
             rollout_save_path=osp.join(tmpdir, "rollouts", "test.pkl"),
+            rollout_save_interval=1,
             policy_path="tests/data/expert_models/cartpole_0/policies/final/",
         ),
     )

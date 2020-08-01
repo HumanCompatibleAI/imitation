@@ -9,13 +9,13 @@ import torch as th
 
 from imitation.data import rollout
 from imitation.policies import base
-from imitation.rewards import reward_net, serialize
+from imitation.rewards import reward_nets, serialize
 from imitation.util import util
 
 ENVS = ["FrozenLake-v0", "CartPole-v1", "Pendulum-v0"]
 HARDCODED_TYPES = ["zero"]
 
-REWARD_NETS = [reward_net.BasicRewardNet, reward_net.BasicShapedRewardNet]
+REWARD_NETS = [reward_nets.BasicRewardNet, reward_nets.BasicShapedRewardNet]
 
 
 @pytest.mark.parametrize("env_name", ENVS)
@@ -133,6 +133,6 @@ def test_potential_net_2d_obs():
     next_obs_b = next_obs[None]
     done_b = np.array([done], dtype="bool")
 
-    net = reward_net.BasicShapedRewardNet(env.observation_space, env.action_space)
+    net = reward_nets.BasicShapedRewardNet(env.observation_space, env.action_space)
     rew_batch = net.predict_reward_train(obs_b, action_b, next_obs_b, done_b)
     assert rew_batch.shape == (1,)
