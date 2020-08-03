@@ -2,7 +2,7 @@ import dataclasses
 from typing import Dict, Mapping, Optional, Tuple
 
 import numpy as np
-from stable_baselines.common import vec_env
+from stable_baselines3.common import vec_env
 
 from imitation.data import datasets, types
 
@@ -322,10 +322,10 @@ class ReplayBuffer(datasets.Dataset[types.Transitions]):
         Returns:
             A new ReplayBuffer.
         """
-        data_capacity, *obs_shape = transitions.obs.shape
+        obs_shape = transitions.obs.shape[1:]
+        act_shape = transitions.acts.shape[1:]
         if capacity is None:
-            capacity = data_capacity
-        _, *act_shape = transitions.acts.shape
+            capacity = transitions.obs.shape[0]
         instance = cls(
             capacity=capacity,
             obs_shape=obs_shape,

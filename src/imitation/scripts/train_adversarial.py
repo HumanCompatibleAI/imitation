@@ -3,18 +3,19 @@
 Can be used as a CLI script, or the `train_and_plot` function can be called directly.
 """
 
+import logging
 import os
 import os.path as osp
 from typing import Mapping, Optional
 
-import tensorflow as tf
+import torch as th
 from sacred.observers import FileStorageObserver
 
 from imitation.algorithms import adversarial
 from imitation.data import rollout, types
 from imitation.policies import serialize
 from imitation.scripts.config.train_adversarial import train_ex
-from imitation.util import logger, networks
+from imitation.util import logger
 from imitation.util import sacred as sacred_util
 from imitation.util import util
 
@@ -23,12 +24,13 @@ def save(trainer, save_path):
     """Save discriminator and generator."""
     # We implement this here and not in Trainer since we do not want to actually
     # serialize the whole Trainer (including e.g. expert demonstrations).
-    trainer.discrim.save(os.path.join(save_path, "discrim"))
+    os.makedirs(save_path, exist_ok=True)
+    th.save(trainer.discrim, os.path.join(save_path, "discrim.pt"))
     # TODO(gleave): unify this with the saving logic in data_collect?
     # (Needs #43 to be merged before attempting.)
     serialize.save_stable_model(
         os.path.join(save_path, "gen_policy"),
-        trainer.gen_policy,
+        trainer.gen_algo,
         trainer.venv_train_norm,
     )
 
@@ -118,7 +120,7 @@ def train(
     assert os.path.exists(rollout_path)
     total_timesteps = int(total_timesteps)
 
-    tf.logging.info("Logging to %s", log_dir)
+    logging.info("Logging to %s", log_dir)
     logger.configure(log_dir, ["tensorboard", "stdout"])
     os.makedirs(log_dir, exist_ok=True)
     sacred_util.build_sacred_symlink(log_dir, _run)
@@ -129,77 +131,78 @@ def train(
         expert_trajs = expert_trajs[:n_expert_demos]
     expert_transitions = rollout.flatten_trajectories(expert_trajs)
 
-    with networks.make_session():
-        if init_tensorboard:
-            tensorboard_log = osp.join(log_dir, "sb_tb")
-        else:
-            tensorboard_log = None
+    venv = util.make_vec_env(
+        env_name,
+        num_vec,
+        seed=_seed,
+        parallel=parallel,
+        log_dir=log_dir,
+        max_episode_steps=max_episode_steps,
+    )
 
-        venv = util.make_vec_env(
-            env_name,
-            num_vec,
-            seed=_seed,
-            parallel=parallel,
-            log_dir=log_dir,
-            max_episode_steps=max_episode_steps,
-        )
+    # TODO(shwang): Let's get rid of init_rl later on?
+    # It's really just a stub function now.
 
-        # TODO(shwang): Let's get rid of init_rl later on?
-        # It's really just a stub function now.
-        gen_policy = util.init_rl(
-            venv, verbose=1, tensorboard_log=tensorboard_log, **init_rl_kwargs
-        )
+    # if init_tensorboard:
+    #     tensorboard_log = osp.join(log_dir, "sb_tb")
+    # else:
+    #     tensorboard_log = None
 
-        # Convert Sacred's ReadOnlyDict to dict so we can modify it.
-        allowed_keys = {"shared", "gail", "airl"}
-        assert discrim_net_kwargs.keys() <= allowed_keys
-        assert algorithm_kwargs.keys() <= allowed_keys
+    gen_algo = util.init_rl(
+        # FIXME(sam): ignoring tensorboard_log is a hack to prevent SB3 from
+        # re-configuring the logger (SB3 issue #109). See init_rl() for details.
+        venv,
+        **init_rl_kwargs,
+    )
 
-        discrim_kwargs_shared = discrim_net_kwargs.get("shared", {})
-        discrim_kwargs_algo = discrim_net_kwargs.get(algorithm, {})
-        final_discrim_kwargs = dict(**discrim_kwargs_shared, **discrim_kwargs_algo)
+    # Convert Sacred's ReadOnlyDict to dict so we can modify it.
+    allowed_keys = {"shared", "gail", "airl"}
+    assert discrim_net_kwargs.keys() <= allowed_keys
+    assert algorithm_kwargs.keys() <= allowed_keys
 
-        algorithm_kwargs_shared = algorithm_kwargs.get("shared", {})
-        algorithm_kwargs_algo = algorithm_kwargs.get(algorithm, {})
-        final_algorithm_kwargs = dict(
-            **algorithm_kwargs_shared, **algorithm_kwargs_algo,
-        )
+    discrim_kwargs_shared = discrim_net_kwargs.get("shared", {})
+    discrim_kwargs_algo = discrim_net_kwargs.get(algorithm, {})
+    final_discrim_kwargs = dict(**discrim_kwargs_shared, **discrim_kwargs_algo)
 
-        if algorithm.lower() == "gail":
-            algo_cls = adversarial.GAIL
-        elif algorithm.lower() == "airl":
-            algo_cls = adversarial.AIRL
-        else:
-            raise ValueError(f"Invalid value algorithm={algorithm}.")
+    algorithm_kwargs_shared = algorithm_kwargs.get("shared", {})
+    algorithm_kwargs_algo = algorithm_kwargs.get(algorithm, {})
+    final_algorithm_kwargs = dict(**algorithm_kwargs_shared, **algorithm_kwargs_algo,)
 
-        trainer = algo_cls(
-            venv=venv,
-            expert_data=expert_transitions,
-            gen_policy=gen_policy,
-            log_dir=log_dir,
-            discrim_kwargs=final_discrim_kwargs,
-            **final_algorithm_kwargs,
-        )
+    if algorithm.lower() == "gail":
+        algo_cls = adversarial.GAIL
+    elif algorithm.lower() == "airl":
+        algo_cls = adversarial.AIRL
+    else:
+        raise ValueError(f"Invalid value algorithm={algorithm}.")
 
-        def callback(epoch):
-            if checkpoint_interval > 0 and epoch % checkpoint_interval == 0:
-                save(trainer, os.path.join(log_dir, "checkpoints", f"{epoch:05d}"))
+    trainer = algo_cls(
+        venv=venv,
+        expert_data=expert_transitions,
+        gen_algo=gen_algo,
+        log_dir=log_dir,
+        discrim_kwargs=final_discrim_kwargs,
+        **final_algorithm_kwargs,
+    )
 
-        trainer.train(total_timesteps, callback)
+    def callback(epoch):
+        if checkpoint_interval > 0 and epoch % checkpoint_interval == 0:
+            save(trainer, os.path.join(log_dir, "checkpoints", f"{epoch:05d}"))
 
-        # Save final artifacts.
-        if checkpoint_interval >= 0:
-            save(trainer, os.path.join(log_dir, "checkpoints", "final"))
+    trainer.train(total_timesteps, callback)
 
-        # Final evaluation of imitation policy.
-        results = {}
-        sample_until_eval = rollout.min_episodes(n_episodes_eval)
-        trajs = rollout.generate_trajectories(
-            trainer.gen_policy, trainer.venv_test, sample_until=sample_until_eval
-        )
-        results["expert_stats"] = rollout.rollout_stats(expert_trajs)
-        results["imit_stats"] = rollout.rollout_stats(trajs)
-        return results
+    # Save final artifacts.
+    if checkpoint_interval >= 0:
+        save(trainer, os.path.join(log_dir, "checkpoints", "final"))
+
+    # Final evaluation of imitation policy.
+    results = {}
+    sample_until_eval = rollout.min_episodes(n_episodes_eval)
+    trajs = rollout.generate_trajectories(
+        trainer.gen_algo, trainer.venv_test, sample_until=sample_until_eval
+    )
+    results["expert_stats"] = rollout.rollout_stats(expert_trajs)
+    results["imit_stats"] = rollout.rollout_stats(trajs)
+    return results
 
 
 def main_console():

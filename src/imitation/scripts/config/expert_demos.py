@@ -30,7 +30,7 @@ def expert_demos_defaults():
     rollout_save_n_timesteps = None  # Min timesteps saved per file, optional.
     rollout_save_n_episodes = None  # Num episodes saved per file, optional.
 
-    policy_save_interval = 100  # Num updates between saves (<=0 disables)
+    policy_save_interval = 2000  # Num updates between saves (<=0 disables)
     policy_save_final = True  # If True, save after training is finished.
 
     init_tensorboard = False  # If True, then write Tensorboard logs.
@@ -57,7 +57,7 @@ def logging(env_name, log_root):
 @expert_demos_ex.config
 def rollouts_from_policy_only_defaults(log_dir):
     policy_path = None  # Policy path for rollouts_from_policy command only
-    policy_type = "ppo2"  # Policy type for rollouts_from_policy command only
+    policy_type = "ppo"  # Policy type for rollouts_from_policy command only
     rollout_save_path = os.path.join(
         log_dir, "rollout.pkl"
     )  # Save path for `rollouts_from_policy` only.
@@ -153,8 +153,8 @@ def two_d_maze():
 @expert_demos_ex.named_config
 def fast():
     """Intended for testing purposes: small # of updates, ends quickly."""
-    total_timesteps = int(1e3)
-    max_episode_steps = int(1e3)
+    total_timesteps = int(1)
+    max_episode_steps = int(1)
 
 
 # Shared settings

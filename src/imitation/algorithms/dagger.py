@@ -6,39 +6,76 @@ expert's policy; over time, they shift to be drawn more and more from the imitat
 policy.
 """
 
+import abc
 import dataclasses
+import logging
 import os
-from typing import Callable, Tuple
+from typing import Callable, Tuple, Union
 
-import cloudpickle
 import gym
 import numpy as np
-import tensorflow as tf
-from stable_baselines.common.policies import BasePolicy
+import torch as th
+from stable_baselines3.common import utils
 
-from imitation.algorithms.bc import BC, set_tf_vars
+from imitation.algorithms import bc
 from imitation.data import rollout, types
 from imitation.util import util
 
 
-def linear_beta_schedule(rampdown_rounds: int) -> Callable[[int], float]:
-    """Linearly-decreasing schedule for beta (% of time that user act is used).
+class BetaSchedule(abc.ABC):
+    """
+    Determines the value of beta (% of time that demonstrator action is used) over the
+    progression of training rounds.
+    """
+
+    @abc.abstractmethod
+    def __call__(self, round_num: int) -> float:
+        """Gives the value of beta for the current round.
+
+        Args:
+            round: the current round number. Rounds are assumed to be numbered 0, 1, 2,
+              etc.
+
+        Returns:
+            beta: the fraction of the time to sample a demonstrator action. Robot
+              actions will be sampled the remainder of the time.
+        """
+
+
+class LinearBetaSchedule(BetaSchedule):
+    """
+    Linearly-decreasing schedule for beta (% of time that demonstrator action is used).
+    """
+
+    def __init__(self, rampdown_rounds: int):
+        """
+        Args:
+            rampdown_rounds: number of rounds over which to anneal beta.
+        """
+        self.rampdown_rounds = rampdown_rounds
+
+    def __call__(self, round_num: int) -> float:
+        assert round_num >= 0
+        return min(1, max(0, (self.rampdown_rounds - round_num) / self.rampdown_rounds))
+
+
+def reconstruct_trainer(
+    scratch_dir: str, device: Union[th.device, str] = "auto"
+) -> "DAggerTrainer":
+    """Reconstruct trainer from the latest snapshot in some working directory.
 
     Args:
-      rampdown_rounds: number of rounds over which to anneal beta. Rounds
-        are assumed to be numbered 0, 1, 2, ….
+      scratch_dir: path to the working directory created by a previous run of
+        this algorithm. The directory should contain `checkpoint-latest.pt` and
+        `policy-latest.pt` files.
+      device: device on which to load the trainer.
 
     Returns:
-      schedule: function that takes current round number (0, or 1, or 2, etc.)
-        as input & returns current beta as float.
+      trainer: a reconstructed `DAggerTrainer` with the same state as the
+        previously-saved one.
     """
-    assert rampdown_rounds > 0
-
-    def schedule(i: int) -> float:
-        assert i >= 0
-        return min(1, max(0, (rampdown_rounds - i) / rampdown_rounds))
-
-    return schedule
+    checkpoint_path = os.path.join(scratch_dir, "checkpoint-latest.pt")
+    return th.load(checkpoint_path, map_location=utils.get_device(device))
 
 
 def _save_trajectory(npz_path: str, trajectory: types.Trajectory,) -> None:
@@ -60,7 +97,7 @@ def _load_trajectory(npz_path: str) -> types.Trajectory:
 
 class InteractiveTrajectoryCollector(gym.Wrapper):
     """Wrapper around the `.step()` and `.reset()` of an env that allows DAgger to
-    inject a "robot" action (i.e. an action from of the imitation policy) that overrides
+    inject a "robot" action (i.e. an action from the imitation policy) that overrides
     the action given to `.step()` when necessary.
 
     Will also automatically save trajectories.
@@ -146,7 +183,7 @@ class InteractiveTrajectoryCollector(gym.Wrapper):
             trajectory_path = os.path.join(
                 self.save_dir, "dagger-demo-" + timestamp + ".npz"
             )
-            tf.logging.info(f"Saving demo at '{trajectory_path}'")
+            logging.info(f"Saving demo at '{trajectory_path}'")
             _save_trajectory(trajectory_path, trajectory)
 
         if done:
@@ -220,7 +257,7 @@ class DAggerTrainer:
         del self._init_args["bc_kwargs"]
 
         if beta_schedule is None:
-            beta_schedule = linear_beta_schedule(15)
+            beta_schedule = LinearBetaSchedule(15)
         self.beta_schedule = beta_schedule
         self.scratch_dir = scratch_dir
         self.env = env
@@ -229,18 +266,9 @@ class DAggerTrainer:
         self._last_loaded_round = -1
         self._all_demos = []
 
-        self._build_graph()
-
-    def _build_graph(self):
-        with tf.variable_scope("dagger"):
-            self.bc_trainer = BC(
-                self.env.observation_space, self.env.action_space, **self.bc_kwargs
-            )
-            with self._graph.as_default():
-                self._vars = tf.get_collection(
-                    tf.GraphKeys.GLOBAL_VARIABLES, scope=tf.get_variable_scope().name
-                )
-            assert len(self._vars) > 0
+        self.bc_trainer = bc.BC(
+            self.env.observation_space, self.env.action_space, **self.bc_kwargs
+        )
 
     def _load_all_demos(self):
         num_demos_by_round = []
@@ -249,7 +277,7 @@ class DAggerTrainer:
             demo_paths = self._get_demo_paths(round_dir)
             self._all_demos.extend(_load_trajectory(p) for p in demo_paths)
             num_demos_by_round.append(len(demo_paths))
-        tf.logging.info(f"Loaded {len(self._all_demos)} total")
+        logging.info(f"Loaded {len(self._all_demos)} total")
         demo_transitions = rollout.flatten_trajectories(self._all_demos)
         return demo_transitions, num_demos_by_round
 
@@ -279,19 +307,11 @@ class DAggerTrainer:
         self._check_has_latest_demos()
         if self._last_loaded_round < self.round_num:
             transitions, num_demos = self._load_all_demos()
-            tf.logging.info(
+            logging.info(
                 f"Loaded {sum(num_demos)} new demos from {len(num_demos)} rounds"
             )
             self.bc_trainer.set_expert_dataset(transitions)
             self._last_loaded_round = self.round_num
-
-    @property
-    def _sess(self):
-        return self.bc_trainer.sess
-
-    @property
-    def _graph(self):
-        return self.bc_trainer.sess.graph
 
     def extend_and_update(self, **train_kwargs) -> int:
         """Extend internal batch of data and train.
@@ -306,33 +326,33 @@ class DAggerTrainer:
         the current interaction round.
 
         Arguments:
-          **train_kwargs: arguments to pass to `BC.train()`.
+            **train_kwargs: arguments to pass to `BC.train()`.
 
         Returns:
-          round_num: new round number after advancing the round counter.
+            round_num: new round number after advancing the round counter.
         """
-        tf.logging.info("Loading demonstrations")
+        logging.info("Loading demonstrations")
         self._try_load_demos()
-        tf.logging.info(f"Training at round {self.round_num}")
+        logging.info(f"Training at round {self.round_num}")
         self.bc_trainer.train(**train_kwargs)
         self.round_num += 1
-        tf.logging.info(f"New round number is {self.round_num}")
+        logging.info(f"New round number is {self.round_num}")
         return self.round_num
 
     def get_trajectory_collector(self) -> InteractiveTrajectoryCollector:
         """Create trajectory collector to extend current round's demonstration set.
 
         Returns:
-          collector: an `InteractiveTrajectoryCollector` configured with the
-            appropriate beta, appropriate imitator policy, etc. for the current
-            round. Refer to the documentation for
-            `InteractiveTrajectoryCollector` to see how to use this.
+            collector: an `InteractiveTrajectoryCollector` configured with the
+                appropriate beta, appropriate imitator policy, etc. for the current
+                round. Refer to the documentation for
+                `InteractiveTrajectoryCollector` to see how to use this.
         """
         save_dir = self._demo_dir_path_for_round()
         beta = self.beta_schedule(self.round_num)
 
         def get_robot_act(obs):
-            (act,), _, _, _ = self.bc_trainer.policy.step(obs[None])
+            (act,), _, = self.bc_trainer.policy.predict(obs[None])
             return act
 
         collector = InteractiveTrajectoryCollector(
@@ -341,86 +361,43 @@ class DAggerTrainer:
 
         return collector
 
-    def save_trainer(self) -> str:
+    def save_trainer(self) -> Tuple[str, str]:
         """Create a snapshot of trainer in the scratch/working directory.
 
-        The created snapshot can also be reloaded with `.reconstruct_trainer()`.
-        For convenience, this method will also create a separate snapshot of the
-        current policy, which can then be passed to evaluation routines for other
-        algorithms.
+        The created snapshot can be reloaded with `.reconstruct_trainer()`.
+        In addition to saving one copy of the policy in the trainer snapshot, this
+        method saves a second copy of the policy in its own file. Having a second copy
+        of the policy is convenient because it can be loaded on its own and passed to
+        evaluation routines for other algorithms.
 
         Returns:
-          checkpoint_path: a path to one of the created `DAggerTrainer`
-            checkpoints.
+            checkpoint_path: a path to one of the created `DAggerTrainer` checkpoints.
+            policy_path: a path to one of the created `DAggerTrainer` policies.
         """
         os.makedirs(self.scratch_dir, exist_ok=True)
+
         # save full trainer checkpoints
         checkpoint_paths = [
-            os.path.join(self.scratch_dir, f"checkpoint-{self.round_num:03d}.pkl"),
-            os.path.join(self.scratch_dir, "checkpoint-latest.pkl"),
+            os.path.join(self.scratch_dir, f"checkpoint-{self.round_num:03d}.pt"),
+            os.path.join(self.scratch_dir, "checkpoint-latest.pt"),
         ]
-        saved_attrs = {
-            attr_name: getattr(self, attr_name) for attr_name in self.SAVE_ATTRS
-        }
-        snapshot_dict = {
-            "init_args": self._init_args,
-            "variable_values": self._sess.run(self._vars),
-            "saved_attrs": saved_attrs,
-        }
         for checkpoint_path in checkpoint_paths:
-            with open(checkpoint_path, "wb") as fp:
-                cloudpickle.dump(snapshot_dict, fp)
+            th.save(self, checkpoint_path)
 
         # save policies separately for convenience
         policy_paths = [
-            os.path.join(self.scratch_dir, f"policy-{self.round_num:03d}.pkl"),
-            os.path.join(self.scratch_dir, "policy-latest.pkl"),
+            os.path.join(self.scratch_dir, f"policy-{self.round_num:03d}.pt"),
+            os.path.join(self.scratch_dir, "policy-latest.pt"),
         ]
         for policy_path in policy_paths:
             self.save_policy(policy_path)
 
-        return checkpoint_paths[-1]
+        return checkpoint_paths[0], policy_paths[0]
 
-    @classmethod
-    def reconstruct_trainer(cls, scratch_dir: str) -> "DAggerTrainer":
-        """Reconstruct trainer from the latest snapshot in some working directory.
+    def save_policy(self, policy_path: str) -> None:
+        """Save the current policy only (and not the rest of the trainer).
 
         Args:
-          scratch_dir: path to the working directory created by a previous run of
-            this algorithm. The directory should contain a
-            `checkpoint-latest.pkl` file.
-
-        Returns:
-          trainer: a reconstructed `DAggerTrainer` with the same state as the
-            previously-saved one.
+            policy_path: path to save policy to.
         """
-        checkpoint_path = os.path.join(scratch_dir, "checkpoint-latest.pkl")
-        with open(checkpoint_path, "rb") as fp:
-            saved_trainer = cloudpickle.load(fp)
-        # reconstruct from old init args
-        trainer = cls(**saved_trainer["init_args"])
-        # set TF variables
-        set_tf_vars(
-            values=saved_trainer["variable_values"],
-            tf_vars=trainer._vars,
-            sess=trainer.bc_trainer.sess,
-        )
-        for attr_name in cls.SAVE_ATTRS:
-            attr_value = saved_trainer["saved_attrs"][attr_name]
-            setattr(trainer, attr_name, attr_value)
-        return trainer
-
-    def save_policy(self, *args, **kwargs):
-        """Save the current policy only, (and not the rest of the trainer).
-
-        Refer to docs for `BC.save_policy`.
-        """
-        self.bc_trainer.save_policy(*args, **kwargs)
-
-    @staticmethod
-    def reconstruct_policy(*args, **kwargs) -> BasePolicy:
-        """Reconstruct a policy saved with `save_policy()`.
-
-        This is an alias for `BC.reconstruct_policy()`.
-        """
-        return BC.reconstruct_policy(*args, **kwargs)
+        self.bc_trainer.save_policy(policy_path)

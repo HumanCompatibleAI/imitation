@@ -28,14 +28,6 @@ imitation.util.sacred module
    :undoc-members:
    :show-inheritance:
 
-imitation.util.serialize module
--------------------------------
-
-.. automodule:: imitation.util.serialize
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 imitation.util.util module
 --------------------------
 

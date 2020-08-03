@@ -1,12 +1,11 @@
-import contextlib
+import logging
 import os
 import os.path as osp
 import time
 from typing import Optional
 
-import tensorflow as tf
 from sacred.observers import FileStorageObserver
-from stable_baselines.common.vec_env import VecEnvWrapper
+from stable_baselines3.common.vec_env import VecEnvWrapper
 
 import imitation.util.sacred as sacred_util
 from imitation.data import rollout
@@ -16,7 +15,7 @@ from imitation.scripts.config.eval_policy import eval_policy_ex
 from imitation.util import reward_wrapper, util
 
 
-class InteractiveRender(VecEnvWrapper):
+class InteractiveRender(VecEnvWrapper):  # pragma: no cover
     def __init__(self, venv, fps):
         super().__init__(venv)
         self.render_fps = fps
@@ -84,8 +83,8 @@ def eval_policy(
     os.makedirs(log_dir, exist_ok=True)
     sacred_util.build_sacred_symlink(log_dir, _run)
 
-    tf.logging.set_verbosity(tf.logging.INFO)
-    tf.logging.info("Logging to %s", log_dir)
+    logging.basicConfig(level=logging.INFO)
+    logging.info("Logging to %s", log_dir)
     sample_until = rollout.make_sample_until(eval_n_timesteps, eval_n_episodes)
     venv = util.make_vec_env(
         env_name,
@@ -96,19 +95,19 @@ def eval_policy(
         max_episode_steps=max_episode_steps,
     )
 
-    if render:
+    if render:  # pragma: no cover
+        # As of July 31, 2020, DummyVecEnv rendering only works with num_vec=1
+        # due to a bug on Stable Baselines 3.
         venv = InteractiveRender(venv, render_fps)
     # TODO(adam): add support for videos using VideoRecorder?
 
-    with contextlib.ExitStack() as stack:
-        if reward_type is not None:
-            reward_fn_ctx = load_reward(reward_type, reward_path, venv)
-            reward_fn = stack.enter_context(reward_fn_ctx)
-            venv = reward_wrapper.RewardVecEnvWrapper(venv, reward_fn)
-            tf.logging.info(f"Wrapped env in reward {reward_type} from {reward_path}.")
+    if reward_type is not None:
+        reward_fn = load_reward(reward_type, reward_path, venv)
+        venv = reward_wrapper.RewardVecEnvWrapper(venv, reward_fn)
+        logging.info(f"Wrapped env in reward {reward_type} from {reward_path}.")
 
-        with serialize.load_policy(policy_type, policy_path, venv) as policy:
-            trajs = rollout.generate_trajectories(policy, venv, sample_until)
+    policy = serialize.load_policy(policy_type, policy_path, venv)
+    trajs = rollout.generate_trajectories(policy, venv, sample_until)
     return rollout.rollout_stats(trajs)
 
 

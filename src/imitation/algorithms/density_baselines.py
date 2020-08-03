@@ -7,12 +7,11 @@ then rewards the agent for following that estimate.
 from typing import Sequence
 
 import numpy as np
-import tensorflow as tf
 from gym.spaces.utils import flatten
 from sklearn.neighbors import KernelDensity
 from sklearn.preprocessing import StandardScaler
-from stable_baselines.common.base_class import BaseRLModel
-from stable_baselines.common.vec_env import VecEnv
+from stable_baselines3.common.base_class import BaseAlgorithm
+from stable_baselines3.common.vec_env import VecEnv
 
 from imitation.data import rollout, types
 from imitation.util import reward_wrapper
@@ -215,7 +214,7 @@ class DensityTrainer:
         self,
         venv: VecEnv,
         rollouts: Sequence[types.Trajectory],
-        imitation_trainer: BaseRLModel,
+        imitation_trainer: BaseAlgorithm,
         *,
         standardise_inputs: bool = True,
         kernel: str = "gaussian",
@@ -251,10 +250,6 @@ class DensityTrainer:
             standardise_inputs=standardise_inputs,
         )
         self.wrapped_env = reward_wrapper.RewardVecEnvWrapper(self.venv, self.reward_fn)
-        self.graph = tf.Graph()
-        self.sess = tf.Session(graph=self.graph)
-        with self.graph.as_default():
-            self.sess.run(tf.global_variables_initializer())
 
     def train_policy(self, n_timesteps=int(1e6), **kwargs):
         """Train the imitation policy for a given number of timesteps.

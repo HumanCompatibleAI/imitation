@@ -1,20 +1,9 @@
-import contextlib
 import functools
 import importlib
-from typing import (
-    Callable,
-    ContextManager,
-    Generic,
-    Iterable,
-    Iterator,
-    Optional,
-    TypeVar,
-)
+from typing import Callable, Generic, Iterable, Optional, TypeVar
 
 import gym
-from stable_baselines.common.vec_env import VecEnv
-
-from imitation.util import networks
+from stable_baselines3.common.vec_env import VecEnv
 
 T = TypeVar("T")
 LoaderFn = Callable[[str, VecEnv], T]
@@ -100,24 +89,5 @@ def build_loader_fn_require_env(fn: Callable[[VecEnv], T], **kwargs) -> LoaderFn
     def wrapper(path: str, venv: VecEnv) -> T:
         del path
         return fn(venv, **kwargs)
-
-    return wrapper
-
-
-def dummy_context(fn: Callable[..., T]) -> Callable[..., ContextManager[T]]:
-    @functools.wraps(fn)
-    @contextlib.contextmanager
-    def wrapper(*args, **kwargs) -> Iterator[T]:
-        yield fn(*args, **kwargs)
-
-    return wrapper
-
-
-def sess_context(fn: Callable[..., T]) -> Callable[..., ContextManager[T]]:
-    @functools.wraps(fn)
-    @contextlib.contextmanager
-    def wrapper(*args, **kwargs) -> Iterator[T]:
-        with networks.make_session():
-            yield fn(*args, **kwargs)
 
     return wrapper

@@ -1,16 +1,14 @@
 import collections
 import dataclasses
-import functools
+import logging
 from typing import Callable, Dict, Hashable, List, Optional, Sequence, Union
 
 import numpy as np
-import tensorflow as tf
-from stable_baselines.common.base_class import BaseRLModel
-from stable_baselines.common.policies import BasePolicy
-from stable_baselines.common.vec_env import VecEnv
+from stable_baselines3.common.base_class import BaseAlgorithm
+from stable_baselines3.common.policies import BasePolicy
+from stable_baselines3.common.vec_env import VecEnv
 
 from imitation.data import types
-from imitation.policies.base import get_action_policy
 
 
 def unwrap_traj(traj: types.TrajectoryWithRew) -> types.TrajectoryWithRew:
@@ -225,7 +223,7 @@ def generate_trajectories(
     """Generate trajectory dictionaries from a policy and an environment.
 
     Args:
-      policy (BasePolicy or BaseRLModel): A stable_baselines policy or RLModel,
+      policy (BasePolicy or BaseAlgorithm): A stable_baselines3 policy or algorithm
           trained on the gym environment.
       venv: The vectorized environments to interact with.
       sample_until: A function determining the termination condition.
@@ -241,11 +239,9 @@ def generate_trajectories(
       may be collected to avoid biasing process towards short episodes; the user
       should truncate if required.
     """
-    if isinstance(policy, BaseRLModel):
-        get_action = policy.predict
+    get_action = policy.predict
+    if isinstance(policy, BaseAlgorithm):
         policy.set_env(venv)
-    else:
-        get_action = functools.partial(get_action_policy, policy)
 
     # Collect rollout tuples.
     trajectories = []
@@ -417,8 +413,8 @@ def generate_transitions(
     """Generate obs-action-next_obs-reward tuples.
 
     Args:
-      policy (BasePolicy or BaseRLModel): A stable_baselines policy or RLModel,
-          trained on the gym environment.
+      policy (BasePolicy or BaseAlgorithm): A stable_baselines3 policy or
+          algorithm, trained on the gym environment.
       venv: The vectorized environments to interact with.
       n_timesteps: The minimum number of timesteps to sample.
       truncate: If True, then drop any additional samples to ensure that exactly
@@ -443,7 +439,7 @@ def generate_transitions(
 
 def rollout_and_save(
     path: str,
-    policy: Union[BaseRLModel, BasePolicy],
+    policy: Union[BaseAlgorithm, BasePolicy],
     venv: VecEnv,
     sample_until: GenTrajTerminationFn,
     *,
@@ -476,6 +472,6 @@ def rollout_and_save(
         trajs = [dataclasses.replace(traj, infos=None) for traj in trajs]
     if verbose:
         stats = rollout_stats(trajs)
-        tf.logging.info(f"Rollout stats: {stats}")
+        logging.info(f"Rollout stats: {stats}")
 
     types.save(path, trajs)

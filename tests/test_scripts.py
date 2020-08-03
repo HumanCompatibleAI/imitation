@@ -65,6 +65,7 @@ def test_expert_demos_rollouts_from_policy(tmpdir):
         config_updates=dict(
             log_root=tmpdir,
             rollout_save_path=osp.join(tmpdir, "rollouts", "test.pkl"),
+            rollout_save_interval=1,
             policy_path="tests/data/expert_models/cartpole_0/policies/final/",
         ),
     )
@@ -164,7 +165,7 @@ def test_transfer_learning(tmpdir):
     _check_rollout_stats(run.result["imit_stats"])
 
     log_dir_data = osp.join(tmpdir, "expert_demos")
-    discrim_path = osp.join(log_dir_train, "checkpoints", "final", "discrim")
+    discrim_path = osp.join(log_dir_train, "checkpoints", "final", "discrim.pt")
     run = expert_demos.expert_demos_ex.run(
         named_configs=["cartpole", "fast"],
         config_updates=dict(
@@ -199,13 +200,21 @@ PARALLEL_CONFIG_UPDATES = [
         search_space={
             "config_updates": {
                 "algorithm": tune.grid_search(["gail", "airl"]),
-                "algorithm_kwargs": {
-                    "airl": {
-                        "reward_net_kwargs": {
-                            "phi_units": tune.grid_search([[16, 16], [7, 9]]),
-                        }
-                    }
-                },
+                # FIXME(sam): this method of searching for hidden sizes won't
+                # work now that I've changed the API for reward/discriminator
+                # networks. I think we need a nicer API for building such
+                # networks, analogous to the one Stable Baselines has for
+                # policies. We should add back architecture search support once
+                # we have that new API.
+                # "algorithm_kwargs": {
+                #     "airl": {
+                #         "reward_net_kwargs": {
+                #             "build_mlp_kwargs": {
+                #                 "hid_sizes": tune.grid_search([[16, 16], [7, 9]]),
+                #             },
+                #         }
+                #     }
+                # },
             },
         },
     ),
@@ -244,6 +253,12 @@ def _generate_test_rollouts(tmpdir: str, env_named_config: str) -> str:
 
 
 def test_parallel_train_adversarial_custom_env(tmpdir):
+    import gym
+
+    try:
+        gym.make("Ant-v3")
+    except gym.error.DependencyNotInstalled:  # pragma: no cover
+        pytest.skip("mujoco_py not available")
     env_named_config = "custom_ant"
     rollout_path = _generate_test_rollouts(tmpdir, env_named_config)
 
@@ -312,4 +327,4 @@ def test_analyze_gather_tb(tmpdir: str):
     )
     assert run.status == "COMPLETED"
     assert isinstance(run.result, dict)
-    assert run.result["n_tb_dirs"] == 4
+    assert run.result["n_tb_dirs"] == 2

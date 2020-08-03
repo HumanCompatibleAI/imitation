@@ -2,7 +2,7 @@
 
 import numpy as np
 import pytest
-from stable_baselines.common.vec_env import VecNormalize
+from stable_baselines3.common.vec_env import VecNormalize
 
 from imitation.data import rollout
 from imitation.policies import serialize
@@ -24,8 +24,8 @@ BASELINE_MODELS = [
 def test_actions_valid(env_name, policy_type):
     """Test output actions of our custom policies always lie in action space."""
     venv = util.make_vec_env(env_name, n_envs=1, parallel=False)
-    with serialize.load_policy(policy_type, "foobar", venv) as policy:
-        transitions = rollout.generate_transitions(policy, venv, n_timesteps=100)
+    policy = serialize.load_policy(policy_type, "foobar", venv)
+    transitions = rollout.generate_transitions(policy, venv, n_timesteps=100)
 
     for a in transitions.acts:
         assert venv.action_space.contains(a)
@@ -42,15 +42,10 @@ def test_serialize_identity(env_name, model_cfg, normalize, tmpdir):
         venv = vec_normalize = VecNormalize(venv)
 
     model_name, model_cls_name = model_cfg
-    try:
-        model_cls = registry.load_attr(model_cls_name)
-    except (AttributeError, ImportError):  # pragma: no cover
-        pytest.skip(
-            "Couldn't load stable baselines class. "
-            "(Probably because mpi4py not installed.)"
-        )
+    model_cls = registry.load_attr(model_cls_name)
 
-    model = model_cls("MlpPolicy", venv)
+    # FIXME(sam): verbose=1 is a hack to stop it from setting up SB logger
+    model = model_cls("MlpPolicy", venv, verbose=1)
     model.learn(1000)
 
     venv.env_method("seed", 0)
@@ -69,15 +64,15 @@ def test_serialize_identity(env_name, model_cfg, normalize, tmpdir):
     serialize.save_stable_model(tmpdir, model, vec_normalize)
     # We use `orig_venv` since `load_policy` automatically wraps `loaded`
     # with a VecNormalize, when appropriate.
-    with serialize.load_policy(model_name, tmpdir, orig_venv) as loaded:
-        orig_venv.env_method("seed", 0)
-        orig_venv.reset()
-        new_rollout = rollout.generate_transitions(
-            loaded,
-            orig_venv,
-            n_timesteps=1000,
-            deterministic_policy=True,
-            rng=np.random.RandomState(0),
-        )
+    loaded = serialize.load_policy(model_name, tmpdir, orig_venv)
+    orig_venv.env_method("seed", 0)
+    orig_venv.reset()
+    new_rollout = rollout.generate_transitions(
+        loaded,
+        orig_venv,
+        n_timesteps=1000,
+        deterministic_policy=True,
+        rng=np.random.RandomState(0),
+    )
 
     assert np.allclose(orig_rollout.acts, new_rollout.acts)

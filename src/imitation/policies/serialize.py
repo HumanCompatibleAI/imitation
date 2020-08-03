@@ -1,19 +1,26 @@
 """Load serialized policies of different types."""
+# TODO(scottemmons): Only import packages and modules to adhere to style guide:
+#  https://google.github.io/styleguide/pyguide.html#22-imports
 
-import contextlib
+# FIXME(sam): it seems like this module could mostly be replaced with a few
+# torch.load() and torch.save() calls
+
+import logging
 import os
 import pickle
-from typing import Callable, ContextManager, Iterator, Optional, Type
+from typing import Callable, Optional, Tuple, Type, Union
 
-import tensorflow as tf
-from stable_baselines.common.base_class import BaseRLModel
-from stable_baselines.common.policies import BasePolicy
-from stable_baselines.common.vec_env import VecEnv, VecNormalize
+import numpy as np
+import torch as th
+from stable_baselines3.common.base_class import BaseAlgorithm
+from stable_baselines3.common.policies import BasePolicy
+from stable_baselines3.common.vec_env import VecEnv, VecNormalize
+from torch import nn
 
 from imitation.policies.base import RandomPolicy, ZeroPolicy
 from imitation.util import registry
 
-PolicyLoaderFn = Callable[[str, VecEnv], ContextManager[BasePolicy]]
+PolicyLoaderFn = Callable[[str, VecEnv], BasePolicy]
 
 policy_registry: registry.Registry[PolicyLoaderFn] = registry.Registry()
 
@@ -33,32 +40,63 @@ class NormalizePolicy(BasePolicy):
 
     def __init__(self, policy: BasePolicy, vec_normalize: VecNormalize):
         super().__init__(
-            policy.sess,
-            policy.ob_space,
-            policy.ac_space,
-            policy.n_env,
-            policy.n_steps,
-            policy.n_batch,
+            observation_space=policy.observation_space,
+            action_space=policy.action_space,
+            device=policy.device,
         )
         self._policy = policy
         self.vec_normalize = vec_normalize
 
-    def _wrapper(self, fn, obs, state=None, mask=None, *args, **kwargs):
-        norm_obs = self.vec_normalize.normalize_obs(obs)
-        return fn(norm_obs, state=state, mask=mask, *args, **kwargs)
+    def _predict(self, *args, **kwargs):
+        raise NotImplementedError()
 
-    def step(self, *args, **kwargs):
-        return self._wrapper(self._policy.step, *args, **kwargs)
+    def predict(
+        self, obs: np.ndarray, *args, **kwargs
+    ) -> Tuple[np.ndarray, Optional[np.ndarray]]:
+        preproc_obs = self.vec_normalize.normalize_obs(obs)
+        return self._policy.predict(preproc_obs, *args, **kwargs)
 
-    def proba_step(self, *args, **kwargs):
-        return self._wrapper(self._policy.proba_step, *args, **kwargs)
+    # next few methods are meant to prevent users from accidentally treating
+    # this as a real policy
+
+    def forward(*args, **kwargs):
+        raise NotImplementedError()
+
+    @property
+    def squash_output(self) -> bool:
+        raise NotImplementedError()
+
+    @staticmethod
+    def init_weights(module: nn.Module, gain: float = 1) -> None:
+        raise NotImplementedError()
+
+    def scale_action(self, action: np.ndarray) -> np.ndarray:
+        raise NotImplementedError()
+
+    def unscale_action(self, scaled_action: np.ndarray) -> np.ndarray:
+        raise NotImplementedError()
+
+    def save(self, path: str) -> None:
+        raise NotImplementedError()
+
+    @classmethod
+    def load(cls, path: str, device: Union[th.device, str] = "auto") -> BasePolicy:
+        raise NotImplementedError()
+
+    def load_from_vector(self, vector: np.ndarray):
+        raise NotImplementedError()
+
+    def parameters_to_vector(self) -> np.ndarray:
+        raise NotImplementedError()
 
 
-def _load_stable_baselines(cls: Type[BaseRLModel], policy_attr: str) -> PolicyLoaderFn:
+def _load_stable_baselines(
+    cls: Type[BaseAlgorithm], policy_attr: str
+) -> PolicyLoaderFn:
     """Higher-order function, returning a policy loading function.
 
     Args:
-        cls: The RL algorithm, e.g. `stable_baselines.PPO2`.
+        cls: The RL algorithm, e.g. `stable_baselines3.PPO`.
         policy_attr: The attribute of the RL algorithm containing the policy,
             e.g. `act_model`.
 
@@ -66,74 +104,57 @@ def _load_stable_baselines(cls: Type[BaseRLModel], policy_attr: str) -> PolicyLo
         A function loading policies trained via cls.
     """
 
-    @contextlib.contextmanager
-    def f(path: str, venv: VecEnv) -> Iterator[BasePolicy]:
+    def f(path: str, venv: VecEnv) -> BasePolicy:
         """Loads a policy saved to path, for environment env."""
-        tf.logging.info(
-            f"Loading Stable Baselines policy for '{cls}' " f"from '{path}'"
-        )
+        logging.info(f"Loading Stable Baselines policy for '{cls}' from '{path}'")
         model_path = os.path.join(path, "model.pkl")
-        model = None
+        model = cls.load(model_path, env=venv)
+        policy = getattr(model, policy_attr)
+
+        normalize_path = os.path.join(path, "vec_normalize.pkl")
         try:
-            model = cls.load(model_path, env=venv)
-            policy = getattr(model, policy_attr)
+            with open(normalize_path, "rb") as f:
+                vec_normalize = pickle.load(f)
+        except FileNotFoundError:
+            # We did not use VecNormalize during training, skip
+            pass
+        else:
+            vec_normalize.training = False
+            vec_normalize.set_venv(venv)
+            policy = NormalizePolicy(policy, vec_normalize)
+            logging.info(f"Loaded VecNormalize from '{normalize_path}'")
 
-            try:
-                normalize_path = os.path.join(path, "vec_normalize.pkl")
-                with open(normalize_path, "rb") as f:
-                    vec_normalize = pickle.load(f)
-                vec_normalize.training = False
-                vec_normalize.set_venv(venv)
-                policy = NormalizePolicy(policy, vec_normalize)
-                tf.logging.info(f"Loaded VecNormalize from '{normalize_path}'")
-            except FileNotFoundError:
-                # We did not use VecNormalize during training, skip
-                pass
-
-            yield policy
-        finally:
-            if model is not None and model.sess is not None:
-                model.sess.close()
+        return policy
 
     return f
 
 
 policy_registry.register(
-    "random",
-    value=registry.build_loader_fn_require_space(registry.dummy_context(RandomPolicy),),
+    "random", value=registry.build_loader_fn_require_space(RandomPolicy),
 )
 policy_registry.register(
-    "zero",
-    value=registry.build_loader_fn_require_space(registry.dummy_context(ZeroPolicy),),
+    "zero", value=registry.build_loader_fn_require_space(ZeroPolicy),
 )
 
 
 def _add_stable_baselines_policies(classes):
     for k, (cls_name, attr) in classes.items():
-        try:
-            cls = registry.load_attr(cls_name)
-            fn = _load_stable_baselines(cls, attr)
-            policy_registry.register(k, value=fn)
-        except (AttributeError, ImportError):
-            # We expect PPO1 load to fail if mpi4py isn't installed.
-            # Stable Baselines can be installed without mpi4py.
-            tf.logging.debug(f"Couldn't load {cls_name}. Skipping...")
+        cls = registry.load_attr(cls_name)
+        fn = _load_stable_baselines(cls, attr)
+        policy_registry.register(k, value=fn)
 
 
 STABLE_BASELINES_CLASSES = {
-    "ppo1": ("stable_baselines:PPO1", "policy_pi"),
-    "ppo2": ("stable_baselines:PPO2", "act_model"),
+    "ppo": ("stable_baselines3:PPO", "policy"),
 }
 _add_stable_baselines_policies(STABLE_BASELINES_CLASSES)
 
 
-def load_policy(
-    policy_type: str, policy_path: str, venv: VecEnv
-) -> ContextManager[BasePolicy]:
+def load_policy(policy_type: str, policy_path: str, venv: VecEnv) -> BasePolicy:
     """Load serialized policy.
 
     Args:
-        policy_type: A key in `policy_registry`, e.g. `ppo2`.
+        policy_type: A key in `policy_registry`, e.g. `ppo`.
         policy_path: A path on disk where the policy is stored.
         venv: An environment that the policy is to be used with.
     """
@@ -142,7 +163,7 @@ def load_policy(
 
 
 def save_stable_model(
-    output_dir: str, model: BaseRLModel, vec_normalize: Optional[VecNormalize] = None,
+    output_dir: str, model: BaseAlgorithm, vec_normalize: Optional[VecNormalize] = None,
 ) -> None:
     """Serialize policy.
 
@@ -160,4 +181,4 @@ def save_stable_model(
     if vec_normalize is not None:
         with open(os.path.join(output_dir, "vec_normalize.pkl"), "wb") as f:
             pickle.dump(vec_normalize, f)
-    tf.logging.info("Saved policy to %s", output_dir)
+    logging.info("Saved policy to %s", output_dir)

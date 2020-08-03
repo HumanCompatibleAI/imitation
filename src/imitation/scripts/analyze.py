@@ -1,3 +1,4 @@
+import logging
 import os
 import os.path as osp
 import tempfile
@@ -5,7 +6,6 @@ from collections import OrderedDict
 from typing import List, Optional
 
 import pandas as pd
-import tensorflow as tf
 from sacred.observers import FileStorageObserver
 
 import imitation.util.sacred as sacred_util
@@ -52,7 +52,7 @@ def gather_tb_directories(
         # "tb" is TensorBoard directory built by our codebase. "sb_tb" is Stable
         # Baselines TensorBoard directory. There should be at most one of each
         # directory.
-        for basename in ["tb", "sb_tb"]:
+        for basename in ["rl", "tb", "sb_tb"]:
             tb_src_dirs = tuple(
                 sacred_util.filter_subdirs(
                     run_dir, lambda path: osp.basename(path) == basename
@@ -69,8 +69,8 @@ def gather_tb_directories(
                 os.symlink(tb_src_dir, tb_symlink)
                 tb_dirs_count += 1
 
-    tf.logging.info(f"Symlinked {tb_dirs_count} TensorBoard dirs to {tmp_dir}.")
-    tf.logging.info(f"Start Tensorboard with `tensorboard --logdir {tmp_dir}`.")
+    logging.info(f"Symlinked {tb_dirs_count} TensorBoard dirs to {tmp_dir}.")
+    logging.info(f"Start Tensorboard with `tensorboard --logdir {tmp_dir}`.")
     return {"n_tb_dirs": tb_dirs_count, "gather_dir": tmp_dir}
 
 

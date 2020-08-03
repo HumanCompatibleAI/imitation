@@ -2,7 +2,7 @@ from typing import List
 
 import gym
 import numpy as np
-from stable_baselines.common.vec_env import VecEnv, VecEnvWrapper
+from stable_baselines3.common.vec_env import VecEnv, VecEnvWrapper
 
 from imitation.data import rollout, types
 

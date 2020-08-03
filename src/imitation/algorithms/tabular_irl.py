@@ -10,6 +10,7 @@ PyTorch/TensorFlow, and some code for simple reward models.
 """
 
 import abc
+import logging
 
 import jax
 import jax.experimental.stax as jstax
@@ -17,7 +18,6 @@ import jax.numpy as jnp
 import jax.random as jrandom
 import numpy as np
 import scipy
-import tensorflow as tf
 
 
 def mce_partition_fh(env, *, R=None):
@@ -130,7 +130,7 @@ def mce_irl(
         grad_l2_eps (float): optimisation also terminates if the $\ell_2$ norm
             of the MCE IRL gradient falls below this value.
         print_interval (int or None): how often to log current loss stats
-            (using tf.logging). None to disable.
+            (using `logging`). None to disable.
 
     Returns:
         (np.ndarray, np.ndarray): tuple of final parameters found by optimiser
@@ -171,7 +171,7 @@ def mce_irl(
         grad_norm = np.linalg.norm(grad)
         linf_delta = np.max(np.abs(demo_state_om - visitations))
         if print_interval is not None and 0 == (t % print_interval):
-            tf.logging.info(
+            logging.info(
                 "Occupancy measure error@iter % 3d: %f (||params||=%f, "
                 "||grad||=%f, ||E[dr/dw]||=%f)"
                 % (

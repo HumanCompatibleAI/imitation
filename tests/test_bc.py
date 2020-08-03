@@ -2,9 +2,8 @@
 
 import os
 
-import numpy as np
 import pytest
-import tensorflow as tf
+import torch as th
 
 from imitation.algorithms import bc
 from imitation.data import datasets, rollout, types
@@ -21,7 +20,7 @@ def venv():
 
 
 @pytest.fixture(params=[False, True])
-def trainer(request, session, venv):
+def trainer(request, venv):
     convert_dataset = request.param
     rollouts = types.load(ROLLOUT_PATH)
     data = rollout.flatten_trajectories(rollouts)
@@ -32,29 +31,41 @@ def trainer(request, session, venv):
     return bc.BC(venv.observation_space, venv.action_space, expert_data=data)
 
 
+def test_weight_decay_init_error(venv):
+    with pytest.raises(ValueError, match=".*weight_decay.*"):
+        bc.BC(
+            venv.observation_space,
+            venv.action_space,
+            expert_data=None,
+            optimizer_kwargs=dict(weight_decay=1e-4),
+        )
+
+
 def test_bc(trainer: bc.BC, venv):
-    sample_until = rollout.min_episodes(25)
+    sample_until = rollout.min_episodes(15)
     novice_ret_mean = rollout.mean_return(trainer.policy, venv, sample_until)
-    trainer.train(n_epochs=40)
+    trainer.train(n_epochs=1, on_epoch_end=lambda _: print("epoch end"))
     trained_ret_mean = rollout.mean_return(trainer.policy, venv, sample_until)
-    # novice is bad
-    assert novice_ret_mean < 80.0
-    # bc is okay but isn't perfect (for the purpose of this test)
-    assert trained_ret_mean > 350.0
+    # Typically <80 score is bad, >350 is okay. We want an improvement of at
+    # least 50 points, which seems like it's not noise.
+    assert trained_ret_mean - novice_ret_mean > 50
+
+
+def test_train_from_random_dict_dataset(venv):
+    # make sure that we can construct BC instance & train from a RandomDictDataset
+    rollouts = types.load(ROLLOUT_PATH)
+    data = rollout.flatten_trajectories(rollouts)
+    data = datasets.TransitionsDictDatasetAdaptor(data, datasets.RandomDictDataset)
+    trainer = bc.BC(venv.observation_space, venv.action_space, expert_data=data)
+    trainer.train(n_epochs=1)
 
 
 def test_save_reload(trainer, tmpdir):
-    pol_path = os.path.join(tmpdir, "policy.pkl")
-    # just to change the values a little
-    trainer.train(n_epochs=1)
-    var_values = trainer.sess.run(trainer.policy_variables)
+    pol_path = os.path.join(tmpdir, "policy.pt")
+    var_values = list(trainer.policy.parameters())
     trainer.save_policy(pol_path)
-    with tf.Session() as sess:
-        # just make sure it doesn't die
-        with tf.variable_scope("new"):
-            bc.BC.reconstruct_policy(pol_path)
-        new_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope="new")
-        new_values = sess.run(new_vars)
-        assert len(var_values) == len(new_values)
-        for old, new in zip(var_values, new_values):
-            assert np.allclose(old, new)
+    new_policy = bc.reconstruct_policy(pol_path)
+    new_values = list(new_policy.parameters())
+    assert len(var_values) == len(new_values)
+    for old, new in zip(var_values, new_values):
+        assert th.allclose(old, new)

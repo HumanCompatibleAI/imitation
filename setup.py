@@ -1,7 +1,6 @@
 import src.imitation  # pytype: disable=import-error
 from setuptools import find_packages, setup
 
-TF_VERSION = ">=1.15.0,<2.0"
 TESTS_REQUIRE = [
     "seals~=0.1.0",
     "black",
@@ -50,26 +49,26 @@ setup(
         "gym[classic_control]",
         "matplotlib",
         "numpy>=1.15",
+        "torch>=1.4.0",
         "tqdm",
         "scikit-learn>=0.21.2",
-        # TODO(shwang): Stop using GitHub pointer once
-        # https://github.com/hill-a/stable-baselines/pull/935 is part of Stable
-        # Baselines release.
-        "stable-baselines @ git+https://github.com/hill-a/stable-baselines.git",
+        # TODO(adam): switch to pip once release including commit 8353056 is made
+        "stable-baselines3 @ git+https://github.com/DLR-RM/stable-baselines3.git",
+        # "stable-baselines3~=0.8.0a2",
         "jax~=0.1.66",
         "jaxlib~=0.1.47",
         "sacred~=0.8.1",
+        "tensorboard>=1.14",
     ],
     tests_require=TESTS_REQUIRE,
     extras_require={
-        "gpu": [f"tensorflow-gpu{TF_VERSION}"],
-        "cpu": [f"tensorflow{TF_VERSION}"],
         # recommended packages for development
         "dev": [
             "autopep8",
             "ntfy[slack]",
             "ipdb",
-            "isort",
+            # isort 4.X required for flake8-isort (2020-07-07)
+            "isort~=4.0",
             "jupyter",
             "pytype",
             "codespell",

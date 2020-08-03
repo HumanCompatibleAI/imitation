@@ -1,19 +1,18 @@
-import contextlib
+import logging
 import os
 import os.path as osp
 from typing import Optional
 
-import stable_baselines.logger as sb_logger
-import tensorflow as tf
 from sacred.observers import FileStorageObserver
-from stable_baselines.common.vec_env import VecNormalize
+from stable_baselines3.common import logger as sb_logger
+from stable_baselines3.common.vec_env import VecNormalize
 
 import imitation.util.sacred as sacred_util
 from imitation.data import rollout
 from imitation.policies import serialize
 from imitation.rewards.serialize import load_reward
 from imitation.scripts.config.expert_demos import expert_demos_ex
-from imitation.util import logger, networks, util
+from imitation.util import logger, util
 from imitation.util.reward_wrapper import RewardVecEnvWrapper
 
 
@@ -108,87 +107,85 @@ def rollouts_and_policy(
     )
     eval_sample_until = rollout.min_episodes(n_episodes_eval)
 
-    with networks.make_session():
-        tf.logging.set_verbosity(tf.logging.INFO)
-        logger.configure(
-            folder=osp.join(log_dir, "rl"), format_strs=["tensorboard", "stdout"]
-        )
+    logging.basicConfig(level=logging.INFO)
+    logger.configure(
+        folder=osp.join(log_dir, "rl"), format_strs=["tensorboard", "stdout"]
+    )
 
-        rollout_dir = osp.join(log_dir, "rollouts")
-        policy_dir = osp.join(log_dir, "policies")
-        os.makedirs(rollout_dir, exist_ok=True)
-        os.makedirs(policy_dir, exist_ok=True)
+    rollout_dir = osp.join(log_dir, "rollouts")
+    policy_dir = osp.join(log_dir, "policies")
+    os.makedirs(rollout_dir, exist_ok=True)
+    os.makedirs(policy_dir, exist_ok=True)
 
-        if init_tensorboard:
-            sb_tensorboard_dir = osp.join(log_dir, "sb_tb")
-            # Convert sacred's ReadOnlyDict to dict so we can modify on next line.
-            init_rl_kwargs = dict(init_rl_kwargs)
-            init_rl_kwargs["tensorboard_log"] = sb_tensorboard_dir
+    if init_tensorboard:
+        # sb_tensorboard_dir = osp.join(log_dir, "sb_tb")
+        # Convert sacred's ReadOnlyDict to dict so we can modify on next line.
+        init_rl_kwargs = dict(init_rl_kwargs)
+        # init_rl_kwargs["tensorboard_log"] = sb_tensorboard_dir
+        # FIXME(sam): this is another hack to prevent SB3 from configuring the
+        # logger on the first .learn() call. Remove it once SB3 issue #109 is
+        # fixed.
+        init_rl_kwargs["tensorboard_log"] = None
 
-        venv = util.make_vec_env(
-            env_name,
-            num_vec,
-            seed=_seed,
-            parallel=parallel,
-            log_dir=log_dir,
-            max_episode_steps=max_episode_steps,
-        )
+    venv = util.make_vec_env(
+        env_name,
+        num_vec,
+        seed=_seed,
+        parallel=parallel,
+        log_dir=log_dir,
+        max_episode_steps=max_episode_steps,
+    )
 
-        log_callbacks = []
-        with contextlib.ExitStack() as stack:
-            if reward_type is not None:
-                reward_fn_ctx = load_reward(reward_type, reward_path, venv)
-                reward_fn = stack.enter_context(reward_fn_ctx)
-                venv = RewardVecEnvWrapper(venv, reward_fn)
-                log_callbacks.append(venv.log_callback)
-                tf.logging.info(
-                    f"Wrapped env in reward {reward_type} from {reward_path}."
-                )
+    log_callbacks = []
+    if reward_type is not None:
+        reward_fn = load_reward(reward_type, reward_path, venv)
+        venv = RewardVecEnvWrapper(venv, reward_fn)
+        log_callbacks.append(venv.log_callback)
+        logging.info(f"Wrapped env in reward {reward_type} from {reward_path}.")
 
-            vec_normalize = None
-            if normalize:
-                venv = vec_normalize = VecNormalize(venv, **normalize_kwargs)
+    vec_normalize = None
+    if normalize:
+        venv = vec_normalize = VecNormalize(venv, **normalize_kwargs)
 
-            policy = util.init_rl(venv, verbose=1, **init_rl_kwargs)
+    policy = util.init_rl(venv, verbose=1, **init_rl_kwargs)
 
-            # Make callback to save intermediate artifacts during training.
-            step = 0
+    # Make callback to save intermediate artifacts during training.
+    step = 0
 
-            def callback(locals_: dict, _) -> bool:
-                nonlocal step
-                step += 1
-                policy = locals_["self"]
+    def callback(locals_: dict, _) -> bool:
+        nonlocal step
+        step += 1
+        policy = locals_["self"]
 
-                # TODO(adam): make logging frequency configurable
-                for callback in log_callbacks:
-                    callback(sb_logger)
+        # TODO(adam): make logging frequency configurable
+        for callback in log_callbacks:
+            callback(sb_logger)
 
-                if rollout_save_interval > 0 and step % rollout_save_interval == 0:
-                    save_path = osp.join(rollout_dir, f"{step}.pkl")
-                    rollout.rollout_and_save(save_path, policy, venv, sample_until)
-                if policy_save_interval > 0 and step % policy_save_interval == 0:
-                    output_dir = os.path.join(policy_dir, f"{step:05d}")
-                    serialize.save_stable_model(output_dir, policy, vec_normalize)
+        if rollout_save_interval > 0 and step % rollout_save_interval == 0:
+            save_path = osp.join(rollout_dir, f"{step}.pkl")
+            rollout.rollout_and_save(save_path, policy, venv, sample_until)
+        if policy_save_interval > 0 and step % policy_save_interval == 0:
+            output_dir = os.path.join(policy_dir, f"{step:05d}")
+            serialize.save_stable_model(output_dir, policy, vec_normalize)
 
-            policy.learn(total_timesteps, callback=callback)
+    policy.learn(total_timesteps, callback=callback)
 
-            # Save final artifacts after training is complete.
-            if rollout_save_final:
-                save_path = osp.join(rollout_dir, "final.pkl")
-                rollout.rollout_and_save(save_path, policy, venv, sample_until)
-            if policy_save_final:
-                output_dir = os.path.join(policy_dir, "final")
-                serialize.save_stable_model(output_dir, policy, vec_normalize)
+    # Save final artifacts after training is complete.
+    if rollout_save_final:
+        save_path = osp.join(rollout_dir, "final.pkl")
+        rollout.rollout_and_save(save_path, policy, venv, sample_until)
+    if policy_save_final:
+        output_dir = os.path.join(policy_dir, "final")
+        serialize.save_stable_model(output_dir, policy, vec_normalize)
 
-            # Final evaluation of expert policy.
-            trajs = rollout.generate_trajectories(policy, venv, eval_sample_until)
-            stats = rollout.rollout_stats(trajs)
+    # Final evaluation of expert policy.
+    trajs = rollout.generate_trajectories(policy, venv, eval_sample_until)
+    stats = rollout.rollout_stats(trajs)
 
     return stats
 
 
 @expert_demos_ex.command
-@networks.make_session()
 def rollouts_from_policy(
     _run,
     _seed: int,
@@ -229,8 +226,8 @@ def rollouts_from_policy(
         max_episode_steps=max_episode_steps,
     )
 
-    with serialize.load_policy(policy_type, policy_path, venv) as policy:
-        rollout.rollout_and_save(rollout_save_path, policy, venv, sample_until)
+    policy = serialize.load_policy(policy_type, policy_path, venv)
+    rollout.rollout_and_save(rollout_save_path, policy, venv, sample_until)
 
 
 def main_console():

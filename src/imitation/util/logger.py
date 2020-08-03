@@ -2,7 +2,7 @@ import contextlib
 import os
 from typing import ContextManager, Optional, Sequence
 
-import stable_baselines.logger as sb_logger
+import stable_baselines3.common.logger as sb_logger
 
 
 def _build_output_formats(
@@ -13,7 +13,7 @@ def _build_output_formats(
     Args:
       folder: Path to directory that logs are written to.
       format_strs: An list of output format strings. For details on available
-        output formats see `stable_baselines.logger.make_output_format`.
+        output formats see `stable_baselines3.logger.make_output_format`.
     """
     os.makedirs(folder, exist_ok=True)
     output_formats = [sb_logger.make_output_format(f, folder) for f in format_strs]
@@ -35,7 +35,7 @@ class _HierarchicalLogger(sb_logger.Logger):
           format_strs: An list of output format strings that should be used by
             every Logger initialized by this class during an `AccumulatingMeans`
             context. For details on available output formats see
-            `stable_baselines.logger.make_output_format`.
+            `stable_baselines3.logger.make_output_format`.
         """
         self.default_logger = default_logger
         self.current_logger = None
@@ -48,20 +48,20 @@ class _HierarchicalLogger(sb_logger.Logger):
     def accumulate_means(self, subdir: str):
         """Temporarily modifies this _HierarchicalLogger to accumulate means values.
 
-        During this context, `self.logkv(key, value)` writes the "raw" values in
+        During this context, `self.record(key, value)` writes the "raw" values in
         "{self.default_logger.log_dir}/{subdir}" under the key "raw/{subdir}/{key}".
-        At the same time, any call to `self.logkv` will also accumulate mean values
+        At the same time, any call to `self.record` will also accumulate mean values
         on the default logger by calling
-        `self.default_logger.logkv_mean(f"mean/{subdir}/{key}", value)`.
+        `self.default_logger.record_mean(f"mean/{subdir}/{key}", value)`.
 
-        During the context, `self.logkv(key, value)` will write the "raw" values in
+        During the context, `self.record(key, value)` will write the "raw" values in
         `"{self.default_logger.log_dir}/subdir"` under the key "raw/{subdir}/key".
 
-        After the context exits, calling `self.dumpkvs()` will write the means
+        After the context exits, calling `self.dump()` will write the means
         of all the "raw" values accumulated during this context to
         `self.default_logger` under keys with the prefix `mean/{subdir}/`
 
-        Note that the behavior of other logging methods, `log` and `logkv_mean`
+        Note that the behavior of other logging methods, `log` and `record_mean`
         are unmodified and will go straight to the default logger.
 
         Args:
@@ -91,16 +91,16 @@ class _HierarchicalLogger(sb_logger.Logger):
             self.current_logger = None
             self._subdir = None
 
-    def logkv(self, key, val):
+    def record(self, key, val, exclude=None):
         if self.current_logger is not None:
             assert self._subdir is not None
             raw_key = os.path.join("raw", self._subdir, key)
-            self.current_logger.logkv(raw_key, val)
+            self.current_logger.record(raw_key, val, exclude)
 
             mean_key = os.path.join("mean", self._subdir, key)
-            self.default_logger.logkv_mean(mean_key, val)
+            self.default_logger.record_mean(mean_key, val, exclude)
         else:
-            self.default_logger.logkv_mean(key, val)
+            self.default_logger.record_mean(key, val, exclude)
 
     @property
     def _logger(self):
@@ -109,8 +109,8 @@ class _HierarchicalLogger(sb_logger.Logger):
         else:
             return self.default_logger
 
-    def dumpkvs(self):
-        self._logger.dumpkvs()
+    def dump(self, step=0):
+        self._logger.dump(step)
 
     def get_dir(self) -> str:
         return self._logger.get_dir()
@@ -118,8 +118,8 @@ class _HierarchicalLogger(sb_logger.Logger):
     def log(self, *args, **kwargs):
         self.default_logger.log(*args, **kwargs)
 
-    def logkv_mean(self, key, val):
-        self.default_logger.logkv_mean(key, val)
+    def record_mean(self, key, val, exclude=None):
+        self.default_logger.record_mean(key, val, exclude)
 
     def close(self):
         raise NotImplementedError
@@ -127,14 +127,14 @@ class _HierarchicalLogger(sb_logger.Logger):
 
 def _sb_logger_configure_replacement(*args, **kwargs):
     raise RuntimeError(
-        "Shouldn't call stable_baselines.logger.configure "
+        "Shouldn't call stable_baselines3.logger.configure "
         "once imitation.logger.configure() has been called"
     )
 
 
 def _sb_logger_reset_replacement():
     raise RuntimeError(
-        "Shouldn't call stable_baselines.logger.reset "
+        "Shouldn't call stable_baselines3.logger.reset "
         "once imitation.logger.configure() has been called"
     )
 
@@ -147,15 +147,15 @@ def is_configured() -> bool:
 def configure(folder: str, format_strs: Optional[Sequence[str]] = None) -> None:
     """Configure Stable Baselines logger to be `accumulate_means()`-compatible.
 
-    After this function is called, `stable_baselines.logger.{configure,reset}()`
+    After this function is called, `stable_baselines3.logger.{configure,reset}()`
     are replaced with stubs that raise RuntimeError.
 
     Args:
-        folder: Argument from `stable_baselines.logger.configure`.
+        folder: Argument from `stable_baselines3.logger.configure`.
         format_strs: An list of output format strings. For details on available
-          output formats see `stable_baselines.logger.make_output_format`.
+          output formats see `stable_baselines3.logger.make_output_format`.
     """
-    # Replace `stable_baselines.logger` methods with erroring stubs to
+    # Replace `stable_baselines3.logger` methods with erroring stubs to
     # prevent unexpected logging state from mixed logging configuration.
     sb_logger.configure = _sb_logger_configure_replacement
     sb_logger.reset = _sb_logger_reset_replacement
@@ -170,30 +170,30 @@ def configure(folder: str, format_strs: Optional[Sequence[str]] = None) -> None:
     assert is_configured()
 
 
-def logkv(key, val) -> None:
-    """Alias for `stable_baselines.logger.logkv`."""
-    sb_logger.logkv(key, val)
+def record(key, val, exclude=None) -> None:
+    """Alias for `stable_baselines3.logger.record`."""
+    sb_logger.record(key, val, exclude)
 
 
-def dumpkvs() -> None:
-    """Alias for `stable_baselines.logger.dumpkvs`."""
-    sb_logger.dumpkvs()
+def dump(step=0) -> None:
+    """Alias for `stable_baselines3.logger.dump`."""
+    sb_logger.dump(step)
 
 
 def accumulate_means(subdir_name: str) -> ContextManager:
-    """Temporarily redirect logkv() to a different logger and auto-track kvmeans.
+    """Temporarily redirect record() to a different logger and auto-track kvmeans.
 
     Within this context, the original logger is swapped out for a special logger
     in directory `"{current_logging_dir}/raw/{subdir_name}"`.
 
-    The special logger's `stable_baselines.logger.logkv(key, val)`, in addition
+    The special logger's `stable_baselines3.logger.record(key, val)`, in addition
     to tracking its own logs, also forwards the log to the original logger's
-    `.logkv_mean()` under the key `mean/{subdir_name}/{key}`.
+    `.record_mean()` under the key `mean/{subdir_name}/{key}`.
 
     After the context exits, these means can be dumped as usual using
-    `stable_baselines.logger.dumpkvs()` or `imitation.util.logger.dumpkvs()`.
+    `stable_baselines3.logger.dump()` or `imitation.util.logger.dump()`.
 
-    Note that the behavior of other logging methods, `log` and `logkv_mean`
+    Note that the behavior of other logging methods, `log` and `record_mean`
     are unmodified and will go straight to the original logger.
 
     This context cannot be nested.

@@ -20,7 +20,7 @@ def replay_defaults():
     render_fps = 60  # -1 to render at full speed
     log_root = os.path.join("output", "eval_policy")  # output directory
 
-    policy_type = "ppo2"  # class to load policy, see imitation.policies.loader
+    policy_type = "ppo"  # class to load policy, see imitation.policies.loader
     policy_path = (
         "tests/data/expert_models/" "cartpole_0/policies/final/"
     )  # serialized policy
@@ -38,6 +38,6 @@ def logging(log_root, env_name):
 
 @eval_policy_ex.named_config
 def fast():
-    eval_n_timesteps = int(1e2)
+    eval_n_timesteps = 1
     eval_n_episodes = None
-    max_episode_steps = int(1e2)
+    max_episode_steps = 1
