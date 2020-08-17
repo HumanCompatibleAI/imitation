@@ -2,7 +2,7 @@ import datetime
 import functools
 import os
 import uuid
-from typing import Optional, Type, Union
+from typing import Optional, Type, TypeVar, Union
 
 import gym
 import numpy as np
@@ -135,3 +135,11 @@ def docstring_parameter(*args, **kwargs):
         return obj
 
     return helper
+
+
+T = TypeVar("T")
+
+
+def identity(x: T) -> T:
+    """Identity function."""
+    return x

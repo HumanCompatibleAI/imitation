@@ -13,6 +13,7 @@ from tqdm.autonotebook import trange
 
 from imitation.data import datasets, types
 from imitation.policies import base
+from imitation.util import util
 
 
 def reconstruct_policy(
@@ -67,6 +68,7 @@ class BC:
         optimizer_kwargs: Optional[Dict[str, Any]] = None,
         ent_weight: float = 1e-3,
         l2_weight: float = 0.0,
+        augmentation_fn: Callable[th.Tensor, th.Tensor] = None,
         device: Union[str, th.device] = "auto",
     ):
         """Behavioral cloning (BC).
@@ -87,6 +89,8 @@ class BC:
                   weight decay, for optimiser construction.
             ent_weight: scaling applied to the policy's entropy regularization.
             l2_weight: scaling applied to the policy's L2 regularization.
+            augmentation_fn: function to augment a batch of (on-device) images
+                (default: identity).
             device: name/identity of device to place policy on.
         """
         if optimizer_kwargs:
@@ -118,6 +122,9 @@ class BC:
         self.expert_dataset: Optional[datasets.Dataset[types.TransitionsMinimal]] = None
         self.ent_weight = ent_weight
         self.l2_weight = l2_weight
+        if augmentation_fn is None:
+            augmentation_fn = util.identity
+        self.augmentation_fn = augmentation_fn
 
         if expert_data is not None:
             self.set_expert_dataset(expert_data)
@@ -216,8 +223,10 @@ class BC:
                 assert len(trans) == self.batch_size
                 samples_so_far += self.batch_size
 
-                obs_tensor = th.as_tensor(trans.obs).to(self.policy.device)
                 acts_tensor = th.as_tensor(trans.acts).to(self.policy.device)
+                # we always apply augmentations to observations
+                obs_tensor = th.as_tensor(trans.obs).to(self.policy.device)
+                obs_tensor = self.augmentation_fn(obs_tensor)
                 loss, stats_dict = self._calculate_loss(obs_tensor, acts_tensor)
 
                 self.optimizer.zero_grad()

@@ -13,7 +13,7 @@ from stable_baselines3.common import base_class, preprocessing, vec_env
 from imitation.data import buffer, datasets, types, wrappers
 from imitation.rewards import common as rew_common
 from imitation.rewards import discrim_nets, reward_nets
-from imitation.util import logger, reward_wrapper
+from imitation.util import logger, reward_wrapper, util
 
 
 class AdversarialTrainer:
@@ -55,6 +55,7 @@ class AdversarialTrainer:
         obs_norm_clip: float = float("inf"),
         rew_norm: bool = True,
         rew_norm_clip: float = float("inf"),
+        disc_augmentation_fn: Callable[th.Tensor, th.Tensor] = None,
     ):
         """Builds AdversarialTrainer.
 
@@ -100,6 +101,8 @@ class AdversarialTrainer:
                 normalization?
             rew_norm: Should rewards be normalized?
             rew_norm_clip: Analogous to `obs_norm_clip`, but for rewards.
+            disc_augmentation_fn: Function to augment a batch of (on-device)
+                discriminator training inputs (default: identity).
         """
         assert (
             logger.is_configured()
@@ -114,6 +117,9 @@ class AdversarialTrainer:
         )
         self.disc_batch_size = disc_batch_size
         self.disc_minibatch_size = disc_minibatch_size
+        if disc_augmentation_fn is None:
+            disc_augmentation_fn = util.identity
+        self.disc_augmentation_fn = disc_augmentation_fn
         self.debug_use_ground_truth = debug_use_ground_truth
         self.venv = venv
         self.gen_algo = gen_algo
