@@ -2,7 +2,6 @@
 environments, these can be helpful for BC, and essential for the GAIL
 discriminator."""
 
-import collections
 import enum
 import inspect
 import math
