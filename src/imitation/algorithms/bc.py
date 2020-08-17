@@ -68,7 +68,7 @@ class BC:
         optimizer_kwargs: Optional[Dict[str, Any]] = None,
         ent_weight: float = 1e-3,
         l2_weight: float = 0.0,
-        augmentation_fn: Callable[th.Tensor, th.Tensor] = None,
+        augmentation_fn: Callable[[th.Tensor], th.Tensor] = None,
         device: Union[str, th.device] = "auto",
     ):
         """Behavioral cloning (BC).

@@ -55,7 +55,7 @@ class AdversarialTrainer:
         obs_norm_clip: float = float("inf"),
         rew_norm: bool = True,
         rew_norm_clip: float = float("inf"),
-        disc_augmentation_fn: Callable[th.Tensor, th.Tensor] = None,
+        disc_augmentation_fn: Callable[[th.Tensor], th.Tensor] = None,
     ):
         """Builds AdversarialTrainer.
 
@@ -408,6 +408,7 @@ class AdversarialTrainer:
         )
 
         # Calculate generator-policy log probabilities.
+        # FIXME(sam): skip this if we don't actually need log probabilities
         with th.no_grad():
             obs_th = th.as_tensor(obs, device=self.gen_algo.device)
             acts_th = th.as_tensor(acts, device=self.gen_algo.device)
@@ -419,12 +420,19 @@ class AdversarialTrainer:
         assert len(log_act_prob) == n_samples
         log_act_prob = log_act_prob.reshape((n_samples,))
 
-        batch_dict = {
-            "state": self._torchify_with_space(obs, self.discrim.observation_space),
-            "action": self._torchify_with_space(acts, self.discrim.action_space),
-            "next_state": self._torchify_with_space(
+        # torchify states first so that we can apply augmentations
+        with th.no_grad():
+            torch_state = self._torchify_with_space(obs, self.discrim.observation_space)
+            torch_next_state = self._torchify_with_space(
                 next_obs, self.discrim.observation_space
-            ),
+            )
+        torch_state = self.disc_augmentation_fn(torch_state)
+        torch_next_state = self.disc_augmentation_fn(torch_next_state)
+
+        batch_dict = {
+            "state": torch_state,
+            "next_state": torch_next_state,
+            "action": self._torchify_with_space(acts, self.discrim.action_space),
             "done": self._torchify_array(dones),
             "labels_gen_is_one": self._torchify_array(labels_gen_is_one),
             "log_policy_act_prob": self._torchify_array(log_act_prob),

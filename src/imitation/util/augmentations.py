@@ -263,13 +263,9 @@ class MILBenchAugmentations(KorniaAugmentations):
         super().__init__(*transforms)
 
     @classmethod
-    def known_options(cls) -> collections.abc.Set:
-        sig = inspect.signature(cls)
-        return sig.parameters().keys()
-
-    @classmethod
     def from_string_spec(cls, spec: str) -> "MILBenchAugmentations":
-        known_options = cls.known_options()
+        sig = inspect.signature(cls)
+        known_options = sig.parameters.keys()
         kwargs = {}
         for item in spec.split(","):
             item = item.strip()
