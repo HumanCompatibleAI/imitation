@@ -51,6 +51,10 @@ class AdversarialTrainer:
         init_tensorboard_graph: bool = False,
         debug_use_ground_truth: bool = False,
         device: Union[str, th.device] = "auto",
+        obs_norm: bool = False,
+        obs_norm_clip: float = float("inf"),
+        rew_norm: bool = True,
+        rew_norm_clip: float = float("inf"),
     ):
         """Builds AdversarialTrainer.
 
@@ -90,6 +94,12 @@ class AdversarialTrainer:
               This disables the reward wrapping that would normally replace
               the environment reward with the learned reward. This is useful for
               sanity checking that the policy training is functional.
+            obs_norm: Should observations be normalized?
+            obs_norm_clip: If observations should be normalized, what magnitude
+                should the elements of the observation be clipped to after
+                normalization?
+            rew_norm: Should rewards be normalized?
+            rew_norm_clip: Analogous to `obs_norm_clip`, but for rewards.
         """
         assert (
             logger.is_configured()
@@ -137,7 +147,13 @@ class AdversarialTrainer:
             )
 
         self.venv_train_buffering = wrappers.BufferingWrapper(self.venv_train)
-        self.venv_train_norm = vec_env.VecNormalize(self.venv_train_buffering)
+        self.venv_train_norm = vec_env.VecNormalize(
+            self.venv_train_buffering,
+            norm_obs=obs_norm,
+            norm_reward=rew_norm,
+            clip_rew=obs_norm_clip,
+            clip_obs=rew_norm_clip,
+        )
         self.gen_algo.set_env(self.venv_train_norm)
 
         if gen_replay_buffer_capacity is None:
