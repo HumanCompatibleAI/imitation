@@ -156,9 +156,9 @@ class AdversarialTrainer:
         self.venv_train_norm = vec_env.VecNormalize(
             self.venv_train_buffering,
             norm_obs=obs_norm,
-            norm_reward=rew_norm,
-            clip_rew=obs_norm_clip,
             clip_obs=rew_norm_clip,
+            norm_reward=rew_norm,
+            clip_reward=obs_norm_clip,
         )
         self.gen_algo.set_env(self.venv_train_norm)
 
