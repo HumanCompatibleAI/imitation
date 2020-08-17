@@ -6,6 +6,7 @@ import pytest
 
 from imitation.algorithms import adversarial
 from imitation.data import datasets, rollout, types
+from imitation.testing import counter
 from imitation.util import logger, util
 
 ALGORITHM_CLS = [adversarial.AIRL, adversarial.GAIL]
@@ -13,6 +14,7 @@ IN_CODECOV = "COV_CORE_CONFIG" in os.environ
 # Disable SubprocVecEnv tests for code coverage test since
 # multiprocessing support is flaky in py.test --cov
 PARALLEL = [False] if IN_CODECOV else [True, False]
+CARTPOLE_PATH = "tests/data/expert_models/cartpole_0/rollouts/final.pkl"
 
 
 @pytest.fixture(params=ALGORITHM_CLS)
@@ -55,7 +57,7 @@ def _convert_dataset(request):
 @pytest.fixture
 def trainer(_algorithm_cls, _parallel: bool, tmpdir: str, _convert_dataset: bool):
     logger.configure(tmpdir, ["tensorboard", "stdout"])
-    trajs = types.load("tests/data/expert_models/cartpole_0/rollouts/final.pkl")
+    trajs = types.load(CARTPOLE_PATH)
     if _convert_dataset:
         trans = rollout.flatten_trajectories(trajs)
         expert_data = datasets.TransitionsDictDatasetAdaptor(trans)
@@ -105,3 +107,27 @@ def test_train_disc_improve_D(tmpdir, trainer, n_timesteps=200, n_steps=100):
         if init_stats is None:
             init_stats = final_stats
     assert final_stats["disc_loss"] < init_stats["disc_loss"]
+
+
+def test_augment(_algorithm_cls, tmpdir: str):
+    logger.configure(tmpdir, ["tensorboard", "stdout"])
+    trajs = types.load(CARTPOLE_PATH)
+    expert_data = rollout.flatten_trajectories(trajs)
+    venv = util.make_vec_env("CartPole-v1", n_envs=2, parallel=False, log_dir=tmpdir,)
+    gen_algo = util.init_rl(venv, verbose=1)
+    mock_augment = counter.IdentityCounter()
+    trainer = _algorithm_cls(
+        venv=venv,
+        expert_data=expert_data,
+        gen_algo=gen_algo,
+        log_dir=tmpdir,
+        disc_augmentation_fn=mock_augment,
+    )
+    transitions = rollout.generate_transitions(
+        trainer.gen_algo, trainer.venv, n_timesteps=32,
+    )
+
+    # make sure it gets called
+    assert mock_augment.ncalls == 0
+    trainer.train_disc_step(gen_samples=transitions)
+    assert mock_augment.ncalls > 0

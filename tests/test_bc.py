@@ -7,6 +7,7 @@ import torch as th
 
 from imitation.algorithms import bc
 from imitation.data import datasets, rollout, types
+from imitation.testing import counter
 from imitation.util import util
 
 ROLLOUT_PATH = "tests/data/expert_models/cartpole_0/rollouts/final.pkl"
@@ -69,3 +70,18 @@ def test_save_reload(trainer, tmpdir):
     assert len(var_values) == len(new_values)
     for old, new in zip(var_values, new_values):
         assert th.allclose(old, new)
+
+
+def test_augment(venv):
+    rollouts = types.load(ROLLOUT_PATH)
+    data = rollout.flatten_trajectories(rollouts)
+    mock_augment = counter.IdentityCounter()
+    trainer = bc.BC(
+        venv.observation_space,
+        venv.action_space,
+        expert_data=data,
+        augmentation_fn=mock_augment,
+    )
+    assert mock_augment.ncalls == 0
+    trainer.train(n_epochs=1)
+    assert mock_augment.ncalls > 0
