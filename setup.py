@@ -23,7 +23,7 @@ DOCS_REQUIRE = [
     "sphinx",
     "sphinxcontrib-napoleon",
 ]
-PARALLEL_REQUIRE = ["ray[debug,tune]~=0.8.5"]
+PARALLEL_REQUIRE = ["ray[debug,tune]>=0.8.7,<0.9.0"]
 
 
 def get_readme() -> str:
