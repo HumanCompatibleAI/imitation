@@ -53,7 +53,7 @@ setup(
         "tqdm",
         "scikit-learn>=0.21.2",
         # TODO(sam): switch to pip once release including PRs #141 and $143 is made
-        "stable-baselines3 @ git+https://github.com/qxcv/stable-baselines3.git#imitation",
+        "stable-baselines3 @ git+https://github.com/HumanCompatibleAI/stable-baselines3.git#imitation",
         # "stable-baselines3~=0.8.0a2",
         "jax~=0.1.66",
         "jaxlib~=0.1.47",
