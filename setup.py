@@ -1,5 +1,6 @@
-import src.imitation  # pytype: disable=import-error
 from setuptools import find_packages, setup
+
+import src.imitation  # pytype: disable=import-error
 
 TESTS_REQUIRE = [
     "seals~=0.1.0",
