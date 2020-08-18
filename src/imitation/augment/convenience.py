@@ -2,7 +2,7 @@
 
 import inspect
 import math
-from typing import Optional, Sequence
+from typing import Optional, Sequence, Set
 
 import kornia.augmentation as aug
 import torch as th
@@ -169,7 +169,7 @@ class StandardAugmentations(KorniaAugmentations):
         super().__init__(transforms, stack_color_space=stack_color_space)
 
     @classmethod
-    def known_options(cls) -> Sequence[str]:
+    def known_options(cls) -> Set[str]:
         """Collect all Boolean options of this class (i.e. augmentations)."""
         sig = inspect.signature(cls)
         known_options = set(
