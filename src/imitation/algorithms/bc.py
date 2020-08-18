@@ -8,7 +8,7 @@ from typing import Any, Callable, Dict, Mapping, Optional, Tuple, Type, Union
 
 import gym
 import torch as th
-from stable_baselines3.common import logger, policies, utils
+from stable_baselines3.common import logger, policies, utils, preprocessing
 from tqdm.autonotebook import trange
 
 from imitation.data import datasets, types
@@ -69,6 +69,7 @@ class BC:
         ent_weight: float = 1e-3,
         l2_weight: float = 0.0,
         augmentation_fn: Callable[[th.Tensor], th.Tensor] = None,
+        normalize_images: bool = True,
         device: Union[str, th.device] = "auto",
     ):
         """Behavioral cloning (BC).
@@ -226,6 +227,11 @@ class BC:
                 acts_tensor = th.as_tensor(trans.acts).to(self.policy.device)
                 # we always apply augmentations to observations
                 obs_tensor = th.as_tensor(trans.obs).to(self.policy.device)
+                obs_tensor = preprocessing.preprocess_obs(
+                    obs_tensor,
+                    self.observation_space,
+                    normalize_images=True,
+                )
                 obs_tensor = self.augmentation_fn(obs_tensor)
                 loss, stats_dict = self._calculate_loss(obs_tensor, acts_tensor)
 
