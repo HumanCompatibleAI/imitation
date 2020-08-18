@@ -55,7 +55,8 @@ class KorniaAugmentations(nn.Module):
             if images.dim() != 4 or not th.is_floating_point(images):
                 raise ValueError(
                     f"Images of shape '{images.shape}' and type '{images.dtype}' do "
-                    "not have rank 4 and floating point type")
+                    "not have rank 4 and floating point type"
+                )
 
             # push frames into the batch axis, if necessary
             orig_shape = images.shape
