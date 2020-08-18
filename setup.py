@@ -63,7 +63,11 @@ setup(
         "jaxlib~=0.1.47",
         "sacred~=0.8.1",
         "tensorboard>=1.14",
-        "kornia>=0.4.0",
+        # TODO(sam): switch to pip once kornia#635 is fixed.
+        (
+            "kornia @"
+            "git+https://github.com/qxcv/kornia.git#feat/random-affine-padding-mode"
+        ),
     ],
     tests_require=TESTS_REQUIRE,
     extras_require={

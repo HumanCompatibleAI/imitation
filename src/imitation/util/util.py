@@ -2,7 +2,7 @@ import datetime
 import functools
 import os
 import uuid
-from typing import Optional, Type, TypeVar, Union
+from typing import Callable, Optional, Type, TypeVar, Union
 
 import gym
 import numpy as np
@@ -31,6 +31,7 @@ def make_vec_env(
     parallel: bool = False,
     log_dir: Optional[str] = None,
     max_episode_steps: Optional[int] = None,
+    wrapper_class: Optional[Callable] = None,
 ) -> VecEnv:
     """Returns a VecEnv initialized with `n_envs` Envs.
 
@@ -46,6 +47,8 @@ def make_vec_env(
             `max_episode_steps` for every TimeLimit wrapper (this automatic
             wrapper is the default behavior when calling `gym.make`). Otherwise
             the environments are passed into the VecEnv unwrapped.
+        wrapper_class: A wrapper class to apply to all sub-environments. This
+            is applied after the Monitor, but before the RolloutInfoWrapper.
     """
     # Resolve the spec outside of the subprocess first, so that it is available to
     # subprocesses running `make_env` via automatic pickling.
@@ -81,6 +84,9 @@ def make_vec_env(
             log_path = os.path.join(log_subdir, f"mon{i:03d}")
 
         env = monitor.Monitor(env, log_path)
+        if wrapper_class is not None:
+            # we apply this after Monitor, just like cmd_util.make_vec_env in SB3
+            env = wrapper_class(env)
         env = wrappers.RolloutInfoWrapper(env)
         return env
 
