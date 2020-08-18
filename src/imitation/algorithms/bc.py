@@ -218,6 +218,7 @@ class BC:
         samples_so_far = 0
         batch_num = 0
         for epoch_num in trange(n_epochs, desc="BC epoch"):
+            self.policy.train()
             while samples_so_far < (epoch_num + 1) * self.expert_dataset.size():
                 batch_num += 1
                 trans = self.expert_dataset.sample(self.batch_size)
@@ -245,6 +246,7 @@ class BC:
                         logger.record(k, v)
                     logger.dump(batch_num)
 
+            self.policy.eval()
             if on_epoch_end is not None:
                 on_epoch_end(locals())
 
