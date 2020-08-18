@@ -56,7 +56,7 @@ setup(
         # TODO(sam): switch to pip once release including PRs #141 and #143 is made
         (
             "stable-baselines3 @ git+https://github.com/HumanCompatibleAI/"
-            "stable-baselines3.git#imitation"
+            "stable-baselines3.git@imitation"
         ),
         # "stable-baselines3~=0.8.0a2",
         "jax~=0.1.66",
@@ -64,7 +64,7 @@ setup(
         "sacred~=0.8.1",
         "tensorboard>=1.14",
         # TODO(sam): switch to pip once kornia#635 is fixed.
-        "kornia @ git+https://github.com/qxcv/kornia.git#imitation",
+        "kornia @ git+https://github.com/qxcv/kornia.git@imitation",
     ],
     tests_require=TESTS_REQUIRE,
     extras_require={
