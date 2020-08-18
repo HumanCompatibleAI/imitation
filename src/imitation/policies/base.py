@@ -15,7 +15,6 @@ class HardCodedPolicy(policies.BasePolicy, abc.ABC):
         super().__init__(
             observation_space=observation_space,
             action_space=action_space,
-            device=th.device("cpu"),
         )
 
     def _predict(self, obs: th.Tensor, deterministic: bool = False):
