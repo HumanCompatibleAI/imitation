@@ -2,9 +2,9 @@
 image-based environments, these can be helpful for BC, and essential for the
 GAIL discriminator."""
 
-
 import torch as th
 from kornia.color.gray import rgb_to_grayscale
+from kornia.filters.gaussian import GaussianBlur2d
 from torch import nn
 
 from imitation.augment.color import apply_lab_jitter
@@ -22,6 +22,20 @@ class GaussianNoise(nn.Module):
         out = x + self.std * th.randn_like(x)
         out.clamp_(0.0, 1.0)
         return out
+
+
+class GaussianBlur(nn.Module):
+    """Blurs images."""
+
+    def __init__(self, kernel_hw=5, sigma=1):
+        super().__init__()
+        assert kernel_hw >= 1 and (kernel_hw % 2) == 1
+        sigma = float(sigma)
+        assert sigma > 0
+        self.blur_op = GaussianBlur2d((kernel_hw, kernel_hw), (sigma, sigma))
+
+    def forward(self, images):
+        return self.blur_op(images)
 
 
 class CIELabJitter(nn.Module):
