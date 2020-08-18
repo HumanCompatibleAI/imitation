@@ -36,6 +36,8 @@ class KorniaAugmentations(nn.Module):
         stack_color_space: Optional[ColorSpace] = None,
     ) -> None:
         super().__init__()
+        if stack_color_space is None:
+            stack_color_space = ColorSpace.RGB
         self.stack_n_channels = None
         if stack_color_space == ColorSpace.RGB:
             self.stack_n_channels = 3
@@ -50,8 +52,10 @@ class KorniaAugmentations(nn.Module):
         # no_grad() ensures that we don't unnecessarily build up a backward graph
         with th.no_grad():
             # check type & number of dims
-            assert th.is_floating_point(images)
-            assert images.dim() == 4
+            if images.dim() != 4 or not th.is_floating_point(images):
+                raise ValueError(
+                    f"Images of shape '{images.shape}' and type '{images.dtype}' do "
+                    "not have rank 4 and floating point type")
 
             # push frames into the batch axis, if necessary
             orig_shape = images.shape

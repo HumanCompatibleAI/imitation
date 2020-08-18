@@ -65,8 +65,8 @@ setup(
         "tensorboard>=1.14",
         # TODO(sam): switch to pip once kornia#635 is fixed.
         (
-            "kornia @"
-            "git+https://github.com/qxcv/kornia.git#feat/random-affine-padding-mode"
+            "kornia @ git+https://github.com/qxcv/kornia.git"
+            "#8f91f1a8582ecb140fea0de5704807ab0a4f48ed"
         ),
     ],
     tests_require=TESTS_REQUIRE,
