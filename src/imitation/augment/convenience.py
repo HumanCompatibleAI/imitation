@@ -83,28 +83,66 @@ class KorniaAugmentations(nn.Module):
 
 
 class StandardAugmentations(KorniaAugmentations):
-    """Convenience class for data augmentation. Has a standard set of possible
-    augmentations with sensible pre-set values."""
+    """Convenience class for constructing data augmenters.
+
+    Contains many common augmentations configured to several preset magnitudes.
+    For instance, `color_jitter` enables slight colour jitter;
+    `color_jitter_mid` enables more intense (mid-level) color jitter, and
+    `color_jitter_ex` enables extreme color jitter (in this case, completely
+    randomising hue, and slightly randomising luminance). The
+    `.from_string_spec()` method makes it easy to construct image augmenters
+    from readable specifications, like `"translate,rotate_ex,gray"`. This is
+    most useful when you want to quickly try many different kinds of
+    augmentations, but don't want to bother figuring out reasonable parameter
+    settings for them.
+    """
 
     def __init__(
         self,
         translate: bool = False,
+        translate_ex: bool = False,
         rotate: bool = False,
-        noise: bool = False,
-        flip_ud: bool = False,
-        flip_lr: bool = False,
+        rotate_mid: bool = False,
+        rotate_ex: bool = False,
         color_jitter: bool = False,
         color_jitter_mid: bool = False,
         color_jitter_ex: bool = False,
-        translate_ex: bool = False,
-        rotate_mid: bool = False,
-        rotate_ex: bool = False,
+        flip_ud: bool = False,
+        flip_lr: bool = False,
+        noise: bool = False,
         rot90: bool = False,
         erase: bool = False,
         gray: bool = False,
         gaussian_blur: bool = False,
         stack_color_space: Optional[ColorSpace] = None,
     ) -> None:
+        """Construct an augmenter that sequentially applies the given augmentations.
+
+        Args:
+            translate: random translation by up to 5% of image dimensions.
+            translate_ex: translation by up to 30% of image dimensions.
+            rotate: randomise image rotation by up to 5 degrees.
+            rotate_mid: randomise image rotation by up to 20 degrees.
+            rotate_ex: randomise image rotation by up to 35 degrees.
+            color_jitter: convert to Lab and randomise the (a,b) channel
+                direction (~hue) by up to 0.15 radians, and rescale luminance
+                by up to 1%.
+            color_jitter_mid: color jitter by up to 0.6 rad on (a,b) and up to
+                1% on luminance.
+            color_jitter_ex: color jitter that chooses random orientation for
+                (a,b) and scales luminance up/down by up to 5%.
+            flip_ud: flip up-down with 50% probability.
+            flip_lr: flip left-right with 50% probability.
+            noise: add iid, zero-mean Gaussian noise with stddev 0.01.o
+            rot90: randomly rotate by 0, 90, 180, or 270 degrees (faster than
+                unconstrained rotation).
+            erase: with 50% probability, randomly erase a rectangle from the
+                image and replace it with value 0.5 (see `kornia`'s
+                `RandomErasing`).
+            gray: with 50% probability, convert the image to grayscale.
+            gaussian_blur: always apply Gaussian blur with sigma=1.0.
+            stack_color_space: color space for images that will be augmented.
+        """
         transforms = []
 
         # color jitter
@@ -176,7 +214,11 @@ class StandardAugmentations(KorniaAugmentations):
 
     @classmethod
     def known_options(cls) -> Set[str]:
-        """Collect all Boolean options of this class (i.e. augmentations)."""
+        """Collect all Boolean options of this class (i.e. augmentations).
+
+        Returns: a set of augmentation names that the constructor takes as
+            kwargs.
+        """
         sig = inspect.signature(cls)
         known_options = set(
             key for key, param in sig.parameters.items() if param.annotation is bool
@@ -187,6 +229,18 @@ class StandardAugmentations(KorniaAugmentations):
     def from_string_spec(
         cls, spec: str, stack_color_space: Optional[ColorSpace] = None
     ) -> "StandardAugmentations":
+        """Construct an augmenter from a string specification.
+
+        Args:
+            spec: a string with comma-separated names of keyword arguments that
+                should be set to True. For example, "translate,rotate,gray"
+                would turn on random translation, random rotation, and random
+                desaturation, but no other augmentations. See
+                `StandardAugmentations.known_options()` for all options.
+            stack_color_space: color space for augmented images.
+
+        Returns: the constructed `StandardAugmentations` object.
+        """
         known_options = cls.known_options()
         kwargs = {}
         for item in spec.split(","):
