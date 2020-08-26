@@ -4,9 +4,10 @@ import os
 
 import pytest
 import torch as th
+from torch.utils import data as th_data
 
 from imitation.algorithms import bc
-from imitation.data import datasets, rollout, types
+from imitation.data import rollout, types
 from imitation.util import util
 
 ROLLOUT_PATH = "tests/data/expert_models/cartpole_0/rollouts/final.pkl"
@@ -19,16 +20,19 @@ def venv():
     return venv
 
 
-@pytest.fixture(params=[False, True])
-def trainer(request, venv):
-    convert_dataset = request.param
+@pytest.fixture(params=[1, 20])
+def batch_size(request):
+    return request.param
+
+
+@pytest.fixture
+def trainer(batch_size, venv):
     rollouts = types.load(ROLLOUT_PATH)
-    data = rollout.flatten_trajectories(rollouts)
-    if convert_dataset:
-        data = datasets.TransitionsDictDatasetAdaptor(
-            data, datasets.EpochOrderDictDataset
-        )
-    return bc.BC(venv.observation_space, venv.action_space, expert_data=data)
+    dataset = rollout.flatten_trajectories(rollouts)
+    dataloader = th_data.DataLoader(dataset, batch_size=batch_size, shuffle=True)
+    return bc.BC(
+        venv.observation_space, venv.action_space, expert_dataloader=dataloader
+    )
 
 
 def test_weight_decay_init_error(venv):
@@ -36,7 +40,7 @@ def test_weight_decay_init_error(venv):
         bc.BC(
             venv.observation_space,
             venv.action_space,
-            expert_data=None,
+            expert_dataloader=None,
             optimizer_kwargs=dict(weight_decay=1e-4),
         )
 
@@ -49,15 +53,6 @@ def test_bc(trainer: bc.BC, venv):
     # Typically <80 score is bad, >350 is okay. We want an improvement of at
     # least 50 points, which seems like it's not noise.
     assert trained_ret_mean - novice_ret_mean > 50
-
-
-def test_train_from_random_dict_dataset(venv):
-    # make sure that we can construct BC instance & train from a RandomDictDataset
-    rollouts = types.load(ROLLOUT_PATH)
-    data = rollout.flatten_trajectories(rollouts)
-    data = datasets.TransitionsDictDatasetAdaptor(data, datasets.RandomDictDataset)
-    trainer = bc.BC(venv.observation_space, venv.action_space, expert_data=data)
-    trainer.train(n_epochs=1)
 
 
 def test_save_reload(trainer, tmpdir):

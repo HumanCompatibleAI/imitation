@@ -4,11 +4,14 @@ import dataclasses
 import logging
 import os
 import pickle
-from typing import Optional, Sequence
+from typing import Dict, Optional, Sequence, TypeVar, overload
 
 import numpy as np
+from torch.utils import data as th_data
 
 from imitation.data import old_types
+
+T = TypeVar("T")
 
 
 @dataclasses.dataclass(frozen=True)
@@ -69,11 +72,18 @@ class TrajectoryWithRew(Trajectory):
 
 
 @dataclasses.dataclass(frozen=True)
-class TransitionsMinimal:
-    """A batch of obs-act transitions.
+class TransitionsMinimal(th_data.Dataset):
+    """A Torch-compatible `Dataset` of obs-act transitions.
 
     This class and its subclasses are usually instantiated via
     `imitation.data.rollout.flatten_trajectories`.
+
+    Indexing an instance `trans` of TransitionsMinimal with an integer `i`
+    returns the `i`th `Dict[str, np.ndarray]` sample, whose values are the `i` element
+    of each dataclass field.
+
+    Slicing returns a possibly empty instance of `TransitionsMinimal` where each
+    field has been sliced.
     """
 
     obs: np.ndarray
@@ -109,14 +119,36 @@ class TransitionsMinimal:
                 "obs and acts must have same number of timesteps: "
                 f"{len(self.obs)} != {len(self.acts)}"
             )
-        if len(self.obs) == 0:
-            raise ValueError("Must have non-zero number of observations.")
 
         if self.infos is not None and len(self.infos) != len(self.obs):
             raise ValueError(
                 "obs and infos must have same number of timesteps: "
                 f"{len(self.obs)} != {len(self.infos)}"
             )
+
+    @overload
+    def __getitem__(self, key: int) -> Dict[str, np.ndarray]:
+        pass
+
+    @overload
+    def __getitem__(self: T, key: slice) -> T:
+        pass
+
+    def __getitem__(self, key):
+        # Extract items using `dataclasses.fields` + dict comprehension instead of using
+        # `dataclasses.asdict` because `asdict` will undocumentedly deepcopy every
+        # numpy array. See https://stackoverflow.com/a/52229565/1091722.
+        d = {f.name: getattr(self, f.name) for f in dataclasses.fields(self)}
+        d_item = {k: v[key] for k, v in d.items()}
+
+        if isinstance(key, slice):
+            # Return type is the same as this dataclass. Replace fields with sliced
+            # fields.
+            return dataclasses.replace(self, **d_item)
+        else:
+            assert isinstance(key, int)
+            # Return type is a dictionary.
+            return d_item
 
 
 @dataclasses.dataclass(frozen=True)

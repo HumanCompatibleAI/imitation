@@ -310,7 +310,7 @@ class DAggerTrainer:
             logging.info(
                 f"Loaded {sum(num_demos)} new demos from {len(num_demos)} rounds"
             )
-            self.bc_trainer.set_expert_dataset(transitions)
+            self.bc_trainer.set_expert_dataloader(transitions)
             self._last_loaded_round = self.round_num
 
     def extend_and_update(self, **train_kwargs) -> int:
