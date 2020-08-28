@@ -318,7 +318,10 @@ class DAggerTrainer:
                 f"Loaded {sum(num_demos)} new demos from {len(num_demos)} rounds"
             )
             dataloader = th_data.DataLoader(
-                transitions, self.batch_size, drop_last=True
+                transitions,
+                self.batch_size,
+                drop_last=True,
+                shuffle=True,
             )
             self.bc_trainer.set_expert_dataloader(dataloader)
             self._last_loaded_round = self.round_num
