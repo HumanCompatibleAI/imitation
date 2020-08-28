@@ -22,7 +22,7 @@ SPACES = [
 ]
 OBS_SPACES = SPACES
 ACT_SPACES = SPACES
-LENGTHS = [1, 2, 10]
+LENGTHS = [0, 1, 2, 10]
 
 
 def _check_1d_shape(fn: Callable[[np.ndarray], Any], length: float, expected_msg: str):
@@ -36,6 +36,8 @@ def trajectory(
     obs_space: gym.Space, act_space: gym.Space, length: int
 ) -> types.Trajectory:
     """Fixture to generate trajectory of length `length` iid sampled from spaces."""
+    if length == 0:
+        pytest.skip()
     obs = np.array([obs_space.sample() for _ in range(length + 1)])
     acts = np.array([act_space.sample() for _ in range(length)])
     infos = np.array([{} for _ in range(length)])
@@ -158,6 +160,9 @@ class TestData:
         length: int,
     ) -> None:
         """Checks input validation catches space and dtype related errors."""
+        if length == 0:
+            pytest.skip()
+
         for trans in [transitions_min, transitions, transitions_rew]:
             with pytest.raises(
                 ValueError, match=r"obs and acts must have same number of timesteps:.*"
@@ -207,14 +212,6 @@ def test_zero_length_fails():
     empty = np.array([])
     with pytest.raises(ValueError, match=r"Degenerate trajectory.*"):
         types.Trajectory(obs=np.array([42]), acts=empty, infos=None)
-    with pytest.raises(ValueError, match=r"Must have non-zero number of.*"):
-        types.Transitions(
-            obs=empty,
-            acts=empty,
-            next_obs=empty,
-            dones=empty.astype(np.bool),
-            infos=empty.astype(np.object),
-        )
 
 
 # Dataset tests:
@@ -403,6 +400,8 @@ class TestTransitionsDictDatasetAdaptor(TestData):
         n_checks=30,
     ):
         """Check for correct sample shapes and dtypes."""
+        if len(transitions) == 0:
+            pytest.skip("Can't sample from empty Dataset.")
         for ds, trans in [(trans_ds, transitions), (trans_ds_rew, transitions_rew)]:
             trans_dict = dataclasses.asdict(trans)
             for _ in range(n_checks):
