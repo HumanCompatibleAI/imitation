@@ -135,8 +135,7 @@ class TransitionsMinimal(th_data.Dataset):
         pass
 
     def __getitem__(self, key):
-        """See `TransitionsMinimal` class docstring for indexing and slicing semantics.
-        """
+        """See TransitionsMinimal docstring for indexing and slicing semantics."""
         # Extract items using `dataclasses.fields` + dict comprehension instead of using
         # `dataclasses.asdict` because `asdict` expensively and undocumentedly
         # deep-copies every numpy array value.
