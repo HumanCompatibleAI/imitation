@@ -53,7 +53,7 @@ setup(
         "torch>=1.4.0",
         "tqdm",
         "scikit-learn>=0.21.2",
-        "stable-baselines3~=0.8.0a2",
+        "stable-baselines3~=0.8.0",
         "jax~=0.1.66",
         "jaxlib~=0.1.47",
         "sacred~=0.8.1",
