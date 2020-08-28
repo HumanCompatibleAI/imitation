@@ -127,27 +127,30 @@ class TransitionsMinimal(th_data.Dataset):
             )
 
     @overload
-    def __getitem__(self, key: int) -> Dict[str, np.ndarray]:
-        pass
-
-    @overload
     def __getitem__(self: T, key: slice) -> T:
         pass
 
+    @overload
+    def __getitem__(self, key: int) -> Dict[str, np.ndarray]:
+        pass
+
     def __getitem__(self, key):
+        """See `TransitionsMinimal` class docstring for indexing and slicing semantics.
+        """
         # Extract items using `dataclasses.fields` + dict comprehension instead of using
-        # `dataclasses.asdict` because `asdict` will undocumentedly deepcopy every
-        # numpy array. See https://stackoverflow.com/a/52229565/1091722.
+        # `dataclasses.asdict` because `asdict` expensively and undocumentedly
+        # deep-copies every numpy array value.
+        # See https://stackoverflow.com/a/52229565/1091722.
         d = {f.name: getattr(self, f.name) for f in dataclasses.fields(self)}
         d_item = {k: v[key] for k, v in d.items()}
 
         if isinstance(key, slice):
-            # Return type is the same as this dataclass. Replace fields with sliced
-            # fields.
+            # Return type is the same as this dataclass. Replace field value with
+            # slices.
             return dataclasses.replace(self, **d_item)
         else:
             assert isinstance(key, int)
-            # Return type is a dictionary.
+            # Return type is a dictionary. Array values have no batch dimension.
             return d_item
 
 

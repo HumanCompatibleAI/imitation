@@ -20,7 +20,7 @@ def venv():
     return venv
 
 
-@pytest.fixture(params=[1, 20])
+@pytest.fixture(params=[32, 50])
 def batch_size(request):
     return request.param
 

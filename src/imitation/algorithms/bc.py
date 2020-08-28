@@ -117,9 +117,7 @@ class BC:
         if expert_dataloader is not None:
             self.set_expert_dataloader(expert_dataloader)
 
-    def set_expert_dataloader(
-        self, expert_dataloader: Union[BCDataLoaderLike],
-    ) -> None:
+    def set_expert_dataloader(self, expert_dataloader: BCDataLoaderLike) -> None:
         """Set the expert dataloader, which yields batches of obs-act pairs.
 
         Changing the expert dataloader on-demand is useful for DAgger and other
