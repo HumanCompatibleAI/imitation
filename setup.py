@@ -53,9 +53,7 @@ setup(
         "torch>=1.4.0",
         "tqdm",
         "scikit-learn>=0.21.2",
-        # TODO(adam): switch to pip once release including commit 8353056 is made
-        "stable-baselines3 @ git+https://github.com/DLR-RM/stable-baselines3.git",
-        # "stable-baselines3~=0.8.0a2",
+        "stable-baselines3~=0.8.0a2",
         "jax~=0.1.66",
         "jaxlib~=0.1.47",
         "sacred~=0.8.1",
