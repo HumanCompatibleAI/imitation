@@ -146,11 +146,42 @@ class TestData:
         transitions: types.Transitions,
         transitions_rew: types.TransitionsWithRew,
         length: int,
+        n_checks: int = 20,
     ) -> None:
-        """Checks trajectories can be created for a variety of lengths and spaces."""
-        assert len(transitions_min) == length
-        assert len(transitions) == length
-        assert len(transitions_rew) == length
+        """Checks initialization, indexing, and slicing sanity."""
+        for trans in [transitions_min, transitions, transitions_rew]:
+            assert len(trans) == length
+
+            for _ in range(n_checks):
+                # Indexing checks, which require at least one element.
+                if length != 0:
+                    index = np.random.randint(length)
+                    assert isinstance(trans[index], dict)
+                    self._check_transitions_get_item(trans, index)
+
+                # Slicing checks.
+                start = np.random.randint(-2, length)
+                stop = np.random.randint(0, length + 2)
+                step = np.random.randint(-2, 4)
+                if step == 0:  # Illegal. Quick fix that biases tests to ordinary step.
+                    step = 1
+                s = slice(start, stop, step)
+                assert type(trans[s]) is type(trans)
+                self._check_transitions_get_item(trans, s)
+
+    def _check_transitions_get_item(self, trans, key):
+        """Check trans[key] by manually indexing/slicing into every `trans` field."""
+        item = trans[key]
+        for field in dataclasses.fields(trans):
+            if isinstance(item, dict):
+                observed = item[field.name]
+            else:
+                observed = getattr(item, field.name)
+
+            expected = getattr(trans, field.name)[key]
+            if isinstance(expected, np.ndarray):
+                assert observed.dtype == expected.dtype
+            np.testing.assert_array_equal(observed, expected)
 
     def test_invalid_transitions(
         self,
