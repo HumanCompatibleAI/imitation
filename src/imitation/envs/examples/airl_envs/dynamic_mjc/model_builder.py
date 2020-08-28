@@ -48,10 +48,10 @@ class MJCModel(object):
     @contextmanager
     def asfile(self):
         """Usage:
-    model = MJCModel('reacher')
-    with model.asfile() as f:
-        print f.read()  # prints a dump of the model
-    """
+        model = MJCModel('reacher')
+        with model.asfile() as f:
+            print f.read()  # prints a dump of the model
+        """
         with tempfile.NamedTemporaryFile(mode="w+", suffix=".xml", delete=True) as f:
             self.root.write(f)
             f.seek(0)

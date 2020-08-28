@@ -167,7 +167,11 @@ class AdversarialTrainer:
         return self.gen_algo.n_steps
 
     def _gen_log_action_prob_from_unnormalized(
-        self, observation: np.ndarray, *, actions: np.ndarray, logp=True,
+        self,
+        observation: np.ndarray,
+        *,
+        actions: np.ndarray,
+        logp=True,
     ) -> np.ndarray:
         """Calculate generator log action probabilility.
 
@@ -295,7 +299,9 @@ class AdversarialTrainer:
         self._gen_replay_buffer.store(gen_samples)
 
     def train(
-        self, total_timesteps: int, callback: Optional[Callable[[int], None]] = None,
+        self,
+        total_timesteps: int,
+        callback: Optional[Callable[[int], None]] = None,
     ) -> None:
         """Alternates between training the generator and discriminator.
 
