@@ -16,7 +16,8 @@ from imitation.policies import base
 
 
 def reconstruct_policy(
-    policy_path: str, device: Union[th.device, str] = "auto",
+    policy_path: str,
+    device: Union[th.device, str] = "auto",
 ) -> policies.BasePolicy:
     """Reconstruct a saved policy.
 
@@ -60,7 +61,9 @@ class BC:
         policy_class: Type[policies.BasePolicy] = base.FeedForward32Policy,
         policy_kwargs: Optional[Mapping[str, Any]] = None,
         expert_data: Union[
-            types.TransitionsMinimal, datasets.Dataset[types.TransitionsMinimal], None,
+            types.TransitionsMinimal,
+            datasets.Dataset[types.TransitionsMinimal],
+            None,
         ] = None,
         batch_size: int = 32,
         optimizer_cls: Type[th.optim.Optimizer] = th.optim.Adam,
@@ -126,7 +129,8 @@ class BC:
     def set_expert_dataset(
         self,
         expert_data: Union[
-            types.TransitionsMinimal, datasets.Dataset[types.TransitionsMinimal],
+            types.TransitionsMinimal,
+            datasets.Dataset[types.TransitionsMinimal],
         ],
     ) -> None:
         """Replace the current expert dataset with a new one.

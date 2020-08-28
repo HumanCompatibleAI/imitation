@@ -418,7 +418,9 @@ class BasicShapedRewardNet(RewardNetShaped):
           kwargs: Passed through to `RewardNetShaped`.
         """
         super().__init__(
-            observation_space, action_space, **kwargs,
+            observation_space,
+            action_space,
+            **kwargs,
         )
 
         if base_reward_net is None:

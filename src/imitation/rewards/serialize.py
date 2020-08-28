@@ -33,7 +33,10 @@ def _load_reward_net_as_fn(shaped: bool) -> RewardFnLoaderFn:
         reward = net.predict_reward_train if shaped else net.predict_reward_test
 
         def rew_fn(
-            obs: np.ndarray, act: np.ndarray, next_obs: np.ndarray, dones: np.ndarray,
+            obs: np.ndarray,
+            act: np.ndarray,
+            next_obs: np.ndarray,
+            dones: np.ndarray,
         ) -> np.ndarray:
             rew = reward(obs, act, next_obs, dones)
             assert rew.shape == (len(obs),)

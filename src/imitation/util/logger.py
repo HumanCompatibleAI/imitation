@@ -6,7 +6,8 @@ import stable_baselines3.common.logger as sb_logger
 
 
 def _build_output_formats(
-    folder: str, format_strs: Sequence[str] = None,
+    folder: str,
+    format_strs: Sequence[str] = None,
 ) -> Sequence[sb_logger.KVWriter]:
     """Build output formats for initializing a Stable Baselines Logger.
 
