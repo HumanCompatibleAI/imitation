@@ -55,11 +55,11 @@ jobs:
       - dependencies
       - run:
           name: flake8
-          command: flake8 ${SRC_FILES}
+          command: flake8 --version && flake8 ${SRC_FILES}
 
       - run:
           name: black
-          command: black --check --diff ${SRC_FILES}
+          command: black --version && black --check --diff ${SRC_FILES}
 
       - run:
           name: codespell
