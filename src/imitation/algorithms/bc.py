@@ -232,6 +232,13 @@ class BC:
                     obs_tensor, self.observation_space, normalize_images=True,
                 )
                 obs_tensor = self.augmentation_fn(obs_tensor)
+                # FIXME(sam): SB policies *always* apply preprocessing, so we
+                # need to undo the preprocessing we did before applying
+                # augmentations. The code below is the inverse of SB's
+                # preprocessing.preprocess_obs, but only for Box spaces.
+                if isinstance(self.observation_space, gym.spaces.Box):
+                    if preprocessing.is_image_space(self.observation_space):
+                        obs_tensor = obs_tensor * 255.0
                 loss, stats_dict = self._calculate_loss(obs_tensor, acts_tensor)
 
                 self.optimizer.zero_grad()
