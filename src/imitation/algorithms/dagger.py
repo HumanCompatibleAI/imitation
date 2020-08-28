@@ -79,7 +79,10 @@ def reconstruct_trainer(
     return th.load(checkpoint_path, map_location=utils.get_device(device))
 
 
-def _save_trajectory(npz_path: str, trajectory: types.Trajectory,) -> None:
+def _save_trajectory(
+    npz_path: str,
+    trajectory: types.Trajectory,
+) -> None:
     """Save a trajectory as a compressed Numpy file."""
     save_dir = os.path.dirname(npz_path)
     if save_dir:
@@ -359,7 +362,10 @@ class DAggerTrainer:
         beta = self.beta_schedule(self.round_num)
 
         def get_robot_act(obs):
-            (act,), _, = self.bc_trainer.policy.predict(obs[None])
+            (
+                (act,),
+                _,
+            ) = self.bc_trainer.policy.predict(obs[None])
             return act
 
         collector = InteractiveTrajectoryCollector(

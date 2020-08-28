@@ -130,10 +130,12 @@ def _load_stable_baselines(
 
 
 policy_registry.register(
-    "random", value=registry.build_loader_fn_require_space(RandomPolicy),
+    "random",
+    value=registry.build_loader_fn_require_space(RandomPolicy),
 )
 policy_registry.register(
-    "zero", value=registry.build_loader_fn_require_space(ZeroPolicy),
+    "zero",
+    value=registry.build_loader_fn_require_space(ZeroPolicy),
 )
 
 
@@ -163,7 +165,9 @@ def load_policy(policy_type: str, policy_path: str, venv: VecEnv) -> BasePolicy:
 
 
 def save_stable_model(
-    output_dir: str, model: BaseAlgorithm, vec_normalize: Optional[VecNormalize] = None,
+    output_dir: str,
+    model: BaseAlgorithm,
+    vec_normalize: Optional[VecNormalize] = None,
 ) -> None:
     """Serialize policy.
 

@@ -15,7 +15,8 @@ from imitation.policies import base
 
 
 def reconstruct_policy(
-    policy_path: str, device: Union[th.device, str] = "auto",
+    policy_path: str,
+    device: Union[th.device, str] = "auto",
 ) -> policies.BasePolicy:
     """Reconstruct a saved policy.
 

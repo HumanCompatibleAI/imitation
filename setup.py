@@ -1,5 +1,6 @@
-import src.imitation  # pytype: disable=import-error
 from setuptools import find_packages, setup
+
+import src.imitation  # pytype: disable=import-error
 
 TESTS_REQUIRE = [
     "seals~=0.1.0",
@@ -65,8 +66,7 @@ setup(
             "autopep8",
             "ntfy[slack]",
             "ipdb",
-            # isort 4.X required for flake8-isort (2020-07-07)
-            "isort~=4.0",
+            "isort~=5.0",
             "jupyter",
             "pytype",
             "codespell",
