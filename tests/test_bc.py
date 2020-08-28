@@ -25,11 +25,33 @@ def batch_size(request):
     return request.param
 
 
+@pytest.fixture(params=[True, False])
+def use_ducktyped_dataloader(request):
+    return request.param
+
+
+class DucktypedDataset:
+    """Used to check that any iterator over Dict[str, Tensor] works with BC."""
+
+    def __init__(self, transitions, batch_size):
+        self.trans = transitions
+        self.batch_size = batch_size
+
+    def __iter__(self):
+        for start in range(0, len(self.trans), self.batch_size):
+            d = dict(obs=self.trans.obs, acts=self.trans.acts)
+            d = {k: th.from_numpy(v) for k, v in d.items()}
+            yield d
+
+
 @pytest.fixture
-def trainer(batch_size, venv):
+def trainer(batch_size, venv, use_ducktyped_dataloader):
     rollouts = types.load(ROLLOUT_PATH)
-    dataset = rollout.flatten_trajectories(rollouts)
-    dataloader = th_data.DataLoader(dataset, batch_size=batch_size, shuffle=True)
+    trans = rollout.flatten_trajectories(rollouts)
+    if not use_ducktyped_dataloader:
+        dataloader = th_data.DataLoader(trans, batch_size=batch_size, shuffle=True)
+    else:
+        dataloader = DucktypedDataset(trans, batch_size)
     return bc.BC(
         venv.observation_space, venv.action_space, expert_dataloader=dataloader
     )
