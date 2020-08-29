@@ -49,7 +49,7 @@ class ConstantLRSchedule:
         return self.lr
 
 
-BCDataLoaderLike = Iterable[Mapping[str, th.Tensor]]
+BCDataLoaderDucktype = Iterable[Mapping[str, th.Tensor]]
 
 
 class BC:
@@ -62,7 +62,7 @@ class BC:
         *,
         policy_class: Type[policies.BasePolicy] = base.FeedForward32Policy,
         policy_kwargs: Optional[Mapping[str, Any]] = None,
-        expert_dataloader: Optional[BCDataLoaderLike] = None,
+        expert_dataloader: Optional[BCDataLoaderDucktype] = None,
         optimizer_cls: Type[th.optim.Optimizer] = th.optim.Adam,
         optimizer_kwargs: Optional[Dict[str, Any]] = None,
         ent_weight: float = 1e-3,
@@ -71,8 +71,9 @@ class BC:
     ):
         """Behavioral cloning (BC).
 
-        Recovers a policy via supervised learning on a Torch DataLoader of
-        observation-action Tensor pairs.
+        Recovers a policy via supervised learning on observation-action Tensor
+        pairs, sampled from a Torch DataLoader or any Iterator that ducktypes
+        `torch.utils.data.DataLoader`.
 
         Args:
             observation_space: the observation space of the environment.
@@ -111,14 +112,14 @@ class BC:
         optimizer_kwargs = optimizer_kwargs or {}
         self.optimizer = optimizer_cls(self.policy.parameters(), **optimizer_kwargs)
 
-        self.expert_dataloader: Optional[BCDataLoaderLike] = None
+        self.expert_dataloader: Optional[BCDataLoaderDucktype] = None
         self.ent_weight = ent_weight
         self.l2_weight = l2_weight
 
         if expert_dataloader is not None:
             self.set_expert_dataloader(expert_dataloader)
 
-    def set_expert_dataloader(self, expert_dataloader: BCDataLoaderLike) -> None:
+    def set_expert_dataloader(self, expert_dataloader: BCDataLoaderDucktype) -> None:
         """Set the expert dataloader, which yields batches of obs-act pairs.
 
         Changing the expert dataloader on-demand is useful for DAgger and other
