@@ -53,7 +53,7 @@ def _rews_validation(rews: np.ndarray, acts: np.ndarray):
             "rewards must be 1D array, one entry for each action: "
             f"{rews.shape} != ({len(acts)},)"
         )
-    if rews.dtype not in [np.float32, np.float64, np.float128]:
+    if not np.issubdtype(rews.dtype, np.floating):
         raise ValueError(f"rewards dtype {rews.dtype} not a float")
 
 
