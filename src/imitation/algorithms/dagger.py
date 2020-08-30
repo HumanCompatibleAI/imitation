@@ -322,6 +322,7 @@ class DAggerTrainer:
                 self.batch_size,
                 drop_last=True,
                 shuffle=True,
+                collate_fn=types.transitions_collate_fn,
             )
             self.bc_trainer.set_expert_dataloader(dataloader)
             self._last_loaded_round = self.round_num

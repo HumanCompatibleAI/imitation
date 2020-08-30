@@ -48,12 +48,19 @@ class DucktypedDataset:
 def trainer(batch_size, venv, use_ducktyped_dataloader):
     rollouts = types.load(ROLLOUT_PATH)
     trans = rollout.flatten_trajectories(rollouts)
-    if not use_ducktyped_dataloader:
-        dataloader = th_data.DataLoader(trans, batch_size=batch_size, shuffle=True)
-    else:
+    if use_ducktyped_dataloader:
         dataloader = DucktypedDataset(trans, batch_size)
+    else:
+        dataloader = th_data.DataLoader(
+            trans,
+            batch_size=batch_size,
+            shuffle=True,
+            collate_fn=types.transitions_collate_fn,
+        )
     return bc.BC(
-        venv.observation_space, venv.action_space, expert_dataloader=dataloader
+        venv.observation_space,
+        venv.action_space,
+        expert_dataloader=dataloader,
     )
 
 

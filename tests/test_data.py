@@ -40,7 +40,7 @@ def trajectory(
         pytest.skip()
     obs = np.array([obs_space.sample() for _ in range(length + 1)])
     acts = np.array([act_space.sample() for _ in range(length)])
-    infos = np.array([{} for _ in range(length)])
+    infos = np.array([{i: i} for i in range(length)])
     return types.Trajectory(obs=obs, acts=acts, infos=infos)
 
 
@@ -57,7 +57,7 @@ def transitions_min(
 ) -> types.TransitionsMinimal:
     obs = np.array([obs_space.sample() for _ in range(length)])
     acts = np.array([act_space.sample() for _ in range(length)])
-    infos = np.array([{}] * length)
+    infos = np.array([{i: i} for i in range(length)])
     return types.TransitionsMinimal(obs=obs, acts=acts, infos=infos)
 
 
@@ -80,6 +80,21 @@ def transitions_rew(
     """Like `transitions` but with reward randomly sampled from a Gaussian."""
     rews = np.random.randn(length)
     return types.TransitionsWithRew(**dataclasses.asdict(transitions), rews=rews)
+
+
+def _check_transitions_get_item(trans, key):
+    """Check trans[key] by manually indexing/slicing into every `trans` field."""
+    item = trans[key]
+    for field in dataclasses.fields(trans):
+        if isinstance(item, dict):
+            observed = item[field.name]  # pytype: disable=unsupported-operands
+        else:
+            observed = getattr(item, field.name)
+
+        expected = getattr(trans, field.name)[key]
+        if isinstance(expected, np.ndarray):
+            assert observed.dtype == expected.dtype
+        np.testing.assert_array_equal(observed, expected)
 
 
 @pytest.mark.parametrize("obs_space", OBS_SPACES)
@@ -159,7 +174,7 @@ class TestData:
                 if length != 0:
                     index = np.random.randint(length)
                     assert isinstance(trans[index], dict)
-                    self._check_transitions_get_item(trans, index)
+                    _check_transitions_get_item(trans, index)
 
                 # Slicing checks.
                 start = np.random.randint(-2, length)
@@ -169,21 +184,7 @@ class TestData:
                     step = 1
                 s = slice(start, stop, step)
                 assert type(trans[s]) is type(trans)
-                self._check_transitions_get_item(trans, s)
-
-    def _check_transitions_get_item(self, trans, key):
-        """Check trans[key] by manually indexing/slicing into every `trans` field."""
-        item = trans[key]
-        for field in dataclasses.fields(trans):
-            if isinstance(item, dict):
-                observed = item[field.name]
-            else:
-                observed = getattr(item, field.name)
-
-            expected = getattr(trans, field.name)[key]
-            if isinstance(expected, np.ndarray):
-                assert observed.dtype == expected.dtype
-            np.testing.assert_array_equal(observed, expected)
+                _check_transitions_get_item(trans, s)
 
     def test_invalid_transitions(
         self,

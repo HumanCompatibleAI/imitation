@@ -4,9 +4,10 @@ import dataclasses
 import logging
 import os
 import pickle
-from typing import Dict, Optional, Sequence, TypeVar, overload
+from typing import Dict, Mapping, Optional, Sequence, TypeVar, Union, overload
 
 import numpy as np
+import torch
 from torch.utils import data as th_data
 
 from imitation.data import old_types
@@ -69,6 +70,29 @@ class TrajectoryWithRew(Trajectory):
         """Performs input validation, including for rews."""
         super().__post_init__()
         _rews_validation(self.rews, self.acts)
+
+
+def transitions_collate_fn(
+    batch: Sequence[Mapping[str, np.ndarray]],
+) -> Dict[str, Union[np.ndarray, torch.Tensor]]:
+    """Custom `torch.utils.data.DataLoader` collate_fn for `TransitionsMinimal`.
+
+    Use this as the `collate_fn` argument to `DataLoader` if using an instance of
+    `TransitionsMinimal` as the `dataset` argument.
+
+    Handles all collation except "infos" collation using Torch's default collate_fn.
+    "infos" needs special handling because we shouldn't recursively collate every
+    the info dict into a single dict, but instead join all the info dicts into a list of
+    dicts.
+    """
+    batch_no_infos = [
+        {k: v for k, v in sample.items() if k != "infos"} for sample in batch
+    ]
+
+    result = th_data.dataloader.default_collate(batch_no_infos)
+    assert isinstance(result, dict)
+    result["infos"] = [sample["infos"] for sample in batch]
+    return result
 
 
 @dataclasses.dataclass(frozen=True)
@@ -150,6 +174,12 @@ class TransitionsMinimal(th_data.Dataset):
         else:
             assert isinstance(key, int)
             # Return type is a dictionary. Array values have no batch dimension.
+            #
+            # Dictionary of np.ndarray values is a convenient
+            # torch.util.data.Dataset return type, as a torch.util.data.DataLoader
+            # taking in this `Dataset` as its first argument knows how to
+            # automatically concatenate several dictionaries together to make
+            # a single dictionary batch with `torch.Tensor` values.
             return d_item
 
 
