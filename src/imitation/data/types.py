@@ -54,7 +54,7 @@ def _rews_validation(rews: np.ndarray, acts: np.ndarray):
             f"{rews.shape} != ({len(acts)},)"
         )
     if rews.dtype not in [np.float32, np.float64, np.float128]:
-        raise ValueError("rewards dtype {self.rews.dtype} not a float")
+        raise ValueError(f"rewards dtype {rews.dtype} not a float")
 
 
 @dataclasses.dataclass(frozen=True)
