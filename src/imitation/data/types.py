@@ -4,13 +4,17 @@ import dataclasses
 import logging
 import os
 import pickle
-from typing import Dict, Mapping, Optional, Sequence, TypeVar, Union, overload
+from typing import Dict, Iterable, Mapping, Optional, Sequence, TypeVar, Union, overload
 
 import numpy as np
-import torch
+import torch as th
 from torch.utils import data as th_data
 
 from imitation.data import old_types
+
+
+DataLoaderInterface = Iterable[Mapping[str, th.Tensor]]
+
 
 T = TypeVar("T")
 
@@ -74,7 +78,7 @@ class TrajectoryWithRew(Trajectory):
 
 def transitions_collate_fn(
     batch: Sequence[Mapping[str, np.ndarray]],
-) -> Dict[str, Union[np.ndarray, torch.Tensor]]:
+) -> Dict[str, Union[np.ndarray, th.Tensor]]:
     """Custom `torch.utils.data.DataLoader` collate_fn for `TransitionsMinimal`.
 
     Use this as the `collate_fn` argument to `DataLoader` if using an instance of

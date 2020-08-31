@@ -1,8 +1,9 @@
 import dataclasses
-from typing import Dict, Mapping, Optional, Tuple
+from typing import Dict, Iterable, Mapping, Optional, Tuple
 
 import numpy as np
 from stable_baselines3.common import vec_env
+import torch as th
 
 from imitation.data import datasets, types
 

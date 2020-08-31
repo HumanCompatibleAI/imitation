@@ -39,11 +39,10 @@ class AdversarialTrainer:
         venv: vec_env.VecEnv,
         gen_algo: base_class.BaseAlgorithm,
         discrim: discrim_nets.DiscrimNet,
-        expert_data: Union[datasets.Dataset[types.Transitions], types.Transitions],
+        expert_dataloader: types.DataLoaderInterface,
+        disc_batch_size: int,
         *,
         log_dir: str = "output/",
-        disc_batch_size: int = 2048,
-        disc_minibatch_size: int = 256,
         disc_opt_cls: Type[th.optim.Optimizer] = th.optim.Adam,
         disc_opt_kwargs: Optional[Mapping] = None,
         gen_replay_buffer_capacity: Optional[int] = None,
@@ -61,10 +60,9 @@ class AdversarialTrainer:
               `self.gen_batch_size` is inferred from `gen_algo.n_steps`.
             discrim: The discriminator network. This will be moved to the same
               device as `gen_algo`.
-            expert_data: Either a `Dataset` of expert `Transitions`, or an instance of
-              `Transitions` to be automatically converted into a
+            expert_dataloader: Either a `Dataset` of expert `Transitions`, or an
+              instance of `Transitions` to be automatically converted into a
               `Dataset[Transitions]`.
-            log_dir: Directory to store TensorBoard logs, plots, etc. in.
             disc_batch_size: The default number of expert and generator transitions
               samples to feed to the discriminator in each call to
               `self.train_disc()`. (Half of the samples are expert and half of the
@@ -73,6 +71,7 @@ class AdversarialTrainer:
               discriminator batch is split into minibatches and an Adam update is
               applied on the gradient resulting form each minibatch. Must evenly
               divide `disc_batch_size`. Must be an even number.
+            log_dir: Directory to store TensorBoard logs, plots, etc. in.
             disc_opt_cls: The optimizer for discriminator training.
             disc_opt_kwargs: Parameters for discriminator training.
             gen_replay_buffer_capacity: The capacity of the
@@ -147,10 +146,7 @@ class AdversarialTrainer:
         )
 
         if isinstance(expert_data, types.Transitions):
-            # Somehow, pytype doesn't recognize that `expert_data` is Transitions.
-            expert_data = datasets.TransitionsDictDatasetAdaptor(
-                expert_data,  # pytype: disable=wrong-arg-types
-            )
+            expert_data = datasets.TransitionsDictDatasetAdaptor(expert_data)
         self._expert_dataset = expert_data
 
         expert_ds_size = self._expert_dataset.size()
