@@ -1,7 +1,9 @@
-import src.imitation  # pytype: disable=import-error
 from setuptools import find_packages, setup
 
+import src.imitation  # pytype: disable=import-error
+
 TF_VERSION = ">=1.15.0,<2.0"
+
 TESTS_REQUIRE = [
     "seals~=0.1.0",
     "black",
@@ -66,7 +68,7 @@ setup(
             "autopep8",
             "ntfy[slack]",
             "ipdb",
-            "isort",
+            "isort~=5.0",
             "jupyter",
             "pytype",
             "codespell",
