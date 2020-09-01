@@ -52,10 +52,7 @@ setup(
         "numpy>=1.15",
         "tqdm",
         "scikit-learn>=0.21.2",
-        # TODO(shwang): Stop using GitHub pointer once
-        # https://github.com/hill-a/stable-baselines/pull/935 is part of Stable
-        # Baselines release.
-        "stable-baselines @ git+https://github.com/hill-a/stable-baselines.git",
+        "stable-baselines~=2.10.1",
         "jax~=0.1.66",
         "jaxlib~=0.1.47",
         "sacred~=0.8.1",
