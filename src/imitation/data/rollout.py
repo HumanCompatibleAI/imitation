@@ -187,7 +187,8 @@ def min_timesteps(n: int) -> GenTrajTerminationFn:
 
 
 def make_sample_until(
-    n_timesteps: Optional[int], n_episodes: Optional[int],
+    n_timesteps: Optional[int],
+    n_episodes: Optional[int],
 ) -> GenTrajTerminationFn:
     """Returns a termination condition sampling until n_timesteps or n_episodes.
 

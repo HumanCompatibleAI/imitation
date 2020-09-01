@@ -231,7 +231,11 @@ class DiscrimNet(serialize.Serializable, ABC):
         return rew
 
     def reward_test(
-        self, obs: np.ndarray, act: np.ndarray, next_obs: np.ndarray, dones: np.ndarray,
+        self,
+        obs: np.ndarray,
+        act: np.ndarray,
+        next_obs: np.ndarray,
+        dones: np.ndarray,
     ) -> np.ndarray:
         """Vectorized reward for training an expert during transfer learning.
 

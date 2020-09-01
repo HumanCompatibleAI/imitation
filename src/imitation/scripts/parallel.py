@@ -89,7 +89,10 @@ def parallel(
             base_config_updates["data_dir"] = data_dir
 
     trainable = _ray_tune_sacred_wrapper(
-        sacred_ex_name, run_name, base_named_configs, base_config_updates,
+        sacred_ex_name,
+        run_name,
+        base_named_configs,
+        base_config_updates,
     )
 
     # Disable all Ray Loggers.

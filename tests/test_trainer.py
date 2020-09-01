@@ -30,7 +30,10 @@ def _algorithm_cls(request):
 def test_train_disc_small_expert_data_warning(tmpdir, _algorithm_cls):
     logger.configure(tmpdir, ["tensorboard", "stdout"])
     venv = util.make_vec_env(
-        "CartPole-v1", n_envs=2, parallel=_parallel, log_dir=tmpdir,
+        "CartPole-v1",
+        n_envs=2,
+        parallel=_parallel,
+        log_dir=tmpdir,
     )
 
     gen_policy = util.init_rl(venv, verbose=1)
@@ -38,7 +41,10 @@ def test_train_disc_small_expert_data_warning(tmpdir, _algorithm_cls):
 
     with pytest.warns(RuntimeWarning, match="discriminator batch size"):
         _algorithm_cls(
-            venv=venv, expert_data=small_data, gen_policy=gen_policy, log_dir=tmpdir,
+            venv=venv,
+            expert_data=small_data,
+            gen_policy=gen_policy,
+            log_dir=tmpdir,
         )
 
 
@@ -69,13 +75,19 @@ def trainer(_algorithm_cls, _parallel: bool, tmpdir: str, _convert_dataset: bool
         expert_data = rollout.flatten_trajectories(trajs)
 
     venv = util.make_vec_env(
-        "CartPole-v1", n_envs=2, parallel=_parallel, log_dir=tmpdir,
+        "CartPole-v1",
+        n_envs=2,
+        parallel=_parallel,
+        log_dir=tmpdir,
     )
 
     gen_policy = util.init_rl(venv, verbose=1)
 
     return _algorithm_cls(
-        venv=venv, expert_data=expert_data, gen_policy=gen_policy, log_dir=tmpdir,
+        venv=venv,
+        expert_data=expert_data,
+        gen_policy=gen_policy,
+        log_dir=tmpdir,
     )
 
 

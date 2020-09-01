@@ -331,7 +331,7 @@ class ReplayBuffer(datasets.Dataset[types.Transitions]):
             obs_shape=obs_shape,
             act_shape=act_shape,
             obs_dtype=transitions.obs.dtype,
-            act_dtype=transitions.acts.dtype,
+            act_dtype=transitions.acts.dtype,  # pytype: disable=wrong-arg-types
         )
         instance.store(transitions, truncate_ok=truncate_ok)
         return instance

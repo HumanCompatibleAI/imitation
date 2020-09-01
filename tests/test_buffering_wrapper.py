@@ -46,7 +46,9 @@ class _CountingEnv(gym.Env):  # pragma: no cover
         return t, t * 10, done, {}
 
 
-def _make_buffering_venv(error_on_premature_reset: bool,) -> BufferingWrapper:
+def _make_buffering_venv(
+    error_on_premature_reset: bool,
+) -> BufferingWrapper:
     venv = DummyVecEnv([_CountingEnv] * 2)
     venv = BufferingWrapper(venv, error_on_premature_reset)
     venv.reset()
@@ -73,7 +75,12 @@ def _join_transitions(
     dones = concat(t.dones for t in trans_list)
     infos = concat(t.infos for t in trans_list)
     return types.TransitionsWithRew(
-        obs=obs, next_obs=next_obs, rews=rews, acts=acts, dones=dones, infos=infos,
+        obs=obs,
+        next_obs=next_obs,
+        rews=rews,
+        acts=acts,
+        dones=dones,
+        infos=infos,
     )
 
 

@@ -230,7 +230,12 @@ def test_replay_buffer_from_data():
     rews = np.array([0.5, 1.0], dtype=float)
     buf_rew = ReplayBuffer.from_data(
         types.TransitionsWithRew(
-            obs=obs, acts=acts, next_obs=next_obs, rews=rews, dones=dones, infos=infos,
+            obs=obs,
+            acts=acts,
+            next_obs=next_obs,
+            rews=rews,
+            dones=dones,
+            infos=infos,
         )
     )
     _check_buf(buf_rew)

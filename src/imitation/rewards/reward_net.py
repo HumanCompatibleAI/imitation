@@ -217,7 +217,9 @@ class RewardNetShaped(RewardNet):
 
     @abstractmethod
     def build_phi_network(
-        self, obs_input: tf.Tensor, next_obs_input: tf.Tensor,
+        self,
+        obs_input: tf.Tensor,
+        next_obs_input: tf.Tensor,
     ) -> Tuple[tf.Tensor, tf.Tensor, networks.LayersDict]:
         """Build the reward shaping network (disentangles dynamics from reward).
 
@@ -373,7 +375,10 @@ class BasicShapedRewardNet(RewardNetShaped, serialize.LayersSerializable):
         self.theta_kwargs = theta_kwargs or {}
         self.phi_kwargs = phi_kwargs or {}
         RewardNetShaped.__init__(
-            self, observation_space, action_space, **kwargs,
+            self,
+            observation_space,
+            action_space,
+            **kwargs,
         )
         serialize.LayersSerializable.__init__(**params, layers=self._layers)
 

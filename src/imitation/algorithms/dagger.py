@@ -41,7 +41,10 @@ def linear_beta_schedule(rampdown_rounds: int) -> Callable[[int], float]:
     return schedule
 
 
-def _save_trajectory(npz_path: str, trajectory: types.Trajectory,) -> None:
+def _save_trajectory(
+    npz_path: str,
+    trajectory: types.Trajectory,
+) -> None:
     """Save a trajectory as a compressed Numpy file."""
     save_dir = os.path.dirname(npz_path)
     if save_dir:

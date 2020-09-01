@@ -102,7 +102,9 @@ class TestData:
             assert len(traj) == length
 
     def test_invalid_trajectories(
-        self, trajectory: types.Trajectory, trajectory_rew: types.TrajectoryWithRew,
+        self,
+        trajectory: types.Trajectory,
+        trajectory_rew: types.TrajectoryWithRew,
     ) -> None:
         """Checks input validation catches space and dtype related errors."""
         trajs = [trajectory, trajectory_rew]
@@ -304,7 +306,13 @@ def test_dict_dataset_parallel_rows(
     Nontrivially, shuffled datasets should maintain this order.
     """
     dataset_cls, kwargs = dict_dataset_params
-    range_data_map = {k: i + np.arange(50,) for i, k in enumerate("abcd")}
+    range_data_map = {
+        k: i
+        + np.arange(
+            50,
+        )
+        for i, k in enumerate("abcd")
+    }
     dict_dataset = dataset_cls(range_data_map, **kwargs)
     for _ in range(n_checks):
         n_samples = np.random.randint(max_batch_size) + 1
@@ -333,7 +341,11 @@ class TestEpochOrderDictDataset:
         return ds
 
     def test_epoch_order_dict_dataset_shuffle_order(
-        self, arange_dataset, shuffle, dataset_size, n_checks=3,
+        self,
+        arange_dataset,
+        shuffle,
+        dataset_size,
+        n_checks=3,
     ):
         """Check that epoch order is deterministic iff not shuffled.
 
@@ -350,7 +362,10 @@ class TestEpochOrderDictDataset:
             assert same_order != shuffle
 
     def test_epoch_order_dict_dataset_order_property(
-        self, arange_dataset, max_batch_size=31, n_epochs=4,
+        self,
+        arange_dataset,
+        max_batch_size=31,
+        n_epochs=4,
     ):
         """No sample should be returned n+1 times until others are returned n times."""
         counter = collections.Counter({i: 0 for i in range(arange_dataset.size())})

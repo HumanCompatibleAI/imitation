@@ -224,20 +224,20 @@ class DensityTrainer:
         is_stationary: bool = False,
     ):
         r"""Family of simple imitation learning baseline algorithms that apply RL to
-         maximise a rough density estimate of the demonstration trajectories.
-         Specifically, it constructs a non-parametric estimate of `p(s)`, `p(s,s')`,
-         `p_t(s,a)`, etc. (depending on options), then rewards the imitation learner
-         with `r_t(s,a,s')=\log p_t(s,a,s')` (or `\log p(s,s')`, or whatever the
-         user wants the model to condition on).
+        maximise a rough density estimate of the demonstration trajectories.
+        Specifically, it constructs a non-parametric estimate of `p(s)`, `p(s,s')`,
+        `p_t(s,a)`, etc. (depending on options), then rewards the imitation learner
+        with `r_t(s,a,s')=\log p_t(s,a,s')` (or `\log p(s,s')`, or whatever the
+        user wants the model to condition on).
 
-         Args:
-             venv: environment to train on.
-             rollouts: list of expert trajectories to imitate.
-             imitation_trainer: RL algorithm & initial policy that will
-                 be used to train the imitation learner.
-             kernel, kernel_bandwidth, density_type, is_stationary,
-                 n_expert_trajectories: these are passed directly to `DensityReward`;
-                 refer to documentation for that class."""
+        Args:
+            venv: environment to train on.
+            rollouts: list of expert trajectories to imitate.
+            imitation_trainer: RL algorithm & initial policy that will
+                be used to train the imitation learner.
+            kernel, kernel_bandwidth, density_type, is_stationary,
+                n_expert_trajectories: these are passed directly to `DensityReward`;
+                refer to documentation for that class."""
         self.venv = venv
         self.imitation_trainer = imitation_trainer
         self.reward_fn = DensityReward(

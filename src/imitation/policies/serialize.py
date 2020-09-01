@@ -100,11 +100,15 @@ def _load_stable_baselines(cls: Type[BaseRLModel], policy_attr: str) -> PolicyLo
 
 policy_registry.register(
     "random",
-    value=registry.build_loader_fn_require_space(registry.dummy_context(RandomPolicy),),
+    value=registry.build_loader_fn_require_space(
+        registry.dummy_context(RandomPolicy),
+    ),
 )
 policy_registry.register(
     "zero",
-    value=registry.build_loader_fn_require_space(registry.dummy_context(ZeroPolicy),),
+    value=registry.build_loader_fn_require_space(
+        registry.dummy_context(ZeroPolicy),
+    ),
 )
 
 
@@ -142,7 +146,9 @@ def load_policy(
 
 
 def save_stable_model(
-    output_dir: str, model: BaseRLModel, vec_normalize: Optional[VecNormalize] = None,
+    output_dir: str,
+    model: BaseRLModel,
+    vec_normalize: Optional[VecNormalize] = None,
 ) -> None:
     """Serialize policy.
 

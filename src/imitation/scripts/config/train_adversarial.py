@@ -50,7 +50,8 @@ def train_defaults():
 
     # Modifies the __init__ arguments for the imitation policy
     init_rl_kwargs = dict(
-        policy_class=base.FeedForward32Policy, **DEFAULT_INIT_RL_KWARGS,
+        policy_class=base.FeedForward32Policy,
+        **DEFAULT_INIT_RL_KWARGS,
     )
     gen_batch_size = 2048  # Batch size for generator updates
 

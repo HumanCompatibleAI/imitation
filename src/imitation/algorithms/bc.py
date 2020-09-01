@@ -67,7 +67,9 @@ class BC:
         policy_class: Type[ActorCriticPolicy] = FeedForward32Policy,
         policy_kwargs: Optional[Mapping[str, Any]] = None,
         expert_data: Union[
-            types.TransitionsMinimal, datasets.Dataset[types.TransitionsMinimal], None,
+            types.TransitionsMinimal,
+            datasets.Dataset[types.TransitionsMinimal],
+            None,
         ] = None,
         batch_size: int = 32,
         optimizer_cls: Type[tf.train.Optimizer] = tf.train.AdamOptimizer,
@@ -122,7 +124,8 @@ class BC:
     def set_expert_dataset(
         self,
         expert_data: Union[
-            types.TransitionsMinimal, datasets.Dataset[types.TransitionsMinimal],
+            types.TransitionsMinimal,
+            datasets.Dataset[types.TransitionsMinimal],
         ],
     ):
         """Replace the current expert dataset with a new one.
@@ -253,7 +256,8 @@ class BC:
 
     @staticmethod
     def reconstruct_policy(
-        policy_path: str, sess: Optional[tf.Session] = None,
+        policy_path: str,
+        sess: Optional[tf.Session] = None,
     ) -> BasePolicy:
         """Reconstruct a saved policy.
 

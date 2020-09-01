@@ -162,7 +162,8 @@ def train(
         algorithm_kwargs_shared = algorithm_kwargs.get("shared", {})
         algorithm_kwargs_algo = algorithm_kwargs.get(algorithm, {})
         final_algorithm_kwargs = dict(
-            **algorithm_kwargs_shared, **algorithm_kwargs_algo,
+            **algorithm_kwargs_shared,
+            **algorithm_kwargs_algo,
         )
 
         if algorithm.lower() == "gail":

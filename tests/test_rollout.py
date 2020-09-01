@@ -34,7 +34,9 @@ class TerminalSentinelEnv(gym.Env):
 
 
 def _sample_fixed_length_trajectories(
-    episode_lengths: Sequence[int], min_episodes: int, **kwargs,
+    episode_lengths: Sequence[int],
+    min_episodes: int,
+    **kwargs,
 ) -> Sequence[types.Trajectory]:
     venv = vec_env.DummyVecEnv(
         [functools.partial(TerminalSentinelEnv, length) for length in episode_lengths]
@@ -42,7 +44,10 @@ def _sample_fixed_length_trajectories(
     policy = RandomPolicy(venv.observation_space, venv.action_space)
     sample_until = rollout.min_episodes(min_episodes)
     trajectories = rollout.generate_trajectories(
-        policy, venv, sample_until=sample_until, **kwargs,
+        policy,
+        venv,
+        sample_until=sample_until,
+        **kwargs,
     )
     return trajectories
 
