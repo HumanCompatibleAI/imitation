@@ -25,6 +25,9 @@ def replay_defaults():
         "tests/data/expert_models/" "cartpole_0/policies/final/"
     )  # serialized policy
 
+    save_video = False
+
+
     reward_type = None  # Optional: override with reward of this type
     reward_path = None  # Path of serialized reward to load
 
