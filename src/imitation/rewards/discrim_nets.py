@@ -153,6 +153,7 @@ class DiscrimNet(nn.Module, abc.ABC):
         next_state: th.Tensor,
         done: th.Tensor,
     ) -> np.ndarray:
+        # BUG(sam): for AIRL, this will do double-preprocessing!
         (
             state_th,
             action_th,

@@ -47,7 +47,7 @@ class DictDataset(Dataset[Dict[str, np.ndarray]]):
         """
         if len(data_map) == 0:
             raise ValueError("Empty data_map not allowed.")
-        self.data_map = {k: v.copy() for k, v in data_map.items()}
+        self.data_map = data_map
 
         n_rows_set = set(len(v) for v in data_map.values())
         if len(n_rows_set) != 1:
@@ -96,7 +96,7 @@ class EpochOrderDictDataset(DictDataset):
             for k, v in sample.items():
                 samples_accum[k].append(v)
 
-        result = {k: np.copy(np.concatenate(v)) for k, v in samples_accum.items()}
+        result = {k: np.concatenate(v) for k, v in samples_accum.items()}
         assert all(len(v) == n_samples for v in result.values())
         return result
 
