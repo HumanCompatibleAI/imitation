@@ -354,7 +354,10 @@ class AdversarialTrainer:
     def _torchify_with_space(
         self, ndarray: np.ndarray, space: gym.Space, **kwargs
     ) -> th.Tensor:
-        tensor = th.as_tensor(ndarray, device=self.discrim.device(), **kwargs)
+        # always make it contiguous so that we can feed it to augmentation
+        # module, RNNs, etc.
+        tensor = th.as_tensor(ndarray, device=self.discrim.device(), **kwargs) \
+            .contiguous()
         preprocessed = preprocessing.preprocess_obs(
             tensor,
             space,

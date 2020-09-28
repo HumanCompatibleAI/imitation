@@ -225,12 +225,16 @@ class BC:
                 assert len(trans) == self.batch_size
                 samples_so_far += self.batch_size
 
-                acts_tensor = th.as_tensor(trans.acts).to(self.policy.device)
-                # we always apply augmentations to observations
-                obs_tensor = th.as_tensor(trans.obs).to(self.policy.device)
+                # some later code (e.g. augmentation, and RNNs if we use them)
+                # require contiguous tensors, hence the .contiguous()
+                acts_tensor = th.as_tensor(trans.acts).contiguous() \
+                    .to(self.policy.device)
+                obs_tensor = th.as_tensor(trans.obs).contiguous() \
+                    .to(self.policy.device)
                 obs_tensor = preprocessing.preprocess_obs(
                     obs_tensor, self.observation_space, normalize_images=True,
                 )
+                # we always apply augmentations to observations
                 obs_tensor = self.augmentation_fn(obs_tensor)
                 # FIXME(sam): SB policies *always* apply preprocessing, so we
                 # need to undo the preprocessing we did before applying
