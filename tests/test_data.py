@@ -2,8 +2,12 @@
 
 
 import collections
+import contextlib
 import copy
 import dataclasses
+import os
+import pathlib
+import pickle
 from typing import Any, Callable
 
 import gym
@@ -80,6 +84,17 @@ def transitions_rew(
     return types.TransitionsWithRew(**dataclasses.asdict(transitions), rews=rews)
 
 
+@contextlib.contextmanager
+def pushd(dir_path):
+    """Change directory temporarily inside context."""
+    orig_dir = os.getcwd()
+    try:
+        os.chdir(dir_path)
+        yield
+    finally:
+        os.chdir(orig_dir)
+
+
 @pytest.mark.parametrize("obs_space", OBS_SPACES)
 @pytest.mark.parametrize("act_space", ACT_SPACES)
 @pytest.mark.parametrize("length", LENGTHS)
@@ -100,6 +115,31 @@ class TestData:
         trajs += [dataclasses.replace(traj, infos=None) for traj in trajs]
         for traj in trajs:
             assert len(traj) == length
+
+    @pytest.mark.parametrize("use_chdir", [False, True])
+    def test_save_trajectories(self, trajectory_rew, use_chdir, tmpdir):
+        """Check that trajectories are properly saved."""
+        if use_chdir:
+            # Test no relative path without directory edge-case.
+            chdir_context = pushd(tmpdir)
+            save_dir = ""
+        else:
+            chdir_context = contextlib.nullcontext()
+            save_dir = tmpdir
+
+        trajs = [trajectory_rew]
+        save_path = pathlib.Path(save_dir, "trajs.pkl")
+
+        with chdir_context:
+            types.save(str(save_path), trajs)
+            with open(save_path, "rb") as f:
+                loaded_trajs = pickle.load(f)
+            assert len(trajs) == len(loaded_trajs)
+            for t1, t2 in zip(trajs, loaded_trajs):
+                d1, d2 = dataclasses.asdict(t1), dataclasses.asdict(t2)
+                assert d1.keys() == d2.keys()
+                for k, v in d1.items():
+                    assert np.array_equal(v, d2[k])
 
     def test_invalid_trajectories(
         self,
