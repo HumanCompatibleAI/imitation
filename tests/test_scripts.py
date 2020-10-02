@@ -5,6 +5,7 @@ codecov might interact poorly with multiprocessing. The 'fast' named_config for 
 experiment implicitly sets parallel=False.
 """
 
+import collections
 import os.path as osp
 import sys
 import tempfile
@@ -136,18 +137,51 @@ def test_train_adversarial(tmpdir):
     _check_train_ex_result(run.result)
 
 
-def test_train_adversarial_algorithm_config_error(tmpdir):
+def test_train_adversarial_algorithm_value_error(tmpdir):
     """Error on bad algorithm arguments."""
-    named_configs = ["cartpole", "fast"]
-    config_updates = {
-        "log_root": tmpdir,
-        "rollout_path": "tests/data/expert_models/cartpole_0/rollouts/final.pkl",
-        "algorithm": "BAD_VALUE",
-    }
+    base_named_configs = ["cartpole", "fast"]
+    base_config_updates = collections.ChainMap(
+        {
+            "log_root": tmpdir,
+            "rollout_path": "tests/data/expert_models/cartpole_0/rollouts/final.pkl",
+        }
+    )
+
     with pytest.raises(ValueError, match=".*BAD_VALUE.*"):
         train_adversarial.train_ex.run(
-            named_configs=named_configs,
-            config_updates=config_updates,
+            named_configs=base_named_configs,
+            config_updates=base_config_updates.new_child(dict(algorithm="BAD_VALUE")),
+        )
+
+    with pytest.raises(ValueError, match=".*BAD_VALUE.*"):
+        train_adversarial.train_ex.run(
+            named_configs=base_named_configs,
+            config_updates=base_config_updates.new_child(
+                dict(discrim_net_kwargs={"BAD_VALUE": "bar"})
+            ),
+        )
+
+    with pytest.raises(ValueError, match=".*BAD_VALUE.*"):
+        train_adversarial.train_ex.run(
+            named_configs=base_named_configs,
+            config_updates=base_config_updates.new_child(
+                dict(algorithm_kwargs={"BAD_VALUE": "bar"})
+            ),
+        )
+
+    with pytest.raises(ValueError, match=".*BAD_VALUE.*"):
+        train_adversarial.train_ex.run(
+            named_configs=base_named_configs,
+            config_updates=base_config_updates.new_child(
+                dict(rollout_path="path/BAD_VALUE")
+            ),
+        )
+
+    n_traj = 1234567
+    with pytest.raises(ValueError, match=f".*{n_traj}.*"):
+        train_adversarial.train_ex.run(
+            named_configs=base_named_configs,
+            config_updates=base_config_updates.new_child(dict(n_expert_demos=n_traj)),
         )
 
 
@@ -248,6 +282,40 @@ def test_parallel(config_updates):
         named_configs=["debug_log_root"], config_updates=config_updates
     )
     assert run.status == "COMPLETED"
+
+
+def test_parallel_arg_errors(tmpdir):
+    """Error on bad algorithm arguments."""
+    base_named_configs = ["debug_log_root"]
+    base_config_updates = collections.ChainMap(PARALLEL_CONFIG_LOW_RESOURCE)
+
+    with pytest.raises(TypeError, match=".*Sequence.*"):
+        parallel.parallel_ex.run(
+            named_configs=base_named_configs,
+            config_updates=base_config_updates.new_child(dict(base_named_configs={})),
+        )
+
+    with pytest.raises(TypeError, match=".*Mapping.*"):
+        parallel.parallel_ex.run(
+            named_configs=base_named_configs,
+            config_updates=base_config_updates.new_child(dict(base_config_updates=())),
+        )
+
+    with pytest.raises(TypeError, match=".*Sequence.*"):
+        parallel.parallel_ex.run(
+            named_configs=base_named_configs,
+            config_updates=base_config_updates.new_child(
+                dict(search_space={"named_configs": {}})
+            ),
+        )
+
+    with pytest.raises(TypeError, match=".*Mapping.*"):
+        parallel.parallel_ex.run(
+            named_configs=base_named_configs,
+            config_updates=base_config_updates.new_child(
+                dict(search_space={"config_updates": ()})
+            ),
+        )
 
 
 def _generate_test_rollouts(tmpdir: str, env_named_config: str) -> str:

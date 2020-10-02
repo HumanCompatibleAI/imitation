@@ -51,6 +51,7 @@ def train(
     n_episodes_eval: int,
     init_tensorboard: bool,
     checkpoint_interval: int,
+    gen_batch_size: int,
     init_rl_kwargs: Mapping,
     algorithm_kwargs: Mapping[str, Mapping],
     discrim_net_kwargs: Mapping[str, Mapping],
@@ -92,6 +93,9 @@ def train(
             `checkpoint_interval` epochs and after training is complete. If 0,
             then only save weights after training is complete. If <0, then don't
             save weights at all.
+        gen_batch_size: Batch size for generator updates. Sacred automatically uses
+            this to calculate `n_steps` in `init_rl_kwargs`. In the script body, this
+            is only used in sanity checks.
         init_rl_kwargs: Keyword arguments for `init_rl`, the RL algorithm initialization
             utility function.
         algorithm_kwargs: Keyword arguments for the `GAIL` or `AIRL` constructor
@@ -117,19 +121,42 @@ def train(
         "monitor_return" key). "expert_stats" gives the return value of
         `rollout_stats()` on the expert demonstrations loaded from `rollout_path`.
     """
-    assert os.path.exists(rollout_path)
+    if gen_batch_size % num_vec != 0:
+        raise ValueError(
+            f"num_vec={num_vec} must evenly divide gen_batch_size={gen_batch_size}."
+        )
+
+    allowed_keys = {"shared", "gail", "airl"}
+    if not discrim_net_kwargs.keys() <= allowed_keys:
+        raise ValueError(
+            f"Invalid discrim_net_kwargs.keys()={discrim_net_kwargs.keys()}. "
+            f"Allowed keys: {allowed_keys}"
+        )
+    if not algorithm_kwargs.keys() <= allowed_keys:
+        raise ValueError(
+            f"Invalid discrim_net_kwargs.keys()={algorithm_kwargs.keys()}. "
+            f"Allowed keys: {allowed_keys}"
+        )
+
+    if not os.path.exists(rollout_path):
+        raise ValueError(f"File at rollout_path={rollout_path} does not exist.")
+
+    expert_trajs = types.load(rollout_path)
+    if n_expert_demos is not None:
+        if not len(expert_trajs) >= n_expert_demos:
+            raise ValueError(
+                f"Want to use n_expert_demos={n_expert_demos} trajectories, but only "
+                f"{len(expert_trajs)} are available via {rollout_path}."
+            )
+        expert_trajs = expert_trajs[:n_expert_demos]
+    expert_transitions = rollout.flatten_trajectories(expert_trajs)
+
     total_timesteps = int(total_timesteps)
 
     logging.info("Logging to %s", log_dir)
     logger.configure(log_dir, ["tensorboard", "stdout"])
     os.makedirs(log_dir, exist_ok=True)
     sacred_util.build_sacred_symlink(log_dir, _run)
-
-    expert_trajs = types.load(rollout_path)
-    if n_expert_demos is not None:
-        assert len(expert_trajs) >= n_expert_demos
-        expert_trajs = expert_trajs[:n_expert_demos]
-    expert_transitions = rollout.flatten_trajectories(expert_trajs)
 
     venv = util.make_vec_env(
         env_name,
@@ -140,9 +167,6 @@ def train(
         max_episode_steps=max_episode_steps,
     )
 
-    # TODO(shwang): Let's get rid of init_rl later on?
-    # It's really just a stub function now.
-
     # if init_tensorboard:
     #     tensorboard_log = osp.join(log_dir, "sb_tb")
     # else:
@@ -151,14 +175,11 @@ def train(
     gen_algo = util.init_rl(
         # FIXME(sam): ignoring tensorboard_log is a hack to prevent SB3 from
         # re-configuring the logger (SB3 issue #109). See init_rl() for details.
+        # TODO(shwang): Let's get rid of init_rl after SB3 issue #109 is fixed?
+        # Besides sidestepping #109, init_rl is just a stub function.
         venv,
         **init_rl_kwargs,
     )
-
-    # Convert Sacred's ReadOnlyDict to dict so we can modify it.
-    allowed_keys = {"shared", "gail", "airl"}
-    assert discrim_net_kwargs.keys() <= allowed_keys
-    assert algorithm_kwargs.keys() <= allowed_keys
 
     discrim_kwargs_shared = discrim_net_kwargs.get("shared", {})
     discrim_kwargs_algo = discrim_net_kwargs.get(algorithm, {})
