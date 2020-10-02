@@ -66,16 +66,16 @@ def parallel(
     """
     # Basic validation for config options before we enter parallel jobs.
     if not isinstance(base_named_configs, collections.abc.Sequence):
-        raise ValueError("base_named_configs must be a Sequence")
+        raise TypeError("base_named_configs must be a Sequence")
 
     if not isinstance(base_config_updates, collections.abc.Mapping):
-        raise ValueError("base_config_updates must be a Mapping")
+        raise TypeError("base_config_updates must be a Mapping")
 
     if not isinstance(search_space["named_configs"], collections.abc.Sequence):
-        raise ValueError('search_space["named_configs"] must be a Sequence')
+        raise TypeError('search_space["named_configs"] must be a Sequence')
 
     if not isinstance(search_space["config_updates"], collections.abc.Mapping):
-        raise ValueError('search_space["config_updates"] must be a Mapping')
+        raise TypeError('search_space["config_updates"] must be a Mapping')
 
     # Convert Sacred's ReadOnlyList to List because not picklable.
     base_named_configs = list(base_named_configs)

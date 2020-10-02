@@ -284,24 +284,24 @@ def test_parallel(config_updates):
     assert run.status == "COMPLETED"
 
 
-def test_parallel_value_errors(tmpdir):
+def test_parallel_arg_errors(tmpdir):
     """Error on bad algorithm arguments."""
     base_named_configs = ["debug_log_root"]
     base_config_updates = collections.ChainMap(PARALLEL_CONFIG_LOW_RESOURCE)
 
-    with pytest.raises(ValueError, match=".*Sequence.*"):
+    with pytest.raises(TypeError, match=".*Sequence.*"):
         parallel.parallel_ex.run(
             named_configs=base_named_configs,
             config_updates=base_config_updates.new_child(dict(base_named_configs={})),
         )
 
-    with pytest.raises(ValueError, match=".*Mapping.*"):
+    with pytest.raises(TypeError, match=".*Mapping.*"):
         parallel.parallel_ex.run(
             named_configs=base_named_configs,
             config_updates=base_config_updates.new_child(dict(base_config_updates=())),
         )
 
-    with pytest.raises(ValueError, match=".*Sequence.*"):
+    with pytest.raises(TypeError, match=".*Sequence.*"):
         parallel.parallel_ex.run(
             named_configs=base_named_configs,
             config_updates=base_config_updates.new_child(
@@ -309,7 +309,7 @@ def test_parallel_value_errors(tmpdir):
             ),
         )
 
-    with pytest.raises(ValueError, match=".*Mapping.*"):
+    with pytest.raises(TypeError, match=".*Mapping.*"):
         parallel.parallel_ex.run(
             named_configs=base_named_configs,
             config_updates=base_config_updates.new_child(
