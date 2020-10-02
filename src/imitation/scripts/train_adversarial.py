@@ -172,11 +172,11 @@ def train(
     # else:
     #     tensorboard_log = None
 
-    # TODO(shwang): Let's get rid of init_rl later on?
-    # It's really just a stub function now.
     gen_algo = util.init_rl(
         # FIXME(sam): ignoring tensorboard_log is a hack to prevent SB3 from
         # re-configuring the logger (SB3 issue #109). See init_rl() for details.
+        # TODO(shwang): Let's get rid of init_rl after SB3 issue #109 is fixed?
+        # Otherwise init_rl is just a stub function.
         venv,
         **init_rl_kwargs,
     )
