@@ -201,7 +201,7 @@ def train(
     results = {}
     sample_until_eval = rollout.min_episodes(n_episodes_eval)
     trajs = rollout.generate_trajectories(
-        trainer.gen_algo, trainer.venv_test, sample_until=sample_until_eval
+        trainer.gen_algo, trainer.venv_train_norm, sample_until=sample_until_eval
     )
     results["expert_stats"] = rollout.rollout_stats(expert_trajs)
     results["imit_stats"] = rollout.rollout_stats(trajs)
