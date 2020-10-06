@@ -123,7 +123,7 @@ def test_train_disc_no_samples_error(trainer: adversarial.AdversarialTrainer):
 
 def test_train_disc_unequal_expert_gen_samples_error(trainer, expert_transitions):
     """Test that train_disc raises error when n_gen != n_expert samples."""
-    if len(expert_transitions) < 2:
+    if len(expert_transitions) < 2:  # pragma: no cover
         raise ValueError("Test assumes at least 2 samples.")
     expert_samples = types.dataclass_quick_asdict(expert_transitions)
     gen_samples = types.dataclass_quick_asdict(expert_transitions[:-1])
