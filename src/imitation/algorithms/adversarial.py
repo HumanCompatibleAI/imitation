@@ -1,4 +1,5 @@
 import collections.abc as collections_abc
+import dataclasses
 import logging
 import os
 from typing import Callable, Dict, Mapping, Optional, Type, Union
@@ -67,10 +68,10 @@ class AdversarialTrainer:
 
                 If the argument is passed a `DataLoader`, then it must yields batches of
                 expert data via its `__iter__` method. Each batch is a dictionary whose
-                keys "obs", "acts", "next_obs", and "dones", correspond to Tensor
-                values each with batch dimension equal to `expert_batch_size`. If any
-                batch dimension doesn't equal `expert_batch_size` then a `ValueError`
-                is raised.
+                keys "obs", "acts", "next_obs", and "dones", correspond to Tensor or
+                Numpy array values each with batch dimension equal to
+                `expert_batch_size`. If any batch dimension doesn't equal
+                `expert_batch_size` then a `ValueError` is raised.
 
                 If the argument is a `Transitions` instance, then `len(expert_data)`
                 must be at least `expert_batch_size`.
@@ -186,15 +187,6 @@ class AdversarialTrainer:
             gen_replay_buffer_capacity, self.venv
         )
 
-        # expert_ds_size = self._expert_dataset.size()
-        # if expert_ds_size is not None and self.disc_batch_size // 2 > expert_ds_size:
-        #     warnings.warn(
-        #         "The discriminator batch size is more than twice the number of "
-        #         "expert samples. This means that we will be reusing expert samples "
-        #         "every discrim batch.",
-        #         category=RuntimeWarning,
-        #     )
-
     def _next_expert_batch(self) -> dict:
         return next(self._endless_expert_iterator)
 
@@ -242,7 +234,9 @@ class AdversarialTrainer:
         Args:
             expert_sample_steps: Transition samples from the expert in dictionary form.
                 Must contain keys corresponding to every field of the `Transitions`
-                dataclass except "infos". Additional keys are allowed but ignored.
+                dataclass except "infos". All corresponding values can be either
+                Numpy arrays or Tensors. Extra keys are ignored.
+
                 If this argument is not provided, then `self.expert_batch_size` expert
                 samples from `self.expert_data_loader` are used by default.
             gen_samples: Transition samples from the generator policy in same dictionary
@@ -406,6 +400,21 @@ class AdversarialTrainer:
                 "Number of expert and generator samples not equal. "
                 f"(n_gen={n_gen} n_expert={n_expert}"
             )
+
+        # Copy items and ensure Mapping argument is in mutable form.
+        expert_samples = dict(expert_samples)
+        gen_samples = dict(gen_samples)
+
+        # Convert applicable Tensor values to Numpy.
+        for field in dataclasses.fields(types.Transitions):
+            k = field.name
+            if k == "infos":
+                continue
+            for d in [gen_samples, expert_samples]:
+                if isinstance(d[k], th.Tensor):
+                    d[k] = d[k].detach().numpy()
+        assert isinstance(gen_samples["obs"], np.ndarray)
+        assert isinstance(expert_samples["obs"], np.ndarray)
 
         # Check dimensions.
         n_samples = n_expert + n_gen
