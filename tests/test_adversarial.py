@@ -147,7 +147,6 @@ def test_train_gen_train_disc_no_crash(trainer, n_updates=2):
 
 
 @pytest.mark.expensive
-@pytest.mark.now
 def test_train_disc_improve_D(
     tmpdir, trainer, expert_transitions, expert_batch_size, n_steps=3
 ):
