@@ -2,7 +2,7 @@ import datetime
 import functools
 import os
 import uuid
-from typing import Optional, Type, Union
+from typing import Generator, Iterable, Optional, Type, Union
 
 import gym
 import numpy as np
@@ -135,3 +135,28 @@ def docstring_parameter(*args, **kwargs):
         return obj
 
     return helper
+
+
+def endless_iter(iterable: Iterable) -> Generator:
+    """Generator that endlessly yields elements from iterable.
+
+    If any call to `iter(iterable)` has no elements, then this function raises
+    RuntimeError.
+
+    >>> x = range(2)
+    >>> it = endless_iter(x)
+    >>> next(it)
+    0
+    >>> next(it)
+    1
+    >>> next(it)
+    0
+
+    """
+    while True:
+        count = 0
+        for x in iterable:
+            count += 1
+            yield x
+        if count == 0:
+            raise RuntimeError(f"iterable {iterable} had no elements to iterate over.")

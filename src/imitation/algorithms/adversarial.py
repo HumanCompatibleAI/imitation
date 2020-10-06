@@ -1,19 +1,20 @@
+import collections.abc as collections_abc
 import logging
 import os
-import warnings
 from typing import Callable, Dict, Mapping, Optional, Type, Union
 
 import gym
 import numpy as np
 import torch as th
+import torch.utils.data as th_data
 import torch.utils.tensorboard as thboard
 import tqdm
 from stable_baselines3.common import base_class, preprocessing, vec_env
 
-from imitation.data import buffer, datasets, types, wrappers
+from imitation.data import buffer, types, wrappers
 from imitation.rewards import common as rew_common
 from imitation.rewards import discrim_nets, reward_nets
-from imitation.util import logger, reward_wrapper
+from imitation.util import logger, reward_wrapper, util
 
 
 class AdversarialTrainer:
@@ -39,8 +40,8 @@ class AdversarialTrainer:
         venv: vec_env.VecEnv,
         gen_algo: base_class.BaseAlgorithm,
         discrim: discrim_nets.DiscrimNet,
-        expert_dataloader: types.DataLoaderInterface,
-        disc_batch_size: int,
+        expert_data: Union[types.DataLoaderInterface, types.Transitions],
+        expert_batch_size: int,
         *,
         log_dir: str = "output/",
         disc_opt_cls: Type[th.optim.Optimizer] = th.optim.Adam,
@@ -56,53 +57,93 @@ class AdversarialTrainer:
         Args:
             venv: The vectorized environment to train in.
             gen_algo: The generator RL algorithm that is trained to maximize
-              discriminator confusion. The generator batch size
-              `self.gen_batch_size` is inferred from `gen_algo.n_steps`.
+                discriminator confusion. The generator batch size
+                `self.gen_batch_size` is inferred from `gen_algo.n_steps`.
             discrim: The discriminator network. This will be moved to the same
-              device as `gen_algo`.
-            expert_dataloader: Either a `Dataset` of expert `Transitions`, or an
-              instance of `Transitions` to be automatically converted into a
-              `Dataset[Transitions]`.
-            disc_batch_size: The default number of expert and generator transitions
-              samples to feed to the discriminator in each call to
-              `self.train_disc()`. (Half of the samples are expert and half of the
-              samples are generator).
+                device as `gen_algo`.
+            expert_data: Either a `torch.utils.data.DataLoader`-like object or an
+                instance of `Transitions` which is automatically converted into a
+                shuffled version of the former type.
+
+                If the argument is passed a `DataLoader`, then it must yields batches of
+                expert data via its `__iter__` method. Each batch is a dictionary whose
+                keys "obs", "acts", "next_obs", and "dones", correspond to Tensor
+                values each with batch dimension equal to `expert_batch_size`. If any
+                batch dimension doesn't equal `expert_batch_size` then a `ValueError`
+                is raised.
+
+                If the argument is a `Transitions` instance, then `len(expert_data)`
+                must be at least `expert_batch_size`.
+            expert_batch_size: The number of samples in each batch yielded from
+                `expert_dataloader`. The discriminator batch size is twice this number
+                because each discriminator batch contains a generator sample for every
+                expert sample.
             disc_minibatch_size: The discriminator minibatch size. Each
-              discriminator batch is split into minibatches and an Adam update is
-              applied on the gradient resulting form each minibatch. Must evenly
-              divide `disc_batch_size`. Must be an even number.
+                discriminator batch is split into minibatches and an Adam update is
+                applied on the gradient resulting form each minibatch. Must evenly
+                divide `disc_batch_size`. Must be an even number.
             log_dir: Directory to store TensorBoard logs, plots, etc. in.
             disc_opt_cls: The optimizer for discriminator training.
             disc_opt_kwargs: Parameters for discriminator training.
             gen_replay_buffer_capacity: The capacity of the
-              generator replay buffer (the number of obs-action-obs samples from
-              the generator that can be stored).
+                generator replay buffer (the number of obs-action-obs samples from
+                the generator that can be stored).
 
-              By default this is equal to `self.gen_batch_size`, meaning that we
-              sample only from the most recent batch of generator samples.
+                By default this is equal to `self.gen_batch_size`, meaning that we
+                sample only from the most recent batch of generator samples.
             init_tensorboard: If True, makes various discriminator
-              TensorBoard summaries.
+                TensorBoard summaries.
             init_tensorboard_graph: If both this and `init_tensorboard` are True,
-              then write a Tensorboard graph summary to disk.
+                then write a Tensorboard graph summary to disk.
             debug_use_ground_truth: If True, use the ground truth reward for
-              `self.train_env`.
-              This disables the reward wrapping that would normally replace
-              the environment reward with the learned reward. This is useful for
-              sanity checking that the policy training is functional.
+                `self.train_env`.
+                This disables the reward wrapping that would normally replace
+                the environment reward with the learned reward. This is useful for
+                sanity checking that the policy training is functional.
         """
+        # TODO(shwang): Allow Transitions to have length less than `expert_batch_size`
+        # by repeating Transitions until the corresponding Dataset set has sufficient
+        # samples.
+
         assert (
             logger.is_configured()
         ), "Requires call to imitation.util.logger.configure"
         self._global_step = 0
         self._disc_step = 0
 
-        assert disc_batch_size % disc_minibatch_size == 0
-        assert disc_minibatch_size % 2 == 0, (
-            "discriminator minibatch size must be even "
-            "(equal split between generator and expert samples)"
-        )
-        self.disc_batch_size = disc_batch_size
-        self.disc_minibatch_size = disc_minibatch_size
+        # We have a mini-batch option here. Turn it into a n_disc_updates_per_turn
+        # option instead later?
+        # Note: Usually we have disc_batch_size=2048, disc_minibatch_size=512, which
+        # would correspond to n_disc_updates_per_turn=4 and expert_batch_size=512.
+        # assert disc_batch_size % disc_minibatch_size == 0
+        # assert disc_minibatch_size % 2 == 0, (
+        #     "discriminator minibatch size must be even "
+        #     "(equal split between generator and expert samples)"
+        # )
+        # self.disc_batch_size = disc_batch_size  # TODO(shwang): Consider @property?
+        # self.disc_minibatch_size = disc_minibatch_size
+
+        assert expert_batch_size > 0
+        self.expert_batch_size = expert_batch_size
+        if isinstance(expert_data, types.Transitions):
+            if len(expert_data) < expert_batch_size:
+                raise ValueError(
+                    "Provided Transitions instance as `expert_data` argument but "
+                    "len(expert_data) < expert_batch_size. "
+                    f"({len(expert_data)} < {expert_batch_size})."
+                )
+
+            self.expert_data_loader = th_data.DataLoader(
+                expert_data,
+                batch_size=expert_batch_size,
+                collate_fn=types.transitions_collate_fn,
+                shuffle=True,
+                drop_last=True,
+            )
+        else:
+            self.expert_data_loader = expert_data
+        self._endless_expert_iterator = util.endless_iter(self.expert_data_loader)
+
         self.debug_use_ground_truth = debug_use_ground_truth
         self.venv = venv
         self.gen_algo = gen_algo
@@ -145,21 +186,33 @@ class AdversarialTrainer:
             gen_replay_buffer_capacity, self.venv
         )
 
-        if isinstance(expert_data, types.Transitions):
-            expert_data = datasets.TransitionsDictDatasetAdaptor(expert_data)
-        self._expert_dataset = expert_data
+        # expert_ds_size = self._expert_dataset.size()
+        # if expert_ds_size is not None and self.disc_batch_size // 2 > expert_ds_size:
+        #     warnings.warn(
+        #         "The discriminator batch size is more than twice the number of "
+        #         "expert samples. This means that we will be reusing expert samples "
+        #         "every discrim batch.",
+        #         category=RuntimeWarning,
+        #     )
 
-        expert_ds_size = self._expert_dataset.size()
-        if expert_ds_size is not None and self.disc_batch_size // 2 > expert_ds_size:
-            warnings.warn(
-                "The discriminator batch size is more than twice the number of "
-                "expert samples. This means that we will be reusing expert samples "
-                "every discrim batch.",
-                category=RuntimeWarning,
-            )
+    def _next_expert_batch(self) -> dict:
+        return next(self._endless_expert_iterator)
+
+    def close(self):
+        """Cleans up memory-intensive resources."""
+        self._endless_expert_iterator.close()
 
     @property
     def gen_batch_size(self) -> int:
+        # TODO(shwang): Sad that this basically hard-codes a dependency on PPO2.n_steps
+        # right now. One way to solve this problem without replying on an adaptor
+        # would be to just get rid of the main user of this property,
+        # self._gen_replay_buffer. We could instead store batches after every call to
+        # `venv_train_norm.step()` via a callback? Should be similarly expensive to
+        # the status quo.
+        #
+        # In fact, is `n_steps` actually the generator batch size? Isn't the batch size
+        # actually `n_steps` * `n_vec`? I'm surprised that this works.
         return self.gen_algo.n_steps
 
     def _gen_log_action_prob_from_unnormalized(
@@ -178,48 +231,24 @@ class AdversarialTrainer:
         obs = self.venv_train_norm.normalize_obs(observation)
         return self.gen_algo.action_probability(obs, actions=actions, logp=logp)
 
-    def train_disc(self, n_samples: Optional[int] = None) -> None:
-        """Trains the discriminator to minimize classification cross-entropy.
-
-        Must call `train_gen` first (otherwise there will be no saved generator
-        samples for training, and will error).
-
-        Args:
-          n_samples: A number of transitions to sample from the generator
-            replay buffer and the expert demonstration dataset. (Half of the
-            samples are from each source). By default, `self.disc_batch_size`.
-            `n_samples` must be a positive multiple of `self.disc_minibatch_size`.
-        """
-        if self._gen_replay_buffer.size() == 0:
-            raise RuntimeError(
-                "No generator samples for training. " "Call `train_gen()` first."
-            )
-
-        if n_samples is None:
-            n_samples = self.disc_batch_size
-        n_updates = n_samples // self.disc_minibatch_size
-        assert n_samples % self.disc_minibatch_size == 0
-        assert n_updates >= 1
-        for _ in range(n_updates):
-            gen_samples = self._gen_replay_buffer.sample(self.disc_minibatch_size)
-            self.train_disc_step(gen_samples=gen_samples)
-
-    def train_disc_step(
+    def train_disc(
         self,
         *,
-        gen_samples: Optional[types.Transitions] = None,
-        expert_samples: Optional[types.Transitions] = None,
+        expert_samples: Optional[Mapping] = None,
+        gen_samples: Optional[Mapping] = None,
     ) -> Dict[str, float]:
         """Perform a single discriminator update, optionally using provided samples.
 
         Args:
-          gen_samples: Transition samples from the generator policy. If not
-            provided, then take `self.disc_batch_size // 2` samples from the
-            generator replay buffer. Observations should not be normalized.
-          expert_samples: Transition samples from the expert. If not
-            provided, then take `n_gen` expert samples from the expert
-            dataset, where `n_gen` is the number of samples in `gen_samples`.
-            Observations should not be normalized.
+            expert_sample_steps: Transition samples from the expert in dictionary form.
+                Must contain keys corresponding to every field of the `Transitions`
+                dataclass except "infos". Additional keys are allowed but ignored.
+                If this argument is not provided, then `self.expert_batch_size` expert
+                samples from `self.expert_data_loader` are used by default.
+            gen_samples: Transition samples from the generator policy in same dictionary
+                form as `expert_samples`. If provided, must contain exactly
+                `self.expert_batch_size` samples. If not provided, then take
+                `len(expert_samples)` samples from the generator replay buffer.
 
         Returns:
            dict: Statistics for discriminator (e.g. loss, accuracy).
@@ -302,18 +331,17 @@ class AdversarialTrainer:
         """Alternates between training the generator and discriminator.
 
         Every epoch consists of a call to `train_gen(self.gen_batch_size)`,
-        a call to `train_disc(self.disc_batch_size)`, and
-        finally a call to `callback(epoch)`.
+        a call to `train_disc`, and finally a call to `callback(epoch)`.
 
         Training ends once an additional epoch would cause the number of transitions
         sampled from the environment to exceed `total_timesteps`.
 
         Params:
           total_timesteps: An upper bound on the number of transitions to sample
-            from the environment during training.
+              from the environment during training.
           callback: A function called at the end of every epoch which takes in a
-            single argument, the epoch number. Epoch numbers are in
-            `range(total_timesteps // self.gen_batch_size)`.
+              single argument, the epoch number. Epoch numbers are in
+              `range(total_timesteps // self.gen_batch_size)`.
         """
         n_epochs = total_timesteps // self.gen_batch_size
         assert n_epochs >= 1, (
@@ -322,8 +350,10 @@ class AdversarialTrainer:
             f"total_timesteps={total_timesteps})!"
         )
         for epoch in tqdm.tqdm(range(0, n_epochs), desc="epoch"):
+            # TODO(shwang): Idea -- get rid of `self.gen_batch_size` property by
+            # having the user pass this in as an initialization argument instead.
             self.train_gen(self.gen_batch_size)
-            self.train_disc(self.disc_batch_size)
+            self.train_disc()
             if callback:
                 callback(epoch)
             logger.dump(self._global_step)
@@ -346,8 +376,8 @@ class AdversarialTrainer:
     def _make_disc_train_batch(
         self,
         *,
-        gen_samples: Optional[types.Transitions] = None,
-        expert_samples: Optional[types.Transitions] = None,
+        gen_samples: Optional[Mapping] = None,
+        expert_samples: Optional[Mapping] = None,
     ) -> dict:
         """Build and return training batch for the next discriminator update.
 
@@ -355,34 +385,44 @@ class AdversarialTrainer:
           gen_samples: Same as in `train_disc_step`.
           expert_samples: Same as in `train_disc_step`.
         """
+        if expert_samples is None:
+            expert_samples = self._next_expert_batch()
+
         if gen_samples is None:
             if self._gen_replay_buffer.size() == 0:
                 raise RuntimeError(
                     "No generator samples for training. " "Call `train_gen()` first."
                 )
-            gen_samples = self._gen_replay_buffer.sample(self.disc_batch_size // 2)
-        n_gen = len(gen_samples.obs)
+            gen_samples = self._gen_replay_buffer.sample(self.expert_batch_size)
+            gen_samples = types.dataclass_quick_asdict(gen_samples)
 
-        if expert_samples is None:
-            expert_samples = self._expert_dataset.sample(n_gen)
-        n_expert = len(expert_samples.obs)
+        assert isinstance(gen_samples, collections_abc.Mapping)
+        assert isinstance(expert_samples, collections_abc.Mapping)
+
+        n_gen = len(gen_samples["obs"])
+        n_expert = len(expert_samples["obs"])
+        if n_gen != n_expert:
+            raise ValueError(
+                "Number of expert and generator samples not equal. "
+                f"(n_gen={n_gen} n_expert={n_expert}"
+            )
 
         # Check dimensions.
         n_samples = n_expert + n_gen
-        assert n_expert == len(expert_samples.acts)
-        assert n_expert == len(expert_samples.next_obs)
-        assert n_gen == len(gen_samples.acts)
-        assert n_gen == len(gen_samples.next_obs)
+        assert n_expert == len(expert_samples["acts"])
+        assert n_expert == len(expert_samples["next_obs"])
+        assert n_gen == len(gen_samples["acts"])
+        assert n_gen == len(gen_samples["next_obs"])
 
         # Policy and reward network were trained on normalized observations.
-        expert_obs_norm = self.venv_train_norm.normalize_obs(expert_samples.obs)
-        gen_obs_norm = self.venv_train_norm.normalize_obs(gen_samples.obs)
+        expert_obs_norm = self.venv_train_norm.normalize_obs(expert_samples["obs"])
+        gen_obs_norm = self.venv_train_norm.normalize_obs(gen_samples["obs"])
 
         # Concatenate rollouts, and label each row as expert or generator.
         obs = np.concatenate([expert_obs_norm, gen_obs_norm])
-        acts = np.concatenate([expert_samples.acts, gen_samples.acts])
-        next_obs = np.concatenate([expert_samples.next_obs, gen_samples.next_obs])
-        dones = np.concatenate([expert_samples.dones, gen_samples.dones])
+        acts = np.concatenate([expert_samples["acts"], gen_samples["acts"]])
+        next_obs = np.concatenate([expert_samples["next_obs"], gen_samples["next_obs"]])
+        dones = np.concatenate([expert_samples["dones"], gen_samples["dones"]])
         labels_gen_is_one = np.concatenate(
             [np.zeros(n_expert, dtype=int), np.ones(n_gen, dtype=int)]
         )
@@ -417,7 +457,8 @@ class GAIL(AdversarialTrainer):
     def __init__(
         self,
         venv: vec_env.VecEnv,
-        expert_data: Union[types.Transitions, datasets.Dataset[types.Transitions]],
+        expert_data: Union[types.DataLoaderInterface, types.Transitions],
+        expert_batch_size: int,
         gen_algo: base_class.BaseAlgorithm,
         *,
         # FIXME(sam) pass in discrim net directly; don't ask for kwargs indirectly
@@ -439,14 +480,17 @@ class GAIL(AdversarialTrainer):
         discrim = discrim_nets.DiscrimNetGAIL(
             venv.observation_space, venv.action_space, **discrim_kwargs
         )
-        super().__init__(venv, gen_algo, discrim, expert_data, **kwargs)
+        super().__init__(
+            venv, gen_algo, discrim, expert_data, expert_batch_size, **kwargs
+        )
 
 
 class AIRL(AdversarialTrainer):
     def __init__(
         self,
         venv: vec_env.VecEnv,
-        expert_data: Union[types.Transitions, datasets.Dataset[types.Transitions]],
+        expert_data: Union[types.DataLoaderInterface, types.Transitions],
+        expert_batch_size: int,
         gen_algo: base_class.BaseAlgorithm,
         *,
         # FIXME(sam): pass in reward net directly, not via _cls and _kwargs
@@ -482,4 +526,6 @@ class AIRL(AdversarialTrainer):
 
         discrim_kwargs = discrim_kwargs or {}
         discrim = discrim_nets.DiscrimNetAIRL(reward_network, **discrim_kwargs)
-        super().__init__(venv, gen_algo, discrim, expert_data, **kwargs)
+        super().__init__(
+            venv, gen_algo, discrim, expert_data, expert_batch_size, **kwargs
+        )

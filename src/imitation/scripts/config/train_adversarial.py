@@ -37,8 +37,9 @@ def train_defaults():
     # Kwargs for initializing GAIL and AIRL
     algorithm_kwargs = dict(
         shared=dict(
-            disc_batch_size=2048,  # Batch size for discriminator updates
-            disc_minibatch_size=512,  # Num discriminator updates per batch
+            expert_batch_size=1024,  # Batch size for discriminator updates
+            # TODO(shwang): Make n_disc_updates_per_gen_update = 2?
+            # disc_minibatch_size=512,  # Num discriminator updates per batch
         ),
         airl={},
         gail={},
@@ -115,7 +116,7 @@ MUJOCO_SHARED_LOCALS = dict(discrim_net_kwargs=dict(airl=dict(entropy_weight=0.1
 ANT_SHARED_LOCALS = dict(
     total_timesteps=3e7,
     max_episode_steps=500,  # To match `inverse_rl` settings.
-    algorithm_kwargs=dict(shared=dict(disc_batch_size=2048 * 8)),
+    algorithm_kwargs=dict(shared=dict(expert_batch_size=2048 * 4)),
     gen_batch_size=2048 * 8,
 )
 
@@ -246,9 +247,7 @@ def fast():
     total_timesteps = 5
     n_expert_demos = 1
     n_episodes_eval = 1
-    # tests fail if we take disc_batch_size and disc_minibatch_size down to 1,
-    # since a size-1 batch can't contain both a positive and a negative
-    algorithm_kwargs = dict(shared=dict(disc_batch_size=2, disc_minibatch_size=2))
+    algorithm_kwargs = dict(shared=dict(expert_batch_size=1))
     gen_batch_size = 2
     parallel = False  # easier to debug with everything in one process
     max_episode_steps = 5

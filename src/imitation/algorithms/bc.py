@@ -11,6 +11,7 @@ import torch as th
 from stable_baselines3.common import logger, policies, utils
 from tqdm.autonotebook import trange
 
+from imitation.data import types
 from imitation.policies import base
 
 
@@ -59,7 +60,7 @@ class BC:
         *,
         policy_class: Type[policies.BasePolicy] = base.FeedForward32Policy,
         policy_kwargs: Optional[Mapping[str, Any]] = None,
-        expert_dataloader: Optional[BCDataLoaderDucktype] = None,
+        expert_dataloader: Optional[types.DataLoaderInterface] = None,
         optimizer_cls: Type[th.optim.Optimizer] = th.optim.Adam,
         optimizer_kwargs: Optional[Dict[str, Any]] = None,
         ent_weight: float = 1e-3,
@@ -109,14 +110,16 @@ class BC:
         optimizer_kwargs = optimizer_kwargs or {}
         self.optimizer = optimizer_cls(self.policy.parameters(), **optimizer_kwargs)
 
-        self.expert_dataloader: Optional[BCDataLoaderDucktype] = None
+        self.expert_dataloader: Optional[types.DataLoaderInterface] = None
         self.ent_weight = ent_weight
         self.l2_weight = l2_weight
 
         if expert_dataloader is not None:
             self.set_expert_dataloader(expert_dataloader)
 
-    def set_expert_dataloader(self, expert_dataloader: BCDataLoaderDucktype) -> None:
+    def set_expert_dataloader(
+        self, expert_dataloader: types.DataLoaderInterface
+    ) -> None:
         """Set the expert dataloader, which yields batches of obs-act pairs.
 
         Changing the expert dataloader on-demand is useful for DAgger and other

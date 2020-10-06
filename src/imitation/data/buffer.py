@@ -1,14 +1,13 @@
 import dataclasses
-from typing import Dict, Iterable, Mapping, Optional, Tuple
+from typing import Dict, Mapping, Optional, Tuple
 
 import numpy as np
 from stable_baselines3.common import vec_env
-import torch as th
 
-from imitation.data import datasets, types
+from imitation.data import types
 
 
-class Buffer(datasets.Dataset[Dict[str, np.ndarray]]):
+class Buffer:
     """A FIFO ring buffer for NumPy arrays of a fixed shape and dtype.
 
     Supports random sampling with replacement.
@@ -224,7 +223,7 @@ class Buffer(datasets.Dataset[Dict[str, np.ndarray]]):
         return self._n_data
 
 
-class ReplayBuffer(datasets.Dataset[types.Transitions]):
+class ReplayBuffer:
     """Buffer for Transitions."""
 
     capacity: int

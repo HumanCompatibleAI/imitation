@@ -12,11 +12,22 @@ from torch.utils import data as th_data
 
 from imitation.data import old_types
 
-
 DataLoaderInterface = Iterable[Mapping[str, th.Tensor]]
 
 
 T = TypeVar("T")
+
+
+def dataclass_quick_asdict(dataclass_instance) -> dict:
+    """Extract dataclass to items using `dataclasses.fields` + dict comprehension.
+
+    This is a quick alternative to `dataclasses.asdict`, which for expensively and
+    undocumentedly deep-copies every numpy array value.
+    See https://stackoverflow.com/a/52229565/1091722.
+    """
+    obj = dataclass_instance
+    d = {f.name: getattr(obj, f.name) for f in dataclasses.fields(obj)}
+    return d
 
 
 @dataclasses.dataclass(frozen=True)
@@ -164,11 +175,7 @@ class TransitionsMinimal(th_data.Dataset):
 
     def __getitem__(self, key):
         """See TransitionsMinimal docstring for indexing and slicing semantics."""
-        # Extract items using `dataclasses.fields` + dict comprehension instead of using
-        # `dataclasses.asdict` because `asdict` expensively and undocumentedly
-        # deep-copies every numpy array value.
-        # See https://stackoverflow.com/a/52229565/1091722.
-        d = {f.name: getattr(self, f.name) for f in dataclasses.fields(self)}
+        d = dataclass_quick_asdict(self)
         d_item = {k: v[key] for k, v in d.items()}
 
         if isinstance(key, slice):
