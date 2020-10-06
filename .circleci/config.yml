@@ -7,6 +7,9 @@ executors:
   my-executor:
     docker:
       - image: humancompatibleai/imitation:base
+        auth:
+                username: $DOCKERHUB_USERNAME
+                password: $DOCKERHUB_PASSWORD
     working_directory: /imitation
     environment:
       # If you change these, also change ci/code_checks.sh
@@ -118,6 +121,10 @@ workflows:
   test:
     jobs:
       - lintandtype:
-          context: MuJoCo
+          context:
+          - MuJoCo
+          - docker-hub-creds
       - unit-test:
-          context: MuJoCo
+          context:
+          - MuJoCo
+          - docker-hub-creds
