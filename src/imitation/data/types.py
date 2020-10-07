@@ -12,7 +12,7 @@ from torch.utils import data as th_data
 
 from imitation.data import old_types
 
-DataLoaderInterface = Iterable[Mapping[str, th.Tensor]]
+DataLoaderInterface = Iterable[Mapping]
 
 
 T = TypeVar("T")
