@@ -168,7 +168,6 @@ class BC:
         Returns:
             loss: The supervised learning loss for the behavioral clone to optimize.
             stats_dict: Statistics about the learning process to be logged.
-
         """
         _, log_prob, entropy = self.policy.evaluate_actions(obs, acts)
         prob_true_act = th.exp(log_prob).mean()
@@ -194,6 +193,44 @@ class BC:
         )
 
         return loss, stats_dict
+
+    def _calculate_policy_norms(
+        self, norm_type: Union[int, float] = 2
+    ) -> Tuple[th.Tensor, th.Tensor]:
+        """
+        Calculate the gradient norm and the weight norm of the policy network.
+
+        Args:
+            norm_type: order of the norm.
+
+        Returns:
+            gradient_norm: norm of the gradient of the policy network (stored in each
+                parameter's .grad attribute)
+            weight_norm: norm of the weights of the policy network
+        """
+
+        norm_type = float(norm_type)
+
+        gradient_parameters = list(
+            filter(lambda p: p.grad is not None, self.policy.parameters())
+        )
+        stacked_gradient_norms = th.stack(
+            [
+                th.norm(p.grad.detach(), norm_type).to(self.policy.device)
+                for p in gradient_parameters
+            ]
+        )
+        stacked_weight_norms = th.stack(
+            [
+                th.norm(p.detach(), norm_type).to(self.policy.device)
+                for p in self.policy.parameters()
+            ]
+        )
+
+        gradient_norm = th.norm(stacked_gradient_norms, norm_type)
+        weight_norm = th.norm(stacked_weight_norms, norm_type)
+
+        return gradient_norm, weight_norm
 
     def train(
         self,
@@ -248,12 +285,16 @@ class BC:
                 self.optimizer.zero_grad()
                 loss.backward()
                 self.optimizer.step()
+
+                gradient_norm, weight_norm = self._calculate_policy_norms()
+                stats_dict["grad_norm"] = gradient_norm.item()
+                stats_dict["weight_norm"] = weight_norm.item()
                 stats_dict["epoch_num"] = epoch_num
                 stats_dict["n_updates"] = batch_num
                 stats_dict["batch_size"] = len(trans)
+
                 for k, v in stats_dict.items():
                     logger.record_mean(k, v)
-
                 if batch_num % log_interval == 0:
                     logger.dump(batch_num)
 
