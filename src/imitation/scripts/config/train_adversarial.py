@@ -37,9 +37,9 @@ def train_defaults():
     # Kwargs for initializing GAIL and AIRL
     algorithm_kwargs = dict(
         shared=dict(
-            expert_batch_size=1024,  # Batch size for discriminator updates
+            expert_batch_size=1024,  # Number of expert samples per discriminator update
+            # Number of discriminator updates after each round of generator updates
             n_disc_updates_per_round=4,
-            # Number of discriminator updates after each round of generator updates.
         ),
         airl={},
         gail={},
