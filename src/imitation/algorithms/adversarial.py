@@ -101,9 +101,6 @@ class AdversarialTrainer:
                 the environment reward with the learned reward. This is useful for
                 sanity checking that the policy training is functional.
         """
-        # TODO(shwang): Allow Transitions (`expert_data`) to have length less than
-        #  `expert_batch_size` by repeating Transitions until the corresponding Dataset
-        #  set has sufficient samples.
 
         assert (
             logger.is_configured()
