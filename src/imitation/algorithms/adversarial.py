@@ -109,7 +109,9 @@ class AdversarialTrainer:
         self._disc_step = 0
         self.n_disc_updates_per_round = n_disc_updates_per_round
 
-        assert expert_batch_size > 0
+        if expert_batch_size < 0:
+            raise ValueError(f"expert_batch_size={expert_batch_size} must be positive.")
+
         self.expert_batch_size = expert_batch_size
         if isinstance(expert_data, types.Transitions):
             if len(expert_data) < expert_batch_size:

@@ -33,11 +33,20 @@ def test_train_disc_small_expert_data_warning(tmpdir, _algorithm_cls):
     gen_algo = util.init_rl(venv, verbose=1)
     small_data = rollout.generate_transitions(gen_algo, venv, n_timesteps=20)
 
-    with pytest.raises(ValueError, match="expert_batch_size"):
+    with pytest.raises(ValueError, match="Transitions.*expert_batch_size"):
         _algorithm_cls(
             venv=venv,
             expert_data=small_data,
             expert_batch_size=21,
+            gen_algo=gen_algo,
+            log_dir=tmpdir,
+        )
+
+    with pytest.raises(ValueError, match="expert_batch_size.*positive"):
+        _algorithm_cls(
+            venv=venv,
+            expert_data=small_data,
+            expert_batch_size=-1,
             gen_algo=gen_algo,
             log_dir=tmpdir,
         )
