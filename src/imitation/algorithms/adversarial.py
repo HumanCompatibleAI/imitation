@@ -43,7 +43,7 @@ class AdversarialTrainer:
         discrim: discrim_nets.DiscrimNet,
         expert_data: Union[types.DataLoaderInterface, types.Transitions],
         expert_batch_size: int,
-        n_disc_updates_per_turn: int = 2,
+        n_disc_updates_per_round: int = 2,
         *,
         log_dir: str = "output/",
         disc_opt_cls: Type[th.optim.Optimizer] = th.optim.Adam,
@@ -80,7 +80,7 @@ class AdversarialTrainer:
                 `expert_dataloader`. The discriminator batch size is twice this number
                 because each discriminator batch contains a generator sample for every
                 expert sample.
-            n_disc_updates_per_turn: The number of discriminator updates after each
+            n_discrim_updates_per_round: The number of discriminator updates after each
                 round of generator updates in AdversarialTrainer.learn().
             log_dir: Directory to store TensorBoard logs, plots, etc. in.
             disc_opt_cls: The optimizer for discriminator training.
@@ -110,7 +110,7 @@ class AdversarialTrainer:
         ), "Requires call to imitation.util.logger.configure"
         self._global_step = 0
         self._disc_step = 0
-        self.n_disc_updates_per_turn = n_disc_updates_per_turn
+        self.n_disc_updates_per_round = n_disc_updates_per_round
 
         assert expert_batch_size > 0
         self.expert_batch_size = expert_batch_size
@@ -221,9 +221,10 @@ class AdversarialTrainer:
 
         Args:
             expert_samples: Transition samples from the expert in dictionary form.
-                Must contain keys corresponding to every field of the `Transitions`
-                dataclass except "infos". All corresponding values can be either
-                NumPy arrays or Tensors. Extra keys are ignored.
+                If provided, must contain keys corresponding to every field of the
+                `Transitions` dataclass except "infos". All corresponding values can be
+                either NumPy arrays or Tensors. Extra keys are ignored. Must contain
+                `self.expert_batch_size` samples.
 
                 If this argument is not provided, then `self.expert_batch_size` expert
                 samples from `self.expert_data_loader` are used by default.
@@ -313,7 +314,7 @@ class AdversarialTrainer:
         """Alternates between training the generator and discriminator.
 
         Every "turn" consists of a call to `train_gen(self.gen_batch_size)`,
-        a call to `train_disc`, and finally a call to `callback(epoch)`.
+        a call to `train_disc`, and finally a call to `callback(round)`.
 
         Training ends once an additional "turn" would cause the number of transitions
         sampled from the environment to exceed `total_timesteps`.
@@ -321,24 +322,24 @@ class AdversarialTrainer:
         Params:
           total_timesteps: An upper bound on the number of transitions to sample
               from the environment during training.
-          callback: A function called at the end of every epoch which takes in a
-              single argument, the epoch number. Epoch numbers are in
+          callback: A function called at the end of every round which takes in a
+              single argument, the round number. Round numbers are in
               `range(total_timesteps // self.gen_batch_size)`.
         """
-        n_turns = total_timesteps // self.gen_batch_size
-        assert n_turns >= 1, (
+        n_rounds = total_timesteps // self.gen_batch_size
+        assert n_rounds >= 1, (
             "No updates (need at least "
             f"{self.gen_batch_size} timesteps, have only "
             f"total_timesteps={total_timesteps})!"
         )
-        for epoch in tqdm.tqdm(range(0, n_turns), desc="turn"):
+        for r in tqdm.tqdm(range(0, n_rounds), desc="round"):
             # TODO(shwang): Idea -- get rid of `self.gen_batch_size` property by
             # having the user pass this in as an initialization argument instead.
             self.train_gen(self.gen_batch_size)
-            for _ in range(self.n_disc_updates_per_turn):
+            for _ in range(self.n_disc_updates_per_round):
                 self.train_disc()
             if callback:
-                callback(epoch)
+                callback(r)
             logger.dump(self._global_step)
 
     def _torchify_array(self, ndarray: np.ndarray, **kwargs) -> th.Tensor:

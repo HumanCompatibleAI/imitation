@@ -38,7 +38,7 @@ def train_defaults():
     algorithm_kwargs = dict(
         shared=dict(
             expert_batch_size=1024,  # Batch size for discriminator updates
-            n_disc_updates_per_turn=4,
+            n_disc_updates_per_round=4,
             # Number of discriminator updates after each round of generator updates.
         ),
         airl={},
@@ -250,7 +250,7 @@ def fast():
     algorithm_kwargs = dict(
         shared=dict(
             expert_batch_size=1,
-            n_disc_updates_per_turn=4,
+            n_disc_updates_per_round=4,
         )
     )
     gen_batch_size = 2
