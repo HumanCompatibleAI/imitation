@@ -26,7 +26,7 @@ def batch_size(request):
 
 
 @pytest.fixture(params=[True, False])
-def use_ducktyped_dataloader(request):
+def use_ducktyped_data_loader(request):
     return request.param
 
 
@@ -45,13 +45,13 @@ class DucktypedDataset:
 
 
 @pytest.fixture
-def trainer(batch_size, venv, use_ducktyped_dataloader):
+def trainer(batch_size, venv, use_ducktyped_data_loader):
     rollouts = types.load(ROLLOUT_PATH)
     trans = rollout.flatten_trajectories(rollouts)
-    if use_ducktyped_dataloader:
-        dataloader = DucktypedDataset(trans, batch_size)
+    if use_ducktyped_data_loader:
+        data_loader = DucktypedDataset(trans, batch_size)
     else:
-        dataloader = th_data.DataLoader(
+        data_loader = th_data.DataLoader(
             trans,
             batch_size=batch_size,
             shuffle=True,
@@ -60,7 +60,7 @@ def trainer(batch_size, venv, use_ducktyped_dataloader):
     return bc.BC(
         venv.observation_space,
         venv.action_space,
-        expert_dataloader=dataloader,
+        expert_data=data_loader,
     )
 
 
@@ -69,7 +69,7 @@ def test_weight_decay_init_error(venv):
         bc.BC(
             venv.observation_space,
             venv.action_space,
-            expert_dataloader=None,
+            expert_data=None,
             optimizer_kwargs=dict(weight_decay=1e-4),
         )
 

@@ -9,6 +9,7 @@ from typing import Any, Callable, Dict, Mapping, Optional, Tuple, Type, Union
 import gym
 import numpy as np
 import torch as th
+import torch.utils.data as th_data
 from stable_baselines3.common import logger, policies, utils
 from tqdm.autonotebook import trange
 
@@ -52,6 +53,13 @@ class ConstantLRSchedule:
 
 
 class BC:
+
+    DEFAULT_BATCH_SIZE: int = 128
+    """Default batch size for DataLoader automatically constructed from Transitions.
+
+    See `set_expert_data_loader()`.
+    """
+
     # TODO(scottemmons): pass BasePolicy into BC directly (rather than passing its
     #  arguments)
     def __init__(
@@ -61,7 +69,9 @@ class BC:
         *,
         policy_class: Type[policies.BasePolicy] = base.FeedForward32Policy,
         policy_kwargs: Optional[Mapping[str, Any]] = None,
-        expert_dataloader: Optional[types.DataLoaderInterface] = None,
+        expert_data: Union[
+            types.DataLoaderInterface, types.TransitionsMinimal, None
+        ] = None,
         optimizer_cls: Type[th.optim.Optimizer] = th.optim.Adam,
         optimizer_kwargs: Optional[Dict[str, Any]] = None,
         ent_weight: float = 1e-3,
@@ -79,8 +89,8 @@ class BC:
             action_space: the action space of the environment.
             policy_class: used to instantiate imitation policy.
             policy_kwargs: keyword arguments passed to policy's constructor.
-            expert_dataloader: If not None, then immediately call
-                  `self.set_expert_dataloader(expert_data)` during initialization.
+            expert_data: If not None, then immediately call
+                  `self.set_expert_data_loader(expert_data)` during initialization.
             optimizer_cls: optimiser to use for supervised training.
             optimizer_kwargs: keyword arguments, excluding learning rate and
                   weight decay, for optimiser construction.
@@ -111,27 +121,39 @@ class BC:
         optimizer_kwargs = optimizer_kwargs or {}
         self.optimizer = optimizer_cls(self.policy.parameters(), **optimizer_kwargs)
 
-        self.expert_dataloader: Optional[types.DataLoaderInterface] = None
+        self.expert_data_loader: Optional[types.DataLoaderInterface] = None
         self.ent_weight = ent_weight
         self.l2_weight = l2_weight
 
-        if expert_dataloader is not None:
-            self.set_expert_dataloader(expert_dataloader)
+        if expert_data is not None:
+            self.set_expert_data_loader(expert_data)
 
-    def set_expert_dataloader(
+    def set_expert_data_loader(
         self,
-        expert_dataloader: types.DataLoaderInterface,
+        expert_data: Union[types.DataLoaderInterface, types.TransitionsMinimal],
     ) -> None:
-        """Set the expert dataloader, which yields batches of obs-act pairs.
+        """Set the expert data_loader, which yields batches of obs-act pairs.
 
-        Changing the expert dataloader on-demand is useful for DAgger and other
+        Changing the expert data_loader on-demand is useful for DAgger and other
         interactive algorithms.
 
         Args:
-             expert_dataloader: Either a Torch `DataLoader` or any other iterator that
-                yields dictionaries containing "obs" and "acts" Tensors or Numpy arrays.
+             expert_data: Either a Torch `DataLoader`, any other iterator that
+                yields dictionaries containing "obs" and "acts" Tensors or Numpy arrays,
+                or a `TransitionsMinimal` instance.
+
+                If this is a `TransitionsMinimal` instance, then it is automatically
+                converted into a shuffled `DataLoader` with batch size
+                `BC.DEFAULT_BATCH_SIZE`.
         """
-        self.expert_dataloader = expert_dataloader
+        if isinstance(expert_data, types.TransitionsMinimal):
+            self.expert_data_loader = th_data.DataLoader(
+                expert_data,
+                batch_size=BC.DEFAULT_BATCH_SIZE,
+                collate_fn=types.transitions_collate_fn,
+            )
+        else:
+            self.expert_data_loader = expert_data
 
     def _calculate_loss(
         self,
@@ -188,7 +210,7 @@ class BC:
         """Train with supervised learning for some number of epochs.
 
         Here an 'epoch' is just a complete pass through the expert data loader,
-        as set by `self.set_expert_dataloader()`.
+        as set by `self.set_expert_data_loader()`.
 
         Args:
             n_epochs: Number of complete passes made through dataset.
@@ -200,7 +222,7 @@ class BC:
         samples_so_far = 0
         batch_num = 0
         for epoch_num in trange(n_epochs, desc="BC epoch"):
-            for batch in self.expert_dataloader:
+            for batch in self.expert_data_loader:
                 batch_num += 1
                 batch_size = len(batch["obs"])
                 assert batch_size > 0
