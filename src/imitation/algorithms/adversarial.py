@@ -80,10 +80,6 @@ class AdversarialTrainer:
                 `expert_dataloader`. The discriminator batch size is twice this number
                 because each discriminator batch contains a generator sample for every
                 expert sample.
-            disc_minibatch_size: The discriminator minibatch size. Each
-                discriminator batch is split into minibatches and an Adam update is
-                applied on the gradient resulting form each minibatch. Must evenly
-                divide `disc_batch_size`. Must be an even number.
             n_discrim_updates_per_turn: The number of discriminator updates after each
                 round of generator updates in PPO2.learn().
             log_dir: Directory to store TensorBoard logs, plots, etc. in.
@@ -114,18 +110,6 @@ class AdversarialTrainer:
         ), "Requires call to imitation.util.logger.configure"
         self._global_step = 0
         self._disc_step = 0
-
-        # We have a mini-batch option here. Turn it into a n_disc_updates_per_turn
-        # option instead later?
-        # Note: Usually we have disc_batch_size=2048, disc_minibatch_size=512, which
-        # would correspond to n_disc_updates_per_turn=4 and expert_batch_size=512.
-        # assert disc_batch_size % disc_minibatch_size == 0
-        # assert disc_minibatch_size % 2 == 0, (
-        #     "discriminator minibatch size must be even "
-        #     "(equal split between generator and expert samples)"
-        # )
-        # self.disc_batch_size = disc_batch_size  # TODO(shwang): Consider @property?
-        # self.disc_minibatch_size = disc_minibatch_size
         self.n_disc_updates_per_turn = n_disc_updates_per_turn
 
         assert expert_batch_size > 0
@@ -201,13 +185,13 @@ class AdversarialTrainer:
     @property
     def gen_batch_size(self) -> int:
         # TODO(shwang): Sad that this basically hard-codes a dependency on PPO2.n_steps
-        # right now. One way to solve this problem without replying on an adaptor
+        # right now. One way to solve this problem without relying on an adaptor pattern
         # would be to just get rid of the main user of this property,
         # self._gen_replay_buffer. We could instead store batches after every call to
         # `venv_train_norm.step()` via a callback? Should be similarly expensive to
         # the status quo.
         #
-        # In fact, is `n_steps` actually the generator batch size? Isn't the batch size
+        # Is `n_steps` really the generator batch size? Isn't the batch size
         # actually `n_steps` * `n_vec`? I'm surprised that this works.
         return self.gen_algo.n_steps
 
@@ -236,7 +220,7 @@ class AdversarialTrainer:
         """Perform a single discriminator update, optionally using provided samples.
 
         Args:
-            expert_sample_steps: Transition samples from the expert in dictionary form.
+            expert_samples: Transition samples from the expert in dictionary form.
                 Must contain keys corresponding to every field of the `Transitions`
                 dataclass except "infos". All corresponding values can be either
                 Numpy arrays or Tensors. Extra keys are ignored.
