@@ -116,8 +116,8 @@ MUJOCO_SHARED_LOCALS = dict(discrim_net_kwargs=dict(airl=dict(entropy_weight=0.1
 ANT_SHARED_LOCALS = dict(
     total_timesteps=3e7,
     max_episode_steps=500,  # To match `inverse_rl` settings.
-    algorithm_kwargs=dict(shared=dict(expert_batch_size=2048 * 4)),
-    gen_batch_size=2048 * 8,
+    algorithm_kwargs=dict(shared=dict(expert_batch_size=8192)),
+    gen_batch_size=16384,
 )
 
 
