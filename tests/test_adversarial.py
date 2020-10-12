@@ -34,14 +34,13 @@ def test_train_disc_small_expert_data_warning(tmpdir, _algorithm_cls):
     small_data = rollout.generate_transitions(gen_algo, venv, n_timesteps=20)
 
     with pytest.raises(ValueError, match="expert_batch_size"):
-        trainer = _algorithm_cls(
+        _algorithm_cls(
             venv=venv,
             expert_data=small_data,
             expert_batch_size=21,
             gen_algo=gen_algo,
             log_dir=tmpdir,
         )
-        trainer.close()
 
 
 @pytest.fixture(params=PARALLEL)
@@ -110,10 +109,7 @@ def trainer(
         log_dir=tmpdir,
     )
 
-    try:
-        yield trainer
-    finally:
-        trainer.close()
+    yield trainer
 
 
 def test_train_disc_no_samples_error(trainer: adversarial.AdversarialTrainer):

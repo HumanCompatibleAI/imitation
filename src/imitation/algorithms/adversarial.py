@@ -175,12 +175,8 @@ class AdversarialTrainer:
             gen_replay_buffer_capacity, self.venv
         )
 
-    def _next_expert_batch(self) -> dict:
+    def _next_expert_batch(self) -> Mapping:
         return next(self._endless_expert_iterator)
-
-    def close(self):
-        """Cleans up memory-intensive resources."""
-        self._endless_expert_iterator.close()
 
     @property
     def gen_batch_size(self) -> int:

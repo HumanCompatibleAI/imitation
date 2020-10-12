@@ -1,8 +1,9 @@
 import datetime
 import functools
+import itertools
 import os
 import uuid
-from typing import Generator, Iterable, Optional, Type, Union
+from typing import Iterable, Iterator, Optional, Type, TypeVar, Union
 
 import gym
 import numpy as np
@@ -137,7 +138,10 @@ def docstring_parameter(*args, **kwargs):
     return helper
 
 
-def endless_iter(iterable: Iterable) -> Generator:
+T = TypeVar("T")
+
+
+def endless_iter(iterable: Iterable[T]) -> Iterator[T]:
     """Generator that endlessly yields elements from iterable.
 
     If any call to `iter(iterable)` has no elements, then this function raises
@@ -153,10 +157,9 @@ def endless_iter(iterable: Iterable) -> Generator:
     0
 
     """
-    while True:
-        count = 0
-        for x in iterable:
-            count += 1
-            yield x
-        if count == 0:
-            raise RuntimeError(f"iterable {iterable} had no elements to iterate over.")
+    try:
+        next(iter(iterable))
+    except StopIteration:
+        raise RuntimeError(f"iterable {iterable} had no elements to iterate over.")
+
+    return itertools.chain.from_iterable(itertools.repeat(iterable))
