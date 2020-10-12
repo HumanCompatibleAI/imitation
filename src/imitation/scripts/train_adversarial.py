@@ -140,9 +140,6 @@ def train(
         max_episode_steps=max_episode_steps,
     )
 
-    # TODO(shwang): Let's get rid of init_rl later on?
-    # It's really just a stub function now.
-
     # if init_tensorboard:
     #     tensorboard_log = osp.join(log_dir, "sb_tb")
     # else:

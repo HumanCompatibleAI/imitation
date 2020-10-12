@@ -38,8 +38,8 @@ def train_defaults():
     algorithm_kwargs = dict(
         shared=dict(
             expert_batch_size=1024,  # Batch size for discriminator updates
-            # TODO(shwang): Make n_disc_updates_per_gen_update = 2?
-            # disc_minibatch_size=512,  # Num discriminator updates per batch
+            n_disc_updates_per_turn=4,
+            # Number of discriminator updates after each round of generator updates.
         ),
         airl={},
         gail={},
@@ -247,7 +247,12 @@ def fast():
     total_timesteps = 5
     n_expert_demos = 1
     n_episodes_eval = 1
-    algorithm_kwargs = dict(shared=dict(expert_batch_size=1))
+    algorithm_kwargs = dict(
+        shared=dict(
+            expert_batch_size=1,
+            n_disc_updates_per_turn=4,
+        )
+    )
     gen_batch_size = 2
     parallel = False  # easier to debug with everything in one process
     max_episode_steps = 5

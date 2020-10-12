@@ -43,6 +43,7 @@ class AdversarialTrainer:
         discrim: discrim_nets.DiscrimNet,
         expert_data: Union[types.DataLoaderInterface, types.Transitions],
         expert_batch_size: int,
+        n_disc_updates_per_turn: int = 2,
         *,
         log_dir: str = "output/",
         disc_opt_cls: Type[th.optim.Optimizer] = th.optim.Adam,
@@ -83,6 +84,8 @@ class AdversarialTrainer:
                 discriminator batch is split into minibatches and an Adam update is
                 applied on the gradient resulting form each minibatch. Must evenly
                 divide `disc_batch_size`. Must be an even number.
+            n_discrim_updates_per_turn: The number of discriminator updates after each
+                round of generator updates in PPO2.learn().
             log_dir: Directory to store TensorBoard logs, plots, etc. in.
             disc_opt_cls: The optimizer for discriminator training.
             disc_opt_kwargs: Parameters for discriminator training.
@@ -102,9 +105,9 @@ class AdversarialTrainer:
                 the environment reward with the learned reward. This is useful for
                 sanity checking that the policy training is functional.
         """
-        # TODO(shwang): Allow Transitions to have length less than `expert_batch_size`
-        # by repeating Transitions until the corresponding Dataset set has sufficient
-        # samples.
+        # TODO(shwang): Allow Transitions (`expert_data`) to have length less than
+        #  `expert_batch_size` by repeating Transitions until the corresponding Dataset
+        #  set has sufficient samples.
 
         assert (
             logger.is_configured()
@@ -123,6 +126,7 @@ class AdversarialTrainer:
         # )
         # self.disc_batch_size = disc_batch_size  # TODO(shwang): Consider @property?
         # self.disc_minibatch_size = disc_minibatch_size
+        self.n_disc_updates_per_turn = n_disc_updates_per_turn
 
         assert expert_batch_size > 0
         self.expert_batch_size = expert_batch_size
@@ -324,10 +328,10 @@ class AdversarialTrainer:
     ) -> None:
         """Alternates between training the generator and discriminator.
 
-        Every epoch consists of a call to `train_gen(self.gen_batch_size)`,
+        Every "turn" consists of a call to `train_gen(self.gen_batch_size)`,
         a call to `train_disc`, and finally a call to `callback(epoch)`.
 
-        Training ends once an additional epoch would cause the number of transitions
+        Training ends once an additional "turn" would cause the number of transitions
         sampled from the environment to exceed `total_timesteps`.
 
         Params:
@@ -337,17 +341,18 @@ class AdversarialTrainer:
               single argument, the epoch number. Epoch numbers are in
               `range(total_timesteps // self.gen_batch_size)`.
         """
-        n_epochs = total_timesteps // self.gen_batch_size
-        assert n_epochs >= 1, (
+        n_turns = total_timesteps // self.gen_batch_size
+        assert n_turns >= 1, (
             "No updates (need at least "
             f"{self.gen_batch_size} timesteps, have only "
             f"total_timesteps={total_timesteps})!"
         )
-        for epoch in tqdm.tqdm(range(0, n_epochs), desc="epoch"):
+        for epoch in tqdm.tqdm(range(0, n_turns), desc="turn"):
             # TODO(shwang): Idea -- get rid of `self.gen_batch_size` property by
             # having the user pass this in as an initialization argument instead.
             self.train_gen(self.gen_batch_size)
-            self.train_disc()
+            for _ in range(self.n_disc_updates_per_turn):
+                self.train_disc()
             if callback:
                 callback(epoch)
             logger.dump(self._global_step)
