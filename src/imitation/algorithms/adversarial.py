@@ -67,10 +67,10 @@ class AdversarialTrainer:
                 instance of `Transitions` which is automatically converted into a
                 shuffled version of the former type.
 
-                If the argument is passed a `DataLoader`, then it must yields batches of
+                If the argument passed is a `DataLoader`, then it must yield batches of
                 expert data via its `__iter__` method. Each batch is a dictionary whose
                 keys "obs", "acts", "next_obs", and "dones", correspond to Tensor or
-                Numpy array values each with batch dimension equal to
+                NumPy array values each with batch dimension equal to
                 `expert_batch_size`. If any batch dimension doesn't equal
                 `expert_batch_size` then a `ValueError` is raised.
 
@@ -80,7 +80,7 @@ class AdversarialTrainer:
                 `expert_dataloader`. The discriminator batch size is twice this number
                 because each discriminator batch contains a generator sample for every
                 expert sample.
-            n_discrim_updates_per_turn: The number of discriminator updates after each
+            n_disc_updates_per_turn: The number of discriminator updates after each
                 round of generator updates in AdversarialTrainer.learn().
             log_dir: Directory to store TensorBoard logs, plots, etc. in.
             disc_opt_cls: The optimizer for discriminator training.
@@ -223,7 +223,7 @@ class AdversarialTrainer:
             expert_samples: Transition samples from the expert in dictionary form.
                 Must contain keys corresponding to every field of the `Transitions`
                 dataclass except "infos". All corresponding values can be either
-                Numpy arrays or Tensors. Extra keys are ignored.
+                NumPy arrays or Tensors. Extra keys are ignored.
 
                 If this argument is not provided, then `self.expert_batch_size` expert
                 samples from `self.expert_data_loader` are used by default.
@@ -396,7 +396,7 @@ class AdversarialTrainer:
         expert_samples = dict(expert_samples)
         gen_samples = dict(gen_samples)
 
-        # Convert applicable Tensor values to Numpy.
+        # Convert applicable Tensor values to NumPy.
         for field in dataclasses.fields(types.Transitions):
             k = field.name
             if k == "infos":
