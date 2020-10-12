@@ -190,22 +190,6 @@ class AdversarialTrainer:
         # actually `n_steps` * `n_vec`? I'm surprised that this works.
         return self.gen_algo.n_steps
 
-    def _gen_log_action_prob_from_unnormalized(
-        self,
-        observation: np.ndarray,
-        *,
-        actions: np.ndarray,
-        logp=True,
-    ) -> np.ndarray:
-        """Calculate generator log action probabilility.
-
-        Params:
-          observation: Unnormalized observation.
-          actions: action.
-        """
-        obs = self.venv_train_norm.normalize_obs(observation)
-        return self.gen_algo.action_probability(obs, actions=actions, logp=logp)
-
     def train_disc(
         self,
         *,

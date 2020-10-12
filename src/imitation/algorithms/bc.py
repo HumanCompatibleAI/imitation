@@ -54,7 +54,7 @@ class ConstantLRSchedule:
 
 class BC:
 
-    DEFAULT_BATCH_SIZE: int = 128
+    DEFAULT_BATCH_SIZE: int = 32
     """Default batch size for DataLoader automatically constructed from Transitions.
 
     See `set_expert_data_loader()`.

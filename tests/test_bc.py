@@ -25,8 +25,8 @@ def batch_size(request):
     return request.param
 
 
-@pytest.fixture(params=[True, False])
-def use_ducktyped_data_loader(request):
+@pytest.fixture(params=["data_loader", "ducktyped_data_loader", "transitions"])
+def expert_data_type(request):
     return request.param
 
 
@@ -45,22 +45,27 @@ class DucktypedDataset:
 
 
 @pytest.fixture
-def trainer(batch_size, venv, use_ducktyped_data_loader):
+def trainer(batch_size, venv, expert_data_type):
     rollouts = types.load(ROLLOUT_PATH)
     trans = rollout.flatten_trajectories(rollouts)
-    if use_ducktyped_data_loader:
-        data_loader = DucktypedDataset(trans, batch_size)
-    else:
-        data_loader = th_data.DataLoader(
+    if expert_data_type == "data_loader":
+        expert_data = th_data.DataLoader(
             trans,
             batch_size=batch_size,
             shuffle=True,
             collate_fn=types.transitions_collate_fn,
         )
+    elif expert_data_type == "ducktyped_data_loader":
+        expert_data = DucktypedDataset(trans, batch_size)
+    elif expert_data_type == "transitions":
+        expert_data = trans
+    else:  # pragma: no cover
+        raise ValueError(expert_data_type)
+
     return bc.BC(
         venv.observation_space,
         venv.action_space,
-        expert_data=data_loader,
+        expert_data=expert_data,
     )
 
 

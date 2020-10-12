@@ -145,7 +145,7 @@ def endless_iter(iterable: Iterable[T]) -> Iterator[T]:
     """Generator that endlessly yields elements from iterable.
 
     If any call to `iter(iterable)` has no elements, then this function raises
-    RuntimeError.
+    ValueError.
 
     >>> x = range(2)
     >>> it = endless_iter(x)
@@ -160,6 +160,7 @@ def endless_iter(iterable: Iterable[T]) -> Iterator[T]:
     try:
         next(iter(iterable))
     except StopIteration:
-        raise RuntimeError(f"iterable {iterable} had no elements to iterate over.")
+        err = ValueError(f"iterable {iterable} had no elements to iterate over.")
+        raise err
 
     return itertools.chain.from_iterable(itertools.repeat(iterable))
