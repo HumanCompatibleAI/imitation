@@ -21,7 +21,7 @@ T = TypeVar("T")
 def dataclass_quick_asdict(dataclass_instance) -> dict:
     """Extract dataclass to items using `dataclasses.fields` + dict comprehension.
 
-    This is a quick alternative to `dataclasses.asdict`, which for expensively and
+    This is a quick alternative to `dataclasses.asdict`, which expensively and
     undocumentedly deep-copies every numpy array value.
     See https://stackoverflow.com/a/52229565/1091722.
     """

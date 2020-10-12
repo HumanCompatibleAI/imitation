@@ -81,7 +81,7 @@ class AdversarialTrainer:
                 because each discriminator batch contains a generator sample for every
                 expert sample.
             n_discrim_updates_per_turn: The number of discriminator updates after each
-                round of generator updates in PPO2.learn().
+                round of generator updates in AdversarialTrainer.learn().
             log_dir: Directory to store TensorBoard logs, plots, etc. in.
             disc_opt_cls: The optimizer for discriminator training.
             disc_opt_kwargs: Parameters for discriminator training.
@@ -384,10 +384,12 @@ class AdversarialTrainer:
 
         n_gen = len(gen_samples["obs"])
         n_expert = len(expert_samples["obs"])
-        if n_gen != n_expert:
+        if not (n_gen == n_expert == self.expert_batch_size):
             raise ValueError(
-                "Number of expert and generator samples not equal. "
-                f"(n_gen={n_gen} n_expert={n_expert}"
+                "Need to have exactly self.expert_batch_size number of expert and "
+                "generator samples, each. "
+                f"(n_gen={n_gen} n_expert={n_expert} "
+                f"expert_batch_size={self.expert_batch_size})"
             )
 
         # Copy items and ensure Mapping argument is in mutable form.
