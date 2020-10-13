@@ -10,7 +10,7 @@ import torch as th
 import torch.utils.data as th_data
 import torch.utils.tensorboard as thboard
 import tqdm
-from stable_baselines3.common import base_class, preprocessing, vec_env
+from stable_baselines3.common import on_policy_algorithm, preprocessing, vec_env
 
 from imitation.data import buffer, types, wrappers
 from imitation.rewards import common as rew_common
@@ -39,7 +39,7 @@ class AdversarialTrainer:
     def __init__(
         self,
         venv: vec_env.VecEnv,
-        gen_algo: base_class.BaseAlgorithm,
+        gen_algo: on_policy_algorithm.OnPolicyAlgorithm,
         discrim: discrim_nets.DiscrimNet,
         expert_data: Union[types.DataLoaderInterface, types.Transitions],
         expert_batch_size: int,
@@ -179,15 +179,8 @@ class AdversarialTrainer:
 
     @property
     def gen_batch_size(self) -> int:
-        # TODO(shwang): Sad that this basically hard-codes a dependency on PPO2.n_steps
-        # right now. One way to solve this problem without relying on an adaptor pattern
-        # would be to just get rid of the main user of this property,
-        # self._gen_replay_buffer. We could instead store batches after every call to
-        # `venv_train_norm.step()` via a callback? Should be similarly expensive to
-        # the status quo.
-        #
-        # Is `n_steps` really the generator batch size? Isn't the batch size
-        # actually `n_steps` * `n_vec`? I'm surprised that this works.
+        # TODO(shwang): Is `n_steps` really the generator batch size? Isn't the batch
+        #  size actually `n_steps` * `n_vec`? I'm surprised that this works.
         return self.gen_algo.n_steps
 
     def train_disc(
@@ -439,7 +432,7 @@ class GAIL(AdversarialTrainer):
         venv: vec_env.VecEnv,
         expert_data: Union[types.DataLoaderInterface, types.Transitions],
         expert_batch_size: int,
-        gen_algo: base_class.BaseAlgorithm,
+        gen_algo: on_policy_algorithm.OnPolicyAlgorithm,
         *,
         # FIXME(sam) pass in discrim net directly; don't ask for kwargs indirectly
         discrim_kwargs: Optional[Mapping] = None,
@@ -471,7 +464,7 @@ class AIRL(AdversarialTrainer):
         venv: vec_env.VecEnv,
         expert_data: Union[types.DataLoaderInterface, types.Transitions],
         expert_batch_size: int,
-        gen_algo: base_class.BaseAlgorithm,
+        gen_algo: on_policy_algorithm.OnPolicyAlgorithm,
         *,
         # FIXME(sam): pass in reward net directly, not via _cls and _kwargs
         reward_net_cls: Type[reward_nets.RewardNet] = reward_nets.BasicShapedRewardNet,
