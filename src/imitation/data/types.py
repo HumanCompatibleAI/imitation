@@ -116,8 +116,9 @@ class TransitionsMinimal(th_data.Dataset):
     `imitation.data.rollout.flatten_trajectories`.
 
     Indexing an instance `trans` of TransitionsMinimal with an integer `i`
-    returns the `i`th `Dict[str, np.ndarray]` sample, whose values are the `i` element
-    of each dataclass field.
+    returns the `i`th `Dict[str, np.ndarray]` sample, whose keys are the field
+    names of each dataclass field and whose values are the ith elements of each field
+    value.
 
     Slicing returns a possibly empty instance of `TransitionsMinimal` where each
     field has been sliced.
@@ -165,11 +166,11 @@ class TransitionsMinimal(th_data.Dataset):
 
     @overload
     def __getitem__(self: T, key: slice) -> T:
-        pass
+        pass  # pragma: no cover
 
     @overload
     def __getitem__(self, key: int) -> Dict[str, np.ndarray]:
-        pass
+        pass  # pragma: no cover
 
     def __getitem__(self, key):
         """See TransitionsMinimal docstring for indexing and slicing semantics."""
