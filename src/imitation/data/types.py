@@ -3,6 +3,7 @@
 import dataclasses
 import logging
 import os
+import pathlib
 import pickle
 from typing import Dict, Mapping, Optional, Sequence, TypeVar, Union, overload
 
@@ -282,7 +283,8 @@ def save(path: str, trajectories: Sequence[TrajectoryWithRew]) -> None:
         path: Trajectories are saved to this path.
         trajectories: The trajectories to save.
     """
-    os.makedirs(os.path.dirname(path), exist_ok=True)
+    p = pathlib.Path(path)
+    p.parent.mkdir(parents=True, exist_ok=True)
     with open(path + ".tmp", "wb") as f:
         pickle.dump(trajectories, f)
     # Ensure atomic write

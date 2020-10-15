@@ -74,7 +74,6 @@ def aliases_default_gen_batch_size(algorithm_kwargs, gen_batch_size):
 
 @train_ex.config
 def calc_n_steps(num_vec, gen_batch_size):
-    assert gen_batch_size % num_vec == 0, "num_vec must evenly divide gen_batch_size"
     init_rl_kwargs = dict(n_steps=gen_batch_size // num_vec)
 
 
