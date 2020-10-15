@@ -14,6 +14,7 @@ executors:
     environment:
       # If you change these, also change ci/code_checks.sh
       SRC_FILES: src/ tests/ experiments/ setup.py
+      NUM_CPUS: 2  # more CPUs visible but we're throttled to 2, which breaks auto-detect
 
 commands:
   dependencies:
@@ -58,7 +59,7 @@ jobs:
       - dependencies
       - run:
           name: flake8
-          command: flake8 --version && flake8 ${SRC_FILES}
+          command: flake8 --version && flake8 -j "${NUM_CPUS}" ${SRC_FILES}
 
       - run:
           name: black
@@ -74,7 +75,7 @@ jobs:
 
       - run:
           name: pytype
-          command: pytype ${SRC_FILES}
+          command: pytype -j "${NUM_CPUS}" ${SRC_FILES[@]}
 
   unit-test:
     executor: my-executor
