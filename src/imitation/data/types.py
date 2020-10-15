@@ -4,16 +4,13 @@ import dataclasses
 import logging
 import os
 import pickle
-from typing import Dict, Iterable, Mapping, Optional, Sequence, TypeVar, Union, overload
+from typing import Dict, Mapping, Optional, Sequence, TypeVar, Union, overload
 
 import numpy as np
 import torch as th
 from torch.utils import data as th_data
 
 from imitation.data import old_types
-
-DataLoaderInterface = Iterable[Mapping]
-
 
 T = TypeVar("T")
 

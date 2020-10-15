@@ -1,8 +1,7 @@
-import collections.abc as collections_abc
 import dataclasses
 import logging
 import os
-from typing import Callable, Dict, Mapping, Optional, Type, Union
+from typing import Callable, Dict, Iterable, Mapping, Optional, Type, Union
 
 import gym
 import numpy as np
@@ -41,7 +40,7 @@ class AdversarialTrainer:
         venv: vec_env.VecEnv,
         gen_algo: on_policy_algorithm.OnPolicyAlgorithm,
         discrim: discrim_nets.DiscrimNet,
-        expert_data: Union[types.DataLoaderInterface, types.Transitions],
+        expert_data: Union[Iterable[Mapping], types.Transitions],
         expert_batch_size: int,
         n_disc_updates_per_round: int = 2,
         *,
@@ -77,9 +76,9 @@ class AdversarialTrainer:
                 If the argument is a `Transitions` instance, then `len(expert_data)`
                 must be at least `expert_batch_size`.
             expert_batch_size: The number of samples in each batch yielded from
-                `expert_dataloader`. The discriminator batch size is twice this number
-                because each discriminator batch contains a generator sample for every
-                expert sample.
+                the expert data loader. The discriminator batch size is twice this
+                number because each discriminator batch contains a generator sample for
+                every expert sample.
             n_discrim_updates_per_round: The number of discriminator updates after each
                 round of generator updates in AdversarialTrainer.learn().
             log_dir: Directory to store TensorBoard logs, plots, etc. in.
@@ -285,10 +284,10 @@ class AdversarialTrainer:
     ) -> None:
         """Alternates between training the generator and discriminator.
 
-        Every "turn" consists of a call to `train_gen(self.gen_batch_size)`,
+        Every "round" consists of a call to `train_gen(self.gen_batch_size)`,
         a call to `train_disc`, and finally a call to `callback(round)`.
 
-        Training ends once an additional "turn" would cause the number of transitions
+        Training ends once an additional "round" would cause the number of transitions
         sampled from the environment to exceed `total_timesteps`.
 
         Params:
@@ -305,8 +304,6 @@ class AdversarialTrainer:
             f"total_timesteps={total_timesteps})!"
         )
         for r in tqdm.tqdm(range(0, n_rounds), desc="round"):
-            # TODO(shwang): Idea -- get rid of `self.gen_batch_size` property by
-            # having the user pass this in as an initialization argument instead.
             self.train_gen(self.gen_batch_size)
             for _ in range(self.n_disc_updates_per_round):
                 self.train_disc()
@@ -352,9 +349,6 @@ class AdversarialTrainer:
             gen_samples = self._gen_replay_buffer.sample(self.expert_batch_size)
             gen_samples = types.dataclass_quick_asdict(gen_samples)
 
-        assert isinstance(gen_samples, collections_abc.Mapping)
-        assert isinstance(expert_samples, collections_abc.Mapping)
-
         n_gen = len(gen_samples["obs"])
         n_expert = len(expert_samples["obs"])
         if not (n_gen == n_expert == self.expert_batch_size):
@@ -365,7 +359,7 @@ class AdversarialTrainer:
                 f"expert_batch_size={self.expert_batch_size})"
             )
 
-        # Copy items and ensure Mapping argument is in mutable form.
+        # Guarantee that Mapping arguments are in mutable form.
         expert_samples = dict(expert_samples)
         gen_samples = dict(gen_samples)
 
@@ -430,7 +424,7 @@ class GAIL(AdversarialTrainer):
     def __init__(
         self,
         venv: vec_env.VecEnv,
-        expert_data: Union[types.DataLoaderInterface, types.Transitions],
+        expert_data: Union[Iterable[Mapping], types.Transitions],
         expert_batch_size: int,
         gen_algo: on_policy_algorithm.OnPolicyAlgorithm,
         *,
@@ -462,7 +456,7 @@ class AIRL(AdversarialTrainer):
     def __init__(
         self,
         venv: vec_env.VecEnv,
-        expert_data: Union[types.DataLoaderInterface, types.Transitions],
+        expert_data: Union[Iterable[Mapping], types.Transitions],
         expert_batch_size: int,
         gen_algo: on_policy_algorithm.OnPolicyAlgorithm,
         *,
