@@ -132,9 +132,9 @@ class BC:
         self,
         expert_data: Union[types.DataLoaderInterface, types.TransitionsMinimal],
     ) -> None:
-        """Set the expert data_loader, which yields batches of obs-act pairs.
+        """Set the expert data loader, which yields batches of obs-act pairs.
 
-        Changing the expert data_loader on-demand is useful for DAgger and other
+        Changing the expert data loader on-demand is useful for DAgger and other
         interactive algorithms.
 
         Args:

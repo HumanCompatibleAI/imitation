@@ -118,7 +118,10 @@ def trainer(
         log_dir=tmpdir,
     )
 
-    yield trainer
+    try:
+        yield trainer
+    finally:
+        venv.close()
 
 
 def test_train_disc_no_samples_error(trainer: adversarial.AdversarialTrainer):
