@@ -71,7 +71,7 @@ jobs:
 
       - run:
           name: pytype
-          command: pytype -j auto ${SRC_FILES}
+          command: pytype -j auto ${SRC_FILES[@]}
 
   unit-test:
     executor: my-executor
