@@ -60,7 +60,7 @@ def train(
 
     Checkpoints:
         - DiscrimNets are saved to `f"{log_dir}/checkpoints/{step}/discrim/"`,
-            where step is either the training epoch or "final".
+            where step is either the training round or "final".
         - Generator policies are saved to `f"{log_dir}/checkpoints/{step}/gen_policy/"`.
 
     Args:
@@ -90,7 +90,7 @@ def train(
             the average episode reward of the imitation policy for return.
         init_tensorboard: If True, then write tensorboard logs to `{log_dir}/sb_tb`.
         checkpoint_interval: Save the discriminator and generator models every
-            `checkpoint_interval` epochs and after training is complete. If 0,
+            `checkpoint_interval` rounds and after training is complete. If 0,
             then only save weights after training is complete. If <0, then don't
             save weights at all.
         gen_batch_size: Batch size for generator updates. Sacred automatically uses
@@ -208,9 +208,9 @@ def train(
         **final_algorithm_kwargs,
     )
 
-    def callback(epoch):
-        if checkpoint_interval > 0 and epoch % checkpoint_interval == 0:
-            save(trainer, os.path.join(log_dir, "checkpoints", f"{epoch:05d}"))
+    def callback(round_num):
+        if checkpoint_interval > 0 and round_num % checkpoint_interval == 0:
+            save(trainer, os.path.join(log_dir, "checkpoints", f"{round_num:05d}"))
 
     trainer.train(total_timesteps, callback)
 

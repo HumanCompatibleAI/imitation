@@ -5,11 +5,27 @@ import logging
 import os
 import pathlib
 import pickle
-from typing import Optional, Sequence
+from typing import Dict, Mapping, Optional, Sequence, TypeVar, Union, overload
 
 import numpy as np
+import torch as th
+from torch.utils import data as th_data
 
 from imitation.data import old_types
+
+T = TypeVar("T")
+
+
+def dataclass_quick_asdict(dataclass_instance) -> dict:
+    """Extract dataclass to items using `dataclasses.fields` + dict comprehension.
+
+    This is a quick alternative to `dataclasses.asdict`, which expensively and
+    undocumentedly deep-copies every numpy array value.
+    See https://stackoverflow.com/a/52229565/1091722.
+    """
+    obj = dataclass_instance
+    d = {f.name: getattr(obj, f.name) for f in dataclasses.fields(obj)}
+    return d
 
 
 @dataclasses.dataclass(frozen=True)
@@ -69,12 +85,43 @@ class TrajectoryWithRew(Trajectory):
         _rews_validation(self.rews, self.acts)
 
 
+def transitions_collate_fn(
+    batch: Sequence[Mapping[str, np.ndarray]],
+) -> Dict[str, Union[np.ndarray, th.Tensor]]:
+    """Custom `torch.utils.data.DataLoader` collate_fn for `TransitionsMinimal`.
+
+    Use this as the `collate_fn` argument to `DataLoader` if using an instance of
+    `TransitionsMinimal` as the `dataset` argument.
+
+    Handles all collation except "infos" collation using Torch's default collate_fn.
+    "infos" needs special handling because we shouldn't recursively collate every
+    the info dict into a single dict, but instead join all the info dicts into a list of
+    dicts.
+    """
+    batch_no_infos = [
+        {k: v for k, v in sample.items() if k != "infos"} for sample in batch
+    ]
+
+    result = th_data.dataloader.default_collate(batch_no_infos)
+    assert isinstance(result, dict)
+    result["infos"] = [sample["infos"] for sample in batch]
+    return result
+
+
 @dataclasses.dataclass(frozen=True)
-class TransitionsMinimal:
-    """A batch of obs-act transitions.
+class TransitionsMinimal(th_data.Dataset):
+    """A Torch-compatible `Dataset` of obs-act transitions.
 
     This class and its subclasses are usually instantiated via
     `imitation.data.rollout.flatten_trajectories`.
+
+    Indexing an instance `trans` of TransitionsMinimal with an integer `i`
+    returns the `i`th `Dict[str, np.ndarray]` sample, whose keys are the field
+    names of each dataclass field and whose values are the ith elements of each field
+    value.
+
+    Slicing returns a possibly empty instance of `TransitionsMinimal` where each
+    field has been sliced.
     """
 
     obs: np.ndarray
@@ -110,14 +157,40 @@ class TransitionsMinimal:
                 "obs and acts must have same number of timesteps: "
                 f"{len(self.obs)} != {len(self.acts)}"
             )
-        if len(self.obs) == 0:
-            raise ValueError("Must have non-zero number of observations.")
 
         if self.infos is not None and len(self.infos) != len(self.obs):
             raise ValueError(
                 "obs and infos must have same number of timesteps: "
                 f"{len(self.obs)} != {len(self.infos)}"
             )
+
+    @overload
+    def __getitem__(self: T, key: slice) -> T:
+        pass  # pragma: no cover
+
+    @overload
+    def __getitem__(self, key: int) -> Dict[str, np.ndarray]:
+        pass  # pragma: no cover
+
+    def __getitem__(self, key):
+        """See TransitionsMinimal docstring for indexing and slicing semantics."""
+        d = dataclass_quick_asdict(self)
+        d_item = {k: v[key] for k, v in d.items()}
+
+        if isinstance(key, slice):
+            # Return type is the same as this dataclass. Replace field value with
+            # slices.
+            return dataclasses.replace(self, **d_item)
+        else:
+            assert isinstance(key, int)
+            # Return type is a dictionary. Array values have no batch dimension.
+            #
+            # Dictionary of np.ndarray values is a convenient
+            # torch.util.data.Dataset return type, as a torch.util.data.DataLoader
+            # taking in this `Dataset` as its first argument knows how to
+            # automatically concatenate several dictionaries together to make
+            # a single dictionary batch with `torch.Tensor` values.
+            return d_item
 
 
 @dataclasses.dataclass(frozen=True)

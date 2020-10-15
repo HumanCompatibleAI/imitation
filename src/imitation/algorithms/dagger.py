@@ -16,6 +16,7 @@ import gym
 import numpy as np
 import torch as th
 from stable_baselines3.common import utils
+from torch.utils import data as th_data
 
 from imitation.algorithms import bc
 from imitation.data import rollout, types
@@ -239,19 +240,21 @@ class DAggerTrainer:
         env: gym.Env,
         scratch_dir: str,
         beta_schedule: Callable[[int], float] = None,
+        batch_size: int = 32,
         **bc_kwargs,
     ):
         """Trainer constructor.
 
         Args:
-          env: environment to train in.
-          scratch_dir: directory to use to store intermediate training
-              information (e.g. for resuming training).
-          beta_schedule: provides a value of `beta` (the probability of taking
-              expert action in any given state) at each round of training. If
-              `None`, then `linear_beta_schedule` will be used instead.
-          **bc_kwargs: additional arguments for constructing the `BC` that
-              will be used to train the underlying policy.
+            env: environment to train in.
+            scratch_dir: directory to use to store intermediate training
+                information (e.g. for resuming training).
+            beta_schedule: provides a value of `beta` (the probability of taking
+                expert action in any given state) at each round of training. If
+                `None`, then `linear_beta_schedule` will be used instead.
+            batch_size: Number of samples in each batch during BC training.
+            **bc_kwargs: additional arguments for constructing the `BC` that
+                will be used to train the underlying policy.
         """
         # for pickling
         self._init_args = locals()
@@ -261,6 +264,7 @@ class DAggerTrainer:
 
         if beta_schedule is None:
             beta_schedule = LinearBetaSchedule(15)
+        self.batch_size = batch_size
         self.beta_schedule = beta_schedule
         self.scratch_dir = scratch_dir
         self.env = env
@@ -313,7 +317,14 @@ class DAggerTrainer:
             logging.info(
                 f"Loaded {sum(num_demos)} new demos from {len(num_demos)} rounds"
             )
-            self.bc_trainer.set_expert_dataset(transitions)
+            data_loader = th_data.DataLoader(
+                transitions,
+                self.batch_size,
+                drop_last=True,
+                shuffle=True,
+                collate_fn=types.transitions_collate_fn,
+            )
+            self.bc_trainer.set_expert_data_loader(data_loader)
             self._last_loaded_round = self.round_num
 
     def extend_and_update(self, **train_kwargs) -> int:

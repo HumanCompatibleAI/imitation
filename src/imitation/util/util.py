@@ -1,8 +1,9 @@
 import datetime
 import functools
+import itertools
 import os
 import uuid
-from typing import Optional, Type, Union
+from typing import Iterable, Iterator, Optional, Type, TypeVar, Union
 
 import gym
 import numpy as np
@@ -135,3 +136,31 @@ def docstring_parameter(*args, **kwargs):
         return obj
 
     return helper
+
+
+T = TypeVar("T")
+
+
+def endless_iter(iterable: Iterable[T]) -> Iterator[T]:
+    """Generator that endlessly yields elements from iterable.
+
+    If any call to `iter(iterable)` has no elements, then this function raises
+    ValueError.
+
+    >>> x = range(2)
+    >>> it = endless_iter(x)
+    >>> next(it)
+    0
+    >>> next(it)
+    1
+    >>> next(it)
+    0
+
+    """
+    try:
+        next(iter(iterable))
+    except StopIteration:
+        err = ValueError(f"iterable {iterable} had no elements to iterate over.")
+        raise err
+
+    return itertools.chain.from_iterable(itertools.repeat(iterable))
