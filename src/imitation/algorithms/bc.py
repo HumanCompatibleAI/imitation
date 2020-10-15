@@ -163,16 +163,18 @@ class BC:
         Calculate the supervised learning loss used to train the behavioral clone.
 
         Args:
-            obs: The observations seen by the expert.
-            acts: The actions taken by the expert.
+            obs: The observations seen by the expert. If this is a Tensor, then
+                gradients are detached first before loss is calculated.
+            acts: The actions taken by the expert. If this is a Tensor, then its
+                gradients are detached first before loss is calculated.
 
         Returns:
             loss: The supervised learning loss for the behavioral clone to optimize.
             stats_dict: Statistics about the learning process to be logged.
 
         """
-        obs = th.as_tensor(obs, device=self.device)
-        acts = th.as_tensor(acts, device=self.device)
+        obs = th.as_tensor(obs, device=self.device).detach()
+        acts = th.as_tensor(acts, device=self.device).detach()
 
         _, log_prob, entropy = self.policy.evaluate_actions(obs, acts)
         prob_true_act = th.exp(log_prob).mean()
@@ -227,9 +229,7 @@ class BC:
                 assert batch_size > 0
                 samples_so_far += batch_size
 
-                obs = batch["obs"].to(self.device)
-                acts = batch["acts"].to(self.device)
-                loss, stats_dict = self._calculate_loss(obs, acts)
+                loss, stats_dict = self._calculate_loss(batch["obs"], batch["acts"])
 
                 self.optimizer.zero_grad()
                 loss.backward()
