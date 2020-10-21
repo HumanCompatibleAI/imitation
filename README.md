@@ -50,7 +50,7 @@ import pickle
 
 import stable_baselines3 as sb3
 
-from imitation.algorithms import bc
+from imitation.algorithms import adversarial, bc
 from imitation.data import types
 from imitation.util import logger, util
 
@@ -75,12 +75,12 @@ bc_trainer.train(n_epochs=2)
 
 # Train GAIL on expert data.
 logger.configure("quickstart/tensorboard_dir_gail/")
-gail_trainer = GAIL(venv, expert_data=transitions, expert_batch_size=32, gen_algo=sb3.PPO(venv))
+gail_trainer = adversarial.GAIL(venv, expert_data=transitions, expert_batch_size=32, gen_algo=sb3.PPO(venv))
 gail_trainer.train(total_timesteps=2000)
 
 # Train AIRL on expert data.
 logger.configure("quickstart/tensorboard_dir_airl/")
-airl_trainer = AIRL(venv, expert_data=transitions, expert_batch_size=32, gen_algo=sb3.PPO(venv))
+airl_trainer = adversarial.AIRL(venv, expert_data=transitions, expert_batch_size=32, gen_algo=sb3.PPO(venv))
 airl_trainer.train(total_timesteps=2000)
 ```
 

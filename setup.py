@@ -16,6 +16,7 @@ TESTS_REQUIRE = [
     "flake8-isort",
     "pytest",
     "pytest-cov",
+    "pytest-notebook",
     "pytest-shard",
     "pytest-xdist",
     "pytype",
