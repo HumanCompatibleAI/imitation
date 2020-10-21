@@ -20,13 +20,6 @@ def train_defaults():
     n_expert_demos = None  # Num demos used. None uses every demo possible
     n_episodes_eval = 50  # Num of episodes for final mean ground truth return
 
-    # Number of epochs in between plots (<0 disables) (=0 means final plot only)
-    plot_interval = -1
-    n_plot_episodes = 5  # Number of rollouts for each mean_ep_rew data
-    # Interval for extra episode rew data. (<=0 disables)
-    extra_episode_data_interval = -1
-    show_plots = True  # Show plots in addition to saving them
-
     # Number of environments in VecEnv, must evenly divide gen_batch_size
     num_vec = 8
 
