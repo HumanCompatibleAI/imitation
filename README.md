@@ -25,19 +25,19 @@ Follow instructions to install [mujoco_py v1.5 here](https://github.com/openai/m
 ## Sacred CLI Quickstart:
 
 ```bash
-# Train PPO agent on cartpole and collect expert demonstrations
-python -m imitation.scripts.expert_demos with cartpole log_dir=quickstart
+# Train PPO agent on cartpole and collect expert demonstrations. Tensorboard logs saved in `quickstart/rl/`
+python -m imitation.scripts.expert_demos with cartpole log_dir=quickstart/rl/
 
-# Train GAIL from demonstrations
-python -m imitation.scripts.train_adversarial with gail cartpole rollout_path=quickstart/rollouts/final.pkl
+# Train GAIL from demonstrations. Tensorboard logs saved in output/ (default log directory).
+python -m imitation.scripts.train_adversarial with gail cartpole rollout_path=quickstart/rl/rollouts/final.pkl
 
-# Train AIRL from demonstrations
-python -m imitation.scripts.train_adversarial with airl cartpole rollout_path=quickstart/rollouts/final.pkl
-
-# Tip: `python -m imitation.scripts.* print_config` will list Sacred script options, which are documented
-# in `src/imitation/scripts/`.
-# For more information configuring Sacred options, see docs at https://sacred.readthedocs.io/en/stable/.
+# Train AIRL from demonstrations. Tensorboard logs saved in output/ (default log directory).
+python -m imitation.scripts.train_adversarial with airl cartpole rollout_path=quickstart/rl/rollouts/final.pkl
 ```
+Tip: `python -m imitation.scripts.* print_config` will list Sacred script options, which are documented
+in the script docstrings.
+
+For more information configuring Sacred CLI options, see [Sacred docs](https://sacred.readthedocs.io/en/stable/).
 
 
 ## Functional Interface Quickstart:
