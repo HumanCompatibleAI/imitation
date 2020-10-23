@@ -13,7 +13,7 @@ executors:
     working_directory: /imitation
     environment:
       # If you change these, also change ci/code_checks.sh
-      SRC_FILES: src/ tests/ experiments/ examples/ setup.py
+      SRC_FILES: src/ tests/ experiments/ examples/ docs/conf.py setup.py
       NUM_CPUS: 2  # more CPUs visible but we're throttled to 2, which breaks auto-detect
 
 commands:

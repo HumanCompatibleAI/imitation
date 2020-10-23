@@ -23,6 +23,7 @@ TESTS_REQUIRE = [
 ]
 DOCS_REQUIRE = [
     "sphinx",
+    "sphinx-rtd-theme",
     "sphinxcontrib-napoleon",
 ]
 PARALLEL_REQUIRE = ["ray[debug,tune]~=0.8.5"]
