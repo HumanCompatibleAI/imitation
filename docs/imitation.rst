@@ -14,10 +14,8 @@ Subpackages
    imitation.scripts
    imitation.util
 
+
 Module contents
 ---------------
 
 .. automodule:: imitation
-   :members:
-   :undoc-members:
-   :show-inheritance:

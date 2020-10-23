@@ -13,7 +13,7 @@ executors:
     working_directory: /imitation
     environment:
       # If you change these, also change ci/code_checks.sh
-      SRC_FILES: src/ tests/ experiments/ setup.py
+      SRC_FILES: src/ tests/ experiments/ examples/ docs/conf.py setup.py
       NUM_CPUS: 2  # more CPUs visible but we're throttled to 2, which breaks auto-detect
 
 commands:
@@ -75,7 +75,7 @@ jobs:
 
       - run:
           name: pytype
-          command: pytype -j "${NUM_CPUS}" ${SRC_FILES[@]}
+          command: pytype --version && pytype -j "${NUM_CPUS}" ${SRC_FILES[@]}
 
   unit-test:
     executor: my-executor

@@ -16,12 +16,15 @@ TESTS_REQUIRE = [
     "flake8-isort",
     "pytest",
     "pytest-cov",
+    "pytest-notebook",
     "pytest-shard",
     "pytest-xdist",
     "pytype",
 ]
 DOCS_REQUIRE = [
     "sphinx",
+    "sphinx-autodoc-typehints",
+    "sphinx-rtd-theme",
     "sphinxcontrib-napoleon",
 ]
 PARALLEL_REQUIRE = ["ray[debug,tune]~=0.8.5"]

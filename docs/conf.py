@@ -17,11 +17,11 @@
 
 # -- Project information -----------------------------------------------------
 
-import imitation
+import imitation  # pytype: disable=import-error
 
-project = 'imitation'
-copyright = '2019, Center for Human-Compatible AI'
-author = 'Center for Human-Compatible AI'
+project = "imitation"
+copyright = "2019, Center for Human-Compatible AI"  # noqa: A001
+author = "Center for Human-Compatible AI"
 
 # The full version, including alpha/beta/rc tags
 release = imitation.__version__
@@ -33,23 +33,32 @@ release = imitation.__version__
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-    'sphinxcontrib.napoleon',
-    'sphinx.ext.autodoc',
-    'sphinx.ext.autosummary',
-    'sphinx.ext.mathjax',
-    'sphinx.ext.viewcode',
+    "sphinxcontrib.napoleon",
+    "sphinx.ext.autodoc",
+    "sphinx_autodoc_typehints",
+    "sphinx.ext.autosummary",
+    "sphinx.ext.mathjax",
+    "sphinx.ext.viewcode",
+    "sphinx_rtd_theme",
 ]
 
 napoleon_google_docstring = True
 napoleon_numpy_docstring = False
 
 # Add any paths that contain templates here, relative to this directory.
-templates_path = ['_templates']
+templates_path = ["_templates"]
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
-exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
+exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
+
+autodoc_default_options = {
+    "members": True,
+    "undoc-members": True,
+    "special-members": "__init__",
+    "show-inheritance": True,
+}
 
 
 # -- Options for HTML output -------------------------------------------------
@@ -57,7 +66,7 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = 'alabaster'
+html_theme = "sphinx_rtd_theme"
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
@@ -66,24 +75,23 @@ html_static_path = []
 
 # -- Customization -----------------------------------------------------------
 
-def no_namedtuple_attrib_docstring(app, what, name,
-                                   obj, options, lines):
-  """Remove redundant documentation in named tuples.
 
-  Worksaround https://github.com/sphinx-doc/sphinx/issues/7353
-  Adapted from https://chrisdown.name/2015/09/20/removing-namedtuple-docstrings-from-sphinx.html
-  """
-  is_namedtuple_docstring = (
-    1 <= len(lines) <= 2 and
-    lines[0].startswith('Alias for field number')
-  )
-  if is_namedtuple_docstring:
-    # We don't return, so we need to purge in-place
-    del lines[:]
+def no_namedtuple_attrib_docstring(app, what, name, obj, options, lines):
+    """Remove redundant documentation in named tuples.
+
+    Worksaround https://github.com/sphinx-doc/sphinx/issues/7353 -- adapted from
+    https://chrisdown.name/2015/09/20/removing-namedtuple-docstrings-from-sphinx.html
+    """
+    is_namedtuple_docstring = 1 <= len(lines) <= 2 and lines[0].startswith(
+        "Alias for field number"
+    )
+    if is_namedtuple_docstring:
+        # We don't return, so we need to purge in-place
+        del lines[:]
 
 
 def setup(app):
-  app.connect(
-    'autodoc-process-docstring',
-    no_namedtuple_attrib_docstring,
-  )
+    app.connect(
+        "autodoc-process-docstring",
+        no_namedtuple_attrib_docstring,
+    )

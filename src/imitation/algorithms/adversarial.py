@@ -290,7 +290,7 @@ class AdversarialTrainer:
         Training ends once an additional "round" would cause the number of transitions
         sampled from the environment to exceed `total_timesteps`.
 
-        Params:
+        Args:
           total_timesteps: An upper bound on the number of transitions to sample
               from the environment during training.
           callback: A function called at the end of every round which takes in a
