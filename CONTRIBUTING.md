@@ -12,8 +12,12 @@ It is OK to omit annotations when it would make the code significantly more comp
 
 We use `pytest` for unit testing: run `pytest tests/` to run the test suite.
 We use `pytype` for static type analysis.
-You should run `ci/code_checks.sh` to run linting and static type checks, and may wish
-to configure this as a Git pre-commit hook.
+You should run `ci/code_checks.sh` to run linting and static type checks,
+and may wish to configure this as a Git commit hook:
+
+```bash
+ln -s ../../ci/code_checks.sh .git/hooks/pre-commit
+```
 
 These checks are run on CircleCI and are required to pass before merging.
 Additionally, we track test coverage by CodeCov and require that code coverage
