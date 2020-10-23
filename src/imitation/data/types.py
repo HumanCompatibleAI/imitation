@@ -15,6 +15,8 @@ from imitation.data import old_types
 
 T = TypeVar("T")
 
+Pathlike = Union[str, bytes, pathlib.Path]
+
 
 def dataclass_quick_asdict(dataclass_instance) -> dict:
     """Extract dataclass to items using `dataclasses.fields` + dict comprehension.

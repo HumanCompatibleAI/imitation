@@ -4,9 +4,11 @@ from typing import ContextManager, Optional, Sequence
 
 import stable_baselines3.common.logger as sb_logger
 
+from imitation.data import types
+
 
 def _build_output_formats(
-    folder: str,
+    folder: types.Pathlike,
     format_strs: Sequence[str] = None,
 ) -> Sequence[sb_logger.KVWriter]:
     """Build output formats for initializing a Stable Baselines Logger.
@@ -46,7 +48,7 @@ class _HierarchicalLogger(sb_logger.Logger):
         super().__init__(folder=self.default_logger.dir, output_formats=None)
 
     @contextlib.contextmanager
-    def accumulate_means(self, subdir: str):
+    def accumulate_means(self, subdir: types.Pathlike):
         """Temporarily modifies this _HierarchicalLogger to accumulate means values.
 
         During this context, `self.record(key, value)` writes the "raw" values in
@@ -79,7 +81,7 @@ class _HierarchicalLogger(sb_logger.Logger):
             logger = self._cached_loggers[subdir]
         else:
             folder = os.path.join(self.default_logger.dir, "raw", subdir)
-            os.makedirs(folder)
+            os.makedirs(folder, exist_ok=True)
             output_formats = _build_output_formats(folder, self.format_strs)
             logger = sb_logger.Logger(folder, output_formats)
             self._cached_loggers[subdir] = logger
@@ -145,7 +147,9 @@ def is_configured() -> bool:
     return isinstance(sb_logger.Logger.CURRENT, _HierarchicalLogger)
 
 
-def configure(folder: str, format_strs: Optional[Sequence[str]] = None) -> None:
+def configure(
+    folder: types.Pathlike, format_strs: Optional[Sequence[str]] = None
+) -> None:
     """Configure Stable Baselines logger to be `accumulate_means()`-compatible.
 
     After this function is called, `stable_baselines3.logger.{configure,reset}()`
@@ -181,7 +185,7 @@ def dump(step=0) -> None:
     sb_logger.dump(step)
 
 
-def accumulate_means(subdir_name: str) -> ContextManager:
+def accumulate_means(subdir_name: types.Pathlike) -> ContextManager:
     """Temporarily redirect record() to a different logger and auto-track kvmeans.
 
     Within this context, the original logger is swapped out for a special logger
