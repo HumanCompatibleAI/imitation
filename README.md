@@ -7,14 +7,13 @@
 # Imitation Learning Baseline Implementations
 
 This project aims to provide clean implementations of imitation learning algorithms.
-Currently we have implementations of [AIRL](https://arxiv.org/abs/1710.11248) and 
-[GAIL](https://arxiv.org/abs/1606.03476), and intend to add more in the future.
+Currently we have implementations of Behavioral Cloning, [DAgger](https://arxiv.org/pdf/1011.0686.pdf) (with synthetic examples), [Adversarial Inverse Reinforcement Learning](https://arxiv.org/abs/1710.11248), and [Generative Adversarial Imitation Learning](https://arxiv.org/abs/1606.03476).
 
 ### To install:
 ```
-conda create -n imitation python=3.7
-conda activate imitation
-pip install -e '.[dev]'  # install `imitation` in developer mode
+git clone http://github.com/HumanCompatibleAI/imitation
+cd imitation
+pip install -e .
 ```
 
 ### Optional Mujoco Dependency:
