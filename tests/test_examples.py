@@ -29,7 +29,6 @@ def test_run_example_py_scripts(py_path):
     assert exit_code == 0
 
 
-@pytest.mark.now
 @pytest.mark.parametrize("sh_path", SH_PATHS)
 def test_run_example_sh_scripts(sh_path):
     """Smoke test ensuring that shell example scripts run without error."""
