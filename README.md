@@ -26,63 +26,24 @@ Follow instructions to install [mujoco\_py v1.5 here](https://github.com/openai/
 
 ```bash
 # Train PPO agent on cartpole and collect expert demonstrations. Tensorboard logs saved in `quickstart/rl/`
-python -m imitation.scripts.expert_demos with cartpole log_dir=quickstart/rl/
+python -m imitation.scripts.expert_demos with fast cartpole log_dir=quickstart/rl/
 
 # Train GAIL from demonstrations. Tensorboard logs saved in output/ (default log directory).
-python -m imitation.scripts.train_adversarial with gail cartpole rollout_path=quickstart/rl/rollouts/final.pkl
+python -m imitation.scripts.train_adversarial with fast gail cartpole rollout_path=quickstart/rl/rollouts/final.pkl
 
 # Train AIRL from demonstrations. Tensorboard logs saved in output/ (default log directory).
-python -m imitation.scripts.train_adversarial with airl cartpole rollout_path=quickstart/rl/rollouts/final.pkl
+python -m imitation.scripts.train_adversarial with fast airl cartpole rollout_path=quickstart/rl/rollouts/final.pkl
 ```
-Tip: `python -m imitation.scripts.* print_config` will list Sacred script options, which are documented
-in the script docstrings.
+Tip: Remove the "fast" option from the above runs to run training to completion.
+Tip: `python -m imitation.scripts.expert_demos print_config` will list Sacred script options, which are documented
+in each script's docstrings.
 
 For more information configuring Sacred CLI options, see [Sacred docs](https://sacred.readthedocs.io/en/stable/).
 
 
-## Functional Interface Quickstart:
+## Python Interface Quickstart:
 
-Here's an example script that loads CartPole-v1 demonstrations and trains BC, GAIL, and AIRL models on that data.
-
-```python
-import gym
-import pickle
-
-import stable_baselines3 as sb3
-
-from imitation.algorithms import adversarial, bc
-from imitation.data import types
-from imitation.util import logger, util
-
-
-# Load pickled test demonstrations.
-with open("tests/data/expert_models/cartpole_0/rollouts/final.pkl", "rb") as f:
-    # This is a list of `types.Trajectory`, where
-    # every instance contains observations and actions for a single expert demonstration.
-    trajectories = pickle.load(f)
-
-# Convert List[types.Trajectory] to an instance of `types.Transitions`.
-# This is a more general dataclass containing unordered (observation, actions, next_observation)
-# transitions.
-transitions = types.flatten_trajectories(trajectories)
-
-venv = util.make_vec_env("CartPole-v1")
-
-# Train BC on expert data. 
-logger.configure("quickstart/tensorboard_dir_bc/")
-bc_trainer = bc.BC(venv.observation_space, venv.action_space, expert_data=transitions)
-bc_trainer.train(n_epochs=2)
-
-# Train GAIL on expert data.
-logger.configure("quickstart/tensorboard_dir_gail/")
-gail_trainer = adversarial.GAIL(venv, expert_data=transitions, expert_batch_size=32, gen_algo=sb3.PPO(venv))
-gail_trainer.train(total_timesteps=2000)
-
-# Train AIRL on expert data.
-logger.configure("quickstart/tensorboard_dir_airl/")
-airl_trainer = adversarial.AIRL(venv, expert_data=transitions, expert_batch_size=32, gen_algo=sb3.PPO(venv))
-airl_trainer.train(total_timesteps=2000)
-```
+See [examples/quickstart.py](examples/quickstart.py) for an example script that loads CartPole-v1 demonstrations and trains BC, GAIL, and AIRL models on that data.
 
 BC, GAIL, and AIRL also accept as `expert_data` any Pytorch-style DataLoader that iterates over dictionaries containing observations, actions, and next\_observations.
 
