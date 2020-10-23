@@ -34,11 +34,12 @@ python -m imitation.scripts.train_adversarial with fast gail cartpole rollout_pa
 # Train AIRL from demonstrations. Tensorboard logs saved in output/ (default log directory).
 python -m imitation.scripts.train_adversarial with fast airl cartpole rollout_path=quickstart/rl/rollouts/final.pkl
 ```
-Tip: Remove the "fast" option from the above runs to run training to completion.
-Tip: `python -m imitation.scripts.expert_demos print_config` will list Sacred script options, which are documented
-in each script's docstrings.
+Tips:
+  * Remove the "fast" option from the above runs to run training to completion.
+  * `python -m imitation.scripts.expert_demos print_config` will list Sacred script options, which are documented
+  in each script's docstrings.
 
-For more information configuring Sacred CLI options, see [Sacred docs](https://sacred.readthedocs.io/en/stable/).
+For more information configuring on Sacred CLI options, see [Sacred docs](https://sacred.readthedocs.io/en/stable/).
 
 
 ## Python Interface Quickstart:
