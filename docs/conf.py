@@ -17,7 +17,7 @@
 
 # -- Project information -----------------------------------------------------
 
-import imitation
+import imitation  # pytype: disable=import-error
 
 project = "imitation"
 copyright = "2019, Center for Human-Compatible AI"  # noqa: A001
