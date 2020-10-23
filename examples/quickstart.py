@@ -31,9 +31,7 @@ print(f"All Tensorboards and logging are being written inside {tempdir_path}/.")
 
 # Train BC on expert data.
 logger.configure(tempdir_path / "BC/")
-bc_trainer = bc.BC(
-    venv.observation_space, venv.action_space, expert_data=transitions
-)
+bc_trainer = bc.BC(venv.observation_space, venv.action_space, expert_data=transitions)
 bc_trainer.train(n_epochs=1)
 
 # Train GAIL on expert data.
