@@ -15,7 +15,7 @@ from imitation.data import old_types
 
 T = TypeVar("T")
 
-Pathlike = Union[str, bytes, pathlib.Path]
+AnyPath = Union[str, bytes, os.PathLike]
 
 
 def dataclass_quick_asdict(dataclass_instance) -> dict:

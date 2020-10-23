@@ -4,7 +4,8 @@ import subprocess
 import pytest
 from pytest_notebook import execution, notebook
 
-EXAMPLES_DIR = pathlib.Path("examples/")
+THIS_DIR = pathlib.Path(__file__).absolute().parent
+EXAMPLES_DIR = THIS_DIR / ".." / "examples"
 
 SH_PATHS = EXAMPLES_DIR.glob("*.sh")
 NB_PATHS = EXAMPLES_DIR.glob("*.ipynb")

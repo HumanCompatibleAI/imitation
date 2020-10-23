@@ -9,7 +9,16 @@
 This project aims to provide clean implementations of imitation learning algorithms.
 Currently we have implementations of Behavioral Cloning, [DAgger](https://arxiv.org/pdf/1011.0686.pdf) (with synthetic examples), [Adversarial Inverse Reinforcement Learning](https://arxiv.org/abs/1710.11248), and [Generative Adversarial Imitation Learning](https://arxiv.org/abs/1606.03476).
 
-### To install:
+## Installation:
+
+### Installing PyPI release
+
+```
+pip install imitation
+```
+
+### Install latest commit
+
 ```
 git clone http://github.com/HumanCompatibleAI/imitation
 cd imitation
@@ -21,7 +30,11 @@ pip install -e .
 Follow instructions to install [mujoco\_py v1.5 here](https://github.com/openai/mujoco-py/tree/498b451a03fb61e5bdfcb6956d8d7c881b1098b5#install-mujoco).
 
 
-## Sacred CLI Quickstart:
+## CLI Quickstart:
+
+We provide several CLI scripts as a front-end to the algorithms implemented in `imitation`. These use [Sacred](https://github.com/idsia/sacred) for configuration and replicability.
+
+From [examples/quickstart.sh:](examples/quickstart.sh)
 
 ```bash
 # Train PPO agent on cartpole and collect expert demonstrations. Tensorboard logs saved in `quickstart/rl/`
@@ -34,11 +47,10 @@ python -m imitation.scripts.train_adversarial with fast gail cartpole rollout_pa
 python -m imitation.scripts.train_adversarial with fast airl cartpole rollout_path=quickstart/rl/rollouts/final.pkl
 ```
 Tips:
-  * Remove the "fast" option from the above runs to run training to completion.
-  * `python -m imitation.scripts.expert_demos print_config` will list Sacred script options, which are documented
-  in each script's docstrings.
+  * Remove the "fast" option from the commands above to allow training run to completion.
+  * `python -m imitation.scripts.expert_demos print_config` will list Sacred script options. These configuration options are documented in each script's docstrings.
 
-For more information configuring on Sacred CLI options, see [Sacred docs](https://sacred.readthedocs.io/en/stable/).
+For more information on how to configure Sacred CLI options, see the [Sacred docs](https://sacred.readthedocs.io/en/stable/).
 
 
 ## Python Interface Quickstart:
@@ -46,6 +58,10 @@ For more information configuring on Sacred CLI options, see [Sacred docs](https:
 See [examples/quickstart.py](examples/quickstart.py) for an example script that loads CartPole-v1 demonstrations and trains BC, GAIL, and AIRL models on that data.
 
 BC, GAIL, and AIRL also accept as `expert_data` any Pytorch-style DataLoader that iterates over dictionaries containing observations, actions, and next\_observations.
+
+### Density reward baseline
+
+We also implement a density-based reward baseline. You can find an [example notebook here](examples/density_baseline_demo.ipynb).
 
 # Contributing
 See [CONTRIBUTING.md](CONTRIBUTING.md).

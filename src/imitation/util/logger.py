@@ -8,7 +8,7 @@ from imitation.data import types
 
 
 def _build_output_formats(
-    folder: types.Pathlike,
+    folder: types.AnyPath,
     format_strs: Sequence[str] = None,
 ) -> Sequence[sb_logger.KVWriter]:
     """Build output formats for initializing a Stable Baselines Logger.
@@ -48,7 +48,7 @@ class _HierarchicalLogger(sb_logger.Logger):
         super().__init__(folder=self.default_logger.dir, output_formats=None)
 
     @contextlib.contextmanager
-    def accumulate_means(self, subdir: types.Pathlike):
+    def accumulate_means(self, subdir: types.AnyPath):
         """Temporarily modifies this _HierarchicalLogger to accumulate means values.
 
         During this context, `self.record(key, value)` writes the "raw" values in
@@ -148,7 +148,7 @@ def is_configured() -> bool:
 
 
 def configure(
-    folder: types.Pathlike, format_strs: Optional[Sequence[str]] = None
+    folder: types.AnyPath, format_strs: Optional[Sequence[str]] = None
 ) -> None:
     """Configure Stable Baselines logger to be `accumulate_means()`-compatible.
 
@@ -185,7 +185,7 @@ def dump(step=0) -> None:
     sb_logger.dump(step)
 
 
-def accumulate_means(subdir_name: types.Pathlike) -> ContextManager:
+def accumulate_means(subdir_name: types.AnyPath) -> ContextManager:
     """Temporarily redirect record() to a different logger and auto-track kvmeans.
 
     Within this context, the original logger is swapped out for a special logger
