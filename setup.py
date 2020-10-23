@@ -23,6 +23,7 @@ TESTS_REQUIRE = [
 ]
 DOCS_REQUIRE = [
     "sphinx",
+    "sphinx-autodoc-typehints",
     "sphinx-rtd-theme",
     "sphinxcontrib-napoleon",
 ]
