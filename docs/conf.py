@@ -53,6 +53,13 @@ templates_path = ["_templates"]
 # This pattern also affects html_static_path and html_extra_path.
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 
+autodoc_default_options = {
+    "members": True,
+    "undoc-members": True,
+    "special-members": "__init__",
+    "show-inheritance": True,
+}
+
 
 # -- Options for HTML output -------------------------------------------------
 
