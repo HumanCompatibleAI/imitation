@@ -100,7 +100,7 @@ class EpochOrBatchIteratorWithProgress:
         elif self.mode == "batches":
             display = tqdm.tqdm(total=self.n_batches)
             batch_suffix = f"/{self.n_batches}"
-        else:
+        else:  # pragma: no cover
             raise RuntimeError(f"Unexpected self.mode: {self.mode}")
 
         def update_desc():
