@@ -108,7 +108,8 @@ class EpochOrBatchIteratorWithProgress:
                 f"batch: {batch_num}{batch_suffix}  epoch: {epoch_num}{epoch_suffix}"
             )
 
-        while True:
+        done = False
+        while not done:
             update_desc()
             for batch in self.data_loader:
                 batch_num += 1
@@ -125,16 +126,16 @@ class EpochOrBatchIteratorWithProgress:
                     update_desc()
                     display.update(1)
                     if batch_num >= self.n_batches:
-                        break
-
+                        done = True
             epoch_num += 1
+            if self.on_epoch_end is not None:
+                self.on_epoch_end()
+
             if self.mode == "epochs":
                 update_desc()
                 display.update(1)
                 if epoch_num >= self.n_epochs:
-                    break
-            if self.on_epoch_end is not None:
-                self.on_epoch_end()
+                    done = True
 
         display.close()
 
