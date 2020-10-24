@@ -57,7 +57,6 @@ For more information on how to configure Sacred CLI options, see the [Sacred doc
 
 See [examples/quickstart.py](examples/quickstart.py) for an example script that loads CartPole-v1 demonstrations and trains BC, GAIL, and AIRL models on that data.
 
-BC, GAIL, and AIRL also accept as `expert_data` any Pytorch-style DataLoader that iterates over dictionaries containing observations, actions, and next\_observations.
 
 ### Density reward baseline
 

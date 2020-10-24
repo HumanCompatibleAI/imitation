@@ -30,11 +30,15 @@ tempdir_path = pathlib.Path(tempdir.name)
 print(f"All Tensorboards and logging are being written inside {tempdir_path}/.")
 
 # Train BC on expert data.
+# BC also accepts as `expert_data` any PyTorch-style DataLoader that iterates over
+# dictionaries containing observations and actions.
 logger.configure(tempdir_path / "BC/")
 bc_trainer = bc.BC(venv.observation_space, venv.action_space, expert_data=transitions)
 bc_trainer.train(n_epochs=1)
 
 # Train GAIL on expert data.
+# GAIL, and AIRL also accept as `expert_data` any Pytorch-style DataLoader that
+# iterates over dictionaries containing observations, actions, and next_observations.
 logger.configure(tempdir_path / "GAIL/")
 gail_trainer = adversarial.GAIL(
     venv,
