@@ -178,7 +178,7 @@ class AdversarialTrainer:
 
     @property
     def gen_batch_size(self) -> int:
-        return self.gen_algo.n_steps * self.venv.num_envs
+        return self.gen_algo.n_steps * self.gen_algo.get_env().num_envs
 
     def train_disc(
         self,
