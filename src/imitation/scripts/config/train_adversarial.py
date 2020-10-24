@@ -235,8 +235,9 @@ def fast():
 
     Useful for test cases.
     """
-    # need a minimum of 5 total_timesteps for adversarial training code to run
-    total_timesteps = 5
+    # Need a minimum of 10 total_timesteps for adversarial training code to pass
+    # "any update happened" assertion inside training loop.
+    total_timesteps = 10
     n_expert_demos = 1
     n_episodes_eval = 1
     algorithm_kwargs = dict(

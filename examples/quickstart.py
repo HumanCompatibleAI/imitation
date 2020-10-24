@@ -23,7 +23,7 @@ with open("tests/data/expert_models/cartpole_0/rollouts/final.pkl", "rb") as f:
 # (observation, actions, next_observation) transitions.
 transitions = rollout.flatten_trajectories(trajectories)
 
-venv = util.make_vec_env("CartPole-v1")
+venv = util.make_vec_env("CartPole-v1", n_envs=2)
 
 tempdir = tempfile.TemporaryDirectory(prefix="quickstart")
 tempdir_path = pathlib.Path(tempdir.name)
@@ -40,7 +40,7 @@ gail_trainer = adversarial.GAIL(
     venv,
     expert_data=transitions,
     expert_batch_size=32,
-    gen_algo=sb3.PPO("MlpPolicy", venv, verbose=1),
+    gen_algo=sb3.PPO("MlpPolicy", venv, verbose=1, n_steps=1024),
 )
 gail_trainer.train(total_timesteps=2048)
 
@@ -50,6 +50,6 @@ airl_trainer = adversarial.AIRL(
     venv,
     expert_data=transitions,
     expert_batch_size=32,
-    gen_algo=sb3.PPO("MlpPolicy", venv, verbose=1),
+    gen_algo=sb3.PPO("MlpPolicy", venv, verbose=1, n_steps=1024),
 )
 airl_trainer.train(total_timesteps=2048)
