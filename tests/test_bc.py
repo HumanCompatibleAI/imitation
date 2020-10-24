@@ -80,8 +80,13 @@ def test_weight_decay_init_error(venv):
 
 
 def test_train_end_cond_error(trainer: bc.BC, venv):
-    with pytest.raises(ValueError, match="exactly one.*n_epochs"):
+    err_context = pytest.raises(ValueError, match="exactly one.*n_epochs")
+    with err_context:
         trainer.train(n_epochs=1, n_batches=10)
+    with err_context:
+        trainer.train()
+    with err_context:
+        trainer.train(n_epochs=None, n_batches=None)
 
 
 def test_bc(trainer: bc.BC, venv):
