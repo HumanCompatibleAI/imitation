@@ -8,7 +8,8 @@ from imitation.data import types
 
 
 def _build_output_formats(
-    folder: types.AnyPath, format_strs: Sequence[str] = None,
+    folder: types.AnyPath,
+    format_strs: Sequence[str] = None,
 ) -> Sequence[sb_logger.KVWriter]:
     """Build output formats for initializing a Stable Baselines Logger.
 

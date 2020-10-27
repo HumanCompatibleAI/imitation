@@ -98,7 +98,9 @@ def hopper():
 @expert_demos_ex.named_config
 def humanoid():
     env_name = "Humanoid-v2"
-    init_rl_kwargs = dict(n_steps=2048,)  # batch size of 2048*8=16384 due to num_vec
+    init_rl_kwargs = dict(
+        n_steps=2048,
+    )  # batch size of 2048*8=16384 due to num_vec
     total_timesteps = int(10e6)  # fairly discontinuous, needs at least 5e6
 
 
@@ -160,7 +162,9 @@ def fast():
 # Shared settings
 
 ant_shared_locals = dict(
-    init_rl_kwargs=dict(n_steps=2048,),  # batch size of 2048*8=16384 due to num_vec
+    init_rl_kwargs=dict(
+        n_steps=2048,
+    ),  # batch size of 2048*8=16384 due to num_vec
     total_timesteps=int(5e6),
     max_episode_steps=500,  # To match `inverse_rl` settings.
 )

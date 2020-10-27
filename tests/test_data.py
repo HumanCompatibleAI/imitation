@@ -156,7 +156,9 @@ class TestData:
                     assert np.array_equal(v, d2[k])
 
     def test_invalid_trajectories(
-        self, trajectory: types.Trajectory, trajectory_rew: types.TrajectoryWithRew,
+        self,
+        trajectory: types.Trajectory,
+        trajectory_rew: types.TrajectoryWithRew,
     ) -> None:
         """Checks input validation catches space and dtype related errors."""
         trajs = [trajectory, trajectory_rew]

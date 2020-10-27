@@ -131,10 +131,12 @@ def _load_stable_baselines(
 
 
 policy_registry.register(
-    "random", value=registry.build_loader_fn_require_space(RandomPolicy),
+    "random",
+    value=registry.build_loader_fn_require_space(RandomPolicy),
 )
 policy_registry.register(
-    "zero", value=registry.build_loader_fn_require_space(ZeroPolicy),
+    "zero",
+    value=registry.build_loader_fn_require_space(ZeroPolicy),
 )
 
 

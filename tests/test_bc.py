@@ -63,7 +63,11 @@ def trainer(batch_size, venv, expert_data_type):
     else:  # pragma: no cover
         raise ValueError(expert_data_type)
 
-    return bc.BC(venv.observation_space, venv.action_space, expert_data=expert_data,)
+    return bc.BC(
+        venv.observation_space,
+        venv.action_space,
+        expert_data=expert_data,
+    )
 
 
 def test_weight_decay_init_error(venv):

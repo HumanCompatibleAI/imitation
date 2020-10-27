@@ -52,7 +52,10 @@ def test_main_console(script_mod):
 def test_expert_demos_main(tmpdir):
     """Smoke test for imitation.scripts.expert_demos.rollouts_and_policy."""
     run = expert_demos.expert_demos_ex.run(
-        named_configs=["cartpole", "fast"], config_updates=dict(log_root=tmpdir,),
+        named_configs=["cartpole", "fast"],
+        config_updates=dict(
+            log_root=tmpdir,
+        ),
     )
     assert run.status == "COMPLETED"
     assert isinstance(run.result, dict)
@@ -127,7 +130,8 @@ def test_train_adversarial(tmpdir):
         "init_tensorboard": True,
     }
     run = train_adversarial.train_ex.run(
-        named_configs=named_configs, config_updates=config_updates,
+        named_configs=named_configs,
+        config_updates=config_updates,
     )
     assert run.status == "COMPLETED"
     _check_train_ex_result(run.result)
@@ -204,7 +208,9 @@ def test_transfer_learning(tmpdir):
     run = expert_demos.expert_demos_ex.run(
         named_configs=["cartpole", "fast"],
         config_updates=dict(
-            log_dir=log_dir_data, reward_type="DiscrimNet", reward_path=discrim_path,
+            log_dir=log_dir_data,
+            reward_type="DiscrimNet",
+            reward_path=discrim_path,
         ),
     )
     assert run.status == "COMPLETED"
@@ -315,7 +321,10 @@ def test_parallel_arg_errors(tmpdir):
 def _generate_test_rollouts(tmpdir: str, env_named_config: str) -> str:
     expert_demos.expert_demos_ex.run(
         named_configs=[env_named_config, "fast"],
-        config_updates=dict(rollout_save_interval=0, log_dir=tmpdir,),
+        config_updates=dict(
+            rollout_save_interval=0,
+            log_dir=tmpdir,
+        ),
     )
     rollout_path = osp.abspath(f"{tmpdir}/rollouts/final.pkl")
     return rollout_path
@@ -335,7 +344,11 @@ def test_parallel_train_adversarial_custom_env(tmpdir):
         sacred_ex_name="train_adversarial",
         n_seeds=1,
         base_named_configs=[env_named_config, "fast"],
-        base_config_updates=dict(parallel=True, num_vec=2, rollout_path=rollout_path,),
+        base_config_updates=dict(
+            parallel=True,
+            num_vec=2,
+            rollout_path=rollout_path,
+        ),
     )
     config_updates.update(PARALLEL_CONFIG_LOW_RESOURCE)
     run = parallel.parallel_ex.run(
@@ -355,7 +368,9 @@ def test_analyze_imitation(tmpdir: str, run_names: List[str]):
             run = train_adversarial.train_ex.run(
                 named_configs=["fast", "cartpole"],
                 config_updates=dict(
-                    rollout_path=rollout_path, log_dir=junkdir, checkpoint_interval=-1,
+                    rollout_path=rollout_path,
+                    log_dir=junkdir,
+                    checkpoint_interval=-1,
                 ),
                 options={"--name": run_name, "--file_storage": sacred_logs_dir},
             )
@@ -392,7 +407,10 @@ def test_analyze_gather_tb(tmpdir: str):
     assert parallel_run.status == "COMPLETED"
 
     run = analyze.analysis_ex.run(
-        command_name="gather_tb_directories", config_updates=dict(source_dir=tmpdir,),
+        command_name="gather_tb_directories",
+        config_updates=dict(
+            source_dir=tmpdir,
+        ),
     )
     assert run.status == "COMPLETED"
     assert isinstance(run.result, dict)

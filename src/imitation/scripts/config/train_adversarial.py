@@ -43,7 +43,8 @@ def train_defaults():
 
     # Modifies the __init__ arguments for the imitation policy
     init_rl_kwargs = dict(
-        policy_class=base.FeedForward32Policy, **DEFAULT_INIT_RL_KWARGS,
+        policy_class=base.FeedForward32Policy,
+        **DEFAULT_INIT_RL_KWARGS,
     )
     gen_batch_size = 2048  # Batch size for generator updates
 
@@ -239,7 +240,10 @@ def fast():
     n_expert_demos = 1
     n_episodes_eval = 1
     algorithm_kwargs = dict(
-        shared=dict(expert_batch_size=1, n_disc_updates_per_round=4,)
+        shared=dict(
+            expert_batch_size=1,
+            n_disc_updates_per_round=4,
+        )
     )
     gen_batch_size = 2
     parallel = False  # easier to debug with everything in one process

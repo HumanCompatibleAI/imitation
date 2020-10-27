@@ -300,7 +300,9 @@ class AdversarialTrainer:
         self._gen_replay_buffer.store(gen_samples)
 
     def train(
-        self, total_timesteps: int, callback: Optional[Callable[[int], None]] = None,
+        self,
+        total_timesteps: int,
+        callback: Optional[Callable[[int], None]] = None,
     ) -> None:
         """Alternates between training the generator and discriminator.
 

@@ -26,7 +26,11 @@ def _algorithm_cls(request):
 
 def test_train_disc_small_expert_data_warning(tmpdir, _algorithm_cls):
     logger.configure(tmpdir, ["tensorboard", "stdout"])
-    venv = util.make_vec_env("CartPole-v1", n_envs=2, parallel=_parallel,)
+    venv = util.make_vec_env(
+        "CartPole-v1",
+        n_envs=2,
+        parallel=_parallel,
+    )
 
     gen_algo = util.init_rl(venv, verbose=1)
     small_data = rollout.generate_transitions(gen_algo, venv, n_timesteps=20)
@@ -100,7 +104,10 @@ def trainer(
         expert_data = expert_transitions
 
     venv = util.make_vec_env(
-        "CartPole-v1", n_envs=2, parallel=_parallel, log_dir=tmpdir,
+        "CartPole-v1",
+        n_envs=2,
+        parallel=_parallel,
+        log_dir=tmpdir,
     )
 
     gen_algo = util.init_rl(venv, verbose=1)
@@ -136,7 +143,10 @@ def test_train_disc_unequal_expert_gen_samples_error(trainer, expert_transitions
 
 def test_train_disc_step_no_crash(trainer, expert_batch_size):
     transitions = rollout.generate_transitions(
-        trainer.gen_algo, trainer.venv, n_timesteps=expert_batch_size, truncate=True,
+        trainer.gen_algo,
+        trainer.venv,
+        n_timesteps=expert_batch_size,
+        truncate=True,
     )
     trainer.train_disc(gen_samples=types.dataclass_quick_asdict(transitions))
 
@@ -173,7 +183,12 @@ def test_augment(_algorithm_cls, tmpdir: str):
     logger.configure(tmpdir, ["tensorboard", "stdout"])
     trajs = types.load(CARTPOLE_PATH)
     expert_data = rollout.flatten_trajectories(trajs)
-    venv = util.make_vec_env("CartPole-v1", n_envs=2, parallel=False, log_dir=tmpdir,)
+    venv = util.make_vec_env(
+        "CartPole-v1",
+        n_envs=2,
+        parallel=False,
+        log_dir=tmpdir,
+    )
     gen_algo = util.init_rl(venv, verbose=1)
     mock_augment = counter.IdentityCounter()
     trainer = _algorithm_cls(
@@ -185,15 +200,19 @@ def test_augment(_algorithm_cls, tmpdir: str):
         expert_batch_size=32,
     )
     transitions = rollout.generate_transitions(
-        trainer.gen_algo, trainer.venv, n_timesteps=32,
+        trainer.gen_algo,
+        trainer.venv,
+        n_timesteps=32,
     )
 
     # make sure augmenter gets called
     assert mock_augment.ncalls == 0
-    trainer.train_disc(gen_samples={
-        'obs': transitions.obs,
-        'next_obs': transitions.next_obs,
-        'acts': transitions.acts,
-        'dones': transitions.dones,
-    })
+    trainer.train_disc(
+        gen_samples={
+            "obs": transitions.obs,
+            "next_obs": transitions.next_obs,
+            "acts": transitions.acts,
+            "dones": transitions.dones,
+        }
+    )
     assert mock_augment.ncalls > 0

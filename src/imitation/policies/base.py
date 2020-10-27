@@ -13,7 +13,8 @@ class HardCodedPolicy(policies.BasePolicy, abc.ABC):
 
     def __init__(self, observation_space: gym.Space, action_space: gym.Space):
         super().__init__(
-            observation_space=observation_space, action_space=action_space,
+            observation_space=observation_space,
+            action_space=action_space,
         )
 
     def _predict(self, obs: th.Tensor, deterministic: bool = False):

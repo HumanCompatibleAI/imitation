@@ -30,7 +30,9 @@ class TestEnvs:
     def test_premature_step(self, env):
         """Test that you must call reset() before calling step()."""
         bench_test.test_premature_step(
-            env, skip_fn=pytest.skip, raises_fn=pytest.raises,
+            env,
+            skip_fn=pytest.skip,
+            raises_fn=pytest.raises,
         )
 
     def test_model_based(self, env):

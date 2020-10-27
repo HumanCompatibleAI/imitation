@@ -19,7 +19,8 @@ from imitation.util import util
 
 
 def reconstruct_policy(
-    policy_path: str, device: Union[th.device, str] = "auto",
+    policy_path: str,
+    device: Union[th.device, str] = "auto",
 ) -> policies.BasePolicy:
     """Reconstruct a saved policy.
 
@@ -217,7 +218,8 @@ class BC:
             self.set_expert_data_loader(expert_data)
 
     def set_expert_data_loader(
-        self, expert_data: Union[Iterable[Mapping], types.TransitionsMinimal],
+        self,
+        expert_data: Union[Iterable[Mapping], types.TransitionsMinimal],
     ) -> None:
         """Set the expert data loader, which yields batches of obs-act pairs.
 
@@ -244,7 +246,9 @@ class BC:
             self.expert_data_loader = expert_data
 
     def _calculate_loss(
-        self, obs: th.Tensor, acts: th.Tensor,
+        self,
+        obs: th.Tensor,
+        acts: th.Tensor,
     ) -> Tuple[th.Tensor, Dict[str, float]]:
         """
         Calculate the supervised learning loss used to train the behavioral clone.
@@ -364,7 +368,9 @@ class BC:
             )
             obs_tensor = th.as_tensor(batch["obs"]).contiguous().to(self.policy.device)
             obs_tensor = preprocessing.preprocess_obs(
-                obs_tensor, self.observation_space, normalize_images=True,
+                obs_tensor,
+                self.observation_space,
+                normalize_images=True,
             )
             # we always apply augmentations to observations
             obs_tensor = self.augmentation_fn(obs_tensor)

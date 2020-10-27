@@ -41,7 +41,9 @@ def _setup_airl_basic_custom_net(venv):
 def _setup_airl_undiscounted_shaped_reward_net(venv):
     potential_in_size = preprocessing.get_flattened_obs_dim(venv.observation_space)
     potential_net = networks.build_mlp(
-        in_size=potential_in_size, hid_sizes=(32, 32), squeeze_output=True,
+        in_size=potential_in_size,
+        hid_sizes=(32, 32),
+        squeeze_output=True,
     )
     reward_net = reward_nets.BasicShapedRewardNet(
         venv.observation_space,

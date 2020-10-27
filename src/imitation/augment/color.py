@@ -28,7 +28,9 @@ def _lab_f_inv(t: th.Tensor) -> th.Tensor:
 
 @th.jit.script
 def rgb_to_lab(
-    r: th.Tensor, g: th.Tensor, b: th.Tensor,
+    r: th.Tensor,
+    g: th.Tensor,
+    b: th.Tensor,
 ) -> Tuple[th.Tensor, th.Tensor, th.Tensor]:
     """JITted conversion from RGB to Lab.
 
@@ -63,7 +65,9 @@ def rgb_to_lab(
 
 @th.jit.script
 def lab_to_rgb(
-    L: th.Tensor, a: th.Tensor, b: th.Tensor,
+    L: th.Tensor,
+    a: th.Tensor,
+    b: th.Tensor,
 ) -> Tuple[th.Tensor, th.Tensor, th.Tensor]:
     # convert from Lab to XYZ
     X_n = 0.950489

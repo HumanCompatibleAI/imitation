@@ -53,7 +53,7 @@ def test_rgb_lab_reference():
             lab_vectors.append([lab.lab_l, lab.lab_a, lab.lab_b])
         print('RGB:', rgb_vectors.T.tolist())
         print('LAB:', np.asarray(lab_vectors).T.tolist())
-     """
+    """
     rgb_ref_planes = th.tensor(
         [
             # r values
