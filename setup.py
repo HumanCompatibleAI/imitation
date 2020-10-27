@@ -16,12 +16,15 @@ TESTS_REQUIRE = [
     "flake8-isort",
     "pytest",
     "pytest-cov",
+    "pytest-notebook",
     "pytest-shard",
     "pytest-xdist",
     "pytype",
 ]
 DOCS_REQUIRE = [
     "sphinx",
+    "sphinx-autodoc-typehints",
+    "sphinx-rtd-theme",
     "sphinxcontrib-napoleon",
 ]
 PARALLEL_REQUIRE = ["ray[debug,tune]>=0.8.7,<0.9.0"]
@@ -73,8 +76,7 @@ setup(
             "autopep8",
             "ntfy[slack]",
             "ipdb",
-            # isort 4.X required for flake8-isort (2020-07-07)
-            "isort~=4.0",
+            "isort~=5.0",
             "jupyter",
             "pytype",
             "codespell",

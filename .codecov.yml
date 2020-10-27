@@ -26,6 +26,7 @@ coverage:
           - "!src/imitation/scripts/"
       auxiliary:
         paths:
+          - "examples/"
           - "src/imitation/envs/examples/"
           - "src/imitation/scripts/"
       tests:

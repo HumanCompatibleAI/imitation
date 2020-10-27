@@ -278,10 +278,12 @@ def generate_trajectories(
             # some envs have integer rewards (e.g. because the env author
             # forgot to add a "." at the end of a numeric literal); we
             # auto-convert those to float32
-            rews = rews.astype('float32')
+            rews = rews.astype("float32")
             if not np.all(np.isfinite(rews)):
-                raise ValueError("integer-valued rewards from environment are out of "
-                                 "float32 range; cannot auto-convert to float")
+                raise ValueError(
+                    "integer-valued rewards from environment are out of "
+                    "float32 range; cannot auto-convert to float"
+                )
         new_trajs = trajectories_accum.add_steps_and_auto_finish(
             acts, obs, rews, dones, infos
         )

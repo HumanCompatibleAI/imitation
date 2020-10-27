@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # If you change these, also change .circleci/config.yml.
-SRC_FILES=(src/ tests/ experiments/ setup.py)
+SRC_FILES=(src/ tests/ experiments/ examples/ docs/conf.py setup.py)
 
 set -x  # echo commands
 set -e  # quit immediately on error
@@ -23,5 +23,5 @@ if [ "$skipexpensive" != "true" ]; then
   popd
 
   echo "Type checking"
-  pytype ${SRC_FILES[@]}
+  pytype -j auto ${SRC_FILES[@]}
 fi
