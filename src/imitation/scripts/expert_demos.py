@@ -154,10 +154,10 @@ def rollouts_and_policy(
             # Make callback to save intermediate artifacts during training.
             step = 0
 
-            def callback(locals_: dict, _) -> bool:
+            def callback(_locals, _globals) -> bool:
+                del _locals, _globals
                 nonlocal step
                 step += 1
-                policy = locals_["self"]
 
                 # TODO(adam): make logging frequency configurable
                 for callback in log_callbacks:
