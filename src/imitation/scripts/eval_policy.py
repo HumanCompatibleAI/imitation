@@ -1,9 +1,12 @@
+"""Evaluate policies: render policy interactively, save videos, log episode return."""
+
 import logging
 import os
 import os.path as osp
 import time
 from typing import Optional
 
+import gym
 from sacred.observers import FileStorageObserver
 from stable_baselines3.common.vec_env import VecEnvWrapper
 
@@ -12,10 +15,12 @@ from imitation.data import rollout
 from imitation.policies import serialize
 from imitation.rewards.serialize import load_reward
 from imitation.scripts.config.eval_policy import eval_policy_ex
-from imitation.util import reward_wrapper, util
+from imitation.util import reward_wrapper, util, video_wrapper
 
 
 class InteractiveRender(VecEnvWrapper):  # pragma: no cover
+    """Render the wrapped environment(s) on screen."""
+
     def __init__(self, venv, fps):
         super().__init__(venv)
         self.render_fps = fps
@@ -33,6 +38,17 @@ class InteractiveRender(VecEnvWrapper):  # pragma: no cover
         return ob
 
 
+def video_functor(log_dir: str):
+    """Returns a function that wraps the environment in a video recorder."""
+
+    def f(env: gym.Env, i: int) -> gym.Env:
+        """Wraps `env` in a recorder saving videos to `{log_dir}/videos/{i}`."""
+        directory = os.path.join(log_dir, "videos", str(i))
+        return video_wrapper.VideoWrapper(env, directory=directory)
+
+    return f
+
+
 @eval_policy_ex.main
 def eval_policy(
     _run,
@@ -43,6 +59,7 @@ def eval_policy(
     num_vec: int,
     parallel: bool,
     render: bool,
+    videos: bool,
     render_fps: int,
     log_dir: str,
     policy_type: str,
@@ -67,8 +84,8 @@ def eval_policy(
           TimeLimit so that they have at most `max_episode_steps` steps per
           episode.
       render: If True, renders interactively to the screen.
-      log_dir: The directory to log intermediate output to. (As of 2019-07-19
-          this is just episode-by-episode reward from bench.Monitor.)
+      videos: If True, saves videos to `log_dir`.
+      log_dir: The directory to log intermediate output to, such as episode reward.
       policy_type: A unique identifier for the saved policy,
           defined in POLICY_CLASSES.
       policy_path: A path to the serialized policy.
@@ -86,6 +103,7 @@ def eval_policy(
     logging.basicConfig(level=logging.INFO)
     logging.info("Logging to %s", log_dir)
     sample_until = rollout.make_sample_until(eval_n_timesteps, eval_n_episodes)
+    post_wrappers = [video_functor(log_dir)] if videos else None
     venv = util.make_vec_env(
         env_name,
         num_vec,
@@ -93,13 +111,13 @@ def eval_policy(
         parallel=parallel,
         log_dir=log_dir,
         max_episode_steps=max_episode_steps,
+        post_wrappers=post_wrappers,
     )
 
     if render:  # pragma: no cover
         # As of July 31, 2020, DummyVecEnv rendering only works with num_vec=1
         # due to a bug on Stable Baselines 3.
         venv = InteractiveRender(venv, render_fps)
-    # TODO(adam): add support for videos using VideoRecorder?
 
     if reward_type is not None:
         reward_fn = load_reward(reward_type, reward_path, venv)

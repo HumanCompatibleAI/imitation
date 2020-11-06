@@ -3,7 +3,16 @@ import functools
 import itertools
 import os
 import uuid
-from typing import Iterable, Iterator, Optional, Type, TypeVar, Union
+from typing import (
+    Callable,
+    Iterable,
+    Iterator,
+    Optional,
+    Sequence,
+    Type,
+    TypeVar,
+    Union,
+)
 
 import gym
 import numpy as np
@@ -32,6 +41,7 @@ def make_vec_env(
     parallel: bool = False,
     log_dir: Optional[str] = None,
     max_episode_steps: Optional[int] = None,
+    post_wrappers: Optional[Sequence[Callable[[gym.Env, int], gym.Env]]] = None,
 ) -> VecEnv:
     """Returns a VecEnv initialized with `n_envs` Envs.
 
@@ -83,6 +93,11 @@ def make_vec_env(
 
         env = monitor.Monitor(env, log_path)
         env = wrappers.RolloutInfoWrapper(env)
+
+        if post_wrappers:
+            for wrapper in post_wrappers:
+                env = wrapper(env, i)
+
         return env
 
     rng = np.random.RandomState(seed)
