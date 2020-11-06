@@ -18,7 +18,7 @@ from imitation.scripts.config.eval_policy import eval_policy_ex
 from imitation.util import reward_wrapper, util, video_wrapper
 
 
-class InteractiveRender(VecEnvWrapper):  # pragma: no cover
+class InteractiveRender(VecEnvWrapper):
     """Render the wrapped environment(s) on screen."""
 
     def __init__(self, venv, fps):
@@ -114,7 +114,7 @@ def eval_policy(
         post_wrappers=post_wrappers,
     )
 
-    if render:  # pragma: no cover
+    if render:
         # As of July 31, 2020, DummyVecEnv rendering only works with num_vec=1
         # due to a bug on Stable Baselines 3.
         venv = InteractiveRender(venv, render_fps)
