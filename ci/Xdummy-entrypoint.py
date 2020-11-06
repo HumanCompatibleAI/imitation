@@ -26,7 +26,7 @@ if __name__ == "__main__":
             "-logfile",
             "/tmp/xdummy.log",
             "-config",
-            "/imitation/ci/xorg.conf",
+            "/etc/dummy_xorg.conf",
             ":0",
         ]
     )
