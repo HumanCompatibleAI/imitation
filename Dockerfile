@@ -47,9 +47,9 @@ ENV PATH="/venv/bin:$PATH"
 ENV LD_LIBRARY_PATH /usr/local/nvidia/lib64:/root/.mujoco/mjpro150/bin:${LD_LIBRARY_PATH}
 
 # Run Xdummy mock X server by default so that rendering will work.
-COPY ci/xorg.conf /imitation/ci/xorg.conf
-COPY ci/Xdummy-entrypoint.py /imitation/ci/Xdummy-entrypoint.py
-ENTRYPOINT ["/imitation/ci/Xdummy-entrypoint.py"]
+COPY ci/xorg.conf /etc/dummy_xorg.conf
+COPY ci/Xdummy-entrypoint.py /usr/bin/Xdummy-entrypoint.py
+ENTRYPOINT ["/usr/bin/Xdummy-entrypoint.py"]
 
 # python-req stage contains Python venv, but not code.
 # It is useful for development purposes: you can mount
