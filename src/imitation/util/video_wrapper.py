@@ -9,7 +9,7 @@ from imitation.data import types
 
 
 class VideoWrapper(gym.Wrapper):
-    """Creates videos from wrapped environment by called render after each timestep."""
+    """Creates videos from wrapped environment by calling render after each timestep."""
 
     def __init__(
         self, env: gym.Env, directory: types.AnyPath, single_video: bool = True
@@ -25,7 +25,7 @@ class VideoWrapper(gym.Wrapper):
                 searching for an interesting episode (perhaps by looking at the
                 metadata), then saving to different files can be useful.
         """
-        super(VideoWrapper, self).__init__(env)
+        super().__init__(env)
         self.episode_id = 0
         self.video_recorder = None
         self.single_video = single_video
@@ -46,7 +46,7 @@ class VideoWrapper(gym.Wrapper):
     def _reset_video_recorder(self) -> None:
         """Creates a video recorder if one does not already exist.
 
-        Called at the start of each episode (by _reset). When a video recorder is
+        Called at the start of each episode (by `reset`). When a video recorder is
         already present, it will only create a new one if `self.single_video == False`.
         """
         if self.video_recorder is not None:
@@ -70,4 +70,4 @@ class VideoWrapper(gym.Wrapper):
         if self.video_recorder is not None:
             self.video_recorder.close()
             self.video_recorder = None
-        super(VideoWrapper, self).close()
+        super().close()

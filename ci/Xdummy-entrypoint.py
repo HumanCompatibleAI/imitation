@@ -43,7 +43,7 @@ if __name__ == "__main__":
         argv = extra_args
 
     # Explicitly flush right before the exec since otherwise things might get
-    # lost in Python"s buffers around stdout/stderr (!).
+    # lost in Python's buffers around stdout/stderr (!).
     sys.stdout.flush()
     sys.stderr.flush()
 
