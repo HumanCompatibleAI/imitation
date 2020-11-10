@@ -117,19 +117,22 @@ def eval_policy(
         post_wrappers=post_wrappers,
     )
 
-    if render:
-        # As of July 31, 2020, DummyVecEnv rendering only works with num_vec=1
-        # due to a bug on Stable Baselines 3.
-        venv = InteractiveRender(venv, render_fps)
+    try:
+        if render:
+            # As of July 31, 2020, DummyVecEnv rendering only works with num_vec=1
+            # due to a bug on Stable Baselines 3.
+            venv = InteractiveRender(venv, render_fps)
 
-    if reward_type is not None:
-        reward_fn = load_reward(reward_type, reward_path, venv)
-        venv = reward_wrapper.RewardVecEnvWrapper(venv, reward_fn)
-        logging.info(f"Wrapped env in reward {reward_type} from {reward_path}.")
+        if reward_type is not None:
+            reward_fn = load_reward(reward_type, reward_path, venv)
+            venv = reward_wrapper.RewardVecEnvWrapper(venv, reward_fn)
+            logging.info(f"Wrapped env in reward {reward_type} from {reward_path}.")
 
-    policy = serialize.load_policy(policy_type, policy_path, venv)
-    trajs = rollout.generate_trajectories(policy, venv, sample_until)
-    return rollout.rollout_stats(trajs)
+        policy = serialize.load_policy(policy_type, policy_path, venv)
+        trajs = rollout.generate_trajectories(policy, venv, sample_until)
+        return rollout.rollout_stats(trajs)
+    finally:
+        venv.close()
 
 
 def main_console():
