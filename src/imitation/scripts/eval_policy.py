@@ -4,7 +4,7 @@ import logging
 import os
 import os.path as osp
 import time
-from typing import Optional
+from typing import Any, Mapping, Optional
 
 import gym
 from sacred.observers import FileStorageObserver
@@ -38,13 +38,13 @@ class InteractiveRender(VecEnvWrapper):
         return ob
 
 
-def video_wrapper_factory(log_dir: str):
+def video_wrapper_factory(log_dir: str, **kwargs):
     """Returns a function that wraps the environment in a video recorder."""
 
     def f(env: gym.Env, i: int) -> gym.Env:
         """Wraps `env` in a recorder saving videos to `{log_dir}/videos/{i}`."""
         directory = os.path.join(log_dir, "videos", str(i))
-        return video_wrapper.VideoWrapper(env, directory=directory)
+        return video_wrapper.VideoWrapper(env, directory=directory, **kwargs)
 
     return f
 
@@ -59,8 +59,9 @@ def eval_policy(
     num_vec: int,
     parallel: bool,
     render: bool,
-    videos: bool,
     render_fps: int,
+    videos: bool,
+    video_kwargs: Mapping[str, Any],
     log_dir: str,
     policy_type: str,
     policy_path: str,
@@ -84,7 +85,9 @@ def eval_policy(
           TimeLimit so that they have at most `max_episode_steps` steps per
           episode.
       render: If True, renders interactively to the screen.
+      render_fps: the target number of frames per second to render on screen.
       videos: If True, saves videos to `log_dir`.
+      video_kwargs: keyword arguments passe through to `video_wrapper.VideoWrapper`.
       log_dir: The directory to log intermediate output to, such as episode reward.
       policy_type: A unique identifier for the saved policy,
           defined in POLICY_CLASSES.
@@ -103,7 +106,7 @@ def eval_policy(
     logging.basicConfig(level=logging.INFO)
     logging.info("Logging to %s", log_dir)
     sample_until = rollout.make_sample_until(eval_n_timesteps, eval_n_episodes)
-    post_wrappers = [video_wrapper_factory(log_dir)] if videos else None
+    post_wrappers = [video_wrapper_factory(log_dir, **video_kwargs)] if videos else None
     venv = util.make_vec_env(
         env_name,
         num_vec,

@@ -17,6 +17,7 @@ def replay_defaults():
     max_episode_steps = None  # Set to positive int to limit episode horizons
 
     videos = False  # save video files
+    video_kwargs = {}  # arguments to VideoWrapper
     render = True  # render to screen
     render_fps = 60  # -1 to render at full speed
     log_root = os.path.join("output", "eval_policy")  # output directory
