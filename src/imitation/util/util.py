@@ -57,6 +57,8 @@ def make_vec_env(
             `max_episode_steps` for every TimeLimit wrapper (this automatic
             wrapper is the default behavior when calling `gym.make`). Otherwise
             the environments are passed into the VecEnv unwrapped.
+        post_wrappers: If specified, iteratively wraps each environment with each
+            of the wrappers specified in the sequence.
     """
     # Resolve the spec outside of the subprocess first, so that it is available to
     # subprocesses running `make_env` via automatic pickling.

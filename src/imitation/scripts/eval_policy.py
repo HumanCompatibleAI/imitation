@@ -38,7 +38,7 @@ class InteractiveRender(VecEnvWrapper):
         return ob
 
 
-def video_functor(log_dir: str):
+def video_wrapper_factory(log_dir: str):
     """Returns a function that wraps the environment in a video recorder."""
 
     def f(env: gym.Env, i: int) -> gym.Env:
@@ -103,7 +103,7 @@ def eval_policy(
     logging.basicConfig(level=logging.INFO)
     logging.info("Logging to %s", log_dir)
     sample_until = rollout.make_sample_until(eval_n_timesteps, eval_n_episodes)
-    post_wrappers = [video_functor(log_dir)] if videos else None
+    post_wrappers = [video_wrapper_factory(log_dir)] if videos else None
     venv = util.make_vec_env(
         env_name,
         num_vec,

@@ -33,16 +33,6 @@ class VideoWrapper(gym.Wrapper):
         self.directory = os.path.abspath(directory)
         os.makedirs(self.directory)
 
-    def step(self, action):
-        res = self.env.step(action)
-        self.video_recorder.capture_frame()
-        return res
-
-    def reset(self):
-        self._reset_video_recorder()
-        self.episode_id += 1
-        return self.env.reset()
-
     def _reset_video_recorder(self) -> None:
         """Creates a video recorder if one does not already exist.
 
@@ -65,6 +55,16 @@ class VideoWrapper(gym.Wrapper):
                 ),
                 metadata={"episode_id": self.episode_id},
             )
+
+    def reset(self):
+        self._reset_video_recorder()
+        self.episode_id += 1
+        return self.env.reset()
+
+    def step(self, action):
+        res = self.env.step(action)
+        self.video_recorder.capture_frame()
+        return res
 
     def close(self) -> None:
         if self.video_recorder is not None:
