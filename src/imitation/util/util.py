@@ -58,7 +58,9 @@ def make_vec_env(
             wrapper is the default behavior when calling `gym.make`). Otherwise
             the environments are passed into the VecEnv unwrapped.
         post_wrappers: If specified, iteratively wraps each environment with each
-            of the wrappers specified in the sequence.
+            of the wrappers specified in the sequence. The argument should be a Callable
+            accepting two arguments, the Env to be wrapped and the environment index,
+            and returning the wrapped Env.
     """
     # Resolve the spec outside of the subprocess first, so that it is available to
     # subprocesses running `make_env` via automatic pickling.
