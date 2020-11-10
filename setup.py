@@ -3,7 +3,7 @@ from setuptools import find_packages, setup
 import src.imitation  # pytype: disable=import-error
 
 TESTS_REQUIRE = [
-    "seals @ git+https://github.com/HumanCompatibleAI/seals.git@f651768",
+    "seals>=0.1.1",
     "black",
     # remove pin once https://github.com/nedbat/coveragepy/issues/881 fixed
     "coverage==4.5.4",
