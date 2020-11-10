@@ -12,7 +12,7 @@ class VideoWrapper(gym.Wrapper):
     """Creates videos from wrapped environment by calling render after each timestep."""
 
     def __init__(
-        self, env: gym.Env, directory: types.AnyPath, single_video: bool = True
+        self, env: gym.Env, directory: types.AnyPath, single_video: bool = True,
     ):
         """Builds a VideoWrapper.
 

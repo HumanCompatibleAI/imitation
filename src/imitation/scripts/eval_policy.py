@@ -85,9 +85,9 @@ def eval_policy(
           TimeLimit so that they have at most `max_episode_steps` steps per
           episode.
       render: If True, renders interactively to the screen.
-      render_fps: the target number of frames per second to render on screen.
+      render_fps: The target number of frames per second to render on screen.
       videos: If True, saves videos to `log_dir`.
-      video_kwargs: keyword arguments passe through to `video_wrapper.VideoWrapper`.
+      video_kwargs: Keyword arguments passed through to `video_wrapper.VideoWrapper`.
       log_dir: The directory to log intermediate output to, such as episode reward.
       policy_type: A unique identifier for the saved policy,
           defined in POLICY_CLASSES.
