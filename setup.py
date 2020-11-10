@@ -17,7 +17,6 @@ TESTS_REQUIRE = [
     "pytest",
     "pytest-cov",
     "pytest-notebook",
-    "pytest-shard",
     "pytest-xdist",
     "pytype",
 ]
