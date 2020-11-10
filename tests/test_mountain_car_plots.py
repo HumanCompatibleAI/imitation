@@ -78,12 +78,11 @@ def test_batch_reward_heatmaps(trajs, tmpdir, rand_policy):
     # Generate reward function and generator policy checkpoints.
     log_dir = tmpdir / "train_adversarial"
     run = train_adversarial.train_ex.run(
-        named_configs=["mountain_car"],
+        named_configs=["mountain_car", "fast"],
         config_updates=dict(
             rollout_path=rollout_path,
             checkpoint_interval=1,
             log_dir=(tmpdir / "train_adversarial"),
-            total_timesteps=256,
         ),
     )
     assert run.status == "COMPLETED"

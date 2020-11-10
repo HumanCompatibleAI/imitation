@@ -178,9 +178,7 @@ class AdversarialTrainer:
 
     @property
     def gen_batch_size(self) -> int:
-        # TODO(shwang): Is `n_steps` really the generator batch size? Isn't the batch
-        #  size actually `n_steps` * `n_vec`? I'm surprised that this works.
-        return self.gen_algo.n_steps
+        return self.gen_algo.n_steps * self.gen_algo.get_env().num_envs
 
     def train_disc(
         self,
