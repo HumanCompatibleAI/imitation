@@ -78,7 +78,7 @@ def test_expert_demos_rollouts_from_policy(tmpdir):
 
 EVAL_POLICY_CONFIGS = [
     {"videos": True},
-    {"videos": True, "video_kwargs": {"single_video": True}},
+    {"videos": True, "video_kwargs": {"single_video": False}},
     {"reward_type": "zero", "reward_path": "foobar"},
 ]
 
