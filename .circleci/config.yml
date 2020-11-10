@@ -16,8 +16,8 @@ executors:
     <<: *defaults
     resource_class: xlarge
     environment:
-      # Don't use auto-detect since it sees all CPUs available, but container is throttled.
-      NUM_CPUS: 8
+      # We actually have 8 CPUs, but only use 4 since some tests are resource intensive.
+      NUM_CPUS: 4
   lintandtype:
     <<: *defaults
     resource_class: medium
