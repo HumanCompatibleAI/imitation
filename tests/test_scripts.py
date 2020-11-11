@@ -77,7 +77,8 @@ def test_expert_demos_rollouts_from_policy(tmpdir):
 
 
 EVAL_POLICY_CONFIGS = [
-    {},
+    {"videos": True},
+    {"videos": True, "video_kwargs": {"single_video": False}},
     {"reward_type": "zero", "reward_path": "foobar"},
 ]
 
@@ -86,7 +87,6 @@ EVAL_POLICY_CONFIGS = [
 def test_eval_policy(config, tmpdir):
     """Smoke test for imitation.scripts.eval_policy."""
     config_updates = {
-        "render": False,
         "log_root": tmpdir,
     }
     config_updates.update(config)

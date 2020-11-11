@@ -67,7 +67,7 @@ def make_obs_mat(n_states, is_random, obs_dim, rand_state=np.random):
     assert (
         obs_mat.ndim == 2 and obs_mat.shape[:1] == (n_states,) and obs_mat.shape[1] > 0
     )
-    return obs_mat
+    return obs_mat.astype(np.float32)
 
 
 class RandomMDP(TabularModelEnv):
@@ -178,7 +178,7 @@ class CliffWorld(TabularModelEnv):
         succ_p = 1 - fail_p
         n_states = width * height
         O_mat = self._observation_matrix = np.zeros(
-            (n_states, 2 if use_xy_obs else n_states)
+            (n_states, 2 if use_xy_obs else n_states), dtype=np.float32
         )
         R_vec = self._reward_matrix = np.zeros((n_states,))
         T_mat = self._transition_matrix = np.zeros((n_states, 4, n_states))

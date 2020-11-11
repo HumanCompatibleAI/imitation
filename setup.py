@@ -3,7 +3,7 @@ from setuptools import find_packages, setup
 import src.imitation  # pytype: disable=import-error
 
 TESTS_REQUIRE = [
-    "seals~=0.1.0",
+    "seals>=0.1.1",
     "black",
     # remove pin once https://github.com/nedbat/coveragepy/issues/881 fixed
     "coverage==4.5.4",
@@ -17,7 +17,6 @@ TESTS_REQUIRE = [
     "pytest",
     "pytest-cov",
     "pytest-notebook",
-    "pytest-shard",
     "pytest-xdist",
     "pytype",
 ]

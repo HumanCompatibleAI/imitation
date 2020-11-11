@@ -2,7 +2,7 @@
 
 import gym
 import pytest
-from seals.testing import envs as bench_test
+from seals.testing import envs as seals_test
 
 # Unused imports is for side-effect of registering environments
 from imitation.envs import examples  # noqa: F401
@@ -17,7 +17,7 @@ ENV_NAMES = [
 DETERMINISTIC_ENVS = []
 
 
-env = pytest.fixture(bench_test.make_env_fixture(skip_fn=pytest.skip))
+env = pytest.fixture(seals_test.make_env_fixture(skip_fn=pytest.skip))
 
 
 @pytest.mark.parametrize("env_name", ENV_NAMES)
@@ -25,11 +25,11 @@ class TestEnvs:
     """Battery of simple tests for environments."""
 
     def test_seed(self, env, env_name):
-        bench_test.test_seed(env, env_name, DETERMINISTIC_ENVS)
+        seals_test.test_seed(env, env_name, DETERMINISTIC_ENVS)
 
     def test_premature_step(self, env):
         """Test that you must call reset() before calling step()."""
-        bench_test.test_premature_step(
+        seals_test.test_premature_step(
             env,
             skip_fn=pytest.skip,
             raises_fn=pytest.raises,
@@ -42,5 +42,10 @@ class TestEnvs:
 
         imitation_test.test_model_based(env)
 
-    def test_rollout_schema(self, env):
-        bench_test.test_rollout_schema(env)
+    def test_rollout_schema(self, env: gym.Env):
+        """Tests if environments have correct types on `step()` and `reset()`."""
+        seals_test.test_rollout_schema(env)
+
+    def test_render(self, env: gym.Env):
+        """Tests `render()` supports modes specified in environment metadata."""
+        seals_test.test_render(env, raises_fn=pytest.raises)
