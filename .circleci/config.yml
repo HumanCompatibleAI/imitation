@@ -17,7 +17,7 @@ executors:
     resource_class: xlarge
     environment:
       # We actually have 8 CPUs, but only use 4 since some tests are resource intensive.
-      NUM_CPUS: 4
+      NUM_CPUS: 8
   lintandtype:
     <<: *defaults
     resource_class: medium
