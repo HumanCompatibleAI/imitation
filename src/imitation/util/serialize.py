@@ -80,7 +80,7 @@ class LayersSerializable(Serializable):
 
     def load_parameters(self, directory: str) -> None:
         restore = self._checkpoint.restore(tf.train.latest_checkpoint(directory))
-        restore.assert_existing_objects_matched().run_restore_ops()
+        restore.run_restore_ops()
 
     @classmethod
     def _load(cls: Type[T], directory: str) -> T:
