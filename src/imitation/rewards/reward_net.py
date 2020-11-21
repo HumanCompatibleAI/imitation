@@ -37,6 +37,7 @@ class RewardNet(serialize.Serializable, ABC):
         use_action: bool = True,
         use_next_state: bool = False,
         use_done: bool = False,
+        state_only: bool = False,
     ):
         """Builds a reward network.
 
@@ -48,7 +49,12 @@ class RewardNet(serialize.Serializable, ABC):
             use_action: Whether action is included in inputs to network.
             use_next_state: Whether next state is included in inputs to network.
             use_done: Whether episode termination is included in inputs to network.
+            state_only: (DEPRECATED) Whether to set `use_action` and
+                `use_next_state` to False.
         """
+        if state_only:
+            use_action = False
+            use_next_state = False
 
         self.observation_space = observation_space
         self.action_space = action_space
