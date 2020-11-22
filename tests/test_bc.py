@@ -4,6 +4,7 @@ import os
 
 import pytest
 import torch as th
+from torch.optim import lr_scheduler
 from torch.utils import data as th_data
 
 from imitation.algorithms import bc
@@ -30,6 +31,11 @@ def expert_data_type(request):
     return request.param
 
 
+@pytest.fixture(params=[(None, {}), (lr_scheduler.ExponentialLR, {"gamma": 0.98})])
+def lr_sched_tuple(request):
+    return request.param
+
+
 class DucktypedDataset:
     """Used to check that any iterator over Dict[str, Tensor] works with BC."""
 
@@ -45,9 +51,10 @@ class DucktypedDataset:
 
 
 @pytest.fixture
-def trainer(batch_size, venv, expert_data_type):
+def trainer(batch_size, venv, expert_data_type, lr_sched_tuple):
     rollouts = types.load(ROLLOUT_PATH)
     trans = rollout.flatten_trajectories(rollouts)
+    lr_sched_cls, lr_sched_kwargs = lr_sched_tuple
     if expert_data_type == "data_loader":
         expert_data = th_data.DataLoader(
             trans,
@@ -66,6 +73,8 @@ def trainer(batch_size, venv, expert_data_type):
         venv.observation_space,
         venv.action_space,
         expert_data=expert_data,
+        lr_scheduler_cls=lr_sched_cls,
+        lr_scheduler_kwargs=lr_sched_kwargs,
     )
 
 
