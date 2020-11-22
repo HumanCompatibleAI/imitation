@@ -190,9 +190,9 @@ class BC:
             policy_kwargs: keyword arguments passed to policy's constructor.
             initial_learning_rate: The optimizer's initial learning rate. This is a
                 helper parameter (with a default) that auto-fills
-                `policy_kwargs["lr_schedule"]`. It is ignored if
-                `policy_kwargs["lr_schedule"]` is provided. This
-                learning rate immediately overridden at the end of the first epoch if
+                `policy_kwargs["lr_schedule"]` with a function returning a constant. It
+                is overridden if `policy_kwargs["lr_schedule"]` is provided. This
+                learning rate is overridden by the learning rate scheduler if
                 `lr_scheduler_cls` is provided.
             expert_data: If not None, then immediately call
                   `self.set_expert_data_loader(expert_data)` during initialization.
