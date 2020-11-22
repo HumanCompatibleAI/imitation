@@ -187,7 +187,8 @@ class CliffWorld(TabularModelEnv):
         succ_p = 1 - fail_p
         n_states = width * height
         O_mat = self._observation_matrix = np.zeros(
-            (n_states, 2 if use_xy_obs else n_states), dtype=self.dtype,
+            (n_states, 2 if use_xy_obs else n_states),
+            dtype=self.dtype,
         )
         R_vec = self._reward_matrix = np.zeros((n_states,), dtype=self.dtype)
         T_mat = self._transition_matrix = np.zeros(
