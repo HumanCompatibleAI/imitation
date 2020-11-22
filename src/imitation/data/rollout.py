@@ -342,6 +342,11 @@ def rollout_stats(trajectories: Sequence[types.TrajectoryWithRew]) -> Dict[str, 
     if infos_peek is not None and "episode" in infos_peek[-1]:
         monitor_ep_returns = [t.infos[-1]["episode"]["r"] for t in trajectories]
         traj_descriptors["monitor_return"] = np.asarray(monitor_ep_returns)
+    if infos_peek is not None and "wrapped_env_new_rew" in infos_peek[0]:
+        wrapped_ep_rews = [
+            [info["wrapped_env_new_rew"] for info in t.infos] for t in trajectories
+        ]
+        traj_descriptors["wrapped_return"] = np.sum(wrapped_ep_rews, axis=1)
 
     stat_names = ["min", "mean", "std", "max"]
     for desc_name, desc_vals in traj_descriptors.items():

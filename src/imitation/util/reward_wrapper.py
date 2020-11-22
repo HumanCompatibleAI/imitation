@@ -85,4 +85,6 @@ class RewardVecEnvWrapper(vec_env.VecEnvWrapper):
         self._old_obs = obs
         for info_dict, old_rew in zip(infos, old_rews):
             info_dict["wrapped_env_rew"] = old_rew
+        for info_dict, new_rew in zip(infos, rews):
+            info_dict["wrapped_env_new_rew"] = new_rew
         return obs, rews, dones, infos
