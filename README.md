@@ -62,5 +62,17 @@ See [examples/quickstart.py](examples/quickstart.py) for an example script that 
 
 We also implement a density-based reward baseline. You can find an [example notebook here](examples/density_baseline_demo.ipynb).
 
+# Citations (BibTeX)
+```
+@misc{wang2020imitation,
+  author = {Wang, Steven and Toyer, Sam and Gleave, Adam and Emmons, Scott},
+  title = {The {\tt imitation} Library for Imitation Learning and Inverse Reinforcement Learning},
+  year = {2020},
+  publisher = {GitHub},
+  journal = {GitHub repository},
+  howpublished = {\url{https://github.com/HumanCompatibleAI/imitation}},
+}
+```
+
 # Contributing
 See [CONTRIBUTING.md](CONTRIBUTING.md).

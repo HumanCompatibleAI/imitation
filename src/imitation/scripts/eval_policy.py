@@ -1,9 +1,12 @@
+"""Evaluate policies: render policy interactively, save videos, log episode return."""
+
 import logging
 import os
 import os.path as osp
 import time
-from typing import Optional
+from typing import Any, Mapping, Optional
 
+import gym
 from sacred.observers import FileStorageObserver
 from stable_baselines3.common.vec_env import VecEnvWrapper
 
@@ -12,10 +15,12 @@ from imitation.data import rollout
 from imitation.policies import serialize
 from imitation.rewards.serialize import load_reward
 from imitation.scripts.config.eval_policy import eval_policy_ex
-from imitation.util import reward_wrapper, util
+from imitation.util import reward_wrapper, util, video_wrapper
 
 
-class InteractiveRender(VecEnvWrapper):  # pragma: no cover
+class InteractiveRender(VecEnvWrapper):
+    """Render the wrapped environment(s) on screen."""
+
     def __init__(self, venv, fps):
         super().__init__(venv)
         self.render_fps = fps
@@ -33,6 +38,17 @@ class InteractiveRender(VecEnvWrapper):  # pragma: no cover
         return ob
 
 
+def video_wrapper_factory(log_dir: str, **kwargs):
+    """Returns a function that wraps the environment in a video recorder."""
+
+    def f(env: gym.Env, i: int) -> gym.Env:
+        """Wraps `env` in a recorder saving videos to `{log_dir}/videos/{i}`."""
+        directory = os.path.join(log_dir, "videos", str(i))
+        return video_wrapper.VideoWrapper(env, directory=directory, **kwargs)
+
+    return f
+
+
 @eval_policy_ex.main
 def eval_policy(
     _run,
@@ -44,6 +60,8 @@ def eval_policy(
     parallel: bool,
     render: bool,
     render_fps: int,
+    videos: bool,
+    video_kwargs: Mapping[str, Any],
     log_dir: str,
     policy_type: str,
     policy_path: str,
@@ -67,8 +85,10 @@ def eval_policy(
           TimeLimit so that they have at most `max_episode_steps` steps per
           episode.
       render: If True, renders interactively to the screen.
-      log_dir: The directory to log intermediate output to. (As of 2019-07-19
-          this is just episode-by-episode reward from bench.Monitor.)
+      render_fps: The target number of frames per second to render on screen.
+      videos: If True, saves videos to `log_dir`.
+      video_kwargs: Keyword arguments passed through to `video_wrapper.VideoWrapper`.
+      log_dir: The directory to log intermediate output to, such as episode reward.
       policy_type: A unique identifier for the saved policy,
           defined in POLICY_CLASSES.
       policy_path: A path to the serialized policy.
@@ -86,6 +106,7 @@ def eval_policy(
     logging.basicConfig(level=logging.INFO)
     logging.info("Logging to %s", log_dir)
     sample_until = rollout.make_sample_until(eval_n_timesteps, eval_n_episodes)
+    post_wrappers = [video_wrapper_factory(log_dir, **video_kwargs)] if videos else None
     venv = util.make_vec_env(
         env_name,
         num_vec,
@@ -93,22 +114,25 @@ def eval_policy(
         parallel=parallel,
         log_dir=log_dir,
         max_episode_steps=max_episode_steps,
+        post_wrappers=post_wrappers,
     )
 
-    if render:  # pragma: no cover
-        # As of July 31, 2020, DummyVecEnv rendering only works with num_vec=1
-        # due to a bug on Stable Baselines 3.
-        venv = InteractiveRender(venv, render_fps)
-    # TODO(adam): add support for videos using VideoRecorder?
+    try:
+        if render:
+            # As of July 31, 2020, DummyVecEnv rendering only works with num_vec=1
+            # due to a bug on Stable Baselines 3.
+            venv = InteractiveRender(venv, render_fps)
 
-    if reward_type is not None:
-        reward_fn = load_reward(reward_type, reward_path, venv)
-        venv = reward_wrapper.RewardVecEnvWrapper(venv, reward_fn)
-        logging.info(f"Wrapped env in reward {reward_type} from {reward_path}.")
+        if reward_type is not None:
+            reward_fn = load_reward(reward_type, reward_path, venv)
+            venv = reward_wrapper.RewardVecEnvWrapper(venv, reward_fn)
+            logging.info(f"Wrapped env in reward {reward_type} from {reward_path}.")
 
-    policy = serialize.load_policy(policy_type, policy_path, venv)
-    trajs = rollout.generate_trajectories(policy, venv, sample_until)
-    return rollout.rollout_stats(trajs)
+        policy = serialize.load_policy(policy_type, policy_path, venv)
+        trajs = rollout.generate_trajectories(policy, venv, sample_until)
+        return rollout.rollout_stats(trajs)
+    finally:
+        venv.close()
 
 
 def main_console():
