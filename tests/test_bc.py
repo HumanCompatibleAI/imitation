@@ -75,7 +75,7 @@ def test_weight_decay_init_error(venv):
             venv.observation_space,
             venv.action_space,
             expert_data=None,
-            optimizer_kwargs=dict(weight_decay=1e-4),
+            policy_kwargs=dict(optimizer_kwargs=dict(weight_decay=1e-4)),
         )
 
 
@@ -92,7 +92,7 @@ def test_train_end_cond_error(trainer: bc.BC, venv):
 def test_bc(trainer: bc.BC, venv):
     sample_until = rollout.min_episodes(15)
     novice_ret_mean = rollout.mean_return(trainer.policy, venv, sample_until)
-    trainer.train(n_epochs=1, on_epoch_end=lambda: print("epoch end"))
+    trainer.train(n_epochs=1, epoch_end_callbacks=[lambda: print("epoch end")])
     trainer.train(n_batches=10)
     trained_ret_mean = rollout.mean_return(trainer.policy, venv, sample_until)
     # Typically <80 score is bad, >350 is okay. We want an improvement of at
