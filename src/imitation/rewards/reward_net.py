@@ -188,6 +188,7 @@ class RewardNetShaped(RewardNet):
                 end_potential = tf.Variable(
                     name="end_phi", shape=(), dtype=tf.float32, initial_value=0.0
                 )
+                tf.get_default_session().run(tf.variables_initializer([end_potential]))
                 self._layers.update(end_potential=end_potential)
             self._old_shaping_output, self._new_shaping_output, phi_layers = res
             self._layers.update(**phi_layers)
