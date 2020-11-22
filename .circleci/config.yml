@@ -3,14 +3,24 @@ version: 2.1
 orbs:
   codecov: codecov/codecov@1.0.5
 
+defaults: &defaults
+  docker:
+    - image: humancompatibleai/imitation:base
+      auth:
+        username: $DOCKERHUB_USERNAME
+        password: $DOCKERHUB_PASSWORD
+  working_directory: /imitation
+
 executors:
-  my-executor:
-    docker:
-      - image: humancompatibleai/imitation:base
-        auth:
-                username: $DOCKERHUB_USERNAME
-                password: $DOCKERHUB_PASSWORD
-    working_directory: /imitation
+  unit-test:
+    <<: *defaults
+    resource_class: xlarge
+    environment:
+      # We actually have 8 CPUs, but only use 4 since some tests are resource intensive.
+      NUM_CPUS: 8
+  lintandtype:
+    <<: *defaults
+    resource_class: medium
     environment:
       # If you change these, also change ci/code_checks.sh
       SRC_FILES: src/ tests/ experiments/ examples/ docs/conf.py setup.py
@@ -53,7 +63,7 @@ commands:
 
 jobs:
   lintandtype:
-    executor: my-executor
+    executor: lintandtype
 
     steps:
       - dependencies
@@ -78,8 +88,7 @@ jobs:
           command: pytype --version && pytype -j "${NUM_CPUS}" ${SRC_FILES[@]}
 
   unit-test:
-    executor: my-executor
-    parallelism: 3
+    executor: unit-test
     steps:
       - dependencies
 
@@ -98,10 +107,9 @@ jobs:
       - run:
           name: run tests
           command: |
-            export DISPLAY=:0
-            pytest --cov=/venv/lib/python3.7/site-packages/imitation --cov=tests \
-                   --junitxml=/tmp/test-reports/junit.xml \
-                   --shard-id=${CIRCLE_NODE_INDEX} --num-shards=${CIRCLE_NODE_TOTAL} \
+            # Xdummy-entrypoint.py: starts an X server and sets DISPLAY, then runs wrapped command.
+            Xdummy-entrypoint.py pytest -n ${NUM_CPUS} --cov=/venv/lib/python3.7/site-packages/imitation \
+                   --cov=tests --junitxml=/tmp/test-reports/junit.xml \
                     -vv tests/
             mv .coverage .coverage.imitation
             coverage combine  # rewrite paths from virtualenv to src/

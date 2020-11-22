@@ -3,7 +3,16 @@ import functools
 import itertools
 import os
 import uuid
-from typing import Callable, Iterable, Iterator, Optional, Type, TypeVar, Union
+from typing import (
+    Callable,
+    Iterable,
+    Iterator,
+    Optional,
+    Sequence,
+    Type,
+    TypeVar,
+    Union,
+)
 
 import gym
 import numpy as np
@@ -33,6 +42,7 @@ def make_vec_env(
     log_dir: Optional[str] = None,
     max_episode_steps: Optional[int] = None,
     wrapper_class: Optional[Callable] = None,
+    post_wrappers: Optional[Sequence[Callable[[gym.Env, int], gym.Env]]] = None,
 ) -> VecEnv:
     """Returns a VecEnv initialized with `n_envs` Envs.
 
@@ -50,6 +60,10 @@ def make_vec_env(
             the environments are passed into the VecEnv unwrapped.
         wrapper_class: A wrapper class to apply to all sub-environments. This
             is applied after the Monitor, but before the RolloutInfoWrapper.
+        post_wrappers: If specified, iteratively wraps each environment with each
+            of the wrappers specified in the sequence. The argument should be a Callable
+            accepting two arguments, the Env to be wrapped and the environment index,
+            and returning the wrapped Env.
     """
     # Resolve the spec outside of the subprocess first, so that it is available to
     # subprocesses running `make_env` via automatic pickling.
@@ -89,6 +103,11 @@ def make_vec_env(
             # we apply this after Monitor, just like cmd_util.make_vec_env in SB3
             env = wrapper_class(env)
         env = wrappers.RolloutInfoWrapper(env)
+
+        if post_wrappers:
+            for wrapper in post_wrappers:
+                env = wrapper(env, i)
+
         return env
 
     rng = np.random.RandomState(seed)

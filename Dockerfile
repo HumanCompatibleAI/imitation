@@ -5,8 +5,7 @@
 FROM nvidia/cuda:10.0-cudnn7-runtime-ubuntu18.04 AS base
 ARG DEBIAN_FRONTEND=noninteractive
 
-RUN echo ttf-mscorefonts-installer msttcorefonts/accepted-mscorefonts-eula select true | debconf-set-selections \
-    && apt-get update -q \
+RUN apt-get update -q \
     && apt-get install -y --no-install-recommends \
     build-essential \
     curl \
@@ -28,7 +27,6 @@ RUN echo ttf-mscorefonts-installer msttcorefonts/accepted-mscorefonts-eula selec
     virtualenv \
     xpra \
     xserver-xorg-dev \
-    ttf-mscorefonts-installer \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -48,15 +46,21 @@ RUN    mkdir -p /root/.mujoco \
 ENV PATH="/venv/bin:$PATH"
 ENV LD_LIBRARY_PATH /usr/local/nvidia/lib64:/root/.mujoco/mjpro150/bin:${LD_LIBRARY_PATH}
 
+# Run Xdummy mock X server by default so that rendering will work.
+COPY ci/xorg.conf /etc/dummy_xorg.conf
+COPY ci/Xdummy-entrypoint.py /usr/bin/Xdummy-entrypoint.py
+ENTRYPOINT ["/usr/bin/Xdummy-entrypoint.py"]
+
 # python-req stage contains Python venv, but not code.
 # It is useful for development purposes: you can mount
 # code from outside the Docker container.
 FROM base as python-req
 
 WORKDIR /imitation
-# Copy over just setup.py and __init__.py (including version)
+# Copy over just setup.py and dependencies (__init__.py and README.md)
 # to avoid rebuilding venv when requirements have not changed.
 COPY ./setup.py ./setup.py
+COPY ./README.md ./README.md
 COPY ./src/imitation/__init__.py ./src/imitation/__init__.py
 COPY ./ci/build_venv.sh ./ci/build_venv.sh
 # mjkey.txt needs to exist for build, but doesn't need to be a real key
