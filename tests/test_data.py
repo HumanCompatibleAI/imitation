@@ -133,18 +133,17 @@ class TestData:
     @pytest.mark.parametrize("use_chdir", [False, True])
     def test_save_trajectories(self, trajectory_rew, use_chdir, tmpdir):
         """Check that trajectories are properly saved."""
-        if use_chdir:
-            # Test no relative path without directory edge-case.
-            chdir_context = pushd(tmpdir)
-            save_dir = ""
-        else:
-            chdir_context = contextlib.nullcontext()
-            save_dir = tmpdir
+        with contextlib.ExitStack() as exit_stack:
+            if use_chdir:
+                # Test no relative path without directory edge-case.
+                exit_stack.enter_context(pushd(tmpdir))
+                save_dir = ""
+            else:
+                save_dir = tmpdir
 
-        trajs = [trajectory_rew]
-        save_path = pathlib.Path(save_dir, "trajs.pkl")
+            trajs = [trajectory_rew]
+            save_path = pathlib.Path(save_dir, "trajs.pkl")
 
-        with chdir_context:
             types.save(str(save_path), trajs)
             with open(save_path, "rb") as f:
                 loaded_trajs = pickle.load(f)

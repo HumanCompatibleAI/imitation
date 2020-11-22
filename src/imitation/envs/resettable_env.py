@@ -18,12 +18,13 @@ class ResettableEnv(gym.Env, abc.ABC):
     condition. Almost all simulated environments can meet these criteria.
     """
 
-    def __init__(self):
+    def __init__(self, dtype=None):
         self._state_space = None
         self._observation_space = None
         self._action_space = None
         self.cur_state = None
         self._n_actions_taken = None
+        self.dtype = dtype if dtype is not None else np.float64
         self.seed()
 
     @abc.abstractmethod
@@ -126,7 +127,10 @@ class TabularModelEnv(ResettableEnv, abc.ABC):
         # Construct spaces lazily, so they can depend on properties in subclasses.
         if self._observation_space is None:
             self._observation_space = spaces.Box(
-                low=float("-inf"), high=float("inf"), shape=(self.obs_dim,)
+                low=float("-inf"),
+                high=float("inf"),
+                shape=(self.obs_dim,),
+                dtype=self.dtype,
             )
         return self._observation_space
 

@@ -8,7 +8,13 @@ import kornia.augmentation as kornia_aug
 import torch as th
 from torch import nn
 
-import imitation.augment.augmentations as im_aug
+from imitation.augment.augmentations import (
+    CIELabJitter,
+    GaussianBlur,
+    GaussianNoise,
+    Grayscale,
+    Rot90,
+)
 from imitation.augment.color import ColorSpace
 
 
@@ -148,13 +154,11 @@ class StandardAugmentations(KorniaAugmentations):
         # color jitter
         assert sum([color_jitter, color_jitter_mid, color_jitter_ex]) <= 1
         if color_jitter_ex:
-            transforms.append(
-                im_aug.CIELabJitter(max_lum_scale=1.05, max_uv_rads=math.pi)
-            )
+            transforms.append(CIELabJitter(max_lum_scale=1.05, max_uv_rads=math.pi))
         elif color_jitter_mid:
-            transforms.append(im_aug.CIELabJitter(max_lum_scale=1.01, max_uv_rads=0.6))
+            transforms.append(CIELabJitter(max_lum_scale=1.01, max_uv_rads=0.6))
         elif color_jitter:
-            transforms.append(im_aug.CIELabJitter(max_lum_scale=1.01, max_uv_rads=0.15))
+            transforms.append(CIELabJitter(max_lum_scale=1.01, max_uv_rads=0.15))
 
         # translation and rotation get combined into a single RandomAffine transform
         assert sum([rotate, rotate_ex, rotate_mid]) <= 1
@@ -189,26 +193,26 @@ class StandardAugmentations(KorniaAugmentations):
             transforms.append(kornia_aug.RandomVerticalFlip())
 
         if rot90:
-            transforms.append(im_aug.Rot90())
+            transforms.append(Rot90())
 
         if erase:
             transforms.append(kornia_aug.RandomErasing(value=0.5))
 
         if gaussian_blur:
-            transforms.append(im_aug.GaussianBlur(kernel_hw=5, sigma=1))
+            transforms.append(GaussianBlur(kernel_hw=5, sigma=1))
 
         if noise:
             # Remember that values lie in [0,1], so std=0.01 (for example)
             # means there's a >99% chance that any given noise value will lie
             # in [-0.03,0.03]. I think any value <=0.03 will probably be
             # reasonable.
-            noise_mod = im_aug.GaussianNoise(std=0.01)
+            noise_mod = GaussianNoise(std=0.01)
             # JIT doesn't make it any faster (unsurprisingly)
             # noise_mod = th.jit.script(noise_mod)
             transforms.append(noise_mod)
 
         if gray:
-            transforms.append(im_aug.Grayscale(p=0.5))
+            transforms.append(Grayscale(p=0.5))
 
         super().__init__(transforms, stack_color_space=stack_color_space)
 

@@ -6,7 +6,7 @@ import numpy as np
 from imitation.envs.resettable_env import TabularModelEnv
 
 
-def make_random_trans_mat(n_states, n_actions, max_branch_factor, rand_state=np.random):
+def _make_random_trans_mat(n_states, n_actions, max_branch_factor, rand_state, dtype):
     """Make a 'random' transition matrix.
 
     Each action goes to at least `max_branch_factor` other states from the
@@ -16,7 +16,7 @@ def make_random_trans_mat(n_states, n_actions, max_branch_factor, rand_state=np.
     left on the internet (http://incompleteideas.net/RandomMDPs.html), and is
     therefore a legitimate way to generate MDPs.
     """
-    out_mat = np.zeros((n_states, n_actions, n_states), dtype="float32")
+    out_mat = np.zeros((n_states, n_actions, n_states), dtype=dtype)
     for start_state in range(n_states):
         for action in range(n_actions):
             # uniformly sample a number of successors in [1,max_branch_factor]
@@ -30,11 +30,11 @@ def make_random_trans_mat(n_states, n_actions, max_branch_factor, rand_state=np.
     return out_mat
 
 
-def make_random_state_dist(n_avail, n_states, rand_state=np.random):
+def _make_random_state_dist(n_avail, n_states, rand_state, dtype):
     """Make a random initial state distribution over n_states in which n_avail<=n_states
     of the states are supported."""
     assert 0 < n_avail <= n_states
-    init_dist = np.zeros((n_states,))
+    init_dist = np.zeros((n_states,), dtype=dtype)
     next_states = rand_state.choice(n_states, size=(n_avail,), replace=False)
     avail_state_dist = rand_state.dirichlet(np.ones((n_avail,)))
     init_dist[next_states] = avail_state_dist
@@ -43,7 +43,7 @@ def make_random_state_dist(n_avail, n_states, rand_state=np.random):
     return init_dist
 
 
-def make_obs_mat(n_states, is_random, obs_dim, rand_state=np.random):
+def _make_obs_mat(n_states, is_random, obs_dim, rand_state, dtype):
     """Makes an observation matrix with a single observation for each state.
 
     Args:
@@ -61,9 +61,9 @@ def make_obs_mat(n_states, is_random, obs_dim, rand_state=np.random):
     if not is_random:
         assert obs_dim is None
     if is_random:
-        obs_mat = rand_state.normal(0, 2, (n_states, obs_dim))
+        obs_mat = rand_state.normal(0, 2, (n_states, obs_dim)).astype(dtype)
     else:
-        obs_mat = np.identity(n_states)
+        obs_mat = np.identity(n_states, dtype=dtype)
     assert (
         obs_mat.ndim == 2 and obs_mat.shape[:1] == (n_states,) and obs_mat.shape[1] > 0
     )
@@ -73,7 +73,7 @@ def make_obs_mat(n_states, is_random, obs_dim, rand_state=np.random):
 class RandomMDP(TabularModelEnv):
     """AN MDP with a random transition matrix.
 
-    Random matrix is created by `make_random_trans_mat`.
+    Random matrix is created by `_make_random_trans_mat`.
     """
 
     def __init__(
@@ -86,8 +86,9 @@ class RandomMDP(TabularModelEnv):
         *,
         obs_dim=None,
         generator_seed=None,
+        **kwargs,
     ):
-        super().__init__()
+        super().__init__(**kwargs)
         # this generator is ONLY for constructing the MDP, not for controlling
         # random outcomes during rollouts
         rand_gen = np.random.RandomState(generator_seed)
@@ -96,24 +97,31 @@ class RandomMDP(TabularModelEnv):
                 obs_dim = n_states
         else:
             assert obs_dim is None
-        self._observation_matrix = make_obs_mat(
+        self._observation_matrix = _make_obs_mat(
             n_states=n_states,
             is_random=random_obs,
             obs_dim=obs_dim,
             rand_state=rand_gen,
+            dtype=self.dtype,
         )
-        self._transition_matrix = make_random_trans_mat(
+        self._transition_matrix = _make_random_trans_mat(
             n_states=n_states,
             n_actions=n_actions,
             max_branch_factor=branch_factor,
             rand_state=rand_gen,
+            dtype=self.dtype,
         )
-        self._initial_state_dist = make_random_state_dist(
-            n_avail=branch_factor, n_states=n_states, rand_state=rand_gen
+        self._initial_state_dist = _make_random_state_dist(
+            n_avail=branch_factor,
+            n_states=n_states,
+            rand_state=rand_gen,
+            dtype=self.dtype,
         )
         self._horizon = horizon
         self._reward_weights = rand_gen.randn(self._observation_matrix.shape[-1])
-        self._reward_matrix = self._observation_matrix @ self._reward_weights
+        self._reward_matrix = (self._observation_matrix @ self._reward_weights).astype(
+            self.dtype
+        )
         assert self._reward_matrix.shape == (self.n_states,)
 
     @property
@@ -168,8 +176,9 @@ class CliffWorld(TabularModelEnv):
         rew_goal=10,
         rew_cliff=-10,
         fail_p=0.3,
+        **kwargs,
     ):
-        super().__init__()
+        super().__init__(**kwargs)
         assert (
             width >= 3 and height >= 2
         ), "degenerate grid world requested; is this a bug?"
@@ -178,10 +187,12 @@ class CliffWorld(TabularModelEnv):
         succ_p = 1 - fail_p
         n_states = width * height
         O_mat = self._observation_matrix = np.zeros(
-            (n_states, 2 if use_xy_obs else n_states)
+            (n_states, 2 if use_xy_obs else n_states), dtype=self.dtype
         )
-        R_vec = self._reward_matrix = np.zeros((n_states,))
-        T_mat = self._transition_matrix = np.zeros((n_states, 4, n_states))
+        R_vec = self._reward_matrix = np.zeros((n_states,), dtype=self.dtype)
+        T_mat = self._transition_matrix = np.zeros(
+            (n_states, 4, n_states), dtype=self.dtype
+        )
         self._horizon = horizon
 
         def to_id_clamp(row, col):

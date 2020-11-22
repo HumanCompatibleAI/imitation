@@ -3,7 +3,10 @@ from setuptools import find_packages, setup
 import src.imitation  # pytype: disable=import-error
 
 TESTS_REQUIRE = [
-    "seals~=0.1.0",
+    (
+        "seals @ git+https://github.com/HumanCompatibleAI/seals.git"
+        "@9df0dd38a7c2240227b29ab2abb69f5a32d9ff5b"
+    ),
     "black",
     # remove pin once https://github.com/nedbat/coveragepy/issues/881 fixed
     "coverage==4.5.4",
@@ -43,7 +46,7 @@ setup(
     long_description=get_readme(),
     long_description_content_type="text/markdown",
     author="Center for Human-Compatible AI and Google",
-    python_requires=">=3.7.0",
+    python_requires=">=3.6.0",
     packages=find_packages("src"),
     package_dir={"": "src"},
     package_data={"imitation": ["py.typed", "envs/examples/airl_envs/assets/*.xml"]},
@@ -68,6 +71,7 @@ setup(
         "tensorboard>=1.14",
         # TODO(sam): switch to pip once kornia#635 is fixed.
         "kornia @ git+https://github.com/qxcv/kornia.git@imitation",
+        "dataclasses>=0.8 ; python_version<'3.7'",
     ],
     tests_require=TESTS_REQUIRE,
     extras_require={
@@ -102,9 +106,9 @@ setup(
         "License :: OSI Approved :: MIT License",
         "Programming Language :: Python",
         "Programming Language :: Python :: 3",
+        "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: Implementation :: CPython",
-        "Programming Language :: Python :: Implementation :: PyPy",
     ],
 )
