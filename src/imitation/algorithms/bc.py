@@ -167,7 +167,7 @@ class BC:
         observation_space: gym.Space,
         action_space: gym.Space,
         *,
-        policy_class: Type[policies.BasePolicy] = base.FeedForward32Policy,
+        policy_class: Type[policies.ActorCriticPolicy] = base.FeedForward32Policy,
         policy_kwargs: Optional[Mapping[str, Any]] = None,
         expert_data: Union[Iterable[Mapping], types.TransitionsMinimal, None] = None,
         initial_learning_rate: float = 1e-3,
