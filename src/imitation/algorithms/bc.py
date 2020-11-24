@@ -167,13 +167,15 @@ class BC:
         policy_class: Type[policies.ActorCriticPolicy] = base.FeedForward32Policy,
         policy_kwargs: Optional[Mapping[str, Any]] = None,
         expert_data: Union[Iterable[Mapping], types.TransitionsMinimal, None] = None,
-        optimizer_cls: Type[th.optim.Optimizer] = th.optim.Adam,
+        optimizer_cls: Type[
+            th.optim.Optimizer
+        ] = th.optim.Adam,  # pytype: disable=module-attr
         optimizer_kwargs: Optional[Dict[str, Any]] = None,
         lr_scheduler_cls: Optional[Type[lr_scheduler._LRScheduler]] = None,
         lr_scheduler_kwargs: Optional[Mapping[str, Any]] = None,
         ent_weight: float = 1e-3,
         l2_weight: float = 0.0,
-        device: Union[str, th.device] = "auto",
+        device: Union[str, th.device] = "auto",  # pytype: disable=module-attr
     ):
         """Behavioral cloning (BC).
 
@@ -199,9 +201,7 @@ class BC:
         """
         if optimizer_kwargs:
             if "weight_decay" in optimizer_kwargs:
-                raise ValueError(
-                    "Use the parameter l2_weight instead of weight_decay."
-                )
+                raise ValueError("Use the parameter l2_weight instead of weight_decay.")
 
         self.action_space = action_space
         self.observation_space = observation_space
@@ -232,7 +232,8 @@ class BC:
             self.lr_scheduler = None
         else:
             self.lr_scheduler = lr_scheduler_cls(
-                optimizer=self.optimizer, **lr_scheduler_kwargs,
+                optimizer=self.optimizer,
+                **lr_scheduler_kwargs,
             )
             self.base_epoch_end_callbacks += (self.lr_scheduler.step,)
 
