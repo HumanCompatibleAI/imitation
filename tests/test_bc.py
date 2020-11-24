@@ -84,7 +84,7 @@ def test_weight_decay_init_error(venv):
             venv.observation_space,
             venv.action_space,
             expert_data=None,
-            policy_kwargs=dict(optimizer_kwargs=dict(weight_decay=1e-4)),
+            optimizer_kwargs=dict(weight_decay=1e-4),
         )
 
 

@@ -49,12 +49,9 @@ def reconstruct_policy(
 
 
 class ConstantLRSchedule:
-    """A callable that returns a constant learning rate.
+    """A callable that returns a constant learning rate."""
 
-    We use this instead of a simple lambda because `BC` runs into a pickling error.
-    """
-
-    def __init__(self, lr):
+    def __init__(self, lr: float = 1e-3):
         """
         Args:
             lr: the constant learning rate that calls to this object will return.
@@ -170,7 +167,8 @@ class BC:
         policy_class: Type[policies.ActorCriticPolicy] = base.FeedForward32Policy,
         policy_kwargs: Optional[Mapping[str, Any]] = None,
         expert_data: Union[Iterable[Mapping], types.TransitionsMinimal, None] = None,
-        initial_learning_rate: float = 1e-3,
+        optimizer_cls: Type[th.optim.Optimizer] = th.optim.Adam,
+        optimizer_kwargs: Optional[Dict[str, Any]] = None,
         lr_scheduler_cls: Optional[Type[lr_scheduler._LRScheduler]] = None,
         lr_scheduler_kwargs: Optional[Mapping[str, Any]] = None,
         ent_weight: float = 1e-3,
@@ -188,38 +186,36 @@ class BC:
             action_space: the action space of the environment.
             policy_class: used to instantiate imitation policy.
             policy_kwargs: keyword arguments passed to policy's constructor.
-            initial_learning_rate: The optimizer's initial learning rate. This is a
-                helper parameter (with a default) that auto-fills
-                `policy_kwargs["lr_schedule"]` with a function returning a constant. It
-                is overridden if `policy_kwargs["lr_schedule"]` is provided. This
-                learning rate is overridden by the learning rate scheduler if
-                `lr_scheduler_cls` is provided.
             expert_data: If not None, then immediately call
                   `self.set_expert_data_loader(expert_data)` during initialization.
+            optimizer_cls: Optimizer to use for supervised training.
+            optimizer_kwargs: Keyword arguments, excluding learning rate and
+                  weight decay, for optimizer construction.
             lr_scheduler_cls: A subclass of `_LRScheduler`.
             lr_scheduler_kwargs: Keyword arguments for scheduler construction.
             ent_weight: scaling applied to the policy's entropy regularization.
             l2_weight: scaling applied to the policy's L2 regularization.
             device: name/identity of device to place policy on.
         """
-        # TODO(shwang): Make sure that pepes are putting `optimizer_kwargs` into
-        # `policy_kwargs` properly?
-        if policy_kwargs:
-            optimizer_kwargs = policy_kwargs.get("optimizer_kwargs")
-            if optimizer_kwargs:
-                if "weight_decay" in optimizer_kwargs:
-                    raise ValueError(
-                        "Use the parameter l2_weight instead of weight_decay."
-                    )
+        if optimizer_kwargs:
+            if "weight_decay" in optimizer_kwargs:
+                raise ValueError(
+                    "Use the parameter l2_weight instead of weight_decay."
+                )
 
         self.action_space = action_space
         self.observation_space = observation_space
         self.policy_class = policy_class
         self.device = device = utils.get_device(device)
+
+        # SB3's `ActorCriticPolicy` automatically initializes a optimizer which requires
+        # an argument of this type, but we don't use.
+        unused_lr_schedule = ConstantLRSchedule()
+
         self.policy_kwargs = dict(
             observation_space=self.observation_space,
             action_space=self.action_space,
-            lr_schedule=ConstantLRSchedule(initial_learning_rate),
+            lr_schedule=unused_lr_schedule,
             device=self.device,
         )
         self.policy_kwargs.update(policy_kwargs or {})
@@ -228,13 +224,15 @@ class BC:
         self.policy = self.policy_class(**self.policy_kwargs).to(
             self.device
         )  # pytype: disable=not-instantiable
+        optimizer_kwargs = optimizer_kwargs or {}
+        self.optimizer = optimizer_cls(self.policy.parameters(), **optimizer_kwargs)
 
         self.base_epoch_end_callbacks = ()
         if lr_scheduler_cls is None:
             self.lr_scheduler = None
         else:
             self.lr_scheduler = lr_scheduler_cls(
-                optimizer=self.policy.optimizer, **lr_scheduler_kwargs
+                optimizer=self.optimizer, **lr_scheduler_kwargs,
             )
             self.base_epoch_end_callbacks += (self.lr_scheduler.step,)
 
@@ -354,9 +352,9 @@ class BC:
         for batch, stats_dict_it in it:
             loss, stats_dict_loss = self._calculate_loss(batch["obs"], batch["acts"])
 
-            self.policy.optimizer.zero_grad()
+            self.optimizer.zero_grad()
             loss.backward()
-            self.policy.optimizer.step()
+            self.optimizer.step()
 
             if batch_num % log_interval == 0:
                 for stats in [stats_dict_it, stats_dict_loss]:
