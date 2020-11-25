@@ -102,9 +102,11 @@ def test_bc(trainer: bc.BC, venv):
     sample_until = rollout.min_episodes(15)
     novice_ret_mean = rollout.mean_return(trainer.policy, venv, sample_until)
     callback_count = 0
+
     def callback():
         nonlocal callback_count
         callback_count += 1
+
     trainer.train(n_epochs=1, epoch_end_callbacks=[callback])
     assert callback_count == 1
     trainer.train(n_batches=10)
