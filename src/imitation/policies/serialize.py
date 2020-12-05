@@ -42,6 +42,7 @@ class NormalizePolicy(policies.BasePolicy):
         super().__init__(
             observation_space=policy.observation_space,
             action_space=policy.action_space,
+            # innocuous comment to test CI
         )
         self._policy = policy
         self.vec_normalize = vec_normalize
