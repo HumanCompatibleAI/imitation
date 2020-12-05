@@ -193,7 +193,6 @@ class BC:
             observation_space=self.observation_space,
             action_space=self.action_space,
             lr_schedule=ConstantLRSchedule(),
-            device=self.device,
         )
         self.policy_kwargs.update(policy_kwargs or {})
         self.device = utils.get_device(device)
