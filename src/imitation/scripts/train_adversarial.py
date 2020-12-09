@@ -29,7 +29,7 @@ def save(trainer, save_path):
     serialize.save_stable_model(
         os.path.join(save_path, "gen_policy"),
         trainer.gen_policy,
-        trainer.venv_train_norm,
+        trainer.venv_norm_obs,
     )
 
 
@@ -196,7 +196,7 @@ def train(
         results = {}
         sample_until_eval = rollout.min_episodes(n_episodes_eval)
         trajs = rollout.generate_trajectories(
-            trainer.gen_policy, trainer.venv_test, sample_until=sample_until_eval
+            trainer.gen_policy, trainer.venv_train, sample_until=sample_until_eval
         )
         results["expert_stats"] = rollout.rollout_stats(expert_trajs)
         results["imit_stats"] = rollout.rollout_stats(trajs)

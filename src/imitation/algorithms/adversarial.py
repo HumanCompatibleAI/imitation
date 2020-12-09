@@ -25,11 +25,10 @@ class AdversarialTrainer:
     If `debug_use_ground_truth=True` was passed into the initializer then
     `self.venv_train` is the same as `self.venv`."""
 
-    venv_test: vec_env.VecEnv
-    """Like `self.venv`, but wrapped with test reward unless in debug mode.
+    venv_norm_obs: vec_env.VecEnv
+    """Like `self.venv`, but wrapped with `VecNormalize` normalizing the observations.
 
-    If `debug_use_ground_truth=True` was passed into the initializer then
-    `self.venv_test` is the same as `self.venv`."""
+    These statistics must be saved along with the model."""
 
     def __init__(
         self,
@@ -113,10 +112,15 @@ class AdversarialTrainer:
         self._build_graph()
         self._sess.run(tf.global_variables_initializer())
 
+        self.venv_buffering = wrappers.BufferingWrapper(self.venv)
+        self.venv_norm_obs = vec_env.VecNormalize(
+            self.venv_buffering, norm_reward=False
+        )
+
         if debug_use_ground_truth:
             # Would use an identity reward fn here, but RewardFns can't see rewards.
-            self.reward_train = self.reward_test = None
-            self.venv_train = self.venv_test = self.venv
+            self.reward_train = None
+            self.venv_train = self.venv
         else:
             self.reward_train = partial(
                 self.discrim.reward_train,
@@ -126,17 +130,12 @@ class AdversarialTrainer:
                 # log action probs for AIRL's ent bonus, we need to normalize obs.
                 gen_log_prob_fn=self._gen_log_action_prob_from_unnormalized,
             )
-            self.reward_test = self.discrim.reward_test
-            self.venv_train = reward_wrapper.RewardVecEnvWrapper(
-                self.venv, self.reward_train
-            )
-            self.venv_test = reward_wrapper.RewardVecEnvWrapper(
-                self.venv, self.reward_test
+            self.venv_wrapped = reward_wrapper.RewardVecEnvWrapper(
+                self.venv_norm_obs, self.reward_train
             )
 
-        self.venv_train_buffering = wrappers.BufferingWrapper(self.venv_train)
-        self.venv_train_norm = vec_env.VecNormalize(self.venv_train_buffering)
-        self.gen_policy.set_env(self.venv_train_norm)
+        self.venv_train = vec_env.VecNormalize(self.venv_wrapped, norm_obs=False)
+        self.gen_policy.set_env(self.venv_train)
 
         if gen_replay_buffer_capacity is None:
             gen_replay_buffer_capacity = self.gen_batch_size
@@ -192,7 +191,7 @@ class AdversarialTrainer:
           observation: Unnormalized observation.
           actions: action.
         """
-        obs = self.venv_train_norm.normalize_obs(observation)
+        obs = self.venv_norm_obs.normalize_obs(observation)
         return self.gen_policy.action_probability(obs, actions=actions, logp=logp)
 
     def train_disc(self, n_samples: Optional[int] = None) -> None:
@@ -289,7 +288,7 @@ class AdversarialTrainer:
 
         Args:
           total_timesteps: The number of transitions to sample from
-            `self.venv_train_norm` during training. By default,
+            `self.venv_train` during training. By default,
             `self.gen_batch_size`.
           learn_kwargs: kwargs for the Stable Baselines `RLModel.learn()`
             method.
@@ -305,8 +304,9 @@ class AdversarialTrainer:
                 reset_num_timesteps=False,
                 **learn_kwargs,
             )
+            self.venv_wrapped.log_callback(logger)
 
-        gen_samples = self.venv_train_norm.pop_transitions()
+        gen_samples = self.venv_buffering.pop_transitions()
         self._gen_replay_buffer.store(gen_samples)
 
     def train(
@@ -394,18 +394,17 @@ class AdversarialTrainer:
         assert n_gen == len(gen_samples.acts)
         assert n_gen == len(gen_samples.next_obs)
 
-        # Policy and reward network were trained on normalized observations.
-        expert_obs_norm = self.venv_train_norm.normalize_obs(expert_samples.obs)
-        gen_obs_norm = self.venv_train_norm.normalize_obs(gen_samples.obs)
-
         # Concatenate rollouts, and label each row as expert or generator.
-        obs = np.concatenate([expert_obs_norm, gen_obs_norm])
+        obs = np.concatenate([expert_samples.obs, gen_samples.obs])
         acts = np.concatenate([expert_samples.acts, gen_samples.acts])
         next_obs = np.concatenate([expert_samples.next_obs, gen_samples.next_obs])
         dones = np.concatenate([expert_samples.dones, gen_samples.dones])
         labels_gen_is_one = np.concatenate(
             [np.zeros(n_expert, dtype=int), np.ones(n_gen, dtype=int)]
         )
+        # Policy and reward network were trained on normalized observations.
+        obs = self.venv_norm_obs.normalize_obs(obs)
+        next_obs = self.venv_norm_obs.normalize_obs(next_obs)
 
         # Calculate generator-policy log probabilities.
         log_act_prob = self._gen_policy.action_probability(obs, actions=acts, logp=True)
