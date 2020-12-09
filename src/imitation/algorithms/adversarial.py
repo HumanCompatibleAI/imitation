@@ -17,6 +17,56 @@ from imitation.rewards import discrim_nets, reward_nets
 from imitation.util import logger, reward_wrapper, util
 
 
+class VecRewardNormalize(vec_env.VecEnvWrapper, reward_wrapper.RewardLogMixin):
+    """EWMA normalization of the reward only."""
+
+    def __init__(self, venv, alpha: float = 0.0001):
+        vec_env.VecEnvWrapper.__init__(self, venv)
+        reward_wrapper.RewardLogMixin.__init__(self, venv, "rollout/rlalgo_eprewmean")
+        self.alpha = alpha
+        self.mean_rew = None
+        self.var_rew = 0.0
+        self.mean_rew_frozen = 0.0
+        self.var_rew_frozen = 1.0
+        self.old_rews = None
+
+    def _update(self, rew: float):
+        if self.mean_rew is None:
+            self.mean_rew = rew
+        else:
+            delta = rew - self.mean_rew
+            var_update = self.var_rew + self.alpha * delta * delta
+            self.var_rew = (1 - self.alpha) * var_update
+            self.mean_rew = self.mean_rew + self.alpha * delta
+
+    def batch_over(self):
+        self.mean_rew_frozen = self.mean_rew
+        self.var_rew_frozen = self.var_rew
+
+    def normalize_reward(self, reward: np.ndarray) -> np.ndarray:
+        return (reward - self.mean_rew_frozen) / np.sqrt(self.var_rew_frozen)
+
+    def reset(self):
+        return self.venv.reset()
+
+    def normalize_obs(self, obs: np.ndarray) -> np.ndarray:
+        """Identity (we don't perturb observations.)"""
+        return obs
+
+    def step_wait(self):
+        obs, rews, dones, infos = self.venv.step_wait()
+        self.old_rews = rews
+
+        # TODO(adam): vectorize
+        for rew in rews:
+            self._update(rew)
+
+        rews = self.normalize_reward(rews)
+        self.update_log(rews, dones)
+
+        return obs, rews, dones, infos
+
+
 class AdversarialTrainer:
     """Base class for adversarial imitation learning algorithms like GAIL and AIRL."""
 
@@ -163,7 +213,7 @@ class AdversarialTrainer:
             self.venv_wrapped = reward_wrapper.RewardVecEnvWrapper(
                 self.venv_norm_obs, self.discrim.predict_reward_train
             )
-        self.venv_train = vec_env.VecNormalize(self.venv_wrapped, norm_obs=False)
+        self.venv_train = VecRewardNormalize(self.venv_wrapped)
 
         self.gen_algo.set_env(self.venv_train)
 
@@ -271,6 +321,9 @@ class AdversarialTrainer:
                 **learn_kwargs,
             )
             self._global_step += 1
+            self.venv_wrapped.log_callback(logger)
+            self.venv_train.log_callback(logger)
+            self.venv_train.batch_over()
 
         gen_samples = self.venv_buffering.pop_transitions()
         self._gen_replay_buffer.store(gen_samples)

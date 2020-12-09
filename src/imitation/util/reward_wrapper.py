@@ -1,5 +1,6 @@
 """Common wrapper for adding custom reward values to an environment."""
 import collections
+from typing import Sequence
 
 import numpy as np
 from stable_baselines3.common import vec_env
@@ -7,7 +8,30 @@ from stable_baselines3.common import vec_env
 from imitation.rewards import common
 
 
-class RewardVecEnvWrapper(vec_env.VecEnvWrapper):
+class RewardLogMixin:
+    def __init__(self, venv: vec_env.VecEnv, log_name: str, ep_history: int = 100):
+        self.log_name = log_name
+        self.episode_rewards = collections.deque(maxlen=ep_history)
+        self._cumulative_rew = np.zeros((venv.num_envs,))
+
+    def log_callback(self, logger):
+        """Logs mean reward over the last `ep_history` episodes."""
+        if len(self.episode_rewards) == 0:
+            return
+        mean = sum(self.episode_rewards) / len(self.episode_rewards)
+        logger.record(self.log_name, mean)
+
+    def update_log(self, rews: np.ndarray, dones: Sequence[bool]):
+        """Update statistics."""
+        self._cumulative_rew += rews
+        for single_done, single_ep_rew in zip(dones, self._cumulative_rew):
+            if single_done:
+                self.episode_rewards.append(single_ep_rew)
+        done_mask = np.asarray(dones, dtype="bool").reshape((len(dones),))
+        self._cumulative_rew[done_mask] = 0
+
+
+class RewardVecEnvWrapper(vec_env.VecEnvWrapper, RewardLogMixin):
     def __init__(
         self, venv: vec_env.VecEnv, reward_fn: common.RewardFn, ep_history: int = 100
     ):
@@ -29,18 +53,10 @@ class RewardVecEnvWrapper(vec_env.VecEnvWrapper):
                 mean reward.
         """
         assert not isinstance(venv, RewardVecEnvWrapper)
-        super().__init__(venv)
-        self.episode_rewards = collections.deque(maxlen=ep_history)
-        self._cumulative_rew = np.zeros((venv.num_envs,))
+        vec_env.VecEnvWrapper.__init__(self, venv)
+        RewardLogMixin.__init__(self, venv, "rollout/wrapped_eprewmean", ep_history)
         self.reward_fn = reward_fn
-        self.reset()
-
-    def log_callback(self, logger):
-        """Logs mean reward over the last `ep_history` episodes."""
-        if len(self.episode_rewards) == 0:
-            return
-        mean = sum(self.episode_rewards) / len(self.episode_rewards)
-        logger.record("eprewmean_wrapped", mean)
+        self.reset()  # TODO(adam): why?
 
     @property
     def envs(self):
@@ -70,14 +86,8 @@ class RewardVecEnvWrapper(vec_env.VecEnvWrapper):
 
         rews = self.reward_fn(self._old_obs, self._actions, obs_fixed, np.array(dones))
         assert len(rews) == len(obs), "must return one rew for each env"
-        done_mask = np.asarray(dones, dtype="bool").reshape((len(dones),))
 
-        # Update statistics
-        self._cumulative_rew += rews
-        for single_done, single_ep_rew in zip(dones, self._cumulative_rew):
-            if single_done:
-                self.episode_rewards.append(single_ep_rew)
-        self._cumulative_rew[done_mask] = 0
+        self.update_log(rews, dones)
 
         # we can just use obs instead of obs_fixed because on the next iteration
         # after a reset we DO want to access the first observation of the new
