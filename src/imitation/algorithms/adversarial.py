@@ -271,6 +271,7 @@ class AdversarialTrainer:
                 **learn_kwargs,
             )
             self._global_step += 1
+            self.venv_wrapped.log_callback(logger)
 
         gen_samples = self.venv_buffering.pop_transitions()
         self._gen_replay_buffer.store(gen_samples)

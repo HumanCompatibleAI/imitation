@@ -40,7 +40,7 @@ class RewardVecEnvWrapper(vec_env.VecEnvWrapper):
         if len(self.episode_rewards) == 0:
             return
         mean = sum(self.episode_rewards) / len(self.episode_rewards)
-        logger.record("eprewmean_wrapped", mean)
+        logger.record("rollout/wrapped_eprewmean", mean)
 
     @property
     def envs(self):
