@@ -379,18 +379,17 @@ class AdversarialTrainer:
         assert n_gen == len(gen_samples["acts"])
         assert n_gen == len(gen_samples["next_obs"])
 
-        # Policy and reward network were trained on normalized observations.
-        expert_obs_norm = self.venv_train_norm.normalize_obs(expert_samples["obs"])
-        gen_obs_norm = self.venv_train_norm.normalize_obs(gen_samples["obs"])
-
         # Concatenate rollouts, and label each row as expert or generator.
-        obs = np.concatenate([expert_obs_norm, gen_obs_norm])
+        obs = np.concatenate([expert_samples["obs"], gen_samples["obs"]])
         acts = np.concatenate([expert_samples["acts"], gen_samples["acts"]])
         next_obs = np.concatenate([expert_samples["next_obs"], gen_samples["next_obs"]])
         dones = np.concatenate([expert_samples["dones"], gen_samples["dones"]])
         labels_gen_is_one = np.concatenate(
             [np.zeros(n_expert, dtype=int), np.ones(n_gen, dtype=int)]
         )
+        # Policy and reward network were trained on normalized observations.
+        obs = self.venv_train_norm.normalize_obs(obs)
+        next_obs = self.venv_train_norm.normalize_obs(next_obs)
 
         # Calculate generator-policy log probabilities.
         with th.no_grad():
