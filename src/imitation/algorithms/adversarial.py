@@ -44,13 +44,14 @@ class AdversarialTrainer:
         n_disc_updates_per_round: int = 2,
         *,
         log_dir: str = "output/",
+        normalize_obs: bool = True,
+        normalize_reward: bool = True,
         disc_opt_cls: Type[th.optim.Optimizer] = th.optim.Adam,
         disc_opt_kwargs: Optional[Mapping] = None,
         gen_replay_buffer_capacity: Optional[int] = None,
         init_tensorboard: bool = False,
         init_tensorboard_graph: bool = False,
         debug_use_ground_truth: bool = False,
-        device: Union[str, th.device] = "auto",
     ):
         """Builds AdversarialTrainer.
 
@@ -81,6 +82,8 @@ class AdversarialTrainer:
             n_discrim_updates_per_round: The number of discriminator updates after each
                 round of generator updates in AdversarialTrainer.learn().
             log_dir: Directory to store TensorBoard logs, plots, etc. in.
+            normalize_obs: Whether to normalize observations with `VecNormalize`.
+            normalize_reward: Whether to normalize rewards with `VecNormalize`.
             disc_opt_cls: The optimizer for discriminator training.
             disc_opt_kwargs: Parameters for discriminator training.
             gen_replay_buffer_capacity: The capacity of the
@@ -153,17 +156,23 @@ class AdversarialTrainer:
 
         self.venv_buffering = wrappers.BufferingWrapper(self.venv)
         self.venv_norm_obs = vec_env.VecNormalize(
-            self.venv_buffering, norm_reward=False
+            self.venv_buffering,
+            norm_reward=False,
+            norm_obs=normalize_obs,
         )
 
         if debug_use_ground_truth:
             # Would use an identity reward fn here, but RewardFns can't see rewards.
-            self.venv_train = self.venv
+            self.venv_wrapped = self.venv_norm_obs
+            self.gen_callback = None
         else:
             self.venv_wrapped = reward_wrapper.RewardVecEnvWrapper(
                 self.venv_norm_obs, self.discrim.predict_reward_train
             )
-        self.venv_train = vec_env.VecNormalize(self.venv_wrapped, norm_obs=False)
+            self.gen_callback = self.venv_wrapped.log_callback
+        self.venv_train = vec_env.VecNormalize(
+            self.venv_wrapped, norm_obs=False, norm_reward=normalize_reward
+        )
 
         self.gen_algo.set_env(self.venv_train)
 
@@ -271,7 +280,9 @@ class AdversarialTrainer:
                 **learn_kwargs,
             )
             self._global_step += 1
-            self.venv_wrapped.log_callback(logger)
+
+            if self.gen_callback:
+                self.gen_callback(logger)
 
         gen_samples = self.venv_buffering.pop_transitions()
         self._gen_replay_buffer.store(gen_samples)
