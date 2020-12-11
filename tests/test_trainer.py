@@ -114,7 +114,7 @@ def test_train_gen_train_disc_no_crash(trainer, n_updates=2):
 @pytest.mark.expensive
 def test_train_disc_improve_D(tmpdir, trainer, n_timesteps=200, n_steps=1000):
     gen_samples = rollout.generate_transitions(
-        trainer.gen_policy, trainer.venv_train_norm, n_timesteps=n_timesteps
+        trainer.gen_policy, trainer.venv_train, n_timesteps=n_timesteps
     )
     loss1 = trainer.eval_disc_loss(gen_samples=gen_samples)
     for _ in range(n_steps):
