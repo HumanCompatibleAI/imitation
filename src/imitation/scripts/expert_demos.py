@@ -4,6 +4,7 @@ import os.path as osp
 from typing import Optional
 
 from sacred.observers import FileStorageObserver
+from stable_baselines3.common import callbacks
 from stable_baselines3.common import logger as sb_logger
 from stable_baselines3.common.vec_env import VecNormalize
 
@@ -14,6 +15,25 @@ from imitation.rewards.serialize import load_reward
 from imitation.scripts.config.expert_demos import expert_demos_ex
 from imitation.util import logger, util
 from imitation.util.reward_wrapper import RewardVecEnvWrapper
+
+
+class SavePolicyCallback(callbacks.EventCallback):
+    def __init__(
+        self, policy_dir: str, vec_normalize: Optional[VecNormalize], *args, **kwargs
+    ):
+        """Builds SavePolicyCallback.
+
+        Args:
+            policy_dir: Directory to save checkpoints.
+            vec_normalize: VecNormalize object to save alongside policy.
+        """
+        super().__init__(*args, **kwargs)
+        self.policy_dir = policy_dir
+        self.vec_normalize = vec_normalize
+
+    def _on_step(self) -> bool:
+        output_dir = osp.join(self.policy_dir, f"{self.num_timesteps:012d}")
+        serialize.save_stable_model(output_dir, self.model, self.vec_normalize)
 
 
 @expert_demos_ex.main
@@ -33,7 +53,6 @@ def rollouts_and_policy(
     n_episodes_eval: int,
     reward_type: Optional[str],
     reward_path: Optional[str],
-    rollout_save_interval: int,
     rollout_save_final: bool,
     rollout_save_n_timesteps: Optional[int],
     rollout_save_n_episodes: Optional[int],
@@ -136,11 +155,11 @@ def rollouts_and_policy(
         max_episode_steps=max_episode_steps,
     )
 
-    log_callbacks = []
+    callback_objs = []
     if reward_type is not None:
         reward_fn = load_reward(reward_type, reward_path, venv)
         venv = RewardVecEnvWrapper(venv, reward_fn)
-        log_callbacks.append(venv.log_callback)
+        callback_objs.append(venv.make_log_callback(sb_logger))
         logging.info(f"Wrapped env in reward {reward_type} from {reward_path}.")
 
     vec_normalize = None
@@ -149,24 +168,13 @@ def rollouts_and_policy(
 
     policy = util.init_rl(venv, verbose=1, **init_rl_kwargs)
 
-    # Make callback to save intermediate artifacts during training.
-    step = 0
-
-    def callback(locals_: dict, _) -> bool:
-        nonlocal step
-        step += 1
-        policy = locals_["self"]
-
-        # TODO(adam): make logging frequency configurable
-        for callback in log_callbacks:
-            callback(sb_logger)
-
-        if rollout_save_interval > 0 and step % rollout_save_interval == 0:
-            save_path = osp.join(rollout_dir, f"{step}.pkl")
-            rollout.rollout_and_save(save_path, policy, venv, sample_until)
-        if policy_save_interval > 0 and step % policy_save_interval == 0:
-            output_dir = os.path.join(policy_dir, f"{step:05d}")
-            serialize.save_stable_model(output_dir, policy, vec_normalize)
+    if policy_save_interval > 0:
+        save_policy_callback = SavePolicyCallback(policy_dir, vec_normalize)
+        save_policy_callback = callbacks.EveryNTimesteps(
+            policy_save_interval, save_policy_callback
+        )
+        callback_objs.append(save_policy_callback)
+    callback = callbacks.CallbackList(callback_objs)
 
     policy.learn(total_timesteps, callback=callback)
 

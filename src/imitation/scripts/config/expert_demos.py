@@ -25,12 +25,11 @@ def expert_demos_defaults():
     reward_type = None  # override reward type
     reward_path = None  # override reward path
 
-    rollout_save_interval = -1  # Num updates between saves (<=0 disables)
     rollout_save_final = True  # If True, save after training is finished.
     rollout_save_n_timesteps = None  # Min timesteps saved per file, optional.
     rollout_save_n_episodes = None  # Num episodes saved per file, optional.
 
-    policy_save_interval = 2000  # Num updates between saves (<=0 disables)
+    policy_save_interval = 10000  # Num timesteps between saves (<=0 disables)
     policy_save_final = True  # If True, save after training is finished.
 
     init_tensorboard = False  # If True, then write Tensorboard logs.
