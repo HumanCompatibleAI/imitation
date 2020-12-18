@@ -245,7 +245,6 @@ def _generate_test_rollouts(tmpdir: str, env_named_config: str) -> str:
     expert_demos.expert_demos_ex.run(
         named_configs=[env_named_config, "fast"],
         config_updates=dict(
-            rollout_save_interval=0,
             log_dir=tmpdir,
         ),
     )
