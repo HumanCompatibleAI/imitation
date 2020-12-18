@@ -169,7 +169,7 @@ class AdversarialTrainer:
             self.venv_wrapped = reward_wrapper.RewardVecEnvWrapper(
                 self.venv_norm_obs, self.discrim.predict_reward_train
             )
-            self.gen_callback = self.venv_wrapped.log_callback
+            self.gen_callback = self.venv_wrapped.make_log_callback()
         self.venv_train = vec_env.VecNormalize(
             self.venv_wrapped, norm_obs=False, norm_reward=normalize_reward
         )
@@ -277,12 +277,10 @@ class AdversarialTrainer:
             self.gen_algo.learn(
                 total_timesteps=total_timesteps,
                 reset_num_timesteps=False,
+                callback=self.gen_callback,
                 **learn_kwargs,
             )
             self._global_step += 1
-
-            if self.gen_callback:
-                self.gen_callback(logger)
 
         gen_samples = self.venv_buffering.pop_transitions()
         self._gen_replay_buffer.store(gen_samples)

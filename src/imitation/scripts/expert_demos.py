@@ -5,7 +5,6 @@ from typing import Optional
 
 from sacred.observers import FileStorageObserver
 from stable_baselines3.common import callbacks
-from stable_baselines3.common import logger as sb_logger
 from stable_baselines3.common.vec_env import VecNormalize
 
 import imitation.util.sacred as sacred_util
@@ -140,7 +139,7 @@ def rollouts_and_policy(
     if reward_type is not None:
         reward_fn = load_reward(reward_type, reward_path, venv)
         venv = RewardVecEnvWrapper(venv, reward_fn)
-        callback_objs.append(venv.make_log_callback(sb_logger))
+        callback_objs.append(venv.make_log_callback())
         logging.info(f"Wrapped env in reward {reward_type} from {reward_path}.")
 
     vec_normalize = None

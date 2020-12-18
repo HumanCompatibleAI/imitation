@@ -4,7 +4,7 @@ import collections
 from typing import Deque
 
 import numpy as np
-from stable_baselines3.common import callbacks, logger, vec_env
+from stable_baselines3.common import callbacks, vec_env
 
 from imitation.rewards import common
 
@@ -12,11 +12,8 @@ from imitation.rewards import common
 class WrappedRewardCallback(callbacks.BaseCallback):
     """Logs mean wrapped reward as part of RL (or other) training."""
 
-    def __init__(
-        self, episode_rewards: Deque[float], log_obj: logger.Logger, *args, **kwargs
-    ):
+    def __init__(self, episode_rewards: Deque[float], *args, **kwargs):
         self.episode_rewards = episode_rewards
-        self.log_obj = log_obj
         super().__init__(self, *args, **kwargs)
 
     def _on_step(self) -> bool:
@@ -57,9 +54,9 @@ class RewardVecEnvWrapper(vec_env.VecEnvWrapper):
         self.reward_fn = reward_fn
         self.reset()
 
-    def make_log_callback(self, log_obj: logger.Logger) -> WrappedRewardCallback:
+    def make_log_callback(self) -> WrappedRewardCallback:
         """Creates `WrappedRewardCallback` connected to this `RewardVecEnvWrapper`."""
-        return WrappedRewardCallback(self.episode_rewards, log_obj)
+        return WrappedRewardCallback(self.episode_rewards)
 
     @property
     def envs(self):
