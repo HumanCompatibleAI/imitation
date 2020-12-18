@@ -1,6 +1,4 @@
 """Load serialized policies of different types."""
-# TODO(scottemmons): Only import packages and modules to adhere to style guide:
-#  https://google.github.io/styleguide/pyguide.html#22-imports
 
 # FIXME(sam): it seems like this module could mostly be replaced with a few
 # torch.load() and torch.save() calls
@@ -12,10 +10,10 @@ from typing import Callable, Optional, Tuple, Type, Union
 
 import numpy as np
 import torch as th
-from stable_baselines3.common import on_policy_algorithm, policies, vec_env
+from stable_baselines3.common import callbacks, on_policy_algorithm, policies, vec_env
 from torch import nn
 
-from imitation.policies.base import RandomPolicy, ZeroPolicy
+from imitation.policies import base
 from imitation.util import registry
 
 PolicyLoaderFn = Callable[[str, vec_env.VecEnv], policies.BasePolicy]
@@ -132,11 +130,11 @@ def _load_stable_baselines(
 
 policy_registry.register(
     "random",
-    value=registry.build_loader_fn_require_space(RandomPolicy),
+    value=registry.build_loader_fn_require_space(base.RandomPolicy),
 )
 policy_registry.register(
     "zero",
-    value=registry.build_loader_fn_require_space(ZeroPolicy),
+    value=registry.build_loader_fn_require_space(base.ZeroPolicy),
 )
 
 
@@ -189,3 +187,32 @@ def save_stable_model(
         with open(os.path.join(output_dir, "vec_normalize.pkl"), "wb") as f:
             pickle.dump(vec_normalize, f)
     logging.info("Saved policy to %s", output_dir)
+
+
+class SavePolicyCallback(callbacks.EventCallback):
+    """Saves the policy using `save_stable_model` each time it is called.
+
+    Should be used in conjunction with `callbacks.EveryNTimesteps`
+    or another event-based trigger.
+    """
+
+    def __init__(
+        self,
+        policy_dir: str,
+        vec_normalize: Optional[vec_env.VecNormalize],
+        *args,
+        **kwargs,
+    ):
+        """Builds SavePolicyCallback.
+
+        Args:
+            policy_dir: Directory to save checkpoints.
+            vec_normalize: If specified, VecNormalize object to save alongside policy.
+        """
+        super().__init__(*args, **kwargs)
+        self.policy_dir = policy_dir
+        self.vec_normalize = vec_normalize
+
+    def _on_step(self) -> bool:
+        output_dir = os.path.join(self.policy_dir, f"{self.num_timesteps:012d}")
+        save_stable_model(output_dir, self.model, self.vec_normalize)

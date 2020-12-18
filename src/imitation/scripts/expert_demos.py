@@ -17,25 +17,6 @@ from imitation.util import logger, util
 from imitation.util.reward_wrapper import RewardVecEnvWrapper
 
 
-class SavePolicyCallback(callbacks.EventCallback):
-    def __init__(
-        self, policy_dir: str, vec_normalize: Optional[VecNormalize], *args, **kwargs
-    ):
-        """Builds SavePolicyCallback.
-
-        Args:
-            policy_dir: Directory to save checkpoints.
-            vec_normalize: VecNormalize object to save alongside policy.
-        """
-        super().__init__(*args, **kwargs)
-        self.policy_dir = policy_dir
-        self.vec_normalize = vec_normalize
-
-    def _on_step(self) -> bool:
-        output_dir = osp.join(self.policy_dir, f"{self.num_timesteps:012d}")
-        serialize.save_stable_model(output_dir, self.model, self.vec_normalize)
-
-
 @expert_demos_ex.main
 def rollouts_and_policy(
     _run,
@@ -169,7 +150,7 @@ def rollouts_and_policy(
     policy = util.init_rl(venv, verbose=1, **init_rl_kwargs)
 
     if policy_save_interval > 0:
-        save_policy_callback = SavePolicyCallback(policy_dir, vec_normalize)
+        save_policy_callback = serialize.SavePolicyCallback(policy_dir, vec_normalize)
         save_policy_callback = callbacks.EveryNTimesteps(
             policy_save_interval, save_policy_callback
         )
