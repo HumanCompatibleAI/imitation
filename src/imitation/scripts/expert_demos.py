@@ -6,6 +6,7 @@ from typing import Optional
 import stable_baselines.logger as sb_logger
 import tensorflow as tf
 from sacred.observers import FileStorageObserver
+from stable_baselines.common import callbacks
 from stable_baselines.common.vec_env import VecNormalize
 
 import imitation.util.sacred as sacred_util
@@ -34,7 +35,6 @@ def rollouts_and_policy(
     n_episodes_eval: int,
     reward_type: Optional[str],
     reward_path: Optional[str],
-    rollout_save_interval: int,
     rollout_save_final: bool,
     rollout_save_n_timesteps: Optional[int],
     rollout_save_n_episodes: Optional[int],
@@ -134,13 +134,13 @@ def rollouts_and_policy(
             max_episode_steps=max_episode_steps,
         )
 
-        log_callbacks = []
+        callback_objs = []
         with contextlib.ExitStack() as stack:
             if reward_type is not None:
                 reward_fn_ctx = load_reward(reward_type, reward_path, venv)
                 reward_fn = stack.enter_context(reward_fn_ctx)
                 venv = RewardVecEnvWrapper(venv, reward_fn)
-                log_callbacks.append(venv.log_callback)
+                callback_objs.append(venv.make_log_callback(sb_logger))
                 tf.logging.info(
                     f"Wrapped env in reward {reward_type} from {reward_path}."
                 )
@@ -149,27 +149,17 @@ def rollouts_and_policy(
             if normalize:
                 venv = vec_normalize = VecNormalize(venv, **normalize_kwargs)
 
+            if policy_save_interval > 0:
+                save_policy_callback = serialize.SavePolicyCallback(
+                    policy_dir, vec_normalize
+                )
+                save_policy_callback = callbacks.EveryNTimesteps(
+                    policy_save_interval, save_policy_callback
+                )
+                callback_objs.append(save_policy_callback)
+            callback = callbacks.CallbackList(callback_objs)
+
             policy = util.init_rl(venv, verbose=1, **init_rl_kwargs)
-
-            # Make callback to save intermediate artifacts during training.
-            step = 0
-
-            def callback(_locals, _globals) -> bool:
-                del _locals, _globals
-                nonlocal step
-                step += 1
-
-                # TODO(adam): make logging frequency configurable
-                for callback in log_callbacks:
-                    callback(sb_logger)
-
-                if rollout_save_interval > 0 and step % rollout_save_interval == 0:
-                    save_path = osp.join(rollout_dir, f"{step}.pkl")
-                    rollout.rollout_and_save(save_path, policy, venv, sample_until)
-                if policy_save_interval > 0 and step % policy_save_interval == 0:
-                    output_dir = os.path.join(policy_dir, f"{step:05d}")
-                    serialize.save_stable_model(output_dir, policy, vec_normalize)
-
             policy.learn(total_timesteps, callback=callback)
 
             # Save final artifacts after training is complete.

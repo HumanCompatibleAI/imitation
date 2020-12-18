@@ -6,22 +6,20 @@ import pickle
 from typing import Callable, ContextManager, Iterator, Optional, Type
 
 import tensorflow as tf
-from stable_baselines.common.base_class import BaseRLModel
-from stable_baselines.common.policies import BasePolicy
-from stable_baselines.common.vec_env import VecEnv, VecNormalize
+from stable_baselines.common import base_class, callbacks, policies, vec_env
 
 from imitation.policies.base import RandomPolicy, ZeroPolicy
 from imitation.util import registry
 
-PolicyLoaderFn = Callable[[str, VecEnv], ContextManager[BasePolicy]]
+PolicyLoaderFn = Callable[[str, vec_env.VecEnv], ContextManager[policies.BasePolicy]]
 
 policy_registry: registry.Registry[PolicyLoaderFn] = registry.Registry()
 
 
-class NormalizePolicy(BasePolicy):
+class NormalizePolicy(policies.BasePolicy):
     """Wraps a policy, normalizing its input observations.
 
-    `VecNormalize` normalizes observations to have zero mean and unit standard
+    `vec_env.VecNormalize` normalizes observations to have zero mean and unit standard
     deviation. To do this, it collects statistics on the observations. We must
     restore these statistics when we load the policy, or we will be feeding
     observations in of a different scale to those the policy was trained with.
@@ -31,7 +29,9 @@ class NormalizePolicy(BasePolicy):
     trick will not work for fine-tuning / training policies.
     """
 
-    def __init__(self, policy: BasePolicy, vec_normalize: VecNormalize):
+    def __init__(
+        self, policy: policies.BasePolicy, vec_normalize: vec_env.VecNormalize
+    ):
         super().__init__(
             policy.sess,
             policy.ob_space,
@@ -54,7 +54,9 @@ class NormalizePolicy(BasePolicy):
         return self._wrapper(self._policy.proba_step, *args, **kwargs)
 
 
-def _load_stable_baselines(cls: Type[BaseRLModel], policy_attr: str) -> PolicyLoaderFn:
+def _load_stable_baselines(
+    cls: Type[base_class.BaseRLModel], policy_attr: str
+) -> PolicyLoaderFn:
     """Higher-order function, returning a policy loading function.
 
     Args:
@@ -67,7 +69,7 @@ def _load_stable_baselines(cls: Type[BaseRLModel], policy_attr: str) -> PolicyLo
     """
 
     @contextlib.contextmanager
-    def f(path: str, venv: VecEnv) -> Iterator[BasePolicy]:
+    def f(path: str, venv: vec_env.VecEnv) -> Iterator[policies.BasePolicy]:
         """Loads a policy saved to path, for environment env."""
         tf.logging.info(
             f"Loading Stable Baselines policy for '{cls}' " f"from '{path}'"
@@ -85,9 +87,9 @@ def _load_stable_baselines(cls: Type[BaseRLModel], policy_attr: str) -> PolicyLo
                 vec_normalize.training = False
                 vec_normalize.set_venv(venv)
                 policy = NormalizePolicy(policy, vec_normalize)
-                tf.logging.info(f"Loaded VecNormalize from '{normalize_path}'")
+                tf.logging.info(f"Loaded vec_env.VecNormalize from '{normalize_path}'")
             except FileNotFoundError:
-                # We did not use VecNormalize during training, skip
+                # We did not use vec_env.VecNormalize during training, skip
                 pass
 
             yield policy
@@ -132,8 +134,8 @@ _add_stable_baselines_policies(STABLE_BASELINES_CLASSES)
 
 
 def load_policy(
-    policy_type: str, policy_path: str, venv: VecEnv
-) -> ContextManager[BasePolicy]:
+    policy_type: str, policy_path: str, venv: vec_env.VecEnv
+) -> ContextManager[policies.BasePolicy]:
     """Load serialized policy.
 
     Args:
@@ -147,8 +149,8 @@ def load_policy(
 
 def save_stable_model(
     output_dir: str,
-    model: BaseRLModel,
-    vec_normalize: Optional[VecNormalize] = None,
+    model: base_class.BaseRLModel,
+    vec_normalize: Optional[vec_env.VecNormalize] = None,
 ) -> None:
     """Serialize policy.
 
@@ -157,7 +159,7 @@ def save_stable_model(
     Args:
         output_dir: Path to the save directory.
         policy: The stable baselines policy.
-        vec_normalize: Optionally, a VecNormalize to save statistics for.
+        vec_normalize: Optionally, a vec_env.VecNormalize to save statistics for.
             `load_policy` automatically applies `NormalizePolicy` wrapper
             when loading.
     """
@@ -167,3 +169,33 @@ def save_stable_model(
         with open(os.path.join(output_dir, "vec_normalize.pkl"), "wb") as f:
             pickle.dump(vec_normalize, f)
     tf.logging.info("Saved policy to %s", output_dir)
+
+
+class SavePolicyCallback(callbacks.EventCallback):
+    """Saves the policy using `save_stable_model` each time it is called.
+
+    Should be used in conjunction with `callbacks.EveryNTimesteps`
+    or another event-based trigger.
+    """
+
+    def __init__(
+        self,
+        policy_dir: str,
+        vec_normalize: Optional[vec_env.VecNormalize],
+        *args,
+        **kwargs,
+    ):
+        """Builds SavePolicyCallback.
+
+        Args:
+            policy_dir: Directory to save checkpoints.
+            vec_normalize: If specified, the vec_env.VecNormalize object
+                to save alongside policy.
+        """
+        super().__init__(*args, **kwargs)
+        self.policy_dir = policy_dir
+        self.vec_normalize = vec_normalize
+
+    def _on_step(self) -> bool:
+        output_dir = os.path.join(self.policy_dir, f"{self.num_timesteps:012d}")
+        save_stable_model(output_dir, self.model, self.vec_normalize)
