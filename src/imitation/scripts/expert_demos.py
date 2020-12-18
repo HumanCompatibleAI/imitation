@@ -147,8 +147,6 @@ def rollouts_and_policy(
     if normalize:
         venv = vec_normalize = VecNormalize(venv, **normalize_kwargs)
 
-    policy = util.init_rl(venv, verbose=1, **init_rl_kwargs)
-
     if policy_save_interval > 0:
         save_policy_callback = serialize.SavePolicyCallback(policy_dir, vec_normalize)
         save_policy_callback = callbacks.EveryNTimesteps(
@@ -157,6 +155,7 @@ def rollouts_and_policy(
         callback_objs.append(save_policy_callback)
     callback = callbacks.CallbackList(callback_objs)
 
+    policy = util.init_rl(venv, verbose=1, **init_rl_kwargs)
     policy.learn(total_timesteps, callback=callback)
 
     # Save final artifacts after training is complete.
