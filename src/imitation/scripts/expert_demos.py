@@ -3,7 +3,6 @@ import os
 import os.path as osp
 from typing import Optional
 
-import stable_baselines.logger as sb_logger
 import tensorflow as tf
 from sacred.observers import FileStorageObserver
 from stable_baselines.common import callbacks
@@ -140,7 +139,7 @@ def rollouts_and_policy(
                 reward_fn_ctx = load_reward(reward_type, reward_path, venv)
                 reward_fn = stack.enter_context(reward_fn_ctx)
                 venv = RewardVecEnvWrapper(venv, reward_fn)
-                callback_objs.append(venv.make_log_callback(sb_logger))
+                callback_objs.append(venv.make_log_callback())
                 tf.logging.info(
                     f"Wrapped env in reward {reward_type} from {reward_path}."
                 )

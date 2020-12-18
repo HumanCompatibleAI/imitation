@@ -121,6 +121,7 @@ class AdversarialTrainer:
             # Would use an identity reward fn here, but RewardFns can't see rewards.
             self.reward_train = None
             self.venv_train = self.venv
+            self.gen_callback = None
         else:
             self.reward_train = partial(
                 self.discrim.reward_train,
@@ -133,6 +134,7 @@ class AdversarialTrainer:
             self.venv_wrapped = reward_wrapper.RewardVecEnvWrapper(
                 self.venv_norm_obs, self.reward_train
             )
+            self.gen_callback = self.venv_wrapped.make_log_callback()
 
         self.venv_train = vec_env.VecNormalize(self.venv_wrapped, norm_obs=False)
         self.gen_policy.set_env(self.venv_train)
@@ -302,9 +304,9 @@ class AdversarialTrainer:
             self.gen_policy.learn(
                 total_timesteps=total_timesteps,
                 reset_num_timesteps=False,
+                callback=self.gen_callback,
                 **learn_kwargs,
             )
-            self.venv_wrapped.log_callback(logger)
 
         gen_samples = self.venv_buffering.pop_transitions()
         self._gen_replay_buffer.store(gen_samples)
