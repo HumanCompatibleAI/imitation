@@ -22,7 +22,7 @@ class WrappedRewardCallback(callbacks.BaseCallback):
         if len(self.episode_rewards) == 0:
             return
         mean = sum(self.episode_rewards) / len(self.episode_rewards)
-        self.logger.record("rollout/ep_rew_wrapped_mean", mean)
+        self.logger.logkv("rollout/ep_rew_wrapped_mean", mean)
 
 
 class RewardVecEnvWrapper(vec_env.VecEnvWrapper):
