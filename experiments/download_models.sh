@@ -49,4 +49,4 @@ elif [[ -d "${DATA_DIR}" ]]; then
   rm -r "${DATA_DIR}"
 fi
 
-aws s3 sync "${FLAGS[@]}" s3://shwang-chai/public/data/ "${DATA_DIR}"
+aws --no-sign-request s3 sync "${FLAGS[@]}" s3://shwang-chai/public/data/ "${DATA_DIR}"
