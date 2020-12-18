@@ -185,7 +185,7 @@ class TabularModelEnv(ResettableEnv, abc.ABC):
 
     @property
     def obs_dtype(self):
-        """Data type of observation."""
+        """Data type of observation vectors (e.g. np.float32)."""
         return self.observation_matrix.dtype
 
     # ############################### #
