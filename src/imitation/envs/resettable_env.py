@@ -126,7 +126,10 @@ class TabularModelEnv(ResettableEnv, abc.ABC):
         # Construct spaces lazily, so they can depend on properties in subclasses.
         if self._observation_space is None:
             self._observation_space = spaces.Box(
-                low=float("-inf"), high=float("inf"), shape=(self.obs_dim,)
+                low=float("-inf"),
+                high=float("inf"),
+                shape=(self.obs_dim,),
+                dtype=self.obs_dtype,
             )
         return self._observation_space
 
@@ -179,6 +182,11 @@ class TabularModelEnv(ResettableEnv, abc.ABC):
     def obs_dim(self):
         """Size of observation vectors for this MDP."""
         return self.observation_matrix.shape[1]
+
+    @property
+    def obs_dtype(self):
+        """Data type of observation vectors (e.g. np.float32)."""
+        return self.observation_matrix.dtype
 
     # ############################### #
     # METHODS THAT MUST BE OVERRIDDEN #

@@ -1,10 +1,29 @@
 """Common wrapper for adding custom reward values to an environment."""
+
 import collections
+from typing import Deque
 
 import numpy as np
-from stable_baselines3.common import vec_env
+from stable_baselines3.common import callbacks, vec_env
 
 from imitation.rewards import common
+
+
+class WrappedRewardCallback(callbacks.BaseCallback):
+    """Logs mean wrapped reward as part of RL (or other) training."""
+
+    def __init__(self, episode_rewards: Deque[float], *args, **kwargs):
+        self.episode_rewards = episode_rewards
+        super().__init__(self, *args, **kwargs)
+
+    def _on_step(self) -> bool:
+        return True
+
+    def _on_rollout_start(self) -> None:
+        if len(self.episode_rewards) == 0:
+            return
+        mean = sum(self.episode_rewards) / len(self.episode_rewards)
+        self.logger.record("rollout/ep_rew_wrapped_mean", mean)
 
 
 class RewardVecEnvWrapper(vec_env.VecEnvWrapper):
@@ -35,12 +54,9 @@ class RewardVecEnvWrapper(vec_env.VecEnvWrapper):
         self.reward_fn = reward_fn
         self.reset()
 
-    def log_callback(self, logger):
-        """Logs mean reward over the last `ep_history` episodes."""
-        if len(self.episode_rewards) == 0:
-            return
-        mean = sum(self.episode_rewards) / len(self.episode_rewards)
-        logger.record("rollout/wrapped_eprewmean", mean)
+    def make_log_callback(self) -> WrappedRewardCallback:
+        """Creates `WrappedRewardCallback` connected to this `RewardVecEnvWrapper`."""
+        return WrappedRewardCallback(self.episode_rewards)
 
     @property
     def envs(self):
