@@ -122,13 +122,14 @@ class EpochOrBatchIteratorWithProgress:
                 batch_suffix = f"/{self.n_batches}"
 
         def update_desc():
+            assert display is not None
             display.set_description(
                 f"batch: {batch_num}{batch_suffix}  epoch: {epoch_num}{epoch_suffix}"
             )
 
         try:
             while True:
-                if self.use_tqdm:
+                if display is not None:
                     update_desc()
                 for batch in self.data_loader:
                     batch_num += 1
@@ -142,7 +143,7 @@ class EpochOrBatchIteratorWithProgress:
                     )
                     yield batch, stats
                     if not self.use_epochs:
-                        if self.use_tqdm:
+                        if display is not None:
                             update_desc()
                             display.update(1)
                         if batch_num >= self.n_batches:
@@ -152,14 +153,14 @@ class EpochOrBatchIteratorWithProgress:
                     callback()
 
                 if self.use_epochs:
-                    if self.use_tqdm:
+                    if display is not None:
                         update_desc()
                         display.update(1)
                     if epoch_num >= self.n_epochs:
                         return
 
         finally:
-            if self.use_tqdm:
+            if display is not None:
                 display.close()
 
 
@@ -191,7 +192,7 @@ class BC:
         l2_weight: float = 0.0,
         augmentation_fn: Callable[[th.Tensor], th.Tensor] = None,
         normalize_images: bool = True,
-        device: Union[str, th.device] = "auto",
+        device: Union[str, th.device] = "auto",  # pytype: disable=module-attr
     ):
         """Behavioral cloning (BC).
 
@@ -240,7 +241,7 @@ class BC:
         self.device = utils.get_device(device)
 
         self.policy = self.policy_class(**self.policy_kwargs).to(
-            self.device
+            self.device,
         )  # pytype: disable=not-instantiable
         optimizer_kwargs = optimizer_kwargs or {}
         self.optimizer = optimizer_cls(self.policy.parameters(), **optimizer_kwargs)
