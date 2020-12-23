@@ -152,9 +152,9 @@ class EpochOrBatchIteratorWithProgress:
                 epoch_num += 1
                 for callback in self.epoch_end_callbacks:
                     callback(
-                        epoch_num,
-                        batch_num,
-                        samples_so_far,
+                        epoch_num=epoch_num,
+                        batch_num=batch_num,
+                        samples_so_far=samples_so_far,
                     )
 
                 if self.use_epochs:
