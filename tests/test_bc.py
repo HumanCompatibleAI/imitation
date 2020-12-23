@@ -104,7 +104,7 @@ def test_bc(trainer: bc.BC, venv):
     novice_ret_mean = rollout.mean_return(trainer.policy, venv, sample_until)
     callback_count = 0
 
-    def callback():
+    def callback(epoch_num, batch_num, samples_so_far):
         nonlocal callback_count
         callback_count += 1
 

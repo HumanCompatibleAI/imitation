@@ -73,7 +73,7 @@ class EpochOrBatchIteratorWithProgress:
         n_epochs: Optional[int] = None,
         n_batches: Optional[int] = None,
         use_tqdm: Optional[bool] = None,
-        epoch_end_callbacks: Sequence[Callable[[], None]] = (),
+        epoch_end_callbacks: Sequence[Callable[[int, int, int], None]] = (),
     ):
         """Wraps DataLoader so that all BC batches can be processed in a one for-loop.
 
@@ -87,8 +87,9 @@ class EpochOrBatchIteratorWithProgress:
                 __iter__. Exactly one of `n_epochs` and `n_batches` should be provided.
             use_tqdm: Show a tqdm progress bar if True. True by default if stdout is a
                 TTY.
-            epoch_end_callbacks: A Sequence (e.g. List) of callback functions without
-                parameters to be called at the end of every epoch.
+            epoch_end_callbacks: Sequence (e.g. list) of callbacks with three
+                keyworded int parameters, epoch_num, batch_num, and samples_so_far,
+                to call at the end of each epoch.
         """
         if n_epochs is not None and n_batches is None:
             self.use_epochs = True
@@ -150,7 +151,11 @@ class EpochOrBatchIteratorWithProgress:
                             return
                 epoch_num += 1
                 for callback in self.epoch_end_callbacks:
-                    callback()
+                    callback(
+                        epoch_num,
+                        batch_num,
+                        samples_so_far,
+                    )
 
                 if self.use_epochs:
                     if display is not None:
@@ -246,15 +251,15 @@ class BC:
         optimizer_kwargs = optimizer_kwargs or {}
         self.optimizer = optimizer_cls(self.policy.parameters(), **optimizer_kwargs)
 
-        self.base_epoch_end_callbacks = ()
         if lr_scheduler_cls is None:
             self.lr_scheduler = None
+            self.base_epoch_end_callbacks = ()
         else:
             self.lr_scheduler = lr_scheduler_cls(
                 optimizer=self.optimizer,
                 **lr_scheduler_kwargs,
             )
-            self.base_epoch_end_callbacks += (self.lr_scheduler.step,)
+            self.base_epoch_end_callbacks = (lambda **kwargs: self.lr_scheduler.step(),)
 
         self.expert_data_loader: Optional[Iterable[Mapping]] = None
         self.ent_weight = ent_weight
@@ -383,7 +388,7 @@ class BC:
         *,
         n_epochs: Optional[int] = None,
         n_batches: Optional[int] = None,
-        epoch_end_callbacks: Sequence[Callable[[], None]] = (),
+        epoch_end_callbacks: Sequence[Callable] = (),
         log_interval: int = 100,
     ):
         """Train with supervised learning for some number of epochs.
@@ -396,8 +401,9 @@ class BC:
                 training. Provide exactly one of `n_epochs` and `n_batches`.
             n_batches: Number of batches loaded from dataset before ending training.
                 Provide exactly one of `n_epochs` and `n_batches`.
-            epoch_end_callbacks: Sequence (e.g. list) of callbacks with no parameters to
-                call at the end of each epoch.
+            epoch_end_callbacks: Sequence (e.g. list) of callbacks with three
+                keyworded int parameters, epoch_num, batch_num, and samples_so_far,
+                to call at the end of each epoch.
             log_interval: Log stats after every log_interval batches.
         """
         callbacks = tuple(epoch_end_callbacks) + tuple(self.base_epoch_end_callbacks)
