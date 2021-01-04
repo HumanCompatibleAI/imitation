@@ -166,7 +166,7 @@ def test_train_disc_improve_D(
     expert_samples = types.dataclass_quick_asdict(expert_samples)
     gen_samples = rollout.generate_transitions(
         trainer.gen_algo,
-        trainer.venv_train_norm,
+        trainer.venv_train,
         n_timesteps=expert_batch_size,
         truncate=True,
     )
