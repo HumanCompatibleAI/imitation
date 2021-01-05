@@ -55,7 +55,9 @@ setup(
         "torch>=1.4.0",
         "tqdm",
         "scikit-learn>=0.21.2",
-        "stable-baselines3~=0.10.0",
+        # TODO(sam): remove 'a4' once SB3 0.11.0 is released.
+        # (we need SB3>=0.11 for the transpose fix in SB3#213)
+        "stable-baselines3~=0.11.0a4",
         "jax~=0.1.66",
         "jaxlib~=0.1.47",
         "sacred~=0.8.1",

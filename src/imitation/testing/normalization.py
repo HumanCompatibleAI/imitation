@@ -1,6 +1,8 @@
 """Custom environment and assertions for checking that image normalization
 works correctly."""
 
+from typing import Optional
+
 import gym
 import numpy as np
 import stable_baselines3.common.preprocessing as sb3_preproc
@@ -32,8 +34,9 @@ class NormalizationTestEnv(gym.Env):
         self.action_space = gym.spaces.Discrete(2)
         obs_shape = self.observation_space.shape
         obs_size = np.prod(obs_shape)
-        obs_flat = np.linspace(min_val, max_val, obs_size, dtype="uint8")
+        obs_flat = np.linspace(start=min_val, stop=max_val, num=obs_size, dtype="uint8")
         self._obs = obs_flat.reshape(obs_shape)
+        assert self._obs.dtype == np.uint8  # just double-checking…
         self._expected_normalized_obs = self._obs.astype("float32") / 255.0
 
     def reset(self):
@@ -71,7 +74,7 @@ class NormalizationTestFeatEx(sb3_torch_layers.BaseFeaturesExtractor):
     def __init__(self, observation_space, features_dim=11, *, norm_env):
         super().__init__(observation_space, features_dim)
         self._assert_obs_is_normalized = norm_env.assert_obs_is_normalized
-        self._assert_calls = 0
+        self.assert_calls = 0
         # the "network" here is a simple linear layer on top of the image (it
         # doesn't really matter what it does in our tests---I just chose this
         # so we would have real parameters and gradients)
@@ -80,7 +83,7 @@ class NormalizationTestFeatEx(sb3_torch_layers.BaseFeaturesExtractor):
 
     def forward(self, obs: th.Tensor) -> th.Tensor:
         self._assert_obs_is_normalized(obs)
-        self._assert_calls += 1
+        self.assert_calls += 1
         return self.process_net(obs)
 
 
@@ -90,37 +93,48 @@ class NormalizationTestDiscriminator(discrim_nets.ActObsMLP):
     def __init__(self, *args, norm_env, **kwargs):
         super().__init__(*args, **kwargs)
         self._assert_obs_is_normalized = norm_env.assert_obs_is_normalized
-        self._assert_calls = 0
+        self.assert_calls = 0
 
     def forward(self, obs: th.Tensor, acts: th.Tensor) -> th.Tensor:
         self._assert_obs_is_normalized(obs)
-        self._assert_calls += 1
+        self.assert_calls += 1
         return super().forward(obs, acts)
 
 
 class NormalizationTestRewardMLP(reward_nets.BasicRewardMLP):
     """Base reward net for AIRL that checks against ref obs in NormalizationTestEnv."""
 
-    def __init__(self, *args, norm_env, **kwargs):
+    def __init__(
+        self,
+        *args,
+        norm_env,
+        use_state=True,
+        use_action=True,
+        use_next_state=True,
+        use_done=True,
+        **kwargs,
+    ):
         super().__init__(
             *args,
             **kwargs,
-            use_state=True,
-            use_action=True,
-            use_next_state=True,
-            use_done=True,
+            use_state=use_state,
+            use_action=use_action,
+            use_next_state=use_next_state,
+            use_done=use_done,
         )
         self._assert_obs_is_normalized = norm_env.assert_obs_is_normalized
-        self._assert_calls = 0
+        self.assert_calls = 0
 
     def forward(
         self,
-        state: th.Tensor,
-        action: th.Tensor,
-        next_state: th.Tensor,
-        done: th.Tensor,
+        state: Optional[th.Tensor] = None,
+        action: Optional[th.Tensor] = None,
+        next_state: Optional[th.Tensor] = None,
+        done: Optional[th.Tensor] = None,
     ) -> th.Tensor:
-        self._assert_obs_is_normalized(state)
-        self._assert_obs_is_normalized(next_state)
-        self._assert_calls += 1
+        if state is not None:
+            self._assert_obs_is_normalized(state)
+        if next_state is not None:
+            self._assert_obs_is_normalized(next_state)
+        self.assert_calls += 1
         return super().forward(state, action, next_state, done)

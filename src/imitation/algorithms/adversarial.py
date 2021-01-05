@@ -46,6 +46,8 @@ class AdversarialTrainer:
         log_dir: str = "output/",
         normalize_obs: bool = True,
         normalize_reward: bool = True,
+        clip_obs: float = float("inf"),
+        clip_reward: float = float("inf"),
         disc_opt_cls: Type[th.optim.Optimizer] = th.optim.Adam,
         disc_opt_kwargs: Optional[Mapping] = None,
         gen_replay_buffer_capacity: Optional[int] = None,
@@ -85,6 +87,8 @@ class AdversarialTrainer:
             log_dir: Directory to store TensorBoard logs, plots, etc. in.
             normalize_obs: Whether to normalize observations with `VecNormalize`.
             normalize_reward: Whether to normalize rewards with `VecNormalize`.
+            clip_obs: Bound on l_infty magnitude of observation.
+            clip_reward: Bound on magnitude of reward.
             disc_opt_cls: The optimizer for discriminator training.
             disc_opt_kwargs: Parameters for discriminator training.
             gen_replay_buffer_capacity: The capacity of the
@@ -165,6 +169,8 @@ class AdversarialTrainer:
             self.venv_buffering,
             norm_reward=False,
             norm_obs=normalize_obs,
+            clip_obs=clip_obs,
+            clip_reward=float("inf"),
         )
 
         if debug_use_ground_truth:
@@ -177,7 +183,11 @@ class AdversarialTrainer:
             )
             self.gen_callback = self.venv_wrapped.make_log_callback()
         self.venv_train = vec_env.VecNormalize(
-            self.venv_wrapped, norm_obs=False, norm_reward=normalize_reward
+            self.venv_wrapped,
+            norm_obs=False,
+            norm_reward=normalize_reward,
+            clip_obs=float("inf"),
+            clip_reward=clip_reward,
         )
 
         self.gen_algo.set_env(self.venv_train)
@@ -339,8 +349,7 @@ class AdversarialTrainer:
         preprocessed = preprocessing.preprocess_obs(
             tensor,
             space,
-            # TODO(sam): can I remove "scale" kwarg in DiscrimNet etc.?
-            normalize_images=self.discrim.scale,
+            normalize_images=self.discrim.normalize_images,
         )
         return preprocessed
 

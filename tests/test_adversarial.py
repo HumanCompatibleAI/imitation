@@ -241,6 +241,7 @@ def test_adversarial_normalization(_algorithm_cls, tmpdir: str):
             gen_algo=gen_algo,
             log_dir=tmpdir,
             expert_batch_size=32,
+            normalize_obs=False,
             discrim_kwargs=dict(
                 discrim_net=normalization.NormalizationTestDiscriminator(
                     action_space=venv.action_space,
@@ -251,25 +252,33 @@ def test_adversarial_normalization(_algorithm_cls, tmpdir: str):
             ),
         )
     elif _algorithm_cls is adversarial.AIRL:
-
         trainer = _algorithm_cls(
             venv=venv,
             expert_data=expert_transitions,
             gen_algo=gen_algo,
             log_dir=tmpdir,
             expert_batch_size=32,
+            normalize_obs=False,
             reward_net_kwargs=dict(
                 base_reward_net=normalization.NormalizationTestRewardMLP(
                     action_space=venv.action_space,
                     observation_space=venv.observation_space,
                     norm_env=venv.envs[0],
                     hid_sizes=(5, 7),
+                    use_state=True,
+                    use_action=True,
+                    use_next_state=True,
+                    use_done=True,
                 ),
-                potential_net=normalization.NormalizationTestDiscriminator(
+                potential_net=normalization.NormalizationTestRewardMLP(
                     action_space=venv.action_space,
                     observation_space=venv.observation_space,
                     norm_env=venv.envs[0],
                     hid_sizes=(5, 7),
+                    use_state=True,
+                    use_action=False,
+                    use_next_state=False,
+                    use_done=False,
                 ),
             ),
         )
@@ -282,13 +291,16 @@ def test_adversarial_normalization(_algorithm_cls, tmpdir: str):
     trainer.train_gen(trainer.gen_batch_size)
     trainer.train_disc()
 
-    # TODO: add some assertions:
+    # Verify that:
     # 1. Policy feature extractor actually gets called.
     # 2. Discriminator feature extractor gets called in GAIL.
     # 3. Base and potential net feature extractors actually get called in AIRL.
+    # (these ensure that our assertions are working)
+    assert trainer.gen_algo.policy.features_extractor.assert_calls > 0
     if _algorithm_cls is adversarial.GAIL:
-        pass
+        assert trainer.discrim.discriminator.assert_calls > 0
     elif _algorithm_cls is adversarial.AIRL:
-        pass
+        assert trainer.discrim.reward_net._base_reward_net.assert_calls > 0
+        assert trainer.discrim.reward_net._potential_net.assert_calls > 0
     else:
         raise TypeError(f"don't know how to handle '{_algorithm_cls}'")
