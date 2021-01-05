@@ -55,9 +55,9 @@ setup(
         "torch>=1.4.0",
         "tqdm",
         "scikit-learn>=0.21.2",
-        # TODO(sam): remove 'a4' once SB3 0.11.0 is released.
-        # (we need SB3>=0.11 for the transpose fix in SB3#213)
-        "stable-baselines3~=0.11.0a4",
+        # this has some fixes/improvements to vecenvs
+        ("stable-baselines3 @ git+https://github.com/HumanCompatibleAI"
+         "/stable-baselines3.git@50c186399901ada895573bef461498a801787b25"),
         "jax~=0.1.66",
         "jaxlib~=0.1.47",
         "sacred~=0.8.1",
