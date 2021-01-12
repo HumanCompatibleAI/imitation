@@ -348,7 +348,8 @@ class AdversarialTrainer:
         for r in tqdm.trange(n_rounds, desc="round"):
             self.train_gen(
                 self.gen_batch_size,
-                learn_kwargs=dict(dump_logs=log_interval_timesteps is None))
+                learn_kwargs=dict(dump_logs=log_interval_timesteps is None,
+                                  progress_max_timesteps=total_timesteps))
             for _ in range(self.n_disc_updates_per_round):
                 self.train_disc(dump_logs=log_interval_timesteps is None)
             if callback:
