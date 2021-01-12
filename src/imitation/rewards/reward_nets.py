@@ -323,13 +323,13 @@ class BasicRewardMLP(nn.Module):
     def forward(self, state, action, next_state, done):
         inputs = []
         if self.use_state:
-            inputs.append(th.flatten(state, 1))
+            inputs.append(th.flatten(state, 1).float())
         if self.use_action:
-            inputs.append(th.flatten(action, 1))
+            inputs.append(th.flatten(action, 1).float())
         if self.use_next_state:
-            inputs.append(th.flatten(next_state, 1))
+            inputs.append(th.flatten(next_state, 1).float())
         if self.use_done:
-            inputs.append(th.reshape(done, [-1, 1]))
+            inputs.append(th.reshape(done, [-1, 1]).float())
 
         inputs_concat = th.cat(inputs, dim=1)
 
