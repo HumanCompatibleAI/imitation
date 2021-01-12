@@ -152,8 +152,7 @@ class BC:
         observation_space: gym.Space,
         action_space: gym.Space,
         *,
-        policy_class: Type[policies.BasePolicy] = base.FeedForward32Policy,
-        policy_kwargs: Optional[Mapping[str, Any]] = None,
+        policy: Type[policies.BasePolicy] ,
         expert_data: Union[Iterable[Mapping], types.TransitionsMinimal, None] = None,
         optimizer_cls: Type[th.optim.Optimizer] = th.optim.Adam,
         optimizer_kwargs: Optional[Dict[str, Any]] = None,
@@ -187,17 +186,10 @@ class BC:
 
         self.action_space = action_space
         self.observation_space = observation_space
-        self.policy_class = policy_class
         self.device = device = utils.get_device(device)
-        self.policy_kwargs = dict(
-            observation_space=self.observation_space,
-            action_space=self.action_space,
-            lr_schedule=ConstantLRSchedule(),
-        )
-        self.policy_kwargs.update(policy_kwargs or {})
         self.device = utils.get_device(device)
 
-        self.policy = self.policy_class(**self.policy_kwargs).to(
+        self.policy = self.policy.to(
             self.device
         )  # pytype: disable=not-instantiable
         optimizer_kwargs = optimizer_kwargs or {}
