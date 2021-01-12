@@ -190,7 +190,7 @@ class BC:
         self.policy = policy.policy.to(self.device)
 # pytype: disable=not-instantiable
         optimizer_kwargs = optimizer_kwargs or {}
-        self.optimizer = optimizer_cls(self.policy.parameters(), **optimizer_kwargs)
+        self.optimizer = optimizer_cls(self.policy.policy.parameters(), **optimizer_kwargs)
 
         self.expert_data_loader: Optional[Iterable[Mapping]] = None
         self.ent_weight = ent_weight
