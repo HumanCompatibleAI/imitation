@@ -187,7 +187,7 @@ class BC:
         self.device = device = utils.get_device(device)
         self.device = utils.get_device(device)
 
-        self.policy = policy
+        self.policy = policy.policy.to(self.device)
 # pytype: disable=not-instantiable
         optimizer_kwargs = optimizer_kwargs or {}
         self.optimizer = optimizer_cls(self.policy.parameters(), **optimizer_kwargs)
