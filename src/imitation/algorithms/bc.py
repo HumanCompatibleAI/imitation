@@ -169,8 +169,7 @@ class BC:
         Args:
             observation_space: the observation space of the environment.
             action_space: the action space of the environment.
-            policy_class: used to instantiate imitation policy.
-            policy_kwargs: keyword arguments passed to policy's constructor.
+            policy_class: the policy to be trained.
             expert_data: If not None, then immediately call
                   `self.set_expert_data_loader(expert_data)` during initialization.
             optimizer_cls: optimiser to use for supervised training.
