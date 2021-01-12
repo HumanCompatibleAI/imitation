@@ -151,8 +151,7 @@ class BC:
         self,
         observation_space: gym.Space,
         action_space: gym.Space,
-        *,
-        policy: Type[policies.BasePolicy] ,
+        policy: Type[policies.BasePolicy],
         expert_data: Union[Iterable[Mapping], types.TransitionsMinimal, None] = None,
         optimizer_cls: Type[th.optim.Optimizer] = th.optim.Adam,
         optimizer_kwargs: Optional[Dict[str, Any]] = None,
@@ -169,7 +168,7 @@ class BC:
         Args:
             observation_space: the observation space of the environment.
             action_space: the action space of the environment.
-            policy_class: the policy to be trained.
+            policy: the policy to be trained.
             expert_data: If not None, then immediately call
                   `self.set_expert_data_loader(expert_data)` during initialization.
             optimizer_cls: optimiser to use for supervised training.
