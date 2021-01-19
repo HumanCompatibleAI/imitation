@@ -12,6 +12,39 @@ class ColorSpace(str, enum.Enum):
     GRAY = "GRAY"
 
 
+def split_unsplit_channel_stack(tensor, color_space):
+    """Split a stacked image tensor of size [B,…,S,C,…,H,W] into a tensor of
+    shape [B,…,S,C,…,H,W]. Here C is the number of channels in each image (3
+    for RGB, 1 for grayscale), and S is the depth of the image stack. Very
+    useful for splitting out stacked frames."""
+    chans_axis = (-3) % tensor.ndim
+    assert tensor.ndim >= 4
+    if color_space == ColorSpace.RGB:
+        n_chans = 3
+    elif color_space == ColorSpace.GRAY:
+        n_chans = 1
+    else:
+        raise NotImplementedError(f"Cannot handle space '{color_space}'")
+    shape = tensor.shape
+    assert (shape[chans_axis] % n_chans) == 0
+    stack_depth = shape[chans_axis] // n_chans
+    shape_pre, shape_post = shape[:chans_axis], shape[chans_axis + 1 :]
+    new_shape = shape_pre + (stack_depth, n_chans) + shape_post
+
+    def unsplit(split_tensor):
+        # helps unsplit the tensor after processing
+        split_shape = split_tensor.shape
+        new_pre = split_shape[:chans_axis]
+        new_post = split_shape[chans_axis + 2:]
+        # make sure new shape matches old shape at all except the middle
+        # dimensions
+        assert new_pre == shape_pre, (new_pre, shape_pre)
+        assert new_post == shape_post, (new_post, shape_post)
+        return split_tensor.reshape(shape)
+
+    return tensor.reshape(new_shape), unsplit
+
+
 @th.jit.script
 def _lab_f(t: th.Tensor) -> th.Tensor:
     """Intermediate function used to convert from RGB to Lab."""
