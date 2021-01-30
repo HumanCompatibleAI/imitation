@@ -7,7 +7,7 @@ from kornia.color.gray import rgb_to_grayscale
 from kornia.filters.gaussian import GaussianBlur2d
 from torch import nn
 
-from imitation.augment.color import apply_lab_jitter, split_unsplit_channel_stack
+from imitation.augment.color import apply_lab_jitter
 
 
 class GaussianNoise(nn.Module):
@@ -25,45 +25,37 @@ class GaussianNoise(nn.Module):
 
 
 class GaussianBlur(nn.Module):
-    """Randomly selects images to blur."""
+    """Blurs images."""
 
-    def __init__(self, kernel_hw=5, sigma=1, p=0.5):
+    def __init__(self, kernel_hw=5, sigma=1):
         super().__init__()
         assert kernel_hw >= 1 and (kernel_hw % 2) == 1
         sigma = float(sigma)
         assert sigma > 0
         self.blur_op = GaussianBlur2d((kernel_hw, kernel_hw), (sigma, sigma))
-        self.p = p
 
     def forward(self, images):
-        batch_size = images.size(0)
-        should_blur = th.rand(batch_size) < self.p
-        blur_elems = []
-        for batch_idx in range(batch_size):
-            if should_blur[batch_idx]:
-                rotated_image = self.blur_op(images[batch_idx:batch_idx+1])
-                blur_elems.append(rotated_image)
-            else:
-                blur_elems.append(images[batch_idx:batch_idx+1])
-        blur_images = th.cat(blur_elems, dim=0)
-        return blur_images
+        return self.blur_op(images)
 
 
 class CIELabJitter(nn.Module):
     """Apply 'jitter' in CIELab color space."""
 
-    def __init__(self, max_lum_scale, max_uv_rads, color_space):
+    def __init__(self, max_lum_scale, max_uv_rads):
         super().__init__()
         self.max_lum_scale = max_lum_scale
         self.max_uv_rads = max_uv_rads
-        self.color_space = color_space
 
     def forward(self, x):
-        x_reshape, unsplit = split_unsplit_channel_stack(x, self.color_space)
+        # we take in stacked [N,C,H,W] images, where C=3*T. We then reshape
+        # into [N,T,C,H,W] like apply_lab_jitter expects.
+        stack_depth = x.size(1) // 3
+        assert x.size(1) == 3 * stack_depth, x.shape
+        x_reshape = x.view(x.shape[:1] + (stack_depth, 3) + x.shape[2:])
         jittered_reshape = apply_lab_jitter(
             x_reshape, self.max_lum_scale, self.max_uv_rads
         )
-        jittered = unsplit(jittered_reshape)
+        jittered = jittered_reshape.view(x.shape)
         return jittered
 
 
@@ -83,22 +75,23 @@ class Rot90(nn.Module):
 
 
 class Grayscale(nn.Module):
-    __constants__ = ["p", "color_space"]
+    __constants__ = ["p"]
 
-    def __init__(self, p: float = 0.5, *, color_space) -> None:
+    def __init__(self, p: float = 0.5) -> None:
         super().__init__()
         self.p = p
-        self.color_space = color_space
 
     def forward(self, x):
         # separate out channels, just like in CIELabJitter
-        x_reshape, unsplit = split_unsplit_channel_stack(x, self.color_space)
         batch_size = x.size(0)
+        stack_depth = x.size(1) // 3
+        assert x.size(1) == 3 * stack_depth, x.shape
+        x_reshape = x.view(x.shape[:1] + (stack_depth, 3) + x.shape[2:])
 
         recol_elems = []
         rand_nums = th.rand(batch_size)
-        for batch_idx, sample in enumerate(rand_nums):
-            if sample < self.p:
+        for batch_idx in range(batch_size):
+            if rand_nums[batch_idx] < self.p:
                 recol_reduced = rgb_to_grayscale(x_reshape[batch_idx])
                 rep_spec = (1,) * (recol_reduced.ndim - 3) + (3, 1, 1)
                 recol = recol_reduced.repeat(rep_spec)
@@ -107,6 +100,6 @@ class Grayscale(nn.Module):
                 recol_elems.append(x_reshape[batch_idx])
 
         unshaped_result = th.stack(recol_elems, dim=0)
-        result = unsplit(unshaped_result)
+        result = unshaped_result.view(x.shape)
 
         return result
