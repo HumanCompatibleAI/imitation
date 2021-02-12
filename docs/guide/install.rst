@@ -2,16 +2,14 @@
 Installation
 ============
 
-Installing PyPI release
-=======================
+**Installing PyPI release**
 
 .. code-block:: bash
 
     pip install imitation
 
 
-Install latest commit
-=====================
+**Install latest commit**
 
 .. code-block:: bash
 
@@ -20,8 +18,7 @@ Install latest commit
     pip install -e .
 
 
-Optional Mujoco Dependency
-==========================
+**Optional Mujoco Dependency**
 
 Follow instructions to install `mujoco\_py v1.5 here`_.
 

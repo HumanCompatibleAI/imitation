@@ -6,16 +6,12 @@ Implements `A Reduction of Imitation Learning and Structured Prediction to No-Re
 
 API
 ===
-.. automodule:: imitation.algorithms.dagger
-    :no-members:
-    :noindex:
-
-.. autoclass:: InteractiveTrajectoryCollector
+.. autoclass:: imitation.algorithms.dagger.InteractiveTrajectoryCollector
     :members:
     :inherited-members:
     :noindex:
 
-.. autoclass:: DAggerTrainer
+.. autoclass:: imitation.algorithms.dagger.DAggerTrainer
     :members:
     :inherited-members:
     :noindex:

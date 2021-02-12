@@ -6,16 +6,12 @@ Implements `Generative Adversarial Imitation Learning <https://arxiv.org/abs/160
 
 API
 ===
-.. automodule:: imitation.algorithms.adversarial
-    :no-members:
-    :noindex:
-
-.. autoclass:: GAIL
+.. autoclass:: imitation.algorithms.adversarial.GAIL
     :members:
     :inherited-members:
     :noindex:
 
-.. autoclass:: AdversarialTrainer
+.. autoclass:: imitation.algorithms.adversarial.AdversarialTrainer
     :members:
     :inherited-members:
     :noindex:
