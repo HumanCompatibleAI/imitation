@@ -2,7 +2,7 @@
 Generative Adversarial Imitation Learning (GAIL)
 ================================================
 
-paper: https://arxiv.org/abs/1606.03476
+Implements `Generative Adversarial Imitation Learning <https://arxiv.org/abs/1606.03476>`_.
 
 API
 ===

@@ -2,7 +2,7 @@
 DAgger
 =======================
 
-Paper: https://arxiv.org/pdf/1011.0686.pdf
+Implements `A Reduction of Imitation Learning and Structured Prediction to No-Regret Online Learning <https://arxiv.org/abs/1011.0686>`_.
 
 API
 ===

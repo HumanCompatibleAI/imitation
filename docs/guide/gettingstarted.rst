@@ -14,7 +14,7 @@ For information on how to configure Sacred CLI options, see the `Sacred docs <ht
 .. code-block:: bash
 
     # Train PPO agent on cartpole and collect expert demonstrations. Tensorboard logs saved
-    in `quickstart/rl/`
+#    in `quickstart/rl/`
     python -m imitation.scripts.expert_demos with fast cartpole log_dir=quickstart/rl/
 
     # Train GAIL from demonstrations. Tensorboard logs saved in output/ (default log directory).
@@ -100,4 +100,3 @@ AIRL models on that data.
         gen_algo=sb3.PPO("MlpPolicy", venv, verbose=1, n_steps=1024),
     )
     airl_trainer.train(total_timesteps=2048)
-

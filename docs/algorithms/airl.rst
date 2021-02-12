@@ -2,7 +2,7 @@
 Adversarial Inverse Reinforcement Learning (AIRL)
 =================================================
 
-paper: https://arxiv.org/abs/1710.11248
+Implements `Learning Robust Rewards with Adversarial Inverse Reinforcement Learning <https://arxiv.org/abs/1710.11248>`_.
 
 
 API
