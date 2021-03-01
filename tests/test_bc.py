@@ -4,6 +4,7 @@ import os
 
 import pytest
 import torch as th
+from torch.optim import lr_scheduler
 from torch.utils import data as th_data
 
 from imitation.algorithms import bc
@@ -31,6 +32,11 @@ def expert_data_type(request):
     return request.param
 
 
+@pytest.fixture(params=[(None, {}), (lr_scheduler.ExponentialLR, {"gamma": 0.98})])
+def lr_sched_tuple(request):
+    return request.param
+
+
 class DucktypedDataset:
     """Used to check that any iterator over Dict[str, Tensor] works with BC."""
 
@@ -46,9 +52,10 @@ class DucktypedDataset:
 
 
 @pytest.fixture
-def trainer(batch_size, venv, expert_data_type):
+def trainer(batch_size, venv, expert_data_type, lr_sched_tuple):
     rollouts = types.load(ROLLOUT_PATH)
     trans = rollout.flatten_trajectories(rollouts)
+    lr_sched_cls, lr_sched_kwargs = lr_sched_tuple
     if expert_data_type == "data_loader":
         expert_data = th_data.DataLoader(
             trans,
@@ -67,6 +74,8 @@ def trainer(batch_size, venv, expert_data_type):
         venv.observation_space,
         venv.action_space,
         expert_data=expert_data,
+        lr_scheduler_cls=lr_sched_cls,
+        lr_scheduler_kwargs=lr_sched_kwargs,
     )
 
 
@@ -93,7 +102,14 @@ def test_train_end_cond_error(trainer: bc.BC, venv):
 def test_bc(trainer: bc.BC, venv):
     sample_until = rollout.min_episodes(15)
     novice_ret_mean = rollout.mean_return(trainer.policy, venv, sample_until)
-    trainer.train(n_epochs=1, on_epoch_end=lambda **kwargs: print("epoch end"))
+    callback_count = 0
+
+    def callback(epoch_num, batch_num, samples_so_far):
+        nonlocal callback_count
+        callback_count += 1
+
+    trainer.train(n_epochs=1, epoch_end_callbacks=[callback])
+    assert callback_count == 1
     trainer.train(n_batches=10)
     trained_ret_mean = rollout.mean_return(trainer.policy, venv, sample_until)
     # Typically <80 score is bad, >350 is okay. We want an improvement of at
