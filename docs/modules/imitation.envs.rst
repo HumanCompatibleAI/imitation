@@ -21,4 +21,3 @@ Module contents
 ---------------
 
 .. automodule:: imitation.envs
-   

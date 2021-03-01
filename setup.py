@@ -58,8 +58,8 @@ setup(
         # this has some fixes/improvements to vecenvs
         ("stable-baselines3 @ git+https://github.com/HumanCompatibleAI"
          "/stable-baselines3.git@7c95c9027dbbb93843873aac6dcdcab4c7c709a6"),
-        "jax~=0.1.66",
-        "jaxlib~=0.1.47",
+        "jax~=0.2.8",
+        "jaxlib~=0.1.59",
         "sacred~=0.8.1",
         "tensorboard>=1.14",
         # TODO(sam): switch to pip once kornia#635 is fixed.

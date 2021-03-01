@@ -61,6 +61,10 @@ commands:
             python setup.py sdist bdist_wheel
             pip install --upgrade --force-reinstall --no-deps dist/imitation-*.whl
 
+      - run:
+          name: print installed packages
+          command: pip freeze --all
+
 jobs:
   lintandtype:
     executor: lintandtype
