@@ -232,9 +232,10 @@ class BC:
         self.policy_class = policy_class
         self.device = device = utils.get_device(device)
 
-        # SB3's `ActorCriticPolicy` automatically initializes a optimizer which requires
-        # an argument of this type, but we don't use.
-        unused_lr_schedule = ConstantLRSchedule()
+        # SB3's `ActorCriticPolicy` automatically initializes a optimizer which
+        # requires an argument of this type, but which we don't use. LR is set
+        # to NaN so that it loudly causes errors if we _do_ use it.
+        unused_lr_schedule = ConstantLRSchedule(float('NaN'))
 
         self.policy_kwargs = dict(
             observation_space=self.observation_space,
