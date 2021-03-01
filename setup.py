@@ -57,7 +57,7 @@ setup(
         "scikit-learn>=0.21.2",
         # this has some fixes/improvements to vecenvs
         ("stable-baselines3 @ git+https://github.com/HumanCompatibleAI"
-         "/stable-baselines3.git@7c95c9027dbbb93843873aac6dcdcab4c7c709a6"),
+         "/stable-baselines3.git@ad902dd5f9d4afeef347897cb04c48a19a659ca3"),
         "jax~=0.1.66",
         "jaxlib~=0.1.47",
         "sacred~=0.8.1",
