@@ -234,14 +234,13 @@ class BC:
 
         # SB3's `ActorCriticPolicy` automatically initializes a optimizer which
         # requires an argument of this type, but which we don't use. LR is set
-        # to NaN so that it loudly causes errors if we _do_ use it.
-        unused_lr_schedule = ConstantLRSchedule(float('NaN'))
+        # to huge value so that it loudly causes errors if we _do_ use it.
+        unused_lr_schedule = ConstantLRSchedule(sys.float_info.max)
 
         self.policy_kwargs = dict(
             observation_space=self.observation_space,
             action_space=self.action_space,
             lr_schedule=unused_lr_schedule,
-            device=self.device,
         )
         self.policy_kwargs.update(policy_kwargs or {})
         self.device = utils.get_device(device)
