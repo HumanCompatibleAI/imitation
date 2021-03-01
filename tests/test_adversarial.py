@@ -3,11 +3,13 @@
 import os
 
 import pytest
+import stable_baselines3.common.vec_env as sb3_vec_env
 from torch.utils import data as th_data
 
+import imitation.policies.base as pol_base
 from imitation.algorithms import adversarial
 from imitation.data import rollout, types
-from imitation.testing import counter
+from imitation.testing import counter, normalization
 from imitation.util import logger, util
 
 ALGORITHM_CLS = [adversarial.AIRL, adversarial.GAIL]
@@ -164,7 +166,7 @@ def test_train_disc_improve_D(
     expert_samples = types.dataclass_quick_asdict(expert_samples)
     gen_samples = rollout.generate_transitions(
         trainer.gen_algo,
-        trainer.venv_train_norm,
+        trainer.venv_train,
         n_timesteps=expert_batch_size,
         truncate=True,
     )
@@ -216,3 +218,89 @@ def test_augment(_algorithm_cls, tmpdir: str):
         }
     )
     assert mock_augment.ncalls > 0
+
+
+def test_adversarial_normalization(_algorithm_cls, tmpdir: str):
+    logger.configure(tmpdir, ["tensorboard", "stdout"])
+    venv = sb3_vec_env.DummyVecEnv([normalization.NormalizationTestEnv] * 2)
+    rand_pol = pol_base.RandomPolicy(venv.observation_space, venv.action_space)
+    expert_transitions = rollout.generate_transitions(rand_pol, venv, n_timesteps=32)
+    gen_algo = util.init_rl(
+        venv,
+        verbose=1,
+        policy_kwargs=dict(
+            features_extractor_class=normalization.NormalizationTestFeatEx,
+            features_extractor_kwargs=dict(norm_env=venv.envs[0], features_dim=5),
+        ),
+    )
+
+    if _algorithm_cls is adversarial.GAIL:
+        trainer = _algorithm_cls(
+            venv=venv,
+            expert_data=expert_transitions,
+            gen_algo=gen_algo,
+            log_dir=tmpdir,
+            expert_batch_size=32,
+            normalize_obs=False,
+            discrim_kwargs=dict(
+                discrim_net=normalization.NormalizationTestDiscriminator(
+                    action_space=venv.action_space,
+                    observation_space=venv.observation_space,
+                    norm_env=venv.envs[0],
+                    hid_sizes=(5, 7),
+                )
+            ),
+        )
+    elif _algorithm_cls is adversarial.AIRL:
+        trainer = _algorithm_cls(
+            venv=venv,
+            expert_data=expert_transitions,
+            gen_algo=gen_algo,
+            log_dir=tmpdir,
+            expert_batch_size=32,
+            normalize_obs=False,
+            reward_net_kwargs=dict(
+                base_reward_net=normalization.NormalizationTestRewardMLP(
+                    action_space=venv.action_space,
+                    observation_space=venv.observation_space,
+                    norm_env=venv.envs[0],
+                    hid_sizes=(5, 7),
+                    use_state=True,
+                    use_action=True,
+                    use_next_state=True,
+                    use_done=True,
+                ),
+                potential_net=normalization.NormalizationTestRewardMLP(
+                    action_space=venv.action_space,
+                    observation_space=venv.observation_space,
+                    norm_env=venv.envs[0],
+                    hid_sizes=(5, 7),
+                    use_state=True,
+                    use_action=False,
+                    use_next_state=False,
+                    use_done=False,
+                ),
+            ),
+        )
+    else:
+        raise TypeError(f"don't know how to handle '{_algorithm_cls}'")
+
+    # these steps will fail with an assertion error if normalization is not
+    # being done correctly (e.g. if it's doing double-normalization, or doing
+    # standardization instead of just dividing by 255)
+    trainer.train_gen(trainer.gen_batch_size)
+    trainer.train_disc()
+
+    # Verify that:
+    # 1. Policy feature extractor actually gets called.
+    # 2. Discriminator feature extractor gets called in GAIL.
+    # 3. Base and potential net feature extractors actually get called in AIRL.
+    # (these ensure that our assertions are working)
+    assert trainer.gen_algo.policy.features_extractor.assert_calls > 0
+    if _algorithm_cls is adversarial.GAIL:
+        assert trainer.discrim.discriminator.assert_calls > 0
+    elif _algorithm_cls is adversarial.AIRL:
+        assert trainer.discrim.reward_net._base_reward_net.assert_calls > 0
+        assert trainer.discrim.reward_net._potential_net.assert_calls > 0
+    else:
+        raise TypeError(f"don't know how to handle '{_algorithm_cls}'")

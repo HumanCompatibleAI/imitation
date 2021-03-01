@@ -39,6 +39,7 @@ def make_vec_env(
     n_envs: int = 8,
     seed: int = 0,
     parallel: bool = False,
+    parallel_workers: Optional[int] = None,
     log_dir: Optional[str] = None,
     max_episode_steps: Optional[int] = None,
     wrapper_class: Optional[Callable] = None,
@@ -51,6 +52,8 @@ def make_vec_env(
         n_envs: The number of duplicate environments.
         seed: The environment seed.
         parallel: If True, uses SubprocVecEnv; otherwise, DummyVecEnv.
+        parallel_workers: if `parallel` is true, this determines the number of
+            worker processes (defaults to `n_envs` if None).
         log_dir: If specified, saves Monitor output to this directory.
         max_episode_steps: If specified, wraps each env in a TimeLimit wrapper
             with this episode length. If not specified and `max_episode_steps`
@@ -115,7 +118,8 @@ def make_vec_env(
     env_fns = [functools.partial(make_env, i, s) for i, s in enumerate(env_seeds)]
     if parallel:
         # See GH hill-a/stable-baselines issue #217
-        return SubprocVecEnv(env_fns, start_method="forkserver")
+        return SubprocVecEnv(env_fns, start_method="forkserver",
+                             n_workers=parallel_workers)
     else:
         return DummyVecEnv(env_fns)
 

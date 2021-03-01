@@ -4,7 +4,7 @@ import os.path as osp
 from typing import Optional
 
 from sacred.observers import FileStorageObserver
-from stable_baselines3.common import logger as sb_logger
+from stable_baselines3.common import callbacks
 from stable_baselines3.common.vec_env import VecNormalize
 
 import imitation.util.sacred as sacred_util
@@ -33,7 +33,6 @@ def rollouts_and_policy(
     n_episodes_eval: int,
     reward_type: Optional[str],
     reward_path: Optional[str],
-    rollout_save_interval: int,
     rollout_save_final: bool,
     rollout_save_n_timesteps: Optional[int],
     rollout_save_n_episodes: Optional[int],
@@ -136,38 +135,26 @@ def rollouts_and_policy(
         max_episode_steps=max_episode_steps,
     )
 
-    log_callbacks = []
+    callback_objs = []
     if reward_type is not None:
         reward_fn = load_reward(reward_type, reward_path, venv)
         venv = RewardVecEnvWrapper(venv, reward_fn)
-        log_callbacks.append(venv.log_callback)
+        callback_objs.append(venv.make_log_callback())
         logging.info(f"Wrapped env in reward {reward_type} from {reward_path}.")
 
     vec_normalize = None
     if normalize:
         venv = vec_normalize = VecNormalize(venv, **normalize_kwargs)
 
+    if policy_save_interval > 0:
+        save_policy_callback = serialize.SavePolicyCallback(policy_dir, vec_normalize)
+        save_policy_callback = callbacks.EveryNTimesteps(
+            policy_save_interval, save_policy_callback
+        )
+        callback_objs.append(save_policy_callback)
+    callback = callbacks.CallbackList(callback_objs)
+
     policy = util.init_rl(venv, verbose=1, **init_rl_kwargs)
-
-    # Make callback to save intermediate artifacts during training.
-    step = 0
-
-    def callback(locals_: dict, _) -> bool:
-        nonlocal step
-        step += 1
-        policy = locals_["self"]
-
-        # TODO(adam): make logging frequency configurable
-        for callback in log_callbacks:
-            callback(sb_logger)
-
-        if rollout_save_interval > 0 and step % rollout_save_interval == 0:
-            save_path = osp.join(rollout_dir, f"{step}.pkl")
-            rollout.rollout_and_save(save_path, policy, venv, sample_until)
-        if policy_save_interval > 0 and step % policy_save_interval == 0:
-            output_dir = os.path.join(policy_dir, f"{step:05d}")
-            serialize.save_stable_model(output_dir, policy, vec_normalize)
-
     policy.learn(total_timesteps, callback=callback)
 
     # Save final artifacts after training is complete.

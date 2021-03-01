@@ -118,7 +118,7 @@ def test_rgb_lab_reference():
 
 
 @pytest.mark.parametrize(
-    "option_to_test", list(augment.StandardAugmentations.known_options())
+    "option_to_test", sorted(augment.StandardAugmentations.known_options())
 )
 def test_standard_augs_smoke(option_to_test, fake_image, color_space):
     if (

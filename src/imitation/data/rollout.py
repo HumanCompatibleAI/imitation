@@ -82,6 +82,9 @@ class TrajectoryAccumulator:
             key: np.stack(arr_list, axis=0)
             for key, arr_list in out_dict_unstacked.items()
         }
+        if 'rews' in out_dict_stacked:
+            # make sure rewards are floating point, as expected by TrajectoryWithRew
+            out_dict_stacked['rews'] = out_dict_stacked['rews'].astype('float64')
         traj = types.TrajectoryWithRew(**out_dict_stacked)
         assert traj.rews.shape[0] == traj.acts.shape[0] == traj.obs.shape[0] - 1
         return traj
