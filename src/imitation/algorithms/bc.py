@@ -449,6 +449,7 @@ class BC:
             stats_dict["weight_norm"] = weight_norm.item()
             stats_dict["n_updates"] = batch_num
             stats_dict["batch_size"] = len(obs_tensor)
+            stats_dict["lr_gmean"] = util.optim_lr_gmean(self.optimizer)
 
             for k, v in stats_dict.items():
                 logger.record_mean(k, v)

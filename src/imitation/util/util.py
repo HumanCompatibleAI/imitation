@@ -17,7 +17,9 @@ from typing import (
 import gym
 import numpy as np
 import stable_baselines3
+import torch as th
 from gym.wrappers import TimeLimit
+from scipy import stats
 from stable_baselines3.common import monitor
 from stable_baselines3.common.base_class import BaseAlgorithm
 from stable_baselines3.common.policies import ActorCriticPolicy, BasePolicy
@@ -198,3 +200,26 @@ def endless_iter(iterable: Iterable[T]) -> Iterator[T]:
         raise err
 
     return itertools.chain.from_iterable(itertools.repeat(iterable))
+
+
+def optim_lr_gmean(optimizer: th.optim.Optimizer) -> float:
+    """Compute geometric mean of learning rates across all the optimizer's
+    parameter groups.
+
+    Args:
+        optimizer (torch.optim.Optimizer): a Torch optimizer.
+
+    Returns:
+        float: geometric mean of the learning rates across all parameter
+            groups."""
+    lrs = []
+    for param_group in optimizer.param_groups:
+        lrs.append(param_group['lr'])
+    if len(lrs) == 0:
+        raise ValueError(f"No parameter groups for optimizer {optimizer}")
+    if len(set(lrs)) == 1:
+        # special-case logic: don't do geometric mean (with associated
+        # imprecision) if we can just return one value instead
+        return lrs[0]
+    # otherwise, do geometric mean
+    return stats.gmean(lrs)
