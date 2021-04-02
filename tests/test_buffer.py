@@ -95,7 +95,7 @@ def test_replay_buffer(capacity, chunk_len, obs_shape, act_shape, dtype):
         assert buf.size() == min(i, capacity)
         assert buf._buffer._idx == i % capacity
 
-        dones = np.arange(i, i + chunk_len, dtype=int32) % 2
+        dones = np.arange(i, i + chunk_len, dtype=np.int32) % 2
         dones = dones.astype(bool)
         infos = _fill_chunk(9 * capacity + i, chunk_len, (), dtype=dtype)
         infos = np.array([{"a": val} for val in infos])
