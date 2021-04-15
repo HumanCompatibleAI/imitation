@@ -133,6 +133,7 @@ def rollouts_and_policy(
         parallel=parallel,
         log_dir=log_dir,
         max_episode_steps=max_episode_steps,
+        use_rollout_info_wrapper=True,
     )
 
     callback_objs = []
@@ -211,6 +212,7 @@ def rollouts_from_policy(
         parallel=parallel,
         log_dir=log_dir,
         max_episode_steps=max_episode_steps,
+        use_rollout_info_wrapper=True,
     )
 
     policy = serialize.load_policy(policy_type, policy_path, venv)

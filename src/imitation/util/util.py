@@ -41,6 +41,7 @@ def make_vec_env(
     parallel: bool = False,
     log_dir: Optional[str] = None,
     max_episode_steps: Optional[int] = None,
+    use_rollout_info_wrapper: bool = False,
     post_wrappers: Optional[Sequence[Callable[[gym.Env, int], gym.Env]]] = None,
 ) -> VecEnv:
     """Returns a VecEnv initialized with `n_envs` Envs.
@@ -57,6 +58,9 @@ def make_vec_env(
             `max_episode_steps` for every TimeLimit wrapper (this automatic
             wrapper is the default behavior when calling `gym.make`). Otherwise
             the environments are passed into the VecEnv unwrapped.
+        use_rollout_info_wrapper: If True, then wrap each env in a
+            `imitation.data.wrappers.RolloutInfoWrapper`. Used by `expert_demos` script
+            to access unnormalized observations and rewards during rollout save.
         post_wrappers: If specified, iteratively wraps each environment with each
             of the wrappers specified in the sequence. The argument should be a Callable
             accepting two arguments, the Env to be wrapped and the environment index,
@@ -96,7 +100,8 @@ def make_vec_env(
             log_path = os.path.join(log_subdir, f"mon{i:03d}")
 
         env = monitor.Monitor(env, log_path)
-        env = wrappers.RolloutInfoWrapper(env)
+        if use_rollout_info_wrapper:
+            env = wrappers.RolloutInfoWrapper(env)
 
         if post_wrappers:
             for wrapper in post_wrappers:
