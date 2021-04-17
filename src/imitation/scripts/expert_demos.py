@@ -8,7 +8,7 @@ from stable_baselines3.common import callbacks
 from stable_baselines3.common.vec_env import VecNormalize
 
 import imitation.util.sacred as sacred_util
-from imitation.data import rollout
+from imitation.data import rollout, wrappers
 from imitation.policies import serialize
 from imitation.rewards.serialize import load_reward
 from imitation.scripts.config.expert_demos import expert_demos_ex
@@ -133,7 +133,7 @@ def rollouts_and_policy(
         parallel=parallel,
         log_dir=log_dir,
         max_episode_steps=max_episode_steps,
-        use_rollout_info_wrapper=True,
+        post_wrappers=[lambda env, idx: wrappers.RolloutInfoWrapper(env)],
     )
 
     callback_objs = []
@@ -212,7 +212,7 @@ def rollouts_from_policy(
         parallel=parallel,
         log_dir=log_dir,
         max_episode_steps=max_episode_steps,
-        use_rollout_info_wrapper=True,
+        post_wrappers=[lambda env, idx: wrappers.RolloutInfoWrapper(env)],
     )
 
     policy = serialize.load_policy(policy_type, policy_path, venv)
