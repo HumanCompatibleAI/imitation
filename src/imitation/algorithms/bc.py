@@ -113,10 +113,10 @@ class EpochOrBatchIteratorWithProgress:
         batch_suffix = epoch_suffix = ""
         if self.use_epochs:
             display = tqdm.tqdm(total=self.n_epochs)
-            epoch_suffix = f"/{self.n_epochs}"
+            epoch_suffix = f"/{epoch_num_start + self.n_epochs}"
         else:  # Use batches.
             display = tqdm.tqdm(total=self.n_batches)
-            batch_suffix = f"/{self.n_batches}"
+            batch_suffix = f"/{batch_num_start + self.n_batches}"
 
         def update_desc():
             display.set_description(
