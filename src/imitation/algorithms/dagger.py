@@ -268,6 +268,9 @@ class DAggerTrainer:
         self.beta_schedule = beta_schedule
         self.scratch_dir = scratch_dir
         self.env = env
+        self.samples_so_far = 0
+        self.batch_num = 0
+        self.epoch_num = 0
         self.round_num = 0
         self.bc_kwargs = bc_kwargs
         self._last_loaded_round = -1
@@ -348,8 +351,19 @@ class DAggerTrainer:
         logging.info("Loading demonstrations")
         self._try_load_demos()
         logging.info(f"Training at round {self.round_num}")
-        self.bc_trainer.train(**train_kwargs)
+        train_kwargs.update(
+            {
+                "samples_so_far": self.samples_so_far,
+                "batch_num": self.batch_num,
+                "epoch_num": self.epoch_num,
+            }
+        )
+        samples_so_far, batch_num, epoch_num = self.bc_trainer.train(**train_kwargs)
+        self.samples_so_far += samples_so_far
+        self.batch_num += batch_num
+        self.epoch_num += epoch_num
         self.round_num += 1
+
         logging.info(f"New round number is {self.round_num}")
         return self.round_num
 

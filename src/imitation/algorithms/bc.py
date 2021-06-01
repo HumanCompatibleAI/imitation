@@ -60,6 +60,10 @@ class EpochOrBatchIteratorWithProgress:
         n_epochs: Optional[int] = None,
         n_batches: Optional[int] = None,
         on_epoch_end: Optional[Callable[[], None]] = None,
+        samples_so_far: int = 0,
+        batch_num: int = 0,
+        epoch_num: int = 0,
+        stateful_iter: bool = False,
     ):
         """Wraps DataLoader so that all BC batches can be processed in a one for-loop.
 
@@ -87,13 +91,25 @@ class EpochOrBatchIteratorWithProgress:
         self.n_epochs = n_epochs
         self.n_batches = n_batches
         self.on_epoch_end = on_epoch_end
+        self.samples_so_far = samples_so_far
+        self.batch_num = batch_num
+        self.epoch_num = epoch_num
+        self.stateful_iter = stateful_iter
+
+    def _reset_iter_state(self):
+        self.samples_so_far = 0
+        self.batch_num = 0
+        self.epoch_num = 0
 
     def __iter__(self) -> Iterable[Tuple[dict, dict]]:
         """Yields batches while updating tqdm display to display progress."""
 
-        samples_so_far = 0
-        epoch_num = 0
-        batch_num = 0
+        if not self.stateful_iter:
+            self._reset_iter_state()
+
+        batch_num_start = self.batch_num
+        epoch_num_start = self.epoch_num
+
         batch_suffix = epoch_suffix = ""
         if self.use_epochs:
             display = tqdm.tqdm(total=self.n_epochs)
@@ -104,36 +120,36 @@ class EpochOrBatchIteratorWithProgress:
 
         def update_desc():
             display.set_description(
-                f"batch: {batch_num}{batch_suffix}  epoch: {epoch_num}{epoch_suffix}"
+                f"batch: {self.batch_num}{batch_suffix}  epoch: {self.epoch_num}{epoch_suffix}"
             )
 
         with contextlib.closing(display):
             while True:
                 update_desc()
                 for batch in self.data_loader:
-                    batch_num += 1
+                    self.batch_num += 1
                     batch_size = len(batch["obs"])
                     assert batch_size > 0
-                    samples_so_far += batch_size
+                    self.samples_so_far += batch_size
                     stats = dict(
-                        epoch_num=epoch_num,
-                        batch_num=batch_num,
-                        samples_so_far=samples_so_far,
+                        epoch_num=self.epoch_num,
+                        batch_num=self.batch_num,
+                        samples_so_far=self.samples_so_far,
                     )
                     yield batch, stats
                     if not self.use_epochs:
                         update_desc()
                         display.update(1)
-                        if batch_num >= self.n_batches:
+                        if self.batch_num - batch_num_start >= self.n_batches:
                             return
-                epoch_num += 1
+                self.epoch_num += 1
                 if self.on_epoch_end is not None:
                     self.on_epoch_end()
 
                 if self.use_epochs:
                     update_desc()
                     display.update(1)
-                    if epoch_num >= self.n_epochs:
+                    if self.epoch_num - epoch_num_start >= self.n_epochs:
                         return
 
 
@@ -292,6 +308,9 @@ class BC:
         n_batches: Optional[int] = None,
         on_epoch_end: Callable[[], None] = None,
         log_interval: int = 100,
+        samples_so_far: int = 0,
+        batch_num: int = 0,
+        epoch_num: int = 0,
     ):
         """Train with supervised learning for some number of epochs.
 
@@ -312,9 +331,12 @@ class BC:
             n_epochs=n_epochs,
             n_batches=n_batches,
             on_epoch_end=on_epoch_end,
+            samples_so_far=samples_so_far,
+            batch_num=batch_num,
+            epoch_num=epoch_num,
+            stateful_iter=True,
         )
 
-        batch_num = 0
         for batch, stats_dict_it in it:
             loss, stats_dict_loss = self._calculate_loss(batch["obs"], batch["acts"])
 
@@ -328,6 +350,8 @@ class BC:
                         logger.record(k, v)
                 logger.dump(batch_num)
             batch_num += 1
+
+        return it.samples_so_far, it.batch_num, it.epoch_num
 
     def save_policy(self, policy_path: str) -> None:
         """Save policy to a path. Can be reloaded by `.reconstruct_policy()`.
