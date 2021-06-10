@@ -60,7 +60,7 @@ class EpochOrBatchIteratorWithProgress:
         n_epochs: Optional[int] = None,
         n_batches: Optional[int] = None,
         on_epoch_end: Optional[Callable[[], None]] = None,
-        on_batch_end: Optional[Callable[[], None]] = None
+        on_batch_end: Optional[Callable[[], None]] = None,
     ):
         """Wraps DataLoader so that all BC batches can be processed in a one for-loop.
 
