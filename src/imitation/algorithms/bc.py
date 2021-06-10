@@ -321,7 +321,7 @@ class BC:
             n_epochs=n_epochs,
             n_batches=n_batches,
             on_epoch_end=on_epoch_end,
-            on_batch_end=on_batch_end
+            on_batch_end=on_batch_end,
         )
 
         batch_num = 0
