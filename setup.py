@@ -14,6 +14,8 @@ TESTS_REQUIRE = [
     "flake8-builtins",
     "flake8-debugger",
     "flake8-isort",
+    "ipykernel",
+    "jupyter",
     "pytest",
     "pytest-cov",
     "pytest-notebook",
@@ -69,8 +71,6 @@ setup(
             "ntfy[slack]",
             "ipdb",
             "isort~=5.0",
-            "ipykernel",
-            "jupyter",
             "pytype",
             "codespell",
             # for convenience
