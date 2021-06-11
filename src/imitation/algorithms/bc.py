@@ -60,6 +60,7 @@ class EpochOrBatchIteratorWithProgress:
         n_epochs: Optional[int] = None,
         n_batches: Optional[int] = None,
         on_epoch_end: Optional[Callable[[], None]] = None,
+        on_batch_end: Optional[Callable[[], None]] = None,
     ):
         """Wraps DataLoader so that all BC batches can be processed in a one for-loop.
 
@@ -73,6 +74,8 @@ class EpochOrBatchIteratorWithProgress:
                 __iter__. Exactly one of `n_epochs` and `n_batches` should be provided.
             on_epoch_end: A callback function without parameters to be called at the
                 end of every epoch.
+            on_batch_end: A callback function without parameters to be called at the
+                end of every batch.
         """
         if n_epochs is not None and n_batches is None:
             self.use_epochs = True
@@ -87,6 +90,7 @@ class EpochOrBatchIteratorWithProgress:
         self.n_epochs = n_epochs
         self.n_batches = n_batches
         self.on_epoch_end = on_epoch_end
+        self.on_batch_end = on_batch_end
 
     def __iter__(self) -> Iterable[Tuple[dict, dict]]:
         """Yields batches while updating tqdm display to display progress."""
@@ -121,6 +125,8 @@ class EpochOrBatchIteratorWithProgress:
                         samples_so_far=samples_so_far,
                     )
                     yield batch, stats
+                    if self.on_batch_end is not None:
+                        self.on_batch_end()
                     if not self.use_epochs:
                         update_desc()
                         display.update(1)
@@ -291,6 +297,7 @@ class BC:
         n_epochs: Optional[int] = None,
         n_batches: Optional[int] = None,
         on_epoch_end: Callable[[], None] = None,
+        on_batch_end: Callable[[], None] = None,
         log_interval: int = 100,
     ):
         """Train with supervised learning for some number of epochs.
@@ -305,6 +312,8 @@ class BC:
                 Provide exactly one of `n_epochs` and `n_batches`.
             on_epoch_end: Optional callback with no parameters to run at the end of each
                 epoch.
+            on_batch_end: Optional callback with no parameters to run at the end of each
+                batch.
             log_interval: Log stats after every log_interval batches.
         """
         it = EpochOrBatchIteratorWithProgress(
@@ -312,6 +321,7 @@ class BC:
             n_epochs=n_epochs,
             n_batches=n_batches,
             on_epoch_end=on_epoch_end,
+            on_batch_end=on_batch_end,
         )
 
         batch_num = 0
