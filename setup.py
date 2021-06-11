@@ -69,6 +69,7 @@ setup(
             "ntfy[slack]",
             "ipdb",
             "isort~=5.0",
+            "ipykernel",
             "jupyter",
             "pytype",
             "codespell",
