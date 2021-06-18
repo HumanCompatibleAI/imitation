@@ -112,6 +112,7 @@ class EpochOrBatchIteratorWithProgress:
             )
 
         with contextlib.closing(display):
+            prior_epoch_batches = batch_num
             while True:
                 update_desc()
                 for batch in self.data_loader:
@@ -132,6 +133,10 @@ class EpochOrBatchIteratorWithProgress:
                         display.update(1)
                         if batch_num >= self.n_batches:
                             return
+                if batch_num == prior_epoch_batches:
+                    raise StopIteration("epoch_num is increasing without batch_num going up; "
+                                        "perhaps your data loader has not reset properly")
+                prior_epoch_batches = batch_num
                 epoch_num += 1
                 if self.on_epoch_end is not None:
                     self.on_epoch_end()
