@@ -134,8 +134,8 @@ class EpochOrBatchIteratorWithProgress:
                         if batch_num >= self.n_batches:
                             return
                 if batch_num == prior_epoch_batches:
-                    raise StopIteration("epoch_num is increasing without batch_num going up; "
-                                        "perhaps your data loader has not reset properly")
+                    raise AssertionError("epoch_num is increasing without batch_num going up; "
+                                         "likely your data loader has not reset properly")
                 prior_epoch_batches = batch_num
                 epoch_num += 1
                 if self.on_epoch_end is not None:
