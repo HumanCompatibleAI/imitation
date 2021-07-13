@@ -73,22 +73,24 @@ def filter_subdirs(
 
 def build_sacred_symlink(log_dir: types.AnyPath, run: sacred_run.Run) -> None:
     """Constructs a symlink "{log_dir}/sacred" => "${SACRED_PATH}"."""
+    log_dir = pathlib.Path(log_dir)
+
     sacred_dir = get_sacred_dir_from_run(run)
     if sacred_dir is None:
         warnings.warn(RuntimeWarning("Couldn't find sacred directory."))
         return
     symlink_path = pathlib.Path(log_dir, "sacred")
-    target_path = symlink_path.relative_to(log_dir)
+    target_path = pathlib.Path(os.path.relpath(sacred_dir, start=log_dir))
 
-    # Path.symlink_path errors if the symlink already exists. In our case, we actually
+    # Path.symlink_to errors if the symlink already exists. In our case, we actually
     # want to override the symlink to point to the most recent Sacred dir. The
     # examples/quickstart.sh script fails without this check when run a second time.
-    if target_path.is_symlink():
-        target_path.unlink()
+    if symlink_path.is_symlink():
+        symlink_path.unlink()
 
     # Use relative paths so we can mount the output directory at different paths
     # (e.g. when copying across machines).
-    target_path.symlink_to(symlink_path, target_is_directory=True)
+    symlink_path.symlink_to(target_path, target_is_directory=True)
 
 
 def get_sacred_dir_from_run(run: sacred_run.Run) -> Union[pathlib.Path, None]:
