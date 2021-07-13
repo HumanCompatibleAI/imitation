@@ -150,5 +150,10 @@ dmypy.json
 # yapf (code formatter)
 .style.yapf
 
-# cruft produced by one of the adversarial tests
-tests/data/reward_models
+
+# Various testing / quickstart artifacts:
+
+# Produced by transfer_learn_benchmark.sh
+/tests/data/reward_models
+# Produced by examples/quickstart.sh
+/quickstart/
