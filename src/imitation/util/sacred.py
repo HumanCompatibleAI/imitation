@@ -1,9 +1,13 @@
 import json
 import os
+import pathlib
 import warnings
 from typing import Any, Callable, List, NamedTuple, Union
 
-import sacred
+from sacred import run as sacred_run
+from sacred import observers as sacred_observers
+
+from imitation.data import types
 
 
 class SacredDicts(NamedTuple):
@@ -67,24 +71,31 @@ def filter_subdirs(
     return list(filtered_dirs)
 
 
-def build_sacred_symlink(log_dir: str, run: sacred.run.Run) -> None:
+def build_sacred_symlink(log_dir: types.AnyPath, run: sacred_run.Run) -> None:
     """Constructs a symlink "{log_dir}/sacred" => "${SACRED_PATH}"."""
     sacred_dir = get_sacred_dir_from_run(run)
     if sacred_dir is None:
         warnings.warn(RuntimeWarning("Couldn't find sacred directory."))
         return
-    symlink_path = os.path.join(log_dir, "sacred")
-    target_path = os.path.relpath(sacred_dir, start=log_dir)
+    symlink_path = pathlib.Path(log_dir, "sacred")
+    target_path = symlink_path.relative_to(log_dir)
+
+    # Path.symlink_path errors if the symlink already exists. In our case, we actually
+    # want to override the symlink to point to the most recent Sacred dir. The
+    # examples/quickstart.sh script fails without this check when run a second time.
+    if target_path.is_symlink():
+        target_path.unlink()
+
     # Use relative paths so we can mount the output directory at different paths
     # (e.g. when copying across machines).
-    os.symlink(target_path, symlink_path, target_is_directory=True)
+    target_path.symlink_to(symlink_path, target_is_directory=True)
 
 
-def get_sacred_dir_from_run(run: sacred.run.Run) -> Union[str, None]:
+def get_sacred_dir_from_run(run: sacred_run.Run) -> Union[pathlib.Path, None]:
     """Returns path to the sacred directory, or None if not found."""
     for obs in run.observers:
-        if isinstance(obs, sacred.observers.FileStorageObserver):
-            return obs.dir
+        if isinstance(obs, sacred_observers.FileStorageObserver):
+            return pathlib.Path(obs.dir)
     return None
 
 
