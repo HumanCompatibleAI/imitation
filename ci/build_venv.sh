@@ -9,4 +9,4 @@ fi
 
 virtualenv -p python3.7 ${venv}
 source ${venv}/bin/activate
-pip install .[cpu,docs,parallel,test] gym[mujoco]
+pip install .[cpu,docs,jax,parallel,test] gym[mujoco]
