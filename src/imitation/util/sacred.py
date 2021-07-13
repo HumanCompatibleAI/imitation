@@ -4,8 +4,8 @@ import pathlib
 import warnings
 from typing import Any, Callable, List, NamedTuple, Union
 
-from sacred import run as sacred_run
 from sacred import observers as sacred_observers
+from sacred import run as sacred_run
 
 from imitation.data import types
 

@@ -1,7 +1,6 @@
 import pytest
 
 from imitation.util import util
-from imitation.util import sacred as sacred_util
 
 
 def test_endless_iter():

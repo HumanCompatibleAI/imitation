@@ -13,6 +13,7 @@ def _paths_to_strs(x: Sequence[pathlib.Path]) -> List[str]:
     test_run_example_sh_scripts[sh_path0] rather than seeing the actual path name."""
     return [str(path) for path in x]
 
+
 THIS_DIR = pathlib.Path(__file__).absolute().parent
 EXAMPLES_DIR = THIS_DIR / ".." / "examples"
 
