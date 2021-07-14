@@ -23,8 +23,10 @@ except ImportError:
 
 skip_if_no_jax = pytest.mark.skipif(
     JAX_IMPORT_FAIL,
-    reason=("jax not installed (see imitation.algorithms.tabular_irl docstring for "
-            "installation info)")
+    reason=(
+        "jax not installed (see imitation.algorithms.tabular_irl docstring for "
+        "installation info)"
+    ),
 )
 
 
