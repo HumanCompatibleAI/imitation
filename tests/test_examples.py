@@ -1,12 +1,12 @@
 import pathlib
 import subprocess
-from typing import List, Sequence
+from typing import Iterable, List
 
 import pytest
 from pytest_notebook import execution, notebook
 
 
-def _paths_to_strs(x: Sequence[pathlib.Path]) -> List[str]:
+def _paths_to_strs(x: Iterable[pathlib.Path]) -> List[str]:
     """Convert Path to str for nice Pytest `parameterized` logs.
 
     For example, if we use Path, we get something inscrutable like
