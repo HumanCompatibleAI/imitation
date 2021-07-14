@@ -21,7 +21,11 @@ except ImportError:
     JAX_IMPORT_FAIL = True
 
 
-skip_if_no_jax = pytest.mark.skipif(JAX_IMPORT_FAIL)
+skip_if_no_jax = pytest.mark.skipif(
+    JAX_IMPORT_FAIL,
+    reason=("jax not installed (see imitation.algorithms.tabular_irl docstring for "
+            "installation info)")
+)
 
 
 def rollouts(env, n=10, seed=None):
