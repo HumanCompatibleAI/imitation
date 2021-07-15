@@ -86,8 +86,9 @@ def build_sacred_symlink(log_dir: types.AnyPath, run: sacred_run.Run) -> None:
     # want to override the symlink to point to the most recent Sacred dir. The
     # examples/quickstart.sh script fails without this check when run a second time.
     #
-    # Note that building the Sacred symlink will still fail if `symlink_path` is a
-    # file or directory.
+    # If `symlink_path` exists and is not a symlink, then it was created by something
+    # other than this function we don't remove it (leading to failure on the symlink
+    # step).
     if symlink_path.is_symlink():
         symlink_path.unlink()
 
