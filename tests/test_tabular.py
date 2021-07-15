@@ -17,7 +17,7 @@ from imitation.envs.resettable_env import TabularModelEnv
 JAX_IMPORT_FAIL = False
 try:
     import jax.experimental.optimizers as jaxopt  # pytype: disable=import-error
-except ImportError:
+except ImportError:  # pragma: no cover
     JAX_IMPORT_FAIL = True
 
 
