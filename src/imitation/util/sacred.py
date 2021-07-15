@@ -4,8 +4,7 @@ import pathlib
 import warnings
 from typing import Any, Callable, List, NamedTuple, Union
 
-from sacred import observers as sacred_observers
-from sacred import run as sacred_run
+import sacred
 
 from imitation.data import types
 
@@ -71,7 +70,7 @@ def filter_subdirs(
     return list(filtered_dirs)
 
 
-def build_sacred_symlink(log_dir: types.AnyPath, run: sacred_run.Run) -> None:
+def build_sacred_symlink(log_dir: types.AnyPath, run: sacred.run.Run) -> None:
     """Constructs a symlink "{log_dir}/sacred" => "${SACRED_PATH}"."""
     log_dir = pathlib.Path(log_dir)
 
@@ -97,10 +96,10 @@ def build_sacred_symlink(log_dir: types.AnyPath, run: sacred_run.Run) -> None:
     symlink_path.symlink_to(target_path, target_is_directory=True)
 
 
-def get_sacred_dir_from_run(run: sacred_run.Run) -> Union[pathlib.Path, None]:
+def get_sacred_dir_from_run(run: sacred.run.Run) -> Union[pathlib.Path, None]:
     """Returns path to the sacred directory, or None if not found."""
     for obs in run.observers:
-        if isinstance(obs, sacred_observers.FileStorageObserver):
+        if isinstance(obs, sacred.observers.FileStorageObserver):
             return pathlib.Path(obs.dir)
     return None
 
