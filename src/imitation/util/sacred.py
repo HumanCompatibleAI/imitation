@@ -85,6 +85,9 @@ def build_sacred_symlink(log_dir: types.AnyPath, run: sacred_run.Run) -> None:
     # Path.symlink_to errors if the symlink already exists. In our case, we actually
     # want to override the symlink to point to the most recent Sacred dir. The
     # examples/quickstart.sh script fails without this check when run a second time.
+    #
+    # Note that building the Sacred symlink will still fail if `symlink_path` is a
+    # file or directory.
     if symlink_path.is_symlink():
         symlink_path.unlink()
 
