@@ -14,7 +14,7 @@ from sacred.observers import FileStorageObserver
 from imitation.algorithms import adversarial
 from imitation.data import rollout, types
 from imitation.policies import serialize
-from imitation.scripts.config.train_adversarial import train_ex
+from imitation.scripts.config.train_adversarial import train_adversarial_ex
 from imitation.util import logger
 from imitation.util import sacred as sacred_util
 from imitation.util import util
@@ -35,8 +35,8 @@ def save(trainer, save_path):
     )
 
 
-@train_ex.main
-def train(
+@train_adversarial_ex.main
+def train_adversarial(
     _run,
     _seed: int,
     algorithm: str,
@@ -226,13 +226,15 @@ def train(
     )
     results["expert_stats"] = rollout.rollout_stats(expert_trajs)
     results["imit_stats"] = rollout.rollout_stats(trajs)
+
+    print(f"LOG: tbl {log_dir}")
     return results
 
 
 def main_console():
-    observer = FileStorageObserver(osp.join("output", "sacred", "train"))
-    train_ex.observers.append(observer)
-    train_ex.run_commandline()
+    observer = FileStorageObserver(osp.join("output", "sacred", "train_adversarial"))
+    train_adversarial_ex.observers.append(observer)
+    train_adversarial_ex.run_commandline()
 
 
 if __name__ == "__main__":  # pragma: no cover
