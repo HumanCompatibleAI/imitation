@@ -1,15 +1,25 @@
 import pathlib
 import subprocess
+from typing import Iterable, List
 
 import pytest
 from pytest_notebook import execution, notebook
 
+
+def _paths_to_strs(x: Iterable[pathlib.Path]) -> List[str]:
+    """Convert Path to str for nice Pytest `parameterized` logs.
+
+    For example, if we use Path, we get something inscrutable like
+    test_run_example_sh_scripts[sh_path0] rather than seeing the actual path name."""
+    return [str(path) for path in x]
+
+
 THIS_DIR = pathlib.Path(__file__).absolute().parent
 EXAMPLES_DIR = THIS_DIR / ".." / "examples"
 
-SH_PATHS = EXAMPLES_DIR.glob("*.sh")
-NB_PATHS = EXAMPLES_DIR.glob("*.ipynb")
-PY_PATHS = EXAMPLES_DIR.glob("*.py")
+SH_PATHS = _paths_to_strs(EXAMPLES_DIR.glob("*.sh"))
+NB_PATHS = _paths_to_strs(EXAMPLES_DIR.glob("*.ipynb"))
+PY_PATHS = _paths_to_strs(EXAMPLES_DIR.glob("*.py"))
 
 
 @pytest.mark.parametrize("nb_path", NB_PATHS)
@@ -33,11 +43,12 @@ def test_run_example_py_scripts(py_path):
 @pytest.mark.parametrize("sh_path", SH_PATHS)
 def test_run_example_sh_scripts(sh_path):
     """Smoke test ensuring that shell example scripts run without error."""
-    exit_code = subprocess.call(["env", "bash", sh_path])
-    assert exit_code == 0
+    for _ in range(2):  # Repeat because historically these have failed on second run.
+        exit_code = subprocess.call(["env", "bash", "-e", sh_path])
+        assert exit_code == 0
 
 
-README_SNIPPET_PATHS = [EXAMPLES_DIR / "quickstart.sh"]
+README_SNIPPET_PATHS = _paths_to_strs([EXAMPLES_DIR / "quickstart.sh"])
 
 
 @pytest.mark.parametrize("snippet_path", README_SNIPPET_PATHS)
