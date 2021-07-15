@@ -30,7 +30,8 @@ def build_mlp(
     Args:
         in_size: size of individual input vectors; input to the MLP will be of
             shape (batch_size, in_size).
-        hid_sizes: sizes of hidden layers.
+        hid_sizes: sizes of hidden layers. If this is an empty iterable, then we build
+            a linear function approximator.
         out_size: required size of output vector.
         activation: activation to apply after hidden layers.
         squeeze_output: if out_size=1, then squeeze_input=True ensures that MLP
