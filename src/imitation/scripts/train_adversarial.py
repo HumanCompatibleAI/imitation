@@ -226,8 +226,6 @@ def train_adversarial(
     )
     results["expert_stats"] = rollout.rollout_stats(expert_trajs)
     results["imit_stats"] = rollout.rollout_stats(trajs)
-
-    print(f"LOG: tbl {log_dir}")
     return results
 
 
