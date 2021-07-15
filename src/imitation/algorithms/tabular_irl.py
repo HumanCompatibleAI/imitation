@@ -19,7 +19,6 @@ PyTorch/TensorFlow, and some code for simple reward models.
 
 import abc
 import logging
-import warnings
 
 import numpy as np
 import scipy
@@ -32,8 +31,7 @@ try:
     import jax.random as jrandom
 
     # pytype: enable=import-error
-
-except ImportError:
+except ImportError as e:  # pragma: no cover
     msg = (
         f"Failed to import module {__name__} because Jax dependency is not installed. "
         "See module docstring for more information on installation and OS "
@@ -42,10 +40,7 @@ except ImportError:
     # ImportWarning is more appropriate than UserWarning here, but ImportWarning
     # has been ignored by default since Python 3.7:
     # https://docs.python.org/3/library/devmode.html#effects-of-the-python-development-mode
-    warnings.warn(msg)
-
-    # Also hide module functions to make Jax import failure more immediately obvious.
-    __all__ = []
+    raise ImportError(msg) from e
 
 
 def mce_partition_fh(env, *, R=None):
