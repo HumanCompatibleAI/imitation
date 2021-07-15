@@ -86,7 +86,7 @@ def build_sacred_symlink(log_dir: types.AnyPath, run: sacred.run.Run) -> None:
     # examples/quickstart.sh script fails without this check when run a second time.
     #
     # If `symlink_path` exists and is not a symlink, then it was created by something
-    # other than this function we don't remove it (leading to failure on the symlink
+    # other than this function then we don't remove it (and will error on the symlink
     # step).
     if symlink_path.is_symlink():
         symlink_path.unlink()
