@@ -25,7 +25,7 @@ def save(trainer, save_path):
     # We implement this here and not in Trainer since we do not want to actually
     # serialize the whole Trainer (including e.g. expert demonstrations).
     os.makedirs(save_path, exist_ok=True)
-    th.save(trainer.discrim, os.path.join(save_path, "discrim.pt"))
+    th.save(trainer.discrim_net, os.path.join(save_path, "discrim.pt"))
     # TODO(gleave): unify this with the saving logic in data_collect?
     # (Needs #43 to be merged before attempting.)
     serialize.save_stable_model(
