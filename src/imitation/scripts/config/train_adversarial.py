@@ -130,9 +130,23 @@ def cartpole():
 
 
 @train_adversarial_ex.named_config
+def seals_cartpole():
+    env_name = "seals/CartPole-v0"
+    # seals and vanilla CartPole have the same expert trajectories.
+    rollout_hint = "cartpole"
+    discrim_net_kwargs = {"gail": {"scale": False}}
+
+
+@train_adversarial_ex.named_config
 def mountain_car():
     env_name = "MountainCar-v0"
     rollout_hint = "mountain_car"
+
+
+@train_adversarial_ex.named_config
+def seals_mountain_car():
+    env_name = "seals/MountainCar-v0"
+    rollout_hint = "mountain_car"  # TODO: Use seals/MountainCar-v0 rollouts.
 
 
 @train_adversarial_ex.named_config
