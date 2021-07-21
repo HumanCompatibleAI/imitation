@@ -251,13 +251,13 @@ class BC:
 
         if lr_scheduler_cls is None:
             self.lr_scheduler = None
-            self.base_epoch_end_callbacks = ()
+            self.epoch_end_step_callback = None
         else:
             self.lr_scheduler = lr_scheduler_cls(
                 optimizer=self.optimizer,
                 **lr_scheduler_kwargs,
             )
-            self.base_epoch_end_callbacks = (lambda **kwargs: self.lr_scheduler.step(),)
+            self.epoch_end_step_callback = lambda **kwargs: self.lr_scheduler.step()
 
         self.expert_data_loader: Optional[Iterable[Mapping]] = None
         self.ent_weight = ent_weight
@@ -406,6 +406,7 @@ class BC:
                 batch.
             log_interval: Log stats after every log_interval batches.
         """
+        on_epoch_end = util.join_callbacks(on_epoch_end, self.epoch_end_step_callback)
         it = EpochOrBatchIteratorWithProgress(
             self.expert_data_loader,
             n_epochs=n_epochs,

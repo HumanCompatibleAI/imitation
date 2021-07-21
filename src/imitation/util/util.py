@@ -221,3 +221,21 @@ def optim_lr_gmean(optimizer: th.optim.Optimizer) -> float:
         return lrs[0]
     # otherwise, do geometric mean
     return stats.gmean(lrs)
+
+
+def join_callbacks(*callbacks: Optional[Callable[..., None]]) -> Callable[..., None]:
+    """Call a series of callbacks in sequence.
+
+    Args:
+        callbacks: series of functions (or None values) to call. Any callback
+            that is None will be ignored.
+
+    Returns: a 'joined' callback that executes each of the functions in
+        `callbacks` in sequence with the supplied arguments."""
+
+    def joined_callback(*args, **kwargs):
+        for callback in callbacks:
+            if callback is not None:
+                callback(*args, **kwargs)
+
+    return joined_callback
