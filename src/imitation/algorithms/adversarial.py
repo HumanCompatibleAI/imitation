@@ -386,8 +386,7 @@ class AdversarialTrainer:
         preprocessed = preprocessing.preprocess_obs(
             tensor,
             space,
-            # TODO(sam): can I remove "scale" kwarg in DiscrimNet etc.?
-            normalize_images=self.discrim_net.scale,
+            normalize_images=self.discrim_net.normalize_images,
         )
         return preprocessed
 

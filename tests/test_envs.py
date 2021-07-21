@@ -3,9 +3,11 @@
 import gym
 import pytest
 
-# TODO(sam): seals_test seems to require MuJoCo. It would be helpful to skip
-# these tests if it is not available, like we do in test_scripts.py.
-from seals.testing import envs as seals_test
+try:
+    # seals_test requires mujoco_py, so skip if we don't have that
+    from seals.testing import envs as seals_test
+except gym.error.DependencyNotInstalled:
+    seals_test = None
 
 # Unused imports is for side-effect of registering environments
 from imitation.envs import examples  # noqa: F401
@@ -20,13 +22,18 @@ ENV_NAMES = [
 DETERMINISTIC_ENVS = []
 
 
-env = pytest.fixture(seals_test.make_env_fixture(skip_fn=pytest.skip))
+if seals_test is not None:
+    env = pytest.fixture(seals_test.make_env_fixture(skip_fn=pytest.skip))
 
 
-@pytest.mark.parametrize("env_name", ENV_NAMES)
+@pytest.mark.skipif(
+    seals_test is None,
+    reason="seals.testing could not be imported, " "likely missing mujoco_py",
+)
 class TestEnvs:
     """Battery of simple tests for environments."""
 
+    @pytest.mark.parametrize("env_name", ENV_NAMES)
     def test_seed(self, env, env_name):
         seals_test.test_seed(env, env_name, DETERMINISTIC_ENVS)
 
