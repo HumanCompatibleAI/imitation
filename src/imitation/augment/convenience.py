@@ -2,7 +2,7 @@
 
 import inspect
 import math
-from typing import Optional, Sequence, Set
+from typing import Sequence, Set
 
 import kornia.augmentation as kornia_aug
 import torch as th
@@ -28,18 +28,8 @@ class KorniaAugmentations(nn.Module):
     def __init__(
         self,
         kornia_ops: Sequence[nn.Module],
-        stack_color_space: Optional[ColorSpace] = None,
     ) -> None:
         super().__init__()
-        if stack_color_space is None:
-            stack_color_space = ColorSpace.RGB
-        self.stack_n_channels = None
-        if stack_color_space == ColorSpace.RGB:
-            self.stack_n_channels = 3
-        elif stack_color_space == ColorSpace.GRAY:
-            self.stack_n_channels = 1
-        else:
-            raise ValueError(f"Unrecognised color space '{stack_color_space}'")
         self.kornia_ops = nn.Sequential(*kornia_ops)
 
     def forward(self, images: th.Tensor) -> th.Tensor:
@@ -53,31 +43,8 @@ class KorniaAugmentations(nn.Module):
                     "not have rank 4 and floating point type"
                 )
 
-            # push frames into the batch axis, if necessary
-            orig_shape = images.shape
-            if self.stack_n_channels is not None:
-                # make sure this is a channels-last stack of images
-                stacked_frames = images.size(1) // self.stack_n_channels
-                if stacked_frames < 1:
-                    raise ValueError(
-                        f"No input frames in tensor of shape '{images.shape}' "
-                        f"(channels per frame: {self.stack_n_channels})"
-                    )
-                if stacked_frames * self.stack_n_channels != images.size(1):
-                    raise ValueError(
-                        f"Image tensor shape '{images.shape}' not divisible by "
-                        f"channels per frame ({self.stack_n_channels})"
-                    )
-                images = images.view(
-                    (images.size(0) * stacked_frames, self.stack_n_channels)
-                    + orig_shape[2:]
-                )
-
             # apply augmentations
             images = self.kornia_ops(images)
-
-            # restore shape
-            images = images.reshape(orig_shape)
 
         return images
 
@@ -99,6 +66,7 @@ class StandardAugmentations(KorniaAugmentations):
 
     def __init__(
         self,
+        *,
         translate: bool = False,
         translate_ex: bool = False,
         rotate: bool = False,
@@ -114,7 +82,7 @@ class StandardAugmentations(KorniaAugmentations):
         erase: bool = False,
         gray: bool = False,
         gaussian_blur: bool = False,
-        stack_color_space: Optional[ColorSpace] = None,
+        stack_color_space: ColorSpace,
     ) -> None:
         """Construct an augmenter that sequentially applies the given augmentations.
 
@@ -149,12 +117,16 @@ class StandardAugmentations(KorniaAugmentations):
         assert sum([color_jitter, color_jitter_mid, color_jitter_ex]) <= 1
         if color_jitter_ex:
             transforms.append(
-                im_aug.CIELabJitter(max_lum_scale=1.05, max_uv_rads=math.pi)
+                im_aug.CIELabJitter(
+                    max_lum_scale=1.05,
+                    max_uv_rads=math.pi,
+                    color_space=stack_color_space,
+                )
             )
         elif color_jitter_mid:
-            transforms.append(im_aug.CIELabJitter(max_lum_scale=1.01, max_uv_rads=0.6))
+            transforms.append(im_aug.CIELabJitter(max_lum_scale=1.01, max_uv_rads=0.6, color_space=stack_color_space,))
         elif color_jitter:
-            transforms.append(im_aug.CIELabJitter(max_lum_scale=1.01, max_uv_rads=0.15))
+            transforms.append(im_aug.CIELabJitter(max_lum_scale=1.01, max_uv_rads=0.15, color_space=stack_color_space,))
 
         # translation and rotation get combined into a single RandomAffine transform
         assert sum([rotate, rotate_ex, rotate_mid]) <= 1
@@ -211,9 +183,9 @@ class StandardAugmentations(KorniaAugmentations):
             transforms.append(noise_mod)
 
         if gray:
-            transforms.append(im_aug.Grayscale(p=0.5))
+            transforms.append(im_aug.Grayscale(p=0.5, color_space=stack_color_space))
 
-        super().__init__(transforms, stack_color_space=stack_color_space)
+        super().__init__(transforms)
 
     @classmethod
     def known_options(cls) -> Set[str]:
@@ -230,7 +202,9 @@ class StandardAugmentations(KorniaAugmentations):
 
     @classmethod
     def from_string_spec(
-        cls, spec: str, stack_color_space: Optional[ColorSpace] = None
+        cls,
+        spec: str,
+        stack_color_space: ColorSpace,
     ) -> "StandardAugmentations":
         """Construct an augmenter from a string specification.
 
