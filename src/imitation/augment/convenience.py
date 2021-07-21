@@ -165,6 +165,9 @@ class StandardAugmentations(KorniaAugmentations):
         elif rotate_ex:
             rot_bounds = (-35, 35)
         else:
+            # FIXME(sam): Kornia doesn't support passing in None, but Torch 1.8
+            # doesn't support sampling uniform numbers in [0, 0] (it requires
+            # low < high for sampling range).
             rot_bounds = (0, 0)
 
         sum([translate, translate_ex]) <= 1
