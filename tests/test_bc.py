@@ -116,10 +116,8 @@ def test_bc(trainer: bc.BC, venv):
 
     trainer.train(n_epochs=1, on_epoch_end=on_epoch_end, on_batch_end=on_batch_end)
     assert batch_end_count > 0
-    old_batch_end_count = batch_end_count
     assert epoch_end_count == 1
     trainer.train(n_batches=10)
-    assert batch_end_count == old_batch_end_count + 10
     trained_ret_mean = rollout.mean_return(trainer.policy, venv, sample_until)
     # Typically <80 score is bad, >350 is okay. We want an improvement of at
     # least 50 points, which seems like it's not noise.

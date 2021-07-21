@@ -7,9 +7,17 @@ import torch as th
 
 class ColorSpace(str, enum.Enum):
     """Color space specification for use with image augmentations."""
-
     RGB = "RGB"
     GRAY = "GRAY"
+
+
+def num_channels(color_space) -> int:
+    if color_space == ColorSpace.RGB:
+        return 3
+    if color_space == ColorSpace.GRAY:
+        return 1
+    raise NotImplementedError(
+        f"Don't know number of channels in color_space={color_space!r}")
 
 
 @th.jit.script

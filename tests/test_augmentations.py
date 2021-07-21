@@ -16,10 +16,7 @@ def color_space(request):
 @pytest.fixture(params=[1, 7])
 def fake_image(color_space, request):
     stack_depth = request.param
-    if color_space == augment.ColorSpace.RGB:
-        channels = stack_depth * 3
-    else:
-        channels = stack_depth
+    channels = stack_depth * augment.num_channels(color_space)
     images = th.empty((2, channels, 5, 5), dtype=th.float)
     images.uniform_()
     return images
@@ -145,3 +142,35 @@ def test_from_string_spec(fake_image, color_space):
     new_image = augmenter(fake_image)
     assert new_image.shape == fake_image.shape
     assert new_image.dtype == fake_image.dtype
+
+
+@pytest.mark.parametrize("batch_size", [1, 5])
+@pytest.mark.parametrize("color_space", list(augment.ColorSpace))
+@pytest.mark.parametrize("augmentations",
+                         ["translate,rotate", "color_jitter", "flip_ud,rot90"])
+def test_geom_consistent(color_space, batch_size, augmentations):
+    """Make sure that geometric transformations are being applied consistently
+    across all frames of a frame stack."""
+    if "color" in augmentations and color_space == augment.ColorSpace.GRAY:
+        pytest.skip("cannot do color space augmentations on grayscale image")
+
+    # Make a batch of `batch_size` frame stacks of `stack_depth` images each.
+    # All the frames in a given stack are identical.
+    batch_size = 29
+    stack_depth = 7
+    channels = augment.num_channels(color_space)
+    single_images = th.empty((batch_size, channels, 5, 5), dtype=th.float)
+    single_images.uniform_()
+    tile_spec = (1, stack_depth, 1, 1)
+    stacked_images = single_images.repeat(*tile_spec)
+
+    # augment the fake image batch
+    augmenter = augment.StandardAugmentations.from_string_spec(
+        spec=augmentations, stack_color_space=color_space)
+    augmented = augmenter(stacked_images)
+
+    # extract first image from each stack and tile them into stacks
+    first_images = stacked_images[:, :channels]
+    augmented_rep = first_images.repeat(*tile_spec)
+    # make sure the images within a given stack are identical
+    assert th.allclose(augmented, augmented_rep, rtol=1e-2, atol=1e-2)
