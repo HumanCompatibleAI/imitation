@@ -7,6 +7,7 @@ import torch as th
 
 class ColorSpace(str, enum.Enum):
     """Color space specification for use with image augmentations."""
+
     RGB = "RGB"
     GRAY = "GRAY"
 
@@ -17,7 +18,8 @@ def num_channels(color_space) -> int:
     if color_space == ColorSpace.GRAY:
         return 1
     raise NotImplementedError(
-        f"Don't know number of channels in color_space={color_space!r}")
+        f"Don't know number of channels in color_space={color_space!r}"
+    )
 
 
 def split_unsplit_channel_stack(tensor, color_space):
@@ -43,7 +45,7 @@ def split_unsplit_channel_stack(tensor, color_space):
         # helps unsplit the tensor after processing
         split_shape = split_tensor.shape
         new_pre = split_shape[:chans_axis]
-        new_post = split_shape[chans_axis + 2:]
+        new_post = split_shape[chans_axis + 2 :]
         # make sure new shape matches old shape at all except the middle
         # dimensions
         assert new_pre == shape_pre, (new_pre, shape_pre)

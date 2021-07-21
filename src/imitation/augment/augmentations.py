@@ -41,10 +41,10 @@ class GaussianBlur(nn.Module):
         blur_elems = []
         for batch_idx in range(batch_size):
             if should_blur[batch_idx]:
-                rotated_image = self.blur_op(images[batch_idx:batch_idx+1])
+                rotated_image = self.blur_op(images[batch_idx : batch_idx + 1])
                 blur_elems.append(rotated_image)
             else:
-                blur_elems.append(images[batch_idx:batch_idx+1])
+                blur_elems.append(images[batch_idx : batch_idx + 1])
         blur_images = th.cat(blur_elems, dim=0)
         return blur_images
 

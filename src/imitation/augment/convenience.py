@@ -124,9 +124,21 @@ class StandardAugmentations(KorniaAugmentations):
                 )
             )
         elif color_jitter_mid:
-            transforms.append(im_aug.CIELabJitter(max_lum_scale=1.01, max_uv_rads=0.6, color_space=stack_color_space,))
+            transforms.append(
+                im_aug.CIELabJitter(
+                    max_lum_scale=1.01,
+                    max_uv_rads=0.6,
+                    color_space=stack_color_space,
+                )
+            )
         elif color_jitter:
-            transforms.append(im_aug.CIELabJitter(max_lum_scale=1.01, max_uv_rads=0.15, color_space=stack_color_space,))
+            transforms.append(
+                im_aug.CIELabJitter(
+                    max_lum_scale=1.01,
+                    max_uv_rads=0.15,
+                    color_space=stack_color_space,
+                )
+            )
 
         # translation and rotation get combined into a single RandomAffine transform
         assert sum([rotate, rotate_ex, rotate_mid]) <= 1

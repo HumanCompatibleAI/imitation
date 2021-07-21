@@ -146,8 +146,9 @@ def test_from_string_spec(fake_image, color_space):
 
 @pytest.mark.parametrize("batch_size", [1, 5])
 @pytest.mark.parametrize("color_space", list(augment.ColorSpace))
-@pytest.mark.parametrize("augmentations",
-                         ["translate,rotate", "color_jitter", "flip_ud,rot90"])
+@pytest.mark.parametrize(
+    "augmentations", ["translate,rotate", "color_jitter", "flip_ud,rot90"]
+)
 def test_geom_consistent(color_space, batch_size, augmentations):
     """Make sure that geometric transformations are being applied consistently
     across all frames of a frame stack."""
@@ -166,11 +167,12 @@ def test_geom_consistent(color_space, batch_size, augmentations):
 
     # augment the fake image batch
     augmenter = augment.StandardAugmentations.from_string_spec(
-        spec=augmentations, stack_color_space=color_space)
+        spec=augmentations, stack_color_space=color_space
+    )
     augmented = augmenter(stacked_images)
 
     # extract first image from each stack and tile them into stacks
-    first_images = stacked_images[:, :channels]
-    augmented_rep = first_images.repeat(*tile_spec)
+    augmented_single_images = augmented[:, :channels]
+    augmented_rep = augmented_single_images.repeat(*tile_spec)
     # make sure the images within a given stack are identical
     assert th.allclose(augmented, augmented_rep, rtol=1e-2, atol=1e-2)
