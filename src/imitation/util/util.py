@@ -25,8 +25,6 @@ from stable_baselines3.common.base_class import BaseAlgorithm
 from stable_baselines3.common.policies import ActorCriticPolicy, BasePolicy
 from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecEnv
 
-from imitation.data import wrappers
-
 
 def make_unique_timestamp() -> str:
     """Timestamp, with random uuid added to avoid collisions."""
@@ -107,7 +105,6 @@ def make_vec_env(
         if wrapper_class is not None:
             # we apply this after Monitor, just like cmd_util.make_vec_env in SB3
             env = wrapper_class(env)
-        env = wrappers.RolloutInfoWrapper(env)
 
         if post_wrappers:
             for wrapper in post_wrappers:
@@ -120,8 +117,9 @@ def make_vec_env(
     env_fns = [functools.partial(make_env, i, s) for i, s in enumerate(env_seeds)]
     if parallel:
         # See GH hill-a/stable-baselines issue #217
-        return SubprocVecEnv(env_fns, start_method="forkserver",
-                             n_workers=parallel_workers)
+        return SubprocVecEnv(
+            env_fns, start_method="forkserver", n_workers=parallel_workers
+        )
     else:
         return DummyVecEnv(env_fns)
 
@@ -214,7 +212,7 @@ def optim_lr_gmean(optimizer: th.optim.Optimizer) -> float:
             groups."""
     lrs = []
     for param_group in optimizer.param_groups:
-        lrs.append(param_group['lr'])
+        lrs.append(param_group["lr"])
     if len(lrs) == 0:
         raise ValueError(f"No parameter groups for optimizer {optimizer}")
     if len(set(lrs)) == 1:

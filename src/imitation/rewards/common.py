@@ -137,7 +137,7 @@ def compute_train_stats(
         _n_gen_or_1 = max(1, n_generated)
         generated_acc = _n_pred_gen / float(_n_gen_or_1)
 
-        label_dist = th.distributions.Bernoulli(th.sigmoid(disc_logits_gen_is_high))
+        label_dist = th.distributions.Bernoulli(logits=disc_logits_gen_is_high)
         entropy = th.mean(label_dist.entropy())
 
     pairs = [

@@ -1,7 +1,7 @@
 """Constructs deep network reward models."""
 
 import abc
-from typing import Optional
+from typing import Optional, Sequence, Union
 
 import gym
 import numpy as np
@@ -402,8 +402,8 @@ class BasicShapedRewardNet(RewardNetShaped):
         observation_space: gym.Space,
         action_space: gym.Space,
         *,
-        base_reward_net: Optional[nn.Module] = None,
-        potential_net: Optional[nn.Module] = None,
+        base_reward_net: Union[nn.Module, Sequence[int]] = (32,),
+        potential_net: Union[nn.Module, Sequence[int]] = (32, 32),
         **kwargs,
     ):
         """Builds a simple shaped reward network.
@@ -411,10 +411,14 @@ class BasicShapedRewardNet(RewardNetShaped):
         Args:
           observation_space: The observation space.
           action_space: The action space.
-          base_reward_net: Network responsible for computing "base" reward.
-          potential_net: Net work responsible for computing a potential
+          base_reward_net: Network responsible for computing "base" reward, or
+            a tuple of integer hidden layer sizes for constructing a default
+            BasicRewardMLP.
+          potential_net: Network responsible for computing a potential
             function that will be used to provide additional potential-based
             shaping, in addition to the reward produced by `base_reward_net`.
+            Or, pass in a tuple of integer hidden layer sizes for
+            constructing a default network.
           kwargs: Passed through to `RewardNetShaped`.
         """
         super().__init__(
@@ -423,7 +427,9 @@ class BasicShapedRewardNet(RewardNetShaped):
             **kwargs,
         )
 
-        if base_reward_net is None:
+        if isinstance(base_reward_net, nn.Module):
+            self._base_reward_net = base_reward_net
+        else:
             self._base_reward_net = BasicRewardMLP(
                 observation_space=self.observation_space,
                 action_space=self.action_space,
@@ -431,23 +437,21 @@ class BasicShapedRewardNet(RewardNetShaped):
                 use_action=self.use_action,
                 use_next_state=self.use_next_state,
                 use_done=self.use_done,
-                hid_sizes=(32, 32),
+                hid_sizes=base_reward_net,
             )
-        else:
-            self._base_reward_net = base_reward_net
 
-        if potential_net is None:
+        if isinstance(potential_net, nn.Module):
+            self._potential_net = potential_net
+        else:
             potential_in_size = preprocessing.get_flattened_obs_dim(
                 self.observation_space
             )
             self._potential_net = networks.build_mlp(
                 in_size=potential_in_size,
-                hid_sizes=(32, 32),
+                hid_sizes=potential_net,
                 squeeze_output=True,
                 flatten_input=True,
             )
-        else:
-            self._potential_net = potential_net
 
     @property
     def base_reward_net(self):

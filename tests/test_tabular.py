@@ -1,7 +1,6 @@
 """Test tabular environments and tabular MCE IRL."""
 
 import gym
-import jax.experimental.optimizers as jaxopt
 import numpy as np
 import pytest
 
@@ -14,6 +13,21 @@ from imitation.algorithms.tabular_irl import (
 )
 from imitation.envs.examples.model_envs import RandomMDP
 from imitation.envs.resettable_env import TabularModelEnv
+
+JAX_IMPORT_FAIL = False
+try:
+    import jax.experimental.optimizers as jaxopt  # pytype: disable=import-error
+except ImportError:  # pragma: no cover
+    JAX_IMPORT_FAIL = True
+
+
+skip_if_no_jax = pytest.mark.skipif(
+    JAX_IMPORT_FAIL,
+    reason=(
+        "jax not installed (see imitation.algorithms.tabular_irl docstring for "
+        "installation info)"
+    ),
+)
 
 
 def rollouts(env, n=10, seed=None):
@@ -35,6 +49,7 @@ def rollouts(env, n=10, seed=None):
     return rv
 
 
+@skip_if_no_jax
 def test_random_mdp():
     for i in range(3):
         n_states = 4 * (i + 3)
@@ -81,6 +96,7 @@ def test_random_mdp():
         assert len(set(map(str, trajectories))) == 1
 
 
+@skip_if_no_jax
 def test_policy_om_random_mdp():
     """Test that optimal policy occupancy measure ("om") for a random MDP is sane."""
     mdp = gym.make("imitation/Random-v0")
@@ -182,6 +198,7 @@ class ReasonableMDP(TabularModelEnv):
     horizon = 20
 
 
+@skip_if_no_jax
 def test_policy_om_reasonable_mdp():
     # MDP described above
     mdp = ReasonableMDP()
@@ -217,6 +234,7 @@ def test_policy_om_reasonable_mdp():
     "model_class,model_kwargs",
     [(LinearRewardModel, dict()), (MLPRewardModel, dict(hiddens=[32, 32]))],
 )
+@skip_if_no_jax
 def test_mce_irl_reasonable_mdp(model_class, model_kwargs):
     # test MCE IRL on the MDP
     mdp = ReasonableMDP()

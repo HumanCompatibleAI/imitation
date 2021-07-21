@@ -7,17 +7,40 @@ PyTorch/TensorFlow, and some code for simple reward models.
 
 .. _PhD thesis:
     http://www.cs.cmu.edu/~bziebart/publications/thesis-bziebart.pdf
+
+.. note::
+    Our current implementation of MCE IRL uses Jax, which is not bundled with the
+    default ``pip`` installation of ``imitation`` because Jax is incompatible with
+    Windows. You can install the Jax dependencies used by MCE IRL via
+    ``pip install imitation[jax]``.
+
+    We are considering porting MCE IRL from Jax to PyTorch in a future release.
 """
 
 import abc
 import logging
 
-import jax
-import jax.experimental.stax as jstax
-import jax.numpy as jnp
-import jax.random as jrandom
 import numpy as np
 import scipy
+
+try:
+    # pytype: disable=import-error
+    import jax
+    import jax.experimental.stax as jstax
+    import jax.numpy as jnp
+    import jax.random as jrandom
+
+    # pytype: enable=import-error
+except ImportError as e:  # pragma: no cover
+    msg = (
+        f"Failed to import module {__name__} because Jax dependency is not installed. "
+        "See module docstring for more information on installation and OS "
+        "compatibility."
+    )
+    # ImportWarning is more appropriate than UserWarning here, but ImportWarning
+    # has been ignored by default since Python 3.7:
+    # https://docs.python.org/3/library/devmode.html#effects-of-the-python-development-mode
+    raise ImportError(msg) from e
 
 
 def mce_partition_fh(env, *, R=None):

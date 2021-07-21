@@ -14,6 +14,8 @@ TESTS_REQUIRE = [
     "flake8-builtins",
     "flake8-debugger",
     "flake8-isort",
+    "ipykernel",
+    "jupyter",
     "pytest",
     "pytest-cov",
     "pytest-notebook",
@@ -56,10 +58,10 @@ setup(
         "tqdm",
         "scikit-learn>=0.21.2",
         # this has some fixes/improvements to vecenvs
-        ("stable-baselines3 @ git+https://github.com/HumanCompatibleAI"
-         "/stable-baselines3.git@7c95c9027dbbb93843873aac6dcdcab4c7c709a6"),
-        "jax~=0.2.8",
-        "jaxlib~=0.1.59",
+        (
+            "stable-baselines3 @ git+https://github.com/HumanCompatibleAI"
+            "/stable-baselines3.git@7c95c9027dbbb93843873aac6dcdcab4c7c709a6"
+        ),
         "sacred~=0.8.1",
         "tensorboard>=1.14",
         # TODO(sam): switch to pip once kornia#635 is fixed.
@@ -73,12 +75,15 @@ setup(
             "ntfy[slack]",
             "ipdb",
             "isort~=5.0",
-            "jupyter",
             "pytype",
             "codespell",
             # for convenience
             *TESTS_REQUIRE,
             *DOCS_REQUIRE,
+        ],
+        "jax": [
+            "jax~=0.2.8",
+            "jaxlib~=0.1.59",
         ],
         "test": TESTS_REQUIRE,
         "docs": DOCS_REQUIRE,

@@ -1,9 +1,12 @@
 import json
 import os
+import pathlib
 import warnings
 from typing import Any, Callable, List, NamedTuple, Union
 
 import sacred
+
+from imitation.data import types
 
 
 class SacredDicts(NamedTuple):
@@ -67,24 +70,37 @@ def filter_subdirs(
     return list(filtered_dirs)
 
 
-def build_sacred_symlink(log_dir: str, run: sacred.run.Run) -> None:
+def build_sacred_symlink(log_dir: types.AnyPath, run: sacred.run.Run) -> None:
     """Constructs a symlink "{log_dir}/sacred" => "${SACRED_PATH}"."""
+    log_dir = pathlib.Path(log_dir)
+
     sacred_dir = get_sacred_dir_from_run(run)
     if sacred_dir is None:
         warnings.warn(RuntimeWarning("Couldn't find sacred directory."))
         return
-    symlink_path = os.path.join(log_dir, "sacred")
-    target_path = os.path.relpath(sacred_dir, start=log_dir)
+    symlink_path = pathlib.Path(log_dir, "sacred")
+    target_path = pathlib.Path(os.path.relpath(sacred_dir, start=log_dir))
+
+    # Path.symlink_to errors if the symlink already exists. In our case, we actually
+    # want to override the symlink to point to the most recent Sacred dir. The
+    # examples/quickstart.sh script fails without this check when run a second time.
+    #
+    # If `symlink_path` exists and is not a symlink, then it was created by something
+    # other than this function then we don't remove it (and will error on the symlink
+    # step).
+    if symlink_path.is_symlink():
+        symlink_path.unlink()
+
     # Use relative paths so we can mount the output directory at different paths
     # (e.g. when copying across machines).
-    os.symlink(target_path, symlink_path, target_is_directory=True)
+    symlink_path.symlink_to(target_path, target_is_directory=True)
 
 
-def get_sacred_dir_from_run(run: sacred.run.Run) -> Union[str, None]:
+def get_sacred_dir_from_run(run: sacred.run.Run) -> Union[pathlib.Path, None]:
     """Returns path to the sacred directory, or None if not found."""
     for obs in run.observers:
         if isinstance(obs, sacred.observers.FileStorageObserver):
-            return obs.dir
+            return pathlib.Path(obs.dir)
     return None
 
 
