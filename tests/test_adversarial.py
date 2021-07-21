@@ -298,9 +298,9 @@ def test_adversarial_normalization(_algorithm_cls, tmpdir: str):
     # (these ensure that our assertions are working)
     assert trainer.gen_algo.policy.features_extractor.assert_calls > 0
     if _algorithm_cls is adversarial.GAIL:
-        assert trainer.discrim.discriminator.assert_calls > 0
+        assert trainer.discrim_net.discriminator.assert_calls > 0
     elif _algorithm_cls is adversarial.AIRL:
-        assert trainer.discrim.reward_net._base_reward_net.assert_calls > 0
-        assert trainer.discrim.reward_net._potential_net.assert_calls > 0
+        assert trainer.discrim_net.reward_net._base_reward_net.assert_calls > 0
+        assert trainer.discrim_net.reward_net._potential_net.assert_calls > 0
     else:
         raise TypeError(f"don't know how to handle '{_algorithm_cls}'")
