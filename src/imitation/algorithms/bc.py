@@ -326,20 +326,20 @@ class BC:
         ent_loss = entropy = entropy.mean()
 
         l2_norms = [th.sum(th.square(w)) for w in self.policy.parameters()]
-        l2_loss = l2_norm = sum(l2_norms) / 2  # divide by 2 to cancel grad of square
+        l2_loss_raw = sum(l2_norms) / 2  # divide by 2 to cancel grad of square
 
         ent_term = -self.ent_weight * ent_loss
         neglogp = -log_prob
-        l2_term = self.l2_weight * l2_loss
+        l2_term = self.l2_weight * l2_loss_raw
         loss = neglogp + ent_term + l2_term
 
         stats_dict = dict(
             neglogp=neglogp.item(),
             loss=loss.item(),
-            entropy=entropy.item(),
-            ent_loss_term=ent_term.item(),
             prob_true_act=prob_true_act.item(),
-            l2_norm=l2_norm.item(),
+            ent_loss_raw=entropy.item(),
+            ent_loss_term=ent_term.item(),
+            l2_loss_raw=l2_loss_raw.item(),
             l2_loss_term=l2_term.item(),
         )
 
