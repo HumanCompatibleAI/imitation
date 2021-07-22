@@ -6,7 +6,10 @@ import pytest
 try:
     # seals_test requires mujoco_py, so skip if we don't have that
     from seals.testing import envs as seals_test
-except gym.error.DependencyNotInstalled:
+except gym.error.DependencyNotInstalled as ex:
+    pytest.skip(
+        "skipping due to import error on seals.testing, mujoco_py is probably "
+        f"missing (error: {ex})", allow_module_level=True)
     seals_test = None
 
 # Unused imports is for side-effect of registering environments
@@ -26,14 +29,10 @@ if seals_test is not None:
     env = pytest.fixture(seals_test.make_env_fixture(skip_fn=pytest.skip))
 
 
-@pytest.mark.skipif(
-    seals_test is None,
-    reason="seals.testing could not be imported, " "likely missing mujoco_py",
-)
+@pytest.mark.parametrize("env_name", ENV_NAMES)
 class TestEnvs:
     """Battery of simple tests for environments."""
 
-    @pytest.mark.parametrize("env_name", ENV_NAMES)
     def test_seed(self, env, env_name):
         seals_test.test_seed(env, env_name, DETERMINISTIC_ENVS)
 
