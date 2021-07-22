@@ -3,6 +3,7 @@
 import gym
 import numpy as np
 import pytest
+import torch as th
 
 # need direct import since torch.optim.Adam references cause pytype to fail
 from torch.optim.adam import Adam
@@ -221,17 +222,20 @@ def test_policy_om_reasonable_mdp():
     [(LinearRewardModel, dict()), (MLPRewardModel, dict(hiddens=[32, 32]))],
 )
 def test_mce_irl_reasonable_mdp(model_class, model_kwargs):
-    # test MCE IRL on the MDP
-    mdp = ReasonableMDP()
+    with th.random.fork_rng():
+        th.random.manual_seed(715298)
 
-    # demo occupancy measure
-    V, Q, pi = mce_partition_fh(mdp)
-    Dt, D = mce_occupancy_measures(mdp, pi=pi)
+        # test MCE IRL on the MDP
+        mdp = ReasonableMDP()
 
-    rmodel = model_class(mdp.obs_dim, **model_kwargs)
-    opt = Adam(rmodel.parameters(), lr=1e-2)
-    final_counts = mce_irl(mdp, opt, rmodel, D, linf_eps=1e-3)
+        # demo occupancy measure
+        V, Q, pi = mce_partition_fh(mdp)
+        Dt, D = mce_occupancy_measures(mdp, pi=pi)
 
-    assert np.allclose(final_counts, D, atol=1e-3, rtol=1e-3)
-    # make sure weights have non-insane norm
-    assert tensor_iter_norm(rmodel.parameters()) < 1000
+        rmodel = model_class(mdp.obs_dim, **model_kwargs)
+        opt = Adam(rmodel.parameters(), lr=1e-2)
+        final_counts = mce_irl(mdp, opt, rmodel, D, linf_eps=1e-3)
+
+        assert np.allclose(final_counts, D, atol=1e-3, rtol=1e-3)
+        # make sure weights have non-insane norm
+        assert tensor_iter_norm(rmodel.parameters()) < 1000
