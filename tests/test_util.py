@@ -30,3 +30,5 @@ def test_tensor_iter_norm():
     assert np.allclose(norm_2, 8.0)
     norm_1 = util.tensor_iter_norm(tensor_list, ord=1).item()
     assert np.allclose(norm_1, 14.0)
+    with pytest.raises(ValueError):
+        util.tensor_iter_norm(tensor_list, ord=0.0)
