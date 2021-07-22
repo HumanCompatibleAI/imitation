@@ -75,10 +75,6 @@ setup(
             *TESTS_REQUIRE,
             *DOCS_REQUIRE,
         ],
-        "jax": [
-            "jax~=0.2.8",
-            "jaxlib~=0.1.59",
-        ],
         "test": TESTS_REQUIRE,
         "docs": DOCS_REQUIRE,
         "parallel": PARALLEL_REQUIRE,

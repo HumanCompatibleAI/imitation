@@ -17,6 +17,7 @@ from typing import (
 import gym
 import numpy as np
 import stable_baselines3
+import torch as th
 from gym.wrappers import TimeLimit
 from stable_baselines3.common import monitor
 from stable_baselines3.common.base_class import BaseAlgorithm
@@ -180,3 +181,23 @@ def endless_iter(iterable: Iterable[T]) -> Iterator[T]:
         raise err
 
     return itertools.chain.from_iterable(itertools.repeat(iterable))
+
+
+def tensor_iter_norm(
+    tensor_iter: Iterable[th.Tensor], ord: Union[int, float] = 2  # noqa: A002
+) -> th.Tensor:
+    """Compute the norm of a big vector that is produced one tensor chunk at a time.
+
+    Args:
+        tensor_iter: an iterable that yields tensors.
+        ord: order of the p-norm (can be any int or float except 0 and NaN).
+
+    Returns:
+        norm of the concatenated tensors."""
+    if ord == 0:
+        raise ValueError("This function cannot compute p-norms for p=0.")
+    norms = []
+    for tensor in tensor_iter:
+        norms.append(th.norm(tensor.flatten(), p=ord))
+    norm_tensor = th.as_tensor(norms)
+    return th.norm(norm_tensor, p=ord)

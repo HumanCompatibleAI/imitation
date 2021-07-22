@@ -2,7 +2,11 @@
 
 import gym
 import pytest
-from seals.testing import envs as seals_test
+
+try:
+    from seals.testing import envs as seals_test
+except gym.error.DependencyNotInstalled as ex:
+    pytest.skip(f"could not import gym envs: {ex}", allow_module_level=True)
 
 # Unused imports is for side-effect of registering environments
 from imitation.envs import examples  # noqa: F401

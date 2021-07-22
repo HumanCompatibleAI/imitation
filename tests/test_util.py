@@ -1,4 +1,6 @@
+import numpy as np
 import pytest
+import torch as th
 
 from imitation.util import util
 
@@ -15,3 +17,16 @@ def test_endless_iter_error():
     x = []
     with pytest.raises(ValueError, match="no elements"):
         util.endless_iter(x)
+
+
+def test_tensor_iter_norm():
+    # vector is [1,0,1,1,-5,-6]; its 2-norm is 8, and 1-norm is 14
+    tensor_list = [
+        th.tensor([1.0, 0.0]),
+        th.tensor([[1.0], [1.0], [-5.0]]),
+        th.tensor([-6.0]),
+    ]
+    norm_2 = util.tensor_iter_norm(tensor_list, ord=2).item()
+    assert np.allclose(norm_2, 8.0)
+    norm_1 = util.tensor_iter_norm(tensor_list, ord=1).item()
+    assert np.allclose(norm_1, 14.0)
