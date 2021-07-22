@@ -9,7 +9,9 @@ try:
 except gym.error.DependencyNotInstalled as ex:
     pytest.skip(
         "skipping due to import error on seals.testing, mujoco_py is probably "
-        f"missing (error: {ex})", allow_module_level=True)
+        f"missing (error: {ex})",
+        allow_module_level=True,
+    )
     seals_test = None
 
 # Unused imports is for side-effect of registering environments
