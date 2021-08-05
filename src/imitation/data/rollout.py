@@ -6,6 +6,7 @@ from typing import Callable, Dict, Hashable, List, Optional, Sequence, Union
 import numpy as np
 from stable_baselines3.common.base_class import BaseAlgorithm
 from stable_baselines3.common.policies import BasePolicy
+from stable_baselines3.common.utils import check_for_correct_spaces
 from stable_baselines3.common.vec_env import VecEnv
 
 from imitation.data import types
@@ -242,7 +243,8 @@ def generate_trajectories(
     """
     get_action = policy.predict
     if isinstance(policy, BaseAlgorithm):
-        policy.set_env(venv)
+        # check that the observation and action spaces of policy and environment match
+        check_for_correct_spaces(venv, policy.observation_space, policy.action_space)
 
     # Collect rollout tuples.
     trajectories = []
@@ -264,7 +266,7 @@ def generate_trajectories(
     # are complete.
     #
     # To start with, all environments are active.
-    active = np.ones(venv.num_envs, dtype=np.bool)
+    active = np.ones(venv.num_envs, dtype=bool)
     while np.any(active):
         acts, _ = get_action(obs, deterministic=deterministic_policy)
         obs, rews, dones, infos = venv.step(acts)
@@ -382,7 +384,7 @@ def flatten_trajectories(
         parts["obs"].append(obs[:-1])
         parts["next_obs"].append(obs[1:])
 
-        dones = np.zeros(len(traj.acts), dtype=np.bool)
+        dones = np.zeros(len(traj.acts), dtype=bool)
         dones[-1] = True
         parts["dones"].append(dones)
 

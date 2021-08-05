@@ -14,6 +14,8 @@ TESTS_REQUIRE = [
     "flake8-builtins",
     "flake8-debugger",
     "flake8-isort",
+    "ipykernel",
+    "jupyter",
     "pytest",
     "pytest-cov",
     "pytest-notebook",
@@ -47,8 +49,6 @@ setup(
     package_dir={"": "src"},
     package_data={"imitation": ["py.typed", "envs/examples/airl_envs/assets/*.xml"]},
     install_requires=[
-        "awscli",
-        "cloudpickle>=0.5.5",
         "gym[classic_control]",
         "matplotlib",
         "numpy>=1.15",
@@ -56,8 +56,6 @@ setup(
         "tqdm",
         "scikit-learn>=0.21.2",
         "stable-baselines3~=0.10.0",
-        "jax~=0.1.66",
-        "jaxlib~=0.1.47",
         "sacred~=0.8.1",
         "tensorboard>=1.14",
     ],
@@ -66,15 +64,19 @@ setup(
         # recommended packages for development
         "dev": [
             "autopep8",
+            "awscli",
             "ntfy[slack]",
             "ipdb",
             "isort~=5.0",
-            "jupyter",
             "pytype",
             "codespell",
             # for convenience
             *TESTS_REQUIRE,
             *DOCS_REQUIRE,
+        ],
+        "jax": [
+            "jax~=0.2.8",
+            "jaxlib~=0.1.59",
         ],
         "test": TESTS_REQUIRE,
         "docs": DOCS_REQUIRE,

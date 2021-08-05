@@ -1,5 +1,6 @@
 """Tests for Behavioural Cloning (BC)."""
 
+import dataclasses
 import os
 
 import pytest
@@ -92,12 +93,57 @@ def test_train_end_cond_error(trainer: bc.BC, venv):
 def test_bc(trainer: bc.BC, venv):
     sample_until = rollout.min_episodes(15)
     novice_ret_mean = rollout.mean_return(trainer.policy, venv, sample_until)
-    trainer.train(n_epochs=1, on_epoch_end=lambda: print("epoch end"))
+    trainer.train(
+        n_epochs=1,
+        on_epoch_end=lambda: print("epoch end"),
+        on_batch_end=lambda: print("batch end"),
+    )
     trainer.train(n_batches=10)
     trained_ret_mean = rollout.mean_return(trainer.policy, venv, sample_until)
     # Typically <80 score is bad, >350 is okay. We want an improvement of at
     # least 50 points, which seems like it's not noise.
     assert trained_ret_mean - novice_ret_mean > 50
+
+
+class _DataLoaderFailsOnSecondIter:
+    """A dummy DataLoader that yields after a number of calls of `__iter__`.
+
+    Used by `test_bc_data_loader_empty_iter_error`.
+    """
+
+    def __init__(self, dummy_yield_value: dict, no_yield_after_iter: int = 1):
+        """
+        Args:
+            no_yield_after_iter: `__iter__` will be
+        """
+        self.iter_count = 0
+        self.dummy_yield_value = dummy_yield_value
+        self.no_yield_after_iter = no_yield_after_iter
+
+    def __iter__(self):
+        if self.iter_count < self.no_yield_after_iter:
+            yield self.dummy_yield_value
+        self.iter_count += 1
+
+
+@pytest.mark.parametrize("no_yield_after_iter", [0, 1, 5])
+def test_bc_data_loader_empty_iter_error(venv, no_yield_after_iter):
+    """Check that we error out if the DataLoader suddenly stops yielding any batches.
+
+    At one point, we entered an updateless infinite loop in this edge case.
+    """
+    rollouts = types.load(ROLLOUT_PATH)
+    trans = rollout.flatten_trajectories(rollouts)
+    dummy_yield_value = dataclasses.asdict(trans[:3])
+
+    bad_data_loader = _DataLoaderFailsOnSecondIter(
+        dummy_yield_value=dummy_yield_value,
+        no_yield_after_iter=no_yield_after_iter,
+    )
+    trainer = bc.BC(venv.observation_space, venv.action_space)
+    trainer.set_expert_data_loader(bad_data_loader)
+    with pytest.raises(AssertionError, match=".*no data.*"):
+        trainer.train(n_batches=20)
 
 
 def test_save_reload(trainer, tmpdir):
