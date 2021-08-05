@@ -49,8 +49,6 @@ setup(
     package_dir={"": "src"},
     package_data={"imitation": ["py.typed", "envs/examples/airl_envs/assets/*.xml"]},
     install_requires=[
-        "awscli",
-        "cloudpickle>=0.5.5",
         "gym[classic_control]",
         "matplotlib",
         "numpy>=1.15",
@@ -66,6 +64,7 @@ setup(
         # recommended packages for development
         "dev": [
             "autopep8",
+            "awscli",
             "ntfy[slack]",
             "ipdb",
             "isort~=5.0",
