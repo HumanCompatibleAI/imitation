@@ -162,11 +162,11 @@ def _ray_tune_sacred_wrapper(
         # Import inside function rather than in module because Sacred experiments
         # are not picklable, and Ray requires this function to be picklable.
         from imitation.scripts.expert_demos import expert_demos_ex
-        from imitation.scripts.train_adversarial import train_ex
+        from imitation.scripts.train_adversarial import train_adversarial_ex
 
         experiments = {
             "expert_demos": expert_demos_ex,
-            "train_adversarial": train_ex,
+            "train_adversarial": train_adversarial_ex,
         }
         ex = experiments[sacred_ex_name]
 

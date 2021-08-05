@@ -128,7 +128,7 @@ def test_train_adversarial(tmpdir):
         "rollout_path": "tests/data/expert_models/cartpole_0/rollouts/final.pkl",
         "init_tensorboard": True,
     }
-    run = train_adversarial.train_ex.run(
+    run = train_adversarial.train_adversarial_ex.run(
         named_configs=named_configs,
         config_updates=config_updates,
     )
@@ -147,13 +147,13 @@ def test_train_adversarial_algorithm_value_error(tmpdir):
     )
 
     with pytest.raises(ValueError, match=".*BAD_VALUE.*"):
-        train_adversarial.train_ex.run(
+        train_adversarial.train_adversarial_ex.run(
             named_configs=base_named_configs,
             config_updates=base_config_updates.new_child(dict(algorithm="BAD_VALUE")),
         )
 
     with pytest.raises(ValueError, match=".*BAD_VALUE.*"):
-        train_adversarial.train_ex.run(
+        train_adversarial.train_adversarial_ex.run(
             named_configs=base_named_configs,
             config_updates=base_config_updates.new_child(
                 dict(discrim_net_kwargs={"BAD_VALUE": "bar"})
@@ -161,7 +161,7 @@ def test_train_adversarial_algorithm_value_error(tmpdir):
         )
 
     with pytest.raises(ValueError, match=".*BAD_VALUE.*"):
-        train_adversarial.train_ex.run(
+        train_adversarial.train_adversarial_ex.run(
             named_configs=base_named_configs,
             config_updates=base_config_updates.new_child(
                 dict(algorithm_kwargs={"BAD_VALUE": "bar"})
@@ -169,7 +169,7 @@ def test_train_adversarial_algorithm_value_error(tmpdir):
         )
 
     with pytest.raises(ValueError, match=".*BAD_VALUE.*"):
-        train_adversarial.train_ex.run(
+        train_adversarial.train_adversarial_ex.run(
             named_configs=base_named_configs,
             config_updates=base_config_updates.new_child(
                 dict(rollout_path="path/BAD_VALUE")
@@ -178,7 +178,7 @@ def test_train_adversarial_algorithm_value_error(tmpdir):
 
     n_traj = 1234567
     with pytest.raises(ValueError, match=f".*{n_traj}.*"):
-        train_adversarial.train_ex.run(
+        train_adversarial.train_adversarial_ex.run(
             named_configs=base_named_configs,
             config_updates=base_config_updates.new_child(dict(n_expert_demos=n_traj)),
         )
@@ -190,7 +190,7 @@ def test_transfer_learning(tmpdir):
     Saves a dummy AIRL test reward, then loads it for transfer learning.
     """
     log_dir_train = osp.join(tmpdir, "train")
-    run = train_adversarial.train_ex.run(
+    run = train_adversarial.train_adversarial_ex.run(
         named_configs=["cartpole", "airl", "fast"],
         config_updates=dict(
             rollout_path="tests/data/expert_models/cartpole_0/rollouts/final.pkl",
@@ -363,7 +363,7 @@ def test_analyze_imitation(tmpdir: str, run_names: List[str]):
     for i, run_name in enumerate(run_names):
         with tempfile.TemporaryDirectory(prefix="junk") as junkdir:
             rollout_path = "tests/data/expert_models/cartpole_0/rollouts/final.pkl"
-            run = train_adversarial.train_ex.run(
+            run = train_adversarial.train_adversarial_ex.run(
                 named_configs=["fast", "cartpole"],
                 config_updates=dict(
                     rollout_path=rollout_path,
