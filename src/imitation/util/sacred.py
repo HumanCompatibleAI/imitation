@@ -56,7 +56,7 @@ def filter_subdirs(
       A list of all subdirectory paths where `filter_fn(path) == True`.
     """
     filtered_dirs = set()
-    for root, _, _ in os.walk(root_dir):
+    for root, _, _ in os.walk(root_dir, followlinks=False):
         if filter_fn(root):
             filtered_dirs.add(root)
 

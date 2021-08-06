@@ -83,6 +83,12 @@ def cartpole():
 
 
 @expert_demos_ex.named_config
+def seals_cartpole():
+    env_name = "seals/CartPole-v0"
+    total_timesteps = int(1e6)
+
+
+@expert_demos_ex.named_config
 def half_cheetah():
     env_name = "HalfCheetah-v2"
     total_timesteps = int(5e6)  # does OK after 1e6, but continues improving
@@ -106,6 +112,11 @@ def humanoid():
 @expert_demos_ex.named_config
 def mountain_car():
     env_name = "MountainCar-v0"
+
+
+@expert_demos_ex.named_config
+def seals_mountain_car():
+    env_name = "seals/MountainCar-v0"
 
 
 @expert_demos_ex.named_config
