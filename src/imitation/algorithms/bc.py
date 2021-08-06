@@ -55,6 +55,7 @@ class ConstantLRSchedule:
 
 class _NoopTqdm:
     """Dummy replacement for tqdm.tqdm() when we don't want a progress bar visible."""
+
     def close(self):
         pass
 
