@@ -146,7 +146,7 @@ def mountain_car():
 @train_adversarial_ex.named_config
 def seals_mountain_car():
     env_name = "seals/MountainCar-v0"
-    rollout_hint = "mountain_car"  # TODO: Use seals/MountainCar-v0 rollouts.
+    rollout_hint = "mountain_car"  # TODO(shwang): Use seals/MountainCar-v0 rollouts.
 
 
 @train_adversarial_ex.named_config
