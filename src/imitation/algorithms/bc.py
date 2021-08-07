@@ -12,9 +12,9 @@ import numpy as np
 import torch as th
 import torch.utils.data as th_data
 import tqdm.autonotebook as tqdm
-from stable_baselines3.common import logger, policies, utils
+from stable_baselines3.common import logger, policies, utils, vec_env
 
-from imitation.data import types
+from imitation.data import rollout, types
 from imitation.policies import base
 
 
@@ -307,6 +307,8 @@ class BC:
         on_epoch_end: Callable[[], None] = None,
         on_batch_end: Callable[[], None] = None,
         log_interval: int = 100,
+        log_rollouts_venv: Optional[vec_env.VecEnv] = None,
+        log_rollouts_n_episodes: int = 5,
     ):
         """Train with supervised learning for some number of epochs.
 
@@ -323,6 +325,13 @@ class BC:
             on_batch_end: Optional callback with no parameters to run at the end of each
                 batch.
             log_interval: Log stats after every log_interval batches.
+            log_rollouts_venv: If not None, then this VecEnv (whose observation and
+                actions spaces must match `self.observation_space` and
+                `self.action_space`) is used to generate rollout stats, including
+                average return and average episode length. If None, then no rollouts
+                are generated.
+            log_rollouts_n_episodes: Number of rollouts to generate when calculating
+                rollout stats.
         """
         it = EpochOrBatchIteratorWithProgress(
             self.expert_data_loader,
@@ -344,6 +353,19 @@ class BC:
                 for stats in [stats_dict_it, stats_dict_loss]:
                     for k, v in stats.items():
                         logger.record(k, v)
+                # TODO(shwang): Maybe instead use a callback that can be shared between
+                # all algorithms' `.train()` for generating rollout stats.
+                if log_rollouts_venv is not None:
+                    trajs = rollout.generate_trajectories(
+                        self.policy,
+                        log_rollouts_venv,
+                        rollout.min_episodes(log_rollouts_n_episodes),
+                    )
+                    stats = rollout.rollout_stats(trajs)
+                    logger.record("batch_size", len(batch["obs"]))
+                    for k, v in stats.items():
+                        if "return" in k and "monitor" not in k:
+                            logger.record("rollout/" + k, v)
                 logger.dump(batch_num)
             batch_num += 1
 
