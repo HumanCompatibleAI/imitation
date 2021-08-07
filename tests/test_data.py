@@ -185,7 +185,7 @@ class TestData:
         with pytest.warns(
             DeprecationWarning, match=".*trajectories are saved.*outdated"
         ):
-            loaded_trajs = types.load(pkl_path)
+            loaded_trajs = types.load(str(pkl_path))
 
         # The loaded old-style trajectories are converted into an instance of
         # TrajectoryWithRew, so we should compare against `equivalent_new_trajs` instead
