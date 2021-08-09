@@ -2,7 +2,7 @@
 This script takes as command-line input multiple paths to pickle files containing
 Sequence[imitation.types.TrajectoryWithRew] or Sequence[imitation.old_types.Trajectory].
 It overwrites each path with a new pickle where the demonstration data is saved as
-Sequence[TrajectoryWithRew].
+Sequence[imitation.types.TrajectoryWithRew].
 """
 
 import warnings
