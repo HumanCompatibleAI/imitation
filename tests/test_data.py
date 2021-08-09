@@ -12,7 +12,7 @@ import gym
 import numpy as np
 import pytest
 
-from imitation.data import types
+from imitation.data import old_types, types
 
 SPACES = [
     gym.spaces.Discrete(3),
@@ -50,6 +50,13 @@ def trajectory_rew(trajectory: types.Trajectory) -> types.TrajectoryWithRew:
     """Like `trajectory` but with reward randomly sampled from a Gaussian."""
     rews = np.random.randn(len(trajectory))
     return types.TrajectoryWithRew(**dataclasses.asdict(trajectory), rews=rews)
+
+
+@pytest.fixture
+def old_format_trajectory(
+    trajectory_rew: types.TransitionsWithRew,
+) -> old_types.Trajectory:
+    return old_types.Trajectory(**dataclasses.asdict(trajectory_rew))
 
 
 @pytest.fixture
@@ -109,6 +116,13 @@ def pushd(dir_path):
         os.chdir(orig_dir)
 
 
+def _assert_dataclasses_equal(a, b) -> None:
+    d1, d2 = dataclasses.asdict(a), dataclasses.asdict(b)
+    assert d1.keys() == d2.keys()
+    for k, v in d1.items():
+        assert np.array_equal(v, d2[k])
+
+
 @pytest.mark.parametrize("obs_space", OBS_SPACES)
 @pytest.mark.parametrize("act_space", ACT_SPACES)
 @pytest.mark.parametrize("length", LENGTHS)
@@ -150,10 +164,35 @@ class TestData:
                 loaded_trajs = pickle.load(f)
             assert len(trajs) == len(loaded_trajs)
             for t1, t2 in zip(trajs, loaded_trajs):
-                d1, d2 = dataclasses.asdict(t1), dataclasses.asdict(t2)
-                assert d1.keys() == d2.keys()
-                for k, v in d1.items():
-                    assert np.array_equal(v, d2[k])
+                _assert_dataclasses_equal(t1, t2)
+
+    def test_old_format_compat_load_traj(
+        self, tmpdir, old_format_trajectory, trajectory_rew
+    ):
+        """Check that old data format can be loaded and raises warning.
+
+        Previously we saved demonstration data as
+        `Sequence[imitation.util.rollout.Trajectory]`. Now this format is deprecated,
+        but `imitation.data.types.load` still automatically converts it to
+        `types.TrajectoryWithRew` for compatibility reasons.
+        """
+        pkl_path = pathlib.Path(tmpdir, "old_traj.pkl")
+        old_trajs = [old_format_trajectory] * 2
+        equivalent_new_trajs = [trajectory_rew] * 2
+        with open(pkl_path, "wb") as f:
+            pickle.dump(old_trajs, f)
+
+        with pytest.warns(
+            DeprecationWarning, match=".*trajectories are saved.*outdated"
+        ):
+            loaded_trajs = types.load(str(pkl_path))
+
+        # The loaded old-style trajectories are converted into an instance of
+        # TrajectoryWithRew, so we should compare against `equivalent_new_trajs` instead
+        # of the originally saved `old_trajs`.
+        assert len(equivalent_new_trajs) == len(loaded_trajs)
+        for t1, t2 in zip(equivalent_new_trajs, loaded_trajs):
+            _assert_dataclasses_equal(t1, t2)
 
     def test_invalid_trajectories(
         self,
