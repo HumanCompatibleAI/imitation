@@ -5,6 +5,7 @@ import logging
 import os
 import pathlib
 import pickle
+import sys
 from typing import Dict, Mapping, Optional, Sequence, TypeVar, Union, overload
 
 import numpy as np
@@ -259,9 +260,8 @@ class TransitionsWithRew(Transitions):
 
 def load(path: str) -> Sequence[TrajectoryWithRew]:
     """Loads a sequence of trajectories saved by `save()` from `path`."""
-    # TODO(adam): remove backwards compatibility logic eventually (2021?)
-    import sys
-
+    # TODO(shwang): In a future version, remove the DeprecationWarning and
+    # imitation.data.old_types.Trajectory entirely.
     try:
         assert "imitation.util.rollout" not in sys.modules
         sys.modules["imitation.util.rollout"] = old_types
@@ -272,6 +272,16 @@ def load(path: str) -> Sequence[TrajectoryWithRew]:
 
     if len(trajectories) > 0:
         if isinstance(trajectories[0], old_types.Trajectory):
+            import warnings
+
+            warnings.warn(
+                (
+                    "Your trajectories are saved in an outdated format. Please update "
+                    "them to the new format by running:\n"
+                    f"python -m imitation.scripts.update_traj_file_in_place.py '{path}'"
+                ),
+                DeprecationWarning,
+            )
             trajectories = [
                 TrajectoryWithRew(**traj._asdict()) for traj in trajectories
             ]
