@@ -155,3 +155,9 @@ def test_save_reload(trainer, tmpdir):
     assert len(var_values) == len(new_values)
     for old, new in zip(var_values, new_values):
         assert th.allclose(old, new)
+
+
+def test_train_progress_bar_visibility(trainer: bc.BC):
+    """Smoke test for toggling progress bar visibility"""
+    for visible in [True, False]:
+        trainer.train(n_batches=1, progress_bar=visible)
