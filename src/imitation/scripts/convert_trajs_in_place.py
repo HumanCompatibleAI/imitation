@@ -13,9 +13,11 @@ from imitation.data import types
 def update_traj_file_in_place(path: str) -> None:
     """Modifies trajectories pickle file in-place to update data to new format.
 
+    The new data is saved as `Sequence[imitation.types.TrajectoryWithRew]`.
+
     Args:
         path: Path to a pickle file containing `Sequence[imitation.types.Trajectory]`
-            or `Sequence[imitation.old_types.Trajectory`.
+            or `Sequence[imitation.old_types.TrajectoryWithRew]`.
     """
     with warnings.catch_warnings():
         # Filter out DeprecationWarning because we expect to load old trajectories here.
