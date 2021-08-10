@@ -376,7 +376,9 @@ class BC:
                     for k, v in stats.items():
                         logger.record(k, v)
                 # TODO(shwang): Maybe instead use a callback that can be shared between
-                # all algorithms' `.train()` for generating rollout stats.
+                #   all algorithms' `.train()` for generating rollout stats.
+                #   EvalCallback could be a good fit:
+                #   https://stable-baselines3.readthedocs.io/en/master/guide/callbacks.html#evalcallback
                 if log_rollouts_venv is not None and log_rollouts_n_episodes > 0:
                     trajs = rollout.generate_trajectories(
                         self.policy,
