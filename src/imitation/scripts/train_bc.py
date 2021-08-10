@@ -64,8 +64,10 @@ def train_bc(
             Sacred results, which can be compiled into a table by
             `imitation.scripts.analyze.analyze_imitation`.
     """
-    assert action_space is not None
-    assert observation_space is not None
+    if action_space is None:
+        raise ValueError("action_space cannot be None")
+    if observation_space is None:
+        raise ValueError("observation_space cannot be None")
 
     log_dir = pathlib.Path(log_dir)
     log_dir.mkdir(parents=True, exist_ok=True)
@@ -74,7 +76,6 @@ def train_bc(
     logger.configure(log_dir, ["tensorboard", "stdout"])
     sacred_util.build_sacred_symlink(log_dir, _run)
 
-    assert expert_data_src_format in ("path", "trajectory")
     if expert_data_src_format == "path":
         expert_trajs = types.load(expert_data_src)
     elif expert_data_src_format == "trajectory":
@@ -84,7 +85,8 @@ def train_bc(
     else:
         raise ValueError(f"Invalid expert_data_src_format={expert_data_src_format}")
 
-    # Copied from scripts/train_adversarial -- refactor with "auto"?
+    # TODO(shwang): Copied from scripts/train_adversarial -- refactor with "auto",
+    # or combine all train_*.py into a single script?
     if n_expert_demos is not None:
         if not len(expert_trajs) >= n_expert_demos:
             raise ValueError(
@@ -119,8 +121,8 @@ def train_bc(
 
     print(f"Visualize results with: tensorboard --logdir '{log_dir}'")
 
-    # Later: Use auto env, auto stats thing with shared `env` and stats ingredient,
-    # or something like that.
+    # TODO(shwang): Use auto env, auto stats thing with shared `env` and stats
+    #  ingredient, or something like that.
     sample_until = rollout.make_sample_until(
         n_timesteps=None, n_episodes=n_episodes_eval
     )

@@ -63,7 +63,11 @@ def test_main_console(script_mod):
 
 def test_train_bc_main(tmpdir):
     run = train_bc.train_bc_ex.run(
-        named_configs=["fast"],
+        named_configs=["fast", "cartpole"],
+        config_updates=dict(
+            log_root=tmpdir,
+            expert_data_src=CARTPOLE_TEST_ROLLOUT_PATH,
+        ),
     )
     assert run.status == "COMPLETED"
     assert isinstance(run.result, dict)
@@ -444,7 +448,8 @@ def test_analyze_gather_tb(tmpdir: str):
     config_updates = dict(local_dir=tmpdir, run_name="test")
     config_updates.update(PARALLEL_CONFIG_LOW_RESOURCE)
     parallel_run = parallel.parallel_ex.run(
-        named_configs=["generate_test_data"], config_updates=config_updates
+        named_configs=["generate_test_data"],
+        config_updates=config_updates,
     )
     assert parallel_run.status == "COMPLETED"
 
