@@ -351,7 +351,7 @@ class BC:
                 average return and average episode length. If None, then no rollouts
                 are generated.
             log_rollouts_n_episodes: Number of rollouts to generate when calculating
-                rollout stats.
+                rollout stats. Non-positive number disables rollouts.
             progress_bar: If True, then show a progress bar during training.
         """
         it = EpochOrBatchIteratorWithProgress(
@@ -377,7 +377,7 @@ class BC:
                         logger.record(k, v)
                 # TODO(shwang): Maybe instead use a callback that can be shared between
                 # all algorithms' `.train()` for generating rollout stats.
-                if log_rollouts_venv is not None:
+                if log_rollouts_venv is not None and log_rollouts_n_episodes > 0:
                     trajs = rollout.generate_trajectories(
                         self.policy,
                         log_rollouts_venv,
