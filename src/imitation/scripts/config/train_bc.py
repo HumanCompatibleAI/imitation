@@ -51,6 +51,8 @@ def defaults(
             "data/expert_models/" f"{rollout_hint or 'cartpole'}_0/rollouts/final.pkl"
         )
         expert_data_src_format = "path"
+    elif expert_data_src_format is None:
+        expert_data_src_format = "path"
 
     if env_name is not None:
         # Automatically generated from `env_name`, or set to None for no evaluation.
