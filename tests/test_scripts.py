@@ -70,7 +70,7 @@ def test_train_dagger_main(tmpdir):
             log_root=tmpdir,
             expert_data_src=CARTPOLE_TEST_ROLLOUT_PATH,
             expert_policy_path=CARTPOLE_TEST_POLICY_PATH,
-            expert_policy_type='ppo',
+            expert_policy_type="ppo",
         ),
     )
     assert run.status == "COMPLETED"
