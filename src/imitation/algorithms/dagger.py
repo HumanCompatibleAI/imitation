@@ -11,7 +11,7 @@ import dataclasses
 import logging
 import os
 import pathlib
-from typing import Callable, List, Optional, Tuple, Union
+from typing import Callable, Optional, Sequence, Tuple, Union
 
 import numpy as np
 import torch as th
@@ -487,7 +487,7 @@ class SimpleDAggerTrainer(DAggerTrainer):
         venv: vec_env.VecEnv,
         log_dir: types.AnyPath,
         expert_policy: policies.BasePolicy,
-        expert_trajs: Optional[List[types.Trajectory]] = None,
+        expert_trajs: Optional[Sequence[types.Trajectory]] = None,
         beta_schedule: Callable[[int], float] = None,
         batch_size: int = 32,
         bc_kwargs: Optional[dict] = None,
