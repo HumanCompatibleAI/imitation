@@ -298,7 +298,7 @@ def save(path: AnyPath, trajectories: Sequence[TrajectoryWithRew]) -> None:
     """
     p = pathlib.Path(path)
     p.parent.mkdir(parents=True, exist_ok=True)
-    tmp_path = "{path}.tmp"
+    tmp_path = f"{path}.tmp"
     with open(tmp_path, "wb") as f:
         pickle.dump(trajectories, f)
     # Ensure atomic write
