@@ -79,31 +79,21 @@ def reconstruct_trainer(
     return th.load(checkpoint_path, map_location=utils.get_device(device))
 
 
-def _save_trajectory(
-    npz_path: str,
-    trajectory: types.Trajectory,
-) -> None:
-    """Save a trajectory as a compressed Numpy file."""
-    save_dir = os.path.dirname(npz_path)
-    if save_dir:
-        os.makedirs(save_dir, exist_ok=True)
-    assert isinstance(trajectory, types.Trajectory)
-    np.savez_compressed(npz_path, **dataclasses.asdict(trajectory))
-
-
 def _save_dagger_demo(
     trajectory: types.Trajectory,
     save_dir: types.AnyPath,
     prefix: str = "",
 ) -> None:
+    save_dir = pathlib.Path(save_dir)
     assert isinstance(trajectory, types.Trajectory)
     actual_prefix = f"{prefix}-" if prefix else ""
     timestamp = util.make_unique_timestamp()
     filename = f"{actual_prefix}dagger-demo-{timestamp}.npz"
 
-    path = pathlib.Path(save_dir, filename)
-    logging.info(f"Saving demo at '{path}'")
-    _save_trajectory(path, trajectory)
+    save_dir.mkdir(parents=True, exist_ok=True)
+    npz_path = pathlib.Path(save_dir, filename)
+    np.savez_compressed(npz_path, **dataclasses.asdict(trajectory))
+    logging.info(f"Saved demo at '{npz_path}'")
 
 
 def _load_trajectory(npz_path: str) -> types.Trajectory:
@@ -144,7 +134,7 @@ class InteractiveTrajectoryCollector(vec_env.VecEnvWrapper):
         venv: vec_env.VecEnv,
         get_robot_acts: Callable[[np.ndarray], np.ndarray],
         beta: float,
-        save_dir: str,
+        save_dir: types.AnyPath,
     ):
         """Trajectory collector constructor.
 
@@ -447,7 +437,7 @@ class DAggerTrainer:
         )
         return collector
 
-    def save_trainer(self) -> Tuple[str, str]:
+    def save_trainer(self) -> Tuple[pathlib.Path, pathlib.Path]:
         """Create a snapshot of trainer in the scratch/working directory.
 
         The created snapshot can be reloaded with `reconstruct_trainer()`.
@@ -464,23 +454,23 @@ class DAggerTrainer:
 
         # save full trainer checkpoints
         checkpoint_paths = [
-            os.path.join(self.scratch_dir, f"checkpoint-{self.round_num:03d}.pt"),
-            os.path.join(self.scratch_dir, "checkpoint-latest.pt"),
+            self.scratch_dir / f"checkpoint-{self.round_num:03d}.pt",
+            self.scratch_dir / "checkpoint-latest.pt",
         ]
         for checkpoint_path in checkpoint_paths:
             th.save(self, checkpoint_path)
 
         # save policies separately for convenience
         policy_paths = [
-            os.path.join(self.scratch_dir, f"policy-{self.round_num:03d}.pt"),
-            os.path.join(self.scratch_dir, "policy-latest.pt"),
+            self.scratch_dir / f"policy-{self.round_num:03d}.pt",
+            self.scratch_dir / "policy-latest.pt",
         ]
         for policy_path in policy_paths:
             self.save_policy(policy_path)
 
         return checkpoint_paths[0], policy_paths[0]
 
-    def save_policy(self, policy_path: str) -> None:
+    def save_policy(self, policy_path: types.AnyPath) -> None:
         """Save the current policy only (and not the rest of the trainer).
 
         Args:
