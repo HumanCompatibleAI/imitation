@@ -1,6 +1,7 @@
 import pathlib
 
 import sacred
+import torch as th
 
 from imitation.util import util
 
@@ -36,6 +37,7 @@ def config():
     total_timesteps = 1e5
 
     log_root = pathlib.Path("output", "train_dagger")  # output directory
+    optimizer_cls = th.optim.Adam
     optimizer_kwargs = dict(
         lr=4e-4,
     )

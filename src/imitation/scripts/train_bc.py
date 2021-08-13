@@ -1,9 +1,10 @@
 import logging
 import os.path as osp
 import pathlib
-from typing import Optional, Sequence, Union
+from typing import Optional, Sequence, Type, Union
 
 import gym
+import torch as th
 from sacred.observers import FileStorageObserver
 from stable_baselines3.common import vec_env
 from torch.utils import data as th_data
@@ -29,6 +30,7 @@ def train_bc(
     n_epochs: Optional[int],
     n_batches: Optional[int],
     l2_weight: float,
+    optimizer_cls: Type[th.optim.Optimizer],
     optimizer_kwargs: dict,
     log_dir: types.AnyPath,
     venv: Optional[vec_env.VecEnv],
@@ -55,6 +57,7 @@ def train_bc(
         n_batches: The total number of training batches. Set exactly one of n_epochs and
             n_batches.
         l2_weight: L2 regularization weight.
+        optimizer_cls: The Torch optimizer class used for BC updates.
         optimizer_kwargs: keyword arguments, excluding learning rate and
               weight decay, for optimiser construction.
         log_dir: Log output directory. Final policy is also saved in this directory as
@@ -115,6 +118,7 @@ def train_bc(
         action_space,
         expert_data=expert_data,
         l2_weight=l2_weight,
+        optimizer_cls=optimizer_cls,
         optimizer_kwargs=optimizer_kwargs,
     )
     model.train(

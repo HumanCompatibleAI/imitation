@@ -1,8 +1,9 @@
 import logging
 import os.path as osp
 import pathlib
-from typing import Optional, Sequence, Union
+from typing import Optional, Sequence, Type, Union
 
+import torch as th
 from sacred.observers import FileStorageObserver
 from stable_baselines3.common import policies, vec_env
 
@@ -27,6 +28,7 @@ def train_dagger(
     batch_size: int,
     bc_train_kwargs: dict,
     l2_weight: float,
+    optimizer_cls: Type[th.optim.Optimizer],
     optimizer_kwargs: dict,
     log_dir: types.AnyPath,
     n_episodes_eval: int,
@@ -58,6 +60,7 @@ def train_dagger(
             `SimpleDAggerTrainer.train()`. A dict of keyword arguments that are passed
             to `BC.train()` every DAgger training round.
         l2_weight: L2 regularization weight for BC.
+        optimizer_cls: The Torch optimizer class used for BC updates.
         optimizer_kwargs: Optimizer kwargs passed to BC.
         log_dir: Log output directory. Final policy is also saved in this directory as
             "{log_dir}/final.pkl"
@@ -118,6 +121,7 @@ def train_dagger(
         batch_size=batch_size,
         bc_kwargs=dict(
             l2_weight=l2_weight,
+            optimizer_cls=optimizer_cls,
             optimizer_kwargs=optimizer_kwargs,  # pytype: disable=wrong-arg-types
         ),  # pytype: disable=wrong-arg-types
     )
