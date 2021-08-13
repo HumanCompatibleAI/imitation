@@ -258,7 +258,7 @@ class TransitionsWithRew(Transitions):
         _rews_validation(self.rews, self.acts)
 
 
-def load(path: str) -> Sequence[TrajectoryWithRew]:
+def load(path: AnyPath) -> Sequence[TrajectoryWithRew]:
     """Loads a sequence of trajectories saved by `save()` from `path`."""
     # TODO(shwang): In a future version, remove the DeprecationWarning and
     # imitation.data.old_types.Trajectory entirely.
@@ -289,7 +289,7 @@ def load(path: str) -> Sequence[TrajectoryWithRew]:
     return trajectories
 
 
-def save(path: str, trajectories: Sequence[TrajectoryWithRew]) -> None:
+def save(path: AnyPath, trajectories: Sequence[TrajectoryWithRew]) -> None:
     """Save a sequence of Trajectories to disk.
 
     Args:
@@ -298,8 +298,9 @@ def save(path: str, trajectories: Sequence[TrajectoryWithRew]) -> None:
     """
     p = pathlib.Path(path)
     p.parent.mkdir(parents=True, exist_ok=True)
-    with open(path + ".tmp", "wb") as f:
+    tmp_path = f"{path}.tmp"
+    with open(tmp_path, "wb") as f:
         pickle.dump(trajectories, f)
     # Ensure atomic write
-    os.replace(path + ".tmp", path)
-    logging.info("Dumped demonstrations to {}.".format(path))
+    os.replace(tmp_path, path)
+    logging.info(f"Dumped demonstrations to {path}.")
