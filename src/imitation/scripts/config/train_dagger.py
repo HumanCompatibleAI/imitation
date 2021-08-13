@@ -58,6 +58,9 @@ def defaults(
         )
         expert_data_src_format = "path"
 
+    if expert_data_src_format is None:
+        expert_data_src_format = "path"
+
     if expert_policy_path is None and expert_policy_path is None:
         expert_policy_path = (
             f"data/expert_models/{rollout_hint or 'cartpole'}_0/policies/final"

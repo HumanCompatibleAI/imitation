@@ -93,7 +93,7 @@ def _save_trajectory(
 
 def _save_dagger_demo(
     trajectory: types.Trajectory,
-    save_dir: str,
+    save_dir: types.AnyPath,
     prefix: str = "",
 ) -> None:
     assert isinstance(trajectory, types.Trajectory)
@@ -101,7 +101,7 @@ def _save_dagger_demo(
     timestamp = util.make_unique_timestamp()
     filename = f"{actual_prefix}dagger-demo-{timestamp}.npz"
 
-    path = os.path.join(save_dir, filename)
+    path = pathlib.Path(save_dir, filename)
     logging.info(f"Saving demo at '{path}'")
     _save_trajectory(path, trajectory)
 
@@ -317,7 +317,7 @@ class DAggerTrainer:
             beta_schedule = LinearBetaSchedule(15)
         self.batch_size = batch_size
         self.beta_schedule = beta_schedule
-        self.scratch_dir = scratch_dir
+        self.scratch_dir = pathlib.Path(scratch_dir)
         self.venv = venv
         self.round_num = 0
         self.bc_kwargs = bc_kwargs or {}
@@ -352,12 +352,13 @@ class DAggerTrainer:
             if p.endswith(self.DEMO_SUFFIX)
         ]
 
-    def _demo_dir_path_for_round(self, round_num=None):
+    def _demo_dir_path_for_round(self, round_num: Optional[int] = None) -> pathlib.Path:
         if round_num is None:
             round_num = self.round_num
-        return os.path.join(self.scratch_dir, "demos", f"round-{round_num:03d}")
+        return self.scratch_dir / "demos" / f"round-{round_num:03d}"
 
-    def _check_has_latest_demos(self):
+    def _try_load_demos(self) -> None:
+        """Load the dataset for this round into self.bc_trainer as a DataLoader."""
         demo_dir = self._demo_dir_path_for_round()
         demo_paths = self._get_demo_paths(demo_dir) if os.path.isdir(demo_dir) else []
         if len(demo_paths) == 0:
@@ -367,9 +368,9 @@ class DAggerTrainer:
                 f".get_trajectory_collector()"
             )
 
-    def _try_load_demos(self):
-        self._check_has_latest_demos()
         if self._last_loaded_round < self.round_num:
+            # TODO(shwang): Do we actually only want to load the most recent round's
+            #   data, or should we load all the data?
             transitions, num_demos = self._load_all_demos()
             logging.info(
                 f"Loaded {sum(num_demos)} new demos from {len(num_demos)} rounds"
@@ -459,7 +460,7 @@ class DAggerTrainer:
             checkpoint_path: a path to one of the created `DAggerTrainer` checkpoints.
             policy_path: a path to one of the created `DAggerTrainer` policies.
         """
-        os.makedirs(self.scratch_dir, exist_ok=True)
+        self.scratch_dir.mkdir(parents=True, exist_ok=True)
 
         # save full trainer checkpoints
         checkpoint_paths = [
@@ -553,7 +554,7 @@ class SimpleDAggerTrainer(DAggerTrainer):
         dataset aggregation stage is determined by the `rollout_round_min*` arguments.
 
         During a BC update step, `BC.train()` is called to update the DAgger agent on
-        the dataset collected so far.
+        the dataset collected in this round.
 
         Args:
             total_timesteps: The number of timesteps to train inside the environment.
@@ -579,9 +580,9 @@ class SimpleDAggerTrainer(DAggerTrainer):
 
             obs = collector.reset()
             ep_rewards = np.zeros([self.venv.num_envs])
-            # TODO(shwang): This while loop probably causes rollout collection to
+            # TODO(shwang): This while loop end condition causes rollout collection to
             #   suffer from the same problem that
-            #   `imitation.data.rollout.generate_trajectories previously had -- a
+            #   `imitation.data.rollout.generate_trajectories` previously had -- a
             #   bias towards shorter episodes.
             #   We could probably solve this problem simply by calling
             #   `generate_trajectories(self.expert_policy, venv=collector)` now that

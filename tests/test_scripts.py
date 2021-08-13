@@ -65,7 +65,13 @@ def test_main_console(script_mod):
 
 def test_train_dagger_main(tmpdir):
     run = train_dagger.train_dagger_ex.run(
-        named_configs=["fast"],
+        named_configs=["cartpole", "fast"],
+        config_updates=dict(
+            log_root=tmpdir,
+            expert_data_src=CARTPOLE_TEST_ROLLOUT_PATH,
+            expert_policy_path=CARTPOLE_TEST_POLICY_PATH,
+            expert_policy_type='ppo',
+        ),
     )
     assert run.status == "COMPLETED"
     assert isinstance(run.result, dict)
@@ -73,7 +79,7 @@ def test_train_dagger_main(tmpdir):
 
 def test_train_bc_main(tmpdir):
     run = train_bc.train_bc_ex.run(
-        named_configs=["fast", "cartpole"],
+        named_configs=["cartpole", "fast"],
         config_updates=dict(
             log_root=tmpdir,
             expert_data_src=CARTPOLE_TEST_ROLLOUT_PATH,
