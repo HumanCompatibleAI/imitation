@@ -493,6 +493,7 @@ class SimpleDAggerTrainer(DAggerTrainer):
         bc_kwargs: Optional[dict] = None,
     ):
         """SimpleDAggerTrainer constructor.
+
         Args:
             venv: Vectorized training environment. Note that when the robot
                 action is randomly injected (in accordance with `beta_schedule`
