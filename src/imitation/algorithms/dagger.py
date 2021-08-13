@@ -281,20 +281,20 @@ class DAggerTrainer:
         batch_size: int = 32,
         bc_kwargs: Optional[dict] = None,
     ):
-        """Trainer constructor.
+        """DaggerTrainer constructor.
 
         Args:
             venv: Vectorized training environment. Note that when the robot
                 action is randomly injected (in accordance with `beta_schedule`
                 argument), every individual environment will get a robot action
                 simulatenously for that timestep.
-            scratch_dir: directory to use to store intermediate training
+            scratch_dir: Directory to use to store intermediate training
                 information (e.g. for resuming training).
-            beta_schedule: provides a value of `beta` (the probability of taking
+            beta_schedule: Provides a value of `beta` (the probability of taking
                 expert action in any given state) at each round of training. If
                 `None`, then `linear_beta_schedule` will be used instead.
             batch_size: Number of samples in each batch during BC training.
-            bc_kwargs: additional arguments for constructing the `BC` that
+            bc_kwargs: Additional arguments for constructing the `BC` that
                 will be used to train the underlying policy.
         """
         # for pickling
@@ -480,7 +480,7 @@ class DAggerTrainer:
 
 
 class SimpleDAggerTrainer(DAggerTrainer):
-    """Simpler subclass DAggerTrainer for training with synthetic feedback."""
+    """Simpler subclass of DAggerTrainer for training with synthetic feedback."""
 
     def __init__(
         self,
@@ -492,6 +492,21 @@ class SimpleDAggerTrainer(DAggerTrainer):
         batch_size: int = 32,
         bc_kwargs: Optional[dict] = None,
     ):
+        """SimpleDAggerTrainer constructor.
+        Args:
+            venv: Vectorized training environment. Note that when the robot
+                action is randomly injected (in accordance with `beta_schedule`
+                argument), every individual environment will get a robot action
+                simulatenously for that timestep.
+            log_dir: Directory for storing Tensorboard logs, policies, checkpoints,
+                and demonstrations.
+            expert_policy: The expert policy used to generate synthetic demonstrations.
+            expert_trajs: Optional starting dataset that is inserted into the round 0
+                dataset.
+            batch_size: Number of samples in each batch during BC training.
+            bc_kwargs: additional arguments for constructing the `BC` that
+                will be used to train the underlying policy.
+        """
         self.log_dir = pathlib.Path(log_dir)
         super().__init__(
             venv=venv,
