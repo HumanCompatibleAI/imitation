@@ -124,8 +124,9 @@ class TrajectoryAccumulator:
         zip_iter = enumerate(zip(acts, obs, rews, dones, infos))
         for env_idx, (act, ob, rew, done, info) in zip_iter:
             if done:
-                # actual obs is inaccurate, so we use the one inserted into step info
-                # by stable baselines wrapper
+                # When done[i] from VecEnv.step() is True, obs[i] is the first
+                # observation following reset() of the ith VecEnv, and
+                # info["terminal_observation"] is the actual final observation.
                 real_ob = info["terminal_observation"]
             else:
                 real_ob = ob
@@ -145,6 +146,8 @@ class TrajectoryAccumulator:
                 # finish env_idx-th trajectory
                 new_traj = self.finish_trajectory(env_idx)
                 trajs.append(new_traj)
+                # When done[i] from VecEnv.step() is True, obs[i] is the first
+                # observation following reset() of the ith VecEnv.
                 self.add_step(dict(obs=ob), env_idx)
         return trajs
 

@@ -10,12 +10,12 @@ import abc
 import dataclasses
 import logging
 import os
-from typing import Callable, Tuple, Union
+import pathlib
+from typing import Callable, List, Optional, Tuple, Union
 
-import gym
 import numpy as np
 import torch as th
-from stable_baselines3.common import utils
+from stable_baselines3.common import logger, policies, utils, vec_env
 from torch.utils import data as th_data
 
 from imitation.algorithms import bc
@@ -61,7 +61,7 @@ class LinearBetaSchedule(BetaSchedule):
 
 
 def reconstruct_trainer(
-    scratch_dir: str, device: Union[th.device, str] = "auto"
+    scratch_dir: types.AnyPath, device: Union[th.device, str] = "auto"
 ) -> "DAggerTrainer":
     """Reconstruct trainer from the latest snapshot in some working directory.
 
@@ -75,7 +75,7 @@ def reconstruct_trainer(
       trainer: a reconstructed `DAggerTrainer` with the same state as the
         previously-saved one.
     """
-    checkpoint_path = os.path.join(scratch_dir, "checkpoint-latest.pt")
+    checkpoint_path = pathlib.Path(scratch_dir, "checkpoint-latest.pt")
     return th.load(checkpoint_path, map_location=utils.get_device(device))
 
 
@@ -91,42 +91,74 @@ def _save_trajectory(
     np.savez_compressed(npz_path, **dataclasses.asdict(trajectory))
 
 
+def _save_dagger_demo(
+    trajectory: types.Trajectory,
+    save_dir: str,
+    prefix: str = "",
+) -> None:
+    assert isinstance(trajectory, types.Trajectory)
+    actual_prefix = f"{prefix}-" if prefix else ""
+    timestamp = util.make_unique_timestamp()
+    filename = f"{actual_prefix}dagger-demo-{timestamp}.npz"
+
+    path = os.path.join(save_dir, filename)
+    logging.info(f"Saving demo at '{path}'")
+    _save_trajectory(path, trajectory)
+
+
 def _load_trajectory(npz_path: str) -> types.Trajectory:
     """Load a single trajectory from a compressed Numpy file."""
     np_data = np.load(npz_path, allow_pickle=True)
     has_rew = "rews" in np_data
+    dict_data = dict(np_data.items())
+
+    # infos=None is saved as array(None) which leads to a type checking error upon
+    # `Trajectory` initialization. Convert to None to prevent error.
+    infos = dict_data["infos"]
+    if infos.shape == ():
+        assert infos.item() is None
+        dict_data["infos"] = None
+
     cls = types.TrajectoryWithRew if has_rew else types.Trajectory
-    return cls(**dict(np_data.items()))
+    return cls(**dict_data)
 
 
-class InteractiveTrajectoryCollector(gym.Wrapper):
-    """Wrapper around the `.step()` and `.reset()` of an env that allows DAgger to
-    inject a "robot" action (i.e. an action from the imitation policy) that overrides
-    the action given to `.step()` when necessary.
+class InteractiveTrajectoryCollector(vec_env.VecEnvWrapper):
+    """DAgger VecEnvWrapper for querying and saving expert actions.
 
-    Will also automatically save trajectories.
+    Every call to `.step(actions)` accepts and saves expert actions to `self.save_dir`,
+    but only forwards expert actions to the wrapped VecEnv with probability
+    `self.beta`. With probability `1 - self.beta`, a "robot" action (i.e
+    an action from the imitation policy) is forwarded instead.
+
+    Demonstrations are saved as `TrajectoryWithRew` to `self.save_dir` at the end
+    of every episode.
     """
+
+    # TODO(shwang): Consider adding a Callable param that determines whether we
+    #   query the expert for input or just automatically step() by ourselves using
+    #   the robot action.
 
     def __init__(
         self,
-        env: gym.Env,
-        get_robot_act: Callable[[np.ndarray], np.ndarray],
+        venv: vec_env.VecEnv,
+        get_robot_acts: Callable[[np.ndarray], np.ndarray],
         beta: float,
         save_dir: str,
     ):
         """Trajectory collector constructor.
 
         Args:
-          env: environment to sample trajectories from.
-          get_robot_act: get a single robot action that can be substituted for
-              human action. Takes a single observation as input & returns a
-              single action.
+          venv: vectorized environment to sample trajectories from.
+          get_robot_acts: get robot actions that can be substituted for
+              human actions. Takes a vector of observations as input & returns a
+              vector of actions.
           beta: fraction of the time to use action given to .step() instead of
               robot action.
           save_dir: directory to save collected trajectories in.
         """
-        super().__init__(env)
-        self.get_robot_act = get_robot_act
+        super().__init__(venv)
+        self.get_robot_acts = get_robot_acts
         assert 0 <= beta <= 1
         self.beta = beta
         self.traj_accum = None
@@ -134,6 +166,7 @@ class InteractiveTrajectoryCollector(gym.Wrapper):
         self._last_obs = None
         self._done_before = True
         self._is_reset = False
+        self._last_user_actions = None
 
     def reset(self) -> np.ndarray:
         """Resets the environment.
@@ -142,25 +175,32 @@ class InteractiveTrajectoryCollector(gym.Wrapper):
             obs: first observation of a new trajectory.
         """
         self.traj_accum = rollout.TrajectoryAccumulator()
-        obs = self.env.reset()
+        obs = self.venv.reset()
+        for i, ob in enumerate(obs):
+            self.traj_accum.add_step({"obs": ob}, key=i)
         self._last_obs = obs
-        self.traj_accum.add_step({"obs": obs})
-        self._done_before = False
         self._is_reset = True
+        self._last_user_actions = None
         return obs
 
-    def step(self, user_action: np.ndarray) -> Tuple[np.ndarray, float, bool, dict]:
-        """Steps the environment.
+    def step_async(self, actions: np.ndarray) -> None:
+        """Steps with a `1 - beta` chance of using `self.get_robot_acts` instead.
 
         DAgger needs to be able to inject imitation policy actions randomly at some
-        subset of time steps. This method will replace the given action with a
+        subset of time steps. This method has a `self.beta` chance of keeping the
+        `actions` passed in as an argument, and a `1 - self.beta` chance of
+        will forwarding an actions generated by `self.get_robot_acts` instead.
         "robot" (i.e. imitation policy) action if necessary.
 
+        At the end of every episode, a `TrajectoryWithRew` is saved to `self.save_dir`,
+        where every saved action is the expert action, regardless of whether the
+        robot action was used during that timestep.
+
         Args:
-          user_action: the _intended_ demonstrator action for the current
+          actions: the _intended_ demonstrator/expert actions for the current
             state. This will be executed with probability `self.beta`.
-            Otherwise, a "robot" action will be sampled and executed
-            instead.
+            Otherwise, a "robot" (typically a BC policy) action will be sampled
+            and executed instead via `self.get_robot_act`.
 
         Returns:
           next_obs, reward, done, info: unchanged output of `self.env.step()`.
@@ -169,33 +209,41 @@ class InteractiveTrajectoryCollector(gym.Wrapper):
 
         # Replace the given action with a robot action 100*(1-beta)% of the time.
         if np.random.uniform(0, 1) > self.beta:
-            actual_act = self.get_robot_act(self._last_obs)
+            actual_acts = self.get_robot_acts(self._last_obs)
         else:
-            actual_act = user_action
+            actual_acts = actions
 
-        # actually step the env & record data as appropriate
-        next_obs, reward, done, info = self.env.step(actual_act)
+        self._last_user_actions = actions
+        self.venv.step_async(actual_acts)
+
+    def step_wait(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray, dict]:
+        next_obs, rews, dones, infos = self.venv.step_wait()
         self._last_obs = next_obs
-        self.traj_accum.add_step(
-            {"acts": user_action, "obs": next_obs, "rews": reward, "infos": info}
+        fresh_demos = self.traj_accum.add_steps_and_auto_finish(
+            obs=next_obs,
+            acts=self._last_user_actions,
+            rews=rews,
+            infos=infos,
+            dones=dones,
         )
+        for traj in fresh_demos:
+            _save_dagger_demo(traj, self.save_dir)
 
-        # if we're finished, then save the trajectory & print a message
-        if done and not self._done_before:
-            trajectory = self.traj_accum.finish_trajectory()
-            timestamp = util.make_unique_timestamp()
-            trajectory_path = os.path.join(
-                self.save_dir, "dagger-demo-" + timestamp + ".npz"
-            )
-            logging.info(f"Saving demo at '{trajectory_path}'")
-            _save_trajectory(trajectory_path, trajectory)
+        return next_obs, rews, dones, infos
 
-        if done:
-            # record the fact that we're already done to avoid saving demo over and
-            # over until the user resets
-            self._done_before = True
-
-        return next_obs, reward, done, info
+    def flush_trajectories(self) -> None:
+        """Immediately save all partially completed trajectories to `self.save_dir`."""
+        # TODO(shwang): Since we are saving partial trajectories instead of
+        #  whole trajectories, it might make sense to just transition
+        #  to saving TransitionsMinimal. One easy way to do this could be via
+        #  `imitation.data.wrappers.BufferingWrapper.pop_transitions`.
+        #
+        #  Ah yes, looks like we use Transitions anyways in the
+        #  `DAggerTrainer._try_load_demos` stage.
+        for i in range(self.num_envs):
+            if len(self.traj_accum.partial_trajectories[i]) >= 1:
+                traj = self.traj_accum.finish_trajectory(i)
+                _save_dagger_demo(traj, self.save_dir)
 
 
 class NeedsDemosException(Exception):
@@ -203,7 +251,7 @@ class NeedsDemosException(Exception):
 
 
 class DAggerTrainer:
-    """Helper class for interactively training with DAgger.
+    """DAgger training class with low-level API suitable for interactive human feedback.
 
     In essence, this is just BC with some helpers for incrementally
     resuming training and interpolating between demonstrator/learnt policies.
@@ -237,45 +285,54 @@ class DAggerTrainer:
 
     def __init__(
         self,
-        env: gym.Env,
-        scratch_dir: str,
+        venv: vec_env.VecEnv,
+        scratch_dir: types.AnyPath,
         beta_schedule: Callable[[int], float] = None,
         batch_size: int = 32,
-        **bc_kwargs,
+        bc_kwargs: Optional[dict] = None,
     ):
         """Trainer constructor.
 
         Args:
-            env: environment to train in.
+            venv: Vectorized training environment. Note that when the robot
+                action is randomly injected (in accordance with `beta_schedule`
+                argument), every individual environment will get a robot action
+                simulatenously for that timestep.
             scratch_dir: directory to use to store intermediate training
                 information (e.g. for resuming training).
             beta_schedule: provides a value of `beta` (the probability of taking
                 expert action in any given state) at each round of training. If
                 `None`, then `linear_beta_schedule` will be used instead.
             batch_size: Number of samples in each batch during BC training.
-            **bc_kwargs: additional arguments for constructing the `BC` that
+            bc_kwargs: additional arguments for constructing the `BC` that
                 will be used to train the underlying policy.
         """
         # for pickling
-        self._init_args = locals()
-        self._init_args.update(bc_kwargs)
-        del self._init_args["self"]
-        del self._init_args["bc_kwargs"]
+        # self._init_args = locals()
+        # self._init_args.update(bc_kwargs)
+        # del self._init_args["self"]
+        # del self._init_args["bc_kwargs"]
 
         if beta_schedule is None:
             beta_schedule = LinearBetaSchedule(15)
         self.batch_size = batch_size
         self.beta_schedule = beta_schedule
         self.scratch_dir = scratch_dir
-        self.env = env
+        self.venv = venv
         self.round_num = 0
-        self.bc_kwargs = bc_kwargs
+        self.bc_kwargs = bc_kwargs or {}
         self._last_loaded_round = -1
         self._all_demos = []
 
         self.bc_trainer = bc.BC(
-            self.env.observation_space, self.env.action_space, **self.bc_kwargs
+            self.venv.observation_space,
+            self.venv.action_space,
+            **self.bc_kwargs,
         )
+
+    @property
+    def policy(self) -> policies.BasePolicy:
+        return self.bc_trainer.policy
 
     def _load_all_demos(self):
         num_demos_by_round = []
@@ -320,15 +377,29 @@ class DAggerTrainer:
             data_loader = th_data.DataLoader(
                 transitions,
                 self.batch_size,
-                drop_last=True,
+                # If drop_last=True, then BC.train() fails on "no batches available"
+                # when len(transitions) < self.batch_size.
+                drop_last=False,
                 shuffle=True,
                 collate_fn=types.transitions_collate_fn,
             )
             self.bc_trainer.set_expert_data_loader(data_loader)
             self._last_loaded_round = self.round_num
 
-    def extend_and_update(self, **train_kwargs) -> int:
-        """Extend internal batch of data and train.
+    def _default_bc_train_kwargs(self) -> dict:
+        """Get default kwargs used for calls to `self.bc_trainer.train`.
+
+        Note that these defaults set the `log_rollouts_venv` argument, meaning that
+        `BC.train` will periodically roll out episodes to log the average BC policy
+        return.
+        """
+        return dict(
+            n_epochs=4,
+            log_rollouts_venv=self.venv,
+        )
+
+    def extend_and_update(self, bc_train_kwargs: Optional[dict]) -> int:
+        """Extend internal batch of data and train BC.
 
         Specifically, this method will load new transitions (if necessary), train
         the model for a while, and advance the round counter. If there are no fresh
@@ -340,15 +411,18 @@ class DAggerTrainer:
         the current interaction round.
 
         Arguments:
-            **train_kwargs: arguments to pass to `BC.train()`.
+            bc_train_kwargs: A dictionary of keyword arguments to pass to
+                `BC.train()`, or None to use `self._default_bc_train_kwargs()`.
 
         Returns:
             round_num: new round number after advancing the round counter.
         """
+        if bc_train_kwargs is None:
+            bc_train_kwargs = self._default_bc_train_kwargs()
         logging.info("Loading demonstrations")
         self._try_load_demos()
         logging.info(f"Training at round {self.round_num}")
-        self.bc_trainer.train(**train_kwargs)
+        self.bc_trainer.train(**bc_train_kwargs)
         self.round_num += 1
         logging.info(f"New round number is {self.round_num}")
         return self.round_num
@@ -364,24 +438,18 @@ class DAggerTrainer:
         """
         save_dir = self._demo_dir_path_for_round()
         beta = self.beta_schedule(self.round_num)
-
-        def get_robot_act(obs):
-            (
-                (act,),
-                _,
-            ) = self.bc_trainer.policy.predict(obs[None])
-            return act
-
         collector = InteractiveTrajectoryCollector(
-            env=self.env, get_robot_act=get_robot_act, beta=beta, save_dir=save_dir
+            venv=self.venv,
+            get_robot_acts=lambda acts: self.bc_trainer.policy.predict(acts)[0],
+            beta=beta,
+            save_dir=save_dir,
         )
-
         return collector
 
     def save_trainer(self) -> Tuple[str, str]:
         """Create a snapshot of trainer in the scratch/working directory.
 
-        The created snapshot can be reloaded with `.reconstruct_trainer()`.
+        The created snapshot can be reloaded with `reconstruct_trainer()`.
         In addition to saving one copy of the policy in the trainer snapshot, this
         method saves a second copy of the policy in its own file. Having a second copy
         of the policy is convenient because it can be loaded on its own and passed to
@@ -418,3 +486,139 @@ class DAggerTrainer:
             policy_path: path to save policy to.
         """
         self.bc_trainer.save_policy(policy_path)
+
+
+class SimpleDAggerTrainer(DAggerTrainer):
+    """Simpler subclass DAggerTrainer for training with synthetic feedback."""
+
+    def __init__(
+        self,
+        venv: vec_env.VecEnv,
+        log_dir: types.AnyPath,
+        expert_policy: policies.BasePolicy,
+        expert_trajs: Optional[List[types.Trajectory]] = None,
+        beta_schedule: Callable[[int], float] = None,
+        batch_size: int = 32,
+        bc_kwargs: Optional[dict] = None,
+    ):
+        self.log_dir = pathlib.Path(log_dir)
+        super().__init__(
+            venv=venv,
+            scratch_dir=self.log_dir / "scratch",
+            beta_schedule=beta_schedule,
+            batch_size=batch_size,
+            bc_kwargs=bc_kwargs,
+        )
+        self.expert_policy = expert_policy
+        if expert_policy.observation_space != venv.observation_space:
+            raise ValueError(
+                "Mismatched observation space between expert_policy and env"
+            )
+        if expert_policy.action_space != venv.action_space:
+            raise ValueError("Mismatched action space between expert_policy and env")
+
+        # TODO(shwang):
+        #   Might welcome Transitions and DataLoaders as sources of expert data
+        #   in the future too, but this will require some refactoring, so for
+        #   now we just have `expert_trajs`.
+        if expert_trajs is not None:
+            # Save each initial expert trajectory into the "round 0" demonstration
+            # data directory.
+            for traj in expert_trajs:
+                _save_dagger_demo(
+                    traj,
+                    self._demo_dir_path_for_round(),
+                    prefix="initial_data",
+                )
+
+    def train(
+        self,
+        total_timesteps: int,
+        *,
+        rollout_round_min_episodes: int = 3,
+        rollout_round_min_timesteps: int = 500,
+        bc_train_kwargs: Optional[dict] = None,
+    ) -> None:
+        """Train the DAgger agent.
+
+        The agent is trained in "rounds" where each round consists of a dataset
+        aggregation step followed by BC update step.
+
+        During a dataset aggregation step, `self.expert_policy` is used to perform
+        rollouts in the environment but there is a `1 - beta` chance (beta is
+        determined from the round number and `self.beta_schedule`) that the DAgger
+        agent's action is used instead. Regardless of whether the DAgger agent's action
+        is used during the rollout, the expert action and corresponding observation are
+        always appended to the dataset. The number of environment steps in the
+        dataset aggregation stage is determined by the `rollout_round_min*` arguments.
+
+        During a BC update step, `BC.train()` is called to update the DAgger agent on
+        the dataset collected so far.
+
+        Args:
+            total_timesteps: The number of timesteps to train inside the environment.
+                (In practice this is a lower bound, as the number of timesteps is
+                rounded up to finish DAgger training rounds, and the
+                environment timesteps are executed in multiples of
+                `self.venv.num_envs`.)
+            rollout_round_min_episodes: The number of episodes the must be completed
+                completed before a dataset aggregation step ends.
+            rollout_round_min_timesteps: The number of environment timesteps that must
+                be completed before a dataset aggregation step ends.
+            bc_train_kwargs: Keyword arguments to pass to `BC.train` during the
+                BC update step. If this is None, then `self._default_bc_train_kwargs()`
+                is used.
+        """
+        total_timestep_count = 0
+        round_num = 0
+
+        while total_timestep_count < total_timesteps:
+            collector = self.get_trajectory_collector()
+            round_episode_count = 0
+            round_timestep_count = 0
+
+            obs = collector.reset()
+            ep_rewards = np.zeros([self.venv.num_envs])
+            # TODO(shwang): This while loop probably causes rollout collection to
+            #   suffer from the same problem that
+            #   `imitation.data.rollout.generate_trajectories previously had -- a
+            #   bias towards shorter episodes.
+            #   We could probably solve this problem simply by calling
+            #   `generate_trajectories(self.expert_policy, venv=collector)` now that
+            #   we are ported from using `Env` to `VecEnv`?
+            while (
+                round_episode_count < rollout_round_min_episodes
+                and round_timestep_count < rollout_round_min_timesteps
+            ):
+                acts, _ = self.expert_policy.predict(obs, deterministic=True)
+                obs, rews, dones, _ = collector.step(acts)
+                total_timestep_count += self.venv.num_envs
+                round_timestep_count += self.venv.num_envs
+                ep_rewards += rews
+
+                for i, done in enumerate(dones):
+                    if done:
+                        logger.record_mean("dagger/mean_episode_reward", ep_rewards[i])
+                        ep_rewards[i] = 0
+                round_episode_count += 1
+
+            # Flush partial trajectories so that any timesteps before episode
+            # completion are also available in the dataset.
+            # Without this call, self.extend_and_update() currently
+            # fails if the "round" also didn't finish any episodes (not enough
+            # timesteps).
+            collector.flush_trajectories()
+
+            logger.record("dagger/total_timesteps", total_timestep_count)
+            logger.record("dagger/round_num", round_num)
+            logger.record("dagger/round_episode_count", round_episode_count)
+            logger.record("dagger/round_timestep_count", round_timestep_count)
+
+            # TODO(shwang): It looks like BC might start looping Tensorboard
+            #   back to x=0 with each new call to BC.train(). Consider adding a
+            #   `reset_tensorboard: bool = False` argument to BC.train() if this turns
+            #   out to be the case?
+
+            # `logger.dump` is called inside BC.train within the following fn call:
+            self.extend_and_update(bc_train_kwargs)
+            round_num += 1
