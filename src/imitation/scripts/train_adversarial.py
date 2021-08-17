@@ -220,7 +220,7 @@ def train_adversarial(
 
     # Final evaluation of imitation policy.
     results = {}
-    sample_until_eval = rollout.min_episodes(n_episodes_eval)
+    sample_until_eval = rollout.make_min_episodes(n_episodes_eval)
     trajs = rollout.generate_trajectories(
         trainer.gen_algo, trainer.venv_train, sample_until=sample_until_eval
     )

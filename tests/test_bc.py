@@ -91,7 +91,7 @@ def test_train_end_cond_error(trainer: bc.BC, venv):
 
 
 def test_bc(trainer: bc.BC, venv):
-    sample_until = rollout.min_episodes(15)
+    sample_until = rollout.make_min_episodes(15)
     novice_ret_mean = rollout.mean_return(trainer.policy, venv, sample_until)
     trainer.train(
         n_epochs=1,

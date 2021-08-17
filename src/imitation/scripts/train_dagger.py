@@ -137,7 +137,7 @@ def train_dagger(
     print(f"Tensorboard command: tbl '{log_dir}'")
 
     sample_until = rollout.make_sample_until(
-        n_timesteps=None, n_episodes=n_episodes_eval
+        min_timesteps=None, min_episodes=n_episodes_eval
     )
     trajs = rollout.generate_trajectories(
         model.policy,

@@ -135,7 +135,7 @@ def train_bc(
     # TODO(shwang): Use auto env, auto stats thing with shared `env` and stats
     #  ingredient, or something like that.
     sample_until = rollout.make_sample_until(
-        n_timesteps=None, n_episodes=n_episodes_eval
+        min_timesteps=None, min_episodes=n_episodes_eval
     )
     trajs = rollout.generate_trajectories(
         model.policy,

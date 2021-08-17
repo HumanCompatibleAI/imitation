@@ -172,7 +172,7 @@ def test_trainer_makes_progress(trainer, venv, expert_policy):
     pre_train_rew_mean = rollout.mean_return(
         trainer.bc_trainer.policy,
         venv,
-        sample_until=rollout.min_episodes(15),
+        sample_until=rollout.make_min_episodes(15),
         deterministic_policy=False,
     )
     # checking that the initial policy is poor can be flaky; sometimes the
@@ -192,7 +192,7 @@ def test_trainer_makes_progress(trainer, venv, expert_policy):
     post_train_rew_mean = rollout.mean_return(
         trainer.bc_trainer.policy,
         venv,
-        sample_until=rollout.min_episodes(15),
+        sample_until=rollout.make_min_episodes(15),
         deterministic_policy=True,
     )
     assert post_train_rew_mean - pre_train_rew_mean > 50, (

@@ -388,7 +388,7 @@ class BC:
                     trajs = rollout.generate_trajectories(
                         self.policy,
                         log_rollouts_venv,
-                        rollout.min_episodes(log_rollouts_n_episodes),
+                        rollout.make_min_episodes(log_rollouts_n_episodes),
                     )
                     stats = rollout.rollout_stats(trajs)
                     logger.record("batch_size", len(batch["obs"]))
