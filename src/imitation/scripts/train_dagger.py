@@ -110,9 +110,6 @@ def train_dagger(
             )
         expert_trajs = expert_trajs[:n_expert_demos]
 
-    # pytype is getting super confused about the type of expert_trajs and doesn't
-    # recognize it as a Sequence[types.Trajectory].
-    # Both pytype disable annotations are required to suppress spurious errors.
     model = dagger.SimpleDAggerTrainer(
         venv=venv,
         scratch_dir=log_dir / "scratch",
@@ -122,8 +119,8 @@ def train_dagger(
         bc_kwargs=dict(
             l2_weight=l2_weight,
             optimizer_cls=optimizer_cls,
-            optimizer_kwargs=optimizer_kwargs,  # pytype: disable=wrong-arg-types
-        ),  # pytype: disable=wrong-arg-types
+            optimizer_kwargs=optimizer_kwargs,
+        ),
     )
     model.train(
         total_timesteps=int(total_timesteps),
