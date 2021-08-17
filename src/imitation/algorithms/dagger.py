@@ -11,7 +11,7 @@ import dataclasses
 import logging
 import os
 import pathlib
-from typing import Callable, List, Mapping, Optional, Tuple, Union
+from typing import Callable, List, Mapping, Optional, Sequence, Tuple, Union
 
 import numpy as np
 import torch as th
@@ -510,7 +510,7 @@ class SimpleDAggerTrainer(DAggerTrainer):
         scratch_dir: types.AnyPath,
         *,
         expert_policy: policies.BasePolicy,
-        expert_trajs: Optional[List[types.Trajectory]] = None,
+        expert_trajs: Optional[Sequence[types.Trajectory]] = None,
         **dagger_trainer_kwargs,
     ):
         """SimpleDAggerTrainer constructor.
