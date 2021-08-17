@@ -108,7 +108,7 @@ def test_expert_demos_rollouts_from_policy(tmpdir):
         named_configs=["cartpole", "fast"],
         config_updates=dict(
             log_root=tmpdir,
-            rollout_save_path=str(pathlib.Path(tmpdir, "rollouts", "test.pkl")),
+            rollout_save_path=str(pathlib.Path(tmpdir, "rollouts", "test.zip")),
             policy_path=CARTPOLE_TEST_POLICY_PATH,
         ),
     )
