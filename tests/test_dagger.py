@@ -5,10 +5,9 @@ import glob
 import os
 import pickle
 
-import gym
 import numpy as np
 import pytest
-from stable_baselines3.common import policies, vec_env
+from stable_baselines3.common import policies
 
 from imitation.algorithms import bc, dagger
 from imitation.data import rollout
@@ -28,14 +27,13 @@ def test_beta_schedule():
         assert np.allclose(three_step_sched(i), (3 - i) / 3 if i <= 2 else 0)
 
 
-def test_traj_collector(tmpdir):
-    venv = vec_env.DummyVecEnv([lambda: gym.make(ENV_NAME)])
+def test_traj_collector(tmpdir, venv):
     robot_calls = 0
 
     def get_random_acts(obs):
         nonlocal robot_calls
-        robot_calls += 1
-        return [venv.action_space.sample() for _ in range(venv.num_envs)]
+        robot_calls += len(obs)
+        return [venv.action_space.sample() for _ in range(len(obs))]
 
     collector = dagger.InteractiveTrajectoryCollector(
         venv=venv, get_robot_acts=get_random_acts, beta=0.5, save_dir=tmpdir
@@ -43,19 +41,17 @@ def test_traj_collector(tmpdir):
     collector.reset()
     zero_acts = np.zeros((venv.num_envs,), dtype="int")
     obs, rews, dones, infos = collector.step(zero_acts)
-    assert rews != 0
+    assert np.all(rews != 0)
     assert not np.any(dones)
     for info in infos:
         assert isinstance(info, dict)
-    # roll out ~5 episodes
-    for i in range(999):
-        _, _, done, _ = collector.step(zero_acts)
-        if done:
-            collector.reset()
+    # roll out ~5 * venv.num_envs episodes
+    for i in range(1000):
+        collector.step(zero_acts)
 
     # there is a <10^(-12) probability this fails by chance; we should be calling
     # robot with 50% prob each time
-    assert 388 <= robot_calls <= 612
+    assert 388 * venv.num_envs <= robot_calls <= 612 * venv.num_envs
 
     # All user/expert actions are zero. Therefore, all collected actions should be
     # zero.
@@ -66,9 +62,14 @@ def test_traj_collector(tmpdir):
     assert nonzero_acts == 0
 
 
+@pytest.fixture(params=[1, 4])
+def num_envs(request):
+    return request.param
+
+
 @pytest.fixture
-def venv():
-    return util.make_vec_env(ENV_NAME, 2)
+def venv(num_envs):
+    return util.make_vec_env(ENV_NAME, num_envs)
 
 
 @pytest.fixture
@@ -94,10 +95,10 @@ def _build_dagger_trainer(tmpdir, venv, beta_schedule, expert_policy, expert_tra
             "Skipping to avoid duplicate test."
         )
     return dagger.DAggerTrainer(
-        venv,
+        venv=venv,
         scratch_dir=tmpdir,
         beta_schedule=beta_schedule,
-        bc_kwargs={"optimizer_kwargs": dict(lr=1e-3)},
+        bc_kwargs=dict(optimizer_kwargs=dict(lr=1e-3)),
     )
 
 
@@ -109,10 +110,10 @@ def _build_simple_dagger_trainer(
     expert_trajs,
 ):
     return dagger.SimpleDAggerTrainer(
-        venv,
-        log_dir=tmpdir,
+        venv=venv,
+        scratch_dir=tmpdir,
         beta_schedule=beta_schedule,
-        bc_kwargs={"optimizer_kwargs": dict(lr=1e-3)},
+        bc_kwargs=dict(optimizer_kwargs=dict(lr=1e-3)),
         expert_policy=expert_policy,
         expert_trajs=expert_trajs,
     )

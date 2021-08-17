@@ -115,7 +115,7 @@ def train_dagger(
     # Both pytype disable annotations are required to suppress spurious errors.
     model = dagger.SimpleDAggerTrainer(
         venv=venv,
-        log_dir=log_dir,
+        scratch_dir=log_dir / "scratch",
         expert_trajs=expert_trajs,
         expert_policy=expert_policy,
         batch_size=batch_size,
