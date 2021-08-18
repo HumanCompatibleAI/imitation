@@ -466,7 +466,7 @@ class GAIL(AdversarialTrainer):
 
 class AIRL(AdversarialTrainer):
 
-    reward_net: reward_nets.RewardNet
+    reward_net: reward_nets.AIRLRewardNet
     """The AIRL reward network, used by the imitation policy."""
 
     def __init__(
@@ -477,7 +477,9 @@ class AIRL(AdversarialTrainer):
         gen_algo: on_policy_algorithm.OnPolicyAlgorithm,
         *,
         # FIXME(sam): pass in reward net directly, not via _cls and _kwargs
-        reward_net_cls: Type[reward_nets.RewardNet] = reward_nets.BasicShapedRewardNet,
+        reward_net_cls: Type[
+            reward_nets.AIRLRewardNet
+        ] = reward_nets.BasicShapedRewardNet,
         reward_net_kwargs: Optional[Mapping] = None,
         discrim_kwargs: Optional[Mapping] = None,
         **kwargs,
@@ -502,8 +504,8 @@ class AIRL(AdversarialTrainer):
         reward_network = reward_net_cls(
             action_space=venv.action_space,
             observation_space=venv.observation_space,
-            # pytype is afraid that we'll directly call RewardNet() which is an abstract
-            # class, hence the disable.
+            # pytype is afraid that we'll directly call ARILRewardNet(),
+            # which is an abstract class, hence the disable.
             **reward_net_kwargs,  # pytype: disable=not-instantiable
         )
 

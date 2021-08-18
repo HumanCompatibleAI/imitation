@@ -14,7 +14,29 @@ from imitation.util import networks
 
 
 class RewardNet(nn.Module, abc.ABC):
-    """Abstract reward network.
+    """Minimal abstract reward network.
+
+    Only requires the implementation of a forward pass (calculating rewards given
+    a batch of states, actions, next states and dones).
+    """
+
+    @abc.abstractmethod
+    def forward(
+        self,
+        state: th.Tensor,
+        action: th.Tensor,
+        next_state: th.Tensor,
+        done: th.Tensor,
+    ):
+        """Compute rewards for a batch of transitions."""
+        pass
+
+
+class AIRLRewardNet(nn.Module, abc.ABC):
+    """Abstract reward network with different forward passes for test and train.
+
+    This is a wrapper around a RewardNet instance which allows different forward
+    passes for training and testing and also performs some preprocessing.
 
     Attributes:
       observation_space: The observation space.
@@ -68,7 +90,7 @@ class RewardNet(nn.Module, abc.ABC):
 
     @property
     @abc.abstractmethod
-    def base_reward_net(self) -> nn.Module:
+    def base_reward_net(self) -> RewardNet:
         """Neural network taking state, action, next state and dones, and
         producing a reward value."""
 
@@ -188,7 +210,7 @@ class RewardNet(nn.Module, abc.ABC):
         return first_param.device
 
 
-class RewardNetShaped(RewardNet):
+class RewardNetShaped(AIRLRewardNet):
     """Abstract reward network with a phi network to shape training reward.
 
     This RewardNet formulation matches Equation (4) in the AIRL paper.
@@ -261,7 +283,7 @@ class RewardNetShaped(RewardNet):
         return self.base_reward_net(state, action, next_state, done)
 
 
-class BasicRewardMLP(nn.Module):
+class BasicRewardMLP(RewardNet):
     """MLP that flattens and concatenates current state, current action, next state, and
     done flag, depending on given `use_*` keyword arguments."""
 
@@ -339,7 +361,7 @@ class BasicRewardMLP(nn.Module):
         return outputs
 
 
-class BasicRewardNet(RewardNet):
+class BasicRewardNet(AIRLRewardNet):
     """An unshaped reward net with simple, default settings."""
 
     def __init__(
@@ -356,7 +378,7 @@ class BasicRewardNet(RewardNet):
           observation_space: The observation space.
           action_space: The action space.
           base_reward_net: Reward network.
-          kwargs: Passed through to RewardNet.
+          kwargs: Passed through to AIRLRewardNet.
         """
         super().__init__(observation_space, action_space, **kwargs)
         if base_reward_net is None:
@@ -390,7 +412,7 @@ class BasicRewardNet(RewardNet):
 class BasicShapedRewardNet(RewardNetShaped):
     """A shaped reward network with simple, default settings.
 
-    With default parameters this RewardNet has two hidden layers [32, 32]
+    With default parameters this AIRLRewardNet has two hidden layers [32, 32]
     for the base reward network and shaping network.
 
     This network is feed-forward and flattens inputs, so is a poor choice for
