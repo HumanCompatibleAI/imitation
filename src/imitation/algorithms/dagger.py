@@ -626,6 +626,7 @@ class SimpleDAggerTrainer(DAggerTrainer):
                 _save_dagger_demo(traj, collector.save_dir)
                 logger.record_mean("dagger/mean_episode_reward", np.sum(traj.rews))
                 round_timestep_count += len(traj)
+                total_timestep_count += len(traj)
 
             round_episode_count += len(trajectories)
 
