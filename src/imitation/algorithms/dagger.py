@@ -296,9 +296,6 @@ class DAggerTrainer:
     DEFAULT_N_EPOCHS: int = 4
     """The default number of BC training epochs in `extend_and_update`."""
 
-    SAVE_ATTRS = ("round_num",)
-    DEMO_SUFFIX = ".npz"
-
     def __init__(
         self,
         venv: vec_env.VecEnv,
@@ -359,7 +356,7 @@ class DAggerTrainer:
         return [
             os.path.join(round_dir, p)
             for p in os.listdir(round_dir)
-            if p.endswith(self.DEMO_SUFFIX)
+            if p.endswith(".npz")
         ]
 
     def _demo_dir_path_for_round(self, round_num: Optional[int] = None) -> pathlib.Path:
