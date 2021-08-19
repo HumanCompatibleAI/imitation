@@ -12,7 +12,7 @@ from imitation.policies import base
 from imitation.rewards import reward_nets, serialize
 from imitation.util import util
 
-ENVS = ["FrozenLake-v0", "CartPole-v1", "Pendulum-v0"]
+ENVS = ["FrozenLake-v1", "CartPole-v1", "Pendulum-v0"]
 HARDCODED_TYPES = ["zero"]
 
 REWARD_NETS = [reward_nets.BasicRewardNet, reward_nets.BasicShapedRewardNet]

@@ -77,7 +77,7 @@ DISCRIM_NET_SETUPS = {
     "GAIL_custom_network": _setup_gail_provide_discriminator,
 }
 
-ENV_NAMES = ["FrozenLake-v0", "CartPole-v1", "Pendulum-v0"]
+ENV_NAMES = ["FrozenLake-v1", "CartPole-v1", "Pendulum-v0"]
 
 
 @pytest.fixture(params=ENV_NAMES)
