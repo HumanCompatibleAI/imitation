@@ -572,7 +572,7 @@ class SimpleDAggerTrainer(DAggerTrainer):
         dataset aggregation stage is determined by the `rollout_round_min*` arguments.
 
         During a BC update step, `BC.train()` is called to update the DAgger agent on
-        the dataset collected in this round.
+        all data collected so far.
 
         Args:
             total_timesteps: The number of timesteps to train inside the environment.
@@ -599,13 +599,6 @@ class SimpleDAggerTrainer(DAggerTrainer):
             round_episode_count = 0
             round_timestep_count = 0
 
-            # TODO(shwang): This while loop end condition causes rollout collection to
-            #   suffer from the same problem that
-            #   `imitation.data.rollout.generate_trajectories` previously had -- a
-            #   bias towards shorter episodes.
-            #   We could probably solve this problem simply by calling
-            #   `generate_trajectories(self.expert_policy, venv=collector)` now that
-            #   we are ported from using `Env` to `VecEnv`?
             sample_until = rollout.make_sample_until(
                 min_timesteps=max(rollout_round_min_timesteps, self.batch_size),
                 min_episodes=rollout_round_min_episodes,
