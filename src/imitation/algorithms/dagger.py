@@ -293,6 +293,9 @@ class DAggerTrainer:
                    …
     """
 
+    DEFAULT_N_EPOCHS: int = 4
+    """The default number of BC training epochs in `extend_and_update`."""
+
     SAVE_ATTRS = ("round_num",)
     DEMO_SUFFIX = ".npz"
 
@@ -395,9 +398,6 @@ class DAggerTrainer:
             )
             self.bc_trainer.set_expert_data_loader(data_loader)
             self._last_loaded_round = self.round_num
-
-    DEFAULT_N_EPOCHS: int = 4
-    """The default number of BC training epochs in `extend_and_update`."""
 
     def extend_and_update(self, bc_train_kwargs: Optional[Mapping] = None) -> int:
         """Extend internal batch of data and train BC.
