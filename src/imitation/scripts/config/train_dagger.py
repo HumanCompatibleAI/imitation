@@ -114,7 +114,7 @@ def cartpole():
 @train_dagger_ex.named_config
 def seals_cartpole():
     env_name = "seals/CartPole-v0"
-    rollout_hint = "cartpole"
+    rollout_hint = "seals_cartpole"
 
 
 @train_dagger_ex.named_config
