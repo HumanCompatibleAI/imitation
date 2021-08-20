@@ -31,10 +31,8 @@ def _gather_sacred_dicts(
     for sacred_dir in sacred_dirs:
         try:
             sacred_dicts.append(sacred_util.SacredDicts.load_from_dir(sacred_dir))
-        except json.JSONDecodeError as e:
+        except json.JSONDecodeError:
             warnings.warn(f"Invalid JSON file in {sacred_dir}", RuntimeWarning)
-
-
 
     if run_name is not None:
         sacred_dicts = filter(
@@ -247,8 +245,8 @@ def analyze_imitation(
         csv_output_path: If provided, then save a CSV output file to this path.
         tex_output_path: If provided, then save a LaTeX-format table to this path.
         print_table: If True, then print the dataframe to stdout.
-        table_verbosity: Increasing levels of verbosity, from 0 to 2, increase the number
-            of columns in the table.
+        table_verbosity: Increasing levels of verbosity, from 0 to 2, increase the
+            number of columns in the table.
 
 
     Returns:
