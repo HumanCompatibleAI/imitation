@@ -182,7 +182,7 @@ class DiscrimNet(nn.Module, abc.ABC):
 
 
 class DiscrimNetAIRL(DiscrimNet):
-    r"""The AIRL discriminator for a given ARILRewardNet.
+    r"""The AIRL discriminator for a given AIRLRewardNet.
 
     The AIRL discriminator is of the form
     .. math:: D_{\theta}(s,a) = \frac{\exp(f_{\theta}(s,a)}{\exp(f_{\theta}(s,a) + \pi(a \mid s)}
