@@ -234,12 +234,11 @@ class BC:
             self.device
         )  # pytype: disable=not-instantiable
         optimizer_kwargs = optimizer_kwargs or {}
-        # TODO(shwang): Raise error or warning if learning rate is included, as we
-        #   are setting learning rate via `policy_kwargs` and ConstantLRSchedule
-        #   instead? I also don't fully remember why we need to do this again. It would
-        #   be helpful to add a comment explaining the conflict between these two
-        #   learning rate parameters.
-        self.optimizer = optimizer_cls(self.policy.parameters(), **optimizer_kwargs)
+        # Learning rate should be set via policy_kwargs, so hardcode lr here
+        # to force an error if lr is specified in optimizer_kwargs by mistake.
+        self.optimizer = optimizer_cls(
+            self.policy.parameters(), lr=th.finfo(th.float32).max, **optimizer_kwargs
+        )
 
         self.expert_data_loader: Optional[Iterable[Mapping]] = None
         self.ent_weight = ent_weight
