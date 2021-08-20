@@ -133,7 +133,6 @@ def ant():
 def half_cheetah():
     env_name = "HalfCheetah-v2"
     rollout_hint = "half_cheetah"
-    # Consider adding callback so that I can calculate reward over time.
 
 
 @train_dagger_ex.named_config

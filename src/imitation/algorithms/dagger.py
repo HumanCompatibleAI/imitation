@@ -293,8 +293,8 @@ class DAggerTrainer:
                    …
     """
 
-    SAVE_ATTRS = ("round_num",)
-    DEMO_SUFFIX = ".npz"
+    DEFAULT_N_EPOCHS: int = 4
+    """The default number of BC training epochs in `extend_and_update`."""
 
     def __init__(
         self,
@@ -356,7 +356,7 @@ class DAggerTrainer:
         return [
             os.path.join(round_dir, p)
             for p in os.listdir(round_dir)
-            if p.endswith(self.DEMO_SUFFIX)
+            if p.endswith(".npz")
         ]
 
     def _demo_dir_path_for_round(self, round_num: Optional[int] = None) -> pathlib.Path:
@@ -395,9 +395,6 @@ class DAggerTrainer:
             )
             self.bc_trainer.set_expert_data_loader(data_loader)
             self._last_loaded_round = self.round_num
-
-    DEFAULT_N_EPOCHS: int = 4
-    """The default number of BC training epochs in `extend_and_update`."""
 
     def extend_and_update(self, bc_train_kwargs: Optional[Mapping] = None) -> int:
         """Extend internal batch of data and train BC.
@@ -575,7 +572,7 @@ class SimpleDAggerTrainer(DAggerTrainer):
         dataset aggregation stage is determined by the `rollout_round_min*` arguments.
 
         During a BC update step, `BC.train()` is called to update the DAgger agent on
-        the dataset collected in this round.
+        all data collected so far.
 
         Args:
             total_timesteps: The number of timesteps to train inside the environment.
@@ -602,13 +599,6 @@ class SimpleDAggerTrainer(DAggerTrainer):
             round_episode_count = 0
             round_timestep_count = 0
 
-            # TODO(shwang): This while loop end condition causes rollout collection to
-            #   suffer from the same problem that
-            #   `imitation.data.rollout.generate_trajectories` previously had -- a
-            #   bias towards shorter episodes.
-            #   We could probably solve this problem simply by calling
-            #   `generate_trajectories(self.expert_policy, venv=collector)` now that
-            #   we are ported from using `Env` to `VecEnv`?
             sample_until = rollout.make_sample_until(
                 min_timesteps=max(rollout_round_min_timesteps, self.batch_size),
                 min_episodes=rollout_round_min_episodes,
@@ -626,6 +616,7 @@ class SimpleDAggerTrainer(DAggerTrainer):
                 _save_dagger_demo(traj, collector.save_dir)
                 logger.record_mean("dagger/mean_episode_reward", np.sum(traj.rews))
                 round_timestep_count += len(traj)
+                total_timestep_count += len(traj)
 
             round_episode_count += len(trajectories)
 
@@ -634,7 +625,7 @@ class SimpleDAggerTrainer(DAggerTrainer):
             logger.record("dagger/round_episode_count", round_episode_count)
             logger.record("dagger/round_timestep_count", round_timestep_count)
 
-            # TODO(shwang): It looks like BC might start looping Tensorboard
+            # TODO(shwang): BC starts looping Tensorboard
             #   back to x=0 with each new call to BC.train(). Consider adding a
             #   `reset_tensorboard: bool = False` argument to BC.train() if this turns
             #   out to be the case?
