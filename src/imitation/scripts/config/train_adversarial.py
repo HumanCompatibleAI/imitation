@@ -14,7 +14,7 @@ train_adversarial_ex = sacred.Experiment("train_adversarial", interactive=True)
 @train_adversarial_ex.config
 def train_defaults():
     env_name = "CartPole-v1"  # environment to train on
-    total_timesteps = 1e5  # Num of environment transitions to sample
+    total_timesteps = 1e6  # Num of environment transitions to sample
     algorithm = "gail"  # Either "airl" or "gail"
 
     n_expert_demos = None  # Num demos used. None uses every demo possible
@@ -171,7 +171,38 @@ def half_cheetah():
     locals().update(**MUJOCO_SHARED_LOCALS)
     env_name = "HalfCheetah-v2"
     rollout_hint = "half_cheetah"
-    total_timesteps = 2e6
+    # total_timesteps = 2e6
+    total_timesteps = 2e7
+
+    # ANT
+    algorithm_kwargs = dict(shared=dict(expert_batch_size=8192))
+    gen_batch_size = 16384
+
+    init_rl_kwargs = dict(
+        batch_size=1024,
+    )
+
+    algorithm_kwargs = dict(
+        shared=dict(
+            # Number of discriminator updates after each round of generator updates
+            n_disc_updates_per_round=16,
+            # Equivalent to no replay buffer if batch size is the same
+            gen_replay_buffer_capacity=gen_batch_size,
+            # gen_replay_buffer_capacity=gen_batch_size * 3,
+        ),
+        airl=dict(
+            reward_net_kwargs=dict(
+                base_reward_net=(32,),
+                potential_net=(32,),
+            ),
+            disc_opt_kwargs=dict(
+                # DEFAULT: lr=1e-3
+                # lr=1e-2,
+                # lr=3e-3,
+                # lr=7e-3,
+            ),
+        ),
+    )
 
 
 @train_adversarial_ex.named_config
