@@ -30,7 +30,7 @@ done
 
 echo "Loading config from ${CONFIG_CSV}"
 echo "Loading expert models from ${EXPERT_MODELS_DIR}"
-echo "Writing logs in ${OUTPUT_DIR}"
+echo "Writing logs in ${OUTPUT_DIR}, and saving rollouts in ${EXPERT_MODELS_DIR}/*/rollouts/"
 
 parallel -j 25% --header : --results ${OUTPUT_DIR}/parallel/ --colsep , \
   python -m imitation.scripts.expert_demos rollouts_from_policy \
