@@ -29,7 +29,6 @@ class RewardNet(nn.Module, abc.ABC):
         done: th.Tensor,
     ):
         """Compute rewards for a batch of transitions."""
-        pass
 
 
 class AIRLRewardNet(nn.Module, abc.ABC):
