@@ -331,7 +331,7 @@ class BC:
         n_batches: Optional[int] = None,
         on_epoch_end: Callable[[], None] = None,
         on_batch_end: Callable[[], None] = None,
-        log_interval: int = 100,
+        log_interval: int = 500,
         log_rollouts_venv: Optional[vec_env.VecEnv] = None,
         log_rollouts_n_episodes: int = 5,
         progress_bar: bool = True,

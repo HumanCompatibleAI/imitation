@@ -17,6 +17,7 @@ def config():
     bc_train_kwargs = dict(
         n_epochs=None,  # Number of BC epochs per DAgger training round
         n_batches=None,  # Number of BC batches per DAgger training round
+        log_interval=500,  # Number of updates between Tensorboard/stdout logs
     )
     n_episodes_eval = 50  # Number of rollout episodes in final evaluation.
     expert_data_src = None

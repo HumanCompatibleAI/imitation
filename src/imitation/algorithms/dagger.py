@@ -625,11 +625,6 @@ class SimpleDAggerTrainer(DAggerTrainer):
             logger.record("dagger/round_episode_count", round_episode_count)
             logger.record("dagger/round_timestep_count", round_timestep_count)
 
-            # TODO(shwang): BC starts looping Tensorboard
-            #   back to x=0 with each new call to BC.train(). Consider adding a
-            #   `reset_tensorboard: bool = False` argument to BC.train() if this turns
-            #   out to be the case?
-
             # `logger.dump` is called inside BC.train within the following fn call:
             self.extend_and_update(bc_train_kwargs)
             round_num += 1
