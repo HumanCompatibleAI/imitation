@@ -124,6 +124,8 @@ def _get_algo_name(sd: sacred_util.SacredDicts) -> str:
         return algo
     elif exp_command == "train_bc":
         return "BC"
+    elif exp_command == "train_dagger":
+        return "DAgger"
     else:
         return f"??exp_command={exp_command}"
 
@@ -248,7 +250,6 @@ def analyze_imitation(
         table_verbosity: Increasing levels of verbosity, from 0 to 2, increase the
             number of columns in the table.
 
-
     Returns:
         The DataFrame generated from the Sacred logs.
     """
@@ -269,13 +270,14 @@ def analyze_imitation(
     display_options = dict(index=False)
     if csv_output_path is not None:
         df.to_csv(csv_output_path, **display_options)
+        print(f"Wrote CSV file to {csv_output_path}")
     if print_table:
         print(df.to_string(**display_options))
     if tex_output_path is not None:
         s: str = df.to_latex(**display_options)
         with open(tex_output_path, "w") as f:
             f.write(s)
-        print(f"Wrote to {tex_output_path}")
+        print(f"Wrote TeX file to {tex_output_path}")
     return df
 
 
