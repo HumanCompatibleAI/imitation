@@ -131,6 +131,7 @@ def cartpole():
 
 @train_adversarial_ex.named_config
 def seals_cartpole():
+    total_timesteps = 1.4e6
     env_name = "seals/CartPole-v0"
     # seals and vanilla CartPole have the same expert trajectories.
     rollout_hint = "cartpole"
