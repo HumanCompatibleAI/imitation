@@ -237,7 +237,9 @@ class BC:
         # Learning rate should be set via policy_kwargs, so hardcode lr here
         # to force an error if lr is specified in optimizer_kwargs by mistake.
         self.optimizer = optimizer_cls(
-            self.policy.parameters(), lr=th.finfo(th.float32).max, **optimizer_kwargs
+            self.policy.parameters(),
+            lr=th.finfo(th.float32).max // 100,
+            **optimizer_kwargs,
         )
 
         self.expert_data_loader: Optional[Iterable[Mapping]] = None
