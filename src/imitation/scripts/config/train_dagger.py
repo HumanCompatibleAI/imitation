@@ -5,7 +5,7 @@ import torch as th
 
 from imitation.util import util
 
-train_dagger_ex = sacred.Experiment("train_bc")
+train_dagger_ex = sacred.Experiment("train_dagger")
 
 
 @train_dagger_ex.config
