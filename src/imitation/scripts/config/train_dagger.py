@@ -97,24 +97,30 @@ def paths(log_root, env_name):
 def mountain_car():
     env_name = "MountainCar-v0"
     rollout_hint = "mountain_car"
+    l2_weight = 0
+    total_timesteps = 20000
 
 
 @train_dagger_ex.named_config
 def seals_mountain_car():
     env_name = "seals/MountainCar-v0"
     rollout_hint = "seals_mountain_car"
+    l2_weight = 0
+    total_timesteps = 20000
 
 
 @train_dagger_ex.named_config
 def cartpole():
     env_name = "CartPole-v1"
     rollout_hint = "cartpole"
+    total_timesteps = 20000
 
 
 @train_dagger_ex.named_config
 def seals_cartpole():
     env_name = "seals/CartPole-v0"
     rollout_hint = "seals_cartpole"
+    total_timesteps = 20000
 
 
 @train_dagger_ex.named_config
@@ -133,6 +139,8 @@ def ant():
 def half_cheetah():
     env_name = "HalfCheetah-v2"
     rollout_hint = "half_cheetah"
+    l2_weight = 0
+    total_timesteps = 60000
 
 
 @train_dagger_ex.named_config
