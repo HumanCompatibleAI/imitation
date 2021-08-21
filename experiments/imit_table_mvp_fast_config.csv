@@ -1,0 +1,4 @@
+env_config_name,gen_batch_size,n_epochs,n_expert_demos
+cartpole,10,3,1
+mountain_car,10,3,1
+half_cheetah,10,3,1
