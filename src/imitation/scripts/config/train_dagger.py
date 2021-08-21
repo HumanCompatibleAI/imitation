@@ -20,7 +20,7 @@ def config():
     )
     n_episodes_eval = 50  # Number of rollout episodes in final evaluation.
     expert_data_src = None
-    expert_data_src_format = None  # Either "path" or "trajectory"
+    expert_data_src_format = None  # Either "path" or "trajectory" or None
     rollout_hint = None  # Used to generate default `expert_data_src`.
     # Number of trajectories to use during training, or None to use all.
     n_expert_demos = None

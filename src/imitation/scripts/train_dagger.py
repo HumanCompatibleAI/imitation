@@ -38,9 +38,13 @@ def train_dagger(
 
     Args:
         expert_data_src: Either a path to pickled `Sequence[Trajectory]` or
-            `Sequence[Trajectory]`.
+            `Sequence[Trajectory]` or None. If None, then ignore
+            `expert_data_src_format` and `n_expert_demos`, and don't load
+            initial demonstrations.
         expert_data_src_format: Either "path" if `expert_data_src` is a path, or
-            "trajectory" if `expert_data_src` if `Sequence[Trajectory]`.
+            "trajectory" if `expert_data_src` if `Sequence[Trajectory]`, or None.
+            If None, then ignore `expert_data_src` and `n_expert_demos` and don't load
+            initial demonstrations.
         n_expert_demos: If not None, then a positive number used to truncate the number
             expert demonstrations used from `expert_data_src`. If this number is larger
             than the total number of demonstrations available, then a ValueError is
@@ -84,8 +88,10 @@ def train_dagger(
     if not isinstance(expert_policy, policies.BasePolicy):
         raise TypeError(f"Unexpected type for expert_policy: {type(expert_policy)}")
 
-    expert_trajs: Sequence[types.Trajectory]
-    if expert_data_src_format == "path":
+    expert_trajs: Optional[Sequence[types.Trajectory]]
+    if expert_data_src_format is None or expert_data_src is None:
+        expert_trajs = None
+    elif expert_data_src_format == "path":
         expert_trajs = types.load(expert_data_src)
     elif expert_data_src_format == "trajectory":
         # Convenience option for launching experiment from Python script with
@@ -97,18 +103,19 @@ def train_dagger(
             "or 'trajectory' or None."
         )
 
-    for x in expert_trajs:
-        if not isinstance(x, types.Trajectory):
-            raise ValueError(f"Expert data is the wrong type: {type(x)}")
+    if expert_trajs is not None:
+        for x in expert_trajs:
+            if not isinstance(x, types.Trajectory):
+                raise ValueError(f"Expert data is the wrong type: {type(x)}")
 
-    # TODO(shwang): Copied from scripts/train_adversarial -- refactor with "auto"?
-    if n_expert_demos is not None:
-        if not len(expert_trajs) >= n_expert_demos:
-            raise ValueError(
-                f"Want to use n_expert_demos={n_expert_demos} trajectories, but only "
-                f"{len(expert_trajs)} are available."
-            )
-        expert_trajs = expert_trajs[:n_expert_demos]
+        # TODO(shwang): Copied from scripts/train_adversarial -- refactor with "auto"?
+        if n_expert_demos is not None:
+            if not len(expert_trajs) >= n_expert_demos:
+                raise ValueError(
+                    f"Want to use n_expert_demos={n_expert_demos} trajectories, but "
+                    f"only {len(expert_trajs)} are available."
+                )
+            expert_trajs = expert_trajs[:n_expert_demos]
 
     model = dagger.SimpleDAggerTrainer(
         venv=venv,
