@@ -289,7 +289,7 @@ class DensityTrainer:
         trajs = rollout.generate_trajectories(
             self.imitation_trainer,
             self.venv if true_reward else self.wrapped_env,
-            sample_until=rollout.min_episodes(n_trajectories),
+            sample_until=rollout.make_min_episodes(n_trajectories),
         )
         reward_stats = rollout.rollout_stats(trajs)
         return reward_stats

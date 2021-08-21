@@ -157,7 +157,7 @@ def batch_reward_heatmaps(
             # `load_policy` automatically loads VecNormalize for policy evaluation.
             gen_policy = policies_serialize.load_policy("ppo", str(policy_path), venv)
             gen_trajs = rollout.generate_trajectories(
-                gen_policy, venv, sample_until=rollout.min_episodes(n_gen_trajs)
+                gen_policy, venv, sample_until=rollout.make_min_episodes(n_gen_trajs)
             )
         else:
             gen_trajs = None

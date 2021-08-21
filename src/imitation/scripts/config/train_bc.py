@@ -1,6 +1,7 @@
 import pathlib
 
 import sacred
+import torch as th
 
 from imitation.util import util
 
@@ -20,6 +21,7 @@ def config():
     # Number of trajectories to use during training, or None to use all.
     n_expert_demos = None
     l2_weight = 3e-5  # L2 regularization weight
+    optimizer_cls = th.optim.Adam
     optimizer_kwargs = dict(
         lr=4e-4,
     )

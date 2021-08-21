@@ -124,8 +124,9 @@ class TrajectoryAccumulator:
         zip_iter = enumerate(zip(acts, obs, rews, dones, infos))
         for env_idx, (act, ob, rew, done, info) in zip_iter:
             if done:
-                # actual obs is inaccurate, so we use the one inserted into step info
-                # by stable baselines wrapper
+                # When dones[i] from VecEnv.step() is True, obs[i] is the first
+                # observation following reset() of the ith VecEnv, and
+                # infos[i]["terminal_observation"] is the actual final observation.
                 real_ob = info["terminal_observation"]
             else:
                 real_ob = ob
@@ -145,6 +146,8 @@ class TrajectoryAccumulator:
                 # finish env_idx-th trajectory
                 new_traj = self.finish_trajectory(env_idx)
                 trajs.append(new_traj)
+                # When done[i] from VecEnv.step() is True, obs[i] is the first
+                # observation following reset() of the ith VecEnv.
                 self.add_step(dict(obs=ob), env_idx)
         return trajs
 
@@ -152,7 +155,7 @@ class TrajectoryAccumulator:
 GenTrajTerminationFn = Callable[[Sequence[types.TrajectoryWithRew]], bool]
 
 
-def min_episodes(n: int) -> GenTrajTerminationFn:
+def make_min_episodes(n: int) -> GenTrajTerminationFn:
     """Terminate after collecting n episodes of data.
 
     Arguments:
@@ -166,7 +169,7 @@ def min_episodes(n: int) -> GenTrajTerminationFn:
     return lambda trajectories: len(trajectories) >= n
 
 
-def min_timesteps(n: int) -> GenTrajTerminationFn:
+def make_min_timesteps(n: int) -> GenTrajTerminationFn:
     """Terminate at the first episode after collecting n timesteps of data.
 
     Arguments:
@@ -186,32 +189,51 @@ def min_timesteps(n: int) -> GenTrajTerminationFn:
 
 
 def make_sample_until(
-    n_timesteps: Optional[int],
-    n_episodes: Optional[int],
+    min_timesteps: Optional[int],
+    min_episodes: Optional[int],
 ) -> GenTrajTerminationFn:
-    """Returns a termination condition sampling until n_timesteps or n_episodes.
+    """Returns a termination condition sampling for a number of timesteps and episodes.
 
     Arguments:
-      n_timesteps: Minimum number of timesteps to sample.
-      n_episodes: Number of episodes to sample.
+        min_timesteps: Sampling will not stop until there are at least this many
+            timesteps.
+        min_episodes: Sampling will not stop until there are at least this many
+            episodes.
 
     Returns:
-      A termination condition.
+        A termination condition.
 
     Raises:
-      ValueError if both or neither of n_timesteps and n_episodes are set,
-      or if either are non-positive.
+        ValueError if neither of n_timesteps and n_episodes are set, or if either are
+            non-positive.
     """
-    if n_timesteps is not None and n_episodes is not None:
-        raise ValueError("n_timesteps and n_episodes were both set")
-    elif n_timesteps is not None:
-        assert n_timesteps > 0
-        return min_timesteps(n_timesteps)
-    elif n_episodes is not None:
-        assert n_episodes > 0
-        return min_episodes(n_episodes)
-    else:
-        raise ValueError("Set at least one of n_timesteps and n_episodes")
+    if min_timesteps is None and min_episodes is None:
+        raise ValueError(
+            "At least one of min_timesteps and min_episodes needs to be non-None"
+        )
+
+    conditions = []
+    if min_timesteps is not None:
+        if min_timesteps <= 0:
+            raise ValueError(
+                f"min_timesteps={min_timesteps} if provided must be positive"
+            )
+        conditions.append(make_min_timesteps(min_timesteps))
+
+    if min_episodes is not None:
+        if min_episodes <= 0:
+            raise ValueError(
+                f"min_episodes={min_episodes} if provided must be positive"
+            )
+        conditions.append(make_min_episodes(min_episodes))
+
+    def sample_until(trajs: Sequence[types.TrajectoryWithRew]) -> bool:
+        for cond in conditions:
+            if not cond(trajs):
+                return False
+        return True
+
+    return sample_until
 
 
 def generate_trajectories(
@@ -430,7 +452,7 @@ def generate_transitions(
       `truncate` is provided as we collect data until the end of each episode.
     """
     traj = generate_trajectories(
-        policy, venv, sample_until=min_timesteps(n_timesteps), **kwargs
+        policy, venv, sample_until=make_min_timesteps(n_timesteps), **kwargs
     )
     transitions = flatten_trajectories_with_rew(traj)
     if truncate and n_timesteps is not None:
