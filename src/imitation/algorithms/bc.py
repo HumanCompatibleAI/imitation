@@ -222,10 +222,12 @@ class BC:
         self.observation_space = observation_space
         self.policy_class = policy_class
         self.device = device = utils.get_device(device)
+        # Learning rate should be set via optimizer_kwargs, so hardcode lr here
+        # to force an error if self.policy.optimizer is used by mistake.
         self.policy_kwargs = dict(
             observation_space=self.observation_space,
             action_space=self.action_space,
-            lr_schedule=ConstantLRSchedule(),
+            lr_schedule=ConstantLRSchedule(th.finfo(th.float32).max),
         )
         self.policy_kwargs.update(policy_kwargs or {})
         self.device = utils.get_device(device)
@@ -234,11 +236,8 @@ class BC:
             self.device
         )  # pytype: disable=not-instantiable
         optimizer_kwargs = optimizer_kwargs or {}
-        # Learning rate should be set via policy_kwargs, so hardcode lr here
-        # to force an error if lr is specified in optimizer_kwargs by mistake.
         self.optimizer = optimizer_cls(
             self.policy.parameters(),
-            lr=th.finfo(th.float32).max // 100,
             **optimizer_kwargs,
         )
 
