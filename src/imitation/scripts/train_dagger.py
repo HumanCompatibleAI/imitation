@@ -149,7 +149,7 @@ def train_dagger(
         sample_until=sample_until,
     )
     results = {}
-    results["expert_stats"] = rollout.rollout_stats(expert_trajs)
+    results["expert_stats"] = rollout.rollout_stats(model._all_demos)
     results["imit_stats"] = rollout.rollout_stats(trajs)
     return results
 
