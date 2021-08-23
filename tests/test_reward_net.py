@@ -140,3 +140,14 @@ def test_potential_net_2d_obs():
     net = reward_nets.AIRLRewardNet(reward_net)
     rew_batch = net.predict_reward_train(obs_b, action_b, next_obs_b, done_b)
     assert rew_batch.shape == (1,)
+
+
+@pytest.mark.parametrize("env_name", ENVS)
+def test_device_for_parameterless_model(env_name):
+    class ParameterlessNet(reward_nets.RewardNet):
+        def forward(self):
+            pass
+
+    env = gym.make(env_name)
+    net = ParameterlessNet(env.observation_space, env.action_space)
+    assert net.device == th.device("cpu")
