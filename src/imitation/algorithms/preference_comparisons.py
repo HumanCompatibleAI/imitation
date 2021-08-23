@@ -34,7 +34,7 @@ probabilities.
 
 
 class SyntheticGatherer:
-    """Computes synthetic preferences using ground-truth rewards from the environment."""
+    """Computes synthetic preferences using ground-truth environment rewards."""
 
     def __init__(self, probabilistic: bool = False, noise_prob: float = 0.0):
         """Initialize the synthetic preference gatherer.
@@ -226,8 +226,8 @@ class PreferenceComparisons:
 
         Args:
             agent_trainer: generates trajectories while optionally training an RL agent
-                on the learned reward function (can also be a sampler from a static dataset
-                of trajectories though).
+                on the learned reward function (can also be a sampler from a static
+                dataset of trajectories though).
             reward_model: a RewardNet instance to be used for learning the reward
             agent_timesteps: number of environment steps to train the agent for between
                 each reward model training round
@@ -237,8 +237,8 @@ class PreferenceComparisons:
                 Default is a random fragmenter.
             preference_gatherer: how to get preferences between trajectory fragments.
                 Default (and currently the only option) is to use synthetic preferences
-                based on ground-truth rewards. Human preferences could be implemented here
-                in the future.
+                based on ground-truth rewards. Human preferences could be implemented
+                here in the future.
             reward_trainer: trains the reward model based on pairs of fragments and
                 associated preferences. Default is to use the preference model
                 and loss function from DRLHP.
