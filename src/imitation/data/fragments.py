@@ -43,6 +43,16 @@ class RandomFragmenter:
         self, trajectories: List[TrajectoryWithRew]
     ) -> List[Tuple[TrajectoryWithRew, TrajectoryWithRew]]:
         fragments: List[TrajectoryWithRew] = []
+
+        # filter out all trajectories that are too short
+        trajectories = [
+            traj for traj in trajectories if len(traj) >= self.fragment_length
+        ]
+        if len(trajectories) == 0:
+            raise ValueError(
+                "No trajectories are long enough for the desired fragment length."
+            )
+
         weights = [len(traj) for traj in trajectories]
 
         # TODO(ejnnr): since we're sampling with replacement, there could
@@ -56,6 +66,7 @@ class RandomFragmenter:
                 "Fewer transitions available than needed for desired number "
                 "of fragment pairs. Some transitions will appear multiple times."
             )
+
         # we need two fragments for each comparison
         for _ in range(2 * self.num_pairs):
             traj = self.rng.choices(trajectories, weights, k=1)[0]
@@ -63,7 +74,7 @@ class RandomFragmenter:
             start = self.rng.randint(0, n - self.fragment_length)
             end = start + self.fragment_length
             fragment = TrajectoryWithRew(
-                obs=traj.obs[start:end],
+                obs=traj.obs[start : end + 1],
                 acts=traj.acts[start:end],
                 infos=traj.infos[start:end] if traj.infos is not None else None,
                 rews=traj.rews[start:end],

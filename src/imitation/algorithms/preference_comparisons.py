@@ -126,6 +126,16 @@ class PreferenceDataset(th.utils.data.Dataset):
     def __getitem__(self, i) -> Tuple[TrajectoryWithRew, TrajectoryWithRew, float]:
         return self.fragments1[i], self.fragments2[i], self.preferences[i]
 
+    def __len__(self) -> int:
+        return len(self.fragments1)
+
+
+def preference_collate_fn(
+    batch: List[Tuple[TrajectoryWithRew, TrajectoryWithRew, float]]
+):
+    fragments1, fragments2, preferences = zip(*batch)
+    return list(zip(fragments1, fragments2)), list(preferences)
+
 
 class RewardTrainer(abc.ABC):
     """Abstract base class for training reward models using preference comparisons.
@@ -173,15 +183,21 @@ class CrossEntropyRewardTrainer(RewardTrainer):
         self.optim = th.optim.Adam(self.model.parameters())
 
     def _loss(
-        self, fragment: Tuple[TrajectoryWithRew, TrajectoryWithRew], preference: float
+        self,
+        fragments: List[Tuple[TrajectoryWithRew, TrajectoryWithRew]],
+        preferences: np.ndarray,
     ):
-        frag1, frag2 = fragment
-        trans1 = flatten_trajectories_with_rew([frag1])
-        trans2 = flatten_trajectories_with_rew([frag2])
-        rews1 = self._rewards(trans1)
-        rews2 = self._rewards(trans2)
-        prob = self._probability(rews1, rews2)
-        return th.nn.functional.binary_cross_entropy(prob, th.as_tensor(preference))
+        probs = th.empty(len(fragments), dtype=th.float32)
+        for i, fragment in enumerate(fragments):
+            frag1, frag2 = fragment
+            trans1 = flatten_trajectories_with_rew([frag1])
+            trans2 = flatten_trajectories_with_rew([frag2])
+            rews1 = self._rewards(trans1)
+            rews2 = self._rewards(trans2)
+            probs[i] = self._probability(rews1, rews2)
+        return th.nn.functional.binary_cross_entropy(
+            probs, th.as_tensor(preferences, dtype=th.float32)
+        )
 
     def _rewards(self, transitions: TransitionsWithRew) -> th.Tensor:
         return self.model(*self.model.preprocess(transitions))
@@ -202,10 +218,11 @@ class CrossEntropyRewardTrainer(RewardTrainer):
             sampler=th.utils.data.RandomSampler(
                 dataset, replacement=True, num_samples=None
             ),
+            collate_fn=preference_collate_fn,
         )
         self.optim.zero_grad()
-        for fragment, preference in dataloader:
-            loss = self._loss(fragment, preference)
+        for fragments, preferences in dataloader:
+            loss = self._loss(fragments, preferences)
             loss.backward()
         self.optim.step()
 
