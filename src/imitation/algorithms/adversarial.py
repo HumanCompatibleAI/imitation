@@ -477,9 +477,7 @@ class AIRL(AdversarialTrainer):
         gen_algo: on_policy_algorithm.OnPolicyAlgorithm,
         *,
         # FIXME(sam): pass in reward net directly, not via _cls and _kwargs
-        reward_net_cls: Type[
-            reward_nets.AIRLRewardNet
-        ] = reward_nets.BasicShapedRewardNet,
+        reward_net_cls: Type[reward_nets.RewardNet] = reward_nets.BasicShapedRewardNet,
         reward_net_kwargs: Optional[Mapping] = None,
         discrim_kwargs: Optional[Mapping] = None,
         **kwargs,
@@ -509,8 +507,10 @@ class AIRL(AdversarialTrainer):
             **reward_net_kwargs,  # pytype: disable=not-instantiable
         )
 
+        airl_net = reward_nets.AIRLRewardNet(reward_network)
+
         discrim_kwargs = discrim_kwargs or {}
-        discrim = discrim_nets.DiscrimNetAIRL(reward_network, **discrim_kwargs)
+        discrim = discrim_nets.DiscrimNetAIRL(airl_net, **discrim_kwargs)
         super().__init__(
             venv, gen_algo, discrim, expert_data, expert_batch_size, **kwargs
         )

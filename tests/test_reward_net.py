@@ -55,7 +55,8 @@ def test_serialize_identity(env_name, net_cls, tmpdir):
     logging.info(f"Testing {net_cls}")
 
     venv = util.make_vec_env(env_name, n_envs=1, parallel=False)
-    original = net_cls(venv.observation_space, venv.action_space)
+    reward_net = net_cls(venv.observation_space, venv.action_space)
+    original = reward_nets.AIRLRewardNet(reward_net)
     random = base.RandomPolicy(venv.observation_space, venv.action_space)
 
     tmppath = os.path.join(tmpdir, "reward.pt")
@@ -133,6 +134,9 @@ def test_potential_net_2d_obs():
     next_obs_b = next_obs[None]
     done_b = np.array([done], dtype="bool")
 
-    net = reward_nets.BasicShapedRewardNet(env.observation_space, env.action_space)
+    reward_net = reward_nets.BasicShapedRewardNet(
+        env.observation_space, env.action_space
+    )
+    net = reward_nets.AIRLRewardNet(reward_net)
     rew_batch = net.predict_reward_train(obs_b, action_b, next_obs_b, done_b)
     assert rew_batch.shape == (1,)
