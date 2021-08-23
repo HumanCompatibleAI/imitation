@@ -18,19 +18,13 @@ while true; do
   case "$1" in
     # Fast mode (debug)
     -f | --fast)
-      EXPERT_MODELS_DIR="tests/data/expert_models"
+      # EXPERT_MODELS_DIR="tests/data/expert_models"  # TODO(shwang)
       SEEDS="0"
       extra_configs+="fast "
       shift
       ;;
     --mvp_seals)  # Table benchmark settings
       ENVS="seals_cartpole seals_mountain_car half_cheetah"
-      shift
-      ;;
-    --mvp_fast)  # Debug or quickly validate the benchmark settings
-      ENVS="seals_cartpole seals_mountain_car half_cheetah"
-      SEEDS="0"
-      extra_configs+="fast "
       shift
       ;;
     -T | --tmux)

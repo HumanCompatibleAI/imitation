@@ -31,17 +31,12 @@ while true; do
       ENVS="cartpole"
       SEEDS="0"
       extra_configs+="fast "
-      EXPERT_MODELS_DIR="tests/data/expert_models"
+      # TODO(shwang)
+      # EXPERT_MODELS_DIR="tests/data/expert_models"
       shift
       ;;
     --mvp_seals)  # Table benchmark settings
       ENVS="seals_cartpole seals_mountain_car half_cheetah "
-      shift
-      ;;
-    --mvp_fast)  # Debug or quickly validate the benchmark settings
-      ENVS="cartpole mountain_car half_cheetah "
-      SEEDS="0"
-      extra_configs+="fast "
       shift
       ;;
     --run_name)

@@ -167,27 +167,21 @@ def ant():
     rollout_hint = "ant"
 
 
-@train_adversarial_ex.named_config
-def half_cheetah():
-    locals().update(**MUJOCO_SHARED_LOCALS)
-    env_name = "HalfCheetah-v2"
-    rollout_hint = "half_cheetah"
-    total_timesteps = 5e6
-
-    # ANT
-    algorithm_kwargs = dict(shared=dict(expert_batch_size=8192))
-    gen_batch_size = 16384
-
-    init_rl_kwargs = dict(
+HALF_CHEETAH_SHARED_LOCALS = dict(
+    env_name="HalfCheetah-v2",
+    rollout_hint="half_cheetah",
+    total_timesteps=5e6,
+    gen_batch_size=16384,
+    init_rl_kwargs=dict(
         batch_size=1024,
-    )
-
-    algorithm_kwargs = dict(
+    ),
+    algorithm_kwargs=dict(
         shared=dict(
             # Number of discriminator updates after each round of generator updates
             n_disc_updates_per_round=16,
             # Equivalent to no replay buffer if batch size is the same
-            gen_replay_buffer_capacity=gen_batch_size,
+            gen_replay_buffer_capacity=16384,
+            expert_batch_size=8192,
         ),
         airl=dict(
             reward_net_kwargs=dict(
@@ -195,7 +189,26 @@ def half_cheetah():
                 potential_net=(32,),
             ),
         ),
-    )
+    ),
+)
+
+
+@train_adversarial_ex.named_config
+def half_cheetah_gail():
+    # TODO(shwang): Update experiment scripts to use different total_timesteps
+    # for GAIL and AIRL
+    locals().update(**MUJOCO_SHARED_LOCALS)
+    locals().update(**HALF_CHEETAH_SHARED_LOCALS)
+    algorithm = "gail"
+    total_timesteps = 8e6
+
+
+@train_adversarial_ex.named_config
+def half_cheetah_airl():
+    locals().update(**MUJOCO_SHARED_LOCALS)
+    locals().update(**HALF_CHEETAH_SHARED_LOCALS)
+    algorithm = "airl"
+    total_timesteps = 5e6
 
 
 @train_adversarial_ex.named_config

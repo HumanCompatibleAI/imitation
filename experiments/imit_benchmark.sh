@@ -8,7 +8,7 @@ set -e
 # `experiments/imit_benchmark_config.csv`.
 
 CONFIG_CSV="experiments/imit_benchmark_config.csv"
-EXPERT_MODELS_DIR="data/expert_models"
+DATA_DIR="${DATA_DIR:-data/}"
 TIMESTAMP=$(date --iso-8601=seconds)
 LOG_ROOT="output/imit_benchmark/${TIMESTAMP}"
 extra_configs=""
@@ -17,7 +17,7 @@ ALGORITHM="gail"
 
 SEEDS="0 1 2 3 4"
 
-TEMP=$(getopt -o fT -l fast,mvp_fast,tmux,gail,airl,pdb,echo,run_name:,log_root:,file_storage:,mvp_seals -- "$@")
+TEMP=$(getopt -o fT -l fast,mvp_fast,tmux,gail,airl,pdb,echo,run_name:,log_root:,file_storage:,mvp_seals,cheetah -- "$@")
 if [[ $? != 0 ]]; then exit 1; fi
 eval set -- "$TEMP"
 
@@ -26,7 +26,10 @@ while true; do
     # Fast mode (debug)
     -f | --fast)
       CONFIG_CSV="tests/data/imit_benchmark_config.csv"
-      EXPERT_MODELS_DIR="tests/data/expert_models"
+      # TODO(shwang): Add new flag for using special test data?
+      # Or don't make a new flag -- probably just read EXPERT_MODELS_DIR
+      # from export if possible via DATA_DIR=${EXPERT_MODELS_DIR:-default}
+      # EXPERT_MODELS_DIR="tests/data/expert_models"
       SEEDS="0"
       extra_configs+="fast "
       shift
@@ -35,10 +38,8 @@ while true; do
       CONFIG_CSV="experiments/imit_table_mvp_seals_config.csv"
       shift
       ;;
-    --mvp_fast)
-      CONFIG_CSV="experiments/imit_table_mvp_fast_config.csv"
-      SEEDS="0"
-      extra_configs+="fast "
+    --cheetah)
+      CONFIG_CSV="experiments/imit_table_cheetahs.csv"
       shift
       ;;
     -T | --tmux)
@@ -100,7 +101,7 @@ parallel -j 25% --header : --results ${LOG_ROOT}/parallel/ --colsep , --progress
   ${ALGORITHM} \
   {env_config_name} \
   log_dir="${LOG_ROOT}/{env_config_name}_{seed}/n_expert_demos_{n_expert_demos}" \
-  rollout_path=${EXPERT_MODELS_DIR}/{env_config_name}_0/rollouts/final.pkl \
+  data_dir=${DATA_DIR} \
   checkpoint_interval=0 \
   n_expert_demos={n_expert_demos} \
   seed={seed} \

@@ -26,13 +26,14 @@ set -e  # Exit on error
 export OMP_NUM_THREADS=${OMP_NUM_THREADS:-2}
 
 TIMESTAMP=$(date --iso-8601=seconds)
-RUN_NAME="test-${TIMESTAMP}"
+RUN_NAME="paper-${TIMESTAMP}"
 echo "Training with run_name=${RUN_NAME}"
 
 script_dir=experiments
-MODE_FLAG=--mvp_seals
+fast_flag=""
 pdb_flag=""
 tmux_flag=""
+NO_CHEETAH=0
 
 TEMP=$(getopt -o fT -l fast,tmux -- "$@")
 if [[ $? != 0 ]]; then exit 1; fi
@@ -42,7 +43,7 @@ while true; do
   case "$1" in
     -f | --fast)
       # Use this flag to quickly test a shortened benchmark and table
-      MODE_FLAG=--mvp_fast
+      fast_flag="--fast"
       RUN_NAME="test-${TIMESTAMP}"
       shift
       ;;
@@ -64,17 +65,20 @@ done
 
 set -x  # Start echoing commands
 
-$script_dir/bc_benchmark.sh $MODE_FLAG $tmux_flag --run_name "$RUN_NAME"
-IMIT_PLAIN="$script_dir/imit_benchmark.sh $MODE_FLAG $tmux_flag --run_name "$RUN_NAME""
+$script_dir/bc_benchmark.sh $fast_flag --mvp_seals $tmux_flag --run_name "$RUN_NAME"
+IMIT_PLAIN="$script_dir/imit_benchmark.sh $fast_flag $tmux_flag --run_name "$RUN_NAME""
 
-echo "AIRL BENCHMARK"
-$IMIT_PLAIN --airl
+echo "AIRL seals BENCHMARK"
+$IMIT_PLAIN --mvp_seals --airl
 
-echo "GAIL BENCHMARK"
-$IMIT_PLAIN --gail
+echo "GAIL seals BENCHMARK"
+$IMIT_PLAIN --mvp_seals --gail
+
+echo "AIRL/GAIL HalfCheetah BENCHMARK"
+$IMIT_PLAIN --cheetah
 
 echo "DAGGER BENCHMARK"
-$script_dir/dagger_benchmark.sh $MODE_FLAG $tmux_flag --run_name "$RUN_NAME"
+$script_dir/dagger_benchmark.sh $fast_flag --mvp_seals $tmux_flag --run_name "$RUN_NAME"
 
 result_dir=output/fast_table_result
 mkdir -p $result_dir
