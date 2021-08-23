@@ -20,6 +20,11 @@
 
 set -e  # Exit on error
 
+# Set OMP_NUM_THREADS=2 if not yet exported.
+# This is important because parallel runs of PyTorch often throttle due to
+# CPU contention unless this is # set to a low number.
+export OMP_NUM_THREADS=${OMP_NUM_THREADS:-2}
+
 TIMESTAMP=$(date --iso-8601=seconds)
 RUN_NAME="test-${TIMESTAMP}"
 echo "Training with run_name=${RUN_NAME}"
