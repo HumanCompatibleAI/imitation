@@ -56,8 +56,7 @@ class RewardNet(nn.Module, abc.ABC):
         """Preprocess a batch of input transitions and convert it to PyTorch tensors.
 
         The output of this function is suitable for its forward pass,
-        so a typical usage would be
-        >>> model(*model.preprocess(transitions))
+        so a typical usage would be ``model(*model.preprocess(transitions))``.
         """
         return rewards_common.disc_rew_preprocess_inputs(
             observation_space=self.observation_space,
