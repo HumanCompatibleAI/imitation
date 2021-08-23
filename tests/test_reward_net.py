@@ -146,7 +146,7 @@ def test_potential_net_2d_obs():
 def test_device_for_parameterless_model(env_name):
     class ParameterlessNet(reward_nets.RewardNet):
         def forward(self):
-            pass
+            """Dummy function to avoid abstractmethod complaints"""
 
     env = gym.make(env_name)
     net = ParameterlessNet(env.observation_space, env.action_space)
