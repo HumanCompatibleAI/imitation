@@ -172,8 +172,7 @@ def half_cheetah():
     locals().update(**MUJOCO_SHARED_LOCALS)
     env_name = "HalfCheetah-v2"
     rollout_hint = "half_cheetah"
-    # total_timesteps = 2e6
-    total_timesteps = 2e7
+    total_timesteps = 5e6
 
     # ANT
     algorithm_kwargs = dict(shared=dict(expert_batch_size=8192))
@@ -189,18 +188,11 @@ def half_cheetah():
             n_disc_updates_per_round=16,
             # Equivalent to no replay buffer if batch size is the same
             gen_replay_buffer_capacity=gen_batch_size,
-            # gen_replay_buffer_capacity=gen_batch_size * 3,
         ),
         airl=dict(
             reward_net_kwargs=dict(
                 base_reward_net=(32,),
                 potential_net=(32,),
-            ),
-            disc_opt_kwargs=dict(
-                # DEFAULT: lr=1e-3
-                # lr=1e-2,
-                # lr=3e-3,
-                # lr=7e-3,
             ),
         ),
     )
