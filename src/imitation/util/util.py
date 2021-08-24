@@ -200,4 +200,9 @@ def tensor_iter_norm(
     for tensor in tensor_iter:
         norms.append(th.norm(tensor.flatten(), p=ord))
     norm_tensor = th.as_tensor(norms)
+    # Norm of the norms is equal to the norm of the concatenated tensor.
+    # th.norm(norm_tensor) = sum(norm**ord for norm in norm_tensor)**(1/ord)
+    # = sum(sum(x**ord for x in tensor) for tensor in tensor_iter)**(1/ord)
+    # = sum(x**ord for x in tensor for tensor in tensor_iter)**(1/ord)
+    # = th.norm(concatenated tensors)
     return th.norm(norm_tensor, p=ord)

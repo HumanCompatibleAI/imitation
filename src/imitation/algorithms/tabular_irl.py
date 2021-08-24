@@ -33,8 +33,8 @@ def mce_partition_fh(
 
     Returns:
         (V, Q, \pi) corresponding to the soft values, Q-values and MCE policy.
-            V is a 2d array, indexed V[t,s]. Q is a 3d array, indexed Q[t,s,a].
-            \pi is a 3d array, indexed \pi[t,s,a].
+        V is a 2d array, indexed V[t,s]. Q is a 3d array, indexed Q[t,s,a].
+        \pi is a 3d array, indexed \pi[t,s,a].
     """
 
     # shorthand
@@ -87,9 +87,9 @@ def mce_occupancy_measures(
 
     Returns:
         Tuple of D (ndarray) and Dt (ndarray). D is an :math:`|S|`-dimensional
-            vector recording the expected number of times each state is
-            visited. Dt is a :math:`T*|S|`-dimensional vector recording the
-            probability of being in a given state at a given timestep.
+        vector recording the expected number of times each state is visited.
+        Dt is a :math:`T*|S|`-dimensional vector recording the probability of
+        being in a given state at a given timestep.
     """
 
     # shorthand
@@ -155,9 +155,8 @@ def mce_irl(
             None to disable.
 
     Returns:
-        state occupancy measure for the final reward function. Note
-            that `rmodel` and `optimizer` will be updated in-place during
-            optimisation.
+        state occupancy measure for the final reward function. Note that `rmodel`
+        and `optimizer` will be updated in-place during optimisation.
     """
     # use the same device and dtype as the rmodel parameters
     a_param = next(rmodel.parameters())
@@ -178,7 +177,6 @@ def mce_irl(
     assert demo_state_om.shape == (len(obs_mat),)
 
     while linf_delta > linf_eps and grad_norm > grad_l2_eps:
-        # zero grad
         optimizer.zero_grad()
 
         # get reward predicted for each state by current model, & compute
@@ -190,13 +188,15 @@ def mce_irl(
         _, visitations = mce_occupancy_measures(env, R=predicted_r_np)
 
         # Forward/back/step (grads are zeroed at the top).
-        # Also note that the gradient of this "loss" is:
-        #   E_\pi[\nabla r_\theta(S)] - E_D[\nabla r_\theta(S)].
-        # (which is the thing we need to do gradient _descent_ on)
+        # weights_th(s) = \pi(s) - D(s)
         weights_th = th.as_tensor(
             visitations - demo_state_om, dtype=dtype, device=device
         )
+        # The "loss" is then:
+        #   E_\pi[r_\theta(S)] - E_D[r_\theta(S)]
         loss = th.dot(weights_th, predicted_r)
+        # This gives the required gradient:
+        #   E_\pi[\nabla r_\theta(S)] - E_D[\nabla r_\theta(S)].
         loss.backward()
         optimizer.step()
 
