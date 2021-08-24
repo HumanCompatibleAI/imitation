@@ -465,8 +465,6 @@ class GAIL(AdversarialTrainer):
 
 
 class AIRL(AdversarialTrainer):
-
-    reward_net: reward_nets.AIRLRewardNet
     """The AIRL reward network, used by the imitation policy."""
 
     def __init__(

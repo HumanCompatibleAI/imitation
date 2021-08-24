@@ -29,9 +29,9 @@ class RewardNet(nn.Module, abc.ABC):
         """Initialize the RewardNet.
 
         Args:
-            observation_space (gym.Space): the observation space of the environment
-            action_space (gym.Space): the action space of the environment
-            normalize_images (bool, optional): whether to automatically normalize
+            observation_space: the observation space of the environment
+            action_space: the action space of the environment
+            normalize_images: whether to automatically normalize
                 image observations to [0, 1] (from 0 to 255). Defaults to True.
         """
         super().__init__()
@@ -108,16 +108,16 @@ class ShapedRewardNet(RewardNet):
         """Setup a ShapedRewardNet instance.
 
         Args:
-            observation_space (gym.Space): observation space of the environment
-            action_space (gym.Space): action space of the environment
-            base (RewardNet): the base reward net to which the potential shaping
+            observation_space: observation space of the environment
+            action_space: action space of the environment
+            base: the base reward net to which the potential shaping
                 will be added.
-            potential (Callable[[th.Tensor], th.Tensor]): A callable which takes
+            potential: A callable which takes
                 a batch of states (as a PyTorch tensor) and returns a batch of
                 potentials for these states. If this is a PyTorch Module, it becomes
                 a submodule of the ShapedRewardNet instance.
-            discount_factor (float): discount factor to use for the potential shaping
-            normalize_images (bool, optional): passed through to `RewardNet.__init__`,
+            discount_factor: discount factor to use for the potential shaping
+            normalize_images: passed through to `RewardNet.__init__`,
                 see its documentation
         """
         super().__init__(
@@ -414,8 +414,8 @@ class BasicPotentialMLP(nn.Module):
         """Initialize the potential.
 
         Args:
-            observation_space (gym.Space): observation space of the environment.
-            hid_sizes (Iterable[int]): widths of the hidden layers of the MLP.
+            observation_space: observation space of the environment.
+            hid_sizes: widths of the hidden layers of the MLP.
         """
         super().__init__()
         potential_in_size = preprocessing.get_flattened_obs_dim(observation_space)
