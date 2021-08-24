@@ -55,8 +55,7 @@ def test_serialize_identity(env_name, net_cls, tmpdir):
     logging.info(f"Testing {net_cls}")
 
     venv = util.make_vec_env(env_name, n_envs=1, parallel=False)
-    reward_net = net_cls(venv.observation_space, venv.action_space)
-    original = reward_nets.AIRLRewardNet(reward_net)
+    original = net_cls(venv.observation_space, venv.action_space)
     random = base.RandomPolicy(venv.observation_space, venv.action_space)
 
     tmppath = os.path.join(tmpdir, "reward.pt")
@@ -81,8 +80,11 @@ def test_serialize_identity(env_name, net_cls, tmpdir):
             transitions.next_obs,
             transitions.dones,
         )
-        rewards["train"].append(net.predict_reward_train(*trans_args))
-        rewards["test"].append(net.predict_reward_test(*trans_args))
+        rewards["train"].append(net.predict(*trans_args))
+        if hasattr(net, "base"):
+            rewards["test"].append(net.base.predict(*trans_args))
+        else:
+            rewards["test"].append(net.predict(*trans_args))
 
     args = (
         transitions.obs,
@@ -134,11 +136,8 @@ def test_potential_net_2d_obs():
     next_obs_b = next_obs[None]
     done_b = np.array([done], dtype="bool")
 
-    reward_net = reward_nets.BasicShapedRewardNet(
-        env.observation_space, env.action_space
-    )
-    net = reward_nets.AIRLRewardNet(reward_net)
-    rew_batch = net.predict_reward_train(obs_b, action_b, next_obs_b, done_b)
+    net = reward_nets.BasicShapedRewardNet(env.observation_space, env.action_space)
+    rew_batch = net.predict(obs_b, action_b, next_obs_b, done_b)
     assert rew_batch.shape == (1,)
 
 

@@ -334,8 +334,8 @@ class AdversarialTrainer:
         preprocessed = preprocessing.preprocess_obs(
             tensor,
             space,
-            # TODO(sam): can I remove "scale" kwarg in DiscrimNet etc.?
-            normalize_images=self.discrim_net.scale,
+            # TODO(sam): can I remove "normalize_images" kwarg in DiscrimNet etc.?
+            normalize_images=self.discrim_net.normalize_images,
         )
         return preprocessed
 
@@ -465,8 +465,6 @@ class GAIL(AdversarialTrainer):
 
 
 class AIRL(AdversarialTrainer):
-
-    reward_net: reward_nets.AIRLRewardNet
     """The AIRL reward network, used by the imitation policy."""
 
     def __init__(
@@ -502,15 +500,13 @@ class AIRL(AdversarialTrainer):
         reward_network = reward_net_cls(
             action_space=venv.action_space,
             observation_space=venv.observation_space,
-            # pytype is afraid that we'll directly call ARILRewardNet(),
+            # pytype is afraid that we'll directly call RewardNet(),
             # which is an abstract class, hence the disable.
             **reward_net_kwargs,  # pytype: disable=not-instantiable
         )
 
-        airl_net = reward_nets.AIRLRewardNet(reward_network)
-
         discrim_kwargs = discrim_kwargs or {}
-        discrim = discrim_nets.DiscrimNetAIRL(airl_net, **discrim_kwargs)
+        discrim = discrim_nets.DiscrimNetAIRL(reward_network, **discrim_kwargs)
         super().__init__(
             venv, gen_algo, discrim, expert_data, expert_batch_size, **kwargs
         )

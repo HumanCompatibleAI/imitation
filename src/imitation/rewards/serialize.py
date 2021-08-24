@@ -30,7 +30,14 @@ def _load_reward_net_as_fn(shaped: bool) -> RewardFnLoaderFn:
         """Load train (shaped) or test (not shaped) reward from path."""
         del venv  # Unused.
         net = th.load(str(path))
-        reward = net.predict_reward_train if shaped else net.predict_reward_test
+        if not shaped and hasattr(net, "base"):
+            # If the "base" attribute exists, we are dealing with a ShapedRewardNet
+            # and will disable the potential shaping (if shaped is False).
+            # If no "base" attribute exists, we seem to use an unshaped RewardNet
+            # anyway, so we just use its predict() method directly.
+            reward = net.base.predict
+        else:
+            reward = net.predict
 
         def rew_fn(
             obs: np.ndarray,

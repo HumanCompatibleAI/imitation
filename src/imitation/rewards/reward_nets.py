@@ -30,9 +30,9 @@ class RewardNet(nn.Module, abc.ABC):
         """Initialize the RewardNet.
 
         Args:
-            observation_space (gym.Space): the observation space of the environment
-            action_space (gym.Space): the action space of the environment
-            normalize_images (bool, optional): whether to automatically normalize
+            observation_space: the observation space of the environment
+            action_space: the action space of the environment
+            normalize_images: whether to automatically normalize
                 image observations to [0, 1] (from 0 to 255). Defaults to True.
         """
         super().__init__()
@@ -66,7 +66,7 @@ class RewardNet(nn.Module, abc.ABC):
             next_state=transitions.next_obs,
             done=transitions.dones,
             device=self.device,
-            scale=self.normalize_images,
+            normalize_images=self.normalize_images,
         )
 
     def predict(
@@ -92,7 +92,7 @@ class RewardNet(nn.Module, abc.ABC):
             next_state=next_state,
             done=done,
             device=self.device,
-            scale=self.normalize_images,
+            normalize_images=self.normalize_images,
         )
 
         with th.no_grad():
@@ -128,16 +128,16 @@ class ShapedRewardNet(RewardNet):
         """Setup a ShapedRewardNet instance.
 
         Args:
-            observation_space (gym.Space): observation space of the environment
-            action_space (gym.Space): action space of the environment
-            base (RewardNet): the base reward net to which the potential shaping
+            observation_space: observation space of the environment
+            action_space: action space of the environment
+            base: the base reward net to which the potential shaping
                 will be added.
-            potential (Callable[[th.Tensor], th.Tensor]): A callable which takes
+            potential: A callable which takes
                 a batch of states (as a PyTorch tensor) and returns a batch of
                 potentials for these states. If this is a PyTorch Module, it becomes
                 a submodule of the ShapedRewardNet instance.
-            discount_factor (float): discount factor to use for the potential shaping
-            normalize_images (bool, optional): passed through to `RewardNet.__init__`,
+            discount_factor: discount factor to use for the potential shaping
+            normalize_images: passed through to `RewardNet.__init__`,
                 see its documentation
         """
         super().__init__(
@@ -176,108 +176,6 @@ class ShapedRewardNet(RewardNet):
         )
         assert final_rew.shape == state.shape[:1]
         return final_rew
-
-
-class AIRLRewardNet(nn.Module):
-    """Wrapper around RewardNet with different forward passes for test and train.
-
-    This class is used for AIRL, where we want the potential shaping to be included
-    during training but not testing. If the wrapped RewardNet is not an instance
-    of ShapedRewardNet, then the test and train passes will be identical.
-
-    TODO(ejnnr): get rid of this class entirely, instead just implement the logic
-        inside AIRL itself?
-    """
-
-    def __init__(self, reward_net: RewardNet):
-        """Builds a reward network for AIRL.
-
-        Args:
-            reward_net: the RewardNet instance to be wrapped
-        """
-        super().__init__()
-        self.reward_net = reward_net
-        self.observation_space = reward_net.observation_space
-        self.action_space = reward_net.action_space
-        if isinstance(reward_net, ShapedRewardNet):
-            self.test_reward_net = reward_net.base
-        else:
-            self.test_reward_net = reward_net
-
-    def reward_train(
-        self,
-        state: th.Tensor,
-        action: th.Tensor,
-        next_state: th.Tensor,
-        done: th.Tensor,
-    ) -> th.Tensor:
-        """A Tensor holding the training reward associated with each timestep.
-
-        This performs inner logic for `self.predict_reward_train()`. See
-        `predict_reward_train()` docs for explanation of arguments and return values.
-        """
-        return self.reward_net(state, action, next_state, done)
-
-    def reward_test(
-        self,
-        state: th.Tensor,
-        action: th.Tensor,
-        next_state: th.Tensor,
-        done: th.Tensor,
-    ) -> th.Tensor:
-        """A Tensor holding the test reward associated with each timestep.
-
-        This performs inner logic for `self.predict_reward_test()`. See
-        `predict_reward_test()` docs for explanation of arguments and return
-        values.
-        """
-        return self.test_reward_net(state, action, next_state, done)
-
-    def predict_reward_train(
-        self,
-        state: np.ndarray,
-        action: np.ndarray,
-        next_state: np.ndarray,
-        done: np.ndarray,
-    ) -> np.ndarray:
-        """Compute the train reward with raw ndarrays, including preprocessing.
-
-        Args:
-          state: current state. Leading dimension should be batch size B.
-          action: action associated with `state`.
-          next_state: next state.
-          done: 0/1 value indicating whether episode terminates on transition
-            to `next_state`.
-
-        Returns:
-          np.ndarray: A (B,)-shaped ndarray holding
-              the training reward associated with each timestep.
-        """
-        return self.reward_net.predict(state, action, next_state, done)
-
-    def predict_reward_test(
-        self,
-        state: np.ndarray,
-        action: np.ndarray,
-        next_state: np.ndarray,
-        done: np.ndarray,
-    ) -> np.ndarray:
-        """Compute the test reward with raw ndarrays, including preprocessing.
-
-        Note this is the reward we use for transfer learning.
-
-        Args:
-          state: current state. Lead dimension should be batch size B.
-          action: action associated with `state`.
-          next_state: next state.
-          done: 0/1 value indicating whether episode terminates on transition
-            to `next_state`.
-
-        Returns:
-          np.ndarray: A (B,)-shaped ndarray holding the test reward
-            associated with each timestep.
-        """
-        return self.test_reward_net.predict(state, action, next_state, done)
 
 
 class BasicRewardNet(RewardNet):
@@ -434,8 +332,8 @@ class BasicPotentialMLP(nn.Module):
         """Initialize the potential.
 
         Args:
-            observation_space (gym.Space): observation space of the environment.
-            hid_sizes (Iterable[int]): widths of the hidden layers of the MLP.
+            observation_space: observation space of the environment.
+            hid_sizes: widths of the hidden layers of the MLP.
         """
         super().__init__()
         potential_in_size = preprocessing.get_flattened_obs_dim(observation_space)
