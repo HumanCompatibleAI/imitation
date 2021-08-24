@@ -122,7 +122,6 @@ def squeeze_r(r_output: th.Tensor) -> th.Tensor:
     Returns:
          squeezed reward of shape [n_states].
     """
-    th.squeeze
     if r_output.ndim == 2:
         return th.squeeze(r_output, 1)
     assert r_output.ndim == 1

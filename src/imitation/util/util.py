@@ -193,7 +193,7 @@ def tensor_iter_norm(
         ord: order of the p-norm (can be any int or float except 0 and NaN).
 
     Returns:
-        norm of the concatenated tensors."""
+        Norm of the concatenated tensors."""
     if ord == 0:
         raise ValueError("This function cannot compute p-norms for p=0.")
     norms = []
