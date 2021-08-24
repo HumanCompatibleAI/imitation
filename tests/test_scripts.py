@@ -6,7 +6,7 @@ experiment implicitly sets parallel=False.
 """
 
 import collections
-import os.path as osp
+import pathlib
 import sys
 import tempfile
 from collections import Counter
@@ -24,9 +24,21 @@ from imitation.scripts import (
     expert_demos,
     parallel,
     train_adversarial,
+    train_bc,
 )
 
-ALL_SCRIPTS_MODS = [analyze, eval_policy, expert_demos, parallel, train_adversarial]
+ALL_SCRIPTS_MODS = [
+    analyze,
+    eval_policy,
+    expert_demos,
+    parallel,
+    train_adversarial,
+    train_bc,
+]
+
+CARTPOLE_TEST_DATA_PATH = pathlib.Path("tests/data/expert_models/cartpole_0/")
+CARTPOLE_TEST_ROLLOUT_PATH = CARTPOLE_TEST_DATA_PATH / "rollouts/final.pkl"
+CARTPOLE_TEST_POLICY_PATH = CARTPOLE_TEST_DATA_PATH / "policies/final"
 
 
 @pytest.fixture(autouse=True)
@@ -49,6 +61,18 @@ def test_main_console(script_mod):
         script_mod.main_console()
 
 
+def test_train_bc_main(tmpdir):
+    run = train_bc.train_bc_ex.run(
+        named_configs=["fast", "cartpole"],
+        config_updates=dict(
+            log_root=tmpdir,
+            expert_data_src=CARTPOLE_TEST_ROLLOUT_PATH,
+        ),
+    )
+    assert run.status == "COMPLETED"
+    assert isinstance(run.result, dict)
+
+
 def test_expert_demos_main(tmpdir):
     """Smoke test for imitation.scripts.expert_demos.rollouts_and_policy."""
     run = expert_demos.expert_demos_ex.run(
@@ -68,8 +92,8 @@ def test_expert_demos_rollouts_from_policy(tmpdir):
         named_configs=["cartpole", "fast"],
         config_updates=dict(
             log_root=tmpdir,
-            rollout_save_path=osp.join(tmpdir, "rollouts", "test.pkl"),
-            policy_path="tests/data/expert_models/cartpole_0/policies/final/",
+            rollout_save_path=str(pathlib.Path(tmpdir, "rollouts", "test.pkl")),
+            policy_path=CARTPOLE_TEST_POLICY_PATH,
         ),
     )
     assert run.status == "COMPLETED"
@@ -125,10 +149,10 @@ def test_train_adversarial(tmpdir):
     named_configs = ["cartpole", "gail", "fast"]
     config_updates = {
         "log_root": tmpdir,
-        "rollout_path": "tests/data/expert_models/cartpole_0/rollouts/final.pkl",
+        "rollout_path": CARTPOLE_TEST_ROLLOUT_PATH,
         "init_tensorboard": True,
     }
-    run = train_adversarial.train_ex.run(
+    run = train_adversarial.train_adversarial_ex.run(
         named_configs=named_configs,
         config_updates=config_updates,
     )
@@ -142,18 +166,18 @@ def test_train_adversarial_algorithm_value_error(tmpdir):
     base_config_updates = collections.ChainMap(
         {
             "log_root": tmpdir,
-            "rollout_path": "tests/data/expert_models/cartpole_0/rollouts/final.pkl",
+            "rollout_path": CARTPOLE_TEST_ROLLOUT_PATH,
         }
     )
 
     with pytest.raises(ValueError, match=".*BAD_VALUE.*"):
-        train_adversarial.train_ex.run(
+        train_adversarial.train_adversarial_ex.run(
             named_configs=base_named_configs,
             config_updates=base_config_updates.new_child(dict(algorithm="BAD_VALUE")),
         )
 
     with pytest.raises(ValueError, match=".*BAD_VALUE.*"):
-        train_adversarial.train_ex.run(
+        train_adversarial.train_adversarial_ex.run(
             named_configs=base_named_configs,
             config_updates=base_config_updates.new_child(
                 dict(discrim_net_kwargs={"BAD_VALUE": "bar"})
@@ -161,7 +185,7 @@ def test_train_adversarial_algorithm_value_error(tmpdir):
         )
 
     with pytest.raises(ValueError, match=".*BAD_VALUE.*"):
-        train_adversarial.train_ex.run(
+        train_adversarial.train_adversarial_ex.run(
             named_configs=base_named_configs,
             config_updates=base_config_updates.new_child(
                 dict(algorithm_kwargs={"BAD_VALUE": "bar"})
@@ -169,7 +193,7 @@ def test_train_adversarial_algorithm_value_error(tmpdir):
         )
 
     with pytest.raises(ValueError, match=".*BAD_VALUE.*"):
-        train_adversarial.train_ex.run(
+        train_adversarial.train_adversarial_ex.run(
             named_configs=base_named_configs,
             config_updates=base_config_updates.new_child(
                 dict(rollout_path="path/BAD_VALUE")
@@ -178,7 +202,7 @@ def test_train_adversarial_algorithm_value_error(tmpdir):
 
     n_traj = 1234567
     with pytest.raises(ValueError, match=f".*{n_traj}.*"):
-        train_adversarial.train_ex.run(
+        train_adversarial.train_adversarial_ex.run(
             named_configs=base_named_configs,
             config_updates=base_config_updates.new_child(dict(n_expert_demos=n_traj)),
         )
@@ -189,11 +213,12 @@ def test_transfer_learning(tmpdir):
 
     Saves a dummy AIRL test reward, then loads it for transfer learning.
     """
-    log_dir_train = osp.join(tmpdir, "train")
-    run = train_adversarial.train_ex.run(
+    tmpdir = pathlib.Path(tmpdir)
+    log_dir_train = tmpdir / "train"
+    run = train_adversarial.train_adversarial_ex.run(
         named_configs=["cartpole", "airl", "fast"],
         config_updates=dict(
-            rollout_path="tests/data/expert_models/cartpole_0/rollouts/final.pkl",
+            rollout_path=CARTPOLE_TEST_ROLLOUT_PATH,
             log_dir=log_dir_train,
         ),
     )
@@ -202,8 +227,8 @@ def test_transfer_learning(tmpdir):
 
     _check_rollout_stats(run.result["imit_stats"])
 
-    log_dir_data = osp.join(tmpdir, "expert_demos")
-    discrim_path = osp.join(log_dir_train, "checkpoints", "final", "discrim.pt")
+    log_dir_data = tmpdir / "expert_demos"
+    discrim_path = log_dir_train / "checkpoints" / "final" / "discrim.pt"
     run = expert_demos.expert_demos_ex.run(
         named_configs=["cartpole", "fast"],
         config_updates=dict(
@@ -233,9 +258,7 @@ PARALLEL_CONFIG_UPDATES = [
         base_named_configs=["cartpole", "gail", "fast"],
         base_config_updates={
             # Need absolute path because raylet runs in different working directory.
-            "rollout_path": osp.abspath(
-                "tests/data/expert_models/cartpole_0/rollouts/final.pkl"
-            ),
+            "rollout_path": CARTPOLE_TEST_ROLLOUT_PATH.absolute(),
         },
         search_space={
             "config_updates": {
@@ -317,15 +340,16 @@ def test_parallel_arg_errors(tmpdir):
         )
 
 
-def _generate_test_rollouts(tmpdir: str, env_named_config: str) -> str:
+def _generate_test_rollouts(tmpdir: str, env_named_config: str) -> pathlib.Path:
+    tmpdir = pathlib.Path(tmpdir)
     expert_demos.expert_demos_ex.run(
         named_configs=[env_named_config, "fast"],
         config_updates=dict(
             log_dir=tmpdir,
         ),
     )
-    rollout_path = osp.abspath(f"{tmpdir}/rollouts/final.pkl")
-    return rollout_path
+    rollout_path = tmpdir / "rollouts/final.pkl"
+    return rollout_path.absolute()
 
 
 def test_parallel_train_adversarial_custom_env(tmpdir):
@@ -355,23 +379,47 @@ def test_parallel_train_adversarial_custom_env(tmpdir):
     assert run.status == "COMPLETED"
 
 
+def _run_train_adv_for_test_analyze_imit(run_name, sacred_logs_dir, log_dir):
+    run = train_adversarial.train_adversarial_ex.run(
+        named_configs=["fast", "cartpole"],
+        config_updates=dict(
+            rollout_path=CARTPOLE_TEST_ROLLOUT_PATH,
+            log_dir=log_dir,
+            checkpoint_interval=-1,
+        ),
+        options={"--name": run_name, "--file_storage": sacred_logs_dir},
+    )
+    return run
+
+
+def _run_train_bc_for_test_analyze_imit(run_name, sacred_logs_dir, log_dir):
+    run = train_bc.train_bc_ex.run(
+        named_configs=["fast", "cartpole"],
+        config_updates=dict(
+            expert_data_src=CARTPOLE_TEST_ROLLOUT_PATH,
+            expert_data_src_format="path",
+            log_dir=log_dir,
+        ),
+        options={"--name": run_name, "--file_storage": sacred_logs_dir},
+    )
+    return run
+
+
 @pytest.mark.parametrize("run_names", ([], list("adab")))
-def test_analyze_imitation(tmpdir: str, run_names: List[str]):
-    sacred_logs_dir = tmpdir
+@pytest.mark.parametrize(
+    "run_sacred_fn",
+    (
+        _run_train_adv_for_test_analyze_imit,
+        _run_train_bc_for_test_analyze_imit,
+    ),
+)
+def test_analyze_imitation(tmpdir: str, run_names: List[str], run_sacred_fn):
+    sacred_logs_dir = tmpdir = pathlib.Path(tmpdir)
 
     # Generate sacred logs (other logs are put in separate tmpdir for deletion).
     for i, run_name in enumerate(run_names):
-        with tempfile.TemporaryDirectory(prefix="junk") as junkdir:
-            rollout_path = "tests/data/expert_models/cartpole_0/rollouts/final.pkl"
-            run = train_adversarial.train_ex.run(
-                named_configs=["fast", "cartpole"],
-                config_updates=dict(
-                    rollout_path=rollout_path,
-                    log_dir=junkdir,
-                    checkpoint_interval=-1,
-                ),
-                options={"--name": run_name, "--file_storage": sacred_logs_dir},
-            )
+        with tempfile.TemporaryDirectory(prefix="junk") as log_dir:
+            run = run_sacred_fn(run_name, sacred_logs_dir, log_dir)
             assert run.status == "COMPLETED"
 
     # Check that analyze script finds the correct number of logs.
@@ -382,7 +430,7 @@ def test_analyze_imitation(tmpdir: str, run_names: List[str]):
                 source_dir=sacred_logs_dir,
                 env_name="CartPole-v1",
                 run_name=run_name,
-                csv_output_path=osp.join(tmpdir, "analysis.csv"),
+                csv_output_path=tmpdir / "analysis.csv",
                 verbose=True,
             ),
         )
@@ -400,7 +448,8 @@ def test_analyze_gather_tb(tmpdir: str):
     config_updates = dict(local_dir=tmpdir, run_name="test")
     config_updates.update(PARALLEL_CONFIG_LOW_RESOURCE)
     parallel_run = parallel.parallel_ex.run(
-        named_configs=["generate_test_data"], config_updates=config_updates
+        named_configs=["generate_test_data"],
+        config_updates=config_updates,
     )
     assert parallel_run.status == "COMPLETED"
 

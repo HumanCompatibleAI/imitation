@@ -12,9 +12,9 @@ import numpy as np
 import torch as th
 import torch.utils.data as th_data
 import tqdm.autonotebook as tqdm
-from stable_baselines3.common import logger, policies, utils
+from stable_baselines3.common import logger, policies, utils, vec_env
 
-from imitation.data import types
+from imitation.data import rollout, types
 from imitation.policies import base
 
 
@@ -53,6 +53,19 @@ class ConstantLRSchedule:
         return self.lr
 
 
+class _NoopTqdm:
+    """Dummy replacement for tqdm.tqdm() when we don't want a progress bar visible."""
+
+    def close(self):
+        pass
+
+    def set_description(self, s):
+        pass
+
+    def update(self, n):
+        pass
+
+
 class EpochOrBatchIteratorWithProgress:
     def __init__(
         self,
@@ -61,6 +74,7 @@ class EpochOrBatchIteratorWithProgress:
         n_batches: Optional[int] = None,
         on_epoch_end: Optional[Callable[[], None]] = None,
         on_batch_end: Optional[Callable[[], None]] = None,
+        progress_bar_visible: bool = True,
     ):
         """Wraps DataLoader so that all BC batches can be processed in a one for-loop.
 
@@ -76,6 +90,7 @@ class EpochOrBatchIteratorWithProgress:
                 end of every epoch.
             on_batch_end: A callback function without parameters to be called at the
                 end of every batch.
+            progress_bar_visible: If True, then show a tqdm progress bar.
         """
         if n_epochs is not None and n_batches is None:
             self.use_epochs = True
@@ -91,6 +106,7 @@ class EpochOrBatchIteratorWithProgress:
         self.n_batches = n_batches
         self.on_epoch_end = on_epoch_end
         self.on_batch_end = on_batch_end
+        self.progress_bar_visible = progress_bar_visible
 
     def __iter__(self) -> Iterable[Tuple[dict, dict]]:
         """Yields batches while updating tqdm display to display progress."""
@@ -99,12 +115,15 @@ class EpochOrBatchIteratorWithProgress:
         epoch_num = 0
         batch_num = 0
         batch_suffix = epoch_suffix = ""
-        if self.use_epochs:
-            display = tqdm.tqdm(total=self.n_epochs)
-            epoch_suffix = f"/{self.n_epochs}"
-        else:  # Use batches.
-            display = tqdm.tqdm(total=self.n_batches)
-            batch_suffix = f"/{self.n_batches}"
+        if self.progress_bar_visible:
+            if self.use_epochs:
+                display = tqdm.tqdm(total=self.n_epochs)
+                epoch_suffix = f"/{self.n_epochs}"
+            else:  # Use batches.
+                display = tqdm.tqdm(total=self.n_batches)
+                batch_suffix = f"/{self.n_batches}"
+        else:
+            display = _NoopTqdm()
 
         def update_desc():
             display.set_description(
@@ -307,6 +326,9 @@ class BC:
         on_epoch_end: Callable[[], None] = None,
         on_batch_end: Callable[[], None] = None,
         log_interval: int = 100,
+        log_rollouts_venv: Optional[vec_env.VecEnv] = None,
+        log_rollouts_n_episodes: int = 5,
+        progress_bar: bool = True,
     ):
         """Train with supervised learning for some number of epochs.
 
@@ -323,6 +345,14 @@ class BC:
             on_batch_end: Optional callback with no parameters to run at the end of each
                 batch.
             log_interval: Log stats after every log_interval batches.
+            log_rollouts_venv: If not None, then this VecEnv (whose observation and
+                actions spaces must match `self.observation_space` and
+                `self.action_space`) is used to generate rollout stats, including
+                average return and average episode length. If None, then no rollouts
+                are generated.
+            log_rollouts_n_episodes: Number of rollouts to generate when calculating
+                rollout stats. Non-positive number disables rollouts.
+            progress_bar: If True, then show a progress bar during training.
         """
         it = EpochOrBatchIteratorWithProgress(
             self.expert_data_loader,
@@ -330,6 +360,7 @@ class BC:
             n_batches=n_batches,
             on_epoch_end=on_epoch_end,
             on_batch_end=on_batch_end,
+            progress_bar_visible=progress_bar,
         )
 
         batch_num = 0
@@ -344,10 +375,25 @@ class BC:
                 for stats in [stats_dict_it, stats_dict_loss]:
                     for k, v in stats.items():
                         logger.record(k, v)
+                # TODO(shwang): Maybe instead use a callback that can be shared between
+                #   all algorithms' `.train()` for generating rollout stats.
+                #   EvalCallback could be a good fit:
+                #   https://stable-baselines3.readthedocs.io/en/master/guide/callbacks.html#evalcallback
+                if log_rollouts_venv is not None and log_rollouts_n_episodes > 0:
+                    trajs = rollout.generate_trajectories(
+                        self.policy,
+                        log_rollouts_venv,
+                        rollout.min_episodes(log_rollouts_n_episodes),
+                    )
+                    stats = rollout.rollout_stats(trajs)
+                    logger.record("batch_size", len(batch["obs"]))
+                    for k, v in stats.items():
+                        if "return" in k and "monitor" not in k:
+                            logger.record("rollout/" + k, v)
                 logger.dump(batch_num)
             batch_num += 1
 
-    def save_policy(self, policy_path: str) -> None:
+    def save_policy(self, policy_path: types.AnyPath) -> None:
         """Save policy to a path. Can be reloaded by `.reconstruct_policy()`.
 
         Args:

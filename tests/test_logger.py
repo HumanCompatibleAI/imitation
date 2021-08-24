@@ -25,9 +25,14 @@ def _compare_csv_lines(csv_path: str, expect: dict):
 
 def test_no_accum(tmpdir):
     logger.configure(tmpdir, ["csv"])
+
+    # Check that the recorded "A": -1 is overwritten by "A": 1 in the next line.
+    # Previously, the observed value would be the mean of these two values (0) instead.
+    sb_logger.record("A", -1)
     sb_logger.record("A", 1)
     sb_logger.record("B", 1)
     sb_logger.dump()
+
     sb_logger.record("A", 2)
     sb_logger.dump()
     sb_logger.record("B", 3)

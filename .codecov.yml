@@ -29,6 +29,7 @@ coverage:
           - "examples/"
           - "src/imitation/envs/examples/"
           - "src/imitation/scripts/"
+          - "!src/imitation/scripts/config"
       tests:
         target: 100%
         paths:

@@ -5,6 +5,7 @@
 
 import logging
 import os
+import pathlib
 import pickle
 from typing import Callable, Optional, Tuple, Type, Union
 
@@ -106,7 +107,36 @@ def _load_stable_baselines(
     def f(path: str, venv: vec_env.VecEnv) -> policies.BasePolicy:
         """Loads a policy saved to path, for environment env."""
         logging.info(f"Loading Stable Baselines policy for '{cls}' from '{path}'")
-        model_path = os.path.join(path, "model.pkl")
+        policy_dir = pathlib.Path(path)
+        if not policy_dir.is_dir():
+            raise FileNotFoundError(
+                f"path={path} needs to be a directory containing model.zip and "
+                "optionally vec_normalize.pkl."
+            )
+
+        model_path = policy_dir / "model.zip"
+        if not model_path.is_file():
+            # Couldn't find model.zip. Try deprecated model.pkl instead?
+            deprecated_model_path = policy_dir / "model.pkl"
+            if deprecated_model_path.is_file():
+                import warnings
+
+                warnings.warn(
+                    "Using deprecated policy directory containing model.pkl "
+                    "instead of model.zip (in either case, SB3 actually saves a ZIP"
+                    "file, not a .pkl file). A future version of imitation will not be "
+                    "compatible with `model.pkl`. You can fix this warning now by "
+                    "renaming the ZIP file: \n"
+                    f"mv '{deprecated_model_path}' '{model_path}'",
+                    DeprecationWarning,
+                )
+                model_path = deprecated_model_path
+            else:
+                raise FileNotFoundError(
+                    f"Could not find {model_path} or (deprecated) "
+                    f"{deprecated_model_path}"
+                )
+
         model = cls.load(model_path, env=venv)
         policy = getattr(model, policy_attr)
 
@@ -145,6 +175,9 @@ def _add_stable_baselines_policies(classes):
         policy_registry.register(k, value=fn)
 
 
+# TODO(shwang): For all subclasses of stable_baselines3.common.base_class.BaseAlgorithm,
+#  the policy is saved as `self.policy`. So the second part of this mapping at least
+#  might not be necessary?
 STABLE_BASELINES_CLASSES = {
     "ppo": ("stable_baselines3:PPO", "policy"),
 }
@@ -182,7 +215,7 @@ def save_stable_model(
             when loading.
     """
     os.makedirs(output_dir, exist_ok=True)
-    model.save(os.path.join(output_dir, "model.pkl"))
+    model.save(os.path.join(output_dir, "model.zip"))
     if vec_normalize is not None:
         with open(os.path.join(output_dir, "vec_normalize.pkl"), "wb") as f:
             pickle.dump(vec_normalize, f)

@@ -8,10 +8,10 @@ from imitation.policies import base
 from imitation.scripts.config.common import DEFAULT_INIT_RL_KWARGS
 from imitation.util import util
 
-train_ex = sacred.Experiment("train_adversarial", interactive=True)
+train_adversarial_ex = sacred.Experiment("train_adversarial", interactive=True)
 
 
-@train_ex.config
+@train_adversarial_ex.config
 def train_defaults():
     env_name = "CartPole-v1"  # environment to train on
     total_timesteps = 1e5  # Num of environment transitions to sample
@@ -55,7 +55,7 @@ def train_defaults():
     data_dir = "data/"  # Default data directory
 
 
-@train_ex.config
+@train_adversarial_ex.config
 def aliases_default_gen_batch_size(algorithm_kwargs, gen_batch_size):
     # Setting generator buffer capacity and discriminator batch size to
     # the same number is equivalent to not using a replay buffer at all.
@@ -65,12 +65,12 @@ def aliases_default_gen_batch_size(algorithm_kwargs, gen_batch_size):
     algorithm_kwargs["shared"]["gen_replay_buffer_capacity"] = gen_batch_size
 
 
-@train_ex.config
+@train_adversarial_ex.config
 def calc_n_steps(num_vec, gen_batch_size):
     init_rl_kwargs = dict(n_steps=gen_batch_size // num_vec)
 
 
-@train_ex.config
+@train_adversarial_ex.config
 def paths(env_name, log_root, rollout_hint, data_dir):
     log_dir = os.path.join(
         log_root, env_name.replace("/", "_"), util.make_unique_timestamp()
@@ -89,13 +89,13 @@ def paths(env_name, log_root, rollout_hint, data_dir):
 # Training algorithm named configs
 
 
-@train_ex.named_config
+@train_adversarial_ex.named_config
 def gail():
     """Quick alias for algorithm=gail"""
     algorithm = "gail"
 
 
-@train_ex.named_config
+@train_adversarial_ex.named_config
 def airl():
     """Quick alias for algorithm=airl"""
     algorithm = "airl"
@@ -116,26 +116,40 @@ ANT_SHARED_LOCALS = dict(
 # Classic RL Gym environment named configs
 
 
-@train_ex.named_config
+@train_adversarial_ex.named_config
 def acrobot():
     env_name = "Acrobot-v1"
     rollout_hint = "acrobot"
 
 
-@train_ex.named_config
+@train_adversarial_ex.named_config
 def cartpole():
     env_name = "CartPole-v1"
     rollout_hint = "cartpole"
     discrim_net_kwargs = {"gail": {"scale": False}}
 
 
-@train_ex.named_config
+@train_adversarial_ex.named_config
+def seals_cartpole():
+    env_name = "seals/CartPole-v0"
+    # seals and vanilla CartPole have the same expert trajectories.
+    rollout_hint = "cartpole"
+    discrim_net_kwargs = {"gail": {"scale": False}}
+
+
+@train_adversarial_ex.named_config
 def mountain_car():
     env_name = "MountainCar-v0"
     rollout_hint = "mountain_car"
 
 
-@train_ex.named_config
+@train_adversarial_ex.named_config
+def seals_mountain_car():
+    env_name = "seals/MountainCar-v0"
+    rollout_hint = "mountain_car"  # TODO(shwang): Use seals/MountainCar-v0 rollouts.
+
+
+@train_adversarial_ex.named_config
 def pendulum():
     env_name = "Pendulum-v0"
     rollout_hint = "pendulum"
@@ -144,7 +158,7 @@ def pendulum():
 # Standard MuJoCo Gym environment named configs
 
 
-@train_ex.named_config
+@train_adversarial_ex.named_config
 def ant():
     locals().update(**MUJOCO_SHARED_LOCALS)
     locals().update(**ANT_SHARED_LOCALS)
@@ -152,7 +166,7 @@ def ant():
     rollout_hint = "ant"
 
 
-@train_ex.named_config
+@train_adversarial_ex.named_config
 def half_cheetah():
     locals().update(**MUJOCO_SHARED_LOCALS)
     env_name = "HalfCheetah-v2"
@@ -160,7 +174,7 @@ def half_cheetah():
     total_timesteps = 2e6
 
 
-@train_ex.named_config
+@train_adversarial_ex.named_config
 def hopper():
     locals().update(**MUJOCO_SHARED_LOCALS)
     # TODO(adam): upgrade to Hopper-v3?
@@ -168,7 +182,7 @@ def hopper():
     rollout_hint = "hopper"
 
 
-@train_ex.named_config
+@train_adversarial_ex.named_config
 def humanoid():
     locals().update(**MUJOCO_SHARED_LOCALS)
     env_name = "Humanoid-v2"
@@ -176,13 +190,13 @@ def humanoid():
     total_timesteps = 4e6
 
 
-@train_ex.named_config
+@train_adversarial_ex.named_config
 def reacher():
     env_name = "Reacher-v2"
     rollout_hint = "reacher"
 
 
-@train_ex.named_config
+@train_adversarial_ex.named_config
 def swimmer():
     locals().update(**MUJOCO_SHARED_LOCALS)
     env_name = "Swimmer-v2"
@@ -190,7 +204,7 @@ def swimmer():
     total_timesteps = 2e6
 
 
-@train_ex.named_config
+@train_adversarial_ex.named_config
 def walker():
     locals().update(**MUJOCO_SHARED_LOCALS)
     env_name = "Walker2d-v2"
@@ -200,14 +214,14 @@ def walker():
 # Custom Gym environment named configs
 
 
-@train_ex.named_config
+@train_adversarial_ex.named_config
 def two_d_maze():
     locals().update(**MUJOCO_SHARED_LOCALS)
     env_name = "imitation/TwoDMaze-v0"
     rollout_hint = "two_d_maze"
 
 
-@train_ex.named_config
+@train_adversarial_ex.named_config
 def custom_ant():
     locals().update(**MUJOCO_SHARED_LOCALS)
     # Watch out -- ANT_SHARED_LOCALS could erroneously erase nested dict keys from
@@ -218,7 +232,7 @@ def custom_ant():
     rollout_hint = "custom_ant"
 
 
-@train_ex.named_config
+@train_adversarial_ex.named_config
 def disabled_ant():
     locals().update(**MUJOCO_SHARED_LOCALS)
     locals().update(**ANT_SHARED_LOCALS)
@@ -229,7 +243,7 @@ def disabled_ant():
 # Debug configs
 
 
-@train_ex.named_config
+@train_adversarial_ex.named_config
 def fast():
     """Minimize the amount of computation.
 
