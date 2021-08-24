@@ -500,7 +500,7 @@ class AIRL(AdversarialTrainer):
         reward_network = reward_net_cls(
             action_space=venv.action_space,
             observation_space=venv.observation_space,
-            # pytype is afraid that we'll directly call ARILRewardNet(),
+            # pytype is afraid that we'll directly call RewardNet(),
             # which is an abstract class, hence the disable.
             **reward_net_kwargs,  # pytype: disable=not-instantiable
         )
