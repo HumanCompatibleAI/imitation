@@ -12,8 +12,7 @@ from imitation.util import util
 
 def _setup_airl_basic(venv):
     reward_net = reward_nets.BasicRewardNet(venv.observation_space, venv.action_space)
-    airl_net = reward_nets.AIRLRewardNet(reward_net)
-    return discrim_nets.DiscrimNetAIRL(airl_net)
+    return discrim_nets.DiscrimNetAIRL(reward_net)
 
 
 def _setup_airl_basic_custom_net(venv):
@@ -26,8 +25,7 @@ def _setup_airl_basic_custom_net(venv):
         use_done=False,
         hid_sizes=(32, 32),
     )
-    airl_net = reward_nets.AIRLRewardNet(reward_net)
-    return discrim_nets.DiscrimNetAIRL(airl_net)
+    return discrim_nets.DiscrimNetAIRL(reward_net)
 
 
 def _setup_airl_undiscounted_shaped_reward_net(venv):
@@ -39,8 +37,7 @@ def _setup_airl_undiscounted_shaped_reward_net(venv):
         use_done=True,
         potential_hid_sizes=(32, 32),
     )
-    airl_net = reward_nets.AIRLRewardNet(reward_net)
-    return discrim_nets.DiscrimNetAIRL(airl_net)
+    return discrim_nets.DiscrimNetAIRL(reward_net)
 
 
 def _setup_gail(venv):

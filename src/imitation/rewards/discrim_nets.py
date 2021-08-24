@@ -182,7 +182,7 @@ class DiscrimNet(nn.Module, abc.ABC):
 
 
 class DiscrimNetAIRL(DiscrimNet):
-    r"""The AIRL discriminator for a given AIRLRewardNet.
+    r"""The AIRL discriminator for a given RewardNet.
 
     The AIRL discriminator is of the form
     .. math:: D_{\theta}(s,a) = \frac{\exp(f_{\theta}(s,a)}{\exp(f_{\theta}(s,a) + \pi(a \mid s)}
@@ -190,13 +190,11 @@ class DiscrimNetAIRL(DiscrimNet):
     where :math:`f_{\theta}` is `self.reward_net`.
     """  # noqa: E501
 
-    def __init__(
-        self, reward_net: reward_nets.AIRLRewardNet, entropy_weight: float = 1.0
-    ):
+    def __init__(self, reward_net: reward_nets.RewardNet, entropy_weight: float = 1.0):
         """Builds a DiscrimNetAIRL.
 
         Args:
-            reward_net: A AIRLRewardNet, used as $f_{\theta}$ in the discriminator.
+            reward_net: A RewardNet, used as $f_{\theta}$ in the discriminator.
             entropy_weight: The coefficient for the entropy regularization term.
                 To match the AIRL derivation, it should be 1.0.
                 However, empirically a lower value sometimes work better.
@@ -206,6 +204,11 @@ class DiscrimNetAIRL(DiscrimNet):
             action_space=reward_net.action_space,
         )
         self.reward_net = reward_net
+        # if the reward net has potential shaping, we disable that for testing
+        if isinstance(reward_net, reward_nets.ShapedRewardNet):
+            self.test_reward_net = reward_net.base
+        else:
+            self.test_reward_net = reward_net
         self.entropy_weight = entropy_weight
         logging.info("Using AIRL")
 
@@ -222,9 +225,7 @@ class DiscrimNetAIRL(DiscrimNet):
         A high value corresponds to predicting generator, and a low value corresponds to
         predicting expert.
         """
-        reward_output_train = self.reward_net.reward_train(
-            state, action, next_state, done
-        )
+        reward_output_train = self.reward_net(state, action, next_state, done)
         # In Fu's AIRL paper (https://arxiv.org/pdf/1710.11248.pdf), the
         # discriminator output was given as exp(r_theta(s,a)) /
         # (exp(r_theta(s,a)) - log pi(a|s)), with a high value corresponding to
@@ -245,7 +246,7 @@ class DiscrimNetAIRL(DiscrimNet):
         next_state: th.Tensor,
         done: th.Tensor,
     ) -> th.Tensor:
-        rew = self.reward_net.reward_test(state, action, next_state, done)
+        rew = self.test_reward_net(state, action, next_state, done)
         assert rew.shape == state.shape[:1]
         return rew
 
@@ -260,7 +261,7 @@ class DiscrimNetAIRL(DiscrimNet):
 
         Computed reward does *not* include an entropy bonus. Instead, the
         entropy bonus should be added directly to PPO, SAC, etc."""
-        rew = self.reward_net.reward_train(state, action, next_state, done)
+        rew = self.reward_net(state, action, next_state, done)
         assert rew.shape == state.shape[:1]
         return rew
 

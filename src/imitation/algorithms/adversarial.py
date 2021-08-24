@@ -505,10 +505,8 @@ class AIRL(AdversarialTrainer):
             **reward_net_kwargs,  # pytype: disable=not-instantiable
         )
 
-        airl_net = reward_nets.AIRLRewardNet(reward_network)
-
         discrim_kwargs = discrim_kwargs or {}
-        discrim = discrim_nets.DiscrimNetAIRL(airl_net, **discrim_kwargs)
+        discrim = discrim_nets.DiscrimNetAIRL(reward_network, **discrim_kwargs)
         super().__init__(
             venv, gen_algo, discrim, expert_data, expert_batch_size, **kwargs
         )
