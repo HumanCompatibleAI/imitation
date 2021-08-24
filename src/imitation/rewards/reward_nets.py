@@ -72,7 +72,7 @@ class RewardNet(nn.Module, abc.ABC):
             next_state=next_state,
             done=done,
             device=self.device,
-            scale=self.normalize_images,
+            normalize_images=self.normalize_images,
         )
 
         with th.no_grad():
