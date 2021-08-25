@@ -15,7 +15,12 @@ from imitation.util import networks
 
 
 class DiscrimNet(nn.Module, abc.ABC):
-    """Abstract base class for discriminator, used in AIRL and GAIL."""
+    """Abstract base class for discriminator, used in AIRL and GAIL.
+
+    `self.forward()` is not implemented for this `th.nn.Module` subclass.
+    We subclass `Module` mainly to get pretty-printing of network internals via
+    `print(self)`.
+    """
 
     def __init__(
         self,
@@ -132,7 +137,7 @@ class DiscrimNet(nn.Module, abc.ABC):
         Args:
             state: The observation input. Its shape is
                 `(batch_size,) + observation_space.shape`.
-            act: The action input. Its shape is
+            action: The action input. Its shape is
                 `(batch_size,) + action_space.shape`. The None dimension is
                 expected to be the same as None dimension from `obs_input`.
             next_state: The observation input. Its shape is
@@ -218,13 +223,17 @@ class DiscrimNetAIRL(DiscrimNet):
         action: th.Tensor,
         next_state: th.Tensor,
         done: th.Tensor,
-        log_policy_act_prob: th.Tensor,
+        log_policy_act_prob: Optional[th.Tensor] = None,
     ) -> th.Tensor:
         """Compute the discriminator's logits for each state-action sample.
 
         A high value corresponds to predicting generator, and a low value corresponds to
         predicting expert.
         """
+        if log_policy_act_prob is None:
+            raise TypeError(
+                "Non-None `log_policy_act_prob` is required for this method."
+            )
         reward_output_train = self.reward_net(state, action, next_state, done)
         # In Fu's AIRL paper (https://arxiv.org/pdf/1710.11248.pdf), the
         # discriminator output was given as exp(r_theta(s,a)) /
