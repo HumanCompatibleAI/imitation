@@ -241,23 +241,6 @@ class InteractiveTrajectoryCollector(vec_env.VecEnvWrapper):
 
         return next_obs, rews, dones, infos
 
-    def flush_trajectories(self) -> None:
-        """Immediately save all partially completed trajectories to `self.save_dir`."""
-        # TODO(shwang): Since we are saving partial trajectories instead of
-        #  whole trajectories, it might make sense to just transition
-        #  to saving TransitionsMinimal. One easy way to do this could be via
-        #  `imitation.data.wrappers.BufferingWrapper.pop_transitions`.
-        #
-        #  Ah yes, looks like we use Transitions anyways in the
-        #  `DAggerTrainer._try_load_demos` stage.
-        for i in range(self.num_envs):
-            # If the length is just 1, then the intermediate trajectory data only
-            # contains the reset() observation and no action (corresponding to a
-            # Trajectory of length 0).
-            if len(self.traj_accum.partial_trajectories[i]) > 1:
-                traj = self.traj_accum.finish_trajectory(i)
-                _save_dagger_demo(traj, self.save_dir)
-
 
 class NeedsDemosException(Exception):
     """Signals demos need to be collected for current round before continuing."""
