@@ -513,6 +513,7 @@ class SimpleDAggerTrainer(DAggerTrainer):
         """SimpleDAggerTrainer constructor.
 
         This constructor also accepts keyword arguments for `DaggerTrainer`. See
+        the `DaggerTrainer.__init__` docstring for more details.
 
         Args:
             venv: Vectorized training environment. Note that when the robot
@@ -524,8 +525,8 @@ class SimpleDAggerTrainer(DAggerTrainer):
             expert_policy: The expert policy used to generate synthetic demonstrations.
             expert_trajs: Optional starting dataset that is inserted into the round 0
                 dataset.
-            dagger_trainer_kwargs: Other keyword arguments passed to
-                `DAggerTrainer.__init__`.
+            dagger_trainer_kwargs: Other keyword arguments passed to the
+                superclass initializer `DAggerTrainer.__init__`.
         """
         super().__init__(venv=venv, scratch_dir=scratch_dir, **dagger_trainer_kwargs)
         self.expert_policy = expert_policy
