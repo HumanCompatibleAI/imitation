@@ -1,7 +1,7 @@
 """Learning reward models using preference comparisons.
 
 Trains a reward model and optionally a policy based on preferences
-between short trajectory fragments.
+between trajectory fragments.
 """
 
 
