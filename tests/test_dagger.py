@@ -13,7 +13,7 @@ from stable_baselines3.common import policies
 
 from imitation.algorithms import bc, dagger
 from imitation.data import rollout
-from imitation.policies import serialize
+from imitation.policies import base, serialize
 from imitation.util import util
 
 ENV_NAME = "CartPole-v1"
@@ -290,3 +290,13 @@ def test_simple_dagger_space_mismatch_error(
                 _build_simple_dagger_trainer(
                     tmpdir, venv, beta_schedule, expert_policy, expert_trajs
                 )
+
+def test_dagger_not_enough_transitions_error(tmpdir):
+    venv = util.make_vec_env("CartPole-v0")
+    # Initialize with large batch size to ensure error down the line.
+    trainer = dagger.DAggerTrainer(venv, tmpdir, batch_size=100_000)
+    collector = trainer.get_trajectory_collector()
+    policy = base.RandomPolicy(venv.observation_space, venv.action_space)
+    rollout.generate_trajectories(policy, collector, rollout.make_min_episodes(1))
+    with pytest.raises(ValueError, match="Not enough transitions.*"):
+        trainer.extend_and_update()
