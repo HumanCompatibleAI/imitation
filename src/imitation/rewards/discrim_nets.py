@@ -226,7 +226,7 @@ class DiscrimNetAIRL(DiscrimNet):
         predicting expert.
         """
         if log_policy_act_prob is None:
-            raise ValueError(
+            raise TypeError(
                 "Non-None `log_policy_act_prob` is required for this method."
             )
         reward_output_train = self.reward_net.reward_train(
