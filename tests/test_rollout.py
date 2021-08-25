@@ -199,7 +199,6 @@ def test_make_sample_until_errors():
     with episodes_positive:
         rollout.make_sample_until(min_timesteps=10, min_episodes=-34)
 
-
     timesteps_positive = pytest.raises(ValueError, match="min_timesteps.*positive")
     with timesteps_positive:
         rollout.make_sample_until(min_timesteps=-3, min_episodes=None)
