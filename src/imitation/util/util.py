@@ -212,3 +212,28 @@ def torchify_with_space(
         normalize_images=normalize_images,
     )
     return preprocessed
+
+
+def tensor_iter_norm(
+    tensor_iter: Iterable[th.Tensor], ord: Union[int, float] = 2  # noqa: A002
+) -> th.Tensor:
+    """Compute the norm of a big vector that is produced one tensor chunk at a time.
+
+    Args:
+        tensor_iter: an iterable that yields tensors.
+        ord: order of the p-norm (can be any int or float except 0 and NaN).
+
+    Returns:
+        Norm of the concatenated tensors."""
+    if ord == 0:
+        raise ValueError("This function cannot compute p-norms for p=0.")
+    norms = []
+    for tensor in tensor_iter:
+        norms.append(th.norm(tensor.flatten(), p=ord))
+    norm_tensor = th.as_tensor(norms)
+    # Norm of the norms is equal to the norm of the concatenated tensor.
+    # th.norm(norm_tensor) = sum(norm**ord for norm in norm_tensor)**(1/ord)
+    # = sum(sum(x**ord for x in tensor) for tensor in tensor_iter)**(1/ord)
+    # = sum(x**ord for x in tensor for tensor in tensor_iter)**(1/ord)
+    # = th.norm(concatenated tensors)
+    return th.norm(norm_tensor, p=ord)

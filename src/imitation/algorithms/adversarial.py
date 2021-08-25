@@ -408,7 +408,7 @@ class AdversarialTrainer:
 
         torchify_with_space_defaults = functools.partial(
             util.torchify_with_space,
-            normalize_images=self.discrim_net.scale,
+            normalize_images=self.discrim_net.normalize_images,
             device=self.discrim_net.device(),
         )
         batch_dict = {
@@ -461,8 +461,6 @@ class GAIL(AdversarialTrainer):
 
 
 class AIRL(AdversarialTrainer):
-
-    reward_net: reward_nets.RewardNet
     """The AIRL reward network, used by the imitation policy."""
 
     def __init__(
@@ -498,8 +496,8 @@ class AIRL(AdversarialTrainer):
         reward_network = reward_net_cls(
             action_space=venv.action_space,
             observation_space=venv.observation_space,
-            # pytype is afraid that we'll directly call RewardNet() which is an abstract
-            # class, hence the disable.
+            # pytype is afraid that we'll directly call RewardNet(),
+            # which is an abstract class, hence the disable.
             **reward_net_kwargs,  # pytype: disable=not-instantiable
         )
 

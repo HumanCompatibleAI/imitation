@@ -4,12 +4,12 @@ import os
 import numpy as np
 import pytest
 import torch as th
-from stable_baselines3.common import preprocessing, vec_env
+from stable_baselines3.common import vec_env
 
 from imitation.data import rollout
 from imitation.policies import base
 from imitation.rewards import discrim_nets, reward_nets
-from imitation.util import networks, util
+from imitation.util import util
 
 
 def _setup_airl_basic(venv):
@@ -18,15 +18,6 @@ def _setup_airl_basic(venv):
 
 
 def _setup_airl_basic_custom_net(venv):
-    base_reward_net = reward_nets.BasicRewardMLP(
-        observation_space=venv.observation_space,
-        action_space=venv.action_space,
-        use_state=True,
-        use_action=True,
-        use_next_state=False,
-        use_done=False,
-        hid_sizes=(32, 32),
-    )
     reward_net = reward_nets.BasicRewardNet(
         observation_space=venv.observation_space,
         action_space=venv.action_space,
@@ -34,25 +25,19 @@ def _setup_airl_basic_custom_net(venv):
         use_action=True,
         use_next_state=False,
         use_done=False,
-        base_reward_net=base_reward_net,
+        hid_sizes=(32, 32),
     )
     return discrim_nets.DiscrimNetAIRL(reward_net)
 
 
 def _setup_airl_undiscounted_shaped_reward_net(venv):
-    potential_in_size = preprocessing.get_flattened_obs_dim(venv.observation_space)
-    potential_net = networks.build_mlp(
-        in_size=potential_in_size,
-        hid_sizes=(32, 32),
-        squeeze_output=True,
-    )
     reward_net = reward_nets.BasicShapedRewardNet(
         venv.observation_space,
         venv.action_space,
         discount_factor=1.0,
         use_next_state=True,
         use_done=True,
-        potential_net=potential_net,
+        potential_hid_sizes=(32, 32),
     )
     return discrim_nets.DiscrimNetAIRL(reward_net)
 

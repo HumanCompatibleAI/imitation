@@ -62,7 +62,7 @@ def disc_rew_preprocess_inputs(
     next_state: np.ndarray,
     done: np.ndarray,
     device: th.device,
-    scale: bool = False,
+    normalize_images: bool = False,
 ) -> Tuple[th.Tensor, th.Tensor, th.Tensor, th.Tensor]:
     state_th = th.as_tensor(state, device=device)
     action_th = th.as_tensor(action, device=device)
@@ -72,10 +72,12 @@ def disc_rew_preprocess_inputs(
     del state, action, next_state, done  # unused
 
     # preprocess
-    state_th = preprocessing.preprocess_obs(state_th, observation_space, scale)
-    action_th = preprocessing.preprocess_obs(action_th, action_space, scale)
+    state_th = preprocessing.preprocess_obs(
+        state_th, observation_space, normalize_images
+    )
+    action_th = preprocessing.preprocess_obs(action_th, action_space, normalize_images)
     next_state_th = preprocessing.preprocess_obs(
-        next_state_th, observation_space, scale
+        next_state_th, observation_space, normalize_images
     )
     done_th = done_th.to(th.float32)
 
