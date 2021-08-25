@@ -38,32 +38,38 @@ probabilities.
 class SyntheticGatherer:
     """Computes synthetic preferences using ground-truth environment rewards."""
 
-    def __init__(self, probabilistic: bool = False, noise_prob: float = 0.0):
+    def __init__(
+        self, probabilistic: bool = True, noise_prob: float = 0.0, seed: int = 0
+    ):
         """Initialize the synthetic preference gatherer.
 
         Args:
-            probabilistic: if False (default), the preferences are either 1
-                (if fragment 1 has a higher sum of rewards), 0 (if fragment 2
-                has a higher sum of rewards) or 0.5 (if they are equal).
-                If True, a probability between 0 and 1 is returned
-                instead (based on a softmax).
-            noise_prob: probability with which the preference is uniformly random.
-                This is incorporated into the model if probabilistic=True,
-                no random decisions are actually made! Ignored if probabilistic=False.
+            probabilistic: if True (default), the outputs are sampled from a Bernoulli
+                distribution based on a softmax of the rewards (e.g. if the fragments
+                have equal rewards, 0 or 1 is returned with equal probability).
+                If False, then 0, 1 or 0.5 is returned deterministically based on which
+                fragment is better or whether they are equally good.
+            noise_prob: probability with which the preference is uniformly random
+                rather than based on the softmax of rewards.
+                Cannot be set if probabilistic=False.
+            seed: seed for the internal RNG (only used if probabilistic is True).
         """
         self.noise_prob = noise_prob
         self.probabilistic = probabilistic
+        self.rng = np.random.default_rng(seed=seed)
 
-    def __call__(self, fragments: Sequence[TrajectoryWithRewPair]) -> np.ndarray:
-        rews1, rews2 = self._reward_sums(fragments)
+    def __call__(self, fragment_pairs: Sequence[TrajectoryWithRewPair]) -> np.ndarray:
+        rews1, rews2 = self._reward_sums(fragment_pairs)
         if self.probabilistic:
             # If probabilistic is True, we use the human model to compute probabilities.
             # Instead of computing exp(rews1) / (exp(rews1) + exp(rews2)) directly,
             # we divide enumerator and denominator by exp(rews1) to prevent overflows:
-            model_probabilities = 1 / (1 + np.exp(rews2 - rews1))
+            model_probs = 1 / (1 + np.exp(rews2 - rews1))
             # We also include an optional probability of making a random decision
             # (modeling the fact that humans make mistakes):
-            return self.noise_prob * 0.5 + (1 - self.noise_prob * model_probabilities)
+            noisy_probs = self.noise_prob * 0.5 + (1 - self.noise_prob * model_probs)
+            return self.rng.binomial(n=1, p=noisy_probs)
+
         if self.noise_prob != 0:
             raise ValueError(
                 f"noise_prob={self.noise_prob} is non-zero but probabilistic=False"
@@ -72,9 +78,9 @@ class SyntheticGatherer:
         # of rewards are the same) for the probability
         return (np.sign(rews1 - rews2) + 1) / 2
 
-    def _reward_sums(self, fragments) -> Tuple[np.ndarray, np.ndarray]:
+    def _reward_sums(self, fragment_pairs) -> Tuple[np.ndarray, np.ndarray]:
         rews1, rews2 = zip(
-            *[(np.sum(f1.rews), np.sum(f2.rews)) for f1, f2 in fragments]
+            *[(np.sum(f1.rews), np.sum(f2.rews)) for f1, f2 in fragment_pairs]
         )
         return np.array(rews1), np.array(rews2)
 
