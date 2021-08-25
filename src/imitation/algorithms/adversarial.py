@@ -1,15 +1,15 @@
 import dataclasses
+import functools
 import logging
 import os
 from typing import Callable, Dict, Iterable, Mapping, Optional, Type, Union
 
-import gym
 import numpy as np
 import torch as th
 import torch.utils.data as th_data
 import torch.utils.tensorboard as thboard
 import tqdm
-from stable_baselines3.common import on_policy_algorithm, preprocessing, vec_env
+from stable_baselines3.common import on_policy_algorithm, vec_env
 
 from imitation.data import buffer, types, wrappers
 from imitation.rewards import common as rew_common
@@ -324,20 +324,8 @@ class AdversarialTrainer:
                 callback(r)
             logger.dump(self._global_step)
 
-    def _torchify_array(self, ndarray: np.ndarray, **kwargs) -> th.Tensor:
-        return th.as_tensor(ndarray, device=self.discrim_net.device(), **kwargs)
-
-    def _torchify_with_space(
-        self, ndarray: np.ndarray, space: gym.Space, **kwargs
-    ) -> th.Tensor:
-        tensor = th.as_tensor(ndarray, device=self.discrim_net.device(), **kwargs)
-        preprocessed = preprocessing.preprocess_obs(
-            tensor,
-            space,
-            # TODO(sam): can I remove "scale" kwarg in DiscrimNet etc.?
-            normalize_images=self.discrim_net.scale,
-        )
-        return preprocessed
+    def _torchify_array(self, ndarray: np.ndarray) -> th.Tensor:
+        return th.as_tensor(ndarray, device=self.discrim_net.device())
 
     def _make_disc_train_batch(
         self,
@@ -348,8 +336,8 @@ class AdversarialTrainer:
         """Build and return training batch for the next discriminator update.
 
         Args:
-          gen_samples: Same as in `train_disc_step`.
-          expert_samples: Same as in `train_disc_step`.
+          gen_samples: Same as in `train_disc`.
+          expert_samples: Same as in `train_disc`.
         """
         if expert_samples is None:
             expert_samples = self._next_expert_batch()
@@ -418,11 +406,19 @@ class AdversarialTrainer:
         assert len(log_act_prob) == n_samples
         log_act_prob = log_act_prob.reshape((n_samples,))
 
+        torchify_with_space_defaults = functools.partial(
+            util.torchify_with_space,
+            normalize_images=self.discrim_net.scale,
+            device=self.discrim_net.device,
+        )
         batch_dict = {
-            "state": self._torchify_with_space(obs, self.discrim_net.observation_space),
-            "action": self._torchify_with_space(acts, self.discrim_net.action_space),
-            "next_state": self._torchify_with_space(
-                next_obs, self.discrim_net.observation_space
+            "state": torchify_with_space_defaults(
+                obs, self.discrim_net.observation_space
+            ),
+            "action": torchify_with_space_defaults(acts, self.discrim_net.action_space),
+            "next_state": torchify_with_space_defaults(
+                next_obs,
+                self.discrim_net.observation_space,
             ),
             "done": self._torchify_array(dones),
             "labels_gen_is_one": self._torchify_array(labels_gen_is_one),

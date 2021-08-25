@@ -17,8 +17,9 @@ from typing import (
 import gym
 import numpy as np
 import stable_baselines3
+import torch as th
 from gym.wrappers import TimeLimit
-from stable_baselines3.common import monitor
+from stable_baselines3.common import monitor, preprocessing
 from stable_baselines3.common.base_class import BaseAlgorithm
 from stable_baselines3.common.policies import ActorCriticPolicy, BasePolicy
 from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecEnv
@@ -180,3 +181,34 @@ def endless_iter(iterable: Iterable[T]) -> Iterator[T]:
         raise err
 
     return itertools.chain.from_iterable(itertools.repeat(iterable))
+
+
+def torchify_with_space(
+    array: np.ndarray,
+    space: gym.Space,
+    normalize_images: bool = True,
+    device: Optional[th.device] = None,
+) -> th.Tensor:
+    """Converts a `np.ndarray` into `Tensor` corresponding to `space`.
+
+    The shape of the return value may differ from the shape of the input
+    value. For example, if `space` is discrete, then the input should be
+    an 1D array of scalar values, and the output will be encoded as 2D
+    Tensor of one-hot vectors.
+
+    Args:
+        array: An array of observations or actions.
+        space: The space each value in `array` is sampled from.
+        normalize_images: `normalize_images` keyword argument to
+          `preprocessing.preprocess_obs`. If True, then image `array`
+          is normalized so that each element is between 0 and 1.
+        device: Tensor device.
+    """
+    tensor = th.as_tensor(array, device=device)
+    preprocessed = preprocessing.preprocess_obs(
+        tensor,
+        space,
+        # TODO(sam): can I remove "scale" kwarg in DiscrimNet etc.?
+        normalize_images=normalize_images,
+    )
+    return preprocessed
