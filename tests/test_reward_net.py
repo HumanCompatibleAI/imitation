@@ -80,8 +80,11 @@ def test_serialize_identity(env_name, net_cls, tmpdir):
             transitions.next_obs,
             transitions.dones,
         )
-        rewards["train"].append(net.predict_reward_train(*trans_args))
-        rewards["test"].append(net.predict_reward_test(*trans_args))
+        rewards["train"].append(net.predict(*trans_args))
+        if hasattr(net, "base"):
+            rewards["test"].append(net.base.predict(*trans_args))
+        else:
+            rewards["test"].append(net.predict(*trans_args))
 
     args = (
         transitions.obs,
@@ -134,5 +137,16 @@ def test_potential_net_2d_obs():
     done_b = np.array([done], dtype="bool")
 
     net = reward_nets.BasicShapedRewardNet(env.observation_space, env.action_space)
-    rew_batch = net.predict_reward_train(obs_b, action_b, next_obs_b, done_b)
+    rew_batch = net.predict(obs_b, action_b, next_obs_b, done_b)
     assert rew_batch.shape == (1,)
+
+
+@pytest.mark.parametrize("env_name", ENVS)
+def test_device_for_parameterless_model(env_name):
+    class ParameterlessNet(reward_nets.RewardNet):
+        def forward(self):
+            """Dummy function to avoid abstractmethod complaints"""
+
+    env = gym.make(env_name)
+    net = ParameterlessNet(env.observation_space, env.action_space)
+    assert net.device == th.device("cpu")

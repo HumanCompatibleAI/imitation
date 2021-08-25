@@ -1,14 +1,12 @@
 """Fixtures common across tests."""
 
-import os
-
 import pytest
 import torch
 
 
 @pytest.fixture(scope="session", autouse=True)
 def torch_single_threaded():
-    """Make PyTorch and JAX execute code single-threaded.
+    """Make PyTorch execute code single-threaded.
 
     This allows us to run the test suite with greater across-test parallelism.
     This is faster, since:
@@ -19,9 +17,3 @@ def torch_single_threaded():
     """
     torch.set_num_threads(1)
     torch.set_num_interop_threads(1)
-
-    # Limit ourselves to single-threaded JAX/XLA operations.
-    # See https://github.com/google/jax/issues/743.
-    os.environ["XLA_FLAGS"] = (
-        "--xla_cpu_multi_thread_eigen=false " "intra_op_parallelism_threads=1"
-    )
