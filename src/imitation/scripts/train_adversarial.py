@@ -208,6 +208,12 @@ def train_adversarial(
         **final_algorithm_kwargs,
     )
 
+    logging.info(f"Discriminator network summary:\n {trainer.discrim_net}")
+    logging.info(f"RL algorithm: {type(trainer.gen_algo)}")
+    logging.info(
+        f"Imitation (generator) policy network summary:\n" f"{trainer.gen_algo.policy}"
+    )
+
     def callback(round_num):
         if checkpoint_interval > 0 and round_num % checkpoint_interval == 0:
             save(trainer, os.path.join(log_dir, "checkpoints", f"{round_num:05d}"))
