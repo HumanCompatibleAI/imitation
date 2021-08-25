@@ -127,7 +127,7 @@ class PreferenceDataset(th.utils.data.Dataset):
 
         Args:
             fragments: list of pairs of trajectory fragments to add
-            preferences: corresponding preference probabilities (probabilities
+            preferences: corresponding preference probabilities (probability
                 that fragment 1 is preferred over fragment 2)
         """
         fragments1, fragments2 = zip(*fragments)
