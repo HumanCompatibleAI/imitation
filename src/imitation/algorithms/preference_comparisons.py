@@ -18,7 +18,7 @@ from imitation.policies.trainer import AgentTrainer
 from imitation.rewards.reward_nets import RewardNet
 
 PreferenceGatherer = Callable[
-    [List[Tuple[TrajectoryWithRew, TrajectoryWithRew]]], np.ndarray
+    [Sequence[Tuple[TrajectoryWithRew, TrajectoryWithRew]]], np.ndarray
 ]
 """Gathers the probabilities that fragment 1 is preferred for a batch of fragments.
 
@@ -100,7 +100,7 @@ class PreferenceDataset(th.utils.data.Dataset):
 
     def push(
         self,
-        fragments: List[Tuple[TrajectoryWithRew, TrajectoryWithRew]],
+        fragments: Sequence[Tuple[TrajectoryWithRew, TrajectoryWithRew]],
         preferences: np.ndarray,
     ):
         """Add more samples to the dataset.
@@ -131,8 +131,8 @@ class PreferenceDataset(th.utils.data.Dataset):
 
 
 def preference_collate_fn(
-    batch: List[Tuple[TrajectoryWithRew, TrajectoryWithRew, float]]
-):
+    batch: Sequence[Tuple[TrajectoryWithRew, TrajectoryWithRew, float]]
+) -> Tuple[Sequence[Tuple[TrajectoryWithRew, TrajectoryWithRew]], Sequence[float]]:
     fragments1, fragments2, preferences = zip(*batch)
     return list(zip(fragments1, fragments2)), list(preferences)
 
@@ -184,7 +184,7 @@ class CrossEntropyRewardTrainer(RewardTrainer):
 
     def _loss(
         self,
-        fragments: List[Tuple[TrajectoryWithRew, TrajectoryWithRew]],
+        fragments: List[Tuple[Trajectory, Trajectory]],
         preferences: np.ndarray,
     ):
         probs = th.empty(len(fragments), dtype=th.float32)
