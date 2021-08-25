@@ -409,7 +409,7 @@ class AdversarialTrainer:
         torchify_with_space_defaults = functools.partial(
             util.torchify_with_space,
             normalize_images=self.discrim_net.scale,
-            device=self.discrim_net.device,
+            device=self.discrim_net.device(),
         )
         batch_dict = {
             "state": torchify_with_space_defaults(
