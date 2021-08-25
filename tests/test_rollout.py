@@ -187,3 +187,16 @@ def test_unwrap_traj():
         np.testing.assert_equal(t1.acts, t2.acts)
         np.testing.assert_equal(t1.obs, t2.obs)
         np.testing.assert_equal(t1.rews, t2.rews)
+
+
+def test_compute_returns():
+    np.random.seed(0)
+    N = 100
+    rewards = np.random.random(N)
+    for gamma in [0, 0.9, 1]:
+        discounts = np.power(gamma, np.arange(N))
+        returns = np.sum(discounts * rewards)
+        # small numerical errors will occur because compute_returns
+        # uses a somewhat different method based on evaluating
+        # polynomials
+        assert abs(rollout.compute_returns(rewards, gamma) - returns) < 1e-8

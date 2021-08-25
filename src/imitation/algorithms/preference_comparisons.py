@@ -39,7 +39,11 @@ class SyntheticGatherer:
     """Computes synthetic preferences using ground-truth environment rewards."""
 
     def __init__(
-        self, probabilistic: bool = True, noise_prob: float = 0.0, seed: int = 0
+        self,
+        probabilistic: bool = True,
+        noise_prob: float = 0.0,
+        discount_factor: float = 1,
+        seed: int = 0,
     ):
         """Initialize the synthetic preference gatherer.
 
@@ -52,10 +56,14 @@ class SyntheticGatherer:
             noise_prob: probability with which the preference is uniformly random
                 rather than based on the softmax of rewards.
                 Cannot be set if probabilistic=False.
+            discount_factor: discount factor that is used to compute
+                how good a fragment is. Default is to use undiscounted
+                sums of rewards (as in the DRLHP paper).
             seed: seed for the internal RNG (only used if probabilistic is True).
         """
         self.noise_prob = noise_prob
         self.probabilistic = probabilistic
+        self.discount_factor = discount_factor
         self.rng = np.random.default_rng(seed=seed)
 
     def __call__(self, fragment_pairs: Sequence[TrajectoryWithRewPair]) -> np.ndarray:
@@ -80,7 +88,13 @@ class SyntheticGatherer:
 
     def _reward_sums(self, fragment_pairs) -> Tuple[np.ndarray, np.ndarray]:
         rews1, rews2 = zip(
-            *[(np.sum(f1.rews), np.sum(f2.rews)) for f1, f2 in fragment_pairs]
+            *[
+                (
+                    rollout.compute_returns(f1.rews, self.discount_factor),
+                    rollout.compute_returns(f2.rews, self.discount_factor),
+                )
+                for f1, f2 in fragment_pairs
+            ]
         )
         return np.array(rews1), np.array(rews2)
 

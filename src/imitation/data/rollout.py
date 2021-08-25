@@ -478,3 +478,25 @@ def rollout_and_save(
         logging.info(f"Rollout stats: {stats}")
 
     types.save(path, trajs)
+
+
+def compute_returns(rewards: np.ndarray, gamma: float) -> float:
+    """Calculate the discounted returns from an array of undiscounted rewards.
+
+    Args:
+        rewards: array of rewards, from the current time step (first)
+            to the last timestep (last).
+        gamma: the discount factor used for calculating returns.
+
+    Returns:
+        the discounted returns (the first reward is undiscounted,
+        i.e. we start at gamma^0)
+    """
+    # We want to calculate sum_{t = 0}^T gamma^t r_t, which can be
+    # interpreted as the polynomial sum_{t = 0}^T r_t x^t
+    # evaluated at x=gamma.
+    # Compared to first computing all the powers of gamma, then
+    # multiplying with the rewards and then summing, this method
+    # should require fewer computations and potentially be more
+    # numerically stable.
+    return np.polynomial.polynomial.polyval(gamma, rewards)
