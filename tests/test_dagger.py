@@ -190,6 +190,25 @@ def test_trainer_needs_demos_exception_error(
         trainer.extend_and_update(dict(n_epochs=1))
 
 
+def test_trainer_train_arguments(trainer, expert_policy):
+    def add_samples():
+        collector = trainer.get_trajectory_collector()
+        rollout.generate_trajectories(
+            expert_policy, collector, sample_until=rollout.make_min_timesteps(40)
+        )
+
+    # Lower default number of epochs for the no-arguments call that follows.
+    add_samples()
+    with mock.patch.object(trainer, "DEFAULT_N_EPOCHS", 1):
+        trainer.extend_and_update()
+
+    add_samples()
+    trainer.extend_and_update(dict(n_batches=2))
+
+    add_samples()
+    trainer.extend_and_update(dict(n_epochs=1))
+
+
 def test_trainer_makes_progress(trainer, venv, expert_policy):
     pre_train_rew_mean = rollout.mean_return(
         trainer.bc_trainer.policy,
@@ -209,11 +228,7 @@ def test_trainer_makes_progress(trainer, venv, expert_policy):
             while not np.any(dones):
                 expert_actions, _ = expert_policy.predict(obs, deterministic=True)
                 obs, _, dones, _ = collector.step(expert_actions)
-        trainer.extend_and_update(dict(n_batches=1))
-        # Lower default number of epochs for the no-arguments call that follows.
-        # (No arguments call is here for coverage reasons).
-        trainer.DEFAULT_N_EPOCHS = 1
-        trainer.extend_and_update()
+        trainer.extend_and_update(dict(n_epochs=1))
     # make sure we're doing better than a random policy would
     post_train_rew_mean = rollout.mean_return(
         trainer.bc_trainer.policy,
