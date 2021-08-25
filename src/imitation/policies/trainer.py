@@ -4,11 +4,10 @@ from typing import List, Union
 from stable_baselines3.common.base_class import BaseAlgorithm
 from stable_baselines3.common.vec_env import VecEnv
 
-from imitation.data import types
-from imitation.data.wrappers import BufferingWrapper
-from imitation.rewards.common import RewardFn
-from imitation.rewards.reward_nets import RewardNet
-from imitation.util.reward_wrapper import RewardVecEnvWrapper
+from imitation.data import types, wrappers
+from imitation.rewards import common as rewards_common
+from imitation.rewards import reward_nets
+from imitation.util import reward_wrapper
 
 
 class AgentTrainer:
@@ -34,10 +33,10 @@ class AgentTrainer:
     def __init__(
         self,
         algorithm: BaseAlgorithm,
-        reward_fn: Union[RewardFn, RewardNet],
+        reward_fn: Union[rewards_common.RewardFn, reward_nets.RewardNet],
     ):
         self.algorithm = algorithm
-        if isinstance(reward_fn, RewardNet):
+        if isinstance(reward_fn, reward_nets.RewardNet):
             reward_fn = reward_fn.predict
         self.reward_fn = reward_fn
 
@@ -48,8 +47,8 @@ class AgentTrainer:
         # them after training. This should come first (before the wrapper that
         # changes the reward function), so that we return the original environment
         # rewards.
-        env = BufferingWrapper(env)
-        env = RewardVecEnvWrapper(env, reward_fn)
+        env = wrappers.BufferingWrapper(env)
+        env = reward_wrapper.RewardVecEnvWrapper(env, reward_fn)
         self.algorithm.set_env(env)
 
     def train(self, total_timesteps: int, **kwargs) -> List[types.TrajectoryWithRew]:
@@ -73,9 +72,11 @@ class AgentTrainer:
         return self.algorithm.policy
 
     @property
-    def venv(self) -> RewardVecEnvWrapper:
+    def venv(self) -> reward_wrapper.RewardVecEnvWrapper:
         venv = self.algorithm.get_env()
-        assert isinstance(venv, RewardVecEnvWrapper), "RewardVecEnvWrapper missing"
+        assert isinstance(
+            venv, reward_wrapper.RewardVecEnvWrapper
+        ), "RewardVecEnvWrapper missing"
         return venv
 
     def _pop_trajectories(self) -> List[types.TrajectoryWithRew]:

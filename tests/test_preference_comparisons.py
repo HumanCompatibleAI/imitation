@@ -3,11 +3,10 @@
 import pytest
 from stable_baselines3 import PPO
 
-from imitation.algorithms.preference_comparisons import PreferenceComparisons
-from imitation.data import types
-from imitation.data.fragments import RandomFragmenter
-from imitation.policies.trainer import AgentTrainer
-from imitation.rewards.reward_nets import BasicRewardNet
+from imitation.algorithms import preference_comparisons
+from imitation.data import fragments, types
+from imitation.policies import trainer
+from imitation.rewards import reward_nets
 from imitation.util import util
 
 
@@ -22,11 +21,13 @@ def test_trainer_no_crash():
         "CartPole-v1",
         n_envs=1,
     )
-    reward_net = BasicRewardNet(venv.observation_space, venv.action_space)
+    reward_net = reward_nets.BasicRewardNet(venv.observation_space, venv.action_space)
     # verbose=1 suppresses SB3 logger configuration,
     # which conflicts with imitation logging
     agent = PPO("MlpPolicy", venv, verbose=1)
-    agent_trainer = AgentTrainer(agent, reward_net)
-    fragmenter = RandomFragmenter(fragment_length=2, num_pairs=2, seed=0)
-    trainer = PreferenceComparisons(agent_trainer, reward_net, 10, fragmenter)
-    trainer.train(2)
+    agent_trainer = trainer.AgentTrainer(agent, reward_net)
+    fragmenter = fragments.RandomFragmenter(fragment_length=2, num_pairs=2, seed=0)
+    main_trainer = preference_comparisons.PreferenceComparisons(
+        agent_trainer, reward_net, 10, fragmenter
+    )
+    main_trainer.train(2)

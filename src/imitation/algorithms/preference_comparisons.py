@@ -11,16 +11,15 @@ from typing import Callable, List, Optional, Sequence, Tuple
 import numpy as np
 import torch as th
 
-from imitation.data.fragments import Fragmenter, RandomFragmenter
-from imitation.data.rollout import flatten_trajectories
+from imitation.data import fragments, rollout
 from imitation.data.types import (
     TrajectoryPair,
     TrajectoryWithRew,
     TrajectoryWithRewPair,
     Transitions,
 )
-from imitation.policies.trainer import AgentTrainer
-from imitation.rewards.reward_nets import RewardNet
+from imitation.policies import trainer
+from imitation.rewards import reward_nets
 
 PreferenceGatherer = Callable[[Sequence[TrajectoryWithRewPair]], np.ndarray]
 """Gathers the probabilities that fragment 1 is preferred for a batch of fragments.
@@ -146,7 +145,7 @@ class RewardTrainer(abc.ABC):
     or for agent training (see PreferenceComparisons for that).
     """
 
-    def __init__(self, model: RewardNet):
+    def __init__(self, model: reward_nets.RewardNet):
         """Initialize the reward trainer.
 
         Args:
@@ -174,7 +173,7 @@ class CrossEntropyRewardTrainer(RewardTrainer):
 
     def __init__(
         self,
-        model: RewardNet,
+        model: reward_nets.RewardNet,
         noise_prob: float = 0.0,
         batch_size: int = 32,
     ):
@@ -185,14 +184,14 @@ class CrossEntropyRewardTrainer(RewardTrainer):
 
     def _loss(
         self,
-        fragments: Sequence[TrajectoryPair],
+        fragment_pairs: Sequence[TrajectoryPair],
         preferences: np.ndarray,
     ):
-        probs = th.empty(len(fragments), dtype=th.float32)
-        for i, fragment in enumerate(fragments):
+        probs = th.empty(len(fragment_pairs), dtype=th.float32)
+        for i, fragment in enumerate(fragment_pairs):
             frag1, frag2 = fragment
-            trans1 = flatten_trajectories([frag1])
-            trans2 = flatten_trajectories([frag2])
+            trans1 = rollout.flatten_trajectories([frag1])
+            trans2 = rollout.flatten_trajectories([frag2])
             rews1 = self._rewards(trans1)
             rews2 = self._rewards(trans2)
             probs[i] = self._probability(rews1, rews2)
@@ -222,8 +221,8 @@ class CrossEntropyRewardTrainer(RewardTrainer):
             collate_fn=preference_collate_fn,
         )
         self.optim.zero_grad()
-        for fragments, preferences in dataloader:
-            loss = self._loss(fragments, preferences)
+        for fragment_pairs, preferences in dataloader:
+            loss = self._loss(fragment_pairs, preferences)
             loss.backward()
         self.optim.step()
 
@@ -233,10 +232,10 @@ class PreferenceComparisons:
 
     def __init__(
         self,
-        agent_trainer: AgentTrainer,
-        reward_model: RewardNet,
+        agent_trainer: trainer.AgentTrainer,
+        reward_model: reward_nets.RewardNet,
         agent_timesteps: int,
-        fragmenter: Optional[Fragmenter] = None,
+        fragmenter: Optional[fragments.Fragmenter] = None,
         preference_gatherer: Optional[PreferenceGatherer] = None,
         reward_trainer: Optional[RewardTrainer] = None,
     ):
@@ -267,7 +266,7 @@ class PreferenceComparisons:
         self.reward_trainer = reward_trainer
         self.agent = agent_trainer
         if fragmenter is None:
-            fragmenter = RandomFragmenter()
+            fragmenter = fragments.RandomFragmenter()
         self.fragmenter = fragmenter
         if preference_gatherer is None:
             preference_gatherer = SyntheticGatherer()
