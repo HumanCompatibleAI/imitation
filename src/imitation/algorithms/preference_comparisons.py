@@ -6,20 +6,23 @@ between trajectory fragments.
 
 
 import abc
-from typing import Callable, List, Optional, Tuple
+from typing import Callable, List, Optional, Sequence, Tuple
 
 import numpy as np
 import torch as th
 
 from imitation.data.fragments import Fragmenter, RandomFragmenter
-from imitation.data.rollout import flatten_trajectories_with_rew
-from imitation.data.types import TrajectoryWithRew, TransitionsWithRew
+from imitation.data.rollout import flatten_trajectories
+from imitation.data.types import (
+    TrajectoryPair,
+    TrajectoryWithRew,
+    TrajectoryWithRewPair,
+    Transitions,
+)
 from imitation.policies.trainer import AgentTrainer
 from imitation.rewards.reward_nets import RewardNet
 
-PreferenceGatherer = Callable[
-    [Sequence[Tuple[TrajectoryWithRew, TrajectoryWithRew]]], np.ndarray
-]
+PreferenceGatherer = Callable[[Sequence[TrajectoryWithRewPair]], np.ndarray]
 """Gathers the probabilities that fragment 1 is preferred for a batch of fragments.
 
 Takes a list of pairs of trajectory fragments as input. Should return a numpy
@@ -52,9 +55,7 @@ class SyntheticGatherer:
         self.noise_prob = noise_prob
         self.probabilistic = probabilistic
 
-    def __call__(
-        self, fragments: List[Tuple[TrajectoryWithRew, TrajectoryWithRew]]
-    ) -> np.ndarray:
+    def __call__(self, fragments: Sequence[TrajectoryWithRewPair]) -> np.ndarray:
         rews1, rews2 = self._reward_sums(fragments)
         if self.probabilistic:
             # If probabilistic is True, we use the human model to compute probabilities.
@@ -100,7 +101,7 @@ class PreferenceDataset(th.utils.data.Dataset):
 
     def push(
         self,
-        fragments: Sequence[Tuple[TrajectoryWithRew, TrajectoryWithRew]],
+        fragments: Sequence[TrajectoryWithRewPair],
         preferences: np.ndarray,
     ):
         """Add more samples to the dataset.
@@ -123,18 +124,18 @@ class PreferenceDataset(th.utils.data.Dataset):
         self.fragments2.extend(fragments2)
         self.preferences = np.concatenate((self.preferences, preferences))
 
-    def __getitem__(self, i) -> Tuple[TrajectoryWithRew, TrajectoryWithRew, float]:
-        return self.fragments1[i], self.fragments2[i], self.preferences[i]
+    def __getitem__(self, i) -> Tuple[TrajectoryWithRewPair, float]:
+        return (self.fragments1[i], self.fragments2[i]), self.preferences[i]
 
     def __len__(self) -> int:
         return len(self.fragments1)
 
 
 def preference_collate_fn(
-    batch: Sequence[Tuple[TrajectoryWithRew, TrajectoryWithRew, float]]
-) -> Tuple[Sequence[Tuple[TrajectoryWithRew, TrajectoryWithRew]], Sequence[float]]:
-    fragments1, fragments2, preferences = zip(*batch)
-    return list(zip(fragments1, fragments2)), list(preferences)
+    batch: Sequence[Tuple[TrajectoryWithRewPair, float]]
+) -> Tuple[Sequence[TrajectoryWithRewPair], Sequence[float]]:
+    fragment_pairs, preferences = zip(*batch)
+    return list(fragment_pairs), list(preferences)
 
 
 class RewardTrainer(abc.ABC):
@@ -184,14 +185,14 @@ class CrossEntropyRewardTrainer(RewardTrainer):
 
     def _loss(
         self,
-        fragments: List[Tuple[Trajectory, Trajectory]],
+        fragments: Sequence[TrajectoryPair],
         preferences: np.ndarray,
     ):
         probs = th.empty(len(fragments), dtype=th.float32)
         for i, fragment in enumerate(fragments):
             frag1, frag2 = fragment
-            trans1 = flatten_trajectories_with_rew([frag1])
-            trans2 = flatten_trajectories_with_rew([frag2])
+            trans1 = flatten_trajectories([frag1])
+            trans2 = flatten_trajectories([frag2])
             rews1 = self._rewards(trans1)
             rews2 = self._rewards(trans2)
             probs[i] = self._probability(rews1, rews2)
@@ -199,7 +200,7 @@ class CrossEntropyRewardTrainer(RewardTrainer):
             probs, th.as_tensor(preferences, dtype=th.float32)
         )
 
-    def _rewards(self, transitions: TransitionsWithRew) -> th.Tensor:
+    def _rewards(self, transitions: Transitions) -> th.Tensor:
         return self.model(*self.model.preprocess(transitions))
 
     def _probability(self, rews1: th.Tensor, rews2: th.Tensor) -> th.Tensor:

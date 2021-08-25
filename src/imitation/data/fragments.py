@@ -1,12 +1,10 @@
 import random
 import warnings
-from typing import Callable, List, Optional, Tuple
+from typing import Callable, List, Optional, Sequence
 
-from imitation.data.types import TrajectoryWithRew
+from imitation.data.types import TrajectoryWithRew, TrajectoryWithRewPair
 
-Fragmenter = Callable[
-    [Sequence[TrajectoryWithRew]], Sequence[Tuple[TrajectoryWithRew, TrajectoryWithRew]]
-]
+Fragmenter = Callable[[Sequence[TrajectoryWithRew]], Sequence[TrajectoryWithRewPair]]
 """Creates pairs of trajectory fragments from a collection of trajectories."""
 
 
@@ -41,7 +39,7 @@ class RandomFragmenter:
 
     def __call__(
         self, trajectories: Sequence[TrajectoryWithRew]
-    ) -> Sequence[Tuple[TrajectoryWithRew, TrajectoryWithRew]]:
+    ) -> Sequence[TrajectoryWithRewPair]:
         fragments: List[TrajectoryWithRew] = []
 
         # filter out all trajectories that are too short

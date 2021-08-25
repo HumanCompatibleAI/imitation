@@ -6,7 +6,7 @@ import os
 import pathlib
 import pickle
 import sys
-from typing import Dict, Mapping, Optional, Sequence, TypeVar, Union, overload
+from typing import Dict, Mapping, Optional, Sequence, Tuple, TypeVar, Union, overload
 
 import numpy as np
 import torch as th
@@ -86,6 +86,10 @@ class TrajectoryWithRew(Trajectory):
         """Performs input validation, including for rews."""
         super().__post_init__()
         _rews_validation(self.rews, self.acts)
+
+
+TrajectoryPair = Tuple[Trajectory, Trajectory]
+TrajectoryWithRewPair = Tuple[TrajectoryWithRew, TrajectoryWithRew]
 
 
 def transitions_collate_fn(

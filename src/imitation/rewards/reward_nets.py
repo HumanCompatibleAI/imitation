@@ -10,7 +10,7 @@ from stable_baselines3.common import preprocessing
 from torch import nn
 
 import imitation.rewards.common as rewards_common
-from imitation.data.types import TransitionsWithRew
+from imitation.data import types
 from imitation.util import networks
 
 
@@ -51,7 +51,7 @@ class RewardNet(nn.Module, abc.ABC):
         """Compute rewards for a batch of transitions and keep gradients."""
 
     def preprocess(
-        self, transitions: TransitionsWithRew
+        self, transitions: types.Transitions
     ) -> Tuple[th.Tensor, th.Tensor, th.Tensor, th.Tensor]:
         """Preprocess a batch of input transitions and convert it to PyTorch tensors.
 
