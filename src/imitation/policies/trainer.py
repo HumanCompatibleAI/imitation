@@ -1,8 +1,7 @@
 """Training policies with a specifiable reward function and collect trajectories."""
 from typing import List, Union
 
-from stable_baselines3.common.base_class import BaseAlgorithm
-from stable_baselines3.common.vec_env import VecEnv
+from stable_baselines3.common import base_class, vec_env
 
 from imitation.data import types, wrappers
 from imitation.rewards import common as rewards_common
@@ -32,7 +31,7 @@ class AgentTrainer:
 
     def __init__(
         self,
-        algorithm: BaseAlgorithm,
+        algorithm: base_class.BaseAlgorithm,
         reward_fn: Union[rewards_common.RewardFn, reward_nets.RewardNet],
     ):
         self.algorithm = algorithm
@@ -41,7 +40,7 @@ class AgentTrainer:
         self.reward_fn = reward_fn
 
         env = self.algorithm.get_env()
-        if not isinstance(env, VecEnv):
+        if not isinstance(env, vec_env.VecEnv):
             raise ValueError("The environment for the agent algorithm must be set.")
         # The BufferingWrapper records all trajectories, so we can return
         # them after training. This should come first (before the wrapper that
