@@ -281,16 +281,10 @@ class PreferenceComparisons:
                 and loss function from DRLHP.
         """
         self.model = reward_model
-        if reward_trainer is None:
-            reward_trainer = CrossEntropyRewardTrainer(reward_model)
-        self.reward_trainer = reward_trainer
+        self.reward_trainer = reward_trainer or CrossEntropyRewardTrainer(reward_model)
         self.agent = agent_trainer
-        if fragmenter is None:
-            fragmenter = fragments.RandomFragmenter()
-        self.fragmenter = fragmenter
-        if preference_gatherer is None:
-            preference_gatherer = SyntheticGatherer()
-        self.preference_gatherer = preference_gatherer
+        self.fragmenter = fragmenter or fragments.RandomFragmenter()
+        self.preference_gatherer = preference_gatherer or SyntheticGatherer()
         self.agent_timesteps = agent_timesteps
 
         self.dataset = PreferenceDataset()
