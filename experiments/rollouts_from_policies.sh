@@ -15,7 +15,12 @@
 # mean return of each policy, then use this to choose the best seed rather
 # than hardcoding seed 0.
 
-TIMESTAMP=$(date --iso-8601=seconds)
+gnu_date=date
+if [[ "$OSTYPE" == "darwin"* ]]; then
+  gnu_date=gdate
+fi
+
+TIMESTAMP=$($gnu_date --iso-8601=seconds)
 EXPERT_MODELS_DIR=${EXPERT_MODELS_DIR:-data/expert_models}
 CONFIG_CSV=${CONFIG_CSV:-experiments/rollouts_from_policies_config.csv}
 OUTPUT_DIR="output/train_experts/${TIMESTAMP}"
