@@ -19,23 +19,16 @@
 # they can be gathered by the table-generating analysis script.
 
 set -e  # Exit on error
+source experiments/common.env
 
-# Set OMP_NUM_THREADS=2 if not yet exported.
-# This is important because parallel runs of PyTorch often throttle due to
-# CPU contention unless this is # set to a low number.
-export OMP_NUM_THREADS=${OMP_NUM_THREADS:-2}
-
-TIMESTAMP=$(date --iso-8601=seconds)
 RUN_NAME="paper-${TIMESTAMP}"
 echo "Training with run_name=${RUN_NAME}"
 
 script_dir=experiments
 fast_flag=""
-pdb_flag=""
 tmux_flag=""
-NO_CHEETAH=0
 
-TEMP=$(getopt -o fT -l fast,tmux -- "$@")
+TEMP=$($GNU_GETOPT -o fT -l fast,tmux -- "$@")
 if [[ $? != 0 ]]; then exit 1; fi
 eval set -- "$TEMP"
 
@@ -66,7 +59,7 @@ done
 set -x  # Start echoing commands
 
 $script_dir/bc_benchmark.sh $fast_flag --mvp_seals $tmux_flag --run_name "$RUN_NAME"
-IMIT_PLAIN="$script_dir/imit_benchmark.sh $fast_flag $tmux_flag --run_name "$RUN_NAME""
+IMIT_PLAIN="$script_dir/imit_benchmark.sh $fast_flag $tmux_flag --run_name $RUN_NAME"
 
 echo "AIRL seals BENCHMARK"
 $IMIT_PLAIN --mvp_seals --airl
