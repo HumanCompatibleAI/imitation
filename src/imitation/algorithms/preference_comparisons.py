@@ -10,6 +10,7 @@ from typing import Callable, List, Optional, Sequence, Tuple
 
 import numpy as np
 import torch as th
+from stable_baselines3.common import logger
 
 from imitation.data import fragments, rollout
 from imitation.data.types import (
@@ -264,11 +265,12 @@ class CrossEntropyRewardTrainer(RewardTrainer):
             ),
             collate_fn=preference_collate_fn,
         )
-        self.optim.zero_grad()
         for fragment_pairs, preferences in dataloader:
+            self.optim.zero_grad()
             loss = self._loss(fragment_pairs, preferences)
             loss.backward()
-        self.optim.step()
+            self.optim.step()
+            logger.record("reward/loss", loss.item())
 
 
 class PreferenceComparisons:
@@ -328,9 +330,15 @@ class PreferenceComparisons:
             steps: number of iterations of the outer training loop
         """
         for _ in range(steps):
+            logger.log(f"Training agent for {self.agent_timesteps} steps")
             self.trajectory_generator.train(steps=self.agent_timesteps)
+            logger.log(f"Collecting {self.timesteps} trajectory steps")
             trajectories = self.trajectory_generator.sample(self.timesteps)
+            logger.log(f"Creating {self.fragmenter.num_pairs} fragment pairs")
             fragments = self.fragmenter(trajectories)
+            logger.log("Gathering preferences")
             preferences = self.preference_gatherer(fragments)
             self.dataset.push(fragments, preferences)
+            logger.log(f"Dataset now contains {len(self.dataset)} samples")
+            logger.log("Training reward model")
             self.reward_trainer.train(self.dataset)

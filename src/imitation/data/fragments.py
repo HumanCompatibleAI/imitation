@@ -2,6 +2,8 @@ import random
 import warnings
 from typing import Callable, List, Optional, Sequence
 
+from stable_baselines3.common import logger
+
 from imitation.data.types import TrajectoryWithRew, TrajectoryWithRewPair
 
 Fragmenter = Callable[[Sequence[TrajectoryWithRew]], Sequence[TrajectoryWithRewPair]]
@@ -50,6 +52,7 @@ class RandomFragmenter:
     ) -> Sequence[TrajectoryWithRewPair]:
         fragments: List[TrajectoryWithRew] = []
 
+        prev_num_trajectories = len(trajectories)
         # filter out all trajectories that are too short
         trajectories = [
             traj for traj in trajectories if len(traj) >= self.fragment_length
@@ -58,6 +61,11 @@ class RandomFragmenter:
             raise ValueError(
                 "No trajectories are long enough for the desired fragment length."
             )
+        logger.log(
+            f"Discarded {prev_num_trajectories - len(trajectories)} "
+            f"out of {prev_num_trajectories} trajectories because they are "
+            f"shorter than the desired length of {self.fragment_length}."
+        )
 
         weights = [len(traj) for traj in trajectories]
 
@@ -76,7 +84,7 @@ class RandomFragmenter:
             # than the number of requires ones, we already give a warning.
             # But only if self.warning_threshold is non-zero.
             warnings.warn(
-                f"Samples will contain {num_transitions} in total "
+                f"Samples will contain {num_transitions} transitions in total "
                 f"and only {sum(weights)} are available. "
                 f"Because we sample with replacement, a significant number "
                 "of transitions are likely to appear multiple times."

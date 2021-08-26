@@ -1,7 +1,7 @@
 """Tests for the preference comparisons reward learning implementation."""
 
 import pytest
-from stable_baselines3 import PPO
+import stable_baselines3
 
 from imitation.algorithms import preference_comparisons
 from imitation.data import fragments, types
@@ -24,7 +24,7 @@ def test_trainer_no_crash():
     reward_net = reward_nets.BasicRewardNet(venv.observation_space, venv.action_space)
     # verbose=1 suppresses SB3 logger configuration,
     # which conflicts with imitation logging
-    agent = PPO("MlpPolicy", venv, verbose=1)
+    agent = stable_baselines3.PPO("MlpPolicy", venv, verbose=1)
     agent_trainer = trainer.AgentTrainer(agent, reward_net)
     fragmenter = fragments.RandomFragmenter(
         fragment_length=2, num_pairs=2, seed=0, warning_threshold=0
