@@ -10,5 +10,6 @@ import pytest
 )
 def test_experiments_fast(script_name: str):
     """Quickly check that experiments run successfully on fast mode."""
-    exit_code = subprocess.call([f"./experiments/{script_name}", "--fast"])
+    exit_code = subprocess.call([f"./experiments/{script_name}", "--fast"],
+                                env={"DATA_DIR": "tests/data"})
     assert exit_code == 0
