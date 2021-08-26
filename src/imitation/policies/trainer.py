@@ -18,15 +18,6 @@ class AgentTrainer:
     (if only because we need rendering when sampling and using human feedback,
     but not when training), but on the other hand, sampling in addition to training
     can be unnecessary overhead.
-
-    Args:
-        algorithm: the stable-baselines algorithm to use for training.
-            Its environment must be set.
-        reward_fn: either a RewardFn or a RewardNet instance that will supply
-            the rewards used for training the agent. In the latter case,
-            a simple wrapper is automatically applied to get a RewardFn.
-        device: an optional PyTorch device on which the RewardNet expects
-            its inputs to be
     """
 
     def __init__(
@@ -34,6 +25,14 @@ class AgentTrainer:
         algorithm: base_class.BaseAlgorithm,
         reward_fn: Union[rewards_common.RewardFn, reward_nets.RewardNet],
     ):
+        """Initialize the agent trainer.
+
+        Args:
+            algorithm: the stable-baselines algorithm to use for training.
+                Its environment must be set.
+            reward_fn: either a RewardFn or a RewardNet instance that will supply
+                the rewards used for training the agent.
+        """
         self.algorithm = algorithm
         if isinstance(reward_fn, reward_nets.RewardNet):
             reward_fn = reward_fn.predict

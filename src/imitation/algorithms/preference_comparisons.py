@@ -183,13 +183,7 @@ class RewardTrainer(abc.ABC):
 
 
 class CrossEntropyRewardTrainer(RewardTrainer):
-    """Train a reward model using a cross entropy loss.
-
-    Args:
-        model: the RewardNet instance to be trained
-        noise_prob: assumed probability with which the preference is uniformly random
-            (used for the model of preference generation that is used for the loss)
-    """
+    """Train a reward model using a cross entropy loss."""
 
     def __init__(
         self,
@@ -197,6 +191,15 @@ class CrossEntropyRewardTrainer(RewardTrainer):
         noise_prob: float = 0.0,
         batch_size: int = 32,
     ):
+        """Initialize the reward model trainer.
+
+        Args:
+            model: the RewardNet instance to be trained
+            noise_prob: assumed probability with which the preference
+                is uniformly random (used for the model of preference generation
+                that is used for the loss)
+            batch_size: number of fragment pairs per batch
+        """
         super().__init__(model)
         self.noise_prob = noise_prob
         self.batch_size = batch_size
