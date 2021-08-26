@@ -147,6 +147,7 @@ class PreferenceDataset(th.utils.data.Dataset):
         return (self.fragments1[i], self.fragments2[i]), self.preferences[i]
 
     def __len__(self) -> int:
+        assert len(self.fragments1) == len(self.fragments2) == len(self.preferences)
         return len(self.fragments1)
 
 
@@ -226,6 +227,10 @@ class CrossEntropyRewardTrainer(RewardTrainer):
         return self.model(*self.model.preprocess(transitions))
 
     def _probability(self, rews1: th.Tensor, rews2: th.Tensor) -> th.Tensor:
+        assert rews1.ndim == rews2.ndim == 1
+        # We take the softmax of the sums or rewards. model_probability
+        # is the first dimension of that softmax, representing the
+        # probability that fragment 1 is preferred.
         model_probability = 1 / (1 + (rews2 - rews1).sum().exp())
         return self.noise_prob * 0.5 + (1 - self.noise_prob) * model_probability
 
