@@ -28,6 +28,6 @@ def test_trainer_no_crash():
     agent_trainer = trainer.AgentTrainer(agent, reward_net)
     fragmenter = fragments.RandomFragmenter(fragment_length=2, num_pairs=2, seed=0)
     main_trainer = preference_comparisons.PreferenceComparisons(
-        agent_trainer, reward_net, 10, fragmenter
+        agent_trainer, reward_net, timesteps=10, fragmenter=fragmenter
     )
     main_trainer.train(2)

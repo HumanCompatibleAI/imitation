@@ -1,6 +1,8 @@
 """Training policies with a specifiable reward function and collect trajectories."""
+import abc
 from typing import List, Union
 
+import numpy as np
 from stable_baselines3.common import base_class, vec_env
 
 from imitation.data import types, wrappers
@@ -9,16 +11,35 @@ from imitation.rewards import reward_nets
 from imitation.util import reward_wrapper
 
 
-class AgentTrainer:
-    """Wrapper for training an SB3 algorithm on an arbitrary reward function.
+class TrajectoryGenerator(abc.ABC):
+    @abc.abstractmethod
+    def sample(self, num_steps: int) -> List[types.TrajectoryWithRew]:
+        """Sample a batch of trajectories.
 
-    TODO(ejnnr): For preference comparisons, we might want to allow something more
-    general at some point; only the .train() method is required. Also not clear yet
-    how we want to deal with sampling/training: they should probably be separate
-    (if only because we need rendering when sampling and using human feedback,
-    but not when training), but on the other hand, sampling in addition to training
-    can be unnecessary overhead.
-    """
+        Args:
+            num_steps: All trajectories taken together should
+                have at least this many steps.
+
+        Returns:
+            A list of sampled trajectories with rewards (which should
+            be the environment rewards, not ones from a reward model).
+        """
+
+    def train(self, steps: int, **kwargs):
+        """Train an agent if the trajector generator uses one.
+
+        By default, this method does nothing and doesn't need
+        to be overridden in subclasses that don't require training.
+
+        Args:
+            steps: number of environment steps to train for.
+            **kwargs: additional keyword arguments to pass on to
+                the training procedure.
+        """
+
+
+class AgentTrainer(TrajectoryGenerator):
+    """Wrapper for training an SB3 algorithm on an arbitrary reward function."""
 
     def __init__(
         self,
@@ -51,11 +72,11 @@ class AgentTrainer:
         )
         self.algorithm.set_env(self.venv)
 
-    def train(self, total_timesteps: int, **kwargs) -> List[types.TrajectoryWithRew]:
+    def train(self, steps: int, **kwargs):
         """Train the agent using the reward function specified during instantiation.
 
         Args:
-            total_timesteps: number of environment timesteps to train for
+            steps: number of environment timesteps to train for
             **kwargs: other keyword arguments to pass to BaseAlgorithm.train()
 
         Returns:
@@ -64,8 +85,46 @@ class AgentTrainer:
         """
         # to clear the trajectory buffer
         self.venv.reset()
-        self.algorithm.learn(total_timesteps=total_timesteps, **kwargs)
-        return self._pop_trajectories()
+        self.algorithm.learn(total_timesteps=steps, **kwargs)
+
+    def sample(self, steps: int) -> List[types.TrajectoryWithRew]:
+        trajectories = self._pop_trajectories()
+        # We typically have more trajectories than are needed.
+        # In that case, we use the final trajectories because
+        # they are the ones with the most relevant version of
+        # the agent.
+        # TODO(ejnnr): should we use random ones instead?
+
+        # The easiest way to do this will be to first invert the
+        # list and then just take the first trajectories:
+        trajectories = trajectories[::-1]
+
+        # Next, we need the cumulative sum of trajectory lengths
+        # to determine how many trajectories to return:
+        steps_cumsum = np.cumsum([len(traj) for traj in trajectories])
+
+        avail_steps = steps_cumsum[-1]
+        if avail_steps == 0:
+            # We have this as a special case to give a better error message
+            raise RuntimeError(
+                "Trajectory buffer is empty, "
+                "run AgentTrainer.train() before .sample()."
+            )
+        if avail_steps < steps:
+            raise RuntimeError(
+                f"Requested {steps} environment steps, "
+                f"but only {avail_steps} available. "
+                "Run AgentTrainer.train() with more steps."
+            )
+
+        # Now we find the first index that gives us enough
+        # total steps:
+        idx = (steps_cumsum >= steps).argmax()
+        # we need to include the element at position idx
+        trajectories = trajectories[: idx + 1]
+        # sanity check
+        assert sum(len(traj) for traj in trajectories) >= steps
+        return trajectories
 
     @property
     def policy(self):
