@@ -103,6 +103,8 @@ class AgentTrainer(TrajectoryGenerator):
         # to determine how many trajectories to return:
         steps_cumsum = np.cumsum([len(traj) for traj in trajectories])
 
+        # TODO(ejnnr): I think it would be better to sample
+        # additional trajectories here if needed.
         avail_steps = steps_cumsum[-1]
         if avail_steps == 0:
             # We have this as a special case to give a better error message
