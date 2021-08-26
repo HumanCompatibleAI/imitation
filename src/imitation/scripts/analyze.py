@@ -198,7 +198,7 @@ table_entry_fns: sd_to_table_entry_type = collections.OrderedDict(
 )
 
 
-# If `verbosity` is at least the length of this tuple, then we use all table_entry_fns
+# If `verbosity` is at least the length of this list, then we use all table_entry_fns
 # as columns of table.
 # Otherwise, use only the subset at index `verbosity`. The subset of columns is
 # still arranged in the same order as in the `table_entry_fns` OrderedDict.
@@ -226,7 +226,7 @@ table_verbosity_mapping.append(
 
 def _get_table_entry_fns_subset(table_verbosity: int) -> sd_to_table_entry_type:
     assert table_verbosity >= 0
-    if table_verbosity >= len(table_entry_fns):
+    if table_verbosity >= len(table_verbosity_mapping):
         return table_entry_fns
     else:
         keys_subset = table_verbosity_mapping[table_verbosity]

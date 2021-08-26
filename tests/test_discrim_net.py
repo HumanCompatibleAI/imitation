@@ -1,14 +1,15 @@
+import contextlib
 import os
 
 import numpy as np
 import pytest
 import torch as th
-from stable_baselines3.common import preprocessing
+from stable_baselines3.common import vec_env
 
 from imitation.data import rollout
 from imitation.policies import base
 from imitation.rewards import discrim_nets, reward_nets
-from imitation.util import networks, util
+from imitation.util import util
 
 
 def _setup_airl_basic(venv):
@@ -17,15 +18,6 @@ def _setup_airl_basic(venv):
 
 
 def _setup_airl_basic_custom_net(venv):
-    base_reward_net = reward_nets.BasicRewardMLP(
-        observation_space=venv.observation_space,
-        action_space=venv.action_space,
-        use_state=True,
-        use_action=True,
-        use_next_state=False,
-        use_done=False,
-        hid_sizes=(32, 32),
-    )
     reward_net = reward_nets.BasicRewardNet(
         observation_space=venv.observation_space,
         action_space=venv.action_space,
@@ -33,25 +25,19 @@ def _setup_airl_basic_custom_net(venv):
         use_action=True,
         use_next_state=False,
         use_done=False,
-        base_reward_net=base_reward_net,
+        hid_sizes=(32, 32),
     )
     return discrim_nets.DiscrimNetAIRL(reward_net)
 
 
 def _setup_airl_undiscounted_shaped_reward_net(venv):
-    potential_in_size = preprocessing.get_flattened_obs_dim(venv.observation_space)
-    potential_net = networks.build_mlp(
-        in_size=potential_in_size,
-        hid_sizes=(32, 32),
-        squeeze_output=True,
-    )
     reward_net = reward_nets.BasicShapedRewardNet(
         venv.observation_space,
         venv.action_space,
         discount_factor=1.0,
         use_next_state=True,
         use_done=True,
-        potential_net=potential_net,
+        potential_hid_sizes=(32, 32),
     )
     return discrim_nets.DiscrimNetAIRL(reward_net)
 
@@ -100,6 +86,40 @@ def discrim_net(request, venv):
     """
     # If parallel=True, codecov sometimes acts up.
     return DISCRIM_NET_SETUPS[request.param](venv)
+
+
+@pytest.mark.parametrize("n_timesteps", [2, 4, 10])
+def test_logits_gen_is_high_log_policy_act_prob(
+    discrim_net: discrim_nets.DiscrimNet,
+    venv: vec_env.VecEnv,
+    n_timesteps: int,
+):
+    """Smoke test calling `logits_gen_is_high` on each DiscrimNet.
+
+    For subclasses of DiscrimNetAIRL, also checks that the function raises
+    error on `log_policy_act_prob=None`.
+    """
+
+    random = base.RandomPolicy(venv.observation_space, venv.action_space)
+    trans = rollout.generate_transitions(random, venv, n_timesteps=n_timesteps)
+
+    obs = util.torchify_with_space(trans.obs, venv.observation_space)
+    acts = util.torchify_with_space(trans.acts, venv.action_space)
+    next_obs = util.torchify_with_space(trans.next_obs, venv.observation_space)
+    dones = th.as_tensor(trans.dones)
+    log_act_prob_non_none = th.as_tensor(np.random.rand(n_timesteps))
+
+    for log_act_prob in [None, log_act_prob_non_none]:
+        if (
+            isinstance(discrim_net, discrim_nets.DiscrimNetAIRL)
+            and log_act_prob is None
+        ):
+            maybe_error_ctx = pytest.raises(TypeError, match="Non-None.*required.*")
+        else:
+            maybe_error_ctx = contextlib.nullcontext()
+
+        with maybe_error_ctx:
+            discrim_net.logits_gen_is_high(obs, acts, next_obs, dones, log_act_prob)
 
 
 def test_serialize_identity(discrim_net, venv, tmpdir):
