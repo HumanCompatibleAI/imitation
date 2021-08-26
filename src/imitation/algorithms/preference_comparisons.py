@@ -191,6 +191,7 @@ class CrossEntropyRewardTrainer(RewardTrainer):
         model: reward_nets.RewardNet,
         noise_prob: float = 0.0,
         batch_size: int = 32,
+        discount_factor: float = 1.0,
     ):
         """Initialize the reward model trainer.
 
@@ -200,10 +201,16 @@ class CrossEntropyRewardTrainer(RewardTrainer):
                 is uniformly random (used for the model of preference generation
                 that is used for the loss)
             batch_size: number of fragment pairs per batch
+            discount_factor: the model of preference generation uses a softmax
+                of returns as the probability that a fragment is preferred.
+                This is the discount factor used to calculate those returns.
+                Default is 1, i.e. undiscounted sums of rewards (which is what
+                the DRLHP paper uses).
         """
         super().__init__(model)
         self.noise_prob = noise_prob
         self.batch_size = batch_size
+        self.discount_factor = discount_factor
         self.optim = th.optim.Adam(self.model.parameters())
 
     def _loss(
@@ -228,10 +235,19 @@ class CrossEntropyRewardTrainer(RewardTrainer):
 
     def _probability(self, rews1: th.Tensor, rews2: th.Tensor) -> th.Tensor:
         assert rews1.ndim == rews2.ndim == 1
-        # We take the softmax of the sums or rewards. model_probability
+        # First, we compute the difference of the returns of
+        # the two fragments. We have a special case for a discount
+        # factor of 1 to avoid unnecessary computation (especially
+        # since this is the default setting).
+        if self.discount_factor == 1:
+            returns_diff = (rews2 - rews1).sum()
+        else:
+            discounts = self.discount_factor ** th.arange(len(rews1))
+            returns_diff = (discounts * (rews2 - rews1)).sum()
+        # We take the softmax of the returns. model_probability
         # is the first dimension of that softmax, representing the
         # probability that fragment 1 is preferred.
-        model_probability = 1 / (1 + (rews2 - rews1).sum().exp())
+        model_probability = 1 / (1 + returns_diff.exp())
         return self.noise_prob * 0.5 + (1 - self.noise_prob) * model_probability
 
     def train(self, dataset: PreferenceDataset):
