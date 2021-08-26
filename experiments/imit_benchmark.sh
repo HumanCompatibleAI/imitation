@@ -7,16 +7,11 @@ set -e
 # The benchmark tasks are defined in the CSV config file
 # `experiments/imit_benchmark_config.csv`.
 
-gnu_date=date
-gnu_getopt=getopt
-if [[ "$OSTYPE" == "darwin"* ]]; then
-  gnu_date=gdate
-  gnu_getopt=gnu-getopt
-fi
+source experiments/common.env
 
 CONFIG_CSV="experiments/imit_benchmark_config.csv"
 DATA_DIR="${DATA_DIR:-data/}"
-TIMESTAMP=$($gnu_date --iso-8601=seconds)
+EXPERT_MODELS_DIR="data/expert_models"
 LOG_ROOT="output/imit_benchmark/${TIMESTAMP}"
 extra_configs=""
 extra_options=""
@@ -24,7 +19,7 @@ ALGORITHM="gail"
 
 SEEDS="0 1 2 3 4"
 
-TEMP=$($gnu_getopt -o fT -l fast,mvp_fast,tmux,gail,airl,pdb,echo,run_name:,log_root:,file_storage:,mvp_seals,cheetah -- "$@")
+TEMP=$($GNU_GETOPT -o f -l fast,gail,airl,run_name:,log_root:,file_storage: -- $@)
 if [[ $? != 0 ]]; then exit 1; fi
 eval set -- "$TEMP"
 

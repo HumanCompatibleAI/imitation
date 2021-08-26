@@ -11,19 +11,12 @@ ENVS+="two_d_maze custom_ant disabled_ant "
 
 SEEDS="0 1 2"
 
-gnu_date=date
-gnu_getopt=gnu-getopt
-if [[ "$OSTYPE" == "darwin"* ]]; then
-  gnu_date=gdate
-  gnu_getopt=gnu-getopt
-fi
-
-TIMESTAMP=$($gnu_date --iso-8601=seconds)
+source experiments/common.env
 OUTPUT_DIR="output/train_experts/${TIMESTAMP}"
 RESULTS_FILE="results.txt"
 extra_configs=""
 
-TEMP=$($gnu_getopt -o fr -l fast,regenerate -- $@)
+TEMP=$($GNU_GETOPT -o fr -l fast,regenerate -- $@)
 if [[ $? != 0 ]]; then exit 1; fi
 eval set -- "$TEMP"
 
