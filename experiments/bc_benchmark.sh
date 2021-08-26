@@ -14,7 +14,7 @@ source experiments/common.env
 ENVS+="cartpole"
 SEEDS="0 1 2"
 
-DATA_DIR="data/"
+DATA_DIR=${DATA_DIR:-"data/"}
 OUTPUT_DIR="output/bc_benchmark/${TIMESTAMP}"
 RESULTS_FILE="results.txt"
 extra_configs=""
