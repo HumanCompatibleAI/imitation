@@ -76,7 +76,7 @@ class SyntheticGatherer:
             # We also include an optional probability of making a random decision
             # (modeling the fact that humans make mistakes):
             noisy_probs = self.noise_prob * 0.5 + (1 - self.noise_prob * model_probs)
-            return self.rng.binomial(n=1, p=noisy_probs)
+            return self.rng.binomial(n=1, p=noisy_probs).astype(np.float32)
 
         if self.noise_prob != 0:
             raise ValueError(
