@@ -41,7 +41,7 @@ def _sample_fixed_length_trajectories(
         [functools.partial(TerminalSentinelEnv, length) for length in episode_lengths]
     )
     policy = RandomPolicy(venv.observation_space, venv.action_space)
-    sample_until = rollout.min_episodes(min_episodes)
+    sample_until = rollout.make_min_episodes(min_episodes)
     trajectories = rollout.generate_trajectories(
         policy,
         venv,
@@ -154,7 +154,7 @@ def test_rollout_stats():
     venv = vec_env.DummyVecEnv([lambda: env])
 
     policy = serialize.load_policy("zero", "UNUSED", venv)
-    trajs = rollout.generate_trajectories(policy, venv, rollout.min_episodes(10))
+    trajs = rollout.generate_trajectories(policy, venv, rollout.make_min_episodes(10))
     s = rollout.rollout_stats(trajs)
 
     np.testing.assert_allclose(s["return_mean"], s["monitor_return_mean"] / 2)
@@ -174,7 +174,7 @@ def test_unwrap_traj():
     venv = vec_env.DummyVecEnv([lambda: env])
 
     policy = serialize.load_policy("zero", "UNUSED", venv)
-    trajs = rollout.generate_trajectories(policy, venv, rollout.min_episodes(10))
+    trajs = rollout.generate_trajectories(policy, venv, rollout.make_min_episodes(10))
     trajs_unwrapped = [rollout.unwrap_traj(t) for t in trajs]
     trajs_unwrapped_twice = [rollout.unwrap_traj(t) for t in trajs_unwrapped]
 
@@ -187,3 +187,20 @@ def test_unwrap_traj():
         np.testing.assert_equal(t1.acts, t2.acts)
         np.testing.assert_equal(t1.obs, t2.obs)
         np.testing.assert_equal(t1.rews, t2.rews)
+
+
+def test_make_sample_until_errors():
+    with pytest.raises(ValueError, match="At least one.*"):
+        rollout.make_sample_until(min_timesteps=None, min_episodes=None)
+
+    episodes_positive = pytest.raises(ValueError, match="min_episodes.*positive")
+    with episodes_positive:
+        rollout.make_sample_until(min_timesteps=None, min_episodes=0)
+    with episodes_positive:
+        rollout.make_sample_until(min_timesteps=10, min_episodes=-34)
+
+    timesteps_positive = pytest.raises(ValueError, match="min_timesteps.*positive")
+    with timesteps_positive:
+        rollout.make_sample_until(min_timesteps=-3, min_episodes=None)
+    with timesteps_positive:
+        rollout.make_sample_until(min_timesteps=0, min_episodes=None)
