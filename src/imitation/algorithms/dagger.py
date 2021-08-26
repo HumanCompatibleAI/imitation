@@ -241,23 +241,6 @@ class InteractiveTrajectoryCollector(vec_env.VecEnvWrapper):
 
         return next_obs, rews, dones, infos
 
-    def flush_trajectories(self) -> None:
-        """Immediately save all partially completed trajectories to `self.save_dir`."""
-        # TODO(shwang): Since we are saving partial trajectories instead of
-        #  whole trajectories, it might make sense to just transition
-        #  to saving TransitionsMinimal. One easy way to do this could be via
-        #  `imitation.data.wrappers.BufferingWrapper.pop_transitions`.
-        #
-        #  Ah yes, looks like we use Transitions anyways in the
-        #  `DAggerTrainer._try_load_demos` stage.
-        for i in range(self.num_envs):
-            # If the length is just 1, then the intermediate trajectory data only
-            # contains the reset() observation and no action (corresponding to a
-            # Trajectory of length 0).
-            if len(self.traj_accum.partial_trajectories[i]) > 1:
-                traj = self.traj_accum.finish_trajectory(i)
-                _save_dagger_demo(traj, self.save_dir)
-
 
 class NeedsDemosException(Exception):
     """Signals demos need to be collected for current round before continuing."""
@@ -513,6 +496,7 @@ class SimpleDAggerTrainer(DAggerTrainer):
         """SimpleDAggerTrainer constructor.
 
         This constructor also accepts keyword arguments for `DaggerTrainer`. See
+        the `DaggerTrainer.__init__` docstring for more details.
 
         Args:
             venv: Vectorized training environment. Note that when the robot
@@ -524,8 +508,8 @@ class SimpleDAggerTrainer(DAggerTrainer):
             expert_policy: The expert policy used to generate synthetic demonstrations.
             expert_trajs: Optional starting dataset that is inserted into the round 0
                 dataset.
-            dagger_trainer_kwargs: Other keyword arguments passed to
-                `DAggerTrainer.__init__`.
+            dagger_trainer_kwargs: Other keyword arguments passed to the
+                superclass initializer `DAggerTrainer.__init__`.
         """
         super().__init__(venv=venv, scratch_dir=scratch_dir, **dagger_trainer_kwargs)
         self.expert_policy = expert_policy
@@ -624,11 +608,6 @@ class SimpleDAggerTrainer(DAggerTrainer):
             logger.record("dagger/round_num", round_num)
             logger.record("dagger/round_episode_count", round_episode_count)
             logger.record("dagger/round_timestep_count", round_timestep_count)
-
-            # TODO(shwang): BC starts looping Tensorboard
-            #   back to x=0 with each new call to BC.train(). Consider adding a
-            #   `reset_tensorboard: bool = False` argument to BC.train() if this turns
-            #   out to be the case?
 
             # `logger.dump` is called inside BC.train within the following fn call:
             self.extend_and_update(bc_train_kwargs)

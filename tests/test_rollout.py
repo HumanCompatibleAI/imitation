@@ -187,3 +187,20 @@ def test_unwrap_traj():
         np.testing.assert_equal(t1.acts, t2.acts)
         np.testing.assert_equal(t1.obs, t2.obs)
         np.testing.assert_equal(t1.rews, t2.rews)
+
+
+def test_make_sample_until_errors():
+    with pytest.raises(ValueError, match="At least one.*"):
+        rollout.make_sample_until(min_timesteps=None, min_episodes=None)
+
+    episodes_positive = pytest.raises(ValueError, match="min_episodes.*positive")
+    with episodes_positive:
+        rollout.make_sample_until(min_timesteps=None, min_episodes=0)
+    with episodes_positive:
+        rollout.make_sample_until(min_timesteps=10, min_episodes=-34)
+
+    timesteps_positive = pytest.raises(ValueError, match="min_timesteps.*positive")
+    with timesteps_positive:
+        rollout.make_sample_until(min_timesteps=-3, min_episodes=None)
+    with timesteps_positive:
+        rollout.make_sample_until(min_timesteps=0, min_episodes=None)

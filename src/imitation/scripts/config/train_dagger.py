@@ -5,7 +5,7 @@ import torch as th
 
 from imitation.util import util
 
-train_dagger_ex = sacred.Experiment("train_bc")
+train_dagger_ex = sacred.Experiment("train_dagger")
 
 
 @train_dagger_ex.config
@@ -17,10 +17,11 @@ def config():
     bc_train_kwargs = dict(
         n_epochs=None,  # Number of BC epochs per DAgger training round
         n_batches=None,  # Number of BC batches per DAgger training round
+        log_interval=500,  # Number of updates between Tensorboard/stdout logs
     )
     n_episodes_eval = 50  # Number of rollout episodes in final evaluation.
     expert_data_src = None
-    expert_data_src_format = None  # Either "path" or "trajectory"
+    expert_data_src_format = None  # Either "path" or "trajectory" or None
     rollout_hint = None  # Used to generate default `expert_data_src`.
     # Number of trajectories to use during training, or None to use all.
     n_expert_demos = None
@@ -97,24 +98,30 @@ def paths(log_root, env_name):
 def mountain_car():
     env_name = "MountainCar-v0"
     rollout_hint = "mountain_car"
+    l2_weight = 0
+    total_timesteps = 20000
 
 
 @train_dagger_ex.named_config
 def seals_mountain_car():
     env_name = "seals/MountainCar-v0"
     rollout_hint = "seals_mountain_car"
+    l2_weight = 0
+    total_timesteps = 20000
 
 
 @train_dagger_ex.named_config
 def cartpole():
     env_name = "CartPole-v1"
     rollout_hint = "cartpole"
+    total_timesteps = 20000
 
 
 @train_dagger_ex.named_config
 def seals_cartpole():
     env_name = "seals/CartPole-v0"
-    rollout_hint = "cartpole"
+    rollout_hint = "seals_cartpole"
+    total_timesteps = 20000
 
 
 @train_dagger_ex.named_config
@@ -133,7 +140,8 @@ def ant():
 def half_cheetah():
     env_name = "HalfCheetah-v2"
     rollout_hint = "half_cheetah"
-    # Consider adding callback so that I can calculate reward over time.
+    l2_weight = 0
+    total_timesteps = 60000
 
 
 @train_dagger_ex.named_config
