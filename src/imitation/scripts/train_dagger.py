@@ -99,8 +99,8 @@ def train_dagger(
         expert_trajs = expert_data_src
     else:
         raise ValueError(
-            f"expert_data_src_format={expert_data_src_format} should be 'path' "
-            "or 'trajectory' or None."
+            f"expert_data_src_format={expert_data_src_format} should be 'path', "
+            "'trajectory' or None."
         )
 
     if expert_trajs is not None:

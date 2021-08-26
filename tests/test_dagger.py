@@ -4,14 +4,16 @@ import contextlib
 import glob
 import os
 import pickle
+from unittest import mock
 
+import gym
 import numpy as np
 import pytest
 from stable_baselines3.common import policies
 
 from imitation.algorithms import bc, dagger
 from imitation.data import rollout
-from imitation.policies import serialize
+from imitation.policies import base, serialize
 from imitation.util import util
 
 ENV_NAME = "CartPole-v1"
@@ -25,6 +27,47 @@ def test_beta_schedule():
     for i in range(10):
         assert np.allclose(one_step_sched(i), 1 if i == 0 else 0)
         assert np.allclose(three_step_sched(i), (3 - i) / 3 if i <= 2 else 0)
+
+
+@pytest.fixture(params=[1, 4])
+def num_envs(request):
+    return request.param
+
+
+@pytest.fixture
+def venv(num_envs):
+    return util.make_vec_env(ENV_NAME, num_envs)
+
+
+@pytest.fixture
+def expert_policy(venv):
+    return serialize.load_policy("ppo", EXPERT_POLICY_PATH, venv)
+
+
+@pytest.fixture(params=[True, False])
+def expert_trajs(request):
+    keep_trajs = request.param
+    if keep_trajs:
+        with open(EXPERT_ROLLOUTS_PATH, "rb") as f:
+            return pickle.load(f)
+    else:
+        return None
+
+
+def test_traj_collector_seed(tmpdir, venv):
+    collector = dagger.InteractiveTrajectoryCollector(
+        venv=venv,
+        get_robot_acts=lambda o: [venv.action_space.sample() for _ in range(len(o))],
+        beta=0.5,
+        save_dir=tmpdir,
+    )
+    seeds1 = collector.seed(42)
+    obs1 = collector.reset()
+    seeds2 = collector.seed(42)
+    obs2 = collector.reset()
+
+    np.testing.assert_array_equal(seeds1, seeds2)
+    np.testing.assert_array_equal(obs1, obs2)
 
 
 def test_traj_collector(tmpdir, venv):
@@ -60,31 +103,6 @@ def test_traj_collector(tmpdir, venv):
     trajs = map(dagger._load_trajectory, file_paths)
     nonzero_acts = sum(np.sum(traj.acts != 0) for traj in trajs)
     assert nonzero_acts == 0
-
-
-@pytest.fixture(params=[1, 4])
-def num_envs(request):
-    return request.param
-
-
-@pytest.fixture
-def venv(num_envs):
-    return util.make_vec_env(ENV_NAME, num_envs)
-
-
-@pytest.fixture
-def expert_policy(venv):
-    return serialize.load_policy("ppo", EXPERT_POLICY_PATH, venv)
-
-
-@pytest.fixture(params=[True, False])
-def expert_trajs(request):
-    keep_trajs = request.param
-    if keep_trajs:
-        with open(EXPERT_ROLLOUTS_PATH, "rb") as f:
-            return pickle.load(f)
-    else:
-        return None
 
 
 def _build_dagger_trainer(tmpdir, venv, beta_schedule, expert_policy, expert_trajs):
@@ -162,11 +180,30 @@ def test_trainer_needs_demos_exception_error(
     with ctx:
         trainer.extend_and_update(dict(n_epochs=1))
 
-    if ctx == contextlib.nullcontext():
-        with error_ctx:
-            # If ctx=nullcontext before, then we should fail on the second call
-            # because there aren't any demos loaded into round 1 yet.
-            trainer.extend_and_update(dict(n_epochs=1))
+    # If ctx==nullcontext before, then we should fail on the second call
+    # because there aren't any demos loaded into round 1 yet.
+    # If ctx==error_ctx, then still should fail once again on the second call.
+    with error_ctx:
+        trainer.extend_and_update(dict(n_epochs=1))
+
+
+def test_trainer_train_arguments(trainer, expert_policy):
+    def add_samples():
+        collector = trainer.get_trajectory_collector()
+        rollout.generate_trajectories(
+            expert_policy, collector, sample_until=rollout.make_min_timesteps(40)
+        )
+
+    # Lower default number of epochs for the no-arguments call that follows.
+    add_samples()
+    with mock.patch.object(trainer, "DEFAULT_N_EPOCHS", 1):
+        trainer.extend_and_update()
+
+    add_samples()
+    trainer.extend_and_update(dict(n_batches=2))
+
+    add_samples()
+    trainer.extend_and_update(dict(n_epochs=1))
 
 
 def test_trainer_makes_progress(trainer, venv, expert_policy):
@@ -223,7 +260,6 @@ def test_trainer_save_reload(tmpdir, init_trainer_fn):
     assert not all(values.equal(old_vars[var]) for var, values in third_vars.items())
 
 
-@pytest.mark.now
 def test_simple_dagger_trainer_train(simple_dagger_trainer: dagger.SimpleDAggerTrainer):
     simple_dagger_trainer.train(total_timesteps=200, bc_train_kwargs=dict(n_batches=10))
 
@@ -234,3 +270,31 @@ def test_policy_save_reload(tmpdir, trainer):
     trainer.save_policy(policy_path)
     pol = bc.reconstruct_policy(policy_path)
     assert isinstance(pol, policies.BasePolicy)
+
+
+def test_simple_dagger_space_mismatch_error(
+    tmpdir, venv, beta_schedule, expert_policy, expert_trajs
+):
+    class MismatchedSpace(gym.spaces.Space):
+        """Dummy space that is not equal to any other space."""
+
+    # Swap out expert_policy.{observation,action}_space with a bad space to
+    # elicit space mismatch errors.
+    space = MismatchedSpace()
+    for space_name in ["observation", "action"]:
+        with mock.patch.object(expert_policy, f"{space_name}_space", space):
+            with pytest.raises(ValueError, match=f"Mismatched {space_name}.*"):
+                _build_simple_dagger_trainer(
+                    tmpdir, venv, beta_schedule, expert_policy, expert_trajs
+                )
+
+
+def test_dagger_not_enough_transitions_error(tmpdir):
+    venv = util.make_vec_env("CartPole-v0")
+    # Initialize with large batch size to ensure error down the line.
+    trainer = dagger.DAggerTrainer(venv, tmpdir, batch_size=100_000)
+    collector = trainer.get_trajectory_collector()
+    policy = base.RandomPolicy(venv.observation_space, venv.action_space)
+    rollout.generate_trajectories(policy, collector, rollout.make_min_episodes(1))
+    with pytest.raises(ValueError, match="Not enough transitions.*"):
+        trainer.extend_and_update()

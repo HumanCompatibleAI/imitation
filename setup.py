@@ -5,8 +5,7 @@ import src.imitation  # pytype: disable=import-error
 TESTS_REQUIRE = [
     "seals>=0.1.1",
     "black",
-    # remove pin once https://github.com/nedbat/coveragepy/issues/881 fixed
-    "coverage==4.5.4",
+    "coverage",
     "codecov",
     "codespell",
     "flake8",
@@ -16,6 +15,8 @@ TESTS_REQUIRE = [
     "flake8-isort",
     "ipykernel",
     "jupyter",
+    # remove pin once https://github.com/jupyter/jupyter_client/issues/637 fixed
+    "jupyter-client<7.0",
     "pytest",
     "pytest-cov",
     "pytest-notebook",
@@ -73,10 +74,6 @@ setup(
             # for convenience
             *TESTS_REQUIRE,
             *DOCS_REQUIRE,
-        ],
-        "jax": [
-            "jax~=0.2.8",
-            "jaxlib~=0.1.59",
         ],
         "test": TESTS_REQUIRE,
         "docs": DOCS_REQUIRE,

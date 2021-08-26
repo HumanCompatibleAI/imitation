@@ -7,9 +7,11 @@ set -e
 # The benchmark tasks are defined in the CSV config file
 # `experiments/imit_benchmark_config.csv`.
 
+source experiments/common.env
+
 CONFIG_CSV="experiments/imit_benchmark_config.csv"
 DATA_DIR="${DATA_DIR:-data/}"
-TIMESTAMP=$(date --iso-8601=seconds)
+EXPERT_MODELS_DIR="data/expert_models"
 LOG_ROOT="output/imit_benchmark/${TIMESTAMP}"
 extra_configs=""
 extra_options=""
@@ -17,7 +19,7 @@ ALGORITHM="gail"
 
 SEEDS="0 1 2 3 4"
 
-TEMP=$(getopt -o fT -l fast,mvp_fast,tmux,gail,airl,pdb,echo,run_name:,log_root:,file_storage:,mvp_seals,cheetah -- "$@")
+TEMP=$($GNU_GETOPT -o f -l fast,gail,airl,run_name:,log_root:,file_storage: -- $@)
 if [[ $? != 0 ]]; then exit 1; fi
 eval set -- "$TEMP"
 
@@ -26,10 +28,6 @@ while true; do
     # Fast mode (debug)
     -f | --fast)
       CONFIG_CSV="tests/data/imit_benchmark_config.csv"
-      # TODO(shwang): Add new flag for using special test data?
-      # Or don't make a new flag -- probably just read EXPERT_MODELS_DIR
-      # from export if possible via DATA_DIR=${EXPERT_MODELS_DIR:-default}
-      # EXPERT_MODELS_DIR="tests/data/expert_models"
       SEEDS="0"
       extra_configs+="fast "
       shift

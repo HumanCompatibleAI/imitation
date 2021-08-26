@@ -9,18 +9,17 @@ set -e
 #
 # When training is finished, it reports the mean episode reward of each
 # expert.
+source experiments/common.env
 
 ENVS+="cartpole"
-
 SEEDS="0 1 2"
 
-EXPERT_MODELS_DIR="data/expert_models"
-TIMESTAMP=$(date --iso-8601=seconds)
+DATA_DIR="data/"
 OUTPUT_DIR="output/bc_benchmark/${TIMESTAMP}"
 RESULTS_FILE="results.txt"
 extra_configs=""
 
-TEMP=$(getopt -o fT -l fast,tmux,run_name:,mvp_seals,mvp_fast -- "$@")
+TEMP=$($GNU_GETOPT -o fT -l fast,tmux,run_name:,mvp_seals,mvp_fast -- "$@")
 if [[ $? != 0 ]]; then exit 1; fi
 eval set -- "$TEMP"
 
@@ -31,8 +30,6 @@ while true; do
       ENVS="cartpole"
       SEEDS="0"
       extra_configs+="fast "
-      # TODO(shwang)
-      # EXPERT_MODELS_DIR="tests/data/expert_models"
       shift
       ;;
     --mvp_seals)  # Table benchmark settings
@@ -68,7 +65,7 @@ parallel -j 25% --header : --results ${OUTPUT_DIR}/parallel/ --colsep , --progre
   with \
   ${extra_configs} \
   {env_cfg_name} \
-  expert_data_src=${EXPERT_MODELS_DIR}/{env_cfg_name}_0/rollouts/final.pkl \
+  expert_data_src=${DATA_DIR}/expert_models/{env_cfg_name}_0/rollouts/final.pkl \
   expert_data_src_format="path" \
   seed={seed} \
   log_root=${OUTPUT_DIR} \

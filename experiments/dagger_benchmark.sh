@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
 set -e
+source experiments/common.env
 
 ENVS="cartpole"
-EXPERT_MODELS_DIR="data/expert_models"
-TIMESTAMP=$(date --iso-8601=seconds)
+DATA_DIR=${DATA_DIR:-"data/expert_models"}
 LOG_ROOT="output/dagger_benchmark/${TIMESTAMP}"
 extra_configs=""
 extra_options=""
 
 SEEDS="0 1 2 3 4"
 
-TEMP=$(getopt -o fT -l fast,mvp,mvp_fast,tmux,pdb,echo,run_name:,log_root:,file_storage:,mvp_seals -- "$@")
+TEMP=$(GNU_GETOPT -o fT -l fast,mvp,mvp_fast,tmux,pdb,echo,run_name:,log_root:,file_storage:,mvp_seals -- "$@")
 if [[ $? != 0 ]]; then exit 1; fi
 eval set -- "$TEMP"
 
@@ -18,7 +18,6 @@ while true; do
   case "$1" in
     # Fast mode (debug)
     -f | --fast)
-      # EXPERT_MODELS_DIR="tests/data/expert_models"  # TODO(shwang)
       SEEDS="0"
       extra_configs+="fast "
       shift
@@ -78,7 +77,7 @@ parallel -j 25% --header : --results ${LOG_ROOT}/parallel/ --colsep , --progress
   {env_config_name} \
   log_dir="${LOG_ROOT}/{env_config_name}_{seed}" \
   expert_data_src_format=None \
-  expert_policy_path=${EXPERT_MODELS_DIR}/{env_config_name}_0/policies/final/ \
+  expert_policy_path=${DATA_DIR}/expert_models/{env_config_name}_0/policies/final/ \
   expert_policy_type='ppo' \
   seed={seed} \
   ${extra_configs} \
