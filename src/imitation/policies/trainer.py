@@ -39,16 +39,18 @@ class AgentTrainer:
             reward_fn = reward_fn.predict
         self.reward_fn = reward_fn
 
-        env = self.algorithm.get_env()
-        if not isinstance(env, vec_env.VecEnv):
+        venv = self.algorithm.get_env()
+        if not isinstance(venv, vec_env.VecEnv):
             raise ValueError("The environment for the agent algorithm must be set.")
         # The BufferingWrapper records all trajectories, so we can return
         # them after training. This should come first (before the wrapper that
         # changes the reward function), so that we return the original environment
         # rewards.
-        env = wrappers.BufferingWrapper(env)
-        env = reward_wrapper.RewardVecEnvWrapper(env, reward_fn)
-        self.algorithm.set_env(env)
+        self.buffering_wrapper = wrappers.BufferingWrapper(venv)
+        self.venv = reward_wrapper.RewardVecEnvWrapper(
+            self.buffering_wrapper, reward_fn
+        )
+        self.algorithm.set_env(self.venv)
 
     def train(self, total_timesteps: int, **kwargs) -> List[types.TrajectoryWithRew]:
         """Train the agent using the reward function specified during instantiation.
@@ -70,14 +72,5 @@ class AgentTrainer:
     def policy(self):
         return self.algorithm.policy
 
-    @property
-    def venv(self) -> reward_wrapper.RewardVecEnvWrapper:
-        venv = self.algorithm.get_env()
-        assert isinstance(
-            venv, reward_wrapper.RewardVecEnvWrapper
-        ), "RewardVecEnvWrapper missing"
-        return venv
-
     def _pop_trajectories(self) -> List[types.TrajectoryWithRew]:
-        # self.venv is the reward wrapper, so self.venv.venv is the BufferingWrapper
-        return self.venv.venv.pop_trajectories()
+        return self.buffering_wrapper.pop_trajectories()
