@@ -7,7 +7,7 @@ import os.path as osp
 import tempfile
 import warnings
 from collections import OrderedDict
-from typing import Any, Callable, List, Mapping, Optional, Set
+from typing import Any, Callable, List, Mapping, Optional, Sequence, Set
 
 import pandas as pd
 from sacred.observers import FileStorageObserver
@@ -19,8 +19,24 @@ from imitation.util.sacred import dict_get_nested as get
 
 @analysis_ex.capture
 def _gather_sacred_dicts(
-    source_dirs: List[str], run_name: str, env_name: str, skip_failed_runs: bool
+    source_dirs: Sequence[str], run_name: str, env_name: str, skip_failed_runs: bool
 ) -> List[sacred_util.SacredDicts]:
+    """Helper function for parsing and selecting Sacred experiment JSON files.
+
+    Args:
+        source_dirs: A directory containing Sacred FileObserver subdirectories
+            associated with the `train_adversarial` Sacred script. Behavior is
+            undefined if there are Sacred subdirectories associated with other
+            scripts. (Captured argument)
+        run_name: If provided, then only analyze results from Sacred directories
+            associated with this run name. `run_name` is compared against the
+            "experiment.name" key in `run.json`. (Captured argument)
+        skip_failed_runs: If True, then filter out runs where the status is FAILED.
+            (Captured argument)
+
+    Returns:
+        A list of `SacredDicts` corresponding to the selected Sacred directories.
+    """
     # e.g. chain.from_iterable([["pathone", "pathtwo"], [], ["paththree"]]) =>
     # ("pathone", "pathtwo", "paththree")
     sacred_dirs = itertools.chain.from_iterable(
@@ -59,10 +75,9 @@ def gather_tb_directories() -> dict:
     The directories are copied to a unique directory in `/tmp/analysis_tb/` under
     subdirectories matching the Tensorboard events' Ray Tune trial names.
 
-    Undocumented arguments are the same as in `analyze_imitation()`.
-
-    Args:
-      source_dir: A local_dir for Ray. For example, `~/ray_results/`.
+    This function calls the helper `_gather_sacred_dicts`, which captures its arguments
+    automatically via Sacred. Provide those arguments to select which Sacred
+    results to parse.
 
     Returns:
       A dict with two keys. "gather_dir" (str) is a path to a /tmp/
@@ -119,8 +134,6 @@ def _get_algo_name(sd: sacred_util.SacredDicts) -> str:
         algo = get(sd.config, "algorithm")
         if algo is not None:
             algo = algo.upper()
-        else:
-            print(sd.config)
         return algo
     elif exp_command == "train_bc":
         return "BC"
@@ -185,7 +198,7 @@ table_entry_fns: sd_to_table_entry_type = collections.OrderedDict(
 )
 
 
-# If `verbosity` is at least the length of this tuple, then we use all table_entry_fns
+# If `verbosity` is at least the length of this list, then we use all table_entry_fns
 # as columns of table.
 # Otherwise, use only the subset at index `verbosity`. The subset of columns is
 # still arranged in the same order as in the `table_entry_fns` OrderedDict.
@@ -213,7 +226,7 @@ table_verbosity_mapping.append(
 
 def _get_table_entry_fns_subset(table_verbosity: int) -> sd_to_table_entry_type:
     assert table_verbosity >= 0
-    if table_verbosity >= len(table_entry_fns):
+    if table_verbosity >= len(table_verbosity_mapping):
         return table_entry_fns
     else:
         keys_subset = table_verbosity_mapping[table_verbosity]
@@ -234,16 +247,11 @@ def analyze_imitation(
 ) -> pd.DataFrame:
     """Parse Sacred logs and generate a DataFrame for imitation learning results.
 
+    This function calls the helper `_gather_sacred_dicts`, which captures its arguments
+    automatically via Sacred. Provide those arguments to select which Sacred
+    results to parse.
+
     Args:
-        source_dir: A directory containing Sacred FileObserver subdirectories
-            associated with the `train_adversarial` Sacred script. Behavior is
-            undefined if there are Sacred subdirectories associated with other
-            scripts. (Captured argument)
-        run_name: If provided, then only analyze results from Sacred directories
-            associated with this run name. `run_name` is compared against the
-            "experiment.name" key in `run.json`. (Captured argument)
-        skip_failed_runs: If True, then filter out runs where the status is FAILED.
-            (Captured argument)
         csv_output_path: If provided, then save a CSV output file to this path.
         tex_output_path: If provided, then save a LaTeX-format table to this path.
         print_table: If True, then print the dataframe to stdout.
@@ -271,13 +279,14 @@ def analyze_imitation(
     if csv_output_path is not None:
         df.to_csv(csv_output_path, **display_options)
         print(f"Wrote CSV file to {csv_output_path}")
-    if print_table:
-        print(df.to_string(**display_options))
     if tex_output_path is not None:
         s: str = df.to_latex(**display_options)
         with open(tex_output_path, "w") as f:
             f.write(s)
         print(f"Wrote TeX file to {tex_output_path}")
+
+    if print_table:
+        print(df.to_string(**display_options))
     return df
 
 

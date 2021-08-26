@@ -42,7 +42,7 @@ def train_dagger(
             `expert_data_src_format` and `n_expert_demos`, and don't load
             initial demonstrations.
         expert_data_src_format: Either "path" if `expert_data_src` is a path, or
-            "trajectory" if `expert_data_src` if `Sequence[Trajectory]`, or None.
+            "trajectory" if `expert_data_src` is `Sequence[Trajectory]`, or None.
             If None, then ignore `expert_data_src` and `n_expert_demos` and don't load
             initial demonstrations.
         n_expert_demos: If not None, then a positive number used to truncate the number
