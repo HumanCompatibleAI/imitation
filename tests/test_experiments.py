@@ -5,9 +5,17 @@ import subprocess
 import pytest
 
 
+SCRIPT_NAMES = (
+    "bc_benchmark.sh"
+    "benchmark_and_table.sh"
+    "imit_benchmark.sh",
+    "train_experts.sh",
+    "transfer_learn_benchmark.sh",
+)
+
 @pytest.mark.parametrize(
     "script_name",
-    ["imit_benchmark.sh", "train_experts.sh", "transfer_learn_benchmark.sh"],
+    SCRIPT_NAMES,
 )
 def test_experiments_fast(script_name: str):
     """Quickly check that experiments run successfully on fast mode."""
