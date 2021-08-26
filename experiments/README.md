@@ -2,20 +2,12 @@ Experiment scripts are compatible with Linux and macOS.
 
 ## (macOS only) macOS compatibility setup
 
-macOS requires some special setup before all scripts will work.
-
-### Install `gdate`
+macOS to install some GNU-compatible binaries before all experiments scripts will work.
 
 ```
-brew install gdate
+brew install gdate gnu-getopt
 ```
 
-### Install `gnu-getopt`
-
-```
-brew install gnu-getopt
-echo "alias gnu-getopt='/usr/local/opt/gnu-getopt/bin/getopt'" >> .bashrc
-```
 
 ## Setup
 
