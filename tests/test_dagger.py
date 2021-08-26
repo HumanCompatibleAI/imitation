@@ -291,6 +291,7 @@ def test_simple_dagger_space_mismatch_error(
                     tmpdir, venv, beta_schedule, expert_policy, expert_trajs
                 )
 
+
 def test_dagger_not_enough_transitions_error(tmpdir):
     venv = util.make_vec_env("CartPole-v0")
     # Initialize with large batch size to ensure error down the line.
