@@ -18,6 +18,9 @@ class RandomFragmenter:
 
     TODO(ejnnr): should we correct for this bias and make all transitions equally
     likely to be part of fragments?
+
+    An additional bias is that trajectories shorter than the desired fragment
+    length are never used.
     """
 
     def __init__(
@@ -25,6 +28,7 @@ class RandomFragmenter:
         fragment_length: int = 50,
         num_pairs: int = 50,
         seed: Optional[float] = None,
+        warning_threshold: int = 10,
     ):
         """Initialize the fragmenter.
 
@@ -32,10 +36,14 @@ class RandomFragmenter:
             fragment_length: the length of each sampled fragment
             num_pairs: the number of fragment pairs to sample
             seed: an optional seed for the internal RNG
+            warning_threshold: give a warning if the number of available
+                transitions is less than this many times the number of
+                required samples. Set to 0 to disable this warning.
         """
         self.fragment_length = fragment_length
         self.num_pairs = num_pairs
         self.rng = random.Random(seed)
+        self.warning_threshold = warning_threshold
 
     def __call__(
         self, trajectories: Sequence[TrajectoryWithRew]
@@ -53,16 +61,25 @@ class RandomFragmenter:
 
         weights = [len(traj) for traj in trajectories]
 
-        # TODO(ejnnr): since we're sampling with replacement, there could
-        # already be lots of duplicates below this threshold. Perhaps
-        # we should warn already if the number of transitions isn't larger
-        # than what's needed by a factor of e.g. 10?
-        # Alternatively, sample without replacement, but that seems much
-        # trickier to do (and maybe introduces new biases?)
-        if sum(weights) < 2 * self.num_pairs * self.fragment_length:
+        # number of transitions that will be contained in the fragments
+        num_transitions = 2 * self.num_pairs * self.fragment_length
+        if sum(weights) < num_transitions:
             warnings.warn(
                 "Fewer transitions available than needed for desired number "
                 "of fragment pairs. Some transitions will appear multiple times."
+            )
+        elif (
+            self.warning_threshold
+            and sum(weights) < self.warning_threshold * num_transitions
+        ):
+            # If the number of available transitions is not much larger
+            # than the number of requires ones, we already give a warning.
+            # But only if self.warning_threshold is non-zero.
+            warnings.warn(
+                f"Samples will contain {num_transitions} in total "
+                f"and only {sum(weights)} are available. "
+                f"Because we sample with replacement, a significant number "
+                "of transitions are likely to appear multiple times."
             )
 
         # we need two fragments for each comparison
