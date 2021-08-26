@@ -55,12 +55,9 @@ def expert_trajs(request):
 
 
 def test_traj_collector_seed(tmpdir, venv):
-    def get_random_acts(obs):
-        return [venv.action_space.sample() for _ in range(len(obs))]
-
     collector = dagger.InteractiveTrajectoryCollector(
         venv=venv,
-        get_robot_acts=get_random_acts,
+        get_robot_acts=lambda o: [venv.action_space.sample() for _ in range(len(o))],
         beta=0.5,
         save_dir=tmpdir,
     )
