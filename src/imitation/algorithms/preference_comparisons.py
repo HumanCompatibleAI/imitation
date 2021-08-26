@@ -306,6 +306,8 @@ class PreferenceComparisons:
         """
         self.model = reward_model
         self.reward_trainer = reward_trainer or CrossEntropyRewardTrainer(reward_model)
+        # the reward_trainer's model should refer to the same object as our copy
+        assert self.reward_trainer.model is self.model
         self.agent = agent_trainer
         self.fragmenter = fragmenter or fragments.RandomFragmenter()
         self.preference_gatherer = preference_gatherer or SyntheticGatherer()
