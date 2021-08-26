@@ -56,9 +56,10 @@ while true; do
 done
 
 
-set -x  # Start echoing commands
+set -ex  # Start echoing commands
 
 $script_dir/bc_benchmark.sh $fast_flag --mvp_seals $tmux_flag --run_name "$RUN_NAME"
+
 IMIT_PLAIN="$script_dir/imit_benchmark.sh $fast_flag $tmux_flag --run_name $RUN_NAME"
 
 echo "AIRL seals BENCHMARK"

@@ -185,8 +185,8 @@ HALF_CHEETAH_SHARED_LOCALS = dict(
         ),
         airl=dict(
             reward_net_kwargs=dict(
-                base_reward_net=(32,),
-                potential_net=(32,),
+                reward_hid_sizes=(32,),
+                potential_hid_sizes=(32,),
             ),
         ),
     ),

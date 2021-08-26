@@ -19,7 +19,7 @@ ALGORITHM="gail"
 
 SEEDS="0 1 2 3 4"
 
-TEMP=$($GNU_GETOPT -o f -l fast,gail,airl,run_name:,log_root:,file_storage: -- $@)
+TEMP=$($GNU_GETOPT -o f,T -l fast,gail,airl,mvp_seals,cheetah,tmux,pdb,run_name:,log_root:,file_storage:,echo -- $@)
 if [[ $? != 0 ]]; then exit 1; fi
 eval set -- "$TEMP"
 

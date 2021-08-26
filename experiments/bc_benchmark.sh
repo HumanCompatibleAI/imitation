@@ -27,7 +27,6 @@ while true; do
   case "$1" in
     -f | --fast)
       # Fast mode (debug)
-      ENVS="cartpole"
       SEEDS="0"
       extra_configs+="fast "
       shift
@@ -63,8 +62,8 @@ parallel -j 25% --header : --results ${OUTPUT_DIR}/parallel/ --colsep , --progre
   --capture=sys \
   ${extra_options} \
   with \
-  ${extra_configs} \
   {env_cfg_name} \
+  ${extra_configs} \
   expert_data_src=${DATA_DIR}/expert_models/{env_cfg_name}_0/rollouts/final.pkl \
   expert_data_src_format="path" \
   seed={seed} \

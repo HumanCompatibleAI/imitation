@@ -3,14 +3,14 @@ set -e
 source experiments/common.env
 
 ENVS="cartpole"
-DATA_DIR=${DATA_DIR:-"data/expert_models"}
+DATA_DIR=${DATA_DIR:-"data"}
 LOG_ROOT="output/dagger_benchmark/${TIMESTAMP}"
 extra_configs=""
 extra_options=""
 
 SEEDS="0 1 2 3 4"
 
-TEMP=$(GNU_GETOPT -o fT -l fast,mvp,mvp_fast,tmux,pdb,echo,run_name:,log_root:,file_storage:,mvp_seals -- "$@")
+TEMP=$($GNU_GETOPT -o fT -l fast,mvp,mvp_fast,tmux,pdb,echo,run_name:,log_root:,file_storage:,mvp_seals -- "$@")
 if [[ $? != 0 ]]; then exit 1; fi
 eval set -- "$TEMP"
 
