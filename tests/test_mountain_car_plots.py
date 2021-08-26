@@ -26,7 +26,7 @@ def rand_policy(venv):
 @pytest.fixture
 def trajs(venv, rand_policy):
     return rollout.generate_trajectories(
-        rand_policy, venv, sample_until=rollout.min_episodes(5)
+        rand_policy, venv, sample_until=rollout.make_min_episodes(5)
     )
 
 
