@@ -26,12 +26,12 @@ class DiscrimNet(nn.Module, abc.ABC):
         self,
         observation_space: gym.Space,
         action_space: gym.Space,
-        scale: bool = False,
+        normalize_images: bool = False,
     ):
         super().__init__()
         self.observation_space = observation_space
         self.action_space = action_space
-        self.scale = scale
+        self.normalize_images = normalize_images
 
     @abc.abstractmethod
     def logits_gen_is_high(
@@ -171,7 +171,7 @@ class DiscrimNet(nn.Module, abc.ABC):
             next_state=next_state,
             done=done,
             device=self.device(),
-            scale=self.scale,
+            normalize_images=self.normalize_images,
         )
 
         with th.no_grad():
@@ -209,6 +209,11 @@ class DiscrimNetAIRL(DiscrimNet):
             action_space=reward_net.action_space,
         )
         self.reward_net = reward_net
+        # if the reward net has potential shaping, we disable that for testing
+        if isinstance(reward_net, reward_nets.ShapedRewardNet):
+            self.test_reward_net = reward_net.base
+        else:
+            self.test_reward_net = reward_net
         self.entropy_weight = entropy_weight
         logging.info("Using AIRL")
 
@@ -226,12 +231,10 @@ class DiscrimNetAIRL(DiscrimNet):
         predicting expert.
         """
         if log_policy_act_prob is None:
-            raise ValueError(
+            raise TypeError(
                 "Non-None `log_policy_act_prob` is required for this method."
             )
-        reward_output_train = self.reward_net.reward_train(
-            state, action, next_state, done
-        )
+        reward_output_train = self.reward_net(state, action, next_state, done)
         # In Fu's AIRL paper (https://arxiv.org/pdf/1710.11248.pdf), the
         # discriminator output was given as exp(r_theta(s,a)) /
         # (exp(r_theta(s,a)) - log pi(a|s)), with a high value corresponding to
@@ -252,7 +255,7 @@ class DiscrimNetAIRL(DiscrimNet):
         next_state: th.Tensor,
         done: th.Tensor,
     ) -> th.Tensor:
-        rew = self.reward_net.reward_test(state, action, next_state, done)
+        rew = self.test_reward_net(state, action, next_state, done)
         assert rew.shape == state.shape[:1]
         return rew
 
@@ -267,7 +270,7 @@ class DiscrimNetAIRL(DiscrimNet):
 
         Computed reward does *not* include an entropy bonus. Instead, the
         entropy bonus should be added directly to PPO, SAC, etc."""
-        rew = self.reward_net.reward_train(state, action, next_state, done)
+        rew = self.reward_net(state, action, next_state, done)
         assert rew.shape == state.shape[:1]
         return rew
 
@@ -302,7 +305,7 @@ class DiscrimNetGAIL(DiscrimNet):
         observation_space: gym.Space,
         action_space: gym.Space,
         discrim_net: Optional[nn.Module] = None,
-        scale: bool = False,
+        normalize_images: bool = False,
     ):
         """Construct discriminator network.
 
@@ -311,11 +314,12 @@ class DiscrimNetGAIL(DiscrimNet):
           action_space: action space for this environment:
           discrim_net: a Torch module that takes an observation and action
             tensor as input, then computes the logits for GAIL.
-          scale: should inputs be rescaled according to declared observation
-            space bounds?
+          normalize_images: should image observations be normalized to [0, 1]?
         """
         super().__init__(
-            observation_space=observation_space, action_space=action_space, scale=scale
+            observation_space=observation_space,
+            action_space=action_space,
+            normalize_images=normalize_images,
         )
 
         if discrim_net is None:

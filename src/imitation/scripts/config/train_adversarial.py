@@ -126,7 +126,7 @@ def acrobot():
 def cartpole():
     env_name = "CartPole-v1"
     rollout_hint = "cartpole"
-    discrim_net_kwargs = {"gail": {"scale": False}}
+    discrim_net_kwargs = {"gail": {"normalize_images": False}}
 
 
 @train_adversarial_ex.named_config
@@ -135,7 +135,7 @@ def seals_cartpole():
     env_name = "seals/CartPole-v0"
     # seals and vanilla CartPole have the same expert trajectories.
     rollout_hint = "cartpole"
-    discrim_net_kwargs = {"gail": {"scale": False}}
+    discrim_net_kwargs = {"gail": {"normalize_images": False}}
 
 
 @train_adversarial_ex.named_config

@@ -15,7 +15,12 @@
 # mean return of each policy, then use this to choose the best seed rather
 # than hardcoding seed 0.
 
-TIMESTAMP=$(date --iso-8601=seconds)
+gnu_date=date
+if [[ "$OSTYPE" == "darwin"* ]]; then
+  gnu_date=gdate
+fi
+
+TIMESTAMP=$($gnu_date --iso-8601=seconds)
 EXPERT_MODELS_DIR=${EXPERT_MODELS_DIR:-data/expert_models}
 CONFIG_CSV=${CONFIG_CSV:-experiments/rollouts_from_policies_config.csv}
 OUTPUT_DIR="output/train_experts/${TIMESTAMP}"
@@ -30,7 +35,7 @@ done
 
 echo "Loading config from ${CONFIG_CSV}"
 echo "Loading expert models from ${EXPERT_MODELS_DIR}"
-echo "Writing logs in ${OUTPUT_DIR}"
+echo "Writing logs in ${OUTPUT_DIR}, and saving rollouts in ${EXPERT_MODELS_DIR}/*/rollouts/"
 
 parallel -j 25% --header : --results ${OUTPUT_DIR}/parallel/ --colsep , \
   python -m imitation.scripts.expert_demos rollouts_from_policy \
