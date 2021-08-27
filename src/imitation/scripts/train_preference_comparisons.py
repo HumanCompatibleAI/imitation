@@ -5,7 +5,7 @@ Can be used as a CLI script, or the `train_and_plot` function can be called dire
 
 import logging
 import os
-from typing import Optional
+from typing import Any, Dict, Optional
 
 import stable_baselines3
 import torch as th
@@ -37,6 +37,8 @@ def train_preference_comparisons(
     agent_steps: int,
     fragment_length: int,
     num_pairs: int,
+    reward_kwargs: Dict[str, Any],
+    agent_kwargs: Dict[str, Any],
 ) -> dict:
     """Train a reward model using preference comparisons.
 
@@ -61,6 +63,8 @@ def train_preference_comparisons(
             for preference comparisons.
         num_pairs: number of fragment pairs to collect preferences for in
             each iteration.
+        reward_kwargs: passed to BasicRewardNet
+        agent_kwargs: passed to SB3's PPO
     """
 
     logging.info("Logging to %s", log_dir)
@@ -77,10 +81,12 @@ def train_preference_comparisons(
         max_episode_steps=max_episode_steps,
     )
 
-    reward_net = reward_nets.BasicRewardNet(venv.observation_space, venv.action_space)
+    reward_net = reward_nets.BasicRewardNet(
+        venv.observation_space, venv.action_space, **reward_kwargs
+    )
     # HACK: verbose=1 prevents SB3 from configuring logger,
     # see SB3 issue #109
-    agent = stable_baselines3.PPO("MlpPolicy", venv, verbose=1)
+    agent = stable_baselines3.PPO("MlpPolicy", venv, verbose=1, **agent_kwargs)
     agent_trainer = trainer.AgentTrainer(agent, reward_net)
     fragmenter = fragments.RandomFragmenter(
         fragment_length=fragment_length, num_pairs=num_pairs, seed=_seed
@@ -88,8 +94,8 @@ def train_preference_comparisons(
     main_trainer = preference_comparisons.PreferenceComparisons(
         agent_trainer,
         reward_net,
-        timesteps=sample_steps,
-        agent_timesteps=agent_steps,
+        sample_steps=sample_steps,
+        agent_steps=agent_steps,
         fragmenter=fragmenter,
     )
     main_trainer.train(steps)

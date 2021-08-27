@@ -30,6 +30,6 @@ def test_trainer_no_crash():
         fragment_length=2, num_pairs=2, seed=0, warning_threshold=0
     )
     main_trainer = preference_comparisons.PreferenceComparisons(
-        agent_trainer, reward_net, timesteps=10, fragmenter=fragmenter
+        agent_trainer, reward_net, sample_steps=10, fragmenter=fragmenter
     )
     main_trainer.train(2)

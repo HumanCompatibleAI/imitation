@@ -19,6 +19,8 @@ def train_defaults():
     sample_steps = 1e5
     fragment_length = 50
     num_pairs = 50
+    reward_kwargs = {}
+    agent_kwargs = {}
 
     # Number of environments in VecEnv
     num_vec = 8

@@ -280,8 +280,8 @@ class PreferenceComparisons:
         self,
         trajectory_generator: trainer.TrajectoryGenerator,
         reward_model: reward_nets.RewardNet,
-        timesteps: int,
-        agent_timesteps: Optional[int] = None,
+        sample_steps: int,
+        agent_steps: Optional[int] = None,
         fragmenter: Optional[fragments.Fragmenter] = None,
         preference_gatherer: Optional[PreferenceGatherer] = None,
         reward_trainer: Optional[RewardTrainer] = None,
@@ -293,9 +293,10 @@ class PreferenceComparisons:
                 an RL agent on the learned reward function (can also be a sampler
                 from a static dataset of trajectories though).
             reward_model: a RewardNet instance to be used for learning the reward
-            timesteps: number of environment timesteps to sample for creating fragments.
-            agent_timesteps: number of environment steps to train the agent for between
-                each reward model training round. Defaults to timesteps.
+            sample_steps: number of environment timesteps to sample
+                for creating fragments.
+            agent_steps: number of environment steps to train the agent for between
+                each reward model training round. Defaults to sample_steps.
             fragmenter: takes in a set of trajectories and returns pairs of fragments
                 for which preferences will be gathered. These fragments could be random,
                 or they could be selected more deliberately (active learning).
@@ -315,12 +316,12 @@ class PreferenceComparisons:
         self.trajectory_generator = trajectory_generator
         self.fragmenter = fragmenter or fragments.RandomFragmenter()
         self.preference_gatherer = preference_gatherer or SyntheticGatherer()
-        self.timesteps = timesteps
+        self.sample_steps = sample_steps
         # In contrast to the previous cases, we need the is None check
         # because someone might explicitly set agent_timesteps=0.
-        if agent_timesteps is None:
-            agent_timesteps = timesteps
-        self.agent_timesteps = agent_timesteps
+        if agent_steps is None:
+            agent_steps = sample_steps
+        self.agent_steps = agent_steps
         self.dataset = PreferenceDataset()
 
     def train(self, steps: int):
@@ -330,10 +331,10 @@ class PreferenceComparisons:
             steps: number of iterations of the outer training loop
         """
         for _ in range(steps):
-            logger.log(f"Training agent for {self.agent_timesteps} steps")
-            self.trajectory_generator.train(steps=self.agent_timesteps)
-            logger.log(f"Collecting {self.timesteps} trajectory steps")
-            trajectories = self.trajectory_generator.sample(self.timesteps)
+            logger.log(f"Training agent for {self.agent_steps} steps")
+            self.trajectory_generator.train(steps=self.agent_steps)
+            logger.log(f"Collecting {self.sample_steps} trajectory steps")
+            trajectories = self.trajectory_generator.sample(self.sample_steps)
             if hasattr(self.fragmenter, "num_pairs"):
                 logger.log(f"Creating {self.fragmenter.num_pairs} fragment pairs")
             else:
