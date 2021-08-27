@@ -24,7 +24,9 @@ def test_trainer_no_crash():
     reward_net = reward_nets.BasicRewardNet(venv.observation_space, venv.action_space)
     # verbose=1 suppresses SB3 logger configuration,
     # which conflicts with imitation logging
-    agent = stable_baselines3.PPO("MlpPolicy", venv, verbose=1)
+    agent = stable_baselines3.PPO(
+        "MlpPolicy", venv, verbose=1, n_epochs=1, batch_size=2, n_steps=10
+    )
     agent_trainer = trainer.AgentTrainer(agent, reward_net)
     fragmenter = fragments.RandomFragmenter(
         fragment_length=2, num_pairs=2, seed=0, warning_threshold=0
