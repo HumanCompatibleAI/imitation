@@ -32,7 +32,7 @@ def train_preference_comparisons(
     parallel: bool,
     max_episode_steps: Optional[int],
     log_dir: str,
-    steps: int,
+    iterations: int,
     sample_steps: int,
     agent_steps: int,
     fragment_length: int,
@@ -53,8 +53,8 @@ def train_preference_comparisons(
             environment to artificially limit the maximum number of timesteps in an
             episode.
         log_dir: Directory to save models and other logging to.
-        steps: Number of steps of the outer training loop (i.e. number of times
-            that new preferences are collected).
+        iterations: Number of iterations of the outer training loop
+            (i.e. number of times that new preferences are collected).
         sample_steps: how many environment steps to sample each time that
             preferences are collected. Trajectory fragments will be chosen
             from all the sampled steps.
@@ -101,7 +101,7 @@ def train_preference_comparisons(
         agent_steps=agent_steps,
         fragmenter=fragmenter,
     )
-    main_trainer.train(steps)
+    main_trainer.train(iterations)
 
     agent.save(os.path.join(log_dir, "final_agent"))
     th.save(reward_net.state_dict(), os.path.join(log_dir, "final_reward_net.pt"))

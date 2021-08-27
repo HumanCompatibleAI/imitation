@@ -324,13 +324,13 @@ class PreferenceComparisons:
         self.agent_steps = agent_steps
         self.dataset = PreferenceDataset()
 
-    def train(self, steps: int):
+    def train(self, iterations: int):
         """Train the reward model and the policy if applicable.
 
         Args:
-            steps: number of iterations of the outer training loop
+            iterations: number of iterations of the outer training loop
         """
-        for _ in range(steps):
+        for _ in range(iterations):
             logger.log(f"Training agent for {self.agent_steps} steps")
             self.trajectory_generator.train(steps=self.agent_steps)
             logger.log(f"Collecting {self.sample_steps} trajectory steps")

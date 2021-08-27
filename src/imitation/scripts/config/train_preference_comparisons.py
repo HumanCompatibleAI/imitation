@@ -14,7 +14,7 @@ train_preference_comparisons_ex = sacred.Experiment(
 @train_preference_comparisons_ex.config
 def train_defaults():
     env_name = "CartPole-v1"  # environment to train on
-    steps = 10
+    iterations = 10
     agent_steps = 1e5
     sample_steps = 1e5
     fragment_length = 50
@@ -51,7 +51,7 @@ def fast():
 
     Useful for test cases.
     """
-    steps = 1
+    iterations = 1
     agent_steps = 10
     sample_steps = 10
     agent_steps = 2
