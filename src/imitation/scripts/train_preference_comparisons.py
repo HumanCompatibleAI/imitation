@@ -12,7 +12,7 @@ import torch as th
 from sacred.observers import FileStorageObserver
 
 from imitation.algorithms import preference_comparisons
-from imitation.data import fragments
+from imitation.data import fragments, rollout
 from imitation.policies import trainer
 from imitation.rewards import reward_nets
 from imitation.scripts.config.train_preference_comparisons import (
@@ -37,6 +37,7 @@ def train_preference_comparisons(
     agent_steps: int,
     fragment_length: int,
     num_pairs: int,
+    n_episodes_eval: int,
     reward_kwargs: Dict[str, Any],
     agent_kwargs: Dict[str, Any],
 ) -> dict:
@@ -63,6 +64,8 @@ def train_preference_comparisons(
             for preference comparisons.
         num_pairs: number of fragment pairs to collect preferences for in
             each iteration.
+        n_episodes_eval: The number of episodes to average over when calculating
+            the average episode reward of the learned policy for return.
         reward_kwargs: passed to BasicRewardNet
         agent_kwargs: passed to SB3's PPO
     """
@@ -103,9 +106,15 @@ def train_preference_comparisons(
     agent.save(os.path.join(log_dir, "final_agent"))
     th.save(reward_net.state_dict(), os.path.join(log_dir, "final_reward_net.pt"))
 
-    # TODO(ejnnr): actually return something here
-    results = {}
-    return results
+    sample_until = rollout.make_sample_until(
+        min_timesteps=None, min_episodes=n_episodes_eval
+    )
+    trajs = rollout.generate_trajectories(
+        agent,
+        venv,
+        sample_until=sample_until,
+    )
+    return rollout.rollout_stats(trajs)
 
 
 def main_console():

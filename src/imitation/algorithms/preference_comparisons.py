@@ -253,7 +253,7 @@ class CrossEntropyRewardTrainer(RewardTrainer):
 
     def train(self, dataset: PreferenceDataset):
         # TODO(ejnnr): This isn't specific to the loss function or probability model.
-        # In general, it mighe be best to split the probability model, the loss and
+        # In general, it might be best to split the probability model, the loss and
         # the optimization procedure a bit more cleanly so that different versions
         # can be combined
 

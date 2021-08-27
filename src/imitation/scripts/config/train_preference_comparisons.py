@@ -19,6 +19,7 @@ def train_defaults():
     sample_steps = 1e5
     fragment_length = 50
     num_pairs = 50
+    n_episodes_eval = 50  # Num of episodes for final mean ground truth return
     reward_kwargs = {}
     agent_kwargs = {}
 
@@ -58,3 +59,5 @@ def fast():
     num_vec = 1
     fragment_length = 2
     num_pairs = 2
+    n_episodes_eval = 1
+    agent_kwargs = {"batch_size": 2, "n_steps": 10, "n_epochs": 1}
