@@ -15,10 +15,10 @@ train_preference_comparisons_ex = sacred.Experiment(
 def train_defaults():
     env_name = "CartPole-v1"  # environment to train on
     iterations = 10
-    agent_steps = 1e5
-    sample_steps = 1e5
-    fragment_length = 50
-    num_pairs = 50
+    agent_steps = 1e4
+    sample_steps = 1e4
+    fragment_length = 10
+    num_pairs = 100
     n_episodes_eval = 50  # Num of episodes for final mean ground truth return
     reward_kwargs = {}
     agent_kwargs = {}
