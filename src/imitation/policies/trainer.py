@@ -3,9 +3,9 @@ import abc
 from typing import Sequence, Union
 
 import numpy as np
-from stable_baselines3.common import base_class, vec_env
+from stable_baselines3.common import base_class, logger, vec_env
 
-from imitation.data import types, wrappers
+from imitation.data import rollout, types, wrappers
 from imitation.rewards import common as rewards_common
 from imitation.rewards import reward_nets
 from imitation.util import reward_wrapper
@@ -83,8 +83,12 @@ class AgentTrainer(TrajectoryGenerator):
             a list of all trajectories that occurred during training, including their
             original environment rewards (rather than the ones computed using reward_fn)
         """
-        # to clear the trajectory buffer
-        self.venv.reset()
+        n_transitions = self.buffering_wrapper.n_transitions
+        if n_transitions:
+            raise RuntimeError(
+                f"There are {n_transitions} transitions left in the buffer. "
+                "Call AgentTrainer.sample() first to clear them."
+            )
         self.algorithm.learn(total_timesteps=steps, **kwargs)
 
     def sample(self, steps: int) -> Sequence[types.TrajectoryWithRew]:
@@ -94,29 +98,40 @@ class AgentTrainer(TrajectoryGenerator):
         # they are the ones with the most relevant version of
         # the agent.
         # The easiest way to do this will be to first invert the
-        # list and then just take the first trajectories:
+        # list and then later just take the first trajectories:
         trajectories = trajectories[::-1]
+        avail_steps = sum(len(traj) for traj in trajectories)
+
+        if avail_steps < steps:
+            logger.log(
+                f"Requested {steps} transitions but only {avail_steps} in buffer. "
+                f"Sampling {steps - avail_steps} additional transitions."
+            )
+            sample_until = rollout.make_sample_until(
+                min_timesteps=steps - avail_steps, min_episodes=None
+            )
+            additional_trajectories = rollout.generate_trajectories(
+                self.algorithm,
+                self.venv,
+                sample_until=sample_until,
+            )
+            # This is just to empty the trajectory buffer
+            # (after .sample() has been called, the buffer should be
+            # empty).
+            self._pop_trajectories()
+
+            # With the current implementation, these are already lists,
+            # but strictly speaking, the type annotation is Sequence
+            if not isinstance(additional_trajectories, list):
+                additional_trajectories = list(additional_trajectories)
+            if not isinstance(trajectories, list):
+                trajectories = list(trajectories)
+
+            trajectories = trajectories + additional_trajectories
 
         # Next, we need the cumulative sum of trajectory lengths
         # to determine how many trajectories to return:
         steps_cumsum = np.cumsum([len(traj) for traj in trajectories])
-
-        # TODO(ejnnr): I think it would be better to sample
-        # additional trajectories here if needed.
-        avail_steps = steps_cumsum[-1]
-        if avail_steps == 0:
-            # We have this as a special case to give a better error message
-            raise RuntimeError(
-                "Trajectory buffer is empty, "
-                "run AgentTrainer.train() before .sample()."
-            )
-        if avail_steps < steps:
-            raise RuntimeError(
-                f"Requested {steps} environment steps, "
-                f"but only {avail_steps} available. "
-                "Run AgentTrainer.train() with more steps."
-            )
-
         # Now we find the first index that gives us enough
         # total steps:
         idx = (steps_cumsum >= steps).argmax()

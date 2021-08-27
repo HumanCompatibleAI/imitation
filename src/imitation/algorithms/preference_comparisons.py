@@ -433,8 +433,6 @@ class PreferenceComparisons:
             iterations: number of iterations of the outer training loop
         """
         for _ in range(iterations):
-            logger.log(f"Training agent for {self.agent_steps} steps")
-            self.trajectory_generator.train(steps=self.agent_steps)
             logger.log(f"Collecting {self.sample_steps} trajectory steps")
             trajectories = self.trajectory_generator.sample(self.sample_steps)
             if hasattr(self.fragmenter, "num_pairs"):
@@ -448,3 +446,5 @@ class PreferenceComparisons:
             logger.log(f"Dataset now contains {len(self.dataset)} samples")
             logger.log("Training reward model")
             self.reward_trainer.train(self.dataset)
+            logger.log(f"Training agent for {self.agent_steps} steps")
+            self.trajectory_generator.train(steps=self.agent_steps)
