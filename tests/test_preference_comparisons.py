@@ -1,19 +1,11 @@
 """Tests for the preference comparisons reward learning implementation."""
 
-import pytest
 import stable_baselines3
 
 from imitation.algorithms import preference_comparisons
-from imitation.data import fragments, types
 from imitation.policies import trainer
 from imitation.rewards import reward_nets
 from imitation.util import util
-
-
-@pytest.fixture
-def expert_trajectories():
-    trajs = types.load("tests/data/expert_models/cartpole_0/rollouts/final.pkl")
-    return trajs
 
 
 def test_trainer_no_crash():
@@ -28,7 +20,7 @@ def test_trainer_no_crash():
         "MlpPolicy", venv, verbose=1, n_epochs=1, batch_size=2, n_steps=10
     )
     agent_trainer = trainer.AgentTrainer(agent, reward_net)
-    fragmenter = fragments.RandomFragmenter(
+    fragmenter = preference_comparisons.RandomFragmenter(
         fragment_length=2, num_pairs=2, seed=0, warning_threshold=0
     )
     main_trainer = preference_comparisons.PreferenceComparisons(

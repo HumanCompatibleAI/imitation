@@ -12,7 +12,7 @@ import torch as th
 from sacred.observers import FileStorageObserver
 
 from imitation.algorithms import preference_comparisons
-from imitation.data import fragments, rollout
+from imitation.data import rollout
 from imitation.policies import trainer
 from imitation.rewards import reward_nets
 from imitation.scripts.config.train_preference_comparisons import (
@@ -91,7 +91,7 @@ def train_preference_comparisons(
     # see SB3 issue #109
     agent = stable_baselines3.PPO("MlpPolicy", venv, verbose=1, **agent_kwargs)
     agent_trainer = trainer.AgentTrainer(agent, reward_net)
-    fragmenter = fragments.RandomFragmenter(
+    fragmenter = preference_comparisons.RandomFragmenter(
         fragment_length=fragment_length, num_pairs=num_pairs, seed=_seed
     )
     main_trainer = preference_comparisons.PreferenceComparisons(
