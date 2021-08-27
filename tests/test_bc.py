@@ -91,7 +91,7 @@ def test_train_end_cond_error(trainer: bc.BC, venv):
 
 
 def test_bc(trainer: bc.BC, venv):
-    sample_until = rollout.min_episodes(15)
+    sample_until = rollout.make_min_episodes(15)
     novice_ret_mean = rollout.mean_return(trainer.policy, venv, sample_until)
     trainer.train(
         n_epochs=1,
@@ -165,3 +165,9 @@ def test_train_progress_bar_visibility(trainer: bc.BC):
     """Smoke test for toggling progress bar visibility"""
     for visible in [True, False]:
         trainer.train(n_batches=1, progress_bar=visible)
+
+
+def test_train_reset_tensorboard(trainer: bc.BC):
+    """Smoke test for reset_tensorboard parameter"""
+    for reset in [True, False]:
+        trainer.train(n_batches=1, reset_tensorboard=reset)

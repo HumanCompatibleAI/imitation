@@ -25,6 +25,7 @@ from imitation.scripts import (
     parallel,
     train_adversarial,
     train_bc,
+    train_dagger,
 )
 
 ALL_SCRIPTS_MODS = [
@@ -34,6 +35,7 @@ ALL_SCRIPTS_MODS = [
     parallel,
     train_adversarial,
     train_bc,
+    train_dagger,
 ]
 
 CARTPOLE_TEST_DATA_PATH = pathlib.Path("tests/data/expert_models/cartpole_0/")
@@ -61,9 +63,23 @@ def test_main_console(script_mod):
         script_mod.main_console()
 
 
+def test_train_dagger_main(tmpdir):
+    run = train_dagger.train_dagger_ex.run(
+        named_configs=["cartpole", "fast"],
+        config_updates=dict(
+            log_root=tmpdir,
+            expert_data_src=CARTPOLE_TEST_ROLLOUT_PATH,
+            expert_policy_path=CARTPOLE_TEST_POLICY_PATH,
+            expert_policy_type="ppo",
+        ),
+    )
+    assert run.status == "COMPLETED"
+    assert isinstance(run.result, dict)
+
+
 def test_train_bc_main(tmpdir):
     run = train_bc.train_bc_ex.run(
-        named_configs=["fast", "cartpole"],
+        named_configs=["cartpole", "fast"],
         config_updates=dict(
             log_root=tmpdir,
             expert_data_src=CARTPOLE_TEST_ROLLOUT_PATH,
@@ -92,7 +108,7 @@ def test_expert_demos_rollouts_from_policy(tmpdir):
         named_configs=["cartpole", "fast"],
         config_updates=dict(
             log_root=tmpdir,
-            rollout_save_path=str(pathlib.Path(tmpdir, "rollouts", "test.pkl")),
+            rollout_save_path=str(pathlib.Path(tmpdir, "rollouts", "test.zip")),
             policy_path=CARTPOLE_TEST_POLICY_PATH,
         ),
     )

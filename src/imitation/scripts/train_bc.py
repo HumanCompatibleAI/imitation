@@ -1,9 +1,10 @@
 import logging
 import os.path as osp
 import pathlib
-from typing import Optional, Sequence, Union
+from typing import Optional, Sequence, Type, Union
 
 import gym
+import torch as th
 from sacred.observers import FileStorageObserver
 from stable_baselines3.common import vec_env
 from torch.utils import data as th_data
@@ -20,6 +21,7 @@ def train_bc(
     _run,
     expert_data_src: Union[types.AnyPath, Sequence[types.Trajectory]],
     expert_data_src_format: str,
+    n_expert_demos: Optional[int],
     observation_space: gym.Space,
     action_space: gym.Space,
     batch_size: int,
@@ -27,8 +29,8 @@ def train_bc(
     #  types.TransitionsMinimal, unlike BC.__init__ or BC.set_expert_data_loader().
     n_epochs: Optional[int],
     n_batches: Optional[int],
-    n_expert_demos: int,
     l2_weight: float,
+    optimizer_cls: Type[th.optim.Optimizer],
     optimizer_kwargs: dict,
     log_dir: types.AnyPath,
     venv: Optional[vec_env.VecEnv],
@@ -43,6 +45,10 @@ def train_bc(
             `Sequence[Trajectory]`.
         expert_data_src_format: Either "path" if `expert_data_src` is a path, or
             "trajectory" if `expert_data_src` if `Sequence[Trajectory]`.
+        n_expert_demos: If not None, then a positive number used to truncate the number
+            expert demonstrations used from `expert_data_src`. If this number is larger
+            than the total number of demonstrations available, then a ValueError is
+            raised.
         observation_space: The observation space corresponding to the expert data.
         action_space: The action space corresponding to the expert data.
         batch_size: Number of observation-action samples used in each BC update.
@@ -50,6 +56,10 @@ def train_bc(
             n_batches.
         n_batches: The total number of training batches. Set exactly one of n_epochs and
             n_batches.
+        l2_weight: L2 regularization weight.
+        optimizer_cls: The Torch optimizer class used for BC updates.
+        optimizer_kwargs: keyword arguments, excluding learning rate and
+              weight decay, for optimiser construction.
         log_dir: Log output directory. Final policy is also saved in this directory as
             "{log_dir}/final.pkl"
         venv: If not None, then this VecEnv is used to generate rollout episodes for
@@ -108,6 +118,7 @@ def train_bc(
         action_space,
         expert_data=expert_data,
         l2_weight=l2_weight,
+        optimizer_cls=optimizer_cls,
         optimizer_kwargs=optimizer_kwargs,
     )
     model.train(
@@ -124,7 +135,7 @@ def train_bc(
     # TODO(shwang): Use auto env, auto stats thing with shared `env` and stats
     #  ingredient, or something like that.
     sample_until = rollout.make_sample_until(
-        n_timesteps=None, n_episodes=n_episodes_eval
+        min_timesteps=None, min_episodes=n_episodes_eval
     )
     trajs = rollout.generate_trajectories(
         model.policy,

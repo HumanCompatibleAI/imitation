@@ -19,7 +19,7 @@ def test_reward_overwrite():
     reward_fn = FunkyReward()
     wrapped_env = reward_wrapper.RewardVecEnvWrapper(env, reward_fn)
     policy = RandomPolicy(env.observation_space, env.action_space)
-    sample_until = rollout.min_episodes(10)
+    sample_until = rollout.make_min_episodes(10)
     default_stats = rollout.rollout_stats(
         rollout.generate_trajectories(policy, env, sample_until)
     )

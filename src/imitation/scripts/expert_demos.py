@@ -104,7 +104,7 @@ def rollouts_and_policy(
     sample_until = rollout.make_sample_until(
         rollout_save_n_timesteps, rollout_save_n_episodes
     )
-    eval_sample_until = rollout.min_episodes(n_episodes_eval)
+    eval_sample_until = rollout.make_min_episodes(n_episodes_eval)
 
     logging.basicConfig(level=logging.INFO)
     logger.configure(

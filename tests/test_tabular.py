@@ -3,6 +3,10 @@
 import gym
 import numpy as np
 import pytest
+import torch as th
+
+# need direct import since torch.optim.Adam references cause pytype to fail
+from torch.optim.adam import Adam
 
 from imitation.algorithms.tabular_irl import (
     LinearRewardModel,
@@ -13,21 +17,7 @@ from imitation.algorithms.tabular_irl import (
 )
 from imitation.envs.examples.model_envs import RandomMDP
 from imitation.envs.resettable_env import TabularModelEnv
-
-JAX_IMPORT_FAIL = False
-try:
-    import jax.experimental.optimizers as jaxopt  # pytype: disable=import-error
-except ImportError:  # pragma: no cover
-    JAX_IMPORT_FAIL = True
-
-
-skip_if_no_jax = pytest.mark.skipif(
-    JAX_IMPORT_FAIL,
-    reason=(
-        "jax not installed (see imitation.algorithms.tabular_irl docstring for "
-        "installation info)"
-    ),
-)
+from imitation.util.util import tensor_iter_norm
 
 
 def rollouts(env, n=10, seed=None):
@@ -49,7 +39,6 @@ def rollouts(env, n=10, seed=None):
     return rv
 
 
-@skip_if_no_jax
 def test_random_mdp():
     for i in range(3):
         n_states = 4 * (i + 3)
@@ -96,7 +85,6 @@ def test_random_mdp():
         assert len(set(map(str, trajectories))) == 1
 
 
-@skip_if_no_jax
 def test_policy_om_random_mdp():
     """Test that optimal policy occupancy measure ("om") for a random MDP is sane."""
     mdp = gym.make("imitation/Random-v0")
@@ -198,7 +186,6 @@ class ReasonableMDP(TabularModelEnv):
     horizon = 20
 
 
-@skip_if_no_jax
 def test_policy_om_reasonable_mdp():
     # MDP described above
     mdp = ReasonableMDP()
@@ -234,19 +221,21 @@ def test_policy_om_reasonable_mdp():
     "model_class,model_kwargs",
     [(LinearRewardModel, dict()), (MLPRewardModel, dict(hiddens=[32, 32]))],
 )
-@skip_if_no_jax
 def test_mce_irl_reasonable_mdp(model_class, model_kwargs):
-    # test MCE IRL on the MDP
-    mdp = ReasonableMDP()
+    with th.random.fork_rng():
+        th.random.manual_seed(715298)
 
-    # demo occupancy measure
-    V, Q, pi = mce_partition_fh(mdp)
-    Dt, D = mce_occupancy_measures(mdp, pi=pi)
+        # test MCE IRL on the MDP
+        mdp = ReasonableMDP()
 
-    rmodel = model_class(mdp.obs_dim, seed=13, **model_kwargs)
-    opt = jaxopt.adam(1e-2)
-    final_weights, final_counts = mce_irl(mdp, opt, rmodel, D, linf_eps=1e-3)
+        # demo occupancy measure
+        V, Q, pi = mce_partition_fh(mdp)
+        Dt, D = mce_occupancy_measures(mdp, pi=pi)
 
-    assert np.allclose(final_counts, D, atol=1e-3, rtol=1e-3)
-    # make sure weights have non-insane norm
-    assert np.linalg.norm(final_weights) < 1000
+        rmodel = model_class(mdp.obs_dim, **model_kwargs)
+        opt = Adam(rmodel.parameters(), lr=1e-2)
+        final_counts = mce_irl(mdp, opt, rmodel, D, linf_eps=1e-3)
+
+        assert np.allclose(final_counts, D, atol=1e-3, rtol=1e-3)
+        # make sure weights have non-insane norm
+        assert tensor_iter_norm(rmodel.parameters()) < 1000
