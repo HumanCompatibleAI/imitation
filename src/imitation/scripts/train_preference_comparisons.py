@@ -5,10 +5,10 @@ Can be used as a CLI script, or the `train_and_plot` function can be called dire
 
 import logging
 import os
-import os.path as osp
 from typing import Optional
 
 import stable_baselines3
+import torch as th
 from sacred.observers import FileStorageObserver
 
 from imitation.algorithms import preference_comparisons
@@ -94,6 +94,9 @@ def train_preference_comparisons(
     )
     main_trainer.train(steps)
 
+    agent.save(os.path.join(log_dir, "final_agent"))
+    th.save(reward_net.state_dict(), os.path.join(log_dir, "final_reward_net.pt"))
+
     # TODO(ejnnr): actually return something here
     results = {}
     return results
@@ -101,7 +104,7 @@ def train_preference_comparisons(
 
 def main_console():
     observer = FileStorageObserver(
-        osp.join("output", "sacred", "train_preference_comparisons")
+        os.path.join("output", "sacred", "train_preference_comparisons")
     )
     train_preference_comparisons_ex.observers.append(observer)
     train_preference_comparisons_ex.run_commandline()
