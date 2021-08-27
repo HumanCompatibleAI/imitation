@@ -18,9 +18,6 @@ class RandomFragmenter:
     end of episodes are less likely to occur as part of fragments (this affects
     the first and last fragment_length transitions).
 
-    TODO(ejnnr): should we correct for this bias and make all transitions equally
-    likely to be part of fragments?
-
     An additional bias is that trajectories shorter than the desired fragment
     length are never used.
     """

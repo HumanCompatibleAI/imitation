@@ -316,10 +316,10 @@ class PreferenceComparisons:
         self.fragmenter = fragmenter or fragments.RandomFragmenter()
         self.preference_gatherer = preference_gatherer or SyntheticGatherer()
         self.timesteps = timesteps
-        if agent_timesteps is None:
-            agent_timesteps = timesteps
         # In contrast to the previous cases, we need the is None check
         # because someone might explicitly set agent_timesteps=0.
+        if agent_timesteps is None:
+            agent_timesteps = timesteps
         self.agent_timesteps = agent_timesteps
         self.dataset = PreferenceDataset()
 
@@ -334,7 +334,10 @@ class PreferenceComparisons:
             self.trajectory_generator.train(steps=self.agent_timesteps)
             logger.log(f"Collecting {self.timesteps} trajectory steps")
             trajectories = self.trajectory_generator.sample(self.timesteps)
-            logger.log(f"Creating {self.fragmenter.num_pairs} fragment pairs")
+            if hasattr(self.fragmenter, "num_pairs"):
+                logger.log(f"Creating {self.fragmenter.num_pairs} fragment pairs")
+            else:
+                logger.log("Creating fragment pairs")
             fragments = self.fragmenter(trajectories)
             logger.log("Gathering preferences")
             preferences = self.preference_gatherer(fragments)

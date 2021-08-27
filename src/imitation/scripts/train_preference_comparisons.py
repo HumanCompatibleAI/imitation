@@ -94,7 +94,7 @@ def train_preference_comparisons(
     )
     main_trainer.train(steps)
 
-    # Final evaluation of imitation policy.
+    # TODO(ejnnr): actually return something here
     results = {}
     return results
 

@@ -1,6 +1,6 @@
 """Training policies with a specifiable reward function and collect trajectories."""
 import abc
-from typing import List, Union
+from typing import Sequence, Union
 
 import numpy as np
 from stable_baselines3.common import base_class, vec_env
@@ -87,14 +87,12 @@ class AgentTrainer(TrajectoryGenerator):
         self.venv.reset()
         self.algorithm.learn(total_timesteps=steps, **kwargs)
 
-    def sample(self, steps: int) -> List[types.TrajectoryWithRew]:
+    def sample(self, steps: int) -> Sequence[types.TrajectoryWithRew]:
         trajectories = self._pop_trajectories()
         # We typically have more trajectories than are needed.
         # In that case, we use the final trajectories because
         # they are the ones with the most relevant version of
         # the agent.
-        # TODO(ejnnr): should we use random ones instead?
-
         # The easiest way to do this will be to first invert the
         # list and then just take the first trajectories:
         trajectories = trajectories[::-1]
@@ -132,5 +130,5 @@ class AgentTrainer(TrajectoryGenerator):
     def policy(self):
         return self.algorithm.policy
 
-    def _pop_trajectories(self) -> List[types.TrajectoryWithRew]:
+    def _pop_trajectories(self) -> Sequence[types.TrajectoryWithRew]:
         return self.buffering_wrapper.pop_trajectories()
