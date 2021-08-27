@@ -511,7 +511,7 @@ def compute_returns(rewards: np.ndarray, gamma: float) -> float:
         gamma: the discount factor used for calculating returns.
 
     Returns:
-        the discounted returns (the first reward is undiscounted,
+        The discounted returns (the first reward is undiscounted,
         i.e. we start at gamma^0)
     """
     # We want to calculate sum_{t = 0}^T gamma^t r_t, which can be

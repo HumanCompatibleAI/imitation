@@ -218,7 +218,7 @@ class CrossEntropyRewardTrainer(RewardTrainer):
         self,
         fragment_pairs: Sequence[TrajectoryPair],
         preferences: np.ndarray,
-    ):
+    ) -> th.Tensor:
         probs = th.empty(len(fragment_pairs), dtype=th.float32)
         for i, fragment in enumerate(fragment_pairs):
             frag1, frag2 = fragment

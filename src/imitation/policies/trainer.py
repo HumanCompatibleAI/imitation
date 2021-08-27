@@ -13,7 +13,7 @@ from imitation.util import reward_wrapper
 
 class TrajectoryGenerator(abc.ABC):
     @abc.abstractmethod
-    def sample(self, num_steps: int) -> List[types.TrajectoryWithRew]:
+    def sample(self, num_steps: int) -> Sequence[types.TrajectoryWithRew]:
         """Sample a batch of trajectories.
 
         Args:
