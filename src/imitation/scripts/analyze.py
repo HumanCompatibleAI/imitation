@@ -266,13 +266,12 @@ def analyze_imitation(
     rows = []
     for sd in _gather_sacred_dicts():
         row = OrderedDict()
-        rows.append(row)
         for col_name, make_entry_fn in table_entry_fns_subset.items():
             row[col_name] = make_entry_fn(sd)
+        rows.append(row)
 
     df = pd.DataFrame(rows)
     if len(df) > 0:
-        assert set(df.columns) == set(table_verbosity_mapping[table_verbosity])
         df.sort_values(by=["algo", "env_name"], inplace=True)
 
     display_options = dict(index=False)
