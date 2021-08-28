@@ -170,7 +170,6 @@ def ant():
 HALF_CHEETAH_SHARED_LOCALS = dict(
     env_name="HalfCheetah-v2",
     rollout_hint="half_cheetah",
-    total_timesteps=5e6,
     gen_batch_size=16384,
     init_rl_kwargs=dict(
         batch_size=1024,
