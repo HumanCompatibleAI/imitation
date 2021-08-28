@@ -7,6 +7,7 @@ import pytest
 
 SCRIPT_NAMES = (
     "bc_benchmark.sh",
+    "dagger_benchmark.sh",
     "benchmark_and_table.sh",
     "imit_benchmark.sh",
     "train_experts.sh",
