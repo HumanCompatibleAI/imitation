@@ -10,7 +10,7 @@ extra_options=""
 
 SEEDS="0 1 2 3 4"
 
-TEMP=$($GNU_GETOPT -o fT -l fast,mvp,mvp_fast,tmux,pdb,echo,run_name:,log_root:,file_storage:,mvp_seals -- "$@")
+TEMP=$($GNU_GETOPT -o fT -l fast,paper,tmux,pdb,echo,run_name:,log_root:,file_storage: -- "$@")
 if [[ $? != 0 ]]; then exit 1; fi
 eval set -- "$TEMP"
 
@@ -22,7 +22,7 @@ while true; do
       extra_configs+="fast "
       shift
       ;;
-    --mvp_seals)  # Table benchmark settings
+    --paper)  # Table benchmark settings
       ENVS="seals_cartpole seals_mountain_car half_cheetah"
       shift
       ;;

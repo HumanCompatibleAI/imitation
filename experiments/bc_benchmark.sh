@@ -3,9 +3,7 @@ set -e
 
 # This script trains BC experts.
 #
-# Use the --mvp_seals flag to produce paper benchmark results.
-#
-# TODO(shwang): Just rename mvp_seals flag in this file and others to --paper
+# Use the --paper flag to produce paper benchmark results.
 #
 # When training is finished, it reports the mean episode reward of each
 # expert.
@@ -19,7 +17,7 @@ OUTPUT_DIR="output/bc_benchmark/${TIMESTAMP}"
 RESULTS_FILE="results.txt"
 extra_configs=""
 
-TEMP=$($GNU_GETOPT -o fT -l fast,tmux,run_name:,mvp_seals,mvp_fast -- "$@")
+TEMP=$($GNU_GETOPT -o fT -l fast,paper,tmux,run_name: -- "$@")
 if [[ $? != 0 ]]; then exit 1; fi
 eval set -- "$TEMP"
 
@@ -31,7 +29,7 @@ while true; do
       extra_configs+="fast "
       shift
       ;;
-    --mvp_seals)  # Table benchmark settings
+    --paper)  # Table benchmark settings
       ENVS="seals_cartpole seals_mountain_car half_cheetah "
       shift
       ;;

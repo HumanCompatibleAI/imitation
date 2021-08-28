@@ -58,7 +58,7 @@ done
 
 set -ex  # Start echoing commands
 
-$script_dir/bc_benchmark.sh $fast_flag --mvp_seals $tmux_flag --run_name "$RUN_NAME"
+$script_dir/bc_benchmark.sh $fast_flag --paper $tmux_flag --run_name "$RUN_NAME"
 
 IMIT_PLAIN="$script_dir/imit_benchmark.sh $fast_flag $tmux_flag --run_name $RUN_NAME"
 
@@ -72,7 +72,7 @@ echo "AIRL/GAIL HalfCheetah BENCHMARK"
 $IMIT_PLAIN --cheetah
 
 echo "DAGGER BENCHMARK"
-$script_dir/dagger_benchmark.sh $fast_flag --mvp_seals $tmux_flag --run_name "$RUN_NAME"
+$script_dir/dagger_benchmark.sh $fast_flag --paper $tmux_flag --run_name "$RUN_NAME"
 
 result_dir=output/fast_table_result
 mkdir -p $result_dir
