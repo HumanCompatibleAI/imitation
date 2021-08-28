@@ -443,11 +443,12 @@ def test_analyze_imitation(tmpdir: str, run_names: List[str], run_sacred_fn):
         run = analyze.analysis_ex.run(
             command_name="analyze_imitation",
             config_updates=dict(
-                source_dir=sacred_logs_dir,
+                source_dirs=[sacred_logs_dir],
                 env_name="CartPole-v1",
                 run_name=run_name,
                 csv_output_path=tmpdir / "analysis.csv",
-                verbose=True,
+                tex_output_path=tmpdir / "analysis.tex",
+                print_table=True,
             ),
         )
         assert run.status == "COMPLETED"
@@ -472,7 +473,7 @@ def test_analyze_gather_tb(tmpdir: str):
     run = analyze.analysis_ex.run(
         command_name="gather_tb_directories",
         config_updates=dict(
-            source_dir=tmpdir,
+            source_dirs=[tmpdir],
         ),
     )
     assert run.status == "COMPLETED"
