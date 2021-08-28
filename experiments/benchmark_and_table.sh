@@ -58,6 +58,7 @@ done
 
 set -ex  # Start echoing commands
 
+echo "BC BENCHMARK"
 $script_dir/bc_benchmark.sh $fast_flag --paper $tmux_flag --run_name "$RUN_NAME"
 
 IMIT_PLAIN="$script_dir/imit_benchmark.sh $fast_flag $tmux_flag --run_name $RUN_NAME"
