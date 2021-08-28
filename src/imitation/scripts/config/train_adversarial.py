@@ -14,7 +14,7 @@ train_adversarial_ex = sacred.Experiment("train_adversarial", interactive=True)
 @train_adversarial_ex.config
 def train_defaults():
     env_name = "CartPole-v1"  # environment to train on
-    total_timesteps = 1e5  # Num of environment transitions to sample
+    total_timesteps = 1e6  # Num of environment transitions to sample
     algorithm = "gail"  # Either "airl" or "gail"
 
     n_expert_demos = None  # Num demos used. None uses every demo possible
@@ -131,6 +131,7 @@ def cartpole():
 
 @train_adversarial_ex.named_config
 def seals_cartpole():
+    total_timesteps = 1.4e6
     env_name = "seals/CartPole-v0"
     # seals and vanilla CartPole have the same expert trajectories.
     rollout_hint = "cartpole"
@@ -166,12 +167,47 @@ def ant():
     rollout_hint = "ant"
 
 
+HALF_CHEETAH_SHARED_LOCALS = dict(
+    env_name="HalfCheetah-v2",
+    rollout_hint="half_cheetah",
+    gen_batch_size=16384,
+    init_rl_kwargs=dict(
+        batch_size=1024,
+    ),
+    algorithm_kwargs=dict(
+        shared=dict(
+            # Number of discriminator updates after each round of generator updates
+            n_disc_updates_per_round=16,
+            # Equivalent to no replay buffer if batch size is the same
+            gen_replay_buffer_capacity=16384,
+            expert_batch_size=8192,
+        ),
+        airl=dict(
+            reward_net_kwargs=dict(
+                reward_hid_sizes=(32,),
+                potential_hid_sizes=(32,),
+            ),
+        ),
+    ),
+)
+
+
 @train_adversarial_ex.named_config
-def half_cheetah():
+def half_cheetah_gail():
+    # TODO(shwang): Update experiment scripts to use different total_timesteps
+    # for GAIL and AIRL
     locals().update(**MUJOCO_SHARED_LOCALS)
-    env_name = "HalfCheetah-v2"
-    rollout_hint = "half_cheetah"
-    total_timesteps = 2e6
+    locals().update(**HALF_CHEETAH_SHARED_LOCALS)
+    algorithm = "gail"
+    total_timesteps = 8e6
+
+
+@train_adversarial_ex.named_config
+def half_cheetah_airl():
+    locals().update(**MUJOCO_SHARED_LOCALS)
+    locals().update(**HALF_CHEETAH_SHARED_LOCALS)
+    algorithm = "airl"
+    total_timesteps = 5e6
 
 
 @train_adversarial_ex.named_config

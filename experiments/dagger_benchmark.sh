@@ -1,25 +1,16 @@
 #!/usr/bin/env bash
 set -e
-
-# This script finds the the mean and standard error of episode return after
-# training GAIL or AIRL on benchmark tasks.
-#
-# The benchmark tasks are defined in the CSV config file
-# `experiments/imit_benchmark_config.csv`.
-
 source experiments/common.env
 
-CONFIG_CSV="experiments/imit_benchmark_config.csv"
-DATA_DIR="${DATA_DIR:-data/}"
-LOG_ROOT="output/imit_benchmark/${TIMESTAMP}"
+ENVS="cartpole"
+DATA_DIR=${DATA_DIR:-"data"}
+LOG_ROOT="output/dagger_benchmark/${TIMESTAMP}"
 extra_configs=""
 extra_options=""
-extra_parallel_options=""
-ALGORITHM="gail"
 
 SEEDS="0 1 2 3 4"
 
-TEMP=$($GNU_GETOPT -o f,T -l fast,gail,airl,mvp_seals,cheetah,tmux,pdb,run_name:,log_root:,file_storage:,echo -- $@)
+TEMP=$($GNU_GETOPT -o fT -l fast,paper,tmux,pdb,echo,run_name:,log_root:,file_storage: -- "$@")
 if [[ $? != 0 ]]; then exit 1; fi
 eval set -- "$TEMP"
 
@@ -27,29 +18,16 @@ while true; do
   case "$1" in
     # Fast mode (debug)
     -f | --fast)
-      CONFIG_CSV="tests/data/imit_benchmark_config.csv"
       SEEDS="0"
       extra_configs+="fast "
       shift
       ;;
-    --mvp_seals)
-      CONFIG_CSV="experiments/imit_table_mvp_seals_config.csv"
-      shift
-      ;;
-    --cheetah)
-      CONFIG_CSV="experiments/imit_table_cheetahs.csv"
+    --paper)  # Table benchmark settings
+      ENVS="seals_cartpole seals_mountain_car half_cheetah"
       shift
       ;;
     -T | --tmux)
       extra_parallel_options+="--tmux "
-      shift
-      ;;
-    --gail)
-      ALGORITHM="gail"
-      shift
-      ;;
-    --airl)
-      ALGORITHM="airl"
       shift
       ;;
     --run_name)
@@ -92,29 +70,24 @@ echo "Logging to: ${LOG_ROOT}"
 
 parallel -j 25% --header : --results ${LOG_ROOT}/parallel/ --colsep , --progress \
   ${extra_parallel_options} \
-  python -m imitation.scripts.train_adversarial \
+  python -m imitation.scripts.train_dagger \
   --capture=sys \
   ${extra_options} \
   with \
-  ${ALGORITHM} \
   {env_config_name} \
-  log_dir="${LOG_ROOT}/{env_config_name}_{seed}/n_expert_demos_{n_expert_demos}" \
-  data_dir=${DATA_DIR} \
-  checkpoint_interval=0 \
-  n_expert_demos={n_expert_demos} \
+  log_dir="${LOG_ROOT}/{env_config_name}_{seed}" \
+  expert_data_src_format=None \
+  expert_policy_path=${DATA_DIR}/expert_models/{env_config_name}_0/policies/final/ \
+  expert_policy_type='ppo' \
   seed={seed} \
   ${extra_configs} \
-  :::: $CONFIG_CSV \
+  ::: env_config_name ${ENVS} \
   ::: seed ${SEEDS}
 
 # Directory path is really long. Enter the directory to shorten results output,
 # which includes directory of each stdout file.
 pushd ${LOG_ROOT}/parallel
-find . -name stdout | sort | xargs tail -n 15 | grep -E '==|Result'
+find . -name stderr | sort | xargs tail -n 15 | grep -E '==|Result'
 popd
-
-echo "[Optional] Upload new reward models to S3 (replacing old ones) using the commands:"
-echo "aws s3 rm --recursive s3://shwang-chai/public/data/reward_models/${ALGORITHM}/"
-echo "aws s3 sync --exclude '*/rollouts/*' --exclude '*/checkpoints/*' --include '*/checkpoints/final/*' '${LOG_ROOT}' s3://shwang-chai/public/data/reward_models/${ALGORITHM}/"
 
 echo 'Generate results table using `python -m imitation.scripts.analyze`'
