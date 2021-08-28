@@ -10,11 +10,10 @@ SCRIPT_NAMES = (
     "dagger_benchmark.sh",
     "benchmark_and_table.sh",
     "imit_benchmark.sh",
+    "rollouts_from_policies.sh",
     "train_experts.sh",
     "transfer_learn_benchmark.sh",
 )
-
-# TODO(shwang): Test rollouts_from_policies too
 
 USES_FULL_ROLLOUTS = ("benchmark_and_table.sh",)
 
