@@ -14,11 +14,14 @@ SCRIPT_NAMES = (
     "transfer_learn_benchmark.sh",
 )
 
+# TODO(shwang): Test rollouts_from_policies too
+
 USES_FULL_ROLLOUTS = ("benchmark_and_table.sh",)
 
 _test_path = pathlib.Path(
     "data", "expert_models", "half_cheetah_0", "rollouts", "final.pkl"
 )
+
 HAS_FULL_ROLLOUTS = _test_path.exists()
 
 
