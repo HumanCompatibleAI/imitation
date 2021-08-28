@@ -68,7 +68,3 @@ parallel -j 25% --header : --results ${OUTPUT_DIR}/parallel/ --colsep , --progre
   log_root=${OUTPUT_DIR} \
   ::: env_cfg_name ${ENVS} \
   ::: seed ${SEEDS}
-
-pushd $OUTPUT_DIR
-
-popd
