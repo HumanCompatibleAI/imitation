@@ -11,10 +11,10 @@ source experiments/common.env
 
 CONFIG_CSV="experiments/imit_benchmark_config.csv"
 DATA_DIR="${DATA_DIR:-data/}"
-EXPERT_MODELS_DIR="data/expert_models"
 LOG_ROOT="output/imit_benchmark/${TIMESTAMP}"
 extra_configs=""
 extra_options=""
+extra_parallel_options=""
 ALGORITHM="gail"
 
 SEEDS="0 1 2 3 4"
