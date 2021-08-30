@@ -6,6 +6,7 @@ import stable_baselines3.common.logger as sb_logger
 
 from imitation.data import types
 
+logger = None
 
 def _build_output_formats(
     folder: types.AnyPath,
@@ -144,7 +145,7 @@ def _sb_logger_reset_replacement():
 
 def is_configured() -> bool:
     """Return True if the custom logger is active."""
-    return isinstance(sb_logger.Logger.CURRENT, _HierarchicalLogger)
+    return isinstance(logger, _HierarchicalLogger)
 
 
 def configure(
@@ -170,19 +171,20 @@ def configure(
     output_formats = _build_output_formats(folder, format_strs)
     default_logger = sb_logger.Logger(folder, output_formats)
     hier_logger = _HierarchicalLogger(default_logger, format_strs)
-    sb_logger.Logger.CURRENT = hier_logger
-    sb_logger.log("Logging to %s" % folder)
+    global logger
+    logger = hier_logger
+    logger.log("Logging to %s" % folder)
     assert is_configured()
 
 
 def record(key, val, exclude=None) -> None:
     """Alias for `stable_baselines3.logger.record`."""
-    sb_logger.record(key, val, exclude)
+    logger.record(key, val, exclude)
 
 
 def dump(step=0) -> None:
     """Alias for `stable_baselines3.logger.dump`."""
-    sb_logger.dump(step)
+    logger.dump(step)
 
 
 def accumulate_means(subdir_name: types.AnyPath) -> ContextManager:
@@ -210,5 +212,4 @@ def accumulate_means(subdir_name: types.AnyPath) -> ContextManager:
       A context manager.
     """
     assert is_configured()
-    hier_logger = sb_logger.Logger.CURRENT  # type: _HierarchicalLogger
-    return hier_logger.accumulate_means(subdir_name)
+    return logger.accumulate_means(subdir_name)

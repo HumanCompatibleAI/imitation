@@ -15,12 +15,12 @@ from typing import Callable, List, Mapping, Optional, Sequence, Tuple, Union
 
 import numpy as np
 import torch as th
-from stable_baselines3.common import logger, policies, utils, vec_env
+from stable_baselines3.common import policies, utils, vec_env
 from torch.utils import data as th_data
 
 from imitation.algorithms import bc
 from imitation.data import rollout, types
-from imitation.util import util
+from imitation.util import util, logger
 
 
 class BetaSchedule(abc.ABC):

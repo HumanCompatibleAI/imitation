@@ -12,10 +12,12 @@ import numpy as np
 import torch as th
 import torch.utils.data as th_data
 import tqdm.autonotebook as tqdm
-from stable_baselines3.common import logger, policies, utils, vec_env
+from stable_baselines3.common import policies, utils, vec_env
 
 from imitation.data import rollout, types
 from imitation.policies import base
+
+from imitation.util import logger
 
 
 def reconstruct_policy(
