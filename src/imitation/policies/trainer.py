@@ -120,14 +120,7 @@ class AgentTrainer(TrajectoryGenerator):
             # empty).
             self._pop_trajectories()
 
-            # With the current implementation, these are already lists,
-            # but strictly speaking, the type annotation is Sequence
-            if not isinstance(additional_trajectories, list):
-                additional_trajectories = list(additional_trajectories)
-            if not isinstance(trajectories, list):
-                trajectories = list(trajectories)
-
-            trajectories = trajectories + additional_trajectories
+            trajectories = list(trajectories) + list(additional_trajectories)
 
         # Next, we need the cumulative sum of trajectory lengths
         # to determine how many trajectories to return:

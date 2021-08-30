@@ -42,6 +42,11 @@ def paths(env_name, log_root):
     )
 
 
+@train_preference_comparisons_ex.named_config
+def cartpole():
+    env_name = "CartPole-v1"
+
+
 # Debug configs
 
 

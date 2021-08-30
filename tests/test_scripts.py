@@ -26,6 +26,7 @@ from imitation.scripts import (
     train_adversarial,
     train_bc,
     train_dagger,
+    train_preference_comparisons,
 )
 
 ALL_SCRIPTS_MODS = [
@@ -36,6 +37,7 @@ ALL_SCRIPTS_MODS = [
     train_adversarial,
     train_bc,
     train_dagger,
+    train_preference_comparisons,
 ]
 
 CARTPOLE_TEST_DATA_PATH = pathlib.Path("tests/data/expert_models/cartpole_0/")
@@ -61,6 +63,14 @@ def test_main_console(script_mod):
     argv = ["sacred-pytest-stub", "print_config"]
     with mock.patch.object(sys, "argv", argv):
         script_mod.main_console()
+
+
+def test_train_preference_comparisons_main(tmpdir):
+    run = train_preference_comparisons.train_preference_comparisons_ex.run(
+        named_configs=["cartpole", "fast"], config_updates=dict(log_root=tmpdir)
+    )
+    assert run.status == "COMPLETED"
+    assert isinstance(run.result, dict)
 
 
 def test_train_dagger_main(tmpdir):
