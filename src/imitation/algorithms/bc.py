@@ -18,6 +18,7 @@ from imitation.data import rollout, types
 from imitation.policies import base
 from imitation.util import logger
 
+
 def reconstruct_policy(
     policy_path: str,
     device: Union[th.device, str] = "auto",

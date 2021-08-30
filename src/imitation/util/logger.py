@@ -146,7 +146,8 @@ def configure(
     """
     if folder is None:
         if folder is None:
-            timestamp = datetime.datetime.now().strftime("imitation-%Y-%m-%d-%H-%M-%S-%f")
+            now = datetime.datetime.now()
+            timestamp = now.strftime("imitation-%Y-%m-%d-%H-%M-%S-%f")
             folder = os.path.join(tempfile.gettempdir(), timestamp)
     logging.info("Logging to '%s'", folder)
     if format_strs is None:
