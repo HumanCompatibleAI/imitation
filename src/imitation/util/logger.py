@@ -1,5 +1,8 @@
 import contextlib
+import datetime
+import logging
 import os
+import tempfile
 from typing import Optional, Sequence
 
 import stable_baselines3.common.logger as sb_logger
@@ -129,8 +132,8 @@ class HierarchicalLogger(sb_logger.Logger):
 
 
 def configure(
-    folder: types.AnyPath, format_strs: Optional[Sequence[str]] = None
-) -> sb_logger.Logger:
+    folder: Optional[types.AnyPath] = None, format_strs: Optional[Sequence[str]] = None
+) -> HierarchicalLogger:
     """Configure Stable Baselines logger to be `accumulate_means()`-compatible.
 
     After this function is called, `stable_baselines3.logger.{configure,reset}()`
@@ -141,6 +144,11 @@ def configure(
         format_strs: An list of output format strings. For details on available
           output formats see `stable_baselines3.logger.make_output_format`.
     """
+    if folder is None:
+        if folder is None:
+            timestamp = datetime.datetime.now().strftime("imitation-%Y-%m-%d-%H-%M-%S-%f")
+            folder = os.path.join(tempfile.gettempdir(), timestamp)
+    logging.info("Logging to '%s'", folder)
     if format_strs is None:
         format_strs = ["stdout", "log", "csv"]
     output_formats = _build_output_formats(folder, format_strs)

@@ -12,11 +12,11 @@ import numpy as np
 import torch as th
 import torch.utils.data as th_data
 import tqdm.autonotebook as tqdm
-from stable_baselines3.common import logger, policies, utils, vec_env
+from stable_baselines3.common import policies, utils, vec_env
 
 from imitation.data import rollout, types
 from imitation.policies import base
-
+from imitation.util import logger
 
 def reconstruct_policy(
     policy_path: str,
@@ -193,6 +193,7 @@ class BC:
         ent_weight: float = 1e-3,
         l2_weight: float = 0.0,
         device: Union[str, th.device] = "auto",
+        custom_logger: Optional[logger.HierarchicalLogger] = None,
     ):
         """Behavioral cloning (BC).
 
@@ -213,11 +214,13 @@ class BC:
             ent_weight: scaling applied to the policy's entropy regularization.
             l2_weight: scaling applied to the policy's L2 regularization.
             device: name/identity of device to place policy on.
+            custom_logger: Where to log to; if None (default), creates a new logger.
         """
         if optimizer_kwargs:
             if "weight_decay" in optimizer_kwargs:
                 raise ValueError("Use the parameter l2_weight instead of weight_decay.")
         self.tensorboard_step = 0
+        self.logger = custom_logger or logger.configure()
 
         self.action_space = action_space
         self.observation_space = observation_space
@@ -387,7 +390,7 @@ class BC:
             if batch_num % log_interval == 0:
                 for stats in [stats_dict_it, stats_dict_loss]:
                     for k, v in stats.items():
-                        logger.record(f"bc/{k}", v)
+                        self.logger.record(f"bc/{k}", v)
                 # TODO(shwang): Maybe instead use a callback that can be shared between
                 #   all algorithms' `.train()` for generating rollout stats.
                 #   EvalCallback could be a good fit:
@@ -399,11 +402,11 @@ class BC:
                         rollout.make_min_episodes(log_rollouts_n_episodes),
                     )
                     stats = rollout.rollout_stats(trajs)
-                    logger.record("batch_size", len(batch["obs"]))
+                    self.logger.record("batch_size", len(batch["obs"]))
                     for k, v in stats.items():
                         if "return" in k and "monitor" not in k:
-                            logger.record("rollout/" + k, v)
-                logger.dump(self.tensorboard_step)
+                            self.logger.record("rollout/" + k, v)
+                self.logger.dump(self.tensorboard_step)
             batch_num += 1
             self.tensorboard_step += 1
 
