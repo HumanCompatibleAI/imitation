@@ -49,7 +49,7 @@ def test_reentry_fails(tmpdir):
 
     with hier_logger.accumulate_means("foo"):
         with pytest.raises(RuntimeError, match=r"Nested.*"):
-            with hier_logger.accumulate_means("bar"):
+            with hier_logger.accumulate_means("bar"):  # pragma: no cover
                 pass
 
 
