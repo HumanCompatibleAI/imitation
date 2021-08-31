@@ -56,7 +56,7 @@ setup(
         "torch>=1.4.0",
         "tqdm",
         "scikit-learn>=0.21.2",
-        "stable-baselines3",
+        "stable-baselines3>=1.1.0",
         "sacred~=0.8.1",
         "tensorboard>=1.14",
     ],
