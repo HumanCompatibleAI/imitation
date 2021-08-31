@@ -48,7 +48,7 @@ class HierarchicalLogger(sb_logger.Logger):
         self._cached_loggers = {}
         self._subdir = None
         self.format_strs = format_strs
-        super().__init__(folder=self.default_logger.dir, output_formats=None)
+        super().__init__(folder=self.default_logger.dir, output_formats=[])
 
     @contextlib.contextmanager
     def accumulate_means(self, subdir: types.AnyPath):
@@ -124,11 +124,16 @@ class HierarchicalLogger(sb_logger.Logger):
     def log(self, *args, **kwargs):
         self.default_logger.log(*args, **kwargs)
 
+    def set_level(self, level: int) -> None:
+        self.default_logger.set_level(level)
+
     def record_mean(self, key, val, exclude=None):
         self.default_logger.record_mean(key, val, exclude)
 
     def close(self):
-        raise NotImplementedError
+        self.default_logger.close()
+        for logger in self._cached_loggers.values():
+            logger.close()
 
 
 def configure(
@@ -145,10 +150,9 @@ def configure(
           output formats see `stable_baselines3.logger.make_output_format`.
     """
     if folder is None:
-        if folder is None:
-            now = datetime.datetime.now()
-            timestamp = now.strftime("imitation-%Y-%m-%d-%H-%M-%S-%f")
-            folder = os.path.join(tempfile.gettempdir(), timestamp)
+        now = datetime.datetime.now()
+        timestamp = now.strftime("imitation-%Y-%m-%d-%H-%M-%S-%f")
+        folder = os.path.join(tempfile.gettempdir(), timestamp)
     logging.info("Logging to '%s'", folder)
     if format_strs is None:
         format_strs = ["stdout", "log", "csv"]
