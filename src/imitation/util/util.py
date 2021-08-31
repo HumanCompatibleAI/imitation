@@ -112,6 +112,8 @@ def make_vec_env(
         return DummyVecEnv(env_fns)
 
 
+# TODO(adam): this is a very simple function; convenient given how Sacred config
+# currently works, but we should maybe refactor to avoid needing that.
 def init_rl(
     env: Union[gym.Env, VecEnv],
     model_class: Type[BaseAlgorithm] = stable_baselines3.PPO,
@@ -131,17 +133,8 @@ def init_rl(
     Returns:
       An RL algorithm.
     """
-    # FIXME(sam): verbose=1 and tensorboard_log=None is a hack to prevent SB3
-    # from reconfiguring the logger after we've already configured it. Should
-    # remove once SB3 issue #109 is fixed (there are also >=2 other comments to
-    # this effect elsewhere; worth grepping for "#109").
-    all_kwargs = {
-        "verbose": 1,
-        "tensorboard_log": None,
-    }
-    all_kwargs.update(model_kwargs)
     return model_class(
-        policy_class, env, **all_kwargs
+        policy_class, env, **model_kwargs
     )  # pytype: disable=not-instantiable
 
 

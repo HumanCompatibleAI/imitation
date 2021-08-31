@@ -117,14 +117,10 @@ def rollouts_and_policy(
     os.makedirs(policy_dir, exist_ok=True)
 
     if init_tensorboard:
-        # sb_tensorboard_dir = osp.join(log_dir, "sb_tb")
+        sb_tensorboard_dir = osp.join(log_dir, "sb_tb")
         # Convert sacred's ReadOnlyDict to dict so we can modify on next line.
         init_rl_kwargs = dict(init_rl_kwargs)
-        # init_rl_kwargs["tensorboard_log"] = sb_tensorboard_dir
-        # FIXME(sam): this is another hack to prevent SB3 from configuring the
-        # logger on the first .learn() call. Remove it once SB3 issue #109 is
-        # fixed.
-        init_rl_kwargs["tensorboard_log"] = None
+        init_rl_kwargs["tensorboard_log"] = sb_tensorboard_dir
 
     venv = util.make_vec_env(
         env_name,

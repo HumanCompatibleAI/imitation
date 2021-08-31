@@ -167,17 +167,10 @@ def train_adversarial(
         max_episode_steps=max_episode_steps,
     )
 
-    # if init_tensorboard:
-    #     tensorboard_log = osp.join(log_dir, "sb_tb")
-    # else:
-    #     tensorboard_log = None
-
+    tensorboard_log = osp.join(log_dir, "sb_tb") if init_tensorboard else None
     gen_algo = util.init_rl(
-        # FIXME(sam): ignoring tensorboard_log is a hack to prevent SB3 from
-        # re-configuring the logger (SB3 issue #109). See init_rl() for details.
-        # TODO(shwang): Let's get rid of init_rl after SB3 issue #109 is fixed?
-        # Besides sidestepping #109, init_rl is just a stub function.
         venv,
+        tensorboard_log=tensorboard_log,
         **init_rl_kwargs,
     )
 
