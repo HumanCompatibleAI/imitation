@@ -143,51 +143,36 @@ class SyntheticGatherer:
 
     def __init__(
         self,
-        probabilistic: bool = True,
-        noise_prob: float = 0.0,
+        temperature: float = 1,
         discount_factor: float = 1,
         seed: int = 0,
     ):
         """Initialize the synthetic preference gatherer.
 
         Args:
-            probabilistic: if True (default), the outputs are sampled from a Bernoulli
-                distribution based on a softmax of the rewards (e.g. if the fragments
-                have equal rewards, 0 or 1 is returned with equal probability).
-                If False, then 0, 1 or 0.5 is returned deterministically based on which
-                fragment is better or whether they are equally good.
-            noise_prob: probability with which the preference is uniformly random
-                rather than based on the softmax of rewards.
-                Cannot be set if probabilistic=False.
+            temperature: the preferences are sampled from a softmax, this is
+                the temperature used for sampling. temperature=0 leads to deterministic
+                results (for equal rewards, 0.5 will be returned).
             discount_factor: discount factor that is used to compute
                 how good a fragment is. Default is to use undiscounted
                 sums of rewards (as in the DRLHP paper).
-            seed: seed for the internal RNG (only used if probabilistic is True).
+            seed: seed for the internal RNG (only used if temperature > 0)
         """
-        self.noise_prob = noise_prob
-        self.probabilistic = probabilistic
+        self.temperature = temperature
         self.discount_factor = discount_factor
         self.rng = np.random.default_rng(seed=seed)
 
     def __call__(self, fragment_pairs: Sequence[TrajectoryWithRewPair]) -> np.ndarray:
         rews1, rews2 = self._reward_sums(fragment_pairs)
-        if self.probabilistic:
-            # If probabilistic is True, we use the human model to compute probabilities.
-            # Instead of computing exp(rews1) / (exp(rews1) + exp(rews2)) directly,
-            # we divide enumerator and denominator by exp(rews1) to prevent overflows:
-            model_probs = 1 / (1 + np.exp(rews2 - rews1))
-            # We also include an optional probability of making a random decision
-            # (modeling the fact that humans make mistakes):
-            noisy_probs = self.noise_prob * 0.5 + (1 - self.noise_prob * model_probs)
-            return self.rng.binomial(n=1, p=noisy_probs).astype(np.float32)
+        if self.temperature == 0:
+            return (np.sign(rews1 - rews2) + 1) / 2
 
-        if self.noise_prob != 0:
-            raise ValueError(
-                f"noise_prob={self.noise_prob} is non-zero but probabilistic=False"
-            )
-        # if probabilistic is set to False, we simply return 0 or 1 (or 0.5 if the sums
-        # of rewards are the same) for the probability
-        return (np.sign(rews1 - rews2) + 1) / 2
+        rews1 /= self.temperature
+        rews2 /= self.temperature
+        # Instead of computing exp(rews1) / (exp(rews1) + exp(rews2)) directly,
+        # we divide enumerator and denominator by exp(rews1) to prevent overflows:
+        model_probs = 1 / (1 + np.exp(rews2 - rews1))
+        return self.rng.binomial(n=1, p=model_probs).astype(np.float32)
 
     def _reward_sums(self, fragment_pairs) -> Tuple[np.ndarray, np.ndarray]:
         rews1, rews2 = zip(

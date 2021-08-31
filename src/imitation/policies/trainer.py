@@ -134,9 +134,5 @@ class AgentTrainer(TrajectoryGenerator):
         assert sum(len(traj) for traj in trajectories) >= steps
         return trajectories
 
-    @property
-    def policy(self):
-        return self.algorithm.policy
-
     def _pop_trajectories(self) -> Sequence[types.TrajectoryWithRew]:
         return self.buffering_wrapper.pop_trajectories()
