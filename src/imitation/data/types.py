@@ -31,6 +31,13 @@ def dataclass_quick_asdict(dataclass_instance) -> dict:
     return d
 
 
+def path_to_str(path: AnyPath) -> str:
+    if isinstance(path, bytes):
+        return path.decode()
+    else:
+        return str(path)
+
+
 @dataclasses.dataclass(frozen=True)
 class Trajectory:
     """A trajectory, e.g. a one episode rollout from an expert policy."""

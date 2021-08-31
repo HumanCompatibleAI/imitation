@@ -1,6 +1,9 @@
 import contextlib
+import datetime
+import logging
 import os
-from typing import ContextManager, Optional, Sequence
+import tempfile
+from typing import Optional, Sequence
 
 import stable_baselines3.common.logger as sb_logger
 
@@ -8,7 +11,7 @@ from imitation.data import types
 
 
 def _build_output_formats(
-    folder: types.AnyPath,
+    folder: str,
     format_strs: Sequence[str] = None,
 ) -> Sequence[sb_logger.KVWriter]:
     """Build output formats for initializing a Stable Baselines Logger.
@@ -23,7 +26,7 @@ def _build_output_formats(
     return output_formats
 
 
-class _HierarchicalLogger(sb_logger.Logger):
+class HierarchicalLogger(sb_logger.Logger):
     def __init__(
         self,
         default_logger: sb_logger.Logger,
@@ -45,11 +48,11 @@ class _HierarchicalLogger(sb_logger.Logger):
         self._cached_loggers = {}
         self._subdir = None
         self.format_strs = format_strs
-        super().__init__(folder=self.default_logger.dir, output_formats=None)
+        super().__init__(folder=self.default_logger.dir, output_formats=[])
 
     @contextlib.contextmanager
     def accumulate_means(self, subdir: types.AnyPath):
-        """Temporarily modifies this _HierarchicalLogger to accumulate means values.
+        """Temporarily modifies this HierarchicalLogger to accumulate means values.
 
         During this context, `self.record(key, value)` writes the "raw" values in
         "{self.default_logger.log_dir}/{subdir}" under the key "raw/{subdir}/{key}".
@@ -80,6 +83,7 @@ class _HierarchicalLogger(sb_logger.Logger):
         if subdir in self._cached_loggers:
             logger = self._cached_loggers[subdir]
         else:
+            subdir = types.path_to_str(subdir)
             folder = os.path.join(self.default_logger.dir, "raw", subdir)
             os.makedirs(folder, exist_ok=True)
             output_formats = _build_output_formats(folder, self.format_strs)
@@ -121,35 +125,21 @@ class _HierarchicalLogger(sb_logger.Logger):
     def log(self, *args, **kwargs):
         self.default_logger.log(*args, **kwargs)
 
+    def set_level(self, level: int) -> None:
+        self.default_logger.set_level(level)
+
     def record_mean(self, key, val, exclude=None):
         self.default_logger.record_mean(key, val, exclude)
 
     def close(self):
-        raise NotImplementedError
-
-
-def _sb_logger_configure_replacement(*args, **kwargs):
-    raise RuntimeError(
-        "Shouldn't call stable_baselines3.logger.configure "
-        "once imitation.logger.configure() has been called"
-    )
-
-
-def _sb_logger_reset_replacement():
-    raise RuntimeError(
-        "Shouldn't call stable_baselines3.logger.reset "
-        "once imitation.logger.configure() has been called"
-    )
-
-
-def is_configured() -> bool:
-    """Return True if the custom logger is active."""
-    return isinstance(sb_logger.Logger.CURRENT, _HierarchicalLogger)
+        self.default_logger.close()
+        for logger in self._cached_loggers.values():
+            logger.close()
 
 
 def configure(
-    folder: types.AnyPath, format_strs: Optional[Sequence[str]] = None
-) -> None:
+    folder: Optional[types.AnyPath] = None, format_strs: Optional[Sequence[str]] = None
+) -> HierarchicalLogger:
     """Configure Stable Baselines logger to be `accumulate_means()`-compatible.
 
     After this function is called, `stable_baselines3.logger.{configure,reset}()`
@@ -160,55 +150,16 @@ def configure(
         format_strs: An list of output format strings. For details on available
           output formats see `stable_baselines3.logger.make_output_format`.
     """
-    # Replace `stable_baselines3.logger` methods with erroring stubs to
-    # prevent unexpected logging state from mixed logging configuration.
-    sb_logger.configure = _sb_logger_configure_replacement
-    sb_logger.reset = _sb_logger_reset_replacement
-
+    if folder is None:
+        now = datetime.datetime.now()
+        timestamp = now.strftime("imitation-%Y-%m-%d-%H-%M-%S-%f")
+        folder = os.path.join(tempfile.gettempdir(), timestamp)
+    else:
+        folder = types.path_to_str(folder)
+    logging.info("Logging to '%s'", folder)
     if format_strs is None:
         format_strs = ["stdout", "log", "csv"]
     output_formats = _build_output_formats(folder, format_strs)
     default_logger = sb_logger.Logger(folder, output_formats)
-    hier_logger = _HierarchicalLogger(default_logger, format_strs)
-    sb_logger.Logger.CURRENT = hier_logger
-    sb_logger.log("Logging to %s" % folder)
-    assert is_configured()
-
-
-def record(key, val, exclude=None) -> None:
-    """Alias for `stable_baselines3.logger.record`."""
-    sb_logger.record(key, val, exclude)
-
-
-def dump(step=0) -> None:
-    """Alias for `stable_baselines3.logger.dump`."""
-    sb_logger.dump(step)
-
-
-def accumulate_means(subdir_name: types.AnyPath) -> ContextManager:
-    """Temporarily redirect record() to a different logger and auto-track kvmeans.
-
-    Within this context, the original logger is swapped out for a special logger
-    in directory `"{current_logging_dir}/raw/{subdir_name}"`.
-
-    The special logger's `stable_baselines3.logger.record(key, val)`, in addition
-    to tracking its own logs, also forwards the log to the original logger's
-    `.record_mean()` under the key `mean/{subdir_name}/{key}`.
-
-    After the context exits, these means can be dumped as usual using
-    `stable_baselines3.logger.dump()` or `imitation.util.logger.dump()`.
-
-    Note that the behavior of other logging methods, `log` and `record_mean`
-    are unmodified and will go straight to the original logger.
-
-    This context cannot be nested.
-
-    Args:
-      subdir_name: A string key for building the logger, as described above.
-
-    Returns:
-      A context manager.
-    """
-    assert is_configured()
-    hier_logger = sb_logger.Logger.CURRENT  # type: _HierarchicalLogger
-    return hier_logger.accumulate_means(subdir_name)
+    hier_logger = HierarchicalLogger(default_logger, format_strs)
+    return hier_logger
