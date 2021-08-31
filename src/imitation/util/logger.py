@@ -11,7 +11,7 @@ from imitation.data import types
 
 
 def _build_output_formats(
-    folder: types.AnyPath,
+    folder: str,
     format_strs: Sequence[str] = None,
 ) -> Sequence[sb_logger.KVWriter]:
     """Build output formats for initializing a Stable Baselines Logger.
@@ -83,6 +83,7 @@ class HierarchicalLogger(sb_logger.Logger):
         if subdir in self._cached_loggers:
             logger = self._cached_loggers[subdir]
         else:
+            subdir = types.path_to_str(subdir)
             folder = os.path.join(self.default_logger.dir, "raw", subdir)
             os.makedirs(folder, exist_ok=True)
             output_formats = _build_output_formats(folder, self.format_strs)
@@ -153,6 +154,8 @@ def configure(
         now = datetime.datetime.now()
         timestamp = now.strftime("imitation-%Y-%m-%d-%H-%M-%S-%f")
         folder = os.path.join(tempfile.gettempdir(), timestamp)
+    else:
+        folder = types.path_to_str(folder)
     logging.info("Logging to '%s'", folder)
     if format_strs is None:
         format_strs = ["stdout", "log", "csv"]
