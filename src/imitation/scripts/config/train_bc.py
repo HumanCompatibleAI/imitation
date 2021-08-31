@@ -26,7 +26,7 @@ def config():
         lr=4e-4,
     )
     log_dir = None  # Log directory
-    log_interval = 100  # Number of batches in between each training log.
+    log_interval = 1000  # Number of batches in between each training log.
     log_rollouts_n_episodes = 5  # Number of rollout episodes per training log.
 
     # Parent directory for automatic log_dir
@@ -73,7 +73,7 @@ def defaults(
 @train_bc_ex.config
 def default_train_duration(n_epochs, n_batches):
     if n_epochs is None and n_batches is None:
-        n_epochs = 400
+        n_batches = 50_000
 
 
 @train_bc_ex.config
@@ -127,6 +127,7 @@ def ant():
 def half_cheetah():
     env_name = "HalfCheetah-v2"
     rollout_hint = "half_cheetah"
+    n_batches = 100_000
 
 
 @train_bc_ex.named_config

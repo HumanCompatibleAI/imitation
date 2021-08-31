@@ -73,8 +73,7 @@ def test_serialize_identity(env_name, model_cfg, normalize, tmpdir):
     model_name, model_cls_name = model_cfg
     model_cls = registry.load_attr(model_cls_name)
 
-    # FIXME(sam): verbose=1 is a hack to stop it from setting up SB logger
-    model = model_cls("MlpPolicy", venv, verbose=1)
+    model = model_cls("MlpPolicy", venv)
     model.learn(1000)
 
     venv.env_method("seed", 0)

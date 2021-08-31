@@ -11,12 +11,12 @@ ENVS+="two_d_maze custom_ant disabled_ant "
 
 SEEDS="0 1 2"
 
-TIMESTAMP=$(date --iso-8601=seconds)
+source experiments/common.env
 OUTPUT_DIR="output/train_experts/${TIMESTAMP}"
 RESULTS_FILE="results.txt"
 extra_configs=""
 
-TEMP=$(getopt -o fr -l fast,regenerate -- $@)
+TEMP=$($GNU_GETOPT -o fr -l fast,regenerate -- $@)
 if [[ $? != 0 ]]; then exit 1; fi
 eval set -- "$TEMP"
 

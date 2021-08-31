@@ -149,14 +149,6 @@ class ShapedRewardNet(RewardNet):
         self.potential = potential
         self.discount_factor = discount_factor
 
-        # end_potential is the potential when the episode terminates.
-        if discount_factor == 1.0:
-            # If undiscounted, terminal state must have potential 0.
-            self.end_potential = 0.0
-        else:
-            # Otherwise, it can be arbitrary, so make a trainable variable.
-            self.end_potential = nn.Parameter(th.zeros(()))
-
     def forward(
         self,
         state: th.Tensor,
@@ -167,8 +159,25 @@ class ShapedRewardNet(RewardNet):
         base_reward_net_output = self.base(state, action, next_state, done)
         new_shaping_output = self.potential(next_state).flatten()
         old_shaping_output = self.potential(state).flatten()
-        done_f = done.float()
-        new_shaping = done_f * self.end_potential + (1 - done_f) * new_shaping_output
+        # NOTE(ejnnr): We fix the potential of terminal states to zero, which is
+        # necessary for valid potential shaping in a variable-length horizon setting.
+        #
+        # In more detail: variable-length episodes are usually modeled
+        # as infinite-length episodes where we transition to a terminal state
+        # in which we then remain forever. The transition to this final
+        # state contributes gamma * Phi(s_T) - Phi(s_{T - 1}) to the returns,
+        # where Phi is the potential and s_T the final state. But on every step
+        # afterwards, the potential shaping leads to a reward of (gamma - 1) * Phi(s_T).
+        # The discounted series of these rewards, which is added to the return,
+        # is gamma / (1 - gamma) times this reward, i.e. just -gamma * Phi(s_T).
+        # This cancels the contribution of the final state to the last "real"
+        # transition, so instead of computing the infinite series, we can
+        # equivalently fix the final potential to zero without loss of generality.
+        # Not fixing the final potential to zero and also not adding this infinite
+        # series of remaining potential shapings can lead to reward shaping
+        # that does not preserve the optimal policy if the episodes have variable
+        # length!
+        new_shaping = (1 - done.float()) * new_shaping_output
         final_rew = (
             base_reward_net_output
             + self.discount_factor * new_shaping

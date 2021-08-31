@@ -1,36 +1,58 @@
 #!/usr/bin/env bash
 
 # This script loads expert PPO policies of the form
-# `${EXPERT_MODELS_DIR}/{env_config_name}_0/policies/final/`
+# `${DATA_DIR}/expert_models/{env_config_name}_0/policies/final/`
 # and generates rollouts. The rollouts are saved to
-# `${EXPERT_MODELS_DIR}/{env_config_name}_0/rollouts/final.pkl`
+# `${DATA_DIR}/expert_models/{env_config_name}_0/rollouts/final.pkl`
 #
-# EXPERT_MODELS_DIR is "data/expert_models" by default, but can be configured
-# via `export EXPERT_MODELS_DIR=foobar`.
+# DATA_DIR is "data/" by default, but can be configured via `export DATA_DIR=foobar`.
 #
 # The values of {env_config_name} are defined in the config file
 # `experiments/rollouts_from_policies.csv`.
 #
-# TODO(shwang): When we are migrated to Python, first evaluate the
-# mean return of each policy, then use this to choose the best seed rather
-# than hardcoding seed 0.
+# TODO(shwang): Nice to have -- first evaluate the mean return of each policy, then use
+# this to choose the best seed rather than hardcoding seed 0. This will probably require
+# a Python implementation. We (Steven) currently pick out the best policies seeds
+# manually and rename that directory to `expert_models/polieices/${env_name}_0/` to ensure
+# that downstream scripts get good expert rollouts and policies. If you are in the
+# process of picking good policies, then this "check rollout quality" script could
+# be useful: https://gist.github.com/1bea85e658a41b32c2693832fc216b8a.
 
-TIMESTAMP=$(date --iso-8601=seconds)
-EXPERT_MODELS_DIR=${EXPERT_MODELS_DIR:-data/expert_models}
+set -e  # Exit on error.
+
+source experiments/common.env
+
+DATA_DIR=${DATA_DIR:-data}
 CONFIG_CSV=${CONFIG_CSV:-experiments/rollouts_from_policies_config.csv}
 OUTPUT_DIR="output/train_experts/${TIMESTAMP}"
 
-while getopts "f" arg; do
-  if [[ $arg == "f" ]]; then
-    # Fast mode (debug)
-    CONFIG_CSV="tests/data/rollouts_from_policies_config.csv"
-    EXPERT_MODELS_DIR="tests/data/expert_models"
-  fi
+TEMP=$($GNU_GETOPT -o f -l fast -- "$@")
+if [[ $? != 0 ]]; then exit 1; fi
+eval set -- "$TEMP"
+
+while true; do
+  case "$1" in
+    -f | --fast)
+      # Fast mode (debug)
+      CONFIG_CSV="tests/data/rollouts_from_policies_config.csv"
+      shift
+      ;;
+    --)
+      shift
+      break
+      ;;
+    *)
+      echo "Unrecognized flag $1" >&2
+      exit 1
+      ;;
+  esac
 done
 
-echo "Loading config from ${CONFIG_CSV}"
-echo "Loading expert models from ${EXPERT_MODELS_DIR}"
-echo "Writing logs in ${OUTPUT_DIR}, and saving rollouts in ${EXPERT_MODELS_DIR}/*/rollouts/"
+expert_models_dir=${DATA_DIR}/expert_models
+
+echo "Loading config from ${expert_models_dir}"
+echo "Loading expert models from ${DATA_DIR}/expert_models}"
+echo "Writing logs in ${OUTPUT_DIR}, and saving rollouts in ${OUTPUT_DIR}/expert_models/*/rollouts/"
 
 parallel -j 25% --header : --results ${OUTPUT_DIR}/parallel/ --colsep , \
   python -m imitation.scripts.expert_demos rollouts_from_policy \
@@ -38,8 +60,8 @@ parallel -j 25% --header : --results ${OUTPUT_DIR}/parallel/ --colsep , \
   with \
   {env_config_name} \
   log_root="${OUTPUT_DIR}" \
-  policy_path="${EXPERT_MODELS_DIR}/{env_config_name}_0/policies/final/" \
-  rollout_save_path="${EXPERT_MODELS_DIR}/{env_config_name}_0/rollouts/final.pkl" \
+  policy_path="${expert_models_dir}/{env_config_name}_0/policies/final/" \
+  rollout_save_path="${OUTPUT_DIR}/{env_config_name}_0/rollouts/final.pkl" \
   rollout_save_n_episodes="{n_demonstrations}" \
   rollout_save_n_timesteps=None \
   :::: ${CONFIG_CSV}

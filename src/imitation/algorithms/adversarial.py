@@ -52,6 +52,7 @@ class AdversarialTrainer:
         disc_opt_cls: Type[th.optim.Optimizer] = th.optim.Adam,
         disc_opt_kwargs: Optional[Mapping] = None,
         gen_replay_buffer_capacity: Optional[int] = None,
+        custom_logger: Optional[logger.HierarchicalLogger] = None,
         init_tensorboard: bool = False,
         init_tensorboard_graph: bool = False,
         debug_use_ground_truth: bool = False,
@@ -63,6 +64,7 @@ class AdversarialTrainer:
             gen_algo: The generator RL algorithm that is trained to maximize
                 discriminator confusion. The generator batch size
                 `self.gen_batch_size` is inferred from `gen_algo.n_steps`.
+                Environment and logger will be set to `venv` and `custom_logger`.
             discrim_net: The discriminator network. This will be moved to the same
                 device as `gen_algo`.
             expert_data: Either a `torch.utils.data.DataLoader`-like object or an
@@ -95,6 +97,7 @@ class AdversarialTrainer:
 
                 By default this is equal to `self.gen_batch_size`, meaning that we
                 sample only from the most recent batch of generator samples.
+            custom_logger: Where to log to; if None (default), creates a new logger.
             init_tensorboard: If True, makes various discriminator
                 TensorBoard summaries.
             init_tensorboard_graph: If both this and `init_tensorboard` are True,
@@ -105,10 +108,6 @@ class AdversarialTrainer:
                 the environment reward with the learned reward. This is useful for
                 sanity checking that the policy training is functional.
         """
-
-        assert (
-            logger.is_configured()
-        ), "Requires call to imitation.util.logger.configure"
         self._global_step = 0
         self._disc_step = 0
         self.n_disc_updates_per_round = n_disc_updates_per_round
@@ -151,6 +150,7 @@ class AdversarialTrainer:
             self.discrim_net.parameters(), **self._disc_opt_kwargs
         )
 
+        self.logger = custom_logger or logger.configure()
         if self._init_tensorboard:
             logging.info("building summary directory at " + self._log_dir)
             summary_dir = os.path.join(self._log_dir, "summary")
@@ -178,6 +178,7 @@ class AdversarialTrainer:
         )
 
         self.gen_algo.set_env(self.venv_train)
+        self.gen_algo.set_logger(self.logger)
 
         if gen_replay_buffer_capacity is None:
             gen_replay_buffer_capacity = self.gen_batch_size
@@ -217,7 +218,7 @@ class AdversarialTrainer:
         Returns:
            dict: Statistics for discriminator (e.g. loss, accuracy).
         """
-        with logger.accumulate_means("disc"):
+        with self.logger.accumulate_means("disc"):
             # optionally write TB summaries for collected ops
             write_summaries = self._init_tensorboard and self._global_step % 20 == 0
 
@@ -247,10 +248,10 @@ class AdversarialTrainer:
                     batch["labels_gen_is_one"],
                     loss,
                 )
-            logger.record("global_step", self._global_step)
+            self.logger.record("global_step", self._global_step)
             for k, v in train_stats.items():
-                logger.record(k, v)
-            logger.dump(self._disc_step)
+                self.logger.record(k, v)
+            self.logger.dump(self._disc_step)
             if write_summaries:
                 self._summary_writer.add_histogram("disc_logits", disc_logits.detach())
 
@@ -278,7 +279,7 @@ class AdversarialTrainer:
         if learn_kwargs is None:
             learn_kwargs = {}
 
-        with logger.accumulate_means("gen"):
+        with self.logger.accumulate_means("gen"):
             self.gen_algo.learn(
                 total_timesteps=total_timesteps,
                 reset_num_timesteps=False,
@@ -322,7 +323,7 @@ class AdversarialTrainer:
                 self.train_disc()
             if callback:
                 callback(r)
-            logger.dump(self._global_step)
+            self.logger.dump(self._global_step)
 
     def _torchify_array(self, ndarray: np.ndarray) -> th.Tensor:
         return th.as_tensor(ndarray, device=self.discrim_net.device())
