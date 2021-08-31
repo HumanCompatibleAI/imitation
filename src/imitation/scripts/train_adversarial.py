@@ -154,7 +154,7 @@ def train_adversarial(
     total_timesteps = int(total_timesteps)
 
     logging.info("Logging to %s", log_dir)
-    logger.configure(log_dir, ["tensorboard", "stdout"])
+    custom_logger = logger.configure(log_dir, ["tensorboard", "stdout"])
     os.makedirs(log_dir, exist_ok=True)
     sacred_util.build_sacred_symlink(log_dir, _run)
 
@@ -171,6 +171,7 @@ def train_adversarial(
     gen_algo = util.init_rl(
         venv,
         tensorboard_log=tensorboard_log,
+        custom_logger=custom_logger,
         **init_rl_kwargs,
     )
 
@@ -198,6 +199,7 @@ def train_adversarial(
         gen_algo=gen_algo,
         log_dir=log_dir,
         discrim_kwargs=final_discrim_kwargs,
+        custom_logger=custom_logger,
         **final_algorithm_kwargs,
     )
 
