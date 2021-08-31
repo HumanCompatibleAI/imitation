@@ -32,7 +32,7 @@ def dataclass_quick_asdict(dataclass_instance) -> dict:
 
 
 def path_to_str(path: AnyPath) -> str:
-    if isinstance(AnyPath, bytes):
+    if isinstance(path, bytes):
         return path.decode()
     else:
         return str(path)
