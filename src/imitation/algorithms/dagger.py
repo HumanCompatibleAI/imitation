@@ -315,13 +315,28 @@ class DAggerTrainer:
         self._last_loaded_round = -1
         self._all_demos = []
 
-        self.logger = custom_logger or logger.configure()
+        self._logger = custom_logger or logger.configure()
         self.bc_trainer = bc.BC(
             self.venv.observation_space,
             self.venv.action_space,
-            custom_logger=self.logger,
+            custom_logger=self._logger,
             **self.bc_kwargs,
         )
+
+    def set_logger(self, custom_logger: logger.HierarchicalLogger) -> None:
+        self._logger = custom_logger
+        self.bc_trainer.logger = custom_logger
+
+    def __getstate__(self):
+        state = self.__dict__.copy()
+        # logger can't be pickled as it depends on open files
+        del state["_logger"]
+        return state
+
+    def __setstate__(self, state):
+        self.__dict__.update(state)
+        # callee should call set_logger if they want to override this
+        self._logger = state.get("_logger") or logger.configure()
 
     @property
     def policy(self) -> policies.BasePolicy:
@@ -601,16 +616,18 @@ class SimpleDAggerTrainer(DAggerTrainer):
 
             for traj in trajectories:
                 _save_dagger_demo(traj, collector.save_dir)
-                self.logger.record_mean("dagger/mean_episode_reward", np.sum(traj.rews))
+                self._logger.record_mean(
+                    "dagger/mean_episode_reward", np.sum(traj.rews)
+                )
                 round_timestep_count += len(traj)
                 total_timestep_count += len(traj)
 
             round_episode_count += len(trajectories)
 
-            self.logger.record("dagger/total_timesteps", total_timestep_count)
-            self.logger.record("dagger/round_num", round_num)
-            self.logger.record("dagger/round_episode_count", round_episode_count)
-            self.logger.record("dagger/round_timestep_count", round_timestep_count)
+            self._logger.record("dagger/total_timesteps", total_timestep_count)
+            self._logger.record("dagger/round_num", round_num)
+            self._logger.record("dagger/round_episode_count", round_episode_count)
+            self._logger.record("dagger/round_timestep_count", round_timestep_count)
 
             # `logger.dump` is called inside BC.train within the following fn call:
             self.extend_and_update(bc_train_kwargs)

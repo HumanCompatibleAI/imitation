@@ -418,3 +418,14 @@ class BC:
             policy_path: path to save policy to.
         """
         th.save(self.policy, policy_path)
+
+    def __getstate__(self):
+        state = self.__dict__.copy()
+        # logger can't be pickled as it depends on open files
+        del state["logger"]
+        return state
+
+    def __setstate__(self, state):
+        self.__dict__.update(state)
+        # callee should call set_logger if they want to override this
+        self._logger = state.get("logger") or logger.configure()
