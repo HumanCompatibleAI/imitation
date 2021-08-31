@@ -73,3 +73,39 @@ def test_synthetic_gatherer_deterministic(agent_trainer, fragmenter):
     preferences1 = gatherer(fragments)
     preferences2 = gatherer(fragments)
     assert np.all(preferences1 == preferences2)
+
+
+def test_fragments_too_short_error(agent_trainer):
+    trajectories = agent_trainer.sample(2)
+    fragmenter = preference_comparisons.RandomFragmenter(
+        # the only important bit is that fragment_length is higher than
+        # we'll ever reach
+        fragment_length=10000,
+        num_pairs=2,
+        seed=0,
+        warning_threshold=0,
+    )
+    with pytest.raises(ValueError) as err:
+        fragmenter(trajectories)
+
+    assert (
+        str(err.value)
+        == "No trajectories are long enough for the desired fragment length."
+    )
+
+
+def test_preference_dataset_errors(agent_trainer, fragmenter):
+    dataset = preference_comparisons.PreferenceDataset()
+    trajectories = agent_trainer.sample(2)
+    fragments = fragmenter(trajectories)
+    # just create something with a different shape:
+    preferences = np.empty(len(fragments) + 1, dtype=np.float32)
+    with pytest.raises(ValueError) as err:
+        dataset.push(fragments, preferences)
+    assert "Unexpected preferences shape" in str(err.value)
+
+    # Now test dtype
+    preferences = np.empty(len(fragments), dtype=np.float64)
+    with pytest.raises(ValueError) as err:
+        dataset.push(fragments, preferences)
+    assert str(err.value) == "preferences should have dtype float32"
