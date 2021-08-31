@@ -478,4 +478,4 @@ def test_analyze_gather_tb(tmpdir: str):
     )
     assert run.status == "COMPLETED"
     assert isinstance(run.result, dict)
-    assert run.result["n_tb_dirs"] == 2
+    assert run.result["n_tb_dirs"] == 4
