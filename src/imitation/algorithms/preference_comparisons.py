@@ -11,7 +11,6 @@ from typing import Callable, List, Optional, Sequence, Tuple
 
 import numpy as np
 import torch as th
-from stable_baselines3.common import logger
 
 from imitation.data import rollout
 from imitation.data.types import (
@@ -22,6 +21,7 @@ from imitation.data.types import (
 )
 from imitation.policies import trainer
 from imitation.rewards import reward_nets
+from imitation.util import logger
 
 Fragmenter = Callable[[Sequence[TrajectoryWithRew]], Sequence[TrajectoryWithRewPair]]
 """Creates pairs of trajectory fragments from a collection of trajectories."""
@@ -45,6 +45,7 @@ class RandomFragmenter:
         num_pairs: int = 50,
         seed: Optional[float] = None,
         warning_threshold: int = 10,
+        custom_logger: Optional[logger.HierarchicalLogger] = None,
     ):
         """Initialize the fragmenter.
 
@@ -55,11 +56,13 @@ class RandomFragmenter:
             warning_threshold: give a warning if the number of available
                 transitions is less than this many times the number of
                 required samples. Set to 0 to disable this warning.
+            custom_logger: Where to log to; if None (default), creates a new logger.
         """
         self.fragment_length = fragment_length
         self.num_pairs = num_pairs
         self.rng = random.Random(seed)
         self.warning_threshold = warning_threshold
+        self.logger = custom_logger or logger.configure()
 
     def __call__(
         self, trajectories: Sequence[TrajectoryWithRew]
@@ -75,7 +78,7 @@ class RandomFragmenter:
             raise ValueError(
                 "No trajectories are long enough for the desired fragment length."
             )
-        logger.log(
+        self.logger.log(
             f"Discarded {prev_num_trajectories - len(trajectories)} "
             f"out of {prev_num_trajectories} trajectories because they are "
             f"shorter than the desired length of {self.fragment_length}."
@@ -86,7 +89,7 @@ class RandomFragmenter:
         # number of transitions that will be contained in the fragments
         num_transitions = 2 * self.num_pairs * self.fragment_length
         if sum(weights) < num_transitions:
-            logger.warn(
+            self.logger.warn(
                 "Fewer transitions available than needed for desired number "
                 "of fragment pairs. Some transitions will appear multiple times."
             )
@@ -97,7 +100,7 @@ class RandomFragmenter:
             # If the number of available transitions is not much larger
             # than the number of requires ones, we already give a warning.
             # But only if self.warning_threshold is non-zero.
-            logger.warn(
+            self.logger.warn(
                 f"Samples will contain {num_transitions} transitions in total "
                 f"and only {sum(weights)} are available. "
                 f"Because we sample with replacement, a significant number "
@@ -280,6 +283,7 @@ class CrossEntropyRewardTrainer(RewardTrainer):
         noise_prob: float = 0.0,
         batch_size: int = 32,
         discount_factor: float = 1.0,
+        custom_logger: Optional[logger.HierarchicalLogger] = None,
     ):
         """Initialize the reward model trainer.
 
@@ -294,12 +298,14 @@ class CrossEntropyRewardTrainer(RewardTrainer):
                 This is the discount factor used to calculate those returns.
                 Default is 1, i.e. undiscounted sums of rewards (which is what
                 the DRLHP paper uses).
+            custom_logger: Where to log to; if None (default), creates a new logger.
         """
         super().__init__(model)
         self.noise_prob = noise_prob
         self.batch_size = batch_size
         self.discount_factor = discount_factor
         self.optim = th.optim.Adam(self.model.parameters())
+        self.logger = custom_logger or logger.configure()
 
     def _loss(
         self,
@@ -357,7 +363,7 @@ class CrossEntropyRewardTrainer(RewardTrainer):
             loss = self._loss(fragment_pairs, preferences)
             loss.backward()
             self.optim.step()
-            logger.record("reward/loss", loss.item())
+            self.logger.record("reward/loss", loss.item())
 
 
 class PreferenceComparisons:
@@ -372,8 +378,12 @@ class PreferenceComparisons:
         fragmenter: Optional[Fragmenter] = None,
         preference_gatherer: Optional[PreferenceGatherer] = None,
         reward_trainer: Optional[RewardTrainer] = None,
+        custom_logger: Optional[logger.HierarchicalLogger] = None,
     ):
         """Initialize the preference comparison trainer.
+
+        The loggers of all subcomponents are overridden with the logger used
+        by this class.
 
         Args:
             trajectory_generator: generates trajectories while optionally training
@@ -395,13 +405,26 @@ class PreferenceComparisons:
             reward_trainer: trains the reward model based on pairs of fragments and
                 associated preferences. Default is to use the preference model
                 and loss function from DRLHP.
+            custom_logger: Where to log to; if None (default), creates a new logger.
         """
+        self.logger = custom_logger or logger.configure()
         self.model = reward_model
-        self.reward_trainer = reward_trainer or CrossEntropyRewardTrainer(reward_model)
+        self.reward_trainer = reward_trainer or CrossEntropyRewardTrainer(
+            reward_model, custom_logger=self.logger
+        )
+        # If the reward trainer was created in the previous line, we've already passed
+        # the correct logger. But if the user created a RewardTrainer themselves and
+        # didn't manually set a logger, it would be annoying if a separate one was used.
+        if hasattr(self.reward_trainer, "logger"):
+            self.reward_trainer.logger = self.logger
         # the reward_trainer's model should refer to the same object as our copy
         assert self.reward_trainer.model is self.model
         self.trajectory_generator = trajectory_generator
-        self.fragmenter = fragmenter or RandomFragmenter()
+        if hasattr(self.trajectory_generator, "logger"):
+            self.trajectory_generator.logger = self.logger
+        self.fragmenter = fragmenter or RandomFragmenter(custom_logger=self.logger)
+        if hasattr(self.fragmenter, "logger"):
+            self.fragmenter.logger = self.logger
         self.preference_gatherer = preference_gatherer or SyntheticGatherer()
         self.sample_steps = sample_steps
         # In contrast to the previous cases, we need the is None check
@@ -418,18 +441,18 @@ class PreferenceComparisons:
             iterations: number of iterations of the outer training loop
         """
         for _ in range(iterations):
-            logger.log(f"Collecting {self.sample_steps} trajectory steps")
+            self.logger.log(f"Collecting {self.sample_steps} trajectory steps")
             trajectories = self.trajectory_generator.sample(self.sample_steps)
             if hasattr(self.fragmenter, "num_pairs"):
-                logger.log(f"Creating {self.fragmenter.num_pairs} fragment pairs")
+                self.logger.log(f"Creating {self.fragmenter.num_pairs} fragment pairs")
             else:
-                logger.log("Creating fragment pairs")
+                self.logger.log("Creating fragment pairs")
             fragments = self.fragmenter(trajectories)
-            logger.log("Gathering preferences")
+            self.logger.log("Gathering preferences")
             preferences = self.preference_gatherer(fragments)
             self.dataset.push(fragments, preferences)
-            logger.log(f"Dataset now contains {len(self.dataset)} samples")
-            logger.log("Training reward model")
+            self.logger.log(f"Dataset now contains {len(self.dataset)} samples")
+            self.logger.log("Training reward model")
             self.reward_trainer.train(self.dataset)
-            logger.log(f"Training agent for {self.agent_steps} steps")
+            self.logger.log(f"Training agent for {self.agent_steps} steps")
             self.trajectory_generator.train(steps=self.agent_steps)

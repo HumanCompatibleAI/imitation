@@ -124,6 +124,9 @@ class HierarchicalLogger(sb_logger.Logger):
     def log(self, *args, **kwargs):
         self.default_logger.log(*args, **kwargs)
 
+    def warn(self, *args):
+        self.default_logger.warn(*args)
+
     def record_mean(self, key, val, exclude=None):
         self.default_logger.record_mean(key, val, exclude)
 

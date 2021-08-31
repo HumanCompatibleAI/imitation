@@ -1,14 +1,14 @@
 """Training policies with a specifiable reward function and collect trajectories."""
 import abc
-from typing import Sequence, Union
+from typing import Optional, Sequence, Union
 
 import numpy as np
-from stable_baselines3.common import base_class, logger, vec_env
+from stable_baselines3.common import base_class, vec_env
 
 from imitation.data import rollout, types, wrappers
 from imitation.rewards import common as rewards_common
 from imitation.rewards import reward_nets
-from imitation.util import reward_wrapper
+from imitation.util import logger, reward_wrapper
 
 
 class TrajectoryGenerator(abc.ABC):
@@ -45,6 +45,7 @@ class AgentTrainer(TrajectoryGenerator):
         self,
         algorithm: base_class.BaseAlgorithm,
         reward_fn: Union[rewards_common.RewardFn, reward_nets.RewardNet],
+        custom_logger: Optional[logger.HierarchicalLogger] = None,
     ):
         """Initialize the agent trainer.
 
@@ -53,6 +54,7 @@ class AgentTrainer(TrajectoryGenerator):
                 Its environment must be set.
             reward_fn: either a RewardFn or a RewardNet instance that will supply
                 the rewards used for training the agent.
+            custom_logger: Where to log to; if None (default), creates a new logger.
         """
         self.algorithm = algorithm
         if isinstance(reward_fn, reward_nets.RewardNet):
@@ -71,6 +73,7 @@ class AgentTrainer(TrajectoryGenerator):
             self.buffering_wrapper, reward_fn
         )
         self.algorithm.set_env(self.venv)
+        self.logger = custom_logger or logger.configure()
 
     def train(self, steps: int, **kwargs):
         """Train the agent using the reward function specified during instantiation.
@@ -103,7 +106,7 @@ class AgentTrainer(TrajectoryGenerator):
         avail_steps = sum(len(traj) for traj in trajectories)
 
         if avail_steps < steps:
-            logger.log(
+            self.logger.log(
                 f"Requested {steps} transitions but only {avail_steps} in buffer. "
                 f"Sampling {steps - avail_steps} additional transitions."
             )
