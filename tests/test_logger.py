@@ -2,6 +2,8 @@ import csv
 import os.path as osp
 from collections import defaultdict
 
+import pytest
+
 import imitation.util.logger as logger
 
 
@@ -23,6 +25,9 @@ def _compare_csv_lines(csv_path: str, expect: dict):
 
 def test_no_accum(tmpdir):
     hier_logger = logger.configure(tmpdir, ["csv"])
+    assert hier_logger.get_dir() == tmpdir
+
+    hier_logger.log("a free-form log message")
 
     # Check that the recorded "A": -1 is overwritten by "A": 1 in the next line.
     # Previously, the observed value would be the mean of these two values (0) instead.
@@ -37,6 +42,15 @@ def test_no_accum(tmpdir):
     hier_logger.dump()
     expect = {"A": [1, 2, ""], "B": [1, "", 3]}
     _compare_csv_lines(osp.join(tmpdir, "progress.csv"), expect)
+
+
+def test_reentry_fails(tmpdir):
+    hier_logger = logger.configure(tmpdir)
+
+    with hier_logger.accumulate_means("foo"):
+        with pytest.raises(RuntimeError, match=r"Nested.*"):
+            with hier_logger.accumulate_means("bar"):
+                pass
 
 
 def test_hard(tmpdir):
