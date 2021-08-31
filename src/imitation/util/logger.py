@@ -52,7 +52,7 @@ class HierarchicalLogger(sb_logger.Logger):
 
     @contextlib.contextmanager
     def accumulate_means(self, subdir: types.AnyPath):
-        """Temporarily modifies this _HierarchicalLogger to accumulate means values.
+        """Temporarily modifies this HierarchicalLogger to accumulate means values.
 
         During this context, `self.record(key, value)` writes the "raw" values in
         "{self.default_logger.log_dir}/{subdir}" under the key "raw/{subdir}/{key}".
