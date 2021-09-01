@@ -78,7 +78,7 @@ def train_dagger(
     log_dir.mkdir(parents=True, exist_ok=True)
     logging.info("Logging to %s", log_dir)
 
-    logger.configure(log_dir, ["tensorboard", "stdout"])
+    custom_logger = logger.configure(log_dir, ["tensorboard", "stdout"])
     sacred_util.build_sacred_symlink(log_dir, _run)
 
     if expert_policy_path is None:
@@ -128,6 +128,7 @@ def train_dagger(
             optimizer_cls=optimizer_cls,
             optimizer_kwargs=optimizer_kwargs,
         ),
+        custom_logger=custom_logger,
     )
     model.train(
         total_timesteps=int(total_timesteps),

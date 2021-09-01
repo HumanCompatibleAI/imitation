@@ -83,7 +83,7 @@ def train_bc(
     log_dir.mkdir(parents=True, exist_ok=True)
     logging.info("Logging to %s", log_dir)
 
-    logger.configure(log_dir, ["tensorboard", "stdout"])
+    custom_logger = logger.configure(log_dir, ["tensorboard", "stdout"])
     sacred_util.build_sacred_symlink(log_dir, _run)
 
     if expert_data_src_format == "path":
@@ -120,6 +120,7 @@ def train_bc(
         l2_weight=l2_weight,
         optimizer_cls=optimizer_cls,
         optimizer_kwargs=optimizer_kwargs,
+        custom_logger=custom_logger,
     )
     model.train(
         n_epochs=n_epochs,

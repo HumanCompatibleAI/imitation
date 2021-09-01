@@ -358,10 +358,20 @@ def rollout_stats(trajectories: Sequence[types.TrajectoryWithRew]) -> Dict[str, 
         "len": np.asarray([len(t.rews) for t in trajectories]),
     }
 
-    infos_peek = trajectories[0].infos
-    if infos_peek is not None and "episode" in infos_peek[-1]:
-        monitor_ep_returns = [t.infos[-1]["episode"]["r"] for t in trajectories]
+    monitor_ep_returns = []
+    for t in trajectories:
+        if t.infos is not None:
+            ep_return = t.infos[-1].get("episode", {}).get("r")
+            if ep_return is not None:
+                monitor_ep_returns.append(ep_return)
+    if monitor_ep_returns:
+        # Note monitor_ep_returns[i] may be from a different episode than ep_return[i]
+        # since we skip episodes with None infos. This is OK as we only return summary
+        # statistics, but you cannot e.g. compute the correlation between ep_return and
+        # monitor_ep_returns.
         traj_descriptors["monitor_return"] = np.asarray(monitor_ep_returns)
+        # monitor_return_len may be < n_traj when infos is sometimes missing
+        out_stats["monitor_return_len"] = len(traj_descriptors["monitor_return"])
 
     stat_names = ["min", "mean", "std", "max"]
     for desc_name, desc_vals in traj_descriptors.items():

@@ -77,28 +77,35 @@ AIRL models on that data.
     # Train BC on expert data.
     # BC also accepts as `expert_data` any PyTorch-style DataLoader that iterates over
     # dictionaries containing observations and actions.
-    logger.configure(tempdir_path / "BC/")
-    bc_trainer = bc.BC(venv.observation_space, venv.action_space, expert_data=transitions)
+    bc_logger = logger.configure(tempdir_path / "BC/")
+    bc_trainer = bc.BC(
+        venv.observation_space,
+        venv.action_space,
+        expert_data=transitions,
+        custom_logger=bc_logger,
+    )
     bc_trainer.train(n_epochs=1)
 
     # Train GAIL on expert data.
     # GAIL, and AIRL also accept as `expert_data` any Pytorch-style DataLoader that
     # iterates over dictionaries containing observations, actions, and next_observations.
-    logger.configure(tempdir_path / "GAIL/")
+    gail_logger = logger.configure(tempdir_path / "GAIL/")
     gail_trainer = adversarial.GAIL(
         venv,
         expert_data=transitions,
         expert_batch_size=32,
         gen_algo=sb3.PPO("MlpPolicy", venv, verbose=1, n_steps=1024),
+        custom_logger=gail_logger,
     )
     gail_trainer.train(total_timesteps=2048)
 
     # Train AIRL on expert data.
-    logger.configure(tempdir_path / "AIRL/")
+    airl_logger = logger.configure(tempdir_path / "AIRL/")
     airl_trainer = adversarial.AIRL(
         venv,
         expert_data=transitions,
         expert_batch_size=32,
         gen_algo=sb3.PPO("MlpPolicy", venv, verbose=1, n_steps=1024),
+        custom_logger=airl_logger,
     )
     airl_trainer.train(total_timesteps=2048)

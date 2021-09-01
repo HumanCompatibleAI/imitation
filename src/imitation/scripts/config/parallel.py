@@ -56,8 +56,8 @@ def debug_log_root():
 def generate_test_data():
     """Used by tests/generate_test_data.sh to generate tests/data/gather_tb/.
 
-    "tests/data/gather_tb/" should contain 4 Tensorboard run directories ("sb_tb/" and
-    "tb/" for each of two trials in the search space below).
+    "tests/data/gather_tb/" should contain 2 Tensorboard run directories, one for each
+     of the trials in the search space below.
     """
     sacred_ex_name = "expert_demos"
     run_name = "TEST"
@@ -71,7 +71,6 @@ def generate_test_data():
     }
     base_named_configs = ["cartpole", "fast"]
     base_config_updates = {
-        "init_tensorboard": True,
         "rollout_save_final": False,
     }
 
@@ -90,7 +89,6 @@ def example_cartpole_rl():
         }
     }
     base_named_configs = ["cartpole"]
-    base_config_updates = {"init_tensorboard": True}
     resources_per_trial = dict(cpu=4)
 
 
@@ -111,7 +109,6 @@ def example_rl_easy():
             },
         },
     }
-    base_config_updates = {"init_tensorboard": True}
     resources_per_trial = dict(cpu=4)
 
 
@@ -132,6 +129,5 @@ def example_gail_easy():
         },
     }
     base_config_updates = {
-        "init_tensorboard": True,
         "init_trainer_kwargs": {"use_gail": True},
     }

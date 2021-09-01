@@ -23,7 +23,7 @@ def _algorithm_cls(request):
 
 
 def test_train_disc_small_expert_data_warning(tmpdir, _algorithm_cls):
-    logger.configure(tmpdir, ["tensorboard", "stdout"])
+    custom_logger = logger.configure(tmpdir, ["tensorboard", "stdout"])
     venv = util.make_vec_env(
         "CartPole-v1",
         n_envs=2,
@@ -40,6 +40,7 @@ def test_train_disc_small_expert_data_warning(tmpdir, _algorithm_cls):
             expert_batch_size=21,
             gen_algo=gen_algo,
             log_dir=tmpdir,
+            custom_logger=custom_logger,
         )
 
     with pytest.raises(ValueError, match="expert_batch_size.*positive"):
@@ -49,6 +50,7 @@ def test_train_disc_small_expert_data_warning(tmpdir, _algorithm_cls):
             expert_batch_size=-1,
             gen_algo=gen_algo,
             log_dir=tmpdir,
+            custom_logger=custom_logger,
         )
 
 
@@ -89,7 +91,6 @@ def trainer(
     expert_batch_size: int,
     expert_transitions: types.Transitions,
 ):
-    logger.configure(tmpdir, ["tensorboard", "stdout"])
     if _convert_dataset:
         expert_data = th_data.DataLoader(
             expert_transitions,
@@ -109,13 +110,14 @@ def trainer(
     )
 
     gen_algo = util.init_rl(venv, verbose=1)
-
+    custom_logger = logger.configure(tmpdir, ["tensorboard", "stdout"])
     trainer = _algorithm_cls(
         venv=venv,
         expert_data=expert_data,
         expert_batch_size=expert_batch_size,
         gen_algo=gen_algo,
         log_dir=tmpdir,
+        custom_logger=custom_logger,
     )
 
     try:

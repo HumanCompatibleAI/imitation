@@ -49,7 +49,6 @@ def train_adversarial(
     log_dir: str,
     total_timesteps: int,
     n_episodes_eval: int,
-    init_tensorboard: bool,
     checkpoint_interval: int,
     gen_batch_size: int,
     init_rl_kwargs: Mapping,
@@ -88,7 +87,6 @@ def train_adversarial(
             during training.
         n_episodes_eval: The number of episodes to average over when calculating
             the average episode reward of the imitation policy for return.
-        init_tensorboard: If True, then write tensorboard logs to `{log_dir}/sb_tb`.
         checkpoint_interval: Save the discriminator and generator models every
             `checkpoint_interval` rounds and after training is complete. If 0,
             then only save weights after training is complete. If <0, then don't
@@ -153,8 +151,7 @@ def train_adversarial(
 
     total_timesteps = int(total_timesteps)
 
-    logging.info("Logging to %s", log_dir)
-    logger.configure(log_dir, ["tensorboard", "stdout"])
+    custom_logger = logger.configure(log_dir, ["tensorboard", "stdout"])
     os.makedirs(log_dir, exist_ok=True)
     sacred_util.build_sacred_symlink(log_dir, _run)
 
@@ -167,10 +164,8 @@ def train_adversarial(
         max_episode_steps=max_episode_steps,
     )
 
-    tensorboard_log = osp.join(log_dir, "sb_tb") if init_tensorboard else None
     gen_algo = util.init_rl(
         venv,
-        tensorboard_log=tensorboard_log,
         **init_rl_kwargs,
     )
 
@@ -198,6 +193,7 @@ def train_adversarial(
         gen_algo=gen_algo,
         log_dir=log_dir,
         discrim_kwargs=final_discrim_kwargs,
+        custom_logger=custom_logger,
         **final_algorithm_kwargs,
     )
 
