@@ -71,7 +71,6 @@ def generate_test_data():
     }
     base_named_configs = ["cartpole", "fast"]
     base_config_updates = {
-        "init_tensorboard": True,
         "rollout_save_final": False,
     }
 
@@ -90,7 +89,6 @@ def example_cartpole_rl():
         }
     }
     base_named_configs = ["cartpole"]
-    base_config_updates = {"init_tensorboard": True}
     resources_per_trial = dict(cpu=4)
 
 
@@ -111,7 +109,6 @@ def example_rl_easy():
             },
         },
     }
-    base_config_updates = {"init_tensorboard": True}
     resources_per_trial = dict(cpu=4)
 
 
@@ -132,6 +129,5 @@ def example_gail_easy():
         },
     }
     base_config_updates = {
-        "init_tensorboard": True,
         "init_trainer_kwargs": {"use_gail": True},
     }
