@@ -322,3 +322,14 @@ def test_zero_length_fails():
     empty = np.array([])
     with pytest.raises(ValueError, match=r"Degenerate trajectory.*"):
         types.Trajectory(obs=np.array([42]), acts=empty, infos=None)
+
+
+def test_path_to_str():
+    assert types.path_to_str("") == ""
+    assert types.path_to_str(b"") == ""
+    assert types.path_to_str("foo") == "foo"
+    assert types.path_to_str(b"foo") == "foo"
+    assert types.path_to_str(pathlib.Path("foo")) == "foo"
+    assert types.path_to_str("/foo/bar") == "/foo/bar"
+    assert types.path_to_str(b"/foo/bar") == "/foo/bar"
+    assert types.path_to_str(pathlib.Path("/foo", "bar"))

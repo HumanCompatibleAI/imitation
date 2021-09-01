@@ -3,6 +3,7 @@ import os.path as osp
 from collections import defaultdict
 
 import pytest
+from stable_baselines3.common import logger as sb_logger
 
 import imitation.util.logger as logger
 
@@ -27,8 +28,6 @@ def test_no_accum(tmpdir):
     hier_logger = logger.configure(tmpdir, ["csv"])
     assert hier_logger.get_dir() == tmpdir
 
-    hier_logger.log("a free-form log message")
-
     # Check that the recorded "A": -1 is overwritten by "A": 1 in the next line.
     # Previously, the observed value would be the mean of these two values (0) instead.
     hier_logger.record("A", -1)
@@ -44,6 +43,35 @@ def test_no_accum(tmpdir):
     _compare_csv_lines(osp.join(tmpdir, "progress.csv"), expect)
 
 
+def test_free_form(tmpdir):
+    hier_logger = logger.configure(tmpdir, ["log"])
+
+    hier_logger.log("info 1")
+    hier_logger.info("info 2")
+    hier_logger.warn("warn 1")
+    hier_logger.error("error 1")
+    hier_logger.debug("debug not printed")
+    hier_logger.set_level(level=sb_logger.DEBUG)
+    hier_logger.debug("debug 1")
+    with hier_logger.accumulate_means("foo"):
+        hier_logger.info("info inner")
+    hier_logger.debug("debug outer")
+
+    hier_logger.close()
+
+    with open(osp.join(tmpdir, "log.txt"), "r") as f:
+        contents = f.readlines()
+    assert contents == [
+        "info 1\n",
+        "info 2\n",
+        "warn 1\n",
+        "error 1\n",
+        "debug 1\n",
+        "info inner\n",
+        "debug outer\n",
+    ]
+
+
 def test_reentry_fails(tmpdir):
     hier_logger = logger.configure(tmpdir)
 
@@ -51,6 +79,20 @@ def test_reentry_fails(tmpdir):
         with pytest.raises(RuntimeError, match=r"Nested.*"):
             with hier_logger.accumulate_means("bar"):  # pragma: no cover
                 pass
+
+
+def test_close(tmpdir):
+    hier_logger = logger.configure(tmpdir)
+
+    hier_logger.record("A", 1)
+    with hier_logger.accumulate_means("foo"):
+        hier_logger.record("B", 2)
+    hier_logger.dump()
+
+    hier_logger.close()
+    hier_logger.record("foo", 42)
+    with pytest.raises(ValueError, match="I/O operation on closed file."):
+        hier_logger.dump()
 
 
 def test_hard(tmpdir):

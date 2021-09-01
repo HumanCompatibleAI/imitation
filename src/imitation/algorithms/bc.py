@@ -428,4 +428,4 @@ class BC:
     def __setstate__(self, state):
         self.__dict__.update(state)
         # callee should call set_logger if they want to override this
-        self._logger = state.get("logger") or logger.configure()
+        self.logger = state.get("logger") or logger.configure()
