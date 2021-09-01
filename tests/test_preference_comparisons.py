@@ -25,10 +25,8 @@ def reward_net(venv):
 
 @pytest.fixture
 def agent(venv):
-    # verbose=1 suppresses SB3 logger configuration,
-    # which conflicts with imitation logging
     return stable_baselines3.PPO(
-        "MlpPolicy", venv, verbose=1, n_epochs=1, batch_size=2, n_steps=10
+        "MlpPolicy", venv, n_epochs=1, batch_size=2, n_steps=10
     )
 
 

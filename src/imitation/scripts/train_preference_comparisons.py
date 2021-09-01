@@ -71,7 +71,7 @@ def train_preference_comparisons(
     """
 
     logging.info("Logging to %s", log_dir)
-    logger.configure(log_dir, ["tensorboard", "stdout"])
+    custom_logger = logger.configure(log_dir, ["tensorboard", "stdout"])
     os.makedirs(log_dir, exist_ok=True)
     sacred_util.build_sacred_symlink(log_dir, _run)
 
@@ -87,9 +87,7 @@ def train_preference_comparisons(
     reward_net = reward_nets.BasicRewardNet(
         venv.observation_space, venv.action_space, **reward_kwargs
     )
-    # HACK: verbose=1 prevents SB3 from configuring logger,
-    # see SB3 issue #109
-    agent = stable_baselines3.PPO("MlpPolicy", venv, verbose=1, **agent_kwargs)
+    agent = stable_baselines3.PPO("MlpPolicy", venv, **agent_kwargs)
     agent_trainer = trainer.AgentTrainer(agent, reward_net)
     fragmenter = preference_comparisons.RandomFragmenter(
         fragment_length=fragment_length, num_pairs=num_pairs, seed=_seed
@@ -100,6 +98,7 @@ def train_preference_comparisons(
         sample_steps=sample_steps,
         agent_steps=agent_steps,
         fragmenter=fragmenter,
+        custom_logger=custom_logger,
     )
     main_trainer.train(iterations)
 
