@@ -3,7 +3,6 @@
 Can be used as a CLI script, or the `train_and_plot` function can be called directly.
 """
 
-import logging
 import os
 from typing import Any, Dict, Optional
 
@@ -70,7 +69,6 @@ def train_preference_comparisons(
         agent_kwargs: passed to SB3's PPO
     """
 
-    logging.info("Logging to %s", log_dir)
     custom_logger = logger.configure(log_dir, ["tensorboard", "stdout"])
     os.makedirs(log_dir, exist_ok=True)
     sacred_util.build_sacred_symlink(log_dir, _run)
