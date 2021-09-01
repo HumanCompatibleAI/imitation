@@ -64,15 +64,23 @@ def test_main_console(script_mod):
 
 
 def test_train_dagger_main(tmpdir):
-    run = train_dagger.train_dagger_ex.run(
-        named_configs=["cartpole", "fast"],
-        config_updates=dict(
-            log_root=tmpdir,
-            expert_data_src=CARTPOLE_TEST_ROLLOUT_PATH,
-            expert_policy_path=CARTPOLE_TEST_POLICY_PATH,
-            expert_policy_type="ppo",
-        ),
-    )
+    with pytest.warns(None) as record:
+        run = train_dagger.train_dagger_ex.run(
+            named_configs=["cartpole", "fast"],
+            config_updates=dict(
+                log_root=tmpdir,
+                expert_data_src=CARTPOLE_TEST_ROLLOUT_PATH,
+                expert_policy_path=CARTPOLE_TEST_POLICY_PATH,
+                expert_policy_type="ppo",
+            ),
+        )
+    for warning in record:
+        # PyTorch wants writeable arrays.
+        # See https://github.com/HumanCompatibleAI/imitation/issues/219
+        assert not (
+            warning.category == UserWarning
+            and "NumPy array is not writeable" in warning.message.args[0]
+        )
     assert run.status == "COMPLETED"
     assert isinstance(run.result, dict)
 
