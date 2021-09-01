@@ -107,7 +107,7 @@ def rollouts_and_policy(
     eval_sample_until = rollout.make_min_episodes(n_episodes_eval)
 
     logging.basicConfig(level=logging.INFO)
-    logger.configure(
+    custom_logger = logger.configure(
         folder=osp.join(log_dir, "rl"), format_strs=["tensorboard", "stdout"]
     )
 
@@ -152,6 +152,7 @@ def rollouts_and_policy(
     callback = callbacks.CallbackList(callback_objs)
 
     policy = util.init_rl(venv, verbose=1, **init_rl_kwargs)
+    policy.set_logger(custom_logger)
     policy.learn(total_timesteps, callback=callback)
 
     # Save final artifacts after training is complete.
