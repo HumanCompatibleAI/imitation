@@ -166,7 +166,6 @@ def test_train_adversarial(tmpdir):
     config_updates = {
         "log_root": tmpdir,
         "rollout_path": CARTPOLE_TEST_ROLLOUT_PATH,
-        "init_tensorboard": True,
     }
     run = train_adversarial.train_adversarial_ex.run(
         named_configs=named_configs,
@@ -478,4 +477,4 @@ def test_analyze_gather_tb(tmpdir: str):
     )
     assert run.status == "COMPLETED"
     assert isinstance(run.result, dict)
-    assert run.result["n_tb_dirs"] == 4
+    assert run.result["n_tb_dirs"] == 2
