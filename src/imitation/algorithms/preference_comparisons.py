@@ -7,7 +7,7 @@ between trajectory fragments.
 
 import abc
 import random
-from typing import Callable, List, Optional, Sequence, Tuple
+from typing import List, Optional, Sequence, Tuple
 
 import numpy as np
 import torch as th
@@ -23,11 +23,34 @@ from imitation.policies import trainer
 from imitation.rewards import reward_nets
 from imitation.util import logger
 
-Fragmenter = Callable[[Sequence[TrajectoryWithRew]], Sequence[TrajectoryWithRewPair]]
-"""Creates pairs of trajectory fragments from a collection of trajectories."""
+
+class Fragmenter(abc.ABC):
+    """Class for creating pairs of trajectory fragments from a set of trajectories."""
+
+    def __init__(self, custom_logger: Optional[logger.HierarchicalLogger] = None):
+        """Initialize the fragmenter.
+
+        Args:
+            custom_logger: Where to log to; if None (default), creates a new logger.
+        """
+        self.logger = custom_logger or logger.configure()
+
+    @abc.abstractmethod
+    def __call__(
+        self, trajectories: Sequence[TrajectoryWithRew]
+    ) -> Sequence[TrajectoryWithRewPair]:
+        """Create fragment pairs out of a sequence of trajectories.
+
+        Args:
+            trajectories: collection of trajectories that will be split up into
+                fragments
+
+        Returns:
+            a sequence of fragment pairs
+        """
 
 
-class RandomFragmenter:
+class RandomFragmenter(Fragmenter):
     """Sample fragments of trajectories uniformly at random with replacement.
 
     Note that each fragment is part of a single episode and has a fixed
@@ -58,11 +81,11 @@ class RandomFragmenter:
                 required samples. Set to 0 to disable this warning.
             custom_logger: Where to log to; if None (default), creates a new logger.
         """
+        super().__init__(custom_logger)
         self.fragment_length = fragment_length
         self.num_pairs = num_pairs
         self.rng = random.Random(seed)
         self.warning_threshold = warning_threshold
-        self.logger = custom_logger or logger.configure()
 
     def __call__(
         self, trajectories: Sequence[TrajectoryWithRew]
@@ -127,21 +150,36 @@ class RandomFragmenter:
         return list(zip(iterator, iterator))
 
 
-PreferenceGatherer = Callable[[Sequence[TrajectoryWithRewPair]], np.ndarray]
-"""Gathers the probabilities that fragment 1 is preferred for a batch of fragments.
+class PreferenceGatherer(abc.ABC):
+    def __init__(self, custom_logger: Optional[logger.HierarchicalLogger] = None):
+        """Initialize the preference gatherer.
 
-Takes a list of pairs of trajectory fragments as input. Should return a numpy
-array with shape (b, ), where b is the length of the list (i.e. batch size).
-Each item in the array is the probability that fragment 1 is preferred over
-fragment 2 for the corresponding pair of fragments.
+        Args:
+            custom_logger: Where to log to; if None (default), creates a new logger.
+        """
+        self.logger = custom_logger or logger.configure()
 
-Note that for human feedback, these probabilities are simply 0 or 1
-(or 0.5 in case of indifference), but synthetic models may yield other
-probabilities.
-"""
+    @abc.abstractmethod
+    def __call__(self, fragment_pairs: Sequence[TrajectoryWithRewPair]) -> np.ndarray:
+        """Gathers the probabilities that fragment 1 is preferred
+        for a batch of fragments.
+
+        Args:
+            fragment_pairs: sequence of pairs of trajectory fragments
+
+        Returns:
+            A numpy array with shape (b, ), where b is the length of the input
+            (i.e. batch size). Each item in the array is the probability that
+            fragment 1 is preferred over fragment 2 for the corresponding
+            pair of fragments.
+
+            Note that for human feedback, these probabilities are simply 0 or 1
+            (or 0.5 in case of indifference), but synthetic models may yield other
+            probabilities.
+        """
 
 
-class SyntheticGatherer:
+class SyntheticGatherer(PreferenceGatherer):
     """Computes synthetic preferences using ground-truth environment rewards."""
 
     def __init__(
@@ -161,6 +199,9 @@ class SyntheticGatherer:
                 sums of rewards (as in the DRLHP paper).
             seed: seed for the internal RNG (only used if temperature > 0)
         """
+        # we don't pass a logger for now since this particular implementation
+        # doesn't use one at the moment
+        super().__init__()
         self.temperature = temperature
         self.discount_factor = discount_factor
         self.rng = np.random.default_rng(seed=seed)
@@ -257,13 +298,19 @@ class RewardTrainer(abc.ABC):
     or for agent training (see PreferenceComparisons for that).
     """
 
-    def __init__(self, model: reward_nets.RewardNet):
+    def __init__(
+        self,
+        model: reward_nets.RewardNet,
+        custom_logger: Optional[logger.HierarchicalLogger] = None,
+    ):
         """Initialize the reward trainer.
 
         Args:
             model: the RewardNet instance to be trained
+            custom_logger: Where to log to; if None (default), creates a new logger.
         """
         self.model = model
+        self.logger = custom_logger or logger.configure()
 
     @abc.abstractmethod
     def train(self, dataset: PreferenceDataset):
@@ -300,12 +347,11 @@ class CrossEntropyRewardTrainer(RewardTrainer):
                 the DRLHP paper uses).
             custom_logger: Where to log to; if None (default), creates a new logger.
         """
-        super().__init__(model)
+        super().__init__(model, custom_logger)
         self.noise_prob = noise_prob
         self.batch_size = batch_size
         self.discount_factor = discount_factor
         self.optim = th.optim.Adam(self.model.parameters())
-        self.logger = custom_logger or logger.configure()
 
     def _loss(
         self,
@@ -415,17 +461,15 @@ class PreferenceComparisons:
         # If the reward trainer was created in the previous line, we've already passed
         # the correct logger. But if the user created a RewardTrainer themselves and
         # didn't manually set a logger, it would be annoying if a separate one was used.
-        if hasattr(self.reward_trainer, "logger"):
-            self.reward_trainer.logger = self.logger
+        self.reward_trainer.logger = self.logger
         # the reward_trainer's model should refer to the same object as our copy
         assert self.reward_trainer.model is self.model
         self.trajectory_generator = trajectory_generator
-        if hasattr(self.trajectory_generator, "logger"):
-            self.trajectory_generator.logger = self.logger
+        self.trajectory_generator.logger = self.logger
         self.fragmenter = fragmenter or RandomFragmenter(custom_logger=self.logger)
-        if hasattr(self.fragmenter, "logger"):
-            self.fragmenter.logger = self.logger
+        self.fragmenter.logger = self.logger
         self.preference_gatherer = preference_gatherer or SyntheticGatherer()
+        self.preference_gatherer.logger = self.logger
         self.sample_steps = sample_steps
         # In contrast to the previous cases, we need the is None check
         # because someone might explicitly set agent_timesteps=0.
@@ -443,10 +487,7 @@ class PreferenceComparisons:
         for _ in range(iterations):
             self.logger.log(f"Collecting {self.sample_steps} trajectory steps")
             trajectories = self.trajectory_generator.sample(self.sample_steps)
-            if hasattr(self.fragmenter, "num_pairs"):
-                self.logger.log(f"Creating {self.fragmenter.num_pairs} fragment pairs")
-            else:
-                self.logger.log("Creating fragment pairs")
+            self.logger.log("Creating fragment pairs")
             fragments = self.fragmenter(trajectories)
             self.logger.log("Gathering preferences")
             preferences = self.preference_gatherer(fragments)

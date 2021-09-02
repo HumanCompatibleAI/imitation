@@ -12,6 +12,14 @@ from imitation.util import logger, reward_wrapper
 
 
 class TrajectoryGenerator(abc.ABC):
+    def __init__(self, custom_logger: Optional[logger.HierarchicalLogger] = None):
+        """Initialize the trajectory generator
+
+        Args:
+            custom_logger: Where to log to; if None (default), creates a new logger.
+        """
+        self.logger = custom_logger or logger.configure()
+
     @abc.abstractmethod
     def sample(self, num_steps: int) -> Sequence[types.TrajectoryWithRew]:
         """Sample a batch of trajectories.
@@ -56,6 +64,7 @@ class AgentTrainer(TrajectoryGenerator):
                 the rewards used for training the agent.
             custom_logger: Where to log to; if None (default), creates a new logger.
         """
+        super().__init__(custom_logger)
         self.algorithm = algorithm
         if isinstance(reward_fn, reward_nets.RewardNet):
             reward_fn = reward_fn.predict
@@ -73,7 +82,6 @@ class AgentTrainer(TrajectoryGenerator):
             self.buffering_wrapper, reward_fn
         )
         self.algorithm.set_env(self.venv)
-        self.logger = custom_logger or logger.configure()
 
     def train(self, steps: int, **kwargs):
         """Train the agent using the reward function specified during instantiation.
