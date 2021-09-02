@@ -125,9 +125,6 @@ class HierarchicalLogger(sb_logger.Logger):
     def log(self, *args, **kwargs):
         self.default_logger.log(*args, **kwargs)
 
-    def warn(self, *args):
-        self.default_logger.warn(*args)
-
     def set_level(self, level: int) -> None:
         self.default_logger.set_level(level)
 
