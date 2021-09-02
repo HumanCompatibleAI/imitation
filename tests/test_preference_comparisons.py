@@ -50,7 +50,7 @@ def test_trainer_no_crash(agent_trainer, reward_net, fragmenter):
 
 
 def test_discount_rate_no_crash(agent_trainer, reward_net, fragmenter):
-    # also use a non-zero noise probability to ensure that doesn't cause errors
+    # also use a non-zero noise probability to check that doesn't cause errors
     reward_trainer = preference_comparisons.CrossEntropyRewardTrainer(
         reward_net, noise_prob=0.1, discount_factor=0.9
     )
@@ -83,13 +83,11 @@ def test_fragments_too_short_error(agent_trainer):
         seed=0,
         warning_threshold=0,
     )
-    with pytest.raises(ValueError) as err:
+    with pytest.raises(
+        ValueError,
+        match="No trajectories are long enough for the desired fragment length.",
+    ):
         fragmenter(trajectories)
-
-    assert (
-        str(err.value)
-        == "No trajectories are long enough for the desired fragment length."
-    )
 
 
 def test_preference_dataset_errors(agent_trainer, fragmenter):
@@ -98,12 +96,10 @@ def test_preference_dataset_errors(agent_trainer, fragmenter):
     fragments = fragmenter(trajectories)
     # just create something with a different shape:
     preferences = np.empty(len(fragments) + 1, dtype=np.float32)
-    with pytest.raises(ValueError) as err:
+    with pytest.raises(ValueError, match="Unexpected preferences shape"):
         dataset.push(fragments, preferences)
-    assert "Unexpected preferences shape" in str(err.value)
 
     # Now test dtype
     preferences = np.empty(len(fragments), dtype=np.float64)
-    with pytest.raises(ValueError) as err:
+    with pytest.raises(ValueError, match="preferences should have dtype float32"):
         dataset.push(fragments, preferences)
-    assert str(err.value) == "preferences should have dtype float32"
