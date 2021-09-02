@@ -1,4 +1,3 @@
-# import gym  # noqa: F401
 import pytest
 from stable_baselines3 import PPO
 
