@@ -12,8 +12,11 @@ def agent():
 
 
 def reward_fn(obs, acts, next_obs, dones):
-    # dummy RewardFn
-    return dones.astype(float)
+    """Dummy RewardFn."""
+    # This function is currently not actually called, so ignore it for
+    # coverage. Still seems better to return something valid for future
+    # tests.
+    return dones.astype(float)  # pragma: no cover
 
 
 @pytest.fixture
