@@ -204,3 +204,16 @@ def test_make_sample_until_errors():
         rollout.make_sample_until(min_timesteps=-3, min_episodes=None)
     with timesteps_positive:
         rollout.make_sample_until(min_timesteps=0, min_episodes=None)
+
+
+@pytest.mark.parametrize("gamma", [0, 0.9, 1])
+def test_compute_returns(gamma):
+    rng = np.random.default_rng(seed=0)
+    N = 100
+    rewards = rng.random(N)
+    discounts = np.power(gamma, np.arange(N))
+    returns = np.sum(discounts * rewards)
+    # small numerical errors will occur because compute_returns
+    # uses a somewhat different method based on evaluating
+    # polynomials
+    assert abs(rollout.compute_returns(rewards, gamma) - returns) < 1e-8

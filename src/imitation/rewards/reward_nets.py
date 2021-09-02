@@ -1,7 +1,7 @@
 """Constructs deep network reward models."""
 
 import abc
-from typing import Callable, Iterable, Sequence
+from typing import Callable, Iterable, Sequence, Tuple
 
 import gym
 import numpy as np
@@ -10,6 +10,7 @@ from stable_baselines3.common import preprocessing
 from torch import nn
 
 import imitation.rewards.common as rewards_common
+from imitation.data import types
 from imitation.util import networks
 
 
@@ -48,6 +49,25 @@ class RewardNet(nn.Module, abc.ABC):
         done: th.Tensor,
     ):
         """Compute rewards for a batch of transitions and keep gradients."""
+
+    def preprocess(
+        self, transitions: types.Transitions
+    ) -> Tuple[th.Tensor, th.Tensor, th.Tensor, th.Tensor]:
+        """Preprocess a batch of input transitions and convert it to PyTorch tensors.
+
+        The output of this function is suitable for its forward pass,
+        so a typical usage would be ``model(*model.preprocess(transitions))``.
+        """
+        return rewards_common.disc_rew_preprocess_inputs(
+            observation_space=self.observation_space,
+            action_space=self.action_space,
+            state=transitions.obs,
+            action=transitions.acts,
+            next_state=transitions.next_obs,
+            done=transitions.dones,
+            device=self.device,
+            normalize_images=self.normalize_images,
+        )
 
     def predict(
         self,
