@@ -11,7 +11,7 @@ class BaseImitationAlgorithm(abc.ABC):
     _logger: imit_logger.HierarchicalLogger
     """Object to log statistics and natural language messages to."""
 
-    variable_horizon_footgun: bool
+    allow_variable_horizon: bool
     """If True, allow variable horizon trajectories; otherwise error if detected."""
 
     _horizon: Optional[int]
@@ -20,13 +20,13 @@ class BaseImitationAlgorithm(abc.ABC):
     def __init__(
         self,
         custom_logger: Optional[imit_logger.HierarchicalLogger],
-        variable_horizon_footgun: bool = False,
+        allow_variable_horizon: bool = False,
     ):
         """Creates an imitation learning algorithm.
 
         Args:
             custom_logger: Where to log to; if None (default), creates a new logger.
-            variable_horizon_footgun: If False (default), algorithm will raise an
+            allow_variable_horizon: If False (default), algorithm will raise an
                 exception if it detects trajectories of different length during
                 training. If True, overrides this safety check. WARNING: variable
                 horizon episodes leak information about the reward via termination
@@ -35,10 +35,10 @@ class BaseImitationAlgorithm(abc.ABC):
                 before overriding this.
         """
         self._logger = custom_logger or imit_logger.configure()
-        self.variable_horizon_footgun = variable_horizon_footgun
-        if variable_horizon_footgun:
+        self.allow_variable_horizon = allow_variable_horizon
+        if allow_variable_horizon:
             self.logger.warn(
-                "Running with `variable_horizon_footgun` set to True. "
+                "Running with `allow_variable_horizon` set to True. "
                 "Some algorithms are biased towards shorter or longer "
                 "episodes, which may significantly confound results. "
                 "Additionally, even unbiased algorithms can exploit "
@@ -70,7 +70,7 @@ class BaseImitationAlgorithm(abc.ABC):
             ValueError if the length of trajectories in trajs are different from one
             another, or from trajectory lengths in previous calls to this method.
         """
-        if self.variable_horizon_footgun:  # skip check -- YOLO
+        if self.allow_variable_horizon:  # skip check -- YOLO
             return
 
         # horizons = all horizons seen so far (including trajs)
@@ -86,7 +86,7 @@ class BaseImitationAlgorithm(abc.ABC):
                 "https://imitation.readthedocs.io/en/latest/guide/variable_horizon.html"
                 " for more information. If you are SURE you want to run imitation on a "
                 "variable horizon task, then please pass in the flag: "
-                "`variable_horizon_footgun=True`."
+                "`allow_variable_horizon=True`."
             )
         elif len(horizons) == 1:
             self._horizon = horizons.pop()

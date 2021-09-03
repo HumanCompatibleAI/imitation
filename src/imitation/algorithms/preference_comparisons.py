@@ -426,7 +426,7 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
         preference_gatherer: Optional[PreferenceGatherer] = None,
         reward_trainer: Optional[RewardTrainer] = None,
         custom_logger: Optional[logger.HierarchicalLogger] = None,
-        variable_horizon_footgun: bool = False,
+        allow_variable_horizon: bool = False,
     ):
         """Initialize the preference comparison trainer.
 
@@ -454,7 +454,7 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
                 associated preferences. Default is to use the preference model
                 and loss function from DRLHP.
             custom_logger: Where to log to; if None (default), creates a new logger.
-            variable_horizon_footgun: If False (default), algorithm will raise an
+            allow_variable_horizon: If False (default), algorithm will raise an
                 exception if it detects trajectories of different length during
                 training. If True, overrides this safety check. WARNING: variable
                 horizon episodes leak information about the reward via termination
@@ -464,7 +464,7 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
         """
         super().__init__(
             custom_logger=custom_logger,
-            variable_horizon_footgun=variable_horizon_footgun,
+            allow_variable_horizon=allow_variable_horizon,
         )
 
         self.model = reward_model

@@ -47,7 +47,7 @@ def test_check_fixed_horizon(custom_logger):
 def test_check_fixed_horizon_footgun(custom_logger):
     """Tests check for fixed horizon ignores variable horizon with footgun flag."""
     algo = base.BaseImitationAlgorithm(
-        custom_logger=custom_logger, variable_horizon_footgun=True
+        custom_logger=custom_logger, allow_variable_horizon=True
     )
     algo._check_fixed_horizon(trajs=gen_trajectories([5]))
     algo._check_fixed_horizon(trajs=gen_trajectories([42]))

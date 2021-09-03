@@ -37,10 +37,10 @@ Our sister project `seals`_ provides fixed-horizon versions of many commonly use
 Given the serious issues with evaluation and training in variable horizon tasks, ``imitation`` will by default throw an error
 if training AIRL, GAIL or DRLHP in variable horizon tasks. If you have read this document and understand the problems that
 variable horizon tasks can cause but still want to train in variable horizon settings, you can override this safety check
-by setting ``variable_horizon_footgun=True``. Note this check is not applied for BC or DAgger, which operate on individual`
+by setting ``allow_variable_horizon=True``. Note this check is not applied for BC or DAgger, which operate on individual`
 transitions (not episodes) and so cannot exploit the information leak.
 
-Usage with ``variable_horizon_footgun=True`` is not officially supported, and we will not optimize ``imitation`` algorithms
+Usage with ``allow_variable_horizon=True`` is not officially supported, and we will not optimize ``imitation`` algorithms
 to perform well in this situation, as it would not represent real progress. Examples of situations where setting this
 flag may nonetheless be appropriate include:
 

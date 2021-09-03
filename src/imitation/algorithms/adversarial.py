@@ -57,7 +57,7 @@ class AdversarialTrainer(base.BaseImitationAlgorithm):
         init_tensorboard: bool = False,
         init_tensorboard_graph: bool = False,
         debug_use_ground_truth: bool = False,
-        variable_horizon_footgun: bool = False,
+        allow_variable_horizon: bool = False,
     ):
         """Builds AdversarialTrainer.
 
@@ -109,7 +109,7 @@ class AdversarialTrainer(base.BaseImitationAlgorithm):
                 This disables the reward wrapping that would normally replace
                 the environment reward with the learned reward. This is useful for
                 sanity checking that the policy training is functional.
-            variable_horizon_footgun: If False (default), algorithm will raise an
+            allow_variable_horizon: If False (default), algorithm will raise an
                 exception if it detects trajectories of different length during
                 training. If True, overrides this safety check. WARNING: variable
                 horizon episodes leak information about the reward via termination
@@ -119,7 +119,7 @@ class AdversarialTrainer(base.BaseImitationAlgorithm):
         """
         super().__init__(
             custom_logger=custom_logger,
-            variable_horizon_footgun=variable_horizon_footgun,
+            allow_variable_horizon=allow_variable_horizon,
         )
 
         self._global_step = 0

@@ -22,7 +22,7 @@ def train_defaults():
     n_episodes_eval = 50  # Num of episodes for final mean ground truth return
     reward_kwargs = {}
     agent_kwargs = {}
-    variable_horizon_footgun = False
+    allow_variable_horizon = False
 
     # Number of environments in VecEnv
     num_vec = 8
@@ -46,7 +46,7 @@ def paths(env_name, log_root):
 @train_preference_comparisons_ex.named_config
 def cartpole():
     env_name = "CartPole-v1"
-    variable_horizon_footgun = True
+    allow_variable_horizon = True
 
 
 # Debug configs

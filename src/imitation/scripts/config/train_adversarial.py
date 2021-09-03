@@ -118,7 +118,7 @@ ANT_SHARED_LOCALS = dict(
 @train_adversarial_ex.named_config
 def acrobot():
     env_name = "Acrobot-v1"
-    algorithm_kwargs = {"shared": {"variable_horizon_footgun": True}}
+    algorithm_kwargs = {"shared": {"allow_variable_horizon": True}}
     rollout_hint = "acrobot"
 
 
@@ -126,7 +126,7 @@ def acrobot():
 def cartpole():
     env_name = "CartPole-v1"
     rollout_hint = "cartpole"
-    algorithm_kwargs = {"shared": {"variable_horizon_footgun": True}}
+    algorithm_kwargs = {"shared": {"allow_variable_horizon": True}}
     discrim_net_kwargs = {"gail": {"normalize_images": False}}
 
 
@@ -142,7 +142,7 @@ def seals_cartpole():
 @train_adversarial_ex.named_config
 def mountain_car():
     env_name = "MountainCar-v0"
-    algorithm_kwargs = {"shared": {"variable_horizon_footgun": True}}
+    algorithm_kwargs = {"shared": {"allow_variable_horizon": True}}
     rollout_hint = "mountain_car"
 
 
@@ -230,7 +230,7 @@ def seals_humanoid():
 @train_adversarial_ex.named_config
 def reacher():
     env_name = "Reacher-v2"
-    algorithm_kwargs = {"shared": {"variable_horizon_footgun": True}}
+    algorithm_kwargs = {"shared": {"allow_variable_horizon": True}}
     rollout_hint = "reacher"
 
 
