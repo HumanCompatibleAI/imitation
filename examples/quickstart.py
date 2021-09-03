@@ -13,7 +13,7 @@ from imitation.util import logger, util
 
 # Load pickled test demonstrations.
 with open("tests/testdata/expert_models/cartpole_0/rollouts/final.pkl", "rb") as f:
-    # This is a list of `imitation.testdata.types.Trajectory`, where
+    # This is a list of `imitation.data.types.Trajectory`, where
     # every instance contains observations and actions for a single expert
     # demonstration.
     trajectories = pickle.load(f)
