@@ -72,7 +72,8 @@ def train_preference_comparisons(
             exception if it detects trajectories of different length during
             training. If True, overrides this safety check. WARNING: variable
             horizon episodes leak information about the reward via termination
-            condition, and can seriously confound evaluation. Read <todo: doc>
+            condition, and can seriously confound evaluation. Read
+            https://imitation.readthedocs.io/en/latest/guide/variable_horizon.html
             before overriding this.
     """
 

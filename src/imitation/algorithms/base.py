@@ -30,7 +30,8 @@ class BaseImitationAlgorithm(abc.ABC):
                 exception if it detects trajectories of different length during
                 training. If True, overrides this safety check. WARNING: variable
                 horizon episodes leak information about the reward via termination
-                condition, and can seriously confound evaluation. Read <todo: doc>
+                condition, and can seriously confound evaluation. Read
+                https://imitation.readthedocs.io/en/latest/guide/variable_horizon.html
                 before overriding this.
         """
         self._logger = custom_logger or imit_logger.configure()
@@ -42,8 +43,9 @@ class BaseImitationAlgorithm(abc.ABC):
                 "episodes, which may significantly confound results. "
                 "Additionally, even unbiased algorithms can exploit "
                 "the information leak from the termination condition, "
-                "producing spuriously high performance. "
-                "See <todo: doc> for more information."
+                "producing spuriously high performance. See "
+                "https://imitation.readthedocs.io/en/latest/guide/variable_horizon.html"
+                " for more information."
             )
         self._horizon = None
 
@@ -80,10 +82,10 @@ class BaseImitationAlgorithm(abc.ABC):
             raise ValueError(
                 f"Episodes of different length detected: {horizons}. "
                 "Variable horizon environments are discouraged -- "
-                "termination conditions leak information about reward. "
-                "See <TODO: docs link> for more information. "
-                "If you are SURE you want to run imitation on a variable "
-                "horizon task, then please pass in the flag: "
+                "termination conditions leak information about reward. See"
+                "https://imitation.readthedocs.io/en/latest/guide/variable_horizon.html"
+                " for more information. If you are SURE you want to run imitation on a "
+                "variable horizon task, then please pass in the flag: "
                 "`variable_horizon_footgun=True`."
             )
         elif len(horizons) == 1:
