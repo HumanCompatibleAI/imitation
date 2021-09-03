@@ -63,7 +63,9 @@ class TrajectoryAccumulator:
         """
         self.partial_trajectories[key].append(step_dict)
 
-    def finish_trajectory(self, key: Hashable = None) -> types.TrajectoryWithRew:
+    def finish_trajectory(
+        self, key: Hashable, terminal: bool
+    ) -> types.TrajectoryWithRew:
         """Complete the trajectory labelled with `key`.
 
         Args:
@@ -83,7 +85,7 @@ class TrajectoryAccumulator:
             key: np.stack(arr_list, axis=0)
             for key, arr_list in out_dict_unstacked.items()
         }
-        traj = types.TrajectoryWithRew(**out_dict_stacked)
+        traj = types.TrajectoryWithRew(**out_dict_stacked, terminal=terminal)
         assert traj.rews.shape[0] == traj.acts.shape[0] == traj.obs.shape[0] - 1
         return traj
 
@@ -144,7 +146,7 @@ class TrajectoryAccumulator:
             )
             if done:
                 # finish env_idx-th trajectory
-                new_traj = self.finish_trajectory(env_idx)
+                new_traj = self.finish_trajectory(env_idx, terminal=True)
                 trajs.append(new_traj)
                 # When done[i] from VecEnv.step() is True, obs[i] is the first
                 # observation following reset() of the ith VecEnv.
@@ -417,7 +419,7 @@ def flatten_trajectories(
         parts["next_obs"].append(obs[1:])
 
         dones = np.zeros(len(traj.acts), dtype=bool)
-        dones[-1] = True
+        dones[-1] = traj.terminal
         parts["dones"].append(dones)
 
         if traj.infos is None:

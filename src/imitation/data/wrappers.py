@@ -73,7 +73,7 @@ class BufferingWrapper(VecEnvWrapper):
             n_transitions = len(self._traj_accum.partial_trajectories[i]) - 1
             assert n_transitions >= 0, "Invalid TrajectoryAccumulator state"
             if n_transitions >= 1:
-                traj = self._traj_accum.finish_trajectory(i)
+                traj = self._traj_accum.finish_trajectory(i, terminal=False)
                 trajs.append(traj)
 
                 # Reinitialize a partial trajectory starting with the final observation.
