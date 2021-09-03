@@ -1,4 +1,4 @@
-from typing import List
+from typing import Sequence
 
 import gym
 import numpy as np
@@ -61,7 +61,7 @@ class BufferingWrapper(VecEnvWrapper):
         self.n_transitions += self.num_envs
         return obs, rews, dones, infos
 
-    def _finish_partial_trajectories(self) -> List[types.TrajectoryWithRew]:
+    def _finish_partial_trajectories(self) -> Sequence[types.TrajectoryWithRew]:
         """Finishes and returns partial trajectories in `self._traj_accum`."""
         trajs = []
         for i in range(self.num_envs):
@@ -80,15 +80,20 @@ class BufferingWrapper(VecEnvWrapper):
                 self._traj_accum.add_step({"obs": traj.obs[-1]}, key=i)
         return trajs
 
-    def pop_trajectories(self) -> List[types.TrajectoryWithRew]:
+    def pop_full_trajectories(self) -> Sequence[types.TrajectoryWithRew]:
+        trajectories = self._trajectories
+        self._trajectories = []
+        self.n_transitions -= sum(len(traj) for traj in trajectories)
+        return trajectories
+
+    def pop_trajectories(self) -> Sequence[types.TrajectoryWithRew]:
         """Pops recorded trajectories as a list of TrajectoryWithRew instances."""
         if self.n_transitions == 0:
             return []
         partial_trajs = self._finish_partial_trajectories()
         self._trajectories.extend(partial_trajs)
-        trajectories = self._trajectories
-        self._trajectories = []
-        self.n_transitions = 0
+        trajectories = self.pop_full_trajectories()
+        assert self.n_transitions == 0
         return trajectories
 
     def pop_transitions(self) -> types.TransitionsWithRew:

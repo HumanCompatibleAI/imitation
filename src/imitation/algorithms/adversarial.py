@@ -300,8 +300,10 @@ class AdversarialTrainer(base.BaseImitationAlgorithm):
             )
             self._global_step += 1
 
-        gen_trajs = self.venv_buffering.pop_trajectories()
-        self._check_fixed_horizon(gen_trajs)
+        full_trajs = self.venv_buffering.pop_full_trajectories()
+        self._check_fixed_horizon(full_trajs)
+        partial_trajs = self.venv_buffering.pop_trajectories()
+        gen_trajs = list(full_trajs) + list(partial_trajs)
         gen_samples = rollout.flatten_trajectories_with_rew(gen_trajs)
         self._gen_replay_buffer.store(gen_samples)
 
