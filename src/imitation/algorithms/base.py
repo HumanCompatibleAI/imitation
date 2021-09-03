@@ -36,7 +36,7 @@ class BaseImitationAlgorithm(abc.ABC):
         self._logger = custom_logger or imit_logger.configure()
         self.variable_horizon_footgun = variable_horizon_footgun
         if variable_horizon_footgun:
-            self.logger.warning(
+            self.logger.warn(
                 "Running with `variable_horizon_footgun` set to True. "
                 "Some algorithms are biased towards shorter or longer "
                 "episodes, which may significantly confound results. "

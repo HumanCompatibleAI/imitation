@@ -3,6 +3,8 @@
 import pytest
 import torch
 
+from imitation.util import logger
+
 
 @pytest.fixture(scope="session", autouse=True)
 def torch_single_threaded():
@@ -17,3 +19,8 @@ def torch_single_threaded():
     """
     torch.set_num_threads(1)
     torch.set_num_interop_threads(1)
+
+
+@pytest.fixture()
+def custom_logger(tmpdir: str) -> logger.HierarchicalLogger:
+    return logger.configure(tmpdir)
