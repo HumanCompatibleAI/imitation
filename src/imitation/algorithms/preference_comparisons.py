@@ -141,6 +141,7 @@ class RandomFragmenter(Fragmenter):
                 acts=traj.acts[start:end],
                 infos=traj.infos[start:end] if traj.infos is not None else None,
                 rews=traj.rews[start:end],
+                terminal=(end == n - 1),
             )
             fragments.append(fragment)
         # fragments is currently a list of single fragments. We want to pair up
