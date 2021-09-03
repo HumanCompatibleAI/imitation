@@ -93,14 +93,13 @@ def half_cheetah():
 
 
 @expert_demos_ex.named_config
-def hopper():
-    # TODO(adam): upgrade to Hopper-v3?
-    env_name = "Hopper-v2"
+def seals_hopper():
+    env_name = "seals/Hopper-v0"
 
 
 @expert_demos_ex.named_config
-def humanoid():
-    env_name = "Humanoid-v2"
+def seals_humanoid():
+    env_name = "seals/Humanoid-v0"
     init_rl_kwargs = dict(
         n_steps=2048,
     )  # batch size of 2048*8=16384 due to num_vec
@@ -128,13 +127,13 @@ def reacher():
 
 
 @expert_demos_ex.named_config
-def swimmer():
-    env_name = "Swimmer-v2"
+def seals_swimmer():
+    env_name = "seals/Swimmer-v0"
 
 
 @expert_demos_ex.named_config
-def walker():
-    env_name = "Walker2d-v2"
+def seals_walker():
+    env_name = "seals/Walker2d-v0"
 
 
 # Custom env configs
