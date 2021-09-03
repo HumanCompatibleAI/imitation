@@ -419,7 +419,7 @@ def flatten_trajectories(
         parts["next_obs"].append(obs[1:])
 
         dones = np.zeros(len(traj.acts), dtype=bool)
-        dones[-1] = True
+        dones[-1] = traj.terminal
         parts["dones"].append(dones)
 
         if traj.infos is None:
