@@ -239,7 +239,7 @@ class PreferenceDataset(th.utils.data.Dataset):
     and a probability that fragment 1 is preferred over fragment 2.
 
     This dataset is meant to be generated piece by piece during the
-    training process, which is why testdata can be added via the .push()
+    training process, which is why data can be added via the .push()
     method.
 
     TODO(ejnnr): it should also be possible to store a dataset on disk

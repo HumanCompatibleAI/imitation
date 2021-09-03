@@ -24,7 +24,8 @@ However, this does not solve the problem of information leakage.
 Rather, it merely ensures that different algorithms are all able to equally exploit the information leak provided by the termination condition.
 
 In light of this issue, we would strongly recommend users evaluate ``imitation`` and other reward or imitation learning algorithms only in fixed-horizon environments.
-This is common, though unfortunately not ubiquitous, practice in reward learning papers. For example, `Christiano et al (2017)`_ state:
+This is a common, though unfortunately not ubiquitous, practice in reward learning papers.
+For example, `Christiano et al (2017)`_ use fixed horizon environments because:
 
     Removing variable length episodes leaves the agent with only the information encoded in the
     environment itself; human feedback provides its only guidance about what it ought to do.

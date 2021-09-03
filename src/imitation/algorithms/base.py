@@ -99,5 +99,5 @@ class BaseImitationAlgorithm(abc.ABC):
 
     def __setstate__(self, state):
         self.__dict__.update(state)
-        # callee should call set_logger if they want to override this
+        # callee should modify self.logger directly if they want to override this
         self.logger = state.get("_logger") or imit_logger.configure()
