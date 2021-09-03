@@ -25,8 +25,8 @@ while true; do
   case "$1" in
     # Fast mode (debug)
     -f | --fast)
-      CONFIG_CSV="tests/data/imit_benchmark_config.csv"
-      REWARD_MODELS_DIR="tests/data/reward_models"
+      CONFIG_CSV="tests/testdata/imit_benchmark_config.csv"
+      REWARD_MODELS_DIR="tests/testdata/reward_models"
       NEED_TEST_FILES="true"
       SEEDS="0"
       extra_configs+="fast "

@@ -125,7 +125,7 @@ def acrobot():
 def cartpole():
     env_name = "CartPole-v1"
     rollout_hint = "cartpole"
-    algorithm_kwargs = {"variable_horizon_footgun": True}
+    algorithm_kwargs = {"shared": {"variable_horizon_footgun": True}}
     discrim_net_kwargs = {"gail": {"normalize_images": False}}
 
 
