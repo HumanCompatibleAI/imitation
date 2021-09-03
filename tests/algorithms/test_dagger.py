@@ -105,7 +105,9 @@ def test_traj_collector(tmpdir, venv):
     assert nonzero_acts == 0
 
 
-def _build_dagger_trainer(tmpdir, venv, beta_schedule, expert_policy, expert_trajs):
+def _build_dagger_trainer(
+    tmpdir, venv, beta_schedule, expert_policy, expert_trajs, custom_logger
+):
     del expert_policy
     if expert_trajs is not None:
         pytest.skip(
@@ -117,6 +119,7 @@ def _build_dagger_trainer(tmpdir, venv, beta_schedule, expert_policy, expert_tra
         scratch_dir=tmpdir,
         beta_schedule=beta_schedule,
         bc_kwargs=dict(optimizer_kwargs=dict(lr=1e-3)),
+        custom_logger=custom_logger,
     )
 
 
@@ -126,6 +129,7 @@ def _build_simple_dagger_trainer(
     beta_schedule,
     expert_policy,
     expert_trajs,
+    custom_logger,
 ):
     return dagger.SimpleDAggerTrainer(
         venv=venv,
@@ -134,6 +138,7 @@ def _build_simple_dagger_trainer(
         bc_kwargs=dict(optimizer_kwargs=dict(lr=1e-3)),
         expert_policy=expert_policy,
         expert_trajs=expert_trajs,
+        custom_logger=custom_logger,
     )
 
 
@@ -143,11 +148,15 @@ def beta_schedule(request):
 
 
 @pytest.fixture(params=[_build_dagger_trainer, _build_simple_dagger_trainer])
-def init_trainer_fn(request, tmpdir, venv, beta_schedule, expert_policy, expert_trajs):
+def init_trainer_fn(
+    request, tmpdir, venv, beta_schedule, expert_policy, expert_trajs, custom_logger
+):
     # Provide a trainer initialization fixture in addition `trainer` fixture below
     # for tests that want to initialize multiple DAggerTrainer.
     trainer_fn = request.param
-    return lambda: trainer_fn(tmpdir, venv, beta_schedule, expert_policy, expert_trajs)
+    return lambda: trainer_fn(
+        tmpdir, venv, beta_schedule, expert_policy, expert_trajs, custom_logger
+    )
 
 
 @pytest.fixture
@@ -156,9 +165,11 @@ def trainer(init_trainer_fn):
 
 
 @pytest.fixture
-def simple_dagger_trainer(tmpdir, venv, beta_schedule, expert_policy, expert_trajs):
+def simple_dagger_trainer(
+    tmpdir, venv, beta_schedule, expert_policy, expert_trajs, custom_logger
+):
     return _build_simple_dagger_trainer(
-        tmpdir, venv, beta_schedule, expert_policy, expert_trajs
+        tmpdir, venv, beta_schedule, expert_policy, expert_trajs, custom_logger
     )
 
 
@@ -273,7 +284,12 @@ def test_policy_save_reload(tmpdir, trainer):
 
 
 def test_simple_dagger_space_mismatch_error(
-    tmpdir, venv, beta_schedule, expert_policy, expert_trajs
+    tmpdir,
+    venv,
+    beta_schedule,
+    expert_policy,
+    expert_trajs,
+    custom_logger,
 ):
     class MismatchedSpace(gym.spaces.Space):
         """Dummy space that is not equal to any other space."""
@@ -285,14 +301,21 @@ def test_simple_dagger_space_mismatch_error(
         with mock.patch.object(expert_policy, f"{space_name}_space", space):
             with pytest.raises(ValueError, match=f"Mismatched {space_name}.*"):
                 _build_simple_dagger_trainer(
-                    tmpdir, venv, beta_schedule, expert_policy, expert_trajs
+                    tmpdir,
+                    venv,
+                    beta_schedule,
+                    expert_policy,
+                    expert_trajs,
+                    custom_logger,
                 )
 
 
-def test_dagger_not_enough_transitions_error(tmpdir):
+def test_dagger_not_enough_transitions_error(tmpdir, custom_logger):
     venv = util.make_vec_env("CartPole-v0")
     # Initialize with large batch size to ensure error down the line.
-    trainer = dagger.DAggerTrainer(venv, tmpdir, batch_size=100_000)
+    trainer = dagger.DAggerTrainer(
+        venv, tmpdir, batch_size=100_000, custom_logger=custom_logger
+    )
     collector = trainer.get_trajectory_collector()
     policy = base.RandomPolicy(venv.observation_space, venv.action_space)
     rollout.generate_trajectories(policy, collector, rollout.make_min_episodes(1))
