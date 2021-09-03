@@ -42,14 +42,18 @@ def agent_trainer(agent, reward_net):
     return trainer.AgentTrainer(agent, reward_net)
 
 
-def test_trainer_no_crash(agent_trainer, reward_net, fragmenter):
+def test_trainer_no_crash(agent_trainer, reward_net, fragmenter, custom_logger):
     main_trainer = preference_comparisons.PreferenceComparisons(
-        agent_trainer, reward_net, sample_steps=10, fragmenter=fragmenter
+        agent_trainer,
+        reward_net,
+        sample_steps=10,
+        fragmenter=fragmenter,
+        custom_logger=custom_logger,
     )
     main_trainer.train(2)
 
 
-def test_discount_rate_no_crash(agent_trainer, reward_net, fragmenter):
+def test_discount_rate_no_crash(agent_trainer, reward_net, fragmenter, custom_logger):
     # also use a non-zero noise probability to check that doesn't cause errors
     reward_trainer = preference_comparisons.CrossEntropyRewardTrainer(
         reward_net, noise_prob=0.1, discount_factor=0.9
@@ -60,6 +64,7 @@ def test_discount_rate_no_crash(agent_trainer, reward_net, fragmenter):
         sample_steps=10,
         fragmenter=fragmenter,
         reward_trainer=reward_trainer,
+        custom_logger=custom_logger,
     )
     main_trainer.train(2)
 
