@@ -20,7 +20,8 @@ def train_defaults():
     fragment_length = 10
     num_pairs = 100
     n_episodes_eval = 50  # Num of episodes for final mean ground truth return
-    reward_kwargs = {}
+    reward_net_kwargs = {}
+    reward_trainer_kwargs = {}
     agent_kwargs = {}
 
     # Number of environments in VecEnv

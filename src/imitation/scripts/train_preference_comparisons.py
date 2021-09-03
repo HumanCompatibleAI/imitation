@@ -37,7 +37,8 @@ def train_preference_comparisons(
     fragment_length: int,
     num_pairs: int,
     n_episodes_eval: int,
-    reward_kwargs: Dict[str, Any],
+    reward_net_kwargs: Dict[str, Any],
+    reward_trainer_kwargs: Dict[str, Any],
     agent_kwargs: Dict[str, Any],
 ) -> dict:
     """Train a reward model using preference comparisons.
@@ -65,7 +66,8 @@ def train_preference_comparisons(
             each iteration.
         n_episodes_eval: The number of episodes to average over when calculating
             the average episode reward of the learned policy for return.
-        reward_kwargs: passed to BasicRewardNet
+        reward_net_kwargs: passed to BasicRewardNet
+        reward_trainer_kwargs: passed to CrossEntropyRewardTrainer
         agent_kwargs: passed to SB3's PPO
     """
 
@@ -83,19 +85,21 @@ def train_preference_comparisons(
     )
 
     reward_net = reward_nets.BasicRewardNet(
-        venv.observation_space, venv.action_space, **reward_kwargs
+        venv.observation_space, venv.action_space, **reward_net_kwargs
     )
     agent = stable_baselines3.PPO("MlpPolicy", venv, **agent_kwargs)
     agent_trainer = trainer.AgentTrainer(agent, reward_net)
     fragmenter = preference_comparisons.RandomFragmenter(
         fragment_length=fragment_length, num_pairs=num_pairs, seed=_seed
     )
+    reward_trainer = preference_comparisons.CrossEntropyRewardTrainer(model=reward_net, **reward_trainer_kwargs)
     main_trainer = preference_comparisons.PreferenceComparisons(
         agent_trainer,
         reward_net,
         sample_steps=sample_steps,
         agent_steps=agent_steps,
         fragmenter=fragmenter,
+        reward_trainer=reward_trainer,
         custom_logger=custom_logger,
     )
     main_trainer.train(iterations)
