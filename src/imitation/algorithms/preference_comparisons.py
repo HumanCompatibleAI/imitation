@@ -471,7 +471,7 @@ class PreferenceComparisons:
         # the reward_trainer's model should refer to the same object as our copy
         assert self.reward_trainer.model is self.model
         self.trajectory_generator = trajectory_generator
-        self.trajectory_generator.logger = self.logger
+        self.trajectory_generator.set_logger(self.logger)
         self.fragmenter = fragmenter or RandomFragmenter(custom_logger=self.logger)
         self.fragmenter.logger = self.logger
         self.preference_gatherer = preference_gatherer or SyntheticGatherer()
@@ -490,7 +490,7 @@ class PreferenceComparisons:
         Args:
             iterations: number of iterations of the outer training loop
         """
-        for _ in range(iterations):
+        for i in range(iterations):
             self.logger.log(f"Collecting {self.sample_steps} trajectory steps")
             trajectories = self.trajectory_generator.sample(self.sample_steps)
             self.logger.log("Creating fragment pairs")
@@ -499,7 +499,10 @@ class PreferenceComparisons:
             preferences = self.preference_gatherer(fragments)
             self.dataset.push(fragments, preferences)
             self.logger.log(f"Dataset now contains {len(self.dataset)} samples")
-            self.logger.log("Training reward model")
-            self.reward_trainer.train(self.dataset)
-            self.logger.log(f"Training agent for {self.agent_steps} steps")
-            self.trajectory_generator.train(steps=self.agent_steps)
+            with self.logger.accumulate_means("reward"):
+                self.logger.log("Training reward model")
+                self.reward_trainer.train(self.dataset)
+            with self.logger.accumulate_means("agent"):
+                self.logger.log(f"Training agent for {self.agent_steps} steps")
+                self.trajectory_generator.train(steps=self.agent_steps)
+            self.logger.dump(i)

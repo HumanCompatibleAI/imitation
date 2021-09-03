@@ -18,7 +18,7 @@ class TrajectoryGenerator(abc.ABC):
         Args:
             custom_logger: Where to log to; if None (default), creates a new logger.
         """
-        self.logger = custom_logger or logger.configure()
+        self.set_logger(custom_logger)
 
     @abc.abstractmethod
     def sample(self, num_steps: int) -> Sequence[types.TrajectoryWithRew]:
@@ -44,6 +44,16 @@ class TrajectoryGenerator(abc.ABC):
             **kwargs: additional keyword arguments to pass on to
                 the training procedure.
         """
+    
+    def set_logger(self, custom_logger: Optional[logger.HierarchicalLogger]):
+        """Set the internal logger.
+        For subclasses, this should also set the logger of any wrapped modules
+        (such as SB3 algorithms).
+
+        Args:
+            logger: the HierarchicalLogger instance to use.
+        """
+        self._logger = custom_logger or logger.configure()
 
 
 class AgentTrainer(TrajectoryGenerator):
@@ -64,8 +74,10 @@ class AgentTrainer(TrajectoryGenerator):
                 the rewards used for training the agent.
             custom_logger: Where to log to; if None (default), creates a new logger.
         """
-        super().__init__(custom_logger)
         self.algorithm = algorithm
+        # NOTE: this has to come after setting self.algorithm because super().__init__
+        # will call self.set_logger(), which also sets the logger for the algorithm
+        super().__init__(custom_logger)
         if isinstance(reward_fn, reward_nets.RewardNet):
             reward_fn = reward_fn.predict
         self.reward_fn = reward_fn
@@ -114,7 +126,7 @@ class AgentTrainer(TrajectoryGenerator):
         avail_steps = sum(len(traj) for traj in trajectories)
 
         if avail_steps < steps:
-            self.logger.log(
+            self._logger.log(
                 f"Requested {steps} transitions but only {avail_steps} in buffer. "
                 f"Sampling {steps - avail_steps} additional transitions."
             )
@@ -147,3 +159,7 @@ class AgentTrainer(TrajectoryGenerator):
 
     def _pop_trajectories(self) -> Sequence[types.TrajectoryWithRew]:
         return self.buffering_wrapper.pop_trajectories()
+
+    def set_logger(self, custom_logger: Optional[logger.HierarchicalLogger]):
+        super().set_logger(custom_logger)
+        self.algorithm.set_logger(self._logger)

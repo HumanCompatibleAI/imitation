@@ -90,7 +90,7 @@ def train_preference_comparisons(
     agent = stable_baselines3.PPO("MlpPolicy", venv, **agent_kwargs)
     agent_trainer = trainer.AgentTrainer(agent, reward_net)
     fragmenter = preference_comparisons.RandomFragmenter(
-        fragment_length=fragment_length, num_pairs=num_pairs, seed=_seed
+        fragment_length=fragment_length, num_pairs=num_pairs, seed=_seed, custom_logger=custom_logger
     )
     reward_trainer = preference_comparisons.CrossEntropyRewardTrainer(model=reward_net, **reward_trainer_kwargs)
     main_trainer = preference_comparisons.PreferenceComparisons(
