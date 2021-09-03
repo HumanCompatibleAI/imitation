@@ -1,0 +1,87 @@
+import abc
+from typing import Iterable, Optional
+
+from imitation.data import types
+from imitation.util import logger as imit_logger
+
+
+class BaseImitationAlgorithm(abc.ABC):
+    """Base class for all imitation learning algorithms."""
+
+    _logger: imit_logger.HierarchicalLogger
+    """Object to log statistics and natural language messages to."""
+
+    variable_horizon_footgun: bool
+    """If True, allow variable horizon trajectories; otherwise error if detected."""
+
+    _horizon: Optional[int]
+    """Horizon of trajectories seen so far (None if no trajectories seen)."""
+
+    def __init__(
+        self,
+        custom_logger: Optional[imit_logger.HierarchicalLogger],
+        variable_horizon_footgun: bool = False,
+    ):
+        """Creates an imitation learning algorithm.
+
+        Args:
+            custom_logger: Where to log to; if None (default), creates a new logger.
+            variable_horizon_footgun: If False (default), algorithm will raise an
+                exception if it detects trajectories of different length during
+                training. If True, overrides this safety check. WARNING: variable
+                horizon episodes leak information about the reward via termination
+                condition, and can seriously confound evaluation. Read <todo: doc>
+                before overriding this.
+        """
+        self._logger = custom_logger or imit_logger.configure()
+        self.variable_horizon_footgun = variable_horizon_footgun
+        if variable_horizon_footgun:
+            self.logger.warning(
+                "Running with `variable_horizon_footgun` set to True. "
+                "Some algorithms are biased towards shorter or longer "
+                "episodes, which may significantly confound results. "
+                "Additionally, even unbiased algorithms can exploit "
+                "the information leak from the termination condition, "
+                "producing spuriously high performance. "
+                "See <todo: doc> for more information."
+            )
+        self._horizon = None
+
+    @property
+    def logger(self):
+        return self._logger
+
+    @logger.setter
+    def logger(self, value: imit_logger.HierarchicalLogger) -> None:
+        self._logger = value
+
+    def _check_fixed_horizon(self, trajs: Iterable[types.Trajectory]) -> None:
+        """Check that `trajs` has fixed episode length and equal to prior calls.
+
+        Args:
+            trajs: An iterable sequence of trajectories.
+
+        Raises:
+            ValueError if the length of trajectories in trajs are different from one
+            another, or from trajectory lengths in previous calls to this method.
+        """
+        if self.variable_horizon_footgun:  # skip check -- YOLO
+            return
+
+        # horizons = all horizons seen so far (including trajs)
+        horizons = set(len(traj) for traj in trajs)
+        if self._horizon is not None:
+            horizons |= self._horizon
+
+        if len(horizons) > 1:
+            raise ValueError(
+                f"Episodes of different length detected: {horizons}. "
+                "Variable horizon environments are discouraged -- "
+                "termination conditions leak information about reward. "
+                "See <TODO: docs link> for more information. "
+                "If you are SURE you want to run imitation on a variable "
+                "horizon task, then please pass in the flag: "
+                "`variable_horizon_footgun=True`."
+            )
+        elif len(horizons) == 1:
+            self._horizon = horizons.pop()

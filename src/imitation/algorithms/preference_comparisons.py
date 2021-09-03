@@ -12,6 +12,7 @@ from typing import List, Optional, Sequence, Tuple
 import numpy as np
 import torch as th
 
+from imitation.algorithms import base
 from imitation.data import rollout
 from imitation.data.types import (
     TrajectoryPair,
@@ -238,7 +239,7 @@ class PreferenceDataset(th.utils.data.Dataset):
     and a probability that fragment 1 is preferred over fragment 2.
 
     This dataset is meant to be generated piece by piece during the
-    training process, which is why data can be added via the .push()
+    training process, which is why testdata can be added via the .push()
     method.
 
     TODO(ejnnr): it should also be possible to store a dataset on disk
@@ -412,7 +413,7 @@ class CrossEntropyRewardTrainer(RewardTrainer):
             self.logger.record("reward/loss", loss.item())
 
 
-class PreferenceComparisons:
+class PreferenceComparisons(base.BaseImitationAlgorithm):
     """Main interface for reward learning using preference comparisons."""
 
     def __init__(
@@ -425,6 +426,7 @@ class PreferenceComparisons:
         preference_gatherer: Optional[PreferenceGatherer] = None,
         reward_trainer: Optional[RewardTrainer] = None,
         custom_logger: Optional[logger.HierarchicalLogger] = None,
+        variable_horizon_footgun: bool = False,
     ):
         """Initialize the preference comparison trainer.
 
@@ -452,8 +454,18 @@ class PreferenceComparisons:
                 associated preferences. Default is to use the preference model
                 and loss function from DRLHP.
             custom_logger: Where to log to; if None (default), creates a new logger.
+            variable_horizon_footgun: If False (default), algorithm will raise an
+                exception if it detects trajectories of different length during
+                training. If True, overrides this safety check. WARNING: variable
+                horizon episodes leak information about the reward via termination
+                condition, and can seriously confound evaluation. Read <todo: doc>
+                before overriding this.
         """
-        self.logger = custom_logger or logger.configure()
+        super().__init__(
+            custom_logger=custom_logger,
+            variable_horizon_footgun=variable_horizon_footgun,
+        )
+
         self.model = reward_model
         self.reward_trainer = reward_trainer or CrossEntropyRewardTrainer(
             reward_model, custom_logger=self.logger
@@ -487,6 +499,7 @@ class PreferenceComparisons:
         for _ in range(iterations):
             self.logger.log(f"Collecting {self.sample_steps} trajectory steps")
             trajectories = self.trajectory_generator.sample(self.sample_steps)
+            self._check_fixed_horizon(trajectories)
             self.logger.log("Creating fragment pairs")
             fragments = self.fragmenter(trajectories)
             self.logger.log("Gathering preferences")
