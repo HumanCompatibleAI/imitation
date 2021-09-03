@@ -3,7 +3,7 @@ Variable Horizon Environments Considered Harmful
 ================================================
 
 Reinforcement learning (RL) algorithms are commonly trained and evaluated in *variable horizon* environments.
-In these environments, the episode ends when some termination condition is reached.
+In these environments, the episode ends when some termination condition is reached (rather than after a fixed number of steps).
 This typically corresponds to success, such as reaching the top of the mountain in ``MountainCar``, or to failure, such as the pole falling down in ``CartPole``.
 A variable horizon will tend to speed up RL training, by increasing the proportion of samples where the agent's actions still have a meaningful impact on the reward, pruning out states that are already a foregone conclusion.
 
@@ -24,7 +24,7 @@ However, this does not solve the problem of information leakage.
 Rather, it merely ensures that different algorithms are all able to equally exploit the information leak provided by the termination condition.
 
 In light of this issue, we would strongly recommend users evaluate ``imitation`` and other reward or imitation learning algorithms only in fixed-horizon environments.
-This is common, but unfortunately not ubiquitous, practice in reward learning papers. For example, `Christiano et al (2017)`_ state:
+This is common, though unfortunately not ubiquitous, practice in reward learning papers. For example, `Christiano et al (2017)`_ state:
 
     Removing variable length episodes leaves the agent with only the information encoded in the
     environment itself; human feedback provides its only guidance about what it ought to do.
