@@ -81,7 +81,7 @@ jobs:
 
       - run:
           name: codespell
-          command: codespell -I .codespell.skip --skip='*.pyc,tests/data/*,*.ipynb,*.csv' ${SRC_FILES}
+          command: codespell -I .codespell.skip --skip='*.pyc,tests/testdata/*,*.ipynb,*.csv' ${SRC_FILES}
 
       - run:
           name: sphinx

@@ -34,10 +34,10 @@ while true; do
       #
       # Combine with fast mode flag to generate low-computation versions of
       # test data.
-      # Use `git clean -df tests/data` to remove extra log files.
+      # Use `git clean -df tests/testdata` to remove extra log files.
       ENVS="cartpole pendulum"
       SEEDS="0"
-      OUTPUT_DIR="tests/data/expert_models"
+      OUTPUT_DIR="tests/testdata/expert_models"
       extra_configs+="rollout_save_n_episodes=50 "
 
       if [[ -d ${OUTPUT_DIR} ]]; then

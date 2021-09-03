@@ -11,7 +11,7 @@ from imitation.algorithms import bc
 from imitation.data import rollout, types
 from imitation.util import util
 
-ROLLOUT_PATH = "tests/data/expert_models/cartpole_0/rollouts/final.pkl"
+ROLLOUT_PATH = "tests/testdata/expert_models/cartpole_0/rollouts/final.pkl"
 
 
 @pytest.fixture

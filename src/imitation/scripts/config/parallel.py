@@ -54,10 +54,10 @@ def debug_log_root():
 
 @parallel_ex.named_config
 def generate_test_data():
-    """Used by tests/generate_test_data.sh to generate tests/data/gather_tb/.
+    """Used by tests/generate_test_data.sh to generate tests/testdata/gather_tb/.
 
-    "tests/data/gather_tb/" should contain 2 Tensorboard run directories, one for each
-     of the trials in the search space below.
+    "tests/testdata/gather_tb/" should contain 2 Tensorboard run directories,
+    one for each of the trials in the search space below.
     """
     sacred_ex_name = "expert_demos"
     run_name = "TEST"

@@ -49,7 +49,7 @@ def test_density_reward(density_type, is_stationary):
     env = util.make_vec_env(env_name, 2)
 
     # construct density-based reward from expert rollouts
-    rollout_path = "tests/data/expert_models/pendulum_0/rollouts/final.pkl"
+    rollout_path = "tests/testdata/expert_models/pendulum_0/rollouts/final.pkl"
     # use only a subset of trajectories
     expert_trajectories_all = types.load(rollout_path)[:8]
     n_experts = len(expert_trajectories_all)
@@ -83,7 +83,7 @@ def test_density_trainer_smoke():
     # tests whether density trainer runs, not whether it's good
     # (it's actually really poor)
     env_name = "Pendulum-v0"
-    rollout_path = "tests/data/expert_models/pendulum_0/rollouts/final.pkl"
+    rollout_path = "tests/testdata/expert_models/pendulum_0/rollouts/final.pkl"
     rollouts = types.load(rollout_path)[:2]
     env = util.make_vec_env(env_name, 2)
     imitation_trainer = util.init_rl(env)

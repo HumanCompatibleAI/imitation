@@ -17,8 +17,8 @@ from imitation.policies import base, serialize
 from imitation.util import util
 
 ENV_NAME = "CartPole-v1"
-EXPERT_POLICY_PATH = "tests/data/expert_models/cartpole_0/policies/final/"
-EXPERT_ROLLOUTS_PATH = "tests/data/expert_models/cartpole_0/rollouts/final.pkl"
+EXPERT_POLICY_PATH = "tests/testdata/expert_models/cartpole_0/policies/final/"
+EXPERT_ROLLOUTS_PATH = "tests/testdata/expert_models/cartpole_0/rollouts/final.pkl"
 
 
 def test_beta_schedule():

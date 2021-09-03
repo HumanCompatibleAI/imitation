@@ -63,7 +63,7 @@ done
 
 if [[ $NEED_TEST_FILES == "true" ]]; then
   # Generate quick reward models for test.
-  save_dir=tests/data/reward_models/${ALGORITHM}
+  save_dir=tests/testdata/reward_models/${ALGORITHM}
 
   # Wipe directories for writing later.
   if [[ -d ${save_dir} ]]; then

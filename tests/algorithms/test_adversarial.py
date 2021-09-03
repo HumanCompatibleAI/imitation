@@ -77,7 +77,7 @@ def expert_batch_size(request):
 
 @pytest.fixture
 def expert_transitions():
-    trajs = types.load("tests/data/expert_models/cartpole_0/rollouts/final.pkl")
+    trajs = types.load("tests/testdata/expert_models/cartpole_0/rollouts/final.pkl")
     trans = rollout.flatten_trajectories(trajs)
     return trans
 
