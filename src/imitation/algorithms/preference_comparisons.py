@@ -329,6 +329,8 @@ class CrossEntropyRewardTrainer(RewardTrainer):
         model: reward_nets.RewardNet,
         noise_prob: float = 0.0,
         batch_size: int = 32,
+        episodes: int = 1,
+        lr: float = 1e-3,
         discount_factor: float = 1.0,
         custom_logger: Optional[logger.HierarchicalLogger] = None,
     ):
@@ -340,6 +342,8 @@ class CrossEntropyRewardTrainer(RewardTrainer):
                 is uniformly random (used for the model of preference generation
                 that is used for the loss)
             batch_size: number of fragment pairs per batch
+            episodes: number of episodes on each training iteration
+            lr: the learning rate
             discount_factor: the model of preference generation uses a softmax
                 of returns as the probability that a fragment is preferred.
                 This is the discount factor used to calculate those returns.
@@ -350,8 +354,9 @@ class CrossEntropyRewardTrainer(RewardTrainer):
         super().__init__(model, custom_logger)
         self.noise_prob = noise_prob
         self.batch_size = batch_size
+        self.episodes = episodes
         self.discount_factor = discount_factor
-        self.optim = th.optim.Adam(self.model.parameters())
+        self.optim = th.optim.Adam(self.model.parameters(), lr=lr)
 
     def _loss(
         self,
@@ -404,12 +409,13 @@ class CrossEntropyRewardTrainer(RewardTrainer):
             ),
             collate_fn=preference_collate_fn,
         )
-        for fragment_pairs, preferences in dataloader:
-            self.optim.zero_grad()
-            loss = self._loss(fragment_pairs, preferences)
-            loss.backward()
-            self.optim.step()
-            self.logger.record("reward/loss", loss.item())
+        for ep in range(self.episodes):
+            for fragment_pairs, preferences in dataloader:
+                self.optim.zero_grad()
+                loss = self._loss(fragment_pairs, preferences)
+                loss.backward()
+                self.optim.step()
+                self.logger.record("loss", loss.item())
 
 
 class PreferenceComparisons:
