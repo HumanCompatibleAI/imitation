@@ -58,6 +58,9 @@ class BaseImitationAlgorithm(abc.ABC):
     def _check_fixed_horizon(self, trajs: Iterable[types.Trajectory]) -> None:
         """Check that `trajs` has fixed episode length and equal to prior calls.
 
+        If algorithm is safe to use with variable horizon episodes (e.g. behavioral
+        cloning), then just don't call this method.
+
         Args:
             trajs: An iterable sequence of trajectories.
 
@@ -85,3 +88,14 @@ class BaseImitationAlgorithm(abc.ABC):
             )
         elif len(horizons) == 1:
             self._horizon = horizons.pop()
+
+    def __getstate__(self):
+        state = self.__dict__.copy()
+        # logger can't be pickled as it depends on open files
+        del state["_logger"]
+        return state
+
+    def __setstate__(self, state):
+        self.__dict__.update(state)
+        # callee should call set_logger if they want to override this
+        self.logger = state.get("_logger") or imit_logger.configure()
