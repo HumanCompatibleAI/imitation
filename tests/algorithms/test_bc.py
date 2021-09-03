@@ -11,7 +11,7 @@ from imitation.algorithms import bc
 from imitation.data import rollout, types
 from imitation.util import util
 
-ROLLOUT_PATH = "tests/data/expert_models/cartpole_0/rollouts/final.pkl"
+ROLLOUT_PATH = "tests/testdata/expert_models/cartpole_0/rollouts/final.pkl"
 
 
 @pytest.fixture
@@ -46,7 +46,7 @@ class DucktypedDataset:
 
 
 @pytest.fixture
-def trainer(batch_size, venv, expert_data_type):
+def trainer(batch_size, venv, expert_data_type, custom_logger):
     rollouts = types.load(ROLLOUT_PATH)
     trans = rollout.flatten_trajectories(rollouts)
     if expert_data_type == "data_loader":
@@ -67,16 +67,18 @@ def trainer(batch_size, venv, expert_data_type):
         venv.observation_space,
         venv.action_space,
         expert_data=expert_data,
+        custom_logger=custom_logger,
     )
 
 
-def test_weight_decay_init_error(venv):
+def test_weight_decay_init_error(venv, custom_logger):
     with pytest.raises(ValueError, match=".*weight_decay.*"):
         bc.BC(
             venv.observation_space,
             venv.action_space,
             expert_data=None,
             optimizer_kwargs=dict(weight_decay=1e-4),
+            custom_logger=custom_logger,
         )
 
 
@@ -131,7 +133,7 @@ class _DataLoaderFailsOnSecondIter:
 
 
 @pytest.mark.parametrize("no_yield_after_iter", [0, 1, 5])
-def test_bc_data_loader_empty_iter_error(venv, no_yield_after_iter):
+def test_bc_data_loader_empty_iter_error(venv, no_yield_after_iter, custom_logger):
     """Check that we error out if the DataLoader suddenly stops yielding any batches.
 
     At one point, we entered an updateless infinite loop in this edge case.
@@ -144,7 +146,9 @@ def test_bc_data_loader_empty_iter_error(venv, no_yield_after_iter):
         dummy_yield_value=dummy_yield_value,
         no_yield_after_iter=no_yield_after_iter,
     )
-    trainer = bc.BC(venv.observation_space, venv.action_space)
+    trainer = bc.BC(
+        venv.observation_space, venv.action_space, custom_logger=custom_logger
+    )
     trainer.set_expert_data_loader(bad_data_loader)
     with pytest.raises(AssertionError, match=".*no data.*"):
         trainer.train(n_batches=20)

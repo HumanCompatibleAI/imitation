@@ -36,7 +36,7 @@ def test_experiments_fast(script_name: str):
             pytest.skip("Need to download or generate benchmark demonstrations first.")
     else:
         test_data_env = dict(os.environ)
-        test_data_env.update(DATA_DIR="tests/data")
+        test_data_env.update(DATA_DIR="tests/testdata")
         env = test_data_env
 
     exit_code = subprocess.call([f"./experiments/{script_name}", "--fast"], env=env)
