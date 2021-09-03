@@ -13,7 +13,7 @@ train_adversarial_ex = sacred.Experiment("train_adversarial", interactive=True)
 
 @train_adversarial_ex.config
 def train_defaults():
-    env_name = "CartPole-v1"  # environment to train on
+    env_name = "seals/CartPole-v0"  # environment to train on
     total_timesteps = 1e6  # Num of environment transitions to sample
     algorithm = "gail"  # Either "airl" or "gail"
 
@@ -125,6 +125,7 @@ def acrobot():
 def cartpole():
     env_name = "CartPole-v1"
     rollout_hint = "cartpole"
+    algorithm_kwargs = {"variable_horizon_footgun": True}
     discrim_net_kwargs = {"gail": {"normalize_images": False}}
 
 
