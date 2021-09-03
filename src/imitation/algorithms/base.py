@@ -74,7 +74,7 @@ class BaseImitationAlgorithm(abc.ABC):
             return
 
         # horizons = all horizons seen so far (including trajs)
-        horizons = set(len(traj) for traj in trajs)
+        horizons = set(len(traj) for traj in trajs if traj.terminal)
         if self._horizon is not None:
             horizons.add(self._horizon)
 

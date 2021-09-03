@@ -121,9 +121,6 @@ class AgentTrainer(TrajectoryGenerator):
             sample_until = rollout.make_sample_until(
                 min_timesteps=steps - avail_steps, min_episodes=None
             )
-            # clear out any partial trajectories to prevent buffering_wrapper
-            # complaining about subsequent reset().
-            self.buffering_wrapper.pop_trajectories()
             additional_trajectories = rollout.generate_trajectories(
                 self.algorithm,
                 self.venv,
@@ -149,4 +146,5 @@ class AgentTrainer(TrajectoryGenerator):
         return trajectories
 
     def _pop_trajectories(self) -> Sequence[types.TrajectoryWithRew]:
-        return self.buffering_wrapper.pop_full_trajectories()
+        # TODO(adam): should we discard incomplete trajectories?
+        return self.buffering_wrapper.pop_trajectories()
