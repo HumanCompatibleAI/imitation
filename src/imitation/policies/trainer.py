@@ -22,11 +22,11 @@ class TrajectoryGenerator(abc.ABC):
         self.set_logger(custom_logger)
 
     @abc.abstractmethod
-    def sample(self, num_steps: int) -> Sequence[types.TrajectoryWithRew]:
+    def sample(self, steps: int) -> Sequence[types.TrajectoryWithRew]:
         """Sample a batch of trajectories.
 
         Args:
-            num_steps: All trajectories taken together should
+            steps: All trajectories taken together should
                 have at least this many steps.
 
         Returns:
