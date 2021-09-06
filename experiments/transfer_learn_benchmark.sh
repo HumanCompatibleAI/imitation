@@ -25,8 +25,8 @@ while true; do
   case "$1" in
     # Fast mode (debug)
     -f | --fast)
-      CONFIG_CSV="tests/data/imit_benchmark_config.csv"
-      REWARD_MODELS_DIR="tests/data/reward_models"
+      CONFIG_CSV="tests/testdata/imit_benchmark_config.csv"
+      REWARD_MODELS_DIR="tests/testdata/reward_models"
       NEED_TEST_FILES="true"
       SEEDS="0"
       extra_configs+="fast "
@@ -63,7 +63,7 @@ done
 
 if [[ $NEED_TEST_FILES == "true" ]]; then
   # Generate quick reward models for test.
-  save_dir=tests/data/reward_models/${ALGORITHM}
+  save_dir=tests/testdata/reward_models/${ALGORITHM}
 
   # Wipe directories for writing later.
   if [[ -d ${save_dir} ]]; then

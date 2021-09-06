@@ -13,7 +13,7 @@ train_preference_comparisons_ex = sacred.Experiment(
 
 @train_preference_comparisons_ex.config
 def train_defaults():
-    env_name = "CartPole-v1"  # environment to train on
+    env_name = "seals/CartPole-v0"  # environment to train on
     iterations = 10
     agent_steps = 1e4
     sample_steps = 1e4
@@ -27,6 +27,7 @@ def train_defaults():
     agent_kwargs = {}
     gatherer_kwargs = {}
     trajectory_path = None
+    allow_variable_horizon = False
 
     # TODO(ejnnr): Set to 1 mostly do speed up experimentation, should be increased
     # Number of environments in VecEnv
@@ -52,6 +53,7 @@ def paths(env_name, log_root):
 @train_preference_comparisons_ex.named_config
 def cartpole():
     env_name = "CartPole-v1"
+    allow_variable_horizon = True
 
 
 @train_preference_comparisons_ex.named_config

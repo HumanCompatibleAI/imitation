@@ -27,7 +27,7 @@ while true; do
   case "$1" in
     # Fast mode (debug)
     -f | --fast)
-      CONFIG_CSV="tests/data/imit_benchmark_config.csv"
+      CONFIG_CSV="tests/testdata/imit_benchmark_config.csv"
       SEEDS="0"
       extra_configs+="fast "
       shift
@@ -61,7 +61,7 @@ while true; do
       shift 2
       ;;
     --file_storage)
-      # Used by `tests/generate_test_data.sh` to save Sacred logs in tests/data.
+      # Used by `tests/generate_test_data.sh` to save Sacred logs in tests/testdata.
       extra_options+="--file_storage $2 "
       shift 2
       ;;

@@ -25,7 +25,7 @@ def _algorithm_cls(request):
 def test_train_disc_small_expert_data_warning(tmpdir, _algorithm_cls):
     custom_logger = logger.configure(tmpdir, ["tensorboard", "stdout"])
     venv = util.make_vec_env(
-        "CartPole-v1",
+        "seals/CartPole-v0",
         n_envs=2,
         parallel=_parallel,
     )
@@ -77,7 +77,7 @@ def expert_batch_size(request):
 
 @pytest.fixture
 def expert_transitions():
-    trajs = types.load("tests/data/expert_models/cartpole_0/rollouts/final.pkl")
+    trajs = types.load("tests/testdata/expert_models/cartpole_0/rollouts/final.pkl")
     trans = rollout.flatten_trajectories(trajs)
     return trans
 
@@ -103,7 +103,7 @@ def trainer(
         expert_data = expert_transitions
 
     venv = util.make_vec_env(
-        "CartPole-v1",
+        "seals/CartPole-v0",
         n_envs=2,
         parallel=_parallel,
         log_dir=tmpdir,

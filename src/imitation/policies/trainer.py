@@ -185,6 +185,7 @@ class AgentTrainer(TrajectoryGenerator):
         return trajectories
 
     def _pop_trajectories(self) -> Sequence[types.TrajectoryWithRew]:
+        # TODO(adam): should we discard incomplete trajectories?
         return self.buffering_wrapper.pop_trajectories()
 
     def set_logger(self, custom_logger: Optional[logger.HierarchicalLogger]):

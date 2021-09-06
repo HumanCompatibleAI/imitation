@@ -39,7 +39,7 @@ while true; do
       shift 2
       ;;
     --file_storage)
-      # Used by `tests/generate_test_data.sh` to save Sacred logs in tests/data.
+      # Used by `tests/generate_test_data.sh` to save Sacred logs in tests/testdata.
       extra_options+="--file_storage $2 "
       shift 2
       ;;

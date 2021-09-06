@@ -24,7 +24,7 @@ def replay_defaults():
 
     policy_type = "ppo"  # class to load policy, see imitation.policies.loader
     policy_path = (
-        "tests/data/expert_models/" "cartpole_0/policies/final/"
+        "tests/testdata/expert_models/" "cartpole_0/policies/final/"
     )  # serialized policy
 
     reward_type = None  # Optional: override with reward of this type

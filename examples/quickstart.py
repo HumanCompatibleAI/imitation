@@ -5,6 +5,7 @@ import pathlib
 import pickle
 import tempfile
 
+import seals  # noqa: F401
 import stable_baselines3 as sb3
 
 from imitation.algorithms import adversarial, bc
@@ -12,7 +13,7 @@ from imitation.data import rollout
 from imitation.util import logger, util
 
 # Load pickled test demonstrations.
-with open("tests/data/expert_models/cartpole_0/rollouts/final.pkl", "rb") as f:
+with open("tests/testdata/expert_models/cartpole_0/rollouts/final.pkl", "rb") as f:
     # This is a list of `imitation.data.types.Trajectory`, where
     # every instance contains observations and actions for a single expert
     # demonstration.
@@ -23,7 +24,7 @@ with open("tests/data/expert_models/cartpole_0/rollouts/final.pkl", "rb") as f:
 # (observation, actions, next_observation) transitions.
 transitions = rollout.flatten_trajectories(trajectories)
 
-venv = util.make_vec_env("CartPole-v1", n_envs=2)
+venv = util.make_vec_env("seals/CartPole-v0", n_envs=2)
 
 tempdir = tempfile.TemporaryDirectory(prefix="quickstart")
 tempdir_path = pathlib.Path(tempdir.name)

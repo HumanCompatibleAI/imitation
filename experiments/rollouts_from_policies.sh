@@ -34,7 +34,7 @@ while true; do
   case "$1" in
     -f | --fast)
       # Fast mode (debug)
-      CONFIG_CSV="tests/data/rollouts_from_policies_config.csv"
+      CONFIG_CSV="tests/testdata/rollouts_from_policies_config.csv"
       shift
       ;;
     --)
