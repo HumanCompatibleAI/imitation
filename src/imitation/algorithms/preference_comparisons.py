@@ -231,7 +231,7 @@ class SyntheticGatherer(PreferenceGatherer):
                 for f1, f2 in fragment_pairs
             ]
         )
-        return np.array(rews1), np.array(rews2)
+        return np.array(rews1, dtype=np.float32), np.array(rews2, dtype=np.float32)
 
 
 class PreferenceDataset(th.utils.data.Dataset):
