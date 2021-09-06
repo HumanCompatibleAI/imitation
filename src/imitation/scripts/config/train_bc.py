@@ -118,8 +118,8 @@ def pendulum():
 
 
 @train_bc_ex.named_config
-def ant():
-    env_name = "Ant-v2"
+def seals_ant():
+    env_name = "seals/Ant-v0"
     rollout_hint = "ant"
 
 
@@ -131,8 +131,8 @@ def half_cheetah():
 
 
 @train_bc_ex.named_config
-def humanoid():
-    env_name = "Humanoid-v2"
+def seals_humanoid():
+    env_name = "seals/Humanoid-v0"
     rollout_hint = "humanoid"
 
 

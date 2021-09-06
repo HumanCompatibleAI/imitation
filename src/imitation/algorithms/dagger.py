@@ -18,7 +18,7 @@ import torch as th
 from stable_baselines3.common import policies, utils, vec_env
 from torch.utils import data as th_data
 
-from imitation.algorithms import bc
+from imitation.algorithms import base, bc
 from imitation.data import rollout, types
 from imitation.util import logger, util
 
@@ -246,7 +246,7 @@ class NeedsDemosException(Exception):
     """Signals demos need to be collected for current round before continuing."""
 
 
-class DAggerTrainer:
+class DAggerTrainer(base.BaseImitationAlgorithm):
     """DAgger training class with low-level API suitable for interactive human feedback.
 
     In essence, this is just BC with some helpers for incrementally
@@ -304,6 +304,8 @@ class DAggerTrainer:
             bc_kwargs: Additional arguments for constructing the `BC` instance that
                 will be used to train the underlying policy.
         """
+        super().__init__(custom_logger=custom_logger)
+
         if beta_schedule is None:
             beta_schedule = LinearBetaSchedule(15)
         self.batch_size = batch_size
@@ -315,28 +317,18 @@ class DAggerTrainer:
         self._last_loaded_round = -1
         self._all_demos = []
 
-        self._logger = custom_logger or logger.configure()
         self.bc_trainer = bc.BC(
             self.venv.observation_space,
             self.venv.action_space,
-            custom_logger=self._logger,
+            custom_logger=custom_logger,
             **self.bc_kwargs,
         )
 
-    def set_logger(self, custom_logger: logger.HierarchicalLogger) -> None:
-        self._logger = custom_logger
-        self.bc_trainer.logger = custom_logger
-
-    def __getstate__(self):
-        state = self.__dict__.copy()
-        # logger can't be pickled as it depends on open files
-        del state["_logger"]
-        return state
-
-    def __setstate__(self, state):
-        self.__dict__.update(state)
-        # callee should call set_logger if they want to override this
-        self._logger = state.get("_logger") or logger.configure()
+    @base.BaseImitationAlgorithm.logger.setter
+    def logger(self, value: logger.HierarchicalLogger) -> None:
+        # DAgger and inner-BC logger should stay in sync
+        self._logger = value
+        self.bc_trainer.logger = value
 
     @property
     def policy(self) -> policies.BasePolicy:

@@ -11,13 +11,14 @@ import torch.utils.tensorboard as thboard
 import tqdm
 from stable_baselines3.common import on_policy_algorithm, vec_env
 
-from imitation.data import buffer, types, wrappers
+from imitation.algorithms import base
+from imitation.data import buffer, rollout, types, wrappers
 from imitation.rewards import common as rew_common
 from imitation.rewards import discrim_nets, reward_nets
 from imitation.util import logger, reward_wrapper, util
 
 
-class AdversarialTrainer:
+class AdversarialTrainer(base.BaseImitationAlgorithm):
     """Base class for adversarial imitation learning algorithms like GAIL and AIRL."""
 
     venv: vec_env.VecEnv
@@ -56,6 +57,7 @@ class AdversarialTrainer:
         init_tensorboard: bool = False,
         init_tensorboard_graph: bool = False,
         debug_use_ground_truth: bool = False,
+        allow_variable_horizon: bool = False,
     ):
         """Builds AdversarialTrainer.
 
@@ -107,7 +109,19 @@ class AdversarialTrainer:
                 This disables the reward wrapping that would normally replace
                 the environment reward with the learned reward. This is useful for
                 sanity checking that the policy training is functional.
+            allow_variable_horizon: If False (default), algorithm will raise an
+                exception if it detects trajectories of different length during
+                training. If True, overrides this safety check. WARNING: variable
+                horizon episodes leak information about the reward via termination
+                condition, and can seriously confound evaluation. Read
+                https://imitation.readthedocs.io/en/latest/guide/variable_horizon.html
+                before overriding this.
         """
+        super().__init__(
+            custom_logger=custom_logger,
+            allow_variable_horizon=allow_variable_horizon,
+        )
+
         self._global_step = 0
         self._disc_step = 0
         self.n_disc_updates_per_round = n_disc_updates_per_round
@@ -150,7 +164,6 @@ class AdversarialTrainer:
             self.discrim_net.parameters(), **self._disc_opt_kwargs
         )
 
-        self.logger = custom_logger or logger.configure()
         if self._init_tensorboard:
             logging.info("building summary directory at " + self._log_dir)
             summary_dir = os.path.join(self._log_dir, "summary")
@@ -288,7 +301,9 @@ class AdversarialTrainer:
             )
             self._global_step += 1
 
-        gen_samples = self.venv_buffering.pop_transitions()
+        gen_trajs = self.venv_buffering.pop_trajectories()
+        self._check_fixed_horizon(gen_trajs)
+        gen_samples = rollout.flatten_trajectories_with_rew(gen_trajs)
         self._gen_replay_buffer.store(gen_samples)
 
     def train(
