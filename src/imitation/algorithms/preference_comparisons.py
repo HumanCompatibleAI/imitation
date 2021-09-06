@@ -11,6 +11,7 @@ from typing import List, Optional, Sequence, Tuple
 
 import numpy as np
 import torch as th
+from scipy import special
 
 from imitation.data import rollout
 from imitation.data.types import (
@@ -190,6 +191,7 @@ class SyntheticGatherer(PreferenceGatherer):
         temperature: float = 1,
         discount_factor: float = 1,
         seed: int = 0,
+        custom_logger: Optional[logger.HierarchicalLogger] = None,
     ):
         """Initialize the synthetic preference gatherer.
 
@@ -201,10 +203,11 @@ class SyntheticGatherer(PreferenceGatherer):
                 how good a fragment is. Default is to use undiscounted
                 sums of rewards (as in the DRLHP paper).
             seed: seed for the internal RNG (only used if temperature > 0)
+            custom_logger: Where to log to; if None (default), creates a new logger.
         """
         # we don't pass a logger for now since this particular implementation
         # doesn't use one at the moment
-        super().__init__()
+        super().__init__(custom_logger=custom_logger)
         self.temperature = temperature
         self.discount_factor = discount_factor
         self.rng = np.random.default_rng(seed=seed)
@@ -219,6 +222,11 @@ class SyntheticGatherer(PreferenceGatherer):
         # Instead of computing exp(rews1) / (exp(rews1) + exp(rews2)) directly,
         # we divide enumerator and denominator by exp(rews1) to prevent overflows:
         model_probs = 1 / (1 + np.exp(rews2 - rews1))
+        # Compute the mean binary entropy. This metric helps estimate
+        # how good we can expect the performance of the learned reward
+        # model to be at predicting preferences.
+        entropy = -(special.xlogy(model_probs, model_probs) + special.xlogy(1 - model_probs, 1 - model_probs)).mean()
+        self.logger.record("entropy", entropy)
         return self.rng.binomial(n=1, p=model_probs).astype(np.float32)
 
     def _reward_sums(self, fragment_pairs) -> Tuple[np.ndarray, np.ndarray]:
@@ -477,7 +485,7 @@ class PreferenceComparisons:
         self.trajectory_generator.set_logger(self.logger)
         self.fragmenter = fragmenter or RandomFragmenter(custom_logger=self.logger)
         self.fragmenter.logger = self.logger
-        self.preference_gatherer = preference_gatherer or SyntheticGatherer()
+        self.preference_gatherer = preference_gatherer or SyntheticGatherer(custom_logger=self.logger)
         self.preference_gatherer.logger = self.logger
         self.sample_steps = sample_steps
         # In contrast to the previous cases, we need the is None check
@@ -498,8 +506,9 @@ class PreferenceComparisons:
             trajectories = self.trajectory_generator.sample(self.sample_steps)
             self.logger.log("Creating fragment pairs")
             fragments = self.fragmenter(trajectories)
-            self.logger.log("Gathering preferences")
-            preferences = self.preference_gatherer(fragments)
+            with self.logger.accumulate_means("preferences"):
+                self.logger.log("Gathering preferences")
+                preferences = self.preference_gatherer(fragments)
             self.dataset.push(fragments, preferences)
             self.logger.log(f"Dataset now contains {len(self.dataset)} samples")
             with self.logger.accumulate_means("reward"):
