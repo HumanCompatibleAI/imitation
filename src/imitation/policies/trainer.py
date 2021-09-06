@@ -45,7 +45,7 @@ class TrajectoryGenerator(abc.ABC):
             **kwargs: additional keyword arguments to pass on to
                 the training procedure.
         """
-    
+
     def set_logger(self, custom_logger: Optional[logger.HierarchicalLogger]):
         """Set the internal logger.
         For subclasses, this should also set the logger of any wrapped modules
@@ -56,15 +56,18 @@ class TrajectoryGenerator(abc.ABC):
         """
         self._logger = custom_logger or logger.configure()
 
+
 class TrajectoryDataset(TrajectoryGenerator):
     def __init__(self, path: types.AnyPath, seed: int = 0):
         self._trajectories = types.load(path)
         self.rng = random.Random(seed)
-    
+
     def sample(self, steps: int) -> Sequence[types.TrajectoryWithRew]:
         available_steps = sum(len(traj) for traj in self._trajectories)
         if available_steps < steps:
-            raise RuntimeError(f"Asked for {steps} transitions but only {available_steps} available")
+            raise RuntimeError(
+                f"Asked for {steps} transitions but only {available_steps} available"
+            )
         trajectories = list(self._trajectories)
         self.rng.shuffle(trajectories)
         # Next, we need the cumulative sum of trajectory lengths
@@ -78,7 +81,7 @@ class TrajectoryDataset(TrajectoryGenerator):
         # sanity check
         assert sum(len(traj) for traj in trajectories) >= steps
         return trajectories
-    
+
 
 class AgentTrainer(TrajectoryGenerator):
     """Wrapper for training an SB3 algorithm on an arbitrary reward function."""

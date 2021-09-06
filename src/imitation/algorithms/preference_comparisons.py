@@ -235,7 +235,10 @@ class SyntheticGatherer(PreferenceGatherer):
         # Compute the mean binary entropy. This metric helps estimate
         # how good we can expect the performance of the learned reward
         # model to be at predicting preferences.
-        entropy = -(special.xlogy(model_probs, model_probs) + special.xlogy(1 - model_probs, 1 - model_probs)).mean()
+        entropy = -(
+            special.xlogy(model_probs, model_probs)
+            + special.xlogy(1 - model_probs, 1 - model_probs)
+        ).mean()
         self.logger.record("entropy", entropy)
         return self.rng.binomial(n=1, p=model_probs).astype(np.float32)
 
@@ -505,7 +508,9 @@ class PreferenceComparisons:
         self.trajectory_generator.set_logger(self.logger)
         self.fragmenter = fragmenter or RandomFragmenter(custom_logger=self.logger)
         self.fragmenter.logger = self.logger
-        self.preference_gatherer = preference_gatherer or SyntheticGatherer(custom_logger=self.logger)
+        self.preference_gatherer = preference_gatherer or SyntheticGatherer(
+            custom_logger=self.logger
+        )
         self.preference_gatherer.logger = self.logger
         self.sample_steps = sample_steps
         # In contrast to the previous cases, we need the is None check

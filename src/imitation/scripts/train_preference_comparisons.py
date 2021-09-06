@@ -97,15 +97,24 @@ def train_preference_comparisons(
     if trajectory_path is None:
         # Setting the logger here is not really necessary (PreferenceComparisons
         # takes care of that automatically) but it avoids creating unnecessary loggers
-        trajectory_generator = trainer.AgentTrainer(agent, reward_net, custom_logger=custom_logger)
+        trajectory_generator = trainer.AgentTrainer(
+            agent, reward_net, custom_logger=custom_logger
+        )
     else:
         trajectory_generator = trainer.TrajectoryDataset(trajectory_path, _seed)
 
     fragmenter = preference_comparisons.RandomFragmenter(
-        fragment_length=fragment_length, num_pairs=num_pairs, seed=_seed, custom_logger=custom_logger
+        fragment_length=fragment_length,
+        num_pairs=num_pairs,
+        seed=_seed,
+        custom_logger=custom_logger,
     )
-    gatherer = preference_comparisons.SyntheticGatherer(**gatherer_kwargs, seed=_seed, custom_logger=custom_logger)
-    reward_trainer = preference_comparisons.CrossEntropyRewardTrainer(model=reward_net, **reward_trainer_kwargs, custom_logger=custom_logger)
+    gatherer = preference_comparisons.SyntheticGatherer(
+        **gatherer_kwargs, seed=_seed, custom_logger=custom_logger
+    )
+    reward_trainer = preference_comparisons.CrossEntropyRewardTrainer(
+        model=reward_net, **reward_trainer_kwargs, custom_logger=custom_logger
+    )
     main_trainer = preference_comparisons.PreferenceComparisons(
         trajectory_generator,
         reward_net,

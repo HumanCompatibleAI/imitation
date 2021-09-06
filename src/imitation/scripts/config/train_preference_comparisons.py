@@ -53,9 +53,11 @@ def paths(env_name, log_root):
 def cartpole():
     env_name = "CartPole-v1"
 
+
 @train_preference_comparisons_ex.named_config
 def seals_cartpole():
     env_name = "seals/CartPole-v0"
+
 
 @train_preference_comparisons_ex.named_config
 def mountain_car():
