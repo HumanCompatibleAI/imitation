@@ -12,7 +12,7 @@ import gym
 import numpy as np
 import pytest
 
-from imitation.data import old_types, types
+from imitation.data import types
 
 SPACES = [
     gym.spaces.Discrete(3),
@@ -42,7 +42,7 @@ def trajectory(
     obs = np.array([obs_space.sample() for _ in range(length + 1)])
     acts = np.array([act_space.sample() for _ in range(length)])
     infos = np.array([{i: i} for i in range(length)])
-    return types.Trajectory(obs=obs, acts=acts, infos=infos)
+    return types.Trajectory(obs=obs, acts=acts, infos=infos, terminal=True)
 
 
 @pytest.fixture
@@ -50,13 +50,6 @@ def trajectory_rew(trajectory: types.Trajectory) -> types.TrajectoryWithRew:
     """Like `trajectory` but with reward randomly sampled from a Gaussian."""
     rews = np.random.randn(len(trajectory))
     return types.TrajectoryWithRew(**dataclasses.asdict(trajectory), rews=rews)
-
-
-@pytest.fixture
-def old_format_trajectory(
-    trajectory_rew: types.TransitionsWithRew,
-) -> old_types.Trajectory:
-    return old_types.Trajectory(**dataclasses.asdict(trajectory_rew))
 
 
 @pytest.fixture
@@ -165,34 +158,6 @@ class TestData:
             assert len(trajs) == len(loaded_trajs)
             for t1, t2 in zip(trajs, loaded_trajs):
                 _assert_dataclasses_equal(t1, t2)
-
-    def test_old_format_compat_load_traj(
-        self, tmpdir, old_format_trajectory, trajectory_rew
-    ):
-        """Check that old data format can be loaded and raises warning.
-
-        Previously we saved demonstration data as
-        `Sequence[imitation.util.rollout.Trajectory]`. Now this format is deprecated,
-        but `imitation.data.types.load` still automatically converts it to
-        `types.TrajectoryWithRew` for compatibility reasons.
-        """
-        pkl_path = pathlib.Path(tmpdir, "old_traj.pkl")
-        old_trajs = [old_format_trajectory] * 2
-        equivalent_new_trajs = [trajectory_rew] * 2
-        with open(pkl_path, "wb") as f:
-            pickle.dump(old_trajs, f)
-
-        with pytest.warns(
-            DeprecationWarning, match=".*trajectories are saved.*outdated"
-        ):
-            loaded_trajs = types.load(str(pkl_path))
-
-        # The loaded old-style trajectories are converted into an instance of
-        # TrajectoryWithRew, so we should compare against `equivalent_new_trajs` instead
-        # of the originally saved `old_trajs`.
-        assert len(equivalent_new_trajs) == len(loaded_trajs)
-        for t1, t2 in zip(equivalent_new_trajs, loaded_trajs):
-            _assert_dataclasses_equal(t1, t2)
 
     def test_invalid_trajectories(
         self,
@@ -321,7 +286,7 @@ def test_zero_length_fails():
     """Check zero-length trajectory and transitions fail."""
     empty = np.array([])
     with pytest.raises(ValueError, match=r"Degenerate trajectory.*"):
-        types.Trajectory(obs=np.array([42]), acts=empty, infos=None)
+        types.Trajectory(obs=np.array([42]), acts=empty, infos=None, terminal=True)
 
 
 def test_path_to_str():

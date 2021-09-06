@@ -136,11 +136,13 @@ class RandomFragmenter(Fragmenter):
             n = len(traj)
             start = self.rng.randint(0, n - self.fragment_length)
             end = start + self.fragment_length
+            terminal = (end == n) and traj.terminal
             fragment = TrajectoryWithRew(
                 obs=traj.obs[start : end + 1],
                 acts=traj.acts[start:end],
                 infos=traj.infos[start:end] if traj.infos is not None else None,
                 rews=traj.rews[start:end],
+                terminal=terminal,
             )
             fragments.append(fragment)
         # fragments is currently a list of single fragments. We want to pair up
