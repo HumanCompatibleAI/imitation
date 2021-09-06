@@ -99,13 +99,16 @@ class RandomFragmenter(Fragmenter):
         ]
         if len(trajectories) == 0:
             raise ValueError(
-                "No trajectories are long enough for the desired fragment length."
+                "No trajectories are long enough for the desired fragment length "
+                f"of {self.fragment_length}."
             )
-        self.logger.log(
-            f"Discarded {prev_num_trajectories - len(trajectories)} "
-            f"out of {prev_num_trajectories} trajectories because they are "
-            f"shorter than the desired length of {self.fragment_length}."
-        )
+        num_discarded = prev_num_trajectories - len(trajectories)
+        if num_discarded:
+            self.logger.log(
+                f"Discarded {num_discarded} out of {prev_num_trajectories} "
+                "trajectories because they are shorter than the desired length "
+                f"of {self.fragment_length}."
+            )
 
         weights = [len(traj) for traj in trajectories]
 
