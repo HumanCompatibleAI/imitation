@@ -28,6 +28,7 @@ Main Features
 
    guide/install
    guide/gettingstarted
+   guide/variable_horizon
 
 
 .. toctree::

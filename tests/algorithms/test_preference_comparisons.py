@@ -2,6 +2,7 @@
 
 import numpy as np
 import pytest
+import seals  # noqa: F401
 import stable_baselines3
 
 from imitation.algorithms import preference_comparisons
@@ -14,7 +15,7 @@ from imitation.util import util
 @pytest.fixture
 def venv():
     return util.make_vec_env(
-        "CartPole-v1",
+        "seals/CartPole-v0",
         n_envs=1,
     )
 

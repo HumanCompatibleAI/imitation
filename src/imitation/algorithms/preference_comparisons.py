@@ -12,6 +12,7 @@ from typing import List, Optional, Sequence, Tuple
 import numpy as np
 import torch as th
 
+from imitation.algorithms import base
 from imitation.data import rollout
 from imitation.data.types import (
     TrajectoryPair,
@@ -414,7 +415,7 @@ class CrossEntropyRewardTrainer(RewardTrainer):
             self.logger.record("reward/loss", loss.item())
 
 
-class PreferenceComparisons:
+class PreferenceComparisons(base.BaseImitationAlgorithm):
     """Main interface for reward learning using preference comparisons."""
 
     def __init__(
@@ -427,6 +428,7 @@ class PreferenceComparisons:
         preference_gatherer: Optional[PreferenceGatherer] = None,
         reward_trainer: Optional[RewardTrainer] = None,
         custom_logger: Optional[logger.HierarchicalLogger] = None,
+        allow_variable_horizon: bool = False,
     ):
         """Initialize the preference comparison trainer.
 
@@ -454,8 +456,19 @@ class PreferenceComparisons:
                 associated preferences. Default is to use the preference model
                 and loss function from DRLHP.
             custom_logger: Where to log to; if None (default), creates a new logger.
+            allow_variable_horizon: If False (default), algorithm will raise an
+                exception if it detects trajectories of different length during
+                training. If True, overrides this safety check. WARNING: variable
+                horizon episodes leak information about the reward via termination
+                condition, and can seriously confound evaluation. Read
+                https://imitation.readthedocs.io/en/latest/guide/variable_horizon.html
+                before overriding this.
         """
-        self.logger = custom_logger or logger.configure()
+        super().__init__(
+            custom_logger=custom_logger,
+            allow_variable_horizon=allow_variable_horizon,
+        )
+
         self.model = reward_model
         self.reward_trainer = reward_trainer or CrossEntropyRewardTrainer(
             reward_model, custom_logger=self.logger
@@ -489,6 +502,7 @@ class PreferenceComparisons:
         for _ in range(iterations):
             self.logger.log(f"Collecting {self.sample_steps} trajectory steps")
             trajectories = self.trajectory_generator.sample(self.sample_steps)
+            self._check_fixed_horizon(trajectories)
             self.logger.log("Creating fragment pairs")
             fragments = self.fragmenter(trajectories)
             self.logger.log("Gathering preferences")
