@@ -17,20 +17,24 @@ def train_defaults():
     iterations = 10
     agent_steps = 1e4
     sample_steps = 1e4
-    fragment_length = 10
-    num_pairs = 100
+    fragment_length = 100
+    num_pairs = 20
     n_episodes_eval = 50  # Num of episodes for final mean ground truth return
     reward_net_kwargs = {}
-    reward_trainer_kwargs = {}
+    reward_trainer_kwargs = {
+        "episodes": 3,
+    }
     agent_kwargs = {}
     gatherer_kwargs = {}
     trajectory_path = None
 
+    # TODO(ejnnr): Set to 1 mostly do speed up experimentation, should be increased
     # Number of environments in VecEnv
-    num_vec = 8
+    num_vec = 1
 
+    # TODO(ejnnr): should probably be set to True again once num_vec is increased
     # Use SubprocVecEnv rather than DummyVecEnv (generally faster if num_vec>1)
-    parallel = True
+    parallel = False
     max_episode_steps = None  # Set to positive int to limit episode horizons
 
     log_root = os.path.join(
@@ -48,6 +52,14 @@ def paths(env_name, log_root):
 @train_preference_comparisons_ex.named_config
 def cartpole():
     env_name = "CartPole-v1"
+
+@train_preference_comparisons_ex.named_config
+def seals_cartpole():
+    env_name = "seals/CartPole-v0"
+
+@train_preference_comparisons_ex.named_config
+def mountain_car():
+    env_name = "MountainCar-v0"
 
 
 # Debug configs
