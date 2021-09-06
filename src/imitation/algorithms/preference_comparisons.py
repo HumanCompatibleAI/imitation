@@ -191,6 +191,7 @@ class SyntheticGatherer(PreferenceGatherer):
         temperature: float = 1,
         discount_factor: float = 1,
         seed: int = 0,
+        threshold: float = 50,
         custom_logger: Optional[logger.HierarchicalLogger] = None,
     ):
         """Initialize the synthetic preference gatherer.
@@ -203,6 +204,11 @@ class SyntheticGatherer(PreferenceGatherer):
                 how good a fragment is. Default is to use undiscounted
                 sums of rewards (as in the DRLHP paper).
             seed: seed for the internal RNG (only used if temperature > 0)
+            threshold: preferences are sampled from a softmax of returns.
+                To avoid overflows, we clip differences in returns that are
+                above this threshold (after multiplying with temperature).
+                This threshold is therefore in logspace. The default value
+                of 50 means that probabilities below 2e-22 are rounded to 0.
             custom_logger: Where to log to; if None (default), creates a new logger.
         """
         # we don't pass a logger for now since this particular implementation
@@ -211,17 +217,21 @@ class SyntheticGatherer(PreferenceGatherer):
         self.temperature = temperature
         self.discount_factor = discount_factor
         self.rng = np.random.default_rng(seed=seed)
+        self.threshold = threshold
 
     def __call__(self, fragment_pairs: Sequence[TrajectoryWithRewPair]) -> np.ndarray:
-        rews1, rews2 = self._reward_sums(fragment_pairs)
+        returns1, returns2 = self._reward_sums(fragment_pairs)
         if self.temperature == 0:
-            return (np.sign(rews1 - rews2) + 1) / 2
+            return (np.sign(returns1 - returns2) + 1) / 2
 
-        rews1 /= self.temperature
-        rews2 /= self.temperature
+        returns1 /= self.temperature
+        returns2 /= self.temperature
+
+        # clip the returns to avoid overflows in the softmax below
+        returns_diff = np.clip(returns1 - returns2, -self.threshold, self.threshold)
         # Instead of computing exp(rews1) / (exp(rews1) + exp(rews2)) directly,
         # we divide enumerator and denominator by exp(rews1) to prevent overflows:
-        model_probs = 1 / (1 + np.exp(rews2 - rews1))
+        model_probs = 1 / (1 + np.exp(-returns_diff))
         # Compute the mean binary entropy. This metric helps estimate
         # how good we can expect the performance of the learned reward
         # model to be at predicting preferences.
@@ -343,6 +353,7 @@ class CrossEntropyRewardTrainer(RewardTrainer):
         episodes: int = 1,
         lr: float = 1e-3,
         discount_factor: float = 1.0,
+        threshold: float = 50,
         custom_logger: Optional[logger.HierarchicalLogger] = None,
     ):
         """Initialize the reward model trainer.
@@ -360,6 +371,11 @@ class CrossEntropyRewardTrainer(RewardTrainer):
                 This is the discount factor used to calculate those returns.
                 Default is 1, i.e. undiscounted sums of rewards (which is what
                 the DRLHP paper uses).
+            threshold: the preference model used to compute the loss contains
+                a softmax of returns. To avoid overflows, we clip differences
+                in returns that are above this threshold.
+                This threshold is therefore in logspace. The default value
+                of 50 means that probabilities below 2e-22 are rounded to 0.
             custom_logger: Where to log to; if None (default), creates a new logger.
         """
         super().__init__(model, custom_logger)
@@ -367,6 +383,7 @@ class CrossEntropyRewardTrainer(RewardTrainer):
         self.batch_size = batch_size
         self.episodes = episodes
         self.discount_factor = discount_factor
+        self.threshold = threshold
         self.optim = th.optim.Adam(self.model.parameters(), lr=lr)
 
     def _loss(
@@ -400,6 +417,9 @@ class CrossEntropyRewardTrainer(RewardTrainer):
         else:
             discounts = self.discount_factor ** th.arange(len(rews1))
             returns_diff = (discounts * (rews2 - rews1)).sum()
+        # Clip to avoid overflows (which in particular may occur
+        # in the backwards pass even if they do not in the forward pass).
+        returns_diff = th.clip(returns_diff, -self.threshold, self.threshold)
         # We take the softmax of the returns. model_probability
         # is the first dimension of that softmax, representing the
         # probability that fragment 1 is preferred.
