@@ -23,6 +23,7 @@ def train_defaults():
     reward_net_kwargs = {}
     reward_trainer_kwargs = {}
     agent_kwargs = {}
+    trajectory_path = None
 
     # Number of environments in VecEnv
     num_vec = 8

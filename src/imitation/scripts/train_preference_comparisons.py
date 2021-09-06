@@ -37,6 +37,7 @@ def train_preference_comparisons(
     fragment_length: int,
     num_pairs: int,
     n_episodes_eval: int,
+    trajectory_path: Optional[str],
     reward_net_kwargs: Dict[str, Any],
     reward_trainer_kwargs: Dict[str, Any],
     agent_kwargs: Dict[str, Any],
@@ -66,6 +67,9 @@ def train_preference_comparisons(
             each iteration.
         n_episodes_eval: The number of episodes to average over when calculating
             the average episode reward of the learned policy for return.
+        trajectory_path: either None, in which case an agent will be trained
+            and used to sample trajectories on the fly, or a path to a pickled
+            sequence of TrajectoryWithRew to be trained on
         reward_net_kwargs: passed to BasicRewardNet
         reward_trainer_kwargs: passed to CrossEntropyRewardTrainer
         agent_kwargs: passed to SB3's PPO
@@ -88,13 +92,19 @@ def train_preference_comparisons(
         venv.observation_space, venv.action_space, **reward_net_kwargs
     )
     agent = stable_baselines3.PPO("MlpPolicy", venv, **agent_kwargs)
-    agent_trainer = trainer.AgentTrainer(agent, reward_net)
+    if trajectory_path is None:
+        # Setting the logger here is not really necessary (PreferenceComparisons
+        # takes care of that automatically) but it avoids creating unnecessary loggers
+        trajectory_generator = trainer.AgentTrainer(agent, reward_net, custom_logger=custom_logger)
+    else:
+        trajectory_generator = trainer.TrajectoryDataset(trajectory_path, _seed)
+
     fragmenter = preference_comparisons.RandomFragmenter(
         fragment_length=fragment_length, num_pairs=num_pairs, seed=_seed, custom_logger=custom_logger
     )
     reward_trainer = preference_comparisons.CrossEntropyRewardTrainer(model=reward_net, **reward_trainer_kwargs)
     main_trainer = preference_comparisons.PreferenceComparisons(
-        agent_trainer,
+        trajectory_generator,
         reward_net,
         sample_steps=sample_steps,
         agent_steps=agent_steps,
