@@ -41,6 +41,7 @@ def train_preference_comparisons(
     reward_net_kwargs: Dict[str, Any],
     reward_trainer_kwargs: Dict[str, Any],
     agent_kwargs: Dict[str, Any],
+    gatherer_kwargs: Dict[str, Any],
 ) -> dict:
     """Train a reward model using preference comparisons.
 
@@ -73,6 +74,7 @@ def train_preference_comparisons(
         reward_net_kwargs: passed to BasicRewardNet
         reward_trainer_kwargs: passed to CrossEntropyRewardTrainer
         agent_kwargs: passed to SB3's PPO
+        gatherer_kwargs: passed to SyntheticGatherer
     """
 
     custom_logger = logger.configure(log_dir, ["tensorboard", "stdout"])
@@ -102,6 +104,7 @@ def train_preference_comparisons(
     fragmenter = preference_comparisons.RandomFragmenter(
         fragment_length=fragment_length, num_pairs=num_pairs, seed=_seed, custom_logger=custom_logger
     )
+    gatherer = preference_comparisons.SyntheticGatherer(**gatherer_kwargs, seed=_seed)
     reward_trainer = preference_comparisons.CrossEntropyRewardTrainer(model=reward_net, **reward_trainer_kwargs)
     main_trainer = preference_comparisons.PreferenceComparisons(
         trajectory_generator,
@@ -109,6 +112,7 @@ def train_preference_comparisons(
         sample_steps=sample_steps,
         agent_steps=agent_steps,
         fragmenter=fragmenter,
+        preference_gatherer=gatherer,
         reward_trainer=reward_trainer,
         custom_logger=custom_logger,
     )
