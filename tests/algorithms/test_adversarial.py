@@ -3,6 +3,9 @@
 import os
 
 import pytest
+import seals  # noqa: F401
+import stable_baselines3
+from stable_baselines3.common import policies
 from torch.utils import data as th_data
 
 from imitation.algorithms import adversarial
@@ -10,6 +13,16 @@ from imitation.data import rollout, types
 from imitation.util import logger, util
 
 ALGORITHM_CLS = [adversarial.AIRL, adversarial.GAIL]
+RL_ALGORITHM_CLS = {
+    "ppo": {
+        "model_class": stable_baselines3.PPO,
+        "policy_class": policies.ActorCriticPolicy,
+    },
+    "dqn": {
+        "model_class": stable_baselines3.DQN,
+        "policy_class": stable_baselines3.dqn.policies.DQNPolicy,
+    },
+}
 IN_CODECOV = "COV_CORE_CONFIG" in os.environ
 # Disable SubprocVecEnv tests for code coverage test since
 # multiprocessing support is flaky in py.test --cov
@@ -22,15 +35,23 @@ def _algorithm_cls(request):
     return request.param
 
 
-def test_train_disc_small_expert_data_warning(tmpdir, _algorithm_cls):
+@pytest.fixture(params=RL_ALGORITHM_CLS.values(), ids=RL_ALGORITHM_CLS.keys())
+def _rl_algorithm_cls(request):
+    """Auto-parametrizes `_rl_algorithm_cls` for the `trainer` fixture."""
+    return request.param
+
+
+def test_train_disc_small_expert_data_warning(
+    tmpdir, _algorithm_cls, _rl_algorithm_cls
+):
     custom_logger = logger.configure(tmpdir, ["tensorboard", "stdout"])
     venv = util.make_vec_env(
         "seals/CartPole-v0",
-        n_envs=2,
+        n_envs=1,
         parallel=_parallel,
     )
 
-    gen_algo = util.init_rl(venv, verbose=1)
+    gen_algo = util.init_rl(venv, verbose=1, **_rl_algorithm_cls)
     small_data = rollout.generate_transitions(gen_algo, venv, n_timesteps=20)
 
     with pytest.raises(ValueError, match="Transitions.*expert_batch_size"):
@@ -85,6 +106,7 @@ def expert_transitions():
 @pytest.fixture
 def trainer(
     _algorithm_cls,
+    _rl_algorithm_cls,
     _parallel: bool,
     tmpdir: str,
     _convert_dataset: bool,
@@ -104,12 +126,12 @@ def trainer(
 
     venv = util.make_vec_env(
         "seals/CartPole-v0",
-        n_envs=2,
+        n_envs=1,
         parallel=_parallel,
         log_dir=tmpdir,
     )
 
-    gen_algo = util.init_rl(venv, verbose=1)
+    gen_algo = util.init_rl(venv, verbose=1, **_rl_algorithm_cls)
     custom_logger = logger.configure(tmpdir, ["tensorboard", "stdout"])
     trainer = _algorithm_cls(
         venv=venv,
