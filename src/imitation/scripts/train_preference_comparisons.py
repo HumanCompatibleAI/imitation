@@ -13,7 +13,7 @@ from stable_baselines3.common import vec_env
 
 from imitation.algorithms import preference_comparisons
 from imitation.data import rollout
-from imitation.policies import trainer
+from imitation.policies import serialize, trainer
 from imitation.rewards import reward_nets
 from imitation.scripts.config.train_preference_comparisons import (
     train_preference_comparisons_ex,
@@ -103,8 +103,9 @@ def train_preference_comparisons(
         max_episode_steps=max_episode_steps,
     )
 
+    vec_normalize = None
     if normalize:
-        venv = vec_env.VecNormalize(venv, **normalize_kwargs)
+        venv = vec_normalize = vec_env.VecNormalize(venv, **normalize_kwargs)
 
     reward_net = reward_nets.BasicRewardNet(
         venv.observation_space, venv.action_space, **reward_net_kwargs
@@ -145,6 +146,8 @@ def train_preference_comparisons(
     main_trainer.train(iterations)
 
     agent.save(os.path.join(log_dir, "final_agent"))
+
+    serialize.save_stable_model(os.path.join(log_dir, "final_policy"), agent, vec_normalize)
     th.save(reward_net.state_dict(), os.path.join(log_dir, "final_reward_net.pt"))
 
     sample_until = rollout.make_sample_until(
