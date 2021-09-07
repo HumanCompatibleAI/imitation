@@ -237,9 +237,11 @@ def make_sample_until(
 
     return sample_until
 
+
 # A PolicyCallable is a function that takes an array of observations
 # and returns an array of corresponding actions.
 PolicyCallable = Callable[[np.ndarray], np.ndarray]
+
 
 def generate_trajectories(
     policy: Union[BaseAlgorithm, BasePolicy, PolicyCallable, None],
@@ -252,8 +254,11 @@ def generate_trajectories(
     """Generate trajectory dictionaries from a policy and an environment.
 
     Args:
-      policy (BasePolicy or BaseAlgorithm): A stable_baselines3 policy or algorithm
-          trained on the gym environment.
+      policy: Can be any of the following:
+        - A stable_baselines3 policy or algorithm trained on the gym environment
+        - A Callable that takes an ndarray of observations and returns an ndarray
+          of corresponding actions
+        - None, in which case actions will be sampled randomly
       venv: The vectorized environments to interact with.
       sample_until: A function determining the termination condition.
           It takes a sequence of trajectories, and returns a bool.
@@ -279,7 +284,9 @@ def generate_trajectories(
     elif isinstance(policy, (BaseAlgorithm, BasePolicy)):
 
         def get_actions(states):
-            acts, _ = policy.predict(states, deterministic=deterministic_policy)
+            acts, _ = policy.predict(  # pytype: disable=attribute-error
+                states, deterministic=deterministic_policy
+            )
             return acts
 
     elif isinstance(policy, Callable):
