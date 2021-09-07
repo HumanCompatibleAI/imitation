@@ -33,6 +33,9 @@ def train_defaults():
     # Number of environments in VecEnv
     num_vec = 1
 
+    normalize = True  # Use VecNormalize
+    normalize_kwargs = {"norm_reward": False}  # kwargs for `VecNormalize`
+
     # TODO(ejnnr): should probably be set to True again once num_vec is increased
     # Use SubprocVecEnv rather than DummyVecEnv (generally faster if num_vec>1)
     parallel = False

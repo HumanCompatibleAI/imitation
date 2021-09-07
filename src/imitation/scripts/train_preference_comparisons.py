@@ -9,6 +9,7 @@ from typing import Any, Dict, Optional
 import stable_baselines3
 import torch as th
 from sacred.observers import FileStorageObserver
+from stable_baselines3.common import vec_env
 
 from imitation.algorithms import preference_comparisons
 from imitation.data import rollout
@@ -29,6 +30,8 @@ def train_preference_comparisons(
     env_name: str,
     num_vec: int,
     parallel: bool,
+    normalize: bool,
+    normalize_kwargs: dict,
     max_episode_steps: Optional[int],
     log_dir: str,
     iterations: int,
@@ -52,6 +55,8 @@ def train_preference_comparisons(
         num_vec: Number of `gym.Env` to vectorize.
         parallel: Whether to use "true" parallelism. If True, then use `SubProcVecEnv`.
             Otherwise, use `DummyVecEnv` which steps through environments serially.
+        normalize: If True, then rescale observations and reward.
+        normalize_kwargs: kwargs for `VecNormalize`.
         max_episode_steps: If not None, then a TimeLimit wrapper is applied to each
             environment to artificially limit the maximum number of timesteps in an
             episode.
@@ -97,6 +102,9 @@ def train_preference_comparisons(
         log_dir=log_dir,
         max_episode_steps=max_episode_steps,
     )
+
+    if normalize:
+        venv = vec_env.VecNormalize(venv, **normalize_kwargs)
 
     reward_net = reward_nets.BasicRewardNet(
         venv.observation_space, venv.action_space, **reward_net_kwargs
