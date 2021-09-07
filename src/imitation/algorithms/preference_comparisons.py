@@ -214,8 +214,6 @@ class SyntheticGatherer(PreferenceGatherer):
                 of 50 means that probabilities below 2e-22 are rounded up to 2e-22.
             custom_logger: Where to log to; if None (default), creates a new logger.
         """
-        # we don't pass a logger for now since this particular implementation
-        # doesn't use one at the moment
         super().__init__(custom_logger=custom_logger)
         self.temperature = temperature
         self.discount_factor = discount_factor
