@@ -147,7 +147,9 @@ def train_preference_comparisons(
 
     agent.save(os.path.join(log_dir, "final_agent"))
 
-    serialize.save_stable_model(os.path.join(log_dir, "final_policy"), agent, vec_normalize)
+    serialize.save_stable_model(
+        os.path.join(log_dir, "final_policy"), agent, vec_normalize
+    )
     th.save(reward_net.state_dict(), os.path.join(log_dir, "final_reward_net.pt"))
 
     sample_until = rollout.make_sample_until(
