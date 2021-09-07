@@ -34,3 +34,12 @@ coverage:
         target: 100%
         paths:
           - "tests/"
+
+flags:
+  core:
+    paths:
+      # Everything except examples and scripts that we're less strict about
+      - "src/imitation/"
+      - "!src/imitation/envs/examples/"
+      - "!src/imitation/scripts/"
+      - "tests/"
