@@ -1,7 +1,9 @@
 """
 This script takes as command-line input multiple paths to pickle files containing
-Sequence[imitation.types.TrajectoryWithRew]. It overwrites each path with a new pickle
-where the demonstration data is saved as Sequence[imitation.types.TrajectoryWithRew].
+(possibly old forms of) Sequence[imitation.types.TrajectoryWithRew]. It overwrites each
+path with a new pickle where the demonstration data is saved as
+Sequence[imitation.types.TrajectoryWithRew]. This is updated to the newest format,
+setting `terminal=True` where it is missing.
 """
 
 import warnings
