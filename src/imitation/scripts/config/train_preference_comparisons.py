@@ -22,7 +22,7 @@ def train_defaults():
     n_episodes_eval = 50  # Num of episodes for final mean ground truth return
     reward_net_kwargs = {}
     reward_trainer_kwargs = {
-        "episodes": 3,
+        "epochs": 3,
     }
     agent_kwargs = {}
     gatherer_kwargs = {}

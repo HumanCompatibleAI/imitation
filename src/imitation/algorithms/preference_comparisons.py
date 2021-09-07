@@ -211,7 +211,7 @@ class SyntheticGatherer(PreferenceGatherer):
                 To avoid overflows, we clip differences in returns that are
                 above this threshold (after multiplying with temperature).
                 This threshold is therefore in logspace. The default value
-                of 50 means that probabilities below 2e-22 are rounded to 0.
+                of 50 means that probabilities below 2e-22 are rounded up to 2e-22.
             custom_logger: Where to log to; if None (default), creates a new logger.
         """
         # we don't pass a logger for now since this particular implementation
@@ -356,7 +356,7 @@ class CrossEntropyRewardTrainer(RewardTrainer):
         model: reward_nets.RewardNet,
         noise_prob: float = 0.0,
         batch_size: int = 32,
-        episodes: int = 1,
+        epochs: int = 1,
         lr: float = 1e-3,
         discount_factor: float = 1.0,
         threshold: float = 50,
@@ -370,7 +370,7 @@ class CrossEntropyRewardTrainer(RewardTrainer):
                 is uniformly random (used for the model of preference generation
                 that is used for the loss)
             batch_size: number of fragment pairs per batch
-            episodes: number of episodes on each training iteration
+            epochs: number of epochs on each training iteration
             lr: the learning rate
             discount_factor: the model of preference generation uses a softmax
                 of returns as the probability that a fragment is preferred.
@@ -381,13 +381,13 @@ class CrossEntropyRewardTrainer(RewardTrainer):
                 a softmax of returns. To avoid overflows, we clip differences
                 in returns that are above this threshold.
                 This threshold is therefore in logspace. The default value
-                of 50 means that probabilities below 2e-22 are rounded to 0.
+                of 50 means that probabilities below 2e-22 are rounded up to 2e-22.
             custom_logger: Where to log to; if None (default), creates a new logger.
         """
         super().__init__(model, custom_logger)
         self.noise_prob = noise_prob
         self.batch_size = batch_size
-        self.episodes = episodes
+        self.epochs = epochs
         self.discount_factor = discount_factor
         self.threshold = threshold
         self.optim = th.optim.Adam(self.model.parameters(), lr=lr)
@@ -446,7 +446,7 @@ class CrossEntropyRewardTrainer(RewardTrainer):
             ),
             collate_fn=preference_collate_fn,
         )
-        for ep in range(self.episodes):
+        for ep in range(self.epochs):
             for fragment_pairs, preferences in dataloader:
                 self.optim.zero_grad()
                 loss = self._loss(fragment_pairs, preferences)
@@ -520,7 +520,7 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
         # the reward_trainer's model should refer to the same object as our copy
         assert self.reward_trainer.model is self.model
         self.trajectory_generator = trajectory_generator
-        self.trajectory_generator.set_logger(self.logger)
+        self.trajectory_generator.logger = self.logger
         self.fragmenter = fragmenter or RandomFragmenter(custom_logger=self.logger)
         self.fragmenter.logger = self.logger
         self.preference_gatherer = preference_gatherer or SyntheticGatherer(

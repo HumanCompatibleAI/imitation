@@ -9,17 +9,18 @@ from stable_baselines3.common import base_class, vec_env
 from imitation.data import rollout, types, wrappers
 from imitation.rewards import common as rewards_common
 from imitation.rewards import reward_nets
-from imitation.util import logger, reward_wrapper
+from imitation.util import logger as imit_logger
+from imitation.util import reward_wrapper
 
 
 class TrajectoryGenerator(abc.ABC):
-    def __init__(self, custom_logger: Optional[logger.HierarchicalLogger] = None):
+    def __init__(self, custom_logger: Optional[imit_logger.HierarchicalLogger] = None):
         """Initialize the trajectory generator
 
         Args:
             custom_logger: Where to log to; if None (default), creates a new logger.
         """
-        self.set_logger(custom_logger)
+        self.logger = custom_logger or imit_logger.configure()
 
     @abc.abstractmethod
     def sample(self, steps: int) -> Sequence[types.TrajectoryWithRew]:
@@ -46,41 +47,31 @@ class TrajectoryGenerator(abc.ABC):
                 the training procedure.
         """
 
-    def set_logger(self, custom_logger: Optional[logger.HierarchicalLogger]):
-        """Set the internal logger.
-        For subclasses, this should also set the logger of any wrapped modules
-        (such as SB3 algorithms).
+    @property
+    def logger(self) -> imit_logger.HierarchicalLogger:
+        return self._logger
 
-        Args:
-            logger: the HierarchicalLogger instance to use.
-        """
-        self._logger = custom_logger or logger.configure()
+    @logger.setter
+    def logger(self, value: imit_logger.HierarchicalLogger):
+        self._logger = value
 
 
 class TrajectoryDataset(TrajectoryGenerator):
-    def __init__(self, path: types.AnyPath, seed: int = 0):
+    def __init__(
+        self,
+        path: types.AnyPath,
+        seed: int = 0,
+        custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
+    ):
+        super().__init__(custom_logger=custom_logger)
         self._trajectories = types.load(path)
         self.rng = random.Random(seed)
 
     def sample(self, steps: int) -> Sequence[types.TrajectoryWithRew]:
-        available_steps = sum(len(traj) for traj in self._trajectories)
-        if available_steps < steps:
-            raise RuntimeError(
-                f"Asked for {steps} transitions but only {available_steps} available"
-            )
+        # make a copy before shuffling
         trajectories = list(self._trajectories)
         self.rng.shuffle(trajectories)
-        # Next, we need the cumulative sum of trajectory lengths
-        # to determine how many trajectories to return:
-        steps_cumsum = np.cumsum([len(traj) for traj in trajectories])
-        # Now we find the first index that gives us enough
-        # total steps:
-        idx = (steps_cumsum >= steps).argmax()
-        # we need to include the element at position idx
-        trajectories = trajectories[: idx + 1]
-        # sanity check
-        assert sum(len(traj) for traj in trajectories) >= steps
-        return trajectories
+        return _get_trajectories(trajectories, steps)
 
 
 class AgentTrainer(TrajectoryGenerator):
@@ -90,7 +81,7 @@ class AgentTrainer(TrajectoryGenerator):
         self,
         algorithm: base_class.BaseAlgorithm,
         reward_fn: Union[rewards_common.RewardFn, reward_nets.RewardNet],
-        custom_logger: Optional[logger.HierarchicalLogger] = None,
+        custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
     ):
         """Initialize the agent trainer.
 
@@ -103,7 +94,7 @@ class AgentTrainer(TrajectoryGenerator):
         """
         self.algorithm = algorithm
         # NOTE: this has to come after setting self.algorithm because super().__init__
-        # will call self.set_logger(), which also sets the logger for the algorithm
+        # will set self.logger, which also sets the logger for the algorithm
         super().__init__(custom_logger)
         if isinstance(reward_fn, reward_nets.RewardNet):
             reward_fn = reward_fn.predict
@@ -153,7 +144,7 @@ class AgentTrainer(TrajectoryGenerator):
         avail_steps = sum(len(traj) for traj in trajectories)
 
         if avail_steps < steps:
-            self._logger.log(
+            self.logger.log(
                 f"Requested {steps} transitions but only {avail_steps} in buffer. "
                 f"Sampling {steps - avail_steps} additional transitions."
             )
@@ -172,22 +163,35 @@ class AgentTrainer(TrajectoryGenerator):
 
             trajectories = list(trajectories) + list(additional_trajectories)
 
-        # Next, we need the cumulative sum of trajectory lengths
-        # to determine how many trajectories to return:
-        steps_cumsum = np.cumsum([len(traj) for traj in trajectories])
-        # Now we find the first index that gives us enough
-        # total steps:
-        idx = (steps_cumsum >= steps).argmax()
-        # we need to include the element at position idx
-        trajectories = trajectories[: idx + 1]
-        # sanity check
-        assert sum(len(traj) for traj in trajectories) >= steps
-        return trajectories
+        return _get_trajectories(trajectories, steps)
 
     def _pop_trajectories(self) -> Sequence[types.TrajectoryWithRew]:
         # TODO(adam): should we discard incomplete trajectories?
         return self.buffering_wrapper.pop_trajectories()
 
-    def set_logger(self, custom_logger: Optional[logger.HierarchicalLogger]):
-        super().set_logger(custom_logger)
-        self.algorithm.set_logger(self._logger)
+    @TrajectoryGenerator.logger.setter
+    def logger(self, value: imit_logger.HierarchicalLogger):
+        self._logger = value
+        self.algorithm.set_logger(self.logger)
+
+
+def _get_trajectories(
+    trajectories: Sequence[types.TrajectoryWithRew], steps: int
+) -> Sequence[types.TrajectoryWithRew]:
+    """Get enough trajectories to have at least `steps` transitions in total."""
+    available_steps = sum(len(traj) for traj in trajectories)
+    if available_steps < steps:
+        raise RuntimeError(
+            f"Asked for {steps} transitions but only {available_steps} available"
+        )
+    # We need the cumulative sum of trajectory lengths
+    # to determine how many trajectories to return:
+    steps_cumsum = np.cumsum([len(traj) for traj in trajectories])
+    # Now we find the first index that gives us enough
+    # total steps:
+    idx = (steps_cumsum >= steps).argmax()
+    # we need to include the element at position idx
+    trajectories = trajectories[: idx + 1]
+    # sanity check
+    assert sum(len(traj) for traj in trajectories) >= steps
+    return trajectories
