@@ -14,6 +14,11 @@ from imitation.util import reward_wrapper
 
 
 class TrajectoryGenerator(abc.ABC):
+    """Generator of trajectories with optional training logic."""
+
+    _logger: imit_logger.HierarchicalLogger
+    """Object to log statistics and natural language messages to."""
+
     def __init__(self, custom_logger: Optional[imit_logger.HierarchicalLogger] = None):
         """Initialize the trajectory generator
 
@@ -36,7 +41,7 @@ class TrajectoryGenerator(abc.ABC):
         """
 
     def train(self, steps: int, **kwargs):
-        """Train an agent if the trajector generator uses one.
+        """Train an agent if the trajectory generator uses one.
 
         By default, this method does nothing and doesn't need
         to be overridden in subclasses that don't require training.
@@ -57,12 +62,21 @@ class TrajectoryGenerator(abc.ABC):
 
 
 class TrajectoryDataset(TrajectoryGenerator):
+    """A fixed dataset of trajectories."""
+
     def __init__(
         self,
         path: types.AnyPath,
         seed: int = 0,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
     ):
+        """Creates a dataset loaded from `path`.
+
+        Args:
+            path: A path to pickled rollouts.
+            seed: Seed for RNG used for shuffling dataset.
+            custom_logger: Where to log to; if None (default), creates a new logger.
+        """
         super().__init__(custom_logger=custom_logger)
         self._trajectories = types.load(path)
         self.rng = random.Random(seed)

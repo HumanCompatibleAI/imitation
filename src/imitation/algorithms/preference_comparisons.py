@@ -221,6 +221,7 @@ class SyntheticGatherer(PreferenceGatherer):
         self.threshold = threshold
 
     def __call__(self, fragment_pairs: Sequence[TrajectoryWithRewPair]) -> np.ndarray:
+        """Computes probability fragment 1 is preferred over fragment 2."""
         returns1, returns2 = self._reward_sums(fragment_pairs)
         if self.temperature == 0:
             return (np.sign(returns1 - returns2) + 1) / 2
@@ -229,10 +230,10 @@ class SyntheticGatherer(PreferenceGatherer):
         returns2 /= self.temperature
 
         # clip the returns to avoid overflows in the softmax below
-        returns_diff = np.clip(returns1 - returns2, -self.threshold, self.threshold)
+        returns_diff = np.clip(returns2 - returns1, -self.threshold, self.threshold)
         # Instead of computing exp(rews1) / (exp(rews1) + exp(rews2)) directly,
         # we divide enumerator and denominator by exp(rews1) to prevent overflows:
-        model_probs = 1 / (1 + np.exp(-returns_diff))
+        model_probs = 1 / (1 + np.exp(returns_diff))
         # Compute the mean binary entropy. This metric helps estimate
         # how good we can expect the performance of the learned reward
         # model to be at predicting preferences.
@@ -395,6 +396,17 @@ class CrossEntropyRewardTrainer(RewardTrainer):
         fragment_pairs: Sequence[TrajectoryPair],
         preferences: np.ndarray,
     ) -> th.Tensor:
+        """Computes the loss.
+
+        Args:
+            fragment_pairs: Batch consisting of pairs of trajectory fragments.
+            preferences: The probability that the first fragment is preferred
+                over the second. Typically 0, 1 or 0.5 (tie).
+
+        Returns:
+            The cross-entropy loss between the probability predicted by the
+            reward model and the target probabilities in `preferences`.
+        """
         probs = th.empty(len(fragment_pairs), dtype=th.float32)
         for i, fragment in enumerate(fragment_pairs):
             frag1, frag2 = fragment
@@ -411,6 +423,16 @@ class CrossEntropyRewardTrainer(RewardTrainer):
         return self.model(*self.model.preprocess(transitions))
 
     def _probability(self, rews1: th.Tensor, rews2: th.Tensor) -> th.Tensor:
+        """Computes the Boltzmann rational probability that the first trajectory is best.
+
+        Args:
+            rews1: A 1-dimensional array of rewards for the first trajectory fragment.
+            rews2: A 1-dimensional array of rewards for the second trajectory fragment.
+
+        Returns:
+            The softmax of the difference between the (discounted) return of the
+            first and second trajectory.
+        """
         assert rews1.ndim == rews2.ndim == 1
         # First, we compute the difference of the returns of
         # the two fragments. We have a special case for a discount
@@ -431,6 +453,7 @@ class CrossEntropyRewardTrainer(RewardTrainer):
         return self.noise_prob * 0.5 + (1 - self.noise_prob) * model_probability
 
     def train(self, dataset: PreferenceDataset):
+        """Trains for one epoch over `dataset`."""
         # TODO(ejnnr): This isn't specific to the loss function or probability model.
         # In general, it might be best to split the probability model, the loss and
         # the optimization procedure a bit more cleanly so that different versions
