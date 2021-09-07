@@ -1,8 +1,7 @@
 """
 This script takes as command-line input multiple paths to pickle files containing
-Sequence[imitation.types.TrajectoryWithRew] or Sequence[imitation.old_types.Trajectory].
-It overwrites each path with a new pickle where the demonstration data is saved as
-Sequence[imitation.types.TrajectoryWithRew].
+Sequence[imitation.types.TrajectoryWithRew]. It overwrites each path with a new pickle
+where the demonstration data is saved as Sequence[imitation.types.TrajectoryWithRew].
 """
 
 import warnings
@@ -23,7 +22,7 @@ def update_traj_file_in_place(path: str) -> None:
         # Filter out DeprecationWarning because we expect to load old trajectories here.
         warnings.filterwarnings(
             "ignore",
-            message=".*trajectories are saved in an outdated format.*",
+            message="Loading old version of Trajectory.*",
             category=DeprecationWarning,
         )
         trajs = types.load(path)
