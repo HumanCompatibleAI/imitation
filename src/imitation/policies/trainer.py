@@ -151,15 +151,16 @@ class AgentTrainer(TrajectoryGenerator):
             sample_until = rollout.make_sample_until(
                 min_timesteps=steps - avail_steps, min_episodes=None
             )
-            additional_trajectories = rollout.generate_trajectories(
+            # Important note: we don't want to use the trajectories returned
+            # here because their rewards are the ones provided by the reward
+            # model! Instead, we collect the trajectories using the BufferingWrapper,
+            # which have the ground truth environment reward.
+            rollout.generate_trajectories(
                 self.algorithm,
                 self.venv,
                 sample_until=sample_until,
             )
-            # This is just to empty the trajectory buffer
-            # (after .sample() has been called, the buffer should be
-            # empty).
-            self._pop_trajectories()
+            additional_trajectories = self._pop_trajectories()
 
             trajectories = list(trajectories) + list(additional_trajectories)
 
