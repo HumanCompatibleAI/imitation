@@ -68,6 +68,7 @@ def eval_policy(
     reward_type: Optional[str] = None,
     reward_path: Optional[str] = None,
     max_episode_steps: Optional[int] = None,
+    env_make_kwargs: Optional[Mapping[str, Any]] = {},
 ):
     """Rolls a policy out in an environment, collecting statistics.
 
@@ -96,6 +97,7 @@ def eval_policy(
           a reward of this.
       reward_path: If reward_type is specified, the path to a serialized reward
           of `reward_type` to override the environment reward with.
+      env_make_kwargs: The kwargs passed to `spec.make` of a gym environment.
 
     Returns:
       Return value of `imitation.util.rollout.rollout_stats()`.
@@ -115,6 +117,7 @@ def eval_policy(
         log_dir=log_dir,
         max_episode_steps=max_episode_steps,
         post_wrappers=post_wrappers,
+        env_make_kwargs=env_make_kwargs,
     )
 
     try:

@@ -6,7 +6,7 @@ Can be used as a CLI script, or the `train_and_plot` function can be called dire
 import logging
 import os
 import os.path as osp
-from typing import Mapping, Optional
+from typing import Any, Mapping, Optional
 
 import torch as th
 from sacred.observers import FileStorageObserver
@@ -54,6 +54,7 @@ def train_adversarial(
     init_rl_kwargs: Mapping,
     algorithm_kwargs: Mapping[str, Mapping],
     discrim_net_kwargs: Mapping[str, Mapping],
+    env_make_kwargs: Optional[Mapping[str, Any]],
 ) -> dict:
     """Train an adversarial-network-based imitation learning algorithm.
 
@@ -111,6 +112,7 @@ def train_adversarial(
             regular kwargs argument, this argument can only have the following keys:
             "shared", "airl", "gail". These keys have the same meaning as they do in
             `algorithm_kwargs`.
+        env_make_kwargs: The kwargs passed to `spec.make` of a gym environment.
 
     Returns:
         A dictionary with two keys. "imit_stats" gives the return value of
@@ -162,6 +164,7 @@ def train_adversarial(
         parallel=parallel,
         log_dir=log_dir,
         max_episode_steps=max_episode_steps,
+        env_make_kwargs=env_make_kwargs,
     )
 
     gen_algo = util.init_rl(

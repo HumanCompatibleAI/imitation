@@ -4,7 +4,7 @@ Can be used as a CLI script, or the `train_and_plot` function can be called dire
 """
 
 import os
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Mapping, Optional
 
 import stable_baselines3
 import torch as th
@@ -39,6 +39,7 @@ def train_preference_comparisons(
     n_episodes_eval: int,
     reward_kwargs: Dict[str, Any],
     agent_kwargs: Dict[str, Any],
+    env_make_kwargs: Optional[Mapping[str, Any]],
 ) -> dict:
     """Train a reward model using preference comparisons.
 
@@ -67,6 +68,7 @@ def train_preference_comparisons(
             the average episode reward of the learned policy for return.
         reward_kwargs: passed to BasicRewardNet
         agent_kwargs: passed to SB3's PPO
+        env_make_kwargs: The kwargs passed to `spec.make` of a gym environment.
     """
 
     custom_logger = logger.configure(log_dir, ["tensorboard", "stdout"])
@@ -80,6 +82,7 @@ def train_preference_comparisons(
         parallel=parallel,
         log_dir=log_dir,
         max_episode_steps=max_episode_steps,
+        env_make_kwargs=env_make_kwargs,
     )
 
     reward_net = reward_nets.BasicRewardNet(

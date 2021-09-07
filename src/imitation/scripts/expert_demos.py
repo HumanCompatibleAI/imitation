@@ -1,7 +1,7 @@
 import logging
 import os
 import os.path as osp
-from typing import Optional
+from typing import Any, Mapping, Optional
 
 from sacred.observers import FileStorageObserver
 from stable_baselines3.common import callbacks
@@ -38,6 +38,7 @@ def rollouts_and_policy(
     rollout_save_n_episodes: Optional[int],
     policy_save_interval: int,
     policy_save_final: bool,
+    env_make_kwargs: Optional[Mapping[str, Any]],
 ) -> dict:
     """Trains an expert policy from scratch and saves the rollouts and policy.
 
@@ -90,6 +91,7 @@ def rollouts_and_policy(
             the same semantics are `rollout_save_interval`.
         policy_save_final: If True, then save the policy right after training is
             finished.
+        env_make_kwargs: The kwargs passed to `spec.make` of a gym environment.
 
     Returns:
       The return value of `rollout_stats()` using the final policy.
@@ -120,6 +122,7 @@ def rollouts_and_policy(
         log_dir=log_dir,
         max_episode_steps=max_episode_steps,
         post_wrappers=[lambda env, idx: wrappers.RolloutInfoWrapper(env)],
+        env_make_kwargs=env_make_kwargs,
     )
 
     callback_objs = []
@@ -175,6 +178,7 @@ def rollouts_from_policy(
     parallel: bool,
     rollout_save_path: str,
     max_episode_steps: Optional[int],
+    env_make_kwargs: Optional[Mapping[str, Any]],
 ) -> None:
     """Loads a saved policy and generates rollouts.
 
@@ -200,6 +204,7 @@ def rollouts_from_policy(
         log_dir=log_dir,
         max_episode_steps=max_episode_steps,
         post_wrappers=[lambda env, idx: wrappers.RolloutInfoWrapper(env)],
+        env_make_kwargs=env_make_kwargs,
     )
 
     policy = serialize.load_policy(policy_type, policy_path, venv)
