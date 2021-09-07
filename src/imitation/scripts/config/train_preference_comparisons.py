@@ -64,6 +64,7 @@ def seals_cartpole():
 @train_preference_comparisons_ex.named_config
 def mountain_car():
     env_name = "MountainCar-v0"
+    allow_variable_horizon = True
 
 
 # Debug configs

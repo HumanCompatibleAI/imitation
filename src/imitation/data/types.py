@@ -128,7 +128,7 @@ def transitions_collate_fn(
     dicts.
     """
     batch_no_infos = [
-        {k: v for k, v in sample.items() if k != "infos"} for sample in batch
+        {k: np.array(v) for k, v in sample.items() if k != "infos"} for sample in batch
     ]
 
     result = th_data.dataloader.default_collate(batch_no_infos)
