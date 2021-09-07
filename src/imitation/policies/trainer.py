@@ -130,7 +130,7 @@ class AgentTrainer(TrajectoryGenerator):
                 f"There are {n_transitions} transitions left in the buffer. "
                 "Call AgentTrainer.sample() first to clear them."
             )
-        self.algorithm.learn(total_timesteps=steps, **kwargs)
+        self.algorithm.learn(total_timesteps=steps, reset_num_timesteps=False, **kwargs)
 
     def sample(self, steps: int) -> Sequence[types.TrajectoryWithRew]:
         trajectories = self._pop_trajectories()
