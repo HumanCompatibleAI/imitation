@@ -20,7 +20,7 @@ class TrajectoryGenerator(abc.ABC):
         Args:
             custom_logger: Where to log to; if None (default), creates a new logger.
         """
-        self.logger = custom_logger or imit_logger.configure()
+        self._logger = custom_logger or imit_logger.configure()
 
     @abc.abstractmethod
     def sample(self, steps: int) -> Sequence[types.TrajectoryWithRew]:
