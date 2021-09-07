@@ -130,6 +130,17 @@ class AgentTrainer(TrajectoryGenerator):
                 f"There are {n_transitions} transitions left in the buffer. "
                 "Call AgentTrainer.sample() first to clear them."
             )
+        # Because we use reset_num_timesteps=False (to get logging right),
+        # SB3 doesn't automatically reset the environment on .learn().
+        # This causes the following issue: if the previous learning cycle leaves
+        # unfinished trajectories, then we will collect the remainder of those
+        # trajectories during this cycle. They will therefore be incomplete episodes
+        # (because they don't start in the initial state) and in particular will
+        # be shorter, which raises the variable horizon check error.
+        # I think avoiding a reset() here would be tricky (assuming we even want to)
+        # because it would be hard to set a hypothetical Trajectory.initial attribute
+        # correctly like we do for Trajectory.terminal.
+        self.venv.reset()
         self.algorithm.learn(total_timesteps=steps, reset_num_timesteps=False, **kwargs)
 
     def sample(self, steps: int) -> Sequence[types.TrajectoryWithRew]:
