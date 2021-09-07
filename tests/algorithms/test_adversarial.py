@@ -25,7 +25,7 @@ def _algorithm_cls(request):
 def test_train_disc_small_expert_data_warning(tmpdir, _algorithm_cls):
     custom_logger = logger.configure(tmpdir, ["tensorboard", "stdout"])
     venv = util.make_vec_env(
-        "CartPole-v1",
+        "seals/CartPole-v0",
         n_envs=2,
         parallel=_parallel,
     )
@@ -103,7 +103,7 @@ def trainer(
         expert_data = expert_transitions
 
     venv = util.make_vec_env(
-        "CartPole-v1",
+        "seals/CartPole-v0",
         n_envs=2,
         parallel=_parallel,
         log_dir=tmpdir,

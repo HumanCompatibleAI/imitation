@@ -37,19 +37,21 @@ For information on how to configure Sacred CLI options, see the `Sacred docs <ht
 Python Interface Quickstart
 ===========================
 
-Here's an `example script`_ that loads CartPole-v1 demonstrations and trains BC, GAIL, and
-AIRL models on that data.
+Here's an `example script`_ that loads CartPole demonstrations and trains BC, GAIL, and
+AIRL models on that data. You will need to `pip install seals` or `pip install imitation[test]`
+to run this.
 
 .. _example script: https://github.com/HumanCompatibleAI/imitation/blob/master/examples/quickstart.py
 
 .. code-block:: python
 
-    """Loads CartPole-v1 demonstrations and trains BC, GAIL, and AIRL models on that data.
+    """Loads CartPole demonstrations and trains BC, GAIL, and AIRL models on that data.
     """
     import pathlib
     import pickle
     import tempfile
 
+    import seals  # noqa: F401
     import stable_baselines3 as sb3
 
     from imitation.algorithms import adversarial, bc
@@ -68,7 +70,7 @@ AIRL models on that data.
     # (observation, actions, next_observation) transitions.
     transitions = rollout.flatten_trajectories(trajectories)
 
-    venv = util.make_vec_env("CartPole-v1", n_envs=2)
+    venv = util.make_vec_env("seals/CartPole-v0", n_envs=2)
 
     tempdir = tempfile.TemporaryDirectory(prefix="quickstart")
     tempdir_path = pathlib.Path(tempdir.name)

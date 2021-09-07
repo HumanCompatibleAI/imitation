@@ -40,6 +40,7 @@ def train_preference_comparisons(
     reward_kwargs: Dict[str, Any],
     agent_kwargs: Dict[str, Any],
     env_make_kwargs: Optional[Mapping[str, Any]],
+    allow_variable_horizon: bool,
 ) -> dict:
     """Train a reward model using preference comparisons.
 
@@ -69,6 +70,13 @@ def train_preference_comparisons(
         reward_kwargs: passed to BasicRewardNet
         agent_kwargs: passed to SB3's PPO
         env_make_kwargs: The kwargs passed to `spec.make` of a gym environment.
+        allow_variable_horizon: If False (default), algorithm will raise an
+            exception if it detects trajectories of different length during
+            training. If True, overrides this safety check. WARNING: variable
+            horizon episodes leak information about the reward via termination
+            condition, and can seriously confound evaluation. Read
+            https://imitation.readthedocs.io/en/latest/guide/variable_horizon.html
+            before overriding this.
     """
 
     custom_logger = logger.configure(log_dir, ["tensorboard", "stdout"])
@@ -100,6 +108,7 @@ def train_preference_comparisons(
         agent_steps=agent_steps,
         fragmenter=fragmenter,
         custom_logger=custom_logger,
+        allow_variable_horizon=allow_variable_horizon,
     )
     main_trainer.train(iterations)
 

@@ -14,8 +14,9 @@ import torch.utils.data as th_data
 import tqdm.autonotebook as tqdm
 from stable_baselines3.common import policies, utils, vec_env
 
+from imitation.algorithms import base as algo_base
 from imitation.data import rollout, types
-from imitation.policies import base
+from imitation.policies import base as policy_base
 from imitation.util import logger
 
 
@@ -171,7 +172,7 @@ class EpochOrBatchIteratorWithProgress:
                         return
 
 
-class BC:
+class BC(algo_base.BaseImitationAlgorithm):
 
     DEFAULT_BATCH_SIZE: int = 32
     """Default batch size for DataLoader automatically constructed from Transitions.
@@ -186,7 +187,7 @@ class BC:
         observation_space: gym.Space,
         action_space: gym.Space,
         *,
-        policy_class: Type[policies.BasePolicy] = base.FeedForward32Policy,
+        policy_class: Type[policies.BasePolicy] = policy_base.FeedForward32Policy,
         policy_kwargs: Optional[Mapping[str, Any]] = None,
         expert_data: Union[Iterable[Mapping], types.TransitionsMinimal, None] = None,
         optimizer_cls: Type[th.optim.Optimizer] = th.optim.Adam,
@@ -217,11 +218,12 @@ class BC:
             device: name/identity of device to place policy on.
             custom_logger: Where to log to; if None (default), creates a new logger.
         """
+        super().__init__(custom_logger=custom_logger)
+
         if optimizer_kwargs:
             if "weight_decay" in optimizer_kwargs:
                 raise ValueError("Use the parameter l2_weight instead of weight_decay.")
         self.tensorboard_step = 0
-        self.logger = custom_logger or logger.configure()
 
         self.action_space = action_space
         self.observation_space = observation_space
@@ -418,14 +420,3 @@ class BC:
             policy_path: path to save policy to.
         """
         th.save(self.policy, policy_path)
-
-    def __getstate__(self):
-        state = self.__dict__.copy()
-        # logger can't be pickled as it depends on open files
-        del state["logger"]
-        return state
-
-    def __setstate__(self, state):
-        self.__dict__.update(state)
-        # callee should call set_logger if they want to override this
-        self.logger = state.get("logger") or logger.configure()
