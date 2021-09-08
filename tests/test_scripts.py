@@ -6,7 +6,11 @@ experiment implicitly sets parallel=False.
 """
 
 import collections
+import filecmp
+import os
 import pathlib
+import shutil
+import subprocess
 import sys
 import tempfile
 from collections import Counter
@@ -496,3 +500,22 @@ def test_analyze_gather_tb(tmpdir: str):
     assert run.status == "COMPLETED"
     assert isinstance(run.result, dict)
     assert run.result["n_tb_dirs"] == 2
+
+
+def test_convert_trajs_in_place(tmpdir: str):
+    shutil.copy(CARTPOLE_TEST_ROLLOUT_PATH, tmpdir)
+    tmp_path = os.path.join(tmpdir, os.path.basename(CARTPOLE_TEST_ROLLOUT_PATH))
+    exit_code = subprocess.call(
+        ["python", "-m", "imitation.scripts.convert_trajs_in_place", tmp_path]
+    )
+    assert exit_code == 0
+
+    shutil.copy(tmp_path, tmp_path + ".new")
+    exit_code = subprocess.call(
+        ["python", "-m", "imitation.scripts.convert_trajs_in_place", tmp_path]
+    )
+    assert exit_code == 0
+
+    assert filecmp.cmp(
+        tmp_path, tmp_path + ".new"
+    ), "convert_trajs_in_place not idempotent"
