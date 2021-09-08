@@ -255,10 +255,10 @@ def generate_trajectories(
 
     Args:
       policy: Can be any of the following:
-        - A stable_baselines3 policy or algorithm trained on the gym environment
-        - A Callable that takes an ndarray of observations and returns an ndarray
+          - A stable_baselines3 policy or algorithm trained on the gym environment
+          - A Callable that takes an ndarray of observations and returns an ndarray
           of corresponding actions
-        - None, in which case actions will be sampled randomly
+          - None, in which case actions will be sampled randomly
       venv: The vectorized environments to interact with.
       sample_until: A function determining the termination condition.
           It takes a sequence of trajectories, and returns a bool.
