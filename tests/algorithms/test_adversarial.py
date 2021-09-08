@@ -174,7 +174,7 @@ def test_train_disc_step_no_crash(trainer, expert_batch_size):
 
 
 def test_train_gen_train_disc_no_crash(trainer, n_updates=2):
-    trainer.train_gen(n_updates * trainer.gen_batch_size)
+    trainer.train_gen(n_updates * trainer.gen_train_timesteps)
     trainer.train_disc()
 
 
