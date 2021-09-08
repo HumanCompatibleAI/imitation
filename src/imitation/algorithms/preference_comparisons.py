@@ -193,6 +193,7 @@ class SyntheticGatherer(PreferenceGatherer):
         self,
         temperature: float = 1,
         discount_factor: float = 1,
+        sample: bool = True,
         seed: int = 0,
         threshold: float = 50,
         custom_logger: Optional[logger.HierarchicalLogger] = None,
@@ -206,7 +207,11 @@ class SyntheticGatherer(PreferenceGatherer):
             discount_factor: discount factor that is used to compute
                 how good a fragment is. Default is to use undiscounted
                 sums of rewards (as in the DRLHP paper).
-            seed: seed for the internal RNG (only used if temperature > 0)
+            sample: if True (default), the preferences are 0 or 1, sampled from
+                a Bernoulli distribution (or 0.5 in the case of ties with zero
+                temperature). If False, then the underlying Bernoulli probabilities
+                are returned instead.
+            seed: seed for the internal RNG (only used if temperature > 0 and sample)
             threshold: preferences are sampled from a softmax of returns.
                 To avoid overflows, we clip differences in returns that are
                 above this threshold (after multiplying with temperature).
@@ -217,6 +222,7 @@ class SyntheticGatherer(PreferenceGatherer):
         super().__init__(custom_logger=custom_logger)
         self.temperature = temperature
         self.discount_factor = discount_factor
+        self.sample = sample
         self.rng = np.random.default_rng(seed=seed)
         self.threshold = threshold
 
@@ -242,7 +248,10 @@ class SyntheticGatherer(PreferenceGatherer):
             + special.xlogy(1 - model_probs, 1 - model_probs)
         ).mean()
         self.logger.record("entropy", entropy)
-        return self.rng.binomial(n=1, p=model_probs).astype(np.float32)
+
+        if self.sample:
+            return self.rng.binomial(n=1, p=model_probs).astype(np.float32)
+        return model_probs
 
     def _reward_sums(self, fragment_pairs) -> Tuple[np.ndarray, np.ndarray]:
         rews1, rews2 = zip(
