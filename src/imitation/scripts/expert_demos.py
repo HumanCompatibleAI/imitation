@@ -21,6 +21,7 @@ def rollouts_and_policy(
     _run,
     _seed: int,
     env_name: str,
+    env_make_kwargs: Optional[Mapping[str, Any]],
     total_timesteps: int,
     *,
     log_dir: str,
@@ -38,7 +39,6 @@ def rollouts_and_policy(
     rollout_save_n_episodes: Optional[int],
     policy_save_interval: int,
     policy_save_final: bool,
-    env_make_kwargs: Optional[Mapping[str, Any]],
 ) -> dict:
     """Trains an expert policy from scratch and saves the rollouts and policy.
 
@@ -51,6 +51,7 @@ def rollouts_and_policy(
 
     Args:
         env_name: The gym.Env name. Loaded as VecEnv.
+        env_make_kwargs: The kwargs passed to `spec.make` of a gym environment.
         total_timesteps: Number of training timesteps in `model.learn()`.
         log_dir: The root directory to save metrics and checkpoints to.
         num_vec: Number of environments in VecEnv.
@@ -91,7 +92,6 @@ def rollouts_and_policy(
             the same semantics are `rollout_save_interval`.
         policy_save_final: If True, then save the policy right after training is
             finished.
-        env_make_kwargs: The kwargs passed to `spec.make` of a gym environment.
 
     Returns:
       The return value of `rollout_stats()` using the final policy.

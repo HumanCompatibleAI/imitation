@@ -41,6 +41,7 @@ def train_adversarial(
     _seed: int,
     algorithm: str,
     env_name: str,
+    env_make_kwargs: Optional[Mapping[str, Any]],
     num_vec: int,
     parallel: bool,
     max_episode_steps: Optional[int],
@@ -54,7 +55,6 @@ def train_adversarial(
     init_rl_kwargs: Mapping,
     algorithm_kwargs: Mapping[str, Mapping],
     discrim_net_kwargs: Mapping[str, Mapping],
-    env_make_kwargs: Optional[Mapping[str, Any]],
 ) -> dict:
     """Train an adversarial-network-based imitation learning algorithm.
 
@@ -68,6 +68,7 @@ def train_adversarial(
         algorithm: A case-insensitive string determining which adversarial imitation
             learning algorithm is executed. Either "airl" or "gail".
         env_name: The environment to train in.
+        env_make_kwargs: The kwargs passed to `spec.make` of a gym environment.
         num_vec: Number of `gym.Env` to vectorize.
         parallel: Whether to use "true" parallelism. If True, then use `SubProcVecEnv`.
             Otherwise, use `DummyVecEnv` which steps through environments serially.
@@ -112,7 +113,6 @@ def train_adversarial(
             regular kwargs argument, this argument can only have the following keys:
             "shared", "airl", "gail". These keys have the same meaning as they do in
             `algorithm_kwargs`.
-        env_make_kwargs: The kwargs passed to `spec.make` of a gym environment.
 
     Returns:
         A dictionary with two keys. "imit_stats" gives the return value of
