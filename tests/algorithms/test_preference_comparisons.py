@@ -2,9 +2,11 @@
 
 import numpy as np
 import pytest
+import seals  # noqa: F401
 import stable_baselines3
 
 from imitation.algorithms import preference_comparisons
+from imitation.data import types
 from imitation.policies import trainer
 from imitation.rewards import reward_nets
 from imitation.util import util
@@ -13,7 +15,7 @@ from imitation.util import util
 @pytest.fixture
 def venv():
     return util.make_vec_env(
-        "CartPole-v1",
+        "seals/CartPole-v0",
         n_envs=1,
     )
 
@@ -76,6 +78,29 @@ def test_synthetic_gatherer_deterministic(agent_trainer, fragmenter):
     preferences1 = gatherer(fragments)
     preferences2 = gatherer(fragments)
     assert np.all(preferences1 == preferences2)
+
+
+def test_fragments_terminal(fragmenter):
+    trajectories = [
+        types.TrajectoryWithRew(
+            obs=np.arange(4),
+            acts=np.zeros((3,)),
+            rews=np.zeros((3,)),
+            infos=None,
+            terminal=True,
+        ),
+        types.TrajectoryWithRew(
+            obs=np.arange(3),
+            acts=np.zeros((2,)),
+            rews=np.zeros((2,)),
+            infos=None,
+            terminal=False,
+        ),
+    ]
+    for _ in range(5):
+        for frags in fragmenter(trajectories):
+            for frag in frags:
+                assert (frag.obs[-1] == 3) == frag.terminal
 
 
 def test_fragments_too_short_error(agent_trainer):

@@ -1,4 +1,4 @@
-from typing import List
+from typing import Sequence
 
 import gym
 import numpy as np
@@ -61,7 +61,7 @@ class BufferingWrapper(VecEnvWrapper):
         self.n_transitions += self.num_envs
         return obs, rews, dones, infos
 
-    def _finish_partial_trajectories(self) -> List[types.TrajectoryWithRew]:
+    def _finish_partial_trajectories(self) -> Sequence[types.TrajectoryWithRew]:
         """Finishes and returns partial trajectories in `self._traj_accum`."""
         trajs = []
         for i in range(self.num_envs):
@@ -73,14 +73,14 @@ class BufferingWrapper(VecEnvWrapper):
             n_transitions = len(self._traj_accum.partial_trajectories[i]) - 1
             assert n_transitions >= 0, "Invalid TrajectoryAccumulator state"
             if n_transitions >= 1:
-                traj = self._traj_accum.finish_trajectory(i)
+                traj = self._traj_accum.finish_trajectory(i, terminal=False)
                 trajs.append(traj)
 
                 # Reinitialize a partial trajectory starting with the final observation.
                 self._traj_accum.add_step({"obs": traj.obs[-1]}, key=i)
         return trajs
 
-    def pop_trajectories(self) -> List[types.TrajectoryWithRew]:
+    def pop_trajectories(self) -> Sequence[types.TrajectoryWithRew]:
         """Pops recorded trajectories as a list of TrajectoryWithRew instances."""
         if self.n_transitions == 0:
             return []

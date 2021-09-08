@@ -13,8 +13,9 @@ train_preference_comparisons_ex = sacred.Experiment(
 
 @train_preference_comparisons_ex.config
 def train_defaults():
-    env_name = "CartPole-v1"  # environment to train on
+    env_name = "seals/CartPole-v0"  # environment to train on
     env_make_kwargs = {}  # The kwargs passed to `spec.make`.
+
     iterations = 10
     agent_steps = 1e4
     sample_steps = 1e4
@@ -23,6 +24,7 @@ def train_defaults():
     n_episodes_eval = 50  # Num of episodes for final mean ground truth return
     reward_kwargs = {}
     agent_kwargs = {}
+    allow_variable_horizon = False
 
     # Number of environments in VecEnv
     num_vec = 8
@@ -46,6 +48,7 @@ def paths(env_name, log_root):
 @train_preference_comparisons_ex.named_config
 def cartpole():
     env_name = "CartPole-v1"
+    allow_variable_horizon = True
 
 
 # Debug configs
