@@ -12,15 +12,21 @@ from imitation.algorithms import adversarial
 from imitation.data import rollout, types
 from imitation.util import logger, util
 
-ALGORITHM_CLS = [adversarial.AIRL, adversarial.GAIL]
-RL_ALGORITHM_CLS = {
-    "ppo": {
+ALGORITH_KWARGS = {
+    "airl-ppo": {
+        "algorithm_cls": adversarial.AIRL,
         "model_class": stable_baselines3.PPO,
         "policy_class": policies.ActorCriticPolicy,
     },
-    "dqn": {
+    "gail-ppo": {
+        "algorithm_cls": adversarial.GAIL,
+        "model_class": stable_baselines3.PPO,
+        "policy_class": policies.ActorCriticPolicy,
+    },
+    "gail-dqn": {
+        "algorithm_cls": adversarial.GAIL,
         "model_class": stable_baselines3.DQN,
-        "policy_class": stable_baselines3.dqn.policies.DQNPolicy,
+        "policy_class": stable_baselines3.dqn.MlpPolicy,
     },
 }
 IN_CODECOV = "COV_CORE_CONFIG" in os.environ
@@ -29,29 +35,25 @@ IN_CODECOV = "COV_CORE_CONFIG" in os.environ
 PARALLEL = [False] if IN_CODECOV else [True, False]
 
 
-@pytest.fixture(params=ALGORITHM_CLS)
-def _algorithm_cls(request):
-    """Auto-parametrizes `_algorithm_cls` for the `trainer` fixture."""
-    return request.param
-
-
-@pytest.fixture(params=RL_ALGORITHM_CLS.values(), ids=RL_ALGORITHM_CLS.keys())
-def _rl_algorithm_cls(request):
+@pytest.fixture(params=ALGORITH_KWARGS.values(), ids=ALGORITH_KWARGS.keys())
+def _algorithm_kwargs(request):
     """Auto-parametrizes `_rl_algorithm_cls` for the `trainer` fixture."""
-    return request.param
+    return dict(request.param)
 
 
 def test_train_disc_small_expert_data_warning(
-    tmpdir, _algorithm_cls, _rl_algorithm_cls
+    tmpdir,
+    custom_logger,
+    _algorithm_kwargs,
 ):
-    custom_logger = logger.configure(tmpdir, ["tensorboard", "stdout"])
     venv = util.make_vec_env(
         "seals/CartPole-v0",
         n_envs=1,
         parallel=_parallel,
     )
 
-    gen_algo = util.init_rl(venv, verbose=1, **_rl_algorithm_cls)
+    _algorithm_cls = _algorithm_kwargs.pop("algorithm_cls")
+    gen_algo = util.init_rl(venv, verbose=1, **_algorithm_kwargs)
     small_data = rollout.generate_transitions(gen_algo, venv, n_timesteps=20)
 
     with pytest.raises(ValueError, match="Transitions.*expert_batch_size"):
@@ -69,6 +71,31 @@ def test_train_disc_small_expert_data_warning(
             venv=venv,
             expert_data=small_data,
             expert_batch_size=-1,
+            gen_algo=gen_algo,
+            log_dir=tmpdir,
+            custom_logger=custom_logger,
+        )
+
+
+def test_airl_fail_fast(custom_logger, tmpdir):
+    venv = util.make_vec_env(
+        "seals/CartPole-v0",
+        n_envs=1,
+        parallel=_parallel,
+    )
+
+    gen_algo = util.init_rl(
+        venv,
+        model_class=stable_baselines3.DQN,
+        policy_class=stable_baselines3.dqn.MlpPolicy,
+    )
+    small_data = rollout.generate_transitions(gen_algo, venv, n_timesteps=20)
+
+    with pytest.raises(TypeError, match="AIRL needs a stochastic policy.*"):
+        adversarial.AIRL(
+            venv=venv,
+            expert_data=small_data,
+            expert_batch_size=20,
             gen_algo=gen_algo,
             log_dir=tmpdir,
             custom_logger=custom_logger,
@@ -105,8 +132,7 @@ def expert_transitions():
 
 @pytest.fixture
 def trainer(
-    _algorithm_cls,
-    _rl_algorithm_cls,
+    _algorithm_kwargs,
     _parallel: bool,
     tmpdir: str,
     _convert_dataset: bool,
@@ -131,7 +157,8 @@ def trainer(
         log_dir=tmpdir,
     )
 
-    gen_algo = util.init_rl(venv, verbose=1, **_rl_algorithm_cls)
+    _algorithm_cls = _algorithm_kwargs.pop("algorithm_cls")
+    gen_algo = util.init_rl(venv, verbose=1, **_algorithm_kwargs)
     custom_logger = logger.configure(tmpdir, ["tensorboard", "stdout"])
     trainer = _algorithm_cls(
         venv=venv,

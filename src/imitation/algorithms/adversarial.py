@@ -345,8 +345,9 @@ class AdversarialTrainer(base.BaseImitationAlgorithm):
                 callback(r)
             self.logger.dump(self._global_step)
 
-    def _torchify_array(self, ndarray: np.ndarray) -> th.Tensor:
-        return th.as_tensor(ndarray, device=self.discrim_net.device())
+    def _torchify_array(self, ndarray: Optional[np.ndarray]) -> Optional[th.Tensor]:
+        if ndarray is not None:
+            return th.as_tensor(ndarray, device=self.discrim_net.device())
 
     def _make_disc_train_batch(
         self,
@@ -419,13 +420,16 @@ class AdversarialTrainer(base.BaseImitationAlgorithm):
         with th.no_grad():
             obs_th = th.as_tensor(obs, device=self.gen_algo.device)
             acts_th = th.as_tensor(acts, device=self.gen_algo.device)
-            _, log_act_prob_th, _ = self.gen_algo.policy.evaluate_actions(
-                obs_th, acts_th
-            )
-            log_act_prob = log_act_prob_th.detach().cpu().numpy()
-            del obs_th, acts_th, log_act_prob_th  # unneeded
-        assert len(log_act_prob) == n_samples
-        log_act_prob = log_act_prob.reshape((n_samples,))
+            log_act_prob = None
+            if hasattr(self.gen_algo.policy, "evaluate_actions"):
+                _, log_act_prob_th, _ = self.gen_algo.policy.evaluate_actions(
+                    obs_th, acts_th
+                )
+                log_act_prob = log_act_prob_th.detach().cpu().numpy()
+                del log_act_prob_th  # unneeded
+                assert len(log_act_prob) == n_samples
+                log_act_prob = log_act_prob.reshape((n_samples,))
+            del obs_th, acts_th  # unneeded
 
         torchify_with_space_defaults = functools.partial(
             util.torchify_with_space,
@@ -527,3 +531,8 @@ class AIRL(AdversarialTrainer):
         super().__init__(
             venv, gen_algo, discrim, expert_data, expert_batch_size, **kwargs
         )
+
+        if not hasattr(self.gen_algo.policy, "evaluate_actions"):
+            raise TypeError(
+                "AIRL needs a stochastic policy to compute the discriminator output."
+            )
