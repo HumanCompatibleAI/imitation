@@ -1,37 +1,26 @@
 #!/bin/bash
 
+# Usage: launch_docker-dev.sh
+# You can specify LOCAL_MNT and MJKEY_MNT ahead
+
 DOCKER_IMAGE="humancompatibleai/imitation:python-req"
+# Specify LOCAL_MNT if you want to mount a local directory to the docker container
 if [[ ${LOCAL_MNT} == "" ]]; then
-  LOCAL_MNT="${HOME}/reward-function-transfer"
+  LOCAL_MNT="${HOME}/imitation"
 fi
 
-if [[ ${OUTPUT_MNT} == "" ]]; then
-  OUTPUT_MNT="${HOME}/mnt/reward_transfer"
+# Pass your own mjkey.txt
+if [[ ${MJKEY_MNT} == "" ]]; then
+  MJKEY_MNT="${HOME}/mnt/mjkey.txt"
 fi
 
-CMD="pip install -e . "
-CMD="${CMD} && pip install -e /imitation "
-CMD="${CMD} && pip install -e /seals "
-CMD="${CMD} && pip install -e /dmc2gym "
+# install imitation in developer mode
+CMD="pip install -e .[docs,parallel,test] gym[mujoco]"  # borrowed from ci/build_venv.sh
 
-# if port is changed here, it should also be changed in scripts/launch_jupyter.sh
-FLAGS="-p 9998:9998" 
-
-# Using jupyter lab for easy development
-if [[ $1 == "jupyter" ]]; then
-  CMD="${CMD} && scripts/launch_jupyter.sh "
-fi
-
-docker pull ${DOCKER_IMAGE}
+# docker pull ${DOCKER_IMAGE}  # Uncomment this line to pull the image
 docker run -it --rm --init \
-       -v ${HOME}/imitation:/imitation \
-       -v ${HOME}/seals:/seals \
-       -v ${HOME}/dmc2gym:/dmc2gym \
-       -v ${HOME}/.netrc:/root/.netrc \
-       -v ${LOCAL_MNT}:/reward-function-transfer \
-       -v ${LOCAL_MNT}/mjkey.txt:/root/.mujoco/mjkey.txt \
-       -v ${OUTPUT_MNT}:/mnt \
-       --env MUJOCO_GL="egl" \
-       --env EVAL_OUTPUT_ROOT=/mnt/output \
+       -v ${LOCAL_MNT}:/imitation \
+       -v ${MJKEY_MNT}:/root/.mujoco/mjkey.txt \
+       --env EVAL_OUTPUT_ROOT=${EVAL_OUTPUT_ROOT} \
        ${FLAGS} ${DOCKER_IMAGE} \
        /bin/bash -c "${CMD} && bash"
