@@ -145,22 +145,22 @@ def train_preference_comparisons(
     )
     main_trainer.train(iterations)
 
-    agent.save(os.path.join(log_dir, "final_agent"))
+    th.save(reward_net, os.path.join(log_dir, "final_reward_net.pt"))
 
-    serialize.save_stable_model(
-        os.path.join(log_dir, "final_policy"), agent, vec_normalize
-    )
-    th.save(reward_net.state_dict(), os.path.join(log_dir, "final_reward_net.pt"))
-
-    sample_until = rollout.make_sample_until(
-        min_timesteps=None, min_episodes=n_episodes_eval
-    )
-    trajs = rollout.generate_trajectories(
-        agent,
-        venv,
-        sample_until=sample_until,
-    )
-    return rollout.rollout_stats(trajs)
+    # Storing and evaluating the policy only makes sense if we actually used it
+    if trajectory_path is None:
+        serialize.save_stable_model(
+            os.path.join(log_dir, "final_policy"), agent, vec_normalize
+        )
+        sample_until = rollout.make_sample_until(
+            min_timesteps=None, min_episodes=n_episodes_eval
+        )
+        trajs = rollout.generate_trajectories(
+            agent,
+            venv,
+            sample_until=sample_until,
+        )
+        return rollout.rollout_stats(trajs)
 
 
 def main_console():
