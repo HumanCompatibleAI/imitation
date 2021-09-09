@@ -238,13 +238,8 @@ def make_sample_until(
     return sample_until
 
 
-# A PolicyCallable is a function that takes an array of observations
-# and returns an array of corresponding actions.
-PolicyCallable = Callable[[np.ndarray], np.ndarray]
-
-
 def generate_trajectories(
-    policy: Union[BaseAlgorithm, BasePolicy, PolicyCallable, None],
+    policy,
     venv: VecEnv,
     sample_until: GenTrajTerminationFn,
     *,
@@ -254,11 +249,8 @@ def generate_trajectories(
     """Generate trajectory dictionaries from a policy and an environment.
 
     Args:
-      policy: Can be any of the following:
-        - A stable_baselines3 policy or algorithm trained on the gym environment
-        - A Callable that takes an ndarray of observations and returns an ndarray
-          of corresponding actions
-        - None, in which case actions will be sampled randomly
+      policy (BasePolicy or BaseAlgorithm): A stable_baselines3 policy or algorithm
+          trained on the gym environment.
       venv: The vectorized environments to interact with.
       sample_until: A function determining the termination condition.
           It takes a sequence of trajectories, and returns a bool.
@@ -273,30 +265,7 @@ def generate_trajectories(
       may be collected to avoid biasing process towards short episodes; the user
       should truncate if required.
     """
-    if policy is None:
-
-        def get_actions(states):
-            acts = []
-            for _ in range(len(states)):
-                acts.append(venv.action_space.sample())
-            return np.stack(acts, axis=0)
-
-    elif isinstance(policy, (BaseAlgorithm, BasePolicy)):
-
-        def get_actions(states):
-            acts, _ = policy.predict(  # pytype: disable=attribute-error
-                states, deterministic=deterministic_policy
-            )
-            return acts
-
-    elif isinstance(policy, Callable):
-        get_actions = policy
-    else:
-        raise TypeError(
-            "Policy must be None, a stable-baselines policy or algorithm, "
-            f"or a Callable, got {type(policy)} instead"
-        )
-
+    get_action = policy.predict
     if isinstance(policy, BaseAlgorithm):
         # check that the observation and action spaces of policy and environment match
         check_for_correct_spaces(venv, policy.observation_space, policy.action_space)
@@ -323,7 +292,7 @@ def generate_trajectories(
     # To start with, all environments are active.
     active = np.ones(venv.num_envs, dtype=bool)
     while np.any(active):
-        acts = get_actions(obs)
+        acts, _ = get_action(obs, deterministic=deterministic_policy)
         obs, rews, dones, infos = venv.step(acts)
 
         # If an environment is inactive, i.e. the episode completed for that
