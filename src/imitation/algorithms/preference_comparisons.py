@@ -424,8 +424,22 @@ class CrossEntropyRewardTrainer(RewardTrainer):
             rews1 = self._rewards(trans1)
             rews2 = self._rewards(trans2)
             probs[i] = self._probability(rews1, rews2)
+        entropy = -(
+            special.xlogy(preferences, preferences)
+            + special.xlogy(1 - preferences, 1 - preferences)
+        ).mean()
+        self.logger.record("pref_entropy", entropy)
+        # TODO(ejnnr): Here and below, > 0.5 is problematic
+        # because getting exactly 0.5 is actually somewhat
+        # common. In a sense that "only" creates class imbalance
+        # but it's still misleading.
+        predictions = (probs > 0.5).float()
+        preferences_th = th.as_tensor(preferences, dtype=th.float32)
+        ground_truth = (preferences_th > 0.5).float()
+        accuracy = (predictions == ground_truth).float().mean()
+        self.logger.record("accuracy", accuracy.item())
         return th.nn.functional.binary_cross_entropy(
-            probs, th.as_tensor(preferences, dtype=th.float32)
+            probs, preferences_th
         )
 
     def _rewards(self, transitions: Transitions) -> th.Tensor:
