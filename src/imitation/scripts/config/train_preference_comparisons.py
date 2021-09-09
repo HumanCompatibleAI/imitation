@@ -18,7 +18,7 @@ def train_defaults():
     agent_steps = 1e4
     sample_steps = 1e4
     fragment_length = 100
-    num_pairs = 20
+    num_pairs = 50
     n_episodes_eval = 50  # Num of episodes for final mean ground truth return
     reward_net_kwargs = {}
     reward_trainer_kwargs = {
