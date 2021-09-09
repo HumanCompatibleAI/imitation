@@ -1,5 +1,7 @@
 """Tests for the preference comparisons reward learning implementation."""
 
+import re
+
 import numpy as np
 import pytest
 import seals  # noqa: F401
@@ -7,7 +9,6 @@ import stable_baselines3
 
 from imitation.algorithms import preference_comparisons
 from imitation.data import types
-from imitation.policies import trainer
 from imitation.rewards import reward_nets
 from imitation.util import util
 
@@ -39,7 +40,31 @@ def fragmenter():
 
 @pytest.fixture
 def agent_trainer(agent, reward_net):
-    return trainer.AgentTrainer(agent, reward_net)
+    return preference_comparisons.AgentTrainer(agent, reward_net)
+
+
+def test_missing_environment(agent):
+    # Create an agent that doesn't have its environment set.
+    # More realistically, this can happen when loading a stored agent.
+    agent.env = None
+    with pytest.raises(
+        ValueError, match="The environment for the agent algorithm must be set."
+    ):
+        preference_comparisons.AgentTrainer(agent, reward_net)
+
+
+def test_transitions_left_in_buffer(agent_trainer):
+    # Faster to just set the counter than to actually fill the buffer
+    # with transitions.
+    agent_trainer.buffering_wrapper.n_transitions = 2
+    with pytest.raises(
+        RuntimeError,
+        match=re.escape(
+            "There are 2 transitions left in the buffer. "
+            "Call AgentTrainer.sample() first to clear them."
+        ),
+    ):
+        agent_trainer.train(steps=1)
 
 
 def test_trainer_no_crash(agent_trainer, reward_net, fragmenter, custom_logger):

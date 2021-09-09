@@ -14,7 +14,7 @@ from stable_baselines3.common import vec_env
 
 from imitation.algorithms import preference_comparisons
 from imitation.data import rollout
-from imitation.policies import serialize, trainer
+from imitation.policies import serialize
 from imitation.rewards import reward_nets
 from imitation.scripts.config.train_preference_comparisons import (
     train_preference_comparisons_ex,
@@ -129,11 +129,11 @@ def train_preference_comparisons(
     if trajectory_path is None:
         # Setting the logger here is not really necessary (PreferenceComparisons
         # takes care of that automatically) but it avoids creating unnecessary loggers
-        trajectory_generator = trainer.AgentTrainer(
+        trajectory_generator = preference_comparisons.AgentTrainer(
             agent, reward_net, custom_logger=custom_logger
         )
     else:
-        trajectory_generator = trainer.TrajectoryDataset(
+        trajectory_generator = preference_comparisons.TrajectoryDataset(
             trajectory_path, _seed, custom_logger
         )
 

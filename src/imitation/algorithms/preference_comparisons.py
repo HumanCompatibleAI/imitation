@@ -7,14 +7,15 @@ import abc
 import math
 import pickle
 import random
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 
 import numpy as np
 import torch as th
 from scipy import special
+from stable_baselines3.common import base_class, vec_env
 
 from imitation.algorithms import base
-from imitation.data import rollout
+from imitation.data import rollout, types, wrappers
 from imitation.data.types import (
     AnyPath,
     TrajectoryPair,
@@ -22,21 +23,232 @@ from imitation.data.types import (
     TrajectoryWithRewPair,
     Transitions,
 )
-from imitation.policies import trainer
+from imitation.rewards import common as rewards_common
 from imitation.rewards import reward_nets
-from imitation.util import logger
+from imitation.util import logger as imit_logger
+from imitation.util import reward_wrapper
+
+
+class TrajectoryGenerator(abc.ABC):
+    """Generator of trajectories with optional training logic."""
+
+    _logger: imit_logger.HierarchicalLogger
+    """Object to log statistics and natural language messages to."""
+
+    def __init__(self, custom_logger: Optional[imit_logger.HierarchicalLogger] = None):
+        """Initialize the trajectory generator
+
+        Args:
+            custom_logger: Where to log to; if None (default), creates a new logger.
+        """
+        self._logger = custom_logger or imit_logger.configure()
+
+    @abc.abstractmethod
+    def sample(self, steps: int) -> Sequence[TrajectoryWithRew]:
+        """Sample a batch of trajectories.
+
+        Args:
+            steps: All trajectories taken together should
+                have at least this many steps.
+
+        Returns:
+            A list of sampled trajectories with rewards (which should
+            be the environment rewards, not ones from a reward model).
+        """
+
+    def train(self, steps: int, **kwargs):
+        """Train an agent if the trajectory generator uses one.
+
+        By default, this method does nothing and doesn't need
+        to be overridden in subclasses that don't require training.
+
+        Args:
+            steps: number of environment steps to train for.
+            **kwargs: additional keyword arguments to pass on to
+                the training procedure.
+        """
+
+    @property
+    def logger(self) -> imit_logger.HierarchicalLogger:
+        return self._logger
+
+    @logger.setter
+    def logger(self, value: imit_logger.HierarchicalLogger):
+        self._logger = value
+
+
+class TrajectoryDataset(TrajectoryGenerator):
+    """A fixed dataset of trajectories."""
+
+    def __init__(
+        self,
+        path: AnyPath,
+        seed: Optional[int] = None,
+        custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
+    ):
+        """Creates a dataset loaded from `path`.
+
+        Args:
+            path: A path to pickled rollouts.
+            seed: Seed for RNG used for shuffling dataset.
+            custom_logger: Where to log to; if None (default), creates a new logger.
+        """
+        super().__init__(custom_logger=custom_logger)
+        self._trajectories = types.load(path)
+        self.rng = random.Random(seed)
+
+    def sample(self, steps: int) -> Sequence[TrajectoryWithRew]:
+        # make a copy before shuffling
+        trajectories = list(self._trajectories)
+        self.rng.shuffle(trajectories)
+        return _get_trajectories(trajectories, steps)
+
+
+class AgentTrainer(TrajectoryGenerator):
+    """Wrapper for training an SB3 algorithm on an arbitrary reward function."""
+
+    def __init__(
+        self,
+        algorithm: base_class.BaseAlgorithm,
+        reward_fn: Union[rewards_common.RewardFn, reward_nets.RewardNet],
+        custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
+    ):
+        """Initialize the agent trainer.
+
+        Args:
+            algorithm: the stable-baselines algorithm to use for training.
+                Its environment must be set.
+            reward_fn: either a RewardFn or a RewardNet instance that will supply
+                the rewards used for training the agent.
+            custom_logger: Where to log to; if None (default), creates a new logger.
+        """
+        self.algorithm = algorithm
+        # NOTE: this has to come after setting self.algorithm because super().__init__
+        # will set self.logger, which also sets the logger for the algorithm
+        super().__init__(custom_logger)
+        if isinstance(reward_fn, reward_nets.RewardNet):
+            reward_fn = reward_fn.predict
+        self.reward_fn = reward_fn
+
+        venv = self.algorithm.get_env()
+        if not isinstance(venv, vec_env.VecEnv):
+            raise ValueError("The environment for the agent algorithm must be set.")
+        # The BufferingWrapper records all trajectories, so we can return
+        # them after training. This should come first (before the wrapper that
+        # changes the reward function), so that we return the original environment
+        # rewards.
+        self.buffering_wrapper = wrappers.BufferingWrapper(venv)
+        self.venv = reward_wrapper.RewardVecEnvWrapper(
+            self.buffering_wrapper, reward_fn
+        )
+        self.algorithm.set_env(self.venv)
+
+    def train(self, steps: int, **kwargs):
+        """Train the agent using the reward function specified during instantiation.
+
+        Args:
+            steps: number of environment timesteps to train for
+            **kwargs: other keyword arguments to pass to BaseAlgorithm.train()
+
+        Returns:
+            a list of all trajectories that occurred during training, including their
+            original environment rewards (rather than the ones computed using reward_fn)
+        """
+        n_transitions = self.buffering_wrapper.n_transitions
+        if n_transitions:
+            raise RuntimeError(
+                f"There are {n_transitions} transitions left in the buffer. "
+                "Call AgentTrainer.sample() first to clear them."
+            )
+        # Because we use reset_num_timesteps=False (to get logging right),
+        # SB3 doesn't automatically reset the environment on .learn().
+        # This causes the following issue: if the previous learning cycle leaves
+        # unfinished trajectories, then we will collect the remainder of those
+        # trajectories during this cycle. They will therefore be incomplete episodes
+        # (because they don't start in the initial state) and in particular will
+        # be shorter, which raises the variable horizon check error.
+        # I think avoiding a reset() here would be tricky (assuming we even want to)
+        # because it would be hard to set a hypothetical Trajectory.initial attribute
+        # correctly like we do for Trajectory.terminal.
+        self.venv.reset()
+        self.algorithm.learn(total_timesteps=steps, reset_num_timesteps=False, **kwargs)
+
+    def sample(self, steps: int) -> Sequence[types.TrajectoryWithRew]:
+        trajectories = self._pop_trajectories()
+        # We typically have more trajectories than are needed.
+        # In that case, we use the final trajectories because
+        # they are the ones with the most relevant version of
+        # the agent.
+        # The easiest way to do this will be to first invert the
+        # list and then later just take the first trajectories:
+        trajectories = trajectories[::-1]
+        avail_steps = sum(len(traj) for traj in trajectories)
+
+        if avail_steps < steps:
+            self.logger.log(
+                f"Requested {steps} transitions but only {avail_steps} in buffer. "
+                f"Sampling {steps - avail_steps} additional transitions."
+            )
+            sample_until = rollout.make_sample_until(
+                min_timesteps=steps - avail_steps, min_episodes=None
+            )
+            # Important note: we don't want to use the trajectories returned
+            # here because their rewards are the ones provided by the reward
+            # model! Instead, we collect the trajectories using the BufferingWrapper,
+            # which have the ground truth environment reward.
+            rollout.generate_trajectories(
+                self.algorithm,
+                self.venv,
+                sample_until=sample_until,
+            )
+            additional_trajectories = self._pop_trajectories()
+
+            trajectories = list(trajectories) + list(additional_trajectories)
+
+        return _get_trajectories(trajectories, steps)
+
+    def _pop_trajectories(self) -> Sequence[types.TrajectoryWithRew]:
+        # TODO(adam): should we discard incomplete trajectories?
+        return self.buffering_wrapper.pop_trajectories()
+
+    @TrajectoryGenerator.logger.setter
+    def logger(self, value: imit_logger.HierarchicalLogger):
+        self._logger = value
+        self.algorithm.set_logger(self.logger)
+
+
+def _get_trajectories(
+    trajectories: Sequence[TrajectoryWithRew], steps: int
+) -> Sequence[TrajectoryWithRew]:
+    """Get enough trajectories to have at least `steps` transitions in total."""
+    available_steps = sum(len(traj) for traj in trajectories)
+    if available_steps < steps:
+        raise RuntimeError(
+            f"Asked for {steps} transitions but only {available_steps} available"
+        )
+    # We need the cumulative sum of trajectory lengths
+    # to determine how many trajectories to return:
+    steps_cumsum = np.cumsum([len(traj) for traj in trajectories])
+    # Now we find the first index that gives us enough
+    # total steps:
+    idx = (steps_cumsum >= steps).argmax()
+    # we need to include the element at position idx
+    trajectories = trajectories[: idx + 1]
+    # sanity check
+    assert sum(len(traj) for traj in trajectories) >= steps
+    return trajectories
 
 
 class Fragmenter(abc.ABC):
     """Class for creating pairs of trajectory fragments from a set of trajectories."""
 
-    def __init__(self, custom_logger: Optional[logger.HierarchicalLogger] = None):
+    def __init__(self, custom_logger: Optional[imit_logger.HierarchicalLogger] = None):
         """Initialize the fragmenter.
 
         Args:
             custom_logger: Where to log to; if None (default), creates a new logger.
         """
-        self.logger = custom_logger or logger.configure()
+        self.logger = custom_logger or imit_logger.configure()
 
     @abc.abstractmethod
     def __call__(
@@ -74,7 +286,7 @@ class RandomFragmenter(Fragmenter):
         self,
         seed: Optional[float] = None,
         warning_threshold: int = 10,
-        custom_logger: Optional[logger.HierarchicalLogger] = None,
+        custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
     ):
         """Initialize the fragmenter.
 
@@ -159,13 +371,13 @@ class RandomFragmenter(Fragmenter):
 
 
 class PreferenceGatherer(abc.ABC):
-    def __init__(self, custom_logger: Optional[logger.HierarchicalLogger] = None):
+    def __init__(self, custom_logger: Optional[imit_logger.HierarchicalLogger] = None):
         """Initialize the preference gatherer.
 
         Args:
             custom_logger: Where to log to; if None (default), creates a new logger.
         """
-        self.logger = custom_logger or logger.configure()
+        self.logger = custom_logger or imit_logger.configure()
 
     @abc.abstractmethod
     def __call__(self, fragment_pairs: Sequence[TrajectoryWithRewPair]) -> np.ndarray:
@@ -197,7 +409,7 @@ class SyntheticGatherer(PreferenceGatherer):
         sample: bool = True,
         seed: Optional[int] = None,
         threshold: float = 50,
-        custom_logger: Optional[logger.HierarchicalLogger] = None,
+        custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
     ):
         """Initialize the synthetic preference gatherer.
 
@@ -343,7 +555,7 @@ class RewardTrainer(abc.ABC):
     def __init__(
         self,
         model: reward_nets.RewardNet,
-        custom_logger: Optional[logger.HierarchicalLogger] = None,
+        custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
     ):
         """Initialize the reward trainer.
 
@@ -352,7 +564,7 @@ class RewardTrainer(abc.ABC):
             custom_logger: Where to log to; if None (default), creates a new logger.
         """
         self.model = model
-        self.logger = custom_logger or logger.configure()
+        self.logger = custom_logger or imit_logger.configure()
 
     @abc.abstractmethod
     def train(self, dataset: PreferenceDataset):
@@ -375,7 +587,7 @@ class CrossEntropyRewardTrainer(RewardTrainer):
         lr: float = 1e-3,
         discount_factor: float = 1.0,
         threshold: float = 50,
-        custom_logger: Optional[logger.HierarchicalLogger] = None,
+        custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
     ):
         """Initialize the reward model trainer.
 
@@ -503,7 +715,7 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
 
     def __init__(
         self,
-        trajectory_generator: trainer.TrajectoryGenerator,
+        trajectory_generator: TrajectoryGenerator,
         reward_model: reward_nets.RewardNet,
         fragmenter: Optional[Fragmenter] = None,
         preference_gatherer: Optional[PreferenceGatherer] = None,
@@ -512,7 +724,7 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
         comparisons_per_iteration: int = 50,
         fragment_length: int = 50,
         transition_oversampling: float = 10,
-        custom_logger: Optional[logger.HierarchicalLogger] = None,
+        custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
         allow_variable_horizon: bool = False,
         seed: Optional[int] = None,
     ):
@@ -567,6 +779,10 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
             custom_logger=custom_logger,
             allow_variable_horizon=allow_variable_horizon,
         )
+
+        # for keeping track of the global iteration, in case train() is called
+        # multiple times
+        self._iteration = 0
 
         self.model = reward_model
         self.reward_trainer = reward_trainer or CrossEntropyRewardTrainer(
@@ -657,6 +873,7 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
                 with self.logger.accumulate_means("agent"):
                     self.logger.log(f"Training agent for {num_steps} timesteps")
                     self.trajectory_generator.train(steps=num_steps)
-            self.logger.dump(i)
+            self.logger.dump(self._iteration)
+            self._iteration += 1
 
         return {"reward_loss": reward_loss, "reward_accuracy": reward_accuracy}
