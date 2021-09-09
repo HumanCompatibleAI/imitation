@@ -14,6 +14,8 @@ train_preference_comparisons_ex = sacred.Experiment(
 @train_preference_comparisons_ex.config
 def train_defaults():
     env_name = "seals/CartPole-v0"  # environment to train on
+    env_make_kwargs = {}  # The kwargs passed to `spec.make`.
+
     iterations = 10
     agent_steps = 1e4
     sample_steps = 1e4

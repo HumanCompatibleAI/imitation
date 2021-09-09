@@ -4,9 +4,11 @@ import itertools
 import os
 import uuid
 from typing import (
+    Any,
     Callable,
     Iterable,
     Iterator,
+    Mapping,
     Optional,
     Sequence,
     Type,
@@ -41,6 +43,7 @@ def make_vec_env(
     log_dir: Optional[str] = None,
     max_episode_steps: Optional[int] = None,
     post_wrappers: Optional[Sequence[Callable[[gym.Env, int], gym.Env]]] = None,
+    env_make_kwargs: Optional[Mapping[str, Any]] = None,
 ) -> VecEnv:
     """Returns a VecEnv initialized with `n_envs` Envs.
 
@@ -60,10 +63,12 @@ def make_vec_env(
             of the wrappers specified in the sequence. The argument should be a Callable
             accepting two arguments, the Env to be wrapped and the environment index,
             and returning the wrapped Env.
+        env_make_kwargs: The kwargs passed to `spec.make`.
     """
     # Resolve the spec outside of the subprocess first, so that it is available to
     # subprocesses running `make_env` via automatic pickling.
     spec = gym.spec(env_name)
+    env_make_kwargs = env_make_kwargs or {}
 
     def make_env(i, this_seed):
         # Previously, we directly called `gym.make(env_name)`, but running
@@ -74,7 +79,7 @@ def make_vec_env(
         # registering the custom environment in the scope of `make_vec_env` didn't
         # work. For more discussion and hypotheses on this issue see PR #160:
         # https://github.com/HumanCompatibleAI/imitation/pull/160.
-        env = spec.make()
+        env = spec.make(**env_make_kwargs)
 
         # Seed each environment with a different, non-sequential seed for diversity
         # (even if caller is passing us sequentially-assigned base seeds). int() is

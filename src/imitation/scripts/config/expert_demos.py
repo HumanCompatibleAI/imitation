@@ -11,6 +11,7 @@ expert_demos_ex = sacred.Experiment("expert_demos")
 @expert_demos_ex.config
 def expert_demos_defaults():
     env_name = "CartPole-v1"  # The gym.Env name
+    env_make_kwargs = {}  # The kwargs passed to `spec.make`.
     total_timesteps = int(1e6)  # Number of training timesteps in model.learn()
     num_vec = 8  # Number of environments in VecEnv
     parallel = True  # Use SubprocVecEnv (generally faster if num_vec>1)
