@@ -21,6 +21,5 @@ CMD="pip install -e .[docs,parallel,test] gym[mujoco]"  # borrowed from ci/build
 docker run -it --rm --init \
        -v ${LOCAL_MNT}:/imitation \
        -v ${MJKEY_MNT}:/root/.mujoco/mjkey.txt \
-       --env EVAL_OUTPUT_ROOT=${EVAL_OUTPUT_ROOT} \
        ${FLAGS} ${DOCKER_IMAGE} \
        /bin/bash -c "${CMD} && bash"
