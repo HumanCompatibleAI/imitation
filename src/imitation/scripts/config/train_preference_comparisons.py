@@ -14,25 +14,29 @@ train_preference_comparisons_ex = sacred.Experiment(
 @train_preference_comparisons_ex.config
 def train_defaults():
     env_name = "seals/CartPole-v0"  # environment to train on
-    iterations = 10
-    agent_steps = 1e4
-    sample_steps = 1e4
-    fragment_length = 100
-    num_pairs = 50
+    fragment_length = 100  # timesteps per fragment used for comparisons
+    total_timesteps = int(1e6)  # total number of environment timesteps
+    total_comparisons = 1000  # total number of comparisons to elicit
+    # comparisons to gather before switching back to agent training
+    comparisons_per_iteration = 50
+    # factor by which to oversample transitions before creating fragments
+    transition_oversampling = 10
     n_episodes_eval = 50  # Num of episodes for final mean ground truth return
     reward_net_kwargs = {}
     reward_trainer_kwargs = {
         "epochs": 3,
     }
+    # path to a preference dataset to use instead of dynamic preference gathering
     preferences_path = None
-    save_preferences = False
-    agent_path = None
+    save_preferences = False  # save preference dataset at the end?
+    agent_path = None  # path to a (partially) trained agent to load at the beginning
     agent_kwargs = {}
     gatherer_kwargs = {}
+    # path to a pickled sequence of trajectories used instead of training an agent
     trajectory_path = None
     allow_variable_horizon = False
 
-    num_vec = 8
+    num_vec = 8  # number of parallel environments
 
     normalize = True  # Use VecNormalize
     normalize_kwargs = {"norm_reward": False}  # kwargs for `VecNormalize`
@@ -60,13 +64,13 @@ def cartpole():
 
 
 @train_preference_comparisons_ex.named_config
-def pendulum():
-    env_name = "Pendulum-v0"
+def seals_cartpole():
+    env_name = "seals/CartPole-v0"
 
 
 @train_preference_comparisons_ex.named_config
-def seals_cartpole():
-    env_name = "seals/CartPole-v0"
+def pendulum():
+    env_name = "Pendulum-v0"
 
 
 @train_preference_comparisons_ex.named_config
@@ -75,7 +79,9 @@ def mountain_car():
     allow_variable_horizon = True
 
 
-# Debug configs
+@train_preference_comparisons_ex.named_config
+def seals_mountain_car():
+    env_name = "seals/MountainCar-v0"
 
 
 @train_preference_comparisons_ex.named_config
@@ -84,14 +90,12 @@ def fast():
 
     Useful for test cases.
     """
-    iterations = 1
-    agent_steps = 10
-    sample_steps = 10
-    agent_steps = 2
+    total_timesteps = 2
+    total_comparisons = 3
+    comparisons_per_iteration = 2
     parallel = False
     num_vec = 1
     fragment_length = 2
-    num_pairs = 2
     n_episodes_eval = 1
     agent_kwargs = {"batch_size": 2, "n_steps": 10, "n_epochs": 1}
     reward_trainer_kwargs = {

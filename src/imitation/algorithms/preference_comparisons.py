@@ -3,9 +3,8 @@
 Trains a reward model and optionally a policy based on preferences
 between trajectory fragments.
 """
-
-
 import abc
+import math
 import pickle
 import random
 from typing import Any, Dict, List, Optional, Sequence, Tuple
@@ -41,13 +40,18 @@ class Fragmenter(abc.ABC):
 
     @abc.abstractmethod
     def __call__(
-        self, trajectories: Sequence[TrajectoryWithRew]
+        self,
+        trajectories: Sequence[TrajectoryWithRew],
+        fragment_length: int,
+        num_pairs: int,
     ) -> Sequence[TrajectoryWithRewPair]:
         """Create fragment pairs out of a sequence of trajectories.
 
         Args:
             trajectories: collection of trajectories that will be split up into
                 fragments
+            fragment_length: the length of each sampled fragment
+            num_pairs: the number of fragment pairs to sample
 
         Returns:
             a sequence of fragment pairs
@@ -68,8 +72,6 @@ class RandomFragmenter(Fragmenter):
 
     def __init__(
         self,
-        fragment_length: int = 50,
-        num_pairs: int = 50,
         seed: Optional[float] = None,
         warning_threshold: int = 10,
         custom_logger: Optional[logger.HierarchicalLogger] = None,
@@ -77,8 +79,6 @@ class RandomFragmenter(Fragmenter):
         """Initialize the fragmenter.
 
         Args:
-            fragment_length: the length of each sampled fragment
-            num_pairs: the number of fragment pairs to sample
             seed: an optional seed for the internal RNG
             warning_threshold: give a warning if the number of available
                 transitions is less than this many times the number of
@@ -86,38 +86,37 @@ class RandomFragmenter(Fragmenter):
             custom_logger: Where to log to; if None (default), creates a new logger.
         """
         super().__init__(custom_logger)
-        self.fragment_length = fragment_length
-        self.num_pairs = num_pairs
         self.rng = random.Random(seed)
         self.warning_threshold = warning_threshold
 
     def __call__(
-        self, trajectories: Sequence[TrajectoryWithRew]
+        self,
+        trajectories: Sequence[TrajectoryWithRew],
+        fragment_length: int,
+        num_pairs: int,
     ) -> Sequence[TrajectoryWithRewPair]:
         fragments: List[TrajectoryWithRew] = []
 
         prev_num_trajectories = len(trajectories)
         # filter out all trajectories that are too short
-        trajectories = [
-            traj for traj in trajectories if len(traj) >= self.fragment_length
-        ]
+        trajectories = [traj for traj in trajectories if len(traj) >= fragment_length]
         if len(trajectories) == 0:
             raise ValueError(
                 "No trajectories are long enough for the desired fragment length "
-                f"of {self.fragment_length}."
+                f"of {fragment_length}."
             )
         num_discarded = prev_num_trajectories - len(trajectories)
         if num_discarded:
             self.logger.log(
                 f"Discarded {num_discarded} out of {prev_num_trajectories} "
                 "trajectories because they are shorter than the desired length "
-                f"of {self.fragment_length}."
+                f"of {fragment_length}."
             )
 
         weights = [len(traj) for traj in trajectories]
 
         # number of transitions that will be contained in the fragments
-        num_transitions = 2 * self.num_pairs * self.fragment_length
+        num_transitions = 2 * num_pairs * fragment_length
         if sum(weights) < num_transitions:
             self.logger.warn(
                 "Fewer transitions available than needed for desired number "
@@ -138,11 +137,11 @@ class RandomFragmenter(Fragmenter):
             )
 
         # we need two fragments for each comparison
-        for _ in range(2 * self.num_pairs):
+        for _ in range(2 * num_pairs):
             traj = self.rng.choices(trajectories, weights, k=1)[0]
             n = len(traj)
-            start = self.rng.randint(0, n - self.fragment_length)
-            end = start + self.fragment_length
+            start = self.rng.randint(0, n - fragment_length)
+            end = start + fragment_length
             terminal = (end == n) and traj.terminal
             fragment = TrajectoryWithRew(
                 obs=traj.obs[start : end + 1],
@@ -505,12 +504,13 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
         self,
         trajectory_generator: trainer.TrajectoryGenerator,
         reward_model: reward_nets.RewardNet,
-        sample_steps: int,
-        agent_steps: Optional[int] = None,
         fragmenter: Optional[Fragmenter] = None,
         preference_gatherer: Optional[PreferenceGatherer] = None,
         preferences_path: Optional[AnyPath] = None,
         reward_trainer: Optional[RewardTrainer] = None,
+        comparisons_per_iteration: int = 50,
+        fragment_length: int = 50,
+        transition_oversampling: float = 10,
         custom_logger: Optional[logger.HierarchicalLogger] = None,
         allow_variable_horizon: bool = False,
         seed: Optional[int] = None,
@@ -525,10 +525,6 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
                 an RL agent on the learned reward function (can also be a sampler
                 from a static dataset of trajectories though).
             reward_model: a RewardNet instance to be used for learning the reward
-            sample_steps: number of environment timesteps to sample
-                for creating fragments.
-            agent_steps: number of environment steps to train the agent for between
-                each reward model training round. Defaults to sample_steps.
             fragmenter: takes in a set of trajectories and returns pairs of fragments
                 for which preferences will be gathered. These fragments could be random,
                 or they could be selected more deliberately (active learning).
@@ -543,6 +539,16 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
             reward_trainer: trains the reward model based on pairs of fragments and
                 associated preferences. Default is to use the preference model
                 and loss function from DRLHP.
+            comparisons_per_iteration: number of preferences to gather at once (before
+                switching back to agent training). This doesn't impact the total number
+                of comparisons that are gathered, only the frequency of switching
+                between preference gathering and agent training.
+            fragment_length: number of timesteps per fragment that is used to elicit
+                preferences
+            transition_oversampling: factor by which to oversample transitions before
+                creating fragments. Since fragments are sampled with replacement,
+                this is usually chosen > 1 to avoid having the same transition
+                in too many fragments.
             custom_logger: Where to log to; if None (default), creates a new logger.
             allow_variable_horizon: If False (default), algorithm will raise an
                 exception if it detects trajectories of different length during
@@ -581,12 +587,10 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
             custom_logger=self.logger, seed=seed
         )
         self.preference_gatherer.logger = self.logger
-        self.sample_steps = sample_steps
-        # In contrast to the previous cases, we need the is None check
-        # because someone might explicitly set agent_timesteps=0.
-        if agent_steps is None:
-            agent_steps = sample_steps
-        self.agent_steps = agent_steps
+
+        self.comparisons_per_iteration = comparisons_per_iteration
+        self.fragment_length = fragment_length
+        self.transition_oversampling = transition_oversampling
 
         self.preferences_path = preferences_path
         if preferences_path is not None:
@@ -594,22 +598,40 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
         else:
             self.dataset = PreferenceDataset()
 
-    def train(self, iterations: int) -> Dict[str, Any]:
+    def train(self, total_timesteps: int, total_comparisons: int) -> Dict[str, Any]:
         """Train the reward model and the policy if applicable.
 
         Args:
-            iterations: number of iterations of the outer training loop
+            total_timesteps: number of environment interaction steps
+            total_comparisons: number of preferences to gather in total
         """
+        iterations, extra_comparisons = divmod(
+            total_comparisons, self.comparisons_per_iteration
+        )
+        timesteps_per_iteration, extra_timesteps = divmod(total_timesteps, iterations)
+
         reward_loss = None
         reward_accuracy = None
+
         for i in range(iterations):
             # Gather new preferences (only if no dataset was given)
             if self.preferences_path is None:
-                self.logger.log(f"Collecting {self.sample_steps} trajectory steps")
-                trajectories = self.trajectory_generator.sample(self.sample_steps)
+                num_pairs = self.comparisons_per_iteration
+                # if the number of comparisons per iterations doesn't exactly divide
+                # the desired total number of comparisons, we collect the remainder
+                # right at the beginning to pretrain the reward model slightly
+                if i == 0:
+                    num_pairs += extra_comparisons
+                num_steps = math.ceil(
+                    self.transition_oversampling * 2 * num_pairs * self.fragment_length
+                )
+                self.logger.log(f"Collecting {num_steps} trajectory steps")
+                trajectories = self.trajectory_generator.sample(num_steps)
                 self._check_fixed_horizon(trajectories)
                 self.logger.log("Creating fragment pairs")
-                fragments = self.fragmenter(trajectories)
+                fragments = self.fragmenter(
+                    trajectories, self.fragment_length, num_pairs
+                )
                 with self.logger.accumulate_means("preferences"):
                     self.logger.log("gathering preferences")
                     preferences = self.preference_gatherer(fragments)
@@ -625,9 +647,15 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
 
             # Train the agent (only if no preference dataset was given)
             if self.preferences_path is None:
+                num_steps = timesteps_per_iteration
+                # if the number of timesteps per iterations doesn't exactly divide
+                # the desired total number of timesteps, we train the agent a bit longer
+                # at the end of training (where the reward model is presumably best)
+                if i == iterations - 1:
+                    num_steps += extra_timesteps
                 with self.logger.accumulate_means("agent"):
-                    self.logger.log(f"Training agent for {self.agent_steps} steps")
-                    self.trajectory_generator.train(steps=self.agent_steps)
+                    self.logger.log(f"Training agent for {num_steps} timesteps")
+                    self.trajectory_generator.train(steps=num_steps)
             self.logger.dump(i)
 
         return {"reward_loss": reward_loss, "reward_accuracy": reward_accuracy}

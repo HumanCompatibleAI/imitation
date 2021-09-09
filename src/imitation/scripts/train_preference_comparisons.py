@@ -35,11 +35,11 @@ def train_preference_comparisons(
     normalize_kwargs: dict,
     max_episode_steps: Optional[int],
     log_dir: str,
-    iterations: int,
-    sample_steps: int,
-    agent_steps: int,
+    total_timesteps: int,
+    total_comparisons: int,
+    comparisons_per_iteration: int,
     fragment_length: int,
-    num_pairs: int,
+    transition_oversampling: float,
     n_episodes_eval: int,
     trajectory_path: Optional[str],
     preferences_path: Optional[str],
@@ -65,17 +65,18 @@ def train_preference_comparisons(
             environment to artificially limit the maximum number of timesteps in an
             episode.
         log_dir: Directory to save models and other logging to.
-        iterations: Number of iterations of the outer training loop
-            (i.e. number of times that new preferences are collected).
-        sample_steps: how many environment steps to sample each time that
-            preferences are collected. Trajectory fragments will be chosen
-            from all the sampled steps.
-        agent_steps: how many environment steps to train the agent for in
-            each iteration.
-        fragment_length: number of transitions in each fragment that is shown
-            for preference comparisons.
-        num_pairs: number of fragment pairs to collect preferences for in
-            each iteration.
+        total_timesteps: number of environment interaction steps
+        total_comparisons: number of preferences to gather in total
+        comparisons_per_iteration: number of preferences to gather at once (before
+            switching back to agent training). This doesn't impact the total number
+            of comparisons that are gathered, only the frequency of switching
+            between preference gathering and agent training.
+        fragment_length: number of timesteps per fragment that is used to elicit
+            preferences
+        transition_oversampling: factor by which to oversample transitions before
+            creating fragments. Since fragments are sampled with replacement,
+            this is usually chosen > 1 to avoid having the same transition
+            in too many fragments.
         n_episodes_eval: The number of episodes to average over when calculating
             the average episode reward of the learned policy for return.
         trajectory_path: either None, in which case an agent will be trained
@@ -137,8 +138,6 @@ def train_preference_comparisons(
         )
 
     fragmenter = preference_comparisons.RandomFragmenter(
-        fragment_length=fragment_length,
-        num_pairs=num_pairs,
         seed=_seed,
         custom_logger=custom_logger,
     )
@@ -151,17 +150,18 @@ def train_preference_comparisons(
     main_trainer = preference_comparisons.PreferenceComparisons(
         trajectory_generator,
         reward_net,
-        sample_steps=sample_steps,
-        agent_steps=agent_steps,
         fragmenter=fragmenter,
         preference_gatherer=gatherer,
         reward_trainer=reward_trainer,
+        comparisons_per_iteration=comparisons_per_iteration,
+        fragment_length=fragment_length,
+        transition_oversampling=transition_oversampling,
         custom_logger=custom_logger,
         allow_variable_horizon=allow_variable_horizon,
         preferences_path=preferences_path,
         seed=_seed,
     )
-    results = main_trainer.train(iterations)
+    results = main_trainer.train(total_timesteps, total_comparisons)
 
     th.save(reward_net, os.path.join(log_dir, "final_reward_net.pt"))
 
