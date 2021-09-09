@@ -6,8 +6,9 @@ between trajectory fragments.
 
 
 import abc
+import pickle
 import random
-from typing import List, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
 import torch as th
@@ -16,6 +17,7 @@ from scipy import special
 from imitation.algorithms import base
 from imitation.data import rollout
 from imitation.data.types import (
+    AnyPath,
     TrajectoryPair,
     TrajectoryWithRew,
     TrajectoryWithRewPair,
@@ -275,9 +277,6 @@ class PreferenceDataset(th.utils.data.Dataset):
     This dataset is meant to be generated piece by piece during the
     training process, which is why data can be added via the .push()
     method.
-
-    TODO(ejnnr): it should also be possible to store a dataset on disk
-    and load it again.
     """
 
     def __init__(self):
@@ -316,6 +315,15 @@ class PreferenceDataset(th.utils.data.Dataset):
     def __len__(self) -> int:
         assert len(self.fragments1) == len(self.fragments2) == len(self.preferences)
         return len(self.fragments1)
+
+    def save(self, path: AnyPath):
+        with open(path, "wb") as file:
+            pickle.dump(self, file)
+
+    @staticmethod
+    def load(path: AnyPath):
+        with open(path, "rb") as file:
+            return pickle.load(file)
 
 
 def preference_collate_fn(
@@ -424,11 +432,6 @@ class CrossEntropyRewardTrainer(RewardTrainer):
             rews1 = self._rewards(trans1)
             rews2 = self._rewards(trans2)
             probs[i] = self._probability(rews1, rews2)
-        entropy = -(
-            special.xlogy(preferences, preferences)
-            + special.xlogy(1 - preferences, 1 - preferences)
-        ).mean()
-        self.logger.record("pref_entropy", entropy)
         # TODO(ejnnr): Here and below, > 0.5 is problematic
         # because getting exactly 0.5 is actually somewhat
         # common. In a sense that "only" creates class imbalance
@@ -438,9 +441,7 @@ class CrossEntropyRewardTrainer(RewardTrainer):
         ground_truth = (preferences_th > 0.5).float()
         accuracy = (predictions == ground_truth).float().mean()
         self.logger.record("accuracy", accuracy.item())
-        return th.nn.functional.binary_cross_entropy(
-            probs, preferences_th
-        )
+        return th.nn.functional.binary_cross_entropy(probs, preferences_th)
 
     def _rewards(self, transitions: Transitions) -> th.Tensor:
         return self.model(*self.model.preprocess(transitions))
@@ -476,7 +477,7 @@ class CrossEntropyRewardTrainer(RewardTrainer):
         return self.noise_prob * 0.5 + (1 - self.noise_prob) * model_probability
 
     def train(self, dataset: PreferenceDataset):
-        """Trains for one epoch over `dataset`."""
+        """Trains for `self.epochs` epochs over `dataset`."""
         # TODO(ejnnr): This isn't specific to the loss function or probability model.
         # In general, it might be best to split the probability model, the loss and
         # the optimization procedure a bit more cleanly so that different versions
@@ -488,7 +489,7 @@ class CrossEntropyRewardTrainer(RewardTrainer):
             shuffle=True,
             collate_fn=preference_collate_fn,
         )
-        for ep in range(self.epochs):
+        for _ in range(self.epochs):
             for fragment_pairs, preferences in dataloader:
                 self.optim.zero_grad()
                 loss = self._loss(fragment_pairs, preferences)
@@ -508,6 +509,7 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
         agent_steps: Optional[int] = None,
         fragmenter: Optional[Fragmenter] = None,
         preference_gatherer: Optional[PreferenceGatherer] = None,
+        preferences_path: Optional[AnyPath] = None,
         reward_trainer: Optional[RewardTrainer] = None,
         custom_logger: Optional[logger.HierarchicalLogger] = None,
         allow_variable_horizon: bool = False,
@@ -535,6 +537,9 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
                 Default (and currently the only option) is to use synthetic preferences
                 based on ground-truth rewards. Human preferences could be implemented
                 here in the future.
+            preferences_path: path to a pickled PreferenceDataset which will be
+                loaded. If given, only a reward model is trained on this fixed dataset,
+                no agent will be trained and no new preferences will be gathered.
             reward_trainer: trains the reward model based on pairs of fragments and
                 associated preferences. Default is to use the preference model
                 and loss function from DRLHP.
@@ -582,29 +587,47 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
         if agent_steps is None:
             agent_steps = sample_steps
         self.agent_steps = agent_steps
-        self.dataset = PreferenceDataset()
 
-    def train(self, iterations: int):
+        self.preferences_path = preferences_path
+        if preferences_path is not None:
+            self.dataset = PreferenceDataset.load(preferences_path)
+        else:
+            self.dataset = PreferenceDataset()
+
+    def train(self, iterations: int) -> Dict[str, Any]:
         """Train the reward model and the policy if applicable.
 
         Args:
             iterations: number of iterations of the outer training loop
         """
+        reward_loss = None
+        reward_accuracy = None
         for i in range(iterations):
-            self.logger.log(f"Collecting {self.sample_steps} trajectory steps")
-            trajectories = self.trajectory_generator.sample(self.sample_steps)
-            self._check_fixed_horizon(trajectories)
-            self.logger.log("Creating fragment pairs")
-            fragments = self.fragmenter(trajectories)
-            with self.logger.accumulate_means("preferences"):
-                self.logger.log("Gathering preferences")
-                preferences = self.preference_gatherer(fragments)
-            self.dataset.push(fragments, preferences)
-            self.logger.log(f"Dataset now contains {len(self.dataset)} samples")
+            # Gather new preferences (only if no dataset was given)
+            if self.preferences_path is None:
+                self.logger.log(f"Collecting {self.sample_steps} trajectory steps")
+                trajectories = self.trajectory_generator.sample(self.sample_steps)
+                self._check_fixed_horizon(trajectories)
+                self.logger.log("Creating fragment pairs")
+                fragments = self.fragmenter(trajectories)
+                with self.logger.accumulate_means("preferences"):
+                    self.logger.log("gathering preferences")
+                    preferences = self.preference_gatherer(fragments)
+                self.dataset.push(fragments, preferences)
+                self.logger.log(f"Dataset now contains {len(self.dataset)} samples")
+
+            # Train the reward model
             with self.logger.accumulate_means("reward"):
                 self.logger.log("Training reward model")
                 self.reward_trainer.train(self.dataset)
-            with self.logger.accumulate_means("agent"):
-                self.logger.log(f"Training agent for {self.agent_steps} steps")
-                self.trajectory_generator.train(steps=self.agent_steps)
+            reward_loss = self.logger.name_to_value["mean/reward/loss"]
+            reward_accuracy = self.logger.name_to_value["mean/reward/accuracy"]
+
+            # Train the agent (only if no preference dataset was given)
+            if self.preferences_path is None:
+                with self.logger.accumulate_means("agent"):
+                    self.logger.log(f"Training agent for {self.agent_steps} steps")
+                    self.trajectory_generator.train(steps=self.agent_steps)
             self.logger.dump(i)
+
+        return {"reward_loss": reward_loss, "reward_accuracy": reward_accuracy}

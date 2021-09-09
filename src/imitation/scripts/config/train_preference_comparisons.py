@@ -24,21 +24,21 @@ def train_defaults():
     reward_trainer_kwargs = {
         "epochs": 3,
     }
+    preferences_path = None
+    save_preferences = False
+    agent_path = None
     agent_kwargs = {}
     gatherer_kwargs = {}
     trajectory_path = None
     allow_variable_horizon = False
 
-    # TODO(ejnnr): Set to 1 mostly do speed up experimentation, should be increased
-    # Number of environments in VecEnv
-    num_vec = 1
+    num_vec = 8
 
     normalize = True  # Use VecNormalize
     normalize_kwargs = {"norm_reward": False}  # kwargs for `VecNormalize`
 
-    # TODO(ejnnr): should probably be set to True again once num_vec is increased
     # Use SubprocVecEnv rather than DummyVecEnv (generally faster if num_vec>1)
-    parallel = False
+    parallel = True
     max_episode_steps = None  # Set to positive int to limit episode horizons
 
     log_root = os.path.join(
@@ -57,6 +57,11 @@ def paths(env_name, log_root):
 def cartpole():
     env_name = "CartPole-v1"
     allow_variable_horizon = True
+
+
+@train_preference_comparisons_ex.named_config
+def pendulum():
+    env_name = "Pendulum-v0"
 
 
 @train_preference_comparisons_ex.named_config
@@ -89,3 +94,6 @@ def fast():
     num_pairs = 2
     n_episodes_eval = 1
     agent_kwargs = {"batch_size": 2, "n_steps": 10, "n_epochs": 1}
+    reward_trainer_kwargs = {
+        "epochs": 1,
+    }

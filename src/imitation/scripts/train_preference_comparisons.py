@@ -1,6 +1,7 @@
 """Train a reward model using preference comparisons.
 
-Can be used as a CLI script, or the `train_and_plot` function can be called directly.
+Can be used as a CLI script, or the `train_preference_comparisons` function
+can be called directly.
 """
 
 import os
@@ -41,6 +42,9 @@ def train_preference_comparisons(
     num_pairs: int,
     n_episodes_eval: int,
     trajectory_path: Optional[str],
+    preferences_path: Optional[str],
+    save_preferences: bool,
+    agent_path: Optional[str],
     reward_net_kwargs: Dict[str, Any],
     reward_trainer_kwargs: Dict[str, Any],
     agent_kwargs: Dict[str, Any],
@@ -77,6 +81,13 @@ def train_preference_comparisons(
         trajectory_path: either None, in which case an agent will be trained
             and used to sample trajectories on the fly, or a path to a pickled
             sequence of TrajectoryWithRew to be trained on
+        preferences_path: path to a dataset of preferences previously created
+            using this script. If given, only a reward model will be trained
+            on this preference dataset, no agent will be trained and no new
+            preferences will be gathered.
+        save_preferences: if True, store the final dataset of preferences to disk.
+        agent_path: if given, initialize the agent using this stored policy
+            rather than randomly.
         reward_net_kwargs: passed to BasicRewardNet
         reward_trainer_kwargs: passed to CrossEntropyRewardTrainer
         agent_kwargs: passed to SB3's PPO
@@ -110,7 +121,10 @@ def train_preference_comparisons(
     reward_net = reward_nets.BasicRewardNet(
         venv.observation_space, venv.action_space, **reward_net_kwargs
     )
-    agent = stable_baselines3.PPO("MlpPolicy", venv, **agent_kwargs)
+    if agent_path is None:
+        agent = stable_baselines3.PPO("MlpPolicy", venv, seed=_seed, **agent_kwargs)
+    else:
+        agent = stable_baselines3.PPO.load(agent_path, venv, seed=_seed, **agent_kwargs)
     if trajectory_path is None:
         # Setting the logger here is not really necessary (PreferenceComparisons
         # takes care of that automatically) but it avoids creating unnecessary loggers
@@ -118,7 +132,9 @@ def train_preference_comparisons(
             agent, reward_net, custom_logger=custom_logger
         )
     else:
-        trajectory_generator = trainer.TrajectoryDataset(trajectory_path, _seed)
+        trajectory_generator = trainer.TrajectoryDataset(
+            trajectory_path, _seed, custom_logger
+        )
 
     fragmenter = preference_comparisons.RandomFragmenter(
         fragment_length=fragment_length,
@@ -142,14 +158,18 @@ def train_preference_comparisons(
         reward_trainer=reward_trainer,
         custom_logger=custom_logger,
         allow_variable_horizon=allow_variable_horizon,
+        preferences_path=preferences_path,
         seed=_seed,
     )
-    main_trainer.train(iterations)
+    results = main_trainer.train(iterations)
 
     th.save(reward_net, os.path.join(log_dir, "final_reward_net.pt"))
 
+    if save_preferences:
+        main_trainer.dataset.save(os.path.join(log_dir, "preferences.pkl"))
+
     # Storing and evaluating the policy only makes sense if we actually used it
-    if trajectory_path is None:
+    if trajectory_path is None and preferences_path is None:
         serialize.save_stable_model(
             os.path.join(log_dir, "final_policy"), agent, vec_normalize
         )
@@ -161,7 +181,9 @@ def train_preference_comparisons(
             venv,
             sample_until=sample_until,
         )
-        return rollout.rollout_stats(trajs)
+        results["rollout"] = rollout.rollout_stats(trajs)
+
+    return results
 
 
 def main_console():
