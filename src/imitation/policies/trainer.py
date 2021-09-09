@@ -67,7 +67,7 @@ class TrajectoryDataset(TrajectoryGenerator):
     def __init__(
         self,
         path: types.AnyPath,
-        seed: int = 0,
+        seed: Optional[int] = None,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
     ):
         """Creates a dataset loaded from `path`.

@@ -142,6 +142,7 @@ def train_preference_comparisons(
         reward_trainer=reward_trainer,
         custom_logger=custom_logger,
         allow_variable_horizon=allow_variable_horizon,
+        seed=_seed,
     )
     main_trainer.train(iterations)
 

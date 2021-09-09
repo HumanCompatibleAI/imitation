@@ -194,7 +194,7 @@ class SyntheticGatherer(PreferenceGatherer):
         temperature: float = 1,
         discount_factor: float = 1,
         sample: bool = True,
-        seed: int = 0,
+        seed: Optional[int] = None,
         threshold: float = 50,
         custom_logger: Optional[logger.HierarchicalLogger] = None,
     ):
@@ -511,6 +511,7 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
         reward_trainer: Optional[RewardTrainer] = None,
         custom_logger: Optional[logger.HierarchicalLogger] = None,
         allow_variable_horizon: bool = False,
+        seed: Optional[int] = None,
     ):
         """Initialize the preference comparison trainer.
 
@@ -545,6 +546,10 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
                 condition, and can seriously confound evaluation. Read
                 https://imitation.readthedocs.io/en/latest/guide/variable_horizon.html
                 before overriding this.
+            seed: seed to use for initializing subcomponents such as fragmenter.
+                Only used when default components are used; if you instantiate your
+                own fragmenter, preference gatherer, etc., you are responsible for
+                seeding them!
         """
         super().__init__(
             custom_logger=custom_logger,
@@ -563,10 +568,12 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
         assert self.reward_trainer.model is self.model
         self.trajectory_generator = trajectory_generator
         self.trajectory_generator.logger = self.logger
-        self.fragmenter = fragmenter or RandomFragmenter(custom_logger=self.logger)
+        self.fragmenter = fragmenter or RandomFragmenter(
+            custom_logger=self.logger, seed=seed
+        )
         self.fragmenter.logger = self.logger
         self.preference_gatherer = preference_gatherer or SyntheticGatherer(
-            custom_logger=self.logger
+            custom_logger=self.logger, seed=seed
         )
         self.preference_gatherer.logger = self.logger
         self.sample_steps = sample_steps
