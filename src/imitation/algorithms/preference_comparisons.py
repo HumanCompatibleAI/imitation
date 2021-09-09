@@ -433,7 +433,8 @@ class CrossEntropyRewardTrainer(RewardTrainer):
             probs[i] = self._probability(rews1, rews2)
         # TODO(ejnnr): Here and below, > 0.5 is problematic
         # because getting exactly 0.5 is actually somewhat
-        # common. In a sense that "only" creates class imbalance
+        # common in some environments (as long as sample=False or temperature=0).
+        # In a sense that "only" creates class imbalance
         # but it's still misleading.
         predictions = (probs > 0.5).float()
         preferences_th = th.as_tensor(preferences, dtype=th.float32)
