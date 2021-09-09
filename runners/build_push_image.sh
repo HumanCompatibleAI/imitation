@@ -1,5 +1,9 @@
 #!/bin/bash
-# Usage
+# Usage: build_push_image.sh <tag_names>
+# Running the following command will build and push the base image to Docker Hub 
+#        runners/build_push_image.sh base
+# Running the following command to build and push two stages
+#        runners/build_push_image.sh base python-req
 
 KEYS="$@"
 
@@ -15,5 +19,5 @@ for key in $KEYS; do
     echo "${BUILD}"
     ${BUILD}
     echo "${PUSH}"
-    ${PUSH}
+    # ${PUSH}  # Uncomment this line to push the image to Docker Hub 
 done
