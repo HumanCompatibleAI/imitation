@@ -43,7 +43,7 @@ def make_vec_env(
     log_dir: Optional[str] = None,
     max_episode_steps: Optional[int] = None,
     post_wrappers: Optional[Sequence[Callable[[gym.Env, int], gym.Env]]] = None,
-    env_make_kwargs: Optional[Mapping[str, Any]] = {},
+    env_make_kwargs: Optional[Mapping[str, Any]] = None,
 ) -> VecEnv:
     """Returns a VecEnv initialized with `n_envs` Envs.
 
@@ -68,6 +68,7 @@ def make_vec_env(
     # Resolve the spec outside of the subprocess first, so that it is available to
     # subprocesses running `make_env` via automatic pickling.
     spec = gym.spec(env_name)
+    env_make_kwargs = env_make_kwargs or {}
 
     def make_env(i, this_seed):
         # Previously, we directly called `gym.make(env_name)`, but running
