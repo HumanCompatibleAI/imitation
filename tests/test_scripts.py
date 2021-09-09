@@ -65,9 +65,32 @@ def test_main_console(script_mod):
         script_mod.main_console()
 
 
-def test_train_preference_comparisons_main(tmpdir):
+PREFERENCE_COMPARISON_CONFIGS = [
+    {},
+    {
+        "trajectory_path": "tests/testdata/expert_models/cartpole_0/rollouts/final.pkl",
+    },
+    {
+        "agent_path": (
+            "tests/testdata/expert_models/cartpole_0/policies/final/model.zip"
+        ),
+        # TODO(ejnnr): the policy we load was trained on 8 parallel environments
+        # and for some reason using it breaks if we use just 1 (like would be the
+        # default with the fast named_config)
+        "num_vec": 8,
+        # we're putting this here to test it at some point without having
+        # yet another run
+        "save_preferences": True,
+        "gatherer_kwargs": {"sample": False},
+    },
+]
+
+
+@pytest.mark.parametrize("config", PREFERENCE_COMPARISON_CONFIGS)
+def test_train_preference_comparisons_main(tmpdir, config):
     run = train_preference_comparisons.train_preference_comparisons_ex.run(
-        named_configs=["cartpole", "fast"], config_updates=dict(log_root=tmpdir)
+        named_configs=["cartpole", "fast"],
+        config_updates=dict(log_root=tmpdir, **config),
     )
     assert run.status == "COMPLETED"
     assert isinstance(run.result, dict)

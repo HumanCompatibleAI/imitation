@@ -67,7 +67,16 @@ def test_transitions_left_in_buffer(agent_trainer):
         agent_trainer.train(steps=1)
 
 
-def test_trainer_no_crash(agent_trainer, reward_net, fragmenter, custom_logger):
+PREFERENCE_COMPARISON_CONFIGS = [
+    {},
+    {
+        "preferences_path": "tests/testdata/preferences/cartpole/preferences.pkl",
+    },
+]
+
+
+@pytest.mark.parametrize("config", PREFERENCE_COMPARISON_CONFIGS)
+def test_trainer_no_crash(agent_trainer, reward_net, fragmenter, custom_logger, config):
     main_trainer = preference_comparisons.PreferenceComparisons(
         agent_trainer,
         reward_net,
@@ -76,6 +85,7 @@ def test_trainer_no_crash(agent_trainer, reward_net, fragmenter, custom_logger):
         comparisons_per_iteration=2,
         fragmenter=fragmenter,
         custom_logger=custom_logger,
+        **config,
     )
     main_trainer.train(10, 3)
 

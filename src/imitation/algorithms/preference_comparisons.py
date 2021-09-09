@@ -825,6 +825,11 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
         iterations, extra_comparisons = divmod(
             total_comparisons, self.comparisons_per_iteration
         )
+        if iterations == 0:
+            raise ValueError(
+                f"total_comparisons={total_comparisons} is less than "
+                f"comparisons_per_iteration={self.comparisons_per_iteration}"
+            )
         timesteps_per_iteration, extra_timesteps = divmod(total_timesteps, iterations)
 
         reward_loss = None
