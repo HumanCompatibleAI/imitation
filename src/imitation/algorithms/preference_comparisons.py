@@ -320,9 +320,9 @@ class PreferenceDataset(th.utils.data.Dataset):
 
 def preference_collate_fn(
     batch: Sequence[Tuple[TrajectoryWithRewPair, float]]
-) -> Tuple[Sequence[TrajectoryWithRewPair], Sequence[float]]:
+) -> Tuple[Sequence[TrajectoryWithRewPair], np.ndarray]:
     fragment_pairs, preferences = zip(*batch)
-    return list(fragment_pairs), list(preferences)
+    return list(fragment_pairs), np.array(preferences)
 
 
 class RewardTrainer(abc.ABC):
