@@ -485,9 +485,7 @@ class CrossEntropyRewardTrainer(RewardTrainer):
         dataloader = th.utils.data.DataLoader(
             dataset,
             batch_size=self.batch_size,
-            sampler=th.utils.data.RandomSampler(
-                dataset, replacement=True, num_samples=None
-            ),
+            shuffle=True,
             collate_fn=preference_collate_fn,
         )
         for ep in range(self.epochs):
