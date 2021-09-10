@@ -261,7 +261,12 @@ def _policy_to_callable(
         # (which would call .forward()). So this elif clause must come first!
 
         def get_actions(states):
-            acts, _ = policy.predict(states, deterministic=deterministic_policy)
+            # pytype doesn't seem to understand that policy is a BaseAlgorithm
+            # or BasePolicy here, rather than a Callable
+            acts, _ = policy.predict(  # pytype: disable=attribute-error
+                states,
+                deterministic=deterministic_policy,
+            )
             return acts
 
     elif isinstance(policy, Callable):
