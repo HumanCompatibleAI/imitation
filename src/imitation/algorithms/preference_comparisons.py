@@ -174,7 +174,8 @@ class AgentTrainer(TrajectoryGenerator):
         self.algorithm.learn(total_timesteps=steps, reset_num_timesteps=False, **kwargs)
 
     def sample(self, steps: int) -> Sequence[types.TrajectoryWithRew]:
-        trajectories = self._pop_trajectories()
+        # TODO(adam): should we discard incomplete trajectories?
+        trajectories = self.buffering_wrapper.pop_trajectories()
         # We typically have more trajectories than are needed.
         # In that case, we use the final trajectories because
         # they are the ones with the most relevant version of
@@ -201,15 +202,11 @@ class AgentTrainer(TrajectoryGenerator):
                 self.venv,
                 sample_until=sample_until,
             )
-            additional_trajectories = self._pop_trajectories()
+            additional_trajectories = self.buffering_wrapper.pop_trajectories()
 
             trajectories = list(trajectories) + list(additional_trajectories)
 
         return _get_trajectories(trajectories, steps)
-
-    def _pop_trajectories(self) -> Sequence[types.TrajectoryWithRew]:
-        # TODO(adam): should we discard incomplete trajectories?
-        return self.buffering_wrapper.pop_trajectories()
 
     @TrajectoryGenerator.logger.setter
     def logger(self, value: imit_logger.HierarchicalLogger):
@@ -606,9 +603,9 @@ class CrossEntropyRewardTrainer(RewardTrainer):
                 the DRLHP paper uses).
             threshold: the preference model used to compute the loss contains
                 a softmax of returns. To avoid overflows, we clip differences
-                in returns that are above this threshold.
-                This threshold is therefore in logspace. The default value
-                of 50 means that probabilities below 2e-22 are rounded up to 2e-22.
+                in returns that are above this threshold. This threshold
+                is therefore in logspace. The default value of 50 means
+                that probabilities below 2e-22 are rounded up to 2e-22.
             custom_logger: Where to log to; if None (default), creates a new logger.
         """
         super().__init__(model, custom_logger)
@@ -821,6 +818,10 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
         Args:
             total_timesteps: number of environment interaction steps
             total_comparisons: number of preferences to gather in total
+
+        Returns:
+            A dictionary with final metrics such as loss and accuracy
+            of the reward model.
         """
         iterations, extra_comparisons = divmod(
             total_comparisons, self.comparisons_per_iteration

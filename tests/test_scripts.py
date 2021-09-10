@@ -78,8 +78,9 @@ PREFERENCE_COMPARISON_CONFIGS = [
         # and for some reason using it breaks if we use just 1 (like would be the
         # default with the fast named_config)
         "num_vec": 8,
-        # we're putting this here to test it at some point without having
-        # yet another run
+        # We're testing preference saving and disabling sampling here as well;
+        # having yet another run just for those would be wasteful since they
+        # don't interact with warm starting an agent.
         "save_preferences": True,
         "gatherer_kwargs": {"sample": False},
     },

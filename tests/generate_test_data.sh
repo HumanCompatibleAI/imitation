@@ -3,7 +3,7 @@
 set -e
 
 # Regenerate tests/testdata/expert_models (for various tests).
-# experiments/train_experts.sh -r
+experiments/train_experts.sh -r
 
 # Gather preferences (for preference comparison test).
 # We only gather a minimal dataset for smoke tests.
