@@ -254,13 +254,18 @@ def _policy_to_callable(
             acts = [venv.action_space.sample() for _ in range(len(states))]
             return np.stack(acts, axis=0)
 
-    elif isinstance(policy, Callable):
-        get_actions = policy
     elif isinstance(policy, (BaseAlgorithm, BasePolicy)):
+        # There's an important subtlety here: BaseAlgorithm and BasePolicy
+        # are themselves Callable (which we check next). But in their case,
+        # we want to use the .predict() method, rather than __call__()
+        # (which would call .forward()). So this elif clause must come first!
 
         def get_actions(states):
             acts, _ = policy.predict(states, deterministic=deterministic_policy)
             return acts
+
+    elif isinstance(policy, Callable):
+        get_actions = policy
 
     else:
         raise TypeError(
