@@ -165,6 +165,7 @@ EVAL_POLICY_CONFIGS = [
     {"videos": True},
     {"videos": True, "video_kwargs": {"single_video": False}},
     {"reward_type": "zero", "reward_path": "foobar"},
+    {"save_rollouts": True},
 ]
 
 

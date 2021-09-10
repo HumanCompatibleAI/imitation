@@ -158,3 +158,28 @@ def test_preference_dataset_errors(agent_trainer, fragmenter):
     preferences = np.empty(len(fragments), dtype=np.float64)
     with pytest.raises(ValueError, match="preferences should have dtype float32"):
         dataset.push(fragments, preferences)
+
+
+def test_store_and_load_preference_dataset(agent_trainer, fragmenter, tmp_path):
+    dataset = preference_comparisons.PreferenceDataset()
+    trajectories = agent_trainer.sample(10)
+    fragments = fragmenter(trajectories, fragment_length=2, num_pairs=2)
+    gatherer = preference_comparisons.SyntheticGatherer()
+    preferences = gatherer(fragments)
+    dataset.push(fragments, preferences)
+
+    path = tmp_path / "preferences.pkl"
+    dataset.save(path)
+    loaded = preference_comparisons.PreferenceDataset.load(path)
+    assert len(loaded) == len(dataset)
+    for sample, loaded_sample in zip(dataset, loaded):
+        fragments, preference = sample
+        loaded_fragments, loaded_preference = loaded_sample
+
+        assert preference == loaded_preference
+        for fragment, loaded_fragment in zip(fragments, loaded_fragments):
+            assert np.array_equal(fragment.obs, loaded_fragment.obs)
+            assert np.array_equal(fragment.acts, loaded_fragment.acts)
+            assert np.array_equal(fragment.rews, loaded_fragment.rews)
+            assert np.array_equal(fragment.infos, loaded_fragment.infos)
+            assert fragment.terminal == loaded_fragment.terminal
