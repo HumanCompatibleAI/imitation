@@ -524,12 +524,12 @@ class PreferenceDataset(th.utils.data.Dataset):
         assert len(self.fragments1) == len(self.fragments2) == len(self.preferences)
         return len(self.fragments1)
 
-    def save(self, path: AnyPath):
+    def save(self, path: AnyPath) -> None:
         with open(path, "wb") as file:
             pickle.dump(self, file)
 
     @staticmethod
-    def load(path: AnyPath):
+    def load(path: AnyPath) -> "PreferenceDataset":
         with open(path, "rb") as file:
             return pickle.load(file)
 
@@ -879,6 +879,7 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
                 with self.logger.accumulate_means("agent"):
                     self.logger.log(f"Training agent for {num_steps} timesteps")
                     self.trajectory_generator.train(steps=num_steps)
+            
             self.logger.dump(self._iteration)
             self._iteration += 1
 
