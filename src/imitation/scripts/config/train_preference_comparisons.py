@@ -26,8 +26,6 @@ def train_defaults():
     reward_trainer_kwargs = {
         "epochs": 3,
     }
-    # path to a preference dataset to use instead of dynamic preference gathering
-    preferences_path = None
     save_preferences = False  # save preference dataset at the end?
     agent_path = None  # path to a (partially) trained agent to load at the beginning
     agent_kwargs = {}

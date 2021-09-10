@@ -716,7 +716,6 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
         reward_model: reward_nets.RewardNet,
         fragmenter: Optional[Fragmenter] = None,
         preference_gatherer: Optional[PreferenceGatherer] = None,
-        preferences_path: Optional[AnyPath] = None,
         reward_trainer: Optional[RewardTrainer] = None,
         comparisons_per_iteration: int = 50,
         fragment_length: int = 50,
@@ -743,9 +742,6 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
                 Default (and currently the only option) is to use synthetic preferences
                 based on ground-truth rewards. Human preferences could be implemented
                 here in the future.
-            preferences_path: path to a pickled PreferenceDataset which will be
-                loaded. If given, only a reward model is trained on this fixed dataset,
-                no agent will be trained and no new preferences will be gathered.
             reward_trainer: trains the reward model based on pairs of fragments and
                 associated preferences. Default is to use the preference model
                 and loss function from DRLHP.
@@ -806,11 +802,7 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
         self.fragment_length = fragment_length
         self.transition_oversampling = transition_oversampling
 
-        self.preferences_path = preferences_path
-        if preferences_path is not None:
-            self.dataset = PreferenceDataset.load(preferences_path)
-        else:
-            self.dataset = PreferenceDataset()
+        self.dataset = PreferenceDataset()
 
     def train(self, total_timesteps: int, total_comparisons: int) -> Dict[str, Any]:
         """Train the reward model and the policy if applicable.
@@ -837,49 +829,51 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
         reward_accuracy = None
 
         for i in range(iterations):
-            # Gather new preferences (only if no dataset was given)
-            if self.preferences_path is None:
-                num_pairs = self.comparisons_per_iteration
-                # if the number of comparisons per iterations doesn't exactly divide
-                # the desired total number of comparisons, we collect the remainder
-                # right at the beginning to pretrain the reward model slightly
-                if i == 0:
-                    num_pairs += extra_comparisons
-                num_steps = math.ceil(
-                    self.transition_oversampling * 2 * num_pairs * self.fragment_length
-                )
-                self.logger.log(f"Collecting {num_steps} trajectory steps")
-                trajectories = self.trajectory_generator.sample(num_steps)
-                self._check_fixed_horizon(trajectories)
-                self.logger.log("Creating fragment pairs")
-                fragments = self.fragmenter(
-                    trajectories, self.fragment_length, num_pairs
-                )
-                with self.logger.accumulate_means("preferences"):
-                    self.logger.log("gathering preferences")
-                    preferences = self.preference_gatherer(fragments)
-                self.dataset.push(fragments, preferences)
-                self.logger.log(f"Dataset now contains {len(self.dataset)} samples")
+            ##########################
+            # Gather new preferences #
+            ##########################
+            num_pairs = self.comparisons_per_iteration
+            # if the number of comparisons per iterations doesn't exactly divide
+            # the desired total number of comparisons, we collect the remainder
+            # right at the beginning to pretrain the reward model slightly
+            if i == 0:
+                num_pairs += extra_comparisons
+            num_steps = math.ceil(
+                self.transition_oversampling * 2 * num_pairs * self.fragment_length
+            )
+            self.logger.log(f"Collecting {num_steps} trajectory steps")
+            trajectories = self.trajectory_generator.sample(num_steps)
+            self._check_fixed_horizon(trajectories)
+            self.logger.log("Creating fragment pairs")
+            fragments = self.fragmenter(trajectories, self.fragment_length, num_pairs)
+            with self.logger.accumulate_means("preferences"):
+                self.logger.log("gathering preferences")
+                preferences = self.preference_gatherer(fragments)
+            self.dataset.push(fragments, preferences)
+            self.logger.log(f"Dataset now contains {len(self.dataset)} samples")
 
-            # Train the reward model
+            ##########################
+            # Train the reward model #
+            ##########################
             with self.logger.accumulate_means("reward"):
                 self.logger.log("Training reward model")
                 self.reward_trainer.train(self.dataset)
             reward_loss = self.logger.name_to_value["mean/reward/loss"]
             reward_accuracy = self.logger.name_to_value["mean/reward/accuracy"]
 
-            # Train the agent (only if no preference dataset was given)
-            if self.preferences_path is None:
-                num_steps = timesteps_per_iteration
-                # if the number of timesteps per iterations doesn't exactly divide
-                # the desired total number of timesteps, we train the agent a bit longer
-                # at the end of training (where the reward model is presumably best)
-                if i == iterations - 1:
-                    num_steps += extra_timesteps
-                with self.logger.accumulate_means("agent"):
-                    self.logger.log(f"Training agent for {num_steps} timesteps")
-                    self.trajectory_generator.train(steps=num_steps)
-            
+            ###################
+            # Train the agent #
+            ###################
+            num_steps = timesteps_per_iteration
+            # if the number of timesteps per iterations doesn't exactly divide
+            # the desired total number of timesteps, we train the agent a bit longer
+            # at the end of training (where the reward model is presumably best)
+            if i == iterations - 1:
+                num_steps += extra_timesteps
+            with self.logger.accumulate_means("agent"):
+                self.logger.log(f"Training agent for {num_steps} timesteps")
+                self.trajectory_generator.train(steps=num_steps)
+
             self.logger.dump(self._iteration)
             self._iteration += 1
 

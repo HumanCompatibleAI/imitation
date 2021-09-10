@@ -42,7 +42,6 @@ def train_preference_comparisons(
     transition_oversampling: float,
     n_episodes_eval: int,
     trajectory_path: Optional[str],
-    preferences_path: Optional[str],
     save_preferences: bool,
     agent_path: Optional[str],
     reward_net_kwargs: Dict[str, Any],
@@ -82,10 +81,6 @@ def train_preference_comparisons(
         trajectory_path: either None, in which case an agent will be trained
             and used to sample trajectories on the fly, or a path to a pickled
             sequence of TrajectoryWithRew to be trained on
-        preferences_path: path to a dataset of preferences previously created
-            using this script. If given, only a reward model will be trained
-            on this preference dataset, no agent will be trained and no new
-            preferences will be gathered.
         save_preferences: if True, store the final dataset of preferences to disk.
         agent_path: if given, initialize the agent using this stored policy
             rather than randomly.
@@ -158,7 +153,6 @@ def train_preference_comparisons(
         transition_oversampling=transition_oversampling,
         custom_logger=custom_logger,
         allow_variable_horizon=allow_variable_horizon,
-        preferences_path=preferences_path,
         seed=_seed,
     )
     results = main_trainer.train(total_timesteps, total_comparisons)
@@ -169,7 +163,7 @@ def train_preference_comparisons(
         main_trainer.dataset.save(os.path.join(log_dir, "preferences.pkl"))
 
     # Storing and evaluating the policy only makes sense if we actually used it
-    if trajectory_path is None and preferences_path is None:
+    if trajectory_path is None:
         serialize.save_stable_model(
             os.path.join(log_dir, "final_policy"), agent, vec_normalize
         )
