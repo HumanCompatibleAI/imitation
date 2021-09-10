@@ -44,9 +44,13 @@ def _sample_fixed_length_trajectories(
     if policy_type == "policy":
         policy = RandomPolicy(venv.observation_space, venv.action_space)
     elif policy_type == "callable":
+        random_policy = RandomPolicy(venv.observation_space, venv.action_space)
+
         # Simple way to get a valid callable: just use a policies .predict() method
         # (still tests another code path inside generate_trajectories)
-        policy = lambda x: RandomPolicy(venv.observation_space, venv.action_space).predict(x)[0]
+        def policy(x):
+            return random_policy.predict(x)[0]
+
     elif policy_type == "random":
         policy = None
     else:
@@ -232,10 +236,9 @@ def test_compute_returns(gamma):
     # polynomials
     assert abs(rollout.compute_returns(rewards, gamma) - returns) < 1e-8
 
+
 def test_generate_trajectories_type_error():
-    venv = vec_env.DummyVecEnv(
-        [functools.partial(TerminalSentinelEnv, 1)]
-    )
+    venv = vec_env.DummyVecEnv([functools.partial(TerminalSentinelEnv, 1)])
     sample_until = rollout.make_min_episodes(1)
     with pytest.raises(TypeError, match="Policy must be.*got <class 'str'> instead"):
         rollout.generate_trajectories(
