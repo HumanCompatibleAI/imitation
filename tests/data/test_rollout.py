@@ -35,12 +35,22 @@ class TerminalSentinelEnv(gym.Env):
 def _sample_fixed_length_trajectories(
     episode_lengths: Sequence[int],
     min_episodes: int,
+    policy_type: str = "policy",
     **kwargs,
 ) -> Sequence[types.Trajectory]:
     venv = vec_env.DummyVecEnv(
         [functools.partial(TerminalSentinelEnv, length) for length in episode_lengths]
     )
-    policy = RandomPolicy(venv.observation_space, venv.action_space)
+    if policy_type == "policy":
+        policy = RandomPolicy(venv.observation_space, venv.action_space)
+    elif policy_type == "callable":
+        # Simple way to get a valid callable: just use a policies .predict() method
+        # (still tests another code path inside generate_trajectories)
+        policy = lambda x: RandomPolicy(venv.observation_space, venv.action_space).predict(x)[0]
+    elif policy_type == "random":
+        policy = None
+    else:
+        raise ValueError(f"Unknown policy_type '{policy_type}'")
     sample_until = rollout.make_min_episodes(min_episodes)
     trajectories = rollout.generate_trajectories(
         policy,
@@ -51,7 +61,11 @@ def _sample_fixed_length_trajectories(
     return trajectories
 
 
-def test_complete_trajectories():
+@pytest.mark.parametrize(
+    "policy_type",
+    ["policy", "callable", "random"],
+)
+def test_complete_trajectories(policy_type):
     """Checks trajectories include the terminal observation.
 
     This is hidden by default by VecEnv's auto-reset; we add it back in using
@@ -61,7 +75,7 @@ def test_complete_trajectories():
     max_acts = 5
     num_envs = 4
     trajectories = _sample_fixed_length_trajectories(
-        [max_acts] * num_envs, min_episodes
+        [max_acts] * num_envs, min_episodes, policy_type=policy_type
     )
     assert len(trajectories) >= min_episodes
     expected_obs = np.array([[0]] * max_acts + [[1]])
@@ -217,3 +231,15 @@ def test_compute_returns(gamma):
     # uses a somewhat different method based on evaluating
     # polynomials
     assert abs(rollout.compute_returns(rewards, gamma) - returns) < 1e-8
+
+def test_generate_trajectories_type_error():
+    venv = vec_env.DummyVecEnv(
+        [functools.partial(TerminalSentinelEnv, 1)]
+    )
+    sample_until = rollout.make_min_episodes(1)
+    with pytest.raises(TypeError, match="Policy must be.*got <class 'str'> instead"):
+        rollout.generate_trajectories(
+            "strings_are_not_valid_policies",
+            venv,
+            sample_until=sample_until,
+        )
