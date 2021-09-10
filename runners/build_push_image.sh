@@ -44,21 +44,20 @@ done
 
 if [[ -z $KEYS ]]; then
   KEYS="base"
-  echo "No tag found in the arguments! Building and pushing default image humancompatibleai/imitation:${KEYS}"
+  echo "No tag found in the arguments! Building default image humancompatibleai/imitation:${KEYS}"
 fi
 
 for key in $KEYS; do
-  echo "----- Building and pushing humancompatibleai/imitation:${key} ..."
+  echo "----- Building humancompatibleai/imitation:${key} ..."
   BUILD_CMD="docker build --target ${key} -t humancompatibleai/imitation:${key} ."
   PUSH_CMD="docker push humancompatibleai/imitation:${key}"
 
   # Build image
-  # echo "${BUILD_CMD}"
   ${BUILD_CMD}
 
   # Push image if prompted
   if [[ $PUSH == 1 ]]; then
-    # echo "${PUSH_CMD}"
+    echo "----- Pushing humancompatibleai/imitation:${key} ..."
     ${PUSH_CMD}
   fi
 done
