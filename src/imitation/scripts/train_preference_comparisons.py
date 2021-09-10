@@ -5,7 +5,7 @@ can be called directly.
 """
 
 import os
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Mapping, Optional
 
 import stable_baselines3
 import torch as th
@@ -29,6 +29,7 @@ def train_preference_comparisons(
     _run,
     _seed: int,
     env_name: str,
+    env_make_kwargs: Optional[Mapping[str, Any]],
     num_vec: int,
     parallel: bool,
     normalize: bool,
@@ -55,6 +56,7 @@ def train_preference_comparisons(
     Args:
         _seed: Random seed.
         env_name: The environment to train in.
+        env_make_kwargs: The kwargs passed to `spec.make` of a gym environment.
         num_vec: Number of `gym.Env` to vectorize.
         parallel: Whether to use "true" parallelism. If True, then use `SubProcVecEnv`.
             Otherwise, use `DummyVecEnv` which steps through environments serially.
@@ -108,6 +110,7 @@ def train_preference_comparisons(
         parallel=parallel,
         log_dir=log_dir,
         max_episode_steps=max_episode_steps,
+        env_make_kwargs=env_make_kwargs,
     )
 
     vec_normalize = None

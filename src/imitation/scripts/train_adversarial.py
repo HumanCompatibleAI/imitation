@@ -6,7 +6,7 @@ Can be used as a CLI script, or the `train_and_plot` function can be called dire
 import logging
 import os
 import os.path as osp
-from typing import Mapping, Optional
+from typing import Any, Mapping, Optional
 
 import torch as th
 from sacred.observers import FileStorageObserver
@@ -41,6 +41,7 @@ def train_adversarial(
     _seed: int,
     algorithm: str,
     env_name: str,
+    env_make_kwargs: Optional[Mapping[str, Any]],
     num_vec: int,
     parallel: bool,
     max_episode_steps: Optional[int],
@@ -67,6 +68,7 @@ def train_adversarial(
         algorithm: A case-insensitive string determining which adversarial imitation
             learning algorithm is executed. Either "airl" or "gail".
         env_name: The environment to train in.
+        env_make_kwargs: The kwargs passed to `spec.make` of a gym environment.
         num_vec: Number of `gym.Env` to vectorize.
         parallel: Whether to use "true" parallelism. If True, then use `SubProcVecEnv`.
             Otherwise, use `DummyVecEnv` which steps through environments serially.
@@ -162,6 +164,7 @@ def train_adversarial(
         parallel=parallel,
         log_dir=log_dir,
         max_episode_steps=max_episode_steps,
+        env_make_kwargs=env_make_kwargs,
     )
 
     gen_algo = util.init_rl(

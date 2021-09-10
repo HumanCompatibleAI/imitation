@@ -14,6 +14,8 @@ train_preference_comparisons_ex = sacred.Experiment(
 @train_preference_comparisons_ex.config
 def train_defaults():
     env_name = "seals/CartPole-v0"  # environment to train on
+    env_make_kwargs = {}  # The kwargs passed to `spec.make`.
+
     fragment_length = 100  # timesteps per fragment used for comparisons
     total_timesteps = int(1e6)  # total number of environment timesteps
     total_comparisons = 1000  # total number of comparisons to elicit
@@ -21,6 +23,7 @@ def train_defaults():
     comparisons_per_iteration = 50
     # factor by which to oversample transitions before creating fragments
     transition_oversampling = 10
+
     n_episodes_eval = 50  # Num of episodes for final mean ground truth return
     reward_net_kwargs = {}
     reward_trainer_kwargs = {

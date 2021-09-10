@@ -9,7 +9,7 @@ import torch as th
 import torch.utils.data as th_data
 import torch.utils.tensorboard as thboard
 import tqdm
-from stable_baselines3.common import on_policy_algorithm, vec_env
+from stable_baselines3.common import base_class, vec_env
 
 from imitation.algorithms import base
 from imitation.data import buffer, rollout, types, wrappers
@@ -41,7 +41,7 @@ class AdversarialTrainer(base.BaseImitationAlgorithm):
     def __init__(
         self,
         venv: vec_env.VecEnv,
-        gen_algo: on_policy_algorithm.OnPolicyAlgorithm,
+        gen_algo: base_class.BaseAlgorithm,
         discrim_net: discrim_nets.DiscrimNet,
         expert_data: Union[Iterable[Mapping], types.Transitions],
         expert_batch_size: int,
@@ -52,6 +52,7 @@ class AdversarialTrainer(base.BaseImitationAlgorithm):
         normalize_reward: bool = True,
         disc_opt_cls: Type[th.optim.Optimizer] = th.optim.Adam,
         disc_opt_kwargs: Optional[Mapping] = None,
+        gen_train_timesteps: Optional[int] = None,
         gen_replay_buffer_capacity: Optional[int] = None,
         custom_logger: Optional[logger.HierarchicalLogger] = None,
         init_tensorboard: bool = False,
@@ -64,9 +65,8 @@ class AdversarialTrainer(base.BaseImitationAlgorithm):
         Args:
             venv: The vectorized environment to train in.
             gen_algo: The generator RL algorithm that is trained to maximize
-                discriminator confusion. The generator batch size
-                `self.gen_batch_size` is inferred from `gen_algo.n_steps`.
-                Environment and logger will be set to `venv` and `custom_logger`.
+                discriminator confusion. Environment and logger will be set to
+                `venv` and `custom_logger`.
             discrim_net: The discriminator network. This will be moved to the same
                 device as `gen_algo`.
             expert_data: Either a `torch.utils.data.DataLoader`-like object or an
@@ -93,11 +93,14 @@ class AdversarialTrainer(base.BaseImitationAlgorithm):
             normalize_reward: Whether to normalize rewards with `VecNormalize`.
             disc_opt_cls: The optimizer for discriminator training.
             disc_opt_kwargs: Parameters for discriminator training.
+            gen_train_timesteps: The number of steps to train the generator policy for
+                each iteration. If None, then defaults to the batch size (for on-policy)
+                or number of environments (for off-policy).
             gen_replay_buffer_capacity: The capacity of the
                 generator replay buffer (the number of obs-action-obs samples from
                 the generator that can be stored).
 
-                By default this is equal to `self.gen_batch_size`, meaning that we
+                By default this is equal to `gen_train_timesteps`, meaning that we
                 sample only from the most recent batch of generator samples.
             custom_logger: Where to log to; if None (default), creates a new logger.
             init_tensorboard: If True, makes various discriminator
@@ -193,18 +196,20 @@ class AdversarialTrainer(base.BaseImitationAlgorithm):
         self.gen_algo.set_env(self.venv_train)
         self.gen_algo.set_logger(self.logger)
 
+        if gen_train_timesteps is None:
+            gen_train_timesteps = self.gen_algo.get_env().num_envs
+            if hasattr(self.gen_algo, "n_steps"):  # on policy
+                gen_train_timesteps *= self.gen_algo.n_steps
+        self.gen_train_timesteps = gen_train_timesteps
+
         if gen_replay_buffer_capacity is None:
-            gen_replay_buffer_capacity = self.gen_batch_size
+            gen_replay_buffer_capacity = self.gen_train_timesteps
         self._gen_replay_buffer = buffer.ReplayBuffer(
             gen_replay_buffer_capacity, self.venv
         )
 
     def _next_expert_batch(self) -> Mapping:
         return next(self._endless_expert_iterator)
-
-    @property
-    def gen_batch_size(self) -> int:
-        return self.gen_algo.n_steps * self.gen_algo.get_env().num_envs
 
     def train_disc(
         self,
@@ -283,12 +288,12 @@ class AdversarialTrainer(base.BaseImitationAlgorithm):
         Args:
           total_timesteps: The number of transitions to sample from
             `self.venv_train` during training. By default,
-            `self.gen_batch_size`.
+            `self.gen_train_timesteps`.
           learn_kwargs: kwargs for the Stable Baselines `RLModel.learn()`
             method.
         """
         if total_timesteps is None:
-            total_timesteps = self.gen_batch_size
+            total_timesteps = self.gen_train_timesteps
         if learn_kwargs is None:
             learn_kwargs = {}
 
@@ -313,7 +318,7 @@ class AdversarialTrainer(base.BaseImitationAlgorithm):
     ) -> None:
         """Alternates between training the generator and discriminator.
 
-        Every "round" consists of a call to `train_gen(self.gen_batch_size)`,
+        Every "round" consists of a call to `train_gen(self.gen_train_timesteps)`,
         a call to `train_disc`, and finally a call to `callback(round)`.
 
         Training ends once an additional "round" would cause the number of transitions
@@ -324,24 +329,25 @@ class AdversarialTrainer(base.BaseImitationAlgorithm):
               from the environment during training.
           callback: A function called at the end of every round which takes in a
               single argument, the round number. Round numbers are in
-              `range(total_timesteps // self.gen_batch_size)`.
+              `range(total_timesteps // self.gen_train_timesteps)`.
         """
-        n_rounds = total_timesteps // self.gen_batch_size
+        n_rounds = total_timesteps // self.gen_train_timesteps
         assert n_rounds >= 1, (
             "No updates (need at least "
-            f"{self.gen_batch_size} timesteps, have only "
+            f"{self.gen_train_timesteps} timesteps, have only "
             f"total_timesteps={total_timesteps})!"
         )
         for r in tqdm.tqdm(range(0, n_rounds), desc="round"):
-            self.train_gen(self.gen_batch_size)
+            self.train_gen(self.gen_train_timesteps)
             for _ in range(self.n_disc_updates_per_round):
                 self.train_disc()
             if callback:
                 callback(r)
             self.logger.dump(self._global_step)
 
-    def _torchify_array(self, ndarray: np.ndarray) -> th.Tensor:
-        return th.as_tensor(ndarray, device=self.discrim_net.device())
+    def _torchify_array(self, ndarray: Optional[np.ndarray]) -> Optional[th.Tensor]:
+        if ndarray is not None:
+            return th.as_tensor(ndarray, device=self.discrim_net.device())
 
     def _make_disc_train_batch(
         self,
@@ -414,13 +420,16 @@ class AdversarialTrainer(base.BaseImitationAlgorithm):
         with th.no_grad():
             obs_th = th.as_tensor(obs, device=self.gen_algo.device)
             acts_th = th.as_tensor(acts, device=self.gen_algo.device)
-            _, log_act_prob_th, _ = self.gen_algo.policy.evaluate_actions(
-                obs_th, acts_th
-            )
-            log_act_prob = log_act_prob_th.detach().cpu().numpy()
-            del obs_th, acts_th, log_act_prob_th  # unneeded
-        assert len(log_act_prob) == n_samples
-        log_act_prob = log_act_prob.reshape((n_samples,))
+            log_act_prob = None
+            if hasattr(self.gen_algo.policy, "evaluate_actions"):
+                _, log_act_prob_th, _ = self.gen_algo.policy.evaluate_actions(
+                    obs_th, acts_th
+                )
+                log_act_prob = log_act_prob_th.detach().cpu().numpy()
+                del log_act_prob_th  # unneeded
+                assert len(log_act_prob) == n_samples
+                log_act_prob = log_act_prob.reshape((n_samples,))
+            del obs_th, acts_th  # unneeded
 
         torchify_with_space_defaults = functools.partial(
             util.torchify_with_space,
@@ -450,7 +459,7 @@ class GAIL(AdversarialTrainer):
         venv: vec_env.VecEnv,
         expert_data: Union[Iterable[Mapping], types.Transitions],
         expert_batch_size: int,
-        gen_algo: on_policy_algorithm.OnPolicyAlgorithm,
+        gen_algo: base_class.BaseAlgorithm,
         *,
         # FIXME(sam) pass in discrim net directly; don't ask for kwargs indirectly
         discrim_kwargs: Optional[Mapping] = None,
@@ -484,7 +493,7 @@ class AIRL(AdversarialTrainer):
         venv: vec_env.VecEnv,
         expert_data: Union[Iterable[Mapping], types.Transitions],
         expert_batch_size: int,
-        gen_algo: on_policy_algorithm.OnPolicyAlgorithm,
+        gen_algo: base_class.BaseAlgorithm,
         *,
         # FIXME(sam): pass in reward net directly, not via _cls and _kwargs
         reward_net_cls: Type[reward_nets.RewardNet] = reward_nets.BasicShapedRewardNet,
@@ -522,3 +531,8 @@ class AIRL(AdversarialTrainer):
         super().__init__(
             venv, gen_algo, discrim, expert_data, expert_batch_size, **kwargs
         )
+
+        if not hasattr(self.gen_algo.policy, "evaluate_actions"):
+            raise TypeError(
+                "AIRL needs a stochastic policy to compute the discriminator output."
+            )

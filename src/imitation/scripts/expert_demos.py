@@ -1,7 +1,7 @@
 import logging
 import os
 import os.path as osp
-from typing import Optional
+from typing import Any, Mapping, Optional
 
 from sacred.observers import FileStorageObserver
 from stable_baselines3.common import callbacks
@@ -21,6 +21,7 @@ def rollouts_and_policy(
     _run,
     _seed: int,
     env_name: str,
+    env_make_kwargs: Optional[Mapping[str, Any]],
     total_timesteps: int,
     *,
     log_dir: str,
@@ -50,6 +51,7 @@ def rollouts_and_policy(
 
     Args:
         env_name: The gym.Env name. Loaded as VecEnv.
+        env_make_kwargs: The kwargs passed to `spec.make` of a gym environment.
         total_timesteps: Number of training timesteps in `model.learn()`.
         log_dir: The root directory to save metrics and checkpoints to.
         num_vec: Number of environments in VecEnv.
@@ -120,6 +122,7 @@ def rollouts_and_policy(
         log_dir=log_dir,
         max_episode_steps=max_episode_steps,
         post_wrappers=[lambda env, idx: wrappers.RolloutInfoWrapper(env)],
+        env_make_kwargs=env_make_kwargs,
     )
 
     callback_objs = []
@@ -175,6 +178,7 @@ def rollouts_from_policy(
     parallel: bool,
     rollout_save_path: str,
     max_episode_steps: Optional[int],
+    env_make_kwargs: Optional[Mapping[str, Any]],
 ) -> None:
     """Loads a saved policy and generates rollouts.
 
@@ -200,6 +204,7 @@ def rollouts_from_policy(
         log_dir=log_dir,
         max_episode_steps=max_episode_steps,
         post_wrappers=[lambda env, idx: wrappers.RolloutInfoWrapper(env)],
+        env_make_kwargs=env_make_kwargs,
     )
 
     policy = serialize.load_policy(policy_type, policy_path, venv)
