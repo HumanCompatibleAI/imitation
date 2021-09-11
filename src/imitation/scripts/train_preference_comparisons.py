@@ -5,7 +5,7 @@ can be called directly.
 """
 
 import os
-from typing import Any, Dict, Mapping, Optional
+from typing import Any, Mapping, Optional
 
 import stable_baselines3
 import torch as th
@@ -33,7 +33,7 @@ def train_preference_comparisons(
     num_vec: int,
     parallel: bool,
     normalize: bool,
-    normalize_kwargs: dict,
+    normalize_kwargs: Mapping[str, Any],
     max_episode_steps: Optional[int],
     log_dir: str,
     total_timesteps: int,
@@ -45,12 +45,12 @@ def train_preference_comparisons(
     trajectory_path: Optional[str],
     save_preferences: bool,
     agent_path: Optional[str],
-    reward_net_kwargs: Dict[str, Any],
-    reward_trainer_kwargs: Dict[str, Any],
-    agent_kwargs: Dict[str, Any],
-    gatherer_kwargs: Dict[str, Any],
+    reward_net_kwargs: Mapping[str, Any],
+    reward_trainer_kwargs: Mapping[str, Any],
+    agent_kwargs: Mapping[str, Any],
+    gatherer_kwargs: Mapping[str, Any],
     allow_variable_horizon: bool,
-) -> dict:
+) -> Mapping[str, Any]:
     """Train a reward model using preference comparisons.
 
     Args:
@@ -178,6 +178,7 @@ def train_preference_comparisons(
             venv,
             sample_until=sample_until,
         )
+        results = dict(results)
         results["rollout"] = rollout.rollout_stats(trajs)
 
     return results

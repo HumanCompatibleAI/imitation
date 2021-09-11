@@ -7,7 +7,7 @@ import abc
 import math
 import pickle
 import random
-from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
+from typing import Any, List, Mapping, Optional, Sequence, Tuple, Union
 
 import numpy as np
 import torch as th
@@ -804,7 +804,7 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
 
         self.dataset = PreferenceDataset()
 
-    def train(self, total_timesteps: int, total_comparisons: int) -> Dict[str, Any]:
+    def train(self, total_timesteps: int, total_comparisons: int) -> Mapping[str, Any]:
         """Train the reward model and the policy if applicable.
 
         Args:
