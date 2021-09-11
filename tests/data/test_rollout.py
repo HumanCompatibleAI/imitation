@@ -53,7 +53,7 @@ def _sample_fixed_length_trajectories(
 
     elif policy_type == "random":
         policy = None
-    else:
+    else:  # pragma: no cover
         raise ValueError(f"Unknown policy_type '{policy_type}'")
     sample_until = rollout.make_min_episodes(min_episodes)
     trajectories = rollout.generate_trajectories(
