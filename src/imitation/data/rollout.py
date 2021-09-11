@@ -238,8 +238,55 @@ def make_sample_until(
     return sample_until
 
 
+# A PolicyCallable is a function that takes an array of observations
+# and returns an array of corresponding actions.
+PolicyCallable = Callable[[np.ndarray], np.ndarray]
+AnyPolicy = Union[BaseAlgorithm, BasePolicy, PolicyCallable, None]
+
+
+def _policy_to_callable(
+    policy: AnyPolicy, venv: VecEnv, deterministic_policy: bool
+) -> PolicyCallable:
+    """Converts any policy-like object into a function from observations to actions."""
+    if policy is None:
+
+        def get_actions(states):
+            acts = [venv.action_space.sample() for _ in range(len(states))]
+            return np.stack(acts, axis=0)
+
+    elif isinstance(policy, (BaseAlgorithm, BasePolicy)):
+        # There's an important subtlety here: BaseAlgorithm and BasePolicy
+        # are themselves Callable (which we check next). But in their case,
+        # we want to use the .predict() method, rather than __call__()
+        # (which would call .forward()). So this elif clause must come first!
+
+        def get_actions(states):
+            # pytype doesn't seem to understand that policy is a BaseAlgorithm
+            # or BasePolicy here, rather than a Callable
+            acts, _ = policy.predict(  # pytype: disable=attribute-error
+                states,
+                deterministic=deterministic_policy,
+            )
+            return acts
+
+    elif isinstance(policy, Callable):
+        get_actions = policy
+
+    else:
+        raise TypeError(
+            "Policy must be None, a stable-baselines policy or algorithm, "
+            f"or a Callable, got {type(policy)} instead"
+        )
+
+    if isinstance(policy, BaseAlgorithm):
+        # check that the observation and action spaces of policy and environment match
+        check_for_correct_spaces(venv, policy.observation_space, policy.action_space)
+
+    return get_actions
+
+
 def generate_trajectories(
-    policy,
+    policy: AnyPolicy,
     venv: VecEnv,
     sample_until: GenTrajTerminationFn,
     *,
@@ -249,8 +296,11 @@ def generate_trajectories(
     """Generate trajectory dictionaries from a policy and an environment.
 
     Args:
-      policy (BasePolicy or BaseAlgorithm): A stable_baselines3 policy or algorithm
-          trained on the gym environment.
+      policy: Can be any of the following:
+          - A stable_baselines3 policy or algorithm trained on the gym environment
+          - A Callable that takes an ndarray of observations and returns an ndarray
+          of corresponding actions
+          - None, in which case actions will be sampled randomly
       venv: The vectorized environments to interact with.
       sample_until: A function determining the termination condition.
           It takes a sequence of trajectories, and returns a bool.
@@ -265,10 +315,7 @@ def generate_trajectories(
       may be collected to avoid biasing process towards short episodes; the user
       should truncate if required.
     """
-    get_action = policy.predict
-    if isinstance(policy, BaseAlgorithm):
-        # check that the observation and action spaces of policy and environment match
-        check_for_correct_spaces(venv, policy.observation_space, policy.action_space)
+    get_actions = _policy_to_callable(policy, venv, deterministic_policy)
 
     # Collect rollout tuples.
     trajectories = []
@@ -292,7 +339,7 @@ def generate_trajectories(
     # To start with, all environments are active.
     active = np.ones(venv.num_envs, dtype=bool)
     while np.any(active):
-        acts, _ = get_action(obs, deterministic=deterministic_policy)
+        acts = get_actions(obs)
         obs, rews, dones, infos = venv.step(acts)
 
         # If an environment is inactive, i.e. the episode completed for that
@@ -445,13 +492,21 @@ def flatten_trajectories_with_rew(
 
 
 def generate_transitions(
-    policy, venv, n_timesteps: int, *, truncate: bool = True, **kwargs
+    policy: AnyPolicy,
+    venv: VecEnv,
+    n_timesteps: int,
+    *,
+    truncate: bool = True,
+    **kwargs,
 ) -> types.TransitionsWithRew:
     """Generate obs-action-next_obs-reward tuples.
 
     Args:
-      policy (BasePolicy or BaseAlgorithm): A stable_baselines3 policy or
-          algorithm, trained on the gym environment.
+      policy: Can be any of the following:
+          - A stable_baselines3 policy or algorithm trained on the gym environment
+          - A Callable that takes an ndarray of observations and returns an ndarray
+          of corresponding actions
+          - None, in which case actions will be sampled randomly
       venv: The vectorized environments to interact with.
       n_timesteps: The minimum number of timesteps to sample.
       truncate: If True, then drop any additional samples to ensure that exactly
@@ -476,7 +531,7 @@ def generate_transitions(
 
 def rollout_and_save(
     path: str,
-    policy: Union[BaseAlgorithm, BasePolicy],
+    policy: AnyPolicy,
     venv: VecEnv,
     sample_until: GenTrajTerminationFn,
     *,
@@ -491,6 +546,11 @@ def rollout_and_save(
 
     Args:
       path: Rollouts are saved to this path.
+      policy: Can be any of the following:
+          - A stable_baselines3 policy or algorithm trained on the gym environment
+          - A Callable that takes an ndarray of observations and returns an ndarray
+          of corresponding actions
+          - None, in which case actions will be sampled randomly
       venv: The vectorized environments.
       sample_until: End condition for rollout sampling.
       unwrap: If True, then save original observations and rewards (instead of
@@ -500,7 +560,7 @@ def rollout_and_save(
         this field to None. Excluding `infos` can save a lot of space during
         pickles.
       verbose: If True, then print out rollout stats before saving.
-      deterministic_policy: Argument from `generate_trajectories`.
+      **kwargs: Passed through to `generate_trajectories`.
     """
     trajs = generate_trajectories(policy, venv, sample_until, **kwargs)
     if unwrap:
