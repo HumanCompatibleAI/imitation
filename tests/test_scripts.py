@@ -72,12 +72,10 @@ def test_main_console(script_mod):
 PREFERENCE_COMPARISON_CONFIGS = [
     {},
     {
-        "trajectory_path": "tests/testdata/expert_models/cartpole_0/rollouts/final.pkl",
+        "trajectory_path": CARTPOLE_TEST_ROLLOUT_PATH,
     },
     {
-        "agent_path": (
-            "tests/testdata/expert_models/cartpole_0/policies/final/model.zip"
-        ),
+        "agent_path": CARTPOLE_TEST_POLICY_PATH,
         # TODO(ejnnr): the policy we load was trained on 8 parallel environments
         # and for some reason using it breaks if we use just 1 (like would be the
         # default with the fast named_config)

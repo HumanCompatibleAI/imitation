@@ -1,6 +1,7 @@
 """Tests for the preference comparisons reward learning implementation."""
 
 import re
+from typing import Sequence
 
 import numpy as np
 import pytest
@@ -43,6 +44,18 @@ def agent_trainer(agent, reward_net):
     return preference_comparisons.AgentTrainer(agent, reward_net)
 
 
+def _check_trajs_equal(
+    trajs1: Sequence[types.TrajectoryWithRew], trajs2: Sequence[types.TrajectoryWithRew]
+):
+    assert len(trajs1) == len(trajs2)
+    for traj1, traj2 in zip(trajs1, trajs2):
+        assert np.array_equal(traj1.obs, traj2.obs)
+        assert np.array_equal(traj1.acts, traj2.acts)
+        assert np.array_equal(traj1.rews, traj2.rews)
+        assert np.array_equal(traj1.infos, traj2.infos)
+        assert traj1.terminal == traj2.terminal
+
+
 def test_missing_environment(agent):
     # Create an agent that doesn't have its environment set.
     # More realistically, this can happen when loading a stored agent.
@@ -51,6 +64,51 @@ def test_missing_environment(agent):
         ValueError, match="The environment for the agent algorithm must be set."
     ):
         preference_comparisons.AgentTrainer(agent, reward_net)
+
+
+def _load_dataset(**kwargs) -> preference_comparisons.TrajectoryDataset:
+    return preference_comparisons.TrajectoryDataset(
+        path="tests/testdata/expert_models/cartpole_0/rollouts/final.pkl", **kwargs
+    )
+
+
+def test_trajectory_dataset_seeding(num_samples: int = 400):
+    dataset1 = _load_dataset(seed=0)
+    sample1 = dataset1.sample(num_samples)
+    dataset2 = _load_dataset(seed=0)
+    sample2 = dataset2.sample(num_samples)
+
+    _check_trajs_equal(sample1, sample2)
+
+    dataset3 = _load_dataset(seed=42)
+    sample3 = dataset3.sample(num_samples)
+    with pytest.raises(AssertionError):
+        _check_trajs_equal(sample2, sample3)
+
+
+# CartPole max episode length is 200
+@pytest.mark.parametrize("num_steps", [0, 199, 200, 201, 400])
+def test_trajectory_dataset_len(num_steps: int):
+    dataset = _load_dataset(seed=0)
+    sample = dataset.sample(num_steps)
+    lengths = [len(t) for t in sample]
+    assert sum(lengths) >= num_steps
+    if num_steps > 0:
+        assert sum(lengths) - min(lengths) < num_steps
+
+
+def test_trajectory_dataset_too_long():
+    dataset = _load_dataset(seed=0)
+    with pytest.raises(RuntimeError, match="Asked for.*but only.* available"):
+        dataset.sample(100000)
+
+
+def test_trajectory_dataset_shuffle(num_steps: int = 400):
+    dataset = _load_dataset(seed=0)
+    sample = dataset.sample(num_steps)
+    sample2 = dataset.sample(num_steps)
+    with pytest.raises(AssertionError):
+        _check_trajs_equal(sample, sample2)
 
 
 def test_transitions_left_in_buffer(agent_trainer):
@@ -177,9 +235,4 @@ def test_store_and_load_preference_dataset(agent_trainer, fragmenter, tmp_path):
         loaded_fragments, loaded_preference = loaded_sample
 
         assert preference == loaded_preference
-        for fragment, loaded_fragment in zip(fragments, loaded_fragments):
-            assert np.array_equal(fragment.obs, loaded_fragment.obs)
-            assert np.array_equal(fragment.acts, loaded_fragment.acts)
-            assert np.array_equal(fragment.rews, loaded_fragment.rews)
-            assert np.array_equal(fragment.infos, loaded_fragment.infos)
-            assert fragment.terminal == loaded_fragment.terminal
+        _check_trajs_equal(fragments, loaded_fragments)
