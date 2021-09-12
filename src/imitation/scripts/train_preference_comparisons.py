@@ -47,6 +47,7 @@ def train_preference_comparisons(
     trajectory_path: Optional[str],
     save_preferences: bool,
     agent_path: Optional[str],
+    value_net_path: Optional[str],
     reward_net_kwargs: Mapping[str, Any],
     reward_trainer_kwargs: Mapping[str, Any],
     agent_kwargs: Mapping[str, Any],
@@ -88,6 +89,9 @@ def train_preference_comparisons(
         save_preferences: if True, store the final dataset of preferences to disk.
         agent_path: if given, initialize the agent using this stored policy
             rather than randomly.
+        value_net_path: if given, use load an SB3 algorithm from this path and
+            use its critic to shape the reward used for computing synthetic
+            preferences.
         reward_net_kwargs: passed to BasicRewardNet
         reward_trainer_kwargs: passed to CrossEntropyRewardTrainer
         agent_kwargs: passed to SB3's PPO
@@ -204,9 +208,17 @@ def train_preference_comparisons(
         seed=_seed,
         custom_logger=custom_logger,
     )
-    gatherer = preference_comparisons.SyntheticGatherer(
-        **gatherer_kwargs, seed=_seed, custom_logger=custom_logger
-    )
+    if value_net_path is None:
+        gatherer = preference_comparisons.SyntheticGatherer(
+            **gatherer_kwargs, seed=_seed, custom_logger=custom_logger
+        )
+    else:
+        gatherer = preference_comparisons.ValueNetPreferenceGatherer(
+            path=value_net_path,
+            **gatherer_kwargs,
+            seed=_seed,
+            custom_logger=custom_logger,
+        )
     reward_trainer = preference_comparisons.CrossEntropyRewardTrainer(
         model=reward_net, **reward_trainer_kwargs, custom_logger=custom_logger
     )
