@@ -181,6 +181,7 @@ def train_preference_comparisons(
             # Note: the following line must come after the previous set_venv line!
             # Otherwise, we get recursion errors
             venv = vec_normalize
+            agent.set_env(venv)
             custom_logger.info(f"Loaded VecNormalize from '{normalize_path}'")
 
     if normalize and vec_normalize is None:
