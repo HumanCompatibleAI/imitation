@@ -7,12 +7,13 @@ import abc
 import math
 import pickle
 import random
-from typing import Any, List, Mapping, Optional, Sequence, Tuple, Union
+from typing import Any, List, Mapping, Optional, Sequence, Tuple, Type, Union
 
 import numpy as np
+import stable_baselines3
 import torch as th
 from scipy import special
-from stable_baselines3.common import base_class, vec_env
+from stable_baselines3.common import base_class, on_policy_algorithm, policies, vec_env
 
 from imitation.algorithms import base
 from imitation.data import rollout, types, wrappers
@@ -705,6 +706,94 @@ class CrossEntropyRewardTrainer(RewardTrainer):
                 loss.backward()
                 self.optim.step()
                 self.logger.record("loss", loss.item())
+
+
+class ValueNetPreferenceGatherer(SyntheticGatherer):
+    def __init__(
+        self,
+        path: AnyPath,
+        algorithm_cls: Type[
+            on_policy_algorithm.OnPolicyAlgorithm
+        ] = stable_baselines3.PPO,
+        **kwargs,
+    ):
+        """Initialize the reward model trainer.
+
+        Args:
+            path: path to an OnPolicyAlgorithm's .zip file. This algorithms
+                critic will be used for shaping.
+            algorithm_cls: the type of OnPolicyAlgorithm used to load
+                the file from `path`.
+            **kwargs: passed on to SyntheticGatherer
+        """
+        super().__init__(**kwargs)
+        algorithm = algorithm_cls.load(types.path_to_str(path))
+        policy = algorithm.policy
+        assert isinstance(policy, policies.ActorCriticPolicy)
+
+        # the value function isn't meant to be trained:
+        for p in policy.parameters():
+            p.requires_grad = False
+        policy.eval()
+        self._policy = policy
+
+    def _potential(self, obs):
+        # This function is equivalent to how policy.forward() computes
+        # state values but we do only the computations necessary for the
+        # value function (ignoring the action probabilities).
+
+        # Note: the input is already preprocessed (contrary to what policy.forward())
+        # would expect
+        features = self._policy.extract_features(obs)
+        shared_latent = self._policy.mlp_extractor.shared_net(features)
+        latent_vf = self._policy.mlp_extractor.value_net(shared_latent)
+        return self._policy.value_net(latent_vf)
+
+    def _reward_sums(self, fragment_pairs) -> Tuple[np.ndarray, np.ndarray]:
+        # fragment_lists has length 2 and each item is a sequence of trajectories
+        fragment_lists = zip(*fragment_pairs)
+        # shaped_return_lists will have two items, each one an array with
+        # size (number_of_fragments, )
+        shaped_return_lists: List[np.ndarray] = []
+
+        # In the outer loop, we iterate over the two lists of fragments
+        for fragments in fragment_lists:
+            shaped_returns = np.empty(len(fragments))
+            # for each such list, we iterate over the fragments and compute
+            # the returns of each fragment
+            for i, fragment in enumerate(fragments):
+                transitions = rollout.flatten_trajectories_with_rew([fragment])
+                obs, _, next_obs, dones = rewards_common.disc_rew_preprocess_inputs(
+                    observation_space=self._policy.observation_space,
+                    action_space=self._policy.action_space,
+                    state=transitions.obs,
+                    action=transitions.acts,
+                    next_state=transitions.next_obs,
+                    done=transitions.dones,
+                    device=self._policy.device,
+                    normalize_images=self._policy.normalize_images,
+                )
+
+                potential = self._potential(obs).flatten()
+                next_potential = (1 - dones.float()) * self._potential(
+                    next_obs
+                ).flatten()
+                np_potential = potential.detach().cpu().numpy()
+                np_next_potential = next_potential.detach().cpu().numpy()
+
+                final_rew = (
+                    transitions.rews
+                    + self.discount_factor * np_next_potential
+                    - np_potential
+                )
+                assert final_rew.shape == (len(obs),)
+                shaped_returns[i] = rollout.compute_returns(
+                    final_rew, self.discount_factor
+                )
+
+            shaped_return_lists.append(shaped_returns)
+
+        return tuple(shaped_return_lists)
 
 
 class PreferenceComparisons(base.BaseImitationAlgorithm):
