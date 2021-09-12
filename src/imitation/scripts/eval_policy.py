@@ -11,7 +11,7 @@ from sacred.observers import FileStorageObserver
 from stable_baselines3.common.vec_env import VecEnvWrapper
 
 import imitation.util.sacred as sacred_util
-from imitation.data import rollout
+from imitation.data import rollout, types
 from imitation.policies import serialize
 from imitation.rewards.serialize import load_reward
 from imitation.scripts.config.eval_policy import eval_policy_ex
@@ -69,6 +69,7 @@ def eval_policy(
     reward_type: Optional[str] = None,
     reward_path: Optional[str] = None,
     max_episode_steps: Optional[int] = None,
+    save_rollouts: bool = False,
 ):
     """Rolls a policy out in an environment, collecting statistics.
 
@@ -98,6 +99,8 @@ def eval_policy(
           a reward of this.
       reward_path: If reward_type is specified, the path to a serialized reward
           of `reward_type` to override the environment reward with.
+      save_rollouts: whether to store the rollouts used for computing stats
+          to disk (as pickle file).
 
     Returns:
       Return value of `imitation.util.rollout.rollout_stats()`.
@@ -133,6 +136,10 @@ def eval_policy(
 
         policy = serialize.load_policy(policy_type, policy_path, venv)
         trajs = rollout.generate_trajectories(policy, venv, sample_until)
+
+        if save_rollouts:
+            types.save(osp.join(log_dir, "rollouts.pkl"), trajs)
+
         return rollout.rollout_stats(trajs)
     finally:
         venv.close()

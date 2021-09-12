@@ -31,6 +31,8 @@ def replay_defaults():
     reward_type = None  # Optional: override with reward of this type
     reward_path = None  # Path of serialized reward to load
 
+    save_rollouts = False  # Save rollouts generated during eval to disk?
+
 
 @eval_policy_ex.config
 def logging(log_root, env_name):

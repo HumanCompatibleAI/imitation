@@ -3,48 +3,264 @@
 Trains a reward model and optionally a policy based on preferences
 between trajectory fragments.
 """
-
-
 import abc
+import math
+import pickle
 import random
-from typing import List, Optional, Sequence, Tuple
+from typing import Any, List, Mapping, Optional, Sequence, Tuple, Union
 
 import numpy as np
 import torch as th
+from scipy import special
+from stable_baselines3.common import base_class, vec_env
 
 from imitation.algorithms import base
-from imitation.data import rollout
+from imitation.data import rollout, types, wrappers
 from imitation.data.types import (
+    AnyPath,
     TrajectoryPair,
     TrajectoryWithRew,
     TrajectoryWithRewPair,
     Transitions,
 )
-from imitation.policies import trainer
+from imitation.rewards import common as rewards_common
 from imitation.rewards import reward_nets
-from imitation.util import logger
+from imitation.util import logger as imit_logger
+from imitation.util import reward_wrapper
+
+
+class TrajectoryGenerator(abc.ABC):
+    """Generator of trajectories with optional training logic."""
+
+    _logger: imit_logger.HierarchicalLogger
+    """Object to log statistics and natural language messages to."""
+
+    def __init__(self, custom_logger: Optional[imit_logger.HierarchicalLogger] = None):
+        """Initialize the trajectory generator
+
+        Args:
+            custom_logger: Where to log to; if None (default), creates a new logger.
+        """
+        self._logger = custom_logger or imit_logger.configure()
+
+    @abc.abstractmethod
+    def sample(self, steps: int) -> Sequence[TrajectoryWithRew]:
+        """Sample a batch of trajectories.
+
+        Args:
+            steps: All trajectories taken together should
+                have at least this many steps.
+
+        Returns:
+            A list of sampled trajectories with rewards (which should
+            be the environment rewards, not ones from a reward model).
+        """
+
+    def train(self, steps: int, **kwargs):
+        """Train an agent if the trajectory generator uses one.
+
+        By default, this method does nothing and doesn't need
+        to be overridden in subclasses that don't require training.
+
+        Args:
+            steps: number of environment steps to train for.
+            **kwargs: additional keyword arguments to pass on to
+                the training procedure.
+        """
+
+    @property
+    def logger(self) -> imit_logger.HierarchicalLogger:
+        return self._logger
+
+    @logger.setter
+    def logger(self, value: imit_logger.HierarchicalLogger):
+        self._logger = value
+
+
+class TrajectoryDataset(TrajectoryGenerator):
+    """A fixed dataset of trajectories."""
+
+    def __init__(
+        self,
+        path: AnyPath,
+        seed: Optional[int] = None,
+        custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
+    ):
+        """Creates a dataset loaded from `path`.
+
+        Args:
+            path: A path to pickled rollouts.
+            seed: Seed for RNG used for shuffling dataset.
+            custom_logger: Where to log to; if None (default), creates a new logger.
+        """
+        super().__init__(custom_logger=custom_logger)
+        self._trajectories = types.load(path)
+        self.rng = random.Random(seed)
+
+    def sample(self, steps: int) -> Sequence[TrajectoryWithRew]:
+        # make a copy before shuffling
+        trajectories = list(self._trajectories)
+        self.rng.shuffle(trajectories)
+        return _get_trajectories(trajectories, steps)
+
+
+class AgentTrainer(TrajectoryGenerator):
+    """Wrapper for training an SB3 algorithm on an arbitrary reward function."""
+
+    def __init__(
+        self,
+        algorithm: base_class.BaseAlgorithm,
+        reward_fn: Union[rewards_common.RewardFn, reward_nets.RewardNet],
+        custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
+    ):
+        """Initialize the agent trainer.
+
+        Args:
+            algorithm: the stable-baselines algorithm to use for training.
+                Its environment must be set.
+            reward_fn: either a RewardFn or a RewardNet instance that will supply
+                the rewards used for training the agent.
+            custom_logger: Where to log to; if None (default), creates a new logger.
+        """
+        self.algorithm = algorithm
+        # NOTE: this has to come after setting self.algorithm because super().__init__
+        # will set self.logger, which also sets the logger for the algorithm
+        super().__init__(custom_logger)
+        if isinstance(reward_fn, reward_nets.RewardNet):
+            reward_fn = reward_fn.predict
+        self.reward_fn = reward_fn
+
+        venv = self.algorithm.get_env()
+        if not isinstance(venv, vec_env.VecEnv):
+            raise ValueError("The environment for the agent algorithm must be set.")
+        # The BufferingWrapper records all trajectories, so we can return
+        # them after training. This should come first (before the wrapper that
+        # changes the reward function), so that we return the original environment
+        # rewards.
+        self.buffering_wrapper = wrappers.BufferingWrapper(venv)
+        self.venv = reward_wrapper.RewardVecEnvWrapper(
+            self.buffering_wrapper, reward_fn
+        )
+        self.algorithm.set_env(self.venv)
+
+    def train(self, steps: int, **kwargs):
+        """Train the agent using the reward function specified during instantiation.
+
+        Args:
+            steps: number of environment timesteps to train for
+            **kwargs: other keyword arguments to pass to BaseAlgorithm.train()
+
+        Returns:
+            a list of all trajectories that occurred during training, including their
+            original environment rewards (rather than the ones computed using reward_fn)
+        """
+        n_transitions = self.buffering_wrapper.n_transitions
+        if n_transitions:
+            raise RuntimeError(
+                f"There are {n_transitions} transitions left in the buffer. "
+                "Call AgentTrainer.sample() first to clear them."
+            )
+        # Because we use reset_num_timesteps=False (to get logging right),
+        # SB3 doesn't automatically reset the environment on .learn().
+        # This causes the following issue: if the previous learning cycle leaves
+        # unfinished trajectories, then we will collect the remainder of those
+        # trajectories during this cycle. They will therefore be incomplete episodes
+        # (because they don't start in the initial state) and in particular will
+        # be shorter, which raises the variable horizon check error.
+        # I think avoiding a reset() here would be tricky (assuming we even want to)
+        # because it would be hard to set a hypothetical Trajectory.initial attribute
+        # correctly like we do for Trajectory.terminal.
+        self.venv.reset()
+        self.algorithm.learn(total_timesteps=steps, reset_num_timesteps=False, **kwargs)
+
+    def sample(self, steps: int) -> Sequence[types.TrajectoryWithRew]:
+        # TODO(adam): should we discard incomplete trajectories?
+        trajectories = self.buffering_wrapper.pop_trajectories()
+        # We typically have more trajectories than are needed.
+        # In that case, we use the final trajectories because
+        # they are the ones with the most relevant version of
+        # the agent.
+        # The easiest way to do this will be to first invert the
+        # list and then later just take the first trajectories:
+        trajectories = trajectories[::-1]
+        avail_steps = sum(len(traj) for traj in trajectories)
+
+        if avail_steps < steps:
+            self.logger.log(
+                f"Requested {steps} transitions but only {avail_steps} in buffer. "
+                f"Sampling {steps - avail_steps} additional transitions."
+            )
+            sample_until = rollout.make_sample_until(
+                min_timesteps=steps - avail_steps, min_episodes=None
+            )
+            # Important note: we don't want to use the trajectories returned
+            # here because their rewards are the ones provided by the reward
+            # model! Instead, we collect the trajectories using the BufferingWrapper,
+            # which have the ground truth environment reward.
+            rollout.generate_trajectories(
+                self.algorithm,
+                self.venv,
+                sample_until=sample_until,
+            )
+            additional_trajectories = self.buffering_wrapper.pop_trajectories()
+
+            trajectories = list(trajectories) + list(additional_trajectories)
+
+        return _get_trajectories(trajectories, steps)
+
+    @TrajectoryGenerator.logger.setter
+    def logger(self, value: imit_logger.HierarchicalLogger):
+        self._logger = value
+        self.algorithm.set_logger(self.logger)
+
+
+def _get_trajectories(
+    trajectories: Sequence[TrajectoryWithRew], steps: int
+) -> Sequence[TrajectoryWithRew]:
+    """Get enough trajectories to have at least `steps` transitions in total."""
+    available_steps = sum(len(traj) for traj in trajectories)
+    if available_steps < steps:
+        raise RuntimeError(
+            f"Asked for {steps} transitions but only {available_steps} available"
+        )
+    # We need the cumulative sum of trajectory lengths
+    # to determine how many trajectories to return:
+    steps_cumsum = np.cumsum([len(traj) for traj in trajectories])
+    # Now we find the first index that gives us enough
+    # total steps:
+    idx = (steps_cumsum >= steps).argmax()
+    # we need to include the element at position idx
+    trajectories = trajectories[: idx + 1]
+    # sanity check
+    assert sum(len(traj) for traj in trajectories) >= steps
+    return trajectories
 
 
 class Fragmenter(abc.ABC):
     """Class for creating pairs of trajectory fragments from a set of trajectories."""
 
-    def __init__(self, custom_logger: Optional[logger.HierarchicalLogger] = None):
+    def __init__(self, custom_logger: Optional[imit_logger.HierarchicalLogger] = None):
         """Initialize the fragmenter.
 
         Args:
             custom_logger: Where to log to; if None (default), creates a new logger.
         """
-        self.logger = custom_logger or logger.configure()
+        self.logger = custom_logger or imit_logger.configure()
 
     @abc.abstractmethod
     def __call__(
-        self, trajectories: Sequence[TrajectoryWithRew]
+        self,
+        trajectories: Sequence[TrajectoryWithRew],
+        fragment_length: int,
+        num_pairs: int,
     ) -> Sequence[TrajectoryWithRewPair]:
         """Create fragment pairs out of a sequence of trajectories.
 
         Args:
             trajectories: collection of trajectories that will be split up into
                 fragments
+            fragment_length: the length of each sampled fragment
+            num_pairs: the number of fragment pairs to sample
 
         Returns:
             a sequence of fragment pairs
@@ -65,17 +281,13 @@ class RandomFragmenter(Fragmenter):
 
     def __init__(
         self,
-        fragment_length: int = 50,
-        num_pairs: int = 50,
         seed: Optional[float] = None,
         warning_threshold: int = 10,
-        custom_logger: Optional[logger.HierarchicalLogger] = None,
+        custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
     ):
         """Initialize the fragmenter.
 
         Args:
-            fragment_length: the length of each sampled fragment
-            num_pairs: the number of fragment pairs to sample
             seed: an optional seed for the internal RNG
             warning_threshold: give a warning if the number of available
                 transitions is less than this many times the number of
@@ -83,35 +295,37 @@ class RandomFragmenter(Fragmenter):
             custom_logger: Where to log to; if None (default), creates a new logger.
         """
         super().__init__(custom_logger)
-        self.fragment_length = fragment_length
-        self.num_pairs = num_pairs
         self.rng = random.Random(seed)
         self.warning_threshold = warning_threshold
 
     def __call__(
-        self, trajectories: Sequence[TrajectoryWithRew]
+        self,
+        trajectories: Sequence[TrajectoryWithRew],
+        fragment_length: int,
+        num_pairs: int,
     ) -> Sequence[TrajectoryWithRewPair]:
         fragments: List[TrajectoryWithRew] = []
 
         prev_num_trajectories = len(trajectories)
         # filter out all trajectories that are too short
-        trajectories = [
-            traj for traj in trajectories if len(traj) >= self.fragment_length
-        ]
+        trajectories = [traj for traj in trajectories if len(traj) >= fragment_length]
         if len(trajectories) == 0:
             raise ValueError(
-                "No trajectories are long enough for the desired fragment length."
+                "No trajectories are long enough for the desired fragment length "
+                f"of {fragment_length}."
             )
-        self.logger.log(
-            f"Discarded {prev_num_trajectories - len(trajectories)} "
-            f"out of {prev_num_trajectories} trajectories because they are "
-            f"shorter than the desired length of {self.fragment_length}."
-        )
+        num_discarded = prev_num_trajectories - len(trajectories)
+        if num_discarded:
+            self.logger.log(
+                f"Discarded {num_discarded} out of {prev_num_trajectories} "
+                "trajectories because they are shorter than the desired length "
+                f"of {fragment_length}."
+            )
 
         weights = [len(traj) for traj in trajectories]
 
         # number of transitions that will be contained in the fragments
-        num_transitions = 2 * self.num_pairs * self.fragment_length
+        num_transitions = 2 * num_pairs * fragment_length
         if sum(weights) < num_transitions:
             self.logger.warn(
                 "Fewer transitions available than needed for desired number "
@@ -132,11 +346,11 @@ class RandomFragmenter(Fragmenter):
             )
 
         # we need two fragments for each comparison
-        for _ in range(2 * self.num_pairs):
+        for _ in range(2 * num_pairs):
             traj = self.rng.choices(trajectories, weights, k=1)[0]
             n = len(traj)
-            start = self.rng.randint(0, n - self.fragment_length)
-            end = start + self.fragment_length
+            start = self.rng.randint(0, n - fragment_length)
+            end = start + fragment_length
             terminal = (end == n) and traj.terminal
             fragment = TrajectoryWithRew(
                 obs=traj.obs[start : end + 1],
@@ -154,13 +368,13 @@ class RandomFragmenter(Fragmenter):
 
 
 class PreferenceGatherer(abc.ABC):
-    def __init__(self, custom_logger: Optional[logger.HierarchicalLogger] = None):
+    def __init__(self, custom_logger: Optional[imit_logger.HierarchicalLogger] = None):
         """Initialize the preference gatherer.
 
         Args:
             custom_logger: Where to log to; if None (default), creates a new logger.
         """
-        self.logger = custom_logger or logger.configure()
+        self.logger = custom_logger or imit_logger.configure()
 
     @abc.abstractmethod
     def __call__(self, fragment_pairs: Sequence[TrajectoryWithRewPair]) -> np.ndarray:
@@ -189,7 +403,10 @@ class SyntheticGatherer(PreferenceGatherer):
         self,
         temperature: float = 1,
         discount_factor: float = 1,
-        seed: int = 0,
+        sample: bool = True,
+        seed: Optional[int] = None,
+        threshold: float = 50,
+        custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
     ):
         """Initialize the synthetic preference gatherer.
 
@@ -200,26 +417,51 @@ class SyntheticGatherer(PreferenceGatherer):
             discount_factor: discount factor that is used to compute
                 how good a fragment is. Default is to use undiscounted
                 sums of rewards (as in the DRLHP paper).
-            seed: seed for the internal RNG (only used if temperature > 0)
+            sample: if True (default), the preferences are 0 or 1, sampled from
+                a Bernoulli distribution (or 0.5 in the case of ties with zero
+                temperature). If False, then the underlying Bernoulli probabilities
+                are returned instead.
+            seed: seed for the internal RNG (only used if temperature > 0 and sample)
+            threshold: preferences are sampled from a softmax of returns.
+                To avoid overflows, we clip differences in returns that are
+                above this threshold (after multiplying with temperature).
+                This threshold is therefore in logspace. The default value
+                of 50 means that probabilities below 2e-22 are rounded up to 2e-22.
+            custom_logger: Where to log to; if None (default), creates a new logger.
         """
-        # we don't pass a logger for now since this particular implementation
-        # doesn't use one at the moment
-        super().__init__()
+        super().__init__(custom_logger=custom_logger)
         self.temperature = temperature
         self.discount_factor = discount_factor
+        self.sample = sample
         self.rng = np.random.default_rng(seed=seed)
+        self.threshold = threshold
 
     def __call__(self, fragment_pairs: Sequence[TrajectoryWithRewPair]) -> np.ndarray:
-        rews1, rews2 = self._reward_sums(fragment_pairs)
+        """Computes probability fragment 1 is preferred over fragment 2."""
+        returns1, returns2 = self._reward_sums(fragment_pairs)
         if self.temperature == 0:
-            return (np.sign(rews1 - rews2) + 1) / 2
+            return (np.sign(returns1 - returns2) + 1) / 2
 
-        rews1 /= self.temperature
-        rews2 /= self.temperature
+        returns1 /= self.temperature
+        returns2 /= self.temperature
+
+        # clip the returns to avoid overflows in the softmax below
+        returns_diff = np.clip(returns2 - returns1, -self.threshold, self.threshold)
         # Instead of computing exp(rews1) / (exp(rews1) + exp(rews2)) directly,
         # we divide enumerator and denominator by exp(rews1) to prevent overflows:
-        model_probs = 1 / (1 + np.exp(rews2 - rews1))
-        return self.rng.binomial(n=1, p=model_probs).astype(np.float32)
+        model_probs = 1 / (1 + np.exp(returns_diff))
+        # Compute the mean binary entropy. This metric helps estimate
+        # how good we can expect the performance of the learned reward
+        # model to be at predicting preferences.
+        entropy = -(
+            special.xlogy(model_probs, model_probs)
+            + special.xlogy(1 - model_probs, 1 - model_probs)
+        ).mean()
+        self.logger.record("entropy", entropy)
+
+        if self.sample:
+            return self.rng.binomial(n=1, p=model_probs).astype(np.float32)
+        return model_probs
 
     def _reward_sums(self, fragment_pairs) -> Tuple[np.ndarray, np.ndarray]:
         rews1, rews2 = zip(
@@ -231,7 +473,7 @@ class SyntheticGatherer(PreferenceGatherer):
                 for f1, f2 in fragment_pairs
             ]
         )
-        return np.array(rews1), np.array(rews2)
+        return np.array(rews1, dtype=np.float32), np.array(rews2, dtype=np.float32)
 
 
 class PreferenceDataset(th.utils.data.Dataset):
@@ -243,9 +485,6 @@ class PreferenceDataset(th.utils.data.Dataset):
     This dataset is meant to be generated piece by piece during the
     training process, which is why data can be added via the .push()
     method.
-
-    TODO(ejnnr): it should also be possible to store a dataset on disk
-    and load it again.
     """
 
     def __init__(self):
@@ -285,12 +524,21 @@ class PreferenceDataset(th.utils.data.Dataset):
         assert len(self.fragments1) == len(self.fragments2) == len(self.preferences)
         return len(self.fragments1)
 
+    def save(self, path: AnyPath) -> None:
+        with open(path, "wb") as file:
+            pickle.dump(self, file)
+
+    @staticmethod
+    def load(path: AnyPath) -> "PreferenceDataset":
+        with open(path, "rb") as file:
+            return pickle.load(file)
+
 
 def preference_collate_fn(
     batch: Sequence[Tuple[TrajectoryWithRewPair, float]]
-) -> Tuple[Sequence[TrajectoryWithRewPair], Sequence[float]]:
+) -> Tuple[Sequence[TrajectoryWithRewPair], np.ndarray]:
     fragment_pairs, preferences = zip(*batch)
-    return list(fragment_pairs), list(preferences)
+    return list(fragment_pairs), np.array(preferences)
 
 
 class RewardTrainer(abc.ABC):
@@ -304,7 +552,7 @@ class RewardTrainer(abc.ABC):
     def __init__(
         self,
         model: reward_nets.RewardNet,
-        custom_logger: Optional[logger.HierarchicalLogger] = None,
+        custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
     ):
         """Initialize the reward trainer.
 
@@ -313,7 +561,7 @@ class RewardTrainer(abc.ABC):
             custom_logger: Where to log to; if None (default), creates a new logger.
         """
         self.model = model
-        self.logger = custom_logger or logger.configure()
+        self.logger = custom_logger or imit_logger.configure()
 
     @abc.abstractmethod
     def train(self, dataset: PreferenceDataset):
@@ -332,8 +580,11 @@ class CrossEntropyRewardTrainer(RewardTrainer):
         model: reward_nets.RewardNet,
         noise_prob: float = 0.0,
         batch_size: int = 32,
+        epochs: int = 1,
+        lr: float = 1e-3,
         discount_factor: float = 1.0,
-        custom_logger: Optional[logger.HierarchicalLogger] = None,
+        threshold: float = 50,
+        custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
     ):
         """Initialize the reward model trainer.
 
@@ -343,24 +594,44 @@ class CrossEntropyRewardTrainer(RewardTrainer):
                 is uniformly random (used for the model of preference generation
                 that is used for the loss)
             batch_size: number of fragment pairs per batch
+            epochs: number of epochs on each training iteration
+            lr: the learning rate
             discount_factor: the model of preference generation uses a softmax
                 of returns as the probability that a fragment is preferred.
                 This is the discount factor used to calculate those returns.
                 Default is 1, i.e. undiscounted sums of rewards (which is what
                 the DRLHP paper uses).
+            threshold: the preference model used to compute the loss contains
+                a softmax of returns. To avoid overflows, we clip differences
+                in returns that are above this threshold. This threshold
+                is therefore in logspace. The default value of 50 means
+                that probabilities below 2e-22 are rounded up to 2e-22.
             custom_logger: Where to log to; if None (default), creates a new logger.
         """
         super().__init__(model, custom_logger)
         self.noise_prob = noise_prob
         self.batch_size = batch_size
+        self.epochs = epochs
         self.discount_factor = discount_factor
-        self.optim = th.optim.Adam(self.model.parameters())
+        self.threshold = threshold
+        self.optim = th.optim.Adam(self.model.parameters(), lr=lr)
 
     def _loss(
         self,
         fragment_pairs: Sequence[TrajectoryPair],
         preferences: np.ndarray,
     ) -> th.Tensor:
+        """Computes the loss.
+
+        Args:
+            fragment_pairs: Batch consisting of pairs of trajectory fragments.
+            preferences: The probability that the first fragment is preferred
+                over the second. Typically 0, 1 or 0.5 (tie).
+
+        Returns:
+            The cross-entropy loss between the probability predicted by the
+            reward model and the target probabilities in `preferences`.
+        """
         probs = th.empty(len(fragment_pairs), dtype=th.float32)
         for i, fragment in enumerate(fragment_pairs):
             frag1, frag2 = fragment
@@ -369,14 +640,32 @@ class CrossEntropyRewardTrainer(RewardTrainer):
             rews1 = self._rewards(trans1)
             rews2 = self._rewards(trans2)
             probs[i] = self._probability(rews1, rews2)
-        return th.nn.functional.binary_cross_entropy(
-            probs, th.as_tensor(preferences, dtype=th.float32)
-        )
+        # TODO(ejnnr): Here and below, > 0.5 is problematic
+        # because getting exactly 0.5 is actually somewhat
+        # common in some environments (as long as sample=False or temperature=0).
+        # In a sense that "only" creates class imbalance
+        # but it's still misleading.
+        predictions = (probs > 0.5).float()
+        preferences_th = th.as_tensor(preferences, dtype=th.float32)
+        ground_truth = (preferences_th > 0.5).float()
+        accuracy = (predictions == ground_truth).float().mean()
+        self.logger.record("accuracy", accuracy.item())
+        return th.nn.functional.binary_cross_entropy(probs, preferences_th)
 
     def _rewards(self, transitions: Transitions) -> th.Tensor:
         return self.model(*self.model.preprocess(transitions))
 
     def _probability(self, rews1: th.Tensor, rews2: th.Tensor) -> th.Tensor:
+        """Computes the Boltzmann rational probability that the first trajectory is best.
+
+        Args:
+            rews1: A 1-dimensional array of rewards for the first trajectory fragment.
+            rews2: A 1-dimensional array of rewards for the second trajectory fragment.
+
+        Returns:
+            The softmax of the difference between the (discounted) return of the
+            first and second trajectory.
+        """
         assert rews1.ndim == rews2.ndim == 1
         # First, we compute the difference of the returns of
         # the two fragments. We have a special case for a discount
@@ -387,6 +676,9 @@ class CrossEntropyRewardTrainer(RewardTrainer):
         else:
             discounts = self.discount_factor ** th.arange(len(rews1))
             returns_diff = (discounts * (rews2 - rews1)).sum()
+        # Clip to avoid overflows (which in particular may occur
+        # in the backwards pass even if they do not in the forward pass).
+        returns_diff = th.clip(returns_diff, -self.threshold, self.threshold)
         # We take the softmax of the returns. model_probability
         # is the first dimension of that softmax, representing the
         # probability that fragment 1 is preferred.
@@ -394,6 +686,7 @@ class CrossEntropyRewardTrainer(RewardTrainer):
         return self.noise_prob * 0.5 + (1 - self.noise_prob) * model_probability
 
     def train(self, dataset: PreferenceDataset):
+        """Trains for `self.epochs` epochs over `dataset`."""
         # TODO(ejnnr): This isn't specific to the loss function or probability model.
         # In general, it might be best to split the probability model, the loss and
         # the optimization procedure a bit more cleanly so that different versions
@@ -402,17 +695,16 @@ class CrossEntropyRewardTrainer(RewardTrainer):
         dataloader = th.utils.data.DataLoader(
             dataset,
             batch_size=self.batch_size,
-            sampler=th.utils.data.RandomSampler(
-                dataset, replacement=True, num_samples=None
-            ),
+            shuffle=True,
             collate_fn=preference_collate_fn,
         )
-        for fragment_pairs, preferences in dataloader:
-            self.optim.zero_grad()
-            loss = self._loss(fragment_pairs, preferences)
-            loss.backward()
-            self.optim.step()
-            self.logger.record("reward/loss", loss.item())
+        for _ in range(self.epochs):
+            for fragment_pairs, preferences in dataloader:
+                self.optim.zero_grad()
+                loss = self._loss(fragment_pairs, preferences)
+                loss.backward()
+                self.optim.step()
+                self.logger.record("loss", loss.item())
 
 
 class PreferenceComparisons(base.BaseImitationAlgorithm):
@@ -420,15 +712,17 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
 
     def __init__(
         self,
-        trajectory_generator: trainer.TrajectoryGenerator,
+        trajectory_generator: TrajectoryGenerator,
         reward_model: reward_nets.RewardNet,
-        sample_steps: int,
-        agent_steps: Optional[int] = None,
         fragmenter: Optional[Fragmenter] = None,
         preference_gatherer: Optional[PreferenceGatherer] = None,
         reward_trainer: Optional[RewardTrainer] = None,
-        custom_logger: Optional[logger.HierarchicalLogger] = None,
+        comparisons_per_iteration: int = 50,
+        fragment_length: int = 50,
+        transition_oversampling: float = 10,
+        custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
         allow_variable_horizon: bool = False,
+        seed: Optional[int] = None,
     ):
         """Initialize the preference comparison trainer.
 
@@ -440,10 +734,6 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
                 an RL agent on the learned reward function (can also be a sampler
                 from a static dataset of trajectories though).
             reward_model: a RewardNet instance to be used for learning the reward
-            sample_steps: number of environment timesteps to sample
-                for creating fragments.
-            agent_steps: number of environment steps to train the agent for between
-                each reward model training round. Defaults to sample_steps.
             fragmenter: takes in a set of trajectories and returns pairs of fragments
                 for which preferences will be gathered. These fragments could be random,
                 or they could be selected more deliberately (active learning).
@@ -455,6 +745,16 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
             reward_trainer: trains the reward model based on pairs of fragments and
                 associated preferences. Default is to use the preference model
                 and loss function from DRLHP.
+            comparisons_per_iteration: number of preferences to gather at once (before
+                switching back to agent training). This doesn't impact the total number
+                of comparisons that are gathered, only the frequency of switching
+                between preference gathering and agent training.
+            fragment_length: number of timesteps per fragment that is used to elicit
+                preferences
+            transition_oversampling: factor by which to oversample transitions before
+                creating fragments. Since fragments are sampled with replacement,
+                this is usually chosen > 1 to avoid having the same transition
+                in too many fragments.
             custom_logger: Where to log to; if None (default), creates a new logger.
             allow_variable_horizon: If False (default), algorithm will raise an
                 exception if it detects trajectories of different length during
@@ -463,11 +763,19 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
                 condition, and can seriously confound evaluation. Read
                 https://imitation.readthedocs.io/en/latest/guide/variable_horizon.html
                 before overriding this.
+            seed: seed to use for initializing subcomponents such as fragmenter.
+                Only used when default components are used; if you instantiate your
+                own fragmenter, preference gatherer, etc., you are responsible for
+                seeding them!
         """
         super().__init__(
             custom_logger=custom_logger,
             allow_variable_horizon=allow_variable_horizon,
         )
+
+        # for keeping track of the global iteration, in case train() is called
+        # multiple times
+        self._iteration = 0
 
         self.model = reward_model
         self.reward_trainer = reward_trainer or CrossEntropyRewardTrainer(
@@ -481,35 +789,92 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
         assert self.reward_trainer.model is self.model
         self.trajectory_generator = trajectory_generator
         self.trajectory_generator.logger = self.logger
-        self.fragmenter = fragmenter or RandomFragmenter(custom_logger=self.logger)
+        self.fragmenter = fragmenter or RandomFragmenter(
+            custom_logger=self.logger, seed=seed
+        )
         self.fragmenter.logger = self.logger
-        self.preference_gatherer = preference_gatherer or SyntheticGatherer()
+        self.preference_gatherer = preference_gatherer or SyntheticGatherer(
+            custom_logger=self.logger, seed=seed
+        )
         self.preference_gatherer.logger = self.logger
-        self.sample_steps = sample_steps
-        # In contrast to the previous cases, we need the is None check
-        # because someone might explicitly set agent_timesteps=0.
-        if agent_steps is None:
-            agent_steps = sample_steps
-        self.agent_steps = agent_steps
+
+        self.comparisons_per_iteration = comparisons_per_iteration
+        self.fragment_length = fragment_length
+        self.transition_oversampling = transition_oversampling
+
         self.dataset = PreferenceDataset()
 
-    def train(self, iterations: int):
+    def train(self, total_timesteps: int, total_comparisons: int) -> Mapping[str, Any]:
         """Train the reward model and the policy if applicable.
 
         Args:
-            iterations: number of iterations of the outer training loop
+            total_timesteps: number of environment interaction steps
+            total_comparisons: number of preferences to gather in total
+
+        Returns:
+            A dictionary with final metrics such as loss and accuracy
+            of the reward model.
         """
-        for _ in range(iterations):
-            self.logger.log(f"Collecting {self.sample_steps} trajectory steps")
-            trajectories = self.trajectory_generator.sample(self.sample_steps)
+        iterations, extra_comparisons = divmod(
+            total_comparisons, self.comparisons_per_iteration
+        )
+        if iterations == 0:
+            raise ValueError(
+                f"total_comparisons={total_comparisons} is less than "
+                f"comparisons_per_iteration={self.comparisons_per_iteration}"
+            )
+        timesteps_per_iteration, extra_timesteps = divmod(total_timesteps, iterations)
+
+        reward_loss = None
+        reward_accuracy = None
+
+        for i in range(iterations):
+            ##########################
+            # Gather new preferences #
+            ##########################
+            num_pairs = self.comparisons_per_iteration
+            # if the number of comparisons per iterations doesn't exactly divide
+            # the desired total number of comparisons, we collect the remainder
+            # right at the beginning to pretrain the reward model slightly
+            if i == 0:
+                num_pairs += extra_comparisons
+            num_steps = math.ceil(
+                self.transition_oversampling * 2 * num_pairs * self.fragment_length
+            )
+            self.logger.log(f"Collecting {num_steps} trajectory steps")
+            trajectories = self.trajectory_generator.sample(num_steps)
             self._check_fixed_horizon(trajectories)
             self.logger.log("Creating fragment pairs")
-            fragments = self.fragmenter(trajectories)
-            self.logger.log("Gathering preferences")
-            preferences = self.preference_gatherer(fragments)
+            fragments = self.fragmenter(trajectories, self.fragment_length, num_pairs)
+            with self.logger.accumulate_means("preferences"):
+                self.logger.log("gathering preferences")
+                preferences = self.preference_gatherer(fragments)
             self.dataset.push(fragments, preferences)
             self.logger.log(f"Dataset now contains {len(self.dataset)} samples")
-            self.logger.log("Training reward model")
-            self.reward_trainer.train(self.dataset)
-            self.logger.log(f"Training agent for {self.agent_steps} steps")
-            self.trajectory_generator.train(steps=self.agent_steps)
+
+            ##########################
+            # Train the reward model #
+            ##########################
+            with self.logger.accumulate_means("reward"):
+                self.logger.log("Training reward model")
+                self.reward_trainer.train(self.dataset)
+            reward_loss = self.logger.name_to_value["mean/reward/loss"]
+            reward_accuracy = self.logger.name_to_value["mean/reward/accuracy"]
+
+            ###################
+            # Train the agent #
+            ###################
+            num_steps = timesteps_per_iteration
+            # if the number of timesteps per iterations doesn't exactly divide
+            # the desired total number of timesteps, we train the agent a bit longer
+            # at the end of training (where the reward model is presumably best)
+            if i == iterations - 1:
+                num_steps += extra_timesteps
+            with self.logger.accumulate_means("agent"):
+                self.logger.log(f"Training agent for {num_steps} timesteps")
+                self.trajectory_generator.train(steps=num_steps)
+
+            self.logger.dump(self._iteration)
+            self._iteration += 1
+
+        return {"reward_loss": reward_loss, "reward_accuracy": reward_accuracy}
