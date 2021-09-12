@@ -47,6 +47,9 @@ ALL_SCRIPTS_MODS = [
 CARTPOLE_TEST_DATA_PATH = pathlib.Path("tests/testdata/expert_models/cartpole_0/")
 CARTPOLE_TEST_ROLLOUT_PATH = CARTPOLE_TEST_DATA_PATH / "rollouts/final.pkl"
 CARTPOLE_TEST_POLICY_PATH = CARTPOLE_TEST_DATA_PATH / "policies/final"
+CARTPOLE_TEST_POLICY_WITHOUT_VECNORM_PATH = (
+    CARTPOLE_TEST_DATA_PATH / "policies/final_without_vecnorm"
+)
 
 
 @pytest.fixture(autouse=True)
@@ -86,6 +89,11 @@ PREFERENCE_COMPARISON_CONFIGS = [
         "save_preferences": True,
         "gatherer_kwargs": {"sample": False},
     },
+    {
+        "agent_path": CARTPOLE_TEST_POLICY_WITHOUT_VECNORM_PATH,
+        # Needed for the same reason as in the previous config
+        "num_vec": 8,
+    },
 ]
 
 
@@ -97,6 +105,48 @@ def test_train_preference_comparisons_main(tmpdir, config):
     )
     assert run.status == "COMPLETED"
     assert isinstance(run.result, dict)
+
+
+def test_train_preference_comparisons_normalization_errors(tmpdir):
+    with pytest.raises(
+        ValueError,
+        match=".*loaded policy has associated normalization stats.*",
+    ):
+        train_preference_comparisons.train_preference_comparisons_ex.run(
+            named_configs=["cartpole", "fast"],
+            config_updates=dict(
+                log_root=tmpdir, normalize=False, agent_path=CARTPOLE_TEST_POLICY_PATH
+            ),
+        )
+
+    with pytest.raises(
+        ValueError,
+        match="Setting normalize_kwargs is not supported.*",
+    ):
+        train_preference_comparisons.train_preference_comparisons_ex.run(
+            named_configs=["cartpole", "fast"],
+            config_updates=dict(
+                log_root=tmpdir,
+                normalize_kwargs={"norm_rewward": True},
+                agent_path=CARTPOLE_TEST_POLICY_PATH,
+            ),
+        )
+
+
+def test_train_preference_comparisons_file_errors(tmpdir):
+    with pytest.raises(FileNotFoundError, match=".*needs to be a directory.*"):
+        train_preference_comparisons.train_preference_comparisons_ex.run(
+            named_configs=["cartpole", "fast"],
+            config_updates=dict(
+                log_root=tmpdir, agent_path=CARTPOLE_TEST_POLICY_PATH / "model.zip"
+            ),
+        )
+
+    with pytest.raises(FileNotFoundError, match="Could not find policy.*"):
+        train_preference_comparisons.train_preference_comparisons_ex.run(
+            named_configs=["cartpole", "fast"],
+            config_updates=dict(log_root=tmpdir, agent_path="."),
+        )
 
 
 def test_train_dagger_main(tmpdir):

@@ -5,6 +5,8 @@ can be called directly.
 """
 
 import os
+import pathlib
+import pickle
 from typing import Any, Mapping, Optional
 
 import stable_baselines3
@@ -114,8 +116,6 @@ def train_preference_comparisons(
     )
 
     vec_normalize = None
-    if normalize:
-        venv = vec_normalize = vec_env.VecNormalize(venv, **normalize_kwargs)
 
     reward_net = reward_nets.BasicRewardNet(
         venv.observation_space, venv.action_space, **reward_net_kwargs
@@ -123,7 +123,71 @@ def train_preference_comparisons(
     if agent_path is None:
         agent = stable_baselines3.PPO("MlpPolicy", venv, seed=_seed, **agent_kwargs)
     else:
-        agent = stable_baselines3.PPO.load(agent_path, venv, seed=_seed, **agent_kwargs)
+        # TODO(ejnnr): this is pretty similar to the logic in policies/serialize.py
+        # but I did make a few small changes that make it a bit tricky to actually
+        # factor this out into a helper function. Still, sharing at least part of the
+        # code would probably be good.
+        policy_dir = pathlib.Path(agent_path)
+        if not policy_dir.is_dir():
+            raise FileNotFoundError(
+                f"agent_path={agent_path} needs to be a directory containing model.zip "
+                "and optionally vec_normalize.pkl."
+            )
+
+        model_path = policy_dir / "model.zip"
+        if not model_path.is_file():
+            raise FileNotFoundError(
+                f"Could not find policy at expected location {model_path}"
+            )
+
+        agent = stable_baselines3.PPO.load(
+            model_path, env=venv, seed=_seed, **agent_kwargs
+        )
+        custom_logger.info(f"Warm starting agent from '{model_path}'")
+
+        normalize_path = policy_dir / "vec_normalize.pkl"
+        try:
+            with open(normalize_path, "rb") as f:
+                vec_normalize = pickle.load(f)
+        except FileNotFoundError:
+            # We did not use VecNormalize during training, skip
+            pass
+        else:
+            if not normalize:
+                raise ValueError(
+                    "normalize=False but the loaded policy has "
+                    "associated normalization stats."
+                )
+            # TODO(ejnnr): this check is hacky, what if we change the default config?
+            if normalize_kwargs != {"norm_reward": False}:
+                # We could adjust settings manually but that's very brittle
+                # if SB3 changes any of the VecNormalize internals
+                print(normalize_kwargs)
+                raise ValueError(
+                    "Setting normalize_kwargs is not supported "
+                    "when loading an existing VecNormalize."
+                )
+            vec_normalize.training = True
+            # TODO(ejnnr): We should figure out at some point if reward normalization
+            # is useful for preference comparisons but I haven't tried it yet. We'd also
+            # have to decide where to normalize rewards; setting norm_reward=True here
+            # would normalize the rewards that the reward model sees. This would
+            # probably translate to some degree to its output (i.e. the rewards for
+            # the agent). Alternatively, we could just train the reward model on
+            # unnormalized rewards and then normalize its output before giving it
+            # to the agent (which would also work for human feedback).
+            vec_normalize.norm_reward = False
+            vec_normalize.set_venv(venv)
+            # Note: the following line must come after the previous set_venv line!
+            # Otherwise, we get recursion errors
+            venv = vec_normalize
+            custom_logger.info(f"Loaded VecNormalize from '{normalize_path}'")
+
+    if normalize and vec_normalize is None:
+        # if no stats have been loaded, create a new VecNormalize wrapper
+        venv = vec_normalize = vec_env.VecNormalize(venv, **normalize_kwargs)
+        agent.set_env(venv)
+
     if trajectory_path is None:
         # Setting the logger here is not really necessary (PreferenceComparisons
         # takes care of that automatically) but it avoids creating unnecessary loggers
