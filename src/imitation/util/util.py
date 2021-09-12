@@ -21,7 +21,7 @@ import numpy as np
 import stable_baselines3
 import torch as th
 from gym.wrappers import TimeLimit
-from stable_baselines3.common import monitor, preprocessing
+from stable_baselines3.common import callbacks, monitor, preprocessing
 from stable_baselines3.common.base_class import BaseAlgorithm
 from stable_baselines3.common.policies import ActorCriticPolicy, BasePolicy
 from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecEnv
@@ -235,3 +235,33 @@ def tensor_iter_norm(
     # = sum(x**ord for x in tensor for tensor in tensor_iter)**(1/ord)
     # = th.norm(concatenated tensors)
     return th.norm(norm_tensor, p=ord)
+
+
+class StopActorTrainingCallback(callbacks.BaseCallback):
+    def __init__(self, stop_after: int):
+        super().__init__()
+        self.stop_after = stop_after
+        self._stopped = False
+        self._check_param = None
+
+    def _on_step(self) -> bool:
+        if self.num_timesteps >= self.stop_after:
+            if not self._stopped:
+                # TODO: the LR should be taken from the schedule and we should
+                # pass in the original optimizer kwargs.
+                # But this is extremely hacky anyway
+                self.model.policy.optimizer = self.model.policy.optimizer_class(
+                    self.model.policy.value_net.parameters(), lr=3e-4
+                )
+                print("Stopped training the actor!")
+                self._check_param = next(
+                    self.model.policy.action_net.parameters()
+                ).view(-1)[0]
+                self._stopped = True
+            else:
+                # make sure that the policy doesn't change anymore
+                assert (
+                    self._check_param
+                    == next(self.model.policy.action_net.parameters()).view(-1)[0]
+                )
+        return True

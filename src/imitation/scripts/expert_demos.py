@@ -28,6 +28,7 @@ def rollouts_and_policy(
     num_vec: int,
     parallel: bool,
     max_episode_steps: Optional[int],
+    stop_actor_training: Optional[int],
     normalize: bool,
     normalize_kwargs: dict,
     init_rl_kwargs: dict,
@@ -59,6 +60,9 @@ def rollouts_and_policy(
         max_episode_steps: If not None, then environments are wrapped by
             TimeLimit so that they have at most `max_episode_steps` steps per
             episode.
+        stop_actor_training: If not None, stop training the actor (and only
+            continue training the critic) after this many timesteps.
+            Extremely hacky implementation, not intended for broad use!
         normalize: If True, then rescale observations and reward.
         normalize_kwargs: kwargs for `VecNormalize`.
         init_rl_kwargs: kwargs for `init_rl`.
@@ -143,6 +147,9 @@ def rollouts_and_policy(
         )
         callback_objs.append(save_policy_callback)
     callback = callbacks.CallbackList(callback_objs)
+
+    if stop_actor_training is not None:
+        callback_objs.append(util.StopActorTrainingCallback(stop_actor_training))
 
     policy = util.init_rl(venv, verbose=1, **init_rl_kwargs)
     policy.set_logger(custom_logger)

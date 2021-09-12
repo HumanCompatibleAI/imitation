@@ -18,6 +18,8 @@ def expert_demos_defaults():
     normalize = True  # Use VecNormalize
     normalize_kwargs = dict()  # kwargs for `VecNormalize`
     max_episode_steps = None  # Set to positive int to limit episode horizons
+    # Set to int to stop training the actor after this many timesteps
+    stop_actor_training = None
     n_episodes_eval = 50  # Num of episodes for final ep reward mean evaluation
 
     init_rl_kwargs = dict(DEFAULT_INIT_RL_KWARGS)
