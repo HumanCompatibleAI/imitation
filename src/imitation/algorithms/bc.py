@@ -10,7 +10,6 @@ from typing import Any, Callable, Dict, Iterable, Mapping, Optional, Tuple, Type
 import gym
 import numpy as np
 import torch as th
-import torch.utils.data as th_data
 import tqdm.autonotebook as tqdm
 from stable_baselines3.common import policies, utils, vec_env
 
@@ -172,9 +171,7 @@ class EpochOrBatchIteratorWithProgress:
                         return
 
 
-class BC(algo_base.BaseImitationAlgorithm):
-
-    DEFAULT_BATCH_SIZE: int = 32
+class BC(algo_base.DemonstrationAlgorithm):
     """Default batch size for DataLoader automatically constructed from Transitions.
 
     See `set_expert_data_loader()`.
@@ -189,7 +186,8 @@ class BC(algo_base.BaseImitationAlgorithm):
         *,
         policy_class: Type[policies.BasePolicy] = policy_base.FeedForward32Policy,
         policy_kwargs: Optional[Mapping[str, Any]] = None,
-        expert_data: Union[Iterable[Mapping], types.TransitionsMinimal, None] = None,
+        demonstrations: Optional[algo_base.AnyTransitions] = None,
+        demo_batch_size: int = 32,
         optimizer_cls: Type[th.optim.Optimizer] = th.optim.Adam,
         optimizer_kwargs: Optional[Dict[str, Any]] = None,
         ent_weight: float = 1e-3,
@@ -208,8 +206,8 @@ class BC(algo_base.BaseImitationAlgorithm):
             action_space: the action space of the environment.
             policy_class: used to instantiate imitation policy.
             policy_kwargs: keyword arguments passed to policy's constructor.
-            expert_data: If not None, then immediately call
-                  `self.set_expert_data_loader(expert_data)` during initialization.
+            demonstrations: If not None, then immediately call
+                  `self.set_expert_data_loader(demonstrations)` during initialization.
             optimizer_cls: optimiser to use for supervised training.
             optimizer_kwargs: keyword arguments, excluding learning rate and
                   weight decay, for optimiser construction.
@@ -218,7 +216,12 @@ class BC(algo_base.BaseImitationAlgorithm):
             device: name/identity of device to place policy on.
             custom_logger: Where to log to; if None (default), creates a new logger.
         """
-        super().__init__(custom_logger=custom_logger)
+        # TODO(adam): update docstring
+        super().__init__(
+            demonstrations=demonstrations,
+            demo_batch_size=demo_batch_size,
+            custom_logger=custom_logger,
+        )
 
         if optimizer_kwargs:
             if "weight_decay" in optimizer_kwargs:
@@ -248,40 +251,8 @@ class BC(algo_base.BaseImitationAlgorithm):
             **optimizer_kwargs,
         )
 
-        self.expert_data_loader: Optional[Iterable[Mapping]] = None
         self.ent_weight = ent_weight
         self.l2_weight = l2_weight
-
-        if expert_data is not None:
-            self.set_expert_data_loader(expert_data)
-
-    def set_expert_data_loader(
-        self,
-        expert_data: Union[Iterable[Mapping], types.TransitionsMinimal],
-    ) -> None:
-        """Set the expert data loader, which yields batches of obs-act pairs.
-
-        Changing the expert data loader on-demand is useful for DAgger and other
-        interactive algorithms.
-
-        Args:
-             expert_data: Either a Torch `DataLoader`, any other iterator that
-                yields dictionaries containing "obs" and "acts" Tensors or Numpy arrays,
-                or a `TransitionsMinimal` instance.
-
-                If this is a `TransitionsMinimal` instance, then it is automatically
-                converted into a shuffled `DataLoader` with batch size
-                `BC.DEFAULT_BATCH_SIZE`.
-        """
-        if isinstance(expert_data, types.TransitionsMinimal):
-            self.expert_data_loader = th_data.DataLoader(
-                expert_data,
-                shuffle=True,
-                batch_size=BC.DEFAULT_BATCH_SIZE,
-                collate_fn=types.transitions_collate_fn,
-            )
-        else:
-            self.expert_data_loader = expert_data
 
     def _calculate_loss(
         self,
@@ -371,7 +342,7 @@ class BC(algo_base.BaseImitationAlgorithm):
                 effect if `.train()` is being called for the first time.
         """
         it = EpochOrBatchIteratorWithProgress(
-            self.expert_data_loader,
+            self.demo_data_loader,
             n_epochs=n_epochs,
             n_batches=n_batches,
             on_epoch_end=on_epoch_end,

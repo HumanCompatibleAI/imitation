@@ -116,7 +116,7 @@ def train_bc(
     model = bc.BC(
         observation_space,
         action_space,
-        expert_data=expert_data,
+        demonstrations=expert_data,
         l2_weight=l2_weight,
         optimizer_cls=optimizer_cls,
         optimizer_kwargs=optimizer_kwargs,

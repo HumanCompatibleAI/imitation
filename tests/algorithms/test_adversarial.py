@@ -56,21 +56,21 @@ def test_train_disc_small_expert_data_warning(
     gen_algo = util.init_rl(venv, verbose=1, **_algorithm_kwargs)
     small_data = rollout.generate_transitions(gen_algo, venv, n_timesteps=20)
 
-    with pytest.raises(ValueError, match="Transitions.*expert_batch_size"):
+    with pytest.raises(ValueError, match="Transitions.*demo_batch_size"):
         _algorithm_cls(
             venv=venv,
-            expert_data=small_data,
-            expert_batch_size=21,
+            demonstrations=small_data,
+            demo_batch_size=21,
             gen_algo=gen_algo,
             log_dir=tmpdir,
             custom_logger=custom_logger,
         )
 
-    with pytest.raises(ValueError, match="expert_batch_size.*positive"):
+    with pytest.raises(ValueError, match="demo_batch_size.*positive"):
         _algorithm_cls(
             venv=venv,
-            expert_data=small_data,
-            expert_batch_size=-1,
+            demonstrations=small_data,
+            demo_batch_size=-1,
             gen_algo=gen_algo,
             log_dir=tmpdir,
             custom_logger=custom_logger,
@@ -94,8 +94,8 @@ def test_airl_fail_fast(custom_logger, tmpdir):
     with pytest.raises(TypeError, match="AIRL needs a stochastic policy.*"):
         adversarial.AIRL(
             venv=venv,
-            expert_data=small_data,
-            expert_batch_size=20,
+            demonstrations=small_data,
+            demo_batch_size=20,
             gen_algo=gen_algo,
             log_dir=tmpdir,
             custom_logger=custom_logger,
@@ -162,8 +162,8 @@ def trainer(
     custom_logger = logger.configure(tmpdir, ["tensorboard", "stdout"])
     trainer = _algorithm_cls(
         venv=venv,
-        expert_data=expert_data,
-        expert_batch_size=expert_batch_size,
+        demonstrations=expert_data,
+        demo_batch_size=expert_batch_size,
         gen_algo=gen_algo,
         log_dir=tmpdir,
         custom_logger=custom_logger,

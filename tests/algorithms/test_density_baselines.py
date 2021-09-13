@@ -6,26 +6,16 @@ import numpy as np
 import pytest
 
 from imitation.algorithms.density_baselines import (
-    STATE_ACTION_DENSITY,
-    STATE_DENSITY,
-    STATE_STATE_DENSITY,
     DensityReward,
     DensityTrainer,
+    DensityType,
 )
 from imitation.data import rollout, types
 from imitation.policies.base import RandomPolicy
 from imitation.rewards import common
 from imitation.util import util
 
-parametrize_density_stationary = pytest.mark.parametrize(
-    "density_type,is_stationary",
-    [
-        (STATE_DENSITY, True),
-        (STATE_DENSITY, False),
-        (STATE_ACTION_DENSITY, True),
-        (STATE_STATE_DENSITY, True),
-    ],
-)
+parametrize_density = pytest.mark.parametrize("density_type", list(DensityType))
 
 
 def score_trajectories(
@@ -34,15 +24,16 @@ def score_trajectories(
     # score trajectories under given reward function w/o discount
     returns = []
     for traj in trajectories:
-        steps = np.arange(0, len(traj.acts))
-        rewards = reward_fn(traj.obs[:-1], traj.acts, traj.obs[1:], steps)
+        dones = np.zeros(len(traj), dtype=np.bool)
+        dones[-1] = True
+        rewards = reward_fn(traj.obs[:-1], traj.acts, traj.obs[1:], dones)
         ret = np.sum(rewards)
         returns.append(ret)
     return np.mean(returns)
 
 
-@parametrize_density_stationary
-def test_density_reward(density_type, is_stationary):
+@parametrize_density
+def test_density_reward(density_type):
     # test on Pendulum rather than Cartpole because I don't handle episodes that
     # terminate early yet (see issue #40)
     env_name = "Pendulum-v0"
@@ -55,15 +46,15 @@ def test_density_reward(density_type, is_stationary):
     n_experts = len(expert_trajectories_all)
     expert_trajectories_train = expert_trajectories_all[: n_experts // 2]
     reward_fn = DensityReward(
-        trajectories=expert_trajectories_train,
+        demonstrations=expert_trajectories_train,
         density_type=density_type,
         kernel="gaussian",
         obs_space=env.observation_space,
         act_space=env.action_space,
-        is_stationary=is_stationary,
         kernel_bandwidth=0.2,
         standardise_inputs=True,
     )
+    reward_fn.train()
 
     # check that expert policy does better than a random policy under our reward
     # function
@@ -91,8 +82,7 @@ def test_density_trainer_smoke():
         env,
         rollouts=rollouts,
         imitation_trainer=imitation_trainer,
-        density_type=STATE_ACTION_DENSITY,
-        is_stationary=False,
+        density_type=DensityType.STATE_ACTION_DENSITY,
         kernel="gaussian",
     )
     density_trainer.train_policy(n_timesteps=2)

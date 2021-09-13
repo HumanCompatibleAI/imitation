@@ -66,7 +66,7 @@ def trainer(batch_size, venv, expert_data_type, custom_logger):
     return bc.BC(
         venv.observation_space,
         venv.action_space,
-        expert_data=expert_data,
+        demonstrations=expert_data,
         custom_logger=custom_logger,
     )
 
@@ -76,7 +76,7 @@ def test_weight_decay_init_error(venv, custom_logger):
         bc.BC(
             venv.observation_space,
             venv.action_space,
-            expert_data=None,
+            demonstrations=None,
             optimizer_kwargs=dict(weight_decay=1e-4),
             custom_logger=custom_logger,
         )
@@ -149,7 +149,7 @@ def test_bc_data_loader_empty_iter_error(venv, no_yield_after_iter, custom_logge
     trainer = bc.BC(
         venv.observation_space, venv.action_space, custom_logger=custom_logger
     )
-    trainer.set_expert_data_loader(bad_data_loader)
+    trainer.set_demonstrations(bad_data_loader)
     with pytest.raises(AssertionError, match=".*no data.*"):
         trainer.train(n_batches=20)
 

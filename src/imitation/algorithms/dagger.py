@@ -386,7 +386,7 @@ class DAggerTrainer(base.BaseImitationAlgorithm):
                 shuffle=True,
                 collate_fn=types.transitions_collate_fn,
             )
-            self.bc_trainer.set_expert_data_loader(data_loader)
+            self.bc_trainer.set_demonstrations(data_loader)
             self._last_loaded_round = self.round_num
 
     def extend_and_update(self, bc_train_kwargs: Optional[Mapping] = None) -> int:
