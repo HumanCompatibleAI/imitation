@@ -243,10 +243,14 @@ class StopActorTrainingCallback(callbacks.BaseCallback):
         self.stop_after = stop_after
         self._stopped = False
         self._check_param = None
+        self._original_optimizer = None
 
     def _on_step(self) -> bool:
         if self.num_timesteps >= self.stop_after:
             if not self._stopped:
+                # HACK: We need to restore this later to be able to load
+                # the model from disk without errors.
+                self._original_optimizer = self.model.policy.optimizer
                 # TODO: the LR should be taken from the schedule and we should
                 # pass in the original optimizer kwargs.
                 # But this is extremely hacky anyway
@@ -264,4 +268,9 @@ class StopActorTrainingCallback(callbacks.BaseCallback):
                     self._check_param
                     == next(self.model.policy.action_net.parameters()).view(-1)[0]
                 )
+        return True
+
+    def _on_training_end(self):
+        print("Restoring optimizer")
+        self.model.policy.optimizer = self._original_optimizer
         return True
