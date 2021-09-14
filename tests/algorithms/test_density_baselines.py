@@ -15,7 +15,11 @@ from imitation.policies.base import RandomPolicy
 from imitation.rewards import common
 from imitation.util import util
 
-parametrize_density = pytest.mark.parametrize("density_type", list(DensityType))
+parametrize_density = pytest.mark.parametrize(
+    "density_type,is_stationary",
+    [(density_type, True) for density_type in DensityType]
+    + [(DensityType.STATE_DENSITY, False)],
+)
 
 
 def score_trajectories(
@@ -26,14 +30,15 @@ def score_trajectories(
     for traj in trajectories:
         dones = np.zeros(len(traj), dtype=np.bool)
         dones[-1] = True
-        rewards = reward_fn(traj.obs[:-1], traj.acts, traj.obs[1:], dones)
+        steps = np.arange(0, len(traj.acts))
+        rewards = reward_fn(traj.obs[:-1], traj.acts, traj.obs[1:], dones, steps)
         ret = np.sum(rewards)
         returns.append(ret)
     return np.mean(returns)
 
 
 @parametrize_density
-def test_density_reward(density_type):
+def test_density_reward(density_type, is_stationary):
     # test on Pendulum rather than Cartpole because I don't handle episodes that
     # terminate early yet (see issue #40)
     env_name = "Pendulum-v0"
@@ -51,6 +56,7 @@ def test_density_reward(density_type):
         kernel="gaussian",
         obs_space=env.observation_space,
         act_space=env.action_space,
+        is_stationary=is_stationary,
         kernel_bandwidth=0.2,
         standardise_inputs=True,
     )

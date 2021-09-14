@@ -5,13 +5,13 @@ then rewards the agent for following that estimate.
 """
 
 import enum
-from typing import Optional, Sequence
+import itertools
+from typing import Iterable, Mapping, Optional, Sequence
 
 import gym
 import numpy as np
 from gym.spaces.utils import flatten
-from sklearn.neighbors import KernelDensity
-from sklearn.preprocessing import StandardScaler
+from sklearn import neighbors, preprocessing
 from stable_baselines3.common import on_policy_algorithm, vec_env
 
 from imitation.algorithms import base
@@ -34,6 +34,8 @@ class DensityType(enum.Enum):
 
 
 class DensityReward(base.DemonstrationAlgorithm):
+    transitions: Mapping[Optional[int], np.ndarray]
+
     def __init__(
         self,
         *,
@@ -43,6 +45,7 @@ class DensityReward(base.DemonstrationAlgorithm):
         kernel_bandwidth: float,
         obs_space: gym.Space,
         act_space: gym.Space,
+        is_stationary: bool = True,
         standardise_inputs: bool = True,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
         allow_variable_horizon: bool = False,
@@ -63,6 +66,13 @@ class DensityReward(base.DemonstrationAlgorithm):
             kernel_bandwidth: bandwidth of kernel. If `standardise_inputs` is
                 true and you are using a Gaussian kernel, then it probably makes sense
                 to set this somewhere between 0.1 and 1.
+            is_stationary: if True, share same density models for all timesteps;
+                if False, use a different density model for each timestep.
+                A non-stationary model is particularly likely to be useful when using
+                STATE_DENSITY, to encourage agent to imitate entire trajectories, not
+                just a few states that have high frequency in the demonstration dataset.
+                If non-stationary, demonstrations must be trajectories, not transitions
+                (which do not contain timesteps).
             custom_logger: Where to log to; if None (default), creates a new logger.
             allow_variable_horizon: If False (default), algorithm will raise an
                 exception if it detects trajectories of different length during
@@ -72,55 +82,94 @@ class DensityReward(base.DemonstrationAlgorithm):
                 https://imitation.readthedocs.io/en/latest/guide/variable_horizon.html
                 before overriding this.
         """
+        self.is_stationary = is_stationary
+        self.density_type = density_type
+        self.obs_space = obs_space
+        self.act_space = act_space
+        self.transitions = {}
         super().__init__(
             demonstrations=demonstrations,
-            demo_batch_size=32,  # doesn't matter, we don't use batches
             custom_logger=custom_logger,
             allow_variable_horizon=allow_variable_horizon,
         )
-        self.density_type = density_type
         self.kernel = kernel
         self.kernel_bandwidth = kernel_bandwidth
         self.standardise = standardise_inputs
-        self.obs_space = obs_space
-        self.act_space = act_space
-
         self._scaler = None
-        self._density_model = None
+        self._density_models = {}
+
+    def set_demonstrations(self, demonstrations: base.AnyTransitions) -> None:
+        self.transitions = {}
+
+        if isinstance(demonstrations, Iterable):
+            first_item = iter(demonstrations).__next__()
+            if isinstance(first_item, types.Trajectory):
+                # Demonstrations are trajectories.
+                # We have timestep information.
+                for traj in demonstrations:
+                    for i, (obs, act, next_obs) in enumerate(
+                        zip(traj.obs[:-1], traj.acts, traj.obs[1:])
+                    ):
+                        flat_trans = self._preprocess_transition(obs, act, next_obs)
+                        self.transitions.setdefault(i, []).append(flat_trans)
+            else:
+                # Demonstrations are a Torch DataLoader or other Mapping iterable
+                for batch in demonstrations:
+                    next_obses = batch.get("next_obs", itertools.repeat(None))
+                    for obs, act, next_obs in zip(
+                        batch["obs"], batch["acts"], next_obses
+                    ):
+                        flat_trans = self._preprocess_transition(obs, act, next_obs)
+                        self.transitions.setdefault(None, []).append(flat_trans)
+        elif isinstance(demonstrations, types.TransitionsMinimal):
+            next_obses = (
+                demonstrations.next_obs
+                if hasattr(demonstrations, "next_obs")
+                else itertools.repeat(None)
+            )
+            for obs, act, next_obs in zip(
+                demonstrations.obs, demonstrations.acts, next_obses
+            ):
+                flat_trans = self._preprocess_transition(obs, act, next_obs)
+                self.transitions.setdefault(None, []).append(flat_trans)
+        else:
+            raise TypeError(f"Unsupported demonstration type {type(demonstrations)}")
+
+        self.transitions = {k: np.stack(v, axis=0) for k, v in self.transitions.items()}
+
+        if not self.is_stationary and None in self.transitions:
+            raise ValueError(
+                "Non-stationary model incompatible with non-trajectory demonstrations."
+            )
+        if self.is_stationary:
+            self.transitions = {
+                None: np.concatenate(list(self.transitions.values()), axis=0)
+            }
 
     def train(self):
-        transitions = self._gather_transitions()
-
         # if requested, we'll scale demonstration transitions so that they have
         # zero mean and unit variance (i.e all components are equally important)
-        self._scaler = StandardScaler(
+        self._scaler = preprocessing.StandardScaler(
             with_mean=self.standardise, with_std=self.standardise
         )
-        self._scaler.fit(transitions)
+        flattened_dataset = np.concatenate(list(self.transitions.values()), axis=0)
+        self._scaler.fit(flattened_dataset)
 
         # now fit density model
-        self._density_model = self._fit_density(self._scaler.transform(transitions))
+        self._density_models = {
+            k: self._fit_density(self._scaler.transform(v))
+            for k, v in self.transitions.items()
+        }
 
-    def _fit_density(self, flat_transitions):
+    def _fit_density(self, transitions: np.ndarray) -> neighbors.KernelDensity:
         # This bandwidth was chosen to make sense with standardised inputs that
         # have unit variance in each component. There might be a better way to
         # choose it automatically.
-        density_model = KernelDensity(
+        density_model = neighbors.KernelDensity(
             kernel=self.kernel, bandwidth=self.kernel_bandwidth
         )
-        density_model.fit(flat_transitions)
+        density_model.fit(transitions)
         return density_model
-
-    def _gather_transitions(self) -> np.ndarray:
-        transitions = []
-        for batch in self.demo_data_loader:
-            # TODO(adam): vectorize?
-            for obs, act, next_obs in zip(
-                batch["obs"], batch["acts"], batch["next_obs"]
-            ):
-                trans = self._preprocess_transition(obs, act, next_obs)
-                transitions.append(trans)
-        return np.stack(transitions, axis=0)
 
     def _preprocess_transition(
         self, obs: np.ndarray, act: np.ndarray, next_obs: np.ndarray
@@ -144,6 +193,7 @@ class DensityReward(base.DemonstrationAlgorithm):
         act_b: np.ndarray,
         next_obs_b: np.ndarray,
         dones: np.ndarray,
+        steps: Optional[np.ndarray] = None,
     ) -> np.ndarray:
         r"""Compute reward from given (s,a,s') transition batch.
 
@@ -157,6 +207,7 @@ class DensityReward(base.DemonstrationAlgorithm):
             next_obs_b: batch of observations encountered after the
                 agent took those actions.
             dones: is it terminal state?
+            steps: Optional -- what timestep is this from?
 
         Returns:
             Array of scalar rewards of the form `r_t(s,a,s') = \log \hat p_t(s,a,s')`
@@ -164,13 +215,32 @@ class DensityReward(base.DemonstrationAlgorithm):
             model (and may be independent of s', a, or t, depending on options passed
             to constructor).
         """
+        if not self.is_stationary and steps is None:
+            raise ValueError("steps must be provided with non-stationary models")
+
         del dones  # TODO(adam): should we handle terminal state specially in any way?
+
         rew_list = []
         assert len(obs_b) == len(act_b) and len(obs_b) == len(next_obs_b)
         for idx, (obs, act, next_obs) in enumerate(zip(obs_b, act_b, next_obs_b)):
             flat_trans = self._preprocess_transition(obs, act, next_obs)
             scaled_padded_trans = self._scaler.transform(flat_trans[np.newaxis])
-            rew = self._density_model.score(scaled_padded_trans)
+            if self.is_stationary:
+                rew = self._density_models[None].score(scaled_padded_trans)
+            else:
+                time = steps[idx]
+                if time >= len(self._density_models):
+                    # Can't do anything sensible here yet. Correct solution is to use
+                    # hierarchical model in which we first check whether state is
+                    # absorbing, then assign either constant score or a score based on
+                    # density.
+                    raise ValueError(
+                        f"Time {time} out of range (0, {len(self._density_models)}], "
+                        "and absorbing states not currently supported"
+                    )
+                else:
+                    time_model = self._density_models[time]
+                    rew = time_model.score(scaled_padded_trans)
             rew_list.append(rew)
         rew_array = np.asarray(rew_list, dtype="float32")
         return rew_array
