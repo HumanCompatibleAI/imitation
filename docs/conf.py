@@ -83,7 +83,7 @@ def no_namedtuple_attrib_docstring(app, what, name, obj, options, lines):
     https://chrisdown.name/2015/09/20/removing-namedtuple-docstrings-from-sphinx.html
     """
     is_namedtuple_docstring = 1 <= len(lines) <= 2 and lines[0].startswith(
-        "Alias for field number"
+        "Alias for field number",
     )
     if is_namedtuple_docstring:
         # We don't return, so we need to purge in-place

@@ -100,7 +100,7 @@ def train_dagger(
     else:
         raise ValueError(
             f"expert_data_src_format={expert_data_src_format} should be 'path', "
-            "'trajectory' or None."
+            "'trajectory' or None.",
         )
 
     if expert_trajs is not None:
@@ -113,7 +113,7 @@ def train_dagger(
             if not len(expert_trajs) >= n_expert_demos:
                 raise ValueError(
                     f"Want to use n_expert_demos={n_expert_demos} trajectories, but "
-                    f"only {len(expert_trajs)} are available."
+                    f"only {len(expert_trajs)} are available.",
                 )
             expert_trajs = expert_trajs[:n_expert_demos]
 
@@ -142,7 +142,8 @@ def train_dagger(
     print(f"Tensorboard command: tbl '{log_dir}'")
 
     sample_until = rollout.make_sample_until(
-        min_timesteps=None, min_episodes=n_episodes_eval
+        min_timesteps=None,
+        min_episodes=n_episodes_eval,
     )
     trajs = rollout.generate_trajectories(
         model.policy,

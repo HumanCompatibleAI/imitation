@@ -100,7 +100,7 @@ class EpochOrBatchIteratorWithProgress:
             self.use_epochs = False
         else:
             raise ValueError(
-                "Must provide exactly one of `n_epochs` and `n_batches` arguments."
+                "Must provide exactly one of `n_epochs` and `n_batches` arguments.",
             )
 
         self.data_loader = data_loader
@@ -129,7 +129,7 @@ class EpochOrBatchIteratorWithProgress:
 
         def update_desc():
             display.set_description(
-                f"batch: {batch_num}{batch_suffix}  epoch: {epoch_num}{epoch_suffix}"
+                f"batch: {batch_num}{batch_suffix}  epoch: {epoch_num}{epoch_suffix}",
             )
 
         with contextlib.closing(display):
@@ -159,7 +159,7 @@ class EpochOrBatchIteratorWithProgress:
                     raise AssertionError(
                         f"Data loader returned no data after "
                         f"{batch_num} batches, during epoch "
-                        f"{epoch_num} -- did it reset correctly?"
+                        f"{epoch_num} -- did it reset correctly?",
                     )
                 epoch_num += 1
                 if self.on_epoch_end is not None:
@@ -240,7 +240,7 @@ class BC(algo_base.BaseImitationAlgorithm):
         self.device = utils.get_device(device)
 
         self.policy = self.policy_class(**self.policy_kwargs).to(
-            self.device
+            self.device,
         )  # pytype: disable=not-instantiable
         optimizer_kwargs = optimizer_kwargs or {}
         self.optimizer = optimizer_cls(

@@ -45,7 +45,7 @@ class BaseImitationAlgorithm(abc.ABC):
                 "the information leak from the termination condition, "
                 "producing spuriously high performance. See "
                 "https://imitation.readthedocs.io/en/latest/guide/variable_horizon.html"
-                " for more information."
+                " for more information.",
             )
         self._horizon = None
 
@@ -86,7 +86,7 @@ class BaseImitationAlgorithm(abc.ABC):
                 "https://imitation.readthedocs.io/en/latest/guide/variable_horizon.html"
                 " for more information. If you are SURE you want to run imitation on a "
                 "variable horizon task, then please pass in the flag: "
-                "`allow_variable_horizon=True`."
+                "`allow_variable_horizon=True`.",
             )
         elif len(horizons) == 1:
             self._horizon = horizons.pop()

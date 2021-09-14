@@ -67,7 +67,7 @@ def generate_test_data():
             "init_rl_kwargs": {
                 "learning_rate": tune.grid_search([3e-4 * x for x in (1 / 3, 1 / 2)]),
             },
-        }
+        },
     }
     base_named_configs = ["cartpole", "fast"]
     base_config_updates = {
@@ -86,7 +86,7 @@ def example_cartpole_rl():
                 "learning_rate": tune.grid_search(np.logspace(3e-6, 1e-1, num=3)),
                 "nminibatches": tune.grid_search([16, 32, 64]),
             },
-        }
+        },
     }
     base_named_configs = ["cartpole"]
     resources_per_trial = dict(cpu=4)

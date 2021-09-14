@@ -48,7 +48,9 @@ def default_end_cond(rollout_save_n_timesteps, rollout_save_n_episodes):
 @expert_demos_ex.config
 def logging(env_name, log_root):
     log_dir = os.path.join(
-        log_root, env_name.replace("/", "_"), util.make_unique_timestamp()
+        log_root,
+        env_name.replace("/", "_"),
+        util.make_unique_timestamp(),
     )
 
 
@@ -57,7 +59,8 @@ def rollouts_from_policy_only_defaults(log_dir):
     policy_path = None  # Policy path for rollouts_from_policy command only
     policy_type = "ppo"  # Policy type for rollouts_from_policy command only
     rollout_save_path = os.path.join(
-        log_dir, "rollout.pkl"
+        log_dir,
+        "rollout.pkl",
     )  # Save path for `rollouts_from_policy` only.
 
 

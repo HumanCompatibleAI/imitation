@@ -10,7 +10,8 @@ from imitation.data import types
 
 
 def gen_trajectories(
-    lens: Sequence[int], terminal: Sequence[bool]
+    lens: Sequence[int],
+    terminal: Sequence[bool],
 ) -> Sequence[types.Trajectory]:
     """Generate trajectories of lengths specified in `lens`."""
     trajs = []
@@ -52,7 +53,8 @@ def test_check_fixed_horizon(custom_logger):
 def test_check_fixed_horizon_flag(custom_logger):
     """Tests check for fixed horizon ignores variable horizon with allow flag."""
     algo = base.BaseImitationAlgorithm(
-        custom_logger=custom_logger, allow_variable_horizon=True
+        custom_logger=custom_logger,
+        allow_variable_horizon=True,
     )
     algo._check_fixed_horizon(trajs=gen_trajectories([5], [True]))
     algo._check_fixed_horizon(trajs=gen_trajectories([42], [True]))

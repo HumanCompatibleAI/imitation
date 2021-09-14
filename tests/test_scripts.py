@@ -115,7 +115,9 @@ def test_train_preference_comparisons_normalization_errors(tmpdir):
         train_preference_comparisons.train_preference_comparisons_ex.run(
             named_configs=["cartpole", "fast"],
             config_updates=dict(
-                log_root=tmpdir, normalize=False, agent_path=CARTPOLE_TEST_POLICY_PATH
+                log_root=tmpdir,
+                normalize=False,
+                agent_path=CARTPOLE_TEST_POLICY_PATH,
             ),
         )
 
@@ -138,7 +140,8 @@ def test_train_preference_comparisons_file_errors(tmpdir):
         train_preference_comparisons.train_preference_comparisons_ex.run(
             named_configs=["cartpole", "fast"],
             config_updates=dict(
-                log_root=tmpdir, agent_path=CARTPOLE_TEST_POLICY_PATH / "model.zip"
+                log_root=tmpdir,
+                agent_path=CARTPOLE_TEST_POLICY_PATH / "model.zip",
             ),
         )
 
@@ -225,7 +228,8 @@ def test_eval_policy(config, tmpdir):
     }
     config_updates.update(config)
     run = eval_policy.eval_policy_ex.run(
-        config_updates=config_updates, named_configs=["fast"]
+        config_updates=config_updates,
+        named_configs=["fast"],
     )
     assert run.status == "COMPLETED"
     wrapped_reward = "reward_type" in config
@@ -277,7 +281,7 @@ def test_train_adversarial_algorithm_value_error(tmpdir):
         {
             "log_root": tmpdir,
             "rollout_path": CARTPOLE_TEST_ROLLOUT_PATH,
-        }
+        },
     )
 
     with pytest.raises(ValueError, match=".*BAD_VALUE.*"):
@@ -290,7 +294,7 @@ def test_train_adversarial_algorithm_value_error(tmpdir):
         train_adversarial.train_adversarial_ex.run(
             named_configs=base_named_configs,
             config_updates=base_config_updates.new_child(
-                dict(discrim_net_kwargs={"BAD_VALUE": "bar"})
+                dict(discrim_net_kwargs={"BAD_VALUE": "bar"}),
             ),
         )
 
@@ -298,7 +302,7 @@ def test_train_adversarial_algorithm_value_error(tmpdir):
         train_adversarial.train_adversarial_ex.run(
             named_configs=base_named_configs,
             config_updates=base_config_updates.new_child(
-                dict(algorithm_kwargs={"BAD_VALUE": "bar"})
+                dict(algorithm_kwargs={"BAD_VALUE": "bar"}),
             ),
         )
 
@@ -306,7 +310,7 @@ def test_train_adversarial_algorithm_value_error(tmpdir):
         train_adversarial.train_adversarial_ex.run(
             named_configs=base_named_configs,
             config_updates=base_config_updates.new_child(
-                dict(rollout_path="path/BAD_VALUE")
+                dict(rollout_path="path/BAD_VALUE"),
             ),
         )
 
@@ -411,7 +415,8 @@ def test_parallel(config_updates):
     # itself generates no artifacts, and "debug_log_root" sets inner experiment's
     # log_root="/tmp/parallel_debug/".
     run = parallel.parallel_ex.run(
-        named_configs=["debug_log_root"], config_updates=config_updates
+        named_configs=["debug_log_root"],
+        config_updates=config_updates,
     )
     assert run.status == "COMPLETED"
 
@@ -437,7 +442,7 @@ def test_parallel_arg_errors(tmpdir):
         parallel.parallel_ex.run(
             named_configs=base_named_configs,
             config_updates=base_config_updates.new_child(
-                dict(search_space={"named_configs": {}})
+                dict(search_space={"named_configs": {}}),
             ),
         )
 
@@ -445,7 +450,7 @@ def test_parallel_arg_errors(tmpdir):
         parallel.parallel_ex.run(
             named_configs=base_named_configs,
             config_updates=base_config_updates.new_child(
-                dict(search_space={"config_updates": ()})
+                dict(search_space={"config_updates": ()}),
             ),
         )
 
@@ -484,7 +489,8 @@ def test_parallel_train_adversarial_custom_env(tmpdir):
     )
     config_updates.update(PARALLEL_CONFIG_LOW_RESOURCE)
     run = parallel.parallel_ex.run(
-        named_configs=["debug_log_root"], config_updates=config_updates
+        named_configs=["debug_log_root"],
+        config_updates=config_updates,
     )
     assert run.status == "COMPLETED"
 
@@ -579,16 +585,17 @@ def test_convert_trajs_in_place(tmpdir: str):
     shutil.copy(CARTPOLE_TEST_ROLLOUT_PATH, tmpdir)
     tmp_path = os.path.join(tmpdir, os.path.basename(CARTPOLE_TEST_ROLLOUT_PATH))
     exit_code = subprocess.call(
-        ["python", "-m", "imitation.scripts.convert_trajs_in_place", tmp_path]
+        ["python", "-m", "imitation.scripts.convert_trajs_in_place", tmp_path],
     )
     assert exit_code == 0
 
     shutil.copy(tmp_path, tmp_path + ".new")
     exit_code = subprocess.call(
-        ["python", "-m", "imitation.scripts.convert_trajs_in_place", tmp_path]
+        ["python", "-m", "imitation.scripts.convert_trajs_in_place", tmp_path],
     )
     assert exit_code == 0
 
     assert filecmp.cmp(
-        tmp_path, tmp_path + ".new"
+        tmp_path,
+        tmp_path + ".new",
     ), "convert_trajs_in_place not idempotent"

@@ -207,7 +207,11 @@ def test_train_gen_train_disc_no_crash(trainer, n_updates=2):
 
 @pytest.mark.expensive
 def test_train_disc_improve_D(
-    tmpdir, trainer, expert_transitions, expert_batch_size, n_steps=3
+    tmpdir,
+    trainer,
+    expert_transitions,
+    expert_batch_size,
+    n_steps=3,
 ):
     expert_samples = expert_transitions[:expert_batch_size]
     expert_samples = types.dataclass_quick_asdict(expert_samples)
@@ -221,7 +225,8 @@ def test_train_disc_improve_D(
     init_stats = final_stats = None
     for _ in range(n_steps):
         final_stats = trainer.train_disc(
-            gen_samples=gen_samples, expert_samples=expert_samples
+            gen_samples=gen_samples,
+            expert_samples=expert_samples,
         )
         if init_stats is None:
             init_stats = final_stats

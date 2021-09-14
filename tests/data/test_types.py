@@ -34,7 +34,9 @@ def _check_1d_shape(fn: Callable[[np.ndarray], Any], length: float, expected_msg
 
 @pytest.fixture
 def trajectory(
-    obs_space: gym.Space, act_space: gym.Space, length: int
+    obs_space: gym.Space,
+    act_space: gym.Space,
+    length: int,
 ) -> types.Trajectory:
     """Fixture to generate trajectory of length `length` iid sampled from spaces."""
     if length == 0:
@@ -54,7 +56,9 @@ def trajectory_rew(trajectory: types.Trajectory) -> types.TrajectoryWithRew:
 
 @pytest.fixture
 def transitions_min(
-    obs_space: gym.Space, act_space: gym.Space, length: int
+    obs_space: gym.Space,
+    act_space: gym.Space,
+    length: int,
 ) -> types.TransitionsMinimal:
     obs = np.array([obs_space.sample() for _ in range(length)])
     acts = np.array([act_space.sample() for _ in range(length)])
@@ -64,19 +68,24 @@ def transitions_min(
 
 @pytest.fixture
 def transitions(
-    transitions_min: types.TransitionsMinimal, obs_space: gym.Space, length: int
+    transitions_min: types.TransitionsMinimal,
+    obs_space: gym.Space,
+    length: int,
 ) -> types.Transitions:
     """Fixture to generate transitions of length `length` iid sampled from spaces."""
     next_obs = np.array([obs_space.sample() for _ in range(length)])
     dones = np.zeros(length, dtype=bool)
     return types.Transitions(
-        **dataclasses.asdict(transitions_min), next_obs=next_obs, dones=dones
+        **dataclasses.asdict(transitions_min),
+        next_obs=next_obs,
+        dones=dones,
     )
 
 
 @pytest.fixture
 def transitions_rew(
-    transitions: types.Transitions, length: int
+    transitions: types.Transitions,
+    length: int,
 ) -> types.TransitionsWithRew:
     """Like `transitions` but with reward randomly sampled from a Gaussian."""
     rews = np.random.randn(length)
@@ -168,11 +177,13 @@ class TestData:
         trajs = [trajectory, trajectory_rew]
         for traj in trajs:
             with pytest.raises(
-                ValueError, match=r"expected one more observations than actions.*"
+                ValueError,
+                match=r"expected one more observations than actions.*",
             ):
                 dataclasses.replace(traj, obs=traj.obs[:-1])
             with pytest.raises(
-                ValueError, match=r"expected one more observations than actions.*"
+                ValueError,
+                match=r"expected one more observations than actions.*",
             ):
                 dataclasses.replace(traj, acts=traj.acts[:-1])
 
@@ -195,7 +206,8 @@ class TestData:
 
         with pytest.raises(ValueError, match=r"rewards dtype.* not a float"):
             dataclasses.replace(
-                trajectory_rew, rews=np.zeros(len(trajectory_rew), dtype=int)
+                trajectory_rew,
+                rews=np.zeros(len(trajectory_rew), dtype=int),
             )
 
     def test_valid_transitions(
@@ -240,26 +252,31 @@ class TestData:
 
         for trans in [transitions_min, transitions, transitions_rew]:
             with pytest.raises(
-                ValueError, match=r"obs and acts must have same number of timesteps:.*"
+                ValueError,
+                match=r"obs and acts must have same number of timesteps:.*",
             ):
                 dataclasses.replace(trans, acts=trans.acts[:-1])
             with pytest.raises(
-                ValueError, match=r"obs and infos must have same number of timesteps:.*"
+                ValueError,
+                match=r"obs and infos must have same number of timesteps:.*",
             ):
                 dataclasses.replace(trans, infos=[{}] * (length - 1))
 
         for trans in [transitions, transitions_rew]:
             with pytest.raises(
-                ValueError, match=r"obs and next_obs must have same shape:.*"
+                ValueError,
+                match=r"obs and next_obs must have same shape:.*",
             ):
                 dataclasses.replace(trans, next_obs=np.zeros((len(trans), 4, 2)))
 
             with pytest.raises(
-                ValueError, match=r"obs and next_obs must have the same dtype:.*"
+                ValueError,
+                match=r"obs and next_obs must have the same dtype:.*",
             ):
                 dataclasses.replace(
-                    trans, next_obs=np.zeros_like(trans.next_obs, dtype=bool)
-                ),
+                    trans,
+                    next_obs=np.zeros_like(trans.next_obs, dtype=bool),
+                )
 
             _check_1d_shape(
                 fn=lambda bogus_dones: dataclasses.replace(trans, dones=bogus_dones),
@@ -278,7 +295,8 @@ class TestData:
 
         with pytest.raises(ValueError, match=r"rewards dtype.* not a float"):
             dataclasses.replace(
-                transitions_rew, rews=np.zeros(len(transitions_rew), dtype=int)
+                transitions_rew,
+                rews=np.zeros(len(transitions_rew), dtype=int),
             )
 
 

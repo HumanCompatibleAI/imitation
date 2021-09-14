@@ -64,7 +64,9 @@ class TrajectoryAccumulator:
         self.partial_trajectories[key].append(step_dict)
 
     def finish_trajectory(
-        self, key: Hashable, terminal: bool
+        self,
+        key: Hashable,
+        terminal: bool,
     ) -> types.TrajectoryWithRew:
         """Complete the trajectory labelled with `key`.
 
@@ -211,21 +213,21 @@ def make_sample_until(
     """
     if min_timesteps is None and min_episodes is None:
         raise ValueError(
-            "At least one of min_timesteps and min_episodes needs to be non-None"
+            "At least one of min_timesteps and min_episodes needs to be non-None",
         )
 
     conditions = []
     if min_timesteps is not None:
         if min_timesteps <= 0:
             raise ValueError(
-                f"min_timesteps={min_timesteps} if provided must be positive"
+                f"min_timesteps={min_timesteps} if provided must be positive",
             )
         conditions.append(make_min_timesteps(min_timesteps))
 
     if min_episodes is not None:
         if min_episodes <= 0:
             raise ValueError(
-                f"min_episodes={min_episodes} if provided must be positive"
+                f"min_episodes={min_episodes} if provided must be positive",
             )
         conditions.append(make_min_episodes(min_episodes))
 
@@ -245,7 +247,9 @@ AnyPolicy = Union[BaseAlgorithm, BasePolicy, PolicyCallable, None]
 
 
 def _policy_to_callable(
-    policy: AnyPolicy, venv: VecEnv, deterministic_policy: bool
+    policy: AnyPolicy,
+    venv: VecEnv,
+    deterministic_policy: bool,
 ) -> PolicyCallable:
     """Converts any policy-like object into a function from observations to actions."""
     if policy is None:
@@ -275,7 +279,7 @@ def _policy_to_callable(
     else:
         raise TypeError(
             "Policy must be None, a stable-baselines policy or algorithm, "
-            f"or a Callable, got {type(policy)} instead"
+            f"or a Callable, got {type(policy)} instead",
         )
 
     if isinstance(policy, BaseAlgorithm):
@@ -349,7 +353,11 @@ def generate_trajectories(
         dones &= active
 
         new_trajs = trajectories_accum.add_steps_and_auto_finish(
-            acts, obs, rews, dones, infos
+            acts,
+            obs,
+            rews,
+            dones,
+            infos,
         )
         trajectories.extend(new_trajs)
 
@@ -519,7 +527,10 @@ def generate_transitions(
       `truncate` is provided as we collect data until the end of each episode.
     """
     traj = generate_trajectories(
-        policy, venv, sample_until=make_min_timesteps(n_timesteps), **kwargs
+        policy,
+        venv,
+        sample_until=make_min_timesteps(n_timesteps),
+        **kwargs,
     )
     transitions = flatten_trajectories_with_rew(traj)
     if truncate and n_timesteps is not None:

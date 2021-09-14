@@ -58,7 +58,10 @@ def load_zero(path: str, venv: VecEnv) -> common.RewardFn:
     del path, venv
 
     def f(
-        obs: np.ndarray, act: np.ndarray, next_obs: np.ndarray, dones: np.ndarray
+        obs: np.ndarray,
+        act: np.ndarray,
+        next_obs: np.ndarray,
+        dones: np.ndarray,
     ) -> np.ndarray:
         del act, next_obs, dones  # Unused.
         return np.zeros(obs.shape[0])
@@ -68,10 +71,12 @@ def load_zero(path: str, venv: VecEnv) -> common.RewardFn:
 
 reward_registry.register(key="DiscrimNet", value=_load_discrim_net)
 reward_registry.register(
-    key="RewardNet_shaped", value=_load_reward_net_as_fn(shaped=True)
+    key="RewardNet_shaped",
+    value=_load_reward_net_as_fn(shaped=True),
 )
 reward_registry.register(
-    key="RewardNet_unshaped", value=_load_reward_net_as_fn(shaped=False)
+    key="RewardNet_unshaped",
+    value=_load_reward_net_as_fn(shaped=False),
 )
 reward_registry.register(key="zero", value=load_zero)
 

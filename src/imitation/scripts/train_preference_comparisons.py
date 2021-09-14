@@ -118,7 +118,9 @@ def train_preference_comparisons(
     vec_normalize = None
 
     reward_net = reward_nets.BasicRewardNet(
-        venv.observation_space, venv.action_space, **reward_net_kwargs
+        venv.observation_space,
+        venv.action_space,
+        **reward_net_kwargs,
     )
     if agent_path is None:
         agent = stable_baselines3.PPO("MlpPolicy", venv, seed=_seed, **agent_kwargs)
@@ -131,17 +133,20 @@ def train_preference_comparisons(
         if not policy_dir.is_dir():
             raise FileNotFoundError(
                 f"agent_path={agent_path} needs to be a directory containing model.zip "
-                "and optionally vec_normalize.pkl."
+                "and optionally vec_normalize.pkl.",
             )
 
         model_path = policy_dir / "model.zip"
         if not model_path.is_file():
             raise FileNotFoundError(
-                f"Could not find policy at expected location {model_path}"
+                f"Could not find policy at expected location {model_path}",
             )
 
         agent = stable_baselines3.PPO.load(
-            model_path, env=venv, seed=_seed, **agent_kwargs
+            model_path,
+            env=venv,
+            seed=_seed,
+            **agent_kwargs,
         )
         custom_logger.info(f"Warm starting agent from '{model_path}'")
 
@@ -156,7 +161,7 @@ def train_preference_comparisons(
             if not normalize:
                 raise ValueError(
                     "normalize=False but the loaded policy has "
-                    "associated normalization stats."
+                    "associated normalization stats.",
                 )
             # TODO(ejnnr): this check is hacky, what if we change the default config?
             if normalize_kwargs != {"norm_reward": False}:
@@ -165,7 +170,7 @@ def train_preference_comparisons(
                 print(normalize_kwargs)
                 raise ValueError(
                     "Setting normalize_kwargs is not supported "
-                    "when loading an existing VecNormalize."
+                    "when loading an existing VecNormalize.",
                 )
             vec_normalize.training = True
             # TODO(ejnnr): We should figure out at some point if reward normalization
@@ -193,11 +198,15 @@ def train_preference_comparisons(
         # Setting the logger here is not really necessary (PreferenceComparisons
         # takes care of that automatically) but it avoids creating unnecessary loggers
         trajectory_generator = preference_comparisons.AgentTrainer(
-            agent, reward_net, custom_logger=custom_logger
+            agent,
+            reward_net,
+            custom_logger=custom_logger,
         )
     else:
         trajectory_generator = preference_comparisons.TrajectoryDataset(
-            trajectory_path, _seed, custom_logger
+            trajectory_path,
+            _seed,
+            custom_logger,
         )
 
     fragmenter = preference_comparisons.RandomFragmenter(
@@ -205,10 +214,14 @@ def train_preference_comparisons(
         custom_logger=custom_logger,
     )
     gatherer = preference_comparisons.SyntheticGatherer(
-        **gatherer_kwargs, seed=_seed, custom_logger=custom_logger
+        **gatherer_kwargs,
+        seed=_seed,
+        custom_logger=custom_logger,
     )
     reward_trainer = preference_comparisons.CrossEntropyRewardTrainer(
-        model=reward_net, **reward_trainer_kwargs, custom_logger=custom_logger
+        model=reward_net,
+        **reward_trainer_kwargs,
+        custom_logger=custom_logger,
     )
     main_trainer = preference_comparisons.PreferenceComparisons(
         trajectory_generator,
@@ -233,10 +246,13 @@ def train_preference_comparisons(
     # Storing and evaluating the policy only makes sense if we actually used it
     if trajectory_path is None:
         serialize.save_stable_model(
-            os.path.join(log_dir, "final_policy"), agent, vec_normalize
+            os.path.join(log_dir, "final_policy"),
+            agent,
+            vec_normalize,
         )
         sample_until = rollout.make_sample_until(
-            min_timesteps=None, min_episodes=n_episodes_eval
+            min_timesteps=None,
+            min_episodes=n_episodes_eval,
         )
         trajs = rollout.generate_trajectories(
             agent,
@@ -251,7 +267,7 @@ def train_preference_comparisons(
 
 def main_console():
     observer = FileStorageObserver(
-        os.path.join("output", "sacred", "train_preference_comparisons")
+        os.path.join("output", "sacred", "train_preference_comparisons"),
     )
     train_preference_comparisons_ex.observers.append(observer)
     train_preference_comparisons_ex.run_commandline()

@@ -61,7 +61,7 @@ class PusherEnv(mujoco_env.MujocoEnv, utils.EzPickle):
                 [
                     self.np_random.uniform(low=-0.5, high=0, size=1),
                     self.np_random.uniform(low=-0.5, high=0.5, size=1),
-                ]
+                ],
             )
             cyl_dist = np.linalg.norm(self.cylinder_pos - self.goal_pos)
             if cyl_dist > 0.2 and cyl_dist < 0.4:
@@ -71,7 +71,9 @@ class PusherEnv(mujoco_env.MujocoEnv, utils.EzPickle):
         qpos[-2] = self.goal_pos[0]
         qpos[-1] = self.goal_pos[1]
         qvel = self.init_qvel + self.np_random.uniform(
-            low=-0.005, high=0.005, size=self.model.nv
+            low=-0.005,
+            high=0.005,
+            size=self.model.nv,
         )
         qvel[-4:] = 0
         self.set_state(qpos, qvel)
@@ -85,7 +87,7 @@ class PusherEnv(mujoco_env.MujocoEnv, utils.EzPickle):
                 self.get_body_com("tips_arm"),
                 self.get_body_com("object"),
                 self.get_body_com("goal"),
-            ]
+            ],
         )
 
     def plot_trajs(self, *args, **kwargs):

@@ -83,7 +83,8 @@ class DensityReward:
         # zero mean and unit variance (i.e all components are equally important)
         flattened_dataset = np.stack(sum(flat_trajs, []), axis=0)
         self._scaler = StandardScaler(
-            with_mean=self.standardise, with_std=self.standardise
+            with_mean=self.standardise,
+            with_std=self.standardise,
         )
         self._scaler.fit(flattened_dataset)
 
@@ -92,7 +93,7 @@ class DensityReward:
         if self.is_stationary:
             # fit to all pairs, since density model is stationary
             self._density_model = self._fit_single_density(
-                self._scaler.transform(flattened_dataset)
+                self._scaler.transform(flattened_dataset),
             )
         else:
             # fit separately for samples at each time step
@@ -115,7 +116,8 @@ class DensityReward:
         # have unit variance in each component. There might be a better way to
         # choose it automatically.
         density_model = KernelDensity(
-            kernel=self.kernel, bandwidth=self.kernel_bandwidth
+            kernel=self.kernel,
+            bandwidth=self.kernel_bandwidth,
         )
         density_model.fit(flat_transitions)
         return density_model
@@ -143,7 +145,9 @@ class DensityReward:
             flat_traj = []
             for step_num in range(len(traj.acts)):
                 flat_trans = self._preprocess_transition(
-                    obs_vec[step_num], act_vec[step_num], obs_vec[step_num + 1]
+                    obs_vec[step_num],
+                    act_vec[step_num],
+                    obs_vec[step_num + 1],
                 )
                 flat_traj.append(flat_trans)
             flat_trajectories.append(flat_traj)
@@ -154,11 +158,11 @@ class DensityReward:
             return flatten(self.obs_space, obs)
         elif self.density_type == STATE_ACTION_DENSITY:
             return np.concatenate(
-                [flatten(self.obs_space, obs), flatten(self.act_space, act)]
+                [flatten(self.obs_space, obs), flatten(self.act_space, act)],
             )
         elif self.density_type == STATE_STATE_DENSITY:
             return np.concatenate(
-                [flatten(self.obs_space, obs), flatten(self.obs_space, next_obs)]
+                [flatten(self.obs_space, obs), flatten(self.obs_space, next_obs)],
             )
         else:
             raise ValueError(f"Unknown density type {self.density_type}")
@@ -198,7 +202,7 @@ class DensityReward:
                     # density.
                     raise Exception(
                         f"Time {time} out of range (0, {len(self._density_models)}], "
-                        "and I haven't implemented absorbing states etc. yet"
+                        "and I haven't implemented absorbing states etc. yet",
                     )
                 else:
                     time_model = self._density_models[time]
