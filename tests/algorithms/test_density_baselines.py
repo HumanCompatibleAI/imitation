@@ -10,7 +10,7 @@ from imitation.data import rollout, types
 from imitation.policies.base import RandomPolicy
 from imitation.util import util
 
-parametrize_density = pytest.mark.parametrize(
+parametrize_density_stationary = pytest.mark.parametrize(
     "density_type,is_stationary",
     [(density_type, True) for density_type in DensityType]
     + [(DensityType.STATE_DENSITY, False)],
@@ -33,7 +33,7 @@ def score_trajectories(
     return np.mean(returns)
 
 
-@parametrize_density
+@parametrize_density_stationary
 def test_density_reward(density_type, is_stationary):
     # test on Pendulum rather than Cartpole because I don't handle episodes that
     # terminate early yet (see issue #40)
