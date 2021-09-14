@@ -70,7 +70,7 @@ class _NoopTqdm:
 class EpochOrBatchIteratorWithProgress:
     def __init__(
         self,
-        data_loader: Iterable[dict],
+        data_loader: Iterable[algo_base.TransitionMapping],
         n_epochs: Optional[int] = None,
         n_batches: Optional[int] = None,
         on_epoch_end: Optional[Callable[[], None]] = None,
@@ -109,7 +109,9 @@ class EpochOrBatchIteratorWithProgress:
         self.on_batch_end = on_batch_end
         self.progress_bar_visible = progress_bar_visible
 
-    def __iter__(self) -> Iterable[Tuple[dict, dict]]:
+    def __iter__(
+        self,
+    ) -> Iterable[Tuple[algo_base.TransitionMapping, Mapping[str, Any]]]:
         """Yields batches while updating tqdm display to display progress."""
 
         samples_so_far = 0
@@ -255,7 +257,9 @@ class BC(algo_base.DemonstrationAlgorithm):
         self.l2_weight = l2_weight
 
     def set_demonstrations(self, demonstrations: algo_base.AnyTransitions) -> None:
-        self._demo_data_loader = algo_base.make_data_loader(demonstrations, self.demo_batch_size)
+        self._demo_data_loader = algo_base.make_data_loader(
+            demonstrations, self.demo_batch_size
+        )
 
     def _calculate_loss(
         self,

@@ -41,42 +41,6 @@ def _algorithm_kwargs(request):
     return dict(request.param)
 
 
-def test_train_disc_small_expert_data_warning(
-    tmpdir,
-    custom_logger,
-    _algorithm_kwargs,
-):
-    venv = util.make_vec_env(
-        "seals/CartPole-v0",
-        n_envs=1,
-        parallel=_parallel,
-    )
-
-    _algorithm_cls = _algorithm_kwargs.pop("algorithm_cls")
-    gen_algo = util.init_rl(venv, verbose=1, **_algorithm_kwargs)
-    small_data = rollout.generate_transitions(gen_algo, venv, n_timesteps=20)
-
-    with pytest.raises(ValueError, match="Transitions.*demo_batch_size"):
-        _algorithm_cls(
-            venv=venv,
-            demonstrations=small_data,
-            demo_batch_size=21,
-            gen_algo=gen_algo,
-            log_dir=tmpdir,
-            custom_logger=custom_logger,
-        )
-
-    with pytest.raises(ValueError, match="demo_batch_size.*positive"):
-        _algorithm_cls(
-            venv=venv,
-            demonstrations=small_data,
-            demo_batch_size=-1,
-            gen_algo=gen_algo,
-            log_dir=tmpdir,
-            custom_logger=custom_logger,
-        )
-
-
 def test_airl_fail_fast(custom_logger, tmpdir):
     venv = util.make_vec_env(
         "seals/CartPole-v0",

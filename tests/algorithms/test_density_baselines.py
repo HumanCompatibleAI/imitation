@@ -12,7 +12,6 @@ from imitation.algorithms.density_baselines import (
 )
 from imitation.data import rollout, types
 from imitation.policies.base import RandomPolicy
-from imitation.rewards import common
 from imitation.util import util
 
 parametrize_density = pytest.mark.parametrize(
@@ -23,7 +22,7 @@ parametrize_density = pytest.mark.parametrize(
 
 
 def score_trajectories(
-    trajectories: Sequence[types.Trajectory], reward_fn: common.RewardFn
+    trajectories: Sequence[types.Trajectory], density_reward: DensityReward
 ):
     # score trajectories under given reward function w/o discount
     returns = []
@@ -31,7 +30,7 @@ def score_trajectories(
         dones = np.zeros(len(traj), dtype=np.bool)
         dones[-1] = True
         steps = np.arange(0, len(traj.acts))
-        rewards = reward_fn(traj.obs[:-1], traj.acts, traj.obs[1:], dones, steps)
+        rewards = density_reward(traj.obs[:-1], traj.acts, traj.obs[1:], dones, steps)
         ret = np.sum(rewards)
         returns.append(ret)
     return np.mean(returns)

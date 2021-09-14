@@ -1,5 +1,5 @@
 import abc
-from typing import Generic, Iterable, Mapping, Optional, TypeVar, Union
+from typing import Any, Generic, Iterable, Mapping, Optional, TypeVar, Union
 
 import numpy as np
 import torch as th
@@ -108,39 +108,78 @@ class BaseImitationAlgorithm(abc.ABC):
         self.logger = state.get("_logger") or imit_logger.configure()
 
 
-TransitionMappings = Iterable[Mapping[str, Union[np.ndarray, th.Tensor]]]
+TransitionMapping = Mapping[str, Union[np.ndarray, th.Tensor]]
 TransitionKind = TypeVar("TransitionKind", bound=types.TransitionsMinimal)
-AnyTransitions = Union[Iterable[types.Trajectory], TransitionMappings, TransitionKind]
+AnyTransitions = Union[
+    Iterable[types.Trajectory], Iterable[TransitionMapping], TransitionKind
+]
 
 
 def make_data_loader(
-    demonstrations: AnyTransitions, demo_batch_size: int
-) -> TransitionMappings:
-    if isinstance(demonstrations, Iterable):
-        # TODO(adam): what about empty iterable?
-        first_item = next(demonstrations).__iter__()
-        if isinstance(first_item, types.Trajectory):
-            demonstrations = rollout.flatten_trajectories(list(demonstrations))
+    transitions: AnyTransitions,
+    batch_size: int,
+    data_loader_kwargs: Optional[Mapping[str, Any]] = None,
+) -> Iterable[TransitionMapping]:
+    """Converts demonstration data to Torch data loader.
 
-    if isinstance(demonstrations, types.TransitionsMinimal):
-        if len(demonstrations) < demo_batch_size:
+    Args:
+        transitions: Transitions expressed directly as a `types.TransitionsMinimal`
+            object, a sequence of trajectories, or an iterable of transition
+            batches (mappings from keywords to arrays containing observations, etc).
+        batch_size: The size of the batch to create. Does not change the batch size
+            if `transitions` is already an iterable of transition batches.
+        data_loader_kwargs: Arguments to pass to `th_data.DataLoader`.
+
+    Returns:
+        An iterable of transition batches.
+
+    Raises:
+        ValueError if `transitions` is an iterable over transition batches with batch
+        size not equal to `batch_size`.
+    """
+    if batch_size <= 0:
+        raise ValueError(f"batch_size={batch_size} must be positive.")
+
+    if isinstance(transitions, Iterable):
+        try:
+            first_item = next(iter(transitions))
+        except StopIteration:
+            first_item = None
+        if isinstance(first_item, types.Trajectory):
+            transitions = rollout.flatten_trajectories(list(transitions))
+
+    if isinstance(transitions, types.TransitionsMinimal):
+        if len(transitions) < batch_size:
             raise ValueError(
                 "Provided Transitions instance as `demonstrations` argument but "
-                "len(demonstrations) < demo_batch_size. "
-                f"({len(demonstrations)} < {demo_batch_size})."
+                "len(demonstrations) < batch_size. "
+                f"({len(transitions)} < {batch_size})."
             )
 
+        extra_kwargs = dict(shuffle=True, drop_last=True)
+        if data_loader_kwargs is not None:
+            extra_kwargs.update(data_loader_kwargs)
         return th_data.DataLoader(
-            demonstrations,
-            batch_size=demo_batch_size,
+            transitions,
+            batch_size=batch_size,
             collate_fn=types.transitions_collate_fn,
-            shuffle=True,
-            drop_last=True,
+            **extra_kwargs,
         )
-    elif isinstance(demonstrations, Iterable):
-        return demonstrations
+    elif isinstance(transitions, Iterable):
+        try:
+            first_item = next(iter(transitions))
+            first_batch_size = len(first_item["obs"])
+            if first_batch_size != batch_size:
+                raise ValueError(
+                    f"Expected batch size {batch_size} "
+                    f"!= actual {first_batch_size}."
+                )
+        except StopIteration:
+            pass
+        # pytype does not understand transitions is an Iterable[TransitionMapping]
+        return transitions  # pytype:disable=bad-return-type
     else:
-        raise TypeError(f"`demonstrations` unexpected type {type(demonstrations)}")
+        raise TypeError(f"`demonstrations` unexpected type {type(transitions)}")
 
 
 class DemonstrationAlgorithm(BaseImitationAlgorithm, Generic[TransitionKind]):
