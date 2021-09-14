@@ -14,7 +14,7 @@ from sklearn import neighbors, preprocessing
 from stable_baselines3.common import base_class, vec_env
 
 from imitation.algorithms import base
-from imitation.data import rollout, types
+from imitation.data import rollout, types, wrappers
 from imitation.util import logger as imit_logger
 from imitation.util import reward_wrapper
 
@@ -107,11 +107,23 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
         self._density_models = {}
 
         self.rl_algo = rl_algo
+        self.buffering_wrapper = wrappers.BufferingWrapper(self.venv)
         self.venv_wrapped = reward_wrapper.RewardVecEnvWrapper(
-            self.venv,
+            self.buffering_wrapper,
             self,
         )
         self.wrapper_callback = self.venv_wrapped.make_log_callback()
+
+    def _set_demo_from_batch(
+        self,
+        obs_b: np.ndarray,
+        act_b: np.ndarray,
+        next_obs_b: Optional[np.ndarray],
+    ) -> None:
+        next_obs_b = next_obs_b or itertools.repeat(None)
+        for obs, act, next_obs in zip(obs_b, act_b, next_obs_b):
+            flat_trans = self._preprocess_transition(obs, act, next_obs)
+            self.transitions.setdefault(None, []).append(flat_trans)
 
     def set_demonstrations(self, demonstrations: base.AnyTransitions) -> None:
         """Sets the demonstration data."""
@@ -131,27 +143,20 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
             else:
                 # Demonstrations are a Torch DataLoader or other Mapping iterable
                 for batch in demonstrations:
-                    next_obses = batch.get("next_obs", itertools.repeat(None))
-                    for obs, act, next_obs in zip(
+                    self._set_demo_from_batch(
                         batch["obs"],
                         batch["acts"],
-                        next_obses,
-                    ):
-                        flat_trans = self._preprocess_transition(obs, act, next_obs)
-                        self.transitions.setdefault(None, []).append(flat_trans)
+                        batch.get("next_obs"),
+                    )
         elif isinstance(demonstrations, types.TransitionsMinimal):
-            next_obses = (
-                demonstrations.next_obs
-                if hasattr(demonstrations, "next_obs")
-                else itertools.repeat(None)
+            next_obs_b = (
+                demonstrations.next_obs if hasattr(demonstrations, "next_obs") else None
             )
-            for obs, act, next_obs in zip(
+            self._set_demo_from_batch(
                 demonstrations.obs,
                 demonstrations.acts,
-                next_obses,
-            ):
-                flat_trans = self._preprocess_transition(obs, act, next_obs)
-                self.transitions.setdefault(None, []).append(flat_trans)
+                next_obs_b,
+            )
         else:
             raise TypeError(f"Unsupported demonstration type {type(demonstrations)}")
 
@@ -184,9 +189,6 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
         }
 
     def _fit_density(self, transitions: np.ndarray) -> neighbors.KernelDensity:
-        # This bandwidth was chosen to make sense with standardised inputs that
-        # have unit variance in each component. There might be a better way to
-        # choose it automatically.
         density_model = neighbors.KernelDensity(
             kernel=self.kernel,
             bandwidth=self.kernel_bandwidth,
@@ -301,6 +303,8 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
             callback=self.wrapper_callback,
             **kwargs,
         )
+        trajs = self.buffering_wrapper.pop_trajectories()
+        self._check_fixed_horizon(trajs)
 
     def test_policy(self, *, n_trajectories: int = 10, true_reward: bool = True):
         """Test current imitation policy on environment & give some rollout stats.
@@ -319,5 +323,6 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
             self.venv if true_reward else self.venv_wrapped,
             sample_until=rollout.make_min_episodes(n_trajectories),
         )
+        self._check_fixed_horizon(trajs)
         reward_stats = rollout.rollout_stats(trajs)
         return reward_stats
