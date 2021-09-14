@@ -39,8 +39,9 @@ class DucktypedDataset:
         self.batch_size = batch_size
 
     def __iter__(self):
-        for start in range(0, len(self.trans), self.batch_size):
-            d = dict(obs=self.trans.obs, acts=self.trans.acts)
+        for start in range(0, len(self.trans) - self.batch_size, self.batch_size):
+            end = start + self.batch_size
+            d = dict(obs=self.trans.obs[start:end], acts=self.trans.acts[start:end])
             d = {k: th.from_numpy(v) for k, v in d.items()}
             yield d
 
@@ -54,6 +55,7 @@ def trainer(batch_size, venv, expert_data_type, custom_logger):
             trans,
             batch_size=batch_size,
             shuffle=True,
+            drop_last=True,
             collate_fn=types.transitions_collate_fn,
         )
     elif expert_data_type == "ducktyped_data_loader":
@@ -66,7 +68,8 @@ def trainer(batch_size, venv, expert_data_type, custom_logger):
     return bc.BC(
         venv.observation_space,
         venv.action_space,
-        expert_data=expert_data,
+        demo_batch_size=batch_size,
+        demonstrations=expert_data,
         custom_logger=custom_logger,
     )
 
@@ -76,7 +79,7 @@ def test_weight_decay_init_error(venv, custom_logger):
         bc.BC(
             venv.observation_space,
             venv.action_space,
-            expert_data=None,
+            demonstrations=None,
             optimizer_kwargs=dict(weight_decay=1e-4),
             custom_logger=custom_logger,
         )
@@ -138,18 +141,22 @@ def test_bc_data_loader_empty_iter_error(venv, no_yield_after_iter, custom_logge
 
     At one point, we entered an updateless infinite loop in this edge case.
     """
+    batch_size = 32
     rollouts = types.load(ROLLOUT_PATH)
     trans = rollout.flatten_trajectories(rollouts)
-    dummy_yield_value = dataclasses.asdict(trans[:3])
+    dummy_yield_value = dataclasses.asdict(trans[:batch_size])
 
     bad_data_loader = _DataLoaderFailsOnSecondIter(
         dummy_yield_value=dummy_yield_value,
         no_yield_after_iter=no_yield_after_iter,
     )
     trainer = bc.BC(
-        venv.observation_space, venv.action_space, custom_logger=custom_logger
+        venv.observation_space,
+        venv.action_space,
+        demo_batch_size=batch_size,
+        custom_logger=custom_logger,
     )
-    trainer.set_expert_data_loader(bad_data_loader)
+    trainer.set_demonstrations(bad_data_loader)
     with pytest.raises(AssertionError, match=".*no data.*"):
         trainer.train(n_batches=20)
 

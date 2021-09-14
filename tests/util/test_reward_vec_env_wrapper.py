@@ -21,10 +21,10 @@ def test_reward_overwrite():
     policy = RandomPolicy(env.observation_space, env.action_space)
     sample_until = rollout.make_min_episodes(10)
     default_stats = rollout.rollout_stats(
-        rollout.generate_trajectories(policy, env, sample_until)
+        rollout.generate_trajectories(policy, env, sample_until),
     )
     wrapped_stats = rollout.rollout_stats(
-        rollout.generate_trajectories(policy, wrapped_env, sample_until)
+        rollout.generate_trajectories(policy, wrapped_env, sample_until),
     )
     # Pendulum-v0 always has negative rewards
     assert default_stats["return_max"] < 0

@@ -222,8 +222,12 @@ def test_replay_buffer_from_data():
 
     buf_std = ReplayBuffer.from_data(
         types.Transitions(
-            obs=obs, acts=acts, next_obs=next_obs, dones=dones, infos=infos
-        )
+            obs=obs,
+            acts=acts,
+            next_obs=next_obs,
+            dones=dones,
+            infos=infos,
+        ),
     )
     _check_buf(buf_std)
 
@@ -236,6 +240,6 @@ def test_replay_buffer_from_data():
             rews=rews,
             dones=dones,
             infos=infos,
-        )
+        ),
     )
     _check_buf(buf_rew)

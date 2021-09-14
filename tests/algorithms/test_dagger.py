@@ -79,7 +79,10 @@ def test_traj_collector(tmpdir, venv):
         return [venv.action_space.sample() for _ in range(len(obs))]
 
     collector = dagger.InteractiveTrajectoryCollector(
-        venv=venv, get_robot_acts=get_random_acts, beta=0.5, save_dir=tmpdir
+        venv=venv,
+        get_robot_acts=get_random_acts,
+        beta=0.5,
+        save_dir=tmpdir,
     )
     collector.reset()
     zero_acts = np.zeros((venv.num_envs,), dtype="int")
@@ -106,13 +109,18 @@ def test_traj_collector(tmpdir, venv):
 
 
 def _build_dagger_trainer(
-    tmpdir, venv, beta_schedule, expert_policy, expert_trajs, custom_logger
+    tmpdir,
+    venv,
+    beta_schedule,
+    expert_policy,
+    expert_trajs,
+    custom_logger,
 ):
     del expert_policy
     if expert_trajs is not None:
         pytest.skip(
             "DAggerTrainer does not use trajectories. "
-            "Skipping to avoid duplicate test."
+            "Skipping to avoid duplicate test.",
         )
     return dagger.DAggerTrainer(
         venv=venv,
@@ -149,13 +157,24 @@ def beta_schedule(request):
 
 @pytest.fixture(params=[_build_dagger_trainer, _build_simple_dagger_trainer])
 def init_trainer_fn(
-    request, tmpdir, venv, beta_schedule, expert_policy, expert_trajs, custom_logger
+    request,
+    tmpdir,
+    venv,
+    beta_schedule,
+    expert_policy,
+    expert_trajs,
+    custom_logger,
 ):
     # Provide a trainer initialization fixture in addition `trainer` fixture below
     # for tests that want to initialize multiple DAggerTrainer.
     trainer_fn = request.param
     return lambda: trainer_fn(
-        tmpdir, venv, beta_schedule, expert_policy, expert_trajs, custom_logger
+        tmpdir,
+        venv,
+        beta_schedule,
+        expert_policy,
+        expert_trajs,
+        custom_logger,
     )
 
 
@@ -166,10 +185,20 @@ def trainer(init_trainer_fn):
 
 @pytest.fixture
 def simple_dagger_trainer(
-    tmpdir, venv, beta_schedule, expert_policy, expert_trajs, custom_logger
+    tmpdir,
+    venv,
+    beta_schedule,
+    expert_policy,
+    expert_trajs,
+    custom_logger,
 ):
     return _build_simple_dagger_trainer(
-        tmpdir, venv, beta_schedule, expert_policy, expert_trajs, custom_logger
+        tmpdir,
+        venv,
+        beta_schedule,
+        expert_policy,
+        expert_trajs,
+        custom_logger,
     )
 
 
@@ -202,7 +231,9 @@ def test_trainer_train_arguments(trainer, expert_policy):
     def add_samples():
         collector = trainer.get_trajectory_collector()
         rollout.generate_trajectories(
-            expert_policy, collector, sample_until=rollout.make_min_timesteps(40)
+            expert_policy,
+            collector,
+            sample_until=rollout.make_min_timesteps(40),
         )
 
     # Lower default number of epochs for the no-arguments call that follows.
@@ -314,7 +345,10 @@ def test_dagger_not_enough_transitions_error(tmpdir, custom_logger):
     venv = util.make_vec_env("CartPole-v0")
     # Initialize with large batch size to ensure error down the line.
     trainer = dagger.DAggerTrainer(
-        venv, tmpdir, batch_size=100_000, custom_logger=custom_logger
+        venv,
+        tmpdir,
+        batch_size=100_000,
+        custom_logger=custom_logger,
     )
     collector = trainer.get_trajectory_collector()
     policy = base.RandomPolicy(venv.observation_space, venv.action_space)

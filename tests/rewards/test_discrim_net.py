@@ -48,10 +48,14 @@ def _setup_gail(venv):
 
 def _setup_gail_provide_discriminator(venv):
     discriminator = discrim_nets.ActObsMLP(
-        venv.action_space, venv.observation_space, hid_sizes=(4, 4, 4)
+        venv.action_space,
+        venv.observation_space,
+        hid_sizes=(4, 4, 4),
     )
     return discrim_nets.DiscrimNetGAIL(
-        venv.observation_space, venv.action_space, discriminator
+        venv.observation_space,
+        venv.action_space,
+        discriminator,
     )
 
 
@@ -141,7 +145,7 @@ def test_serialize_identity(discrim_net, venv, tmpdir):
                 transitions.acts,
                 transitions.next_obs,
                 transitions.dones,
-            )
+            ),
         )
         rewards["test"].append(
             net.predict_reward_test(
@@ -149,7 +153,7 @@ def test_serialize_identity(discrim_net, venv, tmpdir):
                 transitions.acts,
                 transitions.next_obs,
                 transitions.dones,
-            )
+            ),
         )
 
     for key, predictions in rewards.items():

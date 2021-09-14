@@ -73,11 +73,15 @@ def disc_rew_preprocess_inputs(
 
     # preprocess
     state_th = preprocessing.preprocess_obs(
-        state_th, observation_space, normalize_images
+        state_th,
+        observation_space,
+        normalize_images,
     )
     action_th = preprocessing.preprocess_obs(action_th, action_space, normalize_images)
     next_state_th = preprocessing.preprocess_obs(
-        next_state_th, observation_space, normalize_images
+        next_state_th,
+        observation_space,
+        normalize_images,
     )
     done_th = done_th.to(th.float32)
 

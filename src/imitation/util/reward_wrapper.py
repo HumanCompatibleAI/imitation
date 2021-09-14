@@ -28,7 +28,10 @@ class WrappedRewardCallback(callbacks.BaseCallback):
 
 class RewardVecEnvWrapper(vec_env.VecEnvWrapper):
     def __init__(
-        self, venv: vec_env.VecEnv, reward_fn: common.RewardFn, ep_history: int = 100
+        self,
+        venv: vec_env.VecEnv,
+        reward_fn: common.RewardFn,
+        ep_history: int = 100,
     ):
         """Uses a provided reward_fn to replace the reward function returned by `step()`.
 

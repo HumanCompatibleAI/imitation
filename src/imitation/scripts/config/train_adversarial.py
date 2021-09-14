@@ -32,7 +32,7 @@ def train_defaults():
     # Kwargs for initializing GAIL and AIRL
     algorithm_kwargs = dict(
         shared=dict(
-            expert_batch_size=1024,  # Number of expert samples per discriminator update
+            demo_batch_size=1024,  # Number of expert samples per discriminator update
             # Number of discriminator updates after each round of generator updates
             n_disc_updates_per_round=4,
         ),
@@ -74,7 +74,9 @@ def calc_n_steps(num_vec, gen_batch_size):
 @train_adversarial_ex.config
 def paths(env_name, log_root, rollout_hint, data_dir):
     log_dir = os.path.join(
-        log_root, env_name.replace("/", "_"), util.make_unique_timestamp()
+        log_root,
+        env_name.replace("/", "_"),
+        util.make_unique_timestamp(),
     )
 
     # Recommended that user sets rollout_path manually.
@@ -83,7 +85,11 @@ def paths(env_name, log_root, rollout_hint, data_dir):
     if rollout_hint is None:
         rollout_hint = env_name.split("-")[0].lower()
     rollout_path = os.path.join(
-        data_dir, "expert_models", f"{rollout_hint}_0", "rollouts", "final.pkl"
+        data_dir,
+        "expert_models",
+        f"{rollout_hint}_0",
+        "rollouts",
+        "final.pkl",
     )
 
 
@@ -109,7 +115,7 @@ MUJOCO_SHARED_LOCALS = dict(discrim_net_kwargs=dict(airl=dict(entropy_weight=0.1
 ANT_SHARED_LOCALS = dict(
     total_timesteps=3e7,
     max_episode_steps=500,  # To match `inverse_rl` settings.
-    algorithm_kwargs=dict(shared=dict(expert_batch_size=8192)),
+    algorithm_kwargs=dict(shared=dict(demo_batch_size=8192)),
     gen_batch_size=16384,
 )
 
@@ -184,7 +190,7 @@ HALF_CHEETAH_SHARED_LOCALS = dict(
             n_disc_updates_per_round=16,
             # Equivalent to no replay buffer if batch size is the same
             gen_replay_buffer_capacity=16384,
-            expert_batch_size=8192,
+            demo_batch_size=8192,
         ),
         airl=dict(
             reward_net_kwargs=dict(
@@ -296,9 +302,9 @@ def fast():
     n_episodes_eval = 1
     algorithm_kwargs = dict(
         shared=dict(
-            expert_batch_size=1,
+            demo_batch_size=1,
             n_disc_updates_per_round=4,
-        )
+        ),
     )
     gen_batch_size = 2
     parallel = False  # easier to debug with everything in one process

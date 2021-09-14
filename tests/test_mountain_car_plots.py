@@ -26,7 +26,9 @@ def rand_policy(venv):
 @pytest.fixture
 def trajs(venv, rand_policy):
     return rollout.generate_trajectories(
-        rand_policy, venv, sample_until=rollout.make_min_episodes(5)
+        rand_policy,
+        venv,
+        sample_until=rollout.make_min_episodes(5),
     )
 
 
@@ -46,7 +48,10 @@ def test_smoke_make_heatmap(trajs):
     """Smoke test."""
     for act in range(mountain_car_plots.MC_NUM_ACTS):
         fig = mountain_car_plots.make_heatmap(
-            act, fake_reward_fn, gen_trajs=trajs, exp_trajs=trajs
+            act,
+            fake_reward_fn,
+            gen_trajs=trajs,
+            exp_trajs=trajs,
         )
         assert isinstance(fig, plt.Figure)
         plt.close(fig)
@@ -56,7 +61,9 @@ def test_smoke_plot_reward_vs_time(trajs):
     """Smoke test."""
     trajs_dict = dict(expert=trajs, generator=trajs)
     fig = mountain_car_plots.plot_reward_vs_time(
-        trajs_dict, fake_reward_fn, {"expert": "tab:orange"}
+        trajs_dict,
+        fake_reward_fn,
+        {"expert": "tab:orange"},
     )
     assert isinstance(fig, plt.Figure)
     plt.close(fig)
@@ -91,7 +98,8 @@ def test_batch_reward_heatmaps(trajs, tmpdir, rand_policy):
 
     # Finally generate batched figures from checkpoints.
     fig_dict = mountain_car_plots.batch_reward_heatmaps(
-        checkpoints_dir, exp_trajs=trajs
+        checkpoints_dir,
+        exp_trajs=trajs,
     )
 
     n_checkpoints = len(list(checkpoints_dir.iterdir()))

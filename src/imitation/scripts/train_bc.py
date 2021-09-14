@@ -7,7 +7,6 @@ import gym
 import torch as th
 from sacred.observers import FileStorageObserver
 from stable_baselines3.common import vec_env
-from torch.utils import data as th_data
 
 from imitation.algorithms import bc
 from imitation.data import rollout, types
@@ -101,22 +100,15 @@ def train_bc(
         if not len(expert_trajs) >= n_expert_demos:
             raise ValueError(
                 f"Want to use n_expert_demos={n_expert_demos} trajectories, but only "
-                f"{len(expert_trajs)} are available."
+                f"{len(expert_trajs)} are available.",
             )
         expert_trajs = expert_trajs[:n_expert_demos]
-
-    expert_data_trans = rollout.flatten_trajectories(expert_trajs)
-    expert_data = th_data.DataLoader(
-        expert_data_trans,
-        batch_size=batch_size,
-        shuffle=True,
-        collate_fn=types.transitions_collate_fn,
-    )
 
     model = bc.BC(
         observation_space,
         action_space,
-        expert_data=expert_data,
+        demonstrations=expert_trajs,
+        demo_batch_size=batch_size,
         l2_weight=l2_weight,
         optimizer_cls=optimizer_cls,
         optimizer_kwargs=optimizer_kwargs,
@@ -136,7 +128,8 @@ def train_bc(
     # TODO(shwang): Use auto env, auto stats thing with shared `env` and stats
     #  ingredient, or something like that.
     sample_until = rollout.make_sample_until(
-        min_timesteps=None, min_episodes=n_episodes_eval
+        min_timesteps=None,
+        min_episodes=n_episodes_eval,
     )
     trajs = rollout.generate_trajectories(
         model.policy,

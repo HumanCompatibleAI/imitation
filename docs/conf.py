@@ -20,7 +20,7 @@
 import imitation  # pytype: disable=import-error
 
 project = "imitation"
-copyright = "2019, Center for Human-Compatible AI"  # noqa: A001
+copyright = "2019-2021, Center for Human-Compatible AI"  # noqa: A001
 author = "Center for Human-Compatible AI"
 
 # The full version, including alpha/beta/rc tags
@@ -33,7 +33,7 @@ release = imitation.__version__
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-    "sphinxcontrib.napoleon",
+    "sphinx.ext.napoleon",
     "sphinx.ext.autodoc",
     "sphinx_autodoc_typehints",
     "sphinx.ext.autosummary",
@@ -83,7 +83,7 @@ def no_namedtuple_attrib_docstring(app, what, name, obj, options, lines):
     https://chrisdown.name/2015/09/20/removing-namedtuple-docstrings-from-sphinx.html
     """
     is_namedtuple_docstring = 1 <= len(lines) <= 2 and lines[0].startswith(
-        "Alias for field number"
+        "Alias for field number",
     )
     if is_namedtuple_docstring:
         # We don't return, so we need to purge in-place

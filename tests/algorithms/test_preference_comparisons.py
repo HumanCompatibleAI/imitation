@@ -30,7 +30,11 @@ def reward_net(venv):
 @pytest.fixture
 def agent(venv):
     return stable_baselines3.PPO(
-        "MlpPolicy", venv, n_epochs=1, batch_size=2, n_steps=10
+        "MlpPolicy",
+        venv,
+        n_epochs=1,
+        batch_size=2,
+        n_steps=10,
     )
 
 
@@ -45,7 +49,8 @@ def agent_trainer(agent, reward_net):
 
 
 def _check_trajs_equal(
-    trajs1: Sequence[types.TrajectoryWithRew], trajs2: Sequence[types.TrajectoryWithRew]
+    trajs1: Sequence[types.TrajectoryWithRew],
+    trajs2: Sequence[types.TrajectoryWithRew],
 ):
     assert len(trajs1) == len(trajs2)
     for traj1, traj2 in zip(trajs1, trajs2):
@@ -61,14 +66,16 @@ def test_missing_environment(agent):
     # More realistically, this can happen when loading a stored agent.
     agent.env = None
     with pytest.raises(
-        ValueError, match="The environment for the agent algorithm must be set."
+        ValueError,
+        match="The environment for the agent algorithm must be set.",
     ):
         preference_comparisons.AgentTrainer(agent, reward_net)
 
 
 def _load_dataset(**kwargs) -> preference_comparisons.TrajectoryDataset:
     return preference_comparisons.TrajectoryDataset(
-        path="tests/testdata/expert_models/cartpole_0/rollouts/final.pkl", **kwargs
+        path="tests/testdata/expert_models/cartpole_0/rollouts/final.pkl",
+        **kwargs,
     )
 
 
@@ -119,7 +126,7 @@ def test_transitions_left_in_buffer(agent_trainer):
         RuntimeError,
         match=re.escape(
             "There are 2 transitions left in the buffer. "
-            "Call AgentTrainer.sample() first to clear them."
+            "Call AgentTrainer.sample() first to clear them.",
         ),
     ):
         agent_trainer.train(steps=1)
@@ -141,7 +148,9 @@ def test_trainer_no_crash(agent_trainer, reward_net, fragmenter, custom_logger):
 def test_discount_rate_no_crash(agent_trainer, reward_net, fragmenter, custom_logger):
     # also use a non-zero noise probability to check that doesn't cause errors
     reward_trainer = preference_comparisons.CrossEntropyRewardTrainer(
-        reward_net, noise_prob=0.1, discount_factor=0.9
+        reward_net,
+        noise_prob=0.1,
+        discount_factor=0.9,
     )
     main_trainer = preference_comparisons.PreferenceComparisons(
         agent_trainer,

@@ -88,7 +88,9 @@ def _join_transitions(
 @pytest.mark.parametrize("n_steps", [1, 2, 20, 21])
 @pytest.mark.parametrize("extra_pop_timesteps", [(), (1,), (4, 8)])
 def test_pop(
-    episode_lengths: Sequence[int], n_steps: int, extra_pop_timesteps: Sequence[int]
+    episode_lengths: Sequence[int],
+    n_steps: int,
+    extra_pop_timesteps: Sequence[int],
 ):
     """Check pop_transitions() results for BufferWrapper.
 

@@ -41,42 +41,6 @@ def _algorithm_kwargs(request):
     return dict(request.param)
 
 
-def test_train_disc_small_expert_data_warning(
-    tmpdir,
-    custom_logger,
-    _algorithm_kwargs,
-):
-    venv = util.make_vec_env(
-        "seals/CartPole-v0",
-        n_envs=1,
-        parallel=_parallel,
-    )
-
-    _algorithm_cls = _algorithm_kwargs.pop("algorithm_cls")
-    gen_algo = util.init_rl(venv, verbose=1, **_algorithm_kwargs)
-    small_data = rollout.generate_transitions(gen_algo, venv, n_timesteps=20)
-
-    with pytest.raises(ValueError, match="Transitions.*expert_batch_size"):
-        _algorithm_cls(
-            venv=venv,
-            expert_data=small_data,
-            expert_batch_size=21,
-            gen_algo=gen_algo,
-            log_dir=tmpdir,
-            custom_logger=custom_logger,
-        )
-
-    with pytest.raises(ValueError, match="expert_batch_size.*positive"):
-        _algorithm_cls(
-            venv=venv,
-            expert_data=small_data,
-            expert_batch_size=-1,
-            gen_algo=gen_algo,
-            log_dir=tmpdir,
-            custom_logger=custom_logger,
-        )
-
-
 def test_airl_fail_fast(custom_logger, tmpdir):
     venv = util.make_vec_env(
         "seals/CartPole-v0",
@@ -94,8 +58,8 @@ def test_airl_fail_fast(custom_logger, tmpdir):
     with pytest.raises(TypeError, match="AIRL needs a stochastic policy.*"):
         adversarial.AIRL(
             venv=venv,
-            expert_data=small_data,
-            expert_batch_size=20,
+            demonstrations=small_data,
+            demo_batch_size=20,
             gen_algo=gen_algo,
             log_dir=tmpdir,
             custom_logger=custom_logger,
@@ -162,8 +126,8 @@ def trainer(
     custom_logger = logger.configure(tmpdir, ["tensorboard", "stdout"])
     trainer = _algorithm_cls(
         venv=venv,
-        expert_data=expert_data,
-        expert_batch_size=expert_batch_size,
+        demonstrations=expert_data,
+        demo_batch_size=expert_batch_size,
         gen_algo=gen_algo,
         log_dir=tmpdir,
         custom_logger=custom_logger,
@@ -207,7 +171,11 @@ def test_train_gen_train_disc_no_crash(trainer, n_updates=2):
 
 @pytest.mark.expensive
 def test_train_disc_improve_D(
-    tmpdir, trainer, expert_transitions, expert_batch_size, n_steps=3
+    tmpdir,
+    trainer,
+    expert_transitions,
+    expert_batch_size,
+    n_steps=3,
 ):
     expert_samples = expert_transitions[:expert_batch_size]
     expert_samples = types.dataclass_quick_asdict(expert_samples)
@@ -221,7 +189,8 @@ def test_train_disc_improve_D(
     init_stats = final_stats = None
     for _ in range(n_steps):
         final_stats = trainer.train_disc(
-            gen_samples=gen_samples, expert_samples=expert_samples
+            gen_samples=gen_samples,
+            expert_samples=expert_samples,
         )
         if init_stats is None:
             init_stats = final_stats

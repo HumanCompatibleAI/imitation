@@ -24,38 +24,43 @@ from imitation.util import logger, util
 
 
 class BetaSchedule(abc.ABC):
-    """
-    Determines the value of beta (% of time that demonstrator action is used) over the
-    progression of training rounds.
-    """
+    """Computes beta (% of time demonstration action used) from training round."""
 
     @abc.abstractmethod
     def __call__(self, round_num: int) -> float:
-        """Gives the value of beta for the current round.
+        """Computes the value of beta for the current round.
 
         Args:
-            round: the current round number. Rounds are assumed to be numbered 0, 1, 2,
-              etc.
+            round_num: the current round number. Rounds are assumed to be sequentially
+                numbered from 0.
 
         Returns:
-            beta: the fraction of the time to sample a demonstrator action. Robot
-              actions will be sampled the remainder of the time.
-        """
+            The fraction of the time to sample a demonstrator action. Robot
+                actions will be sampled the remainder of the time.
+        """  # noqa: DAR202
 
 
 class LinearBetaSchedule(BetaSchedule):
-    """
-    Linearly-decreasing schedule for beta (% of time that demonstrator action is used).
-    """
+    """Linearly-decreasing schedule for beta."""
 
     def __init__(self, rampdown_rounds: int):
-        """
+        """Builds LinearBetaSchedule.
+
         Args:
             rampdown_rounds: number of rounds over which to anneal beta.
         """
         self.rampdown_rounds = rampdown_rounds
 
     def __call__(self, round_num: int) -> float:
+        """Computes beta value.
+
+        Args:
+            round_num: the current round number.
+
+        Returns:
+            beta linearly decreasing from `1` to `0` between round `0` and
+            `self.rampdown_rounds`. After that, it is 0.
+        """
         assert round_num >= 0
         return min(1, max(0, (self.rampdown_rounds - round_num) / self.rampdown_rounds))
 
@@ -137,17 +142,17 @@ class InteractiveTrajectoryCollector(vec_env.VecEnvWrapper):
         beta: float,
         save_dir: types.AnyPath,
     ):
-        """Trajectory collector constructor.
+        """Builds InteractiveTrajectoryCollector.
 
         Args:
-          venv: vectorized environment to sample trajectories from.
-          get_robot_acts: get robot actions that can be substituted for
-              human actions. Takes a vector of observations as input & returns a
-              vector of actions.
-          beta: fraction of the time to use action given to .step() instead of
-              robot action. The choice of robot or human action is independently
-              randomized for each individual `Env` at every timestep.
-          save_dir: directory to save collected trajectories in.
+            venv: vectorized environment to sample trajectories from.
+            get_robot_acts: get robot actions that can be substituted for
+                human actions. Takes a vector of observations as input & returns a
+                vector of actions.
+            beta: fraction of the time to use action given to .step() instead of
+                robot action. The choice of robot or human action is independently
+                randomized for each individual `Env` at every timestep.
+            save_dir: directory to save collected trajectories in.
         """
         super().__init__(venv)
         self.get_robot_acts = get_robot_acts
@@ -169,10 +174,10 @@ class InteractiveTrajectoryCollector(vec_env.VecEnvWrapper):
 
         Args:
             seed: The random seed. May be None for completely random seeding.
+
         Returns:
-            Returns a list containing the seeds for each individual env. Note that all
-            list elements may be None, if the env does not return anything when being
-            seeded.
+            A list containing the seeds for each individual env. Note that all list
+            elements may be None, if the env does not return anything when seeded.
         """
         self.rng = np.random.RandomState(seed=seed)
         return self.venv.seed(seed)
@@ -289,20 +294,19 @@ class DAggerTrainer(base.BaseImitationAlgorithm):
         bc_kwargs: Optional[dict] = None,
         custom_logger: Optional[logger.HierarchicalLogger] = None,
     ):
-        """DaggerTrainer constructor.
+        """Builds DAggerTrainer constructor.
 
         Args:
             venv: Vectorized training environment.
             scratch_dir: Directory to use to store intermediate training
                 information (e.g. for resuming training).
-
-        Keyword Args:
             beta_schedule: Provides a value of `beta` (the probability of taking
                 expert action in any given state) at each round of training. If
                 `None`, then `linear_beta_schedule` will be used instead.
             batch_size: Number of samples in each batch during BC training.
             bc_kwargs: Additional arguments for constructing the `BC` instance that
                 will be used to train the underlying policy.
+            custom_logger: Where to log to; if None (default), creates a new logger.
         """
         super().__init__(custom_logger=custom_logger)
 
@@ -365,19 +369,19 @@ class DAggerTrainer(base.BaseImitationAlgorithm):
             raise NeedsDemosException(
                 f"No demos found for round {self.round_num} in dir '{demo_dir}'. "
                 f"Maybe you need to collect some demos? See "
-                f".get_trajectory_collector()"
+                f".get_trajectory_collector()",
             )
 
         if self._last_loaded_round < self.round_num:
             transitions, num_demos = self._load_all_demos()
             logging.info(
-                f"Loaded {sum(num_demos)} new demos from {len(num_demos)} rounds"
+                f"Loaded {sum(num_demos)} new demos from {len(num_demos)} rounds",
             )
             if len(transitions) < self.batch_size:
                 raise ValueError(
                     "Not enough transitions to form a single batch: "
                     f"self.batch_size={self.batch_size} > "
-                    f"len(transitions)={len(transitions)}"
+                    f"len(transitions)={len(transitions)}",
                 )
             data_loader = th_data.DataLoader(
                 transitions,
@@ -386,7 +390,7 @@ class DAggerTrainer(base.BaseImitationAlgorithm):
                 shuffle=True,
                 collate_fn=types.transitions_collate_fn,
             )
-            self.bc_trainer.set_expert_data_loader(data_loader)
+            self.bc_trainer.set_demonstrations(data_loader)
             self._last_loaded_round = self.round_num
 
     def extend_and_update(self, bc_train_kwargs: Optional[Mapping] = None) -> int:
@@ -408,7 +412,7 @@ class DAggerTrainer(base.BaseImitationAlgorithm):
                 keys are provided, then `n_epochs` is set to `self.DEFAULT_N_EPOCHS`.
 
         Returns:
-            round_num: new round number after advancing the round counter.
+            New round number after advancing the round counter.
         """
         if bc_train_kwargs is None:
             bc_train_kwargs = {}
@@ -434,10 +438,9 @@ class DAggerTrainer(base.BaseImitationAlgorithm):
         """Create trajectory collector to extend current round's demonstration set.
 
         Returns:
-            collector: an `InteractiveTrajectoryCollector` configured with the
-                appropriate beta, appropriate imitator policy, etc. for the current
-                round. Refer to the documentation for
-                `InteractiveTrajectoryCollector` to see how to use this.
+            A collector configured with the appropriate beta, imitator policy, etc.
+            for the current round. Refer to the documentation for
+            `InteractiveTrajectoryCollector` to see how to use this.
         """
         save_dir = self._demo_dir_path_for_round()
         beta = self.beta_schedule(self.round_num)
@@ -503,10 +506,7 @@ class SimpleDAggerTrainer(DAggerTrainer):
         expert_trajs: Optional[Sequence[types.Trajectory]] = None,
         **dagger_trainer_kwargs,
     ):
-        """SimpleDAggerTrainer constructor.
-
-        This constructor also accepts keyword arguments for `DaggerTrainer`. See
-        the `DaggerTrainer.__init__` docstring for more details.
+        """Builds SimpleDAggerTrainer.
 
         Args:
             venv: Vectorized training environment. Note that when the robot
@@ -520,15 +520,19 @@ class SimpleDAggerTrainer(DAggerTrainer):
                 dataset.
             dagger_trainer_kwargs: Other keyword arguments passed to the
                 superclass initializer `DAggerTrainer.__init__`.
+
+        Raises:
+            ValueError: The observation or action space does not match between
+                `venv` and `expert_policy`.
         """
         super().__init__(venv=venv, scratch_dir=scratch_dir, **dagger_trainer_kwargs)
         self.expert_policy = expert_policy
         if expert_policy.observation_space != self.venv.observation_space:
             raise ValueError(
-                "Mismatched observation space between expert_policy and env"
+                "Mismatched observation space between expert_policy and venv",
             )
         if expert_policy.action_space != self.venv.action_space:
-            raise ValueError("Mismatched action space between expert_policy and env")
+            raise ValueError("Mismatched action space between expert_policy and venv")
 
         # TODO(shwang):
         #   Might welcome Transitions and DataLoaders as sources of expert data
@@ -609,7 +613,8 @@ class SimpleDAggerTrainer(DAggerTrainer):
             for traj in trajectories:
                 _save_dagger_demo(traj, collector.save_dir)
                 self._logger.record_mean(
-                    "dagger/mean_episode_reward", np.sum(traj.rews)
+                    "dagger/mean_episode_reward",
+                    np.sum(traj.rews),
                 )
                 round_timestep_count += len(traj)
                 total_timestep_count += len(traj)

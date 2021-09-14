@@ -55,7 +55,11 @@ class BufferingWrapper(VecEnvWrapper):
         acts, self._saved_acts = self._saved_acts, None
         obs, rews, dones, infos = self.venv.step_wait()
         finished_trajs = self._traj_accum.add_steps_and_auto_finish(
-            acts, obs, rews, dones, infos
+            acts,
+            obs,
+            rews,
+            dones,
+            infos,
         )
         self._trajectories.extend(finished_trajs)
         self.n_transitions += self.num_envs
