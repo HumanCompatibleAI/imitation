@@ -55,6 +55,7 @@ def trainer(batch_size, venv, expert_data_type, custom_logger):
             trans,
             batch_size=batch_size,
             shuffle=True,
+            drop_last=True,
             collate_fn=types.transitions_collate_fn,
         )
     elif expert_data_type == "ducktyped_data_loader":

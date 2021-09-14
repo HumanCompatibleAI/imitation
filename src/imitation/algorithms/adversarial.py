@@ -479,11 +479,11 @@ class GAIL(AdversarialTrainer):
             **discrim_kwargs,
         )
         super().__init__(
-            venv,
-            gen_algo,
-            discrim,
-            demonstrations,
-            demo_batch_size,
+            demonstrations=demonstrations,
+            demo_batch_size=demo_batch_size,
+            venv=venv,
+            discrim_net=discrim,
+            gen_algo=gen_algo,
             **kwargs,
         )
 
@@ -548,11 +548,11 @@ class AIRL(AdversarialTrainer):
         discrim_kwargs = discrim_kwargs or {}
         discrim = discrim_nets.DiscrimNetAIRL(reward_network, **discrim_kwargs)
         super().__init__(
-            venv,
-            gen_algo,
-            discrim,
-            demonstrations,
-            demo_batch_size,
+            demonstrations=demonstrations,
+            demo_batch_size=demo_batch_size,
+            venv=venv,
+            discrim_net=discrim,
+            gen_algo=gen_algo,
             **kwargs,
         )
 
