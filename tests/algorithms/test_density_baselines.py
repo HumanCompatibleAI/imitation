@@ -83,5 +83,6 @@ def test_density_trainer_smoke():
         venv=venv,
         rl_algo=rl_algo,
     )
+    density_trainer.train()
     density_trainer.train_policy(n_timesteps=2)
     density_trainer.test_policy(n_trajectories=2)
