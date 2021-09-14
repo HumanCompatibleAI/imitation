@@ -63,6 +63,12 @@ def test_check_fixed_horizon_flag(custom_logger):
     assert algo._horizon is None
 
 
+def _make_and_iterate_loader(*args, **kwargs):
+    loader = base.make_data_loader(*args, **kwargs)
+    for batch in loader:
+        pass
+
+
 def test_make_data_loader_batch_size():
     """Tests data loader performs batch size validation."""
     for batch_size in [0, -1, -42]:
@@ -73,8 +79,19 @@ def test_make_data_loader_batch_size():
     batch_iterable = [{"obs": np.zeros((5, 2)), "acts": np.zeros((5, 1))}]
     for wrong_batch_size in [4, 6, 42]:
         with pytest.raises(ValueError, match="Expected batch size.*"):
-            base.make_data_loader(batch_iterable, batch_size=wrong_batch_size)
-    base.make_data_loader(batch_iterable, batch_size=5)
+            _make_and_iterate_loader(batch_iterable, batch_size=wrong_batch_size)
+    _make_and_iterate_loader(batch_iterable, batch_size=5)
+
+    batch_iterable2 = [{"obs": np.zeros((5, 2)), "acts": np.zeros((4, 1))}]
+    with pytest.raises(ValueError, match="Expected batch size.*"):
+        _make_and_iterate_loader(batch_iterable2, batch_size=5)
+
+    batch_iterable3 = [
+        {"obs": np.zeros((5, 2)), "acts": np.zeros((5, 1))},
+        {"obs": np.zeros((6, 2)), "acts": np.zeros((5, 1))},
+    ]
+    with pytest.raises(ValueError, match="Expected batch size.*"):
+        _make_and_iterate_loader(batch_iterable3, batch_size=5)
 
     trans = types.TransitionsMinimal(
         obs=np.zeros((5, 2)),
@@ -104,18 +121,18 @@ def test_make_data_loader():
             terminal=True,
         ),
         types.Trajectory(
-            obs=np.array([10, 11, 12]),
-            acts=np.array([104, 105]),
+            obs=np.array([10, 11, 12, 13]),
+            acts=np.array([104, 105, 106]),
             infos=None,
             terminal=False,
         ),
     ]
     trans = types.Transitions(
-        obs=np.array([0, 4, 5, 10, 11]),
-        acts=np.array([100, 102, 103, 104, 105]),
-        next_obs=np.array([1, 5, 6, 11, 12]),
-        dones=np.array([True, False, True, False, False]),
-        infos=np.array([{}] * 5),
+        obs=np.array([0, 4, 5, 10, 11, 12]),
+        acts=np.array([100, 102, 103, 104, 105, 106]),
+        next_obs=np.array([1, 5, 6, 11, 12, 13]),
+        dones=np.array([True, False, True, False, False, False]),
+        infos=np.array([{}] * 6),
     )
     trans_mapping = [
         {
@@ -133,11 +150,11 @@ def test_make_data_loader():
             "infos": np.array([{}, {}]),
         },
         {
-            "obs": np.array([11]),
-            "acts": np.array([105]),
-            "next_obs": np.array([12]),
+            "obs": np.array([11, 12]),
+            "acts": np.array([105, 106]),
+            "next_obs": np.array([12, 13]),
             "dones": np.array([False]),
-            "infos": np.array([{}]),
+            "infos": np.array([{}, {}]),
         },
     ]
 

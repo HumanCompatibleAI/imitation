@@ -167,6 +167,44 @@ class DemonstrationAlgorithm(BaseImitationAlgorithm, Generic[TransitionKind]):
         """
 
 
+class _WrappedDataLoader:
+    """Wraps a data loader (batch iterable) and checks for specified batch size."""
+
+    def __init__(
+        self,
+        data_loader: Iterable[TransitionMapping],
+        expected_batch_size: int,
+    ):
+        """Builds _WrapedDataLoader.
+
+        Args:
+            data_loader: The data loader (batch iterable) to wrap.
+            expected_batch_size: The batch size to check for.
+        """
+        self.data_loader = data_loader
+        self.expected_batch_size = expected_batch_size
+
+    def __iter__(self):
+        """Iterator yielding data from `self.data_loader`, checking `self.expected_batch_size`.
+
+        Raises:
+            ValueError: `self.data_loader` returns a batch of size not equal to
+                `self.expected_batch_size`.
+        """
+        for batch in self.data_loader:
+            if len(batch["obs"]) != self.expected_batch_size:
+                raise ValueError(
+                    f"Expected batch size {self.expected_batch_size} "
+                    f"!= {len(batch['obs'])} = len(batch['obs'])",
+                )
+            if len(batch["acts"]) != self.expected_batch_size:
+                raise ValueError(
+                    f"Expected batch size {self.expected_batch_size} "
+                    f"!= {len(batch['acts'])} = len(batch['acts'])",
+                )
+            yield batch
+
+
 def make_data_loader(
     transitions: AnyTransitions,
     batch_size: int,
@@ -220,10 +258,6 @@ def make_data_loader(
             **extra_kwargs,
         )
     elif isinstance(transitions, Iterable):
-        for batch in transitions:
-            assert isinstance(batch, Mapping)  # pytype is confused without this
-            assert len(batch["obs"]) == batch_size
-            assert len(batch["acts"]) == batch_size
-            yield batch
+        return _WrappedDataLoader(transitions, batch_size)
     else:
         raise TypeError(f"`demonstrations` unexpected type {type(transitions)}")
