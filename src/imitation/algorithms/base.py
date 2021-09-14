@@ -1,3 +1,5 @@
+"""Module of base classes and helper methods for imitation learning algorithms."""
+
 import abc
 from typing import Any, Generic, Iterable, Mapping, Optional, TypeVar, Union
 
@@ -63,7 +65,7 @@ class BaseImitationAlgorithm(abc.ABC):
         self._logger = value
 
     def _check_fixed_horizon(self, trajs: Iterable[types.Trajectory]) -> None:
-        """Check that `trajs` has fixed episode length and equal to prior calls.
+        """Checks that `trajs` has fixed episode length and equal to prior calls.
 
         If algorithm is safe to use with variable horizon episodes (e.g. behavioral
         cloning), then just don't call this method.
@@ -72,8 +74,8 @@ class BaseImitationAlgorithm(abc.ABC):
             trajs: An iterable sequence of trajectories.
 
         Raises:
-            ValueError if the length of trajectories in trajs are different from one
-            another, or from trajectory lengths in previous calls to this method.
+            ValueError: The length of trajectories in trajs differs from one
+                another, or from trajectory lengths in previous calls to this method.
         """
         if self.allow_variable_horizon:  # skip check -- YOLO
             return
@@ -134,8 +136,10 @@ def make_data_loader(
         An iterable of transition batches.
 
     Raises:
-        ValueError if `transitions` is an iterable over transition batches with batch
-        size not equal to `batch_size`.
+        ValueError: if `transitions` is an iterable over transition batches with batch
+            size not equal to `batch_size`; or if `transitions` is transitions or a
+            sequence of trajectories with total timesteps less than `batch_size`.
+        TypeError: if `transitions` is an unsupported type.
     """
     if batch_size <= 0:
         raise ValueError(f"batch_size={batch_size} must be positive.")
@@ -195,9 +199,10 @@ class DemonstrationAlgorithm(BaseImitationAlgorithm, Generic[TransitionKind]):
         """Creates an algorithm that learns from demonstrations.
 
         Args:
-            demonstrations: Demonstrations from an expert (optional). Can be a sequence
-                of trajectories, or transitions, or an iterable over mappings that
-                represent a batch of transitions.
+            demonstrations: Demonstrations from an expert (optional). Transitions
+                expressed directly as a `types.TransitionsMinimal` object, a sequence
+                of trajectories, or an iterable of transition batches (mappings from
+                keywords to arrays containing observations, etc).
             custom_logger: Where to log to; if None (default), creates a new logger.
             allow_variable_horizon: If False (default), algorithm will raise an
                 exception if it detects trajectories of different length during

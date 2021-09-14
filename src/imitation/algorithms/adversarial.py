@@ -1,3 +1,5 @@
+"""Module for adversarial imitation learning algorithms, GAIL and AIRL."""
+
 import dataclasses
 import functools
 import logging
@@ -39,13 +41,13 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
 
     def __init__(
         self,
-        venv: vec_env.VecEnv,
-        gen_algo: base_class.BaseAlgorithm,
-        discrim_net: discrim_nets.DiscrimNet,
         demonstrations: Union[Iterable[Mapping], types.Transitions],
         demo_batch_size: int,
-        n_disc_updates_per_round: int = 2,
+        venv: vec_env.VecEnv,
+        discrim_net: discrim_nets.DiscrimNet,
+        gen_algo: base_class.BaseAlgorithm,
         *,
+        n_disc_updates_per_round: int = 2,
         log_dir: str = "output/",
         normalize_obs: bool = True,
         normalize_reward: bool = True,
@@ -62,30 +64,20 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
         """Builds AdversarialTrainer.
 
         Args:
+            demonstrations: Demonstrations from an expert (optional). Transitions
+                expressed directly as a `types.TransitionsMinimal` object, a sequence
+                of trajectories, or an iterable of transition batches (mappings from
+                keywords to arrays containing observations, etc).
+            demo_batch_size: The number of samples in each batch of expert data. The
+                discriminator batch size is twice this number because each discriminator
+                batch contains a generator sample for every expert sample.
             venv: The vectorized environment to train in.
             gen_algo: The generator RL algorithm that is trained to maximize
                 discriminator confusion. Environment and logger will be set to
-                `venv` and `custom_logger`.
+                `venv` and `custom_logger`
             discrim_net: The discriminator network. This will be moved to the same
                 device as `gen_algo`.
-            demonstrations: Either a `torch.utils.data.DataLoader`-like object or an
-                instance of `Transitions` which is automatically converted into a
-                shuffled version of the former type.
-
-                If the argument passed is a `DataLoader`, then it must yield batches of
-                expert data via its `__iter__` method. Each batch is a dictionary whose
-                keys "obs", "acts", "next_obs", and "dones", correspond to Tensor or
-                NumPy array values each with batch dimension equal to
-                `demo_batch_size`. If any batch dimension doesn't equal
-                `demo_batch_size` then a `ValueError` is raised.
-
-                If the argument is a `Transitions` instance, then `len(demonstrations)`
-                must be at least `demo_batch_size`.
-            demo_batch_size: The number of samples in each batch yielded from
-                the expert data loader. The discriminator batch size is twice this
-                number because each discriminator batch contains a generator sample for
-                every expert sample.
-            n_discrim_updates_per_round: The number of discriminator updates after each
+            n_disc_updates_per_round: The number of discriminator updates after each
                 round of generator updates in AdversarialTrainer.learn().
             log_dir: Directory to store TensorBoard logs, plots, etc. in.
             normalize_obs: Whether to normalize observations with `VecNormalize`.
@@ -97,10 +89,9 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
                 or number of environments (for off-policy).
             gen_replay_buffer_capacity: The capacity of the
                 generator replay buffer (the number of obs-action-obs samples from
-                the generator that can be stored).
-
-                By default this is equal to `gen_train_timesteps`, meaning that we
-                sample only from the most recent batch of generator samples.
+                the generator that can be stored). By default this is equal to
+                `gen_train_timesteps`, meaning that we sample only from the most
+                recent batch of generator samples.
             custom_logger: Where to log to; if None (default), creates a new logger.
             init_tensorboard: If True, makes various discriminator
                 TensorBoard summaries.
@@ -210,17 +201,16 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
                 If provided, must contain keys corresponding to every field of the
                 `Transitions` dataclass except "infos". All corresponding values can be
                 either NumPy arrays or Tensors. Extra keys are ignored. Must contain
-                `self.demo_batch_size` samples.
-
-                If this argument is not provided, then `self.demo_batch_size` expert
-                samples from `self.demo_data_loader` are used by default.
+                `self.demo_batch_size` samples. If this argument is not provided, then
+                `self.demo_batch_size` expert samples from `self.demo_data_loader` are
+                used by default.
             gen_samples: Transition samples from the generator policy in same dictionary
                 form as `expert_samples`. If provided, must contain exactly
                 `self.demo_batch_size` samples. If not provided, then take
                 `len(expert_samples)` samples from the generator replay buffer.
 
         Returns:
-           dict: Statistics for discriminator (e.g. loss, accuracy).
+            Statistics for discriminator (e.g. loss, accuracy).
         """
         with self.logger.accumulate_means("disc"):
             # optionally write TB summaries for collected ops
@@ -440,27 +430,38 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
 
 
 class GAIL(AdversarialTrainer):
+    """Generative Adversarial Imitation Learning (`GAIL`_).
+
+    .. _GAIL: https://arxiv.org/abs/1606.03476
+    """
+
     def __init__(
         self,
-        venv: vec_env.VecEnv,
         demonstrations: Union[Iterable[Mapping], types.Transitions],
         demo_batch_size: int,
+        venv: vec_env.VecEnv,
         gen_algo: base_class.BaseAlgorithm,
         *,
-        # FIXME(sam) pass in discrim net directly; don't ask for kwargs indirectly
         discrim_kwargs: Optional[Mapping] = None,
         **kwargs,
     ):
         """Generative Adversarial Imitation Learning.
 
-        Most parameters are described in and passed to `AdversarialTrainer.__init__`.
-        Additional parameters that `GAIL` adds on top of its superclass initializer are
-        as follows:
-
         Args:
+            demonstrations: Demonstrations from an expert (optional). Transitions
+                expressed directly as a `types.TransitionsMinimal` object, a sequence
+                of trajectories, or an iterable of transition batches (mappings from
+                keywords to arrays containing observations, etc).
+            demo_batch_size: The number of samples in each batch of expert data. The
+                discriminator batch size is twice this number because each discriminator
+                batch contains a generator sample for every expert sample.
+            venv: The vectorized environment to train in.
+            gen_algo: The generator RL algorithm that is trained to maximize
+                discriminator confusion. Environment and logger will be set to
+                `venv` and `custom_logger`
             discrim_kwargs: Optional keyword arguments to use while constructing the
                 DiscrimNetGAIL.
-
+            **kwargs: Passed through to `AdversarialTrainer.__init__`.
         """
         discrim_kwargs = discrim_kwargs or {}
         discrim = discrim_nets.DiscrimNetGAIL(
@@ -472,13 +473,16 @@ class GAIL(AdversarialTrainer):
 
 
 class AIRL(AdversarialTrainer):
-    """The AIRL reward network, used by the imitation policy."""
+    """Adversarial Inverse Reinforcement Learning (`AIRL`_).
+
+    .. _AIRL: https://arxiv.org/abs/1710.11248
+    """
 
     def __init__(
         self,
-        venv: vec_env.VecEnv,
         demonstrations: Union[Iterable[Mapping], types.Transitions],
         demo_batch_size: int,
+        venv: vec_env.VecEnv,
         gen_algo: base_class.BaseAlgorithm,
         *,
         # FIXME(sam): pass in reward net directly, not via _cls and _kwargs
@@ -487,19 +491,32 @@ class AIRL(AdversarialTrainer):
         discrim_kwargs: Optional[Mapping] = None,
         **kwargs,
     ):
-        """Adversarial Inverse Reinforcement Learning.
-
-        Most parameters are described in and passed to `AdversarialTrainer.__init__`.
-        Additional parameters that `AIRL` adds on top of its superclass initializer are
-        as follows:
+        """Builds an AIRL trainer.
 
         Args:
+            demonstrations: Demonstrations from an expert (optional). Transitions
+                expressed directly as a `types.TransitionsMinimal` object, a sequence
+                of trajectories, or an iterable of transition batches (mappings from
+                keywords to arrays containing observations, etc).
+            demo_batch_size: The number of samples in each batch of expert data. The
+                discriminator batch size is twice this number because each discriminator
+                batch contains a generator sample for every expert sample.
+            venv: The vectorized environment to train in.
+            gen_algo: The generator RL algorithm that is trained to maximize
+                discriminator confusion. Environment and logger will be set to
+                `venv` and `custom_logger`
             reward_net_cls: Reward network constructor. The reward network is part of
                 the AIRL discriminator.
             reward_net_kwargs: Optional keyword arguments to use while constructing
                 the reward network.
             discrim_kwargs: Optional keyword arguments to use while constructing the
                 DiscrimNetAIRL.
+            **kwargs: Passed through to `AdversarialTrainer.__init__`.
+
+        Raises:
+            TypeError: If `gen_algo.policy` does not have an `evaluate_actions`
+                attribute (present in `ActorCriticPolicy`), needed to compute
+                log-probability of actions.
         """
         # TODO(shwang): Maybe offer str=>RewardNet conversion like
         #  stable_baselines3 does with policy classes.

@@ -44,7 +44,6 @@ def mce_partition_fh(
         V is a 2d array, indexed V[t,s]. Q is a 3d array, indexed Q[t,s,a].
         \pi is a 3d array, indexed \pi[t,s,a].
     """
-
     # shorthand
     horizon = env.horizon
     n_states = env.n_states
@@ -101,7 +100,6 @@ def mce_occupancy_measures(
         a :math:`T*|S|`-dimensional vector recording the probability of being in a given
         state at a given timestep.
     """
-
     # shorthand
     horizon = env.horizon
     n_states = env.n_states
@@ -163,7 +161,6 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
         log_interval: Optional[int] = 100,
         *,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
-        allow_variable_horizon: bool = False,
     ):
         r"""Creates MCE IRL.
 
@@ -189,6 +186,7 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
                 MCE IRL gradient falls below this value.
             log_interval: how often to log current loss stats (using `logging`).
                 None to disable.
+            custom_logger: Where to log to; if None (default), creates a new logger.
         """
         self.discount = discount
         self.env = env
@@ -196,7 +194,6 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
         super().__init__(
             demonstrations=demonstrations,
             custom_logger=custom_logger,
-            allow_variable_horizon=allow_variable_horizon,
         )
 
         self.optimizer = optimizer
@@ -250,6 +247,10 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
 
     def train(self, max_iter: int = 1000) -> np.ndarray:
         """Runs MCE IRL.
+
+        Args:
+            max_iter: The maximum number of iterations to train for. May terminate
+                earlier if `self.linf_eps` or `self.grad_l2_eps` thresholds are reached.
 
         Returns:
             State occupancy measure for the final reward function. `self.reward_net`
