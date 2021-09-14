@@ -119,9 +119,11 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
                 https://imitation.readthedocs.io/en/latest/guide/variable_horizon.html
                 before overriding this.
         """
+        self.demo_batch_size = demo_batch_size
+        self._demo_data_loader = None
+        self._endless_expert_iterator = None
         super().__init__(
             demonstrations=demonstrations,
-            demo_batch_size=demo_batch_size,
             custom_logger=custom_logger,
             allow_variable_horizon=allow_variable_horizon,
         )
@@ -129,7 +131,6 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
         self._global_step = 0
         self._disc_step = 0
         self.n_disc_updates_per_round = n_disc_updates_per_round
-        self._endless_expert_iterator = util.endless_iter(self.demo_data_loader)
 
         self.debug_use_ground_truth = debug_use_ground_truth
         self.venv = venv
@@ -186,6 +187,10 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
         self._gen_replay_buffer = buffer.ReplayBuffer(
             gen_replay_buffer_capacity, self.venv
         )
+
+    def set_demonstrations(self, demonstrations: base.AnyTransitions) -> None:
+        self._demo_data_loader = base.make_data_loader(demonstrations, self.demo_batch_size)
+        self._endless_expert_iterator = util.endless_iter(self._demo_data_loader)
 
     def _next_expert_batch(self) -> Mapping:
         return next(self._endless_expert_iterator)

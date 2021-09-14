@@ -102,7 +102,7 @@ class DensityReward(base.DemonstrationAlgorithm):
         self.transitions = {}
 
         if isinstance(demonstrations, Iterable):
-            first_item = iter(demonstrations).__next__()
+            first_item = next(iter(demonstrations))
             if isinstance(first_item, types.Trajectory):
                 # Demonstrations are trajectories.
                 # We have timestep information.

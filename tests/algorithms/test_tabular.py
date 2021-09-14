@@ -248,7 +248,7 @@ def test_mce_irl_demo_formats():
     demonstrations = {
         "trajs": trajs,
         "trans": rollout.flatten_trajectories(trajs),
-        "data_loader": base.make_data_loader(trajs, demo_batch_size=32),
+        "data_loader": base.make_data_loader(trajs, batch_size=32),
     }
 
     final_counts = {}

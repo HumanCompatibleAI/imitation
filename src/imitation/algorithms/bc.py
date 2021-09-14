@@ -217,9 +217,9 @@ class BC(algo_base.DemonstrationAlgorithm):
             custom_logger: Where to log to; if None (default), creates a new logger.
         """
         # TODO(adam): update docstring
+        self.demo_batch_size = demo_batch_size
         super().__init__(
             demonstrations=demonstrations,
-            demo_batch_size=demo_batch_size,
             custom_logger=custom_logger,
         )
 
@@ -253,6 +253,9 @@ class BC(algo_base.DemonstrationAlgorithm):
 
         self.ent_weight = ent_weight
         self.l2_weight = l2_weight
+
+    def set_demonstrations(self, demonstrations: algo_base.AnyTransitions) -> None:
+        self._demo_data_loader = algo_base.make_data_loader(demonstrations, self.demo_batch_size)
 
     def _calculate_loss(
         self,
@@ -342,7 +345,7 @@ class BC(algo_base.DemonstrationAlgorithm):
                 effect if `.train()` is being called for the first time.
         """
         it = EpochOrBatchIteratorWithProgress(
-            self.demo_data_loader,
+            self._demo_data_loader,
             n_epochs=n_epochs,
             n_batches=n_batches,
             on_epoch_end=on_epoch_end,

@@ -216,7 +216,7 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
             self.demo_state_om = np.zeros((self.env.n_states,))
 
             if isinstance(demonstrations, Iterable):
-                first_item = iter(demonstrations).__next__()
+                first_item = next(iter(demonstrations))
                 if isinstance(first_item, types.Trajectory):
                     # Demonstrations are trajectories.
                     for traj in demonstrations:
