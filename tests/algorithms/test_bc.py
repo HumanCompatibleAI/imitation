@@ -147,7 +147,9 @@ def test_bc_data_loader_empty_iter_error(venv, no_yield_after_iter, custom_logge
         no_yield_after_iter=no_yield_after_iter,
     )
     trainer = bc.BC(
-        venv.observation_space, venv.action_space, custom_logger=custom_logger
+        venv.observation_space,
+        venv.action_space,
+        custom_logger=custom_logger,
     )
     trainer.set_expert_data_loader(bad_data_loader)
     with pytest.raises(AssertionError, match=".*no data.*"):

@@ -365,19 +365,19 @@ class DAggerTrainer(base.BaseImitationAlgorithm):
             raise NeedsDemosException(
                 f"No demos found for round {self.round_num} in dir '{demo_dir}'. "
                 f"Maybe you need to collect some demos? See "
-                f".get_trajectory_collector()"
+                f".get_trajectory_collector()",
             )
 
         if self._last_loaded_round < self.round_num:
             transitions, num_demos = self._load_all_demos()
             logging.info(
-                f"Loaded {sum(num_demos)} new demos from {len(num_demos)} rounds"
+                f"Loaded {sum(num_demos)} new demos from {len(num_demos)} rounds",
             )
             if len(transitions) < self.batch_size:
                 raise ValueError(
                     "Not enough transitions to form a single batch: "
                     f"self.batch_size={self.batch_size} > "
-                    f"len(transitions)={len(transitions)}"
+                    f"len(transitions)={len(transitions)}",
                 )
             data_loader = th_data.DataLoader(
                 transitions,
@@ -525,7 +525,7 @@ class SimpleDAggerTrainer(DAggerTrainer):
         self.expert_policy = expert_policy
         if expert_policy.observation_space != self.venv.observation_space:
             raise ValueError(
-                "Mismatched observation space between expert_policy and env"
+                "Mismatched observation space between expert_policy and env",
             )
         if expert_policy.action_space != self.venv.action_space:
             raise ValueError("Mismatched action space between expert_policy and env")
@@ -609,7 +609,8 @@ class SimpleDAggerTrainer(DAggerTrainer):
             for traj in trajectories:
                 _save_dagger_demo(traj, collector.save_dir)
                 self._logger.record_mean(
-                    "dagger/mean_episode_reward", np.sum(traj.rews)
+                    "dagger/mean_episode_reward",
+                    np.sum(traj.rews),
                 )
                 round_timestep_count += len(traj)
                 total_timestep_count += len(traj)

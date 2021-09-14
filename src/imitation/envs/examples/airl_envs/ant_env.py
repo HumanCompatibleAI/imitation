@@ -169,7 +169,11 @@ def ant_env(gear=150, eyes=True):
     )
     aux_1 = front_left_leg.body(name="aux_1", pos=[0.2, 0.2, 0])
     aux_1.joint(
-        axis=[0, 0, 1], name="hip_1", pos=[0.0, 0.0, 0.0], range=[-30, 30], type="hinge"
+        axis=[0, 0, 1],
+        name="hip_1",
+        pos=[0.0, 0.0, 0.0],
+        range=[-30, 30],
+        type="hinge",
     )
     aux_1.geom(
         fromto=[0.0, 0.0, 0.0, 0.2, 0.2, 0.0],
@@ -201,7 +205,11 @@ def ant_env(gear=150, eyes=True):
     )
     aux_2 = front_right_leg.body(name="aux_2", pos=[-0.2, 0.2, 0])
     aux_2.joint(
-        axis=[0, 0, 1], name="hip_2", pos=[0.0, 0.0, 0.0], range=[-30, 30], type="hinge"
+        axis=[0, 0, 1],
+        name="hip_2",
+        pos=[0.0, 0.0, 0.0],
+        range=[-30, 30],
+        type="hinge",
     )
     aux_2.geom(
         fromto=[0.0, 0.0, 0.0, -0.2, 0.2, 0.0],
@@ -233,7 +241,11 @@ def ant_env(gear=150, eyes=True):
     )
     aux_3 = back_left_leg.body(name="aux_3", pos=[-0.2, -0.2, 0])
     aux_3.joint(
-        axis=[0, 0, 1], name="hip_3", pos=[0.0, 0.0, 0.0], range=[-30, 30], type="hinge"
+        axis=[0, 0, 1],
+        name="hip_3",
+        pos=[0.0, 0.0, 0.0],
+        range=[-30, 30],
+        type="hinge",
     )
     aux_3.geom(
         fromto=[0.0, 0.0, 0.0, -0.2, -0.2, 0.0],
@@ -265,7 +277,11 @@ def ant_env(gear=150, eyes=True):
     )
     aux_4 = back_right_leg.body(name="aux_4", pos=[0.2, -0.2, 0])
     aux_4.joint(
-        axis=[0, 0, 1], name="hip_4", pos=[0.0, 0.0, 0.0], range=[-30, 30], type="hinge"
+        axis=[0, 0, 1],
+        name="hip_4",
+        pos=[0.0, 0.0, 0.0],
+        range=[-30, 30],
+        type="hinge",
     )
     aux_4.geom(
         fromto=[0.0, 0.0, 0.0, 0.2, -0.2, 0.0],
@@ -464,7 +480,11 @@ def angry_ant_crippled(gear=150):
     )
     aux_1 = front_left_leg.body(name="aux_1", pos=[0.2, 0.2, 0])
     aux_1.joint(
-        axis=[0, 0, 1], name="hip_1", pos=[0.0, 0.0, 0.0], range=[-30, 30], type="hinge"
+        axis=[0, 0, 1],
+        name="hip_1",
+        pos=[0.0, 0.0, 0.0],
+        range=[-30, 30],
+        type="hinge",
     )
     aux_1.geom(
         fromto=[0.0, 0.0, 0.0, 0.2, 0.2, 0.0],
@@ -496,7 +516,11 @@ def angry_ant_crippled(gear=150):
     )
     aux_2 = front_right_leg.body(name="aux_2", pos=[-0.2, 0.2, 0])
     aux_2.joint(
-        axis=[0, 0, 1], name="hip_2", pos=[0.0, 0.0, 0.0], range=[-30, 30], type="hinge"
+        axis=[0, 0, 1],
+        name="hip_2",
+        pos=[0.0, 0.0, 0.0],
+        range=[-30, 30],
+        type="hinge",
     )
     aux_2.geom(
         fromto=[0.0, 0.0, 0.0, -0.2, 0.2, 0.0],
@@ -534,7 +558,11 @@ def angry_ant_crippled(gear=150):
     )
     aux_3 = back_left_leg.body(name="aux_3", pos=[-0.2, -0.2, 0])
     aux_3.joint(
-        axis=[0, 0, 1], name="hip_3", pos=[0.0, 0.0, 0.0], range=[-30, 30], type="hinge"
+        axis=[0, 0, 1],
+        name="hip_3",
+        pos=[0.0, 0.0, 0.0],
+        range=[-30, 30],
+        type="hinge",
     )
     aux_3.geom(
         fromto=[0.0, 0.0, 0.0, -thigh_length, -thigh_length, 0.0],
@@ -569,7 +597,11 @@ def angry_ant_crippled(gear=150):
     )
     aux_4 = back_right_leg.body(name="aux_4", pos=[0.2, -0.2, 0])
     aux_4.joint(
-        axis=[0, 0, 1], name="hip_4", pos=[0.0, 0.0, 0.0], range=[-30, 30], type="hinge"
+        axis=[0, 0, 1],
+        name="hip_4",
+        pos=[0.0, 0.0, 0.0],
+        range=[-30, 30],
+        type="hinge",
     )
     aux_4.geom(
         fromto=[0.0, 0.0, 0.0, thigh_length, -thigh_length, 0.0],
@@ -600,10 +632,16 @@ def angry_ant_crippled(gear=150):
     actuator.motor(ctrllimited="true", ctrlrange="-1.0 1.0", joint="hip_2", gear=gear)
     actuator.motor(ctrllimited="true", ctrlrange="-1.0 1.0", joint="ankle_2", gear=gear)
     actuator.motor(
-        ctrllimited="true", ctrlrange="-1.0 1.0", joint="hip_3", gear=1
+        ctrllimited="true",
+        ctrlrange="-1.0 1.0",
+        joint="hip_3",
+        gear=1,
     )  # cripple the joints
     actuator.motor(
-        ctrllimited="true", ctrlrange="-1.0 1.0", joint="ankle_3", gear=1
+        ctrllimited="true",
+        ctrlrange="-1.0 1.0",
+        joint="ankle_3",
+        gear=1,
     )  # cripple the joints
     actuator.motor(ctrllimited="true", ctrlrange="-1.0 1.0", joint="hip_4", gear=1)
     actuator.motor(ctrllimited="true", ctrlrange="-1.0 1.0", joint="ankle_4", gear=1)
@@ -662,13 +700,15 @@ class CustomAntEnv(mujoco_env.MujocoEnv, utils.EzPickle):
                 self.sim.data.qpos.flat[2:],
                 self.sim.data.qvel.flat,
                 np.clip(self.sim.data.cfrc_ext, -1, 1).flat,
-            ]
+            ],
         )
 
     def reset_model(self):
         self.timesteps = 0
         qpos = self.init_qpos + self.np_random.uniform(
-            size=self.model.nq, low=-0.1, high=0.1
+            size=self.model.nq,
+            low=-0.1,
+            high=0.1,
         )
         qvel = self.init_qvel + self.np_random.randn(self.model.nv) * 0.1
         self.set_state(qpos, qvel)

@@ -123,19 +123,19 @@ def train_adversarial(
     """
     if gen_batch_size % num_vec != 0:
         raise ValueError(
-            f"num_vec={num_vec} must evenly divide gen_batch_size={gen_batch_size}."
+            f"num_vec={num_vec} must evenly divide gen_batch_size={gen_batch_size}.",
         )
 
     allowed_keys = {"shared", "gail", "airl"}
     if not discrim_net_kwargs.keys() <= allowed_keys:
         raise ValueError(
             f"Invalid discrim_net_kwargs.keys()={discrim_net_kwargs.keys()}. "
-            f"Allowed keys: {allowed_keys}"
+            f"Allowed keys: {allowed_keys}",
         )
     if not algorithm_kwargs.keys() <= allowed_keys:
         raise ValueError(
             f"Invalid discrim_net_kwargs.keys()={algorithm_kwargs.keys()}. "
-            f"Allowed keys: {allowed_keys}"
+            f"Allowed keys: {allowed_keys}",
         )
 
     if not os.path.exists(rollout_path):
@@ -146,7 +146,7 @@ def train_adversarial(
         if not len(expert_trajs) >= n_expert_demos:
             raise ValueError(
                 f"Want to use n_expert_demos={n_expert_demos} trajectories, but only "
-                f"{len(expert_trajs)} are available via {rollout_path}."
+                f"{len(expert_trajs)} are available via {rollout_path}.",
             )
         expert_trajs = expert_trajs[:n_expert_demos]
     expert_transitions = rollout.flatten_trajectories(expert_trajs)
@@ -203,7 +203,7 @@ def train_adversarial(
     logging.info(f"Discriminator network summary:\n {trainer.discrim_net}")
     logging.info(f"RL algorithm: {type(trainer.gen_algo)}")
     logging.info(
-        f"Imitation (generator) policy network summary:\n" f"{trainer.gen_algo.policy}"
+        f"Imitation (generator) policy network summary:\n" f"{trainer.gen_algo.policy}",
     )
 
     def callback(round_num):
@@ -220,7 +220,9 @@ def train_adversarial(
     results = {}
     sample_until_eval = rollout.make_min_episodes(n_episodes_eval)
     trajs = rollout.generate_trajectories(
-        trainer.gen_algo, trainer.venv_train, sample_until=sample_until_eval
+        trainer.gen_algo,
+        trainer.venv_train,
+        sample_until=sample_until_eval,
     )
     results["expert_stats"] = rollout.rollout_stats(expert_trajs)
     results["imit_stats"] = rollout.rollout_stats(trajs)

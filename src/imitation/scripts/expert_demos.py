@@ -100,13 +100,15 @@ def rollouts_and_policy(
     sacred_util.build_sacred_symlink(log_dir, _run)
 
     sample_until = rollout.make_sample_until(
-        rollout_save_n_timesteps, rollout_save_n_episodes
+        rollout_save_n_timesteps,
+        rollout_save_n_episodes,
     )
     eval_sample_until = rollout.make_min_episodes(n_episodes_eval)
 
     logging.basicConfig(level=logging.INFO)
     custom_logger = logger.configure(
-        folder=osp.join(log_dir, "rl"), format_strs=["tensorboard", "stdout"]
+        folder=osp.join(log_dir, "rl"),
+        format_strs=["tensorboard", "stdout"],
     )
 
     rollout_dir = osp.join(log_dir, "rollouts")
@@ -139,7 +141,8 @@ def rollouts_and_policy(
     if policy_save_interval > 0:
         save_policy_callback = serialize.SavePolicyCallback(policy_dir, vec_normalize)
         save_policy_callback = callbacks.EveryNTimesteps(
-            policy_save_interval, save_policy_callback
+            policy_save_interval,
+            save_policy_callback,
         )
         callback_objs.append(save_policy_callback)
     callback = callbacks.CallbackList(callback_objs)
@@ -193,7 +196,8 @@ def rollouts_from_policy(
     sacred_util.build_sacred_symlink(log_dir, _run)
 
     sample_until = rollout.make_sample_until(
-        rollout_save_n_timesteps, rollout_save_n_episodes
+        rollout_save_n_timesteps,
+        rollout_save_n_episodes,
     )
 
     venv = util.make_vec_env(

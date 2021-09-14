@@ -101,7 +101,7 @@ def train_bc(
         if not len(expert_trajs) >= n_expert_demos:
             raise ValueError(
                 f"Want to use n_expert_demos={n_expert_demos} trajectories, but only "
-                f"{len(expert_trajs)} are available."
+                f"{len(expert_trajs)} are available.",
             )
         expert_trajs = expert_trajs[:n_expert_demos]
 
@@ -136,7 +136,8 @@ def train_bc(
     # TODO(shwang): Use auto env, auto stats thing with shared `env` and stats
     #  ingredient, or something like that.
     sample_until = rollout.make_sample_until(
-        min_timesteps=None, min_episodes=n_episodes_eval
+        min_timesteps=None,
+        min_episodes=n_episodes_eval,
     )
     trajs = rollout.generate_trajectories(
         model.policy,

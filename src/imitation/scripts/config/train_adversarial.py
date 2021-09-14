@@ -74,7 +74,9 @@ def calc_n_steps(num_vec, gen_batch_size):
 @train_adversarial_ex.config
 def paths(env_name, log_root, rollout_hint, data_dir):
     log_dir = os.path.join(
-        log_root, env_name.replace("/", "_"), util.make_unique_timestamp()
+        log_root,
+        env_name.replace("/", "_"),
+        util.make_unique_timestamp(),
     )
 
     # Recommended that user sets rollout_path manually.
@@ -83,7 +85,11 @@ def paths(env_name, log_root, rollout_hint, data_dir):
     if rollout_hint is None:
         rollout_hint = env_name.split("-")[0].lower()
     rollout_path = os.path.join(
-        data_dir, "expert_models", f"{rollout_hint}_0", "rollouts", "final.pkl"
+        data_dir,
+        "expert_models",
+        f"{rollout_hint}_0",
+        "rollouts",
+        "final.pkl",
     )
 
 
@@ -298,7 +304,7 @@ def fast():
         shared=dict(
             expert_batch_size=1,
             n_disc_updates_per_round=4,
-        )
+        ),
     )
     gen_batch_size = 2
     parallel = False  # easier to debug with everything in one process

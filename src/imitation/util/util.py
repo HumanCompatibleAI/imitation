@@ -139,7 +139,9 @@ def init_rl(
       An RL algorithm.
     """
     return model_class(
-        policy_class, env, **model_kwargs
+        policy_class,
+        env,
+        **model_kwargs,
     )  # pytype: disable=not-instantiable
 
 
@@ -213,7 +215,8 @@ def torchify_with_space(
 
 
 def tensor_iter_norm(
-    tensor_iter: Iterable[th.Tensor], ord: Union[int, float] = 2  # noqa: A002
+    tensor_iter: Iterable[th.Tensor],
+    ord: Union[int, float] = 2,  # noqa: A002
 ) -> th.Tensor:
     """Compute the norm of a big vector that is produced one tensor chunk at a time.
 

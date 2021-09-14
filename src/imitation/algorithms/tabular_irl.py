@@ -20,7 +20,9 @@ from imitation.util.util import tensor_iter_norm
 
 
 def mce_partition_fh(
-    env: TabularModelEnv, *, R: Optional[np.ndarray] = None
+    env: TabularModelEnv,
+    *,
+    R: Optional[np.ndarray] = None,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     r"""Performs the soft Bellman backup for a finite-horizon, undiscounted MDP.
 
@@ -190,7 +192,9 @@ def mce_irl(
         # Forward/back/step (grads are zeroed at the top).
         # weights_th(s) = \pi(s) - D(s)
         weights_th = th.as_tensor(
-            visitations - demo_state_om, dtype=dtype, device=device
+            visitations - demo_state_om,
+            dtype=dtype,
+            device=device,
         )
         # The "loss" is then:
         #   E_\pi[r_\theta(S)] - E_D[r_\theta(S)]
@@ -213,7 +217,7 @@ def mce_irl(
                     linf_delta,
                     weight_norm,
                     grad_norm,
-                )
+                ),
             )
 
         t += 1

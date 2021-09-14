@@ -19,7 +19,10 @@ from imitation.util.sacred import dict_get_nested as get
 
 @analysis_ex.capture
 def _gather_sacred_dicts(
-    source_dirs: Sequence[str], run_name: str, env_name: str, skip_failed_runs: bool
+    source_dirs: Sequence[str],
+    run_name: str,
+    env_name: str,
+    skip_failed_runs: bool,
 ) -> List[sacred_util.SacredDicts]:
     """Helper function for parsing and selecting Sacred experiment JSON files.
 
@@ -52,17 +55,20 @@ def _gather_sacred_dicts(
 
     if run_name is not None:
         sacred_dicts = filter(
-            lambda sd: get(sd.run, "experiment.name") == run_name, sacred_dicts
+            lambda sd: get(sd.run, "experiment.name") == run_name,
+            sacred_dicts,
         )
 
     if env_name is not None:
         sacred_dicts = filter(
-            lambda sd: get(sd.config, "env_name") == env_name, sacred_dicts
+            lambda sd: get(sd.config, "env_name") == env_name,
+            sacred_dicts,
         )
 
     if skip_failed_runs:
         sacred_dicts = filter(
-            lambda sd: get(sd.run, "status") != "FAILED", sacred_dicts
+            lambda sd: get(sd.run, "status") != "FAILED",
+            sacred_dicts,
         )
 
     return list(sacred_dicts)
@@ -104,8 +110,9 @@ def gather_tb_directories() -> dict:
         for basename in ["rl", "tb", "sb_tb"]:
             tb_src_dirs = tuple(
                 sacred_util.filter_subdirs(
-                    run_dir, lambda path: osp.basename(path) == basename
-                )
+                    run_dir,
+                    lambda path: osp.basename(path) == basename,
+                ),
             )
             if tb_src_dirs:
                 assert len(tb_src_dirs) == 1, "expect at most one TB dir of each type"
@@ -194,7 +201,7 @@ table_entry_fns: sd_to_table_entry_type = collections.OrderedDict(
             lambda sd: _return_summaries(sd)["imit_return_summary"],
         ),
         ("imit_expert_ratio", lambda sd: _return_summaries(sd)["imit_expert_ratio"]),
-    ]
+    ],
 )
 
 
@@ -211,7 +218,7 @@ table_verbosity_mapping.append(
         "env_name",
         "expert_return_summary",
         "imit_return_summary",
-    }
+    },
 )
 
 # verbosity 1
@@ -220,7 +227,7 @@ table_verbosity_mapping.append(table_verbosity_mapping[-1] | {"n_expert_demos"})
 # verbosity 2
 table_verbosity_mapping.append(
     table_verbosity_mapping[-1]
-    | {"status", "imit_expert_ratio", "exp_command", "run_name"}
+    | {"status", "imit_expert_ratio", "exp_command", "run_name"},
 )
 
 
@@ -291,7 +298,9 @@ def analyze_imitation(
 
 def _make_return_summary(stats: dict, prefix="") -> str:
     return "{:3g} ± {:3g} (n={})".format(
-        stats[f"{prefix}return_mean"], stats[f"{prefix}return_std"], stats["n_traj"]
+        stats[f"{prefix}return_mean"],
+        stats[f"{prefix}return_std"],
+        stats["n_traj"],
     )
 
 

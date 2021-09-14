@@ -116,7 +116,7 @@ class ReasonableMDP(TabularModelEnv):
             [-5, -1, 4, 1, 4, 1, 5, 3],
             # state 4 (final, all self loops, good reward)
             [2, -5, 1, -5, 1, 4, 4, -3],
-        ]
+        ],
     )
     transition_matrix = np.array(
         [
@@ -165,7 +165,7 @@ class ReasonableMDP(TabularModelEnv):
                 # action 2
                 [1, 0, 0, 0, 0],
             ],
-        ]
+        ],
     )
     reward_matrix = np.array(
         [
@@ -179,7 +179,7 @@ class ReasonableMDP(TabularModelEnv):
             # state 4 has pretty good reward (good enough that we should move out
             # of 1 & 2)
             3,
-        ]
+        ],
     )
     # always start in s0 or s4
     initial_state_dist = [0.5, 0, 0, 0, 0.5]

@@ -13,7 +13,9 @@ def test_compute_train_stats(n_samples):
     labels_gen_is_one = th.from_numpy(np.random.randint(2, size=[n_samples]))
     disc_loss = th.tensor(np.random.random() * 10)
     stats = common.compute_train_stats(
-        disc_logits_gen_is_high, labels_gen_is_one, disc_loss
+        disc_logits_gen_is_high,
+        labels_gen_is_one,
+        disc_loss,
     )
     for k, v in stats.items():
         assert isinstance(k, str)

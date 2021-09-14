@@ -39,7 +39,7 @@ def _sample_fixed_length_trajectories(
     **kwargs,
 ) -> Sequence[types.Trajectory]:
     venv = vec_env.DummyVecEnv(
-        [functools.partial(TerminalSentinelEnv, length) for length in episode_lengths]
+        [functools.partial(TerminalSentinelEnv, length) for length in episode_lengths],
     )
     if policy_type == "policy":
         policy = RandomPolicy(venv.observation_space, venv.action_space)
@@ -79,7 +79,9 @@ def test_complete_trajectories(policy_type):
     max_acts = 5
     num_envs = 4
     trajectories = _sample_fixed_length_trajectories(
-        [max_acts] * num_envs, min_episodes, policy_type=policy_type
+        [max_acts] * num_envs,
+        min_episodes,
+        policy_type=policy_type,
     )
     assert len(trajectories) >= min_episodes
     expected_obs = np.array([[0]] * max_acts + [[1]])

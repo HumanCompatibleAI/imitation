@@ -109,7 +109,9 @@ class RandomMDP(TabularModelEnv):
             rand_state=rand_gen,
         )
         self._initial_state_dist = make_random_state_dist(
-            n_avail=branch_factor, n_states=n_states, rand_state=rand_gen
+            n_avail=branch_factor,
+            n_states=n_states,
+            rand_state=rand_gen,
         )
         self._horizon = horizon
         self._reward_weights = rand_gen.randn(self._observation_matrix.shape[-1])
@@ -178,7 +180,8 @@ class CliffWorld(TabularModelEnv):
         succ_p = 1 - fail_p
         n_states = width * height
         O_mat = self._observation_matrix = np.zeros(
-            (n_states, 2 if use_xy_obs else n_states), dtype=np.float32
+            (n_states, 2 if use_xy_obs else n_states),
+            dtype=np.float32,
         )
         R_vec = self._reward_matrix = np.zeros((n_states,))
         T_mat = self._transition_matrix = np.zeros((n_states, 4, n_states))
