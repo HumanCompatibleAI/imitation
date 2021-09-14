@@ -6,66 +6,70 @@ then rewards the agent for following that estimate.
 
 import enum
 import itertools
-from typing import Iterable, Mapping, Optional, Sequence
+from typing import Iterable, Mapping, Optional
 
-import gym
 import numpy as np
 from gym.spaces.utils import flatten
 from sklearn import neighbors, preprocessing
-from stable_baselines3.common import on_policy_algorithm, vec_env
+from stable_baselines3.common import base_class, vec_env
 
 from imitation.algorithms import base
 from imitation.data import rollout, types
 from imitation.util import logger as imit_logger
 from imitation.util import reward_wrapper
 
-# Constants identifying different kinds of density we can use. Note that all
-# can be augmented to depend on the time step by passing `is_stationary = True`
-# to `DensityReward`.
-
 
 class DensityType(enum.Enum):
-    # Density on state s
+    """Input type the density model should use."""
+
     STATE_DENSITY = enum.auto()
-    # Density on (s,a) pairs
+    """Density on state s."""
+
     STATE_ACTION_DENSITY = enum.auto()
-    # Density (s,s') pairs
+    """Density on (s,a) pairs."""
+
     STATE_STATE_DENSITY = enum.auto()
+    """Density on (s,s') pairs."""
 
 
-class DensityReward(base.DemonstrationAlgorithm):
+class DensityAlgorithm(base.DemonstrationAlgorithm):
+    """Learns a reward function based on density modeling.
+
+    Specifically, it constructs a non-parametric estimate of `p(s)`, `p(s,a)`, `p(s,s')`
+    and then computes a reward using the log of these probabilities.
+    """
+
     transitions: Mapping[Optional[int], np.ndarray]
 
     def __init__(
         self,
         *,
         demonstrations: Optional[base.AnyTransitions],
-        density_type: DensityType,
-        kernel: str,
-        kernel_bandwidth: float,
-        obs_space: gym.Space,
-        act_space: gym.Space,
+        venv: vec_env.VecEnv,
+        density_type: DensityType = DensityType.STATE_ACTION_DENSITY,
+        kernel: str = "gaussian",
+        kernel_bandwidth: float = 0.5,
+        rl_algo: Optional[base_class.BaseAlgorithm] = None,
         is_stationary: bool = True,
         standardise_inputs: bool = True,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
         allow_variable_horizon: bool = False,
     ):
-        """Reward function based on a density estimate of trajectories.
+        """Builds DensityAlgorithm.
 
         Args:
             demonstrations: expert demonstration trajectories.
-            obs_space: observation space for underlying environment.
-            act_space: action space for underlying environment.
             density_type: type of density to train on: single state, state-action pairs,
                 or state-state pairs.
-            standardise_inputs: if True, then the inputs to the reward model
-                will be standardised to have zero mean and unit variance over the
-                demonstration trajectories. Otherwise, inputs will be passed to the
-                reward model with their ordinary scale.
             kernel: kernel to use for density estimation with `sklearn.KernelDensity`.
             kernel_bandwidth: bandwidth of kernel. If `standardise_inputs` is
                 true and you are using a Gaussian kernel, then it probably makes sense
                 to set this somewhere between 0.1 and 1.
+            venv: The environment to learn a reward model in. We don't actually need
+                any environment interaction to fit the reward model, but we use this
+                to extract the observation and action space, and to train the RL
+                algorithm `rl_algo` (if specified).
+            rl_algo: An RL algorithm to train on the resulting reward model (optional).
             is_stationary: if True, share same density models for all timesteps;
                 if False, use a different density model for each timestep.
                 A non-stationary model is particularly likely to be useful when using
@@ -73,6 +77,10 @@ class DensityReward(base.DemonstrationAlgorithm):
                 just a few states that have high frequency in the demonstration dataset.
                 If non-stationary, demonstrations must be trajectories, not transitions
                 (which do not contain timesteps).
+            standardise_inputs: if True, then the inputs to the reward model
+                will be standardised to have zero mean and unit variance over the
+                demonstration trajectories. Otherwise, inputs will be passed to the
+                reward model with their ordinary scale.
             custom_logger: Where to log to; if None (default), creates a new logger.
             allow_variable_horizon: If False (default), algorithm will raise an
                 exception if it detects trajectories of different length during
@@ -84,21 +92,29 @@ class DensityReward(base.DemonstrationAlgorithm):
         """
         self.is_stationary = is_stationary
         self.density_type = density_type
-        self.obs_space = obs_space
-        self.act_space = act_space
+        self.venv = venv
         self.transitions = {}
         super().__init__(
             demonstrations=demonstrations,
             custom_logger=custom_logger,
             allow_variable_horizon=allow_variable_horizon,
         )
+
         self.kernel = kernel
         self.kernel_bandwidth = kernel_bandwidth
         self.standardise = standardise_inputs
         self._scaler = None
         self._density_models = {}
 
+        self.rl_algo = rl_algo
+        self.venv_wrapped = reward_wrapper.RewardVecEnvWrapper(
+            self.venv,
+            self,
+        )
+        self.wrapper_callback = self.venv_wrapped.make_log_callback()
+
     def set_demonstrations(self, demonstrations: base.AnyTransitions) -> None:
+        """Sets the demonstration data."""
         self.transitions = {}
 
         if isinstance(demonstrations, Iterable):
@@ -147,6 +163,7 @@ class DensityReward(base.DemonstrationAlgorithm):
             }
 
     def train(self):
+        """Fits the density model to demonstration data `self.transitions`."""
         # if requested, we'll scale demonstration transitions so that they have
         # zero mean and unit variance (i.e all components are equally important)
         self._scaler = preprocessing.StandardScaler(
@@ -174,15 +191,22 @@ class DensityReward(base.DemonstrationAlgorithm):
     def _preprocess_transition(
         self, obs: np.ndarray, act: np.ndarray, next_obs: np.ndarray
     ) -> np.ndarray:
+        """Compute flattened transition on subset specified by `self.density_type`."""
         if self.density_type == DensityType.STATE_DENSITY:
-            return flatten(self.obs_space, obs)
+            return flatten(self.venv.observation_space, obs)
         elif self.density_type == DensityType.STATE_ACTION_DENSITY:
             return np.concatenate(
-                [flatten(self.obs_space, obs), flatten(self.act_space, act)]
+                [
+                    flatten(self.venv.observation_space, obs),
+                    flatten(self.venv.action_space, act),
+                ]
             )
         elif self.density_type == DensityType.STATE_STATE_DENSITY:
             return np.concatenate(
-                [flatten(self.obs_space, obs), flatten(self.obs_space, next_obs)]
+                [
+                    flatten(self.venv.observation_space, obs),
+                    flatten(self.venv.observation_space, next_obs),
+                ]
             )
         else:
             raise ValueError(f"Unknown density type {self.density_type}")
@@ -207,13 +231,18 @@ class DensityReward(base.DemonstrationAlgorithm):
             next_obs_b: batch of observations encountered after the
                 agent took those actions.
             dones: is it terminal state?
-            steps: Optional -- what timestep is this from?
+            steps: What timestep is this from? Used if `self.is_stationary` is false,
+                otherwise ignored.
 
         Returns:
             Array of scalar rewards of the form `r_t(s,a,s') = \log \hat p_t(s,a,s')`
             (one for each environment), where `\log \hat p` is the underlying density
             model (and may be independent of s', a, or t, depending on options passed
             to constructor).
+
+        Raises:
+            ValueError: Non-stationary model (`self.is_stationary` false) and `steps`
+                is not provided.
         """
         if not self.is_stationary and steps is None:
             raise ValueError("steps must be provided with non-stationary models")
@@ -245,88 +274,40 @@ class DensityReward(base.DemonstrationAlgorithm):
         rew_array = np.asarray(rew_list, dtype="float32")
         return rew_array
 
-
-# TODO(adam): Do we even need this? Merge into one class perhaps?
-class DensityTrainer:
-    def __init__(
-        self,
-        venv: vec_env.VecEnv,
-        rollouts: Sequence[types.Trajectory],
-        imitation_trainer: on_policy_algorithm.OnPolicyAlgorithm,
-        *,
-        standardise_inputs: bool = True,
-        kernel: str = "gaussian",
-        kernel_bandwidth: float = 0.5,
-        density_type: DensityType = DensityType.STATE_ACTION_DENSITY,
-    ):
-        r"""Family of simple imitation learning baseline algorithms that apply RL to
-        maximise a rough density estimate of the demonstration trajectories.
-        Specifically, it constructs a non-parametric estimate of `p(s)`, `p(s,s')`,
-        `p_t(s,a)`, etc. (depending on options), then rewards the imitation learner
-        with `r_t(s,a,s')=\log p_t(s,a,s')` (or `\log p(s,s')`, or whatever the
-        user wants the model to condition on).
-
-        Args:
-            venv: environment to train on.
-            rollouts: list of expert trajectories to imitate.
-            imitation_trainer: RL algorithm & initial policy that will
-                be used to train the imitation learner.
-            kernel, kernel_bandwidth, density_type, is_stationary,
-                standardise_inputs: these are passed directly to `DensityReward`;
-                refer to documentation for that class."""
-        self.venv = venv
-        self.imitation_trainer = imitation_trainer
-        self.reward_fn = DensityReward(
-            demonstrations=rollouts,
-            density_type=density_type,
-            obs_space=self.venv.observation_space,
-            act_space=self.venv.action_space,
-            kernel=kernel,
-            kernel_bandwidth=kernel_bandwidth,
-            standardise_inputs=standardise_inputs,
-        )
-        self.wrapped_env = reward_wrapper.RewardVecEnvWrapper(self.venv, self.reward_fn)
-
-    def train_policy(self, n_timesteps=int(1e6), **kwargs):
+    def train_policy(self, n_timesteps: int = int(1e6), **kwargs):
         """Train the imitation policy for a given number of timesteps.
 
         Args:
-            n_timesteps (int): number of timesteps to train the policy for.
+            n_timesteps: number of timesteps to train the policy for.
             kwargs (dict): extra arguments that will be passed to the `learn()`
                 method of the imitation RL model. Refer to Stable Baselines docs for
                 details.
         """
-        self.reward_fn.train()
-        self.imitation_trainer.set_env(self.wrapped_env)
-        # FIXME: learn() is not meant to be called frequently; there are
-        # significant per-call overheads (see Adam's comment in adversarial.py)
-        # FIXME: the ep_reward_mean reported by SB is wrong; it comes from a
-        # Monitor() that is being (incorrectly) used to wrap the underlying
-        # environment.
-        self.imitation_trainer.learn(
+        self.rl_algo.set_env(self.venv_wrapped)
+        self.rl_algo.learn(
             n_timesteps,
             # ensure we can see total steps for all
             # learn() calls, not just for this call
             reset_num_timesteps=False,
+            callback=self.wrapper_callback,
             **kwargs,
         )
 
-    def test_policy(self, *, n_trajectories=10, true_reward=True):
+    def test_policy(self, *, n_trajectories: int = 10, true_reward: bool = True):
         """Test current imitation policy on environment & give some rollout stats.
 
         Args:
-            n_trajectories (int): number of rolled-out trajectories.
-            true_reward (bool): should this use ground truth reward from underlying
+            n_trajectories: number of rolled-out trajectories.
+            true_reward: should this use ground truth reward from underlying
                 environment (True), or imitation reward (False)?
 
         Returns:
             dict: rollout statistics collected by
                 `imitation.utils.rollout.rollout_stats()`.
         """
-        self.imitation_trainer.set_env(self.venv)
         trajs = rollout.generate_trajectories(
-            self.imitation_trainer,
-            self.venv if true_reward else self.wrapped_env,
+            self.rl_algo,
+            self.venv if true_reward else self.venv_wrapped,
             sample_until=rollout.make_min_episodes(n_trajectories),
         )
         reward_stats = rollout.rollout_stats(trajs)
