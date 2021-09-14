@@ -119,6 +119,54 @@ AnyTransitions = Union[
 ]
 
 
+class DemonstrationAlgorithm(BaseImitationAlgorithm, Generic[TransitionKind]):
+    """An algorithm that learns from demonstration: BC, IRL, etc."""
+
+    def __init__(
+        self,
+        demonstrations: Optional[AnyTransitions],
+        *,
+        custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
+        allow_variable_horizon: bool = False,
+    ):
+        """Creates an algorithm that learns from demonstrations.
+
+        Args:
+            demonstrations: Demonstrations from an expert (optional). Transitions
+                expressed directly as a `types.TransitionsMinimal` object, a sequence
+                of trajectories, or an iterable of transition batches (mappings from
+                keywords to arrays containing observations, etc).
+            custom_logger: Where to log to; if None (default), creates a new logger.
+            allow_variable_horizon: If False (default), algorithm will raise an
+                exception if it detects trajectories of different length during
+                training. If True, overrides this safety check. WARNING: variable
+                horizon episodes leak information about the reward via termination
+                condition, and can seriously confound evaluation. Read
+                https://imitation.readthedocs.io/en/latest/guide/variable_horizon.html
+                before overriding this.
+        """
+        super().__init__(
+            custom_logger=custom_logger,
+            allow_variable_horizon=allow_variable_horizon,
+        )
+
+        if demonstrations is not None:
+            self.set_demonstrations(demonstrations)
+
+    @abc.abstractmethod
+    def set_demonstrations(self, demonstrations: AnyTransitions) -> None:
+        """Sets the demonstration data.
+
+        Changing the demonstration data on-demand can be useful for
+        interactive algorithms like DAgger.
+
+        Args:
+             demonstrations: Either a Torch `DataLoader`, any other iterator that
+                yields dictionaries containing "obs" and "acts" Tensors or NumPy arrays,
+                `TransitionKind` instance, or a Sequence of Trajectory objects.
+        """
+
+
 def make_data_loader(
     transitions: AnyTransitions,
     batch_size: int,
@@ -172,65 +220,10 @@ def make_data_loader(
             **extra_kwargs,
         )
     elif isinstance(transitions, Iterable):
-        try:
-            first_item = next(iter(transitions))
-            first_batch_size = len(first_item["obs"])
-            if first_batch_size != batch_size:
-                raise ValueError(
-                    f"Expected batch size {batch_size} "
-                    f"!= actual {first_batch_size}.",
-                )
-        except StopIteration:
-            pass
-        # pytype does not understand transitions is an Iterable[TransitionMapping]
-        return transitions  # pytype:disable=bad-return-type
+        for batch in transitions:
+            assert isinstance(batch, Mapping)  # pytype is confused without this
+            assert len(batch["obs"]) == batch_size
+            assert len(batch["acts"]) == batch_size
+            yield batch
     else:
         raise TypeError(f"`demonstrations` unexpected type {type(transitions)}")
-
-
-class DemonstrationAlgorithm(BaseImitationAlgorithm, Generic[TransitionKind]):
-    """An algorithm that learns from demonstration: BC, IRL, etc."""
-
-    def __init__(
-        self,
-        demonstrations: Optional[AnyTransitions],
-        *,
-        custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
-        allow_variable_horizon: bool = False,
-    ):
-        """Creates an algorithm that learns from demonstrations.
-
-        Args:
-            demonstrations: Demonstrations from an expert (optional). Transitions
-                expressed directly as a `types.TransitionsMinimal` object, a sequence
-                of trajectories, or an iterable of transition batches (mappings from
-                keywords to arrays containing observations, etc).
-            custom_logger: Where to log to; if None (default), creates a new logger.
-            allow_variable_horizon: If False (default), algorithm will raise an
-                exception if it detects trajectories of different length during
-                training. If True, overrides this safety check. WARNING: variable
-                horizon episodes leak information about the reward via termination
-                condition, and can seriously confound evaluation. Read
-                https://imitation.readthedocs.io/en/latest/guide/variable_horizon.html
-                before overriding this.
-        """
-        super().__init__(
-            custom_logger=custom_logger,
-            allow_variable_horizon=allow_variable_horizon,
-        )
-
-        if demonstrations is not None:
-            self.set_demonstrations(demonstrations)
-
-    @abc.abstractmethod
-    def set_demonstrations(self, demonstrations: AnyTransitions) -> None:
-        """Sets the demonstration data.
-
-        Changing the demonstration data loader on-demand can be useful for
-        interactive algorithms like DAgger.
-
-        Args:
-             demonstrations: Either a Torch `DataLoader`, any other iterator that
-                yields dictionaries containing "obs" and "acts" Tensors or NumPy arrays,
-                `TransitionKind` instance, or a Sequence of Trajectory objects.
-        """

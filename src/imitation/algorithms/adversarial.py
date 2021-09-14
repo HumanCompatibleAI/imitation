@@ -74,7 +74,7 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
             venv: The vectorized environment to train in.
             gen_algo: The generator RL algorithm that is trained to maximize
                 discriminator confusion. Environment and logger will be set to
-                `venv` and `custom_logger`
+                `venv` and `custom_logger`.
             discrim_net: The discriminator network. This will be moved to the same
                 device as `gen_algo`.
             n_disc_updates_per_round: The number of discriminator updates after each
@@ -467,7 +467,7 @@ class GAIL(AdversarialTrainer):
             venv: The vectorized environment to train in.
             gen_algo: The generator RL algorithm that is trained to maximize
                 discriminator confusion. Environment and logger will be set to
-                `venv` and `custom_logger`
+                `venv` and `custom_logger`.
             discrim_kwargs: Optional keyword arguments to use while constructing the
                 DiscrimNetGAIL.
             **kwargs: Passed through to `AdversarialTrainer.__init__`.
@@ -520,7 +520,7 @@ class AIRL(AdversarialTrainer):
             venv: The vectorized environment to train in.
             gen_algo: The generator RL algorithm that is trained to maximize
                 discriminator confusion. Environment and logger will be set to
-                `venv` and `custom_logger`
+                `venv` and `custom_logger`.
             reward_net_cls: Reward network constructor. The reward network is part of
                 the AIRL discriminator.
             reward_net_kwargs: Optional keyword arguments to use while constructing
