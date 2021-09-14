@@ -1,5 +1,5 @@
 import abc
-from typing import Generic, Iterable, Mapping, Optional, Sequence, TypeVar, Union
+from typing import Generic, Iterable, Mapping, Optional, TypeVar, Union
 
 import numpy as np
 import torch as th
@@ -108,44 +108,76 @@ class BaseImitationAlgorithm(abc.ABC):
         self.logger = state.get("_logger") or imit_logger.configure()
 
 
-# TODO(adam): do we want to lock ourselves into transitions?
-# Might some algorithms actually need trajectories? (Density baselines kind of did...?)
-TransMapping = Mapping[str, Union[np.ndarray, th.Tensor]]
+TransitionMappings = Iterable[Mapping[str, Union[np.ndarray, th.Tensor]]]
 TransitionKind = TypeVar("TransitionKind", bound=types.TransitionsMinimal)
-AnyTransitions = Union[Iterable[TransMapping], TransitionKind, types.Trajectory]
+AnyTransitions = Union[Iterable[types.Trajectory], TransitionMappings, TransitionKind]
+
+
+def make_data_loader(
+    demonstrations: AnyTransitions, demo_batch_size: int
+) -> TransitionMappings:
+    if isinstance(demonstrations, Iterable):
+        # TODO(adam): what about empty iterable?
+        first_item = next(demonstrations).__iter__()
+        if isinstance(first_item, types.Trajectory):
+            demonstrations = rollout.flatten_trajectories(list(demonstrations))
+
+    if isinstance(demonstrations, types.TransitionsMinimal):
+        if len(demonstrations) < demo_batch_size:
+            raise ValueError(
+                "Provided Transitions instance as `demonstrations` argument but "
+                "len(demonstrations) < demo_batch_size. "
+                f"({len(demonstrations)} < {demo_batch_size})."
+            )
+
+        return th_data.DataLoader(
+            demonstrations,
+            batch_size=demo_batch_size,
+            collate_fn=types.transitions_collate_fn,
+            shuffle=True,
+            drop_last=True,
+        )
+    elif isinstance(demonstrations, Iterable):
+        return demonstrations
+    else:
+        raise TypeError(f"`demonstrations` unexpected type {type(demonstrations)}")
 
 
 class DemonstrationAlgorithm(BaseImitationAlgorithm, Generic[TransitionKind]):
     """An algorithm that learns from demonstration: BC, IRL, etc."""
 
-    demo_data_loader: Optional[Iterable[TransMapping]] = None
-
     def __init__(
         self,
         demonstrations: Optional[AnyTransitions],
-        demo_batch_size: int,
         *,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
         allow_variable_horizon: bool = False,
     ):
+        """Creates an algorithm that learns from demonstrations.
+
+        Args:
+            demonstrations: Demonstrations from an expert (optional). Can be a sequence
+                of trajectories, or transitions, or an iterable over mappings that
+                represent a batch of transitions.
+            custom_logger: Where to log to; if None (default), creates a new logger.
+            allow_variable_horizon: If False (default), algorithm will raise an
+                exception if it detects trajectories of different length during
+                training. If True, overrides this safety check. WARNING: variable
+                horizon episodes leak information about the reward via termination
+                condition, and can seriously confound evaluation. Read
+                https://imitation.readthedocs.io/en/latest/guide/variable_horizon.html
+                before overriding this.
+        """
         super().__init__(
             custom_logger=custom_logger, allow_variable_horizon=allow_variable_horizon
         )
 
-        # TODO(adam): it seems this is ignored if demonstrations is an Iterable?
-        # Maybe make it Optional to and assert None if demonstrations is Iterable?
-        # Or just make people always pass in a DataLoader, and add a convenience
-        # function for this?
-        if demo_batch_size <= 0:
-            raise ValueError(f"demo_batch_size={demo_batch_size} must be positive.")
-        self.demo_batch_size = demo_batch_size
-
-        self.demo_data_loader = None
         if demonstrations is not None:
             self.set_demonstrations(demonstrations)
 
-    def set_demonstrations(self, demonstrations: AnyTransitions):
-        """Sets the demonstration data loader, which yields batches of transitions.
+    @abc.abstractmethod
+    def set_demonstrations(self, demonstrations: AnyTransitions) -> None:
+        """Sets the demonstration data.
 
         Changing the demonstration data loader on-demand can be useful for
         interactive algorithms like DAgger.
@@ -153,34 +185,5 @@ class DemonstrationAlgorithm(BaseImitationAlgorithm, Generic[TransitionKind]):
         Args:
              demonstrations: Either a Torch `DataLoader`, any other iterator that
                 yields dictionaries containing "obs" and "acts" Tensors or NumPy arrays,
-                or a `TransitionsMinimal` instance (or subclass).
-
-                If this is a `TransitionsMinimal` instance, then it is automatically
-                converted into a shuffled `DataLoader` with batch size
-                `self.demo_batch_size`.
+                `TransitionKind` instance, or a Sequence of Trajectory objects.
         """
-        if isinstance(demonstrations, Sequence):
-            if len(demonstrations) == 0 or isinstance(
-                demonstrations[0], types.Trajectory
-            ):
-                demonstrations = rollout.flatten_trajectories(demonstrations)
-
-        if isinstance(demonstrations, types.TransitionsMinimal):
-            if len(demonstrations) < self.demo_batch_size:
-                raise ValueError(
-                    "Provided Transitions instance as `demonstrations` argument but "
-                    "len(demonstrations) < self.demo_batch_size. "
-                    f"({len(demonstrations)} < {self.demo_batch_size})."
-                )
-
-            self.demo_data_loader = th_data.DataLoader(
-                demonstrations,
-                batch_size=self.demo_batch_size,
-                collate_fn=types.transitions_collate_fn,
-                shuffle=True,
-                drop_last=True,
-            )
-        elif isinstance(demonstrations, Iterable):
-            self.demo_data_loader = demonstrations
-        else:
-            raise TypeError(f"`demonstrations` unexpected type {type(demonstrations)}")
