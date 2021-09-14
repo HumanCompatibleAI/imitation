@@ -52,7 +52,7 @@ class BaseImitationAlgorithm(abc.ABC):
                 "the information leak from the termination condition, "
                 "producing spuriously high performance. See "
                 "https://imitation.readthedocs.io/en/latest/guide/variable_horizon.html"
-                " for more information."
+                " for more information.",
             )
         self._horizon = None
 
@@ -93,7 +93,7 @@ class BaseImitationAlgorithm(abc.ABC):
                 "https://imitation.readthedocs.io/en/latest/guide/variable_horizon.html"
                 " for more information. If you are SURE you want to run imitation on a "
                 "variable horizon task, then please pass in the flag: "
-                "`allow_variable_horizon=True`."
+                "`allow_variable_horizon=True`.",
             )
         elif len(horizons) == 1:
             self._horizon = horizons.pop()
@@ -113,7 +113,9 @@ class BaseImitationAlgorithm(abc.ABC):
 TransitionMapping = Mapping[str, Union[np.ndarray, th.Tensor]]
 TransitionKind = TypeVar("TransitionKind", bound=types.TransitionsMinimal)
 AnyTransitions = Union[
-    Iterable[types.Trajectory], Iterable[TransitionMapping], TransitionKind
+    Iterable[types.Trajectory],
+    Iterable[TransitionMapping],
+    TransitionKind,
 ]
 
 
@@ -157,7 +159,7 @@ def make_data_loader(
             raise ValueError(
                 "Provided Transitions instance as `demonstrations` argument but "
                 "len(demonstrations) < batch_size. "
-                f"({len(transitions)} < {batch_size})."
+                f"({len(transitions)} < {batch_size}).",
             )
 
         extra_kwargs = dict(shuffle=True, drop_last=True)
@@ -176,7 +178,7 @@ def make_data_loader(
             if first_batch_size != batch_size:
                 raise ValueError(
                     f"Expected batch size {batch_size} "
-                    f"!= actual {first_batch_size}."
+                    f"!= actual {first_batch_size}.",
                 )
         except StopIteration:
             pass
@@ -213,7 +215,8 @@ class DemonstrationAlgorithm(BaseImitationAlgorithm, Generic[TransitionKind]):
                 before overriding this.
         """
         super().__init__(
-            custom_logger=custom_logger, allow_variable_horizon=allow_variable_horizon
+            custom_logger=custom_logger,
+            allow_variable_horizon=allow_variable_horizon,
         )
 
         if demonstrations is not None:

@@ -71,7 +71,8 @@ class TwoDEnv(mujoco_env.MujocoEnv):
         assert isinstance(self.observation_space, Box)
         assert self.observation_space.shape == (2,)
         self.__map_config = MapConfig(
-            xs=(xbounds[0], xbounds[1]), ys=(ybounds[0], ybounds[1])
+            xs=(xbounds[0], xbounds[1]),
+            ys=(ybounds[0], ybounds[1]),
         )
 
     @property

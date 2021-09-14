@@ -68,12 +68,12 @@ class Trajectory:
         if len(self.obs) != len(self.acts) + 1:
             raise ValueError(
                 "expected one more observations than actions: "
-                f"{len(self.obs)} != {len(self.acts)} + 1"
+                f"{len(self.obs)} != {len(self.acts)} + 1",
             )
         if self.infos is not None and len(self.infos) != len(self.acts):
             raise ValueError(
                 "infos when present must be present for each action: "
-                f"{len(self.infos)} != {len(self.acts)}"
+                f"{len(self.infos)} != {len(self.acts)}",
             )
         if len(self.acts) == 0:
             raise ValueError("Degenerate trajectory: must have at least one action.")
@@ -93,7 +93,7 @@ def _rews_validation(rews: np.ndarray, acts: np.ndarray):
     if rews.shape != (len(acts),):
         raise ValueError(
             "rewards must be 1D array, one entry for each action: "
-            f"{rews.shape} != ({len(acts)},)"
+            f"{rews.shape} != ({len(acts)},)",
         )
     if not np.issubdtype(rews.dtype, np.floating):
         raise ValueError(f"rewards dtype {rews.dtype} not a float")
@@ -184,13 +184,13 @@ class TransitionsMinimal(th_data.Dataset):
         if len(self.obs) != len(self.acts):
             raise ValueError(
                 "obs and acts must have same number of timesteps: "
-                f"{len(self.obs)} != {len(self.acts)}"
+                f"{len(self.obs)} != {len(self.acts)}",
             )
 
         if self.infos is not None and len(self.infos) != len(self.obs):
             raise ValueError(
                 "obs and infos must have same number of timesteps: "
-                f"{len(self.obs)} != {len(self.infos)}"
+                f"{len(self.obs)} != {len(self.infos)}",
             )
 
     @overload
@@ -250,17 +250,17 @@ class Transitions(TransitionsMinimal):
         if self.obs.shape != self.next_obs.shape:
             raise ValueError(
                 "obs and next_obs must have same shape: "
-                f"{self.obs.shape} != {self.next_obs.shape}"
+                f"{self.obs.shape} != {self.next_obs.shape}",
             )
         if self.obs.dtype != self.next_obs.dtype:
             raise ValueError(
                 "obs and next_obs must have the same dtype: "
-                f"{self.obs.dtype} != {self.next_obs.dtype}"
+                f"{self.obs.dtype} != {self.next_obs.dtype}",
             )
         if self.dones.shape != (len(self.acts),):
             raise ValueError(
                 "dones must be 1D array, one entry for each timestep: "
-                f"{self.dones.shape} != ({len(self.acts)},)"
+                f"{self.dones.shape} != ({len(self.acts)},)",
             )
         if self.dones.dtype != bool:
             raise ValueError(f"dones must be boolean, not {self.dones.dtype}")

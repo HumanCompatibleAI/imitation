@@ -138,7 +138,8 @@ class HierarchicalLogger(sb_logger.Logger):
 
 
 def configure(
-    folder: Optional[types.AnyPath] = None, format_strs: Optional[Sequence[str]] = None
+    folder: Optional[types.AnyPath] = None,
+    format_strs: Optional[Sequence[str]] = None,
 ) -> HierarchicalLogger:
     """Configure Stable Baselines logger to be `accumulate_means()`-compatible.
 

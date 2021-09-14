@@ -124,7 +124,7 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
                 # We have timestep information.
                 for traj in demonstrations:
                     for i, (obs, act, next_obs) in enumerate(
-                        zip(traj.obs[:-1], traj.acts, traj.obs[1:])
+                        zip(traj.obs[:-1], traj.acts, traj.obs[1:]),
                     ):
                         flat_trans = self._preprocess_transition(obs, act, next_obs)
                         self.transitions.setdefault(i, []).append(flat_trans)
@@ -133,7 +133,9 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
                 for batch in demonstrations:
                     next_obses = batch.get("next_obs", itertools.repeat(None))
                     for obs, act, next_obs in zip(
-                        batch["obs"], batch["acts"], next_obses
+                        batch["obs"],
+                        batch["acts"],
+                        next_obses,
                     ):
                         flat_trans = self._preprocess_transition(obs, act, next_obs)
                         self.transitions.setdefault(None, []).append(flat_trans)
@@ -144,7 +146,9 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
                 else itertools.repeat(None)
             )
             for obs, act, next_obs in zip(
-                demonstrations.obs, demonstrations.acts, next_obses
+                demonstrations.obs,
+                demonstrations.acts,
+                next_obses,
             ):
                 flat_trans = self._preprocess_transition(obs, act, next_obs)
                 self.transitions.setdefault(None, []).append(flat_trans)
@@ -155,11 +159,11 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
 
         if not self.is_stationary and None in self.transitions:
             raise ValueError(
-                "Non-stationary model incompatible with non-trajectory demonstrations."
+                "Non-stationary model incompatible with non-trajectory demonstrations.",
             )
         if self.is_stationary:
             self.transitions = {
-                None: np.concatenate(list(self.transitions.values()), axis=0)
+                None: np.concatenate(list(self.transitions.values()), axis=0),
             }
 
     def train(self):
@@ -167,7 +171,8 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
         # if requested, we'll scale demonstration transitions so that they have
         # zero mean and unit variance (i.e all components are equally important)
         self._scaler = preprocessing.StandardScaler(
-            with_mean=self.standardise, with_std=self.standardise
+            with_mean=self.standardise,
+            with_std=self.standardise,
         )
         flattened_dataset = np.concatenate(list(self.transitions.values()), axis=0)
         self._scaler.fit(flattened_dataset)
@@ -183,13 +188,17 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
         # have unit variance in each component. There might be a better way to
         # choose it automatically.
         density_model = neighbors.KernelDensity(
-            kernel=self.kernel, bandwidth=self.kernel_bandwidth
+            kernel=self.kernel,
+            bandwidth=self.kernel_bandwidth,
         )
         density_model.fit(transitions)
         return density_model
 
     def _preprocess_transition(
-        self, obs: np.ndarray, act: np.ndarray, next_obs: np.ndarray
+        self,
+        obs: np.ndarray,
+        act: np.ndarray,
+        next_obs: np.ndarray,
     ) -> np.ndarray:
         """Compute flattened transition on subset specified by `self.density_type`."""
         if self.density_type == DensityType.STATE_DENSITY:
@@ -199,14 +208,14 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
                 [
                     flatten(self.venv.observation_space, obs),
                     flatten(self.venv.action_space, act),
-                ]
+                ],
             )
         elif self.density_type == DensityType.STATE_STATE_DENSITY:
             return np.concatenate(
                 [
                     flatten(self.venv.observation_space, obs),
                     flatten(self.venv.observation_space, next_obs),
-                ]
+                ],
             )
         else:
             raise ValueError(f"Unknown density type {self.density_type}")
@@ -265,7 +274,7 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
                     # density.
                     raise ValueError(
                         f"Time {time} out of range (0, {len(self._density_models)}], "
-                        "and absorbing states not currently supported"
+                        "and absorbing states not currently supported",
                     )
                 else:
                     time_model = self._density_models[time]

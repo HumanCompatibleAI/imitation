@@ -7,7 +7,8 @@ import sacred
 from imitation.util import util
 
 train_preference_comparisons_ex = sacred.Experiment(
-    "train_preference_comparisons", interactive=True
+    "train_preference_comparisons",
+    interactive=True,
 )
 
 
@@ -47,14 +48,17 @@ def train_defaults():
     max_episode_steps = None  # Set to positive int to limit episode horizons
 
     log_root = os.path.join(
-        "output", "train_preference_comparisons"
+        "output",
+        "train_preference_comparisons",
     )  # output directory
 
 
 @train_preference_comparisons_ex.config
 def paths(env_name, log_root):
     log_dir = os.path.join(
-        log_root, env_name.replace("/", "_"), util.make_unique_timestamp()
+        log_root,
+        env_name.replace("/", "_"),
+        util.make_unique_timestamp(),
     )
 
 

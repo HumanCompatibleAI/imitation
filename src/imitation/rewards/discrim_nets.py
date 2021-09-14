@@ -72,7 +72,8 @@ class DiscrimNet(nn.Module, abc.ABC):
         Returns:
             loss: scalar-valued discriminator loss."""
         return F.binary_cross_entropy_with_logits(
-            disc_logits_gen_is_high, labels_gen_is_one.float()
+            disc_logits_gen_is_high,
+            labels_gen_is_one.float(),
         )
 
     def device(self) -> th.device:
@@ -122,7 +123,11 @@ class DiscrimNet(nn.Module, abc.ABC):
             The rewards. Its shape is `(batch_size,)`.
         """
         return self._eval_reward(
-            is_train=True, state=state, action=action, next_state=next_state, done=done
+            is_train=True,
+            state=state,
+            action=action,
+            next_state=next_state,
+            done=done,
         )
 
     def predict_reward_test(
@@ -147,7 +152,11 @@ class DiscrimNet(nn.Module, abc.ABC):
             The rewards. Its shape is `(batch_size,)`.
         """
         return self._eval_reward(
-            is_train=False, state=state, action=action, next_state=next_state, done=done
+            is_train=False,
+            state=state,
+            action=action,
+            next_state=next_state,
+            done=done,
         )
 
     def _eval_reward(
@@ -232,7 +241,7 @@ class DiscrimNetAIRL(DiscrimNet):
         """
         if log_policy_act_prob is None:
             raise TypeError(
-                "Non-None `log_policy_act_prob` is required for this method."
+                "Non-None `log_policy_act_prob` is required for this method.",
             )
         reward_output_train = self.reward_net(state, action, next_state, done)
         # In Fu's AIRL paper (https://arxiv.org/pdf/1710.11248.pdf), the
@@ -280,15 +289,21 @@ class ActObsMLP(nn.Module):
     output."""
 
     def __init__(
-        self, action_space: gym.Space, observation_space: gym.Space, **mlp_kwargs
+        self,
+        action_space: gym.Space,
+        observation_space: gym.Space,
+        **mlp_kwargs,
     ):
         super().__init__()
 
-        in_size = preprocessing.get_flattened_obs_dim(
-            observation_space
-        ) + preprocessing.get_flattened_obs_dim(action_space)
+        in_size = (
+            preprocessing.get_flattened_obs_dim(
+                observation_space,
+            )
+            + preprocessing.get_flattened_obs_dim(action_space)
+        )
         self.mlp = networks.build_mlp(
-            **{"in_size": in_size, "out_size": 1, **mlp_kwargs}
+            **{"in_size": in_size, "out_size": 1, **mlp_kwargs},
         )
 
     def forward(self, obs: th.Tensor, acts: th.Tensor) -> th.Tensor:

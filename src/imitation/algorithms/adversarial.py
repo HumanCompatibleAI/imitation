@@ -135,7 +135,8 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
         self._init_tensorboard = init_tensorboard
         self._init_tensorboard_graph = init_tensorboard_graph
         self._disc_opt = self._disc_opt_cls(
-            self.discrim_net.parameters(), **self._disc_opt_kwargs
+            self.discrim_net.parameters(),
+            **self._disc_opt_kwargs,
         )
 
         if self._init_tensorboard:
@@ -157,11 +158,14 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
             self.gen_callback = None
         else:
             self.venv_wrapped = reward_wrapper.RewardVecEnvWrapper(
-                self.venv_norm_obs, self.discrim_net.predict_reward_train
+                self.venv_norm_obs,
+                self.discrim_net.predict_reward_train,
             )
             self.gen_callback = self.venv_wrapped.make_log_callback()
         self.venv_train = vec_env.VecNormalize(
-            self.venv_wrapped, norm_obs=False, norm_reward=normalize_reward
+            self.venv_wrapped,
+            norm_obs=False,
+            norm_reward=normalize_reward,
         )
 
         self.gen_algo.set_env(self.venv_train)
@@ -176,12 +180,14 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
         if gen_replay_buffer_capacity is None:
             gen_replay_buffer_capacity = self.gen_train_timesteps
         self._gen_replay_buffer = buffer.ReplayBuffer(
-            gen_replay_buffer_capacity, self.venv
+            gen_replay_buffer_capacity,
+            self.venv,
         )
 
     def set_demonstrations(self, demonstrations: base.AnyTransitions) -> None:
         self._demo_data_loader = base.make_data_loader(
-            demonstrations, self.demo_batch_size
+            demonstrations,
+            self.demo_batch_size,
         )
         self._endless_expert_iterator = util.endless_iter(self._demo_data_loader)
 
@@ -218,7 +224,8 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
 
             # compute loss
             batch = self._make_disc_train_batch(
-                gen_samples=gen_samples, expert_samples=expert_samples
+                gen_samples=gen_samples,
+                expert_samples=expert_samples,
             )
             disc_logits = self.discrim_net.logits_gen_is_high(
                 batch["state"],
@@ -343,7 +350,7 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
         if gen_samples is None:
             if self._gen_replay_buffer.size() == 0:
                 raise RuntimeError(
-                    "No generator samples for training. " "Call `train_gen()` first."
+                    "No generator samples for training. " "Call `train_gen()` first.",
                 )
             gen_samples = self._gen_replay_buffer.sample(self.demo_batch_size)
             gen_samples = types.dataclass_quick_asdict(gen_samples)
@@ -355,7 +362,7 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
                 "Need to have exactly self.demo_batch_size number of expert and "
                 "generator samples, each. "
                 f"(n_gen={n_gen} n_expert={n_expert} "
-                f"demo_batch_size={self.demo_batch_size})"
+                f"demo_batch_size={self.demo_batch_size})",
             )
 
         # Guarantee that Mapping arguments are in mutable form.
@@ -386,7 +393,7 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
         next_obs = np.concatenate([expert_samples["next_obs"], gen_samples["next_obs"]])
         dones = np.concatenate([expert_samples["dones"], gen_samples["dones"]])
         labels_gen_is_one = np.concatenate(
-            [np.zeros(n_expert, dtype=int), np.ones(n_gen, dtype=int)]
+            [np.zeros(n_expert, dtype=int), np.ones(n_gen, dtype=int)],
         )
         # Policy and reward network were trained on normalized observations.
         obs = self.venv_norm_obs.normalize_obs(obs)
@@ -399,7 +406,8 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
             log_act_prob = None
             if hasattr(self.gen_algo.policy, "evaluate_actions"):
                 _, log_act_prob_th, _ = self.gen_algo.policy.evaluate_actions(
-                    obs_th, acts_th
+                    obs_th,
+                    acts_th,
                 )
                 log_act_prob = log_act_prob_th.detach().cpu().numpy()
                 del log_act_prob_th  # unneeded
@@ -414,7 +422,8 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
         )
         batch_dict = {
             "state": torchify_with_space_defaults(
-                obs, self.discrim_net.observation_space
+                obs,
+                self.discrim_net.observation_space,
             ),
             "action": torchify_with_space_defaults(acts, self.discrim_net.action_space),
             "next_state": torchify_with_space_defaults(
@@ -465,10 +474,17 @@ class GAIL(AdversarialTrainer):
         """
         discrim_kwargs = discrim_kwargs or {}
         discrim = discrim_nets.DiscrimNetGAIL(
-            venv.observation_space, venv.action_space, **discrim_kwargs
+            venv.observation_space,
+            venv.action_space,
+            **discrim_kwargs,
         )
         super().__init__(
-            venv, gen_algo, discrim, demonstrations, demo_batch_size, **kwargs
+            venv,
+            gen_algo,
+            discrim,
+            demonstrations,
+            demo_batch_size,
+            **kwargs,
         )
 
 
@@ -532,10 +548,15 @@ class AIRL(AdversarialTrainer):
         discrim_kwargs = discrim_kwargs or {}
         discrim = discrim_nets.DiscrimNetAIRL(reward_network, **discrim_kwargs)
         super().__init__(
-            venv, gen_algo, discrim, demonstrations, demo_batch_size, **kwargs
+            venv,
+            gen_algo,
+            discrim,
+            demonstrations,
+            demo_batch_size,
+            **kwargs,
         )
 
         if not hasattr(self.gen_algo.policy, "evaluate_actions"):
             raise TypeError(
-                "AIRL needs a stochastic policy to compute the discriminator output."
+                "AIRL needs a stochastic policy to compute the discriminator output.",
             )

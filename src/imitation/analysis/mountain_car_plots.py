@@ -103,7 +103,9 @@ def make_heatmap(
 
     if mark_goal:
         ax.axvline(
-            x=MC_GOAL_POS, linestyle="--", label=f"goal state (pos={MC_GOAL_POS})"
+            x=MC_GOAL_POS,
+            linestyle="--",
+            label=f"goal state (pos={MC_GOAL_POS})",
         )
     if exp_trajs is not None:
         X, Y = convert_traj_to_coords_filtered(exp_trajs)
@@ -157,7 +159,9 @@ def batch_reward_heatmaps(
             # `load_policy` automatically loads VecNormalize for policy evaluation.
             gen_policy = policies_serialize.load_policy("ppo", str(policy_path), venv)
             gen_trajs = rollout.generate_trajectories(
-                gen_policy, venv, sample_until=rollout.make_min_episodes(n_gen_trajs)
+                gen_policy,
+                venv,
+                sample_until=rollout.make_min_episodes(n_gen_trajs),
             )
         else:
             gen_trajs = None
@@ -171,7 +175,8 @@ def batch_reward_heatmaps(
 
         reward_fn = rewards_serialize.load_reward("DiscrimNet", discrim_path, venv)
         norm_rew_fn = common.build_norm_reward_fn(
-            reward_fn=reward_fn, vec_normalize=vec_normalize
+            reward_fn=reward_fn,
+            vec_normalize=vec_normalize,
         )
         for act in range(MC_NUM_ACTS):
             fig = make_heatmap(

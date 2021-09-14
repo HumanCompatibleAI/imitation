@@ -18,7 +18,8 @@ parametrize_density = pytest.mark.parametrize(
 
 
 def score_trajectories(
-    trajectories: Sequence[types.Trajectory], density_reward: DensityAlgorithm
+    trajectories: Sequence[types.Trajectory],
+    density_reward: DensityAlgorithm,
 ):
     # score trajectories under given reward function w/o discount
     returns = []
@@ -61,7 +62,9 @@ def test_density_reward(density_type, is_stationary):
     random_policy = RandomPolicy(venv.observation_space, venv.action_space)
     sample_until = rollout.make_min_episodes(15)
     random_trajectories = rollout.generate_trajectories(
-        random_policy, venv, sample_until=sample_until
+        random_policy,
+        venv,
+        sample_until=sample_until,
     )
     expert_trajectories_test = expert_trajectories_all[n_experts // 2 :]
     random_score = score_trajectories(random_trajectories, reward_fn)

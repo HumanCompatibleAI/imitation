@@ -36,7 +36,9 @@ class NormalizePolicy(policies.BasePolicy):
     """
 
     def __init__(
-        self, policy: policies.BasePolicy, vec_normalize: vec_env.VecNormalize
+        self,
+        policy: policies.BasePolicy,
+        vec_normalize: vec_env.VecNormalize,
     ):
         super().__init__(
             observation_space=policy.observation_space,
@@ -49,7 +51,10 @@ class NormalizePolicy(policies.BasePolicy):
         raise NotImplementedError()
 
     def predict(
-        self, obs: np.ndarray, *args, **kwargs
+        self,
+        obs: np.ndarray,
+        *args,
+        **kwargs,
     ) -> Tuple[np.ndarray, Optional[np.ndarray]]:
         preproc_obs = self.vec_normalize.normalize_obs(obs)
         return self._policy.predict(preproc_obs, *args, **kwargs)
@@ -79,7 +84,9 @@ class NormalizePolicy(policies.BasePolicy):
 
     @classmethod
     def load(
-        cls, path: str, device: Union[th.device, str] = "auto"
+        cls,
+        path: str,
+        device: Union[th.device, str] = "auto",
     ) -> policies.BasePolicy:
         raise NotImplementedError()
 
@@ -91,7 +98,8 @@ class NormalizePolicy(policies.BasePolicy):
 
 
 def _load_stable_baselines(
-    cls: Type[on_policy_algorithm.OnPolicyAlgorithm], policy_attr: str
+    cls: Type[on_policy_algorithm.OnPolicyAlgorithm],
+    policy_attr: str,
 ) -> PolicyLoaderFn:
     """Higher-order function, returning a policy loading function.
 
@@ -111,7 +119,7 @@ def _load_stable_baselines(
         if not policy_dir.is_dir():
             raise FileNotFoundError(
                 f"path={path} needs to be a directory containing model.zip and "
-                "optionally vec_normalize.pkl."
+                "optionally vec_normalize.pkl.",
             )
 
         model_path = policy_dir / "model.zip"
@@ -134,7 +142,7 @@ def _load_stable_baselines(
             else:
                 raise FileNotFoundError(
                     f"Could not find {model_path} or (deprecated) "
-                    f"{deprecated_model_path}"
+                    f"{deprecated_model_path}",
                 )
 
         model = cls.load(model_path, env=venv)
@@ -185,7 +193,9 @@ _add_stable_baselines_policies(STABLE_BASELINES_CLASSES)
 
 
 def load_policy(
-    policy_type: str, policy_path: str, venv: vec_env.VecEnv
+    policy_type: str,
+    policy_path: str,
+    venv: vec_env.VecEnv,
 ) -> policies.BasePolicy:
     """Load serialized policy.
 

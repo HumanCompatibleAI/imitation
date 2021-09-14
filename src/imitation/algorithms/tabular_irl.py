@@ -226,7 +226,7 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
                     # Demonstrations are a Torch DataLoader or other Mapping iterable
                     if self.discount != 1.0:
                         raise ValueError(
-                            "Cannot compute discounted OM from timeless Transitions."
+                            "Cannot compute discounted OM from timeless Transitions.",
                         )
                     for batch in demonstrations:
                         for obs in batch["obs"]:
@@ -236,13 +236,13 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
             elif isinstance(demonstrations, types.TransitionsMinimal):
                 if self.discount != 1.0:
                     raise ValueError(
-                        "Cannot compute discounted OM from timeless Transitions."
+                        "Cannot compute discounted OM from timeless Transitions.",
                     )
                 for obs in demonstrations.obs:
                     self.demo_state_om[obs.astype(bool)] += 1.0
             else:
                 raise TypeError(
-                    f"Unsupported demonstration type {type(demonstrations)}"
+                    f"Unsupported demonstration type {type(demonstrations)}",
                 )
 
     def train(self, max_iter: int = 1000) -> np.ndarray:
@@ -276,13 +276,17 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
             assert predicted_r.shape == (obs_mat.shape[0],)
             predicted_r_np = predicted_r.detach().cpu().numpy()
             _, visitations = mce_occupancy_measures(
-                self.env, reward=predicted_r_np, discount=self.discount
+                self.env,
+                reward=predicted_r_np,
+                discount=self.discount,
             )
 
             # Forward/back/step (grads are zeroed at the top).
             # weights_th(s) = \pi(s) - D(s)
             weights_th = th.as_tensor(
-                visitations - self.demo_state_om, dtype=dtype, device=device
+                visitations - self.demo_state_om,
+                dtype=dtype,
+                device=device,
             )
             # The "loss" is then:
             #   E_\pi[r_\theta(S)] - E_D[r_\theta(S)]
