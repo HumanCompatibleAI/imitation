@@ -202,6 +202,16 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
         self.grad_l2_eps = grad_l2_eps
         self.log_interval = log_interval
 
+    def _set_demo_from_obs(self, obses: np.ndarray) -> None:
+        if self.discount != 1.0:
+            raise ValueError(
+                "Cannot compute discounted OM from timeless Transitions.",
+            )
+        for obs in obses:
+            if isinstance(obs, th.Tensor):
+                obs = obs.numpy()
+            self.demo_state_om[obs.astype(bool)] += 1.0
+
     def set_demonstrations(self, demonstrations: MCEDemonstrations) -> None:
         if isinstance(demonstrations, np.ndarray):
             # Demonstrations are an occupancy measure
@@ -224,26 +234,17 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
                             cum_discount *= self.discount
                 else:
                     # Demonstrations are a Torch DataLoader or other Mapping iterable
-                    if self.discount != 1.0:
-                        raise ValueError(
-                            "Cannot compute discounted OM from timeless Transitions.",
-                        )
                     for batch in demonstrations:
-                        for obs in batch["obs"]:
-                            if isinstance(obs, th.Tensor):
-                                obs = obs.numpy()
-                            self.demo_state_om[obs.astype(bool)] += 1.0
+                        self._set_demo_from_obs(batch["obs"])
+
             elif isinstance(demonstrations, types.TransitionsMinimal):
-                if self.discount != 1.0:
-                    raise ValueError(
-                        "Cannot compute discounted OM from timeless Transitions.",
-                    )
-                for obs in demonstrations.obs:
-                    self.demo_state_om[obs.astype(bool)] += 1.0
+                self._set_demo_from_obs(demonstrations.obs)
             else:
                 raise TypeError(
                     f"Unsupported demonstration type {type(demonstrations)}",
                 )
+
+            self.demo_state_om /= self.demo_state_om.sum()  # normalize
 
     def train(self, max_iter: int = 1000) -> np.ndarray:
         """Runs MCE IRL.

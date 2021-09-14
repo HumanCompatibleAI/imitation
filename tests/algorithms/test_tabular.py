@@ -268,6 +268,7 @@ def test_mce_irl_demo_formats():
             )
             opt = adam.Adam(reward_net.parameters(), lr=1e-2)
             mce_irl = MCEIRL(demo, mdp, reward_net, opt, linf_eps=1e-3)
+            assert np.allclose(mce_irl.demo_state_om.sum(), 1.0)
             final_counts[kind] = mce_irl.train(max_iter=5)
 
         # make sure weights have non-insane norm
