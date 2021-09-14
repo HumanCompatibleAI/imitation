@@ -47,7 +47,7 @@ bc_trainer.train(n_epochs=1)
 # iterates over dictionaries containing observations, actions, and next_observations.
 gail_logger = logger.configure(tempdir_path / "GAIL/")
 gail_trainer = adversarial.GAIL(
-    venv,
+    venv=venv,
     demonstrations=transitions,
     demo_batch_size=32,
     gen_algo=sb3.PPO("MlpPolicy", venv, verbose=1, n_steps=1024),
@@ -58,7 +58,7 @@ gail_trainer.train(total_timesteps=2048)
 # Train AIRL on expert data.
 airl_logger = logger.configure(tempdir_path / "AIRL/")
 airl_trainer = adversarial.AIRL(
-    venv,
+    venv=venv,
     demonstrations=transitions,
     demo_batch_size=32,
     gen_algo=sb3.PPO("MlpPolicy", venv, verbose=1, n_steps=1024),

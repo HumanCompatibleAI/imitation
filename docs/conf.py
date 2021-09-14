@@ -20,7 +20,7 @@
 import imitation  # pytype: disable=import-error
 
 project = "imitation"
-copyright = "2019, Center for Human-Compatible AI"  # noqa: A001
+copyright = "2019-2021, Center for Human-Compatible AI"  # noqa: A001
 author = "Center for Human-Compatible AI"
 
 # The full version, including alpha/beta/rc tags
@@ -33,7 +33,7 @@ release = imitation.__version__
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-    "sphinxcontrib.napoleon",
+    "sphinx.ext.napoleon",
     "sphinx.ext.autodoc",
     "sphinx_autodoc_typehints",
     "sphinx.ext.autosummary",
