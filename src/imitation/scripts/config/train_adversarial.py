@@ -32,7 +32,7 @@ def train_defaults():
     # Kwargs for initializing GAIL and AIRL
     algorithm_kwargs = dict(
         shared=dict(
-            expert_batch_size=1024,  # Number of expert samples per discriminator update
+            demo_batch_size=1024,  # Number of expert samples per discriminator update
             # Number of discriminator updates after each round of generator updates
             n_disc_updates_per_round=4,
         ),
@@ -109,7 +109,7 @@ MUJOCO_SHARED_LOCALS = dict(discrim_net_kwargs=dict(airl=dict(entropy_weight=0.1
 ANT_SHARED_LOCALS = dict(
     total_timesteps=3e7,
     max_episode_steps=500,  # To match `inverse_rl` settings.
-    algorithm_kwargs=dict(shared=dict(expert_batch_size=8192)),
+    algorithm_kwargs=dict(shared=dict(demo_batch_size=8192)),
     gen_batch_size=16384,
 )
 
@@ -184,7 +184,7 @@ HALF_CHEETAH_SHARED_LOCALS = dict(
             n_disc_updates_per_round=16,
             # Equivalent to no replay buffer if batch size is the same
             gen_replay_buffer_capacity=16384,
-            expert_batch_size=8192,
+            demo_batch_size=8192,
         ),
         airl=dict(
             reward_net_kwargs=dict(
@@ -296,7 +296,7 @@ def fast():
     n_episodes_eval = 1
     algorithm_kwargs = dict(
         shared=dict(
-            expert_batch_size=1,
+            demo_batch_size=1,
             n_disc_updates_per_round=4,
         )
     )
