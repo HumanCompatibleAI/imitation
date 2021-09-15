@@ -35,8 +35,8 @@ print(f"All Tensorboards and logging are being written inside {tempdir_path}/.")
 # dictionaries containing observations and actions.
 bc_logger = logger.configure(tempdir_path / "BC/")
 bc_trainer = bc.BC(
-    venv.observation_space,
-    venv.action_space,
+    observation_space=venv.observation_space,
+    action_space=venv.action_space,
     demonstrations=transitions,
     custom_logger=bc_logger,
 )

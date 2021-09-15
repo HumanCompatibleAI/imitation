@@ -345,8 +345,8 @@ def test_dagger_not_enough_transitions_error(tmpdir, custom_logger):
     venv = util.make_vec_env("CartPole-v0")
     # Initialize with large batch size to ensure error down the line.
     trainer = dagger.DAggerTrainer(
-        venv,
-        tmpdir,
+        venv=venv,
+        scratch_dir=tmpdir,
         batch_size=100_000,
         custom_logger=custom_logger,
     )

@@ -187,9 +187,9 @@ class BC(algo_base.DemonstrationAlgorithm):
     #  arguments)
     def __init__(
         self,
+        *,
         observation_space: gym.Space,
         action_space: gym.Space,
-        *,
         policy_class: Type[policies.BasePolicy] = policy_base.FeedForward32Policy,
         policy_kwargs: Optional[Mapping[str, Any]] = None,
         demonstrations: Optional[algo_base.AnyTransitions] = None,

@@ -286,9 +286,9 @@ class DAggerTrainer(base.BaseImitationAlgorithm):
 
     def __init__(
         self,
+        *,
         venv: vec_env.VecEnv,
         scratch_dir: types.AnyPath,
-        *,
         beta_schedule: Callable[[int], float] = None,
         batch_size: int = 32,
         bc_kwargs: Optional[dict] = None,
@@ -322,8 +322,8 @@ class DAggerTrainer(base.BaseImitationAlgorithm):
         self._all_demos = []
 
         self.bc_trainer = bc.BC(
-            self.venv.observation_space,
-            self.venv.action_space,
+            observation_space=self.venv.observation_space,
+            action_space=self.venv.action_space,
             custom_logger=custom_logger,
             **self.bc_kwargs,
         )
@@ -499,9 +499,9 @@ class SimpleDAggerTrainer(DAggerTrainer):
 
     def __init__(
         self,
+        *,
         venv: vec_env.VecEnv,
         scratch_dir: types.AnyPath,
-        *,
         expert_policy: policies.BasePolicy,
         expert_trajs: Optional[Sequence[types.Trajectory]] = None,
         **dagger_trainer_kwargs,

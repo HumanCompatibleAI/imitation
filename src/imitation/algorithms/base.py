@@ -124,8 +124,8 @@ class DemonstrationAlgorithm(BaseImitationAlgorithm, Generic[TransitionKind]):
 
     def __init__(
         self,
-        demonstrations: Optional[AnyTransitions],
         *,
+        demonstrations: Optional[AnyTransitions],
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
         allow_variable_horizon: bool = False,
     ):
