@@ -113,6 +113,16 @@ class RewardNet(nn.Module, abc.ABC):
             # if the model has no parameters, we use the CPU
             return th.device("cpu")
 
+    @property
+    def dtype(self) -> th.dtype:
+        """Heuristic to determine dtype of module."""
+        try:
+            first_param = next(self.parameters())
+            return first_param.device
+        except StopIteration:
+            # if the model has no parameters, default to float32
+            return th.float32
+
 
 class ShapedRewardNet(RewardNet):
     """A RewardNet consisting of a base net and a potential shaping."""

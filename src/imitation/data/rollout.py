@@ -585,23 +585,33 @@ def rollout_and_save(
     types.save(path, trajs)
 
 
-def compute_returns(rewards: np.ndarray, gamma: float) -> float:
-    """Calculate the discounted returns from an array of undiscounted rewards.
+def discounted_sum(arr: np.ndarray, gamma: float) -> Union[np.ndarray, float]:
+    """Calculate the discounted sum of `arr`.
+
+    If `arr` is an array of rewards, then this computes the return;
+    however, it can also be used to e.g. compute discounted state
+    occupancy measures.
 
     Args:
-        rewards: array of rewards, from the current time step (first)
-            to the last timestep (last).
-        gamma: the discount factor used for calculating returns.
+        arr: 1 or 2-dimensional array to compute discounted sum over.
+            Last axis is timestep, from current time step (first) to
+            last timestep (last). First axis (if present) is batch
+            dimension.
+        gamma: the discount factor used.
 
     Returns:
-        The discounted returns (the first reward is undiscounted,
-        i.e. we start at gamma^0)
+        The discounted sum over the timestep axis. The first timestep is undiscounted,
+        i.e. we start at gamma^0.
     """
     # We want to calculate sum_{t = 0}^T gamma^t r_t, which can be
     # interpreted as the polynomial sum_{t = 0}^T r_t x^t
     # evaluated at x=gamma.
     # Compared to first computing all the powers of gamma, then
-    # multiplying with the rewards and then summing, this method
+    # multiplying with the `arr` values and then summing, this method
     # should require fewer computations and potentially be more
     # numerically stable.
-    return np.polynomial.polynomial.polyval(gamma, rewards)
+    assert arr.ndims in (1, 2)
+    if gamma == 1.0:
+        return arr.sum(axis=0)
+    else:
+        return np.polynomial.polynomial.polyval(gamma, arr)

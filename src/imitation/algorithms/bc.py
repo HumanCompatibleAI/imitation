@@ -67,7 +67,7 @@ class _NoopTqdm:
 
 
 class EpochOrBatchIteratorWithProgress:
-    """Wraps DataLoader so that all BC batches can be processed in a one for-loop.
+    """Wraps DataLoader so that all BC batches can be processed in one for-loop.
 
     Also uses `tqdm` to show progress in stdout.
     """

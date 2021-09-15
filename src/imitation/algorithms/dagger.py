@@ -294,7 +294,7 @@ class DAggerTrainer(base.BaseImitationAlgorithm):
         bc_kwargs: Optional[dict] = None,
         custom_logger: Optional[logger.HierarchicalLogger] = None,
     ):
-        """Builds DAggerTrainer constructor.
+        """Builds DAggerTrainer.
 
         Args:
             venv: Vectorized training environment.

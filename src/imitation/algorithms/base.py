@@ -243,9 +243,8 @@ def make_data_loader(
     if isinstance(transitions, types.TransitionsMinimal):
         if len(transitions) < batch_size:
             raise ValueError(
-                "Provided Transitions instance as `demonstrations` argument but "
-                "len(demonstrations) < batch_size. "
-                f"({len(transitions)} < {batch_size}).",
+                f"Number of transitions in `demonstrations` {len(transitions)} "
+                f"is smaller than batch size {batch_size}.",
             )
 
         extra_kwargs = dict(shuffle=True, drop_last=True)

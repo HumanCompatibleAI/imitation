@@ -14,7 +14,7 @@ import torch as th
 from torch.optim import optimizer
 
 from imitation.algorithms import base
-from imitation.data import types
+from imitation.data import rollout, types
 from imitation.envs import resettable_env
 from imitation.rewards import reward_nets
 from imitation.util import logger as imit_logger
@@ -117,10 +117,8 @@ def mce_occupancy_measures(
             E = D[t - 1] * pi[t - 1, :, a]
             D[t, :] += E @ T[:, a, :]
 
-    if discount == 1.0:
-        Dcum = D.sum(axis=0)
-    else:
-        Dcum = np.polynomial.polynomial.polyval(discount, D)
+    Dcum = rollout.discounted_sum(D, discount)
+    assert isinstance(Dcum, np.ndarray)
     return D, Dcum
 
 
@@ -258,12 +256,14 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
             and `self.optimizer` will be updated in-place during optimisation.
         """
         # use the same device and dtype as the rmodel parameters
-        a_param = next(self.reward_net.parameters())
-        device = a_param.device
-        dtype = a_param.dtype
-
         obs_mat = self.env.observation_matrix
-        torch_obs_mat = th.as_tensor(obs_mat, dtype=dtype, device=device)
+        dtype = self.reward_net.dtype
+        device = self.reward_net.device
+        torch_obs_mat = th.as_tensor(
+            obs_mat,
+            dtype=dtype,
+            device=device,
+        )
         assert self.demo_state_om.shape == (len(obs_mat),)
 
         for t in range(max_iter):

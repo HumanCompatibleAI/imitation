@@ -4,7 +4,7 @@ import dataclasses
 import functools
 import logging
 import os
-from typing import Callable, Dict, Iterable, Mapping, Optional, Type, Union
+from typing import Callable, Dict, Mapping, Optional, Type
 
 import numpy as np
 import torch as th
@@ -42,7 +42,7 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
     def __init__(
         self,
         *,
-        demonstrations: Union[Iterable[Mapping], types.Transitions],
+        demonstrations: base.AnyTransitions,
         demo_batch_size: int,
         venv: vec_env.VecEnv,
         discrim_net: discrim_nets.DiscrimNet,
@@ -447,7 +447,7 @@ class GAIL(AdversarialTrainer):
     def __init__(
         self,
         *,
-        demonstrations: Union[Iterable[Mapping], types.Transitions],
+        demonstrations: base.AnyTransitions,
         demo_batch_size: int,
         venv: vec_env.VecEnv,
         gen_algo: base_class.BaseAlgorithm,
@@ -497,7 +497,7 @@ class AIRL(AdversarialTrainer):
     def __init__(
         self,
         *,
-        demonstrations: Union[Iterable[Mapping], types.Transitions],
+        demonstrations: base.AnyTransitions,
         demo_batch_size: int,
         venv: vec_env.VecEnv,
         gen_algo: base_class.BaseAlgorithm,
