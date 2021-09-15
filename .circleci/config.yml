@@ -73,7 +73,10 @@ jobs:
       - dependencies
       - run:
           name: flake8
-          command: flake8 --version && flake8 -j "${NUM_CPUS}" ${SRC_FILES}
+          command: |
+            cp ci/.darglint .  # enable darglint
+            flake8 --version && flake8 -j "${NUM_CPUS}" ${SRC_FILES}
+            rm .darglint
 
       - run:
           name: black
@@ -90,14 +93,6 @@ jobs:
       - run:
           name: sphinx
           command: pushd docs/ && make clean && make html && popd
-
-      - run:
-          name: darglint
-          command: |
-            cp ci/.darglint .
-            find ${SRC_FILES} -name "*.py" | parallel -j "${NUM_CPUS}" darglint
-            rm .darglint
-
 
   unit-test:
     executor: unit-test
