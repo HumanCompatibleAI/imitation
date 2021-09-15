@@ -118,7 +118,7 @@ class RewardNet(nn.Module, abc.ABC):
         """Heuristic to determine dtype of module."""
         try:
             first_param = next(self.parameters())
-            return first_param.device
+            return first_param.dtype
         except StopIteration:
             # if the model has no parameters, default to float32
             return th.float32

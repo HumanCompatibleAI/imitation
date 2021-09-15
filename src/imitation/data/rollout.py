@@ -610,7 +610,7 @@ def discounted_sum(arr: np.ndarray, gamma: float) -> Union[np.ndarray, float]:
     # multiplying with the `arr` values and then summing, this method
     # should require fewer computations and potentially be more
     # numerically stable.
-    assert arr.ndims in (1, 2)
+    assert arr.ndim in (1, 2)
     if gamma == 1.0:
         return arr.sum(axis=0)
     else:
