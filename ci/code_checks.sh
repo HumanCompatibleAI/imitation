@@ -15,6 +15,9 @@ if [ -x "`which circleci`" ]; then
     circleci config validate
 fi
 
+echo "files changed"
+echo $*
+
 if [ "$skipexpensive" != "true" ]; then
   echo "Type checking"
   pytype -j auto ${SRC_FILES[@]}
@@ -23,5 +26,10 @@ if [ "$skipexpensive" != "true" ]; then
   pushd docs/
   make clean
   make html
+  popd
+
+  echo "Darglint on diff"
+  pushd ci/  # darglint will read config from ci/.darglint, enabling it
+  git diff --cached --name-only ${against} | parallel darglint
   popd
 fi

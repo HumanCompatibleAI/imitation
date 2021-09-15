@@ -84,12 +84,20 @@ jobs:
           command: codespell -I .codespell.skip --skip='*.pyc,tests/testdata/*,*.ipynb,*.csv' ${SRC_FILES}
 
       - run:
+          name: pytype
+          command: pytype --version && pytype -j "${NUM_CPUS}" ${SRC_FILES[@]}
+
+      - run:
           name: sphinx
           command: pushd docs/ && make clean && make html && popd
 
       - run:
-          name: pytype
-          command: pytype --version && pytype -j "${NUM_CPUS}" ${SRC_FILES[@]}
+          name: darglint
+          command: |
+            cp ci/.darglint .
+            find ${SRC_FILES} -name "*.py" | parallel -j "${NUM_CPUS}" darglint
+            rm .darglint
+
 
   unit-test:
     executor: unit-test
