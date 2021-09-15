@@ -20,8 +20,8 @@ from imitation.util.sacred import dict_get_nested as get
 @analysis_ex.capture
 def _gather_sacred_dicts(
     source_dirs: Sequence[str],
-    run_name: str,
-    env_name: str,
+    run_name: Optional[str],
+    env_name: Optional[str],
     skip_failed_runs: bool,
 ) -> List[sacred_util.SacredDicts]:
     """Helper function for parsing and selecting Sacred experiment JSON files.
@@ -34,6 +34,8 @@ def _gather_sacred_dicts(
         run_name: If provided, then only analyze results from Sacred directories
             associated with this run name. `run_name` is compared against the
             "experiment.name" key in `run.json`. (Captured argument)
+        env_name: If provided, then only analyze results from Sacred directories
+            associated with this Gym environment ID.
         skip_failed_runs: If True, then filter out runs where the status is FAILED.
             (Captured argument)
 

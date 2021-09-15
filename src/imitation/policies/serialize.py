@@ -203,6 +203,9 @@ def load_policy(
         policy_type: A key in `policy_registry`, e.g. `ppo`.
         policy_path: A path on disk where the policy is stored.
         venv: An environment that the policy is to be used with.
+
+    Returns:
+        The deserialized policy.
     """
     agent_loader = policy_registry.get(policy_type)
     return agent_loader(policy_path, venv)
@@ -251,6 +254,8 @@ class SavePolicyCallback(callbacks.EventCallback):
         Args:
             policy_dir: Directory to save checkpoints.
             vec_normalize: If specified, VecNormalize object to save alongside policy.
+            *args: Passed through to `callbacks.EventCallback`.
+            **kwargs: Passed through to `callbacks.EventCallback`.
         """
         super().__init__(*args, **kwargs)
         self.policy_dir = policy_dir

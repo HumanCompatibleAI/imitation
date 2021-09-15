@@ -52,7 +52,7 @@ def train_preference_comparisons(
     agent_kwargs: Mapping[str, Any],
     gatherer_kwargs: Mapping[str, Any],
     allow_variable_horizon: bool,
-) -> Mapping[str, Any]:
+) -> Mapping[str, float]:
     """Train a reward model using preference comparisons.
 
     Args:
@@ -99,6 +99,13 @@ def train_preference_comparisons(
             condition, and can seriously confound evaluation. Read
             https://imitation.readthedocs.io/en/latest/guide/variable_horizon.html
             before overriding this.
+
+    Returns:
+        Rollout statistics from trained policy.
+
+    Raises:
+        FileNotFoundError: Path corresponding to saved policy missing.
+        ValueError: Inconsistency between config and deserialized policy normalization.
     """
 
     custom_logger = logger.configure(log_dir, ["tensorboard", "stdout"])

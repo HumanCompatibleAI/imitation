@@ -62,10 +62,8 @@ def rollouts_and_policy(
         normalize: If True, then rescale observations and reward.
         normalize_kwargs: kwargs for `VecNormalize`.
         init_rl_kwargs: kwargs for `init_rl`.
-
         n_episodes_eval: The number of episodes to average over when calculating
             the average ground truth reward return of the final policy.
-
         reward_type: If provided, then load the serialized reward of this type,
             wrapping the environment in this reward. This is useful to test
             whether a reward model transfers. For more information, see
@@ -73,10 +71,6 @@ def rollouts_and_policy(
         reward_path: A specifier, such as a path to a file on disk, used by
             reward_type to load the reward model. For more information, see
             `imitation.rewards.serialize.load_reward`.
-
-        rollout_save_interval: The number of training updates in between
-            intermediate rollout saves. If the argument is nonpositive, then
-            don't save intermediate updates.
         rollout_save_final: If True, then save rollouts right after training is
             finished.
         rollout_save_n_timesteps: The minimum number of timesteps saved in every
@@ -87,14 +81,14 @@ def rollouts_and_policy(
         rollout_save_n_episodes: The number of episodes saved in every
             file. Must set exactly one of `rollout_save_n_timesteps` and
             `rollout_save_n_episodes`.
-
-        policy_save_interval: The number of training updates between saves. Has
-            the same semantics are `rollout_save_interval`.
+        policy_save_interval: The number of training updates between in between
+            intermediate rollout saves. If the argument is nonpositive, then
+            don't save intermediate updates.
         policy_save_final: If True, then save the policy right after training is
             finished.
 
     Returns:
-      The return value of `rollout_stats()` using the final policy.
+        The return value of `rollout_stats()` using the final policy.
     """
     os.makedirs(log_dir, exist_ok=True)
     sacred_util.build_sacred_symlink(log_dir, _run)

@@ -22,10 +22,10 @@ def unwrap_traj(traj: types.TrajectoryWithRew) -> types.TrajectoryWithRew:
     environment without imitation.util.rollout.RolloutInfoWrapper
 
     Args:
-      traj: A trajectory generated from `RolloutInfoWrapper`-wrapped Environments.
+        traj: A trajectory generated from `RolloutInfoWrapper`-wrapped Environments.
 
     Returns:
-      A copy of `traj` with replaced `obs` and `rews` fields.
+        A copy of `traj` with replaced `obs` and `rews` fields.
     """
     ep_info = traj.infos[-1]["rollout"]
     res = dataclasses.replace(traj, obs=ep_info["obs"], rews=ep_info["rews"])
@@ -48,7 +48,7 @@ class TrajectoryAccumulator:
         """Initialise the trajectory accumulator."""
         self.partial_trajectories = collections.defaultdict(list)
 
-    def add_step(self, step_dict: Dict[str, np.ndarray], key: Hashable = None):
+    def add_step(self, step_dict: Dict[str, np.ndarray], key: Hashable = None) -> None:
         """Add a single step to the partial trajectory identified by `key`.
 
         Generally a single step could correspond to, e.g., one environment managed
@@ -72,6 +72,7 @@ class TrajectoryAccumulator:
 
         Args:
             key: key uniquely identifying which in-progress trajectory to remove.
+            terminal: trajectory has naturally finished (i.e. includes terminal state).
 
         Returns:
             traj: list of completed trajectories popped from
@@ -113,6 +114,7 @@ class TrajectoryAccumulator:
             rews: Return value from `VecEnv.step(acts)`.
             dones: Return value from `VecEnv.step(acts)`.
             infos: Return value from `VecEnv.step(acts)`.
+
         Returns:
             A list of completed trajectories. There should be one trajectory for
             each `True` in the `dones` argument.
@@ -162,12 +164,12 @@ GenTrajTerminationFn = Callable[[Sequence[types.TrajectoryWithRew]], bool]
 def make_min_episodes(n: int) -> GenTrajTerminationFn:
     """Terminate after collecting n episodes of data.
 
-    Arguments:
-      n: Minimum number of episodes of data to collect.
-         May overshoot if two episodes complete simultaneously (unlikely).
+    Args:
+        n: Minimum number of episodes of data to collect.
+            May overshoot if two episodes complete simultaneously (unlikely).
 
     Returns:
-      A function implementing this termination condition.
+        A function implementing this termination condition.
     """
     assert n >= 1
     return lambda trajectories: len(trajectories) >= n
@@ -176,12 +178,12 @@ def make_min_episodes(n: int) -> GenTrajTerminationFn:
 def make_min_timesteps(n: int) -> GenTrajTerminationFn:
     """Terminate at the first episode after collecting n timesteps of data.
 
-    Arguments:
-      n: Minimum number of timesteps of data to collect.
-        May overshoot to nearest episode boundary.
+    Args:
+        n: Minimum number of timesteps of data to collect.
+            May overshoot to nearest episode boundary.
 
     Returns:
-      A function implementing this termination condition.
+        A function implementing this termination condition.
     """
     assert n >= 1
 
@@ -198,7 +200,7 @@ def make_sample_until(
 ) -> GenTrajTerminationFn:
     """Returns a termination condition sampling for a number of timesteps and episodes.
 
-    Arguments:
+    Args:
         min_timesteps: Sampling will not stop until there are at least this many
             timesteps.
         min_episodes: Sampling will not stop until there are at least this many
@@ -208,7 +210,7 @@ def make_sample_until(
         A termination condition.
 
     Raises:
-        ValueError if neither of n_timesteps and n_episodes are set, or if either are
+        ValueError: Neither of n_timesteps and n_episodes are set, or if either are
             non-positive.
     """
     if min_timesteps is None and min_episodes is None:
@@ -458,11 +460,12 @@ def flatten_trajectories(
     trajectories: Sequence[types.Trajectory],
 ) -> types.Transitions:
     """Flatten a series of trajectory dictionaries into arrays.
-    Returns observations, actions, next observations, rewards.
+
     Args:
         trajectories: list of trajectories.
+
     Returns:
-      The trajectories flattened into a single batch of Transitions.
+        The trajectories flattened into a single batch of Transitions.
     """
     keys = ["obs", "next_obs", "acts", "dones", "infos"]
     parts = {key: [] for key in keys}

@@ -1,7 +1,7 @@
 import logging
 import os.path as osp
 import pathlib
-from typing import Optional, Sequence, Type, Union
+from typing import Mapping, Optional, Sequence, Type, Union
 
 import gym
 import torch as th
@@ -36,7 +36,7 @@ def train_bc(
     log_interval: int,
     log_rollouts_n_episodes: int,
     n_episodes_eval: int,
-) -> dict:
+) -> Mapping[str, Any]:
     """Sacred interface to Behavioral Cloning.
 
     Args:
@@ -72,6 +72,9 @@ def train_bc(
             provided. These rollouts are used to generate final statistics saved into
             Sacred results, which can be compiled into a table by
             `imitation.scripts.analyze.analyze_imitation`.
+
+    Returns:
+        Statistics for rollouts from the trained policy and demonstration data.
     """
     if action_space is None:
         raise ValueError("action_space cannot be None")

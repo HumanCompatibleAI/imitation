@@ -58,7 +58,7 @@ class DiscrimNet(nn.Module, abc.ABC):
         Returns:
             disc_logits_gen_is_high: discriminator logits for a sigmoid
                 activation. A high output indicates a generator-like transition.
-        """
+        """  # noqa: DAR202
 
     def disc_loss(self, disc_logits_gen_is_high, labels_gen_is_one) -> th.Tensor:
         """Compute discriminator loss.
@@ -119,8 +119,9 @@ class DiscrimNet(nn.Module, abc.ABC):
             next_state: The observation input. Its shape is
                 `(batch_size,) + observation_space.shape`.
             done: Whether the episode has terminated. Its shape is `(batch_size,)`.
+
         Returns:
-            The rewards. Its shape is `(batch_size,)`.
+            The rewards of shape `(batch_size,)`.
         """
         return self._eval_reward(
             is_train=True,
@@ -148,6 +149,7 @@ class DiscrimNet(nn.Module, abc.ABC):
             next_state: The observation input. Its shape is
                 `(batch_size,) + observation_space.shape`.
             done: Whether the episode has terminated. Its shape is `(batch_size,)`.
+
         Returns:
             The rewards. Its shape is `(batch_size,)`.
         """

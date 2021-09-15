@@ -25,6 +25,10 @@ def _reward_fn_normalize_inputs(
     """Combine with `functools.partial` to create an input-normalizing RewardFn.
 
     Args:
+        obs: Observations before transition.
+        acts: Actions.
+        next_obs: Observations after transition.
+        dones: Is the transition into terminal state at end of episode?
         reward_fn: The reward function that normalized inputs are evaluated on.
         vec_normalize: Instance of VecNormalize used to normalize inputs and
             rewards.

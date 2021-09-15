@@ -101,6 +101,8 @@ def _rews_validation(rews: np.ndarray, acts: np.ndarray):
 
 @dataclasses.dataclass(frozen=True)
 class TrajectoryWithRew(Trajectory):
+    """A `Trajectory` that additionally includes reward information."""
+
     rews: np.ndarray
     """Reward, shape (trajectory_len, ). dtype float."""
 

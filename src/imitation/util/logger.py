@@ -149,7 +149,10 @@ def configure(
     Args:
         folder: Argument from `stable_baselines3.logger.configure`.
         format_strs: An list of output format strings. For details on available
-          output formats see `stable_baselines3.logger.make_output_format`.
+            output formats see `stable_baselines3.logger.make_output_format`.
+
+    Returns:
+        The configured HierarchicalLogger instance.
     """
     if folder is None:
         now = datetime.datetime.now()

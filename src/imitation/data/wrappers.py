@@ -1,3 +1,5 @@
+"""Environment wrappers for collecting rollouts."""
+
 from typing import Sequence
 
 import gym
@@ -14,11 +16,12 @@ class BufferingWrapper(VecEnvWrapper):
     """
 
     def __init__(self, venv: VecEnv, error_on_premature_reset: bool = True):
-        """
+        """Builds BufferingWrapper.
+
         Args:
-          venv: The wrapped VecEnv.
-          error_on_premature_reset: Error if `reset()` is called on this wrapper
-            and there are saved samples that haven't yet been accessed.
+            venv: The wrapped VecEnv.
+            error_on_premature_reset: Error if `reset()` is called on this wrapper
+                and there are saved samples that haven't yet been accessed.
         """
         super().__init__(venv)
         self.error_on_premature_reset = error_on_premature_reset
@@ -121,7 +124,12 @@ class RolloutInfoWrapper(gym.Wrapper):
     rewards seen during this episode.
     """
 
-    def __init__(self, env):
+    def __init__(self, env: gym.Env):
+        """Builds RolloutInfoWrapper.
+
+        Args:
+            env: Environment to wrap.
+        """
         super().__init__(env)
         self._obs = None
         self._rews = None

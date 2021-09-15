@@ -121,9 +121,12 @@ class _DataLoaderFailsOnSecondIter:
     """
 
     def __init__(self, dummy_yield_value: dict, no_yield_after_iter: int = 1):
-        """
+        """Builds dummy data loader.
+
         Args:
-            no_yield_after_iter: `__iter__` will be
+            dummy_yield_value: The value to yield on each call.
+            no_yield_after_iter: `__iter__` will raise `StopIteration` after
+                this many calls.
         """
         self.iter_count = 0
         self.dummy_yield_value = dummy_yield_value
