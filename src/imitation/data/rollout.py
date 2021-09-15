@@ -1,3 +1,5 @@
+"""Methods to collect, analyze and manipulate transition and trajectory rollouts."""
+
 import collections
 import dataclasses
 import logging

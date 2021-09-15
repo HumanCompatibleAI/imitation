@@ -1,3 +1,5 @@
+"""Miscellaneous utility methods."""
+
 import datetime
 import functools
 import itertools

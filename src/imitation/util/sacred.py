@@ -1,3 +1,5 @@
+"""Helper methods for the `sacred` experimental configuration and logging framework."""
+
 import json
 import os
 import pathlib
