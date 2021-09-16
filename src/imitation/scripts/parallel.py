@@ -1,7 +1,7 @@
 import collections.abc
 import copy
 import os
-from typing import Any, Callable, Mapping, Optional, Sequence,
+from typing import Any, Callable, Mapping, Optional, Sequence
 
 import ray
 import ray.tune
