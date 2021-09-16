@@ -19,10 +19,10 @@ imitation.algorithms.dagger module
 
 .. automodule:: imitation.algorithms.dagger
 
-imitation.algorithms.density\_baselines module
-----------------------------------------------
+imitation.algorithms.density module
+-----------------------------------
 
-.. automodule:: imitation.algorithms.density_baselines
+.. automodule:: imitation.algorithms.density
 
 imitation.algorithms.tabular\_irl module
 ----------------------------------------

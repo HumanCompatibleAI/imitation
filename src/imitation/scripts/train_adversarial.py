@@ -192,7 +192,7 @@ def train_adversarial(
 
     trainer = algo_cls(
         venv=venv,
-        expert_data=expert_transitions,
+        demonstrations=expert_transitions,
         gen_algo=gen_algo,
         log_dir=log_dir,
         discrim_kwargs=final_discrim_kwargs,

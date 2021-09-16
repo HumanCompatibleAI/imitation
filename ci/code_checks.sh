@@ -16,12 +16,12 @@ if [ -x "`which circleci`" ]; then
 fi
 
 if [ "$skipexpensive" != "true" ]; then
+  echo "Type checking"
+  pytype -j auto ${SRC_FILES[@]}
+
   echo "Building docs (validates docstrings)"
   pushd docs/
   make clean
   make html
   popd
-
-  echo "Type checking"
-  pytype -j auto ${SRC_FILES[@]}
 fi

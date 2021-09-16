@@ -116,7 +116,7 @@ TrajectoryWithRewPair = Tuple[TrajectoryWithRew, TrajectoryWithRew]
 
 def transitions_collate_fn(
     batch: Sequence[Mapping[str, np.ndarray]],
-) -> Dict[str, Union[np.ndarray, th.Tensor]]:
+) -> Mapping[str, Union[np.ndarray, th.Tensor]]:
     """Custom `torch.utils.data.DataLoader` collate_fn for `TransitionsMinimal`.
 
     Use this as the `collate_fn` argument to `DataLoader` if using an instance of

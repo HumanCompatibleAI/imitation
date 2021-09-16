@@ -36,7 +36,7 @@ class TrajectoryGenerator(abc.ABC):
     """Object to log statistics and natural language messages to."""
 
     def __init__(self, custom_logger: Optional[imit_logger.HierarchicalLogger] = None):
-        """Initialize the trajectory generator
+        """Builds TrajectoryGenerator.
 
         Args:
             custom_logger: Where to log to; if None (default), creates a new logger.
@@ -54,7 +54,7 @@ class TrajectoryGenerator(abc.ABC):
         Returns:
             A list of sampled trajectories with rewards (which should
             be the environment rewards, not ones from a reward model).
-        """
+        """  # noqa: DAR202
 
     def train(self, steps: int, **kwargs):
         """Train an agent if the trajectory generator uses one.
@@ -121,6 +121,9 @@ class AgentTrainer(TrajectoryGenerator):
             reward_fn: either a RewardFn or a RewardNet instance that will supply
                 the rewards used for training the agent.
             custom_logger: Where to log to; if None (default), creates a new logger.
+
+        Raises:
+            ValueError: `algorithm` does not have an environment set.
         """
         self.algorithm = algorithm
         # NOTE: this has to come after setting self.algorithm because super().__init__
@@ -144,16 +147,16 @@ class AgentTrainer(TrajectoryGenerator):
         )
         self.algorithm.set_env(self.venv)
 
-    def train(self, steps: int, **kwargs):
+    def train(self, steps: int, **kwargs) -> None:
         """Train the agent using the reward function specified during instantiation.
 
         Args:
             steps: number of environment timesteps to train for
             **kwargs: other keyword arguments to pass to BaseAlgorithm.train()
 
-        Returns:
-            a list of all trajectories that occurred during training, including their
-            original environment rewards (rather than the ones computed using reward_fn)
+        Raises:
+            RuntimeError: Transitions left in `self.buffering_wrapper`; call
+                `self.sample` first to clear them.
         """
         n_transitions = self.buffering_wrapper.n_transitions
         if n_transitions:
@@ -267,7 +270,7 @@ class Fragmenter(abc.ABC):
 
         Returns:
             a sequence of fragment pairs
-        """
+        """  # noqa: DAR202
 
 
 class RandomFragmenter(Fragmenter):
@@ -371,8 +374,10 @@ class RandomFragmenter(Fragmenter):
 
 
 class PreferenceGatherer(abc.ABC):
+    """Base class for gathering preference comparisons between trajectory fragments."""
+
     def __init__(self, custom_logger: Optional[imit_logger.HierarchicalLogger] = None):
-        """Initialize the preference gatherer.
+        """Initializes the preference gatherer.
 
         Args:
             custom_logger: Where to log to; if None (default), creates a new logger.
@@ -381,8 +386,7 @@ class PreferenceGatherer(abc.ABC):
 
     @abc.abstractmethod
     def __call__(self, fragment_pairs: Sequence[TrajectoryWithRewPair]) -> np.ndarray:
-        """Gathers the probabilities that fragment 1 is preferred
-        for a batch of fragments.
+        """Gathers the probabilities that fragment 1 is preferred in `fragment_pairs`.
 
         Args:
             fragment_pairs: sequence of pairs of trajectory fragments
@@ -396,7 +400,7 @@ class PreferenceGatherer(abc.ABC):
             Note that for human feedback, these probabilities are simply 0 or 1
             (or 0.5 in case of indifference), but synthetic models may yield other
             probabilities.
-        """
+        """  # noqa: DAR202
 
 
 class SyntheticGatherer(PreferenceGatherer):
@@ -470,8 +474,8 @@ class SyntheticGatherer(PreferenceGatherer):
         rews1, rews2 = zip(
             *[
                 (
-                    rollout.compute_returns(f1.rews, self.discount_factor),
-                    rollout.compute_returns(f2.rews, self.discount_factor),
+                    rollout.discounted_sum(f1.rews, self.discount_factor),
+                    rollout.discounted_sum(f2.rews, self.discount_factor),
                 )
                 for f1, f2 in fragment_pairs
             ],
@@ -491,6 +495,7 @@ class PreferenceDataset(th.utils.data.Dataset):
     """
 
     def __init__(self):
+        """Builds an empty PreferenceDataset."""
         self.fragments1: List[TrajectoryWithRew] = []
         self.fragments2: List[TrajectoryWithRew] = []
         self.preferences = np.array([])
@@ -506,6 +511,10 @@ class PreferenceDataset(th.utils.data.Dataset):
             fragments: list of pairs of trajectory fragments to add
             preferences: corresponding preference probabilities (probability
                 that fragment 1 is preferred over fragment 2)
+
+        Raises:
+            ValueError: `preferences` shape does not match `fragments` or
+                has non-float32 dtype.
         """
         fragments1, fragments2 = zip(*fragments)
         if preferences.shape != (len(fragments),):
@@ -820,6 +829,9 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
         Returns:
             A dictionary with final metrics such as loss and accuracy
             of the reward model.
+
+        Raises:
+            ValueError: `total_comparisons < self.comparisons_per_iteration`.
         """
         iterations, extra_comparisons = divmod(
             total_comparisons,
