@@ -4,7 +4,7 @@ import dataclasses
 import functools
 import logging
 import os
-from typing import Callable, Dict, Iterable, Mapping, Optional, Type, Union
+from typing import Callable, Dict, Mapping, Optional, Type
 
 import numpy as np
 import torch as th
@@ -41,12 +41,12 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
 
     def __init__(
         self,
-        demonstrations: Union[Iterable[Mapping], types.Transitions],
+        *,
+        demonstrations: base.AnyTransitions,
         demo_batch_size: int,
         venv: vec_env.VecEnv,
         discrim_net: discrim_nets.DiscrimNet,
         gen_algo: base_class.BaseAlgorithm,
-        *,
         n_disc_updates_per_round: int = 2,
         log_dir: str = "output/",
         normalize_obs: bool = True,
@@ -446,11 +446,11 @@ class GAIL(AdversarialTrainer):
 
     def __init__(
         self,
-        demonstrations: Union[Iterable[Mapping], types.Transitions],
+        *,
+        demonstrations: base.AnyTransitions,
         demo_batch_size: int,
         venv: vec_env.VecEnv,
         gen_algo: base_class.BaseAlgorithm,
-        *,
         discrim_kwargs: Optional[Mapping] = None,
         **kwargs,
     ):
@@ -496,11 +496,11 @@ class AIRL(AdversarialTrainer):
 
     def __init__(
         self,
-        demonstrations: Union[Iterable[Mapping], types.Transitions],
+        *,
+        demonstrations: base.AnyTransitions,
         demo_batch_size: int,
         venv: vec_env.VecEnv,
         gen_algo: base_class.BaseAlgorithm,
-        *,
         # FIXME(sam): pass in reward net directly, not via _cls and _kwargs
         reward_net_cls: Type[reward_nets.RewardNet] = reward_nets.BasicShapedRewardNet,
         reward_net_kwargs: Optional[Mapping] = None,

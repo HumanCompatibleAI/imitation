@@ -108,8 +108,8 @@ def train_bc(
         expert_trajs = expert_trajs[:n_expert_demos]
 
     model = bc.BC(
-        observation_space,
-        action_space,
+        observation_space=observation_space,
+        action_space=action_space,
         demonstrations=expert_trajs,
         demo_batch_size=batch_size,
         l2_weight=l2_weight,

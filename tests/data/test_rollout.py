@@ -236,7 +236,7 @@ def test_compute_returns(gamma):
     # small numerical errors will occur because compute_returns
     # uses a somewhat different method based on evaluating
     # polynomials
-    assert abs(rollout.compute_returns(rewards, gamma) - returns) < 1e-8
+    assert abs(rollout.discounted_sum(rewards, gamma) - returns) < 1e-8
 
 
 def test_generate_trajectories_type_error():

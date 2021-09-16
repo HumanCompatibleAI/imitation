@@ -474,8 +474,8 @@ class SyntheticGatherer(PreferenceGatherer):
         rews1, rews2 = zip(
             *[
                 (
-                    rollout.compute_returns(f1.rews, self.discount_factor),
-                    rollout.compute_returns(f2.rews, self.discount_factor),
+                    rollout.discounted_sum(f1.rews, self.discount_factor),
+                    rollout.discounted_sum(f2.rews, self.discount_factor),
                 )
                 for f1, f2 in fragment_pairs
             ],

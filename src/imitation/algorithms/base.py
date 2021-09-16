@@ -124,8 +124,8 @@ class DemonstrationAlgorithm(BaseImitationAlgorithm, Generic[TransitionKind]):
 
     def __init__(
         self,
-        demonstrations: Optional[AnyTransitions],
         *,
+        demonstrations: Optional[AnyTransitions],
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
         allow_variable_horizon: bool = False,
     ):
@@ -246,9 +246,8 @@ def make_data_loader(
     if isinstance(transitions, types.TransitionsMinimal):
         if len(transitions) < batch_size:
             raise ValueError(
-                "Provided Transitions instance as `demonstrations` argument but "
-                "len(demonstrations) < batch_size. "
-                f"({len(transitions)} < {batch_size}).",
+                f"Number of transitions in `demonstrations` {len(transitions)} "
+                f"is smaller than batch size {batch_size}.",
             )
 
         extra_kwargs = dict(shuffle=True, drop_last=True)

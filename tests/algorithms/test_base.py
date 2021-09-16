@@ -101,7 +101,7 @@ def test_make_data_loader_batch_size():
     for smaller_bs in range(1, 6):
         base.make_data_loader(trans, batch_size=smaller_bs)
     for larger_bs in [6, 7, 42]:
-        with pytest.raises(ValueError, match=".* < batch_size"):
+        with pytest.raises(ValueError, match=".* smaller than batch size.*"):
             base.make_data_loader(trans, batch_size=larger_bs)
 
 

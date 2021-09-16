@@ -66,8 +66,8 @@ def trainer(batch_size, venv, expert_data_type, custom_logger):
         raise ValueError(expert_data_type)
 
     return bc.BC(
-        venv.observation_space,
-        venv.action_space,
+        observation_space=venv.observation_space,
+        action_space=venv.action_space,
         demo_batch_size=batch_size,
         demonstrations=expert_data,
         custom_logger=custom_logger,
@@ -77,8 +77,8 @@ def trainer(batch_size, venv, expert_data_type, custom_logger):
 def test_weight_decay_init_error(venv, custom_logger):
     with pytest.raises(ValueError, match=".*weight_decay.*"):
         bc.BC(
-            venv.observation_space,
-            venv.action_space,
+            observation_space=venv.observation_space,
+            action_space=venv.action_space,
             demonstrations=None,
             optimizer_kwargs=dict(weight_decay=1e-4),
             custom_logger=custom_logger,
@@ -154,8 +154,8 @@ def test_bc_data_loader_empty_iter_error(venv, no_yield_after_iter, custom_logge
         no_yield_after_iter=no_yield_after_iter,
     )
     trainer = bc.BC(
-        venv.observation_space,
-        venv.action_space,
+        observation_space=venv.observation_space,
+        action_space=venv.action_space,
         demo_batch_size=batch_size,
         custom_logger=custom_logger,
     )
