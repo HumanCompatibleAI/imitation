@@ -1,7 +1,7 @@
 import logging
 import os.path as osp
 import pathlib
-from typing import Mapping, Optional, Sequence, Type, Union
+from typing import Any, Mapping, Optional, Sequence, Type, Union
 
 import gym
 import torch as th
