@@ -1,3 +1,5 @@
+"""Setup for imitation: a reward and imitation learning library."""
+
 from setuptools import find_packages, setup
 
 import src.imitation  # pytype: disable=import-error

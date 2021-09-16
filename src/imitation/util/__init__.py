@@ -1,1 +1,1 @@
-"""General utility functions: e.g. logging, configuration, neural network construction, etc."""
+"""General utility functions: e.g. logging, configuration, etc."""

@@ -1,4 +1,5 @@
-"""
+"""Converts old-style trajectories to new-style trajectories.
+
 This script takes as command-line input multiple paths to pickle files containing
 (possibly old forms of) Sequence[imitation.types.TrajectoryWithRew]. It overwrites each
 path with a new pickle where the demonstration data is saved as

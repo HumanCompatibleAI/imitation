@@ -1,7 +1,9 @@
+"""Trains a policy via behavioral cloning (BC) from expert demonstrations."""
+
 import logging
 import os.path as osp
 import pathlib
-from typing import Any, Mapping, Optional, Sequence, Type, Union
+from typing import Mapping, Optional, Sequence, Type, Union
 
 import gym
 import torch as th
@@ -36,7 +38,7 @@ def train_bc(
     log_interval: int,
     log_rollouts_n_episodes: int,
     n_episodes_eval: int,
-) -> Mapping[str, Any]:
+) -> Mapping[str, Mapping[str, float]]:
     """Sacred interface to Behavioral Cloning.
 
     Args:

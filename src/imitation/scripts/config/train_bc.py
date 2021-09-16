@@ -1,3 +1,5 @@
+"""Configuration settings for train_bc, training a policy via behavioral cloning."""
+
 import pathlib
 
 import sacred

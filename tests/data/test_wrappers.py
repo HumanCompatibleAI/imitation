@@ -1,3 +1,5 @@
+"""Tests imitation.data.wrappers."""
+
 from typing import List, Sequence
 
 import gym

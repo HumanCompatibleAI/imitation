@@ -1,3 +1,5 @@
+"""Runs a Sacred experiment in parallel."""
+
 import collections.abc
 import copy
 import os
@@ -91,6 +93,7 @@ def parallel(
     if sacred_ex_name == "train_adversarial":
         if "data_dir" not in base_config_updates:
             data_dir = os.path.join(os.getcwd(), "data/")
+            base_config_updates = dict(base_config_updates)
             base_config_updates["data_dir"] = data_dir
 
     trainable = _ray_tune_sacred_wrapper(
@@ -127,7 +130,7 @@ def _ray_tune_sacred_wrapper(
     sacred_ex_name: str,
     run_name: str,
     base_named_configs: list,
-    base_config_updates: dict,
+    base_config_updates: Mapping[str, Any],
 ) -> Callable:
     """From an Experiment build a wrapped run function suitable for Ray Tune.
 

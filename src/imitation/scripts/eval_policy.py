@@ -22,6 +22,7 @@ class InteractiveRender(VecEnvWrapper):
     """Render the wrapped environment(s) on screen."""
 
     def __init__(self, venv, fps):
+        """Builds renderer for `venv` running at `fps` frames per second."""
         super().__init__(venv)
         self.render_fps = fps
 

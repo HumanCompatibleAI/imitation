@@ -4,7 +4,7 @@ import dataclasses
 import functools
 import logging
 import os
-from typing import Callable, Dict, Mapping, Optional, Type
+from typing import Callable, Mapping, Optional, Type
 
 import numpy as np
 import torch as th
@@ -199,7 +199,7 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
         *,
         expert_samples: Optional[Mapping] = None,
         gen_samples: Optional[Mapping] = None,
-    ) -> Dict[str, float]:
+    ) -> Mapping[str, float]:
         """Perform a single discriminator update, optionally using provided samples.
 
         Args:

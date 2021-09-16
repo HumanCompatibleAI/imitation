@@ -14,7 +14,10 @@ from imitation.policies.base import RandomPolicy
 
 
 class TerminalSentinelEnv(gym.Env):
-    def __init__(self, max_acts):
+    """Environment with observation 0 when alive and 1 at terminal state."""
+
+    def __init__(self, max_acts: int):
+        """Builds `TerminalSentinelLength` with episode length `max_acts`."""
         self.max_acts = max_acts
         self.current_step = 0
         self.action_space = gym.spaces.Discrete(1)

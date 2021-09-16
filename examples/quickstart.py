@@ -1,5 +1,4 @@
-"""Loads CartPole-v1 demonstrations and trains BC, GAIL, and AIRL models on that data.
-"""
+"""Trains BC, GAIL and AIRL models on saved CartPole-v1 demonstrations."""
 
 import pathlib
 import pickle

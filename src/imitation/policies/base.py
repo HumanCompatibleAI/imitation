@@ -12,6 +12,7 @@ class HardCodedPolicy(policies.BasePolicy, abc.ABC):
     """Abstract class for hard-coded (non-trainable) policies."""
 
     def __init__(self, observation_space: gym.Space, action_space: gym.Space):
+        """Builds HardcodedPolicy with specified observation and action space."""
         super().__init__(
             observation_space=observation_space,
             action_space=action_space,
@@ -62,4 +63,5 @@ class FeedForward32Policy(policies.ActorCriticPolicy):
     """
 
     def __init__(self, *args, **kwargs):
+        """Builds FeedForward32Policy; arguments passed to `ActorCriticPolicy`."""
         super().__init__(*args, **kwargs, net_arch=[32, 32])

@@ -1,3 +1,5 @@
+"""Tests data/buffer.py."""
+
 import numpy as np
 import pytest
 
@@ -27,17 +29,26 @@ def _check_bound(end, capacity, samples, offset=0):
 @pytest.mark.parametrize("capacity", [10, 30, 60])
 @pytest.mark.parametrize("chunk_len", [1, 2, 4, 9])
 @pytest.mark.parametrize("sample_shape", [(), (1, 2), (5, 4, 4)])
-def test_buffer(capacity, chunk_len, sample_shape):
-    """Builds a Buffer with the provided `capacity` and insert `capacity * 3`
+def test_buffer(capacity, chunk_len, sample_shape) -> None:
+    """Tests `buffer.Buffer` by creating a buffer, inserting data and checking samples.
+
+    Builds a Buffer with the provided `capacity` and inserts `capacity * 3`
     samples into the buffer in chunks of shape `(chunk_len,) + sample_shape`.
 
     We always insert chunks with consecutive integers.
 
-    * `len(buffer)` should increase until we reach capacity.
-    * `buffer._idx` should loop between 0 and `capacity - 1`.
-    * After every insertion, samples should be in expected range, verifying
+    The test checks that:
+
+        - `len(buffer)` increases until we reach capacity.
+        - `buffer._idx` loops between 0 and `capacity - 1`.
+        - After every insertion, samples are in the expected range, verifying
       FIFO insertion.
-    * Mutating the inserted chunk shouldn't mutate the buffer.
+        - Mutating the inserted chunk doesn't mutate the buffer.
+
+    Args:
+        capacity: The capacity of the buffer to create.
+        chunk_len: The number of chunks to insert in one go.
+        sample_shape: The shape of the data to insert.
     """
     buf = Buffer(
         capacity,

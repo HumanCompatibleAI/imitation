@@ -116,6 +116,8 @@ def test_policy_om_random_mdp(discount: float):
 
 
 class ReasonableMDP(resettable_env.TabularModelEnv):
+    """A tabular MDP with sensible parameters."""
+
     observation_matrix = np.array(
         [
             [3, -5, -1, -1, -4, 5, 3, 0],

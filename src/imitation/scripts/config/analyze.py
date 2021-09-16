@@ -1,3 +1,5 @@
+"""Configuration settings for analyze, inspecting results from completed experiments."""
+
 import os.path as osp
 
 import sacred

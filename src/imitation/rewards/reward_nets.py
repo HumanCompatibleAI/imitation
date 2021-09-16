@@ -78,7 +78,18 @@ class RewardNet(nn.Module, abc.ABC):
         done: np.ndarray,
     ) -> np.ndarray:
         """Compute rewards for a batch of transitions without gradients.
-        Also performs some preprocessing and numpy conversion.
+
+        Preprocesses the inputs, converting between Torch
+        tensors and NumPy arrays as necessary.
+
+        Args:
+            state: Current states of shape `(batch_size,) + state_shape`.
+            action: Actions of shape `(batch_size,) + action_shape`.
+            next_state: Successor states of shape `(batch_size,) + state_shape`.
+            done: End-of-episode (terminal state) indicator of shape `(batch_size,)`.
+
+        Returns:
+            Computed rewards of shape `(batch_size,`).
         """
         (
             state_th,
@@ -199,8 +210,11 @@ class ShapedRewardNet(RewardNet):
 
 
 class BasicRewardNet(RewardNet):
-    """MLP that flattens and concatenates current state, current action, next state, and
-    done flag, depending on given `use_*` keyword arguments."""
+    """MLP that takes as input the state, action, next state and done flag.
+
+    These inputs are flattened and then concatenated to one another. Each input
+    can enabled or disabled by the `use_*` constructor keyword arguments.
+    """
 
     def __init__(
         self,
@@ -221,7 +235,7 @@ class BasicRewardNet(RewardNet):
           use_action: should the current action be included as an input to the MLP?
           use_next_state: should the next state be included as an input to the MLP?
           use_done: should the "done" flag be included as an input to the MLP?
-          kwargs: passed straight through to build_mlp.
+          kwargs: passed straight through to `build_mlp`.
         """
         super().__init__(observation_space, action_space)
         combined_size = 0

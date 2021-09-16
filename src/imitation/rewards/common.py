@@ -2,7 +2,7 @@
 
 import collections
 import functools
-from typing import Callable, Dict, List, Tuple
+from typing import Callable, List, Mapping, Tuple
 
 import gym
 import numpy as np
@@ -100,7 +100,7 @@ def compute_train_stats(
     disc_logits_gen_is_high: th.Tensor,
     labels_gen_is_one: th.Tensor,
     disc_loss: th.Tensor,
-) -> Dict[str, float]:
+) -> Mapping[str, float]:
     """Train statistics for GAIL/AIRL discriminator, or other binary classifiers.
 
     Args:
@@ -111,7 +111,8 @@ def compute_train_stats(
         disc_loss: final discriminator loss.
 
     Returns:
-        stats: dictionary mapping statistic names for float values."""
+        A mapping from statistic names to float values.
+    """
     with th.no_grad():
         bin_is_generated_pred = disc_logits_gen_is_high > 0
         bin_is_generated_true = labels_gen_is_one > 0

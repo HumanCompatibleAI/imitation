@@ -40,6 +40,13 @@ class NormalizePolicy(policies.BasePolicy):
         policy: policies.BasePolicy,
         vec_normalize: vec_env.VecNormalize,
     ):
+        """Builds NormalizePolicy.
+
+        Args:
+            policy: The policy to wrap.
+            vec_normalize: Used to normalize observations. Note observation statistics
+                are frozen, and not updated with repeated calls to `predict`.
+        """
         super().__init__(
             observation_space=policy.observation_space,
             action_space=policy.action_space,

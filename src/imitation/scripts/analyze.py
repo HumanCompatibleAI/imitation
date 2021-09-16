@@ -1,3 +1,5 @@
+"""Commands to analyze experimental results."""
+
 import collections
 import itertools
 import json
@@ -93,7 +95,6 @@ def gather_tb_directories() -> dict:
       "n_tb_dirs" (int) is the number of TensorBoard directories that were
       filtered.
     """
-
     os.makedirs("/tmp/analysis_tb", exist_ok=True)
     tmp_dir = tempfile.mkdtemp(dir="/tmp/analysis_tb/")
 

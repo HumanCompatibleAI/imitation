@@ -55,7 +55,7 @@ def train_adversarial(
     init_rl_kwargs: Mapping,
     algorithm_kwargs: Mapping[str, Mapping],
     discrim_net_kwargs: Mapping[str, Mapping],
-) -> dict:
+) -> Mapping[str, Mapping[str, float]]:
     """Train an adversarial-network-based imitation learning algorithm.
 
     Checkpoints:

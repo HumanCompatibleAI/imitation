@@ -33,7 +33,9 @@ def make_random_trans_mat(n_states, n_actions, max_branch_factor, rand_state=np.
 
 
 def make_random_state_dist(
-    n_avail: int, n_states: int, rand_state: np.random.RandomState = np.random,
+    n_avail: int,
+    n_states: int,
+    rand_state: np.random.RandomState = np.random,
 ) -> np.ndarray:
     """Make a random initial state distribution over n_states.
 
@@ -173,7 +175,7 @@ class RandomMDP(TabularModelEnv):
 class CliffWorld(TabularModelEnv):
     """A grid world with a goal next to a cliff the agent may fall into.
 
-    Illustration:
+    Illustration::
 
          0 1 2 3 4 5 6 7 8 9
         +-+-+-+-+-+-+-+-+-+-+  Wind:

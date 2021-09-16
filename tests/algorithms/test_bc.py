@@ -34,7 +34,8 @@ def expert_data_type(request):
 class DucktypedDataset:
     """Used to check that any iterator over Dict[str, Tensor] works with BC."""
 
-    def __init__(self, transitions, batch_size):
+    def __init__(self, transitions: types.TransitionsMinimal, batch_size: int):
+        """Builds `DucktypedDataset`."""
         self.trans = transitions
         self.batch_size = batch_size
 
@@ -176,12 +177,12 @@ def test_save_reload(trainer, tmpdir):
 
 
 def test_train_progress_bar_visibility(trainer: bc.BC):
-    """Smoke test for toggling progress bar visibility"""
+    """Smoke test for toggling progress bar visibility."""
     for visible in [True, False]:
         trainer.train(n_batches=1, progress_bar=visible)
 
 
 def test_train_reset_tensorboard(trainer: bc.BC):
-    """Smoke test for reset_tensorboard parameter"""
+    """Smoke test for reset_tensorboard parameter."""
     for reset in [True, False]:
         trainer.train(n_batches=1, reset_tensorboard=reset)

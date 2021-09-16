@@ -1,1 +1,1 @@
-"""Environment base classess and demo environments."""
+"""Environment base clasess and demo environments."""

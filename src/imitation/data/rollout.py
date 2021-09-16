@@ -3,7 +3,7 @@
 import collections
 import dataclasses
 import logging
-from typing import Callable, Dict, Hashable, List, Optional, Sequence, Union
+from typing import Callable, Dict, Hashable, List, Mapping, Optional, Sequence, Union
 
 import numpy as np
 from stable_baselines3.common.base_class import BaseAlgorithm
@@ -50,7 +50,11 @@ class TrajectoryAccumulator:
         """Initialise the trajectory accumulator."""
         self.partial_trajectories = collections.defaultdict(list)
 
-    def add_step(self, step_dict: Dict[str, np.ndarray], key: Hashable = None) -> None:
+    def add_step(
+        self,
+        step_dict: Mapping[str, np.ndarray],
+        key: Hashable = None,
+    ) -> None:
         """Add a single step to the partial trajectory identified by `key`.
 
         Generally a single step could correspond to, e.g., one environment managed
@@ -396,7 +400,9 @@ def generate_trajectories(
     return trajectories
 
 
-def rollout_stats(trajectories: Sequence[types.TrajectoryWithRew]) -> Dict[str, float]:
+def rollout_stats(
+    trajectories: Sequence[types.TrajectoryWithRew],
+) -> Mapping[str, float]:
     """Calculates various stats for a sequence of trajectories.
 
     Args:

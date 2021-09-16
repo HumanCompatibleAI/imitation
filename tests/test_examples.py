@@ -1,3 +1,5 @@
+"""Test examples/*: quickstart code and Jupyter notebook."""
+
 import pathlib
 import subprocess
 from typing import Iterable, List
@@ -10,7 +12,8 @@ def _paths_to_strs(x: Iterable[pathlib.Path]) -> List[str]:
     """Convert Path to str for nice Pytest `parameterized` logs.
 
     For example, if we use Path, we get something inscrutable like
-    test_run_example_sh_scripts[sh_path0] rather than seeing the actual path name."""
+    test_run_example_sh_scripts[sh_path0] rather than seeing the actual path name.
+    """
     return [str(path) for path in x]
 
 

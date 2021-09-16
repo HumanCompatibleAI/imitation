@@ -52,7 +52,7 @@ def train_preference_comparisons(
     agent_kwargs: Mapping[str, Any],
     gatherer_kwargs: Mapping[str, Any],
     allow_variable_horizon: bool,
-) -> Mapping[str, float]:
+) -> Mapping[str, Mapping[str, float]]:
     """Train a reward model using preference comparisons.
 
     Args:
@@ -107,7 +107,6 @@ def train_preference_comparisons(
         FileNotFoundError: Path corresponding to saved policy missing.
         ValueError: Inconsistency between config and deserialized policy normalization.
     """
-
     custom_logger = logger.configure(log_dir, ["tensorboard", "stdout"])
     os.makedirs(log_dir, exist_ok=True)
     sacred_util.build_sacred_symlink(log_dir, _run)

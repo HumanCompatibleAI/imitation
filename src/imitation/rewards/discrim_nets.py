@@ -1,3 +1,5 @@
+"""Discriminator networks, used for `AdversarialTrainer`."""
+
 import abc
 import logging
 from typing import Optional
@@ -28,6 +30,13 @@ class DiscrimNet(nn.Module, abc.ABC):
         action_space: gym.Space,
         normalize_images: bool = False,
     ):
+        """Builds DiscrimNet.
+
+        Args:
+            observation_space: The space observations are drawn from.
+            action_space: The space actions are drawn from.
+            normalize_images: Whether to normalize image-based inputs in preprocessing.
+        """
         super().__init__()
         self.observation_space = observation_space
         self.action_space = action_space
@@ -56,8 +65,8 @@ class DiscrimNet(nn.Module, abc.ABC):
                 only used for AIRL.
 
         Returns:
-            disc_logits_gen_is_high: discriminator logits for a sigmoid
-                activation. A high output indicates a generator-like transition.
+            Discriminator logits for a sigmoid activation. A high output indicates a
+            generator-like transition.
         """  # noqa: DAR202
 
     def disc_loss(self, disc_logits_gen_is_high, labels_gen_is_one) -> th.Tensor:
@@ -70,7 +79,8 @@ class DiscrimNet(nn.Module, abc.ABC):
                 generator (novice).
 
         Returns:
-            loss: scalar-valued discriminator loss."""
+            Scalar-valued discriminator loss.
+        """
         return F.binary_cross_entropy_with_logits(
             disc_logits_gen_is_high,
             labels_gen_is_one.float(),
@@ -207,7 +217,7 @@ class DiscrimNetAIRL(DiscrimNet):
     """  # noqa: E501
 
     def __init__(self, reward_net: reward_nets.RewardNet, entropy_weight: float = 1.0):
-        """Builds a DiscrimNetAIRL.
+        r"""Builds a DiscrimNetAIRL.
 
         Args:
             reward_net: A RewardNet, used as $f_{\theta}$ in the discriminator.
@@ -277,18 +287,27 @@ class DiscrimNetAIRL(DiscrimNet):
         next_state: th.Tensor,
         done: th.Tensor,
     ) -> th.Tensor:
-        """Compute train reward.
+        """Computes train reward.
 
         Computed reward does *not* include an entropy bonus. Instead, the
-        entropy bonus should be added directly to PPO, SAC, etc."""
+        entropy bonus should be added directly to PPO, SAC, etc.
+
+        Args:
+            state: Current states of shape `(batch_size,) + state_shape`.
+            action: Actions of shape `(batch_size,) + action_shape`.
+            next_state: Successor states of shape `(batch_size,) + state_shape`.
+            done: End-of-episode (terminal state) indicator of shape `(batch_size,)`.
+
+        Returns:
+            Reward of shape `(batch_size,`).
+        """
         rew = self.reward_net(state, action, next_state, done)
         assert rew.shape == state.shape[:1]
         return rew
 
 
 class ActObsMLP(nn.Module):
-    """Simple MLP that takes an action and observation and produces a single
-    output."""
+    """MLP with observation and action input producing single scalar output."""
 
     def __init__(
         self,
@@ -296,6 +315,7 @@ class ActObsMLP(nn.Module):
         observation_space: gym.Space,
         **mlp_kwargs,
     ):
+        """Builds ActObsMLP."""
         super().__init__()
 
         in_size = (

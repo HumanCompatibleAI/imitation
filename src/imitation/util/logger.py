@@ -29,18 +29,25 @@ def _build_output_formats(
 
 
 class HierarchicalLogger(sb_logger.Logger):
+    """A logger supporting contexts for accumulating mean values.
+
+    `self.accumulate_means` creates a context manager. While in this context,
+    values are loggged to a sub-logger, with only mean values recorded in the
+    top-level (root) logger.
+    """
+
     def __init__(
         self,
         default_logger: sb_logger.Logger,
         format_strs: Sequence[str] = ("stdout", "log", "csv"),
     ):
-        """A logger with a context for accumulating mean values.
+        """Builds HierarchicalLogger.
 
         Args:
-          default_logger: The default logger when not in the a `accumulate_means`
-            context. Also the logger to which mean values are written to when
-            contexts are over.
-          format_strs: An list of output format strings that should be used by
+          default_logger: The default logger when not in an `accumulate_means`
+            context. Also the logger to which mean values are written to after
+            exiting from a context.
+          format_strs: A list of output format strings that should be used by
             every Logger initialized by this class during an `AccumulatingMeans`
             context. For details on available output formats see
             `stable_baselines3.logger.make_output_format`.

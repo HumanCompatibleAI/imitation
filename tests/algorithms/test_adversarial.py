@@ -72,7 +72,11 @@ def _parallel(request):
 
     This way we don't have to add a @pytest.mark.parametrize("_parallel", ... )
     decorator in front of every test. I couldn't find a better way to do this that
-    didn't involve the aforementioned `parameterize` duplication."""
+    didn't involve the aforementioned `parameterize` duplication.
+
+    Args:
+        request: PyTest request object.
+    """
     return request.param
 
 

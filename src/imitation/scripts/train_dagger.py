@@ -1,7 +1,9 @@
+"""Trains DAgger on synthetic demonstrations generated from an expert policy."""
+
 import logging
 import os.path as osp
 import pathlib
-from typing import Any, Mapping, Optional, Sequence, Type, Union
+from typing import Mapping, Optional, Sequence, Type, Union
 
 import torch as th
 from sacred.observers import FileStorageObserver
@@ -32,7 +34,7 @@ def train_dagger(
     optimizer_kwargs: dict,
     log_dir: types.AnyPath,
     n_episodes_eval: int,
-) -> Mapping[str, Any]:
+) -> Mapping[str, Mapping[str, float]]:
     """Run synthetic DAgger experiment using a Sacred interface to SimpleDAggerTrainer.
 
     Args:

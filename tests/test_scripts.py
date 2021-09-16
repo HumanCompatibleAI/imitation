@@ -1,4 +1,4 @@
-"""Smoke tests for CLI programs in imitation.scripts.*
+"""Smoke tests for CLI programs in imitation.scripts.*.
 
 Every test in this file should use `parallel=False` to turn off multiprocessing because
 codecov might interact poorly with multiprocessing. The 'fast' named_config for each
@@ -56,7 +56,8 @@ CARTPOLE_TEST_POLICY_WITHOUT_VECNORM_PATH = (
 def sacred_capture_use_sys():
     """Set Sacred capture mode to "sys" because default "fd" option leads to error.
 
-    See https://github.com/IDSIA/sacred/issues/289."""
+    See https://github.com/IDSIA/sacred/issues/289.
+    """
     # TODO(shwang): Stop using non-default "sys" mode once the issue is fixed.
     temp = sacred.SETTINGS["CAPTURE_MODE"]
     sacred.SETTINGS.CAPTURE_MODE = "sys"

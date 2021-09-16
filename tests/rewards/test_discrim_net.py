@@ -1,3 +1,5 @@
+"""Tests `imitation.rewards.discrim_nets`."""
+
 import contextlib
 import os
 
@@ -98,14 +100,21 @@ def test_logits_gen_is_high_log_policy_act_prob(
     venv: vec_env.VecEnv,
     n_timesteps: int,
 ):
-    """Smoke test calling `logits_gen_is_high` on each DiscrimNet.
+    """Smoke test calling `logits_gen_is_high` on `DiscrimNet`.
 
     For subclasses of DiscrimNetAIRL, also checks that the function raises
     error on `log_policy_act_prob=None`.
-    """
 
-    random = base.RandomPolicy(venv.observation_space, venv.action_space)
-    trans = rollout.generate_transitions(random, venv, n_timesteps=n_timesteps)
+    Args:
+        discrim_net: The discriminator network to test.
+        venv: An environment to collect rollouts from.
+        n_timesteps: The number of timesteps of rollouts to collect.
+    """
+    trans = rollout.generate_transitions(
+        policy=None,
+        venv=venv,
+        n_timesteps=n_timesteps,
+    )
 
     obs = util.torchify_with_space(trans.obs, venv.observation_space)
     acts = util.torchify_with_space(trans.acts, venv.action_space)
