@@ -19,6 +19,7 @@ class ResettableEnv(gym.Env, abc.ABC):
     """
 
     def __init__(self):
+        """Builds a ResettableEnv with all attributes initialized to None."""
         self._state_space = None
         self._observation_space = None
         self._action_space = None
@@ -111,7 +112,8 @@ class TabularModelEnv(ResettableEnv, abc.ABC):
 
         Attributes include current state & number of actions taken so far (initial
         None, so that error can be thrown if reset() is not called), attributes for
-        cached observation/action space, and random seed for rollouts."""
+        cached observation/action space, and random seed for rollouts.
+        """
         super().__init__()
 
     @property
@@ -210,7 +212,8 @@ class TabularModelEnv(ResettableEnv, abc.ABC):
         """2D observation matrix.
 
         Dimensions correspond to current state (first dim) and elements of observation
-        (second dim)."""
+        (second dim).
+        """
 
     @property
     @abc.abstractmethod

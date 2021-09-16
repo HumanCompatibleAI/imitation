@@ -1,3 +1,5 @@
+"""Logging for quantitative metrics and free-form text."""
+
 import contextlib
 import datetime
 import logging

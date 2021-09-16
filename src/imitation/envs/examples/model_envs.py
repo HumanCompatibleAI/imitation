@@ -1,5 +1,7 @@
 """Example discrete MDPs for use with tabular MCE IRL."""
 
+from typing import Optional
+
 import gym
 import numpy as np
 
@@ -30,9 +32,19 @@ def make_random_trans_mat(n_states, n_actions, max_branch_factor, rand_state=np.
     return out_mat
 
 
-def make_random_state_dist(n_avail, n_states, rand_state=np.random):
-    """Make a random initial state distribution over n_states in which n_avail<=n_states
-    of the states are supported."""
+def make_random_state_dist(
+    n_avail: int, n_states: int, rand_state: np.random.RandomState = np.random,
+) -> np.ndarray:
+    """Make a random initial state distribution over n_states.
+
+    Args:
+        n_avail: Number of states available to transition into.
+        n_states: Total number of states.
+        rand_state: NumPy random state.
+
+    Raises:
+        ValueError: If `n_avail` is not in the range `(0, n_states]`.
+    """
     assert 0 < n_avail <= n_states
     init_dist = np.zeros((n_states,))
     next_states = rand_state.choice(n_states, size=(n_avail,), replace=False)
@@ -43,7 +55,12 @@ def make_random_state_dist(n_avail, n_states, rand_state=np.random):
     return init_dist
 
 
-def make_obs_mat(n_states, is_random, obs_dim, rand_state=np.random):
+def make_obs_mat(
+    n_states: int,
+    is_random: bool,
+    obs_dim: Optional[int],
+    rand_state: np.random.RandomState = np.random,
+) -> np.ndarray:
     """Makes an observation matrix with a single observation for each state.
 
     Args:
@@ -78,15 +95,29 @@ class RandomMDP(TabularModelEnv):
 
     def __init__(
         self,
-        n_states,
-        n_actions,
-        branch_factor,
-        horizon,
-        random_obs,
         *,
-        obs_dim=None,
-        generator_seed=None,
+        n_states: int,
+        n_actions: int,
+        branch_factor: int,
+        horizon: int,
+        random_obs: bool,
+        obs_dim: Optional[int] = None,
+        generator_seed: Optional[int] = None,
     ):
+        """Builds RandomMDP.
+
+        Args:
+            n_states: Number of states.
+            n_actions: Number of actions.
+            branch_factor: Maximum number of states that can be reached from
+                each state-action pair.
+            horizon: The horizon of the MDP, i.e. the episode length.
+            random_obs: Whether to use random observations (True)
+                or one-hot coded (False).
+            obs_dim: The size of the observation vectors; must be `None`
+                if `random_obs == False`.
+            generator_seed: Seed for NumPy RNG.
+        """
         super().__init__()
         # this generator is ONLY for constructing the MDP, not for controlling
         # random outcomes during rollouts
@@ -140,7 +171,9 @@ class RandomMDP(TabularModelEnv):
 
 
 class CliffWorld(TabularModelEnv):
-    """A grid world like this::
+    """A grid world with a goal next to a cliff the agent may fall into.
+
+    Illustration:
 
          0 1 2 3 4 5 6 7 8 9
         +-+-+-+-+-+-+-+-+-+-+  Wind:
@@ -161,16 +194,17 @@ class CliffWorld(TabularModelEnv):
 
     def __init__(
         self,
-        width,
-        height,
-        horizon,
-        use_xy_obs,
         *,
-        rew_default=-1,
-        rew_goal=10,
-        rew_cliff=-10,
-        fail_p=0.3,
+        width: int,
+        height: int,
+        horizon: int,
+        use_xy_obs: bool,
+        rew_default: int = -1,
+        rew_goal: int = 10,
+        rew_cliff: int = -10,
+        fail_p: float = 0.3,
     ):
+        """Builds CliffWorld with specified dimensions and reward."""
         super().__init__()
         assert (
             width >= 3 and height >= 2
