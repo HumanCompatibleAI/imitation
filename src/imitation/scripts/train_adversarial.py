@@ -195,6 +195,7 @@ def train_adversarial(
         **algorithm_kwargs_algo,
     )
 
+    reward_net = None
     if reward_net_cls is not None:
         reward_net_kwargs = reward_net_kwargs or {}
         reward_net = reward_net_cls(
