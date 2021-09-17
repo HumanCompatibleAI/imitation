@@ -1,4 +1,4 @@
-"""Smoke tests for CLI programs in imitation.scripts.*.
+"""Smoke tests for CLI programs in `imitation.scripts.*`.
 
 Every test in this file should use `parallel=False` to turn off multiprocessing because
 codecov might interact poorly with multiprocessing. The 'fast' named_config for each

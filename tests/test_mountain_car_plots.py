@@ -1,4 +1,4 @@
-"""Smoke tests for imitation.analysis.mountain_car_plots module."""
+"""Smoke tests for `imitation.analysis.mountain_car_plots``."""
 
 import pathlib
 import pickle

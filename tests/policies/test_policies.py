@@ -1,4 +1,4 @@
-"""Test imitation.policies."""
+"""Tests `imitation.policies.*`."""
 
 import pathlib
 

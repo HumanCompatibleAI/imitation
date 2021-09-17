@@ -1,4 +1,4 @@
-"""Tests data/buffer.py."""
+"""Tests for `imitation.data.buffer`."""
 
 import numpy as np
 import pytest

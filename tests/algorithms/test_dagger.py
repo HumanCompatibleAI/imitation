@@ -1,4 +1,4 @@
-"""Tests for DAgger."""
+"""Tests for `imitation.algorithms.dagger`."""
 
 import contextlib
 import glob

@@ -1,4 +1,4 @@
-"""Tests for code that generates trajectory rollouts."""
+"""Tests for `imitation.data.rollout`."""
 
 import functools
 from typing import Mapping, Sequence

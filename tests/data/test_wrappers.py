@@ -1,4 +1,4 @@
-"""Tests imitation.data.wrappers."""
+"""Tests for `imitation.data.wrappers`."""
 
 from typing import List, Sequence
 

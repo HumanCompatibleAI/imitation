@@ -1,4 +1,4 @@
-"""Tests for imitation.trainer.Trainer and util.trainer.init_trainer."""
+"""Tests for `imitation.algorithms.adversarial`."""
 
 import os
 

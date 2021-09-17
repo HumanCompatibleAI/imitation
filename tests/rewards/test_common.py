@@ -1,4 +1,4 @@
-"""Unit tests for `imitation.rewards.common`."""
+"""Tests `imitation.rewards.common`."""
 
 import numpy as np
 import pytest

@@ -1,4 +1,4 @@
-"""Tests of `imitation.data.{dataset,types}`."""
+"""Tests of `imitation.data.types`."""
 
 
 import contextlib

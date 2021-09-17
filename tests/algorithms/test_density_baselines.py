@@ -1,4 +1,4 @@
-"""Testing simple density estimation baselines for IRL."""
+"""Tests for `imitation.algorithms.density_baselines`."""
 
 from typing import Sequence
 

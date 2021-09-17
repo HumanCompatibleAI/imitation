@@ -1,4 +1,4 @@
-"""Test tabular environments and tabular MCE IRL."""
+"""Test `imitation.algorithms.tabular_irl` and tabular environments."""
 
 from typing import Any, Mapping, Type
 

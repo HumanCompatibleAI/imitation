@@ -1,4 +1,4 @@
-"""Test examples/*: quickstart code and Jupyter notebook."""
+"""Tests examples/*: quickstart code and Jupyter notebook."""
 
 import pathlib
 import subprocess

@@ -1,4 +1,4 @@
-"""Tests for Behavioural Cloning (BC)."""
+"""Tests `imitation.algorithms.bc`."""
 
 import dataclasses
 import os
