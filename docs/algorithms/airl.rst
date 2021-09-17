@@ -7,11 +7,15 @@ Implements `Learning Robust Rewards with Adversarial Inverse Reinforcement Learn
 
 API
 ===
-.. autoclass:: imitation.algorithms.adversarial.AIRL
+.. autoclass:: imitation.algorithms.adversarial.airl.AIRL
     :members:
     :inherited-members:
     :noindex:
 
-.. autoclass:: imitation.algorithms.adversarial.AdversarialTrainer
+.. autoclass:: imitation.algorithms.adversarial.airl.DiscrimNetAIRL
+    :members:
+    :noindex:
+
+.. autoclass:: imitation.algorithms.adversarial.common.AdversarialTrainer
     :members:
     :noindex:

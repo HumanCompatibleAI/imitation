@@ -8,23 +8,23 @@ import stable_baselines3
 from stable_baselines3.common import policies
 from torch.utils import data as th_data
 
-from imitation.algorithms import adversarial
+from imitation.algorithms.adversarial import airl, common, gail
 from imitation.data import rollout, types
 from imitation.util import logger, util
 
 ALGORITH_KWARGS = {
     "airl-ppo": {
-        "algorithm_cls": adversarial.AIRL,
+        "algorithm_cls": airl.AIRL,
         "model_class": stable_baselines3.PPO,
         "policy_class": policies.ActorCriticPolicy,
     },
     "gail-ppo": {
-        "algorithm_cls": adversarial.GAIL,
+        "algorithm_cls": gail.GAIL,
         "model_class": stable_baselines3.PPO,
         "policy_class": policies.ActorCriticPolicy,
     },
     "gail-dqn": {
-        "algorithm_cls": adversarial.GAIL,
+        "algorithm_cls": gail.GAIL,
         "model_class": stable_baselines3.DQN,
         "policy_class": stable_baselines3.dqn.MlpPolicy,
     },
@@ -56,7 +56,7 @@ def test_airl_fail_fast(custom_logger, tmpdir):
     small_data = rollout.generate_transitions(gen_algo, venv, n_timesteps=20)
 
     with pytest.raises(TypeError, match="AIRL needs a stochastic policy.*"):
-        adversarial.AIRL(
+        airl.AIRL(
             venv=venv,
             demonstrations=small_data,
             demo_batch_size=20,
@@ -146,7 +146,7 @@ def trainer(
         venv.close()
 
 
-def test_train_disc_no_samples_error(trainer: adversarial.AdversarialTrainer):
+def test_train_disc_no_samples_error(trainer: common.AdversarialTrainer):
     with pytest.raises(RuntimeError, match="No generator samples"):
         trainer.train_disc()
 

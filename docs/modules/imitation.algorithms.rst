@@ -1,13 +1,15 @@
 imitation.algorithms package
 ============================
 
+Subpackages
+-----------
+
+.. toctree::
+
+   imitation.algorithms.adversarial
+
 Submodules
 ----------
-
-imitation.algorithms.adversarial module
----------------------------------------
-
-.. automodule:: imitation.algorithms.adversarial
 
 imitation.algorithms.bc module
 ------------------------------
