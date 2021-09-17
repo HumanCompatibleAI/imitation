@@ -216,7 +216,7 @@ def make_sample_until(
         A termination condition.
 
     Raises:
-        ValueError: Neither of n_timesteps and n_episodes are set, or if either are
+        ValueError: Neither of n_timesteps and n_episodes are set, or either are
             non-positive.
     """
     if min_timesteps is None and min_episodes is None:
