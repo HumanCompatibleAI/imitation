@@ -16,6 +16,8 @@ from imitation.rewards import reward_nets
 class DiscrimNetGAIL(common.DiscrimNet):
     """The discriminator to use for GAIL."""
 
+    discriminator: reward_nets.RewardNet
+
     def __init__(
         self,
         observation_space: gym.Space,
@@ -95,6 +97,7 @@ class GAIL(common.AdversarialTrainer):
         demo_batch_size: int,
         venv: vec_env.VecEnv,
         gen_algo: base_class.BaseAlgorithm,
+        reward_net: Optional[nn.Module] = None,
         discrim_kwargs: Optional[Mapping] = None,
         **kwargs,
     ):
@@ -112,14 +115,16 @@ class GAIL(common.AdversarialTrainer):
             gen_algo: The generator RL algorithm that is trained to maximize
                 discriminator confusion. Environment and logger will be set to
                 `venv` and `custom_logger`.
-            discrim_kwargs: Optional keyword arguments to use while constructing the
-                DiscrimNetGAIL.
+            reward_net: a Torch module that takes an observation and action
+                tensor as input, then computes the logits for GAIL.
+            discrim_kwargs: Passed through to `DiscrimNetGAIL.__init__`.
             **kwargs: Passed through to `AdversarialTrainer.__init__`.
         """
         discrim_kwargs = discrim_kwargs or {}
         discrim = DiscrimNetGAIL(
             venv.observation_space,
             venv.action_space,
+            discrim_net=reward_net,
             **discrim_kwargs,
         )
         super().__init__(

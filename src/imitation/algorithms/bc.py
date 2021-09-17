@@ -190,8 +190,7 @@ class BC(algo_base.DemonstrationAlgorithm):
         *,
         observation_space: gym.Space,
         action_space: gym.Space,
-        policy_class: Type[policies.BasePolicy] = policy_base.FeedForward32Policy,
-        policy_kwargs: Optional[Mapping[str, Any]] = None,
+        policy: Optional[policies.BasePolicy] = None,
         demonstrations: Optional[algo_base.AnyTransitions] = None,
         demo_batch_size: int = 32,
         optimizer_cls: Type[th.optim.Optimizer] = th.optim.Adam,
@@ -206,8 +205,8 @@ class BC(algo_base.DemonstrationAlgorithm):
         Args:
             observation_space: the observation space of the environment.
             action_space: the action space of the environment.
-            policy_class: used to instantiate imitation policy.
-            policy_kwargs: keyword arguments passed to policy's constructor.
+            policy: a Stable Baselines3 policy; if unspecified,
+                defaults to `FeedForward32Policy`.
             demonstrations: Demonstrations from an expert (optional). Transitions
                 expressed directly as a `types.TransitionsMinimal` object, a sequence
                 of trajectories, or an iterable of transition batches (mappings from
@@ -238,21 +237,21 @@ class BC(algo_base.DemonstrationAlgorithm):
 
         self.action_space = action_space
         self.observation_space = observation_space
-        self.policy_class = policy_class
-        self.device = device = utils.get_device(device)
-        # Learning rate should be set via optimizer_kwargs, so hardcode lr here
-        # to force an error if self.policy.optimizer is used by mistake.
-        self.policy_kwargs = dict(
-            observation_space=self.observation_space,
-            action_space=self.action_space,
-            lr_schedule=ConstantLRSchedule(th.finfo(th.float32).max),
-        )
-        self.policy_kwargs.update(policy_kwargs or {})
         self.device = utils.get_device(device)
 
-        self.policy = self.policy_class(**self.policy_kwargs).to(
-            self.device,
-        )  # pytype: disable=not-instantiable
+        if policy is None:
+            policy = policy_base.FeedForward32Policy(
+                observation_space=observation_space,
+                action_space=action_space,
+                # Set lr_schedule to max value to force error if policy.optimizer
+                # is used by mistake (should use self.optimizer instead).
+                lr_schedule=ConstantLRSchedule(th.finfo(th.float32).max),
+            )
+        self.policy = policy.to(self.device)
+        # TODO(adam): make policy mandatory and delete observation/action space params?
+        assert self.policy.observation_space == self.observation_space
+        assert self.policy.action_space == self.action_space
+
         optimizer_kwargs = optimizer_kwargs or {}
         self.optimizer = optimizer_cls(
             self.policy.parameters(),

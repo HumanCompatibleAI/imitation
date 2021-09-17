@@ -6,7 +6,7 @@ Can be used as a CLI script, or the `train_and_plot` function can be called dire
 import logging
 import os
 import os.path as osp
-from typing import Any, Mapping, Optional
+from typing import Any, Mapping, Optional, Type
 
 import torch as th
 from sacred.observers import FileStorageObserver
@@ -14,6 +14,7 @@ from sacred.observers import FileStorageObserver
 from imitation.algorithms.adversarial import airl, gail
 from imitation.data import rollout, types
 from imitation.policies import serialize
+from imitation.rewards import reward_nets
 from imitation.scripts.config.train_adversarial import train_adversarial_ex
 from imitation.util import logger
 from imitation.util import sacred as sacred_util
@@ -53,6 +54,8 @@ def train_adversarial(
     checkpoint_interval: int,
     gen_batch_size: int,
     init_rl_kwargs: Mapping,
+    reward_net_cls: Optional[Type[reward_nets.RewardNet]],
+    reward_net_kwargs: Optional[Mapping[str, Any]],
     algorithm_kwargs: Mapping[str, Mapping],
     discrim_net_kwargs: Mapping[str, Mapping],
 ) -> Mapping[str, Mapping[str, float]]:
@@ -178,6 +181,9 @@ def train_adversarial(
         **init_rl_kwargs,
     )
 
+    # TODO(adam): eliminate discrim_kwargs and roll into final_algorithm_kwargs?
+    # (how many parameters does a discriminator really need?)
+    # TODO(adam): construct rewardnet to feed into discrim_net as needed...
     discrim_kwargs_shared = discrim_net_kwargs.get("shared", {})
     discrim_kwargs_algo = discrim_net_kwargs.get(algorithm, {})
     final_discrim_kwargs = dict(**discrim_kwargs_shared, **discrim_kwargs_algo)
@@ -188,6 +194,14 @@ def train_adversarial(
         **algorithm_kwargs_shared,
         **algorithm_kwargs_algo,
     )
+
+    if reward_net_cls is not None:
+        reward_net_kwargs = reward_net_kwargs or {}
+        reward_net = reward_net_cls(
+            venv.observation_space,
+            venv.action_space,
+            **reward_net_kwargs,
+        )
 
     if algorithm.lower() == "gail":
         algo_cls = gail.GAIL
@@ -201,6 +215,7 @@ def train_adversarial(
         demonstrations=expert_transitions,
         gen_algo=gen_algo,
         log_dir=log_dir,
+        reward_net=reward_net,
         discrim_kwargs=final_discrim_kwargs,
         custom_logger=custom_logger,
         **final_algorithm_kwargs,

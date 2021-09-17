@@ -43,6 +43,10 @@ def train_defaults():
     # Kwargs for initializing {GAIL,AIRL}DiscrimNet
     discrim_net_kwargs = dict(shared={}, airl={}, gail={})
 
+    # Custom reward network
+    reward_net_cls = None
+    reward_net_kwargs = None
+
     # Modifies the __init__ arguments for the imitation policy
     init_rl_kwargs = dict(
         policy_class=base.FeedForward32Policy,

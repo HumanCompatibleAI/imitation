@@ -3,12 +3,12 @@
 import logging
 import os.path as osp
 import pathlib
-from typing import Mapping, Optional, Sequence, Type, Union
+from typing import Any, Mapping, Optional, Sequence, Type, Union
 
 import gym
 import torch as th
 from sacred.observers import FileStorageObserver
-from stable_baselines3.common import vec_env
+from stable_baselines3.common import policies, vec_env
 
 from imitation.algorithms import bc
 from imitation.data import rollout, types
@@ -20,17 +20,19 @@ from imitation.util import sacred as sacred_util
 @train_bc_ex.main
 def train_bc(
     _run,
+    # TODO(shwang): Doesn't currently accept Iterable[Mapping] or
+    #  types.TransitionsMinimal, unlike BC.__init__ or BC.set_expert_data_loader().
     expert_data_src: Union[types.AnyPath, Sequence[types.Trajectory]],
     expert_data_src_format: str,
     n_expert_demos: Optional[int],
     observation_space: gym.Space,
     action_space: gym.Space,
     batch_size: int,
-    # TODO(shwang): Doesn't currently accept Iterable[Mapping] or
-    #  types.TransitionsMinimal, unlike BC.__init__ or BC.set_expert_data_loader().
     n_epochs: Optional[int],
     n_batches: Optional[int],
     l2_weight: float,
+    policy_cls: Type[policies.BasePolicy],
+    policy_kwargs: Mapping[str, Any],
     optimizer_cls: Type[th.optim.Optimizer],
     optimizer_kwargs: dict,
     log_dir: types.AnyPath,
@@ -58,6 +60,8 @@ def train_bc(
         n_batches: The total number of training batches. Set exactly one of n_epochs and
             n_batches.
         l2_weight: L2 regularization weight.
+        policy_cls: Class of BC policy to initialize.
+        policy_kwargs: Constructor keyword arguments for BC policy.
         optimizer_cls: The Torch optimizer class used for BC updates.
         optimizer_kwargs: keyword arguments, excluding learning rate and
               weight decay, for optimiser construction.
@@ -112,9 +116,15 @@ def train_bc(
             )
         expert_trajs = expert_trajs[:n_expert_demos]
 
+    policy = policy_cls(
+        observation_space=observation_space,
+        action_space=action_space,
+        **policy_kwargs,
+    )
     model = bc.BC(
         observation_space=observation_space,
         action_space=action_space,
+        policy=policy,
         demonstrations=expert_trajs,
         demo_batch_size=batch_size,
         l2_weight=l2_weight,

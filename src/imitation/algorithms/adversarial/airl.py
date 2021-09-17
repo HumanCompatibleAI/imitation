@@ -1,6 +1,6 @@
 """Adversarial Inverse Reinforcement Learning (AIRL)."""
 
-from typing import Mapping, Optional, Type
+from typing import Any, Mapping, Optional
 
 import torch as th
 from stable_baselines3.common import base_class, vec_env
@@ -19,18 +19,25 @@ class DiscrimNetAIRL(common.DiscrimNet):
     where :math:`f_{\theta}` is `self.reward_net`.
     """  # noqa: E501
 
-    def __init__(self, reward_net: reward_nets.RewardNet, entropy_weight: float = 1.0):
+    def __init__(
+        self,
+        reward_net: reward_nets.RewardNet,
+        entropy_weight: float = 1.0,
+        normalize_images: bool = True,
+    ):
         r"""Builds a DiscrimNetAIRL.
 
         Args:
-            reward_net: A RewardNet, used as $f_{\theta}$ in the discriminator.
+            reward_net: A reward network, used as $f_{\theta}$ in the discriminator.
             entropy_weight: The coefficient for the entropy regularization term.
                 To match the AIRL derivation, it should be 1.0.
                 However, empirically a lower value sometimes work better.
+            normalize_images: should image observations be normalized to [0, 1]?
         """
         super().__init__(
             observation_space=reward_net.observation_space,
             action_space=reward_net.action_space,
+            normalize_images=normalize_images,
         )
         self.reward_net = reward_net
         # if the reward net has potential shaping, we disable that for testing
@@ -117,10 +124,8 @@ class AIRL(common.AdversarialTrainer):
         demo_batch_size: int,
         venv: vec_env.VecEnv,
         gen_algo: base_class.BaseAlgorithm,
-        # FIXME(sam): pass in reward net directly, not via _cls and _kwargs
-        reward_net_cls: Type[reward_nets.RewardNet] = reward_nets.BasicShapedRewardNet,
-        reward_net_kwargs: Optional[Mapping] = None,
-        discrim_kwargs: Optional[Mapping] = None,
+        reward_net: Optional[reward_nets.RewardNet] = None,
+        discrim_kwargs: Optional[Mapping[str, Any]] = None,
         **kwargs,
     ):
         """Builds an AIRL trainer.
@@ -137,12 +142,12 @@ class AIRL(common.AdversarialTrainer):
             gen_algo: The generator RL algorithm that is trained to maximize
                 discriminator confusion. Environment and logger will be set to
                 `venv` and `custom_logger`.
-            reward_net_cls: Reward network constructor. The reward network is part of
-                the AIRL discriminator.
-            reward_net_kwargs: Optional keyword arguments to use while constructing
-                the reward network.
-            discrim_kwargs: Optional keyword arguments to use while constructing the
-                DiscrimNetAIRL.
+            reward_net: Reward network; used as part of AIRL discriminator. Defaults to
+                `reward_nets.BasicShapedRewardNet` when unspecified.
+            entropy_weight: The coefficient for the entropy regularization term.
+                To match the AIRL derivation, it should be 1.0.
+                However, empirically a lower value sometimes work better.
+            discrim_kwargs: Passed through to `DiscrimNetAIRL.__init__`.
             **kwargs: Passed through to `AdversarialTrainer.__init__`.
 
         Raises:
@@ -150,19 +155,15 @@ class AIRL(common.AdversarialTrainer):
                 attribute (present in `ActorCriticPolicy`), needed to compute
                 log-probability of actions.
         """
-        # TODO(shwang): Maybe offer str=>RewardNet conversion like
-        #  stable_baselines3 does with policy classes.
-        reward_net_kwargs = reward_net_kwargs or {}
-        reward_network = reward_net_cls(
-            action_space=venv.action_space,
-            observation_space=venv.observation_space,
-            # pytype is afraid that we'll directly call RewardNet(),
-            # which is an abstract class, hence the disable.
-            **reward_net_kwargs,  # pytype: disable=not-instantiable
-        )
+        if reward_net is None:
+            reward_net = reward_nets.BasicShapedRewardNet(
+                observation_space=venv.observation_space,
+                action_space=venv.action_space,
+            )
 
         discrim_kwargs = discrim_kwargs or {}
-        discrim = DiscrimNetAIRL(reward_network, **discrim_kwargs)
+        discrim = DiscrimNetAIRL(reward_net, **discrim_kwargs)
+
         super().__init__(
             demonstrations=demonstrations,
             demo_batch_size=demo_batch_size,
