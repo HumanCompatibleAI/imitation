@@ -1,4 +1,7 @@
-"""Tests for `imitation.algorithms.adversarial`."""
+"""Tests for `imitation.algorithms.adversarial.*` algorithms.
+
+See `test_discrim_net.py` for discriminator network tests.
+"""
 
 import os
 

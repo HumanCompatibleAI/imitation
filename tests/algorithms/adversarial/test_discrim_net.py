@@ -1,4 +1,7 @@
-"""Tests `imitation.rewards.discrim_nets`."""
+"""Tests `imitation.algorithms.adversarial.*` discriminator networks.
+
+See `test_algorithms.py` for tests of algorithmic training.
+"""
 
 import contextlib
 import os
