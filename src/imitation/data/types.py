@@ -209,7 +209,7 @@ class TransitionsMinimal(th_data.Dataset):
                 f"{len(self.obs)} != {len(self.acts)}",
             )
 
-        if self.infos is not None and len(self.infos) != len(self.obs):
+        if len(self.infos) != len(self.obs):
             raise ValueError(
                 "obs and infos must have same number of timesteps: "
                 f"{len(self.obs)} != {len(self.infos)}",

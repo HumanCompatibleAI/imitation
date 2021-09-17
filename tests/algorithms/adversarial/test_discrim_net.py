@@ -49,20 +49,20 @@ def _setup_airl_undiscounted_shaped_reward_net(venv):
 
 
 def _setup_gail(venv):
-    return gail.DiscrimNetGAIL(venv.observation_space, venv.action_space)
+    reward_net = reward_nets.BasicRewardNet(
+        observation_space=venv.observation_space,
+        action_space=venv.action_space,
+    )
+    return gail.DiscrimNetGAIL(reward_net)
 
 
-def _setup_gail_provide_discriminator(venv):
-    discriminator = reward_nets.BasicRewardNet(
-        venv.action_space,
-        venv.observation_space,
+def _setup_gail_custom(venv):
+    reward_net = reward_nets.BasicRewardNet(
+        observation_space=venv.observation_space,
+        action_space=venv.action_space,
         hid_sizes=(4, 4, 4),
     )
-    return gail.DiscrimNetGAIL(
-        venv.observation_space,
-        venv.action_space,
-        discriminator,
-    )
+    return gail.DiscrimNetGAIL(reward_net)
 
 
 DISCRIM_NET_SETUPS = {
@@ -70,7 +70,7 @@ DISCRIM_NET_SETUPS = {
     "AIRL_basic_reward_net_custom_base_net": _setup_airl_basic_custom_net,
     "AIRL_unshaped_reward_net_undiscounted": _setup_airl_undiscounted_shaped_reward_net,
     "GAIL": _setup_gail,
-    "GAIL_custom_network": _setup_gail_provide_discriminator,
+    "GAIL_custom_network": _setup_gail_custom,
 }
 
 ENV_NAMES = ["FrozenLake-v1", "CartPole-v1", "Pendulum-v0"]

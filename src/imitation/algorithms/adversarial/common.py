@@ -1,12 +1,10 @@
 """Core code for adversarial imitation learning, shared between GAIL and AIRL."""
 import abc
 import dataclasses
-import functools
 import logging
 import os
 from typing import Callable, Mapping, Optional, Type
 
-import gym
 import numpy as np
 import torch as th
 import torch.utils.tensorboard as thboard
@@ -18,7 +16,7 @@ from torch.nn import functional as F
 from imitation.algorithms import base
 from imitation.data import buffer, rollout, types, wrappers
 from imitation.rewards import common as rew_common
-from imitation.rewards import common as rewards_common
+from imitation.rewards import reward_nets
 from imitation.util import logger, reward_wrapper, util
 
 
@@ -32,21 +30,15 @@ class DiscrimNet(nn.Module, abc.ABC):
 
     def __init__(
         self,
-        observation_space: gym.Space,
-        action_space: gym.Space,
-        normalize_images: bool = False,
+        reward_net: reward_nets.RewardNet,
     ):
         """Builds DiscrimNet.
 
         Args:
-            observation_space: The space observations are drawn from.
-            action_space: The space actions are drawn from.
-            normalize_images: Whether to normalize image-based inputs in preprocessing.
+            reward_net: The reward network used to compute discriminator output.
         """
         super().__init__()
-        self.observation_space = observation_space
-        self.action_space = action_space
-        self.normalize_images = normalize_images
+        self.reward_net = reward_net
 
     @abc.abstractmethod
     def logits_gen_is_high(
@@ -169,25 +161,16 @@ class DiscrimNet(nn.Module, abc.ABC):
     def _eval_reward(
         self,
         is_train: bool,
-        state: th.Tensor,
-        action: th.Tensor,
-        next_state: th.Tensor,
-        done: th.Tensor,
+        state: np.ndarray,
+        action: np.ndarray,
+        next_state: np.ndarray,
+        done: np.ndarray,
     ) -> np.ndarray:
-        (
-            state_th,
-            action_th,
-            next_state_th,
-            done_th,
-        ) = rewards_common.disc_rew_preprocess_inputs(
-            observation_space=self.observation_space,
-            action_space=self.action_space,
-            state=state,
-            action=action,
-            next_state=next_state,
-            done=done,
-            device=self.device,
-            normalize_images=self.normalize_images,
+        state_th, action_th, next_state_th, done_th = self.reward_net.preprocess(
+            state,
+            action,
+            next_state,
+            done,
         )
 
         with th.no_grad():
@@ -610,22 +593,17 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
                 log_act_prob = log_act_prob.reshape((n_samples,))
             del obs_th, acts_th  # unneeded
 
-        torchify_with_space_defaults = functools.partial(
-            util.torchify_with_space,
-            normalize_images=self.discrim_net.normalize_images,
-            device=self.discrim_net.device,
+        obs_th, acts_th, next_obs_th, dones_th = self.discrim_net.reward_net.preprocess(
+            obs,
+            acts,
+            next_obs,
+            dones,
         )
         batch_dict = {
-            "state": torchify_with_space_defaults(
-                obs,
-                self.discrim_net.observation_space,
-            ),
-            "action": torchify_with_space_defaults(acts, self.discrim_net.action_space),
-            "next_state": torchify_with_space_defaults(
-                next_obs,
-                self.discrim_net.observation_space,
-            ),
-            "done": self._torchify_array(dones),
+            "state": obs_th,
+            "action": acts_th,
+            "next_state": next_obs_th,
+            "done": dones_th,
             "labels_gen_is_one": self._torchify_array(labels_gen_is_one),
             "log_policy_act_prob": self._torchify_array(log_act_prob),
         }

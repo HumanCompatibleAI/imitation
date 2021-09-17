@@ -1,8 +1,7 @@
 """Generative Adversarial Imitation Learning (GAIL)."""
 
-from typing import Mapping, Optional
+from typing import Optional
 
-import gym
 import torch as th
 from stable_baselines3.common import base_class, vec_env
 from torch import nn
@@ -20,33 +19,17 @@ class DiscrimNetGAIL(common.DiscrimNet):
 
     def __init__(
         self,
-        observation_space: gym.Space,
-        action_space: gym.Space,
-        discrim_net: Optional[nn.Module] = None,
-        normalize_images: bool = False,
+        reward_net: reward_nets.RewardNet,
     ):
         """Construct discriminator network.
 
         Args:
-            observation_space: observation space for this environment.
-            action_space: action space for this environment:
-            discrim_net: a Torch module that takes an observation and action
-                tensor as input, then computes the logits for GAIL.
-            normalize_images: should image observations be normalized to [0, 1]?
+            reward_net: A reward network used to compute the logits for GAIL.
+                This is a bit of an abuse of terminology: the actual "reward"
+                given by GAIL is the negative logsigmoid of this output. But
+                this works as discriminator logits and reward are both scalar outputs.
         """
-        super().__init__(
-            observation_space=observation_space,
-            action_space=action_space,
-            normalize_images=normalize_images,
-        )
-
-        if discrim_net is None:
-            self.discriminator = reward_nets.BasicRewardNet(
-                action_space=action_space,
-                observation_space=observation_space,
-            )
-        else:
-            self.discriminator = discrim_net
+        super().__init__(reward_net=reward_net)
 
     def logits_gen_is_high(
         self,
@@ -57,19 +40,9 @@ class DiscrimNetGAIL(common.DiscrimNet):
         log_policy_act_prob: Optional[th.Tensor] = None,
     ) -> th.Tensor:
         """Compute the discriminator's logits for each state-action sample."""
-        logits = self.discriminator(state, action, next_state, done)
+        logits = self.reward_net(state, action, next_state, done)
+        assert logits.shape == state.shape[:1]
         return logits
-
-    def reward_test(
-        self,
-        state: th.Tensor,
-        action: th.Tensor,
-        next_state: th.Tensor,
-        done: th.Tensor,
-    ) -> th.Tensor:
-        rew = self.reward_train(state, action, next_state, done)
-        assert rew.shape == state.shape[:1]
-        return rew
 
     def reward_train(
         self,
@@ -82,6 +55,8 @@ class DiscrimNetGAIL(common.DiscrimNet):
         rew = -F.logsigmoid(logits)
         assert rew.shape == state.shape[:1]
         return rew
+
+    reward_test = reward_train
 
 
 class GAIL(common.AdversarialTrainer):
@@ -98,7 +73,6 @@ class GAIL(common.AdversarialTrainer):
         venv: vec_env.VecEnv,
         gen_algo: base_class.BaseAlgorithm,
         reward_net: Optional[nn.Module] = None,
-        discrim_kwargs: Optional[Mapping] = None,
         **kwargs,
     ):
         """Generative Adversarial Imitation Learning.
@@ -117,16 +91,14 @@ class GAIL(common.AdversarialTrainer):
                 `venv` and `custom_logger`.
             reward_net: a Torch module that takes an observation and action
                 tensor as input, then computes the logits for GAIL.
-            discrim_kwargs: Passed through to `DiscrimNetGAIL.__init__`.
             **kwargs: Passed through to `AdversarialTrainer.__init__`.
         """
-        discrim_kwargs = discrim_kwargs or {}
-        discrim = DiscrimNetGAIL(
-            venv.observation_space,
-            venv.action_space,
-            discrim_net=reward_net,
-            **discrim_kwargs,
-        )
+        if reward_net is None:
+            reward_net = reward_nets.BasicRewardNet(
+                observation_space=venv.observation_space,
+                action_space=venv.action_space,
+            )
+        discrim = DiscrimNetGAIL(reward_net=reward_net)
         super().__init__(
             demonstrations=demonstrations,
             demo_batch_size=demo_batch_size,

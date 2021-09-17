@@ -10,7 +10,6 @@ from stable_baselines3.common import preprocessing
 from torch import nn
 
 import imitation.rewards.common as rewards_common
-from imitation.data import types
 from imitation.util import networks
 
 
@@ -52,7 +51,10 @@ class RewardNet(nn.Module, abc.ABC):
 
     def preprocess(
         self,
-        transitions: types.Transitions,
+        state: np.ndarray,
+        action: np.ndarray,
+        next_state: np.ndarray,
+        done: np.ndarray,
     ) -> Tuple[th.Tensor, th.Tensor, th.Tensor, th.Tensor]:
         """Preprocess a batch of input transitions and convert it to PyTorch tensors.
 
@@ -60,7 +62,14 @@ class RewardNet(nn.Module, abc.ABC):
         so a typical usage would be ``model(*model.preprocess(transitions))``.
 
         Args:
-            transitions: The transitions to preprocess.
+            state: The observation input. Its shape is
+                `(batch_size,) + observation_space.shape`.
+            action: The action input. Its shape is
+                `(batch_size,) + action_space.shape`. The None dimension is
+                expected to be the same as None dimension from `obs_input`.
+            next_state: The observation input. Its shape is
+                `(batch_size,) + observation_space.shape`.
+            done: Whether the episode has terminated. Its shape is `(batch_size,)`.
 
         Returns:
             Preprocessed transitions: a Tuple of tensors containing
@@ -69,10 +78,10 @@ class RewardNet(nn.Module, abc.ABC):
         return rewards_common.disc_rew_preprocess_inputs(
             observation_space=self.observation_space,
             action_space=self.action_space,
-            state=transitions.obs,
-            action=transitions.acts,
-            next_state=transitions.next_obs,
-            done=transitions.dones,
+            state=state,
+            action=action,
+            next_state=next_state,
+            done=done,
             device=self.device,
             normalize_images=self.normalize_images,
         )

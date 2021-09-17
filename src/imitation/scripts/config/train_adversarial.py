@@ -40,9 +40,6 @@ def train_defaults():
         gail={},
     )
 
-    # Kwargs for initializing {GAIL,AIRL}DiscrimNet
-    discrim_net_kwargs = dict(shared={}, airl={}, gail={})
-
     # Custom reward network
     reward_net_cls = None
     reward_net_kwargs = None
@@ -114,7 +111,7 @@ def airl():
 
 # Shared settings
 
-MUJOCO_SHARED_LOCALS = dict(discrim_net_kwargs=dict(airl=dict(entropy_weight=0.1)))
+MUJOCO_SHARED_LOCALS = dict(algorithm_kwargs=dict(airl=dict(entropy_weight=0.1)))
 
 ANT_SHARED_LOCALS = dict(
     total_timesteps=3e7,
@@ -139,7 +136,6 @@ def cartpole():
     env_name = "CartPole-v1"
     rollout_hint = "cartpole"
     algorithm_kwargs = {"shared": {"allow_variable_horizon": True}}
-    discrim_net_kwargs = {"gail": {"normalize_images": False}}
 
 
 @train_adversarial_ex.named_config
@@ -148,7 +144,6 @@ def seals_cartpole():
     env_name = "seals/CartPole-v0"
     # seals and vanilla CartPole have the same expert trajectories.
     rollout_hint = "cartpole"
-    discrim_net_kwargs = {"gail": {"normalize_images": False}}
 
 
 @train_adversarial_ex.named_config

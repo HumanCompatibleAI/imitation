@@ -1,6 +1,6 @@
 """Adversarial Inverse Reinforcement Learning (AIRL)."""
 
-from typing import Any, Mapping, Optional
+from typing import Optional
 
 import torch as th
 from stable_baselines3.common import base_class, vec_env
@@ -23,7 +23,6 @@ class DiscrimNetAIRL(common.DiscrimNet):
         self,
         reward_net: reward_nets.RewardNet,
         entropy_weight: float = 1.0,
-        normalize_images: bool = True,
     ):
         r"""Builds a DiscrimNetAIRL.
 
@@ -32,14 +31,8 @@ class DiscrimNetAIRL(common.DiscrimNet):
             entropy_weight: The coefficient for the entropy regularization term.
                 To match the AIRL derivation, it should be 1.0.
                 However, empirically a lower value sometimes work better.
-            normalize_images: should image observations be normalized to [0, 1]?
         """
-        super().__init__(
-            observation_space=reward_net.observation_space,
-            action_space=reward_net.action_space,
-            normalize_images=normalize_images,
-        )
-        self.reward_net = reward_net
+        super().__init__(reward_net=reward_net)
         # if the reward net has potential shaping, we disable that for testing
         if isinstance(reward_net, reward_nets.ShapedRewardNet):
             self.test_reward_net = reward_net.base
@@ -63,7 +56,7 @@ class DiscrimNetAIRL(common.DiscrimNet):
         reward_output_train = self.reward_net(state, action, next_state, done)
         # In Fu's AIRL paper (https://arxiv.org/pdf/1710.11248.pdf), the
         # discriminator output was given as exp(r_theta(s,a)) /
-        # (exp(r_theta(s,a)) - log pi(a|s)), with a high value corresponding to
+        # (exp(r_theta(s,a)) + log pi(a|s)), with a high value corresponding to
         # expert and a low value corresponding to generator (the opposite of
         # our convention).
         #
@@ -125,7 +118,7 @@ class AIRL(common.AdversarialTrainer):
         venv: vec_env.VecEnv,
         gen_algo: base_class.BaseAlgorithm,
         reward_net: Optional[reward_nets.RewardNet] = None,
-        discrim_kwargs: Optional[Mapping[str, Any]] = None,
+        entropy_weight: float = 1.0,
         **kwargs,
     ):
         """Builds an AIRL trainer.
@@ -147,7 +140,6 @@ class AIRL(common.AdversarialTrainer):
             entropy_weight: The coefficient for the entropy regularization term.
                 To match the AIRL derivation, it should be 1.0.
                 However, empirically a lower value sometimes work better.
-            discrim_kwargs: Passed through to `DiscrimNetAIRL.__init__`.
             **kwargs: Passed through to `AdversarialTrainer.__init__`.
 
         Raises:
@@ -161,9 +153,7 @@ class AIRL(common.AdversarialTrainer):
                 action_space=venv.action_space,
             )
 
-        discrim_kwargs = discrim_kwargs or {}
-        discrim = DiscrimNetAIRL(reward_net, **discrim_kwargs)
-
+        discrim = DiscrimNetAIRL(reward_net, entropy_weight=entropy_weight)
         super().__init__(
             demonstrations=demonstrations,
             demo_batch_size=demo_batch_size,
@@ -172,7 +162,6 @@ class AIRL(common.AdversarialTrainer):
             gen_algo=gen_algo,
             **kwargs,
         )
-
         if not hasattr(self.gen_algo.policy, "evaluate_actions"):
             raise TypeError(
                 "AIRL needs a stochastic policy to compute the discriminator output.",

@@ -181,13 +181,6 @@ def train_adversarial(
         **init_rl_kwargs,
     )
 
-    # TODO(adam): eliminate discrim_kwargs and roll into final_algorithm_kwargs?
-    # (how many parameters does a discriminator really need?)
-    # TODO(adam): construct rewardnet to feed into discrim_net as needed...
-    discrim_kwargs_shared = discrim_net_kwargs.get("shared", {})
-    discrim_kwargs_algo = discrim_net_kwargs.get(algorithm, {})
-    final_discrim_kwargs = dict(**discrim_kwargs_shared, **discrim_kwargs_algo)
-
     algorithm_kwargs_shared = algorithm_kwargs.get("shared", {})
     algorithm_kwargs_algo = algorithm_kwargs.get(algorithm, {})
     final_algorithm_kwargs = dict(
@@ -217,7 +210,6 @@ def train_adversarial(
         gen_algo=gen_algo,
         log_dir=log_dir,
         reward_net=reward_net,
-        discrim_kwargs=final_discrim_kwargs,
         custom_logger=custom_logger,
         **final_algorithm_kwargs,
     )

@@ -665,7 +665,13 @@ class CrossEntropyRewardTrainer(RewardTrainer):
         return th.nn.functional.binary_cross_entropy(probs, preferences_th)
 
     def _rewards(self, transitions: Transitions) -> th.Tensor:
-        return self.model(*self.model.preprocess(transitions))
+        preprocessed = self.model.preprocess(
+            state=transitions.obs,
+            action=transitions.acts,
+            next_state=transitions.next_obs,
+            done=transitions.dones,
+        )
+        return self.model(*preprocessed)
 
     def _probability(self, rews1: th.Tensor, rews2: th.Tensor) -> th.Tensor:
         """Computes the Boltzmann rational probability that the first trajectory is best.
