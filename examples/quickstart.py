@@ -7,7 +7,8 @@ import tempfile
 import seals  # noqa: F401
 import stable_baselines3 as sb3
 
-from imitation.algorithms import adversarial, bc
+from imitation.algorithms import bc
+from imitation.algorithms.adversarial import airl, gail
 from imitation.data import rollout
 from imitation.util import logger, util
 
@@ -45,7 +46,7 @@ bc_trainer.train(n_epochs=1)
 # GAIL, and AIRL also accept as `demonstrations` any Pytorch-style DataLoader that
 # iterates over dictionaries containing observations, actions, and next_observations.
 gail_logger = logger.configure(tempdir_path / "GAIL/")
-gail_trainer = adversarial.GAIL(
+gail_trainer = gail.GAIL(
     venv=venv,
     demonstrations=transitions,
     demo_batch_size=32,
@@ -56,7 +57,7 @@ gail_trainer.train(total_timesteps=2048)
 
 # Train AIRL on expert data.
 airl_logger = logger.configure(tempdir_path / "AIRL/")
-airl_trainer = adversarial.AIRL(
+airl_trainer = airl.AIRL(
     venv=venv,
     demonstrations=transitions,
     demo_batch_size=32,

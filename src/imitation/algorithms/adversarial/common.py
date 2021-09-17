@@ -1,22 +1,205 @@
-"""Module for adversarial imitation learning algorithms, GAIL and AIRL."""
-
+"""Core code for adversarial imitation learning, shared between GAIL and AIRL."""
+import abc
 import dataclasses
 import functools
 import logging
 import os
 from typing import Callable, Mapping, Optional, Type
 
+import gym
 import numpy as np
 import torch as th
 import torch.utils.tensorboard as thboard
 import tqdm
 from stable_baselines3.common import base_class, vec_env
+from torch import nn
+from torch.nn import functional as F
 
 from imitation.algorithms import base
 from imitation.data import buffer, rollout, types, wrappers
 from imitation.rewards import common as rew_common
-from imitation.rewards import discrim_nets, reward_nets
+from imitation.rewards import common as rewards_common
 from imitation.util import logger, reward_wrapper, util
+
+
+class DiscrimNet(nn.Module, abc.ABC):
+    """Abstract base class for discriminator, used in AIRL and GAIL.
+
+    `self.forward()` is not implemented for this `th.nn.Module` subclass.
+    We subclass `Module` mainly to get pretty-printing of network internals via
+    `print(self)`.
+    """
+
+    def __init__(
+        self,
+        observation_space: gym.Space,
+        action_space: gym.Space,
+        normalize_images: bool = False,
+    ):
+        """Builds DiscrimNet.
+
+        Args:
+            observation_space: The space observations are drawn from.
+            action_space: The space actions are drawn from.
+            normalize_images: Whether to normalize image-based inputs in preprocessing.
+        """
+        super().__init__()
+        self.observation_space = observation_space
+        self.action_space = action_space
+        self.normalize_images = normalize_images
+
+    @abc.abstractmethod
+    def logits_gen_is_high(
+        self,
+        state: th.Tensor,
+        action: th.Tensor,
+        next_state: th.Tensor,
+        done: th.Tensor,
+        log_policy_act_prob: Optional[th.Tensor] = None,
+    ) -> th.Tensor:
+        """Compute the discriminator's logits for each state-action sample.
+
+        A high value corresponds to predicting generator, and a low value corresponds to
+        predicting expert.
+
+        Args:
+            state: state at time t, of shape `(batch_size,) + state_shape`.
+            action: action taken at time t, of shape `(batch_size,) + action_shape`.
+            next_state: state at time t+1, of shape `(batch_size,) + state_shape`.
+            done: binary episode completion flag after action at time t,
+                of shape `(batch_size,)`.
+            log_policy_act_prob: log probability of generator policy taking
+                `action` at time t.
+
+        Returns:
+            Discriminator logits of shape `(batch_size,)`. A high output indicates a
+            generator-like transition.
+        """  # noqa: DAR202
+
+    @property
+    def device(self) -> th.device:
+        """Heuristic to determine which device this module is on."""
+        try:
+            first_param = next(self.parameters())
+            return first_param.device
+        except StopIteration:
+            # if the model has no parameters, we use the CPU
+            return th.device("cpu")
+
+    @abc.abstractmethod
+    def reward_test(
+        self,
+        state: th.Tensor,
+        action: th.Tensor,
+        next_state: th.Tensor,
+        done: th.Tensor,
+    ) -> th.Tensor:
+        """Test-time reward for given states/actions."""
+
+    @abc.abstractmethod
+    def reward_train(
+        self,
+        state: th.Tensor,
+        action: th.Tensor,
+        next_state: th.Tensor,
+        done: th.Tensor,
+    ) -> th.Tensor:
+        """Train-time reward for given states/actions."""
+
+    def predict_reward_train(
+        self,
+        state: np.ndarray,
+        action: np.ndarray,
+        next_state: np.ndarray,
+        done: np.ndarray,
+    ) -> np.ndarray:
+        """Vectorized reward for training an imitation learning algorithm.
+
+        Args:
+            state: The observation input. Its shape is
+                `(batch_size,) + observation_space.shape`.
+            action: The action input. Its shape is
+                `(batch_size,) + action_space.shape`. The None dimension is
+                expected to be the same as None dimension from `obs_input`.
+            next_state: The observation input. Its shape is
+                `(batch_size,) + observation_space.shape`.
+            done: Whether the episode has terminated. Its shape is `(batch_size,)`.
+
+        Returns:
+            The rewards of shape `(batch_size,)`.
+        """
+        return self._eval_reward(
+            is_train=True,
+            state=state,
+            action=action,
+            next_state=next_state,
+            done=done,
+        )
+
+    def predict_reward_test(
+        self,
+        state: np.ndarray,
+        action: np.ndarray,
+        next_state: np.ndarray,
+        done: np.ndarray,
+    ) -> np.ndarray:
+        """Vectorized reward for training an expert during transfer learning.
+
+        Args:
+            state: The observation input. Its shape is
+                `(batch_size,) + observation_space.shape`.
+            action: The action input. Its shape is
+                `(batch_size,) + action_space.shape`. The None dimension is
+                expected to be the same as None dimension from `obs_input`.
+            next_state: The observation input. Its shape is
+                `(batch_size,) + observation_space.shape`.
+            done: Whether the episode has terminated. Its shape is `(batch_size,)`.
+
+        Returns:
+            The rewards. Its shape is `(batch_size,)`.
+        """
+        return self._eval_reward(
+            is_train=False,
+            state=state,
+            action=action,
+            next_state=next_state,
+            done=done,
+        )
+
+    def _eval_reward(
+        self,
+        is_train: bool,
+        state: th.Tensor,
+        action: th.Tensor,
+        next_state: th.Tensor,
+        done: th.Tensor,
+    ) -> np.ndarray:
+        (
+            state_th,
+            action_th,
+            next_state_th,
+            done_th,
+        ) = rewards_common.disc_rew_preprocess_inputs(
+            observation_space=self.observation_space,
+            action_space=self.action_space,
+            state=state,
+            action=action,
+            next_state=next_state,
+            done=done,
+            device=self.device,
+            normalize_images=self.normalize_images,
+        )
+
+        with th.no_grad():
+            if is_train:
+                rew_th = self.reward_train(state_th, action_th, next_state_th, done_th)
+            else:
+                rew_th = self.reward_test(state_th, action_th, next_state_th, done_th)
+
+        rew = rew_th.detach().cpu().numpy().flatten()
+        assert rew.shape == (len(state),)
+
+        return rew
 
 
 class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
@@ -36,7 +219,7 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
     If `debug_use_ground_truth=True` was passed into the initializer then
     `self.venv_train` is the same as `self.venv`."""
 
-    discrim_net: discrim_nets.DiscrimNet
+    discrim_net: DiscrimNet
     """The discriminator network."""
 
     def __init__(
@@ -45,7 +228,7 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
         demonstrations: base.AnyTransitions,
         demo_batch_size: int,
         venv: vec_env.VecEnv,
-        discrim_net: discrim_nets.DiscrimNet,
+        discrim_net: DiscrimNet,
         gen_algo: base_class.BaseAlgorithm,
         n_disc_updates_per_round: int = 2,
         log_dir: str = "output/",
@@ -234,7 +417,10 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
                 batch["done"],
                 batch["log_policy_act_prob"],
             )
-            loss = self.discrim_net.disc_loss(disc_logits, batch["labels_gen_is_one"])
+            loss = F.binary_cross_entropy_with_logits(
+                disc_logits,
+                batch["labels_gen_is_one"].float(),
+            )
 
             # do gradient step
             self._disc_opt.zero_grad()
@@ -330,7 +516,7 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
 
     def _torchify_array(self, ndarray: Optional[np.ndarray]) -> Optional[th.Tensor]:
         if ndarray is not None:
-            return th.as_tensor(ndarray, device=self.discrim_net.device())
+            return th.as_tensor(ndarray, device=self.discrim_net.device)
 
     def _make_disc_train_batch(
         self,
@@ -427,7 +613,7 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
         torchify_with_space_defaults = functools.partial(
             util.torchify_with_space,
             normalize_images=self.discrim_net.normalize_images,
-            device=self.discrim_net.device(),
+            device=self.discrim_net.device,
         )
         batch_dict = {
             "state": torchify_with_space_defaults(
@@ -445,127 +631,3 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
         }
 
         return batch_dict
-
-
-class GAIL(AdversarialTrainer):
-    """Generative Adversarial Imitation Learning (`GAIL`_).
-
-    .. _GAIL: https://arxiv.org/abs/1606.03476
-    """
-
-    def __init__(
-        self,
-        *,
-        demonstrations: base.AnyTransitions,
-        demo_batch_size: int,
-        venv: vec_env.VecEnv,
-        gen_algo: base_class.BaseAlgorithm,
-        discrim_kwargs: Optional[Mapping] = None,
-        **kwargs,
-    ):
-        """Generative Adversarial Imitation Learning.
-
-        Args:
-            demonstrations: Demonstrations from an expert (optional). Transitions
-                expressed directly as a `types.TransitionsMinimal` object, a sequence
-                of trajectories, or an iterable of transition batches (mappings from
-                keywords to arrays containing observations, etc).
-            demo_batch_size: The number of samples in each batch of expert data. The
-                discriminator batch size is twice this number because each discriminator
-                batch contains a generator sample for every expert sample.
-            venv: The vectorized environment to train in.
-            gen_algo: The generator RL algorithm that is trained to maximize
-                discriminator confusion. Environment and logger will be set to
-                `venv` and `custom_logger`.
-            discrim_kwargs: Optional keyword arguments to use while constructing the
-                DiscrimNetGAIL.
-            **kwargs: Passed through to `AdversarialTrainer.__init__`.
-        """
-        discrim_kwargs = discrim_kwargs or {}
-        discrim = discrim_nets.DiscrimNetGAIL(
-            venv.observation_space,
-            venv.action_space,
-            **discrim_kwargs,
-        )
-        super().__init__(
-            demonstrations=demonstrations,
-            demo_batch_size=demo_batch_size,
-            venv=venv,
-            discrim_net=discrim,
-            gen_algo=gen_algo,
-            **kwargs,
-        )
-
-
-class AIRL(AdversarialTrainer):
-    """Adversarial Inverse Reinforcement Learning (`AIRL`_).
-
-    .. _AIRL: https://arxiv.org/abs/1710.11248
-    """
-
-    def __init__(
-        self,
-        *,
-        demonstrations: base.AnyTransitions,
-        demo_batch_size: int,
-        venv: vec_env.VecEnv,
-        gen_algo: base_class.BaseAlgorithm,
-        # FIXME(sam): pass in reward net directly, not via _cls and _kwargs
-        reward_net_cls: Type[reward_nets.RewardNet] = reward_nets.BasicShapedRewardNet,
-        reward_net_kwargs: Optional[Mapping] = None,
-        discrim_kwargs: Optional[Mapping] = None,
-        **kwargs,
-    ):
-        """Builds an AIRL trainer.
-
-        Args:
-            demonstrations: Demonstrations from an expert (optional). Transitions
-                expressed directly as a `types.TransitionsMinimal` object, a sequence
-                of trajectories, or an iterable of transition batches (mappings from
-                keywords to arrays containing observations, etc).
-            demo_batch_size: The number of samples in each batch of expert data. The
-                discriminator batch size is twice this number because each discriminator
-                batch contains a generator sample for every expert sample.
-            venv: The vectorized environment to train in.
-            gen_algo: The generator RL algorithm that is trained to maximize
-                discriminator confusion. Environment and logger will be set to
-                `venv` and `custom_logger`.
-            reward_net_cls: Reward network constructor. The reward network is part of
-                the AIRL discriminator.
-            reward_net_kwargs: Optional keyword arguments to use while constructing
-                the reward network.
-            discrim_kwargs: Optional keyword arguments to use while constructing the
-                DiscrimNetAIRL.
-            **kwargs: Passed through to `AdversarialTrainer.__init__`.
-
-        Raises:
-            TypeError: If `gen_algo.policy` does not have an `evaluate_actions`
-                attribute (present in `ActorCriticPolicy`), needed to compute
-                log-probability of actions.
-        """
-        # TODO(shwang): Maybe offer str=>RewardNet conversion like
-        #  stable_baselines3 does with policy classes.
-        reward_net_kwargs = reward_net_kwargs or {}
-        reward_network = reward_net_cls(
-            action_space=venv.action_space,
-            observation_space=venv.observation_space,
-            # pytype is afraid that we'll directly call RewardNet(),
-            # which is an abstract class, hence the disable.
-            **reward_net_kwargs,  # pytype: disable=not-instantiable
-        )
-
-        discrim_kwargs = discrim_kwargs or {}
-        discrim = discrim_nets.DiscrimNetAIRL(reward_network, **discrim_kwargs)
-        super().__init__(
-            demonstrations=demonstrations,
-            demo_batch_size=demo_batch_size,
-            venv=venv,
-            discrim_net=discrim,
-            gen_algo=gen_algo,
-            **kwargs,
-        )
-
-        if not hasattr(self.gen_algo.policy, "evaluate_actions"):
-            raise TypeError(
-                "AIRL needs a stochastic policy to compute the discriminator output.",
-            )

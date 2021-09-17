@@ -11,7 +11,7 @@ from typing import Any, Mapping, Optional
 import torch as th
 from sacred.observers import FileStorageObserver
 
-from imitation.algorithms import adversarial
+from imitation.algorithms.adversarial import airl, gail
 from imitation.data import rollout, types
 from imitation.policies import serialize
 from imitation.scripts.config.train_adversarial import train_adversarial_ex
@@ -190,9 +190,9 @@ def train_adversarial(
     )
 
     if algorithm.lower() == "gail":
-        algo_cls = adversarial.GAIL
+        algo_cls = gail.GAIL
     elif algorithm.lower() == "airl":
-        algo_cls = adversarial.AIRL
+        algo_cls = airl.AIRL
     else:
         raise ValueError(f"Invalid value algorithm={algorithm}.")
 

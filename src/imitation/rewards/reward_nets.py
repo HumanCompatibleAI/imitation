@@ -139,7 +139,7 @@ class RewardNet(nn.Module, abc.ABC):
             return first_param.dtype
         except StopIteration:
             # if the model has no parameters, default to float32
-            return th.float32
+            return th.get_default_dtype()
 
 
 class ShapedRewardNet(RewardNet):

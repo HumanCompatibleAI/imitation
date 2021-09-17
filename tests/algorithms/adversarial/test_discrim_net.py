@@ -1,4 +1,7 @@
-"""Tests `imitation.rewards.discrim_nets`."""
+"""Tests `imitation.algorithms.adversarial.*` discriminator networks.
+
+See `test_algorithms.py` for tests of algorithmic training.
+"""
 
 import contextlib
 import os
@@ -8,15 +11,16 @@ import pytest
 import torch as th
 from stable_baselines3.common import vec_env
 
+from imitation.algorithms.adversarial import airl, common, gail
 from imitation.data import rollout
 from imitation.policies import base
-from imitation.rewards import discrim_nets, reward_nets
+from imitation.rewards import reward_nets
 from imitation.util import util
 
 
 def _setup_airl_basic(venv):
     reward_net = reward_nets.BasicRewardNet(venv.observation_space, venv.action_space)
-    return discrim_nets.DiscrimNetAIRL(reward_net)
+    return airl.DiscrimNetAIRL(reward_net)
 
 
 def _setup_airl_basic_custom_net(venv):
@@ -29,7 +33,7 @@ def _setup_airl_basic_custom_net(venv):
         use_done=False,
         hid_sizes=(32, 32),
     )
-    return discrim_nets.DiscrimNetAIRL(reward_net)
+    return airl.DiscrimNetAIRL(reward_net)
 
 
 def _setup_airl_undiscounted_shaped_reward_net(venv):
@@ -41,20 +45,20 @@ def _setup_airl_undiscounted_shaped_reward_net(venv):
         use_done=True,
         potential_hid_sizes=(32, 32),
     )
-    return discrim_nets.DiscrimNetAIRL(reward_net)
+    return airl.DiscrimNetAIRL(reward_net)
 
 
 def _setup_gail(venv):
-    return discrim_nets.DiscrimNetGAIL(venv.observation_space, venv.action_space)
+    return gail.DiscrimNetGAIL(venv.observation_space, venv.action_space)
 
 
 def _setup_gail_provide_discriminator(venv):
-    discriminator = discrim_nets.ActObsMLP(
+    discriminator = reward_nets.BasicRewardNet(
         venv.action_space,
         venv.observation_space,
         hid_sizes=(4, 4, 4),
     )
-    return discrim_nets.DiscrimNetGAIL(
+    return gail.DiscrimNetGAIL(
         venv.observation_space,
         venv.action_space,
         discriminator,
@@ -83,7 +87,7 @@ def venv(env_name):
 
 
 @pytest.fixture(params=list(DISCRIM_NET_SETUPS.keys()))
-def discrim_net(request, venv) -> discrim_nets.DiscrimNet:
+def discrim_net(request, venv) -> common.DiscrimNet:
     """Fixture for every DiscrimNet in DISCRIM_NET_SETUPS.
 
     The `params` argument of the fixture decorator is over the keys of
@@ -103,7 +107,7 @@ def discrim_net(request, venv) -> discrim_nets.DiscrimNet:
 
 @pytest.mark.parametrize("n_timesteps", [2, 4, 10])
 def test_logits_gen_is_high_log_policy_act_prob(
-    discrim_net: discrim_nets.DiscrimNet,
+    discrim_net: common.DiscrimNet,
     venv: vec_env.VecEnv,
     n_timesteps: int,
 ):
@@ -130,10 +134,7 @@ def test_logits_gen_is_high_log_policy_act_prob(
     log_act_prob_non_none = th.as_tensor(np.random.rand(n_timesteps))
 
     for log_act_prob in [None, log_act_prob_non_none]:
-        if (
-            isinstance(discrim_net, discrim_nets.DiscrimNetAIRL)
-            and log_act_prob is None
-        ):
+        if isinstance(discrim_net, airl.DiscrimNetAIRL) and log_act_prob is None:
             maybe_error_ctx = pytest.raises(TypeError, match="Non-None.*required.*")
         else:
             maybe_error_ctx = contextlib.nullcontext()
