@@ -9,7 +9,10 @@ from imitation.envs.resettable_env import TabularModelEnv
 
 
 def make_random_trans_mat(
-    n_states, n_actions, max_branch_factor, rand_state=np.random,
+    n_states,
+    n_actions,
+    max_branch_factor,
+    rand_state=np.random,
 ) -> np.ndarray:
     """Make a 'random' transition matrix.
 
