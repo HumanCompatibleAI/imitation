@@ -58,6 +58,13 @@ class RewardNet(nn.Module, abc.ABC):
 
         The output of this function is suitable for its forward pass,
         so a typical usage would be ``model(*model.preprocess(transitions))``.
+
+        Args:
+            transitions: The transitions to preprocess.
+
+        Returns:
+            Preprocessed transitions: a Tuple of tensors containing
+            observations, actions, next observations and dones.
         """
         return rewards_common.disc_rew_preprocess_inputs(
             observation_space=self.observation_space,
@@ -229,13 +236,13 @@ class BasicRewardNet(RewardNet):
         """Builds reward MLP.
 
         Args:
-          observation_space: The observation space.
-          action_space: The action space.
-          use_state: should the current state be included as an input to the MLP?
-          use_action: should the current action be included as an input to the MLP?
-          use_next_state: should the next state be included as an input to the MLP?
-          use_done: should the "done" flag be included as an input to the MLP?
-          kwargs: passed straight through to `build_mlp`.
+            observation_space: The observation space.
+            action_space: The action space.
+            use_state: should the current state be included as an input to the MLP?
+            use_action: should the current action be included as an input to the MLP?
+            use_next_state: should the next state be included as an input to the MLP?
+            use_done: should the "done" flag be included as an input to the MLP?
+            kwargs: passed straight through to `build_mlp`.
         """
         super().__init__(observation_space, action_space)
         combined_size = 0
@@ -322,19 +329,20 @@ class BasicShapedRewardNet(ShapedRewardNet):
         """Builds a simple shaped reward network.
 
         Args:
-          observation_space: The observation space.
-          action_space: The action space.
-          reward_hid_sizes: sequence of widths for the hidden layers
-            of the base reward MLP.
-          potential_hid_sizes: sequence of widths for the hidden layers
-            of the potential MLP.
-          use_state: should the current state be included as an input to the reward MLP?
-          use_action: should the current action be included as an input
-            to the reward MLP?
-          use_next_state: should the next state be included as an input
-            to the reward MLP?
-          use_done: should the "done" flag be included as an input to the reward MLP?
-          discount_factor: discount factor for the potential shaping.
+            observation_space: The observation space.
+            action_space: The action space.
+            reward_hid_sizes: sequence of widths for the hidden layers
+                of the base reward MLP.
+            potential_hid_sizes: sequence of widths for the hidden layers
+                of the potential MLP.
+            use_state: should the current state be included as an input
+                to the reward MLP?
+            use_action: should the current action be included as an input
+                to the reward MLP?
+            use_next_state: should the next state be included as an input
+                to the reward MLP?
+            use_done: should the "done" flag be included as an input to the reward MLP?
+            discount_factor: discount factor for the potential shaping.
         """
         base_reward_net = BasicRewardNet(
             observation_space=observation_space,

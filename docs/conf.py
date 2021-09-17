@@ -83,7 +83,7 @@ def no_namedtuple_attrib_docstring(app, what, name, obj, options, lines):
 
     Worksaround https://github.com/sphinx-doc/sphinx/issues/7353 -- adapted from
     https://chrisdown.name/2015/09/20/removing-namedtuple-docstrings-from-sphinx.html
-    """
+    """  # noqa: DAR101
     is_namedtuple_docstring = 1 <= len(lines) <= 2 and lines[0].startswith(
         "Alias for field number",
     )

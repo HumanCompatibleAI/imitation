@@ -77,11 +77,14 @@ def train_bc(
 
     Returns:
         Statistics for rollouts from the trained policy and demonstration data.
+
+    Raises:
+        ValueError: if `observation_space` or `action_space` are None.
     """
-    if action_space is None:
-        raise ValueError("action_space cannot be None")
     if observation_space is None:
         raise ValueError("observation_space cannot be None")
+    if action_space is None:
+        raise ValueError("action_space cannot be None")
 
     log_dir = pathlib.Path(log_dir)
     log_dir.mkdir(parents=True, exist_ok=True)

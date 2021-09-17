@@ -23,10 +23,7 @@ ACT_NAMES = ["left", "neutral", "right"]
 
 
 def _make_next_mc_obs(obs, acts) -> np.ndarray:
-    """Utility for calculating the MountainCar-v0 next observation s'.
-
-    Required for evaluating AIRL reward at arbitrary (s, a) points.
-    """
+    """Utility for calculating the MountainCar-v0 next observation s'."""
     env = gym.make("MountainCar-v0")
     obs = np.array(obs)
     acts = np.array(acts)

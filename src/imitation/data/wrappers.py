@@ -101,7 +101,11 @@ class BufferingWrapper(VecEnvWrapper):
     def pop_transitions(self) -> types.TransitionsWithRew:
         """Pops recorded transitions, returning them as an instance of Transitions.
 
-        Raises a RuntimeError if called when `self.n_transitions == 0`.
+        Returns:
+            All transitions recorded since the last call.
+
+        Raises:
+            RuntimeError: empty (no transitions recorded since last pop).
         """
         if self.n_transitions == 0:
             # It would be better to return an empty `Transitions`, but we would need

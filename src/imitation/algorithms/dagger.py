@@ -72,14 +72,13 @@ def reconstruct_trainer(
     """Reconstruct trainer from the latest snapshot in some working directory.
 
     Args:
-      scratch_dir: path to the working directory created by a previous run of
-        this algorithm. The directory should contain `checkpoint-latest.pt` and
-        `policy-latest.pt` files.
-      device: device on which to load the trainer.
+        scratch_dir: path to the working directory created by a previous run of
+            this algorithm. The directory should contain `checkpoint-latest.pt` and
+            `policy-latest.pt` files.
+        device: device on which to load the trainer.
 
     Returns:
-      trainer: a reconstructed `DAggerTrainer` with the same state as the
-        previously-saved one.
+        A deserialized `DAggerTrainer`.
     """
     checkpoint_path = pathlib.Path(scratch_dir, "checkpoint-latest.pt")
     return th.load(checkpoint_path, map_location=utils.get_device(device))
@@ -211,13 +210,10 @@ class InteractiveTrajectoryCollector(vec_env.VecEnvWrapper):
         robot action was used during that timestep.
 
         Args:
-          actions: the _intended_ demonstrator/expert actions for the current
-            state. This will be executed with probability `self.beta`.
-            Otherwise, a "robot" (typically a BC policy) action will be sampled
-            and executed instead via `self.get_robot_act`.
-
-        Returns:
-          next_obs, reward, done, info: unchanged output of `self.env.step()`.
+            actions: the _intended_ demonstrator/expert actions for the current
+                state. This will be executed with probability `self.beta`.
+                Otherwise, a "robot" (typically a BC policy) action will be sampled
+                and executed instead via `self.get_robot_act`.
         """
         assert self._is_reset, "call .reset() before .step()"
 
@@ -232,6 +228,13 @@ class InteractiveTrajectoryCollector(vec_env.VecEnvWrapper):
         self.venv.step_async(actual_acts)
 
     def step_wait(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray, dict]:
+        """Returns observation, reward, etc after previous `step_async()` call.
+
+        Stores the transition, and saves trajectory as demo once complete.
+
+        Returns:
+            Observation, reward, dones (is terminal?) and info dict.
+        """
         next_obs, rews, dones, infos = self.venv.step_wait()
         self._last_obs = next_obs
         fresh_demos = self.traj_accum.add_steps_and_auto_finish(

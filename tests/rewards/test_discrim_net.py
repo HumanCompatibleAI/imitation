@@ -83,12 +83,19 @@ def venv(env_name):
 
 
 @pytest.fixture(params=list(DISCRIM_NET_SETUPS.keys()))
-def discrim_net(request, venv):
+def discrim_net(request, venv) -> discrim_nets.DiscrimNet:
     """Fixture for every DiscrimNet in DISCRIM_NET_SETUPS.
 
     The `params` argument of the fixture decorator is over the keys of
     DISCRIM_NET_SETUPS rather than the values so that the tests have nice
     paramerized string names.
+
+    Args:
+        request: pytest request object.
+        venv: Environment to test in.
+
+    Returns:
+        Discriminator network for `venv`.
     """
     # If parallel=True, codecov sometimes acts up.
     return DISCRIM_NET_SETUPS[request.param](venv)

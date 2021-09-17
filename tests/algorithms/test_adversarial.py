@@ -76,6 +76,9 @@ def _parallel(request):
 
     Args:
         request: PyTest request object.
+
+    Returns:
+        True or False.
     """
     return request.param
 

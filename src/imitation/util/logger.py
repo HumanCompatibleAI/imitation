@@ -5,7 +5,7 @@ import datetime
 import logging
 import os
 import tempfile
-from typing import Optional, Sequence
+from typing import Generator, Optional, Sequence
 
 import stable_baselines3.common.logger as sb_logger
 
@@ -19,9 +19,12 @@ def _build_output_formats(
     """Build output formats for initializing a Stable Baselines Logger.
 
     Args:
-      folder: Path to directory that logs are written to.
-      format_strs: An list of output format strings. For details on available
-        output formats see `stable_baselines3.logger.make_output_format`.
+        folder: Path to directory that logs are written to.
+        format_strs: An list of output format strings. For details on available
+            output formats see `stable_baselines3.logger.make_output_format`.
+
+    Returns:
+        A sequence of output formats, one corresponding to each `format_strs`.
     """
     os.makedirs(folder, exist_ok=True)
     output_formats = [sb_logger.make_output_format(f, folder) for f in format_strs]
@@ -44,13 +47,13 @@ class HierarchicalLogger(sb_logger.Logger):
         """Builds HierarchicalLogger.
 
         Args:
-          default_logger: The default logger when not in an `accumulate_means`
-            context. Also the logger to which mean values are written to after
-            exiting from a context.
-          format_strs: A list of output format strings that should be used by
-            every Logger initialized by this class during an `AccumulatingMeans`
-            context. For details on available output formats see
-            `stable_baselines3.logger.make_output_format`.
+            default_logger: The default logger when not in an `accumulate_means`
+                context. Also the logger to which mean values are written to after
+                exiting from a context.
+            format_strs: A list of output format strings that should be used by
+                every Logger initialized by this class during an `AccumulatingMeans`
+                context. For details on available output formats see
+                `stable_baselines3.logger.make_output_format`.
         """
         self.default_logger = default_logger
         self.current_logger = None
@@ -60,7 +63,7 @@ class HierarchicalLogger(sb_logger.Logger):
         super().__init__(folder=self.default_logger.dir, output_formats=[])
 
     @contextlib.contextmanager
-    def accumulate_means(self, subdir: types.AnyPath):
+    def accumulate_means(self, subdir: types.AnyPath) -> Generator[None, None, None]:
         """Temporarily modifies this HierarchicalLogger to accumulate means values.
 
         During this context, `self.record(key, value)` writes the "raw" values in
@@ -80,11 +83,18 @@ class HierarchicalLogger(sb_logger.Logger):
         are unmodified and will go straight to the default logger.
 
         Args:
-          subdir: A string key which determines the `folder` where raw data is
-            written and temporary logging prefixes for raw and mean data. Entering
-            an `accumulate_means` context in the future with the same `subdir`
-            will safely append to logs written in this folder rather than
-            overwrite.
+            subdir: A string key which determines the `folder` where raw data is
+                written and temporary logging prefixes for raw and mean data. Entering
+                an `accumulate_means` context in the future with the same `subdir`
+                will safely append to logs written in this folder rather than
+                overwrite.
+
+        Yields:
+            None when the context is entered.
+
+        Raises:
+            RuntimeError: If this context is entered into while already in
+                an `accumulate_means` context.
         """
         if self.current_logger is not None:
             raise RuntimeError("Nested `accumulate_means` context")

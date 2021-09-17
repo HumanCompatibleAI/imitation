@@ -164,10 +164,7 @@ T = TypeVar("T")
 
 
 def endless_iter(iterable: Iterable[T]) -> Iterator[T]:
-    """Generator that endlessly yields elements from iterable.
-
-    If any call to `iter(iterable)` has no elements, then this function raises
-    ValueError.
+    """Generator that endlessly yields elements from `iterable`.
 
     >>> x = range(2)
     >>> it = endless_iter(x)
@@ -178,12 +175,19 @@ def endless_iter(iterable: Iterable[T]) -> Iterator[T]:
     >>> next(it)
     0
 
+    Args:
+        iterable: The object to endlessly iterate over.
+
+    Returns:
+        An iterator that repeats the elements in `iterable` forever.
+
+    Raises:
+        ValueError: `iterable` is empty -- the first call it to returns no elements.
     """
     try:
         next(iter(iterable))
     except StopIteration:
-        err = ValueError(f"iterable {iterable} had no elements to iterate over.")
-        raise err
+        raise ValueError(f"iterable {iterable} had no elements to iterate over.")
 
     return itertools.chain.from_iterable(itertools.repeat(iterable))
 

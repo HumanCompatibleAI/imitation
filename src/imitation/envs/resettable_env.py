@@ -52,6 +52,9 @@ class ResettableEnv(gym.Env, abc.ABC):
         """State space.
 
         Often same as observation_space, but differs in POMDPs.
+
+        Returns:
+            The state space of this environment.
         """
         return self._state_space
 
@@ -60,6 +63,9 @@ class ResettableEnv(gym.Env, abc.ABC):
         """Observation space.
 
         Return type of reset() and component of step().
+
+        Returns:
+            The observation space of this environment.
         """
         return self._observation_space
 
@@ -68,6 +74,9 @@ class ResettableEnv(gym.Env, abc.ABC):
         """Action space.
 
         Parameter type of step().
+
+        Returns:
+            The action space of this environment.
         """
         return self._action_space
 

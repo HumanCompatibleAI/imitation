@@ -57,6 +57,9 @@ def sacred_capture_use_sys():
     """Set Sacred capture mode to "sys" because default "fd" option leads to error.
 
     See https://github.com/IDSIA/sacred/issues/289.
+
+    Yields:
+        None after setting capture mode; restores it after yield.
     """
     # TODO(shwang): Stop using non-default "sys" mode once the issue is fixed.
     temp = sacred.SETTINGS["CAPTURE_MODE"]
@@ -323,10 +326,13 @@ def test_train_adversarial_algorithm_value_error(tmpdir):
         )
 
 
-def test_transfer_learning(tmpdir):
+def test_transfer_learning(tmpdir: str) -> None:
     """Transfer learning smoke test.
 
     Saves a dummy AIRL test reward, then loads it for transfer learning.
+
+    Args:
+        tmpdir: Temporary directory to save results to.
     """
     tmpdir = pathlib.Path(tmpdir)
     log_dir_train = tmpdir / "train"

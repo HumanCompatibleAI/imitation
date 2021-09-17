@@ -33,13 +33,11 @@ def trajs(venv, rand_policy):
 
 
 def fake_reward_fn(obs, acts, next_obs, steps):
-    """Debug reward function.
-
-    If the heatmap code has the correct shape and row-order, then we should expect
-    moving up the y-axis to dramatically increase reward and moving right to slightly
-    increase reward. You can confirm this effect by calling `plt.show()` inside
-    `test_smoke_make_heatmap`.
-    """
+    """Debug reward function."""
+    # If the heatmap code has the correct shape and row-order, then we should expect
+    # moving up the y-axis to dramatically increase reward and moving right to slightly
+    # increase reward. You can confirm this effect by calling `plt.show()` inside
+    # `test_smoke_make_heatmap`.
     pos, vel = obs[:, 0], obs[:, 1]
     return vel * 100 + pos
 

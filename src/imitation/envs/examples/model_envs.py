@@ -8,7 +8,9 @@ import numpy as np
 from imitation.envs.resettable_env import TabularModelEnv
 
 
-def make_random_trans_mat(n_states, n_actions, max_branch_factor, rand_state=np.random):
+def make_random_trans_mat(
+    n_states, n_actions, max_branch_factor, rand_state=np.random,
+) -> np.ndarray:
     """Make a 'random' transition matrix.
 
     Each action goes to at least `max_branch_factor` other states from the
@@ -17,6 +19,17 @@ def make_random_trans_mat(n_states, n_actions, max_branch_factor, rand_state=np.
     This roughly apes the strategy from some old Lisp code that Rich Sutton
     left on the internet (http://incompleteideas.net/RandomMDPs.html), and is
     therefore a legitimate way to generate MDPs.
+
+    Args:
+        n_states: Number of states.
+        n_actions: Number of actions.
+        max_branch_factor: Maximum number of states that can be reached from
+            each state-action pair.
+        rand_state: NumPy random state.
+
+    Returns:
+        The transition matrix `mat`, where `mat[s,a,next_s]` gives the probability
+        of transitioning to `next_s` after taking action `a` in state `s`.
     """
     out_mat = np.zeros((n_states, n_actions, n_states), dtype="float32")
     for start_state in range(n_states):
@@ -44,9 +57,15 @@ def make_random_state_dist(
         n_states: Total number of states.
         rand_state: NumPy random state.
 
+    Returns:
+        An initial state distribution that is zero at all but a uniformly random
+        chosen subset of `n_avail` states. This subset of chosen states are set to a
+        sample from the uniform distribution over the (n_avail-1) simplex, aka the
+        flat Dirichlet distribution.
+
     Raises:
         ValueError: If `n_avail` is not in the range `(0, n_states]`.
-    """
+    """  # noqa: DAR402
     assert 0 < n_avail <= n_states
     init_dist = np.zeros((n_states,))
     next_states = rand_state.choice(n_states, size=(n_avail,), replace=False)
@@ -296,10 +315,13 @@ class CliffWorld(TabularModelEnv):
         rv[0] = 1.0
         return rv
 
-    def draw_value_vec(self, D):
-        """Use matplotlib a vector of values for each state.
+    def draw_value_vec(self, D) -> None:
+        """Use matplotlib to plot a vector of values for each state.
 
         The vector could represent things like reward, occupancy measure, etc.
+
+        Args:
+            D: the vector to plot.
         """
         import matplotlib.pyplot as plt
 

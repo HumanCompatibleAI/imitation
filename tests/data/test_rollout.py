@@ -72,11 +72,14 @@ def _sample_fixed_length_trajectories(
     "policy_type",
     ["policy", "callable", "random"],
 )
-def test_complete_trajectories(policy_type):
+def test_complete_trajectories(policy_type) -> None:
     """Checks trajectories include the terminal observation.
 
     This is hidden by default by VecEnv's auto-reset; we add it back in using
     `rollout.RolloutInfoWrapper`.
+
+    Args:
+        policy_type: Kind of policy to use when generating trajectories.
     """
     min_episodes = 13
     max_acts = 5
@@ -114,7 +117,7 @@ def test_unbiased_trajectories(
     episode_lengths: Sequence[int],
     min_episodes: int,
     expected_counts: Mapping[int, int],
-):
+) -> None:
     """Checks trajectories are sampled without bias towards shorter episodes.
 
     Specifically, we create a VecEnv consisting of environments with fixed-length
@@ -127,6 +130,12 @@ def test_unbiased_trajectories(
     environments.
 
     The different test cases check each of these cases.
+
+    Args:
+        episode_lengths: The length of the episodes in each environment.
+        min_episodes: The minimum number of episodes to sample.
+        expected_counts: Mapping from episode length to expected number of episodes
+            of that length (omit if 0 episodes of that length expected).
     """
     trajectories = _sample_fixed_length_trajectories(episode_lengths, min_episodes)
     assert len(trajectories) == sum(expected_counts.values())

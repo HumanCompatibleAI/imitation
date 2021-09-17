@@ -82,17 +82,28 @@ def test_buffer(capacity, chunk_len, sample_shape) -> None:
 @pytest.mark.parametrize("act_shape", [(), (5, 4, 4)])
 @pytest.mark.parametrize("dtype", [int, np.float32])
 def test_replay_buffer(capacity, chunk_len, obs_shape, act_shape, dtype):
-    """Builds a ReplayBuffer with the provided `capacity` and inserts.
+    """Tests `ReplayBuffer` by creating a buffer, inserting data and checking samples.
 
-    `capacity * 3` observation-action-observation samples into the buffer in
+    Inserts `capacity * 3` observation-action-observation samples into the buffer in
     chunks of length `chunk_len`.
 
     All chunks are of the appropriate observation or action shape, and contain
     the value fill_val.
 
-    `len(buffer)` should increase until we reach capacity.
-    `buffer._idx` should loop between 0 and `capacity - 1`.
-    After every insertion, samples should only contain 66.6.
+    Tests that:
+
+        - len(buffer)` increases until we reach capacity.
+        - `buffer._idx` loops between 0 and `capacity - 1`.
+        - After every insertion, samples only contain samples from
+          expected range.
+
+    Args:
+        capacity: The capacity of the `ReplayBuffer`.
+        chunk_len: The length of each chunk to insert.
+        obs_shape: Shape of observations.
+        act_shape: Shape of actions.
+        dtype: dtype used for observations and actions.
+
     """
     buf = ReplayBuffer(
         capacity,

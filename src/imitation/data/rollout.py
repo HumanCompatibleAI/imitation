@@ -308,24 +308,24 @@ def generate_trajectories(
     """Generate trajectory dictionaries from a policy and an environment.
 
     Args:
-      policy: Can be any of the following:
-          - A stable_baselines3 policy or algorithm trained on the gym environment
-          - A Callable that takes an ndarray of observations and returns an ndarray
-          of corresponding actions
-          - None, in which case actions will be sampled randomly
-      venv: The vectorized environments to interact with.
-      sample_until: A function determining the termination condition.
-          It takes a sequence of trajectories, and returns a bool.
-          Most users will want to use one of `min_episodes` or `min_timesteps`.
-      deterministic_policy: If True, asks policy to deterministically return
-          action. Note the trajectories might still be non-deterministic if the
-          environment has non-determinism!
-      rng: used for shuffling trajectories.
+        policy: Can be any of the following:
+            - A stable_baselines3 policy or algorithm trained on the gym environment
+            - A Callable that takes an ndarray of observations and returns an ndarray
+              of corresponding actions
+            - None, in which case actions will be sampled randomly
+        venv: The vectorized environments to interact with.
+        sample_until: A function determining the termination condition.
+            It takes a sequence of trajectories, and returns a bool.
+            Most users will want to use one of `min_episodes` or `min_timesteps`.
+        deterministic_policy: If True, asks policy to deterministically return
+            action. Note the trajectories might still be non-deterministic if the
+            environment has non-determinism!
+        rng: used for shuffling trajectories.
 
     Returns:
-      Sequence of trajectories, satisfying `sample_until`. Additional trajectories
-      may be collected to avoid biasing process towards short episodes; the user
-      should truncate if required.
+        Sequence of trajectories, satisfying `sample_until`. Additional trajectories
+        may be collected to avoid biasing process towards short episodes; the user
+        should truncate if required.
     """
     get_actions = _policy_to_callable(policy, venv, deterministic_policy)
 
@@ -457,8 +457,12 @@ def rollout_stats(
 def mean_return(*args, **kwargs) -> float:
     """Find the mean return of a policy.
 
-    Shortcut to call `generate_trajectories` and fetch the `rollout_stats` value for
-    `'return_mean'`; see documentation for `generate_trajectories` and `rollout_stats`.
+    Args:
+        *args: Passed through to `generate_trajectories`.
+        **kwargs: Passed through to `generate_trajectories`.
+
+    Returns:
+        The mean return of the generated trajectories.
     """
     trajectories = generate_trajectories(*args, **kwargs)
     return rollout_stats(trajectories)["return_mean"]
@@ -521,21 +525,21 @@ def generate_transitions(
     """Generate obs-action-next_obs-reward tuples.
 
     Args:
-      policy: Can be any of the following:
-          - A stable_baselines3 policy or algorithm trained on the gym environment
-          - A Callable that takes an ndarray of observations and returns an ndarray
-          of corresponding actions
-          - None, in which case actions will be sampled randomly
-      venv: The vectorized environments to interact with.
-      n_timesteps: The minimum number of timesteps to sample.
-      truncate: If True, then drop any additional samples to ensure that exactly
-          `n_timesteps` samples are returned.
-      **kwargs: Passed-through to generate_trajectories.
+        policy: Can be any of the following:
+            - A stable_baselines3 policy or algorithm trained on the gym environment
+            - A Callable that takes an ndarray of observations and returns an ndarray
+            of corresponding actions
+            - None, in which case actions will be sampled randomly
+        venv: The vectorized environments to interact with.
+        n_timesteps: The minimum number of timesteps to sample.
+        truncate: If True, then drop any additional samples to ensure that exactly
+            `n_timesteps` samples are returned.
+        **kwargs: Passed-through to generate_trajectories.
 
     Returns:
-      A batch of Transitions. The length of the constituent arrays is guaranteed
-      to be at least `n_timesteps` (if specified), but may be greater unless
-      `truncate` is provided as we collect data until the end of each episode.
+        A batch of Transitions. The length of the constituent arrays is guaranteed
+        to be at least `n_timesteps` (if specified), but may be greater unless
+        `truncate` is provided as we collect data until the end of each episode.
     """
     traj = generate_trajectories(
         policy,
@@ -567,22 +571,22 @@ def rollout_and_save(
     The `.infos` field of each Trajectory is set to `None` to save space.
 
     Args:
-      path: Rollouts are saved to this path.
-      policy: Can be any of the following:
-          - A stable_baselines3 policy or algorithm trained on the gym environment
-          - A Callable that takes an ndarray of observations and returns an ndarray
-          of corresponding actions
-          - None, in which case actions will be sampled randomly
-      venv: The vectorized environments.
-      sample_until: End condition for rollout sampling.
-      unwrap: If True, then save original observations and rewards (instead of
-        potentially wrapped observations and rewards) by calling
-        `unwrap_traj()`.
-      exclude_infos: If True, then exclude `infos` from pickle by setting
-        this field to None. Excluding `infos` can save a lot of space during
-        pickles.
-      verbose: If True, then print out rollout stats before saving.
-      **kwargs: Passed through to `generate_trajectories`.
+        path: Rollouts are saved to this path.
+        policy: Can be any of the following:
+            - A stable_baselines3 policy or algorithm trained on the gym environment
+            - A Callable that takes an ndarray of observations and returns an ndarray
+              of corresponding actions
+            - None, in which case actions will be sampled randomly
+        venv: The vectorized environments.
+        sample_until: End condition for rollout sampling.
+        unwrap: If True, then save original observations and rewards (instead of
+            potentially wrapped observations and rewards) by calling
+            `unwrap_traj()`.
+        exclude_infos: If True, then exclude `infos` from pickle by setting
+            this field to None. Excluding `infos` can save a lot of space during
+            pickles.
+        verbose: If True, then print out rollout stats before saving.
+        **kwargs: Passed through to `generate_trajectories`.
     """
     trajs = generate_trajectories(policy, venv, sample_until, **kwargs)
     if unwrap:
