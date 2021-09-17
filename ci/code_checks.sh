@@ -35,7 +35,7 @@ if [ "$skipexpensive" != "true" ]; then
   # so noqa's are respected outside docstring.
   # If we got to this point, flake8 already passed, so this should
   # only find new darglint-specific errors.
-  files=$(git diff --cached --name-only ${against} | sed -e s'/^/..\//' | xargs -I'{}' find '{}' -name '*.py'$)
+  files=$(git diff --cached --name-only --diff-filter=AMR ${against} | sed -e s'/^/..\//' | xargs -I'{}' find '{}' -name '*.py'$)
   if [[ ${files} -ne "" ]]; then
     flake8 ${files}
   fi
