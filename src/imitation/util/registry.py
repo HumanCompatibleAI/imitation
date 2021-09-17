@@ -1,3 +1,5 @@
+"""Registry mapping IDs to objects, such as environments or policy loaders."""
+
 import functools
 import importlib
 from typing import Callable, Generic, Iterable, Optional, TypeVar
@@ -36,6 +38,7 @@ class Registry(Generic[T]):
     """
 
     def __init__(self):
+        """Builds empty Registry."""
         self._values = {}
         self._indirect = {}
 

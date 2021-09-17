@@ -1,3 +1,5 @@
+"""Tests for `imitation.data.buffer`."""
+
 import numpy as np
 import pytest
 
@@ -27,17 +29,26 @@ def _check_bound(end, capacity, samples, offset=0):
 @pytest.mark.parametrize("capacity", [10, 30, 60])
 @pytest.mark.parametrize("chunk_len", [1, 2, 4, 9])
 @pytest.mark.parametrize("sample_shape", [(), (1, 2), (5, 4, 4)])
-def test_buffer(capacity, chunk_len, sample_shape):
-    """Builds a Buffer with the provided `capacity` and insert `capacity * 3`
+def test_buffer(capacity, chunk_len, sample_shape) -> None:
+    """Tests `buffer.Buffer` by creating a buffer, inserting data and checking samples.
+
+    Builds a Buffer with the provided `capacity` and inserts `capacity * 3`
     samples into the buffer in chunks of shape `(chunk_len,) + sample_shape`.
 
     We always insert chunks with consecutive integers.
 
-    * `len(buffer)` should increase until we reach capacity.
-    * `buffer._idx` should loop between 0 and `capacity - 1`.
-    * After every insertion, samples should be in expected range, verifying
+    The test checks that:
+
+        - `len(buffer)` increases until we reach capacity.
+        - `buffer._idx` loops between 0 and `capacity - 1`.
+        - After every insertion, samples are in the expected range, verifying
       FIFO insertion.
-    * Mutating the inserted chunk shouldn't mutate the buffer.
+        - Mutating the inserted chunk doesn't mutate the buffer.
+
+    Args:
+        capacity: The capacity of the buffer to create.
+        chunk_len: The number of chunks to insert in one go.
+        sample_shape: The shape of the data to insert.
     """
     buf = Buffer(
         capacity,
@@ -71,17 +82,28 @@ def test_buffer(capacity, chunk_len, sample_shape):
 @pytest.mark.parametrize("act_shape", [(), (5, 4, 4)])
 @pytest.mark.parametrize("dtype", [int, np.float32])
 def test_replay_buffer(capacity, chunk_len, obs_shape, act_shape, dtype):
-    """Builds a ReplayBuffer with the provided `capacity` and inserts.
+    """Tests `ReplayBuffer` by creating a buffer, inserting data and checking samples.
 
-    `capacity * 3` observation-action-observation samples into the buffer in
+    Inserts `capacity * 3` observation-action-observation samples into the buffer in
     chunks of length `chunk_len`.
 
     All chunks are of the appropriate observation or action shape, and contain
     the value fill_val.
 
-    `len(buffer)` should increase until we reach capacity.
-    `buffer._idx` should loop between 0 and `capacity - 1`.
-    After every insertion, samples should only contain 66.6.
+    Tests that:
+
+        - len(buffer)` increases until we reach capacity.
+        - `buffer._idx` loops between 0 and `capacity - 1`.
+        - After every insertion, samples only contain samples from
+          expected range.
+
+    Args:
+        capacity: The capacity of the `ReplayBuffer`.
+        chunk_len: The length of each chunk to insert.
+        obs_shape: Shape of observations.
+        act_shape: Shape of actions.
+        dtype: dtype used for observations and actions.
+
     """
     buf = ReplayBuffer(
         capacity,

@@ -1,3 +1,5 @@
+"""Configuration settings for train_dagger, training DAgger from synthetic demos."""
+
 import pathlib
 
 import sacred

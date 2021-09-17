@@ -1,7 +1,9 @@
+"""Runs a Sacred experiment in parallel."""
+
 import collections.abc
 import copy
 import os
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Mapping, Optional, Sequence
 
 import ray
 import ray.tune
@@ -15,11 +17,11 @@ from imitation.scripts.config.parallel import parallel_ex
 def parallel(
     sacred_ex_name: str,
     run_name: str,
-    search_space: dict,
-    base_named_configs: list,
-    base_config_updates: dict,
-    resources_per_trial: dict,
-    init_kwargs: Dict[str, Any],
+    search_space: Mapping[str, Any],
+    base_named_configs: Sequence[str],
+    base_config_updates: Mapping[str, Any],
+    resources_per_trial: Mapping[str, Any],
+    init_kwargs: Mapping[str, Any],
     local_dir: Optional[str],
     upload_dir: Optional[str],
 ) -> None:
@@ -50,19 +52,19 @@ def parallel(
             taken from `search_space` are higher priority than the base_named_configs.
             Concretely, this priority is implemented by appending named configs taken
             from `search_space` to the run's named configs after `base_named_configs`.
-
             Named configs in `base_named_configs` don't appear in the automatically
             generated Ray directory name, unlike named configs from `search_space`.
-
         base_config_updates: Default Sacred config updates. Any config updates taken
             from `search_space` are higher priority than `base_config_updates`.
-
             Config updates in `base_config_updates` don't appear in the automatically
             generated Ray directory name, unlike config updates from `search_space`.
         resources_per_trial: Argument to `ray.tune.run()`.
         init_kwargs: Arguments to pass to `ray.init`.
         local_dir: `local_dir` argument to `ray.tune.run()`.
         upload_dir: `upload_dir` argument to `ray.tune.run()`.
+
+    Raises:
+        TypeError: Named configs not string sequences or config updates not mappings.
     """
     # Basic validation for config options before we enter parallel jobs.
     if not isinstance(base_named_configs, collections.abc.Sequence):
@@ -91,6 +93,7 @@ def parallel(
     if sacred_ex_name == "train_adversarial":
         if "data_dir" not in base_config_updates:
             data_dir = os.path.join(os.getcwd(), "data/")
+            base_config_updates = dict(base_config_updates)
             base_config_updates["data_dir"] = data_dir
 
     trainable = _ray_tune_sacred_wrapper(
@@ -127,8 +130,8 @@ def _ray_tune_sacred_wrapper(
     sacred_ex_name: str,
     run_name: str,
     base_named_configs: list,
-    base_config_updates: dict,
-) -> Callable:
+    base_config_updates: Mapping[str, Any],
+) -> Callable[[Mapping[str, Any], Any], Mapping[str, Any]]:
     """From an Experiment build a wrapped run function suitable for Ray Tune.
 
     `ray.tune.run(...)` expects a trainable function that takes a dict
@@ -138,19 +141,41 @@ def _ray_tune_sacred_wrapper(
 
     The Ray Tune `reporter` is not passed to the inner experiment.
 
-    Args have the same meanings as arguments described in `parallel`.
+    Args:
+        sacred_ex_name: The Sacred experiment to tune. Either "expert_demos" or
+            "train_adversarial".
+        run_name: A name describing this parallelizing experiment.
+            This argument is also passed to `ray.tune.run` as the `name` argument.
+            It is also saved in 'sacred/run.json' of each inner Sacred experiment
+            under the 'experiment.name' key. This is equivalent to using the Sacred
+            CLI '--name' option on the inner experiment. Offline analysis jobs can use
+            this argument to group similar data.
+        base_named_configs: Default Sacred named configs. Any named configs
+            taken from `search_space` are higher priority than the base_named_configs.
+            Concretely, this priority is implemented by appending named configs taken
+            from `search_space` to the run's named configs after `base_named_configs`.
+            Named configs in `base_named_configs` don't appear in the automatically
+            generated Ray directory name, unlike named configs from `search_space`.
+        base_config_updates: Default Sacred config updates. Any config updates taken
+            from `search_space` are higher priority than `base_config_updates`.
+            Config updates in `base_config_updates` don't appear in the automatically
+            generated Ray directory name, unlike config updates from `search_space`.
 
     Returns:
-      A function that takes two arguments, `config` (used as keyword args for
-      `ex.run`) and `reporter`. The function returns the run result.
+        A function that takes two arguments, `config` (used as keyword args for
+        `ex.run`) and `reporter`. The function returns the run result.
     """
 
-    def inner(config: dict, reporter) -> dict:
+    def inner(config: Mapping[str, Any], reporter) -> Mapping[str, Any]:
         """Trainable function with the correct signature for `ray.tune`.
 
         Args:
             config: Keyword arguments for `ex.run()`, where `ex` is the
                 `sacred.Experiment` instance associated with `sacred_ex_name`.
+            reporter: Callback to report progress to Ray.
+
+        Returns:
+            Result from `ray.Run` object.
         """
         # Set Sacred capture mode to "sys" because default "fd" option leads to error.
         # See https://github.com/IDSIA/sacred/issues/289.

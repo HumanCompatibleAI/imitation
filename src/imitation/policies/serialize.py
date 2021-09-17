@@ -40,6 +40,13 @@ class NormalizePolicy(policies.BasePolicy):
         policy: policies.BasePolicy,
         vec_normalize: vec_env.VecNormalize,
     ):
+        """Builds NormalizePolicy.
+
+        Args:
+            policy: The policy to wrap.
+            vec_normalize: Used to normalize observations. Note observation statistics
+                are frozen, and not updated with repeated calls to `predict`.
+        """
         super().__init__(
             observation_space=policy.observation_space,
             action_space=policy.action_space,
@@ -203,6 +210,9 @@ def load_policy(
         policy_type: A key in `policy_registry`, e.g. `ppo`.
         policy_path: A path on disk where the policy is stored.
         venv: An environment that the policy is to be used with.
+
+    Returns:
+        The deserialized policy.
     """
     agent_loader = policy_registry.get(policy_type)
     return agent_loader(policy_path, venv)
@@ -251,6 +261,8 @@ class SavePolicyCallback(callbacks.EventCallback):
         Args:
             policy_dir: Directory to save checkpoints.
             vec_normalize: If specified, VecNormalize object to save alongside policy.
+            *args: Passed through to `callbacks.EventCallback`.
+            **kwargs: Passed through to `callbacks.EventCallback`.
         """
         super().__init__(*args, **kwargs)
         self.policy_dir = policy_dir

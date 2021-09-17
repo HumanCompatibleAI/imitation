@@ -1,3 +1,5 @@
+"""Discriminator networks, used for `AdversarialTrainer`."""
+
 import abc
 import logging
 from typing import Optional
@@ -28,6 +30,13 @@ class DiscrimNet(nn.Module, abc.ABC):
         action_space: gym.Space,
         normalize_images: bool = False,
     ):
+        """Builds DiscrimNet.
+
+        Args:
+            observation_space: The space observations are drawn from.
+            action_space: The space actions are drawn from.
+            normalize_images: Whether to normalize image-based inputs in preprocessing.
+        """
         super().__init__()
         self.observation_space = observation_space
         self.action_space = action_space
@@ -48,17 +57,18 @@ class DiscrimNet(nn.Module, abc.ABC):
         predicting expert.
 
         Args:
-            state: state at time t.
-            action: action taken at time t.
-            next_state: state at time t+1.
-            done: binary episode completion flag after action at time t.
-            log_policy_act_prob: log policy of novice taking `action`. This is
-                only used for AIRL.
+            state: state at time t, of shape `(batch_size,) + state_shape`.
+            action: action taken at time t, of shape `(batch_size,) + action_shape`.
+            next_state: state at time t+1, of shape `(batch_size,) + state_shape`.
+            done: binary episode completion flag after action at time t,
+                of shape `(batch_size,)`.
+            log_policy_act_prob: log probability of generator policy taking
+                `action` at time t.
 
         Returns:
-            disc_logits_gen_is_high: discriminator logits for a sigmoid
-                activation. A high output indicates a generator-like transition.
-        """
+            Discriminator logits of shape `(batch_size,)`. A high output indicates a
+            generator-like transition.
+        """  # noqa: DAR202
 
     def disc_loss(self, disc_logits_gen_is_high, labels_gen_is_one) -> th.Tensor:
         """Compute discriminator loss.
@@ -70,7 +80,8 @@ class DiscrimNet(nn.Module, abc.ABC):
                 generator (novice).
 
         Returns:
-            loss: scalar-valued discriminator loss."""
+            Scalar-valued discriminator loss.
+        """
         return F.binary_cross_entropy_with_logits(
             disc_logits_gen_is_high,
             labels_gen_is_one.float(),
@@ -119,8 +130,9 @@ class DiscrimNet(nn.Module, abc.ABC):
             next_state: The observation input. Its shape is
                 `(batch_size,) + observation_space.shape`.
             done: Whether the episode has terminated. Its shape is `(batch_size,)`.
+
         Returns:
-            The rewards. Its shape is `(batch_size,)`.
+            The rewards of shape `(batch_size,)`.
         """
         return self._eval_reward(
             is_train=True,
@@ -148,6 +160,7 @@ class DiscrimNet(nn.Module, abc.ABC):
             next_state: The observation input. Its shape is
                 `(batch_size,) + observation_space.shape`.
             done: Whether the episode has terminated. Its shape is `(batch_size,)`.
+
         Returns:
             The rewards. Its shape is `(batch_size,)`.
         """
@@ -205,7 +218,7 @@ class DiscrimNetAIRL(DiscrimNet):
     """  # noqa: E501
 
     def __init__(self, reward_net: reward_nets.RewardNet, entropy_weight: float = 1.0):
-        """Builds a DiscrimNetAIRL.
+        r"""Builds a DiscrimNetAIRL.
 
         Args:
             reward_net: A RewardNet, used as $f_{\theta}$ in the discriminator.
@@ -232,13 +245,9 @@ class DiscrimNetAIRL(DiscrimNet):
         action: th.Tensor,
         next_state: th.Tensor,
         done: th.Tensor,
-        log_policy_act_prob: Optional[th.Tensor] = None,
+        log_policy_act_prob: th.Tensor,
     ) -> th.Tensor:
-        """Compute the discriminator's logits for each state-action sample.
-
-        A high value corresponds to predicting generator, and a low value corresponds to
-        predicting expert.
-        """
+        """Compute the discriminator's logits for each state-action sample."""
         if log_policy_act_prob is None:
             raise TypeError(
                 "Non-None `log_policy_act_prob` is required for this method.",
@@ -275,18 +284,27 @@ class DiscrimNetAIRL(DiscrimNet):
         next_state: th.Tensor,
         done: th.Tensor,
     ) -> th.Tensor:
-        """Compute train reward.
+        """Computes train reward.
 
         Computed reward does *not* include an entropy bonus. Instead, the
-        entropy bonus should be added directly to PPO, SAC, etc."""
+        entropy bonus should be added directly to PPO, SAC, etc.
+
+        Args:
+            state: Current states of shape `(batch_size,) + state_shape`.
+            action: Actions of shape `(batch_size,) + action_shape`.
+            next_state: Successor states of shape `(batch_size,) + state_shape`.
+            done: End-of-episode (terminal state) indicator of shape `(batch_size,)`.
+
+        Returns:
+            Reward of shape `(batch_size,`).
+        """
         rew = self.reward_net(state, action, next_state, done)
         assert rew.shape == state.shape[:1]
         return rew
 
 
 class ActObsMLP(nn.Module):
-    """Simple MLP that takes an action and observation and produces a single
-    output."""
+    """MLP with observation and action input producing single scalar output."""
 
     def __init__(
         self,
@@ -294,6 +312,7 @@ class ActObsMLP(nn.Module):
         observation_space: gym.Space,
         **mlp_kwargs,
     ):
+        """Builds ActObsMLP."""
         super().__init__()
 
         in_size = (
@@ -325,11 +344,11 @@ class DiscrimNetGAIL(DiscrimNet):
         """Construct discriminator network.
 
         Args:
-          observation_space: observation space for this environment.
-          action_space: action space for this environment:
-          discrim_net: a Torch module that takes an observation and action
-            tensor as input, then computes the logits for GAIL.
-          normalize_images: should image observations be normalized to [0, 1]?
+            observation_space: observation space for this environment.
+            action_space: action space for this environment:
+            discrim_net: a Torch module that takes an observation and action
+                tensor as input, then computes the logits for GAIL.
+            normalize_images: should image observations be normalized to [0, 1]?
         """
         super().__init__(
             observation_space=observation_space,
@@ -356,11 +375,7 @@ class DiscrimNetGAIL(DiscrimNet):
         done: th.Tensor,
         log_policy_act_prob: Optional[th.Tensor] = None,
     ) -> th.Tensor:
-        """Compute the discriminator's logits for each state-action sample.
-
-        A high value corresponds to predicting generator, and a low value corresponds to
-        predicting expert.
-        """
+        """Compute the discriminator's logits for each state-action sample."""
         logits = self.discriminator(state, action)
         return logits
 

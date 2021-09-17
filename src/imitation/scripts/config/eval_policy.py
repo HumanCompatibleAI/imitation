@@ -1,3 +1,5 @@
+"""Configuration settings for eval_policy, evaluating pre-trained policies."""
+
 import os
 
 import sacred

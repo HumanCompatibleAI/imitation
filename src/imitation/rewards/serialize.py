@@ -83,13 +83,16 @@ reward_registry.register(key="zero", value=load_zero)
 
 @util.docstring_parameter(reward_types=", ".join(reward_registry.keys()))
 def load_reward(reward_type: str, reward_path: str, venv: VecEnv) -> common.RewardFn:
-    """Load serialized policy.
+    """Load serialized reward.
 
     Args:
-      reward_type: A key in `reward_registry`. Valid types
-          include {reward_types}.
-      reward_path: A path specifying the reward.
-      venv: An environment that the policy is to be used with.
+        reward_type: A key in `reward_registry`. Valid types
+            include {reward_types}.
+        reward_path: A path specifying the reward.
+        venv: An environment that the policy is to be used with.
+
+    Returns:
+        The deserialized reward.
     """
     reward_loader = reward_registry.get(reward_type)
     return reward_loader(reward_path, venv)

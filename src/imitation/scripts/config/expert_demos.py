@@ -1,3 +1,5 @@
+"""Configuration settings for expert_demos, training an expert policy with RL."""
+
 import os
 
 import sacred

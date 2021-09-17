@@ -13,6 +13,13 @@ class WrappedRewardCallback(callbacks.BaseCallback):
     """Logs mean wrapped reward as part of RL (or other) training."""
 
     def __init__(self, episode_rewards: Deque[float], *args, **kwargs):
+        """Builds WrappedRewardCallback.
+
+        Args:
+            episode_rewards: A queue that episode rewards will be placed into.
+            *args: Passed through to `callbacks.BaseCallback`.
+            **kwargs: Passed through to `callbacks.BaseCallback`.
+        """
         self.episode_rewards = episode_rewards
         super().__init__(self, *args, **kwargs)
 
@@ -27,20 +34,23 @@ class WrappedRewardCallback(callbacks.BaseCallback):
 
 
 class RewardVecEnvWrapper(vec_env.VecEnvWrapper):
+    """Uses a provided reward_fn to replace the reward function returned by `step()`.
+
+    Automatically resets the inner VecEnv upon initialization. A tricky part
+    about this class is keeping track of the most recent observation from each
+    environment.
+
+    Will also include the previous reward given by the inner VecEnv in the
+    returned info dict under the `wrapped_env_rew` key.
+    """
+
     def __init__(
         self,
         venv: vec_env.VecEnv,
         reward_fn: common.RewardFn,
         ep_history: int = 100,
     ):
-        """Uses a provided reward_fn to replace the reward function returned by `step()`.
-
-        Automatically resets the inner VecEnv upon initialization. A tricky part
-        about this class is keeping track of the most recent observation from each
-        environment.
-
-        Will also include the previous reward given by the inner VecEnv in the
-        returned info dict under the `wrapped_env_rew` key.
+        """Builds RewardVecEnvWrapper.
 
         Args:
             venv: The VecEnv to wrap.

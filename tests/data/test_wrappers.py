@@ -1,3 +1,5 @@
+"""Tests for `imitation.data.wrappers`."""
+
 from typing import List, Sequence
 
 import gym
@@ -91,7 +93,7 @@ def test_pop(
     episode_lengths: Sequence[int],
     n_steps: int,
     extra_pop_timesteps: Sequence[int],
-):
+) -> None:
     """Check pop_transitions() results for BufferWrapper.
 
     To make things easier to test, we use _CountingEnv where the observation
@@ -117,19 +119,21 @@ def test_pop(
     ```
 
     Args:
-      episode_lengths: The number of timesteps before episode end in each dummy
-        environment.
-      n_steps: Number of times to call `step()` on the dummy environment.
-      extra_pop_timesteps: By default, we only call `pop_*()` after `n_steps`
-        calls to `step()`. For every unique positive `x` in `extra_pop_timesteps`,
-        we also call `pop_*()` after the `x`th call to `step()`. All popped
-        samples are concatenated before validating results at the end of this
-        test case. All `x` in `extra_pop_timesteps` must be in range(1, n_steps).
-        (`x == 0` is not valid because there are no transitions to pop at timestep
-        0).
+        episode_lengths: The number of timesteps before episode end in each dummy
+            environment.
+        n_steps: Number of times to call `step()` on the dummy environment.
+        extra_pop_timesteps: By default, we only call `pop_*()` after `n_steps` calls
+            to `step()`. For every unique positive `x` in `extra_pop_timesteps`, we
+            also call `pop_*()` after the `x`th call to `step()`. All popped samples
+            are concatenated before validating results at the end of this test case.
+            All `x` in `extra_pop_timesteps` must be in range(1, n_steps). (`x == 0`
+            is not valid because there are no transitions to pop at timestep 0).
+
+    Raises:
+        ValueError: `n_steps <= 0`.
     """
     if not n_steps >= 1:  # pragma: no cover
-        raise ValueError(n_steps)
+        raise ValueError(f"n_steps = {n_steps} <= 0")
     for t in extra_pop_timesteps:  # pragma: no cover
         if t < 1:
             raise ValueError(t)

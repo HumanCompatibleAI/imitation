@@ -10,6 +10,9 @@ import gym
 def test_model_based(env: gym.Env) -> None:
     """Smoke test for each of the ModelBasedEnv methods with type checks.
 
+    Args:
+        env: The environment to test.
+
     Raises:
         AssertionError if test fails.
     """

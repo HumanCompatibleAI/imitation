@@ -1,7 +1,9 @@
+"""Trains DAgger on synthetic demonstrations generated from an expert policy."""
+
 import logging
 import os.path as osp
 import pathlib
-from typing import Optional, Sequence, Type, Union
+from typing import Mapping, Optional, Sequence, Type, Union
 
 import torch as th
 from sacred.observers import FileStorageObserver
@@ -32,9 +34,8 @@ def train_dagger(
     optimizer_kwargs: dict,
     log_dir: types.AnyPath,
     n_episodes_eval: int,
-) -> dict:
-    """
-    Run synthetic DAgger experiment using a Sacred interface to SimpleDAggerTrainer.
+) -> Mapping[str, Mapping[str, float]]:
+    """Run synthetic DAgger experiment using a Sacred interface to SimpleDAggerTrainer.
 
     Args:
         expert_data_src: Either a path to pickled `Sequence[Trajectory]` or
@@ -72,6 +73,14 @@ def train_dagger(
             provided. These rollouts are used to generate final statistics saved into
             Sacred results, which can be compiled into a table by
             `imitation.scripts.analyze.analyze_imitation`.
+
+    Returns:
+        Statistics for rollouts from the trained policy and expert data.
+
+    Raises:
+        ValueError: `expert_policy_path` is None.
+        ValueError:  `expert_data_src_format` unrecognized.
+        TypeError: `expert_policy` is not a BasePolicy.
     """
     # TODO(shwang): Add support for directly loading a BasePolicy `*.th` file.
     log_dir = pathlib.Path(log_dir)

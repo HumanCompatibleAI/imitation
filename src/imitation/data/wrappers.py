@@ -1,3 +1,5 @@
+"""Environment wrappers for collecting rollouts."""
+
 from typing import Sequence
 
 import gym
@@ -14,11 +16,12 @@ class BufferingWrapper(VecEnvWrapper):
     """
 
     def __init__(self, venv: VecEnv, error_on_premature_reset: bool = True):
-        """
+        """Builds BufferingWrapper.
+
         Args:
-          venv: The wrapped VecEnv.
-          error_on_premature_reset: Error if `reset()` is called on this wrapper
-            and there are saved samples that haven't yet been accessed.
+            venv: The wrapped VecEnv.
+            error_on_premature_reset: Error if `reset()` is called on this wrapper
+                and there are saved samples that haven't yet been accessed.
         """
         super().__init__(venv)
         self.error_on_premature_reset = error_on_premature_reset
@@ -98,7 +101,11 @@ class BufferingWrapper(VecEnvWrapper):
     def pop_transitions(self) -> types.TransitionsWithRew:
         """Pops recorded transitions, returning them as an instance of Transitions.
 
-        Raises a RuntimeError if called when `self.n_transitions == 0`.
+        Returns:
+            All transitions recorded since the last call.
+
+        Raises:
+            RuntimeError: empty (no transitions recorded since last pop).
         """
         if self.n_transitions == 0:
             # It would be better to return an empty `Transitions`, but we would need
@@ -121,7 +128,12 @@ class RolloutInfoWrapper(gym.Wrapper):
     rewards seen during this episode.
     """
 
-    def __init__(self, env):
+    def __init__(self, env: gym.Env):
+        """Builds RolloutInfoWrapper.
+
+        Args:
+            env: Environment to wrap.
+        """
         super().__init__(env)
         self._obs = None
         self._rews = None

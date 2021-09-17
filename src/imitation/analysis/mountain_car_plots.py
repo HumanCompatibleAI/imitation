@@ -23,10 +23,7 @@ ACT_NAMES = ["left", "neutral", "right"]
 
 
 def _make_next_mc_obs(obs, acts) -> np.ndarray:
-    """Utility for calculating the MountainCar-v0 next observation s'.
-
-    Required for evaluating AIRL reward at arbitrary (s, a) points.
-    """
+    """Utility for calculating the MountainCar-v0 next observation s'."""
     env = gym.make("MountainCar-v0")
     obs = np.array(obs)
     acts = np.array(acts)
@@ -65,6 +62,7 @@ def make_heatmap(
             into.
         n_vel_step: The number of squares that the y axis of the heatmap is divided
             into.
+        mark_goal: mark the goal position with a vertical line.
         gen_trajs: A list of generator trajectories to
             scatterplot on top of the heatmap.
         exp_trajs: A list of exp trajectories to scatterplot on
@@ -75,6 +73,9 @@ def make_heatmap(
         filter_trans_by_act: If True, then filter out transitions from
             `gen_trajs` and `exp_trajs` that don't use action `act` before
             scatterplotting.
+
+    Returns:
+        A Figure containing the heatmap.
     """
     assert 0 <= act < MC_NUM_ACTS
 

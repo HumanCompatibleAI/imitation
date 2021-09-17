@@ -1,3 +1,5 @@
+"""Setup for imitation: a reward and imitation learning library."""
+
 from setuptools import find_packages, setup
 
 import src.imitation  # pytype: disable=import-error
@@ -8,11 +10,13 @@ TESTS_REQUIRE = [
     "coverage",
     "codecov",
     "codespell",
+    "darglint",
     "flake8",
     "flake8-blind-except",
     "flake8-builtins",
     "flake8-commas",
     "flake8-debugger",
+    "flake8-docstrings",
     "flake8-isort",
     "ipykernel",
     "jupyter",
@@ -42,7 +46,7 @@ def get_readme() -> str:
 setup(
     name="imitation",
     version=src.imitation.__version__,
-    description="Implementation of modern IRL and imitation learning algorithms.",
+    description="Implementation of modern reward and imitation learning algorithms.",
     long_description=get_readme(),
     long_description_content_type="text/markdown",
     author="Center for Human-Compatible AI and Google",
@@ -51,7 +55,9 @@ setup(
     package_dir={"": "src"},
     package_data={"imitation": ["py.typed", "envs/examples/airl_envs/assets/*.xml"]},
     install_requires=[
-        "gym[classic_control]",
+        # TODO(adam): unpeg gym once SB3 includes workaround for pickle compatibility
+        # See https://github.com/DLR-RM/stable-baselines3/issues/573
+        "gym[classic_control]==0.19.0",
         "matplotlib",
         "numpy>=1.15",
         "torch>=1.4.0",

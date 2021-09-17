@@ -99,8 +99,14 @@ def train_preference_comparisons(
             condition, and can seriously confound evaluation. Read
             https://imitation.readthedocs.io/en/latest/guide/variable_horizon.html
             before overriding this.
-    """
 
+    Returns:
+        Rollout statistics from trained policy.
+
+    Raises:
+        FileNotFoundError: Path corresponding to saved policy missing.
+        ValueError: Inconsistency between config and deserialized policy normalization.
+    """
     custom_logger = logger.configure(log_dir, ["tensorboard", "stdout"])
     os.makedirs(log_dir, exist_ok=True)
     sacred_util.build_sacred_symlink(log_dir, _run)

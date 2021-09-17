@@ -1,4 +1,5 @@
-"""Smoke tests for bash scripts in experiments/"""
+"""Smoke tests for bash scripts in experiments/."""
+
 import os
 import pathlib
 import subprocess

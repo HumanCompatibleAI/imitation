@@ -33,6 +33,7 @@ def build_mlp(
         hid_sizes: sizes of hidden layers. If this is an empty iterable, then we build
             a linear function approximator.
         out_size: required size of output vector.
+        name: Name to use as a prefix for the layers ID.
         activation: activation to apply after hidden layers.
         squeeze_output: if out_size=1, then squeeze_input=True ensures that MLP
             output is of size (B,) instead of (B,1).
@@ -45,7 +46,8 @@ def build_mlp(
             in which case the output is of size (batch_size, ).
 
     Raises:
-        ValueError: if squeeze_output was supplied with out_size!=1."""
+        ValueError: if squeeze_output was supplied with out_size!=1.
+    """
     layers = collections.OrderedDict()
 
     if name is None:

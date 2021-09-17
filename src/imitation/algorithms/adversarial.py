@@ -4,7 +4,7 @@ import dataclasses
 import functools
 import logging
 import os
-from typing import Callable, Dict, Mapping, Optional, Type
+from typing import Callable, Mapping, Optional, Type
 
 import numpy as np
 import torch as th
@@ -199,7 +199,7 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
         *,
         expert_samples: Optional[Mapping] = None,
         gen_samples: Optional[Mapping] = None,
-    ) -> Dict[str, float]:
+    ) -> Mapping[str, float]:
         """Perform a single discriminator update, optionally using provided samples.
 
         Args:
@@ -262,18 +262,18 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
         self,
         total_timesteps: Optional[int] = None,
         learn_kwargs: Optional[Mapping] = None,
-    ):
+    ) -> None:
         """Trains the generator to maximize the discriminator loss.
 
         After the end of training populates the generator replay buffer (used in
         discriminator training) with `self.disc_batch_size` transitions.
 
         Args:
-          total_timesteps: The number of transitions to sample from
-            `self.venv_train` during training. By default,
-            `self.gen_train_timesteps`.
-          learn_kwargs: kwargs for the Stable Baselines `RLModel.learn()`
-            method.
+            total_timesteps: The number of transitions to sample from
+                `self.venv_train` during training. By default,
+                `self.gen_train_timesteps`.
+            learn_kwargs: kwargs for the Stable Baselines `RLModel.learn()`
+                method.
         """
         if total_timesteps is None:
             total_timesteps = self.gen_train_timesteps
@@ -308,11 +308,11 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
         sampled from the environment to exceed `total_timesteps`.
 
         Args:
-          total_timesteps: An upper bound on the number of transitions to sample
-              from the environment during training.
-          callback: A function called at the end of every round which takes in a
-              single argument, the round number. Round numbers are in
-              `range(total_timesteps // self.gen_train_timesteps)`.
+            total_timesteps: An upper bound on the number of transitions to sample
+                from the environment during training.
+            callback: A function called at the end of every round which takes in a
+                single argument, the round number. Round numbers are in
+                `range(total_timesteps // self.gen_train_timesteps)`.
         """
         n_rounds = total_timesteps // self.gen_train_timesteps
         assert n_rounds >= 1, (
@@ -337,12 +337,21 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
         *,
         gen_samples: Optional[Mapping] = None,
         expert_samples: Optional[Mapping] = None,
-    ) -> dict:
+    ) -> Mapping[str, th.Tensor]:
         """Build and return training batch for the next discriminator update.
 
         Args:
-          gen_samples: Same as in `train_disc`.
-          expert_samples: Same as in `train_disc`.
+            gen_samples: Same as in `train_disc`.
+            expert_samples: Same as in `train_disc`.
+
+        Returns:
+            The training batch: state, action, next state, dones, labels
+            and policy log-probabilities.
+
+        Raises:
+            RuntimeError: Empty generator replay buffer.
+            ValueError: `gen_samples` or `expert_samples` batch size is
+                different from `self.demo_batch_size`.
         """
         if expert_samples is None:
             expert_samples = self._next_expert_batch()

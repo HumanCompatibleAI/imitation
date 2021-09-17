@@ -1,3 +1,5 @@
+"""Commands to analyze experimental results."""
+
 import collections
 import itertools
 import json
@@ -20,8 +22,8 @@ from imitation.util.sacred import dict_get_nested as get
 @analysis_ex.capture
 def _gather_sacred_dicts(
     source_dirs: Sequence[str],
-    run_name: str,
-    env_name: str,
+    run_name: Optional[str],
+    env_name: Optional[str],
     skip_failed_runs: bool,
 ) -> List[sacred_util.SacredDicts]:
     """Helper function for parsing and selecting Sacred experiment JSON files.
@@ -34,6 +36,8 @@ def _gather_sacred_dicts(
         run_name: If provided, then only analyze results from Sacred directories
             associated with this run name. `run_name` is compared against the
             "experiment.name" key in `run.json`. (Captured argument)
+        env_name: If provided, then only analyze results from Sacred directories
+            associated with this Gym environment ID.
         skip_failed_runs: If True, then filter out runs where the status is FAILED.
             (Captured argument)
 
@@ -86,12 +90,10 @@ def gather_tb_directories() -> dict:
     results to parse.
 
     Returns:
-      A dict with two keys. "gather_dir" (str) is a path to a /tmp/
-      directory containing all the TensorBoard runs filtered from `source_dir`.
-      "n_tb_dirs" (int) is the number of TensorBoard directories that were
-      filtered.
+        A dict with two keys. "gather_dir" (str) is a path to a /tmp/ directory
+        containing all the TensorBoard runs filtered from `source_dir`.
+        "n_tb_dirs" (int) is the number of TensorBoard directories that were filtered.
     """
-
     os.makedirs("/tmp/analysis_tb", exist_ok=True)
     tmp_dir = tempfile.mkdtemp(dir="/tmp/analysis_tb/")
 

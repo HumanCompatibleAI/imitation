@@ -1,4 +1,4 @@
-"""Tests for imitation.trainer.Trainer and util.trainer.init_trainer."""
+"""Tests for `imitation.algorithms.adversarial`."""
 
 import os
 
@@ -72,7 +72,14 @@ def _parallel(request):
 
     This way we don't have to add a @pytest.mark.parametrize("_parallel", ... )
     decorator in front of every test. I couldn't find a better way to do this that
-    didn't involve the aforementioned `parameterize` duplication."""
+    didn't involve the aforementioned `parameterize` duplication.
+
+    Args:
+        request: PyTest request object.
+
+    Returns:
+        True or False.
+    """
     return request.param
 
 

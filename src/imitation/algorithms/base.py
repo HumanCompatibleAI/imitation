@@ -187,6 +187,9 @@ class _WrappedDataLoader:
     def __iter__(self):
         """Iterator yielding data from `self.data_loader`, checking `self.expected_batch_size`.
 
+        Yields:
+            Identity -- yields same batches as from `self.data_loader`.
+
         Raises:
             ValueError: `self.data_loader` returns a batch of size not equal to
                 `self.expected_batch_size`.

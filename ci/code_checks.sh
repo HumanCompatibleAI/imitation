@@ -15,6 +15,9 @@ if [ -x "`which circleci`" ]; then
     circleci config validate
 fi
 
+echo "files changed"
+echo $*
+
 if [ "$skipexpensive" != "true" ]; then
   echo "Type checking"
   pytype -j auto ${SRC_FILES[@]}
@@ -24,4 +27,16 @@ if [ "$skipexpensive" != "true" ]; then
   make clean
   make html
   popd
+
+  echo "Darglint on diff"
+  pushd ci/  # darglint will read config from ci/.darglint, enabling it
+  # We run flake8 rather than darglint directly to work around:
+  # https://github.com/terrencepreilly/darglint/issues/21
+  # so noqa's are respected outside docstring.
+  # If we got to this point, flake8 already passed, so this should
+  # only find new darglint-specific errors.
+  files=$(git diff --cached --name-only ${against} | sed -e s'/^/..\//' | xargs -I'{}' find '{}' -name '*.py'$)
+  if [[ ${files} -ne "" ]]; then
+    flake8 ${files}
+  fi
 fi

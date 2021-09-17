@@ -55,7 +55,7 @@ def train_adversarial(
     init_rl_kwargs: Mapping,
     algorithm_kwargs: Mapping[str, Mapping],
     discrim_net_kwargs: Mapping[str, Mapping],
-) -> dict:
+) -> Mapping[str, Mapping[str, float]]:
     """Train an adversarial-network-based imitation learning algorithm.
 
     Checkpoints:
@@ -101,7 +101,6 @@ def train_adversarial(
         algorithm_kwargs: Keyword arguments for the `GAIL` or `AIRL` constructor
             that can apply to either constructor. Unlike a regular kwargs argument, this
             argument can only have the following keys: "shared", "airl", and "gail".
-
             `algorithm_kwargs["airl"]`, if it is provided, is a kwargs `Mapping` passed
             to the `AIRL` constructor when `algorithm == "airl"`. Likewise
             `algorithm_kwargs["gail"]` is passed to the `GAIL` constructor when
@@ -120,6 +119,13 @@ def train_adversarial(
         policy (remember that the ground-truth reward can be recovered from the
         "monitor_return" key). "expert_stats" gives the return value of
         `rollout_stats()` on the expert demonstrations loaded from `rollout_path`.
+
+    Raises:
+        ValueError: `gen_batch_size` not divisible by `num_vec`.
+        ValueError: `discrim_net_kwargs` or `algorithm_kwargs` included unsupported key
+            (not one of "shared", "gail" or "airl").
+        ValueError: Number of expert trajectories is less than `n_expert_demos`.
+        FileNotFoundError: `rollout_path` does not exist.
     """
     if gen_batch_size % num_vec != 0:
         raise ValueError(
@@ -139,11 +145,11 @@ def train_adversarial(
         )
 
     if not os.path.exists(rollout_path):
-        raise ValueError(f"File at rollout_path={rollout_path} does not exist.")
+        raise FileNotFoundError(f"File at rollout_path={rollout_path} does not exist.")
 
     expert_trajs = types.load(rollout_path)
     if n_expert_demos is not None:
-        if not len(expert_trajs) >= n_expert_demos:
+        if len(expert_trajs) < n_expert_demos:
             raise ValueError(
                 f"Want to use n_expert_demos={n_expert_demos} trajectories, but only "
                 f"{len(expert_trajs)} are available via {rollout_path}.",

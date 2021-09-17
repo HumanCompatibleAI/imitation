@@ -1,15 +1,16 @@
-"""Tests for Behavioural Cloning (BC)."""
+"""Tests `imitation.algorithms.bc`."""
 
 import dataclasses
 import os
 
 import pytest
 import torch as th
+from stable_baselines3.common import vec_env
 from torch.utils import data as th_data
 
 from imitation.algorithms import bc
 from imitation.data import rollout, types
-from imitation.util import util
+from imitation.util import logger, util
 
 ROLLOUT_PATH = "tests/testdata/expert_models/cartpole_0/rollouts/final.pkl"
 
@@ -34,7 +35,8 @@ def expert_data_type(request):
 class DucktypedDataset:
     """Used to check that any iterator over Dict[str, Tensor] works with BC."""
 
-    def __init__(self, transitions, batch_size):
+    def __init__(self, transitions: types.TransitionsMinimal, batch_size: int):
+        """Builds `DucktypedDataset`."""
         self.trans = transitions
         self.batch_size = batch_size
 
@@ -114,16 +116,19 @@ def test_bc_log_rollouts(trainer: bc.BC, venv):
     trainer.train(n_batches=20, log_rollouts_venv=venv, log_rollouts_n_episodes=1)
 
 
-class _DataLoaderFailsOnSecondIter:
+class _DataLoaderFailsOnNthIter:
     """A dummy DataLoader that yields after a number of calls of `__iter__`.
 
     Used by `test_bc_data_loader_empty_iter_error`.
     """
 
     def __init__(self, dummy_yield_value: dict, no_yield_after_iter: int = 1):
-        """
+        """Builds dummy data loader.
+
         Args:
-            no_yield_after_iter: `__iter__` will be
+            dummy_yield_value: The value to yield on each call.
+            no_yield_after_iter: `__iter__` will raise `StopIteration` after
+                this many calls.
         """
         self.iter_count = 0
         self.dummy_yield_value = dummy_yield_value
@@ -136,17 +141,26 @@ class _DataLoaderFailsOnSecondIter:
 
 
 @pytest.mark.parametrize("no_yield_after_iter", [0, 1, 5])
-def test_bc_data_loader_empty_iter_error(venv, no_yield_after_iter, custom_logger):
+def test_bc_data_loader_empty_iter_error(
+    venv: vec_env.VecEnv,
+    no_yield_after_iter: bool,
+    custom_logger: logger.HierarchicalLogger,
+) -> None:
     """Check that we error out if the DataLoader suddenly stops yielding any batches.
 
     At one point, we entered an updateless infinite loop in this edge case.
+
+    Args:
+        venv: Environment to test in.
+        no_yield_after_iter: Data loader stops yielding after this many calls.
+        custom_logger: Where to log to.
     """
     batch_size = 32
     rollouts = types.load(ROLLOUT_PATH)
     trans = rollout.flatten_trajectories(rollouts)
     dummy_yield_value = dataclasses.asdict(trans[:batch_size])
 
-    bad_data_loader = _DataLoaderFailsOnSecondIter(
+    bad_data_loader = _DataLoaderFailsOnNthIter(
         dummy_yield_value=dummy_yield_value,
         no_yield_after_iter=no_yield_after_iter,
     )
@@ -173,12 +187,12 @@ def test_save_reload(trainer, tmpdir):
 
 
 def test_train_progress_bar_visibility(trainer: bc.BC):
-    """Smoke test for toggling progress bar visibility"""
+    """Smoke test for toggling progress bar visibility."""
     for visible in [True, False]:
         trainer.train(n_batches=1, progress_bar=visible)
 
 
 def test_train_reset_tensorboard(trainer: bc.BC):
-    """Smoke test for reset_tensorboard parameter"""
+    """Smoke test for reset_tensorboard parameter."""
     for reset in [True, False]:
         trainer.train(n_batches=1, reset_tensorboard=reset)

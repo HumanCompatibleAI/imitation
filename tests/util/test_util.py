@@ -1,3 +1,5 @@
+"""Tests `imitation.util.sacred` and `imitation.util.util`."""
+
 import numpy as np
 import pytest
 import torch as th

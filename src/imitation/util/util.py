@@ -1,3 +1,5 @@
+"""Miscellaneous utility methods."""
+
 import datetime
 import functools
 import itertools
@@ -45,7 +47,7 @@ def make_vec_env(
     post_wrappers: Optional[Sequence[Callable[[gym.Env, int], gym.Env]]] = None,
     env_make_kwargs: Optional[Mapping[str, Any]] = None,
 ) -> VecEnv:
-    """Returns a VecEnv initialized with `n_envs` Envs.
+    """Makes a vectorized environment.
 
     Args:
         env_name: The Env's string id in Gym.
@@ -64,6 +66,9 @@ def make_vec_env(
             accepting two arguments, the Env to be wrapped and the environment index,
             and returning the wrapped Env.
         env_make_kwargs: The kwargs passed to `spec.make`.
+
+    Returns:
+        A VecEnv initialized with `n_envs` environments.
     """
     # Resolve the spec outside of the subprocess first, so that it is available to
     # subprocesses running `make_env` via automatic pickling.
@@ -124,7 +129,7 @@ def init_rl(
     model_class: Type[BaseAlgorithm] = stable_baselines3.PPO,
     policy_class: Type[BasePolicy] = ActorCriticPolicy,
     **model_kwargs,
-):
+) -> BaseAlgorithm:
     """Instantiates a policy for the provided environment.
 
     Args:
@@ -132,11 +137,11 @@ def init_rl(
         model_class: A Stable Baselines RL algorithm.
         policy_class: A Stable Baselines compatible policy network class.
         model_kwargs (dict): kwargs passed through to the algorithm.
-          Note: anything specified in `policy_kwargs` is passed through by the
-          algorithm to the policy network.
+            Note: anything specified in `policy_kwargs` is passed through by the
+            algorithm to the policy network.
 
     Returns:
-      An RL algorithm.
+        An RL algorithm.
     """
     return model_class(
         policy_class,
@@ -159,10 +164,7 @@ T = TypeVar("T")
 
 
 def endless_iter(iterable: Iterable[T]) -> Iterator[T]:
-    """Generator that endlessly yields elements from iterable.
-
-    If any call to `iter(iterable)` has no elements, then this function raises
-    ValueError.
+    """Generator that endlessly yields elements from `iterable`.
 
     >>> x = range(2)
     >>> it = endless_iter(x)
@@ -173,12 +175,19 @@ def endless_iter(iterable: Iterable[T]) -> Iterator[T]:
     >>> next(it)
     0
 
+    Args:
+        iterable: The object to endlessly iterate over.
+
+    Returns:
+        An iterator that repeats the elements in `iterable` forever.
+
+    Raises:
+        ValueError: `iterable` is empty -- the first call it to returns no elements.
     """
     try:
         next(iter(iterable))
     except StopIteration:
-        err = ValueError(f"iterable {iterable} had no elements to iterate over.")
-        raise err
+        raise ValueError(f"iterable {iterable} had no elements to iterate over.")
 
     return itertools.chain.from_iterable(itertools.repeat(iterable))
 
@@ -200,9 +209,12 @@ def torchify_with_space(
         array: An array of observations or actions.
         space: The space each value in `array` is sampled from.
         normalize_images: `normalize_images` keyword argument to
-          `preprocessing.preprocess_obs`. If True, then image `array`
-          is normalized so that each element is between 0 and 1.
+            `preprocessing.preprocess_obs`. If True, then image `array`
+            is normalized so that each element is between 0 and 1.
         device: Tensor device.
+
+    Returns:
+        Tensor containing preprocessed values of `array`.
     """
     tensor = th.as_tensor(array, device=device)
     preprocessed = preprocessing.preprocess_obs(
@@ -225,7 +237,11 @@ def tensor_iter_norm(
         ord: order of the p-norm (can be any int or float except 0 and NaN).
 
     Returns:
-        Norm of the concatenated tensors."""
+        Norm of the concatenated tensors.
+
+    Raises:
+        ValueError: ord is 0 (unsupported).
+    """
     if ord == 0:
         raise ValueError("This function cannot compute p-norms for p=0.")
     norms = []

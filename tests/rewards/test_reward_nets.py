@@ -1,3 +1,5 @@
+"""Tests `imitation.rewards.reward_nets` and `imitation.rewards.serialize`."""
+
 import logging
 import numbers
 import os
@@ -105,6 +107,7 @@ class Env2D(gym.Env):
     """Mock environment with 2D observations."""
 
     def __init__(self):
+        """Builds `Env2D`."""
         super().__init__()
         self.observation_space = gym.spaces.Box(shape=(5, 5), low=-1.0, high=1.0)
         self.action_space = gym.spaces.Discrete(2)
@@ -125,7 +128,8 @@ def test_potential_net_2d_obs():
 
     This is a regression test for a problem identified Eric. Previously, reward
     nets would not properly flatten N-dimensional states before passing them to
-    potential networks, leading to shape mismatches."""
+    potential networks, leading to shape mismatches.
+    """
     # instantiate environment & get batch observations, actions, etc.
     env = Env2D()
     obs = env.reset()
@@ -145,7 +149,7 @@ def test_potential_net_2d_obs():
 def test_device_for_parameterless_model(env_name):
     class ParameterlessNet(reward_nets.RewardNet):
         def forward(self):
-            """Dummy function to avoid abstractmethod complaints"""
+            """Dummy function to avoid abstractmethod complaints."""
 
     env = gym.make(env_name)
     net = ParameterlessNet(env.observation_space, env.action_space)

@@ -1,5 +1,7 @@
+"""Buffers to store NumPy arrays and transitions in."""
+
 import dataclasses
-from typing import Dict, Mapping, Optional, Tuple
+from typing import Mapping, Optional, Tuple
 
 import numpy as np
 from stable_baselines3.common import vec_env
@@ -16,10 +18,10 @@ class Buffer:
     capacity: int
     """The number of data samples that can be stored in this buffer."""
 
-    sample_shapes: Dict[str, Tuple[int, ...]]
+    sample_shapes: Mapping[str, Tuple[int, ...]]
     """The shapes of each data sample stored in this buffer."""
 
-    _arrays: Dict[str, np.ndarray]
+    _arrays: Mapping[str, np.ndarray]
     """The underlying NumPy arrays (which actually store the data)."""
 
     _n_data: int
@@ -67,7 +69,7 @@ class Buffer:
     @classmethod
     def from_data(
         cls,
-        data: Dict[str, np.ndarray],
+        data: Mapping[str, np.ndarray],
         capacity: Optional[int] = None,
         truncate_ok: bool = False,
     ) -> "Buffer":
@@ -101,6 +103,9 @@ class Buffer:
 
                 Buffer.from_data(data, 5, truncate_ok=True)
 
+        Returns:
+            Buffer of specified `capacity` containing provided `data`.
+
         Raises:
             ValueError: `data` is empty.
             ValueError: `data` has items mapping to arrays differing in the
@@ -121,7 +126,7 @@ class Buffer:
         buf.store(data, truncate_ok=truncate_ok)
         return buf
 
-    def store(self, data: Dict[str, np.ndarray], truncate_ok: bool = False) -> None:
+    def store(self, data: Mapping[str, np.ndarray], truncate_ok: bool = False) -> None:
         """Stores new data samples, replacing old samples with FIFO priority.
 
         Args:
@@ -129,8 +134,8 @@ class Buffer:
                 `(n_samples,) + self.sample_shapes[k]`, where `n_samples` is less
                 than or equal to `self.capacity`.
             truncate_ok: If False, then error if the length of `transitions` is
-              greater than `self.capacity`. Otherwise, store only the final
-              `self.capacity` transitions.
+                greater than `self.capacity`. Otherwise, store only the final
+                `self.capacity` transitions.
 
         Raises:
             ValueError: `data` is empty.
@@ -173,7 +178,7 @@ class Buffer:
         else:
             self._store_easy(data)
 
-    def _store_easy(self, data: Dict[str, np.ndarray]) -> None:
+    def _store_easy(self, data: Mapping[str, np.ndarray]) -> None:
         """Stores new data samples, replacing old samples with FIFO priority.
 
         Requires that `size(data) <= self.capacity - self._idx`, where `size(data)` is
@@ -199,7 +204,7 @@ class Buffer:
         self._idx = idx_hi % self.capacity
         self._n_data = min(self._n_data + n_samples, self.capacity)
 
-    def sample(self, n_samples: int) -> Dict[str, np.ndarray]:
+    def sample(self, n_samples: int) -> Mapping[str, np.ndarray]:
         """Uniformly sample `n_samples` samples from the buffer with replacement.
 
         Args:
@@ -352,14 +357,14 @@ class ReplayBuffer:
         """Store obs-act-obs triples.
 
         Args:
-          transitions: Transitions to store.
-          truncate_ok: If False, then error if the length of `transitions` is
-            greater than `self.capacity`. Otherwise, store only the final
-            `self.capacity` transitions.
+            transitions: Transitions to store.
+            truncate_ok: If False, then error if the length of `transitions` is
+                greater than `self.capacity`. Otherwise, store only the final
+                `self.capacity` transitions.
 
         Raises:
             ValueError: The arguments didn't have the same length.
-        """
+        """  # noqa: DAR402
         trans_dict = dataclasses.asdict(transitions)
         # Remove unnecessary fields
         trans_dict = {k: trans_dict[k] for k in self._buffer.sample_shapes.keys()}
