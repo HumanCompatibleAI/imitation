@@ -7,7 +7,6 @@ import numpy as np
 import pytest
 import torch as th
 from stable_baselines3.common import vec_env
-from torch.optim import adam
 
 from imitation.algorithms import base
 from imitation.algorithms.tabular_irl import (
