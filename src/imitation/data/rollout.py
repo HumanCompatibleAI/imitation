@@ -309,10 +309,10 @@ def generate_trajectories(
 
     Args:
         policy: Can be any of the following:
-            - A stable_baselines3 policy or algorithm trained on the gym environment
-            - A Callable that takes an ndarray of observations and returns an ndarray
-              of corresponding actions
-            - None, in which case actions will be sampled randomly
+            1) A stable_baselines3 policy or algorithm trained on the gym environment.
+            2) A Callable that takes an ndarray of observations and returns an ndarray
+            of corresponding actions.
+            3) None, in which case actions will be sampled randomly.
         venv: The vectorized environments to interact with.
         sample_until: A function determining the termination condition.
             It takes a sequence of trajectories, and returns a bool.
@@ -573,10 +573,10 @@ def rollout_and_save(
     Args:
         path: Rollouts are saved to this path.
         policy: Can be any of the following:
-            - A stable_baselines3 policy or algorithm trained on the gym environment
-            - A Callable that takes an ndarray of observations and returns an ndarray
-              of corresponding actions
-            - None, in which case actions will be sampled randomly
+            1) A stable_baselines3 policy or algorithm trained on the gym environment.
+            2) A Callable that takes an ndarray of observations and returns an ndarray
+            of corresponding actions.
+            3) None, in which case actions will be sampled randomly.
         venv: The vectorized environments.
         sample_until: End condition for rollout sampling.
         unwrap: If True, then save original observations and rewards (instead of
