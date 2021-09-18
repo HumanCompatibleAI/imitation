@@ -298,14 +298,6 @@ def test_train_adversarial_algorithm_value_error(tmpdir):
         train_adversarial.train_adversarial_ex.run(
             named_configs=base_named_configs,
             config_updates=base_config_updates.new_child(
-                dict(discrim_net_kwargs={"BAD_VALUE": "bar"}),
-            ),
-        )
-
-    with pytest.raises(ValueError, match=".*BAD_VALUE.*"):
-        train_adversarial.train_adversarial_ex.run(
-            named_configs=base_named_configs,
-            config_updates=base_config_updates.new_child(
                 dict(algorithm_kwargs={"BAD_VALUE": "bar"}),
             ),
         )
