@@ -46,7 +46,7 @@ def get_readme() -> str:
 setup(
     name="imitation",
     version=src.imitation.__version__,
-    description="Implementation of modern IRL and imitation learning algorithms.",
+    description="Implementation of modern reward and imitation learning algorithms.",
     long_description=get_readme(),
     long_description_content_type="text/markdown",
     author="Center for Human-Compatible AI and Google",

@@ -52,7 +52,7 @@ def train_preference_comparisons(
     agent_kwargs: Mapping[str, Any],
     gatherer_kwargs: Mapping[str, Any],
     allow_variable_horizon: bool,
-) -> Mapping[str, Mapping[str, float]]:
+) -> Mapping[str, Any]:
     """Train a reward model using preference comparisons.
 
     Args:
