@@ -26,7 +26,8 @@ def save(trainer, save_path):
     # We implement this here and not in Trainer since we do not want to actually
     # serialize the whole Trainer (including e.g. expert demonstrations).
     os.makedirs(save_path, exist_ok=True)
-    th.save(trainer.discrim_net, os.path.join(save_path, "discrim.pt"))
+    th.save(trainer.reward_train, os.path.join(save_path, "reward_train.pt"))
+    th.save(trainer.reward_test, os.path.join(save_path, "reward_test.pt"))
     # TODO(gleave): unify this with the saving logic in data_collect?
     # (Needs #43 to be merged before attempting.)
     serialize.save_stable_model(
@@ -204,11 +205,12 @@ def train_adversarial(
         **final_algorithm_kwargs,
     )
 
-    logging.info(f"Discriminator network summary:\n {trainer.discrim_net}")
+    logging.info(f"Reward network summary:\n {reward_net}")
     logging.info(f"RL algorithm: {type(trainer.gen_algo)}")
     logging.info(
         f"Imitation (generator) policy network summary:\n" f"{trainer.gen_algo.policy}",
     )
+    logging.info(f"Adversarial algorithm: {algorithm}")
 
     def callback(round_num):
         if checkpoint_interval > 0 and round_num % checkpoint_interval == 0:

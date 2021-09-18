@@ -111,7 +111,7 @@ def airl():
 
 # Shared settings
 
-MUJOCO_SHARED_LOCALS = dict(algorithm_kwargs=dict(airl=dict(entropy_weight=0.1)))
+MUJOCO_SHARED_LOCALS = dict(init_rl_kwargs=dict(ent_coef=0.1))
 
 ANT_SHARED_LOCALS = dict(
     total_timesteps=3e7,

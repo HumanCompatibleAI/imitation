@@ -11,10 +11,6 @@ API
     :inherited-members:
     :noindex:
 
-.. autoclass:: imitation.algorithms.adversarial.gail.DiscrimNetGAIL
-    :members:
-    :noindex:
-
 .. autoclass:: imitation.algorithms.adversarial.common.AdversarialTrainer
     :members:
     :inherited-members:

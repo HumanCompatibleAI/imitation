@@ -46,7 +46,7 @@ class RewardNet(nn.Module, abc.ABC):
         action: th.Tensor,
         next_state: th.Tensor,
         done: th.Tensor,
-    ):
+    ) -> th.Tensor:
         """Compute rewards for a batch of transitions and keep gradients."""
 
     def preprocess(

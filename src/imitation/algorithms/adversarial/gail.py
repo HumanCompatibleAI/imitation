@@ -12,51 +12,29 @@ from imitation.algorithms.adversarial import common
 from imitation.rewards import reward_nets
 
 
-class DiscrimNetGAIL(common.DiscrimNet):
-    """The discriminator to use for GAIL."""
+class LogSigmoidRewardNet(reward_nets.RewardNet):
+    """Wrapper for reward network that takes log sigmoid of wrapped network."""
 
-    discriminator: reward_nets.RewardNet
+    def __init__(self, base: reward_nets.RewardNet):
+        """Builds LogSigmoidRewardNet to wrap `reward_net`."""
+        # TODO(adam): make an explicit RewardNetWrapper class?
+        super().__init__(
+            observation_space=base.observation_space,
+            action_space=base.action_space,
+            normalize_images=base.normalize_images,
+        )
+        self.base = base
 
-    def __init__(
-        self,
-        reward_net: reward_nets.RewardNet,
-    ):
-        """Construct discriminator network.
-
-        Args:
-            reward_net: A reward network used to compute the logits for GAIL.
-                This is a bit of an abuse of terminology: the actual "reward"
-                given by GAIL is the negative logsigmoid of this output. But
-                this works as discriminator logits and reward are both scalar outputs.
-        """
-        super().__init__(reward_net=reward_net)
-
-    def logits_gen_is_high(
-        self,
-        state: th.Tensor,
-        action: th.Tensor,
-        next_state: th.Tensor,
-        done: th.Tensor,
-        log_policy_act_prob: Optional[th.Tensor] = None,
-    ) -> th.Tensor:
-        """Compute the discriminator's logits for each state-action sample."""
-        logits = self.reward_net(state, action, next_state, done)
-        assert logits.shape == state.shape[:1]
-        return logits
-
-    def reward_train(
+    def forward(
         self,
         state: th.Tensor,
         action: th.Tensor,
         next_state: th.Tensor,
         done: th.Tensor,
     ) -> th.Tensor:
-        logits = self.logits_gen_is_high(state, action, next_state, done)
-        rew = -F.logsigmoid(logits)
-        assert rew.shape == state.shape[:1]
-        return rew
-
-    reward_test = reward_train
+        """Computes negative log sigmoid of base reward network."""
+        logits = self.base.forward(state, action, next_state, done)
+        return -F.logsigmoid(logits)
 
 
 class GAIL(common.AdversarialTrainer):
@@ -98,12 +76,33 @@ class GAIL(common.AdversarialTrainer):
                 observation_space=venv.observation_space,
                 action_space=venv.action_space,
             )
-        discrim = DiscrimNetGAIL(reward_net=reward_net)
+        self.discriminator = reward_net.to(gen_algo.device)
+        self._reward_net = LogSigmoidRewardNet(self.discriminator)
         super().__init__(
             demonstrations=demonstrations,
             demo_batch_size=demo_batch_size,
             venv=venv,
-            discrim_net=discrim,
             gen_algo=gen_algo,
             **kwargs,
         )
+
+    def logits_gen_is_high(
+        self,
+        state: th.Tensor,
+        action: th.Tensor,
+        next_state: th.Tensor,
+        done: th.Tensor,
+        log_policy_act_prob: Optional[th.Tensor] = None,
+    ) -> th.Tensor:
+        """Compute the discriminator's logits for each state-action sample."""
+        logits = self.discriminator(state, action, next_state, done)
+        assert logits.shape == state.shape[:1]
+        return logits
+
+    @property
+    def reward_train(self) -> reward_nets.RewardNet:
+        return self._reward_net
+
+    @property
+    def reward_test(self) -> reward_nets.RewardNet:
+        return self._reward_net

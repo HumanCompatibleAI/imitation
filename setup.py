@@ -23,6 +23,7 @@ TESTS_REQUIRE = [
     # remove pin once https://github.com/jupyter/jupyter_client/issues/637 fixed
     "jupyter-client<7.0",
     "pytest",
+    "pytest-cases",
     "pytest-cov",
     "pytest-notebook",
     "pytest-xdist",
