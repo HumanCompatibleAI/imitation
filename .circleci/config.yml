@@ -73,10 +73,7 @@ jobs:
       - dependencies
       - run:
           name: flake8
-          command: |
-            cp ci/.darglint .  # enable darglint
-            flake8 --version && flake8 -j "${NUM_CPUS}" ${SRC_FILES}
-            rm .darglint
+          command: flake8 --version && flake8 -j "${NUM_CPUS}" ${SRC_FILES}
 
       - run:
           name: black

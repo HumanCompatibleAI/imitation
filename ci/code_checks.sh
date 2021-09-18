@@ -7,7 +7,7 @@ set -x  # echo commands
 set -e  # quit immediately on error
 
 echo "Source format checking"
-flake8 ${SRC_FILES[@]}
+flake8 --disable-darglint ${SRC_FILES[@]}
 black --check --diff ${SRC_FILES[@]}
 codespell -I .codespell.skip --skip='*.pyc,tests/testdata/*,*.ipynb,*.csv' ${SRC_FILES[@]}
 
@@ -29,13 +29,12 @@ if [ "$skipexpensive" != "true" ]; then
   popd
 
   echo "Darglint on diff"
-  pushd ci/  # darglint will read config from ci/.darglint, enabling it
   # We run flake8 rather than darglint directly to work around:
   # https://github.com/terrencepreilly/darglint/issues/21
   # so noqa's are respected outside docstring.
   # If we got to this point, flake8 already passed, so this should
   # only find new darglint-specific errors.
-  files=$(git diff --cached --name-only --diff-filter=AMR ${against} | sed -e s'/^/..\//' | xargs -I'{}' find '{}' -name '*.py'$)
+  files=$(git diff --cached --name-only --diff-filter=AMR ${against} | xargs -I'{}' find '{}' -name '*.py'$)
   if [[ ${files} -ne "" ]]; then
     flake8 ${files}
   fi
