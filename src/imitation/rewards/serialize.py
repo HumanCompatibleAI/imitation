@@ -61,6 +61,7 @@ def load_zero(path: str, venv: VecEnv) -> common.RewardFn:
     return f
 
 
+# TODO(adam): I think we can get rid of this and have just one RewardNet.
 reward_registry.register(
     key="RewardNet_shaped",
     value=_load_reward_net_as_fn(shaped=True),
