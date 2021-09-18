@@ -18,15 +18,23 @@ executors:
     environment:
       # more CPUs visible but we're throttled to 8, which breaks auto-detect
       NUM_CPUS: 8
-  lintandtype:
+  lint:
     <<: *defaults
-    # We do actually benefit from xlarge even for linting because pytype
-    # and darglint are both quite slow but parallelizable.
-    resource_class: xlarge
+    # darglint is slow enough that we benefit from large even for linting.
+    # However, there's little benefit from larger parallelization (I think there's
+    # a handful of files with long docstrings causing the bulk of the time).
+    resource_class: large
     environment:
       # If you change these, also change ci/code_checks.sh
       SRC_FILES: src/ tests/ experiments/ examples/ docs/conf.py setup.py
-      NUM_CPUS: 8
+      NUM_CPUS: 4
+  type:
+    <<: *defaults
+    resource_class: medium
+    environment:
+      # If you change these, also change ci/code_checks.sh
+      SRC_FILES: src/ tests/ experiments/ examples/ docs/conf.py setup.py
+      NUM_CPUS: 2
 
 commands:
   dependencies:
@@ -68,8 +76,8 @@ commands:
           command: pip freeze --all
 
 jobs:
-  lintandtype:
-    executor: lintandtype
+  lint:
+    executor: lint
 
     steps:
       - dependencies
@@ -86,12 +94,18 @@ jobs:
           command: codespell -I .codespell.skip --skip='*.pyc,tests/testdata/*,*.ipynb,*.csv' ${SRC_FILES}
 
       - run:
+          name: sphinx
+          command: pushd docs/ && make clean && make html && popd
+
+  type:
+    executor: type
+    steps:
+      - dependencies
+
+      - run:
           name: pytype
           command: pytype --version && pytype -j "${NUM_CPUS}" ${SRC_FILES[@]}
 
-      - run:
-          name: sphinx
-          command: pushd docs/ && make clean && make html && popd
 
   unit-test:
     executor: unit-test
@@ -135,7 +149,11 @@ workflows:
   version: 2
   test:
     jobs:
-      - lintandtype:
+      - lint:
+          context:
+          - MuJoCo
+          - docker-hub-creds
+      - type:
           context:
           - MuJoCo
           - docker-hub-creds
