@@ -84,8 +84,8 @@ parallel -j 25% --header : --results ${LOG_ROOT}/parallel/ --colsep , --progress
   {env_config_name} ${extra_configs} \
   seed={seed} \
   log_dir="${LOG_ROOT}/${ALGORITHM}/{env_config_name}_{seed}/n_expert_demos_{n_expert_demos}" \
-  reward_type="DiscrimNet" \
-  reward_path="${REWARD_MODELS_DIR}/${ALGORITHM}/{env_config_name}_0/n_expert_demos_{n_expert_demos}/checkpoints/final/discrim.pt" \
+  reward_type="RewardNet_shaped" \
+  reward_path="${REWARD_MODELS_DIR}/${ALGORITHM}/{env_config_name}_0/n_expert_demos_{n_expert_demos}/checkpoints/final/reward_test.pt" \
   ::: seed ${SEEDS} :::: ${CONFIG_CSV}
 
 

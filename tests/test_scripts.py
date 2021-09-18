@@ -341,13 +341,13 @@ def test_transfer_learning(tmpdir: str) -> None:
     _check_rollout_stats(run.result["imit_stats"])
 
     log_dir_data = tmpdir / "expert_demos"
-    discrim_path = log_dir_train / "checkpoints" / "final" / "discrim.pt"
+    reward_path = log_dir_train / "checkpoints" / "final" / "reward_test.pt"
     run = expert_demos.expert_demos_ex.run(
         named_configs=["cartpole", "fast"],
         config_updates=dict(
             log_dir=log_dir_data,
-            reward_type="DiscrimNet",
-            reward_path=discrim_path,
+            reward_type="RewardNet_shaped",
+            reward_path=reward_path,
         ),
     )
     assert run.status == "COMPLETED"
