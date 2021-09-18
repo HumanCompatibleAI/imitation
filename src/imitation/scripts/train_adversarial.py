@@ -57,7 +57,6 @@ def train_adversarial(
     reward_net_cls: Optional[Type[reward_nets.RewardNet]],
     reward_net_kwargs: Optional[Mapping[str, Any]],
     algorithm_kwargs: Mapping[str, Mapping],
-    discrim_net_kwargs: Mapping[str, Mapping],
 ) -> Mapping[str, Mapping[str, float]]:
     """Train an adversarial-network-based imitation learning algorithm.
 
@@ -111,10 +110,6 @@ def train_adversarial(
             to both the `AIRL` and `GAIL` constructors. Duplicate keyword argument keys
             between `algorithm_kwargs["shared"]` and `algorithm_kwargs["airl"]` (or
             "gail") leads to an error.
-        discrim_net_kwargs: Keyword arguments for the `DiscrimNet` constructor. Unlike a
-            regular kwargs argument, this argument can only have the following keys:
-            "shared", "airl", "gail". These keys have the same meaning as they do in
-            `algorithm_kwargs`.
 
     Returns:
         A dictionary with two keys. "imit_stats" gives the return value of
@@ -125,7 +120,7 @@ def train_adversarial(
 
     Raises:
         ValueError: `gen_batch_size` not divisible by `num_vec`.
-        ValueError: `discrim_net_kwargs` or `algorithm_kwargs` included unsupported key
+        ValueError: `algorithm_kwargs` included unsupported key
             (not one of "shared", "gail" or "airl").
         ValueError: Number of expert trajectories is less than `n_expert_demos`.
         FileNotFoundError: `rollout_path` does not exist.
@@ -136,14 +131,9 @@ def train_adversarial(
         )
 
     allowed_keys = {"shared", "gail", "airl"}
-    if not discrim_net_kwargs.keys() <= allowed_keys:
-        raise ValueError(
-            f"Invalid discrim_net_kwargs.keys()={discrim_net_kwargs.keys()}. "
-            f"Allowed keys: {allowed_keys}",
-        )
     if not algorithm_kwargs.keys() <= allowed_keys:
         raise ValueError(
-            f"Invalid discrim_net_kwargs.keys()={algorithm_kwargs.keys()}. "
+            f"Invalid algorithm_kwargs.keys()={algorithm_kwargs.keys()}. "
             f"Allowed keys: {allowed_keys}",
         )
 

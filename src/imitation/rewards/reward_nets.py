@@ -107,22 +107,12 @@ class RewardNet(nn.Module, abc.ABC):
         Returns:
             Computed rewards of shape `(batch_size,`).
         """
-        (
-            state_th,
-            action_th,
-            next_state_th,
-            done_th,
-        ) = rewards_common.disc_rew_preprocess_inputs(
-            observation_space=self.observation_space,
-            action_space=self.action_space,
-            state=state,
-            action=action,
-            next_state=next_state,
-            done=done,
-            device=self.device,
-            normalize_images=self.normalize_images,
+        state_th, action_th, next_state_th, done_th = self.preprocess(
+            state,
+            action,
+            next_state,
+            done,
         )
-
         with th.no_grad():
             rew_th = self(state_th, action_th, next_state_th, done_th)
 
