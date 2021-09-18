@@ -1,9 +1,10 @@
 """Core code for adversarial imitation learning, shared between GAIL and AIRL."""
 import abc
+import collections
 import dataclasses
 import logging
 import os
-from typing import Callable, Iterator, Mapping, Optional, Type
+from typing import Callable, Iterator, Mapping, Optional, Sequence, Tuple, Type
 
 import numpy as np
 import torch as th
@@ -14,9 +15,77 @@ from torch.nn import functional as F
 
 from imitation.algorithms import base
 from imitation.data import buffer, rollout, types, wrappers
-from imitation.rewards import common as rew_common
 from imitation.rewards import reward_nets
 from imitation.util import logger, reward_wrapper, util
+
+
+def compute_train_stats(
+    disc_logits_gen_is_high: th.Tensor,
+    labels_gen_is_one: th.Tensor,
+    disc_loss: th.Tensor,
+) -> Mapping[str, float]:
+    """Train statistics for GAIL/AIRL discriminator.
+
+    Args:
+        disc_logits_gen_is_high: discriminator logits produced by
+            `DiscrimNet.logits_gen_is_high`.
+        labels_gen_is_one: integer labels describing whether logit was for an
+            expert (0) or generator (1) sample.
+        disc_loss: final discriminator loss.
+
+    Returns:
+        A mapping from statistic names to float values.
+    """
+    with th.no_grad():
+        bin_is_generated_pred = disc_logits_gen_is_high > 0
+        bin_is_generated_true = labels_gen_is_one > 0
+        bin_is_expert_true = th.logical_not(bin_is_generated_true)
+        int_is_generated_pred = bin_is_generated_pred.long()
+        int_is_generated_true = bin_is_generated_true.long()
+        n_generated = float(th.sum(int_is_generated_true))
+        n_labels = float(len(labels_gen_is_one))
+        n_expert = n_labels - n_generated
+        pct_expert = n_expert / float(n_labels) if n_labels > 0 else float("NaN")
+        n_expert_pred = int(n_labels - th.sum(int_is_generated_pred))
+        if n_labels > 0:
+            pct_expert_pred = n_expert_pred / float(n_labels)
+        else:
+            pct_expert_pred = float("NaN")
+        correct_vec = th.eq(bin_is_generated_pred, bin_is_generated_true)
+        acc = th.mean(correct_vec.float())
+
+        _n_pred_expert = th.sum(th.logical_and(bin_is_expert_true, correct_vec))
+        if n_expert < 1:
+            expert_acc = float("NaN")
+        else:
+            # float() is defensive, since we cannot divide Torch tensors by
+            # Python ints
+            expert_acc = _n_pred_expert / float(n_expert)
+
+        _n_pred_gen = th.sum(th.logical_and(bin_is_generated_true, correct_vec))
+        _n_gen_or_1 = max(1, n_generated)
+        generated_acc = _n_pred_gen / float(_n_gen_or_1)
+
+        label_dist = th.distributions.Bernoulli(logits=disc_logits_gen_is_high)
+        entropy = th.mean(label_dist.entropy())
+
+    pairs = [
+        ("disc_loss", float(th.mean(disc_loss))),
+        # accuracy, as well as accuracy on *just* expert examples and *just*
+        # generated examples
+        ("disc_acc", float(acc)),
+        ("disc_acc_expert", float(expert_acc)),
+        ("disc_acc_gen", float(generated_acc)),
+        # entropy of the predicted label distribution, averaged equally across
+        # both classes (if this drops then disc is very good or has given up)
+        ("disc_entropy", float(entropy)),
+        # true number of expert demos and predicted number of expert demos
+        ("disc_proportion_expert_true", float(pct_expert)),
+        ("disc_proportion_expert_pred", float(pct_expert_pred)),
+        ("n_expert", float(n_expert)),
+        ("n_generated", float(n_generated)),
+    ]  # type: Sequence[Tuple[str, float]]
+    return collections.OrderedDict(pairs)
 
 
 class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
@@ -282,7 +351,7 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
 
             # compute/write stats and TensorBoard data
             with th.no_grad():
-                train_stats = rew_common.compute_train_stats(
+                train_stats = compute_train_stats(
                     disc_logits,
                     batch["labels_gen_is_one"],
                     loss,
