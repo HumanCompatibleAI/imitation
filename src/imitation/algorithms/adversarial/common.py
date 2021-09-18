@@ -3,14 +3,13 @@ import abc
 import dataclasses
 import logging
 import os
-from typing import Callable, Mapping, Optional, Type
+from typing import Callable, Iterator, Mapping, Optional, Type
 
 import numpy as np
 import torch as th
 import torch.utils.tensorboard as thboard
 import tqdm
 from stable_baselines3.common import base_class, vec_env
-from torch import nn
 from torch.nn import functional as F
 
 from imitation.algorithms import base
@@ -18,171 +17,6 @@ from imitation.data import buffer, rollout, types, wrappers
 from imitation.rewards import common as rew_common
 from imitation.rewards import reward_nets
 from imitation.util import logger, reward_wrapper, util
-
-
-class DiscrimNet(nn.Module, abc.ABC):
-    """Abstract base class for discriminator, used in AIRL and GAIL.
-
-    `self.forward()` is not implemented for this `th.nn.Module` subclass.
-    We subclass `Module` mainly to get pretty-printing of network internals via
-    `print(self)`.
-    """
-
-    def __init__(
-        self,
-        reward_net: reward_nets.RewardNet,
-    ):
-        """Builds DiscrimNet.
-
-        Args:
-            reward_net: The reward network used to compute discriminator output.
-        """
-        super().__init__()
-        self.reward_net = reward_net
-
-    @abc.abstractmethod
-    def logits_gen_is_high(
-        self,
-        state: th.Tensor,
-        action: th.Tensor,
-        next_state: th.Tensor,
-        done: th.Tensor,
-        log_policy_act_prob: Optional[th.Tensor] = None,
-    ) -> th.Tensor:
-        """Compute the discriminator's logits for each state-action sample.
-
-        A high value corresponds to predicting generator, and a low value corresponds to
-        predicting expert.
-
-        Args:
-            state: state at time t, of shape `(batch_size,) + state_shape`.
-            action: action taken at time t, of shape `(batch_size,) + action_shape`.
-            next_state: state at time t+1, of shape `(batch_size,) + state_shape`.
-            done: binary episode completion flag after action at time t,
-                of shape `(batch_size,)`.
-            log_policy_act_prob: log probability of generator policy taking
-                `action` at time t.
-
-        Returns:
-            Discriminator logits of shape `(batch_size,)`. A high output indicates a
-            generator-like transition.
-        """  # noqa: DAR202
-
-    @property
-    def device(self) -> th.device:
-        """Heuristic to determine which device this module is on."""
-        try:
-            first_param = next(self.parameters())
-            return first_param.device
-        except StopIteration:
-            # if the model has no parameters, we use the CPU
-            return th.device("cpu")
-
-    @abc.abstractmethod
-    def reward_test(
-        self,
-        state: th.Tensor,
-        action: th.Tensor,
-        next_state: th.Tensor,
-        done: th.Tensor,
-    ) -> th.Tensor:
-        """Test-time reward for given states/actions."""
-
-    @abc.abstractmethod
-    def reward_train(
-        self,
-        state: th.Tensor,
-        action: th.Tensor,
-        next_state: th.Tensor,
-        done: th.Tensor,
-    ) -> th.Tensor:
-        """Train-time reward for given states/actions."""
-
-    def predict_reward_train(
-        self,
-        state: np.ndarray,
-        action: np.ndarray,
-        next_state: np.ndarray,
-        done: np.ndarray,
-    ) -> np.ndarray:
-        """Vectorized reward for training an imitation learning algorithm.
-
-        Args:
-            state: The observation input. Its shape is
-                `(batch_size,) + observation_space.shape`.
-            action: The action input. Its shape is
-                `(batch_size,) + action_space.shape`. The None dimension is
-                expected to be the same as None dimension from `obs_input`.
-            next_state: The observation input. Its shape is
-                `(batch_size,) + observation_space.shape`.
-            done: Whether the episode has terminated. Its shape is `(batch_size,)`.
-
-        Returns:
-            The rewards of shape `(batch_size,)`.
-        """
-        return self._eval_reward(
-            is_train=True,
-            state=state,
-            action=action,
-            next_state=next_state,
-            done=done,
-        )
-
-    def predict_reward_test(
-        self,
-        state: np.ndarray,
-        action: np.ndarray,
-        next_state: np.ndarray,
-        done: np.ndarray,
-    ) -> np.ndarray:
-        """Vectorized reward for training an expert during transfer learning.
-
-        Args:
-            state: The observation input. Its shape is
-                `(batch_size,) + observation_space.shape`.
-            action: The action input. Its shape is
-                `(batch_size,) + action_space.shape`. The None dimension is
-                expected to be the same as None dimension from `obs_input`.
-            next_state: The observation input. Its shape is
-                `(batch_size,) + observation_space.shape`.
-            done: Whether the episode has terminated. Its shape is `(batch_size,)`.
-
-        Returns:
-            The rewards. Its shape is `(batch_size,)`.
-        """
-        return self._eval_reward(
-            is_train=False,
-            state=state,
-            action=action,
-            next_state=next_state,
-            done=done,
-        )
-
-    def _eval_reward(
-        self,
-        is_train: bool,
-        state: np.ndarray,
-        action: np.ndarray,
-        next_state: np.ndarray,
-        done: np.ndarray,
-    ) -> np.ndarray:
-        state_th, action_th, next_state_th, done_th = self.reward_net.preprocess(
-            state,
-            action,
-            next_state,
-            done,
-        )
-
-        with th.no_grad():
-            if is_train:
-                rew_th = self.reward_train(state_th, action_th, next_state_th, done_th)
-            else:
-                rew_th = self.reward_test(state_th, action_th, next_state_th, done_th)
-
-        rew = rew_th.detach().cpu().numpy().flatten()
-        assert rew.shape == (len(state),)
-
-        return rew
 
 
 class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
@@ -209,6 +43,7 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
         demo_batch_size: int,
         venv: vec_env.VecEnv,
         gen_algo: base_class.BaseAlgorithm,
+        disc_parameters: Iterator[th.nn.Parameter],
         n_disc_updates_per_round: int = 2,
         log_dir: str = "output/",
         normalize_obs: bool = True,
@@ -237,6 +72,7 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
             gen_algo: The generator RL algorithm that is trained to maximize
                 discriminator confusion. Environment and logger will be set to
                 `venv` and `custom_logger`.
+            disc_parameters: Discriminator parameters to optimize over.
             n_disc_updates_per_round: The number of discriminator updates after each
                 round of generator updates in AdversarialTrainer.learn().
             log_dir: Directory to store TensorBoard logs, plots, etc. in.
@@ -294,8 +130,7 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
         self._init_tensorboard = init_tensorboard
         self._init_tensorboard_graph = init_tensorboard_graph
         self._disc_opt = self._disc_opt_cls(
-            # TODO(adam): is this enough?
-            self.reward_train.parameters(),
+            disc_parameters,
             **self._disc_opt_kwargs,
         )
 

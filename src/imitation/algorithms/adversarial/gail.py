@@ -76,13 +76,14 @@ class GAIL(common.AdversarialTrainer):
                 observation_space=venv.observation_space,
                 action_space=venv.action_space,
             )
-        self.discriminator = reward_net.to(gen_algo.device)
-        self._reward_net = LogSigmoidRewardNet(self.discriminator)
+        self._discriminator = reward_net.to(gen_algo.device)
+        self._reward_net = LogSigmoidRewardNet(self._discriminator)
         super().__init__(
             demonstrations=demonstrations,
             demo_batch_size=demo_batch_size,
             venv=venv,
             gen_algo=gen_algo,
+            disc_parameters=self._discriminator.parameters(),
             **kwargs,
         )
 
@@ -95,7 +96,7 @@ class GAIL(common.AdversarialTrainer):
         log_policy_act_prob: Optional[th.Tensor] = None,
     ) -> th.Tensor:
         """Compute the discriminator's logits for each state-action sample."""
-        logits = self.discriminator(state, action, next_state, done)
+        logits = self._discriminator(state, action, next_state, done)
         assert logits.shape == state.shape[:1]
         return logits
 

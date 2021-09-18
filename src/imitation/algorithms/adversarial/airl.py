@@ -60,6 +60,7 @@ class AIRL(common.AdversarialTrainer):
             demo_batch_size=demo_batch_size,
             venv=venv,
             gen_algo=gen_algo,
+            disc_parameters=self._reward_net.parameters(),
             **kwargs,
         )
         if not hasattr(self.gen_algo.policy, "evaluate_actions"):
