@@ -20,14 +20,14 @@ executors:
       NUM_CPUS: 8
   lint:
     <<: *defaults
-    # darglint is slow enough that we benefit from large even for linting.
+    # darglint is slow enough that we benefit from xlarge even for linting.
     # However, there's little benefit from larger parallelization (I think there's
     # a handful of files with long docstrings causing the bulk of the time).
-    resource_class: large
+    resource_class: xlarge
     environment:
       # If you change these, also change ci/code_checks.sh
       SRC_FILES: src/ tests/ experiments/ examples/ docs/conf.py setup.py
-      NUM_CPUS: 4
+      NUM_CPUS: 8
   type:
     <<: *defaults
     resource_class: medium
