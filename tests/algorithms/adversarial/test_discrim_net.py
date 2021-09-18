@@ -127,10 +127,12 @@ def test_logits_gen_is_high_log_policy_act_prob(
         n_timesteps=n_timesteps,
     )
 
-    obs = util.torchify_with_space(trans.obs, venv.observation_space)
-    acts = util.torchify_with_space(trans.acts, venv.action_space)
-    next_obs = util.torchify_with_space(trans.next_obs, venv.observation_space)
-    dones = th.as_tensor(trans.dones)
+    obs, acts, next_obs, dones = discrim_net.reward_net.preprocess(
+        trans.obs,
+        trans.acts,
+        trans.next_obs,
+        trans.dones,
+    )
     log_act_prob_non_none = th.as_tensor(np.random.rand(n_timesteps))
 
     for log_act_prob in [None, log_act_prob_non_none]:
