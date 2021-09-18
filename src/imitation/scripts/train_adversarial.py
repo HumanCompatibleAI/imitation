@@ -101,6 +101,8 @@ def train_adversarial(
             is only used in sanity checks.
         init_rl_kwargs: Keyword arguments for `init_rl`, the RL algorithm initialization
             utility function.
+        reward_net_cls: Class of reward network to construct.
+        reward_net_kwargs: Keyword arguments passed to reward network constructor.
         algorithm_kwargs: Keyword arguments for the `GAIL` or `AIRL` constructor
             that can apply to either constructor. Unlike a regular kwargs argument, this
             argument can only have the following keys: "shared", "airl", and "gail".
