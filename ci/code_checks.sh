@@ -7,7 +7,7 @@ set -x  # echo commands
 set -e  # quit immediately on error
 
 echo "Source format checking"
-flake8 --darglint-disable ${SRC_FILES[@]}
+flake8 --disable-darglint ${SRC_FILES[@]}
 black --check --diff ${SRC_FILES[@]}
 codespell -I .codespell.skip --skip='*.pyc,tests/testdata/*,*.ipynb,*.csv' ${SRC_FILES[@]}
 
