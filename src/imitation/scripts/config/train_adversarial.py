@@ -256,35 +256,6 @@ def seals_walker():
     rollout_hint = "walker"
 
 
-# Custom Gym environment named configs
-
-
-@train_adversarial_ex.named_config
-def two_d_maze():
-    locals().update(**MUJOCO_SHARED_LOCALS)
-    env_name = "imitation/TwoDMaze-v0"
-    rollout_hint = "two_d_maze"
-
-
-@train_adversarial_ex.named_config
-def custom_ant():
-    locals().update(**MUJOCO_SHARED_LOCALS)
-    # Watch out -- ANT_SHARED_LOCALS could erroneously erase nested dict keys from
-    # MUJOCO_SHARED_LOCALS because `locals().update()` doesn't merge dicts
-    # "Sacred-style".
-    locals().update(**ANT_SHARED_LOCALS)
-    env_name = "imitation/CustomAnt-v0"
-    rollout_hint = "custom_ant"
-
-
-@train_adversarial_ex.named_config
-def disabled_ant():
-    locals().update(**MUJOCO_SHARED_LOCALS)
-    locals().update(**ANT_SHARED_LOCALS)
-    env_name = "imitation/DisabledAnt-v0"
-    rollout_hint = "disabled_ant"
-
-
 # Debug configs
 
 

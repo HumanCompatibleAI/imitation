@@ -7,7 +7,6 @@ set -e
 
 ENVS+="acrobot cartpole mountain_car "
 ENVS+="reacher half_cheetah hopper ant humanoid swimmer walker "
-ENVS+="two_d_maze custom_ant disabled_ant "
 
 SEEDS="0 1 2"
 
