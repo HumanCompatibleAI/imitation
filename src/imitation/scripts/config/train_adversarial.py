@@ -68,11 +68,6 @@ def aliases_default_gen_batch_size(algorithm_kwargs, gen_batch_size):
 
 
 @train_adversarial_ex.config
-def calc_n_steps(num_vec, gen_batch_size):
-    init_rl_kwargs = dict(n_steps=gen_batch_size // num_vec)
-
-
-@train_adversarial_ex.config
 def paths(env_name, log_root, rollout_hint, data_dir):
     log_dir = os.path.join(
         log_root,
