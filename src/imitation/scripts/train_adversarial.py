@@ -160,15 +160,18 @@ def load_expert_demos(
 def make_rl_algo(
     venv: vec_env.VecEnv,
     gen_batch_size: int,
-    init_rl_kwargs: Mapping[str, Any],
+    rl_cls: Type[base_class.BaseAlgorithm],
+    policy_cls: Type[base_class.BasePolicy],
+    rl_kwargs: Mapping[str, Any],
 ) -> base_class.BaseAlgorithm:
     """Instantiates a Stable Baselines3 RL algorithm.
 
     Args:
         venv: The vectorized environment to train on.
         gen_batch_size: The batch size of the RL algorithm.
-        init_rl_kwargs: Keyword arguments for `init_rl`, the RL algorithm
-            initialization utility function.
+        rl_cls: Type of a Stable Baselines3 RL algorithm.
+        policy_cls: Type of a Stable Baselines3 policy architecture.
+        rl_kwargs: Keyword arguments for RL algorithm constructor.
 
     Returns:
         The RL algorithm.
@@ -182,11 +185,12 @@ def make_rl_algo(
             f"gen_batch_size={gen_batch_size}.",
         )
     n_steps = gen_batch_size // venv.num_envs
-    # TODO(adam): n_steps doesn't exist in all algos -- generalize?
-    rl_algo = util.init_rl(
+    rl_algo = rl_cls(
+        policy_cls,
         venv,
+        # TODO(adam): n_steps doesn't exist in all algos -- generalize?
         n_steps=n_steps,
-        **init_rl_kwargs,
+        **rl_kwargs,
     )
     logger.info(f"RL algorithm: {type(rl_algo)}")
     logger.info(f"Policy network summary:\n {rl_algo.policy}")

@@ -3,9 +3,10 @@
 import os
 
 import sacred
+import stable_baselines3
 
 from imitation.policies import base
-from imitation.scripts.config.common import DEFAULT_INIT_RL_KWARGS
+from imitation.scripts.config.common import DEFAULT_RL_KWARGS
 from imitation.util import util
 
 train_adversarial_ex = sacred.Experiment("train_adversarial", interactive=True)
@@ -45,10 +46,9 @@ def train_defaults():
     reward_net_kwargs = None
 
     # Modifies the __init__ arguments for the imitation policy
-    init_rl_kwargs = dict(
-        policy_class=base.FeedForward32Policy,
-        **DEFAULT_INIT_RL_KWARGS,
-    )
+    rl_cls = stable_baselines3.PPO
+    policy_cls = base.FeedForward32Policy
+    rl_kwargs = DEFAULT_RL_KWARGS
     gen_batch_size = 2048  # Batch size for generator updates
 
     log_root = os.path.join("output", "train_adversarial")  # output directory
@@ -106,7 +106,7 @@ def airl():
 
 # Shared settings
 
-MUJOCO_SHARED_LOCALS = dict(init_rl_kwargs=dict(ent_coef=0.1))
+MUJOCO_SHARED_LOCALS = dict(rl_kwargs=dict(ent_coef=0.1))
 
 ANT_SHARED_LOCALS = dict(
     total_timesteps=3e7,
@@ -175,7 +175,7 @@ HALF_CHEETAH_SHARED_LOCALS = dict(
     env_name="HalfCheetah-v2",
     rollout_hint="half_cheetah",
     gen_batch_size=16384,
-    init_rl_kwargs=dict(
+    rl_kwargs=dict(
         batch_size=1024,
     ),
     algorithm_kwargs=dict(
@@ -306,4 +306,4 @@ def fast():
     # SB3 RL seems to need batch size of 2, otherwise it runs into numeric
     # issues when computing multinomial distribution during predict()
     num_vec = 2
-    init_rl_kwargs = dict(batch_size=2)
+    rl_kwargs = dict(batch_size=2)

@@ -4,7 +4,7 @@ import os
 
 import sacred
 
-from imitation.scripts.config.common import DEFAULT_INIT_RL_KWARGS
+from imitation.scripts.config.common import DEFAULT_RL_KWARGS
 from imitation.util import util
 
 expert_demos_ex = sacred.Experiment("expert_demos")
@@ -22,7 +22,7 @@ def expert_demos_defaults():
     max_episode_steps = None  # Set to positive int to limit episode horizons
     n_episodes_eval = 50  # Num of episodes for final ep reward mean evaluation
 
-    init_rl_kwargs = dict(DEFAULT_INIT_RL_KWARGS)
+    init_rl_kwargs = dict(DEFAULT_RL_KWARGS)
 
     # If specified, overrides the ground-truth environment reward
     reward_type = None  # override reward type
