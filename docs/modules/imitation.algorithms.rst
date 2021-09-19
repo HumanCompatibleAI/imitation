@@ -26,10 +26,10 @@ imitation.algorithms.density module
 
 .. automodule:: imitation.algorithms.density
 
-imitation.algorithms.tabular\_irl module
-----------------------------------------
+imitation.algorithms.mce\_irl module
+------------------------------------
 
-.. automodule:: imitation.algorithms.tabular_irl
+.. automodule:: imitation.algorithms.mce_irl
 
 
 Module contents
