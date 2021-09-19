@@ -8,13 +8,48 @@ from typing import Any, Mapping, Optional, Sequence, Type, Union
 import gym
 import torch as th
 from sacred.observers import FileStorageObserver
-from stable_baselines3.common import policies, vec_env
+from stable_baselines3.common import policies, utils, vec_env
 
 from imitation.algorithms import bc
 from imitation.data import rollout, types
 from imitation.scripts.config.train_bc import train_bc_ex
-from imitation.util import logger
+from imitation.util import logger as imit_logger
 from imitation.util import sacred as sacred_util
+
+logger = logging.getLogger(__name__)
+
+
+@train_bc_ex.capture
+def make_policy(
+    observation_space: gym.Space,
+    action_space: gym.Space,
+    policy_cls: Type[policies.BasePolicy],
+    policy_kwargs: Mapping[str, Any],
+) -> policies.BasePolicy:
+    """Makes policy.
+
+    Args:
+        observation_space: The observation space.
+        action_space: The action space.
+        policy_cls: Type of a Stable Baselines3 policy architecture.
+        policy_kwargs: Keyword arguments for policy constructor.
+
+    Returns:
+        A Stable Baselines3 policy.
+    """
+    policy_kwargs = dict(policy_kwargs)
+    if issubclass(policy_cls, policies.ActorCriticPolicy):
+        policy_kwargs.update(
+            {
+                "observation_space": observation_space,
+                "action_space": action_space,
+                # parameter mandatory for ActorCriticPolicy, but not used by BC
+                "lr_schedule": utils.get_schedule_fn(1),
+            },
+        )
+    policy = policy_cls(**policy_kwargs)
+    logger.info(f"Policy network summary:\n {policy}")
+    return policy
 
 
 @train_bc_ex.main
@@ -31,8 +66,6 @@ def train_bc(
     n_epochs: Optional[int],
     n_batches: Optional[int],
     l2_weight: float,
-    policy_cls: Type[policies.BasePolicy],
-    policy_kwargs: Mapping[str, Any],
     optimizer_cls: Type[th.optim.Optimizer],
     optimizer_kwargs: dict,
     log_dir: types.AnyPath,
@@ -92,9 +125,9 @@ def train_bc(
 
     log_dir = pathlib.Path(log_dir)
     log_dir.mkdir(parents=True, exist_ok=True)
-    logging.info("Logging to %s", log_dir)
+    logger.info("Logging to %s", log_dir)
 
-    custom_logger = logger.configure(log_dir, ["tensorboard", "stdout"])
+    custom_logger = imit_logger.configure(log_dir, ["tensorboard", "stdout"])
     sacred_util.build_sacred_symlink(log_dir, _run)
 
     if expert_data_src_format == "path":
@@ -116,11 +149,7 @@ def train_bc(
             )
         expert_trajs = expert_trajs[:n_expert_demos]
 
-    policy = policy_cls(
-        observation_space=observation_space,
-        action_space=action_space,
-        **policy_kwargs,
-    )
+    policy = make_policy()
     model = bc.BC(
         observation_space=observation_space,
         action_space=action_space,
@@ -132,6 +161,7 @@ def train_bc(
         optimizer_kwargs=optimizer_kwargs,
         custom_logger=custom_logger,
     )
+    # TODO(adam): have BC support timesteps instead of epochs/batches?
     model.train(
         n_epochs=n_epochs,
         n_batches=n_batches,
@@ -139,6 +169,7 @@ def train_bc(
         log_rollouts_venv=venv,
         log_rollouts_n_episodes=log_rollouts_n_episodes,
     )
+    # TODO(adam): add checkpointing to BC?
     model.save_policy(policy_path=pathlib.Path(log_dir, "final.th"))
 
     print(f"Visualize results with: tensorboard --logdir '{log_dir}'")

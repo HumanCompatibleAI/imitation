@@ -6,16 +6,18 @@ Can be used as a CLI script, or the `train_and_plot` function can be called dire
 import logging
 import os
 import os.path as osp
-from typing import Any, Mapping, Optional, Sequence, Tuple, Type
+from typing import Any, Mapping, Optional, Tuple, Type
 
 import torch as th
 from sacred.observers import FileStorageObserver
-from stable_baselines3.common import base_class, vec_env
+from stable_baselines3.common import vec_env
 
-from imitation.algorithms.adversarial import airl, common, gail
-from imitation.data import rollout, types
+from imitation.algorithms.adversarial import airl, gail
+from imitation.algorithms.adversarial.common import AdversarialTrainer
+from imitation.data import rollout
 from imitation.policies import serialize
 from imitation.rewards import reward_nets
+from imitation.scripts.common import rl, train
 from imitation.scripts.config.train_adversarial import train_adversarial_ex
 from imitation.util import logger as imit_logger
 from imitation.util import sacred as sacred_util
@@ -76,7 +78,7 @@ def make_reward_net(
 def get_algorithm_config(
     algorithm: str,
     algorithm_kwargs: Mapping[str, Mapping],
-) -> Tuple[Type[common.AdversarialTrainer], Mapping[str, Any]]:
+) -> Tuple[Type[AdversarialTrainer], Mapping[str, Any]]:
     """Makes an adversarial training algorithm.
 
     Args:
@@ -103,6 +105,11 @@ def get_algorithm_config(
             an algorithm defined in ALGORITHMS), or `algorithm` is not defined
             in ALGORITHMS.
     """
+    try:
+        algo_cls = ALGORITHMS[algorithm]
+    except KeyError as e:
+        raise ValueError(f"Unrecognized algorithm '{algorithm}'") from e
+
     allowed_keys = set(ALGORITHMS.keys()).union(("shared",))
     if not algorithm_kwargs.keys() <= allowed_keys:
         raise ValueError(
@@ -110,122 +117,15 @@ def get_algorithm_config(
             f"Allowed keys: {allowed_keys}",
         )
 
-    algorithm_kwargs_shared = algorithm_kwargs.get("shared", {})
+    algorithm_kwargs_shared = dict(algorithm_kwargs.get("shared", {}))
     algorithm_kwargs_algo = algorithm_kwargs.get(algorithm, {})
     final_algorithm_kwargs = dict(
         **algorithm_kwargs_shared,
         **algorithm_kwargs_algo,
     )
-    try:
-        algo_cls = ALGORITHMS[algorithm]
-    except KeyError as e:
-        raise ValueError(f"Unrecognized algorithm '{algorithm}'") from e
 
     logger.info(f"Using '{algorithm}' algorithm")
     return algo_cls, final_algorithm_kwargs
-
-
-@train_adversarial_ex.capture
-def load_expert_demos(
-    rollout_path: str,
-    n_expert_demos: Optional[int],
-) -> Sequence[types.Trajectory]:
-    """Loads expert demonstrations.
-
-    Args:
-        rollout_path: A path containing a pickled sequence of `types.Trajectory`.
-        n_expert_demos: The number of trajectories to load.
-            Dataset is truncated to this length if specified.
-
-    Returns:
-        The expert trajectories.
-
-    Raises:
-        ValueError: There are fewer trajectories than `n_expert_demos`.
-    """
-    expert_trajs = types.load(rollout_path)
-    logger.info(f"Loaded {len(expert_trajs)} expert trajectories from '{rollout_path}'")
-    if n_expert_demos is not None:
-        if len(expert_trajs) < n_expert_demos:
-            raise ValueError(
-                f"Want to use n_expert_demos={n_expert_demos} trajectories, but only "
-                f"{len(expert_trajs)} are available via {rollout_path}.",
-            )
-        expert_trajs = expert_trajs[:n_expert_demos]
-        logger.info(f"Truncated to {n_expert_demos} expert trajectories")
-    return expert_trajs
-
-
-@train_adversarial_ex.capture
-def make_rl_algo(
-    venv: vec_env.VecEnv,
-    gen_batch_size: int,
-    rl_cls: Type[base_class.BaseAlgorithm],
-    policy_cls: Type[base_class.BasePolicy],
-    rl_kwargs: Mapping[str, Any],
-) -> base_class.BaseAlgorithm:
-    """Instantiates a Stable Baselines3 RL algorithm.
-
-    Args:
-        venv: The vectorized environment to train on.
-        gen_batch_size: The batch size of the RL algorithm.
-        rl_cls: Type of a Stable Baselines3 RL algorithm.
-        policy_cls: Type of a Stable Baselines3 policy architecture.
-        rl_kwargs: Keyword arguments for RL algorithm constructor.
-
-    Returns:
-        The RL algorithm.
-
-    Raises:
-        ValueError: `gen_batch_size` not divisible by `venv.num_envs`.
-    """
-    if gen_batch_size % venv.num_envs != 0:
-        raise ValueError(
-            f"num_envs={venv.num_envs} must evenly divide "
-            f"gen_batch_size={gen_batch_size}.",
-        )
-    n_steps = gen_batch_size // venv.num_envs
-    rl_algo = rl_cls(
-        policy_cls,
-        venv,
-        # TODO(adam): n_steps doesn't exist in all algos -- generalize?
-        n_steps=n_steps,
-        **rl_kwargs,
-    )
-    logger.info(f"RL algorithm: {type(rl_algo)}")
-    logger.info(f"Policy network summary:\n {rl_algo.policy}")
-    return rl_algo
-
-
-@train_adversarial_ex.capture
-def eval_policy(
-    rl_algo: base_class.BaseAlgorithm,
-    venv: vec_env.VecEnv,
-    n_episodes_eval: int,
-) -> Mapping[str, float]:
-    """Evaluation of imitation learned policy.
-
-    Args:
-        rl_algo: Algorithm to evaluate.
-        venv: Environment to evaluate on.
-        n_episodes_eval: The number of episodes to average over when calculating
-            the average episode reward of the imitation policy for return.
-
-    Returns:
-        A dictionary with two keys. "imit_stats" gives the return value of
-        `rollout_stats()` on rollouts test-reward-wrapped environment, using the final
-        policy (remember that the ground-truth reward can be recovered from the
-        "monitor_return" key). "expert_stats" gives the return value of
-        `rollout_stats()` on the expert demonstrations loaded from `rollout_path`.
-
-    """
-    sample_until_eval = rollout.make_min_episodes(n_episodes_eval)
-    trajs = rollout.generate_trajectories(
-        rl_algo,
-        venv,
-        sample_until=sample_until_eval,
-    )
-    return rollout.rollout_stats(trajs)
 
 
 @train_adversarial_ex.main
@@ -271,13 +171,15 @@ def train_adversarial(
         `rollout_stats()` on rollouts test-reward-wrapped environment, using the final
         policy (remember that the ground-truth reward can be recovered from the
         "monitor_return" key). "expert_stats" gives the return value of
-        `rollout_stats()` on the expert demonstrations loaded from `rollout_path`.
+        `rollout_stats()` on the expert demonstrations.
     """
+    # needed by BC
     custom_logger = imit_logger.configure(log_dir, ["tensorboard", "stdout"])
     os.makedirs(log_dir, exist_ok=True)
+    logger.info("Logging to %s", log_dir)
     sacred_util.build_sacred_symlink(log_dir, _run)
 
-    venv = util.make_vec_env(
+    venv = util.make_vec_env(  # kinda needed by BC (easiest way to get obs/act spaces!)
         env_name,
         num_vec,
         seed=_seed,
@@ -287,13 +189,14 @@ def train_adversarial(
         env_make_kwargs=env_make_kwargs,
     )
 
-    gen_algo = make_rl_algo(venv)
-    reward_net = make_reward_net(venv)
-    expert_trajs = load_expert_demos()
-
-    algo_cls, algorithm_kwargs = get_algorithm_config()
-    expert_transitions = rollout.flatten_trajectories(expert_trajs)
+    expert_trajs = train.load_expert_demos()  # needed by BC
+    expert_transitions = rollout.flatten_trajectories(expert_trajs)  # needed by BC
     logger.info(f"Loaded {len(expert_transitions)} timesteps of expert data")
+
+    algo_cls, algorithm_kwargs = get_algorithm_config()  # needed by BC
+    gen_algo = rl.make_rl_algo(venv)  # not needed by BC
+    reward_net = make_reward_net(venv)  # not needed by BC
+
     trainer = algo_cls(
         venv=venv,
         demonstrations=expert_transitions,
@@ -316,7 +219,7 @@ def train_adversarial(
 
     results = {}
     # TODO(adam): accessing venv_train directly is hacky
-    results["imit_stats"] = eval_policy(gen_algo, trainer.venv_train)
+    results["imit_stats"] = train.eval_policy(trainer.policy, trainer.venv_train)
     results["expert_stats"] = rollout.rollout_stats(expert_trajs)
     return results
 

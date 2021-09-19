@@ -265,10 +265,10 @@ def _check_train_ex_result(result: dict):
 
 def test_train_adversarial(tmpdir):
     """Smoke test for imitation.scripts.train_adversarial."""
-    named_configs = ["cartpole", "gail", "fast"]
+    named_configs = ["cartpole", "gail", "fast", "train.fast", "rl.fast"]
     config_updates = {
         "log_root": tmpdir,
-        "rollout_path": CARTPOLE_TEST_ROLLOUT_PATH,
+        "train.rollout_path": CARTPOLE_TEST_ROLLOUT_PATH,
     }
     run = train_adversarial.train_adversarial_ex.run(
         named_configs=named_configs,
@@ -280,11 +280,11 @@ def test_train_adversarial(tmpdir):
 
 def test_train_adversarial_algorithm_value_error(tmpdir):
     """Error on bad algorithm arguments."""
-    base_named_configs = ["cartpole", "fast"]
+    base_named_configs = ["cartpole", "fast", "train.fast", "rl.fast"]
     base_config_updates = collections.ChainMap(
         {
             "log_root": tmpdir,
-            "rollout_path": CARTPOLE_TEST_ROLLOUT_PATH,
+            "train.rollout_path": CARTPOLE_TEST_ROLLOUT_PATH,
         },
     )
 
@@ -306,7 +306,7 @@ def test_train_adversarial_algorithm_value_error(tmpdir):
         train_adversarial.train_adversarial_ex.run(
             named_configs=base_named_configs,
             config_updates=base_config_updates.new_child(
-                dict(rollout_path="path/BAD_VALUE"),
+                {"train.rollout_path": "path/BAD_VALUE"},
             ),
         )
 
@@ -314,7 +314,9 @@ def test_train_adversarial_algorithm_value_error(tmpdir):
     with pytest.raises(ValueError, match=f".*{n_traj}.*"):
         train_adversarial.train_adversarial_ex.run(
             named_configs=base_named_configs,
-            config_updates=base_config_updates.new_child(dict(n_expert_demos=n_traj)),
+            config_updates=base_config_updates.new_child(
+                dict(train=dict(n_expert_demos=n_traj)),
+            ),
         )
 
 
@@ -329,9 +331,9 @@ def test_transfer_learning(tmpdir: str) -> None:
     tmpdir = pathlib.Path(tmpdir)
     log_dir_train = tmpdir / "train"
     run = train_adversarial.train_adversarial_ex.run(
-        named_configs=["cartpole", "airl", "fast"],
+        named_configs=["cartpole", "airl", "fast", "train.fast", "rl.fast"],
         config_updates=dict(
-            rollout_path=CARTPOLE_TEST_ROLLOUT_PATH,
+            train=dict(rollout_path=CARTPOLE_TEST_ROLLOUT_PATH),
             log_dir=log_dir_train,
         ),
     )
@@ -368,10 +370,10 @@ PARALLEL_CONFIG_UPDATES = [
     ),
     dict(
         sacred_ex_name="train_adversarial",
-        base_named_configs=["cartpole", "gail", "fast"],
+        base_named_configs=["cartpole", "gail", "fast", "train.fast", "rl.fast"],
         base_config_updates={
             # Need absolute path because raylet runs in different working directory.
-            "rollout_path": CARTPOLE_TEST_ROLLOUT_PATH.absolute(),
+            "train.rollout_path": CARTPOLE_TEST_ROLLOUT_PATH.absolute(),
         },
         search_space={
             "config_updates": {
@@ -479,11 +481,11 @@ def test_parallel_train_adversarial_custom_env(tmpdir):
     config_updates = dict(
         sacred_ex_name="train_adversarial",
         n_seeds=1,
-        base_named_configs=[env_named_config, "fast"],
+        base_named_configs=[env_named_config, "fast", "rl.fast", "train.fast"],
         base_config_updates=dict(
             parallel=True,
             num_vec=2,
-            rollout_path=rollout_path,
+            train=dict(rollout_path=rollout_path),
         ),
     )
     config_updates.update(PARALLEL_CONFIG_LOW_RESOURCE)
@@ -496,9 +498,9 @@ def test_parallel_train_adversarial_custom_env(tmpdir):
 
 def _run_train_adv_for_test_analyze_imit(run_name, sacred_logs_dir, log_dir):
     run = train_adversarial.train_adversarial_ex.run(
-        named_configs=["fast", "cartpole"],
+        named_configs=["cartpole", "fast", "rl.fast", "train.fast"],
         config_updates=dict(
-            rollout_path=CARTPOLE_TEST_ROLLOUT_PATH,
+            train=dict(rollout_path=CARTPOLE_TEST_ROLLOUT_PATH),
             log_dir=log_dir,
             checkpoint_interval=-1,
         ),

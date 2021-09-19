@@ -3,13 +3,15 @@
 import os
 
 import sacred
-import stable_baselines3
 
-from imitation.policies import base
-from imitation.scripts.config.common import DEFAULT_RL_KWARGS
+from imitation.scripts.common import reward, rl, train
 from imitation.util import util
 
-train_adversarial_ex = sacred.Experiment("train_adversarial", interactive=True)
+train_adversarial_ex = sacred.Experiment(
+    "train_adversarial",
+    interactive=True,
+    ingredients=[train.train_ingredient, rl.rl_ingredient, reward.reward_ingredient],
+)
 
 
 @train_adversarial_ex.config
@@ -19,9 +21,6 @@ def train_defaults():
 
     total_timesteps = 1e6  # Num of environment transitions to sample
     algorithm = "gail"  # Either "airl" or "gail"
-
-    n_expert_demos = None  # Num demos used. None uses every demo possible
-    n_episodes_eval = 50  # Num of episodes for final mean ground truth return
 
     # Number of environments in VecEnv, must evenly divide gen_batch_size
     num_vec = 8
@@ -45,12 +44,6 @@ def train_defaults():
     reward_net_cls = None
     reward_net_kwargs = None
 
-    # Modifies the __init__ arguments for the imitation policy
-    rl_cls = stable_baselines3.PPO
-    policy_cls = base.FeedForward32Policy
-    rl_kwargs = DEFAULT_RL_KWARGS
-    gen_batch_size = 2048  # Batch size for generator updates
-
     log_root = os.path.join("output", "train_adversarial")  # output directory
     checkpoint_interval = 0  # Num epochs between checkpoints (<0 disables)
     rollout_hint = None  # Used to generate default rollout_path
@@ -58,34 +51,21 @@ def train_defaults():
 
 
 @train_adversarial_ex.config
-def aliases_default_gen_batch_size(algorithm_kwargs, gen_batch_size):
+def aliases_default_gen_batch_size(algorithm_kwargs, rl):
     # Setting generator buffer capacity and discriminator batch size to
     # the same number is equivalent to not using a replay buffer at all.
     # "Disabling" the replay buffer seems to improve convergence speed, but may
     # come at a cost of stability.
 
-    algorithm_kwargs["shared"]["gen_replay_buffer_capacity"] = gen_batch_size
+    algorithm_kwargs["adversarial"]["gen_replay_buffer_capacity"] = rl["batch_size"]
 
 
 @train_adversarial_ex.config
-def paths(env_name, log_root, rollout_hint, data_dir):
+def paths(env_name, log_root, rollout_hint, data_dir, train):
     log_dir = os.path.join(
         log_root,
         env_name.replace("/", "_"),
         util.make_unique_timestamp(),
-    )
-
-    # Recommended that user sets rollout_path manually.
-    # By default we guess the named config associated with `env_name`
-    # and attempt to load rollouts from `data/expert_models/`.
-    if rollout_hint is None:
-        rollout_hint = env_name.split("-")[0].lower()
-    rollout_path = os.path.join(
-        data_dir,
-        "expert_models",
-        f"{rollout_hint}_0",
-        "rollouts",
-        "final.pkl",
     )
 
 
@@ -232,6 +212,10 @@ def seals_humanoid():
 @train_adversarial_ex.named_config
 def reacher():
     env_name = "Reacher-v2"
+    # TODO(adam): bc doesn't need allow_variable_horizon. Could add it but as a no-op
+    # for consistency (could check demos, maybe?), or move this out of shared (but it
+    # might be used places that aren't just adversarial... and it is something that
+    # appears in base imitation algorithm.)
     algorithm_kwargs = {"shared": {"allow_variable_horizon": True}}
     rollout_hint = "reacher"
 
@@ -292,18 +276,12 @@ def fast():
     # Need a minimum of 10 total_timesteps for adversarial training code to pass
     # "any update happened" assertion inside training loop.
     total_timesteps = 10
-    n_expert_demos = 1
-    n_episodes_eval = 1
     algorithm_kwargs = dict(
         shared=dict(
             demo_batch_size=1,
             n_disc_updates_per_round=4,
         ),
     )
-    gen_batch_size = 2
     parallel = False  # easier to debug with everything in one process
     max_episode_steps = 5
-    # SB3 RL seems to need batch size of 2, otherwise it runs into numeric
-    # issues when computing multinomial distribution during predict()
     num_vec = 2
-    rl_kwargs = dict(batch_size=2)

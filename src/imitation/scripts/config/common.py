@@ -1,5 +1,6 @@
 """Configuration settings shared between multiple scripts."""
 
+# TODO(adam): delete this file
 DEFAULT_RL_KWARGS = dict(
     # For recommended PPO hyperparams in each environment, see:
     # https://github.com/DLR-RM/rl-baselines3-zoo/blob/master/hyperparams/ppo.yml
