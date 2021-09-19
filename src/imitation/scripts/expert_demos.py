@@ -13,10 +13,10 @@ from stable_baselines3.common.vec_env import VecNormalize
 import imitation.util.sacred as sacred_util
 from imitation.data import rollout, wrappers
 from imitation.policies import serialize
+from imitation.rewards.reward_wrapper import RewardVecEnvWrapper
 from imitation.rewards.serialize import load_reward
 from imitation.scripts.config.expert_demos import expert_demos_ex
 from imitation.util import logger, util
-from imitation.util.reward_wrapper import RewardVecEnvWrapper
 
 
 @expert_demos_ex.main

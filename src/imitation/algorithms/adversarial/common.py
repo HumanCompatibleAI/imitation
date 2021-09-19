@@ -15,8 +15,8 @@ from torch.nn import functional as F
 
 from imitation.algorithms import base
 from imitation.data import buffer, rollout, types, wrappers
-from imitation.rewards import reward_nets
-from imitation.util import logger, reward_wrapper, util
+from imitation.rewards import reward_nets, reward_wrapper
+from imitation.util import logger, util
 
 
 def compute_train_stats(
