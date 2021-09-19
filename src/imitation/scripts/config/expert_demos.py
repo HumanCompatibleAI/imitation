@@ -133,6 +133,11 @@ def reacher():
 
 
 @expert_demos_ex.named_config
+def seals_ant():
+    env_name = "seals/Ant-v0"
+
+
+@expert_demos_ex.named_config
 def seals_swimmer():
     env_name = "seals/Swimmer-v0"
 
