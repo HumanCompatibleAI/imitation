@@ -6,12 +6,11 @@ Follows the description in chapters 9 and 10 of Brian Ziebart's `PhD thesis`_.
     http://www.cs.cmu.edu/~bziebart/publications/thesis-bziebart.pdf
 """
 
-from typing import Iterable, Optional, Tuple, Union
+from typing import Any, Iterable, Mapping, Optional, Tuple, Type, Union
 
 import numpy as np
 import scipy.special
 import torch as th
-from torch.optim import optimizer
 
 from imitation.algorithms import base
 from imitation.data import rollout, types
@@ -150,8 +149,9 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
         self,
         demonstrations: Optional[MCEDemonstrations],
         env: resettable_env.TabularModelEnv,
-        reward_net: reward_nets.RewardNet,
-        optimizer: optimizer.Optimizer,
+        reward_net: Optional[reward_nets.RewardNet] = None,
+        optimizer_cls: Type[th.optim.Optimizer] = th.optim.Adam,
+        optimizer_kwargs: Optional[Mapping[str, Any]] = None,
         discount: float = 1,
         linf_eps: float = 1e-3,
         grad_l2_eps: float = 1e-4,
@@ -171,7 +171,8 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
             env: a tabular MDP.
             reward_net: a neural network that computes rewards for the supplied
                 observations.
-            optimizer: an optimizer for `reward_net`.
+            optimizer_cls: optimiser to use for supervised training.
+            optimizer_kwargs: keyword arguments for optimiser construction.
             discount: the discount factor to use when computing occupancy measure.
                 If not 1.0 (undiscounted), then `demonstrations` must either be
                 a (discounted) state-occupancy measure, or trajectories. Transitions
@@ -194,8 +195,19 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
             custom_logger=custom_logger,
         )
 
-        self.optimizer = optimizer
+        if reward_net is None:
+            reward_net = reward_nets.BasicRewardNet(
+                env.observation_space,
+                env.action_space,
+                use_action=False,
+                use_next_state=False,
+                use_done=False,
+                hid_sizes=[],
+            )
         self.reward_net = reward_net
+        optimizer_kwargs = optimizer_kwargs or {"lr": 1e-2}
+        self.optimizer = optimizer_cls(reward_net.parameters(), **optimizer_kwargs)
+
         self.linf_eps = linf_eps
         self.grad_l2_eps = grad_l2_eps
         self.log_interval = log_interval

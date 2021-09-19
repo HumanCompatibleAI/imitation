@@ -1,205 +1,91 @@
 """Core code for adversarial imitation learning, shared between GAIL and AIRL."""
 import abc
+import collections
 import dataclasses
-import functools
 import logging
 import os
-from typing import Callable, Mapping, Optional, Type
+from typing import Callable, Iterator, Mapping, Optional, Sequence, Tuple, Type
 
-import gym
 import numpy as np
 import torch as th
 import torch.utils.tensorboard as thboard
 import tqdm
 from stable_baselines3.common import base_class, vec_env
-from torch import nn
 from torch.nn import functional as F
 
 from imitation.algorithms import base
 from imitation.data import buffer, rollout, types, wrappers
-from imitation.rewards import common as rew_common
-from imitation.rewards import common as rewards_common
+from imitation.rewards import reward_nets
 from imitation.util import logger, reward_wrapper, util
 
 
-class DiscrimNet(nn.Module, abc.ABC):
-    """Abstract base class for discriminator, used in AIRL and GAIL.
+def compute_train_stats(
+    disc_logits_gen_is_high: th.Tensor,
+    labels_gen_is_one: th.Tensor,
+    disc_loss: th.Tensor,
+) -> Mapping[str, float]:
+    """Train statistics for GAIL/AIRL discriminator.
 
-    `self.forward()` is not implemented for this `th.nn.Module` subclass.
-    We subclass `Module` mainly to get pretty-printing of network internals via
-    `print(self)`.
+    Args:
+        disc_logits_gen_is_high: discriminator logits produced by
+            `DiscrimNet.logits_gen_is_high`.
+        labels_gen_is_one: integer labels describing whether logit was for an
+            expert (0) or generator (1) sample.
+        disc_loss: final discriminator loss.
+
+    Returns:
+        A mapping from statistic names to float values.
     """
+    with th.no_grad():
+        bin_is_generated_pred = disc_logits_gen_is_high > 0
+        bin_is_generated_true = labels_gen_is_one > 0
+        bin_is_expert_true = th.logical_not(bin_is_generated_true)
+        int_is_generated_pred = bin_is_generated_pred.long()
+        int_is_generated_true = bin_is_generated_true.long()
+        n_generated = float(th.sum(int_is_generated_true))
+        n_labels = float(len(labels_gen_is_one))
+        n_expert = n_labels - n_generated
+        pct_expert = n_expert / float(n_labels) if n_labels > 0 else float("NaN")
+        n_expert_pred = int(n_labels - th.sum(int_is_generated_pred))
+        if n_labels > 0:
+            pct_expert_pred = n_expert_pred / float(n_labels)
+        else:
+            pct_expert_pred = float("NaN")
+        correct_vec = th.eq(bin_is_generated_pred, bin_is_generated_true)
+        acc = th.mean(correct_vec.float())
 
-    def __init__(
-        self,
-        observation_space: gym.Space,
-        action_space: gym.Space,
-        normalize_images: bool = False,
-    ):
-        """Builds DiscrimNet.
+        _n_pred_expert = th.sum(th.logical_and(bin_is_expert_true, correct_vec))
+        if n_expert < 1:
+            expert_acc = float("NaN")
+        else:
+            # float() is defensive, since we cannot divide Torch tensors by
+            # Python ints
+            expert_acc = _n_pred_expert / float(n_expert)
 
-        Args:
-            observation_space: The space observations are drawn from.
-            action_space: The space actions are drawn from.
-            normalize_images: Whether to normalize image-based inputs in preprocessing.
-        """
-        super().__init__()
-        self.observation_space = observation_space
-        self.action_space = action_space
-        self.normalize_images = normalize_images
+        _n_pred_gen = th.sum(th.logical_and(bin_is_generated_true, correct_vec))
+        _n_gen_or_1 = max(1, n_generated)
+        generated_acc = _n_pred_gen / float(_n_gen_or_1)
 
-    @abc.abstractmethod
-    def logits_gen_is_high(
-        self,
-        state: th.Tensor,
-        action: th.Tensor,
-        next_state: th.Tensor,
-        done: th.Tensor,
-        log_policy_act_prob: Optional[th.Tensor] = None,
-    ) -> th.Tensor:
-        """Compute the discriminator's logits for each state-action sample.
+        label_dist = th.distributions.Bernoulli(logits=disc_logits_gen_is_high)
+        entropy = th.mean(label_dist.entropy())
 
-        A high value corresponds to predicting generator, and a low value corresponds to
-        predicting expert.
-
-        Args:
-            state: state at time t, of shape `(batch_size,) + state_shape`.
-            action: action taken at time t, of shape `(batch_size,) + action_shape`.
-            next_state: state at time t+1, of shape `(batch_size,) + state_shape`.
-            done: binary episode completion flag after action at time t,
-                of shape `(batch_size,)`.
-            log_policy_act_prob: log probability of generator policy taking
-                `action` at time t.
-
-        Returns:
-            Discriminator logits of shape `(batch_size,)`. A high output indicates a
-            generator-like transition.
-        """  # noqa: DAR202
-
-    @property
-    def device(self) -> th.device:
-        """Heuristic to determine which device this module is on."""
-        try:
-            first_param = next(self.parameters())
-            return first_param.device
-        except StopIteration:
-            # if the model has no parameters, we use the CPU
-            return th.device("cpu")
-
-    @abc.abstractmethod
-    def reward_test(
-        self,
-        state: th.Tensor,
-        action: th.Tensor,
-        next_state: th.Tensor,
-        done: th.Tensor,
-    ) -> th.Tensor:
-        """Test-time reward for given states/actions."""
-
-    @abc.abstractmethod
-    def reward_train(
-        self,
-        state: th.Tensor,
-        action: th.Tensor,
-        next_state: th.Tensor,
-        done: th.Tensor,
-    ) -> th.Tensor:
-        """Train-time reward for given states/actions."""
-
-    def predict_reward_train(
-        self,
-        state: np.ndarray,
-        action: np.ndarray,
-        next_state: np.ndarray,
-        done: np.ndarray,
-    ) -> np.ndarray:
-        """Vectorized reward for training an imitation learning algorithm.
-
-        Args:
-            state: The observation input. Its shape is
-                `(batch_size,) + observation_space.shape`.
-            action: The action input. Its shape is
-                `(batch_size,) + action_space.shape`. The None dimension is
-                expected to be the same as None dimension from `obs_input`.
-            next_state: The observation input. Its shape is
-                `(batch_size,) + observation_space.shape`.
-            done: Whether the episode has terminated. Its shape is `(batch_size,)`.
-
-        Returns:
-            The rewards of shape `(batch_size,)`.
-        """
-        return self._eval_reward(
-            is_train=True,
-            state=state,
-            action=action,
-            next_state=next_state,
-            done=done,
-        )
-
-    def predict_reward_test(
-        self,
-        state: np.ndarray,
-        action: np.ndarray,
-        next_state: np.ndarray,
-        done: np.ndarray,
-    ) -> np.ndarray:
-        """Vectorized reward for training an expert during transfer learning.
-
-        Args:
-            state: The observation input. Its shape is
-                `(batch_size,) + observation_space.shape`.
-            action: The action input. Its shape is
-                `(batch_size,) + action_space.shape`. The None dimension is
-                expected to be the same as None dimension from `obs_input`.
-            next_state: The observation input. Its shape is
-                `(batch_size,) + observation_space.shape`.
-            done: Whether the episode has terminated. Its shape is `(batch_size,)`.
-
-        Returns:
-            The rewards. Its shape is `(batch_size,)`.
-        """
-        return self._eval_reward(
-            is_train=False,
-            state=state,
-            action=action,
-            next_state=next_state,
-            done=done,
-        )
-
-    def _eval_reward(
-        self,
-        is_train: bool,
-        state: th.Tensor,
-        action: th.Tensor,
-        next_state: th.Tensor,
-        done: th.Tensor,
-    ) -> np.ndarray:
-        (
-            state_th,
-            action_th,
-            next_state_th,
-            done_th,
-        ) = rewards_common.disc_rew_preprocess_inputs(
-            observation_space=self.observation_space,
-            action_space=self.action_space,
-            state=state,
-            action=action,
-            next_state=next_state,
-            done=done,
-            device=self.device,
-            normalize_images=self.normalize_images,
-        )
-
-        with th.no_grad():
-            if is_train:
-                rew_th = self.reward_train(state_th, action_th, next_state_th, done_th)
-            else:
-                rew_th = self.reward_test(state_th, action_th, next_state_th, done_th)
-
-        rew = rew_th.detach().cpu().numpy().flatten()
-        assert rew.shape == (len(state),)
-
-        return rew
+    pairs = [
+        ("disc_loss", float(th.mean(disc_loss))),
+        # accuracy, as well as accuracy on *just* expert examples and *just*
+        # generated examples
+        ("disc_acc", float(acc)),
+        ("disc_acc_expert", float(expert_acc)),
+        ("disc_acc_gen", float(generated_acc)),
+        # entropy of the predicted label distribution, averaged equally across
+        # both classes (if this drops then disc is very good or has given up)
+        ("disc_entropy", float(entropy)),
+        # true number of expert demos and predicted number of expert demos
+        ("disc_proportion_expert_true", float(pct_expert)),
+        ("disc_proportion_expert_pred", float(pct_expert_pred)),
+        ("n_expert", float(n_expert)),
+        ("n_generated", float(n_generated)),
+    ]  # type: Sequence[Tuple[str, float]]
+    return collections.OrderedDict(pairs)
 
 
 class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
@@ -219,17 +105,14 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
     If `debug_use_ground_truth=True` was passed into the initializer then
     `self.venv_train` is the same as `self.venv`."""
 
-    discrim_net: DiscrimNet
-    """The discriminator network."""
-
     def __init__(
         self,
         *,
         demonstrations: base.AnyTransitions,
         demo_batch_size: int,
         venv: vec_env.VecEnv,
-        discrim_net: DiscrimNet,
         gen_algo: base_class.BaseAlgorithm,
+        disc_parameters: Iterator[th.nn.Parameter],
         n_disc_updates_per_round: int = 2,
         log_dir: str = "output/",
         normalize_obs: bool = True,
@@ -258,8 +141,7 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
             gen_algo: The generator RL algorithm that is trained to maximize
                 discriminator confusion. Environment and logger will be set to
                 `venv` and `custom_logger`.
-            discrim_net: The discriminator network. This will be moved to the same
-                device as `gen_algo`.
+            disc_parameters: Discriminator parameters to optimize over.
             n_disc_updates_per_round: The number of discriminator updates after each
                 round of generator updates in AdversarialTrainer.learn().
             log_dir: Directory to store TensorBoard logs, plots, etc. in.
@@ -312,13 +194,12 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
         self._log_dir = log_dir
 
         # Create graph for optimising/recording stats on discriminator
-        self.discrim_net = discrim_net.to(self.gen_algo.device)
         self._disc_opt_cls = disc_opt_cls
         self._disc_opt_kwargs = disc_opt_kwargs or {}
         self._init_tensorboard = init_tensorboard
         self._init_tensorboard_graph = init_tensorboard_graph
         self._disc_opt = self._disc_opt_cls(
-            self.discrim_net.parameters(),
+            disc_parameters,
             **self._disc_opt_kwargs,
         )
 
@@ -329,11 +210,12 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
             self._summary_writer = thboard.SummaryWriter(summary_dir)
 
         self.venv_buffering = wrappers.BufferingWrapper(self.venv)
-        self.venv_norm_obs = vec_env.VecNormalize(
-            self.venv_buffering,
-            norm_reward=False,
-            norm_obs=normalize_obs,
-        )
+        self.venv_norm_obs = self.venv_buffering
+        if normalize_obs:
+            self.venv_norm_obs = vec_env.VecNormalize(
+                self.venv_buffering,
+                norm_reward=False,
+            )
 
         if debug_use_ground_truth:
             # Would use an identity reward fn here, but RewardFns can't see rewards.
@@ -342,14 +224,15 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
         else:
             self.venv_wrapped = reward_wrapper.RewardVecEnvWrapper(
                 self.venv_norm_obs,
-                self.discrim_net.predict_reward_train,
+                self.reward_train.predict,
             )
             self.gen_callback = self.venv_wrapped.make_log_callback()
-        self.venv_train = vec_env.VecNormalize(
-            self.venv_wrapped,
-            norm_obs=False,
-            norm_reward=normalize_reward,
-        )
+        self.venv_train = self.venv_wrapped
+        if normalize_reward:
+            self.venv_train = vec_env.VecNormalize(
+                self.venv_wrapped,
+                norm_obs=False,
+            )
 
         self.gen_algo.set_env(self.venv_train)
         self.gen_algo.set_logger(self.logger)
@@ -366,6 +249,44 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
             gen_replay_buffer_capacity,
             self.venv,
         )
+
+    @abc.abstractmethod
+    def logits_gen_is_high(
+        self,
+        state: th.Tensor,
+        action: th.Tensor,
+        next_state: th.Tensor,
+        done: th.Tensor,
+        log_policy_act_prob: Optional[th.Tensor] = None,
+    ) -> th.Tensor:
+        """Compute the discriminator's logits for each state-action sample.
+
+        A high value corresponds to predicting generator, and a low value corresponds to
+        predicting expert.
+
+        Args:
+            state: state at time t, of shape `(batch_size,) + state_shape`.
+            action: action taken at time t, of shape `(batch_size,) + action_shape`.
+            next_state: state at time t+1, of shape `(batch_size,) + state_shape`.
+            done: binary episode completion flag after action at time t,
+                of shape `(batch_size,)`.
+            log_policy_act_prob: log probability of generator policy taking
+                `action` at time t.
+
+        Returns:
+            Discriminator logits of shape `(batch_size,)`. A high output indicates a
+            generator-like transition.
+        """  # noqa: DAR202
+
+    @property
+    @abc.abstractmethod
+    def reward_train(self) -> reward_nets.RewardNet:
+        """Reward used to train generator policy."""
+
+    @property
+    @abc.abstractmethod
+    def reward_test(self) -> reward_nets.RewardNet:
+        """Reward used to train policy at "test" time after adversarial training."""
 
     def set_demonstrations(self, demonstrations: base.AnyTransitions) -> None:
         self._demo_data_loader = base.make_data_loader(
@@ -410,7 +331,7 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
                 gen_samples=gen_samples,
                 expert_samples=expert_samples,
             )
-            disc_logits = self.discrim_net.logits_gen_is_high(
+            disc_logits = self.logits_gen_is_high(
                 batch["state"],
                 batch["action"],
                 batch["next_state"],
@@ -430,7 +351,7 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
 
             # compute/write stats and TensorBoard data
             with th.no_grad():
-                train_stats = rew_common.compute_train_stats(
+                train_stats = compute_train_stats(
                     disc_logits,
                     batch["labels_gen_is_one"],
                     loss,
@@ -516,7 +437,7 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
 
     def _torchify_array(self, ndarray: Optional[np.ndarray]) -> Optional[th.Tensor]:
         if ndarray is not None:
-            return th.as_tensor(ndarray, device=self.discrim_net.device)
+            return th.as_tensor(ndarray, device=self.reward_train.device)
 
     def _make_disc_train_batch(
         self,
@@ -610,22 +531,17 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
                 log_act_prob = log_act_prob.reshape((n_samples,))
             del obs_th, acts_th  # unneeded
 
-        torchify_with_space_defaults = functools.partial(
-            util.torchify_with_space,
-            normalize_images=self.discrim_net.normalize_images,
-            device=self.discrim_net.device,
+        obs_th, acts_th, next_obs_th, dones_th = self.reward_train.preprocess(
+            obs,
+            acts,
+            next_obs,
+            dones,
         )
         batch_dict = {
-            "state": torchify_with_space_defaults(
-                obs,
-                self.discrim_net.observation_space,
-            ),
-            "action": torchify_with_space_defaults(acts, self.discrim_net.action_space),
-            "next_state": torchify_with_space_defaults(
-                next_obs,
-                self.discrim_net.observation_space,
-            ),
-            "done": self._torchify_array(dones),
+            "state": obs_th,
+            "action": acts_th,
+            "next_state": next_obs_th,
+            "done": dones_th,
             "labels_gen_is_one": self._torchify_array(labels_gen_is_one),
             "log_policy_act_prob": self._torchify_array(log_act_prob),
         }

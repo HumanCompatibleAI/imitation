@@ -9,8 +9,6 @@ import torch as th
 from stable_baselines3.common import preprocessing
 from torch import nn
 
-import imitation.rewards.common as rewards_common
-from imitation.data import types
 from imitation.util import networks
 
 
@@ -47,12 +45,15 @@ class RewardNet(nn.Module, abc.ABC):
         action: th.Tensor,
         next_state: th.Tensor,
         done: th.Tensor,
-    ):
+    ) -> th.Tensor:
         """Compute rewards for a batch of transitions and keep gradients."""
 
     def preprocess(
         self,
-        transitions: types.Transitions,
+        state: np.ndarray,
+        action: np.ndarray,
+        next_state: np.ndarray,
+        done: np.ndarray,
     ) -> Tuple[th.Tensor, th.Tensor, th.Tensor, th.Tensor]:
         """Preprocess a batch of input transitions and convert it to PyTorch tensors.
 
@@ -60,22 +61,49 @@ class RewardNet(nn.Module, abc.ABC):
         so a typical usage would be ``model(*model.preprocess(transitions))``.
 
         Args:
-            transitions: The transitions to preprocess.
+            state: The observation input. Its shape is
+                `(batch_size,) + observation_space.shape`.
+            action: The action input. Its shape is
+                `(batch_size,) + action_space.shape`. The None dimension is
+                expected to be the same as None dimension from `obs_input`.
+            next_state: The observation input. Its shape is
+                `(batch_size,) + observation_space.shape`.
+            done: Whether the episode has terminated. Its shape is `(batch_size,)`.
 
         Returns:
             Preprocessed transitions: a Tuple of tensors containing
             observations, actions, next observations and dones.
         """
-        return rewards_common.disc_rew_preprocess_inputs(
-            observation_space=self.observation_space,
-            action_space=self.action_space,
-            state=transitions.obs,
-            action=transitions.acts,
-            next_state=transitions.next_obs,
-            done=transitions.dones,
-            device=self.device,
-            normalize_images=self.normalize_images,
+        state_th = th.as_tensor(state, device=self.device)
+        action_th = th.as_tensor(action, device=self.device)
+        next_state_th = th.as_tensor(next_state, device=self.device)
+        done_th = th.as_tensor(done, device=self.device)
+
+        del state, action, next_state, done  # unused
+
+        # preprocess
+        state_th = preprocessing.preprocess_obs(
+            state_th,
+            self.observation_space,
+            self.normalize_images,
         )
+        action_th = preprocessing.preprocess_obs(
+            action_th,
+            self.action_space,
+            self.normalize_images,
+        )
+        next_state_th = preprocessing.preprocess_obs(
+            next_state_th,
+            self.observation_space,
+            self.normalize_images,
+        )
+        done_th = done_th.to(th.float32)
+
+        n_gen = len(state_th)
+        assert state_th.shape == next_state_th.shape
+        assert len(action_th) == n_gen
+
+        return state_th, action_th, next_state_th, done_th
 
     def predict(
         self,
@@ -98,22 +126,12 @@ class RewardNet(nn.Module, abc.ABC):
         Returns:
             Computed rewards of shape `(batch_size,`).
         """
-        (
-            state_th,
-            action_th,
-            next_state_th,
-            done_th,
-        ) = rewards_common.disc_rew_preprocess_inputs(
-            observation_space=self.observation_space,
-            action_space=self.action_space,
-            state=state,
-            action=action,
-            next_state=next_state,
-            done=done,
-            device=self.device,
-            normalize_images=self.normalize_images,
+        state_th, action_th, next_state_th, done_th = self.preprocess(
+            state,
+            action,
+            next_state,
+            done,
         )
-
         with th.no_grad():
             rew_th = self(state_th, action_th, next_state_th, done_th)
 

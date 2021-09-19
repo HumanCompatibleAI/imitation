@@ -17,14 +17,6 @@ RewardFnLoaderFn = Callable[[str, VecEnv], common.RewardFn]
 reward_registry: registry.Registry[RewardFnLoaderFn] = registry.Registry()
 
 
-def _load_discrim_net(path: str, venv: VecEnv) -> common.RewardFn:
-    """Load test reward output from discriminator."""
-    del venv  # Unused.
-    discriminator = th.load(path)
-    # TODO(gleave): expose train reward as well? (hard due to action probs?)
-    return discriminator.predict_reward_test
-
-
 def _load_reward_net_as_fn(shaped: bool) -> RewardFnLoaderFn:
     def loader(path: str, venv: VecEnv) -> common.RewardFn:
         """Load train (shaped) or test (not shaped) reward from path."""
@@ -69,7 +61,7 @@ def load_zero(path: str, venv: VecEnv) -> common.RewardFn:
     return f
 
 
-reward_registry.register(key="DiscrimNet", value=_load_discrim_net)
+# TODO(adam): I think we can get rid of this and have just one RewardNet.
 reward_registry.register(
     key="RewardNet_shaped",
     value=_load_reward_net_as_fn(shaped=True),

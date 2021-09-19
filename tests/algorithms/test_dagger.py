@@ -9,6 +9,7 @@ from unittest import mock
 import gym
 import numpy as np
 import pytest
+import torch.random
 from stable_baselines3.common import policies
 
 from imitation.algorithms import bc, dagger
@@ -248,33 +249,40 @@ def test_trainer_train_arguments(trainer, expert_policy):
     trainer.extend_and_update(dict(n_epochs=1))
 
 
-def test_trainer_makes_progress(trainer, venv, expert_policy):
-    pre_train_rew_mean = rollout.mean_return(
-        trainer.bc_trainer.policy,
-        venv,
-        sample_until=rollout.make_min_episodes(15),
-        deterministic_policy=False,
-    )
-    # checking that the initial policy is poor can be flaky; sometimes the
-    # randomly initialised policy performs very well, and it's not clear why
-    # assert pre_train_rew_mean < 100
-    for i in range(2):
-        # roll out a few trajectories for dataset, then train for a few steps
-        collector = trainer.get_trajectory_collector()
-        for _ in range(5):
-            obs = collector.reset()
-            dones = [False] * venv.num_envs
-            while not np.any(dones):
-                expert_actions, _ = expert_policy.predict(obs, deterministic=True)
-                obs, _, dones, _ = collector.step(expert_actions)
-        trainer.extend_and_update(dict(n_epochs=1))
-    # make sure we're doing better than a random policy would
-    post_train_rew_mean = rollout.mean_return(
-        trainer.bc_trainer.policy,
-        venv,
-        sample_until=rollout.make_min_episodes(15),
-        deterministic_policy=True,
-    )
+def test_trainer_makes_progress(init_trainer_fn, venv, expert_policy):
+    with torch.random.fork_rng():
+        # manually seed to avoid flakiness
+        torch.random.manual_seed(42)
+        venv.action_space.seed(42)
+
+        trainer = init_trainer_fn()
+        pre_train_rew_mean = rollout.mean_return(
+            trainer.bc_trainer.policy,
+            venv,
+            sample_until=rollout.make_min_episodes(15),
+            deterministic_policy=False,
+        )
+        # note a randomly initialised policy does well for some seeds -- so may
+        # want to remove this check if changing seed.
+        assert pre_train_rew_mean < 100
+        for i in range(2):
+            # roll out a few trajectories for dataset, then train for a few steps
+            collector = trainer.get_trajectory_collector()
+            for _ in range(5):
+                obs = collector.reset()
+                dones = [False] * venv.num_envs
+                while not np.any(dones):
+                    expert_actions, _ = expert_policy.predict(obs, deterministic=True)
+                    obs, _, dones, _ = collector.step(expert_actions)
+            trainer.extend_and_update(dict(n_epochs=1))
+        # make sure we're doing better than a random policy would
+        post_train_rew_mean = rollout.mean_return(
+            trainer.bc_trainer.policy,
+            venv,
+            sample_until=rollout.make_min_episodes(15),
+            deterministic_policy=True,
+        )
+
     assert post_train_rew_mean - pre_train_rew_mean > 50, (
         f"pre-train mean {pre_train_rew_mean}, post-train mean "
         f"{post_train_rew_mean}"

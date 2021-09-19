@@ -298,14 +298,6 @@ def test_train_adversarial_algorithm_value_error(tmpdir):
         train_adversarial.train_adversarial_ex.run(
             named_configs=base_named_configs,
             config_updates=base_config_updates.new_child(
-                dict(discrim_net_kwargs={"BAD_VALUE": "bar"}),
-            ),
-        )
-
-    with pytest.raises(ValueError, match=".*BAD_VALUE.*"):
-        train_adversarial.train_adversarial_ex.run(
-            named_configs=base_named_configs,
-            config_updates=base_config_updates.new_child(
                 dict(algorithm_kwargs={"BAD_VALUE": "bar"}),
             ),
         )
@@ -349,13 +341,13 @@ def test_transfer_learning(tmpdir: str) -> None:
     _check_rollout_stats(run.result["imit_stats"])
 
     log_dir_data = tmpdir / "expert_demos"
-    discrim_path = log_dir_train / "checkpoints" / "final" / "discrim.pt"
+    reward_path = log_dir_train / "checkpoints" / "final" / "reward_test.pt"
     run = expert_demos.expert_demos_ex.run(
         named_configs=["cartpole", "fast"],
         config_updates=dict(
             log_dir=log_dir_data,
-            reward_type="DiscrimNet",
-            reward_path=discrim_path,
+            reward_type="RewardNet_shaped",
+            reward_path=reward_path,
         ),
     )
     assert run.status == "COMPLETED"

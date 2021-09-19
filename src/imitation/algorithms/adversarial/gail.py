@@ -1,8 +1,7 @@
 """Generative Adversarial Imitation Learning (GAIL)."""
 
-from typing import Mapping, Optional
+from typing import Optional
 
-import gym
 import torch as th
 from stable_baselines3.common import base_class, vec_env
 from torch import nn
@@ -13,73 +12,29 @@ from imitation.algorithms.adversarial import common
 from imitation.rewards import reward_nets
 
 
-class DiscrimNetGAIL(common.DiscrimNet):
-    """The discriminator to use for GAIL."""
+class LogSigmoidRewardNet(reward_nets.RewardNet):
+    """Wrapper for reward network that takes log sigmoid of wrapped network."""
 
-    def __init__(
-        self,
-        observation_space: gym.Space,
-        action_space: gym.Space,
-        discrim_net: Optional[nn.Module] = None,
-        normalize_images: bool = False,
-    ):
-        """Construct discriminator network.
-
-        Args:
-            observation_space: observation space for this environment.
-            action_space: action space for this environment:
-            discrim_net: a Torch module that takes an observation and action
-                tensor as input, then computes the logits for GAIL.
-            normalize_images: should image observations be normalized to [0, 1]?
-        """
+    def __init__(self, base: reward_nets.RewardNet):
+        """Builds LogSigmoidRewardNet to wrap `reward_net`."""
+        # TODO(adam): make an explicit RewardNetWrapper class?
         super().__init__(
-            observation_space=observation_space,
-            action_space=action_space,
-            normalize_images=normalize_images,
+            observation_space=base.observation_space,
+            action_space=base.action_space,
+            normalize_images=base.normalize_images,
         )
+        self.base = base
 
-        if discrim_net is None:
-            self.discriminator = reward_nets.BasicRewardNet(
-                action_space=action_space,
-                observation_space=observation_space,
-            )
-        else:
-            self.discriminator = discrim_net
-
-    def logits_gen_is_high(
-        self,
-        state: th.Tensor,
-        action: th.Tensor,
-        next_state: th.Tensor,
-        done: th.Tensor,
-        log_policy_act_prob: Optional[th.Tensor] = None,
-    ) -> th.Tensor:
-        """Compute the discriminator's logits for each state-action sample."""
-        logits = self.discriminator(state, action, next_state, done)
-        return logits
-
-    def reward_test(
+    def forward(
         self,
         state: th.Tensor,
         action: th.Tensor,
         next_state: th.Tensor,
         done: th.Tensor,
     ) -> th.Tensor:
-        rew = self.reward_train(state, action, next_state, done)
-        assert rew.shape == state.shape[:1]
-        return rew
-
-    def reward_train(
-        self,
-        state: th.Tensor,
-        action: th.Tensor,
-        next_state: th.Tensor,
-        done: th.Tensor,
-    ) -> th.Tensor:
-        logits = self.logits_gen_is_high(state, action, next_state, done)
-        rew = -F.logsigmoid(logits)
-        assert rew.shape == state.shape[:1]
-        return rew
+        """Computes negative log sigmoid of base reward network."""
+        logits = self.base.forward(state, action, next_state, done)
+        return -F.logsigmoid(logits)
 
 
 class GAIL(common.AdversarialTrainer):
@@ -95,7 +50,7 @@ class GAIL(common.AdversarialTrainer):
         demo_batch_size: int,
         venv: vec_env.VecEnv,
         gen_algo: base_class.BaseAlgorithm,
-        discrim_kwargs: Optional[Mapping] = None,
+        reward_net: Optional[nn.Module] = None,
         **kwargs,
     ):
         """Generative Adversarial Imitation Learning.
@@ -112,21 +67,43 @@ class GAIL(common.AdversarialTrainer):
             gen_algo: The generator RL algorithm that is trained to maximize
                 discriminator confusion. Environment and logger will be set to
                 `venv` and `custom_logger`.
-            discrim_kwargs: Optional keyword arguments to use while constructing the
-                DiscrimNetGAIL.
+            reward_net: a Torch module that takes an observation and action
+                tensor as input, then computes the logits for GAIL.
             **kwargs: Passed through to `AdversarialTrainer.__init__`.
         """
-        discrim_kwargs = discrim_kwargs or {}
-        discrim = DiscrimNetGAIL(
-            venv.observation_space,
-            venv.action_space,
-            **discrim_kwargs,
-        )
+        if reward_net is None:
+            reward_net = reward_nets.BasicRewardNet(
+                observation_space=venv.observation_space,
+                action_space=venv.action_space,
+            )
+        self._discriminator = reward_net.to(gen_algo.device)
+        self._reward_net = LogSigmoidRewardNet(self._discriminator)
         super().__init__(
             demonstrations=demonstrations,
             demo_batch_size=demo_batch_size,
             venv=venv,
-            discrim_net=discrim,
             gen_algo=gen_algo,
+            disc_parameters=self._discriminator.parameters(),
             **kwargs,
         )
+
+    def logits_gen_is_high(
+        self,
+        state: th.Tensor,
+        action: th.Tensor,
+        next_state: th.Tensor,
+        done: th.Tensor,
+        log_policy_act_prob: Optional[th.Tensor] = None,
+    ) -> th.Tensor:
+        """Compute the discriminator's logits for each state-action sample."""
+        logits = self._discriminator(state, action, next_state, done)
+        assert logits.shape == state.shape[:1]
+        return logits
+
+    @property
+    def reward_train(self) -> reward_nets.RewardNet:
+        return self._reward_net
+
+    @property
+    def reward_test(self) -> reward_nets.RewardNet:
+        return self._reward_net

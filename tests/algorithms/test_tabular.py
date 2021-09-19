@@ -7,7 +7,6 @@ import numpy as np
 import pytest
 import torch as th
 from stable_baselines3.common import vec_env
-from torch.optim import adam
 
 from imitation.algorithms import base
 from imitation.algorithms.tabular_irl import (
@@ -259,7 +258,7 @@ def test_mce_irl_demo_formats():
     for kind, demo in demonstrations.items():
         with th.random.fork_rng():
             th.random.manual_seed(715298)
-
+            # create reward network so we can be sure it's seeded identically
             reward_net = reward_nets.BasicRewardNet(
                 mdp.observation_space,
                 mdp.action_space,
@@ -268,13 +267,12 @@ def test_mce_irl_demo_formats():
                 use_done=False,
                 hid_sizes=[],
             )
-            opt = adam.Adam(reward_net.parameters(), lr=1e-2)
-            mce_irl = MCEIRL(demo, mdp, reward_net, opt, linf_eps=1e-3)
+            mce_irl = MCEIRL(demo, mdp, reward_net, linf_eps=1e-3)
             assert np.allclose(mce_irl.demo_state_om.sum(), 1.0)
             final_counts[kind] = mce_irl.train(max_iter=5)
 
-        # make sure weights have non-insane norm
-        assert tensor_iter_norm(reward_net.parameters()) < 1000
+            # make sure weights have non-insane norm
+            assert tensor_iter_norm(mce_irl.reward_net.parameters()) < 1000
 
     for cts in final_counts.values():
         assert np.allclose(cts, final_counts["trajs"], atol=1e-3, rtol=1e-3)
@@ -312,8 +310,7 @@ def test_mce_irl_reasonable_mdp(
             use_done=False,
             **model_kwargs,
         )
-        opt = adam.Adam(reward_net.parameters(), lr=1e-2)
-        mce_irl = MCEIRL(D, mdp, reward_net, opt, linf_eps=1e-3, discount=discount)
+        mce_irl = MCEIRL(D, mdp, reward_net, linf_eps=1e-3, discount=discount)
         final_counts = mce_irl.train()
 
         assert np.allclose(final_counts, D, atol=1e-3, rtol=1e-3)
