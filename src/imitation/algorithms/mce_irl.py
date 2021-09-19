@@ -11,6 +11,7 @@ from typing import Any, Iterable, Mapping, Optional, Tuple, Type, Union
 import numpy as np
 import scipy.special
 import torch as th
+from stable_baselines3.common import policies
 
 from imitation.algorithms import base
 from imitation.data import rollout, types
@@ -135,6 +136,50 @@ def squeeze_r(r_output: th.Tensor) -> th.Tensor:
     return r_output
 
 
+# TODO(adam): add test case for this
+class TabularPolicy(policies.BasePolicy):
+    """A tabular policy. Cannot be trained -- prediction only."""
+
+    def __init__(self, pi: np.ndarray, rng: Optional[np.random.RandomState]):
+        """Builds TabularPolicy.
+
+        Args:
+            pi: A tabular policy. Three-dimensional array, where pi[t,s,a]
+                is the probability of taking action a at state s at timestep t.
+            rng: Random state, used for sampling when `predict` is called with
+                `deterministic=False`.
+        """
+        super().__init__()
+        assert pi.ndim == 3, "expected three-dimensional policy"
+        assert np.allclose(pi.sum(axis=2), 1), "policy not normalized"
+        assert np.all(pi >= 0), "policy has negative probabilities"
+        self.pi = pi
+        self.rng = rng or np.random
+
+    def predict(
+        self,
+        observation: np.ndarray,
+        state: Optional[np.ndarray] = None,
+        mask: Optional[np.ndarray] = None,
+        deterministic: bool = False,
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        # state represents timesteps, reset at end of episode
+        if state is None:
+            state = np.zeros(len(observation))
+        if mask is not None:
+            state[mask] = 0
+
+        actions = []
+        for obs, t in zip(observation, state):
+            dist = self.pi[t, obs, :]
+            if deterministic:
+                actions.append(dist.argmax())
+            else:
+                actions.append(self.rng.multinomial(1, dist))
+
+        return np.array(actions), state
+
+
 MCEDemonstrations = Union[np.ndarray, base.AnyTransitions]
 
 
@@ -156,6 +201,7 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
         # TODO(adam): do we need log_interval or can just use record_mean...?
         log_interval: Optional[int] = 100,
         *,
+        rng: Optional[np.random.RandomState] = None,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
     ):
         r"""Creates MCE IRL.
@@ -183,6 +229,7 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
                 MCE IRL gradient falls below this value.
             log_interval: how often to log current loss stats (using `logging`).
                 None to disable.
+            rng: random state used for sampling from policy.
             custom_logger: Where to log to; if None (default), creates a new logger.
         """
         self.discount = discount
@@ -209,6 +256,14 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
         self.linf_eps = linf_eps
         self.grad_l2_eps = grad_l2_eps
         self.log_interval = log_interval
+        self.rng = rng
+
+        # Initialize policy to be uniform random. We don't use this for MCE IRL
+        # training, but it gives us something to return at all times with `policy`
+        # property, similar to other algorithms.
+        ones = np.ones(self.env.horizon, self.env.n_states, self.env.n_actions)
+        uniform_pi = ones / self.env.n_actions
+        self._policy = TabularPolicy(uniform_pi, rng=self.rng)
 
     def _set_demo_from_obs(self, obses: np.ndarray) -> None:
         if self.discount != 1.0:
@@ -324,4 +379,15 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
             if linf_delta <= self.linf_eps or grad_norm <= self.grad_l2_eps:
                 break
 
+        _, _, pi = mce_partition_fh(
+            self.env,
+            reward=predicted_r_np,
+            discount=self.discount,
+        )
+        self._policy = TabularPolicy(pi, rng=self.rng)
+
         return visitations
+
+    @property
+    def policy(self) -> policies.BasePolicy:
+        return self._policy

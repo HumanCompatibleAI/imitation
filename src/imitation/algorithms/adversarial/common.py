@@ -10,7 +10,7 @@ import numpy as np
 import torch as th
 import torch.utils.tensorboard as thboard
 import tqdm
-from stable_baselines3.common import base_class, vec_env
+from stable_baselines3.common import base_class, policies, vec_env
 from torch.nn import functional as F
 
 from imitation.algorithms import base
@@ -249,6 +249,10 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
             gen_replay_buffer_capacity,
             self.venv,
         )
+
+    @property
+    def policy(self) -> policies.BasePolicy:
+        return self.gen_algo.policy
 
     @abc.abstractmethod
     def logits_gen_is_high(

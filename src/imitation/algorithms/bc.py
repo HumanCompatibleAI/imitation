@@ -183,8 +183,6 @@ class BC(algo_base.DemonstrationAlgorithm):
     Recovers a policy via supervised learning from observation-action pairs.
     """
 
-    # TODO(scottemmons): pass BasePolicy into BC directly (rather than passing its
-    #  arguments)
     def __init__(
         self,
         *,
@@ -247,7 +245,7 @@ class BC(algo_base.DemonstrationAlgorithm):
                 # is used by mistake (should use self.optimizer instead).
                 lr_schedule=ConstantLRSchedule(th.finfo(th.float32).max),
             )
-        self.policy = policy.to(self.device)
+        self._policy = policy.to(self.device)
         # TODO(adam): make policy mandatory and delete observation/action space params?
         assert self.policy.observation_space == self.observation_space
         assert self.policy.action_space == self.action_space
@@ -260,6 +258,10 @@ class BC(algo_base.DemonstrationAlgorithm):
 
         self.ent_weight = ent_weight
         self.l2_weight = l2_weight
+
+    @property
+    def policy(self) -> policies.BasePolicy:
+        return self._policy
 
     def set_demonstrations(self, demonstrations: algo_base.AnyTransitions) -> None:
         self._demo_data_loader = algo_base.make_data_loader(
