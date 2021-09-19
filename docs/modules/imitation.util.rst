@@ -9,11 +9,6 @@ imitation.util.logger module
 
 .. automodule:: imitation.util.logger
    
-imitation.util.reward\_wrapper module
--------------------------------------
-
-.. automodule:: imitation.util.reward_wrapper
-   
 imitation.util.sacred module
 -------------------------------
 

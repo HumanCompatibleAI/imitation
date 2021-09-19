@@ -13,9 +13,10 @@ from stable_baselines3.common.vec_env import VecEnvWrapper
 import imitation.util.sacred as sacred_util
 from imitation.data import rollout, types
 from imitation.policies import serialize
+from imitation.rewards import reward_wrapper
 from imitation.rewards.serialize import load_reward
 from imitation.scripts.config.eval_policy import eval_policy_ex
-from imitation.util import reward_wrapper, util, video_wrapper
+from imitation.util import util, video_wrapper
 
 
 class InteractiveRender(VecEnvWrapper):

@@ -9,7 +9,7 @@ import torch as th
 from stable_baselines3.common import vec_env
 
 from imitation.algorithms import base
-from imitation.algorithms.tabular_irl import (
+from imitation.algorithms.mce_irl import (
     MCEIRL,
     mce_occupancy_measures,
     mce_partition_fh,

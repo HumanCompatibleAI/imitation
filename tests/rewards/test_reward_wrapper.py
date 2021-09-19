@@ -4,7 +4,8 @@ import numpy as np
 
 from imitation.data import rollout
 from imitation.policies.base import RandomPolicy
-from imitation.util import reward_wrapper, util
+from imitation.rewards import reward_wrapper
+from imitation.util import util
 
 
 class FunkyReward:

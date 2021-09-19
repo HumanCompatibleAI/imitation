@@ -19,8 +19,6 @@ from imitation.rewards import reward_nets
 from imitation.util import logger as imit_logger
 from imitation.util import util
 
-# TODO(adam): support reward linear in state-action or arbitrary features?
-
 
 def mce_partition_fh(
     env: resettable_env.TabularModelEnv,

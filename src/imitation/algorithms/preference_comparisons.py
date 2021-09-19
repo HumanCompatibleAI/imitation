@@ -24,9 +24,8 @@ from imitation.data.types import (
     Transitions,
 )
 from imitation.rewards import common as rewards_common
-from imitation.rewards import reward_nets
+from imitation.rewards import reward_nets, reward_wrapper
 from imitation.util import logger as imit_logger
-from imitation.util import reward_wrapper
 
 
 class TrajectoryGenerator(abc.ABC):
