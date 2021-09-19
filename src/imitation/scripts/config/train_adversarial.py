@@ -57,7 +57,7 @@ def aliases_default_gen_batch_size(algorithm_kwargs, rl):
     # "Disabling" the replay buffer seems to improve convergence speed, but may
     # come at a cost of stability.
 
-    algorithm_kwargs["adversarial"]["gen_replay_buffer_capacity"] = rl["batch_size"]
+    algorithm_kwargs["shared"]["gen_replay_buffer_capacity"] = rl["batch_size"]
 
 
 @train_adversarial_ex.config
