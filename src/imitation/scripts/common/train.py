@@ -49,7 +49,7 @@ def config():
 
     # TODO(adam): should we separate config into a separate file?
     # or just disable F841 on this whole file?
-    _ = locals()  # quiten flake8
+    _ = locals()  # quieten flake8
     del _
 
 
@@ -57,7 +57,7 @@ def config():
 def defaults(data_dir, env_name, rollout_path):
     # If rollout_path not set explicitly, then guess it based on environment name.
     if rollout_path is None:
-        rollout_hint = env_name.split("-")[0].lower().replace("/", "_")
+        rollout_hint = env_name.split("-")[0].replace("/", "_").lower()
         rollout_path = os.path.join(
             data_dir,
             "expert_models",
@@ -67,12 +67,13 @@ def defaults(data_dir, env_name, rollout_path):
         )
         del rollout_hint
 
-    _ = locals()  # quiten flake8
+    _ = locals()  # quieten flake8
     del _
 
 
 @train_ingredient.config_hook
 def hook(config, command_name, logger):
+    del logger
     updates = {}
     if config["train"]["log_dir"] is None:
         env_sanitized = config["train"]["env_name"].replace("/", "_")
@@ -93,7 +94,7 @@ def fast():
     max_episode_steps = 5
     parallel = False  # easier to debug with everything in one process
     num_vec = 2
-    _ = locals()  # quiten flake8
+    _ = locals()  # quieten flake8
     del _
 
 

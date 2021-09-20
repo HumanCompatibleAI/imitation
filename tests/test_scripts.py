@@ -267,8 +267,10 @@ def test_train_adversarial(tmpdir):
     """Smoke test for imitation.scripts.train_adversarial."""
     named_configs = ["cartpole", "gail", "fast", "train.fast", "rl.fast"]
     config_updates = {
-        "log_root": tmpdir,
-        "train.rollout_path": CARTPOLE_TEST_ROLLOUT_PATH,
+        "train": {
+            "log_root": tmpdir,
+            "rollout_path": CARTPOLE_TEST_ROLLOUT_PATH,
+        },
     }
     run = train_adversarial.train_adversarial_ex.run(
         named_configs=named_configs,
@@ -283,8 +285,10 @@ def test_train_adversarial_algorithm_value_error(tmpdir):
     base_named_configs = ["cartpole", "fast", "train.fast", "rl.fast"]
     base_config_updates = collections.ChainMap(
         {
-            "log_root": tmpdir,
-            "train.rollout_path": CARTPOLE_TEST_ROLLOUT_PATH,
+            "train": {
+                "log_root": tmpdir,
+                "rollout_path": CARTPOLE_TEST_ROLLOUT_PATH,
+            },
         },
     )
 
@@ -333,8 +337,7 @@ def test_transfer_learning(tmpdir: str) -> None:
     run = train_adversarial.train_adversarial_ex.run(
         named_configs=["cartpole", "airl", "fast", "train.fast", "rl.fast"],
         config_updates=dict(
-            train=dict(rollout_path=CARTPOLE_TEST_ROLLOUT_PATH),
-            log_dir=log_dir_train,
+            train=dict(rollout_path=CARTPOLE_TEST_ROLLOUT_PATH, log_dir=log_dir_train),
         ),
     )
     assert run.status == "COMPLETED"
@@ -500,8 +503,7 @@ def _run_train_adv_for_test_analyze_imit(run_name, sacred_logs_dir, log_dir):
     run = train_adversarial.train_adversarial_ex.run(
         named_configs=["cartpole", "fast", "rl.fast", "train.fast"],
         config_updates=dict(
-            train=dict(rollout_path=CARTPOLE_TEST_ROLLOUT_PATH),
-            log_dir=log_dir,
+            train=dict(rollout_path=CARTPOLE_TEST_ROLLOUT_PATH, log_dir=log_dir),
             checkpoint_interval=-1,
         ),
         options={"--name": run_name, "--file_storage": sacred_logs_dir},

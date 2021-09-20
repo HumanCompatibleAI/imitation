@@ -25,7 +25,7 @@ def config():
         n_epochs=10,
         ent_coef=0.0,
     )
-    _ = locals()  # quiten flake8
+    _ = locals()  # quieten flake8
     del _
 
 
@@ -35,7 +35,7 @@ def fast():
     # SB3 RL seems to need batch size of 2, otherwise it runs into numeric
     # issues when computing multinomial distribution during predict()
     rl_kwargs = dict(batch_size=2)
-    _ = locals()  # quiten flake8
+    _ = locals()  # quieten flake8
     del _
 
 
