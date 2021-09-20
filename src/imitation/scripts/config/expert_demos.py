@@ -133,6 +133,11 @@ def reacher():
 
 
 @expert_demos_ex.named_config
+def seals_ant():
+    env_name = "seals/Ant-v0"
+
+
+@expert_demos_ex.named_config
 def seals_swimmer():
     env_name = "seals/Swimmer-v0"
 
@@ -140,26 +145,6 @@ def seals_swimmer():
 @expert_demos_ex.named_config
 def seals_walker():
     env_name = "seals/Walker2d-v0"
-
-
-# Custom env configs
-
-
-@expert_demos_ex.named_config
-def custom_ant():
-    env_name = "imitation/CustomAnt-v0"
-    locals().update(**ant_shared_locals)
-
-
-@expert_demos_ex.named_config
-def disabled_ant():
-    env_name = "imitation/DisabledAnt-v0"
-    locals().update(**ant_shared_locals)
-
-
-@expert_demos_ex.named_config
-def two_d_maze():
-    env_name = "imitation/TwoDMaze-v0"
 
 
 # Debug configs

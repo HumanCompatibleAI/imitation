@@ -38,15 +38,3 @@ reacher,50000,4
 reacher,50000,11
 reacher,50000,18
 reacher,50000,25
-two_d_maze,50000,4
-two_d_maze,50000,11
-two_d_maze,50000,18
-two_d_maze,50000,25
-custom_ant,50000,4
-custom_ant,50000,11
-custom_ant,50000,18
-custom_ant,50000,25
-disabled_ant,50000,4
-disabled_ant,50000,11
-disabled_ant,50000,18
-disabled_ant,50000,25
