@@ -19,9 +19,6 @@ from imitation.policies import serialize
 from imitation.rewards import reward_nets
 from imitation.scripts.common import rl, train
 from imitation.scripts.config.train_adversarial import train_adversarial_ex
-from imitation.util import logger as imit_logger
-from imitation.util import sacred as sacred_util
-from imitation.util import util
 
 logger = logging.getLogger("imitation.scripts.train_adversarial")
 
@@ -132,12 +129,6 @@ def get_algorithm_config(
 def train_adversarial(
     _run,
     _seed: int,
-    env_name: str,
-    env_make_kwargs: Optional[Mapping[str, Any]],
-    num_vec: int,
-    parallel: bool,
-    max_episode_steps: Optional[int],
-    log_dir: str,
     total_timesteps: int,
     checkpoint_interval: int,
 ) -> Mapping[str, Mapping[str, float]]:
@@ -150,15 +141,6 @@ def train_adversarial(
 
     Args:
         _seed: Random seed.
-        env_name: The environment to train in.
-        env_make_kwargs: The kwargs passed to `spec.make` of a gym environment.
-        num_vec: Number of `gym.Env` to vectorize.
-        parallel: Whether to use "true" parallelism. If True, then use `SubProcVecEnv`.
-            Otherwise, use `DummyVecEnv` which steps through environments serially.
-        max_episode_steps: If not None, then a TimeLimit wrapper is applied to each
-            environment to artificially limit the maximum number of timesteps in an
-            episode.
-        log_dir: Directory to save models and other logging to.
         total_timesteps: The number of transitions to sample from the environment
             during training.
         checkpoint_interval: Save the discriminator and generator models every
@@ -173,30 +155,17 @@ def train_adversarial(
         "monitor_return" key). "expert_stats" gives the return value of
         `rollout_stats()` on the expert demonstrations.
     """
-    # needed by BC
-    custom_logger = imit_logger.configure(log_dir, ["tensorboard", "stdout"])
-    os.makedirs(log_dir, exist_ok=True)
-    logger.info("Logging to %s", log_dir)
-    sacred_util.build_sacred_symlink(log_dir, _run)
+    custom_logger, log_dir = train.setup_logging()
 
-    venv = util.make_vec_env(  # kinda needed by BC (easiest way to get obs/act spaces!)
-        env_name,
-        num_vec,
-        seed=_seed,
-        parallel=parallel,
-        log_dir=log_dir,
-        max_episode_steps=max_episode_steps,
-        env_make_kwargs=env_make_kwargs,
-    )
-
-    expert_trajs = train.load_expert_demos()  # needed by BC
-    expert_transitions = rollout.flatten_trajectories(expert_trajs)  # needed by BC
+    expert_trajs = train.load_expert_demos()
+    expert_transitions = rollout.flatten_trajectories(expert_trajs)
     logger.info(f"Loaded {len(expert_transitions)} timesteps of expert data")
 
-    algo_cls, algorithm_kwargs = get_algorithm_config()  # needed by BC
-    gen_algo = rl.make_rl_algo(venv)  # not needed by BC
-    reward_net = make_reward_net(venv)  # not needed by BC
+    venv = train.make_venv()
+    gen_algo = rl.make_rl_algo(venv)
+    reward_net = make_reward_net(venv)
 
+    algo_cls, algorithm_kwargs = get_algorithm_config()
     trainer = algo_cls(
         venv=venv,
         demonstrations=expert_transitions,

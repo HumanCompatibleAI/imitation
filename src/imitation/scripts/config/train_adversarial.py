@@ -5,7 +5,6 @@ import os
 import sacred
 
 from imitation.scripts.common import reward, rl, train
-from imitation.util import util
 
 train_adversarial_ex = sacred.Experiment(
     "train_adversarial",
@@ -16,18 +15,8 @@ train_adversarial_ex = sacred.Experiment(
 
 @train_adversarial_ex.config
 def train_defaults():
-    env_name = "seals/CartPole-v0"  # environment to train on
-    env_make_kwargs = {}  # The kwargs passed to `spec.make`.
-
     total_timesteps = 1e6  # Num of environment transitions to sample
     algorithm = "gail"  # Either "airl" or "gail"
-
-    # Number of environments in VecEnv, must evenly divide gen_batch_size
-    num_vec = 8
-
-    # Use SubprocVecEnv rather than DummyVecEnv (generally faster if num_vec>1)
-    parallel = True
-    max_episode_steps = None  # Set to positive int to limit episode horizons
 
     # Kwargs for initializing GAIL and AIRL
     algorithm_kwargs = dict(
@@ -44,7 +33,7 @@ def train_defaults():
     reward_net_cls = None
     reward_net_kwargs = None
 
-    log_root = os.path.join("output", "train_adversarial")  # output directory
+    train = {"log_root": os.path.join("output", "train_adversarial")}
     checkpoint_interval = 0  # Num epochs between checkpoints (<0 disables)
     rollout_hint = None  # Used to generate default rollout_path
     data_dir = "data/"  # Default data directory
@@ -58,15 +47,6 @@ def aliases_default_gen_batch_size(algorithm_kwargs, rl):
     # come at a cost of stability.
 
     algorithm_kwargs["shared"]["gen_replay_buffer_capacity"] = rl["batch_size"]
-
-
-@train_adversarial_ex.config
-def paths(env_name, log_root, rollout_hint, data_dir, train):
-    log_dir = os.path.join(
-        log_root,
-        env_name.replace("/", "_"),
-        util.make_unique_timestamp(),
-    )
 
 
 # Training algorithm named configs
@@ -108,7 +88,7 @@ def acrobot():
 
 @train_adversarial_ex.named_config
 def cartpole():
-    env_name = "CartPole-v1"
+    train = dict(env_name="CartPole-v1")
     rollout_hint = "cartpole"
     algorithm_kwargs = {"shared": {"allow_variable_horizon": True}}
 
@@ -282,6 +262,3 @@ def fast():
             n_disc_updates_per_round=4,
         ),
     )
-    parallel = False  # easier to debug with everything in one process
-    max_episode_steps = 5
-    num_vec = 2
