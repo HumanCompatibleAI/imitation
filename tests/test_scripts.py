@@ -265,7 +265,7 @@ def _check_train_ex_result(result: dict):
 
 def test_train_adversarial(tmpdir):
     """Smoke test for imitation.scripts.train_adversarial."""
-    named_configs = ["cartpole", "gail", "fast", "train.fast", "rl.fast"]
+    named_configs = ["cartpole", "fast", "train.fast", "rl.fast"]
     config_updates = {
         "train": {
             "log_root": tmpdir,
@@ -273,6 +273,7 @@ def test_train_adversarial(tmpdir):
         },
     }
     run = train_adversarial.train_adversarial_ex.run(
+        command_name="gail",
         named_configs=named_configs,
         config_updates=config_updates,
     )
@@ -292,14 +293,9 @@ def test_train_adversarial_algorithm_value_error(tmpdir):
         },
     )
 
-    with pytest.raises(ValueError, match=".*BAD_VALUE.*"):
+    with pytest.raises(TypeError, match=".*BAD_VALUE.*"):
         train_adversarial.train_adversarial_ex.run(
-            named_configs=base_named_configs,
-            config_updates=base_config_updates.new_child(dict(algorithm="BAD_VALUE")),
-        )
-
-    with pytest.raises(ValueError, match=".*BAD_VALUE.*"):
-        train_adversarial.train_adversarial_ex.run(
+            command_name="gail",
             named_configs=base_named_configs,
             config_updates=base_config_updates.new_child(
                 dict(algorithm_kwargs={"BAD_VALUE": "bar"}),
@@ -308,6 +304,7 @@ def test_train_adversarial_algorithm_value_error(tmpdir):
 
     with pytest.raises(FileNotFoundError, match=".*BAD_VALUE.*"):
         train_adversarial.train_adversarial_ex.run(
+            command_name="gail",
             named_configs=base_named_configs,
             config_updates=base_config_updates.new_child(
                 {"train.rollout_path": "path/BAD_VALUE"},
@@ -317,6 +314,7 @@ def test_train_adversarial_algorithm_value_error(tmpdir):
     n_traj = 1234567
     with pytest.raises(ValueError, match=f".*{n_traj}.*"):
         train_adversarial.train_adversarial_ex.run(
+            command_name="gail",
             named_configs=base_named_configs,
             config_updates=base_config_updates.new_child(
                 dict(train=dict(n_expert_demos=n_traj)),
@@ -335,7 +333,8 @@ def test_transfer_learning(tmpdir: str) -> None:
     tmpdir = pathlib.Path(tmpdir)
     log_dir_train = tmpdir / "train"
     run = train_adversarial.train_adversarial_ex.run(
-        named_configs=["cartpole", "airl", "fast", "train.fast", "rl.fast"],
+        command_name="airl",
+        named_configs=["cartpole", "fast", "train.fast", "rl.fast"],
         config_updates=dict(
             train=dict(rollout_path=CARTPOLE_TEST_ROLLOUT_PATH, log_dir=log_dir_train),
         ),
@@ -373,30 +372,13 @@ PARALLEL_CONFIG_UPDATES = [
     ),
     dict(
         sacred_ex_name="train_adversarial",
-        base_named_configs=["cartpole", "gail", "fast", "train.fast", "rl.fast"],
+        base_named_configs=["cartpole", "fast", "train.fast", "rl.fast"],
         base_config_updates={
             # Need absolute path because raylet runs in different working directory.
             "train.rollout_path": CARTPOLE_TEST_ROLLOUT_PATH.absolute(),
         },
         search_space={
-            "config_updates": {
-                "algorithm": tune.grid_search(["gail", "airl"]),
-                # FIXME(sam): this method of searching for hidden sizes won't
-                # work now that I've changed the API for reward/discriminator
-                # networks. I think we need a nicer API for building such
-                # networks, analogous to the one Stable Baselines has for
-                # policies. We should add back architecture search support once
-                # we have that new API.
-                # "algorithm_kwargs": {
-                #     "airl": {
-                #         "reward_net_kwargs": {
-                #             "build_mlp_kwargs": {
-                #                 "hid_sizes": tune.grid_search([[16, 16], [7, 9]]),
-                #             },
-                #         }
-                #     }
-                # },
-            },
+            "command_name": tune.grid_search(["gail", "airl"]),
         },
     ),
 ]
@@ -501,6 +483,7 @@ def test_parallel_train_adversarial_custom_env(tmpdir):
 
 def _run_train_adv_for_test_analyze_imit(run_name, sacred_logs_dir, log_dir):
     run = train_adversarial.train_adversarial_ex.run(
+        command_name="gail",
         named_configs=["cartpole", "fast", "rl.fast", "train.fast"],
         config_updates=dict(
             train=dict(rollout_path=CARTPOLE_TEST_ROLLOUT_PATH, log_dir=log_dir),
