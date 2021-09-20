@@ -25,18 +25,18 @@ import sacred
 from imitation.scripts import (
     analyze,
     eval_policy,
-    expert_demos,
     parallel,
     train_adversarial,
     train_bc,
     train_dagger,
     train_preference_comparisons,
+    train_rl,
 )
 
 ALL_SCRIPTS_MODS = [
     analyze,
     eval_policy,
-    expert_demos,
+    train_rl,
     parallel,
     train_adversarial,
     train_bc,
@@ -190,28 +190,14 @@ def test_train_bc_main(tmpdir):
 
 def test_expert_demos_main(tmpdir):
     """Smoke test for imitation.scripts.expert_demos.rollouts_and_policy."""
-    run = expert_demos.expert_demos_ex.run(
-        named_configs=["cartpole", "fast"],
+    run = train_rl.train_rl_ex.run(
+        named_configs=["cartpole", "fast", "rl.fast", "train.fast"],
         config_updates=dict(
-            log_root=tmpdir,
+            train=dict(log_root=tmpdir),
         ),
     )
     assert run.status == "COMPLETED"
     assert isinstance(run.result, dict)
-
-
-def test_expert_demos_rollouts_from_policy(tmpdir):
-    """Smoke test for imitation.scripts.expert_demos.rollouts_from_policy."""
-    run = expert_demos.expert_demos_ex.run(
-        command_name="rollouts_from_policy",
-        named_configs=["cartpole", "fast"],
-        config_updates=dict(
-            log_root=tmpdir,
-            rollout_save_path=str(pathlib.Path(tmpdir, "rollouts", "test.zip")),
-            policy_path=CARTPOLE_TEST_POLICY_PATH,
-        ),
-    )
-    assert run.status == "COMPLETED"
 
 
 EVAL_POLICY_CONFIGS = [
@@ -344,10 +330,10 @@ def test_transfer_learning(tmpdir: str) -> None:
 
     log_dir_data = tmpdir / "expert_demos"
     reward_path = log_dir_train / "checkpoints" / "final" / "reward_test.pt"
-    run = expert_demos.expert_demos_ex.run(
-        named_configs=["cartpole", "fast"],
+    run = train_rl.train_rl_ex.run(
+        named_configs=["cartpole", "fast", "rl.fast", "train.fast"],
         config_updates=dict(
-            log_dir=log_dir_data,
+            train=dict(log_dir=log_dir_data),
             reward_type="RewardNet_shaped",
             reward_path=reward_path,
         ),
@@ -359,11 +345,11 @@ def test_transfer_learning(tmpdir: str) -> None:
 PARALLEL_CONFIG_UPDATES = [
     dict(
         sacred_ex_name="expert_demos",
-        base_named_configs=["cartpole", "fast"],
+        base_named_configs=["cartpole", "fast", "train.fast", "rl.fast"],
         n_seeds=2,
         search_space={
             "config_updates": {
-                "init_rl_kwargs": {"learning_rate": tune.grid_search([3e-4, 1e-4])},
+                "rl": {"rl_kwargs": {"learning_rate": tune.grid_search([3e-4, 1e-4])}},
             },
             "meta_info": {"asdf": "I exist for coverage purposes"},
         },
@@ -441,10 +427,10 @@ def test_parallel_arg_errors(tmpdir):
 
 def _generate_test_rollouts(tmpdir: str, env_named_config: str) -> pathlib.Path:
     tmpdir = pathlib.Path(tmpdir)
-    expert_demos.expert_demos_ex.run(
-        named_configs=[env_named_config, "fast"],
+    train_rl.train_rl_ex.run(
+        named_configs=[env_named_config, "fast", "train.fast", "rl.fast"],
         config_updates=dict(
-            log_dir=tmpdir,
+            train=dict(log_dir=tmpdir),
         ),
     )
     rollout_path = tmpdir / "rollouts/final.pkl"

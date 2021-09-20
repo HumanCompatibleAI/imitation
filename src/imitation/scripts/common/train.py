@@ -100,24 +100,40 @@ def fast():
 
 
 @train_ingredient.capture
-def setup_logging(
+def make_log_dir(
     _run,
     log_dir: str,
+) -> str:
+    """Creates log directory and sets up symlink to Sacred logs.
+
+    Args:
+        log_dir: The directory to log to.
+
+    Returns:
+        The `log_dir`. This avoids the caller needing to capture this argument.
+    """
+    os.makedirs(log_dir, exist_ok=True)
+    logging.basicConfig(level=logging.INFO)
+    logger.info("Logging to %s", log_dir)
+    sacred_util.build_sacred_symlink(log_dir, _run)
+    return log_dir
+
+
+@train_ingredient.capture
+def setup_logging(
+    _run,
     log_format_strs: Sequence[str],
 ) -> Tuple[imit_logger.HierarchicalLogger, str]:
     """Builds the imitation logger.
 
     Args:
-        log_dir: The directory to log to.
         log_format_strs: The types of formats to log to.
 
     Returns:
         The configured imitation logger and `log_dir`.
         Returning `log_dir` avoids the caller needing to capture this value.
     """
-    os.makedirs(log_dir, exist_ok=True)
-    logger.info("Logging to %s", log_dir)
-    sacred_util.build_sacred_symlink(log_dir, _run)
+    log_dir = make_log_dir()
     custom_logger = imit_logger.configure(log_dir, log_format_strs)
     return custom_logger, log_dir
 
@@ -131,6 +147,7 @@ def make_venv(
     log_dir: str,
     max_episode_steps: int,
     env_make_kwargs: Mapping[str, Any],
+    **kwargs,
 ) -> vec_env.VecEnv:
     """Builds the vector environment.
 
@@ -144,6 +161,7 @@ def make_venv(
             episode.
         log_dir: Logs episode return statistics to a subdirectory 'monitor`.
         env_make_kwargs: The kwargs passed to `spec.make` of a gym environment.
+        kwargs: Passed through to `util.make_vec_env`.
 
     Returns:
         The constructed vector environment.
@@ -156,6 +174,7 @@ def make_venv(
         max_episode_steps=max_episode_steps,
         log_dir=log_dir,
         env_make_kwargs=env_make_kwargs,
+        **kwargs,
     )
 
 
