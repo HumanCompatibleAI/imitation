@@ -2,10 +2,10 @@
 
 import logging
 import os
-from typing import Any, Mapping, Optional, Sequence, Tuple
+from typing import Any, Mapping, Optional, Sequence, Tuple, Union
 
 import sacred
-from stable_baselines3.common import base_class, vec_env
+from stable_baselines3.common import base_class, policies, vec_env
 
 from imitation.data import rollout, types
 from imitation.policies import base
@@ -53,19 +53,20 @@ def config():
     del _
 
 
+def guess_expert_dir(data_dir: str, env_name: str) -> str:
+    rollout_hint = env_name.split("-")[0].replace("/", "_").lower()
+    return os.path.join(data_dir, "expert_models", f"{rollout_hint}_0")
+
+
 @train_ingredient.config
 def defaults(data_dir, env_name, rollout_path):
     # If rollout_path not set explicitly, then guess it based on environment name.
     if rollout_path is None:
-        rollout_hint = env_name.split("-")[0].replace("/", "_").lower()
         rollout_path = os.path.join(
-            data_dir,
-            "expert_models",
-            f"{rollout_hint}_0",
+            guess_expert_dir(data_dir, env_name),
             "rollouts",
             "final.pkl",
         )
-        del rollout_hint
 
     _ = locals()  # quieten flake8
     del _
@@ -191,7 +192,7 @@ def load_expert_trajs(
 
 @train_ingredient.capture
 def eval_policy(
-    rl_algo: base_class.BaseAlgorithm,
+    rl_algo: Union[base_class.BaseAlgorithm, policies.BasePolicy],
     venv: vec_env.VecEnv,
     n_episodes_eval: int,
 ) -> Mapping[str, float]:

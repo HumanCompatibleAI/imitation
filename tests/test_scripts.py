@@ -159,10 +159,9 @@ def test_train_preference_comparisons_file_errors(tmpdir):
 def test_train_dagger_main(tmpdir):
     with pytest.warns(None) as record:
         run = train_dagger.train_dagger_ex.run(
-            named_configs=["cartpole", "fast"],
+            named_configs=["cartpole", "fast", "train.fast"],
             config_updates=dict(
-                log_root=tmpdir,
-                expert_data_src=CARTPOLE_TEST_ROLLOUT_PATH,
+                train=dict(rollout_path=CARTPOLE_TEST_ROLLOUT_PATH, log_root=tmpdir),
                 expert_policy_path=CARTPOLE_TEST_POLICY_PATH,
                 expert_policy_type="ppo",
             ),
@@ -180,7 +179,7 @@ def test_train_dagger_main(tmpdir):
 
 def test_train_bc_main(tmpdir):
     run = train_bc.train_bc_ex.run(
-        named_configs=["cartpole", "fast"],
+        named_configs=["cartpole", "fast", "train.fast"],
         config_updates=dict(
             train=dict(rollout_path=CARTPOLE_TEST_ROLLOUT_PATH, log_root=tmpdir),
         ),
