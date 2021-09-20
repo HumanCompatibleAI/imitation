@@ -3,14 +3,13 @@
 import sacred
 
 from imitation.rewards import reward_nets
-from imitation.scripts.common import reward, rl
-from imitation.scripts.common import train as train_common
+from imitation.scripts.common import reward, rl, train
 
 train_adversarial_ex = sacred.Experiment(
     "train_adversarial",
     interactive=True,
     ingredients=[
-        train_common.train_ingredient,
+        train.train_ingredient,
         rl.rl_ingredient,
         reward.reward_ingredient,
     ],
@@ -18,7 +17,7 @@ train_adversarial_ex = sacred.Experiment(
 
 
 @train_adversarial_ex.config
-def train_defaults():
+def defaults():
     show_config = False
 
     total_timesteps = 1e6  # Num of environment transitions to sample
@@ -165,10 +164,8 @@ def seals_walker():
 
 @train_adversarial_ex.named_config
 def fast():
-    """Minimize the amount of computation.
+    # Minimize the amount of computation. Useful for test cases.
 
-    Useful for test cases.
-    """
     # Need a minimum of 10 total_timesteps for adversarial training code to pass
     # "any update happened" assertion inside training loop.
     total_timesteps = 10

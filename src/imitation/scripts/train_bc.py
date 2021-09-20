@@ -3,34 +3,30 @@
 import logging
 import os.path as osp
 import pathlib
-from typing import Any, Mapping, Optional, Sequence, Type, Union
+from typing import Any, Mapping, Optional, Type
 
-import gym
 import torch as th
 from sacred.observers import FileStorageObserver
 from stable_baselines3.common import policies, utils, vec_env
 
 from imitation.algorithms import bc
-from imitation.data import rollout, types
+from imitation.data import rollout
+from imitation.scripts.common import train
 from imitation.scripts.config.train_bc import train_bc_ex
-from imitation.util import logger as imit_logger
-from imitation.util import sacred as sacred_util
 
 logger = logging.getLogger(__name__)
 
 
 @train_bc_ex.capture
 def make_policy(
-    observation_space: gym.Space,
-    action_space: gym.Space,
+    venv: vec_env.VecEnv,
     policy_cls: Type[policies.BasePolicy],
     policy_kwargs: Mapping[str, Any],
 ) -> policies.BasePolicy:
     """Makes policy.
 
     Args:
-        observation_space: The observation space.
-        action_space: The action space.
+        venv: Vectorized environment we will be imitating demos from.
         policy_cls: Type of a Stable Baselines3 policy architecture.
         policy_kwargs: Keyword arguments for policy constructor.
 
@@ -41,8 +37,8 @@ def make_policy(
     if issubclass(policy_cls, policies.ActorCriticPolicy):
         policy_kwargs.update(
             {
-                "observation_space": observation_space,
-                "action_space": action_space,
+                "observation_space": venv.observation_space,
+                "action_space": venv.action_space,
                 # parameter mandatory for ActorCriticPolicy, but not used by BC
                 "lr_schedule": utils.get_schedule_fn(1),
             },
@@ -55,106 +51,48 @@ def make_policy(
 @train_bc_ex.main
 def train_bc(
     _run,
-    # TODO(shwang): Doesn't currently accept Iterable[Mapping] or
-    #  types.TransitionsMinimal, unlike BC.__init__ or BC.set_expert_data_loader().
-    expert_data_src: Union[types.AnyPath, Sequence[types.Trajectory]],
-    expert_data_src_format: str,
-    n_expert_demos: Optional[int],
-    observation_space: gym.Space,
-    action_space: gym.Space,
     batch_size: int,
     n_epochs: Optional[int],
     n_batches: Optional[int],
     l2_weight: float,
     optimizer_cls: Type[th.optim.Optimizer],
     optimizer_kwargs: dict,
-    log_dir: types.AnyPath,
-    venv: Optional[vec_env.VecEnv],
     log_interval: int,
     log_rollouts_n_episodes: int,
-    n_episodes_eval: int,
 ) -> Mapping[str, Mapping[str, float]]:
     """Sacred interface to Behavioral Cloning.
 
     Args:
-        expert_data_src: Either a path to pickled `Sequence[Trajectory]` or
-            `Sequence[Trajectory]`.
-        expert_data_src_format: Either "path" if `expert_data_src` is a path, or
-            "trajectory" if `expert_data_src` if `Sequence[Trajectory]`.
-        n_expert_demos: If not None, then a positive number used to truncate the number
-            expert demonstrations used from `expert_data_src`. If this number is larger
-            than the total number of demonstrations available, then a ValueError is
-            raised.
-        observation_space: The observation space corresponding to the expert data.
-        action_space: The action space corresponding to the expert data.
         batch_size: Number of observation-action samples used in each BC update.
         n_epochs: The total number of training epochs. Set exactly one of n_epochs and
             n_batches.
         n_batches: The total number of training batches. Set exactly one of n_epochs and
             n_batches.
         l2_weight: L2 regularization weight.
-        policy_cls: Class of BC policy to initialize.
-        policy_kwargs: Constructor keyword arguments for BC policy.
         optimizer_cls: The Torch optimizer class used for BC updates.
         optimizer_kwargs: keyword arguments, excluding learning rate and
               weight decay, for optimiser construction.
-        log_dir: Log output directory. Final policy is also saved in this directory as
-            "{log_dir}/final.pkl"
-        venv: If not None, then this VecEnv is used to generate rollout episodes for
-            evaluating policy performance during and after training.
         log_interval: The number of updates in between logging various training
             statistics to stdout and Tensorboard.
         log_rollouts_n_episodes: The number of rollout episodes generated for
             training statistics every `log_interval` updates. If `venv` is None or
             this argument is nonpositive, then no rollouts are generated.
-        n_episodes_eval: The number of final evaluation rollout episodes, if `venv` is
-            provided. These rollouts are used to generate final statistics saved into
-            Sacred results, which can be compiled into a table by
-            `imitation.scripts.analyze.analyze_imitation`.
 
     Returns:
         Statistics for rollouts from the trained policy and demonstration data.
-
-    Raises:
-        ValueError: if `observation_space` or `action_space` are None.
     """
-    if observation_space is None:
-        raise ValueError("observation_space cannot be None")
-    if action_space is None:
-        raise ValueError("action_space cannot be None")
+    custom_logger, log_dir = train.setup_logging()
+    venv = train.make_venv()
+    expert_trajs = train.load_expert_trajs()
+    expert_transitions = rollout.flatten_trajectories(expert_trajs)
+    logger.info(f"Loaded {len(expert_transitions)} timesteps of expert data")
 
-    log_dir = pathlib.Path(log_dir)
-    log_dir.mkdir(parents=True, exist_ok=True)
-    logger.info("Logging to %s", log_dir)
-
-    custom_logger = imit_logger.configure(log_dir, ["tensorboard", "stdout"])
-    sacred_util.build_sacred_symlink(log_dir, _run)
-
-    if expert_data_src_format == "path":
-        expert_trajs = types.load(expert_data_src)
-    elif expert_data_src_format == "trajectory":
-        # Convenience option for launching experiment from Python script with
-        # in-memory trajectories.
-        expert_trajs = expert_data_src
-    else:
-        raise ValueError(f"Invalid expert_data_src_format={expert_data_src_format}")
-
-    # TODO(shwang): Copied from scripts/train_adversarial -- refactor with "auto",
-    # or combine all train_*.py into a single script?
-    if n_expert_demos is not None:
-        if not len(expert_trajs) >= n_expert_demos:
-            raise ValueError(
-                f"Want to use n_expert_demos={n_expert_demos} trajectories, but only "
-                f"{len(expert_trajs)} are available.",
-            )
-        expert_trajs = expert_trajs[:n_expert_demos]
-
-    policy = make_policy()
+    policy = make_policy(venv)
     model = bc.BC(
-        observation_space=observation_space,
-        action_space=action_space,
+        observation_space=venv.observation_space,
+        action_space=venv.action_space,
         policy=policy,
-        demonstrations=expert_trajs,
+        demonstrations=expert_transitions,
         demo_batch_size=batch_size,
         l2_weight=l2_weight,
         optimizer_cls=optimizer_cls,
@@ -172,22 +110,9 @@ def train_bc(
     # TODO(adam): add checkpointing to BC?
     model.save_policy(policy_path=pathlib.Path(log_dir, "final.th"))
 
-    print(f"Visualize results with: tensorboard --logdir '{log_dir}'")
-
-    # TODO(shwang): Use auto env, auto stats thing with shared `env` and stats
-    #  ingredient, or something like that.
-    sample_until = rollout.make_sample_until(
-        min_timesteps=None,
-        min_episodes=n_episodes_eval,
-    )
-    trajs = rollout.generate_trajectories(
-        model.policy,
-        venv,
-        sample_until=sample_until,
-    )
     results = {}
+    results["imit_stats"] = train.eval_policy(model.policy, venv)
     results["expert_stats"] = rollout.rollout_stats(expert_trajs)
-    results["imit_stats"] = rollout.rollout_stats(trajs)
     return results
 
 

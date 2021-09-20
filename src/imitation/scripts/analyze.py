@@ -65,7 +65,7 @@ def _gather_sacred_dicts(
 
     if env_name is not None:
         sacred_dicts = filter(
-            lambda sd: get(sd.config, "env_name") == env_name,
+            lambda sd: get(sd.config, "train.env_name") == env_name,
             sacred_dicts,
         )
 

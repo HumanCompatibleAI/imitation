@@ -182,8 +182,7 @@ def test_train_bc_main(tmpdir):
     run = train_bc.train_bc_ex.run(
         named_configs=["cartpole", "fast"],
         config_updates=dict(
-            log_root=tmpdir,
-            expert_data_src=CARTPOLE_TEST_ROLLOUT_PATH,
+            train=dict(rollout_path=CARTPOLE_TEST_ROLLOUT_PATH, log_root=tmpdir),
         ),
     )
     assert run.status == "COMPLETED"
@@ -498,9 +497,7 @@ def _run_train_bc_for_test_analyze_imit(run_name, sacred_logs_dir, log_dir):
     run = train_bc.train_bc_ex.run(
         named_configs=["fast", "cartpole"],
         config_updates=dict(
-            expert_data_src=CARTPOLE_TEST_ROLLOUT_PATH,
-            expert_data_src_format="path",
-            log_dir=log_dir,
+            train=dict(rollout_path=CARTPOLE_TEST_ROLLOUT_PATH, log_dir=log_dir),
         ),
         options={"--name": run_name, "--file_storage": sacred_logs_dir},
     )

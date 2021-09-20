@@ -159,7 +159,7 @@ def make_venv(
 
 
 @train_ingredient.capture
-def load_expert_demos(
+def load_expert_trajs(
     rollout_path: str,
     n_expert_demos: Optional[int],
 ) -> Sequence[types.Trajectory]:

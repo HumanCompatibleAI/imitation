@@ -110,8 +110,7 @@ def train_adversarial(
         sacred.commands.print_config(_run)
 
     custom_logger, log_dir = train.setup_logging()
-
-    expert_trajs = train.load_expert_demos()
+    expert_trajs = train.load_expert_trajs()
     expert_transitions = rollout.flatten_trajectories(expert_trajs)
     logger.info(f"Loaded {len(expert_transitions)} timesteps of expert data")
 
@@ -149,12 +148,12 @@ def train_adversarial(
 
 @train_adversarial_ex.command
 def gail():
-    train_adversarial(algo_cls=gail_algo.GAIL)
+    return train_adversarial(algo_cls=gail_algo.GAIL)
 
 
 @train_adversarial_ex.command
 def airl():
-    train_adversarial(algo_cls=airl_algo.AIRL)
+    return train_adversarial(algo_cls=airl_algo.AIRL)
 
 
 def main_console():
