@@ -87,8 +87,7 @@ def train_adversarial(
         show_config: Print the merged config before starting training. This is
             analogous to the print_config command, but will show config after
             rather than before merging `algorithm_specific` arguments.
-        algorithm: A case-insensitive string determining which adversarial imitation
-            learning algorithm is executed. Either "airl" or "gail".
+        algo_cls: The adversarial imitation learning algorithm to use.
         algorithm_kwargs: Keyword arguments for the `GAIL` or `AIRL` constructor.
         total_timesteps: The number of transitions to sample from the environment
             during training.

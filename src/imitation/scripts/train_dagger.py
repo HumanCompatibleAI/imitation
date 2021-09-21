@@ -54,7 +54,7 @@ def train_dagger(
 
     Raises:
         ValueError: `expert_policy_path` is None.
-        ValueError: `expert_data_src_format` unrecognized.
+        TypeError: The policy loaded from `expert_policy_path` is not a SB3 policy.
     """
     custom_logger, log_dir = train.setup_logging()
 
