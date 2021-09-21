@@ -18,11 +18,11 @@ def train_defaults():
 
     fragment_length = 100  # timesteps per fragment used for comparisons
     total_timesteps = int(1e6)  # total number of environment timesteps
-    total_comparisons = 1000  # total number of comparisons to elicit
+    total_comparisons = 5000  # total number of comparisons to elicit
     # comparisons to gather before switching back to agent training
-    comparisons_per_iteration = 50
+    comparisons_per_iteration = 100
     # factor by which to oversample transitions before creating fragments
-    transition_oversampling = 10
+    transition_oversampling = 1
     initial_comparison_fraction = 0.1
 
     n_episodes_eval = 50  # Num of episodes for final mean ground truth return
@@ -36,6 +36,7 @@ def train_defaults():
     gatherer_kwargs = {}
     # path to a pickled sequence of trajectories used instead of training an agent
     trajectory_path = None
+    value_net_path = None
     allow_variable_horizon = False
 
     num_vec = 8  # number of parallel environments
@@ -84,6 +85,12 @@ def mountain_car():
 @train_preference_comparisons_ex.named_config
 def seals_mountain_car():
     env_name = "seals/MountainCar-v0"
+
+
+@train_preference_comparisons_ex.named_config
+def sparse_reacher():
+    env_name = "imitation/SparseReacher-v0"
+    fragment_length = 20
 
 
 @train_preference_comparisons_ex.named_config
