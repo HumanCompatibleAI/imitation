@@ -21,6 +21,7 @@ import pandas as pd
 import pytest
 import ray.tune as tune
 import sacred
+import sacred.utils
 
 from imitation.scripts import (
     analyze,
@@ -86,7 +87,7 @@ PREFERENCE_COMPARISON_CONFIGS = [
         # TODO(ejnnr): the policy we load was trained on 8 parallel environments
         # and for some reason using it breaks if we use just 1 (like would be the
         # default with the fast named_config)
-        "num_vec": 8,
+        "train": dict(num_vec=8),
         # We're testing preference saving and disabling sampling here as well;
         # having yet another run just for those would be wasteful since they
         # don't interact with warm starting an agent.
@@ -96,16 +97,18 @@ PREFERENCE_COMPARISON_CONFIGS = [
     {
         "agent_path": CARTPOLE_TEST_POLICY_WITHOUT_VECNORM_PATH,
         # Needed for the same reason as in the previous config
-        "num_vec": 8,
+        "train": dict(num_vec=8),
     },
 ]
 
 
 @pytest.mark.parametrize("config", PREFERENCE_COMPARISON_CONFIGS)
 def test_train_preference_comparisons_main(tmpdir, config):
+    config_updates = dict(train=dict(log_root=tmpdir))
+    sacred.utils.recursive_update(config_updates, config)
     run = train_preference_comparisons.train_preference_comparisons_ex.run(
-        named_configs=["cartpole", "fast"],
-        config_updates=dict(log_root=tmpdir, **config),
+        named_configs=["cartpole", "fast", "train.fast"],
+        config_updates=config_updates,
     )
     assert run.status == "COMPLETED"
     assert isinstance(run.result, dict)
@@ -117,9 +120,9 @@ def test_train_preference_comparisons_normalization_errors(tmpdir):
         match=".*loaded policy has associated normalization stats.*",
     ):
         train_preference_comparisons.train_preference_comparisons_ex.run(
-            named_configs=["cartpole", "fast"],
+            named_configs=["cartpole", "train.fast", "fast"],
             config_updates=dict(
-                log_root=tmpdir,
+                train=dict(log_root=tmpdir),
                 normalize=False,
                 agent_path=CARTPOLE_TEST_POLICY_PATH,
             ),
@@ -130,10 +133,10 @@ def test_train_preference_comparisons_normalization_errors(tmpdir):
         match="Setting normalize_kwargs is not supported.*",
     ):
         train_preference_comparisons.train_preference_comparisons_ex.run(
-            named_configs=["cartpole", "fast"],
+            named_configs=["cartpole", "train.fast", "fast"],
             config_updates=dict(
-                log_root=tmpdir,
-                normalize_kwargs={"norm_rewward": True},
+                train=dict(log_root=tmpdir),
+                normalize_kwargs={"norm_reward": True},
                 agent_path=CARTPOLE_TEST_POLICY_PATH,
             ),
         )
@@ -142,17 +145,17 @@ def test_train_preference_comparisons_normalization_errors(tmpdir):
 def test_train_preference_comparisons_file_errors(tmpdir):
     with pytest.raises(FileNotFoundError, match=".*needs to be a directory.*"):
         train_preference_comparisons.train_preference_comparisons_ex.run(
-            named_configs=["cartpole", "fast"],
+            named_configs=["cartpole", "train.fast", "fast"],
             config_updates=dict(
-                log_root=tmpdir,
+                train=dict(log_root=tmpdir),
                 agent_path=CARTPOLE_TEST_POLICY_PATH / "model.zip",
             ),
         )
 
     with pytest.raises(FileNotFoundError, match="Could not find policy.*"):
         train_preference_comparisons.train_preference_comparisons_ex.run(
-            named_configs=["cartpole", "fast"],
-            config_updates=dict(log_root=tmpdir, agent_path="."),
+            named_configs=["cartpole", "train.fast", "fast"],
+            config_updates=dict(train=dict(log_root=tmpdir), agent_path="."),
         )
 
 
