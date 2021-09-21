@@ -7,7 +7,7 @@ from imitation.scripts.common import train
 train_preference_comparisons_ex = sacred.Experiment(
     "train_preference_comparisons",
     interactive=True,
-    ingredients=[train.train_ingredient]
+    ingredients=[train.train_ingredient],
 )
 
 

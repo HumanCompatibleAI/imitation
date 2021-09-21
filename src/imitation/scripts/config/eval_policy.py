@@ -23,13 +23,83 @@ def replay_defaults():
     reward_type = None  # Optional: override with reward of this type
     reward_path = None  # Path of serialized reward to load
 
-    save_rollouts = False  # Save rollouts generated during eval to disk?
+    rollout_save_path = None  # where to save rollouts to -- if None, do not save
 
 
 @eval_policy_ex.named_config
 def render():
     train = dict(num_vec=1, parallel=False)
     render = True
+
+
+@eval_policy_ex.named_config
+def acrobot():
+    train = dict(env_name="Acrobot-v1")
+
+
+@eval_policy_ex.named_config
+def ant():
+    train = dict(env_name="Ant-v2")
+
+
+@eval_policy_ex.named_config
+def cartpole():
+    train = dict(env_name="CartPole-v1")
+
+
+@eval_policy_ex.named_config
+def seals_cartpole():
+    train = dict(env_name="seals/CartPole-v0")
+
+
+@eval_policy_ex.named_config
+def half_cheetah():
+    train = dict(env_name="HalfCheetah-v2")
+
+
+@eval_policy_ex.named_config
+def seals_hopper():
+    train = dict(env_name="seals/Hopper-v0")
+
+
+@eval_policy_ex.named_config
+def seals_humanoid():
+    train = dict(env_name="seals/Humanoid-v0")
+
+
+@eval_policy_ex.named_config
+def mountain_car():
+    train = dict(env_name="MountainCar-v0")
+
+
+@eval_policy_ex.named_config
+def seals_mountain_car():
+    train = dict(env_name="seals/MountainCar-v0")
+
+
+@eval_policy_ex.named_config
+def pendulum():
+    train = dict(env_name="Pendulum-v0")
+
+
+@eval_policy_ex.named_config
+def reacher():
+    train = dict(env_name="Reacher-v2")
+
+
+@eval_policy_ex.named_config
+def seals_ant():
+    train = dict(env_name="seals/Ant-v0")
+
+
+@eval_policy_ex.named_config
+def seals_swimmer():
+    train = dict(env_name="seals/Swimmer-v0")
+
+
+@eval_policy_ex.named_config
+def seals_walker():
+    train = dict(env_name="seals/Walker2d-v0")
 
 
 @eval_policy_ex.named_config

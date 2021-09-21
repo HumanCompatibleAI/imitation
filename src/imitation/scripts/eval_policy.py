@@ -65,7 +65,7 @@ def eval_policy(
     policy_path: Optional[str],
     reward_type: Optional[str] = None,
     reward_path: Optional[str] = None,
-    save_rollouts: bool = False,
+    rollout_save_path: Optional[str] = None,
 ):
     """Rolls a policy out in an environment, collecting statistics.
 
@@ -86,8 +86,8 @@ def eval_policy(
             a reward of this.
         reward_path: If reward_type is specified, the path to a serialized reward
             of `reward_type` to override the environment reward with.
-        save_rollouts: whether to store the rollouts used for computing stats
-            to disk (as pickle file).
+        rollout_save_path: where to save rollouts used for computing stats to disk;
+            if None, then do not save.
 
     Returns:
         Return value of `imitation.util.rollout.rollout_stats()`.
@@ -111,8 +111,8 @@ def eval_policy(
             policy = serialize.load_policy(policy_type, policy_path, venv)
         trajs = rollout.generate_trajectories(policy, venv, sample_until)
 
-        if save_rollouts:
-            types.save(osp.join(log_dir, "rollouts.pkl"), trajs)
+        if rollout_save_path:
+            types.save(rollout_save_path, trajs)
 
         return rollout.rollout_stats(trajs)
     finally:
