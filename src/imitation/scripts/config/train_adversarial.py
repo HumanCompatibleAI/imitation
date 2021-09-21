@@ -45,7 +45,7 @@ MUJOCO_SHARED_LOCALS = dict(rl=dict(rl_kwargs=dict(ent_coef=0.1)))
 
 ANT_SHARED_LOCALS = dict(
     total_timesteps=3e7,
-    max_episode_steps=500,  # To match `inverse_rl` settings.
+    train=dict(max_episode_steps=500),  # To match `inverse_rl` settings.
     algorithm_kwargs=dict(shared=dict(demo_batch_size=8192)),
     rl=dict(batch_size=16384),
 )

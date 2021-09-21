@@ -1,4 +1,4 @@
-"""Configuration settings for expert_demos, training an expert policy with RL."""
+"""Configuration settings for train_rl, training a policy with RL."""
 
 import sacred
 
@@ -11,7 +11,7 @@ train_rl_ex = sacred.Experiment(
 
 
 @train_rl_ex.config
-def expert_demos_defaults():
+def train_rl_defaults():
     total_timesteps = int(1e6)  # Number of training timesteps in model.learn()
     normalize = True  # Use VecNormalize
     normalize_kwargs = dict()  # kwargs for `VecNormalize`

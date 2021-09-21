@@ -15,7 +15,7 @@ For information on how to configure Sacred CLI options, see the `Sacred docs <ht
 
     # Train PPO agent on cartpole and collect expert demonstrations. Tensorboard logs saved
     # in `quickstart/rl/`
-    python -m imitation.scripts.expert_demos with fast cartpole log_dir=quickstart/rl/
+    python -m imitation.scripts.train_rl with fast cartpole log_dir=quickstart/rl/
 
     # Train GAIL from demonstrations. Tensorboard logs saved in output/ (default log directory).
     python -m imitation.scripts.train_adversarial with fast gail cartpole \
@@ -30,7 +30,7 @@ For information on how to configure Sacred CLI options, see the `Sacred docs <ht
   Remove the ``fast`` option from the commands above to allow training run to completion.
 
 .. tip::
-  ``python -m imitation.scripts.expert_demos print_config`` will list Sacred script options.
+  ``python -m imitation.scripts.train_rl print_config`` will list Sacred script options.
   These configuration options are also documented in each script's docstrings.
 
 

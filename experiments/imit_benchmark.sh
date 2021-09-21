@@ -28,8 +28,9 @@ while true; do
     # Fast mode (debug)
     -f | --fast)
       CONFIG_CSV="tests/testdata/imit_benchmark_config.csv"
+      DATA_DIR="tests/testdata/"
       SEEDS="0"
-      extra_configs+="fast "
+      extra_configs+="fast train.fast rl.fast "
       shift
       ;;
     --mvp_seals)
@@ -95,13 +96,13 @@ parallel -j 25% --header : --results ${LOG_ROOT}/parallel/ --colsep , --progress
   python -m imitation.scripts.train_adversarial \
   --capture=sys \
   ${extra_options} \
-  with \
   ${ALGORITHM} \
+  with \
   {env_config_name} \
-  log_dir="${LOG_ROOT}/{env_config_name}_{seed}/n_expert_demos_{n_expert_demos}" \
-  data_dir=${DATA_DIR} \
+  train.log_dir="${LOG_ROOT}/{env_config_name}_{seed}/n_expert_demos_{n_expert_demos}" \
+  train.data_dir=${DATA_DIR} \
+  train.n_expert_demos={n_expert_demos} \
   checkpoint_interval=0 \
-  n_expert_demos={n_expert_demos} \
   seed={seed} \
   ${extra_configs} \
   :::: $CONFIG_CSV \

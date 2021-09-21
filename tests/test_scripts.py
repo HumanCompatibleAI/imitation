@@ -191,8 +191,8 @@ def test_train_bc_main(tmpdir):
     assert isinstance(run.result, dict)
 
 
-def test_expert_demos_main(tmpdir):
-    """Smoke test for imitation.scripts.expert_demos.rollouts_and_policy."""
+def test_train_rl_main(tmpdir):
+    """Smoke test for imitation.scripts.train_rl.rollouts_and_policy."""
     run = train_rl.train_rl_ex.run(
         named_configs=["cartpole", "fast", "rl.fast", "train.fast"],
         config_updates=dict(
@@ -207,7 +207,7 @@ EVAL_POLICY_CONFIGS = [
     {"videos": True},
     {"videos": True, "video_kwargs": {"single_video": False}},
     {"reward_type": "zero", "reward_path": "foobar"},
-    {"save_rollouts": True},
+    {"rollout_save_path": "{log_dir}/rollouts.pkl"},
 ]
 
 
@@ -329,7 +329,7 @@ def test_transfer_learning(tmpdir: str) -> None:
 
     _check_rollout_stats(run.result["imit_stats"])
 
-    log_dir_data = tmpdir / "expert_demos"
+    log_dir_data = tmpdir / "train_rl"
     reward_path = log_dir_train / "checkpoints" / "final" / "reward_test.pt"
     run = train_rl.train_rl_ex.run(
         named_configs=["cartpole", "fast", "rl.fast", "train.fast"],
@@ -345,7 +345,7 @@ def test_transfer_learning(tmpdir: str) -> None:
 
 PARALLEL_CONFIG_UPDATES = [
     dict(
-        sacred_ex_name="expert_demos",
+        sacred_ex_name="train_rl",
         base_named_configs=["cartpole", "fast", "train.fast", "rl.fast"],
         n_seeds=2,
         search_space={
@@ -377,50 +377,42 @@ PARALLEL_CONFIG_LOW_RESOURCE = {
 
 
 @pytest.mark.parametrize("config_updates", PARALLEL_CONFIG_UPDATES)
-def test_parallel(config_updates):
+def test_parallel(config_updates, tmpdir):
     """Hyperparam tuning smoke test."""
     # CI server only has 2 cores
     config_updates = dict(config_updates)
     config_updates.update(PARALLEL_CONFIG_LOW_RESOURCE)
-    # No need for TemporaryDirectory because the hyperparameter tuning script
-    # itself generates no artifacts, and "debug_log_root" sets inner experiment's
-    # log_root="/tmp/parallel_debug/".
-    run = parallel.parallel_ex.run(
-        named_configs=["debug_log_root"],
-        config_updates=config_updates,
-    )
+    config_updates.setdefault("base_config_updates", {})["train.log_root"] = tmpdir
+    run = parallel.parallel_ex.run(config_updates=config_updates)
     assert run.status == "COMPLETED"
 
 
 def test_parallel_arg_errors(tmpdir):
     """Error on bad algorithm arguments."""
-    base_named_configs = ["debug_log_root"]
-    base_config_updates = collections.ChainMap(PARALLEL_CONFIG_LOW_RESOURCE)
+    config_updates = dict(PARALLEL_CONFIG_LOW_RESOURCE)
+    config_updates.setdefault("base_config_updates", {})["train.log_root"] = tmpdir
+    config_updates = collections.ChainMap(config_updates)
 
     with pytest.raises(TypeError, match=".*Sequence.*"):
         parallel.parallel_ex.run(
-            named_configs=base_named_configs,
-            config_updates=base_config_updates.new_child(dict(base_named_configs={})),
+            config_updates=config_updates.new_child(dict(base_named_configs={})),
         )
 
     with pytest.raises(TypeError, match=".*Mapping.*"):
         parallel.parallel_ex.run(
-            named_configs=base_named_configs,
-            config_updates=base_config_updates.new_child(dict(base_config_updates=())),
+            config_updates=config_updates.new_child(dict(base_config_updates=())),
         )
 
     with pytest.raises(TypeError, match=".*Sequence.*"):
         parallel.parallel_ex.run(
-            named_configs=base_named_configs,
-            config_updates=base_config_updates.new_child(
+            config_updates=config_updates.new_child(
                 dict(search_space={"named_configs": {}}),
             ),
         )
 
     with pytest.raises(TypeError, match=".*Mapping.*"):
         parallel.parallel_ex.run(
-            named_configs=base_named_configs,
-            config_updates=base_config_updates.new_child(
+            config_updates=config_updates.new_child(
                 dict(search_space={"config_updates": ()}),
             ),
         )
@@ -453,16 +445,12 @@ def test_parallel_train_adversarial_custom_env(tmpdir):
         n_seeds=1,
         base_named_configs=[env_named_config, "fast", "rl.fast", "train.fast"],
         base_config_updates=dict(
-            parallel=True,
-            num_vec=2,
-            train=dict(rollout_path=rollout_path),
+            train=dict(rollout_path=rollout_path, log_root=tmpdir),
         ),
+        search_space=dict(command_name="gail"),
     )
     config_updates.update(PARALLEL_CONFIG_LOW_RESOURCE)
-    run = parallel.parallel_ex.run(
-        named_configs=["debug_log_root"],
-        config_updates=config_updates,
-    )
+    run = parallel.parallel_ex.run(config_updates=config_updates)
     assert run.status == "COMPLETED"
 
 

@@ -25,7 +25,7 @@ while true; do
       # Fast mode (debug)
       ENVS="cartpole pendulum"
       SEEDS="0"
-      extra_configs+="fast "
+      extra_configs+="fast train.fast rl.fast "
       shift
       ;;
     -r | --regenerate)
@@ -59,18 +59,18 @@ done
 echo "Writing logs in ${OUTPUT_DIR}"
 # Train experts.
 parallel -j 25% --header : --progress --results ${OUTPUT_DIR}/parallel/ \
-  python -m imitation.scripts.expert_demos \
+  python -m imitation.scripts.train_rl \
   --capture=sys \
   with \
   {env} ${extra_configs} \
   seed={seed} \
-  log_dir="${OUTPUT_DIR}/{env}_{seed}" \
+  train.log_dir="${OUTPUT_DIR}/{env}_{seed}" \
   ::: env ${ENVS} ::: seed ${SEEDS}
 
 pushd $OUTPUT_DIR
 
 # Display and save mean episode reward to ${RESULTS_FILE}.
-find . -name stdout | xargs tail -n 15 | grep -E '(==|ep_reward_mean)' | tee ${RESULTS_FILE}
+find . -name stdout | xargs tail -n 15 | grep -E '(==|return_mean)' | tee ${RESULTS_FILE}
 
 popd
 

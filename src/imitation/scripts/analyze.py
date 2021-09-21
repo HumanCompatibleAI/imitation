@@ -106,10 +106,9 @@ def gather_tb_directories() -> dict:
         run_dir = osp.dirname(osp.dirname(sacred_dir))
         run_name = osp.basename(run_dir)
 
-        # "tb" is TensorBoard directory built by our codebase. "sb_tb" is Stable
-        # Baselines TensorBoard directory. There should be at most one of each
-        # directory.
-        for basename in ["rl", "tb", "sb_tb"]:
+        # log is what we use as subdirectory in new code.
+        # rl, tb, sb_tb all appear in old versions.
+        for basename in ["log", "rl", "tb", "sb_tb"]:
             tb_src_dirs = tuple(
                 sacred_util.filter_subdirs(
                     run_dir,

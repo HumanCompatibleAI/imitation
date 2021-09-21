@@ -118,6 +118,13 @@ def train_adversarial(
     reward_net = reward.make_reward_net(venv)
 
     logger.info(f"Using '{algo_cls}' algorithm")
+    algorithm_kwargs = dict(algorithm_kwargs)
+    for k in ("shared", "airl", "gail"):
+        # Config hook has copied relevant subset of config to top-level.
+        # But due to Sared limitations, cannot delete the rest of it.
+        # So do that here to avoid passing in invalid arguments to constructor.
+        if k in algorithm_kwargs:
+            del algorithm_kwargs[k]
     trainer = algo_cls(
         venv=venv,
         demonstrations=expert_transitions,

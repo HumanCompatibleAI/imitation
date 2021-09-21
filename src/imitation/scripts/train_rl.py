@@ -132,7 +132,7 @@ def train_rl(
 
 
 def main_console():
-    observer = FileStorageObserver(osp.join("output", "sacred", "expert_demos"))
+    observer = FileStorageObserver(osp.join("output", "sacred", "train_rl"))
     train_rl_ex.observers.append(observer)
     train_rl_ex.run_commandline()
 

@@ -26,7 +26,7 @@ while true; do
     -f | --fast)
       # Fast mode (debug)
       SEEDS="0"
-      extra_configs+="fast "
+      extra_configs+="fast train.fast "
       shift
       ;;
     --paper)  # Table benchmark settings
@@ -65,6 +65,6 @@ parallel -j 25% --header : --results ${OUTPUT_DIR}/parallel/ --colsep , --progre
   expert_data_src=${DATA_DIR}/expert_models/{env_cfg_name}_0/rollouts/final.pkl \
   expert_data_src_format="path" \
   seed={seed} \
-  log_root=${OUTPUT_DIR} \
+  train.log_root=${OUTPUT_DIR} \
   ::: env_cfg_name ${ENVS} \
   ::: seed ${SEEDS}

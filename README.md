@@ -48,7 +48,7 @@ python -m imitation.scripts.train_adversarial with airl pendulum fast rollout_pa
 ```
 Tips:
   * Remove the "fast" option from the commands above to allow training run to completion.
-  * `python -m imitation.scripts.expert_demos print_config` will list Sacred script options. These configuration options are documented in each script's docstrings.
+  * `python -m imitation.scripts.train_rl print_config` will list Sacred script options. These configuration options are documented in each script's docstrings.
 
 For more information on how to configure Sacred CLI options, see the [Sacred docs](https://sacred.readthedocs.io/en/stable/).
 

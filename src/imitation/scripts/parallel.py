@@ -32,7 +32,7 @@ def parallel(
     to `upload_dir` if that argument is provided.
 
     Args:
-        sacred_ex_name: The Sacred experiment to tune. Either "expert_demos" or
+        sacred_ex_name: The Sacred experiment to tune. Either "train_rl" or
             "train_adversarial".
         run_name: A name describing this parallelizing experiment.
             This argument is also passed to `ray.tune.run` as the `name` argument.
@@ -91,10 +91,14 @@ def parallel(
     # automatically find rollout pickles because Ray sets a new working directory for
     # each Raylet.
     if sacred_ex_name == "train_adversarial":
-        if "data_dir" not in base_config_updates:
+        no_data_dir = (
+            "train.data_dir" not in base_config_updates
+            and "data_dir" not in base_config_updates.get("train", {})
+        )
+        if no_data_dir:
             data_dir = os.path.join(os.getcwd(), "data/")
             base_config_updates = dict(base_config_updates)
-            base_config_updates["data_dir"] = data_dir
+            base_config_updates["train.data_dir"] = data_dir
 
     trainable = _ray_tune_sacred_wrapper(
         sacred_ex_name,
@@ -142,7 +146,7 @@ def _ray_tune_sacred_wrapper(
     The Ray Tune `reporter` is not passed to the inner experiment.
 
     Args:
-        sacred_ex_name: The Sacred experiment to tune. Either "expert_demos" or
+        sacred_ex_name: The Sacred experiment to tune. Either "train_rl" or
             "train_adversarial".
         run_name: A name describing this parallelizing experiment.
             This argument is also passed to `ray.tune.run` as the `name` argument.
@@ -190,7 +194,7 @@ def _ray_tune_sacred_wrapper(
         from imitation.scripts.train_rl import train_rl_ex
 
         experiments = {
-            "expert_demos": train_rl_ex,
+            "train_rl": train_rl_ex,
             "train_adversarial": train_adversarial_ex,
         }
         ex = experiments[sacred_ex_name]
