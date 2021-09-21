@@ -18,4 +18,6 @@ class SparseReacher(reacher.ReacherEnv):
 gym.register(
     "imitation/SparseReacher-v0",
     entry_point="imitation.envs.sparse:SparseReacher",
+    # as in original Mujoco environment
+    max_episode_steps=50,
 )
