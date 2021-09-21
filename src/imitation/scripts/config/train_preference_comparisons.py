@@ -23,6 +23,7 @@ def train_defaults():
     comparisons_per_iteration = 50
     # factor by which to oversample transitions before creating fragments
     transition_oversampling = 10
+    initial_comparison_fraction = 0.1
 
     n_episodes_eval = 50  # Num of episodes for final mean ground truth return
     reward_net_kwargs = {"use_action": False}
