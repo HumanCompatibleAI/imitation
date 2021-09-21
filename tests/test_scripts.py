@@ -211,13 +211,11 @@ EVAL_POLICY_CONFIGS = [
 @pytest.mark.parametrize("config", EVAL_POLICY_CONFIGS)
 def test_eval_policy(config, tmpdir):
     """Smoke test for imitation.scripts.eval_policy."""
-    config_updates = {
-        "log_root": tmpdir,
-    }
+    config_updates = dict(train=dict(log_root=tmpdir))
     config_updates.update(config)
     run = eval_policy.eval_policy_ex.run(
         config_updates=config_updates,
-        named_configs=["fast"],
+        named_configs=["train.fast", "fast"],
     )
     assert run.status == "COMPLETED"
     wrapped_reward = "reward_type" in config
