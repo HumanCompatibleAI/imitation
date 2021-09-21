@@ -25,7 +25,7 @@ def train_defaults():
     transition_oversampling = 10
 
     n_episodes_eval = 50  # Num of episodes for final mean ground truth return
-    reward_net_kwargs = {}
+    reward_net_kwargs = {"use_action": False}
     reward_trainer_kwargs = {
         "epochs": 3,
     }

@@ -14,6 +14,7 @@ class SparseReacher(reacher.ReacherEnv):
         done = False
         return ob, reward, done, {}
 
+
 gym.register(
     "imitation/SparseReacher-v0",
     entry_point="imitation.envs.sparse:SparseReacher",
