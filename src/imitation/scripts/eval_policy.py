@@ -12,6 +12,7 @@ from stable_baselines3.common.vec_env import VecEnvWrapper
 
 import imitation.util.sacred as sacred_util
 from imitation.data import rollout, types
+from imitation.envs import maze, sparse
 from imitation.policies import serialize
 from imitation.rewards.serialize import load_reward
 from imitation.scripts.config.eval_policy import eval_policy_ex

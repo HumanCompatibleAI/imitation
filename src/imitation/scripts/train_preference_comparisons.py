@@ -16,7 +16,7 @@ from stable_baselines3.common import vec_env
 
 from imitation.algorithms import preference_comparisons
 from imitation.data import rollout
-from imitation.envs import sparse  # noqa: F401
+from imitation.envs import maze, sparse  # noqa: F401
 from imitation.policies import serialize
 from imitation.rewards import reward_nets
 from imitation.scripts.config.train_preference_comparisons import (
