@@ -18,25 +18,25 @@ def config():
     use_offline_rollouts = False
     # TODO(shwang): This config is almost the same as train_bc's. Consider merging
     #   into a shared ingredient.
+    bc_kwargs = dict(
+        batch_size=32,
+        l2_weight=3e-5,  # L2 regularization weight
+        optimizer_cls=th.optim.Adam,
+        optimizer_kwargs=dict(
+            lr=4e-4,
+        ),
+    )
     bc_train_kwargs = dict(
         n_epochs=None,  # Number of BC epochs per DAgger training round
         n_batches=None,  # Number of BC batches per DAgger training round
         log_interval=500,  # Number of updates between Tensorboard/stdout logs
     )
 
-    batch_size = 32
-
-    l2_weight = 3e-5  # L2 regularization weight
     # Path to directory containing model.pkl (and optionally, vec_normalize.pkl)
     expert_policy_path = None
     expert_policy_type = None  # 'ppo', 'random', or 'zero'
 
     total_timesteps = 1e5
-
-    optimizer_cls = th.optim.Adam
-    optimizer_kwargs = dict(
-        lr=4e-4,
-    )
 
 
 @train_dagger_ex.config
@@ -68,14 +68,14 @@ def default_train_duration(bc_train_kwargs):
 @train_dagger_ex.named_config
 def mountain_car():
     train = dict(env_name="MountainCar-v0")
-    l2_weight = 0
+    bc_kwargs = dict(l2_weight=0.0)
     total_timesteps = 20000
 
 
 @train_dagger_ex.named_config
 def seals_mountain_car():
     train = dict(env_name="seals/MountainCar-v0")
-    l2_weight = 0
+    bc_kwargs = dict(l2_weight=0.0)
     total_timesteps = 20000
 
 
@@ -104,7 +104,7 @@ def ant():
 @train_dagger_ex.named_config
 def half_cheetah():
     train = dict(env_name="HalfCheetah-v2")
-    l2_weight = 0
+    bc_kwargs = dict(l2_weight=0.0)
     total_timesteps = 60000
 
 

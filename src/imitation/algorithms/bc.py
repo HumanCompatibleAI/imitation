@@ -190,7 +190,7 @@ class BC(algo_base.DemonstrationAlgorithm):
         action_space: gym.Space,
         policy: Optional[policies.BasePolicy] = None,
         demonstrations: Optional[algo_base.AnyTransitions] = None,
-        demo_batch_size: int = 32,
+        batch_size: int = 32,
         optimizer_cls: Type[th.optim.Optimizer] = th.optim.Adam,
         optimizer_kwargs: Optional[Mapping[str, Any]] = None,
         ent_weight: float = 1e-3,
@@ -209,7 +209,7 @@ class BC(algo_base.DemonstrationAlgorithm):
                 expressed directly as a `types.TransitionsMinimal` object, a sequence
                 of trajectories, or an iterable of transition batches (mappings from
                 keywords to arrays containing observations, etc).
-            demo_batch_size: The number of samples in each batch of expert data.
+            batch_size: The number of samples in each batch of expert data.
             optimizer_cls: optimiser to use for supervised training.
             optimizer_kwargs: keyword arguments, excluding learning rate and
                 weight decay, for optimiser construction.
@@ -222,7 +222,7 @@ class BC(algo_base.DemonstrationAlgorithm):
             ValueError: If `weight_decay` is specified in `optimizer_kwargs` (use the
                 parameter `l2_weight` instead.)
         """
-        self.demo_batch_size = demo_batch_size
+        self.batch_size = batch_size
         super().__init__(
             demonstrations=demonstrations,
             custom_logger=custom_logger,
@@ -266,7 +266,7 @@ class BC(algo_base.DemonstrationAlgorithm):
     def set_demonstrations(self, demonstrations: algo_base.AnyTransitions) -> None:
         self._demo_data_loader = algo_base.make_data_loader(
             demonstrations,
-            self.demo_batch_size,
+            self.batch_size,
         )
 
     def _calculate_loss(

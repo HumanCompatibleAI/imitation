@@ -1,9 +1,8 @@
 """Trains DAgger on synthetic demonstrations generated from an expert policy."""
 
 import os.path as osp
-from typing import Mapping, Type
+from typing import Any, Mapping
 
-import torch as th
 from sacred.observers import FileStorageObserver
 from stable_baselines3.common import policies
 
@@ -21,11 +20,8 @@ def train_dagger(
     expert_policy_path: types.AnyPath,
     expert_policy_type: str,
     total_timesteps: float,
-    batch_size: int,
+    bc_kwargs: Mapping[str, Any],
     bc_train_kwargs: dict,
-    l2_weight: float,
-    optimizer_cls: Type[th.optim.Optimizer],
-    optimizer_kwargs: dict,
 ) -> Mapping[str, Mapping[str, float]]:
     """Run synthetic DAgger experiment using a Sacred interface to SimpleDAggerTrainer.
 
@@ -41,13 +37,9 @@ def train_dagger(
         total_timesteps: The number of timesteps to train inside the environment. (In
             practice this is a lower bound, as the number of timesteps is rounded up
             to finish a DAgger training rounds.)
-        batch_size: Number of observation-action samples used in each BC update.
         bc_train_kwargs: The `bc_train_kwargs` argument for
             `SimpleDAggerTrainer.train()`. A dict of keyword arguments that are passed
             to `BC.train()` every DAgger training round.
-        l2_weight: L2 regularization weight for BC.
-        optimizer_cls: The Torch optimizer class used for BC updates.
-        optimizer_kwargs: Optimizer kwargs passed to BC.
 
     Returns:
         Statistics for rollouts from the trained policy and expert data.
@@ -61,11 +53,8 @@ def train_dagger(
     if expert_policy_path is None:
         raise ValueError("expert_policy_path cannot be None")
 
+    venv = train.make_venv()
     # TODO(shwang): Add support for directly loading a BasePolicy `*.th` file.
-    # set log_dir=None as saving trainer blows up if venv includes file handles
-    # TODO(adam): should we even be saving venv when we save trainer?
-    # (In general environments may not be pickleable.)
-    venv = train.make_venv(log_dir=None)
     expert_policy = serialize.load_policy(expert_policy_type, expert_policy_path, venv)
     if not isinstance(expert_policy, policies.BasePolicy):
         raise TypeError(f"Unexpected type for expert_policy: {type(expert_policy)}")
@@ -79,13 +68,7 @@ def train_dagger(
         scratch_dir=osp.join(log_dir, "scratch"),
         expert_trajs=expert_trajs,
         expert_policy=expert_policy,
-        batch_size=batch_size,
-        # TODO(adam): this is only a subset of bc_kwargs... make this configurable?
-        bc_kwargs=dict(
-            l2_weight=l2_weight,
-            optimizer_cls=optimizer_cls,
-            optimizer_kwargs=optimizer_kwargs,
-        ),
+        bc_kwargs=bc_kwargs,
         custom_logger=custom_logger,
     )
     model.train(

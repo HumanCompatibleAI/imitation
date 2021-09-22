@@ -293,7 +293,6 @@ class DAggerTrainer(base.BaseImitationAlgorithm):
         venv: vec_env.VecEnv,
         scratch_dir: types.AnyPath,
         beta_schedule: Callable[[int], float] = None,
-        batch_size: int = 32,
         bc_kwargs: Optional[dict] = None,
         custom_logger: Optional[logger.HierarchicalLogger] = None,
     ):
@@ -306,7 +305,6 @@ class DAggerTrainer(base.BaseImitationAlgorithm):
             beta_schedule: Provides a value of `beta` (the probability of taking
                 expert action in any given state) at each round of training. If
                 `None`, then `linear_beta_schedule` will be used instead.
-            batch_size: Number of samples in each batch during BC training.
             bc_kwargs: Additional arguments for constructing the `BC` instance that
                 will be used to train the underlying policy.
             custom_logger: Where to log to; if None (default), creates a new logger.
@@ -315,7 +313,6 @@ class DAggerTrainer(base.BaseImitationAlgorithm):
 
         if beta_schedule is None:
             beta_schedule = LinearBetaSchedule(15)
-        self.batch_size = batch_size
         self.beta_schedule = beta_schedule
         self.scratch_dir = pathlib.Path(scratch_dir)
         self.venv = venv
@@ -331,6 +328,13 @@ class DAggerTrainer(base.BaseImitationAlgorithm):
             **self.bc_kwargs,
         )
 
+    def __getstate__(self):
+        """Return state excluding non-pickleable objects."""
+        d = dict(self.__dict__)
+        del d["venv"]
+        del d["_logger"]
+        return d
+
     @base.BaseImitationAlgorithm.logger.setter
     def logger(self, value: logger.HierarchicalLogger) -> None:
         # DAgger and inner-BC logger should stay in sync
@@ -340,6 +344,10 @@ class DAggerTrainer(base.BaseImitationAlgorithm):
     @property
     def policy(self) -> policies.BasePolicy:
         return self.bc_trainer.policy
+
+    @property
+    def batch_size(self) -> int:
+        return self.bc_trainer.batch_size
 
     def _load_all_demos(self):
         num_demos_by_round = []

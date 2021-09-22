@@ -355,7 +355,7 @@ def test_dagger_not_enough_transitions_error(tmpdir, custom_logger):
     trainer = dagger.DAggerTrainer(
         venv=venv,
         scratch_dir=tmpdir,
-        batch_size=100_000,
+        bc_kwargs=dict(batch_size=100_000),
         custom_logger=custom_logger,
     )
     collector = trainer.get_trajectory_collector()
