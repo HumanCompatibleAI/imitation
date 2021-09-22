@@ -41,10 +41,10 @@ From [examples/quickstart.sh:](examples/quickstart.sh)
 python -m imitation.scripts.train_rl with pendulum fast train.fast rl.fast train.log_dir=quickstart/rl/
 
 # Train GAIL from demonstrations. Tensorboard logs saved in output/ (default log directory).
-python -m imitation.scripts.train_adversarial gail with pendulum fast train.fast rl.fast  train.rollout_path=quickstart/rl/rollouts/final.pkl
+python -m imitation.scripts.train_adversarial gail with pendulum fast train.fast rl.fast train.rollout_path=quickstart/rl/rollouts/final.pkl
 
 # Train AIRL from demonstrations. Tensorboard logs saved in output/ (default log directory).
-python -m imitation.scripts.train_adversarial airl with pendulum fast train.fast rl.fast  train.rollout_path=quickstart/rl/rollouts/final.pkl
+python -m imitation.scripts.train_adversarial airl with pendulum fast train.fast rl.fast train.rollout_path=quickstart/rl/rollouts/final.pkl
 ```
 Tips:
   * Remove the "fast" options from the commands above to allow training run to completion.
