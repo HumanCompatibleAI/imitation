@@ -110,8 +110,6 @@ def train_adversarial(
 
     custom_logger, log_dir = train.setup_logging()
     expert_trajs = train.load_expert_trajs()
-    expert_transitions = rollout.flatten_trajectories(expert_trajs)
-    logger.info(f"Loaded {len(expert_transitions)} timesteps of expert data")
 
     venv = train.make_venv()
     gen_algo = rl.make_rl_algo(venv)
@@ -127,7 +125,7 @@ def train_adversarial(
             del algorithm_kwargs[k]
     trainer = algo_cls(
         venv=venv,
-        demonstrations=expert_transitions,
+        demonstrations=expert_trajs,
         gen_algo=gen_algo,
         log_dir=log_dir,
         reward_net=reward_net,

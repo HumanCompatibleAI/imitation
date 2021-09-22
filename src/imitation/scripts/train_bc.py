@@ -5,7 +5,6 @@ import os.path as osp
 import pathlib
 from typing import Any, Mapping, Optional, Type
 
-import torch as th
 from sacred.observers import FileStorageObserver
 from stable_baselines3.common import policies, utils, vec_env
 
@@ -51,27 +50,20 @@ def make_policy(
 @train_bc_ex.main
 def train_bc(
     _run,
-    batch_size: int,
     n_epochs: Optional[int],
     n_batches: Optional[int],
-    l2_weight: float,
-    optimizer_cls: Type[th.optim.Optimizer],
-    optimizer_kwargs: dict,
+    bc_kwargs: Mapping[str, Any],
     log_interval: int,
     log_rollouts_n_episodes: int,
 ) -> Mapping[str, Mapping[str, float]]:
     """Sacred interface to Behavioral Cloning.
 
     Args:
-        batch_size: Number of observation-action samples used in each BC update.
         n_epochs: The total number of training epochs. Set exactly one of n_epochs and
             n_batches.
         n_batches: The total number of training batches. Set exactly one of n_epochs and
             n_batches.
-        l2_weight: L2 regularization weight.
-        optimizer_cls: The Torch optimizer class used for BC updates.
-        optimizer_kwargs: keyword arguments, excluding learning rate and
-              weight decay, for optimiser construction.
+        bc_kwargs: Keyword arguments passed through to `bc.BC` constructor.
         log_interval: The number of updates in between logging various training
             statistics to stdout and Tensorboard.
         log_rollouts_n_episodes: The number of rollout episodes generated for
@@ -84,20 +76,15 @@ def train_bc(
     custom_logger, log_dir = train.setup_logging()
     venv = train.make_venv()
     expert_trajs = train.load_expert_trajs()
-    expert_transitions = rollout.flatten_trajectories(expert_trajs)
-    logger.info(f"Loaded {len(expert_transitions)} timesteps of expert data")
 
     policy = make_policy(venv)
     model = bc.BC(
         observation_space=venv.observation_space,
         action_space=venv.action_space,
         policy=policy,
-        demonstrations=expert_transitions,
-        demo_batch_size=batch_size,
-        l2_weight=l2_weight,
-        optimizer_cls=optimizer_cls,
-        optimizer_kwargs=optimizer_kwargs,
+        demonstrations=expert_trajs,
         custom_logger=custom_logger,
+        **bc_kwargs,
     )
     # TODO(adam): have BC support timesteps instead of epochs/batches?
     model.train(

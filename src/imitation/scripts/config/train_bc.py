@@ -12,31 +12,26 @@ train_bc_ex = sacred.Experiment("train_bc", ingredients=[train.train_ingredient]
 
 @train_bc_ex.config
 def config():
-    expert_data_src = None
-    expert_data_src_format = None  # Either "trajectory" or "path"
-    batch_size = 32
     n_epochs = None  # Number of training epochs (mutually exclusive with n_batches)
     n_batches = None  # Number of training batches (mutually exclusive with n_epochs)
-    n_episodes_eval = 50  # Number of rollout episodes in final evaluation.
-    # Number of trajectories to use during training, or None to use all.
-    n_expert_demos = None
-    l2_weight = 3e-5  # L2 regularization weight
 
     policy_cls = base.FeedForward32Policy
     policy_kwargs = {
         # parameter mandatory for ActorCriticPolicy, but not used by BC
         "lr_schedule": utils.get_schedule_fn(1),
     }
-    optimizer_cls = th.optim.Adam
-    optimizer_kwargs = dict(
-        lr=4e-4,
+
+    bc_kwargs = dict(
+        demo_batch_size=32,
+        l2_weight=3e-5,  # L2 regularization weight
+        optimizer_cls=th.optim.Adam,
+        optimizer_kwargs=dict(
+            lr=4e-4,
+        ),
     )
-    log_dir = None  # Log directory
+
     log_interval = 1000  # Number of batches in between each training log.
     log_rollouts_n_episodes = 5  # Number of rollout episodes per training log.
-
-    # Either Sequence[Trajectory] or path to Sequence[Trajectory]
-    rollout_hint = None  # Used to generate default `expert_data_src`.
 
 
 @train_bc_ex.config
@@ -74,7 +69,7 @@ def pendulum():
 
 @train_bc_ex.named_config
 def seals_ant():
-    rollout_hint = "ant"
+    train = dict(env_name="seals/Ant-v0")
 
 
 @train_bc_ex.named_config
@@ -91,5 +86,3 @@ def seals_humanoid():
 @train_bc_ex.named_config
 def fast():
     n_batches = 50
-    n_episodes_eval = 1
-    n_expert_demos = 1
