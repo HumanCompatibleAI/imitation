@@ -24,15 +24,10 @@ imitation.scripts.train\_adversarial module
 
 .. automodule:: imitation.scripts.train_adversarial
 
-imitation.scripts.train\_bc module
-----------------------------------
+imitation.scripts.train\_imitation module
+------------------------------------------
 
-.. automodule:: imitation.scripts.train_bc
-
-imitation.scripts.train\_dagger module
---------------------------------------
-
-.. automodule:: imitation.scripts.train_dagger
+.. automodule:: imitation.scripts.train_imitation
 
 imitation.scripts.train\_preference_comparisons module
 ------------------------------------------------------

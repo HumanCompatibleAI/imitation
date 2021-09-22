@@ -28,8 +28,7 @@ from imitation.scripts import (
     eval_policy,
     parallel,
     train_adversarial,
-    train_bc,
-    train_dagger,
+    train_imitation,
     train_preference_comparisons,
     train_rl,
 )
@@ -37,12 +36,11 @@ from imitation.scripts import (
 ALL_SCRIPTS_MODS = [
     analyze,
     eval_policy,
-    train_rl,
     parallel,
     train_adversarial,
-    train_bc,
-    train_dagger,
+    train_imitation,
     train_preference_comparisons,
+    train_rl,
 ]
 
 CARTPOLE_TEST_DATA_PATH = pathlib.Path("tests/testdata/expert_models/cartpole_0/")
@@ -161,12 +159,15 @@ def test_train_preference_comparisons_file_errors(tmpdir):
 
 def test_train_dagger_main(tmpdir):
     with pytest.warns(None) as record:
-        run = train_dagger.train_dagger_ex.run(
+        run = train_imitation.train_imitation_ex.run(
+            command_name="dagger",
             named_configs=["cartpole", "fast", "train.fast"],
             config_updates=dict(
                 train=dict(rollout_path=CARTPOLE_TEST_ROLLOUT_PATH, log_root=tmpdir),
-                expert_policy_path=CARTPOLE_TEST_POLICY_PATH,
-                expert_policy_type="ppo",
+                dagger=dict(
+                    expert_policy_type="ppo",
+                    expert_policy_path=CARTPOLE_TEST_POLICY_PATH,
+                ),
             ),
         )
     for warning in record:
@@ -181,7 +182,8 @@ def test_train_dagger_main(tmpdir):
 
 
 def test_train_bc_main(tmpdir):
-    run = train_bc.train_bc_ex.run(
+    run = train_imitation.train_imitation_ex.run(
+        command_name="bc",
         named_configs=["cartpole", "fast", "train.fast"],
         config_updates=dict(
             train=dict(rollout_path=CARTPOLE_TEST_ROLLOUT_PATH, log_root=tmpdir),
@@ -468,7 +470,8 @@ def _run_train_adv_for_test_analyze_imit(run_name, sacred_logs_dir, log_dir):
 
 
 def _run_train_bc_for_test_analyze_imit(run_name, sacred_logs_dir, log_dir):
-    run = train_bc.train_bc_ex.run(
+    run = train_imitation.train_imitation_ex.run(
+        command_name="bc",
         named_configs=["fast", "cartpole"],
         config_updates=dict(
             train=dict(rollout_path=CARTPOLE_TEST_ROLLOUT_PATH, log_dir=log_dir),
