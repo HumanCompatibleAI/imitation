@@ -53,7 +53,7 @@ def load_expert_policy(
     venv: vec_env.VecEnv,
     expert_policy_type: Optional[str],
     expert_policy_path: Optional[str],
-):
+) -> policies.BasePolicy:
     """Loads expert policy from `expert_policy_path`.
 
     Args:
@@ -63,6 +63,9 @@ def load_expert_policy(
             (and optionally, vec_normalize.pkl) if `expert_data_src_format == "ppo"`,
             or None if `expert_data_src_format in ('zero', 'random'). This is used
             as the `policy_path` argument to `imitation.policies.serialize.load_policy`.
+
+    Returns:
+        The deserialized expert policy from `expert_policy_path`.
 
     Raises:
         ValueError: `expert_policy_path` is None.
@@ -156,7 +159,7 @@ def bc() -> Mapping[str, Mapping[str, float]]:
     Returns:
         Statistics for rollouts from the trained policy and expert data.
     """
-    return train_imitation(use_dagger=True)
+    return train_imitation(use_dagger=False)
 
 
 @train_imitation_ex.command

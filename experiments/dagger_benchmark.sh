@@ -70,9 +70,10 @@ echo "Logging to: ${LOG_ROOT}"
 
 parallel -j 25% --header : --results ${LOG_ROOT}/parallel/ --colsep , --progress \
   ${extra_parallel_options} \
-  python -m imitation.scripts.train_dagger \
+  python -m imitation.scripts.train_imitation \
   --capture=sys --pdb \
   ${extra_options} \
+  dagger \
   with \
   {env_config_name} \
   train.log_dir="${LOG_ROOT}/{env_config_name}_{seed}" \

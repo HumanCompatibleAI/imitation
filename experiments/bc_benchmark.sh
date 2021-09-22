@@ -57,9 +57,10 @@ echo "Writing logs in ${OUTPUT_DIR}"
 
 parallel -j 25% --header : --results ${OUTPUT_DIR}/parallel/ --colsep , --progress \
   ${extra_parallel_options} \
-  python -m imitation.scripts.train_bc \
+  python -m imitation.scripts.train_imitation \
   --capture=sys \
   ${extra_options} \
+  bc \
   with \
   {env_cfg_name} \
   ${extra_configs} \
