@@ -77,8 +77,8 @@ parallel -j 25% --header : --results ${LOG_ROOT}/parallel/ --colsep , --progress
   with \
   {env_config_name} \
   train.log_dir="${LOG_ROOT}/{env_config_name}_{seed}" \
-  expert_policy_path=${DATA_DIR}/expert_models/{env_config_name}_0/policies/final/ \
-  expert_policy_type='ppo' \
+  dagger.expert_policy_path=${DATA_DIR}/expert_models/{env_config_name}_0/policies/final/ \
+  dagger.expert_policy_type='ppo' \
   seed={seed} \
   ${extra_configs} \
   ::: env_config_name ${ENVS} \

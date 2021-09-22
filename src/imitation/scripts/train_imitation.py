@@ -57,6 +57,7 @@ def load_expert_policy(
     """Loads expert policy from `expert_policy_path`.
 
     Args:
+        venv: Vectorized environment the policy will be operating in.
         expert_policy_type: Either 'ppo', 'zero', or 'random'. This is used as the
             `policy_type` argument to `imitation.policies.serialize.load_policy`.
         expert_policy_path: Either a path to a policy directory containing model.zip
