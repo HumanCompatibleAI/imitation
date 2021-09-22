@@ -8,6 +8,7 @@ Follows the description in chapters 9 and 10 of Brian Ziebart's `PhD thesis`_.
 
 from typing import Any, Iterable, Mapping, Optional, Tuple, Type, Union
 
+import gym
 import numpy as np
 import scipy.special
 import torch as th
@@ -140,21 +141,44 @@ def squeeze_r(r_output: th.Tensor) -> th.Tensor:
 class TabularPolicy(policies.BasePolicy):
     """A tabular policy. Cannot be trained -- prediction only."""
 
-    def __init__(self, pi: np.ndarray, rng: Optional[np.random.RandomState]):
+    def __init__(
+        self,
+        observation_space: gym.Space,
+        action_space: gym.Space,
+        pi: np.ndarray,
+        rng: Optional[np.random.RandomState],
+    ):
         """Builds TabularPolicy.
 
         Args:
+            observation_space: The observation space of the environment.
+            action_space: The action space of the environment.
             pi: A tabular policy. Three-dimensional array, where pi[t,s,a]
                 is the probability of taking action a at state s at timestep t.
             rng: Random state, used for sampling when `predict` is called with
                 `deterministic=False`.
         """
-        super().__init__()
+        assert isinstance(
+            observation_space,
+            gym.spaces.Discrete,
+        ), "observation not tabular"
+        assert isinstance(action_space, gym.spaces.Discrete), "action not tabular"
+        super().__init__(observation_space=observation_space, action_space=action_space)
+        self.rng = rng or np.random
+        self.set_pi(pi)
+
+    def set_pi(self, pi: np.ndarray) -> None:
+        """Sets tabular policy to `pi`."""
         assert pi.ndim == 3, "expected three-dimensional policy"
         assert np.allclose(pi.sum(axis=2), 1), "policy not normalized"
         assert np.all(pi >= 0), "policy has negative probabilities"
         self.pi = pi
-        self.rng = rng or np.random
+
+    def _predict(self, observation: th.Tensor, deterministic: bool = False):
+        raise NotImplementedError("Should never be called as predict overridden.")
+
+    def forward(self, observation: th.Tensor, deterministic: bool = False):
+        raise NotImplementedError("Should never be called.")
 
     def predict(
         self,
@@ -176,6 +200,8 @@ class TabularPolicy(policies.BasePolicy):
                 actions.append(dist.argmax())
             else:
                 actions.append(self.rng.multinomial(1, dist))
+
+        state += 1  # increment timestep
 
         return np.array(actions), state
 
@@ -242,8 +268,8 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
 
         if reward_net is None:
             reward_net = reward_nets.BasicRewardNet(
-                env.observation_space,
-                env.action_space,
+                self.env.observation_space,
+                self.env.action_space,
                 use_action=False,
                 use_next_state=False,
                 use_done=False,
@@ -261,9 +287,16 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
         # Initialize policy to be uniform random. We don't use this for MCE IRL
         # training, but it gives us something to return at all times with `policy`
         # property, similar to other algorithms.
-        ones = np.ones(self.env.horizon, self.env.n_states, self.env.n_actions)
+        ones = np.ones((self.env.horizon, self.env.n_states, self.env.n_actions))
         uniform_pi = ones / self.env.n_actions
-        self._policy = TabularPolicy(uniform_pi, rng=self.rng)
+        self._policy = TabularPolicy(
+            # TODO(adam): nomenclature clash between MCE IRL and SB3 -- resolve?
+            # (rename observation to something else perhaps...?
+            observation_space=self.env.state_space,
+            action_space=self.env.action_space,
+            pi=uniform_pi,
+            rng=self.rng,
+        )
 
     def _set_demo_from_obs(self, obses: np.ndarray) -> None:
         if self.discount != 1.0:
@@ -384,7 +417,7 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
             reward=predicted_r_np,
             discount=self.discount,
         )
-        self._policy = TabularPolicy(pi, rng=self.rng)
+        self._policy.set_pi(pi)
 
         return visitations
 

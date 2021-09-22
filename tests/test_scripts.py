@@ -302,7 +302,7 @@ def test_train_adversarial_algorithm_value_error(tmpdir):
             command_name="gail",
             named_configs=base_named_configs,
             config_updates=base_config_updates.new_child(
-                dict(train=dict(n_expert_demos=n_traj)),
+                {"train.n_expert_demos": n_traj},
             ),
         )
 
