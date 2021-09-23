@@ -12,7 +12,7 @@ from stable_baselines3.common.vec_env import VecEnvWrapper
 
 import imitation.util.sacred as sacred_util
 from imitation.data import rollout, types
-from imitation.envs import maze, sparse
+from imitation.envs import maze, sparse  # noqa: F401
 from imitation.policies import serialize
 from imitation.rewards import reward_wrapper
 from imitation.rewards.serialize import load_reward

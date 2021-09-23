@@ -33,7 +33,6 @@ from imitation.data.types import (
 from imitation.rewards import common as rewards_common
 from imitation.rewards import reward_nets, reward_wrapper
 from imitation.util import logger as imit_logger
-from imitation.util import reward_wrapper
 
 
 class TrajectoryGenerator(abc.ABC):
@@ -205,11 +204,12 @@ class AgentTrainer(TrajectoryGenerator):
 
         if avail_steps < agent_steps:
             self.logger.log(
-                f"Requested {agent_steps} transitions but only {avail_steps} in buffer. "
-                f"Sampling {agent_steps - avail_steps} additional transitions.",
+                f"Requested {agent_steps} transitions but only {avail_steps} in buffer."
+                f" Sampling {agent_steps - avail_steps} additional transitions.",
             )
             sample_until = rollout.make_sample_until(
-                min_timesteps=agent_steps, min_episodes=None,
+                min_timesteps=agent_steps,
+                min_episodes=None,
             )
             # Important note: we don't want to use the trajectories returned
             # here because their rewards are the ones provided by the reward
@@ -222,17 +222,20 @@ class AgentTrainer(TrajectoryGenerator):
             )
             additional_trajectories = self.buffering_wrapper.pop_trajectories()
 
-            agent_trajectories = list(agent_trajectories) + list(additional_trajectories)
+            agent_trajectories = list(agent_trajectories) + list(
+                additional_trajectories
+            )
 
         agent_trajectories = _get_trajectories(agent_trajectories, agent_steps)
-    
+
         random_trajectories = []
         if random_steps > 0:
             self.logger.log(
                 f"Sampling {random_steps} random transitions.",
             )
             sample_until = rollout.make_sample_until(
-                min_timesteps=random_steps, min_episodes=None,
+                min_timesteps=random_steps,
+                min_episodes=None,
             )
             rollout.generate_trajectories(
                 policy=None,
@@ -242,7 +245,6 @@ class AgentTrainer(TrajectoryGenerator):
             random_trajectories = self.buffering_wrapper.pop_trajectories()
 
         return list(agent_trajectories) + list(random_trajectories)
-
 
     @TrajectoryGenerator.logger.setter
     def logger(self, value: imit_logger.HierarchicalLogger):
@@ -755,6 +757,7 @@ class CrossEntropyRewardTrainer(RewardTrainer):
                 self.optim.step()
                 self.logger.record("loss", loss.item())
 
+
 class ShapedPreferenceGatherer(SyntheticGatherer):
     def __init__(
         self,
@@ -785,23 +788,25 @@ class ShapedPreferenceGatherer(SyntheticGatherer):
             for i, fragment in enumerate(fragments):
                 transitions = rollout.flatten_trajectories_with_rew([fragment])
                 potential = self._potential(transitions.obs).flatten()
-                next_potential = (1 - transitions.dones.astype(np.float32)) * self._potential(
+                next_potential = (
+                    1 - transitions.dones.astype(np.float32)
+                ) * self._potential(
                     transitions.next_obs,
                 ).flatten()
 
                 final_rew = (
-                    transitions.rews
-                    + self.discount_factor * next_potential
-                    - potential
+                    transitions.rews + self.discount_factor * next_potential - potential
                 )
                 assert final_rew.shape == (transitions,)
                 shaped_returns[i] = rollout.compute_returns(
-                    final_rew, self.discount_factor,
+                    final_rew,
+                    self.discount_factor,
                 )
 
             shaped_return_lists.append(shaped_returns)
 
         return tuple(shaped_return_lists)
+
 
 class ValueNetPreferenceGatherer(ShapedPreferenceGatherer):
     def __init__(
@@ -834,7 +839,9 @@ class ValueNetPreferenceGatherer(ShapedPreferenceGatherer):
         def _potential(obs):
             th_obs = th.as_tensor(obs, device=self._policy.device)
             th_obs = preprocessing.preprocess_obs(
-                th_obs, self._policy.observation_space, self._policy.normalize_images,
+                th_obs,
+                self._policy.observation_space,
+                self._policy.normalize_images,
             )
 
             # This function is equivalent to how policy.forward() computes

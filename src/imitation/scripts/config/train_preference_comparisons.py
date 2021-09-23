@@ -97,11 +97,13 @@ def sparse_reacher():
     env_name = "imitation/SparseReacher-v0"
     fragment_length = 20
 
+
 @train_preference_comparisons_ex.named_config
 def empty_maze():
     env_name = "imitation/EmptyMaze-v0"
     fragment_length = 15
     normalize = False
+
 
 @train_preference_comparisons_ex.named_config
 def empty_maze_dense():
@@ -109,6 +111,7 @@ def empty_maze_dense():
     reward_net_kwargs = {"use_next_state": True}
     fragment_length = 15
     normalize = False
+
 
 @train_preference_comparisons_ex.named_config
 def fast():

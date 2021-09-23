@@ -219,14 +219,16 @@ def train_preference_comparisons(
         # Setting the logger here is not really necessary (PreferenceComparisons
         # takes care of that automatically) but it avoids creating unnecessary loggers
         trajectory_generator = preference_comparisons.AgentTrainer(
-            agent, 
+            agent,
             reward_net,
             random_frac=random_frac,
             custom_logger=custom_logger,
         )
     else:
         if random_frac > 0:
-            raise ValueError("random_frac can't be set when a trajectory dataset is used")
+            raise ValueError(
+                "random_frac can't be set when a trajectory dataset is used"
+            )
         trajectory_generator = preference_comparisons.TrajectoryDataset(
             trajectory_path,
             _seed,
@@ -251,7 +253,9 @@ def train_preference_comparisons(
             custom_logger=custom_logger,
         )
     reward_trainer = preference_comparisons.CrossEntropyRewardTrainer(
-        model=reward_net, **reward_trainer_kwargs, custom_logger=custom_logger,
+        model=reward_net,
+        **reward_trainer_kwargs,
+        custom_logger=custom_logger,
     )
     main_trainer = preference_comparisons.PreferenceComparisons(
         trajectory_generator,

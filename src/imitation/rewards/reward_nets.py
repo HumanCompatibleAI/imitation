@@ -8,7 +8,6 @@ import numpy as np
 import torch as th
 from stable_baselines3.common import preprocessing
 from torch import nn
-from torch.functional import norm
 
 from imitation.util import networks
 
@@ -422,9 +421,13 @@ class TabularRewardNet(RewardNet):
         use_action: bool = False,
     ):
         if not isinstance(observation_space, gym.spaces.Discrete):
-            raise TypeError("TabularRewardNet can only be used with Discrete observation spaces.")
+            raise TypeError(
+                "TabularRewardNet can only be used with Discrete observation spaces."
+            )
         if use_action:
-            raise NotImplementedError("use_action not yet implemented for TabularRewardNet")
+            raise NotImplementedError(
+                "use_action not yet implemented for TabularRewardNet"
+            )
         # TODO(ejnnr): it's silly to pass normalize_images here, that indicates
         # the design of RewardNet isn't that great yet. Maybe we should have something
         # like a NonTabularRewardNet ABC and put that there?

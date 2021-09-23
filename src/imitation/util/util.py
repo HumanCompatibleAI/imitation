@@ -23,7 +23,7 @@ import numpy as np
 import stable_baselines3
 import torch as th
 from gym.wrappers import TimeLimit
-from stable_baselines3.common import monitor
+from stable_baselines3.common import callbacks, monitor
 from stable_baselines3.common.base_class import BaseAlgorithm
 from stable_baselines3.common.policies import ActorCriticPolicy, BasePolicy
 from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecEnv
@@ -240,7 +240,8 @@ class StopActorTrainingCallback(callbacks.BaseCallback):
                 # pass in the original optimizer kwargs.
                 # But this is extremely hacky anyway
                 self.model.policy.optimizer = self.model.policy.optimizer_class(
-                    self.model.policy.value_net.parameters(), lr=3e-4,
+                    self.model.policy.value_net.parameters(),
+                    lr=3e-4,
                 )
                 print("Stopped training the actor!")
                 self._check_param = next(

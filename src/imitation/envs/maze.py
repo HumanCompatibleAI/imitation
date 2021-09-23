@@ -21,7 +21,11 @@ class Maze(BaseMaze):
 
     def make_objects(self):
         free = Object(
-            "free", 0, color.free, False, np.stack(np.where(self.data == 0), axis=1),
+            "free",
+            0,
+            color.free,
+            False,
+            np.stack(np.where(self.data == 0), axis=1),
         )
         obstacle = Object(
             "obstacle",
@@ -36,7 +40,14 @@ class Maze(BaseMaze):
 
 
 class MazeEnv(BaseEnv):
-    def __init__(self, size: int = 10, random_start: bool = True, reward: str = "goal", shaping: str = "zero", gamma: float = 0.99):
+    def __init__(
+        self,
+        size: int = 10,
+        random_start: bool = True,
+        reward: str = "goal",
+        shaping: str = "zero",
+        gamma: float = 0.99,
+    ):
         # among other things, this calls self.seed() so that the self.rng
         # object exists
         super().__init__()
@@ -65,13 +76,11 @@ class MazeEnv(BaseEnv):
                 pos = self._to_idx((i, j))
 
                 current_potential = -(
-                    abs(i - self.goal_idx[0][0])
-                    + abs(j - self.goal_idx[0][1])
+                    abs(i - self.goal_idx[0][0]) + abs(j - self.goal_idx[0][1])
                 )
 
                 next_potential = -(
-                    abs(i - self.goal_idx[0][0])
-                    + abs(j - self.goal_idx[0][1])
+                    abs(i - self.goal_idx[0][0]) + abs(j - self.goal_idx[0][1])
                 )
 
                 self.rewards[pos, :] -= current_potential
@@ -80,14 +89,12 @@ class MazeEnv(BaseEnv):
             for i, j in itertools.product(range(size), repeat=2):
                 pos = self._to_idx((i, j))
 
-                current_potential = (
-                    abs(i - self.goal_idx[0][0])
-                    + abs(j - self.goal_idx[0][1])
+                current_potential = abs(i - self.goal_idx[0][0]) + abs(
+                    j - self.goal_idx[0][1]
                 )
 
-                next_potential = (
-                    abs(i - self.goal_idx[0][0])
-                    + abs(j - self.goal_idx[0][1])
+                next_potential = abs(i - self.goal_idx[0][0]) + abs(
+                    j - self.goal_idx[0][1]
                 )
 
                 self.rewards[pos, :] -= current_potential
@@ -122,10 +129,10 @@ class MazeEnv(BaseEnv):
         done = False
         reward = self._reward(current_position, action, new_position)
         return self._get_obs(), reward, done, {}
-    
+
     def _reward(self, state, action, next_state) -> float:
         return self.rewards[self._to_idx(state), self._to_idx(next_state)]
-    
+
     def _to_idx(self, position):
         return self.size * position[0] + position[1]
 
@@ -177,6 +184,7 @@ class MazeEnv(BaseEnv):
 
     def get_image(self):
         return self.maze.to_rgb()
+
 
 gym.register(
     "imitation/EmptyMaze-v0",
