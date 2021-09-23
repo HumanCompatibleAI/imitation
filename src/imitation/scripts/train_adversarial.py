@@ -10,6 +10,7 @@ from typing import Any, Mapping, Optional, Type
 
 import torch as th
 from sacred.observers import FileStorageObserver
+from stable_baselines3.common import vec_env
 
 from imitation.algorithms.adversarial import airl, gail
 from imitation.data import rollout, types
@@ -28,12 +29,17 @@ def save(trainer, save_path):
     os.makedirs(save_path, exist_ok=True)
     th.save(trainer.reward_train, os.path.join(save_path, "reward_train.pt"))
     th.save(trainer.reward_test, os.path.join(save_path, "reward_test.pt"))
+    vec_normalize = None
+    # venv_norm_obs is always set but it might be the venv itself
+    # if no normalization is used. So we need to check its type:
+    if isinstance(trainer.venv_norm_obs, vec_env.VecNormalize):
+        vec_normalize = trainer.venv_norm_obs
     # TODO(gleave): unify this with the saving logic in data_collect?
     # (Needs #43 to be merged before attempting.)
     serialize.save_stable_model(
         os.path.join(save_path, "gen_policy"),
         trainer.gen_algo,
-        trainer.venv_norm_obs,
+        vec_normalize,
     )
 
 
