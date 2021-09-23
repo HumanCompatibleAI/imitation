@@ -5,6 +5,7 @@ import os
 import sacred
 
 from imitation.policies import base
+from imitation.rewards import reward_nets
 from imitation.scripts.config.common import DEFAULT_INIT_RL_KWARGS
 from imitation.util import util
 
@@ -163,6 +164,14 @@ def seals_mountain_car():
 def pendulum():
     env_name = "Pendulum-v0"
     rollout_hint = "pendulum"
+
+
+@train_adversarial_ex.named_config
+def empty_maze():
+    env_name = "imitation/EmptyMaze-v0"
+    rollout_hint = "empty_maze"
+    reward_net_cls = reward_nets.TabularRewardNet
+    algorithm_kwargs = {"shared": {"normalize_obs": False, "normalize_reward": False}}
 
 
 # Standard MuJoCo Gym environment named configs

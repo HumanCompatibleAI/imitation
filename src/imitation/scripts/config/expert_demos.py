@@ -149,6 +149,14 @@ def seals_walker():
     env_name = "seals/Walker2d-v0"
 
 
+@expert_demos_ex.named_config
+def empty_maze():
+    env_name = "imitation/EmptyMaze-v0"
+    total_timesteps = int(5e5)
+    normalize = False
+    rollout_save_n_timesteps = 10000  # Min timesteps saved per file, optional.
+
+
 # Debug configs
 
 

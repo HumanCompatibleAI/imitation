@@ -13,6 +13,7 @@ from sacred.observers import FileStorageObserver
 
 from imitation.algorithms.adversarial import airl, gail
 from imitation.data import rollout, types
+from imitation.envs import maze  # noqa: F401
 from imitation.policies import serialize
 from imitation.rewards import reward_nets
 from imitation.scripts.config.train_adversarial import train_adversarial_ex
