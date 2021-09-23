@@ -7,7 +7,7 @@ def block_push(object_pos=(0, 0, 0), goal_pos=(0, 0, 0)):
     mjcmodel = MJCModel("block_push")
     mjcmodel.root.compiler(inertiafromgeom="true", angle="radian", coordinate="local")
     mjcmodel.root.option(
-        timestep="0.01", gravity="0 0 0", iterations="20", integrator="Euler"
+        timestep="0.01", gravity="0 0 0", iterations="20", integrator="Euler",
     )
     default = mjcmodel.root.default()
     default.joint(armature="0.04", damping=1, limited="true")
@@ -24,7 +24,7 @@ def block_push(object_pos=(0, 0, 0), goal_pos=(0, 0, 0)):
 
     palm = worldbody.body(name="palm", pos=[0, 0, 0])
     palm.geom(
-        name="palm_geom", type="capsule", fromto=[0, -0.1, 0, 0, 0.1, 0], size=0.12
+        name="palm_geom", type="capsule", fromto=[0, -0.1, 0, 0, 0.1, 0], size=0.12,
     )
     proximal1 = palm.body(name="proximal_1", pos=[0, 0, 0])
     proximal1.joint(
@@ -35,7 +35,7 @@ def block_push(object_pos=(0, 0, 0), goal_pos=(0, 0, 0)):
         range=[-2.5, 2.3],
     )
     proximal1.geom(
-        type="capsule", fromto=[0, 0, 0, 0.4, 0, 0], size=0.06, contype=1, conaffinity=1
+        type="capsule", fromto=[0, 0, 0, 0.4, 0, 0], size=0.06, contype=1, conaffinity=1,
     )
     distal1 = proximal1.body(name="distal_1", pos=[0.4, 0, 0])
     distal1.joint(
@@ -161,7 +161,7 @@ def twod_corridor(direction=EAST, length=1.2):
     mjcmodel = MJCModel("twod_corridor")
     mjcmodel.root.compiler(inertiafromgeom="true", angle="radian", coordinate="local")
     mjcmodel.root.option(
-        timestep="0.01", gravity="0 0 0", iterations="20", integrator="Euler"
+        timestep="0.01", gravity="0 0 0", iterations="20", integrator="Euler",
     )
     default = mjcmodel.root.default()
     default.joint(damping=1, limited="false")
@@ -275,7 +275,7 @@ def point_mass_maze(direction=RIGHT, length=1.2, borders=True):
     mjcmodel = MJCModel("twod_maze")
     mjcmodel.root.compiler(inertiafromgeom="true", angle="radian", coordinate="local")
     mjcmodel.root.option(
-        timestep="0.01", gravity="0 0 0", iterations="20", integrator="Euler"
+        timestep="0.01", gravity="0 0 0", iterations="20", integrator="Euler",
     )
     default = mjcmodel.root.default()
     default.joint(damping=1, limited="false")
@@ -380,7 +380,7 @@ def ant_maze(direction=RIGHT, length=6.0):
     mjcmodel = MJCModel("ant_maze")
     mjcmodel.root.compiler(inertiafromgeom="true", angle="degree", coordinate="local")
     mjcmodel.root.option(
-        timestep="0.01", gravity="0 0 -9.8", iterations="20", integrator="Euler"
+        timestep="0.01", gravity="0 0 -9.8", iterations="20", integrator="Euler",
     )
 
     assets = mjcmodel.root.asset()
@@ -426,7 +426,7 @@ def ant_maze(direction=RIGHT, length=6.0):
     default = mjcmodel.root.default()
     default.joint(armature="1", damping=1, limited="true")
     default.geom(
-        friction="1 0.5 0.5", density="5.0", margin="0.01", condim="3", conaffinity="0"
+        friction="1 0.5 0.5", density="5.0", margin="0.01", condim="3", conaffinity="0",
     )
 
     worldbody = mjcmodel.root.worldbody()
@@ -452,7 +452,7 @@ def ant_maze(direction=RIGHT, length=6.0):
     )
     aux_1 = front_left_leg.body(name="aux_1", pos=[0.2, 0.2, 0])
     aux_1.joint(
-        axis=[0, 0, 1], name="hip_1", pos=[0.0, 0.0, 0.0], range=[-30, 30], type="hinge"
+        axis=[0, 0, 1], name="hip_1", pos=[0.0, 0.0, 0.0], range=[-30, 30], type="hinge",
     )
     aux_1.geom(
         fromto=[0.0, 0.0, 0.0, 0.2, 0.2, 0.0],
@@ -484,7 +484,7 @@ def ant_maze(direction=RIGHT, length=6.0):
     )
     aux_2 = front_right_leg.body(name="aux_2", pos=[-0.2, 0.2, 0])
     aux_2.joint(
-        axis=[0, 0, 1], name="hip_2", pos=[0.0, 0.0, 0.0], range=[-30, 30], type="hinge"
+        axis=[0, 0, 1], name="hip_2", pos=[0.0, 0.0, 0.0], range=[-30, 30], type="hinge",
     )
     aux_2.geom(
         fromto=[0.0, 0.0, 0.0, -0.2, 0.2, 0.0],
@@ -516,7 +516,7 @@ def ant_maze(direction=RIGHT, length=6.0):
     )
     aux_3 = back_left_leg.body(name="aux_3", pos=[-0.2, -0.2, 0])
     aux_3.joint(
-        axis=[0, 0, 1], name="hip_3", pos=[0.0, 0.0, 0.0], range=[-30, 30], type="hinge"
+        axis=[0, 0, 1], name="hip_3", pos=[0.0, 0.0, 0.0], range=[-30, 30], type="hinge",
     )
     aux_3.geom(
         fromto=[0.0, 0.0, 0.0, -0.2, -0.2, 0.0],
@@ -548,7 +548,7 @@ def ant_maze(direction=RIGHT, length=6.0):
     )
     aux_4 = back_right_leg.body(name="aux_4", pos=[0.2, -0.2, 0])
     aux_4.joint(
-        axis=[0, 0, 1], name="hip_4", pos=[0.0, 0.0, 0.0], range=[-30, 30], type="hinge"
+        axis=[0, 0, 1], name="hip_4", pos=[0.0, 0.0, 0.0], range=[-30, 30], type="hinge",
     )
     aux_4.geom(
         fromto=[0.0, 0.0, 0.0, 0.2, -0.2, 0.0],
@@ -659,7 +659,7 @@ def ant_maze_corridor(direction=RIGHT, height=6.0, width=10.0):
     mjcmodel = MJCModel("ant_maze_corridor")
     mjcmodel.root.compiler(inertiafromgeom="true", angle="degree", coordinate="local")
     mjcmodel.root.option(
-        timestep="0.01", gravity="0 0 -9.8", iterations="20", integrator="Euler"
+        timestep="0.01", gravity="0 0 -9.8", iterations="20", integrator="Euler",
     )
 
     assets = mjcmodel.root.asset()
@@ -705,7 +705,7 @@ def ant_maze_corridor(direction=RIGHT, height=6.0, width=10.0):
     default = mjcmodel.root.default()
     default.joint(armature="1", damping=1, limited="true")
     default.geom(
-        friction="1 0.5 0.5", density="5.0", margin="0.01", condim="3", conaffinity="0"
+        friction="1 0.5 0.5", density="5.0", margin="0.01", condim="3", conaffinity="0",
     )
 
     worldbody = mjcmodel.root.worldbody()
@@ -731,7 +731,7 @@ def ant_maze_corridor(direction=RIGHT, height=6.0, width=10.0):
     )
     aux_1 = front_left_leg.body(name="aux_1", pos=[0.2, 0.2, 0])
     aux_1.joint(
-        axis=[0, 0, 1], name="hip_1", pos=[0.0, 0.0, 0.0], range=[-30, 30], type="hinge"
+        axis=[0, 0, 1], name="hip_1", pos=[0.0, 0.0, 0.0], range=[-30, 30], type="hinge",
     )
     aux_1.geom(
         fromto=[0.0, 0.0, 0.0, 0.2, 0.2, 0.0],
@@ -763,7 +763,7 @@ def ant_maze_corridor(direction=RIGHT, height=6.0, width=10.0):
     )
     aux_2 = front_right_leg.body(name="aux_2", pos=[-0.2, 0.2, 0])
     aux_2.joint(
-        axis=[0, 0, 1], name="hip_2", pos=[0.0, 0.0, 0.0], range=[-30, 30], type="hinge"
+        axis=[0, 0, 1], name="hip_2", pos=[0.0, 0.0, 0.0], range=[-30, 30], type="hinge",
     )
     aux_2.geom(
         fromto=[0.0, 0.0, 0.0, -0.2, 0.2, 0.0],
@@ -795,7 +795,7 @@ def ant_maze_corridor(direction=RIGHT, height=6.0, width=10.0):
     )
     aux_3 = back_left_leg.body(name="aux_3", pos=[-0.2, -0.2, 0])
     aux_3.joint(
-        axis=[0, 0, 1], name="hip_3", pos=[0.0, 0.0, 0.0], range=[-30, 30], type="hinge"
+        axis=[0, 0, 1], name="hip_3", pos=[0.0, 0.0, 0.0], range=[-30, 30], type="hinge",
     )
     aux_3.geom(
         fromto=[0.0, 0.0, 0.0, -0.2, -0.2, 0.0],
@@ -827,7 +827,7 @@ def ant_maze_corridor(direction=RIGHT, height=6.0, width=10.0):
     )
     aux_4 = back_right_leg.body(name="aux_4", pos=[0.2, -0.2, 0])
     aux_4.joint(
-        axis=[0, 0, 1], name="hip_4", pos=[0.0, 0.0, 0.0], range=[-30, 30], type="hinge"
+        axis=[0, 0, 1], name="hip_4", pos=[0.0, 0.0, 0.0], range=[-30, 30], type="hinge",
     )
     aux_4.geom(
         fromto=[0.0, 0.0, 0.0, 0.2, -0.2, 0.0],
@@ -939,7 +939,7 @@ def pusher(goal_pos=np.array([0.45, -0.05, -0.323])):
     mjcmodel = MJCModel("pusher")
     mjcmodel.root.compiler(inertiafromgeom="true", angle="radian", coordinate="local")
     mjcmodel.root.option(
-        timestep="0.01", gravity="0 0 0", iterations="20", integrator="Euler"
+        timestep="0.01", gravity="0 0 0", iterations="20", integrator="Euler",
     )
     default = mjcmodel.root.default()
     default.joint(armature=0.04, damping=1, limited=False)
@@ -993,7 +993,7 @@ def pusher(goal_pos=np.array([0.45, -0.05, -0.323])):
         size=0.03,
     )
     r_shoulder_pan_link.geom(
-        name="sp", type="capsule", fromto=[0, 0, -0.4, 0, 0, 0.2], size=0.1
+        name="sp", type="capsule", fromto=[0, 0, -0.4, 0, 0, 0.2], size=0.1,
     )
 
     r_shoulder_pan_link.joint(
@@ -1006,10 +1006,10 @@ def pusher(goal_pos=np.array([0.45, -0.05, -0.323])):
     )
 
     r_shoulder_lift_link = r_shoulder_pan_link.body(
-        name="r_shoulder_lift_link", pos=[0.1, 0, 0]
+        name="r_shoulder_lift_link", pos=[0.1, 0, 0],
     )
     r_shoulder_lift_link.geom(
-        name="s1", type="capsule", fromto="0 -0.1 0 0 0.1 0", size="0.1"
+        name="s1", type="capsule", fromto="0 -0.1 0 0 0.1 0", size="0.1",
     )
     r_shoulder_lift_link.joint(
         name="r_shoulder_lift_joint",
@@ -1021,10 +1021,10 @@ def pusher(goal_pos=np.array([0.45, -0.05, -0.323])):
     )
 
     r_upper_arm_roll_link = r_shoulder_lift_link.body(
-        name="r_upper_arm_roll_link", pos=[0, 0, 0]
+        name="r_upper_arm_roll_link", pos=[0, 0, 0],
     )
     r_upper_arm_roll_link.geom(
-        name="uar", type="capsule", fromto="-0.1 0 0 0.1 0 0", size="0.02"
+        name="uar", type="capsule", fromto="-0.1 0 0 0.1 0 0", size="0.02",
     )
     r_upper_arm_roll_link.joint(
         name="r_upper_arm_roll_joint",
@@ -1036,15 +1036,15 @@ def pusher(goal_pos=np.array([0.45, -0.05, -0.323])):
     )
 
     r_upper_arm_link = r_upper_arm_roll_link.body(
-        name="r_upper_arm_link", pos=[0, 0, 0]
+        name="r_upper_arm_link", pos=[0, 0, 0],
     )
     r_upper_arm_link.geom(
-        name="ua", type="capsule", fromto="0 0 0 0.4 0 0", size="0.06"
+        name="ua", type="capsule", fromto="0 0 0 0.4 0 0", size="0.06",
     )
 
     r_elbow_flex_link = r_upper_arm_link.body(name="r_elbow_flex_link", pos=[0.4, 0, 0])
     r_elbow_flex_link.geom(
-        name="ef", type="capsule", fromto="0 -0.02 0 0.0 0.02 0", size="0.06"
+        name="ef", type="capsule", fromto="0 -0.02 0 0.0 0.02 0", size="0.06",
     )
     r_elbow_flex_link.joint(
         name="r_elbow_flex_joint",
@@ -1056,10 +1056,10 @@ def pusher(goal_pos=np.array([0.45, -0.05, -0.323])):
     )
 
     r_forearm_roll_link = r_elbow_flex_link.body(
-        name="r_forearm_roll_link", pos=[0, 0, 0]
+        name="r_forearm_roll_link", pos=[0, 0, 0],
     )
     r_forearm_roll_link.geom(
-        name="fr", type="capsule", fromto="-0.1 0 0 0.1 0 0", size="0.02"
+        name="fr", type="capsule", fromto="-0.1 0 0 0.1 0 0", size="0.02",
     )
     r_forearm_roll_link.joint(
         name="r_forearm_roll_joint",
@@ -1073,12 +1073,12 @@ def pusher(goal_pos=np.array([0.45, -0.05, -0.323])):
 
     r_forearm_link = r_forearm_roll_link.body(name="r_forearm_link", pos=[0, 0, 0])
     r_forearm_link.geom(
-        name="fa", type="capsule", fromto="0 0 0 0.291 0 0", size="0.05"
+        name="fa", type="capsule", fromto="0 0 0 0.291 0 0", size="0.05",
     )
 
     r_wrist_flex_link = r_forearm_link.body(name="r_wrist_flex_link", pos=[0.321, 0, 0])
     r_wrist_flex_link.geom(
-        name="wf", type="capsule", fromto="0 -0.02 0 0 0.02 0", size="0.01"
+        name="wf", type="capsule", fromto="0 -0.02 0 0 0.02 0", size="0.01",
     )
     r_wrist_flex_link.joint(
         name="r_wrist_flex_joint",
@@ -1179,17 +1179,17 @@ def pusher(goal_pos=np.array([0.45, -0.05, -0.323])):
 
     actuator = mjcmodel.root.actuator()
     actuator.motor(
-        joint="r_shoulder_pan_joint", ctrlrange=[-2.0, 2.0], ctrllimited=True
+        joint="r_shoulder_pan_joint", ctrlrange=[-2.0, 2.0], ctrllimited=True,
     )
     actuator.motor(
-        joint="r_shoulder_lift_joint", ctrlrange=[-2.0, 2.0], ctrllimited=True
+        joint="r_shoulder_lift_joint", ctrlrange=[-2.0, 2.0], ctrllimited=True,
     )
     actuator.motor(
-        joint="r_upper_arm_roll_joint", ctrlrange=[-2.0, 2.0], ctrllimited=True
+        joint="r_upper_arm_roll_joint", ctrlrange=[-2.0, 2.0], ctrllimited=True,
     )
     actuator.motor(joint="r_elbow_flex_joint", ctrlrange=[-2.0, 2.0], ctrllimited=True)
     actuator.motor(
-        joint="r_forearm_roll_joint", ctrlrange=[-2.0, 2.0], ctrllimited=True
+        joint="r_forearm_roll_joint", ctrlrange=[-2.0, 2.0], ctrllimited=True,
     )
     actuator.motor(joint="r_wrist_flex_joint", ctrlrange=[-2.0, 2.0], ctrllimited=True)
     actuator.motor(joint="r_wrist_roll_joint", ctrlrange=[-2.0, 2.0], ctrllimited=True)
@@ -1210,7 +1210,7 @@ def swimmer():
     default = mjcmodel.root.default()
     default.joint(armature=0.1)
     default.geom(
-        rgba=[0.8, 0.6, 0.1, 1], condim=1, contype=1, conaffinity=1, material="geom"
+        rgba=[0.8, 0.6, 0.1, 1], condim=1, contype=1, conaffinity=1, material="geom",
     )
 
     asset = mjcmodel.root.asset()
@@ -1323,7 +1323,7 @@ def swimmer_rllab():
     default = mjcmodel.root.default()
     # default.joint(armature=0.1)
     default.geom(
-        rgba=[0.8, 0.6, 0.1, 1], condim=1, contype=1, conaffinity=1, material="geom"
+        rgba=[0.8, 0.6, 0.1, 1], condim=1, contype=1, conaffinity=1, material="geom",
     )
 
     asset = mjcmodel.root.asset()

@@ -51,7 +51,7 @@ class Registry(Generic[T]):
         return set(self._values.keys()).union(self._indirect.keys())
 
     def register(
-        self, key: str, *, value: Optional[T] = None, indirect: Optional[str] = None
+        self, key: str, *, value: Optional[T] = None, indirect: Optional[str] = None,
     ):
         if key in self._values or key in self._indirect:
             raise KeyError(f"Duplicate registration for '{key}'")
@@ -60,7 +60,7 @@ class Registry(Generic[T]):
         if provided_args != 1:
             raise ValueError(
                 "Must provide exactly one of 'value' and 'indirect',"
-                f"{provided_args} have been provided."
+                f"{provided_args} have been provided.",
             )
 
         if value is not None:
@@ -70,7 +70,7 @@ class Registry(Generic[T]):
 
 
 def build_loader_fn_require_space(
-    fn: Callable[[gym.Space, gym.Space], T], **kwargs
+    fn: Callable[[gym.Space, gym.Space], T], **kwargs,
 ) -> LoaderFn:
     """Converts a factory taking observation and action space into a LoaderFn."""
 

@@ -21,7 +21,7 @@ class Maze(BaseMaze):
 
     def make_objects(self):
         free = Object(
-            "free", 0, color.free, False, np.stack(np.where(self.data == 0), axis=1)
+            "free", 0, color.free, False, np.stack(np.where(self.data == 0), axis=1),
         )
         obstacle = Object(
             "obstacle",
@@ -149,7 +149,7 @@ class MazeEnv(BaseEnv):
                 if pos not in self.maze.objects.goal.positions
             ]
             self.maze.objects.agent.positions = [
-                list(self.rng.choice(available_positions))
+                list(self.rng.choice(available_positions)),
             ]
         else:
             self.maze.objects.agent.positions = [self.start_idx]
@@ -188,26 +188,26 @@ gym.register(
     "imitation/EmptyMazeDense-v0",
     entry_point=MazeEnv,
     max_episode_steps=20,
-    kwargs={"shaping": "dense"}
+    kwargs={"shaping": "dense"},
 )
 
 gym.register(
     "imitation/EmptyMazeAntiDense-v0",
     entry_point=MazeEnv,
     max_episode_steps=20,
-    kwargs={"shaping": "antidense"}
+    kwargs={"shaping": "antidense"},
 )
 
 gym.register(
     "imitation/EmptyMazePath-v0",
     entry_point=MazeEnv,
     max_episode_steps=20,
-    kwargs={"reward": "path"}
+    kwargs={"reward": "path"},
 )
 
 gym.register(
     "imitation/EmptyMazePathDense-v0",
     entry_point=MazeEnv,
     max_episode_steps=20,
-    kwargs={"reward": "path", "shaping": "dense"}
+    kwargs={"reward": "path", "shaping": "dense"},
 )

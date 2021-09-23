@@ -139,7 +139,7 @@ def init_rl(
       An RL algorithm.
     """
     return model_class(
-        policy_class, env, **model_kwargs
+        policy_class, env, **model_kwargs,
     )  # pytype: disable=not-instantiable
 
 
@@ -213,7 +213,7 @@ def torchify_with_space(
 
 
 def tensor_iter_norm(
-    tensor_iter: Iterable[th.Tensor], ord: Union[int, float] = 2  # noqa: A002
+    tensor_iter: Iterable[th.Tensor], ord: Union[int, float] = 2,  # noqa: A002
 ) -> th.Tensor:
     """Compute the norm of a big vector that is produced one tensor chunk at a time.
 
@@ -255,11 +255,11 @@ class StopActorTrainingCallback(callbacks.BaseCallback):
                 # pass in the original optimizer kwargs.
                 # But this is extremely hacky anyway
                 self.model.policy.optimizer = self.model.policy.optimizer_class(
-                    self.model.policy.value_net.parameters(), lr=3e-4
+                    self.model.policy.value_net.parameters(), lr=3e-4,
                 )
                 print("Stopped training the actor!")
                 self._check_param = next(
-                    self.model.policy.action_net.parameters()
+                    self.model.policy.action_net.parameters(),
                 ).view(-1)[0]
                 self._stopped = True
             else:

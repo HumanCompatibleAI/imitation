@@ -52,7 +52,7 @@ class RewardNet(nn.Module, abc.ABC):
         """Compute rewards for a batch of transitions and keep gradients."""
 
     def preprocess(
-        self, transitions: types.Transitions
+        self, transitions: types.Transitions,
     ) -> Tuple[th.Tensor, th.Tensor, th.Tensor, th.Tensor]:
         """Preprocess a batch of input transitions and convert it to PyTorch tensors.
 
@@ -242,7 +242,7 @@ class BasicRewardNet(RewardNet):
                 "in_size": combined_size,
                 "out_size": 1,
                 "squeeze_output": True,
-            }
+            },
         )
 
         self.mlp = networks.build_mlp(**full_build_mlp_kwargs)
@@ -323,7 +323,7 @@ class BasicShapedRewardNet(ShapedRewardNet):
         )
 
         potential_net = BasicPotentialMLP(
-            observation_space=observation_space, hid_sizes=potential_hid_sizes
+            observation_space=observation_space, hid_sizes=potential_hid_sizes,
         )
 
         super().__init__(
@@ -395,7 +395,7 @@ class TabularRewardNet(RewardNet):
             return self.rewards[self.observation_space.n * state + next_state]
 
     def preprocess(
-        self, transitions: types.Transitions
+        self, transitions: types.Transitions,
     ) -> Tuple[th.Tensor, th.Tensor, th.Tensor, th.Tensor]:
         """Preprocess a batch of input transitions and convert it to PyTorch tensors.
 
