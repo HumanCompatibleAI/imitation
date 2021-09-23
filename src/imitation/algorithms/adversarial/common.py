@@ -388,6 +388,17 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
             learn_kwargs = {}
 
         with self.logger.accumulate_means("gen"):
+            # Because we use reset_num_timesteps=False (to get logging right),
+            # SB3 doesn't automatically reset the environment on .learn().
+            # This causes the following issue: if the previous learning cycle leaves
+            # unfinished trajectories, then we will collect the remainder of those
+            # trajectories during this cycle. They will therefore be incomplete episodes
+            # (because they don't start in the initial state) and in particular will
+            # be shorter, which raises the variable horizon check error.
+            # TODO(ejnnr): the same issue occurs in preference comparisons and I'm
+            # not sure that resetting is the "correct" solution. Better may be to just
+            # not collect partial trajectories when calling pop_trajectories?
+            self.venv.reset()
             self.gen_algo.learn(
                 total_timesteps=total_timesteps,
                 reset_num_timesteps=False,
@@ -512,8 +523,9 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
             [np.zeros(n_expert, dtype=int), np.ones(n_gen, dtype=int)],
         )
         # Policy and reward network were trained on normalized observations.
-        obs = self.venv_norm_obs.normalize_obs(obs)
-        next_obs = self.venv_norm_obs.normalize_obs(next_obs)
+        if isinstance(self.venv_norm_obs, vec_env.VecNormalize):
+            obs = self.venv_norm_obs.normalize_obs(obs)
+            next_obs = self.venv_norm_obs.normalize_obs(next_obs)
 
         # Calculate generator-policy log probabilities.
         with th.no_grad():
