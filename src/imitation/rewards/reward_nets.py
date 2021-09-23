@@ -8,6 +8,7 @@ import numpy as np
 import torch as th
 from stable_baselines3.common import preprocessing
 from torch import nn
+from torch.functional import norm
 
 import imitation.rewards.common as rewards_common
 from imitation.data import types
@@ -355,3 +356,80 @@ class BasicPotentialMLP(nn.Module):
 
     def forward(self, state: th.Tensor) -> th.Tensor:
         return self._potential_net(state)
+
+
+class TabularRewardNet(RewardNet):
+    """Lookup table RewardNet for discrete state spaces."""
+
+    def __init__(
+        self,
+        observation_space: gym.Space,
+        action_space: gym.Space,
+        normalize_images: bool = True,
+        use_next_state: bool = False,
+        use_action: bool = False,
+    ):
+        if not isinstance(observation_space, gym.spaces.Discrete):
+            raise TypeError("TabularRewardNet can only be used with Discrete observation spaces.")
+        if use_action:
+            raise NotImplementedError("use_action not yet implemented for TabularRewardNet")
+        # TODO(ejnnr): it's silly to pass normalize_images here, that indicates
+        # the design of RewardNet isn't that great yet. Maybe we should have something
+        # like a NonTabularRewardNet ABC and put that there?
+        super().__init__(observation_space, action_space, normalize_images)
+        self.use_next_state = use_next_state
+        n = observation_space.n ** 2 if use_next_state else observation_space.n
+        self.rewards = nn.Parameter(th.zeros(n))
+
+    def forward(
+        self,
+        state: th.Tensor,
+        action: th.Tensor,
+        next_state: th.Tensor,
+        done: th.Tensor,
+    ):
+        """Compute rewards for a batch of transitions and keep gradients."""
+        if not self.use_next_state:
+            return self.rewards[state]
+        else:
+            return self.rewards[self.observation_space.n * state + next_state]
+
+    def preprocess(
+        self, transitions: types.Transitions
+    ) -> Tuple[th.Tensor, th.Tensor, th.Tensor, th.Tensor]:
+        """Preprocess a batch of input transitions and convert it to PyTorch tensors.
+
+        The output of this function is suitable for its forward pass,
+        so a typical usage would be ``model(*model.preprocess(transitions))``.
+        """
+        state_th = th.as_tensor(transitions.obs, device=self.device, dtype=th.long)
+        action_th = th.as_tensor(transitions.acts, device=self.device)
+        next_state_th = th.as_tensor(transitions.next_obs, device=self.device, dtype=th.long)
+        done_th = th.as_tensor(transitions.dones, device=self.device)
+
+        del transitions # unused
+
+        assert state_th.shape == next_state_th.shape
+        return state_th, action_th, next_state_th, done_th
+
+    def predict(
+        self,
+        state: np.ndarray,
+        action: np.ndarray,
+        next_state: np.ndarray,
+        done: np.ndarray,
+    ) -> np.ndarray:
+        """Compute rewards for a batch of transitions without gradients.
+        Also performs some preprocessing and numpy conversion.
+        """
+        state_th = th.as_tensor(state, device=self.device, dtype=th.long)
+        action_th = th.as_tensor(action, device=self.device)
+        next_state_th = th.as_tensor(next_state, device=self.device, dtype=th.long)
+        done_th = th.as_tensor(done, device=self.device)
+
+        with th.no_grad():
+            rew_th = self(state_th, action_th, next_state_th, done_th)
+
+        rew = rew_th.detach().cpu().numpy().flatten()
+        assert rew.shape == state.shape[:1]
+        return rew

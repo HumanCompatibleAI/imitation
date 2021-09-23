@@ -7,13 +7,19 @@ import abc
 import math
 import pickle
 import random
-from typing import Any, List, Mapping, Optional, Sequence, Tuple, Type, Union
+from typing import Any, Callable, List, Mapping, Optional, Sequence, Tuple, Type, Union
 
 import numpy as np
 import stable_baselines3
 import torch as th
 from scipy import special
-from stable_baselines3.common import base_class, on_policy_algorithm, policies, vec_env
+from stable_baselines3.common import (
+    base_class,
+    on_policy_algorithm,
+    policies,
+    preprocessing,
+    vec_env,
+)
 
 from imitation.algorithms import base
 from imitation.data import rollout, types, wrappers
@@ -112,6 +118,7 @@ class AgentTrainer(TrajectoryGenerator):
         self,
         algorithm: base_class.BaseAlgorithm,
         reward_fn: Union[rewards_common.RewardFn, reward_nets.RewardNet],
+        random_frac: float = 0.0,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
     ):
         """Initialize the agent trainer.
@@ -121,6 +128,8 @@ class AgentTrainer(TrajectoryGenerator):
                 Its environment must be set.
             reward_fn: either a RewardFn or a RewardNet instance that will supply
                 the rewards used for training the agent.
+            random_frac: fraction of the trajectories that will be generated
+                randomly rather than by the agent when sample() is called.
             custom_logger: Where to log to; if None (default), creates a new logger.
         """
         self.algorithm = algorithm
@@ -130,6 +139,7 @@ class AgentTrainer(TrajectoryGenerator):
         if isinstance(reward_fn, reward_nets.RewardNet):
             reward_fn = reward_fn.predict
         self.reward_fn = reward_fn
+        self.random_frac = random_frac
 
         venv = self.algorithm.get_env()
         if not isinstance(venv, vec_env.VecEnv):
@@ -176,23 +186,26 @@ class AgentTrainer(TrajectoryGenerator):
 
     def sample(self, steps: int) -> Sequence[types.TrajectoryWithRew]:
         # TODO(adam): should we discard incomplete trajectories?
-        trajectories = self.buffering_wrapper.pop_trajectories()
+        agent_trajectories = self.buffering_wrapper.pop_trajectories()
         # We typically have more trajectories than are needed.
         # In that case, we use the final trajectories because
         # they are the ones with the most relevant version of
         # the agent.
         # The easiest way to do this will be to first invert the
         # list and then later just take the first trajectories:
-        trajectories = trajectories[::-1]
-        avail_steps = sum(len(traj) for traj in trajectories)
+        agent_trajectories = agent_trajectories[::-1]
+        avail_steps = sum(len(traj) for traj in agent_trajectories)
 
-        if avail_steps < steps:
+        random_steps = int(self.random_frac * steps)
+        agent_steps = steps - random_steps
+
+        if avail_steps < agent_steps:
             self.logger.log(
-                f"Requested {steps} transitions but only {avail_steps} in buffer. "
-                f"Sampling {steps - avail_steps} additional transitions."
+                f"Requested {agent_steps} transitions but only {avail_steps} in buffer. "
+                f"Sampling {agent_steps - avail_steps} additional transitions."
             )
             sample_until = rollout.make_sample_until(
-                min_timesteps=steps - avail_steps, min_episodes=None
+                min_timesteps=agent_steps, min_episodes=None
             )
             # Important note: we don't want to use the trajectories returned
             # here because their rewards are the ones provided by the reward
@@ -205,9 +218,27 @@ class AgentTrainer(TrajectoryGenerator):
             )
             additional_trajectories = self.buffering_wrapper.pop_trajectories()
 
-            trajectories = list(trajectories) + list(additional_trajectories)
+            agent_trajectories = list(agent_trajectories) + list(additional_trajectories)
 
-        return _get_trajectories(trajectories, steps)
+        agent_trajectories = _get_trajectories(agent_trajectories, agent_steps)
+    
+        random_trajectories = []
+        if random_steps > 0:
+            self.logger.log(
+                f"Sampling {random_steps} random transitions."
+            )
+            sample_until = rollout.make_sample_until(
+                min_timesteps=random_steps, min_episodes=None
+            )
+            rollout.generate_trajectories(
+                policy=None,
+                venv=self.venv,
+                sample_until=sample_until,
+            )
+            random_trajectories = self.buffering_wrapper.pop_trajectories()
+
+        return list(agent_trajectories) + list(random_trajectories)
+
 
     @TrajectoryGenerator.logger.setter
     def logger(self, value: imit_logger.HierarchicalLogger):
@@ -707,8 +738,55 @@ class CrossEntropyRewardTrainer(RewardTrainer):
                 self.optim.step()
                 self.logger.record("loss", loss.item())
 
+class ShapedPreferenceGatherer(SyntheticGatherer):
+    def __init__(
+        self,
+        potential: Callable[[np.ndarray], np.ndarray],
+        **kwargs,
+    ):
+        """Initialize the reward model trainer.
 
-class ValueNetPreferenceGatherer(SyntheticGatherer):
+        Args:
+            potential: function mapping batch of states to potentials
+            **kwargs: passed on to SyntheticGatherer
+        """
+        super().__init__(**kwargs)
+        self._potential = potential
+
+    def _reward_sums(self, fragment_pairs) -> Tuple[np.ndarray, np.ndarray]:
+        # fragment_lists has length 2 and each item is a sequence of trajectories
+        fragment_lists = zip(*fragment_pairs)
+        # shaped_return_lists will have two items, each one an array with
+        # size (number_of_fragments, )
+        shaped_return_lists: List[np.ndarray] = []
+
+        # In the outer loop, we iterate over the two lists of fragments
+        for fragments in fragment_lists:
+            shaped_returns = np.empty(len(fragments))
+            # for each such list, we iterate over the fragments and compute
+            # the returns of each fragment
+            for i, fragment in enumerate(fragments):
+                transitions = rollout.flatten_trajectories_with_rew([fragment])
+                potential = self._potential(transitions.obs).flatten()
+                next_potential = (1 - transitions.dones.astype(np.float32)) * self._potential(
+                    transitions.next_obs
+                ).flatten()
+
+                final_rew = (
+                    transitions.rews
+                    + self.discount_factor * next_potential
+                    - potential
+                )
+                assert final_rew.shape == (transitions,)
+                shaped_returns[i] = rollout.compute_returns(
+                    final_rew, self.discount_factor
+                )
+
+            shaped_return_lists.append(shaped_returns)
+
+        return tuple(shaped_return_lists)
+
+class ValueNetPreferenceGatherer(ShapedPreferenceGatherer):
     def __init__(
         self,
         path: AnyPath,
@@ -726,7 +804,6 @@ class ValueNetPreferenceGatherer(SyntheticGatherer):
                 the file from `path`.
             **kwargs: passed on to SyntheticGatherer
         """
-        super().__init__(**kwargs)
         algorithm = algorithm_cls.load(types.path_to_str(path))
         policy = algorithm.policy
         assert isinstance(policy, policies.ActorCriticPolicy)
@@ -737,63 +814,23 @@ class ValueNetPreferenceGatherer(SyntheticGatherer):
         policy.eval()
         self._policy = policy
 
-    def _potential(self, obs):
-        # This function is equivalent to how policy.forward() computes
-        # state values but we do only the computations necessary for the
-        # value function (ignoring the action probabilities).
+        def _potential(obs):
+            th_obs = th.as_tensor(obs, device=self._policy.device)
+            th_obs = preprocessing.preprocess_obs(
+                th_obs, self._policy.observation_space, self._policy.normalize_images
+            )
 
-        # Note: the input is already preprocessed (contrary to what policy.forward())
-        # would expect
-        features = self._policy.extract_features(obs)
-        shared_latent = self._policy.mlp_extractor.shared_net(features)
-        latent_vf = self._policy.mlp_extractor.value_net(shared_latent)
-        return self._policy.value_net(latent_vf)
+            # This function is equivalent to how policy.forward() computes
+            # state values but we do only the computations necessary for the
+            # value function (ignoring the action probabilities).
+            with th.no_grad():
+                features = self._policy.extract_features(th_obs)
+                shared_latent = self._policy.mlp_extractor.shared_net(features)
+                latent_vf = self._policy.mlp_extractor.value_net(shared_latent)
+                potential = self._policy.value_net(latent_vf)
+            return potential.detach().cpu().numpy()
 
-    def _reward_sums(self, fragment_pairs) -> Tuple[np.ndarray, np.ndarray]:
-        # fragment_lists has length 2 and each item is a sequence of trajectories
-        fragment_lists = zip(*fragment_pairs)
-        # shaped_return_lists will have two items, each one an array with
-        # size (number_of_fragments, )
-        shaped_return_lists: List[np.ndarray] = []
-
-        # In the outer loop, we iterate over the two lists of fragments
-        for fragments in fragment_lists:
-            shaped_returns = np.empty(len(fragments))
-            # for each such list, we iterate over the fragments and compute
-            # the returns of each fragment
-            for i, fragment in enumerate(fragments):
-                transitions = rollout.flatten_trajectories_with_rew([fragment])
-                obs, _, next_obs, dones = rewards_common.disc_rew_preprocess_inputs(
-                    observation_space=self._policy.observation_space,
-                    action_space=self._policy.action_space,
-                    state=transitions.obs,
-                    action=transitions.acts,
-                    next_state=transitions.next_obs,
-                    done=transitions.dones,
-                    device=self._policy.device,
-                    normalize_images=self._policy.normalize_images,
-                )
-
-                potential = self._potential(obs).flatten()
-                next_potential = (1 - dones.float()) * self._potential(
-                    next_obs
-                ).flatten()
-                np_potential = potential.detach().cpu().numpy()
-                np_next_potential = next_potential.detach().cpu().numpy()
-
-                final_rew = (
-                    transitions.rews
-                    + self.discount_factor * np_next_potential
-                    - np_potential
-                )
-                assert final_rew.shape == (len(obs),)
-                shaped_returns[i] = rollout.compute_returns(
-                    final_rew, self.discount_factor
-                )
-
-            shaped_return_lists.append(shaped_returns)
-
-        return tuple(shaped_return_lists)
+        super().__init__(potential=_potential, **kwargs)
 
 
 class PreferenceComparisons(base.BaseImitationAlgorithm):

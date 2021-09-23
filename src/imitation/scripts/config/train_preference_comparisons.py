@@ -24,6 +24,7 @@ def train_defaults():
     # factor by which to oversample transitions before creating fragments
     transition_oversampling = 1
     initial_comparison_fraction = 0.1
+    random_frac = 0.0
 
     n_episodes_eval = 50  # Num of episodes for final mean ground truth return
     reward_net_kwargs = {"use_action": False}
@@ -101,6 +102,7 @@ def empty_maze():
 @train_preference_comparisons_ex.named_config
 def empty_maze_dense():
     env_name = "imitation/EmptyMazeDense-v0"
+    reward_net_kwargs = {"use_next_state": True}
     fragment_length = 15
     normalize = False
 

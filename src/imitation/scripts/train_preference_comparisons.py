@@ -9,6 +9,7 @@ import pathlib
 import pickle
 from typing import Any, Mapping, Optional
 
+import gym
 import stable_baselines3
 import torch as th
 from sacred.observers import FileStorageObserver
@@ -45,6 +46,7 @@ def train_preference_comparisons(
     fragment_length: int,
     transition_oversampling: float,
     initial_comparison_fraction: float,
+    random_frac: float,
     n_episodes_eval: int,
     trajectory_path: Optional[str],
     save_preferences: bool,
@@ -123,9 +125,14 @@ def train_preference_comparisons(
 
     vec_normalize = None
 
-    reward_net = reward_nets.BasicRewardNet(
-        venv.observation_space, venv.action_space, **reward_net_kwargs
-    )
+    if isinstance(venv.observation_space, gym.spaces.Discrete):
+        reward_net = reward_nets.TabularRewardNet(
+            venv.observation_space, venv.action_space, **reward_net_kwargs
+        )
+    else:
+        reward_net = reward_nets.BasicRewardNet(
+            venv.observation_space, venv.action_space, **reward_net_kwargs
+        )
     if agent_path is None:
         agent = stable_baselines3.PPO("MlpPolicy", venv, seed=_seed, **agent_kwargs)
     else:
@@ -199,9 +206,11 @@ def train_preference_comparisons(
         # Setting the logger here is not really necessary (PreferenceComparisons
         # takes care of that automatically) but it avoids creating unnecessary loggers
         trajectory_generator = preference_comparisons.AgentTrainer(
-            agent, reward_net, custom_logger=custom_logger
+            agent, reward_net, random_frac=random_frac, custom_logger=custom_logger
         )
     else:
+        if random_frac > 0:
+            raise ValueError("random_frac can't be set when a trajectory dataset is used")
         trajectory_generator = preference_comparisons.TrajectoryDataset(
             trajectory_path, _seed, custom_logger
         )
