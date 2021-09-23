@@ -1,8 +1,11 @@
+"""Uses RL to train an expert policy from scratch, saving rollouts and policy."""
+
 import logging
 import os
 import os.path as osp
 from typing import Any, Mapping, Optional
 
+import sacred.run
 from sacred.observers import FileStorageObserver
 from stable_baselines3.common import callbacks
 from stable_baselines3.common.vec_env import VecNormalize
@@ -10,23 +13,22 @@ from stable_baselines3.common.vec_env import VecNormalize
 import imitation.util.sacred as sacred_util
 from imitation.data import rollout, wrappers
 from imitation.policies import serialize
+from imitation.rewards.reward_wrapper import RewardVecEnvWrapper
 from imitation.rewards.serialize import load_reward
 from imitation.scripts.config.expert_demos import expert_demos_ex
 from imitation.util import logger, util
-from imitation.util.reward_wrapper import RewardVecEnvWrapper
 
 
 @expert_demos_ex.main
 def rollouts_and_policy(
-    _run,
+    *,
+    _run: sacred.run.Run,
     _seed: int,
     env_name: str,
     env_make_kwargs: Optional[Mapping[str, Any]],
-    total_timesteps: int,
-    *,
-    log_dir: str,
     num_vec: int,
     parallel: bool,
+    total_timesteps: int,
     max_episode_steps: Optional[int],
     stop_actor_training: Optional[int],
     normalize: bool,
@@ -40,7 +42,8 @@ def rollouts_and_policy(
     rollout_save_n_episodes: Optional[int],
     policy_save_interval: int,
     policy_save_final: bool,
-) -> dict:
+    log_dir: str,
+) -> Mapping[str, float]:
     """Trains an expert policy from scratch and saves the rollouts and policy.
 
     Checkpoints:
@@ -53,10 +56,9 @@ def rollouts_and_policy(
     Args:
         env_name: The gym.Env name. Loaded as VecEnv.
         env_make_kwargs: The kwargs passed to `spec.make` of a gym environment.
-        total_timesteps: Number of training timesteps in `model.learn()`.
-        log_dir: The root directory to save metrics and checkpoints to.
         num_vec: Number of environments in VecEnv.
         parallel: If True, then use DummyVecEnv. Otherwise use SubprocVecEnv.
+        total_timesteps: Number of training timesteps in `model.learn()`.
         max_episode_steps: If not None, then environments are wrapped by
             TimeLimit so that they have at most `max_episode_steps` steps per
             episode.
@@ -66,10 +68,8 @@ def rollouts_and_policy(
         normalize: If True, then rescale observations and reward.
         normalize_kwargs: kwargs for `VecNormalize`.
         init_rl_kwargs: kwargs for `init_rl`.
-
         n_episodes_eval: The number of episodes to average over when calculating
             the average ground truth reward return of the final policy.
-
         reward_type: If provided, then load the serialized reward of this type,
             wrapping the environment in this reward. This is useful to test
             whether a reward model transfers. For more information, see
@@ -77,10 +77,6 @@ def rollouts_and_policy(
         reward_path: A specifier, such as a path to a file on disk, used by
             reward_type to load the reward model. For more information, see
             `imitation.rewards.serialize.load_reward`.
-
-        rollout_save_interval: The number of training updates in between
-            intermediate rollout saves. If the argument is nonpositive, then
-            don't save intermediate updates.
         rollout_save_final: If True, then save rollouts right after training is
             finished.
         rollout_save_n_timesteps: The minimum number of timesteps saved in every
@@ -91,26 +87,29 @@ def rollouts_and_policy(
         rollout_save_n_episodes: The number of episodes saved in every
             file. Must set exactly one of `rollout_save_n_timesteps` and
             `rollout_save_n_episodes`.
-
-        policy_save_interval: The number of training updates between saves. Has
-            the same semantics are `rollout_save_interval`.
+        policy_save_interval: The number of training updates between in between
+            intermediate rollout saves. If the argument is nonpositive, then
+            don't save intermediate updates.
         policy_save_final: If True, then save the policy right after training is
             finished.
+        log_dir: The root directory to save metrics and checkpoints to.
 
     Returns:
-      The return value of `rollout_stats()` using the final policy.
+        The return value of `rollout_stats()` using the final policy.
     """
     os.makedirs(log_dir, exist_ok=True)
     sacred_util.build_sacred_symlink(log_dir, _run)
 
     sample_until = rollout.make_sample_until(
-        rollout_save_n_timesteps, rollout_save_n_episodes,
+        rollout_save_n_timesteps,
+        rollout_save_n_episodes,
     )
     eval_sample_until = rollout.make_min_episodes(n_episodes_eval)
 
     logging.basicConfig(level=logging.INFO)
     custom_logger = logger.configure(
-        folder=osp.join(log_dir, "rl"), format_strs=["tensorboard", "stdout"],
+        folder=osp.join(log_dir, "rl"),
+        format_strs=["tensorboard", "stdout"],
     )
 
     rollout_dir = osp.join(log_dir, "rollouts")
@@ -143,7 +142,8 @@ def rollouts_and_policy(
     if policy_save_interval > 0:
         save_policy_callback = serialize.SavePolicyCallback(policy_dir, vec_normalize)
         save_policy_callback = callbacks.EveryNTimesteps(
-            policy_save_interval, save_policy_callback,
+            policy_save_interval,
+            save_policy_callback,
         )
         callback_objs.append(save_policy_callback)
     callback = callbacks.CallbackList(callback_objs)
@@ -172,35 +172,52 @@ def rollouts_and_policy(
 
 @expert_demos_ex.command
 def rollouts_from_policy(
-    _run,
-    _seed: int,
     *,
+    _run: sacred.run.Run,
+    _seed: int,
+    env_name: str,
+    env_make_kwargs: Optional[Mapping[str, Any]],
     num_vec: int,
+    parallel: bool,
+    max_episode_steps: Optional[int],
     rollout_save_n_timesteps: int,
     rollout_save_n_episodes: int,
-    log_dir: str,
     policy_path: str,
     policy_type: str,
-    env_name: str,
-    parallel: bool,
     rollout_save_path: str,
-    max_episode_steps: Optional[int],
-    env_make_kwargs: Optional[Mapping[str, Any]],
+    log_dir: str,
 ) -> None:
     """Loads a saved policy and generates rollouts.
 
     Unlisted arguments are the same as in `rollouts_and_policy()`.
 
     Args:
+        env_name: The gym.Env name. Loaded as VecEnv.
+        env_make_kwargs: The kwargs passed to `spec.make` of a gym environment.
+        num_vec: Number of environments in VecEnv.
+        parallel: If True, then use DummyVecEnv. Otherwise use SubprocVecEnv.
+        max_episode_steps: If not None, then environments are wrapped by
+            TimeLimit so that they have at most `max_episode_steps` steps per
+            episode.
+        rollout_save_n_timesteps: The minimum number of timesteps saved in every
+            file. Could be more than `rollout_save_n_timesteps` because
+            trajectories are saved by episode rather than by transition.
+            Must set exactly one of `rollout_save_n_timesteps`
+            and `rollout_save_n_episodes`.
+        rollout_save_n_episodes: The number of episodes saved in every
+            file. Must set exactly one of `rollout_save_n_timesteps` and
+            `rollout_save_n_episodes`.
         policy_type: Argument to `imitation.policies.serialize.load_policy`.
         policy_path: Argument to `imitation.policies.serialize.load_policy`.
         rollout_save_path: Rollout pickle is saved to this path.
+        log_dir: The root directory to save metrics and checkpoints to.
     """
     os.makedirs(log_dir, exist_ok=True)
     sacred_util.build_sacred_symlink(log_dir, _run)
 
     sample_until = rollout.make_sample_until(
-        rollout_save_n_timesteps, rollout_save_n_episodes,
+        rollout_save_n_timesteps,
+        rollout_save_n_episodes,
     )
 
     venv = util.make_vec_env(

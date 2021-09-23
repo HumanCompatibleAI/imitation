@@ -1,8 +1,12 @@
+"""Configuration settings for train_bc, training a policy via behavioral cloning."""
+
 import pathlib
 
 import sacred
 import torch as th
+from stable_baselines3.common import utils
 
+from imitation.policies import base
 from imitation.util import util
 
 train_bc_ex = sacred.Experiment("train_bc")
@@ -21,6 +25,12 @@ def config():
     # Number of trajectories to use during training, or None to use all.
     n_expert_demos = None
     l2_weight = 3e-5  # L2 regularization weight
+
+    policy_cls = base.FeedForward32Policy
+    policy_kwargs = {
+        # parameter mandatory for ActorCriticPolicy, but not used by BC
+        "lr_schedule": utils.get_schedule_fn(1),
+    }
     optimizer_cls = th.optim.Adam
     optimizer_kwargs = dict(
         lr=4e-4,

@@ -1,3 +1,5 @@
+"""Commands to analyze experimental results."""
+
 import collections
 import itertools
 import json
@@ -19,7 +21,10 @@ from imitation.util.sacred import dict_get_nested as get
 
 @analysis_ex.capture
 def _gather_sacred_dicts(
-    source_dirs: Sequence[str], run_name: str, env_name: str, skip_failed_runs: bool,
+    source_dirs: Sequence[str],
+    run_name: Optional[str],
+    env_name: Optional[str],
+    skip_failed_runs: bool,
 ) -> List[sacred_util.SacredDicts]:
     """Helper function for parsing and selecting Sacred experiment JSON files.
 
@@ -31,6 +36,8 @@ def _gather_sacred_dicts(
         run_name: If provided, then only analyze results from Sacred directories
             associated with this run name. `run_name` is compared against the
             "experiment.name" key in `run.json`. (Captured argument)
+        env_name: If provided, then only analyze results from Sacred directories
+            associated with this Gym environment ID.
         skip_failed_runs: If True, then filter out runs where the status is FAILED.
             (Captured argument)
 
@@ -52,17 +59,20 @@ def _gather_sacred_dicts(
 
     if run_name is not None:
         sacred_dicts = filter(
-            lambda sd: get(sd.run, "experiment.name") == run_name, sacred_dicts,
+            lambda sd: get(sd.run, "experiment.name") == run_name,
+            sacred_dicts,
         )
 
     if env_name is not None:
         sacred_dicts = filter(
-            lambda sd: get(sd.config, "env_name") == env_name, sacred_dicts,
+            lambda sd: get(sd.config, "env_name") == env_name,
+            sacred_dicts,
         )
 
     if skip_failed_runs:
         sacred_dicts = filter(
-            lambda sd: get(sd.run, "status") != "FAILED", sacred_dicts,
+            lambda sd: get(sd.run, "status") != "FAILED",
+            sacred_dicts,
         )
 
     return list(sacred_dicts)
@@ -80,12 +90,10 @@ def gather_tb_directories() -> dict:
     results to parse.
 
     Returns:
-      A dict with two keys. "gather_dir" (str) is a path to a /tmp/
-      directory containing all the TensorBoard runs filtered from `source_dir`.
-      "n_tb_dirs" (int) is the number of TensorBoard directories that were
-      filtered.
+        A dict with two keys. "gather_dir" (str) is a path to a /tmp/ directory
+        containing all the TensorBoard runs filtered from `source_dir`.
+        "n_tb_dirs" (int) is the number of TensorBoard directories that were filtered.
     """
-
     os.makedirs("/tmp/analysis_tb", exist_ok=True)
     tmp_dir = tempfile.mkdtemp(dir="/tmp/analysis_tb/")
 
@@ -104,7 +112,8 @@ def gather_tb_directories() -> dict:
         for basename in ["rl", "tb", "sb_tb"]:
             tb_src_dirs = tuple(
                 sacred_util.filter_subdirs(
-                    run_dir, lambda path: osp.basename(path) == basename,
+                    run_dir,
+                    lambda path: osp.basename(path) == basename,
                 ),
             )
             if tb_src_dirs:
@@ -291,7 +300,9 @@ def analyze_imitation(
 
 def _make_return_summary(stats: dict, prefix="") -> str:
     return "{:3g} ± {:3g} (n={})".format(
-        stats[f"{prefix}return_mean"], stats[f"{prefix}return_std"], stats["n_traj"],
+        stats[f"{prefix}return_mean"],
+        stats[f"{prefix}return_std"],
+        stats["n_traj"],
     )
 
 

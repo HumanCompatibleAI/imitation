@@ -1,4 +1,5 @@
-"""Smoke tests for bash scripts in experiments/"""
+"""Smoke tests for bash scripts in experiments/."""
+
 import os
 import pathlib
 import subprocess
@@ -18,7 +19,11 @@ SCRIPT_NAMES = (
 USES_FULL_ROLLOUTS = ("benchmark_and_table.sh",)
 
 _test_path = pathlib.Path(
-    "data", "expert_models", "half_cheetah_0", "rollouts", "final.pkl",
+    "data",
+    "expert_models",
+    "half_cheetah_0",
+    "rollouts",
+    "final.pkl",
 )
 
 HAS_FULL_ROLLOUTS = _test_path.exists()

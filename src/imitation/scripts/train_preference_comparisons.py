@@ -107,8 +107,14 @@ def train_preference_comparisons(
             condition, and can seriously confound evaluation. Read
             https://imitation.readthedocs.io/en/latest/guide/variable_horizon.html
             before overriding this.
-    """
 
+    Returns:
+        Rollout statistics from trained policy.
+
+    Raises:
+        FileNotFoundError: Path corresponding to saved policy missing.
+        ValueError: Inconsistency between config and deserialized policy normalization.
+    """
     custom_logger = logger.configure(log_dir, ["tensorboard", "stdout"])
     os.makedirs(log_dir, exist_ok=True)
     sacred_util.build_sacred_symlink(log_dir, _run)
@@ -127,11 +133,15 @@ def train_preference_comparisons(
 
     if isinstance(venv.observation_space, gym.spaces.Discrete):
         reward_net = reward_nets.TabularRewardNet(
-            venv.observation_space, venv.action_space, **reward_net_kwargs,
+            venv.observation_space,
+            venv.action_space,
+            **reward_net_kwargs,
         )
     else:
         reward_net = reward_nets.BasicRewardNet(
-            venv.observation_space, venv.action_space, **reward_net_kwargs,
+            venv.observation_space,
+            venv.action_space,
+            **reward_net_kwargs,
         )
     if agent_path is None:
         agent = stable_baselines3.PPO("MlpPolicy", venv, seed=_seed, **agent_kwargs)
@@ -154,7 +164,10 @@ def train_preference_comparisons(
             )
 
         agent = stable_baselines3.PPO.load(
-            model_path, env=venv, seed=_seed, **agent_kwargs,
+            model_path,
+            env=venv,
+            seed=_seed,
+            **agent_kwargs,
         )
         custom_logger.info(f"Warm starting agent from '{model_path}'")
 
@@ -206,13 +219,18 @@ def train_preference_comparisons(
         # Setting the logger here is not really necessary (PreferenceComparisons
         # takes care of that automatically) but it avoids creating unnecessary loggers
         trajectory_generator = preference_comparisons.AgentTrainer(
-            agent, reward_net, random_frac=random_frac, custom_logger=custom_logger,
+            agent, 
+            reward_net,
+            random_frac=random_frac,
+            custom_logger=custom_logger,
         )
     else:
         if random_frac > 0:
             raise ValueError("random_frac can't be set when a trajectory dataset is used")
         trajectory_generator = preference_comparisons.TrajectoryDataset(
-            trajectory_path, _seed, custom_logger,
+            trajectory_path,
+            _seed,
+            custom_logger,
         )
 
     fragmenter = preference_comparisons.RandomFragmenter(
@@ -221,7 +239,9 @@ def train_preference_comparisons(
     )
     if value_net_path is None:
         gatherer = preference_comparisons.SyntheticGatherer(
-            **gatherer_kwargs, seed=_seed, custom_logger=custom_logger,
+            **gatherer_kwargs,
+            seed=_seed,
+            custom_logger=custom_logger,
         )
     else:
         gatherer = preference_comparisons.ValueNetPreferenceGatherer(
@@ -257,10 +277,13 @@ def train_preference_comparisons(
     # Storing and evaluating the policy only makes sense if we actually used it
     if trajectory_path is None:
         serialize.save_stable_model(
-            os.path.join(log_dir, "final_policy"), agent, vec_normalize,
+            os.path.join(log_dir, "final_policy"),
+            agent,
+            vec_normalize,
         )
         sample_until = rollout.make_sample_until(
-            min_timesteps=None, min_episodes=n_episodes_eval,
+            min_timesteps=None,
+            min_episodes=n_episodes_eval,
         )
         trajs = rollout.generate_trajectories(
             agent,

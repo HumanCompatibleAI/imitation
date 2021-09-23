@@ -1,22 +1,23 @@
-"""Test tabular environments and tabular MCE IRL."""
+"""Test `imitation.algorithms.tabular_irl` and tabular environments."""
+
+from typing import Any, Mapping, Type
 
 import gym
 import numpy as np
 import pytest
 import torch as th
+from stable_baselines3.common import vec_env
 
-# need direct import since torch.optim.Adam references cause pytype to fail
-from torch.optim.adam import Adam
-
-from imitation.algorithms.tabular_irl import (
-    LinearRewardModel,
-    MLPRewardModel,
-    mce_irl,
+from imitation.algorithms import base
+from imitation.algorithms.mce_irl import (
+    MCEIRL,
     mce_occupancy_measures,
     mce_partition_fh,
 )
-from imitation.envs.examples.model_envs import RandomMDP
-from imitation.envs.resettable_env import TabularModelEnv
+from imitation.data import rollout
+from imitation.envs import resettable_env
+from imitation.envs.examples import model_envs
+from imitation.rewards import reward_nets
 from imitation.util.util import tensor_iter_norm
 
 
@@ -50,7 +51,7 @@ def test_random_mdp():
         horizon = 5 * (i + 1)
         random_obs = (i % 2) == 0
         obs_dim = (i * 3 + 4) ** 2 + i
-        mdp = RandomMDP(
+        mdp = model_envs.RandomMDP(
             n_states=n_states,
             n_actions=n_actions,
             branch_factor=branch_factor,
@@ -85,10 +86,15 @@ def test_random_mdp():
         assert len(set(map(str, trajectories))) == 1
 
 
-def test_policy_om_random_mdp():
+FEW_DISCOUNT_RATES = [0.0, 0.99, 1.0]
+DISCOUNT_RATES = FEW_DISCOUNT_RATES + [0.5, 0.9]
+
+
+@pytest.mark.parametrize("discount", DISCOUNT_RATES)
+def test_policy_om_random_mdp(discount: float):
     """Test that optimal policy occupancy measure ("om") for a random MDP is sane."""
     mdp = gym.make("imitation/Random-v0")
-    V, Q, pi = mce_partition_fh(mdp)
+    V, Q, pi = mce_partition_fh(mdp, discount=discount)
     assert np.all(np.isfinite(V))
     assert np.all(np.isfinite(Q))
     assert np.all(np.isfinite(pi))
@@ -96,15 +102,21 @@ def test_policy_om_random_mdp():
     assert np.all(pi >= 0)
     assert np.allclose(np.sum(pi, axis=-1), 1)
 
-    Dt, D = mce_occupancy_measures(mdp, pi=pi)
+    Dt, D = mce_occupancy_measures(mdp, pi=pi, discount=discount)
     assert np.all(np.isfinite(D))
     assert np.any(D > 0)
     # expected number of state visits (over all states) should be equal to the
     # horizon
-    assert np.allclose(np.sum(D), mdp.horizon)
+    if discount == 1.0:
+        expected_sum = mdp.horizon
+    else:
+        expected_sum = (1 - discount ** mdp.horizon) / (1 - discount)
+    assert np.allclose(np.sum(D), expected_sum)
 
 
-class ReasonableMDP(TabularModelEnv):
+class ReasonableMDP(resettable_env.TabularModelEnv):
+    """A tabular MDP with sensible parameters."""
+
     observation_matrix = np.array(
         [
             [3, -5, -1, -1, -4, 5, 3, 0],
@@ -186,12 +198,13 @@ class ReasonableMDP(TabularModelEnv):
     horizon = 20
 
 
-def test_policy_om_reasonable_mdp():
+@pytest.mark.parametrize("discount", DISCOUNT_RATES)
+def test_policy_om_reasonable_mdp(discount: float):
     # MDP described above
     mdp = ReasonableMDP()
     # get policy etc. for our MDP
-    V, Q, pi = mce_partition_fh(mdp)
-    Dt, D = mce_occupancy_measures(mdp, pi=pi)
+    V, Q, pi = mce_partition_fh(mdp, discount=discount)
+    Dt, D = mce_occupancy_measures(mdp, pi=pi, discount=discount)
     assert np.all(np.isfinite(V))
     assert np.all(np.isfinite(Q))
     assert np.all(np.isfinite(pi))
@@ -201,7 +214,8 @@ def test_policy_om_reasonable_mdp():
     assert np.allclose(pi[:19, 0, 0], pi[:19, 0, 2])
     # also check that they're by far preferred to action 1 (that goes to state
     # 3, which has poor reward)
-    assert np.all(pi[:19, 0, 0] > 2 * pi[:19, 0, 1])
+    if discount > 0:
+        assert np.all(pi[:19, 0, 0] > 2 * pi[:19, 0, 1])
     # make sure that states 3 & 4 have roughly uniform policies
     pi_34 = pi[:5, 3:5]
     assert np.allclose(pi_34, np.ones_like(pi_34) / 3.0)
@@ -210,18 +224,74 @@ def test_policy_om_reasonable_mdp():
     # check that in state 1, action 2 (which goes to state 4 with certainty) is
     # better than action 0 (which only gets there with some probability), and
     # that both are better than action 1 (which always goes to the bad state).
-    assert np.all(pi[:19, 1, 2] > pi[:19, 1, 0])
-    assert np.all(pi[:19, 1, 0] > pi[:19, 1, 1])
+    if discount > 0:
+        assert np.all(pi[:19, 1, 2] > pi[:19, 1, 0])
+        assert np.all(pi[:19, 1, 0] > pi[:19, 1, 1])
     # check that Dt[0] matches our initial state dist
     assert np.allclose(Dt[0], mdp.initial_state_dist)
+
+
+def test_mce_irl_demo_formats():
+    mdp = model_envs.RandomMDP(
+        n_states=5,
+        n_actions=3,
+        branch_factor=2,
+        horizon=10,
+        random_obs=False,
+        obs_dim=None,
+        generator_seed=42,
+    )
+    venv = vec_env.DummyVecEnv([lambda: mdp])
+    trajs = rollout.generate_trajectories(
+        policy=None,
+        venv=venv,
+        sample_until=rollout.make_min_timesteps(100),
+    )
+
+    demonstrations = {
+        "trajs": trajs,
+        "trans": rollout.flatten_trajectories(trajs),
+        "data_loader": base.make_data_loader(trajs, batch_size=32),
+    }
+
+    final_counts = {}
+    for kind, demo in demonstrations.items():
+        with th.random.fork_rng():
+            th.random.manual_seed(715298)
+            # create reward network so we can be sure it's seeded identically
+            reward_net = reward_nets.BasicRewardNet(
+                mdp.observation_space,
+                mdp.action_space,
+                use_action=False,
+                use_next_state=False,
+                use_done=False,
+                hid_sizes=[],
+            )
+            mce_irl = MCEIRL(demo, mdp, reward_net, linf_eps=1e-3)
+            assert np.allclose(mce_irl.demo_state_om.sum(), 1.0)
+            final_counts[kind] = mce_irl.train(max_iter=5)
+
+            # make sure weights have non-insane norm
+            assert tensor_iter_norm(mce_irl.reward_net.parameters()) < 1000
+
+    for cts in final_counts.values():
+        assert np.allclose(cts, final_counts["trajs"], atol=1e-3, rtol=1e-3)
 
 
 @pytest.mark.expensive
 @pytest.mark.parametrize(
     "model_class,model_kwargs",
-    [(LinearRewardModel, dict()), (MLPRewardModel, dict(hiddens=[32, 32]))],
+    [
+        (reward_nets.BasicRewardNet, dict(hid_sizes=[])),
+        (reward_nets.BasicRewardNet, dict(hid_sizes=[32, 32])),
+    ],
 )
-def test_mce_irl_reasonable_mdp(model_class, model_kwargs):
+@pytest.mark.parametrize("discount", FEW_DISCOUNT_RATES)
+def test_mce_irl_reasonable_mdp(
+    model_class: Type[reward_nets.RewardNet],
+    model_kwargs: Mapping[str, Any],
+    discount: float,
+):
     with th.random.fork_rng():
         th.random.manual_seed(715298)
 
@@ -229,13 +299,20 @@ def test_mce_irl_reasonable_mdp(model_class, model_kwargs):
         mdp = ReasonableMDP()
 
         # demo occupancy measure
-        V, Q, pi = mce_partition_fh(mdp)
-        Dt, D = mce_occupancy_measures(mdp, pi=pi)
+        V, Q, pi = mce_partition_fh(mdp, discount=discount)
+        Dt, D = mce_occupancy_measures(mdp, pi=pi, discount=discount)
 
-        rmodel = model_class(mdp.obs_dim, **model_kwargs)
-        opt = Adam(rmodel.parameters(), lr=1e-2)
-        final_counts = mce_irl(mdp, opt, rmodel, D, linf_eps=1e-3)
+        reward_net = model_class(
+            mdp.observation_space,
+            mdp.action_space,
+            use_action=False,
+            use_next_state=False,
+            use_done=False,
+            **model_kwargs,
+        )
+        mce_irl = MCEIRL(D, mdp, reward_net, linf_eps=1e-3, discount=discount)
+        final_counts = mce_irl.train()
 
         assert np.allclose(final_counts, D, atol=1e-3, rtol=1e-3)
         # make sure weights have non-insane norm
-        assert tensor_iter_norm(rmodel.parameters()) < 1000
+        assert tensor_iter_norm(reward_net.parameters()) < 1000

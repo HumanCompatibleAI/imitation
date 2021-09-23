@@ -1,3 +1,5 @@
+"""Miscellaneous utility methods."""
+
 import datetime
 import functools
 import itertools
@@ -21,7 +23,7 @@ import numpy as np
 import stable_baselines3
 import torch as th
 from gym.wrappers import TimeLimit
-from stable_baselines3.common import callbacks, monitor, preprocessing
+from stable_baselines3.common import monitor
 from stable_baselines3.common.base_class import BaseAlgorithm
 from stable_baselines3.common.policies import ActorCriticPolicy, BasePolicy
 from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecEnv
@@ -45,7 +47,7 @@ def make_vec_env(
     post_wrappers: Optional[Sequence[Callable[[gym.Env, int], gym.Env]]] = None,
     env_make_kwargs: Optional[Mapping[str, Any]] = None,
 ) -> VecEnv:
-    """Returns a VecEnv initialized with `n_envs` Envs.
+    """Makes a vectorized environment.
 
     Args:
         env_name: The Env's string id in Gym.
@@ -64,6 +66,9 @@ def make_vec_env(
             accepting two arguments, the Env to be wrapped and the environment index,
             and returning the wrapped Env.
         env_make_kwargs: The kwargs passed to `spec.make`.
+
+    Returns:
+        A VecEnv initialized with `n_envs` environments.
     """
     # Resolve the spec outside of the subprocess first, so that it is available to
     # subprocesses running `make_env` via automatic pickling.
@@ -124,7 +129,7 @@ def init_rl(
     model_class: Type[BaseAlgorithm] = stable_baselines3.PPO,
     policy_class: Type[BasePolicy] = ActorCriticPolicy,
     **model_kwargs,
-):
+) -> BaseAlgorithm:
     """Instantiates a policy for the provided environment.
 
     Args:
@@ -132,14 +137,16 @@ def init_rl(
         model_class: A Stable Baselines RL algorithm.
         policy_class: A Stable Baselines compatible policy network class.
         model_kwargs (dict): kwargs passed through to the algorithm.
-          Note: anything specified in `policy_kwargs` is passed through by the
-          algorithm to the policy network.
+            Note: anything specified in `policy_kwargs` is passed through by the
+            algorithm to the policy network.
 
     Returns:
-      An RL algorithm.
+        An RL algorithm.
     """
     return model_class(
-        policy_class, env, **model_kwargs,
+        policy_class,
+        env,
+        **model_kwargs,
     )  # pytype: disable=not-instantiable
 
 
@@ -157,10 +164,7 @@ T = TypeVar("T")
 
 
 def endless_iter(iterable: Iterable[T]) -> Iterator[T]:
-    """Generator that endlessly yields elements from iterable.
-
-    If any call to `iter(iterable)` has no elements, then this function raises
-    ValueError.
+    """Generator that endlessly yields elements from `iterable`.
 
     >>> x = range(2)
     >>> it = endless_iter(x)
@@ -171,49 +175,26 @@ def endless_iter(iterable: Iterable[T]) -> Iterator[T]:
     >>> next(it)
     0
 
+    Args:
+        iterable: The object to endlessly iterate over.
+
+    Returns:
+        An iterator that repeats the elements in `iterable` forever.
+
+    Raises:
+        ValueError: `iterable` is empty -- the first call it to returns no elements.
     """
     try:
         next(iter(iterable))
     except StopIteration:
-        err = ValueError(f"iterable {iterable} had no elements to iterate over.")
-        raise err
+        raise ValueError(f"iterable {iterable} had no elements to iterate over.")
 
     return itertools.chain.from_iterable(itertools.repeat(iterable))
 
 
-def torchify_with_space(
-    array: np.ndarray,
-    space: gym.Space,
-    normalize_images: bool = True,
-    device: Optional[th.device] = None,
-) -> th.Tensor:
-    """Converts a `np.ndarray` into `Tensor` corresponding to `space`.
-
-    The shape of the return value may differ from the shape of the input
-    value. For example, if `space` is discrete, then the input should be
-    an 1D array of scalar values, and the output will be encoded as 2D
-    Tensor of one-hot vectors.
-
-    Args:
-        array: An array of observations or actions.
-        space: The space each value in `array` is sampled from.
-        normalize_images: `normalize_images` keyword argument to
-          `preprocessing.preprocess_obs`. If True, then image `array`
-          is normalized so that each element is between 0 and 1.
-        device: Tensor device.
-    """
-    tensor = th.as_tensor(array, device=device)
-    preprocessed = preprocessing.preprocess_obs(
-        tensor,
-        space,
-        # TODO(sam): can I remove "scale" kwarg in DiscrimNet etc.?
-        normalize_images=normalize_images,
-    )
-    return preprocessed
-
-
 def tensor_iter_norm(
-    tensor_iter: Iterable[th.Tensor], ord: Union[int, float] = 2,  # noqa: A002
+    tensor_iter: Iterable[th.Tensor],
+    ord: Union[int, float] = 2,  # noqa: A002
 ) -> th.Tensor:
     """Compute the norm of a big vector that is produced one tensor chunk at a time.
 
@@ -222,7 +203,11 @@ def tensor_iter_norm(
         ord: order of the p-norm (can be any int or float except 0 and NaN).
 
     Returns:
-        Norm of the concatenated tensors."""
+        Norm of the concatenated tensors.
+
+    Raises:
+        ValueError: ord is 0 (unsupported).
+    """
     if ord == 0:
         raise ValueError("This function cannot compute p-norms for p=0.")
     norms = []

@@ -1,4 +1,4 @@
-"""Test imitation.policies."""
+"""Tests `imitation.policies.*`."""
 
 import pathlib
 
@@ -35,7 +35,7 @@ def test_actions_valid(env_name, policy_type):
 
 
 def test_save_stable_model_errors_and_warnings(tmpdir):
-    """Check errors and warnings in save_stable_model()"""
+    """Check errors and warnings in `save_stable_model()`."""
     tmpdir = pathlib.Path(tmpdir)
     venv = util.make_vec_env("CartPole-v0")
     ppo = stable_baselines3.PPO("MlpPolicy", venv)

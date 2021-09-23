@@ -16,15 +16,25 @@ executors:
     <<: *defaults
     resource_class: xlarge
     environment:
-      # We actually have 8 CPUs, but only use 4 since some tests are resource intensive.
+      # more CPUs visible but we're throttled to 8, which breaks auto-detect
       NUM_CPUS: 8
-  lintandtype:
+  lint:
+    <<: *defaults
+    # darglint is slow enough that we benefit from xlarge even for linting.
+    # However, there's little benefit from larger parallelization (I think there's
+    # a handful of files with long docstrings causing the bulk of the time).
+    resource_class: xlarge
+    environment:
+      # If you change these, also change ci/code_checks.sh
+      SRC_FILES: src/ tests/ experiments/ examples/ docs/conf.py setup.py
+      NUM_CPUS: 8
+  type:
     <<: *defaults
     resource_class: medium
     environment:
       # If you change these, also change ci/code_checks.sh
       SRC_FILES: src/ tests/ experiments/ examples/ docs/conf.py setup.py
-      NUM_CPUS: 2  # more CPUs visible but we're throttled to 2, which breaks auto-detect
+      NUM_CPUS: 2
 
 commands:
   dependencies:
@@ -66,8 +76,8 @@ commands:
           command: pip freeze --all
 
 jobs:
-  lintandtype:
-    executor: lintandtype
+  lint:
+    executor: lint
 
     steps:
       - dependencies
@@ -87,9 +97,15 @@ jobs:
           name: sphinx
           command: pushd docs/ && make clean && make html && popd
 
+  type:
+    executor: type
+    steps:
+      - dependencies
+
       - run:
           name: pytype
           command: pytype --version && pytype -j "${NUM_CPUS}" ${SRC_FILES[@]}
+
 
   unit-test:
     executor: unit-test
@@ -133,7 +149,11 @@ workflows:
   version: 2
   test:
     jobs:
-      - lintandtype:
+      - lint:
+          context:
+          - MuJoCo
+          - docker-hub-creds
+      - type:
           context:
           - MuJoCo
           - docker-hub-creds

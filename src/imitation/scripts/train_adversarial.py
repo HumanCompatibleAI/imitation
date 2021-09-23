@@ -6,14 +6,15 @@ Can be used as a CLI script, or the `train_and_plot` function can be called dire
 import logging
 import os
 import os.path as osp
-from typing import Any, Mapping, Optional
+from typing import Any, Mapping, Optional, Type
 
 import torch as th
 from sacred.observers import FileStorageObserver
 
-from imitation.algorithms import adversarial
+from imitation.algorithms.adversarial import airl, gail
 from imitation.data import rollout, types
 from imitation.policies import serialize
+from imitation.rewards import reward_nets
 from imitation.scripts.config.train_adversarial import train_adversarial_ex
 from imitation.util import logger
 from imitation.util import sacred as sacred_util
@@ -25,7 +26,8 @@ def save(trainer, save_path):
     # We implement this here and not in Trainer since we do not want to actually
     # serialize the whole Trainer (including e.g. expert demonstrations).
     os.makedirs(save_path, exist_ok=True)
-    th.save(trainer.discrim_net, os.path.join(save_path, "discrim.pt"))
+    th.save(trainer.reward_train, os.path.join(save_path, "reward_train.pt"))
+    th.save(trainer.reward_test, os.path.join(save_path, "reward_test.pt"))
     # TODO(gleave): unify this with the saving logic in data_collect?
     # (Needs #43 to be merged before attempting.)
     serialize.save_stable_model(
@@ -53,9 +55,10 @@ def train_adversarial(
     checkpoint_interval: int,
     gen_batch_size: int,
     init_rl_kwargs: Mapping,
+    reward_net_cls: Optional[Type[reward_nets.RewardNet]],
+    reward_net_kwargs: Optional[Mapping[str, Any]],
     algorithm_kwargs: Mapping[str, Mapping],
-    discrim_net_kwargs: Mapping[str, Mapping],
-) -> dict:
+) -> Mapping[str, Mapping[str, float]]:
     """Train an adversarial-network-based imitation learning algorithm.
 
     Checkpoints:
@@ -98,10 +101,11 @@ def train_adversarial(
             is only used in sanity checks.
         init_rl_kwargs: Keyword arguments for `init_rl`, the RL algorithm initialization
             utility function.
+        reward_net_cls: Class of reward network to construct.
+        reward_net_kwargs: Keyword arguments passed to reward network constructor.
         algorithm_kwargs: Keyword arguments for the `GAIL` or `AIRL` constructor
             that can apply to either constructor. Unlike a regular kwargs argument, this
             argument can only have the following keys: "shared", "airl", and "gail".
-
             `algorithm_kwargs["airl"]`, if it is provided, is a kwargs `Mapping` passed
             to the `AIRL` constructor when `algorithm == "airl"`. Likewise
             `algorithm_kwargs["gail"]` is passed to the `GAIL` constructor when
@@ -109,10 +113,6 @@ def train_adversarial(
             to both the `AIRL` and `GAIL` constructors. Duplicate keyword argument keys
             between `algorithm_kwargs["shared"]` and `algorithm_kwargs["airl"]` (or
             "gail") leads to an error.
-        discrim_net_kwargs: Keyword arguments for the `DiscrimNet` constructor. Unlike a
-            regular kwargs argument, this argument can only have the following keys:
-            "shared", "airl", "gail". These keys have the same meaning as they do in
-            `algorithm_kwargs`.
 
     Returns:
         A dictionary with two keys. "imit_stats" gives the return value of
@@ -120,6 +120,13 @@ def train_adversarial(
         policy (remember that the ground-truth reward can be recovered from the
         "monitor_return" key). "expert_stats" gives the return value of
         `rollout_stats()` on the expert demonstrations loaded from `rollout_path`.
+
+    Raises:
+        ValueError: `gen_batch_size` not divisible by `num_vec`.
+        ValueError: `algorithm_kwargs` included unsupported key
+            (not one of "shared", "gail" or "airl").
+        ValueError: Number of expert trajectories is less than `n_expert_demos`.
+        FileNotFoundError: `rollout_path` does not exist.
     """
     if gen_batch_size % num_vec != 0:
         raise ValueError(
@@ -127,23 +134,18 @@ def train_adversarial(
         )
 
     allowed_keys = {"shared", "gail", "airl"}
-    if not discrim_net_kwargs.keys() <= allowed_keys:
-        raise ValueError(
-            f"Invalid discrim_net_kwargs.keys()={discrim_net_kwargs.keys()}. "
-            f"Allowed keys: {allowed_keys}",
-        )
     if not algorithm_kwargs.keys() <= allowed_keys:
         raise ValueError(
-            f"Invalid discrim_net_kwargs.keys()={algorithm_kwargs.keys()}. "
+            f"Invalid algorithm_kwargs.keys()={algorithm_kwargs.keys()}. "
             f"Allowed keys: {allowed_keys}",
         )
 
     if not os.path.exists(rollout_path):
-        raise ValueError(f"File at rollout_path={rollout_path} does not exist.")
+        raise FileNotFoundError(f"File at rollout_path={rollout_path} does not exist.")
 
     expert_trajs = types.load(rollout_path)
     if n_expert_demos is not None:
-        if not len(expert_trajs) >= n_expert_demos:
+        if len(expert_trajs) < n_expert_demos:
             raise ValueError(
                 f"Want to use n_expert_demos={n_expert_demos} trajectories, but only "
                 f"{len(expert_trajs)} are available via {rollout_path}.",
@@ -172,10 +174,6 @@ def train_adversarial(
         **init_rl_kwargs,
     )
 
-    discrim_kwargs_shared = discrim_net_kwargs.get("shared", {})
-    discrim_kwargs_algo = discrim_net_kwargs.get(algorithm, {})
-    final_discrim_kwargs = dict(**discrim_kwargs_shared, **discrim_kwargs_algo)
-
     algorithm_kwargs_shared = algorithm_kwargs.get("shared", {})
     algorithm_kwargs_algo = algorithm_kwargs.get(algorithm, {})
     final_algorithm_kwargs = dict(
@@ -183,28 +181,38 @@ def train_adversarial(
         **algorithm_kwargs_algo,
     )
 
+    reward_net = None
+    if reward_net_cls is not None:
+        reward_net_kwargs = reward_net_kwargs or {}
+        reward_net = reward_net_cls(
+            venv.observation_space,
+            venv.action_space,
+            **reward_net_kwargs,
+        )
+
     if algorithm.lower() == "gail":
-        algo_cls = adversarial.GAIL
+        algo_cls = gail.GAIL
     elif algorithm.lower() == "airl":
-        algo_cls = adversarial.AIRL
+        algo_cls = airl.AIRL
     else:
         raise ValueError(f"Invalid value algorithm={algorithm}.")
 
     trainer = algo_cls(
         venv=venv,
-        expert_data=expert_transitions,
+        demonstrations=expert_transitions,
         gen_algo=gen_algo,
         log_dir=log_dir,
-        discrim_kwargs=final_discrim_kwargs,
+        reward_net=reward_net,
         custom_logger=custom_logger,
         **final_algorithm_kwargs,
     )
 
-    logging.info(f"Discriminator network summary:\n {trainer.discrim_net}")
+    logging.info(f"Reward network summary:\n {reward_net}")
     logging.info(f"RL algorithm: {type(trainer.gen_algo)}")
     logging.info(
         f"Imitation (generator) policy network summary:\n" f"{trainer.gen_algo.policy}",
     )
+    logging.info(f"Adversarial algorithm: {algorithm}")
 
     def callback(round_num):
         if checkpoint_interval > 0 and round_num % checkpoint_interval == 0:
@@ -220,7 +228,9 @@ def train_adversarial(
     results = {}
     sample_until_eval = rollout.make_min_episodes(n_episodes_eval)
     trajs = rollout.generate_trajectories(
-        trainer.gen_algo, trainer.venv_train, sample_until=sample_until_eval,
+        trainer.gen_algo,
+        trainer.venv_train,
+        sample_until=sample_until_eval,
     )
     results["expert_stats"] = rollout.rollout_stats(expert_trajs)
     results["imit_stats"] = rollout.rollout_stats(trajs)

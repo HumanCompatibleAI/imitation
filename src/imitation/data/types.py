@@ -6,7 +6,17 @@ import os
 import pathlib
 import pickle
 import warnings
-from typing import Dict, Mapping, Optional, Sequence, Tuple, TypeVar, Union, overload
+from typing import (
+    Any,
+    Dict,
+    Mapping,
+    Optional,
+    Sequence,
+    Tuple,
+    TypeVar,
+    Union,
+    overload,
+)
 
 import numpy as np
 import torch as th
@@ -17,14 +27,19 @@ T = TypeVar("T")
 AnyPath = Union[str, bytes, os.PathLike]
 
 
-def dataclass_quick_asdict(dataclass_instance) -> dict:
+def dataclass_quick_asdict(obj) -> Dict[str, Any]:
     """Extract dataclass to items using `dataclasses.fields` + dict comprehension.
 
     This is a quick alternative to `dataclasses.asdict`, which expensively and
     undocumentedly deep-copies every numpy array value.
     See https://stackoverflow.com/a/52229565/1091722.
+
+    Args:
+        obj: A dataclass instance.
+
+    Returns:
+        A dictionary mapping from `obj` field names to values.
     """
-    obj = dataclass_instance
     d = {f.name: getattr(obj, f.name) for f in dataclasses.fields(obj)}
     return d
 
@@ -57,10 +72,7 @@ class Trajectory:
     """
 
     def __len__(self):
-        """Returns number of transitions, `trajectory_len` in attribute docstrings.
-
-        This is equal to the number of actions, and is always positive.
-        """
+        """Returns number of transitions, equal to the number of actions."""
         return len(self.acts)
 
     def __post_init__(self):
@@ -101,6 +113,8 @@ def _rews_validation(rews: np.ndarray, acts: np.ndarray):
 
 @dataclasses.dataclass(frozen=True)
 class TrajectoryWithRew(Trajectory):
+    """A `Trajectory` that additionally includes reward information."""
+
     rews: np.ndarray
     """Reward, shape (trajectory_len, ). dtype float."""
 
@@ -116,16 +130,20 @@ TrajectoryWithRewPair = Tuple[TrajectoryWithRew, TrajectoryWithRew]
 
 def transitions_collate_fn(
     batch: Sequence[Mapping[str, np.ndarray]],
-) -> Dict[str, Union[np.ndarray, th.Tensor]]:
+) -> Mapping[str, Union[np.ndarray, th.Tensor]]:
     """Custom `torch.utils.data.DataLoader` collate_fn for `TransitionsMinimal`.
 
     Use this as the `collate_fn` argument to `DataLoader` if using an instance of
     `TransitionsMinimal` as the `dataset` argument.
 
-    Handles all collation except "infos" collation using Torch's default collate_fn.
-    "infos" needs special handling because we shouldn't recursively collate every
-    the info dict into a single dict, but instead join all the info dicts into a list of
-    dicts.
+    Args:
+        batch: The batch to collate.
+
+    Returns:
+        A collated batch. Uses Torch's default collate function for everything
+        except the "infos" key. For "infos", we join all the info dicts into a
+        list of dicts. (The default behavior would recursively collate every
+        info dict into a single dict, which is incorrect.)
     """
     batch_no_infos = [
         {k: np.array(v) for k, v in sample.items() if k != "infos"} for sample in batch
@@ -176,6 +194,10 @@ class TransitionsMinimal(th_data.Dataset):
         """Performs input validation: check shapes & dtypes match docstring.
 
         Also make array values read-only.
+
+        Raises:
+            ValueError: if batch size (array length) is inconsistent
+                between `obs`, `acts` and `infos`.
         """
         for val in vars(self).values():
             if isinstance(val, np.ndarray):
@@ -187,7 +209,7 @@ class TransitionsMinimal(th_data.Dataset):
                 f"{len(self.obs)} != {len(self.acts)}",
             )
 
-        if self.infos is not None and len(self.infos) != len(self.obs):
+        if len(self.infos) != len(self.obs):
             raise ValueError(
                 "obs and infos must have same number of timesteps: "
                 f"{len(self.obs)} != {len(self.infos)}",

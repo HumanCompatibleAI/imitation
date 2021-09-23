@@ -36,8 +36,17 @@ class NormalizePolicy(policies.BasePolicy):
     """
 
     def __init__(
-        self, policy: policies.BasePolicy, vec_normalize: vec_env.VecNormalize,
+        self,
+        policy: policies.BasePolicy,
+        vec_normalize: vec_env.VecNormalize,
     ):
+        """Builds NormalizePolicy.
+
+        Args:
+            policy: The policy to wrap.
+            vec_normalize: Used to normalize observations. Note observation statistics
+                are frozen, and not updated with repeated calls to `predict`.
+        """
         super().__init__(
             observation_space=policy.observation_space,
             action_space=policy.action_space,
@@ -49,7 +58,10 @@ class NormalizePolicy(policies.BasePolicy):
         raise NotImplementedError()
 
     def predict(
-        self, obs: np.ndarray, *args, **kwargs,
+        self,
+        obs: np.ndarray,
+        *args,
+        **kwargs,
     ) -> Tuple[np.ndarray, Optional[np.ndarray]]:
         preproc_obs = self.vec_normalize.normalize_obs(obs)
         return self._policy.predict(preproc_obs, *args, **kwargs)
@@ -79,7 +91,9 @@ class NormalizePolicy(policies.BasePolicy):
 
     @classmethod
     def load(
-        cls, path: str, device: Union[th.device, str] = "auto",
+        cls,
+        path: str,
+        device: Union[th.device, str] = "auto",
     ) -> policies.BasePolicy:
         raise NotImplementedError()
 
@@ -91,7 +105,8 @@ class NormalizePolicy(policies.BasePolicy):
 
 
 def _load_stable_baselines(
-    cls: Type[on_policy_algorithm.OnPolicyAlgorithm], policy_attr: str,
+    cls: Type[on_policy_algorithm.OnPolicyAlgorithm],
+    policy_attr: str,
 ) -> PolicyLoaderFn:
     """Higher-order function, returning a policy loading function.
 
@@ -185,7 +200,9 @@ _add_stable_baselines_policies(STABLE_BASELINES_CLASSES)
 
 
 def load_policy(
-    policy_type: str, policy_path: str, venv: vec_env.VecEnv,
+    policy_type: str,
+    policy_path: str,
+    venv: vec_env.VecEnv,
 ) -> policies.BasePolicy:
     """Load serialized policy.
 
@@ -193,6 +210,9 @@ def load_policy(
         policy_type: A key in `policy_registry`, e.g. `ppo`.
         policy_path: A path on disk where the policy is stored.
         venv: An environment that the policy is to be used with.
+
+    Returns:
+        The deserialized policy.
     """
     agent_loader = policy_registry.get(policy_type)
     return agent_loader(policy_path, venv)
@@ -241,6 +261,8 @@ class SavePolicyCallback(callbacks.EventCallback):
         Args:
             policy_dir: Directory to save checkpoints.
             vec_normalize: If specified, VecNormalize object to save alongside policy.
+            *args: Passed through to `callbacks.EventCallback`.
+            **kwargs: Passed through to `callbacks.EventCallback`.
         """
         super().__init__(*args, **kwargs)
         self.policy_dir = policy_dir

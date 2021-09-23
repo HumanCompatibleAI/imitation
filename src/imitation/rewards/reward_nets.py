@@ -10,8 +10,6 @@ from stable_baselines3.common import preprocessing
 from torch import nn
 from torch.functional import norm
 
-import imitation.rewards.common as rewards_common
-from imitation.data import types
 from imitation.util import networks
 
 
@@ -48,27 +46,65 @@ class RewardNet(nn.Module, abc.ABC):
         action: th.Tensor,
         next_state: th.Tensor,
         done: th.Tensor,
-    ):
+    ) -> th.Tensor:
         """Compute rewards for a batch of transitions and keep gradients."""
 
     def preprocess(
-        self, transitions: types.Transitions,
+        self,
+        state: np.ndarray,
+        action: np.ndarray,
+        next_state: np.ndarray,
+        done: np.ndarray,
     ) -> Tuple[th.Tensor, th.Tensor, th.Tensor, th.Tensor]:
         """Preprocess a batch of input transitions and convert it to PyTorch tensors.
 
         The output of this function is suitable for its forward pass,
         so a typical usage would be ``model(*model.preprocess(transitions))``.
+
+        Args:
+            state: The observation input. Its shape is
+                `(batch_size,) + observation_space.shape`.
+            action: The action input. Its shape is
+                `(batch_size,) + action_space.shape`. The None dimension is
+                expected to be the same as None dimension from `obs_input`.
+            next_state: The observation input. Its shape is
+                `(batch_size,) + observation_space.shape`.
+            done: Whether the episode has terminated. Its shape is `(batch_size,)`.
+
+        Returns:
+            Preprocessed transitions: a Tuple of tensors containing
+            observations, actions, next observations and dones.
         """
-        return rewards_common.disc_rew_preprocess_inputs(
-            observation_space=self.observation_space,
-            action_space=self.action_space,
-            state=transitions.obs,
-            action=transitions.acts,
-            next_state=transitions.next_obs,
-            done=transitions.dones,
-            device=self.device,
-            normalize_images=self.normalize_images,
+        state_th = th.as_tensor(state, device=self.device)
+        action_th = th.as_tensor(action, device=self.device)
+        next_state_th = th.as_tensor(next_state, device=self.device)
+        done_th = th.as_tensor(done, device=self.device)
+
+        del state, action, next_state, done  # unused
+
+        # preprocess
+        state_th = preprocessing.preprocess_obs(
+            state_th,
+            self.observation_space,
+            self.normalize_images,
         )
+        action_th = preprocessing.preprocess_obs(
+            action_th,
+            self.action_space,
+            self.normalize_images,
+        )
+        next_state_th = preprocessing.preprocess_obs(
+            next_state_th,
+            self.observation_space,
+            self.normalize_images,
+        )
+        done_th = done_th.to(th.float32)
+
+        n_gen = len(state_th)
+        assert state_th.shape == next_state_th.shape
+        assert len(action_th) == n_gen
+
+        return state_th, action_th, next_state_th, done_th
 
     def predict(
         self,
@@ -78,24 +114,25 @@ class RewardNet(nn.Module, abc.ABC):
         done: np.ndarray,
     ) -> np.ndarray:
         """Compute rewards for a batch of transitions without gradients.
-        Also performs some preprocessing and numpy conversion.
-        """
-        (
-            state_th,
-            action_th,
-            next_state_th,
-            done_th,
-        ) = rewards_common.disc_rew_preprocess_inputs(
-            observation_space=self.observation_space,
-            action_space=self.action_space,
-            state=state,
-            action=action,
-            next_state=next_state,
-            done=done,
-            device=self.device,
-            normalize_images=self.normalize_images,
-        )
 
+        Preprocesses the inputs, converting between Torch
+        tensors and NumPy arrays as necessary.
+
+        Args:
+            state: Current states of shape `(batch_size,) + state_shape`.
+            action: Actions of shape `(batch_size,) + action_shape`.
+            next_state: Successor states of shape `(batch_size,) + state_shape`.
+            done: End-of-episode (terminal state) indicator of shape `(batch_size,)`.
+
+        Returns:
+            Computed rewards of shape `(batch_size,`).
+        """
+        state_th, action_th, next_state_th, done_th = self.preprocess(
+            state,
+            action,
+            next_state,
+            done,
+        )
         with th.no_grad():
             rew_th = self(state_th, action_th, next_state_th, done_th)
 
@@ -112,6 +149,16 @@ class RewardNet(nn.Module, abc.ABC):
         except StopIteration:
             # if the model has no parameters, we use the CPU
             return th.device("cpu")
+
+    @property
+    def dtype(self) -> th.dtype:
+        """Heuristic to determine dtype of module."""
+        try:
+            first_param = next(self.parameters())
+            return first_param.dtype
+        except StopIteration:
+            # if the model has no parameters, default to float32
+            return th.get_default_dtype()
 
 
 class ShapedRewardNet(RewardNet):
@@ -189,8 +236,11 @@ class ShapedRewardNet(RewardNet):
 
 
 class BasicRewardNet(RewardNet):
-    """MLP that flattens and concatenates current state, current action, next state, and
-    done flag, depending on given `use_*` keyword arguments."""
+    """MLP that takes as input the state, action, next state and done flag.
+
+    These inputs are flattened and then concatenated to one another. Each input
+    can enabled or disabled by the `use_*` constructor keyword arguments.
+    """
 
     def __init__(
         self,
@@ -205,13 +255,13 @@ class BasicRewardNet(RewardNet):
         """Builds reward MLP.
 
         Args:
-          observation_space: The observation space.
-          action_space: The action space.
-          use_state: should the current state be included as an input to the MLP?
-          use_action: should the current action be included as an input to the MLP?
-          use_next_state: should the next state be included as an input to the MLP?
-          use_done: should the "done" flag be included as an input to the MLP?
-          kwargs: passed straight through to build_mlp.
+            observation_space: The observation space.
+            action_space: The action space.
+            use_state: should the current state be included as an input to the MLP?
+            use_action: should the current action be included as an input to the MLP?
+            use_next_state: should the next state be included as an input to the MLP?
+            use_done: should the "done" flag be included as an input to the MLP?
+            kwargs: passed straight through to `build_mlp`.
         """
         super().__init__(observation_space, action_space)
         combined_size = 0
@@ -298,19 +348,20 @@ class BasicShapedRewardNet(ShapedRewardNet):
         """Builds a simple shaped reward network.
 
         Args:
-          observation_space: The observation space.
-          action_space: The action space.
-          reward_hid_sizes: sequence of widths for the hidden layers
-            of the base reward MLP.
-          potential_hid_sizes: sequence of widths for the hidden layers
-            of the potential MLP.
-          use_state: should the current state be included as an input to the reward MLP?
-          use_action: should the current action be included as an input
-            to the reward MLP?
-          use_next_state: should the next state be included as an input
-            to the reward MLP?
-          use_done: should the "done" flag be included as an input to the reward MLP?
-          discount_factor: discount factor for the potential shaping.
+            observation_space: The observation space.
+            action_space: The action space.
+            reward_hid_sizes: sequence of widths for the hidden layers
+                of the base reward MLP.
+            potential_hid_sizes: sequence of widths for the hidden layers
+                of the potential MLP.
+            use_state: should the current state be included as an input
+                to the reward MLP?
+            use_action: should the current action be included as an input
+                to the reward MLP?
+            use_next_state: should the next state be included as an input
+                to the reward MLP?
+            use_done: should the "done" flag be included as an input to the reward MLP?
+            discount_factor: discount factor for the potential shaping.
         """
         base_reward_net = BasicRewardNet(
             observation_space=observation_space,
@@ -323,7 +374,8 @@ class BasicShapedRewardNet(ShapedRewardNet):
         )
 
         potential_net = BasicPotentialMLP(
-            observation_space=observation_space, hid_sizes=potential_hid_sizes,
+            observation_space=observation_space,
+            hid_sizes=potential_hid_sizes,
         )
 
         super().__init__(
@@ -395,41 +447,21 @@ class TabularRewardNet(RewardNet):
             return self.rewards[self.observation_space.n * state + next_state]
 
     def preprocess(
-        self, transitions: types.Transitions,
+        self,
+        state: np.ndarray,
+        action: np.ndarray,
+        next_state: np.ndarray,
+        done: np.ndarray,
     ) -> Tuple[th.Tensor, th.Tensor, th.Tensor, th.Tensor]:
         """Preprocess a batch of input transitions and convert it to PyTorch tensors.
 
         The output of this function is suitable for its forward pass,
         so a typical usage would be ``model(*model.preprocess(transitions))``.
         """
-        state_th = th.as_tensor(transitions.obs, device=self.device, dtype=th.long)
-        action_th = th.as_tensor(transitions.acts, device=self.device)
-        next_state_th = th.as_tensor(transitions.next_obs, device=self.device, dtype=th.long)
-        done_th = th.as_tensor(transitions.dones, device=self.device)
-
-        del transitions # unused
-
-        assert state_th.shape == next_state_th.shape
-        return state_th, action_th, next_state_th, done_th
-
-    def predict(
-        self,
-        state: np.ndarray,
-        action: np.ndarray,
-        next_state: np.ndarray,
-        done: np.ndarray,
-    ) -> np.ndarray:
-        """Compute rewards for a batch of transitions without gradients.
-        Also performs some preprocessing and numpy conversion.
-        """
         state_th = th.as_tensor(state, device=self.device, dtype=th.long)
         action_th = th.as_tensor(action, device=self.device)
         next_state_th = th.as_tensor(next_state, device=self.device, dtype=th.long)
         done_th = th.as_tensor(done, device=self.device)
 
-        with th.no_grad():
-            rew_th = self(state_th, action_th, next_state_th, done_th)
-
-        rew = rew_th.detach().cpu().numpy().flatten()
-        assert rew.shape == state.shape[:1]
-        return rew
+        assert state_th.shape == next_state_th.shape
+        return state_th, action_th, next_state_th, done_th

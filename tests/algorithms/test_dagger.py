@@ -1,4 +1,4 @@
-"""Tests for DAgger."""
+"""Tests for `imitation.algorithms.dagger`."""
 
 import contextlib
 import glob
@@ -9,6 +9,7 @@ from unittest import mock
 import gym
 import numpy as np
 import pytest
+import torch.random
 from stable_baselines3.common import policies
 
 from imitation.algorithms import bc, dagger
@@ -79,7 +80,10 @@ def test_traj_collector(tmpdir, venv):
         return [venv.action_space.sample() for _ in range(len(obs))]
 
     collector = dagger.InteractiveTrajectoryCollector(
-        venv=venv, get_robot_acts=get_random_acts, beta=0.5, save_dir=tmpdir,
+        venv=venv,
+        get_robot_acts=get_random_acts,
+        beta=0.5,
+        save_dir=tmpdir,
     )
     collector.reset()
     zero_acts = np.zeros((venv.num_envs,), dtype="int")
@@ -106,7 +110,12 @@ def test_traj_collector(tmpdir, venv):
 
 
 def _build_dagger_trainer(
-    tmpdir, venv, beta_schedule, expert_policy, expert_trajs, custom_logger,
+    tmpdir,
+    venv,
+    beta_schedule,
+    expert_policy,
+    expert_trajs,
+    custom_logger,
 ):
     del expert_policy
     if expert_trajs is not None:
@@ -149,13 +158,24 @@ def beta_schedule(request):
 
 @pytest.fixture(params=[_build_dagger_trainer, _build_simple_dagger_trainer])
 def init_trainer_fn(
-    request, tmpdir, venv, beta_schedule, expert_policy, expert_trajs, custom_logger,
+    request,
+    tmpdir,
+    venv,
+    beta_schedule,
+    expert_policy,
+    expert_trajs,
+    custom_logger,
 ):
     # Provide a trainer initialization fixture in addition `trainer` fixture below
     # for tests that want to initialize multiple DAggerTrainer.
     trainer_fn = request.param
     return lambda: trainer_fn(
-        tmpdir, venv, beta_schedule, expert_policy, expert_trajs, custom_logger,
+        tmpdir,
+        venv,
+        beta_schedule,
+        expert_policy,
+        expert_trajs,
+        custom_logger,
     )
 
 
@@ -166,10 +186,20 @@ def trainer(init_trainer_fn):
 
 @pytest.fixture
 def simple_dagger_trainer(
-    tmpdir, venv, beta_schedule, expert_policy, expert_trajs, custom_logger,
+    tmpdir,
+    venv,
+    beta_schedule,
+    expert_policy,
+    expert_trajs,
+    custom_logger,
 ):
     return _build_simple_dagger_trainer(
-        tmpdir, venv, beta_schedule, expert_policy, expert_trajs, custom_logger,
+        tmpdir,
+        venv,
+        beta_schedule,
+        expert_policy,
+        expert_trajs,
+        custom_logger,
     )
 
 
@@ -202,7 +232,9 @@ def test_trainer_train_arguments(trainer, expert_policy):
     def add_samples():
         collector = trainer.get_trajectory_collector()
         rollout.generate_trajectories(
-            expert_policy, collector, sample_until=rollout.make_min_timesteps(40),
+            expert_policy,
+            collector,
+            sample_until=rollout.make_min_timesteps(40),
         )
 
     # Lower default number of epochs for the no-arguments call that follows.
@@ -217,33 +249,40 @@ def test_trainer_train_arguments(trainer, expert_policy):
     trainer.extend_and_update(dict(n_epochs=1))
 
 
-def test_trainer_makes_progress(trainer, venv, expert_policy):
-    pre_train_rew_mean = rollout.mean_return(
-        trainer.bc_trainer.policy,
-        venv,
-        sample_until=rollout.make_min_episodes(15),
-        deterministic_policy=False,
-    )
-    # checking that the initial policy is poor can be flaky; sometimes the
-    # randomly initialised policy performs very well, and it's not clear why
-    # assert pre_train_rew_mean < 100
-    for i in range(2):
-        # roll out a few trajectories for dataset, then train for a few steps
-        collector = trainer.get_trajectory_collector()
-        for _ in range(5):
-            obs = collector.reset()
-            dones = [False] * venv.num_envs
-            while not np.any(dones):
-                expert_actions, _ = expert_policy.predict(obs, deterministic=True)
-                obs, _, dones, _ = collector.step(expert_actions)
-        trainer.extend_and_update(dict(n_epochs=1))
-    # make sure we're doing better than a random policy would
-    post_train_rew_mean = rollout.mean_return(
-        trainer.bc_trainer.policy,
-        venv,
-        sample_until=rollout.make_min_episodes(15),
-        deterministic_policy=True,
-    )
+def test_trainer_makes_progress(init_trainer_fn, venv, expert_policy):
+    with torch.random.fork_rng():
+        # manually seed to avoid flakiness
+        torch.random.manual_seed(42)
+        venv.action_space.seed(42)
+
+        trainer = init_trainer_fn()
+        pre_train_rew_mean = rollout.mean_return(
+            trainer.bc_trainer.policy,
+            venv,
+            sample_until=rollout.make_min_episodes(15),
+            deterministic_policy=False,
+        )
+        # note a randomly initialised policy does well for some seeds -- so may
+        # want to remove this check if changing seed.
+        assert pre_train_rew_mean < 100
+        for i in range(2):
+            # roll out a few trajectories for dataset, then train for a few steps
+            collector = trainer.get_trajectory_collector()
+            for _ in range(5):
+                obs = collector.reset()
+                dones = [False] * venv.num_envs
+                while not np.any(dones):
+                    expert_actions, _ = expert_policy.predict(obs, deterministic=True)
+                    obs, _, dones, _ = collector.step(expert_actions)
+            trainer.extend_and_update(dict(n_epochs=1))
+        # make sure we're doing better than a random policy would
+        post_train_rew_mean = rollout.mean_return(
+            trainer.bc_trainer.policy,
+            venv,
+            sample_until=rollout.make_min_episodes(15),
+            deterministic_policy=True,
+        )
+
     assert post_train_rew_mean - pre_train_rew_mean > 50, (
         f"pre-train mean {pre_train_rew_mean}, post-train mean "
         f"{post_train_rew_mean}"
@@ -314,7 +353,10 @@ def test_dagger_not_enough_transitions_error(tmpdir, custom_logger):
     venv = util.make_vec_env("CartPole-v0")
     # Initialize with large batch size to ensure error down the line.
     trainer = dagger.DAggerTrainer(
-        venv, tmpdir, batch_size=100_000, custom_logger=custom_logger,
+        venv=venv,
+        scratch_dir=tmpdir,
+        batch_size=100_000,
+        custom_logger=custom_logger,
     )
     collector = trainer.get_trajectory_collector()
     policy = base.RandomPolicy(venv.observation_space, venv.action_space)

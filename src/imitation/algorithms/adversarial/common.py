@@ -1,24 +1,94 @@
+"""Core code for adversarial imitation learning, shared between GAIL and AIRL."""
+import abc
+import collections
 import dataclasses
-import functools
 import logging
 import os
-from typing import Callable, Dict, Iterable, Mapping, Optional, Type, Union
+from typing import Callable, Iterator, Mapping, Optional, Sequence, Tuple, Type
 
 import numpy as np
 import torch as th
-import torch.utils.data as th_data
 import torch.utils.tensorboard as thboard
 import tqdm
 from stable_baselines3.common import base_class, vec_env
+from torch.nn import functional as F
 
 from imitation.algorithms import base
 from imitation.data import buffer, rollout, types, wrappers
-from imitation.rewards import common as rew_common
-from imitation.rewards import discrim_nets, reward_nets
-from imitation.util import logger, reward_wrapper, util
+from imitation.rewards import reward_nets, reward_wrapper
+from imitation.util import logger, util
 
 
-class AdversarialTrainer(base.BaseImitationAlgorithm):
+def compute_train_stats(
+    disc_logits_gen_is_high: th.Tensor,
+    labels_gen_is_one: th.Tensor,
+    disc_loss: th.Tensor,
+) -> Mapping[str, float]:
+    """Train statistics for GAIL/AIRL discriminator.
+
+    Args:
+        disc_logits_gen_is_high: discriminator logits produced by
+            `DiscrimNet.logits_gen_is_high`.
+        labels_gen_is_one: integer labels describing whether logit was for an
+            expert (0) or generator (1) sample.
+        disc_loss: final discriminator loss.
+
+    Returns:
+        A mapping from statistic names to float values.
+    """
+    with th.no_grad():
+        bin_is_generated_pred = disc_logits_gen_is_high > 0
+        bin_is_generated_true = labels_gen_is_one > 0
+        bin_is_expert_true = th.logical_not(bin_is_generated_true)
+        int_is_generated_pred = bin_is_generated_pred.long()
+        int_is_generated_true = bin_is_generated_true.long()
+        n_generated = float(th.sum(int_is_generated_true))
+        n_labels = float(len(labels_gen_is_one))
+        n_expert = n_labels - n_generated
+        pct_expert = n_expert / float(n_labels) if n_labels > 0 else float("NaN")
+        n_expert_pred = int(n_labels - th.sum(int_is_generated_pred))
+        if n_labels > 0:
+            pct_expert_pred = n_expert_pred / float(n_labels)
+        else:
+            pct_expert_pred = float("NaN")
+        correct_vec = th.eq(bin_is_generated_pred, bin_is_generated_true)
+        acc = th.mean(correct_vec.float())
+
+        _n_pred_expert = th.sum(th.logical_and(bin_is_expert_true, correct_vec))
+        if n_expert < 1:
+            expert_acc = float("NaN")
+        else:
+            # float() is defensive, since we cannot divide Torch tensors by
+            # Python ints
+            expert_acc = _n_pred_expert / float(n_expert)
+
+        _n_pred_gen = th.sum(th.logical_and(bin_is_generated_true, correct_vec))
+        _n_gen_or_1 = max(1, n_generated)
+        generated_acc = _n_pred_gen / float(_n_gen_or_1)
+
+        label_dist = th.distributions.Bernoulli(logits=disc_logits_gen_is_high)
+        entropy = th.mean(label_dist.entropy())
+
+    pairs = [
+        ("disc_loss", float(th.mean(disc_loss))),
+        # accuracy, as well as accuracy on *just* expert examples and *just*
+        # generated examples
+        ("disc_acc", float(acc)),
+        ("disc_acc_expert", float(expert_acc)),
+        ("disc_acc_gen", float(generated_acc)),
+        # entropy of the predicted label distribution, averaged equally across
+        # both classes (if this drops then disc is very good or has given up)
+        ("disc_entropy", float(entropy)),
+        # true number of expert demos and predicted number of expert demos
+        ("disc_proportion_expert_true", float(pct_expert)),
+        ("disc_proportion_expert_pred", float(pct_expert_pred)),
+        ("n_expert", float(n_expert)),
+        ("n_generated", float(n_generated)),
+    ]  # type: Sequence[Tuple[str, float]]
+    return collections.OrderedDict(pairs)
+
+
+class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
     """Base class for adversarial imitation learning algorithms like GAIL and AIRL."""
 
     venv: vec_env.VecEnv
@@ -35,18 +105,15 @@ class AdversarialTrainer(base.BaseImitationAlgorithm):
     If `debug_use_ground_truth=True` was passed into the initializer then
     `self.venv_train` is the same as `self.venv`."""
 
-    discrim_net: discrim_nets.DiscrimNet
-    """The discriminator network."""
-
     def __init__(
         self,
+        *,
+        demonstrations: base.AnyTransitions,
+        demo_batch_size: int,
         venv: vec_env.VecEnv,
         gen_algo: base_class.BaseAlgorithm,
-        discrim_net: discrim_nets.DiscrimNet,
-        expert_data: Union[Iterable[Mapping], types.Transitions],
-        expert_batch_size: int,
+        disc_parameters: Iterator[th.nn.Parameter],
         n_disc_updates_per_round: int = 2,
-        *,
         log_dir: str = "output/",
         normalize_obs: bool = True,
         normalize_reward: bool = True,
@@ -63,30 +130,19 @@ class AdversarialTrainer(base.BaseImitationAlgorithm):
         """Builds AdversarialTrainer.
 
         Args:
+            demonstrations: Demonstrations from an expert (optional). Transitions
+                expressed directly as a `types.TransitionsMinimal` object, a sequence
+                of trajectories, or an iterable of transition batches (mappings from
+                keywords to arrays containing observations, etc).
+            demo_batch_size: The number of samples in each batch of expert data. The
+                discriminator batch size is twice this number because each discriminator
+                batch contains a generator sample for every expert sample.
             venv: The vectorized environment to train in.
             gen_algo: The generator RL algorithm that is trained to maximize
                 discriminator confusion. Environment and logger will be set to
                 `venv` and `custom_logger`.
-            discrim_net: The discriminator network. This will be moved to the same
-                device as `gen_algo`.
-            expert_data: Either a `torch.utils.data.DataLoader`-like object or an
-                instance of `Transitions` which is automatically converted into a
-                shuffled version of the former type.
-
-                If the argument passed is a `DataLoader`, then it must yield batches of
-                expert data via its `__iter__` method. Each batch is a dictionary whose
-                keys "obs", "acts", "next_obs", and "dones", correspond to Tensor or
-                NumPy array values each with batch dimension equal to
-                `expert_batch_size`. If any batch dimension doesn't equal
-                `expert_batch_size` then a `ValueError` is raised.
-
-                If the argument is a `Transitions` instance, then `len(expert_data)`
-                must be at least `expert_batch_size`.
-            expert_batch_size: The number of samples in each batch yielded from
-                the expert data loader. The discriminator batch size is twice this
-                number because each discriminator batch contains a generator sample for
-                every expert sample.
-            n_discrim_updates_per_round: The number of discriminator updates after each
+            disc_parameters: Discriminator parameters to optimize over.
+            n_disc_updates_per_round: The number of discriminator updates after each
                 round of generator updates in AdversarialTrainer.learn().
             log_dir: Directory to store TensorBoard logs, plots, etc. in.
             normalize_obs: Whether to normalize observations with `VecNormalize`.
@@ -98,10 +154,9 @@ class AdversarialTrainer(base.BaseImitationAlgorithm):
                 or number of environments (for off-policy).
             gen_replay_buffer_capacity: The capacity of the
                 generator replay buffer (the number of obs-action-obs samples from
-                the generator that can be stored).
-
-                By default this is equal to `gen_train_timesteps`, meaning that we
-                sample only from the most recent batch of generator samples.
+                the generator that can be stored). By default this is equal to
+                `gen_train_timesteps`, meaning that we sample only from the most
+                recent batch of generator samples.
             custom_logger: Where to log to; if None (default), creates a new logger.
             init_tensorboard: If True, makes various discriminator
                 TensorBoard summaries.
@@ -120,7 +175,11 @@ class AdversarialTrainer(base.BaseImitationAlgorithm):
                 https://imitation.readthedocs.io/en/latest/guide/variable_horizon.html
                 before overriding this.
         """
+        self.demo_batch_size = demo_batch_size
+        self._demo_data_loader = None
+        self._endless_expert_iterator = None
         super().__init__(
+            demonstrations=demonstrations,
             custom_logger=custom_logger,
             allow_variable_horizon=allow_variable_horizon,
         )
@@ -129,42 +188,19 @@ class AdversarialTrainer(base.BaseImitationAlgorithm):
         self._disc_step = 0
         self.n_disc_updates_per_round = n_disc_updates_per_round
 
-        if expert_batch_size <= 0:
-            raise ValueError(f"expert_batch_size={expert_batch_size} must be positive.")
-
-        self.expert_batch_size = expert_batch_size
-        if isinstance(expert_data, types.Transitions):
-            if len(expert_data) < expert_batch_size:
-                raise ValueError(
-                    "Provided Transitions instance as `expert_data` argument but "
-                    "len(expert_data) < expert_batch_size. "
-                    f"({len(expert_data)} < {expert_batch_size}).",
-                )
-
-            self.expert_data_loader = th_data.DataLoader(
-                expert_data,
-                batch_size=expert_batch_size,
-                collate_fn=types.transitions_collate_fn,
-                shuffle=True,
-                drop_last=True,
-            )
-        else:
-            self.expert_data_loader = expert_data
-        self._endless_expert_iterator = util.endless_iter(self.expert_data_loader)
-
         self.debug_use_ground_truth = debug_use_ground_truth
         self.venv = venv
         self.gen_algo = gen_algo
         self._log_dir = log_dir
 
         # Create graph for optimising/recording stats on discriminator
-        self.discrim_net = discrim_net.to(self.gen_algo.device)
         self._disc_opt_cls = disc_opt_cls
         self._disc_opt_kwargs = disc_opt_kwargs or {}
         self._init_tensorboard = init_tensorboard
         self._init_tensorboard_graph = init_tensorboard_graph
         self._disc_opt = self._disc_opt_cls(
-            self.discrim_net.parameters(), **self._disc_opt_kwargs,
+            disc_parameters,
+            **self._disc_opt_kwargs,
         )
 
         if self._init_tensorboard:
@@ -174,11 +210,12 @@ class AdversarialTrainer(base.BaseImitationAlgorithm):
             self._summary_writer = thboard.SummaryWriter(summary_dir)
 
         self.venv_buffering = wrappers.BufferingWrapper(self.venv)
-        self.venv_norm_obs = vec_env.VecNormalize(
-            self.venv_buffering,
-            norm_reward=False,
-            norm_obs=normalize_obs,
-        )
+        self.venv_norm_obs = self.venv_buffering
+        if normalize_obs:
+            self.venv_norm_obs = vec_env.VecNormalize(
+                self.venv_buffering,
+                norm_reward=False,
+            )
 
         if debug_use_ground_truth:
             # Would use an identity reward fn here, but RewardFns can't see rewards.
@@ -186,12 +223,16 @@ class AdversarialTrainer(base.BaseImitationAlgorithm):
             self.gen_callback = None
         else:
             self.venv_wrapped = reward_wrapper.RewardVecEnvWrapper(
-                self.venv_norm_obs, self.discrim_net.predict_reward_train,
+                self.venv_norm_obs,
+                self.reward_train.predict,
             )
             self.gen_callback = self.venv_wrapped.make_log_callback()
-        self.venv_train = vec_env.VecNormalize(
-            self.venv_wrapped, norm_obs=False, norm_reward=normalize_reward,
-        )
+        self.venv_train = self.venv_wrapped
+        if normalize_reward:
+            self.venv_train = vec_env.VecNormalize(
+                self.venv_wrapped,
+                norm_obs=False,
+            )
 
         self.gen_algo.set_env(self.venv_train)
         self.gen_algo.set_logger(self.logger)
@@ -205,8 +246,54 @@ class AdversarialTrainer(base.BaseImitationAlgorithm):
         if gen_replay_buffer_capacity is None:
             gen_replay_buffer_capacity = self.gen_train_timesteps
         self._gen_replay_buffer = buffer.ReplayBuffer(
-            gen_replay_buffer_capacity, self.venv,
+            gen_replay_buffer_capacity,
+            self.venv,
         )
+
+    @abc.abstractmethod
+    def logits_gen_is_high(
+        self,
+        state: th.Tensor,
+        action: th.Tensor,
+        next_state: th.Tensor,
+        done: th.Tensor,
+        log_policy_act_prob: Optional[th.Tensor] = None,
+    ) -> th.Tensor:
+        """Compute the discriminator's logits for each state-action sample.
+
+        A high value corresponds to predicting generator, and a low value corresponds to
+        predicting expert.
+
+        Args:
+            state: state at time t, of shape `(batch_size,) + state_shape`.
+            action: action taken at time t, of shape `(batch_size,) + action_shape`.
+            next_state: state at time t+1, of shape `(batch_size,) + state_shape`.
+            done: binary episode completion flag after action at time t,
+                of shape `(batch_size,)`.
+            log_policy_act_prob: log probability of generator policy taking
+                `action` at time t.
+
+        Returns:
+            Discriminator logits of shape `(batch_size,)`. A high output indicates a
+            generator-like transition.
+        """  # noqa: DAR202
+
+    @property
+    @abc.abstractmethod
+    def reward_train(self) -> reward_nets.RewardNet:
+        """Reward used to train generator policy."""
+
+    @property
+    @abc.abstractmethod
+    def reward_test(self) -> reward_nets.RewardNet:
+        """Reward used to train policy at "test" time after adversarial training."""
+
+    def set_demonstrations(self, demonstrations: base.AnyTransitions) -> None:
+        self._demo_data_loader = base.make_data_loader(
+            demonstrations,
+            self.demo_batch_size,
+        )
+        self._endless_expert_iterator = util.endless_iter(self._demo_data_loader)
 
     def _next_expert_batch(self) -> Mapping:
         return next(self._endless_expert_iterator)
@@ -216,7 +303,7 @@ class AdversarialTrainer(base.BaseImitationAlgorithm):
         *,
         expert_samples: Optional[Mapping] = None,
         gen_samples: Optional[Mapping] = None,
-    ) -> Dict[str, float]:
+    ) -> Mapping[str, float]:
         """Perform a single discriminator update, optionally using provided samples.
 
         Args:
@@ -224,17 +311,16 @@ class AdversarialTrainer(base.BaseImitationAlgorithm):
                 If provided, must contain keys corresponding to every field of the
                 `Transitions` dataclass except "infos". All corresponding values can be
                 either NumPy arrays or Tensors. Extra keys are ignored. Must contain
-                `self.expert_batch_size` samples.
-
-                If this argument is not provided, then `self.expert_batch_size` expert
-                samples from `self.expert_data_loader` are used by default.
+                `self.demo_batch_size` samples. If this argument is not provided, then
+                `self.demo_batch_size` expert samples from `self.demo_data_loader` are
+                used by default.
             gen_samples: Transition samples from the generator policy in same dictionary
                 form as `expert_samples`. If provided, must contain exactly
-                `self.expert_batch_size` samples. If not provided, then take
+                `self.demo_batch_size` samples. If not provided, then take
                 `len(expert_samples)` samples from the generator replay buffer.
 
         Returns:
-           dict: Statistics for discriminator (e.g. loss, accuracy).
+            Statistics for discriminator (e.g. loss, accuracy).
         """
         with self.logger.accumulate_means("disc"):
             # optionally write TB summaries for collected ops
@@ -242,16 +328,20 @@ class AdversarialTrainer(base.BaseImitationAlgorithm):
 
             # compute loss
             batch = self._make_disc_train_batch(
-                gen_samples=gen_samples, expert_samples=expert_samples,
+                gen_samples=gen_samples,
+                expert_samples=expert_samples,
             )
-            disc_logits = self.discrim_net.logits_gen_is_high(
+            disc_logits = self.logits_gen_is_high(
                 batch["state"],
                 batch["action"],
                 batch["next_state"],
                 batch["done"],
                 batch["log_policy_act_prob"],
             )
-            loss = self.discrim_net.disc_loss(disc_logits, batch["labels_gen_is_one"])
+            loss = F.binary_cross_entropy_with_logits(
+                disc_logits,
+                batch["labels_gen_is_one"].float(),
+            )
 
             # do gradient step
             self._disc_opt.zero_grad()
@@ -261,7 +351,7 @@ class AdversarialTrainer(base.BaseImitationAlgorithm):
 
             # compute/write stats and TensorBoard data
             with th.no_grad():
-                train_stats = rew_common.compute_train_stats(
+                train_stats = compute_train_stats(
                     disc_logits,
                     batch["labels_gen_is_one"],
                     loss,
@@ -279,18 +369,18 @@ class AdversarialTrainer(base.BaseImitationAlgorithm):
         self,
         total_timesteps: Optional[int] = None,
         learn_kwargs: Optional[Mapping] = None,
-    ):
+    ) -> None:
         """Trains the generator to maximize the discriminator loss.
 
         After the end of training populates the generator replay buffer (used in
         discriminator training) with `self.disc_batch_size` transitions.
 
         Args:
-          total_timesteps: The number of transitions to sample from
-            `self.venv_train` during training. By default,
-            `self.gen_train_timesteps`.
-          learn_kwargs: kwargs for the Stable Baselines `RLModel.learn()`
-            method.
+            total_timesteps: The number of transitions to sample from
+                `self.venv_train` during training. By default,
+                `self.gen_train_timesteps`.
+            learn_kwargs: kwargs for the Stable Baselines `RLModel.learn()`
+                method.
         """
         if total_timesteps is None:
             total_timesteps = self.gen_train_timesteps
@@ -325,11 +415,11 @@ class AdversarialTrainer(base.BaseImitationAlgorithm):
         sampled from the environment to exceed `total_timesteps`.
 
         Args:
-          total_timesteps: An upper bound on the number of transitions to sample
-              from the environment during training.
-          callback: A function called at the end of every round which takes in a
-              single argument, the round number. Round numbers are in
-              `range(total_timesteps // self.gen_train_timesteps)`.
+            total_timesteps: An upper bound on the number of transitions to sample
+                from the environment during training.
+            callback: A function called at the end of every round which takes in a
+                single argument, the round number. Round numbers are in
+                `range(total_timesteps // self.gen_train_timesteps)`.
         """
         n_rounds = total_timesteps // self.gen_train_timesteps
         assert n_rounds >= 1, (
@@ -347,19 +437,28 @@ class AdversarialTrainer(base.BaseImitationAlgorithm):
 
     def _torchify_array(self, ndarray: Optional[np.ndarray]) -> Optional[th.Tensor]:
         if ndarray is not None:
-            return th.as_tensor(ndarray, device=self.discrim_net.device())
+            return th.as_tensor(ndarray, device=self.reward_train.device)
 
     def _make_disc_train_batch(
         self,
         *,
         gen_samples: Optional[Mapping] = None,
         expert_samples: Optional[Mapping] = None,
-    ) -> dict:
+    ) -> Mapping[str, th.Tensor]:
         """Build and return training batch for the next discriminator update.
 
         Args:
-          gen_samples: Same as in `train_disc`.
-          expert_samples: Same as in `train_disc`.
+            gen_samples: Same as in `train_disc`.
+            expert_samples: Same as in `train_disc`.
+
+        Returns:
+            The training batch: state, action, next state, dones, labels
+            and policy log-probabilities.
+
+        Raises:
+            RuntimeError: Empty generator replay buffer.
+            ValueError: `gen_samples` or `expert_samples` batch size is
+                different from `self.demo_batch_size`.
         """
         if expert_samples is None:
             expert_samples = self._next_expert_batch()
@@ -369,17 +468,17 @@ class AdversarialTrainer(base.BaseImitationAlgorithm):
                 raise RuntimeError(
                     "No generator samples for training. " "Call `train_gen()` first.",
                 )
-            gen_samples = self._gen_replay_buffer.sample(self.expert_batch_size)
+            gen_samples = self._gen_replay_buffer.sample(self.demo_batch_size)
             gen_samples = types.dataclass_quick_asdict(gen_samples)
 
         n_gen = len(gen_samples["obs"])
         n_expert = len(expert_samples["obs"])
-        if not (n_gen == n_expert == self.expert_batch_size):
+        if not (n_gen == n_expert == self.demo_batch_size):
             raise ValueError(
-                "Need to have exactly self.expert_batch_size number of expert and "
+                "Need to have exactly self.demo_batch_size number of expert and "
                 "generator samples, each. "
                 f"(n_gen={n_gen} n_expert={n_expert} "
-                f"expert_batch_size={self.expert_batch_size})",
+                f"demo_batch_size={self.demo_batch_size})",
             )
 
         # Guarantee that Mapping arguments are in mutable form.
@@ -423,7 +522,8 @@ class AdversarialTrainer(base.BaseImitationAlgorithm):
             log_act_prob = None
             if hasattr(self.gen_algo.policy, "evaluate_actions"):
                 _, log_act_prob_th, _ = self.gen_algo.policy.evaluate_actions(
-                    obs_th, acts_th,
+                    obs_th,
+                    acts_th,
                 )
                 log_act_prob = log_act_prob_th.detach().cpu().numpy()
                 del log_act_prob_th  # unneeded
@@ -431,108 +531,19 @@ class AdversarialTrainer(base.BaseImitationAlgorithm):
                 log_act_prob = log_act_prob.reshape((n_samples,))
             del obs_th, acts_th  # unneeded
 
-        torchify_with_space_defaults = functools.partial(
-            util.torchify_with_space,
-            normalize_images=self.discrim_net.normalize_images,
-            device=self.discrim_net.device(),
+        obs_th, acts_th, next_obs_th, dones_th = self.reward_train.preprocess(
+            obs,
+            acts,
+            next_obs,
+            dones,
         )
         batch_dict = {
-            "state": torchify_with_space_defaults(
-                obs, self.discrim_net.observation_space,
-            ),
-            "action": torchify_with_space_defaults(acts, self.discrim_net.action_space),
-            "next_state": torchify_with_space_defaults(
-                next_obs,
-                self.discrim_net.observation_space,
-            ),
-            "done": self._torchify_array(dones),
+            "state": obs_th,
+            "action": acts_th,
+            "next_state": next_obs_th,
+            "done": dones_th,
             "labels_gen_is_one": self._torchify_array(labels_gen_is_one),
             "log_policy_act_prob": self._torchify_array(log_act_prob),
         }
 
         return batch_dict
-
-
-class GAIL(AdversarialTrainer):
-    def __init__(
-        self,
-        venv: vec_env.VecEnv,
-        expert_data: Union[Iterable[Mapping], types.Transitions],
-        expert_batch_size: int,
-        gen_algo: base_class.BaseAlgorithm,
-        *,
-        # FIXME(sam) pass in discrim net directly; don't ask for kwargs indirectly
-        discrim_kwargs: Optional[Mapping] = None,
-        **kwargs,
-    ):
-        """Generative Adversarial Imitation Learning.
-
-        Most parameters are described in and passed to `AdversarialTrainer.__init__`.
-        Additional parameters that `GAIL` adds on top of its superclass initializer are
-        as follows:
-
-        Args:
-            discrim_kwargs: Optional keyword arguments to use while constructing the
-                DiscrimNetGAIL.
-
-        """
-        discrim_kwargs = discrim_kwargs or {}
-        discrim = discrim_nets.DiscrimNetGAIL(
-            venv.observation_space, venv.action_space, **discrim_kwargs,
-        )
-        super().__init__(
-            venv, gen_algo, discrim, expert_data, expert_batch_size, **kwargs,
-        )
-
-
-class AIRL(AdversarialTrainer):
-    """The AIRL reward network, used by the imitation policy."""
-
-    def __init__(
-        self,
-        venv: vec_env.VecEnv,
-        expert_data: Union[Iterable[Mapping], types.Transitions],
-        expert_batch_size: int,
-        gen_algo: base_class.BaseAlgorithm,
-        *,
-        # FIXME(sam): pass in reward net directly, not via _cls and _kwargs
-        reward_net_cls: Type[reward_nets.RewardNet] = reward_nets.BasicShapedRewardNet,
-        reward_net_kwargs: Optional[Mapping] = None,
-        discrim_kwargs: Optional[Mapping] = None,
-        **kwargs,
-    ):
-        """Adversarial Inverse Reinforcement Learning.
-
-        Most parameters are described in and passed to `AdversarialTrainer.__init__`.
-        Additional parameters that `AIRL` adds on top of its superclass initializer are
-        as follows:
-
-        Args:
-            reward_net_cls: Reward network constructor. The reward network is part of
-                the AIRL discriminator.
-            reward_net_kwargs: Optional keyword arguments to use while constructing
-                the reward network.
-            discrim_kwargs: Optional keyword arguments to use while constructing the
-                DiscrimNetAIRL.
-        """
-        # TODO(shwang): Maybe offer str=>RewardNet conversion like
-        #  stable_baselines3 does with policy classes.
-        reward_net_kwargs = reward_net_kwargs or {}
-        reward_network = reward_net_cls(
-            action_space=venv.action_space,
-            observation_space=venv.observation_space,
-            # pytype is afraid that we'll directly call RewardNet(),
-            # which is an abstract class, hence the disable.
-            **reward_net_kwargs,  # pytype: disable=not-instantiable
-        )
-
-        discrim_kwargs = discrim_kwargs or {}
-        discrim = discrim_nets.DiscrimNetAIRL(reward_network, **discrim_kwargs)
-        super().__init__(
-            venv, gen_algo, discrim, expert_data, expert_batch_size, **kwargs,
-        )
-
-        if not hasattr(self.gen_algo.policy, "evaluate_actions"):
-            raise TypeError(
-                "AIRL needs a stochastic policy to compute the discriminator output.",
-            )

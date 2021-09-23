@@ -1,8 +1,10 @@
+"""Helper methods for the `sacred` experimental configuration and logging framework."""
+
 import json
 import os
 import pathlib
 import warnings
-from typing import Any, Callable, List, NamedTuple, Union
+from typing import Any, Callable, NamedTuple, Sequence, Union
 
 import sacred
 
@@ -40,20 +42,24 @@ def filter_subdirs(
     filter_fn: Callable[[str], bool] = dir_contains_sacred_jsons,
     *,
     nested_ok: bool = False,
-) -> List[str]:
+) -> Sequence[str]:
     """Walks through a directory tree, returning paths to filtered subdirectories.
 
     Does not follow symlinks.
 
     Args:
-      root_dir: The start of the directory tree walk.
-      filter_fn: A function with takes a directory path and returns True if
-        we should include the directory path in this function's return value.
-      nested_ok: If False, then error if in the return value, one of the
-        directory paths is a subdirectory of another.
+        root_dir: The start of the directory tree walk.
+        filter_fn: A function with takes a directory path and returns True if
+            we should include the directory path in this function's return value.
+        nested_ok: Allow returning "nested" directories, i.e. a return value where
+            some elements are subdirectories of other elements.
 
     Returns:
-      A list of all subdirectory paths where `filter_fn(path) == True`.
+        A list of all subdirectory paths where `filter_fn(path) == True`.
+
+    Raises:
+        ValueError: If `nested_ok` is False and one of the filtered directory
+            paths is a subdirecotry of another.
     """
     filtered_dirs = set()
     for root, _, _ in os.walk(root_dir, followlinks=False):

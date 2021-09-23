@@ -24,38 +24,43 @@ from imitation.util import logger, util
 
 
 class BetaSchedule(abc.ABC):
-    """
-    Determines the value of beta (% of time that demonstrator action is used) over the
-    progression of training rounds.
-    """
+    """Computes beta (% of time demonstration action used) from training round."""
 
     @abc.abstractmethod
     def __call__(self, round_num: int) -> float:
-        """Gives the value of beta for the current round.
+        """Computes the value of beta for the current round.
 
         Args:
-            round: the current round number. Rounds are assumed to be numbered 0, 1, 2,
-              etc.
+            round_num: the current round number. Rounds are assumed to be sequentially
+                numbered from 0.
 
         Returns:
-            beta: the fraction of the time to sample a demonstrator action. Robot
-              actions will be sampled the remainder of the time.
-        """
+            The fraction of the time to sample a demonstrator action. Robot
+                actions will be sampled the remainder of the time.
+        """  # noqa: DAR202
 
 
 class LinearBetaSchedule(BetaSchedule):
-    """
-    Linearly-decreasing schedule for beta (% of time that demonstrator action is used).
-    """
+    """Linearly-decreasing schedule for beta."""
 
     def __init__(self, rampdown_rounds: int):
-        """
+        """Builds LinearBetaSchedule.
+
         Args:
             rampdown_rounds: number of rounds over which to anneal beta.
         """
         self.rampdown_rounds = rampdown_rounds
 
     def __call__(self, round_num: int) -> float:
+        """Computes beta value.
+
+        Args:
+            round_num: the current round number.
+
+        Returns:
+            beta linearly decreasing from `1` to `0` between round `0` and
+            `self.rampdown_rounds`. After that, it is 0.
+        """
         assert round_num >= 0
         return min(1, max(0, (self.rampdown_rounds - round_num) / self.rampdown_rounds))
 
@@ -67,14 +72,13 @@ def reconstruct_trainer(
     """Reconstruct trainer from the latest snapshot in some working directory.
 
     Args:
-      scratch_dir: path to the working directory created by a previous run of
-        this algorithm. The directory should contain `checkpoint-latest.pt` and
-        `policy-latest.pt` files.
-      device: device on which to load the trainer.
+        scratch_dir: path to the working directory created by a previous run of
+            this algorithm. The directory should contain `checkpoint-latest.pt` and
+            `policy-latest.pt` files.
+        device: device on which to load the trainer.
 
     Returns:
-      trainer: a reconstructed `DAggerTrainer` with the same state as the
-        previously-saved one.
+        A deserialized `DAggerTrainer`.
     """
     checkpoint_path = pathlib.Path(scratch_dir, "checkpoint-latest.pt")
     return th.load(checkpoint_path, map_location=utils.get_device(device))
@@ -137,17 +141,17 @@ class InteractiveTrajectoryCollector(vec_env.VecEnvWrapper):
         beta: float,
         save_dir: types.AnyPath,
     ):
-        """Trajectory collector constructor.
+        """Builds InteractiveTrajectoryCollector.
 
         Args:
-          venv: vectorized environment to sample trajectories from.
-          get_robot_acts: get robot actions that can be substituted for
-              human actions. Takes a vector of observations as input & returns a
-              vector of actions.
-          beta: fraction of the time to use action given to .step() instead of
-              robot action. The choice of robot or human action is independently
-              randomized for each individual `Env` at every timestep.
-          save_dir: directory to save collected trajectories in.
+            venv: vectorized environment to sample trajectories from.
+            get_robot_acts: get robot actions that can be substituted for
+                human actions. Takes a vector of observations as input & returns a
+                vector of actions.
+            beta: fraction of the time to use action given to .step() instead of
+                robot action. The choice of robot or human action is independently
+                randomized for each individual `Env` at every timestep.
+            save_dir: directory to save collected trajectories in.
         """
         super().__init__(venv)
         self.get_robot_acts = get_robot_acts
@@ -169,10 +173,10 @@ class InteractiveTrajectoryCollector(vec_env.VecEnvWrapper):
 
         Args:
             seed: The random seed. May be None for completely random seeding.
+
         Returns:
-            Returns a list containing the seeds for each individual env. Note that all
-            list elements may be None, if the env does not return anything when being
-            seeded.
+            A list containing the seeds for each individual env. Note that all list
+            elements may be None, if the env does not return anything when seeded.
         """
         self.rng = np.random.RandomState(seed=seed)
         return self.venv.seed(seed)
@@ -206,13 +210,10 @@ class InteractiveTrajectoryCollector(vec_env.VecEnvWrapper):
         robot action was used during that timestep.
 
         Args:
-          actions: the _intended_ demonstrator/expert actions for the current
-            state. This will be executed with probability `self.beta`.
-            Otherwise, a "robot" (typically a BC policy) action will be sampled
-            and executed instead via `self.get_robot_act`.
-
-        Returns:
-          next_obs, reward, done, info: unchanged output of `self.env.step()`.
+            actions: the _intended_ demonstrator/expert actions for the current
+                state. This will be executed with probability `self.beta`.
+                Otherwise, a "robot" (typically a BC policy) action will be sampled
+                and executed instead via `self.get_robot_act`.
         """
         assert self._is_reset, "call .reset() before .step()"
 
@@ -227,6 +228,13 @@ class InteractiveTrajectoryCollector(vec_env.VecEnvWrapper):
         self.venv.step_async(actual_acts)
 
     def step_wait(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray, dict]:
+        """Returns observation, reward, etc after previous `step_async()` call.
+
+        Stores the transition, and saves trajectory as demo once complete.
+
+        Returns:
+            Observation, reward, dones (is terminal?) and info dict.
+        """
         next_obs, rews, dones, infos = self.venv.step_wait()
         self._last_obs = next_obs
         fresh_demos = self.traj_accum.add_steps_and_auto_finish(
@@ -281,28 +289,27 @@ class DAggerTrainer(base.BaseImitationAlgorithm):
 
     def __init__(
         self,
+        *,
         venv: vec_env.VecEnv,
         scratch_dir: types.AnyPath,
-        *,
         beta_schedule: Callable[[int], float] = None,
         batch_size: int = 32,
         bc_kwargs: Optional[dict] = None,
         custom_logger: Optional[logger.HierarchicalLogger] = None,
     ):
-        """DaggerTrainer constructor.
+        """Builds DAggerTrainer.
 
         Args:
             venv: Vectorized training environment.
             scratch_dir: Directory to use to store intermediate training
                 information (e.g. for resuming training).
-
-        Keyword Args:
             beta_schedule: Provides a value of `beta` (the probability of taking
                 expert action in any given state) at each round of training. If
                 `None`, then `linear_beta_schedule` will be used instead.
             batch_size: Number of samples in each batch during BC training.
             bc_kwargs: Additional arguments for constructing the `BC` instance that
                 will be used to train the underlying policy.
+            custom_logger: Where to log to; if None (default), creates a new logger.
         """
         super().__init__(custom_logger=custom_logger)
 
@@ -318,8 +325,8 @@ class DAggerTrainer(base.BaseImitationAlgorithm):
         self._all_demos = []
 
         self.bc_trainer = bc.BC(
-            self.venv.observation_space,
-            self.venv.action_space,
+            observation_space=self.venv.observation_space,
+            action_space=self.venv.action_space,
             custom_logger=custom_logger,
             **self.bc_kwargs,
         )
@@ -386,7 +393,7 @@ class DAggerTrainer(base.BaseImitationAlgorithm):
                 shuffle=True,
                 collate_fn=types.transitions_collate_fn,
             )
-            self.bc_trainer.set_expert_data_loader(data_loader)
+            self.bc_trainer.set_demonstrations(data_loader)
             self._last_loaded_round = self.round_num
 
     def extend_and_update(self, bc_train_kwargs: Optional[Mapping] = None) -> int:
@@ -408,7 +415,7 @@ class DAggerTrainer(base.BaseImitationAlgorithm):
                 keys are provided, then `n_epochs` is set to `self.DEFAULT_N_EPOCHS`.
 
         Returns:
-            round_num: new round number after advancing the round counter.
+            New round number after advancing the round counter.
         """
         if bc_train_kwargs is None:
             bc_train_kwargs = {}
@@ -434,10 +441,9 @@ class DAggerTrainer(base.BaseImitationAlgorithm):
         """Create trajectory collector to extend current round's demonstration set.
 
         Returns:
-            collector: an `InteractiveTrajectoryCollector` configured with the
-                appropriate beta, appropriate imitator policy, etc. for the current
-                round. Refer to the documentation for
-                `InteractiveTrajectoryCollector` to see how to use this.
+            A collector configured with the appropriate beta, imitator policy, etc.
+            for the current round. Refer to the documentation for
+            `InteractiveTrajectoryCollector` to see how to use this.
         """
         save_dir = self._demo_dir_path_for_round()
         beta = self.beta_schedule(self.round_num)
@@ -496,17 +502,14 @@ class SimpleDAggerTrainer(DAggerTrainer):
 
     def __init__(
         self,
+        *,
         venv: vec_env.VecEnv,
         scratch_dir: types.AnyPath,
-        *,
         expert_policy: policies.BasePolicy,
         expert_trajs: Optional[Sequence[types.Trajectory]] = None,
         **dagger_trainer_kwargs,
     ):
-        """SimpleDAggerTrainer constructor.
-
-        This constructor also accepts keyword arguments for `DaggerTrainer`. See
-        the `DaggerTrainer.__init__` docstring for more details.
+        """Builds SimpleDAggerTrainer.
 
         Args:
             venv: Vectorized training environment. Note that when the robot
@@ -520,15 +523,19 @@ class SimpleDAggerTrainer(DAggerTrainer):
                 dataset.
             dagger_trainer_kwargs: Other keyword arguments passed to the
                 superclass initializer `DAggerTrainer.__init__`.
+
+        Raises:
+            ValueError: The observation or action space does not match between
+                `venv` and `expert_policy`.
         """
         super().__init__(venv=venv, scratch_dir=scratch_dir, **dagger_trainer_kwargs)
         self.expert_policy = expert_policy
         if expert_policy.observation_space != self.venv.observation_space:
             raise ValueError(
-                "Mismatched observation space between expert_policy and env",
+                "Mismatched observation space between expert_policy and venv",
             )
         if expert_policy.action_space != self.venv.action_space:
-            raise ValueError("Mismatched action space between expert_policy and env")
+            raise ValueError("Mismatched action space between expert_policy and venv")
 
         # TODO(shwang):
         #   Might welcome Transitions and DataLoaders as sources of expert data
@@ -609,7 +616,8 @@ class SimpleDAggerTrainer(DAggerTrainer):
             for traj in trajectories:
                 _save_dagger_demo(traj, collector.save_dir)
                 self._logger.record_mean(
-                    "dagger/mean_episode_reward", np.sum(traj.rews),
+                    "dagger/mean_episode_reward",
+                    np.sum(traj.rews),
                 )
                 round_timestep_count += len(traj)
                 total_timestep_count += len(traj)

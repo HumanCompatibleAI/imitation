@@ -1,3 +1,5 @@
+"""Registry mapping IDs to objects, such as environments or policy loaders."""
+
 import functools
 import importlib
 from typing import Callable, Generic, Iterable, Optional, TypeVar
@@ -36,6 +38,7 @@ class Registry(Generic[T]):
     """
 
     def __init__(self):
+        """Builds empty Registry."""
         self._values = {}
         self._indirect = {}
 
@@ -51,7 +54,11 @@ class Registry(Generic[T]):
         return set(self._values.keys()).union(self._indirect.keys())
 
     def register(
-        self, key: str, *, value: Optional[T] = None, indirect: Optional[str] = None,
+        self,
+        key: str,
+        *,
+        value: Optional[T] = None,
+        indirect: Optional[str] = None,
     ):
         if key in self._values or key in self._indirect:
             raise KeyError(f"Duplicate registration for '{key}'")
@@ -70,7 +77,8 @@ class Registry(Generic[T]):
 
 
 def build_loader_fn_require_space(
-    fn: Callable[[gym.Space, gym.Space], T], **kwargs,
+    fn: Callable[[gym.Space, gym.Space], T],
+    **kwargs,
 ) -> LoaderFn:
     """Converts a factory taking observation and action space into a LoaderFn."""
 

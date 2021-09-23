@@ -1,12 +1,18 @@
+"""Tests `imitation.util.reward_wrapper`."""
+
 import numpy as np
 
 from imitation.data import rollout
 from imitation.policies.base import RandomPolicy
-from imitation.util import reward_wrapper, util
+from imitation.rewards import reward_wrapper
+from imitation.util import util
 
 
 class FunkyReward:
+    """A reward that ignores observation and depends only on batch index."""
+
     def __call__(self, obs, act, next_obs, steps=None):
+        """Returns consecutive reward from 1 to batch size `len(obs)`."""
         # give each environment number from 1 to num_envs
         return (np.arange(len(obs)) + 1).astype("float32")
 

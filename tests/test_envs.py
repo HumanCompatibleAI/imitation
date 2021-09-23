@@ -1,4 +1,4 @@
-"""Test imitation.envs.*."""
+"""Tests for `imitation.envs.*`."""
 
 import gym
 import pytest

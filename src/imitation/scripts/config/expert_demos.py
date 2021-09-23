@@ -1,3 +1,5 @@
+"""Configuration settings for expert_demos, training an expert policy with RL."""
+
 import os
 
 import sacred
@@ -50,7 +52,9 @@ def default_end_cond(rollout_save_n_timesteps, rollout_save_n_episodes):
 @expert_demos_ex.config
 def logging(env_name, log_root):
     log_dir = os.path.join(
-        log_root, env_name.replace("/", "_"), util.make_unique_timestamp(),
+        log_root,
+        env_name.replace("/", "_"),
+        util.make_unique_timestamp(),
     )
 
 
@@ -59,7 +63,8 @@ def rollouts_from_policy_only_defaults(log_dir):
     policy_path = None  # Policy path for rollouts_from_policy command only
     policy_type = "ppo"  # Policy type for rollouts_from_policy command only
     rollout_save_path = os.path.join(
-        log_dir, "rollout.pkl",
+        log_dir,
+        "rollout.pkl",
     )  # Save path for `rollouts_from_policy` only.
 
 
@@ -130,6 +135,11 @@ def reacher():
 
 
 @expert_demos_ex.named_config
+def seals_ant():
+    env_name = "seals/Ant-v0"
+
+
+@expert_demos_ex.named_config
 def seals_swimmer():
     env_name = "seals/Swimmer-v0"
 
@@ -137,26 +147,6 @@ def seals_swimmer():
 @expert_demos_ex.named_config
 def seals_walker():
     env_name = "seals/Walker2d-v0"
-
-
-# Custom env configs
-
-
-@expert_demos_ex.named_config
-def custom_ant():
-    env_name = "imitation/CustomAnt-v0"
-    locals().update(**ant_shared_locals)
-
-
-@expert_demos_ex.named_config
-def disabled_ant():
-    env_name = "imitation/DisabledAnt-v0"
-    locals().update(**ant_shared_locals)
-
-
-@expert_demos_ex.named_config
-def two_d_maze():
-    env_name = "imitation/TwoDMaze-v0"
 
 
 # Debug configs

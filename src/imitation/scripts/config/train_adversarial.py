@@ -32,7 +32,7 @@ def train_defaults():
     # Kwargs for initializing GAIL and AIRL
     algorithm_kwargs = dict(
         shared=dict(
-            expert_batch_size=1024,  # Number of expert samples per discriminator update
+            demo_batch_size=1024,  # Number of expert samples per discriminator update
             # Number of discriminator updates after each round of generator updates
             n_disc_updates_per_round=4,
         ),
@@ -40,8 +40,9 @@ def train_defaults():
         gail={},
     )
 
-    # Kwargs for initializing {GAIL,AIRL}DiscrimNet
-    discrim_net_kwargs = dict(shared={}, airl={}, gail={})
+    # Custom reward network
+    reward_net_cls = None
+    reward_net_kwargs = None
 
     # Modifies the __init__ arguments for the imitation policy
     init_rl_kwargs = dict(
@@ -74,7 +75,9 @@ def calc_n_steps(num_vec, gen_batch_size):
 @train_adversarial_ex.config
 def paths(env_name, log_root, rollout_hint, data_dir):
     log_dir = os.path.join(
-        log_root, env_name.replace("/", "_"), util.make_unique_timestamp(),
+        log_root,
+        env_name.replace("/", "_"),
+        util.make_unique_timestamp(),
     )
 
     # Recommended that user sets rollout_path manually.
@@ -83,7 +86,11 @@ def paths(env_name, log_root, rollout_hint, data_dir):
     if rollout_hint is None:
         rollout_hint = env_name.split("-")[0].lower()
     rollout_path = os.path.join(
-        data_dir, "expert_models", f"{rollout_hint}_0", "rollouts", "final.pkl",
+        data_dir,
+        "expert_models",
+        f"{rollout_hint}_0",
+        "rollouts",
+        "final.pkl",
     )
 
 
@@ -92,24 +99,24 @@ def paths(env_name, log_root, rollout_hint, data_dir):
 
 @train_adversarial_ex.named_config
 def gail():
-    """Quick alias for algorithm=gail"""
+    """Quick alias for algorithm=gail."""
     algorithm = "gail"
 
 
 @train_adversarial_ex.named_config
 def airl():
-    """Quick alias for algorithm=airl"""
+    """Quick alias for algorithm=airl."""
     algorithm = "airl"
 
 
 # Shared settings
 
-MUJOCO_SHARED_LOCALS = dict(discrim_net_kwargs=dict(airl=dict(entropy_weight=0.1)))
+MUJOCO_SHARED_LOCALS = dict(init_rl_kwargs=dict(ent_coef=0.1))
 
 ANT_SHARED_LOCALS = dict(
     total_timesteps=3e7,
     max_episode_steps=500,  # To match `inverse_rl` settings.
-    algorithm_kwargs=dict(shared=dict(expert_batch_size=8192)),
+    algorithm_kwargs=dict(shared=dict(demo_batch_size=8192)),
     gen_batch_size=16384,
 )
 
@@ -129,7 +136,6 @@ def cartpole():
     env_name = "CartPole-v1"
     rollout_hint = "cartpole"
     algorithm_kwargs = {"shared": {"allow_variable_horizon": True}}
-    discrim_net_kwargs = {"gail": {"normalize_images": False}}
 
 
 @train_adversarial_ex.named_config
@@ -138,7 +144,6 @@ def seals_cartpole():
     env_name = "seals/CartPole-v0"
     # seals and vanilla CartPole have the same expert trajectories.
     rollout_hint = "cartpole"
-    discrim_net_kwargs = {"gail": {"normalize_images": False}}
 
 
 @train_adversarial_ex.named_config
@@ -184,7 +189,7 @@ HALF_CHEETAH_SHARED_LOCALS = dict(
             n_disc_updates_per_round=16,
             # Equivalent to no replay buffer if batch size is the same
             gen_replay_buffer_capacity=16384,
-            expert_batch_size=8192,
+            demo_batch_size=8192,
         ),
         airl=dict(
             reward_net_kwargs=dict(
@@ -251,35 +256,6 @@ def seals_walker():
     rollout_hint = "walker"
 
 
-# Custom Gym environment named configs
-
-
-@train_adversarial_ex.named_config
-def two_d_maze():
-    locals().update(**MUJOCO_SHARED_LOCALS)
-    env_name = "imitation/TwoDMaze-v0"
-    rollout_hint = "two_d_maze"
-
-
-@train_adversarial_ex.named_config
-def custom_ant():
-    locals().update(**MUJOCO_SHARED_LOCALS)
-    # Watch out -- ANT_SHARED_LOCALS could erroneously erase nested dict keys from
-    # MUJOCO_SHARED_LOCALS because `locals().update()` doesn't merge dicts
-    # "Sacred-style".
-    locals().update(**ANT_SHARED_LOCALS)
-    env_name = "imitation/CustomAnt-v0"
-    rollout_hint = "custom_ant"
-
-
-@train_adversarial_ex.named_config
-def disabled_ant():
-    locals().update(**MUJOCO_SHARED_LOCALS)
-    locals().update(**ANT_SHARED_LOCALS)
-    env_name = "imitation/DisabledAnt-v0"
-    rollout_hint = "disabled_ant"
-
-
 # Debug configs
 
 
@@ -296,7 +272,7 @@ def fast():
     n_episodes_eval = 1
     algorithm_kwargs = dict(
         shared=dict(
-            expert_batch_size=1,
+            demo_batch_size=1,
             n_disc_updates_per_round=4,
         ),
     )

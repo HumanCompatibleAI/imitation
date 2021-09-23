@@ -1,13 +1,15 @@
 imitation.algorithms package
 ============================
 
+Subpackages
+-----------
+
+.. toctree::
+
+   imitation.algorithms.adversarial
+
 Submodules
 ----------
-
-imitation.algorithms.adversarial module
----------------------------------------
-
-.. automodule:: imitation.algorithms.adversarial
 
 imitation.algorithms.bc module
 ------------------------------
@@ -19,15 +21,15 @@ imitation.algorithms.dagger module
 
 .. automodule:: imitation.algorithms.dagger
 
-imitation.algorithms.density\_baselines module
-----------------------------------------------
+imitation.algorithms.density module
+-----------------------------------
 
-.. automodule:: imitation.algorithms.density_baselines
+.. automodule:: imitation.algorithms.density
 
-imitation.algorithms.tabular\_irl module
-----------------------------------------
+imitation.algorithms.mce\_irl module
+------------------------------------
 
-.. automodule:: imitation.algorithms.tabular_irl
+.. automodule:: imitation.algorithms.mce_irl
 
 
 Module contents
