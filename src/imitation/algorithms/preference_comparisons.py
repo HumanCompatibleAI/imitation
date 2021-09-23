@@ -257,6 +257,9 @@ def _get_trajectories(
     steps: int,
 ) -> Sequence[TrajectoryWithRew]:
     """Get enough trajectories to have at least `steps` transitions in total."""
+    if steps == 0:
+        return []
+
     available_steps = sum(len(traj) for traj in trajectories)
     if available_steps < steps:
         raise RuntimeError(
