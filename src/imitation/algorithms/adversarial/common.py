@@ -94,7 +94,7 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
     venv: vec_env.VecEnv
     """The original vectorized environment."""
 
-    venv_norm_obs: vec_env.VecEnv
+    venv_norm_obs: Optional[vec_env.VecEnv]
     """Like `self.venv`, but wrapped with `VecNormalize` normalizing the observations.
 
     These statistics must be saved along with the model."""
@@ -209,21 +209,21 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
             os.makedirs(summary_dir, exist_ok=True)
             self._summary_writer = thboard.SummaryWriter(summary_dir)
 
-        self.venv_buffering = wrappers.BufferingWrapper(self.venv)
-        self.venv_norm_obs = self.venv_buffering
+        venv = self.venv_buffering = wrappers.BufferingWrapper(self.venv)
+        self.venv_norm_obs = None
         if normalize_obs:
-            self.venv_norm_obs = vec_env.VecNormalize(
-                self.venv_buffering,
+            venv = self.venv_norm_obs = vec_env.VecNormalize(
+                venv,
                 norm_reward=False,
             )
 
         if debug_use_ground_truth:
             # Would use an identity reward fn here, but RewardFns can't see rewards.
-            self.venv_wrapped = self.venv_norm_obs
+            self.venv_wrapped = venv
             self.gen_callback = None
         else:
-            self.venv_wrapped = reward_wrapper.RewardVecEnvWrapper(
-                self.venv_norm_obs,
+            venv = self.venv_wrapped = reward_wrapper.RewardVecEnvWrapper(
+                venv,
                 self.reward_train.predict,
             )
             self.gen_callback = self.venv_wrapped.make_log_callback()
@@ -519,7 +519,7 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
             [np.zeros(n_expert, dtype=int), np.ones(n_gen, dtype=int)],
         )
         # Policy and reward network were trained on normalized observations.
-        if isinstance(self.venv_norm_obs, vec_env.VecNormalize):
+        if self.venv_norm_obs is not None:
             obs = self.venv_norm_obs.normalize_obs(obs)
             next_obs = self.venv_norm_obs.normalize_obs(next_obs)
 
