@@ -152,12 +152,18 @@ def seals_walker():
 
 
 @expert_demos_ex.named_config
-def empty_maze():
-    env_name = "imitation/EmptyMaze-v0"
+def empty_maze_10():
+    env_name = "imitation/EmptyMaze10-v0"
     total_timesteps = int(5e5)
     normalize = False
-    rollout_save_n_timesteps = 50000  # Min timesteps saved per file, optional.
+    rollout_save_n_timesteps = 10000  # Min timesteps saved per file, optional.
 
+@expert_demos_ex.named_config
+def empty_maze_4():
+    env_name = "imitation/EmptyMaze4-v0"
+    total_timesteps = int(1e5)
+    normalize = False
+    rollout_save_n_timesteps = 2000  # Min timesteps saved per file, optional.
 
 # Debug configs
 
@@ -169,6 +175,8 @@ def fast():
     max_episode_steps = int(1)
     rollout_save_n_timesteps = 1
     n_episodes_eval = 1
+    num_vec = 1
+    init_rl_kwargs = {"batch_size": 2, "n_epochs": 1, "n_steps": 10}
 
 
 # Shared settings

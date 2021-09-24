@@ -102,11 +102,24 @@ def sparse_reacher():
 
 
 @train_preference_comparisons_ex.named_config
-def empty_maze():
-    env_name = "imitation/EmptyMaze-v0"
-    fragment_length = 5
+def empty_maze_10():
+    env_name = "imitation/EmptyMaze10-v0"
+    fragment_length = 6
+    random_frac = 0.5
+    total_timesteps = int(5e5)
+    total_comparisons = 10000
+    comparisons_per_iteration = 1000
     normalize = False
 
+@train_preference_comparisons_ex.named_config
+def empty_maze_4():
+    env_name = "imitation/EmptyMaze4-v0"
+    fragment_length = 3
+    random_frac = 0.5
+    total_timesteps = int(1e5)
+    total_comparisons = 2000
+    comparisons_per_iteration = 200
+    normalize = False
 
 @train_preference_comparisons_ex.named_config
 def fast():

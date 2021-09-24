@@ -189,9 +189,17 @@ class MazeEnv(BaseEnv):
 
 
 gym.register(
-    "imitation/EmptyMaze-v0",
+    "imitation/EmptyMaze10-v0",
     entry_point=MazeEnv,
     max_episode_steps=20,
+    kwargs = {"size": 10},
+)
+
+gym.register(
+    "imitation/EmptyMaze4-v0",
+    entry_point=MazeEnv,
+    max_episode_steps=8,
+    kwargs = {"size": 4},
 )
 
 
@@ -231,17 +239,5 @@ def use_config(
     @ex.named_config
     def goal():
         env_make_kwargs = {"reward": "goal"}
-        _ = locals()  # make flake8 happy
-        del _
-
-    @ex.named_config
-    def size4():
-        env_make_kwargs = {"size": 4}
-        _ = locals()  # make flake8 happy
-        del _
-
-    @ex.named_config
-    def size10():
-        env_make_kwargs = {"size": 10}
         _ = locals()  # make flake8 happy
         del _

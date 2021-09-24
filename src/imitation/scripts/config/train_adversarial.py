@@ -169,11 +169,16 @@ def pendulum():
 
 
 @train_adversarial_ex.named_config
-def empty_maze():
-    env_name = "imitation/EmptyMaze-v0"
+def empty_maze_10():
+    env_name = "imitation/EmptyMaze10-v0"
     reward_net_cls = reward_nets.ShapedTabularRewardNet
     algorithm_kwargs = {"shared": {"normalize_obs": False, "normalize_reward": False}}
 
+@train_adversarial_ex.named_config
+def empty_maze_4():
+    env_name = "imitation/EmptyMaze4-v0"
+    reward_net_cls = reward_nets.ShapedTabularRewardNet
+    algorithm_kwargs = {"shared": {"normalize_obs": False, "normalize_reward": False}}
 
 # Standard MuJoCo Gym environment named configs
 
