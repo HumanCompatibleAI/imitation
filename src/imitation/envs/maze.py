@@ -72,7 +72,7 @@ class MazeEnv(BaseEnv):
         else:
             raise ValueError(f"Unknown reward type {reward}")
 
-        if shaping == "zero":
+        if shaping == "unshaped":
             pass
         elif shaping == "dense":
             for i, j in itertools.product(range(size), repeat=2):
