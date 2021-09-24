@@ -20,18 +20,27 @@ from imitation.util import logger, util
 ALGORITHM_KWARGS = {
     "airl-ppo": {
         "algorithm_cls": airl.AIRL,
-        "model_class": stable_baselines3.PPO,
-        "policy_class": policies.ActorCriticPolicy,
+        "rl_kwargs": {
+            "model_class": stable_baselines3.PPO,
+            "policy_class": policies.ActorCriticPolicy,
+        },
     },
     "gail-ppo": {
         "algorithm_cls": gail.GAIL,
-        "model_class": stable_baselines3.PPO,
-        "policy_class": policies.ActorCriticPolicy,
+        "rl_kwargs": {
+            "model_class": stable_baselines3.PPO,
+            "policy_class": policies.ActorCriticPolicy,
+        },
     },
     "gail-dqn": {
         "algorithm_cls": gail.GAIL,
-        "model_class": stable_baselines3.DQN,
-        "policy_class": stable_baselines3.dqn.MlpPolicy,
+        "rl_kwargs": {
+            "model_class": stable_baselines3.DQN,
+            "policy_class": stable_baselines3.dqn.MlpPolicy,
+        },
+        "algo_kwargs": {
+            "gen_train_timesteps": 500,
+        },
     },
 }
 IN_CODECOV = "COV_CORE_CONFIG" in os.environ
@@ -57,7 +66,7 @@ def expert_transitions():
 
 @contextlib.contextmanager
 def make_trainer(
-    algorithm_kwargs: Mapping[str, Any],
+    config: Mapping[str, Any],
     tmpdir: str,
     expert_transitions: types.Transitions,
     expert_batch_size: int = 1,
@@ -77,13 +86,14 @@ def make_trainer(
     else:
         expert_data = expert_transitions
 
-    algorithm_kwargs = dict(algorithm_kwargs)
-    _algorithm_cls = algorithm_kwargs.pop("algorithm_cls")
+    config = dict(config)
+    _algorithm_cls = config.pop("algorithm_cls")
     venv = util.make_vec_env(env_name, n_envs=num_envs, parallel=parallel)
-    gen_algo = util.init_rl(venv, verbose=1, **algorithm_kwargs)
+    gen_algo = util.init_rl(venv, verbose=1, **config["rl_kwargs"])
     custom_logger = logger.configure(tmpdir, ["tensorboard", "stdout"])
 
     normalize = isinstance(venv.observation_space, gym.spaces.Box)
+    algo_kwargs = config.get("algo_kwargs", {})
     trainer = _algorithm_cls(
         venv=venv,
         normalize_obs=normalize,
@@ -95,6 +105,7 @@ def make_trainer(
         gen_algo=gen_algo,
         log_dir=tmpdir,
         custom_logger=custom_logger,
+        **algo_kwargs,
     )
 
     try:
@@ -135,8 +146,7 @@ def trainer(request, tmpdir, expert_transitions):
 
 
 def test_train_disc_no_samples_error(trainer: common.AdversarialTrainer):
-    with pytest.raises(RuntimeError, match="No generator samples"):
-        trainer.train_disc()
+    assert trainer.train_disc() is None
 
 
 def test_train_disc_unequal_expert_gen_samples_error(
@@ -207,7 +217,19 @@ def test_train_gen_train_disc_no_crash(
     n_updates: int = 2,
 ) -> None:
     trainer_parametrized.train_gen(n_updates * trainer_parametrized.gen_train_timesteps)
-    trainer_parametrized.train_disc()
+    disc_stats = trainer_parametrized.train_disc()
+    assert disc_stats is not None, "no discriminator updates"
+
+
+def test_no_disc_train_error(tmpdir: str, expert_transitions):
+    config = dict(ALGORITHM_KWARGS["gail-dqn"])
+    # train generator for too little time to ever get complete episode
+    algo_kwargs = dict(config["algo_kwargs"])
+    algo_kwargs["gen_train_timesteps"] = 1
+    config["algo_kwargs"] = algo_kwargs
+    with make_trainer(config, tmpdir, expert_transitions) as trainer:
+        with pytest.raises(ValueError, match="Replay buffer empty.*"):
+            trainer.train(total_timesteps=2)
 
 
 @pytest.fixture
@@ -261,7 +283,7 @@ def _env_name(request):
 
 @pytest.fixture
 def trainer_diverse_env(_algorithm_kwargs, _env_name, tmpdir, expert_transitions):
-    if _algorithm_kwargs["model_class"] == stable_baselines3.DQN:
+    if _algorithm_kwargs["rl_kwargs"]["model_class"] == stable_baselines3.DQN:
         pytest.skip("DQN does not support all environments.")
     with make_trainer(
         _algorithm_kwargs,

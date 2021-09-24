@@ -303,7 +303,7 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
         *,
         expert_samples: Optional[Mapping] = None,
         gen_samples: Optional[Mapping] = None,
-    ) -> Mapping[str, float]:
+    ) -> Optional[Mapping[str, float]]:
         """Perform a single discriminator update, optionally using provided samples.
 
         Args:
@@ -331,6 +331,8 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
                 gen_samples=gen_samples,
                 expert_samples=expert_samples,
             )
+            if batch is None:  # no data in replay buffer yet
+                return None
             disc_logits = self.logits_gen_is_high(
                 batch["state"],
                 batch["action"],
@@ -388,17 +390,6 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
             learn_kwargs = {}
 
         with self.logger.accumulate_means("gen"):
-            # Because we use reset_num_timesteps=False (to get logging right),
-            # SB3 doesn't automatically reset the environment on .learn().
-            # This causes the following issue: if the previous learning cycle leaves
-            # unfinished trajectories, then we will collect the remainder of those
-            # trajectories during this cycle. They will therefore be incomplete episodes
-            # (because they don't start in the initial state) and in particular will
-            # be shorter, which raises the variable horizon check error.
-            # TODO(ejnnr): the same issue occurs in preference comparisons and I'm
-            # not sure that resetting is the "correct" solution. Better may be to just
-            # not collect partial trajectories when calling pop_trajectories?
-            self.venv.reset()
             self.gen_algo.learn(
                 total_timesteps=total_timesteps,
                 reset_num_timesteps=False,
@@ -407,10 +398,11 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
             )
             self._global_step += 1
 
-        gen_trajs = self.venv_buffering.pop_trajectories()
+        gen_trajs = self.venv_buffering.pop_finished_trajectories()
         self._check_fixed_horizon(gen_trajs)
-        gen_samples = rollout.flatten_trajectories_with_rew(gen_trajs)
-        self._gen_replay_buffer.store(gen_samples)
+        if gen_trajs:  # at least one complete trajectory
+            gen_samples = rollout.flatten_trajectories_with_rew(gen_trajs)
+            self._gen_replay_buffer.store(gen_samples)
 
     def train(
         self,
@@ -446,6 +438,13 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
                 callback(r)
             self.logger.dump(self._global_step)
 
+        if self._gen_replay_buffer.size() == 0:
+            # sanity check to avoid silent discriminator non-training
+            raise ValueError(
+                "Replay buffer empty even at training end: "
+                "total_timesteps < episode length?",
+            )
+
     def _torchify_array(self, ndarray: Optional[np.ndarray]) -> Optional[th.Tensor]:
         if ndarray is not None:
             return th.as_tensor(ndarray, device=self.reward_train.device)
@@ -455,7 +454,7 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
         *,
         gen_samples: Optional[Mapping] = None,
         expert_samples: Optional[Mapping] = None,
-    ) -> Mapping[str, th.Tensor]:
+    ) -> Optional[Mapping[str, th.Tensor]]:
         """Build and return training batch for the next discriminator update.
 
         Args:
@@ -467,7 +466,6 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
             and policy log-probabilities.
 
         Raises:
-            RuntimeError: Empty generator replay buffer.
             ValueError: `gen_samples` or `expert_samples` batch size is
                 different from `self.demo_batch_size`.
         """
@@ -476,9 +474,7 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
 
         if gen_samples is None:
             if self._gen_replay_buffer.size() == 0:
-                raise RuntimeError(
-                    "No generator samples for training. " "Call `train_gen()` first.",
-                )
+                return None  # no data in replay buffer yet
             gen_samples = self._gen_replay_buffer.sample(self.demo_batch_size)
             gen_samples = types.dataclass_quick_asdict(gen_samples)
 

@@ -87,16 +87,20 @@ class BufferingWrapper(VecEnvWrapper):
                 self._traj_accum.add_step({"obs": traj.obs[-1]}, key=i)
         return trajs
 
-    def pop_trajectories(self) -> Sequence[types.TrajectoryWithRew]:
-        """Pops recorded trajectories as a list of TrajectoryWithRew instances."""
-        if self.n_transitions == 0:
-            return []
-        partial_trajs = self._finish_partial_trajectories()
-        self._trajectories.extend(partial_trajs)
+    def pop_finished_trajectories(self) -> Sequence[types.TrajectoryWithRew]:
+        """Pops recorded complete trajectories."""
         trajectories = self._trajectories
         self._trajectories = []
         self.n_transitions = 0
         return trajectories
+
+    def pop_trajectories(self) -> Sequence[types.TrajectoryWithRew]:
+        """Pops recorded trajectories."""
+        if self.n_transitions == 0:
+            return []
+        partial_trajs = self._finish_partial_trajectories()
+        self._trajectories.extend(partial_trajs)
+        return self.pop_finished_trajectories()
 
     def pop_transitions(self) -> types.TransitionsWithRew:
         """Pops recorded transitions, returning them as an instance of Transitions.

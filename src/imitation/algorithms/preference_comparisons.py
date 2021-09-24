@@ -163,22 +163,10 @@ class AgentTrainer(TrajectoryGenerator):
                 f"There are {n_transitions} transitions left in the buffer. "
                 "Call AgentTrainer.sample() first to clear them.",
             )
-        # Because we use reset_num_timesteps=False (to get logging right),
-        # SB3 doesn't automatically reset the environment on .learn().
-        # This causes the following issue: if the previous learning cycle leaves
-        # unfinished trajectories, then we will collect the remainder of those
-        # trajectories during this cycle. They will therefore be incomplete episodes
-        # (because they don't start in the initial state) and in particular will
-        # be shorter, which raises the variable horizon check error.
-        # I think avoiding a reset() here would be tricky (assuming we even want to)
-        # because it would be hard to set a hypothetical Trajectory.initial attribute
-        # correctly like we do for Trajectory.terminal.
-        self.venv.reset()
         self.algorithm.learn(total_timesteps=steps, reset_num_timesteps=False, **kwargs)
 
     def sample(self, steps: int) -> Sequence[types.TrajectoryWithRew]:
-        # TODO(adam): should we discard incomplete trajectories?
-        trajectories = self.buffering_wrapper.pop_trajectories()
+        trajectories = self.buffering_wrapper.pop_finished_trajectories()
         # We typically have more trajectories than are needed.
         # In that case, we use the final trajectories because
         # they are the ones with the most relevant version of
@@ -193,20 +181,25 @@ class AgentTrainer(TrajectoryGenerator):
                 f"Requested {steps} transitions but only {avail_steps} in buffer. "
                 f"Sampling {steps - avail_steps} additional transitions.",
             )
+            # TODO(adam): make this over-sample less often?
+            # We need to get `min_timesteps` of new *completed* trajectories, but we
+            # already have some partial trajectories that means we may need to collect
+            # less than `min_timesteps` of new *timesteps*. However, we don't know the
+            # exact number as it depends on when the episodes end.
             sample_until = rollout.make_sample_until(
                 min_timesteps=steps - avail_steps,
                 min_episodes=None,
             )
             # Important note: we don't want to use the trajectories returned
-            # here because their rewards are the ones provided by the reward
-            # model! Instead, we collect the trajectories using the BufferingWrapper,
-            # which have the ground truth environment reward.
+            # here because a) they'll miss any steps already taken in partial
+            # trajectories; and b) their rewards are the ones provided by the reward
+            # model! Instead, we collect the trajectories using the BufferingWrapper.
             rollout.generate_trajectories(
                 self.algorithm,
                 self.venv,
                 sample_until=sample_until,
             )
-            additional_trajectories = self.buffering_wrapper.pop_trajectories()
+            additional_trajectories = self.buffering_wrapper.pop_finished_trajectories()
 
             trajectories = list(trajectories) + list(additional_trajectories)
 
