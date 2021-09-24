@@ -435,13 +435,6 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
                 callback(r)
             self.logger.dump(self._global_step)
 
-        if self._gen_replay_buffer.size() == 0:
-            # sanity check to avoid silent discriminator non-training
-            raise ValueError(
-                "Replay buffer empty even at training end: "
-                "total_timesteps < episode length?",
-            )
-
     def _torchify_array(self, ndarray: Optional[np.ndarray]) -> Optional[th.Tensor]:
         if ndarray is not None:
             return th.as_tensor(ndarray, device=self.reward_train.device)
@@ -463,6 +456,7 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
             and policy log-probabilities.
 
         Raises:
+            RuntimeError: Empty generator replay buffer.
             ValueError: `gen_samples` or `expert_samples` batch size is
                 different from `self.demo_batch_size`.
         """
@@ -474,7 +468,6 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
                 raise RuntimeError(
                     "No generator samples for training. " "Call `train_gen()` first.",
                 )
-
             gen_samples = self._gen_replay_buffer.sample(self.demo_batch_size)
             gen_samples = types.dataclass_quick_asdict(gen_samples)
 
