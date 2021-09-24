@@ -46,7 +46,7 @@ class MazeEnv(BaseEnv):
         size: int = 10,
         random_start: bool = True,
         reward: str = "goal",
-        shaping: str = "zero",
+        shaping: str = "unshaped",
         gamma: float = 0.99,
     ):
         # among other things, this calls self.seed() so that the self.rng
@@ -226,7 +226,7 @@ def use_config(
 
     @ex.named_config
     def unshaped():
-        env_make_kwargs = {"shaping": "zero"}
+        env_make_kwargs = {"shaping": "unshaped"}
         _ = locals()  # make flake8 happy
         del _
 
