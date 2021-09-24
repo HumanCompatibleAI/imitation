@@ -4,12 +4,14 @@ import os
 
 import sacred
 
+from imitation.envs import maze
 from imitation.policies import base
 from imitation.rewards import reward_nets
 from imitation.scripts.config.common import DEFAULT_INIT_RL_KWARGS
 from imitation.util import util
 
 train_adversarial_ex = sacred.Experiment("train_adversarial", interactive=True)
+maze.use_config(train_adversarial_ex)
 
 
 @train_adversarial_ex.config
@@ -169,8 +171,7 @@ def pendulum():
 @train_adversarial_ex.named_config
 def empty_maze():
     env_name = "imitation/EmptyMaze-v0"
-    rollout_hint = "empty_maze"
-    reward_net_cls = reward_nets.TabularRewardNet
+    reward_net_cls = reward_nets.ShapedTabularRewardNet
     algorithm_kwargs = {"shared": {"normalize_obs": False, "normalize_reward": False}}
 
 

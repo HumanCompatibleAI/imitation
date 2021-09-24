@@ -4,10 +4,12 @@ import os
 
 import sacred
 
+from imitation.envs import maze
 from imitation.scripts.config.common import DEFAULT_INIT_RL_KWARGS
 from imitation.util import util
 
 expert_demos_ex = sacred.Experiment("expert_demos")
+maze.use_config(expert_demos_ex)
 
 
 @expert_demos_ex.config
@@ -154,7 +156,7 @@ def empty_maze():
     env_name = "imitation/EmptyMaze-v0"
     total_timesteps = int(5e5)
     normalize = False
-    rollout_save_n_timesteps = 10000  # Min timesteps saved per file, optional.
+    rollout_save_n_timesteps = 50000  # Min timesteps saved per file, optional.
 
 
 # Debug configs
@@ -165,6 +167,8 @@ def fast():
     """Intended for testing purposes: small # of updates, ends quickly."""
     total_timesteps = int(1)
     max_episode_steps = int(1)
+    rollout_save_n_timesteps = 1
+    n_episodes_eval = 1
 
 
 # Shared settings

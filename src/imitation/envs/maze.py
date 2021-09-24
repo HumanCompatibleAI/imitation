@@ -4,6 +4,7 @@ from typing import List
 
 import gym
 import numpy as np
+import sacred
 from gym.spaces import Discrete
 from mazelab import BaseEnv, BaseMaze
 from mazelab import DeepMindColor as color
@@ -54,7 +55,7 @@ class MazeEnv(BaseEnv):
         x = np.zeros((size, size))
         self.size = size
         self.start_idx = [[1, 1]]
-        self.goal_idx = [[8, 8]]
+        self.goal_idx = [[size - 2, size - 2]]
         self.random_start = random_start
         self.gamma = gamma
         self.rewards = np.zeros((size ** 2, size ** 2))
@@ -62,9 +63,11 @@ class MazeEnv(BaseEnv):
         if reward == "goal":
             self.rewards[goal_pos, :] = 1.0
         elif reward == "path":
-            self.rewards[:, :] = -0.2
+            self.rewards[:, :] = -0.4
             diagonal = size * np.arange(size) + np.arange(size)
+            off_diagonal = diagonal[:-1] + 1
             self.rewards[diagonal, :] = 0.0
+            self.rewards[off_diagonal, :] = 0.0
             self.rewards[goal_pos, :] = 1.0
         else:
             raise ValueError(f"Unknown reward type {reward}")
@@ -75,30 +78,29 @@ class MazeEnv(BaseEnv):
             for i, j in itertools.product(range(size), repeat=2):
                 pos = self._to_idx((i, j))
 
-                current_potential = -(
+                potential = -(
                     abs(i - self.goal_idx[0][0]) + abs(j - self.goal_idx[0][1])
                 )
 
-                next_potential = -(
-                    abs(i - self.goal_idx[0][0]) + abs(j - self.goal_idx[0][1])
-                )
-
-                self.rewards[pos, :] -= current_potential
-                self.rewards[:, pos] += self.gamma * next_potential
+                self.rewards[pos, :] -= potential
+                self.rewards[:, pos] += self.gamma * potential
         elif shaping == "antidense":
             for i, j in itertools.product(range(size), repeat=2):
                 pos = self._to_idx((i, j))
 
-                current_potential = abs(i - self.goal_idx[0][0]) + abs(
+                potential = abs(i - self.goal_idx[0][0]) + abs(
                     j - self.goal_idx[0][1]
                 )
 
-                next_potential = abs(i - self.goal_idx[0][0]) + abs(
-                    j - self.goal_idx[0][1]
-                )
+                self.rewards[pos, :] -= potential
+                self.rewards[:, pos] += self.gamma * potential
+        elif shaping == "random":
+            potential = np.random.randn(size ** 2)
+            for i, j in itertools.product(range(size), repeat=2):
+                pos = self._to_idx((i, j))
 
-                self.rewards[pos, :] -= current_potential
-                self.rewards[:, pos] += self.gamma * next_potential
+                self.rewards[pos, :] -= potential[pos]
+                self.rewards[:, pos] += self.gamma * potential[pos]
         else:
             raise ValueError(f"Unknown shaping type {shaping}")
 
@@ -192,30 +194,54 @@ gym.register(
     max_episode_steps=20,
 )
 
-gym.register(
-    "imitation/EmptyMazeDense-v0",
-    entry_point=MazeEnv,
-    max_episode_steps=20,
-    kwargs={"shaping": "dense"},
-)
 
-gym.register(
-    "imitation/EmptyMazeAntiDense-v0",
-    entry_point=MazeEnv,
-    max_episode_steps=20,
-    kwargs={"shaping": "antidense"},
-)
+def use_config(
+    ex: sacred.Experiment,
+) -> None:
+    @ex.named_config
+    def dense():
+        env_make_kwargs = {"shaping": "dense"}
+        _ = locals()  # make flake8 happy
+        del _
 
-gym.register(
-    "imitation/EmptyMazePath-v0",
-    entry_point=MazeEnv,
-    max_episode_steps=20,
-    kwargs={"reward": "path"},
-)
+    @ex.named_config
+    def antidense():
+        env_make_kwargs = {"shaping": "antidense"}
+        _ = locals()  # make flake8 happy
+        del _
 
-gym.register(
-    "imitation/EmptyMazePathDense-v0",
-    entry_point=MazeEnv,
-    max_episode_steps=20,
-    kwargs={"reward": "path", "shaping": "dense"},
-)
+    @ex.named_config
+    def random():
+        env_make_kwargs = {"shaping": "random"}
+        _ = locals()  # make flake8 happy
+        del _
+
+    @ex.named_config
+    def unshaped():
+        env_make_kwargs = {"shaping": "zero"}
+        _ = locals()  # make flake8 happy
+        del _
+
+    @ex.named_config
+    def path():
+        env_make_kwargs = {"reward": "path"}
+        _ = locals()  # make flake8 happy
+        del _
+
+    @ex.named_config
+    def goal():
+        env_make_kwargs = {"reward": "goal"}
+        _ = locals()  # make flake8 happy
+        del _
+
+    @ex.named_config
+    def size4():
+        env_make_kwargs = {"size": 4}
+        _ = locals()  # make flake8 happy
+        del _
+
+    @ex.named_config
+    def size10():
+        env_make_kwargs = {"size": 10}
+        _ = locals()  # make flake8 happy
+        del _

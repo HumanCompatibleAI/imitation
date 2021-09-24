@@ -4,12 +4,15 @@ import os
 
 import sacred
 
+from imitation.envs import maze
 from imitation.util import util
 
 train_preference_comparisons_ex = sacred.Experiment(
     "train_preference_comparisons",
     interactive=True,
 )
+
+maze.use_config(train_preference_comparisons_ex)
 
 
 @train_preference_comparisons_ex.config
@@ -101,15 +104,7 @@ def sparse_reacher():
 @train_preference_comparisons_ex.named_config
 def empty_maze():
     env_name = "imitation/EmptyMaze-v0"
-    fragment_length = 10
-    normalize = False
-
-
-@train_preference_comparisons_ex.named_config
-def empty_maze_dense():
-    env_name = "imitation/EmptyMazeDense-v0"
-    reward_net_kwargs = {"use_next_state": True}
-    fragment_length = 10
+    fragment_length = 5
     normalize = False
 
 

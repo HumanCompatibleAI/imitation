@@ -417,7 +417,7 @@ class TabularRewardNet(RewardNet):
         observation_space: gym.Space,
         action_space: gym.Space,
         normalize_images: bool = True,
-        use_next_state: bool = False,
+        use_next_state: bool = True,
         use_action: bool = False,
     ):
         if not isinstance(observation_space, gym.spaces.Discrete):
@@ -468,3 +468,51 @@ class TabularRewardNet(RewardNet):
 
         assert state_th.shape == next_state_th.shape
         return state_th, action_th, next_state_th, done_th
+
+class TabularPotential(nn.Module):
+    def __init__(self, n: int):
+        super().__init__()
+        self.potential_weights = nn.Parameter(th.zeros(n))
+
+    def forward(self, states):
+        return self.potential_weights[states]
+
+class ShapedTabularRewardNet(ShapedRewardNet):
+    """Lookup table RewardNet for discrete state spaces with shaping."""
+
+    def __init__(
+        self,
+        observation_space: gym.Space,
+        action_space: gym.Space,
+        normalize_images: bool = True,
+        use_next_state: bool = False,
+        use_action: bool = False,
+        discount_factor: float = 0.99,
+    ):
+        base = TabularRewardNet(
+            observation_space,
+            action_space,
+            normalize_images,
+            use_next_state,
+            use_action,
+        )
+
+        potential = TabularPotential(observation_space.n)
+
+        super().__init__(
+            observation_space,
+            action_space,
+            base,
+            potential,
+            discount_factor,
+            normalize_images,
+        )
+
+    def preprocess(
+        self,
+        state: np.ndarray,
+        action: np.ndarray,
+        next_state: np.ndarray,
+        done: np.ndarray,
+    ) -> Tuple[th.Tensor, th.Tensor, th.Tensor, th.Tensor]:
+        return self.base.preprocess(state, action, next_state, done)
