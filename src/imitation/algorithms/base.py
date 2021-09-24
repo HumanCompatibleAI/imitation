@@ -71,7 +71,7 @@ class BaseImitationAlgorithm(abc.ABC):
         cloning), then just don't call this method.
 
         Args:
-            trajs: An iterable sequence of trajectories.
+            horizons: An iterable sequence of episode lengths.
 
         Raises:
             ValueError: The length of trajectories in trajs differs from one

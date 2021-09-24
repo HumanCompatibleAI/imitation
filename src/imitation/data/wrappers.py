@@ -64,8 +64,8 @@ class BufferingWrapper(VecEnvWrapper):
         self.n_transitions += self.num_envs
         self._timesteps += 1
         ep_lens = self._timesteps[dones]
-        if ep_lens:
-            self._ep_lens += ep_lens
+        if len(ep_lens) > 0:
+            self._ep_lens += list(ep_lens)
         self._timesteps[dones] = 0
 
         finished_trajs = self._traj_accum.add_steps_and_auto_finish(
@@ -103,10 +103,12 @@ class BufferingWrapper(VecEnvWrapper):
     ) -> Tuple[Sequence[types.TrajectoryWithRew], Sequence[int]]:
         """Pops recorded complete trajectories `trajs` and episode lengths `ep_lens`.
 
-        Note episode length may be longer than the length of the trajectory,
-        if a trajectory fragment was previously popped. Moreover, `len(ep_lens)` ma
-        be less than `len(trajs)` as episode length is only returned for terminal
-        trajectories, and not for fragments returned in this call.
+        Returns:
+            A tuple `(trajs, ep_lens)` where `trajs` is a sequence of trajectories
+            including the terminal state (but possibly missing initial states, if
+            `pop_trajectories` was previously called) and `ep_lens` is a sequence
+            of episode lengths. Note the episode length will be longer than the
+            trajectory length when the trajectory misses initial states.
         """
         trajectories = self._trajectories
         ep_lens = self._ep_lens
@@ -120,7 +122,12 @@ class BufferingWrapper(VecEnvWrapper):
     ) -> Tuple[Sequence[types.TrajectoryWithRew], Sequence[int]]:
         """Pops recorded trajectories `trajs` and episode lengths `ep_lens`.
 
-        See `pop_finished_trajectories` for details on `ep_lens`.
+        Returns:
+            A tuple `(trajs, ep_lens)`. `trajs` is a sequence of trajectory fragments,
+            consisting of data collected after the last call to `pop_trajectories`.
+            They may miss initial states (if `pop_trajectories` previously returned
+            a fragment for that episode), and terminal states (if the episode has
+            yet to complete). `ep_lens` is the total length of completed episodes.
         """
         if self.n_transitions == 0:
             return [], []
