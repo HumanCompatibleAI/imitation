@@ -38,9 +38,6 @@ ALGORITHM_KWARGS = {
             "model_class": stable_baselines3.DQN,
             "policy_class": stable_baselines3.dqn.MlpPolicy,
         },
-        "algo_kwargs": {
-            "gen_train_timesteps": 500,
-        },
     },
 }
 IN_CODECOV = "COV_CORE_CONFIG" in os.environ
@@ -146,7 +143,8 @@ def trainer(request, tmpdir, expert_transitions):
 
 
 def test_train_disc_no_samples_error(trainer: common.AdversarialTrainer):
-    assert trainer.train_disc() is None
+    with pytest.raises(RuntimeError, match="No generator samples"):
+        trainer.train_disc()
 
 
 def test_train_disc_unequal_expert_gen_samples_error(
@@ -217,19 +215,7 @@ def test_train_gen_train_disc_no_crash(
     n_updates: int = 2,
 ) -> None:
     trainer_parametrized.train_gen(n_updates * trainer_parametrized.gen_train_timesteps)
-    disc_stats = trainer_parametrized.train_disc()
-    assert disc_stats is not None, "no discriminator updates"
-
-
-def test_no_disc_train_error(tmpdir: str, expert_transitions):
-    config = dict(ALGORITHM_KWARGS["gail-dqn"])
-    # train generator for too little time to ever get complete episode
-    algo_kwargs = dict(config["algo_kwargs"])
-    algo_kwargs["gen_train_timesteps"] = 1
-    config["algo_kwargs"] = algo_kwargs
-    with make_trainer(config, tmpdir, expert_transitions) as trainer:
-        with pytest.raises(ValueError, match="Replay buffer empty.*"):
-            trainer.train(total_timesteps=2)
+    trainer_parametrized.train_disc()
 
 
 @pytest.fixture

@@ -166,7 +166,7 @@ class AgentTrainer(TrajectoryGenerator):
         self.algorithm.learn(total_timesteps=steps, reset_num_timesteps=False, **kwargs)
 
     def sample(self, steps: int) -> Sequence[types.TrajectoryWithRew]:
-        trajectories = self.buffering_wrapper.pop_finished_trajectories()
+        trajectories, _ = self.buffering_wrapper.pop_finished_trajectories()
         # We typically have more trajectories than are needed.
         # In that case, we use the final trajectories because
         # they are the ones with the most relevant version of
@@ -181,27 +181,22 @@ class AgentTrainer(TrajectoryGenerator):
                 f"Requested {steps} transitions but only {avail_steps} in buffer. "
                 f"Sampling {steps - avail_steps} additional transitions.",
             )
-            # TODO(adam): make this over-sample less often?
-            # We need to get `min_timesteps` of new *completed* trajectories, but we
-            # already have some partial trajectories that means we may need to collect
-            # less than `min_timesteps` of new *timesteps*. However, we don't know the
-            # exact number as it depends on when the episodes end.
             sample_until = rollout.make_sample_until(
                 min_timesteps=steps - avail_steps,
                 min_episodes=None,
             )
             # Important note: we don't want to use the trajectories returned
-            # here because a) they'll miss any steps already taken in partial
-            # trajectories; and b) their rewards are the ones provided by the reward
-            # model! Instead, we collect the trajectories using the BufferingWrapper.
+            # here because 1) they might miss initial timesteps taken by the RL agent
+            # and 2) their rewards are the ones provided by the reward model!
+            # Instead, we collect the trajectories using the BufferingWrapper.
             rollout.generate_trajectories(
                 self.algorithm,
                 self.venv,
                 sample_until=sample_until,
             )
-            additional_trajectories = self.buffering_wrapper.pop_finished_trajectories()
+            additional_trajs, _ = self.buffering_wrapper.pop_finished_trajectories()
 
-            trajectories = list(trajectories) + list(additional_trajectories)
+            trajectories = list(trajectories) + list(additional_trajs)
 
         return _get_trajectories(trajectories, steps)
 
@@ -860,7 +855,10 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
             )
             self.logger.log(f"Collecting {num_steps} trajectory steps")
             trajectories = self.trajectory_generator.sample(num_steps)
-            self._check_fixed_horizon(trajectories)
+            # This assumes there are no fragments missing initial timesteps
+            # (but allows for fragments missing terminal timesteps).
+            horizons = (len(traj) for traj in trajectories if traj.terminal)
+            self._check_fixed_horizon(horizons)
             self.logger.log("Creating fragment pairs")
             fragments = self.fragmenter(trajectories, self.fragment_length, num_pairs)
             with self.logger.accumulate_means("preferences"):

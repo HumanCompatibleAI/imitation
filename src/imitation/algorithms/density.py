@@ -303,8 +303,8 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
             callback=self.wrapper_callback,
             **kwargs,
         )
-        trajs = self.buffering_wrapper.pop_trajectories()
-        self._check_fixed_horizon(trajs)
+        trajs, ep_lens = self.buffering_wrapper.pop_trajectories()
+        self._check_fixed_horizon(ep_lens)
 
     def test_policy(self, *, n_trajectories: int = 10, true_reward: bool = True):
         """Test current imitation policy on environment & give some rollout stats.
@@ -323,6 +323,6 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
             self.venv if true_reward else self.venv_wrapped,
             sample_until=rollout.make_min_episodes(n_trajectories),
         )
-        self._check_fixed_horizon(trajs)
+        self._check_fixed_horizon((len(traj) for traj in trajs))
         reward_stats = rollout.rollout_stats(trajs)
         return reward_stats

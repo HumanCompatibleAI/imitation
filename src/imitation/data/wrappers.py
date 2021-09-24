@@ -1,6 +1,6 @@
 """Environment wrappers for collecting rollouts."""
 
-from typing import Sequence
+from typing import Sequence, Tuple
 
 import gym
 import numpy as np
@@ -26,9 +26,11 @@ class BufferingWrapper(VecEnvWrapper):
         super().__init__(venv)
         self.error_on_premature_reset = error_on_premature_reset
         self._trajectories = []
+        self._ep_lens = []
         self._init_reset = False
         self._traj_accum = None
         self._saved_acts = None
+        self._timesteps = None
         self.n_transitions = None
 
     def reset(self, **kwargs):
@@ -44,6 +46,7 @@ class BufferingWrapper(VecEnvWrapper):
         self._traj_accum = rollout.TrajectoryAccumulator()
         for i, ob in enumerate(obs):
             self._traj_accum.add_step({"obs": ob}, key=i)
+        self._timesteps = np.zeros((len(obs),), dtype=int)
         return obs
 
     def step_async(self, actions):
@@ -57,6 +60,14 @@ class BufferingWrapper(VecEnvWrapper):
         assert self._saved_acts is not None
         acts, self._saved_acts = self._saved_acts, None
         obs, rews, dones, infos = self.venv.step_wait()
+
+        self.n_transitions += self.num_envs
+        self._timesteps += 1
+        ep_lens = self._timesteps[dones]
+        if ep_lens:
+            self._ep_lens += ep_lens
+        self._timesteps[dones] = 0
+
         finished_trajs = self._traj_accum.add_steps_and_auto_finish(
             acts,
             obs,
@@ -65,7 +76,7 @@ class BufferingWrapper(VecEnvWrapper):
             infos,
         )
         self._trajectories.extend(finished_trajs)
-        self.n_transitions += self.num_envs
+
         return obs, rews, dones, infos
 
     def _finish_partial_trajectories(self) -> Sequence[types.TrajectoryWithRew]:
@@ -87,17 +98,32 @@ class BufferingWrapper(VecEnvWrapper):
                 self._traj_accum.add_step({"obs": traj.obs[-1]}, key=i)
         return trajs
 
-    def pop_finished_trajectories(self) -> Sequence[types.TrajectoryWithRew]:
-        """Pops recorded complete trajectories."""
-        trajectories = self._trajectories
-        self._trajectories = []
-        self.n_transitions = 0
-        return trajectories
+    def pop_finished_trajectories(
+        self,
+    ) -> Tuple[Sequence[types.TrajectoryWithRew], Sequence[int]]:
+        """Pops recorded complete trajectories `trajs` and episode lengths `ep_lens`.
 
-    def pop_trajectories(self) -> Sequence[types.TrajectoryWithRew]:
-        """Pops recorded trajectories."""
+        Note episode length may be longer than the length of the trajectory,
+        if a trajectory fragment was previously popped. Moreover, `len(ep_lens)` ma
+        be less than `len(trajs)` as episode length is only returned for terminal
+        trajectories, and not for fragments returned in this call.
+        """
+        trajectories = self._trajectories
+        ep_lens = self._ep_lens
+        self._trajectories = []
+        self._ep_lens = []
+        self.n_transitions = 0
+        return trajectories, ep_lens
+
+    def pop_trajectories(
+        self,
+    ) -> Tuple[Sequence[types.TrajectoryWithRew], Sequence[int]]:
+        """Pops recorded trajectories `trajs` and episode lengths `ep_lens`.
+
+        See `pop_finished_trajectories` for details on `ep_lens`.
+        """
         if self.n_transitions == 0:
-            return []
+            return [], []
         partial_trajs = self._finish_partial_trajectories()
         self._trajectories.extend(partial_trajs)
         return self.pop_finished_trajectories()
@@ -118,7 +144,7 @@ class BufferingWrapper(VecEnvWrapper):
             raise RuntimeError("Called pop_transitions on an empty BufferingWrapper")
         # make a copy for the assert later
         n_transitions = self.n_transitions
-        trajectories = self.pop_trajectories()
+        trajectories, _ = self.pop_trajectories()
         transitions = rollout.flatten_trajectories_with_rew(trajectories)
         assert len(transitions.obs) == n_transitions
         return transitions

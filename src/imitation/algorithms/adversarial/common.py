@@ -331,8 +331,6 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
                 gen_samples=gen_samples,
                 expert_samples=expert_samples,
             )
-            if batch is None:  # no data in replay buffer yet
-                return None
             disc_logits = self.logits_gen_is_high(
                 batch["state"],
                 batch["action"],
@@ -398,11 +396,10 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
             )
             self._global_step += 1
 
-        gen_trajs = self.venv_buffering.pop_finished_trajectories()
-        self._check_fixed_horizon(gen_trajs)
-        if gen_trajs:  # at least one complete trajectory
-            gen_samples = rollout.flatten_trajectories_with_rew(gen_trajs)
-            self._gen_replay_buffer.store(gen_samples)
+        gen_trajs, ep_lens = self.venv_buffering.pop_trajectories()
+        self._check_fixed_horizon(ep_lens)
+        gen_samples = rollout.flatten_trajectories_with_rew(gen_trajs)
+        self._gen_replay_buffer.store(gen_samples)
 
     def train(
         self,
@@ -454,7 +451,7 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
         *,
         gen_samples: Optional[Mapping] = None,
         expert_samples: Optional[Mapping] = None,
-    ) -> Optional[Mapping[str, th.Tensor]]:
+    ) -> Mapping[str, th.Tensor]:
         """Build and return training batch for the next discriminator update.
 
         Args:
@@ -474,7 +471,10 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
 
         if gen_samples is None:
             if self._gen_replay_buffer.size() == 0:
-                return None  # no data in replay buffer yet
+                raise RuntimeError(
+                    "No generator samples for training. " "Call `train_gen()` first.",
+                )
+
             gen_samples = self._gen_replay_buffer.sample(self.demo_batch_size)
             gen_samples = types.dataclass_quick_asdict(gen_samples)
 

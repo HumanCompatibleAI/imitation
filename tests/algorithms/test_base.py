@@ -30,24 +30,20 @@ def gen_trajectories(
 def test_check_fixed_horizon(custom_logger):
     """Tests check for fixed horizon catches trajectories of varying lengths."""
     algo = base.BaseImitationAlgorithm(custom_logger=custom_logger)
-    algo._check_fixed_horizon(trajs=[])
+    algo._check_fixed_horizon([])
     assert algo._horizon is None
-    algo._check_fixed_horizon(trajs=gen_trajectories([5], [True]))
+    algo._check_fixed_horizon([5])
     assert algo._horizon == 5
-    algo._check_fixed_horizon(trajs=gen_trajectories([5], [True]))
-    algo._check_fixed_horizon(trajs=[])
-    algo._check_fixed_horizon(trajs=gen_trajectories([5, 5, 5], [True, True, True]))
+    algo._check_fixed_horizon([5])
+    algo._check_fixed_horizon([])
+    algo._check_fixed_horizon([5, 5, 5])
 
     with pytest.raises(ValueError, match="Episodes of different length.*"):
-        algo._check_fixed_horizon(trajs=gen_trajectories([4], [True]))
+        algo._check_fixed_horizon([4])
     with pytest.raises(ValueError, match="Episodes of different length.*"):
-        algo._check_fixed_horizon(trajs=gen_trajectories([6], [True]))
+        algo._check_fixed_horizon([6])
     with pytest.raises(ValueError, match="Episodes of different length.*"):
-        algo._check_fixed_horizon(trajs=gen_trajectories([1], [True]))
-
-    algo._check_fixed_horizon(trajs=gen_trajectories([4, 6, 1], [False, False, False]))
-    algo._check_fixed_horizon(trajs=gen_trajectories([42], [False]))
-    algo._check_fixed_horizon(trajs=gen_trajectories([5], [True]))
+        algo._check_fixed_horizon([1])
     assert algo._horizon == 5
 
 
@@ -57,9 +53,9 @@ def test_check_fixed_horizon_flag(custom_logger):
         custom_logger=custom_logger,
         allow_variable_horizon=True,
     )
-    algo._check_fixed_horizon(trajs=gen_trajectories([5], [True]))
-    algo._check_fixed_horizon(trajs=gen_trajectories([42], [True]))
-    algo._check_fixed_horizon(trajs=gen_trajectories([5, 42], [True, True]))
+    algo._check_fixed_horizon([5])
+    algo._check_fixed_horizon([42])
+    algo._check_fixed_horizon([5, 42])
     assert algo._horizon is None
 
 

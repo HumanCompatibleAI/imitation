@@ -64,7 +64,7 @@ class BaseImitationAlgorithm(abc.ABC):
     def logger(self, value: imit_logger.HierarchicalLogger) -> None:
         self._logger = value
 
-    def _check_fixed_horizon(self, trajs: Iterable[types.Trajectory]) -> None:
+    def _check_fixed_horizon(self, horizons: Iterable[int]) -> None:
         """Checks that `trajs` has fixed episode length and equal to prior calls.
 
         If algorithm is safe to use with variable horizon episodes (e.g. behavioral
@@ -81,7 +81,7 @@ class BaseImitationAlgorithm(abc.ABC):
             return
 
         # horizons = all horizons seen so far (including trajs)
-        horizons = set(len(traj) for traj in trajs if traj.terminal)
+        horizons = set(horizons)
         if self._horizon is not None:
             horizons.add(self._horizon)
 
