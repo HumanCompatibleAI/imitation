@@ -20,11 +20,11 @@ def train_defaults():
     env_name = "seals/CartPole-v0"  # environment to train on
     env_make_kwargs = {}  # The kwargs passed to `spec.make`.
 
-    fragment_length = 50  # timesteps per fragment used for comparisons
+    fragment_length = 20  # timesteps per fragment used for comparisons
     total_timesteps = int(1e6)  # total number of environment timesteps
-    total_comparisons = 10000  # total number of comparisons to elicit
+    total_comparisons = 5000  # total number of comparisons to elicit
     # comparisons to gather before switching back to agent training
-    comparisons_per_iteration = 500
+    comparisons_per_iteration = 300
     # factor by which to oversample transitions before creating fragments
     transition_oversampling = 1
     initial_comparison_fraction = 0.1
@@ -67,6 +67,23 @@ def paths(env_name, log_root):
         util.make_unique_timestamp(),
     )
 
+@train_preference_comparisons_ex.named_config
+def good(fragment_length, total_comparisons, comparisons_per_iteration):
+    fragment_length = fragment_length // 2
+    total_comparisons *= 2
+    comparisons_per_iteration *= 2
+    gatherer_kwargs = {"sample": False}
+
+@train_preference_comparisons_ex.named_config
+def medium():
+    gatherer_kwargs = {"sample": False}
+
+@train_preference_comparisons_ex.named_config
+def bad(fragment_length, total_comparisons, comparisons_per_iteration):
+    fragment_length *= 4
+    total_comparisons = total_comparisons // 2
+    comparisons_per_iteration = comparisons_per_iteration // 2
+    gatherer_kwargs = {"sample": True}
 
 @train_preference_comparisons_ex.named_config
 def cartpole():
@@ -97,7 +114,11 @@ def seals_mountain_car():
 @train_preference_comparisons_ex.named_config
 def shaped_mountain_car():
     env_name = "imitation/MountainCar-v0"
-    total_timesteps = int(2e6)
+    agent_path = "results/expert_demos/seals_mountain_car/policies/final"
+    total_timesteps = int(1e5)
+    fragment_length = 20
+    total_comparisons = 5000
+    comparisons_per_iteration = 300
 
 @train_preference_comparisons_ex.named_config
 def sparse_reacher():
@@ -108,11 +129,11 @@ def sparse_reacher():
 @train_preference_comparisons_ex.named_config
 def empty_maze_10():
     env_name = "imitation/EmptyMaze10-v0"
-    fragment_length = 6
+    fragment_length = 4
     random_frac = 0.5
     total_timesteps = int(5e5)
-    total_comparisons = 10000
-    comparisons_per_iteration = 1000
+    total_comparisons = 5000
+    comparisons_per_iteration = 300
     normalize = False
 
 @train_preference_comparisons_ex.named_config
@@ -121,16 +142,18 @@ def empty_maze_4():
     fragment_length = 3
     random_frac = 0.5
     total_timesteps = int(1e5)
-    total_comparisons = 2000
-    comparisons_per_iteration = 200
+    total_comparisons = 1000
+    comparisons_per_iteration = 100
     normalize = False
 
 @train_preference_comparisons_ex.named_config
-def fast():
+def fast(env_name):
     """Minimize the amount of computation.
 
     Useful for test cases.
     """
+    if env_name == "imitation/MountainCar-v0":
+        agent_path = "results/expert_demos/seals_mountain_car_fast/policies/final"
     total_timesteps = 2
     total_comparisons = 3
     comparisons_per_iteration = 2
