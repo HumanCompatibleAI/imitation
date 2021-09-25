@@ -128,6 +128,7 @@ def mountain_car():
 @expert_demos_ex.named_config
 def seals_mountain_car():
     env_name = "seals/MountainCar-v0"
+    rollout_save_n_timesteps = 100000  # Min timesteps saved per file, optional.
 
 @expert_demos_ex.named_config
 def shaped_mountain_car():
