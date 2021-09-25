@@ -8,15 +8,15 @@ from seals import util
 def random_potential(self, obs):
     pos, vel = obs
     # just some semi-complex random shaping
-    return np.sin(self.a * pos + self.b) * np.sin(self.c * vel + self.d)
+    return 100 * np.sin(self.a * pos + self.b) * np.sin(self.c * vel + self.d)
 
 def antidense_potential(self, obs):
     pos, vel = obs
-    return -0.5 * vel**2 - self.gravity * self._height(pos)
+    return 1e4 * (-0.5 * vel**2 - self.gravity * self._height(pos))
 
 def dense_potential(self, obs):
     pos, vel = obs
-    return 0.5 * vel**2 + self.gravity * self._height(pos)
+    return 1e4 * (0.5 * vel**2 + self.gravity * self._height(pos))
 
 def unshaped_potential(self, obs):
     return 0
