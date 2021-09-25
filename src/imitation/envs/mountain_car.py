@@ -4,6 +4,23 @@ import numpy as np
 from seals import util
 
 
+# Declaring these at top level to allow pickling
+def random_potential(self, obs):
+    pos, vel = obs
+    # just some semi-complex random shaping
+    return np.sin(self.a * pos + self.b) * np.sin(self.c * vel + self.d)
+
+def antidense_potential(self, obs):
+    pos, vel = obs
+    return -0.5 * vel**2 - self.gravity * self._height(pos)
+
+def dense_potential(self, obs):
+    pos, vel = obs
+    return 0.5 * vel**2 + self.gravity * self._height(pos)
+
+def unshaped_potential(self, obs):
+    return 0
+
 class ShapedMountainCar(gym.envs.classic_control.MountainCarEnv):
     def __init__(
         self, 
@@ -14,30 +31,19 @@ class ShapedMountainCar(gym.envs.classic_control.MountainCarEnv):
         self.gamma = gamma
 
         if shaping == "unshaped":
-            def potential(obs):
-                return 0
+            self._potential = unshaped_potential
         elif shaping == "dense":
-            def potential(obs):
-                pos, vel = obs
-                # simple potential shaping: energy as a proxy for value
-                return 0.5 * vel**2 + self.gravity * self._height(pos)
+            self._potential = dense_potential
         elif shaping == "antidense":
-            def potential(obs):
-                pos, vel = obs
-                return -0.5 * vel**2 - self.gravity * self._height(pos)
+            self._potential = antidense_potential
         elif shaping == "random":
             rng = np.random.default_rng(0)
-            a, b = 2 * rng.random(2) - 2
-            c, d = 2 * np.pi * rng.random(2) - np.pi
-            def potential(obs):
-                pos, vel = obs
-                # just some semi-complex random shaping
-                return np.sin(a * pos + b) * np.sin(c * vel + d)
+            self.a, self.b = 2 * rng.random(2) - 2
+            self.c, self.d = 2 * np.pi * rng.random(2) - np.pi
+            self._potential = random_potential
         else:
             raise ValueError(f"Unknow shaping {shaping}")
         
-        self._potential = potential
-
     
     def step(self, action):
         next_obs, rew, done, info = super().step(action)
@@ -45,9 +51,9 @@ class ShapedMountainCar(gym.envs.classic_control.MountainCarEnv):
         return next_obs, rew, done, info
     
     def _shaping(self, obs, next_obs):
-        current_potential = self._potential(obs)
+        current_potential = self._potential(self, obs)
         # done is always False after wrapping
-        next_potential = self._potential(next_obs)
+        next_potential = self._potential(self, next_obs)
         return self.gamma * next_potential - current_potential
 
 # just a temporary environment so we can pass it to gym.make below
