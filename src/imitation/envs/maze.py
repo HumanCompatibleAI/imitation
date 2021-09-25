@@ -95,9 +95,9 @@ class MazeEnv(BaseEnv):
                 self.rewards[pos, :] -= potential
                 self.rewards[:, pos] += self.gamma * potential
         elif shaping == "random":
-            # sample potential uniformly between [-0.5, 0.5]
+            # sample potential uniformly between [-1, 1]
             rng = np.random.default_rng(seed=0)
-            potential = rng.random(size ** 2) - 0.5
+            potential = 2 * rng.random(size ** 2) - 1
             for i, j in itertools.product(range(size), repeat=2):
                 pos = self._to_idx((i, j))
 

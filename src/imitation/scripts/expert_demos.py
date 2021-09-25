@@ -12,7 +12,7 @@ from stable_baselines3.common.vec_env import VecNormalize
 
 import imitation.util.sacred as sacred_util
 from imitation.data import rollout, wrappers
-from imitation.envs import maze  # noqa: F401
+from imitation.envs import maze, mountain_car  # noqa: F401
 from imitation.policies import serialize
 from imitation.rewards.reward_wrapper import RewardVecEnvWrapper
 from imitation.rewards.serialize import load_reward

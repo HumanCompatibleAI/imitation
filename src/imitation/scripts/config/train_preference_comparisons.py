@@ -20,11 +20,11 @@ def train_defaults():
     env_name = "seals/CartPole-v0"  # environment to train on
     env_make_kwargs = {}  # The kwargs passed to `spec.make`.
 
-    fragment_length = 100  # timesteps per fragment used for comparisons
+    fragment_length = 50  # timesteps per fragment used for comparisons
     total_timesteps = int(1e6)  # total number of environment timesteps
-    total_comparisons = 5000  # total number of comparisons to elicit
+    total_comparisons = 10000  # total number of comparisons to elicit
     # comparisons to gather before switching back to agent training
-    comparisons_per_iteration = 100
+    comparisons_per_iteration = 500
     # factor by which to oversample transitions before creating fragments
     transition_oversampling = 1
     initial_comparison_fraction = 0.1
@@ -94,6 +94,10 @@ def mountain_car():
 def seals_mountain_car():
     env_name = "seals/MountainCar-v0"
 
+@train_preference_comparisons_ex.named_config
+def shaped_mountain_car():
+    env_name = "imitation/MountainCar-v0"
+    total_timesteps = int(2e6)
 
 @train_preference_comparisons_ex.named_config
 def sparse_reacher():

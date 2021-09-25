@@ -14,7 +14,7 @@ from stable_baselines3.common import vec_env
 
 from imitation.algorithms.adversarial import airl, gail
 from imitation.data import rollout, types
-from imitation.envs import maze  # noqa: F401
+from imitation.envs import maze, mountain_car  # noqa: F401
 from imitation.policies import serialize
 from imitation.rewards import reward_nets
 from imitation.scripts.config.train_adversarial import train_adversarial_ex

@@ -69,6 +69,10 @@ def rollouts_from_policy_only_defaults(log_dir):
         "rollout.pkl",
     )  # Save path for `rollouts_from_policy` only.
 
+@expert_demos_ex.named_config
+def value(total_timesteps):
+    stop_actor_training = total_timesteps // 2
+
 
 # Standard Gym env configs
 
@@ -124,6 +128,10 @@ def mountain_car():
 @expert_demos_ex.named_config
 def seals_mountain_car():
     env_name = "seals/MountainCar-v0"
+
+@expert_demos_ex.named_config
+def shaped_mountain_car():
+    env_name = "imitation/MountainCar-v0"
 
 
 @expert_demos_ex.named_config
