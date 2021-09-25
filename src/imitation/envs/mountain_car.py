@@ -12,11 +12,13 @@ def random_potential(self, obs):
 
 def antidense_potential(self, obs):
     pos, vel = obs
-    return 1e4 * (-0.5 * vel**2 - self.gravity * self._height(pos))
+    # return 1e4 * (-0.5 * vel**2 - self.gravity * self._height(pos))
+    return -1e2 * (10 * np.abs(vel) + pos)
 
 def dense_potential(self, obs):
     pos, vel = obs
-    return 1e4 * (0.5 * vel**2 + self.gravity * self._height(pos))
+    # return 1e4 * (0.5 * vel**2 + self.gravity * self._height(pos))
+    return 1e2 * (10 * np.abs(vel) + pos)
 
 def unshaped_potential(self, obs):
     return 0
