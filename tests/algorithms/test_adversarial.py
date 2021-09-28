@@ -77,14 +77,13 @@ def make_trainer(
     else:
         expert_data = expert_transitions
 
-    algorithm_kwargs = dict(algorithm_kwargs)
-    _algorithm_cls = algorithm_kwargs.pop("algorithm_cls")
     venv = util.make_vec_env(env_name, n_envs=num_envs, parallel=parallel)
-    gen_algo = util.init_rl(venv, verbose=1, **algorithm_kwargs)
+    model_cls = algorithm_kwargs["model_class"]
+    gen_algo = model_cls(algorithm_kwargs["policy_class"], venv)
     custom_logger = logger.configure(tmpdir, ["tensorboard", "stdout"])
 
     normalize = isinstance(venv.observation_space, gym.spaces.Box)
-    trainer = _algorithm_cls(
+    trainer = algorithm_kwargs["algorithm_cls"](
         venv=venv,
         normalize_obs=normalize,
         # TODO(adam): remove following line when SB3 PR merged:
@@ -110,11 +109,7 @@ def test_airl_fail_fast(custom_logger, tmpdir):
         parallel=False,
     )
 
-    gen_algo = util.init_rl(
-        venv,
-        model_class=stable_baselines3.DQN,
-        policy_class=stable_baselines3.dqn.MlpPolicy,
-    )
+    gen_algo = stable_baselines3.DQN(stable_baselines3.dqn.MlpPolicy, venv)
     small_data = rollout.generate_transitions(gen_algo, venv, n_timesteps=20)
 
     with pytest.raises(TypeError, match="AIRL needs a stochastic policy.*"):
