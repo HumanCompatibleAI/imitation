@@ -18,8 +18,7 @@ def config():
     # Custom reward network
     net_cls = None
     net_kwargs = {}
-    _ = locals()  # quieten flake8
-    del _
+    locals()  # quieten flake8
 
 
 @reward_ingredient.capture

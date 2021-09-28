@@ -29,7 +29,7 @@ while true; do
       REWARD_MODELS_DIR="tests/testdata/reward_models"
       NEED_TEST_FILES="true"
       SEEDS="0"
-      extra_configs+="fast train.fast rl.fast "
+      extra_configs+="common.fast train.fast rl.fast fast "
       shift
       ;;
     --gail)
@@ -83,7 +83,7 @@ parallel -j 25% --header : --results ${LOG_ROOT}/parallel/ --colsep , --progress
   with \
   {env_config_name} ${extra_configs} \
   seed={seed} \
-  train.log_dir="${LOG_ROOT}/${ALGORITHM}/{env_config_name}_{seed}/n_expert_demos_{n_expert_demos}" \
+  common.log_dir="${LOG_ROOT}/${ALGORITHM}/{env_config_name}_{seed}/n_expert_demos_{n_expert_demos}" \
   reward_type="RewardNet_shaped" \
   reward_path="${REWARD_MODELS_DIR}/${ALGORITHM}/{env_config_name}_0/n_expert_demos_{n_expert_demos}/checkpoints/final/reward_test.pt" \
   ::: seed ${SEEDS} :::: ${CONFIG_CSV}

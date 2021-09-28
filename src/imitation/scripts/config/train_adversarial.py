@@ -3,15 +3,17 @@
 import sacred
 
 from imitation.rewards import reward_nets
-from imitation.scripts.common import reward, rl, train
+from imitation.scripts.common import common, demonstrations, reward, rl, train
 
 train_adversarial_ex = sacred.Experiment(
     "train_adversarial",
     interactive=True,
     ingredients=[
-        train.train_ingredient,
-        rl.rl_ingredient,
+        common.common_ingredient,
+        demonstrations.demonstrations_ingredient,
         reward.reward_ingredient,
+        rl.rl_ingredient,
+        train.train_ingredient,
     ],
 )
 
@@ -45,7 +47,7 @@ MUJOCO_SHARED_LOCALS = dict(rl=dict(rl_kwargs=dict(ent_coef=0.1)))
 
 ANT_SHARED_LOCALS = dict(
     total_timesteps=3e7,
-    train=dict(max_episode_steps=500),  # To match `inverse_rl` settings.
+    common=dict(max_episode_steps=500),  # To match `inverse_rl` settings.
     algorithm_kwargs=dict(shared=dict(demo_batch_size=8192)),
     rl=dict(batch_size=16384),
 )
@@ -62,30 +64,30 @@ def acrobot():
 
 @train_adversarial_ex.named_config
 def cartpole():
-    train = dict(env_name="CartPole-v1")
+    common = dict(env_name="CartPole-v1")
     algorithm_kwargs = {"allow_variable_horizon": True}
 
 
 @train_adversarial_ex.named_config
 def seals_cartpole():
-    train = dict(env_name="seals/CartPole-v0")
+    common = dict(env_name="seals/CartPole-v0")
     total_timesteps = 1.4e6
 
 
 @train_adversarial_ex.named_config
 def mountain_car():
-    train = dict(env_name="MountainCar-v0")
+    common = dict(env_name="MountainCar-v0")
     algorithm_kwargs = {"allow_variable_horizon": True}
 
 
 @train_adversarial_ex.named_config
 def seals_mountain_car():
-    train = dict(env_name="seals/MountainCar-v0")
+    common = dict(env_name="seals/MountainCar-v0")
 
 
 @train_adversarial_ex.named_config
 def pendulum():
-    train = dict(env_name="Pendulum-v0")
+    common = dict(env_name="Pendulum-v0")
 
 
 # Standard MuJoCo Gym environment named configs
@@ -95,13 +97,13 @@ def pendulum():
 def seals_ant():
     locals().update(**MUJOCO_SHARED_LOCALS)
     locals().update(**ANT_SHARED_LOCALS)
-    train = dict(env_name="seals/Ant-v0")
+    common = dict(env_name="seals/Ant-v0")
 
 
 @train_adversarial_ex.named_config
 def half_cheetah():
     locals().update(**MUJOCO_SHARED_LOCALS)
-    train = dict(env_name="HalfCheetah-v2")
+    common = dict(env_name="HalfCheetah-v2")
     rl = dict(batch_size=16384, rl_kwargs=dict(batch_size=1024))
     algorithm_specific = dict(
         airl=dict(total_timesteps=5e6),
@@ -130,33 +132,33 @@ def half_cheetah():
 @train_adversarial_ex.named_config
 def seals_hopper():
     locals().update(**MUJOCO_SHARED_LOCALS)
-    train = dict(env_name="seals/Hopper-v0")
+    common = dict(env_name="seals/Hopper-v0")
 
 
 @train_adversarial_ex.named_config
 def seals_humanoid():
     locals().update(**MUJOCO_SHARED_LOCALS)
-    train = dict(env_name="seals/Humanoid-v0")
+    common = dict(env_name="seals/Humanoid-v0")
     total_timesteps = 4e6
 
 
 @train_adversarial_ex.named_config
 def reacher():
-    train = dict(env_name="Reacher-v2")
+    common = dict(env_name="Reacher-v2")
     algorithm_kwargs = {"allow_variable_horizon": True}
 
 
 @train_adversarial_ex.named_config
 def seals_swimmer():
     locals().update(**MUJOCO_SHARED_LOCALS)
-    train = dict(env_name="seals/Swimmer-v0")
+    common = dict(env_name="seals/Swimmer-v0")
     total_timesteps = 2e6
 
 
 @train_adversarial_ex.named_config
 def seals_walker():
     locals().update(**MUJOCO_SHARED_LOCALS)
-    train = dict(env_name="seals/Walker2d-v0")
+    common = dict(env_name="seals/Walker2d-v0")
 
 
 # Debug configs

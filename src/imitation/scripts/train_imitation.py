@@ -11,7 +11,7 @@ from imitation.algorithms.bc import BC
 from imitation.algorithms.dagger import SimpleDAggerTrainer
 from imitation.data import rollout
 from imitation.policies import serialize
-from imitation.scripts.common import train
+from imitation.scripts.common import common, demonstrations, train
 from imitation.scripts.config.train_imitation import train_imitation_ex
 
 logger = logging.getLogger(__name__)
@@ -100,13 +100,13 @@ def train_imitation(
     Returns:
         Statistics for rollouts from the trained policy and demonstration data.
     """
-    custom_logger, log_dir = train.setup_logging()
-    venv = train.make_venv()
+    custom_logger, log_dir = common.setup_logging()
+    venv = common.make_venv()
     imit_policy = make_policy(venv)
 
     expert_trajs = None
     if not use_dagger or dagger["use_offline_rollouts"]:
-        expert_trajs = train.load_expert_trajs()
+        expert_trajs = demonstrations.load_expert_trajs()
 
     bc_trainer = BC(
         observation_space=venv.observation_space,

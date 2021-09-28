@@ -30,7 +30,7 @@ while true; do
       CONFIG_CSV="tests/testdata/imit_benchmark_config.csv"
       DATA_DIR="tests/testdata/"
       SEEDS="0"
-      extra_configs+="fast train.fast rl.fast "
+      extra_configs+="common.fast demonstrations.fast rl.fast fast "
       shift
       ;;
     --mvp_seals)
@@ -99,9 +99,9 @@ parallel -j 25% --header : --results ${LOG_ROOT}/parallel/ --colsep , --progress
   ${ALGORITHM} \
   with \
   {env_config_name} \
-  train.log_dir="${LOG_ROOT}/{env_config_name}_{seed}/n_expert_demos_{n_expert_demos}" \
-  train.data_dir=${DATA_DIR} \
-  train.n_expert_demos={n_expert_demos} \
+  common.log_dir="${LOG_ROOT}/{env_config_name}_{seed}/n_expert_demos_{n_expert_demos}" \
+  demonstrations.data_dir=${DATA_DIR} \
+  demonstrations.n_expert_demos={n_expert_demos} \
   checkpoint_interval=0 \
   seed={seed} \
   ${extra_configs} \

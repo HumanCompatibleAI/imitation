@@ -22,7 +22,7 @@ from imitation.data import rollout, wrappers
 from imitation.policies import serialize
 from imitation.rewards.reward_wrapper import RewardVecEnvWrapper
 from imitation.rewards.serialize import load_reward
-from imitation.scripts.common import rl, train
+from imitation.scripts.common import common, rl, train
 from imitation.scripts.config.train_rl import train_rl_ex
 
 
@@ -81,13 +81,13 @@ def train_rl(
     Returns:
         The return value of `rollout_stats()` using the final policy.
     """
-    custom_logger, log_dir = train.setup_logging()
+    custom_logger, log_dir = common.setup_logging()
     rollout_dir = osp.join(log_dir, "rollouts")
     policy_dir = osp.join(log_dir, "policies")
     os.makedirs(rollout_dir, exist_ok=True)
     os.makedirs(policy_dir, exist_ok=True)
 
-    venv = train.make_venv(
+    venv = common.make_venv(
         post_wrappers=[lambda env, idx: wrappers.RolloutInfoWrapper(env)],
     )
     callback_objs = []

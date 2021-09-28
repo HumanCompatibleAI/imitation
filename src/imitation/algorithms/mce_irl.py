@@ -190,6 +190,9 @@ class TabularPolicy(policies.BasePolicy):
         # state represents timesteps, reset at end of episode
         if state is None:
             state = np.zeros(len(observation))
+        else:
+            state = np.array(state)
+
         if mask is not None:
             state[mask] = 0
 

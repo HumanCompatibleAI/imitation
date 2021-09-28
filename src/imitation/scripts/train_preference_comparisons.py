@@ -9,7 +9,6 @@ import pathlib
 import pickle
 from typing import Any, Mapping, Optional
 
-import stable_baselines3
 import torch as th
 from sacred.observers import FileStorageObserver
 from stable_baselines3.common import vec_env
@@ -17,6 +16,8 @@ from stable_baselines3.common import vec_env
 from imitation.algorithms import preference_comparisons
 from imitation.policies import serialize
 from imitation.rewards import reward_nets
+from imitation.scripts.common import common
+from imitation.scripts.common import rl as rl_common
 from imitation.scripts.common import train
 from imitation.scripts.config.train_preference_comparisons import (
     train_preference_comparisons_ex,
@@ -39,8 +40,8 @@ def train_preference_comparisons(
     agent_path: Optional[str],
     reward_net_kwargs: Mapping[str, Any],
     reward_trainer_kwargs: Mapping[str, Any],
-    agent_kwargs: Mapping[str, Any],
     gatherer_kwargs: Mapping[str, Any],
+    rl: Mapping[str, Any],
     allow_variable_horizon: bool,
 ) -> Mapping[str, Any]:
     """Train a reward model using preference comparisons.
@@ -69,8 +70,8 @@ def train_preference_comparisons(
             rather than randomly.
         reward_net_kwargs: passed to BasicRewardNet
         reward_trainer_kwargs: passed to CrossEntropyRewardTrainer
-        agent_kwargs: passed to SB3's PPO
         gatherer_kwargs: passed to SyntheticGatherer
+        rl: parameters for RL training, used for restoring agents.
         allow_variable_horizon: If False (default), algorithm will raise an
             exception if it detects trajectories of different length during
             training. If True, overrides this safety check. WARNING: variable
@@ -86,8 +87,8 @@ def train_preference_comparisons(
         FileNotFoundError: Path corresponding to saved policy missing.
         ValueError: Inconsistency between config and deserialized policy normalization.
     """
-    custom_logger, log_dir = train.setup_logging()
-    venv = train.make_venv()
+    custom_logger, log_dir = common.setup_logging()
+    venv = common.make_venv()
 
     vec_normalize = None
     reward_net = reward_nets.BasicRewardNet(
@@ -96,7 +97,7 @@ def train_preference_comparisons(
         **reward_net_kwargs,
     )
     if agent_path is None:
-        agent = stable_baselines3.PPO("MlpPolicy", venv, seed=_seed, **agent_kwargs)
+        agent = rl_common.make_rl_algo(venv)
     else:
         # TODO(ejnnr): this is pretty similar to the logic in policies/serialize.py
         # but I did make a few small changes that make it a bit tricky to actually
@@ -115,11 +116,11 @@ def train_preference_comparisons(
                 f"Could not find policy at expected location {model_path}",
             )
 
-        agent = stable_baselines3.PPO.load(
+        agent = rl["rl_cls"].load(
             model_path,
             env=venv,
             seed=_seed,
-            **agent_kwargs,
+            **rl["rl_kwargs"],
         )
         custom_logger.info(f"Warm starting agent from '{model_path}'")
 

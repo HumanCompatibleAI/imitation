@@ -2,11 +2,11 @@
 
 import sacred
 
-from imitation.scripts.common import rl, train
+from imitation.scripts.common import common, rl, train
 
 train_rl_ex = sacred.Experiment(
     "train_rl",
-    ingredients=[train.train_ingredient, rl.rl_ingredient],
+    ingredients=[common.common_ingredient, train.train_ingredient, rl.rl_ingredient],
 )
 
 
@@ -42,12 +42,12 @@ def default_end_cond(rollout_save_n_timesteps, rollout_save_n_episodes):
 
 @train_rl_ex.named_config
 def acrobot():
-    train = dict(env_name="Acrobot-v1")
+    common = dict(env_name="Acrobot-v1")
 
 
 @train_rl_ex.named_config
 def ant():
-    train = dict(
+    common = dict(
         env_name="Ant-v2",
         # TODO(adam): do we still want this?
         max_episode_steps=500,  # to match AIRL settings
@@ -58,67 +58,67 @@ def ant():
 
 @train_rl_ex.named_config
 def cartpole():
-    train = dict(env_name="CartPole-v1")
+    common = dict(env_name="CartPole-v1")
     total_timesteps = int(1e5)
 
 
 @train_rl_ex.named_config
 def seals_cartpole():
-    train = dict(env_name="seals/CartPole-v0")
+    common = dict(env_name="seals/CartPole-v0")
     total_timesteps = int(1e6)
 
 
 @train_rl_ex.named_config
 def half_cheetah():
-    train = dict(env_name="HalfCheetah-v2")
+    common = dict(env_name="HalfCheetah-v2")
     total_timesteps = int(5e6)  # does OK after 1e6, but continues improving
 
 
 @train_rl_ex.named_config
 def seals_hopper():
-    train = dict(env_name="seals/Hopper-v0")
+    common = dict(env_name="seals/Hopper-v0")
 
 
 @train_rl_ex.named_config
 def seals_humanoid():
-    train = dict(env_name="seals/Humanoid-v0")
+    common = dict(env_name="seals/Humanoid-v0")
     rl = dict(batch_size=16384)
     total_timesteps = int(10e6)  # fairly discontinuous, needs at least 5e6
 
 
 @train_rl_ex.named_config
 def mountain_car():
-    train = dict(env_name="MountainCar-v0")
+    common = dict(env_name="MountainCar-v0")
 
 
 @train_rl_ex.named_config
 def seals_mountain_car():
-    train = dict(env_name="seals/MountainCar-v0")
+    common = dict(env_name="seals/MountainCar-v0")
 
 
 @train_rl_ex.named_config
 def pendulum():
-    train = dict(env_name="Pendulum-v0")
+    common = dict(env_name="Pendulum-v0")
 
 
 @train_rl_ex.named_config
 def reacher():
-    train = dict(env_name="Reacher-v2")
+    common = dict(env_name="Reacher-v2")
 
 
 @train_rl_ex.named_config
 def seals_ant():
-    train = dict(env_name="seals/Ant-v0")
+    common = dict(env_name="seals/Ant-v0")
 
 
 @train_rl_ex.named_config
 def seals_swimmer():
-    train = dict(env_name="seals/Swimmer-v0")
+    common = dict(env_name="seals/Swimmer-v0")
 
 
 @train_rl_ex.named_config
 def seals_walker():
-    train = dict(env_name="seals/Walker2d-v0")
+    common = dict(env_name="seals/Walker2d-v0")
 
 
 # Debug configs

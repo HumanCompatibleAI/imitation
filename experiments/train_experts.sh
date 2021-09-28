@@ -25,7 +25,7 @@ while true; do
       # Fast mode (debug)
       ENVS="cartpole pendulum"
       SEEDS="0"
-      extra_configs+="fast train.fast rl.fast "
+      extra_configs+="fast common.fast rl.fast train.fast "
       shift
       ;;
     -r | --regenerate)
@@ -64,7 +64,7 @@ parallel -j 25% --header : --progress --results ${OUTPUT_DIR}/parallel/ \
   with \
   {env} ${extra_configs} \
   seed={seed} \
-  train.log_dir="${OUTPUT_DIR}/{env}_{seed}" \
+  common.log_dir="${OUTPUT_DIR}/{env}_{seed}" \
   ::: env ${ENVS} ::: seed ${SEEDS}
 
 pushd $OUTPUT_DIR

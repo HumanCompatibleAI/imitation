@@ -59,7 +59,7 @@ parallel -j 25% --header : --results ${OUTPUT_DIR}/parallel/ --colsep , \
   --capture=sys \
   with \
   {env_config_name} \
-  train.log_root="${OUTPUT_DIR}" \
+  common.log_root="${OUTPUT_DIR}" \
   policy_type="ppo" policy_path="${expert_models_dir}/{env_config_name}_0/policies/final/" \
   rollout_save_path="${OUTPUT_DIR}/{env_config_name}_0/rollouts/final.pkl" \
   eval_n_episodes="{n_demonstrations}" \

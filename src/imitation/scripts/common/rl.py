@@ -25,8 +25,7 @@ def config():
         n_epochs=10,
         ent_coef=0.0,
     )
-    _ = locals()  # quieten flake8
-    del _
+    locals()  # quieten flake8
 
 
 @rl_ingredient.named_config
@@ -35,8 +34,7 @@ def fast():
     # SB3 RL seems to need batch size of 2, otherwise it runs into numeric
     # issues when computing multinomial distribution during predict()
     rl_kwargs = dict(batch_size=2)
-    _ = locals()  # quieten flake8
-    del _
+    locals()  # quieten flake8
 
 
 @rl_ingredient.capture
@@ -46,6 +44,7 @@ def make_rl_algo(
     batch_size: int,
     rl_kwargs: Mapping[str, Any],
     train: Mapping[str, Any],
+    _seed: int,
 ) -> base_class.BaseAlgorithm:
     """Instantiates a Stable Baselines3 RL algorithm.
 
@@ -74,6 +73,7 @@ def make_rl_algo(
         env=venv,
         # TODO(adam): n_steps doesn't exist in all algos -- generalize?
         n_steps=n_steps,
+        seed=_seed,
         **rl_kwargs,
     )
     logger.info(f"RL algorithm: {type(rl_algo)}")

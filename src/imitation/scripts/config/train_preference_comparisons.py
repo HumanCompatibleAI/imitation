@@ -2,12 +2,12 @@
 
 import sacred
 
-from imitation.scripts.common import train
+from imitation.scripts.common import common, rl, train
 
 train_preference_comparisons_ex = sacred.Experiment(
     "train_preference_comparisons",
     interactive=True,
-    ingredients=[train.train_ingredient],
+    ingredients=[common.common_ingredient, rl.rl_ingredient, train.train_ingredient],
 )
 
 
@@ -27,7 +27,6 @@ def train_defaults():
     }
     save_preferences = False  # save preference dataset at the end?
     agent_path = None  # path to a (partially) trained agent to load at the beginning
-    agent_kwargs = {}
     gatherer_kwargs = {}
     # path to a pickled sequence of trajectories used instead of training an agent
     trajectory_path = None
@@ -39,29 +38,29 @@ def train_defaults():
 
 @train_preference_comparisons_ex.named_config
 def cartpole():
-    train = dict(env_name="CartPole-v1")
+    common = dict(env_name="CartPole-v1")
     allow_variable_horizon = True
 
 
 @train_preference_comparisons_ex.named_config
 def seals_cartpole():
-    train = dict(env_name="seals/CartPole-v0")
+    common = dict(env_name="seals/CartPole-v0")
 
 
 @train_preference_comparisons_ex.named_config
 def pendulum():
-    train = dict(env_name="Pendulum-v0")
+    common = dict(env_name="Pendulum-v0")
 
 
 @train_preference_comparisons_ex.named_config
 def mountain_car():
-    train = dict(env_name="MountainCar-v0")
+    common = dict(env_name="MountainCar-v0")
     allow_variable_horizon = True
 
 
 @train_preference_comparisons_ex.named_config
 def seals_mountain_car():
-    train = dict(env_name="seals/MountainCar-v0")
+    common = dict(env_name="seals/MountainCar-v0")
 
 
 @train_preference_comparisons_ex.named_config
@@ -71,7 +70,6 @@ def fast():
     total_comparisons = 3
     comparisons_per_iteration = 2
     fragment_length = 2
-    agent_kwargs = {"batch_size": 2, "n_steps": 10, "n_epochs": 1}
     reward_trainer_kwargs = {
         "epochs": 1,
     }

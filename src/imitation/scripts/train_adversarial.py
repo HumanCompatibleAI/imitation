@@ -14,7 +14,8 @@ from imitation.algorithms.adversarial import common
 from imitation.algorithms.adversarial import gail as gail_algo
 from imitation.data import rollout
 from imitation.policies import serialize
-from imitation.scripts.common import reward, rl, train
+from imitation.scripts.common import common as common_config
+from imitation.scripts.common import demonstrations, reward, rl, train
 from imitation.scripts.config.train_adversarial import train_adversarial_ex
 
 logger = logging.getLogger("imitation.scripts.train_adversarial")
@@ -108,10 +109,10 @@ def train_adversarial(
         # So, support showing merged config from `train_adversarial {airl,gail}`.
         sacred.commands.print_config(_run)
 
-    custom_logger, log_dir = train.setup_logging()
-    expert_trajs = train.load_expert_trajs()
+    custom_logger, log_dir = common_config.setup_logging()
+    expert_trajs = demonstrations.load_expert_trajs()
 
-    venv = train.make_venv()
+    venv = common_config.make_venv()
     gen_algo = rl.make_rl_algo(venv)
     reward_net = reward.make_reward_net(venv)
 
