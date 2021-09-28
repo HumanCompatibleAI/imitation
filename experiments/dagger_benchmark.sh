@@ -19,7 +19,8 @@ while true; do
     # Fast mode (debug)
     -f | --fast)
       SEEDS="0"
-      extra_configs+="fast train.fast "
+      extra_configs+="train.fast demonstrations.fast common.fast fast "
+      DATA_DIR="tests/testdata"
       shift
       ;;
     --paper)  # Table benchmark settings
