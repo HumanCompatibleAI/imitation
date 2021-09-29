@@ -110,7 +110,7 @@ ALGO_FAST_CONFIGS = {
     "eval_policy": ["common.fast", "fast"],
     "imitation": ["common.fast", "demonstrations.fast", "train.fast", "fast"],
     "preference_comparison": ["common.fast", "rl.fast", "train.fast", "fast"],
-    "rl": ["common.fast", "rl.fast", "fast"],
+    "rl": ["common.fast", "rl.fast", "train.fast", "fast"],
 }
 
 

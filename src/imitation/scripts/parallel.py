@@ -90,7 +90,7 @@ def parallel(
     # Explicitly set `data_dir` if parallelizing `train_adversarial`. We need this to
     # automatically find rollout pickles because Ray sets a new working directory for
     # each Raylet.
-    if sacred_ex_name in ("train_adversarial", "train_imitation"):
+    if sacred_ex_name == "train_adversarial":
         no_data_dir = (
             "demonstrations.data_dir" not in base_config_updates
             and "data_dir" not in base_config_updates.get("demonstrations", {})

@@ -2,12 +2,16 @@
 
 import sacred
 
-from imitation.scripts.common import common, rl, train
+from imitation.scripts.common import common, reward, rl, train
 
 train_preference_comparisons_ex = sacred.Experiment(
     "train_preference_comparisons",
-    interactive=True,
-    ingredients=[common.common_ingredient, rl.rl_ingredient, train.train_ingredient],
+    ingredients=[
+        common.common_ingredient,
+        reward.reward_ingredient,
+        rl.rl_ingredient,
+        train.train_ingredient,
+    ],
 )
 
 
@@ -21,7 +25,6 @@ def train_defaults():
     # factor by which to oversample transitions before creating fragments
     transition_oversampling = 10
 
-    reward_net_kwargs = {}
     reward_trainer_kwargs = {
         "epochs": 3,
     }

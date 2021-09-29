@@ -167,11 +167,6 @@ class DemonstrationAlgorithm(BaseImitationAlgorithm, Generic[TransitionKind]):
                 `TransitionKind` instance, or a Sequence of Trajectory objects.
         """
 
-    # TODO(adam): this will cause minor headache for MCE IRL and density baseline
-    # which do not train a policy by default. Could return None for these?
-    # Or just have them train when calling this. Not so bad for MCE IRL
-    # (can compute it analytically in reasonable time frame), more awkward
-    # for density baseline.
     @property
     @abc.abstractmethod
     def policy(self) -> policies.BasePolicy:

@@ -7,7 +7,6 @@ from imitation.scripts.common import common, demonstrations, reward, rl, train
 
 train_adversarial_ex = sacred.Experiment(
     "train_adversarial",
-    interactive=True,
     ingredients=[
         common.common_ingredient,
         demonstrations.demonstrations_ingredient,
@@ -47,7 +46,6 @@ MUJOCO_SHARED_LOCALS = dict(rl=dict(rl_kwargs=dict(ent_coef=0.1)))
 
 ANT_SHARED_LOCALS = dict(
     total_timesteps=3e7,
-    common=dict(max_episode_steps=500),  # To match `inverse_rl` settings.
     algorithm_kwargs=dict(shared=dict(demo_batch_size=8192)),
     rl=dict(batch_size=16384),
 )

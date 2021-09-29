@@ -2,7 +2,7 @@
 
 import logging
 import os
-from typing import Any, Mapping, Sequence, Tuple
+from typing import Any, Mapping, Sequence, Tuple, Union
 
 import sacred
 from stable_baselines3.common import vec_env
@@ -20,6 +20,7 @@ def config():
     # Logging
     log_root = None
     log_dir = None
+    log_level = logging.INFO
     log_format_strs = ["tensorboard", "stdout"]
 
     # Environment config
@@ -61,17 +62,26 @@ def fast():
 def make_log_dir(
     _run,
     log_dir: str,
+    log_level: Union[int, str],
 ) -> str:
     """Creates log directory and sets up symlink to Sacred logs.
 
     Args:
         log_dir: The directory to log to.
+        log_level: The threshold of the logger. Either an integer level (10, 20, ...),
+            a string of digits ('10', '20'), or a string of the designated level
+            ('DEBUG', 'INFO', ...).
 
     Returns:
         The `log_dir`. This avoids the caller needing to capture this argument.
     """
     os.makedirs(log_dir, exist_ok=True)
-    logging.basicConfig(level=logging.INFO)
+    # convert strings of digits to numbers; but leave levels like 'INFO' unmodified
+    try:
+        log_level = int(log_level)
+    except ValueError:
+        pass
+    logging.basicConfig(level=log_level)
     logger.info("Logging to %s", log_dir)
     sacred_util.build_sacred_symlink(log_dir, _run)
     return log_dir
@@ -111,7 +121,7 @@ def make_venv(
 
      Args:
         env_name: The environment to train in.
-        num_vec: Number of `gym.Env` to vectorize.
+        num_vec: Number of `gym.Env` instances to combine into a vector environment.
         parallel: Whether to use "true" parallelism. If True, then use `SubProcVecEnv`.
             Otherwise, use `DummyVecEnv` which steps through environments serially.
         max_episode_steps: If not None, then a TimeLimit wrapper is applied to each

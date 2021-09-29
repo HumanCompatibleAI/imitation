@@ -16,18 +16,12 @@ logger = logging.getLogger(__name__)
 @train_ingredient.config
 def config():
     # Training
-    # TODO(adam): does this need to be here or could it be in rl and separately for bc?
-    # Is there any script we want to not take a policy?
-    # Hmm, MCE IRL doesn't need this -- it can just ignore it though.
-    # (Perhaps have that script warn if something non-default is set...?)
     policy_cls = base.FeedForward32Policy
     policy_kwargs = {}
 
     # Evaluation
     n_episodes_eval = 50  # Num of episodes for final mean ground truth return
 
-    # TODO(adam): should we separate config into a separate file?
-    # or just disable F841 on this whole file?
     locals()  # quieten flake8
 
 

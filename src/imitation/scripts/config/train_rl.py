@@ -47,13 +47,9 @@ def acrobot():
 
 @train_rl_ex.named_config
 def ant():
-    common = dict(
-        env_name="Ant-v2",
-        # TODO(adam): do we still want this?
-        max_episode_steps=500,  # to match AIRL settings
-    )
+    common = dict(env_name="Ant-v2")
     rl = dict(batch_size=16384)
-    total_timesteps = (int(5e6),)
+    total_timesteps = int(5e6)
 
 
 @train_rl_ex.named_config

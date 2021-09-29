@@ -91,18 +91,18 @@ setup(
     },
     entry_points={
         "console_scripts": [
-            "imitation-eval-policy=imitation.scripts.eval_policy:main_console"
-            "imitation-train-bc=imitation.scripts.train_bc:main_console",
-            "imitation-train-dagger=imitation.scripts.train_dagger:main_console",
-            "imitation-train-rl=imitation.scripts.train_rl:main_console",
+            "imitation-eval-policy=imitation.scripts.eval_policy:main_console",
+            "imitation-parallel=imitation.scripts.parallel:main_console",
             (
                 "imitation-train-adversarial="
                 "imitation.scripts.train_adversarial:main_console"
             ),
+            "imitation-train-imitation=imitation.scripts.train_imitation:main_console",
             (
                 "imitation-train-preference-comparisons="
                 "imitation.scripts.train_preference_comparisons:main_console"
             ),
+            "imitation-train-rl=imitation.scripts.train_rl:main_console",
         ],
     },
     url="https://github.com/HumanCompatibleAI/imitation",

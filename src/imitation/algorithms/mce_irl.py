@@ -143,7 +143,7 @@ class TabularPolicy(policies.BasePolicy):
 
     def __init__(
         self,
-        observation_space: gym.Space,
+        state_space: gym.Space,
         action_space: gym.Space,
         pi: np.ndarray,
         rng: Optional[np.random.RandomState],
@@ -151,19 +151,17 @@ class TabularPolicy(policies.BasePolicy):
         """Builds TabularPolicy.
 
         Args:
-            observation_space: The observation space of the environment.
+            state_space: The state space of the environment.
             action_space: The action space of the environment.
             pi: A tabular policy. Three-dimensional array, where pi[t,s,a]
                 is the probability of taking action a at state s at timestep t.
             rng: Random state, used for sampling when `predict` is called with
                 `deterministic=False`.
         """
-        assert isinstance(
-            observation_space,
-            gym.spaces.Discrete,
-        ), "observation not tabular"
+        assert isinstance(state_space, gym.spaces.Discrete), "state not tabular"
         assert isinstance(action_space, gym.spaces.Discrete), "action not tabular"
-        super().__init__(observation_space=observation_space, action_space=action_space)
+        # What we call state space here is observation space in SB3 nomenclature.
+        super().__init__(observation_space=state_space, action_space=action_space)
         self.rng = rng or np.random
         self.set_pi(pi)
 
@@ -187,7 +185,26 @@ class TabularPolicy(policies.BasePolicy):
         mask: Optional[np.ndarray] = None,
         deterministic: bool = False,
     ) -> Tuple[np.ndarray, np.ndarray]:
-        # state represents timesteps, reset at end of episode
+        """Predict action to take in given state.
+
+        Arguments follow SB3 naming convention as this is an SB3 policy.
+        In this convention, observations are returned by the environment,
+        and state is a hidden state used by the policy (used by us to
+        keep track of timesteps).
+
+        What is `observation` here is a state in the underlying MDP,
+        and would be called `state` elsewhere in this file.
+
+        Args:
+            observation: States in the underlying MDP.
+            state: Hidden states of the policy -- used to represent timesteps by us.
+            mask: Has episode completed?
+            deterministic: If true, pick action with highest probability; otherwise,
+                sample.
+
+        Returns:
+            Tuple of the actions and new hidden states.
+        """
         if state is None:
             state = np.zeros(len(observation))
         else:
@@ -213,7 +230,17 @@ MCEDemonstrations = Union[np.ndarray, base.AnyTransitions]
 
 
 class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
-    """Tabular MCE IRL."""
+    """Tabular MCE IRL.
+
+    Reward is a function of observations, but policy is a function of states.
+
+    The "observations" effectively exist just to let MCE IRL learn a reward
+    in a reasonable feature space, giving a helpful inductive bias, e.g. that
+    similar states have similar reward.
+
+    Since we are performing planning to compute the policy, there is no need
+    for function approximation in the policy.
+    """
 
     demo_state_om: Optional[np.ndarray]
 
@@ -293,9 +320,7 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
         ones = np.ones((self.env.horizon, self.env.n_states, self.env.n_actions))
         uniform_pi = ones / self.env.n_actions
         self._policy = TabularPolicy(
-            # TODO(adam): nomenclature clash between MCE IRL and SB3 -- resolve?
-            # (rename observation to something else perhaps...?
-            observation_space=self.env.state_space,
+            state_space=self.env.state_space,
             action_space=self.env.action_space,
             pi=uniform_pi,
             rng=self.rng,

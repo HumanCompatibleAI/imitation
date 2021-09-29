@@ -17,7 +17,7 @@ from imitation.scripts.config.train_imitation import train_imitation_ex
 logger = logging.getLogger(__name__)
 
 
-@train_imitation_ex.capture
+@train_imitation_ex.capture(prefix="train")
 def make_policy(
     venv: vec_env.VecEnv,
     policy_cls: Type[policies.BasePolicy],
@@ -61,9 +61,9 @@ def load_expert_policy(
         expert_policy_type: Either 'ppo', 'zero', or 'random'. This is used as the
             `policy_type` argument to `imitation.policies.serialize.load_policy`.
         expert_policy_path: Either a path to a policy directory containing model.zip
-            (and optionally, vec_normalize.pkl) if `expert_data_src_format == "ppo"`,
-            or None if `expert_data_src_format in ('zero', 'random'). This is used
-            as the `policy_path` argument to `imitation.policies.serialize.load_policy`.
+            (and optionally, vec_normalize.pkl) or None if policy type is 'zero' or
+            'random'. This is used as the `policy_path` argument to
+            `imitation.policies.serialize.load_policy`.
 
     Returns:
         The deserialized expert policy from `expert_policy_path`.

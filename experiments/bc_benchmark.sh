@@ -26,7 +26,7 @@ while true; do
     -f | --fast)
       # Fast mode (debug)
       SEEDS="0"
-      extra_configs+="fast train.fast "
+      extra_configs+="common.fast demonstrations.fast train.fast fast "
       DATA_DIR="tests/testdata"
       shift
       ;;

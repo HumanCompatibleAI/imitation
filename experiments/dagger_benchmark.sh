@@ -19,7 +19,7 @@ while true; do
     # Fast mode (debug)
     -f | --fast)
       SEEDS="0"
-      extra_configs+="train.fast demonstrations.fast common.fast fast "
+      extra_configs+="common.fast demonstrations.fast train.fast fast "
       DATA_DIR="tests/testdata"
       shift
       ;;
@@ -72,7 +72,7 @@ echo "Logging to: ${LOG_ROOT}"
 parallel -j 25% --header : --results ${LOG_ROOT}/parallel/ --colsep , --progress \
   ${extra_parallel_options} \
   python -m imitation.scripts.train_imitation \
-  --capture=sys --pdb \
+  --capture=sys \
   ${extra_options} \
   dagger \
   with \

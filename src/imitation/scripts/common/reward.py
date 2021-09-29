@@ -7,9 +7,8 @@ import sacred
 from stable_baselines3.common import vec_env
 
 from imitation.rewards import reward_nets
-from imitation.scripts.common.train import train_ingredient
 
-reward_ingredient = sacred.Ingredient("reward", ingredients=[train_ingredient])
+reward_ingredient = sacred.Ingredient("reward")
 logger = logging.getLogger(__name__)
 
 

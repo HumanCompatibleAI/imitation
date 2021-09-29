@@ -30,7 +30,7 @@ while true; do
       CONFIG_CSV="tests/testdata/imit_benchmark_config.csv"
       DATA_DIR="tests/testdata/"
       SEEDS="0"
-      extra_configs+="common.fast demonstrations.fast rl.fast fast "
+      extra_configs+="common.fast demonstrations.fast rl.fast train.fast fast "
       shift
       ;;
     --mvp_seals)

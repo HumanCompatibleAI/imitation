@@ -16,7 +16,7 @@ from stable_baselines3.common import vec_env
 from imitation.algorithms import preference_comparisons
 from imitation.policies import serialize
 from imitation.rewards import reward_nets
-from imitation.scripts.common import common
+from imitation.scripts.common import common, reward
 from imitation.scripts.common import rl as rl_common
 from imitation.scripts.common import train
 from imitation.scripts.config.train_preference_comparisons import (
@@ -38,7 +38,6 @@ def train_preference_comparisons(
     trajectory_path: Optional[str],
     save_preferences: bool,
     agent_path: Optional[str],
-    reward_net_kwargs: Mapping[str, Any],
     reward_trainer_kwargs: Mapping[str, Any],
     gatherer_kwargs: Mapping[str, Any],
     rl: Mapping[str, Any],
@@ -68,7 +67,6 @@ def train_preference_comparisons(
         save_preferences: if True, store the final dataset of preferences to disk.
         agent_path: if given, initialize the agent using this stored policy
             rather than randomly.
-        reward_net_kwargs: passed to BasicRewardNet
         reward_trainer_kwargs: passed to CrossEntropyRewardTrainer
         gatherer_kwargs: passed to SyntheticGatherer
         rl: parameters for RL training, used for restoring agents.
@@ -91,11 +89,12 @@ def train_preference_comparisons(
     venv = common.make_venv()
 
     vec_normalize = None
-    reward_net = reward_nets.BasicRewardNet(
-        venv.observation_space,
-        venv.action_space,
-        **reward_net_kwargs,
-    )
+    reward_net = reward.make_reward_net(venv)
+    if reward_net is None:
+        reward_net = reward_nets.BasicRewardNet(
+            venv.observation_space,
+            venv.action_space,
+        )
     if agent_path is None:
         agent = rl_common.make_rl_algo(venv)
     else:

@@ -4,9 +4,7 @@ import os
 
 import sacred
 import torch as th
-from stable_baselines3.common import utils
 
-from imitation.policies import base
 from imitation.scripts.common import common
 from imitation.scripts.common import demonstrations as demos_common
 from imitation.scripts.common import train
@@ -23,11 +21,6 @@ train_imitation_ex = sacred.Experiment(
 
 @train_imitation_ex.config
 def config():
-    policy_cls = base.FeedForward32Policy
-    policy_kwargs = {
-        # parameter mandatory for ActorCriticPolicy, but not used by BC
-        "lr_schedule": utils.get_schedule_fn(1),
-    }
     bc_kwargs = dict(
         batch_size=32,
         l2_weight=3e-5,  # L2 regularization weight
@@ -69,8 +62,6 @@ def defaults(
         )
 
 
-# TODO(shwang): Move these redundant configs into a `auto.env` Ingredient,
-# similar to what the ILR project does.
 @train_imitation_ex.named_config
 def mountain_car():
     common = dict(env_name="MountainCar-v0")
