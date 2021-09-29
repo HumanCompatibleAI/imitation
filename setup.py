@@ -5,7 +5,10 @@ from setuptools import find_packages, setup
 import src.imitation  # pytype: disable=import-error
 
 TESTS_REQUIRE = [
-    "seals>=0.1.1",
+    # TODO(adam): switch back to PyPi release once PR incorporated:
+    # https://github.com/HumanCompatibleAI/seals/pull/51
+    "seals @ "
+    "git+https://github.com/HumanCompatibleAI/seals.git@support-dict-tests#egg=seals",
     "black",
     "coverage",
     "codecov",
