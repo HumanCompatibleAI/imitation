@@ -240,7 +240,12 @@ def test_tabular_policy():
         [np.eye(2), 1 - np.eye(2)],
     )
     rng = np.random.RandomState(42)
-    tabular = TabularPolicy(state_space=state_space, action_space=action_space, pi=pi, rng=rng)
+    tabular = TabularPolicy(
+        state_space=state_space,
+        action_space=action_space,
+        pi=pi,
+        rng=rng,
+    )
 
     states = np.array([0, 1, 1, 0, 1])
     actions, timesteps = tabular.predict(states)
@@ -259,19 +264,33 @@ def test_tabular_policy():
 
     mask = (1 - states).astype(bool)
     actions, timesteps = tabular.predict(states, timesteps, mask)
-    np.testing.assert_array_equal(np.zeros(5,), actions)
+    np.testing.assert_array_equal(
+        np.zeros(
+            5,
+        ),
+        actions,
+    )
     np.testing.assert_equal(timesteps, 2 - mask.astype(int))
 
 
 def test_tabular_policy_randomness():
     state_space = gym.spaces.Discrete(2)
     action_space = gym.spaces.Discrete(2)
-    pi = np.array([[
-        [0.5, 0.5],
-        [0.9, 0.1],
-    ]])
+    pi = np.array(
+        [
+            [
+                [0.5, 0.5],
+                [0.9, 0.1],
+            ],
+        ],
+    )
     rng = np.random.RandomState(42)
-    tabular = TabularPolicy(state_space=state_space, action_space=action_space, pi=pi, rng=rng)
+    tabular = TabularPolicy(
+        state_space=state_space,
+        action_space=action_space,
+        pi=pi,
+        rng=rng,
+    )
 
     actions, _ = tabular.predict(np.zeros((100,), dtype=int))
     assert 0.45 <= np.mean(actions) <= 0.55
