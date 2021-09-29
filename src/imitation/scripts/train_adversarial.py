@@ -145,8 +145,7 @@ def train_adversarial(
         save(trainer, os.path.join(log_dir, "checkpoints", "final"))
 
     results = {}
-    train_venv = trainer.venv_norm_obs or trainer.venv
-    results["imit_stats"] = train.eval_policy(trainer.policy, train_venv)
+    results["imit_stats"] = train.eval_policy(trainer.policy, trainer.venv_train)
     results["expert_stats"] = rollout.rollout_stats(expert_trajs)
     return results
 
