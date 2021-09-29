@@ -206,7 +206,7 @@ class TabularPolicy(policies.BasePolicy):
             Tuple of the actions and new hidden states.
         """
         if state is None:
-            state = np.zeros(len(observation))
+            state = np.zeros(len(observation), dtype=np.int)
         else:
             state = np.array(state)
 
@@ -215,11 +215,13 @@ class TabularPolicy(policies.BasePolicy):
 
         actions = []
         for obs, t in zip(observation, state):
+            assert self.observation_space.contains(obs), "illegal observation"
             dist = self.pi[t, obs, :]
             if deterministic:
                 actions.append(dist.argmax())
             else:
-                actions.append(self.rng.multinomial(1, dist))
+                actions_onehot = self.rng.multinomial(1, dist)
+                actions.append(actions_onehot.argmax())
 
         state += 1  # increment timestep
 
@@ -445,6 +447,9 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
             reward=predicted_r_np,
             discount=self.discount,
         )
+        # TODO(adam): this policy works on states, not observations, so can't
+        # actually compute rollouts from it in the usual way. Fix this by making
+        # observations part of MCE IRL and turn environment from POMDP->MDP?
         self._policy.set_pi(pi)
 
         return visitations
