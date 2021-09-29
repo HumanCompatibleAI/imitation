@@ -270,12 +270,7 @@ def test_tabular_policy():
 
     mask = (1 - states).astype(bool)
     actions, timesteps = tabular.predict(obs, timesteps, mask)
-    np.testing.assert_array_equal(
-        np.zeros(
-            5,
-        ),
-        actions,
-    )
+    np.testing.assert_array_equal(np.zeros((5,)), actions)
     np.testing.assert_equal(timesteps, 2 - mask.astype(int))
 
 
