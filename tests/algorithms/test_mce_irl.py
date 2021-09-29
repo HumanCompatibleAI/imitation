@@ -316,3 +316,14 @@ def test_mce_irl_reasonable_mdp(
         assert np.allclose(final_counts, D, atol=1e-3, rtol=1e-3)
         # make sure weights have non-insane norm
         assert tensor_iter_norm(reward_net.parameters()) < 1000
+
+        venv = vec_env.DummyVecEnv([lambda: mdp])
+        trajs = rollout.generate_trajectories(
+            mce_irl.policy,
+            venv,
+            sample_until=rollout.make_min_episodes(5),
+        )
+        stats = rollout.rollout_stats(trajs)
+        # 3 is maximum attainable reward, 2 is next best.
+        # This just checks we're in the highest reward state most of the time
+        assert stats["return_mean"] >= mdp.horizon * 3 * 0.8
