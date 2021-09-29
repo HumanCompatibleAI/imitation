@@ -232,52 +232,79 @@ def test_policy_om_reasonable_mdp(discount: float):
     assert np.allclose(Dt[0], mdp.initial_state_dist)
 
 
+def _dup_obs(state):
+    return {"obs": state, "state": state}
+
+
 def test_tabular_policy():
     """Tests tabular policy prediction, especially timestep calculation and masking."""
     state_space = gym.spaces.Discrete(2)
+    observation_space = gym.spaces.Dict({"obs": state_space, "state": state_space})
     action_space = gym.spaces.Discrete(2)
     pi = np.stack(
         [np.eye(2), 1 - np.eye(2)],
     )
     rng = np.random.RandomState(42)
-    tabular = TabularPolicy(state_space=state_space, action_space=action_space, pi=pi, rng=rng)
+    tabular = TabularPolicy(
+        observation_space=observation_space,
+        action_space=action_space,
+        pi=pi,
+        rng=rng,
+    )
 
     states = np.array([0, 1, 1, 0, 1])
-    actions, timesteps = tabular.predict(states)
+    obs = _dup_obs(states)
+    actions, timesteps = tabular.predict(obs)
     np.testing.assert_array_equal(states, actions)
     np.testing.assert_equal(timesteps, 1)
 
     mask = np.zeros((5,), dtype=bool)
-    actions, timesteps = tabular.predict(states, timesteps, mask)
+    actions, timesteps = tabular.predict(obs, timesteps, mask)
     np.testing.assert_array_equal(1 - states, actions)
     np.testing.assert_equal(timesteps, 2)
 
     mask = np.ones((5,), dtype=bool)
-    actions, timesteps = tabular.predict(states, timesteps, mask)
+    actions, timesteps = tabular.predict(obs, timesteps, mask)
     np.testing.assert_array_equal(states, actions)
     np.testing.assert_equal(timesteps, 1)
 
     mask = (1 - states).astype(bool)
-    actions, timesteps = tabular.predict(states, timesteps, mask)
-    np.testing.assert_array_equal(np.zeros(5,), actions)
+    actions, timesteps = tabular.predict(obs, timesteps, mask)
+    np.testing.assert_array_equal(
+        np.zeros(
+            5,
+        ),
+        actions,
+    )
     np.testing.assert_equal(timesteps, 2 - mask.astype(int))
 
 
 def test_tabular_policy_randomness():
     state_space = gym.spaces.Discrete(2)
+    observation_space = gym.spaces.Dict({"obs": state_space, "state": state_space})
     action_space = gym.spaces.Discrete(2)
-    pi = np.array([[
-        [0.5, 0.5],
-        [0.9, 0.1],
-    ]])
+    pi = np.array(
+        [
+            [
+                [0.5, 0.5],
+                [0.9, 0.1],
+            ],
+        ],
+    )
     rng = np.random.RandomState(42)
-    tabular = TabularPolicy(state_space=state_space, action_space=action_space, pi=pi, rng=rng)
+    tabular = TabularPolicy(
+        observation_space=observation_space,
+        action_space=action_space,
+        pi=pi,
+        rng=rng,
+    )
 
-    actions, _ = tabular.predict(np.zeros((100,), dtype=int))
+    actions, _ = tabular.predict(_dup_obs(np.zeros((100,), dtype=int)))
     assert 0.45 <= np.mean(actions) <= 0.55
-    actions, _ = tabular.predict(np.ones((100,), dtype=int))
+    ones_obs = _dup_obs(np.ones((100,), dtype=int))
+    actions, _ = tabular.predict(ones_obs)
     assert 0.05 <= np.mean(actions) <= 0.15
-    actions, _ = tabular.predict(np.ones((100,), dtype=int), deterministic=True)
+    actions, _ = tabular.predict(ones_obs, deterministic=True)
     np.testing.assert_equal(actions, 0)
 
 

@@ -137,13 +137,12 @@ def squeeze_r(r_output: th.Tensor) -> th.Tensor:
     return r_output
 
 
-# TODO(adam): add test case for this
 class TabularPolicy(policies.BasePolicy):
     """A tabular policy. Cannot be trained -- prediction only."""
 
     def __init__(
         self,
-        state_space: gym.Space,
+        observation_space: gym.Space,
         action_space: gym.Space,
         pi: np.ndarray,
         rng: Optional[np.random.RandomState],
@@ -151,17 +150,21 @@ class TabularPolicy(policies.BasePolicy):
         """Builds TabularPolicy.
 
         Args:
-            state_space: The state space of the environment.
+            observation_space: The observation space of the environment.
             action_space: The action space of the environment.
             pi: A tabular policy. Three-dimensional array, where pi[t,s,a]
                 is the probability of taking action a at state s at timestep t.
             rng: Random state, used for sampling when `predict` is called with
                 `deterministic=False`.
         """
-        assert isinstance(state_space, gym.spaces.Discrete), "state not tabular"
+        assert isinstance(observation_space, gym.spaces.Dict), "observation not dict"
+        assert isinstance(
+            observation_space.spaces["state"],
+            gym.spaces.Discrete,
+        ), "state not tabular"
         assert isinstance(action_space, gym.spaces.Discrete), "action not tabular"
         # What we call state space here is observation space in SB3 nomenclature.
-        super().__init__(observation_space=state_space, action_space=action_space)
+        super().__init__(observation_space=observation_space, action_space=action_space)
         self.rng = rng or np.random
         self.set_pi(pi)
 
@@ -180,7 +183,7 @@ class TabularPolicy(policies.BasePolicy):
 
     def predict(
         self,
-        observation: np.ndarray,
+        observation: Mapping[str, np.ndarray],
         state: Optional[np.ndarray] = None,
         mask: Optional[np.ndarray] = None,
         deterministic: bool = False,
@@ -192,8 +195,9 @@ class TabularPolicy(policies.BasePolicy):
         and state is a hidden state used by the policy (used by us to
         keep track of timesteps).
 
-        What is `observation` here is a state in the underlying MDP,
-        and would be called `state` elsewhere in this file.
+        What is `observation` here is really a dict of the state of the underlying
+        MDP (which we use), and the observation in the POMDP sense (which we do not
+        use, but is used for the reward network).
 
         Args:
             observation: States in the underlying MDP.
@@ -205,17 +209,23 @@ class TabularPolicy(policies.BasePolicy):
         Returns:
             Tuple of the actions and new hidden states.
         """
-        if state is None:
-            state = np.zeros(len(observation), dtype=np.int)
+        timesteps = state  # rename to avoid confusion
+        del state
+
+        # obs_state = state from the MDP
+        obs_state = observation["state"]
+        if timesteps is None:
+            timesteps = np.zeros(len(obs_state), dtype=np.int)
         else:
-            state = np.array(state)
+            timesteps = np.array(timesteps)
+        assert len(timesteps) == len(obs_state), "timestep and obs batch size differ"
 
         if mask is not None:
-            state[mask] = 0
+            timesteps[mask] = 0
 
         actions = []
-        for obs, t in zip(observation, state):
-            assert self.observation_space.contains(obs), "illegal observation"
+        for obs, t in zip(obs_state, timesteps):
+            assert self.observation_space["state"].contains(obs), "illegal state"
             dist = self.pi[t, obs, :]
             if deterministic:
                 actions.append(dist.argmax())
@@ -223,9 +233,8 @@ class TabularPolicy(policies.BasePolicy):
                 actions_onehot = self.rng.multinomial(1, dist)
                 actions.append(actions_onehot.argmax())
 
-        state += 1  # increment timestep
-
-        return np.array(actions), state
+        timesteps += 1  # increment timestep
+        return np.array(actions), timesteps
 
 
 MCEDemonstrations = Union[np.ndarray, base.AnyTransitions]
@@ -300,7 +309,7 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
 
         if reward_net is None:
             reward_net = reward_nets.BasicRewardNet(
-                self.env.observation_space,
+                self.env.raw_observation_space,
                 self.env.action_space,
                 use_action=False,
                 use_next_state=False,
@@ -322,7 +331,7 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
         ones = np.ones((self.env.horizon, self.env.n_states, self.env.n_actions))
         uniform_pi = ones / self.env.n_actions
         self._policy = TabularPolicy(
-            state_space=self.env.state_space,
+            observation_space=self.env.observation_space,
             action_space=self.env.action_space,
             pi=uniform_pi,
             rng=self.rng,
