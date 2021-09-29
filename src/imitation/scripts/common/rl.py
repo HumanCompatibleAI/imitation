@@ -5,7 +5,12 @@ from typing import Any, Mapping, Type
 
 import sacred
 import stable_baselines3
-from stable_baselines3.common import base_class, policies, vec_env
+from stable_baselines3.common import (
+    base_class,
+    off_policy_algorithm,
+    on_policy_algorithm,
+    vec_env,
+)
 
 from imitation.scripts.common.train import train_ingredient
 
@@ -73,12 +78,12 @@ def make_rl_algo(
     # These are different notion of batches, but this seems the closest
     # possible translation, and I would expect the appropriate hyperparameter
     # to be similar between them.
-    if issubclass(rl_cls, policies.OnPolicyAlgorithm):
+    if issubclass(rl_cls, on_policy_algorithm.OnPolicyAlgorithm):
         assert (
             "n_steps" not in rl_kwargs
         ), "set 'n_steps' at top-level using 'batch_size'"
         rl_kwargs["n_steps"] = batch_size // venv.num_envs
-    elif issubclass(rl_cls, policies.OffPolicyAlgorithm):
+    elif issubclass(rl_cls, off_policy_algorithm.OffPolicyAlgorithm):
         assert "batch_size" not in rl_kwargs, "set 'batch_size' at top-level"
         rl_kwargs["batch_size"] = batch_size
     else:
