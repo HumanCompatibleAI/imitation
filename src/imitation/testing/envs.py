@@ -30,6 +30,6 @@ def test_model_based(env: gym.Env) -> None:
     assert isinstance(done, bool)
 
     obs = env.obs_from_state(state)
-    assert env.observation_space.contains(obs)
+    assert env.raw_observation_space.contains(obs)
     next_obs = env.obs_from_state(new_state)
-    assert env.observation_space.contains(next_obs)
+    assert env.raw_observation_space.contains(next_obs)
