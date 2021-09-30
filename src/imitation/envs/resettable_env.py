@@ -283,9 +283,10 @@ class DictExtractWrapper(vec_env.VecEnvWrapper):
             raise TypeError(
                 f"Observation space '{venv.observation_space}' is not dict type.",
             )
-        if key not in venv.observation_space:
+        if key not in venv.observation_space.spaces:
             raise KeyError(
-                f"Unrecognized '{key}'; valid keys = {venv.observation_space.keys()}",
+                f"Unrecognized '{key}'; valid keys = "
+                f"{venv.observation_space.spaces.keys()}",
             )
         super().__init__(venv=venv, observation_space=venv.observation_space[key])
         self.key = key
