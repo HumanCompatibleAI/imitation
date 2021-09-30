@@ -8,6 +8,7 @@ import abc
 import gym
 import numpy as np
 from gym import spaces
+from stable_baselines3.common import vec_env
 
 
 class ResettableEnv(gym.Env, abc.ABC):
@@ -256,3 +257,46 @@ class TabularModelEnv(ResettableEnv, abc.ABC):
     def initial_state_dist(self):
         """1D vector representing a distribution over initial states."""
         return
+
+
+class DictExtractWrapper(vec_env.VecEnvWrapper):
+    """Extracts key from dict observation of wrapped environment.
+
+    For example, can be used with instances of `ResettableEnv` to extract either
+    `'obs'` or `'state'` keys as appropriate. This is useful when you want a model
+    to depend on only one, or if the model does not natively support dict-based
+    observations.
+    """
+
+    def __init__(self, venv: vec_env.VecEnv, key: str):
+        """Builds DictExtractWrapper.
+
+        Args:
+            venv: A vectorized environment with dict observation space.
+            key: The key to extract from observations.
+
+        Raises:
+            TypeError: The observation space of `venv` is not a dict.
+            KeyError: `key` is not present in the observation space of `venv`.
+        """
+        if not isinstance(venv.observation_space, gym.spaces.Dict):
+            raise TypeError(
+                f"Observation space '{venv.observation_space}' is not dict type.",
+            )
+        if key not in venv.observation_space:
+            raise KeyError(
+                f"Unrecognized '{key}'; valid keys = {venv.observation_space.keys()}",
+            )
+        super().__init__(venv=venv, observation_space=venv.observation_space[key])
+        self.key = key
+
+    def reset(self):
+        obs = self.venv.reset()
+        return obs[self.key]
+
+    def step_wait(self):
+        obs, rew, dones, infos = self.venv.step_wait()
+        for info in infos:
+            if "terminal_observation" in info:
+                info["terminal_observation"] = info["terminal_observation"][self.key]
+        return obs[self.key], rew, dones, infos

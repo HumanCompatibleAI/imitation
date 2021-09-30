@@ -157,11 +157,7 @@ class TabularPolicy(policies.BasePolicy):
             rng: Random state, used for sampling when `predict` is called with
                 `deterministic=False`.
         """
-        assert isinstance(observation_space, gym.spaces.Dict), "observation not dict"
-        assert isinstance(
-            observation_space.spaces["state"],
-            gym.spaces.Discrete,
-        ), "state not tabular"
+        assert isinstance(observation_space, gym.spaces.Discrete), "state not tabular"
         assert isinstance(action_space, gym.spaces.Discrete), "action not tabular"
         # What we call state space here is observation space in SB3 nomenclature.
         super().__init__(observation_space=observation_space, action_space=action_space)
@@ -213,19 +209,18 @@ class TabularPolicy(policies.BasePolicy):
         del state
 
         # obs_state = state from the MDP
-        obs_state = observation["state"]
         if timesteps is None:
-            timesteps = np.zeros(len(obs_state), dtype=np.int)
+            timesteps = np.zeros(len(observation), dtype=np.int)
         else:
             timesteps = np.array(timesteps)
-        assert len(timesteps) == len(obs_state), "timestep and obs batch size differ"
+        assert len(timesteps) == len(observation), "timestep and obs batch size differ"
 
         if mask is not None:
             timesteps[mask] = 0
 
         actions = []
-        for obs, t in zip(obs_state, timesteps):
-            assert self.observation_space["state"].contains(obs), "illegal state"
+        for obs, t in zip(observation, timesteps):
+            assert self.observation_space.contains(obs), "illegal state"
             dist = self.pi[t, obs, :]
             if deterministic:
                 actions.append(dist.argmax())
@@ -331,7 +326,7 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
         ones = np.ones((self.env.horizon, self.env.n_states, self.env.n_actions))
         uniform_pi = ones / self.env.n_actions
         self._policy = TabularPolicy(
-            observation_space=self.env.observation_space,
+            observation_space=self.env.observation_space["state"],
             action_space=self.env.action_space,
             pi=uniform_pi,
             rng=self.rng,
