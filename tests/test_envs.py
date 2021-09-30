@@ -57,10 +57,10 @@ def test_dict_extract_wrapper():
     """Tests `DictExtractWrapper` input validation and extraction."""
     venv = vec_env.DummyVecEnv([lambda: envs.SimpleMultiObsEnv()])
     with pytest.raises(KeyError, match="Unrecognized .*"):
-        resettable_env.DictExtractWrapper(venv, 'foobar')
-    wrapped_venv = resettable_env.DictExtractWrapper(venv, 'vec')
+        resettable_env.DictExtractWrapper(venv, "foobar")
+    wrapped_venv = resettable_env.DictExtractWrapper(venv, "vec")
     with pytest.raises(TypeError, match=".* not dict type"):
-        resettable_env.DictExtractWrapper(wrapped_venv, 'foobar')
+        resettable_env.DictExtractWrapper(wrapped_venv, "foobar")
     obs = wrapped_venv.reset()
     assert isinstance(obs, np.ndarray)
     obs, _, _, _ = wrapped_venv.step([wrapped_venv.action_space.sample()])
