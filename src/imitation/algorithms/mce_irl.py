@@ -142,7 +142,7 @@ class TabularPolicy(policies.BasePolicy):
 
     def __init__(
         self,
-        observation_space: gym.Space,
+        state_space: gym.Space,
         action_space: gym.Space,
         pi: np.ndarray,
         rng: Optional[np.random.RandomState],
@@ -150,17 +150,17 @@ class TabularPolicy(policies.BasePolicy):
         """Builds TabularPolicy.
 
         Args:
-            observation_space: The observation space of the environment.
+            state_space: The observation space of the environment.
             action_space: The action space of the environment.
             pi: A tabular policy. Three-dimensional array, where pi[t,s,a]
                 is the probability of taking action a at state s at timestep t.
             rng: Random state, used for sampling when `predict` is called with
                 `deterministic=False`.
         """
-        assert isinstance(observation_space, gym.spaces.Discrete), "state not tabular"
+        assert isinstance(state_space, gym.spaces.Discrete), "state not tabular"
         assert isinstance(action_space, gym.spaces.Discrete), "action not tabular"
         # What we call state space here is observation space in SB3 nomenclature.
-        super().__init__(observation_space=observation_space, action_space=action_space)
+        super().__init__(observation_space=state_space, action_space=action_space)
         self.rng = rng or np.random
         self.set_pi(pi)
 
@@ -179,7 +179,7 @@ class TabularPolicy(policies.BasePolicy):
 
     def predict(
         self,
-        observation: Mapping[str, np.ndarray],
+        observation: np.ndarray,
         state: Optional[np.ndarray] = None,
         mask: Optional[np.ndarray] = None,
         deterministic: bool = False,
@@ -191,9 +191,8 @@ class TabularPolicy(policies.BasePolicy):
         and state is a hidden state used by the policy (used by us to
         keep track of timesteps).
 
-        What is `observation` here is really a dict of the state of the underlying
-        MDP (which we use), and the observation in the POMDP sense (which we do not
-        use, but is used for the reward network).
+        What is `observation` here is a state in the underlying MDP,
+        and would be called `state` elsewhere in this file.
 
         Args:
             observation: States in the underlying MDP.
@@ -326,7 +325,7 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
         ones = np.ones((self.env.horizon, self.env.n_states, self.env.n_actions))
         uniform_pi = ones / self.env.n_actions
         self._policy = TabularPolicy(
-            observation_space=self.env.observation_space["state"],
+            state_space=self.env.observation_space["state"],
             action_space=self.env.action_space,
             pi=uniform_pi,
             rng=self.rng,

@@ -241,7 +241,7 @@ def test_tabular_policy():
     )
     rng = np.random.RandomState(42)
     tabular = TabularPolicy(
-        observation_space=state_space,
+        state_space=state_space,
         action_space=action_space,
         pi=pi,
         rng=rng,
@@ -281,7 +281,7 @@ def test_tabular_policy_randomness():
     )
     rng = np.random.RandomState(42)
     tabular = TabularPolicy(
-        observation_space=state_space,
+        state_space=state_space,
         action_space=action_space,
         pi=pi,
         rng=rng,
