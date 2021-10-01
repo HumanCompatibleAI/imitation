@@ -82,7 +82,9 @@ jobs:
 
     steps:
       - dependencies
-      - shellcheck/install
+      - run:
+          name: spellcheck install
+          command: apt-get install -y spellcheck
 
       - shellcheck/check:
           dir: .
