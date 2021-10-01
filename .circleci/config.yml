@@ -84,9 +84,12 @@ jobs:
       - dependencies
 
       - run:
-          name: install wget (to install shellcheck)
-          command: apt-get install -y wget
-      - shellcheck/install
+          name: install shellcheck
+          command: |
+            curl -o /tmp/shellcheck.tar.xz https://github.com/koalaman/shellcheck/releases/download/stable/shellcheck-stable.linux.x86_64.tar.xz
+            tar -x shellcheck -f /tmp/shellcheck.tar.xz
+            mv shellcheck /usr/local/bin/shellcheck
+            chmod a+x /usr/local/bin/shellcheck
       - shellcheck/check:
           dir: .
 
