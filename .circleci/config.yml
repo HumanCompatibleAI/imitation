@@ -2,6 +2,7 @@ version: 2.1
 
 orbs:
   codecov: codecov/codecov@1.0.5
+  shellcheck: circleci/shellcheck@2.2.4
 
 defaults: &defaults
   docker:
@@ -81,6 +82,11 @@ jobs:
 
     steps:
       - dependencies
+      - shellcheck/install
+
+      - shellcheck/check:
+          dir: .
+
       - run:
           name: flake8
           command: flake8 --version && flake8 -j "${NUM_CPUS}" ${SRC_FILES}
