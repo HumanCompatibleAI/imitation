@@ -8,5 +8,6 @@ if [[ ${venv} == "" ]]; then
 fi
 
 virtualenv -p python3.7 ${venv}
+# shellcheck disable=SC1090
 source ${venv}/bin/activate
-pip install .[docs,parallel,test] gym[mujoco]
+pip install ".[docs,parallel,test]" "gym[mujoco]"

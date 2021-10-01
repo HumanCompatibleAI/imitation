@@ -37,7 +37,7 @@ We provide several CLI scripts as a front-end to the algorithms implemented in `
 From [examples/quickstart.sh:](examples/quickstart.sh)
 
 ```bash
-# Train PPO agent on pendulum and collect expert demonstrations. Tensorboard logs saved in `quickstart/rl/`
+# Train PPO agent on pendulum and collect expert demonstrations. Tensorboard logs saved in quickstart/rl/
 python -m imitation.scripts.train_rl with pendulum common.fast train.fast rl.fast fast common.log_dir=quickstart/rl/
 
 # Train GAIL from demonstrations. Tensorboard logs saved in output/ (default log directory).
