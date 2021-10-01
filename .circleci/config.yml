@@ -93,6 +93,10 @@ jobs:
             chmod a+x /usr/local/bin/shellcheck
       - shellcheck/check:
           dir: .
+          # Orb invokes shellcheck once per file. shellcheck complains if file
+          # includes another file not given on the command line. Ignore this,
+          # since they'll just get checked in a separate shellcheck invocation.
+          exclude: SC1091
 
       - run:
           name: flake8
