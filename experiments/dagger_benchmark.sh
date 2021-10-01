@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -e
-source experiments/common.env
+source experiments/common.sh
 
 ENVS=(cartpole)
 SEEDS=(0 1 2 3 4)

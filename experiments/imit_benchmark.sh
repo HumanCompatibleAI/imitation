@@ -7,7 +7,7 @@ set -e
 # The benchmark tasks are defined in the CSV config file
 # `experiments/imit_benchmark_config.csv`.
 
-source experiments/common.env
+source experiments/common.sh
 
 SEEDS=(0 1 2 3 4)
 CONFIG_CSV="experiments/imit_benchmark_config.csv"

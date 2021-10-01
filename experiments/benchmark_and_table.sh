@@ -19,7 +19,7 @@
 # they can be gathered by the table-generating analysis script.
 
 set -e  # Exit on error
-source experiments/common.env
+source experiments/common.sh
 
 RUN_NAME="paper-${TIMESTAMP}"
 echo "Training with run_name=${RUN_NAME}"

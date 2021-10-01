@@ -16,7 +16,7 @@ if [ -x "$(which circleci)" ]; then
 fi
 
 if [ -x "$(which shellcheck)" ]; then
-    find . -path ./venv -prune -o \( -name '*.sh' -o -name '*.env' \) -print0 | xargs -0 shellcheck
+    find . -path ./venv -prune -o -name '*.sh' -print0 | xargs -0 shellcheck
 fi
 
 if [ "${skipexpensive:-}" != "true" ]; then

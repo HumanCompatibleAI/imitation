@@ -7,7 +7,7 @@ set -e
 #
 # When training is finished, it reports the mean episode reward of each
 # expert.
-source experiments/common.env
+source experiments/common.sh
 
 ENVS=(cartpole)
 SEEDS=(0 1 2)

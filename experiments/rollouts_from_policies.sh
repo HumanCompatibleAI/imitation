@@ -20,7 +20,7 @@
 
 set -e  # Exit on error.
 
-source experiments/common.env
+source experiments/common.sh
 
 DATA_DIR=${DATA_DIR:-data}
 CONFIG_CSV=${CONFIG_CSV:-experiments/rollouts_from_policies_config.csv}

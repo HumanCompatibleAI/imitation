@@ -3,7 +3,7 @@
 
 set -e
 
-source experiments/common.env
+source experiments/common.sh
 
 SEEDS=(0 1 2)
 CONFIG_CSV="experiments/imit_benchmark_config.csv"

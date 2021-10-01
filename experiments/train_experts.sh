@@ -5,7 +5,7 @@ set -e
 # When training is finished, it reports the mean episode reward of each
 # expert.
 
-source experiments/common.env
+source experiments/common.sh
 
 SEEDS=(0 1 2)
 ENVS=(acrobot cartpole mountain_car reacher half_cheetah)
