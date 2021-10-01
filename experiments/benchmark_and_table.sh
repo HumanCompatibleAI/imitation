@@ -28,8 +28,9 @@ script_dir=experiments
 fast_flag=""
 tmux_flag=""
 
-TEMP=$($GNU_GETOPT -o fT -l fast,tmux -- "$@")
-if [[ $? != 0 ]]; then exit 1; fi
+if ! TEMP=$($GNU_GETOPT -o fT -l fast,tmux -- "$@"); then
+  exit 1
+fi
 eval set -- "$TEMP"
 
 while true; do

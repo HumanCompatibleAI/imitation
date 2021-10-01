@@ -26,8 +26,9 @@ DATA_DIR=${DATA_DIR:-data}
 CONFIG_CSV=${CONFIG_CSV:-experiments/rollouts_from_policies_config.csv}
 OUTPUT_DIR="output/train_experts/${TIMESTAMP}"
 
-TEMP=$($GNU_GETOPT -o f -l fast -- "$@")
-if [[ $? != 0 ]]; then exit 1; fi
+if ! TEMP=$($GNU_GETOPT -o f -l fast -- "$@"); then
+  exit 1
+fi
 eval set -- "$TEMP"
 
 while true; do
@@ -54,14 +55,14 @@ echo "Loading config from ${expert_models_dir}"
 echo "Loading expert models from ${DATA_DIR}/expert_models}"
 echo "Writing logs in ${OUTPUT_DIR}, and saving rollouts in ${OUTPUT_DIR}/expert_models/*/rollouts/"
 
-parallel -j 25% --header : --results ${OUTPUT_DIR}/parallel/ --colsep , \
+parallel -j 25% --header : --results "${OUTPUT_DIR}/parallel/" --colsep , \
   python -m imitation.scripts.eval_policy \
   --capture=sys \
   with \
-  {env_config_name} \
+  '{env_config_name}' \
   common.log_root="${OUTPUT_DIR}" \
   policy_type="ppo" policy_path="${expert_models_dir}/{env_config_name}_0/policies/final/" \
   rollout_save_path="${OUTPUT_DIR}/{env_config_name}_0/rollouts/final.pkl" \
-  eval_n_episodes="{n_demonstrations}" \
+  eval_n_episodes='{n_demonstrations}' \
   eval_n_timesteps=None \
   :::: ${CONFIG_CSV}

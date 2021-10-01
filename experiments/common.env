@@ -1,3 +1,5 @@
+# shellcheck shell=bash
+
 # Common variables for experiment scripts
 
 export GNU_DATE=date
@@ -7,7 +9,8 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
   export GNU_GETOPT=/usr/local/opt/gnu-getopt/bin/getopt
 fi
 
-export TIMESTAMP=$($GNU_DATE --iso-8601=seconds)
+TIMESTAMP=$($GNU_DATE --iso-8601=seconds)
+export TIMESTAMP
 
 # Set OMP_NUM_THREADS=2 if not yet exported.
 # This is important because parallel runs of PyTorch often throttle due to
