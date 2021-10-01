@@ -82,10 +82,11 @@ jobs:
 
     steps:
       - dependencies
-      - run:
-          name: shellcheck install
-          command: apt-get install -y shellcheck
 
+      - run:
+          name: install wget (to install shellcheck)
+          command: apt-get install -y wget
+      - shellcheck/install
       - shellcheck/check:
           dir: .
 
