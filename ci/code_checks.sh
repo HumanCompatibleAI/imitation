@@ -15,6 +15,10 @@ if [ -x "`which circleci`" ]; then
     circleci config validate
 fi
 
+if [ -x "`which shellcheck`" ]; then
+    find . -path ./venv -prune -o \( -name '*.sh' -o -name '*.env' \) -print0 | xargs -0 shellcheck
+fi
+
 echo "files changed"
 echo $*
 
