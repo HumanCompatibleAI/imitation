@@ -123,11 +123,17 @@ def _build_dagger_trainer(
             "DAggerTrainer does not use trajectories. "
             "Skipping to avoid duplicate test.",
         )
+    bc_trainer = bc.BC(
+        observation_space=venv.observation_space,
+        action_space=venv.action_space,
+        optimizer_kwargs=dict(lr=1e-3),
+        custom_logger=custom_logger,
+    )
     return dagger.DAggerTrainer(
         venv=venv,
         scratch_dir=tmpdir,
         beta_schedule=beta_schedule,
-        bc_kwargs=dict(optimizer_kwargs=dict(lr=1e-3)),
+        bc_trainer=bc_trainer,
         custom_logger=custom_logger,
     )
 
@@ -140,11 +146,17 @@ def _build_simple_dagger_trainer(
     expert_trajs,
     custom_logger,
 ):
+    bc_trainer = bc.BC(
+        observation_space=venv.observation_space,
+        action_space=venv.action_space,
+        optimizer_kwargs=dict(lr=1e-3),
+        custom_logger=custom_logger,
+    )
     return dagger.SimpleDAggerTrainer(
         venv=venv,
         scratch_dir=tmpdir,
         beta_schedule=beta_schedule,
-        bc_kwargs=dict(optimizer_kwargs=dict(lr=1e-3)),
+        bc_trainer=bc_trainer,
         expert_policy=expert_policy,
         expert_trajs=expert_trajs,
         custom_logger=custom_logger,
@@ -352,10 +364,16 @@ def test_simple_dagger_space_mismatch_error(
 def test_dagger_not_enough_transitions_error(tmpdir, custom_logger):
     venv = util.make_vec_env("CartPole-v0")
     # Initialize with large batch size to ensure error down the line.
+    bc_trainer = bc.BC(
+        observation_space=venv.observation_space,
+        action_space=venv.action_space,
+        batch_size=100_000,
+        custom_logger=custom_logger,
+    )
     trainer = dagger.DAggerTrainer(
         venv=venv,
         scratch_dir=tmpdir,
-        batch_size=100_000,
+        bc_trainer=bc_trainer,
         custom_logger=custom_logger,
     )
     collector = trainer.get_trajectory_collector()

@@ -19,7 +19,8 @@ while true; do
     # Fast mode (debug)
     -f | --fast)
       SEEDS="0"
-      extra_configs+="fast "
+      extra_configs+="common.fast demonstrations.fast train.fast fast "
+      DATA_DIR="tests/testdata"
       shift
       ;;
     --paper)  # Table benchmark settings
@@ -70,15 +71,15 @@ echo "Logging to: ${LOG_ROOT}"
 
 parallel -j 25% --header : --results ${LOG_ROOT}/parallel/ --colsep , --progress \
   ${extra_parallel_options} \
-  python -m imitation.scripts.train_dagger \
+  python -m imitation.scripts.train_imitation \
   --capture=sys \
   ${extra_options} \
+  dagger \
   with \
   {env_config_name} \
-  log_dir="${LOG_ROOT}/{env_config_name}_{seed}" \
-  expert_data_src_format=None \
-  expert_policy_path=${DATA_DIR}/expert_models/{env_config_name}_0/policies/final/ \
-  expert_policy_type='ppo' \
+  common.log_dir="${LOG_ROOT}/{env_config_name}_{seed}" \
+  dagger.expert_policy_path=${DATA_DIR}/expert_models/{env_config_name}_0/policies/final/ \
+  dagger.expert_policy_type='ppo' \
   seed={seed} \
   ${extra_configs} \
   ::: env_config_name ${ENVS} \

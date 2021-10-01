@@ -11,26 +11,14 @@ These use `Sacred <https://github.com/idsia/sacred>`_ for configuration and repl
 
 For information on how to configure Sacred CLI options, see the `Sacred docs <https://sacred.readthedocs.io/en/stable/>`_.
 
-.. code-block:: bash
-
-    # Train PPO agent on cartpole and collect expert demonstrations. Tensorboard logs saved
-    # in `quickstart/rl/`
-    python -m imitation.scripts.expert_demos with fast cartpole log_dir=quickstart/rl/
-
-    # Train GAIL from demonstrations. Tensorboard logs saved in output/ (default log directory).
-    python -m imitation.scripts.train_adversarial with fast gail cartpole \
-        rollout_path=quickstart/rl/rollouts/final.pkl
-
-    # Train AIRL from demonstrations. Tensorboard logs saved in output/ (default log directory).
-    python -m imitation.scripts.train_adversarial with fast airl cartpole \
-        rollout_path=quickstart/rl/rollouts/final.pkl
-
+.. literalinclude :: ../../examples/quickstart.sh
+   :language: bash
 
 .. note::
-  Remove the ``fast`` option from the commands above to allow training run to completion.
+  Remove the ``fast`` options from the commands above to allow training run to completion.
 
 .. tip::
-  ``python -m imitation.scripts.expert_demos print_config`` will list Sacred script options.
+  ``python -m imitation.scripts.train_rl print_config`` will list Sacred script options.
   These configuration options are also documented in each script's docstrings.
 
 

@@ -9,65 +9,46 @@ import pathlib
 import pickle
 from typing import Any, Mapping, Optional
 
-import stable_baselines3
 import torch as th
 from sacred.observers import FileStorageObserver
 from stable_baselines3.common import vec_env
 
 from imitation.algorithms import preference_comparisons
-from imitation.data import rollout
 from imitation.policies import serialize
 from imitation.rewards import reward_nets
+from imitation.scripts.common import common, reward
+from imitation.scripts.common import rl as rl_common
+from imitation.scripts.common import train
 from imitation.scripts.config.train_preference_comparisons import (
     train_preference_comparisons_ex,
 )
-from imitation.util import logger
-from imitation.util import sacred as sacred_util
-from imitation.util import util
 
 
 @train_preference_comparisons_ex.main
 def train_preference_comparisons(
     _run,
     _seed: int,
-    env_name: str,
-    env_make_kwargs: Optional[Mapping[str, Any]],
-    num_vec: int,
-    parallel: bool,
     normalize: bool,
     normalize_kwargs: Mapping[str, Any],
-    max_episode_steps: Optional[int],
-    log_dir: str,
     total_timesteps: int,
     total_comparisons: int,
     comparisons_per_iteration: int,
     fragment_length: int,
     transition_oversampling: float,
-    n_episodes_eval: int,
     trajectory_path: Optional[str],
     save_preferences: bool,
     agent_path: Optional[str],
-    reward_net_kwargs: Mapping[str, Any],
     reward_trainer_kwargs: Mapping[str, Any],
-    agent_kwargs: Mapping[str, Any],
     gatherer_kwargs: Mapping[str, Any],
+    rl: Mapping[str, Any],
     allow_variable_horizon: bool,
 ) -> Mapping[str, Any]:
     """Train a reward model using preference comparisons.
 
     Args:
         _seed: Random seed.
-        env_name: The environment to train in.
-        env_make_kwargs: The kwargs passed to `spec.make` of a gym environment.
-        num_vec: Number of `gym.Env` to vectorize.
-        parallel: Whether to use "true" parallelism. If True, then use `SubProcVecEnv`.
-            Otherwise, use `DummyVecEnv` which steps through environments serially.
         normalize: If True, then rescale observations and reward.
         normalize_kwargs: kwargs for `VecNormalize`.
-        max_episode_steps: If not None, then a TimeLimit wrapper is applied to each
-            environment to artificially limit the maximum number of timesteps in an
-            episode.
-        log_dir: Directory to save models and other logging to.
         total_timesteps: number of environment interaction steps
         total_comparisons: number of preferences to gather in total
         comparisons_per_iteration: number of preferences to gather at once (before
@@ -80,18 +61,15 @@ def train_preference_comparisons(
             creating fragments. Since fragments are sampled with replacement,
             this is usually chosen > 1 to avoid having the same transition
             in too many fragments.
-        n_episodes_eval: The number of episodes to average over when calculating
-            the average episode reward of the learned policy for return.
         trajectory_path: either None, in which case an agent will be trained
             and used to sample trajectories on the fly, or a path to a pickled
             sequence of TrajectoryWithRew to be trained on
         save_preferences: if True, store the final dataset of preferences to disk.
         agent_path: if given, initialize the agent using this stored policy
             rather than randomly.
-        reward_net_kwargs: passed to BasicRewardNet
         reward_trainer_kwargs: passed to CrossEntropyRewardTrainer
-        agent_kwargs: passed to SB3's PPO
         gatherer_kwargs: passed to SyntheticGatherer
+        rl: parameters for RL training, used for restoring agents.
         allow_variable_horizon: If False (default), algorithm will raise an
             exception if it detects trajectories of different length during
             training. If True, overrides this safety check. WARNING: variable
@@ -107,29 +85,18 @@ def train_preference_comparisons(
         FileNotFoundError: Path corresponding to saved policy missing.
         ValueError: Inconsistency between config and deserialized policy normalization.
     """
-    custom_logger = logger.configure(log_dir, ["tensorboard", "stdout"])
-    os.makedirs(log_dir, exist_ok=True)
-    sacred_util.build_sacred_symlink(log_dir, _run)
-
-    venv = util.make_vec_env(
-        env_name,
-        num_vec,
-        seed=_seed,
-        parallel=parallel,
-        log_dir=log_dir,
-        max_episode_steps=max_episode_steps,
-        env_make_kwargs=env_make_kwargs,
-    )
+    custom_logger, log_dir = common.setup_logging()
+    venv = common.make_venv()
 
     vec_normalize = None
-
-    reward_net = reward_nets.BasicRewardNet(
-        venv.observation_space,
-        venv.action_space,
-        **reward_net_kwargs,
-    )
+    reward_net = reward.make_reward_net(venv)
+    if reward_net is None:
+        reward_net = reward_nets.BasicRewardNet(
+            venv.observation_space,
+            venv.action_space,
+        )
     if agent_path is None:
-        agent = stable_baselines3.PPO("MlpPolicy", venv, seed=_seed, **agent_kwargs)
+        agent = rl_common.make_rl_algo(venv)
     else:
         # TODO(ejnnr): this is pretty similar to the logic in policies/serialize.py
         # but I did make a few small changes that make it a bit tricky to actually
@@ -148,11 +115,11 @@ def train_preference_comparisons(
                 f"Could not find policy at expected location {model_path}",
             )
 
-        agent = stable_baselines3.PPO.load(
+        agent = rl["rl_cls"].load(
             model_path,
             env=venv,
             seed=_seed,
-            **agent_kwargs,
+            **rl["rl_kwargs"],
         )
         custom_logger.info(f"Warm starting agent from '{model_path}'")
 
@@ -256,17 +223,8 @@ def train_preference_comparisons(
             agent,
             vec_normalize,
         )
-        sample_until = rollout.make_sample_until(
-            min_timesteps=None,
-            min_episodes=n_episodes_eval,
-        )
-        trajs = rollout.generate_trajectories(
-            agent,
-            venv,
-            sample_until=sample_until,
-        )
         results = dict(results)
-        results["rollout"] = rollout.rollout_stats(trajs)
+        results["rollout"] = train.eval_policy(agent, venv)
 
     return results
 

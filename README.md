@@ -38,17 +38,17 @@ From [examples/quickstart.sh:](examples/quickstart.sh)
 
 ```bash
 # Train PPO agent on pendulum and collect expert demonstrations. Tensorboard logs saved in `quickstart/rl/`
-python -m imitation.scripts.expert_demos with pendulum fast log_dir=quickstart/rl/
+python -m imitation.scripts.train_rl with pendulum common.fast train.fast rl.fast fast common.log_dir=quickstart/rl/
 
 # Train GAIL from demonstrations. Tensorboard logs saved in output/ (default log directory).
-python -m imitation.scripts.train_adversarial with gail pendulum fast rollout_path=quickstart/rl/rollouts/final.pkl
+python -m imitation.scripts.train_adversarial gail with pendulum common.fast demonstrations.fast train.fast rl.fast fast demonstrations.rollout_path=quickstart/rl/rollouts/final.pkl
 
 # Train AIRL from demonstrations. Tensorboard logs saved in output/ (default log directory).
-python -m imitation.scripts.train_adversarial with airl pendulum fast rollout_path=quickstart/rl/rollouts/final.pkl
+python -m imitation.scripts.train_adversarial airl with pendulum common.fast demonstrations.fast train.fast rl.fast fast demonstrations.rollout_path=quickstart/rl/rollouts/final.pkl
 ```
 Tips:
-  * Remove the "fast" option from the commands above to allow training run to completion.
-  * `python -m imitation.scripts.expert_demos print_config` will list Sacred script options. These configuration options are documented in each script's docstrings.
+  * Remove the "fast" options from the commands above to allow training run to completion.
+  * `python -m imitation.scripts.train_rl print_config` will list Sacred script options. These configuration options are documented in each script's docstrings.
 
 For more information on how to configure Sacred CLI options, see the [Sacred docs](https://sacred.readthedocs.io/en/stable/).
 

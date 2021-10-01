@@ -70,7 +70,7 @@ def trainer(batch_size, venv, expert_data_type, custom_logger):
     return bc.BC(
         observation_space=venv.observation_space,
         action_space=venv.action_space,
-        demo_batch_size=batch_size,
+        batch_size=batch_size,
         demonstrations=expert_data,
         custom_logger=custom_logger,
     )
@@ -167,7 +167,7 @@ def test_bc_data_loader_empty_iter_error(
     trainer = bc.BC(
         observation_space=venv.observation_space,
         action_space=venv.action_space,
-        demo_batch_size=batch_size,
+        batch_size=batch_size,
         custom_logger=custom_logger,
     )
     trainer.set_demonstrations(bad_data_loader)

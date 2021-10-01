@@ -8,9 +8,11 @@ Follows the description in chapters 9 and 10 of Brian Ziebart's `PhD thesis`_.
 
 from typing import Any, Iterable, Mapping, Optional, Tuple, Type, Union
 
+import gym
 import numpy as np
 import scipy.special
 import torch as th
+from stable_baselines3.common import policies
 
 from imitation.algorithms import base
 from imitation.data import rollout, types
@@ -135,11 +137,112 @@ def squeeze_r(r_output: th.Tensor) -> th.Tensor:
     return r_output
 
 
+# TODO(adam): add test case for this
+class TabularPolicy(policies.BasePolicy):
+    """A tabular policy. Cannot be trained -- prediction only."""
+
+    def __init__(
+        self,
+        state_space: gym.Space,
+        action_space: gym.Space,
+        pi: np.ndarray,
+        rng: Optional[np.random.RandomState],
+    ):
+        """Builds TabularPolicy.
+
+        Args:
+            state_space: The state space of the environment.
+            action_space: The action space of the environment.
+            pi: A tabular policy. Three-dimensional array, where pi[t,s,a]
+                is the probability of taking action a at state s at timestep t.
+            rng: Random state, used for sampling when `predict` is called with
+                `deterministic=False`.
+        """
+        assert isinstance(state_space, gym.spaces.Discrete), "state not tabular"
+        assert isinstance(action_space, gym.spaces.Discrete), "action not tabular"
+        # What we call state space here is observation space in SB3 nomenclature.
+        super().__init__(observation_space=state_space, action_space=action_space)
+        self.rng = rng or np.random
+        self.set_pi(pi)
+
+    def set_pi(self, pi: np.ndarray) -> None:
+        """Sets tabular policy to `pi`."""
+        assert pi.ndim == 3, "expected three-dimensional policy"
+        assert np.allclose(pi.sum(axis=2), 1), "policy not normalized"
+        assert np.all(pi >= 0), "policy has negative probabilities"
+        self.pi = pi
+
+    def _predict(self, observation: th.Tensor, deterministic: bool = False):
+        raise NotImplementedError("Should never be called as predict overridden.")
+
+    def forward(self, observation: th.Tensor, deterministic: bool = False):
+        raise NotImplementedError("Should never be called.")
+
+    def predict(
+        self,
+        observation: np.ndarray,
+        state: Optional[np.ndarray] = None,
+        mask: Optional[np.ndarray] = None,
+        deterministic: bool = False,
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        """Predict action to take in given state.
+
+        Arguments follow SB3 naming convention as this is an SB3 policy.
+        In this convention, observations are returned by the environment,
+        and state is a hidden state used by the policy (used by us to
+        keep track of timesteps).
+
+        What is `observation` here is a state in the underlying MDP,
+        and would be called `state` elsewhere in this file.
+
+        Args:
+            observation: States in the underlying MDP.
+            state: Hidden states of the policy -- used to represent timesteps by us.
+            mask: Has episode completed?
+            deterministic: If true, pick action with highest probability; otherwise,
+                sample.
+
+        Returns:
+            Tuple of the actions and new hidden states.
+        """
+        if state is None:
+            state = np.zeros(len(observation), dtype=np.int)
+        else:
+            state = np.array(state)
+
+        if mask is not None:
+            state[mask] = 0
+
+        actions = []
+        for obs, t in zip(observation, state):
+            assert self.observation_space.contains(obs), "illegal observation"
+            dist = self.pi[t, obs, :]
+            if deterministic:
+                actions.append(dist.argmax())
+            else:
+                actions_onehot = self.rng.multinomial(1, dist)
+                actions.append(actions_onehot.argmax())
+
+        state += 1  # increment timestep
+
+        return np.array(actions), state
+
+
 MCEDemonstrations = Union[np.ndarray, base.AnyTransitions]
 
 
 class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
-    """Tabular MCE IRL."""
+    """Tabular MCE IRL.
+
+    Reward is a function of observations, but policy is a function of states.
+
+    The "observations" effectively exist just to let MCE IRL learn a reward
+    in a reasonable feature space, giving a helpful inductive bias, e.g. that
+    similar states have similar reward.
+
+    Since we are performing planning to compute the policy, there is no need
+    for function approximation in the policy.
+    """
 
     demo_state_om: Optional[np.ndarray]
 
@@ -156,6 +259,7 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
         # TODO(adam): do we need log_interval or can just use record_mean...?
         log_interval: Optional[int] = 100,
         *,
+        rng: Optional[np.random.RandomState] = None,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
     ):
         r"""Creates MCE IRL.
@@ -183,6 +287,7 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
                 MCE IRL gradient falls below this value.
             log_interval: how often to log current loss stats (using `logging`).
                 None to disable.
+            rng: random state used for sampling from policy.
             custom_logger: Where to log to; if None (default), creates a new logger.
         """
         self.discount = discount
@@ -195,8 +300,8 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
 
         if reward_net is None:
             reward_net = reward_nets.BasicRewardNet(
-                env.observation_space,
-                env.action_space,
+                self.env.observation_space,
+                self.env.action_space,
                 use_action=False,
                 use_next_state=False,
                 use_done=False,
@@ -209,6 +314,19 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
         self.linf_eps = linf_eps
         self.grad_l2_eps = grad_l2_eps
         self.log_interval = log_interval
+        self.rng = rng
+
+        # Initialize policy to be uniform random. We don't use this for MCE IRL
+        # training, but it gives us something to return at all times with `policy`
+        # property, similar to other algorithms.
+        ones = np.ones((self.env.horizon, self.env.n_states, self.env.n_actions))
+        uniform_pi = ones / self.env.n_actions
+        self._policy = TabularPolicy(
+            state_space=self.env.state_space,
+            action_space=self.env.action_space,
+            pi=uniform_pi,
+            rng=self.rng,
+        )
 
     def _set_demo_from_obs(self, obses: np.ndarray) -> None:
         if self.discount != 1.0:
@@ -324,4 +442,18 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
             if linf_delta <= self.linf_eps or grad_norm <= self.grad_l2_eps:
                 break
 
+        _, _, pi = mce_partition_fh(
+            self.env,
+            reward=predicted_r_np,
+            discount=self.discount,
+        )
+        # TODO(adam): this policy works on states, not observations, so can't
+        # actually compute rollouts from it in the usual way. Fix this by making
+        # observations part of MCE IRL and turn environment from POMDP->MDP?
+        self._policy.set_pi(pi)
+
         return visitations
+
+    @property
+    def policy(self) -> policies.BasePolicy:
+        return self._policy

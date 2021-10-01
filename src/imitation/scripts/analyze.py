@@ -65,7 +65,7 @@ def _gather_sacred_dicts(
 
     if env_name is not None:
         sacred_dicts = filter(
-            lambda sd: get(sd.config, "env_name") == env_name,
+            lambda sd: get(sd.config, "common.env_name") == env_name,
             sacred_dicts,
         )
 
@@ -106,10 +106,9 @@ def gather_tb_directories() -> dict:
         run_dir = osp.dirname(osp.dirname(sacred_dir))
         run_name = osp.basename(run_dir)
 
-        # "tb" is TensorBoard directory built by our codebase. "sb_tb" is Stable
-        # Baselines TensorBoard directory. There should be at most one of each
-        # directory.
-        for basename in ["rl", "tb", "sb_tb"]:
+        # log is what we use as subdirectory in new code.
+        # rl, tb, sb_tb all appear in old versions.
+        for basename in ["log", "rl", "tb", "sb_tb"]:
             tb_src_dirs = tuple(
                 sacred_util.filter_subdirs(
                     run_dir,
@@ -191,8 +190,8 @@ table_entry_fns: sd_to_table_entry_type = collections.OrderedDict(
         ("status", lambda sd: get(sd.run, "status")),
         ("exp_command", _get_exp_command),
         ("algo", _get_algo_name),
-        ("env_name", lambda sd: get(sd.config, "env_name")),
-        ("n_expert_demos", lambda sd: get(sd.config, "n_expert_demos")),
+        ("env_name", lambda sd: get(sd.config, "common.env_name")),
+        ("n_expert_demos", lambda sd: get(sd.config, "demonstrations.n_expert_demos")),
         ("run_name", lambda sd: get(sd.run, "experiment.name")),
         (
             "expert_return_summary",

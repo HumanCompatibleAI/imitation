@@ -6,6 +6,7 @@ from typing import Any, Generic, Iterable, Mapping, Optional, TypeVar, Union
 import numpy as np
 import torch as th
 import torch.utils.data as th_data
+from stable_baselines3.common import policies
 
 from imitation.data import rollout, types
 from imitation.util import logger as imit_logger
@@ -165,6 +166,11 @@ class DemonstrationAlgorithm(BaseImitationAlgorithm, Generic[TransitionKind]):
                 yields dictionaries containing "obs" and "acts" Tensors or NumPy arrays,
                 `TransitionKind` instance, or a Sequence of Trajectory objects.
         """
+
+    @property
+    @abc.abstractmethod
+    def policy(self) -> policies.BasePolicy:
+        """Returns a policy imitating the demonstration data."""
 
 
 class _WrappedDataLoader:
