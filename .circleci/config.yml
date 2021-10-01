@@ -86,9 +86,10 @@ jobs:
       - run:
           name: install shellcheck
           command: |
-            curl -o /tmp/shellcheck.tar.xz https://github.com/koalaman/shellcheck/releases/download/stable/shellcheck-stable.linux.x86_64.tar.xz
-            tar -x shellcheck -f /tmp/shellcheck.tar.xz
-            mv shellcheck /usr/local/bin/shellcheck
+            curl -Lo /tmp/shellcheck.tar.xz https://github.com/koalaman/shellcheck/releases/download/stable/shellcheck-stable.linux.x86_64.tar.xz
+            tar -x shellcheck-stable/shellcheck -f /tmp/shellcheck.tar.xz
+            mv shellcheck-stable/shellcheck /usr/local/bin/shellcheck
+            rm -rf shellcheck-stable
             chmod a+x /usr/local/bin/shellcheck
       - shellcheck/check:
           dir: .
