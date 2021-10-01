@@ -65,7 +65,7 @@ parallel -j 25% --header : --progress --results ${OUTPUT_DIR}/parallel/ \
   '{env}' "${extra_configs[@]}" \
   seed='{seed}' \
   common.log_dir="${OUTPUT_DIR}/{env}_{seed}" \
-  ::: env "${ENVS[@]}"
+  ::: env "${ENVS[@]}" \
   ::: seed "${SEEDS[@]}"
 
 pushd "$OUTPUT_DIR"

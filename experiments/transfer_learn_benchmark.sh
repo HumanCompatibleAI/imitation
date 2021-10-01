@@ -85,7 +85,7 @@ parallel -j 25% --header : --results "${LOG_ROOT}/parallel/" --colsep , --progre
   reward_type="RewardNet_shaped" \
   reward_path="${REWARD_MODELS_DIR}/${ALGORITHM}/{env_config_name}_0/n_expert_demos_{n_expert_demos}/checkpoints/final/reward_test.pt" \
   "${extra_configs[@]}" \
-  :::: ${CONFIG_CSV}
+  :::: ${CONFIG_CSV} \
   ::: seed "${SEEDS[@]}"
 
 pushd "$LOG_ROOT"
