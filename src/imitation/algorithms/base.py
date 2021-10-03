@@ -65,7 +65,7 @@ class BaseImitationAlgorithm(abc.ABC):
         self._logger = value
 
     def _check_fixed_horizon(self, horizons: Iterable[int]) -> None:
-        """Checks that `trajs` has fixed episode length and equal to prior calls.
+        """Checks that episode lengths in `horizons` are fixed and equal to prior calls.
 
         If algorithm is safe to use with variable horizon episodes (e.g. behavioral
         cloning), then just don't call this method.
