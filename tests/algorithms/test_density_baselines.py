@@ -26,7 +26,7 @@ def score_trajectories(
     # score trajectories under given reward function w/o discount
     returns = []
     for traj in trajectories:
-        dones = np.zeros(len(traj), dtype=np.bool)
+        dones = np.zeros(len(traj), dtype=bool)
         dones[-1] = True
         steps = np.arange(0, len(traj.acts))
         rewards = density_reward(traj.obs[:-1], traj.acts, traj.obs[1:], dones, steps)

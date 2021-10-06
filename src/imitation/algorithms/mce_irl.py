@@ -206,7 +206,7 @@ class TabularPolicy(policies.BasePolicy):
             Tuple of the actions and new hidden states.
         """
         if state is None:
-            state = np.zeros(len(observation), dtype=np.int)
+            state = np.zeros(len(observation), dtype=int)
         else:
             state = np.array(state)
 
