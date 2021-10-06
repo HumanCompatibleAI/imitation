@@ -220,8 +220,7 @@ class TabularPolicy(policies.BasePolicy):
             if deterministic:
                 actions.append(dist.argmax())
             else:
-                actions_onehot = self.rng.multinomial(1, dist)
-                actions.append(actions_onehot.argmax())
+                actions.append(self.rng.choice(len(dist), p=dist))
 
         state += 1  # increment timestep
 
