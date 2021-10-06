@@ -28,7 +28,7 @@ def fast():
 
 
 def guess_expert_dir(data_dir: str, env_name: str) -> str:
-    rollout_hint = env_name.split("-")[0].replace("/", "_").lower()
+    rollout_hint = env_name.rsplit("-", 1)[0].replace("/", "_").lower()
     return os.path.join(data_dir, "expert_models", f"{rollout_hint}_0")
 
 
