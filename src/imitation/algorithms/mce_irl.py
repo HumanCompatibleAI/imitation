@@ -207,7 +207,6 @@ class TabularPolicy(policies.BasePolicy):
         timesteps = state  # rename to avoid confusion
         del state
 
-        # obs_state = state from the MDP
         if timesteps is None:
             timesteps = np.zeros(len(observation), dtype=np.int)
         else:

@@ -7,8 +7,7 @@ import src.imitation  # pytype: disable=import-error
 TESTS_REQUIRE = [
     # TODO(adam): switch back to PyPi release once PR incorporated:
     # https://github.com/HumanCompatibleAI/seals/pull/51
-    "seals @ "
-    "git+https://github.com/HumanCompatibleAI/seals.git@master#egg=seals",
+    "seals @ git+https://github.com/HumanCompatibleAI/seals.git@master#egg=seals",
     "black",
     "coverage",
     "codecov",
