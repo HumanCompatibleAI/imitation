@@ -1,30 +1,11 @@
 """Tests for imitation.algorithms.base."""
 
-from typing import Sequence
-
 import numpy as np
 import pytest
 import torch as th
 
 from imitation.algorithms import base
 from imitation.data import types
-
-
-def gen_trajectories(
-    lens: Sequence[int],
-    terminal: Sequence[bool],
-) -> Sequence[types.Trajectory]:
-    """Generate trajectories of lengths specified in `lens`."""
-    trajs = []
-    for n, t in zip(lens, terminal):
-        traj = types.Trajectory(
-            obs=np.zeros((n + 1, 2)),
-            acts=np.zeros((n,)),
-            infos=None,
-            terminal=t,
-        )
-        trajs.append(traj)
-    return trajs
 
 
 def test_check_fixed_horizon(custom_logger):
