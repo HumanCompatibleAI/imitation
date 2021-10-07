@@ -49,24 +49,26 @@ class ResettableEnv(gym.Env, abc.ABC):
         """Returns observation produced by a given state."""
 
     @property
-    def state_space(self) -> gym.Space:
-        """State space.
+    def pomdp_state_space(self) -> gym.Space:
+        """The POMDP's state space.
 
-        Often same as observation_space, but differs in POMDPs.
+        In fully observable MDPs, `pomdp_state_space == pomdp_observation_space`.
 
         Returns:
-            The state space of this environment.
+            The POMDP state space of this environment.
         """
         return self._state_space
 
     @property
-    def raw_observation_space(self) -> gym.Space:
-        """Raw observation space; the observation part of a POMDP.
+    def pomdp_observation_space(self) -> gym.Space:
+        """The POMDP's observation space.
+
+        In fully observable MDPs, `pomdp_state_space == pomdp_observation_space`.
 
         The actual "observation" returned by step() includes both this *and* the state.
 
         Returns:
-            The raw observation space of this environment.
+            The POMDP observation space of this environment.
         """
         return self._raw_observation_space
 
@@ -74,7 +76,10 @@ class ResettableEnv(gym.Env, abc.ABC):
     def observation_space(self) -> gym.Space:
         """Combined observation space.
 
-        Dict space, including both the state and raw observation space.
+        Dict space, including both the POMDP's state and observation space.
+        The intention is to support both algorithms that train on the POMDP's
+        observations, as well as allowing some algorithms to "cheat" and
+        operate directly on the underlying POMDP states.
 
         Return type of reset() and component of step().
 
@@ -82,7 +87,7 @@ class ResettableEnv(gym.Env, abc.ABC):
             The observation space of this environment.
         """
         return gym.spaces.Dict(
-            {"obs": self.raw_observation_space, "state": self.state_space},
+            {"obs": self.pomdp_observation_space, "state": self.pomdp_state_space},
         )
 
     @property
@@ -144,14 +149,14 @@ class TabularModelEnv(ResettableEnv, abc.ABC):
         super().__init__()
 
     @property
-    def state_space(self) -> gym.Space:
+    def pomdp_state_space(self) -> gym.Space:
         # Construct spaces lazily, so they can depend on properties in subclasses.
         if self._state_space is None:
             self._state_space = spaces.Discrete(self.state_dim)
         return self._state_space
 
     @property
-    def raw_observation_space(self) -> gym.Space:
+    def pomdp_observation_space(self) -> gym.Space:
         # Construct spaces lazily, so they can depend on properties in subclasses.
         if self._raw_observation_space is None:
             self._raw_observation_space = spaces.Box(

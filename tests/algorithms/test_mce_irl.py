@@ -325,7 +325,7 @@ def test_mce_irl_demo_formats():
             th.random.manual_seed(715298)
             # create reward network so we can be sure it's seeded identically
             reward_net = reward_nets.BasicRewardNet(
-                mdp.raw_observation_space,
+                mdp.pomdp_observation_space,
                 mdp.action_space,
                 use_action=False,
                 use_next_state=False,
@@ -368,7 +368,7 @@ def test_mce_irl_reasonable_mdp(
         Dt, D = mce_occupancy_measures(mdp, pi=pi, discount=discount)
 
         reward_net = model_class(
-            mdp.raw_observation_space,
+            mdp.pomdp_observation_space,
             mdp.action_space,
             use_action=False,
             use_next_state=False,

@@ -301,7 +301,7 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
 
         if reward_net is None:
             reward_net = reward_nets.BasicRewardNet(
-                self.env.raw_observation_space,
+                self.env.pomdp_observation_space,
                 self.env.action_space,
                 use_action=False,
                 use_next_state=False,
