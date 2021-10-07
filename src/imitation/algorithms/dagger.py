@@ -67,21 +67,32 @@ class LinearBetaSchedule(BetaSchedule):
 
 def reconstruct_trainer(
     scratch_dir: types.AnyPath,
+    venv: vec_env.VecEnv,
+    custom_logger: Optional[logger.HierarchicalLogger] = None,
     device: Union[th.device, str] = "auto",
 ) -> "DAggerTrainer":
     """Reconstruct trainer from the latest snapshot in some working directory.
+
+    Requires vectorized environment and (optionally) a logger, as these objects
+    cannot be serialized.
 
     Args:
         scratch_dir: path to the working directory created by a previous run of
             this algorithm. The directory should contain `checkpoint-latest.pt` and
             `policy-latest.pt` files.
+        venv: Vectorized training environment.
+        custom_logger: Where to log to; if None (default), creates a new logger.
         device: device on which to load the trainer.
 
     Returns:
         A deserialized `DAggerTrainer`.
     """
+    custom_logger = custom_logger or logger.configure()
     checkpoint_path = pathlib.Path(scratch_dir, "checkpoint-latest.pt")
-    return th.load(checkpoint_path, map_location=utils.get_device(device))
+    trainer = th.load(checkpoint_path, map_location=utils.get_device(device))
+    trainer.venv = venv
+    trainer._logger = custom_logger
+    return trainer
 
 
 def _save_dagger_demo(
