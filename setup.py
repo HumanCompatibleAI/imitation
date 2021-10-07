@@ -14,8 +14,8 @@ TESTS_REQUIRE = [
     "codespell",
     # TODO(adam): switch back to PyPi release once PR incorporated:
     # https://github.com/terrencepreilly/darglint/pull/176
-    "darglint @ "
-    "git+https://github.com/AdamGleave/darglint.git@flake8-ignore#egg=darglint",
+    "darglint @ git+"
+    "https://github.com/AdamGleave/darglint.git@flake8-ignore#egg=darglint",
     "flake8",
     "flake8-blind-except",
     "flake8-builtins",

@@ -208,7 +208,7 @@ class TabularPolicy(policies.BasePolicy):
         del state
 
         if timesteps is None:
-            timesteps = np.zeros(len(observation), dtype=np.int)
+            timesteps = np.zeros(len(observation), dtype=int)
         else:
             timesteps = np.array(timesteps)
         assert len(timesteps) == len(observation), "timestep and obs batch size differ"
@@ -223,8 +223,7 @@ class TabularPolicy(policies.BasePolicy):
             if deterministic:
                 actions.append(dist.argmax())
             else:
-                actions_onehot = self.rng.multinomial(1, dist)
-                actions.append(actions_onehot.argmax())
+                actions.append(self.rng.choice(len(dist), p=dist))
 
         timesteps += 1  # increment timestep
         return np.array(actions), timesteps

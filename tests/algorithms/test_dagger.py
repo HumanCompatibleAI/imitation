@@ -301,11 +301,11 @@ def test_trainer_makes_progress(init_trainer_fn, venv, expert_policy):
     )
 
 
-def test_trainer_save_reload(tmpdir, init_trainer_fn):
+def test_trainer_save_reload(tmpdir, init_trainer_fn, venv):
     trainer = init_trainer_fn()
     trainer.round_num = 3
     trainer.save_trainer()
-    loaded_trainer = dagger.reconstruct_trainer(trainer.scratch_dir)
+    loaded_trainer = dagger.reconstruct_trainer(trainer.scratch_dir, venv=venv)
     assert loaded_trainer.round_num == trainer.round_num
 
     # old trainer and reloaded trainer should have same variable values
