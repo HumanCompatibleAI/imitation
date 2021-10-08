@@ -277,7 +277,7 @@ def test_train_adversarial(tmpdir):
             "rollout_path": CARTPOLE_TEST_ROLLOUT_PATH,
         },
         # TensorBoard logs to get extra coverage
-        "algorithm_kwargs": {"shared": {"init_tensorboard": True}},
+        "algorithm_kwargs": {"init_tensorboard": True},
     }
     run = train_adversarial.train_adversarial_ex.run(
         command_name="gail",
