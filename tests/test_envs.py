@@ -39,8 +39,8 @@ class TestEnvs:
 
     def test_model_based(self, env):
         """Smoke test for each of the ModelBasedEnv methods with type checks."""
-        if not hasattr(env, "state_space"):  # pragma: no cover
-            pytest.skip("This test is only for subclasses of ModelBasedEnv.")
+        if not hasattr(env, "pomdp_state_space"):  # pragma: no cover
+            pytest.skip("This test is only for subclasses of ResettableEnv.")
 
         imitation_test.test_model_based(env)
 
