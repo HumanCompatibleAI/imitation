@@ -222,6 +222,9 @@ def test_reset_error():
 
 def test_n_transitions_and_empty_error():
     venv = _make_buffering_venv(True)
+    trajs, ep_lens = venv.pop_trajectories()
+    assert trajs == []
+    assert ep_lens == []
     venv.step([0, 0])
     assert venv.n_transitions == 2
     venv.step([0, 0])
