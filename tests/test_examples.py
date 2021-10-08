@@ -68,7 +68,7 @@ README_SNIPPET_PATHS = _paths_to_strs([EXAMPLES_DIR / "quickstart.sh"])
 def test_example_snippets_are_in_readme(snippet_path):
     """Check that README.md examples haven't diverged from snippets."""
     with open(snippet_path, "r") as f:
-        x = f.read()
+        x = "".join(f.readlines()[2:])  # strip away shebang line
     with open("README.md") as f:
         y = f.read()
     assert x in y, f"{snippet_path} has diverged from README.md"

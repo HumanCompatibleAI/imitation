@@ -19,7 +19,7 @@
 # they can be gathered by the table-generating analysis script.
 
 set -e  # Exit on error
-source experiments/common.env
+source experiments/common.sh
 
 RUN_NAME="paper-${TIMESTAMP}"
 echo "Training with run_name=${RUN_NAME}"
@@ -28,8 +28,9 @@ script_dir=experiments
 fast_flag=""
 tmux_flag=""
 
-TEMP=$($GNU_GETOPT -o fT -l fast,tmux -- "$@")
-if [[ $? != 0 ]]; then exit 1; fi
+if ! TEMP=$($GNU_GETOPT -o fT -l fast,tmux -- "$@"); then
+  exit 1
+fi
 eval set -- "$TEMP"
 
 while true; do

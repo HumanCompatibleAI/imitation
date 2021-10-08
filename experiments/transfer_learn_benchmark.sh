@@ -3,22 +3,21 @@
 
 set -e
 
-source experiments/common.env
+source experiments/common.sh
 
+SEEDS=(0 1 2)
 CONFIG_CSV="experiments/imit_benchmark_config.csv"
 REWARD_MODELS_DIR="data/reward_models"
 LOG_ROOT="output/train_experts/${TIMESTAMP}"
 RESULTS_FILE="results.txt"
 ALGORITHM="gail"
-extra_configs=""
-
-
-SEEDS="0 1 2"
 NEED_TEST_FILES="false"
+extra_configs=()
 
 
-TEMP=$($GNU_GETOPT -o f -l fast,gail,airl,run_name:,log_root: -- $@)
-if [[ $? != 0 ]]; then exit 1; fi
+if ! TEMP=$($GNU_GETOPT -o f -l fast,gail,airl,run_name:,log_root: -- "$@"); then
+  exit 1
+fi
 eval set -- "$TEMP"
 
 while true; do
@@ -28,8 +27,8 @@ while true; do
       CONFIG_CSV="tests/testdata/imit_benchmark_config.csv"
       REWARD_MODELS_DIR="tests/testdata/reward_models"
       NEED_TEST_FILES="true"
-      SEEDS="0"
-      extra_configs+="common.fast train.fast rl.fast fast "
+      SEEDS=(0)
+      extra_configs=("${extra_configs[@]}" common.fast rl.fast train.fast fast)
       shift
       ;;
     --gail)
@@ -42,7 +41,7 @@ while true; do
       ;;
     --run_name)
       # Used by analysis scripts to filter runs later.
-      extra_options+="--name $2 "
+      extra_options=("${extra_options[@]}" --name "$2")
       shift 2
       ;;
     --log_root)
@@ -76,22 +75,22 @@ fi
 
 
 echo "Writing logs in ${LOG_ROOT}"
-parallel -j 25% --header : --results ${LOG_ROOT}/parallel/ --colsep , --progress \
+parallel -j 25% --header : --results "${LOG_ROOT}/parallel/" --colsep , --progress \
   python -m imitation.scripts.train_rl \
   --capture=sys \
-  ${extra_options} \
+  "${extra_options[@]}" \
   with \
-  {env_config_name} ${extra_configs} \
-  seed={seed} \
+  '{env_config_name}' seed='{seed}' \
   common.log_dir="${LOG_ROOT}/${ALGORITHM}/{env_config_name}_{seed}/n_expert_demos_{n_expert_demos}" \
   reward_type="RewardNet_shaped" \
   reward_path="${REWARD_MODELS_DIR}/${ALGORITHM}/{env_config_name}_0/n_expert_demos_{n_expert_demos}/checkpoints/final/reward_test.pt" \
-  ::: seed ${SEEDS} :::: ${CONFIG_CSV}
+  "${extra_configs[@]}" \
+  :::: ${CONFIG_CSV} \
+  ::: seed "${SEEDS[@]}"
 
-
-pushd $LOG_ROOT
+pushd "$LOG_ROOT"
 
 # Display and save mean episode reward to ${RESULTS_FILE}.
-find . -name stdout | xargs tail -n 15 | grep -E '(==|Result)' | tee ${RESULTS_FILE}
+find . -name stdout -print0 | sort -z | xargs -0 tail -n 15 | grep -E '(==|Result)' | tee ${RESULTS_FILE}
 
 popd
