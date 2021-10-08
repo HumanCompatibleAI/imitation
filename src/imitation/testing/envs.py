@@ -17,11 +17,11 @@ def test_model_based(env: gym.Env) -> None:
         AssertionError if test fails.
     """
     state = env.initial_state()
-    assert env.state_space.contains(state)
+    assert env.pomdp_state_space.contains(state)
 
     action = env.action_space.sample()
     new_state = env.transition(state, action)
-    assert env.state_space.contains(new_state)
+    assert env.pomdp_state_space.contains(new_state)
 
     reward = env.reward(state, action, new_state)
     assert isinstance(reward, float)
