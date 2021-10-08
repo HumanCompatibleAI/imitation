@@ -138,11 +138,10 @@ def _get_exp_command(sd: sacred_util.SacredDicts) -> str:
 def _get_algo_name(sd: sacred_util.SacredDicts) -> str:
     exp_command = _get_exp_command(sd)
 
-    if exp_command == "train_adversarial":
-        algo = get(sd.config, "algorithm")
-        if algo is not None:
-            algo = algo.upper()
-        return algo
+    if exp_command == "gail":
+        return "GAIL"
+    elif exp_command == "airl":
+        return "AIRL"
     elif exp_command == "train_bc":
         return "BC"
     elif exp_command == "train_dagger":
