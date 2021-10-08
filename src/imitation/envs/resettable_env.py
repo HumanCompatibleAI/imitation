@@ -21,8 +21,8 @@ class ResettableEnv(gym.Env, abc.ABC):
 
     def __init__(self):
         """Builds a ResettableEnv with all attributes initialized to None."""
-        self._state_space = None
-        self._raw_observation_space = None
+        self._pomdp_state_space = None
+        self._pomdp_observation_space = None
         self._action_space = None
         self.cur_state = None
         self._n_actions_taken = None
@@ -57,7 +57,7 @@ class ResettableEnv(gym.Env, abc.ABC):
         Returns:
             The POMDP state space of this environment.
         """
-        return self._state_space
+        return self._pomdp_state_space
 
     @property
     def pomdp_observation_space(self) -> gym.Space:
@@ -70,7 +70,7 @@ class ResettableEnv(gym.Env, abc.ABC):
         Returns:
             The POMDP observation space of this environment.
         """
-        return self._raw_observation_space
+        return self._pomdp_observation_space
 
     @property
     def observation_space(self) -> gym.Space:
@@ -151,21 +151,21 @@ class TabularModelEnv(ResettableEnv, abc.ABC):
     @property
     def pomdp_state_space(self) -> gym.Space:
         # Construct spaces lazily, so they can depend on properties in subclasses.
-        if self._state_space is None:
-            self._state_space = spaces.Discrete(self.state_dim)
-        return self._state_space
+        if self._pomdp_state_space is None:
+            self._pomdp_state_space = spaces.Discrete(self.state_dim)
+        return self._pomdp_state_space
 
     @property
     def pomdp_observation_space(self) -> gym.Space:
         # Construct spaces lazily, so they can depend on properties in subclasses.
-        if self._raw_observation_space is None:
-            self._raw_observation_space = spaces.Box(
+        if self._pomdp_observation_space is None:
+            self._pomdp_observation_space = spaces.Box(
                 low=float("-inf"),
                 high=float("inf"),
                 shape=(self.obs_dim,),
                 dtype=self.obs_dtype,
             )
-        return self._raw_observation_space
+        return self._pomdp_observation_space
 
     @property
     def action_space(self) -> gym.Space:

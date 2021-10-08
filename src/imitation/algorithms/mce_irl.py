@@ -150,7 +150,7 @@ class TabularPolicy(policies.BasePolicy):
         """Builds TabularPolicy.
 
         Args:
-            state_space: The observation space of the environment.
+            state_space: The state space of the environment.
             action_space: The action space of the environment.
             pi: A tabular policy. Three-dimensional array, where pi[t,s,a]
                 is the probability of taking action a at state s at timestep t.
@@ -323,7 +323,7 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
         ones = np.ones((self.env.horizon, self.env.n_states, self.env.n_actions))
         uniform_pi = ones / self.env.n_actions
         self._policy = TabularPolicy(
-            state_space=self.env.observation_space["state"],
+            state_space=self.env.pomdp_state_space,
             action_space=self.env.action_space,
             pi=uniform_pi,
             rng=self.rng,
