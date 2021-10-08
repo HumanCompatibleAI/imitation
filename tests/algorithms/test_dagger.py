@@ -269,7 +269,7 @@ def test_trainer_makes_progress(init_trainer_fn, venv, expert_policy):
 
         trainer = init_trainer_fn()
         pre_train_rew_mean = rollout.mean_return(
-            trainer.bc_trainer.policy,
+            trainer.policy,
             venv,
             sample_until=rollout.make_min_episodes(15),
             deterministic_policy=False,
@@ -289,7 +289,7 @@ def test_trainer_makes_progress(init_trainer_fn, venv, expert_policy):
             trainer.extend_and_update(dict(n_epochs=1))
         # make sure we're doing better than a random policy would
         post_train_rew_mean = rollout.mean_return(
-            trainer.bc_trainer.policy,
+            trainer.policy,
             venv,
             sample_until=rollout.make_min_episodes(15),
             deterministic_policy=True,
@@ -301,23 +301,23 @@ def test_trainer_makes_progress(init_trainer_fn, venv, expert_policy):
     )
 
 
-def test_trainer_save_reload(tmpdir, init_trainer_fn):
+def test_trainer_save_reload(tmpdir, init_trainer_fn, venv):
     trainer = init_trainer_fn()
     trainer.round_num = 3
     trainer.save_trainer()
-    loaded_trainer = dagger.reconstruct_trainer(trainer.scratch_dir)
+    loaded_trainer = dagger.reconstruct_trainer(trainer.scratch_dir, venv=venv)
     assert loaded_trainer.round_num == trainer.round_num
 
     # old trainer and reloaded trainer should have same variable values
-    old_vars = trainer.bc_trainer.policy.state_dict()
-    new_vars = loaded_trainer.bc_trainer.policy.state_dict()
+    old_vars = trainer.policy.state_dict()
+    new_vars = loaded_trainer.policy.state_dict()
     assert len(new_vars) == len(old_vars)
     for var, values in new_vars.items():
         assert values.equal(old_vars[var])
 
     # also those values should be different from freshly initialized trainer
     third_trainer = init_trainer_fn()
-    third_vars = third_trainer.bc_trainer.policy.state_dict()
+    third_vars = third_trainer.policy.state_dict()
     assert len(third_vars) == len(old_vars)
     assert not all(values.equal(old_vars[var]) for var, values in third_vars.items())
 

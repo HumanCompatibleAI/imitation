@@ -7,7 +7,7 @@ set -x  # echo commands
 set -e  # quit immediately on error
 
 echo "Source format checking"
-flake8 --disable-darglint "${SRC_FILES[@]}"
+flake8 --darglint-ignore-regex '.*' "${SRC_FILES[@]}"
 black --check --diff "${SRC_FILES[@]}"
 codespell -I .codespell.skip --skip='*.pyc,tests/testdata/*,*.ipynb,*.csv' "${SRC_FILES[@]}"
 
@@ -37,6 +37,7 @@ if [ "${skipexpensive:-}" != "true" ]; then
   # only find new darglint-specific errors.
   files=$(git diff --cached --name-only --diff-filter=AMR | xargs -I'{}' find '{}' -name '*.py')
   if [[ ${files} != "" ]]; then
-    flake8 "${files}"
+    IFS=' ' read -r -a file_array <<< "${files}"
+    flake8 "${file_array[@]}"
   fi
 fi

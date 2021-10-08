@@ -7,7 +7,7 @@ from imitation.data import types
 from imitation.data.buffer import Buffer, ReplayBuffer
 
 
-def _fill_chunk(start, chunk_len, sample_shape, dtype=np.float):
+def _fill_chunk(start, chunk_len, sample_shape, dtype=float):
     fill_vals = np.arange(start, start + chunk_len, dtype=dtype)
     fill_vals = np.reshape(fill_vals, (-1,) + (1,) * len(sample_shape))
     chunk = np.tile(fill_vals, (1,) + sample_shape)
