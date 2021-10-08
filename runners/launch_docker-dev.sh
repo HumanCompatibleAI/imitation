@@ -43,7 +43,6 @@ if [[ ${MJKEY_MNT} == "" ]]; then
   MJKEY_MNT="${HOME}/mnt/mjkey.txt"
 fi
 
-FLAGS=""
 # install imitation in developer mode
 CMD="pip install -e .[docs,parallel,test] gym[mujoco]" # borrowed from ci/build_venv.sh
 
@@ -54,7 +53,7 @@ if [[ $PULL == 1 ]]; then
 fi
 
 docker run -it --rm --init \
-  -v ${LOCAL_MNT}:/imitation \
-  -v ${MJKEY_MNT}:/root/.mujoco/mjkey.txt \
-  ${FLAGS} ${DOCKER_IMAGE} \
+  -v "${LOCAL_MNT}:/imitation" \
+  -v "${MJKEY_MNT}:/root/.mujoco/mjkey.txt" \
+  ${DOCKER_IMAGE} \
   /bin/bash -c "${CMD} && exec bash"

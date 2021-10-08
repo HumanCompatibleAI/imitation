@@ -2,6 +2,7 @@ version: 2.1
 
 orbs:
   codecov: codecov/codecov@1.0.5
+  shellcheck: circleci/shellcheck@2.2.4
 
 defaults: &defaults
   docker:
@@ -81,6 +82,22 @@ jobs:
 
     steps:
       - dependencies
+
+      - run:
+          name: install shellcheck
+          command: |
+            curl -Lo /tmp/shellcheck.tar.xz https://github.com/koalaman/shellcheck/releases/download/stable/shellcheck-stable.linux.x86_64.tar.xz
+            tar -x shellcheck-stable/shellcheck -f /tmp/shellcheck.tar.xz
+            mv shellcheck-stable/shellcheck /usr/local/bin/shellcheck
+            rm -rf shellcheck-stable
+            chmod a+x /usr/local/bin/shellcheck
+      - shellcheck/check:
+          dir: .
+          # Orb invokes shellcheck once per file. shellcheck complains if file
+          # includes another file not given on the command line. Ignore this,
+          # since they'll just get checked in a separate shellcheck invocation.
+          exclude: SC1091
+
       - run:
           name: flake8
           command: flake8 --version && flake8 -j "${NUM_CPUS}" ${SRC_FILES}
