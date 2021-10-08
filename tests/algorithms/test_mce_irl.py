@@ -289,9 +289,10 @@ def test_tabular_policy_randomness():
 
     actions, _ = tabular.predict(np.zeros((100,), dtype=int))
     assert 0.45 <= np.mean(actions) <= 0.55
-    actions, _ = tabular.predict(np.ones((100,), dtype=int))
+    ones_obs = np.ones((100,), dtype=int)
+    actions, _ = tabular.predict(ones_obs)
     assert 0.05 <= np.mean(actions) <= 0.15
-    actions, _ = tabular.predict(np.ones((100,), dtype=int), deterministic=True)
+    actions, _ = tabular.predict(ones_obs, deterministic=True)
     np.testing.assert_equal(actions, 0)
 
 
@@ -306,12 +307,12 @@ def test_mce_irl_demo_formats():
         generator_seed=42,
     )
     venv = vec_env.DummyVecEnv([lambda: mdp])
+    state_venv = resettable_env.DictExtractWrapper(venv, "state")
     trajs = rollout.generate_trajectories(
         policy=None,
-        venv=venv,
+        venv=state_venv,
         sample_until=rollout.make_min_timesteps(100),
     )
-
     demonstrations = {
         "trajs": trajs,
         "trans": rollout.flatten_trajectories(trajs),
@@ -324,7 +325,7 @@ def test_mce_irl_demo_formats():
             th.random.manual_seed(715298)
             # create reward network so we can be sure it's seeded identically
             reward_net = reward_nets.BasicRewardNet(
-                mdp.observation_space,
+                mdp.pomdp_observation_space,
                 mdp.action_space,
                 use_action=False,
                 use_next_state=False,
@@ -361,13 +362,14 @@ def test_mce_irl_reasonable_mdp(
 
         # test MCE IRL on the MDP
         mdp = ReasonableMDP()
+        mdp.seed(715298)
 
         # demo occupancy measure
         V, Q, pi = mce_partition_fh(mdp, discount=discount)
         Dt, D = mce_occupancy_measures(mdp, pi=pi, discount=discount)
 
         reward_net = model_class(
-            mdp.observation_space,
+            mdp.pomdp_observation_space,
             mdp.action_space,
             use_action=False,
             use_next_state=False,
@@ -380,3 +382,14 @@ def test_mce_irl_reasonable_mdp(
         assert np.allclose(final_counts, D, atol=1e-3, rtol=1e-3)
         # make sure weights have non-insane norm
         assert tensor_iter_norm(reward_net.parameters()) < 1000
+
+        venv = vec_env.DummyVecEnv([lambda: mdp])
+        state_venv = resettable_env.DictExtractWrapper(venv, "state")
+        trajs = rollout.generate_trajectories(
+            mce_irl.policy,
+            state_venv,
+            sample_until=rollout.make_min_episodes(5),
+        )
+        stats = rollout.rollout_stats(trajs)
+        if discount > 0.0:  # skip check when discount==0.0 (random policy)
+            assert stats["return_mean"] >= mdp.horizon * 2 * 0.8

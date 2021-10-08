@@ -1,11 +1,13 @@
 """Tests for `imitation.envs.*`."""
 
 import gym
+import numpy as np
 import pytest
 from seals.testing import envs as seals_test
+from stable_baselines3.common import envs, vec_env
 
 # Unused imports is for side-effect of registering environments
-from imitation.envs import examples  # noqa: F401
+from imitation.envs import examples, resettable_env  # noqa: F401
 from imitation.testing import envs as imitation_test
 
 ENV_NAMES = [
@@ -37,8 +39,8 @@ class TestEnvs:
 
     def test_model_based(self, env):
         """Smoke test for each of the ModelBasedEnv methods with type checks."""
-        if not hasattr(env, "state_space"):  # pragma: no cover
-            pytest.skip("This test is only for subclasses of ModelBasedEnv.")
+        if not hasattr(env, "pomdp_state_space"):  # pragma: no cover
+            pytest.skip("This test is only for subclasses of ResettableEnv.")
 
         imitation_test.test_model_based(env)
 
@@ -49,3 +51,17 @@ class TestEnvs:
     def test_render(self, env: gym.Env):
         """Tests `render()` supports modes specified in environment metadata."""
         seals_test.test_render(env, raises_fn=pytest.raises)
+
+
+def test_dict_extract_wrapper():
+    """Tests `DictExtractWrapper` input validation and extraction."""
+    venv = vec_env.DummyVecEnv([lambda: envs.SimpleMultiObsEnv()])
+    with pytest.raises(KeyError, match="Unrecognized .*"):
+        resettable_env.DictExtractWrapper(venv, "foobar")
+    wrapped_venv = resettable_env.DictExtractWrapper(venv, "vec")
+    with pytest.raises(TypeError, match=".* not dict type"):
+        resettable_env.DictExtractWrapper(wrapped_venv, "foobar")
+    obs = wrapped_venv.reset()
+    assert isinstance(obs, np.ndarray)
+    obs, _, _, _ = wrapped_venv.step([wrapped_venv.action_space.sample()])
+    assert isinstance(obs, np.ndarray)

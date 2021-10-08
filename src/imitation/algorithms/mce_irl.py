@@ -137,7 +137,6 @@ def squeeze_r(r_output: th.Tensor) -> th.Tensor:
     return r_output
 
 
-# TODO(adam): add test case for this
 class TabularPolicy(policies.BasePolicy):
     """A tabular policy. Cannot be trained -- prediction only."""
 
@@ -205,26 +204,29 @@ class TabularPolicy(policies.BasePolicy):
         Returns:
             Tuple of the actions and new hidden states.
         """
-        if state is None:
-            state = np.zeros(len(observation), dtype=int)
+        timesteps = state  # rename to avoid confusion
+        del state
+
+        if timesteps is None:
+            timesteps = np.zeros(len(observation), dtype=int)
         else:
-            state = np.array(state)
+            timesteps = np.array(timesteps)
+        assert len(timesteps) == len(observation), "timestep and obs batch size differ"
 
         if mask is not None:
-            state[mask] = 0
+            timesteps[mask] = 0
 
         actions = []
-        for obs, t in zip(observation, state):
-            assert self.observation_space.contains(obs), "illegal observation"
+        for obs, t in zip(observation, timesteps):
+            assert self.observation_space.contains(obs), "illegal state"
             dist = self.pi[t, obs, :]
             if deterministic:
                 actions.append(dist.argmax())
             else:
                 actions.append(self.rng.choice(len(dist), p=dist))
 
-        state += 1  # increment timestep
-
-        return np.array(actions), state
+        timesteps += 1  # increment timestep
+        return np.array(actions), timesteps
 
 
 MCEDemonstrations = Union[np.ndarray, base.AnyTransitions]
@@ -299,7 +301,7 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
 
         if reward_net is None:
             reward_net = reward_nets.BasicRewardNet(
-                self.env.observation_space,
+                self.env.pomdp_observation_space,
                 self.env.action_space,
                 use_action=False,
                 use_next_state=False,
@@ -321,7 +323,7 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
         ones = np.ones((self.env.horizon, self.env.n_states, self.env.n_actions))
         uniform_pi = ones / self.env.n_actions
         self._policy = TabularPolicy(
-            state_space=self.env.state_space,
+            state_space=self.env.pomdp_state_space,
             action_space=self.env.action_space,
             pi=uniform_pi,
             rng=self.rng,

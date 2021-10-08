@@ -8,6 +8,7 @@ import abc
 import gym
 import numpy as np
 from gym import spaces
+from stable_baselines3.common import vec_env
 
 
 class ResettableEnv(gym.Env, abc.ABC):
@@ -20,8 +21,8 @@ class ResettableEnv(gym.Env, abc.ABC):
 
     def __init__(self):
         """Builds a ResettableEnv with all attributes initialized to None."""
-        self._state_space = None
-        self._observation_space = None
+        self._pomdp_state_space = None
+        self._pomdp_observation_space = None
         self._action_space = None
         self.cur_state = None
         self._n_actions_taken = None
@@ -48,26 +49,46 @@ class ResettableEnv(gym.Env, abc.ABC):
         """Returns observation produced by a given state."""
 
     @property
-    def state_space(self) -> gym.Space:
-        """State space.
+    def pomdp_state_space(self) -> gym.Space:
+        """The POMDP's state space.
 
-        Often same as observation_space, but differs in POMDPs.
+        In fully observable MDPs, `pomdp_state_space == pomdp_observation_space`.
 
         Returns:
-            The state space of this environment.
+            The POMDP state space of this environment.
         """
-        return self._state_space
+        return self._pomdp_state_space
+
+    @property
+    def pomdp_observation_space(self) -> gym.Space:
+        """The POMDP's observation space.
+
+        In fully observable MDPs, `pomdp_state_space == pomdp_observation_space`.
+
+        The actual "observation" returned by step() includes both this *and* the state.
+
+        Returns:
+            The POMDP observation space of this environment.
+        """
+        return self._pomdp_observation_space
 
     @property
     def observation_space(self) -> gym.Space:
-        """Observation space.
+        """Combined observation space.
+
+        Dict space, including both the POMDP's state and observation space.
+        The intention is to support both algorithms that train on the POMDP's
+        observations, as well as allowing some algorithms to "cheat" and
+        operate directly on the underlying POMDP states.
 
         Return type of reset() and component of step().
 
         Returns:
             The observation space of this environment.
         """
-        return self._observation_space
+        return gym.spaces.Dict(
+            {"obs": self.pomdp_observation_space, "state": self.pomdp_state_space},
+        )
 
     @property
     def action_space(self) -> gym.Space:
@@ -96,7 +117,8 @@ class ResettableEnv(gym.Env, abc.ABC):
     def reset(self):
         self.cur_state = self.initial_state()
         self._n_actions_taken = 0
-        return self.obs_from_state(self.cur_state)
+        obs = self.obs_from_state(self.cur_state)
+        return {"obs": obs, "state": self.cur_state}
 
     def step(self, action):
         if self.cur_state is None or self._n_actions_taken is None:
@@ -110,7 +132,8 @@ class ResettableEnv(gym.Env, abc.ABC):
         self._n_actions_taken += 1
 
         infos = {"old_state": old_state, "new_state": self.cur_state}
-        return obs, rew, done, infos
+        combined_obs = {"obs": obs, "state": self.cur_state}
+        return combined_obs, rew, done, infos
 
 
 class TabularModelEnv(ResettableEnv, abc.ABC):
@@ -126,23 +149,23 @@ class TabularModelEnv(ResettableEnv, abc.ABC):
         super().__init__()
 
     @property
-    def state_space(self) -> gym.Space:
+    def pomdp_state_space(self) -> gym.Space:
         # Construct spaces lazily, so they can depend on properties in subclasses.
-        if self._state_space is None:
-            self._state_space = spaces.Discrete(self.state_dim)
-        return self._state_space
+        if self._pomdp_state_space is None:
+            self._pomdp_state_space = spaces.Discrete(self.state_dim)
+        return self._pomdp_state_space
 
     @property
-    def observation_space(self) -> gym.Space:
+    def pomdp_observation_space(self) -> gym.Space:
         # Construct spaces lazily, so they can depend on properties in subclasses.
-        if self._observation_space is None:
-            self._observation_space = spaces.Box(
+        if self._pomdp_observation_space is None:
+            self._pomdp_observation_space = spaces.Box(
                 low=float("-inf"),
                 high=float("inf"),
                 shape=(self.obs_dim,),
                 dtype=self.obs_dtype,
             )
-        return self._observation_space
+        return self._pomdp_observation_space
 
     @property
     def action_space(self) -> gym.Space:
@@ -239,3 +262,47 @@ class TabularModelEnv(ResettableEnv, abc.ABC):
     def initial_state_dist(self):
         """1D vector representing a distribution over initial states."""
         return
+
+
+class DictExtractWrapper(vec_env.VecEnvWrapper):
+    """Extracts key from dict observation of wrapped environment.
+
+    For example, can be used with instances of `ResettableEnv` to extract either
+    `'obs'` or `'state'` keys as appropriate. This is useful when you want a model
+    to depend on only one, or if the model does not natively support dict-based
+    observations.
+    """
+
+    def __init__(self, venv: vec_env.VecEnv, key: str):
+        """Builds DictExtractWrapper.
+
+        Args:
+            venv: A vectorized environment with dict observation space.
+            key: The key to extract from observations.
+
+        Raises:
+            TypeError: The observation space of `venv` is not a dict.
+            KeyError: `key` is not present in the observation space of `venv`.
+        """
+        if not isinstance(venv.observation_space, gym.spaces.Dict):
+            raise TypeError(
+                f"Observation space '{venv.observation_space}' is not dict type.",
+            )
+        if key not in venv.observation_space.spaces:
+            raise KeyError(
+                f"Unrecognized '{key}'; valid keys = "
+                f"{venv.observation_space.spaces.keys()}",
+            )
+        super().__init__(venv=venv, observation_space=venv.observation_space[key])
+        self.key = key
+
+    def reset(self):
+        obs = self.venv.reset()
+        return obs[self.key]
+
+    def step_wait(self):
+        obs, rew, dones, infos = self.venv.step_wait()
+        for info in infos:
+            if "terminal_observation" in info:
+                info["terminal_observation"] = info["terminal_observation"][self.key]
+        return obs[self.key], rew, dones, infos
