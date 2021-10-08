@@ -20,24 +20,18 @@ from imitation.util import logger, util
 ALGORITHM_KWARGS = {
     "airl-ppo": {
         "algorithm_cls": airl.AIRL,
-        "rl_kwargs": {
-            "model_class": stable_baselines3.PPO,
-            "policy_class": policies.ActorCriticPolicy,
-        },
+        "model_class": stable_baselines3.PPO,
+        "policy_class": policies.ActorCriticPolicy,
     },
     "gail-ppo": {
         "algorithm_cls": gail.GAIL,
-        "rl_kwargs": {
-            "model_class": stable_baselines3.PPO,
-            "policy_class": policies.ActorCriticPolicy,
-        },
+        "model_class": stable_baselines3.PPO,
+        "policy_class": policies.ActorCriticPolicy,
     },
     "gail-dqn": {
         "algorithm_cls": gail.GAIL,
-        "rl_kwargs": {
-            "model_class": stable_baselines3.DQN,
-            "policy_class": stable_baselines3.dqn.MlpPolicy,
-        },
+        "model_class": stable_baselines3.DQN,
+        "policy_class": stable_baselines3.dqn.MlpPolicy,
     },
 }
 IN_CODECOV = "COV_CORE_CONFIG" in os.environ
@@ -63,7 +57,7 @@ def expert_transitions():
 
 @contextlib.contextmanager
 def make_trainer(
-    config: Mapping[str, Any],
+    algorithm_kwargs: Mapping[str, Any],
     tmpdir: str,
     expert_transitions: types.Transitions,
     expert_batch_size: int = 1,
@@ -83,15 +77,13 @@ def make_trainer(
     else:
         expert_data = expert_transitions
 
-    config = dict(config)
-    _algorithm_cls = config.pop("algorithm_cls")
     venv = util.make_vec_env(env_name, n_envs=num_envs, parallel=parallel)
-    gen_algo = util.init_rl(venv, verbose=1, **config["rl_kwargs"])
+    model_cls = algorithm_kwargs["model_class"]
+    gen_algo = model_cls(algorithm_kwargs["policy_class"], venv)
     custom_logger = logger.configure(tmpdir, ["tensorboard", "stdout"])
 
     normalize = isinstance(venv.observation_space, gym.spaces.Box)
-    algo_kwargs = config.get("algo_kwargs", {})
-    trainer = _algorithm_cls(
+    trainer = algorithm_kwargs["algorithm_cls"](
         venv=venv,
         normalize_obs=normalize,
         # TODO(adam): remove following line when SB3 PR merged:
@@ -102,7 +94,6 @@ def make_trainer(
         gen_algo=gen_algo,
         log_dir=tmpdir,
         custom_logger=custom_logger,
-        **algo_kwargs,
     )
 
     try:
@@ -118,11 +109,7 @@ def test_airl_fail_fast(custom_logger, tmpdir):
         parallel=False,
     )
 
-    gen_algo = util.init_rl(
-        venv,
-        model_class=stable_baselines3.DQN,
-        policy_class=stable_baselines3.dqn.MlpPolicy,
-    )
+    gen_algo = stable_baselines3.DQN(stable_baselines3.dqn.MlpPolicy, venv)
     small_data = rollout.generate_transitions(gen_algo, venv, n_timesteps=20)
 
     with pytest.raises(TypeError, match="AIRL needs a stochastic policy.*"):
@@ -269,7 +256,7 @@ def _env_name(request):
 
 @pytest.fixture
 def trainer_diverse_env(_algorithm_kwargs, _env_name, tmpdir, expert_transitions):
-    if _algorithm_kwargs["rl_kwargs"]["model_class"] == stable_baselines3.DQN:
+    if _algorithm_kwargs["model_class"] == stable_baselines3.DQN:
         pytest.skip("DQN does not support all environments.")
     with make_trainer(
         _algorithm_kwargs,

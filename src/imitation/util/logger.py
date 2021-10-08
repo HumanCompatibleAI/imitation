@@ -2,7 +2,6 @@
 
 import contextlib
 import datetime
-import logging
 import os
 import tempfile
 from typing import Generator, Optional, Sequence
@@ -179,7 +178,6 @@ def configure(
         folder = os.path.join(tempfile.gettempdir(), timestamp)
     else:
         folder = types.path_to_str(folder)
-    logging.info("Logging to '%s'", folder)
     if format_strs is None:
         format_strs = ["stdout", "log", "csv"]
     output_formats = _build_output_formats(folder, format_strs)

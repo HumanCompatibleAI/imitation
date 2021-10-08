@@ -29,7 +29,7 @@ while true; do
       REWARD_MODELS_DIR="tests/testdata/reward_models"
       NEED_TEST_FILES="true"
       SEEDS="0"
-      extra_configs+="fast "
+      extra_configs+="common.fast train.fast rl.fast fast "
       shift
       ;;
     --gail)
@@ -77,13 +77,13 @@ fi
 
 echo "Writing logs in ${LOG_ROOT}"
 parallel -j 25% --header : --results ${LOG_ROOT}/parallel/ --colsep , --progress \
-  python -m imitation.scripts.expert_demos \
+  python -m imitation.scripts.train_rl \
   --capture=sys \
   ${extra_options} \
   with \
   {env_config_name} ${extra_configs} \
   seed={seed} \
-  log_dir="${LOG_ROOT}/${ALGORITHM}/{env_config_name}_{seed}/n_expert_demos_{n_expert_demos}" \
+  common.log_dir="${LOG_ROOT}/${ALGORITHM}/{env_config_name}_{seed}/n_expert_demos_{n_expert_demos}" \
   reward_type="RewardNet_shaped" \
   reward_path="${REWARD_MODELS_DIR}/${ALGORITHM}/{env_config_name}_0/n_expert_demos_{n_expert_demos}/checkpoints/final/reward_test.pt" \
   ::: seed ${SEEDS} :::: ${CONFIG_CSV}
@@ -92,6 +92,6 @@ parallel -j 25% --header : --results ${LOG_ROOT}/parallel/ --colsep , --progress
 pushd $LOG_ROOT
 
 # Display and save mean episode reward to ${RESULTS_FILE}.
-find . -name stdout | xargs tail -n 15 | grep -E '(==|ep_reward_mean)' | tee ${RESULTS_FILE}
+find . -name stdout | xargs tail -n 15 | grep -E '(==|Result)' | tee ${RESULTS_FILE}
 
 popd

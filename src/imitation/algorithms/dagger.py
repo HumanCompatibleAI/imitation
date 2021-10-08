@@ -67,21 +67,32 @@ class LinearBetaSchedule(BetaSchedule):
 
 def reconstruct_trainer(
     scratch_dir: types.AnyPath,
+    venv: vec_env.VecEnv,
+    custom_logger: Optional[logger.HierarchicalLogger] = None,
     device: Union[th.device, str] = "auto",
 ) -> "DAggerTrainer":
     """Reconstruct trainer from the latest snapshot in some working directory.
+
+    Requires vectorized environment and (optionally) a logger, as these objects
+    cannot be serialized.
 
     Args:
         scratch_dir: path to the working directory created by a previous run of
             this algorithm. The directory should contain `checkpoint-latest.pt` and
             `policy-latest.pt` files.
+        venv: Vectorized training environment.
+        custom_logger: Where to log to; if None (default), creates a new logger.
         device: device on which to load the trainer.
 
     Returns:
         A deserialized `DAggerTrainer`.
     """
+    custom_logger = custom_logger or logger.configure()
     checkpoint_path = pathlib.Path(scratch_dir, "checkpoint-latest.pt")
-    return th.load(checkpoint_path, map_location=utils.get_device(device))
+    trainer = th.load(checkpoint_path, map_location=utils.get_device(device))
+    trainer.venv = venv
+    trainer._logger = custom_logger
+    return trainer
 
 
 def _save_dagger_demo(
@@ -293,8 +304,7 @@ class DAggerTrainer(base.BaseImitationAlgorithm):
         venv: vec_env.VecEnv,
         scratch_dir: types.AnyPath,
         beta_schedule: Callable[[int], float] = None,
-        batch_size: int = 32,
-        bc_kwargs: Optional[dict] = None,
+        bc_trainer: bc.BC,
         custom_logger: Optional[logger.HierarchicalLogger] = None,
     ):
         """Builds DAggerTrainer.
@@ -306,30 +316,34 @@ class DAggerTrainer(base.BaseImitationAlgorithm):
             beta_schedule: Provides a value of `beta` (the probability of taking
                 expert action in any given state) at each round of training. If
                 `None`, then `linear_beta_schedule` will be used instead.
-            batch_size: Number of samples in each batch during BC training.
-            bc_kwargs: Additional arguments for constructing the `BC` instance that
-                will be used to train the underlying policy.
+            bc_trainer: A `BC` instance used to train the underlying policy.
             custom_logger: Where to log to; if None (default), creates a new logger.
         """
         super().__init__(custom_logger=custom_logger)
 
         if beta_schedule is None:
             beta_schedule = LinearBetaSchedule(15)
-        self.batch_size = batch_size
         self.beta_schedule = beta_schedule
         self.scratch_dir = pathlib.Path(scratch_dir)
         self.venv = venv
         self.round_num = 0
-        self.bc_kwargs = bc_kwargs or {}
         self._last_loaded_round = -1
         self._all_demos = []
 
-        self.bc_trainer = bc.BC(
-            observation_space=self.venv.observation_space,
-            action_space=self.venv.action_space,
-            custom_logger=custom_logger,
-            **self.bc_kwargs,
+        utils.check_for_correct_spaces(
+            self.venv,
+            bc_trainer.observation_space,
+            bc_trainer.action_space,
         )
+        self.bc_trainer = bc_trainer
+        self.bc_trainer.logger = custom_logger
+
+    def __getstate__(self):
+        """Return state excluding non-pickleable objects."""
+        d = dict(self.__dict__)
+        del d["venv"]
+        del d["_logger"]
+        return d
 
     @base.BaseImitationAlgorithm.logger.setter
     def logger(self, value: logger.HierarchicalLogger) -> None:
@@ -340,6 +354,10 @@ class DAggerTrainer(base.BaseImitationAlgorithm):
     @property
     def policy(self) -> policies.BasePolicy:
         return self.bc_trainer.policy
+
+    @property
+    def batch_size(self) -> int:
+        return self.bc_trainer.batch_size
 
     def _load_all_demos(self):
         num_demos_by_round = []

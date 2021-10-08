@@ -161,7 +161,7 @@ class RolloutInfoWrapper(gym.Wrapper):
     """Add the entire episode's rewards and observations to `info` at episode end.
 
     Whenever done=True, `info["rollouts"]` is a dict with keys "obs" and "rews", whose
-    corresponding values hold the Numpy arrays containing the raw observations and
+    corresponding values hold the NumPy arrays containing the raw observations and
     rewards seen during this episode.
     """
 

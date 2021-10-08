@@ -13,19 +13,15 @@ from typing import (
     Mapping,
     Optional,
     Sequence,
-    Type,
     TypeVar,
     Union,
 )
 
 import gym
 import numpy as np
-import stable_baselines3
 import torch as th
 from gym.wrappers import TimeLimit
 from stable_baselines3.common import monitor
-from stable_baselines3.common.base_class import BaseAlgorithm
-from stable_baselines3.common.policies import ActorCriticPolicy, BasePolicy
 from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecEnv
 
 
@@ -120,34 +116,6 @@ def make_vec_env(
         return SubprocVecEnv(env_fns, start_method="forkserver")
     else:
         return DummyVecEnv(env_fns)
-
-
-# TODO(adam): this is a very simple function; convenient given how Sacred config
-# currently works, but we should maybe refactor to avoid needing that.
-def init_rl(
-    env: Union[gym.Env, VecEnv],
-    model_class: Type[BaseAlgorithm] = stable_baselines3.PPO,
-    policy_class: Type[BasePolicy] = ActorCriticPolicy,
-    **model_kwargs,
-) -> BaseAlgorithm:
-    """Instantiates a policy for the provided environment.
-
-    Args:
-        env: The (vector) environment.
-        model_class: A Stable Baselines RL algorithm.
-        policy_class: A Stable Baselines compatible policy network class.
-        model_kwargs (dict): kwargs passed through to the algorithm.
-            Note: anything specified in `policy_kwargs` is passed through by the
-            algorithm to the policy network.
-
-    Returns:
-        An RL algorithm.
-    """
-    return model_class(
-        policy_class,
-        env,
-        **model_kwargs,
-    )  # pytype: disable=not-instantiable
 
 
 def docstring_parameter(*args, **kwargs):

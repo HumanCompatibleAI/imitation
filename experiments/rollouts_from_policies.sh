@@ -55,13 +55,13 @@ echo "Loading expert models from ${DATA_DIR}/expert_models}"
 echo "Writing logs in ${OUTPUT_DIR}, and saving rollouts in ${OUTPUT_DIR}/expert_models/*/rollouts/"
 
 parallel -j 25% --header : --results ${OUTPUT_DIR}/parallel/ --colsep , \
-  python -m imitation.scripts.expert_demos rollouts_from_policy \
+  python -m imitation.scripts.eval_policy \
   --capture=sys \
   with \
   {env_config_name} \
-  log_root="${OUTPUT_DIR}" \
-  policy_path="${expert_models_dir}/{env_config_name}_0/policies/final/" \
+  common.log_root="${OUTPUT_DIR}" \
+  policy_type="ppo" policy_path="${expert_models_dir}/{env_config_name}_0/policies/final/" \
   rollout_save_path="${OUTPUT_DIR}/{env_config_name}_0/rollouts/final.pkl" \
-  rollout_save_n_episodes="{n_demonstrations}" \
-  rollout_save_n_timesteps=None \
+  eval_n_episodes="{n_demonstrations}" \
+  eval_n_timesteps=None \
   :::: ${CONFIG_CSV}

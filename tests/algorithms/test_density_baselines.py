@@ -4,6 +4,8 @@ from typing import Sequence
 
 import numpy as np
 import pytest
+import stable_baselines3
+from stable_baselines3.common import policies
 
 from imitation.algorithms.density import DensityAlgorithm, DensityType
 from imitation.data import rollout, types
@@ -24,7 +26,7 @@ def score_trajectories(
     # score trajectories under given reward function w/o discount
     returns = []
     for traj in trajectories:
-        dones = np.zeros(len(traj), dtype=np.bool)
+        dones = np.zeros(len(traj), dtype=bool)
         dones[-1] = True
         steps = np.arange(0, len(traj.acts))
         rewards = density_reward(traj.obs[:-1], traj.acts, traj.obs[1:], dones, steps)
@@ -80,7 +82,7 @@ def test_density_trainer_smoke():
     rollout_path = "tests/testdata/expert_models/pendulum_0/rollouts/final.pkl"
     rollouts = types.load(rollout_path)[:2]
     venv = util.make_vec_env(env_name, 2)
-    rl_algo = util.init_rl(venv)
+    rl_algo = stable_baselines3.PPO(policies.ActorCriticPolicy, venv)
     density_trainer = DensityAlgorithm(
         demonstrations=rollouts,
         venv=venv,

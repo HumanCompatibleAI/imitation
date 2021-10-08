@@ -326,3 +326,7 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
         self._check_fixed_horizon((len(traj) for traj in trajs))
         reward_stats = rollout.rollout_stats(trajs)
         return reward_stats
+
+    @property
+    def policy(self) -> base_class.BasePolicy:
+        return self.rl_algo.policy

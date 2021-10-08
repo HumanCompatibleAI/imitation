@@ -26,7 +26,8 @@ while true; do
     -f | --fast)
       # Fast mode (debug)
       SEEDS="0"
-      extra_configs+="fast "
+      extra_configs+="common.fast demonstrations.fast train.fast fast "
+      DATA_DIR="tests/testdata"
       shift
       ;;
     --paper)  # Table benchmark settings
@@ -56,15 +57,15 @@ echo "Writing logs in ${OUTPUT_DIR}"
 
 parallel -j 25% --header : --results ${OUTPUT_DIR}/parallel/ --colsep , --progress \
   ${extra_parallel_options} \
-  python -m imitation.scripts.train_bc \
+  python -m imitation.scripts.train_imitation \
   --capture=sys \
   ${extra_options} \
+  bc \
   with \
   {env_cfg_name} \
   ${extra_configs} \
-  expert_data_src=${DATA_DIR}/expert_models/{env_cfg_name}_0/rollouts/final.pkl \
-  expert_data_src_format="path" \
   seed={seed} \
-  log_root=${OUTPUT_DIR} \
+  common.log_root=${OUTPUT_DIR} \
+  demonstrations.rollout_path=${DATA_DIR}/expert_models/{env_cfg_name}_0/rollouts/final.pkl \
   ::: env_cfg_name ${ENVS} \
   ::: seed ${SEEDS}

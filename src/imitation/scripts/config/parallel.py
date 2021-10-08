@@ -19,7 +19,7 @@ parallel_ex = sacred.Experiment("parallel")
 
 @parallel_ex.config
 def config():
-    sacred_ex_name = "expert_demos"  # The experiment to parallelize
+    sacred_ex_name = "train_rl"  # The experiment to parallelize
     init_kwargs = {}  # Keyword arguments to pass to ray.init()
     _uuid = make_unique_timestamp()
     run_name = f"DEFAULT_{_uuid}"  # CLI --name option. For analysis grouping.
@@ -47,9 +47,6 @@ def s3():
 
 
 # Debug named configs
-@parallel_ex.named_config
-def debug_log_root():
-    search_space = {"config_updates": {"log_root": "/tmp/debug_parallel_ex"}}
 
 
 @parallel_ex.named_config
@@ -59,17 +56,21 @@ def generate_test_data():
     "tests/testdata/gather_tb/" should contain 2 Tensorboard run directories,
     one for each of the trials in the search space below.
     """
-    sacred_ex_name = "expert_demos"
+    sacred_ex_name = "train_rl"
     run_name = "TEST"
     n_seeds = 1
     search_space = {
         "config_updates": {
-            "init_rl_kwargs": {
-                "learning_rate": tune.grid_search([3e-4 * x for x in (1 / 3, 1 / 2)]),
+            "rl": {
+                "rl_kwargs": {
+                    "learning_rate": tune.grid_search(
+                        [3e-4 * x for x in (1 / 3, 1 / 2)],
+                    ),
+                },
             },
         },
     }
-    base_named_configs = ["cartpole", "fast"]
+    base_named_configs = ["cartpole", "common.fast", "train.fast", "rl.fast", "fast"]
     base_config_updates = {
         "rollout_save_final": False,
     }
@@ -77,14 +78,16 @@ def generate_test_data():
 
 @parallel_ex.named_config
 def example_cartpole_rl():
-    sacred_ex_name = "expert_demos"
+    sacred_ex_name = "train_rl"
     run_name = "example-cartpole"
     n_seeds = 2
     search_space = {
         "config_updates": {
-            "init_rl_kwargs": {
-                "learning_rate": tune.grid_search(np.logspace(3e-6, 1e-1, num=3)),
-                "nminibatches": tune.grid_search([16, 32, 64]),
+            "rl": {
+                "rl_kwargs": {
+                    "learning_rate": tune.grid_search(np.logspace(3e-6, 1e-1, num=3)),
+                    "nminibatches": tune.grid_search([16, 32, 64]),
+                },
             },
         },
     }
@@ -97,15 +100,17 @@ EASY_ENVS = ["cartpole", "pendulum", "mountain_car"]
 
 @parallel_ex.named_config
 def example_rl_easy():
-    sacred_ex_name = "expert_demos"
+    sacred_ex_name = "train_rl"
     run_name = "example-rl-easy"
     n_seeds = 2
     search_space = {
         "named_configs": tune.grid_search([[env] for env in EASY_ENVS]),
         "config_updates": {
-            "init_rl_kwargs": {
-                "learning_rate": tune.grid_search(np.logspace(3e-6, 1e-1, num=3)),
-                "nminibatches": tune.grid_search([16, 32, 64]),
+            "rl": {
+                "rl_kwargs": {
+                    "learning_rate": tune.grid_search(np.logspace(3e-6, 1e-1, num=3)),
+                    "nminibatches": tune.grid_search([16, 32, 64]),
+                },
             },
         },
     }
@@ -121,13 +126,17 @@ def example_gail_easy():
         "named_configs": tune.grid_search([[env] for env in EASY_ENVS]),
         "config_updates": {
             "init_trainer_kwargs": {
-                "init_rl_kwargs": {
-                    "learning_rate": tune.grid_search(np.logspace(3e-6, 1e-1, num=3)),
-                    "nminibatches": tune.grid_search([16, 32, 64]),
+                "rl": {
+                    "rl_kwargs": {
+                        "learning_rate": tune.grid_search(
+                            np.logspace(3e-6, 1e-1, num=3),
+                        ),
+                        "nminibatches": tune.grid_search([16, 32, 64]),
+                    },
                 },
             },
         },
     }
-    base_config_updates = {
-        "init_trainer_kwargs": {"use_gail": True},
+    search_space = {
+        "command_name": "gail",
     }
