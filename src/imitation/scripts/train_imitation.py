@@ -11,7 +11,7 @@ from imitation.algorithms.bc import BC
 from imitation.algorithms.dagger import SimpleDAggerTrainer
 from imitation.data import rollout
 from imitation.policies import serialize
-from imitation.scripts.common import common, demonstrations, train
+from imitation.scripts.common import common, demonstrations, train, wb
 from imitation.scripts.config.train_imitation import train_imitation_ex
 
 logger = logging.getLogger(__name__)
@@ -101,6 +101,7 @@ def train_imitation(
         Statistics for rollouts from the trained policy and demonstration data.
     """
     custom_logger, log_dir = common.setup_logging()
+    custom_logger = wb.setup_wandb_writer(custom_logger=custom_logger, log_dir=log_dir)
     venv = common.make_venv()
     imit_policy = make_policy(venv)
 

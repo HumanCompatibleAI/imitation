@@ -7,7 +7,7 @@ import torch as th
 
 from imitation.scripts.common import common
 from imitation.scripts.common import demonstrations as demos_common
-from imitation.scripts.common import train
+from imitation.scripts.common import train, wb
 
 train_imitation_ex = sacred.Experiment(
     "train_imitation",
@@ -15,6 +15,7 @@ train_imitation_ex = sacred.Experiment(
         common.common_ingredient,
         demos_common.demonstrations_ingredient,
         train.train_ingredient,
+        wb.wandb_ingredient,
     ],
 )
 

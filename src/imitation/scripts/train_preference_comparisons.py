@@ -18,7 +18,7 @@ from imitation.policies import serialize
 from imitation.rewards import reward_nets
 from imitation.scripts.common import common, reward
 from imitation.scripts.common import rl as rl_common
-from imitation.scripts.common import train
+from imitation.scripts.common import train, wb
 from imitation.scripts.config.train_preference_comparisons import (
     train_preference_comparisons_ex,
 )
@@ -86,6 +86,7 @@ def train_preference_comparisons(
         ValueError: Inconsistency between config and deserialized policy normalization.
     """
     custom_logger, log_dir = common.setup_logging()
+    custom_logger = wb.setup_wandb_writer(custom_logger=custom_logger, log_dir=log_dir)
     venv = common.make_venv()
 
     vec_normalize = None

@@ -15,7 +15,7 @@ from imitation.algorithms.adversarial import gail as gail_algo
 from imitation.data import rollout
 from imitation.policies import serialize
 from imitation.scripts.common import common as common_config
-from imitation.scripts.common import demonstrations, reward, rl, train
+from imitation.scripts.common import demonstrations, reward, rl, train, wb
 from imitation.scripts.config.train_adversarial import train_adversarial_ex
 
 logger = logging.getLogger("imitation.scripts.train_adversarial")
@@ -110,6 +110,7 @@ def train_adversarial(
         sacred.commands.print_config(_run)
 
     custom_logger, log_dir = common_config.setup_logging()
+    custom_logger = wb.setup_wandb_writer(custom_logger=custom_logger, log_dir=log_dir)
     expert_trajs = demonstrations.load_expert_trajs()
 
     venv = common_config.make_venv()
