@@ -4,10 +4,10 @@ import contextlib
 import datetime
 import os
 import tempfile
-from typing import Any, Dict, Mapping, Tuple, Union, Generator, Optional, Sequence
+from typing import Any, Dict, Generator, Mapping, Optional, Sequence, Tuple, Union
 
-import wandb
 import stable_baselines3.common.logger as sb_logger
+import wandb
 
 from imitation.data import types
 
@@ -194,7 +194,6 @@ class WandbOutputFormat(sb_logger.KVWriter):
 def configure(
     folder: Optional[types.AnyPath] = None,
     format_strs: Optional[Sequence[str]] = None,
-    custom_writers: Optional[Sequence[sb_logger.KVWriter]] = None,
 ) -> HierarchicalLogger:
     """Configure Stable Baselines logger to be `accumulate_means()`-compatible.
 
@@ -205,7 +204,6 @@ def configure(
         folder: Argument from `stable_baselines3.logger.configure`.
         format_strs: An list of output format strings. For details on available
             output formats see `stable_baselines3.logger.make_output_format`.
-        custom_writers: An optional list of custom KVWriters.
 
     Returns:
         The configured HierarchicalLogger instance.
@@ -219,10 +217,6 @@ def configure(
     if format_strs is None:
         format_strs = ["stdout", "log", "csv"]
     output_formats = _build_output_formats(folder, format_strs)
-    additional_writers = [] if custom_writers is None else custom_writers
-    for additional_writer in additional_writers:
-        output_formats.append(additional_writer)
-
     default_logger = sb_logger.Logger(folder, output_formats)
     hier_logger = HierarchicalLogger(default_logger, format_strs)
     return hier_logger
