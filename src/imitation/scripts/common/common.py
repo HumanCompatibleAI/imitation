@@ -2,7 +2,7 @@
 
 import logging
 import os
-from typing import Any, Mapping, Sequence, Tuple, Union, Optional
+from typing import Any, Mapping, Sequence, Tuple, Union
 
 import sacred
 from stable_baselines3.common import vec_env
@@ -30,26 +30,7 @@ def config():
     max_episode_steps = None  # Set to positive int to limit episode horizons
     env_make_kwargs = {}  # The kwargs passed to `spec.make`.
 
-    # Capture root-seed for Sacred, this is the seed specified from the command line
-    # It is different from _seed
-    root_seed = None
-
     locals()  # quieten flake8
-
-
-@common_ingredient.config
-def wandb_config(env_name, root_seed):
-    wandb_logging = False  # If True, adding a custom writer that logs to wandb 
-    wandb_tag = None  # User-specified tag for this run
-    wandb_name_suffix = ""
-    assert isinstance(root_seed, int), "common.root_seed must be specified for wandb"
-    wandb_kwargs = dict(
-        project="imitation",
-        name="-".join([env_name, f"seed{root_seed}",]) + wandb_name_suffix,
-        tags=[env_name, f"seed{root_seed}"] + ([wandb_tag] if wandb_tag else []),
-        monitor_gym=False,
-        save_code=False,
-    )
 
 
 @common_ingredient.config_hook
@@ -107,32 +88,8 @@ def make_log_dir(
 
 
 @common_ingredient.capture
-def make_wandb_kwargs(
-    log_dir: str, 
-    wandb_kwargs: Mapping[str, Any],
-) -> Mapping[str, Any]:
-    """W&B kwargs for wandb.init(). Other user can overwrite this function to
-    customize their wandb.init() call.
-
-    Args:
-        # env_name (str): Environment name.
-        # seed (Optional[int]): User-specified root-seed from command line.
-        # wandb_tag (Optional[str]): User-sepcified tag for this run.
-        log_dir (str): W&B logs will be stored into directory `{log_dir}/wandb/`.
-
-    Returns:
-        Mapping: kwargs for wandb.init()
-    """
-    updated_wandb_kwargs = {}
-    updated_wandb_kwargs.update(wandb_kwargs)
-    updated_wandb_kwargs.update(dict(dir=log_dir,))
-    return updated_wandb_kwargs
-
-
-@common_ingredient.capture
 def setup_logging(
     _run,
-    wandb_logging: bool,
     log_format_strs: Sequence[str],
 ) -> Tuple[imit_logger.HierarchicalLogger, str]:
     """Builds the imitation logger.
@@ -145,20 +102,11 @@ def setup_logging(
         Returning `log_dir` avoids the caller needing to capture this value.
     """
     log_dir = make_log_dir()
-    
-    wandb_writer = None
-    if wandb_logging:
-        wandb_kwargs = make_wandb_kwargs()
-        wandb_writer = imit_logger.WandbOutputFormat(
-            wandb_kwargs=wandb_kwargs,
-            config=_run.config,
-        )
 
     custom_logger = imit_logger.configure(
-            folder=os.path.join(log_dir, "log"), 
-            format_strs=log_format_strs, 
-            custom_writers=[wandb_writer] if wandb_writer else None
-        )
+        folder=os.path.join(log_dir, "log"),
+        format_strs=log_format_strs,
+    )
     return custom_logger, log_dir
 
 
