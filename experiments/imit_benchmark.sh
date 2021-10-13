@@ -18,7 +18,7 @@ extra_options=()
 extra_parallel_options=()
 ALGORITHM="gail"
 
-if ! TEMP=$($GNU_GETOPT -o f,T -l fast,gail,airl,mvp_seals,cheetah,tmux,pdb,run_name:,log_root:,file_storage:,echo -- "$@"); then
+if ! TEMP=$($GNU_GETOPT -o f,T,w -l fast,gail,airl,mvp_seals,cheetah,tmux,pdb,run_name:,log_root:,file_storage:,echo,wandb -- "$@"); then
   exit 1
 fi
 eval set -- "$TEMP"
@@ -31,6 +31,10 @@ while true; do
       DATA_DIR="tests/testdata/"
       SEEDS=(0)
       extra_configs=("${extra_configs[@]}" common.fast demonstrations.fast rl.fast train.fast fast)
+      shift
+      ;;
+    -w | --wandb)
+      extra_configs=("${extra_configs[@]}" "wandb.wandb_logging=True")
       shift
       ;;
     --mvp_seals)

@@ -10,7 +10,7 @@ extra_configs=()
 extra_options=()
 extra_parallel_options=()
 
-if ! TEMP=$($GNU_GETOPT -o fT -l fast,paper,tmux,pdb,echo,run_name:,log_root:,file_storage: -- "$@"); then
+if ! TEMP=$($GNU_GETOPT -o fTw -l fast,wandb,paper,tmux,pdb,echo,run_name:,log_root:,file_storage: -- "$@"); then
   exit 1
 fi
 eval set -- "$TEMP"
@@ -26,6 +26,10 @@ while true; do
       ;;
     --paper)  # Table benchmark settings
       ENVS=(seals_cartpole seals_mountain_car half_cheetah)
+      shift
+      ;;
+    -w | --wandb)
+      extra_configs=("${extra_configs[@]}" "wandb.wandb_logging=True")
       shift
       ;;
     -T | --tmux)
