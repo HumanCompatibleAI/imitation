@@ -4,7 +4,7 @@ import contextlib
 import datetime
 import os
 import tempfile
-from typing import Any, Dict, Generator, Mapping, Optional, Sequence, Tuple, Union
+from typing import Any, Dict, Generator, Optional, Sequence, Tuple, Union
 
 import stable_baselines3.common.logger as sb_logger
 import wandb

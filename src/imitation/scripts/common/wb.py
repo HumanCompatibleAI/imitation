@@ -4,9 +4,6 @@ import logging
 from typing import Any, Mapping, Optional
 
 import sacred
-import stable_baselines3.common.logger as sb_logger
-
-from imitation.util import logger as imit_logger
 
 wandb_ingredient = sacred.Ingredient("common.wandb")
 logger = logging.getLogger(__name__)
