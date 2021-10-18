@@ -27,7 +27,12 @@ def _build_output_formats(
         A sequence of output formats, one corresponding to each `format_strs`.
     """
     os.makedirs(folder, exist_ok=True)
-    output_formats = [sb_logger.make_output_format(f, folder) for f in format_strs]
+    output_formats = []
+    for f in format_strs:
+        if f == "wandb":
+            output_formats.append(WandbOutputFormat())
+        else:
+            output_formats.append(sb_logger.make_output_format(f, folder))
     return output_formats
 
 
@@ -158,20 +163,6 @@ class HierarchicalLogger(sb_logger.Logger):
 
 class WandbOutputFormat(sb_logger.KVWriter):
     """A stable-baseline logger that writes to wandb."""
-
-    def __init__(
-        self,
-        wandb_kwargs: Mapping[str, Any],
-        config: Mapping[str, Any],
-    ):
-        """Builds WandbOutputFormat.
-
-        Args:
-            wandb_kwargs: A dictionary of key_values to pass to wandb.init.
-            config: A dictionary of config values to log to wandb.
-
-        """
-        wandb.init(config=config, **wandb_kwargs)
 
     def write(
         self,

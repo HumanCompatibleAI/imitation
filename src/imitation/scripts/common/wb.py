@@ -8,14 +8,13 @@ import stable_baselines3.common.logger as sb_logger
 
 from imitation.util import logger as imit_logger
 
-wandb_ingredient = sacred.Ingredient("wandb")
+wandb_ingredient = sacred.Ingredient("common.wandb")
 logger = logging.getLogger(__name__)
 
 
 @wandb_ingredient.config
 def wandb_config():
     """Other user can overwrite this function to customize their wandb.init() call."""
-    wandb_logging = False  # If True, adding a custom writer that logs to wandb
     wandb_tag = None  # User-specified tag for this run
     wandb_name_suffix = ""  # User-specified suffix for the run name
     wandb_kwargs = dict(
@@ -59,22 +58,3 @@ def make_wandb_kwargs(
         ),
     )
     return updated_wandb_kwargs
-
-
-@wandb_ingredient.capture
-def setup_wandb_writer(
-    _run,
-    wandb_logging: bool,
-    custom_logger: sb_logger.Logger,
-    log_dir: str,
-):
-    """Capture function to add a wandb writer to the custom logger."""
-    wandb_writer = None
-    if wandb_logging:
-        wandb_kwargs = make_wandb_kwargs(log_dir=log_dir)
-        wandb_writer = imit_logger.WandbOutputFormat(
-            wandb_kwargs=wandb_kwargs,
-            config=_run.config,
-        )
-    custom_logger.output_formats += [wandb_writer]
-    return custom_logger

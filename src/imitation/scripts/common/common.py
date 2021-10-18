@@ -7,11 +7,12 @@ from typing import Any, Mapping, Sequence, Tuple, Union
 import sacred
 from stable_baselines3.common import vec_env
 
+from imitation.scripts.common import wb
 from imitation.util import logger as imit_logger
 from imitation.util import sacred as sacred_util
 from imitation.util import util
 
-common_ingredient = sacred.Ingredient("common")
+common_ingredient = sacred.Ingredient("common", ingredients=[wb.wandb_ingredient])
 logger = logging.getLogger(__name__)
 
 
@@ -107,6 +108,13 @@ def setup_logging(
         folder=os.path.join(log_dir, "log"),
         format_strs=log_format_strs,
     )
+
+    if "wandb" in log_format_strs:
+        import wandb
+
+        wandb_kwargs = wb.make_wandb_kwargs(log_dir=log_dir)
+        wandb.init(config=_run.config, **wandb_kwargs)
+
     return custom_logger, log_dir
 
 
