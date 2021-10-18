@@ -1,28 +1,28 @@
+"""Miscellaneous utility methods."""
+
 import datetime
 import functools
 import itertools
 import os
 import uuid
 from typing import (
+    Any,
     Callable,
     Iterable,
     Iterator,
+    Mapping,
     Optional,
     Sequence,
-    Type,
     TypeVar,
     Union,
 )
 
 import gym
 import numpy as np
-import stable_baselines3
 import torch as th
 from gym.wrappers import TimeLimit
 from scipy import stats
 from stable_baselines3.common import monitor
-from stable_baselines3.common.base_class import BaseAlgorithm
-from stable_baselines3.common.policies import ActorCriticPolicy, BasePolicy
 from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecEnv
 
 
@@ -44,8 +44,9 @@ def make_vec_env(
     max_episode_steps: Optional[int] = None,
     wrapper_class: Optional[Callable] = None,
     post_wrappers: Optional[Sequence[Callable[[gym.Env, int], gym.Env]]] = None,
+    env_make_kwargs: Optional[Mapping[str, Any]] = None,
 ) -> VecEnv:
-    """Returns a VecEnv initialized with `n_envs` Envs.
+    """Makes a vectorized environment.
 
     Args:
         env_name: The Env's string id in Gym.
@@ -67,10 +68,15 @@ def make_vec_env(
             of the wrappers specified in the sequence. The argument should be a Callable
             accepting two arguments, the Env to be wrapped and the environment index,
             and returning the wrapped Env.
+        env_make_kwargs: The kwargs passed to `spec.make`.
+
+    Returns:
+        A VecEnv initialized with `n_envs` environments.
     """
     # Resolve the spec outside of the subprocess first, so that it is available to
     # subprocesses running `make_env` via automatic pickling.
     spec = gym.spec(env_name)
+    env_make_kwargs = env_make_kwargs or {}
 
     def make_env(i, this_seed):
         # Previously, we directly called `gym.make(env_name)`, but running
@@ -81,7 +87,7 @@ def make_vec_env(
         # registering the custom environment in the scope of `make_vec_env` didn't
         # work. For more discussion and hypotheses on this issue see PR #160:
         # https://github.com/HumanCompatibleAI/imitation/pull/160.
-        env = spec.make()
+        env = spec.make(**env_make_kwargs)
 
         # Seed each environment with a different, non-sequential seed for diversity
         # (even if caller is passing us sequentially-assigned base seeds). int() is
@@ -124,39 +130,6 @@ def make_vec_env(
         return DummyVecEnv(env_fns)
 
 
-def init_rl(
-    env: Union[gym.Env, VecEnv],
-    model_class: Type[BaseAlgorithm] = stable_baselines3.PPO,
-    policy_class: Type[BasePolicy] = ActorCriticPolicy,
-    **model_kwargs,
-):
-    """Instantiates a policy for the provided environment.
-
-    Args:
-        env: The (vector) environment.
-        model_class: A Stable Baselines RL algorithm.
-        policy_class: A Stable Baselines compatible policy network class.
-        model_kwargs (dict): kwargs passed through to the algorithm.
-          Note: anything specified in `policy_kwargs` is passed through by the
-          algorithm to the policy network.
-
-    Returns:
-      An RL algorithm.
-    """
-    # FIXME(sam): verbose=1 and tensorboard_log=None is a hack to prevent SB3
-    # from reconfiguring the logger after we've already configured it. Should
-    # remove once SB3 issue #109 is fixed (there are also >=2 other comments to
-    # this effect elsewhere; worth grepping for "#109").
-    all_kwargs = {
-        "verbose": 1,
-        "tensorboard_log": None,
-    }
-    all_kwargs.update(model_kwargs)
-    return model_class(
-        policy_class, env, **all_kwargs
-    )  # pytype: disable=not-instantiable
-
-
 def docstring_parameter(*args, **kwargs):
     """Treats the docstring as a format string, substituting in the arguments."""
 
@@ -176,10 +149,7 @@ def identity(x: T) -> T:
 
 
 def endless_iter(iterable: Iterable[T]) -> Iterator[T]:
-    """Generator that endlessly yields elements from iterable.
-
-    If any call to `iter(iterable)` has no elements, then this function raises
-    ValueError.
+    """Generator that endlessly yields elements from `iterable`.
 
     >>> x = range(2)
     >>> it = endless_iter(x)
@@ -190,12 +160,19 @@ def endless_iter(iterable: Iterable[T]) -> Iterator[T]:
     >>> next(it)
     0
 
+    Args:
+        iterable: The object to endlessly iterate over.
+
+    Returns:
+        An iterator that repeats the elements in `iterable` forever.
+
+    Raises:
+        ValueError: `iterable` is empty -- the first call it to returns no elements.
     """
     try:
         next(iter(iterable))
     except StopIteration:
-        err = ValueError(f"iterable {iterable} had no elements to iterate over.")
-        raise err
+        raise ValueError(f"iterable {iterable} had no elements to iterate over.")
 
     return itertools.chain.from_iterable(itertools.repeat(iterable))
 
@@ -239,3 +216,33 @@ def join_callbacks(*callbacks: Optional[Callable[..., None]]) -> Callable[..., N
                 callback(*args, **kwargs)
 
     return joined_callback
+
+
+def tensor_iter_norm(
+    tensor_iter: Iterable[th.Tensor],
+    ord: Union[int, float] = 2,  # noqa: A002
+) -> th.Tensor:
+    """Compute the norm of a big vector that is produced one tensor chunk at a time.
+
+    Args:
+        tensor_iter: an iterable that yields tensors.
+        ord: order of the p-norm (can be any int or float except 0 and NaN).
+
+    Returns:
+        Norm of the concatenated tensors.
+
+    Raises:
+        ValueError: ord is 0 (unsupported).
+    """
+    if ord == 0:
+        raise ValueError("This function cannot compute p-norms for p=0.")
+    norms = []
+    for tensor in tensor_iter:
+        norms.append(th.norm(tensor.flatten(), p=ord))
+    norm_tensor = th.as_tensor(norms)
+    # Norm of the norms is equal to the norm of the concatenated tensor.
+    # th.norm(norm_tensor) = sum(norm**ord for norm in norm_tensor)**(1/ord)
+    # = sum(sum(x**ord for x in tensor) for tensor in tensor_iter)**(1/ord)
+    # = sum(x**ord for x in tensor for tensor in tensor_iter)**(1/ord)
+    # = th.norm(concatenated tensors)
+    return th.norm(norm_tensor, p=ord)

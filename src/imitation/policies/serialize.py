@@ -5,6 +5,7 @@
 
 import logging
 import os
+import pathlib
 import pickle
 from typing import Callable, Optional, Tuple, Type, Union
 
@@ -35,8 +36,17 @@ class NormalizePolicy(policies.BasePolicy):
     """
 
     def __init__(
-        self, policy: policies.BasePolicy, vec_normalize: vec_env.VecNormalize
+        self,
+        policy: policies.BasePolicy,
+        vec_normalize: vec_env.VecNormalize,
     ):
+        """Builds NormalizePolicy.
+
+        Args:
+            policy: The policy to wrap.
+            vec_normalize: Used to normalize observations. Note observation statistics
+                are frozen, and not updated with repeated calls to `predict`.
+        """
         super().__init__(
             observation_space=policy.observation_space,
             action_space=policy.action_space,
@@ -48,7 +58,10 @@ class NormalizePolicy(policies.BasePolicy):
         raise NotImplementedError()
 
     def predict(
-        self, obs: np.ndarray, *args, **kwargs
+        self,
+        obs: np.ndarray,
+        *args,
+        **kwargs,
     ) -> Tuple[np.ndarray, Optional[np.ndarray]]:
         preproc_obs = self.vec_normalize.normalize_obs(obs)
         return self._policy.predict(preproc_obs, *args, **kwargs)
@@ -78,7 +91,9 @@ class NormalizePolicy(policies.BasePolicy):
 
     @classmethod
     def load(
-        cls, path: str, device: Union[th.device, str] = "auto"
+        cls,
+        path: str,
+        device: Union[th.device, str] = "auto",
     ) -> policies.BasePolicy:
         raise NotImplementedError()
 
@@ -90,7 +105,8 @@ class NormalizePolicy(policies.BasePolicy):
 
 
 def _load_stable_baselines(
-    cls: Type[on_policy_algorithm.OnPolicyAlgorithm], policy_attr: str
+    cls: Type[on_policy_algorithm.OnPolicyAlgorithm],
+    policy_attr: str,
 ) -> PolicyLoaderFn:
     """Higher-order function, returning a policy loading function.
 
@@ -106,7 +122,36 @@ def _load_stable_baselines(
     def f(path: str, venv: vec_env.VecEnv) -> policies.BasePolicy:
         """Loads a policy saved to path, for environment env."""
         logging.info(f"Loading Stable Baselines policy for '{cls}' from '{path}'")
-        model_path = os.path.join(path, "model.pkl")
+        policy_dir = pathlib.Path(path)
+        if not policy_dir.is_dir():
+            raise FileNotFoundError(
+                f"path={path} needs to be a directory containing model.zip and "
+                "optionally vec_normalize.pkl.",
+            )
+
+        model_path = policy_dir / "model.zip"
+        if not model_path.is_file():
+            # Couldn't find model.zip. Try deprecated model.pkl instead?
+            deprecated_model_path = policy_dir / "model.pkl"
+            if deprecated_model_path.is_file():
+                import warnings
+
+                warnings.warn(
+                    "Using deprecated policy directory containing model.pkl "
+                    "instead of model.zip (in either case, SB3 actually saves a ZIP"
+                    "file, not a .pkl file). A future version of imitation will not be "
+                    "compatible with `model.pkl`. You can fix this warning now by "
+                    "renaming the ZIP file: \n"
+                    f"mv '{deprecated_model_path}' '{model_path}'",
+                    DeprecationWarning,
+                )
+                model_path = deprecated_model_path
+            else:
+                raise FileNotFoundError(
+                    f"Could not find {model_path} or (deprecated) "
+                    f"{deprecated_model_path}",
+                )
+
         model = cls.load(model_path, env=venv)
         policy = getattr(model, policy_attr)
 
@@ -145,6 +190,9 @@ def _add_stable_baselines_policies(classes):
         policy_registry.register(k, value=fn)
 
 
+# TODO(shwang): For all subclasses of stable_baselines3.common.base_class.BaseAlgorithm,
+#  the policy is saved as `self.policy`. So the second part of this mapping at least
+#  might not be necessary?
 STABLE_BASELINES_CLASSES = {
     "ppo": ("stable_baselines3:PPO", "policy"),
 }
@@ -152,7 +200,9 @@ _add_stable_baselines_policies(STABLE_BASELINES_CLASSES)
 
 
 def load_policy(
-    policy_type: str, policy_path: str, venv: vec_env.VecEnv
+    policy_type: str,
+    policy_path: str,
+    venv: vec_env.VecEnv,
 ) -> policies.BasePolicy:
     """Load serialized policy.
 
@@ -160,6 +210,9 @@ def load_policy(
         policy_type: A key in `policy_registry`, e.g. `ppo`.
         policy_path: A path on disk where the policy is stored.
         venv: An environment that the policy is to be used with.
+
+    Returns:
+        The deserialized policy.
     """
     agent_loader = policy_registry.get(policy_type)
     return agent_loader(policy_path, venv)
@@ -182,7 +235,7 @@ def save_stable_model(
             when loading.
     """
     os.makedirs(output_dir, exist_ok=True)
-    model.save(os.path.join(output_dir, "model.pkl"))
+    model.save(os.path.join(output_dir, "model.zip"))
     if vec_normalize is not None:
         with open(os.path.join(output_dir, "vec_normalize.pkl"), "wb") as f:
             pickle.dump(vec_normalize, f)
@@ -208,6 +261,8 @@ class SavePolicyCallback(callbacks.EventCallback):
         Args:
             policy_dir: Directory to save checkpoints.
             vec_normalize: If specified, VecNormalize object to save alongside policy.
+            *args: Passed through to `callbacks.EventCallback`.
+            **kwargs: Passed through to `callbacks.EventCallback`.
         """
         super().__init__(*args, **kwargs)
         self.policy_dir = policy_dir

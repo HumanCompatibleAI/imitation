@@ -1,3 +1,5 @@
+"""Command-line scripts."""
+
 # Add our custom environments to Gym registry.
 
 try:

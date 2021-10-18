@@ -5,4 +5,4 @@ and may be changed without warning.
 """
 
 # Register environments with Gym
-from imitation.envs.examples import airl_envs, model_envs  # noqa: F401
+from imitation.envs.examples import model_envs  # noqa: F401

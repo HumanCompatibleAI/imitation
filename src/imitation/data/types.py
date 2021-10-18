@@ -5,29 +5,50 @@ import logging
 import os
 import pathlib
 import pickle
-from typing import Dict, Mapping, Optional, Sequence, TypeVar, Union, overload
+import warnings
+from typing import (
+    Any,
+    Dict,
+    Mapping,
+    Optional,
+    Sequence,
+    Tuple,
+    TypeVar,
+    Union,
+    overload,
+)
 
 import numpy as np
 import torch as th
 from torch.utils import data as th_data
-
-from imitation.data import old_types
 
 T = TypeVar("T")
 
 AnyPath = Union[str, bytes, os.PathLike]
 
 
-def dataclass_quick_asdict(dataclass_instance) -> dict:
+def dataclass_quick_asdict(obj) -> Dict[str, Any]:
     """Extract dataclass to items using `dataclasses.fields` + dict comprehension.
 
     This is a quick alternative to `dataclasses.asdict`, which expensively and
     undocumentedly deep-copies every numpy array value.
     See https://stackoverflow.com/a/52229565/1091722.
+
+    Args:
+        obj: A dataclass instance.
+
+    Returns:
+        A dictionary mapping from `obj` field names to values.
     """
-    obj = dataclass_instance
     d = {f.name: getattr(obj, f.name) for f in dataclasses.fields(obj)}
     return d
+
+
+def path_to_str(path: AnyPath) -> str:
+    if isinstance(path, bytes):
+        return path.decode()
+    else:
+        return str(path)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -43,11 +64,15 @@ class Trajectory:
     infos: Optional[np.ndarray]
     """An array of info dicts, length trajectory_len."""
 
-    def __len__(self):
-        """Returns number of transitions, `trajectory_len` in attribute docstrings.
+    terminal: bool
+    """Does this trajectory (fragment) end in a terminal state?
 
-        This is equal to the number of actions, and is always positive.
-        """
+    Episodes are always terminal. Trajectory fragments are also terminal when they
+    contain the final state of an episode (even if missing the start of the episode).
+    """
+
+    def __len__(self):
+        """Returns number of transitions, equal to the number of actions."""
         return len(self.acts)
 
     def __post_init__(self):
@@ -55,22 +80,32 @@ class Trajectory:
         if len(self.obs) != len(self.acts) + 1:
             raise ValueError(
                 "expected one more observations than actions: "
-                f"{len(self.obs)} != {len(self.acts)} + 1"
+                f"{len(self.obs)} != {len(self.acts)} + 1",
             )
         if self.infos is not None and len(self.infos) != len(self.acts):
             raise ValueError(
                 "infos when present must be present for each action: "
-                f"{len(self.infos)} != {len(self.acts)}"
+                f"{len(self.infos)} != {len(self.acts)}",
             )
         if len(self.acts) == 0:
             raise ValueError("Degenerate trajectory: must have at least one action.")
+
+    def __setstate__(self, state):
+        if "terminal" not in state:
+            warnings.warn(
+                "Loading old version of Trajectory."
+                "Support for this will be removed in future versions.",
+                DeprecationWarning,
+            )
+            state["terminal"] = True
+        self.__dict__.update(state)
 
 
 def _rews_validation(rews: np.ndarray, acts: np.ndarray):
     if rews.shape != (len(acts),):
         raise ValueError(
             "rewards must be 1D array, one entry for each action: "
-            f"{rews.shape} != ({len(acts)},)"
+            f"{rews.shape} != ({len(acts)},)",
         )
     if not np.issubdtype(rews.dtype, np.floating):
         raise ValueError(f"rewards dtype {rews.dtype} not a float")
@@ -78,6 +113,8 @@ def _rews_validation(rews: np.ndarray, acts: np.ndarray):
 
 @dataclasses.dataclass(frozen=True)
 class TrajectoryWithRew(Trajectory):
+    """A `Trajectory` that additionally includes reward information."""
+
     rews: np.ndarray
     """Reward, shape (trajectory_len, ). dtype float."""
 
@@ -87,21 +124,29 @@ class TrajectoryWithRew(Trajectory):
         _rews_validation(self.rews, self.acts)
 
 
+TrajectoryPair = Tuple[Trajectory, Trajectory]
+TrajectoryWithRewPair = Tuple[TrajectoryWithRew, TrajectoryWithRew]
+
+
 def transitions_collate_fn(
     batch: Sequence[Mapping[str, np.ndarray]],
-) -> Dict[str, Union[np.ndarray, th.Tensor]]:
+) -> Mapping[str, Union[np.ndarray, th.Tensor]]:
     """Custom `torch.utils.data.DataLoader` collate_fn for `TransitionsMinimal`.
 
     Use this as the `collate_fn` argument to `DataLoader` if using an instance of
     `TransitionsMinimal` as the `dataset` argument.
 
-    Handles all collation except "infos" collation using Torch's default collate_fn.
-    "infos" needs special handling because we shouldn't recursively collate every
-    the info dict into a single dict, but instead join all the info dicts into a list of
-    dicts.
+    Args:
+        batch: The batch to collate.
+
+    Returns:
+        A collated batch. Uses Torch's default collate function for everything
+        except the "infos" key. For "infos", we join all the info dicts into a
+        list of dicts. (The default behavior would recursively collate every
+        info dict into a single dict, which is incorrect.)
     """
     batch_no_infos = [
-        {k: v for k, v in sample.items() if k != "infos"} for sample in batch
+        {k: np.array(v) for k, v in sample.items() if k != "infos"} for sample in batch
     ]
 
     result = th_data.dataloader.default_collate(batch_no_infos)
@@ -149,6 +194,10 @@ class TransitionsMinimal(th_data.Dataset):
         """Performs input validation: check shapes & dtypes match docstring.
 
         Also make array values read-only.
+
+        Raises:
+            ValueError: if batch size (array length) is inconsistent
+                between `obs`, `acts` and `infos`.
         """
         for val in vars(self).values():
             if isinstance(val, np.ndarray):
@@ -157,13 +206,13 @@ class TransitionsMinimal(th_data.Dataset):
         if len(self.obs) != len(self.acts):
             raise ValueError(
                 "obs and acts must have same number of timesteps: "
-                f"{len(self.obs)} != {len(self.acts)}"
+                f"{len(self.obs)} != {len(self.acts)}",
             )
 
-        if self.infos is not None and len(self.infos) != len(self.obs):
+        if len(self.infos) != len(self.obs):
             raise ValueError(
                 "obs and infos must have same number of timesteps: "
-                f"{len(self.obs)} != {len(self.infos)}"
+                f"{len(self.obs)} != {len(self.infos)}",
             )
 
     @overload
@@ -223,17 +272,17 @@ class Transitions(TransitionsMinimal):
         if self.obs.shape != self.next_obs.shape:
             raise ValueError(
                 "obs and next_obs must have same shape: "
-                f"{self.obs.shape} != {self.next_obs.shape}"
+                f"{self.obs.shape} != {self.next_obs.shape}",
             )
         if self.obs.dtype != self.next_obs.dtype:
             raise ValueError(
                 "obs and next_obs must have the same dtype: "
-                f"{self.obs.dtype} != {self.next_obs.dtype}"
+                f"{self.obs.dtype} != {self.next_obs.dtype}",
             )
         if self.dones.shape != (len(self.acts),):
             raise ValueError(
                 "dones must be 1D array, one entry for each timestep: "
-                f"{self.dones.shape} != ({len(self.acts)},)"
+                f"{self.dones.shape} != ({len(self.acts)},)",
             )
         if self.dones.dtype != bool:
             raise ValueError(f"dones must be boolean, not {self.dones.dtype}")
@@ -257,29 +306,13 @@ class TransitionsWithRew(Transitions):
         _rews_validation(self.rews, self.acts)
 
 
-def load(path: str) -> Sequence[TrajectoryWithRew]:
+def load(path: AnyPath) -> Sequence[TrajectoryWithRew]:
     """Loads a sequence of trajectories saved by `save()` from `path`."""
-    # TODO(adam): remove backwards compatibility logic eventually (2021?)
-    import sys
-
-    try:
-        assert "imitation.util.rollout" not in sys.modules
-        sys.modules["imitation.util.rollout"] = old_types
-        with open(path, "rb") as f:
-            trajectories = pickle.load(f)
-    finally:
-        del sys.modules["imitation.util.rollout"]
-
-    if len(trajectories) > 0:
-        if isinstance(trajectories[0], old_types.Trajectory):
-            trajectories = [
-                TrajectoryWithRew(**traj._asdict()) for traj in trajectories
-            ]
-
-    return trajectories
+    with open(path, "rb") as f:
+        return pickle.load(f)
 
 
-def save(path: str, trajectories: Sequence[TrajectoryWithRew]) -> None:
+def save(path: AnyPath, trajectories: Sequence[TrajectoryWithRew]) -> None:
     """Save a sequence of Trajectories to disk.
 
     Args:
@@ -288,8 +321,9 @@ def save(path: str, trajectories: Sequence[TrajectoryWithRew]) -> None:
     """
     p = pathlib.Path(path)
     p.parent.mkdir(parents=True, exist_ok=True)
-    with open(path + ".tmp", "wb") as f:
+    tmp_path = f"{path}.tmp"
+    with open(tmp_path, "wb") as f:
         pickle.dump(trajectories, f)
     # Ensure atomic write
-    os.replace(path + ".tmp", path)
-    logging.info("Dumped demonstrations to {}.".format(path))
+    os.replace(tmp_path, path)
+    logging.info(f"Dumped demonstrations to {path}.")

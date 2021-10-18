@@ -6,8 +6,8 @@
 
 # Imitation Learning Baseline Implementations
 
-This project aims to provide clean implementations of imitation learning algorithms.
-Currently we have implementations of Behavioral Cloning, [DAgger](https://arxiv.org/pdf/1011.0686.pdf) (with synthetic examples), [Adversarial Inverse Reinforcement Learning](https://arxiv.org/abs/1710.11248), and [Generative Adversarial Imitation Learning](https://arxiv.org/abs/1606.03476).
+This project aims to provide clean implementations of imitation and reward learning algorithms.
+Currently we have implementations of Behavioral Cloning, [DAgger](https://arxiv.org/pdf/1011.0686.pdf) (with synthetic examples), density-based reward modeling, [Maximum Causal Entropy Inverse Reinforcement Learning](https://www.cs.cmu.edu/~bziebart/publications/maximum-causal-entropy.pdf), [Adversarial Inverse Reinforcement Learning](https://arxiv.org/abs/1710.11248), [Generative Adversarial Imitation Learning](https://arxiv.org/abs/1606.03476) and [Deep RL from Human Preferences](https://arxiv.org/abs/1706.03741).
 
 ## Installation:
 
@@ -37,18 +37,18 @@ We provide several CLI scripts as a front-end to the algorithms implemented in `
 From [examples/quickstart.sh:](examples/quickstart.sh)
 
 ```bash
-# Train PPO agent on cartpole and collect expert demonstrations. Tensorboard logs saved in `quickstart/rl/`
-python -m imitation.scripts.expert_demos with fast cartpole log_dir=quickstart/rl/
+# Train PPO agent on pendulum and collect expert demonstrations. Tensorboard logs saved in quickstart/rl/
+python -m imitation.scripts.train_rl with pendulum common.fast train.fast rl.fast fast common.log_dir=quickstart/rl/
 
 # Train GAIL from demonstrations. Tensorboard logs saved in output/ (default log directory).
-python -m imitation.scripts.train_adversarial with fast gail cartpole rollout_path=quickstart/rl/rollouts/final.pkl
+python -m imitation.scripts.train_adversarial gail with pendulum common.fast demonstrations.fast train.fast rl.fast fast demonstrations.rollout_path=quickstart/rl/rollouts/final.pkl
 
 # Train AIRL from demonstrations. Tensorboard logs saved in output/ (default log directory).
-python -m imitation.scripts.train_adversarial with fast airl cartpole rollout_path=quickstart/rl/rollouts/final.pkl
+python -m imitation.scripts.train_adversarial airl with pendulum common.fast demonstrations.fast train.fast rl.fast fast demonstrations.rollout_path=quickstart/rl/rollouts/final.pkl
 ```
 Tips:
-  * Remove the "fast" option from the commands above to allow training run to completion.
-  * `python -m imitation.scripts.expert_demos print_config` will list Sacred script options. These configuration options are documented in each script's docstrings.
+  * Remove the "fast" options from the commands above to allow training run to completion.
+  * `python -m imitation.scripts.train_rl print_config` will list Sacred script options. These configuration options are documented in each script's docstrings.
 
 For more information on how to configure Sacred CLI options, see the [Sacred docs](https://sacred.readthedocs.io/en/stable/).
 

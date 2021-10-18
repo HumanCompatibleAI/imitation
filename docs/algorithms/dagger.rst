@@ -15,3 +15,8 @@ API
     :members:
     :inherited-members:
     :noindex:
+
+.. autoclass:: imitation.algorithms.dagger.SimpleDAggerTrainer
+    :members:
+    :inherited-members:
+    :noindex:

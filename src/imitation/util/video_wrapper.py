@@ -54,7 +54,8 @@ class VideoWrapper(gym.Wrapper):
             self.video_recorder = video_recorder.VideoRecorder(
                 env=self.env,
                 base_path=os.path.join(
-                    self.directory, "video.{:06}".format(self.episode_id)
+                    self.directory,
+                    "video.{:06}".format(self.episode_id),
                 ),
                 metadata={"episode_id": self.episode_id},
             )
