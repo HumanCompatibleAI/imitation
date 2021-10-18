@@ -34,7 +34,8 @@ while true; do
       shift
       ;;
     -w | --wandb)
-      extra_configs=("${extra_configs[@]}" "wandb.wandb_logging=True")
+      # add a format string 'common.log_format_strs=["tensorboard", "stdout", "wandb"]'
+      extra_configs=("${extra_configs[@]}" "\'"'common.log_format_strs=[\"tensorboard\", \"stdout\", \"wandb\"]'"\'")
       shift
       ;;
     --mvp_seals)
