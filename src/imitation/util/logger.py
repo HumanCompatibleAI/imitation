@@ -7,10 +7,14 @@ import tempfile
 from typing import Any, Dict, Generator, Optional, Sequence, Tuple, Union
 
 import stable_baselines3.common.logger as sb_logger
-import wandb
 
 from imitation.data import types
 
+DEBUG = 10
+INFO = 20
+WARN = 30
+ERROR = 40
+DISABLED = 50
 
 def _build_output_formats(
     folder: str,
@@ -140,8 +144,29 @@ class HierarchicalLogger(sb_logger.Logger):
         else:
             return self.default_logger
 
-    def dump(self, step=0):
-        self._logger.dump(step)
+    def dump(self, step=0, wb_commit=True):
+        """
+        Write all of the diagnostics from the current iteration
+        """
+        # self._logger.dump(step)
+        _logger = self._logger
+        if _logger.level == DISABLED:
+            return
+        for _format in _logger.output_formats:
+            if isinstance(_format, WandbOutputFormat):
+                _format.write(
+                    _logger.name_to_value,
+                    _logger.name_to_excluded,
+                    step,
+                    wb_commit=wb_commit,
+                )
+                continue
+            if isinstance(_format, sb_logger.KVWriter):
+                _format.write(_logger.name_to_value, _logger.name_to_excluded, step)
+
+        _logger.name_to_value.clear()
+        _logger.name_to_count.clear()
+        _logger.name_to_excluded.clear()
 
     def get_dir(self) -> str:
         return self._logger.get_dir()
@@ -162,13 +187,22 @@ class HierarchicalLogger(sb_logger.Logger):
 
 
 class WandbOutputFormat(sb_logger.KVWriter):
-    """A stable-baseline logger that writes to wandb."""
+    """A stable-baseline logger that writes to wandb. Users need to call `wandb.init()`
+    before initializing any instance of `WandbOutputFormat`."""
+    def __init__(self):
+        try: 
+            import wandb
+        except ModuleNotFoundError:
+            raise ModuleNotFoundError("Trying to log data with `WandbOutputFormat` " \
+                "but `wandb` not installed: try `pip install wandb`.")
+        self.wandb_obj = wandb
 
     def write(
         self,
         key_values: Dict[str, Any],
         key_excluded: Dict[str, Union[str, Tuple[str, ...]]],
         step: int = 0,
+        wb_commit: Optional[bool] = None,
     ) -> None:
         for (key, value), (_, excluded) in zip(
             sorted(key_values.items()),
@@ -176,10 +210,18 @@ class WandbOutputFormat(sb_logger.KVWriter):
         ):
             if excluded is not None and "wandb" in excluded:
                 continue
-            wandb.log({key: value}, step=step)
+
+            # Specifying step allows wandb_obj to write and upload data for specific
+            # step. The steps must be increasing. If wb_commit is specified, step will
+            # not be used. If wb_commit=True, record and upload data. If False, record
+            # but not upload.
+            if wb_commit is None:
+                self.wandb_obj.log({key: value}, step=step)
+            else:
+                self.wandb_obj.log({key: value}, commit=wb_commit)
 
     def close(self) -> None:
-        wandb.finish()
+        self.wandb_obj.finish()
 
 
 def configure(

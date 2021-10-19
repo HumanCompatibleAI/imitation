@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 def wandb_config():
     """Other user can overwrite this function to customize their wandb.init() call."""
     wandb_tag = None  # User-specified tag for this run
-    wandb_name_suffix = ""  # User-specified suffix for the run name
+    wandb_name_prefix = ""  # User-specified prefix for the run name
     wandb_kwargs = dict(
         project="imitation",
         monitor_gym=False,
@@ -54,4 +54,9 @@ def wandb_init(
             dir=log_dir,
         ),
     )
-    return updated_wandb_kwargs
+    try: 
+        import wandb
+    except ModuleNotFoundError:
+        raise ModuleNotFoundError("Trying to call `wandb.init()` but `wandb` not " \
+            "installed: try `pip install wandb`.")
+    wandb.init(config=_run.config, **updated_wandb_kwargs)

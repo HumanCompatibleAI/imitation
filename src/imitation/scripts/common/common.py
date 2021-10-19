@@ -51,6 +51,11 @@ def hook(config, command_name, logger):
 
 
 @common_ingredient.named_config
+def wandb_logging():
+    log_format_strs = ["tensorboard", "stdout", "wandb"]
+
+
+@common_ingredient.named_config
 def fast():
     num_vec = 2
     parallel = False  # easier to debug with everything in one process
