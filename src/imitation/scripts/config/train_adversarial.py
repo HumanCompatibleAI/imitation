@@ -21,7 +21,7 @@ train_adversarial_ex = sacred.Experiment(
 def defaults():
     show_config = False
 
-    total_timesteps = 1e6  # Num of environment transitions to sample
+    total_timesteps = int(1e6)  # Num of environment transitions to sample
     algorithm_kwargs = dict(
         demo_batch_size=1024,  # Number of expert samples per discriminator update
         n_disc_updates_per_round=4,  # Num discriminator updates per generator round
@@ -45,7 +45,7 @@ def aliases_default_gen_batch_size(algorithm_kwargs, rl):
 MUJOCO_SHARED_LOCALS = dict(rl=dict(rl_kwargs=dict(ent_coef=0.1)))
 
 ANT_SHARED_LOCALS = dict(
-    total_timesteps=3e7,
+    total_timesteps=int(3e7),
     algorithm_kwargs=dict(shared=dict(demo_batch_size=8192)),
     rl=dict(batch_size=16384),
 )
@@ -69,7 +69,7 @@ def cartpole():
 @train_adversarial_ex.named_config
 def seals_cartpole():
     common = dict(env_name="seals/CartPole-v0")
-    total_timesteps = 1.4e6
+    total_timesteps = int(1.4e6)
 
 
 @train_adversarial_ex.named_config
@@ -104,8 +104,8 @@ def half_cheetah():
     common = dict(env_name="HalfCheetah-v2")
     rl = dict(batch_size=16384, rl_kwargs=dict(batch_size=1024))
     algorithm_specific = dict(
-        airl=dict(total_timesteps=5e6),
-        gail=dict(total_timesteps=8e6),
+        airl=dict(total_timesteps=int(5e6)),
+        gail=dict(total_timesteps=int(8e6)),
     )
     reward = dict(
         algorithm_specific=dict(
@@ -137,7 +137,7 @@ def seals_hopper():
 def seals_humanoid():
     locals().update(**MUJOCO_SHARED_LOCALS)
     common = dict(env_name="seals/Humanoid-v0")
-    total_timesteps = 4e6
+    total_timesteps = int(4e6)
 
 
 @train_adversarial_ex.named_config
@@ -150,7 +150,7 @@ def reacher():
 def seals_swimmer():
     locals().update(**MUJOCO_SHARED_LOCALS)
     common = dict(env_name="seals/Swimmer-v0")
-    total_timesteps = 2e6
+    total_timesteps = int(2e6)
 
 
 @train_adversarial_ex.named_config
