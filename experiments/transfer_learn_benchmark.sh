@@ -32,8 +32,8 @@ while true; do
       shift
       ;;
     -w | --wandb)
-      # add a format string 'common.log_format_strs=["tensorboard", "stdout", "wandb"]'
-      extra_configs=("${extra_configs[@]}" "\'"'common.log_format_strs=[\"tensorboard\", \"stdout\", \"wandb\"]'"\'")
+      # activate wandb logging by adding 'wandb' format string to common.log_format_strs
+      extra_configs=("${extra_configs[@]}" "common.wandb_logging")
       shift
       ;;
     --gail)
