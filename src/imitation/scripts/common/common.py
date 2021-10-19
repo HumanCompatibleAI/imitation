@@ -103,18 +103,12 @@ def setup_logging(
         Returning `log_dir` avoids the caller needing to capture this value.
     """
     log_dir = make_log_dir()
-
+    if "wandb" in log_format_strs:
+        wb.wandb_init(log_dir=log_dir)
     custom_logger = imit_logger.configure(
         folder=os.path.join(log_dir, "log"),
         format_strs=log_format_strs,
     )
-
-    if "wandb" in log_format_strs:
-        import wandb
-
-        wandb_kwargs = wb.make_wandb_kwargs(log_dir=log_dir)
-        wandb.init(config=_run.config, **wandb_kwargs)
-
     return custom_logger, log_dir
 
 

@@ -24,9 +24,9 @@ def wandb_config():
 
 
 @wandb_ingredient.capture
-def make_wandb_kwargs(
+def wandb_init(
     _run,
-    wandb_name_suffix: str,
+    wandb_name_prefix: str,
     wandb_tag: Optional[str],
     wandb_kwargs: Mapping[str, Any],
     log_dir: str,
@@ -34,10 +34,10 @@ def make_wandb_kwargs(
     """Putting everything together to get the W&B kwargs for wandb.init().
 
     Args:
-        wandb_name_suffix (str): User-specified suffix for wandb run name.
-        wandb_tag (Optional[str]): User-sepcified tag for this run.
+        wandb_name_prefix (str): User-specified prefix for wandb run name.
+        wandb_tag (Optional[str]): User-specified tag for this run.
         wandb_kwargs (Mapping[str, Any]): User-specified kwargs for wandb.init().
-        log_dir (str): W&B logs will be stored into directory `{log_dir}/wandb/`.
+        log_dir (str): W&B logs will be stored in directory `{log_dir}/wandb/`.
 
     Returns:
         Mapping: kwargs for wandb.init()
@@ -49,7 +49,7 @@ def make_wandb_kwargs(
     updated_wandb_kwargs.update(wandb_kwargs)
     updated_wandb_kwargs.update(
         dict(
-            name="-".join([env_name, f"seed{root_seed}"]) + wandb_name_suffix,
+            name="-".join([wandb_name_prefix, env_name, f"seed{root_seed}"]),
             tags=[env_name, f"seed{root_seed}"] + ([wandb_tag] if wandb_tag else []),
             dir=log_dir,
         ),
