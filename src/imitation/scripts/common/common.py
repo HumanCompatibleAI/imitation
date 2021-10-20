@@ -23,6 +23,7 @@ def config():
     log_dir = None
     log_level = logging.INFO
     log_format_strs = ["tensorboard", "stdout"]
+    log_format_strs_additional = []
 
     # Environment config
     env_name = "seals/CartPole-v0"  # environment to train on
@@ -32,6 +33,11 @@ def config():
     env_make_kwargs = {}  # The kwargs passed to `spec.make`.
 
     locals()  # quieten flake8
+
+
+@common_ingredient.config
+def update_log_format_strs(log_format_strs, log_format_strs_additional):
+    log_format_strs = log_format_strs + log_format_strs_additional
 
 
 @common_ingredient.config_hook
@@ -52,7 +58,9 @@ def hook(config, command_name, logger):
 
 @common_ingredient.named_config
 def wandb_logging():
-    log_format_strs = ["tensorboard", "stdout", "wandb"]
+    log_format_strs_additional = ["wandb"]
+
+    locals()
 
 
 @common_ingredient.named_config
