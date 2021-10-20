@@ -39,8 +39,8 @@ def wandb_init(
         wandb_kwargs (Mapping[str, Any]): User-specified kwargs for wandb.init().
         log_dir (str): W&B logs will be stored in directory `{log_dir}/wandb/`.
 
-    Returns:
-        Mapping: kwargs for wandb.init()
+    Raises:
+        ModuleNotFoundError: wandb is not installed.
     """
     env_name = _run.config["common"]["env_name"]
     root_seed = _run.config["seed"]
