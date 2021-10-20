@@ -163,13 +163,16 @@ class HierarchicalLogger(sb_logger.Logger):
 class WandbOutputFormat(sb_logger.KVWriter):
     """A stable-baseline logger that writes to wandb. Users need to call `wandb.init()`
     before initializing any instance of `WandbOutputFormat`."""
+
     def __init__(self):
-        try: 
+        try:
             import wandb
         except ModuleNotFoundError:
-            raise ModuleNotFoundError("Trying to log data with `WandbOutputFormat` " \
-                "but `wandb` not installed: try `pip install wandb`.")
-        self.wandb_obj = wandb
+            raise ModuleNotFoundError(
+                "Trying to log data with `WandbOutputFormat` "
+                "but `wandb` not installed: try `pip install wandb`."
+            )
+        self.wandb_module = wandb
 
     def write(
         self,
@@ -184,14 +187,10 @@ class WandbOutputFormat(sb_logger.KVWriter):
             if excluded is not None and "wandb" in excluded:
                 continue
 
-            # Specifying step allows wandb_obj to write and upload data for specific
-            # step. The steps must be increasing. If wb_commit is specified, step will
-            # not be used. If wb_commit=True, record and upload data. If False, record
-            # but not upload.
-            self.wandb_obj.log({key: value}, step=step)
+            self.wandb_module.log({key: value}, step=step)
 
     def close(self) -> None:
-        self.wandb_obj.finish()
+        self.wandb_module.finish()
 
 
 def configure(
@@ -221,5 +220,6 @@ def configure(
         format_strs = ["stdout", "log", "csv"]
     output_formats = _build_output_formats(folder, format_strs)
     default_logger = sb_logger.Logger(folder, output_formats)
-    hier_logger = HierarchicalLogger(default_logger, format_strs)
+    hier_format_strs = [f for f in format_strs if f != "wandb"]
+    hier_logger = HierarchicalLogger(default_logger, hier_format_strs)
     return hier_logger

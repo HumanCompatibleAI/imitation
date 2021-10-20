@@ -54,9 +54,11 @@ def wandb_init(
             dir=log_dir,
         ),
     )
-    try: 
+    try:
         import wandb
     except ModuleNotFoundError:
-        raise ModuleNotFoundError("Trying to call `wandb.init()` but `wandb` not " \
-            "installed: try `pip install wandb`.")
+        raise ModuleNotFoundError(
+            "Trying to call `wandb.init()` but `wandb` not installed: "
+            "try `pip install wandb`."
+        )
     wandb.init(config=_run.config, **updated_wandb_kwargs)
