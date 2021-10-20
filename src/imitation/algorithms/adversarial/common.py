@@ -363,7 +363,7 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
             self.logger.record("global_step", self._global_step)
             for k, v in train_stats.items():
                 self.logger.record(k, v)
-            self.logger.dump(self._disc_step, wb_commit=False)
+            self.logger.dump(self._disc_step)
             if write_summaries:
                 self._summary_writer.add_histogram("disc_logits", disc_logits.detach())
 
@@ -437,8 +437,7 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
                 self.train_disc()
             if callback:
                 callback(r)
-            self.logger.dump(self._global_step, wb_commit=False)
-            self.logger.dump(self.gen_algo.num_timesteps, wb_commit=True)
+            self.logger.dump(self._global_step)
 
     def _torchify_array(self, ndarray: Optional[np.ndarray]) -> Optional[th.Tensor]:
         if ndarray is not None:
