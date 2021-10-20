@@ -30,7 +30,7 @@ def wandb_init(
     wandb_tag: Optional[str],
     wandb_kwargs: Mapping[str, Any],
     log_dir: str,
-) -> Mapping[str, Any]:
+) -> None:
     """Putting everything together to get the W&B kwargs for wandb.init().
 
     Args:
@@ -59,6 +59,6 @@ def wandb_init(
     except ModuleNotFoundError:
         raise ModuleNotFoundError(
             "Trying to call `wandb.init()` but `wandb` not installed: "
-            "try `pip install wandb`."
+            "try `pip install wandb`.",
         )
     wandb.init(config=_run.config, **updated_wandb_kwargs)

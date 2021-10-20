@@ -161,16 +161,23 @@ class HierarchicalLogger(sb_logger.Logger):
 
 
 class WandbOutputFormat(sb_logger.KVWriter):
-    """A stable-baseline logger that writes to wandb. Users need to call `wandb.init()`
-    before initializing any instance of `WandbOutputFormat`."""
+    """A stable-baseline logger that writes to wandb.
+
+    Users need to call `wandb.init()` before initializing `WandbOutputFormat`.
+    """
 
     def __init__(self):
+        """Initializes an instance of WandbOutputFormat.
+
+        Raises:
+            ModuleNotFoundError: wandb is not installed.
+        """
         try:
             import wandb
         except ModuleNotFoundError:
             raise ModuleNotFoundError(
                 "Trying to log data with `WandbOutputFormat` "
-                "but `wandb` not installed: try `pip install wandb`."
+                "but `wandb` not installed: try `pip install wandb`.",
             )
         self.wandb_module = wandb
 
