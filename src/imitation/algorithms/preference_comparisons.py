@@ -728,6 +728,7 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
         comparisons_per_iteration: int = 50,
         fragment_length: int = 50,
         transition_oversampling: float = 10,
+        initial_comparison_fraction: float = 0.1,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
         allow_variable_horizon: bool = False,
         seed: Optional[int] = None,
@@ -763,6 +764,10 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
                 creating fragments. Since fragments are sampled with replacement,
                 this is usually chosen > 1 to avoid having the same transition
                 in too many fragments.
+            initial_comparison_fraction: fraction of the total_comparisons argument
+                to train() that will be sampled before the rest of training begins
+                (using the randomly initialized agent). This can be used to pretrain
+                the reward model before the agent is trained on the learned reward.
             custom_logger: Where to log to; if None (default), creates a new logger.
             allow_variable_horizon: If False (default), algorithm will raise an
                 exception if it detects trajectories of different length during
@@ -812,6 +817,7 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
         self.comparisons_per_iteration = comparisons_per_iteration
         self.fragment_length = fragment_length
         self.transition_oversampling = transition_oversampling
+        self.initial_comparison_fraction = initial_comparison_fraction
 
         self.dataset = PreferenceDataset()
 
@@ -829,6 +835,8 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
         Raises:
             ValueError: `total_comparisons < self.comparisons_per_iteration`.
         """
+        initial_comparisons = int(total_comparisons * self.initial_comparison_fraction)
+        total_comparisons -= initial_comparisons
         iterations, extra_comparisons = divmod(
             total_comparisons,
             self.comparisons_per_iteration,
@@ -852,7 +860,7 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
             # the desired total number of comparisons, we collect the remainder
             # right at the beginning to pretrain the reward model slightly
             if i == 0:
-                num_pairs += extra_comparisons
+                num_pairs += extra_comparisons + initial_comparisons
             num_steps = math.ceil(
                 self.transition_oversampling * 2 * num_pairs * self.fragment_length,
             )
