@@ -25,6 +25,7 @@ def train_defaults():
     # factor by which to oversample transitions before creating fragments
     transition_oversampling = 10
     initial_comparison_fraction = 0.1
+    random_frac = 0.0
 
     reward_trainer_kwargs = {
         "epochs": 3,

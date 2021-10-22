@@ -110,6 +110,7 @@ class AgentTrainer(TrajectoryGenerator):
         self,
         algorithm: base_class.BaseAlgorithm,
         reward_fn: Union[rewards_common.RewardFn, reward_nets.RewardNet],
+        random_frac: float = 0.0,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
     ):
         """Initialize the agent trainer.
@@ -119,6 +120,8 @@ class AgentTrainer(TrajectoryGenerator):
                 Its environment must be set.
             reward_fn: either a RewardFn or a RewardNet instance that will supply
                 the rewards used for training the agent.
+            random_frac: fraction of the trajectories that will be generated
+                randomly rather than by the agent when sample() is called.
             custom_logger: Where to log to; if None (default), creates a new logger.
 
         Raises:
@@ -131,6 +134,7 @@ class AgentTrainer(TrajectoryGenerator):
         if isinstance(reward_fn, reward_nets.RewardNet):
             reward_fn = reward_fn.predict
         self.reward_fn = reward_fn
+        self.random_frac = random_frac
 
         venv = self.algorithm.get_env()
         if not isinstance(venv, vec_env.VecEnv):
@@ -166,24 +170,26 @@ class AgentTrainer(TrajectoryGenerator):
         self.algorithm.learn(total_timesteps=steps, reset_num_timesteps=False, **kwargs)
 
     def sample(self, steps: int) -> Sequence[types.TrajectoryWithRew]:
-        trajectories, _ = self.buffering_wrapper.pop_finished_trajectories()
+        agent_trajs, _ = self.buffering_wrapper.pop_finished_trajectories()
         # We typically have more trajectories than are needed.
         # In that case, we use the final trajectories because
         # they are the ones with the most relevant version of
         # the agent.
         # The easiest way to do this will be to first invert the
         # list and then later just take the first trajectories:
-        trajectories = trajectories[::-1]
-        avail_steps = sum(len(traj) for traj in trajectories)
+        agent_trajs = agent_trajs[::-1]
+        avail_steps = sum(len(traj) for traj in agent_trajs)
 
-        if avail_steps < steps:
+        random_steps = int(self.random_frac * steps)
+        agent_steps = steps - random_steps
+
+        if avail_steps < agent_steps:
             self.logger.log(
-                f"Requested {steps} transitions but only {avail_steps} in buffer. "
-                f"Sampling {steps - avail_steps} additional transitions.",
+                f"Requested {agent_steps} transitions but only {avail_steps} in buffer."
+                f" Sampling {agent_steps - avail_steps} additional transitions."
             )
             sample_until = rollout.make_sample_until(
-                min_timesteps=steps - avail_steps,
-                min_episodes=None,
+                min_timesteps=agent_steps, min_episodes=None
             )
             # Important note: we don't want to use the trajectories returned
             # here because 1) they might miss initial timesteps taken by the RL agent
@@ -196,9 +202,24 @@ class AgentTrainer(TrajectoryGenerator):
             )
             additional_trajs, _ = self.buffering_wrapper.pop_finished_trajectories()
 
-            trajectories = list(trajectories) + list(additional_trajs)
+            agent_trajs = list(agent_trajs) + list(additional_trajs)
 
-        return _get_trajectories(trajectories, steps)
+        agent_trajs = _get_trajectories(agent_trajs, agent_steps)
+
+        random_trajs = []
+        if random_steps > 0:
+            self.logger.log(f"Sampling {random_steps} random transitions.")
+            sample_until = rollout.make_sample_until(
+                min_timesteps=random_steps, min_episodes=None
+            )
+            rollout.generate_trajectories(
+                policy=None,
+                venv=self.venv,
+                sample_until=sample_until,
+            )
+            random_trajs, _ = self.buffering_wrapper.pop_finished_trajectories()
+
+        return list(agent_trajs) + list(random_trajs)
 
     @TrajectoryGenerator.logger.setter
     def logger(self, value: imit_logger.HierarchicalLogger):

@@ -36,6 +36,7 @@ def train_preference_comparisons(
     fragment_length: int,
     transition_oversampling: float,
     initial_comparison_fraction: float,
+    random_frac: float,
     trajectory_path: Optional[str],
     save_preferences: bool,
     agent_path: Optional[str],
@@ -66,6 +67,10 @@ def train_preference_comparisons(
             sampled before the rest of training begins (using the randomly initialized
             agent). This can be used to pretrain the reward model before the agent
             is trained on the learned reward.
+        random_frac: fraction of trajectory samples that will be created using
+            random actions, rather than the current trained policy. Might be helpful
+            if the learned policy explores too little and gets stuck with a wrong
+            reward.
         trajectory_path: either None, in which case an agent will be trained
             and used to sample trajectories on the fly, or a path to a pickled
             sequence of TrajectoryWithRew to be trained on
@@ -176,11 +181,13 @@ def train_preference_comparisons(
         # Setting the logger here is not really necessary (PreferenceComparisons
         # takes care of that automatically) but it avoids creating unnecessary loggers
         trajectory_generator = preference_comparisons.AgentTrainer(
-            agent,
-            reward_net,
-            custom_logger=custom_logger,
+            agent, reward_net, random_frac=random_frac, custom_logger=custom_logger
         )
     else:
+        if random_frac > 0:
+            raise ValueError(
+                "random_frac can't be set when a trajectory dataset is used"
+            )
         trajectory_generator = preference_comparisons.TrajectoryDataset(
             trajectory_path,
             _seed,
