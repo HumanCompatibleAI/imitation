@@ -189,7 +189,8 @@ class AgentTrainer(TrajectoryGenerator):
                 f" Sampling {agent_steps - avail_steps} additional transitions."
             )
             sample_until = rollout.make_sample_until(
-                min_timesteps=agent_steps, min_episodes=None
+                min_timesteps=agent_steps - avail_steps,
+                min_episodes=None,
             )
             # Important note: we don't want to use the trajectories returned
             # here because 1) they might miss initial timesteps taken by the RL agent
@@ -218,7 +219,12 @@ class AgentTrainer(TrajectoryGenerator):
                 sample_until=sample_until,
             )
             random_trajs, _ = self.buffering_wrapper.pop_finished_trajectories()
+            random_trajs = _get_trajectories(random_trajs, random_steps)
 
+        # We call _get_trajectories separately on agent_trajs and random_trajs
+        # and then just concatenate. This could mean we return slightly too many
+        # transitions, but it gets the proportion of random and non-random transitions
+        # roughly right.
         return list(agent_trajs) + list(random_trajs)
 
     @TrajectoryGenerator.logger.setter
