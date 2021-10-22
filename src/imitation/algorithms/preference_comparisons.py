@@ -186,7 +186,7 @@ class AgentTrainer(TrajectoryGenerator):
         if avail_steps < agent_steps:
             self.logger.log(
                 f"Requested {agent_steps} transitions but only {avail_steps} in buffer."
-                f" Sampling {agent_steps - avail_steps} additional transitions."
+                f" Sampling {agent_steps - avail_steps} additional transitions.",
             )
             sample_until = rollout.make_sample_until(
                 min_timesteps=agent_steps - avail_steps,
@@ -211,7 +211,8 @@ class AgentTrainer(TrajectoryGenerator):
         if random_steps > 0:
             self.logger.log(f"Sampling {random_steps} random transitions.")
             sample_until = rollout.make_sample_until(
-                min_timesteps=random_steps, min_episodes=None
+                min_timesteps=random_steps,
+                min_episodes=None,
             )
             rollout.generate_trajectories(
                 policy=None,

@@ -189,7 +189,7 @@ def train_preference_comparisons(
     else:
         if random_frac > 0:
             raise ValueError(
-                "random_frac can't be set when a trajectory dataset is used"
+                "random_frac can't be set when a trajectory dataset is used",
             )
         trajectory_generator = preference_comparisons.TrajectoryDataset(
             trajectory_path,
