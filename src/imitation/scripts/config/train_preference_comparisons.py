@@ -25,7 +25,7 @@ def train_defaults():
     # factor by which to oversample transitions before creating fragments
     transition_oversampling = 1
     # fraction of total_comparisons that will be sampled right at the beginning
-    initial_comparison_fraction = 0.1
+    initial_comparison_frac = 0.1
     # fraction of sampled trajectories that will use random actions rather than policy
     random_frac = 0.0
 

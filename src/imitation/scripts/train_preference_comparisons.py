@@ -35,7 +35,7 @@ def train_preference_comparisons(
     comparisons_per_iteration: int,
     fragment_length: int,
     transition_oversampling: float,
-    initial_comparison_fraction: float,
+    initial_comparison_frac: float,
     random_frac: float,
     trajectory_path: Optional[str],
     save_preferences: bool,
@@ -63,7 +63,7 @@ def train_preference_comparisons(
             creating fragments. Since fragments are sampled with replacement,
             this is usually chosen > 1 to avoid having the same transition
             in too many fragments.
-        initial_comparison_fraction: fraction of total_comparisons that will be
+        initial_comparison_frac: fraction of total_comparisons that will be
             sampled before the rest of training begins (using the randomly initialized
             agent). This can be used to pretrain the reward model before the agent
             is trained on the learned reward.
@@ -217,7 +217,7 @@ def train_preference_comparisons(
         comparisons_per_iteration=comparisons_per_iteration,
         fragment_length=fragment_length,
         transition_oversampling=transition_oversampling,
-        initial_comparison_fraction=initial_comparison_fraction,
+        initial_comparison_frac=initial_comparison_frac,
         custom_logger=custom_logger,
         allow_variable_horizon=allow_variable_horizon,
         seed=_seed,
