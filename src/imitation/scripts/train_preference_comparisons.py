@@ -181,7 +181,10 @@ def train_preference_comparisons(
         # Setting the logger here is not really necessary (PreferenceComparisons
         # takes care of that automatically) but it avoids creating unnecessary loggers
         trajectory_generator = preference_comparisons.AgentTrainer(
-            agent, reward_net, random_frac=random_frac, custom_logger=custom_logger
+            agent,
+            reward_net,
+            random_frac=random_frac,
+            custom_logger=custom_logger,
         )
     else:
         if random_frac > 0:
