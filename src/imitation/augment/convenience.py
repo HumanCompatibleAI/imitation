@@ -149,10 +149,10 @@ class StandardAugmentations(KorniaAugmentations):
         elif rotate_ex:
             rot_bounds = (-35, 35)
         else:
-            # FIXME(sam): Kornia doesn't support passing in None, but Torch 1.8
-            # doesn't support sampling uniform numbers in [0, 0] (it requires
-            # low < high for sampling range).
-            rot_bounds = (0, 0)
+            # note that (0,0) doesn't work (it raises an error in Torch when
+            # Torch tries to sample a uniform random from the nonexistent
+            # interval [0,0).)
+            rot_bounds = 0
 
         sum([translate, translate_ex]) <= 1
         if translate:
@@ -162,7 +162,7 @@ class StandardAugmentations(KorniaAugmentations):
         else:
             trans_bounds = None
 
-        if any(rot_bounds) or trans_bounds:
+        if rot_bounds != 0 or trans_bounds:
             transforms.append(
                 kornia_aug.RandomAffine(
                     degrees=rot_bounds, translate=trans_bounds, padding_mode="border"
