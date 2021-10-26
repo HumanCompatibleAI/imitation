@@ -203,7 +203,7 @@ def test_augment(venv):
     trainer = bc.BC(
         venv.observation_space,
         venv.action_space,
-        expert_data=data,
+        demonstrations=data,
         augmentation_fn=mock_augment,
     )
     assert mock_augment.ncalls == 0
