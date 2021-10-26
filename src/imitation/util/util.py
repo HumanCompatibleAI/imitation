@@ -185,8 +185,12 @@ def optim_lr_gmean(optimizer: th.optim.Optimizer) -> float:
         optimizer (torch.optim.Optimizer): a Torch optimizer.
 
     Returns:
-        float: geometric mean of the learning rates across all parameter
-            groups."""
+        Geometric mean of the learning rates across all parameter
+        groups.
+
+    Raises:
+        ValueError: if there are no parameter groups attached to the
+            optimizer."""
     lrs = []
     for param_group in optimizer.param_groups:
         lrs.append(param_group["lr"])
@@ -207,7 +211,8 @@ def join_callbacks(*callbacks: Optional[Callable[..., None]]) -> Callable[..., N
         callbacks: series of functions (or None values) to call. Any callback
             that is None will be ignored.
 
-    Returns: a 'joined' callback that executes each of the functions in
+    Returns:
+        A 'joined' callback that executes each of the functions in
         `callbacks` in sequence with the supplied arguments."""
 
     def joined_callback(*args, **kwargs):

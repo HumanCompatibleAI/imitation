@@ -12,7 +12,7 @@ import gym
 import numpy as np
 import torch as th
 import tqdm.autonotebook as tqdm
-from stable_baselines3.common import logger, policies, preprocessing, utils, vec_env
+from stable_baselines3.common import policies, preprocessing, utils, vec_env
 
 from imitation.algorithms import base as algo_base
 from imitation.data import rollout, types
@@ -412,7 +412,6 @@ class BC(algo_base.DemonstrationAlgorithm):
                 even if `.train()` logged to Tensorboard previously. Has no practical
                 effect if `.train()` is being called for the first time.
         """
-        on_epoch_end = util.join_callbacks(on_epoch_end, self.epoch_end_step_callback)
         it = EpochOrBatchIteratorWithProgress(
             self._demo_data_loader,
             n_epochs=n_epochs,
