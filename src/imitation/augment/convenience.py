@@ -135,6 +135,8 @@ class StandardAugmentations(KorniaAugmentations):
             gray: with 50% probability, convert the image to grayscale.
             gaussian_blur: always apply Gaussian blur with sigma=1.0.
             stack_color_space: color space for images that will be augmented.
+            kwargs: additional keyword arguments to be passed to
+                `KorniaAugmentations`.
         """
         transforms = []
 
