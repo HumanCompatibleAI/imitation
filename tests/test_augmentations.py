@@ -144,12 +144,13 @@ def test_from_string_spec(fake_image, color_space):
     assert new_image.dtype == fake_image.dtype
 
 
+@pytest.mark.parametrize("consistent", [True, False])
 @pytest.mark.parametrize("batch_size", [1, 5])
 @pytest.mark.parametrize("color_space", list(augment.ColorSpace))
 @pytest.mark.parametrize(
     "augmentations", ["translate,rotate", "color_jitter", "flip_ud,rot90"]
 )
-def test_geom_consistent(color_space, batch_size, augmentations):
+def test_geom_consistent(consistent, color_space, batch_size, augmentations):
     """Make sure that geometric transformations are being applied consistently
     across all frames of a frame stack."""
     if "color" in augmentations and color_space == augment.ColorSpace.GRAY:
@@ -158,7 +159,7 @@ def test_geom_consistent(color_space, batch_size, augmentations):
     # Make a batch of `batch_size` frame stacks of `stack_depth` images each.
     # All the frames in a given stack are identical.
     batch_size = 29
-    stack_depth = 7
+    stack_depth = 15
     channels = augment.num_channels(color_space)
     single_images = th.empty((batch_size, channels, 5, 5), dtype=th.float)
     single_images.uniform_()
@@ -167,12 +168,16 @@ def test_geom_consistent(color_space, batch_size, augmentations):
 
     # augment the fake image batch
     augmenter = augment.StandardAugmentations.from_string_spec(
-        spec=augmentations, stack_color_space=color_space
+        spec=augmentations, stack_color_space=color_space,
+        temporally_consistent=consistent,
     )
     augmented = augmenter(stacked_images)
 
     # extract first image from each stack and tile them into stacks
     augmented_single_images = augmented[:, :channels]
     augmented_rep = augmented_single_images.repeat(*tile_spec)
-    # make sure the images within a given stack are identical
-    assert th.allclose(augmented, augmented_rep, rtol=1e-2, atol=1e-2)
+    if consistent:
+        # make sure the images within a given stack are identical
+        assert th.allclose(augmented, augmented_rep, rtol=1e-2, atol=1e-2)
+    else:
+        assert not th.allclose(augmented, augmented_rep, rtol=1e-2, atol=1e-2)

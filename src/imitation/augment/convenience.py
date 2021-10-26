@@ -9,7 +9,7 @@ import torch as th
 from torch import nn
 
 import imitation.augment.augmentations as im_aug
-from imitation.augment.color import ColorSpace
+from imitation.augment.color import ColorSpace, split_unsplit_channel_stack
 
 
 class KorniaAugmentations(nn.Module):
@@ -28,9 +28,17 @@ class KorniaAugmentations(nn.Module):
     def __init__(
         self,
         kornia_ops: Sequence[nn.Module],
+        color_space: ColorSpace,
+        # If temporally_consistent=True, then we apply the same sampled
+        # augmentation to each frame in a frame stack, but different
+        # augmentations to each frame in a batch. Otherwise, very frame gets a
+        # different augmentation.
+        temporally_consistent: bool = False,
     ) -> None:
         super().__init__()
         self.kornia_ops = nn.Sequential(*kornia_ops)
+        self.temporally_consistent = temporally_consistent
+        self.color_space = color_space
 
     def forward(self, images: th.Tensor) -> th.Tensor:
         """Apply augmentations to the given image batch."""
@@ -43,8 +51,24 @@ class KorniaAugmentations(nn.Module):
                     "not have rank 4 and floating point type"
                 )
 
+            if not self.temporally_consistent:
+                # split [B,…,S*C,H,W] tensor to [B,…,S,C,H,W]
+                images, unsplit = split_unsplit_channel_stack(images, self.color_space)
+                old_shape = images.shape
+                # Now reshape to [B*…*S,C,H,W] so that all intervening axis are
+                # absorbed into the batch axis. Each element in the batch will
+                # be augmented separately, which breaks temporal consistency
+                # within a frame stack.
+                images = images.reshape((-1, ) + images.shape[-3:])
+
             # apply augmentations
             images = self.kornia_ops(images)
+
+            if not self.temporally_consistent:
+                # undo reshaping of everything along the batch axis
+                images = images.reshape(old_shape)
+                # undo separation of channels
+                images = unsplit(images)
 
         return images
 
@@ -83,6 +107,7 @@ class StandardAugmentations(KorniaAugmentations):
         gray: bool = False,
         gaussian_blur: bool = False,
         stack_color_space: ColorSpace,
+        **kwargs,
     ) -> None:
         """Construct an augmenter that sequentially applies the given augmentations.
 
@@ -197,7 +222,7 @@ class StandardAugmentations(KorniaAugmentations):
         if gray:
             transforms.append(im_aug.Grayscale(p=0.5, color_space=stack_color_space))
 
-        super().__init__(transforms)
+        super().__init__(transforms, color_space=stack_color_space, **kwargs)
 
     @classmethod
     def known_options(cls) -> Set[str]:
@@ -217,6 +242,7 @@ class StandardAugmentations(KorniaAugmentations):
         cls,
         spec: str,
         stack_color_space: ColorSpace,
+        temporally_consistent: bool = False,
     ) -> "StandardAugmentations":
         """Construct an augmenter from a string specification.
 
@@ -227,6 +253,8 @@ class StandardAugmentations(KorniaAugmentations):
                 desaturation, but no other augmentations. See
                 `StandardAugmentations.known_options()` for all options.
             stack_color_space: color space for augmented images.
+            temporally_consistent: should we augment the frames in each frame
+                stack in the same way?
 
         Returns: the constructed `StandardAugmentations` object.
         """
@@ -237,4 +265,5 @@ class StandardAugmentations(KorniaAugmentations):
             if item not in known_options:
                 raise ValueError(f"Unknown augmentation option '{item}'")
             kwargs[item] = True
-        return StandardAugmentations(**kwargs, stack_color_space=stack_color_space)
+        return StandardAugmentations(**kwargs, stack_color_space=stack_color_space,
+                                     temporally_consistent=temporally_consistent)

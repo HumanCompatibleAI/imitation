@@ -23,7 +23,7 @@ def num_channels(color_space) -> int:
 
 
 def split_unsplit_channel_stack(tensor, color_space):
-    """Split a stacked image tensor of size [B,…,S,C,…,H,W] into a tensor of
+    """Split a stacked image tensor of size [B,…,S*C,…,H,W] into a tensor of
     shape [B,…,S,C,…,H,W]. Here C is the number of channels in each image (3
     for RGB, 1 for grayscale), and S is the depth of the image stack. Very
     useful for splitting out stacked frames."""
