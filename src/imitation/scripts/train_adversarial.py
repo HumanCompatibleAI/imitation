@@ -3,7 +3,7 @@
 import logging
 import os
 import os.path as osp
-from typing import Any, Mapping, Type
+from typing import Any, Mapping, Type, Union
 
 import sacred.commands
 import torch as th
@@ -71,7 +71,10 @@ def train_adversarial(
     _run,
     _seed: int,
     show_config: bool,
-    algo_cls: Type[common.AdversarialTrainer],
+    # FIXME(sam): pytype 2021.10.25 raises an exception if we replace
+    # Union[AIRL,GAIL] with AdversarialTrainer, since both algorithms take a
+    # reward_net, but the superclass does not (it just takes params).
+    algo_cls: Type[Union[airl_algo.AIRL, gail_algo.GAIL]],
     algorithm_kwargs: Mapping[str, Any],
     total_timesteps: int,
     checkpoint_interval: int,

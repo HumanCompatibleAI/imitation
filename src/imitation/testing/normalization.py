@@ -10,7 +10,7 @@ import stable_baselines3.common.torch_layers as sb3_torch_layers
 import torch as th
 from torch import nn
 
-from imitation.rewards import discrim_nets, reward_nets
+from imitation.rewards import reward_nets
 
 
 class NormalizationTestEnv(gym.Env):
@@ -87,22 +87,8 @@ class NormalizationTestFeatEx(sb3_torch_layers.BaseFeaturesExtractor):
         return self.process_net(obs)
 
 
-class NormalizationTestDiscriminator(discrim_nets.ActObsMLP):
-    """Discriminator for GAIL that checks against ref obs in NormalizationTestEnv."""
-
-    def __init__(self, *args, norm_env, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._assert_obs_is_normalized = norm_env.assert_obs_is_normalized
-        self.assert_calls = 0
-
-    def forward(self, obs: th.Tensor, acts: th.Tensor) -> th.Tensor:
-        self._assert_obs_is_normalized(obs)
-        self.assert_calls += 1
-        return super().forward(obs, acts)
-
-
-class NormalizationTestRewardMLP(reward_nets.BasicRewardMLP):
-    """Base reward net for AIRL that checks against ref obs in NormalizationTestEnv."""
+class NormalizationTestRewardMLP(reward_nets.BasicRewardNet):
+    """Base reward net that checks against ref obs in NormalizationTestEnv."""
 
     def __init__(
         self,

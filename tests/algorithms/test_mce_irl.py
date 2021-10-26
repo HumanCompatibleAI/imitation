@@ -353,7 +353,7 @@ def test_mce_irl_demo_formats():
 )
 @pytest.mark.parametrize("discount", FEW_DISCOUNT_RATES)
 def test_mce_irl_reasonable_mdp(
-    model_class: Type[reward_nets.RewardNet],
+    model_class: Type[reward_nets.BasicRewardNet],
     model_kwargs: Mapping[str, Any],
     discount: float,
 ):

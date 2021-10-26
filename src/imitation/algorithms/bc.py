@@ -211,7 +211,7 @@ class BC(algo_base.DemonstrationAlgorithm):
         l2_weight: float = 0.0,
         device: Union[str, th.device] = "auto",
         custom_logger: Optional[logger.HierarchicalLogger] = None,
-        augmentation_fn: Callable[[th.Tensor], th.Tensor] = None,
+        augmentation_fn: Optional[Callable[[th.Tensor], th.Tensor]] = None,
     ):
         """Builds BC.
 
@@ -377,8 +377,8 @@ class BC(algo_base.DemonstrationAlgorithm):
         *,
         n_epochs: Optional[int] = None,
         n_batches: Optional[int] = None,
-        on_epoch_end: Callable[[], None] = None,
-        on_batch_end: Callable[[], None] = None,
+        on_epoch_end: Optional[Callable[[], None]] = None,
+        on_batch_end: Optional[Callable[[], None]] = None,
         log_interval: int = 500,
         log_rollouts_venv: Optional[vec_env.VecEnv] = None,
         log_rollouts_n_episodes: int = 5,

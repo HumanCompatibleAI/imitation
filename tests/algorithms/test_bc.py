@@ -201,8 +201,8 @@ def test_augment(venv):
     data = rollout.flatten_trajectories(rollouts)
     mock_augment = counter.IdentityCounter()
     trainer = bc.BC(
-        venv.observation_space,
-        venv.action_space,
+        observation_space=venv.observation_space,
+        action_space=venv.action_space,
         demonstrations=data,
         augmentation_fn=mock_augment,
     )

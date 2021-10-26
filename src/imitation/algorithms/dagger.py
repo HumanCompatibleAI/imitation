@@ -303,7 +303,7 @@ class DAggerTrainer(base.BaseImitationAlgorithm):
         *,
         venv: vec_env.VecEnv,
         scratch_dir: types.AnyPath,
-        beta_schedule: Callable[[int], float] = None,
+        beta_schedule: Optional[Callable[[int], float]] = None,
         bc_trainer: bc.BC,
         custom_logger: Optional[logger.HierarchicalLogger] = None,
     ):
