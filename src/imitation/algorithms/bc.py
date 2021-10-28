@@ -177,7 +177,9 @@ class EpochOrBatchIteratorWithProgress:
                     )
                 epoch_num += 1
                 if self.on_epoch_end is not None:
-                    self.on_epoch_end()
+                    self.on_epoch_end(
+                        samples_so_far=samples_so_far, epoch_num=epoch_num,
+                        batch_num=batch_num)
 
                 if self.use_epochs:
                     if display is not None:
