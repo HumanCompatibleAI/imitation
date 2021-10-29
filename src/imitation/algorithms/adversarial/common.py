@@ -4,13 +4,24 @@ import collections
 import dataclasses
 import logging
 import os
-from typing import Callable, Iterator, Mapping, Optional, Sequence, Tuple, Type
+from typing import (
+    Callable,
+    Iterable,
+    Iterator,
+    Mapping,
+    Optional,
+    Sequence,
+    Tuple,
+    Type,
+)
 
 import numpy as np
 import torch as th
 import torch.utils.tensorboard as thboard
 import tqdm
-from stable_baselines3.common import base_class, policies, vec_env
+from stable_baselines3.common import base_class
+from stable_baselines3.common import callbacks as sb3_callbacks
+from stable_baselines3.common import policies, vec_env
 from torch.nn import functional as F
 
 from imitation.algorithms import base
@@ -127,6 +138,8 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
         init_tensorboard_graph: bool = False,
         debug_use_ground_truth: bool = False,
         allow_variable_horizon: bool = False,
+        disc_augmentation_fn: Callable[[th.Tensor], th.Tensor] = None,
+        gen_callbacks: Optional[Iterable[sb3_callbacks.BaseCallback]] = None,
     ):
         """Builds AdversarialTrainer.
 
@@ -179,6 +192,10 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
                 condition, and can seriously confound evaluation. Read
                 https://imitation.readthedocs.io/en/latest/guide/variable_horizon.html
                 before overriding this.
+            disc_augmentation_fn: Function to augment a batch of (on-device)
+                discriminator training inputs (default: identity).
+            gen_callbacks: SB3 callbacks to give to `PPO.learn()` during
+                generator training.
         """
         self.demo_batch_size = demo_batch_size
         self._demo_data_loader = None
@@ -222,16 +239,19 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
                 norm_reward=False,
             )
 
+        self.gen_callbacks = []
+        if gen_callbacks:
+            self.gen_callbacks.extend(gen_callbacks)
+
         if debug_use_ground_truth:
             # Would use an identity reward fn here, but RewardFns can't see rewards.
             self.venv_wrapped = venv
-            self.gen_callback = None
         else:
             venv = self.venv_wrapped = reward_wrapper.RewardVecEnvWrapper(
                 venv,
                 self.reward_train.predict,
             )
-            self.gen_callback = self.venv_wrapped.make_log_callback()
+            self.gen_callbacks.append(self.venv_wrapped.make_log_callback())
         self.venv_train = self.venv_wrapped
         if normalize_reward:
             if normalize_reward_kwargs is None:
@@ -243,6 +263,10 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
             )
         else:
             assert normalize_reward_kwargs is None
+
+        if disc_augmentation_fn is None:
+            disc_augmentation_fn = util.identity
+        self.disc_augmentation_fn = disc_augmentation_fn
 
         self.gen_algo.set_env(self.venv_train)
         self.gen_algo.set_logger(self.logger)
@@ -317,6 +341,7 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
         *,
         expert_samples: Optional[Mapping] = None,
         gen_samples: Optional[Mapping] = None,
+        dump_logs: bool = True,
     ) -> Optional[Mapping[str, float]]:
         """Perform a single discriminator update, optionally using provided samples.
 
@@ -332,6 +357,7 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
                 form as `expert_samples`. If provided, must contain exactly
                 `self.demo_batch_size` samples. If not provided, then take
                 `len(expert_samples)` samples from the generator replay buffer.
+            dump_logs: should we dump logs at the end of the update?
 
         Returns:
             Statistics for discriminator (e.g. loss, accuracy).
@@ -373,7 +399,8 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
             self.logger.record("global_step", self._global_step)
             for k, v in train_stats.items():
                 self.logger.record(k, v)
-            self.logger.dump(self._disc_step)
+            if dump_logs:
+                self.logger.dump(self._disc_step)
             if write_summaries:
                 self._summary_writer.add_histogram("disc_logits", disc_logits.detach())
 
@@ -405,7 +432,7 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
             self.gen_algo.learn(
                 total_timesteps=total_timesteps,
                 reset_num_timesteps=False,
-                callback=self.gen_callback,
+                callback=sb3_callbacks.CallbackList(self.gen_callbacks),
                 **learn_kwargs,
             )
             self._global_step += 1
@@ -419,6 +446,7 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
         self,
         total_timesteps: int,
         callback: Optional[Callable[[int], None]] = None,
+        log_interval_timesteps: Optional[int] = None,
     ) -> None:
         """Alternates between training the generator and discriminator.
 
@@ -434,20 +462,30 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
             callback: A function called at the end of every round which takes in a
                 single argument, the round number. Round numbers are in
                 `range(total_timesteps // self.gen_train_timesteps)`.
+            log_interval_timesteps: dump logs every `log_interval_timesteps`. If
+                None, will dump as frequently as possible.
         """
         n_rounds = total_timesteps // self.gen_train_timesteps
+        last_log_dump = None
         assert n_rounds >= 1, (
             "No updates (need at least "
             f"{self.gen_train_timesteps} timesteps, have only "
             f"total_timesteps={total_timesteps})!"
         )
         for r in tqdm.tqdm(range(0, n_rounds), desc="round"):
-            self.train_gen(self.gen_train_timesteps)
+            self.train_gen(
+                self.gen_train_timesteps,
+                learn_kwargs=dict(dump_logs=log_interval_timesteps is None))
             for _ in range(self.n_disc_updates_per_round):
-                self.train_disc()
+                self.train_disc(dump_logs=log_interval_timesteps is None)
             if callback:
                 callback(r)
-            self.logger.dump(self._global_step)
+            num_timesteps = self.gen_algo.num_timesteps
+            if (last_log_dump is None or log_interval_timesteps is None or
+               num_timesteps > last_log_dump + log_interval_timesteps):
+                # we dump all accumulated logs at the same time, so that
+                # discriminator & generator entries are aligned
+                self.logger.dump(self._global_step)
 
     def _torchify_array(self, ndarray: Optional[np.ndarray]) -> Optional[th.Tensor]:
         if ndarray is not None:
@@ -552,6 +590,10 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
             next_obs,
             dones,
         )
+
+        obs_th = self.disc_augmentation_fn(obs_th)
+        next_obs_th = self.disc_augmentation_fn(obs_th)
+
         batch_dict = {
             "state": obs_th,
             "action": acts_th,

@@ -66,7 +66,7 @@ setup(
         # temporary branch for improvements to il-representations
         (
             "stable-baselines3 @ git+https://github.com/HumanCompatibleAI"
-            "/stable-baselines3.git@3b998e143e3bab2dc21cc5727e5cc27b96a6873e"
+            "/stable-baselines3.git@845b04bd82d10f1725b4c6861a22a2454601f0e8"
         ),
         "sacred~=0.8.1",
         "tensorboard>=1.14",
