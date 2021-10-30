@@ -78,10 +78,9 @@ class EpochOrBatchIteratorWithProgress:
         data_loader: Iterable[algo_base.TransitionMapping],
         n_epochs: Optional[int] = None,
         n_batches: Optional[int] = None,
-        use_tqdm: Optional[bool] = None,
-        on_epoch_end: Optional[Callable[[], None]] = None,
-        on_batch_end: Optional[Callable[[], None]] = None,
-        progress_bar_visible: bool = True,
+        on_epoch_end: Optional[Callable[..., None]] = None,
+        on_batch_end: Optional[Callable[..., None]] = None,
+        progress_bar_visible: Optional[bool] = None,
     ):
         """Builds EpochOrBatchIteratorWithProgress.
 
@@ -91,13 +90,13 @@ class EpochOrBatchIteratorWithProgress:
                 __iter__. Exactly one of `n_epochs` and `n_batches` should be provided.
             n_batches: The number of batches to iterate through in one call to
                 __iter__. Exactly one of `n_epochs` and `n_batches` should be provided.
-            use_tqdm: Show a tqdm progress bar if True. True by default if stdout is a
-                TTY.
             on_epoch_end: A callback function without parameters to be called at the
                 end of every epoch.
             on_batch_end: A callback function without parameters to be called at the
                 end of every batch.
-            progress_bar_visible: If True, then show a tqdm progress bar.
+            progress_bar_visible: If True, then show a tqdm progress bar; if
+                False, do not show. Otherwise, progress bar is shown iff stdout
+                is a tty.
 
         Raises:
             ValueError: If neither or both of `n_epochs` and `n_batches` are non-None.
@@ -114,9 +113,10 @@ class EpochOrBatchIteratorWithProgress:
         self.data_loader = data_loader
         self.n_epochs = n_epochs
         self.n_batches = n_batches
-        self.use_tqdm = os.isatty(sys.stdout.fileno()) if use_tqdm is None else use_tqdm
         self.on_epoch_end = on_epoch_end
         self.on_batch_end = on_batch_end
+        if progress_bar_visible is None:
+            progress_bar_visible = os.isatty(sys.stdout.fileno())
         self.progress_bar_visible = progress_bar_visible
 
     def __iter__(
@@ -384,7 +384,7 @@ class BC(algo_base.DemonstrationAlgorithm):
         log_interval: int = 500,
         log_rollouts_venv: Optional[vec_env.VecEnv] = None,
         log_rollouts_n_episodes: int = 5,
-        progress_bar: bool = True,
+        progress_bar: Optional[bool] = None,
         reset_tensorboard: bool = False,
     ):
         """Train with supervised learning for some number of epochs.
@@ -409,7 +409,8 @@ class BC(algo_base.DemonstrationAlgorithm):
                 are generated.
             log_rollouts_n_episodes: Number of rollouts to generate when calculating
                 rollout stats. Non-positive number disables rollouts.
-            progress_bar: If True, then show a progress bar during training.
+            progress_bar: Whether to show a progress bar during training. By
+                default, this is True iff stdout is a TTY.
             reset_tensorboard: If True, then start plotting to Tensorboard from x=0
                 even if `.train()` logged to Tensorboard previously. Has no practical
                 effect if `.train()` is being called for the first time.

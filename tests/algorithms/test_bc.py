@@ -108,7 +108,7 @@ def test_bc(trainer: bc.BC, venv):
         nonlocal batch_end_count
         batch_end_count += 1
 
-    def on_epoch_end():
+    def on_epoch_end(**kwargs):
         nonlocal epoch_end_count
         epoch_end_count += 1
 

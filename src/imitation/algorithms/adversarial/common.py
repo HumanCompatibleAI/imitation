@@ -138,7 +138,7 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
         init_tensorboard_graph: bool = False,
         debug_use_ground_truth: bool = False,
         allow_variable_horizon: bool = False,
-        disc_augmentation_fn: Callable[[th.Tensor], th.Tensor] = None,
+        disc_augmentation_fn: Optional[Callable[[th.Tensor], th.Tensor]] = None,
         gen_callbacks: Optional[Iterable[sb3_callbacks.BaseCallback]] = None,
     ):
         """Builds AdversarialTrainer.
