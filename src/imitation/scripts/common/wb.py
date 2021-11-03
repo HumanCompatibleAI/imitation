@@ -34,11 +34,11 @@ def wandb_init(
     """Putting everything together to get the W&B kwargs for wandb.init().
 
     Args:
-        wandb_name_prefix (str): User-specified prefix for wandb run name.
-        wandb_tag (Optional[str]): User-specified tag for this run.
-        wandb_kwargs (Mapping[str, Any]): User-specified kwargs for wandb.init().
-        log_dir (str): W&B logs will be stored in directory `{log_dir}/wandb/`.
-
+        wandb_name_prefix: User-specified prefix for wandb run name.
+        wandb_tag: User-specified tag for this run.
+        wandb_kwargs: User-specified kwargs for wandb.init().
+        log_dir: W&B logs will be stored in directory `{log_dir}/wandb/`.
+    
     Raises:
         ModuleNotFoundError: wandb is not installed.
     """
