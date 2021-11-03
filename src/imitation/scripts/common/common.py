@@ -24,6 +24,7 @@ def config():
     log_level = logging.INFO
     log_format_strs = ["tensorboard", "stdout"]
     log_format_strs_additional = []
+    # additional log_format_strs that can be overridden by named_config
 
     # Environment config
     env_name = "seals/CartPole-v0"  # environment to train on
