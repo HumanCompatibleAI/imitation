@@ -409,6 +409,7 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
     def train_gen(
         self,
         total_timesteps: Optional[int] = None,
+        expected_total_timesteps: int = None,
         learn_kwargs: Optional[Mapping] = None,
     ) -> None:
         """Trains the generator to maximize the discriminator loss.
@@ -420,6 +421,12 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
             total_timesteps: The number of transitions to sample from
                 `self.venv_train` during training. By default,
                 `self.gen_train_timesteps`.
+            expected_total_timesteps: Expected number of timesteps that this
+                algorithm will be trained for over _all_ calls to `train_gen`.
+                e.g. if you plan to call `train_gen` 100 times, each with a
+                `total_timesteps` of 30, you should set
+                `expected_total_timesteps` to 3,000 for all of those calls.
+                This number is used to do learning rate annealing.
             learn_kwargs: kwargs for the Stable Baselines `RLModel.learn()`
                 method.
         """
@@ -428,9 +435,17 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
         if learn_kwargs is None:
             learn_kwargs = {}
 
+        timesteps_after_this_call = self.gen_algo.num_timesteps + total_timesteps
+        if timesteps_after_this_call > expected_total_timesteps:
+            logging.warn(
+                'After this call, the generator will have taken at least '
+                f'{timesteps_after_this_call} timesteps, which is greater than '
+                f'expected_total_timesteps={expected_total_timesteps}.')
+
         with self.logger.accumulate_means("gen"):
             self.gen_algo.learn(
                 total_timesteps=total_timesteps,
+                expected_total_timesteps=expected_total_timesteps,
                 reset_num_timesteps=False,
                 callback=sb3_callbacks.CallbackList(self.gen_callbacks),
                 **learn_kwargs,
@@ -475,6 +490,7 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
         for r in tqdm.tqdm(range(0, n_rounds), desc="round"):
             self.train_gen(
                 self.gen_train_timesteps,
+                expected_total_timesteps=total_timesteps,
                 learn_kwargs=dict(dump_logs=log_interval_timesteps is None))
             for _ in range(self.n_disc_updates_per_round):
                 self.train_disc(dump_logs=log_interval_timesteps is None)
