@@ -187,10 +187,11 @@ class WandbOutputFormat(sb_logger.KVWriter):
         key_excluded: Dict[str, Union[str, Tuple[str, ...]]],
         step: int = 0,
     ) -> None:
-        for (key, value), (_, excluded) in zip(
+        for (key, value), (key_ex, excluded) in zip(
             sorted(key_values.items()),
             sorted(key_excluded.items()),
         ):
+            assert key == key_ex, f"key mismatch between {key} and {key_ex} !"
             if excluded is not None and "wandb" in excluded:
                 continue
 
