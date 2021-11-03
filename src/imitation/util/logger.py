@@ -191,7 +191,7 @@ class WandbOutputFormat(sb_logger.KVWriter):
             sorted(key_values.items()),
             sorted(key_excluded.items()),
         ):
-            assert key == key_ex, f"key mismatch between {key} and {key_ex} !"
+            assert key == key_ex, f"key mismatch between {key} and {key_ex}."
             if excluded is not None and "wandb" in excluded:
                 continue
 

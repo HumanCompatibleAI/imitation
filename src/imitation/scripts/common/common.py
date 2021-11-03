@@ -23,8 +23,9 @@ def config():
     log_dir = None
     log_level = logging.INFO
     log_format_strs = ["tensorboard", "stdout"]
-    log_format_strs_additional = []
-    # additional log_format_strs that can be overridden by named_config
+    # The keys of log_format_strs_additional are concatenated to log_format_strs.
+    # This allows named configs to add format strings, without changing the defaults.
+    log_format_strs_additional = {}
 
     # Environment config
     env_name = "seals/CartPole-v0"  # environment to train on
@@ -38,7 +39,7 @@ def config():
 
 @common_ingredient.config
 def update_log_format_strs(log_format_strs, log_format_strs_additional):
-    log_format_strs = log_format_strs + log_format_strs_additional
+    log_format_strs = log_format_strs + list(log_format_strs_additional.keys())
 
 
 @common_ingredient.config_hook
@@ -59,9 +60,7 @@ def hook(config, command_name, logger):
 
 @common_ingredient.named_config
 def wandb_logging():
-    log_format_strs_additional = ["wandb"]
-
-    locals()
+    log_format_strs_additional = {"wandb": None}  # noqa: F841
 
 
 @common_ingredient.named_config
