@@ -174,11 +174,11 @@ class WandbOutputFormat(sb_logger.KVWriter):
         """
         try:
             import wandb
-        except ModuleNotFoundError:
+        except ModuleNotFoundError as e:
             raise ModuleNotFoundError(
                 "Trying to log data with `WandbOutputFormat` "
                 "but `wandb` not installed: try `pip install wandb`.",
-            )
+            ) from e
         self.wandb_module = wandb
 
     def write(

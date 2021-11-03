@@ -38,7 +38,7 @@ def wandb_init(
         wandb_tag: User-specified tag for this run.
         wandb_kwargs: User-specified kwargs for wandb.init().
         log_dir: W&B logs will be stored in directory `{log_dir}/wandb/`.
-    
+
     Raises:
         ModuleNotFoundError: wandb is not installed.
     """
@@ -56,9 +56,9 @@ def wandb_init(
     )
     try:
         import wandb
-    except ModuleNotFoundError:
+    except ModuleNotFoundError as e:
         raise ModuleNotFoundError(
             "Trying to call `wandb.init()` but `wandb` not installed: "
             "try `pip install wandb`.",
-        )
+        ) from e
     wandb.init(config=_run.config, **updated_wandb_kwargs)
