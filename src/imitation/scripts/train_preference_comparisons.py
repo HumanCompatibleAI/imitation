@@ -24,6 +24,12 @@ from imitation.scripts.config.train_preference_comparisons import (
 )
 
 
+def save(trainer, save_path):
+    """Save reward model and policy."""
+    os.makedirs(save_path, exist_ok=True)
+    th.save(trainer.reward_trainer.model, os.path.join(save_path, "reward_net.pt"))
+
+
 @train_preference_comparisons_ex.main
 def train_preference_comparisons(
     _run,
@@ -42,6 +48,7 @@ def train_preference_comparisons(
     gatherer_kwargs: Mapping[str, Any],
     rl: Mapping[str, Any],
     allow_variable_horizon: bool,
+    checkpoint_interval: int,
 ) -> Mapping[str, Any]:
     """Train a reward model using preference comparisons.
 
@@ -196,6 +203,7 @@ def train_preference_comparisons(
         **reward_trainer_kwargs,
         custom_logger=custom_logger,
     )
+
     main_trainer = preference_comparisons.PreferenceComparisons(
         trajectory_generator,
         reward_net,
@@ -209,9 +217,14 @@ def train_preference_comparisons(
         allow_variable_horizon=allow_variable_horizon,
         seed=_seed,
     )
-    results = main_trainer.train(total_timesteps, total_comparisons)
 
-    th.save(reward_net, os.path.join(log_dir, "final_reward_net.pt"))
+    def save_callback(round_num):
+        if checkpoint_interval > 0 and round_num % checkpoint_interval == 0:
+            save(main_trainer, os.path.join(log_dir, "checkpoints", f"{round_num:04d}"))
+
+    results = main_trainer.train(total_timesteps, total_comparisons, callback=save_callback)
+    
+    save(main_trainer, os.path.join(log_dir, "checkpoints", "final", "reward_net.pt"))
 
     if save_preferences:
         main_trainer.dataset.save(os.path.join(log_dir, "preferences.pkl"))
@@ -219,7 +232,7 @@ def train_preference_comparisons(
     # Storing and evaluating the policy only makes sense if we actually used it
     if trajectory_path is None:
         serialize.save_stable_model(
-            os.path.join(log_dir, "final_policy"),
+            os.path.join(log_dir, "checkpoints", "final", "policy"),
             agent,
             vec_normalize,
         )

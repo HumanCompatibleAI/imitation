@@ -7,7 +7,7 @@ import abc
 import math
 import pickle
 import random
-from typing import Any, List, Mapping, Optional, Sequence, Tuple, Union
+from typing import Any, Callable, List, Mapping, Optional, Sequence, Tuple, Union
 
 import numpy as np
 import torch as th
@@ -812,7 +812,12 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
 
         self.dataset = PreferenceDataset()
 
-    def train(self, total_timesteps: int, total_comparisons: int) -> Mapping[str, Any]:
+    def train(
+        self,
+        total_timesteps: int,
+        total_comparisons: int,
+        callback: Optional[Callable[[int], None]] = None,
+    ) -> Mapping[str, Any]:
         """Train the reward model and the policy if applicable.
 
         Args:
@@ -890,6 +895,12 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
                 self.trajectory_generator.train(steps=num_steps)
 
             self.logger.dump(self._iteration)
+
+            ########################
+            # Additional Callbacks #
+            ########################
+            if callback:
+                callback(self._iteration)
             self._iteration += 1
 
         return {"reward_loss": reward_loss, "reward_accuracy": reward_accuracy}
