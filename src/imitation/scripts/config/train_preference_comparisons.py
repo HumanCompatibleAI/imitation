@@ -38,6 +38,8 @@ def train_defaults():
     normalize = True  # Use VecNormalize
     normalize_kwargs = {"norm_reward": False}  # kwargs for `VecNormalize`
 
+    checkpoint_interval = 0  # Num epochs between checkpoints (<0 disables)
+
 
 @train_preference_comparisons_ex.named_config
 def cartpole():
