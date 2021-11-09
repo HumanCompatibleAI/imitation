@@ -36,8 +36,7 @@ def save(trainer, save_path):
         )
     else:
         print("trainer.trajectory_generator doesn't contain a policy to save.")
-        
-    
+
 
 @train_preference_comparisons_ex.main
 def train_preference_comparisons(
@@ -230,10 +229,15 @@ def train_preference_comparisons(
 
     def save_callback(iteration_num):
         if checkpoint_interval > 0 and iteration_num % checkpoint_interval == 0:
-            save(main_trainer, os.path.join(log_dir, "checkpoints", f"{iteration_num:04d}"))
+            save(
+                main_trainer,
+                os.path.join(log_dir, "checkpoints", f"{iteration_num:04d}"),
+            )
 
-    results = main_trainer.train(total_timesteps, total_comparisons, callback=save_callback)
-    
+    results = main_trainer.train(
+        total_timesteps, total_comparisons, callback=save_callback
+    )
+
     save(main_trainer, os.path.join(log_dir, "checkpoints", "final"))
 
     if save_preferences:
