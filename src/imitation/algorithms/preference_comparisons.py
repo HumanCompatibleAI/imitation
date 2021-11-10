@@ -139,11 +139,13 @@ class AgentTrainer(TrajectoryGenerator):
         # them after training. This should come first (before the wrapper that
         # changes the reward function), so that we return the original environment
         # rewards.
-        self.buffering_wrapper = wrappers.BufferingWrapper(venv)
+        self.buffering_wrapped_venv = wrappers.BufferingWrapper(venv)
         self.venv = reward_wrapper.RewardVecEnvWrapper(
-            self.buffering_wrapper,
-            reward_fn,
+            self.buffering_wrapped_venv,
+            self.reward_fn,
         )
+        self.log_callback = self.venv.make_log_callback()
+
         self.algorithm.set_env(self.venv)
 
     def train(self, steps: int, **kwargs) -> None:
@@ -154,19 +156,24 @@ class AgentTrainer(TrajectoryGenerator):
             **kwargs: other keyword arguments to pass to BaseAlgorithm.train()
 
         Raises:
-            RuntimeError: Transitions left in `self.buffering_wrapper`; call
+            RuntimeError: Transitions left in `self.buffering_wrapped_venv`; call
                 `self.sample` first to clear them.
         """
-        n_transitions = self.buffering_wrapper.n_transitions
+        n_transitions = self.buffering_wrapped_venv.n_transitions
         if n_transitions:
             raise RuntimeError(
                 f"There are {n_transitions} transitions left in the buffer. "
                 "Call AgentTrainer.sample() first to clear them.",
             )
-        self.algorithm.learn(total_timesteps=steps, reset_num_timesteps=False, **kwargs)
+        self.algorithm.learn(
+            total_timesteps=steps, 
+            reset_num_timesteps=False, 
+            callback=self.log_callback, 
+            **kwargs,
+        )
 
     def sample(self, steps: int) -> Sequence[types.TrajectoryWithRew]:
-        trajectories, _ = self.buffering_wrapper.pop_finished_trajectories()
+        trajectories, _ = self.buffering_wrapped_venv.pop_finished_trajectories()
         # We typically have more trajectories than are needed.
         # In that case, we use the final trajectories because
         # they are the ones with the most relevant version of
@@ -194,7 +201,7 @@ class AgentTrainer(TrajectoryGenerator):
                 self.venv,
                 sample_until=sample_until,
             )
-            additional_trajs, _ = self.buffering_wrapper.pop_finished_trajectories()
+            additional_trajs, _ = self.buffering_wrapped_venv.pop_finished_trajectories()
 
             trajectories = list(trajectories) + list(additional_trajs)
 
