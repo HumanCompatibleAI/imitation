@@ -594,11 +594,13 @@ class RewardTrainer(abc.ABC):
         self.logger = custom_logger or imit_logger.configure()
 
     @abc.abstractmethod
-    def train(self, dataset: PreferenceDataset):
+    def train(self, dataset: PreferenceDataset, epoch_multiplier: float = 1.0):
         """Train the reward model on a batch of fragment pairs and preferences.
 
         Args:
             dataset: the dataset of preference comparisons to train on.
+            epoch_multiplier: how much longer to train for than usual
+                (measured relatively).
         """
 
 
@@ -624,7 +626,9 @@ class CrossEntropyRewardTrainer(RewardTrainer):
                 is uniformly random (used for the model of preference generation
                 that is used for the loss)
             batch_size: number of fragment pairs per batch
-            epochs: number of epochs on each training iteration
+            epochs: number of epochs on each training iteration (can be adjusted
+                on the fly by specifying an `epoch_multiplier` in `self.train()`
+                if longer training is desired in specific cases).
             lr: the learning rate
             discount_factor: the model of preference generation uses a softmax
                 of returns as the probability that a fragment is preferred.
@@ -721,8 +725,8 @@ class CrossEntropyRewardTrainer(RewardTrainer):
         model_probability = 1 / (1 + returns_diff.exp())
         return self.noise_prob * 0.5 + (1 - self.noise_prob) * model_probability
 
-    def train(self, dataset: PreferenceDataset):
-        """Trains for `self.epochs` epochs over `dataset`."""
+    def train(self, dataset: PreferenceDataset, epoch_multiplier: float = 1.0):
+        """Trains for `epoch_multiplier * self.epochs` epochs over `dataset`."""
         # TODO(ejnnr): This isn't specific to the loss function or probability model.
         # In general, it might be best to split the probability model, the loss and
         # the optimization procedure a bit more cleanly so that different versions
@@ -734,7 +738,8 @@ class CrossEntropyRewardTrainer(RewardTrainer):
             shuffle=True,
             collate_fn=preference_collate_fn,
         )
-        for _ in range(self.epochs):
+        epochs = round(self.epochs * epoch_multiplier)
+        for _ in range(epochs):
             for fragment_pairs, preferences in dataloader:
                 self.optim.zero_grad()
                 loss = self._loss(fragment_pairs, preferences)
@@ -909,9 +914,16 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
             ##########################
             # Train the reward model #
             ##########################
+            # Usually, num_pairs is the same as comparisons_per_iteration,
+            # but on the first iteration, we might have additional pairs
+            # (i.e. num_pairs > comparisons_per_iteration). In that case,
+            # we want to train the reward model for correspondingly more
+            # epochs.
+            epoch_multiplier = num_pairs / self.comparisons_per_iteration
+
             with self.logger.accumulate_means("reward"):
                 self.logger.log("Training reward model")
-                self.reward_trainer.train(self.dataset)
+                self.reward_trainer.train(self.dataset, epoch_multiplier)
             reward_loss = self.logger.name_to_value["mean/reward/loss"]
             reward_accuracy = self.logger.name_to_value["mean/reward/accuracy"]
 
