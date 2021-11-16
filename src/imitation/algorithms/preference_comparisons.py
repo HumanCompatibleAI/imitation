@@ -800,7 +800,8 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
             initial_comparison_frac: fraction of the total_comparisons argument
                 to train() that will be sampled before the rest of training begins
                 (using the randomly initialized agent). This can be used to pretrain
-                the reward model before the agent is trained on the learned reward.
+                the reward model before the agent is trained on the learned reward,
+                to help avoid irreversibly learning a bad policy from an untrained reward.
             custom_logger: Where to log to; if None (default), creates a new logger.
             allow_variable_horizon: If False (default), algorithm will raise an
                 exception if it detects trajectories of different length during
