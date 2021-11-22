@@ -166,9 +166,9 @@ class AgentTrainer(TrajectoryGenerator):
                 "Call AgentTrainer.sample() first to clear them.",
             )
         self.algorithm.learn(
-            total_timesteps=steps, 
-            reset_num_timesteps=False, 
-            callback=self.log_callback, 
+            total_timesteps=steps,
+            reset_num_timesteps=False,
+            callback=self.log_callback,
             **kwargs,
         )
 
@@ -201,7 +201,10 @@ class AgentTrainer(TrajectoryGenerator):
                 self.venv,
                 sample_until=sample_until,
             )
-            additional_trajs, _ = self.buffering_wrapped_venv.pop_finished_trajectories()
+            (
+                additional_trajs,
+                _,
+            ) = self.buffering_wrapped_venv.pop_finished_trajectories()
 
             trajectories = list(trajectories) + list(additional_trajs)
 
