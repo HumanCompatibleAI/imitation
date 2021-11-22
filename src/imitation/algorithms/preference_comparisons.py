@@ -139,12 +139,12 @@ class AgentTrainer(TrajectoryGenerator):
         # them after training. This should come first (before the wrapper that
         # changes the reward function), so that we return the original environment
         # rewards.
-        self.buffering_wrapper = wrappers.BufferingWrapper(venv)
+        self.buffering_wrapped_venv = wrappers.BufferingWrapper(venv)
         self.venv = reward_wrapper.RewardVecEnvWrapper(
-            self.buffering_wrapper,
-            reward_fn,
+            self.buffering_wrapped_venv,
+            self.reward_fn,
         )
-        self.algorithm.set_env(self.venv)
+        self.log_callback = self.venv.make_log_callback()
 
     def train(self, steps: int, **kwargs) -> None:
         """Train the agent using the reward function specified during instantiation.
@@ -154,10 +154,10 @@ class AgentTrainer(TrajectoryGenerator):
             **kwargs: other keyword arguments to pass to BaseAlgorithm.train()
 
         Raises:
-            RuntimeError: Transitions left in `self.buffering_wrapper`; call
+            RuntimeError: Transitions left in `self.buffering_wrapped_venv`; call
                 `self.sample` first to clear them.
         """
-        n_transitions = self.buffering_wrapper.n_transitions
+        n_transitions = self.buffering_wrapped_venv.n_transitions
         if n_transitions:
             raise RuntimeError(
                 f"There are {n_transitions} transitions left in the buffer. "
