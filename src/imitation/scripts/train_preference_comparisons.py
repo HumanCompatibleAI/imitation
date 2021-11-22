@@ -50,7 +50,8 @@ def save(
         save_policy(trainer.trajectory_generator, vec_normalize, save_path)
     else:
         print("trainer.trajectory_generator doesn't contain a policy to save.")
-
+        
+    
 
 @train_preference_comparisons_ex.main
 def train_preference_comparisons(
