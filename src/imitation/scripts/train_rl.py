@@ -11,7 +11,9 @@ This can be used:
 import logging
 import os
 import os.path as osp
-from typing import Mapping, Optional
+import pathlib
+import pickle
+from typing import Any, Mapping, Optional
 
 import sacred.run
 from sacred.observers import FileStorageObserver
@@ -22,7 +24,9 @@ from imitation.data import rollout, wrappers
 from imitation.policies import serialize
 from imitation.rewards.reward_wrapper import RewardVecEnvWrapper
 from imitation.rewards.serialize import load_reward
-from imitation.scripts.common import common, rl, train
+from imitation.scripts.common import common
+from imitation.scripts.common import rl as rl_common
+from imitation.scripts.common import train
 from imitation.scripts.config.train_rl import train_rl_ex
 
 
@@ -41,6 +45,8 @@ def train_rl(
     rollout_save_n_episodes: Optional[int],
     policy_save_interval: int,
     policy_save_final: bool,
+    policy_load_path: Optional[str],
+    rl: Mapping[str, Any],
 ) -> Mapping[str, float]:
     """Trains an expert policy from scratch and saves the rollouts and policy.
 
@@ -77,19 +83,23 @@ def train_rl(
             don't save intermediate updates.
         policy_save_final: If True, then save the policy right after training is
             finished.
+        policy_load_path: A directory containing `model.zip` and optionally
+            `vec_normalize.pkl`. If provided, then load the policy from
+            `imitation.serialize.load_policy_for_training`
 
     Returns:
         The return value of `rollout_stats()` using the final policy.
     """
     custom_logger, log_dir = common.setup_logging()
     rollout_dir = osp.join(log_dir, "rollouts")
-    policy_dir = osp.join(log_dir, "policies")
+    policy_save_dir = osp.join(log_dir, "policies")
     os.makedirs(rollout_dir, exist_ok=True)
-    os.makedirs(policy_dir, exist_ok=True)
+    os.makedirs(policy_save_dir, exist_ok=True)
 
     venv = common.make_venv(
         post_wrappers=[lambda env, idx: wrappers.RolloutInfoWrapper(env)],
     )
+
     callback_objs = []
 
     if reward_type is not None:
@@ -99,19 +109,75 @@ def train_rl(
         logging.info(f"Wrapped env in reward {reward_type} from {reward_path}.")
 
     vec_normalize = None
-    if normalize:
+
+    ################################################################
+    if policy_load_path is None:
+        rl_algo = rl_common.make_rl_algo(venv)
+    else:
+        # TODO(ejnnr): this is pretty similar to the logic in policies/serialize.py
+        # but I did make a few small changes that make it a bit tricky to actually
+        # factor this out into a helper function. Still, sharing at least part of the
+        # code would probably be good.
+        policy_load_dir = pathlib.Path(policy_load_path)
+        if not policy_load_dir.is_dir():
+            raise FileNotFoundError(
+                f"policy_load_path={policy_load_path} needs to be a directory \
+                containing model.zip and optionally vec_normalize.pkl.",
+            )
+
+        model_path = policy_load_dir / "model.zip"
+        if not model_path.is_file():
+            raise FileNotFoundError(
+                f"Could not find policy at expected location {model_path}",
+            )
+
+        rl_algo = rl["rl_cls"].load(
+            model_path,
+            env=venv,
+            seed=_seed,
+            **rl["rl_kwargs"],
+        )
+        custom_logger.info(f"Warm starting agent from '{model_path}'")
+
+        normalize_path = policy_load_dir / "vec_normalize.pkl"
+        try:
+            with open(normalize_path, "rb") as f:
+                vec_normalize = pickle.load(f)
+        except FileNotFoundError:
+            # We did not use VecNormalize during training, skip
+            pass
+        else:
+            if not normalize:
+                raise ValueError(
+                    "normalize=False but the loaded policy has "
+                    "associated normalization stats.",
+                )
+            vec_normalize.training = True
+            vec_normalize.set_venv(venv)
+            # Note: the following line must come after the previous set_venv line!
+            # Otherwise, we get recursion errors
+            venv = vec_normalize
+            rl_algo.set_env(venv)
+            custom_logger.info(f"Loaded VecNormalize from '{normalize_path}'")
+
+    if normalize and vec_normalize is None:
+        # if no stats have been loaded, create a new VecNormalize wrapper
         venv = vec_normalize = VecNormalize(venv, **normalize_kwargs)
+        rl_algo.set_env(venv)
+
+    ################################################################
 
     if policy_save_interval > 0:
-        save_policy_callback = serialize.SavePolicyCallback(policy_dir, vec_normalize)
+        save_policy_callback = serialize.SavePolicyCallback(
+            policy_save_dir,
+            vec_normalize,
+        )
         save_policy_callback = callbacks.EveryNTimesteps(
             policy_save_interval,
             save_policy_callback,
         )
         callback_objs.append(save_policy_callback)
     callback = callbacks.CallbackList(callback_objs)
-
-    rl_algo = rl.make_rl_algo(venv)
     rl_algo.set_logger(custom_logger)
     rl_algo.learn(total_timesteps, callback=callback)
 
@@ -124,7 +190,7 @@ def train_rl(
         )
         rollout.rollout_and_save(save_path, rl_algo, venv, sample_until)
     if policy_save_final:
-        output_dir = os.path.join(policy_dir, "final")
+        output_dir = os.path.join(policy_save_dir, "final")
         serialize.save_stable_model(output_dir, rl_algo, vec_normalize)
 
     # Final evaluation of expert policy.
