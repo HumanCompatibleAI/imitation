@@ -163,7 +163,12 @@ class AgentTrainer(TrajectoryGenerator):
                 f"There are {n_transitions} transitions left in the buffer. "
                 "Call AgentTrainer.sample() first to clear them.",
             )
-        self.algorithm.learn(total_timesteps=steps, reset_num_timesteps=False, **kwargs)
+        self.algorithm.learn(
+            total_timesteps=steps,
+            reset_num_timesteps=False,
+            callback=self.log_callback,
+            **kwargs,
+        )
 
     def sample(self, steps: int) -> Sequence[types.TrajectoryWithRew]:
         trajectories, _ = self.buffering_wrapper.pop_finished_trajectories()
@@ -194,7 +199,10 @@ class AgentTrainer(TrajectoryGenerator):
                 self.venv,
                 sample_until=sample_until,
             )
-            additional_trajs, _ = self.buffering_wrapper.pop_finished_trajectories()
+            (
+                additional_trajs,
+                _,
+            ) = self.buffering_wrapped_venv.pop_finished_trajectories()
 
             trajectories = list(trajectories) + list(additional_trajs)
 
@@ -728,7 +736,6 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
         allow_variable_horizon: bool = False,
         seed: Optional[int] = None,
-        vec_normalize: Optional[vec_env.VecNormalize] = None,
     ):
         """Initialize the preference comparison trainer.
 
@@ -773,9 +780,6 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
                 Only used when default components are used; if you instantiate your
                 own fragmenter, preference gatherer, etc., you are responsible for
                 seeding them!
-            vec_normalize: optional VecNormalize instance to use for normalizing. This
-                is used for saving the vec_normalize stats. If it's None, then saving
-                nothing when calling save_checkpoint callback.
         """
         super().__init__(
             custom_logger=custom_logger,
@@ -815,8 +819,6 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
         self.transition_oversampling = transition_oversampling
 
         self.dataset = PreferenceDataset()
-
-        self.vec_normalize = vec_normalize
 
     def train(
         self,
