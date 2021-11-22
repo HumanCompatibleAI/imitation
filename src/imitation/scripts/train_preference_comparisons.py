@@ -24,24 +24,33 @@ from imitation.scripts.config.train_preference_comparisons import (
 )
 
 
+def save_policy(
+    agent_trainer: preference_comparisons.AgentTrainer,
+    vec_normalize: Optional[vec_env.VecNormalize],
+    save_path: str,
+):
+    serialize.save_stable_model(
+        os.path.join(save_path, "policy"),
+        agent_trainer.algorithm,
+        vec_normalize,
+    )
+
+
 def save(
-    trainer: preference_comparisons.PreferenceComparisons, 
-    save_path: str, 
+    trainer: preference_comparisons.PreferenceComparisons,
+    vec_normalize: Optional[vec_env.VecNormalize],
+    save_path: str,
     save_policy: Optional[bool],
-    ):
+):
     """Save reward model and optionally policy."""
     os.makedirs(save_path, exist_ok=True)
     th.save(trainer.reward_trainer.model, os.path.join(save_path, "reward_net.pt"))
     if save_policy:
-        serialize.save_stable_model(
-            os.path.join(save_path, "policy"),
-            trainer.trajectory_generator.algorithm,
-            trainer.vec_normalize,
-        )
+        assert hasattr(trainer.trajectory_generator, "algorithm")
+        save_policy(trainer.trajectory_generator, vec_normalize, save_path)
     else:
         print("trainer.trajectory_generator doesn't contain a policy to save.")
-        
-    
+
 
 @train_preference_comparisons_ex.main
 def train_preference_comparisons(
@@ -97,7 +106,7 @@ def train_preference_comparisons(
             condition, and can seriously confound evaluation. Read
             https://imitation.readthedocs.io/en/latest/guide/variable_horizon.html
             before overriding this.
-        checkpoint_interval: Save the reward model and policy models (if 
+        checkpoint_interval: Save the reward model and policy models (if
             trajectory_generator contains a policy) every `checkpoint_interval`
             iterations and after training is complete. If 0, then only save weights
             after training is complete. If <0, then don't save weights at all.
@@ -233,30 +242,33 @@ def train_preference_comparisons(
         custom_logger=custom_logger,
         allow_variable_horizon=allow_variable_horizon,
         seed=_seed,
-        vec_normalize=vec_normalize,
     )
 
     def save_callback(iteration_num):
         if checkpoint_interval > 0 and iteration_num % checkpoint_interval == 0:
             save(
-                main_trainer,
-                os.path.join(log_dir, "checkpoints", f"{iteration_num:04d}"),
-                trajectory_path is None,
+                trainer=main_trainer,
+                vec_normalize=vec_normalize,
+                save_path=os.path.join(log_dir, "checkpoints", f"{iteration_num:04d}"),
+                save_policy=bool(trajectory_path is None),
             )
 
     results = main_trainer.train(
-        total_timesteps, total_comparisons, callback=save_callback
+        total_timesteps,
+        total_comparisons,
+        callback=save_callback,
     )
-    
+
     if save_preferences:
         main_trainer.dataset.save(os.path.join(log_dir, "preferences.pkl"))
 
     # Save final artifacts.
     if checkpoint_interval >= 0:
         save(
-            main_trainer, 
-            os.path.join(log_dir, "checkpoints", "final"), 
-            trajectory_path is None
+            trainer=main_trainer,
+            vec_normalize=vec_normalize,
+            save_path=os.path.join(log_dir, "checkpoints", "final"),
+            save_policy=trajectory_path is None,
         )
 
     # Storing and evaluating the policy only makes sense if we actually used it
