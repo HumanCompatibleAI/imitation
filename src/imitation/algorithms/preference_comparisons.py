@@ -166,7 +166,7 @@ class AgentTrainer(TrajectoryGenerator):
         self.algorithm.learn(total_timesteps=steps, reset_num_timesteps=False, **kwargs)
 
     def sample(self, steps: int) -> Sequence[types.TrajectoryWithRew]:
-        trajectories, _ = self.buffering_wrapper_venv.pop_finished_trajectories()
+        trajectories, _ = self.buffering_wrapper.pop_finished_trajectories()
         # We typically have more trajectories than are needed.
         # In that case, we use the final trajectories because
         # they are the ones with the most relevant version of
