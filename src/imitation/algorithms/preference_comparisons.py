@@ -149,13 +149,14 @@ class AgentTrainer(TrajectoryGenerator):
             reward_fn,
         )
         self.algorithm.set_env(self.venv)
+        self._callback = self.venv.make_log_callback()
 
     def train(self, steps: int, **kwargs) -> None:
         """Train the agent using the reward function specified during instantiation.
 
         Args:
             steps: number of environment timesteps to train for
-            **kwargs: other keyword arguments to pass to BaseAlgorithm.train()
+            **kwargs: other keyword arguments to pass to BaseAlgorithm.learn()
 
         Raises:
             RuntimeError: Transitions left in `self.buffering_wrapper`; call
@@ -167,7 +168,12 @@ class AgentTrainer(TrajectoryGenerator):
                 f"There are {n_transitions} transitions left in the buffer. "
                 "Call AgentTrainer.sample() first to clear them.",
             )
-        self.algorithm.learn(total_timesteps=steps, reset_num_timesteps=False, **kwargs)
+        self.algorithm.learn(
+            total_timesteps=steps,
+            reset_num_timesteps=False,
+            callback=self._callback,
+            **kwargs,
+        )
 
     def sample(self, steps: int) -> Sequence[types.TrajectoryWithRew]:
         agent_trajs, _ = self.buffering_wrapper.pop_finished_trajectories()
