@@ -26,7 +26,6 @@ def train_rl_defaults():
 
     policy_save_interval = 10000  # Num timesteps between saves (<=0 disables)
     policy_save_final = True  # If True, save after training is finished.
-    policy_load_dir = None  # TODO(yawen): write some docs for this.
 
 
 @train_rl_ex.config
