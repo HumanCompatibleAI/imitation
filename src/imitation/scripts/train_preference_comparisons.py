@@ -40,6 +40,7 @@ def train_preference_comparisons(
     trajectory_path: Optional[str],
     save_preferences: bool,
     agent_path: Optional[str],
+    record_video_every: int,
     reward_trainer_kwargs: Mapping[str, Any],
     gatherer_kwargs: Mapping[str, Any],
     fragmenter_kwargs: Mapping[str, Any],
@@ -78,6 +79,8 @@ def train_preference_comparisons(
         save_preferences: if True, store the final dataset of preferences to disk.
         agent_path: if given, initialize the agent using this stored policy
             rather than randomly.
+        record_video_every: number of iterations between recording videos of the agent.
+            If 0, no videos are recorded.
         reward_trainer_kwargs: passed to CrossEntropyRewardTrainer
         gatherer_kwargs: passed to SyntheticGatherer
         fragmenter_kwargs: passed to RandomFragmenter
@@ -224,6 +227,7 @@ def train_preference_comparisons(
         fragment_length=fragment_length,
         transition_oversampling=transition_oversampling,
         initial_comparison_frac=initial_comparison_frac,
+        record_video_every=record_video_every,
         custom_logger=custom_logger,
         allow_variable_horizon=allow_variable_horizon,
         seed=_seed,

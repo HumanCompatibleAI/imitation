@@ -5,6 +5,7 @@ between trajectory fragments.
 """
 import abc
 import math
+import os
 import pickle
 import random
 from typing import Any, List, Mapping, Optional, Sequence, Tuple, Union
@@ -66,6 +67,21 @@ class TrajectoryGenerator(abc.ABC):
             **kwargs: additional keyword arguments to pass on to
                 the training procedure.
         """
+
+    def record_video(self, video_folder: str, **kwargs) -> None:
+        """Record a video of the environment if the trajectory generator is able to.
+
+        By default, this method raises an error and doesn't need
+        to be overridden in subclasses that are unable to record video.
+
+        Args:
+            video_folder: folder to save the videos to.
+            **kwargs: additional keyword arguments to pass on to
+                the video recording procedure.
+        """
+        raise NotImplementedError(
+            "Video recording is not supported with this TrajectoryGenerator",
+        )
 
     @property
     def logger(self) -> imit_logger.HierarchicalLogger:
@@ -220,6 +236,9 @@ class AgentTrainer(TrajectoryGenerator):
                 min_timesteps=random_steps,
                 min_episodes=None,
             )
+            # TODO(ejnnr): sharing this environment with the agent might be bad
+            # because it can lead to unintended mixed trajectories. Should try
+            # to find a cleaner design.
             rollout.generate_trajectories(
                 policy=None,
                 venv=self.venv,
@@ -233,6 +252,25 @@ class AgentTrainer(TrajectoryGenerator):
         # transitions, but it gets the proportion of random and non-random transitions
         # roughly right.
         return list(agent_trajs) + list(random_trajs)
+
+    def record_video(self, video_folder: str, **kwargs) -> None:
+        if "record_video_trigger" not in kwargs:
+            kwargs = dict(kwargs)
+            kwargs["record_video_trigger"] = lambda x: x == 0
+
+        venv = vec_env.VecVideoRecorder(self.venv, video_folder=video_folder, **kwargs)
+
+        sample_until = rollout.make_sample_until(
+            min_timesteps=None,
+            min_episodes=1,
+        )
+        rollout.generate_trajectories(
+            self.algorithm,
+            venv,
+            sample_until=sample_until,
+        )
+        # Empty the buffer to prevent errors when calling train()
+        self.buffering_wrapper.pop_finished_trajectories()
 
     @TrajectoryGenerator.logger.setter
     def logger(self, value: imit_logger.HierarchicalLogger):
@@ -768,6 +806,8 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
         fragment_length: int = 50,
         transition_oversampling: float = 10,
         initial_comparison_frac: float = 0.1,
+        record_video_every: int = 0,
+        record_video_kwargs: Mapping[str, Any] = {},
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
         allow_variable_horizon: bool = False,
         seed: Optional[int] = None,
@@ -806,8 +846,12 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
             initial_comparison_frac: fraction of the total_comparisons argument
                 to train() that will be sampled before the rest of training begins
                 (using the randomly initialized agent). This can be used to pretrain
-                the reward model before the agent is trained on the learned reward,
-                to help avoid irreversibly learning a bad policy from an untrained reward.
+                the reward model before the agent is trained on the learned reward, to
+                help avoid irreversibly learning a bad policy from an untrained reward.
+            record_video_every: number of iterations between each video recording.
+                If 0, no videos are recorded.
+            record_video_kwargs: kwargs to pass to TrajectoryGenerator.record_video().
+                Notably, may contain `video_folder` and `video_length`.
             custom_logger: Where to log to; if None (default), creates a new logger.
             allow_variable_horizon: If False (default), algorithm will raise an
                 exception if it detects trajectories of different length during
@@ -858,6 +902,14 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
         self.fragment_length = fragment_length
         self.transition_oversampling = transition_oversampling
         self.initial_comparison_frac = initial_comparison_frac
+        self.record_video_every = record_video_every
+        self.record_video_kwargs = dict(record_video_kwargs)
+
+        if "video_folder" not in self.record_video_kwargs:
+            self.record_video_kwargs["video_folder"] = os.path.join(
+                self.logger.get_dir(),
+                "videos",
+            )
 
         self.dataset = PreferenceDataset()
 
@@ -933,6 +985,23 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
                 self.reward_trainer.train(self.dataset, epoch_multiplier)
             reward_loss = self.logger.name_to_value["mean/reward/loss"]
             reward_accuracy = self.logger.name_to_value["mean/reward/accuracy"]
+
+            ################
+            # Record video #
+            ################
+
+            if (
+                self.record_video_every
+                and self._iteration % self.record_video_every == 0
+            ):
+                try:
+                    self.trajectory_generator.record_video(
+                        name_prefix=f"iteration_{self._iteration}",
+                        **self.record_video_kwargs,
+                    )
+                    self.logger.log("Recorded video")
+                except NotImplementedError:
+                    self.logger.log("Video recording not supported, skipping")
 
             ###################
             # Train the agent #

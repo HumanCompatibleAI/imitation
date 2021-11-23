@@ -29,6 +29,7 @@ def train_defaults():
     # fraction of sampled trajectories that will use random actions rather than policy
     random_frac = 0.0
 
+    record_video_every = 0  # record video every N iterations (0 to disable)
     reward_trainer_kwargs = {
         "epochs": 3,
     }
@@ -44,6 +45,11 @@ def train_defaults():
 
     normalize = True  # Use VecNormalize
     normalize_kwargs = {"norm_reward": False}  # kwargs for `VecNormalize`
+
+
+@train_preference_comparisons_ex.named_config
+def video():
+    record_video_every = 1
 
 
 @train_preference_comparisons_ex.named_config
