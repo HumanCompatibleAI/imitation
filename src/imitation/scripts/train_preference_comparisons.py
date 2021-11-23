@@ -31,9 +31,9 @@ def save_model(
 ):
     """Save the model as model.pkl."""
     serialize.save_stable_model(
-        os.path.join(save_path, "policy"),
-        agent_trainer.algorithm,
-        vec_normalize,
+        output_dir=os.path.join(save_path, "policy"),
+        model=agent_trainer.algorithm,
+        vec_normalize=vec_normalize,
     )
 
 
@@ -41,12 +41,12 @@ def save_checkpoint(
     trainer: preference_comparisons.PreferenceComparisons,
     vec_normalize: Optional[vec_env.VecNormalize],
     save_path: str,
-    save_model: Optional[bool],
+    allow_save_policy: Optional[bool],
 ):
     """Save reward model and optionally policy."""
     os.makedirs(save_path, exist_ok=True)
     th.save(trainer.reward_trainer.model, os.path.join(save_path, "reward_net.pt"))
-    if save_model:
+    if allow_save_policy:
         # Note: We should only save the model as model.pkl if `trajectory_generator`
         # contains one. Specifically we check if the `trajectory_generator` contains an
         # `algorithm` attribute.
@@ -254,7 +254,7 @@ def train_preference_comparisons(
                 trainer=main_trainer,
                 vec_normalize=vec_normalize,
                 save_path=os.path.join(log_dir, "checkpoints", f"{iteration_num:04d}"),
-                save_model=bool(trajectory_path is None),
+                allow_save_policy=bool(trajectory_path is None),
             )
 
     results = main_trainer.train(
@@ -272,11 +272,11 @@ def train_preference_comparisons(
             trainer=main_trainer,
             vec_normalize=vec_normalize,
             save_path=os.path.join(log_dir, "checkpoints", "final"),
-            save_model=trajectory_path is None,
+            allow_save_policy=bool(trajectory_path is None),
         )
 
-    # Storing and evaluating the policy only makes sense if we actually used it
-    if trajectory_path is None:
+    # Storing and evaluating policy only useful if we actually generate trajectory data
+    if bool(trajectory_path is None):
         results = dict(results)
         results["rollout"] = train.eval_policy(agent, venv)
 
