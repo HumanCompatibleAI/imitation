@@ -121,7 +121,7 @@ def test_trajectory_dataset_shuffle(num_steps: int = 400):
 def test_transitions_left_in_buffer(agent_trainer):
     # Faster to just set the counter than to actually fill the buffer
     # with transitions.
-    agent_trainer.buffering_wrapper.n_transitions = 2
+    agent_trainer.buffering_wrapped_venv.n_transitions = 2
     with pytest.raises(
         RuntimeError,
         match=re.escape(
