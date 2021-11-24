@@ -17,21 +17,22 @@ train_preference_comparisons_ex = sacred.Experiment(
 
 @train_preference_comparisons_ex.config
 def train_defaults():
-    fragment_length = 100  # timesteps per fragment used for comparisons
+    fragment_length = 50  # timesteps per fragment used for comparisons
     total_timesteps = int(1e6)  # total number of environment timesteps
-    total_comparisons = 5000  # total number of comparisons to elicit
+    total_comparisons = 10000  # total number of comparisons to elicit
     # comparisons to gather before switching back to agent training
-    comparisons_per_iteration = 100
+    comparisons_per_iteration = 250
     # factor by which to oversample transitions before creating fragments
     transition_oversampling = 1
     # fraction of total_comparisons that will be sampled right at the beginning
-    initial_comparison_frac = 0.1
+    initial_comparison_frac = 0.2
     # fraction of sampled trajectories that will use random actions rather than policy
     random_frac = 0.0
 
     record_video_every = 0  # record video every N iterations (0 to disable)
     reward_trainer_kwargs = {
-        "epochs": 3,
+        "epochs": 5,
+        "weight_decay": 1e-7,
     }
     save_preferences = False  # save preference dataset at the end?
     agent_path = None  # path to a (partially) trained agent to load at the beginning

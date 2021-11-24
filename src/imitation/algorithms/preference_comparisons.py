@@ -658,6 +658,7 @@ class CrossEntropyRewardTrainer(RewardTrainer):
         batch_size: int = 32,
         epochs: int = 1,
         lr: float = 1e-3,
+        weight_decay: float = 0.0,
         discount_factor: float = 1.0,
         threshold: float = 50,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
@@ -674,6 +675,7 @@ class CrossEntropyRewardTrainer(RewardTrainer):
                 on the fly by specifying an `epoch_multiplier` in `self.train()`
                 if longer training is desired in specific cases).
             lr: the learning rate
+            weight_decay: weight decay factor (passed on to optimizer)
             discount_factor: the model of preference generation uses a softmax
                 of returns as the probability that a fragment is preferred.
                 This is the discount factor used to calculate those returns.
@@ -692,7 +694,11 @@ class CrossEntropyRewardTrainer(RewardTrainer):
         self.epochs = epochs
         self.discount_factor = discount_factor
         self.threshold = threshold
-        self.optim = th.optim.Adam(self.model.parameters(), lr=lr)
+        self.optim = th.optim.Adam(
+            self.model.parameters(),
+            lr=lr,
+            weight_decay=weight_decay,
+        )
 
     def _loss(
         self,
