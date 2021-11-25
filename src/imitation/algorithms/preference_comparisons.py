@@ -626,6 +626,7 @@ class CrossEntropyRewardTrainer(RewardTrainer):
         lr: float = 1e-3,
         discount_factor: float = 1.0,
         threshold: float = 50,
+        weight_decay: float = 0.0,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
     ):
         """Initialize the reward model trainer.
@@ -650,6 +651,8 @@ class CrossEntropyRewardTrainer(RewardTrainer):
                 in returns that are above this threshold. This threshold
                 is therefore in logspace. The default value of 50 means
                 that probabilities below 2e-22 are rounded up to 2e-22.
+            weight_decay: the weight decay factor for the reward model's weights,
+                equivalent to L2 regularization.
             custom_logger: Where to log to; if None (default), creates a new logger.
         """
         super().__init__(model, custom_logger)
@@ -658,7 +661,7 @@ class CrossEntropyRewardTrainer(RewardTrainer):
         self.epochs = epochs
         self.discount_factor = discount_factor
         self.threshold = threshold
-        self.optim = th.optim.Adam(self.model.parameters(), lr=lr)
+        self.optim = th.optim.Adam(self.model.parameters(), lr=lr, weight_decay=weight_decay)
 
     def _loss(
         self,
