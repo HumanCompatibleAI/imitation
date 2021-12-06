@@ -425,7 +425,7 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
                 single argument, the round number. Round numbers are in
                 `range(total_timesteps // self.gen_train_timesteps)`.
         """
-        n_rounds = total_timesteps // self.gen_train_timesteps
+        n_rounds = int(total_timesteps // self.gen_train_timesteps)
         assert n_rounds >= 1, (
             "No updates (need at least "
             f"{self.gen_train_timesteps} timesteps, have only "
