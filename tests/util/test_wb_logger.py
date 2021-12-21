@@ -118,17 +118,8 @@ def test_wandb_output_format():
     log_obj.record("fow", 24, exclude="wandb")
     log_obj.record("fizz", 12, exclude="stdout")
     log_obj.dump()
-    try:
-        assert len(mock_wandb.history_list) == 1, "exactly one entry should be logged"
-        assert mock_wandb.history_list == [{"_step": 0, "foo": 42, "fizz": 12}]
-    except AssertionError:
-        print(mock_wandb.history_list)
-        print(wandb.init)
-        print(wandb.log)
-        print(wandb.finish)
-        print(log_obj.name_to_value)
-        print(log_obj.name_to_count)
-        print(log_obj.name_to_excluded)
-        raise
-
-    wandb.finish()
+    
+    assert len(mock_wandb.history_list) == 1, "exactly one entry should be logged"
+    assert mock_wandb.history_list == [{"_step": 0, "foo": 42, "fizz": 12}]
+    
+    log_obj.close()
