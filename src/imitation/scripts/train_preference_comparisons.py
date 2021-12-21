@@ -54,7 +54,7 @@ def save_checkpoint(
         save_model(trainer.trajectory_generator, vec_normalize, save_path)
     else:
         trainer.logger.warn(
-            "trainer.trajectory_generator doesn't contain a policy to save."
+            "trainer.trajectory_generator doesn't contain a policy to save.",
         )
 
 
