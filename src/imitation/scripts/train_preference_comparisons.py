@@ -53,7 +53,9 @@ def save_checkpoint(
         assert hasattr(trainer.trajectory_generator, "algorithm")
         save_model(trainer.trajectory_generator, vec_normalize, save_path)
     else:
-        print("trainer.trajectory_generator doesn't contain a policy to save.")
+        trainer.logger.warn(
+            "trainer.trajectory_generator doesn't contain a policy to save."
+        )
 
 
 @train_preference_comparisons_ex.main
