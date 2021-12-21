@@ -65,28 +65,11 @@ class MockWandb:
         assert self._initialized
         if sync:
             raise NotImplementedError("usage of sync to MockWandb.log not implemented")
-        if not isinstance(data, Mapping):
-            raise ValueError("`wandb.log` must be passed a dictionary")
-
-        if any(not isinstance(key, str) for key in data.keys()):
-            raise ValueError("Key values passed to `wandb.log` must be strings.")
 
         if step is not None:
-            if self.history._step > step:
-                raise ValueError(
-                    "Step must only increase in log calls.  "
-                    "Step {} < {}; dropping {}.".format(
-                        step,
-                        self.history._step,
-                        data,
-                    ),
-                )
-                return
-            elif step > self.history._step:
+            if step > self.history._step:
                 self.history._flush()
                 self.history._step = step
-        elif commit is None:
-            commit = True
         if commit:
             self.history._row_add(data)
         else:
