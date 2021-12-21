@@ -35,9 +35,6 @@ class MockHistory:
                 self._callback(row=self._data, step=self._step)
             self._data = dict()
 
-    def add(self, d):
-        self._row_add(d)
-
 
 class MockWandb:
     """Mock Wandb object for testing."""
