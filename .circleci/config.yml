@@ -168,13 +168,13 @@ workflows:
     jobs:
       - lint:
           context:
-          - MuJoCo
+          - MuJoCo-free
           - docker-hub-creds
       - type:
           context:
-          - MuJoCo
+          - MuJoCo-free
           - docker-hub-creds
       - unit-test:
           context:
-          - MuJoCo
+          - MuJoCo-free
           - docker-hub-creds

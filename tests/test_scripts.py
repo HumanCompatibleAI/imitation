@@ -97,6 +97,10 @@ PREFERENCE_COMPARISON_CONFIGS = [
         # Needed for the same reason as in the previous config
         "common": dict(num_vec=8),
     },
+    {
+        "checkpoint_interval": 1,
+        # Test that we can save checkpoints
+    },
 ]
 
 ALGO_FAST_CONFIGS = {
