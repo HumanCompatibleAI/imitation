@@ -196,6 +196,7 @@ class WandbOutputFormat(sb_logger.KVWriter):
                 continue
 
             self.wandb_module.log({key: value}, step=step)
+        self.wandb_module.log({}, commit=True)
 
     def close(self) -> None:
         self.wandb_module.finish()
