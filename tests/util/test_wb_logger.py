@@ -100,4 +100,11 @@ def test_wandb_output_format():
     log_obj.dump()
     assert len(mock_wandb.history_list) == 1, "exactly one entry should be logged"
     assert mock_wandb.history_list == [{"_step": 0, "foo": 42, "fizz": 12}]
+    log_obj.record("fizz", 21)
+    log_obj.dump(step=3)
+    assert len(mock_wandb.history_list) == 2, "exactly two entries should be logged"
+    assert mock_wandb.history_list == [
+        {"_step": 0, "foo": 42, "fizz": 12},
+        {"_step": 3, "fizz": 21},
+    ]
     log_obj.close()
