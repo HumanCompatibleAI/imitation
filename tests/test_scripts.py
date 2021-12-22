@@ -224,7 +224,7 @@ def test_train_rl_main(tmpdir):
 def test_train_rl_wb_logging(tmpdir):
     """Smoke test for imitation.scripts.common.common.wandb_logging."""
     with pytest.raises(Exception, match=".*api_key not configured.*"):
-        run = train_rl.train_rl_ex.run(
+        train_rl.train_rl_ex.run(
             named_configs=["cartpole"]
             + ALGO_FAST_CONFIGS["rl"]
             + ["common.wandb_logging"],
