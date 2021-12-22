@@ -84,6 +84,7 @@ class MockWandb:
 
 mock_wandb = MockWandb()
 
+
 @mock.patch.object(wandb, "__init__", mock_wandb.__init__)
 @mock.patch.object(wandb, "init", mock_wandb.init)
 @mock.patch.object(wandb, "log", mock_wandb.log)
@@ -110,12 +111,12 @@ def test_wandb_output_format():
     ]
     log_obj.close()
 
+
 def test_wandb_module_import_error():
-    wandb_module = sys.modules['wandb'] 
+    wandb_module = sys.modules["wandb"]
     try:
-        sys.modules['wandb'] = None
+        sys.modules["wandb"] = None
         with pytest.raises(ModuleNotFoundError, match=r"Trying to log data.*"):
             logger.configure(format_strs=["wandb"])
     finally:
         sys.modules[wandb] = wandb_module
-
