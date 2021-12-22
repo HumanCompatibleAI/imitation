@@ -1,11 +1,11 @@
 """Tests `imitation.util.logger.WandbOutputFormat`."""
 
+import sys
 from typing import Any, Mapping
 from unittest import mock
 
-import sys
-import wandb
 import pytest
+import wandb
 
 from imitation.util import logger
 
