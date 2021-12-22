@@ -221,6 +221,19 @@ def test_train_rl_main(tmpdir):
     assert isinstance(run.result, dict)
 
 
+def test_train_rl_wb_logging(tmpdir):
+    """Smoke test for imitation.scripts.common.common.wandb_logging."""
+    with pytest.raises(Exception, match=".*api_key not configured.*"):
+        run = train_rl.train_rl_ex.run(
+            named_configs=["cartpole"]
+            + ALGO_FAST_CONFIGS["rl"]
+            + ["common.wandb_logging"],
+            config_updates=dict(
+                common=dict(log_root=tmpdir),
+            ),
+        )
+
+
 EVAL_POLICY_CONFIGS = [
     {"videos": True},
     {"videos": True, "video_kwargs": {"single_video": False}},
