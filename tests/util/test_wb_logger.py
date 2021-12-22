@@ -1,8 +1,10 @@
 """Tests `imitation.util.logger.WandbOutputFormat`."""
 
+import sys
 from typing import Any, Mapping
 from unittest import mock
 
+import pytest
 import wandb
 
 from imitation.util import logger
@@ -108,3 +110,13 @@ def test_wandb_output_format():
         {"_step": 3, "fizz": 21},
     ]
     log_obj.close()
+
+
+def test_wandb_module_import_error():
+    wandb_module = sys.modules["wandb"]
+    try:
+        sys.modules["wandb"] = None
+        with pytest.raises(ModuleNotFoundError, match=r"Trying to log data.*"):
+            logger.configure(format_strs=["wandb"])
+    finally:
+        sys.modules[wandb] = wandb_module
