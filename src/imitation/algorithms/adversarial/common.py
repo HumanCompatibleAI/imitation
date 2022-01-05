@@ -409,7 +409,7 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
     def train_gen(
         self,
         total_timesteps: Optional[int] = None,
-        expected_total_timesteps: int = None,
+        expected_total_timesteps: Optional[int] = None,
         learn_kwargs: Optional[Mapping] = None,
     ) -> None:
         """Trains the generator to maximize the discriminator loss.

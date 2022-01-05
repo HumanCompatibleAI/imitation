@@ -4,7 +4,8 @@ GAIL discriminator."""
 
 import torch as th
 from kornia.color.gray import rgb_to_grayscale
-from kornia.filters.gaussian import GaussianBlur2d
+from kornia.filters.filter import filter2d_separable
+from kornia.filters.kernels import get_gaussian_kernel1d
 from torch import nn
 
 from imitation.augment.color import apply_lab_jitter, split_unsplit_channel_stack
@@ -24,29 +25,36 @@ class GaussianNoise(nn.Module):
         return out
 
 
-class GaussianBlur(nn.Module):
-    """Randomly selects images to blur."""
+@th.jit.script
+def _blur(images: th.Tensor, kernel: th.Tensor, p: float):
+    batch_size = images.size(0)
+    blur_mask = th.rand(batch_size) < p
+    out_images = images.clone()
+    extracted = images[blur_mask]
+    blurred = filter2d_separable(extracted, kernel, kernel,
+                                 "reflect")
+    out_images[blur_mask] = blurred
+    return out_images
 
-    def __init__(self, kernel_hw=5, sigma=1, p=0.5):
+
+class GaussianBlur(nn.Module):
+    kernel: th.Tensor
+
+    def __init__(self, kernel_hw: int = 5, sigma: float = 1.0, p: float = 0.5):
         super().__init__()
-        assert kernel_hw >= 1 and (kernel_hw % 2) == 1
-        sigma = float(sigma)
-        assert sigma > 0
-        self.blur_op = GaussianBlur2d((kernel_hw, kernel_hw), (sigma, sigma))
+        assert isinstance(kernel_hw, int) and kernel_hw > 0, kernel_hw
+        assert isinstance(sigma, float) and sigma > 0, sigma
+        assert isinstance(p, float) and 0 <= p <= 1, p
+        # kernel must be of size [1, kernel_hw] for filter2d_separable
+        kernel: th.Tensor = get_gaussian_kernel1d(kernel_hw, sigma)[None]
+        self.register_buffer('kernel', kernel)
+        assert self.kernel.shape == (1, kernel_hw), self.kernel.shape
         self.p = p
 
     def forward(self, images):
-        batch_size = images.size(0)
-        should_blur = th.rand(batch_size) < self.p
-        blur_elems = []
-        for batch_idx in range(batch_size):
-            if should_blur[batch_idx]:
-                rotated_image = self.blur_op(images[batch_idx : batch_idx + 1])
-                blur_elems.append(rotated_image)
-            else:
-                blur_elems.append(images[batch_idx : batch_idx + 1])
-        blur_images = th.cat(blur_elems, dim=0)
-        return blur_images
+        # Note that Kornia 0.6 has a built-in GaussianBlur2d class, but it's
+        # slow because it recomputes the kernel on each forward pass.
+        return _blur(images, self.kernel, self.p)
 
 
 class CIELabJitter(nn.Module):
