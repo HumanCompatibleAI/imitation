@@ -29,6 +29,7 @@ TESTS_REQUIRE = [
     "pytest-notebook",
     "pytest-xdist",
     "pytype",
+    "wandb",
 ]
 DOCS_REQUIRE = [
     "sphinx",

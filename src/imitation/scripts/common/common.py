@@ -7,11 +7,12 @@ from typing import Any, Mapping, Sequence, Tuple, Union
 import sacred
 from stable_baselines3.common import vec_env
 
+from imitation.scripts.common import wb
 from imitation.util import logger as imit_logger
 from imitation.util import sacred as sacred_util
 from imitation.util import util
 
-common_ingredient = sacred.Ingredient("common")
+common_ingredient = sacred.Ingredient("common", ingredients=[wb.wandb_ingredient])
 logger = logging.getLogger(__name__)
 
 
@@ -22,6 +23,9 @@ def config():
     log_dir = None
     log_level = logging.INFO
     log_format_strs = ["tensorboard", "stdout"]
+    # The keys of log_format_strs_additional are concatenated to log_format_strs.
+    # This allows named configs to add format strings, without changing the defaults.
+    log_format_strs_additional = {}
 
     # Environment config
     env_name = "seals/CartPole-v0"  # environment to train on
@@ -31,6 +35,11 @@ def config():
     env_make_kwargs = {}  # The kwargs passed to `spec.make`.
 
     locals()  # quieten flake8
+
+
+@common_ingredient.config
+def update_log_format_strs(log_format_strs, log_format_strs_additional):
+    log_format_strs = log_format_strs + list(log_format_strs_additional.keys())
 
 
 @common_ingredient.config_hook
@@ -47,6 +56,11 @@ def hook(config, command_name, logger):
         )
         updates["log_dir"] = log_dir
     return updates
+
+
+@common_ingredient.named_config
+def wandb_logging():
+    log_format_strs_additional = {"wandb": None}  # noqa: F841
 
 
 @common_ingredient.named_config
@@ -102,7 +116,12 @@ def setup_logging(
         Returning `log_dir` avoids the caller needing to capture this value.
     """
     log_dir = make_log_dir()
-    custom_logger = imit_logger.configure(os.path.join(log_dir, "log"), log_format_strs)
+    if "wandb" in log_format_strs:
+        wb.wandb_init(log_dir=log_dir)
+    custom_logger = imit_logger.configure(
+        folder=os.path.join(log_dir, "log"),
+        format_strs=log_format_strs,
+    )
     return custom_logger, log_dir
 
 

@@ -15,7 +15,7 @@ NEED_TEST_FILES="false"
 extra_configs=()
 
 
-if ! TEMP=$($GNU_GETOPT -o f -l fast,gail,airl,run_name:,log_root: -- "$@"); then
+if ! TEMP=$($GNU_GETOPT -o fw -l fast,gail,airl,run_name:,log_root:,wandb -- "$@"); then
   exit 1
 fi
 eval set -- "$TEMP"
@@ -29,6 +29,11 @@ while true; do
       NEED_TEST_FILES="true"
       SEEDS=(0)
       extra_configs=("${extra_configs[@]}" common.fast rl.fast train.fast fast)
+      shift
+      ;;
+    -w | --wandb)
+      # activate wandb logging by adding 'wandb' format string to common.log_format_strs
+      extra_configs=("${extra_configs[@]}" "common.wandb_logging")
       shift
       ;;
     --gail)

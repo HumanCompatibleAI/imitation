@@ -4,7 +4,7 @@ import contextlib
 import datetime
 import os
 import tempfile
-from typing import Generator, Optional, Sequence
+from typing import Any, Dict, Generator, Optional, Sequence, Tuple, Union
 
 import stable_baselines3.common.logger as sb_logger
 
@@ -26,7 +26,12 @@ def _build_output_formats(
         A sequence of output formats, one corresponding to each `format_strs`.
     """
     os.makedirs(folder, exist_ok=True)
-    output_formats = [sb_logger.make_output_format(f, folder) for f in format_strs]
+    output_formats = []
+    for f in format_strs:
+        if f == "wandb":
+            output_formats.append(WandbOutputFormat())
+        else:
+            output_formats.append(sb_logger.make_output_format(f, folder))
     return output_formats
 
 
@@ -155,6 +160,48 @@ class HierarchicalLogger(sb_logger.Logger):
             logger.close()
 
 
+class WandbOutputFormat(sb_logger.KVWriter):
+    """A stable-baseline logger that writes to wandb.
+
+    Users need to call `wandb.init()` before initializing `WandbOutputFormat`.
+    """
+
+    def __init__(self):
+        """Initializes an instance of WandbOutputFormat.
+
+        Raises:
+            ModuleNotFoundError: wandb is not installed.
+        """
+        try:
+            import wandb
+        except ModuleNotFoundError as e:
+            raise ModuleNotFoundError(
+                "Trying to log data with `WandbOutputFormat` "
+                "but `wandb` not installed: try `pip install wandb`.",
+            ) from e
+        self.wandb_module = wandb
+
+    def write(
+        self,
+        key_values: Dict[str, Any],
+        key_excluded: Dict[str, Union[str, Tuple[str, ...]]],
+        step: int = 0,
+    ) -> None:
+        for (key, value), (key_ex, excluded) in zip(
+            sorted(key_values.items()),
+            sorted(key_excluded.items()),
+        ):
+            assert key == key_ex, f"key mismatch between {key} and {key_ex}."
+            if excluded is not None and "wandb" in excluded:
+                continue
+
+            self.wandb_module.log({key: value}, step=step)
+        self.wandb_module.log({}, commit=True)
+
+    def close(self) -> None:
+        self.wandb_module.finish()
+
+
 def configure(
     folder: Optional[types.AnyPath] = None,
     format_strs: Optional[Sequence[str]] = None,
@@ -182,5 +229,6 @@ def configure(
         format_strs = ["stdout", "log", "csv"]
     output_formats = _build_output_formats(folder, format_strs)
     default_logger = sb_logger.Logger(folder, output_formats)
-    hier_logger = HierarchicalLogger(default_logger, format_strs)
+    hier_format_strs = [f for f in format_strs if f != "wandb"]
+    hier_logger = HierarchicalLogger(default_logger, hier_format_strs)
     return hier_logger

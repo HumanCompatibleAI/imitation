@@ -9,12 +9,12 @@ source experiments/common.sh
 
 SEEDS=(0 1 2)
 ENVS=(acrobot cartpole mountain_car reacher half_cheetah)
-ENVS=("${ENVS[@]}" hopper ant humanoid swimmer walker)
+ENVS=("${ENVS[@]}" seals_hopper ant seals_humanoid swimmer seals_walker)
 OUTPUT_DIR="output/train_experts/${TIMESTAMP}"
 RESULTS_FILE="results.txt"
 extra_configs=()
 
-if ! TEMP=$($GNU_GETOPT -o fr -l fast,regenerate -- "$@"); then
+if ! TEMP=$($GNU_GETOPT -o frw -l fast,regenerate,wandb -- "$@"); then
   exit 1
 fi
 eval set -- "$TEMP"
@@ -26,6 +26,11 @@ while true; do
       ENVS=(cartpole pendulum)
       SEEDS=(0)
       extra_configs=("${extra_configs[@]}" common.fast rl.fast train.fast fast)
+      shift
+      ;;
+    -w | --wandb)
+      # activate wandb logging by adding 'wandb' format string to common.log_format_strs
+      extra_configs=("${extra_configs[@]}" "common.wandb_logging")
       shift
       ;;
     -r | --regenerate)

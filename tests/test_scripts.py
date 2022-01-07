@@ -97,6 +97,10 @@ PREFERENCE_COMPARISON_CONFIGS = [
         # Needed for the same reason as in the previous config
         "common": dict(num_vec=8),
     },
+    {
+        "checkpoint_interval": 1,
+        # Test that we can save checkpoints
+    },
 ]
 
 ALGO_FAST_CONFIGS = {
@@ -219,6 +223,19 @@ def test_train_rl_main(tmpdir):
     )
     assert run.status == "COMPLETED"
     assert isinstance(run.result, dict)
+
+
+def test_train_rl_wb_logging(tmpdir):
+    """Smoke test for imitation.scripts.common.common.wandb_logging."""
+    with pytest.raises(Exception, match=".*api_key not configured.*"):
+        train_rl.train_rl_ex.run(
+            named_configs=["cartpole"]
+            + ALGO_FAST_CONFIGS["rl"]
+            + ["common.wandb_logging"],
+            config_updates=dict(
+                common=dict(log_root=tmpdir),
+            ),
+        )
 
 
 EVAL_POLICY_CONFIGS = [
