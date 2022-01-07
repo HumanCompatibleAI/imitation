@@ -7,7 +7,7 @@ can be called directly.
 import os
 import pathlib
 import pickle
-from typing import Any, Mapping, Optional
+from typing import Any, Mapping, Optional, Type
 
 import torch as th
 from sacred.observers import FileStorageObserver
@@ -41,6 +41,7 @@ def train_preference_comparisons(
     save_preferences: bool,
     agent_path: Optional[str],
     reward_trainer_kwargs: Mapping[str, Any],
+    gatherer_cls: Type[preference_comparisons.PreferenceGatherer],
     gatherer_kwargs: Mapping[str, Any],
     fragmenter_kwargs: Mapping[str, Any],
     rl: Mapping[str, Any],
@@ -79,7 +80,8 @@ def train_preference_comparisons(
         agent_path: if given, initialize the agent using this stored policy
             rather than randomly.
         reward_trainer_kwargs: passed to CrossEntropyRewardTrainer
-        gatherer_kwargs: passed to SyntheticGatherer
+        gatherer_cls: type of PreferenceGatherer to use (defaults to SyntheticGatherer)
+        gatherer_kwargs: passed to the PreferenceGatherer specified by gatherer_cls
         fragmenter_kwargs: passed to RandomFragmenter
         rl: parameters for RL training, used for restoring agents.
         allow_variable_horizon: If False (default), algorithm will raise an
@@ -204,7 +206,7 @@ def train_preference_comparisons(
         seed=_seed,
         custom_logger=custom_logger,
     )
-    gatherer = preference_comparisons.SyntheticGatherer(
+    gatherer = gatherer_cls(
         **gatherer_kwargs,
         seed=_seed,
         custom_logger=custom_logger,

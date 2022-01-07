@@ -394,12 +394,22 @@ class RandomFragmenter(Fragmenter):
 class PreferenceGatherer(abc.ABC):
     """Base class for gathering preference comparisons between trajectory fragments."""
 
-    def __init__(self, custom_logger: Optional[imit_logger.HierarchicalLogger] = None):
+    def __init__(
+        self,
+        seed: Optional[int] = None,
+        custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
+    ):
         """Initializes the preference gatherer.
 
         Args:
+            seed: seed for the internal RNG, if applicable
             custom_logger: Where to log to; if None (default), creates a new logger.
         """
+        # The random seed isn't used here, but it's useful to have this
+        # as an argument nevertheless because that means we can always
+        # pass in a seed in training scripts (without worrying about whether
+        # the PreferenceGatherer we use needs one).
+        del seed
         self.logger = custom_logger or imit_logger.configure()
 
     @abc.abstractmethod
