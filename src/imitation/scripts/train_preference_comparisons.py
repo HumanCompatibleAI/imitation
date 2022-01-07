@@ -43,6 +43,7 @@ def train_preference_comparisons(
     reward_trainer_kwargs: Mapping[str, Any],
     gatherer_cls: Type[preference_comparisons.PreferenceGatherer],
     gatherer_kwargs: Mapping[str, Any],
+    fragmenter_kwargs: Mapping[str, Any],
     rl: Mapping[str, Any],
     allow_variable_horizon: bool,
 ) -> Mapping[str, Any]:
@@ -81,6 +82,7 @@ def train_preference_comparisons(
         reward_trainer_kwargs: passed to CrossEntropyRewardTrainer
         gatherer_cls: type of PreferenceGatherer to use (defaults to SyntheticGatherer)
         gatherer_kwargs: passed to the PreferenceGatherer specified by gatherer_cls
+        fragmenter_kwargs: passed to RandomFragmenter
         rl: parameters for RL training, used for restoring agents.
         allow_variable_horizon: If False (default), algorithm will raise an
             exception if it detects trajectories of different length during
@@ -200,6 +202,7 @@ def train_preference_comparisons(
         )
 
     fragmenter = preference_comparisons.RandomFragmenter(
+        **fragmenter_kwargs,
         seed=_seed,
         custom_logger=custom_logger,
     )
