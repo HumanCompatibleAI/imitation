@@ -409,6 +409,7 @@ class PreferenceGatherer(abc.ABC):
         # as an argument nevertheless because that means we can always
         # pass in a seed in training scripts (without worrying about whether
         # the PreferenceGatherer we use needs one).
+        del seed
         self.logger = custom_logger or imit_logger.configure()
 
     @abc.abstractmethod
