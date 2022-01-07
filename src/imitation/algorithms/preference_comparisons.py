@@ -931,16 +931,10 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
             ##########################
             # Train the reward model #
             ##########################
-            # Usually, num_pairs is the same as comparisons_per_iteration,
-            # but on the first iteration, we might have additional pairs
-            # (i.e. num_pairs > comparisons_per_iteration). In that case,
-            # we want to train the reward model for correspondingly more
-            # epochs.
-            epoch_multiplier = num_pairs / self.comparisons_per_iteration
 
             with self.logger.accumulate_means("reward"):
                 self.logger.log("Training reward model")
-                self.reward_trainer.train(self.dataset, epoch_multiplier)
+                self.reward_trainer.train(self.dataset)
             reward_loss = self.logger.name_to_value["mean/reward/loss"]
             reward_accuracy = self.logger.name_to_value["mean/reward/accuracy"]
 
