@@ -43,8 +43,8 @@ class GaussianBlur(nn.Module):
     def __init__(self, kernel_hw: int = 5, sigma: float = 1.0, p: float = 0.5):
         super().__init__()
         assert isinstance(kernel_hw, int) and kernel_hw > 0, kernel_hw
-        assert isinstance(sigma, float) and sigma > 0, sigma
-        assert isinstance(p, float) and 0 <= p <= 1, p
+        assert sigma > 0, sigma
+        assert 0 <= p <= 1, p
         # kernel must be of size [1, kernel_hw] for filter2d_separable
         kernel: th.Tensor = get_gaussian_kernel1d(kernel_hw, sigma)[None]
         self.register_buffer('kernel', kernel)
