@@ -23,6 +23,7 @@ from imitation.data.types import (
     TrajectoryWithRewPair,
     Transitions,
 )
+from imitation.policies import exploration_wrapper
 from imitation.rewards import common as rewards_common
 from imitation.rewards import reward_nets, reward_wrapper
 from imitation.util import logger as imit_logger
@@ -110,7 +111,9 @@ class AgentTrainer(TrajectoryGenerator):
         self,
         algorithm: base_class.BaseAlgorithm,
         reward_fn: Union[rewards_common.RewardFn, reward_nets.RewardNet],
-        random_frac: float = 0.0,
+        exploration_frac: float = 0.0,
+        stay_prob: float = 0.5,
+        random_prob: float = 0.5,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
     ):
         """Initialize the agent trainer.
@@ -120,8 +123,12 @@ class AgentTrainer(TrajectoryGenerator):
                 Its environment must be set.
             reward_fn: either a RewardFn or a RewardNet instance that will supply
                 the rewards used for training the agent.
-            random_frac: fraction of the trajectories that will be generated
-                randomly rather than by the agent when sample() is called.
+            exploration_frac: fraction of the trajectories that will be generated
+                partially randomly rather than only by the agent when sampling.
+            stay_prob: the probability of staying with the current policy at each
+                step for the exploratory samples.
+            random_prob: the probability of picking the random policy when switching
+                during exploration.
             custom_logger: Where to log to; if None (default), creates a new logger.
 
         Raises:
@@ -134,7 +141,7 @@ class AgentTrainer(TrajectoryGenerator):
         if isinstance(reward_fn, reward_nets.RewardNet):
             reward_fn = reward_fn.predict
         self.reward_fn = reward_fn
-        self.random_frac = random_frac
+        self.exploration_frac = exploration_frac
 
         venv = self.algorithm.get_env()
         if not isinstance(venv, vec_env.VecEnv):
@@ -149,6 +156,17 @@ class AgentTrainer(TrajectoryGenerator):
             reward_fn,
         )
         self.algorithm.set_env(self.venv)
+        policy = rollout._policy_to_callable(
+            self.algorithm,
+            self.venv,
+            deterministic_policy=True,
+        )
+        self.exploration_wrapper = exploration_wrapper.ExplorationWrapper(
+            policy=policy,
+            venv=self.venv,
+            random_prob=random_prob,
+            stay_prob=stay_prob,
+        )
 
     def train(self, steps: int, **kwargs) -> None:
         """Train the agent using the reward function specified during instantiation.
@@ -180,8 +198,8 @@ class AgentTrainer(TrajectoryGenerator):
         agent_trajs = agent_trajs[::-1]
         avail_steps = sum(len(traj) for traj in agent_trajs)
 
-        random_steps = int(self.random_frac * steps)
-        agent_steps = steps - random_steps
+        exploration_steps = int(self.exploration_frac * steps)
+        agent_steps = steps - exploration_steps
 
         if avail_steps < agent_steps:
             self.logger.log(
@@ -207,26 +225,26 @@ class AgentTrainer(TrajectoryGenerator):
 
         agent_trajs = _get_trajectories(agent_trajs, agent_steps)
 
-        random_trajs = []
-        if random_steps > 0:
-            self.logger.log(f"Sampling {random_steps} random transitions.")
+        exploration_trajs = []
+        if exploration_steps > 0:
+            self.logger.log(f"Sampling {exploration_steps} exploratory transitions.")
             sample_until = rollout.make_sample_until(
-                min_timesteps=random_steps,
+                min_timesteps=exploration_steps,
                 min_episodes=None,
             )
             rollout.generate_trajectories(
-                policy=None,
+                policy=self.exploration_wrapper,
                 venv=self.venv,
                 sample_until=sample_until,
             )
-            random_trajs, _ = self.buffering_wrapper.pop_finished_trajectories()
-            random_trajs = _get_trajectories(random_trajs, random_steps)
+            exploration_trajs, _ = self.buffering_wrapper.pop_finished_trajectories()
+            exploration_trajs = _get_trajectories(exploration_trajs, exploration_steps)
 
-        # We call _get_trajectories separately on agent_trajs and random_trajs
+        # We call _get_trajectories separately on agent_trajs and exploration_trajs
         # and then just concatenate. This could mean we return slightly too many
-        # transitions, but it gets the proportion of random and non-random transitions
+        # transitions, but it gets the proportion of exploratory and agent transitions
         # roughly right.
-        return list(agent_trajs) + list(random_trajs)
+        return list(agent_trajs) + list(exploration_trajs)
 
     @TrajectoryGenerator.logger.setter
     def logger(self, value: imit_logger.HierarchicalLogger):
