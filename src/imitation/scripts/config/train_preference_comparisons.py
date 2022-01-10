@@ -27,8 +27,8 @@ def train_defaults():
     transition_oversampling = 1
     # fraction of total_comparisons that will be sampled right at the beginning
     initial_comparison_frac = 0.1
-    # fraction of sampled trajectories that will use random actions rather than policy
-    random_frac = 0.0
+    # fraction of sampled trajectories that will include some random actions
+    exploration_frac = 0.0
 
     reward_trainer_kwargs = {
         "epochs": 3,
