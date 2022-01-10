@@ -227,6 +227,7 @@ def train_preference_comparisons(
             algorithm=agent,
             reward_fn=reward_net,
             exploration_frac=exploration_frac,
+            seed=_seed,
             custom_logger=custom_logger,
         )
     else:

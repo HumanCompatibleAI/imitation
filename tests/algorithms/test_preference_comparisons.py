@@ -245,3 +245,21 @@ def test_store_and_load_preference_dataset(agent_trainer, fragmenter, tmp_path):
 
         assert preference == loaded_preference
         _check_trajs_equal(fragments, loaded_fragments)
+
+
+def test_exploration_no_crash(agent, reward_net, fragmenter, custom_logger):
+    agent_trainer = preference_comparisons.AgentTrainer(
+        agent,
+        reward_net,
+        exploration_frac=0.5,
+    )
+    main_trainer = preference_comparisons.PreferenceComparisons(
+        agent_trainer,
+        reward_net,
+        transition_oversampling=2,
+        fragment_length=5,
+        comparisons_per_iteration=2,
+        fragmenter=fragmenter,
+        custom_logger=custom_logger,
+    )
+    main_trainer.train(10, 3)

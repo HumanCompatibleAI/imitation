@@ -1,5 +1,7 @@
 """Wrapper to turn a policy into a more exploratory version."""
 
+from typing import Optional
+
 import numpy as np
 from stable_baselines3.common import vec_env
 
@@ -21,6 +23,7 @@ class ExplorationWrapper:
         venv: vec_env.VecEnv,
         random_prob: float,
         stay_prob: float,
+        seed: Optional[int] = None,
     ):
         """Initializes the ExplorationWrapper.
 
@@ -29,11 +32,15 @@ class ExplorationWrapper:
             venv: The environment to use (needed for sampling random actions).
             random_prob: The probability of picking the random policy when switching.
             stay_prob: The probability of staying with the current policy.
+            seed: The random seed to use.
         """
         self.wrapped_policy = policy
         self.random_prob = random_prob
         self.stay_prob = stay_prob
         self.venv = venv
+
+        self.rng = np.random.RandomState(seed)
+        self.venv.action_space.seed(seed)
 
         self.current_policy = policy
         # Choose the initial policy at random
@@ -45,13 +52,13 @@ class ExplorationWrapper:
 
     def _switch(self):
         """Pick a new policy at random."""
-        if np.random.rand() < self.random_prob:
+        if self.rng.rand() < self.random_prob:
             self.current_policy = self._random_policy
         else:
             self.current_policy = self.wrapped_policy
 
     def __call__(self, obs: np.ndarray):
         acts = self.current_policy(obs)
-        if np.random.rand() < self.stay_prob:
+        if self.rng.rand() < self.stay_prob:
             self._switch()
         return acts

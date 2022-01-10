@@ -114,6 +114,7 @@ class AgentTrainer(TrajectoryGenerator):
         exploration_frac: float = 0.0,
         stay_prob: float = 0.5,
         random_prob: float = 0.5,
+        seed: Optional[int] = None,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
     ):
         """Initialize the agent trainer.
@@ -129,6 +130,7 @@ class AgentTrainer(TrajectoryGenerator):
                 step for the exploratory samples.
             random_prob: the probability of picking the random policy when switching
                 during exploration.
+            seed: random seed for exploratory trajectories.
             custom_logger: Where to log to; if None (default), creates a new logger.
 
         Raises:
@@ -166,6 +168,7 @@ class AgentTrainer(TrajectoryGenerator):
             venv=self.venv,
             random_prob=random_prob,
             stay_prob=stay_prob,
+            seed=seed,
         )
 
     def train(self, steps: int, **kwargs) -> None:
