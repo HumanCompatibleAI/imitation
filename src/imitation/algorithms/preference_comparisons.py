@@ -772,6 +772,7 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
         fragment_length: int = 50,
         transition_oversampling: float = 10,
         initial_comparison_frac: float = 0.1,
+        initial_epoch_multiplier: float = 200.0,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
         allow_variable_horizon: bool = False,
         seed: Optional[int] = None,
@@ -812,6 +813,9 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
                 (using a randomly initialized agent). This can be used to pretrain the
                 reward model before the agent is trained on the learned reward, to
                 help avoid irreversibly learning a bad policy from an untrained reward.
+            initial_epoch_multiplier: before agent training begins, train the reward
+                model for this many more epochs than usual (on fragments sampled from a
+                random agent).
             custom_logger: Where to log to; if None (default), creates a new logger.
             allow_variable_horizon: If False (default), algorithm will raise an
                 exception if it detects trajectories of different length during
@@ -862,6 +866,7 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
         self.fragment_length = fragment_length
         self.transition_oversampling = transition_oversampling
         self.initial_comparison_frac = initial_comparison_frac
+        self.initial_epoch_multiplier = initial_epoch_multiplier
 
         self.dataset = PreferenceDataset()
 
@@ -906,11 +911,16 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
             # Gather new preferences #
             ##########################
             num_pairs = self.comparisons_per_iteration
-            # if the number of comparisons per iterations doesn't exactly divide
+            epoch_multiplier = 1.0
+            # If the number of comparisons per iterations doesn't exactly divide
             # the desired total number of comparisons, we collect the remainder
-            # right at the beginning to pretrain the reward model slightly
+            # right at the beginning to pretrain the reward model slightly.
+            # In addition, we collect the comparisons specified via
+            # initial_comparison_frac, and we train the reward model for longer,
+            # as specified by initial_epoch_multiplier.
             if i == 0:
                 num_pairs += extra_comparisons + initial_comparisons
+                epoch_multiplier = self.initial_epoch_multiplier
             num_steps = math.ceil(
                 self.transition_oversampling * 2 * num_pairs * self.fragment_length,
             )
@@ -934,7 +944,10 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
 
             with self.logger.accumulate_means("reward"):
                 self.logger.log("Training reward model")
-                self.reward_trainer.train(self.dataset)
+                self.reward_trainer.train(
+                    self.dataset,
+                    epoch_multiplier=epoch_multiplier,
+                )
             reward_loss = self.logger.name_to_value["mean/reward/loss"]
             reward_accuracy = self.logger.name_to_value["mean/reward/accuracy"]
 
