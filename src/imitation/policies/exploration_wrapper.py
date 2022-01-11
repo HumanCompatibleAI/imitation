@@ -46,18 +46,18 @@ class ExplorationWrapper:
         # Choose the initial policy at random
         self._switch()
 
-    def _random_policy(self, states):
+    def _random_policy(self, states: np.ndarray) -> np.ndarray:
         acts = [self.venv.action_space.sample() for _ in range(len(states))]
         return np.stack(acts, axis=0)
 
-    def _switch(self):
+    def _switch(self) -> None:
         """Pick a new policy at random."""
         if self.rng.rand() < self.random_prob:
             self.current_policy = self._random_policy
         else:
             self.current_policy = self.wrapped_policy
 
-    def __call__(self, obs: np.ndarray):
+    def __call__(self, obs: np.ndarray) -> np.ndarray:
         acts = self.current_policy(obs)
         if self.rng.rand() < self.stay_prob:
             self._switch()
