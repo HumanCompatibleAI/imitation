@@ -12,9 +12,11 @@ class ExplorationWrapper:
     """Wraps a PolicyCallable to create a partially randomized version.
 
     This wrapper randomly switches between two policies: the wrapped policy,
-    and a uniformly random one. After each action, the current policy is kept
+    and a random one. After each action, the current policy is kept
     with a certain probability. Otherwise, one of these two policies is chosen
     at random (without any dependence on what the current policy is).
+
+    The random policy uses the `action_space.sample()` method.
     """
 
     def __init__(
@@ -46,8 +48,8 @@ class ExplorationWrapper:
         # Choose the initial policy at random
         self._switch()
 
-    def _random_policy(self, states: np.ndarray) -> np.ndarray:
-        acts = [self.venv.action_space.sample() for _ in range(len(states))]
+    def _random_policy(self, obs: np.ndarray) -> np.ndarray:
+        acts = [self.venv.action_space.sample() for _ in range(len(obs))]
         return np.stack(acts, axis=0)
 
     def _switch(self) -> None:

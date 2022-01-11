@@ -202,6 +202,11 @@ class AgentTrainer(TrajectoryGenerator):
         avail_steps = sum(len(traj) for traj in agent_trajs)
 
         exploration_steps = int(self.exploration_frac * steps)
+        if self.exploration_frac > 0 and exploration_steps == 0:
+            self.logger.warn(
+                "No exploration steps included: exploration_frac = "
+                f"{self.exploration_frac} > 0 but steps={steps} is too small.",
+            )
         agent_steps = steps - exploration_steps
 
         if avail_steps < agent_steps:
@@ -834,6 +839,10 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
                 (using a randomly initialized agent). This can be used to pretrain the
                 reward model before the agent is trained on the learned reward, to
                 help avoid irreversibly learning a bad policy from an untrained reward.
+                Note that there will often be some additional pretraining comparisons
+                since `comparisons_per_iteration` won't exactly divide the total number
+                of comparisons. How many such comparisons there are depends
+                discontinuously on `total_comparisons` and `comparisons_per_iteration`.
             initial_epoch_multiplier: before agent training begins, train the reward
                 model for this many more epochs than usual (on fragments sampled from a
                 random agent).
@@ -932,16 +941,17 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
             # Gather new preferences #
             ##########################
             num_pairs = self.comparisons_per_iteration
-            epoch_multiplier = 1.0
             # If the number of comparisons per iterations doesn't exactly divide
             # the desired total number of comparisons, we collect the remainder
             # right at the beginning to pretrain the reward model slightly.
+            # WARNING: This means that slightly changing the total number of
+            # comparisons or the number of comparisons per iteration can
+            # significantly change the proportion of pretraining comparisons!
+            #
             # In addition, we collect the comparisons specified via
-            # initial_comparison_frac, and we train the reward model for longer,
-            # as specified by initial_epoch_multiplier.
+            # initial_comparison_frac.
             if i == 0:
                 num_pairs += extra_comparisons + initial_comparisons
-                epoch_multiplier = self.initial_epoch_multiplier
             num_steps = math.ceil(
                 self.transition_oversampling * 2 * num_pairs * self.fragment_length,
             )
@@ -962,6 +972,12 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
             ##########################
             # Train the reward model #
             ##########################
+
+            # On the first iteration, we train the reward model for longer,
+            # as specified by initial_epoch_multiplier.
+            epoch_multiplier = 1.0
+            if i == 0:
+                epoch_multiplier = self.initial_epoch_multiplier
 
             with self.logger.accumulate_means("reward"):
                 self.logger.log("Training reward model")
