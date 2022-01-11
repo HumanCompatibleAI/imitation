@@ -7,7 +7,7 @@ can be called directly.
 import os
 import pathlib
 import pickle
-from typing import Any, Mapping, Optional
+from typing import Any, Mapping, Optional, Type
 
 import torch as th
 from sacred.observers import FileStorageObserver
@@ -69,11 +69,15 @@ def train_preference_comparisons(
     comparisons_per_iteration: int,
     fragment_length: int,
     transition_oversampling: float,
+    initial_comparison_frac: float,
+    exploration_frac: float,
     trajectory_path: Optional[str],
     save_preferences: bool,
     agent_path: Optional[str],
     reward_trainer_kwargs: Mapping[str, Any],
+    gatherer_cls: Type[preference_comparisons.PreferenceGatherer],
     gatherer_kwargs: Mapping[str, Any],
+    fragmenter_kwargs: Mapping[str, Any],
     rl: Mapping[str, Any],
     allow_variable_horizon: bool,
     checkpoint_interval: int,
@@ -96,6 +100,14 @@ def train_preference_comparisons(
             creating fragments. Since fragments are sampled with replacement,
             this is usually chosen > 1 to avoid having the same transition
             in too many fragments.
+        initial_comparison_frac: fraction of total_comparisons that will be
+            sampled before the rest of training begins (using the randomly initialized
+            agent). This can be used to pretrain the reward model before the agent
+            is trained on the learned reward.
+        exploration_frac: fraction of trajectory samples that will be created using
+            partially random actions, rather than the current policy. Might be helpful
+            if the learned policy explores too little and gets stuck with a wrong
+            reward.
         trajectory_path: either None, in which case an agent will be trained
             and used to sample trajectories on the fly, or a path to a pickled
             sequence of TrajectoryWithRew to be trained on
@@ -103,7 +115,9 @@ def train_preference_comparisons(
         agent_path: if given, initialize the agent using this stored policy
             rather than randomly.
         reward_trainer_kwargs: passed to CrossEntropyRewardTrainer
-        gatherer_kwargs: passed to SyntheticGatherer
+        gatherer_cls: type of PreferenceGatherer to use (defaults to SyntheticGatherer)
+        gatherer_kwargs: passed to the PreferenceGatherer specified by gatherer_cls
+        fragmenter_kwargs: passed to RandomFragmenter
         rl: parameters for RL training, used for restoring agents.
         allow_variable_horizon: If False (default), algorithm will raise an
             exception if it detects trajectories of different length during
@@ -212,9 +226,15 @@ def train_preference_comparisons(
         trajectory_generator = preference_comparisons.AgentTrainer(
             algorithm=agent,
             reward_fn=reward_net,
+            exploration_frac=exploration_frac,
+            seed=_seed,
             custom_logger=custom_logger,
         )
     else:
+        if exploration_frac > 0:
+            raise ValueError(
+                "exploration_frac can't be set when a trajectory dataset is used",
+            )
         trajectory_generator = preference_comparisons.TrajectoryDataset(
             path=trajectory_path,
             seed=_seed,
@@ -222,10 +242,11 @@ def train_preference_comparisons(
         )
 
     fragmenter = preference_comparisons.RandomFragmenter(
+        **fragmenter_kwargs,
         seed=_seed,
         custom_logger=custom_logger,
     )
-    gatherer = preference_comparisons.SyntheticGatherer(
+    gatherer = gatherer_cls(
         **gatherer_kwargs,
         seed=_seed,
         custom_logger=custom_logger,
@@ -245,6 +266,7 @@ def train_preference_comparisons(
         comparisons_per_iteration=comparisons_per_iteration,
         fragment_length=fragment_length,
         transition_oversampling=transition_oversampling,
+        initial_comparison_frac=initial_comparison_frac,
         custom_logger=custom_logger,
         allow_variable_horizon=allow_variable_horizon,
         seed=_seed,
