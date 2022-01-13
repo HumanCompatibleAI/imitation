@@ -152,9 +152,9 @@ class AgentTrainer(TrajectoryGenerator):
         # them after training. This should come first (before the wrapper that
         # changes the reward function), so that we return the original environment
         # rewards.
-        self.buffering_wrapped_venv = wrappers.BufferingWrapper(venv)
+        self.buffering_wrapper = wrappers.BufferingWrapper(venv)
         self.venv = reward_wrapper.RewardVecEnvWrapper(
-            self.buffering_wrapped_venv,
+            self.buffering_wrapper,
             self.reward_fn,
         )
         self.log_callback = self.venv.make_log_callback()
@@ -181,10 +181,10 @@ class AgentTrainer(TrajectoryGenerator):
             **kwargs: other keyword arguments to pass to BaseAlgorithm.train()
 
         Raises:
-            RuntimeError: Transitions left in `self.buffering_wrapped_venv`; call
+            RuntimeError: Transitions left in `self.buffering_wrapper`; call
                 `self.sample` first to clear them.
         """
-        n_transitions = self.buffering_wrapped_venv.n_transitions
+        n_transitions = self.buffering_wrapper.n_transitions
         if n_transitions:
             raise RuntimeError(
                 f"There are {n_transitions} transitions left in the buffer. "
@@ -237,7 +237,7 @@ class AgentTrainer(TrajectoryGenerator):
             (
                 additional_trajs,
                 _,
-            ) = self.buffering_wrapped_venv.pop_finished_trajectories()
+            ) = self.buffering_wrapper.pop_finished_trajectories()
 
             agent_trajs = list(agent_trajs) + list(additional_trajs)
 
@@ -697,7 +697,11 @@ class CrossEntropyRewardTrainer(RewardTrainer):
         self.epochs = epochs
         self.discount_factor = discount_factor
         self.threshold = threshold
-        self.optim = th.optim.Adam(self.model.parameters(), lr=lr, weight_decay=weight_decay)
+        self.optim = th.optim.Adam(
+            self.model.parameters(),
+            lr=lr,
+            weight_decay=weight_decay,
+        )
 
     def _loss(
         self,

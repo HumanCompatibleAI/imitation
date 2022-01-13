@@ -226,6 +226,15 @@ def train_preference_comparisons(
         trajectory_generator = preference_comparisons.AgentTrainer(
             algorithm=agent,
             reward_fn=reward_net,
+            exploration_frac=exploration_frac,
+            seed=_seed,
+            custom_logger=custom_logger,
+        )
+    else:
+        if exploration_frac > 0:
+            raise ValueError(
+                "exploration_frac can't be set when a trajectory dataset is used",
+            )
         trajectory_generator = preference_comparisons.TrajectoryDataset(
             path=trajectory_path,
             seed=_seed,
@@ -234,6 +243,7 @@ def train_preference_comparisons(
 
     fragmenter = preference_comparisons.RandomFragmenter(
         **fragmenter_kwargs,
+        seed=_seed,
         custom_logger=custom_logger,
     )
     gatherer = gatherer_cls(
