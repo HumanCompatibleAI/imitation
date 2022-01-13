@@ -23,6 +23,7 @@ from imitation.data.types import (
     TrajectoryWithRewPair,
     Transitions,
 )
+from imitation.policies import exploration_wrapper
 from imitation.rewards import common as rewards_common
 from imitation.rewards import reward_nets, reward_wrapper
 from imitation.util import logger as imit_logger
@@ -110,7 +111,10 @@ class AgentTrainer(TrajectoryGenerator):
         self,
         algorithm: base_class.BaseAlgorithm,
         reward_fn: Union[rewards_common.RewardFn, reward_nets.RewardNet],
-        random_frac: float = 0.0,
+        exploration_frac: float = 0.0,
+        stay_prob: float = 0.5,
+        random_prob: float = 0.5,
+        seed: Optional[int] = None,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
     ):
         """Initialize the agent trainer.
@@ -120,8 +124,13 @@ class AgentTrainer(TrajectoryGenerator):
                 Its environment must be set.
             reward_fn: either a RewardFn or a RewardNet instance that will supply
                 the rewards used for training the agent.
-            random_frac: fraction of the trajectories that will be generated
-                randomly rather than by the agent when sample() is called.
+            exploration_frac: fraction of the trajectories that will be generated
+                partially randomly rather than only by the agent when sampling.
+            stay_prob: the probability of staying with the current policy at each
+                step for the exploratory samples.
+            random_prob: the probability of picking the random policy when switching
+                during exploration.
+            seed: random seed for exploratory trajectories.
             custom_logger: Where to log to; if None (default), creates a new logger.
 
         Raises:
@@ -134,7 +143,7 @@ class AgentTrainer(TrajectoryGenerator):
         if isinstance(reward_fn, reward_nets.RewardNet):
             reward_fn = reward_fn.predict
         self.reward_fn = reward_fn
-        self.random_frac = random_frac
+        self.exploration_frac = exploration_frac
 
         venv = self.algorithm.get_env()
         if not isinstance(venv, vec_env.VecEnv):
@@ -151,6 +160,18 @@ class AgentTrainer(TrajectoryGenerator):
         self.log_callback = self.venv.make_log_callback()
 
         self.algorithm.set_env(self.venv)
+        policy = rollout._policy_to_callable(
+            self.algorithm,
+            self.venv,
+            deterministic_policy=True,
+        )
+        self.exploration_wrapper = exploration_wrapper.ExplorationWrapper(
+            policy=policy,
+            venv=self.venv,
+            random_prob=random_prob,
+            stay_prob=stay_prob,
+            seed=seed,
+        )
 
     def train(self, steps: int, **kwargs) -> None:
         """Train the agent using the reward function specified during instantiation.
@@ -177,7 +198,7 @@ class AgentTrainer(TrajectoryGenerator):
         )
 
     def sample(self, steps: int) -> Sequence[types.TrajectoryWithRew]:
-        agent_trajs, _ = self.buffering_wrapped_venv.pop_finished_trajectories()
+        agent_trajs, _ = self.buffering_wrapper.pop_finished_trajectories()
         # We typically have more trajectories than are needed.
         # In that case, we use the final trajectories because
         # they are the ones with the most relevant version of
@@ -187,8 +208,13 @@ class AgentTrainer(TrajectoryGenerator):
         agent_trajs = agent_trajs[::-1]
         avail_steps = sum(len(traj) for traj in agent_trajs)
 
-        random_steps = int(self.random_frac * steps)
-        agent_steps = steps - random_steps
+        exploration_steps = int(self.exploration_frac * steps)
+        if self.exploration_frac > 0 and exploration_steps == 0:
+            self.logger.warn(
+                "No exploration steps included: exploration_frac = "
+                f"{self.exploration_frac} > 0 but steps={steps} is too small.",
+            )
+        agent_steps = steps - exploration_steps
 
         if avail_steps < agent_steps:
             self.logger.log(
@@ -217,26 +243,26 @@ class AgentTrainer(TrajectoryGenerator):
 
         agent_trajs = _get_trajectories(agent_trajs, agent_steps)
 
-        random_trajs = []
-        if random_steps > 0:
-            self.logger.log(f"Sampling {random_steps} random transitions.")
+        exploration_trajs = []
+        if exploration_steps > 0:
+            self.logger.log(f"Sampling {exploration_steps} exploratory transitions.")
             sample_until = rollout.make_sample_until(
-                min_timesteps=random_steps,
+                min_timesteps=exploration_steps,
                 min_episodes=None,
             )
             rollout.generate_trajectories(
-                policy=None,
+                policy=self.exploration_wrapper,
                 venv=self.venv,
                 sample_until=sample_until,
             )
-            random_trajs, _ = self.buffering_wrapped_venv.pop_finished_trajectories()
-            random_trajs = _get_trajectories(random_trajs, random_steps)
+            exploration_trajs, _ = self.buffering_wrapper.pop_finished_trajectories()
+            exploration_trajs = _get_trajectories(exploration_trajs, exploration_steps)
 
-        # We call _get_trajectories separately on agent_trajs and random_trajs
+        # We call _get_trajectories separately on agent_trajs and exploration_trajs
         # and then just concatenate. This could mean we return slightly too many
-        # transitions, but it gets the proportion of random and non-random transitions
+        # transitions, but it gets the proportion of exploratory and agent transitions
         # roughly right.
-        return list(agent_trajs) + list(random_trajs)
+        return list(agent_trajs) + list(exploration_trajs)
 
     @TrajectoryGenerator.logger.setter
     def logger(self, value: imit_logger.HierarchicalLogger):
@@ -404,12 +430,22 @@ class RandomFragmenter(Fragmenter):
 class PreferenceGatherer(abc.ABC):
     """Base class for gathering preference comparisons between trajectory fragments."""
 
-    def __init__(self, custom_logger: Optional[imit_logger.HierarchicalLogger] = None):
+    def __init__(
+        self,
+        seed: Optional[int] = None,
+        custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
+    ):
         """Initializes the preference gatherer.
 
         Args:
+            seed: seed for the internal RNG, if applicable
             custom_logger: Where to log to; if None (default), creates a new logger.
         """
+        # The random seed isn't used here, but it's useful to have this
+        # as an argument nevertheless because that means we can always
+        # pass in a seed in training scripts (without worrying about whether
+        # the PreferenceGatherer we use needs one).
+        del seed
         self.logger = custom_logger or imit_logger.configure()
 
     @abc.abstractmethod
@@ -775,6 +811,7 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
         fragment_length: int = 50,
         transition_oversampling: float = 10,
         initial_comparison_frac: float = 0.1,
+        initial_epoch_multiplier: float = 200.0,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
         allow_variable_horizon: bool = False,
         seed: Optional[int] = None,
@@ -815,6 +852,13 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
                 (using a randomly initialized agent). This can be used to pretrain the
                 reward model before the agent is trained on the learned reward, to
                 help avoid irreversibly learning a bad policy from an untrained reward.
+                Note that there will often be some additional pretraining comparisons
+                since `comparisons_per_iteration` won't exactly divide the total number
+                of comparisons. How many such comparisons there are depends
+                discontinuously on `total_comparisons` and `comparisons_per_iteration`.
+            initial_epoch_multiplier: before agent training begins, train the reward
+                model for this many more epochs than usual (on fragments sampled from a
+                random agent).
             custom_logger: Where to log to; if None (default), creates a new logger.
             allow_variable_horizon: If False (default), algorithm will raise an
                 exception if it detects trajectories of different length during
@@ -865,6 +909,7 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
         self.fragment_length = fragment_length
         self.transition_oversampling = transition_oversampling
         self.initial_comparison_frac = initial_comparison_frac
+        self.initial_epoch_multiplier = initial_epoch_multiplier
 
         self.dataset = PreferenceDataset()
 
@@ -909,9 +954,15 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
             # Gather new preferences #
             ##########################
             num_pairs = self.comparisons_per_iteration
-            # if the number of comparisons per iterations doesn't exactly divide
+            # If the number of comparisons per iterations doesn't exactly divide
             # the desired total number of comparisons, we collect the remainder
-            # right at the beginning to pretrain the reward model slightly
+            # right at the beginning to pretrain the reward model slightly.
+            # WARNING: This means that slightly changing the total number of
+            # comparisons or the number of comparisons per iteration can
+            # significantly change the proportion of pretraining comparisons!
+            #
+            # In addition, we collect the comparisons specified via
+            # initial_comparison_frac.
             if i == 0:
                 num_pairs += extra_comparisons + initial_comparisons
             num_steps = math.ceil(
@@ -934,16 +985,19 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
             ##########################
             # Train the reward model #
             ##########################
-            # Usually, num_pairs is the same as comparisons_per_iteration,
-            # but on the first iteration, we might have additional pairs
-            # (i.e. num_pairs > comparisons_per_iteration). In that case,
-            # we want to train the reward model for correspondingly more
-            # epochs.
-            epoch_multiplier = num_pairs / self.comparisons_per_iteration
+
+            # On the first iteration, we train the reward model for longer,
+            # as specified by initial_epoch_multiplier.
+            epoch_multiplier = 1.0
+            if i == 0:
+                epoch_multiplier = self.initial_epoch_multiplier
 
             with self.logger.accumulate_means("reward"):
                 self.logger.log("Training reward model")
-                self.reward_trainer.train(self.dataset, epoch_multiplier)
+                self.reward_trainer.train(
+                    self.dataset,
+                    epoch_multiplier=epoch_multiplier,
+                )
             reward_loss = self.logger.name_to_value["mean/reward/loss"]
             reward_accuracy = self.logger.name_to_value["mean/reward/accuracy"]
 

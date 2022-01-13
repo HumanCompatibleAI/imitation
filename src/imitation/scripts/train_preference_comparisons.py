@@ -7,7 +7,7 @@ can be called directly.
 import os
 import pathlib
 import pickle
-from typing import Any, Mapping, Optional
+from typing import Any, Mapping, Optional, Type
 
 import torch as th
 from sacred.observers import FileStorageObserver
@@ -70,11 +70,12 @@ def train_preference_comparisons(
     fragment_length: int,
     transition_oversampling: float,
     initial_comparison_frac: float,
-    random_frac: float,
+    exploration_frac: float,
     trajectory_path: Optional[str],
     save_preferences: bool,
     agent_path: Optional[str],
     reward_trainer_kwargs: Mapping[str, Any],
+    gatherer_cls: Type[preference_comparisons.PreferenceGatherer],
     gatherer_kwargs: Mapping[str, Any],
     fragmenter_kwargs: Mapping[str, Any],
     rl: Mapping[str, Any],
@@ -103,8 +104,8 @@ def train_preference_comparisons(
             sampled before the rest of training begins (using the randomly initialized
             agent). This can be used to pretrain the reward model before the agent
             is trained on the learned reward.
-        random_frac: fraction of trajectory samples that will be created using
-            random actions, rather than the current trained policy. Might be helpful
+        exploration_frac: fraction of trajectory samples that will be created using
+            partially random actions, rather than the current policy. Might be helpful
             if the learned policy explores too little and gets stuck with a wrong
             reward.
         trajectory_path: either None, in which case an agent will be trained
@@ -114,7 +115,8 @@ def train_preference_comparisons(
         agent_path: if given, initialize the agent using this stored policy
             rather than randomly.
         reward_trainer_kwargs: passed to CrossEntropyRewardTrainer
-        gatherer_kwargs: passed to SyntheticGatherer
+        gatherer_cls: type of PreferenceGatherer to use (defaults to SyntheticGatherer)
+        gatherer_kwargs: passed to the PreferenceGatherer specified by gatherer_cls
         fragmenter_kwargs: passed to RandomFragmenter
         rl: parameters for RL training, used for restoring agents.
         allow_variable_horizon: If False (default), algorithm will raise an
@@ -224,14 +226,6 @@ def train_preference_comparisons(
         trajectory_generator = preference_comparisons.AgentTrainer(
             algorithm=agent,
             reward_fn=reward_net,
-            random_frac=random_frac,
-            custom_logger=custom_logger,
-        )
-    else:
-        if random_frac > 0:
-            raise ValueError(
-                "random_frac can't be set when a trajectory dataset is used",
-            )
         trajectory_generator = preference_comparisons.TrajectoryDataset(
             path=trajectory_path,
             seed=_seed,
@@ -240,10 +234,9 @@ def train_preference_comparisons(
 
     fragmenter = preference_comparisons.RandomFragmenter(
         **fragmenter_kwargs,
-        seed=_seed,
         custom_logger=custom_logger,
     )
-    gatherer = preference_comparisons.SyntheticGatherer(
+    gatherer = gatherer_cls(
         **gatherer_kwargs,
         seed=_seed,
         custom_logger=custom_logger,
