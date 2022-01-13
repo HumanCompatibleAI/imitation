@@ -234,11 +234,7 @@ class AgentTrainer(TrajectoryGenerator):
                 self.venv,
                 sample_until=sample_until,
             )
-            (
-                additional_trajs,
-                _,
-            ) = self.buffering_wrapper.pop_finished_trajectories()
-
+            additional_trajs, _ = self.buffering_wrapper.pop_finished_trajectories()
             agent_trajs = list(agent_trajs) + list(additional_trajs)
 
         agent_trajs = _get_trajectories(agent_trajs, agent_steps)
