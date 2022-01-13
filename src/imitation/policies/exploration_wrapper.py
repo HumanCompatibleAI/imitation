@@ -24,7 +24,7 @@ class ExplorationWrapper:
         policy: rollout.PolicyCallable,
         venv: vec_env.VecEnv,
         random_prob: float,
-        stay_prob: float,
+        switch_prob: float,
         seed: Optional[int] = None,
     ):
         """Initializes the ExplorationWrapper.
@@ -33,12 +33,12 @@ class ExplorationWrapper:
             policy: The policy to randomize.
             venv: The environment to use (needed for sampling random actions).
             random_prob: The probability of picking the random policy when switching.
-            stay_prob: The probability of staying with the current policy.
+            switch_prob: The probability of switching the current policy.
             seed: The random seed to use.
         """
         self.wrapped_policy = policy
         self.random_prob = random_prob
-        self.stay_prob = stay_prob
+        self.switch_prob = switch_prob
         self.venv = venv
 
         self.rng = np.random.RandomState(seed)
@@ -61,6 +61,6 @@ class ExplorationWrapper:
 
     def __call__(self, obs: np.ndarray) -> np.ndarray:
         acts = self.current_policy(obs)
-        if self.rng.rand() < self.stay_prob:
+        if self.rng.rand() < self.switch_prob:
             self._switch()
         return acts

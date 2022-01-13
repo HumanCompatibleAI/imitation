@@ -71,6 +71,7 @@ def train_preference_comparisons(
     transition_oversampling: float,
     initial_comparison_frac: float,
     exploration_frac: float,
+    random_prob: float,
     trajectory_path: Optional[str],
     save_preferences: bool,
     agent_path: Optional[str],
@@ -227,6 +228,7 @@ def train_preference_comparisons(
             algorithm=agent,
             reward_fn=reward_net,
             exploration_frac=exploration_frac,
+            random_prob=random_prob,
             seed=_seed,
             custom_logger=custom_logger,
         )

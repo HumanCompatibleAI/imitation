@@ -112,7 +112,7 @@ class AgentTrainer(TrajectoryGenerator):
         algorithm: base_class.BaseAlgorithm,
         reward_fn: Union[rewards_common.RewardFn, reward_nets.RewardNet],
         exploration_frac: float = 0.0,
-        stay_prob: float = 0.5,
+        switch_prob: float = 1.0,
         random_prob: float = 0.5,
         seed: Optional[int] = None,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
@@ -126,7 +126,7 @@ class AgentTrainer(TrajectoryGenerator):
                 the rewards used for training the agent.
             exploration_frac: fraction of the trajectories that will be generated
                 partially randomly rather than only by the agent when sampling.
-            stay_prob: the probability of staying with the current policy at each
+            switch_prob: the probability of switching the current policy at each
                 step for the exploratory samples.
             random_prob: the probability of picking the random policy when switching
                 during exploration.
@@ -169,7 +169,7 @@ class AgentTrainer(TrajectoryGenerator):
             policy=policy,
             venv=self.venv,
             random_prob=random_prob,
-            stay_prob=stay_prob,
+            switch_prob=switch_prob,
             seed=seed,
         )
 
