@@ -1,10 +1,11 @@
 """Common configuration elements for training imitation algorithms."""
 
 import logging
-from typing import Mapping, Union
+from typing import Any, Mapping, Union
 
 import sacred
 from stable_baselines3.common import base_class, policies, vec_env
+from torch import nn
 
 from imitation.data import rollout
 from imitation.policies import base
@@ -28,6 +29,17 @@ def config():
 @train_ingredient.named_config
 def fast():
     n_episodes_eval = 1
+    locals()  # quieten flake8
+
+
+@train_ingredient.named_config
+def normalize_batchnorm():
+    policy_kwargs = {
+        "features_extractor_class": base.NormalizeFeaturesExtractor,
+        "features_extractor_kwargs": {
+            "normalize_class": nn.BatchNorm1d,
+        },
+    }
     locals()  # quieten flake8
 
 
@@ -59,3 +71,8 @@ def eval_policy(
         sample_until=sample_until_eval,
     )
     return rollout.rollout_stats(trajs)
+
+
+@train_ingredient.capture
+def suppress_sacred_error(policy_kwargs: Mapping[str, Any]):
+    """No-op so Sacred recognizes `policy_kwargs` is used (in `rl` and elsewhere)."""
