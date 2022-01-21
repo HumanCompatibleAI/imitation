@@ -69,13 +69,80 @@ class FeedForward32Policy(policies.ActorCriticPolicy):
         super().__init__(*args, **kwargs, net_arch=[32, 32])
 
 
+class RunningNorm(nn.Module):
+    """Normalizes input to mean zero and standard deviation 1 using a running average.
+
+    Similar to BatchNorm, LayerNorm, etc but whereas they at training time only
+    use statistics from the current batch, we use statistics from all previous
+    training batches with exponential decay.
+
+    This should closely replicate the common practice in RL of normalizing environment
+    observations, such as using `VecNormalize` in Stable Baselines.
+    """
+
+    def __init__(self, num_features: int, eps: float = 1e-5):
+        """Builds RunningNorm.
+
+        Args:
+            num_features: Number of features; the length of the non-batch dimension.
+            eps: Small constant for numerical stability. Inputs are rescaled by
+                `1 / sqrt(estimated_variance + eps)`.
+        """
+        super().__init__()
+        self.eps = eps
+        self.register_buffer("running_mean", th.empty(num_features))
+        self.register_buffer("running_var", th.empty(num_features))
+        self.register_buffer("count", th.empty((), dtype=th.int))
+        self.running_mean: th.Tensor
+        self.running_var: th.Tensor
+        self.count: th.Tensor
+        self.reset_running_stats()
+
+    def reset_running_stats(self) -> None:
+        """Resets running stats to defaults, yielding the identity transformation."""
+        self.running_mean.zero_()
+        self.running_var.fill_(1)
+        self.count.zero_()
+
+    def update_stats(self, batch: th.Tensor) -> th.Tensor:
+        """Update `self.running_mean`, `self.running_var` and `self.count`.
+
+        Uses Chan et al (1979), "Updating Formulae and a Pairwise Algorithm for
+        Computing Sample Variances." to update the running moments in a numerically
+        stable fashion.
+
+        Args:
+            batch: A batch of data to use to update the running mean and variance.
+        """
+        batch_mean = th.mean(batch, dim=0)
+        batch_var = th.var(batch, dim=0, unbiased=False)
+        batch_count = batch.shape[0]
+
+        delta = batch_mean - self.running_mean
+        tot_count = self.count + batch_count
+        self.running_mean += delta * batch_count / tot_count
+
+        self.running_var *= self.count
+        self.running_var += batch_var * batch_count
+        self.running_var += th.square(delta) * self.count * batch_count / tot_count
+        self.running_var /= tot_count
+
+        self.count += batch_count
+
+    def forward(self, x: th.Tensor) -> th.Tensor:
+        if self.training:
+            self.update_stats(x)
+
+        return (x - self.running_mean) / th.sqrt(self.running_var + self.eps)
+
+
 class NormalizeFeaturesExtractor(torch_layers.FlattenExtractor):
     """Feature extractor that flattens then normalizes input."""
 
     def __init__(
         self,
         observation_space: gym.Space,
-        normalize_class: Type[nn.Module] = nn.BatchNorm1d,
+        normalize_class: Type[nn.Module] = RunningNorm,
     ):
         """Builds NormalizeFeaturesExtractor.
 

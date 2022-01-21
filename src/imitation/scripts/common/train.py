@@ -43,6 +43,17 @@ def normalize_batchnorm():
     locals()  # quieten flake8
 
 
+@train_ingredient.named_config
+def normalize_running():
+    policy_kwargs = {
+        "features_extractor_class": base.NormalizeFeaturesExtractor,
+        "features_extractor_kwargs": {
+            "normalize_class": base.RunningNorm,
+        },
+    }
+    locals()  # quieten flake8
+
+
 @train_ingredient.capture
 def eval_policy(
     rl_algo: Union[base_class.BaseAlgorithm, policies.BasePolicy],
