@@ -434,6 +434,8 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
         for r in tqdm.tqdm(range(0, n_rounds), desc="round"):
             self.train_gen(self.gen_train_timesteps)
             for _ in range(self.n_disc_updates_per_round):
+                # switch to training mode (affects dropout, normalization)
+                self.reward_train.train()
                 self.train_disc()
             if callback:
                 callback(r)

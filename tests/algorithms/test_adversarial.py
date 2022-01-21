@@ -15,6 +15,7 @@ from torch.utils import data as th_data
 
 from imitation.algorithms.adversarial import airl, common, gail
 from imitation.data import rollout, types
+from imitation.rewards import reward_nets
 from imitation.util import logger, util
 
 ALGORITHM_KWARGS = {
@@ -111,6 +112,10 @@ def test_airl_fail_fast(custom_logger, tmpdir):
 
     gen_algo = stable_baselines3.DQN(stable_baselines3.dqn.MlpPolicy, venv)
     small_data = rollout.generate_transitions(gen_algo, venv, n_timesteps=20)
+    reward_net = reward_nets.BasicRewardNet(
+        observation_space=venv.observation_space,
+        action_space=venv.action_space,
+    )
 
     with pytest.raises(TypeError, match="AIRL needs a stochastic policy.*"):
         airl.AIRL(
@@ -118,6 +123,7 @@ def test_airl_fail_fast(custom_logger, tmpdir):
             demonstrations=small_data,
             demo_batch_size=20,
             gen_algo=gen_algo,
+            reward_net=reward_net,
             log_dir=tmpdir,
             custom_logger=custom_logger,
         )

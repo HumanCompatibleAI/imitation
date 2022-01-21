@@ -1,7 +1,5 @@
 """Adversarial Inverse Reinforcement Learning (AIRL)."""
 
-from typing import Optional
-
 import torch as th
 from stable_baselines3.common import base_class, vec_env
 
@@ -23,7 +21,7 @@ class AIRL(common.AdversarialTrainer):
         demo_batch_size: int,
         venv: vec_env.VecEnv,
         gen_algo: base_class.BaseAlgorithm,
-        reward_net: Optional[reward_nets.RewardNet] = None,
+        reward_net: reward_nets.RewardNet,
         **kwargs,
     ):
         """Builds an AIRL trainer.
@@ -49,11 +47,6 @@ class AIRL(common.AdversarialTrainer):
                 attribute (present in `ActorCriticPolicy`), needed to compute
                 log-probability of actions.
         """
-        if reward_net is None:
-            reward_net = reward_nets.BasicShapedRewardNet(
-                observation_space=venv.observation_space,
-                action_space=venv.action_space,
-            )
         self._reward_net = reward_net
         super().__init__(
             demonstrations=demonstrations,

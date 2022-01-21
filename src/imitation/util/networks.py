@@ -3,6 +3,7 @@
 import collections
 from typing import Iterable, Optional, Type
 
+import torch as th
 from torch import nn
 
 
@@ -16,14 +17,82 @@ class SqueezeLayer(nn.Module):
         return new_value
 
 
+class RunningNorm(nn.Module):
+    """Normalizes input to mean zero and standard deviation 1 using a running average.
+
+    Similar to BatchNorm, LayerNorm, etc but whereas they at training time only
+    use statistics from the current batch, we use statistics from all previous
+    training batches with exponential decay.
+
+    This should closely replicate the common practice in RL of normalizing environment
+    observations, such as using `VecNormalize` in Stable Baselines.
+    """
+
+    def __init__(self, num_features: int, eps: float = 1e-5):
+        """Builds RunningNorm.
+
+        Args:
+            num_features: Number of features; the length of the non-batch dimension.
+            eps: Small constant for numerical stability. Inputs are rescaled by
+                `1 / sqrt(estimated_variance + eps)`.
+        """
+        super().__init__()
+        self.eps = eps
+        self.register_buffer("running_mean", th.empty(num_features))
+        self.register_buffer("running_var", th.empty(num_features))
+        self.register_buffer("count", th.empty((), dtype=th.int))
+        self.running_mean: th.Tensor
+        self.running_var: th.Tensor
+        self.count: th.Tensor
+        self.reset_running_stats()
+
+    def reset_running_stats(self) -> None:
+        """Resets running stats to defaults, yielding the identity transformation."""
+        self.running_mean.zero_()
+        self.running_var.fill_(1)
+        self.count.zero_()
+
+    def update_stats(self, batch: th.Tensor) -> th.Tensor:
+        """Update `self.running_mean`, `self.running_var` and `self.count`.
+
+        Uses Chan et al (1979), "Updating Formulae and a Pairwise Algorithm for
+        Computing Sample Variances." to update the running moments in a numerically
+        stable fashion.
+
+        Args:
+            batch: A batch of data to use to update the running mean and variance.
+        """
+        batch_mean = th.mean(batch, dim=0)
+        batch_var = th.var(batch, dim=0, unbiased=False)
+        batch_count = batch.shape[0]
+
+        delta = batch_mean - self.running_mean
+        tot_count = self.count + batch_count
+        self.running_mean += delta * batch_count / tot_count
+
+        self.running_var *= self.count
+        self.running_var += batch_var * batch_count
+        self.running_var += th.square(delta) * self.count * batch_count / tot_count
+        self.running_var /= tot_count
+
+        self.count += batch_count
+
+    def forward(self, x: th.Tensor) -> th.Tensor:
+        if self.training:
+            self.update_stats(x)
+
+        return (x - self.running_mean) / th.sqrt(self.running_var + self.eps)
+
+
 def build_mlp(
     in_size: int,
     hid_sizes: Iterable[int],
     out_size: int = 1,
     name: Optional[str] = None,
     activation: Type[nn.Module] = nn.ReLU,
-    squeeze_output=False,
-    flatten_input=False,
+    squeeze_output: bool = False,
+    flatten_input: bool = False,
+    normalize_layer: Optional[Type[nn.Module]] = None,
 ) -> nn.Module:
     """Constructs a Torch MLP.
 
@@ -39,6 +108,8 @@ def build_mlp(
             output is of size (B,) instead of (B,1).
         flatten_input: should input be flattened along axes 1, 2, 3, …? Useful
             if you want to, e.g., process small images inputs with an MLP.
+        normalize_layer: if specified, module to use to normalize inputs;
+            e.g. `nn.BatchNorm` or `RunningNorm`.
 
     Returns:
         nn.Module: an MLP mapping from inputs of size (batch_size, in_size) to
@@ -57,6 +128,9 @@ def build_mlp(
 
     if flatten_input:
         layers[f"{prefix}flatten"] = nn.Flatten()
+
+    if normalize_layer:
+        layers[f"{prefix}normalize"] = normalize_layer(in_size)
 
     # Hidden layers
     prev_size = in_size

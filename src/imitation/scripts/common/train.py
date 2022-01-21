@@ -7,6 +7,7 @@ import sacred
 from stable_baselines3.common import base_class, policies, vec_env
 from torch import nn
 
+import imitation.util.networks
 from imitation.data import rollout
 from imitation.policies import base
 
@@ -48,7 +49,7 @@ def normalize_running():
     policy_kwargs = {
         "features_extractor_class": base.NormalizeFeaturesExtractor,
         "features_extractor_kwargs": {
-            "normalize_class": base.RunningNorm,
+            "normalize_class": imitation.util.networks.RunningNorm,
         },
     }
     locals()  # quieten flake8

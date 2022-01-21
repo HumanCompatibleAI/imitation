@@ -13,7 +13,7 @@ from torch import nn
 
 from imitation.data import rollout
 from imitation.policies import base, serialize
-from imitation.util import registry, util
+from imitation.util import networks, registry, util
 
 SIMPLE_ENVS = [
     "CartPole-v0",  # Discrete(2) action space
@@ -116,7 +116,7 @@ def test_running_norm_identity() -> None:
     Specifically, we test in evaluation mode (initializatn should not change)
     and in training mode with already normalized data.
     """
-    running_norm = base.RunningNorm(1, eps=0.0)
+    running_norm = networks.RunningNorm(1, eps=0.0)
     x = th.Tensor([-1.0, 0.0, 7.32, 42.0])
     running_norm.eval()  # stats should not change in eval mode
     for i in range(10):
@@ -133,7 +133,7 @@ def test_running_norm_eval_fixed(
     num_features: int = 4,
 ) -> None:
     """Tests that stats do not change when in eval mode and do when in training."""
-    running_norm = base.RunningNorm(num_features)
+    running_norm = networks.RunningNorm(num_features)
 
     def do_forward(shift: float = 0.0, scale: float = 1.0):
         for i in range(num_batches):
@@ -166,7 +166,7 @@ def test_running_norm_matches_dist(batch_size: int) -> None:
     sd = th.sqrt(var)
 
     num_dims = len(mean)
-    running_norm = base.RunningNorm(num_dims)
+    running_norm = networks.RunningNorm(num_dims)
     running_norm.train()
 
     num_samples = 256

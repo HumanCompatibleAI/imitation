@@ -251,7 +251,7 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
         self,
         demonstrations: Optional[MCEDemonstrations],
         env: resettable_env.TabularModelEnv,
-        reward_net: Optional[reward_nets.RewardNet] = None,
+        reward_net: reward_nets.RewardNet,
         optimizer_cls: Type[th.optim.Optimizer] = th.optim.Adam,
         optimizer_kwargs: Optional[Mapping[str, Any]] = None,
         discount: float = 1,
@@ -299,15 +299,6 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
             custom_logger=custom_logger,
         )
 
-        if reward_net is None:
-            reward_net = reward_nets.BasicRewardNet(
-                self.env.pomdp_observation_space,
-                self.env.action_space,
-                use_action=False,
-                use_next_state=False,
-                use_done=False,
-                hid_sizes=[],
-            )
         self.reward_net = reward_net
         optimizer_kwargs = optimizer_kwargs or {"lr": 1e-2}
         self.optimizer = optimizer_cls(reward_net.parameters(), **optimizer_kwargs)
@@ -384,6 +375,9 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
             State occupancy measure for the final reward function. `self.reward_net`
             and `self.optimizer` will be updated in-place during optimisation.
         """
+        # switch to training mode (affects dropout, normalization)
+        self.reward_net.train()
+
         # use the same device and dtype as the rmodel parameters
         obs_mat = self.env.observation_matrix
         dtype = self.reward_net.dtype

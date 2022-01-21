@@ -50,7 +50,7 @@ class GAIL(common.AdversarialTrainer):
         demo_batch_size: int,
         venv: vec_env.VecEnv,
         gen_algo: base_class.BaseAlgorithm,
-        reward_net: Optional[nn.Module] = None,
+        reward_net: nn.Module,
         **kwargs,
     ):
         """Generative Adversarial Imitation Learning.
@@ -71,11 +71,6 @@ class GAIL(common.AdversarialTrainer):
                 tensor as input, then computes the logits for GAIL.
             **kwargs: Passed through to `AdversarialTrainer.__init__`.
         """
-        if reward_net is None:
-            reward_net = reward_nets.BasicRewardNet(
-                observation_space=venv.observation_space,
-                action_space=venv.action_space,
-            )
         self._discriminator = reward_net.to(gen_algo.device)
         self._reward_net = LogSigmoidRewardNet(self._discriminator)
         super().__init__(

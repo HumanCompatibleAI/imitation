@@ -638,6 +638,7 @@ class RewardTrainer(abc.ABC):
             epoch_multiplier: how much longer to train for than usual
                 (measured relatively).
         """
+        self.model.train()  # switch to training mode (affects dropout, normalization)
 
 
 class CrossEntropyRewardTrainer(RewardTrainer):
@@ -768,6 +769,7 @@ class CrossEntropyRewardTrainer(RewardTrainer):
         # the optimization procedure a bit more cleanly so that different versions
         # can be combined
 
+        super().train(dataset, epoch_multiplier)
         dataloader = th.utils.data.DataLoader(
             dataset,
             batch_size=self.batch_size,
