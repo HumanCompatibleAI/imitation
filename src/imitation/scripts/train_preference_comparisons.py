@@ -26,20 +26,17 @@ from imitation.scripts.config.train_preference_comparisons import (
 
 def save_model(
     agent_trainer: preference_comparisons.AgentTrainer,
-    vec_normalize: Optional[vec_env.VecNormalize],
     save_path: str,
 ):
     """Save the model as model.pkl."""
     serialize.save_stable_model(
         output_dir=os.path.join(save_path, "policy"),
         model=agent_trainer.algorithm,
-        vec_normalize=vec_normalize,
     )
 
 
 def save_checkpoint(
     trainer: preference_comparisons.PreferenceComparisons,
-    vec_normalize: Optional[vec_env.VecNormalize],
     save_path: str,
     allow_save_policy: Optional[bool],
 ):
@@ -51,7 +48,7 @@ def save_checkpoint(
         # contains one. Specifically we check if the `trajectory_generator` contains an
         # `algorithm` attribute.
         assert hasattr(trainer.trajectory_generator, "algorithm")
-        save_model(trainer.trajectory_generator, vec_normalize, save_path)
+        save_model(trainer.trajectory_generator, save_path)
     else:
         trainer.logger.warn(
             "trainer.trajectory_generator doesn't contain a policy to save.",
@@ -276,7 +273,6 @@ def train_preference_comparisons(
         if checkpoint_interval > 0 and iteration_num % checkpoint_interval == 0:
             save_checkpoint(
                 trainer=main_trainer,
-                vec_normalize=vec_normalize,
                 save_path=os.path.join(log_dir, "checkpoints", f"{iteration_num:04d}"),
                 allow_save_policy=bool(trajectory_path is None),
             )
@@ -294,7 +290,6 @@ def train_preference_comparisons(
     if checkpoint_interval >= 0:
         save_checkpoint(
             trainer=main_trainer,
-            vec_normalize=vec_normalize,
             save_path=os.path.join(log_dir, "checkpoints", "final"),
             allow_save_policy=bool(trajectory_path is None),
         )

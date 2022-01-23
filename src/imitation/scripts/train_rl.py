@@ -32,7 +32,7 @@ def train_rl(
     _run: sacred.run.Run,
     _seed: int,
     total_timesteps: int,
-    normalize: bool,
+    normalize_reward: bool,
     normalize_kwargs: dict,
     reward_type: Optional[str],
     reward_path: Optional[str],
@@ -53,7 +53,7 @@ def train_rl(
 
     Args:
         total_timesteps: Number of training timesteps in `model.learn()`.
-        normalize: If True, then rescale observations and reward.
+        normalize_reward: If True, then rescale and clip reward.
         normalize_kwargs: kwargs for `VecNormalize`.
         reward_type: If provided, then load the serialized reward of this type,
             wrapping the environment in this reward. This is useful to test
@@ -98,12 +98,14 @@ def train_rl(
         callback_objs.append(venv.make_log_callback())
         logging.info(f"Wrapped env in reward {reward_type} from {reward_path}.")
 
-    vec_normalize = None
-    if normalize:
-        venv = vec_normalize = VecNormalize(venv, **normalize_kwargs)
+    if normalize_reward:
+        # Normalize reward. Reward scale effectively changes the learning rate,
+        # so normalizing it makes training more stable. Note we do *not* normalize
+        # observations here; use the `NormalizeFeaturesExtractor` instead.
+        venv = VecNormalize(venv, norm_obs=False, **normalize_kwargs)
 
     if policy_save_interval > 0:
-        save_policy_callback = serialize.SavePolicyCallback(policy_dir, vec_normalize)
+        save_policy_callback = serialize.SavePolicyCallback(policy_dir)
         save_policy_callback = callbacks.EveryNTimesteps(
             policy_save_interval,
             save_policy_callback,
@@ -125,7 +127,7 @@ def train_rl(
         rollout.rollout_and_save(save_path, rl_algo, venv, sample_until)
     if policy_save_final:
         output_dir = os.path.join(policy_dir, "final")
-        serialize.save_stable_model(output_dir, rl_algo, vec_normalize)
+        serialize.save_stable_model(output_dir, rl_algo)
 
     # Final evaluation of expert policy.
     return train.eval_policy(rl_algo, venv)
