@@ -1,6 +1,7 @@
 """Constructs deep network reward models."""
 
 import abc
+import contextlib
 from typing import Callable, Iterable, Sequence, Tuple
 
 import gym
@@ -10,6 +11,19 @@ from stable_baselines3.common import preprocessing
 from torch import nn
 
 from imitation.util import networks
+
+
+@contextlib.contextmanager
+def evaluating(m: nn.Module):
+    """Temporarily switch to evaluation mode."""
+    # Modified from Christoph Heindl
+    # https://discuss.pytorch.org/t/opinion-eval-should-be-a-context-manager/18998/3
+    is_train = m.training
+    try:
+        m.eval()
+        yield m
+    finally:
+        m.train(is_train)
 
 
 class RewardNet(nn.Module, abc.ABC):
@@ -126,20 +140,21 @@ class RewardNet(nn.Module, abc.ABC):
         Returns:
             Computed rewards of shape `(batch_size,`).
         """
-        self.eval()  # switch to eval mode (affecting normalization, dropout, etc)
+        with evaluating(self):
+            # switch to eval mode (affecting normalization, dropout, etc)
 
-        state_th, action_th, next_state_th, done_th = self.preprocess(
-            state,
-            action,
-            next_state,
-            done,
-        )
-        with th.no_grad():
-            rew_th = self(state_th, action_th, next_state_th, done_th)
+            state_th, action_th, next_state_th, done_th = self.preprocess(
+                state,
+                action,
+                next_state,
+                done,
+            )
+            with th.no_grad():
+                rew_th = self(state_th, action_th, next_state_th, done_th)
 
-        rew = rew_th.detach().cpu().numpy().flatten()
-        assert rew.shape == state.shape[:1]
-        return rew
+            rew = rew_th.detach().cpu().numpy().flatten()
+            assert rew.shape == state.shape[:1]
+            return rew
 
     @property
     def device(self) -> th.device:
