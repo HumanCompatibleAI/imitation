@@ -4,7 +4,7 @@ import logging
 from typing import Any, Mapping, Union
 
 import sacred
-from stable_baselines3.common import base_class, policies, vec_env
+from stable_baselines3.common import base_class, policies, torch_layers, vec_env
 from torch import nn
 
 import imitation.util.networks
@@ -34,6 +34,17 @@ def fast():
 
 
 @train_ingredient.named_config
+def normalize_disable():
+    policy_kwargs = {
+        # FlattenExtractor is the default for SB3; but we specify it here
+        # explicitly as no entry will be set to normalization by default
+        # via the config hook.
+        "features_extractor_class": torch_layers.FlattenExtractor,
+    }
+    locals()  # quieten flake8
+
+
+@train_ingredient.named_config
 def normalize_batchnorm():
     policy_kwargs = {
         "features_extractor_class": base.NormalizeFeaturesExtractor,
@@ -44,15 +55,25 @@ def normalize_batchnorm():
     locals()  # quieten flake8
 
 
+NORMALIZE_RUNNING_POLICY_KWARGS = {
+    "features_extractor_class": base.NormalizeFeaturesExtractor,
+    "features_extractor_kwargs": {
+        "normalize_class": imitation.util.networks.RunningNorm,
+    },
+}
+
+
 @train_ingredient.named_config
 def normalize_running():
-    policy_kwargs = {
-        "features_extractor_class": base.NormalizeFeaturesExtractor,
-        "features_extractor_kwargs": {
-            "normalize_class": imitation.util.networks.RunningNorm,
-        },
-    }
-    locals()  # quieten flake8
+    policy_kwargs = NORMALIZE_RUNNING_POLICY_KWARGS  # noqa: F841
+
+
+@train_ingredient.config_hook
+def config_hook(config, command_name, logger):
+    del command_name, logger
+    if "features_extractor_class" not in config["train"]["policy_kwargs"]:
+        return {"policy_kwargs": NORMALIZE_RUNNING_POLICY_KWARGS}
+    return {}
 
 
 @train_ingredient.capture

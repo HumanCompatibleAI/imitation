@@ -34,6 +34,7 @@ def normalize_running():
 
 @reward_ingredient.config_hook
 def config_hook(config, command_name, logger):
+    del logger
     if config["reward"]["net_cls"] is None:
         default_net = reward_nets.BasicRewardNet
         if command_name == "airl":
