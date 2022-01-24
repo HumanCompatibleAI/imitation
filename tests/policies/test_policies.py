@@ -44,7 +44,7 @@ def test_save_stable_model_errors_and_warnings(tmpdir):
     # Trigger FileNotFoundError for no model.{zip,pkl}
     dir_b = tmpdir / "b"
     dir_b.mkdir()
-    with pytest.raises(FileNotFoundError, match="No such file or.*model.zip.*"):
+    with pytest.raises(FileNotFoundError, match=".*No such file or.*model.zip.*"):
         serialize.load_policy("ppo", str(dir_b), venv)
 
     # Trigger FileNotError for nonexistent directory

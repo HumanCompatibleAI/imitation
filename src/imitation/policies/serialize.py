@@ -6,20 +6,53 @@
 import logging
 import os
 import pathlib
-from typing import Callable, Type
+from typing import Callable, Type, TypeVar
 
-from stable_baselines3.common import callbacks, on_policy_algorithm, policies, vec_env
+from stable_baselines3.common import base_class, callbacks, policies, vec_env
 
 from imitation.policies import base
 from imitation.util import registry
+
+Algorithm = TypeVar("Algorithm", bound=base_class.BaseAlgorithm)
 
 PolicyLoaderFn = Callable[[str, vec_env.VecEnv], policies.BasePolicy]
 
 policy_registry: registry.Registry[PolicyLoaderFn] = registry.Registry()
 
 
+def load_stable_baselines_model(
+    cls: Type[Algorithm],
+    path: str,
+    venv: vec_env.VecEnv,
+    **kwargs,
+) -> Algorithm:
+    """Helper method to load RL models from Stable Baselines.
+
+    Args:
+        cls: Stable Baselines RL algorithm.
+        path: Path to directory containing saved model data.
+        venv: Environment to train on.
+        kwargs: Passed through to `cls.load`.
+
+    Raises:
+        FileNotFoundError: If `path` is not a directory containing a `model.zip` file.
+
+    Returns:
+        The deserialized RL algorithm.
+    """
+    logging.info(f"Loading Stable Baselines policy for '{cls}' from '{path}'")
+    policy_dir = pathlib.Path(path)
+    if not policy_dir.is_dir():
+        raise FileNotFoundError(
+            f"path={path} needs to be a directory containing model.zip.",
+        )
+
+    model_path = policy_dir / "model.zip"
+    return cls.load(model_path, env=venv, **kwargs)
+
+
 def _load_stable_baselines(
-    cls: Type[on_policy_algorithm.OnPolicyAlgorithm],
+    cls: Type[base_class.BaseAlgorithm],
 ) -> PolicyLoaderFn:
     """Higher-order function, returning a policy loading function.
 
@@ -32,15 +65,7 @@ def _load_stable_baselines(
 
     def f(path: str, venv: vec_env.VecEnv) -> policies.BasePolicy:
         """Loads a policy saved to path, for environment env."""
-        logging.info(f"Loading Stable Baselines policy for '{cls}' from '{path}'")
-        policy_dir = pathlib.Path(path)
-        if not policy_dir.is_dir():
-            raise FileNotFoundError(
-                f"path={path} needs to be a directory containing model.zip.",
-            )
-
-        model_path = policy_dir / "model.zip"
-        model = cls.load(model_path, env=venv)
+        model = load_stable_baselines_model(cls, path, venv)
         return getattr(model, "policy")
 
     return f
@@ -90,7 +115,7 @@ def load_policy(
 
 def save_stable_model(
     output_dir: str,
-    model: on_policy_algorithm.OnPolicyAlgorithm,
+    model: base_class.BaseAlgorithm,
 ) -> None:
     """Serialize Stable Baselines model.
 
