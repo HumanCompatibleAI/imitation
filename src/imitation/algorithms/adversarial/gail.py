@@ -68,17 +68,19 @@ class GAIL(common.AdversarialTrainer):
                 discriminator confusion. Environment and logger will be set to
                 `venv` and `custom_logger`.
             reward_net: a Torch module that takes an observation and action
-                tensor as input, then computes the logits for GAIL.
+                tensor as input, then computes the logits. Used as the GAIL
+                discriminator.
             **kwargs: Passed through to `AdversarialTrainer.__init__`.
         """
-        self._discriminator = reward_net.to(gen_algo.device)
-        self._reward_net = LogSigmoidRewardNet(self._discriminator)
+        # Raw self._reward_net is discriminator logits, process for RL training
+        reward_net = reward_net.to(gen_algo.device)
+        self._processed_reward = LogSigmoidRewardNet(reward_net)
         super().__init__(
             demonstrations=demonstrations,
             demo_batch_size=demo_batch_size,
             venv=venv,
             gen_algo=gen_algo,
-            disc_parameters=self._discriminator.parameters(),
+            reward_net=reward_net,
             **kwargs,
         )
 
@@ -91,14 +93,14 @@ class GAIL(common.AdversarialTrainer):
         log_policy_act_prob: Optional[th.Tensor] = None,
     ) -> th.Tensor:
         """Compute the discriminator's logits for each state-action sample."""
-        logits = self._discriminator(state, action, next_state, done)
+        logits = self._reward_net(state, action, next_state, done)
         assert logits.shape == state.shape[:1]
         return logits
 
     @property
     def reward_train(self) -> reward_nets.RewardNet:
-        return self._reward_net
+        return self._processed_reward
 
     @property
     def reward_test(self) -> reward_nets.RewardNet:
-        return self._reward_net
+        return self._processed_reward

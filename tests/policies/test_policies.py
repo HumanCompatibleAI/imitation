@@ -1,11 +1,11 @@
 """Tests `imitation.policies.*`."""
 
+import functools
 import pathlib
 
 import gym
 import numpy as np
 import pytest
-import stable_baselines3
 import torch as th
 from stable_baselines3.common import preprocessing
 from torch import nn
@@ -19,6 +19,9 @@ SIMPLE_ENVS = [
     "MountainCarContinuous-v0",  # Box(1) action space
 ]
 HARDCODED_TYPES = ["random", "zero"]
+
+
+assert_equal = functools.partial(th.testing.assert_close, rtol=0, atol=0)
 
 
 @pytest.mark.parametrize("env_name", SIMPLE_ENVS)
@@ -37,20 +40,11 @@ def test_save_stable_model_errors_and_warnings(tmpdir):
     """Check errors and warnings in `save_stable_model()`."""
     tmpdir = pathlib.Path(tmpdir)
     venv = util.make_vec_env("CartPole-v0")
-    ppo = stable_baselines3.PPO("MlpPolicy", venv)
-
-    # Trigger DeprecationWarning for saving to model.pkl instead of model.zip
-    dir_a = tmpdir / "a"
-    dir_a.mkdir()
-    deprecated_model_path = dir_a / "model.pkl"
-    ppo.save(deprecated_model_path)
-    with pytest.warns(DeprecationWarning, match=".*deprecated policy directory.*"):
-        serialize.load_policy("ppo", str(dir_a), venv)
 
     # Trigger FileNotFoundError for no model.{zip,pkl}
     dir_b = tmpdir / "b"
     dir_b.mkdir()
-    with pytest.raises(FileNotFoundError, match=".*Could not find.*model.zip.*"):
+    with pytest.raises(FileNotFoundError, match="No such file or.*model.zip.*"):
         serialize.load_policy("ppo", str(dir_b), venv)
 
     # Trigger FileNotError for nonexistent directory
@@ -60,7 +54,7 @@ def test_save_stable_model_errors_and_warnings(tmpdir):
 
 
 @pytest.mark.parametrize("env_name", SIMPLE_ENVS)
-@pytest.mark.parametrize("model_cfg", serialize.STABLE_BASELINES_CLASSES)
+@pytest.mark.parametrize("model_cfg", serialize.STABLE_BASELINES_CLASSES.items())
 def test_serialize_identity(env_name, model_cfg, tmpdir):
     """Test output actions of deserialized policy are same as original."""
     venv = util.make_vec_env(env_name, n_envs=1, parallel=False)

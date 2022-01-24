@@ -1,9 +1,13 @@
 """Tests `imitation.util.networks`."""
 
+import functools
+
 import pytest
 import torch as th
 
 from imitation.util import networks
+
+assert_equal = functools.partial(th.testing.assert_close, rtol=0, atol=0)
 
 
 def test_running_norm_identity() -> None:
@@ -16,11 +20,11 @@ def test_running_norm_identity() -> None:
     x = th.Tensor([-1.0, 0.0, 7.32, 42.0])
     running_norm.eval()  # stats should not change in eval mode
     for i in range(10):
-        th.testing.assert_equal(running_norm.forward(x), x)
+        assert_equal(running_norm.forward(x), x)
     running_norm.train()  # stats will change in eval mode
     normalized = th.Tensor([-1, 1])  # mean 0, variance 1
     for i in range(10):
-        th.testing.assert_equal(running_norm.forward(normalized), normalized)
+        assert_equal(running_norm.forward(normalized), normalized)
 
 
 def test_running_norm_eval_fixed(
@@ -45,8 +49,8 @@ def test_running_norm_eval_fixed(
 
         running_norm.eval()
         do_forward()
-        th.testing.assert_equal(running_norm.running_mean, current_mean)
-        th.testing.assert_equal(running_norm.running_var, current_var)
+        assert_equal(running_norm.running_mean, current_mean)
+        assert_equal(running_norm.running_var, current_var)
 
         running_norm.train()
         do_forward(1.0, 2.0)

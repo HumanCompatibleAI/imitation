@@ -4,7 +4,7 @@ import collections
 import dataclasses
 import logging
 import os
-from typing import Callable, Iterator, Mapping, Optional, Sequence, Tuple, Type
+from typing import Callable, Mapping, Optional, Sequence, Tuple, Type
 
 import numpy as np
 import torch as th
@@ -112,7 +112,7 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
         demo_batch_size: int,
         venv: vec_env.VecEnv,
         gen_algo: base_class.BaseAlgorithm,
-        disc_parameters: Iterator[th.nn.Parameter],
+        reward_net: reward_nets.RewardNet,
         n_disc_updates_per_round: int = 2,
         log_dir: str = "output/",
         normalize_obs: bool = True,
@@ -141,7 +141,8 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
             gen_algo: The generator RL algorithm that is trained to maximize
                 discriminator confusion. Environment and logger will be set to
                 `venv` and `custom_logger`.
-            disc_parameters: Discriminator parameters to optimize over.
+            reward_net: a Torch module that takes an observation and action
+                tensor as input, then computes a reward signal.
             n_disc_updates_per_round: The number of discriminator updates after each
                 round of generator updates in AdversarialTrainer.learn().
             log_dir: Directory to store TensorBoard logs, plots, etc. in.
@@ -191,6 +192,7 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
         self.debug_use_ground_truth = debug_use_ground_truth
         self.venv = venv
         self.gen_algo = gen_algo
+        self._reward_net = reward_net.to(gen_algo.device)
         self._log_dir = log_dir
 
         # Create graph for optimising/recording stats on discriminator
@@ -199,7 +201,7 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
         self._init_tensorboard = init_tensorboard
         self._init_tensorboard_graph = init_tensorboard_graph
         self._disc_opt = self._disc_opt_cls(
-            disc_parameters,
+            self._reward_net.parameters(),
             **self._disc_opt_kwargs,
         )
 

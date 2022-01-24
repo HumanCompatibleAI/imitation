@@ -38,8 +38,7 @@ class AIRL(common.AdversarialTrainer):
             gen_algo: The generator RL algorithm that is trained to maximize
                 discriminator confusion. Environment and logger will be set to
                 `venv` and `custom_logger`.
-            reward_net: Reward network; used as part of AIRL discriminator. Defaults to
-                `reward_nets.BasicShapedRewardNet` when unspecified.
+            reward_net: Reward network; used as part of AIRL discriminator.
             **kwargs: Passed through to `AdversarialTrainer.__init__`.
 
         Raises:
@@ -47,13 +46,12 @@ class AIRL(common.AdversarialTrainer):
                 attribute (present in `ActorCriticPolicy`), needed to compute
                 log-probability of actions.
         """
-        self._reward_net = reward_net
         super().__init__(
             demonstrations=demonstrations,
             demo_batch_size=demo_batch_size,
             venv=venv,
             gen_algo=gen_algo,
-            disc_parameters=self._reward_net.parameters(),
+            reward_net=reward_net,
             **kwargs,
         )
         if not hasattr(self.gen_algo.policy, "evaluate_actions"):

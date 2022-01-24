@@ -81,6 +81,10 @@ def make_trainer(
     venv = util.make_vec_env(env_name, n_envs=num_envs, parallel=parallel)
     model_cls = algorithm_kwargs["model_class"]
     gen_algo = model_cls(algorithm_kwargs["policy_class"], venv)
+    reward_net_cls = reward_nets.BasicRewardNet
+    if model_cls == airl.AIRL:
+        reward_net_cls = reward_nets.BasicShapedRewardNet
+    reward_net = reward_net_cls(venv.observation_space, venv.action_space)
     custom_logger = logger.configure(tmpdir, ["tensorboard", "stdout"])
 
     normalize = isinstance(venv.observation_space, gym.spaces.Box)
@@ -93,6 +97,7 @@ def make_trainer(
         demonstrations=expert_data,
         demo_batch_size=expert_batch_size,
         gen_algo=gen_algo,
+        reward_net=reward_net,
         log_dir=tmpdir,
         custom_logger=custom_logger,
     )
