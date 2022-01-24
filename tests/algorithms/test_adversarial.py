@@ -39,7 +39,7 @@ IN_CODECOV = "COV_CORE_CONFIG" in os.environ
 # Disable SubprocVecEnv tests for code coverage test since
 # multiprocessing support is flaky in py.test --cov
 PARALLEL = [False] if IN_CODECOV else [True, False]
-ENV_NAMES = ["FrozenLake-v1", "CartPole-v1", "Pendulum-v0"]
+ENV_NAMES = ["FrozenLake-v1", "CartPole-v1", "Pendulum-v1"]
 EXPERT_BATCH_SIZES = [1, 128]
 
 
@@ -304,7 +304,7 @@ def test_logits_gen_is_high_log_policy_act_prob(
         trans.next_obs,
         trans.dones,
     )
-    log_act_prob_non_none = th.as_tensor(np.random.rand(n_timesteps))
+    log_act_prob_non_none = th.as_tensor(np.random.rand(n_timesteps)).to(obs.device)
 
     for log_act_prob in [None, log_act_prob_non_none]:
         if isinstance(trainer_diverse_env, airl.AIRL) and log_act_prob is None:

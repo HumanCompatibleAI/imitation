@@ -138,5 +138,5 @@ def test_normalize_features_extractor(obs_space: gym.Space) -> None:
         for k, v in extracted.items():
             assert v.shape == flattened_obs.shape, k
 
-        th.testing.assert_equal(extracted["identity"], flattened_obs)
-        th.testing.assert_equal(extracted["zero"], flattened_obs * 0.0)
+        assert_equal(extracted["identity"], flattened_obs)
+        assert_equal(extracted["zero"], flattened_obs * 0.0)
