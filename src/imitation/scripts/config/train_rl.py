@@ -95,6 +95,14 @@ def seals_mountain_car():
 @train_rl_ex.named_config
 def pendulum():
     common = dict(env_name="Pendulum-v1")
+    rl = dict(
+        batch_size=4096,
+        rl_kwargs=dict(
+            gamma=0.9,
+            learning_rate=1e-3,
+        ),
+    )
+    total_timesteps = int(2e5)
 
 
 @train_rl_ex.named_config
