@@ -94,7 +94,7 @@ def seals_mountain_car():
 
 @train_rl_ex.named_config
 def pendulum():
-    common = dict(env_name="Pendulum-v0")
+    common = dict(env_name="Pendulum-v1")
 
 
 @train_rl_ex.named_config

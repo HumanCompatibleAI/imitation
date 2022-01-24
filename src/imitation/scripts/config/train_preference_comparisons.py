@@ -65,7 +65,7 @@ def seals_cartpole():
 
 @train_preference_comparisons_ex.named_config
 def pendulum():
-    common = dict(env_name="Pendulum-v0")
+    common = dict(env_name="Pendulum-v1")
 
 
 @train_preference_comparisons_ex.named_config

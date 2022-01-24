@@ -32,7 +32,7 @@ def test_reward_overwrite():
     wrapped_stats = rollout.rollout_stats(
         rollout.generate_trajectories(policy, wrapped_env, sample_until),
     )
-    # Pendulum-v0 always has negative rewards
+    # Pendulum-v1 always has negative rewards
     assert default_stats["return_max"] < 0
     # ours gives between 1 * traj_len and num_envs * traj_len reward
     # (trajectories are all constant length of 200 in Pendulum)
