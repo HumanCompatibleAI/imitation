@@ -1,7 +1,7 @@
 """Tests `imitation.util.logger.WandbOutputFormat`."""
 
 import sys
-from typing import Any, Mapping
+from typing import Any, Mapping, Optional
 from unittest import mock
 
 import pytest
@@ -56,9 +56,9 @@ class MockWandb:
     def log(
         self,
         data: Mapping[str, Any],
-        step: int = None,
-        commit: bool = None,
-        sync: bool = None,
+        step: Optional[int] = None,
+        commit: bool = False,
+        sync: bool = False,
     ):
 
         assert self._initialized
