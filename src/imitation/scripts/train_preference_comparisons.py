@@ -125,7 +125,6 @@ def train_preference_comparisons(
         Rollout statistics from trained policy.
 
     Raises:
-        FileNotFoundError: Path corresponding to saved policy missing.
         ValueError: Inconsistency between config and deserialized policy normalization.
     """
     custom_logger, log_dir = common.setup_logging()

@@ -90,7 +90,6 @@ def make_trainer(
     normalize = isinstance(venv.observation_space, gym.spaces.Box)
     trainer = algorithm_kwargs["algorithm_cls"](
         venv=venv,
-        normalize_obs=normalize,
         # TODO(adam): remove following line when SB3 PR merged:
         # https://github.com/DLR-RM/stable-baselines3/pull/575
         normalize_reward=normalize,
