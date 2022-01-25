@@ -230,9 +230,16 @@ def _check_train_ex_result(result: dict):
     _check_rollout_stats(imit_stats)
 
 
-def test_train_adversarial(tmpdir):
+@pytest.mark.parametrize(
+    "named_configs",
+    [
+        [],
+        ["train.normalize_disable", "reward.normalize_disable"],
+    ],
+)
+def test_train_adversarial(tmpdir, named_configs):
     """Smoke test for imitation.scripts.train_adversarial."""
-    named_configs = ["cartpole"] + ALGO_FAST_CONFIGS["adversarial"]
+    named_configs = named_configs + ["cartpole"] + ALGO_FAST_CONFIGS["adversarial"]
     config_updates = {
         "common": {
             "log_root": tmpdir,
