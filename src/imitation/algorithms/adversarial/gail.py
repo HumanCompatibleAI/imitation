@@ -67,13 +67,14 @@ class GAIL(common.AdversarialTrainer):
             gen_algo: The generator RL algorithm that is trained to maximize
                 discriminator confusion. Environment and logger will be set to
                 `venv` and `custom_logger`.
-            reward_net: a Torch module that takes an observation and action
-                tensor as input, then computes the logits. Used as the GAIL
-                discriminator.
+            reward_net: a Torch module that takes an observation, action and
+                next observation tensor as input, then computes the logits.
+                Used as the GAIL discriminator.
             **kwargs: Passed through to `AdversarialTrainer.__init__`.
         """
-        # Raw self._reward_net is discriminator logits, process for RL training
+        # Raw self._reward_net is discriminator logits
         reward_net = reward_net.to(gen_algo.device)
+        # Process it to produce output suitable for RL training
         self._processed_reward = LogSigmoidRewardNet(reward_net)
         super().__init__(
             demonstrations=demonstrations,

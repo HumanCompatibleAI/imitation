@@ -5,7 +5,6 @@ from typing import Any, Mapping, Union
 
 import sacred
 from stable_baselines3.common import base_class, policies, torch_layers, vec_env
-from torch import nn
 
 import imitation.util.networks
 from imitation.data import rollout
@@ -43,16 +42,6 @@ def normalize_disable():
     }
 
 
-@train_ingredient.named_config
-def normalize_batchnorm():
-    policy_kwargs = {  # noqa: F841
-        "features_extractor_class": base.NormalizeFeaturesExtractor,
-        "features_extractor_kwargs": {
-            "normalize_class": nn.BatchNorm1d,
-        },
-    }
-
-
 NORMALIZE_RUNNING_POLICY_KWARGS = {
     "features_extractor_class": base.NormalizeFeaturesExtractor,
     "features_extractor_kwargs": {
@@ -68,6 +57,7 @@ def normalize_running():
 
 @train_ingredient.config_hook
 def config_hook(config, command_name, logger):
+    """Sets defaults equivalent to `normalize_running`."""
     del command_name, logger
     if "features_extractor_class" not in config["train"]["policy_kwargs"]:
         return {"policy_kwargs": NORMALIZE_RUNNING_POLICY_KWARGS}

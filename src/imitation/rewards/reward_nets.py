@@ -16,7 +16,7 @@ from imitation.util import networks
 @contextlib.contextmanager
 def evaluating(m: nn.Module):
     """Temporarily switch to evaluation mode."""
-    # Modified from Christoph Heindl
+    # Modified from Christoph Heindl's method posted on:
     # https://discuss.pytorch.org/t/opinion-eval-should-be-a-context-manager/18998/3
     is_train = m.training
     try:

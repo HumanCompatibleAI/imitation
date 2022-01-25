@@ -116,7 +116,7 @@ def test_airl_fail_fast(custom_logger, tmpdir):
 
     gen_algo = stable_baselines3.DQN(stable_baselines3.dqn.MlpPolicy, venv)
     small_data = rollout.generate_transitions(gen_algo, venv, n_timesteps=20)
-    reward_net = reward_nets.BasicRewardNet(
+    reward_net = reward_nets.BasicShapedRewardNet(
         observation_space=venv.observation_space,
         action_space=venv.action_space,
     )

@@ -135,8 +135,8 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
             gen_algo: The generator RL algorithm that is trained to maximize
                 discriminator confusion. Environment and logger will be set to
                 `venv` and `custom_logger`.
-            reward_net: a Torch module that takes an observation and action
-                tensor as input, then computes a reward signal.
+            reward_net: a Torch module that takes an observation, action and
+                next observation tensors as input and computes a reward signal.
             n_disc_updates_per_round: The number of discriminator updates after each
                 round of generator updates in AdversarialTrainer.learn().
             log_dir: Directory to store TensorBoard logs, plots, etc. in.

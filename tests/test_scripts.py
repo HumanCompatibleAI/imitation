@@ -232,10 +232,10 @@ def _check_train_ex_result(result: dict):
 
 @pytest.mark.parametrize(
     "named_configs",
-    [
+    (
         [],
         ["train.normalize_disable", "reward.normalize_disable"],
-    ],
+    ),
 )
 def test_train_adversarial(tmpdir, named_configs):
     """Smoke test for imitation.scripts.train_adversarial."""

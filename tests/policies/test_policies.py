@@ -105,7 +105,7 @@ class ZeroModule(nn.Module):
 
     def forward(self, x: th.Tensor) -> th.Tensor:
         """Returns zeros of same shape as `x`."""
-        assert x.shape[1] == self.features_dim
+        assert x.shape[1:] == (self.features_dim,)
         return x * 0
 
 

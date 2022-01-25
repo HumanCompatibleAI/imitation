@@ -36,7 +36,7 @@ def load_stable_baselines_model(
 
     Raises:
         FileNotFoundError: If `path` is not a directory containing a `model.zip` file.
-        FileExistsError: If `path` contains `vec_normalize.pkl` file (unsupported).
+        FileExistsError: If `path` contains a `vec_normalize.pkl` file (unsupported).
 
     Returns:
         The deserialized RL algorithm.

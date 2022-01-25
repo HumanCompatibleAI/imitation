@@ -18,15 +18,18 @@ class SqueezeLayer(nn.Module):
 
 
 class RunningNorm(nn.Module):
-    """Normalizes input to mean zero and standard deviation 1 using a running average.
+    """Normalizes input to mean 0 and standard deviation 1 using a running average.
 
-    Similar to BatchNorm, LayerNorm, etc but whereas they at training time only
-    use statistics from the current batch, we use statistics from all previous
-    training batches with exponential decay.
+    Similar to BatchNorm, LayerNorm, etc. but whereas they only use statistics from
+    the current batch at train time, we use statistics from all batches.
 
     This should closely replicate the common practice in RL of normalizing environment
     observations, such as using `VecNormalize` in Stable Baselines.
     """
+
+    running_mean: th.Tensor
+    running_var: th.Tensor
+    count: th.Tensor
 
     def __init__(self, num_features: int, eps: float = 1e-5):
         """Builds RunningNorm.
@@ -41,9 +44,6 @@ class RunningNorm(nn.Module):
         self.register_buffer("running_mean", th.empty(num_features))
         self.register_buffer("running_var", th.empty(num_features))
         self.register_buffer("count", th.empty((), dtype=th.int))
-        self.running_mean: th.Tensor
-        self.running_var: th.Tensor
-        self.count: th.Tensor
         self.reset_running_stats()
 
     def reset_running_stats(self) -> None:
@@ -52,7 +52,7 @@ class RunningNorm(nn.Module):
         self.running_var.fill_(1)
         self.count.zero_()
 
-    def update_stats(self, batch: th.Tensor) -> th.Tensor:
+    def update_stats(self, batch: th.Tensor) -> None:
         """Update `self.running_mean`, `self.running_var` and `self.count`.
 
         Uses Chan et al (1979), "Updating Formulae and a Pairwise Algorithm for
@@ -78,6 +78,7 @@ class RunningNorm(nn.Module):
         self.count += batch_count
 
     def forward(self, x: th.Tensor) -> th.Tensor:
+        """Updates statistics if in training mode. Returns normalized `x`."""
         if self.training:
             self.update_stats(x)
 

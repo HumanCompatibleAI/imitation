@@ -5,7 +5,6 @@ from typing import Any, Mapping, Type
 
 import sacred
 from stable_baselines3.common import vec_env
-from torch import nn
 
 from imitation.rewards import reward_nets
 from imitation.util import networks
@@ -28,17 +27,13 @@ def normalize_disable():
 
 
 @reward_ingredient.named_config
-def normalize_batchnorm():
-    net_kwargs = {"normalize_layer": nn.BatchNorm1d}  # noqa: F841
-
-
-@reward_ingredient.named_config
 def normalize_running():
     net_kwargs = {"normalize_layer": networks.RunningNorm}  # noqa: F841
 
 
 @reward_ingredient.config_hook
 def config_hook(config, command_name, logger):
+    """Sets default values for `net_cls` and `net_kwargs`."""
     del logger
     res = {}
     if config["reward"]["net_cls"] is None:
