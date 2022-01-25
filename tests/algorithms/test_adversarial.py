@@ -82,7 +82,7 @@ def make_trainer(
     model_cls = algorithm_kwargs["model_class"]
     gen_algo = model_cls(algorithm_kwargs["policy_class"], venv)
     reward_net_cls = reward_nets.BasicRewardNet
-    if model_cls == airl.AIRL:
+    if algorithm_kwargs["algorithm_cls"] == airl.AIRL:
         reward_net_cls = reward_nets.BasicShapedRewardNet
     reward_net = reward_net_cls(venv.observation_space, venv.action_space)
     custom_logger = logger.configure(tmpdir, ["tensorboard", "stdout"])
