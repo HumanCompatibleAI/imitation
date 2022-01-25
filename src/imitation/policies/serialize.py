@@ -36,6 +36,7 @@ def load_stable_baselines_model(
 
     Raises:
         FileNotFoundError: If `path` is not a directory containing a `model.zip` file.
+        FileExistsError: If `path` contains `vec_normalize.pkl` file (unsupported).
 
     Returns:
         The deserialized RL algorithm.
@@ -45,6 +46,14 @@ def load_stable_baselines_model(
     if not policy_dir.is_dir():
         raise FileNotFoundError(
             f"path={path} needs to be a directory containing model.zip.",
+        )
+
+    # SOMEDAY(adam): added 2022-01, can probably remove this check in 2023
+    vec_normalize_path = policy_dir / "vec_normalize.pkl"
+    if vec_normalize_path.exists():
+        raise FileExistsError(
+            "Outdated policy format: we do not support restoring normalization "
+            "statistics from '{vec_normalize_path}'",
         )
 
     model_path = policy_dir / "model.zip"
