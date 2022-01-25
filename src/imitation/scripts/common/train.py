@@ -35,24 +35,22 @@ def fast():
 
 @train_ingredient.named_config
 def normalize_disable():
-    policy_kwargs = {
+    policy_kwargs = {  # noqa: F841
         # FlattenExtractor is the default for SB3; but we specify it here
         # explicitly as no entry will be set to normalization by default
         # via the config hook.
         "features_extractor_class": torch_layers.FlattenExtractor,
     }
-    locals()  # quieten flake8
 
 
 @train_ingredient.named_config
 def normalize_batchnorm():
-    policy_kwargs = {
+    policy_kwargs = {  # noqa: F841
         "features_extractor_class": base.NormalizeFeaturesExtractor,
         "features_extractor_kwargs": {
             "normalize_class": nn.BatchNorm1d,
         },
     }
-    locals()  # quieten flake8
 
 
 NORMALIZE_RUNNING_POLICY_KWARGS = {

@@ -42,10 +42,15 @@ def test_save_stable_model_errors_and_warnings(tmpdir):
     venv = util.make_vec_env("CartPole-v0")
 
     # Trigger FileNotFoundError for no model.{zip,pkl}
-    dir_b = tmpdir / "b"
-    dir_b.mkdir()
+    dir_a = tmpdir / "a"
+    dir_a.mkdir()
     with pytest.raises(FileNotFoundError, match=".*No such file or.*model.zip.*"):
-        serialize.load_policy("ppo", str(dir_b), venv)
+        serialize.load_policy("ppo", str(dir_a), venv)
+
+    vec_normalize = dir_a / "vec_normalize.pkl"
+    vec_normalize.touch()
+    with pytest.raises(FileExistsError, match="Outdated policy format.*"):
+        serialize.load_policy("ppo", str(dir_a), venv)
 
     # Trigger FileNotError for nonexistent directory
     dir_nonexistent = tmpdir / "i_dont_exist"
