@@ -1,10 +1,37 @@
 """Helper methods to build and run neural networks."""
 
 import collections
+import contextlib
+import functools
 from typing import Iterable, Optional, Type
 
 import torch as th
 from torch import nn
+
+
+@contextlib.contextmanager
+def training_mode(m: nn.Module, mode: bool = False):
+    """Temporarily switch module ``m`` to specified training ``mode``.
+
+    Args:
+        m: The module to switch the mode of.
+        mode: whether to set training mode (``True``) or evaluation (``False``).
+
+    Yields:
+        The module `m`.
+    """
+    # Modified from Christoph Heindl's method posted on:
+    # https://discuss.pytorch.org/t/opinion-eval-should-be-a-context-manager/18998/3
+    old_mode = m.training
+    try:
+        m.train(mode)
+        yield m
+    finally:
+        m.train(old_mode)
+
+
+training = functools.partial(training_mode, mode=True)
+evaluating = functools.partial(training_mode, mode=False)
 
 
 class SqueezeLayer(nn.Module):

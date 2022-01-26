@@ -16,7 +16,7 @@ from torch.nn import functional as F
 from imitation.algorithms import base
 from imitation.data import buffer, rollout, types, wrappers
 from imitation.rewards import reward_nets, reward_wrapper
-from imitation.util import logger, util
+from imitation.util import logger, networks, util
 
 
 def compute_train_stats(
@@ -423,9 +423,9 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
         for r in tqdm.tqdm(range(0, n_rounds), desc="round"):
             self.train_gen(self.gen_train_timesteps)
             for _ in range(self.n_disc_updates_per_round):
-                # switch to training mode (affects dropout, normalization)
-                self.reward_train.train()
-                self.train_disc()
+                with networks.training(self.reward_train):
+                    # switch to training mode (affects dropout, normalization)
+                    self.train_disc()
             if callback:
                 callback(r)
             self.logger.dump(self._global_step)
