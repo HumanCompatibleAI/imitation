@@ -12,7 +12,6 @@ from sacred.observers import FileStorageObserver
 
 from imitation.algorithms import preference_comparisons
 from imitation.policies import serialize
-from imitation.rewards import reward_nets
 from imitation.scripts.common import common, reward
 from imitation.scripts.common import rl as rl_common
 from imitation.scripts.common import train
@@ -131,11 +130,6 @@ def train_preference_comparisons(
     venv = common.make_venv()
 
     reward_net = reward.make_reward_net(venv)
-    if reward_net is None:
-        reward_net = reward_nets.BasicRewardNet(
-            venv.observation_space,
-            venv.action_space,
-        )
     if agent_path is None:
         agent = rl_common.make_rl_algo(venv)
     else:
