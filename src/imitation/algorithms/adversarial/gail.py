@@ -4,7 +4,6 @@ from typing import Optional
 
 import torch as th
 from stable_baselines3.common import base_class, vec_env
-from torch import nn
 from torch.nn import functional as F
 
 from imitation.algorithms import base
@@ -50,7 +49,7 @@ class GAIL(common.AdversarialTrainer):
         demo_batch_size: int,
         venv: vec_env.VecEnv,
         gen_algo: base_class.BaseAlgorithm,
-        reward_net: nn.Module,
+        reward_net: reward_nets.RewardNet,
         **kwargs,
     ):
         """Generative Adversarial Imitation Learning.
@@ -94,6 +93,7 @@ class GAIL(common.AdversarialTrainer):
         log_policy_act_prob: Optional[th.Tensor] = None,
     ) -> th.Tensor:
         """Compute the discriminator's logits for each state-action sample."""
+        del log_policy_act_prob
         logits = self._reward_net(state, action, next_state, done)
         assert logits.shape == state.shape[:1]
         return logits
