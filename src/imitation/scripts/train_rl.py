@@ -91,7 +91,6 @@ def train_rl(
         post_wrappers=[lambda env, idx: wrappers.RolloutInfoWrapper(env)],
     )
     callback_objs = []
-
     if reward_type is not None:
         reward_fn = load_reward(reward_type, reward_path, venv)
         venv = RewardVecEnvWrapper(venv, reward_fn)
