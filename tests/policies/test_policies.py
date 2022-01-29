@@ -106,7 +106,7 @@ class ZeroModule(nn.Module):
     def forward(self, x: th.Tensor) -> th.Tensor:
         """Returns zeros of same shape as `x`."""
         assert x.shape[1:] == (self.features_dim,)
-        return x * 0
+        return th.zeros_like(x)
 
 
 @pytest.mark.parametrize(

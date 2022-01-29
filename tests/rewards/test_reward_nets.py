@@ -18,7 +18,7 @@ ENVS = ["FrozenLake-v1", "CartPole-v1", "Pendulum-v1"]
 HARDCODED_TYPES = ["zero"]
 
 REWARD_NETS = [reward_nets.BasicRewardNet, reward_nets.BasicShapedRewardNet]
-REWARD_NET_KWARGS = [{}, {"normalize_layer": networks.RunningNorm}]
+REWARD_NET_KWARGS = [{}, {"normalize_input_layer": networks.RunningNorm}]
 
 
 @pytest.mark.parametrize("env_name", ENVS)

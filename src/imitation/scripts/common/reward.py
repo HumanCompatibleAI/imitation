@@ -22,13 +22,13 @@ def config():
 
 
 @reward_ingredient.named_config
-def normalize_disable():
-    net_kwargs = {"normalize_layer": None}  # noqa: F841
+def normalize_input_disable():
+    net_kwargs = {"normalize_input_layer": None}  # noqa: F841
 
 
 @reward_ingredient.named_config
-def normalize_running():
-    net_kwargs = {"normalize_layer": networks.RunningNorm}  # noqa: F841
+def normalize_input_running():
+    net_kwargs = {"normalize_input_layer": networks.RunningNorm}  # noqa: F841
 
 
 @reward_ingredient.config_hook
@@ -41,8 +41,8 @@ def config_hook(config, command_name, logger):
         if command_name == "airl":
             default_net = reward_nets.BasicShapedRewardNet
         res["net_cls"] = default_net
-    if "normalize_layer" not in config["reward"]["net_kwargs"]:
-        res["net_kwargs"] = {"normalize_layer": networks.RunningNorm}
+    if "normalize_input_layer" not in config["reward"]["net_kwargs"]:
+        res["net_kwargs"] = {"normalize_input_layer": networks.RunningNorm}
     return res
 
 

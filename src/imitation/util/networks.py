@@ -23,8 +23,8 @@ def training_mode(m: nn.Module, mode: bool = False):
     # Modified from Christoph Heindl's method posted on:
     # https://discuss.pytorch.org/t/opinion-eval-should-be-a-context-manager/18998/3
     old_mode = m.training
+    m.train(mode)
     try:
-        m.train(mode)
         yield m
     finally:
         m.train(old_mode)
@@ -102,7 +102,7 @@ class RunningNorm(nn.Module):
         self.running_var += th.square(delta) * self.count * batch_count / tot_count
         self.running_var /= tot_count
 
-        self.count += batch_count
+        self.count[:] = tot_count
 
     def forward(self, x: th.Tensor) -> th.Tensor:
         """Updates statistics if in training mode. Returns normalized `x`."""
@@ -120,7 +120,7 @@ def build_mlp(
     activation: Type[nn.Module] = nn.ReLU,
     squeeze_output: bool = False,
     flatten_input: bool = False,
-    normalize_layer: Optional[Type[nn.Module]] = None,
+    normalize_input_layer: Optional[Type[nn.Module]] = None,
 ) -> nn.Module:
     """Constructs a Torch MLP.
 
@@ -136,7 +136,7 @@ def build_mlp(
             output is of size (B,) instead of (B,1).
         flatten_input: should input be flattened along axes 1, 2, 3, …? Useful
             if you want to, e.g., process small images inputs with an MLP.
-        normalize_layer: if specified, module to use to normalize inputs;
+        normalize_input_layer: if specified, module to use to normalize inputs;
             e.g. `nn.BatchNorm` or `RunningNorm`.
 
     Returns:
@@ -157,8 +157,8 @@ def build_mlp(
     if flatten_input:
         layers[f"{prefix}flatten"] = nn.Flatten()
 
-    if normalize_layer:
-        layers[f"{prefix}normalize"] = normalize_layer(in_size)
+    if normalize_input_layer:
+        layers[f"{prefix}normalize_input"] = normalize_input_layer(in_size)
 
     # Hidden layers
     prev_size = in_size
