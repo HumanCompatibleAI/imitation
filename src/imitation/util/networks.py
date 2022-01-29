@@ -102,7 +102,7 @@ class RunningNorm(nn.Module):
         self.running_var += th.square(delta) * self.count * batch_count / tot_count
         self.running_var /= tot_count
 
-        self.count[:] = tot_count
+        self.count += batch_count
 
     def forward(self, x: th.Tensor) -> th.Tensor:
         """Updates statistics if in training mode. Returns normalized `x`."""
