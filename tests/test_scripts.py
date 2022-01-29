@@ -234,7 +234,7 @@ def _check_train_ex_result(result: dict):
     "named_configs",
     (
         [],
-        ["train.normalize_disable", "reward.normalize_disable"],
+        ["train.normalize_disable", "reward.normalize_input_disable"],
     ),
 )
 def test_train_adversarial(tmpdir, named_configs):
