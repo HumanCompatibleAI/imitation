@@ -277,7 +277,8 @@ def test_trainer_makes_progress(init_trainer_fn, venv, expert_policy):
         # note a randomly initialised policy does well for some seeds -- so may
         # want to remove this check if changing seed.
         assert pre_train_rew_mean < 100
-        for i in range(2):
+        # Train for 4 iterations. (3 or less causes test to fail on some configs.)
+        for i in range(4):
             # roll out a few trajectories for dataset, then train for a few steps
             collector = trainer.get_trajectory_collector()
             for _ in range(5):

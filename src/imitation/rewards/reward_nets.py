@@ -126,18 +126,21 @@ class RewardNet(nn.Module, abc.ABC):
         Returns:
             Computed rewards of shape `(batch_size,`).
         """
-        state_th, action_th, next_state_th, done_th = self.preprocess(
-            state,
-            action,
-            next_state,
-            done,
-        )
-        with th.no_grad():
-            rew_th = self(state_th, action_th, next_state_th, done_th)
+        with networks.evaluating(self):
+            # switch to eval mode (affecting normalization, dropout, etc)
 
-        rew = rew_th.detach().cpu().numpy().flatten()
-        assert rew.shape == state.shape[:1]
-        return rew
+            state_th, action_th, next_state_th, done_th = self.preprocess(
+                state,
+                action,
+                next_state,
+                done,
+            )
+            with th.no_grad():
+                rew_th = self(state_th, action_th, next_state_th, done_th)
+
+            rew = rew_th.detach().cpu().numpy().flatten()
+            assert rew.shape == state.shape[:1]
+            return rew
 
     @property
     def device(self) -> th.device:
@@ -343,6 +346,7 @@ class BasicShapedRewardNet(ShapedRewardNet):
         use_next_state: bool = False,
         use_done: bool = False,
         discount_factor: float = 0.99,
+        **kwargs,
     ):
         """Builds a simple shaped reward network.
 
@@ -361,6 +365,7 @@ class BasicShapedRewardNet(ShapedRewardNet):
                 to the reward MLP?
             use_done: should the "done" flag be included as an input to the reward MLP?
             discount_factor: discount factor for the potential shaping.
+            kwargs: passed straight through to `BasicRewardNet` and `BasicPotentialMLP`.
         """
         base_reward_net = BasicRewardNet(
             observation_space=observation_space,
@@ -370,11 +375,13 @@ class BasicShapedRewardNet(ShapedRewardNet):
             use_next_state=use_next_state,
             use_done=use_done,
             hid_sizes=reward_hid_sizes,
+            **kwargs,
         )
 
         potential_net = BasicPotentialMLP(
             observation_space=observation_space,
             hid_sizes=potential_hid_sizes,
+            **kwargs,
         )
 
         super().__init__(
@@ -389,12 +396,18 @@ class BasicShapedRewardNet(ShapedRewardNet):
 class BasicPotentialMLP(nn.Module):
     """Simple implementation of a potential using an MLP."""
 
-    def __init__(self, observation_space: gym.Space, hid_sizes: Iterable[int]):
+    def __init__(
+        self,
+        observation_space: gym.Space,
+        hid_sizes: Iterable[int],
+        **kwargs,
+    ):
         """Initialize the potential.
 
         Args:
             observation_space: observation space of the environment.
             hid_sizes: widths of the hidden layers of the MLP.
+            kwargs: passed straight through to `build_mlp`.
         """
         super().__init__()
         potential_in_size = preprocessing.get_flattened_obs_dim(observation_space)
@@ -403,6 +416,7 @@ class BasicPotentialMLP(nn.Module):
             hid_sizes=hid_sizes,
             squeeze_output=True,
             flatten_input=True,
+            **kwargs,
         )
 
     def forward(self, state: th.Tensor) -> th.Tensor:

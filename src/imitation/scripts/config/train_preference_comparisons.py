@@ -46,9 +46,6 @@ def train_defaults():
     trajectory_path = None
     allow_variable_horizon = False
 
-    normalize = True  # Use VecNormalize
-    normalize_kwargs = {"norm_reward": False}  # kwargs for `VecNormalize`
-
     checkpoint_interval = 0  # Num epochs between saving (<0 disables, =0 final only)
 
 
@@ -65,7 +62,7 @@ def seals_cartpole():
 
 @train_preference_comparisons_ex.named_config
 def pendulum():
-    common = dict(env_name="Pendulum-v0")
+    common = dict(env_name="Pendulum-v1")
 
 
 @train_preference_comparisons_ex.named_config

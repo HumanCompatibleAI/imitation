@@ -27,6 +27,7 @@ from imitation.policies import exploration_wrapper
 from imitation.rewards import common as rewards_common
 from imitation.rewards import reward_nets, reward_wrapper
 from imitation.util import logger as imit_logger
+from imitation.util import networks
 
 
 class TrajectoryGenerator(abc.ABC):
@@ -629,7 +630,6 @@ class RewardTrainer(abc.ABC):
         self.model = model
         self.logger = custom_logger or imit_logger.configure()
 
-    @abc.abstractmethod
     def train(self, dataset: PreferenceDataset, epoch_multiplier: float = 1.0):
         """Train the reward model on a batch of fragment pairs and preferences.
 
@@ -638,6 +638,12 @@ class RewardTrainer(abc.ABC):
             epoch_multiplier: how much longer to train for than usual
                 (measured relatively).
         """
+        with networks.training(self.model):
+            self._train(dataset, epoch_multiplier)
+
+    @abc.abstractmethod
+    def _train(self, dataset: PreferenceDataset, epoch_multiplier: float):
+        """Train the reward model; see ``train`` for details."""
 
 
 class CrossEntropyRewardTrainer(RewardTrainer):
@@ -761,13 +767,12 @@ class CrossEntropyRewardTrainer(RewardTrainer):
         model_probability = 1 / (1 + returns_diff.exp())
         return self.noise_prob * 0.5 + (1 - self.noise_prob) * model_probability
 
-    def train(self, dataset: PreferenceDataset, epoch_multiplier: float = 1.0):
+    def _train(self, dataset: PreferenceDataset, epoch_multiplier: float = 1.0):
         """Trains for `epoch_multiplier * self.epochs` epochs over `dataset`."""
         # TODO(ejnnr): This isn't specific to the loss function or probability model.
         # In general, it might be best to split the probability model, the loss and
         # the optimization procedure a bit more cleanly so that different versions
         # can be combined
-
         dataloader = th.utils.data.DataLoader(
             dataset,
             batch_size=self.batch_size,

@@ -82,7 +82,7 @@ def seals_mountain_car():
 
 @eval_policy_ex.named_config
 def pendulum():
-    common = dict(env_name="Pendulum-v0")
+    common = dict(env_name="Pendulum-v1")
 
 
 @eval_policy_ex.named_config

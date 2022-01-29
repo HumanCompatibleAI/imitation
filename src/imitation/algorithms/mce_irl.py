@@ -19,7 +19,7 @@ from imitation.data import rollout, types
 from imitation.envs import resettable_env
 from imitation.rewards import reward_nets
 from imitation.util import logger as imit_logger
-from imitation.util import util
+from imitation.util import networks, util
 
 
 def mce_partition_fh(
@@ -251,7 +251,7 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
         self,
         demonstrations: Optional[MCEDemonstrations],
         env: resettable_env.TabularModelEnv,
-        reward_net: Optional[reward_nets.RewardNet] = None,
+        reward_net: reward_nets.RewardNet,
         optimizer_cls: Type[th.optim.Optimizer] = th.optim.Adam,
         optimizer_kwargs: Optional[Mapping[str, Any]] = None,
         discount: float = 1,
@@ -299,15 +299,6 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
             custom_logger=custom_logger,
         )
 
-        if reward_net is None:
-            reward_net = reward_nets.BasicRewardNet(
-                self.env.pomdp_observation_space,
-                self.env.action_space,
-                use_action=False,
-                use_next_state=False,
-                use_done=False,
-                hid_sizes=[],
-            )
         self.reward_net = reward_net
         optimizer_kwargs = optimizer_kwargs or {"lr": 1e-2}
         self.optimizer = optimizer_cls(reward_net.parameters(), **optimizer_kwargs)
@@ -373,6 +364,39 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
 
             self.demo_state_om /= self.demo_state_om.sum()  # normalize
 
+    def _train_step(self, obs_mat: th.Tensor):
+        self.optimizer.zero_grad()
+
+        # get reward predicted for each state by current model, & compute
+        # expected # of times each state is visited by soft-optimal policy
+        # w.r.t that reward function
+        # TODO(adam): support not just state-only reward?
+        predicted_r = squeeze_r(self.reward_net(obs_mat, None, None, None))
+        assert predicted_r.shape == (obs_mat.shape[0],)
+        predicted_r_np = predicted_r.detach().cpu().numpy()
+        _, visitations = mce_occupancy_measures(
+            self.env,
+            reward=predicted_r_np,
+            discount=self.discount,
+        )
+
+        # Forward/back/step (grads are zeroed at the top).
+        # weights_th(s) = \pi(s) - D(s)
+        weights_th = th.as_tensor(
+            visitations - self.demo_state_om,
+            dtype=self.reward_net.dtype,
+            device=self.reward_net.device,
+        )
+        # The "loss" is then:
+        #   E_\pi[r_\theta(S)] - E_D[r_\theta(S)]
+        loss = th.dot(weights_th, predicted_r)
+        # This gives the required gradient:
+        #   E_\pi[\nabla r_\theta(S)] - E_D[\nabla r_\theta(S)].
+        loss.backward()
+        self.optimizer.step()
+
+        return predicted_r_np, visitations
+
     def train(self, max_iter: int = 1000) -> np.ndarray:
         """Runs MCE IRL.
 
@@ -386,62 +410,35 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
         """
         # use the same device and dtype as the rmodel parameters
         obs_mat = self.env.observation_matrix
-        dtype = self.reward_net.dtype
-        device = self.reward_net.device
         torch_obs_mat = th.as_tensor(
             obs_mat,
-            dtype=dtype,
-            device=device,
+            dtype=self.reward_net.dtype,
+            device=self.reward_net.device,
         )
         assert self.demo_state_om.shape == (len(obs_mat),)
 
-        for t in range(max_iter):
-            self.optimizer.zero_grad()
+        with networks.training(self.reward_net):
+            # switch to training mode (affects dropout, normalization)
+            for t in range(max_iter):
+                predicted_r_np, visitations = self._train_step(torch_obs_mat)
 
-            # get reward predicted for each state by current model, & compute
-            # expected # of times each state is visited by soft-optimal policy
-            # w.r.t that reward function
-            # TODO(adam): support not just state-only reward?
-            predicted_r = squeeze_r(self.reward_net(torch_obs_mat, None, None, None))
-            assert predicted_r.shape == (obs_mat.shape[0],)
-            predicted_r_np = predicted_r.detach().cpu().numpy()
-            _, visitations = mce_occupancy_measures(
-                self.env,
-                reward=predicted_r_np,
-                discount=self.discount,
-            )
+                # these are just for termination conditions & debug logging
+                grad_norm = util.tensor_iter_norm(
+                    p.grad for p in self.reward_net.parameters()
+                ).item()
+                linf_delta = np.max(np.abs(self.demo_state_om - visitations))
 
-            # Forward/back/step (grads are zeroed at the top).
-            # weights_th(s) = \pi(s) - D(s)
-            weights_th = th.as_tensor(
-                visitations - self.demo_state_om,
-                dtype=dtype,
-                device=device,
-            )
-            # The "loss" is then:
-            #   E_\pi[r_\theta(S)] - E_D[r_\theta(S)]
-            loss = th.dot(weights_th, predicted_r)
-            # This gives the required gradient:
-            #   E_\pi[\nabla r_\theta(S)] - E_D[\nabla r_\theta(S)].
-            loss.backward()
-            self.optimizer.step()
+                if self.log_interval is not None and 0 == (t % self.log_interval):
+                    params = self.reward_net.parameters()
+                    weight_norm = util.tensor_iter_norm(params).item()
+                    self.logger.record("iteration", t)
+                    self.logger.record("linf_delta", linf_delta)
+                    self.logger.record("weight_norm", weight_norm)
+                    self.logger.record("grad_norm", grad_norm)
+                    self.logger.dump(t)
 
-            # these are just for termination conditions & debug logging
-            grad_norm = util.tensor_iter_norm(
-                p.grad for p in self.reward_net.parameters()
-            ).item()
-            linf_delta = np.max(np.abs(self.demo_state_om - visitations))
-
-            if self.log_interval is not None and 0 == (t % self.log_interval):
-                weight_norm = util.tensor_iter_norm(self.reward_net.parameters()).item()
-                self.logger.record("iteration", t)
-                self.logger.record("linf_delta", linf_delta)
-                self.logger.record("weight_norm", weight_norm)
-                self.logger.record("grad_norm", grad_norm)
-                self.logger.dump(t)
-
-            if linf_delta <= self.linf_eps or grad_norm <= self.grad_l2_eps:
-                break
+                if linf_delta <= self.linf_eps or grad_norm <= self.grad_l2_eps:
+                    break
 
         _, _, pi = mce_partition_fh(
             self.env,
