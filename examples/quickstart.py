@@ -1,78 +1,19 @@
-"""Trains BC, GAIL and AIRL models on saved CartPole-v1 demonstrations."""
-
-import pathlib
 import pickle
-import tempfile
-
+import gym
 import seals  # noqa: F401
-import stable_baselines3 as sb3
 
 from imitation.algorithms import bc
-from imitation.algorithms.adversarial import airl, gail
 from imitation.data import rollout
-from imitation.rewards import reward_nets
-from imitation.util import logger, util
+from examples.utils import render_a_trajectory_and_print_reward
 
-# Load pickled test demonstrations.
+env = gym.make("seals/CartPole-v0")
 with open("tests/testdata/expert_models/cartpole_0/rollouts/final.pkl", "rb") as f:
-    # This is a list of `imitation.data.types.Trajectory`, where
-    # every instance contains observations and actions for a single expert
-    # demonstration.
-    trajectories = pickle.load(f)
+    demonstrations = rollout.flatten_trajectories(pickle.load(f))
+bc_trainer = bc.BC(observation_space=env.observation_space, action_space=env.action_space,
+                   demonstrations=demonstrations)
 
-# Convert List[types.Trajectory] to an instance of `imitation.data.types.Transitions`.
-# This is a more general dataclass containing unordered
-# (observation, actions, next_observation) transitions.
-transitions = rollout.flatten_trajectories(trajectories)
-
-venv = util.make_vec_env("seals/CartPole-v0", n_envs=2)
-
-tempdir = tempfile.TemporaryDirectory(prefix="quickstart")
-tempdir_path = pathlib.Path(tempdir.name)
-print(f"All Tensorboards and logging are being written inside {tempdir_path}/.")
-
-# Train BC on expert data.
-# BC also accepts as `demonstrations` any PyTorch-style DataLoader that iterates over
-# dictionaries containing observations and actions.
-bc_logger = logger.configure(tempdir_path / "BC/")
-bc_trainer = bc.BC(
-    observation_space=venv.observation_space,
-    action_space=venv.action_space,
-    demonstrations=transitions,
-    custom_logger=bc_logger,
-)
+print("Before behaviour cloning:")
+render_a_trajectory_and_print_reward(env, bc_trainer.policy)
 bc_trainer.train(n_epochs=1)
-
-# Train GAIL on expert data.
-# GAIL, and AIRL also accept as `demonstrations` any Pytorch-style DataLoader that
-# iterates over dictionaries containing observations, actions, and next_observations.
-gail_logger = logger.configure(tempdir_path / "GAIL/")
-gail_reward_net = reward_nets.BasicRewardNet(
-    observation_space=venv.observation_space,
-    action_space=venv.action_space,
-)
-gail_trainer = gail.GAIL(
-    venv=venv,
-    demonstrations=transitions,
-    demo_batch_size=32,
-    gen_algo=sb3.PPO("MlpPolicy", venv, verbose=1, n_steps=1024),
-    reward_net=gail_reward_net,
-    custom_logger=gail_logger,
-)
-gail_trainer.train(total_timesteps=2048)
-
-# Train AIRL on expert data.
-airl_logger = logger.configure(tempdir_path / "AIRL/")
-airl_reward_net = reward_nets.BasicShapedRewardNet(
-    observation_space=venv.observation_space,
-    action_space=venv.action_space,
-)
-airl_trainer = airl.AIRL(
-    venv=venv,
-    demonstrations=transitions,
-    demo_batch_size=32,
-    gen_algo=sb3.PPO("MlpPolicy", venv, verbose=1, n_steps=1024),
-    reward_net=airl_reward_net,
-    custom_logger=airl_logger,
-)
-airl_trainer.train(total_timesteps=2048)
+print("After behaviour cloning:")
+render_a_trajectory_and_print_reward(env, bc_trainer.policy)
