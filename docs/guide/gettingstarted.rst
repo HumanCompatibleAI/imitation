@@ -26,7 +26,7 @@ Python Interface Quickstart
 ===========================
 
 Here's an `example script`_ that loads CartPole demonstrations and trains BC, GAIL, and
-AIRL models on that data. You will need to `pip install seals` or `pip install imitation[test]`
+AIRL models on that data. You will need to ``pip install seals`` or ``pip install imitation[test]``
 to run this.
 
 .. _example script: https://github.com/HumanCompatibleAI/imitation/blob/master/examples/quickstart.py

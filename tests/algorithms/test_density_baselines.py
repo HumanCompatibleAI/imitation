@@ -39,7 +39,7 @@ def score_trajectories(
 def test_density_reward(density_type, is_stationary):
     # test on Pendulum rather than Cartpole because I don't handle episodes that
     # terminate early yet (see issue #40)
-    env_name = "Pendulum-v0"
+    env_name = "Pendulum-v1"
     venv = util.make_vec_env(env_name, 2)
 
     # construct density-based reward from expert rollouts
@@ -78,7 +78,7 @@ def test_density_reward(density_type, is_stationary):
 def test_density_trainer_smoke():
     # tests whether density trainer runs, not whether it's good
     # (it's actually really poor)
-    env_name = "Pendulum-v0"
+    env_name = "Pendulum-v1"
     rollout_path = "tests/testdata/expert_models/pendulum_0/rollouts/final.pkl"
     rollouts = types.load(rollout_path)[:2]
     venv = util.make_vec_env(env_name, 2)

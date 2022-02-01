@@ -5,17 +5,13 @@ can be called directly.
 """
 
 import os
-import pathlib
-import pickle
 from typing import Any, Mapping, Optional, Type
 
 import torch as th
 from sacred.observers import FileStorageObserver
-from stable_baselines3.common import vec_env
 
 from imitation.algorithms import preference_comparisons
 from imitation.policies import serialize
-from imitation.rewards import reward_nets
 from imitation.scripts.common import common, reward
 from imitation.scripts.common import rl as rl_common
 from imitation.scripts.common import train
@@ -26,20 +22,17 @@ from imitation.scripts.config.train_preference_comparisons import (
 
 def save_model(
     agent_trainer: preference_comparisons.AgentTrainer,
-    vec_normalize: Optional[vec_env.VecNormalize],
     save_path: str,
 ):
     """Save the model as model.pkl."""
     serialize.save_stable_model(
         output_dir=os.path.join(save_path, "policy"),
         model=agent_trainer.algorithm,
-        vec_normalize=vec_normalize,
     )
 
 
 def save_checkpoint(
     trainer: preference_comparisons.PreferenceComparisons,
-    vec_normalize: Optional[vec_env.VecNormalize],
     save_path: str,
     allow_save_policy: Optional[bool],
 ):
@@ -51,7 +44,7 @@ def save_checkpoint(
         # contains one. Specifically we check if the `trajectory_generator` contains an
         # `algorithm` attribute.
         assert hasattr(trainer.trajectory_generator, "algorithm")
-        save_model(trainer.trajectory_generator, vec_normalize, save_path)
+        save_model(trainer.trajectory_generator, save_path)
     else:
         trainer.logger.warn(
             "trainer.trajectory_generator doesn't contain a policy to save.",
@@ -62,8 +55,6 @@ def save_checkpoint(
 def train_preference_comparisons(
     _run,
     _seed: int,
-    normalize: bool,
-    normalize_kwargs: Mapping[str, Any],
     total_timesteps: int,
     total_comparisons: int,
     comparisons_per_iteration: int,
@@ -86,8 +77,6 @@ def train_preference_comparisons(
 
     Args:
         _seed: Random seed.
-        normalize: If True, then rescale observations and reward.
-        normalize_kwargs: kwargs for `VecNormalize`.
         total_timesteps: number of environment interaction steps
         total_comparisons: number of preferences to gather in total
         comparisons_per_iteration: number of preferences to gather at once (before
@@ -135,90 +124,23 @@ def train_preference_comparisons(
         Rollout statistics from trained policy.
 
     Raises:
-        FileNotFoundError: Path corresponding to saved policy missing.
         ValueError: Inconsistency between config and deserialized policy normalization.
     """
     custom_logger, log_dir = common.setup_logging()
     venv = common.make_venv()
 
-    vec_normalize = None
     reward_net = reward.make_reward_net(venv)
-    if reward_net is None:
-        reward_net = reward_nets.BasicRewardNet(
-            venv.observation_space,
-            venv.action_space,
-        )
     if agent_path is None:
         agent = rl_common.make_rl_algo(venv)
     else:
-        # TODO(ejnnr): this is pretty similar to the logic in policies/serialize.py
-        # but I did make a few small changes that make it a bit tricky to actually
-        # factor this out into a helper function. Still, sharing at least part of the
-        # code would probably be good.
-        policy_dir = pathlib.Path(agent_path)
-        if not policy_dir.is_dir():
-            raise FileNotFoundError(
-                f"agent_path={agent_path} needs to be a directory containing model.zip "
-                "and optionally vec_normalize.pkl.",
-            )
-
-        model_path = policy_dir / "model.zip"
-        if not model_path.is_file():
-            raise FileNotFoundError(
-                f"Could not find policy at expected location {model_path}",
-            )
-
-        agent = rl["rl_cls"].load(
-            model_path,
-            env=venv,
+        agent = serialize.load_stable_baselines_model(
+            rl["rl_cls"],
+            agent_path,
+            venv,
             seed=_seed,
             **rl["rl_kwargs"],
         )
-        custom_logger.info(f"Warm starting agent from '{model_path}'")
-
-        normalize_path = policy_dir / "vec_normalize.pkl"
-        try:
-            with open(normalize_path, "rb") as f:
-                vec_normalize = pickle.load(f)
-        except FileNotFoundError:
-            # We did not use VecNormalize during training, skip
-            pass
-        else:
-            if not normalize:
-                raise ValueError(
-                    "normalize=False but the loaded policy has "
-                    "associated normalization stats.",
-                )
-            # TODO(ejnnr): this check is hacky, what if we change the default config?
-            if normalize_kwargs != {"norm_reward": False}:
-                # We could adjust settings manually but that's very brittle
-                # if SB3 changes any of the VecNormalize internals
-                print(normalize_kwargs)
-                raise ValueError(
-                    "Setting normalize_kwargs is not supported "
-                    "when loading an existing VecNormalize.",
-                )
-            vec_normalize.training = True
-            # TODO(ejnnr): We should figure out at some point if reward normalization
-            # is useful for preference comparisons but I haven't tried it yet. We'd also
-            # have to decide where to normalize rewards; setting norm_reward=True here
-            # would normalize the rewards that the reward model sees. This would
-            # probably translate to some degree to its output (i.e. the rewards for
-            # the agent). Alternatively, we could just train the reward model on
-            # unnormalized rewards and then normalize its output before giving it
-            # to the agent (which would also work for human feedback).
-            vec_normalize.norm_reward = False
-            vec_normalize.set_venv(venv)
-            # Note: the following line must come after the previous set_venv line!
-            # Otherwise, we get recursion errors
-            venv = vec_normalize
-            agent.set_env(venv)
-            custom_logger.info(f"Loaded VecNormalize from '{normalize_path}'")
-
-    if normalize and vec_normalize is None:
-        # if no stats have been loaded, create a new VecNormalize wrapper
-        venv = vec_normalize = vec_env.VecNormalize(venv, **normalize_kwargs)
-        agent.set_env(venv)
+        custom_logger.info(f"Warm starting agent from '{agent_path}'")
 
     if trajectory_path is None:
         # Setting the logger here is not really necessary (PreferenceComparisons
@@ -276,7 +198,6 @@ def train_preference_comparisons(
         if checkpoint_interval > 0 and iteration_num % checkpoint_interval == 0:
             save_checkpoint(
                 trainer=main_trainer,
-                vec_normalize=vec_normalize,
                 save_path=os.path.join(log_dir, "checkpoints", f"{iteration_num:04d}"),
                 allow_save_policy=bool(trajectory_path is None),
             )
@@ -294,7 +215,6 @@ def train_preference_comparisons(
     if checkpoint_interval >= 0:
         save_checkpoint(
             trainer=main_trainer,
-            vec_normalize=vec_normalize,
             save_path=os.path.join(log_dir, "checkpoints", "final"),
             allow_save_policy=bool(trajectory_path is None),
         )

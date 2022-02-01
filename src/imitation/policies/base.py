@@ -1,11 +1,15 @@
 """Custom policy classes and convenience methods."""
 
 import abc
+from typing import Type
 
 import gym
 import numpy as np
 import torch as th
-from stable_baselines3.common import policies
+from stable_baselines3.common import policies, torch_layers
+from torch import nn
+
+from imitation.util import networks
 
 
 class HardCodedPolicy(policies.BasePolicy, abc.ABC):
@@ -65,3 +69,27 @@ class FeedForward32Policy(policies.ActorCriticPolicy):
     def __init__(self, *args, **kwargs):
         """Builds FeedForward32Policy; arguments passed to `ActorCriticPolicy`."""
         super().__init__(*args, **kwargs, net_arch=[32, 32])
+
+
+class NormalizeFeaturesExtractor(torch_layers.FlattenExtractor):
+    """Feature extractor that flattens then normalizes input."""
+
+    def __init__(
+        self,
+        observation_space: gym.Space,
+        normalize_class: Type[nn.Module] = networks.RunningNorm,
+    ):
+        """Builds NormalizeFeaturesExtractor.
+
+        Args:
+            observation_space: The space observations lie in.
+            normalize_class: The class to use to normalize observations (after being
+                flattened). This can be any Module that preserves the shape;
+                e.g. `nn.BatchNorm*` or `nn.LayerNorm`.
+        """
+        super().__init__(observation_space)
+        self.normalize = normalize_class(self.features_dim)
+
+    def forward(self, observations: th.Tensor) -> th.Tensor:
+        flattened = super().forward(observations)
+        return self.normalize(flattened)

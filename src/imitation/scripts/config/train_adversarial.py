@@ -85,7 +85,7 @@ def seals_mountain_car():
 
 @train_adversarial_ex.named_config
 def pendulum():
-    common = dict(env_name="Pendulum-v0")
+    common = dict(env_name="Pendulum-v1")
 
 
 # Standard MuJoCo Gym environment named configs
