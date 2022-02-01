@@ -689,8 +689,9 @@ class CrossEntropyRewardTrainer(RewardTrainer):
                 in returns that are above this threshold. This threshold
                 is therefore in logspace. The default value of 50 means
                 that probabilities below 2e-22 are rounded up to 2e-22.
-            weight_decay: the weight decay factor for the reward model's weights,
-                equivalent to L2 regularization.
+            weight_decay: the weight decay factor for the reward model's weights
+                to use with ``th.optim.AdamW``. This is similar to but not equivalent
+                to L2 regularization, see https://arxiv.org/abs/1711.05101
             custom_logger: Where to log to; if None (default), creates a new logger.
         """
         super().__init__(model, custom_logger)
@@ -699,7 +700,7 @@ class CrossEntropyRewardTrainer(RewardTrainer):
         self.epochs = epochs
         self.discount_factor = discount_factor
         self.threshold = threshold
-        self.optim = th.optim.Adam(
+        self.optim = th.optim.AdamW(
             self.model.parameters(),
             lr=lr,
             weight_decay=weight_decay,
