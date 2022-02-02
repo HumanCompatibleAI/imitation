@@ -57,6 +57,7 @@ setup(
     package_dir={"": "src"},
     package_data={"imitation": ["py.typed", "envs/examples/airl_envs/assets/*.xml"]},
     install_requires=[
+        # If you change gym version here, change it in "mujoco" below too.
         "gym[classic_control]>=0.21.0",
         "matplotlib",
         "numpy>=1.15",
@@ -85,6 +86,9 @@ setup(
         "test": TESTS_REQUIRE,
         "docs": DOCS_REQUIRE,
         "parallel": PARALLEL_REQUIRE,
+        "mujoco": [
+            "gym[classic_control,mujoco]>=0.21.0",
+        ],
     },
     entry_points={
         "console_scripts": [
