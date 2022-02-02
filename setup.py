@@ -57,7 +57,7 @@ setup(
     package_dir={"": "src"},
     package_data={"imitation": ["py.typed", "envs/examples/airl_envs/assets/*.xml"]},
     install_requires=[
-        "gym[classic_control]",
+        "gym[classic_control]>=0.21.0",
         "matplotlib",
         "numpy>=1.15",
         "torch>=1.4.0",
