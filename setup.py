@@ -27,6 +27,7 @@ TESTS_REQUIRE = [
     "pytest-notebook",
     "pytest-xdist",
     "pytype",
+    "ray[debug,tune]~=0.8.5",
     "wandb",
 ]
 DOCS_REQUIRE = [
