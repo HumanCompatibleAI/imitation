@@ -27,6 +27,7 @@ TESTS_REQUIRE = [
     "pytest-notebook",
     "pytest-xdist",
     "pytype",
+    "ray[debug,tune]~=0.8.5",
     "wandb",
 ]
 DOCS_REQUIRE = [
@@ -56,13 +57,20 @@ setup(
     package_dir={"": "src"},
     package_data={"imitation": ["py.typed", "envs/examples/airl_envs/assets/*.xml"]},
     install_requires=[
-        "gym[classic_control]",
+        # If you change gym version here, change it in "mujoco" below too.
+        "gym[classic_control]>=0.21.0",
         "matplotlib",
         "numpy>=1.15",
         "torch>=1.4.0",
         "tqdm",
         "scikit-learn>=0.21.2",
-        "stable-baselines3>=1.1.0",
+        # TODO(adam): switch back to PyPi once following makes it to release:
+        # https://github.com/DLR-RM/stable-baselines3/pull/734 is released
+        (
+            "stable-baselines3@git+https://github.com/carlosluis/stable-baselines3.git"
+            "@gym_fixes#egg=stable-baselines3"
+        ),
+        "stable-baselines3>=1.4.0",
         "sacred~=0.8.1",
         "tensorboard>=1.14",
     ],
@@ -84,6 +92,9 @@ setup(
         "test": TESTS_REQUIRE,
         "docs": DOCS_REQUIRE,
         "parallel": PARALLEL_REQUIRE,
+        "mujoco": [
+            "gym[classic_control,mujoco]>=0.21.0",
+        ],
     },
     entry_points={
         "console_scripts": [
