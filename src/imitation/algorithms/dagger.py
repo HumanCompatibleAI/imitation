@@ -632,7 +632,6 @@ class SimpleDAggerTrainer(DAggerTrainer):
             )
 
             for traj in trajectories:
-                _save_dagger_demo(traj, collector.save_dir)
                 self._logger.record_mean(
                     "dagger/mean_episode_reward",
                     np.sum(traj.rews),
