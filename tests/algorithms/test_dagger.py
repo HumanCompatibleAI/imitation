@@ -2,6 +2,7 @@
 
 import contextlib
 import glob
+import math
 import os
 import pickle
 from unittest import mock
@@ -17,9 +18,14 @@ from imitation.data import rollout
 from imitation.policies import base, serialize
 from imitation.util import util
 
-ENV_NAME = "CartPole-v1"
-EXPERT_POLICY_PATH = "tests/testdata/expert_models/cartpole_0/policies/final/"
-EXPERT_ROLLOUTS_PATH = "tests/testdata/expert_models/cartpole_0/rollouts/final.pkl"
+DEFAULT_ENV_NAME = "CartPole-v0"
+EXPERT_POLICY_PATH = {
+    "CartPole-v0": "tests/testdata/expert_models/cartpole_0/policies/final/",
+}
+EXPERT_ROLLOUTS_PATH = {
+    "CartPole-v0": "tests/testdata/expert_models/cartpole_0/rollouts/final.pkl",
+    "Pendulum-v1": "tests/testdata/expert_models/pendulum_0/rollouts/final.pkl",
+}
 
 
 def test_beta_schedule():
@@ -30,26 +36,34 @@ def test_beta_schedule():
         assert np.allclose(three_step_sched(i), (3 - i) / 3 if i <= 2 else 0)
 
 
+@pytest.fixture(params=[DEFAULT_ENV_NAME])
+def env_name(request):
+    return request.param
+
+
 @pytest.fixture(params=[1, 4])
 def num_envs(request):
     return request.param
 
 
 @pytest.fixture
-def venv(num_envs):
-    return util.make_vec_env(ENV_NAME, num_envs)
+def venv(env_name, num_envs):
+    return util.make_vec_env(env_name=env_name, n_envs=num_envs)
 
 
 @pytest.fixture
-def expert_policy(venv):
-    return serialize.load_policy("ppo", EXPERT_POLICY_PATH, venv)
+def expert_policy(env_name, venv):
+    if env_name in EXPERT_POLICY_PATH:
+        return serialize.load_policy("ppo", EXPERT_POLICY_PATH[env_name], venv)
+    else:
+        return serialize.load_policy("random", "dummy", venv)
 
 
 @pytest.fixture(params=[True, False])
-def expert_trajs(request):
+def expert_trajs(request, env_name):
     keep_trajs = request.param
     if keep_trajs:
-        with open(EXPERT_ROLLOUTS_PATH, "rb") as f:
+        with open(EXPERT_ROLLOUTS_PATH[env_name], "rb") as f:
             return pickle.load(f)
     else:
         return None
@@ -71,8 +85,11 @@ def test_traj_collector_seed(tmpdir, venv):
     np.testing.assert_array_equal(obs1, obs2)
 
 
+# Use Pendulum for fixed-length episode
+@pytest.mark.parametrize("env_name", ["Pendulum-v1"], indirect=True)
 def test_traj_collector(tmpdir, venv):
     robot_calls = 0
+    num_episodes = 0
 
     def get_random_acts(obs):
         nonlocal robot_calls
@@ -86,15 +103,19 @@ def test_traj_collector(tmpdir, venv):
         save_dir=tmpdir,
     )
     collector.reset()
-    zero_acts = np.zeros((venv.num_envs,), dtype="int")
+    zero_acts = np.zeros(
+        (venv.num_envs,) + venv.action_space.shape,
+        dtype=venv.action_space.dtype,
+    )
     obs, rews, dones, infos = collector.step(zero_acts)
     assert np.all(rews != 0)
     assert not np.any(dones)
     for info in infos:
         assert isinstance(info, dict)
-    # roll out ~5 * venv.num_envs episodes
+    # roll out 5 * venv.num_envs episodes (Pendulum-v0 has 200 timestep episodes)
     for i in range(1000):
-        collector.step(zero_acts)
+        _, _, dones, _ = collector.step(zero_acts)
+        num_episodes += np.sum(dones)
 
     # there is a <10^(-12) probability this fails by chance; we should be calling
     # robot with 50% prob each time
@@ -103,7 +124,8 @@ def test_traj_collector(tmpdir, venv):
     # All user/expert actions are zero. Therefore, all collected actions should be
     # zero.
     file_paths = glob.glob(os.path.join(tmpdir, "dagger-demo-*.npz"))
-    assert len(file_paths) >= 5
+    assert num_episodes == 5 * venv.num_envs
+    assert len(file_paths) == num_episodes
     trajs = map(dagger._load_trajectory, file_paths)
     nonzero_acts = sum(np.sum(traj.acts != 0) for traj in trajs)
     assert nonzero_acts == 0
@@ -323,8 +345,32 @@ def test_trainer_save_reload(tmpdir, init_trainer_fn, venv):
     assert not all(values.equal(old_vars[var]) for var, values in third_vars.items())
 
 
-def test_simple_dagger_trainer_train(simple_dagger_trainer: dagger.SimpleDAggerTrainer):
-    simple_dagger_trainer.train(total_timesteps=200, bc_train_kwargs=dict(n_batches=10))
+# Use Pendulum for fixed-length episode
+@pytest.mark.parametrize("env_name", ["Pendulum-v1"], indirect=True)
+@pytest.mark.parametrize("num_episodes", [1, 4])
+def test_simple_dagger_trainer_train(
+    simple_dagger_trainer: dagger.SimpleDAggerTrainer,
+    venv,
+    num_episodes: int,
+    tmpdir: str,
+):
+    episode_length = 200  # for Pendulum-v1
+    rollout_min_episodes = 2
+    simple_dagger_trainer.train(
+        total_timesteps=episode_length * num_episodes,
+        bc_train_kwargs=dict(n_batches=10),
+        rollout_round_min_episodes=rollout_min_episodes,
+        rollout_round_min_timesteps=1,
+    )
+
+    episodes_per_round = max(rollout_min_episodes, venv.num_envs)
+    num_rounds = math.ceil(num_episodes / episodes_per_round)
+
+    round_paths = glob.glob(os.path.join(tmpdir, "demos", "round-*"))
+    assert len(round_paths) == num_rounds
+    for directory in round_paths:
+        file_paths = glob.glob(os.path.join(directory, "dagger-demo-*.npz"))
+        assert len(file_paths) == episodes_per_round
 
 
 def test_policy_save_reload(tmpdir, trainer):
