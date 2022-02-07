@@ -5,7 +5,6 @@ import pytest
 from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import VecNormalize, DummyVecEnv
 
-from imitation.policies import serialize
 from imitation.policies.base import FeedForward32Policy, NormalizeFeaturesExtractor
 from imitation.util.networks import RunningNorm
 
@@ -31,11 +30,11 @@ def train_cartpole_expert_policy(cartpole_venv) -> PPO:
 
 @pytest.fixture
 def cached_cartpole_expert_policy(cartpole_venv, pytestconfig) -> PPO:
-    cached_expert_path = str(pytestconfig.cache.makedir("experts") / CARTPOLE_ENV_NAME)
+    cached_expert_path = str(pytestconfig.cache.makedir("experts") / CARTPOLE_ENV_NAME / "model.zip")
     try:
-        expert_policy = serialize.load_policy("ppo", cached_expert_path, cartpole_venv)
+        expert_policy = PPO.load(cached_expert_path, cartpole_venv)
         return expert_policy
     except Exception as e:
         expert_policy = train_cartpole_expert_policy(cartpole_venv)
-        serialize.save_stable_model(cached_expert_path, expert_policy)
+        expert_policy.save(cached_expert_path)
         return expert_policy
