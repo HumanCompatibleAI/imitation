@@ -17,7 +17,7 @@ from imitation.data import rollout
 from imitation.policies import base, serialize
 from imitation.util import util
 
-from tests.fixtures import *
+from tests.fixtures import cartpole_venv, cartpole_expert_policy
 
 ENV_NAME = "CartPole-v1"
 EXPERT_POLICY_PATH = "tests/testdata/expert_models/cartpole_0/policies/final/"
@@ -161,7 +161,7 @@ def init_trainer_fn(
     tmpdir,
     cartpole_venv,
     beta_schedule,
-    cached_cartpole_expert_policy,
+    cartpole_expert_policy,
     expert_trajs,
     custom_logger,
 ):
@@ -172,7 +172,7 @@ def init_trainer_fn(
         tmpdir,
         cartpole_venv,
         beta_schedule,
-        cached_cartpole_expert_policy,
+        cartpole_expert_policy,
         expert_trajs,
         custom_logger,
     )
@@ -188,7 +188,7 @@ def simple_dagger_trainer(
     tmpdir,
     cartpole_venv,
     beta_schedule,
-    cached_cartpole_expert_policy,
+    cartpole_expert_policy,
     expert_trajs,
     custom_logger,
 ):
@@ -196,7 +196,7 @@ def simple_dagger_trainer(
         tmpdir,
         cartpole_venv,
         beta_schedule,
-        cached_cartpole_expert_policy,
+        cartpole_expert_policy,
         expert_trajs,
         custom_logger,
     )
@@ -227,11 +227,11 @@ def test_trainer_needs_demos_exception_error(
         trainer.extend_and_update(dict(n_epochs=1))
 
 
-def test_trainer_train_arguments(trainer, cached_cartpole_expert_policy):
+def test_trainer_train_arguments(trainer, cartpole_expert_policy):
     def add_samples():
         collector = trainer.get_trajectory_collector()
         rollout.generate_trajectories(
-            cached_cartpole_expert_policy,
+            cartpole_expert_policy,
             collector,
             sample_until=rollout.make_min_timesteps(40),
         )
@@ -248,7 +248,7 @@ def test_trainer_train_arguments(trainer, cached_cartpole_expert_policy):
     trainer.extend_and_update(dict(n_epochs=1))
 
 
-def test_trainer_makes_progress(init_trainer_fn, cartpole_venv, cached_cartpole_expert_policy):
+def test_trainer_makes_progress(init_trainer_fn, cartpole_venv, cartpole_expert_policy):
     with torch.random.fork_rng():
         # manually seed to avoid flakiness
         torch.random.manual_seed(42)
@@ -272,7 +272,7 @@ def test_trainer_makes_progress(init_trainer_fn, cartpole_venv, cached_cartpole_
                 obs = collector.reset()
                 dones = [False] * cartpole_venv.num_envs
                 while not np.any(dones):
-                    expert_actions, _ = cached_cartpole_expert_policy.predict(obs, deterministic=True)
+                    expert_actions, _ = cartpole_expert_policy.predict(obs, deterministic=True)
                     obs, _, dones, _ = collector.step(expert_actions)
             trainer.extend_and_update(dict(n_epochs=1))
         # make sure we're doing better than a random policy would
@@ -326,7 +326,7 @@ def test_simple_dagger_space_mismatch_error(
     tmpdir,
     cartpole_venv,
     beta_schedule,
-    cached_cartpole_expert_policy,
+        cartpole_expert_policy,
     expert_trajs,
     custom_logger,
 ):
@@ -337,13 +337,13 @@ def test_simple_dagger_space_mismatch_error(
     # elicit space mismatch errors.
     space = MismatchedSpace()
     for space_name in ["observation", "action"]:
-        with mock.patch.object(cached_cartpole_expert_policy, f"{space_name}_space", space):
+        with mock.patch.object(cartpole_expert_policy, f"{space_name}_space", space):
             with pytest.raises(ValueError, match=f"Mismatched {space_name}.*"):
                 _build_simple_dagger_trainer(
                     tmpdir,
                     cartpole_venv,
                     beta_schedule,
-                    cached_cartpole_expert_policy,
+                    cartpole_expert_policy,
                     expert_trajs,
                     custom_logger,
                 )

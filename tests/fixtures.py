@@ -27,7 +27,7 @@ def train_cartpole_expert_policy(cartpole_venv) -> PPO:
 
 
 @pytest.fixture
-def cached_cartpole_expert_policy(cartpole_venv, pytestconfig) -> PPO:
+def cartpole_expert_policy(cartpole_venv, pytestconfig) -> PPO:
     cached_expert_path = str(pytestconfig.cache.makedir("experts") / CARTPOLE_ENV_NAME / "model.zip")
     try:
         expert_policy = PPO.load(cached_expert_path, cartpole_venv)
