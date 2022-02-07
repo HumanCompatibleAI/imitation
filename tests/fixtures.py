@@ -11,7 +11,6 @@ from imitation.util.networks import RunningNorm
 
 
 CARTPOLE_ENV_NAME = "CartPole-v1"
-EXPERTS_CACHE_FOLDER = ".experts/"
 
 
 @pytest.fixture(params=[1, 4])
@@ -31,8 +30,8 @@ def train_cartpole_expert_policy(cartpole_venv) -> PPO:
 
 
 @pytest.fixture
-def cached_cartpole_expert_policy(cartpole_venv) -> PPO:
-    cached_expert_path = os.path.join(EXPERTS_CACHE_FOLDER, CARTPOLE_ENV_NAME)
+def cached_cartpole_expert_policy(cartpole_venv, pytestconfig) -> PPO:
+    cached_expert_path = str(pytestconfig.cache.makedir("experts") / CARTPOLE_ENV_NAME)
     try:
         expert_policy = serialize.load_policy("ppo", cached_expert_path, cartpole_venv)
         return expert_policy
