@@ -45,4 +45,4 @@ def test_reward_overwrite():
     rand_act, _ = policy.predict(wrapped_env.reset())
     _, rew, _, infos = wrapped_env.step(rand_act)
     assert np.all(rew >= 0)
-    assert np.all([info_dict["wrapped_env_rew"] < 0 for info_dict in infos])
+    assert np.all([info_dict["original_env_rew"] < 0 for info_dict in infos])
