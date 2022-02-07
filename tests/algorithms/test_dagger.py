@@ -17,6 +17,8 @@ from imitation.data import rollout
 from imitation.policies import base, serialize
 from imitation.util import util
 
+from tests.fixtures import *
+
 ENV_NAME = "CartPole-v1"
 EXPERT_POLICY_PATH = "tests/testdata/expert_models/cartpole_0/policies/final/"
 EXPERT_ROLLOUTS_PATH = "tests/testdata/expert_models/cartpole_0/rollouts/final.pkl"
@@ -30,21 +32,6 @@ def test_beta_schedule():
         assert np.allclose(three_step_sched(i), (3 - i) / 3 if i <= 2 else 0)
 
 
-@pytest.fixture(params=[1, 4])
-def num_envs(request):
-    return request.param
-
-
-@pytest.fixture
-def venv(num_envs):
-    return util.make_vec_env(ENV_NAME, num_envs)
-
-
-@pytest.fixture
-def expert_policy(venv):
-    return serialize.load_policy("ppo", EXPERT_POLICY_PATH, venv)
-
-
 @pytest.fixture(params=[True, False])
 def expert_trajs(request):
     keep_trajs = request.param
@@ -55,10 +42,10 @@ def expert_trajs(request):
         return None
 
 
-def test_traj_collector_seed(tmpdir, venv):
+def test_traj_collector_seed(tmpdir, cartpole_venv):
     collector = dagger.InteractiveTrajectoryCollector(
-        venv=venv,
-        get_robot_acts=lambda o: [venv.action_space.sample() for _ in range(len(o))],
+        venv=cartpole_venv,
+        get_robot_acts=lambda o: [cartpole_venv.action_space.sample() for _ in range(len(o))],
         beta=0.5,
         save_dir=tmpdir,
     )
@@ -71,22 +58,22 @@ def test_traj_collector_seed(tmpdir, venv):
     np.testing.assert_array_equal(obs1, obs2)
 
 
-def test_traj_collector(tmpdir, venv):
+def test_traj_collector(tmpdir, cartpole_venv):
     robot_calls = 0
 
     def get_random_acts(obs):
         nonlocal robot_calls
         robot_calls += len(obs)
-        return [venv.action_space.sample() for _ in range(len(obs))]
+        return [cartpole_venv.action_space.sample() for _ in range(len(obs))]
 
     collector = dagger.InteractiveTrajectoryCollector(
-        venv=venv,
+        venv=cartpole_venv,
         get_robot_acts=get_random_acts,
         beta=0.5,
         save_dir=tmpdir,
     )
     collector.reset()
-    zero_acts = np.zeros((venv.num_envs,), dtype="int")
+    zero_acts = np.zeros((cartpole_venv.num_envs,), dtype="int")
     obs, rews, dones, infos = collector.step(zero_acts)
     assert np.all(rews != 0)
     assert not np.any(dones)
@@ -98,7 +85,7 @@ def test_traj_collector(tmpdir, venv):
 
     # there is a <10^(-12) probability this fails by chance; we should be calling
     # robot with 50% prob each time
-    assert 388 * venv.num_envs <= robot_calls <= 612 * venv.num_envs
+    assert 388 * cartpole_venv.num_envs <= robot_calls <= 612 * cartpole_venv.num_envs
 
     # All user/expert actions are zero. Therefore, all collected actions should be
     # zero.
@@ -172,9 +159,9 @@ def beta_schedule(request):
 def init_trainer_fn(
     request,
     tmpdir,
-    venv,
+    cartpole_venv,
     beta_schedule,
-    expert_policy,
+    cached_cartpole_expert_policy,
     expert_trajs,
     custom_logger,
 ):
@@ -183,9 +170,9 @@ def init_trainer_fn(
     trainer_fn = request.param
     return lambda: trainer_fn(
         tmpdir,
-        venv,
+        cartpole_venv,
         beta_schedule,
-        expert_policy,
+        cached_cartpole_expert_policy,
         expert_trajs,
         custom_logger,
     )
@@ -199,17 +186,17 @@ def trainer(init_trainer_fn):
 @pytest.fixture
 def simple_dagger_trainer(
     tmpdir,
-    venv,
+    cartpole_venv,
     beta_schedule,
-    expert_policy,
+    cached_cartpole_expert_policy,
     expert_trajs,
     custom_logger,
 ):
     return _build_simple_dagger_trainer(
         tmpdir,
-        venv,
+        cartpole_venv,
         beta_schedule,
-        expert_policy,
+        cached_cartpole_expert_policy,
         expert_trajs,
         custom_logger,
     )
@@ -240,11 +227,11 @@ def test_trainer_needs_demos_exception_error(
         trainer.extend_and_update(dict(n_epochs=1))
 
 
-def test_trainer_train_arguments(trainer, expert_policy):
+def test_trainer_train_arguments(trainer, cached_cartpole_expert_policy):
     def add_samples():
         collector = trainer.get_trajectory_collector()
         rollout.generate_trajectories(
-            expert_policy,
+            cached_cartpole_expert_policy,
             collector,
             sample_until=rollout.make_min_timesteps(40),
         )
@@ -261,16 +248,16 @@ def test_trainer_train_arguments(trainer, expert_policy):
     trainer.extend_and_update(dict(n_epochs=1))
 
 
-def test_trainer_makes_progress(init_trainer_fn, venv, expert_policy):
+def test_trainer_makes_progress(init_trainer_fn, cartpole_venv, cached_cartpole_expert_policy):
     with torch.random.fork_rng():
         # manually seed to avoid flakiness
         torch.random.manual_seed(42)
-        venv.action_space.seed(42)
+        cartpole_venv.action_space.seed(42)
 
         trainer = init_trainer_fn()
         pre_train_rew_mean = rollout.mean_return(
             trainer.policy,
-            venv,
+            cartpole_venv,
             sample_until=rollout.make_min_episodes(15),
             deterministic_policy=False,
         )
@@ -283,15 +270,15 @@ def test_trainer_makes_progress(init_trainer_fn, venv, expert_policy):
             collector = trainer.get_trajectory_collector()
             for _ in range(5):
                 obs = collector.reset()
-                dones = [False] * venv.num_envs
+                dones = [False] * cartpole_venv.num_envs
                 while not np.any(dones):
-                    expert_actions, _ = expert_policy.predict(obs, deterministic=True)
+                    expert_actions, _ = cached_cartpole_expert_policy.predict(obs, deterministic=True)
                     obs, _, dones, _ = collector.step(expert_actions)
             trainer.extend_and_update(dict(n_epochs=1))
         # make sure we're doing better than a random policy would
         post_train_rew_mean = rollout.mean_return(
             trainer.policy,
-            venv,
+            cartpole_venv,
             sample_until=rollout.make_min_episodes(15),
             deterministic_policy=True,
         )
@@ -302,11 +289,11 @@ def test_trainer_makes_progress(init_trainer_fn, venv, expert_policy):
     )
 
 
-def test_trainer_save_reload(tmpdir, init_trainer_fn, venv):
+def test_trainer_save_reload(tmpdir, init_trainer_fn, cartpole_venv):
     trainer = init_trainer_fn()
     trainer.round_num = 3
     trainer.save_trainer()
-    loaded_trainer = dagger.reconstruct_trainer(trainer.scratch_dir, venv=venv)
+    loaded_trainer = dagger.reconstruct_trainer(trainer.scratch_dir, venv=cartpole_venv)
     assert loaded_trainer.round_num == trainer.round_num
 
     # old trainer and reloaded trainer should have same variable values
@@ -337,9 +324,9 @@ def test_policy_save_reload(tmpdir, trainer):
 
 def test_simple_dagger_space_mismatch_error(
     tmpdir,
-    venv,
+    cartpole_venv,
     beta_schedule,
-    expert_policy,
+    cached_cartpole_expert_policy,
     expert_trajs,
     custom_logger,
 ):
@@ -350,13 +337,13 @@ def test_simple_dagger_space_mismatch_error(
     # elicit space mismatch errors.
     space = MismatchedSpace()
     for space_name in ["observation", "action"]:
-        with mock.patch.object(expert_policy, f"{space_name}_space", space):
+        with mock.patch.object(cached_cartpole_expert_policy, f"{space_name}_space", space):
             with pytest.raises(ValueError, match=f"Mismatched {space_name}.*"):
                 _build_simple_dagger_trainer(
                     tmpdir,
-                    venv,
+                    cartpole_venv,
                     beta_schedule,
-                    expert_policy,
+                    cached_cartpole_expert_policy,
                     expert_trajs,
                     custom_logger,
                 )
