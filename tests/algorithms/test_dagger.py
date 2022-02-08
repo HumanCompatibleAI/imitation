@@ -3,7 +3,6 @@
 import contextlib
 import glob
 import os
-import pickle
 from unittest import mock
 
 import gym
@@ -148,7 +147,7 @@ def init_trainer_fn(
     cartpole_venv,
     beta_schedule,
     cartpole_expert_policy,
-        cartpole_expert_trajectories,
+    cartpole_expert_trajectories,
     custom_logger,
 ):
     # Provide a trainer initialization fixture in addition `trainer` fixture below
@@ -175,7 +174,7 @@ def simple_dagger_trainer(
     cartpole_venv,
     beta_schedule,
     cartpole_expert_policy,
-        cartpole_expert_trajectories,
+    cartpole_expert_trajectories,
     custom_logger,
 ):
     return _build_simple_dagger_trainer(
@@ -190,7 +189,7 @@ def simple_dagger_trainer(
 
 def test_trainer_needs_demos_exception_error(
     trainer,
-        cartpole_expert_trajectories,
+    cartpole_expert_trajectories,
 ):
     assert trainer.round_num == 0
     error_ctx = pytest.raises(dagger.NeedsDemosException)
@@ -312,8 +311,8 @@ def test_simple_dagger_space_mismatch_error(
     tmpdir,
     cartpole_venv,
     beta_schedule,
-        cartpole_expert_policy,
-        cartpole_expert_trajectories,
+    cartpole_expert_policy,
+    cartpole_expert_trajectories,
     custom_logger,
 ):
     class MismatchedSpace(gym.spaces.Space):
