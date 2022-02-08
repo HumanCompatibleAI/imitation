@@ -14,14 +14,10 @@ from stable_baselines3.common import policies
 
 from imitation.algorithms import bc, dagger
 from imitation.data import rollout
-from imitation.policies import base, serialize
+from imitation.policies import base
 from imitation.util import util
 
-from tests.fixtures import cartpole_venv, cartpole_expert_policy
-
-ENV_NAME = "CartPole-v1"
-EXPERT_POLICY_PATH = "tests/testdata/expert_models/cartpole_0/policies/final/"
-EXPERT_ROLLOUTS_PATH = "tests/testdata/expert_models/cartpole_0/rollouts/final.pkl"
+from tests.fixtures import cartpole_venv, cartpole_expert_policy, cartpole_expert_trajectories
 
 
 def test_beta_schedule():
@@ -30,16 +26,6 @@ def test_beta_schedule():
     for i in range(10):
         assert np.allclose(one_step_sched(i), 1 if i == 0 else 0)
         assert np.allclose(three_step_sched(i), (3 - i) / 3 if i <= 2 else 0)
-
-
-@pytest.fixture(params=[True, False])
-def expert_trajs(request):
-    keep_trajs = request.param
-    if keep_trajs:
-        with open(EXPERT_ROLLOUTS_PATH, "rb") as f:
-            return pickle.load(f)
-    else:
-        return None
 
 
 def test_traj_collector_seed(tmpdir, cartpole_venv):
@@ -101,11 +87,11 @@ def _build_dagger_trainer(
     venv,
     beta_schedule,
     expert_policy,
-    expert_trajs,
+    cartpole_expert_rollouts,
     custom_logger,
 ):
     del expert_policy
-    if expert_trajs is not None:
+    if cartpole_expert_rollouts is not None:
         pytest.skip(
             "DAggerTrainer does not use trajectories. "
             "Skipping to avoid duplicate test.",
@@ -130,7 +116,7 @@ def _build_simple_dagger_trainer(
     venv,
     beta_schedule,
     expert_policy,
-    expert_trajs,
+    cartpole_expert_rollouts,
     custom_logger,
 ):
     bc_trainer = bc.BC(
@@ -145,7 +131,7 @@ def _build_simple_dagger_trainer(
         beta_schedule=beta_schedule,
         bc_trainer=bc_trainer,
         expert_policy=expert_policy,
-        expert_trajs=expert_trajs,
+        expert_trajs=cartpole_expert_rollouts,
         custom_logger=custom_logger,
     )
 
@@ -162,7 +148,7 @@ def init_trainer_fn(
     cartpole_venv,
     beta_schedule,
     cartpole_expert_policy,
-    expert_trajs,
+        cartpole_expert_trajectories,
     custom_logger,
 ):
     # Provide a trainer initialization fixture in addition `trainer` fixture below
@@ -173,7 +159,7 @@ def init_trainer_fn(
         cartpole_venv,
         beta_schedule,
         cartpole_expert_policy,
-        expert_trajs,
+        cartpole_expert_trajectories,
         custom_logger,
     )
 
@@ -189,7 +175,7 @@ def simple_dagger_trainer(
     cartpole_venv,
     beta_schedule,
     cartpole_expert_policy,
-    expert_trajs,
+        cartpole_expert_trajectories,
     custom_logger,
 ):
     return _build_simple_dagger_trainer(
@@ -197,18 +183,18 @@ def simple_dagger_trainer(
         cartpole_venv,
         beta_schedule,
         cartpole_expert_policy,
-        expert_trajs,
+        cartpole_expert_trajectories,
         custom_logger,
     )
 
 
 def test_trainer_needs_demos_exception_error(
     trainer,
-    expert_trajs,
+        cartpole_expert_trajectories,
 ):
     assert trainer.round_num == 0
     error_ctx = pytest.raises(dagger.NeedsDemosException)
-    if expert_trajs is not None and isinstance(trainer, dagger.SimpleDAggerTrainer):
+    if cartpole_expert_trajectories is not None and isinstance(trainer, dagger.SimpleDAggerTrainer):
         # In this case, demos should be preloaded and we shouldn't experience
         # the NeedsDemoException error.
         ctx = contextlib.nullcontext()
@@ -327,7 +313,7 @@ def test_simple_dagger_space_mismatch_error(
     cartpole_venv,
     beta_schedule,
         cartpole_expert_policy,
-    expert_trajs,
+        cartpole_expert_trajectories,
     custom_logger,
 ):
     class MismatchedSpace(gym.spaces.Space):
@@ -344,7 +330,7 @@ def test_simple_dagger_space_mismatch_error(
                     cartpole_venv,
                     beta_schedule,
                     cartpole_expert_policy,
-                    expert_trajs,
+                    cartpole_expert_trajectories,
                     custom_logger,
                 )
 
