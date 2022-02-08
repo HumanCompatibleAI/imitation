@@ -50,6 +50,6 @@ def cartpole_expert_trajectories(cartpole_expert_policy, cartpole_venv, pytestco
             return pickle.load(f)
     except Exception as e:
         rollout.rollout_and_save(rollouts_path, cartpole_expert_policy, cartpole_venv,
-                                 rollout.make_sample_until(min_timesteps=2000, min_episodes=None))
+                                 rollout.make_sample_until(min_timesteps=2000, min_episodes=57))
         with open(rollouts_path, "rb") as f:  # TODO: not re-loading the trajectory would be nicer here
             return pickle.load(f)
