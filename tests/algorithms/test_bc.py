@@ -12,7 +12,7 @@ from imitation.algorithms import bc
 from imitation.data import rollout, types
 from imitation.util import logger, util
 
-ROLLOUT_PATH = "tests/testdata/expert_models/cartpole_0/rollouts/final.pkl"
+from tests.fixtures import cartpole_expert_trajectories, cartpole_expert_policy, cartpole_venv
 
 
 @pytest.fixture
@@ -49,9 +49,8 @@ class DucktypedDataset:
 
 
 @pytest.fixture
-def trainer(batch_size, venv, expert_data_type, custom_logger):
-    rollouts = types.load(ROLLOUT_PATH)
-    trans = rollout.flatten_trajectories(rollouts)
+def trainer(batch_size, venv, expert_data_type, custom_logger, cartpole_expert_trajectories):
+    trans = rollout.flatten_trajectories(cartpole_expert_trajectories)
     if expert_data_type == "data_loader":
         expert_data = th_data.DataLoader(
             trans,
@@ -145,6 +144,7 @@ def test_bc_data_loader_empty_iter_error(
     venv: vec_env.VecEnv,
     no_yield_after_iter: bool,
     custom_logger: logger.HierarchicalLogger,
+    cartpole_expert_trajectories
 ) -> None:
     """Check that we error out if the DataLoader suddenly stops yielding any batches.
 
@@ -156,8 +156,7 @@ def test_bc_data_loader_empty_iter_error(
         custom_logger: Where to log to.
     """
     batch_size = 32
-    rollouts = types.load(ROLLOUT_PATH)
-    trans = rollout.flatten_trajectories(rollouts)
+    trans = rollout.flatten_trajectories(cartpole_expert_trajectories)
     dummy_yield_value = dataclasses.asdict(trans[:batch_size])
 
     bad_data_loader = _DataLoaderFailsOnNthIter(
