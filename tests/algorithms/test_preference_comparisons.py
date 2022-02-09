@@ -1,7 +1,7 @@
 """Tests for the preference comparisons reward learning implementation."""
 
 import re
-from typing import Sequence
+from typing import Sequence, List
 
 import numpy as np
 import pytest
@@ -10,6 +10,7 @@ import stable_baselines3
 
 from imitation.algorithms import preference_comparisons
 from imitation.data import types
+from imitation.data.types import TrajectoryWithRew
 from imitation.rewards import reward_nets
 from imitation.util import util
 
@@ -72,22 +73,15 @@ def test_missing_environment(agent):
         preference_comparisons.AgentTrainer(agent, reward_net)
 
 
-def _load_dataset(**kwargs) -> preference_comparisons.TrajectoryDataset:
-    return preference_comparisons.TrajectoryDataset(
-        trajectories=types.load("tests/testdata/expert_models/cartpole_0/rollouts/final.pkl"),
-        **kwargs,
-    )
-
-
-def test_trajectory_dataset_seeding(num_samples: int = 400):
-    dataset1 = _load_dataset(seed=0)
+def test_trajectory_dataset_seeding(cartpole_expert_trajectories: List[TrajectoryWithRew], num_samples: int = 400):
+    dataset1 = preference_comparisons.TrajectoryDataset(cartpole_expert_trajectories, seed=0)
     sample1 = dataset1.sample(num_samples)
-    dataset2 = _load_dataset(seed=0)
+    dataset2 = preference_comparisons.TrajectoryDataset(cartpole_expert_trajectories, seed=0)
     sample2 = dataset2.sample(num_samples)
 
     _check_trajs_equal(sample1, sample2)
 
-    dataset3 = _load_dataset(seed=42)
+    dataset3 = preference_comparisons.TrajectoryDataset(cartpole_expert_trajectories, seed=42)
     sample3 = dataset3.sample(num_samples)
     with pytest.raises(AssertionError):
         _check_trajs_equal(sample2, sample3)
@@ -95,8 +89,8 @@ def test_trajectory_dataset_seeding(num_samples: int = 400):
 
 # CartPole max episode length is 200
 @pytest.mark.parametrize("num_steps", [0, 199, 200, 201, 400])
-def test_trajectory_dataset_len(num_steps: int):
-    dataset = _load_dataset(seed=0)
+def test_trajectory_dataset_len(cartpole_expert_trajectories: List[TrajectoryWithRew], num_steps: int):
+    dataset = preference_comparisons.TrajectoryDataset(cartpole_expert_trajectories, seed=0)
     sample = dataset.sample(num_steps)
     lengths = [len(t) for t in sample]
     assert sum(lengths) >= num_steps
@@ -104,14 +98,14 @@ def test_trajectory_dataset_len(num_steps: int):
         assert sum(lengths) - min(lengths) < num_steps
 
 
-def test_trajectory_dataset_too_long():
-    dataset = _load_dataset(seed=0)
+def test_trajectory_dataset_too_long(cartpole_expert_trajectories: List[TrajectoryWithRew]):
+    dataset = preference_comparisons.TrajectoryDataset(cartpole_expert_trajectories, seed=0)
     with pytest.raises(RuntimeError, match="Asked for.*but only.* available"):
         dataset.sample(100000)
 
 
-def test_trajectory_dataset_shuffle(num_steps: int = 400):
-    dataset = _load_dataset(seed=0)
+def test_trajectory_dataset_shuffle(cartpole_expert_trajectories: List[TrajectoryWithRew], num_steps: int = 400):
+    dataset = preference_comparisons.TrajectoryDataset(cartpole_expert_trajectories, seed=0)
     sample = dataset.sample(num_steps)
     sample2 = dataset.sample(num_steps)
     with pytest.raises(AssertionError):
