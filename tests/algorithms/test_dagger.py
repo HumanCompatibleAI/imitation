@@ -16,8 +16,6 @@ from imitation.data import rollout
 from imitation.policies import base
 from imitation.util import util
 
-from tests.fixtures import cartpole_venv, cartpole_expert_policy, cartpole_expert_trajectories
-
 
 def test_beta_schedule():
     one_step_sched = dagger.LinearBetaSchedule(1)

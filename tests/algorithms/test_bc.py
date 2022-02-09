@@ -12,8 +12,6 @@ from imitation.algorithms import bc
 from imitation.data import rollout, types
 from imitation.util import logger, util
 
-from tests.fixtures import cartpole_expert_trajectories, cartpole_expert_policy, cartpole_venv
-
 
 @pytest.fixture(params=[32, 50])
 def batch_size(request):

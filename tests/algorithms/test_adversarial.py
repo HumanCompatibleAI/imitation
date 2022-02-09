@@ -18,7 +18,6 @@ from imitation.data import rollout, types
 from imitation.rewards import reward_nets
 from imitation.util import logger, util
 
-from tests.fixtures import cartpole_venv, cartpole_expert_policy, cartpole_expert_trajectories
 
 ALGORITHM_KWARGS = {
     "airl-ppo": {
