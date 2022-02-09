@@ -83,7 +83,7 @@ class TrajectoryDataset(TrajectoryGenerator):
 
     def __init__(
         self,
-        path: AnyPath,
+        trajectories: List[TrajectoryWithRew],
         seed: Optional[int] = None,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
     ):
@@ -95,7 +95,7 @@ class TrajectoryDataset(TrajectoryGenerator):
             custom_logger: Where to log to; if None (default), creates a new logger.
         """
         super().__init__(custom_logger=custom_logger)
-        self._trajectories = types.load(path)
+        self._trajectories = trajectories
         self.rng = random.Random(seed)
 
     def sample(self, steps: int) -> Sequence[TrajectoryWithRew]:

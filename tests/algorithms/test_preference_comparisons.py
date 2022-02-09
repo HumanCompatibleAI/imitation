@@ -74,7 +74,7 @@ def test_missing_environment(agent):
 
 def _load_dataset(**kwargs) -> preference_comparisons.TrajectoryDataset:
     return preference_comparisons.TrajectoryDataset(
-        path="tests/testdata/expert_models/cartpole_0/rollouts/final.pkl",
+        trajectories=types.load("tests/testdata/expert_models/cartpole_0/rollouts/final.pkl"),
         **kwargs,
     )
 
