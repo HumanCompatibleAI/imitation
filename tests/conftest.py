@@ -1,4 +1,5 @@
 """Fixtures common across tests."""
+from typing import List
 
 import pytest
 import torch
@@ -9,6 +10,7 @@ from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import VecNormalize, DummyVecEnv
 
 from imitation.data import rollout
+from imitation.data.types import TrajectoryWithRew
 from imitation.data.wrappers import RolloutInfoWrapper
 from imitation.policies.base import FeedForward32Policy, NormalizeFeaturesExtractor
 from imitation.util import logger
@@ -47,7 +49,7 @@ def cartpole_expert_policy(cartpole_venv, pytestconfig) -> PPO:
 
 
 @pytest.fixture
-def cartpole_expert_trajectories(cartpole_expert_policy, cartpole_venv, pytestconfig):
+def cartpole_expert_trajectories(cartpole_expert_policy, cartpole_venv, pytestconfig) -> List[TrajectoryWithRew]:
     rollouts_path = str(pytestconfig.cache.makedir("experts") / CARTPOLE_ENV_NAME / "rollout.pkl")
     try:
         with open(rollouts_path, "rb") as f:

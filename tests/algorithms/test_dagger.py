@@ -3,6 +3,7 @@
 import contextlib
 import glob
 import os
+from typing import List
 from unittest import mock
 
 import gym
@@ -13,6 +14,7 @@ from stable_baselines3.common import policies
 
 from imitation.algorithms import bc, dagger
 from imitation.data import rollout
+from imitation.data.types import TrajectoryWithRew
 from imitation.policies import base
 from imitation.util import util
 
@@ -84,7 +86,7 @@ def _build_dagger_trainer(
     venv,
     beta_schedule,
     expert_policy,
-    cartpole_expert_rollouts,
+    cartpole_expert_rollouts: List[TrajectoryWithRew],
     custom_logger,
 ):
     del expert_policy
@@ -113,7 +115,7 @@ def _build_simple_dagger_trainer(
     venv,
     beta_schedule,
     expert_policy,
-    cartpole_expert_rollouts,
+    cartpole_expert_rollouts: List[TrajectoryWithRew],
     custom_logger,
 ):
     bc_trainer = bc.BC(
@@ -145,7 +147,7 @@ def init_trainer_fn(
     cartpole_venv,
     beta_schedule,
     cartpole_expert_policy,
-    cartpole_expert_trajectories,
+    cartpole_expert_trajectories: List[TrajectoryWithRew],
     custom_logger,
 ):
     # Provide a trainer initialization fixture in addition `trainer` fixture below
@@ -172,7 +174,7 @@ def simple_dagger_trainer(
     cartpole_venv,
     beta_schedule,
     cartpole_expert_policy,
-    cartpole_expert_trajectories,
+    cartpole_expert_trajectories: List[TrajectoryWithRew],
     custom_logger,
 ):
     return _build_simple_dagger_trainer(
@@ -187,7 +189,7 @@ def simple_dagger_trainer(
 
 def test_trainer_needs_demos_exception_error(
     trainer,
-    cartpole_expert_trajectories,
+    cartpole_expert_trajectories: List[TrajectoryWithRew],
 ):
     assert trainer.round_num == 0
     error_ctx = pytest.raises(dagger.NeedsDemosException)
@@ -310,7 +312,7 @@ def test_simple_dagger_space_mismatch_error(
     cartpole_venv,
     beta_schedule,
     cartpole_expert_policy,
-    cartpole_expert_trajectories,
+    cartpole_expert_trajectories: List[TrajectoryWithRew],
     custom_logger,
 ):
     class MismatchedSpace(gym.spaces.Space):
