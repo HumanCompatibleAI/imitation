@@ -83,7 +83,7 @@ class TrajectoryDataset(TrajectoryGenerator):
 
     def __init__(
         self,
-        trajectories: List[TrajectoryWithRew],
+        trajectories: Sequence[TrajectoryWithRew],
         seed: Optional[int] = None,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
     ):
