@@ -21,7 +21,7 @@ CARTPOLE_ENV_NAME = "CartPole-v1"
 
 def load_or_train_ppo(
     cache_path: str,
-    training_function: Callable[[gym.Env], None],
+    training_function: Callable[[gym.Env], PPO],
     venv,
 ) -> PPO:
     try:
