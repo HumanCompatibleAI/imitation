@@ -140,7 +140,10 @@ jobs:
               sleep 1
             done
           background: true
-
+      - restore_cache:
+          key: v1-pytest-cache
+          paths:
+            - .pytest_cache
       - run:
           name: run tests
           command: |
@@ -151,7 +154,10 @@ jobs:
             mv .coverage .coverage.imitation
             coverage combine  # rewrite paths from virtualenv to src/
       - codecov/upload
-
+      - save_cache:
+          key: v1-pytest-cache
+          paths:
+            - .pytest_cache
       - store_artifacts:
           path: /tmp/test-reports
           destination: test-reports
