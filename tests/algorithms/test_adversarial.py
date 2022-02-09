@@ -18,7 +18,6 @@ from imitation.data import rollout, types
 from imitation.rewards import reward_nets
 from imitation.util import logger, util
 
-
 ALGORITHM_KWARGS = {
     "airl-ppo": {
         "algorithm_cls": airl.AIRL,

@@ -90,7 +90,7 @@ class TrajectoryDataset(TrajectoryGenerator):
         """Creates a dataset loaded from `path`.
 
         Args:
-            path: A path to pickled rollouts.
+            trajectories: the dataset of rollouts.
             seed: Seed for RNG used for shuffling dataset.
             custom_logger: Where to log to; if None (default), creates a new logger.
         """

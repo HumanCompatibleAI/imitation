@@ -30,7 +30,9 @@ def test_beta_schedule():
 def test_traj_collector_seed(tmpdir, cartpole_venv):
     collector = dagger.InteractiveTrajectoryCollector(
         venv=cartpole_venv,
-        get_robot_acts=lambda o: [cartpole_venv.action_space.sample() for _ in range(len(o))],
+        get_robot_acts=lambda o: [
+            cartpole_venv.action_space.sample() for _ in range(len(o))
+        ],
         beta=0.5,
         save_dir=tmpdir,
     )
@@ -193,7 +195,10 @@ def test_trainer_needs_demos_exception_error(
 ):
     assert trainer.round_num == 0
     error_ctx = pytest.raises(dagger.NeedsDemosException)
-    if cartpole_expert_trajectories is not None and isinstance(trainer, dagger.SimpleDAggerTrainer):
+    if cartpole_expert_trajectories is not None and isinstance(
+        trainer,
+        dagger.SimpleDAggerTrainer,
+    ):
         # In this case, demos should be preloaded and we shouldn't experience
         # the NeedsDemoException error.
         ctx = contextlib.nullcontext()
@@ -257,7 +262,10 @@ def test_trainer_makes_progress(init_trainer_fn, cartpole_venv, cartpole_expert_
                 obs = collector.reset()
                 dones = [False] * cartpole_venv.num_envs
                 while not np.any(dones):
-                    expert_actions, _ = cartpole_expert_policy.predict(obs, deterministic=True)
+                    expert_actions, _ = cartpole_expert_policy.predict(
+                        obs,
+                        deterministic=True,
+                    )
                     obs, _, dones, _ = collector.step(expert_actions)
             trainer.extend_and_update(dict(n_epochs=1))
         # make sure we're doing better than a random policy would

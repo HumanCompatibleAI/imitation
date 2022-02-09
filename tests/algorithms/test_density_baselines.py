@@ -37,7 +37,12 @@ def score_trajectories(
 # test on Pendulum rather than Cartpole because I don't handle episodes that
 # terminate early yet (see issue #40)
 @parametrize_density_stationary
-def test_density_reward(density_type, is_stationary, pendulum_venv, pendulum_expert_trajectories):
+def test_density_reward(
+    density_type,
+    is_stationary,
+    pendulum_venv,
+    pendulum_expert_trajectories,
+):
     # use only a subset of trajectories
     expert_trajectories_all = pendulum_expert_trajectories[:8]
     n_experts = len(expert_trajectories_all)
@@ -55,7 +60,10 @@ def test_density_reward(density_type, is_stationary, pendulum_venv, pendulum_exp
 
     # check that expert policy does better than a random policy under our reward
     # function
-    random_policy = RandomPolicy(pendulum_venv.observation_space, pendulum_venv.action_space)
+    random_policy = RandomPolicy(
+        pendulum_venv.observation_space,
+        pendulum_venv.action_space,
+    )
     sample_until = rollout.make_min_episodes(15)
     random_trajectories = rollout.generate_trajectories(
         random_policy,
