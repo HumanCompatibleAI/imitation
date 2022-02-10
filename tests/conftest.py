@@ -1,4 +1,5 @@
 """Fixtures common across tests."""
+import os
 import pickle
 import traceback
 import warnings
@@ -7,6 +8,7 @@ from typing import Callable, List
 import gym
 import pytest
 import torch
+from filelock import FileLock
 from stable_baselines3 import PPO
 from stable_baselines3.common.policies import BasePolicy
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
@@ -26,37 +28,42 @@ def load_or_train_ppo(
     training_function: Callable[[gym.Env], PPO],
     venv,
 ) -> PPO:
-    try:
-        return PPO.load(cache_path, venv)
-    except (OSError, AssertionError, pickle.PickleError):
-        # Note, when loading models from older stable-baselines versions, we can get
-        # AssertionErrors.
-        warnings.warn(
-            "Retraining expert policy due to the following error when trying"
-            " to load it:\n" + traceback.format_exc(),
-        )
-    expert = training_function(venv)
-    expert.save(cache_path)
-    return expert
+    os.makedirs(os.path.dirname(cache_path), exist_ok=True)
+    with FileLock(cache_path + ".lock"):
+        try:
+            return PPO.load(cache_path, venv)
+        except (OSError, AssertionError, pickle.PickleError):
+            # Note, when loading models from older stable-baselines versions, we can get
+            # AssertionErrors.
+            warnings.warn(
+                "Retraining expert policy due to the following error when trying"
+                " to load it:\n" + traceback.format_exc(),
+            )
+        expert = training_function(venv)
+        expert.save(cache_path)
+        return expert
 
 
 def load_or_rollout_trajectories(cache_path, policy, venv) -> List[TrajectoryWithRew]:
-    try:
-        with open(cache_path, "rb") as f:
-            return pickle.load(f)
-    except (OSError, pickle.PickleError):
-        warnings.warn(
-            "Recomputing expert trajectories due to the following error when "
-            "trying to load them:\n" + traceback.format_exc(),
+    os.makedirs(os.path.dirname(cache_path), exist_ok=True)
+    with FileLock(cache_path + ".lock"):
+        try:
+            with open(cache_path, "rb") as f:
+                return pickle.load(f)
+        except (OSError, pickle.PickleError):
+            warnings.warn(
+                "Recomputing expert trajectories due to the following error when "
+                "trying to load them:\n" + traceback.format_exc(),
+            )
+        rollout.rollout_and_save(
+            cache_path,
+            policy,
+            venv,
+            rollout.make_sample_until(min_timesteps=2000, min_episodes=57),
         )
-    rollout.rollout_and_save(
-        cache_path,
-        policy,
-        venv,
-        rollout.make_sample_until(min_timesteps=2000, min_episodes=57),
-    )
-    with open(cache_path, "rb") as f:
-        return pickle.load(f)  # TODO: not re-loading the trajectory would be nicer here
+        with open(cache_path, "rb") as f:
+            # TODO: not re-loading the trajectory would be nicer here
+            return pickle.load(f)
 
 
 @pytest.fixture(params=[1, 4])
