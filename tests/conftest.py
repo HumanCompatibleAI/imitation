@@ -27,9 +27,11 @@ def load_or_train_ppo(
     try:
         return PPO.load(cache_path, venv)
     except OSError:
-        pass
+        pass  # File not found, or path is a directory
     except AssertionError:
-        pass
+        pass  # Model was stored with an older version of stable baselines
+    except pickle.PickleError:
+        pass  # File contains something, that can not be unpickled
     expert = training_function(venv)
     expert.save(cache_path)
     return expert
@@ -40,9 +42,11 @@ def load_or_rollout_trajectories(cache_path, policy, venv) -> List[TrajectoryWit
         with open(cache_path, "rb") as f:
             return pickle.load(f)
     except OSError:
-        pass
+        pass  # File not found, or path is a directory
     except AssertionError:
-        pass
+        pass  # Model was stored with an older version of stable baselines
+    except pickle.PickleError:
+        pass  # File contains something, that can not be unpickled
     rollout.rollout_and_save(
         cache_path,
         policy,
