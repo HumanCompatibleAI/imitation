@@ -141,7 +141,7 @@ jobs:
             done
           background: true
       - restore_cache:
-          key: v1-pytest-cache
+          key: v1-pytest-cache-{{ checksum "setup.py" }}
           paths:
             - .pytest_cache
       - run:
@@ -155,7 +155,7 @@ jobs:
             coverage combine  # rewrite paths from virtualenv to src/
       - codecov/upload
       - save_cache:
-          key: v1-pytest-cache
+          key: v1-pytest-cache-{{ checksum "setup.py" }}
           paths:
             - .pytest_cache
       - store_artifacts:
