@@ -70,7 +70,7 @@ def cartpole_venv(request) -> gym.Env:
     )
 
 
-def train_cartpole_expert(cartpole_venv) -> PPO:
+def train_cartpole_expert(cartpole_env) -> PPO:
     policy_kwargs = dict(
         features_extractor_class=NormalizeFeaturesExtractor,
         features_extractor_kwargs=dict(normalize_class=RunningNorm),
@@ -78,13 +78,13 @@ def train_cartpole_expert(cartpole_venv) -> PPO:
     policy = PPO(
         policy=FeedForward32Policy,
         policy_kwargs=policy_kwargs,
-        env=VecNormalize(cartpole_venv, norm_obs=False),
+        env=VecNormalize(cartpole_env, norm_obs=False),
         seed=0,
         batch_size=64,
         ent_coef=0.0,
         learning_rate=0.0003,
         n_epochs=10,
-        n_steps=64 // cartpole_venv.num_envs,
+        n_steps=64 // cartpole_env.num_envs,
     )
     policy.learn(100000)
     return policy
@@ -126,7 +126,7 @@ def pendulum_venv() -> gym.Env:
     return DummyVecEnv([lambda: RolloutInfoWrapper(gym.make(PENDULUM_ENV_NAME))] * 8)
 
 
-def train_pendulum_expert(pendulum_venv) -> PPO:
+def train_pendulum_expert(pendulum_env) -> PPO:
     policy_kwargs = dict(
         features_extractor_class=NormalizeFeaturesExtractor,
         features_extractor_kwargs=dict(normalize_class=RunningNorm),
@@ -134,13 +134,13 @@ def train_pendulum_expert(pendulum_venv) -> PPO:
     policy = PPO(
         policy=FeedForward32Policy,
         policy_kwargs=policy_kwargs,
-        env=VecNormalize(pendulum_venv, norm_obs=False),
+        env=VecNormalize(pendulum_env, norm_obs=False),
         seed=0,
         batch_size=64,
         ent_coef=0.0,
         learning_rate=0.0001,
         n_epochs=10,
-        n_steps=4096 // pendulum_venv.num_envs,
+        n_steps=4096 // pendulum_env.num_envs,
         gamma=0.9,
     )
     policy.learn(200000)
