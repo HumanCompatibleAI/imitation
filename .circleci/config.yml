@@ -140,8 +140,17 @@ jobs:
               sleep 1
             done
           background: true
+
+      # Note: The setup.py checksum in the cache name ensures that we retrain our expert
+      # policies, which are cached in the pytest cache, whenever setup.py changes. This
+      # is just a rough heuristic to decide when the experts should be retrained but
+      # still better than nothing.
       - restore_cache:
-          key: v1-pytest-cache-{{ checksum "setup.py" }}
+          keys:
+            - v1-pytest-cache-{{ checksum "setup.py" }}
+            # This more generic key here lets us access the "outdated" cache so we avoid
+            # retraining the experts when it is not needed.
+            - v1-pytest-cache-
           paths:
             - .pytest_cache
       - run:
