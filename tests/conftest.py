@@ -1,5 +1,7 @@
 """Fixtures common across tests."""
 import pickle
+import traceback
+import warnings
 from typing import Callable, List
 
 import gym
@@ -26,12 +28,13 @@ def load_or_train_ppo(
 ) -> PPO:
     try:
         return PPO.load(cache_path, venv)
-    except OSError:
-        pass  # File not found, or path is a directory
-    except AssertionError:
-        pass  # Model was stored with an older version of stable baselines
-    except pickle.PickleError:
-        pass  # File contains something, that can not be unpickled
+    except (OSError, AssertionError, pickle.PickleError):
+        # Note, when loading models from older stable-baselines versions, we can get
+        # AssertionErrors.
+        warnings.warn(
+            "Retraining expert policy due to the following error when trying"
+            " to load it:\n" + traceback.format_exc(),
+        )
     expert = training_function(venv)
     expert.save(cache_path)
     return expert
@@ -41,12 +44,11 @@ def load_or_rollout_trajectories(cache_path, policy, venv) -> List[TrajectoryWit
     try:
         with open(cache_path, "rb") as f:
             return pickle.load(f)
-    except OSError:
-        pass  # File not found, or path is a directory
-    except AssertionError:
-        pass  # Model was stored with an older version of stable baselines
-    except pickle.PickleError:
-        pass  # File contains something, that can not be unpickled
+    except (OSError, pickle.PickleError):
+        warnings.warn(
+            "Recomputing expert trajectories due to the following error when "
+            "trying to load them:\n" + traceback.format_exc(),
+        )
     rollout.rollout_and_save(
         cache_path,
         policy,
