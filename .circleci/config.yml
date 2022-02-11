@@ -150,8 +150,9 @@ jobs:
       - restore_cache:
           keys:
             - v1-pytest-cache-{{ checksum "setup.py" }}
-            # This more generic key here lets us access the "outdated" cache so we avoid
-            # retraining the experts when it is not needed.
+            # This prefix-matched key restores the most recent pytest cache with any
+            # checksum. If that cached policy happens to be still loadable, we avoid
+            # retraining. See https://circleci.com/docs/2.0/caching/#restoring-cache
             - v1-pytest-cache-
           paths:
             - .pytest_cache
