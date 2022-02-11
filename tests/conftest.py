@@ -39,9 +39,9 @@ def load_or_train_ppo(
                 "Retraining expert policy due to the following error when trying"
                 " to load it:\n" + traceback.format_exc(),
             )
-        expert = training_function(venv)
-        expert.save(cache_path)
-        return expert
+            expert = training_function(venv)
+            expert.save(cache_path)
+            return expert
 
 
 def load_or_rollout_trajectories(cache_path, policy, venv) -> List[TrajectoryWithRew]:
@@ -55,15 +55,15 @@ def load_or_rollout_trajectories(cache_path, policy, venv) -> List[TrajectoryWit
                 "Recomputing expert trajectories due to the following error when "
                 "trying to load them:\n" + traceback.format_exc(),
             )
-        rollout.rollout_and_save(
-            cache_path,
-            policy,
-            venv,
-            rollout.make_sample_until(min_timesteps=2000, min_episodes=57),
-        )
-        with open(cache_path, "rb") as f:
-            # TODO: not re-loading the trajectory would be nicer here
-            return pickle.load(f)
+            rollout.rollout_and_save(
+                cache_path,
+                policy,
+                venv,
+                rollout.make_sample_until(min_timesteps=2000, min_episodes=57),
+            )
+            with open(cache_path, "rb") as f:
+                # TODO: not re-loading the trajectory would be nicer here
+                return pickle.load(f)
 
 
 @pytest.fixture(params=[1, 4])
