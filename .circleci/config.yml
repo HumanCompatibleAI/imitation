@@ -44,6 +44,7 @@ commands:
     description: "Check out and update Python dependencies."
     steps:
       - checkout
+
       # Download and cache dependencies
       - restore_cache:
           keys:
@@ -91,6 +92,7 @@ jobs:
             mv shellcheck-stable/shellcheck /usr/local/bin/shellcheck
             rm -rf shellcheck-stable
             chmod a+x /usr/local/bin/shellcheck
+
       - shellcheck/check:
           dir: .
           # Orb invokes shellcheck once per file. shellcheck complains if file
@@ -153,6 +155,7 @@ jobs:
             - v1-pytest-cache-
           paths:
             - .pytest_cache
+
       - run:
           name: run tests
           command: |
@@ -162,17 +165,22 @@ jobs:
                     -vv tests/
             mv .coverage .coverage.imitation
             coverage combine  # rewrite paths from virtualenv to src/
+
       - codecov/upload
+
       - save_cache:
           key: v1-pytest-cache-{{ checksum "setup.py" }}
           paths:
             - .pytest_cache
+
       - store_artifacts:
           path: /tmp/test-reports
           destination: test-reports
+
       - store_test_results:
           path: /tmp/test-reports
           unit-test:
+
       - store_artifacts:
           path: /tmp/resource-usage
           destination: resource-usage
