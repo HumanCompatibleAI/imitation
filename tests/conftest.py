@@ -32,7 +32,7 @@ def load_or_train_ppo(
     with FileLock(cache_path + ".lock"):
         try:
             return PPO.load(cache_path, venv)
-        except (OSError, AssertionError, pickle.PickleError):
+        except (OSError, AssertionError, pickle.PickleError):  # pragma: no cover
             # Note, when loading models from older stable-baselines versions, we can get
             # AssertionErrors.
             warnings.warn(
@@ -50,7 +50,7 @@ def load_or_rollout_trajectories(cache_path, policy, venv) -> List[TrajectoryWit
         try:
             with open(cache_path, "rb") as f:
                 return pickle.load(f)
-        except (OSError, pickle.PickleError):
+        except (OSError, pickle.PickleError):  # pragma: no cover
             warnings.warn(
                 "Recomputing expert trajectories due to the following error when "
                 "trying to load them:\n" + traceback.format_exc(),
@@ -77,7 +77,7 @@ def cartpole_venv(request) -> gym.Env:
     )
 
 
-def train_cartpole_expert(cartpole_env) -> PPO:
+def train_cartpole_expert(cartpole_env) -> PPO:  # pragma: no cover
     policy_kwargs = dict(
         features_extractor_class=NormalizeFeaturesExtractor,
         features_extractor_kwargs=dict(normalize_class=RunningNorm),
@@ -133,7 +133,7 @@ def pendulum_venv() -> gym.Env:
     return DummyVecEnv([lambda: RolloutInfoWrapper(gym.make(PENDULUM_ENV_NAME))] * 8)
 
 
-def train_pendulum_expert(pendulum_env) -> PPO:
+def train_pendulum_expert(pendulum_env) -> PPO:  # pragma: no cover
     policy_kwargs = dict(
         features_extractor_class=NormalizeFeaturesExtractor,
         features_extractor_kwargs=dict(normalize_class=RunningNorm),
