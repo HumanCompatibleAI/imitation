@@ -112,7 +112,7 @@ def test_traj_collector(tmpdir, venv):
     assert not np.any(dones)
     for info in infos:
         assert isinstance(info, dict)
-    # roll out 5 * venv.num_envs episodes (Pendulum-v0 has 200 timestep episodes)
+    # roll out 5 * venv.num_envs episodes (Pendulum-v1 has 200 timestep episodes)
     for i in range(1000):
         _, _, dones, _ = collector.step(zero_acts)
         num_episodes += np.sum(dones)
