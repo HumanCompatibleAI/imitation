@@ -41,7 +41,7 @@ class RewardVecEnvWrapper(vec_env.VecEnvWrapper):
     environment.
 
     Will also include the previous reward given by the inner VecEnv in the
-    returned info dict under the `wrapped_env_rew` key.
+    returned info dict under the `original_env_rew` key.
     """
 
     def __init__(
@@ -113,5 +113,5 @@ class RewardVecEnvWrapper(vec_env.VecEnvWrapper):
         # trajectory, not the last observation of the old trajectory
         self._old_obs = obs
         for info_dict, old_rew in zip(infos, old_rews):
-            info_dict["wrapped_env_rew"] = old_rew
+            info_dict["original_env_rew"] = old_rew
         return obs, rews, dones, infos
