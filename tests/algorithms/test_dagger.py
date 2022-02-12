@@ -56,6 +56,8 @@ def expert_policy(env_name, venv):
     if env_name in EXPERT_POLICY_PATH:
         return serialize.load_policy("ppo", EXPERT_POLICY_PATH[env_name], venv)
     else:
+        # TODO(adam): this is misleading as this is not an "expert".
+        # Should be able to delete this code after PR#405 is merged
         return serialize.load_policy("random", "dummy", venv)
 
 
