@@ -13,6 +13,7 @@ from stable_baselines3 import PPO
 from stable_baselines3.common.evaluation import evaluate_policy
 from stable_baselines3.common.policies import BasePolicy
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
+from stable_baselines3.ppo import MlpPolicy
 
 from imitation.data import rollout
 from imitation.data.types import TrajectoryWithRew
@@ -138,23 +139,23 @@ def pendulum_venv() -> gym.Env:
 
 
 def train_pendulum_expert(pendulum_env) -> PPO:  # pragma: no cover
-    policy_kwargs = dict(
-        features_extractor_class=NormalizeFeaturesExtractor,
-        features_extractor_kwargs=dict(normalize_class=RunningNorm),
-    )
-    policy = PPO(
-        policy=FeedForward32Policy,
-        policy_kwargs=policy_kwargs,
-        env=VecNormalize(pendulum_env, norm_obs=False),
-        seed=0,
-        batch_size=64,
-        ent_coef=0.0,
-        learning_rate=0.0001,
-        n_epochs=10,
-        n_steps=4096 // pendulum_env.num_envs,
-        gamma=0.9,
-    )
-    policy.learn(200000)
+    mean_reward = 0
+    while mean_reward < -185:
+        policy = PPO(
+            policy=MlpPolicy,
+            env=VecNormalize(pendulum_env, norm_obs=False),
+            seed=0,
+            batch_size=64,
+            ent_coef=0.0,
+            learning_rate=1e-3,
+            n_epochs=10,
+            n_steps=1024,
+            gamma=0.9,
+            gae_lambda=0.95,
+            use_sde=True,
+            sde_sample_freq=4
+        )
+        policy.learn(1e5)
     return policy
 
 
