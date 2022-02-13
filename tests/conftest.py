@@ -153,7 +153,7 @@ def train_pendulum_expert(pendulum_env) -> PPO:  # pragma: no cover
             gamma=0.9,
             gae_lambda=0.95,
             use_sde=True,
-            sde_sample_freq=4
+            sde_sample_freq=4,
         )
         policy.learn(1e5)
     return policy
