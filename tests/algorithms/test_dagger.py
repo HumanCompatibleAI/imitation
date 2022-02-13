@@ -18,6 +18,7 @@ from imitation.data.types import TrajectoryWithRew
 from imitation.policies import base
 from imitation.util import util
 
+
 @pytest.fixture(params=[True, False])
 def sometimes_cartpole_expert_trajectories(cartpole_expert_trajectories, request):
     keep_trajs = request.param
