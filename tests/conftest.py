@@ -10,6 +10,7 @@ import pytest
 import torch
 from filelock import FileLock
 from stable_baselines3 import PPO
+from stable_baselines3.common.evaluation import evaluate_policy
 from stable_baselines3.common.policies import BasePolicy
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 
@@ -82,18 +83,21 @@ def train_cartpole_expert(cartpole_env) -> PPO:  # pragma: no cover
         features_extractor_class=NormalizeFeaturesExtractor,
         features_extractor_kwargs=dict(normalize_class=RunningNorm),
     )
-    policy = PPO(
-        policy=FeedForward32Policy,
-        policy_kwargs=policy_kwargs,
-        env=VecNormalize(cartpole_env, norm_obs=False),
-        seed=0,
-        batch_size=64,
-        ent_coef=0.0,
-        learning_rate=0.0003,
-        n_epochs=10,
-        n_steps=64 // cartpole_env.num_envs,
-    )
-    policy.learn(100000)
+    mean_reward = 0
+    while mean_reward < 500:
+        policy = PPO(
+            policy=FeedForward32Policy,
+            policy_kwargs=policy_kwargs,
+            env=VecNormalize(cartpole_env, norm_obs=False),
+            seed=0,
+            batch_size=64,
+            ent_coef=0.0,
+            learning_rate=0.0003,
+            n_epochs=10,
+            n_steps=64 // cartpole_env.num_envs,
+        )
+        policy.learn(100000)
+        mean_reward, _ = evaluate_policy(policy, cartpole_env, 10)
     return policy
 
 
