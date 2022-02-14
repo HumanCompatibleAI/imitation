@@ -3,7 +3,7 @@
 import contextlib
 import glob
 import os
-from typing import List
+from typing import List, Optional
 from unittest import mock
 
 import gym
@@ -20,7 +20,10 @@ from imitation.util import util
 
 
 @pytest.fixture(params=[True, False])
-def sometimes_cartpole_expert_trajectories(cartpole_expert_trajectories, request):
+def maybe_cartpole_expert_trajectories(
+    cartpole_expert_trajectories,
+    request,
+) -> Optional[List[TrajectoryWithRew]]:
     keep_trajs = request.param
     if keep_trajs:
         return cartpole_expert_trajectories
@@ -158,7 +161,7 @@ def init_trainer_fn(
     cartpole_venv,
     beta_schedule,
     cartpole_expert_policy,
-    sometimes_cartpole_expert_trajectories: List[TrajectoryWithRew],
+    maybe_cartpole_expert_trajectories: Optional[List[TrajectoryWithRew]],
     custom_logger,
 ):
     # Provide a trainer initialization fixture in addition `trainer` fixture below
@@ -169,7 +172,7 @@ def init_trainer_fn(
         cartpole_venv,
         beta_schedule,
         cartpole_expert_policy,
-        sometimes_cartpole_expert_trajectories,
+        maybe_cartpole_expert_trajectories,
         custom_logger,
     )
 
@@ -185,7 +188,7 @@ def simple_dagger_trainer(
     cartpole_venv,
     beta_schedule,
     cartpole_expert_policy,
-    sometimes_cartpole_expert_trajectories: List[TrajectoryWithRew],
+    maybe_cartpole_expert_trajectories: Optional[List[TrajectoryWithRew]],
     custom_logger,
 ):
     return _build_simple_dagger_trainer(
@@ -193,18 +196,18 @@ def simple_dagger_trainer(
         cartpole_venv,
         beta_schedule,
         cartpole_expert_policy,
-        sometimes_cartpole_expert_trajectories,
+        maybe_cartpole_expert_trajectories,
         custom_logger,
     )
 
 
 def test_trainer_needs_demos_exception_error(
     trainer,
-    sometimes_cartpole_expert_trajectories: List[TrajectoryWithRew],
+    maybe_cartpole_expert_trajectories: Optional[List[TrajectoryWithRew]],
 ):
     assert trainer.round_num == 0
     error_ctx = pytest.raises(dagger.NeedsDemosException)
-    if sometimes_cartpole_expert_trajectories is not None and isinstance(
+    if maybe_cartpole_expert_trajectories is not None and isinstance(
         trainer,
         dagger.SimpleDAggerTrainer,
     ):
@@ -302,8 +305,7 @@ def test_trainer_save_reload(tmpdir, init_trainer_fn, cartpole_venv):
     old_vars = trainer.policy.state_dict()
     new_vars = loaded_trainer.policy.state_dict()
     assert len(new_vars) == len(old_vars)
-    for var, values in new_vars.items():
-        assert values.equal(old_vars[var])
+    assert all(values.equal(old_vars[var]) for var, values in new_vars.items())
 
     # also those values should be different from freshly initialized trainer
     third_trainer = init_trainer_fn()
@@ -329,7 +331,7 @@ def test_simple_dagger_space_mismatch_error(
     cartpole_venv,
     beta_schedule,
     cartpole_expert_policy,
-    sometimes_cartpole_expert_trajectories: List[TrajectoryWithRew],
+    maybe_cartpole_expert_trajectories: Optional[List[TrajectoryWithRew]],
     custom_logger,
 ):
     class MismatchedSpace(gym.spaces.Space):
@@ -346,7 +348,7 @@ def test_simple_dagger_space_mismatch_error(
                     cartpole_venv,
                     beta_schedule,
                     cartpole_expert_policy,
-                    sometimes_cartpole_expert_trajectories,
+                    maybe_cartpole_expert_trajectories,
                     custom_logger,
                 )
 
