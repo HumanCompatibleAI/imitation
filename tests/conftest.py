@@ -84,8 +84,7 @@ def train_cartpole_expert(cartpole_env) -> PPO:  # pragma: no cover
         features_extractor_class=NormalizeFeaturesExtractor,
         features_extractor_kwargs=dict(normalize_class=RunningNorm),
     )
-    mean_reward = 0
-    while mean_reward < 500:
+    for _ in range(10):
         policy = PPO(
             policy=FeedForward32Policy,
             policy_kwargs=policy_kwargs,
@@ -99,7 +98,9 @@ def train_cartpole_expert(cartpole_env) -> PPO:  # pragma: no cover
         )
         policy.learn(100000)
         mean_reward, _ = evaluate_policy(policy, cartpole_env, 10)
-    return policy
+        if mean_reward >= 500:
+            return policy
+    return None
 
 
 @pytest.fixture
@@ -139,8 +140,7 @@ def pendulum_venv() -> gym.Env:
 
 
 def train_pendulum_expert(pendulum_env) -> PPO:  # pragma: no cover
-    mean_reward = 0
-    while mean_reward < -185:
+    for _ in range(10):
         policy = PPO(
             policy=MlpPolicy,
             env=VecNormalize(pendulum_env, norm_obs=False),
@@ -157,7 +157,9 @@ def train_pendulum_expert(pendulum_env) -> PPO:  # pragma: no cover
         )
         policy.learn(1e5)
         mean_reward, _ = evaluate_policy(policy, pendulum_env, 10)
-    return policy
+        if mean_reward >= -185:
+            return policy
+    return None
 
 
 @pytest.fixture
