@@ -156,6 +156,7 @@ def train_pendulum_expert(pendulum_env) -> PPO:  # pragma: no cover
             sde_sample_freq=4,
         )
         policy.learn(1e5)
+        mean_reward, _ = evaluate_policy(policy, pendulum_env, 10)
     return policy
 
 
