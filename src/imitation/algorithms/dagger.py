@@ -336,7 +336,7 @@ class DAggerTrainer(base.BaseImitationAlgorithm):
             bc_trainer.action_space,
         )
         self.bc_trainer = bc_trainer
-        self.bc_trainer.logger = custom_logger
+        self.bc_trainer.logger = self.logger
 
     def __getstate__(self):
         """Return state excluding non-pickleable objects."""
