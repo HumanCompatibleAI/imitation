@@ -11,6 +11,7 @@ TESTS_REQUIRE = [
     "codecov",
     "codespell",
     "darglint",
+    "filelock",
     "flake8",
     "flake8-blind-except",
     "flake8-builtins",

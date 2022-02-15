@@ -10,7 +10,6 @@ from stable_baselines3.common import policies
 from imitation.algorithms.density import DensityAlgorithm, DensityType
 from imitation.data import rollout, types
 from imitation.policies.base import RandomPolicy
-from imitation.util import util
 
 parametrize_density_stationary = pytest.mark.parametrize(
     "density_type,is_stationary",
@@ -35,24 +34,24 @@ def score_trajectories(
     return np.mean(returns)
 
 
+# test on Pendulum rather than Cartpole because I don't handle episodes that
+# terminate early yet (see issue #40)
 @parametrize_density_stationary
-def test_density_reward(density_type, is_stationary):
-    # test on Pendulum rather than Cartpole because I don't handle episodes that
-    # terminate early yet (see issue #40)
-    env_name = "Pendulum-v1"
-    venv = util.make_vec_env(env_name, 2)
-
-    # construct density-based reward from expert rollouts
-    rollout_path = "tests/testdata/expert_models/pendulum_0/rollouts/final.pkl"
+def test_density_reward(
+    density_type,
+    is_stationary,
+    pendulum_venv,
+    pendulum_expert_trajectories,
+):
     # use only a subset of trajectories
-    expert_trajectories_all = types.load(rollout_path)[:8]
+    expert_trajectories_all = pendulum_expert_trajectories[:8]
     n_experts = len(expert_trajectories_all)
     expert_trajectories_train = expert_trajectories_all[: n_experts // 2]
     reward_fn = DensityAlgorithm(
         demonstrations=expert_trajectories_train,
         density_type=density_type,
         kernel="gaussian",
-        venv=venv,
+        venv=pendulum_venv,
         is_stationary=is_stationary,
         kernel_bandwidth=0.2,
         standardise_inputs=True,
@@ -61,11 +60,14 @@ def test_density_reward(density_type, is_stationary):
 
     # check that expert policy does better than a random policy under our reward
     # function
-    random_policy = RandomPolicy(venv.observation_space, venv.action_space)
+    random_policy = RandomPolicy(
+        pendulum_venv.observation_space,
+        pendulum_venv.action_space,
+    )
     sample_until = rollout.make_min_episodes(15)
     random_trajectories = rollout.generate_trajectories(
         random_policy,
-        venv,
+        pendulum_venv,
         sample_until=sample_until,
     )
     expert_trajectories_test = expert_trajectories_all[n_experts // 2 :]
@@ -75,17 +77,14 @@ def test_density_reward(density_type, is_stationary):
 
 
 @pytest.mark.expensive
-def test_density_trainer_smoke():
+def test_density_trainer_smoke(pendulum_venv, pendulum_expert_trajectories):
     # tests whether density trainer runs, not whether it's good
     # (it's actually really poor)
-    env_name = "Pendulum-v1"
-    rollout_path = "tests/testdata/expert_models/pendulum_0/rollouts/final.pkl"
-    rollouts = types.load(rollout_path)[:2]
-    venv = util.make_vec_env(env_name, 2)
-    rl_algo = stable_baselines3.PPO(policies.ActorCriticPolicy, venv)
+    rollouts = pendulum_expert_trajectories[:2]
+    rl_algo = stable_baselines3.PPO(policies.ActorCriticPolicy, pendulum_venv)
     density_trainer = DensityAlgorithm(
         demonstrations=rollouts,
-        venv=venv,
+        venv=pendulum_venv,
         rl_algo=rl_algo,
     )
     density_trainer.train()
