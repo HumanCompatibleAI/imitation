@@ -11,6 +11,7 @@ import torch as th
 from sacred.observers import FileStorageObserver
 
 from imitation.algorithms import preference_comparisons
+from imitation.data import types
 from imitation.policies import serialize
 from imitation.scripts.common import common, reward
 from imitation.scripts.common import rl as rl_common
@@ -158,7 +159,7 @@ def train_preference_comparisons(
                 "exploration_frac can't be set when a trajectory dataset is used",
             )
         trajectory_generator = preference_comparisons.TrajectoryDataset(
-            path=trajectory_path,
+            trajectories=types.load(trajectory_path),
             seed=_seed,
             custom_logger=custom_logger,
         )

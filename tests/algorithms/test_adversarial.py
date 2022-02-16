@@ -50,10 +50,8 @@ def _algorithm_kwargs(request):
 
 
 @pytest.fixture
-def expert_transitions():
-    trajs = types.load("tests/testdata/expert_models/cartpole_0/rollouts/final.pkl")
-    trans = rollout.flatten_trajectories(trajs)
-    return trans
+def expert_transitions(cartpole_expert_trajectories):
+    return rollout.flatten_trajectories(cartpole_expert_trajectories)
 
 
 @contextlib.contextmanager
