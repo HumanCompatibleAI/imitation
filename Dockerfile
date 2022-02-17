@@ -61,7 +61,6 @@ COPY ./setup.py ./setup.py
 COPY ./README.md ./README.md
 COPY ./src/imitation/__init__.py ./src/imitation/__init__.py
 COPY ./ci/build_venv.sh ./ci/build_venv.sh
-# mjkey.txt needs to exist for build, but doesn't need to be a real key
 RUN    ci/build_venv.sh /venv \
     && rm -rf $HOME/.cache/pip
 
