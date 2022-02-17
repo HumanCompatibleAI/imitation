@@ -117,7 +117,7 @@ def train_adversarial(
     algorithm_kwargs = dict(algorithm_kwargs)
     for k in ("shared", "airl", "gail"):
         # Config hook has copied relevant subset of config to top-level.
-        # But due to Sared limitations, cannot delete the rest of it.
+        # But due to Sacred limitations, cannot delete the rest of it.
         # So do that here to avoid passing in invalid arguments to constructor.
         if k in algorithm_kwargs:
             del algorithm_kwargs[k]
