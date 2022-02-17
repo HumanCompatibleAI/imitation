@@ -52,10 +52,9 @@ commands:
 
       - run:
           name: install dependencies
-          command: |
-            # Only create venv if it's not been restored from cache
-            [[ -d /venv ]] || ./ci/build_venv.sh /venv
-            python -c "import mujoco_py"
+          # Only create venv if it's not been restored from cache
+          command: "[[ -d /venv ]] || ./ci/build_venv.sh /venv"
+
 
       - save_cache:
           paths:
