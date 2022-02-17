@@ -38,7 +38,7 @@ ENV LANG C.UTF-8
 RUN    mkdir -p /root/.mujoco \
     && curl -o mjpro150.zip https://www.roboti.us/download/mjpro150_linux.zip \
     && unzip mjpro150.zip -d /root/.mujoco \
-    && rm mjpro150.zip
+    && rm mjpro150.zip && curl -o /root/.mujoco/mjkey.txt https://www.roboti.us/file/mjkey.txt
 
 # Set the PATH to the venv before we create the venv, so it's visible in base.
 # This is since we may create the venv outside of Docker, e.g. in CI
@@ -64,8 +64,7 @@ COPY ./README.md ./README.md
 COPY ./src/imitation/__init__.py ./src/imitation/__init__.py
 COPY ./ci/build_venv.sh ./ci/build_venv.sh
 # mjkey.txt needs to exist for build, but doesn't need to be a real key
-RUN    touch /root/.mujoco/mjkey.txt \
-    && ci/build_venv.sh /venv \
+RUN    ci/build_venv.sh /venv \
     && rm -rf $HOME/.cache/pip
 
 # full stage contains everything.
