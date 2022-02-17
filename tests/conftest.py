@@ -80,9 +80,7 @@ def cartpole_venv(request) -> gym.Env:
 
 
 def train_cartpole_expert(cartpole_env) -> PPO:  # pragma: no cover
-    """
-    Note: will only work with CartPole-v1!
-    """
+    """Note: will only work with CartPole-v1!"""
     policy_kwargs = dict(
         features_extractor_class=NormalizeFeaturesExtractor,
         features_extractor_kwargs=dict(normalize_class=RunningNorm),
