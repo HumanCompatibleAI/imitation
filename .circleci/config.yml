@@ -187,13 +187,10 @@ workflows:
     jobs:
       - lint:
           context:
-          - MuJoCo-free
           - docker-hub-creds
       - type:
           context:
-          - MuJoCo-free
           - docker-hub-creds
       - unit-test:
           context:
-          - MuJoCo-free
           - docker-hub-creds
