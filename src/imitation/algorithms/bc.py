@@ -260,7 +260,7 @@ class BC(algo_base.DemonstrationAlgorithm):
         self.l2_weight = l2_weight
 
     @property
-    def policy(self) -> policies.BasePolicy:
+    def policy(self) -> policies.ActorCriticPolicy:
         return self._policy
 
     def set_demonstrations(self, demonstrations: algo_base.AnyTransitions) -> None:
