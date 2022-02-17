@@ -27,11 +27,9 @@ RUN apt-get update -q \
     virtualenv \
     xpra \
     xserver-xorg-dev \
+    patchelf  \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
-
-RUN curl -o /usr/local/bin/patchelf https://s3-us-west-2.amazonaws.com/openai-sci-artifacts/manual-builds/patchelf_0.9_amd64.elf \
-    && chmod +x /usr/local/bin/patchelf
 
 ENV LANG C.UTF-8
 
