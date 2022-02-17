@@ -31,6 +31,7 @@ def config():
     env_name = "seals/CartPole-v0"  # environment to train on
     num_vec = 8  # number of environments in VecEnv
     parallel = True  # Use SubprocVecEnv rather than DummyVecEnv
+    parallel_method = "forkserver" # start_method for SubprocVecEnv
     max_episode_steps = None  # Set to positive int to limit episode horizons
     env_make_kwargs = {}  # The kwargs passed to `spec.make`.
 
@@ -66,7 +67,7 @@ def wandb_logging():
 @common_ingredient.named_config
 def fast():
     num_vec = 2
-    parallel = False  # easier to debug with everything in one process
+    # parallel = False  # easier to debug with everything in one process
     max_episode_steps = 5
 
     locals()  # quieten flake8
@@ -131,6 +132,7 @@ def make_venv(
     env_name: str,
     num_vec: int,
     parallel: bool,
+    parallel_method: str,
     log_dir: str,
     max_episode_steps: int,
     env_make_kwargs: Mapping[str, Any],
@@ -158,6 +160,7 @@ def make_venv(
         num_vec,
         seed=_seed,
         parallel=parallel,
+        parallel_method=parallel_method,
         max_episode_steps=max_episode_steps,
         log_dir=log_dir,
         env_make_kwargs=env_make_kwargs,
