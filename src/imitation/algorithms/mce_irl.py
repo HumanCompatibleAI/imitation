@@ -162,6 +162,7 @@ class TabularPolicy(policies.BasePolicy):
         # What we call state space here is observation space in SB3 nomenclature.
         super().__init__(observation_space=state_space, action_space=action_space)
         self.rng = rng or np.random
+        self.pi = None
         self.set_pi(pi)
 
     def set_pi(self, pi: np.ndarray) -> None:

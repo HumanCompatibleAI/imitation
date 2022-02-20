@@ -14,6 +14,7 @@ import tqdm.autonotebook as tqdm
 from stable_baselines3.common import policies, utils, vec_env
 
 from imitation.algorithms import base as algo_base
+from imitation.algorithms.base import TransitionMapping
 from imitation.data import rollout, types
 from imitation.policies import base as policy_base
 from imitation.util import logger
@@ -258,6 +259,8 @@ class BC(algo_base.DemonstrationAlgorithm):
 
         self.ent_weight = ent_weight
         self.l2_weight = l2_weight
+
+        self._demo_data_loader: Iterable[TransitionMapping] = None
 
     @property
     def policy(self) -> policies.ActorCriticPolicy:

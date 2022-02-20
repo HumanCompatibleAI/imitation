@@ -26,6 +26,7 @@ class ResettableEnv(gym.Env, abc.ABC):
         self._action_space = None
         self.cur_state = None
         self._n_actions_taken = None
+        self.rand_state: np.random.RandomState = None
         self.seed()
 
     @abc.abstractmethod

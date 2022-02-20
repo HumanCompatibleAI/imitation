@@ -47,6 +47,8 @@ class MockWandb:
         self.history = MockHistory()
         self.history_list = []
         self.history._set_callback(self._history_callback)
+        self._init_args = None
+        self._init_kwargs = None
 
     def init(self, *args, **kwargs):
         self._initialized = True
