@@ -74,7 +74,7 @@ def test_running_norm_matches_dist(batch_size: int) -> None:
         th.random.manual_seed(42)
         data = th.randn(num_samples, num_dims) * sd + mean
         for start in range(0, num_samples, batch_size):
-            batch = data[start: start + batch_size]
+            batch = data[start : start + batch_size]
             running_norm.forward(batch)
 
     empirical_mean = th.mean(data, dim=0)

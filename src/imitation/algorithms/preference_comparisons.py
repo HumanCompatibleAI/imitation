@@ -410,7 +410,7 @@ class RandomFragmenter(Fragmenter):
             end = start + fragment_length
             terminal = (end == n) and traj.terminal
             fragment = TrajectoryWithRew(
-                obs=traj.obs[start: end + 1],
+                obs=traj.obs[start : end + 1],
                 acts=traj.acts[start:end],
                 infos=traj.infos[start:end] if traj.infos is not None else None,
                 rews=traj.rews[start:end],
