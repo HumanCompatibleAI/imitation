@@ -82,10 +82,12 @@ def cartpole_venv(request) -> VecEnv:
 def train_cartpole_expert(cartpole_env) -> Optional[PPO]:  # pragma: no cover
     """Trains an expert on a cartpole environment.
 
-    Note: will only work with CartPole-v1!
+    Args:
+        cartpole_env: The cartpole environment to use for training. Will only work with
+            CartPole-v1
 
-    If the trained expert performs poorly, a new one is trained util either a good one
-    was found or 10 trials are exceeded in which case None is returned.
+    Returns:
+        The trained cartpole expert or None if training failed even after 10 retries.
     """
     policy_kwargs = dict(
         features_extractor_class=NormalizeFeaturesExtractor,
