@@ -60,8 +60,8 @@ WORKDIR /imitation
 COPY ./setup.py ./setup.py
 COPY ./README.md ./README.md
 COPY ./src/imitation/__init__.py ./src/imitation/__init__.py
-COPY ./ci/build_venv.sh ./ci/build_venv.sh
-RUN    ci/build_venv.sh /venv \
+COPY ci/build_and_activate_venv.sh ./ci/build_venv.sh
+RUN    ci/build_and_activate_venv.sh /venv \
     && rm -rf $HOME/.cache/pip
 
 # full stage contains everything.
