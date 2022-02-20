@@ -3,7 +3,7 @@ import os
 import pickle
 import traceback
 import warnings
-from typing import Callable, List
+from typing import Callable, List, Optional
 
 import gym
 import pytest
@@ -12,7 +12,7 @@ from filelock import FileLock
 from stable_baselines3 import PPO
 from stable_baselines3.common.evaluation import evaluate_policy
 from stable_baselines3.common.policies import BasePolicy
-from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
+from stable_baselines3.common.vec_env import DummyVecEnv, VecEnv, VecNormalize
 from stable_baselines3.ppo import MlpPolicy
 
 from imitation.data import rollout
@@ -69,7 +69,7 @@ def load_or_rollout_trajectories(cache_path, policy, venv) -> List[TrajectoryWit
 
 
 @pytest.fixture(params=[1, 4])
-def cartpole_venv(request) -> gym.Env:
+def cartpole_venv(request) -> VecEnv:
     num_envs = request.param
     return DummyVecEnv(
         [
@@ -79,8 +79,15 @@ def cartpole_venv(request) -> gym.Env:
     )
 
 
-def train_cartpole_expert(cartpole_env) -> PPO:  # pragma: no cover
-    """Note: will only work with CartPole-v1!"""
+def train_cartpole_expert(cartpole_env) -> Optional[PPO]:  # pragma: no cover
+    """
+    Trains an expert on a cartpole environment.
+
+    Note: will only work with CartPole-v1!
+
+    If the trained expert performs poorly, a new one is trained util either a good one
+    was found or 10 trials are exceeded in which case None is returned.
+    """
     policy_kwargs = dict(
         features_extractor_class=NormalizeFeaturesExtractor,
         features_extractor_kwargs=dict(normalize_class=RunningNorm),
@@ -136,11 +143,11 @@ PENDULUM_ENV_NAME = "Pendulum-v1"
 
 
 @pytest.fixture
-def pendulum_venv() -> gym.Env:
+def pendulum_venv() -> VecEnv:
     return DummyVecEnv([lambda: RolloutInfoWrapper(gym.make(PENDULUM_ENV_NAME))] * 8)
 
 
-def train_pendulum_expert(pendulum_env) -> PPO:  # pragma: no cover
+def train_pendulum_expert(pendulum_env) -> Optional[PPO]:  # pragma: no cover
     for _ in range(10):
         policy = PPO(
             policy=MlpPolicy,
@@ -156,7 +163,7 @@ def train_pendulum_expert(pendulum_env) -> PPO:  # pragma: no cover
             use_sde=True,
             sde_sample_freq=4,
         )
-        policy.learn(1e5)
+        policy.learn(int(1e5))
         mean_reward, _ = evaluate_policy(policy, pendulum_env, 10)
         if mean_reward >= -185:
             return policy

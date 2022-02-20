@@ -16,6 +16,7 @@ from typing import Callable, List, Mapping, Optional, Sequence, Tuple, Union
 import numpy as np
 import torch as th
 from stable_baselines3.common import policies, utils, vec_env
+from stable_baselines3.common.vec_env.base_vec_env import VecEnvStepReturn
 from torch.utils import data as th_data
 
 from imitation.algorithms import base, bc
@@ -238,7 +239,7 @@ class InteractiveTrajectoryCollector(vec_env.VecEnvWrapper):
         self._last_user_actions = actions
         self.venv.step_async(actual_acts)
 
-    def step_wait(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray, dict]:
+    def step_wait(self) -> VecEnvStepReturn:
         """Returns observation, reward, etc after previous `step_async()` call.
 
         Stores the transition, and saves trajectory as demo once complete.

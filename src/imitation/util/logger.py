@@ -4,7 +4,7 @@ import contextlib
 import datetime
 import os
 import tempfile
-from typing import Any, Dict, Generator, Optional, Sequence, Tuple, Union
+from typing import Any, Dict, Generator, List, Optional, Sequence, Tuple, Union
 
 import stable_baselines3.common.logger as sb_logger
 
@@ -14,7 +14,7 @@ from imitation.data import types
 def _build_output_formats(
     folder: str,
     format_strs: Sequence[str],
-) -> Sequence[sb_logger.KVWriter]:
+) -> List[sb_logger.KVWriter]:
     """Build output formats for initializing a Stable Baselines Logger.
 
     Args:
@@ -23,7 +23,7 @@ def _build_output_formats(
             output formats see `stable_baselines3.logger.make_output_format`.
 
     Returns:
-        A sequence of output formats, one corresponding to each `format_strs`.
+        A list of output formats, one corresponding to each `format_strs`.
     """
     os.makedirs(folder, exist_ok=True)
     output_formats = []
