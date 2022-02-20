@@ -23,7 +23,7 @@ from imitation.util import logger
 def reconstruct_policy(
     policy_path: str,
     device: Union[th.device, str] = "auto",
-) -> policies.BasePolicy:
+) -> policies.ActorCriticPolicy:
     """Reconstruct a saved policy.
 
     Args:
@@ -34,7 +34,7 @@ def reconstruct_policy(
         policy: policy with reloaded weights.
     """
     policy = th.load(policy_path, map_location=utils.get_device(device))
-    assert isinstance(policy, policies.BasePolicy)
+    assert isinstance(policy, policies.ActorCriticPolicy)
     return policy
 
 
@@ -189,7 +189,7 @@ class BC(algo_base.DemonstrationAlgorithm):
         *,
         observation_space: gym.Space,
         action_space: gym.Space,
-        policy: Optional[policies.BasePolicy] = None,
+        policy: Optional[policies.ActorCriticPolicy] = None,
         demonstrations: Optional[algo_base.AnyTransitions] = None,
         batch_size: int = 32,
         optimizer_cls: Type[th.optim.Optimizer] = th.optim.Adam,
