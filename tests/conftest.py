@@ -80,8 +80,7 @@ def cartpole_venv(request) -> VecEnv:
 
 
 def train_cartpole_expert(cartpole_env) -> Optional[PPO]:  # pragma: no cover
-    """
-    Trains an expert on a cartpole environment.
+    """Trains an expert on a cartpole environment.
 
     Note: will only work with CartPole-v1!
 

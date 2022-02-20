@@ -162,7 +162,7 @@ class Buffer:
             if not truncate_ok:
                 raise ValueError("Not enough capacity to store data.")
             else:
-                data = {k: arr[-self.capacity :] for k, arr in data.items()}
+                data = {k: arr[-self.capacity:] for k, arr in data.items()}
 
         for k, arr in data.items():
             if arr.shape[1:] != self.sample_shapes[k]:
@@ -200,7 +200,7 @@ class Buffer:
         assert n_samples <= self.capacity - self._idx
         idx_hi = self._idx + n_samples
         for k, arr in data.items():
-            self._arrays[k][self._idx : idx_hi] = arr
+            self._arrays[k][self._idx: idx_hi] = arr
         self._idx = idx_hi % self.capacity
         self._n_data = min(self._n_data + n_samples, self.capacity)
 

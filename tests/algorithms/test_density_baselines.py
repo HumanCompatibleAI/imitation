@@ -70,7 +70,7 @@ def test_density_reward(
         pendulum_venv,
         sample_until=sample_until,
     )
-    expert_trajectories_test = expert_trajectories_all[n_experts // 2 :]
+    expert_trajectories_test = expert_trajectories_all[n_experts // 2:]
     random_score = score_trajectories(random_trajectories, reward_fn)
     expert_score = score_trajectories(expert_trajectories_test, reward_fn)
     assert expert_score > random_score
