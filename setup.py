@@ -23,12 +23,14 @@ TESTS_REQUIRE = [
     "jupyter",
     # remove pin once https://github.com/jupyter/jupyter_client/issues/637 fixed
     "jupyter-client<7.0",
+    "pandas",
     "pytest",
     "pytest-cov",
     "pytest-notebook",
     "pytest-xdist",
     "pytype",
     "ray[debug,tune]~=0.8.5",
+    "scipy",
     "wandb",
 ]
 DOCS_REQUIRE = [
