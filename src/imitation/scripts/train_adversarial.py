@@ -141,10 +141,10 @@ def train_adversarial(
     if checkpoint_interval >= 0:
         save(trainer, os.path.join(log_dir, "checkpoints", "final"))
 
-    results = {}
-    results["imit_stats"] = train.eval_policy(trainer.policy, trainer.venv_train)
-    results["expert_stats"] = rollout.rollout_stats(expert_trajs)
-    return results
+    return {
+        "imit_stats": train.eval_policy(trainer.policy, trainer.venv_train),
+        "expert_stats": rollout.rollout_stats(expert_trajs),
+    }
 
 
 @train_adversarial_ex.command
