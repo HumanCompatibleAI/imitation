@@ -223,6 +223,7 @@ class BC(algo_base.DemonstrationAlgorithm):
             ValueError: If `weight_decay` is specified in `optimizer_kwargs` (use the
                 parameter `l2_weight` instead.)
         """
+        self._demo_data_loader: Iterable[TransitionMapping] = None
         self.batch_size = batch_size
         super().__init__(
             demonstrations=demonstrations,
@@ -260,7 +261,6 @@ class BC(algo_base.DemonstrationAlgorithm):
         self.ent_weight = ent_weight
         self.l2_weight = l2_weight
 
-        self._demo_data_loader: Iterable[TransitionMapping] = None
 
     @property
     def policy(self) -> policies.ActorCriticPolicy:
