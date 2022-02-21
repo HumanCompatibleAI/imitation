@@ -42,6 +42,8 @@ def load_or_train_ppo(
                 " to load it:\n" + traceback.format_exc(),
             )
             expert = training_function(venv)
+            if expert is None:
+                pytest.fail("Failed to train expert!")
             expert.save(cache_path)
             return expert
 
@@ -93,12 +95,12 @@ def train_cartpole_expert(cartpole_env) -> Optional[PPO]:  # pragma: no cover
         features_extractor_class=NormalizeFeaturesExtractor,
         features_extractor_kwargs=dict(normalize_class=RunningNorm),
     )
-    for _ in range(10):
+    for attempt_nr in range(10):
         policy = PPO(
             policy=FeedForward32Policy,
             policy_kwargs=policy_kwargs,
             env=VecNormalize(cartpole_env, norm_obs=False),
-            seed=0,
+            seed=attempt_nr,
             batch_size=64,
             ent_coef=0.0,
             learning_rate=0.0003,
@@ -149,11 +151,11 @@ def pendulum_venv() -> VecEnv:
 
 
 def train_pendulum_expert(pendulum_env) -> Optional[PPO]:  # pragma: no cover
-    for _ in range(10):
+    for attempt_nr in range(10):
         policy = PPO(
             policy=MlpPolicy,
             env=VecNormalize(pendulum_env, norm_obs=False),
-            seed=0,
+            seed=attempt_nr,
             batch_size=64,
             ent_coef=0.0,
             learning_rate=1e-3,
