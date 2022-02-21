@@ -144,11 +144,11 @@ jobs:
       # still better than nothing.
       - restore_cache:
           keys:
-            - v4-pytest-cache-{{ checksum "setup.py" }}
+            - v5-pytest-cache-{{ checksum "setup.py" }}
             # This prefix-matched key restores the most recent pytest cache with any
             # checksum. If that cached policy happens to be still loadable, we avoid
             # retraining. See https://circleci.com/docs/2.0/caching/#restoring-cache
-            - v4-pytest-cache-
+            - v5-pytest-cache-
           paths:
             - .pytest_cache
 
@@ -165,7 +165,7 @@ jobs:
       - codecov/upload
 
       - save_cache:
-          key: v4-pytest-cache-{{ checksum "setup.py" }}
+          key: v5-pytest-cache-{{ checksum "setup.py" }}
           paths:
             - .pytest_cache
 
