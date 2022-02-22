@@ -1,6 +1,6 @@
 """Test `imitation.algorithms.tabular_irl` and tabular environments."""
 
-from typing import Any, Mapping, Type
+from typing import Any, Mapping
 
 import gym
 import numpy as np
@@ -111,7 +111,7 @@ def test_policy_om_random_mdp(discount: float):
     if discount == 1.0:
         expected_sum = mdp.horizon
     else:
-        expected_sum = (1 - discount ** mdp.horizon) / (1 - discount)
+        expected_sum = (1 - discount**mdp.horizon) / (1 - discount)
     assert np.allclose(np.sum(D), expected_sum)
 
 
@@ -345,15 +345,11 @@ def test_mce_irl_demo_formats():
 
 @pytest.mark.expensive
 @pytest.mark.parametrize(
-    "model_class,model_kwargs",
-    [
-        (reward_nets.BasicRewardNet, dict(hid_sizes=[])),
-        (reward_nets.BasicRewardNet, dict(hid_sizes=[32, 32])),
-    ],
+    "model_kwargs",
+    [dict(hid_sizes=[]), dict(hid_sizes=[32, 32])],
 )
 @pytest.mark.parametrize("discount", FEW_DISCOUNT_RATES)
 def test_mce_irl_reasonable_mdp(
-    model_class: Type[reward_nets.RewardNet],
     model_kwargs: Mapping[str, Any],
     discount: float,
 ):
@@ -368,7 +364,7 @@ def test_mce_irl_reasonable_mdp(
         V, Q, pi = mce_partition_fh(mdp, discount=discount)
         Dt, D = mce_occupancy_measures(mdp, pi=pi, discount=discount)
 
-        reward_net = model_class(
+        reward_net = reward_nets.BasicRewardNet(
             mdp.pomdp_observation_space,
             mdp.action_space,
             use_action=False,

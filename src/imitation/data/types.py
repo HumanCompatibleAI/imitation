@@ -6,17 +6,7 @@ import os
 import pathlib
 import pickle
 import warnings
-from typing import (
-    Any,
-    Dict,
-    Mapping,
-    Optional,
-    Sequence,
-    Tuple,
-    TypeVar,
-    Union,
-    overload,
-)
+from typing import Any, Dict, Mapping, Optional, Sequence, Tuple, TypeVar, Union
 
 import numpy as np
 import torch as th
@@ -215,13 +205,15 @@ class TransitionsMinimal(th_data.Dataset):
                 f"{len(self.obs)} != {len(self.infos)}",
             )
 
-    @overload
-    def __getitem__(self: T, key: slice) -> T:
-        pass  # pragma: no cover
-
-    @overload
-    def __getitem__(self, key: int) -> Dict[str, np.ndarray]:
-        pass  # pragma: no cover
+    # TODO(adam): uncomment below once pytype bug fixed in
+    # issue https://github.com/google/pytype/issues/1108
+    # @overload
+    # def __getitem__(self: T, key: slice) -> T:
+    #     pass  # pragma: no cover
+    #
+    # @overload
+    # def __getitem__(self, key: int) -> Mapping[str, np.ndarray]:
+    #     pass  # pragma: no cover
 
     def __getitem__(self, key):
         """See TransitionsMinimal docstring for indexing and slicing semantics."""

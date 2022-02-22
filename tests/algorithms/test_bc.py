@@ -10,16 +10,7 @@ from torch.utils import data as th_data
 
 from imitation.algorithms import bc
 from imitation.data import rollout, types
-from imitation.util import logger, util
-
-ROLLOUT_PATH = "tests/testdata/expert_models/cartpole_0/rollouts/final.pkl"
-
-
-@pytest.fixture
-def venv():
-    env_name = "CartPole-v1"
-    venv = util.make_vec_env(env_name, 2)
-    return venv
+from imitation.util import logger
 
 
 @pytest.fixture(params=[32, 50])
@@ -49,9 +40,14 @@ class DucktypedDataset:
 
 
 @pytest.fixture
-def trainer(batch_size, venv, expert_data_type, custom_logger):
-    rollouts = types.load(ROLLOUT_PATH)
-    trans = rollout.flatten_trajectories(rollouts)
+def trainer(
+    batch_size,
+    cartpole_venv,
+    expert_data_type,
+    custom_logger,
+    cartpole_expert_trajectories,
+):
+    trans = rollout.flatten_trajectories(cartpole_expert_trajectories)
     if expert_data_type == "data_loader":
         expert_data = th_data.DataLoader(
             trans,
@@ -68,26 +64,26 @@ def trainer(batch_size, venv, expert_data_type, custom_logger):
         raise ValueError(expert_data_type)
 
     return bc.BC(
-        observation_space=venv.observation_space,
-        action_space=venv.action_space,
+        observation_space=cartpole_venv.observation_space,
+        action_space=cartpole_venv.action_space,
         batch_size=batch_size,
         demonstrations=expert_data,
         custom_logger=custom_logger,
     )
 
 
-def test_weight_decay_init_error(venv, custom_logger):
+def test_weight_decay_init_error(cartpole_venv, custom_logger):
     with pytest.raises(ValueError, match=".*weight_decay.*"):
         bc.BC(
-            observation_space=venv.observation_space,
-            action_space=venv.action_space,
+            observation_space=cartpole_venv.observation_space,
+            action_space=cartpole_venv.action_space,
             demonstrations=None,
             optimizer_kwargs=dict(weight_decay=1e-4),
             custom_logger=custom_logger,
         )
 
 
-def test_train_end_cond_error(trainer: bc.BC, venv):
+def test_train_end_cond_error(trainer: bc.BC):
     err_context = pytest.raises(ValueError, match="exactly one.*n_epochs")
     with err_context:
         trainer.train(n_epochs=1, n_batches=10)
@@ -97,23 +93,27 @@ def test_train_end_cond_error(trainer: bc.BC, venv):
         trainer.train(n_epochs=None, n_batches=None)
 
 
-def test_bc(trainer: bc.BC, venv):
+def test_bc(trainer: bc.BC, cartpole_venv):
     sample_until = rollout.make_min_episodes(15)
-    novice_ret_mean = rollout.mean_return(trainer.policy, venv, sample_until)
+    novice_ret_mean = rollout.mean_return(trainer.policy, cartpole_venv, sample_until)
     trainer.train(
         n_epochs=1,
         on_epoch_end=lambda: print("epoch end"),
         on_batch_end=lambda: print("batch end"),
     )
     trainer.train(n_batches=10)
-    trained_ret_mean = rollout.mean_return(trainer.policy, venv, sample_until)
+    trained_ret_mean = rollout.mean_return(trainer.policy, cartpole_venv, sample_until)
     # Typically <80 score is bad, >350 is okay. We want an improvement of at
     # least 50 points, which seems like it's not noise.
     assert trained_ret_mean - novice_ret_mean > 50
 
 
-def test_bc_log_rollouts(trainer: bc.BC, venv):
-    trainer.train(n_batches=20, log_rollouts_venv=venv, log_rollouts_n_episodes=1)
+def test_bc_log_rollouts(trainer: bc.BC, cartpole_venv):
+    trainer.train(
+        n_batches=20,
+        log_rollouts_venv=cartpole_venv,
+        log_rollouts_n_episodes=1,
+    )
 
 
 class _DataLoaderFailsOnNthIter:
@@ -142,22 +142,23 @@ class _DataLoaderFailsOnNthIter:
 
 @pytest.mark.parametrize("no_yield_after_iter", [0, 1, 5])
 def test_bc_data_loader_empty_iter_error(
-    venv: vec_env.VecEnv,
+    cartpole_venv: vec_env.VecEnv,
     no_yield_after_iter: bool,
     custom_logger: logger.HierarchicalLogger,
+    cartpole_expert_trajectories,
 ) -> None:
     """Check that we error out if the DataLoader suddenly stops yielding any batches.
 
     At one point, we entered an updateless infinite loop in this edge case.
 
     Args:
-        venv: Environment to test in.
+        cartpole_venv: Environment to test in.
         no_yield_after_iter: Data loader stops yielding after this many calls.
         custom_logger: Where to log to.
+        cartpole_expert_trajectories: The expert trajectories to use.
     """
     batch_size = 32
-    rollouts = types.load(ROLLOUT_PATH)
-    trans = rollout.flatten_trajectories(rollouts)
+    trans = rollout.flatten_trajectories(cartpole_expert_trajectories)
     dummy_yield_value = dataclasses.asdict(trans[:batch_size])
 
     bad_data_loader = _DataLoaderFailsOnNthIter(
@@ -165,8 +166,8 @@ def test_bc_data_loader_empty_iter_error(
         no_yield_after_iter=no_yield_after_iter,
     )
     trainer = bc.BC(
-        observation_space=venv.observation_space,
-        action_space=venv.action_space,
+        observation_space=cartpole_venv.observation_space,
+        action_space=cartpole_venv.action_space,
         batch_size=batch_size,
         custom_logger=custom_logger,
     )

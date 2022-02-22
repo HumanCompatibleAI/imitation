@@ -15,6 +15,7 @@ from torch.utils import data as th_data
 
 from imitation.algorithms.adversarial import airl, common, gail
 from imitation.data import rollout, types
+from imitation.rewards import reward_nets
 from imitation.util import logger, util
 
 ALGORITHM_KWARGS = {
@@ -38,7 +39,7 @@ IN_CODECOV = "COV_CORE_CONFIG" in os.environ
 # Disable SubprocVecEnv tests for code coverage test since
 # multiprocessing support is flaky in py.test --cov
 PARALLEL = [False] if IN_CODECOV else [True, False]
-ENV_NAMES = ["FrozenLake-v1", "CartPole-v1", "Pendulum-v0"]
+ENV_NAMES = ["FrozenLake-v1", "CartPole-v1", "Pendulum-v1"]
 EXPERT_BATCH_SIZES = [1, 128]
 
 
@@ -49,10 +50,8 @@ def _algorithm_kwargs(request):
 
 
 @pytest.fixture
-def expert_transitions():
-    trajs = types.load("tests/testdata/expert_models/cartpole_0/rollouts/final.pkl")
-    trans = rollout.flatten_trajectories(trajs)
-    return trans
+def expert_transitions(cartpole_expert_trajectories):
+    return rollout.flatten_trajectories(cartpole_expert_trajectories)
 
 
 @contextlib.contextmanager
@@ -80,18 +79,22 @@ def make_trainer(
     venv = util.make_vec_env(env_name, n_envs=num_envs, parallel=parallel)
     model_cls = algorithm_kwargs["model_class"]
     gen_algo = model_cls(algorithm_kwargs["policy_class"], venv)
+    reward_net_cls = reward_nets.BasicRewardNet
+    if algorithm_kwargs["algorithm_cls"] == airl.AIRL:
+        reward_net_cls = reward_nets.BasicShapedRewardNet
+    reward_net = reward_net_cls(venv.observation_space, venv.action_space)
     custom_logger = logger.configure(tmpdir, ["tensorboard", "stdout"])
 
     normalize = isinstance(venv.observation_space, gym.spaces.Box)
     trainer = algorithm_kwargs["algorithm_cls"](
         venv=venv,
-        normalize_obs=normalize,
         # TODO(adam): remove following line when SB3 PR merged:
         # https://github.com/DLR-RM/stable-baselines3/pull/575
         normalize_reward=normalize,
         demonstrations=expert_data,
         demo_batch_size=expert_batch_size,
         gen_algo=gen_algo,
+        reward_net=reward_net,
         log_dir=tmpdir,
         custom_logger=custom_logger,
     )
@@ -111,6 +114,10 @@ def test_airl_fail_fast(custom_logger, tmpdir):
 
     gen_algo = stable_baselines3.DQN(stable_baselines3.dqn.MlpPolicy, venv)
     small_data = rollout.generate_transitions(gen_algo, venv, n_timesteps=20)
+    reward_net = reward_nets.BasicShapedRewardNet(
+        observation_space=venv.observation_space,
+        action_space=venv.action_space,
+    )
 
     with pytest.raises(TypeError, match="AIRL needs a stochastic policy.*"):
         airl.AIRL(
@@ -118,6 +125,7 @@ def test_airl_fail_fast(custom_logger, tmpdir):
             demonstrations=small_data,
             demo_batch_size=20,
             gen_algo=gen_algo,
+            reward_net=reward_net,
             log_dir=tmpdir,
             custom_logger=custom_logger,
         )
@@ -293,7 +301,8 @@ def test_logits_gen_is_high_log_policy_act_prob(
         trans.next_obs,
         trans.dones,
     )
-    log_act_prob_non_none = th.as_tensor(np.random.rand(n_timesteps))
+    log_act_prob_non_none = np.log(0.1 + 0.9 * np.random.rand(n_timesteps))
+    log_act_prob_non_none = th.as_tensor(log_act_prob_non_none).to(obs.device)
 
     for log_act_prob in [None, log_act_prob_non_none]:
         if isinstance(trainer_diverse_env, airl.AIRL) and log_act_prob is None:

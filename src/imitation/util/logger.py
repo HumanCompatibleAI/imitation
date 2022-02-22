@@ -13,7 +13,7 @@ from imitation.data import types
 
 def _build_output_formats(
     folder: str,
-    format_strs: Sequence[str] = None,
+    format_strs: Sequence[str],
 ) -> Sequence[sb_logger.KVWriter]:
     """Build output formats for initializing a Stable Baselines Logger.
 

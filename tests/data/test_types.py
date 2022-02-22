@@ -103,7 +103,7 @@ def _check_transitions_get_item(trans, key):
 
         expected = getattr(trans, field.name)[key]
         if isinstance(expected, np.ndarray):
-            assert observed.dtype == expected.dtype
+            assert observed.dtype == expected.dtype  # pytype:disable=attribute-error
         np.testing.assert_array_equal(observed, expected)
 
 

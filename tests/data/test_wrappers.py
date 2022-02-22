@@ -195,27 +195,28 @@ def test_reset_error():
 
     # Resetting after a `step()` is not okay if error flag is True.
     venv = _make_buffering_venv(True)
-    venv.step([0, 0])
+    zeros = np.array([0.0, 0.0], dtype=venv.action_space.dtype)
+    venv.step(zeros)
     with pytest.raises(RuntimeError, match="before samples were accessed"):
         venv.reset()
 
     # Same as previous case, but insert a `pop_transitions()` in between.
     venv = _make_buffering_venv(True)
-    venv.step([0, 0])
+    venv.step(zeros)
     venv.pop_transitions()
-    venv.step([0, 0])
+    venv.step(zeros)
     with pytest.raises(RuntimeError, match="before samples were accessed"):
         venv.reset()
 
     # Resetting after a `step()` is ok if error flag is False.
     venv = _make_buffering_venv(False)
-    venv.step([0, 0])
+    venv.step(zeros)
     venv.reset()
 
     # Resetting after a `step()` is ok if transitions are first collected.
     for flag in [True, False]:
         venv = _make_buffering_venv(flag)
-        venv.step([0, 0])
+        venv.step(zeros)
         venv.pop_transitions()
         venv.reset()
 
@@ -225,9 +226,10 @@ def test_n_transitions_and_empty_error():
     trajs, ep_lens = venv.pop_trajectories()
     assert trajs == []
     assert ep_lens == []
-    venv.step([0, 0])
+    zeros = np.array([0.0, 0.0], dtype=venv.action_space.dtype)
+    venv.step(zeros)
     assert venv.n_transitions == 2
-    venv.step([0, 0])
+    venv.step(zeros)
     assert venv.n_transitions == 4
     venv.pop_transitions()
     assert venv.n_transitions == 0

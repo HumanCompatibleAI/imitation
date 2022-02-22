@@ -13,7 +13,7 @@ train_rl_ex = sacred.Experiment(
 @train_rl_ex.config
 def train_rl_defaults():
     total_timesteps = int(1e6)  # Number of training timesteps in model.learn()
-    normalize = True  # Use VecNormalize
+    normalize_reward = True  # Use VecNormalize to normalize the reward
     normalize_kwargs = dict()  # kwargs for `VecNormalize`
 
     # If specified, overrides the ground-truth environment reward
@@ -94,7 +94,15 @@ def seals_mountain_car():
 
 @train_rl_ex.named_config
 def pendulum():
-    common = dict(env_name="Pendulum-v0")
+    common = dict(env_name="Pendulum-v1")
+    rl = dict(
+        batch_size=4096,
+        rl_kwargs=dict(
+            gamma=0.9,
+            learning_rate=1e-3,
+        ),
+    )
+    total_timesteps = int(2e5)
 
 
 @train_rl_ex.named_config

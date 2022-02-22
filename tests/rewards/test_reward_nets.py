@@ -12,20 +12,22 @@ import torch as th
 from imitation.data import rollout
 from imitation.policies import base
 from imitation.rewards import reward_nets, serialize
-from imitation.util import util
+from imitation.util import networks, util
 
-ENVS = ["FrozenLake-v1", "CartPole-v1", "Pendulum-v0"]
+ENVS = ["FrozenLake-v1", "CartPole-v1", "Pendulum-v1"]
 HARDCODED_TYPES = ["zero"]
 
 REWARD_NETS = [reward_nets.BasicRewardNet, reward_nets.BasicShapedRewardNet]
+REWARD_NET_KWARGS = [{}, {"normalize_input_layer": networks.RunningNorm}]
 
 
 @pytest.mark.parametrize("env_name", ENVS)
 @pytest.mark.parametrize("reward_net_cls", REWARD_NETS)
-def test_init_no_crash(env_name, reward_net_cls):
+@pytest.mark.parametrize("reward_net_kwargs", REWARD_NET_KWARGS)
+def test_init_no_crash(env_name, reward_net_cls, reward_net_kwargs):
     env = gym.make(env_name)
     for i in range(3):
-        reward_net_cls(env.observation_space, env.action_space)
+        reward_net_cls(env.observation_space, env.action_space, **reward_net_kwargs)
 
 
 def _sample(space, n):

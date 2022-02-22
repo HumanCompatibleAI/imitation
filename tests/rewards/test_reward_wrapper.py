@@ -19,7 +19,7 @@ class FunkyReward:
 
 def test_reward_overwrite():
     """Test that reward wrapper actually overwrites base rewards."""
-    env_name = "Pendulum-v0"
+    env_name = "Pendulum-v1"
     num_envs = 3
     env = util.make_vec_env(env_name, num_envs)
     reward_fn = FunkyReward()
@@ -32,7 +32,7 @@ def test_reward_overwrite():
     wrapped_stats = rollout.rollout_stats(
         rollout.generate_trajectories(policy, wrapped_env, sample_until),
     )
-    # Pendulum-v0 always has negative rewards
+    # Pendulum-v1 always has negative rewards
     assert default_stats["return_max"] < 0
     # ours gives between 1 * traj_len and num_envs * traj_len reward
     # (trajectories are all constant length of 200 in Pendulum)
@@ -45,4 +45,4 @@ def test_reward_overwrite():
     rand_act, _ = policy.predict(wrapped_env.reset())
     _, rew, _, infos = wrapped_env.step(rand_act)
     assert np.all(rew >= 0)
-    assert np.all([info_dict["wrapped_env_rew"] < 0 for info_dict in infos])
+    assert np.all([info_dict["original_env_rew"] < 0 for info_dict in infos])

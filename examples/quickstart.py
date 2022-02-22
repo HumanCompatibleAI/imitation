@@ -10,6 +10,7 @@ import stable_baselines3 as sb3
 from imitation.algorithms import bc
 from imitation.algorithms.adversarial import airl, gail
 from imitation.data import rollout
+from imitation.rewards import reward_nets
 from imitation.util import logger, util
 
 # Load pickled test demonstrations.
@@ -46,22 +47,32 @@ bc_trainer.train(n_epochs=1)
 # GAIL, and AIRL also accept as `demonstrations` any Pytorch-style DataLoader that
 # iterates over dictionaries containing observations, actions, and next_observations.
 gail_logger = logger.configure(tempdir_path / "GAIL/")
+gail_reward_net = reward_nets.BasicRewardNet(
+    observation_space=venv.observation_space,
+    action_space=venv.action_space,
+)
 gail_trainer = gail.GAIL(
     venv=venv,
     demonstrations=transitions,
     demo_batch_size=32,
     gen_algo=sb3.PPO("MlpPolicy", venv, verbose=1, n_steps=1024),
+    reward_net=gail_reward_net,
     custom_logger=gail_logger,
 )
 gail_trainer.train(total_timesteps=2048)
 
 # Train AIRL on expert data.
 airl_logger = logger.configure(tempdir_path / "AIRL/")
+airl_reward_net = reward_nets.BasicShapedRewardNet(
+    observation_space=venv.observation_space,
+    action_space=venv.action_space,
+)
 airl_trainer = airl.AIRL(
     venv=venv,
     demonstrations=transitions,
     demo_batch_size=32,
     gen_algo=sb3.PPO("MlpPolicy", venv, verbose=1, n_steps=1024),
+    reward_net=airl_reward_net,
     custom_logger=airl_logger,
 )
 airl_trainer.train(total_timesteps=2048)
