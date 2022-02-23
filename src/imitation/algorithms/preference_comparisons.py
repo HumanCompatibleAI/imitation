@@ -174,7 +174,6 @@ class AgentTrainer(TrajectoryGenerator):
             seed=seed,
         )
 
-
     def train(self, steps: int, **kwargs) -> None:
         """Train the agent using the reward function specified during instantiation.
 
