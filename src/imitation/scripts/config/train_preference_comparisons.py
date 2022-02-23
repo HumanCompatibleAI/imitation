@@ -47,6 +47,7 @@ def train_defaults():
     }
     # path to a pickled sequence of trajectories used instead of training an agent
     trajectory_path = None
+    trajectory_generator_kwargs = {}  # kwargs to pass to trajectory generator
     allow_variable_horizon = False
 
     checkpoint_interval = 0  # Num epochs between saving (<0 disables, =0 final only)

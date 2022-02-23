@@ -65,6 +65,7 @@ def train_preference_comparisons(
     exploration_frac: float,
     random_prob: float,
     trajectory_path: Optional[str],
+    trajectory_generator_kwargs: Mapping[str, Any],
     save_preferences: bool,
     agent_path: Optional[str],
     reward_trainer_kwargs: Mapping[str, Any],
@@ -101,7 +102,8 @@ def train_preference_comparisons(
             reward.
         trajectory_path: either None, in which case an agent will be trained
             and used to sample trajectories on the fly, or a path to a pickled
-            sequence of TrajectoryWithRew to be trained on
+            sequence of TrajectoryWithRew to be trained on.
+        trajectory_generator_kwargs: kwargs to pass to the trajectory generator.
         save_preferences: if True, store the final dataset of preferences to disk.
         agent_path: if given, initialize the agent using this stored policy
             rather than randomly.
@@ -154,6 +156,7 @@ def train_preference_comparisons(
             random_prob=random_prob,
             seed=_seed,
             custom_logger=custom_logger,
+            **trajectory_generator_kwargs,
         )
     else:
         if exploration_frac > 0:
@@ -164,6 +167,7 @@ def train_preference_comparisons(
             trajectories=types.load(trajectory_path),
             seed=_seed,
             custom_logger=custom_logger,
+            **trajectory_generator_kwargs,
         )
 
     fragmenter = preference_comparisons.RandomFragmenter(

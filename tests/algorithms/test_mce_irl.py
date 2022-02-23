@@ -111,7 +111,7 @@ def test_policy_om_random_mdp(discount: float):
     if discount == 1.0:
         expected_sum = mdp.horizon
     else:
-        expected_sum = (1 - discount**mdp.horizon) / (1 - discount)
+        expected_sum = (1 - discount ** mdp.horizon) / (1 - discount)
     assert np.allclose(np.sum(D), expected_sum)
 
 

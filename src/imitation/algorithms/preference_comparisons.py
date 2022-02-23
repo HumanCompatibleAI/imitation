@@ -113,7 +113,7 @@ class AgentTrainer(TrajectoryGenerator):
         algorithm: base_class.BaseAlgorithm,
         reward_fn: Union[rewards_common.RewardFn, reward_nets.RewardNet],
         exploration_frac: float = 0.0,
-        switch_prob: float = 1.0,
+        switch_prob: float = 0.5,
         random_prob: float = 0.5,
         seed: Optional[int] = None,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
@@ -254,7 +254,6 @@ class AgentTrainer(TrajectoryGenerator):
             )
             exploration_trajs, _ = self.buffering_wrapper.pop_finished_trajectories()
             exploration_trajs = _get_trajectories(exploration_trajs, exploration_steps)
-
         # We call _get_trajectories separately on agent_trajs and exploration_trajs
         # and then just concatenate. This could mean we return slightly too many
         # transitions, but it gets the proportion of exploratory and agent transitions

@@ -28,7 +28,7 @@ def make_wrapper(random_prob, switch_prob):
     )
 
 
-def test_switch():
+def test_random_prob():
     wrapper, _ = make_wrapper(random_prob=0.0, switch_prob=0.5)
     assert wrapper.current_policy == constant_policy
     for _ in range(100):
@@ -55,6 +55,41 @@ def test_switch():
     # Holds with very high probability (and seeding means it's deterministic)
     assert num_random > 450
     assert num_constant > 450
+
+
+def test_switch_prob():
+    # Ensure that we test both the random and the wrapped policy
+    # at least once:
+    wrapper, venv = make_wrapper(random_prob=0.5, switch_prob=0.0)
+    policy = wrapper.current_policy
+    np.random.seed(0)
+    obs = np.random.rand(100, 2)
+    for action in wrapper(obs):
+        assert venv.action_space.contains(action)
+        assert wrapper.current_policy == policy
+
+    for random_prob in [0.0, 0.5]:
+        wrapper, venv = make_wrapper(random_prob=random_prob, switch_prob=1.0)
+        num_random = 0
+        num_constant = 0
+
+        np.random.seed(0)
+        for _ in range(1000):
+            obs = np.random.rand(1, 2)
+            for action in wrapper(obs):
+                if wrapper.current_policy == wrapper._random_policy:
+                    num_random += 1
+                elif wrapper.current_policy == constant_policy:
+                    num_constant += 1
+                else:  # pragma: no cover
+                    raise ValueError("Unknown policy")
+        if random_prob == 0.5:
+            # Holds with very high probability (and seeding means it's deterministic)
+            assert num_random > 450
+            assert num_constant > 450
+        else:
+            assert num_random == 0
+            assert num_constant == 1000
 
 
 def test_valid_output():
