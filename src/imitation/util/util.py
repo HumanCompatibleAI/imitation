@@ -38,7 +38,6 @@ def make_vec_env(
     n_envs: int = 8,
     seed: int = 0,
     parallel: bool = False,
-    parallel_method: Optional[str] = None,
     log_dir: Optional[str] = None,
     max_episode_steps: Optional[int] = None,
     post_wrappers: Optional[Sequence[Callable[[gym.Env, int], gym.Env]]] = None,
@@ -51,7 +50,6 @@ def make_vec_env(
         n_envs: The number of duplicate environments.
         seed: The environment seed.
         parallel: If True, uses SubprocVecEnv; otherwise, DummyVecEnv.
-        parallel_method: The `start_method` argument for SubprocVecEnv.
         log_dir: If specified, saves Monitor output to this directory.
         max_episode_steps: If specified, wraps each env in a TimeLimit wrapper
             with this episode length. If not specified and `max_episode_steps`
@@ -115,10 +113,8 @@ def make_vec_env(
     env_fns = [functools.partial(make_env, i, s) for i, s in enumerate(env_seeds)]
     if parallel:
         # See GH hill-a/stable-baselines issue #217
-        assert parallel_method is not None, "parallel_method must be specified if parallel=True"
-        return SubprocVecEnv(env_fns, start_method=parallel_method)
+        return SubprocVecEnv(env_fns, start_method="forkserver")
     else:
-        assert parallel_method is None, "parallel_method must be None if not parallel"
         return DummyVecEnv(env_fns)
 
 
