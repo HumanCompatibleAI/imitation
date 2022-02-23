@@ -29,8 +29,6 @@ def train_defaults():
     initial_comparison_frac = 0.1
     # fraction of sampled trajectories that will include some random actions
     exploration_frac = 0.0
-    # the probability of picking the random policy when switching during exploration
-    random_prob = 0.5
 
     reward_trainer_kwargs = {
         "epochs": 3,
