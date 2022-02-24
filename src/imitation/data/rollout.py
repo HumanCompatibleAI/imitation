@@ -597,53 +597,6 @@ def rollout(
     return trajs
 
 
-def rollout_and_save(
-    path: str,
-    policy: AnyPolicy,
-    venv: VecEnv,
-    sample_until: GenTrajTerminationFn,
-    *,
-    unwrap: bool = True,
-    exclude_infos: bool = True,
-    verbose: bool = True,
-    **kwargs,
-) -> None:
-    """Generate policy rollouts and save them to a pickled list of trajectories.
-
-    The `.infos` field of each Trajectory is set to `None` to save space.
-
-    Args:
-        path: Rollouts are saved to this path.
-        policy: Can be any of the following:
-            1) A stable_baselines3 policy or algorithm trained on the gym environment.
-            2) A Callable that takes an ndarray of observations and returns an ndarray
-            of corresponding actions.
-            3) None, in which case actions will be sampled randomly.
-        venv: The vectorized environments.
-        sample_until: End condition for rollout sampling.
-        unwrap: If True, then save original observations and rewards (instead of
-            potentially wrapped observations and rewards) by calling
-            `unwrap_traj()`.
-        exclude_infos: If True, then exclude `infos` from pickle by setting
-            this field to None. Excluding `infos` can save a lot of space during
-            pickles.
-        verbose: If True, then print out rollout stats before saving.
-        **kwargs: Passed through to `generate_trajectories`.
-    """
-    types.save(
-        path,
-        rollout(
-            policy,
-            venv,
-            sample_until,
-            unwrap=unwrap,
-            exclude_infos=exclude_infos,
-            verbose=verbose,
-            **kwargs,
-        ),
-    )
-
-
 def discounted_sum(arr: np.ndarray, gamma: float) -> Union[np.ndarray, float]:
     """Calculate the discounted sum of `arr`.
 

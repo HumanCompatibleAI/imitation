@@ -15,7 +15,7 @@ from stable_baselines3.common.policies import BasePolicy
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 from stable_baselines3.ppo import MlpPolicy
 
-from imitation.data import rollout
+from imitation.data import rollout, types
 from imitation.data.types import TrajectoryWithRew
 from imitation.data.wrappers import RolloutInfoWrapper
 from imitation.policies.base import FeedForward32Policy, NormalizeFeaturesExtractor
@@ -57,15 +57,13 @@ def load_or_rollout_trajectories(cache_path, policy, venv) -> List[TrajectoryWit
                 "Recomputing expert trajectories due to the following error when "
                 "trying to load them:\n" + traceback.format_exc(),
             )
-            rollout.rollout_and_save(
-                cache_path,
+            rollouts = rollout.rollout(
                 policy,
                 venv,
                 rollout.make_sample_until(min_timesteps=2000, min_episodes=57),
             )
-            with open(cache_path, "rb") as f:
-                # TODO: not re-loading the trajectory would be nicer here
-                return pickle.load(f)
+            types.save(cache_path, rollouts)
+            return rollouts
 
 
 @pytest.fixture(params=[1, 4])
