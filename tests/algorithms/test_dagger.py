@@ -271,7 +271,9 @@ def test_trainer_makes_progress(init_trainer_fn, pendulum_venv, pendulum_expert_
             deterministic_policy=False,
         )
         # note a randomly initialised policy does well for some seeds -- so may
-        # want to adjust this check if changing seed.
+        # want to adjust this check if changing seed. Pendulum return can range
+        # from -1,200 to -130 (approx.), per Figure 3 in this PDF (on page 3):
+        # https://arxiv.org/pdf/2106.09556.pdf
         assert pre_train_rew_mean < -1000
         # Train for 6 iterations. (5 or less causes test to fail on some configs.)
         for i in range(6):
