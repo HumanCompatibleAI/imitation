@@ -124,7 +124,7 @@ def train_rl(
             rollout_save_n_timesteps,
             rollout_save_n_episodes,
         )
-        types.save(save_path, rollout.rollout(save_path, rl_algo, venv, sample_until))
+        types.save(save_path, rollout.rollout(rl_algo, venv, sample_until))
     if policy_save_final:
         output_dir = os.path.join(policy_dir, "final")
         serialize.save_stable_model(output_dir, rl_algo)
