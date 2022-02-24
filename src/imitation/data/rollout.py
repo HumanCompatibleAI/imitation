@@ -565,7 +565,7 @@ def rollout(
     verbose: bool = True,
     **kwargs,
 ) -> Sequence[types.TrajectoryWithRew]:
-    """Generate policy rollouts and save them to a pickled list of trajectories.
+    """Generate policy rollouts.
 
     The `.infos` field of each Trajectory is set to `None` to save space.
 
@@ -585,6 +585,10 @@ def rollout(
             pickles.
         verbose: If True, then print out rollout stats before saving.
         **kwargs: Passed through to `generate_trajectories`.
+    Returns:
+        Sequence of trajectories, satisfying `sample_until`. Additional trajectories
+        may be collected to avoid biasing process towards short episodes; the user
+        should truncate if required.
     """
     trajs = generate_trajectories(policy, venv, sample_until, **kwargs)
     if unwrap:
