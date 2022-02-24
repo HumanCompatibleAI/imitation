@@ -1,15 +1,16 @@
 """This is a simple example demonstrating how to clone the behavior of an expert.
+
 Refer to the jupyter notebooks for more detailed examples of how to use the algorithms.
 """
+
 import logging
 
 import gym
 import seals  # noqa: F401
-
 from stable_baselines3 import PPO
-from stable_baselines3.ppo import MlpPolicy
 from stable_baselines3.common.evaluation import evaluate_policy
 from stable_baselines3.common.vec_env import DummyVecEnv
+from stable_baselines3.ppo import MlpPolicy
 
 from imitation.algorithms import bc
 from imitation.data import rollout
@@ -47,8 +48,6 @@ def sample_expert_transitions():
 
 
 transitions = sample_expert_transitions()
-
-
 bc_trainer = bc.BC(
     observation_space=env.observation_space,
     action_space=env.action_space,
