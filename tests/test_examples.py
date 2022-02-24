@@ -32,6 +32,7 @@ NB_PATHS = _paths_to_strs(EXAMPLES_DIR.glob("*.ipynb"))
 PY_PATHS = _paths_to_strs(EXAMPLES_DIR.glob("*.py"))
 
 
+@pytest.skip
 @pytest.mark.parametrize("nb_path", NB_PATHS)
 def test_run_example_notebooks(nb_path) -> None:
     """Smoke test ensuring that example notebooks run without error.
