@@ -1,26 +1,65 @@
-"""This is a simple example demonstrating behavior cloning."""
-import pickle
+"""This is a simple example demonstrating how to clone the behavior of an expert.
+Refer to the jupyter notebooks for more detailed examples of how to use the algorithms.
+"""
+import logging
 
 import gym
 import seals  # noqa: F401
+
+from stable_baselines3 import PPO
+from stable_baselines3.ppo import MlpPolicy
 from stable_baselines3.common.evaluation import evaluate_policy
+from stable_baselines3.common.vec_env import DummyVecEnv
 
 from imitation.algorithms import bc
 from imitation.data import rollout
+from imitation.data.wrappers import RolloutInfoWrapper
 
-env = gym.make("seals/CartPole-v0")
-with open(".pytest_cache/d/experts/CartPole-v1/rollout.pkl", "rb") as f:
-    demonstrations = rollout.flatten_trajectories(pickle.load(f))
+env = gym.make("CartPole-v1")
+
+
+def train_expert():
+    logging.info("Training a expert.")
+    expert = PPO(
+        policy=MlpPolicy,
+        env=env,
+        seed=0,
+        batch_size=64,
+        ent_coef=0.0,
+        learning_rate=0.0003,
+        n_epochs=10,
+        n_steps=64,
+    )
+    expert.learn(100000)
+    return expert
+
+
+def sample_expert_transitions():
+    expert = train_expert()
+
+    logging.info("Sampling expert transitions.")
+    rollouts = rollout.rollout(
+        expert,
+        DummyVecEnv([lambda: RolloutInfoWrapper(env)]),
+        rollout.make_sample_until(min_timesteps=None, min_episodes=50),
+    )
+    return rollout.flatten_trajectories(rollouts)
+
+
+transitions = sample_expert_transitions()
+
+
 bc_trainer = bc.BC(
     observation_space=env.observation_space,
     action_space=env.action_space,
-    demonstrations=demonstrations,
+    demonstrations=transitions,
 )
 
-print("Before behaviour cloning:")
 reward, _ = evaluate_policy(bc_trainer.policy, env, 3, render=True)
-print("Untrained Reward:", reward)
+logging.info(f"Reward before training: {reward}")
+
+logging.info("Training a policy using Behavior Cloning")
 bc_trainer.train(n_epochs=1)
-print("After behaviour cloning:")
+
 reward, _ = evaluate_policy(bc_trainer.policy, env, 3, render=True)
-print("Trained Reward:", reward)
+logging.info(f"Reward after training: {reward}")
