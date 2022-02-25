@@ -4,6 +4,7 @@ These are handy when you want to perform exact maxent policy optimisation.
 """
 
 import abc
+from typing import Optional
 
 import gym
 import numpy as np
@@ -26,7 +27,7 @@ class ResettableEnv(gym.Env, abc.ABC):
         self._action_space = None
         self.cur_state = None
         self._n_actions_taken = None
-        self.rand_state: np.random.RandomState = None
+        self.rand_state: Optional[np.random.RandomState] = None
         self.seed()
 
     @abc.abstractmethod

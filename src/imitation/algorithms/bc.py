@@ -223,7 +223,7 @@ class BC(algo_base.DemonstrationAlgorithm):
             ValueError: If `weight_decay` is specified in `optimizer_kwargs` (use the
                 parameter `l2_weight` instead.)
         """
-        self._demo_data_loader: Iterable[TransitionMapping] = None
+        self._demo_data_loader: Optional[Iterable[TransitionMapping]] = None
         self.batch_size = batch_size
         super().__init__(
             demonstrations=demonstrations,
