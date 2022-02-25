@@ -33,7 +33,7 @@ class ExplorationWrapper:
             policy: The policy to randomize.
             venv: The environment to use (needed for sampling random actions).
             random_prob: The probability of picking the random policy when switching.
-            switch_prob: The probability of switch away from the current policy.
+            switch_prob: The probability of switching away from the current policy.
             seed: The random seed to use.
         """
         self.wrapped_policy = policy
