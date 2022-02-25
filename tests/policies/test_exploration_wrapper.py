@@ -86,28 +86,31 @@ def test_switch_prob():
         assert venv.action_space.contains(action)
         assert wrapper.current_policy == policy
 
-    for random_prob in [0.0, 0.5]:
-        wrapper, venv = make_wrapper(random_prob=random_prob, switch_prob=1.0)
+    def _always_switch(random_prob, num_steps, seed):
+        wrapper, _ = make_wrapper(random_prob=random_prob, switch_prob=1.0)
+        np.random.seed(seed)
         num_random = 0
         num_constant = 0
-
-        np.random.seed(0)
-        for _ in range(1000):
+        for _ in range(num_steps):
             obs = np.random.rand(1, 2)
-            for action in wrapper(obs):
-                if wrapper.current_policy == wrapper._random_policy:
-                    num_random += 1
-                elif wrapper.current_policy == constant_policy:
-                    num_constant += 1
-                else:  # pragma: no cover
-                    raise ValueError("Unknown policy")
-        if random_prob == 0.5:
-            # Holds with very high probability (and seeding means it's deterministic)
-            assert num_random > 450
-            assert num_constant > 450
-        else:
-            assert num_random == 0
-            assert num_constant == 1000
+            _ = wrapper(obs)
+            if wrapper.current_policy == wrapper._random_policy:
+                num_random += 1
+            elif wrapper.current_policy == constant_policy:
+                num_constant += 1
+            else:  # pragma: no cover
+                raise ValueError("Unknown policy")
+        return num_random, num_constant
+
+    num_random, num_constant = _always_switch(random_prob=1.0, num_steps=1000, seed=0)
+    assert num_random == 1000
+    assert num_constant == 0
+    num_random, num_constant = _always_switch(random_prob=0.5, num_steps=1000, seed=0)
+    assert num_random > 450
+    assert num_constant > 450
+    num_random, num_constant = _always_switch(random_prob=0.0, num_steps=1000, seed=0)
+    assert num_random == 0
+    assert num_constant == 1000
 
 
 def test_valid_output():
