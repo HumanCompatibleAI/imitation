@@ -3,8 +3,6 @@
 Refer to the jupyter notebooks for more detailed examples of how to use the algorithms.
 """
 
-import logging
-
 import gym
 from stable_baselines3 import PPO
 from stable_baselines3.common.evaluation import evaluate_policy
@@ -19,7 +17,7 @@ env = gym.make("CartPole-v1")
 
 
 def train_expert():
-    logging.info("Training a expert.")
+    print("Training a expert.")
     expert = PPO(
         policy=MlpPolicy,
         env=env,
@@ -37,7 +35,7 @@ def train_expert():
 def sample_expert_transitions():
     expert = train_expert()
 
-    logging.info("Sampling expert transitions.")
+    print("Sampling expert transitions.")
     rollouts = rollout.rollout(
         expert,
         DummyVecEnv([lambda: RolloutInfoWrapper(env)]),
@@ -53,11 +51,11 @@ bc_trainer = bc.BC(
     demonstrations=transitions,
 )
 
-reward, _ = evaluate_policy(bc_trainer.policy, env, 3, render=True)
-logging.info(f"Reward before training: {reward}")
+reward, _ = evaluate_policy(bc_trainer.policy, env, n_eval_episodes=3, render=True)
+print(f"Reward before training: {reward}")
 
-logging.info("Training a policy using Behavior Cloning")
+print("Training a policy using Behavior Cloning")
 bc_trainer.train(n_epochs=1)
 
-reward, _ = evaluate_policy(bc_trainer.policy, env, 3, render=True)
-logging.info(f"Reward after training: {reward}")
+reward, _ = evaluate_policy(bc_trainer.policy, env, n_eval_episodes=3, render=True)
+print(f"Reward after training: {reward}")
