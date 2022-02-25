@@ -6,7 +6,6 @@ Refer to the jupyter notebooks for more detailed examples of how to use the algo
 import logging
 
 import gym
-import seals  # noqa: F401
 from stable_baselines3 import PPO
 from stable_baselines3.common.evaluation import evaluate_policy
 from stable_baselines3.common.vec_env import DummyVecEnv
