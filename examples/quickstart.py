@@ -28,7 +28,7 @@ def train_expert():
         n_epochs=10,
         n_steps=64,
     )
-    expert.learn(100000)
+    expert.learn(100)  # Note: change this to 100000 to trian a decent expert.
     return expert
 
 
