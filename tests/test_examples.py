@@ -47,7 +47,6 @@ def test_run_example_notebooks(nb_path) -> None:
     execution.execute_notebook(nb, cwd=EXAMPLES_DIR, timeout=120)
 
 
-@pytest.mark.skip
 @pytest.mark.parametrize("py_path", PY_PATHS)
 def test_run_example_py_scripts(py_path):
     """Smoke test ensuring that python example scripts run without error."""
