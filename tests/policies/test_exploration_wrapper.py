@@ -38,6 +38,9 @@ def test_random_prob():
     (1) `random_prob=0.0`: Initial and following policies are always constant policies.
     (2) `random_prob=1.0`: Initial and following policies are always random policies.
     (3) `random_prob=0.5`: Around half-half for constant and random policies.
+
+    Raises:
+        ValueError: Unknown policy type to switch.
     """
     wrapper, _ = make_wrapper(random_prob=0.0, switch_prob=0.5)
     assert wrapper.current_policy == constant_policy
