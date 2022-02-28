@@ -323,6 +323,9 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
             self.venv if true_reward else self.venv_wrapped,
             sample_until=rollout.make_min_episodes(n_trajectories),
         )
+        # We collect `trajs` above so disregard return value from `pop_trajectories`,
+        # but still call it to clear out any saved trajectories.
+        self.buffering_wrapper.pop_trajectories()
         self._check_fixed_horizon((len(traj) for traj in trajs))
         reward_stats = rollout.rollout_stats(trajs)
         return reward_stats
