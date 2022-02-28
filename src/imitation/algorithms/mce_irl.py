@@ -94,10 +94,10 @@ def mce_occupancy_measures(
         discount: rate to discount the cumulative occupancy measure D.
 
     Returns:
-        Tuple of D (ndarray) and Dt (ndarray). D is an :math:`|S|`-dimensional vector
-        recording the expected discounted number of times each state is visited. Dt is
-        a :math:`T*|S|`-dimensional vector recording the probability of being in a given
-        state at a given timestep.
+        Tuple of Dt (ndarray) and D (ndarray). Dt is a :math:`T*|S|`-dimensional vector
+        recording the probability of being in a given state at a given timestep. D is an
+        :math:`|S|`-dimensional vector recording the expected discounted number of times
+        each state is visited.
     """
     # shorthand
     horizon = env.horizon
@@ -255,7 +255,7 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
         reward_net: reward_nets.RewardNet,
         optimizer_cls: Type[th.optim.Optimizer] = th.optim.Adam,
         optimizer_kwargs: Optional[Mapping[str, Any]] = None,
-        discount: float = 1,
+        discount: float = 1.0,
         linf_eps: float = 1e-3,
         grad_l2_eps: float = 1e-4,
         # TODO(adam): do we need log_interval or can just use record_mean...?
@@ -329,7 +329,13 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
         for obs in obses:
             if isinstance(obs, th.Tensor):
                 obs = obs.numpy()
-            self.demo_state_om[obs.astype(bool)] += 1.0
+            self.demo_state_om[obs] += 1.0
+
+        discounted_horizon = rollout.discounted_sum(
+            np.ones(self.env.horizon),
+            gamma=self.discount,
+        )
+        self.demo_state_om *= discounted_horizon / self.demo_state_om.sum()  # normalize
 
     def set_demonstrations(self, demonstrations: MCEDemonstrations) -> None:
         if isinstance(demonstrations, np.ndarray):
@@ -345,12 +351,16 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
                 first_item = next(iter(demonstrations))
                 if isinstance(first_item, types.Trajectory):
                     # Demonstrations are trajectories.
+                    num_demos = 0
                     for traj in demonstrations:
                         # TODO(adam): vectorize?
-                        cum_discount = 1
-                        for obs in traj.obs:
-                            self.demo_state_om[obs.astype(bool)] += cum_discount
+                        cum_discount = 1.0
+                        # TODO(adam): do we want to omit last state?
+                        for obs in traj.obs[:-1]:
+                            self.demo_state_om[obs] += cum_discount
                             cum_discount *= self.discount
+                        num_demos += 1
+                    self.demo_state_om /= num_demos
                 else:
                     # Demonstrations are a Torch DataLoader or other Mapping iterable
                     for batch in demonstrations:
@@ -362,8 +372,6 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
                 raise TypeError(
                     f"Unsupported demonstration type {type(demonstrations)}",
                 )
-
-            self.demo_state_om /= self.demo_state_om.sum()  # normalize
 
     def _train_step(self, obs_mat: th.Tensor):
         self.optimizer.zero_grad()
