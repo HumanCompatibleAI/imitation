@@ -5,7 +5,7 @@ Follows the description in chapters 9 and 10 of Brian Ziebart's `PhD thesis`_.
 .. _PhD thesis:
     http://www.cs.cmu.edu/~bziebart/publications/thesis-bziebart.pdf
 """
-
+import warnings
 from typing import Any, Iterable, Mapping, Optional, Tuple, Type, Union
 
 import gym
@@ -109,9 +109,9 @@ def mce_occupancy_measures(
     if pi is None:
         _, _, pi = mce_partition_fh(env, reward=reward)
 
-    D = np.zeros((horizon, n_states))
+    D = np.zeros((horizon + 1, n_states))
     D[0, :] = env.initial_state_dist
-    for t in range(1, horizon):
+    for t in range(1, horizon + 1):
         for a in range(n_actions):
             E = D[t - 1] * pi[t - 1, :, a]
             D[t, :] += E @ T[:, a, :]
@@ -321,57 +321,92 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
             rng=self.rng,
         )
 
-    def _set_demo_from_obs(self, obses: np.ndarray) -> None:
-        if self.discount != 1.0:
-            raise ValueError(
-                "Cannot compute discounted OM from timeless Transitions.",
-            )
+    def _set_demo_from_trajectories(self, trajs: Iterable[types.Trajectory]) -> None:
+        num_demos = 0
+        for traj in trajs:
+            cum_discount = 1.0
+            for obs in traj.obs:
+                self.demo_state_om[obs] += cum_discount
+                cum_discount *= self.discount
+            num_demos += 1
+        self.demo_state_om /= num_demos
+
+    def _update_demo_from_obs(
+        self,
+        obses: np.ndarray,
+        dones: Optional[np.ndarray],
+        next_obses: Optional[np.ndarray],
+    ) -> None:
         for obs in obses:
             if isinstance(obs, th.Tensor):
                 obs = obs.numpy()
             self.demo_state_om[obs] += 1.0
 
-        discounted_horizon = rollout.discounted_sum(
-            np.ones(self.env.horizon),
-            gamma=self.discount,
-        )
-        self.demo_state_om *= discounted_horizon / self.demo_state_om.sum()  # normalize
+        # We assume the transitions were flattened from some trajectories,
+        # then possibly shuffled. So add next observations for terminal states,
+        # as they will not appear anywhere else; but ignore next observations
+        # for all other states as they occur elsewhere in dataset.
+        if next_obses is not None:
+            for done, obs in zip(dones, next_obses):
+                if isinstance(done, th.Tensor):
+                    done = done.numpy()
+                    obs = obs.numpy()
+                if done:
+                    self.demo_state_om[obs] += 1.0
+        else:
+            warnings.warn(
+                "Training MCEIRL with transitions that lack next observation."
+                "This will result in systematically wrong occupancy measure estimates.",
+            )
 
     def set_demonstrations(self, demonstrations: MCEDemonstrations) -> None:
         if isinstance(demonstrations, np.ndarray):
             # Demonstrations are an occupancy measure
             assert demonstrations.ndim == 1
             self.demo_state_om = demonstrations
-        else:
-            # Demonstrations are either trajectories or transitions;
-            # we must compute occupancy measure from this.
-            self.demo_state_om = np.zeros((self.env.n_states,))
+            return
 
-            if isinstance(demonstrations, Iterable):
-                first_item = next(iter(demonstrations))
-                if isinstance(first_item, types.Trajectory):
-                    # Demonstrations are trajectories.
-                    num_demos = 0
-                    for traj in demonstrations:
-                        # TODO(adam): vectorize?
-                        cum_discount = 1.0
-                        # TODO(adam): do we want to omit last state?
-                        for obs in traj.obs:
-                            self.demo_state_om[obs] += cum_discount
-                            cum_discount *= self.discount
-                        num_demos += 1
-                    self.demo_state_om /= num_demos
-                else:
-                    # Demonstrations are a Torch DataLoader or other Mapping iterable
-                    for batch in demonstrations:
-                        self._set_demo_from_obs(batch["obs"])
+        # Demonstrations are either trajectories or transitions;
+        # we must compute occupancy measure from this.
+        self.demo_state_om = np.zeros((self.env.n_states,))
 
-            elif isinstance(demonstrations, types.TransitionsMinimal):
-                self._set_demo_from_obs(demonstrations.obs)
-            else:
-                raise TypeError(
-                    f"Unsupported demonstration type {type(demonstrations)}",
+        if isinstance(demonstrations, Iterable):
+            first_item = next(iter(demonstrations))
+            if isinstance(first_item, types.Trajectory):
+                self._set_demo_from_trajectories(demonstrations)
+                return
+
+        # Demonstrations are from some kind of transitions-like object. This does
+        # not contain timesteps, so can only compute OM when undiscounted.
+        if self.discount != 1.0:
+            raise ValueError(
+                "Cannot compute discounted OM from timeless Transitions.",
+            )
+
+        if isinstance(demonstrations, types.Transitions):
+            self._update_demo_from_obs(
+                demonstrations.obs,
+                demonstrations.dones,
+                demonstrations.next_obs,
+            )
+        elif isinstance(demonstrations, types.TransitionsMinimal):
+            self._update_demo_from_obs(demonstrations.obs, None, None)
+        elif isinstance(demonstrations, Iterable):
+            # Demonstrations are a Torch DataLoader or other Mapping iterable
+            for batch in demonstrations:
+                assert isinstance(batch, Mapping)
+                self._update_demo_from_obs(
+                    batch["obs"],
+                    batch.get("dones"),
+                    batch.get("next_obs"),
                 )
+        else:
+            raise TypeError(
+                f"Unsupported demonstration type {type(demonstrations)}",
+            )
+
+        # Normalize occupancy measure estimates
+        self.demo_state_om *= (self.env.horizon + 1) / self.demo_state_om.sum()
 
     def _train_step(self, obs_mat: th.Tensor):
         self.optimizer.zero_grad()

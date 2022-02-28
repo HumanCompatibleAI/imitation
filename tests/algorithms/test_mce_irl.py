@@ -104,14 +104,15 @@ def test_policy_om_random_mdp(discount: float):
     assert np.allclose(np.sum(pi, axis=-1), 1)
 
     Dt, D = mce_occupancy_measures(mdp, pi=pi, discount=discount)
+    assert len(Dt) == mdp.horizon + 1
     assert np.all(np.isfinite(D))
     assert np.any(D > 0)
     # expected number of state visits (over all states) should be equal to the
     # horizon
     if discount == 1.0:
-        expected_sum = mdp.horizon
+        expected_sum = mdp.horizon + 1
     else:
-        expected_sum = (1 - discount**mdp.horizon) / (1 - discount)
+        expected_sum = (1 - discount ** (mdp.horizon + 1)) / (1 - discount)
     assert np.allclose(np.sum(D), expected_sum)
 
 
@@ -333,14 +334,14 @@ def test_mce_irl_demo_formats():
                 hid_sizes=[],
             )
             mce_irl = MCEIRL(demo, mdp, reward_net, linf_eps=1e-3)
-            assert np.allclose(mce_irl.demo_state_om.sum(), 1.0)
+            assert np.allclose(mce_irl.demo_state_om.sum(), mdp.horizon + 1)
             final_counts[kind] = mce_irl.train(max_iter=5)
 
             # make sure weights have non-insane norm
             assert tensor_iter_norm(mce_irl.reward_net.parameters()) < 1000
 
-    for cts in final_counts.values():
-        assert np.allclose(cts, final_counts["trajs"], atol=1e-3, rtol=1e-3)
+    for k, cts in final_counts.items():
+        assert np.allclose(cts, final_counts["trajs"], atol=1e-3, rtol=1e-3), k
 
 
 @pytest.mark.expensive
