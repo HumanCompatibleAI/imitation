@@ -238,7 +238,7 @@ def test_trainer_needs_demos_exception_error(
 
 def test_trainer_train_arguments(trainer, pendulum_expert_policy):
     def add_samples():
-        collector = trainer.get_trajectory_collector()
+        collector = trainer.create_trajectory_collector()
         rollout.generate_trajectories(
             pendulum_expert_policy,
             collector,
@@ -278,7 +278,7 @@ def test_trainer_makes_progress(init_trainer_fn, pendulum_venv, pendulum_expert_
         # Train for 6 iterations. (5 or less causes test to fail on some configs.)
         for i in range(6):
             # roll out a few trajectories for dataset, then train for a few steps
-            collector = trainer.get_trajectory_collector()
+            collector = trainer.create_trajectory_collector()
             for _ in range(5):
                 obs = collector.reset()
                 dones = [False] * pendulum_venv.num_envs
@@ -399,7 +399,7 @@ def test_dagger_not_enough_transitions_error(tmpdir, custom_logger):
         bc_trainer=bc_trainer,
         custom_logger=custom_logger,
     )
-    collector = trainer.get_trajectory_collector()
+    collector = trainer.create_trajectory_collector()
     policy = base.RandomPolicy(venv.observation_space, venv.action_space)
     rollout.generate_trajectories(policy, collector, rollout.make_min_episodes(1))
     with pytest.raises(ValueError, match="Not enough transitions.*"):

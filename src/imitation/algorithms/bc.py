@@ -14,6 +14,7 @@ import tqdm.autonotebook as tqdm
 from stable_baselines3.common import policies, utils, vec_env
 
 from imitation.algorithms import base as algo_base
+from imitation.algorithms.base import TransitionMapping
 from imitation.data import rollout, types
 from imitation.policies import base as policy_base
 from imitation.util import logger
@@ -22,7 +23,7 @@ from imitation.util import logger
 def reconstruct_policy(
     policy_path: str,
     device: Union[th.device, str] = "auto",
-) -> policies.BasePolicy:
+) -> policies.ActorCriticPolicy:
     """Reconstruct a saved policy.
 
     Args:
@@ -33,7 +34,7 @@ def reconstruct_policy(
         policy: policy with reloaded weights.
     """
     policy = th.load(policy_path, map_location=utils.get_device(device))
-    assert isinstance(policy, policies.BasePolicy)
+    assert isinstance(policy, policies.ActorCriticPolicy)
     return policy
 
 
@@ -188,7 +189,7 @@ class BC(algo_base.DemonstrationAlgorithm):
         *,
         observation_space: gym.Space,
         action_space: gym.Space,
-        policy: Optional[policies.BasePolicy] = None,
+        policy: Optional[policies.ActorCriticPolicy] = None,
         demonstrations: Optional[algo_base.AnyTransitions] = None,
         batch_size: int = 32,
         optimizer_cls: Type[th.optim.Optimizer] = th.optim.Adam,
@@ -222,6 +223,7 @@ class BC(algo_base.DemonstrationAlgorithm):
             ValueError: If `weight_decay` is specified in `optimizer_kwargs` (use the
                 parameter `l2_weight` instead.)
         """
+        self._demo_data_loader: Optional[Iterable[TransitionMapping]] = None
         self.batch_size = batch_size
         super().__init__(
             demonstrations=demonstrations,
@@ -260,7 +262,7 @@ class BC(algo_base.DemonstrationAlgorithm):
         self.l2_weight = l2_weight
 
     @property
-    def policy(self) -> policies.BasePolicy:
+    def policy(self) -> policies.ActorCriticPolicy:
         return self._policy
 
     def set_demonstrations(self, demonstrations: algo_base.AnyTransitions) -> None:

@@ -16,6 +16,7 @@ from typing import Callable, List, Mapping, Optional, Sequence, Tuple, Union
 import numpy as np
 import torch as th
 from stable_baselines3.common import policies, utils, vec_env
+from stable_baselines3.common.vec_env.base_vec_env import VecEnvStepReturn
 from torch.utils import data as th_data
 
 from imitation.algorithms import base, bc
@@ -238,7 +239,7 @@ class InteractiveTrajectoryCollector(vec_env.VecEnvWrapper):
         self._last_user_actions = actions
         self.venv.step_async(actual_acts)
 
-    def step_wait(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray, dict]:
+    def step_wait(self) -> VecEnvStepReturn:
         """Returns observation, reward, etc after previous `step_async()` call.
 
         Stores the transition, and saves trajectory as demo once complete.
@@ -390,7 +391,7 @@ class DAggerTrainer(base.BaseImitationAlgorithm):
             raise NeedsDemosException(
                 f"No demos found for round {self.round_num} in dir '{demo_dir}'. "
                 f"Maybe you need to collect some demos? See "
-                f".get_trajectory_collector()",
+                f".create_trajectory_collector()",
             )
 
         if self._last_loaded_round < self.round_num:
@@ -422,7 +423,7 @@ class DAggerTrainer(base.BaseImitationAlgorithm):
         demonstrations in the demonstration directory for the current round, then
         this will raise a `NeedsDemosException` instead of training or advancing
         the round counter. In that case, the user should call
-        `.get_trajectory_collector()` and use the returned
+        `.create_trajectory_collector()` and use the returned
         `InteractiveTrajectoryCollector` to produce a new set of demonstrations for
         the current interaction round.
 
@@ -455,7 +456,7 @@ class DAggerTrainer(base.BaseImitationAlgorithm):
         logging.info(f"New round number is {self.round_num}")
         return self.round_num
 
-    def get_trajectory_collector(self) -> InteractiveTrajectoryCollector:
+    def create_trajectory_collector(self) -> InteractiveTrajectoryCollector:
         """Create trajectory collector to extend current round's demonstration set.
 
         Returns:
@@ -614,7 +615,7 @@ class SimpleDAggerTrainer(DAggerTrainer):
         round_num = 0
 
         while total_timestep_count < total_timesteps:
-            collector = self.get_trajectory_collector()
+            collector = self.create_trajectory_collector()
             round_episode_count = 0
             round_timestep_count = 0
 

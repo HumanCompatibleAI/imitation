@@ -65,6 +65,8 @@ class RewardVecEnvWrapper(vec_env.VecEnvWrapper):
         self.episode_rewards = collections.deque(maxlen=ep_history)
         self._cumulative_rew = np.zeros((venv.num_envs,))
         self.reward_fn = reward_fn
+        self._old_obs = None
+        self._actions = None
         self.reset()
 
     def make_log_callback(self) -> WrappedRewardCallback:

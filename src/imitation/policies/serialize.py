@@ -168,3 +168,4 @@ class SavePolicyCallback(callbacks.EventCallback):
     def _on_step(self) -> bool:
         output_dir = os.path.join(self.policy_dir, f"{self.num_timesteps:012d}")
         save_stable_model(output_dir, self.model)
+        return True
