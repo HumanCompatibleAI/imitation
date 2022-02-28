@@ -356,7 +356,7 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
                         # TODO(adam): vectorize?
                         cum_discount = 1.0
                         # TODO(adam): do we want to omit last state?
-                        for obs in traj.obs[:-1]:
+                        for obs in traj.obs:
                             self.demo_state_om[obs] += cum_discount
                             cum_discount *= self.discount
                         num_demos += 1
