@@ -585,6 +585,7 @@ def rollout(
             pickles.
         verbose: If True, then print out rollout stats before saving.
         **kwargs: Passed through to `generate_trajectories`.
+
     Returns:
         Sequence of trajectories, satisfying `sample_until`. Additional trajectories
         may be collected to avoid biasing process towards short episodes; the user
