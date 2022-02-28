@@ -96,7 +96,7 @@ def test_switch_prob():
         num_constant = 0
         for _ in range(num_steps):
             obs = np.random.rand(1, 2)
-            _ = wrapper(obs)
+            wrapper(obs)
             if wrapper.current_policy == wrapper._random_policy:
                 num_random += 1
             elif wrapper.current_policy == constant_policy:
