@@ -120,7 +120,7 @@ TrajectoryWithRewPair = Tuple[TrajectoryWithRew, TrajectoryWithRew]
 
 def transitions_collate_fn(
     batch: Sequence[Mapping[str, np.ndarray]],
-) -> Mapping[str, Union[np.ndarray, th.Tensor]]:
+) -> Mapping[str, Union[np.ndarray, th.Tensor, TensorDict]]:
     """Custom `torch.utils.data.DataLoader` collate_fn for `TransitionsMinimal`.
 
     Use this as the `collate_fn` argument to `DataLoader` if using an instance of
@@ -135,12 +135,19 @@ def transitions_collate_fn(
         list of dicts. (The default behavior would recursively collate every
         info dict into a single dict, which is incorrect.)
     """
+    spec_keys = ["infos", "obs", "next_obs"] if isinstance(batch[0]['obs'], dict) else ["infos"]
     batch_no_infos = [
-        {k: np.array(v) for k, v in sample.items() if k != "infos"} for sample in batch
+        {k: np.array(v) for k, v in sample.items() if k not in spec_keys} for sample in batch
     ]
-
     result = th_data.dataloader.default_collate(batch_no_infos)
     assert isinstance(result, dict)
+
+    # zip result["obs"] into TensorDict
+    if "obs" in spec_keys:
+        result["obs"] = {obs_key: np.array([sample["obs"][obs_key] for sample in batch]) \
+                                        for obs_key in batch[0]["obs"]}
+        result["next_obs"] = {obs_key:np.array([sample["next_obs"][obs_key] for sample in batch]) \
+                                        for obs_key in batch[0]["obs"]}
     result["infos"] = [sample["infos"] for sample in batch]
     return result
 

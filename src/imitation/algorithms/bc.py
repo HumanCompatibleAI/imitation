@@ -289,7 +289,11 @@ class BC(algo_base.DemonstrationAlgorithm):
             stats_dict: Statistics about the learning process to be logged.
 
         """
-        obs = th.as_tensor(obs, device=self.device).detach()
+        if isinstance(obs, dict):
+            for key in obs:
+                obs[key] = th.as_tensor(obs[key], device=self.device).detach()
+        else:
+            obs = th.as_tensor(obs, device=self.device).detach()
         acts = th.as_tensor(acts, device=self.device).detach()
 
         _, log_prob, entropy = self.policy.evaluate_actions(obs, acts)
