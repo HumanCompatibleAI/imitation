@@ -317,7 +317,11 @@ def test_mce_irl_demo_formats():
     demonstrations = {
         "trajs": trajs,
         "trans": rollout.flatten_trajectories(trajs),
-        "data_loader": base.make_data_loader(trajs, batch_size=32),
+        "data_loader": base.make_data_loader(
+            trajs,
+            batch_size=32,
+            data_loader_kwargs=dict(drop_last=False),
+        ),
     }
 
     final_counts = {}
