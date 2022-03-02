@@ -393,4 +393,4 @@ def test_mce_irl_reasonable_mdp(
         )
         stats = rollout.rollout_stats(trajs)
         if discount > 0.0:  # skip check when discount==0.0 (random policy)
-            assert stats["return_mean"] >= mdp.horizon * 2 * 0.8
+            assert stats["return_mean"] >= (mdp.horizon - 1) * 2 * 0.8
