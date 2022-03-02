@@ -43,7 +43,8 @@ def test_run_example_notebooks(nb_path) -> None:
         nb_path: Path to the notebook to test.
     """
     nb = notebook.load_notebook(nb_path)
-    execution.execute_notebook(nb, cwd=EXAMPLES_DIR, timeout=120)
+    result = execution.execute_notebook(nb, cwd=EXAMPLES_DIR, timeout=120)
+    assert result.exec_error is None
 
 
 @pytest.mark.parametrize("py_path", PY_PATHS)
