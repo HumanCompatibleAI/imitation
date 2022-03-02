@@ -112,10 +112,10 @@ def mce_occupancy_measures(
 
     D = np.zeros((horizon + 1, n_states))
     D[0, :] = env.initial_state_dist
-    for t in range(1, horizon + 1):
+    for t in range(horizon):
         for a in range(n_actions):
-            E = D[t - 1] * pi[t - 1, :, a]
-            D[t, :] += E @ T[:, a, :]
+            E = D[t] * pi[t, :, a]
+            D[t + 1, :] += E @ T[:, a, :]
 
     Dcum = rollout.discounted_sum(D, discount)
     assert isinstance(Dcum, np.ndarray)
