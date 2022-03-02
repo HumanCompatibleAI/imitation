@@ -23,7 +23,7 @@ def _build_output_formats(
             output formats see `stable_baselines3.logger.make_output_format`.
 
     Returns:
-        A sequence of output formats, one corresponding to each `format_strs`.
+        A list of output formats, one corresponding to each `format_strs`.
     """
     os.makedirs(folder, exist_ok=True)
     output_formats = []
@@ -110,7 +110,7 @@ class HierarchicalLogger(sb_logger.Logger):
             folder = os.path.join(self.default_logger.dir, "raw", subdir)
             os.makedirs(folder, exist_ok=True)
             output_formats = _build_output_formats(folder, self.format_strs)
-            logger = sb_logger.Logger(folder, output_formats)
+            logger = sb_logger.Logger(folder, list(output_formats))
             self._cached_loggers[subdir] = logger
 
         try:
@@ -228,7 +228,7 @@ def configure(
     if format_strs is None:
         format_strs = ["stdout", "log", "csv"]
     output_formats = _build_output_formats(folder, format_strs)
-    default_logger = sb_logger.Logger(folder, output_formats)
+    default_logger = sb_logger.Logger(folder, list(output_formats))
     hier_format_strs = [f for f in format_strs if f != "wandb"]
     hier_logger = HierarchicalLogger(default_logger, hier_format_strs)
     return hier_logger

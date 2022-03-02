@@ -23,12 +23,14 @@ TESTS_REQUIRE = [
     "jupyter",
     # remove pin once https://github.com/jupyter/jupyter_client/issues/637 fixed
     "jupyter-client<7.0",
+    "pandas",
     "pytest",
     "pytest-cov",
     "pytest-notebook",
     "pytest-xdist",
     "pytype",
     "ray[debug,tune]~=0.8.5",
+    "scipy",
     "wandb",
 ]
 DOCS_REQUIRE = [
@@ -59,7 +61,9 @@ setup(
     package_data={"imitation": ["py.typed", "envs/examples/airl_envs/assets/*.xml"]},
     install_requires=[
         # If you change gym version here, change it in "mujoco" below too.
-        "gym[classic_control]>=0.21.0",
+        # pinned to 0.21 until https://github.com/DLR-RM/stable-baselines3/pull/780
+        # goes upstream.
+        "gym[classic_control]==0.21.0",
         "matplotlib",
         "numpy>=1.15",
         "torch>=1.4.0",
@@ -94,7 +98,7 @@ setup(
         "docs": DOCS_REQUIRE,
         "parallel": PARALLEL_REQUIRE,
         "mujoco": [
-            "gym[classic_control,mujoco]>=0.21.0",
+            "gym[classic_control,mujoco]==0.21.0",
         ],
     },
     entry_points={

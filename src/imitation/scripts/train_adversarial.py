@@ -117,7 +117,7 @@ def train_adversarial(
     algorithm_kwargs = dict(algorithm_kwargs)
     for k in ("shared", "airl", "gail"):
         # Config hook has copied relevant subset of config to top-level.
-        # But due to Sared limitations, cannot delete the rest of it.
+        # But due to Sacred limitations, cannot delete the rest of it.
         # So do that here to avoid passing in invalid arguments to constructor.
         if k in algorithm_kwargs:
             del algorithm_kwargs[k]
@@ -141,10 +141,10 @@ def train_adversarial(
     if checkpoint_interval >= 0:
         save(trainer, os.path.join(log_dir, "checkpoints", "final"))
 
-    results = {}
-    results["imit_stats"] = train.eval_policy(trainer.policy, trainer.venv_train)
-    results["expert_stats"] = rollout.rollout_stats(expert_trajs)
-    return results
+    return {
+        "imit_stats": train.eval_policy(trainer.policy, trainer.venv_train),
+        "expert_stats": rollout.rollout_stats(expert_trajs),
+    }
 
 
 @train_adversarial_ex.command

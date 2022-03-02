@@ -3,7 +3,7 @@ import os
 import pickle
 import traceback
 import warnings
-from typing import Callable, List
+from typing import Callable, List, Optional
 
 import gym
 import pytest
@@ -12,7 +12,7 @@ from filelock import FileLock
 from stable_baselines3 import PPO
 from stable_baselines3.common.evaluation import evaluate_policy
 from stable_baselines3.common.policies import BasePolicy
-from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
+from stable_baselines3.common.vec_env import DummyVecEnv, VecEnv, VecNormalize
 from stable_baselines3.ppo import MlpPolicy
 
 from imitation.data import rollout
@@ -42,6 +42,8 @@ def load_or_train_ppo(
                 " to load it:\n" + traceback.format_exc(),
             )
             expert = training_function(venv)
+            if expert is None:
+                pytest.fail("Failed to train expert!")
             expert.save(cache_path)
             return expert
 
@@ -69,7 +71,7 @@ def load_or_rollout_trajectories(cache_path, policy, venv) -> List[TrajectoryWit
 
 
 @pytest.fixture(params=[1, 4])
-def cartpole_venv(request) -> gym.Env:
+def cartpole_venv(request) -> VecEnv:
     num_envs = request.param
     return DummyVecEnv(
         [
@@ -79,17 +81,26 @@ def cartpole_venv(request) -> gym.Env:
     )
 
 
-def train_cartpole_expert(cartpole_env) -> PPO:  # pragma: no cover
+def train_cartpole_expert(cartpole_env) -> Optional[PPO]:  # pragma: no cover
+    """Trains an expert on a cartpole environment.
+
+    Args:
+        cartpole_env: The cartpole environment to use for training. Will only work with
+            CartPole-v1
+
+    Returns:
+        The trained cartpole expert or None if training failed even after 10 retries.
+    """
     policy_kwargs = dict(
         features_extractor_class=NormalizeFeaturesExtractor,
         features_extractor_kwargs=dict(normalize_class=RunningNorm),
     )
-    for _ in range(10):
+    for attempt_nr in range(10):
         policy = PPO(
             policy=FeedForward32Policy,
             policy_kwargs=policy_kwargs,
             env=VecNormalize(cartpole_env, norm_obs=False),
-            seed=0,
+            seed=attempt_nr,
             batch_size=64,
             ent_coef=0.0,
             learning_rate=0.0003,
@@ -135,16 +146,16 @@ PENDULUM_ENV_NAME = "Pendulum-v1"
 
 
 @pytest.fixture
-def pendulum_venv() -> gym.Env:
+def pendulum_venv() -> VecEnv:
     return DummyVecEnv([lambda: RolloutInfoWrapper(gym.make(PENDULUM_ENV_NAME))] * 8)
 
 
-def train_pendulum_expert(pendulum_env) -> PPO:  # pragma: no cover
-    for _ in range(10):
+def train_pendulum_expert(pendulum_env) -> Optional[PPO]:  # pragma: no cover
+    for attempt_nr in range(10):
         policy = PPO(
             policy=MlpPolicy,
             env=VecNormalize(pendulum_env, norm_obs=False),
-            seed=0,
+            seed=attempt_nr,
             batch_size=64,
             ent_coef=0.0,
             learning_rate=1e-3,
@@ -155,7 +166,7 @@ def train_pendulum_expert(pendulum_env) -> PPO:  # pragma: no cover
             use_sde=True,
             sde_sample_freq=4,
         )
-        policy.learn(1e5)
+        policy.learn(int(1e5))
         mean_reward, _ = evaluate_policy(policy, pendulum_env, 10)
         if mean_reward >= -185:
             return policy
