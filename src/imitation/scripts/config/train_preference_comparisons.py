@@ -32,7 +32,6 @@ def train_defaults():
 
     reward_trainer_kwargs = {
         "epochs": 3,
-        "weight_decay": float(5e-5),
     }
     save_preferences = False  # save preference dataset at the end?
     agent_path = None  # path to a (partially) trained agent to load at the beginning
