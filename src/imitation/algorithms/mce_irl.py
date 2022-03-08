@@ -5,7 +5,8 @@ Follows the description in chapters 9 and 10 of Brian Ziebart's `PhD thesis`_.
 .. _PhD thesis:
     http://www.cs.cmu.edu/~bziebart/publications/thesis-bziebart.pdf
 """
-
+import collections
+import warnings
 from typing import Any, Iterable, Mapping, Optional, Tuple, Type, Union
 
 import gym
@@ -94,10 +95,10 @@ def mce_occupancy_measures(
         discount: rate to discount the cumulative occupancy measure D.
 
     Returns:
-        Tuple of D (ndarray) and Dt (ndarray). D is an :math:`|S|`-dimensional vector
-        recording the expected discounted number of times each state is visited. Dt is
-        a :math:`T*|S|`-dimensional vector recording the probability of being in a given
-        state at a given timestep.
+        Tuple of ``D`` (ndarray) and ``Dcum`` (ndarray). ``D`` is of shape
+        ``(env.horizon, env.n_states)`` and records the probability of being in a
+        given state at a given timestep. ``Dcum`` is of shape ``(env.n_states,)``
+        and records the expected discounted number of times each state is visited.
     """
     # shorthand
     horizon = env.horizon
@@ -109,12 +110,12 @@ def mce_occupancy_measures(
     if pi is None:
         _, _, pi = mce_partition_fh(env, reward=reward)
 
-    D = np.zeros((horizon, n_states))
+    D = np.zeros((horizon + 1, n_states))
     D[0, :] = env.initial_state_dist
-    for t in range(1, horizon):
+    for t in range(horizon):
         for a in range(n_actions):
-            E = D[t - 1] * pi[t - 1, :, a]
-            D[t, :] += E @ T[:, a, :]
+            E = D[t] * pi[t, :, a]
+            D[t + 1, :] += E @ T[:, a, :]
 
     Dcum = rollout.discounted_sum(D, discount)
     assert isinstance(Dcum, np.ndarray)
@@ -255,7 +256,7 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
         reward_net: reward_nets.RewardNet,
         optimizer_cls: Type[th.optim.Optimizer] = th.optim.Adam,
         optimizer_kwargs: Optional[Mapping[str, Any]] = None,
-        discount: float = 1,
+        discount: float = 1.0,
         linf_eps: float = 1e-3,
         grad_l2_eps: float = 1e-4,
         # TODO(adam): do we need log_interval or can just use record_mean...?
@@ -321,49 +322,106 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
             rng=self.rng,
         )
 
-    def _set_demo_from_obs(self, obses: np.ndarray) -> None:
-        if self.discount != 1.0:
-            raise ValueError(
-                "Cannot compute discounted OM from timeless Transitions.",
-            )
+    def _set_demo_from_trajectories(self, trajs: Iterable[types.Trajectory]) -> None:
+        self.demo_state_om = np.zeros((self.env.n_states,))
+        num_demos = 0
+        for traj in trajs:
+            cum_discount = 1.0
+            for obs in traj.obs:
+                self.demo_state_om[obs] += cum_discount
+                cum_discount *= self.discount
+            num_demos += 1
+        self.demo_state_om /= num_demos
+
+    def _set_demo_from_obs(
+        self,
+        obses: np.ndarray,
+        dones: Optional[np.ndarray],
+        next_obses: Optional[np.ndarray],
+    ) -> None:
+        self.demo_state_om = np.zeros((self.env.n_states,))
+
         for obs in obses:
             if isinstance(obs, th.Tensor):
-                obs = obs.numpy()
-            self.demo_state_om[obs.astype(bool)] += 1.0
+                obs = obs.item()  # must be scalar
+            self.demo_state_om[obs] += 1.0
+
+        # We assume the transitions were flattened from some trajectories,
+        # then possibly shuffled. So add next observations for terminal states,
+        # as they will not appear anywhere else; but ignore next observations
+        # for all other states as they occur elsewhere in dataset.
+        if next_obses is not None:
+            for done, obs in zip(dones, next_obses):
+                if isinstance(done, th.Tensor):
+                    done = done.item()  # must be scalar
+                    obs = obs.item()  # must be scalar
+                if done:
+                    self.demo_state_om[obs] += 1.0
+        else:
+            warnings.warn(
+                "Training MCEIRL with transitions that lack next observation."
+                "This will result in systematically wrong occupancy measure estimates.",
+            )
+
+        # Normalize occupancy measure estimates
+        self.demo_state_om *= (self.env.horizon + 1) / self.demo_state_om.sum()
 
     def set_demonstrations(self, demonstrations: MCEDemonstrations) -> None:
         if isinstance(demonstrations, np.ndarray):
             # Demonstrations are an occupancy measure
             assert demonstrations.ndim == 1
             self.demo_state_om = demonstrations
+            return
+
+        # Demonstrations are either trajectories or transitions;
+        # we must compute occupancy measure from this.
+        if isinstance(demonstrations, Iterable):
+            first_item = next(iter(demonstrations))
+            if isinstance(first_item, types.Trajectory):
+                self._set_demo_from_trajectories(demonstrations)
+                return
+
+        # Demonstrations are from some kind of transitions-like object. This does
+        # not contain timesteps, so can only compute OM when undiscounted.
+        if self.discount != 1.0:
+            raise ValueError(
+                "Cannot compute discounted OM from timeless Transitions.",
+            )
+
+        if isinstance(demonstrations, types.Transitions):
+            self._set_demo_from_obs(
+                demonstrations.obs,
+                demonstrations.dones,
+                demonstrations.next_obs,
+            )
+        elif isinstance(demonstrations, types.TransitionsMinimal):
+            self._set_demo_from_obs(demonstrations.obs, None, None)
+        elif isinstance(demonstrations, Iterable):
+            # Demonstrations are a Torch DataLoader or other Mapping iterable
+            # Collect them together into one big NumPy array. This is inefficient,
+            # we could compute the running statistics instead, but in practice do
+            # not expect large dataset sizes together with MCE IRL.
+            collated = collections.defaultdict(list)
+            for batch in demonstrations:
+                assert isinstance(batch, Mapping)
+                for k in ("obs", "dones", "next_obs"):
+                    if k in batch:
+                        collated[k].append(batch[k])
+            for k, v in collated.items():
+                collated[k] = np.concatenate(v)
+
+            assert "obs" in collated
+            for k, v in collated.items():
+                assert len(v) == len(collated["obs"]), k
+            self._set_demo_from_obs(
+                collated["obs"],
+                collated.get("dones"),
+                collated.get("next_obs"),
+            )
         else:
-            # Demonstrations are either trajectories or transitions;
-            # we must compute occupancy measure from this.
-            self.demo_state_om = np.zeros((self.env.n_states,))
-
-            if isinstance(demonstrations, Iterable):
-                first_item = next(iter(demonstrations))
-                if isinstance(first_item, types.Trajectory):
-                    # Demonstrations are trajectories.
-                    for traj in demonstrations:
-                        # TODO(adam): vectorize?
-                        cum_discount = 1
-                        for obs in traj.obs:
-                            self.demo_state_om[obs.astype(bool)] += cum_discount
-                            cum_discount *= self.discount
-                else:
-                    # Demonstrations are a Torch DataLoader or other Mapping iterable
-                    for batch in demonstrations:
-                        self._set_demo_from_obs(batch["obs"])
-
-            elif isinstance(demonstrations, types.TransitionsMinimal):
-                self._set_demo_from_obs(demonstrations.obs)
-            else:
-                raise TypeError(
-                    f"Unsupported demonstration type {type(demonstrations)}",
-                )
-
-            self.demo_state_om /= self.demo_state_om.sum()  # normalize
+            raise TypeError(
+                f"Unsupported demonstration type {type(demonstrations)}",
+            )
 
     def _train_step(self, obs_mat: th.Tensor):
         self.optimizer.zero_grad()
