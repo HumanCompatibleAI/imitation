@@ -86,6 +86,7 @@ class TrajectoryDataset(TrajectoryGenerator):
         trajectories: Sequence[TrajectoryWithRew],
         seed: Optional[int] = None,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
+        shuffle_sampled_trajectories: bool = True,
     ):
         """Creates a dataset loaded from `path`.
 
@@ -93,15 +94,18 @@ class TrajectoryDataset(TrajectoryGenerator):
             trajectories: the dataset of rollouts.
             seed: Seed for RNG used for shuffling dataset.
             custom_logger: Where to log to; if None (default), creates a new logger.
+            shuffle_sampled_trajectories: Whether to shuffle the order of the trajectories.
         """
         super().__init__(custom_logger=custom_logger)
         self._trajectories = trajectories
         self.rng = random.Random(seed)
+        self.shuffle_sampled_trajectories = shuffle_sampled_trajectories
 
     def sample(self, steps: int) -> Sequence[TrajectoryWithRew]:
         # make a copy before shuffling
         trajectories = list(self._trajectories)
-        self.rng.shuffle(trajectories)
+        if self.shuffle_sampled_trajectories:
+            self.rng.shuffle(trajectories)
         return _get_trajectories(trajectories, steps)
 
 
@@ -117,6 +121,7 @@ class AgentTrainer(TrajectoryGenerator):
         random_prob: float = 0.5,
         seed: Optional[int] = None,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
+        shuffle_sampled_trajectories: bool = True,
     ):
         """Initialize the agent trainer.
 
@@ -133,6 +138,7 @@ class AgentTrainer(TrajectoryGenerator):
                 during exploration.
             seed: random seed for exploratory trajectories.
             custom_logger: Where to log to; if None (default), creates a new logger.
+            shuffle_sampled_trajectories: whether to shuffle the trajectories.
 
         Raises:
             ValueError: `algorithm` does not have an environment set.
@@ -173,6 +179,7 @@ class AgentTrainer(TrajectoryGenerator):
             switch_prob=switch_prob,
             seed=seed,
         )
+        self.shuffle_sampled_trajectories = shuffle_sampled_trajectories
 
     def train(self, steps: int, **kwargs) -> None:
         """Train the agent using the reward function specified during instantiation.
@@ -234,6 +241,7 @@ class AgentTrainer(TrajectoryGenerator):
                 self.algorithm,
                 self.venv,
                 sample_until=sample_until,
+                shuffle=self.shuffle_sampled_trajectories,
             )
             additional_trajs, _ = self.buffering_wrapper.pop_finished_trajectories()
             agent_trajs = list(agent_trajs) + list(additional_trajs)
@@ -251,6 +259,7 @@ class AgentTrainer(TrajectoryGenerator):
                 policy=self.exploration_wrapper,
                 venv=self.venv,
                 sample_until=sample_until,
+                shuffle=self.shuffle_sampled_trajectories,
             )
             exploration_trajs, _ = self.buffering_wrapper.pop_finished_trajectories()
             exploration_trajs = _get_trajectories(exploration_trajs, exploration_steps)
