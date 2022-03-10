@@ -384,7 +384,6 @@ def generate_trajectories(
     # when callees end up truncating the number of trajectories or transitions.
     # It is also cheap, since we're just shuffling pointers.
     if shuffle:
-        breakpoint()
         rng.shuffle(trajectories)
 
     # Sanity checks.
