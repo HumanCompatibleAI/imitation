@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 @wandb_ingredient.config
 def wandb_config():
-    # Other user can overwrite this function to customize their wandb.init() call.
+    # Other users can overwrite this function to customize their wandb.init() call.
     wandb_tag = None  # User-specified tag for this run
     wandb_name_prefix = ""  # User-specified prefix for the run name
     wandb_kwargs = dict(
