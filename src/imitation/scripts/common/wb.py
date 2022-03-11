@@ -39,7 +39,7 @@ def wandb_init(
         wandb_name_prefix: User-specified prefix for wandb run name.
         wandb_tag: User-specified tag for this run.
         wandb_kwargs: User-specified kwargs for wandb.init().
-        wandb_additional_info: User-specified additional info for as part of exp config.
+        wandb_additional_info: User-specified additional info to add to wandb experiment ``config``.
         log_dir: W&B logs will be stored in directory `{log_dir}/wandb/`.
 
     Raises:
