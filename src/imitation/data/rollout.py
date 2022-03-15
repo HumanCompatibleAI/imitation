@@ -320,7 +320,7 @@ def generate_trajectories(
             Most users will want to use one of `min_episodes` or `min_timesteps`.
         deterministic_policy: If True, asks policy to deterministically return
             action. Note the trajectories might still be non-deterministic if the
-            environment has non-determinism!
+            environment is stochastic!
         shuffle: If True, shuffle the order of the trajectories.
         rng: used for shuffling trajectories.
 
