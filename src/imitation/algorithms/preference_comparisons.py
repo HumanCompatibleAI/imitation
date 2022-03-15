@@ -122,6 +122,7 @@ class AgentTrainer(TrajectoryGenerator):
         seed: Optional[int] = None,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
         shuffle_sampled_trajectories: bool = True,
+        deterministic_exploration_policy: bool = True,
     ):
         """Initialize the agent trainer.
 
@@ -139,6 +140,8 @@ class AgentTrainer(TrajectoryGenerator):
             seed: random seed for exploratory trajectories.
             custom_logger: Where to log to; if None (default), creates a new logger.
             shuffle_sampled_trajectories: whether to shuffle the trajectories.
+            deterministic_exploration_policy: whether to use the deterministic policy
+                for exploration.
 
         Raises:
             ValueError: `algorithm` does not have an environment set.
@@ -167,10 +170,11 @@ class AgentTrainer(TrajectoryGenerator):
         self.log_callback = self.venv.make_log_callback()
 
         self.algorithm.set_env(self.venv)
+        self.deterministic_exploration_policy = deterministic_exploration_policy
         policy = rollout._policy_to_callable(
             self.algorithm,
             self.venv,
-            deterministic_policy=True,
+            deterministic_policy=self.deterministic_exploration_policy,
         )
         self.exploration_wrapper = exploration_wrapper.ExplorationWrapper(
             policy=policy,

@@ -46,6 +46,7 @@ def train_defaults():
     trajectory_path = None
     trajectory_generator_kwargs = {
         "shuffle_sampled_trajectories": True,
+        "deterministic_exploration_policy": True,
     }  # kwargs to pass to trajectory generator
     allow_variable_horizon = False
 
