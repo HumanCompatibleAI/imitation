@@ -29,6 +29,7 @@ from imitation.rewards import reward_nets, reward_wrapper
 from imitation.util import logger as imit_logger
 from imitation.util import networks
 
+DEBUG = False
 
 class TrajectoryGenerator(abc.ABC):
     """Generator of trajectories with optional training logic."""
@@ -271,6 +272,27 @@ class AgentTrainer(TrajectoryGenerator):
         # and then just concatenate. This could mean we return slightly too many
         # transitions, but it gets the proportion of exploratory and agent transitions
         # roughly right.
+        if DEBUG:
+            import pickle
+            import os
+            os.makedirs("/debug_data", exist_ok=True)
+            for traj_type in ["agent", "exploration"]:
+                file_name = "-".join(
+                    [
+                        f"/debug_data/0315_{traj_type}_trajs",
+                        f"explore_frac{self.exploration_frac}",
+                        f"deterministic{self.deterministic_exploration_policy}",
+                        f"shuffle{self.shuffle_sampled_trajectories}.pkl",
+                    ],
+                )
+                if traj_type == "agent":
+                    pickle.dump(list(agent_trajs), open(file_name, 'wb'))
+                elif traj_type == "exploration":
+                    pickle.dump(list(exploration_trajs), open(file_name, 'wb'))
+                else:
+                    raise ValueError(f"Unknown traj_type: {traj_type}")
+            breakpoint()
+
         return list(agent_trajs) + list(exploration_trajs)
 
     @TrajectoryGenerator.logger.setter
