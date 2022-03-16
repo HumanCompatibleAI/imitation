@@ -5,6 +5,7 @@ between trajectory fragments.
 """
 import abc
 import math
+import os
 import pickle
 import random
 from typing import Any, Callable, List, Mapping, Optional, Sequence, Tuple, Union
@@ -30,6 +31,7 @@ from imitation.util import logger as imit_logger
 from imitation.util import networks
 
 DEBUG = False
+
 
 class TrajectoryGenerator(abc.ABC):
     """Generator of trajectories with optional training logic."""
@@ -95,7 +97,8 @@ class TrajectoryDataset(TrajectoryGenerator):
             trajectories: the dataset of rollouts.
             seed: Seed for RNG used for shuffling dataset.
             custom_logger: Where to log to; if None (default), creates a new logger.
-            shuffle_sampled_trajectories: Whether to shuffle the order of the trajectories.
+            shuffle_sampled_trajectories: Whether to shuffle the order of the
+                trajectories.
         """
         super().__init__(custom_logger=custom_logger)
         self._trajectories = trajectories
@@ -273,8 +276,6 @@ class AgentTrainer(TrajectoryGenerator):
         # transitions, but it gets the proportion of exploratory and agent transitions
         # roughly right.
         if DEBUG:
-            import pickle
-            import os
             os.makedirs("/debug_data", exist_ok=True)
             for traj_type in ["agent", "exploration"]:
                 file_name = "-".join(
@@ -286,12 +287,11 @@ class AgentTrainer(TrajectoryGenerator):
                     ],
                 )
                 if traj_type == "agent":
-                    pickle.dump(list(agent_trajs), open(file_name, 'wb'))
+                    pickle.dump(list(agent_trajs), open(file_name, "wb"))
                 elif traj_type == "exploration":
-                    pickle.dump(list(exploration_trajs), open(file_name, 'wb'))
+                    pickle.dump(list(exploration_trajs), open(file_name, "wb"))
                 else:
                     raise ValueError(f"Unknown traj_type: {traj_type}")
-            breakpoint()
 
         return list(agent_trajs) + list(exploration_trajs)
 
