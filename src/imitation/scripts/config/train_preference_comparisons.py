@@ -45,6 +45,8 @@ def train_defaults():
     # path to a pickled sequence of trajectories used instead of training an agent
     trajectory_path = None
     trajectory_generator_kwargs = {
+        "random_prob": 0.5,
+        "switch_prob": 0.5,
         "shuffle_sampled_trajectories": True,
         "deterministic_exploration_policy": True,
     }  # kwargs to pass to trajectory generator
