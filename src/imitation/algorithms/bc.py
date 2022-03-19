@@ -77,13 +77,13 @@ class BehaviorCloningLossCalculator:
         loss = neglogp + ent_loss + l2_loss
 
         return BehaviorCloningLoss(
-            neglogp,
-            entropy,
-            ent_loss,
-            prob_true_act,
-            l2_norm,
-            l2_loss,
-            loss,
+            neglogp=neglogp,
+            entropy=entropy,
+            ent_loss=ent_loss,
+            prob_true_act=prob_true_act,
+            l2_norm=l2_norm,
+            l2_loss=l2_loss,
+            loss=loss,
         )
 
 
