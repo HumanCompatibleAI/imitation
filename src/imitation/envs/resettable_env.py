@@ -130,8 +130,8 @@ class ResettableEnv(gym.Env, abc.ABC):
         self.cur_state = self.transition(self.cur_state, action)
         obs = self.obs_from_state(self.cur_state)
         rew = self.reward(old_state, action, self.cur_state)
-        done = self.terminal(self.cur_state, self._n_actions_taken)
         self._n_actions_taken += 1
+        done = self.terminal(self.cur_state, self._n_actions_taken)
 
         infos = {"old_state": old_state, "new_state": self.cur_state}
         combined_obs = {"obs": obs, "state": self.cur_state}
