@@ -555,8 +555,7 @@ def generate_transitions(
     return transitions
 
 
-def rollout_and_save(
-    path: str,
+def rollout(
     policy: AnyPolicy,
     venv: VecEnv,
     sample_until: GenTrajTerminationFn,
@@ -565,13 +564,12 @@ def rollout_and_save(
     exclude_infos: bool = True,
     verbose: bool = True,
     **kwargs,
-) -> None:
-    """Generate policy rollouts and save them to a pickled list of trajectories.
+) -> Sequence[types.TrajectoryWithRew]:
+    """Generate policy rollouts.
 
     The `.infos` field of each Trajectory is set to `None` to save space.
 
     Args:
-        path: Rollouts are saved to this path.
         policy: Can be any of the following:
             1) A stable_baselines3 policy or algorithm trained on the gym environment.
             2) A Callable that takes an ndarray of observations and returns an ndarray
@@ -587,6 +585,11 @@ def rollout_and_save(
             pickles.
         verbose: If True, then print out rollout stats before saving.
         **kwargs: Passed through to `generate_trajectories`.
+
+    Returns:
+        Sequence of trajectories, satisfying `sample_until`. Additional trajectories
+        may be collected to avoid biasing process towards short episodes; the user
+        should truncate if required.
     """
     trajs = generate_trajectories(policy, venv, sample_until, **kwargs)
     if unwrap:
@@ -596,8 +599,7 @@ def rollout_and_save(
     if verbose:
         stats = rollout_stats(trajs)
         logging.info(f"Rollout stats: {stats}")
-
-    types.save(path, trajs)
+    return trajs
 
 
 def discounted_sum(arr: np.ndarray, gamma: float) -> Union[np.ndarray, float]:
