@@ -164,7 +164,7 @@ class AgentTrainer(TrajectoryGenerator):
         policy = rollout._policy_to_callable(
             self.algorithm,
             self.venv,
-            deterministic_policy=True,
+            deterministic_policy=False,
         )
         self.exploration_wrapper = exploration_wrapper.ExplorationWrapper(
             policy=policy,
