@@ -11,6 +11,7 @@ from typing import Any, Callable, Iterable, Mapping, Optional, Tuple, Type, Unio
 import gym
 import numpy as np
 import torch as th
+import tqdm
 from stable_baselines3.common import policies, utils, vec_env
 
 from imitation.algorithms import base as algo_base
@@ -162,6 +163,7 @@ class RolloutStatsComputer:
         venv: The vectorized environment in which to compute the rollouts.
         n_episodes: The number of episodes to base the statistics on.
     """
+
     venv: vec_env.VecEnv
     n_episodes: int
 
@@ -397,7 +399,11 @@ class BC(algo_base.DemonstrationAlgorithm):
         )
         batches_with_stats = enumerate_batches(demonstration_batches)
 
-        for ((batch_num, batch_size, num_samples_so_far), batch) in batches_with_stats:
+        for ((batch_num, batch_size, num_samples_so_far), batch) in tqdm.tqdm(
+            batches_with_stats,
+            unit="batch",
+            total=n_batches,
+        ):
             loss = self.trainer(batch)
 
             if batch_num % log_interval == 0:
