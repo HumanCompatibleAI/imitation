@@ -399,11 +399,14 @@ class BC(algo_base.DemonstrationAlgorithm):
         )
         batches_with_stats = enumerate_batches(demonstration_batches)
 
-        for ((batch_num, batch_size, num_samples_so_far), batch) in tqdm.tqdm(
-            batches_with_stats,
-            unit="batch",
-            total=n_batches,
-        ):
+        if progress_bar:
+            batches_with_stats = tqdm.tqdm(
+                batches_with_stats,
+                unit="batch",
+                total=n_batches,
+            )
+
+        for ((batch_num, batch_size, num_samples_so_far), batch) in batches_with_stats:
             loss = self.trainer(batch)
 
             if batch_num % log_interval == 0:
