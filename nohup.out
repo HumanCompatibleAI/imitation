@@ -1,0 +1,18 @@
+
+X.Org X Server 1.19.6
+Release Date: 2017-12-20
+X Protocol Version 11, Revision 0
+Build Operating System: Linux 4.15.0-140-generic x86_64 Ubuntu
+Current Operating System: Linux 012e51ec16b4 5.4.0-104-generic #118-Ubuntu SMP Wed Mar 2 19:02:41 UTC 2022 x86_64
+Kernel command line: BOOT_IMAGE=/vmlinuz-5.4.0-104-generic root=/dev/mapper/ssd--vg-root ro quiet splash vt.handoff=7
+Build Date: 08 April 2021  01:57:21PM
+xorg-server 2:1.19.6-1ubuntu4.9 (For technical support please see http://www.ubuntu.com/support) 
+Current version of pixman: 0.34.0
+	Before reporting problems, check http://wiki.x.org
+	to make sure that you have the latest version.
+Markers: (--) probed, (**) from config file, (==) default setting,
+	(++) from command line, (!!) notice, (II) informational,
+	(WW) warning, (EE) error, (NI) not implemented, (??) unknown.
+(++) Log file: "/tmp/xdummy.log", Time: Tue Mar 22 14:44:21 2022
+(++) Using config file: "/etc/dummy_xorg.conf"
+(==) Using system config directory "/usr/share/X11/xorg.conf.d"

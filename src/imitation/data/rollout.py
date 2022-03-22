@@ -257,7 +257,7 @@ AnyPolicy = Union[BaseAlgorithm, BasePolicy, PolicyCallable, None]
 def _policy_to_callable(
     policy: AnyPolicy,
     venv: VecEnv,
-    deterministic_policy: bool,
+    deterministic_policy: Optional[bool] = None,
 ) -> PolicyCallable:
     """Converts any policy-like object into a function from observations to actions."""
     if policy is None:
@@ -282,6 +282,13 @@ def _policy_to_callable(
             return acts
 
     elif isinstance(policy, Callable):
+        # When a policy callable is passed, by default we will use it directly.
+        # We are not able to change the determinism of the policy when it is a
+        # callable that only takes in the states. 
+        if deterministic_policy is not None:
+            raise ValueError(
+                "deterministic_policy is not supported when policy is a Callable",
+            )
         get_actions = policy
 
     else:

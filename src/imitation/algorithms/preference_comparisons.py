@@ -161,13 +161,13 @@ class AgentTrainer(TrajectoryGenerator):
         self.log_callback = self.venv.make_log_callback()
 
         self.algorithm.set_env(self.venv)
-        policy = rollout._policy_to_callable(
+        policy_callable = rollout._policy_to_callable(
             self.algorithm,
             self.venv,
             deterministic_policy=False,
         )
         self.exploration_wrapper = exploration_wrapper.ExplorationWrapper(
-            policy=policy,
+            policy_callable=policy_callable,
             venv=self.venv,
             random_prob=random_prob,
             switch_prob=switch_prob,
@@ -234,6 +234,7 @@ class AgentTrainer(TrajectoryGenerator):
                 self.algorithm,
                 self.venv,
                 sample_until=sample_until,
+                deterministic_policy=False,  
             )
             additional_trajs, _ = self.buffering_wrapper.pop_finished_trajectories()
             agent_trajs = list(agent_trajs) + list(additional_trajs)
@@ -251,7 +252,9 @@ class AgentTrainer(TrajectoryGenerator):
                 policy=self.exploration_wrapper,
                 venv=self.venv,
                 sample_until=sample_until,
+                deterministic_policy=False,
             )
+            # buffering_wrapper collects rollouts from a non-deterministic policy so we do that here as well for consistency.
             exploration_trajs, _ = self.buffering_wrapper.pop_finished_trajectories()
             exploration_trajs = _get_trajectories(exploration_trajs, exploration_steps)
         # We call _get_trajectories separately on agent_trajs and exploration_trajs
