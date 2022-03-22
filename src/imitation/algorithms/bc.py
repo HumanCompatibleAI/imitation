@@ -387,6 +387,12 @@ class BC(algo_base.DemonstrationAlgorithm):
         )
 
         def _on_epoch_end(epoch_number: int):
+            if isinstance(batches_with_stats, tqdm.tqdm):
+                total_num_epochs_str = f"of {n_epochs}" if n_epochs is not None else ""
+                batches_with_stats.display(
+                    f"Epoch {epoch_number} {total_num_epochs_str}",
+                    pos=1,
+                )
             self._bc_logger.log_epoch(epoch_number)
             if on_epoch_end is not None:
                 on_epoch_end()
