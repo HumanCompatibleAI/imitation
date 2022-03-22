@@ -16,7 +16,53 @@ from stable_baselines3.common import policies, utils, vec_env
 from imitation.algorithms import base as algo_base
 from imitation.data import rollout, types
 from imitation.policies import base as policy_base
-from imitation.util import logger
+from imitation.util import logger as imit_logger
+
+
+@dataclasses.dataclass(frozen=True)
+class BatchIteratorWithEpochEndCallback:
+    """Loops through batches from a batch loader and calls a callback after every epoch.
+
+    Will throw an exception when an epoch contains no batches.
+    """
+
+    batch_loader: Iterable[algo_base.TransitionMapping]
+    n_epochs: Optional[int]
+    n_batches: Optional[int]
+    on_epoch_end: Optional[Callable[[int], None]]
+
+    def __post_init__(self):
+        epochs_and_batches_specified = (
+            self.n_epochs is not None and self.n_batches is not None
+        )
+        neither_epochs_nor_batches_specified = (
+            self.n_epochs is None and self.n_batches is None
+        )
+        if epochs_and_batches_specified or neither_epochs_nor_batches_specified:
+            raise ValueError(
+                "Must provide exactly one of `n_epochs` and `n_batches` arguments.",
+            )
+
+    def __iter__(self) -> Iterable[algo_base.TransitionMapping]:
+        def batch_iterator():
+
+            # Note: the islice here ensures we do not exceed self.n_epochs
+            for epoch_num in itertools.islice(itertools.count(), self.n_epochs):
+                num_batches_in_epoch = 0
+                for num_batches_in_epoch, batch in enumerate(self.batch_loader):
+                    yield batch
+
+                if num_batches_in_epoch == 0:
+                    raise AssertionError(
+                        f"Data loader returned no data after "
+                        f"{num_batches_in_epoch} batches, during epoch "
+                        f"{epoch_num} -- did it reset correctly?",
+                    )
+                if self.on_epoch_end is not None:
+                    self.on_epoch_end(epoch_num)
+
+        # Note: the islice here ensures we do not exceed self.n_batches
+        return itertools.islice(batch_iterator(), self.n_batches)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -97,52 +143,6 @@ class BehaviorCloningTrainer:
         return bc_loss
 
 
-@dataclasses.dataclass(frozen=True)
-class BatchIteratorWithEpochEndCallback:
-    """Loops through batches from a batch loader and calls a callback after every epoch.
-
-    Will throw an exception when an epoch contains no batches.
-    """
-
-    batch_loader: Iterable[algo_base.TransitionMapping]
-    n_epochs: Optional[int]
-    n_batches: Optional[int]
-    on_epoch_end: Optional[Callable[[int], None]]
-
-    def __post_init__(self):
-        epochs_and_batches_specified = (
-            self.n_epochs is not None and self.n_batches is not None
-        )
-        neither_epochs_nor_batches_specified = (
-            self.n_epochs is None and self.n_batches is None
-        )
-        if epochs_and_batches_specified or neither_epochs_nor_batches_specified:
-            raise ValueError(
-                "Must provide exactly one of `n_epochs` and `n_batches` arguments.",
-            )
-
-    def __iter__(self) -> Iterable[algo_base.TransitionMapping]:
-        def batch_iterator():
-
-            # Note: the islice here ensures we do not exceed self.n_epochs
-            for epoch_num in itertools.islice(itertools.count(), self.n_epochs):
-                num_batches_in_epoch = 0
-                for num_batches_in_epoch, batch in enumerate(self.batch_loader):
-                    yield batch
-
-                if num_batches_in_epoch == 0:
-                    raise AssertionError(
-                        f"Data loader returned no data after "
-                        f"{num_batches_in_epoch} batches, during epoch "
-                        f"{epoch_num} -- did it reset correctly?",
-                    )
-                if self.on_epoch_end is not None:
-                    self.on_epoch_end(epoch_num)
-
-        # Note: the islice here ensures we do not exceed self.n_batches
-        return itertools.islice(batch_iterator(), self.n_batches)
-
-
 def enumerate_batches(
     batch_it: Iterable[algo_base.TransitionMapping],
 ) -> Iterable[Tuple[Tuple[int, int, int], algo_base.TransitionMapping]]:
@@ -152,6 +152,74 @@ def enumerate_batches(
         batch_size = len(batch["obs"])
         num_samples_so_far += batch_size
         yield (num_batches, batch_size, num_samples_so_far), batch
+
+
+@dataclasses.dataclass(frozen=True)
+class RolloutStatsComputer:
+    """Computes statistics about rollouts.
+
+    Args:
+        venv: The vectorized environment in which to compute the rollouts.
+        n_episodes: The number of episodes to base the statistics on.
+    """
+    venv: vec_env.VecEnv
+    n_episodes: int
+
+    # TODO(shwang): Maybe instead use a callback that can be shared between
+    #   all algorithms' `.train()` for generating rollout stats.
+    #   EvalCallback could be a good fit:
+    #   https://stable-baselines3.readthedocs.io/en/master/guide/callbacks.html#evalcallback
+
+    def __call__(self, policy: policies.ActorCriticPolicy) -> Mapping[str, float]:
+        if self.venv is not None and self.n_episodes > 0:
+            trajs = rollout.generate_trajectories(
+                policy,
+                self.venv,
+                rollout.make_min_episodes(self.n_episodes),
+            )
+            return rollout.rollout_stats(trajs)
+        else:
+            return dict()
+
+
+class BCLogger:
+    """Utility class to help logging information relevant to Behavior Cloning."""
+
+    def __init__(self, logger: imit_logger.HierarchicalLogger):
+        """Create new BC logger.
+
+        Args:
+            logger: The logger to which to feed all the information.
+        """
+        self._logger = logger
+        self._tensorboard_step = 0
+
+    def reset_tensorboard_steps(self):
+        self._tensorboard_step = 0
+
+    def log_epoch(self, epoch_number):
+        self._logger.record("bc/epoch", epoch_number)
+
+    def log_batch(
+        self,
+        batch_num: int,
+        batch_size: int,
+        num_samples_so_far: int,
+        loss: BehaviorCloningLoss,
+        rollout_stats: Mapping[str, float],
+    ):
+        self._tensorboard_step += 1
+
+        self._logger.record("batch_size", batch_size)
+        self._logger.record("bc/batch", batch_num)
+        self._logger.record("bc/samples_so_far", num_samples_so_far)
+        for k, v in loss.__dict__.items():
+            self._logger.record(f"bc/{k}", v)
+
+        for k, v in rollout_stats.items():
+            if "return" in k and "monitor" not in k:
+                self._logger.record("rollout/" + k, v)
+        self._logger.dump(self._tensorboard_step)
 
 
 def reconstruct_policy(
@@ -191,7 +259,7 @@ class BC(algo_base.DemonstrationAlgorithm):
         ent_weight: float = 1e-3,
         l2_weight: float = 0.0,
         device: Union[str, th.device] = "auto",
-        custom_logger: Optional[logger.HierarchicalLogger] = None,
+        custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
     ):
         """Builds BC.
 
@@ -223,7 +291,7 @@ class BC(algo_base.DemonstrationAlgorithm):
             demonstrations=demonstrations,
             custom_logger=custom_logger,
         )
-        self.tensorboard_step = 0
+        self._bc_logger = BCLogger(self.logger)
 
         self.action_space = action_space
         self.observation_space = observation_space
@@ -309,10 +377,15 @@ class BC(algo_base.DemonstrationAlgorithm):
                 effect if `.train()` is being called for the first time.
         """
         if reset_tensorboard:
-            self.tensorboard_step = 0
+            self._bc_logger.reset_tensorboard_steps()
+
+        compute_rollout_stats = RolloutStatsComputer(
+            log_rollouts_venv,
+            log_rollouts_n_episodes,
+        )
 
         def _on_epoch_end(epoch_number: int):
-            self._log_epoch(epoch_number)
+            self._bc_logger.log_epoch(epoch_number)
             if on_epoch_end is not None:
                 on_epoch_end()
 
@@ -328,53 +401,18 @@ class BC(algo_base.DemonstrationAlgorithm):
             loss = self.trainer(batch)
 
             if batch_num % log_interval == 0:
-                self._log_batch(
+                rollout_stats = compute_rollout_stats(self.policy)
+
+                self._bc_logger.log_batch(
                     batch_num,
                     batch_size,
                     num_samples_so_far,
                     loss,
-                    log_rollouts_venv,
-                    log_rollouts_n_episodes,
+                    rollout_stats,
                 )
 
             if on_batch_end is not None:
                 on_batch_end()
-
-    def _log_epoch(self, epoch_number):
-        self.logger.record("bc/epoch", epoch_number)
-
-    def _log_batch(
-        self,
-        batch_num: int,
-        batch_size: int,
-        num_samples_so_far: int,
-        loss: BehaviorCloningLoss,
-        log_rollouts_venv: Optional[vec_env.VecEnv],
-        log_rollouts_n_episodes: int,
-    ):
-        self.tensorboard_step += 1
-
-        self.logger.record("batch_size", batch_size)
-        self.logger.record("bc/batch", batch_num)
-        self.logger.record("bc/samples_so_far", num_samples_so_far)
-        for k, v in loss.__dict__.items():
-            self.logger.record(f"bc/{k}", v)
-        # TODO(shwang): Maybe instead use a callback that can be shared between
-        #   all algorithms' `.train()` for generating rollout stats.
-        #   EvalCallback could be a good fit:
-        #   https://stable-baselines3.readthedocs.io/en/master/guide/callbacks.html#evalcallback
-        if log_rollouts_venv is not None and log_rollouts_n_episodes > 0:
-            trajs = rollout.generate_trajectories(
-                self.policy,
-                log_rollouts_venv,
-                rollout.make_min_episodes(log_rollouts_n_episodes),
-            )
-            stats = rollout.rollout_stats(trajs)
-
-            for k, v in stats.items():
-                if "return" in k and "monitor" not in k:
-                    self.logger.record("rollout/" + k, v)
-        self.logger.dump(self.tensorboard_step)
 
     def save_policy(self, policy_path: types.AnyPath) -> None:
         """Save policy to a path. Can be reloaded by `.reconstruct_policy()`.
