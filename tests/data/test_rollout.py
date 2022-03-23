@@ -260,3 +260,16 @@ def test_generate_trajectories_type_error():
             venv,
             sample_until=sample_until,
         )
+
+def test_generate_trajectories_value_error():
+    venv = vec_env.DummyVecEnv([functools.partial(TerminalSentinelEnv, 1)])
+    sample_until = rollout.make_min_episodes(1)
+    def constant_policy(obs):
+        return np.zeros(len(obs), dtype=int)
+    with pytest.raises(ValueError, match="Cannot set deterministic.*is ignored."):
+        rollout.generate_trajectories(
+            constant_policy,
+            venv,
+            sample_until=sample_until,
+            deterministic_policy=True,
+        )
