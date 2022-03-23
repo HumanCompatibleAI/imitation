@@ -164,8 +164,10 @@ class AgentTrainer(TrajectoryGenerator):
         policy_callable = rollout._policy_to_callable(
             self.algorithm,
             self.venv,
-            # we keep the default policy scheme in determinism by setting
-            # deterministic_policy to False.
+            # By setting deterministic_policy to False, we ensure that the rollouts
+            # are collected from a deterministic policy only if self.algorithm is
+            # deterministic. If self.algorithm is stochastic, then policy_callable
+            # will also be stochastic.
             deterministic_policy=False,
         )
         self.exploration_wrapper = exploration_wrapper.ExplorationWrapper(
@@ -236,8 +238,10 @@ class AgentTrainer(TrajectoryGenerator):
                 self.algorithm,
                 self.venv,
                 sample_until=sample_until,
-                # we keep the default policy scheme in determinism by setting
-                # deterministic_policy to False.
+                # By setting deterministic_policy to False, we ensure that the rollouts
+                # are collected from a deterministic policy only if self.algorithm is
+                # deterministic. If self.algorithm is stochastic, then policy_callable
+                # will also be stochastic.
                 deterministic_policy=False,
             )
             additional_trajs, _ = self.buffering_wrapper.pop_finished_trajectories()

@@ -30,8 +30,7 @@ class ExplorationWrapper:
         """Initializes the ExplorationWrapper.
 
         Args:
-            policy_callable: The policy callable to randomize. Preferably a policy
-                callable to match the same type of self._random_policy(obs) call.
+            policy_callable: The policy callable to randomize.
             venv: The environment to use (needed for sampling random actions).
             random_prob: The probability of picking the random policy when switching.
             switch_prob: The probability of switching away from the current policy.

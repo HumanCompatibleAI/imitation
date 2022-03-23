@@ -285,7 +285,7 @@ def _policy_to_callable(
         # When a policy callable is passed, by default we will use it directly.
         # We are not able to change the determinism of the policy when it is a
         # callable that only takes in the states.
-        if deterministic_policy is True:
+        if deterministic_policy:
             raise ValueError(
                 "Cannot set deterministic_policy=True when policy is a callable, "
                 "since deterministic_policy argument is ignored.",
