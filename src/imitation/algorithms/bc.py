@@ -108,6 +108,10 @@ class BehaviorCloningLossCalculator:
             policy: The actor-critic policy of which to compute the loss.
             obs: The observations seen by the expert.
             acts: The actions taken by the expert.
+
+        Returns:
+            A BehaviorCloningLoss object with the loss and all the components it
+            consists of.
         """
         _, log_prob, entropy = policy.evaluate_actions(obs, acts)
         prob_true_act = th.exp(log_prob).mean()
