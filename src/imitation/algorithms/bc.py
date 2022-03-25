@@ -223,8 +223,6 @@ class BCLogger:
         loss: BehaviorCloningLoss,
         rollout_stats: Mapping[str, float],
     ):
-        self._tensorboard_step += 1
-
         self._logger.record("batch_size", batch_size)
         self._logger.record("bc/batch", batch_num)
         self._logger.record("bc/samples_so_far", num_samples_so_far)
@@ -235,6 +233,7 @@ class BCLogger:
             if "return" in k and "monitor" not in k:
                 self._logger.record("rollout/" + k, v)
         self._logger.dump(self._tensorboard_step)
+        self._tensorboard_step += 1
 
     def __getstate__(self):
         state = self.__dict__.copy()
