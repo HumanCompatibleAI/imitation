@@ -105,7 +105,7 @@ class BehaviorCloningLossCalculator:
         """Calculate the supervised learning loss used to train the behavioral clone.
 
         Args:
-            policy: The actor-critic policy of which to compute the loss.
+            policy: The actor-critic policy whose loss is being computed.
             obs: The observations seen by the expert.
             acts: The actions taken by the expert.
 
