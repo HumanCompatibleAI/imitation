@@ -49,7 +49,6 @@ class RewardVecEnvWrapper(vec_env.VecEnvWrapper):
         venv: vec_env.VecEnv,
         reward_fn: common.RewardFn,
         ep_history: int = 100,
-        normalize_wrapped_reward: bool = False,
     ):
         """Builds RewardVecEnvWrapper.
 
@@ -60,8 +59,6 @@ class RewardVecEnvWrapper(vec_env.VecEnvWrapper):
                 vector of rewards.
             ep_history: The number of episode rewards to retain for computing
                 mean reward.
-            normalize_wrapped_reward: Whether to normalize the wrapped reward
-                with the mean and std of the episode rewards.
         """
         assert not isinstance(venv, RewardVecEnvWrapper)
         super().__init__(venv)
@@ -70,7 +67,6 @@ class RewardVecEnvWrapper(vec_env.VecEnvWrapper):
         self.reward_fn = reward_fn
         self._old_obs = None
         self._actions = None
-        self.norm_reward = normalize_wrapped_reward
         self.reset()
 
     def make_log_callback(self) -> WrappedRewardCallback:
@@ -106,8 +102,6 @@ class RewardVecEnvWrapper(vec_env.VecEnvWrapper):
         rews = self.reward_fn(self._old_obs, self._actions, obs_fixed, np.array(dones))
         assert len(rews) == len(obs), "must return one rew for each env"
         done_mask = np.asarray(dones, dtype="bool").reshape((len(dones),))
-
-        rews = self.normalize_reward(rews)
 
         # Update statistics
         self._cumulative_rew += rews
