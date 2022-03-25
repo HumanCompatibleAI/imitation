@@ -204,7 +204,7 @@ class BCLogger:
         """Create new BC logger.
 
         Args:
-            logger: The logger to which to feed all the information.
+            logger: The logger to feed all the information to.
         """
         self._logger = logger
         self._tensorboard_step = 0
