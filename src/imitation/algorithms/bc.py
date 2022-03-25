@@ -407,9 +407,9 @@ class BC(algo_base.DemonstrationAlgorithm):
         )
 
         def _on_epoch_end(epoch_number: int):
-            if progress_bar is not None:
+            if tqdm_progress_bar is not None:
                 total_num_epochs_str = f"of {n_epochs}" if n_epochs is not None else ""
-                progress_bar.display(
+                tqdm_progress_bar.display(
                     f"Epoch {epoch_number} {total_num_epochs_str}",
                     pos=1,
                 )
@@ -424,7 +424,7 @@ class BC(algo_base.DemonstrationAlgorithm):
             _on_epoch_end,
         )
         batches_with_stats = enumerate_batches(demonstration_batches)
-        progress_bar: tqdm.tqdm = None
+        tqdm_progress_bar: tqdm.tqdm = None
 
         if progress_bar:
             batches_with_stats = tqdm.tqdm(
@@ -432,7 +432,7 @@ class BC(algo_base.DemonstrationAlgorithm):
                 unit="batch",
                 total=n_batches,
             )
-            progress_bar = batches_with_stats
+            tqdm_progress_bar = batches_with_stats
 
         for (batch_num, batch_size, num_samples_so_far), batch in batches_with_stats:
             loss = self.trainer(batch)
