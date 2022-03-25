@@ -373,7 +373,9 @@ class BC(algo_base.DemonstrationAlgorithm):
         """Train with supervised learning for some number of epochs.
 
         Here an 'epoch' is just a complete pass through the expert data loader,
-        as set by `self.set_expert_data_loader()`.
+        as set by `self.set_expert_data_loader()`. Note, that when you specify
+        `n_batches` smaller than the number of batches in an epoch, the `on_epoch_end`
+        callback will never be called.
 
         Args:
             n_epochs: Number of complete passes made through expert data before ending
