@@ -117,6 +117,7 @@ class AgentTrainer(TrajectoryGenerator):
         random_prob: float = 0.5,
         seed: Optional[int] = None,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
+        normalize_wrapped_reward: bool = False,
     ):
         """Initialize the agent trainer.
 
@@ -133,6 +134,8 @@ class AgentTrainer(TrajectoryGenerator):
                 during exploration.
             seed: random seed for exploratory trajectories.
             custom_logger: Where to log to; if None (default), creates a new logger.
+            normalize_wrapped_reward: Whether to normalize the wrapped reward
+                with the mean and std of the episode rewards.
 
         Raises:
             ValueError: `algorithm` does not have an environment set.
@@ -158,6 +161,8 @@ class AgentTrainer(TrajectoryGenerator):
             self.buffering_wrapper,
             self.reward_fn,
         )
+        if normalize_wrapped_reward:
+            self.venv = vec_env.VecNormalize(self.venv, norm_obs=False)
         self.log_callback = self.venv.make_log_callback()
 
         self.algorithm.set_env(self.venv)
