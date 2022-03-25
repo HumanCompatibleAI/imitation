@@ -166,13 +166,17 @@ class AgentTrainer(TrajectoryGenerator):
         self.log_callback = self.venv.make_log_callback()
 
         self.algorithm.set_env(self.venv)
-        policy = rollout._policy_to_callable(
+        policy_callable = rollout._policy_to_callable(
             self.algorithm,
             self.venv,
+            # By setting deterministic_policy to False, we ensure that the rollouts
+            # are collected from a deterministic policy only if self.algorithm is
+            # deterministic. If self.algorithm is stochastic, then policy_callable
+            # will also be stochastic.
             deterministic_policy=False,
         )
         self.exploration_wrapper = exploration_wrapper.ExplorationWrapper(
-            policy=policy,
+            policy_callable=policy_callable,
             venv=self.venv,
             random_prob=random_prob,
             switch_prob=switch_prob,
@@ -239,6 +243,11 @@ class AgentTrainer(TrajectoryGenerator):
                 self.algorithm,
                 self.venv,
                 sample_until=sample_until,
+                # By setting deterministic_policy to False, we ensure that the rollouts
+                # are collected from a deterministic policy only if self.algorithm is
+                # deterministic. If self.algorithm is stochastic, then policy_callable
+                # will also be stochastic.
+                deterministic_policy=False,
             )
             additional_trajs, _ = self.buffering_wrapper.pop_finished_trajectories()
             agent_trajs = list(agent_trajs) + list(additional_trajs)
@@ -256,6 +265,9 @@ class AgentTrainer(TrajectoryGenerator):
                 policy=self.exploration_wrapper,
                 venv=self.venv,
                 sample_until=sample_until,
+                # buffering_wrapper collects rollouts from a non-deterministic policy
+                # so we do that here as well for consistency.
+                deterministic_policy=False,
             )
             exploration_trajs, _ = self.buffering_wrapper.pop_finished_trajectories()
             exploration_trajs = _get_trajectories(exploration_trajs, exploration_steps)
