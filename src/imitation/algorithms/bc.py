@@ -430,7 +430,7 @@ class BC(algo_base.DemonstrationAlgorithm):
                 total=n_batches,
             )
 
-        for ((batch_num, batch_size, num_samples_so_far), batch) in batches_with_stats:
+        for (batch_num, batch_size, num_samples_so_far), batch in batches_with_stats:
             loss = self.trainer(batch)
 
             if batch_num % log_interval == 0:
