@@ -208,12 +208,13 @@ class BCLogger:
         """
         self._logger = logger
         self._tensorboard_step = 0
+        self._current_epoch = 0
 
     def reset_tensorboard_steps(self):
         self._tensorboard_step = 0
 
     def log_epoch(self, epoch_number):
-        self._logger.record("bc/epoch", epoch_number)
+        self._current_epoch = epoch_number
 
     def log_batch(
         self,
@@ -224,10 +225,11 @@ class BCLogger:
         rollout_stats: Mapping[str, float],
     ):
         self._logger.record("batch_size", batch_size)
+        self._logger.record("bc/epoch", self._current_epoch)
         self._logger.record("bc/batch", batch_num)
         self._logger.record("bc/samples_so_far", num_samples_so_far)
         for k, v in loss.__dict__.items():
-            self._logger.record(f"bc/{k}", v)
+            self._logger.record(f"bc/{k}", float(v))
 
         for k, v in rollout_stats.items():
             if "return" in k and "monitor" not in k:
@@ -397,6 +399,7 @@ class BC(algo_base.DemonstrationAlgorithm):
         """
         if reset_tensorboard:
             self._bc_logger.reset_tensorboard_steps()
+        self._bc_logger.log_epoch(0)
 
         compute_rollout_stats = RolloutStatsComputer(
             log_rollouts_venv,
@@ -410,7 +413,7 @@ class BC(algo_base.DemonstrationAlgorithm):
                     f"Epoch {epoch_number} {total_num_epochs_str}",
                     pos=1,
                 )
-            self._bc_logger.log_epoch(epoch_number)
+            self._bc_logger.log_epoch(epoch_number + 1)
             if on_epoch_end is not None:
                 on_epoch_end()
 
