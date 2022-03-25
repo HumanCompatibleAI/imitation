@@ -144,11 +144,10 @@ class BehaviorCloningTrainer:
     loss: BehaviorCloningLossCalculator
     optimizer: th.optim.Optimizer
     policy: policies.ActorCriticPolicy
-    device: th.device  # TODO(max): not sure whether the device belongs in this class
 
     def __call__(self, batch) -> BehaviorCloningLoss:
-        obs = th.as_tensor(batch["obs"], device=self.device).detach()
-        acts = th.as_tensor(batch["acts"], device=self.device).detach()
+        obs = th.as_tensor(batch["obs"], device=self.policy.device).detach()
+        acts = th.as_tensor(batch["acts"], device=self.policy.device).detach()
         bc_loss = self.loss(self.policy, obs, acts)
 
         self.optimizer.zero_grad()
@@ -316,7 +315,6 @@ class BC(algo_base.DemonstrationAlgorithm):
 
         self.action_space = action_space
         self.observation_space = observation_space
-        self.device = utils.get_device(device)
 
         if policy is None:
             policy = policy_base.FeedForward32Policy(
@@ -326,7 +324,7 @@ class BC(algo_base.DemonstrationAlgorithm):
                 # is used by mistake (should use self.optimizer instead).
                 lr_schedule=lambda _: th.finfo(th.float32).max,
             )
-        self._policy = policy.to(self.device)
+        self._policy = policy.to(utils.get_device(device))
         # TODO(adam): make policy mandatory and delete observation/action space params?
         assert self.policy.observation_space == self.observation_space
         assert self.policy.action_space == self.action_space
@@ -344,7 +342,6 @@ class BC(algo_base.DemonstrationAlgorithm):
             loss_computer,
             optimizer,
             policy,
-            self.device,
         )
 
     @property
