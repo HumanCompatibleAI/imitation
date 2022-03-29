@@ -424,7 +424,7 @@ class BC(algo_base.DemonstrationAlgorithm):
             _on_epoch_end,
         )
         batches_with_stats = enumerate_batches(demonstration_batches)
-        tqdm_progress_bar: tqdm.tqdm = None
+        tqdm_progress_bar: Optional[tqdm.tqdm] = None
 
         if progress_bar:
             batches_with_stats = tqdm.tqdm(
