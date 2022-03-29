@@ -77,7 +77,7 @@ class BatchIteratorWithEpochEndCallback:
 
 
 @dataclasses.dataclass(frozen=True)
-class BehaviorCloningLoss:
+class BCTrainingMetrics:
     """Container for the different components of behavior cloning loss."""
 
     neglogp: th.Tensor
@@ -101,7 +101,7 @@ class BehaviorCloningLossCalculator:
         policy: policies.ActorCriticPolicy,
         obs: Union[th.Tensor, np.ndarray],
         acts: Union[th.Tensor, np.ndarray],
-    ) -> BehaviorCloningLoss:
+    ) -> BCTrainingMetrics:
         """Calculate the supervised learning loss used to train the behavioral clone.
 
         Args:
@@ -110,7 +110,7 @@ class BehaviorCloningLossCalculator:
             acts: The actions taken by the expert.
 
         Returns:
-            A BehaviorCloningLoss object with the loss and all the components it
+            A BCTrainingMetrics object with the loss and all the components it
             consists of.
         """
         _, log_prob, entropy = policy.evaluate_actions(obs, acts)
@@ -126,7 +126,7 @@ class BehaviorCloningLossCalculator:
         l2_loss = self.l2_weight * l2_norm
         loss = neglogp + ent_loss + l2_loss
 
-        return BehaviorCloningLoss(
+        return BCTrainingMetrics(
             neglogp=neglogp,
             entropy=entropy,
             ent_loss=ent_loss,
@@ -145,16 +145,16 @@ class BehaviorCloningTrainer:
     optimizer: th.optim.Optimizer
     policy: policies.ActorCriticPolicy
 
-    def __call__(self, batch) -> BehaviorCloningLoss:
+    def __call__(self, batch) -> BCTrainingMetrics:
         obs = th.as_tensor(batch["obs"], device=self.policy.device).detach()
         acts = th.as_tensor(batch["acts"], device=self.policy.device).detach()
-        bc_loss = self.loss(self.policy, obs, acts)
+        training_metrics = self.loss(self.policy, obs, acts)
 
         self.optimizer.zero_grad()
-        bc_loss.loss.backward()
+        training_metrics.loss.backward()
         self.optimizer.step()
 
-        return bc_loss
+        return training_metrics
 
 
 def enumerate_batches(
@@ -221,14 +221,14 @@ class BCLogger:
         batch_num: int,
         batch_size: int,
         num_samples_so_far: int,
-        loss: BehaviorCloningLoss,
+        training_metrics: BCTrainingMetrics,
         rollout_stats: Mapping[str, float],
     ):
         self._logger.record("batch_size", batch_size)
         self._logger.record("bc/epoch", self._current_epoch)
         self._logger.record("bc/batch", batch_num)
         self._logger.record("bc/samples_so_far", num_samples_so_far)
-        for k, v in loss.__dict__.items():
+        for k, v in training_metrics.__dict__.items():
             self._logger.record(f"bc/{k}", float(v))
 
         for k, v in rollout_stats.items():
