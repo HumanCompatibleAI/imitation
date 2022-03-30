@@ -1,4 +1,4 @@
-"""Utilities and definitions shared by reward-related code."""
+"""Type alias shared by reward-related code."""
 
 from typing import Callable
 
