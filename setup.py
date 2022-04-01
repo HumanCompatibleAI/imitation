@@ -54,7 +54,7 @@ setup(
         "numpy>=1.15",
         "tqdm",
         "scikit-learn>=0.21.2",
-        "stable-baselines~=2.10.1",
+        "stable-baselines>=2.10.1",
         "jax~=0.1.66",
         "jaxlib~=0.1.47",
         "sacred~=0.8.1",
