@@ -31,6 +31,16 @@ def normalize_input_running():
     net_kwargs = {"normalize_input_layer": networks.RunningNorm}  # noqa: F841
 
 
+@reward_ingredient.named_config
+def normalize_output_disable():
+    net_kwargs = {"normalize_output_layer": None}  # noqa: F841
+
+
+@reward_ingredient.named_config
+def normalize_output_running():
+    net_kwargs = {"normalize_output_layer": networks.RunningNorm}  # noqa: F841
+
+
 @reward_ingredient.config_hook
 def config_hook(config, command_name, logger):
     """Sets default values for `net_cls` and `net_kwargs`."""
@@ -43,6 +53,8 @@ def config_hook(config, command_name, logger):
         res["net_cls"] = default_net
     if "normalize_input_layer" not in config["reward"]["net_kwargs"]:
         res["net_kwargs"] = {"normalize_input_layer": networks.RunningNorm}
+    if "normalize_output_layer" not in config["reward"]["net_kwargs"]:
+        res["net_kwargs"] = {"normalize_output_layer": None}
     return res
 
 
