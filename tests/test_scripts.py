@@ -122,6 +122,25 @@ def test_train_preference_comparisons_main(tmpdir, config):
     assert isinstance(run.result, dict)
 
 
+@pytest.mark.parametrize(
+    "named_configs",
+    (
+        [],
+        ["reward.normalize_output_running"],
+    ),
+)
+def test_train_preference_comparisons_reward_norm(tmpdir, named_configs):
+    config_updates = dict(common=dict(log_root=tmpdir))
+    run = train_preference_comparisons.train_preference_comparisons_ex.run(
+        named_configs=["cartpole"]
+        + ALGO_FAST_CONFIGS["preference_comparison"]
+        + named_configs,
+        config_updates=config_updates,
+    )
+    assert run.status == "COMPLETED"
+    assert isinstance(run.result, dict)
+
+
 def test_train_dagger_main(tmpdir):
     with pytest.warns(None) as record:
         run = train_imitation.train_imitation_ex.run(
