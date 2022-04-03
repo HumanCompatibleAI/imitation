@@ -127,6 +127,7 @@ def test_train_preference_comparisons_main(tmpdir, config):
     (
         [],
         ["reward.normalize_output_running"],
+        ["reward.normalize_output_disable"],
     ),
 )
 def test_train_preference_comparisons_reward_norm(tmpdir, named_configs):
@@ -137,6 +138,12 @@ def test_train_preference_comparisons_reward_norm(tmpdir, named_configs):
         + named_configs,
         config_updates=config_updates,
     )
+    if "reward.normalize_output_running" in named_configs:
+        assert run.config['reward']['net_kwargs']["normalize_output_layer"] is not None
+    elif "reward.normalize_output_disable" in named_configs:
+        assert run.config['reward']['net_kwargs']["normalize_output_layer"] is None
+    else:
+        assert run.config['reward']['net_kwargs']["normalize_output_layer"] is None
     assert run.status == "COMPLETED"
     assert isinstance(run.result, dict)
 
