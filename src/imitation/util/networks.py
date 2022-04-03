@@ -107,7 +107,11 @@ class RunningNorm(nn.Module):
     def forward(self, x: th.Tensor) -> th.Tensor:
         """Updates statistics if in training mode. Returns normalized `x`."""
         if self.training:
-            self.update_stats(x)
+            # Buffered tensors' gradients cannot be cleared by `optimizer.zero_grad()`.
+            # We need to avoid computing gradient for running_mean, running_var, and
+            # count, otherwise gradients get computed twice in consecutive iterations.
+            with th.no_grad():
+                self.update_stats(x)
 
         return (x - self.running_mean) / th.sqrt(self.running_var + self.eps)
 
