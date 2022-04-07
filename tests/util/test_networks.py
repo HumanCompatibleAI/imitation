@@ -98,6 +98,8 @@ def test_running_norm_matches_dist(batch_size: int) -> None:
     "init_kwargs",
     [
         {},
+        {"normalize_input_layer": networks.RunningNorm},
+        {"normalize_output_layer": networks.RunningNorm},
         {
             "normalize_input_layer": networks.RunningNorm,
             "normalize_output_layer": networks.RunningNorm,
