@@ -54,10 +54,7 @@ def config_hook(config, command_name, logger):
     if "normalize_input_layer" not in config["reward"]["net_kwargs"]:
         res["net_kwargs"] = {"normalize_input_layer": networks.RunningNorm}
     if "normalize_output_layer" not in config["reward"]["net_kwargs"]:
-        if command_name == "gail":
-            res["net_kwargs"] = {"normalize_output_layer": None}
-        else:
-            res["net_kwargs"] = {"normalize_output_layer": networks.RunningNorm}
+        res["net_kwargs"] = {"normalize_output_layer": None}
     return res
 
 
