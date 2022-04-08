@@ -22,10 +22,6 @@ REWARD_NET_KWARGS = [
     {},
     {"normalize_input_layer": networks.RunningNorm},
     {"normalize_output_layer": networks.RunningNorm},
-    {
-        "normalize_input_layer": networks.RunningNorm,
-        "normalize_output_layer": networks.RunningNorm,
-    },
 ]
 
 
