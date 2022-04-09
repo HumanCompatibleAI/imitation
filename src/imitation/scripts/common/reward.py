@@ -58,6 +58,12 @@ def config_hook(config, command_name, logger):
             res["net_kwargs"] = {"normalize_output_layer": networks.RunningNorm}
         else:
             res["net_kwargs"] = {"normalize_output_layer": None}
+    else:
+        if command_name != "train_preference_comparisons":
+            raise NotImplementedError(
+                "reward.normalize_output_layer is only supported for "
+                "`train_preference_comparisons` for now.",
+            )
     return res
 
 

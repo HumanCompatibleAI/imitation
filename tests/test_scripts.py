@@ -143,7 +143,7 @@ def test_train_preference_comparisons_reward_norm(tmpdir, named_configs):
     elif "reward.normalize_output_disable" in named_configs:
         assert run.config["reward"]["net_kwargs"]["normalize_output_layer"] is None
     else:
-        assert run.config["reward"]["net_kwargs"]["normalize_output_layer"] is None
+        assert run.config["reward"]["net_kwargs"]["normalize_output_layer"] is not None
     assert run.status == "COMPLETED"
     assert isinstance(run.result, dict)
 
@@ -325,6 +325,13 @@ def test_train_adversarial_algorithm_value_error(tmpdir):
             config_updates=base_config_updates.new_child(
                 {"demonstrations.n_expert_demos": n_traj},
             ),
+        )
+
+    with pytest.raises(NotImplementedError, match="normalize_output.*now"):
+        train_adversarial.train_adversarial_ex.run(
+            command_name="gail",
+            named_configs=base_named_configs + ["reward.normalize_output_running"],
+            config_updates=base_config_updates,
         )
 
 
