@@ -5,6 +5,7 @@ import os
 
 import pytest
 import torch as th
+import utils
 from stable_baselines3.common import evaluation, vec_env
 from torch.utils import data as th_data
 
@@ -94,7 +95,12 @@ def test_train_end_cond_error(trainer: bc.BC):
 
 
 def test_bc(trainer: bc.BC, cartpole_venv):
-    novice_ret_mean, _ = evaluation.evaluate_policy(trainer.policy, cartpole_venv, 15)
+    novice_rewards, _ = evaluation.evaluate_policy(
+        trainer.policy,
+        cartpole_venv,
+        15,
+        return_episode_rewards=True,
+    )
 
     trainer.train(
         n_epochs=1,
@@ -102,10 +108,13 @@ def test_bc(trainer: bc.BC, cartpole_venv):
         on_batch_end=lambda: print("batch end"),
     )
     trainer.train(n_batches=10)
-    trained_ret_mean, _ = evaluation.evaluate_policy(trainer.policy, cartpole_venv, 15)
-    # Typically <80 score is bad, >350 is okay. We want an improvement of at
-    # least 50 points, which seems like it's not noise.
-    assert trained_ret_mean - novice_ret_mean > 50
+    rewards_after_training, _ = evaluation.evaluate_policy(
+        trainer.policy,
+        cartpole_venv,
+        15,
+        return_episode_rewards=True,
+    )
+    assert utils.rewards_improved(novice_rewards, rewards_after_training)
 
 
 def test_bc_log_rollouts(trainer: bc.BC, cartpole_venv):

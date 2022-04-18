@@ -5,6 +5,7 @@ from typing import Sequence
 import numpy as np
 import pytest
 import stable_baselines3
+import utils
 from stable_baselines3.common import policies
 
 from imitation.algorithms.density import DensityAlgorithm, DensityType
@@ -32,7 +33,7 @@ def score_trajectories(
         rewards = density_reward(traj.obs[:-1], traj.acts, traj.obs[1:], dones, steps)
         ret = np.sum(rewards)
         returns.append(ret)
-    return np.mean(returns)
+    return returns
 
 
 # test on Pendulum rather than Cartpole because I don't handle episodes that
@@ -72,9 +73,9 @@ def test_density_reward(
         sample_until=sample_until,
     )
     expert_trajectories_test = expert_trajectories_all[n_experts // 2 :]
-    random_score = score_trajectories(random_trajectories, reward_fn)
-    expert_score = score_trajectories(expert_trajectories_test, reward_fn)
-    assert expert_score > random_score
+    random_returns = score_trajectories(random_trajectories, reward_fn)
+    expert_returns = score_trajectories(expert_trajectories_test, reward_fn)
+    assert utils.rewards_improved(random_returns, expert_returns)
 
 
 @pytest.mark.expensive

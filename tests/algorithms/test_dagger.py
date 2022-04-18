@@ -11,6 +11,7 @@ import gym
 import numpy as np
 import pytest
 import torch.random
+import utils
 from stable_baselines3.common import evaluation, policies
 
 from imitation.algorithms import bc, dagger
@@ -264,17 +265,18 @@ def test_trainer_makes_progress(init_trainer_fn, pendulum_venv, pendulum_expert_
         pendulum_venv.action_space.seed(42)
 
         trainer = init_trainer_fn()
-        pre_train_rew_mean, _ = evaluation.evaluate_policy(
+        novice_rewards, _ = evaluation.evaluate_policy(
             trainer.policy,
             pendulum_venv,
             15,
             deterministic=False,
+            return_episode_rewards=True,
         )
         # note a randomly initialised policy does well for some seeds -- so may
         # want to adjust this check if changing seed. Pendulum return can range
         # from -1,200 to -130 (approx.), per Figure 3 in this PDF (on page 3):
         # https://arxiv.org/pdf/2106.09556.pdf
-        assert pre_train_rew_mean < -1000
+        assert np.mean(novice_rewards) < -1000
         # Train for 6 iterations. (5 or less causes test to fail on some configs.)
         for i in range(6):
             # roll out a few trajectories for dataset, then train for a few steps
@@ -290,16 +292,14 @@ def test_trainer_makes_progress(init_trainer_fn, pendulum_venv, pendulum_expert_
                     obs, _, dones, _ = collector.step(expert_actions)
             trainer.extend_and_update(dict(n_epochs=1))
         # make sure we're doing better than a random policy would
-        post_train_rew_mean, _ = evaluation.evaluate_policy(
+        rewards_after_training, _ = evaluation.evaluate_policy(
             trainer.policy,
             pendulum_venv,
             15,
+            return_episode_rewards=True,
         )
 
-    assert post_train_rew_mean - pre_train_rew_mean > 300, (
-        f"pre-train mean {pre_train_rew_mean}, post-train mean "
-        f"{post_train_rew_mean}"
-    )
+    assert utils.rewards_improved(novice_rewards, rewards_after_training)
 
 
 def test_trainer_save_reload(tmpdir, init_trainer_fn, pendulum_venv):
