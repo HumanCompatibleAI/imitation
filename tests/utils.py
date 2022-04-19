@@ -10,14 +10,14 @@ def rewards_improved(
     new_rewards: Iterable[float],
     p_value: float = 0.05,
 ) -> bool:
-    """Checks if that the new rewards are really better than the old rewards.
+    """Checks if the new rewards are really better than the old rewards.
 
-    Ensures, that this is not just due to lucky sampling by a permutation test.
+    Ensures that this is not just due to lucky sampling by a permutation test.
 
     Args:
         old_rewards: Iterable of "old" trajectory rewards (e.g. before training).
         new_rewards: Iterable of "new" trajectory rewards (e.g. after training).
-        p_value: The maximum probabliity, that the old rewards are just as good as the
+        p_value: The maximum probability, that the old rewards are just as good as the
             new reawards, that we tolerate.
 
     Returns:
