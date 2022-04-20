@@ -118,6 +118,11 @@ def test_bc(trainer: bc.BC, cartpole_venv):
         novice_rewards,
         rewards_after_training,
     )
+    assert reward_improvement.mean_reward_improved_by(
+        novice_rewards,
+        rewards_after_training,
+        50,
+    )
 
 
 def test_bc_log_rollouts(trainer: bc.BC, cartpole_venv):

@@ -42,3 +42,28 @@ def is_significant_reward_improvement(
     )
 
     return permutation_test_result.pvalue < p_value
+
+
+def mean_reward_improved_by(
+    old_rewards: Iterable[float],
+    new_rewards: Iterable[float],
+    min_improvement: float,
+):
+    """Checks if mean rewards improved wrt. to old rewards by a certain amount.
+
+    Args:
+        old_rewards: Iterable of "old" trajectory rewards (e.g. before training).
+        new_rewards: Iterable of "new" trajectory rewards (e.g. after training).
+        min_improvement: The minimum amount of improvement that we expect.
+
+    Returns:
+        True if the mean of the new rewards is larger than the mean of the old rewards
+        by min_improvement.
+
+    >>> mean_reward_improved_by([5, 8, 7], [8, 9, 10], 2)
+    True
+
+    >>> mean_reward_improved_by([5, 8, 7], [8, 9, 10], 5)
+    False
+    """
+    return np.mean(new_rewards) - np.mean(old_rewards) >= min_improvement

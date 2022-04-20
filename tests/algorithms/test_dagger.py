@@ -303,6 +303,11 @@ def test_trainer_makes_progress(init_trainer_fn, pendulum_venv, pendulum_expert_
         novice_rewards,
         rewards_after_training,
     )
+    assert reward_improvement.mean_reward_improved_by(
+        novice_rewards,
+        rewards_after_training,
+        300,
+    )
 
 
 def test_trainer_save_reload(tmpdir, init_trainer_fn, pendulum_venv):
