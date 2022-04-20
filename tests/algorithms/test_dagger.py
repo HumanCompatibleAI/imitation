@@ -299,7 +299,10 @@ def test_trainer_makes_progress(init_trainer_fn, pendulum_venv, pendulum_expert_
             return_episode_rewards=True,
         )
 
-    assert reward_improvement.rewards_improved(novice_rewards, rewards_after_training)
+    assert reward_improvement.is_significant_reward_improvement(
+        novice_rewards,
+        rewards_after_training,
+    )
 
 
 def test_trainer_save_reload(tmpdir, init_trainer_fn, pendulum_venv):

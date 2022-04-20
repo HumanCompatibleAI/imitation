@@ -114,7 +114,10 @@ def test_bc(trainer: bc.BC, cartpole_venv):
         15,
         return_episode_rewards=True,
     )
-    assert reward_improvement.rewards_improved(novice_rewards, rewards_after_training)
+    assert reward_improvement.is_significant_reward_improvement(
+        novice_rewards,
+        rewards_after_training,
+    )
 
 
 def test_bc_log_rollouts(trainer: bc.BC, cartpole_venv):

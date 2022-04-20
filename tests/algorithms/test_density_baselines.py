@@ -75,7 +75,10 @@ def test_density_reward(
     expert_trajectories_test = expert_trajectories_all[n_experts // 2 :]
     random_returns = score_trajectories(random_trajectories, reward_fn)
     expert_returns = score_trajectories(expert_trajectories_test, reward_fn)
-    assert reward_improvement.rewards_improved(random_returns, expert_returns)
+    assert reward_improvement.is_significant_reward_improvement(
+        random_returns,
+        expert_returns,
+    )
 
 
 @pytest.mark.expensive

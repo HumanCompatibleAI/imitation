@@ -5,7 +5,7 @@ import numpy as np
 from scipy import stats
 
 
-def rewards_improved(
+def is_significant_reward_improvement(
     old_rewards: Iterable[float],
     new_rewards: Iterable[float],
     p_value: float = 0.05,
@@ -25,13 +25,13 @@ def rewards_improved(
         For this, the probability, that the old rewards are just as good as the new
         rewards must be below `p_value`.
 
-    >>> rewards_improved((5, 6, 7, 4, 4), (7, 5, 9, 9, 12))
+    >>> is_significant_reward_improvement((5, 6, 7, 4, 4), (7, 5, 9, 9, 12))
     True
 
-    >>> rewards_improved((5, 6, 7, 4, 4), (7, 5, 9, 7, 4))
+    >>> is_significant_reward_improvement((5, 6, 7, 4, 4), (7, 5, 9, 7, 4))
     False
 
-    >>> rewards_improved((5, 6, 7, 4, 4), (7, 5, 9, 7, 4), p_value=0.3)
+    >>> is_significant_reward_improvement((5, 6, 7, 4, 4), (7, 5, 9, 7, 4), p_value=0.3)
     True
     """
     permutation_test_result = stats.permutation_test(
