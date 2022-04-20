@@ -5,12 +5,12 @@ import os
 
 import pytest
 import torch as th
-import utils
 from stable_baselines3.common import evaluation, vec_env
 from torch.utils import data as th_data
 
 from imitation.algorithms import bc
 from imitation.data import rollout, types
+from imitation.testing import reward_improvement
 from imitation.util import logger
 
 
@@ -114,7 +114,7 @@ def test_bc(trainer: bc.BC, cartpole_venv):
         15,
         return_episode_rewards=True,
     )
-    assert utils.rewards_improved(novice_rewards, rewards_after_training)
+    assert reward_improvement.rewards_improved(novice_rewards, rewards_after_training)
 
 
 def test_bc_log_rollouts(trainer: bc.BC, cartpole_venv):

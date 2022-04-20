@@ -5,13 +5,13 @@ from typing import Sequence
 import numpy as np
 import pytest
 import stable_baselines3
-import utils
 from stable_baselines3.common import policies
 
 from imitation.algorithms.density import DensityAlgorithm, DensityType
 from imitation.data import rollout, types
 from imitation.data.types import TrajectoryWithRew
 from imitation.policies.base import RandomPolicy
+from imitation.testing import reward_improvement
 
 parametrize_density_stationary = pytest.mark.parametrize(
     "density_type,is_stationary",
@@ -75,7 +75,7 @@ def test_density_reward(
     expert_trajectories_test = expert_trajectories_all[n_experts // 2 :]
     random_returns = score_trajectories(random_trajectories, reward_fn)
     expert_returns = score_trajectories(expert_trajectories_test, reward_fn)
-    assert utils.rewards_improved(random_returns, expert_returns)
+    assert reward_improvement.rewards_improved(random_returns, expert_returns)
 
 
 @pytest.mark.expensive

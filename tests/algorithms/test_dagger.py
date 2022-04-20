@@ -11,13 +11,13 @@ import gym
 import numpy as np
 import pytest
 import torch.random
-import utils
 from stable_baselines3.common import evaluation, policies
 
 from imitation.algorithms import bc, dagger
 from imitation.data import rollout
 from imitation.data.types import TrajectoryWithRew
 from imitation.policies import base
+from imitation.testing import reward_improvement
 from imitation.util import util
 
 
@@ -299,7 +299,7 @@ def test_trainer_makes_progress(init_trainer_fn, pendulum_venv, pendulum_expert_
             return_episode_rewards=True,
         )
 
-    assert utils.rewards_improved(novice_rewards, rewards_after_training)
+    assert reward_improvement.rewards_improved(novice_rewards, rewards_after_training)
 
 
 def test_trainer_save_reload(tmpdir, init_trainer_fn, pendulum_venv):
