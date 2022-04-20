@@ -2,7 +2,7 @@
 
 # base stage contains just binary dependencies.
 # This is used in the CI build.
-FROM nvidia/cuda:10.0-cudnn7-runtime-ubuntu18.04 AS base
+FROM nvidia/cuda:11.6.2-cudnn8-runtime-ubuntu20.04 AS base
 ARG DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update -q \
@@ -17,8 +17,8 @@ RUN apt-get update -q \
     libosmesa6-dev \
     net-tools \
     parallel \
-    python3.7 \
-    python3.7-dev \
+    python3.8 \
+    python3.8-dev \
     python3-pip \
     rsync \
     software-properties-common \
