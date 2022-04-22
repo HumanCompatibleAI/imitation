@@ -4,7 +4,7 @@ import contextlib
 import glob
 import math
 import os
-from typing import List, Optional
+from typing import List, Optional, Sequence
 from unittest import mock
 
 import gym
@@ -22,9 +22,9 @@ from imitation.util import util
 
 @pytest.fixture(params=[True, False])
 def maybe_pendulum_expert_trajectories(
-    pendulum_expert_trajectories,
+    pendulum_expert_trajectories: Sequence[TrajectoryWithRew],
     request,
-) -> Optional[List[TrajectoryWithRew]]:
+) -> Optional[Sequence[TrajectoryWithRew]]:
     keep_trajs = request.param
     if keep_trajs:
         return pendulum_expert_trajectories

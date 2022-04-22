@@ -3,7 +3,7 @@ import os
 import pickle
 import traceback
 import warnings
-from typing import Callable, List, Optional
+from typing import Callable, Optional, Sequence
 
 import gym
 import pytest
@@ -48,7 +48,11 @@ def load_or_train_ppo(
             return expert
 
 
-def load_or_rollout_trajectories(cache_path, policy, venv) -> List[TrajectoryWithRew]:
+def load_or_rollout_trajectories(
+    cache_path,
+    policy,
+    venv,
+) -> Sequence[TrajectoryWithRew]:
     os.makedirs(os.path.dirname(cache_path), exist_ok=True)
     with FileLock(cache_path + ".lock"):
         try:
@@ -129,7 +133,7 @@ def cartpole_expert_trajectories(
     cartpole_expert_policy,
     cartpole_venv,
     pytestconfig,
-) -> List[TrajectoryWithRew]:
+) -> Sequence[TrajectoryWithRew]:
     rollouts_path = str(
         pytestconfig.cache.makedir("experts") / CARTPOLE_ENV_NAME / "rollout.pkl",
     )
@@ -188,7 +192,7 @@ def pendulum_expert_trajectories(
     pendulum_expert_policy,
     pendulum_venv,
     pytestconfig,
-) -> List[TrajectoryWithRew]:
+) -> Sequence[TrajectoryWithRew]:
     rollouts_path = str(
         pytestconfig.cache.makedir("experts") / PENDULUM_ENV_NAME / "rollout.pkl",
     )

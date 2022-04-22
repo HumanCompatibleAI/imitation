@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
 # Adapted from https://github.com/openai/mujoco-py/blob/master/vendor/Xdummy-entrypoint
 # Copyright OpenAI; MIT License
