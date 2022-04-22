@@ -48,7 +48,7 @@ commands:
       # Download and cache dependencies
       - restore_cache:
           keys:
-            - v4-dependencies-{{ checksum "setup.py" }}
+            - v5-dependencies-{{ checksum "setup.py" }}
 
       - run:
           name: install dependencies
@@ -59,7 +59,7 @@ commands:
       - save_cache:
           paths:
             - /venv
-          key: v4-dependencies-{{ checksum "setup.py" }}
+          key: v5-dependencies-{{ checksum "setup.py" }}
 
       - run:
           name: install imitation
