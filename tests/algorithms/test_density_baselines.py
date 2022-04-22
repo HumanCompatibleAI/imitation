@@ -9,6 +9,7 @@ from stable_baselines3.common import policies
 
 from imitation.algorithms.density import DensityAlgorithm, DensityType
 from imitation.data import rollout, types
+from imitation.data.types import TrajectoryWithRew
 from imitation.policies.base import RandomPolicy
 
 parametrize_density_stationary = pytest.mark.parametrize(
@@ -41,7 +42,7 @@ def test_density_reward(
     density_type,
     is_stationary,
     pendulum_venv,
-    pendulum_expert_trajectories,
+    pendulum_expert_trajectories: Sequence[TrajectoryWithRew],
 ):
     # use only a subset of trajectories
     expert_trajectories_all = pendulum_expert_trajectories[:8]
@@ -77,7 +78,10 @@ def test_density_reward(
 
 
 @pytest.mark.expensive
-def test_density_trainer_smoke(pendulum_venv, pendulum_expert_trajectories):
+def test_density_trainer_smoke(
+    pendulum_venv,
+    pendulum_expert_trajectories: Sequence[TrajectoryWithRew],
+):
     # tests whether density trainer runs, not whether it's good
     # (it's actually really poor)
     rollouts = pendulum_expert_trajectories[:2]
