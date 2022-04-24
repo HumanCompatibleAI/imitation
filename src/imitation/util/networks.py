@@ -126,7 +126,6 @@ def build_mlp(
     squeeze_output: bool = False,
     flatten_input: bool = False,
     normalize_input_layer: Optional[Type[nn.Module]] = None,
-    normalize_output_layer: Optional[Type[nn.Module]] = None,
 ) -> nn.Module:
     """Constructs a Torch MLP.
 
@@ -143,8 +142,6 @@ def build_mlp(
         flatten_input: should input be flattened along axes 1, 2, 3, …? Useful
             if you want to, e.g., process small images inputs with an MLP.
         normalize_input_layer: if specified, module to use to normalize inputs;
-            e.g. `nn.BatchNorm` or `RunningNorm`.
-        normalize_output_layer: if specified, module to use to normalize outputs;
             e.g. `nn.BatchNorm` or `RunningNorm`.
 
     Returns:
@@ -179,10 +176,6 @@ def build_mlp(
 
     # Final dense layer
     layers[f"{prefix}dense_final"] = nn.Linear(prev_size, out_size)
-
-    # Normalize output layer
-    if normalize_output_layer:
-        layers[f"{prefix}normalize_output"] = normalize_output_layer(out_size)
 
     if squeeze_output:
         if out_size != 1:
