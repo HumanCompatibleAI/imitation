@@ -107,7 +107,11 @@ def test_running_norm_matches_dist(batch_size: int) -> None:
     ],
 )
 def test_build_mlp_norm(init_kwargs):
-    """Tests that MLP can be built."""
+    """Tests MLP building function `networks.build_mlp()`.
+
+    Specifically, we initialize an MLP and train it on a toy task. We also test the
+    init options of input layer normalization, and output layer normalization.
+    """
     # Create Tensors to hold input and outputs.
     x = th.linspace(-math.pi, math.pi, 200).reshape(-1, 1)
     y = th.sin(x)
