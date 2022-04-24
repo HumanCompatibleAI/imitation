@@ -327,13 +327,6 @@ def test_train_adversarial_algorithm_value_error(tmpdir):
             ),
         )
 
-    with pytest.raises(NotImplementedError, match="normalize_output.*now"):
-        train_adversarial.train_adversarial_ex.run(
-            command_name="gail",
-            named_configs=base_named_configs + ["reward.normalize_output_running"],
-            config_updates=base_config_updates,
-        )
-
 
 def test_transfer_learning(tmpdir: str) -> None:
     """Transfer learning smoke test.
