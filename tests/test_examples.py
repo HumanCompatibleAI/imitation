@@ -43,7 +43,7 @@ def test_run_example_notebooks(nb_path) -> None:
         nb_path: Path to the notebook to test.
     """
     nb = notebook.load_notebook(nb_path)
-    result = execution.execute_notebook(nb, cwd=EXAMPLES_DIR, timeout=120)
+    result = execution.execute_notebook(nb, cwd=EXAMPLES_DIR, timeout=180)
     assert result.exec_error is None
 
 
