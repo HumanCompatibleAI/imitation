@@ -4,7 +4,6 @@ import contextlib
 import os
 from typing import Any, Mapping
 
-import gym.spaces
 import numpy as np
 import pytest
 import seals  # noqa: F401
@@ -85,12 +84,8 @@ def make_trainer(
     reward_net = reward_net_cls(venv.observation_space, venv.action_space)
     custom_logger = logger.configure(tmpdir, ["tensorboard", "stdout"])
 
-    normalize = isinstance(venv.observation_space, gym.spaces.Box)
     trainer = algorithm_kwargs["algorithm_cls"](
         venv=venv,
-        # TODO(adam): remove following line when SB3 PR merged:
-        # https://github.com/DLR-RM/stable-baselines3/pull/575
-        normalize_reward=normalize,
         demonstrations=expert_data,
         demo_batch_size=expert_batch_size,
         gen_algo=gen_algo,
