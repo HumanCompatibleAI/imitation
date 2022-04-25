@@ -48,7 +48,7 @@ commands:
       # Download and cache dependencies
       - restore_cache:
           keys:
-            - v1-dependencies-{{ checksum "setup.py" }}
+            - v5-dependencies-{{ checksum "setup.py" }}
 
       - run:
           name: install dependencies
@@ -59,7 +59,7 @@ commands:
       - save_cache:
           paths:
             - /venv
-          key: v1-dependencies-{{ checksum "setup.py" }}
+          key: v5-dependencies-{{ checksum "setup.py" }}
 
       - run:
           name: install imitation
@@ -156,7 +156,7 @@ jobs:
           name: run tests
           command: |
             # Xdummy-entrypoint.py: starts an X server and sets DISPLAY, then runs wrapped command.
-            Xdummy-entrypoint.py pytest -n ${NUM_CPUS} --cov=/venv/lib/python3.7/site-packages/imitation \
+            Xdummy-entrypoint.py pytest -n ${NUM_CPUS} --cov=/venv/lib/python3.8/site-packages/imitation \
                    --cov=tests --junitxml=/tmp/test-reports/junit.xml \
                     -vv tests/
             mv .coverage .coverage.imitation

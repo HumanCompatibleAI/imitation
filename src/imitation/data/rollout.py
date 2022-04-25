@@ -462,20 +462,6 @@ def rollout_stats(
     return out_stats
 
 
-def mean_return(*args, **kwargs) -> float:
-    """Find the mean return of a policy.
-
-    Args:
-        *args: Passed through to `generate_trajectories`.
-        **kwargs: Passed through to `generate_trajectories`.
-
-    Returns:
-        The mean return of the generated trajectories.
-    """
-    trajectories = generate_trajectories(*args, **kwargs)
-    return rollout_stats(trajectories)["return_mean"]
-
-
 def flatten_trajectories(
     trajectories: Sequence[types.Trajectory],
 ) -> types.Transitions:

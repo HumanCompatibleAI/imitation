@@ -4,14 +4,14 @@ import contextlib
 import glob
 import math
 import os
-from typing import List, Optional
+from typing import List, Optional, Sequence
 from unittest import mock
 
 import gym
 import numpy as np
 import pytest
 import torch.random
-from stable_baselines3.common import policies
+from stable_baselines3.common import evaluation, policies
 
 from imitation.algorithms import bc, dagger
 from imitation.data import rollout
@@ -22,9 +22,9 @@ from imitation.util import util
 
 @pytest.fixture(params=[True, False])
 def maybe_pendulum_expert_trajectories(
-    pendulum_expert_trajectories,
+    pendulum_expert_trajectories: Sequence[TrajectoryWithRew],
     request,
-) -> Optional[List[TrajectoryWithRew]]:
+) -> Optional[Sequence[TrajectoryWithRew]]:
     keep_trajs = request.param
     if keep_trajs:
         return pendulum_expert_trajectories
@@ -264,11 +264,11 @@ def test_trainer_makes_progress(init_trainer_fn, pendulum_venv, pendulum_expert_
         pendulum_venv.action_space.seed(42)
 
         trainer = init_trainer_fn()
-        pre_train_rew_mean = rollout.mean_return(
+        pre_train_rew_mean, _ = evaluation.evaluate_policy(
             trainer.policy,
             pendulum_venv,
-            sample_until=rollout.make_min_episodes(15),
-            deterministic_policy=False,
+            15,
+            deterministic=False,
         )
         # note a randomly initialised policy does well for some seeds -- so may
         # want to adjust this check if changing seed. Pendulum return can range
@@ -290,11 +290,10 @@ def test_trainer_makes_progress(init_trainer_fn, pendulum_venv, pendulum_expert_
                     obs, _, dones, _ = collector.step(expert_actions)
             trainer.extend_and_update(dict(n_epochs=1))
         # make sure we're doing better than a random policy would
-        post_train_rew_mean = rollout.mean_return(
+        post_train_rew_mean, _ = evaluation.evaluate_policy(
             trainer.policy,
             pendulum_venv,
-            sample_until=rollout.make_min_episodes(15),
-            deterministic_policy=True,
+            15,
         )
 
     assert post_train_rew_mean - pre_train_rew_mean > 300, (

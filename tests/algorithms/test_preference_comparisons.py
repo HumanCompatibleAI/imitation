@@ -1,7 +1,7 @@
 """Tests for the preference comparisons reward learning implementation."""
 
 import re
-from typing import List, Sequence
+from typing import Sequence
 
 import numpy as np
 import pytest
@@ -74,7 +74,7 @@ def test_missing_environment(agent):
 
 
 def test_trajectory_dataset_seeding(
-    cartpole_expert_trajectories: List[TrajectoryWithRew],
+    cartpole_expert_trajectories: Sequence[TrajectoryWithRew],
     num_samples: int = 400,
 ):
     dataset1 = preference_comparisons.TrajectoryDataset(
@@ -102,7 +102,7 @@ def test_trajectory_dataset_seeding(
 # CartPole max episode length is 200
 @pytest.mark.parametrize("num_steps", [0, 199, 200, 201, 400])
 def test_trajectory_dataset_len(
-    cartpole_expert_trajectories: List[TrajectoryWithRew],
+    cartpole_expert_trajectories: Sequence[TrajectoryWithRew],
     num_steps: int,
 ):
     dataset = preference_comparisons.TrajectoryDataset(
@@ -117,7 +117,7 @@ def test_trajectory_dataset_len(
 
 
 def test_trajectory_dataset_too_long(
-    cartpole_expert_trajectories: List[TrajectoryWithRew],
+    cartpole_expert_trajectories: Sequence[TrajectoryWithRew],
 ):
     dataset = preference_comparisons.TrajectoryDataset(
         cartpole_expert_trajectories,
@@ -128,7 +128,7 @@ def test_trajectory_dataset_too_long(
 
 
 def test_trajectory_dataset_shuffle(
-    cartpole_expert_trajectories: List[TrajectoryWithRew],
+    cartpole_expert_trajectories: Sequence[TrajectoryWithRew],
     num_steps: int = 400,
 ):
     dataset = preference_comparisons.TrajectoryDataset(
