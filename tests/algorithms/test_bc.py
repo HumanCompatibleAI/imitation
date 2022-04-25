@@ -10,6 +10,7 @@ from torch.utils import data as th_data
 
 from imitation.algorithms import bc
 from imitation.data import rollout, types
+from imitation.testing import reward_improvement
 from imitation.util import logger
 
 
@@ -94,7 +95,12 @@ def test_train_end_cond_error(trainer: bc.BC):
 
 
 def test_bc(trainer: bc.BC, cartpole_venv):
-    novice_ret_mean, _ = evaluation.evaluate_policy(trainer.policy, cartpole_venv, 15)
+    novice_rewards, _ = evaluation.evaluate_policy(
+        trainer.policy,
+        cartpole_venv,
+        15,
+        return_episode_rewards=True,
+    )
 
     trainer.train(
         n_epochs=1,
@@ -102,10 +108,21 @@ def test_bc(trainer: bc.BC, cartpole_venv):
         on_batch_end=lambda: print("batch end"),
     )
     trainer.train(n_batches=10)
-    trained_ret_mean, _ = evaluation.evaluate_policy(trainer.policy, cartpole_venv, 15)
-    # Typically <80 score is bad, >350 is okay. We want an improvement of at
-    # least 50 points, which seems like it's not noise.
-    assert trained_ret_mean - novice_ret_mean > 50
+    rewards_after_training, _ = evaluation.evaluate_policy(
+        trainer.policy,
+        cartpole_venv,
+        15,
+        return_episode_rewards=True,
+    )
+    assert reward_improvement.is_significant_reward_improvement(
+        novice_rewards,
+        rewards_after_training,
+    )
+    assert reward_improvement.mean_reward_improved_by(
+        novice_rewards,
+        rewards_after_training,
+        50,
+    )
 
 
 def test_bc_log_rollouts(trainer: bc.BC, cartpole_venv):
