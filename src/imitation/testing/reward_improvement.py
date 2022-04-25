@@ -18,7 +18,7 @@ def is_significant_reward_improvement(
         old_rewards: Iterable of "old" trajectory rewards (e.g. before training).
         new_rewards: Iterable of "new" trajectory rewards (e.g. after training).
         p_value: The maximum probability, that the old rewards are just as good as the
-            new reawards, that we tolerate.
+            new rewards, that we tolerate.
 
     Returns:
         True, if the new rewards are most probably better than the old rewards.
