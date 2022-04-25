@@ -101,11 +101,14 @@ def test_running_norm_matches_dist(batch_size: int) -> None:
         {"normalize_input_layer": networks.RunningNorm},
     ],
 )
-def test_build_mlp_norm(init_kwargs):
+def test_build_mlp_norm(init_kwargs) -> None:
     """Tests MLP building function `networks.build_mlp()`.
 
     Specifically, we initialize an MLP and train it on a toy task. We also test the
     init options of input layer normalization.
+
+    Args:
+        init_kwargs: dict of kwargs to pass to `networks.build_mlp()`.
     """
     # Create Tensors to hold input and outputs.
     x = th.linspace(-math.pi, math.pi, 200).reshape(-1, 1)
