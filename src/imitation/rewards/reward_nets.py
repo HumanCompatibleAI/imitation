@@ -323,9 +323,9 @@ class NormalizedRewardNet(RewardNetWrapper):
             observation_space: the observation space of the environment
             action_space: the action space of the environment
             base: a base RewardNet
-            rew_normalize_class: The class to use to normalize rewards. This can be
-                any nn.Module that preserves the shape;
-                e.g. `nn.BatchNorm*`, `nn.LayerNorm`, or `networks.RunningNorm`.
+            rew_normalize_class: The class to use to normalize rewards. This
+                can be any nn.Module that preserves the shape; e.g. `nn.Identity`,
+                `nn.BatchNorm*`, `nn.LayerNorm`, or `networks.RunningNorm`.
             normalize_images: passed through to `RewardNet.__init__`,
                 see its documentation
         """
