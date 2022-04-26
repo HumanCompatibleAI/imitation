@@ -558,7 +558,7 @@ class BasicShapedRewardNet(ShapedRewardNet):
         # FIXME(yawen): why could the reward net and potential net use the same kwargs
         # to construct their MDPs?
 
-        # build_mlp doesn't support rew_normalize_class 
+        # build_mlp doesn't support rew_normalize_class
         build_mlp_kwargs = {
             k: v for k, v in kwargs.items() if k != "rew_normalize_class"
         }
