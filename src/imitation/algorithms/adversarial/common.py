@@ -206,7 +206,7 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
 
         if isinstance(self.reward_train, reward_nets.RewardNet):
             if isinstance(self.reward_train, reward_nets.NormalizedRewardNet):
-                reward_fn = self.reward_train.predict_normalized
+                reward_fn = self.reward_train.predict_processed
             else:
                 reward_fn = self.reward_train.predict
 

@@ -1,7 +1,7 @@
 """Constructs deep network reward models."""
 
 import abc
-from typing import Callable, Iterable, Optional, Sequence, Tuple, Type
+from typing import Callable, Iterable, Sequence, Tuple, Type
 
 import gym
 import numpy as np
@@ -142,6 +142,28 @@ class RewardNet(nn.Module, abc.ABC):
             assert rew.shape == state.shape[:1]
             return rew
 
+    def predict_processed(
+        self,
+        state: np.ndarray,
+        action: np.ndarray,
+        next_state: np.ndarray,
+        done: np.ndarray,
+    ) -> np.ndarray:
+        """Compute the processed rewards for a batch of transitions without gradients.
+
+        Its default behavior in RewardNet is to return the raw rewards from predict().
+
+        Args:
+            state: Current states of shape `(batch_size,) + state_shape`.
+            action: Actions of shape `(batch_size,) + action_shape`.
+            next_state: Successor states of shape `(batch_size,) + state_shape`.
+            done: End-of-episode (terminal state) indicator of shape `(batch_size,)`.
+
+        Returns:
+            Computed normalized rewards of shape `(batch_size,`).
+        """
+        return self.predict(state, action, next_state, done)
+
     @property
     def device(self) -> th.device:
         """Heuristic to determine which device this module is on."""
@@ -163,144 +185,40 @@ class RewardNet(nn.Module, abc.ABC):
             return th.get_default_dtype()
 
 
-class NormalizedRewardNet(RewardNet):
-    """A RewardNet that adds an abstract predict_normalized method.
-
-    Only requires the implementation of a forward pass (calculating rewards given
-    a batch of states, actions, next states and dones) as it inherits RewardNet.
-    """
-
-    def __init__(
-        self,
-        observation_space: gym.Space,
-        action_space: gym.Space,
-        normalize_images: bool = True,
-        normalize_output_layer: Optional[Type[nn.Module]] = None,
-    ):
-        """Initialize the NormalizedRewardNet.
-
-        Args:
-            observation_space: the observation space of the environment
-            action_space: the action space of the environment
-            normalize_images: passed through to `RewardNet.__init__`,
-                see its documentation
-            normalize_output_layer: the class to use for normalization.
-        """
-        super().__init__(
-            observation_space,
-            action_space,
-            normalize_images,
-        )
-        self.normalize_output_layer = normalize_output_layer
-        # assuming reward is always a scalar
-        self.normalize_layer = (
-            self.normalize_output_layer(1) if normalize_output_layer else None
-        )
-
-    def predict_normalized(
-        self,
-        state: np.ndarray,
-        action: np.ndarray,
-        next_state: np.ndarray,
-        done: np.ndarray,
-    ) -> np.ndarray:
-        """Compute normalized rewards for a batch of transitions without gradients.
-
-        Args:
-            state: Current states of shape `(batch_size,) + state_shape`.
-            action: Actions of shape `(batch_size,) + action_shape`.
-            next_state: Successor states of shape `(batch_size,) + state_shape`.
-            done: End-of-episode (terminal state) indicator of shape `(batch_size,)`.
-
-        Returns:
-            Computed normalized rewards of shape `(batch_size,`).
-        """
-        rew = self.predict(state, action, next_state, done)
-        if self.normalize_output_layer:
-            rew_th = th.as_tensor(rew, device=self.device)
-            rew = self.normalize_layer(rew_th).detach().cpu().numpy().flatten()
-            assert rew.shape == state.shape[:1]
-        return rew
-
-
-class ShapedRewardNet(NormalizedRewardNet):
-    """A RewardNet consisting of a base net and a potential shaping."""
+class RewardNetWrapper(RewardNet, abc.ABC):
+    """A RewardNet wrapper with a base net."""
 
     def __init__(
         self,
         observation_space: gym.Space,
         action_space: gym.Space,
         base: RewardNet,
-        potential: Callable[[th.Tensor], th.Tensor],
-        discount_factor: float,
         normalize_images: bool = True,
-        normalize_output_layer: Optional[Type[nn.Module]] = None,
     ):
-        """Setup a ShapedRewardNet instance.
+        """A minimal abstract reward network wrapper with a base net.
+
+        A concrete implementation of forward() is needed.
 
         Args:
-            observation_space: observation space of the environment
-            action_space: action space of the environment
-            base: the base reward net to which the potential shaping
-                will be added.
-            potential: A callable which takes
-                a batch of states (as a PyTorch tensor) and returns a batch of
-                potentials for these states. If this is a PyTorch Module, it becomes
-                a submodule of the ShapedRewardNet instance.
-            discount_factor: discount factor to use for the potential shaping
+            observation_space: the observation space of the environment
+            action_space: the action space of the environment
+            base: a base RewardNet
             normalize_images: passed through to `RewardNet.__init__`,
                 see its documentation
-            normalize_output_layer: the class to use for reward normalization.
         """
         super().__init__(
-            observation_space=observation_space,
-            action_space=action_space,
-            normalize_images=normalize_images,
-            normalize_output_layer=normalize_output_layer,
+            observation_space,
+            action_space,
+            normalize_images,
         )
-        self.base = base
-        self.potential = potential
-        self.discount_factor = discount_factor
+        self._base = base
 
-    def forward(
-        self,
-        state: th.Tensor,
-        action: th.Tensor,
-        next_state: th.Tensor,
-        done: th.Tensor,
-    ):
-        base_reward_net_output = self.base(state, action, next_state, done)
-        new_shaping_output = self.potential(next_state).flatten()
-        old_shaping_output = self.potential(state).flatten()
-        # NOTE(ejnnr): We fix the potential of terminal states to zero, which is
-        # necessary for valid potential shaping in a variable-length horizon setting.
-        #
-        # In more detail: variable-length episodes are usually modeled
-        # as infinite-length episodes where we transition to a terminal state
-        # in which we then remain forever. The transition to this final
-        # state contributes gamma * Phi(s_T) - Phi(s_{T - 1}) to the returns,
-        # where Phi is the potential and s_T the final state. But on every step
-        # afterwards, the potential shaping leads to a reward of (gamma - 1) * Phi(s_T).
-        # The discounted series of these rewards, which is added to the return,
-        # is gamma / (1 - gamma) times this reward, i.e. just -gamma * Phi(s_T).
-        # This cancels the contribution of the final state to the last "real"
-        # transition, so instead of computing the infinite series, we can
-        # equivalently fix the final potential to zero without loss of generality.
-        # Not fixing the final potential to zero and also not adding this infinite
-        # series of remaining potential shapings can lead to reward shaping
-        # that does not preserve the optimal policy if the episodes have variable
-        # length!
-        new_shaping = (1 - done.float()) * new_shaping_output
-        final_rew = (
-            base_reward_net_output
-            + self.discount_factor * new_shaping
-            - old_shaping_output
-        )
-        assert final_rew.shape == state.shape[:1]
-        return final_rew
+    @property
+    def base(self) -> RewardNet:
+        return self._base
 
 
-class BasicRewardNet(NormalizedRewardNet):
+class BasicRewardNet(RewardNet):
     """MLP that takes as input the state, action, next state and done flag.
 
     These inputs are flattened and then concatenated to one another. Each input
@@ -315,7 +233,6 @@ class BasicRewardNet(NormalizedRewardNet):
         use_action: bool = True,
         use_next_state: bool = False,
         use_done: bool = False,
-        normalize_output_layer: Optional[Type[nn.Module]] = None,
         **kwargs,
     ):
         """Builds reward MLP.
@@ -327,13 +244,11 @@ class BasicRewardNet(NormalizedRewardNet):
             use_action: should the current action be included as an input to the MLP?
             use_next_state: should the next state be included as an input to the MLP?
             use_done: should the "done" flag be included as an input to the MLP?
-            normalize_output_layer: the class to use for normalization.
             kwargs: passed straight through to `build_mlp`.
         """
         super().__init__(
             observation_space,
             action_space,
-            normalize_output_layer=normalize_output_layer,
         )
         combined_size = 0
 
@@ -387,6 +302,210 @@ class BasicRewardNet(NormalizedRewardNet):
         return outputs
 
 
+class NormalizedRewardNet(RewardNetWrapper):
+    """A reward net that normalizes the output of its base net.
+
+    Only requires the implementation of a forward pass (calculating rewards given
+    a batch of states, actions, next states and dones) as it inherits RewardNet.
+    """
+
+    def __init__(
+        self,
+        observation_space: gym.Space,
+        action_space: gym.Space,
+        base: RewardNet,
+        rew_normalize_class: Type[nn.Module],
+        normalize_images: bool = True,
+    ):
+        """Initialize the NormalizedRewardNet.
+
+        Args:
+            observation_space: the observation space of the environment
+            action_space: the action space of the environment
+            base: a base RewardNet
+            rew_normalize_class: The class to use to normalize rewards. This can be
+                any nn.Module that preserves the shape;
+                e.g. `nn.BatchNorm*`, `nn.LayerNorm`, or `networks.RunningNorm`.
+            normalize_images: passed through to `RewardNet.__init__`,
+                see its documentation
+        """
+        super().__init__(
+            observation_space=observation_space,
+            action_space=action_space,
+            base=base,
+            normalize_images=normalize_images,
+        )
+        # assuming reward is always a scalar
+        self.rew_normalize_layer = (
+            rew_normalize_class(1) if rew_normalize_class else None
+        )
+
+    def predict_processed(
+        self,
+        state: np.ndarray,
+        action: np.ndarray,
+        next_state: np.ndarray,
+        done: np.ndarray,
+    ) -> np.ndarray:
+        """Compute normalized rewards for a batch of transitions without gradients.
+
+        Args:
+            state: Current states of shape `(batch_size,) + state_shape`.
+            action: Actions of shape `(batch_size,) + action_shape`.
+            next_state: Successor states of shape `(batch_size,) + state_shape`.
+            done: End-of-episode (terminal state) indicator of shape `(batch_size,)`.
+
+        Returns:
+            Computed normalized rewards of shape `(batch_size,`).
+        """
+        rew = self.base.predict(state, action, next_state, done)
+        rew_th = th.as_tensor(rew, device=self.device)
+        rew = self.rew_normalize_layer(rew_th).detach().cpu().numpy().flatten()
+        assert rew.shape == state.shape[:1]
+        return rew
+
+    def forward(
+        self,
+        state: th.Tensor,
+        action: th.Tensor,
+        next_state: th.Tensor,
+        done: th.Tensor,
+    ):
+        return self.base(state, action, next_state, done)
+
+
+class BasicNormalizedRewardNet(NormalizedRewardNet):
+    """An implementation of NormalizedRewardNet that uses MLP as its base net."""
+
+    def __init__(
+        self,
+        observation_space: gym.Space,
+        action_space: gym.Space,
+        rew_normalize_class: Type[nn.Module],
+        *,
+        reward_hid_sizes: Sequence[int] = (32,),
+        use_state: bool = True,
+        use_action: bool = True,
+        use_next_state: bool = False,
+        use_done: bool = False,
+        **kwargs,
+    ):
+        """Builds a simple shaped reward network.
+
+        Args:
+            observation_space: The observation space.
+            action_space: The action space.
+            rew_normalize_class: The class to use to normalize rewards. This can be
+                any nn.Module that preserves the shape;
+                e.g. `nn.BatchNorm*`, `nn.LayerNorm`, or `networks.RunningNorm`.
+            reward_hid_sizes: sequence of widths for the hidden layers
+                of the base reward MLP.
+            use_state: should the current state be included as an input
+                to the reward MLP?
+            use_action: should the current action be included as an input
+                to the reward MLP?
+            use_next_state: should the next state be included as an input
+                to the reward MLP?
+            use_done: should the "done" flag be included as an input to the reward MLP?
+            kwargs: passed straight through to `BasicRewardNet`.
+        """
+        build_mlp_kwargs = {
+            k: v for k, v in kwargs.items() if k != "rew_normalize_class"
+        }
+
+        base_reward_net = BasicRewardNet(
+            observation_space=observation_space,
+            action_space=action_space,
+            use_state=use_state,
+            use_action=use_action,
+            use_next_state=use_next_state,
+            use_done=use_done,
+            hid_sizes=reward_hid_sizes,
+            **build_mlp_kwargs,
+        )
+
+        super().__init__(
+            observation_space,
+            action_space,
+            base=base_reward_net,
+            rew_normalize_class=rew_normalize_class,
+        )
+
+
+class ShapedRewardNet(RewardNetWrapper):
+    """A RewardNet consisting of a base net and a potential shaping."""
+
+    def __init__(
+        self,
+        observation_space: gym.Space,
+        action_space: gym.Space,
+        base: RewardNet,
+        potential: Callable[[th.Tensor], th.Tensor],
+        discount_factor: float,
+        normalize_images: bool = True,
+    ):
+        """Setup a ShapedRewardNet instance.
+
+        Args:
+            observation_space: observation space of the environment
+            action_space: action space of the environment
+            base: the base reward net to which the potential shaping
+                will be added.
+            potential: A callable which takes
+                a batch of states (as a PyTorch tensor) and returns a batch of
+                potentials for these states. If this is a PyTorch Module, it becomes
+                a submodule of the ShapedRewardNet instance.
+            discount_factor: discount factor to use for the potential shaping
+            normalize_images: passed through to `RewardNet.__init__`,
+                see its documentation
+        """
+        super().__init__(
+            observation_space=observation_space,
+            action_space=action_space,
+            base=base,
+            normalize_images=normalize_images,
+        )
+        self.potential = potential
+        self.discount_factor = discount_factor
+
+    def forward(
+        self,
+        state: th.Tensor,
+        action: th.Tensor,
+        next_state: th.Tensor,
+        done: th.Tensor,
+    ):
+        base_reward_net_output = self.base(state, action, next_state, done)
+        new_shaping_output = self.potential(next_state).flatten()
+        old_shaping_output = self.potential(state).flatten()
+        # NOTE(ejnnr): We fix the potential of terminal states to zero, which is
+        # necessary for valid potential shaping in a variable-length horizon setting.
+        #
+        # In more detail: variable-length episodes are usually modeled
+        # as infinite-length episodes where we transition to a terminal state
+        # in which we then remain forever. The transition to this final
+        # state contributes gamma * Phi(s_T) - Phi(s_{T - 1}) to the returns,
+        # where Phi is the potential and s_T the final state. But on every step
+        # afterwards, the potential shaping leads to a reward of (gamma - 1) * Phi(s_T).
+        # The discounted series of these rewards, which is added to the return,
+        # is gamma / (1 - gamma) times this reward, i.e. just -gamma * Phi(s_T).
+        # This cancels the contribution of the final state to the last "real"
+        # transition, so instead of computing the infinite series, we can
+        # equivalently fix the final potential to zero without loss of generality.
+        # Not fixing the final potential to zero and also not adding this infinite
+        # series of remaining potential shapings can lead to reward shaping
+        # that does not preserve the optimal policy if the episodes have variable
+        # length!
+        new_shaping = (1 - done.float()) * new_shaping_output
+        final_rew = (
+            base_reward_net_output
+            + self.discount_factor * new_shaping
+            - old_shaping_output
+        )
+        assert final_rew.shape == state.shape[:1]
+        return final_rew
+
+
 class BasicShapedRewardNet(ShapedRewardNet):
     """Shaped reward net based on MLPs.
 
@@ -415,7 +534,6 @@ class BasicShapedRewardNet(ShapedRewardNet):
         use_next_state: bool = False,
         use_done: bool = False,
         discount_factor: float = 0.99,
-        normalize_output_layer: Optional[Type[nn.Module]] = None,
         **kwargs,
     ):
         """Builds a simple shaped reward network.
@@ -435,15 +553,15 @@ class BasicShapedRewardNet(ShapedRewardNet):
                 to the reward MLP?
             use_done: should the "done" flag be included as an input to the reward MLP?
             discount_factor: discount factor for the potential shaping.
-            normalize_output_layer: the class to use for normalization.
             kwargs: passed straight through to `BasicRewardNet` and `BasicPotentialMLP`.
         """
-        _kwargs = kwargs.copy()
-        if (
-            normalize_output_layer in kwargs
-            and kwargs["normalize_output_layer"] is not None
-        ):
-            _kwargs["normalize_output_layer"] = None
+        # FIXME(yawen): why could the reward net and potential net use the same kwargs
+        # to construct their MDPs?
+
+        # build_mlp doesn't support rew_normalize_class 
+        build_mlp_kwargs = {
+            k: v for k, v in kwargs.items() if k != "rew_normalize_class"
+        }
 
         base_reward_net = BasicRewardNet(
             observation_space=observation_space,
@@ -453,13 +571,13 @@ class BasicShapedRewardNet(ShapedRewardNet):
             use_next_state=use_next_state,
             use_done=use_done,
             hid_sizes=reward_hid_sizes,
-            **_kwargs,
+            **build_mlp_kwargs,
         )
 
         potential_net = BasicPotentialMLP(
             observation_space=observation_space,
             hid_sizes=potential_hid_sizes,
-            **_kwargs,
+            **build_mlp_kwargs,
         )
 
         super().__init__(
@@ -468,7 +586,6 @@ class BasicShapedRewardNet(ShapedRewardNet):
             base_reward_net,
             potential_net,
             discount_factor=discount_factor,
-            normalize_output_layer=normalize_output_layer,
         )
 
 
