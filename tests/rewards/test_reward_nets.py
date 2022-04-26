@@ -17,15 +17,13 @@ from imitation.util import networks, util
 ENVS = ["FrozenLake-v1", "CartPole-v1", "Pendulum-v1"]
 HARDCODED_TYPES = ["zero"]
 
-REWARD_NETS = [reward_nets.BasicRewardNet, reward_nets.BasicShapedRewardNet]
+REWARD_NETS = [
+    reward_nets.BasicRewardNet,
+    reward_nets.BasicShapedRewardNet,
+]
 REWARD_NET_KWARGS = [
     {},
     {"normalize_input_layer": networks.RunningNorm},
-    {"normalize_output_layer": networks.RunningNorm},
-    {
-        "normalize_input_layer": networks.RunningNorm,
-        "normalize_output_layer": networks.RunningNorm,
-    },
 ]
 
 
@@ -36,6 +34,27 @@ def test_init_no_crash(env_name, reward_net_cls, reward_net_kwargs):
     env = gym.make(env_name)
     for i in range(3):
         reward_net_cls(env.observation_space, env.action_space, **reward_net_kwargs)
+
+
+@pytest.mark.parametrize("env_name", ENVS)
+@pytest.mark.parametrize(
+    "reward_net_kwargs",
+    [
+        {"rew_normalize_class": networks.RunningNorm},
+        {
+            "normalize_input_layer": networks.RunningNorm,
+            "rew_normalize_class": networks.RunningNorm,
+        },
+    ],
+)
+def test_init_normalized_reward_net_no_crash(env_name, reward_net_kwargs):
+    env = gym.make(env_name)
+    for i in range(3):
+        reward_nets.BasicNormalizedRewardNet(
+            env.observation_space,
+            env.action_space,
+            **reward_net_kwargs,
+        )
 
 
 def _sample(space, n):
@@ -150,7 +169,10 @@ def test_potential_net_2d_obs():
     next_obs_b = next_obs[None]
     done_b = np.array([done], dtype="bool")
 
-    net = reward_nets.BasicShapedRewardNet(env.observation_space, env.action_space)
+    net = reward_nets.BasicShapedRewardNet(
+        env.observation_space,
+        env.action_space,
+    )
     rew_batch = net.predict(obs_b, action_b, next_obs_b, done_b)
     assert rew_batch.shape == (1,)
 
