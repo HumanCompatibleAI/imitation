@@ -208,31 +208,29 @@ class RewardNet(nn.Module, abc.ABC):
             return th.get_default_dtype()
 
 
-class RewardNetWrapper(RewardNet, abc.ABC):
-    """A RewardNet wrapper with a base net."""
+class RewardNetWrapper(RewardNet):
+    """An abstract RewardNet wrapping a base network.
+
+    A concrete implementation of `forward` method is needed.
+    Note: by default, `predict`, `predict_th`, `preprocess`, `predict_processed`,
+    `device` and all the PyTorch `nn.Module` methods will be inherited from `RewardNet`
+    and not passed through to the base network. If any of these methods is overridden
+    in the base `RewardNet`, it will be not inherited from `RewardNetWrapper`.
+    """
 
     def __init__(
         self,
-        observation_space: gym.Space,
-        action_space: gym.Space,
         base: RewardNet,
-        normalize_images: bool = True,
     ):
-        """A minimal abstract reward network wrapper with a base net.
-
-        A concrete implementation of forward() is needed.
+        """Initialize a RewardNet wrapper.
 
         Args:
-            observation_space: the observation space of the environment
-            action_space: the action space of the environment
-            base: a base RewardNet
-            normalize_images: passed through to `RewardNet.__init__`,
-                see its documentation
+            base: the base RewardNet to wrap.
         """
         super().__init__(
-            observation_space,
-            action_space,
-            normalize_images,
+            base.observation_space,
+            base.action_space,
+            base.normalize_images,
         )
         self._base = base
 
