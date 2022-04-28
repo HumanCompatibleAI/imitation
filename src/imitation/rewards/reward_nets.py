@@ -105,17 +105,16 @@ class RewardNet(nn.Module, abc.ABC):
 
         return state_th, action_th, next_state_th, done_th
 
-    def predict(
+    def predict_th(
         self,
         state: np.ndarray,
         action: np.ndarray,
         next_state: np.ndarray,
         done: np.ndarray,
     ) -> np.ndarray:
-        """Compute rewards for a batch of transitions without gradients.
+        """Compute th.Tensor rewards for a batch of transitions without gradients.
 
-        Preprocesses the inputs, converting between Torch
-        tensors and NumPy arrays as necessary.
+        Preprocesses the inputs, output th.Tensor reward arrays.
 
         Args:
             state: Current states of shape `(batch_size,) + state_shape`.
@@ -124,7 +123,7 @@ class RewardNet(nn.Module, abc.ABC):
             done: End-of-episode (terminal state) indicator of shape `(batch_size,)`.
 
         Returns:
-            Computed rewards of shape `(batch_size,`).
+            Computed th.Tensor rewards of shape `(batch_size,`).
         """
         with networks.evaluating(self):
             # switch to eval mode (affecting normalization, dropout, etc)
@@ -138,9 +137,32 @@ class RewardNet(nn.Module, abc.ABC):
             with th.no_grad():
                 rew_th = self(state_th, action_th, next_state_th, done_th)
 
-            rew = rew_th.detach().cpu().numpy().flatten()
-            assert rew.shape == state.shape[:1]
-            return rew
+            assert rew_th.shape == state.shape[:1]
+            return rew_th
+
+    def predict(
+        self,
+        state: np.ndarray,
+        action: np.ndarray,
+        next_state: np.ndarray,
+        done: np.ndarray,
+    ) -> np.ndarray:
+        """Compute rewards for a batch of transitions without gradients.
+
+        Converting th.Tensor rewards from `predict_th` to NumPy arrays.
+
+        Args:
+            state: Current states of shape `(batch_size,) + state_shape`.
+            action: Actions of shape `(batch_size,) + action_shape`.
+            next_state: Successor states of shape `(batch_size,) + state_shape`.
+            done: End-of-episode (terminal state) indicator of shape `(batch_size,)`.
+
+        Returns:
+            Computed rewards of shape `(batch_size,`).
+        """
+        rew_th = self.predict_th(state, action, next_state, done)
+        rew = rew_th.detach().cpu().numpy().flatten()
+        return rew
 
     def predict_processed(
         self,
@@ -151,7 +173,8 @@ class RewardNet(nn.Module, abc.ABC):
     ) -> np.ndarray:
         """Compute the processed rewards for a batch of transitions without gradients.
 
-        Its default behavior in RewardNet is to return the raw rewards from predict().
+        Subclasses can override this to normalize or otherwise modify the rewards in
+        ways that may help RL training or other applications of the reward function.
 
         Args:
             state: Current states of shape `(batch_size,) + state_shape`.
@@ -160,7 +183,7 @@ class RewardNet(nn.Module, abc.ABC):
             done: End-of-episode (terminal state) indicator of shape `(batch_size,)`.
 
         Returns:
-            Computed normalized rewards of shape `(batch_size,`).
+            Computed processed rewards of shape `(batch_size,`).
         """
         return self.predict(state, action, next_state, done)
 
