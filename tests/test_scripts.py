@@ -147,6 +147,7 @@ def test_train_preference_comparisons_reward_norm(tmpdir, named_configs):
     assert run.status == "COMPLETED"
     assert isinstance(run.result, dict)
 
+
 def test_train_dagger_main(tmpdir):
     with pytest.warns(None) as record:
         run = train_imitation.train_imitation_ex.run(
