@@ -30,30 +30,23 @@ REWARD_NET_KWARGS = [
 @pytest.mark.parametrize("env_name", ENVS)
 @pytest.mark.parametrize("reward_net_cls", REWARD_NETS)
 @pytest.mark.parametrize("reward_net_kwargs", REWARD_NET_KWARGS)
-def test_init_no_crash(env_name, reward_net_cls, reward_net_kwargs):
+@pytest.mark.parametrize("normalize_output_layer", [None, networks.RunningNorm])
+def test_init_no_crash(
+    env_name,
+    reward_net_cls,
+    reward_net_kwargs,
+    normalize_output_layer,
+):
     env = gym.make(env_name)
-    for i in range(3):
-        reward_net_cls(env.observation_space, env.action_space, **reward_net_kwargs)
-
-
-@pytest.mark.parametrize("env_name", ENVS)
-@pytest.mark.parametrize(
-    "reward_net_kwargs",
-    [
-        {"rew_normalize_class": networks.RunningNorm},
-        {
-            "normalize_input_layer": networks.RunningNorm,
-            "rew_normalize_class": networks.RunningNorm,
-        },
-    ],
-)
-def test_init_normalized_reward_net_no_crash(env_name, reward_net_kwargs):
-    env = gym.make(env_name)
-    for i in range(3):
-        reward_nets.BasicNormalizedRewardNet(
-            env.observation_space,
-            env.action_space,
-            **reward_net_kwargs,
+    reward_net = reward_net_cls(
+        env.observation_space,
+        env.action_space,
+        **reward_net_kwargs,
+    )
+    if normalize_output_layer:
+        reward_net = reward_nets.NormalizedRewardNet(
+            reward_net,
+            normalize_output_layer,
         )
 
 

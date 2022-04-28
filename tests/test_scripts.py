@@ -22,7 +22,6 @@ import pytest
 import ray.tune as tune
 import sacred
 import sacred.utils
-from torch import nn
 
 from imitation.scripts import (
     analyze,
@@ -140,15 +139,11 @@ def test_train_preference_comparisons_reward_norm(tmpdir, named_configs):
         config_updates=config_updates,
     )
     if "reward.normalize_output_running" in named_configs:
-        assert (
-            run.config["reward"]["net_kwargs"]["rew_normalize_class"] is not nn.Identity
-        )
+        assert run.config["reward"]["net_kwargs"]["normalize_output_layer"] is not None
     elif "reward.normalize_output_disable" in named_configs:
-        assert run.config["reward"]["net_kwargs"]["rew_normalize_class"] is nn.Identity
+        assert run.config["reward"]["net_kwargs"]["normalize_output_layer"] is None
     else:
-        assert (
-            run.config["reward"]["net_kwargs"]["rew_normalize_class"] is not nn.Identity
-        )
+        assert run.config["reward"]["net_kwargs"]["normalize_output_layer"] is not None
     assert run.status == "COMPLETED"
     assert isinstance(run.result, dict)
 
