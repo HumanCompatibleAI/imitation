@@ -205,10 +205,7 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
         venv = self.venv_buffering = wrappers.BufferingWrapper(self.venv)
 
         if isinstance(self.reward_train, reward_nets.RewardNet):
-            if isinstance(self.reward_train, reward_nets.NormalizedRewardNet):
-                reward_fn = self.reward_train.predict_processed
-            else:
-                reward_fn = self.reward_train.predict
+            reward_fn = self.reward_train.predict_processed
 
         if debug_use_ground_truth:
             # Would use an identity reward fn here, but RewardFns can't see rewards.

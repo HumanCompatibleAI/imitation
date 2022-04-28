@@ -142,10 +142,7 @@ class AgentTrainer(TrajectoryGenerator):
         # will set self.logger, which also sets the logger for the algorithm
         super().__init__(custom_logger)
         if isinstance(reward_fn, reward_nets.RewardNet):
-            if isinstance(reward_fn, reward_nets.NormalizedRewardNet):
-                reward_fn = reward_fn.predict_processed
-            else:
-                reward_fn = reward_fn.predict
+            reward_fn = reward_fn.predict_processed
         self.reward_fn = reward_fn
         self.exploration_frac = exploration_frac
 
