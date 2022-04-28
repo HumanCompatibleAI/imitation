@@ -361,7 +361,7 @@ class NormalizedRewardNet(RewardNetWrapper):
         with networks.evaluating(self):
             # switch to eval mode (affecting normalization, dropout, etc)
             rew_th = self.base.predict_th(state, action, next_state, done)
-            rew = self.rew_normalize_layer(rew_th).detach().cpu().numpy().flatten()
+            rew = self.normalize_output_layer(rew_th).detach().cpu().numpy().flatten()
         assert rew.shape == state.shape[:1]
         return rew
 
@@ -393,9 +393,7 @@ class ShapedRewardNet(RewardNetWrapper):
                 a batch of states (as a PyTorch tensor) and returns a batch of
                 potentials for these states. If this is a PyTorch Module, it becomes
                 a submodule of the ShapedRewardNet instance.
-            discount_factor: discount factor to use for the potential shaping
-            normalize_images: passed through to `RewardNet.__init__`,
-                see its documentation
+            discount_factor: discount factor to use for the potential shaping.
         """
         super().__init__(
             base=base,

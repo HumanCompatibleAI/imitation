@@ -19,7 +19,7 @@ def config():
     # Custom reward network
     net_cls = None
     net_kwargs = {}
-    normalize_output_layer = None
+    normalize_output_layer = networks.RunningNorm
     locals()  # quieten flake8
 
 
@@ -35,12 +35,12 @@ def normalize_input_running():
 
 @reward_ingredient.named_config
 def normalize_output_disable():
-    net_kwargs = {"normalize_output_layer": None}  # noqa: F841
+    normalize_output_layer = None  # noqa: F841
 
 
 @reward_ingredient.named_config
 def normalize_output_running():
-    net_kwargs = {"normalize_output_layer": networks.RunningNorm}  # noqa: F841
+    normalize_output_layer = networks.RunningNorm  # noqa: F841
 
 
 @reward_ingredient.config_hook
