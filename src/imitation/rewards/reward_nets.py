@@ -397,64 +397,6 @@ class NormalizedRewardNet(RewardNetWrapper):
         return self.base(state, action, next_state, done)
 
 
-class BasicNormalizedRewardNet(NormalizedRewardNet):
-    """An implementation of NormalizedRewardNet that uses MLP as its base net."""
-
-    def __init__(
-        self,
-        observation_space: gym.Space,
-        action_space: gym.Space,
-        rew_normalize_class: Type[nn.Module],
-        *,
-        reward_hid_sizes: Sequence[int] = (32,),
-        use_state: bool = True,
-        use_action: bool = True,
-        use_next_state: bool = False,
-        use_done: bool = False,
-        **kwargs,
-    ):
-        """Builds a simple shaped reward network.
-
-        Args:
-            observation_space: The observation space.
-            action_space: The action space.
-            rew_normalize_class: The class to use to normalize rewards. This can be
-                any nn.Module that preserves the shape;
-                e.g. `nn.BatchNorm*`, `nn.LayerNorm`, or `networks.RunningNorm`.
-            reward_hid_sizes: sequence of widths for the hidden layers
-                of the base reward MLP.
-            use_state: should the current state be included as an input
-                to the reward MLP?
-            use_action: should the current action be included as an input
-                to the reward MLP?
-            use_next_state: should the next state be included as an input
-                to the reward MLP?
-            use_done: should the "done" flag be included as an input to the reward MLP?
-            kwargs: passed straight through to `BasicRewardNet`.
-        """
-        build_mlp_kwargs = {
-            k: v for k, v in kwargs.items() if k != "rew_normalize_class"
-        }
-
-        base_reward_net = BasicRewardNet(
-            observation_space=observation_space,
-            action_space=action_space,
-            use_state=use_state,
-            use_action=use_action,
-            use_next_state=use_next_state,
-            use_done=use_done,
-            hid_sizes=reward_hid_sizes,
-            **build_mlp_kwargs,
-        )
-
-        super().__init__(
-            observation_space,
-            action_space,
-            base=base_reward_net,
-            rew_normalize_class=rew_normalize_class,
-        )
-
-
 class ShapedRewardNet(RewardNetWrapper):
     """A RewardNet consisting of a base net and a potential shaping."""
 
