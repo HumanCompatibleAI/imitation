@@ -324,42 +324,24 @@ class BasicRewardNet(RewardNet):
 
 
 class NormalizedRewardNet(RewardNetWrapper):
-    """A reward net that normalizes the output of its base net.
-
-    Only requires the implementation of a forward pass (calculating rewards given
-    a batch of states, actions, next states and dones) as it inherits RewardNet.
-    """
+    """A reward net that normalizes the output of its base network."""
 
     def __init__(
         self,
-        observation_space: gym.Space,
-        action_space: gym.Space,
         base: RewardNet,
-        rew_normalize_class: Type[nn.Module],
-        normalize_images: bool = True,
+        normalize_output_layer: Type[nn.Module],
     ):
         """Initialize the NormalizedRewardNet.
 
         Args:
-            observation_space: the observation space of the environment
-            action_space: the action space of the environment
             base: a base RewardNet
-            rew_normalize_class: The class to use to normalize rewards. This
+            normalize_output_layer: The class to use to normalize rewards. This
                 can be any nn.Module that preserves the shape; e.g. `nn.Identity`,
                 `nn.BatchNorm*`, `nn.LayerNorm`, or `networks.RunningNorm`.
-            normalize_images: passed through to `RewardNet.__init__`,
-                see its documentation
         """
-        super().__init__(
-            observation_space=observation_space,
-            action_space=action_space,
-            base=base,
-            normalize_images=normalize_images,
-        )
+        super().__init__(base=base)
         # assuming reward is always a scalar
-        self.rew_normalize_layer = (
-            rew_normalize_class(1) if rew_normalize_class else None
-        )
+        self.normalize_output_layer = normalize_output_layer(1)
 
     def predict_processed(
         self,
@@ -379,9 +361,10 @@ class NormalizedRewardNet(RewardNetWrapper):
         Returns:
             Computed normalized rewards of shape `(batch_size,`).
         """
-        rew = self.base.predict(state, action, next_state, done)
-        rew_th = th.as_tensor(rew, device=self.device)
-        rew = self.rew_normalize_layer(rew_th).detach().cpu().numpy().flatten()
+        with networks.evaluating(self):
+            # switch to eval mode (affecting normalization, dropout, etc)
+            rew_th = self.base.predict_th(state, action, next_state, done)
+            rew = self.rew_normalize_layer(rew_th).detach().cpu().numpy().flatten()
         assert rew.shape == state.shape[:1]
         return rew
 
