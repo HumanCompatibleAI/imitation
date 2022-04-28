@@ -19,6 +19,7 @@ def config():
     # Custom reward network
     net_cls = None
     net_kwargs = {}
+    normalize_output_layer = None
     locals()  # quieten flake8
 
 
@@ -34,12 +35,12 @@ def normalize_input_running():
 
 @reward_ingredient.named_config
 def normalize_output_disable():
-    net_kwargs = {"rew_normalize_class": nn.Identity}  # noqa: F841
+    net_kwargs = {"normalize_output_layer": None}  # noqa: F841
 
 
 @reward_ingredient.named_config
 def normalize_output_running():
-    net_kwargs = {"rew_normalize_class": networks.RunningNorm}  # noqa: F841
+    net_kwargs = {"normalize_output_layer": networks.RunningNorm}  # noqa: F841
 
 
 @reward_ingredient.config_hook
@@ -48,14 +49,12 @@ def config_hook(config, command_name, logger):
     del logger
     res = {}
     if config["reward"]["net_cls"] is None:
-        default_net = reward_nets.BasicNormalizedRewardNet
+        default_net = reward_nets.BasicRewardNet
         if command_name == "airl":
             default_net = reward_nets.BasicShapedRewardNet
         res["net_cls"] = default_net
     if "normalize_input_layer" not in config["reward"]["net_kwargs"]:
         res["net_kwargs"] = {"normalize_input_layer": networks.RunningNorm}
-    if "rew_normalize_class" not in config["reward"]["net_kwargs"]:
-        res["net_kwargs"] = {"rew_normalize_class": networks.RunningNorm}
     return res
 
 
@@ -64,6 +63,7 @@ def make_reward_net(
     venv: vec_env.VecEnv,
     net_cls: Type[reward_nets.RewardNet],
     net_kwargs: Mapping[str, Any],
+    normalize_output_layer: Type[nn.Module],
 ) -> reward_nets.RewardNet:
     """Builds a reward network.
 
@@ -71,6 +71,8 @@ def make_reward_net(
         venv: Vectorized environment reward network will predict reward for.
         net_cls: Class of reward network to construct.
         net_kwargs: Keyword arguments passed to reward network constructor.
+        normalize_output_layer: Wrapping the reward_net with NormalizedRewardNet
+            to normalize the reward output.
 
     Returns:
         None if `reward_net_cls` is None; otherwise, an instance of `reward_net_cls`.
@@ -80,5 +82,10 @@ def make_reward_net(
         venv.action_space,
         **net_kwargs,
     )
+    if normalize_output_layer is not None:
+        reward_net = reward_nets.NormalizedRewardNet(
+            reward_net,
+            normalize_output_layer,
+        )
     logging.info(f"Reward network:\n {reward_net}")
     return reward_net
