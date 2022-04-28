@@ -267,10 +267,7 @@ class BasicRewardNet(RewardNet):
             use_done: should the "done" flag be included as an input to the MLP?
             kwargs: passed straight through to `build_mlp`.
         """
-        super().__init__(
-            observation_space,
-            action_space,
-        )
+        super().__init__(observation_space, action_space)
         combined_size = 0
 
         self.use_state = use_state
@@ -379,16 +376,13 @@ class NormalizedRewardNet(RewardNetWrapper):
 
 
 class ShapedRewardNet(RewardNetWrapper):
-    """A RewardNet consisting of a base net and a potential shaping."""
+    """A RewardNet consisting of a base network and a potential shaping."""
 
     def __init__(
         self,
-        observation_space: gym.Space,
-        action_space: gym.Space,
         base: RewardNet,
         potential: Callable[[th.Tensor], th.Tensor],
         discount_factor: float,
-        normalize_images: bool = True,
     ):
         """Setup a ShapedRewardNet instance.
 
@@ -406,10 +400,7 @@ class ShapedRewardNet(RewardNetWrapper):
                 see its documentation
         """
         super().__init__(
-            observation_space=observation_space,
-            action_space=action_space,
             base=base,
-            normalize_images=normalize_images,
         )
         self.potential = potential
         self.discount_factor = discount_factor
@@ -470,9 +461,6 @@ class BasicShapedRewardNet(ShapedRewardNet):
 
     def __init__(
         self,
-        observation_space: gym.Space,
-        action_space: gym.Space,
-        *,
         reward_hid_sizes: Sequence[int] = (32,),
         potential_hid_sizes: Sequence[int] = (32, 32),
         use_state: bool = True,
@@ -485,8 +473,6 @@ class BasicShapedRewardNet(ShapedRewardNet):
         """Builds a simple shaped reward network.
 
         Args:
-            observation_space: The observation space.
-            action_space: The action space.
             reward_hid_sizes: sequence of widths for the hidden layers
                 of the base reward MLP.
             potential_hid_sizes: sequence of widths for the hidden layers
@@ -501,34 +487,22 @@ class BasicShapedRewardNet(ShapedRewardNet):
             discount_factor: discount factor for the potential shaping.
             kwargs: passed straight through to `BasicRewardNet` and `BasicPotentialMLP`.
         """
-        # FIXME(yawen): why could the reward net and potential net use the same kwargs
-        # to construct their MDPs?
-
-        # build_mlp doesn't support rew_normalize_class
-        build_mlp_kwargs = {
-            k: v for k, v in kwargs.items() if k != "rew_normalize_class"
-        }
-
         base_reward_net = BasicRewardNet(
-            observation_space=observation_space,
-            action_space=action_space,
             use_state=use_state,
             use_action=use_action,
             use_next_state=use_next_state,
             use_done=use_done,
             hid_sizes=reward_hid_sizes,
-            **build_mlp_kwargs,
+            **kwargs,
         )
 
         potential_net = BasicPotentialMLP(
-            observation_space=observation_space,
+            observation_space=base_reward_net.observation_space,
             hid_sizes=potential_hid_sizes,
-            **build_mlp_kwargs,
+            **kwargs,
         )
 
         super().__init__(
-            observation_space,
-            action_space,
             base_reward_net,
             potential_net,
             discount_factor=discount_factor,
