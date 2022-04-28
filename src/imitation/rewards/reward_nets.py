@@ -387,8 +387,6 @@ class ShapedRewardNet(RewardNetWrapper):
         """Setup a ShapedRewardNet instance.
 
         Args:
-            observation_space: observation space of the environment
-            action_space: action space of the environment
             base: the base reward net to which the potential shaping
                 will be added.
             potential: A callable which takes
@@ -461,6 +459,9 @@ class BasicShapedRewardNet(ShapedRewardNet):
 
     def __init__(
         self,
+        observation_space: gym.Space,
+        action_space: gym.Space,
+        *,
         reward_hid_sizes: Sequence[int] = (32,),
         potential_hid_sizes: Sequence[int] = (32, 32),
         use_state: bool = True,
@@ -473,6 +474,8 @@ class BasicShapedRewardNet(ShapedRewardNet):
         """Builds a simple shaped reward network.
 
         Args:
+            observation_space: The observation space.
+            action_space: The action space.
             reward_hid_sizes: sequence of widths for the hidden layers
                 of the base reward MLP.
             potential_hid_sizes: sequence of widths for the hidden layers
@@ -488,6 +491,8 @@ class BasicShapedRewardNet(ShapedRewardNet):
             kwargs: passed straight through to `BasicRewardNet` and `BasicPotentialMLP`.
         """
         base_reward_net = BasicRewardNet(
+            observation_space=observation_space,
+            action_space=action_space,
             use_state=use_state,
             use_action=use_action,
             use_next_state=use_next_state,
@@ -497,7 +502,7 @@ class BasicShapedRewardNet(ShapedRewardNet):
         )
 
         potential_net = BasicPotentialMLP(
-            observation_space=base_reward_net.observation_space,
+            observation_space=observation_space,
             hid_sizes=potential_hid_sizes,
             **kwargs,
         )
