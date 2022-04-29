@@ -101,7 +101,7 @@ def test_running_norm_matches_dist(batch_size: int) -> None:
         {"normalize_input_layer": networks.RunningNorm},
     ],
 )
-def test_build_mlp_norm(init_kwargs) -> None:
+def test_build_mlp_norm_training(init_kwargs) -> None:
     """Tests MLP building function `networks.build_mlp()`.
 
     Specifically, we initialize an MLP and train it on a toy task. We also test the
