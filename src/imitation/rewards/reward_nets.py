@@ -161,8 +161,7 @@ class RewardNet(nn.Module, abc.ABC):
             Computed rewards of shape `(batch_size,`).
         """
         rew_th = self.predict_th(state, action, next_state, done)
-        rew = rew_th.detach().cpu().numpy().flatten()
-        return rew
+        return rew_th.detach().cpu().numpy().flatten()
 
     def predict_processed(
         self,
@@ -173,8 +172,9 @@ class RewardNet(nn.Module, abc.ABC):
     ) -> np.ndarray:
         """Compute the processed rewards for a batch of transitions without gradients.
 
-        Subclasses can override this to normalize or otherwise modify the rewards in
-        ways that may help RL training or other applications of the reward function.
+        Default to call `predict`. Subclasses can override this to normalize or
+        otherwise modify the rewards in ways that may help RL training or other
+        applications of the reward function.
 
         Args:
             state: Current states of shape `(batch_size,) + state_shape`.
