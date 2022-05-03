@@ -8,6 +8,7 @@ import gym
 import numpy as np
 import pytest
 import torch as th
+from stable_baselines3.common.vec_env import DummyVecEnv
 
 from imitation.data import rollout
 from imitation.policies import base
@@ -179,3 +180,61 @@ def test_device_for_parameterless_model(env_name):
     env = gym.make(env_name)
     net = ParameterlessNet(env.observation_space, env.action_space)
     assert net.device == th.device("cpu")
+
+
+@pytest.mark.parametrize("reward_net_cls", [reward_nets.BasicRewardNet])
+@pytest.mark.parametrize("normalize_input_layer", [networks.RunningNorm])
+@pytest.mark.parametrize("normalize_output_layer", [networks.RunningNorm])
+def test_training_regression(
+    reward_net_cls,
+    normalize_input_layer,
+    normalize_output_layer,
+):
+    """Test reward_net normalization by training a regression model."""
+    # TODO(yawen):
+    venv = DummyVecEnv([lambda: gym.make("CartPole-v0")] * 2)
+    reward_net = reward_net_cls(
+        venv.observation_space,
+        venv.action_space,
+        normalize_input_layer=normalize_input_layer,
+    )
+    if normalize_output_layer is not None:
+        reward_net = reward_nets.NormalizedRewardNet(
+            reward_net,
+            normalize_output_layer,
+        )
+
+    # Construct a loss function and an Optimizer.
+    criterion = th.nn.MSELoss(reduction="sum")
+    optimizer = th.optim.SGD(reward_net.parameters(), lr=1e-6)
+
+    for _ in range(20):
+        # Forward pass: Compute predicted y by passing x to the model
+        random = base.RandomPolicy(venv.observation_space, venv.action_space)
+        transitions = rollout.generate_transitions(random, venv, n_timesteps=100)
+
+        trans_args = (
+            transitions.obs,
+            transitions.acts,
+            transitions.next_obs,
+            transitions.dones,
+        )
+        trans_args_th = reward_net.preprocess(*trans_args)
+        rews_th = reward_net(*trans_args_th) + 1.0
+        rews = rews_th.detach().cpu().numpy().flatten()
+
+        # Compute and print loss
+        loss = criterion(
+            th.as_tensor(transitions.rews, device=reward_net.device), rews_th
+        )
+
+        # Zero gradients, perform a backward pass, and update the weights.
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+
+    # rews_predict = reward_net.predict(*trans_args)
+    # rews_processed = reward_net.predict_processed(*trans_args)
+
+    # assert (rews == rews_predict + 1.0).all()
+    # assert not (rews_processed == rews_predict + 1.0).all()
