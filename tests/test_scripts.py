@@ -130,7 +130,7 @@ def test_train_preference_comparisons_main(tmpdir, config):
         ["reward.normalize_output_disable"],
     ),
 )
-def test_train_preference_comparisons_reward_norm(tmpdir, named_configs):
+def test_train_preference_comparisons_reward_norm_named_config(tmpdir, named_configs):
     config_updates = dict(common=dict(log_root=tmpdir))
     run = train_preference_comparisons.train_preference_comparisons_ex.run(
         named_configs=["cartpole"]
