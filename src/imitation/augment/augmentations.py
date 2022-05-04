@@ -30,6 +30,10 @@ def _blur(images: th.Tensor, kernel: th.Tensor, p: float):
     batch_size = images.size(0)
     blur_mask = th.rand(batch_size) < p
     out_images = images.clone()
+    if blur_mask.sum() <= 0:
+        # this function merely copies the input tensor if no images are chosen
+        # for blurring
+        return out_images
     extracted = images[blur_mask]
     blurred = filter2d_separable(extracted, kernel, kernel,
                                  "reflect")
