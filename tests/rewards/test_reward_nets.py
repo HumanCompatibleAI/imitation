@@ -220,21 +220,22 @@ def test_training_regression(
             transitions.dones,
         )
         trans_args_th = reward_net.preprocess(*trans_args)
-        rews_th = reward_net(*trans_args_th) + 1.0
+        rews_th = reward_net(*trans_args_th)
         rews = rews_th.detach().cpu().numpy().flatten()
 
         # Compute and print loss
         loss = criterion(
-            th.as_tensor(transitions.rews, device=reward_net.device), rews_th
+            th.as_tensor(transitions.rews, device=reward_net.device),
+            rews_th,
         )
 
+        rews_predict = reward_net.predict(*trans_args)
+        rews_processed = reward_net.predict_processed(*trans_args)
+
+        assert (rews == rews_predict).all()
+        assert not (rews_processed == rews_predict).all()
+        
         # Zero gradients, perform a backward pass, and update the weights.
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-
-    # rews_predict = reward_net.predict(*trans_args)
-    # rews_processed = reward_net.predict_processed(*trans_args)
-
-    # assert (rews == rews_predict + 1.0).all()
-    # assert not (rews_processed == rews_predict + 1.0).all()

@@ -142,8 +142,13 @@ class AgentTrainer(TrajectoryGenerator):
         # will set self.logger, which also sets the logger for the algorithm
         super().__init__(custom_logger)
         if isinstance(reward_fn, reward_nets.RewardNet):
-            reward_fn = reward_fn.predict_processed
+            eval_reward_fn = reward_fn = reward_fn.predict_processed
+            if isinstance(reward_fn, reward_nets.NormalizedRewardNet):
+                eval_reward_fn = reward_fn.predict_processed_eval
+        else:
+            eval_reward_fn = reward_fn
         self.reward_fn = reward_fn
+        self.eval_reward_fn = eval_reward_fn
         self.exploration_frac = exploration_frac
 
         venv = self.algorithm.get_env()
@@ -156,7 +161,8 @@ class AgentTrainer(TrajectoryGenerator):
         self.buffering_wrapper = wrappers.BufferingWrapper(venv)
         self.venv = reward_wrapper.RewardVecEnvWrapper(
             self.buffering_wrapper,
-            self.reward_fn,
+            reward_fn=self.reward_fn,
+            eval_reward_fn=self.eval_reward_fn,
         )
         self.log_callback = self.venv.make_log_callback()
 
@@ -195,12 +201,13 @@ class AgentTrainer(TrajectoryGenerator):
                 f"There are {n_transitions} transitions left in the buffer. "
                 "Call AgentTrainer.sample() first to clear them.",
             )
-        self.algorithm.learn(
-            total_timesteps=steps,
-            reset_num_timesteps=False,
-            callback=self.log_callback,
-            **kwargs,
-        )
+        with reward_wrapper.training(self.algorithm.env):
+            self.algorithm.learn(
+                total_timesteps=steps,
+                reset_num_timesteps=False,
+                callback=self.log_callback,
+                **kwargs,
+            )
 
     def sample(self, steps: int) -> Sequence[types.TrajectoryWithRew]:
         agent_trajs, _ = self.buffering_wrapper.pop_finished_trajectories()

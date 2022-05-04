@@ -335,6 +335,7 @@ def generate_trajectories(
         may be collected to avoid biasing process towards short episodes; the user
         should truncate if required.
     """
+    # Use evaluating mode if venv is a reward_wrapper.RewardVecEnvWrapper
     get_actions = _policy_to_callable(policy, venv, deterministic_policy)
 
     # Collect rollout tuples.
@@ -378,8 +379,8 @@ def generate_trajectories(
         trajectories.extend(new_trajs)
 
         if sample_until(trajectories):
-            # Termination condition has been reached. Mark as inactive any environments
-            # where a trajectory was completed this timestep.
+            # Termination condition has been reached. Mark as inactive any
+            # environments where a trajectory was completed this timestep.
             active &= ~dones
 
     # Note that we just drop partial trajectories. This is not ideal for some

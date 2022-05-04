@@ -1,12 +1,43 @@
 """Common wrapper for adding custom reward values to an environment."""
 
 import collections
-from typing import Deque
+import contextlib
+import functools
+from typing import Deque, Optional
 
 import numpy as np
 from stable_baselines3.common import callbacks, vec_env
 
 from imitation.rewards import common
+
+
+@contextlib.contextmanager
+def training_mode(env: vec_env.VecEnvWrapper, mode: bool):
+    """Temporarily switch environment wrapper ``env`` to specified training ``mode``.
+
+    Args:
+        env: The env to switch the mode of.
+        mode: whether to set training mode (``True``) or evaluation (``False``).
+
+    Yields:
+        The module `m`.
+    """
+    if isinstance(env, RewardVecEnvWrapper):
+        # Modified from Christoph Heindl's method posted on:
+        # https://discuss.pytorch.org/t/opinion-eval-should-be-a-context-manager/18998/3
+        old_mode = env.training
+        env.train(mode)
+        try:
+            yield env
+        finally:
+            env.train(old_mode)
+    else:
+        # Do nothing if not a RewardVecEnvWrapper
+        yield env
+
+
+training = functools.partial(training_mode, mode=True)
+evaluating = functools.partial(training_mode, mode=False)
 
 
 class WrappedRewardCallback(callbacks.BaseCallback):
@@ -48,7 +79,9 @@ class RewardVecEnvWrapper(vec_env.VecEnvWrapper):
         self,
         venv: vec_env.VecEnv,
         reward_fn: common.RewardFn,
+        eval_reward_fn: Optional[common.RewardFn] = None,
         ep_history: int = 100,
+        training: bool = False,
     ):
         """Builds RewardVecEnvWrapper.
 
@@ -57,14 +90,18 @@ class RewardVecEnvWrapper(vec_env.VecEnvWrapper):
             reward_fn: A function that wraps takes in vectorized transitions
                 (obs, act, next_obs) a vector of episode timesteps, and returns a
                 vector of rewards.
+            eval_reward_fn: The reward function to use during evaluating mode.
             ep_history: The number of episode rewards to retain for computing
                 mean reward.
+            training: the mode.
         """
         assert not isinstance(venv, RewardVecEnvWrapper)
         super().__init__(venv)
         self.episode_rewards = collections.deque(maxlen=ep_history)
         self._cumulative_rew = np.zeros((venv.num_envs,))
         self.reward_fn = reward_fn
+        self.eval_reward_fn = eval_reward_fn if eval_reward_fn else reward_fn
+        self.training = training
         self._old_obs = None
         self._actions = None
         self.reset()
@@ -99,7 +136,8 @@ class RewardVecEnvWrapper(vec_env.VecEnvWrapper):
             obs_fixed.append(single_obs)
         obs_fixed = np.stack(obs_fixed)
 
-        rews = self.reward_fn(self._old_obs, self._actions, obs_fixed, np.array(dones))
+        reward_fn = self.reward_fn if self.training else self.eval_reward_fn
+        rews = reward_fn(self._old_obs, self._actions, obs_fixed, np.array(dones))
         assert len(rews) == len(obs), "must return one rew for each env"
         done_mask = np.asarray(dones, dtype="bool").reshape((len(dones),))
 
@@ -117,3 +155,6 @@ class RewardVecEnvWrapper(vec_env.VecEnvWrapper):
         for info_dict, old_rew in zip(infos, old_rews):
             info_dict["original_env_rew"] = old_rew
         return obs, rews, dones, infos
+
+    def train(self, mode: bool):
+        self.training = mode
