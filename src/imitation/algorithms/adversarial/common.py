@@ -205,9 +205,7 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
         venv = self.venv_buffering = wrappers.BufferingWrapper(self.venv)
 
         if isinstance(self.reward_train, reward_nets.RewardNet):
-            reward_fn = eval_reward_fn = self.reward_train.predict_processed
-            if isinstance(self.reward_train, reward_nets.NormalizedRewardNet):
-                eval_reward_fn = self.reward_train.predict_processed_eval
+            reward_fn = self.reward_train.predict_processed
 
         if debug_use_ground_truth:
             # Would use an identity reward fn here, but RewardFns can't see rewards.
@@ -217,7 +215,6 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
             venv = self.venv_wrapped = reward_wrapper.RewardVecEnvWrapper(
                 venv,
                 reward_fn=reward_fn,
-                eval_reward_fn=eval_reward_fn,
             )
             self.gen_callback = self.venv_wrapped.make_log_callback()
         self.venv_train = self.venv_wrapped
@@ -380,13 +377,12 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
             learn_kwargs = {}
 
         with self.logger.accumulate_means("gen"):
-            with reward_wrapper.training(self.gen_algo.env):
-                self.gen_algo.learn(
-                    total_timesteps=total_timesteps,
-                    reset_num_timesteps=False,
-                    callback=self.gen_callback,
-                    **learn_kwargs,
-                )
+            self.gen_algo.learn(
+                total_timesteps=total_timesteps,
+                reset_num_timesteps=False,
+                callback=self.gen_callback,
+                **learn_kwargs,
+            )
             self._global_step += 1
 
         gen_trajs, ep_lens = self.venv_buffering.pop_trajectories()

@@ -346,6 +346,7 @@ class NormalizedRewardNet(RewardNetWrapper):
         action: np.ndarray,
         next_state: np.ndarray,
         done: np.ndarray,
+        update_norm_stats: bool = True,
     ) -> np.ndarray:
         """Compute normalized rewards for a batch of transitions without gradients.
 
@@ -354,31 +355,7 @@ class NormalizedRewardNet(RewardNetWrapper):
             action: Actions of shape `(batch_size,) + action_shape`.
             next_state: Successor states of shape `(batch_size,) + state_shape`.
             done: End-of-episode (terminal state) indicator of shape `(batch_size,)`.
-
-        Returns:
-            Computed normalized rewards of shape `(batch_size,`).
-        """
-        with networks.evaluating(self):
-            # switch to eval mode (affecting normalization, dropout, etc)
-            rew_th = self.base.predict_th(state, action, next_state, done)
-        rew = self.normalize_output_layer(rew_th).detach().cpu().numpy().flatten()
-        assert rew.shape == state.shape[:1]
-        return rew
-
-    def predict_processed_eval(
-        self,
-        state: np.ndarray,
-        action: np.ndarray,
-        next_state: np.ndarray,
-        done: np.ndarray,
-    ) -> np.ndarray:
-        """Compute normalized rewards for a batch of transitions without gradients.
-
-        Args:
-            state: Current states of shape `(batch_size,) + state_shape`.
-            action: Actions of shape `(batch_size,) + action_shape`.
-            next_state: Successor states of shape `(batch_size,) + state_shape`.
-            done: End-of-episode (terminal state) indicator of shape `(batch_size,)`.
+            update_norm_stats: Whether to update the running stats of the norm layer.
 
         Returns:
             Computed normalized rewards of shape `(batch_size,`).
@@ -387,6 +364,9 @@ class NormalizedRewardNet(RewardNetWrapper):
             # switch to eval mode (affecting normalization, dropout, etc)
             rew_th = self.base.predict_th(state, action, next_state, done)
             rew = self.normalize_output_layer(rew_th).detach().cpu().numpy().flatten()
+        if update_norm_stats:
+            with th.no_grad():
+                self.normalize_output_layer.update_stats(rew_th)
         assert rew.shape == state.shape[:1]
         return rew
 

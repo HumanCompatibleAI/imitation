@@ -335,7 +335,6 @@ def generate_trajectories(
         may be collected to avoid biasing process towards short episodes; the user
         should truncate if required.
     """
-    # Use evaluating mode if venv is a reward_wrapper.RewardVecEnvWrapper
     get_actions = _policy_to_callable(policy, venv, deterministic_policy)
 
     # Collect rollout tuples.
