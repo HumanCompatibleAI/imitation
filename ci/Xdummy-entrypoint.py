@@ -30,11 +30,6 @@ if __name__ == "__main__":
             ":0",
         ]
     )
-    subprocess.Popen(
-        ["nohup", "Xdummy"],
-        stdout=open("/dev/null", "w"),
-        stderr=open("/dev/null", "w"),
-    )
     os.environ["DISPLAY"] = ":0"
 
     if not extra_args:
