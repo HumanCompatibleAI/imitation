@@ -234,7 +234,7 @@ def test_training_regression(
 
         assert (rews == rews_predict).all()
         assert not (rews_processed == rews_predict).all()
-        
+
         # Zero gradients, perform a backward pass, and update the weights.
         optimizer.zero_grad()
         loss.backward()

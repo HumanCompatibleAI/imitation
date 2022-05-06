@@ -295,6 +295,10 @@ class BasicRewardNet(RewardNet):
                 # we do not want these overridden
                 "in_size": combined_size,
                 "out_size": 1,
+                # FIXME(yawen): by default, the reward output is squeezed to produce
+                # tensors with `(batch_size,`) shape for predict_processed. This works
+                # for networks.RunningNorm, but not for nn.BatchNorm1d that requires
+                # shape of (N,C).
                 "squeeze_output": True,
             },
         )
@@ -334,10 +338,14 @@ class NormalizedRewardNet(RewardNetWrapper):
             base: a base RewardNet
             normalize_output_layer: The class to use to normalize rewards. This
                 can be any nn.Module that preserves the shape; e.g. `nn.Identity`,
-                `nn.BatchNorm*`, `nn.LayerNorm`, or `networks.RunningNorm`.
+                `nn.LayerNorm`, or `networks.RunningNorm`.
         """
+        # FIXME(yawen): by default, the reward output is squeezed to produce
+        # tensors with `(batch_size,`) shape for predict_processed. This works
+        # for networks.RunningNorm, but not for nn.BatchNorm1d that requires
+        # shape of (N,C).
         super().__init__(base=base)
-        # assuming reward is always a scalar
+        # Assuming reward is scalar, norm layer should be initialized with shape (1,).
         self.normalize_output_layer = normalize_output_layer(1)
 
     def predict_processed(

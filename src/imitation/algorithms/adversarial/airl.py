@@ -92,6 +92,7 @@ class AIRL(common.AdversarialTrainer):
 
     @property
     def reward_test(self) -> reward_nets.RewardNet:
+        """Returns the unshaped version of reward network used for testing."""
         reward_net = self._reward_net
         # Recursively return the base network of the wrapped reward net
         while isinstance(reward_net, reward_nets.RewardNetWrapper):
