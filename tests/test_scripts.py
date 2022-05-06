@@ -23,6 +23,8 @@ import ray.tune as tune
 import sacred
 import sacred.utils
 
+from imitation.util import networks
+
 from imitation.scripts import (
     analyze,
     eval_policy,
@@ -139,11 +141,11 @@ def test_train_preference_comparisons_reward_norm_named_config(tmpdir, named_con
         config_updates=config_updates,
     )
     if "reward.normalize_output_running" in named_configs:
-        assert run.config["reward"]["normalize_output_layer"] is not None
+        assert run.config["reward"]["normalize_output_layer"] is networks.RunningNorm
     elif "reward.normalize_output_disable" in named_configs:
         assert run.config["reward"]["normalize_output_layer"] is None
     else:
-        assert run.config["reward"]["normalize_output_layer"] is not None
+        assert run.config["reward"]["normalize_output_layer"] is networks.RunningNorm
     assert run.status == "COMPLETED"
     assert isinstance(run.result, dict)
 
