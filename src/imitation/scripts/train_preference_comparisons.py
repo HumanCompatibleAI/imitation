@@ -150,7 +150,7 @@ def train_preference_comparisons(
         # takes care of that automatically) but it avoids creating unnecessary loggers
         trajectory_generator = preference_comparisons.AgentTrainer(
             algorithm=agent,
-            reward_net=reward_net,
+            reward_fn=reward_net,
             exploration_frac=exploration_frac,
             seed=_seed,
             custom_logger=custom_logger,
