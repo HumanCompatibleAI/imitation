@@ -23,8 +23,6 @@ import ray.tune as tune
 import sacred
 import sacred.utils
 
-from imitation.util import networks
-
 from imitation.scripts import (
     analyze,
     eval_policy,
@@ -34,6 +32,7 @@ from imitation.scripts import (
     train_preference_comparisons,
     train_rl,
 )
+from imitation.util import networks
 
 ALL_SCRIPTS_MODS = [
     analyze,

@@ -8,7 +8,7 @@ import functools
 import math
 import pickle
 import random
-from typing import Any, Callable, List, Mapping, Optional, Sequence, Tuple, Union
+from typing import Any, Callable, List, Mapping, Optional, Sequence, Tuple
 
 import numpy as np
 import torch as th
@@ -25,7 +25,6 @@ from imitation.data.types import (
     Transitions,
 )
 from imitation.policies import exploration_wrapper
-from imitation.rewards import common as rewards_common
 from imitation.rewards import reward_nets, reward_wrapper
 from imitation.util import logger as imit_logger
 from imitation.util import networks
@@ -107,12 +106,12 @@ class TrajectoryDataset(TrajectoryGenerator):
 
 
 class AgentTrainer(TrajectoryGenerator):
-    """Wrapper for training an SB3 algorithm on an arbitrary reward function."""
+    """Wrapper for training an SB3 algorithm on an arbitrary reward network."""
 
     def __init__(
         self,
         algorithm: base_class.BaseAlgorithm,
-        reward_fn: Union[rewards_common.RewardFn, reward_nets.RewardNet],
+        reward_net: reward_nets.RewardNet,
         exploration_frac: float = 0.0,
         switch_prob: float = 0.5,
         random_prob: float = 0.5,
@@ -124,7 +123,7 @@ class AgentTrainer(TrajectoryGenerator):
         Args:
             algorithm: the stable-baselines algorithm to use for training.
                 Its environment must be set.
-            reward_fn: either a RewardFn or a RewardNet instance that will supply
+            reward_net: either a RewardFn or a RewardNet instance that will supply
                 the rewards used for training the agent.
             exploration_frac: fraction of the trajectories that will be generated
                 partially randomly rather than only by the agent when sampling.
@@ -142,19 +141,15 @@ class AgentTrainer(TrajectoryGenerator):
         # NOTE: this has to come after setting self.algorithm because super().__init__
         # will set self.logger, which also sets the logger for the algorithm
         super().__init__(custom_logger)
-        if isinstance(reward_fn, reward_nets.RewardNet):
-            if isinstance(reward_fn, reward_nets.NormalizedRewardNet):
-                reward_fn_eval = functools.partial(
-                    reward_fn.predict_processed,
-                    update_norm_stats=False,
-                )
-                reward_fn = reward_fn.predict_processed
-            else:
-                reward_fn_eval = reward_fn = reward_fn.predict_processed
+        if isinstance(reward_net, reward_nets.NormalizedRewardNet):
+            reward_fn_eval = functools.partial(
+                reward_net.predict_processed,
+                update_norm_stats=False,
+            )
+            reward_fn = reward_net.predict_processed
         else:
-            reward_fn_eval = reward_fn
+            reward_fn_eval = reward_fn = reward_net.predict_processed
 
-        # evaluating = functools.partial(training_mode, mode=False)
         self.reward_fn = reward_fn
         self.reward_fn_eval = reward_fn_eval
         self.exploration_frac = exploration_frac
@@ -180,10 +175,6 @@ class AgentTrainer(TrajectoryGenerator):
         # venv_train should be used in self.algorithm.learn()
         self.algorithm.set_env(self.venv_train)
 
-        # TODO(yawen) Among all the attributes of venv, only venv.action_space is
-        # used in policy_callable and exploration_wrapper. If we can substitute
-        # the check_for_correct_spaces function in rollout._policy_to_callable with,
-        # something else, then we only need to pass in venv.action_space.
         policy_callable = rollout._policy_to_callable(
             self.algorithm,
             self.venv_eval,
