@@ -30,7 +30,7 @@ TESTS_REQUIRE = [
     "pytest-xdist",
     "pytype",
     "ray[debug,tune]~=0.8.5",
-    "scipy",
+    "scipy>=1.8.0",
     "wandb",
 ]
 DOCS_REQUIRE = [

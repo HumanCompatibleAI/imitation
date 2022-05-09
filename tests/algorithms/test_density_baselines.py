@@ -11,6 +11,7 @@ from imitation.algorithms.density import DensityAlgorithm, DensityType
 from imitation.data import rollout, types
 from imitation.data.types import TrajectoryWithRew
 from imitation.policies.base import RandomPolicy
+from imitation.testing import reward_improvement
 
 parametrize_density_stationary = pytest.mark.parametrize(
     "density_type,is_stationary",
@@ -32,7 +33,7 @@ def score_trajectories(
         rewards = density_reward(traj.obs[:-1], traj.acts, traj.obs[1:], dones, steps)
         ret = np.sum(rewards)
         returns.append(ret)
-    return np.mean(returns)
+    return returns
 
 
 # test on Pendulum rather than Cartpole because I don't handle episodes that
@@ -72,9 +73,12 @@ def test_density_reward(
         sample_until=sample_until,
     )
     expert_trajectories_test = expert_trajectories_all[n_experts // 2 :]
-    random_score = score_trajectories(random_trajectories, reward_fn)
-    expert_score = score_trajectories(expert_trajectories_test, reward_fn)
-    assert expert_score > random_score
+    random_returns = score_trajectories(random_trajectories, reward_fn)
+    expert_returns = score_trajectories(expert_trajectories_test, reward_fn)
+    assert reward_improvement.is_significant_reward_improvement(
+        random_returns,
+        expert_returns,
+    )
 
 
 @pytest.mark.expensive
