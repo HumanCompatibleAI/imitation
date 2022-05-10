@@ -182,60 +182,54 @@ def test_device_for_parameterless_model(env_name):
     assert net.device == th.device("cpu")
 
 
-@pytest.mark.parametrize("reward_net_cls", [reward_nets.BasicRewardNet])
-@pytest.mark.parametrize("normalize_input_layer", [networks.RunningNorm])
-@pytest.mark.parametrize("normalize_output_layer", [networks.RunningNorm])
-def test_training_regression(
-    reward_net_cls,
-    normalize_input_layer,
-    normalize_output_layer,
-):
+@pytest.mark.parametrize("normalize_input_layer", [None, networks.RunningNorm])
+def test_training_regression(normalize_input_layer):
     """Test reward_net normalization by training a regression model."""
-    # TODO(yawen):
     venv = DummyVecEnv([lambda: gym.make("CartPole-v0")] * 2)
-    reward_net = reward_net_cls(
+    reward_net = reward_nets.BasicRewardNet(
         venv.observation_space,
         venv.action_space,
         normalize_input_layer=normalize_input_layer,
     )
-    if normalize_output_layer is not None:
-        reward_net = reward_nets.NormalizedRewardNet(
-            reward_net,
-            normalize_output_layer,
-        )
+    norm_rew_net = reward_nets.NormalizedRewardNet(
+        reward_net,
+        normalize_output_layer=networks.RunningNorm,
+    )
 
     # Construct a loss function and an Optimizer.
     criterion = th.nn.MSELoss(reduction="sum")
-    optimizer = th.optim.SGD(reward_net.parameters(), lr=1e-6)
+    optimizer = th.optim.SGD(norm_rew_net.parameters(), lr=1e-6)
 
-    for _ in range(20):
-        # Forward pass: Compute predicted y by passing x to the model
-        random = base.RandomPolicy(venv.observation_space, venv.action_space)
+    # Getting transitions from a random policy
+    random = base.RandomPolicy(venv.observation_space, venv.action_space)
+    for i in range(2):
         transitions = rollout.generate_transitions(random, venv, n_timesteps=100)
-
         trans_args = (
             transitions.obs,
             transitions.acts,
             transitions.next_obs,
             transitions.dones,
         )
-        trans_args_th = reward_net.preprocess(*trans_args)
-        rews_th = reward_net(*trans_args_th)
+        trans_args_th = norm_rew_net.preprocess(*trans_args)
+        rews_th = norm_rew_net(*trans_args_th)
         rews = rews_th.detach().cpu().numpy().flatten()
 
         # Compute and print loss
         loss = criterion(
-            th.as_tensor(transitions.rews, device=reward_net.device),
+            th.as_tensor(transitions.rews, device=norm_rew_net.device),
             rews_th,
         )
 
-        rews_predict = reward_net.predict(*trans_args)
-        rews_processed = reward_net.predict_processed(*trans_args)
+        # Get rewards from norm_rew_net.predict() and norm_rew_net.predict_processed()
+        rews_predict = norm_rew_net.predict(*trans_args)
+        rews_processed = norm_rew_net.predict_processed(*trans_args)
 
+        # norm_rew_net() and norm_rew_net.predict() don't pass the reward through the
+        # normalization layer, so the values of `rews` and `rews_predict` are identical
         assert (rews == rews_predict).all()
+        # norm_rew_net.predict_processed() does normalize the reward
         assert not (rews_processed == rews_predict).all()
 
-        # Zero gradients, perform a backward pass, and update the weights.
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
