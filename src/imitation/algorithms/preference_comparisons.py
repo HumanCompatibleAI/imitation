@@ -4,7 +4,6 @@ Trains a reward model and optionally a policy based on preferences
 between trajectory fragments.
 """
 import abc
-import functools
 import math
 import pickle
 import random
@@ -143,19 +142,8 @@ class AgentTrainer(TrajectoryGenerator):
         # will set self.logger, which also sets the logger for the algorithm
         super().__init__(custom_logger)
         if isinstance(reward_fn, reward_nets.RewardNet):
-            if isinstance(reward_fn, reward_nets.NormalizedRewardNet):
-                reward_fn_eval = functools.partial(
-                    reward_fn.predict_processed,
-                    update_norm_stats=False,
-                )
-                reward_fn = reward_fn.predict_processed
-            else:
-                reward_fn_eval = reward_fn = reward_fn.predict_processed
-        else:
-            reward_fn_eval = reward_fn
-
+            reward_fn = reward_fn.predict_processed
         self.reward_fn = reward_fn
-        self.reward_fn_eval = reward_fn_eval
         self.exploration_frac = exploration_frac
 
         venv = self.algorithm.get_env()
@@ -166,26 +154,16 @@ class AgentTrainer(TrajectoryGenerator):
         # changes the reward function), so that we return the original environment
         # rewards.
         self.buffering_wrapper = wrappers.BufferingWrapper(venv)
-        self.venv_train = reward_wrapper.RewardVecEnvWrapper(
+        self.venv = reward_wrapper.RewardVecEnvWrapper(
             self.buffering_wrapper,
             reward_fn=self.reward_fn,
         )
-        self.venv_eval = reward_wrapper.RewardVecEnvWrapper(
-            self.buffering_wrapper,
-            reward_fn=self.reward_fn_eval,
-        )
-        self.log_callback = self.venv_train.make_log_callback()
+        self.log_callback = self.venv.make_log_callback()
 
-        # venv_train should be used in self.algorithm.learn()
-        self.algorithm.set_env(self.venv_train)
-
-        # TODO(yawen) Among all the attributes of venv, only venv.action_space is
-        # used in policy_callable and exploration_wrapper. If we can substitute
-        # the check_for_correct_spaces function in rollout._policy_to_callable with,
-        # something else, then we only need to pass in venv.action_space.
+        self.algorithm.set_env(self.venv)
         policy_callable = rollout._policy_to_callable(
             self.algorithm,
-            self.venv_eval,
+            self.venv,
             # By setting deterministic_policy to False, we ensure that the rollouts
             # are collected from a deterministic policy only if self.algorithm is
             # deterministic. If self.algorithm is stochastic, then policy_callable
@@ -194,7 +172,7 @@ class AgentTrainer(TrajectoryGenerator):
         )
         self.exploration_wrapper = exploration_wrapper.ExplorationWrapper(
             policy_callable=policy_callable,
-            venv=self.venv_eval,
+            venv=self.venv,
             random_prob=random_prob,
             switch_prob=switch_prob,
             seed=seed,
@@ -258,7 +236,7 @@ class AgentTrainer(TrajectoryGenerator):
             # Instead, we collect the trajectories using the BufferingWrapper.
             rollout.generate_trajectories(
                 self.algorithm,
-                self.venv_eval,
+                self.buffering_wrapper,
                 sample_until=sample_until,
                 # By setting deterministic_policy to False, we ensure that the rollouts
                 # are collected from a deterministic policy only if self.algorithm is
@@ -280,7 +258,7 @@ class AgentTrainer(TrajectoryGenerator):
             )
             rollout.generate_trajectories(
                 policy=self.exploration_wrapper,
-                venv=self.venv_eval,
+                venv=self.buffering_wrapper,
                 sample_until=sample_until,
                 # buffering_wrapper collects rollouts from a non-deterministic policy
                 # so we do that here as well for consistency.
