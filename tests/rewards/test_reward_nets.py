@@ -8,6 +8,7 @@ import gym
 import numpy as np
 import pytest
 import torch as th
+from stable_baselines3.common.vec_env import DummyVecEnv
 
 from imitation.data import rollout
 from imitation.policies import base
@@ -17,17 +18,37 @@ from imitation.util import networks, util
 ENVS = ["FrozenLake-v1", "CartPole-v1", "Pendulum-v1"]
 HARDCODED_TYPES = ["zero"]
 
-REWARD_NETS = [reward_nets.BasicRewardNet, reward_nets.BasicShapedRewardNet]
-REWARD_NET_KWARGS = [{}, {"normalize_input_layer": networks.RunningNorm}]
+REWARD_NETS = [
+    reward_nets.BasicRewardNet,
+    reward_nets.BasicShapedRewardNet,
+]
+REWARD_NET_KWARGS = [
+    {},
+    {"normalize_input_layer": networks.RunningNorm},
+]
 
 
 @pytest.mark.parametrize("env_name", ENVS)
 @pytest.mark.parametrize("reward_net_cls", REWARD_NETS)
 @pytest.mark.parametrize("reward_net_kwargs", REWARD_NET_KWARGS)
-def test_init_no_crash(env_name, reward_net_cls, reward_net_kwargs):
+@pytest.mark.parametrize("normalize_output_layer", [None, networks.RunningNorm])
+def test_init_no_crash(
+    env_name,
+    reward_net_cls,
+    reward_net_kwargs,
+    normalize_output_layer,
+):
     env = gym.make(env_name)
-    for i in range(3):
-        reward_net_cls(env.observation_space, env.action_space, **reward_net_kwargs)
+    reward_net = reward_net_cls(
+        env.observation_space,
+        env.action_space,
+        **reward_net_kwargs,
+    )
+    if normalize_output_layer:
+        reward_net = reward_nets.NormalizedRewardNet(
+            reward_net,
+            normalize_output_layer,
+        )
 
 
 def _sample(space, n):
@@ -142,7 +163,10 @@ def test_potential_net_2d_obs():
     next_obs_b = next_obs[None]
     done_b = np.array([done], dtype="bool")
 
-    net = reward_nets.BasicShapedRewardNet(env.observation_space, env.action_space)
+    net = reward_nets.BasicShapedRewardNet(
+        env.observation_space,
+        env.action_space,
+    )
     rew_batch = net.predict(obs_b, action_b, next_obs_b, done_b)
     assert rew_batch.shape == (1,)
 
@@ -156,3 +180,56 @@ def test_device_for_parameterless_model(env_name):
     env = gym.make(env_name)
     net = ParameterlessNet(env.observation_space, env.action_space)
     assert net.device == th.device("cpu")
+
+
+@pytest.mark.parametrize("normalize_input_layer", [None, networks.RunningNorm])
+def test_training_regression(normalize_input_layer):
+    """Test reward_net normalization by training a regression model."""
+    venv = DummyVecEnv([lambda: gym.make("CartPole-v0")] * 2)
+    reward_net = reward_nets.BasicRewardNet(
+        venv.observation_space,
+        venv.action_space,
+        normalize_input_layer=normalize_input_layer,
+    )
+    norm_rew_net = reward_nets.NormalizedRewardNet(
+        reward_net,
+        normalize_output_layer=networks.RunningNorm,
+    )
+
+    # Construct a loss function and an Optimizer.
+    criterion = th.nn.MSELoss(reduction="sum")
+    optimizer = th.optim.SGD(norm_rew_net.parameters(), lr=1e-6)
+
+    # Getting transitions from a random policy
+    random = base.RandomPolicy(venv.observation_space, venv.action_space)
+    for _ in range(2):
+        transitions = rollout.generate_transitions(random, venv, n_timesteps=100)
+        trans_args = (
+            transitions.obs,
+            transitions.acts,
+            transitions.next_obs,
+            transitions.dones,
+        )
+        trans_args_th = norm_rew_net.preprocess(*trans_args)
+        rews_th = norm_rew_net(*trans_args_th)
+        rews = rews_th.detach().cpu().numpy().flatten()
+
+        # Compute and print loss
+        loss = criterion(
+            th.as_tensor(transitions.rews, device=norm_rew_net.device),
+            rews_th,
+        )
+
+        # Get rewards from norm_rew_net.predict() and norm_rew_net.predict_processed()
+        rews_predict = norm_rew_net.predict(*trans_args)
+        rews_processed = norm_rew_net.predict_processed(*trans_args)
+
+        # norm_rew_net() and norm_rew_net.predict() don't pass the reward through the
+        # normalization layer, so the values of `rews` and `rews_predict` are identical
+        assert (rews == rews_predict).all()
+        # norm_rew_net.predict_processed() does normalize the reward
+        assert not (rews_processed == rews_predict).all()
+
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()

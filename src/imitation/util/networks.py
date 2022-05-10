@@ -107,7 +107,12 @@ class RunningNorm(nn.Module):
     def forward(self, x: th.Tensor) -> th.Tensor:
         """Updates statistics if in training mode. Returns normalized `x`."""
         if self.training:
-            self.update_stats(x)
+            # Do not backpropagate through updating running mean and variance.
+            # These updates are in-place and not differentiable. The gradient
+            # is not needed as the running mean and variance are updated
+            # directly by this function, and not by gradient descent.
+            with th.no_grad():
+                self.update_stats(x)
 
         return (x - self.running_mean) / th.sqrt(self.running_var + self.eps)
 
@@ -157,6 +162,7 @@ def build_mlp(
     if flatten_input:
         layers[f"{prefix}flatten"] = nn.Flatten()
 
+    # Normalize input layer
     if normalize_input_layer:
         layers[f"{prefix}normalize_input"] = normalize_input_layer(in_size)
 
@@ -168,7 +174,7 @@ def build_mlp(
         if activation:
             layers[f"{prefix}act{i}"] = activation()
 
-    # Final layer
+    # Final dense layer
     layers[f"{prefix}dense_final"] = nn.Linear(prev_size, out_size)
 
     if squeeze_output:

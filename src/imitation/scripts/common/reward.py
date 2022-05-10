@@ -5,6 +5,7 @@ from typing import Any, Mapping, Type
 
 import sacred
 from stable_baselines3.common import vec_env
+from torch import nn
 
 from imitation.rewards import reward_nets
 from imitation.util import networks
@@ -18,6 +19,7 @@ def config():
     # Custom reward network
     net_cls = None
     net_kwargs = {}
+    normalize_output_layer = networks.RunningNorm
     locals()  # quieten flake8
 
 
@@ -29,6 +31,16 @@ def normalize_input_disable():
 @reward_ingredient.named_config
 def normalize_input_running():
     net_kwargs = {"normalize_input_layer": networks.RunningNorm}  # noqa: F841
+
+
+@reward_ingredient.named_config
+def normalize_output_disable():
+    normalize_output_layer = None  # noqa: F841
+
+
+@reward_ingredient.named_config
+def normalize_output_running():
+    normalize_output_layer = networks.RunningNorm  # noqa: F841
 
 
 @reward_ingredient.config_hook
@@ -51,6 +63,7 @@ def make_reward_net(
     venv: vec_env.VecEnv,
     net_cls: Type[reward_nets.RewardNet],
     net_kwargs: Mapping[str, Any],
+    normalize_output_layer: Type[nn.Module],
 ) -> reward_nets.RewardNet:
     """Builds a reward network.
 
@@ -58,6 +71,8 @@ def make_reward_net(
         venv: Vectorized environment reward network will predict reward for.
         net_cls: Class of reward network to construct.
         net_kwargs: Keyword arguments passed to reward network constructor.
+        normalize_output_layer: Wrapping the reward_net with NormalizedRewardNet
+            to normalize the reward output.
 
     Returns:
         None if `reward_net_cls` is None; otherwise, an instance of `reward_net_cls`.
@@ -67,5 +82,10 @@ def make_reward_net(
         venv.action_space,
         **net_kwargs,
     )
+    if normalize_output_layer is not None:
+        reward_net = reward_nets.NormalizedRewardNet(
+            reward_net,
+            normalize_output_layer,
+        )
     logging.info(f"Reward network:\n {reward_net}")
     return reward_net

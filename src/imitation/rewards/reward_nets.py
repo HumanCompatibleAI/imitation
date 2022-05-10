@@ -1,7 +1,7 @@
 """Constructs deep network reward models."""
 
 import abc
-from typing import Callable, Iterable, Sequence, Tuple
+from typing import Callable, Iterable, Sequence, Tuple, Type
 
 import gym
 import numpy as np
@@ -105,17 +105,16 @@ class RewardNet(nn.Module, abc.ABC):
 
         return state_th, action_th, next_state_th, done_th
 
-    def predict(
+    def predict_th(
         self,
         state: np.ndarray,
         action: np.ndarray,
         next_state: np.ndarray,
         done: np.ndarray,
-    ) -> np.ndarray:
-        """Compute rewards for a batch of transitions without gradients.
+    ) -> th.Tensor:
+        """Compute th.Tensor rewards for a batch of transitions without gradients.
 
-        Preprocesses the inputs, converting between Torch
-        tensors and NumPy arrays as necessary.
+        Preprocesses the inputs, output th.Tensor reward arrays.
 
         Args:
             state: Current states of shape `(batch_size,) + state_shape`.
@@ -124,7 +123,7 @@ class RewardNet(nn.Module, abc.ABC):
             done: End-of-episode (terminal state) indicator of shape `(batch_size,)`.
 
         Returns:
-            Computed rewards of shape `(batch_size,`).
+            Computed th.Tensor rewards of shape `(batch_size,`).
         """
         with networks.evaluating(self):
             # switch to eval mode (affecting normalization, dropout, etc)
@@ -138,9 +137,55 @@ class RewardNet(nn.Module, abc.ABC):
             with th.no_grad():
                 rew_th = self(state_th, action_th, next_state_th, done_th)
 
-            rew = rew_th.detach().cpu().numpy().flatten()
-            assert rew.shape == state.shape[:1]
-            return rew
+            assert rew_th.shape == state.shape[:1]
+            return rew_th
+
+    def predict(
+        self,
+        state: np.ndarray,
+        action: np.ndarray,
+        next_state: np.ndarray,
+        done: np.ndarray,
+    ) -> np.ndarray:
+        """Compute rewards for a batch of transitions without gradients.
+
+        Converting th.Tensor rewards from `predict_th` to NumPy arrays.
+
+        Args:
+            state: Current states of shape `(batch_size,) + state_shape`.
+            action: Actions of shape `(batch_size,) + action_shape`.
+            next_state: Successor states of shape `(batch_size,) + state_shape`.
+            done: End-of-episode (terminal state) indicator of shape `(batch_size,)`.
+
+        Returns:
+            Computed rewards of shape `(batch_size,`).
+        """
+        rew_th = self.predict_th(state, action, next_state, done)
+        return rew_th.detach().cpu().numpy().flatten()
+
+    def predict_processed(
+        self,
+        state: np.ndarray,
+        action: np.ndarray,
+        next_state: np.ndarray,
+        done: np.ndarray,
+    ) -> np.ndarray:
+        """Compute the processed rewards for a batch of transitions without gradients.
+
+        Defaults to calling `predict`. Subclasses can override this to normalize or
+        otherwise modify the rewards in ways that may help RL training or other
+        applications of the reward function.
+
+        Args:
+            state: Current states of shape `(batch_size,) + state_shape`.
+            action: Actions of shape `(batch_size,) + action_shape`.
+            next_state: Successor states of shape `(batch_size,) + state_shape`.
+            done: End-of-episode (terminal state) indicator of shape `(batch_size,)`.
+
+        Returns:
+            Computed processed rewards of shape `(batch_size,`).
+        """
+        return self.predict(state, action, next_state, done)
 
     @property
     def device(self) -> th.device:
@@ -163,78 +208,35 @@ class RewardNet(nn.Module, abc.ABC):
             return th.get_default_dtype()
 
 
-class ShapedRewardNet(RewardNet):
-    """A RewardNet consisting of a base net and a potential shaping."""
+class RewardNetWrapper(RewardNet):
+    """An abstract RewardNet wrapping a base network.
+
+    A concrete implementation of the `forward` method is needed.
+    Note: by default, `predict`, `predict_th`, `preprocess`, `predict_processed`,
+    `device` and all the PyTorch `nn.Module` methods will be inherited from `RewardNet`
+    and not passed through to the base network. If any of these methods is overridden
+    in the base `RewardNet`, this will not affect `RewardNetWrapper`.
+    """
 
     def __init__(
         self,
-        observation_space: gym.Space,
-        action_space: gym.Space,
         base: RewardNet,
-        potential: Callable[[th.Tensor], th.Tensor],
-        discount_factor: float,
-        normalize_images: bool = True,
     ):
-        """Setup a ShapedRewardNet instance.
+        """Initialize a RewardNet wrapper.
 
         Args:
-            observation_space: observation space of the environment
-            action_space: action space of the environment
-            base: the base reward net to which the potential shaping
-                will be added.
-            potential: A callable which takes
-                a batch of states (as a PyTorch tensor) and returns a batch of
-                potentials for these states. If this is a PyTorch Module, it becomes
-                a submodule of the ShapedRewardNet instance.
-            discount_factor: discount factor to use for the potential shaping
-            normalize_images: passed through to `RewardNet.__init__`,
-                see its documentation
+            base: the base RewardNet to wrap.
         """
         super().__init__(
-            observation_space=observation_space,
-            action_space=action_space,
-            normalize_images=normalize_images,
+            base.observation_space,
+            base.action_space,
+            base.normalize_images,
         )
-        self.base = base
-        self.potential = potential
-        self.discount_factor = discount_factor
+        self._base = base
 
-    def forward(
-        self,
-        state: th.Tensor,
-        action: th.Tensor,
-        next_state: th.Tensor,
-        done: th.Tensor,
-    ):
-        base_reward_net_output = self.base(state, action, next_state, done)
-        new_shaping_output = self.potential(next_state).flatten()
-        old_shaping_output = self.potential(state).flatten()
-        # NOTE(ejnnr): We fix the potential of terminal states to zero, which is
-        # necessary for valid potential shaping in a variable-length horizon setting.
-        #
-        # In more detail: variable-length episodes are usually modeled
-        # as infinite-length episodes where we transition to a terminal state
-        # in which we then remain forever. The transition to this final
-        # state contributes gamma * Phi(s_T) - Phi(s_{T - 1}) to the returns,
-        # where Phi is the potential and s_T the final state. But on every step
-        # afterwards, the potential shaping leads to a reward of (gamma - 1) * Phi(s_T).
-        # The discounted series of these rewards, which is added to the return,
-        # is gamma / (1 - gamma) times this reward, i.e. just -gamma * Phi(s_T).
-        # This cancels the contribution of the final state to the last "real"
-        # transition, so instead of computing the infinite series, we can
-        # equivalently fix the final potential to zero without loss of generality.
-        # Not fixing the final potential to zero and also not adding this infinite
-        # series of remaining potential shapings can lead to reward shaping
-        # that does not preserve the optimal policy if the episodes have variable
-        # length!
-        new_shaping = (1 - done.float()) * new_shaping_output
-        final_rew = (
-            base_reward_net_output
-            + self.discount_factor * new_shaping
-            - old_shaping_output
-        )
-        assert final_rew.shape == state.shape[:1]
-        return final_rew
+    @property
+    def base(self) -> RewardNet:
+        return self._base
 
 
 class BasicRewardNet(RewardNet):
@@ -318,6 +320,135 @@ class BasicRewardNet(RewardNet):
         return outputs
 
 
+class NormalizedRewardNet(RewardNetWrapper):
+    """A reward net that normalizes the output of its base network."""
+
+    def __init__(
+        self,
+        base: RewardNet,
+        normalize_output_layer: Type[nn.Module],
+    ):
+        """Initialize the NormalizedRewardNet.
+
+        Args:
+            base: a base RewardNet
+            normalize_output_layer: The class to use to normalize rewards. This
+                can be any nn.Module that preserves the shape; e.g. `nn.Identity`,
+                `nn.LayerNorm`, or `networks.RunningNorm`.
+        """
+        # Note(yawen): by default, the reward output is squeezed to produce
+        # tensors with (N,) shape for predict_processed. This works for
+        # `networks.RunningNorm`, but not for `nn.BatchNorm1d` that requires
+        # shape of (N,C).
+        super().__init__(base=base)
+        # Assuming reward is scalar, norm layer should be initialized with shape (1,).
+        self.normalize_output_layer = normalize_output_layer(1)
+
+    def predict_processed(
+        self,
+        state: np.ndarray,
+        action: np.ndarray,
+        next_state: np.ndarray,
+        done: np.ndarray,
+        update_stats: bool = True,
+    ) -> np.ndarray:
+        """Compute normalized rewards for a batch of transitions without gradients.
+
+        Args:
+            state: Current states of shape `(batch_size,) + state_shape`.
+            action: Actions of shape `(batch_size,) + action_shape`.
+            next_state: Successor states of shape `(batch_size,) + state_shape`.
+            done: End-of-episode (terminal state) indicator of shape `(batch_size,)`.
+            update_stats: Whether to update the running stats of the normalization
+                layer.
+
+        Returns:
+            Computed normalized rewards of shape `(batch_size,`).
+        """
+        with networks.evaluating(self):
+            # switch to eval mode (affecting normalization, dropout, etc)
+            rew_th = self.base.predict_th(state, action, next_state, done)
+            rew = self.normalize_output_layer(rew_th).detach().cpu().numpy().flatten()
+        if update_stats:
+            with th.no_grad():
+                self.normalize_output_layer.update_stats(rew_th)
+        assert rew.shape == state.shape[:1]
+        return rew
+
+    def forward(
+        self,
+        state: th.Tensor,
+        action: th.Tensor,
+        next_state: th.Tensor,
+        done: th.Tensor,
+    ):
+        return self.base(state, action, next_state, done)
+
+
+class ShapedRewardNet(RewardNetWrapper):
+    """A RewardNet consisting of a base network and a potential shaping."""
+
+    def __init__(
+        self,
+        base: RewardNet,
+        potential: Callable[[th.Tensor], th.Tensor],
+        discount_factor: float,
+    ):
+        """Setup a ShapedRewardNet instance.
+
+        Args:
+            base: the base reward net to which the potential shaping
+                will be added.
+            potential: A callable which takes
+                a batch of states (as a PyTorch tensor) and returns a batch of
+                potentials for these states. If this is a PyTorch Module, it becomes
+                a submodule of the ShapedRewardNet instance.
+            discount_factor: discount factor to use for the potential shaping.
+        """
+        super().__init__(
+            base=base,
+        )
+        self.potential = potential
+        self.discount_factor = discount_factor
+
+    def forward(
+        self,
+        state: th.Tensor,
+        action: th.Tensor,
+        next_state: th.Tensor,
+        done: th.Tensor,
+    ):
+        base_reward_net_output = self.base(state, action, next_state, done)
+        new_shaping_output = self.potential(next_state).flatten()
+        old_shaping_output = self.potential(state).flatten()
+        # NOTE(ejnnr): We fix the potential of terminal states to zero, which is
+        # necessary for valid potential shaping in a variable-length horizon setting.
+        #
+        # In more detail: variable-length episodes are usually modeled
+        # as infinite-length episodes where we transition to a terminal state
+        # in which we then remain forever. The transition to this final
+        # state contributes gamma * Phi(s_T) - Phi(s_{T - 1}) to the returns,
+        # where Phi is the potential and s_T the final state. But on every step
+        # afterwards, the potential shaping leads to a reward of (gamma - 1) * Phi(s_T).
+        # The discounted series of these rewards, which is added to the return,
+        # is gamma / (1 - gamma) times this reward, i.e. just -gamma * Phi(s_T).
+        # This cancels the contribution of the final state to the last "real"
+        # transition, so instead of computing the infinite series, we can
+        # equivalently fix the final potential to zero without loss of generality.
+        # Not fixing the final potential to zero and also not adding this infinite
+        # series of remaining potential shapings can lead to reward shaping
+        # that does not preserve the optimal policy if the episodes have variable
+        # length!
+        new_shaping = (1 - done.float()) * new_shaping_output
+        final_rew = (
+            base_reward_net_output
+            + self.discount_factor * new_shaping
+            - old_shaping_output
+        )
+        assert final_rew.shape == state.shape[:1]
+        return final_rew
+
+
 class BasicShapedRewardNet(ShapedRewardNet):
     """Shaped reward net based on MLPs.
 
@@ -385,8 +516,6 @@ class BasicShapedRewardNet(ShapedRewardNet):
         )
 
         super().__init__(
-            observation_space,
-            action_space,
             base_reward_net,
             potential_net,
             discount_factor=discount_factor,

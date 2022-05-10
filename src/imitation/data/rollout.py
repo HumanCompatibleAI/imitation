@@ -378,8 +378,8 @@ def generate_trajectories(
         trajectories.extend(new_trajs)
 
         if sample_until(trajectories):
-            # Termination condition has been reached. Mark as inactive any environments
-            # where a trajectory was completed this timestep.
+            # Termination condition has been reached. Mark as inactive any
+            # environments where a trajectory was completed this timestep.
             active &= ~dones
 
     # Note that we just drop partial trajectories. This is not ideal for some

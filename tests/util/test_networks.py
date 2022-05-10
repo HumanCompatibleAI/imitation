@@ -1,6 +1,7 @@
 """Tests `imitation.util.networks`."""
 
 import functools
+import math
 
 import pytest
 import torch as th
@@ -91,3 +92,41 @@ def test_running_norm_matches_dist(batch_size: int) -> None:
     th.testing.assert_close(running_norm.running_mean, empirical_mean)
     th.testing.assert_close(running_norm.running_var, empirical_var)
     assert running_norm.count == num_samples
+
+
+@pytest.mark.parametrize(
+    "init_kwargs",
+    [
+        {},
+        {"normalize_input_layer": networks.RunningNorm},
+    ],
+)
+def test_build_mlp_norm_training(init_kwargs) -> None:
+    """Tests MLP building function `networks.build_mlp()`.
+
+    Specifically, we initialize an MLP and train it on a toy task. We also test the
+    init options of input layer normalization.
+
+    Args:
+        init_kwargs: dict of kwargs to pass to `networks.build_mlp()`.
+    """
+    # Create Tensors to hold input and outputs.
+    x = th.linspace(-math.pi, math.pi, 200).reshape(-1, 1)
+    y = th.sin(x)
+    # Construct our model by instantiating the class defined above
+    model = networks.build_mlp(in_size=1, hid_sizes=[16, 16], out_size=1, **init_kwargs)
+
+    # Construct a loss function and an Optimizer.
+    criterion = th.nn.MSELoss(reduction="sum")
+    optimizer = th.optim.SGD(model.parameters(), lr=1e-6)
+    for t in range(200):
+        # Forward pass: Compute predicted y by passing x to the model
+        y_pred = model(x)
+
+        # Compute and print loss
+        loss = criterion(y_pred, y)
+
+        # Zero gradients, perform a backward pass, and update the weights.
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
