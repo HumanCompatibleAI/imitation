@@ -202,7 +202,7 @@ def test_training_regression(normalize_input_layer):
 
     # Getting transitions from a random policy
     random = base.RandomPolicy(venv.observation_space, venv.action_space)
-    for i in range(2):
+    for _ in range(2):
         transitions = rollout.generate_transitions(random, venv, n_timesteps=100)
         trans_args = (
             transitions.obs,
