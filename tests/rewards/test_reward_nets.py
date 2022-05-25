@@ -16,7 +16,13 @@ from imitation.rewards import reward_nets, serialize
 from imitation.util import networks, util
 
 ENVS = ["FrozenLake-v1", "CartPole-v1", "Pendulum-v1"]
-HARDCODED_TYPES = ["zero", "RewardNet_normalized", "RewardNet_unnormalized"]
+HARDCODED_TYPES = [
+    "zero",
+    "RewardNet_normalized",
+    "RewardNet_unnormalized",
+    "RewardNet_shaped",
+    "RewardNet_unshaped",
+]
 
 REWARD_NETS = [
     reward_nets.BasicRewardNet,
@@ -57,6 +63,8 @@ def test_init_no_crash(
 def _sample(space, n):
     return np.array([space.sample() for _ in range(n)])
 
+def _potential(x):
+    return th.zeros(1)
 
 def make_env_and_save_reward_net(env_name, reward_type, tmpdir):
     venv = util.make_vec_env(env_name, n_envs=1, parallel=False)
@@ -64,7 +72,7 @@ def make_env_and_save_reward_net(env_name, reward_type, tmpdir):
     if reward_type == "RewardNet_normalized":
         net = reward_nets.NormalizedRewardNet(net, networks.RunningNorm)
     elif reward_type == "RewardNet_shaped":
-        net = reward_nets.ShapedRewardNet(net, lambda x: x, discount_factor=0.99)
+        net = reward_nets.ShapedRewardNet(net, _potential, discount_factor=0.99)
     save_path = os.path.join(tmpdir, "norm_reward.pt")
     th.save(net, save_path)
     return venv, save_path
@@ -104,7 +112,7 @@ def test_strip_wrappers_basic():
 def test_strip_wrappers_complex():
     venv = util.make_vec_env("FrozenLake-v1", n_envs=1, parallel=False)
     net = reward_nets.BasicRewardNet(venv.observation_space, venv.action_space)
-    net = reward_nets.ShapedRewardNet(net, lambda x: x, discount_factor=0.99)
+    net = reward_nets.ShapedRewardNet(net, _potential, discount_factor=0.99)
     net = reward_nets.NormalizedRewardNet(net, networks.RunningNorm)
     # Removing in incorrect order should do nothing
     net = serialize._strip_wrappers(
