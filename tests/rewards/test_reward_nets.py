@@ -28,6 +28,9 @@ REWARD_NET_KWARGS = [
 ]
 
 
+# TODO(lev) use fixtures to speed this all up
+
+
 @pytest.mark.parametrize("env_name", ENVS)
 @pytest.mark.parametrize("reward_net_cls", REWARD_NETS)
 @pytest.mark.parametrize("reward_net_kwargs", REWARD_NET_KWARGS)
@@ -55,32 +58,79 @@ def _sample(space, n):
     return np.array([space.sample() for _ in range(n)])
 
 
+def make_env_and_save_reward_net(env_name, reward_type, tmpdir):
+    venv = util.make_vec_env(env_name, n_envs=1, parallel=False)
+    net = reward_nets.BasicRewardNet(venv.observation_space, venv.action_space)
+    if reward_type == "RewardNet_normalized":
+        net = reward_nets.NormalizedRewardNet(net, networks.RunningNorm)
+    elif reward_type == "RewardNet_shaped":
+        net = reward_nets.ShapedRewardNet(net, lambda x: x, discount_factor=0.99)
+    save_path = os.path.join(tmpdir, "norm_reward.pt")
+    th.save(net, save_path)
+    return venv, save_path
+
+
 @pytest.mark.parametrize("env_name", ENVS)
 @pytest.mark.parametrize("reward_type", HARDCODED_TYPES)
-def test_reward_valid(env_name, reward_type):
+def test_reward_valid(env_name, reward_type, tmpdir):
     """Test output of reward function is appropriate shape and type."""
     venv = util.make_vec_env(env_name, n_envs=1, parallel=False)
+    venv, tmppath = make_env_and_save_reward_net(env_name, reward_type, tmpdir)
+
     TRAJECTORY_LEN = 10
     obs = _sample(venv.observation_space, TRAJECTORY_LEN)
     actions = _sample(venv.action_space, TRAJECTORY_LEN)
     next_obs = _sample(venv.observation_space, TRAJECTORY_LEN)
     steps = np.arange(0, TRAJECTORY_LEN)
 
-    reward_fn = serialize.load_reward(reward_type, "foobar", venv)
+    reward_fn = serialize.load_reward(reward_type, tmppath, venv)
     pred_reward = reward_fn(obs, actions, next_obs, steps)
 
     assert pred_reward.shape == (TRAJECTORY_LEN,)
     assert isinstance(pred_reward[0], numbers.Number)
 
 
-@pytest.mark.parametrize("env_name", ENVS)
-def test_serializing_normalization(env_name, tmpdir):
-    venv = util.make_vec_env(env_name, n_envs=1, parallel=False)
+def test_strip_wrappers_basic():
+    venv = util.make_vec_env("FrozenLake-v1", n_envs=1, parallel=False)
     net = reward_nets.BasicRewardNet(venv.observation_space, venv.action_space)
-    net = reward_nets.NormalizedRewardNet(net, networks.RunningNorm(1))
-    save_path = os.path.join(tmpdir, "norm_reward.pt")
-    th.save(save_path)
-    net = serialize.load_reward("RewardNet_normalized", save_path, venv)
+    net = reward_nets.NormalizedRewardNet(net, networks.RunningNorm)
+    net = serialize._strip_wrappers(net, wrappers=[reward_nets.NormalizedRewardNet])
+    assert isinstance(net, reward_nets.BasicRewardNet)
+    # This removing a wrapper from an unwrapped reward net should do nothing
+    net = serialize._strip_wrappers(net, wrappers=[reward_nets.ShapedRewardNet])
+    assert isinstance(net, reward_nets.BasicRewardNet)
+
+
+def test_strip_wrappers_complex():
+    venv = util.make_vec_env("FrozenLake-v1", n_envs=1, parallel=False)
+    net = reward_nets.BasicRewardNet(venv.observation_space, venv.action_space)
+    net = reward_nets.ShapedRewardNet(net, lambda x: x, discount_factor=0.99)
+    net = reward_nets.NormalizedRewardNet(net, networks.RunningNorm)
+    # Removing in incorrect order should do nothing
+    net = serialize._strip_wrappers(
+        net,
+        wrappers=[reward_nets.ShapedRewardNet, reward_nets.NormalizedRewardNet],
+    )
+
+    assert isinstance(net, reward_nets.NormalizedRewardNet)
+    assert isinstance(net.base, reward_nets.ShapedRewardNet)
+    # Correct order should work
+    net = serialize._strip_wrappers(
+        net,
+        wrappers=[reward_nets.NormalizedRewardNet, reward_nets.ShapedRewardNet],
+    )
+    assert isinstance(net, reward_nets.BasicRewardNet)
+
+
+@pytest.mark.parametrize("env_name", ENVS)
+def test_cant_load_unnorm_as_norm(env_name, tmpdir):
+    venv, tmppath = make_env_and_save_reward_net(
+        env_name,
+        "RewardNet_unnomralized",
+        tmpdir,
+    )
+    with pytest.raises(TypeError):
+        serialize.load_reward("RewardNet_normalized", tmppath, venv)
 
 
 @pytest.mark.parametrize("env_name", ENVS)

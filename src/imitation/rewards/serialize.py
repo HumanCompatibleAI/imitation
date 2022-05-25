@@ -64,6 +64,8 @@ def _strip_wrappers(
 
         if isinstance(net, wrapper_type):
             net = net.base
+        else:
+            break
 
     return net
 
@@ -74,6 +76,12 @@ def _make_functional(
     kwargs=dict(),
 ) -> common.RewardFn:
     return lambda *args: getattr(net, attr)(*args, **kwargs)
+
+
+def _validate_type(net: RewardNet, type_: Type[RewardNet]):
+    if not isinstance(net, type_):
+        raise TypeError("cannot load unnomralized reward as normalized")
+    return net
 
 
 def load_zero(path: str, venv: VecEnv) -> common.RewardFn:
@@ -93,7 +101,6 @@ def load_zero(path: str, venv: VecEnv) -> common.RewardFn:
 
 # TODO(adam): I think we can get rid of this and have just one RewardNet.
 
-# TODO figure out if you need to reset the input normalizationan)a)_and_update
 reward_registry.register(
     key="RewardNet_shaped",
     value=lambda path, _: _validate_reward(_make_functional(th.load(str(path)))),
@@ -109,7 +116,7 @@ reward_registry.register(
     key="RewardNet_normalized",
     value=lambda path, _: _validate_reward(
         _make_functional(
-            th.load(str(path)),
+            _validate_type(th.load(str(path)), NormalizedRewardNet),
             attr="predict_processed",
             kwargs={"update_stats": False},
         ),
