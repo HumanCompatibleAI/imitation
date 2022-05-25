@@ -63,8 +63,10 @@ def test_init_no_crash(
 def _sample(space, n):
     return np.array([space.sample() for _ in range(n)])
 
+
 def _potential(x):
     return th.zeros(1)
+
 
 def make_env_and_save_reward_net(env_name, reward_type, tmpdir):
     venv = util.make_vec_env(env_name, n_envs=1, parallel=False)
