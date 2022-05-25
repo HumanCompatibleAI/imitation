@@ -16,7 +16,7 @@ from imitation.rewards import reward_nets, serialize
 from imitation.util import networks, util
 
 ENVS = ["FrozenLake-v1", "CartPole-v1", "Pendulum-v1"]
-HARDCODED_TYPES = ["zero"]
+HARDCODED_TYPES = ["zero", "RewardNet_normalized", "RewardNet_unnormalized"]
 
 REWARD_NETS = [
     reward_nets.BasicRewardNet,
@@ -71,6 +71,16 @@ def test_reward_valid(env_name, reward_type):
 
     assert pred_reward.shape == (TRAJECTORY_LEN,)
     assert isinstance(pred_reward[0], numbers.Number)
+
+
+@pytest.mark.parametrize("env_name", ENVS)
+def test_serializing_normalization(env_name, tmpdir):
+    venv = util.make_vec_env(env_name, n_envs=1, parallel=False)
+    net = reward_nets.BasicRewardNet(venv.observation_space, venv.action_space)
+    net = reward_nets.NormalizedRewardNet(net, networks.RunningNorm(1))
+    save_path = os.path.join(tmpdir, "norm_reward.pt")
+    th.save(save_path)
+    net = serialize.load_reward("RewardNet_normalized", save_path, venv)
 
 
 @pytest.mark.parametrize("env_name", ENVS)
