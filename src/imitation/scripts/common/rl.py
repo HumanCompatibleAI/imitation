@@ -42,6 +42,20 @@ def fast():
     locals()  # quieten flake8
 
 
+@rl_ingredient.named_config
+def sac():
+    rl_cls = stable_baselines3.SAC
+    # Default HPs are as follows:
+    batch_size = 256  # batch size for RL algorithm
+    rl_kwargs = dict(
+        learning_rate=3e-4,
+        learning_starts=100,
+        # For recommended SAC hyperparams in each environment, see:
+        # https://github.com/DLR-RM/rl-baselines3-zoo/blob/master/hyperparams/sac.yml
+        
+    )
+
+
 @rl_ingredient.capture
 def make_rl_algo(
     venv: vec_env.VecEnv,
