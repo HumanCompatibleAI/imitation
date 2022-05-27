@@ -107,8 +107,7 @@ def train_rl(
         venv = VecNormalize(venv, norm_obs=False, **normalize_kwargs)
         if reward_type == "RewardNet_normalized":
             warnings.warn(
-                "Applying normalization to \
-            already normalized reward function",
+                "Applying normalization to already normalized reward function",
             )
 
     if policy_save_interval > 0:

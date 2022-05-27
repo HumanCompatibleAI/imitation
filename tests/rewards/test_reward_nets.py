@@ -68,7 +68,7 @@ def _potential(x):
     return th.zeros(1)
 
 
-def make_env_and_save_reward_net(env_name, reward_type, tmpdir):
+def _make_env_and_save_reward_net(env_name, reward_type, tmpdir):
     venv = util.make_vec_env(env_name, n_envs=1, parallel=False)
     net = reward_nets.BasicRewardNet(venv.observation_space, venv.action_space)
     if reward_type == "RewardNet_normalized":
@@ -85,7 +85,7 @@ def make_env_and_save_reward_net(env_name, reward_type, tmpdir):
 def test_reward_valid(env_name, reward_type, tmpdir):
     """Test output of reward function is appropriate shape and type."""
     venv = util.make_vec_env(env_name, n_envs=1, parallel=False)
-    venv, tmppath = make_env_and_save_reward_net(env_name, reward_type, tmpdir)
+    venv, tmppath = _make_env_and_save_reward_net(env_name, reward_type, tmpdir)
 
     TRAJECTORY_LEN = 10
     obs = _sample(venv.observation_space, TRAJECTORY_LEN)
@@ -134,7 +134,7 @@ def test_strip_wrappers_complex():
 
 @pytest.mark.parametrize("env_name", ENVS)
 def test_cant_load_unnorm_as_norm(env_name, tmpdir):
-    venv, tmppath = make_env_and_save_reward_net(
+    venv, tmppath = _make_env_and_save_reward_net(
         env_name,
         "RewardNet_unnomralized",
         tmpdir,

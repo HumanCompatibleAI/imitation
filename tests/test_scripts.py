@@ -13,6 +13,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import warnings
 from collections import Counter
 from typing import List, Optional
 from unittest import mock
@@ -22,7 +23,9 @@ import pytest
 import ray.tune as tune
 import sacred
 import sacred.utils
+import torch as th
 
+from imitation.rewards import reward_nets
 from imitation.scripts import (
     analyze,
     eval_policy,
@@ -32,7 +35,7 @@ from imitation.scripts import (
     train_preference_comparisons,
     train_rl,
 )
-from imitation.util import networks
+from imitation.util import networks, util
 
 ALL_SCRIPTS_MODS = [
     analyze,
@@ -364,6 +367,31 @@ def test_transfer_learning(tmpdir: str) -> None:
     )
     assert run.status == "COMPLETED"
     _check_rollout_stats(run.result)
+
+
+def test_rl_train_warning(tmpdir: str):
+    venv = util.make_vec_env("CartPole-v1", n_envs=1, parallel=False)
+    net = reward_nets.BasicRewardNet(venv.observation_space, venv.action_space)
+    net = reward_nets.NormalizedRewardNet(net, networks.RunningNorm)
+    tmppath = os.path.join(tmpdir, "reward.pt")
+    th.save(net, tmppath)
+
+    log_dir_data = os.path.join(tmpdir, "train_rl")
+    with mock.patch("warnings.warn"):
+        run = train_rl.train_rl_ex.run(
+            named_configs=["cartpole"] + ALGO_FAST_CONFIGS["rl"],
+            config_updates=dict(
+                common=dict(log_dir=log_dir_data),
+                reward_type="RewardNet_normalized",
+                normalize_reward=True,
+                reward_path=tmppath,
+            ),
+        )
+
+        warnings.warn.assert_called_with(
+            "Applying normalization to already normalized reward function",
+        )  # type: ignore
+        assert run.status == "COMPLETED"
 
 
 PARALLEL_CONFIG_UPDATES = [
