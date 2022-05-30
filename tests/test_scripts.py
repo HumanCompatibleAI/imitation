@@ -369,7 +369,7 @@ def test_transfer_learning(tmpdir: str) -> None:
     _check_rollout_stats(run.result)
 
 
-def test_rl_train_warning(tmpdir: str):
+def test_rl_train_double_normalization(tmpdir: str):
     venv = util.make_vec_env("CartPole-v1", n_envs=1, parallel=False)
     net = reward_nets.BasicRewardNet(venv.observation_space, venv.action_space)
     net = reward_nets.NormalizedRewardNet(net, networks.RunningNorm)
@@ -377,7 +377,7 @@ def test_rl_train_warning(tmpdir: str):
     th.save(net, tmppath)
 
     log_dir_data = os.path.join(tmpdir, "train_rl")
-    with mock.patch("warnings.warn"):
+    with pytest.raises(ValueError):
         run = train_rl.train_rl_ex.run(
             named_configs=["cartpole"] + ALGO_FAST_CONFIGS["rl"],
             config_updates=dict(

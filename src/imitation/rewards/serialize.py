@@ -45,7 +45,7 @@ def _strip_wrappers(
 ) -> RewardNet:
     """Attempts to remove provided wrappers.
 
-    wrappers until either it reaches a non-warper
+    Strips wrappers until either it reaches a non-warper
     reward net or it has removed all the listed wrappers.
 
     Args:
