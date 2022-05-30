@@ -84,8 +84,8 @@ def train_rl(
         The return value of `rollout_stats()` using the final policy.
 
     Raises:
-        ValueError: if you set normalize_reward to true and try to load a reward function
-            that is already normalized i.e. type "RewardNet_normalized".
+        ValueError: if you set normalize_reward to true and try to load a reward
+            function that is already normalized i.e. type "RewardNet_normalized".
     """
     custom_logger, log_dir = common.setup_logging()
     rollout_dir = osp.join(log_dir, "rollouts")

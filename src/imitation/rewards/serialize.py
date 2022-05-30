@@ -60,8 +60,6 @@ def _strip_wrappers(
             # Reached base reward net
             break
 
-        assert hasattr(net, "base")
-
         if isinstance(net, wrapper_type):
             net = net.base
         else:
@@ -103,8 +101,11 @@ def load_zero(path: str, venv: VecEnv) -> common.RewardFn:
 
 reward_registry.register(
     key="RewardNet_shaped",
-    value=lambda path, _: _validate_reward(_make_functional(th.load(str(path)))),
+    value=lambda path, _: _validate_reward(
+        _make_functional(_validate_type(th.load(str(path)), ShapedRewardNet)),
+    ),
 )
+
 reward_registry.register(
     key="RewardNet_unshaped",
     value=lambda path, _: _validate_reward(
