@@ -3,6 +3,11 @@
 import logging
 from typing import Any, Mapping, Type
 
+# FIXME(yawen): bad practice
+from sacred import SETTINGS
+SETTINGS.CONFIG.READ_ONLY_CONFIG = False
+
+from copy import deepcopy
 import sacred
 import stable_baselines3
 from stable_baselines3.common import (
@@ -20,17 +25,22 @@ logger = logging.getLogger(__name__)
 
 @rl_ingredient.config
 def config():
-    rl_cls = stable_baselines3.PPO
-    batch_size = 2048  # batch size for RL algorithm
-    rl_kwargs = dict(
-        # For recommended PPO hyperparams in each environment, see:
-        # https://github.com/DLR-RM/rl-baselines3-zoo/blob/master/hyperparams/ppo.yml
-        learning_rate=3e-4,
-        batch_size=64,
-        n_epochs=10,
-        ent_coef=0.0,
-    )
+    rl_cls = None
+    batch_size = None
+    rl_kwargs = dict()
     locals()  # quieten flake8
+
+
+@rl_ingredient.config_hook
+def config_hook(config, command_name, logger):
+    """Sets defaults equivalent to stable_baselines3.PPO default hyperparameters."""
+    del command_name, logger
+    res = {}
+    if config["rl"]["rl_cls"] is None:
+        default_rl = stable_baselines3.PPO
+        res["rl_cls"] = default_rl
+        res["batch_size"] = 2048
+    return res
 
 
 @rl_ingredient.named_config
@@ -43,17 +53,19 @@ def fast():
 
 
 @rl_ingredient.named_config
+def ppo():
+    # For recommended PPO hyperparams in each environment, see:
+    # https://github.com/DLR-RM/rl-baselines3-zoo/blob/master/hyperparams/ppo.yml
+    rl_cls = stable_baselines3.PPO
+
+@rl_ingredient.named_config
 def sac():
+    # For recommended SAC hyperparams in each environment, see:
+    # https://github.com/DLR-RM/rl-baselines3-zoo/blob/master/hyperparams/sac.yml
     rl_cls = stable_baselines3.SAC
     # Default HPs are as follows:
     batch_size = 256  # batch size for RL algorithm
-    rl_kwargs = dict(
-        learning_rate=3e-4,
-        learning_starts=100,
-        # For recommended SAC hyperparams in each environment, see:
-        # https://github.com/DLR-RM/rl-baselines3-zoo/blob/master/hyperparams/sac.yml
-        
-    )
+    rl_kwargs = dict()
 
 
 @rl_ingredient.capture
@@ -104,7 +116,7 @@ def make_rl_algo(
         raise TypeError(f"Unsupported RL algorithm '{rl_cls}'")
     rl_algo = rl_cls(
         policy=train["policy_cls"],
-        policy_kwargs=train["policy_kwargs"],
+        policy_kwargs=deepcopy(train["policy_kwargs"]),
         env=venv,
         seed=_seed,
         **rl_kwargs,
