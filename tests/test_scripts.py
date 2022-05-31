@@ -13,7 +13,6 @@ import shutil
 import subprocess
 import sys
 import tempfile
-import warnings
 from collections import Counter
 from typing import List, Optional
 from unittest import mock
@@ -369,7 +368,7 @@ def test_transfer_learning(tmpdir: str) -> None:
     _check_rollout_stats(run.result)
 
 
-def test_rl_train_double_normalization(tmpdir: str):
+def test_train_rl_double_normalization(tmpdir: str):
     venv = util.make_vec_env("CartPole-v1", n_envs=1, parallel=False)
     net = reward_nets.BasicRewardNet(venv.observation_space, venv.action_space)
     net = reward_nets.NormalizedRewardNet(net, networks.RunningNorm)
@@ -378,7 +377,7 @@ def test_rl_train_double_normalization(tmpdir: str):
 
     log_dir_data = os.path.join(tmpdir, "train_rl")
     with pytest.raises(ValueError):
-        run = train_rl.train_rl_ex.run(
+        train_rl.train_rl_ex.run(
             named_configs=["cartpole"] + ALGO_FAST_CONFIGS["rl"],
             config_updates=dict(
                 common=dict(log_dir=log_dir_data),
@@ -387,11 +386,6 @@ def test_rl_train_double_normalization(tmpdir: str):
                 reward_path=tmppath,
             ),
         )
-
-        warnings.warn.assert_called_with(
-            "Applying normalization to already normalized reward function",
-        )  # type: ignore
-        assert run.status == "COMPLETED"
 
 
 PARALLEL_CONFIG_UPDATES = [
