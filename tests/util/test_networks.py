@@ -20,6 +20,9 @@ def test_running_norm_identity(normalization_layer) -> None:
 
     Specifically, we test in evaluation mode (initializatn should not change)
     and in training mode with already normalized data.
+
+    Args:
+        normalization_layer: the normalization layer to be tested.
     """
     running_norm = normalization_layer(1, eps=0.0)
     x = th.Tensor([-1.0, 0.0, 7.32, 42.0])
