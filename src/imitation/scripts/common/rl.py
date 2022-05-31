@@ -3,11 +3,6 @@
 import logging
 from typing import Any, Mapping, Type
 
-# FIXME(yawen): bad practice
-from sacred import SETTINGS
-SETTINGS.CONFIG.READ_ONLY_CONFIG = False
-
-from copy import deepcopy
 import sacred
 import stable_baselines3
 from stable_baselines3.common import (
@@ -39,7 +34,13 @@ def config_hook(config, command_name, logger):
     if config["rl"]["rl_cls"] is None:
         default_rl = stable_baselines3.PPO
         res["rl_cls"] = default_rl
-        res["batch_size"] = 2048
+        res["batch_size"] = 2048  # rl_kwargs["n_steps"] = batch_size // venv.num_envs
+        res["rl_kwargs"] = dict(
+            learning_rate=3e-4,
+            batch_size=64,
+            n_epochs=10,
+            ent_coef=0.0,
+        )
     return res
 
 
@@ -57,6 +58,8 @@ def ppo():
     # For recommended PPO hyperparams in each environment, see:
     # https://github.com/DLR-RM/rl-baselines3-zoo/blob/master/hyperparams/ppo.yml
     rl_cls = stable_baselines3.PPO
+    locals()  # quieten flake8
+
 
 @rl_ingredient.named_config
 def sac():
@@ -66,6 +69,7 @@ def sac():
     # Default HPs are as follows:
     batch_size = 256  # batch size for RL algorithm
     rl_kwargs = dict()
+    locals()  # quieten flake8
 
 
 @rl_ingredient.capture
@@ -116,7 +120,12 @@ def make_rl_algo(
         raise TypeError(f"Unsupported RL algorithm '{rl_cls}'")
     rl_algo = rl_cls(
         policy=train["policy_cls"],
-        policy_kwargs=deepcopy(train["policy_kwargs"]),
+        # Note(yawen): Here we make a copy of policy_kwargs as a temporary workaround
+        # for possible changing configs in a captured function. For off-policy
+        # algorithms in SB3, policy_kwargs["use_sde"] could be changed in
+        # rl_cls.__init__() for certain algorithms, such as Soft Actor Critic.
+        # https://github.com/DLR-RM/stable-baselines3/blob/master/stable_baselines3/common/off_policy_algorithm.py#L142
+        policy_kwargs=dict(train["policy_kwargs"]),
         env=venv,
         seed=_seed,
         **rl_kwargs,

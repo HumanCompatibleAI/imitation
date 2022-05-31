@@ -35,10 +35,8 @@ def fast():
 
 @train_ingredient.named_config
 def sac():
-    # Training
     policy_cls = SACPolicy
-    policy_kwargs = {}
-    
+
     locals()  # quieten flake8
 
 
