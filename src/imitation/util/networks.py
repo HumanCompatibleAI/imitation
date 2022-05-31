@@ -117,6 +117,53 @@ class RunningNorm(nn.Module):
         return (x - self.running_mean) / th.sqrt(self.running_var + self.eps)
 
 
+class EMARunningNorm(RunningNorm):
+    """Similar to RunningNorm but uses an exponentially weighting."""
+
+    running_mean: th.Tensor
+    running_var: th.Tensor
+
+    def __init__(
+        self,
+        num_features: int,
+        lamb: float = 0.99,
+        r: float = 0.99,
+        eps: float = 1e-5,
+    ):
+        """Builds EMARunningNorm.
+
+        Args:
+            num_features: Number of features; the length of the non-batch dim.
+            lamb: value between (0, 1) update rate for the mean
+            r: value between (0, 1) update rate for the variance
+            eps: small constant for for numerical stability.
+        """
+        super().__init__(num_features, eps=eps)
+        self.lamb = lamb
+        self.r = r
+
+    def update_states(self, batch: th.Tensor) -> None:
+        """Update `self.running_mean` and `self.running_var`.
+
+        Uses Macgregor & Harris (1993), "The Exponentially Weighted Moving Variance".
+
+        Args:
+            batch: A batch of data to use to update the running mean and variance.
+        """
+        b_size = batch.shape[0]
+        b_mean = th.mean(batch, dim=0)
+        self.running_mean *= 1 - self.lamb
+        self.running_mean += b_mean * self.lamb
+
+        b_var = (
+            th.sum(th.square(self.running_mean.unsqueeze(0) - batch), dim=1) / b_size
+        )
+        self.running_var *= 1 - self.r
+        self.running_var += self.r * b_var
+
+        self.count += b_size
+
+
 def build_mlp(
     in_size: int,
     hid_sizes: Iterable[int],
