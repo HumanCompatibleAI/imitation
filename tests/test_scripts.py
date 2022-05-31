@@ -361,7 +361,7 @@ def test_transfer_learning(tmpdir: str) -> None:
         named_configs=["cartpole"] + ALGO_FAST_CONFIGS["rl"],
         config_updates=dict(
             common=dict(log_dir=log_dir_data),
-            reward_type="RewardNet_shaped",
+            reward_type="RewardNet_unshaped",
             reward_path=reward_path,
         ),
     )

@@ -162,8 +162,11 @@ def test_serialize_identity(env_name, net_cls, tmpdir):
 
     transitions = rollout.generate_transitions(random, venv, n_timesteps=100)
 
-    unshaped_fn = serialize.load_reward("RewardNet_unshaped", tmppath, venv)
-    shaped_fn = serialize.load_reward("RewardNet_shaped", tmppath, venv)
+    test_rew_fn = serialize.load_reward("RewardNet_unshaped", tmppath, venv)
+    if isinstance(original, reward_nets.ShapedRewardNet):
+        train_rew_fn = serialize.load_reward("RewardNet_shaped", tmppath, venv)
+    else:
+        train_rew_fn = test_rew_fn
     rewards = {
         "train": [],
         "test": [],
@@ -187,8 +190,8 @@ def test_serialize_identity(env_name, net_cls, tmpdir):
         transitions.next_obs,
         transitions.dones,
     )
-    rewards["train"].append(shaped_fn(*args))
-    rewards["test"].append(unshaped_fn(*args))
+    rewards["train"].append(train_rew_fn(*args))
+    rewards["test"].append(test_rew_fn(*args))
 
     for key, predictions in rewards.items():
         assert len(predictions) == 3

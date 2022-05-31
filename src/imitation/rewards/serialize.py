@@ -78,7 +78,7 @@ def _make_functional(
 
 def _validate_type(net: RewardNet, type_: Type[RewardNet]):
     if not isinstance(net, type_):
-        raise TypeError("cannot load unnomralized reward as normalized")
+        raise TypeError(f"expected {type_} but found {type(net)}")
     return net
 
 
