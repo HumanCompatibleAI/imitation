@@ -126,8 +126,8 @@ class EMARunningNorm(RunningNorm):
     def __init__(
         self,
         num_features: int,
-        lamb: float = 0.99,
-        r: float = 0.99,
+        lamb: float = 0.05,
+        r: float = 0.05,
         eps: float = 1e-5,
     ):
         """Builds EMARunningNorm.
@@ -142,7 +142,7 @@ class EMARunningNorm(RunningNorm):
         self.lamb = lamb
         self.r = r
 
-    def update_states(self, batch: th.Tensor) -> None:
+    def update_stats(self, batch: th.Tensor) -> None:
         """Update `self.running_mean` and `self.running_var`.
 
         Uses Macgregor & Harris (1993), "The Exponentially Weighted Moving Variance".
@@ -150,14 +150,18 @@ class EMARunningNorm(RunningNorm):
         Args:
             batch: A batch of data to use to update the running mean and variance.
         """
+        if len(batch.shape) == 1:  # Assume list is a batch of 1-d vectors
+            batch = batch.unsqueeze(-1)
+
         b_size = batch.shape[0]
         b_mean = th.mean(batch, dim=0)
         self.running_mean *= 1 - self.lamb
         self.running_mean += b_mean * self.lamb
 
         b_var = (
-            th.sum(th.square(self.running_mean.unsqueeze(0) - batch), dim=1) / b_size
+            th.sum(th.square(self.running_mean.unsqueeze(0) - batch), dim=0) / b_size
         )
+
         self.running_var *= 1 - self.r
         self.running_var += self.r * b_var
 

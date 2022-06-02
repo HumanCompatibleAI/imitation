@@ -2,6 +2,7 @@
 
 import functools
 import math
+from typing import Type
 
 import pytest
 import torch as th
@@ -69,18 +70,14 @@ def test_running_norm_eval_fixed(
 
 
 @pytest.mark.parametrize("batch_size", [1, 8])
-@pytest.mark.parametrize("normalization_layer", NORMALIZATION_LAYERS)
-def test_running_norm_matches_dist(
-    batch_size: int,
-    normalization_layer: networks.RunningNorm,
-) -> None:
+def test_running_norm_matches_dist(batch_size: int) -> None:
     """Test running norm converges to empirical distribution."""
     mean = th.Tensor([-1.3, 0.0, 42])
     var = th.Tensor([0.1, 1.0, 42])
     sd = th.sqrt(var)
 
     num_dims = len(mean)
-    running_norm = normalization_layer(num_dims)
+    running_norm = networks.RunningNorm(num_dims)
     running_norm.train()
 
     num_samples = 256
@@ -104,6 +101,37 @@ def test_running_norm_matches_dist(
     # Stats should match empirical mean (and be unchanged by eval)
     th.testing.assert_close(running_norm.running_mean, empirical_mean)
     th.testing.assert_close(running_norm.running_var, empirical_var)
+    assert running_norm.count == num_samples
+
+
+@pytest.mark.parametrize("batch_size", [1, 8])
+@pytest.mark.parametrize("normalization_layer", NORMALIZATION_LAYERS)
+def test_parameters_converge(
+    batch_size: int,
+    normalization_layer: Type[networks.RunningNorm],
+) -> None:
+    """Test running norm parameters approximately converge to true values."""
+    mean = th.Tensor([42])
+    var = th.Tensor([42])
+    sd = th.sqrt(var)
+
+    num_dims = len(mean)
+    running_norm = normalization_layer(num_dims)
+    running_norm.train()
+
+    num_samples = 1000
+    with th.random.fork_rng():
+        th.random.manual_seed(42)
+        data = th.randn(num_samples, num_dims) * sd + mean
+        for start in range(0, num_samples, batch_size):
+            batch = data[start : start + batch_size]
+            running_norm.forward(batch)
+
+    running_norm.eval()
+
+    th.testing.assert_close(running_norm.running_mean, mean, rtol=0.03, atol=10)
+    th.testing.assert_close(running_norm.running_var, var, rtol=0.1, atol=10)
+
     assert running_norm.count == num_samples
 
 
