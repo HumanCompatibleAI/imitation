@@ -68,7 +68,7 @@ def sac():
     rl_cls = stable_baselines3.SAC
     # Default HPs are as follows:
     batch_size = 256  # batch size for RL algorithm
-    rl_kwargs = dict(batch_size=None) # make sure to set batch size to None
+    rl_kwargs = dict(batch_size=None)  # make sure to set batch size to None
     locals()  # quieten flake8
 
 
