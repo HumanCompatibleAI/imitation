@@ -16,7 +16,7 @@ from imitation.rewards import reward_nets, serialize
 from imitation.util import networks, util
 
 ENVS = ["FrozenLake-v1", "CartPole-v1", "Pendulum-v1"]
-HARDCODED_TYPES = [
+DESERIALIZATION_TYPES = [
     "zero",
     "RewardNet_normalized",
     "RewardNet_unnormalized",
@@ -75,13 +75,16 @@ def _make_env_and_save_reward_net(env_name, reward_type, tmpdir):
         net = reward_nets.NormalizedRewardNet(net, networks.RunningNorm)
     elif reward_type == "RewardNet_shaped":
         net = reward_nets.ShapedRewardNet(net, _potential, discount_factor=0.99)
+    assert (
+        reward_type in serialize.reward_registry.keys()
+    ), "unknown reward type f{reward_type}"
     save_path = os.path.join(tmpdir, "norm_reward.pt")
     th.save(net, save_path)
     return venv, save_path
 
 
 @pytest.mark.parametrize("env_name", ENVS)
-@pytest.mark.parametrize("reward_type", HARDCODED_TYPES)
+@pytest.mark.parametrize("reward_type", DESERIALIZATION_TYPES)
 def test_reward_valid(env_name, reward_type, tmpdir):
     """Test output of reward function is appropriate shape and type."""
     venv = util.make_vec_env(env_name, n_envs=1, parallel=False)
@@ -104,10 +107,13 @@ def test_strip_wrappers_basic():
     venv = util.make_vec_env("FrozenLake-v1", n_envs=1, parallel=False)
     net = reward_nets.BasicRewardNet(venv.observation_space, venv.action_space)
     net = reward_nets.NormalizedRewardNet(net, networks.RunningNorm)
-    net = serialize._strip_wrappers(net, wrappers=[reward_nets.NormalizedRewardNet])
+    net = serialize._strip_wrappers(
+        net,
+        wrapper_types=[reward_nets.NormalizedRewardNet],
+    )
     assert isinstance(net, reward_nets.BasicRewardNet)
     # This removing a wrapper from an unwrapped reward net should do nothing
-    net = serialize._strip_wrappers(net, wrappers=[reward_nets.ShapedRewardNet])
+    net = serialize._strip_wrappers(net, wrapper_types=[reward_nets.ShapedRewardNet])
     assert isinstance(net, reward_nets.BasicRewardNet)
 
 
@@ -119,7 +125,7 @@ def test_strip_wrappers_complex():
     # Removing in incorrect order should do nothing
     net = serialize._strip_wrappers(
         net,
-        wrappers=[reward_nets.ShapedRewardNet, reward_nets.NormalizedRewardNet],
+        wrapper_types=[reward_nets.ShapedRewardNet, reward_nets.NormalizedRewardNet],
     )
 
     assert isinstance(net, reward_nets.NormalizedRewardNet)
@@ -127,7 +133,7 @@ def test_strip_wrappers_complex():
     # Correct order should work
     net = serialize._strip_wrappers(
         net,
-        wrappers=[reward_nets.NormalizedRewardNet, reward_nets.ShapedRewardNet],
+        wrapper_types=[reward_nets.NormalizedRewardNet, reward_nets.ShapedRewardNet],
     )
     assert isinstance(net, reward_nets.BasicRewardNet)
 
@@ -136,7 +142,7 @@ def test_strip_wrappers_complex():
 def test_cant_load_unnorm_as_norm(env_name, tmpdir):
     venv, tmppath = _make_env_and_save_reward_net(
         env_name,
-        "RewardNet_unnomralized",
+        "RewardNet_unnormalized",
         tmpdir,
     )
     with pytest.raises(TypeError):

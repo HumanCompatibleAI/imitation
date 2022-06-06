@@ -1,6 +1,6 @@
 """Load serialized reward functions of different types."""
 
-from typing import Callable, List, Type
+from typing import Callable, Iterable, Type
 
 import numpy as np
 import torch as th
@@ -40,32 +40,34 @@ def _validate_reward(reward: common.RewardFn) -> common.RewardFn:
 
 
 def _strip_wrappers(
-    net: RewardNet,
-    wrappers: List[Type[RewardNetWrapper]],
+    reward_net: RewardNet,
+    wrapper_types: Iterable[Type[RewardNetWrapper]],
 ) -> RewardNet:
     """Attempts to remove provided wrappers.
 
-    Strips wrappers until either it reaches a non-warper
-    reward net or it has removed all the listed wrappers.
+    Strips wrappers of type `wrapper_type` from `reward_net` in order until either the
+    wrapper type to remove does not match the type of net or there are no more wrappers
+    to remove.
 
     Args:
-        net: an instance of a reward network that may be wrapped
-        wrappers: list of wrapper types to remove
+        reward_net: an instance of a reward network that may be wrapped
+        wrapper_types: an iterable of wrapper types in the order they should be removed
 
     Returns:
         The reward network with the listed wrappers removed
     """
-    for wrapper_type in wrappers:
-        if not isinstance(net, RewardNetWrapper):
-            # Reached base reward net
-            break
+    for wrapper_type in wrapper_types:
+        assert issubclass(
+            wrapper_type,
+            RewardNetWrapper,
+        ), f"trying to remove non-wrapper type {wrapper_type}"
 
-        if isinstance(net, wrapper_type):
-            net = net.base
+        if isinstance(reward_net, wrapper_type):
+            reward_net = reward_net.base
         else:
             break
 
-    return net
+    return reward_net
 
 
 def _make_functional(
@@ -109,7 +111,7 @@ reward_registry.register(
 reward_registry.register(
     key="RewardNet_unshaped",
     value=lambda path, _: _validate_reward(
-        _make_functional(_strip_wrappers(th.load(str(path)), [ShapedRewardNet])),
+        _make_functional(_strip_wrappers(th.load(str(path)), (ShapedRewardNet,))),
     ),
 )
 
@@ -127,7 +129,7 @@ reward_registry.register(
 reward_registry.register(
     key="RewardNet_unnormalized",
     value=lambda path, _: _validate_reward(
-        _make_functional(_strip_wrappers(th.load(str(path)), [NormalizedRewardNet])),
+        _make_functional(_strip_wrappers(th.load(str(path)), (NormalizedRewardNet,))),
     ),
 )
 
