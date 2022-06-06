@@ -34,9 +34,6 @@ REWARD_NET_KWARGS = [
 ]
 
 
-# TODO(lev) use fixtures to speed this all up
-
-
 @pytest.mark.parametrize("env_name", ENVS)
 @pytest.mark.parametrize("reward_net_cls", REWARD_NETS)
 @pytest.mark.parametrize("reward_net_kwargs", REWARD_NET_KWARGS)
