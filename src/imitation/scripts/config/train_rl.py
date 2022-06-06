@@ -71,11 +71,6 @@ def half_cheetah():
 
 
 @train_rl_ex.named_config
-def seals_half_cheetah():
-    common = dict(env_name="seals/HalfCheetah-v0")
-
-
-@train_rl_ex.named_config
 def seals_hopper():
     common = dict(env_name="seals/Hopper-v0")
 
