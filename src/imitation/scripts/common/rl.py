@@ -114,7 +114,8 @@ def make_rl_algo(
         ), "set 'n_steps' at top-level using 'batch_size'"
         rl_kwargs["n_steps"] = batch_size // venv.num_envs
     elif issubclass(rl_cls, off_policy_algorithm.OffPolicyAlgorithm):
-        assert "batch_size" not in rl_kwargs, "set 'batch_size' at top-level"
+        if "batch_size" not in rl_kwargs or rl_kwargs["batch_size"] is not None:
+            raise ValueError("set 'batch_size' at top-level")
         rl_kwargs["batch_size"] = batch_size
     else:
         raise TypeError(f"Unsupported RL algorithm '{rl_cls}'")
