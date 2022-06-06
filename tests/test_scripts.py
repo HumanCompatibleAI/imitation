@@ -17,6 +17,7 @@ from collections import Counter
 from typing import List, Optional
 from unittest import mock
 
+import stable_baselines3
 import pandas as pd
 import pytest
 import ray.tune as tune
@@ -47,6 +48,9 @@ ALL_SCRIPTS_MODS = [
 CARTPOLE_TEST_DATA_PATH = pathlib.Path("tests/testdata/expert_models/cartpole_0/")
 CARTPOLE_TEST_ROLLOUT_PATH = CARTPOLE_TEST_DATA_PATH / "rollouts/final.pkl"
 CARTPOLE_TEST_POLICY_PATH = CARTPOLE_TEST_DATA_PATH / "policies/final"
+
+PENDULUM_TEST_DATA_PATH = pathlib.Path("tests/testdata/expert_models/pendulum_0/")
+PENDULUM_TEST_ROLLOUT_PATH = PENDULUM_TEST_DATA_PATH / "rollouts/final.pkl"
 
 
 @pytest.fixture(autouse=True)
@@ -110,6 +114,8 @@ ALGO_FAST_CONFIGS = {
     "rl": ["common.fast", "rl.fast", "train.fast", "fast"],
 }
 
+RL_SAC_NAMED_CONFIGS = ["rl.sac", "train.sac"]
+
 
 @pytest.mark.parametrize("config", PREFERENCE_COMPARISON_CONFIGS)
 def test_train_preference_comparisons_main(tmpdir, config):
@@ -119,6 +125,21 @@ def test_train_preference_comparisons_main(tmpdir, config):
         named_configs=["cartpole"] + ALGO_FAST_CONFIGS["preference_comparison"],
         config_updates=config_updates,
     )
+    assert run.status == "COMPLETED"
+    assert isinstance(run.result, dict)
+
+
+def test_train_preference_comparisons_sac(tmpdir):
+    config_updates = dict(common=dict(log_root=tmpdir))
+    run = train_preference_comparisons.train_preference_comparisons_ex.run(
+        # make sure rl.sac named_config is called after rl.fast to overwrite
+        # rl_kwargs.batch_size to None
+        named_configs=["pendulum"]
+        + ALGO_FAST_CONFIGS["preference_comparison"]
+        + RL_SAC_NAMED_CONFIGS,
+        config_updates=config_updates,
+    )
+    assert run.config["rl"]["rl_cls"] is stable_baselines3.sac.sac.SAC
     assert run.status == "COMPLETED"
     assert isinstance(run.result, dict)
 
@@ -212,6 +233,20 @@ def test_train_rl_wb_logging(tmpdir):
         )
 
 
+def test_train_rl_sac(tmpdir):
+    run = train_rl.train_rl_ex.run(
+        # make sure rl.sac named_config is called after rl.fast to overwrite
+        # rl_kwargs.batch_size to None
+        named_configs=["pendulum"] + ALGO_FAST_CONFIGS["rl"] + RL_SAC_NAMED_CONFIGS,
+        config_updates=dict(
+            common=dict(log_root=tmpdir),
+        ),
+    )
+    assert run.config["rl"]["rl_cls"] is stable_baselines3.sac.sac.SAC
+    assert run.status == "COMPLETED"
+    assert isinstance(run.result, dict)
+
+
 EVAL_POLICY_CONFIGS = [
     {"videos": True},
     {"videos": True, "video_kwargs": {"single_video": False}},
@@ -282,6 +317,33 @@ def test_train_adversarial(tmpdir, named_configs):
         named_configs=named_configs,
         config_updates=config_updates,
     )
+    assert run.status == "COMPLETED"
+    _check_train_ex_result(run.result)
+
+
+def test_train_adversarial_sac(tmpdir):
+    """Smoke test for imitation.scripts.train_adversarial."""
+    # make sure rl.sac named_config is called after rl.fast to overwrite
+    # rl_kwargs.batch_size to None
+    named_configs = (
+        ["pendulum"] + ALGO_FAST_CONFIGS["adversarial"] + RL_SAC_NAMED_CONFIGS
+    )
+    config_updates = {
+        "common": {
+            "log_root": tmpdir,
+        },
+        "demonstrations": {
+            "rollout_path": PENDULUM_TEST_ROLLOUT_PATH,
+        },
+        # TensorBoard logs to get extra coverage
+        "algorithm_kwargs": {"init_tensorboard": True},
+    }
+    run = train_adversarial.train_adversarial_ex.run(
+        command_name="gail",
+        named_configs=named_configs,
+        config_updates=config_updates,
+    )
+    assert run.config["rl"]["rl_cls"] is stable_baselines3.sac.sac.SAC
     assert run.status == "COMPLETED"
     _check_train_ex_result(run.result)
 
