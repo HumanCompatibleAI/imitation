@@ -17,12 +17,12 @@ from collections import Counter
 from typing import List, Optional
 from unittest import mock
 
-import stable_baselines3
 import pandas as pd
 import pytest
 import ray.tune as tune
 import sacred
 import sacred.utils
+import stable_baselines3
 
 from imitation.scripts import (
     analyze,
@@ -139,7 +139,7 @@ def test_train_preference_comparisons_sac(tmpdir):
         + RL_SAC_NAMED_CONFIGS,
         config_updates=config_updates,
     )
-    assert run.config["rl"]["rl_cls"] is stable_baselines3.sac.sac.SAC
+    assert run.config["rl"]["rl_cls"] is stable_baselines3.SAC
     assert run.status == "COMPLETED"
     assert isinstance(run.result, dict)
 
@@ -242,7 +242,7 @@ def test_train_rl_sac(tmpdir):
             common=dict(log_root=tmpdir),
         ),
     )
-    assert run.config["rl"]["rl_cls"] is stable_baselines3.sac.sac.SAC
+    assert run.config["rl"]["rl_cls"] is stable_baselines3.SAC
     assert run.status == "COMPLETED"
     assert isinstance(run.result, dict)
 
@@ -343,7 +343,7 @@ def test_train_adversarial_sac(tmpdir):
         named_configs=named_configs,
         config_updates=config_updates,
     )
-    assert run.config["rl"]["rl_cls"] is stable_baselines3.sac.sac.SAC
+    assert run.config["rl"]["rl_cls"] is stable_baselines3.SAC
     assert run.status == "COMPLETED"
     _check_train_ex_result(run.result)
 
