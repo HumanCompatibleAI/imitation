@@ -68,7 +68,7 @@ def sac():
     rl_cls = stable_baselines3.SAC
     # Default HPs are as follows:
     batch_size = 256  # batch size for RL algorithm
-    rl_kwargs = dict()
+    rl_kwargs = dict(batch_size=None) # make sure to set batch size to None
     locals()  # quieten flake8
 
 
@@ -124,7 +124,7 @@ def make_rl_algo(
         # for possible changing configs in a captured function. For off-policy
         # algorithms in SB3, policy_kwargs["use_sde"] could be changed in
         # rl_cls.__init__() for certain algorithms, such as Soft Actor Critic.
-        # https://github.com/DLR-RM/stable-baselines3/blob/master/stable_baselines3/common/off_policy_algorithm.py#L142
+        # https://github.com/DLR-RM/stable-baselines3/blob/30772aa9f53a4cf61571ee90046cdc454c1b11d7/stable_baselines3/common/off_policy_algorithm.py#L145
         policy_kwargs=dict(train["policy_kwargs"]),
         env=venv,
         seed=_seed,
