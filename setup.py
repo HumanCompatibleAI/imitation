@@ -32,6 +32,7 @@ TESTS_REQUIRE = [
     "ray[debug,tune]~=0.8.5",
     "scipy>=1.8.0",
     "wandb",
+    "huggingface_sb3",
 ]
 DOCS_REQUIRE = [
     "sphinx",

@@ -3,49 +3,23 @@ import os
 import pickle
 import traceback
 import warnings
-from typing import Callable, Optional, Sequence
+from typing import Callable, Sequence
 
 import gym
 import pytest
 import torch
 from filelock import FileLock
+from huggingface_sb3 import load_from_hub
 from stable_baselines3 import PPO
-from stable_baselines3.common.evaluation import evaluate_policy
 from stable_baselines3.common.policies import BasePolicy
-from stable_baselines3.common.vec_env import DummyVecEnv, VecEnv, VecNormalize
-from stable_baselines3.ppo import MlpPolicy
+from stable_baselines3.common.vec_env import DummyVecEnv, VecEnv
 
 from imitation.data import rollout, types
 from imitation.data.types import TrajectoryWithRew
 from imitation.data.wrappers import RolloutInfoWrapper
-from imitation.policies.base import FeedForward32Policy, NormalizeFeaturesExtractor
 from imitation.util import logger
-from imitation.util.networks import RunningNorm
 
 CARTPOLE_ENV_NAME = "CartPole-v1"
-
-
-def load_or_train_ppo(
-    cache_path: str,
-    training_function: Callable[[gym.Env], PPO],
-    venv,
-) -> PPO:
-    os.makedirs(os.path.dirname(cache_path), exist_ok=True)
-    with FileLock(cache_path + ".lock"):
-        try:
-            return PPO.load(cache_path, venv)
-        except (OSError, AssertionError, pickle.PickleError):  # pragma: no cover
-            # Note, when loading models from older stable-baselines versions, we can get
-            # AssertionErrors.
-            warnings.warn(
-                "Retraining expert policy due to the following error when trying"
-                " to load it:\n" + traceback.format_exc(),
-            )
-            expert = training_function(venv)
-            if expert is None:
-                pytest.fail("Failed to train expert!")
-            expert.save(cache_path)
-            return expert
 
 
 def load_or_rollout_trajectories(
@@ -83,48 +57,11 @@ def cartpole_venv(request) -> VecEnv:
     )
 
 
-def train_cartpole_expert(cartpole_env) -> Optional[PPO]:  # pragma: no cover
-    """Trains an expert on a cartpole environment.
-
-    Args:
-        cartpole_env: The cartpole environment to use for training. Will only work with
-            CartPole-v1
-
-    Returns:
-        The trained cartpole expert or None if training failed even after 10 retries.
-    """
-    policy_kwargs = dict(
-        features_extractor_class=NormalizeFeaturesExtractor,
-        features_extractor_kwargs=dict(normalize_class=RunningNorm),
-    )
-    for attempt_nr in range(10):
-        policy = PPO(
-            policy=FeedForward32Policy,
-            policy_kwargs=policy_kwargs,
-            env=VecNormalize(cartpole_env, norm_obs=False),
-            seed=attempt_nr,
-            batch_size=64,
-            ent_coef=0.0,
-            learning_rate=0.0003,
-            n_epochs=10,
-            n_steps=64 // cartpole_env.num_envs,
-        )
-        policy.learn(100000)
-        mean_reward, _ = evaluate_policy(policy, cartpole_env, 10)
-        if mean_reward >= 500:
-            return policy
-    return None
-
-
 @pytest.fixture
-def cartpole_expert_policy(cartpole_venv, pytestconfig) -> BasePolicy:
-    cached_expert_path = str(
-        pytestconfig.cache.makedir("experts") / CARTPOLE_ENV_NAME / "model.zip",
-    )
-    return load_or_train_ppo(
-        cached_expert_path,
-        train_cartpole_expert,
-        cartpole_venv,
+def cartpole_expert_policy():
+    #TODO(ernestum): load from official orga
+    return PPO.load(
+        load_from_hub("ernestumorga/ppo-seals-CartPole-v0", "ppo-seals/CartPole-v0.zip")
     ).policy
 
 
@@ -152,38 +89,11 @@ def pendulum_venv() -> VecEnv:
     return DummyVecEnv([lambda: RolloutInfoWrapper(gym.make(PENDULUM_ENV_NAME))] * 8)
 
 
-def train_pendulum_expert(pendulum_env) -> Optional[PPO]:  # pragma: no cover
-    for attempt_nr in range(10):
-        policy = PPO(
-            policy=MlpPolicy,
-            env=VecNormalize(pendulum_env, norm_obs=False),
-            seed=attempt_nr,
-            batch_size=64,
-            ent_coef=0.0,
-            learning_rate=1e-3,
-            n_epochs=10,
-            n_steps=1024,
-            gamma=0.9,
-            gae_lambda=0.95,
-            use_sde=True,
-            sde_sample_freq=4,
-        )
-        policy.learn(int(1e5))
-        mean_reward, _ = evaluate_policy(policy, pendulum_env, 10)
-        if mean_reward >= -185:
-            return policy
-    return None
-
-
 @pytest.fixture
-def pendulum_expert_policy(pendulum_venv, pytestconfig) -> BasePolicy:
-    cached_expert_path = str(
-        pytestconfig.cache.makedir("experts") / PENDULUM_ENV_NAME / "model.zip",
-    )
-    return load_or_train_ppo(
-        cached_expert_path,
-        train_pendulum_expert,
-        pendulum_venv,
+def pendulum_expert_policy() -> BasePolicy:
+    # TODO(ernestum): load from official orga
+    return PPO.load(
+        load_from_hub("ernestumorga/ppo-Pendulum-v1", "ppo-Pendulum-v1.zip")
     ).policy
 
 
