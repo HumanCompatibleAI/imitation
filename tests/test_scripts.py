@@ -376,7 +376,7 @@ def test_train_rl_double_normalization(tmpdir: str):
     th.save(net, tmppath)
 
     log_dir_data = os.path.join(tmpdir, "train_rl")
-    with pytest.raises(ValueError):
+    with pytest.warns(RuntimeWarning):
         train_rl.train_rl_ex.run(
             named_configs=["cartpole"] + ALGO_FAST_CONFIGS["rl"],
             config_updates=dict(

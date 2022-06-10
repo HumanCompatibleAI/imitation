@@ -11,6 +11,7 @@ This can be used:
 import logging
 import os
 import os.path as osp
+import warnings
 from typing import Mapping, Optional
 
 import sacred.run
@@ -82,10 +83,6 @@ def train_rl(
 
     Returns:
         The return value of `rollout_stats()` using the final policy.
-
-    Raises:
-        ValueError: if you set normalize_reward to true and try to load a reward
-            function that is already normalized i.e. type "RewardNet_normalized".
     """
     custom_logger, log_dir = common.setup_logging()
     rollout_dir = osp.join(log_dir, "rollouts")
@@ -109,8 +106,10 @@ def train_rl(
         # observations here; use the `NormalizeFeaturesExtractor` instead.
         venv = VecNormalize(venv, norm_obs=False, **normalize_kwargs)
         if reward_type == "RewardNet_normalized":
-            raise ValueError(
-                "Applying normalization to already normalized reward function",
+            warnings.warn(
+                "Applying normalization to already normalized reward function. \
+                Consider removing the --normalize_reward flag",
+                RuntimeWarning,
             )
 
     if policy_save_interval > 0:
