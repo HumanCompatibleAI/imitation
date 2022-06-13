@@ -76,7 +76,7 @@ setup(
             "@gym_fixes#egg=stable-baselines3"
         ),
         "stable-baselines3>=1.4.0",
-        # TODO(nora) switch back to PyPi once following makes it to release:
+        # TODO(nora) switch back to PyPi once 0.8.3 makes it to release:
         "sacred@git+https://github.com/IDSIA/sacred.git",
         "tensorboard>=1.14",
     ],
