@@ -29,7 +29,7 @@ TESTS_REQUIRE = [
     "pytest-notebook",
     "pytest-xdist",
     "pytype",
-    "ray[debug,tune]>=0.8.5",
+    "ray[debug,tune]>=1.13.0",
     "scipy>=1.8.0",
     "wandb",
 ]
@@ -39,7 +39,7 @@ DOCS_REQUIRE = [
     "sphinx-rtd-theme",
     "sphinxcontrib-napoleon",
 ]
-PARALLEL_REQUIRE = ["ray[debug,tune]~=0.8.5"]
+PARALLEL_REQUIRE = ["ray[debug,tune]>=1.13.0"]
 
 
 def get_readme() -> str:
@@ -77,7 +77,7 @@ setup(
         ),
         "stable-baselines3>=1.4.0",
         # TODO(nora) switch back to PyPi once 0.8.3 makes it to release:
-        "sacred@git+https://github.com/IDSIA/sacred.git",
+        "sacred@git+https://github.com/IDSIA/sacred.git@0.8.3",
         "tensorboard>=1.14",
     ],
     tests_require=TESTS_REQUIRE,
