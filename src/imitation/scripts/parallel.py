@@ -122,9 +122,9 @@ def parallel(
             config=search_space,
             name=run_name,
             local_dir=local_dir,
-            upload_dir=upload_dir,
             loggers=ray_loggers,
             resources_per_trial=resources_per_trial,
+            sync_config=ray.tune.syncer.SyncConfig(upload_dir=upload_dir),
         )
     finally:
         ray.shutdown()
