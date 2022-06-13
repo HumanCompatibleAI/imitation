@@ -29,7 +29,7 @@ TESTS_REQUIRE = [
     "pytest-notebook",
     "pytest-xdist",
     "pytype",
-    "ray[debug,tune]~=0.8.5",
+    "ray[debug,tune]>=0.8.5",
     "scipy>=1.8.0",
     "wandb",
 ]
@@ -76,7 +76,8 @@ setup(
             "@gym_fixes#egg=stable-baselines3"
         ),
         "stable-baselines3>=1.4.0",
-        "sacred~=0.8.1",
+        # TODO(nora) switch back to PyPi once following makes it to release:
+        "sacred@git+https://github.com/IDSIA/sacred.git",
         "tensorboard>=1.14",
     ],
     tests_require=TESTS_REQUIRE,
