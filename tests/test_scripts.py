@@ -143,6 +143,16 @@ def test_train_preference_comparisons_sac(tmpdir):
     assert run.status == "COMPLETED"
     assert isinstance(run.result, dict)
 
+    with pytest.raises(Exception, match=".*set 'batch_size' at top-level.*"):
+        train_preference_comparisons.train_preference_comparisons_ex.run(
+            # make sure rl.sac named_config is called after rl.fast to overwrite
+            # rl_kwargs.batch_size to None
+            named_configs=["pendulum"]
+            + RL_SAC_NAMED_CONFIGS
+            + ALGO_FAST_CONFIGS["preference_comparison"],
+            config_updates=config_updates,
+        )
+
 
 @pytest.mark.parametrize(
     "named_configs",
