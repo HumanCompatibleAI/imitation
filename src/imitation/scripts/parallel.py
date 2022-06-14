@@ -115,7 +115,7 @@ def parallel(
     # dashboard.
     ray_loggers = ()
 
-    ray.init(**init_kwargs, local_mode=True)
+    ray.init(**init_kwargs)
     try:
         ray.tune.run(
             trainable,
@@ -124,7 +124,6 @@ def parallel(
             local_dir=local_dir,
             loggers=ray_loggers,
             resources_per_trial=resources_per_trial,
-            max_concurrent_trials=1,
             sync_config=ray.tune.syncer.SyncConfig(upload_dir=upload_dir),
         )
     finally:
