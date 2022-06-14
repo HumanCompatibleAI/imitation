@@ -566,10 +566,18 @@ class PreferenceDataset(th.utils.data.Dataset):
     method.
     """
 
-    def __init__(self):
-        """Builds an empty PreferenceDataset."""
+    def __init__(self, max_size: Optional[int] = None):
+        """Builds an empty PreferenceDataset.
+
+        Args:
+            max_size: Maximum number of preference comparisons to store in the dataset.
+                If None (default), the dataset can grow indefinitely. Otherwise, the
+                dataset acts as a FIFO queue, and the oldest comparisons are evicted
+                when `push()` is called and the dataset is at max capacity.
+        """
         self.fragments1: List[TrajectoryWithRew] = []
         self.fragments2: List[TrajectoryWithRew] = []
+        self.max_size = max_size
         self.preferences = np.array([])
 
     def push(
@@ -600,6 +608,14 @@ class PreferenceDataset(th.utils.data.Dataset):
         self.fragments1.extend(fragments1)
         self.fragments2.extend(fragments2)
         self.preferences = np.concatenate((self.preferences, preferences))
+
+        # Evict old samples if the dataset is at max capacity
+        if self.max_size is not None:
+            extra = len(self.preferences) - self.max_size
+            if extra > 0:
+                self.fragments1 = self.fragments1[extra:]
+                self.fragments2 = self.fragments2[extra:]
+                self.preferences = self.preferences[extra:]
 
     def __getitem__(self, i) -> Tuple[TrajectoryWithRewPair, float]:
         return (self.fragments1[i], self.fragments2[i]), self.preferences[i]
@@ -824,6 +840,7 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
         fragmenter: Optional[Fragmenter] = None,
         preference_gatherer: Optional[PreferenceGatherer] = None,
         reward_trainer: Optional[RewardTrainer] = None,
+        comparison_queue_size: Optional[int] = None,
         comparisons_per_iteration: int = 100,
         fragment_length: int = 100,
         transition_oversampling: float = 1,
@@ -854,6 +871,9 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
             reward_trainer: trains the reward model based on pairs of fragments and
                 associated preferences. Default is to use the preference model
                 and loss function from DRLHP.
+            comparison_queue_size: the maximum number of comparisons to keep in the
+                queue for training the reward model. If None, the queue will grow
+                without bound as new comparisons are added.
             comparisons_per_iteration: number of preferences to gather at once (before
                 switching back to agent training). This doesn't impact the total number
                 of comparisons that are gathered, only the frequency of switching
@@ -928,7 +948,7 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
         self.initial_comparison_frac = initial_comparison_frac
         self.initial_epoch_multiplier = initial_epoch_multiplier
 
-        self.dataset = PreferenceDataset()
+        self.dataset = PreferenceDataset(max_size=comparison_queue_size)
 
     def train(
         self,
