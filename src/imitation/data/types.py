@@ -6,7 +6,7 @@ import os
 import pathlib
 import pickle
 import warnings
-from typing import Any, Dict, Mapping, Optional, Sequence, Tuple, TypeVar, Union
+from typing import Any, cast, Dict, Mapping, Optional, Sequence, Tuple, TypeVar, Union
 
 import numpy as np
 import torch as th
@@ -373,7 +373,9 @@ def save(path: AnyPath, trajectories: Sequence[Trajectory]):
     }
     has_reward = [isinstance(traj, TrajectoryWithRew) for traj in trajectories]
     if all(has_reward):
-        condensed["rews"] = np.concatenate([traj.rews for traj in trajectories])
+        condensed["rews"] = np.concatenate(
+            [cast(TrajectoryWithRew, traj).rews for traj in trajectories]
+        )
     elif any(has_reward):
         raise ValueError("Some trajectories have rewards but not all")
 
