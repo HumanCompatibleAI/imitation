@@ -146,8 +146,12 @@ class TestData:
         for traj in trajs:
             assert len(traj) == length
 
+    @pytest.mark.parametrize("type_safe", [False, True])
+    @pytest.mark.parametrize("use_pickle", [False, True])
     @pytest.mark.parametrize("use_chdir", [False, True])
-    def test_save_trajectories(self, trajectory_rew, use_chdir, tmpdir):
+    def test_save_trajectories(
+        self, trajectory_rew, use_chdir, tmpdir, use_pickle, type_safe
+    ):
         """Check that trajectories are properly saved."""
         if use_chdir:
             # Test no relative path without directory edge-case.
@@ -161,21 +165,32 @@ class TestData:
         save_path = pathlib.Path(save_dir, "trajs.pkl")
 
         with chdir_context:
-            # Check that types.load works for the new .npz based format as well as
-            # trajectories saved with pickle
+            if use_pickle:
+                # Pickle format
+                with open(save_path, "wb") as f:
+                    pickle.dump(trajs, f)
+            else:
+                # .npz format
+                types.save(save_path, trajs)
 
-            # .npz format
-            types.save(save_path, trajs)
-            loaded_trajs = types.load(save_path)
-            assert len(trajs) == len(loaded_trajs)
-            for t1, t2 in zip(trajs, loaded_trajs):
-                _assert_dataclasses_equal(t1, t2)
+                # Test that heterogeneous lists of trajectories throw an error
+                trajs_bad = [
+                    types.Trajectory(
+                        trajectory_rew.obs,
+                        trajectory_rew.acts,
+                        trajectory_rew.infos,
+                        trajectory_rew.terminal,
+                    ),
+                    trajectory_rew,
+                ]
+                with pytest.raises(ValueError):
+                    types.save(save_path, trajs_bad)
 
-            # Pickle format
-            with open(save_path, "wb") as f:
-                pickle.dump(trajs, f)
+            if type_safe:
+                loaded_trajs = types.load_with_rewards(save_path)
+            else:
+                loaded_trajs = types.load(save_path)
 
-            loaded_trajs = types.load(save_path)
             assert len(trajs) == len(loaded_trajs)
             for t1, t2 in zip(trajs, loaded_trajs):
                 _assert_dataclasses_equal(t1, t2)
