@@ -2,6 +2,7 @@
 
 import collections.abc
 import copy
+from multiprocessing.sharedctypes import Value
 import os
 from typing import Any, Callable, Mapping, Optional, Sequence
 
@@ -115,7 +116,7 @@ def parallel(
     # dashboard.
     ray_loggers = ()
 
-    ray.init(**init_kwargs)
+    ray.init(**init_kwargs, local_mode=True)
     try:
         ray.tune.run(
             trainable,
@@ -124,6 +125,7 @@ def parallel(
             local_dir=local_dir,
             loggers=ray_loggers,
             resources_per_trial=resources_per_trial,
+            max_concurrent_trials=1,
             sync_config=ray.tune.syncer.SyncConfig(upload_dir=upload_dir),
         )
     finally:
@@ -198,9 +200,7 @@ def _ray_tune_sacred_wrapper(
             "train_adversarial": train_adversarial_ex,
         }
         ex = experiments[sacred_ex_name]
-
-        observer = FileStorageObserver("sacred")
-        ex.observers.append(observer)
+        ex.observers = [FileStorageObserver("sacred")]
 
         # Apply base configs to get modified `named_configs` and `config_updates`.
         named_configs = []
@@ -217,7 +217,7 @@ def _ray_tune_sacred_wrapper(
         for k, v in run_kwargs.items():
             if k not in updated_run_kwargs:
                 updated_run_kwargs[k] = v
-
+        
         run = ex.run(**updated_run_kwargs, options={"--run": run_name})
 
         # Ray Tune has a string formatting error if raylet completes without
