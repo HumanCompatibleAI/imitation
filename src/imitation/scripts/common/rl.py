@@ -1,10 +1,11 @@
 """Common configuration elements for reinforcement learning."""
 
 import logging
+import warnings
 from typing import Any, Mapping, Type
 
 import sacred
-import stable_baselines3
+import stable_baselines3 as sb3
 from stable_baselines3.common import (
     base_class,
     off_policy_algorithm,
@@ -28,12 +29,11 @@ def config():
 
 @rl_ingredient.config_hook
 def config_hook(config, command_name, logger):
-    """Sets defaults equivalent to stable_baselines3.PPO default hyperparameters."""
+    """Sets defaults equivalent to sb3.PPO default hyperparameters."""
     del command_name, logger
     res = {}
-    if config["rl"]["rl_cls"] is None:
-        default_rl = stable_baselines3.PPO
-        res["rl_cls"] = default_rl
+    if config["rl"]["rl_cls"] is None or config["rl"]["rl_cls"] == sb3.PPO:
+        res["rl_cls"] = sb3.PPO
         res["batch_size"] = 2048  # rl_kwargs["n_steps"] = batch_size // venv.num_envs
         res["rl_kwargs"] = dict(
             learning_rate=3e-4,
@@ -57,21 +57,25 @@ def fast():
 def ppo():
     # For recommended PPO hyperparams in each environment, see:
     # https://github.com/DLR-RM/rl-baselines3-zoo/blob/master/hyperparams/ppo.yml
-    rl_cls = stable_baselines3.PPO
+    rl_cls = sb3.PPO
     locals()  # quieten flake8
 
 
-# TODO(yawen): The current implementation of Soft Actor Critic in SB3 only supports
-# contionuous action spaces. Consider adding a discrete version as mentioned here:
-# https://github.com/DLR-RM/stable-baselines3/issues/505
 @rl_ingredient.named_config
 def sac():
     # For recommended SAC hyperparams in each environment, see:
     # https://github.com/DLR-RM/rl-baselines3-zoo/blob/master/hyperparams/sac.yml
-    rl_cls = stable_baselines3.SAC
+    rl_cls = sb3.SAC
+    warnings.warn(
+        "SAC currently only supports continuous action spaces. "
+        "Consider adding a discrete version as mentioned here: "
+        "https://github.com/DLR-RM/stable-baselines3/issues/505",
+        category=RuntimeWarning,
+    )
     # Default HPs are as follows:
     batch_size = 256  # batch size for RL algorithm
     rl_kwargs = dict(batch_size=None)  # make sure to set batch size to None
+
     locals()  # quieten flake8
 
 
@@ -117,18 +121,17 @@ def make_rl_algo(
         ), "set 'n_steps' at top-level using 'batch_size'"
         rl_kwargs["n_steps"] = batch_size // venv.num_envs
     elif issubclass(rl_cls, off_policy_algorithm.OffPolicyAlgorithm):
-        if "batch_size" not in rl_kwargs or rl_kwargs["batch_size"] is not None:
+        if rl_kwargs.get("batch_size") is not None:
             raise ValueError("set 'batch_size' at top-level")
         rl_kwargs["batch_size"] = batch_size
     else:
         raise TypeError(f"Unsupported RL algorithm '{rl_cls}'")
     rl_algo = rl_cls(
         policy=train["policy_cls"],
-        # Note(yawen): Here we make a copy of policy_kwargs as a temporary workaround
-        # for possible changing configs in a captured function. For off-policy
-        # algorithms in SB3, policy_kwargs["use_sde"] could be changed in
-        # rl_cls.__init__() for certain algorithms, such as Soft Actor Critic.
-        # https://github.com/DLR-RM/stable-baselines3/blob/30772aa9f53a4cf61571ee90046cdc454c1b11d7/stable_baselines3/common/off_policy_algorithm.py#L145
+        # Note(yawen): Copy `policy_kwargs` as SB3 may mutate the config we pass.
+        # In particular, policy_kwargs["use_sde"] may be changed in rl_cls.__init__()
+        # for certain algorithms, such as Soft Actor Critic. See:
+        # https://github.com/DLR-RM/stable-baselines3/blob/30772aa9f53a4cf61571ee90046cdc454c1b11d7/sb3/common/off_policy_algorithm.py#L145
         policy_kwargs=dict(train["policy_kwargs"]),
         env=venv,
         seed=_seed,
