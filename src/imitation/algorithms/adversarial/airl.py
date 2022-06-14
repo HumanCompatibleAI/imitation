@@ -8,6 +8,8 @@ from imitation.algorithms import base
 from imitation.algorithms.adversarial import common
 from imitation.rewards import reward_nets
 
+STOCHASTIC_POLICIES = (sac_policies.SACPolicy, policies.ActorCriticPolicy)
+
 
 class AIRL(common.AdversarialTrainer):
     """Adversarial Inverse Reinforcement Learning (`AIRL`_).
@@ -55,13 +57,8 @@ class AIRL(common.AdversarialTrainer):
             reward_net=reward_net,
             **kwargs,
         )
-        # AIRL needs a stochastic policy to compute the discriminator output.
-        # sac_policies.SACPolicy and policies.ActorCriticPolicy both have an actor
-        # to generate stochastic actions.
-        if not isinstance(
-            self.gen_algo.policy,
-            (sac_policies.SACPolicy, policies.ActorCriticPolicy),
-        ):
+        # AIRL needs a policy from STOCHASTIC_POLICIES to compute discriminator output.
+        if not isinstance(self.gen_algo.policy, STOCHASTIC_POLICIES):
             raise TypeError(
                 "AIRL needs a stochastic policy to compute the discriminator output.",
             )

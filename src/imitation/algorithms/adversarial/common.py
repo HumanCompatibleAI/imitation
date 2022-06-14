@@ -444,16 +444,15 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
         Returns:
             A batch of log policy action probabilities.
         """
-        log_policy_act_prob, log_policy_act_prob_th = None, None
-        if isinstance(self.gen_algo.policy, policies.ActorCriticPolicy):
+        if isinstance(self.policy, policies.ActorCriticPolicy):
             # policies.ActorCriticPolicy has a concrete implementation of
             # evaluate_actions to generate log_policy_act_prob given obs and actions.
-            _, log_policy_act_prob_th, _ = self.gen_algo.policy.evaluate_actions(
+            _, log_policy_act_prob_th, _ = self.policy.evaluate_actions(
                 obs_th,
                 acts_th,
             )
-        elif isinstance(self.gen_algo.policy, sac_policies.SACPolicy):
-            gen_algo_actor = self.gen_algo.policy.actor
+        elif isinstance(self.policy, sac_policies.SACPolicy):
+            gen_algo_actor = self.policy.actor
             # generate log_policy_act_prob from SAC actor.
             mean_actions, log_std, _ = gen_algo_actor.get_action_dist_params(obs_th)
             distribution = gen_algo_actor.action_dist.proba_distribution(
@@ -465,8 +464,9 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
             # might result in NaN values.
             nan_log_prob_idx = th.where(th.isnan(log_policy_act_prob_th))
             log_policy_act_prob_th[nan_log_prob_idx] = LOG_PROB_CUTOFF
-        if log_policy_act_prob_th is not None:
-            log_policy_act_prob = log_policy_act_prob_th.detach().cpu().numpy()
+        else:
+            return None
+        log_policy_act_prob = log_policy_act_prob_th.detach().cpu().numpy()
         return log_policy_act_prob
 
     def _make_disc_train_batch(

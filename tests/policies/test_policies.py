@@ -35,17 +35,17 @@ def test_actions_valid(env_name, policy_type):
 
 
 @pytest.mark.parametrize(
-    "policy_env_pair",
+    "policy_env_name_pair",
     [
         ("ppo", SIMPLE_DISCRETE_ENV),
         ("sac", SIMPLE_CONTINUOUS_ENV),
     ],
 )
-def test_save_stable_model_errors_and_warnings(tmpdir, policy_env_pair):
+def test_save_stable_model_errors_and_warnings(tmpdir, policy_env_name_pair):
     """Check errors and warnings in `save_stable_model()`."""
-    policy, env = policy_env_pair
+    policy, env_name = policy_env_name_pair
     tmpdir = pathlib.Path(tmpdir)
-    venv = util.make_vec_env(env)
+    venv = util.make_vec_env(env_name)
 
     # Trigger FileNotFoundError for no model.{zip,pkl}
     dir_a = tmpdir / "a"
