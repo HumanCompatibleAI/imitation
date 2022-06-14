@@ -129,6 +129,21 @@ def test_train_preference_comparisons_main(tmpdir, config):
     assert isinstance(run.result, dict)
 
 
+@pytest.mark.parametrize(
+    "env_name",
+    ["seals_cartpole", "mountain_car", "seals_mountain_car"],
+)
+def test_train_preference_comparisons_envs_no_crash(tmpdir, env_name):
+    """Test envs specified in imitation.scripts.config.train_preference_comparisons."""
+    config_updates = dict(common=dict(log_root=tmpdir))
+    run = train_preference_comparisons.train_preference_comparisons_ex.run(
+        named_configs=[env_name] + ALGO_FAST_CONFIGS["preference_comparison"],
+        config_updates=config_updates,
+    )
+    assert run.status == "COMPLETED"
+    assert isinstance(run.result, dict)
+
+
 def test_train_preference_comparisons_sac(tmpdir):
     config_updates = dict(common=dict(log_root=tmpdir))
     run = train_preference_comparisons.train_preference_comparisons_ex.run(
