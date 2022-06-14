@@ -220,6 +220,22 @@ def test_train_dagger_main(tmpdir):
     assert isinstance(run.result, dict)
 
 
+def test_train_dagger_error_and_exceptions(tmpdir):
+    with pytest.raises(Exception, match=".*expert_policy_path cannot be None.*"):
+        run = train_imitation.train_imitation_ex.run(
+            command_name="dagger",
+            named_configs=["cartpole"] + ALGO_FAST_CONFIGS["imitation"],
+            config_updates=dict(
+                common=dict(log_root=tmpdir),
+                demonstrations=dict(rollout_path=CARTPOLE_TEST_ROLLOUT_PATH),
+                dagger=dict(
+                    expert_policy_type="ppo",
+                    expert_policy_path=None,
+                ),
+            ),
+        )
+
+
 def test_train_bc_main(tmpdir):
     run = train_imitation.train_imitation_ex.run(
         command_name="bc",
