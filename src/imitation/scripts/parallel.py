@@ -122,9 +122,9 @@ def parallel(
             config=search_space,
             name=run_name,
             local_dir=local_dir,
-            upload_dir=upload_dir,
             loggers=ray_loggers,
             resources_per_trial=resources_per_trial,
+            sync_config=ray.tune.syncer.SyncConfig(upload_dir=upload_dir),
         )
     finally:
         ray.shutdown()
@@ -198,9 +198,7 @@ def _ray_tune_sacred_wrapper(
             "train_adversarial": train_adversarial_ex,
         }
         ex = experiments[sacred_ex_name]
-
-        observer = FileStorageObserver("sacred")
-        ex.observers.append(observer)
+        ex.observers = [FileStorageObserver("sacred")]
 
         # Apply base configs to get modified `named_configs` and `config_updates`.
         named_configs = []
