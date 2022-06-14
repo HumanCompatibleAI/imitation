@@ -309,21 +309,18 @@ def _check_train_ex_result(result: dict):
         ["train.normalize_disable", "reward.normalize_input_disable"],
     ),
 )
-def test_train_adversarial(tmpdir, named_configs):
+@pytest.mark.parametrize("command", ("airl", "gail"))
+def test_train_adversarial(tmpdir, named_configs, command):
     """Smoke test for imitation.scripts.train_adversarial."""
     named_configs = named_configs + ["cartpole"] + ALGO_FAST_CONFIGS["adversarial"]
     config_updates = {
-        "common": {
-            "log_root": tmpdir,
-        },
-        "demonstrations": {
-            "rollout_path": CARTPOLE_TEST_ROLLOUT_PATH,
-        },
+        "common": dict(log_root=tmpdir),
+        "demonstrations": dict(rollout_path=CARTPOLE_TEST_ROLLOUT_PATH),
         # TensorBoard logs to get extra coverage
-        "algorithm_kwargs": {"init_tensorboard": True},
+        "algorithm_kwargs": dict(init_tensorboard=True),
     }
     run = train_adversarial.train_adversarial_ex.run(
-        command_name="gail",
+        command_name=command,
         named_configs=named_configs,
         config_updates=config_updates,
     )
@@ -331,25 +328,20 @@ def test_train_adversarial(tmpdir, named_configs):
     _check_train_ex_result(run.result)
 
 
-def test_train_adversarial_sac(tmpdir):
+@pytest.mark.parametrize("command", ("airl", "gail"))
+def test_train_adversarial_sac(tmpdir, command):
     """Smoke test for imitation.scripts.train_adversarial."""
-    # make sure rl.sac named_config is called after rl.fast to overwrite
+    # Make sure rl.sac named_config is called after rl.fast to overwrite
     # rl_kwargs.batch_size to None
     named_configs = (
         ["pendulum"] + ALGO_FAST_CONFIGS["adversarial"] + RL_SAC_NAMED_CONFIGS
     )
     config_updates = {
-        "common": {
-            "log_root": tmpdir,
-        },
-        "demonstrations": {
-            "rollout_path": PENDULUM_TEST_ROLLOUT_PATH,
-        },
-        # TensorBoard logs to get extra coverage
-        "algorithm_kwargs": {"init_tensorboard": True},
+        "common": dict(log_root=tmpdir),
+        "demonstrations": dict(rollout_path=PENDULUM_TEST_ROLLOUT_PATH),
     }
     run = train_adversarial.train_adversarial_ex.run(
-        command_name="gail",
+        command_name=command,
         named_configs=named_configs,
         config_updates=config_updates,
     )
@@ -363,12 +355,8 @@ def test_train_adversarial_algorithm_value_error(tmpdir):
     base_named_configs = ["cartpole"] + ALGO_FAST_CONFIGS["adversarial"]
     base_config_updates = collections.ChainMap(
         {
-            "common": {
-                "log_root": tmpdir,
-            },
-            "demonstrations": {
-                "rollout_path": CARTPOLE_TEST_ROLLOUT_PATH,
-            },
+            "common": dict(log_root=tmpdir),
+            "demonstrations": dict(rollout_path=CARTPOLE_TEST_ROLLOUT_PATH),
         },
     )
 
