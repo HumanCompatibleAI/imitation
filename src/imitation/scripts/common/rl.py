@@ -65,7 +65,7 @@ def ppo():
 # contionuous action spaces. Consider adding a discrete version as mentioned here:
 # https://github.com/DLR-RM/stable-baselines3/issues/505
 @rl_ingredient.named_config
-def sac():   
+def sac():
     # For recommended SAC hyperparams in each environment, see:
     # https://github.com/DLR-RM/rl-baselines3-zoo/blob/master/hyperparams/sac.yml
     rl_cls = stable_baselines3.SAC
