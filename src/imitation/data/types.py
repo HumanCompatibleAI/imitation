@@ -337,8 +337,8 @@ def load(path: AnyPath) -> Sequence[Trajectory]:
             return [Trajectory(*args) for args in zip(*fields)]
     else:
         raise ValueError(
-            f"Expected either an .npz file or a pickled sequence of trajectories;"
-            f"got a pickled object of type {type(data).__name__}"
+            f"Expected either an .npz file or a pickled sequence of trajectories; "
+            f"got a pickled object of type {type(data).__name__}",
         )
 
 
@@ -360,6 +360,10 @@ def save(path: AnyPath, trajectories: Sequence[Trajectory]):
     Args:
         path: Trajectories are saved to this path.
         trajectories: The trajectories to save.
+
+    Raises:
+        ValueError: If the trajectories are not all of the same type, i.e. some are
+            `Trajectory` and others are `TrajectoryWithRew`.
     """
     p = pathlib.Path(path)
     p.parent.mkdir(parents=True, exist_ok=True)
@@ -376,7 +380,7 @@ def save(path: AnyPath, trajectories: Sequence[Trajectory]):
                 # Replace 'None' values for `infos`` with array of empty dicts
                 traj.infos if traj.infos is not None else np.full(len(traj), {})
                 for traj in trajectories
-            ]
+            ],
         ),
         "terminal": np.array([traj.terminal for traj in trajectories]),
         "indices": np.cumsum([len(traj) for traj in trajectories[:-1]]),
@@ -384,7 +388,7 @@ def save(path: AnyPath, trajectories: Sequence[Trajectory]):
     has_reward = [isinstance(traj, TrajectoryWithRew) for traj in trajectories]
     if all(has_reward):
         condensed["rews"] = np.concatenate(
-            [cast(TrajectoryWithRew, traj).rews for traj in trajectories]
+            [cast(TrajectoryWithRew, traj).rews for traj in trajectories],
         )
     elif any(has_reward):
         raise ValueError("Some trajectories have rewards but not all")
