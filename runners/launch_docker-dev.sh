@@ -10,8 +10,8 @@ Usage: launch_docker-dev.sh [options]
 options:
   -p, --pull                pull the image to DockerHub
 
-Note: You can specify IMIT_LOCAL_MNT and IMIT_MJKEY_MNT environment variables to mount
-  local repository and MuJoCo license key respectively.
+Note: You can specify IMIT_LOCAL_MNT environment variables to mount local
+  repository and MuJoCo license key respectively.
 "
 
 PULL=0
@@ -39,11 +39,6 @@ if [[ ${IMIT_LOCAL_MNT} == "" ]]; then
   IMIT_LOCAL_MNT="${HOME}/imitation"
 fi
 
-# Pass your own mjkey.txt
-if [[ ${IMIT_MJKEY_MNT} == "" ]]; then
-  IMIT_MJKEY_MNT="${HOME}/mnt/mjkey.txt"
-fi
-
 # install imitation in developer mode
 CMD="pip install -e .[docs,parallel,test] gym[mujoco]" # copied from ci/build_and_activate_venv.sh
 
@@ -56,6 +51,5 @@ fi
 
 docker run -it --rm --init \
   -v "${IMIT_LOCAL_MNT}:/imitation" \
-  -v "${IMIT_MJKEY_MNT}:/root/.mujoco/mjkey.txt" \
   ${DOCKER_IMAGE} \
   /bin/bash -c "${CMD} && exec bash"
