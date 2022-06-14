@@ -347,15 +347,15 @@ def save(path: AnyPath, trajectories: Sequence[Trajectory]):
 
     We create an .npz dictionary with the following keys:
     - obs: flattened observations from all trajectories. Note that the leading
-        dimension of this array will be `len(trajectories)` longer than the `acts`
-        and `infos` arrays, because we always have one more observation than we have
-        actions in any trajectory.
+    dimension of this array will be `len(trajectories)` longer than the `acts`
+    and `infos` arrays, because we always have one more observation than we have
+    actions in any trajectory.
     - acts: flattened actions from all trajectories
     - infos: flattened info dicts from all trajectories
     - terminal: boolean array indicating whether each trajectory is done.
     - indices: indices indicating where to split the flattened action and infos arrays,
-        in order to recover the original trajectories. Will be a 1D array of length
-        `len(trajectories)`.
+    in order to recover the original trajectories. Will be a 1D array of length
+    `len(trajectories)`.
 
     Args:
         path: Trajectories are saved to this path.
@@ -363,7 +363,7 @@ def save(path: AnyPath, trajectories: Sequence[Trajectory]):
 
     Raises:
         ValueError: If the trajectories are not all of the same type, i.e. some are
-            `Trajectory` and others are `TrajectoryWithRew`.
+        `Trajectory` and others are `TrajectoryWithRew`.
     """
     p = pathlib.Path(path)
     p.parent.mkdir(parents=True, exist_ok=True)
