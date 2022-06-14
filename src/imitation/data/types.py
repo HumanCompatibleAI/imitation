@@ -363,7 +363,7 @@ def save(path: AnyPath, trajectories: Sequence[Trajectory]):
 
     Raises:
         ValueError: If the trajectories are not all of the same type, i.e. some are
-        `Trajectory` and others are `TrajectoryWithRew`.
+            `Trajectory` and others are `TrajectoryWithRew`.
     """
     p = pathlib.Path(path)
     p.parent.mkdir(parents=True, exist_ok=True)
