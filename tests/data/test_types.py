@@ -161,9 +161,21 @@ class TestData:
         save_path = pathlib.Path(save_dir, "trajs.pkl")
 
         with chdir_context:
-            types.save(str(save_path), trajs)
-            with open(save_path, "rb") as f:
-                loaded_trajs = pickle.load(f)
+            # Check that types.load works for the new .npz based format as well as
+            # trajectories saved with pickle
+
+            # .npz format
+            types.save(save_path, trajs)
+            loaded_trajs = types.load(save_path)
+            assert len(trajs) == len(loaded_trajs)
+            for t1, t2 in zip(trajs, loaded_trajs):
+                _assert_dataclasses_equal(t1, t2)
+            
+            # Pickle format
+            with open(save_path, "wb") as f:
+                pickle.dump(trajs, f)
+            
+            loaded_trajs = types.load(save_path)
             assert len(trajs) == len(loaded_trajs)
             for t1, t2 in zip(trajs, loaded_trajs):
                 _assert_dataclasses_equal(t1, t2)
