@@ -4,6 +4,7 @@ from setuptools import find_packages, setup
 
 import src.imitation  # pytype: disable=import-error
 
+PARALLEL_REQUIRE = ["ray[debug,tune]>=1.13.0"]
 TESTS_REQUIRE = [
     "seals",
     "black",
@@ -29,17 +30,15 @@ TESTS_REQUIRE = [
     "pytest-notebook",
     "pytest-xdist",
     "pytype",
-    "ray[debug,tune]>=1.13.0",
     "scipy>=1.8.0",
     "wandb",
-]
+] + PARALLEL_REQUIRE
 DOCS_REQUIRE = [
     "sphinx",
     "sphinx-autodoc-typehints",
     "sphinx-rtd-theme",
     "sphinxcontrib-napoleon",
 ]
-PARALLEL_REQUIRE = ["ray[debug,tune]>=1.13.0"]
 
 
 def get_readme() -> str:
