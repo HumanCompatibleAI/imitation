@@ -11,12 +11,15 @@ import torch as th
 import torch.utils.tensorboard as thboard
 import tqdm
 from stable_baselines3.common import base_class, policies, vec_env
+from stable_baselines3.sac import policies as sac_policies
 from torch.nn import functional as F
 
 from imitation.algorithms import base
 from imitation.data import buffer, rollout, types, wrappers
 from imitation.rewards import reward_nets, reward_wrapper
 from imitation.util import logger, networks, util
+
+LOG_PROB_CUTOFF = -20.0
 
 
 def compute_train_stats(
@@ -427,6 +430,45 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
         if ndarray is not None:
             return th.as_tensor(ndarray, device=self.reward_train.device)
 
+    def _get_log_policy_act_prob(
+        self,
+        obs_th: th.Tensor,
+        acts_th: th.Tensor,
+    ) -> th.Tensor:
+        """Evaluates the given actions on the given observations.
+
+        Args:
+            obs: A batch of observations.
+            actions: A batch of actions.
+
+        Returns:
+            A batch of log policy action probabilities.
+        """
+        log_policy_act_prob = None
+        if isinstance(self.gen_algo.policy, policies.ActorCriticPolicy):
+            # policies.ActorCriticPolicy has a concrete implementation of
+            # evaluate_actions to generate log_policy_act_prob given obs and actions.
+            _, log_policy_act_prob_th, _ = self.gen_algo.policy.evaluate_actions(
+                obs_th,
+                acts_th,
+            )
+        elif isinstance(self.gen_algo.policy, sac_policies.SACPolicy):
+            gen_algo_actor = self.gen_algo.policy.actor
+            # generate log_policy_act_prob from SAC actor.
+            mean_actions, log_std, _ = gen_algo_actor.get_action_dist_params(obs_th)
+            distribution = gen_algo_actor.action_dist.proba_distribution(
+                mean_actions,
+                log_std,
+            )
+            log_policy_act_prob_th = distribution.log_prob(acts_th)
+            # getting log probability of actions from a continuous distribution
+            # might result in NaN values.
+            nan_log_prob_idx = th.where(th.isnan(log_policy_act_prob_th))
+            log_policy_act_prob_th[nan_log_prob_idx] = LOG_PROB_CUTOFF
+        if log_policy_act_prob_th is not None:
+            log_policy_act_prob = log_policy_act_prob_th.detach().cpu().numpy()
+        return log_policy_act_prob
+
     def _make_disc_train_batch(
         self,
         *,
@@ -504,16 +546,9 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
         with th.no_grad():
             obs_th = th.as_tensor(obs, device=self.gen_algo.device)
             acts_th = th.as_tensor(acts, device=self.gen_algo.device)
-            log_act_prob = None
-            if hasattr(self.gen_algo.policy, "evaluate_actions"):
-                _, log_act_prob_th, _ = self.gen_algo.policy.evaluate_actions(
-                    obs_th,
-                    acts_th,
-                )
-                log_act_prob = log_act_prob_th.detach().cpu().numpy()
-                del log_act_prob_th  # unneeded
-                assert len(log_act_prob) == n_samples
-                log_act_prob = log_act_prob.reshape((n_samples,))
+            log_policy_act_prob = self._get_log_policy_act_prob(obs_th, acts_th)
+            assert len(log_policy_act_prob) == n_samples
+            log_policy_act_prob = log_policy_act_prob.reshape((n_samples,))
             del obs_th, acts_th  # unneeded
 
         obs_th, acts_th, next_obs_th, dones_th = self.reward_train.preprocess(
@@ -528,7 +563,7 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
             "next_state": next_obs_th,
             "done": dones_th,
             "labels_gen_is_one": self._torchify_array(labels_gen_is_one),
-            "log_policy_act_prob": self._torchify_array(log_act_prob),
+            "log_policy_act_prob": self._torchify_array(log_policy_act_prob),
         }
 
         return batch_dict
