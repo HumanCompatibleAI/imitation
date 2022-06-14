@@ -438,13 +438,13 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
         """Evaluates the given actions on the given observations.
 
         Args:
-            obs: A batch of observations.
-            actions: A batch of actions.
+            obs_th: A batch of observations.
+            acts_th: A batch of actions.
 
         Returns:
             A batch of log policy action probabilities.
         """
-        log_policy_act_prob = None
+        log_policy_act_prob, log_policy_act_prob_th = None, None
         if isinstance(self.gen_algo.policy, policies.ActorCriticPolicy):
             # policies.ActorCriticPolicy has a concrete implementation of
             # evaluate_actions to generate log_policy_act_prob given obs and actions.
@@ -547,8 +547,9 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
             obs_th = th.as_tensor(obs, device=self.gen_algo.device)
             acts_th = th.as_tensor(acts, device=self.gen_algo.device)
             log_policy_act_prob = self._get_log_policy_act_prob(obs_th, acts_th)
-            assert len(log_policy_act_prob) == n_samples
-            log_policy_act_prob = log_policy_act_prob.reshape((n_samples,))
+            if log_policy_act_prob is not None:
+                assert len(log_policy_act_prob) == n_samples
+                log_policy_act_prob = log_policy_act_prob.reshape((n_samples,))
             del obs_th, acts_th  # unneeded
 
         obs_th, acts_th, next_obs_th, dones_th = self.reward_train.preprocess(
