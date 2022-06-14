@@ -64,7 +64,7 @@ class FeedForward32Policy(policies.ActorCriticPolicy):
 
     Note: This differs from stable_baselines3 ActorCriticPolicy in two ways: by
     having 32 rather than 64 units, and by having policy and value networks
-    share weights.
+    share weights except at the final layer, where there are different linear heads.
     """
 
     def __init__(self, *args, **kwargs):

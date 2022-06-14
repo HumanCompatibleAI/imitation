@@ -222,7 +222,7 @@ def test_train_dagger_main(tmpdir):
 
 def test_train_dagger_error_and_exceptions(tmpdir):
     with pytest.raises(Exception, match=".*expert_policy_path cannot be None.*"):
-        run = train_imitation.train_imitation_ex.run(
+        train_imitation.train_imitation_ex.run(
             command_name="dagger",
             named_configs=["cartpole"] + ALGO_FAST_CONFIGS["imitation"],
             config_updates=dict(
