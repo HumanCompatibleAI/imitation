@@ -170,11 +170,11 @@ class TestData:
             assert len(trajs) == len(loaded_trajs)
             for t1, t2 in zip(trajs, loaded_trajs):
                 _assert_dataclasses_equal(t1, t2)
-            
+
             # Pickle format
             with open(save_path, "wb") as f:
                 pickle.dump(trajs, f)
-            
+
             loaded_trajs = types.load(save_path)
             assert len(trajs) == len(loaded_trajs)
             for t1, t2 in zip(trajs, loaded_trajs):

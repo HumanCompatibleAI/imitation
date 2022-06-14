@@ -4,9 +4,8 @@ import dataclasses
 import logging
 import os
 import pathlib
-import pickle
 import warnings
-from typing import Any, cast, Dict, Mapping, Optional, Sequence, Tuple, TypeVar, Union
+from typing import Any, Dict, Mapping, Optional, Sequence, Tuple, TypeVar, Union, cast
 
 import numpy as np
 import torch as th
@@ -298,9 +297,20 @@ class TransitionsWithRew(Transitions):
         _rews_validation(self.rews, self.acts)
 
 
+def load_with_rewards(path: AnyPath) -> Sequence[TrajectoryWithRew]:
+    """Loads a sequence of trajectories with rewards from a file."""
+    data = load(path)
+    if not all(isinstance(traj, TrajectoryWithRew) for traj in data):
+        raise ValueError(
+            f"Expected all trajectories to be of type `TrajectoryWithRew`, "
+            f"but found {type(data).__name__}",
+        )
+
+    return cast(Sequence[TrajectoryWithRew], data)
+
+
 def load(path: AnyPath) -> Sequence[Trajectory]:
     """Loads a sequence of trajectories saved by `save()` from `path`."""
-
     # Interestingly, np.load will just silently load a normal pickle file when you
     # set `allow_pickle=True`. So this call should succeed for both the new compressed
     # .npz format and the old pickle based format. To tell the difference we need to
