@@ -357,9 +357,9 @@ def save(path: AnyPath, trajectories: Sequence[Trajectory]):
         * infos: flattened info dicts from all trajectories. Any trajectories with
         no info dict will have their entry in this array set to the empty dictionary.
         * terminal: boolean array indicating whether each trajectory is done.
-        * indices: indices indicating where to split the flattened action and infos arrays,
-        in order to recover the original trajectories. Will be a 1D array of length
-        `len(trajectories)`.
+        * indices: indices indicating where to split the flattened action and infos
+        arrays, in order to recover the original trajectories. Will be a 1D array of
+        length `len(trajectories)`.
 
     Args:
         path: Trajectories are saved to this path.
