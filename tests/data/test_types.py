@@ -32,16 +32,6 @@ def _check_1d_shape(fn: Callable[[np.ndarray], Any], length: float, expected_msg
             fn(np.zeros(shape))
 
 
-def _remove_reward(traj_with_reward):
-    """Return a shallow copy of `traj_with_reward` as a bare `Trajectory`."""
-    return types.Trajectory(
-        traj_with_reward.obs,
-        traj_with_reward.acts,
-        traj_with_reward.infos,
-        traj_with_reward.terminal,
-    )
-
-
 @pytest.fixture
 def trajectory(
     obs_space: gym.Space,
@@ -162,7 +152,8 @@ class TestData:
     @pytest.mark.parametrize("use_chdir", [False, True])
     def test_save_trajectories(
         self,
-        trajectory_rew,
+        trajectory: types.Trajectory,
+        trajectory_rew: types.TrajectoryWithRew,
         use_chdir,
         tmpdir,
         use_pickle,
@@ -178,11 +169,7 @@ class TestData:
             chdir_context = contextlib.nullcontext()
             save_dir = tmpdir
 
-        if not use_rewards:
-            trajs = [_remove_reward(trajectory_rew)]
-        else:
-            trajs = [trajectory_rew]
-
+        trajs = [trajectory_rew if use_rewards else trajectory]
         save_path = pathlib.Path(save_dir, "trajs.pkl")
 
         with chdir_context:
@@ -196,12 +183,8 @@ class TestData:
 
                 # Test that heterogeneous lists of trajectories throw an error
                 if use_rewards:
-                    trajs_bad = [
-                        _remove_reward(trajectory_rew),
-                        trajectory_rew,
-                    ]
                     with pytest.raises(ValueError):
-                        types.save(save_path, trajs_bad)
+                        types.save(save_path, [trajectory, trajectory_rew])
 
             if type_safe:
                 if use_rewards:

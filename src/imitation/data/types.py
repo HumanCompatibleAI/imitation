@@ -300,10 +300,14 @@ class TransitionsWithRew(Transitions):
 def load_with_rewards(path: AnyPath) -> Sequence[TrajectoryWithRew]:
     """Loads a sequence of trajectories with rewards from a file."""
     data = load(path)
-    if not all(isinstance(traj, TrajectoryWithRew) for traj in data):
+
+    mismatched_types = [
+        type(traj) for traj in data if not isinstance(traj, TrajectoryWithRew)
+    ]
+    if mismatched_types:
         raise ValueError(
             f"Expected all trajectories to be of type `TrajectoryWithRew`, "
-            f"but found {type(data).__name__}",
+            f"but found {mismatched_types[0].__name__}",
         )
 
     return cast(Sequence[TrajectoryWithRew], data)
@@ -320,7 +324,6 @@ def load(path: AnyPath) -> Sequence[Trajectory]:
     data = np.load(path, allow_pickle=True)
     if isinstance(data, Sequence):
         return data
-
     elif isinstance(data, Mapping):
         num_trajs = len(data["indices"])
         fields = (
@@ -346,16 +349,17 @@ def save(path: AnyPath, trajectories: Sequence[Trajectory]):
     """Save a sequence of Trajectories to disk using a NumPy-based format.
 
     We create an .npz dictionary with the following keys:
-    - obs: flattened observations from all trajectories. Note that the leading
-    dimension of this array will be `len(trajectories)` longer than the `acts`
-    and `infos` arrays, because we always have one more observation than we have
-    actions in any trajectory.
-    - acts: flattened actions from all trajectories
-    - infos: flattened info dicts from all trajectories
-    - terminal: boolean array indicating whether each trajectory is done.
-    - indices: indices indicating where to split the flattened action and infos arrays,
-    in order to recover the original trajectories. Will be a 1D array of length
-    `len(trajectories)`.
+        * obs: flattened observations from all trajectories. Note that the leading
+        dimension of this array will be `len(trajectories)` longer than the `acts`
+        and `infos` arrays, because we always have one more observation than we have
+        actions in any trajectory.
+        * acts: flattened actions from all trajectories
+        * infos: flattened info dicts from all trajectories. Any trajectories with
+        no info dict will have their entry in this array set to the empty dictionary.
+        * terminal: boolean array indicating whether each trajectory is done.
+        * indices: indices indicating where to split the flattened action and infos arrays,
+        in order to recover the original trajectories. Will be a 1D array of length
+        `len(trajectories)`.
 
     Args:
         path: Trajectories are saved to this path.
@@ -369,19 +373,15 @@ def save(path: AnyPath, trajectories: Sequence[Trajectory]):
     p.parent.mkdir(parents=True, exist_ok=True)
     tmp_path = f"{path}.tmp"
 
-    # TODO(nora): Should we check that the shapes of the observations and actions are
-    # the same for all trajectories and throw a more specific error here, or just let
-    # NumPy throw the error when we try to concatenate?
+    infos = [
+        # Replace 'None' values for `infos`` with array of empty dicts
+        traj.infos if traj.infos is not None else np.full(len(traj), {})
+        for traj in trajectories
+    ]
     condensed = {
         "obs": np.concatenate([traj.obs for traj in trajectories]),
         "acts": np.concatenate([traj.acts for traj in trajectories]),
-        "infos": np.concatenate(
-            [
-                # Replace 'None' values for `infos`` with array of empty dicts
-                traj.infos if traj.infos is not None else np.full(len(traj), {})
-                for traj in trajectories
-            ],
-        ),
+        "infos": np.concatenate(infos),
         "terminal": np.array([traj.terminal for traj in trajectories]),
         "indices": np.cumsum([len(traj) for traj in trajectories[:-1]]),
     }
