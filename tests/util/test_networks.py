@@ -12,11 +12,11 @@ from imitation.util import networks
 assert_equal = functools.partial(th.testing.assert_close, rtol=0, atol=0)
 
 
-NORMALIZATION_LAYERS = [networks.RunningNorm, networks.EMARunningNorm]
+NORMALIZATION_LAYERS = [networks.RunningNorm, networks.EMANorm]
 
 
 @pytest.mark.parametrize("normalization_layer", NORMALIZATION_LAYERS)
-def test_running_norm_identity(normalization_layer) -> None:
+def test_running_norm_identity(normalization_layer: Type[networks.BaseNorm]) -> None:
     """Tests running norm starts and stays at identity function.
 
     Specifically, we test in evaluation mode (initializatn should not change)
@@ -38,7 +38,7 @@ def test_running_norm_identity(normalization_layer) -> None:
 
 @pytest.mark.parametrize("normalization_layer", NORMALIZATION_LAYERS)
 def test_running_norm_eval_fixed(
-    normalization_layer,
+    normalization_layer: Type[networks.BaseNorm],
     batch_size: int = 8,
     num_batches: int = 10,
     num_features: int = 4,
@@ -108,7 +108,7 @@ def test_running_norm_matches_dist(batch_size: int) -> None:
 @pytest.mark.parametrize("normalization_layer", NORMALIZATION_LAYERS)
 def test_parameters_converge(
     batch_size: int,
-    normalization_layer: Type[networks.RunningNorm],
+    normalization_layer: Type[networks.BaseNorm],
 ) -> None:
     """Test running norm parameters approximately converge to true values."""
     mean = th.Tensor([42])
@@ -137,10 +137,7 @@ def test_parameters_converge(
 
 @pytest.mark.parametrize(
     "init_kwargs",
-    [
-        {},
-        *[{"normalize_input_layer": layer} for layer in NORMALIZATION_LAYERS],
-    ],
+    [{}] + [{"normalize_input_layer": layer} for layer in NORMALIZATION_LAYERS],
 )
 def test_build_mlp_norm_training(init_kwargs) -> None:
     """Tests MLP building function `networks.build_mlp()`.

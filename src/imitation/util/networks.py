@@ -168,9 +168,9 @@ class EMANorm(BaseNorm):
         self.running_mean *= 1 - self.lamb
         self.running_mean += b_mean * self.lamb
 
-        b_var = (
-            th.sum(th.square(self.running_mean.unsqueeze(0) - batch), dim=0) / b_size
-        )
+        centered = self.running_mean.unsqueeze(0) - batch
+
+        b_var = th.sum(th.square(centered), dim=0) / b_size
 
         self.running_var *= 1 - self.r
         self.running_var += self.r * b_var
