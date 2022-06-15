@@ -32,6 +32,16 @@ def _check_1d_shape(fn: Callable[[np.ndarray], Any], length: float, expected_msg
             fn(np.zeros(shape))
 
 
+def _remove_reward(traj_with_reward):
+    """Return a shallow copy of `traj_with_reward` as a bare `Trajectory`."""
+    return types.Trajectory(
+        traj_with_reward.obs,
+        traj_with_reward.acts,
+        traj_with_reward.infos,
+        traj_with_reward.terminal,
+    )
+
+
 @pytest.fixture
 def trajectory(
     obs_space: gym.Space,
@@ -148,6 +158,7 @@ class TestData:
 
     @pytest.mark.parametrize("type_safe", [False, True])
     @pytest.mark.parametrize("use_pickle", [False, True])
+    @pytest.mark.parametrize("use_rewards", [False, True])
     @pytest.mark.parametrize("use_chdir", [False, True])
     def test_save_trajectories(
         self,
@@ -155,6 +166,7 @@ class TestData:
         use_chdir,
         tmpdir,
         use_pickle,
+        use_rewards,
         type_safe,
     ):
         """Check that trajectories are properly saved."""
@@ -166,7 +178,11 @@ class TestData:
             chdir_context = contextlib.nullcontext()
             save_dir = tmpdir
 
-        trajs = [trajectory_rew]
+        if not use_rewards:
+            trajs = [_remove_reward(trajectory_rew)]
+        else:
+            trajs = [trajectory_rew]
+
         save_path = pathlib.Path(save_dir, "trajs.pkl")
 
         with chdir_context:
@@ -179,19 +195,15 @@ class TestData:
                 types.save(save_path, trajs)
 
                 # Test that heterogeneous lists of trajectories throw an error
-                trajs_bad = [
-                    types.Trajectory(
-                        trajectory_rew.obs,
-                        trajectory_rew.acts,
-                        trajectory_rew.infos,
-                        trajectory_rew.terminal,
-                    ),
-                    trajectory_rew,
-                ]
-                with pytest.raises(ValueError):
-                    types.save(save_path, trajs_bad)
+                if use_rewards:
+                    trajs_bad = [
+                        _remove_reward(trajectory_rew),
+                        trajectory_rew,
+                    ]
+                    with pytest.raises(ValueError):
+                        types.save(save_path, trajs_bad)
 
-            if type_safe:
+            if type_safe and use_rewards:
                 loaded_trajs = types.load_with_rewards(save_path)
             else:
                 loaded_trajs = types.load(save_path)
