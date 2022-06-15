@@ -14,12 +14,10 @@ from imitation.data import rollout
 from imitation.policies import base, serialize
 from imitation.util import registry, util
 
-SIMPLE_ENVS = [
-    "CartPole-v0",  # Discrete(2) action space
-    "MountainCarContinuous-v0",  # Box(1) action space
-]
+SIMPLE_DISCRETE_ENV = "CartPole-v0"  # Discrete(2) action space
+SIMPLE_CONTINUOUS_ENV = "MountainCarContinuous-v0"  # Box(1) action space
+SIMPLE_ENVS = [SIMPLE_DISCRETE_ENV, SIMPLE_CONTINUOUS_ENV]
 HARDCODED_TYPES = ["random", "zero"]
-
 
 assert_equal = functools.partial(th.testing.assert_close, rtol=0, atol=0)
 
@@ -36,31 +34,37 @@ def test_actions_valid(env_name, policy_type):
         assert venv.action_space.contains(a)
 
 
-def test_save_stable_model_errors_and_warnings(tmpdir):
+@pytest.mark.parametrize(
+    "policy_env_name_pair",
+    [
+        ("ppo", SIMPLE_DISCRETE_ENV),
+        ("sac", SIMPLE_CONTINUOUS_ENV),
+    ],
+)
+def test_save_stable_model_errors_and_warnings(tmpdir, policy_env_name_pair):
     """Check errors and warnings in `save_stable_model()`."""
+    policy, env_name = policy_env_name_pair
     tmpdir = pathlib.Path(tmpdir)
-    venv = util.make_vec_env("CartPole-v0")
+    venv = util.make_vec_env(env_name)
 
     # Trigger FileNotFoundError for no model.{zip,pkl}
     dir_a = tmpdir / "a"
     dir_a.mkdir()
     with pytest.raises(FileNotFoundError, match=".*No such file or.*model.zip.*"):
-        serialize.load_policy("ppo", str(dir_a), venv)
+        serialize.load_policy(policy, str(dir_a), venv)
 
     vec_normalize = dir_a / "vec_normalize.pkl"
     vec_normalize.touch()
     with pytest.raises(FileExistsError, match="Outdated policy format.*"):
-        serialize.load_policy("ppo", str(dir_a), venv)
+        serialize.load_policy(policy, str(dir_a), venv)
 
     # Trigger FileNotError for nonexistent directory
     dir_nonexistent = tmpdir / "i_dont_exist"
     with pytest.raises(FileNotFoundError, match=".*needs to be a directory.*"):
-        serialize.load_policy("ppo", str(dir_nonexistent), venv)
+        serialize.load_policy(policy, str(dir_nonexistent), venv)
 
 
-@pytest.mark.parametrize("env_name", SIMPLE_ENVS)
-@pytest.mark.parametrize("model_cfg", serialize.STABLE_BASELINES_CLASSES.items())
-def test_serialize_identity(env_name, model_cfg, tmpdir):
+def _test_serialize_identity(env_name, model_cfg, tmpdir):
     """Test output actions of deserialized policy are same as original."""
     venv = util.make_vec_env(env_name, n_envs=1, parallel=False)
 
@@ -93,6 +97,26 @@ def test_serialize_identity(env_name, model_cfg, tmpdir):
     )
 
     assert np.allclose(orig_rollout.acts, new_rollout.acts)
+
+
+SB_CONFIGS = serialize.STABLE_BASELINES_CLASSES.items()
+CONTINUOUS_ONLY = ["sac"]
+NORMAL_CONFIGS = [cfg for cfg in SB_CONFIGS if cfg[0] not in CONTINUOUS_ONLY]
+CONTINUOUS_ONLY_CONFIGS = [cfg for cfg in SB_CONFIGS if cfg[0] in CONTINUOUS_ONLY]
+
+
+@pytest.mark.parametrize("env_name", SIMPLE_ENVS)
+@pytest.mark.parametrize("model_cfg", NORMAL_CONFIGS)
+def test_serialize_identity(env_name, model_cfg, tmpdir):
+    """Test output actions of deserialized policy are same as original."""
+    _test_serialize_identity(env_name, model_cfg, tmpdir)
+
+
+@pytest.mark.parametrize("env_name", [SIMPLE_CONTINUOUS_ENV])
+@pytest.mark.parametrize("model_cfg", CONTINUOUS_ONLY_CONFIGS)
+def test_serialize_identity_continuous_only(env_name, model_cfg, tmpdir):
+    """Test serialize identity for continuous_only algorithms."""
+    _test_serialize_identity(env_name, model_cfg, tmpdir)
 
 
 class ZeroModule(nn.Module):

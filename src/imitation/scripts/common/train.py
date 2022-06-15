@@ -28,8 +28,12 @@ def config():
 
 @train_ingredient.named_config
 def fast():
-    n_episodes_eval = 1
-    locals()  # quieten flake8
+    n_episodes_eval = 1  # noqa: F841
+
+
+@train_ingredient.named_config
+def sac():
+    policy_cls = base.SAC1024Policy  # noqa: F841
 
 
 @train_ingredient.named_config
