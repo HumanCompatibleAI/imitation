@@ -19,8 +19,6 @@ from imitation.data import buffer, rollout, types, wrappers
 from imitation.rewards import reward_nets, reward_wrapper
 from imitation.util import logger, networks, util
 
-LOG_PROB_CUTOFF = -20.0
-
 
 def compute_train_stats(
     disc_logits_gen_is_high: th.Tensor,
@@ -459,11 +457,10 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
                 mean_actions,
                 log_std,
             )
-            log_policy_act_prob_th = distribution.log_prob(acts_th)
-            # getting log probability of actions from a continuous distribution
-            # might result in NaN values.
-            nan_log_prob_idx = th.where(th.isnan(log_policy_act_prob_th))
-            log_policy_act_prob_th[nan_log_prob_idx] = LOG_PROB_CUTOFF
+            # SAC applies a squashing function to bound the actions to a finite range
+            # `acts_th` need to be scaled accordingly before computing log prob.
+            scaled_acts_th = self.policy.scale_action(acts_th)
+            log_policy_act_prob_th = distribution.log_prob(scaled_acts_th)
         else:
             return None
         log_policy_act_prob = log_policy_act_prob_th.detach().cpu().numpy()
