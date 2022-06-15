@@ -161,12 +161,15 @@ def test_cant_load_unnorm_as_norm(env_name, tmpdir):
 
 @pytest.mark.parametrize("env_name", ENVS)
 @pytest.mark.parametrize("net_cls", REWARD_NETS)
-def test_serialize_identity(env_name, net_cls, tmpdir):
+@pytest.mark.parametrize("normalize_rewards", [True, False])
+def test_serialize_identity(env_name, net_cls, normalize_rewards, tmpdir):
     """Does output of deserialized reward network match that of original?"""
     logging.info(f"Testing {net_cls}")
 
     venv = util.make_vec_env(env_name, n_envs=1, parallel=False)
     original = net_cls(venv.observation_space, venv.action_space)
+    if normalize_rewards:
+        original = reward_nets.NormalizedRewardNet(original, networks.RunningNorm)
     random = base.RandomPolicy(venv.observation_space, venv.action_space)
 
     tmppath = os.path.join(tmpdir, "reward.pt")
@@ -178,14 +181,23 @@ def test_serialize_identity(env_name, net_cls, tmpdir):
 
     transitions = rollout.generate_transitions(random, venv, n_timesteps=100)
 
-    test_rew_fn = serialize.load_reward("RewardNet_unshaped", tmppath, venv)
+    if isinstance(original, reward_nets.NormalizedRewardNet):
+        wrapped_rew_fn = serialize.load_reward("RewardNet_normalized", tmppath, venv)
+        unwrapped_rew_fn = serialize.load_reward(
+            "RewardNet_unnormalized",
+            tmppath,
+            venv,
+        )
     if isinstance(original, reward_nets.ShapedRewardNet):
-        train_rew_fn = serialize.load_reward("RewardNet_shaped", tmppath, venv)
+        unwrapped_rew_fn = serialize.load_reward("RewardNet_unshaped", tmppath, venv)
+        wrapped_rew_fn = serialize.load_reward("RewardNet_shaped", tmppath, venv)
     else:
-        train_rew_fn = test_rew_fn
+        unwrapped_rew_fn = serialize.load_reward("RewardNet_unshaped", tmppath, venv)
+        wrapped_rew_fn = unwrapped_rew_fn
+
     rewards = {
-        "train": [],
-        "test": [],
+        "wrapped": [],
+        "unwrapped": [],
     }
     for net in [original, loaded]:
         trans_args = (
@@ -194,11 +206,11 @@ def test_serialize_identity(env_name, net_cls, tmpdir):
             transitions.next_obs,
             transitions.dones,
         )
-        rewards["train"].append(net.predict(*trans_args))
+        rewards["wrapped"].append(net.predict(*trans_args))
         if hasattr(net, "base"):
-            rewards["test"].append(net.base.predict(*trans_args))
+            rewards["unwrapped"].append(net.base.predict(*trans_args))
         else:
-            rewards["test"].append(net.predict(*trans_args))
+            rewards["unwrapped"].append(net.predict(*trans_args))
 
     args = (
         transitions.obs,
@@ -206,8 +218,8 @@ def test_serialize_identity(env_name, net_cls, tmpdir):
         transitions.next_obs,
         transitions.dones,
     )
-    rewards["train"].append(train_rew_fn(*args))
-    rewards["test"].append(test_rew_fn(*args))
+    rewards["wrapped"].append(wrapped_rew_fn(*args))
+    rewards["unwrapped"].append(unwrapped_rew_fn(*args))
 
     for key, predictions in rewards.items():
         assert len(predictions) == 3
