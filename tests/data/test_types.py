@@ -203,8 +203,13 @@ class TestData:
                     with pytest.raises(ValueError):
                         types.save(save_path, trajs_bad)
 
-            if type_safe and use_rewards:
-                loaded_trajs = types.load_with_rewards(save_path)
+            if type_safe:
+                if use_rewards:
+                    loaded_trajs = types.load_with_rewards(save_path)
+                else:
+                    with pytest.raises(ValueError):
+                        loaded_trajs = types.load_with_rewards(save_path)
+                    loaded_trajs = types.load(save_path)
             else:
                 loaded_trajs = types.load(save_path)
 
