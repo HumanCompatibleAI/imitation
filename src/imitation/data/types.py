@@ -349,17 +349,17 @@ def save(path: AnyPath, trajectories: Sequence[Trajectory]):
     """Save a sequence of Trajectories to disk using a NumPy-based format.
 
     We create an .npz dictionary with the following keys:
-        * obs: flattened observations from all trajectories. Note that the leading
-        dimension of this array will be `len(trajectories)` longer than the `acts`
-        and `infos` arrays, because we always have one more observation than we have
-        actions in any trajectory.
-        * acts: flattened actions from all trajectories
-        * infos: flattened info dicts from all trajectories. Any trajectories with
-        no info dict will have their entry in this array set to the empty dictionary.
-        * terminal: boolean array indicating whether each trajectory is done.
-        * indices: indices indicating where to split the flattened action and infos
-        arrays, in order to recover the original trajectories. Will be a 1D array of
-        length `len(trajectories)`.
+    * obs: flattened observations from all trajectories. Note that the leading
+    dimension of this array will be `len(trajectories)` longer than the `acts`
+    and `infos` arrays, because we always have one more observation than we have
+    actions in any trajectory.
+    * acts: flattened actions from all trajectories
+    * infos: flattened info dicts from all trajectories. Any trajectories with
+    no info dict will have their entry in this array set to the empty dictionary.
+    * terminal: boolean array indicating whether each trajectory is done.
+    * indices: indices indicating where to split the flattened action and infos
+    arrays, in order to recover the original trajectories. Will be a 1D array of
+    length `len(trajectories)`.
 
     Args:
         path: Trajectories are saved to this path.
