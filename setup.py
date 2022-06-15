@@ -4,6 +4,7 @@ from setuptools import find_packages, setup
 
 import src.imitation  # pytype: disable=import-error
 
+PARALLEL_REQUIRE = ["ray[debug,tune]>=1.13.0"]
 TESTS_REQUIRE = [
     "seals",
     "black",
@@ -29,17 +30,15 @@ TESTS_REQUIRE = [
     "pytest-notebook",
     "pytest-xdist",
     "pytype",
-    "ray[debug,tune]~=0.8.5",
     "scipy>=1.8.0",
     "wandb",
-]
+] + PARALLEL_REQUIRE
 DOCS_REQUIRE = [
     "sphinx",
     "sphinx-autodoc-typehints",
     "sphinx-rtd-theme",
     "sphinxcontrib-napoleon",
 ]
-PARALLEL_REQUIRE = ["ray[debug,tune]~=0.8.5"]
 
 
 def get_readme() -> str:
@@ -76,7 +75,8 @@ setup(
             "@gym_fixes#egg=stable-baselines3"
         ),
         "stable-baselines3>=1.4.0",
-        "sacred~=0.8.1",
+        # TODO(nora) switch back to PyPi once 0.8.3 makes it to release:
+        "sacred@git+https://github.com/IDSIA/sacred.git@0.8.3",
         "tensorboard>=1.14",
     ],
     tests_require=TESTS_REQUIRE,

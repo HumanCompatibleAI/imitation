@@ -55,8 +55,8 @@ def train_rl(
     Args:
         total_timesteps: Number of training timesteps in `model.learn()`.
         normalize_reward: Applies normalization and clipping to the reward function by
-            keeping a running average of training rewards. Note: this is not
-            recommended if using a learned reward that is already normalized.
+            keeping a running average of training rewards. Note: this is may be
+            redundant if using a learned reward that is already normalized.
         normalize_kwargs: kwargs for `VecNormalize`.
         reward_type: If provided, then load the serialized reward of this type,
             wrapping the environment in this reward. This is useful to test
