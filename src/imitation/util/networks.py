@@ -1,8 +1,8 @@
 """Helper methods to build and run neural networks."""
-
 import collections
 import contextlib
 import functools
+from abc import ABC, abstractclassmethod
 from typing import Iterable, Optional, Type
 
 import torch as th
@@ -44,14 +44,11 @@ class SqueezeLayer(nn.Module):
         return new_value
 
 
-class RunningNorm(nn.Module):
-    """Normalizes input to mean 0 and standard deviation 1 using a running average.
+class BaseNorm(nn.Module, ABC):
+    """Base class for layers that try to normalize the input to mean 0 and variance 1.
 
     Similar to BatchNorm, LayerNorm, etc. but whereas they only use statistics from
     the current batch at train time, we use statistics from all batches.
-
-    This should closely replicate the common practice in RL of normalizing environment
-    observations, such as using `VecNormalize` in Stable Baselines.
     """
 
     running_mean: th.Tensor
@@ -79,6 +76,34 @@ class RunningNorm(nn.Module):
         self.running_var.fill_(1)
         self.count.zero_()
 
+    def forward(self, x: th.Tensor) -> th.Tensor:
+        """Updates statistics if in training mode. Returns normalized `x`."""
+        if self.training:
+            # Do not backpropagate through updating running mean and variance.
+            # These updates are in-place and not differentiable. The gradient
+            # is not needed as the running mean and variance are updated
+            # directly by this function, and not by gradient descent.
+            with th.no_grad():
+                self.update_stats(x)
+
+        return (x - self.running_mean) / th.sqrt(self.running_var + self.eps)
+
+    @abstractclassmethod
+    def update_stats(self, batch: th.Tensor) -> None:
+        """Update `self.running_mean`, `self.running_var` and `self.count`."""
+        ...
+
+
+class RunningNorm(BaseNorm):
+    """Normalizes input to mean 0 and standard deviation 1 using a running average.
+
+    Similar to BatchNorm, LayerNorm, etc. but whereas they only use statistics from
+    the current batch at train time, we use statistics from all batches.
+
+    This should closely replicate the common practice in RL of normalizing environment
+    observations, such as using `VecNormalize` in Stable Baselines.
+    """
+
     def update_stats(self, batch: th.Tensor) -> None:
         """Update `self.running_mean`, `self.running_var` and `self.count`.
 
@@ -104,24 +129,9 @@ class RunningNorm(nn.Module):
 
         self.count += batch_count
 
-    def forward(self, x: th.Tensor) -> th.Tensor:
-        """Updates statistics if in training mode. Returns normalized `x`."""
-        if self.training:
-            # Do not backpropagate through updating running mean and variance.
-            # These updates are in-place and not differentiable. The gradient
-            # is not needed as the running mean and variance are updated
-            # directly by this function, and not by gradient descent.
-            with th.no_grad():
-                self.update_stats(x)
 
-        return (x - self.running_mean) / th.sqrt(self.running_var + self.eps)
-
-
-class EMARunningNorm(RunningNorm):
-    """Similar to RunningNorm but uses an exponentially weighting."""
-
-    running_mean: th.Tensor
-    running_var: th.Tensor
+class EMANorm(BaseNorm):
+    """Similar to RunningNorm but uses an exponential weighting."""
 
     def __init__(
         self,
