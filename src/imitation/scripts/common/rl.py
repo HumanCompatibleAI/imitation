@@ -54,14 +54,6 @@ def fast():
 
 
 @rl_ingredient.named_config
-def ppo():
-    # For recommended PPO hyperparams in each environment, see:
-    # https://github.com/DLR-RM/rl-baselines3-zoo/blob/master/hyperparams/ppo.yml
-    rl_cls = sb3.PPO
-    locals()  # quieten flake8
-
-
-@rl_ingredient.named_config
 def sac():
     # For recommended SAC hyperparams in each environment, see:
     # https://github.com/DLR-RM/rl-baselines3-zoo/blob/master/hyperparams/sac.yml
