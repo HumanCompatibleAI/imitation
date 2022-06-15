@@ -22,7 +22,9 @@ import pytest
 import ray.tune as tune
 import sacred
 import sacred.utils
+import torch as th
 
+from imitation.rewards import reward_nets
 from imitation.scripts import (
     analyze,
     eval_policy,
@@ -32,7 +34,7 @@ from imitation.scripts import (
     train_preference_comparisons,
     train_rl,
 )
-from imitation.util import networks
+from imitation.util import networks, util
 
 ALL_SCRIPTS_MODS = [
     analyze,
@@ -358,12 +360,32 @@ def test_transfer_learning(tmpdir: str) -> None:
         named_configs=["cartpole"] + ALGO_FAST_CONFIGS["rl"],
         config_updates=dict(
             common=dict(log_dir=log_dir_data),
-            reward_type="RewardNet_shaped",
+            reward_type="RewardNet_unshaped",
             reward_path=reward_path,
         ),
     )
     assert run.status == "COMPLETED"
     _check_rollout_stats(run.result)
+
+
+def test_train_rl_double_normalization(tmpdir: str):
+    venv = util.make_vec_env("CartPole-v1", n_envs=1, parallel=False)
+    net = reward_nets.BasicRewardNet(venv.observation_space, venv.action_space)
+    net = reward_nets.NormalizedRewardNet(net, networks.RunningNorm)
+    tmppath = os.path.join(tmpdir, "reward.pt")
+    th.save(net, tmppath)
+
+    log_dir_data = os.path.join(tmpdir, "train_rl")
+    with pytest.warns(RuntimeWarning):
+        train_rl.train_rl_ex.run(
+            named_configs=["cartpole"] + ALGO_FAST_CONFIGS["rl"],
+            config_updates=dict(
+                common=dict(log_dir=log_dir_data),
+                reward_type="RewardNet_normalized",
+                normalize_reward=True,
+                reward_path=tmppath,
+            ),
+        )
 
 
 PARALLEL_CONFIG_UPDATES = [
