@@ -16,7 +16,13 @@ from imitation.rewards import reward_nets, serialize
 from imitation.util import networks, util
 
 ENVS = ["FrozenLake-v1", "CartPole-v1", "Pendulum-v1"]
-HARDCODED_TYPES = ["zero"]
+DESERIALIZATION_TYPES = [
+    "zero",
+    "RewardNet_normalized",
+    "RewardNet_unnormalized",
+    "RewardNet_shaped",
+    "RewardNet_unshaped",
+]
 
 REWARD_NETS = [
     reward_nets.BasicRewardNet,
@@ -55,32 +61,115 @@ def _sample(space, n):
     return np.array([space.sample() for _ in range(n)])
 
 
+def _potential(x):
+    return th.zeros(1)
+
+
+def _make_env_and_save_reward_net(env_name, reward_type, tmpdir):
+    venv = util.make_vec_env(env_name, n_envs=1, parallel=False)
+    save_path = os.path.join(tmpdir, "norm_reward.pt")
+
+    assert reward_type in [
+        "zero",
+        "RewardNet_normalized",
+        "RewardNet_unnormalized",
+        "RewardNet_shaped",
+        "RewardNet_unshaped",
+    ], f"Reward net type {reward_type} not supported by this helper."
+
+    if reward_type == "zero":
+        return venv, save_path
+
+    net = reward_nets.BasicRewardNet(venv.observation_space, venv.action_space)
+
+    if reward_type == "RewardNet_normalized":
+        net = reward_nets.NormalizedRewardNet(net, networks.RunningNorm)
+    elif reward_type == "RewardNet_shaped":
+        net = reward_nets.ShapedRewardNet(net, _potential, discount_factor=0.99)
+    elif reward_type in ["RewardNet_unshaped", "RewardNet_unnormalized"]:
+        pass
+
+    th.save(net, save_path)
+    return venv, save_path
+
+
 @pytest.mark.parametrize("env_name", ENVS)
-@pytest.mark.parametrize("reward_type", HARDCODED_TYPES)
-def test_reward_valid(env_name, reward_type):
+@pytest.mark.parametrize("reward_type", DESERIALIZATION_TYPES)
+def test_reward_valid(env_name, reward_type, tmpdir):
     """Test output of reward function is appropriate shape and type."""
     venv = util.make_vec_env(env_name, n_envs=1, parallel=False)
+    venv, tmppath = _make_env_and_save_reward_net(env_name, reward_type, tmpdir)
+
     TRAJECTORY_LEN = 10
     obs = _sample(venv.observation_space, TRAJECTORY_LEN)
     actions = _sample(venv.action_space, TRAJECTORY_LEN)
     next_obs = _sample(venv.observation_space, TRAJECTORY_LEN)
     steps = np.arange(0, TRAJECTORY_LEN)
 
-    reward_fn = serialize.load_reward(reward_type, "foobar", venv)
+    reward_fn = serialize.load_reward(reward_type, tmppath, venv)
     pred_reward = reward_fn(obs, actions, next_obs, steps)
 
     assert pred_reward.shape == (TRAJECTORY_LEN,)
     assert isinstance(pred_reward[0], numbers.Number)
 
 
+def test_strip_wrappers_basic():
+    venv = util.make_vec_env("FrozenLake-v1", n_envs=1, parallel=False)
+    net = reward_nets.BasicRewardNet(venv.observation_space, venv.action_space)
+    net = reward_nets.NormalizedRewardNet(net, networks.RunningNorm)
+    net = serialize._strip_wrappers(
+        net,
+        wrapper_types=[reward_nets.NormalizedRewardNet],
+    )
+    assert isinstance(net, reward_nets.BasicRewardNet)
+    # This removing a wrapper from an unwrapped reward net should do nothing
+    net = serialize._strip_wrappers(net, wrapper_types=[reward_nets.ShapedRewardNet])
+    assert isinstance(net, reward_nets.BasicRewardNet)
+
+
+def test_strip_wrappers_complex():
+    venv = util.make_vec_env("FrozenLake-v1", n_envs=1, parallel=False)
+    net = reward_nets.BasicRewardNet(venv.observation_space, venv.action_space)
+    net = reward_nets.ShapedRewardNet(net, _potential, discount_factor=0.99)
+    net = reward_nets.NormalizedRewardNet(net, networks.RunningNorm)
+    # Removing in incorrect order should do nothing
+    net = serialize._strip_wrappers(
+        net,
+        wrapper_types=[reward_nets.ShapedRewardNet, reward_nets.NormalizedRewardNet],
+    )
+
+    assert isinstance(net, reward_nets.NormalizedRewardNet)
+    assert isinstance(net.base, reward_nets.ShapedRewardNet)
+    # Correct order should work
+    net = serialize._strip_wrappers(
+        net,
+        wrapper_types=[reward_nets.NormalizedRewardNet, reward_nets.ShapedRewardNet],
+    )
+    assert isinstance(net, reward_nets.BasicRewardNet)
+
+
+@pytest.mark.parametrize("env_name", ENVS)
+def test_cant_load_unnorm_as_norm(env_name, tmpdir):
+    venv, tmppath = _make_env_and_save_reward_net(
+        env_name,
+        "RewardNet_unnormalized",
+        tmpdir,
+    )
+    with pytest.raises(TypeError):
+        serialize.load_reward("RewardNet_normalized", tmppath, venv)
+
+
 @pytest.mark.parametrize("env_name", ENVS)
 @pytest.mark.parametrize("net_cls", REWARD_NETS)
-def test_serialize_identity(env_name, net_cls, tmpdir):
+@pytest.mark.parametrize("normalize_rewards", [True, False])
+def test_serialize_identity(env_name, net_cls, normalize_rewards, tmpdir):
     """Does output of deserialized reward network match that of original?"""
     logging.info(f"Testing {net_cls}")
 
     venv = util.make_vec_env(env_name, n_envs=1, parallel=False)
     original = net_cls(venv.observation_space, venv.action_space)
+    if normalize_rewards:
+        original = reward_nets.NormalizedRewardNet(original, networks.RunningNorm)
     random = base.RandomPolicy(venv.observation_space, venv.action_space)
 
     tmppath = os.path.join(tmpdir, "reward.pt")
@@ -92,11 +181,23 @@ def test_serialize_identity(env_name, net_cls, tmpdir):
 
     transitions = rollout.generate_transitions(random, venv, n_timesteps=100)
 
-    unshaped_fn = serialize.load_reward("RewardNet_unshaped", tmppath, venv)
-    shaped_fn = serialize.load_reward("RewardNet_shaped", tmppath, venv)
+    if isinstance(original, reward_nets.NormalizedRewardNet):
+        wrapped_rew_fn = serialize.load_reward("RewardNet_normalized", tmppath, venv)
+        unwrapped_rew_fn = serialize.load_reward(
+            "RewardNet_unnormalized",
+            tmppath,
+            venv,
+        )
+    if isinstance(original, reward_nets.ShapedRewardNet):
+        unwrapped_rew_fn = serialize.load_reward("RewardNet_unshaped", tmppath, venv)
+        wrapped_rew_fn = serialize.load_reward("RewardNet_shaped", tmppath, venv)
+    else:
+        unwrapped_rew_fn = serialize.load_reward("RewardNet_unshaped", tmppath, venv)
+        wrapped_rew_fn = unwrapped_rew_fn
+
     rewards = {
-        "train": [],
-        "test": [],
+        "wrapped": [],
+        "unwrapped": [],
     }
     for net in [original, loaded]:
         trans_args = (
@@ -105,11 +206,11 @@ def test_serialize_identity(env_name, net_cls, tmpdir):
             transitions.next_obs,
             transitions.dones,
         )
-        rewards["train"].append(net.predict(*trans_args))
+        rewards["wrapped"].append(net.predict(*trans_args))
         if hasattr(net, "base"):
-            rewards["test"].append(net.base.predict(*trans_args))
+            rewards["unwrapped"].append(net.base.predict(*trans_args))
         else:
-            rewards["test"].append(net.predict(*trans_args))
+            rewards["unwrapped"].append(net.predict(*trans_args))
 
     args = (
         transitions.obs,
@@ -117,8 +218,8 @@ def test_serialize_identity(env_name, net_cls, tmpdir):
         transitions.next_obs,
         transitions.dones,
     )
-    rewards["train"].append(shaped_fn(*args))
-    rewards["test"].append(unshaped_fn(*args))
+    rewards["wrapped"].append(wrapped_rew_fn(*args))
+    rewards["unwrapped"].append(unwrapped_rew_fn(*args))
 
     for key, predictions in rewards.items():
         assert len(predictions) == 3
