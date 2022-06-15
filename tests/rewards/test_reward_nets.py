@@ -67,15 +67,28 @@ def _potential(x):
 
 def _make_env_and_save_reward_net(env_name, reward_type, tmpdir):
     venv = util.make_vec_env(env_name, n_envs=1, parallel=False)
+    save_path = os.path.join(tmpdir, "norm_reward.pt")
+
+    assert reward_type in [
+        "zero",
+        "RewardNet_normalized",
+        "RewardNet_unnormalized",
+        "RewardNet_shaped",
+        "RewardNet_unshaped",
+    ], f"Reward net type {reward_type} not supported by this helper."
+
+    if reward_type == "zero":
+        return venv, save_path
+
     net = reward_nets.BasicRewardNet(venv.observation_space, venv.action_space)
+
     if reward_type == "RewardNet_normalized":
         net = reward_nets.NormalizedRewardNet(net, networks.RunningNorm)
     elif reward_type == "RewardNet_shaped":
         net = reward_nets.ShapedRewardNet(net, _potential, discount_factor=0.99)
-    assert (
-        reward_type in serialize.reward_registry.keys()
-    ), "unknown reward type f{reward_type}"
-    save_path = os.path.join(tmpdir, "norm_reward.pt")
+    elif reward_type in ["RewardNet_unshaped", "RewardNet_unnormalized"]:
+        pass
+
     th.save(net, save_path)
     return venv, save_path
 

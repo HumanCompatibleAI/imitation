@@ -108,7 +108,7 @@ def train_rl(
         if reward_type == "RewardNet_normalized":
             warnings.warn(
                 "Applying normalization to already normalized reward function. \
-                Consider removing the --normalize_reward flag",
+                Consider setting normalize_reward as False",
                 RuntimeWarning,
             )
 
