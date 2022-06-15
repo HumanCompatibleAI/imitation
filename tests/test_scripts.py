@@ -337,6 +337,7 @@ def _check_train_ex_result(result: dict):
     "named_configs",
     (
         [],
+        ["train.normalize_running", "reward.normalize_input_running"],
         ["train.normalize_disable", "reward.normalize_input_disable"],
     ),
 )
