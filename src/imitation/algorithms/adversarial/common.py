@@ -459,12 +459,13 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
             )
             # SAC applies a squashing function to bound the actions to a finite range
             # `acts_th` need to be scaled accordingly before computing log prob.
+            # Scale actions only if the policy squashes outputs.
+            assert self.policy.squash_output
             scaled_acts_th = self.policy.scale_action(acts_th)
             log_policy_act_prob_th = distribution.log_prob(scaled_acts_th)
         else:
             return None
-        log_policy_act_prob = log_policy_act_prob_th.detach().cpu().numpy()
-        return log_policy_act_prob
+        return log_policy_act_prob_th.detach().cpu().numpy()
 
     def _make_disc_train_batch(
         self,
