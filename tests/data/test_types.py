@@ -150,7 +150,12 @@ class TestData:
     @pytest.mark.parametrize("use_pickle", [False, True])
     @pytest.mark.parametrize("use_chdir", [False, True])
     def test_save_trajectories(
-        self, trajectory_rew, use_chdir, tmpdir, use_pickle, type_safe
+        self,
+        trajectory_rew,
+        use_chdir,
+        tmpdir,
+        use_pickle,
+        type_safe,
     ):
         """Check that trajectories are properly saved."""
         if use_chdir:
