@@ -147,8 +147,18 @@ class EMANorm(BaseNorm):
             lamb: value between (0, 1) update rate for the mean
             r: value between (0, 1) update rate for the variance
             eps: small constant for for numerical stability.
+
+        Raises:
+            ValueError: if lamb or r are out of range.
         """
         super().__init__(num_features, eps=eps)
+
+        if not ((0 < lamb) and (lamb < 1)):
+            raise ValueError("lamb must be between 0 and 1")
+
+        if not ((0 < r) and (r < 1)):
+            raise ValueError("r must be between 0 and 1")
+
         self.lamb = lamb
         self.r = r
 

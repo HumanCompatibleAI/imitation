@@ -111,8 +111,8 @@ def test_parameters_converge(
     normalization_layer: Type[networks.BaseNorm],
 ) -> None:
     """Test running norm parameters approximately converge to true values."""
-    mean = th.Tensor([42])
-    var = th.Tensor([42])
+    mean = th.Tensor([42, 0])
+    var = th.Tensor([42, 1])
     sd = th.sqrt(var)
 
     num_dims = len(mean)
