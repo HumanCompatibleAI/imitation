@@ -1,9 +1,10 @@
 """Tests `imitation.util.sacred` and `imitation.util.util`."""
 
+import warnings
+
 import numpy as np
 import pytest
 import torch as th
-import warnings
 
 from imitation.util import sacred as sacred_util
 from imitation.util import util

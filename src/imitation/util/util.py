@@ -161,9 +161,18 @@ def endless_iter(iterable: Iterable[T]) -> Iterator[T]:
 
 
 def safe_to_tensor(numpy_array: np.ndarray) -> th.Tensor:
-    """Converts a numpy array to a torch tensor, copying it in the case where the array
-    is non-writable. Unfortunately if you just use `th.as_tensor` for this, an ugly
-    warning is logged and there's undefined behavior if you try to write to the tensor."""
+    """Converts a NumPy array to a PyTorch tensor.
+
+    The data is copied in the case where the array is non-writable. Unfortunately if
+    you just use `th.as_tensor` for this, an ugly warning is logged and there's
+    undefined behavior if you try to write to the tensor.
+
+    Args:
+        numpy_array: The numpy array to convert to a PyTorch tensor.
+
+    Returns:
+        A PyTorch tensor with the same content as `numpy_array`.
+    """
     if numpy_array.flags.writeable:
         return th.as_tensor(numpy_array)
     else:

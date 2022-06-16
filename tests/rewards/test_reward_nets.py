@@ -216,7 +216,7 @@ def test_training_regression(normalize_input_layer):
 
         # Compute and print loss
         loss = criterion(
-            th.as_tensor(transitions.rews, device=norm_rew_net.device),
+            util.safe_to_tensor(transitions.rews).to(norm_rew_net.device),
             rews_th,
         )
 

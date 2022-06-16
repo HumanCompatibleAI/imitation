@@ -138,6 +138,8 @@ def build_mlp(
         out_size: required size of output vector.
         name: Name to use as a prefix for the layers ID.
         activation: activation to apply after hidden layers.
+        dropout_prob: Dropout probability to use after each hidden layer. If 0,
+            no dropout layers are added to the network.
         squeeze_output: if out_size=1, then squeeze_input=True ensures that MLP
             output is of size (B,) instead of (B,1).
         flatten_input: should input be flattened along axes 1, 2, 3, …? Useful

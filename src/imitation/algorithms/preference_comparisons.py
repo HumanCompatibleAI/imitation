@@ -7,13 +7,13 @@ import abc
 import math
 import pickle
 import random
-from tqdm.auto import tqdm
 from typing import Any, Callable, List, Mapping, Optional, Sequence, Tuple, Union
 
 import numpy as np
 import torch as th
 from scipy import special
 from stable_baselines3.common import base_class, vec_env
+from tqdm.auto import tqdm
 
 from imitation.algorithms import base
 from imitation.data import rollout, types, wrappers
@@ -1016,7 +1016,7 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
                 self.transition_oversampling * 2 * num_pairs * self.fragment_length,
             )
             self.logger.log(
-                f"Collecting {2 * num_pairs} fragments ({num_steps} transitions)"
+                f"Collecting {2 * num_pairs} fragments ({num_steps} transitions)",
             )
             trajectories = self.trajectory_generator.sample(num_steps)
             # This assumes there are no fragments missing initial timesteps
