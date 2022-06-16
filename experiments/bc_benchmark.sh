@@ -9,7 +9,7 @@ set -e
 # expert.
 source experiments/common.sh
 
-ENVS=(cartpole)
+ENVS=(seals_cartpole)
 SEEDS=(0 1 2)
 DATA_DIR=${DATA_DIR:-"data/"}
 OUTPUT_DIR="output/bc_benchmark/${TIMESTAMP}"

@@ -66,7 +66,7 @@ def seals_cartpole():
 
 @train_rl_ex.named_config
 def half_cheetah():
-    common = dict(env_name="HalfCheetah-v2")
+    common = dict(env_name="seals/HalfCheetah-v0")
     total_timesteps = int(5e6)  # does OK after 1e6, but continues improving
 
 

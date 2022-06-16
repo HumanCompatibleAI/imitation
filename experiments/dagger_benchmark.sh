@@ -2,7 +2,7 @@
 set -e
 source experiments/common.sh
 
-ENVS=(cartpole)
+ENVS=(seals_cartpole)
 SEEDS=(0 1 2 3 4)
 DATA_DIR=${DATA_DIR:-"data"}
 LOG_ROOT="output/dagger_benchmark/${TIMESTAMP}"
