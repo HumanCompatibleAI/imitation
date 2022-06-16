@@ -7,6 +7,7 @@ import abc
 import math
 import pickle
 import random
+from tqdm.auto import tqdm
 from typing import Any, Callable, List, Mapping, Optional, Sequence, Tuple, Union
 
 import numpy as np
@@ -821,7 +822,13 @@ class CrossEntropyRewardTrainer(RewardTrainer):
             collate_fn=preference_collate_fn,
         )
         epochs = round(self.epochs * epoch_multiplier)
-        for _ in range(epochs):
+        outer_loop = range(epochs)
+        if epochs > 1:  # Show a progress bar iff we have more than one epoch
+            outer_loop = tqdm(outer_loop, desc="Training reward model")
+        else:
+            print("Training reward model")
+
+        for _ in outer_loop:
             for fragment_pairs, preferences in dataloader:
                 self.optim.zero_grad()
                 loss = self._loss(fragment_pairs, preferences)
@@ -990,7 +997,6 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
             ##########################
             # Gather new preferences #
             ##########################
-            num_pairs = self.comparisons_per_iteration
             # If the number of comparisons per iterations doesn't exactly divide
             # the desired total number of comparisons, we collect the remainder
             # right at the beginning to pretrain the reward model slightly.
@@ -1000,12 +1006,18 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
             #
             # In addition, we collect the comparisons specified via
             # initial_comparison_frac.
-            if i == 0:
-                num_pairs += extra_comparisons + initial_comparisons
+            num_pairs = (
+                extra_comparisons + initial_comparisons
+                if i == 0
+                else self.comparisons_per_iteration
+            )
+
             num_steps = math.ceil(
                 self.transition_oversampling * 2 * num_pairs * self.fragment_length,
             )
-            self.logger.log(f"Collecting {num_steps} trajectory steps")
+            self.logger.log(
+                f"Collecting {2 * num_pairs} fragments ({num_steps} transitions)"
+            )
             trajectories = self.trajectory_generator.sample(num_steps)
             # This assumes there are no fragments missing initial timesteps
             # (but allows for fragments missing terminal timesteps).
@@ -1014,10 +1026,10 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
             self.logger.log("Creating fragment pairs")
             fragments = self.fragmenter(trajectories, self.fragment_length, num_pairs)
             with self.logger.accumulate_means("preferences"):
-                self.logger.log("gathering preferences")
+                self.logger.log("Gathering preferences")
                 preferences = self.preference_gatherer(fragments)
             self.dataset.push(fragments, preferences)
-            self.logger.log(f"Dataset now contains {len(self.dataset)} samples")
+            self.logger.log(f"Dataset now contains {len(self.dataset)} comparisons")
 
             ##########################
             # Train the reward model #
@@ -1030,7 +1042,6 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
                 epoch_multiplier = self.initial_epoch_multiplier
 
             with self.logger.accumulate_means("reward"):
-                self.logger.log("Training reward model")
                 self.reward_trainer.train(
                     self.dataset,
                     epoch_multiplier=epoch_multiplier,

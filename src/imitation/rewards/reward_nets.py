@@ -9,7 +9,7 @@ import torch as th
 from stable_baselines3.common import preprocessing
 from torch import nn
 
-from imitation.util import networks
+from imitation.util import networks, util
 
 
 class RewardNet(nn.Module, abc.ABC):
@@ -74,10 +74,10 @@ class RewardNet(nn.Module, abc.ABC):
             Preprocessed transitions: a Tuple of tensors containing
             observations, actions, next observations and dones.
         """
-        state_th = th.as_tensor(state, device=self.device)
-        action_th = th.as_tensor(action, device=self.device)
-        next_state_th = th.as_tensor(next_state, device=self.device)
-        done_th = th.as_tensor(done, device=self.device)
+        state_th = util.safe_to_tensor(state).to(self.device)
+        action_th = util.safe_to_tensor(action).to(self.device)
+        next_state_th = util.safe_to_tensor(next_state).to(self.device)
+        done_th = util.safe_to_tensor(done).to(self.device)
 
         del state, action, next_state, done  # unused
 

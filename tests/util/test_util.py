@@ -3,6 +3,7 @@
 import numpy as np
 import pytest
 import torch as th
+import warnings
 
 from imitation.util import sacred as sacred_util
 from imitation.util import util
@@ -25,6 +26,21 @@ def test_endless_iter_error():
 def test_dict_get_nested():
     assert sacred_util.dict_get_nested({}, "asdf.foo", default=4) == 4
     assert sacred_util.dict_get_nested({"a": {"b": "c"}}, "a.b") == "c"
+
+
+def test_safe_to_tensor():
+    # Copy iff the array is non-writable.
+    numpy = np.array([1, 2, 3])
+    torch = util.safe_to_tensor(numpy)
+    assert np.may_share_memory(numpy, torch)
+
+    # This should never cause a warning from `th.as_tensor`.
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+
+        numpy.flags.writeable = False
+        torch = util.safe_to_tensor(numpy)
+        assert not np.may_share_memory(numpy, torch)
 
 
 def test_tensor_iter_norm():

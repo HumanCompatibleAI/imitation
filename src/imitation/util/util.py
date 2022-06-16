@@ -160,6 +160,16 @@ def endless_iter(iterable: Iterable[T]) -> Iterator[T]:
     return itertools.chain.from_iterable(itertools.repeat(iterable))
 
 
+def safe_to_tensor(numpy_array: np.ndarray) -> th.Tensor:
+    """Converts a numpy array to a torch tensor, copying it in the case where the array
+    is non-writable. Unfortunately if you just use `th.as_tensor` for this, an ugly
+    warning is logged and there's undefined behavior if you try to write to the tensor."""
+    if numpy_array.flags.writeable:
+        return th.as_tensor(numpy_array)
+    else:
+        return th.as_tensor(numpy_array.copy())
+
+
 def tensor_iter_norm(
     tensor_iter: Iterable[th.Tensor],
     ord: Union[int, float] = 2,  # noqa: A002

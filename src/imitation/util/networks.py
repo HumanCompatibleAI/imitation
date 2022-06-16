@@ -123,6 +123,7 @@ def build_mlp(
     out_size: int = 1,
     name: Optional[str] = None,
     activation: Type[nn.Module] = nn.ReLU,
+    dropout_prob: float = 0.0,
     squeeze_output: bool = False,
     flatten_input: bool = False,
     normalize_input_layer: Optional[Type[nn.Module]] = None,
@@ -173,6 +174,8 @@ def build_mlp(
         prev_size = size
         if activation:
             layers[f"{prefix}act{i}"] = activation()
+        if dropout_prob > 0.0:
+            layers[f"{prefix}dropout{i}"] = nn.Dropout(dropout_prob)
 
     # Final dense layer
     layers[f"{prefix}dense_final"] = nn.Linear(prev_size, out_size)
