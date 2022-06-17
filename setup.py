@@ -20,6 +20,7 @@ TESTS_REQUIRE = [
     "flake8-debugger",
     "flake8-docstrings",
     "flake8-isort",
+    "hypothesis",
     "ipykernel",
     "jupyter",
     # remove pin once https://github.com/jupyter/jupyter_client/issues/637 fixed

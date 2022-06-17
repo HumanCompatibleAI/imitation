@@ -25,6 +25,34 @@ from stable_baselines3.common import monitor
 from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecEnv
 
 
+def oric(x: np.ndarray) -> np.ndarray:
+    """Optimal rounding under integer constraints.
+
+    Given a vector of real numbers such that the sum is an integer, returns a
+    vector of rounded integers that preserves the sum and which minimizes the
+    Lp-norm of the difference between the rounded and original vectors. Algorithm
+    from https://arxiv.org/abs/1501.00014. Runs in O(n log n) time.
+
+    Args:
+        x: A 1D vector of real numbers that sum to an integer.
+
+    Returns:
+        A 1D vector of rounded integers, preserving the sum.
+    """
+    rounded = np.floor(x)
+    shortfall = x - rounded
+
+    # The total shortfall should be *exactly* an integer, but we
+    # round to account for numerical error.
+    total_shortfall = np.round(shortfall.sum()).astype(int)
+    indices = np.argsort(-shortfall)
+
+    # Apportion the total shortfall to the elements in order of
+    # decreasing shortfall.
+    rounded[indices[:total_shortfall]] += 1
+    return rounded.astype(int)
+
+
 def make_unique_timestamp() -> str:
     """Timestamp, with random uuid added to avoid collisions."""
     ISO_TIMESTAMP = "%Y%m%d_%H%M%S"
