@@ -58,6 +58,7 @@ def train_preference_comparisons(
     _seed: int,
     total_timesteps: int,
     total_comparisons: int,
+    comparison_queue_size: Optional[int],
     comparisons_per_iteration: int,
     fragment_length: int,
     transition_oversampling: float,
@@ -81,6 +82,9 @@ def train_preference_comparisons(
         _seed: Random seed.
         total_timesteps: number of environment interaction steps
         total_comparisons: number of preferences to gather in total
+        comparison_queue_size: the maximum number of comparisons to keep in the
+            queue for training the reward model. If None, the queue will grow
+            without bound as new comparisons are added.
         comparisons_per_iteration: number of preferences to gather at once (before
             switching back to agent training). This doesn't impact the total number
             of comparisons that are gathered, only the frequency of switching
@@ -156,6 +160,9 @@ def train_preference_comparisons(
             custom_logger=custom_logger,
             **trajectory_generator_kwargs,
         )
+        # Stable Baselines will automatically occupy GPU 0 if it is available. Let's use
+        # the same device as the SB3 agent for the reward model.
+        reward_net = reward_net.to(trajectory_generator.algorithm.device)
     else:
         if exploration_frac > 0:
             raise ValueError(
@@ -190,6 +197,7 @@ def train_preference_comparisons(
         fragmenter=fragmenter,
         preference_gatherer=gatherer,
         reward_trainer=reward_trainer,
+        comparison_queue_size=comparison_queue_size,
         comparisons_per_iteration=comparisons_per_iteration,
         fragment_length=fragment_length,
         transition_oversampling=transition_oversampling,

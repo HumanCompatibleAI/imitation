@@ -11,7 +11,7 @@ from torch.utils import data as th_data
 from imitation.algorithms import bc
 from imitation.data import rollout, types
 from imitation.testing import reward_improvement
-from imitation.util import logger
+from imitation.util import logger, util
 
 
 @pytest.fixture(params=[32, 50])
@@ -36,7 +36,7 @@ class DucktypedDataset:
         for start in range(0, len(self.trans) - self.batch_size, self.batch_size):
             end = start + self.batch_size
             d = dict(obs=self.trans.obs[start:end], acts=self.trans.acts[start:end])
-            d = {k: th.from_numpy(v) for k, v in d.items()}
+            d = {k: util.safe_to_tensor(v) for k, v in d.items()}
             yield d
 
 

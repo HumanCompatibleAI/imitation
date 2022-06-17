@@ -68,13 +68,7 @@ setup(
         "torch>=1.4.0",
         "tqdm",
         "scikit-learn>=0.21.2",
-        # TODO(adam): switch back to PyPi once following makes it to release:
-        # https://github.com/DLR-RM/stable-baselines3/pull/734 is released
-        (
-            "stable-baselines3@git+https://github.com/carlosluis/stable-baselines3.git"
-            "@gym_fixes#egg=stable-baselines3"
-        ),
-        "stable-baselines3>=1.4.0",
+        "stable-baselines3>=1.5.0",
         # TODO(nora) switch back to PyPi once 0.8.3 makes it to release:
         "sacred@git+https://github.com/IDSIA/sacred.git@0.8.3",
         "tensorboard>=1.14",
