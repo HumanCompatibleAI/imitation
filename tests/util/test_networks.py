@@ -167,3 +167,13 @@ def test_build_mlp_norm_training(init_kwargs) -> None:
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
+
+
+def test_input_validation_on_ema_norm():
+    with pytest.raises(ValueError):
+        networks.EMANorm(128, decay=1.1)
+
+    with pytest.raises(ValueError):
+        networks.EMANorm(128, decay=-0.1)
+
+    networks.EMANorm(128, decay=0.05)

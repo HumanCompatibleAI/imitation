@@ -147,12 +147,12 @@ class EMANorm(BaseNorm):
             eps: small constant for for numerical stability.
 
         Raises:
-            ValueError: if lamb or r are out of range.
+            ValueError: if decay is out of range.
         """
         super().__init__(num_features, eps=eps)
 
         if not ((0 < decay) and (decay < 1)):
-            raise ValueError("lamb must be between 0 and 1")
+            raise ValueError("decay must be between 0 and 1")
 
         self.decay = decay
 
