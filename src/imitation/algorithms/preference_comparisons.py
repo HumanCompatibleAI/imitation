@@ -1006,11 +1006,10 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
             #
             # In addition, we collect the comparisons specified via
             # initial_comparison_frac.
-            num_pairs = (
-                extra_comparisons + initial_comparisons
-                if i == 0
-                else self.comparisons_per_iteration
-            )
+            if i == 0:
+                num_pairs = extra_comparisons + initial_comparisons
+            else:
+                num_pairs = self.comparisons_per_iteration
 
             num_steps = math.ceil(
                 self.transition_oversampling * 2 * num_pairs * self.fragment_length,
