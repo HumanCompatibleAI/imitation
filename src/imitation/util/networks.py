@@ -91,7 +91,6 @@ class BaseNorm(nn.Module, ABC):
     @abstractclassmethod
     def update_stats(self, batch: th.Tensor) -> None:
         """Update `self.running_mean`, `self.running_var` and `self.count`."""
-        ...
 
 
 class RunningNorm(BaseNorm):
