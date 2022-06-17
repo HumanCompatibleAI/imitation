@@ -8,7 +8,7 @@ if [[ ${venv} == "" ]]; then
 fi
 
 virtualenv -p python3.8 ${venv}
-# shellcheck disable=SC1090
+# shellcheck disable=SC1090,SC1091
 source ${venv}/bin/activate
 python -m pip install --upgrade pip
 pip install ".[docs,parallel,test,mujoco]"
