@@ -250,6 +250,20 @@ def test_preference_dataset_errors(agent_trainer, fragmenter):
         dataset.push(fragments, preferences)
 
 
+def test_preference_dataset_queue(agent_trainer, fragmenter):
+    dataset = preference_comparisons.PreferenceDataset(max_size=5)
+    trajectories = agent_trainer.sample(10)
+
+    gatherer = preference_comparisons.SyntheticGatherer()
+    for _ in range(6):
+        fragments = fragmenter(trajectories, fragment_length=2, num_pairs=1)
+        preferences = gatherer(fragments)
+        dataset.push(fragments, preferences)
+
+    # The first comparison should have been evicted to keep the size at 5
+    assert len(dataset) == 5
+
+
 def test_store_and_load_preference_dataset(agent_trainer, fragmenter, tmp_path):
     dataset = preference_comparisons.PreferenceDataset()
     trajectories = agent_trainer.sample(10)
