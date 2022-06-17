@@ -165,7 +165,7 @@ def test_trainer_no_crash(agent_trainer, reward_net, fragmenter, custom_logger):
         fragmenter=fragmenter,
         custom_logger=custom_logger,
     )
-    result = main_trainer.train(10, 3)
+    result = main_trainer.train(50, 5)
     # We don't expect good performance after training for 10 (!) timesteps,
     # but check stats are within the bounds they should lie in.
     assert result["reward_loss"] > 0.0
