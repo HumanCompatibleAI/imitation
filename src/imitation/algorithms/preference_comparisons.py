@@ -822,13 +822,8 @@ class CrossEntropyRewardTrainer(RewardTrainer):
             collate_fn=preference_collate_fn,
         )
         epochs = round(self.epochs * epoch_multiplier)
-        outer_loop = range(epochs)
-        if epochs > 1:  # Show a progress bar iff we have more than one epoch
-            outer_loop = tqdm(outer_loop, desc="Training reward model")
-        else:
-            print("Training reward model")
 
-        for _ in outer_loop:
+        for _ in tqdm(range(epochs), desc="Training reward model"):
             for fragment_pairs, preferences in dataloader:
                 self.optim.zero_grad()
                 loss = self._loss(fragment_pairs, preferences)
