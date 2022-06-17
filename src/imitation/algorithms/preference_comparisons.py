@@ -875,6 +875,9 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
                 an RL agent on the learned reward function (can also be a sampler
                 from a static dataset of trajectories though).
             reward_model: a RewardNet instance to be used for learning the reward
+            num_iterations: number of times to switch between training the agent against the
+                reward model and training the reward model against newly gathered
+                preferences.
             fragmenter: takes in a set of trajectories and returns pairs of fragments
                 for which preferences will be gathered. These fragments could be random,
                 or they could be selected more deliberately (active learning).
@@ -995,9 +998,6 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
         Returns:
             A dictionary with final metrics such as loss and accuracy
             of the reward model.
-
-        Raises:
-            ValueError: `total_comparisons < self.comparisons_per_iteration`.
         """
         initial_comparisons = int(total_comparisons * self.initial_comparison_frac)
         total_comparisons -= initial_comparisons
@@ -1011,7 +1011,7 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
         print(f"Query schedule: {schedule}")
 
         timesteps_per_iteration, extra_timesteps = divmod(
-            total_timesteps, self.num_iterations
+            total_timesteps, self.num_iterations,
         )
         reward_loss = None
         reward_accuracy = None
