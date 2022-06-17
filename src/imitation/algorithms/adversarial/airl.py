@@ -1,11 +1,14 @@
 """Adversarial Inverse Reinforcement Learning (AIRL)."""
 
 import torch as th
-from stable_baselines3.common import base_class, vec_env
+from stable_baselines3.common import base_class, policies, vec_env
+from stable_baselines3.sac import policies as sac_policies
 
 from imitation.algorithms import base
 from imitation.algorithms.adversarial import common
 from imitation.rewards import reward_nets
+
+STOCHASTIC_POLICIES = (sac_policies.SACPolicy, policies.ActorCriticPolicy)
 
 
 class AIRL(common.AdversarialTrainer):
@@ -54,7 +57,8 @@ class AIRL(common.AdversarialTrainer):
             reward_net=reward_net,
             **kwargs,
         )
-        if not hasattr(self.gen_algo.policy, "evaluate_actions"):
+        # AIRL needs a policy from STOCHASTIC_POLICIES to compute discriminator output.
+        if not isinstance(self.gen_algo.policy, STOCHASTIC_POLICIES):
             raise TypeError(
                 "AIRL needs a stochastic policy to compute the discriminator output.",
             )
