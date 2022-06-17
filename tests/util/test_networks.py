@@ -111,7 +111,7 @@ def test_parameters_converge(
     normalization_layer: Type[networks.BaseNorm],
 ) -> None:
     """Test running norm parameters approximately converge to true values."""
-    mean = th.Tensor([42, 0])
+    mean = th.Tensor([16, 0])
     var = th.Tensor([42, 1])
     sd = th.sqrt(var)
 
@@ -128,7 +128,6 @@ def test_parameters_converge(
             running_norm.forward(batch)
 
     running_norm.eval()
-
     th.testing.assert_close(running_norm.running_mean, mean, rtol=0.03, atol=10)
     th.testing.assert_close(running_norm.running_var, var, rtol=0.1, atol=10)
 

@@ -136,16 +136,14 @@ class EMANorm(BaseNorm):
     def __init__(
         self,
         num_features: int,
-        lamb: float = 0.05,
-        r: float = 0.05,
+        decay: float = 0.95,
         eps: float = 1e-5,
     ):
         """Builds EMARunningNorm.
 
         Args:
             num_features: Number of features; the length of the non-batch dim.
-            lamb: value between (0, 1) update rate for the mean
-            r: value between (0, 1) update rate for the variance
+            decay: how quickly the weight on past samples decays over time
             eps: small constant for for numerical stability.
 
         Raises:
@@ -153,14 +151,10 @@ class EMANorm(BaseNorm):
         """
         super().__init__(num_features, eps=eps)
 
-        if not ((0 < lamb) and (lamb < 1)):
+        if not ((0 < decay) and (decay < 1)):
             raise ValueError("lamb must be between 0 and 1")
 
-        if not ((0 < r) and (r < 1)):
-            raise ValueError("r must be between 0 and 1")
-
-        self.lamb = lamb
-        self.r = r
+        self.decay = decay
 
     def update_stats(self, batch: th.Tensor) -> None:
         """Update `self.running_mean` and `self.running_var`.
@@ -175,15 +169,15 @@ class EMANorm(BaseNorm):
 
         b_size = batch.shape[0]
         b_mean = th.mean(batch, dim=0)
-        self.running_mean *= 1 - self.lamb
-        self.running_mean += b_mean * self.lamb
 
-        centered = self.running_mean.unsqueeze(0) - batch
-
+        centered = batch - self.running_mean.unsqueeze(0)
         b_var = th.sum(th.square(centered), dim=0) / b_size
 
-        self.running_var *= 1 - self.r
-        self.running_var += self.r * b_var
+        self.running_mean *= self.decay
+        self.running_mean += b_mean * (1 - self.decay)
+
+        self.running_var *= self.decay
+        self.running_var += (1 - self.decay) * b_var
 
         self.count += b_size
 
