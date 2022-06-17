@@ -36,8 +36,8 @@ def test_endless_iter_error():
         # Compute the fractional part of the sum of the elements, divide it by
         # the number of elements, and subtract this from every element.
         # This ensures that the sum of the elements is integral.
-        lambda x: (x - (x.sum() - np.floor(x.sum())) / len(x))
-    )
+        lambda x: (x - (x.sum() - np.floor(x.sum())) / len(x)),
+    ),
 )
 def test_integer_constrained_rounding(x: np.ndarray):
     original_sum = x.sum()

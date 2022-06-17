@@ -143,7 +143,7 @@ def train_preference_comparisons(
 
     reward_net = reward.make_reward_net(venv)
     if agent_path is None:
-        agent = rl_common.make_rl_algo(venv)
+        agent = rl_common.make_rl_algo(venv, rl_kwargs=rl["rl_kwargs"])
     else:
         agent = serialize.load_stable_baselines_model(
             rl["rl_cls"],

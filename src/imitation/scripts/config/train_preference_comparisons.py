@@ -16,6 +16,13 @@ train_preference_comparisons_ex = sacred.Experiment(
 )
 
 
+MUJOCO_SHARED_LOCALS = dict(rl=dict(rl_kwargs=dict(ent_coef=0.1)))
+ANT_SHARED_LOCALS = dict(
+    total_timesteps=int(3e7),
+    rl=dict(batch_size=16384),
+)
+
+
 @train_preference_comparisons_ex.config
 def train_defaults():
     fragment_length = 100  # timesteps per fragment used for comparisons
