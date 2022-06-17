@@ -1011,7 +1011,8 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
         print(f"Query schedule: {schedule}")
 
         timesteps_per_iteration, extra_timesteps = divmod(
-            total_timesteps, self.num_iterations,
+            total_timesteps,
+            self.num_iterations,
         )
         reward_loss = None
         reward_accuracy = None

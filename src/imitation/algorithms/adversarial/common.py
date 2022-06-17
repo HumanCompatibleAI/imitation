@@ -11,6 +11,7 @@ import torch as th
 import torch.utils.tensorboard as thboard
 import tqdm
 from stable_baselines3.common import base_class, policies, vec_env
+from stable_baselines3.sac import policies as sac_policies
 from torch.nn import functional as F
 
 from imitation.algorithms import base
@@ -427,6 +428,45 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
         if ndarray is not None:
             return th.as_tensor(ndarray, device=self.reward_train.device)
 
+    def _get_log_policy_act_prob(
+        self,
+        obs_th: th.Tensor,
+        acts_th: th.Tensor,
+    ) -> th.Tensor:
+        """Evaluates the given actions on the given observations.
+
+        Args:
+            obs_th: A batch of observations.
+            acts_th: A batch of actions.
+
+        Returns:
+            A batch of log policy action probabilities.
+        """
+        if isinstance(self.policy, policies.ActorCriticPolicy):
+            # policies.ActorCriticPolicy has a concrete implementation of
+            # evaluate_actions to generate log_policy_act_prob given obs and actions.
+            _, log_policy_act_prob_th, _ = self.policy.evaluate_actions(
+                obs_th,
+                acts_th,
+            )
+        elif isinstance(self.policy, sac_policies.SACPolicy):
+            gen_algo_actor = self.policy.actor
+            # generate log_policy_act_prob from SAC actor.
+            mean_actions, log_std, _ = gen_algo_actor.get_action_dist_params(obs_th)
+            distribution = gen_algo_actor.action_dist.proba_distribution(
+                mean_actions,
+                log_std,
+            )
+            # SAC applies a squashing function to bound the actions to a finite range
+            # `acts_th` need to be scaled accordingly before computing log prob.
+            # Scale actions only if the policy squashes outputs.
+            assert self.policy.squash_output
+            scaled_acts_th = self.policy.scale_action(acts_th)
+            log_policy_act_prob_th = distribution.log_prob(scaled_acts_th)
+        else:
+            return None
+        return log_policy_act_prob_th.detach().cpu().numpy()
+
     def _make_disc_train_batch(
         self,
         *,
@@ -504,16 +544,10 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
         with th.no_grad():
             obs_th = th.as_tensor(obs, device=self.gen_algo.device)
             acts_th = th.as_tensor(acts, device=self.gen_algo.device)
-            log_act_prob = None
-            if hasattr(self.gen_algo.policy, "evaluate_actions"):
-                _, log_act_prob_th, _ = self.gen_algo.policy.evaluate_actions(
-                    obs_th,
-                    acts_th,
-                )
-                log_act_prob = log_act_prob_th.detach().cpu().numpy()
-                del log_act_prob_th  # unneeded
-                assert len(log_act_prob) == n_samples
-                log_act_prob = log_act_prob.reshape((n_samples,))
+            log_policy_act_prob = self._get_log_policy_act_prob(obs_th, acts_th)
+            if log_policy_act_prob is not None:
+                assert len(log_policy_act_prob) == n_samples
+                log_policy_act_prob = log_policy_act_prob.reshape((n_samples,))
             del obs_th, acts_th  # unneeded
 
         obs_th, acts_th, next_obs_th, dones_th = self.reward_train.preprocess(
@@ -528,7 +562,7 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
             "next_state": next_obs_th,
             "done": dones_th,
             "labels_gen_is_one": self._torchify_array(labels_gen_is_one),
-            "log_policy_act_prob": self._torchify_array(log_act_prob),
+            "log_policy_act_prob": self._torchify_array(log_policy_act_prob),
         }
 
         return batch_dict

@@ -188,7 +188,7 @@ def endless_iter(iterable: Iterable[T]) -> Iterator[T]:
     return itertools.chain.from_iterable(itertools.repeat(iterable))
 
 
-def safe_to_tensor(numpy_array: np.ndarray) -> th.Tensor:
+def safe_to_tensor(numpy_array: np.ndarray, **kwargs) -> th.Tensor:
     """Converts a NumPy array to a PyTorch tensor.
 
     The data is copied in the case where the array is non-writable. Unfortunately if
@@ -197,14 +197,15 @@ def safe_to_tensor(numpy_array: np.ndarray) -> th.Tensor:
 
     Args:
         numpy_array: The numpy array to convert to a PyTorch tensor.
+        kwargs: Additional keyword arguments to pass to `th.as_tensor`.
 
     Returns:
         A PyTorch tensor with the same content as `numpy_array`.
     """
-    if numpy_array.flags.writeable:
-        return th.as_tensor(numpy_array)
-    else:
-        return th.as_tensor(numpy_array.copy())
+    if not numpy_array.flags.writeable:
+        numpy_array = numpy_array.copy()
+
+    return th.as_tensor(numpy_array, **kwargs)
 
 
 def tensor_iter_norm(

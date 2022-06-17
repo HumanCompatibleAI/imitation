@@ -1,6 +1,7 @@
 #!/bin/bash
 
 set -e # Exit immediately if a command exits with a non-zero status.
+set -x # echo on
 
 __usage="launch_docker-dev.sh - Launching humancompatibleai/imitation:python-req
 
@@ -9,8 +10,8 @@ Usage: launch_docker-dev.sh [options]
 options:
   -p, --pull                pull the image to DockerHub
 
-Note: You can specify LOCAL_MNT and MJKEY_MNT environment variables to mount
-  local repository and MuJoCo license key respectively.
+Note: You can specify IMIT_LOCAL_MNT environment variables to mount local
+  repository and MuJoCo license key respectively.
 "
 
 PULL=0
@@ -33,18 +34,13 @@ while test $# -gt 0; do
 done
 
 DOCKER_IMAGE="humancompatibleai/imitation:python-req"
-# Specify LOCAL_MNT if you want to mount a local directory to the docker container
-if [[ ${LOCAL_MNT} == "" ]]; then
-  LOCAL_MNT="${HOME}/imitation"
-fi
-
-# Pass your own mjkey.txt
-if [[ ${MJKEY_MNT} == "" ]]; then
-  MJKEY_MNT="${HOME}/mnt/mjkey.txt"
+# Specify IMIT_LOCAL_MNT if you want to mount a local directory to the docker container
+if [[ ${IMIT_LOCAL_MNT} == "" ]]; then
+  IMIT_LOCAL_MNT="${HOME}/imitation"
 fi
 
 # install imitation in developer mode
-CMD="pip install -e .[docs,parallel,test] gym[mujoco]" # borrowed from ci/build_and_activate_venv.sh
+CMD="pip install -e .[docs,parallel,test] gym[mujoco]" # copied from ci/build_and_activate_venv.sh
 
 # Pull image from DockerHub if prompted
 if [[ $PULL == 1 ]]; then
@@ -52,8 +48,8 @@ if [[ $PULL == 1 ]]; then
   docker pull ${DOCKER_IMAGE}
 fi
 
+
 docker run -it --rm --init \
-  -v "${LOCAL_MNT}:/imitation" \
-  -v "${MJKEY_MNT}:/root/.mujoco/mjkey.txt" \
+  -v "${IMIT_LOCAL_MNT}:/imitation" \
   ${DOCKER_IMAGE} \
   /bin/bash -c "${CMD} && exec bash"

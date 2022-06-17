@@ -1,10 +1,11 @@
 """Common configuration elements for reinforcement learning."""
 
 import logging
+import warnings
 from typing import Any, Mapping, Type
 
 import sacred
-import stable_baselines3
+import stable_baselines3 as sb3
 from stable_baselines3.common import (
     base_class,
     off_policy_algorithm,
@@ -20,17 +21,27 @@ logger = logging.getLogger(__name__)
 
 @rl_ingredient.config
 def config():
-    rl_cls = stable_baselines3.PPO
-    batch_size = 2048  # batch size for RL algorithm
-    rl_kwargs = dict(
-        # For recommended PPO hyperparams in each environment, see:
-        # https://github.com/DLR-RM/rl-baselines3-zoo/blob/master/hyperparams/ppo.yml
-        learning_rate=3e-4,
-        batch_size=64,
-        n_epochs=10,
-        ent_coef=0.0,
-    )
+    rl_cls = None
+    batch_size = None
+    rl_kwargs = dict()
     locals()  # quieten flake8
+
+
+@rl_ingredient.config_hook
+def config_hook(config, command_name, logger):
+    """Sets defaults equivalent to sb3.PPO default hyperparameters."""
+    del command_name, logger
+    res = {}
+    if config["rl"]["rl_cls"] is None or config["rl"]["rl_cls"] == sb3.PPO:
+        res["rl_cls"] = sb3.PPO
+        res["batch_size"] = 2048  # rl_kwargs["n_steps"] = batch_size // venv.num_envs
+        res["rl_kwargs"] = dict(
+            learning_rate=3e-4,
+            batch_size=64,
+            n_epochs=10,
+            ent_coef=0.0,
+        )
+    return res
 
 
 @rl_ingredient.named_config
@@ -39,6 +50,24 @@ def fast():
     # SB3 RL seems to need batch size of 2, otherwise it runs into numeric
     # issues when computing multinomial distribution during predict()
     rl_kwargs = dict(batch_size=2)
+    locals()  # quieten flake8
+
+
+@rl_ingredient.named_config
+def sac():
+    # For recommended SAC hyperparams in each environment, see:
+    # https://github.com/DLR-RM/rl-baselines3-zoo/blob/master/hyperparams/sac.yml
+    rl_cls = sb3.SAC
+    warnings.warn(
+        "SAC currently only supports continuous action spaces. "
+        "Consider adding a discrete version as mentioned here: "
+        "https://github.com/DLR-RM/stable-baselines3/issues/505",
+        category=RuntimeWarning,
+    )
+    # Default HPs are as follows:
+    batch_size = 256  # batch size for RL algorithm
+    rl_kwargs = dict(batch_size=None)  # make sure to set batch size to None
+
     locals()  # quieten flake8
 
 
@@ -84,13 +113,18 @@ def make_rl_algo(
         ), "set 'n_steps' at top-level using 'batch_size'"
         rl_kwargs["n_steps"] = batch_size // venv.num_envs
     elif issubclass(rl_cls, off_policy_algorithm.OffPolicyAlgorithm):
-        assert "batch_size" not in rl_kwargs, "set 'batch_size' at top-level"
+        if rl_kwargs.get("batch_size") is not None:
+            raise ValueError("set 'batch_size' at top-level")
         rl_kwargs["batch_size"] = batch_size
     else:
         raise TypeError(f"Unsupported RL algorithm '{rl_cls}'")
     rl_algo = rl_cls(
         policy=train["policy_cls"],
-        policy_kwargs=train["policy_kwargs"],
+        # Note(yawen): Copy `policy_kwargs` as SB3 may mutate the config we pass.
+        # In particular, policy_kwargs["use_sde"] may be changed in rl_cls.__init__()
+        # for certain algorithms, such as Soft Actor Critic. See:
+        # https://github.com/DLR-RM/stable-baselines3/blob/30772aa9f53a4cf61571ee90046cdc454c1b11d7/sb3/common/off_policy_algorithm.py#L145
+        policy_kwargs=dict(train["policy_kwargs"]),
         env=venv,
         seed=_seed,
         **rl_kwargs,

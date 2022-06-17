@@ -4,9 +4,8 @@ import dataclasses
 import logging
 import os
 import pathlib
-import pickle
 import warnings
-from typing import Any, Dict, Mapping, Optional, Sequence, Tuple, TypeVar, Union
+from typing import Any, Dict, Mapping, Optional, Sequence, Tuple, TypeVar, Union, cast
 
 import numpy as np
 import torch as th
@@ -298,24 +297,105 @@ class TransitionsWithRew(Transitions):
         _rews_validation(self.rews, self.acts)
 
 
-def load(path: AnyPath) -> Sequence[TrajectoryWithRew]:
+def load_with_rewards(path: AnyPath) -> Sequence[TrajectoryWithRew]:
+    """Loads a sequence of trajectories with rewards from a file."""
+    data = load(path)
+
+    mismatched_types = [
+        type(traj) for traj in data if not isinstance(traj, TrajectoryWithRew)
+    ]
+    if mismatched_types:
+        raise ValueError(
+            f"Expected all trajectories to be of type `TrajectoryWithRew`, "
+            f"but found {mismatched_types[0].__name__}",
+        )
+
+    return cast(Sequence[TrajectoryWithRew], data)
+
+
+def load(path: AnyPath) -> Sequence[Trajectory]:
     """Loads a sequence of trajectories saved by `save()` from `path`."""
-    with open(path, "rb") as f:
-        return pickle.load(f)
+    # Interestingly, np.load will just silently load a normal pickle file when you
+    # set `allow_pickle=True`. So this call should succeed for both the new compressed
+    # .npz format and the old pickle based format. To tell the difference we need to
+    # look at the type of the resulting object. If it's the new compressed format,
+    # it should be a Mapping that we need to decode, whereas if it's the old format
+    # it's just the sequence of trajectories and we can return it directly.
+    data = np.load(path, allow_pickle=True)
+    if isinstance(data, Sequence):
+        return data
+    elif isinstance(data, Mapping):
+        num_trajs = len(data["indices"])
+        fields = (
+            # Account for the extra obs in each trajectory
+            np.split(data["obs"], data["indices"] + np.arange(num_trajs) + 1),
+            np.split(data["acts"], data["indices"]),
+            np.split(data["infos"], data["indices"]),
+            data["terminal"],
+        )
+        if "rews" in data:
+            fields += (np.split(data["rews"], data["indices"]),)
+            return [TrajectoryWithRew(*args) for args in zip(*fields)]
+        else:
+            return [Trajectory(*args) for args in zip(*fields)]
+    else:
+        raise ValueError(
+            f"Expected either an .npz file or a pickled sequence of trajectories; "
+            f"got a pickled object of type {type(data).__name__}",
+        )
 
 
-def save(path: AnyPath, trajectories: Sequence[TrajectoryWithRew]) -> None:
-    """Save a sequence of Trajectories to disk.
+def save(path: AnyPath, trajectories: Sequence[Trajectory]):
+    """Save a sequence of Trajectories to disk using a NumPy-based format.
+
+    We create an .npz dictionary with the following keys:
+    * obs: flattened observations from all trajectories. Note that the leading
+    dimension of this array will be `len(trajectories)` longer than the `acts`
+    and `infos` arrays, because we always have one more observation than we have
+    actions in any trajectory.
+    * acts: flattened actions from all trajectories
+    * infos: flattened info dicts from all trajectories. Any trajectories with
+    no info dict will have their entry in this array set to the empty dictionary.
+    * terminal: boolean array indicating whether each trajectory is done.
+    * indices: indices indicating where to split the flattened action and infos
+    arrays, in order to recover the original trajectories. Will be a 1D array of
+    length `len(trajectories)`.
 
     Args:
         path: Trajectories are saved to this path.
         trajectories: The trajectories to save.
+
+    Raises:
+        ValueError: If the trajectories are not all of the same type, i.e. some are
+            `Trajectory` and others are `TrajectoryWithRew`.
     """
     p = pathlib.Path(path)
     p.parent.mkdir(parents=True, exist_ok=True)
     tmp_path = f"{path}.tmp"
+
+    infos = [
+        # Replace 'None' values for `infos`` with array of empty dicts
+        traj.infos if traj.infos is not None else np.full(len(traj), {})
+        for traj in trajectories
+    ]
+    condensed = {
+        "obs": np.concatenate([traj.obs for traj in trajectories]),
+        "acts": np.concatenate([traj.acts for traj in trajectories]),
+        "infos": np.concatenate(infos),
+        "terminal": np.array([traj.terminal for traj in trajectories]),
+        "indices": np.cumsum([len(traj) for traj in trajectories[:-1]]),
+    }
+    has_reward = [isinstance(traj, TrajectoryWithRew) for traj in trajectories]
+    if all(has_reward):
+        condensed["rews"] = np.concatenate(
+            [cast(TrajectoryWithRew, traj).rews for traj in trajectories],
+        )
+    elif any(has_reward):
+        raise ValueError("Some trajectories have rewards but not all")
+
     with open(tmp_path, "wb") as f:
-        pickle.dump(trajectories, f)
+        np.savez_compressed(f, **condensed)
+
     # Ensure atomic write
     os.replace(tmp_path, path)
     logging.info(f"Dumped demonstrations to {path}.")

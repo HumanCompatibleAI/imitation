@@ -11,6 +11,7 @@ This can be used:
 import logging
 import os
 import os.path as osp
+import warnings
 from typing import Mapping, Optional
 
 import sacred.run
@@ -53,7 +54,9 @@ def train_rl(
 
     Args:
         total_timesteps: Number of training timesteps in `model.learn()`.
-        normalize_reward: If True, then rescale and clip reward.
+        normalize_reward: Applies normalization and clipping to the reward function by
+            keeping a running average of training rewards. Note: this is may be
+            redundant if using a learned reward that is already normalized.
         normalize_kwargs: kwargs for `VecNormalize`.
         reward_type: If provided, then load the serialized reward of this type,
             wrapping the environment in this reward. This is useful to test
@@ -102,6 +105,12 @@ def train_rl(
         # so normalizing it makes training more stable. Note we do *not* normalize
         # observations here; use the `NormalizeFeaturesExtractor` instead.
         venv = VecNormalize(venv, norm_obs=False, **normalize_kwargs)
+        if reward_type == "RewardNet_normalized":
+            warnings.warn(
+                "Applying normalization to already normalized reward function. \
+                Consider setting normalize_reward as False",
+                RuntimeWarning,
+            )
 
     if policy_save_interval > 0:
         save_policy_callback = serialize.SavePolicyCallback(policy_dir)
