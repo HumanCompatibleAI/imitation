@@ -162,7 +162,7 @@ def train_preference_comparisons(
                 "exploration_frac can't be set when a trajectory dataset is used",
             )
         trajectory_generator = preference_comparisons.TrajectoryDataset(
-            trajectories=types.load(trajectory_path),
+            trajectories=types.load_with_rewards(trajectory_path),
             seed=_seed,
             custom_logger=custom_logger,
             **trajectory_generator_kwargs,
