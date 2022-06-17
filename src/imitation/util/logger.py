@@ -66,6 +66,11 @@ class HierarchicalLogger(sb_logger.Logger):
         self.format_strs = format_strs
         super().__init__(folder=self.default_logger.dir, output_formats=[])
 
+    def _update_name_to_maps(self) -> None:
+        self.name_to_value = self._logger.name_to_value
+        self.name_to_count = self._logger.name_to_count
+        self.name_to_excluded = self._logger.name_to_excluded
+
     @contextlib.contextmanager
     def accumulate_means(self, subdir: types.AnyPath) -> Generator[None, None, None]:
         """Temporarily modifies this HierarchicalLogger to accumulate means values.
@@ -116,10 +121,12 @@ class HierarchicalLogger(sb_logger.Logger):
         try:
             self.current_logger = logger
             self._subdir = subdir
+            self._update_name_to_maps()
             yield
         finally:
             self.current_logger = None
             self._subdir = None
+            self._update_name_to_maps()
 
     def record(self, key, val, exclude=None):
         if self.current_logger is not None:  # In accumulate_means context.
