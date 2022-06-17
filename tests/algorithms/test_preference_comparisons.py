@@ -160,7 +160,11 @@ def test_transitions_left_in_buffer(agent_trainer):
     ["constant", "hyperbolic", "inverse_quadratic", lambda t: 1 / (1 + t**3)],
 )
 def test_trainer_no_crash(
-    agent_trainer, reward_net, fragmenter, custom_logger, schedule,
+    agent_trainer,
+    reward_net,
+    fragmenter,
+    custom_logger,
+    schedule,
 ):
     main_trainer = preference_comparisons.PreferenceComparisons(
         agent_trainer,
