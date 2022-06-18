@@ -7,7 +7,7 @@ import src.imitation  # pytype: disable=import-error
 PARALLEL_REQUIRE = ["ray[debug,tune]>=1.13.0"]
 TESTS_REQUIRE = [
     "seals",
-    "black",
+    "black[jupyter]",
     "coverage",
     "codecov",
     "codespell",
