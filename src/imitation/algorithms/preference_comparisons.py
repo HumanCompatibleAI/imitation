@@ -870,9 +870,8 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
                 an RL agent on the learned reward function (can also be a sampler
                 from a static dataset of trajectories though).
             reward_model: a RewardNet instance to be used for learning the reward
-            num_iterations: number of times to switch between training the agent
-                against the reward model and training the reward model against newly
-                gathered preferences.
+            num_iterations: number of times to train the agent against the reward model
+                and then train the reward model against newly gathered preferences.
             fragmenter: takes in a set of trajectories and returns pairs of fragments
                 for which preferences will be gathered. These fragments could be random,
                 or they could be selected more deliberately (active learning).

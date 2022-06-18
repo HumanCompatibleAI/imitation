@@ -83,9 +83,8 @@ def train_preference_comparisons(
         _seed: Random seed.
         total_timesteps: number of environment interaction steps
         total_comparisons: number of preferences to gather in total
-        num_iterations: number of times to switch between training the agent against the
-            reward model and training the reward model against newly gathered
-            preferences.
+        num_iterations: number of times to train the agent against the reward model
+            and then train the reward model against newly gathered preferences.
         comparison_queue_size: the maximum number of comparisons to keep in the
             queue for training the reward model. If None, the queue will grow
             without bound as new comparisons are added.
