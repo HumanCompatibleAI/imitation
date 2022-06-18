@@ -65,6 +65,33 @@ def cartpole():
 
 
 @train_preference_comparisons_ex.named_config
+def seals_ant():
+    locals().update(**MUJOCO_SHARED_LOCALS)
+    locals().update(**ANT_SHARED_LOCALS)
+    common = dict(env_name="seals/Ant-v0")
+
+
+@train_preference_comparisons_ex.named_config
+def half_cheetah():
+    locals().update(**MUJOCO_SHARED_LOCALS)
+    common = dict(env_name="HalfCheetah-v2")
+    rl = dict(batch_size=16384, rl_kwargs=dict(batch_size=1024))
+
+
+@train_preference_comparisons_ex.named_config
+def seals_hopper():
+    locals().update(**MUJOCO_SHARED_LOCALS)
+    common = dict(env_name="seals/Hopper-v0")
+
+
+@train_preference_comparisons_ex.named_config
+def seals_humanoid():
+    locals().update(**MUJOCO_SHARED_LOCALS)
+    common = dict(env_name="seals/Humanoid-v0")
+    total_timesteps = int(4e6)
+
+
+@train_preference_comparisons_ex.named_config
 def seals_cartpole():
     common = dict(env_name="seals/CartPole-v0")
 
