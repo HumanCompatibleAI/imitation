@@ -98,6 +98,7 @@ def test_running_norm_matches_dist(batch_size: int) -> None:
     "init_kwargs",
     [
         {},
+        {"dropout_prob": 0.5},
         {"normalize_input_layer": networks.RunningNorm},
     ],
 )

@@ -165,11 +165,11 @@ def test_trainer_no_crash(agent_trainer, reward_net, fragmenter, custom_logger):
         fragmenter=fragmenter,
         custom_logger=custom_logger,
     )
-    result = main_trainer.train(10, 3)
+    result = main_trainer.train(50, 5)
     # We don't expect good performance after training for 10 (!) timesteps,
     # but check stats are within the bounds they should lie in.
     assert result["reward_loss"] > 0.0
-    assert 0.0 < result["reward_accuracy"] < 1.0
+    assert 0.0 < result["reward_accuracy"] <= 1.0
 
 
 def test_discount_rate_no_crash(agent_trainer, reward_net, fragmenter, custom_logger):
@@ -252,6 +252,22 @@ def test_preference_dataset_errors(agent_trainer, fragmenter):
     preferences = np.empty(len(fragments), dtype=np.float64)
     with pytest.raises(ValueError, match="preferences should have dtype float32"):
         dataset.push(fragments, preferences)
+
+
+def test_preference_dataset_queue(agent_trainer, fragmenter):
+    dataset = preference_comparisons.PreferenceDataset(max_size=5)
+    trajectories = agent_trainer.sample(10)
+
+    gatherer = preference_comparisons.SyntheticGatherer()
+    for i in range(6):
+        fragments = fragmenter(trajectories, fragment_length=2, num_pairs=1)
+        preferences = gatherer(fragments)
+        assert len(dataset) == min(i, 5)
+        dataset.push(fragments, preferences)
+        assert len(dataset) == min(i + 1, 5)
+
+    # The first comparison should have been evicted to keep the size at 5
+    assert len(dataset) == 5
 
 
 def test_store_and_load_preference_dataset(agent_trainer, fragmenter, tmp_path):

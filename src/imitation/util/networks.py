@@ -123,6 +123,7 @@ def build_mlp(
     out_size: int = 1,
     name: Optional[str] = None,
     activation: Type[nn.Module] = nn.ReLU,
+    dropout_prob: float = 0.0,
     squeeze_output: bool = False,
     flatten_input: bool = False,
     normalize_input_layer: Optional[Type[nn.Module]] = None,
@@ -137,6 +138,8 @@ def build_mlp(
         out_size: required size of output vector.
         name: Name to use as a prefix for the layers ID.
         activation: activation to apply after hidden layers.
+        dropout_prob: Dropout probability to use after each hidden layer. If 0,
+            no dropout layers are added to the network.
         squeeze_output: if out_size=1, then squeeze_input=True ensures that MLP
             output is of size (B,) instead of (B,1).
         flatten_input: should input be flattened along axes 1, 2, 3, …? Useful
@@ -173,6 +176,8 @@ def build_mlp(
         prev_size = size
         if activation:
             layers[f"{prefix}act{i}"] = activation()
+        if dropout_prob > 0.0:
+            layers[f"{prefix}dropout{i}"] = nn.Dropout(dropout_prob)
 
     # Final dense layer
     layers[f"{prefix}dense_final"] = nn.Linear(prev_size, out_size)
