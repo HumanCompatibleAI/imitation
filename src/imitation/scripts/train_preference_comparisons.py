@@ -54,7 +54,6 @@ def save_checkpoint(
 
 @train_preference_comparisons_ex.main
 def train_preference_comparisons(
-    _run,
     _seed: int,
     total_timesteps: int,
     total_comparisons: int,

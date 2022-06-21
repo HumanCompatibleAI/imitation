@@ -14,7 +14,6 @@ import os.path as osp
 import warnings
 from typing import Mapping, Optional
 
-import sacred.run
 from sacred.observers import FileStorageObserver
 from stable_baselines3.common import callbacks
 from stable_baselines3.common.vec_env import VecNormalize
@@ -30,8 +29,6 @@ from imitation.scripts.config.train_rl import train_rl_ex
 @train_rl_ex.main
 def train_rl(
     *,
-    _run: sacred.run.Run,
-    _seed: int,
     total_timesteps: int,
     normalize_reward: bool,
     normalize_kwargs: dict,
