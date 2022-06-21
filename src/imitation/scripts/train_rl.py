@@ -42,6 +42,7 @@ def train_rl(
     rollout_save_n_episodes: Optional[int],
     policy_save_interval: int,
     policy_save_final: bool,
+    agent_path: Optional[str],
 ) -> Mapping[str, float]:
     """Trains an expert policy from scratch and saves the rollouts and policy.
 
@@ -80,6 +81,7 @@ def train_rl(
             don't save intermediate updates.
         policy_save_final: If True, then save the policy right after training is
             finished.
+        agent_path: Path to load warm-started agent.
 
     Returns:
         The return value of `rollout_stats()` using the final policy.
@@ -121,7 +123,10 @@ def train_rl(
         callback_objs.append(save_policy_callback)
     callback = callbacks.CallbackList(callback_objs)
 
-    rl_algo = rl.make_rl_algo(venv)
+    if agent_path is None:
+        rl_algo = rl.make_rl_algo(venv)
+    else:
+        rl_algo = rl.load_rl_algo_from_path(agent_path=agent_path, venv=venv)
     rl_algo.set_logger(custom_logger)
     rl_algo.learn(total_timesteps, callback=callback)
 

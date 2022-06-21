@@ -27,6 +27,8 @@ def train_rl_defaults():
     policy_save_interval = 10000  # Num timesteps between saves (<=0 disables)
     policy_save_final = True  # If True, save after training is finished.
 
+    agent_path = None  # Path to load agent from, optional.
+
 
 @train_rl_ex.config
 def default_end_cond(rollout_save_n_timesteps, rollout_save_n_episodes):
