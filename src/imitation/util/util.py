@@ -28,10 +28,10 @@ from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecEnv
 def oric(x: np.ndarray) -> np.ndarray:
     """Optimal rounding under integer constraints.
 
-    Given a vector of real numbers such that the sum is an integer, returns a
-    vector of rounded integers that preserves the sum and which minimizes the
-    Lp-norm of the difference between the rounded and original vectors. Algorithm
-    from https://arxiv.org/abs/1501.00014. Runs in O(n log n) time.
+    Given a vector of real numbers such that the sum is an integer, returns a vector
+    of rounded integers that preserves the sum and which minimizes the Lp-norm of the
+    difference between the rounded and original vectors for all p >= 1. Algorithm from
+    https://arxiv.org/abs/1501.00014. Runs in O(n log n) time.
 
     Args:
         x: A 1D vector of real numbers that sum to an integer.

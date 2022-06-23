@@ -5,10 +5,11 @@ can be called directly.
 """
 
 import os
-from typing import Any, Mapping, Optional, Type
+from typing import Any, Mapping, Optional, Type, Union
 
 import torch as th
 from sacred.observers import FileStorageObserver
+from stable_baselines3.common import type_aliases
 
 from imitation.algorithms import preference_comparisons
 from imitation.data import types
@@ -75,7 +76,7 @@ def train_preference_comparisons(
     rl: Mapping[str, Any],
     allow_variable_horizon: bool,
     checkpoint_interval: int,
-    query_schedule: str,
+    query_schedule: Union[str, type_aliases.Schedule],
 ) -> Mapping[str, Any]:
     """Train a reward model using preference comparisons.
 
@@ -142,7 +143,7 @@ def train_preference_comparisons(
 
     reward_net = reward.make_reward_net(venv)
     if agent_path is None:
-        agent = rl_common.make_rl_algo(venv, rl_kwargs=rl["rl_kwargs"])
+        agent = rl_common.make_rl_algo(venv)
     else:
         agent = serialize.load_stable_baselines_model(
             rl["rl_cls"],

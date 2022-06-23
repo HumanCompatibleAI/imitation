@@ -12,7 +12,7 @@ from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple
 import numpy as np
 import torch as th
 from scipy import special
-from stable_baselines3.common import base_class, vec_env
+from stable_baselines3.common import base_class, type_aliases, vec_env
 from tqdm.auto import tqdm
 
 from imitation.algorithms import base
@@ -832,7 +832,7 @@ class CrossEntropyRewardTrainer(RewardTrainer):
                 self.logger.record("loss", loss.item())
 
 
-QUERY_SCHEDULES: Dict[str, Callable[[float], float]] = {
+QUERY_SCHEDULES: Dict[str, type_aliases.Schedule] = {
     "constant": lambda t: 1.0,
     "hyperbolic": lambda t: 1.0 / (1.0 + t),
     "inverse_quadratic": lambda t: 1.0 / (1.0 + t**2),
@@ -858,7 +858,7 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
         allow_variable_horizon: bool = False,
         seed: Optional[int] = None,
-        query_schedule: Union[str, Callable[[float], float]] = "hyperbolic",
+        query_schedule: Union[str, type_aliases.Schedule] = "hyperbolic",
     ):
         """Initialize the preference comparison trainer.
 
