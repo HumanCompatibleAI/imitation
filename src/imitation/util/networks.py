@@ -158,25 +158,30 @@ class EMANorm(BaseNorm):
     def update_stats(self, batch: th.Tensor) -> None:
         """Update `self.running_mean` and `self.running_var`.
 
-        Uses Macgregor & Harris (1993), "The Exponentially Weighted Moving Variance".
+        Reference Finch (2009), "Incremental calculation of weighted mean and variance".
+            (https://fanf2.user.srcf.net/hermes/doc/antiforgery/stats.pdf)
 
         Args:
             batch: A batch of data to use to update the running mean and variance.
         """
-        if len(batch.shape) == 1:  # Assume list is a batch of 1-d vectors
-            batch = batch.unsqueeze(-1)
-
         b_size = batch.shape[0]
-        b_mean = th.mean(batch, dim=0)
 
-        centered = batch - self.running_mean.unsqueeze(0)
-        b_var = th.sum(th.square(centered), dim=0) / b_size
+        if self.count == 0:
+            self.running_mean = th.mean(batch, dim=0)
+            if b_size > 1:
+                self.running_var = th.var(batch, dim=0)
+        else:
+            # Shuffle the batch since we don't don't want to bias the mean
+            # towards data that appears latter in the batch
+            perm = th.randperm(b_size)
 
-        self.running_mean *= self.decay
-        self.running_mean += b_mean * (1 - self.decay)
+            alpha = 1 - self.decay
 
-        self.running_var *= self.decay
-        self.running_var += (1 - self.decay) * b_var
+            for i in range(b_size):
+                diff = batch[perm[i], ...] - self.running_mean
+                incr = alpha * diff
+                self.running_mean += incr
+                self.running_var = self.decay * (self.running_var + diff * incr)
 
         self.count += b_size
 
