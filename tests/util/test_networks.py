@@ -149,7 +149,8 @@ def test_parameters_converge(
 
 @pytest.mark.parametrize(
     "init_kwargs",
-    [{}] + [{"normalize_input_layer": layer} for layer in NORMALIZATION_LAYERS],
+    [{}, {"dropout_prob": 0.5}]
+    + [{"normalize_input_layer": layer} for layer in NORMALIZATION_LAYERS],
 )
 def test_build_mlp_norm_training(init_kwargs) -> None:
     """Tests MLP building function `networks.build_mlp()`.

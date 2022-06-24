@@ -21,6 +21,7 @@ def train_defaults():
     fragment_length = 100  # timesteps per fragment used for comparisons
     total_timesteps = int(1e6)  # total number of environment timesteps
     total_comparisons = 5000  # total number of comparisons to elicit
+    comparison_queue_size = None
     # comparisons to gather before switching back to agent training
     comparisons_per_iteration = 100
     # factor by which to oversample transitions before creating fragments
