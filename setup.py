@@ -7,7 +7,7 @@ import src.imitation  # pytype: disable=import-error
 PARALLEL_REQUIRE = ["ray[debug,tune]>=1.13.0"]
 TESTS_REQUIRE = [
     "seals",
-    "black",
+    "black[jupyter]",
     "coverage",
     "codecov",
     "codespell",
@@ -20,6 +20,7 @@ TESTS_REQUIRE = [
     "flake8-debugger",
     "flake8-docstrings",
     "flake8-isort",
+    "hypothesis",
     "ipykernel",
     "jupyter",
     # remove pin once https://github.com/jupyter/jupyter_client/issues/637 fixed

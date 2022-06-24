@@ -5,10 +5,11 @@ can be called directly.
 """
 
 import os
-from typing import Any, Mapping, Optional, Type
+from typing import Any, Mapping, Optional, Type, Union
 
 import torch as th
 from sacred.observers import FileStorageObserver
+from stable_baselines3.common import type_aliases
 
 from imitation.algorithms import preference_comparisons
 from imitation.data import types
@@ -58,8 +59,8 @@ def train_preference_comparisons(
     _seed: int,
     total_timesteps: int,
     total_comparisons: int,
+    num_iterations: int,
     comparison_queue_size: Optional[int],
-    comparisons_per_iteration: int,
     fragment_length: int,
     transition_oversampling: float,
     initial_comparison_frac: float,
@@ -75,6 +76,7 @@ def train_preference_comparisons(
     rl: Mapping[str, Any],
     allow_variable_horizon: bool,
     checkpoint_interval: int,
+    query_schedule: Union[str, type_aliases.Schedule],
 ) -> Mapping[str, Any]:
     """Train a reward model using preference comparisons.
 
@@ -82,13 +84,11 @@ def train_preference_comparisons(
         _seed: Random seed.
         total_timesteps: number of environment interaction steps
         total_comparisons: number of preferences to gather in total
+        num_iterations: number of times to train the agent against the reward model
+            and then train the reward model against newly gathered preferences.
         comparison_queue_size: the maximum number of comparisons to keep in the
             queue for training the reward model. If None, the queue will grow
             without bound as new comparisons are added.
-        comparisons_per_iteration: number of preferences to gather at once (before
-            switching back to agent training). This doesn't impact the total number
-            of comparisons that are gathered, only the frequency of switching
-            between preference gathering and agent training.
         fragment_length: number of timesteps per fragment that is used to elicit
             preferences
         transition_oversampling: factor by which to oversample transitions before
@@ -126,6 +126,11 @@ def train_preference_comparisons(
             trajectory_generator contains a policy) every `checkpoint_interval`
             iterations and after training is complete. If 0, then only save weights
             after training is complete. If <0, then don't save weights at all.
+        query_schedule: one of ("constant", "hyperbolic", "inverse_quadratic").
+            A function indicating how the total number of preference queries should
+            be allocated to each iteration. "hyperbolic" and "inverse_quadratic"
+            apportion fewer queries to later iterations when the policy is assumed
+            to be better and more stable.
 
     Returns:
         Rollout statistics from trained policy.
@@ -194,17 +199,18 @@ def train_preference_comparisons(
     main_trainer = preference_comparisons.PreferenceComparisons(
         trajectory_generator,
         reward_net,
+        num_iterations=num_iterations,
         fragmenter=fragmenter,
         preference_gatherer=gatherer,
         reward_trainer=reward_trainer,
         comparison_queue_size=comparison_queue_size,
-        comparisons_per_iteration=comparisons_per_iteration,
         fragment_length=fragment_length,
         transition_oversampling=transition_oversampling,
         initial_comparison_frac=initial_comparison_frac,
         custom_logger=custom_logger,
         allow_variable_horizon=allow_variable_horizon,
         seed=_seed,
+        query_schedule=query_schedule,
     )
 
     def save_callback(iteration_num):
