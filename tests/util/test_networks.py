@@ -31,22 +31,23 @@ def test_running_norm_identity_eval(normalization_layer: Type[networks.BaseNorm]
         assert_equal(running_norm.forward(x), x)
 
 
-@pytest.mark.parametrize("normalization_layer", [networks.RunningNorm])
+@pytest.mark.parametrize("normalization_layer", NORMALIZATION_LAYERS)
 def test_running_norm_identity_train(normalization_layer: Type[networks.BaseNorm]):
     """Test that the running norm will not change already normalized data.
-
-    Note that we do not test the `EMANorm` here since its parameters will
-    always have small perturbations away from true mean and variance even if the
-    batch always has mean 0 and var 1.
 
     Args:
         normalization_layer: the normalization layer to be tested.
     """
     running_norm = normalization_layer(1, eps=0.0)
     running_norm.train()  # stats will change in eval mode
-    normalized = th.Tensor([-1, 1])  # mean 0, variance 1
+    normalized = th.Tensor([-1, -1, -1, -1, 1, 1, 1, 1])  # mean 0, variance 1
     for _ in range(10):
-        assert_equal(running_norm.forward(normalized), normalized)
+        th.testing.assert_allclose(
+            running_norm.forward(normalized),
+            normalized,
+            rtol=0.05,
+            atol=0.05,
+        )
 
 
 @pytest.mark.parametrize("normalization_layer", NORMALIZATION_LAYERS)
@@ -124,15 +125,15 @@ def test_parameters_converge(
     normalization_layer: Type[networks.BaseNorm],
 ) -> None:
     """Test running norm parameters approximately converge to true values."""
-    mean = th.Tensor([16, 0])
-    var = th.Tensor([42, 1])
+    mean = th.Tensor([3, 0])
+    var = th.Tensor([6, 1])
     sd = th.sqrt(var)
 
     num_dims = len(mean)
     running_norm = normalization_layer(num_dims)
     running_norm.train()
 
-    num_samples = 1000
+    num_samples = 500
     with th.random.fork_rng():
         th.random.manual_seed(42)
         data = th.randn(num_samples, num_dims) * sd + mean
@@ -141,8 +142,8 @@ def test_parameters_converge(
             running_norm.forward(batch)
 
     running_norm.eval()
-    th.testing.assert_close(running_norm.running_mean, mean, rtol=0.1, atol=1)
-    th.testing.assert_close(running_norm.running_var, var, rtol=0.1, atol=1)
+    th.testing.assert_close(running_norm.running_mean, mean, rtol=0.05, atol=0.1)
+    th.testing.assert_close(running_norm.running_var, var, rtol=0.1, atol=0.1)
 
     assert running_norm.count == num_samples
 
