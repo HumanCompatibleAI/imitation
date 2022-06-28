@@ -7,7 +7,7 @@ import torch as th
 
 from imitation.scripts.common import common
 from imitation.scripts.common import demonstrations as demos_common
-from imitation.scripts.common import train
+from imitation.scripts.common import train, expert
 
 train_imitation_ex = sacred.Experiment(
     "train_imitation",
@@ -15,6 +15,7 @@ train_imitation_ex = sacred.Experiment(
         common.common_ingredient,
         demos_common.demonstrations_ingredient,
         train.train_ingredient,
+        expert.expert_ingredient,
     ],
 )
 
@@ -36,30 +37,8 @@ def config():
     )
     dagger = dict(
         use_offline_rollouts=False,  # warm-start policy with BC from offline demos
-        expert_policy_path=None,  # path to directory containing model.pkl
-        expert_policy_type=None,  # 'ppo', 'random', or 'zero'
         total_timesteps=1e5,
     )
-
-
-@train_imitation_ex.config
-def defaults(
-    common,
-    demonstrations,
-    dagger,
-):
-    if dagger["expert_policy_type"] is None and dagger["expert_policy_path"] is None:
-        dagger = dict(
-            expert_policy_type="ppo",
-            expert_policy_path=os.path.join(
-                demos_common.guess_expert_dir(
-                    demonstrations["data_dir"],
-                    common["env_name"],
-                ),
-                "policies",
-                "final",
-            ),
-        )
 
 
 @train_imitation_ex.named_config

@@ -2,11 +2,11 @@
 
 import sacred
 
-from imitation.scripts.common import common
+from imitation.scripts.common import common, expert
 
 eval_policy_ex = sacred.Experiment(
     "eval_policy",
-    ingredients=[common.common_ingredient],
+    ingredients=[common.common_ingredient, expert.expert_ingredient],
 )
 
 
@@ -19,9 +19,6 @@ def replay_defaults():
     video_kwargs = {}  # arguments to VideoWrapper
     render = False  # render to screen
     render_fps = 60  # -1 to render at full speed
-
-    policy_type = None  # class to load policy, see imitation.policies.loader
-    policy_path = None  # path to serialized policy
 
     reward_type = None  # Optional: override with reward of this type
     reward_path = None  # Path of serialized reward to load
@@ -107,9 +104,7 @@ def seals_walker():
 
 @eval_policy_ex.named_config
 def fast():
-    common = dict(env_name="CartPole-v1", num_vec=1, parallel=False)
+    common = dict(env_name="seals/CartPole-v0", num_vec=1, parallel=False)  # TODO(ernestum): switch back to seals/cartpole
     render = True
-    policy_type = "ppo"
-    policy_path = "tests/testdata/expert_models/cartpole_0/policies/final/"
     eval_n_timesteps = 1
     eval_n_episodes = None

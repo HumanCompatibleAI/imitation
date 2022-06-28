@@ -2,7 +2,7 @@
 
 import logging
 import os.path as osp
-from typing import Any, Mapping, Optional, Type
+from typing import Any, Mapping, Type
 
 from sacred.observers import FileStorageObserver
 from stable_baselines3.common import policies, utils, vec_env
@@ -10,8 +10,7 @@ from stable_baselines3.common import policies, utils, vec_env
 from imitation.algorithms.bc import BC
 from imitation.algorithms.dagger import SimpleDAggerTrainer
 from imitation.data import rollout
-from imitation.policies import serialize
-from imitation.scripts.common import common, demonstrations, train
+from imitation.scripts.common import common, demonstrations, train, expert
 from imitation.scripts.config.train_imitation import train_imitation_ex
 
 logger = logging.getLogger(__name__)
@@ -48,39 +47,6 @@ def make_policy(
     return policy
 
 
-@train_imitation_ex.capture(prefix="dagger")
-def load_expert_policy(
-    venv: vec_env.VecEnv,
-    expert_policy_type: Optional[str],
-    expert_policy_path: Optional[str],
-) -> policies.BasePolicy:
-    """Loads expert policy from `expert_policy_path`.
-
-    Args:
-        venv: Vectorized environment the policy will be operating in.
-        expert_policy_type: Either 'ppo', 'zero', or 'random'. This is used as the
-            `policy_type` argument to `imitation.policies.serialize.load_policy`.
-        expert_policy_path: Either a path to a policy directory containing model.zip
-            (and optionally, vec_normalize.pkl) or None if policy type is 'zero' or
-            'random'. This is used as the `policy_path` argument to
-            `imitation.policies.serialize.load_policy`.
-
-    Returns:
-        The deserialized expert policy from `expert_policy_path`.
-
-    Raises:
-        ValueError: `expert_policy_path` is None.
-        TypeError: The policy loaded from `expert_policy_path` is not a SB3 policy.
-    """
-    if expert_policy_path is None:
-        raise ValueError("expert_policy_path cannot be None")
-    # TODO(shwang): Add support for directly loading a BasePolicy `*.th` file.
-    expert_policy = serialize.load_policy(expert_policy_type, expert_policy_path, venv)
-    if not isinstance(expert_policy, policies.BasePolicy):
-        raise TypeError(f"Unexpected type for expert_policy: {type(expert_policy)}")
-    return expert_policy
-
-
 @train_imitation_ex.capture
 def train_imitation(
     _run,
@@ -106,7 +72,7 @@ def train_imitation(
 
     expert_trajs = None
     if not use_dagger or dagger["use_offline_rollouts"]:
-        expert_trajs = demonstrations.load_expert_trajs()
+        expert_trajs = demonstrations.get_expert_trajectories()
 
     bc_trainer = BC(
         observation_space=venv.observation_space,
@@ -124,7 +90,7 @@ def train_imitation(
             bc_train_kwargs["n_batches"] = 50_000
 
     if use_dagger:
-        expert_policy = load_expert_policy(venv=venv)
+        expert_policy = expert.get_expert_policy()
         model = SimpleDAggerTrainer(
             venv=venv,
             scratch_dir=osp.join(log_dir, "scratch"),

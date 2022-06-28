@@ -11,10 +11,10 @@ from sacred.observers import FileStorageObserver
 from stable_baselines3.common.vec_env import VecEnvWrapper
 
 from imitation.data import rollout, types
-from imitation.policies import serialize
 from imitation.rewards import reward_wrapper
 from imitation.rewards.serialize import load_reward
 from imitation.scripts.common import common
+from imitation.scripts.common.expert import get_expert_policy
 from imitation.scripts.config.eval_policy import eval_policy_ex
 from imitation.util import video_wrapper
 
@@ -61,8 +61,6 @@ def eval_policy(
     render_fps: int,
     videos: bool,
     video_kwargs: Mapping[str, Any],
-    policy_type: Optional[str],
-    policy_path: Optional[str],
     reward_type: Optional[str] = None,
     reward_path: Optional[str] = None,
     rollout_save_path: Optional[str] = None,
@@ -106,10 +104,7 @@ def eval_policy(
             venv = reward_wrapper.RewardVecEnvWrapper(venv, reward_fn)
             logging.info(f"Wrapped env in reward {reward_type} from {reward_path}.")
 
-        policy = None
-        if policy_type is not None:
-            policy = serialize.load_policy(policy_type, policy_path, venv)
-        trajs = rollout.generate_trajectories(policy, venv, sample_until)
+        trajs = rollout.generate_trajectories(get_expert_policy(), venv, sample_until)
 
         if rollout_save_path:
             types.save(rollout_save_path.replace("{log_dir}", log_dir), trajs)

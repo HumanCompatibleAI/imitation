@@ -11,6 +11,7 @@ from imitation.scripts.common import wb
 from imitation.util import logger as imit_logger
 from imitation.util import sacred as sacred_util
 from imitation.util import util
+import seals
 
 common_ingredient = sacred.Ingredient("common", ingredients=[wb.wandb_ingredient])
 logger = logging.getLogger(__name__)
