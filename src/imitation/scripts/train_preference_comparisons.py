@@ -55,7 +55,6 @@ def save_checkpoint(
 
 @train_preference_comparisons_ex.main
 def train_preference_comparisons(
-    _run,
     _seed: int,
     total_timesteps: int,
     total_comparisons: int,
@@ -73,7 +72,6 @@ def train_preference_comparisons(
     gatherer_cls: Type[preference_comparisons.PreferenceGatherer],
     gatherer_kwargs: Mapping[str, Any],
     fragmenter_kwargs: Mapping[str, Any],
-    rl: Mapping[str, Any],
     allow_variable_horizon: bool,
     checkpoint_interval: int,
     query_schedule: Union[str, type_aliases.Schedule],
@@ -114,7 +112,6 @@ def train_preference_comparisons(
         gatherer_cls: type of PreferenceGatherer to use (defaults to SyntheticGatherer)
         gatherer_kwargs: passed to the PreferenceGatherer specified by gatherer_cls
         fragmenter_kwargs: passed to RandomFragmenter
-        rl: parameters for RL training, used for restoring agents.
         allow_variable_horizon: If False (default), algorithm will raise an
             exception if it detects trajectories of different length during
             training. If True, overrides this safety check. WARNING: variable
@@ -145,14 +142,7 @@ def train_preference_comparisons(
     if agent_path is None:
         agent = rl_common.make_rl_algo(venv)
     else:
-        agent = serialize.load_stable_baselines_model(
-            rl["rl_cls"],
-            agent_path,
-            venv,
-            seed=_seed,
-            **rl["rl_kwargs"],
-        )
-        custom_logger.info(f"Warm starting agent from '{agent_path}'")
+        agent = rl_common.load_rl_algo_from_path(agent_path=agent_path, venv=venv)
 
     if trajectory_path is None:
         # Setting the logger here is not really necessary (PreferenceComparisons

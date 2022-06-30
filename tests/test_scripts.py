@@ -79,22 +79,26 @@ def test_main_console(script_mod):
         script_mod.main_console()
 
 
+_rl_agent_loading_configs = {
+    "agent_path": CARTPOLE_TEST_POLICY_PATH,
+    # FIXME(yawen): the policy we load was trained on 8 parallel environments
+    # and for some reason using it breaks if we use just 1 (like would be the
+    # default with the fast named_config)
+    "common": dict(num_vec=8),
+}
+
 PREFERENCE_COMPARISON_CONFIGS = [
     {},
     {
         "trajectory_path": CARTPOLE_TEST_ROLLOUT_PATH,
     },
     {
-        "agent_path": CARTPOLE_TEST_POLICY_PATH,
-        # TODO(ejnnr): the policy we load was trained on 8 parallel environments
-        # and for some reason using it breaks if we use just 1 (like would be the
-        # default with the fast named_config)
-        "common": dict(num_vec=8),
         # We're testing preference saving and disabling sampling here as well;
         # having yet another run just for those would be wasteful since they
         # don't interact with warm starting an agent.
         "save_preferences": True,
         "gatherer_kwargs": {"sample": False},
+        **_rl_agent_loading_configs,
     },
     {
         "checkpoint_interval": 1,
@@ -251,13 +255,17 @@ def test_train_bc_main(tmpdir):
     assert isinstance(run.result, dict)
 
 
-def test_train_rl_main(tmpdir):
-    """Smoke test for imitation.scripts.train_rl.rollouts_and_policy."""
+TRAIN_RL_PPO_CONFIGS = [{}, _rl_agent_loading_configs]
+
+
+@pytest.mark.parametrize("config", TRAIN_RL_PPO_CONFIGS)
+def test_train_rl_main(tmpdir, config):
+    """Smoke test for imitation.scripts.train_rl."""
+    config_updates = dict(common=dict(log_root=tmpdir))
+    sacred.utils.recursive_update(config_updates, config)
     run = train_rl.train_rl_ex.run(
         named_configs=["cartpole"] + ALGO_FAST_CONFIGS["rl"],
-        config_updates=dict(
-            common=dict(log_root=tmpdir),
-        ),
+        config_updates=config_updates,
     )
     assert run.status == "COMPLETED"
     assert isinstance(run.result, dict)
