@@ -12,8 +12,13 @@ from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple
 import numpy as np
 import torch as th
 from scipy import special
-from stable_baselines3.common import callbacks, off_policy_algorithm
-from stable_baselines3.common import base_class, type_aliases, vec_env
+from stable_baselines3.common import (
+    base_class,
+    callbacks,
+    off_policy_algorithm,
+    type_aliases,
+    vec_env,
+)
 from tqdm.auto import tqdm
 
 from imitation.algorithms import base
