@@ -12,7 +12,12 @@ from typing import Any, Callable, List, Mapping, Optional, Sequence, Tuple, Unio
 import numpy as np
 import torch as th
 from scipy import special
-from stable_baselines3.common import base_class, vec_env
+from stable_baselines3.common import (
+    base_class,
+    callbacks,
+    off_policy_algorithm,
+    vec_env,
+)
 from tqdm.auto import tqdm
 
 from imitation.algorithms import base
@@ -117,6 +122,7 @@ class AgentTrainer(TrajectoryGenerator):
         switch_prob: float = 0.5,
         random_prob: float = 0.5,
         seed: Optional[int] = None,
+        reward_relabel: bool = False,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
     ):
         """Initialize the agent trainer.
@@ -133,6 +139,8 @@ class AgentTrainer(TrajectoryGenerator):
             random_prob: the probability of picking the random policy when switching
                 during exploration.
             seed: random seed for exploratory trajectories.
+            reward_relabel: whether to relabel rewards in the replay buffer of
+                off-policy algorithms with learned rewards.
             custom_logger: Where to log to; if None (default), creates a new logger.
 
         Raises:
@@ -155,11 +163,21 @@ class AgentTrainer(TrajectoryGenerator):
         # changes the reward function), so that we return the original environment
         # rewards.
         self.buffering_wrapper = wrappers.BufferingWrapper(venv)
-        self.venv = reward_wrapper.RewardVecEnvWrapper(
+        self.venv = self.reward_venv_wrapper = reward_wrapper.RewardVecEnvWrapper(
             self.buffering_wrapper,
             reward_fn=self.reward_fn,
         )
-        self.log_callback = self.venv.make_log_callback()
+
+        log_callback = self.reward_venv_wrapper.make_log_callback()
+        callback_list = [log_callback]
+        if reward_relabel:
+            assert isinstance(self.algorithm, off_policy_algorithm.OffPolicyAlgorithm)
+            reward_relabel_callback = reward_wrapper.RewardRelabelCallback(
+                reward_fn=self.reward_fn,
+            )
+            callback_list.append(reward_relabel_callback)
+
+        self.callback = callbacks.CallbackList(callback_list)
 
         self.algorithm.set_env(self.venv)
         policy_callable = rollout._policy_to_callable(
@@ -199,7 +217,7 @@ class AgentTrainer(TrajectoryGenerator):
         self.algorithm.learn(
             total_timesteps=steps,
             reset_num_timesteps=False,
-            callback=self.log_callback,
+            callback=self.callback,
             **kwargs,
         )
 

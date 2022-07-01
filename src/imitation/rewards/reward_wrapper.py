@@ -4,9 +4,46 @@ import collections
 from typing import Deque
 
 import numpy as np
-from stable_baselines3.common import callbacks, vec_env
+from stable_baselines3.common import buffers, callbacks, vec_env
 
 from imitation.rewards import common
+
+
+class RewardRelabelCallback(callbacks.BaseCallback):
+    """Relabel the reward in a replay buffer for an off-policy RL algorithm if any."""
+
+    def __init__(self, reward_fn: common.RewardFn, *args, **kwargs):
+        """Builds RewardRelabelCallback.
+
+        Args:
+            reward_fn: a RewardFn that will supply the rewards used
+                for training the agent.
+            *args: Passed through to `callbacks.BaseCallback`.
+            **kwargs: Passed through to `callbacks.BaseCallback`.
+        """
+        super().__init__(self, *args, **kwargs)
+        self.reward_fn = reward_fn
+
+    def _on_step(self) -> bool:
+        return True
+
+    def _on_training_start(self) -> None:
+        replay_buffer = self.model.replay_buffer
+        assert isinstance(replay_buffer, buffers.ReplayBuffer)
+        pos = replay_buffer.pos
+        if replay_buffer.full:
+            pos = replay_buffer.buffer_size
+        observations = replay_buffer.observations[:pos]
+        actions = replay_buffer.actions[:pos]
+        next_observations = replay_buffer.next_observations[:pos]
+        dones = replay_buffer.dones[:pos]
+
+        # relabel the rewards if there are at least 1 transition selected
+        if len(observations) > 0:
+            rewards = self.reward_fn(observations, actions, next_observations, dones)
+            assert rewards.shape[0] == pos
+            assert replay_buffer.rewards.shape[-1] == rewards.shape[-1]
+            replay_buffer.rewards[:pos] = rewards
 
 
 class WrappedRewardCallback(callbacks.BaseCallback):

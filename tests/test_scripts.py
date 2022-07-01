@@ -155,8 +155,12 @@ def test_train_preference_comparisons_envs_no_crash(tmpdir, env_name):
     assert isinstance(run.result, dict)
 
 
-def test_train_preference_comparisons_sac(tmpdir):
-    config_updates = dict(common=dict(log_root=tmpdir))
+@pytest.mark.parametrize("reward_relabel", (False, True))
+def test_train_preference_comparisons_sac(tmpdir, reward_relabel):
+    config_updates = dict(
+        trajectory_generator_kwargs=dict(reward_relabel=reward_relabel),
+        common=dict(log_root=tmpdir),
+    )
     run = train_preference_comparisons.train_preference_comparisons_ex.run(
         # make sure rl.sac named_config is called after rl.fast to overwrite
         # rl_kwargs.batch_size to None
