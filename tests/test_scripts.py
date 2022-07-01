@@ -93,11 +93,6 @@ PREFERENCE_COMPARISON_CONFIGS = [
         "trajectory_path": CARTPOLE_TEST_ROLLOUT_PATH,
     },
     {
-        "agent_path": CARTPOLE_TEST_POLICY_PATH,
-        # TODO(ejnnr): the policy we load was trained on 8 parallel environments
-        # and for some reason using it breaks if we use just 1 (like would be the
-        # default with the fast named_config)
-        "common": dict(num_vec=8),
         # We're testing preference saving and disabling sampling here as well;
         # having yet another run just for those would be wasteful since they
         # don't interact with warm starting an agent.
@@ -274,9 +269,7 @@ def test_train_rl_main(tmpdir, config):
     sacred.utils.recursive_update(config_updates, config)
     run = train_rl.train_rl_ex.run(
         named_configs=["cartpole"] + ALGO_FAST_CONFIGS["rl"],
-        config_updates=dict(
-            common=dict(log_root=tmpdir),
-        ),
+        config_updates=config_updates,
     )
     assert run.status == "COMPLETED"
     assert isinstance(run.result, dict)

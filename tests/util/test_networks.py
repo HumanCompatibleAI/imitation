@@ -2,6 +2,7 @@
 
 import functools
 import math
+from typing import Type
 
 import pytest
 import torch as th
@@ -11,30 +12,53 @@ from imitation.util import networks
 assert_equal = functools.partial(th.testing.assert_close, rtol=0, atol=0)
 
 
-def test_running_norm_identity() -> None:
-    """Tests running norm starts and stays at identity function.
+NORMALIZATION_LAYERS = [networks.RunningNorm, networks.EMANorm]
 
-    Specifically, we test in evaluation mode (initializatn should not change)
-    and in training mode with already normalized data.
+
+@pytest.mark.parametrize("normalization_layer", NORMALIZATION_LAYERS)
+def test_running_norm_identity_eval(normalization_layer: Type[networks.BaseNorm]):
+    """Tests running norm starts and stays at identity function when in eval mode.
+
+    Specifically, we test in evaluation mode (initialization should not change)
+
+    Args:
+        normalization_layer: the normalization layer to be tested.
     """
-    running_norm = networks.RunningNorm(1, eps=0.0)
+    running_norm = normalization_layer(1, eps=0.0)
     x = th.Tensor([-1.0, 0.0, 7.32, 42.0])
     running_norm.eval()  # stats should not change in eval mode
-    for i in range(10):
+    for _ in range(10):
         assert_equal(running_norm.forward(x), x)
+
+
+@pytest.mark.parametrize("normalization_layer", NORMALIZATION_LAYERS)
+def test_running_norm_identity_train(normalization_layer: Type[networks.BaseNorm]):
+    """Test that the running norm will not change already normalized data.
+
+    Args:
+        normalization_layer: the normalization layer to be tested.
+    """
+    running_norm = normalization_layer(1, eps=0.0)
     running_norm.train()  # stats will change in eval mode
-    normalized = th.Tensor([-1, 1])  # mean 0, variance 1
-    for i in range(10):
-        assert_equal(running_norm.forward(normalized), normalized)
+    normalized = th.Tensor([-1, -1, -1, -1, 1, 1, 1, 1])  # mean 0, variance 1
+    for _ in range(10):
+        th.testing.assert_allclose(
+            running_norm.forward(normalized),
+            normalized,
+            rtol=0.05,
+            atol=0.05,
+        )
 
 
+@pytest.mark.parametrize("normalization_layer", NORMALIZATION_LAYERS)
 def test_running_norm_eval_fixed(
+    normalization_layer: Type[networks.BaseNorm],
     batch_size: int = 8,
     num_batches: int = 10,
     num_features: int = 4,
 ) -> None:
     """Tests that stats do not change when in eval mode and do when in training."""
-    running_norm = networks.RunningNorm(num_features)
+    running_norm = normalization_layer(num_features)
 
     def do_forward(shift: float = 0.0, scale: float = 1.0):
         for i in range(num_batches):
@@ -94,13 +118,40 @@ def test_running_norm_matches_dist(batch_size: int) -> None:
     assert running_norm.count == num_samples
 
 
+@pytest.mark.parametrize("batch_size", [1, 8])
+@pytest.mark.parametrize("normalization_layer", NORMALIZATION_LAYERS)
+def test_parameters_converge(
+    batch_size: int,
+    normalization_layer: Type[networks.BaseNorm],
+) -> None:
+    """Test running norm parameters approximately converge to true values."""
+    mean = th.Tensor([3, 0])
+    var = th.Tensor([6, 1])
+    sd = th.sqrt(var)
+
+    num_dims = len(mean)
+    running_norm = normalization_layer(num_dims)
+    running_norm.train()
+
+    num_samples = 500
+    with th.random.fork_rng():
+        th.random.manual_seed(42)
+        data = th.randn(num_samples, num_dims) * sd + mean
+        for start in range(0, num_samples, batch_size):
+            batch = data[start : start + batch_size]
+            running_norm.forward(batch)
+
+    running_norm.eval()
+    th.testing.assert_close(running_norm.running_mean, mean, rtol=0.05, atol=0.1)
+    th.testing.assert_close(running_norm.running_var, var, rtol=0.1, atol=0.1)
+
+    assert running_norm.count == num_samples
+
+
 @pytest.mark.parametrize(
     "init_kwargs",
-    [
-        {},
-        {"dropout_prob": 0.5},
-        {"normalize_input_layer": networks.RunningNorm},
-    ],
+    [{}, {"dropout_prob": 0.5}]
+    + [{"normalize_input_layer": layer} for layer in NORMALIZATION_LAYERS],
 )
 def test_build_mlp_norm_training(init_kwargs) -> None:
     """Tests MLP building function `networks.build_mlp()`.
@@ -131,3 +182,13 @@ def test_build_mlp_norm_training(init_kwargs) -> None:
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
+
+
+def test_input_validation_on_ema_norm():
+    with pytest.raises(ValueError):
+        networks.EMANorm(128, decay=1.1)
+
+    with pytest.raises(ValueError):
+        networks.EMANorm(128, decay=-0.1)
+
+    networks.EMANorm(128, decay=0.05)

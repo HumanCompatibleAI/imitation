@@ -13,6 +13,7 @@ from stable_baselines3.common import (
     vec_env,
 )
 
+from imitation.policies import serialize
 from imitation.scripts.common.train import train_ingredient
 
 rl_ingredient = sacred.Ingredient("rl", ingredients=[train_ingredient])
@@ -132,3 +133,25 @@ def make_rl_algo(
     logger.info(f"RL algorithm: {type(rl_algo)}")
     logger.info(f"Policy network summary:\n {rl_algo.policy}")
     return rl_algo
+
+
+@rl_ingredient.capture
+def load_rl_algo_from_path(
+    agent_path: str,
+    venv: vec_env.VecEnv,
+    rl_cls: Type[base_class.BaseAlgorithm],
+    rl_kwargs: Mapping[str, Any],
+    _seed: int,
+) -> base_class.BaseAlgorithm:
+    agent = serialize.load_stable_baselines_model(
+        rl_cls,
+        agent_path,
+        venv,
+        seed=_seed,
+        **rl_kwargs,
+    )
+    logger.info(f"Warm starting agent from '{agent_path}'")
+    logger.info(f"RL algorithm: {type(agent)}")
+    logger.info(f"Policy network summary:\n {agent.policy}")
+
+    return agent
