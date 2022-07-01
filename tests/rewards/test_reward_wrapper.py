@@ -134,7 +134,7 @@ def test_reward_relabel_callback(buffer_size, num_envs):
 
 @pytest.mark.parametrize("normalize_reward", (True, False))
 def test_reward_relabel_norm_reward(normalize_reward):
-    """Test that RewardRelabelCallback actually relabeled reward in replay buffer."""
+    """Test RewardRelabelCallback doesn't change norm stats in NormalizedRewardNet."""
     env_name = "Pendulum-v1"
     num_envs, learn_steps = 2, 100
     subvenv_steps = learn_steps // num_envs
