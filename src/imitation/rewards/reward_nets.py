@@ -169,6 +169,7 @@ class RewardNet(nn.Module, abc.ABC):
         action: np.ndarray,
         next_state: np.ndarray,
         done: np.ndarray,
+        update_stats: bool = False,
     ) -> np.ndarray:
         """Compute the processed rewards for a batch of transitions without gradients.
 
@@ -181,10 +182,12 @@ class RewardNet(nn.Module, abc.ABC):
             action: Actions of shape `(batch_size,) + action_shape`.
             next_state: Successor states of shape `(batch_size,) + state_shape`.
             done: End-of-episode (terminal state) indicator of shape `(batch_size,)`.
+            update_stats: Whether to update auxiliary stats. Not used in RewardNet.
 
         Returns:
             Computed processed rewards of shape `(batch_size,`).
         """
+        del update_stats  # unused
         return self.predict(state, action, next_state, done)
 
     @property

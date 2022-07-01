@@ -3,13 +3,12 @@
 import numpy as np
 import pytest
 import stable_baselines3 as sb3
-from stable_baselines3.common import callbacks
 from stable_baselines3.sac import policies as sac_policies
 
 from imitation.data import rollout
 from imitation.policies.base import RandomPolicy
-from imitation.rewards import reward_wrapper
-from imitation.util import util
+from imitation.rewards import reward_nets, reward_wrapper
+from imitation.util import networks, util
 
 
 class FunkyReward:
@@ -53,7 +52,7 @@ def test_reward_overwrite():
 
 
 def reward_fn_ones(path, venv):
-    del path
+    del path, venv
 
     def f(
         obs: np.ndarray,
@@ -62,7 +61,7 @@ def reward_fn_ones(path, venv):
         dones: np.ndarray,
     ) -> np.ndarray:
         del act, next_obs, dones  # Unused.
-        return np.ones((obs.shape[0], venv.num_envs))
+        return np.ones((obs.shape[0]))
 
     return f
 
@@ -79,11 +78,12 @@ def _check_gt_rews(arr: np.ndarray) -> bool:
     return (arr != 0.0).all() and (arr != 1.0).all()
 
 
+@pytest.mark.parametrize("num_envs", (4, 1))
 @pytest.mark.parametrize("buffer_size", (1000, 450))
-def test_reward_relabel_callback(buffer_size):
+def test_reward_relabel_callback(buffer_size, num_envs):
     """Test that RewardRelabelCallback actually relabeled reward in replay buffer."""
     env_name = "Pendulum-v1"
-    num_envs, learn_steps = 4, 100
+    learn_steps = 100
     subvenv_steps = learn_steps // num_envs
     venv = util.make_vec_env(env_name, num_envs, seed=42)
     reward_fn = reward_fn_ones("foo", venv)
@@ -107,13 +107,11 @@ def test_reward_relabel_callback(buffer_size):
     assert pos_j == subvenv_steps % buffer_len
     assert (buffer.rewards[:pos_j] != 0.0).any()  # seeded with 42
 
-    # Four more iterations: relabeling
+    # A few more iterations with relabeling
     reward_relabel_callback = reward_wrapper.RewardRelabelCallback(reward_fn=reward_fn)
-    callback_list = [reward_relabel_callback]
-    callback = callbacks.CallbackList(callback_list)
     for i in range(2, 8):
         pos_i = int(pos_j)
-        rl_algo.learn(total_timesteps=learn_steps, callback=callback)
+        rl_algo.learn(total_timesteps=learn_steps, callback=reward_relabel_callback)
         pos_j = int(buffer.pos)
         assert pos_j == subvenv_steps * i % buffer_len
         if buffer.full:
@@ -132,3 +130,52 @@ def test_reward_relabel_callback(buffer_size):
             assert _check_ones(buffer.rewards[:pos_i])
             assert _check_gt_rews(buffer.rewards[pos_i:pos_j])
             assert _check_zeros(buffer.rewards[pos_j:])
+
+
+@pytest.mark.parametrize("normalize_reward", (True, False))
+def test_reward_relabel_norm_reward(normalize_reward):
+    """Test that RewardRelabelCallback actually relabeled reward in replay buffer."""
+    env_name = "Pendulum-v1"
+    num_envs, learn_steps = 2, 100
+    subvenv_steps = learn_steps // num_envs
+    venv = util.make_vec_env(env_name, num_envs, seed=42)
+    reward_net = base_reward_net = reward_nets.BasicRewardNet(
+        venv.observation_space,
+        venv.action_space,
+        normalize_input_layer=networks.RunningNorm,
+    )
+    if normalize_reward:
+        reward_net = reward_nets.NormalizedRewardNet(
+            reward_net,
+            normalize_output_layer=networks.RunningNorm,
+        )
+    reward_fn = reward_net.predict_processed
+
+    # Create a reward relabel callback
+    reward_relabel_callback = reward_wrapper.create_rew_relabel_callback(reward_fn)
+    rl_algo = sb3.SAC(
+        policy=sac_policies.SACPolicy,
+        policy_kwargs=dict(),
+        env=venv,
+        seed=42,
+        learning_starts=0,
+        buffer_size=1000,
+    )
+
+    buffer = rl_algo.replay_buffer
+    buffer_len = buffer.rewards.shape[0]
+    pos_i = int(buffer.pos)
+    assert (buffer.rewards == 0.0).all() and pos_i == 0
+
+    # First iteration: no relabeling
+    rl_algo.learn(total_timesteps=learn_steps)
+    pos_j = int(buffer.pos)
+    assert pos_j == subvenv_steps % buffer_len
+    assert (buffer.rewards[:pos_j] != 0.0).any()  # seeded with 42
+
+    # Four more iterations: relabeling
+    for _ in range(2, 4):
+        rl_algo.learn(total_timesteps=learn_steps, callback=reward_relabel_callback)
+        assert base_reward_net.mlp.normalize_input.count.item() == 0
+        if normalize_reward:
+            assert reward_net.normalize_output_layer.count.item() == 0

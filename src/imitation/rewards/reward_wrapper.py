@@ -1,12 +1,31 @@
 """Common wrapper for adding custom reward values to an environment."""
 
 import collections
+import functools
 from typing import Deque
 
 import numpy as np
 from stable_baselines3.common import buffers, callbacks, vec_env
 
 from imitation.rewards import common
+
+
+def _flatten_buffer_data(arr: np.ndarray) -> np.ndarray:
+    """Flatten venv data in the replay buffer.
+
+    Convert shape from [n_steps, n_envs, ...] (when ... is the shape of the features)
+    to [n_steps * n_envs, ...] (which maintain the order)
+
+    Args:
+        arr: array to flatten
+
+    Returns:
+        flattened array
+    """
+    shape = arr.shape
+    if len(shape) < 3:
+        shape = shape + (1,)
+    return arr.reshape(shape[0] * shape[1], *shape[2:])
 
 
 class RewardRelabelCallback(callbacks.BaseCallback):
@@ -33,17 +52,38 @@ class RewardRelabelCallback(callbacks.BaseCallback):
         pos = replay_buffer.pos
         if replay_buffer.full:
             pos = replay_buffer.buffer_size
-        observations = replay_buffer.observations[:pos]
-        actions = replay_buffer.actions[:pos]
-        next_observations = replay_buffer.next_observations[:pos]
-        dones = replay_buffer.dones[:pos]
+        observations = _flatten_buffer_data(replay_buffer.observations[:pos])
+        actions = _flatten_buffer_data(replay_buffer.actions[:pos])
+        next_observations = _flatten_buffer_data(replay_buffer.next_observations[:pos])
+        dones = _flatten_buffer_data(replay_buffer.dones[:pos])
 
         # relabel the rewards if there are at least 1 transition selected
         if len(observations) > 0:
             rewards = self.reward_fn(observations, actions, next_observations, dones)
-            assert rewards.shape[0] == pos
-            assert replay_buffer.rewards.shape[-1] == rewards.shape[-1]
+            shape = replay_buffer.rewards.shape
+            assert len(shape) == 2
+            rewards = rewards.reshape(pos, shape[1], *shape[2:])
             replay_buffer.rewards[:pos] = rewards
+
+
+def create_rew_relabel_callback(reward_fn: common.RewardFn) -> callbacks.BaseCallback:
+    """Create a RewardRelabelCallback with update_stats turning off.
+
+    Args:
+        reward_fn: a RewardFn that will supply the rewards used
+            for training the agent.
+
+    Returns:
+        A RewardRelabelCallback.
+    """
+    # Note(yawen): By default, reward relabeling should not update any auxiliary stat
+    # in RewardNet. This would break when reward_fn doesn't have update_stats as an
+    # argument. e.g. a hard-coded reward function.
+    relabel_reward_fn = functools.partial(reward_fn, update_stats=False)
+    reward_relabel_callback = RewardRelabelCallback(
+        reward_fn=relabel_reward_fn,
+    )
+    return reward_relabel_callback
 
 
 class WrappedRewardCallback(callbacks.BaseCallback):

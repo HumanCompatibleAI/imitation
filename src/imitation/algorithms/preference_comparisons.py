@@ -173,8 +173,8 @@ class AgentTrainer(TrajectoryGenerator):
         callback_list = [log_callback]
         if reward_relabel:
             assert isinstance(self.algorithm, off_policy_algorithm.OffPolicyAlgorithm)
-            reward_relabel_callback = reward_wrapper.RewardRelabelCallback(
-                reward_fn=self.reward_fn,
+            reward_relabel_callback = reward_wrapper.create_rew_relabel_callback(
+                reward_fn,
             )
             callback_list.append(reward_relabel_callback)
 
