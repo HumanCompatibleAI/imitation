@@ -16,8 +16,6 @@ SCRIPT_NAMES = (
     "transfer_learn_benchmark.sh",
 )
 
-USES_FULL_ROLLOUTS = ("benchmark_and_table.sh",)
-
 
 @pytest.mark.parametrize(
     "script_name",
