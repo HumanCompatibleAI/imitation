@@ -79,7 +79,6 @@ def eval_policy(
         video_kwargs: Keyword arguments passed through to `video_wrapper.VideoWrapper`.
         policy_type: A unique identifier for the saved policy,
             defined in POLICY_CLASSES. If None, then uses a random policy.
-        policy_path: A path to the serialized policy.
         reward_type: If specified, overrides the environment reward with
             a reward of this.
         reward_path: If reward_type is specified, the path to a serialized reward
