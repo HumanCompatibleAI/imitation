@@ -87,18 +87,6 @@ def parallel(
     base_config_updates = copy.deepcopy(base_config_updates)
     search_space = copy.deepcopy(search_space)
 
-    # Explicitly set `data_dir` if parallelizing `train_adversarial`. We need this to
-    # automatically find rollout pickles because Ray sets a new working directory for
-    # each Raylet.
-    if sacred_ex_name == "train_adversarial":
-        no_data_dir = (
-            "demonstrations.data_dir" not in base_config_updates
-            and "data_dir" not in base_config_updates.get("demonstrations", {})
-        )
-        if no_data_dir:
-            data_dir = os.path.join(os.getcwd(), "data/")
-            base_config_updates = dict(base_config_updates)
-            base_config_updates["demonstrations.data_dir"] = data_dir
 
     trainable = _ray_tune_sacred_wrapper(
         sacred_ex_name,
