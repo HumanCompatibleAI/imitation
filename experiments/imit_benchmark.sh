@@ -11,7 +11,6 @@ source experiments/common.sh
 
 SEEDS=(0 1 2 3 4)
 CONFIG_CSV="experiments/imit_benchmark_config.csv"
-DATA_DIR="${DATA_DIR:-data/}"
 LOG_ROOT="output/imit_benchmark/${TIMESTAMP}"
 extra_configs=()
 extra_options=()
@@ -28,7 +27,6 @@ while true; do
     # Fast mode (debug)
     -f | --fast)
       CONFIG_CSV="tests/testdata/imit_benchmark_config.csv"
-      DATA_DIR="tests/testdata/"
       SEEDS=(0)
       extra_configs=("${extra_configs[@]}" common.fast demonstrations.fast rl.fast train.fast fast)
       shift
@@ -107,7 +105,6 @@ parallel -j 25% --header : --results "${LOG_ROOT}/parallel/" --colsep , --progre
   with \
   '{env_config_name}' seed='{seed}' \
   common.log_dir="${LOG_ROOT}/{env_config_name}_{seed}/n_expert_demos_{n_expert_demos}" \
-  demonstrations.data_dir="${DATA_DIR}" \
   demonstrations.n_expert_demos='{n_expert_demos}' \
   checkpoint_interval=0 \
   "${extra_configs[@]}" \

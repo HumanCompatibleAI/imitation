@@ -4,7 +4,6 @@ source experiments/common.sh
 
 ENVS=(seals_cartpole)
 SEEDS=(0 1 2 3 4)
-DATA_DIR=${DATA_DIR:-"data"}
 LOG_ROOT="output/dagger_benchmark/${TIMESTAMP}"
 extra_configs=()
 extra_options=()
@@ -21,7 +20,6 @@ while true; do
     -f | --fast)
       SEEDS=(0)
       extra_configs=("${extra_configs[@]}" common.fast demonstrations.fast train.fast fast)
-      DATA_DIR="tests/testdata"
       shift
       ;;
     --paper)  # Table benchmark settings
@@ -86,7 +84,6 @@ parallel -j 25% --header : --results "${LOG_ROOT}/parallel/" --colsep , --progre
   with \
   '{env_config_name}' \
   common.log_dir="${LOG_ROOT}/{env_config_name}_{seed}" \
-  dagger.expert_policy_path="${DATA_DIR}/expert_models/{env_config_name}_0/policies/final/" \
   dagger.expert_policy_type='ppo' \
   seed='{seed}' \
   "${extra_configs[@]}" \

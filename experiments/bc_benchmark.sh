@@ -11,7 +11,6 @@ source experiments/common.sh
 
 ENVS=(seals_cartpole)
 SEEDS=(0 1 2)
-DATA_DIR=${DATA_DIR:-"data/"}
 OUTPUT_DIR="output/bc_benchmark/${TIMESTAMP}"
 extra_configs=()
 extra_options=()
@@ -28,7 +27,6 @@ while true; do
       # Fast mode (debug)
       SEEDS=(0)
       extra_configs=("${extra_configs[@]}" common.fast demonstrations.fast train.fast fast)
-      DATA_DIR="tests/testdata"
       shift
       ;;
     --paper)  # Table benchmark settings
@@ -72,6 +70,5 @@ parallel -j 25% --header : --results "${OUTPUT_DIR}/parallel/" --colsep , --prog
   "${extra_configs[@]}" \
   'seed={seed}' \
   common.log_root="${OUTPUT_DIR}" \
-  demonstrations.rollout_path="${DATA_DIR}/expert_models/{env_config_name}_0/rollouts/final.pkl" \
   ::: env_config_name "${ENVS[@]}" \
   ::: seed "${SEEDS[@]}"
