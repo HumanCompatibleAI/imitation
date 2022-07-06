@@ -111,11 +111,6 @@ parallel -j 25% --header : --results "${LOG_ROOT}/parallel/" --colsep , --progre
   :::: $CONFIG_CSV \
   ::: seed "${SEEDS[@]}"
 
-# Directory path is really long. Enter the directory to shorten results output,
-# which includes directory of each stdout file.
-pushd "${LOG_ROOT}/parallel"
-find . -name stdout -print0 | sort -z | xargs -0 tail -n 15 | grep -E '==|Result'
-popd
 
 echo "[Optional] Upload new reward models to S3 (replacing old ones) using the commands:"
 echo "aws s3 rm --recursive s3://shwang-chai/public/data/reward_models/${ALGORITHM}/"
