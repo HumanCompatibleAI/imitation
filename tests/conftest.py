@@ -61,7 +61,7 @@ def cartpole_venv(request) -> VecEnv:
 def cartpole_expert_policy():
     #TODO(ernestum): load from official orga
     return PPO.load(
-        load_from_hub("ernestumorga/ppo-seals-CartPole-v0", "ppo-seals/CartPole-v0.zip")
+        load_from_hub("ernestumorga/ppo-seals-CartPole-v0", "ppo-seals-CartPole-v0.zip")
     ).policy
 
 
