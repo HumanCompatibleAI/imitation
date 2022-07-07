@@ -577,7 +577,7 @@ class BasicPotentialMLP(nn.Module):
 
 
 class RewardEnsemble(UncertainRewardNet):
-    """An mean ensemble or reward networks."""
+    """A mean ensemble of reward networks."""
 
     def __init__(
         self,
