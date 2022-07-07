@@ -77,15 +77,12 @@ def make_reward_net(
     Returns:
         None if `reward_net_cls` is None; otherwise, an instance of `reward_net_cls`.
     """
-    reward_net = net_cls(
+    reward_net = reward_nets.make_reward_net(
         venv.observation_space,
         venv.action_space,
-        **net_kwargs,
+        net_cls,
+        net_kwargs,
+        normalize_output_layer,
     )
-    if normalize_output_layer is not None:
-        reward_net = reward_nets.NormalizedRewardNet(
-            reward_net,
-            normalize_output_layer,
-        )
     logging.info(f"Reward network:\n {reward_net}")
     return reward_net

@@ -1,7 +1,17 @@
 """Constructs deep network reward models."""
 
 import abc
-from typing import Callable, Iterable, List, Sequence, Tuple, Type
+from typing import (
+    Any,
+    Callable,
+    Iterable,
+    List,
+    Mapping,
+    Optional,
+    Sequence,
+    Tuple,
+    Type,
+)
 
 import gym
 import numpy as np
@@ -584,22 +594,37 @@ class RewardEnsemble(RewardNetWithVariance):
 
     def __init__(
         self,
-        base_networks: Iterable[RewardNet],
         observation_space: gym.Space,
         action_space: gym.Space,
+        num_members: int,
+        member_cls: Type[RewardNet],
+        member_kwargs: Mapping[str, Any] = {},
+        member_normalize_output_layer: Optional[Type[nn.Module]] = None,
         **kwargs,
     ):
         """Initialize the RewardEnsemble.
 
         Args:
-            base_networks: Constituent reward networks that will make up the
-                ensemble.
             observation_space: the observation space of the environment
             action_space: the action space of the environment
+            num_members: the number of members in the ensemble
+            member_cls: class of the constituent reward networks
+            member_kwargs: keyword arguments to pass to the ensemble members
+            member_normalize_output_layer: The normalization layer to use for the
+                member classes. Defaults to None.
             **kwargs: passed along to superclass
         """
         super().__init__(observation_space, action_space, **kwargs)
-        self.base_networks = list(base_networks)
+        self.base_networks = [
+            make_reward_net(
+                observation_space,
+                action_space,
+                member_cls,
+                member_kwargs,
+                member_normalize_output_layer,
+            )
+            for _ in range(num_members)
+        ]
 
     @property
     def num_members(self):
@@ -711,3 +736,38 @@ class ConservativeRewardWrapper(RewardNetWrapper):
 
     def forward(self, *args):
         self.base.forward(*args)
+
+
+def make_reward_net(
+    observation_space: gym.Space,
+    action_space: gym.Space,
+    net_cls: Type[RewardNet],
+    net_kwargs: Mapping[str, Any],
+    normalize_output_layer: Type[nn.Module],
+) -> RewardNet:
+    """Builds a reward network.
+
+    Args:
+        observation_space: the observation space of the environment.
+        action_space: the action space of the environment.
+        net_cls: Class of reward network to construct.
+        net_kwargs: Keyword arguments passed to reward network constructor.
+        normalize_output_layer: Wrapping the reward_net with NormalizedRewardNet
+            to normalize the reward output.
+
+    Returns:
+        An instance of `net_cls`.
+    """
+    reward_net = net_cls(
+        observation_space,
+        action_space,
+        **net_kwargs,
+    )
+
+    if normalize_output_layer is not None:
+        reward_net = NormalizedRewardNet(
+            reward_net,
+            normalize_output_layer,
+        )
+
+    return reward_net
