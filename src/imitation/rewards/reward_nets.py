@@ -253,7 +253,7 @@ class RewardNetWithVariance(RewardNet):
     """A reward net that keeps track of its epistemic uncertainty through variance."""
 
     @abc.abstractmethod
-    def predict_reward_moments(
+    def reward_moments(
         self,
         state: np.ndarray,
         action: np.ndarray,
@@ -730,9 +730,14 @@ class ConservativeRewardWrapper(RewardNetWrapper):
         Returns:
             Estimated lower confidence bounds on rewards of shape `(batch_size,`).
         """
-        reward_mean = self.base.predict_processed(state, action, next_state, done)
-        reward_std = self.base.standard_deviation(state, action, next_state, done)
-        return reward_mean - self.alpha * reward_std
+        reward_mean, reward_var = self.base.reward_moments(
+            state,
+            action,
+            next_state,
+            done,
+        )
+
+        return reward_mean - self.alpha * th.sqrt(reward_var)
 
     def forward(self, *args):
         self.base.forward(*args)
