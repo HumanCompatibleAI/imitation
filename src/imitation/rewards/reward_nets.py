@@ -239,18 +239,18 @@ class RewardNetWrapper(RewardNet):
         return self._base
 
 
-class UncertainRewardNet(RewardNet):
-    """Abstract reward net that keeps track of epistemic uncertainty."""
+class RewardNetWithVariance(RewardNet):
+    """A reward net that keeps track of its epistemic uncertainty through variance."""
 
     @abc.abstractmethod
-    def standard_deviation(
+    def predict_reward_moments(
         self,
         state: np.ndarray,
         action: np.ndarray,
         next_state: np.ndarray,
         done: np.ndarray,
-    ) -> np.ndarray:
-        """Compute the standard deviation of the reward distribution for a batch.
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        """Compute the mean and variance of the reward distribution.
 
         Args:
             state: Current states of shape `(batch_size,) + state_shape`.
@@ -259,7 +259,8 @@ class UncertainRewardNet(RewardNet):
             done: End-of-episode (terminal state) indicator of shape `(batch_size,)`.
 
         Returns:
-            Computed reward std of shape `(batch_size,)`. # noqa: DAR202
+            * Estimated reward mean of shape `(batch_size,)`.
+            * Estimated reward variance of shape `(batch_size,)`. # noqa: DAR202
         """
 
 
@@ -576,7 +577,7 @@ class BasicPotentialMLP(nn.Module):
         return self._potential_net(state)
 
 
-class RewardEnsemble(UncertainRewardNet):
+class RewardEnsemble(RewardNetWithVariance):
     """A mean ensemble of reward networks."""
 
     base_networks: List[RewardNet]
@@ -641,13 +642,13 @@ class RewardEnsemble(UncertainRewardNet):
         return self.forward_all(state, action, next_state, done).mean(-1)
 
     @th.no_grad()
-    def standard_deviation(
+    def predict_moments(
         self,
         state: np.ndarray,
         action: np.ndarray,
         next_state: np.ndarray,
         done: np.ndarray,
-    ) -> np.ndarray:
+    ) -> Tuple[np.ndarray, np.ndarray]:
         """Compute the standard deviation of the reward distribution for a batch.
 
         Args:
@@ -666,15 +667,16 @@ class RewardEnsemble(UncertainRewardNet):
             done,
         )
 
-        return self.forward_all(state, action, next_state, done).std(-1)
+        all_rewards = self.forward_all(state, action, next_state, done)
+        return all_rewards.mean(-1), all_rewards.var(-1)
 
 
 class ConservativeRewardWrapper(RewardNetWrapper):
     """A reward network that returns a conservative estimate of the reward."""
 
-    base: UncertainRewardNet
+    base: RewardNetWithVariance
 
-    def __init__(self, base: UncertainRewardNet, alpha: float = 1.0):
+    def __init__(self, base: RewardNetWithVariance, alpha: float = 1.0):
         """Create a conservative reward network.
 
         Args:
@@ -701,7 +703,7 @@ class ConservativeRewardWrapper(RewardNetWrapper):
             done: End-of-episode (terminal state) indicator of shape `(batch_size,)`.
 
         Returns:
-            Computed lower confidence bounds on rewards of shape `(batch_size,`).
+            Estimated lower confidence bounds on rewards of shape `(batch_size,`).
         """
         reward_mean = self.base.predict_processed(state, action, next_state, done)
         reward_std = self.base.standard_deviation(state, action, next_state, done)
