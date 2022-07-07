@@ -579,9 +579,11 @@ class BasicPotentialMLP(nn.Module):
 class RewardEnsemble(UncertainRewardNet):
     """A mean ensemble of reward networks."""
 
+    base_networks: List[RewardNet]
+
     def __init__(
         self,
-        base_networks: List[RewardNet],
+        base_networks: Iterable[RewardNet],
         observation_space: gym.Space,
         action_space: gym.Space,
         **kwargs,
@@ -596,9 +598,38 @@ class RewardEnsemble(UncertainRewardNet):
             **kwargs: passed along to superclass
         """
         super().__init__(observation_space, action_space, **kwargs)
-        self.base_networks = base_networks
+        self.base_networks = list(base_networks)
 
-    @abc.abstractmethod
+    @property
+    def num_members(self):
+        """The number of members in the ensemble."""
+        return len(self.base_networks)
+
+    def forward_all(
+        self,
+        state: th.Tensor,
+        action: th.Tensor,
+        next_state: th.Tensor,
+        done: th.Tensor,
+    ):
+        """Return the results reward from each member of the ensemble.
+
+        Args:
+            state: The current state as a torch tensor
+            action: The current action as a torch tensor
+            next_state: The next state as a torch tensor
+            done: The done flags as a torch tensor
+
+        Returns:
+            The reward given by each ensemble member. This tenor has a shape of
+                `(batch_size, num_members)`.
+        """
+        rewards = []
+        for net in self.base_networks:
+            rewards.append(net(state, action, next_state, done))
+        rewards = th.stack(rewards, dim=-1)
+        return rewards
+
     def forward(
         self,
         state: th.Tensor,
@@ -607,11 +638,7 @@ class RewardEnsemble(UncertainRewardNet):
         done: th.Tensor,
     ) -> th.Tensor:
         """Compute rewards for a batch of transitions and keep gradients."""
-        rewards = []
-        for net in self.base_networks:
-            rewards.append(net(state, action, next_state, done))
-        rewards = th.stack(rewards, dim=0)
-        return rewards.mean(0)
+        return self.forward_all(state, action, next_state, done).mean(-1)
 
     @th.no_grad()
     def standard_deviation(
@@ -638,11 +665,8 @@ class RewardEnsemble(UncertainRewardNet):
             next_state,
             done,
         )
-        rewards = []
-        for net in self.base_networks:
-            rewards.append(net(state, action, next_state, done))
-        rewards = th.stack(rewards, dim=0)
-        return rewards.std(0)
+
+        return self.forward_all(state, action, next_state, done).std(-1)
 
 
 class ConservativeRewardWrapper(RewardNetWrapper):
@@ -680,7 +704,7 @@ class ConservativeRewardWrapper(RewardNetWrapper):
             Computed lower confidence bounds on rewards of shape `(batch_size,`).
         """
         reward_mean = self.base.predict_processed(state, action, next_state, done)
-        reward_std = self.base.predict_processed(state, action, next_state, done)
+        reward_std = self.base.standard_deviation(state, action, next_state, done)
         return reward_mean - self.alpha * reward_std
 
     def forward(self, *args):
