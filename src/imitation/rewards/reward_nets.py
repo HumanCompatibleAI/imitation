@@ -1,17 +1,7 @@
 """Constructs deep network reward models."""
 
 import abc
-from typing import (
-    Any,
-    Callable,
-    Iterable,
-    List,
-    Mapping,
-    Optional,
-    Sequence,
-    Tuple,
-    Type,
-)
+from typing import Any, Callable, Iterable, Mapping, Optional, Sequence, Tuple, Type
 
 import gym
 import numpy as np
@@ -590,7 +580,7 @@ class BasicPotentialMLP(nn.Module):
 class RewardEnsemble(RewardNetWithVariance):
     """A mean ensemble of reward networks."""
 
-    members: List[RewardNet]
+    members: nn.ModuleList
 
     def __init__(
         self,
@@ -621,7 +611,7 @@ class RewardEnsemble(RewardNetWithVariance):
         if num_members < 1:
             raise ValueError("Must be at least 1 member in the ensemble.")
 
-        self.members = [
+        self.members = nn.ModuleList(
             make_reward_net(
                 observation_space,
                 action_space,
@@ -630,7 +620,7 @@ class RewardEnsemble(RewardNetWithVariance):
                 member_normalize_output_layer,
             )
             for _ in range(num_members)
-        ]
+        )
 
     @property
     def num_members(self):
