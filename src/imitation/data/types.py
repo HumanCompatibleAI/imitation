@@ -322,9 +322,10 @@ def load(path: AnyPath) -> Sequence[Trajectory]:
     # it should be a Mapping that we need to decode, whereas if it's the old format
     # it's just the sequence of trajectories and we can return it directly.
     data = np.load(path, allow_pickle=True)
-    if isinstance(data, Sequence):
+    if isinstance(data, Sequence):  # old format
+        warnings.warn("Loading old version of Trajectory's", DeprecationWarning)
         return data
-    elif isinstance(data, Mapping):
+    elif isinstance(data, Mapping):  # new format
         num_trajs = len(data["indices"])
         fields = (
             # Account for the extra obs in each trajectory

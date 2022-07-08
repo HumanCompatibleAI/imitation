@@ -13,6 +13,7 @@ import numpy as np
 import pytest
 
 from imitation.data import types
+from imitation.testing import types as types_testing
 
 SPACES = [
     gym.spaces.Discrete(3),
@@ -118,13 +119,6 @@ def pushd(dir_path):
         os.chdir(orig_dir)
 
 
-def _assert_dataclasses_equal(a, b) -> None:
-    d1, d2 = dataclasses.asdict(a), dataclasses.asdict(b)
-    assert d1.keys() == d2.keys()
-    for k, v in d1.items():
-        assert np.array_equal(v, d2[k])
-
-
 @pytest.mark.parametrize("obs_space", OBS_SPACES)
 @pytest.mark.parametrize("act_space", ACT_SPACES)
 @pytest.mark.parametrize("length", LENGTHS)
@@ -170,7 +164,7 @@ class TestData:
             save_dir = tmpdir
 
         trajs = [trajectory_rew if use_rewards else trajectory]
-        save_path = pathlib.Path(save_dir, "trajs.pkl")
+        save_path = pathlib.Path(save_dir, "trajs")
 
         with chdir_context:
             if use_pickle:
@@ -196,9 +190,7 @@ class TestData:
             else:
                 loaded_trajs = types.load(save_path)
 
-            assert len(trajs) == len(loaded_trajs)
-            for t1, t2 in zip(trajs, loaded_trajs):
-                _assert_dataclasses_equal(t1, t2)
+            types_testing.assert_traj_sequences_equal(trajs, loaded_trajs)
 
     def test_invalid_trajectories(
         self,

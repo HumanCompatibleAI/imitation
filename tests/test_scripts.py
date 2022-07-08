@@ -25,6 +25,7 @@ import sacred.utils
 import stable_baselines3
 import torch as th
 
+from imitation.data import types
 from imitation.rewards import reward_nets
 from imitation.scripts import (
     analyze,
@@ -35,6 +36,7 @@ from imitation.scripts import (
     train_preference_comparisons,
     train_rl,
 )
+from imitation.testing import types as types_testing
 from imitation.util import networks, util
 
 ALL_SCRIPTS_MODS = [
@@ -687,21 +689,29 @@ def test_analyze_gather_tb(tmpdir: str):
     assert run.result["n_tb_dirs"] == 2
 
 
-def test_convert_trajs_in_place(tmpdir: str):
+def test_convert_trajs(tmpdir: str):
+    """Tests that convert_trajs is idempotent and does not change the data."""
     shutil.copy(CARTPOLE_TEST_ROLLOUT_PATH, tmpdir)
     tmp_path = os.path.join(tmpdir, os.path.basename(CARTPOLE_TEST_ROLLOUT_PATH))
     exit_code = subprocess.call(
-        ["python", "-m", "imitation.scripts.convert_trajs_in_place", tmp_path],
+        ["python", "-m", "imitation.scripts.convert_trajs", tmp_path],
     )
     assert exit_code == 0
 
-    shutil.copy(tmp_path, tmp_path + ".new")
+    npz_tmp_path = tmp_path.replace(".pkl", ".npz")
+    shutil.copy(npz_tmp_path, npz_tmp_path + ".orig")
     exit_code = subprocess.call(
-        ["python", "-m", "imitation.scripts.convert_trajs_in_place", tmp_path],
+        ["python", "-m", "imitation.scripts.convert_trajs", npz_tmp_path],
     )
     assert exit_code == 0
 
     assert filecmp.cmp(
-        tmp_path,
-        tmp_path + ".new",
-    ), "convert_trajs_in_place not idempotent"
+        npz_tmp_path,
+        npz_tmp_path + ".orig",
+    ), "convert_trajs not idempotent"
+
+    from_pkl = types.load(tmp_path)
+    from_npz = types.load(npz_tmp_path)
+
+    assert len(from_pkl) == len(from_npz)
+    types_testing.assert_traj_sequences_equal(from_pkl, from_npz)
