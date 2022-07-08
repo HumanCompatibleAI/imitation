@@ -3,6 +3,7 @@
 import logging
 import numbers
 import os
+from unittest import mock
 
 import gym
 import numpy as np
@@ -27,6 +28,7 @@ DESERIALIZATION_TYPES = [
 REWARD_NETS = [
     reward_nets.BasicRewardNet,
     reward_nets.BasicShapedRewardNet,
+    reward_nets.RewardEnsemble,
 ]
 REWARD_NET_KWARGS = [
     {},
@@ -270,6 +272,92 @@ def test_potential_net_2d_obs():
     )
     rew_batch = net.predict(obs_b, action_b, next_obs_b, done_b)
     assert rew_batch.shape == (1,)
+
+
+@pytest.mark.parametrize("env_name", ENVS)
+@pytest.mark.parametrize("net_cls", REWARD_NETS)
+@pytest.mark.parametrize("num_members", [1, 2, 4])
+def test_reward_ensemble_creation(env_name, net_cls, num_members):
+    """A test RewardEnsemble constructor."""
+    env = gym.make(env_name)
+    ensemble = reward_nets.RewardEnsemble(
+        env.action_space,
+        env.observation_space,
+        num_members,
+        net_cls,
+    )
+    assert ensemble
+    assert ensemble.num_members == num_members
+    assert isinstance(ensemble.members[0], net_cls)
+
+
+class MockRewardNet(reward_nets.RewardNet):
+    """A mock reward net for testing."""
+
+    def __init__(
+        self,
+        observation_space: gym.Space,
+        action_space: gym.Space,
+        value: float = 0.0,
+    ):
+        """Create mock reward.
+
+        Args:
+            observation_space: observation space of the env
+            action_space: action space of the env
+            value: The reward to always return. Defaults to 0.0.
+        """
+        super().__init__(observation_space, action_space)
+        self.value = value
+
+    def forward(
+        self,
+        state: th.Tensor,
+        action: th.Tensor,
+        next_state: th.Tensor,
+        done: th.Tensor,
+    ) -> th.Tensor:
+        batch_size = state.shape[0]
+        return th.full(
+            (batch_size,),
+            fill_value=self.value,
+            dtype=th.float32,
+            device=state.device,
+        )
+
+
+def test_reward_ensemble_test_value_error():
+    env_2d = Env2D()
+    with pytest.raises(ValueError):
+        reward_nets.RewardEnsemble(
+            env_2d.action_space,
+            env_2d.observation_space,
+            num_members=0,
+        )
+
+
+def test_reward_ensemble_reward_moments():
+    env_2d = Env2D()
+    ensemble = reward_nets.RewardEnsemble(
+        env_2d.observation_space,
+        env_2d.action_space,
+        num_members=2,
+        member_cls=MockRewardNet,
+    )
+    args = (np.zeros((10, 5)), np.zeros((10, 1)), np.zeros((10, 5)), np.zeros((10,)))
+    # Test that the calculation of mean and variance is correct
+    mean, var = ensemble.reward_moments(*args)
+    assert np.isclose(mean, 0).all()
+    assert np.isclose(var, 0).all()
+    ensemble.members[0].value = 3
+    ensemble.members[1].value = -1
+    mean, var = ensemble.reward_moments(*args)
+    assert np.isclose(mean, 1).all()
+    assert np.isclose(var, 8).all()  # note we are using the unbiased variance estimator
+    # Test that ensemble calls members correctly
+    ensemble.members[0].forward = mock.MagicMock(return_value=th.zeros(10))
+    mean, var = ensemble.reward_moments(*args)
+    ensemble.members[0].forward.assert_called_once()
 
 
 @pytest.mark.parametrize("env_name", ENVS)

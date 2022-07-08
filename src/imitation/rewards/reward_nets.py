@@ -590,14 +590,14 @@ class BasicPotentialMLP(nn.Module):
 class RewardEnsemble(RewardNetWithVariance):
     """A mean ensemble of reward networks."""
 
-    base_networks: List[RewardNet]
+    members: List[RewardNet]
 
     def __init__(
         self,
         observation_space: gym.Space,
         action_space: gym.Space,
-        num_members: int,
-        member_cls: Type[RewardNet],
+        num_members: int = 5,
+        member_cls: Type[RewardNet] = BasicRewardNet,
         member_kwargs: Mapping[str, Any] = {},
         member_normalize_output_layer: Optional[Type[nn.Module]] = None,
         **kwargs,
@@ -607,15 +607,21 @@ class RewardEnsemble(RewardNetWithVariance):
         Args:
             observation_space: the observation space of the environment
             action_space: the action space of the environment
-            num_members: the number of members in the ensemble
+            num_members: the number of members in the ensemble. Must be at least 1.
             member_cls: class of the constituent reward networks
             member_kwargs: keyword arguments to pass to the ensemble members
             member_normalize_output_layer: The normalization layer to use for the
                 member classes. Defaults to None.
             **kwargs: passed along to superclass
+
+        Raises:
+            ValueError: if num_members is less than 1
         """
-        super().__init__(observation_space, action_space, **kwargs)
-        self.base_networks = [
+        super().__init__(observation_space, action_space)
+        if num_members < 1:
+            raise ValueError("Must be at least 1 member in the ensemble.")
+
+        self.members = [
             make_reward_net(
                 observation_space,
                 action_space,
@@ -629,7 +635,7 @@ class RewardEnsemble(RewardNetWithVariance):
     @property
     def num_members(self):
         """The number of members in the ensemble."""
-        return len(self.base_networks)
+        return len(self.members)
 
     def forward_all(
         self,
@@ -651,7 +657,7 @@ class RewardEnsemble(RewardNetWithVariance):
                 `(batch_size, num_members)`.
         """
         rewards = []
-        for net in self.base_networks:
+        for net in self.members:
             rewards.append(net(state, action, next_state, done))
         rewards = th.stack(rewards, dim=-1)
         return rewards
@@ -667,7 +673,7 @@ class RewardEnsemble(RewardNetWithVariance):
         return self.forward_all(state, action, next_state, done).mean(-1)
 
     @th.no_grad()
-    def predict_moments(
+    def reward_moments(
         self,
         state: np.ndarray,
         action: np.ndarray,
@@ -693,7 +699,7 @@ class RewardEnsemble(RewardNetWithVariance):
         )
 
         all_rewards = self.forward_all(state, action, next_state, done)
-        return all_rewards.mean(-1), all_rewards.var(-1)
+        return all_rewards.mean(-1).cpu().numpy(), all_rewards.var(-1).cpu().numpy()
 
 
 class ConservativeRewardWrapper(RewardNetWrapper):
