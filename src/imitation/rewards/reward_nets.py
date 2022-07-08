@@ -733,7 +733,7 @@ class ConservativeRewardWrapper(RewardNetWrapper):
             done,
         )
 
-        return reward_mean - self.alpha * th.sqrt(reward_var)
+        return reward_mean - self.alpha * np.sqrt(reward_var)
 
     def forward(self, *args):
         self.base.forward(*args)

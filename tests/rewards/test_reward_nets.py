@@ -3,6 +3,7 @@
 import logging
 import numbers
 import os
+from typing import Tuple
 from unittest import mock
 
 import gym
@@ -326,8 +327,30 @@ class MockRewardNet(reward_nets.RewardNet):
         )
 
 
-def test_reward_ensemble_test_value_error():
-    env_2d = Env2D()
+@pytest.fixture
+def env_2d() -> Env2D:
+    """An instance of Env2d."""
+    return Env2D()
+
+
+@pytest.fixture
+def two_ensemble(env_2d) -> reward_nets.RewardEnsemble:
+    """A simple reward ensemble made up of two moke reward nets."""
+    return reward_nets.RewardEnsemble(
+        env_2d.observation_space,
+        env_2d.action_space,
+        num_members=2,
+        member_cls=MockRewardNet,
+    )
+
+
+@pytest.fixture
+def numpy_transitions() -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """A batch of states, actions, next_states, and dones as np.ndarrays."""
+    return np.zeros((10, 5)), np.zeros((10, 1)), np.zeros((10, 5)), np.zeros((10,))
+
+
+def test_reward_ensemble_test_value_error(env_2d):
     with pytest.raises(ValueError):
         reward_nets.RewardEnsemble(
             env_2d.action_space,
@@ -336,28 +359,30 @@ def test_reward_ensemble_test_value_error():
         )
 
 
-def test_reward_ensemble_reward_moments():
-    env_2d = Env2D()
-    ensemble = reward_nets.RewardEnsemble(
-        env_2d.observation_space,
-        env_2d.action_space,
-        num_members=2,
-        member_cls=MockRewardNet,
-    )
-    args = (np.zeros((10, 5)), np.zeros((10, 1)), np.zeros((10, 5)), np.zeros((10,)))
+def test_reward_ensemble_reward_moments(two_ensemble, numpy_transitions):
     # Test that the calculation of mean and variance is correct
-    mean, var = ensemble.reward_moments(*args)
+    two_ensemble.members[0].value = 0
+    two_ensemble.members[1].value = 0
+    mean, var = two_ensemble.reward_moments(*numpy_transitions)
     assert np.isclose(mean, 0).all()
     assert np.isclose(var, 0).all()
-    ensemble.members[0].value = 3
-    ensemble.members[1].value = -1
-    mean, var = ensemble.reward_moments(*args)
+    two_ensemble.members[0].value = 3
+    two_ensemble.members[1].value = -1
+    mean, var = two_ensemble.reward_moments(*numpy_transitions)
     assert np.isclose(mean, 1).all()
     assert np.isclose(var, 8).all()  # note we are using the unbiased variance estimator
     # Test that ensemble calls members correctly
-    ensemble.members[0].forward = mock.MagicMock(return_value=th.zeros(10))
-    mean, var = ensemble.reward_moments(*args)
-    ensemble.members[0].forward.assert_called_once()
+    two_ensemble.members[0].forward = mock.MagicMock(return_value=th.zeros(10))
+    mean, var = two_ensemble.reward_moments(*numpy_transitions)
+    two_ensemble.members[0].forward.assert_called_once()
+
+
+def test_conservative_reward_wrapper(two_ensemble, numpy_transitions):
+    two_ensemble.members[0].value = 3
+    two_ensemble.members[1].value = -1
+    conservative_reward = reward_nets.ConservativeRewardWrapper(two_ensemble, alpha=0.1)
+    rewards = conservative_reward.predict_processed(*numpy_transitions)
+    assert np.allclose(rewards, 1 - 0.1 * np.sqrt(8))
 
 
 @pytest.mark.parametrize("env_name", ENVS)
