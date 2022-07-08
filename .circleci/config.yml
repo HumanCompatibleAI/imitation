@@ -63,7 +63,7 @@ commands:
 
       - run:
           name: install imitation
-          command: pip install .
+          command: pip install --upgrade --force-reinstall --no-deps .
 
       - run:
           name: print installed packages
