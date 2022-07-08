@@ -68,6 +68,7 @@ def train_preference_comparisons(
     trajectory_generator_kwargs: Mapping[str, Any],
     save_preferences: bool,
     agent_path: Optional[str],
+    cross_entropy_loss_kwargs: Mapping[str, Any],
     reward_trainer_kwargs: Mapping[str, Any],
     gatherer_cls: Type[preference_comparisons.PreferenceGatherer],
     gatherer_kwargs: Mapping[str, Any],
@@ -180,8 +181,14 @@ def train_preference_comparisons(
         seed=_seed,
         custom_logger=custom_logger,
     )
-    reward_trainer = preference_comparisons.CrossEntropyRewardTrainer(
+
+    loss = preference_comparisons.CrossEntropyRewardLoss(
+        **cross_entropy_loss_kwargs,
+    )
+
+    reward_trainer = preference_comparisons.BasicRewardTrainer(
         model=reward_net,
+        loss=loss,
         **reward_trainer_kwargs,
         custom_logger=custom_logger,
     )

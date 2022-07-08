@@ -185,11 +185,17 @@ def test_trainer_no_crash(
 
 def test_discount_rate_no_crash(agent_trainer, reward_net, fragmenter, custom_logger):
     # also use a non-zero noise probability to check that doesn't cause errors
-    reward_trainer = preference_comparisons.CrossEntropyRewardTrainer(
-        reward_net,
+    loss = preference_comparisons.CrossEntropyRewardLoss(
         noise_prob=0.1,
         discount_factor=0.9,
+        threshold=50,
     )
+
+    reward_trainer = preference_comparisons.BasicRewardTrainer(
+        reward_net,
+        loss,
+    )
+
     main_trainer = preference_comparisons.PreferenceComparisons(
         agent_trainer,
         reward_net,
