@@ -29,6 +29,11 @@ def reward_net(venv):
 
 
 @pytest.fixture
+def reward_ensemble(venv):
+    return reward_nets.RewardEnsemble(venv.observation_space, venv.action_space)
+
+
+@pytest.fixture
 def agent(venv):
     return stable_baselines3.PPO(
         "MlpPolicy",
@@ -183,6 +188,7 @@ def test_trainer_no_crash(
     assert 0.0 < result["reward_accuracy"] <= 1.0
 
 
+@pytest.mark.parametrize("reward_net", [reward_ensemble, reward_net])
 def test_discount_rate_no_crash(agent_trainer, reward_net, fragmenter, custom_logger):
     # also use a non-zero noise probability to check that doesn't cause errors
     loss = preference_comparisons.CrossEntropyRewardLoss(

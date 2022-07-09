@@ -186,11 +186,10 @@ def train_preference_comparisons(
         **cross_entropy_loss_kwargs,
     )
 
-    reward_trainer = preference_comparisons.BasicRewardTrainer(
-        model=reward_net,
-        loss=loss,
-        **reward_trainer_kwargs,
-        custom_logger=custom_logger,
+    reward_trainer = preference_comparisons.make_reward_trainer(
+        reward_net,
+        loss,
+        reward_trainer_kwargs,
     )
 
     main_trainer = preference_comparisons.PreferenceComparisons(
