@@ -51,12 +51,15 @@ ALL_SCRIPTS_MODS = [
     train_rl,
 ]
 
-CARTPOLE_TEST_DATA_PATH = pathlib.Path("tests/testdata/expert_models/cartpole_0/")
+TEST_DATA_PATH = pathlib.Path("tests/testdata")
+CARTPOLE_TEST_DATA_PATH = TEST_DATA_PATH / "expert_models/cartpole_0/"
 CARTPOLE_TEST_ROLLOUT_PATH = CARTPOLE_TEST_DATA_PATH / "rollouts/final.pkl"
 CARTPOLE_TEST_POLICY_PATH = CARTPOLE_TEST_DATA_PATH / "policies/final"
 
-PENDULUM_TEST_DATA_PATH = pathlib.Path("tests/testdata/expert_models/pendulum_0/")
+PENDULUM_TEST_DATA_PATH = TEST_DATA_PATH / "expert_models/pendulum_0/"
 PENDULUM_TEST_ROLLOUT_PATH = PENDULUM_TEST_DATA_PATH / "rollouts/final.pkl"
+
+OLD_FMT_ROLLOUT_TEST_DATA_PATH = TEST_DATA_PATH / "old_format_rollout.pkl"
 
 
 @pytest.fixture(autouse=True)
@@ -693,8 +696,8 @@ def test_analyze_gather_tb(tmpdir: str):
 
 def test_convert_trajs(tmpdir: str):
     """Tests that convert_trajs is idempotent and does not change the data."""
-    shutil.copy(CARTPOLE_TEST_ROLLOUT_PATH, tmpdir)
-    tmp_path = os.path.join(tmpdir, os.path.basename(CARTPOLE_TEST_ROLLOUT_PATH))
+    shutil.copy(OLD_FMT_ROLLOUT_TEST_DATA_PATH, tmpdir)
+    tmp_path = os.path.join(tmpdir, os.path.basename(OLD_FMT_ROLLOUT_TEST_DATA_PATH))
     with open(tmp_path, "rb") as f:
         pickle.load(f)  # check it's in pickle format to start with
     exit_code = subprocess.call(
