@@ -23,14 +23,9 @@ def venv():
     )
 
 
-@pytest.fixture
-def reward_net(venv):
-    return reward_nets.BasicRewardNet(venv.observation_space, venv.action_space)
-
-
-@pytest.fixture
-def reward_ensemble(venv):
-    return reward_nets.RewardEnsemble(venv.observation_space, venv.action_space)
+@pytest.fixture(params=[reward_nets.BasicRewardNet, reward_nets.RewardEnsemble])
+def reward_net(request, venv):
+    return request.param(venv.observation_space, venv.action_space)
 
 
 @pytest.fixture
@@ -188,7 +183,6 @@ def test_trainer_no_crash(
     assert 0.0 < result["reward_accuracy"] <= 1.0
 
 
-@pytest.mark.parametrize("reward_net", [reward_ensemble, reward_net])
 def test_discount_rate_no_crash(agent_trainer, reward_net, fragmenter, custom_logger):
     # also use a non-zero noise probability to check that doesn't cause errors
     loss = preference_comparisons.CrossEntropyRewardLoss(

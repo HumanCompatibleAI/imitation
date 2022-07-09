@@ -703,7 +703,7 @@ class CrossEntropyRewardLoss(RewardLoss):
         model: reward_nets.RewardNet,
         fragment_pairs: Sequence[TrajectoryPair],
         preferences: np.ndarray,
-    ) -> th.Tensor:
+    ) -> Mapping[str, Any]:
         """Computes the loss.
 
         Args:
@@ -715,7 +715,8 @@ class CrossEntropyRewardLoss(RewardLoss):
         Returns:
             loss: The cross-entropy loss between the probability predicted by the
                 reward model and the target probabilities in `preferences`.
-            metrics: accuracy
+            metrics:
+                accuracy: as a th.Tensor
         """
         probs = th.empty(len(fragment_pairs), dtype=th.float32)
         for i, fragment in enumerate(fragment_pairs):
@@ -736,7 +737,7 @@ class CrossEntropyRewardLoss(RewardLoss):
         accuracy = (predictions == ground_truth).float().mean()
         return {
             "loss": th.nn.functional.binary_cross_entropy(probs, preferences_th),
-            "metrics": {"accuracy": accuracy.item()},
+            "metrics": {"accuracy": accuracy.detach().cpu()},
         }
 
     def _rewards(
@@ -925,20 +926,22 @@ class RewardEnsembleTrainer(BasicRewardTrainer):
                 for member in self.model.members:
                     output = self.loss(member, fragment_pairs, preferences)
                     losses.append(output["loss"])
-                    metrics.append(metrics)
+                    metrics.append(output["metrics"])
                 losses = th.stack(losses)
-                loss = th.stack(losses).mean()
+                loss = losses.mean()
                 loss.backward()
                 self.optim.step()
 
                 # Note here we are return all the losses not just the mean
                 # This will give us a histogram
-                self.logger.record("loss", losses.item())
+                self.logger.record("loss", loss.item())
+                self.logger.record("dist_loss", losses.detach().cpu().numpy())
                 # Turn metrics from a list of dictionaries into a dictionary of
                 # tensors. Again this should give us a histogram in tensorboard.
                 metrics = {k: th.stack([di[k] for di in metrics]) for k in metrics[0]}
                 for metric in metrics:
-                    self.logger.record(metric, metrics[metric])
+                    self.logger.record(metric, metrics[metric].mean().item())
+                    self.logger.record(f"dist_{metric}", metrics[metric].cpu().numpy())
 
 
 def make_reward_trainer(
