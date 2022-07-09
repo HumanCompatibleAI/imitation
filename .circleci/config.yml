@@ -63,10 +63,7 @@ commands:
 
       - run:
           name: install imitation
-          # Build a wheel then install to avoid copying whole directory (pip issue #2195)
-          command: |
-            python setup.py sdist bdist_wheel
-            pip install --upgrade --force-reinstall --no-deps dist/imitation-*.whl
+          command: pip install --upgrade --force-reinstall --no-deps .
 
       - run:
           name: print installed packages
@@ -120,7 +117,6 @@ jobs:
           name: pytype
           command: pytype --version && pytype -j "${NUM_CPUS}" ${SRC_FILES[@]}
 
-
   unit-test:
     executor: unit-test
     steps:
@@ -144,11 +140,11 @@ jobs:
       # still better than nothing.
       - restore_cache:
           keys:
-            - v6-pytest-cache-{{ checksum "setup.py" }}
+            - v7-pytest-cache-{{ checksum "setup.py" }}
             # This prefix-matched key restores the most recent pytest cache with any
             # checksum. If that cached policy happens to be still loadable, we avoid
             # retraining. See https://circleci.com/docs/2.0/caching/#restoring-cache
-            - v6-pytest-cache-
+            - v7-pytest-cache-
           paths:
             - .pytest_cache
 
@@ -165,7 +161,7 @@ jobs:
       - codecov/upload
 
       - save_cache:
-          key: v6-pytest-cache-{{ checksum "setup.py" }}
+          key: v7-pytest-cache-{{ checksum "setup.py" }}
           paths:
             - .pytest_cache
 
