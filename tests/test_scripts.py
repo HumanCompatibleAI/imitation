@@ -9,6 +9,7 @@ import collections
 import filecmp
 import os
 import pathlib
+import pickle
 import shutil
 import subprocess
 import sys
@@ -17,6 +18,7 @@ from collections import Counter
 from typing import List, Optional
 from unittest import mock
 
+import numpy as np
 import pandas as pd
 import pytest
 import ray.tune as tune
@@ -693,12 +695,16 @@ def test_convert_trajs(tmpdir: str):
     """Tests that convert_trajs is idempotent and does not change the data."""
     shutil.copy(CARTPOLE_TEST_ROLLOUT_PATH, tmpdir)
     tmp_path = os.path.join(tmpdir, os.path.basename(CARTPOLE_TEST_ROLLOUT_PATH))
+    with open(tmp_path, "rb") as f:
+        pickle.load(f)  # check it's in pickle format to start with
     exit_code = subprocess.call(
         ["python", "-m", "imitation.scripts.convert_trajs", tmp_path],
     )
     assert exit_code == 0
 
     npz_tmp_path = tmp_path.replace(".pkl", ".npz")
+    np.load(npz_tmp_path, allow_pickle=True)  # check it's now in npz format
+
     shutil.copy(npz_tmp_path, npz_tmp_path + ".orig")
     exit_code = subprocess.call(
         ["python", "-m", "imitation.scripts.convert_trajs", npz_tmp_path],
