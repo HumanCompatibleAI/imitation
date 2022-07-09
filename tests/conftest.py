@@ -56,8 +56,7 @@ def load_or_rollout_trajectories(
     os.makedirs(os.path.dirname(cache_path), exist_ok=True)
     with FileLock(cache_path + ".lock"):
         try:
-            with open(cache_path, "rb") as f:
-                return pickle.load(f)
+            return types.load_with_rewards(cache_path)
         except (OSError, pickle.PickleError):  # pragma: no cover
             warnings.warn(
                 "Recomputing expert trajectories due to the following error when "
@@ -135,7 +134,7 @@ def cartpole_expert_trajectories(
     pytestconfig,
 ) -> Sequence[TrajectoryWithRew]:
     rollouts_path = str(
-        pytestconfig.cache.makedir("experts") / CARTPOLE_ENV_NAME / "rollout.pkl",
+        pytestconfig.cache.makedir("experts") / CARTPOLE_ENV_NAME / "rollout.npz",
     )
     return load_or_rollout_trajectories(
         rollouts_path,
@@ -194,7 +193,7 @@ def pendulum_expert_trajectories(
     pytestconfig,
 ) -> Sequence[TrajectoryWithRew]:
     rollouts_path = str(
-        pytestconfig.cache.makedir("experts") / PENDULUM_ENV_NAME / "rollout.pkl",
+        pytestconfig.cache.makedir("experts") / PENDULUM_ENV_NAME / "rollout.npz",
     )
     return load_or_rollout_trajectories(
         rollouts_path,
