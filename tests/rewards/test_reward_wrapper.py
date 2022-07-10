@@ -1,14 +1,11 @@
 """Tests `imitation.util.reward_wrapper`."""
 
 import numpy as np
-import pytest
-import stable_baselines3 as sb3
-from stable_baselines3.sac import policies as sac_policies
 
 from imitation.data import rollout
 from imitation.policies.base import RandomPolicy
-from imitation.rewards import reward_nets, reward_wrapper
-from imitation.util import networks, util
+from imitation.rewards import reward_wrapper
+from imitation.util import util
 
 
 class FunkyReward:
@@ -49,4 +46,3 @@ def test_reward_overwrite():
     _, rew, _, infos = wrapped_env.step(rand_act)
     assert np.all(rew >= 0)
     assert np.all([info_dict["original_env_rew"] < 0 for info_dict in infos])
-
