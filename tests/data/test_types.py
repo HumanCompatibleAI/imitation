@@ -2,6 +2,7 @@
 
 
 import contextlib
+import copy
 import dataclasses
 import os
 import pathlib
@@ -138,6 +139,52 @@ class TestData:
         trajs += [dataclasses.replace(traj, infos=None) for traj in trajs]
         for traj in trajs:
             assert len(traj) == length
+
+    def test_equals(
+        self,
+        trajectory: types.Trajectory,
+        trajectory_rew: types.TrajectoryWithRew,
+        length: int,
+    ) -> None:
+        """Checks __eq__ compares equal for copies and unequal for perturbations."""
+        for t in [trajectory, trajectory_rew]:
+            # Trajectory compare unequal to things that are not trajectories
+            assert t != 42
+            assert t != "foobar"
+            # But compares equal to itself
+            assert t == t
+
+        # Compares equal to a copy of itself. (This way of copying also validates that
+        # trajectory_rew is derived from trajectory; useful for the next test.)
+        assert trajectory == types.Trajectory(
+            obs=trajectory.obs,
+            acts=trajectory.acts,
+            infos=trajectory.infos,
+            terminal=trajectory.terminal,
+        )
+        assert trajectory_rew == copy.copy(trajectory_rew)
+
+        # Trajectory compares unequal to a copy of itself but with reward
+        assert trajectory != trajectory_rew
+        # And unequal to a copy of itself truncated
+        new_length = length - 1
+        if new_length > 0:
+            assert trajectory != types.Trajectory(
+                obs=trajectory.obs[: new_length + 1],
+                acts=trajectory.acts[:new_length],
+                infos=trajectory.obs[:new_length],
+                terminal=trajectory.terminal,
+            )
+        # Or with contents changed
+        for t in [trajectory, trajectory_rew]:
+            as_dict = dataclasses.asdict(t)
+            for k in as_dict.keys():
+                perturbed = dict(as_dict)
+                if k == "infos":
+                    perturbed["infos"] = [{"foo": 42}] * len(as_dict["infos"])
+                else:
+                    perturbed[k] = as_dict[k] + 1
+                assert trajectory != type(t)(**perturbed)
 
     @pytest.mark.parametrize("type_safe", [False, True])
     @pytest.mark.parametrize("use_pickle", [False, True])
