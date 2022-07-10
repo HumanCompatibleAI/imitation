@@ -43,6 +43,11 @@ def normalize_output_running():
     normalize_output_layer = networks.RunningNorm  # noqa: F841
 
 
+@reward_ingredient.named_config
+def reward_ensemble():
+    net_cls = reward_nets.RewardEnsemble  # noqa: F841
+
+
 @reward_ingredient.config_hook
 def config_hook(config, command_name, logger):
     """Sets default values for `net_cls` and `net_kwargs`."""
