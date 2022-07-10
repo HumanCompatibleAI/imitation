@@ -10,7 +10,15 @@ from imitation.rewards.common import RewardFn
 
 
 class ReplayBufferRewardWrapper(ReplayBuffer):
+    """Relabel the rewards in transitions sampled from a ReplayBuffer."""
+
     def __init__(self, replay_buffer: ReplayBuffer, reward_fn: RewardFn):
+        """Builds ReplayBufferRewardWrapper.
+
+        Args:
+            replay_buffer: The wrapped replay buffer.
+            reward_fn: The reward function used to relabel rewards.
+        """
         self.replay_buffer = replay_buffer
         self.reward_fn = reward_fn
 

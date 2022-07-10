@@ -141,6 +141,8 @@ class AgentTrainer(TrajectoryGenerator):
                 during exploration.
             seed: random seed for exploratory trajectories.
             custom_logger: Where to log to; if None (default), creates a new logger.
+            reward_relabel: whether to relabel rewards in the replay buffer of
+                off-policy algorithms with learned rewards.
 
         Raises:
             ValueError: `algorithm` does not have an environment set.
