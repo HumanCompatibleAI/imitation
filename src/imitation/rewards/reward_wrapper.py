@@ -1,89 +1,12 @@
 """Common wrapper for adding custom reward values to an environment."""
 
 import collections
-import functools
 from typing import Deque
 
 import numpy as np
-from stable_baselines3.common import buffers, callbacks, vec_env
+from stable_baselines3.common import callbacks, vec_env
 
 from imitation.rewards import common
-
-
-def _flatten_buffer_data(arr: np.ndarray) -> np.ndarray:
-    """Flatten venv data in the replay buffer.
-
-    Convert shape from [n_steps, n_envs, ...] (when ... is the shape of the features)
-    to [n_steps * n_envs, ...] (which maintain the order)
-
-    Args:
-        arr: array to flatten
-
-    Returns:
-        flattened array
-    """
-    shape = arr.shape
-    if len(shape) < 3:
-        shape = shape + (1,)
-    return arr.reshape(shape[0] * shape[1], *shape[2:])
-
-
-class RewardRelabelCallback(callbacks.BaseCallback):
-    """Relabel the reward in a replay buffer for an off-policy RL algorithm if any."""
-
-    def __init__(self, reward_fn: common.RewardFn, *args, **kwargs):
-        """Builds RewardRelabelCallback.
-
-        Args:
-            reward_fn: a RewardFn that will supply the rewards used
-                for training the agent.
-            *args: Passed through to `callbacks.BaseCallback`.
-            **kwargs: Passed through to `callbacks.BaseCallback`.
-        """
-        super().__init__(self, *args, **kwargs)
-        self.reward_fn = reward_fn
-
-    def _on_step(self) -> bool:
-        return True
-
-    def _on_training_start(self) -> None:
-        replay_buffer = self.model.replay_buffer
-        assert isinstance(replay_buffer, buffers.ReplayBuffer)
-        pos = replay_buffer.pos
-        if replay_buffer.full:
-            pos = replay_buffer.buffer_size
-        observations = _flatten_buffer_data(replay_buffer.observations[:pos])
-        actions = _flatten_buffer_data(replay_buffer.actions[:pos])
-        next_observations = _flatten_buffer_data(replay_buffer.next_observations[:pos])
-        dones = _flatten_buffer_data(replay_buffer.dones[:pos])
-
-        # relabel the rewards if there are at least 1 transition selected
-        if len(observations) > 0:
-            rewards = self.reward_fn(observations, actions, next_observations, dones)
-            shape = replay_buffer.rewards.shape
-            assert len(shape) == 2
-            rewards = rewards.reshape(pos, shape[1], *shape[2:])
-            replay_buffer.rewards[:pos] = rewards
-
-
-def create_rew_relabel_callback(reward_fn: common.RewardFn) -> callbacks.BaseCallback:
-    """Create a RewardRelabelCallback with update_stats turning off.
-
-    Args:
-        reward_fn: a RewardFn that will supply the rewards used
-            for training the agent.
-
-    Returns:
-        A RewardRelabelCallback.
-    """
-    # Note(yawen): By default, reward relabeling should not update any auxiliary stat
-    # in RewardNet. This would break when reward_fn doesn't have update_stats as an
-    # argument. e.g. a hard-coded reward function.
-    relabel_reward_fn = functools.partial(reward_fn, update_stats=False)
-    reward_relabel_callback = RewardRelabelCallback(
-        reward_fn=relabel_reward_fn,
-    )
-    return reward_relabel_callback
 
 
 class WrappedRewardCallback(callbacks.BaseCallback):

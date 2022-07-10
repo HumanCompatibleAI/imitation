@@ -4,6 +4,7 @@ Trains a reward model and optionally a policy based on preferences
 between trajectory fragments.
 """
 import abc
+import functools
 import math
 import pickle
 import random
@@ -14,7 +15,6 @@ import torch as th
 from scipy import special
 from stable_baselines3.common import (
     base_class,
-    callbacks,
     off_policy_algorithm,
     type_aliases,
     vec_env,
@@ -30,7 +30,7 @@ from imitation.data.types import (
     TrajectoryWithRewPair,
     Transitions,
 )
-from imitation.policies import exploration_wrapper
+from imitation.policies import exploration_wrapper, replay_buffer_wrapper
 from imitation.rewards import common as rewards_common
 from imitation.rewards import reward_nets, reward_wrapper
 from imitation.util import logger as imit_logger
@@ -123,8 +123,8 @@ class AgentTrainer(TrajectoryGenerator):
         switch_prob: float = 0.5,
         random_prob: float = 0.5,
         seed: Optional[int] = None,
-        reward_relabel: bool = False,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
+        reward_relabel: bool = False,
     ):
         """Initialize the agent trainer.
 
@@ -140,8 +140,6 @@ class AgentTrainer(TrajectoryGenerator):
             random_prob: the probability of picking the random policy when switching
                 during exploration.
             seed: random seed for exploratory trajectories.
-            reward_relabel: whether to relabel rewards in the replay buffer of
-                off-policy algorithms with learned rewards.
             custom_logger: Where to log to; if None (default), creates a new logger.
 
         Raises:
@@ -156,6 +154,16 @@ class AgentTrainer(TrajectoryGenerator):
         self.reward_fn = reward_fn
         self.exploration_frac = exploration_frac
 
+        if reward_relabel:
+            assert isinstance(self.algorithm, off_policy_algorithm.OffPolicyAlgorithm)
+            relabel_reward_fn = functools.partial(reward_fn, update_stats=False)
+            self.algorithm.replay_buffer = (
+                replay_buffer_wrapper.ReplayBufferRewardWrapper(
+                    self.algorithm.replay_buffer,
+                    relabel_reward_fn,
+                )
+            )
+
         venv = self.algorithm.get_env()
         if not isinstance(venv, vec_env.VecEnv):
             raise ValueError("The environment for the agent algorithm must be set.")
@@ -169,16 +177,7 @@ class AgentTrainer(TrajectoryGenerator):
             reward_fn=self.reward_fn,
         )
 
-        log_callback = self.reward_venv_wrapper.make_log_callback()
-        callback_list = [log_callback]
-        if reward_relabel:
-            assert isinstance(self.algorithm, off_policy_algorithm.OffPolicyAlgorithm)
-            reward_relabel_callback = reward_wrapper.create_rew_relabel_callback(
-                reward_fn,
-            )
-            callback_list.append(reward_relabel_callback)
-
-        self.callback = callbacks.CallbackList(callback_list)
+        self.log_callback = self.reward_venv_wrapper.make_log_callback()
 
         self.algorithm.set_env(self.venv)
         policy_callable = rollout._policy_to_callable(
@@ -218,7 +217,7 @@ class AgentTrainer(TrajectoryGenerator):
         self.algorithm.learn(
             total_timesteps=steps,
             reset_num_timesteps=False,
-            callback=self.callback,
+            callback=self.log_callback,
             **kwargs,
         )
 
