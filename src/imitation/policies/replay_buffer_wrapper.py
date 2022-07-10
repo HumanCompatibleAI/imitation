@@ -7,6 +7,7 @@ from stable_baselines3.common.buffers import ReplayBuffer
 from stable_baselines3.common.type_aliases import ReplayBufferSamples
 
 from imitation.rewards.common import RewardFn
+from imitation.util import util
 
 
 class ReplayBufferRewardWrapper(ReplayBuffer):
@@ -24,19 +25,24 @@ class ReplayBufferRewardWrapper(ReplayBuffer):
 
     def sample(self, *args, **kwargs):
         samples = self.replay_buffer.sample(*args, **kwargs)
+
         rewards = self.reward_fn(
-            samples.observations,
-            samples.actions,
-            samples.next_observations,
-            samples.dones,
+            samples.observations.cpu().numpy(),
+            samples.actions.cpu().numpy(),
+            samples.next_observations.cpu().numpy(),
+            samples.dones.cpu().numpy(),
         )
+
+        device = samples.rewards.device
+        shape = samples.rewards.shape
+        rewards_th = util.safe_to_tensor(rewards).reshape(shape).to(device)
 
         return ReplayBufferSamples(
             samples.observations,
             samples.actions,
             samples.next_observations,
             samples.dones,
-            rewards,
+            rewards_th,
         )
 
     def add(self, *args, **kwargs):
