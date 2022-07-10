@@ -13,7 +13,6 @@ import numpy as np
 import pytest
 
 from imitation.data import types
-from imitation.testing import types as types_testing
 
 SPACES = [
     gym.spaces.Discrete(3),
@@ -190,7 +189,9 @@ class TestData:
             else:
                 loaded_trajs = types.load(save_path)
 
-            types_testing.assert_traj_sequences_equal(trajs, loaded_trajs)
+            assert len(trajs) == len(loaded_trajs)
+            for t1, t2 in zip(trajs, loaded_trajs):
+                assert t1 == t2
 
     def test_invalid_trajectories(
         self,

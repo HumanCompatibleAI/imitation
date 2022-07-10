@@ -38,7 +38,6 @@ from imitation.scripts import (
     train_preference_comparisons,
     train_rl,
 )
-from imitation.testing import types as types_testing
 from imitation.util import networks, util
 
 ALL_SCRIPTS_MODS = [
@@ -723,4 +722,5 @@ def test_convert_trajs(tmpdir: str):
     from_npz = types.load(npz_tmp_path)
 
     assert len(from_pkl) == len(from_npz)
-    types_testing.assert_traj_sequences_equal(from_pkl, from_npz)
+    for t_pkl, t_npz in zip(from_pkl, from_npz):
+        assert t_pkl == t_npz
