@@ -11,7 +11,6 @@ import os
 import pathlib
 import pickle
 import shutil
-import subprocess
 import sys
 import tempfile
 from collections import Counter
@@ -31,6 +30,7 @@ from imitation.data import types
 from imitation.rewards import reward_nets
 from imitation.scripts import (
     analyze,
+    convert_trajs,
     eval_policy,
     parallel,
     train_adversarial,
@@ -699,19 +699,17 @@ def test_convert_trajs(tmpdir: str):
     tmp_path = os.path.join(tmpdir, os.path.basename(OLD_FMT_ROLLOUT_TEST_DATA_PATH))
     with open(tmp_path, "rb") as f:
         pickle.load(f)  # check it's in pickle format to start with
-    exit_code = subprocess.call(
-        ["python", "-m", "imitation.scripts.convert_trajs", tmp_path],
-    )
-    assert exit_code == 0
+    args = ["convert_trajs.py", tmp_path]
+    with mock.patch.object(sys, "argv", args):
+        convert_trajs.main()
 
     npz_tmp_path = tmp_path.replace(".pkl", ".npz")
     np.load(npz_tmp_path, allow_pickle=True)  # check it's now in npz format
 
     shutil.copy(npz_tmp_path, npz_tmp_path + ".orig")
-    exit_code = subprocess.call(
-        ["python", "-m", "imitation.scripts.convert_trajs", npz_tmp_path],
-    )
-    assert exit_code == 0
+    args = ["convert_trajs.py", npz_tmp_path]
+    with mock.patch.object(sys, "argv", args):
+        convert_trajs.main()
 
     assert filecmp.cmp(
         npz_tmp_path,
