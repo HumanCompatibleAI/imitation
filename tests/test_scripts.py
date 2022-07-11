@@ -9,14 +9,15 @@ import collections
 import filecmp
 import os
 import pathlib
+import pickle
 import shutil
-import subprocess
 import sys
 import tempfile
 from collections import Counter
 from typing import List, Optional
 from unittest import mock
 
+import numpy as np
 import pandas as pd
 import pytest
 import ray.tune as tune
@@ -25,9 +26,11 @@ import sacred.utils
 import stable_baselines3
 import torch as th
 
+from imitation.data import types
 from imitation.rewards import reward_nets
 from imitation.scripts import (
     analyze,
+    convert_trajs,
     eval_policy,
     parallel,
     train_adversarial,
@@ -47,12 +50,15 @@ ALL_SCRIPTS_MODS = [
     train_rl,
 ]
 
-CARTPOLE_TEST_DATA_PATH = pathlib.Path("tests/testdata/expert_models/cartpole_0/")
+TEST_DATA_PATH = pathlib.Path("tests/testdata")
+CARTPOLE_TEST_DATA_PATH = TEST_DATA_PATH / "expert_models/cartpole_0/"
 CARTPOLE_TEST_ROLLOUT_PATH = CARTPOLE_TEST_DATA_PATH / "rollouts/final.pkl"
 CARTPOLE_TEST_POLICY_PATH = CARTPOLE_TEST_DATA_PATH / "policies/final"
 
-PENDULUM_TEST_DATA_PATH = pathlib.Path("tests/testdata/expert_models/pendulum_0/")
+PENDULUM_TEST_DATA_PATH = TEST_DATA_PATH / "expert_models/pendulum_0/"
 PENDULUM_TEST_ROLLOUT_PATH = PENDULUM_TEST_DATA_PATH / "rollouts/final.pkl"
+
+OLD_FMT_ROLLOUT_TEST_DATA_PATH = TEST_DATA_PATH / "old_format_rollout.pkl"
 
 
 @pytest.fixture(autouse=True)
@@ -687,21 +693,32 @@ def test_analyze_gather_tb(tmpdir: str):
     assert run.result["n_tb_dirs"] == 2
 
 
-def test_convert_trajs_in_place(tmpdir: str):
-    shutil.copy(CARTPOLE_TEST_ROLLOUT_PATH, tmpdir)
-    tmp_path = os.path.join(tmpdir, os.path.basename(CARTPOLE_TEST_ROLLOUT_PATH))
-    exit_code = subprocess.call(
-        ["python", "-m", "imitation.scripts.convert_trajs_in_place", tmp_path],
-    )
-    assert exit_code == 0
+def test_convert_trajs(tmpdir: str):
+    """Tests that convert_trajs is idempotent and does not change the data."""
+    shutil.copy(OLD_FMT_ROLLOUT_TEST_DATA_PATH, tmpdir)
+    tmp_path = os.path.join(tmpdir, os.path.basename(OLD_FMT_ROLLOUT_TEST_DATA_PATH))
+    with open(tmp_path, "rb") as f:
+        pickle.load(f)  # check it's in pickle format to start with
+    args = ["convert_trajs.py", tmp_path]
+    with mock.patch.object(sys, "argv", args):
+        convert_trajs.main()
 
-    shutil.copy(tmp_path, tmp_path + ".new")
-    exit_code = subprocess.call(
-        ["python", "-m", "imitation.scripts.convert_trajs_in_place", tmp_path],
-    )
-    assert exit_code == 0
+    npz_tmp_path = tmp_path.replace(".pkl", ".npz")
+    np.load(npz_tmp_path, allow_pickle=True)  # check it's now in npz format
+
+    shutil.copy(npz_tmp_path, npz_tmp_path + ".orig")
+    args = ["convert_trajs.py", npz_tmp_path]
+    with mock.patch.object(sys, "argv", args):
+        convert_trajs.main()
 
     assert filecmp.cmp(
-        tmp_path,
-        tmp_path + ".new",
-    ), "convert_trajs_in_place not idempotent"
+        npz_tmp_path,
+        npz_tmp_path + ".orig",
+    ), "convert_trajs not idempotent"
+
+    from_pkl = types.load(tmp_path)
+    from_npz = types.load(npz_tmp_path)
+
+    assert len(from_pkl) == len(from_npz)
+    for t_pkl, t_npz in zip(from_pkl, from_npz):
+        assert t_pkl == t_npz

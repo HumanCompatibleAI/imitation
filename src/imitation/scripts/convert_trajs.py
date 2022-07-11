@@ -1,12 +1,15 @@
-"""Converts old-style trajectories to new-style trajectories.
+"""Converts old-style pickle trajectories to new-style NPZ trajectories.
 
-This script takes as command-line input multiple paths to pickle files containing
-(possibly old forms of) Sequence[imitation.types.TrajectoryWithRew]. It overwrites each
-path with a new pickle where the demonstration data is saved as
-Sequence[imitation.types.TrajectoryWithRew]. This is updated to the newest format,
-setting `terminal=True` where it is missing.
+See https://github.com/HumanCompatibleAI/imitation/pull/448 for a description
+of the new trajectory format.
+
+This script takes as command-line input multiple paths to saved trajectories,
+in the old .pkl or new .npz format. It then saves each sequence in the new .npz
+format. The path is the same as the original but with an ".npz" extension
+(i.e. "A.pkl" -> "A.npz", "A.npz" -> "A.npz", "A" -> "A.npz", "A.foo" -> "A.foo.npz").
 """
 
+import os
 import warnings
 
 from imitation.data import types
@@ -29,7 +32,10 @@ def update_traj_file_in_place(path: str) -> None:
             category=DeprecationWarning,
         )
         trajs = types.load(path)
-    types.save(path, trajs)
+
+    path, ext = os.path.splitext(path)
+    new_ext = ".npz" if ext in (".pkl", ".npz") else ext + ".npz"
+    types.save(path + new_ext, trajs)
 
 
 def main():
