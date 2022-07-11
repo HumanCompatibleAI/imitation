@@ -140,33 +140,40 @@ class TestData:
         for traj in trajs:
             assert len(traj) == length
 
-    def test_equals(
+    def test_traj_unequal_to_other_types(
+        self,
+        trajectory: types.Trajectory,
+        trajectory_rew: types.TrajectoryWithRew,
+    ) -> None:
+        """Test trajectories unequal to objects of different types."""
+        for t in [trajectory, trajectory_rew]:
+            # Trajectory compare unequal to things that are not trajectories
+            assert t != 42
+            assert t != "foobar"
+
+        # Trajectory compares unequal to a copy of itself but with reward
+        assert trajectory != trajectory_rew
+
+    def test_traj_equal_to_self_and_copies(
+        self,
+        trajectory: types.Trajectory,
+        trajectory_rew: types.TrajectoryWithRew,
+    ) -> None:
+        """Test that trajectories are equal to themselves and copies."""
+        for t in [trajectory, trajectory_rew]:
+            # Equal to itself
+            assert t == t
+            # And to copy
+            assert t == copy.copy(t)
+
+    def test_traj_unequal_to_perturbations(
         self,
         trajectory: types.Trajectory,
         trajectory_rew: types.TrajectoryWithRew,
         length: int,
     ) -> None:
-        """Checks __eq__ compares equal for copies and unequal for perturbations."""
-        for t in [trajectory, trajectory_rew]:
-            # Trajectory compare unequal to things that are not trajectories
-            assert t != 42
-            assert t != "foobar"
-            # But compares equal to itself
-            assert t == t
-
-        # Compares equal to a copy of itself. (This way of copying also validates that
-        # trajectory_rew is derived from trajectory; useful for the next test.)
-        assert trajectory == types.Trajectory(
-            obs=trajectory.obs,
-            acts=trajectory.acts,
-            infos=trajectory.infos,
-            terminal=trajectory.terminal,
-        )
-        assert trajectory_rew == copy.copy(trajectory_rew)
-
-        # Trajectory compares unequal to a copy of itself but with reward
-        assert trajectory != trajectory_rew
-        # And unequal to a copy of itself truncated
+        """Test that trajectories unequal to perturbed versions."""
+        # Unequal to a copy of itself truncated
         new_length = length - 1
         if new_length > 0:
             assert trajectory != types.Trajectory(
@@ -175,6 +182,7 @@ class TestData:
                 infos=trajectory.obs[:new_length],
                 terminal=trajectory.terminal,
             )
+
         # Or with contents changed
         for t in [trajectory, trajectory_rew]:
             as_dict = dataclasses.asdict(t)
