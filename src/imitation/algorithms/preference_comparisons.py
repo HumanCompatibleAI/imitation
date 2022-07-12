@@ -935,6 +935,7 @@ class RewardEnsembleTrainer(BasicRewardTrainer):
                 # Note here we are return all the losses not just the mean
                 # This will give us a histogram
                 self.logger.record("loss", loss.item())
+                self.logger.record("loss_std", loss.std())
                 self.logger.record("dist_loss", losses.detach().cpu().numpy())
                 # Turn metrics from a list of dictionaries into a dictionary of
                 # tensors. Again this should give us a histogram in tensorboard.
