@@ -937,6 +937,7 @@ class RewardEnsembleTrainer(BasicRewardTrainer):
                 self.logger.record("loss", loss.item())
                 self.logger.record("loss_std", loss.std())
                 self.logger.record("dist_loss", losses.detach().cpu().numpy())
+
                 # Turn metrics from a list of dictionaries into a dictionary of
                 # tensors. Again this should give us a histogram in tensorboard.
                 metrics = {k: th.stack([di[k] for di in metrics]) for k in metrics[0]}

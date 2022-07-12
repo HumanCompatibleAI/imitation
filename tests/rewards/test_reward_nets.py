@@ -377,12 +377,15 @@ def test_reward_ensemble_reward_moments(two_ensemble, numpy_transitions):
     two_ensemble.members[0].forward.assert_called_once()
 
 
-def test_conservative_reward_wrapper(two_ensemble, numpy_transitions):
+def test_add_std_reward_wrapper(two_ensemble, numpy_transitions):
     two_ensemble.members[0].value = 3
     two_ensemble.members[1].value = -1
-    conservative_reward = reward_nets.ConservativeRewardWrapper(two_ensemble, alpha=0.1)
-    rewards = conservative_reward.predict_processed(*numpy_transitions)
-    assert np.allclose(rewards, 1 - 0.1 * np.sqrt(8))
+    reward_fn = reward_nets.AddSTDRewardWrapper(two_ensemble, default_alpha=0.1)
+    rewards = reward_fn.predict_processed(*numpy_transitions)
+    assert np.allclose(rewards, 1 + 0.1 * np.sqrt(8))
+    # test overriding in predict processed works correctly
+    rewards = reward_fn.predict_processed(*numpy_transitions, alpha=-0.5)
+    assert np.allclose(rewards, 1 - 0.5 * np.sqrt(8))
 
 
 @pytest.mark.parametrize("env_name", ENVS)

@@ -169,6 +169,7 @@ class RewardNet(nn.Module, abc.ABC):
         action: np.ndarray,
         next_state: np.ndarray,
         done: np.ndarray,
+        **kwargs,
     ) -> np.ndarray:
         """Compute the processed rewards for a batch of transitions without gradients.
 
@@ -181,6 +182,8 @@ class RewardNet(nn.Module, abc.ABC):
             action: Actions of shape `(batch_size,) + action_shape`.
             next_state: Successor states of shape `(batch_size,) + state_shape`.
             done: End-of-episode (terminal state) indicator of shape `(batch_size,)`.
+            kwargs: additional kwargs may be passed to change the functionality of
+                subclasses.
 
         Returns:
             Computed processed rewards of shape `(batch_size,`).
@@ -376,6 +379,7 @@ class NormalizedRewardNet(RewardNetWrapper):
         next_state: np.ndarray,
         done: np.ndarray,
         update_stats: bool = True,
+        **kwargs,
     ) -> np.ndarray:
         """Compute normalized rewards for a batch of transitions without gradients.
 
@@ -692,21 +696,21 @@ class RewardEnsemble(RewardNetWithVariance):
         return all_rewards.mean(-1).cpu().numpy(), all_rewards.var(-1).cpu().numpy()
 
 
-class ConservativeRewardWrapper(RewardNetWrapper):
-    """A reward network that returns a conservative estimate of the reward."""
+class AddSTDRewardWrapper(RewardNetWrapper):
+    """That adds a multiple of the standard deviation to the reward function."""
 
     base: RewardNetWithVariance
 
-    def __init__(self, base: RewardNetWithVariance, alpha: float = 1.0):
+    def __init__(self, base: RewardNetWithVariance, default_alpha: float = 1.0):
         """Create a conservative reward network.
 
         Args:
             base: An uncertain rewarard network
-            alpha: multiple of standard deviation to subtract from reward mean when
-                predicting conservative reward. Defaults to 1.0.
+            default_alpha: multiple of standard deviation to add to the reward mean.
+            Defaults to 1.0.
         """
         super().__init__(base)
-        self.alpha = alpha
+        self.default_alpha = default_alpha
 
     def predict_processed(
         self,
@@ -714,6 +718,8 @@ class ConservativeRewardWrapper(RewardNetWrapper):
         action: np.ndarray,
         next_state: np.ndarray,
         done: np.ndarray,
+        alpha: Optional[float] = None,
+        **kwargs,
     ) -> np.ndarray:
         """Compute a lower confidence bound on the reward without gradients.
 
@@ -722,10 +728,15 @@ class ConservativeRewardWrapper(RewardNetWrapper):
             action: Actions of shape `(batch_size,) + action_shape`.
             next_state: Successor states of shape `(batch_size,) + state_shape`.
             done: End-of-episode (terminal state) indicator of shape `(batch_size,)`.
+            alpha: multiple of standard deviation to add to the reward mean. Defaults
+                to the value provided at initialization.
 
         Returns:
             Estimated lower confidence bounds on rewards of shape `(batch_size,`).
         """
+        if alpha is None:
+            alpha = self.default_alpha
+
         reward_mean, reward_var = self.base.reward_moments(
             state,
             action,
@@ -733,7 +744,7 @@ class ConservativeRewardWrapper(RewardNetWrapper):
             done,
         )
 
-        return reward_mean - self.alpha * np.sqrt(reward_var)
+        return reward_mean + alpha * np.sqrt(reward_var)
 
     def forward(self, *args):
         self.base.forward(*args)
