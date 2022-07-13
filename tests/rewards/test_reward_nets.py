@@ -151,6 +151,39 @@ def test_strip_wrappers_complex():
     assert isinstance(net, reward_nets.BasicRewardNet)
 
 
+def test_valid_wrapper_structure():
+    class RewardNetA(reward_nets.RewardNet):
+        def forward(*args):
+            pass
+
+    class WrapperB(reward_nets.RewardNetWrapper):
+        def forward(*args):
+            pass
+
+    reward_net = RewardNetA(None, None)  # This might fail if we setup better input
+    # validation
+    reward_net = WrapperB(reward_net)
+
+    assert isinstance(reward_net.base, RewardNetA)
+
+    # This should not raise a type error
+    serialize._validate_wrapper_structure(reward_net, [[WrapperB, RewardNetA]])
+
+    # The top level wrapper is an instance of WrapperB this should raise a type error
+    with pytest.raises(TypeError, match=r"Wrapper structure should be one of \(.*\)."):
+        serialize._validate_wrapper_structure(reward_net, [[RewardNetA]])
+
+    # This should not raise a type error since one of the prefixes matches
+    serialize._validate_wrapper_structure(
+        reward_net,
+        [[WrapperB, RewardNetA], [[RewardNetA]]],
+    )
+
+    # This should raise a type error since none the prefix is in the incorrect order
+    with pytest.raises(TypeError):
+        serialize._validate_wrapper_structure(reward_net, [[RewardNetA, WrapperB]])
+
+
 @pytest.mark.parametrize("env_name", ENVS)
 def test_cant_load_unnorm_as_norm(env_name, tmpdir):
     venv, tmppath = _make_env_and_save_reward_net(

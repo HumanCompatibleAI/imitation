@@ -1,0 +1,8 @@
+{
+    "python.linting.enabled": true,
+    "python.linting.banditEnabled": false,
+    "python.linting.flake8Enabled": true,
+    "python.testing.pytestArgs": [],
+    "python.testing.unittestEnabled": false,
+    "python.testing.pytestEnabled": true
+}
