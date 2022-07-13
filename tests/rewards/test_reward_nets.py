@@ -151,7 +151,7 @@ def test_strip_wrappers_complex():
     assert isinstance(net, reward_nets.BasicRewardNet)
 
 
-def test_valid_wrapper_structure():
+def test_validate_wrapper_structure():
     class RewardNetA(reward_nets.RewardNet):
         def forward(*args):
             pass
@@ -170,7 +170,9 @@ def test_valid_wrapper_structure():
     serialize._validate_wrapper_structure(reward_net, [[WrapperB, RewardNetA]])
 
     # The top level wrapper is an instance of WrapperB this should raise a type error
-    with pytest.raises(TypeError, match=r"Wrapper structure should be one of \(.*\)."):
+    with pytest.raises(
+        TypeError, match=r"Wrapper structure should be match \(one of\) \{.*\}"
+    ):
         serialize._validate_wrapper_structure(reward_net, [[RewardNetA]])
 
     # This should not raise a type error since one of the prefixes matches
