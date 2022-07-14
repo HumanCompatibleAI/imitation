@@ -221,10 +221,13 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
         self.gen_algo.set_logger(self.logger)
 
         if gen_train_timesteps is None:
-            gen_train_timesteps = self.gen_algo.get_env().num_envs
+            gen_algo_env = self.gen_algo.get_env()
+            assert gen_algo_env is not None
+            self.gen_train_timesteps = gen_algo_env.num_envs
             if hasattr(self.gen_algo, "n_steps"):  # on policy
-                gen_train_timesteps *= self.gen_algo.n_steps
-        self.gen_train_timesteps = gen_train_timesteps
+                self.gen_train_timesteps *= self.gen_algo.n_steps
+        else:
+            self.gen_train_timesteps = gen_train_timesteps
 
         if gen_replay_buffer_capacity is None:
             gen_replay_buffer_capacity = self.gen_train_timesteps
@@ -432,7 +435,7 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
         self,
         obs_th: th.Tensor,
         acts_th: th.Tensor,
-    ) -> th.Tensor:
+    ) -> Optional[th.Tensor]:
         """Evaluates the given actions on the given observations.
 
         Args:
@@ -451,6 +454,12 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
             )
         elif isinstance(self.policy, sac_policies.SACPolicy):
             gen_algo_actor = self.policy.actor
+            if gen_algo_actor is None:
+                # TODO(juan): when does this actually happen, why can the policy actor be none
+                # and is there a better way to handle this?
+                raise ValueError(
+                    "SAC policy has no actor!"
+                )
             # generate log_policy_act_prob from SAC actor.
             mean_actions, log_std, _ = gen_algo_actor.get_action_dist_params(obs_th)
             distribution = gen_algo_actor.action_dist.proba_distribution(
@@ -556,13 +565,14 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
             next_obs,
             dones,
         )
+        assert isinstance(log_policy_act_prob, th.Tensor)
         batch_dict = {
             "state": obs_th,
             "action": acts_th,
             "next_state": next_obs_th,
             "done": dones_th,
             "labels_gen_is_one": self._torchify_array(labels_gen_is_one),
-            "log_policy_act_prob": self._torchify_array(log_policy_act_prob),
+            "log_policy_act_prob": log_policy_act_prob,
         }
 
         return batch_dict
