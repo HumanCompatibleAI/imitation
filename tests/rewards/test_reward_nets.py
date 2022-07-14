@@ -172,7 +172,7 @@ def test_validate_wrapper_structure():
     # The top level wrapper is an instance of WrapperB this should raise a type error
     with pytest.raises(
         TypeError,
-        match=r"Wrapper structure should be match \(one of\) \{.*\}",
+        match=r"Wrapper structure should be match \(one of\) \[.*\] but found \[.*\]",
     ):
         serialize._validate_wrapper_structure(reward_net, [[RewardNetA]])
 
@@ -183,7 +183,10 @@ def test_validate_wrapper_structure():
     )
 
     # This should raise a type error since none the prefix is in the incorrect order
-    with pytest.raises(TypeError):
+    with pytest.raises(
+        TypeError,
+        match=r"Wrapper structure should be match \(one of\) \[.*\] but found \[.*\]",
+    ):
         serialize._validate_wrapper_structure(reward_net, [[RewardNetA, WrapperB]])
 
 
