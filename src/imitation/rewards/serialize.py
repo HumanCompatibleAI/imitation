@@ -6,7 +6,7 @@ import numpy as np
 import torch as th
 from stable_baselines3.common.vec_env import VecEnv
 
-from imitation.rewards import common
+from imitation.rewards import reward_function
 from imitation.rewards.reward_nets import (
     NormalizedRewardNet,
     RewardNet,
@@ -18,27 +18,37 @@ from imitation.util import registry, util
 # TODO(sam): I suspect this whole file can be replaced with th.load calls. Try
 # that refactoring once I have things running.
 
-RewardFnLoaderFn = Callable[[str, VecEnv], common.RewardFn]
+RewardFnLoaderFn = Callable[[str, VecEnv], reward_function.RewardFn]
 
 reward_registry: registry.Registry[RewardFnLoaderFn] = registry.Registry()
 
 
-def _validate_reward(reward: common.RewardFn) -> common.RewardFn:
+class ValidateRewardFn(reward_function.RewardFn):
     """Add sanity check to the reward function for dealing with VecEnvs."""
 
-    def rew_fn(
-        obs: np.ndarray,
-        act: np.ndarray,
-        next_obs: np.ndarray,
-        dones: np.ndarray,
+    def __init__(
+        self,
+        reward_fn: reward_function.RewardFn,
+    ):
+        """Initialize the Validate Reward 
+
+        Args:
+            reward_fn: base reward function
+        """
+        super().__init__()
+        self.reward_fn = reward_fn
+
+    def __call__(
+        self,
+        state: np.ndarray,
+        action: np.ndarray,
+        next_state: np.ndarray,
+        done: np.ndarray,
     ) -> np.ndarray:
-        rew = reward(obs, act, next_obs, dones)
-        assert rew.shape == (len(obs),)
+        rew = self.reward_fn(state, action, next_state, done)
+        assert rew.shape == (len(state),)
         return rew
-
-    return rew_fn
-
-
+    
 def _strip_wrappers(
     reward_net: RewardNet,
     wrapper_types: Iterable[Type[RewardNetWrapper]],
@@ -74,7 +84,7 @@ def _make_functional(
     net: RewardNet,
     attr: str = "predict",
     kwargs=dict(),
-) -> common.RewardFn:
+) -> reward_function.RewardFn:
     return lambda *args: getattr(net, attr)(*args, **kwargs)
 
 
@@ -84,7 +94,7 @@ def _validate_type(net: RewardNet, type_: Type[RewardNet]):
     return net
 
 
-def load_zero(path: str, venv: VecEnv) -> common.RewardFn:
+def load_zero(path: str, venv: VecEnv) -> reward_function.RewardFn:
     del path, venv
 
     def f(
@@ -103,21 +113,21 @@ def load_zero(path: str, venv: VecEnv) -> common.RewardFn:
 
 reward_registry.register(
     key="RewardNet_shaped",
-    value=lambda path, _: _validate_reward(
+    value=lambda path, _: ValidateRewardFn(
         _make_functional(_validate_type(th.load(str(path)), ShapedRewardNet)),
     ),
 )
 
 reward_registry.register(
     key="RewardNet_unshaped",
-    value=lambda path, _: _validate_reward(
+    value=lambda path, _: ValidateRewardFn(
         _make_functional(_strip_wrappers(th.load(str(path)), (ShapedRewardNet,))),
     ),
 )
 
 reward_registry.register(
     key="RewardNet_normalized",
-    value=lambda path, _: _validate_reward(
+    value=lambda path, _: ValidateRewardFn(
         _make_functional(
             _validate_type(th.load(str(path)), NormalizedRewardNet),
             attr="predict_processed",
@@ -128,7 +138,7 @@ reward_registry.register(
 
 reward_registry.register(
     key="RewardNet_unnormalized",
-    value=lambda path, _: _validate_reward(
+    value=lambda path, _: ValidateRewardFn(
         _make_functional(_strip_wrappers(th.load(str(path)), (NormalizedRewardNet,))),
     ),
 )
@@ -137,7 +147,7 @@ reward_registry.register(key="zero", value=load_zero)
 
 
 @util.docstring_parameter(reward_types=", ".join(reward_registry.keys()))
-def load_reward(reward_type: str, reward_path: str, venv: VecEnv) -> common.RewardFn:
+def load_reward(reward_type: str, reward_path: str, venv: VecEnv) -> reward_function.RewardFn:
     """Load serialized reward.
 
     Args:
