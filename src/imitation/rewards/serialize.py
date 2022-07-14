@@ -137,12 +137,10 @@ def _validate_wrapper_structure(
 
     wrapper = reward_net
     wrappers = []
-    while True:
+    while hasattr(wrapper, "base"):
         wrappers.append(wrapper.__class__)
-        if hasattr(wrapper, "base"):
-            wrapper = wrapper.base
-        else:
-            break
+        wrapper = wrapper.base
+    wrappers.append(wrapper.__class__)
 
     formatted_wrapper_structure = "[" + ",".join(t.__name__ for t in wrappers) + "]"
 

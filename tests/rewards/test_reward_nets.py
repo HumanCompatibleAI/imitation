@@ -154,11 +154,11 @@ def test_strip_wrappers_complex():
 def test_validate_wrapper_structure():
     class RewardNetA(reward_nets.RewardNet):
         def forward(*args):
-            pass
+            ...  # pragma: no cover
 
     class WrapperB(reward_nets.RewardNetWrapper):
         def forward(*args):
-            pass
+            ...  # pragma: no cover
 
     reward_net = RewardNetA(None, None)  # This might fail if we setup better input
     # validation
