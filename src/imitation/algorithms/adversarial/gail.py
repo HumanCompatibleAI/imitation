@@ -3,7 +3,8 @@
 from typing import Optional
 
 import torch as th
-from stable_baselines3.common import base_class, vec_env
+from stable_baselines3.common import base_class
+from stable_baselines3.common.vec_env.base_vec_env import VecEnv
 from torch.nn import functional as F
 
 from imitation.algorithms import base
@@ -11,8 +12,39 @@ from imitation.algorithms.adversarial import common
 from imitation.rewards import reward_nets
 
 
-class LogSigmoidRewardNet(reward_nets.RewardNet):
-    """Wrapper for reward network that takes log sigmoid of wrapped network."""
+class RewardNetFromDiscriminatorLogit(reward_nets.RewardNet):
+    """
+    Wrapper for reward network that takes in the logits of the discriminator 
+    probability distribution and outputs the corresponding reward for the GAIL algorithm.
+
+    Below is the derivation of the transformation that needs to be applied.
+
+    The GAIL paper defines the cost function of the generator as:
+    $$
+    \log{D}
+    $$
+    as shown on line 5 of Algorithm 1. In the paper, $D$ is the probability distribution learned by the discriminator, 
+    where $D(X)=1$ if the trajectory comes from the generator, and $D(X)=0$ if it comes from the expert.
+    In this implementation, we have decided to use the convention that $D(X)=0$ if the trajectory comes from the generator,
+    and $D(X)=1$ if it comes from the expert. Therefore, the resulting cost function is:
+    $$
+    \log{1-D}
+    $$
+
+    Since our algorithm trains using a reward function instead of a loss function, we need to invert the sign to get:
+    $$
+    R=-\log{1-D}=\log{\frac{1}{1-D}}
+    $$
+    Now, let $L$ be the output of our reward net, which gives us the logits of D ($L=\operatorname{logit}{D}$). We can write:
+    $$
+    D=\operatorname{sigmoid}{L}=\frac{1}{1+e^{-L}}
+    $$
+    Since $1-\operatorname{sigmoid}{(L)}$ is the same as $\operatorname{sigmoid}{(-L)}$, we can write:
+    $$
+    R=-\log{\operatorname{sigmoid}{(-L)}}
+    $$
+    which is a non-decreasing map from the logits of D to the reward.
+    """
 
     def __init__(self, base: reward_nets.RewardNet):
         """Builds LogSigmoidRewardNet to wrap `reward_net`."""
@@ -31,9 +63,9 @@ class LogSigmoidRewardNet(reward_nets.RewardNet):
         next_state: th.Tensor,
         done: th.Tensor,
     ) -> th.Tensor:
-        """Computes negative log sigmoid of base reward network."""
+        """Computes negative log sigmoid of minus the logits given by the base network."""
         logits = self.base.forward(state, action, next_state, done)
-        return -F.logsigmoid(logits)
+        return -F.logsigmoid(-logits)
 
 
 class GAIL(common.AdversarialTrainer):
@@ -47,7 +79,7 @@ class GAIL(common.AdversarialTrainer):
         *,
         demonstrations: base.AnyTransitions,
         demo_batch_size: int,
-        venv: vec_env.VecEnv,
+        venv: VecEnv,
         gen_algo: base_class.BaseAlgorithm,
         reward_net: reward_nets.RewardNet,
         **kwargs,
@@ -74,7 +106,8 @@ class GAIL(common.AdversarialTrainer):
         # Raw self._reward_net is discriminator logits
         reward_net = reward_net.to(gen_algo.device)
         # Process it to produce output suitable for RL training
-        self._processed_reward = LogSigmoidRewardNet(reward_net)
+        # Applies a -log(sigmoid(-logits)) to the logits (see class for expanation)
+        self._processed_reward = RewardNetFromDiscriminatorLogit(reward_net)
         super().__init__(
             demonstrations=demonstrations,
             demo_batch_size=demo_batch_size,

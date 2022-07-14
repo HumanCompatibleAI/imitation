@@ -21,30 +21,32 @@ from imitation.util import logger, networks, util
 
 
 def compute_train_stats(
-    disc_logits_gen_is_high: th.Tensor,
-    labels_gen_is_one: th.Tensor,
+    disc_logits_expert_is_high: th.Tensor,
+    labels_expert_is_one: th.Tensor,
     disc_loss: th.Tensor,
 ) -> Mapping[str, float]:
     """Train statistics for GAIL/AIRL discriminator.
 
     Args:
-        disc_logits_gen_is_high: discriminator logits produced by
-            `DiscrimNet.logits_gen_is_high`.
-        labels_gen_is_one: integer labels describing whether logit was for an
-            expert (0) or generator (1) sample.
+        disc_logits_expert_is_high: discriminator logits produced by
+            `DiscrimNet.logits_expert_is_high`.
+        labels_expert_is_one: integer labels describing whether logit was for an
+            expert (1) or generator (0) sample.
         disc_loss: final discriminator loss.
 
     Returns:
         A mapping from statistic names to float values.
     """
     with th.no_grad():
-        bin_is_generated_pred = disc_logits_gen_is_high > 0
-        bin_is_generated_true = labels_gen_is_one > 0
+        # Logits of the discriminator output; >0 for expert samples, <0 for generator.
+        bin_is_generated_pred = disc_logits_expert_is_high < 0
+        # Binary label, so 1 is for expert, 0 is for generator.
+        bin_is_generated_true = labels_expert_is_one == 0
         bin_is_expert_true = th.logical_not(bin_is_generated_true)
         int_is_generated_pred = bin_is_generated_pred.long()
         int_is_generated_true = bin_is_generated_true.long()
         n_generated = float(th.sum(int_is_generated_true))
-        n_labels = float(len(labels_gen_is_one))
+        n_labels = float(len(labels_expert_is_one))
         n_expert = n_labels - n_generated
         pct_expert = n_expert / float(n_labels) if n_labels > 0 else float("NaN")
         n_expert_pred = int(n_labels - th.sum(int_is_generated_pred))
@@ -67,7 +69,7 @@ def compute_train_stats(
         _n_gen_or_1 = max(1, n_generated)
         generated_acc = _n_pred_gen / float(_n_gen_or_1)
 
-        label_dist = th.distributions.Bernoulli(logits=disc_logits_gen_is_high)
+        label_dist = th.distributions.Bernoulli(logits=disc_logits_expert_is_high)
         entropy = th.mean(label_dist.entropy())
 
     pairs = [
@@ -238,7 +240,7 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
         return self.gen_algo.policy
 
     @abc.abstractmethod
-    def logits_gen_is_high(
+    def logits_expert_is_high(
         self,
         state: th.Tensor,
         action: th.Tensor,
@@ -248,8 +250,8 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
     ) -> th.Tensor:
         """Compute the discriminator's logits for each state-action sample.
 
-        A high value corresponds to predicting generator, and a low value corresponds to
-        predicting expert.
+        A high value corresponds to predicting expert, and a low value corresponds to
+        predicting generator.
 
         Args:
             state: state at time t, of shape `(batch_size,) + state_shape`.
@@ -261,8 +263,8 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
                 `action` at time t.
 
         Returns:
-            Discriminator logits of shape `(batch_size,)`. A high output indicates a
-            generator-like transition.
+            Discriminator logits of shape `(batch_size,)`. A high output indicates an
+            expert-like transition.
         """  # noqa: DAR202
 
     @property
@@ -318,7 +320,7 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
                 gen_samples=gen_samples,
                 expert_samples=expert_samples,
             )
-            disc_logits = self.logits_gen_is_high(
+            disc_logits = self.logits_expert_is_high(
                 batch["state"],
                 batch["action"],
                 batch["next_state"],
@@ -327,7 +329,7 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
             )
             loss = F.binary_cross_entropy_with_logits(
                 disc_logits,
-                batch["labels_gen_is_one"].float(),
+                batch["labels_expert_is_one"].float(),
             )
 
             # do gradient step
@@ -340,7 +342,7 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
             with th.no_grad():
                 train_stats = compute_train_stats(
                     disc_logits,
-                    batch["labels_gen_is_one"],
+                    batch["labels_expert_is_one"],
                     loss,
                 )
             self.logger.record("global_step", self._global_step)
@@ -536,8 +538,10 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
         acts = np.concatenate([expert_samples["acts"], gen_samples["acts"]])
         next_obs = np.concatenate([expert_samples["next_obs"], gen_samples["next_obs"]])
         dones = np.concatenate([expert_samples["dones"], gen_samples["dones"]])
-        labels_gen_is_one = np.concatenate(
-            [np.zeros(n_expert, dtype=int), np.ones(n_gen, dtype=int)],
+        # notice that the labels use the convention that expert samples are
+        # labelled with 1 and generator samples with 0.
+        labels_expert_is_one = np.concatenate(
+            [np.ones(n_expert, dtype=int), np.zeros(n_gen, dtype=int)],
         )
 
         # Calculate generator-policy log probabilities.
@@ -561,7 +565,7 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
             "action": acts_th,
             "next_state": next_obs_th,
             "done": dones_th,
-            "labels_gen_is_one": self._torchify_array(labels_gen_is_one),
+            "labels_expert_is_one": self._torchify_array(labels_expert_is_one),
             "log_policy_act_prob": self._torchify_array(log_policy_act_prob),
         }
 
