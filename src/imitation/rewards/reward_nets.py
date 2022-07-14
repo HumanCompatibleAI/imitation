@@ -390,13 +390,17 @@ class NormalizedRewardNet(RewardNetWrapper):
             done: End-of-episode (terminal state) indicator of shape `(batch_size,)`.
             update_stats: Whether to update the running stats of the normalization
                 layer.
+            **kwargs: kwargs passed to base predict_processed call.
 
         Returns:
             Computed normalized rewards of shape `(batch_size,`).
         """
         with networks.evaluating(self):
             # switch to eval mode (affecting normalization, dropout, etc)
-            rew_th = self.base.predict_th(state, action, next_state, done)
+            rew_th = th.tensor(
+                self.base.predict_processed(state, action, next_state, done, **kwargs),
+                device=self.device,
+            )
             rew = self.normalize_output_layer(rew_th).detach().cpu().numpy().flatten()
         if update_stats:
             with th.no_grad():
@@ -701,13 +705,13 @@ class AddSTDRewardWrapper(RewardNetWrapper):
 
     base: RewardNetWithVariance
 
-    def __init__(self, base: RewardNetWithVariance, default_alpha: float = 1.0):
+    def __init__(self, base: RewardNetWithVariance, default_alpha: float = 0.0):
         """Create a conservative reward network.
 
         Args:
             base: An uncertain rewarard network
             default_alpha: multiple of standard deviation to add to the reward mean.
-            Defaults to 1.0.
+                Defaults to 0.0.
         """
         super().__init__(base)
         self.default_alpha = default_alpha
@@ -730,6 +734,7 @@ class AddSTDRewardWrapper(RewardNetWrapper):
             done: End-of-episode (terminal state) indicator of shape `(batch_size,)`.
             alpha: multiple of standard deviation to add to the reward mean. Defaults
                 to the value provided at initialization.
+            **kwargs: are not used
 
         Returns:
             Estimated lower confidence bounds on rewards of shape `(batch_size,`).
