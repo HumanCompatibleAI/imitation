@@ -747,7 +747,7 @@ class AddSTDRewardWrapper(RewardNetWrapper):
         return reward_mean + alpha * np.sqrt(reward_var)
 
     def forward(self, *args):
-        self.base.forward(*args)
+        return self.base.forward(*args)
 
 
 def make_reward_net(
@@ -756,6 +756,7 @@ def make_reward_net(
     net_cls: Type[RewardNet],
     net_kwargs: Mapping[str, Any],
     normalize_output_layer: Type[nn.Module],
+    add_std_alpha: Optional[float] = None,
 ) -> RewardNet:
     """Builds a reward network.
 
@@ -766,15 +767,31 @@ def make_reward_net(
         net_kwargs: Keyword arguments passed to reward network constructor.
         normalize_output_layer: Wrapping the reward_net with NormalizedRewardNet
             to normalize the reward output.
+        add_std_alpha: multiple of reward function standard deviation to add to the
+            reward in predict_processed. Must be None when using a reward function that
+            does not keep track of variance. Defaults to None.
 
     Returns:
-        An instance of `net_cls`.
+        A, possibly wrapped, instance of `net_cls`.
+
+    Raises:
+        ValueError: if you try to specify add_std_alpha for a reward network that
+            is not an instance of `RewardNetWithVariance`.
     """
     reward_net = net_cls(
         observation_space,
         action_space,
         **net_kwargs,
     )
+
+    if add_std_alpha is not None:
+        if isinstance(reward_net, RewardNetWithVariance):
+            reward_net = AddSTDRewardWrapper(reward_net, default_alpha=add_std_alpha)
+        else:
+            raise ValueError(
+                "Cannot add standard deviation to reward net that "
+                "is not an instance of RewardNetWithVariance!",
+            )
 
     if normalize_output_layer is not None:
         reward_net = NormalizedRewardNet(

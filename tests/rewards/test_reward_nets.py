@@ -171,7 +171,8 @@ def test_validate_wrapper_structure():
 
     # The top level wrapper is an instance of WrapperB this should raise a type error
     with pytest.raises(
-        TypeError, match=r"Wrapper structure should be match \(one of\) \{.*\}"
+        TypeError,
+        match=r"Wrapper structure should be match \(one of\) \{.*\}",
     ):
         serialize._validate_wrapper_structure(reward_net, [[RewardNetA]])
 

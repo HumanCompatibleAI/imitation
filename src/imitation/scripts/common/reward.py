@@ -1,7 +1,7 @@
 """Common configuration elements for reward network training."""
 
 import logging
-from typing import Any, Mapping, Type
+from typing import Any, Mapping, Optional, Type
 
 import sacred
 from stable_baselines3.common import vec_env
@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 def config():
     # Custom reward network
     net_cls = None
+    add_std_alpha = None
     net_kwargs = {}
     normalize_output_layer = networks.RunningNorm
     locals()  # quieten flake8
@@ -46,6 +47,7 @@ def normalize_output_running():
 @reward_ingredient.named_config
 def reward_ensemble():
     net_cls = reward_nets.RewardEnsemble  # noqa: F841
+    add_std_alpha = 0  # noqa: F841
 
 
 @reward_ingredient.config_hook
@@ -68,7 +70,8 @@ def make_reward_net(
     venv: vec_env.VecEnv,
     net_cls: Type[reward_nets.RewardNet],
     net_kwargs: Mapping[str, Any],
-    normalize_output_layer: Type[nn.Module],
+    normalize_output_layer: Optional[Type[nn.Module]],
+    add_std_alpha: Optional[float],
 ) -> reward_nets.RewardNet:
     """Builds a reward network.
 
@@ -78,9 +81,12 @@ def make_reward_net(
         net_kwargs: Keyword arguments passed to reward network constructor.
         normalize_output_layer: Wrapping the reward_net with NormalizedRewardNet
             to normalize the reward output.
+        add_std_alpha: multiple of reward function standard deviation to add to the
+            reward in predict_processed. Must be None when using a reward function that
+            does not keep track of variance. Defaults to None.
 
     Returns:
-        None if `reward_net_cls` is None; otherwise, an instance of `reward_net_cls`.
+        A, possibly wrapped, instance of `net_cls`.
     """
     reward_net = reward_nets.make_reward_net(
         venv.observation_space,
@@ -88,6 +94,7 @@ def make_reward_net(
         net_cls,
         net_kwargs,
         normalize_output_layer,
+        add_std_alpha,
     )
     logging.info(f"Reward network:\n {reward_net}")
     return reward_net

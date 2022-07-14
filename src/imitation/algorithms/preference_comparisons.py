@@ -804,7 +804,7 @@ class RewardTrainer(abc.ABC):
             model: the RewardNet instance to be trained
             custom_logger: Where to log to; if None (default), creates a new logger.
         """
-        self.model = model
+        self._model = model
         self.logger = custom_logger or imit_logger.configure()
 
     def train(self, dataset: PreferenceDataset, epoch_multiplier: float = 1.0):
@@ -815,7 +815,7 @@ class RewardTrainer(abc.ABC):
             epoch_multiplier: how much longer to train for than usual
                 (measured relatively).
         """
-        with networks.training(self.model):
+        with networks.training(self._model):
             self._train(dataset, epoch_multiplier)
 
     @abc.abstractmethod
@@ -825,6 +825,8 @@ class RewardTrainer(abc.ABC):
 
 class BasicRewardTrainer(RewardTrainer):
     """Train a basic reward model."""
+
+    _model: reward_nets.RewardNet
 
     def __init__(
         self,
@@ -856,7 +858,7 @@ class BasicRewardTrainer(RewardTrainer):
         self.batch_size = batch_size
         self.epochs = epochs
         self.optim = th.optim.AdamW(
-            self.model.parameters(),
+            self._model.parameters(),
             lr=lr,
             weight_decay=weight_decay,
         )
@@ -878,7 +880,7 @@ class BasicRewardTrainer(RewardTrainer):
         for _ in tqdm(range(epochs), desc="Training reward model"):
             for fragment_pairs, preferences in dataloader:
                 self.optim.zero_grad()
-                output = self.loss(self.model, fragment_pairs, preferences)
+                output = self.loss(self._model, fragment_pairs, preferences)
                 loss = output["loss"]
                 loss.backward()
                 self.optim.step()
@@ -890,7 +892,7 @@ class BasicRewardTrainer(RewardTrainer):
 class RewardEnsembleTrainer(BasicRewardTrainer):
     """Train a reward ensemble."""
 
-    model: reward_nets.RewardEnsemble
+    _model: reward_nets.RewardEnsemble
 
     def __init__(
         self,
@@ -923,7 +925,7 @@ class RewardEnsembleTrainer(BasicRewardTrainer):
                 self.optim.zero_grad()
                 losses = []
                 metrics = []
-                for member in self.model.members:
+                for member in self._model.members:
                     output = self.loss(member, fragment_pairs, preferences)
                     losses.append(output["loss"])
                     metrics.append(output["metrics"])
@@ -935,7 +937,7 @@ class RewardEnsembleTrainer(BasicRewardTrainer):
                 # Note here we are return all the losses not just the mean
                 # This will give us a histogram
                 self.logger.record("loss", loss.item())
-                self.logger.record("loss_std", loss.std())
+                self.logger.record("loss_std", loss.std().item())
                 self.logger.record("dist_loss", losses.detach().cpu().numpy())
 
                 # Turn metrics from a list of dictionaries into a dictionary of
@@ -1090,8 +1092,8 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
         self.reward_trainer.logger = self.logger
         # the reward_trainer's model should refer to the same object as our copy
         # the only exception to this is when we are using a wrapped reward ensemble
-        assert self.reward_trainer.model is self.model or isinstance(
-            self.reward_trainer.model,
+        assert self.reward_trainer._model is self.model or isinstance(
+            self.reward_trainer._model,
             reward_nets.RewardEnsemble,
         )
         self.trajectory_generator = trajectory_generator

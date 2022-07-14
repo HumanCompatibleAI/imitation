@@ -8,8 +8,8 @@ from stable_baselines3.common.vec_env import VecEnv
 
 from imitation.rewards import common
 from imitation.rewards.reward_nets import (
+    AddSTDRewardWrapper,
     NormalizedRewardNet,
-    RewardEnsemble,
     RewardNet,
     RewardNetWrapper,
     ShapedRewardNet,
@@ -130,12 +130,28 @@ def _validate_wrapper_structure(
         if valid:
             return reward_net
 
+    # Provide a useful error
     formatted_prefixes = [
         "[" + ",".join(t.__name__ for t in prefix) + "]" for prefix in prefixes
     ]
+
+    wrapper = reward_net
+    wrappers = []
+    while True:
+        wrappers.append(wrapper.__class__)
+        if hasattr(wrapper, "base"):
+            wrapper = wrapper.base
+        else:
+            break
+
+    formatted_wrapper_structure = "[" + ",".join(t.__name__ for t in wrappers) + "]"
+
     raise TypeError(
         "Wrapper structure should "
-        "be match (one of) {" + " or ".join(formatted_prefixes) + "}",
+        + "be match (one of) "
+        + " or ".join(formatted_prefixes)
+        + " but found "
+        + formatted_wrapper_structure,
     )
 
 
@@ -199,13 +215,17 @@ reward_registry.register(
             _strip_wrappers(
                 _validate_wrapper_structure(
                     th.load(str(path)),
-                    [[RewardEnsemble], [NormalizedRewardNet, RewardEnsemble]],
+                    [[AddSTDRewardWrapper], [NormalizedRewardNet, AddSTDRewardWrapper]],
                 ),
                 (NormalizedRewardNet,),
             ),
+            attr="predict_processed",
+            default_kwargs={},
+            **kwargs,
         ),
     ),
 )
+
 
 reward_registry.register(key="zero", value=load_zero)
 

@@ -40,7 +40,7 @@ def save_checkpoint(
 ):
     """Save reward model and optionally policy."""
     os.makedirs(save_path, exist_ok=True)
-    th.save(trainer.reward_trainer.model, os.path.join(save_path, "reward_net.pt"))
+    th.save(trainer.model, os.path.join(save_path, "reward_net.pt"))
     if allow_save_policy:
         # Note: We should only save the model as model.pkl if `trajectory_generator`
         # contains one. Specifically we check if the `trajectory_generator` contains an
