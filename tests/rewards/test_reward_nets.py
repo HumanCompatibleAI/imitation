@@ -416,6 +416,20 @@ def test_reward_ensemble_reward_moments(two_ensemble, numpy_transitions):
     two_ensemble.members[0].forward.assert_called_once()
 
 
+def test_ensemble_members_have_different_parameters(env_2d):
+    ensemble = reward_nets.RewardEnsemble(
+        env_2d.observation_space,
+        env_2d.action_space,
+        num_members=2,
+        member_cls=reward_nets.BasicRewardNet,
+    )
+
+    assert not th.allclose(
+        next(ensemble.members[0].parameters()),
+        next(ensemble.members[1].parameters()),
+    )
+
+
 def test_add_std_reward_wrapper(two_ensemble, numpy_transitions):
     two_ensemble.members[0].value = 3
     two_ensemble.members[1].value = -1
@@ -425,6 +439,28 @@ def test_add_std_reward_wrapper(two_ensemble, numpy_transitions):
     # test overriding in predict processed works correctly
     rewards = reward_fn.predict_processed(*numpy_transitions, alpha=-0.5)
     assert np.allclose(rewards, 1 - 0.5 * np.sqrt(8))
+
+
+def test_normalize_kwargs_passes(env_2d, numpy_transitions):
+    basic_reward_net = reward_nets.BasicRewardNet(
+        env_2d.observation_space,
+        env_2d.action_space,
+    )
+    basic_reward_net.predict_processed = mock.Mock(return_value=np.zeros(10))
+    normalized_reward_net = reward_nets.NormalizedRewardNet(
+        basic_reward_net,
+        networks.RunningNorm,
+    )
+    normalized_reward_net.predict_processed(
+        *numpy_transitions,
+        update_states=False,
+        foobar=42,
+    )
+    basic_reward_net.predict_processed.assert_called_once_with(
+        *numpy_transitions,
+        update_states=False,
+        foobar=42,
+    )
 
 
 @pytest.mark.parametrize("env_name", ENVS)
