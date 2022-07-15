@@ -24,13 +24,16 @@ reward_registry: registry.Registry[RewardFnLoaderFn] = registry.Registry()
 
 
 class ValidateRewardFn(reward_function.RewardFn):
-    """Add sanity check to the reward function for dealing with VecEnvs."""
+    """Wrap reward function to add sanity check.
+
+    Checks that the reward vector is equal to the batch size of the input.
+    """
 
     def __init__(
         self,
         reward_fn: reward_function.RewardFn,
     ):
-        """Initialize the Validate Reward 
+        """Builds the reward validator.
 
         Args:
             reward_fn: base reward function
@@ -48,7 +51,8 @@ class ValidateRewardFn(reward_function.RewardFn):
         rew = self.reward_fn(state, action, next_state, done)
         assert rew.shape == (len(state),)
         return rew
-    
+
+
 def _strip_wrappers(
     reward_net: RewardNet,
     wrapper_types: Iterable[Type[RewardNetWrapper]],
@@ -147,7 +151,11 @@ reward_registry.register(key="zero", value=load_zero)
 
 
 @util.docstring_parameter(reward_types=", ".join(reward_registry.keys()))
-def load_reward(reward_type: str, reward_path: str, venv: VecEnv) -> reward_function.RewardFn:
+def load_reward(
+    reward_type: str,
+    reward_path: str,
+    venv: VecEnv,
+) -> reward_function.RewardFn:
     """Load serialized reward.
 
     Args:

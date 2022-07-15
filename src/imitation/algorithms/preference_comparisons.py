@@ -25,8 +25,7 @@ from imitation.data.types import (
     Transitions,
 )
 from imitation.policies import exploration_wrapper
-from imitation.rewards import reward_function
-from imitation.rewards import reward_nets, reward_wrapper
+from imitation.rewards import reward_function, reward_nets, reward_wrapper
 from imitation.util import logger as imit_logger
 from imitation.util import networks, util
 

@@ -1,8 +1,10 @@
 """Type alias shared by reward-related code."""
 
-from typing import Protocol
 import abc
+from typing import Protocol
+
 import numpy as np
+
 
 class RewardFn(Protocol):
     """Abstract class for reward function.
@@ -12,6 +14,7 @@ class RewardFn(Protocol):
     """
 
     def __init__(self):
+        """Builds a RewardFn."""
         super().__init__()
 
     @abc.abstractmethod
@@ -29,7 +32,8 @@ class RewardFn(Protocol):
             action: Actions of shape `(batch_size,) + action_shape`.
             next_state: Successor states of shape `(batch_size,) + state_shape`.
             done: End-of-episode (terminal state) indicator of shape `(batch_size,)`.
+
         Returns:
-            Computed np.ndarray rewards of shape `(batch_size,`).
-        """
+            Computed rewards of shape `(batch_size,`).
+        """  # noqa: DAR202
         ...
