@@ -144,9 +144,9 @@ def load_rl_algo_from_path(
     _seed: int,
 ) -> base_class.BaseAlgorithm:
     agent = serialize.load_stable_baselines_model(
-        rl_cls,
-        agent_path,
-        venv,
+        cls=rl_cls,
+        path=agent_path,
+        venv=venv,
         seed=_seed,
         **rl_kwargs,
     )

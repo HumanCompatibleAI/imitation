@@ -13,6 +13,8 @@ from imitation.data import rollout
 from imitation.policies import serialize
 from imitation.scripts.common import common, demonstrations, train
 from imitation.scripts.config.train_imitation import train_imitation_ex
+from stable_baselines3.common.utils import get_device
+import torch as th
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +24,7 @@ def make_policy(
     venv: vec_env.VecEnv,
     policy_cls: Type[policies.BasePolicy],
     policy_kwargs: Mapping[str, Any],
+    policy_path: Optional[str],
 ) -> policies.BasePolicy:
     """Makes policy.
 
@@ -29,6 +32,8 @@ def make_policy(
         venv: Vectorized environment we will be imitating demos from.
         policy_cls: Type of a Stable Baselines3 policy architecture.
         policy_kwargs: Keyword arguments for policy constructor.
+        policy_path: Path to serialized policy. If provided, then load the
+            policy from this path. Otherwise, make a new policy.
 
     Returns:
         A Stable Baselines3 policy.
@@ -43,7 +48,15 @@ def make_policy(
                 "lr_schedule": utils.get_schedule_fn(1),
             },
         )
-    policy = policy_cls(**policy_kwargs)
+    if policy_path is not None:
+        
+        device = get_device("auto")
+        saved_variables = th.load(policy_path, map_location=device)
+        policy = policy_cls(**saved_variables["data"], **policy_kwargs)
+        policy.load_state_dict(saved_variables["state_dict"])
+        policy.to(device)
+    else:
+        policy = policy_cls(**policy_kwargs)
     logger.info(f"Policy network summary:\n {policy}")
     return policy
 
@@ -88,6 +101,7 @@ def train_imitation(
     bc_train_kwargs: Mapping[str, Any],
     dagger: Mapping[str, Any],
     use_dagger: bool,
+    agent_path: Optional[str],
 ) -> Mapping[str, Mapping[str, float]]:
     """Runs DAgger (if `use_dagger`) or BC (otherwise) training.
 
@@ -96,6 +110,8 @@ def train_imitation(
         bc_train_kwargs: Keyword arguments passed through to `BC.train` method.
         dagger: Arguments for DAgger training.
         use_dagger: If True, train using DAgger; otherwise, use BC.
+        agent_path: Path to directory containing pre-trained agent for warm start. If None, train from
+            scratch.
 
     Returns:
         Statistics for rollouts from the trained policy and demonstration data.

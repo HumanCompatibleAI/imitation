@@ -271,11 +271,11 @@ def trainer_diverse_env(_algorithm_kwargs, _env_name, tmpdir, expert_transitions
 
 
 @pytest.mark.parametrize("n_timesteps", [2, 4, 10])
-def test_logits_gen_is_high_log_policy_act_prob(
+def test_logits_expert_is_high_log_policy_act_prob(
     trainer_diverse_env: common.AdversarialTrainer,
     n_timesteps: int,
 ):
-    """Smoke test calling `logits_gen_is_high` on `AdversarialTrainer`.
+    """Smoke test calling `logits_expert_is_high` on `AdversarialTrainer`.
 
     For AIRL, also checks that the function raises
     error on `log_policy_act_prob=None`.
@@ -306,7 +306,7 @@ def test_logits_gen_is_high_log_policy_act_prob(
             maybe_error_ctx = contextlib.nullcontext()
 
         with maybe_error_ctx:
-            trainer_diverse_env.logits_gen_is_high(
+            trainer_diverse_env.logits_expert_is_high(
                 obs,
                 acts,
                 next_obs,
