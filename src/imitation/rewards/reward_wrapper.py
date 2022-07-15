@@ -6,7 +6,7 @@ from typing import Deque
 import numpy as np
 from stable_baselines3.common import callbacks, vec_env
 
-from imitation.rewards import common
+from imitation.rewards import reward_function
 
 
 class WrappedRewardCallback(callbacks.BaseCallback):
@@ -47,7 +47,7 @@ class RewardVecEnvWrapper(vec_env.VecEnvWrapper):
     def __init__(
         self,
         venv: vec_env.VecEnv,
-        reward_fn: common.RewardFn,
+        reward_fn: reward_function.RewardFn,
         ep_history: int = 100,
     ):
         """Builds RewardVecEnvWrapper.
