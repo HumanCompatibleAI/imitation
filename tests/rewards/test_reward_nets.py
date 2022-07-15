@@ -398,21 +398,21 @@ def test_reward_ensemble_test_value_error(env_2d):
         )
 
 
-def test_reward_ensemble_reward_moments(two_ensemble, numpy_transitions):
+def test_reward_ensemble_predict_reward_moments(two_ensemble, numpy_transitions):
     # Test that the calculation of mean and variance is correct
     two_ensemble.members[0].value = 0
     two_ensemble.members[1].value = 0
-    mean, var = two_ensemble.reward_moments(*numpy_transitions)
+    mean, var = two_ensemble.predict_reward_moments(*numpy_transitions)
     assert np.isclose(mean, 0).all()
     assert np.isclose(var, 0).all()
     two_ensemble.members[0].value = 3
     two_ensemble.members[1].value = -1
-    mean, var = two_ensemble.reward_moments(*numpy_transitions)
+    mean, var = two_ensemble.predict_reward_moments(*numpy_transitions)
     assert np.isclose(mean, 1).all()
     assert np.isclose(var, 8).all()  # note we are using the unbiased variance estimator
     # Test that ensemble calls members correctly
     two_ensemble.members[0].forward = mock.MagicMock(return_value=th.zeros(10))
-    mean, var = two_ensemble.reward_moments(*numpy_transitions)
+    mean, var = two_ensemble.predict_reward_moments(*numpy_transitions)
     two_ensemble.members[0].forward.assert_called_once()
 
 
@@ -441,7 +441,7 @@ def test_add_std_reward_wrapper(two_ensemble, numpy_transitions):
     assert np.allclose(rewards, 1 - 0.5 * np.sqrt(8))
 
 
-def test_normalize_kwargs_passes(env_2d, numpy_transitions):
+def test_normalization_wrappers_passes_on_kwargs(env_2d, numpy_transitions):
     basic_reward_net = reward_nets.BasicRewardNet(
         env_2d.observation_space,
         env_2d.action_space,

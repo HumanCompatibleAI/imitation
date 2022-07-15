@@ -246,7 +246,7 @@ class RewardNetWithVariance(RewardNet):
     """A reward net that keeps track of its epistemic uncertainty through variance."""
 
     @abc.abstractmethod
-    def reward_moments(
+    def predict_reward_moments(
         self,
         state: np.ndarray,
         action: np.ndarray,
@@ -671,7 +671,7 @@ class RewardEnsemble(RewardNetWithVariance):
         return self.forward_all(state, action, next_state, done).mean(-1)
 
     @th.no_grad()
-    def reward_moments(
+    def predict_reward_moments(
         self,
         state: np.ndarray,
         action: np.ndarray,
@@ -742,7 +742,7 @@ class AddSTDRewardWrapper(RewardNetWrapper):
         if alpha is None:
             alpha = self.default_alpha
 
-        reward_mean, reward_var = self.base.reward_moments(
+        reward_mean, reward_var = self.base.predict_reward_moments(
             state,
             action,
             next_state,
