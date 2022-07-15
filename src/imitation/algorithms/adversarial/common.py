@@ -474,7 +474,7 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
             log_policy_act_prob_th = distribution.log_prob(scaled_acts_th)
         else:
             return None
-        return log_policy_act_prob_th.detach().cpu().numpy()
+        return log_policy_act_prob_th
 
     def _make_disc_train_batch(
         self,
