@@ -624,12 +624,13 @@ class RewardEnsemble(RewardNetWithVariance):
             member_kwargs: keyword arguments to pass to the ensemble members
             member_normalize_output_layer: The normalization layer to use for the
                 member classes. Defaults to None.
-            **kwargs: passed along to superclass
+            **kwargs: ignored
 
         Raises:
             ValueError: if num_members is less than 1
         """
-        super().__init__(observation_space, action_space, **kwargs)
+        del kwargs
+        super().__init__(observation_space, action_space)
         if num_members < 1:
             raise ValueError("Must be at least 1 member in the ensemble.")
 
