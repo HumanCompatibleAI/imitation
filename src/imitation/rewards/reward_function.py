@@ -13,10 +13,6 @@ class RewardFn(Protocol):
     states, actions, next states and dones.
     """
 
-    def __init__(self):
-        """Builds a RewardFn."""
-        super().__init__()
-
     @abc.abstractmethod
     def __call__(
         self,
@@ -36,4 +32,3 @@ class RewardFn(Protocol):
         Returns:
             Computed rewards of shape `(batch_size,`).
         """  # noqa: DAR202
-        ...
