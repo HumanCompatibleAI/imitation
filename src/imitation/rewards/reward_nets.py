@@ -215,10 +215,12 @@ class RewardNetWrapper(RewardNet):
     """An abstract RewardNet wrapping a base network.
 
     A concrete implementation of the `forward` method is needed.
-    Note: by default, `predict`, `predict_th`, `preprocess`, `predict_processed`,
+    Note: by default, `predict`, `predict_th`, `preprocess`,
     `device` and all the PyTorch `nn.Module` methods will be inherited from `RewardNet`
     and not passed through to the base network. If any of these methods is overridden
-    in the base `RewardNet`, this will not affect `RewardNetWrapper`.
+    in the base `RewardNet`, this will not affect `RewardNetWrapper`. However,
+    `predict_processed` is overridden and will call predict processed on the base
+    net passing along all kwargs.
     """
 
     def __init__(
@@ -240,6 +242,17 @@ class RewardNetWrapper(RewardNet):
     @property
     def base(self) -> RewardNet:
         return self._base
+
+    def predict_processed(
+        self,
+        state: np.ndarray,
+        action: np.ndarray,
+        next_state: np.ndarray,
+        done: np.ndarray,
+        **kwargs,
+    ) -> np.ndarray:
+        super().predict_processed.__doc__
+        return self.base.predict_processed(state, action, next_state, done, **kwargs)
 
 
 class RewardNetWithVariance(RewardNet):

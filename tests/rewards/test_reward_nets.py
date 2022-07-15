@@ -17,6 +17,11 @@ from imitation.policies import base
 from imitation.rewards import reward_nets, serialize
 from imitation.util import networks, util
 
+
+def _potential(x):
+    return th.zeros(x.shape[0])
+
+
 ENVS = ["FrozenLake-v1", "CartPole-v1", "Pendulum-v1"]
 DESERIALIZATION_TYPES = [
     "zero",
@@ -31,6 +36,13 @@ REWARD_NETS = [
     reward_nets.BasicShapedRewardNet,
     reward_nets.RewardEnsemble,
 ]
+
+
+MAKE_BASIC_REWARD_NET_WRAPPERS = [
+    lambda base: reward_nets.ShapedRewardNet(base, _potential, 0.99),
+    lambda base: reward_nets.NormalizedRewardNet(base, networks.RunningNorm),
+]
+
 REWARD_NET_KWARGS = [
     {},
     {"normalize_input_layer": networks.RunningNorm},
@@ -62,10 +74,6 @@ def test_init_no_crash(
 
 def _sample(space, n):
     return np.array([space.sample() for _ in range(n)])
-
-
-def _potential(x):
-    return th.zeros(1)
 
 
 def _make_env_and_save_reward_net(env_name, reward_type, tmpdir):
@@ -385,8 +393,13 @@ def two_ensemble(env_2d) -> reward_nets.RewardEnsemble:
 
 @pytest.fixture
 def numpy_transitions() -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    """A batch of states, actions, next_states, and dones as np.ndarrays."""
-    return np.zeros((10, 5)), np.zeros((10, 1)), np.zeros((10, 5)), np.zeros((10,))
+    """A batch of states, actions, next_states, and dones as np.ndarrays for Env2D."""
+    return (
+        np.zeros((10, 5, 5)),
+        np.zeros((10, 1), dtype=int),
+        np.zeros((10, 5, 5)),
+        np.zeros((10,)),
+    )
 
 
 def test_reward_ensemble_test_value_error(env_2d):
@@ -398,7 +411,10 @@ def test_reward_ensemble_test_value_error(env_2d):
         )
 
 
-def test_reward_ensemble_predict_reward_moments(two_ensemble, numpy_transitions):
+def test_reward_ensemble_predict_reward_moments(
+    two_ensemble: reward_nets.RewardEnsemble,
+    numpy_transitions: tuple,
+):
     # Test that the calculation of mean and variance is correct
     two_ensemble.members[0].value = 0
     two_ensemble.members[1].value = 0
@@ -430,7 +446,10 @@ def test_ensemble_members_have_different_parameters(env_2d):
     )
 
 
-def test_add_std_reward_wrapper(two_ensemble, numpy_transitions):
+def test_add_std_reward_wrapper(
+    two_ensemble: reward_nets.RewardEnsemble,
+    numpy_transitions: tuple,
+):
     two_ensemble.members[0].value = 3
     two_ensemble.members[1].value = -1
     reward_fn = reward_nets.AddSTDRewardWrapper(two_ensemble, default_alpha=0.1)
@@ -441,24 +460,26 @@ def test_add_std_reward_wrapper(two_ensemble, numpy_transitions):
     assert np.allclose(rewards, 1 - 0.5 * np.sqrt(8))
 
 
-def test_normalization_wrappers_passes_on_kwargs(env_2d, numpy_transitions):
+@pytest.mark.parametrize("make_wrapper", MAKE_BASIC_REWARD_NET_WRAPPERS)
+def test_wrappers_pass_on_kwargs(
+    make_wrapper: reward_nets.RewardNetWrapper,
+    env_2d: Env2D,
+    numpy_transitions: tuple,
+):
     basic_reward_net = reward_nets.BasicRewardNet(
         env_2d.observation_space,
         env_2d.action_space,
     )
-    basic_reward_net.predict_processed = mock.Mock(return_value=np.zeros(10))
-    normalized_reward_net = reward_nets.NormalizedRewardNet(
+    basic_reward_net.predict_processed = mock.Mock(return_value=np.zeros((10,)))
+    normalized_reward_net = make_wrapper(
         basic_reward_net,
-        networks.RunningNorm,
     )
     normalized_reward_net.predict_processed(
         *numpy_transitions,
-        update_states=False,
         foobar=42,
     )
     basic_reward_net.predict_processed.assert_called_once_with(
         *numpy_transitions,
-        update_states=False,
         foobar=42,
     )
 
