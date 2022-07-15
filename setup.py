@@ -53,7 +53,7 @@ def get_readme() -> str:
 
 
 class InstallCommand(install):
-    """Custom intall command to throw warnings about external dependencies."""
+    """Custom install command to throw warnings about external dependencies."""
 
     def run(self):
         """Run the install command."""
