@@ -26,7 +26,7 @@ reward_registry: registry.Registry[RewardFnLoaderFn] = registry.Registry()
 class ValidateRewardFn(reward_function.RewardFn):
     """Wrap reward function to add sanity check.
 
-    Checks that the reward vector is equal to the batch size of the input.
+    Checks that the length of the reward vector is equal to the batch size of the input.
     """
 
     def __init__(

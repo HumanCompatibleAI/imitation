@@ -5,6 +5,10 @@ import pytest
 
 from imitation.rewards import reward_function, serialize
 
+OBS = np.random.randint(0, 10, (64, 100))
+ACTS = NEXT_OBS = OBS
+DONES = np.zeros(64, dtype=np.bool)
+
 
 def _funky_reward_fn(obs, act, next_obs, done):
     """Returns consecutive reward from 1 to batch size `len(obs)`."""
@@ -12,8 +16,9 @@ def _funky_reward_fn(obs, act, next_obs, done):
     return (np.arange(len(obs))).astype("float32")
 
 
-obs = np.random.randint(0, 10, (64, 100))
-acts = next_obs = done = obs
+def _invalid_reward_fn(obs, act, next_obs, done):
+    """Returns rewards for lesser number of observations."""
+    return (np.arange(len(obs) - 1)).astype("float32")
 
 
 def test_reward_fn_override():
@@ -28,19 +33,14 @@ def test_reward_fn_override():
             """Returns consecutive reward from 0 to batch size -1 (`len(obs)` - 1)."""
             return (np.arange(len(obs))).astype("float32")
 
-    _funky_reward_fn = InheritedFunkyReward()
-    _funky_reward_fn(obs, acts, next_obs)
+    inherited_funky_reward_fn = InheritedFunkyReward()
+    inherited_funky_reward_fn(OBS, ACTS, NEXT_OBS)
 
 
 def test_validate_rewardfn_class():
     validated_reward_fn = serialize.ValidateRewardFn(_funky_reward_fn)
-    validated_reward_fn(obs, acts, next_obs, done)
+    validated_reward_fn(OBS, ACTS, NEXT_OBS, DONES)
 
     with pytest.raises(AssertionError):
-
-        def _invalid_reward_fn(obs, act, next_obs, done):
-            """Returns rewards for lesser number of observations."""
-            return (np.arange(len(obs) - 1)).astype("float32")
-
         invalidated_reward_fn = serialize.ValidateRewardFn(_invalid_reward_fn)
-        invalidated_reward_fn(obs, acts, next_obs, done)
+        invalidated_reward_fn(OBS, ACTS, NEXT_OBS, DONES)
