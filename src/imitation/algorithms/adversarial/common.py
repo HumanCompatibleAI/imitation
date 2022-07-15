@@ -454,12 +454,7 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
             )
         elif isinstance(self.policy, sac_policies.SACPolicy):
             gen_algo_actor = self.policy.actor
-            if gen_algo_actor is None:
-                # TODO(juan): when does this actually happen, why can the policy actor be none
-                # and is there a better way to handle this?
-                raise ValueError(
-                    "SAC policy has no actor!"
-                )
+            assert gen_algo_actor is not None
             # generate log_policy_act_prob from SAC actor.
             mean_actions, log_std, _ = gen_algo_actor.get_action_dist_params(obs_th)
             distribution = gen_algo_actor.action_dist.proba_distribution(
@@ -565,7 +560,6 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
             next_obs,
             dones,
         )
-        assert isinstance(log_policy_act_prob, th.Tensor)
         batch_dict = {
             "state": obs_th,
             "action": acts_th,
