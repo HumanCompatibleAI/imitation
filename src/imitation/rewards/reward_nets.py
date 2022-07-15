@@ -188,6 +188,7 @@ class RewardNet(nn.Module, abc.ABC):
         Returns:
             Computed processed rewards of shape `(batch_size,`).
         """
+        del kwargs
         return self.predict(state, action, next_state, done)
 
     @property
@@ -628,7 +629,7 @@ class RewardEnsemble(RewardNetWithVariance):
         Raises:
             ValueError: if num_members is less than 1
         """
-        super().__init__(observation_space, action_space)
+        super().__init__(observation_space, action_space, **kwargs)
         if num_members < 1:
             raise ValueError("Must be at least 1 member in the ensemble.")
 
@@ -752,6 +753,8 @@ class AddSTDRewardWrapper(RewardNetWrapper):
         Returns:
             Estimated lower confidence bounds on rewards of shape `(batch_size,`).
         """
+        del kwargs
+
         if alpha is None:
             alpha = self.default_alpha
 
