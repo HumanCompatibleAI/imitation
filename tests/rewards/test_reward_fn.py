@@ -13,7 +13,7 @@ def _funky_reward_fn(obs, act, next_obs, done):
 
 
 obs = np.random.randint(0, 10, (64, 100))
-acts = next_obs = obs
+acts = next_obs = done = obs
 
 
 def test_reward_fn_override():
@@ -34,7 +34,7 @@ def test_reward_fn_override():
 
 def test_validate_rewardfn_class():
     validated_reward_fn = serialize.ValidateRewardFn(_funky_reward_fn)
-    validated_reward_fn(obs, acts, next_obs, None)
+    validated_reward_fn(obs, acts, next_obs, done)
 
     with pytest.raises(AssertionError):
 
@@ -43,4 +43,4 @@ def test_validate_rewardfn_class():
             return (np.arange(len(obs) - 1)).astype("float32")
 
         invalidated_reward_fn = serialize.ValidateRewardFn(_invalid_reward_fn)
-        invalidated_reward_fn(obs, acts, next_obs, None)
+        invalidated_reward_fn(obs, acts, next_obs, done)
