@@ -1,5 +1,8 @@
 """Setup for imitation: a reward and imitation learning library."""
 
+import warnings
+from sys import platform
+
 from setuptools import find_packages, setup
 from setuptools.command.install import install
 
@@ -50,24 +53,20 @@ def get_readme() -> str:
 
 
 class InstallCommand(install):
+    """Custom intall command to throw warnings about external dependencies."""
 
     def run(self):
         """Run the install command."""
         install.run(self)
-        from sys import platform
-        import warnings
 
         if platform == "darwin":
             warnings.warn(
                 "Installation of important packages for macOS is required. "
-                "Scripts in the experiments folder will likely not run without these packages: "
-                "gnu-getopt, parallel, coreutils. They can be installed with Homebrew by running "
-                "`brew install gnu-getopt parallel coreutils`."
+                "Scripts in the experiments folder will likely not run without these "
+                "packages: gnu-getopt, parallel, coreutils. They can be installed with "
+                "Homebrew by running `brew install gnu-getopt parallel coreutils`."
                 "See https://brew.sh/ for installation instructions.",
-                category=Warning,
             )
-
-
 
 
 setup(
