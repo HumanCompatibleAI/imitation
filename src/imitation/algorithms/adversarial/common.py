@@ -30,7 +30,7 @@ def compute_train_stats(
     Args:
         disc_logits_expert_is_high: discriminator logits produced by
             `AdversarialTrainer.logits_expert_is_high`.
-        labels_gen_is_one: integer labels describing whether logit was for an
+        labels_expert_is_one: integer labels describing whether logit was for an
             expert (0) or generator (1) sample.
         disc_loss: final discriminator loss.
 
