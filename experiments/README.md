@@ -5,9 +5,8 @@ Experiment scripts are compatible with Linux and macOS.
 macOS to install some GNU-compatible binaries before all experiments scripts will work.
 
 ```
-brew install gdate gnu-getopt
+brew install coreutils gnu-getopt parallel
 ```
-
 
 ## Setup
 

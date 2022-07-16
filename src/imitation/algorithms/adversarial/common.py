@@ -28,10 +28,10 @@ def compute_train_stats(
     """Train statistics for GAIL/AIRL discriminator.
 
     Args:
-        disc_logits_expert_is_high: discriminator logits produced by
-            `DiscrimNet.logits_expert_is_high`.
-        labels_expert_is_one: integer labels describing whether logit was for an
-            expert (1) or generator (0) sample.
+        disc_logits_gen_is_high: discriminator logits produced by
+            `AdversarialTrainer.logits_gen_is_high`.
+        labels_gen_is_one: integer labels describing whether logit was for an
+            expert (0) or generator (1) sample.
         disc_loss: final discriminator loss.
 
     Returns:
@@ -223,10 +223,13 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
         self.gen_algo.set_logger(self.logger)
 
         if gen_train_timesteps is None:
-            gen_train_timesteps = self.gen_algo.get_env().num_envs
+            gen_algo_env = self.gen_algo.get_env()
+            assert gen_algo_env is not None
+            self.gen_train_timesteps = gen_algo_env.num_envs
             if hasattr(self.gen_algo, "n_steps"):  # on policy
-                gen_train_timesteps *= self.gen_algo.n_steps
-        self.gen_train_timesteps = gen_train_timesteps
+                self.gen_train_timesteps *= self.gen_algo.n_steps
+        else:
+            self.gen_train_timesteps = gen_train_timesteps
 
         if gen_replay_buffer_capacity is None:
             gen_replay_buffer_capacity = self.gen_train_timesteps
@@ -434,7 +437,7 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
         self,
         obs_th: th.Tensor,
         acts_th: th.Tensor,
-    ) -> th.Tensor:
+    ) -> Optional[th.Tensor]:
         """Evaluates the given actions on the given observations.
 
         Args:
@@ -453,6 +456,7 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
             )
         elif isinstance(self.policy, sac_policies.SACPolicy):
             gen_algo_actor = self.policy.actor
+            assert gen_algo_actor is not None
             # generate log_policy_act_prob from SAC actor.
             mean_actions, log_std, _ = gen_algo_actor.get_action_dist_params(obs_th)
             distribution = gen_algo_actor.action_dist.proba_distribution(
@@ -467,7 +471,7 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
             log_policy_act_prob_th = distribution.log_prob(scaled_acts_th)
         else:
             return None
-        return log_policy_act_prob_th.detach().cpu().numpy()
+        return log_policy_act_prob_th
 
     def _make_disc_train_batch(
         self,
@@ -566,7 +570,7 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
             "next_state": next_obs_th,
             "done": dones_th,
             "labels_expert_is_one": self._torchify_array(labels_expert_is_one),
-            "log_policy_act_prob": self._torchify_array(log_policy_act_prob),
+            "log_policy_act_prob": log_policy_act_prob,
         }
 
         return batch_dict

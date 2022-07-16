@@ -76,7 +76,8 @@ def train_adversarial(
     """Train an adversarial-network-based imitation learning algorithm.
 
     Checkpoints:
-        - DiscrimNets are saved to `f"{log_dir}/checkpoints/{step}/discrim/"`,
+        - AdversarialTrainer train and test RewardNets are saved to
+           `f"{log_dir}/checkpoints/{step}/reward_{train,test}.pt"`
             where step is either the training round or "final".
         - Generator policies are saved to `f"{log_dir}/checkpoints/{step}/gen_policy/"`.
 
