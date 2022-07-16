@@ -7,7 +7,7 @@ from typing import Any, Mapping, Optional, Type
 from sacred.observers import FileStorageObserver
 from stable_baselines3.common import policies, utils, vec_env
 
-from imitation.algorithms.bc import BC
+from imitation.algorithms.bc import BC, reconstruct_policy
 from imitation.algorithms.dagger import SimpleDAggerTrainer
 from imitation.data import rollout
 from imitation.policies import serialize
@@ -49,12 +49,7 @@ def make_policy(
             },
         )
     if policy_path is not None:
-        
-        device = get_device("auto")
-        saved_variables = th.load(policy_path, map_location=device)
-        policy = policy_cls(**saved_variables["data"], **policy_kwargs)
-        policy.load_state_dict(saved_variables["state_dict"])
-        policy.to(device)
+        policy = reconstruct_policy(policy_path)
     else:
         policy = policy_cls(**policy_kwargs)
     logger.info(f"Policy network summary:\n {policy}")
