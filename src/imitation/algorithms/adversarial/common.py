@@ -28,8 +28,8 @@ def compute_train_stats(
     """Train statistics for GAIL/AIRL discriminator.
 
     Args:
-        disc_logits_gen_is_high: discriminator logits produced by
-            `AdversarialTrainer.logits_gen_is_high`.
+        disc_logits_expert_is_high: discriminator logits produced by
+            `AdversarialTrainer.logits_expert_is_high`.
         labels_gen_is_one: integer labels describing whether logit was for an
             expert (0) or generator (1) sample.
         disc_loss: final discriminator loss.
