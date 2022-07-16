@@ -271,11 +271,11 @@ def trainer_diverse_env(_algorithm_kwargs, _env_name, tmpdir, expert_transitions
 
 
 @pytest.mark.parametrize("n_timesteps", [2, 4, 10])
-def test_logits_gen_is_high_log_policy_act_prob(
+def test_logits_expert_is_high_log_policy_act_prob(
     trainer_diverse_env: common.AdversarialTrainer,
     n_timesteps: int,
 ):
-    """Smoke test calling `logits_gen_is_high` on `AdversarialTrainer`.
+    """Smoke test calling `logits_expert_is_high` on `AdversarialTrainer`.
 
     For AIRL, also checks that the function raises
     error on `log_policy_act_prob=None`.
@@ -306,7 +306,7 @@ def test_logits_gen_is_high_log_policy_act_prob(
             maybe_error_ctx = contextlib.nullcontext()
 
         with maybe_error_ctx:
-            trainer_diverse_env.logits_gen_is_high(
+            trainer_diverse_env.logits_expert_is_high(
                 obs,
                 acts,
                 next_obs,
@@ -317,11 +317,13 @@ def test_logits_gen_is_high_log_policy_act_prob(
 
 @pytest.mark.parametrize("n_samples", [0, 1, 10, 40])
 def test_compute_train_stats(n_samples):
-    disc_logits_gen_is_high = th.from_numpy(np.random.standard_normal([n_samples]) * 10)
+    disc_logits_expert_is_high = th.from_numpy(
+        np.random.standard_normal([n_samples]) * 10,
+    )
     labels_gen_is_one = th.from_numpy(np.random.randint(2, size=[n_samples]))
     disc_loss = th.tensor(np.random.random() * 10)
     stats = common.compute_train_stats(
-        disc_logits_gen_is_high,
+        disc_logits_expert_is_high,
         labels_gen_is_one,
         disc_loss,
     )

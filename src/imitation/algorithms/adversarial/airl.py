@@ -71,25 +71,38 @@ class AIRL(common.AdversarialTrainer):
         done: th.Tensor,
         log_policy_act_prob: th.Tensor,
     ) -> th.Tensor:
-        """
-        Compute the discriminator's logits for each state-action sample.
+        r"""Compute the discriminator's logits for each state-action sample.
 
         In Fu's AIRL paper (https://arxiv.org/pdf/1710.11248.pdf), the
-        discriminator output was given as 
+        discriminator output was given as
         $$
-        D_{\theta}(s,a) = 
+        D_{\theta}(s,a) =
         \frac{ \exp{r_{\theta}(s,a)} } { \exp{r_{\theta}(s,a)} + \pi(a|s) }
         $$
-        with a high value corresponding to expert and a low value corresponding to generator.
+        with a high value corresponding to the expert and a low value corresponding to
+        the generator.
 
-        In other words, the discriminator output is the probability that the action is taken 
-        by the expert rather than the generator.
+        In other words, the discriminator output is the probability that the action is
+        taken by the expert rather than the generator.
 
         The logit of the above is given as
         $$
         \operatorname{logit}(D_{\theta}(s,a)) = r_{\theta}(s,a) - \log{ \pi(a|s) }
         $$
-        which is what is returned by this function.        
+        which is what is returned by this function.
+
+        Args:
+            state: ?
+            action: ?
+            next_state: ?
+            done: ?
+            log_policy_act_prob: ?
+
+        Returns:
+            The logits of the discriminator for each state-action sample.
+
+        Raises:
+            TypeError: If `log_policy_act_prob` is not a tensor.
         """
         if log_policy_act_prob is None:
             raise TypeError(
