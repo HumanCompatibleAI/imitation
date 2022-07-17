@@ -60,9 +60,34 @@ class Trajectory:
     contain the final state of an episode (even if missing the start of the episode).
     """
 
-    def __len__(self):
+    def __len__(self) -> int:
         """Returns number of transitions, equal to the number of actions."""
         return len(self.acts)
+
+    def __eq__(self, other) -> bool:
+        if not isinstance(other, Trajectory):
+            return False
+
+        dict_self, dict_other = dataclasses.asdict(self), dataclasses.asdict(other)
+        # Trajectory objects may still have different keys if different subclasses
+        if dict_self.keys() != dict_other.keys():
+            return False
+
+        if len(self) != len(other):
+            # Short-circuit: if trajectories are of different length, then unequal.
+            # Redundant as later checks would catch this, but speeds up common case.
+            return False
+
+        for k, self_v in dict_self.items():
+            other_v = dict_other[k]
+            if k == "infos":
+                # Treat None equivalent to sequence of empty dicts
+                self_v = [{}] * len(self) if self_v is None else self_v
+                other_v = [{}] * len(other) if other_v is None else other_v
+            if not np.array_equal(self_v, other_v):
+                return False
+
+        return True
 
     def __post_init__(self):
         """Performs input validation: check shapes are as specified in docstring."""
@@ -100,7 +125,7 @@ def _rews_validation(rews: np.ndarray, acts: np.ndarray):
         raise ValueError(f"rewards dtype {rews.dtype} not a float")
 
 
-@dataclasses.dataclass(frozen=True)
+@dataclasses.dataclass(frozen=True, eq=False)
 class TrajectoryWithRew(Trajectory):
     """A `Trajectory` that additionally includes reward information."""
 
@@ -322,9 +347,10 @@ def load(path: AnyPath) -> Sequence[Trajectory]:
     # it should be a Mapping that we need to decode, whereas if it's the old format
     # it's just the sequence of trajectories and we can return it directly.
     data = np.load(path, allow_pickle=True)
-    if isinstance(data, Sequence):
+    if isinstance(data, Sequence):  # old format
+        warnings.warn("Loading old version of Trajectory's", DeprecationWarning)
         return data
-    elif isinstance(data, Mapping):
+    elif isinstance(data, Mapping):  # new format
         num_trajs = len(data["indices"])
         fields = (
             # Account for the extra obs in each trajectory
