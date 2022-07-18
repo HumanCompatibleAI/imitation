@@ -23,7 +23,15 @@ def venv():
     )
 
 
-@pytest.fixture(params=[reward_nets.BasicRewardNet, reward_nets.RewardEnsemble])
+@pytest.fixture(
+    params=[
+        reward_nets.BasicRewardNet,
+        reward_nets.RewardEnsemble,
+        lambda *args: reward_nets.AddSTDRewardWrapper(
+            reward_nets.RewardEnsemble(*args),
+        ),
+    ],
+)
 def reward_net(request, venv):
     return request.param(venv.observation_space, venv.action_space)
 
@@ -183,8 +191,45 @@ def test_trainer_no_crash(
     assert 0.0 < result["reward_accuracy"] <= 1.0
 
 
-def test_discount_rate_no_crash(agent_trainer, reward_net, fragmenter, custom_logger):
+def test_correct_reward_trainer_used_by_default(
+    agent_trainer,
+    reward_net,
+    fragmenter,
+    custom_logger,
+):
+    main_trainer = preference_comparisons.PreferenceComparisons(
+        agent_trainer,
+        reward_net,
+        num_iterations=2,
+        transition_oversampling=2,
+        fragment_length=2,
+        fragmenter=fragmenter,
+        custom_logger=custom_logger,
+    )
+
+    if isinstance(reward_net, reward_nets.RewardEnsemble):
+        assert isinstance(
+            main_trainer.reward_trainer,
+            preference_comparisons.RewardEnsembleTrainer,
+        )
+    elif hasattr(reward_net, "base") and isinstance(
+        reward_net.base,
+        reward_nets.RewardEnsemble,
+    ):
+        assert isinstance(
+            main_trainer.reward_trainer,
+            preference_comparisons.RewardEnsembleTrainer,
+        )
+    else:
+        assert isinstance(
+            main_trainer.reward_trainer,
+            preference_comparisons.BasicRewardTrainer,
+        )
+
+
+def test_discount_rate_no_crash(agent_trainer, venv, fragmenter, custom_logger):
     # also use a non-zero noise probability to check that doesn't cause errors
+    reward_net = reward_nets.BasicRewardNet(venv.observation_space, venv.action_space)
     loss = preference_comparisons.CrossEntropyRewardLoss(
         noise_prob=0.1,
         discount_factor=0.9,

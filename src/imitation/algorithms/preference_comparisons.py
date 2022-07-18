@@ -948,7 +948,7 @@ class RewardEnsembleTrainer(BasicRewardTrainer):
                     self.logger.record(f"dist_{metric}", metrics[metric].cpu().numpy())
 
 
-def make_reward_trainer(
+def _make_reward_trainer(
     reward_model: reward_nets.RewardNet,
     loss: RewardLoss,
     reward_trainer_kwargs: Mapping[str, Any] = {},
@@ -1082,7 +1082,7 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
 
         if reward_trainer is None:
             loss = CrossEntropyRewardLoss()
-            self.reward_trainer = make_reward_trainer(reward_model, loss)
+            self.reward_trainer = _make_reward_trainer(reward_model, loss)
         else:
             self.reward_trainer = reward_trainer
 
@@ -1091,10 +1091,10 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
         # didn't manually set a logger, it would be annoying if a separate one was used.
         self.reward_trainer.logger = self.logger
         # the reward_trainer's model should refer to the same object as our copy
-        # the only exception to this is when we are using a wrapped reward ensemble
+        # except when training a reward ensemble.
         assert self.reward_trainer._model is self.model or isinstance(
-            self.reward_trainer._model,
-            reward_nets.RewardEnsemble,
+            self.reward_trainer,
+            RewardEnsembleTrainer,
         )
         self.trajectory_generator = trajectory_generator
         self.trajectory_generator.logger = self.logger
