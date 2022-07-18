@@ -252,7 +252,7 @@ class RewardNetWrapper(RewardNet):
         done: np.ndarray,
         **kwargs,
     ) -> np.ndarray:
-        super().predict_processed.__doc__
+        __doc__ = super().predict_processed.__doc__
         return self.base.predict_processed(state, action, next_state, done, **kwargs)
 
 
