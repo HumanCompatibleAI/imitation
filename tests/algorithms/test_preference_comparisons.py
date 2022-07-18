@@ -40,7 +40,7 @@ def agent(venv):
 
 
 @pytest.fixture
-def fragmenter():
+def random_fragmenter():
     return preference_comparisons.RandomFragmenter(seed=0, warning_threshold=0)
 
 
@@ -162,7 +162,7 @@ def test_transitions_left_in_buffer(agent_trainer):
 def test_trainer_no_crash(
     agent_trainer,
     reward_net,
-    fragmenter,
+    random_fragmenter,
     custom_logger,
     schedule,
 ):
@@ -172,7 +172,7 @@ def test_trainer_no_crash(
         num_iterations=2,
         transition_oversampling=2,
         fragment_length=2,
-        fragmenter=fragmenter,
+        fragmenter=random_fragmenter,
         custom_logger=custom_logger,
         query_schedule=schedule,
     )
@@ -183,7 +183,12 @@ def test_trainer_no_crash(
     assert 0.0 < result["reward_accuracy"] <= 1.0
 
 
-def test_discount_rate_no_crash(agent_trainer, reward_net, fragmenter, custom_logger):
+def test_discount_rate_no_crash(
+    agent_trainer,
+    reward_net,
+    random_fragmenter,
+    custom_logger,
+):
     # also use a non-zero noise probability to check that doesn't cause errors
     loss = preference_comparisons.CrossEntropyRewardLoss(
         noise_prob=0.1,
@@ -202,23 +207,23 @@ def test_discount_rate_no_crash(agent_trainer, reward_net, fragmenter, custom_lo
         num_iterations=2,
         transition_oversampling=2,
         fragment_length=2,
-        fragmenter=fragmenter,
+        fragmenter=random_fragmenter,
         reward_trainer=reward_trainer,
         custom_logger=custom_logger,
     )
     main_trainer.train(100, 10)
 
 
-def test_synthetic_gatherer_deterministic(agent_trainer, fragmenter):
+def test_synthetic_gatherer_deterministic(agent_trainer, random_fragmenter):
     gatherer = preference_comparisons.SyntheticGatherer(temperature=0)
     trajectories = agent_trainer.sample(10)
-    fragments = fragmenter(trajectories, fragment_length=2, num_pairs=2)
+    fragments = random_fragmenter(trajectories, fragment_length=2, num_pairs=2)
     preferences1 = gatherer(fragments)
     preferences2 = gatherer(fragments)
     assert np.all(preferences1 == preferences2)
 
 
-def test_fragments_terminal(fragmenter):
+def test_fragments_terminal(random_fragmenter):
     trajectories = [
         types.TrajectoryWithRew(
             obs=np.arange(4),
@@ -236,14 +241,14 @@ def test_fragments_terminal(fragmenter):
         ),
     ]
     for _ in range(5):
-        for frags in fragmenter(trajectories, fragment_length=2, num_pairs=2):
+        for frags in random_fragmenter(trajectories, fragment_length=2, num_pairs=2):
             for frag in frags:
                 assert (frag.obs[-1] == 3) == frag.terminal
 
 
 def test_fragments_too_short_error(agent_trainer):
     trajectories = agent_trainer.sample(2)
-    fragmenter = preference_comparisons.RandomFragmenter(
+    random_fragmenter = preference_comparisons.RandomFragmenter(
         seed=0,
         warning_threshold=0,
     )
@@ -253,13 +258,13 @@ def test_fragments_too_short_error(agent_trainer):
     ):
         # the only important bit is that fragment_length is higher than
         # we'll ever reach
-        fragmenter(trajectories, fragment_length=10000, num_pairs=2)
+        random_fragmenter(trajectories, fragment_length=10000, num_pairs=2)
 
 
-def test_preference_dataset_errors(agent_trainer, fragmenter):
+def test_preference_dataset_errors(agent_trainer, random_fragmenter):
     dataset = preference_comparisons.PreferenceDataset()
     trajectories = agent_trainer.sample(2)
-    fragments = fragmenter(trajectories, fragment_length=2, num_pairs=2)
+    fragments = random_fragmenter(trajectories, fragment_length=2, num_pairs=2)
     # just create something with a different shape:
     preferences = np.empty(len(fragments) + 1, dtype=np.float32)
     with pytest.raises(ValueError, match="Unexpected preferences shape"):
@@ -271,13 +276,13 @@ def test_preference_dataset_errors(agent_trainer, fragmenter):
         dataset.push(fragments, preferences)
 
 
-def test_preference_dataset_queue(agent_trainer, fragmenter):
+def test_preference_dataset_queue(agent_trainer, random_fragmenter):
     dataset = preference_comparisons.PreferenceDataset(max_size=5)
     trajectories = agent_trainer.sample(10)
 
     gatherer = preference_comparisons.SyntheticGatherer()
     for i in range(6):
-        fragments = fragmenter(trajectories, fragment_length=2, num_pairs=1)
+        fragments = random_fragmenter(trajectories, fragment_length=2, num_pairs=1)
         preferences = gatherer(fragments)
         assert len(dataset) == min(i, 5)
         dataset.push(fragments, preferences)
@@ -287,10 +292,10 @@ def test_preference_dataset_queue(agent_trainer, fragmenter):
     assert len(dataset) == 5
 
 
-def test_store_and_load_preference_dataset(agent_trainer, fragmenter, tmp_path):
+def test_store_and_load_preference_dataset(agent_trainer, random_fragmenter, tmp_path):
     dataset = preference_comparisons.PreferenceDataset()
     trajectories = agent_trainer.sample(10)
-    fragments = fragmenter(trajectories, fragment_length=2, num_pairs=2)
+    fragments = random_fragmenter(trajectories, fragment_length=2, num_pairs=2)
     gatherer = preference_comparisons.SyntheticGatherer()
     preferences = gatherer(fragments)
     dataset.push(fragments, preferences)
@@ -307,7 +312,7 @@ def test_store_and_load_preference_dataset(agent_trainer, fragmenter, tmp_path):
         _check_trajs_equal(fragments, loaded_fragments)
 
 
-def test_exploration_no_crash(agent, reward_net, fragmenter, custom_logger):
+def test_exploration_no_crash(agent, reward_net, random_fragmenter, custom_logger):
     agent_trainer = preference_comparisons.AgentTrainer(
         agent,
         reward_net,
@@ -319,7 +324,7 @@ def test_exploration_no_crash(agent, reward_net, fragmenter, custom_logger):
         num_iterations=2,
         transition_oversampling=2,
         fragment_length=5,
-        fragmenter=fragmenter,
+        fragmenter=random_fragmenter,
         custom_logger=custom_logger,
     )
     main_trainer.train(100, 10)
