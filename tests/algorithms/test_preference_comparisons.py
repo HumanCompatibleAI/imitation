@@ -191,6 +191,22 @@ def test_trainer_no_crash(
     assert 0.0 < result["reward_accuracy"] <= 1.0
 
 
+def test_reward_ensemble_trainer_raises_type_error(venv):
+    reward_net = reward_nets.BasicRewardNet(venv.observation_space, venv.action_space)
+    loss = preference_comparisons.CrossEntropyRewardLoss(
+        noise_prob=0.1,
+        discount_factor=0.9,
+        threshold=50,
+    )
+    with pytest.raises(
+        TypeError, match=r"RewardEnsemble expected by RewardEnsembleTrainer not .*"
+    ):
+        preference_comparisons.RewardEnsembleTrainer(
+            reward_net,
+            loss,
+        )
+
+
 def test_correct_reward_trainer_used_by_default(
     agent_trainer,
     reward_net,

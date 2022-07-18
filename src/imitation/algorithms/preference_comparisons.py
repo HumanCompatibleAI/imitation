@@ -905,6 +905,11 @@ class RewardEnsembleTrainer(BasicRewardTrainer):
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
     ):
         """Create an ensemble trainer."""
+        if not isinstance(model, reward_nets.RewardEnsemble):
+            raise TypeError(
+                f"RewardEnsemble expected by RewardEnsembleTrainer not {type(model)}."
+            )
+
         super().__init__(
             model,
             loss,

@@ -252,7 +252,7 @@ class RewardNetWrapper(RewardNet):
         done: np.ndarray,
         **kwargs,
     ) -> np.ndarray:
-        __doc__ = super().predict_processed.__doc__
+        __doc__ = super().predict_processed.__doc__  # noqa: F841
         return self.base.predict_processed(state, action, next_state, done, **kwargs)
 
 
@@ -682,7 +682,11 @@ class RewardEnsemble(RewardNetWithVariance):
         next_state: th.Tensor,
         done: th.Tensor,
     ) -> th.Tensor:
-        """Compute rewards for a batch of transitions and keep gradients."""
+        """Compute rewards the mean of all ensemble members.
+
+        Note: This should not be used to to train the ensemble directly! This is because
+        the mean of each members loss almost never equals the loss of their mean.
+        """
         return self.forward_all(state, action, next_state, done).mean(-1)
 
     @th.no_grad()
