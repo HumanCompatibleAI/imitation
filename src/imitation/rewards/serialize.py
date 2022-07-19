@@ -99,10 +99,10 @@ def _prefix_matches(wrappers: Sequence[Any], prefix: Sequence[Any]):
     prefix_head, *prefix_tail = prefix
     wrappers_head, *wrappers_tail = wrappers
 
-    if wrappers_head != prefix_head:
+    if not issubclass(wrappers_head, prefix_head):
         return False
 
-    return _prefix_matches(prefix_tail, wrappers_tail)
+    return _prefix_matches(wrappers_tail, prefix_tail)
 
 
 def _validate_wrapper_structure(
