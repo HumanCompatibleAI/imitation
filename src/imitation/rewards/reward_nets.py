@@ -252,7 +252,7 @@ class RewardNetWrapper(RewardNet):
         done: np.ndarray,
         **kwargs,
     ) -> np.ndarray:
-        super().predict_processed.__doc__
+        __doc__ = super().predict_processed.__doc__  # noqa: F841
         return self.base.predict_processed(state, action, next_state, done, **kwargs)
 
 
@@ -666,7 +666,7 @@ class RewardEnsemble(RewardNetWithVariance):
             done: The done flags as a torch tensor
 
         Returns:
-            The reward given by each ensemble member. This tenor has a shape of
+            The reward given by each ensemble member. This tensor has a shape of
                 `(batch_size, num_members)`.
         """
         rewards = []
@@ -682,8 +682,22 @@ class RewardEnsemble(RewardNetWithVariance):
         next_state: th.Tensor,
         done: th.Tensor,
     ) -> th.Tensor:
-        """Compute rewards for a batch of transitions and keep gradients."""
-        return self.forward_all(state, action, next_state, done)  # .mean(-1)
+        """Compute rewards the mean of all ensemble members.
+
+        Note: This should not be used to to train the ensemble directly! This is because
+        the mean of each members loss almost never equals the loss of their mean.
+
+        Args:
+            state: The current state as a torch tensor
+            action: The current action as a torch tensor
+            next_state: The next state as a torch tensor
+            done: The done flags as a torch tensor
+
+        Returns:
+            The mean reward given by the ensemble model. This tensor has a shape of
+                `(batch_size,)`.
+        """
+        return self.forward_all(state, action, next_state, done).mean(-1)
 
     @th.no_grad()
     def predict_reward_moments(
@@ -713,41 +727,6 @@ class RewardEnsemble(RewardNetWithVariance):
 
         all_rewards = self.forward_all(state, action, next_state, done)
         return all_rewards.mean(-1).cpu().numpy(), all_rewards.var(-1).cpu().numpy()
-
-    def predict_th(
-        self,
-        state: np.ndarray,
-        action: np.ndarray,
-        next_state: np.ndarray,
-        done: np.ndarray,
-    ) -> th.Tensor:
-        """Compute th.Tensor rewards for a batch of transitions without gradients.
-
-        Preprocesses the inputs, output th.Tensor reward arrays.
-
-        Args:
-            state: Current states of shape `(batch_size,) + state_shape`.
-            action: Actions of shape `(batch_size,) + action_shape`.
-            next_state: Successor states of shape `(batch_size,) + state_shape`.
-            done: End-of-episode (terminal state) indicator of shape `(batch_size,)`.
-
-        Returns:
-            Computed th.Tensor rewards of shape `(batch_size,`).
-        """
-        with networks.evaluating(self):
-            # switch to eval mode (affecting normalization, dropout, etc)
-
-            state_th, action_th, next_state_th, done_th = self.preprocess(
-                state,
-                action,
-                next_state,
-                done,
-            )
-            with th.no_grad():
-                rew_th = self(state_th, action_th, next_state_th, done_th)
-
-            assert rew_th.shape == (state.shape[0], self.num_members)
-            return rew_th
 
 
 class AddSTDRewardWrapper(RewardNetWrapper):

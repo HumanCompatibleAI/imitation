@@ -370,7 +370,10 @@ class PreferencePredictor(nn.Module):
             next_state=transitions.next_obs,
             done=transitions.dones,
         )
-        return self.model(*preprocessed)
+        if self.is_ensemble:
+            return self.model.forward_all(*preprocessed)
+        else:
+            return self.model(*preprocessed)
 
     def probability(
         self,
@@ -611,34 +614,38 @@ class ActiveSelectionFragmenter(Fragmenter):
             trans1 = rollout.flatten_trajectories([frag1])
             trans2 = rollout.flatten_trajectories([frag2])
             if self.uncertainty_on == "logit":
-                _, rew1_var = self._reward_moments(trans1)
-                _, rew2_var = self._reward_moments(trans2)
+                with th.no_grad():
+                    _, rew1_var = self._reward_moments(trans1)
+                    _, rew2_var = self._reward_moments(trans2)
                 # NOTE: Should we first sum the rewards
                 # and then take the var (curr approach)
                 # or first take the var and then sum the rewards?
                 var_estimates.append(rew1_var + rew2_var)
             else:  # uncertainty_on is probability or label
-                rews1 = self.preference_predictor.rewards(trans1)
-                rews2 = self.preference_predictor.rewards(trans2)
-                probs = (
-                    self.preference_predictor.probability(rews1, rews2).cpu().numpy()
-                )
+                with th.no_grad():
+                    rews1 = self.preference_predictor.rewards(trans1)
+                    rews2 = self.preference_predictor.rewards(trans2)
+                    probs = (
+                        self.preference_predictor.probability(rews1, rews2)
+                        .cpu()
+                        .numpy()
+                    )
                 if self.uncertainty_on == "probability":
                     var_estimates.append(probs.var())
                 else:  # uncertainty_on is label
-                    preds = (probs > 0.5).float()
+                    preds = (probs > 0.5).astype(np.float32)
                     # probability estimate of Bernoulli random variable
                     prob_estimate = preds.mean()
                     # variance estimate of Bernoulli random variable
                     var_estimate = prob_estimate * (1 - prob_estimate)
                     var_estimates.append(var_estimate)
 
-        fragment_idxs = np.argsort(var_estimate)[::-1]  # sort in descending order
+        fragment_idxs = np.argsort(var_estimates)[::-1]  # sort in descending order
         # return fragment pairs that have the highest uncertainty
-        return fragment_pairs[fragment_idxs[:num_pairs]]
+        return [fragment_pairs[idx] for idx in fragment_idxs[:num_pairs]]
 
     def _reward_moments(self, transitions):
-        rewards = self.model.rewards(transitions).mean(0)
+        rewards = self.preference_predictor.rewards(transitions).mean(0)
         return rewards.mean().cpu().numpy(), rewards.var().cpu().numpy()
 
 
@@ -1065,6 +1072,11 @@ class RewardEnsembleTrainer(BasicRewardTrainer):
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
     ):
         """Create an ensemble trainer."""
+        if not isinstance(model, reward_nets.RewardEnsemble):
+            raise TypeError(
+                f"RewardEnsemble expected by RewardEnsembleTrainer not {type(model)}.",
+            )
+
         super().__init__(
             model,
             loss,
@@ -1116,7 +1128,7 @@ def is_base_model_ensemble(reward_model):
     return isinstance(base_model, reward_nets.RewardEnsemble), base_model
 
 
-def make_reward_trainer(
+def _make_reward_trainer(
     reward_model: reward_nets.RewardNet,
     loss: RewardLoss,
     reward_trainer_kwargs: Mapping[str, Any] = {},
@@ -1248,7 +1260,7 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
 
         if reward_trainer is None:
             loss = CrossEntropyRewardLoss()
-            self.reward_trainer = make_reward_trainer(reward_model, loss)
+            self.reward_trainer = _make_reward_trainer(reward_model, loss)
         else:
             self.reward_trainer = reward_trainer
 
@@ -1257,10 +1269,10 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
         # didn't manually set a logger, it would be annoying if a separate one was used.
         self.reward_trainer.logger = self.logger
         # the reward_trainer's model should refer to the same object as our copy
-        # the only exception to this is when we are using a wrapped reward ensemble
+        # except when training a reward ensemble.
         assert self.reward_trainer._model is self.model or isinstance(
-            self.reward_trainer._model,
-            reward_nets.RewardEnsemble,
+            self.reward_trainer,
+            RewardEnsembleTrainer,
         )
         self.trajectory_generator = trajectory_generator
         self.trajectory_generator.logger = self.logger

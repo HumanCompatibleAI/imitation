@@ -14,6 +14,8 @@ from imitation.data.types import TrajectoryWithRew
 from imitation.rewards import reward_nets
 from imitation.util import util
 
+UNCERTAINTY_ON = ["logit", "probability", "label"]
+
 
 @pytest.fixture
 def venv():
@@ -23,7 +25,15 @@ def venv():
     )
 
 
-@pytest.fixture(params=[reward_nets.BasicRewardNet, reward_nets.RewardEnsemble])
+@pytest.fixture(
+    params=[
+        reward_nets.BasicRewardNet,
+        reward_nets.RewardEnsemble,
+        lambda *args: reward_nets.AddSTDRewardWrapper(
+            reward_nets.RewardEnsemble(*args),
+        ),
+    ],
+)
 def reward_net(request, venv):
     return request.param(venv.observation_space, venv.action_space)
 
@@ -183,13 +193,62 @@ def test_trainer_no_crash(
     assert 0.0 < result["reward_accuracy"] <= 1.0
 
 
-def test_discount_rate_no_crash(
+def test_reward_ensemble_trainer_raises_type_error(venv):
+    reward_net = reward_nets.BasicRewardNet(venv.observation_space, venv.action_space)
+    loss = preference_comparisons.CrossEntropyRewardLoss(
+        noise_prob=0.1,
+        discount_factor=0.9,
+        threshold=50,
+    )
+    with pytest.raises(
+        TypeError,
+        match=r"RewardEnsemble expected by RewardEnsembleTrainer not .*",
+    ):
+        preference_comparisons.RewardEnsembleTrainer(
+            reward_net,
+            loss,
+        )
+
+
+def test_correct_reward_trainer_used_by_default(
     agent_trainer,
     reward_net,
     random_fragmenter,
     custom_logger,
 ):
+    main_trainer = preference_comparisons.PreferenceComparisons(
+        agent_trainer,
+        reward_net,
+        num_iterations=2,
+        transition_oversampling=2,
+        fragment_length=2,
+        fragmenter=random_fragmenter,
+        custom_logger=custom_logger,
+    )
+
+    if isinstance(reward_net, reward_nets.RewardEnsemble):
+        assert isinstance(
+            main_trainer.reward_trainer,
+            preference_comparisons.RewardEnsembleTrainer,
+        )
+    elif hasattr(reward_net, "base") and isinstance(
+        reward_net.base,
+        reward_nets.RewardEnsemble,
+    ):
+        assert isinstance(
+            main_trainer.reward_trainer,
+            preference_comparisons.RewardEnsembleTrainer,
+        )
+    else:
+        assert isinstance(
+            main_trainer.reward_trainer,
+            preference_comparisons.BasicRewardTrainer,
+        )
+
+
+def test_discount_rate_no_crash(agent_trainer, venv, random_fragmenter, custom_logger):
     # also use a non-zero noise probability to check that doesn't cause errors
+    reward_net = reward_nets.BasicRewardNet(venv.observation_space, venv.action_space)
     loss = preference_comparisons.CrossEntropyRewardLoss(
         noise_prob=0.1,
         discount_factor=0.9,
@@ -328,3 +387,69 @@ def test_exploration_no_crash(agent, reward_net, random_fragmenter, custom_logge
         custom_logger=custom_logger,
     )
     main_trainer.train(100, 10)
+
+
+@pytest.mark.parametrize("uncertainty_on", UNCERTAINTY_ON)
+def test_active_fragmenter_discount_rate_no_crash(
+    agent_trainer,
+    venv,
+    random_fragmenter,
+    uncertainty_on,
+    custom_logger,
+):
+    # also use a non-zero noise probability to check that doesn't cause errors
+    reward_net = reward_nets.RewardEnsemble(venv.observation_space, venv.action_space)
+    preference_predictor = preference_comparisons.PreferencePredictor(
+        model=reward_net,
+        noise_prob=0.1,
+        discount_factor=0.9,
+        threshold=50,
+    )
+
+    fragmenter = preference_comparisons.ActiveSelectionFragmenter(
+        preference_predictor=preference_predictor,
+        base_fragmenter=random_fragmenter,
+        fragment_sample_factor=2,
+        uncertainty_on=uncertainty_on,
+        custom_logger=custom_logger,
+    )
+
+    loss = preference_comparisons.CrossEntropyRewardLoss(
+        noise_prob=0.1,
+        discount_factor=0.9,
+        threshold=50,
+    )
+
+    reward_trainer = preference_comparisons.RewardEnsembleTrainer(
+        reward_net,
+        loss,
+    )
+
+    main_trainer = preference_comparisons.PreferenceComparisons(
+        agent_trainer,
+        reward_net,
+        num_iterations=2,
+        transition_oversampling=2,
+        fragment_length=2,
+        fragmenter=fragmenter,
+        reward_trainer=reward_trainer,
+        custom_logger=custom_logger,
+    )
+    main_trainer.train(100, 10)
+
+
+def test_active_fragmenter_uncertainty_on_not_supported_error(venv, random_fragmenter):
+    reward_net = reward_nets.RewardEnsemble(venv.observation_space, venv.action_space)
+    preference_predictor = preference_comparisons.PreferencePredictor(
+        model=reward_net,
+        noise_prob=0.1,
+        discount_factor=0.9,
+        threshold=50,
+    )
+    with pytest.raises(ValueError):
+        preference_comparisons.ActiveSelectionFragmenter(
+            preference_predictor=preference_predictor,
+            base_fragmenter=random_fragmenter,
+            fragment_sample_factor=2,
+            uncertainty_on="uncertainty_on",
+        )
