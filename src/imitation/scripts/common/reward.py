@@ -62,6 +62,9 @@ def config_hook(config, command_name, logger):
         res["net_cls"] = default_net
     if "normalize_input_layer" not in config["reward"]["net_kwargs"]:
         res["net_kwargs"] = {"normalize_input_layer": networks.RunningNorm}
+
+    if config["reward"]["net_cls"] is reward_nets.RewardEnsemble:
+        del res["net_kwargs"]["normalize_input_layer"]
     return res
 
 

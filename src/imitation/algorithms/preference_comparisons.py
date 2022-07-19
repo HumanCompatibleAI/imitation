@@ -907,7 +907,7 @@ class RewardEnsembleTrainer(BasicRewardTrainer):
         """Create an ensemble trainer."""
         if not isinstance(model, reward_nets.RewardEnsemble):
             raise TypeError(
-                f"RewardEnsemble expected by RewardEnsembleTrainer not {type(model)}."
+                f"RewardEnsemble expected by RewardEnsembleTrainer not {type(model)}.",
             )
 
         super().__init__(

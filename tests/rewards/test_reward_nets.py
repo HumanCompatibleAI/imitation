@@ -31,10 +31,11 @@ DESERIALIZATION_TYPES = [
     "RewardNet_unshaped",
 ]
 
+# Reward net classes, allowed kwargs
 REWARD_NETS = [
-    reward_nets.BasicRewardNet,
-    reward_nets.BasicShapedRewardNet,
-    reward_nets.RewardEnsemble,
+    (reward_nets.BasicRewardNet, {"normalize_input_layer"}),
+    (reward_nets.BasicShapedRewardNet, {"normalize_input_layer"}),
+    (reward_nets.RewardEnsemble, set()),
 ]
 
 
@@ -48,22 +49,28 @@ REWARD_NET_KWARGS = [
     {"normalize_input_layer": networks.RunningNorm},
 ]
 
+NORMALIZE_OUTPUT_LAYER = [
+    None,
+    networks.RunningNorm,
+]
+
 
 @pytest.mark.parametrize("env_name", ENVS)
-@pytest.mark.parametrize("reward_net_cls", REWARD_NETS)
+@pytest.mark.parametrize("reward_net_cls_allowed_kwargs", REWARD_NETS)
 @pytest.mark.parametrize("reward_net_kwargs", REWARD_NET_KWARGS)
-@pytest.mark.parametrize("normalize_output_layer", [None, networks.RunningNorm])
+@pytest.mark.parametrize("normalize_output_layer", NORMALIZE_OUTPUT_LAYER)
 def test_init_no_crash(
     env_name,
-    reward_net_cls,
+    reward_net_cls_allowed_kwargs,
     reward_net_kwargs,
     normalize_output_layer,
 ):
+    reward_net_cls, allowed_kwargs = reward_net_cls_allowed_kwargs
     env = gym.make(env_name)
     reward_net = reward_net_cls(
         env.observation_space,
         env.action_space,
-        **reward_net_kwargs,
+        **{k: v for k, v in reward_net_kwargs.items() if k in allowed_kwargs},
     )
     if normalize_output_layer:
         reward_net = reward_nets.NormalizedRewardNet(
@@ -210,10 +217,16 @@ def test_cant_load_unnorm_as_norm(env_name, tmpdir):
 
 
 @pytest.mark.parametrize("env_name", ENVS)
-@pytest.mark.parametrize("net_cls", REWARD_NETS)
+@pytest.mark.parametrize("net_cls_allowed_kwargs", REWARD_NETS)
 @pytest.mark.parametrize("normalize_rewards", [True, False])
-def test_serialize_identity(env_name, net_cls, normalize_rewards, tmpdir):
+def test_serialize_identity(
+    env_name,
+    net_cls_allowed_kwargs,
+    normalize_rewards,
+    tmpdir,
+):
     """Does output of deserialized reward network match that of original?"""
+    net_cls, _ = net_cls_allowed_kwargs
     logging.info(f"Testing {net_cls}")
 
     venv = util.make_vec_env(env_name, n_envs=1, parallel=False)
@@ -323,11 +336,12 @@ def test_potential_net_2d_obs():
 
 
 @pytest.mark.parametrize("env_name", ENVS)
-@pytest.mark.parametrize("net_cls", REWARD_NETS)
+@pytest.mark.parametrize("net_cls_allowed_kwargs", REWARD_NETS)
 @pytest.mark.parametrize("num_members", [1, 2, 4])
-def test_reward_ensemble_creation(env_name, net_cls, num_members):
+def test_reward_ensemble_creation(env_name, net_cls_allowed_kwargs, num_members):
     """A test RewardEnsemble constructor."""
     env = gym.make(env_name)
+    net_cls, _ = net_cls_allowed_kwargs
     ensemble = reward_nets.RewardEnsemble(
         env.action_space,
         env.observation_space,

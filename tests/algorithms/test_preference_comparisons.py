@@ -199,7 +199,8 @@ def test_reward_ensemble_trainer_raises_type_error(venv):
         threshold=50,
     )
     with pytest.raises(
-        TypeError, match=r"RewardEnsemble expected by RewardEnsembleTrainer not .*"
+        TypeError,
+        match=r"RewardEnsemble expected by RewardEnsembleTrainer not .*",
     ):
         preference_comparisons.RewardEnsembleTrainer(
             reward_net,

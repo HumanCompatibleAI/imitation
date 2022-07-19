@@ -612,7 +612,6 @@ class RewardEnsemble(RewardNetWithVariance):
         member_cls: Type[RewardNet] = BasicRewardNet,
         member_kwargs: Mapping[str, Any] = {},
         member_normalize_output_layer: Optional[Type[nn.Module]] = None,
-        **kwargs,
     ):
         """Initialize the RewardEnsemble.
 
@@ -624,12 +623,10 @@ class RewardEnsemble(RewardNetWithVariance):
             member_kwargs: keyword arguments to pass to the ensemble members
             member_normalize_output_layer: The normalization layer to use for the
                 member classes. Defaults to None.
-            **kwargs: ignored
 
         Raises:
             ValueError: if num_members is less than 1
         """
-        del kwargs
         super().__init__(observation_space, action_space)
         if num_members < 1:
             raise ValueError("Must be at least 1 member in the ensemble.")
