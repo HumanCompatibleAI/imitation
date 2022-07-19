@@ -748,7 +748,7 @@ class AddSTDRewardWrapper(RewardNetWrapper):
             ValueError: if base is not an instance of RewardNetWithVariance
         """
         super().__init__(base)
-        if isinstance(base, RewardNetWithVariance):
+        if not isinstance(base, RewardNetWithVariance):
             raise ValueError(
                 "Cannot add standard deviation to reward net that "
                 "is not an instance of RewardNetWithVariance!",
