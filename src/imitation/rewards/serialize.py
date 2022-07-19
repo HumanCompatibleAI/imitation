@@ -1,6 +1,6 @@
 """Load serialized reward functions of different types."""
 
-from typing import Callable, Iterable, List, Type, Union
+from typing import Any, Callable, Iterable, Sequence, Type, Union
 
 import numpy as np
 import torch as th
@@ -79,19 +79,37 @@ def _make_functional(
 ) -> common.RewardFn:
     if default_kwargs is None:
         default_kwargs = {}
-
     default_kwargs.update(kwargs)
     return lambda *args: getattr(net, attr)(*args, **default_kwargs)
 
 
-WrapperPrefix = List[Type[RewardNet]]
+WrapperPrefix = Sequence[Type[RewardNet]]
+
+
+def _prefix_matches(wrappers: Sequence[Any], prefix: Sequence[Any]):
+    """Return true if prefix is a prefix of wrappers."""
+    # Base cases
+    if len(prefix) == 0:
+        # If we run of of prefix before running of of wrappers
+        return True
+    elif len(wrappers) == 0:
+        # If we run out of wrappers before we run of to prefix
+        return False
+
+    prefix_head, *prefix_tail = prefix
+    wrappers_head, *wrappers_tail = wrappers
+
+    if wrappers_head != prefix_head:
+        return False
+
+    return _prefix_matches(prefix_tail, wrappers_tail)
 
 
 def _validate_wrapper_structure(
     reward_net: Union[RewardNet, RewardNetWrapper],
-    prefixes: List[WrapperPrefix],
+    prefixes: Iterable[WrapperPrefix],
 ) -> RewardNet:
-    """Return true if the reward net has a valid structure.
+    """Reward net if it has a valid structure.
 
     A wrapper prefix specifies, from outermost to innermost, which wrappers must
     be present. If any of the wrapper prefixes match then the RewardNet is considered
@@ -105,7 +123,7 @@ def _validate_wrapper_structure(
         the reward_net if it is valid
 
     Raises:
-        TypeError: if the wrapper structure is not valid.
+        TypeError: if the wrapper structure is not valid with a useful message.
 
     >>> class RewardNetA(RewardNet):
     ...     def forward(*args):
@@ -116,40 +134,29 @@ def _validate_wrapper_structure(
     >>> reward_net = RewardNetA(None, None)
     >>> reward_net = WrapperB(reward_net)
     >>> assert isinstance(reward_net.base, RewardNet)
-    >>> _validate_wrapper_structure(reward_net, [[WrapperB, RewardNetA]])
+    >>> reward_net == _validate_wrapper_structure(reward_net, [[WrapperB, RewardNetA]]))
+    True
     """
-    for prefix in prefixes:
-        wrapper = reward_net
-        valid = True
-        for t in prefix:
-            if not isinstance(wrapper, t):
-                valid = False
-                break
-            if hasattr(wrapper, "base"):
-                wrapper = wrapper.base
-            else:
-                break
-
-        if valid:
-            return reward_net
-
-    # Provide a useful error
-    formatted_prefixes = [
-        "[" + ",".join(t.__name__ for t in prefix) + "]" for prefix in prefixes
-    ]
-
     wrapper = reward_net
     wrappers = []
     while hasattr(wrapper, "base"):
         wrappers.append(wrapper.__class__)
         wrapper = wrapper.base
-    wrappers.append(wrapper.__class__)
+    wrappers.append(wrapper.__class__)  # append the final reward net
+
+    if any(_prefix_matches(wrappers, prefix) for prefix in prefixes):
+        return reward_net
+
+    # Otherwise provide a useful error
+    formatted_prefixes = [
+        "[" + ",".join(t.__name__ for t in prefix) + "]" for prefix in prefixes
+    ]
 
     formatted_wrapper_structure = "[" + ",".join(t.__name__ for t in wrappers) + "]"
 
     raise TypeError(
-        "Wrapper structure should "
-        + "be match (one of) "
+        "Wrapper structure should"
+        + " match "
         + " or ".join(formatted_prefixes)
         + " but found "
         + formatted_wrapper_structure,
@@ -177,7 +184,7 @@ reward_registry.register(
     key="RewardNet_shaped",
     value=lambda path, _, **kwargs: _validate_reward(
         _make_functional(
-            _validate_wrapper_structure(th.load(str(path)), [[ShapedRewardNet]]),
+            _validate_wrapper_structure(th.load(str(path)), {(ShapedRewardNet,)}),
         ),
     ),
 )
@@ -194,7 +201,7 @@ reward_registry.register(
     key="RewardNet_normalized",
     value=lambda path, _, **kwargs: _validate_reward(
         _make_functional(
-            _validate_wrapper_structure(th.load(str(path)), [[NormalizedRewardNet]]),
+            _validate_wrapper_structure(th.load(str(path)), {(NormalizedRewardNet,)}),
             attr="predict_processed",
             default_kwargs={"update_stats": False},
             **kwargs,
@@ -216,7 +223,10 @@ reward_registry.register(
             _strip_wrappers(
                 _validate_wrapper_structure(
                     th.load(str(path)),
-                    [[AddSTDRewardWrapper], [NormalizedRewardNet, AddSTDRewardWrapper]],
+                    {
+                        (AddSTDRewardWrapper,),
+                        (NormalizedRewardNet, AddSTDRewardWrapper),
+                    },
                 ),
                 (NormalizedRewardNet,),
             ),

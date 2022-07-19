@@ -182,14 +182,18 @@ def test_validate_wrapper_structure():
     assert isinstance(reward_net.base, RewardNetA)
 
     # This should not raise a type error
-    serialize._validate_wrapper_structure(reward_net, [[WrapperB, RewardNetA]])
+    serialize._validate_wrapper_structure(reward_net, {(WrapperB, RewardNetA)})
 
     # The top level wrapper is an instance of WrapperB this should raise a type error
     with pytest.raises(
         TypeError,
-        match=r"Wrapper structure should be match \(one of\) \[.*\] but found \[.*\]",
+        match=r"Wrapper structure should match \[.*\] but found \[.*\]",
     ):
-        serialize._validate_wrapper_structure(reward_net, [[RewardNetA]])
+        serialize._validate_wrapper_structure(reward_net, {(RewardNetA,)})
+
+    # Reward net is not wrapped at all this should raise a type error.
+    with pytest.raises(TypeError):
+        serialize._validate_wrapper_structure(RewardNetA(None, None), {(WrapperB,)})
 
     # This should not raise a type error since one of the prefixes matches
     serialize._validate_wrapper_structure(
@@ -198,11 +202,8 @@ def test_validate_wrapper_structure():
     )
 
     # This should raise a type error since none the prefix is in the incorrect order
-    with pytest.raises(
-        TypeError,
-        match=r"Wrapper structure should be match \(one of\) \[.*\] but found \[.*\]",
-    ):
-        serialize._validate_wrapper_structure(reward_net, [[RewardNetA, WrapperB]])
+    with pytest.raises(TypeError):
+        serialize._validate_wrapper_structure(reward_net, {(RewardNetA, WrapperB)})
 
 
 @pytest.mark.parametrize("env_name", ENVS)
