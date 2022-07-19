@@ -187,7 +187,7 @@ def train_preference_comparisons(
         **cross_entropy_loss_kwargs,
     )
 
-    reward_trainer = preference_comparisons.make_reward_trainer(
+    reward_trainer = preference_comparisons._make_reward_trainer(
         reward_net,
         loss,
         reward_trainer_kwargs,
