@@ -500,7 +500,7 @@ def test_wrappers_pass_on_kwargs(
     )
 
 
-def test_load_reward_passing_along_kwargs(
+def test_load_reward_passes_along_alpha_to_add_std_wrappers_predict_processed_method(
     env_2d: Env2D,
     two_ensemble: reward_nets.RewardEnsemble,
     numpy_transitions: tuple,
