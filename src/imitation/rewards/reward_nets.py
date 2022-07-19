@@ -653,23 +653,23 @@ class RewardEnsemble(RewardNetWithVariance):
         action: th.Tensor,
         next_state: th.Tensor,
         done: th.Tensor,
-    ):
+    ) -> th.Tensor:
         """Return the results reward from each member of the ensemble.
 
         Args:
-            state: The current state as a torch tensor
-            action: The current action as a torch tensor
-            next_state: The next state as a torch tensor
+            state: Current states of shape `(batch_size,) + state_shape`.
+            action: Current action of shape `(batch_size,) + action_shape`.
+            next_state: Next state of shape `(batch_size,) + state_shape`.
             done: The done flags as a torch tensor
 
         Returns:
-            The reward given by each ensemble member. This tenor has a shape of
+            The reward given by each ensemble member. This tensor has a shape of
                 `(batch_size, num_members)`.
         """
-        rewards = []
-        for net in self.members:
-            rewards.append(net(state, action, next_state, done))
+        batch_size = state.shape[0]
+        rewards = [net(state, action, next_state, done) for net in self.members]
         rewards = th.stack(rewards, dim=-1)
+        assert rewards.shape == (batch_size, len(self.members))
         return rewards
 
     def forward(
@@ -683,6 +683,15 @@ class RewardEnsemble(RewardNetWithVariance):
 
         Note: This should not be used to to train the ensemble directly! This is because
         the mean of each members loss almost never equals the loss of their mean.
+
+        Args:
+            state: Current states of shape `(batch_size,) + state_shape`.
+            action: Actions of shape `(batch_size,) + action_shape`.
+            next_state: Successor states of shape `(batch_size,) + state_shape`.
+            done: End-of-episode (terminal state) indicator of shape `(batch_size,)`.
+
+        Returns:
+            The mean of the rewards predicted by the ensemble.
         """
         return self.forward_all(state, action, next_state, done).mean(-1)
 
@@ -703,8 +712,10 @@ class RewardEnsemble(RewardNetWithVariance):
             done: End-of-episode (terminal state) indicator of shape `(batch_size,)`.
 
         Returns:
-            Computed reward std of shape `(batch_size,)`.
+            * Reward mean of shape `(batch_size,)`.
+            * Reward std of shape `(batch_size,)`.
         """
+        batch_size = state.shape[-1]
         state, action, next_state, done = self.preprocess(
             state,
             action,
@@ -713,23 +724,36 @@ class RewardEnsemble(RewardNetWithVariance):
         )
 
         all_rewards = self.forward_all(state, action, next_state, done)
-        return all_rewards.mean(-1).cpu().numpy(), all_rewards.var(-1).cpu().numpy()
+        mean_reward = all_rewards.mean(-1).cpu().numpy()
+        std_reward = all_rewards.var(-1).cpu().numpy()
+        assert mean_reward.shape == std_reward.shape == (batch_size,)
+        return mean_reward, std_reward
 
 
 class AddSTDRewardWrapper(RewardNetWrapper):
-    """That adds a multiple of the standard deviation to the reward function."""
+    """Adds a multiple of the estimated standard deviation to mean reward."""
 
     base: RewardNetWithVariance
 
     def __init__(self, base: RewardNetWithVariance, default_alpha: float = 0.0):
-        """Create a conservative reward network.
+        """Create a reward network that added a multiple of the standard deviation.
 
         Args:
-            base: An uncertain rewarard network
+            base: A reward network that keeps track of its epistemic variance.
+                This is used to compute the standard deviation.
             default_alpha: multiple of standard deviation to add to the reward mean.
                 Defaults to 0.0.
+
+        Raises:
+            ValueError: if base is not an instance of RewardNetWithVariance
         """
         super().__init__(base)
+        if isinstance(base, RewardNetWithVariance):
+            raise ValueError(
+                "Cannot add standard deviation to reward net that "
+                "is not an instance of RewardNetWithVariance!",
+            )
+
         self.default_alpha = default_alpha
 
     def predict_processed(
@@ -741,7 +765,7 @@ class AddSTDRewardWrapper(RewardNetWrapper):
         alpha: Optional[float] = None,
         **kwargs,
     ) -> np.ndarray:
-        """Compute a lower confidence bound on the reward without gradients.
+        """Compute a lower/upper confidence bound on the reward without gradients.
 
         Args:
             state: Current states of shape `(batch_size,) + state_shape`.
@@ -796,10 +820,6 @@ def make_reward_net(
 
     Returns:
         A, possibly wrapped, instance of `net_cls`.
-
-    Raises:
-        ValueError: if you try to specify add_std_alpha for a reward network that
-            is not an instance of `RewardNetWithVariance`.
     """
     reward_net = net_cls(
         observation_space,
@@ -808,13 +828,7 @@ def make_reward_net(
     )
 
     if add_std_alpha is not None:
-        if isinstance(reward_net, RewardNetWithVariance):
-            reward_net = AddSTDRewardWrapper(reward_net, default_alpha=add_std_alpha)
-        else:
-            raise ValueError(
-                "Cannot add standard deviation to reward net that "
-                "is not an instance of RewardNetWithVariance!",
-            )
+        reward_net = AddSTDRewardWrapper(reward_net, default_alpha=add_std_alpha)
 
     if normalize_output_layer is not None:
         reward_net = NormalizedRewardNet(

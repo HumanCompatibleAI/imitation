@@ -74,9 +74,12 @@ def _strip_wrappers(
 def _make_functional(
     net: RewardNet,
     attr: str = "predict",
-    default_kwargs=dict(),
+    default_kwargs=None,
     **kwargs,
 ) -> common.RewardFn:
+    if default_kwargs is None:
+        default_kwargs = {}
+
     default_kwargs.update(kwargs)
     return lambda *args: getattr(net, attr)(*args, **default_kwargs)
 
