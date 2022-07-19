@@ -3,6 +3,7 @@
 import logging
 import numbers
 import os
+from tempfile import TemporaryDirectory
 from typing import Tuple
 from unittest import mock
 
@@ -497,6 +498,27 @@ def test_wrappers_pass_on_kwargs(
         *numpy_transitions,
         foobar=42,
     )
+
+
+def test_load_reward_passing_along_kwargs(
+    env_2d: Env2D,
+    two_ensemble: reward_nets.RewardEnsemble,
+    numpy_transitions: tuple,
+):
+    """Kwargs passed to load_reward are passed along to predict_processed."""
+    reward_net = reward_nets.AddSTDRewardWrapper(two_ensemble, default_alpha=0)
+    with TemporaryDirectory() as tmp_dir:
+        net_path = os.path.join(tmp_dir, "reward_net.pkl")
+        th.save(reward_net, os.path.join(tmp_dir))
+        new_alpha = -0.5
+        reward_fn = serialize.load_reward(
+            "RewardNet_add_std",
+            net_path,
+            env_2d,
+            alpha=new_alpha,
+        )
+        rewards = reward_fn(*numpy_transitions)
+        assert np.allclose(rewards, 1 + new_alpha * np.sqrt(8))
 
 
 @pytest.mark.parametrize("env_name", ENVS)
