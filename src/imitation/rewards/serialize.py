@@ -1,12 +1,12 @@
 """Load serialized reward functions of different types."""
 
-from typing import Callable, Iterable, List, Type, Union
+from typing import Any, Callable, Iterable, Sequence, Type, Union
 
 import numpy as np
 import torch as th
 from stable_baselines3.common.vec_env import VecEnv
 
-from imitation.rewards import common
+from imitation.rewards import reward_function
 from imitation.rewards.reward_nets import (
     AddSTDRewardWrapper,
     NormalizedRewardNet,
@@ -19,25 +19,39 @@ from imitation.util import registry, util
 # TODO(sam): I suspect this whole file can be replaced with th.load calls. Try
 # that refactoring once I have things running.
 
-RewardFnLoaderFn = Callable[[str, VecEnv], common.RewardFn]
+RewardFnLoaderFn = Callable[[str, VecEnv], reward_function.RewardFn]
 
 reward_registry: registry.Registry[RewardFnLoaderFn] = registry.Registry()
 
 
-def _validate_reward(reward: common.RewardFn) -> common.RewardFn:
-    """Add sanity check to the reward function for dealing with VecEnvs."""
+class ValidateRewardFn(reward_function.RewardFn):
+    """Wrap reward function to add sanity check.
 
-    def rew_fn(
-        obs: np.ndarray,
-        act: np.ndarray,
-        next_obs: np.ndarray,
-        dones: np.ndarray,
+    Checks that the length of the reward vector is equal to the batch size of the input.
+    """
+
+    def __init__(
+        self,
+        reward_fn: reward_function.RewardFn,
+    ):
+        """Builds the reward validator.
+
+        Args:
+            reward_fn: base reward function
+        """
+        super().__init__()
+        self.reward_fn = reward_fn
+
+    def __call__(
+        self,
+        state: np.ndarray,
+        action: np.ndarray,
+        next_state: np.ndarray,
+        done: np.ndarray,
     ) -> np.ndarray:
-        rew = reward(obs, act, next_obs, dones)
-        assert rew.shape == (len(obs),)
+        rew = self.reward_fn(state, action, next_state, done)
+        assert rew.shape == (len(state),)
         return rew
-
-    return rew_fn
 
 
 def _strip_wrappers(
@@ -74,21 +88,42 @@ def _strip_wrappers(
 def _make_functional(
     net: RewardNet,
     attr: str = "predict",
-    default_kwargs=dict(),
+    default_kwargs=None,
     **kwargs,
-) -> common.RewardFn:
+) -> reward_function.RewardFn:
+    if default_kwargs is None:
+        default_kwargs = {}
     default_kwargs.update(kwargs)
     return lambda *args: getattr(net, attr)(*args, **default_kwargs)
 
 
-WrapperPrefix = List[Type[RewardNet]]
+WrapperPrefix = Sequence[Type[RewardNet]]
+
+
+def _prefix_matches(wrappers: Sequence[Any], prefix: Sequence[Any]):
+    """Return true if prefix is a prefix of wrappers."""
+    # Base cases
+    if len(prefix) == 0:
+        # If we run of of prefix before running of of wrappers
+        return True
+    elif len(wrappers) == 0:
+        # If we run out of wrappers before we run of to prefix
+        return False
+
+    prefix_head, *prefix_tail = prefix
+    wrappers_head, *wrappers_tail = wrappers
+
+    if not issubclass(wrappers_head, prefix_head):
+        return False
+
+    return _prefix_matches(wrappers_tail, prefix_tail)
 
 
 def _validate_wrapper_structure(
     reward_net: Union[RewardNet, RewardNetWrapper],
-    prefixes: List[WrapperPrefix],
+    prefixes: Iterable[WrapperPrefix],
 ) -> RewardNet:
-    """Return true if the reward net has a valid structure.
+    """Reward net if it has a valid structure.
 
     A wrapper prefix specifies, from outermost to innermost, which wrappers must
     be present. If any of the wrapper prefixes match then the RewardNet is considered
@@ -102,7 +137,7 @@ def _validate_wrapper_structure(
         the reward_net if it is valid
 
     Raises:
-        TypeError: if the wrapper structure is not valid.
+        TypeError: if the wrapper structure is not valid with a useful message.
 
     >>> class RewardNetA(RewardNet):
     ...     def forward(*args):
@@ -113,47 +148,36 @@ def _validate_wrapper_structure(
     >>> reward_net = RewardNetA(None, None)
     >>> reward_net = WrapperB(reward_net)
     >>> assert isinstance(reward_net.base, RewardNet)
-    >>> _validate_wrapper_structure(reward_net, [[WrapperB, RewardNetA]])
+    >>> reward_net == _validate_wrapper_structure(reward_net, [[WrapperB, RewardNetA]]))
+    True
     """
-    for prefix in prefixes:
-        wrapper = reward_net
-        valid = True
-        for t in prefix:
-            if not isinstance(wrapper, t):
-                valid = False
-                break
-            if hasattr(wrapper, "base"):
-                wrapper = wrapper.base
-            else:
-                break
-
-        if valid:
-            return reward_net
-
-    # Provide a useful error
-    formatted_prefixes = [
-        "[" + ",".join(t.__name__ for t in prefix) + "]" for prefix in prefixes
-    ]
-
     wrapper = reward_net
     wrappers = []
     while hasattr(wrapper, "base"):
         wrappers.append(wrapper.__class__)
         wrapper = wrapper.base
-    wrappers.append(wrapper.__class__)
+    wrappers.append(wrapper.__class__)  # append the final reward net
+
+    if any(_prefix_matches(wrappers, prefix) for prefix in prefixes):
+        return reward_net
+
+    # Otherwise provide a useful error
+    formatted_prefixes = [
+        "[" + ",".join(t.__name__ for t in prefix) + "]" for prefix in prefixes
+    ]
 
     formatted_wrapper_structure = "[" + ",".join(t.__name__ for t in wrappers) + "]"
 
     raise TypeError(
-        "Wrapper structure should "
-        + "be match (one of) "
+        "Wrapper structure should"
+        + " match "
         + " or ".join(formatted_prefixes)
         + " but found "
         + formatted_wrapper_structure,
     )
 
 
-def load_zero(path: str, venv: VecEnv) -> common.RewardFn:
+def load_zero(path: str, venv: VecEnv) -> reward_function.RewardFn:
     del path, venv
 
     def f(
@@ -172,9 +196,9 @@ def load_zero(path: str, venv: VecEnv) -> common.RewardFn:
 
 reward_registry.register(
     key="RewardNet_shaped",
-    value=lambda path, _, **kwargs: _validate_reward(
+    value=lambda path, _, **kwargs: ValidateRewardFn(
         _make_functional(
-            _validate_wrapper_structure(th.load(str(path)), [[ShapedRewardNet]]),
+            _validate_wrapper_structure(th.load(str(path)), {(ShapedRewardNet,)}),
         ),
     ),
 )
@@ -182,16 +206,16 @@ reward_registry.register(
 
 reward_registry.register(
     key="RewardNet_unshaped",
-    value=lambda path, _, **kwargs: _validate_reward(
+    value=lambda path, _, **kwargs: ValidateRewardFn(
         _make_functional(_strip_wrappers(th.load(str(path)), (ShapedRewardNet,))),
     ),
 )
 
 reward_registry.register(
     key="RewardNet_normalized",
-    value=lambda path, _, **kwargs: _validate_reward(
+    value=lambda path, _, **kwargs: ValidateRewardFn(
         _make_functional(
-            _validate_wrapper_structure(th.load(str(path)), [[NormalizedRewardNet]]),
+            _validate_wrapper_structure(th.load(str(path)), {(NormalizedRewardNet,)}),
             attr="predict_processed",
             default_kwargs={"update_stats": False},
             **kwargs,
@@ -201,19 +225,22 @@ reward_registry.register(
 
 reward_registry.register(
     key="RewardNet_unnormalized",
-    value=lambda path, _, **kwargs: _validate_reward(
+    value=lambda path, _, **kwargs: ValidateRewardFn(
         _make_functional(_strip_wrappers(th.load(str(path)), (NormalizedRewardNet,))),
     ),
 )
 
 reward_registry.register(
     key="RewardNet_std_added",
-    value=lambda path, _, **kwargs: _validate_reward(
+    value=lambda path, _, **kwargs: ValidateRewardFn(
         _make_functional(
             _strip_wrappers(
                 _validate_wrapper_structure(
                     th.load(str(path)),
-                    [[AddSTDRewardWrapper], [NormalizedRewardNet, AddSTDRewardWrapper]],
+                    {
+                        (AddSTDRewardWrapper,),
+                        (NormalizedRewardNet, AddSTDRewardWrapper),
+                    },
                 ),
                 (NormalizedRewardNet,),
             ),
@@ -234,7 +261,7 @@ def load_reward(
     reward_path: str,
     venv: VecEnv,
     **kwargs,
-) -> common.RewardFn:
+) -> reward_function.RewardFn:
     """Load serialized reward.
 
     Args:

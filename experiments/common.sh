@@ -6,7 +6,11 @@ export GNU_DATE=date
 export GNU_GETOPT=getopt
 if [[ "$OSTYPE" == "darwin"* ]]; then
   export GNU_DATE=gdate
-  export GNU_GETOPT=/usr/local/opt/gnu-getopt/bin/getopt
+  if [[ $(uname -m) == 'arm64' ]]; then
+    export GNU_GETOPT=/opt/homebrew/opt/gnu-getopt/bin/getopt
+  else
+    export GNU_GETOPT=/usr/local/opt/gnu-getopt/bin/getopt
+  fi
 fi
 
 TIMESTAMP=$($GNU_DATE --iso-8601=seconds)

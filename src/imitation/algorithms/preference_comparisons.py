@@ -7,13 +7,25 @@ import abc
 import math
 import pickle
 import random
-from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple, Union
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    List,
+    Mapping,
+    NamedTuple,
+    Optional,
+    Sequence,
+    Tuple,
+    Union,
+)
 
 import numpy as np
 import torch as th
 from scipy import special
 from stable_baselines3.common import base_class, type_aliases, vec_env
 from torch import nn
+from torch.utils.data import DataLoader
 from tqdm.auto import tqdm
 
 from imitation.algorithms import base
@@ -26,8 +38,7 @@ from imitation.data.types import (
     Transitions,
 )
 from imitation.policies import exploration_wrapper
-from imitation.rewards import common as rewards_common
-from imitation.rewards import reward_nets, reward_wrapper
+from imitation.rewards import reward_function, reward_nets, reward_wrapper
 from imitation.util import logger as imit_logger
 from imitation.util import networks, util
 
@@ -113,7 +124,7 @@ class AgentTrainer(TrajectoryGenerator):
     def __init__(
         self,
         algorithm: base_class.BaseAlgorithm,
-        reward_fn: Union[rewards_common.RewardFn, reward_nets.RewardNet],
+        reward_fn: Union[reward_function.RewardFn, reward_nets.RewardNet],
         exploration_frac: float = 0.0,
         switch_prob: float = 0.5,
         random_prob: float = 0.5,
@@ -364,15 +375,15 @@ class PreferencePredictor(nn.Module):
         self,
         transitions: Transitions,
     ) -> th.Tensor:
-        preprocessed = self.model.preprocess(
-            state=transitions.obs,
-            action=transitions.acts,
-            next_state=transitions.next_obs,
-            done=transitions.dones,
-        )
+        state = transitions.obs
+        action = transitions.acts
+        next_state = transitions.next_obs
+        done = transitions.dones
         if self.is_ensemble:
-            return self.model.forward_all(*preprocessed)
+            rews = self.model.predict_processed_all(state, action, next_state, done)
+            return util.safe_to_tensor(rews).to(self.model.device)
         else:
+            preprocessed = self.model.preprocess(state, action, next_state, done)
             return self.model(*preprocessed)
 
     def probability(
@@ -855,6 +866,13 @@ def preference_collate_fn(
     return list(fragment_pairs), np.array(preferences)
 
 
+class LossAndMetrics(NamedTuple):
+    """Return type of all for reward losses."""
+
+    loss: th.Tensor
+    metrics: Mapping[str, th.Tensor]
+
+
 class RewardLoss(nn.Module, abc.ABC):
     """A loss function over preferences."""
 
@@ -864,7 +882,7 @@ class RewardLoss(nn.Module, abc.ABC):
         model: reward_nets.RewardNet,
         fragment_pairs: Sequence[TrajectoryPair],
         preferences: np.ndarray,
-    ) -> Mapping[str, th.Tensor]:
+    ) -> LossAndMetrics:
         """Computes the loss.
 
         Args:
@@ -915,7 +933,7 @@ class CrossEntropyRewardLoss(RewardLoss):
         model: reward_nets.RewardNet,
         fragment_pairs: Sequence[TrajectoryPair],
         preferences: np.ndarray,
-    ) -> Mapping[str, Any]:
+    ) -> LossAndMetrics:
         """Computes the loss.
 
         Args:
@@ -925,10 +943,9 @@ class CrossEntropyRewardLoss(RewardLoss):
                 over the second. Typically 0, 1 or 0.5 (tie).
 
         Returns:
-            loss: The cross-entropy loss between the probability predicted by the
-                reward model and the target probabilities in `preferences`.
-            metrics:
-                accuracy: as a th.Tensor
+            The cross-entropy loss between the probability predicted by the
+                reward model and the target probabilities in `preferences`. Metrics
+                are include accuracy.
         """
         preference_predictor = PreferencePredictor(
             model,
@@ -946,10 +963,10 @@ class CrossEntropyRewardLoss(RewardLoss):
         preferences_th = th.as_tensor(preferences, dtype=th.float32)
         ground_truth = (preferences_th > 0.5).float()
         accuracy = (predictions == ground_truth).float().mean()
-        return {
-            "loss": th.nn.functional.binary_cross_entropy(probs, preferences_th),
-            "metrics": {"accuracy": accuracy.detach().cpu()},
-        }
+        return LossAndMetrics(
+            loss=th.nn.functional.binary_cross_entropy(probs, preferences_th),
+            metrics={"accuracy": accuracy.detach().cpu()},
+        )
 
 
 class RewardTrainer(abc.ABC):
@@ -957,7 +974,7 @@ class RewardTrainer(abc.ABC):
 
     This class contains only the actual reward model training code,
     it is not responsible for gathering trajectories and preferences
-    or for agent training (see PreferenceComparisons for that).
+    or for agent training (see :class: `PreferenceComparisons` for that).
     """
 
     def __init__(
@@ -974,7 +991,7 @@ class RewardTrainer(abc.ABC):
         self._model = model
         self.logger = custom_logger or imit_logger.configure()
 
-    def train(self, dataset: PreferenceDataset, epoch_multiplier: float = 1.0):
+    def train(self, dataset: PreferenceDataset, epoch_multiplier: float = 1.0) -> None:
         """Train the reward model on a batch of fragment pairs and preferences.
 
         Args:
@@ -986,14 +1003,12 @@ class RewardTrainer(abc.ABC):
             self._train(dataset, epoch_multiplier)
 
     @abc.abstractmethod
-    def _train(self, dataset: PreferenceDataset, epoch_multiplier: float):
+    def _train(self, dataset: PreferenceDataset, epoch_multiplier: float) -> None:
         """Train the reward model; see ``train`` for details."""
 
 
 class BasicRewardTrainer(RewardTrainer):
     """Train a basic reward model."""
-
-    _model: reward_nets.RewardNet
 
     def __init__(
         self,
@@ -1011,7 +1026,7 @@ class BasicRewardTrainer(RewardTrainer):
             model: the RewardNet instance to be trained
             loss: the loss to use
             batch_size: number of fragment pairs per batch
-            epochs: number of epochs on each training iteration (can be adjusted
+            epochs: number of epochs in each training iteration (can be adjusted
                 on the fly by specifying an `epoch_multiplier` in `self.train()`
                 if longer training is desired in specific cases).
             lr: the learning rate
@@ -1030,16 +1045,16 @@ class BasicRewardTrainer(RewardTrainer):
             weight_decay=weight_decay,
         )
 
-    def _make_data_loader(self, dataset: PreferenceDataset):
+    def _make_data_loader(self, dataset: PreferenceDataset) -> DataLoader:
         """Make a dataloader."""
-        return th.utils.data.DataLoader(
+        return DataLoader(
             dataset,
             batch_size=self.batch_size,
             shuffle=True,
             collate_fn=preference_collate_fn,
         )
 
-    def _train(self, dataset: PreferenceDataset, epoch_multiplier: float = 1.0):
+    def _train(self, dataset: PreferenceDataset, epoch_multiplier: float = 1.0) -> None:
         """Trains for `epoch_multiplier * self.epochs` epochs over `dataset`."""
         dataloader = self._make_data_loader(dataset)
         epochs = round(self.epochs * epoch_multiplier)
@@ -1047,16 +1062,24 @@ class BasicRewardTrainer(RewardTrainer):
         for _ in tqdm(range(epochs), desc="Training reward model"):
             for fragment_pairs, preferences in dataloader:
                 self.optim.zero_grad()
-                output = self.loss(self._model, fragment_pairs, preferences)
-                loss = output["loss"]
+                loss = self._training_inner_loop(fragment_pairs, preferences)
                 loss.backward()
                 self.optim.step()
-                self.logger.record("loss", loss.item())
-                for metric in output["metrics"]:
-                    self.logger.record(metric, output["metrics"][metric])
+
+    def _training_inner_loop(
+        self,
+        fragment_pairs: Sequence[TrajectoryPair],
+        preferences: np.ndarray,
+    ) -> th.Tensor:
+        output = self.loss.forward(self._model, fragment_pairs, preferences)
+        loss = output.loss
+        self.logger.record("loss", loss.item())
+        for name, value in output.metrics.items():
+            self.logger.record(name, value)
+        return loss
 
 
-class RewardEnsembleTrainer(BasicRewardTrainer):
+class EnsembleTrainer(BasicRewardTrainer):
     """Train a reward ensemble."""
 
     _model: reward_nets.RewardEnsemble
@@ -1074,7 +1097,7 @@ class RewardEnsembleTrainer(BasicRewardTrainer):
         """Create an ensemble trainer."""
         if not isinstance(model, reward_nets.RewardEnsemble):
             raise TypeError(
-                f"RewardEnsemble expected by RewardEnsembleTrainer not {type(model)}.",
+                f"RewardEnsemble expected by EnsembleTrainer not {type(model)}.",
             )
 
         super().__init__(
@@ -1087,37 +1110,34 @@ class RewardEnsembleTrainer(BasicRewardTrainer):
             custom_logger,
         )
 
-    def _train(self, dataset: PreferenceDataset, epoch_multiplier: float = 1.0):
-        """Trains for `epoch_multiplier * self.epochs` epochs over `dataset`."""
-        dataloader = self._make_data_loader(dataset)
-        epochs = round(self.epochs * epoch_multiplier)
+    def _training_inner_loop(
+        self,
+        fragment_pairs: Sequence[TrajectoryPair],
+        preferences: np.ndarray,
+    ) -> th.Tensor:
+        losses = []
+        metrics = []
+        for member in self._model.members:
+            output = self.loss.forward(member, fragment_pairs, preferences)
+            losses.append(output.loss)
+            metrics.append(output.metrics)
+        losses = th.stack(losses)
+        loss = losses.sum()
 
-        for _ in tqdm(range(epochs), desc="Training reward model"):
-            for fragment_pairs, preferences in dataloader:
-                self.optim.zero_grad()
-                losses = []
-                metrics = []
-                for member in self._model.members:
-                    output = self.loss(member, fragment_pairs, preferences)
-                    losses.append(output["loss"])
-                    metrics.append(output["metrics"])
-                losses = th.stack(losses)
-                loss = losses.mean()
-                loss.backward()
-                self.optim.step()
+        self.logger.record("loss", loss.item())
+        self.logger.record("loss_std", loss.std().item())
+        # Note here we are returning all the losses not just the mean
+        # This will give us a histogram
+        self.logger.record("dist_loss", losses.detach().cpu().numpy())
 
-                # Note here we are return all the losses not just the mean
-                # This will give us a histogram
-                self.logger.record("loss", loss.item())
-                self.logger.record("loss_std", loss.std().item())
-                self.logger.record("dist_loss", losses.detach().cpu().numpy())
+        # Turn metrics from a list of dictionaries into a dictionary of
+        # tensors. Again this should give us a histogram in tensorboard.
+        metrics = {k: th.stack([di[k] for di in metrics]) for k in metrics[0]}
+        for name, value in metrics.items():
+            self.logger.record(name, value.mean().item())
+            self.logger.record(f"dist_{name}", value.cpu().numpy())
 
-                # Turn metrics from a list of dictionaries into a dictionary of
-                # tensors. Again this should give us a histogram in tensorboard.
-                metrics = {k: th.stack([di[k] for di in metrics]) for k in metrics[0]}
-                for metric in metrics:
-                    self.logger.record(metric, metrics[metric].mean().item())
-                    self.logger.record(f"dist_{metric}", metrics[metric].cpu().numpy())
+        return loss
 
 
 def is_base_model_ensemble(reward_model):
@@ -1137,7 +1157,7 @@ def _make_reward_trainer(
     is_ensemble, base_model = is_base_model_ensemble(reward_model)
 
     if is_ensemble:
-        return RewardEnsembleTrainer(
+        return EnsembleTrainer(
             base_model,
             loss,
             **reward_trainer_kwargs,
@@ -1268,12 +1288,6 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
         # the correct logger. But if the user created a RewardTrainer themselves and
         # didn't manually set a logger, it would be annoying if a separate one was used.
         self.reward_trainer.logger = self.logger
-        # the reward_trainer's model should refer to the same object as our copy
-        # except when training a reward ensemble.
-        assert self.reward_trainer._model is self.model or isinstance(
-            self.reward_trainer,
-            RewardEnsembleTrainer,
-        )
         self.trajectory_generator = trajectory_generator
         self.trajectory_generator.logger = self.logger
         self.fragmenter = fragmenter or RandomFragmenter(

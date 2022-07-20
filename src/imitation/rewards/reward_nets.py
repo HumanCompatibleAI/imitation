@@ -215,13 +215,9 @@ class RewardNet(nn.Module, abc.ABC):
 class RewardNetWrapper(RewardNet):
     """An abstract RewardNet wrapping a base network.
 
-    A concrete implementation of the `forward` method is needed.
-    Note: by default, `predict`, `predict_th`, `preprocess`,
-    `device` and all the PyTorch `nn.Module` methods will be inherited from `RewardNet`
-    and not passed through to the base network. If any of these methods is overridden
-    in the base `RewardNet`, this will not affect `RewardNetWrapper`. However,
-    `predict_processed` is overridden and will call predict processed on the base
-    net passing along all kwargs.
+    Note: The warper will default to forwarding calls to `device`, `forward`,
+        `preproces`, `predict`, and `predict_processed` on the base reward net unless
+        explicitly overridden in a subclases.
     """
 
     def __init__(
@@ -244,6 +240,16 @@ class RewardNetWrapper(RewardNet):
     def base(self) -> RewardNet:
         return self._base
 
+    def forward(
+        self,
+        state: th.Tensor,
+        action: th.Tensor,
+        next_state: th.Tensor,
+        done: th.Tensor,
+    ) -> th.Tensor:
+        __doc__ = super().forward.__doc__  # noqa: F841
+        return self.base.forward(state, action, next_state, done)
+
     def predict_processed(
         self,
         state: np.ndarray,
@@ -254,6 +260,35 @@ class RewardNetWrapper(RewardNet):
     ) -> np.ndarray:
         __doc__ = super().predict_processed.__doc__  # noqa: F841
         return self.base.predict_processed(state, action, next_state, done, **kwargs)
+
+    def predict(
+        self,
+        state: np.ndarray,
+        action: np.ndarray,
+        next_state: np.ndarray,
+        done: np.ndarray,
+    ) -> np.ndarray:
+        __doc__ = super().predict.__doc__  # noqa: F841
+        return self.base.predict(state, action, next_state, done)
+
+    def preprocess(
+        self,
+        state: np.ndarray,
+        action: np.ndarray,
+        next_state: np.ndarray,
+        done: np.ndarray,
+    ) -> Tuple[th.Tensor, th.Tensor, th.Tensor, th.Tensor]:
+        __doc__ = super().preprocess.__doc__  # noqa: F841
+        return self.base.preprocess(state, action, next_state, done)
+
+    @property
+    def device(self) -> th.device:
+        __doc__ = super().device.__doc__  # noqa: F841
+        return self.base.device
+
+    @property
+    def dtype(self) -> th.dtype:
+        return super().dtype
 
 
 class RewardNetWithVariance(RewardNet):
@@ -266,6 +301,7 @@ class RewardNetWithVariance(RewardNet):
         action: np.ndarray,
         next_state: np.ndarray,
         done: np.ndarray,
+        **kwargs,
     ) -> Tuple[np.ndarray, np.ndarray]:
         """Compute the mean and variance of the reward distribution.
 
@@ -274,6 +310,7 @@ class RewardNetWithVariance(RewardNet):
             action: Actions of shape `(batch_size,) + action_shape`.
             next_state: Successor states of shape `(batch_size,) + state_shape`.
             done: End-of-episode (terminal state) indicator of shape `(batch_size,)`.
+            **kwargs: may modify the behavior of subclasses
 
         Returns:
             * Estimated reward mean of shape `(batch_size,)`.
@@ -421,15 +458,6 @@ class NormalizedRewardNet(RewardNetWrapper):
                 self.normalize_output_layer.update_stats(rew_th)
         assert rew.shape == state.shape[:1]
         return rew
-
-    def forward(
-        self,
-        state: th.Tensor,
-        action: th.Tensor,
-        next_state: th.Tensor,
-        done: th.Tensor,
-    ):
-        return self.base(state, action, next_state, done)
 
 
 class ShapedRewardNet(RewardNetWrapper):
@@ -600,7 +628,13 @@ class BasicPotentialMLP(nn.Module):
 
 
 class RewardEnsemble(RewardNetWithVariance):
-    """A mean ensemble of reward networks."""
+    """A mean ensemble of reward networks.
+
+    A reward ensemble is made up of individual reward networks. To maintain consistency
+    the "output" of a reward network will be defined as the results of its
+    `predict_processed`. Thus for example the mean of the ensemble is the mean of the
+    results of its members predict processed classes.
+    """
 
     members: nn.ModuleList
 
@@ -612,7 +646,6 @@ class RewardEnsemble(RewardNetWithVariance):
         member_cls: Type[RewardNet] = BasicRewardNet,
         member_kwargs: Mapping[str, Any] = {},
         member_normalize_output_layer: Optional[Type[nn.Module]] = None,
-        **kwargs,
     ):
         """Initialize the RewardEnsemble.
 
@@ -624,12 +657,10 @@ class RewardEnsemble(RewardNetWithVariance):
             member_kwargs: keyword arguments to pass to the ensemble members
             member_normalize_output_layer: The normalization layer to use for the
                 member classes. Defaults to None.
-            **kwargs: ignored
 
         Raises:
             ValueError: if num_members is less than 1
         """
-        del kwargs
         super().__init__(observation_space, action_space)
         if num_members < 1:
             raise ValueError("Must be at least 1 member in the ensemble.")
@@ -650,54 +681,35 @@ class RewardEnsemble(RewardNetWithVariance):
         """The number of members in the ensemble."""
         return len(self.members)
 
-    def forward_all(
+    def predict_processed_all(
         self,
-        state: th.Tensor,
-        action: th.Tensor,
-        next_state: th.Tensor,
-        done: th.Tensor,
-    ):
-        """Return the results reward from each member of the ensemble.
+        state: np.ndarray,
+        action: np.ndarray,
+        next_state: np.ndarray,
+        done: np.ndarray,
+        **kwargs,
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        """Get the results of predict processed on all of the members.
 
         Args:
-            state: The current state as a torch tensor
-            action: The current action as a torch tensor
-            next_state: The next state as a torch tensor
-            done: The done flags as a torch tensor
+            state: Current states of shape `(batch_size,) + state_shape`.
+            action: Actions of shape `(batch_size,) + action_shape`.
+            next_state: Successor states of shape `(batch_size,) + state_shape`.
+            done: End-of-episode (terminal state) indicator of shape `(batch_size,)`.
+            kwargs: passed along to ensemble members.
 
         Returns:
-            The reward given by each ensemble member. This tensor has a shape of
-                `(batch_size, num_members)`.
+            The result of predict processed for each member in the ensemble of
+                shape `(batch_size, num_members)`.
         """
-        rewards = []
-        for net in self.members:
-            rewards.append(net(state, action, next_state, done))
-        rewards = th.stack(rewards, dim=-1)
+        batch_size = state.shape[0]
+        rewards = [
+            member.predict_processed(state, action, next_state, done, **kwargs)
+            for member in self.members
+        ]
+        rewards = np.stack(rewards, axis=-1)
+        assert rewards.shape == (batch_size, self.num_members)
         return rewards
-
-    def forward(
-        self,
-        state: th.Tensor,
-        action: th.Tensor,
-        next_state: th.Tensor,
-        done: th.Tensor,
-    ) -> th.Tensor:
-        """Compute rewards the mean of all ensemble members.
-
-        Note: This should not be used to to train the ensemble directly! This is because
-        the mean of each members loss almost never equals the loss of their mean.
-
-        Args:
-            state: The current state as a torch tensor
-            action: The current action as a torch tensor
-            next_state: The next state as a torch tensor
-            done: The done flags as a torch tensor
-
-        Returns:
-            The mean reward given by the ensemble model. This tensor has a shape of
-                `(batch_size,)`.
-        """
-        return self.forward_all(state, action, next_state, done).mean(-1)
 
     @th.no_grad()
     def predict_reward_moments(
@@ -706,6 +718,7 @@ class RewardEnsemble(RewardNetWithVariance):
         action: np.ndarray,
         next_state: np.ndarray,
         done: np.ndarray,
+        **kwargs,
     ) -> Tuple[np.ndarray, np.ndarray]:
         """Compute the standard deviation of the reward distribution for a batch.
 
@@ -714,35 +727,77 @@ class RewardEnsemble(RewardNetWithVariance):
             action: Actions of shape `(batch_size,) + action_shape`.
             next_state: Successor states of shape `(batch_size,) + state_shape`.
             done: End-of-episode (terminal state) indicator of shape `(batch_size,)`.
+            **kwargs: passed along to predict processed.
 
         Returns:
-            Computed reward std of shape `(batch_size,)`.
+            * Reward mean of shape `(batch_size,)`.
+            * Reward std of shape `(batch_size,)`.
         """
-        state, action, next_state, done = self.preprocess(
+        batch_size = state.shape[0]
+        all_rewards = self.predict_processed_all(
             state,
             action,
             next_state,
             done,
+            **kwargs,
         )
+        mean_reward = all_rewards.mean(-1)
+        var_reward = all_rewards.var(-1, ddof=1)
+        assert mean_reward.shape == var_reward.shape == (batch_size,)
+        return mean_reward, var_reward
 
-        all_rewards = self.forward_all(state, action, next_state, done)
-        return all_rewards.mean(-1).cpu().numpy(), all_rewards.var(-1).cpu().numpy()
+    def forward(self, *args) -> th.Tensor:
+        """The forward method of the ensemble should in general not be used directly."""
+        raise NotImplementedError()
+
+    def predict_processed(
+        self,
+        state: np.ndarray,
+        action: np.ndarray,
+        next_state: np.ndarray,
+        done: np.ndarray,
+        **kwargs,
+    ) -> np.ndarray:
+        """Return the mean of the ensemble members."""
+        mean, _ = self.predict_reward_moments(state, action, next_state, done, **kwargs)
+        return mean
+
+    def predict(
+        self,
+        state: np.ndarray,
+        action: np.ndarray,
+        next_state: np.ndarray,
+        done: np.ndarray,
+        **kwargs,
+    ):
+        """Return the mean of the ensemble members."""
+        return self.predict_processed(state, action, next_state, done, **kwargs)
 
 
 class AddSTDRewardWrapper(RewardNetWrapper):
-    """That adds a multiple of the standard deviation to the reward function."""
+    """Adds a multiple of the estimated standard deviation to mean reward."""
 
     base: RewardNetWithVariance
 
     def __init__(self, base: RewardNetWithVariance, default_alpha: float = 0.0):
-        """Create a conservative reward network.
+        """Create a reward network that added a multiple of the standard deviation.
 
         Args:
-            base: An uncertain rewarard network
+            base: A reward network that keeps track of its epistemic variance.
+                This is used to compute the standard deviation.
             default_alpha: multiple of standard deviation to add to the reward mean.
                 Defaults to 0.0.
+
+        Raises:
+            ValueError: if base is not an instance of RewardNetWithVariance
         """
         super().__init__(base)
+        if not isinstance(base, RewardNetWithVariance):
+            raise ValueError(
+                "Cannot add standard deviation to reward net that "
+                "is not an instance of RewardNetWithVariance!",
+            )
+
         self.default_alpha = default_alpha
 
     def predict_processed(
@@ -754,7 +809,7 @@ class AddSTDRewardWrapper(RewardNetWrapper):
         alpha: Optional[float] = None,
         **kwargs,
     ) -> np.ndarray:
-        """Compute a lower confidence bound on the reward without gradients.
+        """Compute a lower/upper confidence bound on the reward without gradients.
 
         Args:
             state: Current states of shape `(batch_size,) + state_shape`.
@@ -782,9 +837,6 @@ class AddSTDRewardWrapper(RewardNetWrapper):
 
         return reward_mean + alpha * np.sqrt(reward_var)
 
-    def forward(self, *args):
-        return self.base.forward(*args)
-
 
 def make_reward_net(
     observation_space: gym.Space,
@@ -809,10 +861,6 @@ def make_reward_net(
 
     Returns:
         A, possibly wrapped, instance of `net_cls`.
-
-    Raises:
-        ValueError: if you try to specify add_std_alpha for a reward network that
-            is not an instance of `RewardNetWithVariance`.
     """
     reward_net = net_cls(
         observation_space,
@@ -821,13 +869,7 @@ def make_reward_net(
     )
 
     if add_std_alpha is not None:
-        if isinstance(reward_net, RewardNetWithVariance):
-            reward_net = AddSTDRewardWrapper(reward_net, default_alpha=add_std_alpha)
-        else:
-            raise ValueError(
-                "Cannot add standard deviation to reward net that "
-                "is not an instance of RewardNetWithVariance!",
-            )
+        reward_net = AddSTDRewardWrapper(reward_net, default_alpha=add_std_alpha)
 
     if normalize_output_layer is not None:
         reward_net = NormalizedRewardNet(

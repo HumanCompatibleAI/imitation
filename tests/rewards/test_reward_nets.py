@@ -3,6 +3,7 @@
 import logging
 import numbers
 import os
+from tempfile import TemporaryDirectory
 from typing import Tuple
 from unittest import mock
 
@@ -31,10 +32,11 @@ DESERIALIZATION_TYPES = [
     "RewardNet_unshaped",
 ]
 
+# Reward net classes, allowed kwargs
 REWARD_NETS = [
-    reward_nets.BasicRewardNet,
-    reward_nets.BasicShapedRewardNet,
-    reward_nets.RewardEnsemble,
+    (reward_nets.BasicRewardNet, {"normalize_input_layer"}),
+    (reward_nets.BasicShapedRewardNet, {"normalize_input_layer"}),
+    (reward_nets.RewardEnsemble, set()),
 ]
 
 
@@ -48,22 +50,28 @@ REWARD_NET_KWARGS = [
     {"normalize_input_layer": networks.RunningNorm},
 ]
 
+NORMALIZE_OUTPUT_LAYER = [
+    None,
+    networks.RunningNorm,
+]
+
 
 @pytest.mark.parametrize("env_name", ENVS)
-@pytest.mark.parametrize("reward_net_cls", REWARD_NETS)
+@pytest.mark.parametrize("reward_net_cls_allowed_kwargs", REWARD_NETS)
 @pytest.mark.parametrize("reward_net_kwargs", REWARD_NET_KWARGS)
-@pytest.mark.parametrize("normalize_output_layer", [None, networks.RunningNorm])
+@pytest.mark.parametrize("normalize_output_layer", NORMALIZE_OUTPUT_LAYER)
 def test_init_no_crash(
     env_name,
-    reward_net_cls,
+    reward_net_cls_allowed_kwargs,
     reward_net_kwargs,
     normalize_output_layer,
 ):
+    reward_net_cls, allowed_kwargs = reward_net_cls_allowed_kwargs
     env = gym.make(env_name)
     reward_net = reward_net_cls(
         env.observation_space,
         env.action_space,
-        **reward_net_kwargs,
+        **{k: v for k, v in reward_net_kwargs.items() if k in allowed_kwargs},
     )
     if normalize_output_layer:
         reward_net = reward_nets.NormalizedRewardNet(
@@ -160,6 +168,8 @@ def test_strip_wrappers_complex():
 
 
 def test_validate_wrapper_structure():
+    env = gym.make("FrozenLake-v1")
+
     class RewardNetA(reward_nets.RewardNet):
         def forward(*args):
             ...  # pragma: no cover
@@ -168,21 +178,27 @@ def test_validate_wrapper_structure():
         def forward(*args):
             ...  # pragma: no cover
 
-    reward_net = RewardNetA(None, None)  # This might fail if we setup better input
-    # validation
+    reward_net = RewardNetA(env.action_space, env.observation_space)
     reward_net = WrapperB(reward_net)
 
     assert isinstance(reward_net.base, RewardNetA)
 
     # This should not raise a type error
-    serialize._validate_wrapper_structure(reward_net, [[WrapperB, RewardNetA]])
+    serialize._validate_wrapper_structure(reward_net, {(WrapperB, RewardNetA)})
 
     # The top level wrapper is an instance of WrapperB this should raise a type error
     with pytest.raises(
         TypeError,
-        match=r"Wrapper structure should be match \(one of\) \[.*\] but found \[.*\]",
+        match=r"Wrapper structure should match \[.*\] but found \[.*\]",
     ):
-        serialize._validate_wrapper_structure(reward_net, [[RewardNetA]])
+        serialize._validate_wrapper_structure(reward_net, {(RewardNetA,)})
+
+    # Reward net is not wrapped at all this should raise a type error.
+    with pytest.raises(TypeError):
+        serialize._validate_wrapper_structure(
+            RewardNetA(env.action_space, env.observation_space),
+            {(WrapperB,)},
+        )
 
     # This should not raise a type error since one of the prefixes matches
     serialize._validate_wrapper_structure(
@@ -191,11 +207,8 @@ def test_validate_wrapper_structure():
     )
 
     # This should raise a type error since none the prefix is in the incorrect order
-    with pytest.raises(
-        TypeError,
-        match=r"Wrapper structure should be match \(one of\) \[.*\] but found \[.*\]",
-    ):
-        serialize._validate_wrapper_structure(reward_net, [[RewardNetA, WrapperB]])
+    with pytest.raises(TypeError):
+        serialize._validate_wrapper_structure(reward_net, {(RewardNetA, WrapperB)})
 
 
 @pytest.mark.parametrize("env_name", ENVS)
@@ -210,10 +223,16 @@ def test_cant_load_unnorm_as_norm(env_name, tmpdir):
 
 
 @pytest.mark.parametrize("env_name", ENVS)
-@pytest.mark.parametrize("net_cls", REWARD_NETS)
+@pytest.mark.parametrize("net_cls_allowed_kwargs", REWARD_NETS)
 @pytest.mark.parametrize("normalize_rewards", [True, False])
-def test_serialize_identity(env_name, net_cls, normalize_rewards, tmpdir):
+def test_serialize_identity(
+    env_name,
+    net_cls_allowed_kwargs,
+    normalize_rewards,
+    tmpdir,
+):
     """Does output of deserialized reward network match that of original?"""
+    net_cls, _ = net_cls_allowed_kwargs
     logging.info(f"Testing {net_cls}")
 
     venv = util.make_vec_env(env_name, n_envs=1, parallel=False)
@@ -238,7 +257,7 @@ def test_serialize_identity(env_name, net_cls, normalize_rewards, tmpdir):
             tmppath,
             venv,
         )
-    if isinstance(original, reward_nets.ShapedRewardNet):
+    elif isinstance(original, reward_nets.ShapedRewardNet):
         unwrapped_rew_fn = serialize.load_reward("RewardNet_unshaped", tmppath, venv)
         wrapped_rew_fn = serialize.load_reward("RewardNet_shaped", tmppath, venv)
     else:
@@ -323,11 +342,12 @@ def test_potential_net_2d_obs():
 
 
 @pytest.mark.parametrize("env_name", ENVS)
-@pytest.mark.parametrize("net_cls", REWARD_NETS)
+@pytest.mark.parametrize("net_cls_allowed_kwargs", REWARD_NETS)
 @pytest.mark.parametrize("num_members", [1, 2, 4])
-def test_reward_ensemble_creation(env_name, net_cls, num_members):
-    """A test RewardEnsemble constructor."""
+def test_reward_ensemble_creation(env_name, net_cls_allowed_kwargs, num_members):
+    """A simple test of the RewardEnsemble constructor."""
     env = gym.make(env_name)
+    net_cls, _ = net_cls_allowed_kwargs
     ensemble = reward_nets.RewardEnsemble(
         env.action_space,
         env.observation_space,
@@ -382,7 +402,7 @@ def env_2d() -> Env2D:
 
 @pytest.fixture
 def two_ensemble(env_2d) -> reward_nets.RewardEnsemble:
-    """A simple reward ensemble made up of two moke reward nets."""
+    """A simple reward ensemble made up of two mock reward nets."""
     return reward_nets.RewardEnsemble(
         env_2d.observation_space,
         env_2d.action_space,
@@ -391,29 +411,33 @@ def two_ensemble(env_2d) -> reward_nets.RewardEnsemble:
     )
 
 
+NumpyTransitions = Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]
+
+
 @pytest.fixture
-def numpy_transitions() -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+def numpy_transitions() -> NumpyTransitions:
     """A batch of states, actions, next_states, and dones as np.ndarrays for Env2D."""
     return (
         np.zeros((10, 5, 5)),
         np.zeros((10, 1), dtype=int),
         np.zeros((10, 5, 5)),
-        np.zeros((10,)),
+        np.zeros((10,), dtype=bool),
     )
 
 
-def test_reward_ensemble_test_value_error(env_2d):
+@pytest.mark.parametrize("bad_input", [0, -1, 0.5])
+def test_reward_ensemble_test_value_error(env_2d, bad_input):
     with pytest.raises(ValueError):
         reward_nets.RewardEnsemble(
             env_2d.action_space,
             env_2d.observation_space,
-            num_members=0,
+            num_members=bad_input,
         )
 
 
 def test_reward_ensemble_predict_reward_moments(
     two_ensemble: reward_nets.RewardEnsemble,
-    numpy_transitions: tuple,
+    numpy_transitions: NumpyTransitions,
 ):
     # Test that the calculation of mean and variance is correct
     two_ensemble.members[0].value = 0
@@ -448,7 +472,7 @@ def test_ensemble_members_have_different_parameters(env_2d):
 
 def test_add_std_reward_wrapper(
     two_ensemble: reward_nets.RewardEnsemble,
-    numpy_transitions: tuple,
+    numpy_transitions: NumpyTransitions,
 ):
     two_ensemble.members[0].value = 3
     two_ensemble.members[1].value = -1
@@ -464,17 +488,17 @@ def test_add_std_reward_wrapper(
 def test_wrappers_pass_on_kwargs(
     make_wrapper: reward_nets.RewardNetWrapper,
     env_2d: Env2D,
-    numpy_transitions: tuple,
+    numpy_transitions: NumpyTransitions,
 ):
     basic_reward_net = reward_nets.BasicRewardNet(
         env_2d.observation_space,
         env_2d.action_space,
     )
     basic_reward_net.predict_processed = mock.Mock(return_value=np.zeros((10,)))
-    normalized_reward_net = make_wrapper(
+    wrapped_reward_net = make_wrapper(
         basic_reward_net,
     )
-    normalized_reward_net.predict_processed(
+    wrapped_reward_net.predict_processed(
         *numpy_transitions,
         foobar=42,
     )
@@ -482,6 +506,29 @@ def test_wrappers_pass_on_kwargs(
         *numpy_transitions,
         foobar=42,
     )
+
+
+def test_load_reward_passes_along_alpha_to_add_std_wrappers_predict_processed_method(
+    env_2d: Env2D,
+    two_ensemble: reward_nets.RewardEnsemble,
+    numpy_transitions: NumpyTransitions,
+):
+    """Kwargs passed to load_reward are passed along to predict_processed."""
+    two_ensemble.members[0].value = 3
+    two_ensemble.members[1].value = -1
+    reward_net = reward_nets.AddSTDRewardWrapper(two_ensemble, default_alpha=0)
+    with TemporaryDirectory() as tmp_dir:
+        net_path = os.path.join(tmp_dir, "reward_net.pkl")
+        th.save(reward_net, os.path.join(net_path))
+        new_alpha = -0.5
+        reward_fn = serialize.load_reward(
+            "RewardNet_std_added",
+            net_path,
+            env_2d,
+            alpha=new_alpha,
+        )
+        rewards = reward_fn(*numpy_transitions)
+        assert np.allclose(rewards, 1 + new_alpha * np.sqrt(8))
 
 
 @pytest.mark.parametrize("env_name", ENVS)
