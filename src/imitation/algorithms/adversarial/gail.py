@@ -142,6 +142,7 @@ class GAIL(common.AdversarialTrainer):
         log_policy_act_prob: Optional[th.Tensor] = None,
     ) -> th.Tensor:
         """Compute the discriminator's logits for each state-action sample.
+
         Args:
             state: The state of the environment at the time of the action.
             action: The action taken by the expert or generator.

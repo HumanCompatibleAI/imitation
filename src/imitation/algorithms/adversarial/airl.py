@@ -95,9 +95,9 @@ class AIRL(common.AdversarialTrainer):
             state: The state of the environment at the time of the action.
             action: The action taken by the expert or generator.
             next_state: The state of the environment after the action.
-            done: whether a `terminal state` (as defined under the MDP of the task) has 
+            done: whether a `terminal state` (as defined under the MDP of the task) has
                 been reached.
-            log_policy_act_prob: The log probability of the action taken by the 
+            log_policy_act_prob: The log probability of the action taken by the
                 generator.
 
         Returns:
