@@ -425,7 +425,7 @@ def numpy_transitions() -> NumpyTransitions:
     )
 
 
-@pytest.mark.parametrize("bad_input", [0, -1, 0.5, "foo"])
+@pytest.mark.parametrize("bad_input", [0, -1, 0.5])
 def test_reward_ensemble_test_value_error(env_2d, bad_input):
     with pytest.raises(ValueError):
         reward_nets.RewardEnsemble(
