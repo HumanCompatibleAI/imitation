@@ -38,8 +38,7 @@ from imitation.data.types import (
     Transitions,
 )
 from imitation.policies import exploration_wrapper
-from imitation.rewards import common as rewards_common
-from imitation.rewards import reward_nets, reward_wrapper
+from imitation.rewards import reward_function, reward_nets, reward_wrapper
 from imitation.util import logger as imit_logger
 from imitation.util import networks, util
 
@@ -125,7 +124,7 @@ class AgentTrainer(TrajectoryGenerator):
     def __init__(
         self,
         algorithm: base_class.BaseAlgorithm,
-        reward_fn: Union[rewards_common.RewardFn, reward_nets.RewardNet],
+        reward_fn: Union[reward_function.RewardFn, reward_nets.RewardNet],
         exploration_frac: float = 0.0,
         switch_prob: float = 0.5,
         random_prob: float = 0.5,
