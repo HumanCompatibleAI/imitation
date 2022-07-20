@@ -253,7 +253,7 @@ def test_serialize_identity(
             tmppath,
             venv,
         )
-    if isinstance(original, reward_nets.ShapedRewardNet):
+    elif isinstance(original, reward_nets.ShapedRewardNet):
         unwrapped_rew_fn = serialize.load_reward("RewardNet_unshaped", tmppath, venv)
         wrapped_rew_fn = serialize.load_reward("RewardNet_shaped", tmppath, venv)
     else:
@@ -506,13 +506,15 @@ def test_load_reward_passes_along_alpha_to_add_std_wrappers_predict_processed_me
     numpy_transitions: tuple,
 ):
     """Kwargs passed to load_reward are passed along to predict_processed."""
+    two_ensemble.members[0].value = 3
+    two_ensemble.members[1].value = -1
     reward_net = reward_nets.AddSTDRewardWrapper(two_ensemble, default_alpha=0)
     with TemporaryDirectory() as tmp_dir:
         net_path = os.path.join(tmp_dir, "reward_net.pkl")
-        th.save(reward_net, os.path.join(tmp_dir))
+        th.save(reward_net, os.path.join(net_path))
         new_alpha = -0.5
         reward_fn = serialize.load_reward(
-            "RewardNet_add_std",
+            "RewardNet_std_added",
             net_path,
             env_2d,
             alpha=new_alpha,
