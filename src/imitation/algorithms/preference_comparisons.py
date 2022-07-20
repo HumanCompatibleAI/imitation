@@ -895,13 +895,21 @@ class BasicRewardTrainer(RewardTrainer):
         for _ in tqdm(range(epochs), desc="Training reward model"):
             for fragment_pairs, preferences in dataloader:
                 self.optim.zero_grad()
-                output = self.loss.forward(self._model, fragment_pairs, preferences)
-                loss = output.loss
+                loss = self._training_inner_loop(fragment_pairs, preferences)
                 loss.backward()
                 self.optim.step()
-                self.logger.record("loss", loss.item())
-                for name, value in output.metrics.items():
-                    self.logger.record(name, value)
+
+    def _training_inner_loop(
+        self,
+        fragment_pairs: Sequence[TrajectoryPair],
+        preferences: np.ndarray,
+    ) -> th.Tensor:
+        output = self.loss.forward(self._model, fragment_pairs, preferences)
+        loss = output.loss
+        self.logger.record("loss", loss.item())
+        for name, value in output.metrics.items():
+            self.logger.record(name, value)
+        return loss
 
 
 class RewardEnsembleTrainer(BasicRewardTrainer):
@@ -935,37 +943,34 @@ class RewardEnsembleTrainer(BasicRewardTrainer):
             custom_logger,
         )
 
-    def _train(self, dataset: PreferenceDataset, epoch_multiplier: float = 1.0) -> None:
-        """Trains for `epoch_multiplier * self.epochs` epochs over `dataset`."""
-        dataloader = self._make_data_loader(dataset)
-        epochs = round(self.epochs * epoch_multiplier)
+    def _training_inner_loop(
+        self,
+        fragment_pairs: Sequence[TrajectoryPair],
+        preferences: np.ndarray,
+    ) -> th.Tensor:
+        losses = []
+        metrics = []
+        for member in self._model.members:
+            output = self.loss.forward(member, fragment_pairs, preferences)
+            losses.append(output.loss)
+            metrics.append(output.metrics)
+        losses = th.stack(losses)
+        loss = losses.mean()
 
-        for _ in tqdm(range(epochs), desc="Training reward model"):
-            for fragment_pairs, preferences in dataloader:
-                self.optim.zero_grad()
-                losses = []
-                metrics = []
-                for member in self._model.members:
-                    output = self.loss.forward(member, fragment_pairs, preferences)
-                    losses.append(output.loss)
-                    metrics.append(output.metrics)
-                losses = th.stack(losses)
-                loss = losses.mean()
-                loss.backward()
-                self.optim.step()
+        self.logger.record("loss", loss.item())
+        self.logger.record("loss_std", loss.std().item())
+        # Note here we are returning all the losses not just the mean
+        # This will give us a histogram
+        self.logger.record("dist_loss", losses.detach().cpu().numpy())
 
-                # Note here we are return all the losses not just the mean
-                # This will give us a histogram
-                self.logger.record("loss", loss.item())
-                self.logger.record("loss_std", loss.std().item())
-                self.logger.record("dist_loss", losses.detach().cpu().numpy())
+        # Turn metrics from a list of dictionaries into a dictionary of
+        # tensors. Again this should give us a histogram in tensorboard.
+        metrics = {k: th.stack([di[k] for di in metrics]) for k in metrics[0]}
+        for name, value in metrics.items():
+            self.logger.record(name, value.mean().item())
+            self.logger.record(f"dist_{name}", value.cpu().numpy())
 
-                # Turn metrics from a list of dictionaries into a dictionary of
-                # tensors. Again this should give us a histogram in tensorboard.
-                metrics = {k: th.stack([di[k] for di in metrics]) for k in metrics[0]}
-                for name, value in metrics.items():
-                    self.logger.record(name, value.mean().item())
-                    self.logger.record(f"dist_{name}", value.cpu().numpy())
+        return loss
 
 
 def _make_reward_trainer(
@@ -1110,12 +1115,6 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
         # the correct logger. But if the user created a RewardTrainer themselves and
         # didn't manually set a logger, it would be annoying if a separate one was used.
         self.reward_trainer.logger = self.logger
-        # the reward_trainer's model should refer to the same object as our copy
-        # except when training a reward ensemble.
-        assert self.reward_trainer._model is self.model or isinstance(
-            self.reward_trainer,
-            RewardEnsembleTrainer,
-        )
         self.trajectory_generator = trajectory_generator
         self.trajectory_generator.logger = self.logger
         self.fragmenter = fragmenter or RandomFragmenter(
