@@ -25,6 +25,7 @@ import torch as th
 from scipy import special
 from stable_baselines3.common import base_class, type_aliases, vec_env
 from torch import nn
+from torch.utils.data import DataLoader
 from tqdm.auto import tqdm
 
 from imitation.algorithms import base
@@ -781,7 +782,6 @@ class CrossEntropyRewardLoss(RewardLoss):
             The softmax of the difference between the (discounted) return of the
             first and second trajectory.
         """
-        # TODO(lev) this could be extracted into its own class.
         assert rews1.ndim == rews2.ndim == 1
         # First, we compute the difference of the returns of
         # the two fragments. We have a special case for a discount
@@ -807,7 +807,7 @@ class RewardTrainer(abc.ABC):
 
     This class contains only the actual reward model training code,
     it is not responsible for gathering trajectories and preferences
-    or for agent training (see PreferenceComparisons for that).
+    or for agent training (see :class: `PreferenceComparisons` for that).
     """
 
     def __init__(
@@ -859,7 +859,7 @@ class BasicRewardTrainer(RewardTrainer):
             model: the RewardNet instance to be trained
             loss: the loss to use
             batch_size: number of fragment pairs per batch
-            epochs: number of epochs on each training iteration (can be adjusted
+            epochs: number of epochs in each training iteration (can be adjusted
                 on the fly by specifying an `epoch_multiplier` in `self.train()`
                 if longer training is desired in specific cases).
             lr: the learning rate
@@ -878,9 +878,9 @@ class BasicRewardTrainer(RewardTrainer):
             weight_decay=weight_decay,
         )
 
-    def _make_data_loader(self, dataset: PreferenceDataset):
+    def _make_data_loader(self, dataset: PreferenceDataset) -> DataLoader:
         """Make a dataloader."""
-        return th.utils.data.DataLoader(
+        return DataLoader(
             dataset,
             batch_size=self.batch_size,
             shuffle=True,
@@ -912,7 +912,7 @@ class BasicRewardTrainer(RewardTrainer):
         return loss
 
 
-class RewardEnsembleTrainer(BasicRewardTrainer):
+class EnsembleTrainer(BasicRewardTrainer):
     """Train a reward ensemble."""
 
     _model: reward_nets.RewardEnsemble
@@ -984,7 +984,7 @@ def _make_reward_trainer(
         base_model = base_model.base
 
     if isinstance(base_model, reward_nets.RewardEnsemble):
-        return RewardEnsembleTrainer(
+        return EnsembleTrainer(
             base_model,
             loss,
             **reward_trainer_kwargs,

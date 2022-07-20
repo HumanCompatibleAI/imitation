@@ -202,7 +202,7 @@ def test_reward_ensemble_trainer_raises_type_error(venv):
         TypeError,
         match=r"RewardEnsemble expected by RewardEnsembleTrainer not .*",
     ):
-        preference_comparisons.RewardEnsembleTrainer(
+        preference_comparisons.EnsembleTrainer(
             reward_net,
             loss,
         )
@@ -227,7 +227,7 @@ def test_correct_reward_trainer_used_by_default(
     if isinstance(reward_net, reward_nets.RewardEnsemble):
         assert isinstance(
             main_trainer.reward_trainer,
-            preference_comparisons.RewardEnsembleTrainer,
+            preference_comparisons.EnsembleTrainer,
         )
     elif hasattr(reward_net, "base") and isinstance(
         reward_net.base,
@@ -235,7 +235,7 @@ def test_correct_reward_trainer_used_by_default(
     ):
         assert isinstance(
             main_trainer.reward_trainer,
-            preference_comparisons.RewardEnsembleTrainer,
+            preference_comparisons.EnsembleTrainer,
         )
     else:
         assert isinstance(
