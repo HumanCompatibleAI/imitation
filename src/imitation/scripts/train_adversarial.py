@@ -3,7 +3,7 @@
 import logging
 import os
 import os.path as osp
-from typing import Any, Mapping, Type, Optional
+from typing import Any, Mapping, Optional, Type
 
 import sacred.commands
 import torch as th

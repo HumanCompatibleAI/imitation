@@ -13,8 +13,6 @@ from imitation.data import rollout
 from imitation.policies import serialize
 from imitation.scripts.common import common, demonstrations, train
 from imitation.scripts.config.train_imitation import train_imitation_ex
-from stable_baselines3.common.utils import get_device
-import torch as th
 
 logger = logging.getLogger(__name__)
 
@@ -105,15 +103,15 @@ def train_imitation(
         bc_train_kwargs: Keyword arguments passed through to `BC.train` method.
         dagger: Arguments for DAgger training.
         use_dagger: If True, train using DAgger; otherwise, use BC.
-        agent_path: Path to directory containing pre-trained agent for warm start. If None, train from
-            scratch.
+        agent_path: Path to directory containing pre-trained agent for warm start. If
+            None, train from scratch.
 
     Returns:
         Statistics for rollouts from the trained policy and demonstration data.
     """
     custom_logger, log_dir = common.setup_logging()
     venv = common.make_venv()
-    imit_policy = make_policy(venv)
+    imit_policy = make_policy(venv, policy_path=agent_path)
 
     expert_trajs = None
     if not use_dagger or dagger["use_offline_rollouts"]:

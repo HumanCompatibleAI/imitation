@@ -60,6 +60,7 @@ def defaults(
                 "final",
             ),
         )
+    agent_path = None
 
 
 @train_imitation_ex.named_config
