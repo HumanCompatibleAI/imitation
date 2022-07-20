@@ -350,9 +350,25 @@ class PreferencePredictor(nn.Module):
         self.discount_factor = discount_factor
         self.noise_prob = noise_prob
         self.threshold = threshold
-        self.is_ensemble, _ = is_base_model_ensemble(self.model)
+        self.is_ensemble, base_model = is_base_model_ensemble(self.model)
+        # if the base model is an ensemble model, then keep the base model as
+        # model to get rewards from all networks
+        if self.is_ensemble:
+            self.model = base_model
 
     def forward(self, fragment_pairs: Sequence[TrajectoryPair]):
+        """Computes the preference probability of first fragment for all pairs.
+
+        Args:
+            fragment_pairs: batch of pair of fragments.
+
+        Returns:
+            The preference probability for the first fragment for all fragment pairs
+            given by the network(s).
+            Shape: (num_fragment_pairs, ) for models with single reward networks and
+                   (num_fragment_pairs, num_networks) for ensemble of networks.
+
+        """
         if self.is_ensemble:
             probs = th.empty(
                 len(fragment_pairs),
@@ -375,6 +391,16 @@ class PreferencePredictor(nn.Module):
         self,
         transitions: Transitions,
     ) -> th.Tensor:
+        """Computes the reward for all transitions.
+
+        Args:
+            transitions: batch of obs-act-obs-done for a fragment of a trajectory.
+
+        Returns:
+            The reward given by the network(s) for all the transitions.
+            Shape: (num_transitions, ) for Single reward network and
+                   (num_transitions, num_networks) for ensemble of networks.
+        """
         state = transitions.obs
         action = transitions.acts
         next_state = transitions.next_obs
@@ -565,13 +591,6 @@ class ActiveSelectionFragmenter(Fragmenter):
 
     Actively picks the fragment paris with the highest uncertainty (variance)
     of rewards/probabilties/predictions from ensemble model.
-    Note that each fragment is part of a single episode and has a fixed
-    length. This leads to a bias: transitions at the beginning and at the
-    end of episodes are less likely to occur as part of fragments (this affects
-    the first and last fragment_length transitions).
-
-    An additional bias is that trajectories shorter than the desired fragment
-    length are never used.
     """
 
     def __init__(
@@ -626,11 +645,11 @@ class ActiveSelectionFragmenter(Fragmenter):
             trans2 = rollout.flatten_trajectories([frag2])
             if self.uncertainty_on == "logit":
                 with th.no_grad():
+                    # NOTE: Should we first sum the rewards
+                    # and then take the var (curr approach)
+                    # or first take the var and then sum the rewards?
                     _, rew1_var = self._reward_moments(trans1)
                     _, rew2_var = self._reward_moments(trans2)
-                # NOTE: Should we first sum the rewards
-                # and then take the var (curr approach)
-                # or first take the var and then sum the rewards?
                 var_estimates.append(rew1_var + rew2_var)
             else:  # uncertainty_on is probability or label
                 with th.no_grad():
@@ -656,7 +675,7 @@ class ActiveSelectionFragmenter(Fragmenter):
         return [fragment_pairs[idx] for idx in fragment_idxs[:num_pairs]]
 
     def _reward_moments(self, transitions):
-        rewards = self.preference_predictor.rewards(transitions).mean(0)
+        rewards = self.preference_predictor.rewards(transitions).sum(0)
         return rewards.mean().cpu().numpy(), rewards.var().cpu().numpy()
 
 

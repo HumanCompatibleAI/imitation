@@ -837,35 +837,6 @@ class AddSTDRewardWrapper(RewardNetWrapper):
 
         return reward_mean + alpha * np.sqrt(reward_var)
 
-    def predict_processed_all(
-        self,
-        state: np.ndarray,
-        action: np.ndarray,
-        next_state: np.ndarray,
-        done: np.ndarray,
-        **kwargs,
-    ) -> Tuple[np.ndarray, np.ndarray]:
-        """Get the results of predict processed on all of the members.
-
-        Args:
-            state: Current states of shape `(batch_size,) + state_shape`.
-            action: Actions of shape `(batch_size,) + action_shape`.
-            next_state: Successor states of shape `(batch_size,) + state_shape`.
-            done: End-of-episode (terminal state) indicator of shape `(batch_size,)`.
-            kwargs: passed along to ensemble members.
-
-        Returns:
-            The result of predict processed for each member in the ensemble of
-                shape `(batch_size, num_members)`.
-        """
-        return self.base.predict_processed_all(
-            state,
-            action,
-            next_state,
-            done,
-            **kwargs,
-        )
-
 
 def make_reward_net(
     observation_space: gym.Space,
