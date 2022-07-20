@@ -578,7 +578,7 @@ class ActiveSelectionFragmenter(Fragmenter):
         self,
         preference_predictor: PreferencePredictor,
         base_fragmenter: Fragmenter,
-        fragment_sample_factor: int,
+        fragment_sample_factor: float,
         uncertainty_on: str = "logits",
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
     ):
@@ -617,7 +617,7 @@ class ActiveSelectionFragmenter(Fragmenter):
         fragment_pairs = self.base_fragmenter(
             trajectories,
             fragment_length,
-            self.fragment_sample_factor * num_pairs,
+            int(self.fragment_sample_factor * num_pairs),
         )
         var_estimates = []
         for i, fragment in enumerate(fragment_pairs):

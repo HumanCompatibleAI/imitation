@@ -73,6 +73,7 @@ def train_preference_comparisons(
     gatherer_cls: Type[preference_comparisons.PreferenceGatherer],
     gatherer_kwargs: Mapping[str, Any],
     active_selection: bool,
+    uncertainty_on: str,
     fragmenter_kwargs: Mapping[str, Any],
     allow_variable_horizon: bool,
     checkpoint_interval: int,
@@ -186,8 +187,8 @@ def train_preference_comparisons(
         fragmenter = preference_comparisons.ActiveSelectionFragmenter(
             preference_predictor=preference_predictor,
             base_fragmenter=fragmenter,
-            fragment_sample_factor=2,
-            uncertainty_on='logit',
+            fragment_sample_factor=transition_oversampling,
+            uncertainty_on=uncertainty_on,
             custom_logger=custom_logger,
         )
     gatherer = gatherer_cls(

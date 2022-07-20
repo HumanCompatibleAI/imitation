@@ -47,6 +47,7 @@ def train_defaults():
     # arguments passed on to the PreferenceGatherer specified by gatherer_cls
     gatherer_kwargs = {}
     active_selection = False
+    uncertainty_on = "logit"
     fragmenter_kwargs = {
         "warning_threshold": 0,
     }
