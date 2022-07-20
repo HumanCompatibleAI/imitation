@@ -72,6 +72,7 @@ def train_preference_comparisons(
     reward_trainer_kwargs: Mapping[str, Any],
     gatherer_cls: Type[preference_comparisons.PreferenceGatherer],
     gatherer_kwargs: Mapping[str, Any],
+    active_selection: bool,
     fragmenter_kwargs: Mapping[str, Any],
     allow_variable_horizon: bool,
     checkpoint_interval: int,
@@ -177,6 +178,18 @@ def train_preference_comparisons(
         seed=_seed,
         custom_logger=custom_logger,
     )
+    if active_selection:
+        preference_predictor = preference_comparisons.PreferencePredictor(
+            **cross_entropy_loss_kwargs,
+            model=reward_net,
+        )
+        fragmenter = preference_comparisons.ActiveSelectionFragmenter(
+            preference_predictor=preference_predictor,
+            base_fragmenter=fragmenter,
+            fragment_sample_factor=2,
+            uncertainty_on='logit',
+            custom_logger=custom_logger,
+        )
     gatherer = gatherer_cls(
         **gatherer_kwargs,
         seed=_seed,

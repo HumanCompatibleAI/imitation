@@ -46,6 +46,7 @@ def train_defaults():
     gatherer_cls = preference_comparisons.SyntheticGatherer
     # arguments passed on to the PreferenceGatherer specified by gatherer_cls
     gatherer_kwargs = {}
+    active_selection = False
     fragmenter_kwargs = {
         "warning_threshold": 0,
     }

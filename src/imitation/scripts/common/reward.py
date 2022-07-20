@@ -47,7 +47,9 @@ def normalize_output_running():
 @reward_ingredient.named_config
 def reward_ensemble():
     net_cls = reward_nets.RewardEnsemble  # noqa: F841
-    add_std_alpha = 0  # noqa: F841
+    normalize_output_layer = None  # noqa: F841
+    net_kwargs = {"member_normalize_output_layer": networks.RunningNorm}  # noqa: F841
+    # add_std_alpha =   # noqa: F841
 
 
 @reward_ingredient.config_hook
