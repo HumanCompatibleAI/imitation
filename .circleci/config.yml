@@ -273,9 +273,9 @@ jobs:
           command: |
             .\venv\Scripts\activate
             # Xdummy-entrypoint.py: starts an X server and sets DISPLAY, then runs wrapped command.
-            python ci\Xdummy-entrypoint.py pytest -n ${NUM_CPUS} --cov=/venv/lib/python3.10/site-packages/imitation `
-            --cov=tests --junitxml=/tmp/test-reports/junit.xml `
-            -vv tests/
+            python pytest -n ${NUM_CPUS} --cov=venv\Lib\site-packages\imitation `
+            --cov=tests --junitxml=\tmp\test-reports\junit.xml `
+            -vv tests\
             mv .coverage .coverage.imitation
             coverage combine  # rewrite paths from virtualenv to src/
           shell: powershell.exe
@@ -288,15 +288,15 @@ jobs:
             - .pytest_cache
 
       - store_artifacts:
-          path: /tmp/test-reports
+          path: \tmp\test-reports
           destination: test-reports
 
       - store_test_results:
-          path: /tmp/test-reports
+          path: \tmp\test-reports
           unit-test:
 
       - store_artifacts:
-          path: /tmp/resource-usage
+          path: \tmp\resource-usage
           destination: resource-usage
 
 
