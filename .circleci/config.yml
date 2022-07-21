@@ -3,7 +3,7 @@ version: 2.1
 orbs:
   codecov: codecov/codecov@1.0.5
   shellcheck: circleci/shellcheck@2.2.4
-  win: circleci/windows@2.4.0
+  win: circleci/windows@4.1
 
 defaults: &defaults
   docker:
@@ -37,7 +37,7 @@ executors:
       # If you change these, also change ci/code_checks.sh
       SRC_FILES: src/ tests/ experiments/ examples/ docs/conf.py setup.py
       NUM_CPUS: 2
-  unit-test-windows: win/default
+  unit-test-windows: win/server-2022
 
 
 commands:
