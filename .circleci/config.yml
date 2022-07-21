@@ -85,6 +85,11 @@ commands:
             - v5-dependencies-{{ checksum "setup.py" }}
 
       - run:
+          name: install python
+          command: choco install python --version=3.8
+          shell: powershell.exe
+
+      - run:
           name: install dependencies
           # Only create venv if it's not been restored from cache
           command: "[[ -d /venv ]] ||  powershell.exe ./ci/build_and_activate_venv.ps1 venv"
@@ -99,10 +104,11 @@ commands:
       - run:
           name: install imitation
           command: pip install --upgrade --force-reinstall --no-deps .
-
+          shell: bash.exe
       - run:
           name: print installed packages
           command: pip freeze --all
+          shell: bash.exe
 
 
 jobs:
