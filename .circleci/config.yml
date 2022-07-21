@@ -84,10 +84,10 @@ commands:
           keys:
             - v5-dependencies-{{ checksum "setup.py" }}
 
-      # - run:
-      #     name: install python
-      #     command: choco install python --version=3.8
-      #     shell: powershell.exe
+      - run:
+          name: install python
+          command: choco install --side-by-side -y python --version 3.8
+          shell: powershell.exe
 
       - run:
           name: install virtualenv
