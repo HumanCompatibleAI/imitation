@@ -84,10 +84,10 @@ commands:
           keys:
             - v5-dependencies-{{ checksum "setup.py" }}
 
-      - run:
-          name: install python
-          command: choco install python --version=3.8
-          shell: powershell.exe
+      # - run:
+      #     name: install python
+      #     command: choco install python --version=3.8
+      #     shell: powershell.exe
 
       - run:
           name: install virtualenv
@@ -262,7 +262,7 @@ jobs:
           name: run tests
           command: |
             # Xdummy-entrypoint.py: starts an X server and sets DISPLAY, then runs wrapped command.
-            Xdummy-entrypoint.py pytest -n ${NUM_CPUS} --cov=/venv/lib/python3.8/site-packages/imitation `
+            Xdummy-entrypoint.py pytest -n ${NUM_CPUS} --cov=/venv/lib/python3.10/site-packages/imitation `
             --cov=tests --junitxml=/tmp/test-reports/junit.xml `
             -vv tests/
             mv .coverage .coverage.imitation
