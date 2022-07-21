@@ -92,28 +92,28 @@ commands:
       - run:
           name: install virtualenv
           command: pip install virtualenv
-          shell: bash.exe
+          shell: powershell.exe
 
       - run:
           name: install dependencies
           # Only create venv if it's not been restored from cache
-          command: "[[ -d /venv ]] ||  powershell.exe ./ci/build_and_activate_venv.ps1 venv"
-          shell: bash.exe
+          command: "if (-not (Test-Path venv)) { .\ci\build_and_activate_venv.ps1 -venv venv }"
+          shell: powershell.exe
 
 
       - save_cache:
           paths:
-            - /venv
+            - .\venv
           key: v5-dependencies-{{ checksum "setup.py" }}
 
       - run:
           name: install imitation
           command: pip install --upgrade --force-reinstall --no-deps .
-          shell: bash.exe
+          shell: powershell.exe
       - run:
           name: print installed packages
           command: pip freeze --all
-          shell: bash.exe
+          shell: powershell.exe
 
 
 jobs:
@@ -267,6 +267,7 @@ jobs:
                     -vv tests/
             mv .coverage .coverage.imitation
             coverage combine  # rewrite paths from virtualenv to src/
+          shell: powershell.exe
 
       - codecov/upload
 
