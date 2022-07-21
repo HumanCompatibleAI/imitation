@@ -44,6 +44,7 @@ DOCS_REQUIRE = [
     "sphinx-rtd-theme",
     "sphinxcontrib-napoleon",
     "furo",
+    "sphinx-copybutton"
 ]
 
 
@@ -108,6 +109,7 @@ setup(
             "isort~=5.0",
             "pytype",
             "codespell",
+            "sphinx-autobuild",
             # for convenience
             *TESTS_REQUIRE,
             *DOCS_REQUIRE,
