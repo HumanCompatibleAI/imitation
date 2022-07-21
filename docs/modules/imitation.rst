@@ -1,17 +1,5 @@
-imitation package
-=================
-
-
-Module contents
----------------
-
-.. automodule:: imitation
-
-
-Subpackages
------------
-
 .. toctree::
+   :hidden:
 
    imitation.algorithms
    imitation.data

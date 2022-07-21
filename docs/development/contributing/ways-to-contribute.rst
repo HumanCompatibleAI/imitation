@@ -1,21 +1,15 @@
 
-Contributing to imitation
-=========================
+Ways to contribute
+==================
 
-As an open-source project, we welcome contributions from all users, and are always open to any feedback or suggestions. To keep the community open and inclusive, we ask contributors to first read and observe our `Code of Conduct <CODE_OF_CONDUCT.md>`_.
-
-Getting started
----------------
-
-You can contribute to imitation in four main ways:
-
+There are four main ways you can contribute to imitation:
 
 * Reporting bugs
 * Suggesting new features
 * Contributing to the documentation
 * Contributing to the codebase
 
-Please, note that by contributing to the project, you are agreeing to license your work under `imitation's license <https://github.com/HumanCompatibleAI/imitation/blob/master/LICENSE>`_, as per
+Please, note that by contributing to the project, you are agreeing to license your work under :ref:`imitation's license <License>`, as per
 `GitHub's terms of service <https://docs.github.com/en/site-policy/github-terms/github-terms-of-service#6-contributions-under-repository-license>`_.
 
 Reporting bugs

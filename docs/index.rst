@@ -52,12 +52,14 @@ Main Features
 
 
 .. toctree::
-   :maxdepth: 2
-   :caption: Contributing
+   :maxdepth: 1
+   :caption: Development
    :hidden:
 
-   contributing/how-to-contribute
-   contributing/code-of-conduct
+   development/contributing/index
+   development/release-notes
+   development/license
+
 
 
 
