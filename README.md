@@ -22,7 +22,7 @@ pip install imitation
 
 ### Install from source
 
-If you like, you can install `imitation` from source to [contribute to the project](CONTRIBUTING.md) or access the very last features before a stable release. You can do this by cloning the GitHub repository and running the installer directly. First run:
+If you like, you can install `imitation` from source to [contribute to the project](https://imitation.readthedocs.io/en/latest/guide/contributing.html) or access the very last features before a stable release. You can do this by cloning the GitHub repository and running the installer directly. First run:
 `git clone http://github.com/HumanCompatibleAI/imitation && cd imitation`.
 
 For development mode, then run:
@@ -96,4 +96,4 @@ We also implement a density-based reward baseline. You can find an [example note
 
 # Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md).
+See [Contributing to imitation](https://imitation.readthedocs.io/en/latest/guide/contributing.html) for more information.
