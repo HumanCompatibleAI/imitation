@@ -115,7 +115,7 @@ def train_preference_comparisons(
         reward_trainer_kwargs: passed to BasicRewardTrainer or EnsembleRewardTrainer
         gatherer_cls: type of PreferenceGatherer to use (defaults to SyntheticGatherer)
         gatherer_kwargs: passed to the PreferenceGatherer specified by gatherer_cls
-        active_selection: to use active selection fragmenter instead of random fragmenter
+        active_selection: use active selection fragmenter instead of random fragmenter
         uncertainty_on: passed to ActiveSelectionFragmenter
         fragmenter_kwargs: passed to RandomFragmenter
         allow_variable_horizon: If False (default), algorithm will raise an
