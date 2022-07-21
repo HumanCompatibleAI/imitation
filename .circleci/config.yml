@@ -100,6 +100,12 @@ commands:
           command: if (-not (Test-Path venv)) { .\ci\build_and_activate_venv.ps1 -venv venv }
           shell: powershell.exe
 
+      - run:
+          name: activate venv
+          # Only create venv if it's not been restored from cache
+          command: .\venv\Scripts\activate
+          shell: powershell.exe
+
 
       - save_cache:
           paths:
@@ -261,8 +267,8 @@ jobs:
       - run:
           name: run tests
           command: |
-            # python3 ci\Xdummy-entrypoint.py: starts an X server and sets DISPLAY, then runs wrapped command.
-            Xdummy-entrypoint.py pytest -n ${NUM_CPUS} --cov=/venv/lib/python3.10/site-packages/imitation `
+            # Xdummy-entrypoint.py: starts an X server and sets DISPLAY, then runs wrapped command.
+            python3 ci\Xdummy-entrypoint.py pytest -n ${NUM_CPUS} --cov=/venv/lib/python3.10/site-packages/imitation `
             --cov=tests --junitxml=/tmp/test-reports/junit.xml `
             -vv tests/
             mv .coverage .coverage.imitation
