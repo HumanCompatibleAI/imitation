@@ -10,4 +10,4 @@ If ($venv -eq $null) {
 virtualenv -p python3.8 $venv
 & $venv\Scripts\activate
 python -m pip install --upgrade pip
-pip install ".[docs,parallel,test,mujoco]"
+pip install ".[docs,parallel,test]"
