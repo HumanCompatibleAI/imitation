@@ -4,10 +4,10 @@ Ways to contribute
 
 There are four main ways you can contribute to imitation:
 
-* Reporting bugs
-* Suggesting new features
-* Contributing to the documentation
-* Contributing to the codebase
+* `Reporting bugs <#reporting-bugs>`_
+* `Suggesting new features <#suggesting-new-features>`_
+* `Contributing to the documentation <#contributing-to-the-documentation>`_
+* `Contributing to the codebase <#contributing-to-the-codebase>`_
 
 Please, note that by contributing to the project, you are agreeing to license your work under :ref:`imitation's license <License>`, as per
 `GitHub's terms of service <https://docs.github.com/en/site-policy/github-terms/github-terms-of-service#6-contributions-under-repository-license>`_.
@@ -25,7 +25,7 @@ You can submit a new bug report by creating an issue on `GitHub <https://github.
 * You have checked `existing bug reports <https://github.com/HumanCompatibleAI/imitation/issues?q=is%3Aissue+label%3Abug+is%3Aopen>`_ to make sure that your issue has not already been reported, and
 * You have a minimal, reproducible example of the issue.
 
-When submitting a bug report, please **include the following information**:
+When submitting a bug report, please **include the following information**\ :
 
 
 * A clear, concise description of the bug,
