@@ -1,7 +1,10 @@
-===============
-Getting Started
-===============
+===========
+First steps
+===========
 
+Imitation can be used in two main ways: through its command-line interface (CLI), allowing you to quickly train and test
+algorithms and policies directly from the command line, and through its Python API, which provides greater flexibility
+and extensibility , and allows you to inter-operate with your existing Python environment.
 
 CLI Quickstart
 ==============

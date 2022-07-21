@@ -23,13 +23,13 @@ Main Features
 
 .. toctree::
    :maxdepth: 2
-   :caption: User Guide
+   :caption: Getting started
    :hidden:
 
-   guide/install
-   guide/gettingstarted
-   guide/variable_horizon
-
+   getting-started/installation
+   getting-started/what-is-imitation
+   getting-started/variable-horizon
+   getting-started/first-steps
 
 .. toctree::
    :maxdepth: 2
@@ -44,10 +44,19 @@ Main Features
 
 .. toctree::
    :maxdepth: 3
-   :caption: API
+   :caption: API reference
    :hidden:
 
    modules/imitation
+
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Contributing
+   :hidden:
+
+   contributing/how-to-contribute
+   contributing/code-of-conduct
 
 
 
