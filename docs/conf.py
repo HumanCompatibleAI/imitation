@@ -22,7 +22,7 @@
 import imitation  # pytype: disable=import-error
 
 project = "imitation"
-copyright = "2019-2021, Center for Human-Compatible AI"  # noqa: A001
+copyright = "2019-2022, Center for Human-Compatible AI"  # noqa: A001
 author = "Center for Human-Compatible AI"
 
 # The full version, including alpha/beta/rc tags
