@@ -16,6 +16,7 @@ from stable_baselines3.common.vec_env import DummyVecEnv
 from imitation.data import rollout
 from imitation.policies import base
 from imitation.rewards import reward_nets, serialize
+from imitation.testing.reward_nets import make_ensemble
 from imitation.util import networks, util
 
 
@@ -31,22 +32,6 @@ DESERIALIZATION_TYPES = [
     "RewardNet_shaped",
     "RewardNet_unshaped",
 ]
-
-
-def make_ensemble(
-    obs_space: gym.Env,
-    action_space: gym.Env,
-    num_members: int = 2,
-    **kwargs,
-):
-    return reward_nets.RewardEnsemble(
-        obs_space,
-        action_space,
-        members=[
-            reward_nets.BasicRewardNet(obs_space, action_space, **kwargs)
-            for _ in range(num_members)
-        ],
-    )
 
 
 # Reward net classes, allowed kwargs

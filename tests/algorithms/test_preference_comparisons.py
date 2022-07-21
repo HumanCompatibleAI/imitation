@@ -12,6 +12,7 @@ from imitation.algorithms import preference_comparisons
 from imitation.data import types
 from imitation.data.types import TrajectoryWithRew
 from imitation.rewards import reward_nets
+from imitation.testing.reward_nets import make_ensemble
 from imitation.util import util
 
 
@@ -26,9 +27,9 @@ def venv():
 @pytest.fixture(
     params=[
         reward_nets.BasicRewardNet,
-        reward_nets.RewardEnsemble,
+        make_ensemble,
         lambda *args: reward_nets.AddSTDRewardWrapper(
-            reward_nets.RewardEnsemble(*args),
+            make_ensemble(*args),
         ),
     ],
 )

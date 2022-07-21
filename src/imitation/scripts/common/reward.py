@@ -135,7 +135,7 @@ def make_reward_net(
         ValueError: Using a reward ensemble but failed to provide configuration.
     """
     if issubclass(net_cls, reward_nets.RewardEnsemble):
-        net_cls = typing.cast(Type[reward_nets.RewardEnsemble])
+        net_cls = typing.cast(Type[reward_nets.RewardEnsemble], net_cls)
         if ensemble_member_config is None:
             raise ValueError("Must specify ensemble_member_config.")
 
