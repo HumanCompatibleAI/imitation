@@ -43,6 +43,7 @@ DOCS_REQUIRE = [
     "sphinx-autodoc-typehints",
     "sphinx-rtd-theme",
     "sphinxcontrib-napoleon",
+    "furo",
 ]
 
 
