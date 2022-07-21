@@ -82,7 +82,7 @@ commands:
       # Download and cache dependencies
       - restore_cache:
           keys:
-            - v5-dependencies-{{ checksum "setup.py" }}
+            - v5-win-dependencies-{{ checksum "setup.py" }}
 
       - run:
           name: install python
@@ -104,7 +104,7 @@ commands:
       - save_cache:
           paths:
             - .\venv
-          key: v5-dependencies-{{ checksum "setup.py" }}
+          key: v5-win-dependencies-{{ checksum "setup.py" }}
 
       - run:
           name: install imitation
@@ -250,11 +250,11 @@ jobs:
       # still better than nothing.
       - restore_cache:
           keys:
-            - v7-pytest-cache-{{ checksum "setup.py" }}
+            - v7-win-pytest-cache-{{ checksum "setup.py" }}
             # This prefix-matched key restores the most recent pytest cache with any
             # checksum. If that cached policy happens to be still loadable, we avoid
             # retraining. See https://circleci.com/docs/2.0/caching/#restoring-cache
-            - v7-pytest-cache-
+            - v7-win-pytest-cache-
           paths:
             - .pytest_cache
 
@@ -272,7 +272,7 @@ jobs:
       - codecov/upload
 
       - save_cache:
-          key: v7-pytest-cache-{{ checksum "setup.py" }}
+          key: v7-win-pytest-cache-{{ checksum "setup.py" }}
           paths:
             - .pytest_cache
 
