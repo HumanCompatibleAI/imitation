@@ -114,11 +114,15 @@ commands:
 
       - run:
           name: install imitation
-          command: pip install --upgrade --force-reinstall --no-deps .
+          command: |
+            .\venv\Scripts\activate
+            pip install --upgrade --force-reinstall --no-deps .
           shell: powershell.exe
       - run:
           name: print installed packages
-          command: pip freeze --all
+          command: |
+            .\venv\Scripts\activate
+            pip freeze --all
           shell: powershell.exe
 
 
@@ -267,8 +271,9 @@ jobs:
       - run:
           name: run tests
           command: |
+            .\venv\Scripts\activate
             # Xdummy-entrypoint.py: starts an X server and sets DISPLAY, then runs wrapped command.
-            python3 ci\Xdummy-entrypoint.py pytest -n ${NUM_CPUS} --cov=/venv/lib/python3.10/site-packages/imitation `
+            python ci\Xdummy-entrypoint.py pytest -n ${NUM_CPUS} --cov=/venv/lib/python3.10/site-packages/imitation `
             --cov=tests --junitxml=/tmp/test-reports/junit.xml `
             -vv tests/
             mv .coverage .coverage.imitation
