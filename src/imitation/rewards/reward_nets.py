@@ -215,8 +215,8 @@ class RewardNet(nn.Module, abc.ABC):
 class RewardNetWrapper(RewardNet):
     """An abstract RewardNet wrapping a base network.
 
-    Note: The warper will default to forwarding calls to `device`, `forward`,
-        `preproces`, `predict`, and `predict_processed` on the base reward net unless
+    Note: The wrapper will default to forwarding calls to `device`, `forward`,
+        `preproces`, `predict`, and `predict_processed` to the base reward net unless
         explicitly overridden in a subclases.
     """
 
@@ -657,7 +657,7 @@ class RewardEnsemble(RewardNetWithVariance):
         super().__init__(observation_space, action_space)
 
         members = list(members)
-        if len(members) == 0:
+        if not members:
             raise ValueError("Must be at least 1 member in the ensemble.")
 
         self.members = nn.ModuleList(
@@ -768,7 +768,7 @@ class AddSTDRewardWrapper(RewardNetWrapper):
     base: RewardNetWithVariance
 
     def __init__(self, base: RewardNetWithVariance, default_alpha: float = 0.0):
-        """Create a reward network that added a multiple of the standard deviation.
+        """Create a reward network that adds a multiple of the standard deviation.
 
         Args:
             base: A reward network that keeps track of its epistemic variance.
@@ -781,7 +781,7 @@ class AddSTDRewardWrapper(RewardNetWrapper):
         """
         super().__init__(base)
         if not isinstance(base, RewardNetWithVariance):
-            raise ValueError(
+            raise TypeError(
                 "Cannot add standard deviation to reward net that "
                 "is not an instance of RewardNetWithVariance!",
             )

@@ -132,7 +132,7 @@ def make_reward_net(
         A, possibly wrapped, instance of `net_cls`.
 
     Raises:
-        ValueError: Using a reward ensemble but fail to provide configuration.
+        ValueError: Using a reward ensemble but failed to provide configuration.
     """
     if issubclass(net_cls, reward_nets.RewardEnsemble):
         net_cls = typing.cast(Type[reward_nets.RewardEnsemble])

@@ -100,14 +100,14 @@ def _make_functional(
 WrapperPrefix = Sequence[Type[RewardNet]]
 
 
-def _prefix_matches(wrappers: Sequence[Any], prefix: Sequence[Any]):
-    """Return true if prefix is a prefix of wrappers."""
+def _prefix_matches(wrappers: Sequence[Type[Any]], prefix: Sequence[Type[Any]]):
+    """Return true if `prefix` is a prefix of `wrappers`."""
     # Base cases
     if len(prefix) == 0:
-        # If we run of of prefix before running of of wrappers
+        # If we run out of prefix before running out of wrappers
         return True
     elif len(wrappers) == 0:
-        # If we run out of wrappers before we run of to prefix
+        # If we run out of wrappers before we run out of prefix
         return False
 
     prefix_head, *prefix_tail = prefix
