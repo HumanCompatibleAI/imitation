@@ -1,6 +1,13 @@
 imitation.scripts package
 =========================
 
+
+Module contents
+---------------
+
+.. automodule:: imitation.scripts
+
+
 Submodules
 ----------
 
@@ -38,8 +45,3 @@ imitation.scripts.train\_rl module
 ----------------------------------
 
 .. automodule:: imitation.scripts.train_rl
-
-Module contents
----------------
-
-.. automodule:: imitation.scripts

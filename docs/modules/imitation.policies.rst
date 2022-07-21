@@ -1,6 +1,13 @@
 imitation.policies package
 ==========================
 
+
+Module contents
+---------------
+
+.. automodule:: imitation.policies
+
+
 Submodules
 ----------
 
@@ -13,9 +20,3 @@ imitation.policies.serialize module
 -----------------------------------
 
 .. automodule:: imitation.policies.serialize
-
-
-Module contents
----------------
-
-.. automodule:: imitation.policies

@@ -1,6 +1,13 @@
 imitation package
 =================
 
+
+Module contents
+---------------
+
+.. automodule:: imitation
+
+
 Subpackages
 -----------
 
@@ -13,9 +20,3 @@ Subpackages
    imitation.rewards
    imitation.scripts
    imitation.util
-
-
-Module contents
----------------
-
-.. automodule:: imitation

@@ -1,6 +1,13 @@
 imitation.data package
 ======================
 
+
+Module contents
+---------------
+
+.. automodule:: imitation.data
+
+
 Submodules
 ----------
 
@@ -23,9 +30,3 @@ imitation.data.wrappers module
 ------------------------------
 
 .. automodule:: imitation.data.wrappers
-
-
-Module contents
----------------
-
-.. automodule:: imitation.data

@@ -1,6 +1,12 @@
 imitation.util package
 ======================
 
+Module contents
+---------------
+
+.. automodule:: imitation.util
+
+
 Submodules
 ----------
 
@@ -18,10 +24,3 @@ imitation.util.util module
 --------------------------
 
 .. automodule:: imitation.util.util
-   
-
-Module contents
----------------
-
-.. automodule:: imitation.util
-   

@@ -1,6 +1,13 @@
 imitation.algorithms package
 ============================
 
+
+Module contents
+---------------
+
+.. automodule:: imitation.algorithms
+
+
 Subpackages
 -----------
 
@@ -30,9 +37,3 @@ imitation.algorithms.mce\_irl module
 ------------------------------------
 
 .. automodule:: imitation.algorithms.mce_irl
-
-
-Module contents
----------------
-
-.. automodule:: imitation.algorithms

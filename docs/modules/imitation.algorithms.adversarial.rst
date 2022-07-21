@@ -1,6 +1,13 @@
 imitation.algorithms.adversarial package
 ========================================
 
+
+Module contents
+---------------
+
+.. automodule:: imitation.algorithms.adversarial
+
+
 Submodules
 ----------
 
@@ -18,8 +25,3 @@ imitation.algorithms.adversarial.gail module
 --------------------------------------------
 
 .. automodule:: imitation.algorithms.adversarial.gail
-
-Module contents
----------------
-
-.. automodule:: imitation.algorithms.adversarial

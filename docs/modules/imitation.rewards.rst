@@ -1,6 +1,13 @@
 imitation.rewards package
 =========================
 
+
+Module contents
+---------------
+
+.. automodule:: imitation.rewards
+
+
 Submodules
 ----------
 
@@ -18,9 +25,3 @@ imitation.rewards.serialize
 ---------------------------
 
 .. automodule:: imitation.rewards.serialize
-
-
-Module contents
----------------
-
-.. automodule:: imitation.rewards
