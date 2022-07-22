@@ -3,7 +3,7 @@
 import logging
 import numbers
 import os
-from tempfile import TemporaryDirectory
+import tempfile
 from typing import Tuple
 from unittest import mock
 
@@ -13,10 +13,10 @@ import pytest
 import torch as th
 from stable_baselines3.common.vec_env import DummyVecEnv
 
+import imitation.testing.reward_nets as testing_reward_nets
 from imitation.data import rollout
 from imitation.policies import base
 from imitation.rewards import reward_nets, serialize
-from imitation.testing.reward_nets import make_ensemble
 from imitation.util import networks, util
 
 
@@ -38,7 +38,7 @@ DESERIALIZATION_TYPES = [
 MAKE_REWARD_NET = [
     reward_nets.BasicRewardNet,
     reward_nets.BasicShapedRewardNet,
-    make_ensemble,
+    testing_reward_nets.make_ensemble,
 ]
 
 
@@ -189,15 +189,17 @@ def test_validate_wrapper_structure():
     # This should not raise a type error
     serialize._validate_wrapper_structure(reward_net, {(WrapperB, RewardNetA)})
 
-    # The top level wrapper is an instance of WrapperB this should raise a type error
-    with pytest.raises(
+    raises_error_ctxmgr = pytest.raises(
         TypeError,
         match=r"Wrapper structure should match \[.*\] but found \[.*\]",
-    ):
+    )
+
+    # The top level wrapper is an instance of WrapperB this should raise a type error
+    with raises_error_ctxmgr:
         serialize._validate_wrapper_structure(reward_net, {(RewardNetA,)})
 
     # Reward net is not wrapped at all this should raise a type error.
-    with pytest.raises(TypeError):
+    with raises_error_ctxmgr:
         serialize._validate_wrapper_structure(
             RewardNetA(env.action_space, env.observation_space),
             {(WrapperB,)},
@@ -210,7 +212,7 @@ def test_validate_wrapper_structure():
     )
 
     # This should raise a type error since none the prefix is in the incorrect order
-    with pytest.raises(TypeError):
+    with raises_error_ctxmgr:
         serialize._validate_wrapper_structure(reward_net, {(RewardNetA, WrapperB)})
 
 
@@ -343,16 +345,6 @@ def test_potential_net_2d_obs():
     assert rew_batch.shape == (1,)
 
 
-@pytest.mark.parametrize("env_name", ENVS)
-@pytest.mark.parametrize("num_members", [1, 2, 4])
-def test_reward_ensemble_creation(env_name, num_members):
-    """A simple test of the RewardEnsemble constructor."""
-    env = gym.make(env_name)
-    ensemble = make_ensemble(env.observation_space, env.action_space, num_members)
-    assert ensemble
-    assert ensemble.num_members == num_members
-
-
 class MockRewardNet(reward_nets.RewardNet):
     """A mock reward net for testing."""
 
@@ -443,7 +435,7 @@ def test_reward_ensemble_predict_reward_moments(
 
 
 def test_ensemble_members_have_different_parameters(env_2d):
-    ensemble = make_ensemble(
+    ensemble = testing_reward_nets.make_ensemble(
         env_2d.observation_space,
         env_2d.action_space,
     )
@@ -501,7 +493,7 @@ def test_load_reward_passes_along_alpha_to_add_std_wrappers_predict_processed_me
     two_ensemble.members[0].value = 3
     two_ensemble.members[1].value = -1
     reward_net = reward_nets.AddSTDRewardWrapper(two_ensemble, default_alpha=0)
-    with TemporaryDirectory() as tmp_dir:
+    with tempfile.TemporaryDirectory() as tmp_dir:
         net_path = os.path.join(tmp_dir, "reward_net.pkl")
         th.save(reward_net, os.path.join(net_path))
         new_alpha = -0.5

@@ -8,11 +8,11 @@ import pytest
 import seals  # noqa: F401
 import stable_baselines3
 
+import imitation.testing.reward_nets as testing_reward_nets
 from imitation.algorithms import preference_comparisons
 from imitation.data import types
 from imitation.data.types import TrajectoryWithRew
 from imitation.rewards import reward_nets
-from imitation.testing.reward_nets import make_ensemble
 from imitation.util import util
 
 
@@ -27,9 +27,9 @@ def venv():
 @pytest.fixture(
     params=[
         reward_nets.BasicRewardNet,
-        make_ensemble,
+        testing_reward_nets.make_ensemble,
         lambda *args: reward_nets.AddSTDRewardWrapper(
-            make_ensemble(*args),
+            testing_reward_nets.make_ensemble(*args),
         ),
     ],
 )
@@ -201,7 +201,7 @@ def test_reward_ensemble_trainer_raises_type_error(venv):
     )
     with pytest.raises(
         TypeError,
-        match=r"RewardEnsemble expected by RewardEnsembleTrainer not .*",
+        match=r"RewardEnsemble expected by EnsembleTrainer not .*",
     ):
         preference_comparisons.EnsembleTrainer(
             reward_net,
@@ -225,15 +225,8 @@ def test_correct_reward_trainer_used_by_default(
         custom_logger=custom_logger,
     )
 
-    if isinstance(reward_net, reward_nets.RewardEnsemble):
-        assert isinstance(
-            main_trainer.reward_trainer,
-            preference_comparisons.EnsembleTrainer,
-        )
-    elif hasattr(reward_net, "base") and isinstance(
-        reward_net.base,
-        reward_nets.RewardEnsemble,
-    ):
+    base_reward_net = reward_net.base if hasattr(reward_net, "base") else reward_net
+    if isinstance(base_reward_net, reward_nets.RewardEnsemble):
         assert isinstance(
             main_trainer.reward_trainer,
             preference_comparisons.EnsembleTrainer,

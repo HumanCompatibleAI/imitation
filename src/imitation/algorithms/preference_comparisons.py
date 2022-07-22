@@ -25,7 +25,7 @@ import torch as th
 from scipy import special
 from stable_baselines3.common import base_class, type_aliases, vec_env
 from torch import nn
-from torch.utils.data import DataLoader
+from torch.utils import data as data_th
 from tqdm.auto import tqdm
 
 from imitation.algorithms import base
@@ -685,6 +685,20 @@ class RewardLoss(nn.Module, abc.ABC):
         """
 
 
+def _evaluate_reward_on_transitions(
+    model: reward_nets.RewardNet,
+    transitions: Transitions,
+) -> th.Tensor:
+    """Evaluate `model` on `transitions` and return the rewards with gradients."""
+    preprocessed = model.preprocess(
+        state=transitions.obs,
+        action=transitions.acts,
+        next_state=transitions.next_obs,
+        done=transitions.dones,
+    )
+    return model(*preprocessed)
+
+
 class CrossEntropyRewardLoss(RewardLoss):
     """Compute the cross entropy reward loss."""
 
@@ -740,8 +754,8 @@ class CrossEntropyRewardLoss(RewardLoss):
             frag1, frag2 = fragment
             trans1 = rollout.flatten_trajectories([frag1])
             trans2 = rollout.flatten_trajectories([frag2])
-            rews1 = self._rewards(model, trans1)
-            rews2 = self._rewards(model, trans2)
+            rews1 = _evaluate_reward_on_transitions(model, trans1)
+            rews2 = _evaluate_reward_on_transitions(model, trans2)
             probs[i] = self._probability(rews1, rews2)
         # TODO(ejnnr): Here and below, > 0.5 is problematic
         # because getting exactly 0.5 is actually somewhat
@@ -756,19 +770,6 @@ class CrossEntropyRewardLoss(RewardLoss):
             loss=th.nn.functional.binary_cross_entropy(probs, preferences_th),
             metrics={"accuracy": accuracy.detach().cpu()},
         )
-
-    def _rewards(
-        self,
-        model: reward_nets.RewardNet,
-        transitions: Transitions,
-    ) -> th.Tensor:
-        preprocessed = model.preprocess(
-            state=transitions.obs,
-            action=transitions.acts,
-            next_state=transitions.next_obs,
-            done=transitions.dones,
-        )
-        return model(*preprocessed)
 
     def _probability(self, rews1: th.Tensor, rews2: th.Tensor) -> th.Tensor:
         """Computes the Boltzmann rational probability that the first trajectory is best.
@@ -877,9 +878,9 @@ class BasicRewardTrainer(RewardTrainer):
             weight_decay=weight_decay,
         )
 
-    def _make_data_loader(self, dataset: PreferenceDataset) -> DataLoader:
+    def _make_data_loader(self, dataset: PreferenceDataset) -> data_th.DataLoader:
         """Make a dataloader."""
-        return DataLoader(
+        return data_th.DataLoader(
             dataset,
             batch_size=self.batch_size,
             shuffle=True,
@@ -926,10 +927,27 @@ class EnsembleTrainer(BasicRewardTrainer):
         weight_decay: float = 0.0,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
     ):
-        """Create an ensemble trainer."""
+        """Initialize the reward model trainer.
+
+        Args:
+            model: the RewardNet instance to be trained
+            loss: the loss to use
+            batch_size: number of fragment pairs per batch
+            epochs: number of epochs in each training iteration (can be adjusted
+                on the fly by specifying an `epoch_multiplier` in `self.train()`
+                if longer training is desired in specific cases).
+            lr: the learning rate
+            weight_decay: the weight decay factor for the reward model's weights
+                to use with ``th.optim.AdamW``. This is similar to but not equivalent
+                to L2 regularization, see https://arxiv.org/abs/1711.05101
+            custom_logger: Where to log to; if None (default), creates a new logger.
+
+        Raises:
+            TypeError: if model is not a RewardEnsemble.
+        """
         if not isinstance(model, reward_nets.RewardEnsemble):
             raise TypeError(
-                f"RewardEnsemble expected by RewardEnsembleTrainer not {type(model)}.",
+                f"RewardEnsemble expected by EnsembleTrainer not {type(model)}.",
             )
 
         super().__init__(
@@ -954,7 +972,7 @@ class EnsembleTrainer(BasicRewardTrainer):
             losses.append(output.loss)
             metrics.append(output.metrics)
         losses = th.stack(losses)
-        loss = losses.mean()
+        loss = losses.sum()
 
         self.logger.record("loss", loss.item())
         self.logger.record("loss_std", loss.std().item())

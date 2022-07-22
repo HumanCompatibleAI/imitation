@@ -719,7 +719,7 @@ class RewardEnsemble(RewardNetWithVariance):
 
         Returns:
             * Reward mean of shape `(batch_size,)`.
-            * Reward std of shape `(batch_size,)`.
+            * Reward variance of shape `(batch_size,)`.
         """
         batch_size = state.shape[0]
         all_rewards = self.predict_processed_all(
@@ -747,8 +747,7 @@ class RewardEnsemble(RewardNetWithVariance):
         **kwargs,
     ) -> np.ndarray:
         """Return the mean of the ensemble members."""
-        mean, _ = self.predict_reward_moments(state, action, next_state, done, **kwargs)
-        return mean
+        return self.predict(state, action, next_state, done, **kwargs)
 
     def predict(
         self,
@@ -759,7 +758,8 @@ class RewardEnsemble(RewardNetWithVariance):
         **kwargs,
     ):
         """Return the mean of the ensemble members."""
-        return self.predict_processed(state, action, next_state, done, **kwargs)
+        mean, _ = self.predict_reward_moments(state, action, next_state, done, **kwargs)
+        return mean
 
 
 class AddSTDRewardWrapper(RewardNetWrapper):
@@ -777,7 +777,7 @@ class AddSTDRewardWrapper(RewardNetWrapper):
                 Defaults to 0.0.
 
         Raises:
-            ValueError: if base is not an instance of RewardNetWithVariance
+            TypeError: if base is not an instance of RewardNetWithVariance
         """
         super().__init__(base)
         if not isinstance(base, RewardNetWithVariance):
