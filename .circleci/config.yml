@@ -277,6 +277,7 @@ jobs:
             --cov=tests --junitxml=\tmp\test-reports\junit.xml `
             -vv tests\ --ignore tests\test_examples.py --ignore tests\test_experiments.py `
             --ignore tests\test_scripts.py
+            if ($LASTEXITCODE -ne 0) { throw "pytest failed" }
             mv .coverage .coverage.imitation
             coverage combine  # rewrite paths from virtualenv to src/
           shell: powershell.exe
