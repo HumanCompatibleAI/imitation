@@ -123,7 +123,13 @@ def gather_tb_directories() -> dict:
                 os.makedirs(symlinks_dir, exist_ok=True)
 
                 tb_symlink = osp.join(symlinks_dir, run_name)
-                os.symlink(tb_src_dir, tb_symlink)
+                try:
+                    os.symlink(tb_src_dir, tb_symlink)
+                except OSError as e:
+                    if os.name == "nt":  # Windows
+                        print("Exception occurred while creating symlink.")
+                        print("Please ensure that Developer model is enabled.")
+                    raise e
                 tb_dirs_count += 1
 
     logging.info(f"Symlinked {tb_dirs_count} TensorBoard dirs to {tmp_dir}.")
