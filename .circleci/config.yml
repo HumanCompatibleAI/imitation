@@ -72,6 +72,11 @@ commands:
           name: print installed packages
           command: pip freeze --all
 
+  # codecov-upload-windows:
+  #   shell: bash.exe
+  #   steps:
+  #     - codecov/upload
+
   dependencies-windows:
     # You must still manually update the Docker image if any
     # binary (non-Python) dependencies change.
@@ -275,12 +280,15 @@ jobs:
             # Xdummy-entrypoint.py: starts an X server and sets DISPLAY, then runs wrapped command.
             pytest -n 4 --cov=venv\Lib\site-packages\imitation `
             --cov=tests --junitxml=\tmp\test-reports\junit.xml `
-            -vv tests\
+            -vv tests\ --ignore tests\test_examples.py --ignore tests\test_experiments.py `
+            --ignore tests\test_scripts.py
             mv .coverage .coverage.imitation
             coverage combine  # rewrite paths from virtualenv to src/
           shell: powershell.exe
 
-      - codecov/upload
+      - run:
+          command: codecov/upload
+          shell: bash.exe
 
       - save_cache:
           key: v7-win-pytest-cache-{{ checksum "setup.py" }}
