@@ -508,8 +508,10 @@ def test_preference_comparisons_transfer_learning(
         assert run.config["reward"]["net_cls"] is reward_nets.RewardEnsemble
         assert run.config["reward"]["add_std_alpha"] == 0.0
         reward_type = "RewardNet_std_added"
+        load_reward_kwargs = {"alpha": -1}
     else:
         reward_type = "RewardNet_unnormalized"
+        load_reward_kwargs = {}
 
     log_dir_data = tmpdir / "train_rl"
     reward_path = log_dir_train / "checkpoints" / "final" / "reward_net.pt"
@@ -519,6 +521,7 @@ def test_preference_comparisons_transfer_learning(
             common=dict(log_dir=log_dir_data),
             reward_type=reward_type,
             reward_path=reward_path,
+            load_reward_kwargs=load_reward_kwargs,
         ),
     )
     assert run.status == "COMPLETED"
