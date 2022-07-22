@@ -777,7 +777,7 @@ class AddSTDRewardWrapper(RewardNetWrapper):
                 Defaults to 0.0.
 
         Raises:
-            ValueError: if base is not an instance of RewardNetWithVariance
+            TypeError: if base is not an instance of RewardNetWithVariance
         """
         super().__init__(base)
         if not isinstance(base, RewardNetWithVariance):
