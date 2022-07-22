@@ -274,9 +274,8 @@ jobs:
             .\venv\Scripts\activate
             # Xdummy-entrypoint.py: starts an X server and sets DISPLAY, then runs wrapped command.
             pytest -n 4 --cov=venv\Lib\site-packages\imitation `
-            --cov=tests --junitxml=\tmp\test-reports\junit.xml `
-            -vv tests\ --ignore tests\test_examples.py --ignore tests\test_experiments.py `
-            --ignore tests\test_scripts.py
+            --cov=tests --junitxml=\tmp\test-reports\junit.xml -k 'not run_example_sh_scripts' `
+            -vv tests\ --ignore tests\test_experiments.py ` --ignore tests\test_scripts.py
             if ($LASTEXITCODE -ne 0) { throw "pytest failed" }
             mv .coverage .coverage.imitation
             coverage combine  # rewrite paths from virtualenv to src/
