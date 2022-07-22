@@ -399,7 +399,14 @@ def test_active_fragmenter_discount_rate_no_crash(
     custom_logger,
 ):
     # also use a non-zero noise probability to check that doesn't cause errors
-    reward_net = reward_nets.RewardEnsemble(venv.observation_space, venv.action_space)
+    reward_net = reward_nets.RewardEnsemble(
+        venv.observation_space,
+        venv.action_space,
+        members=[
+            reward_nets.BasicRewardNet(venv.observation_space, venv.action_space)
+            for _ in range(2)
+        ],
+    )
     preference_model = preference_comparisons.PreferenceModel(
         model=reward_net,
         noise_prob=0.1,
@@ -440,7 +447,14 @@ def test_active_fragmenter_discount_rate_no_crash(
 
 
 def test_active_fragmenter_uncertainty_on_not_supported_error(venv, random_fragmenter):
-    reward_net = reward_nets.RewardEnsemble(venv.observation_space, venv.action_space)
+    reward_net = reward_nets.RewardEnsemble(
+        venv.observation_space,
+        venv.action_space,
+        members=[
+            reward_nets.BasicRewardNet(venv.observation_space, venv.action_space)
+            for _ in range(2)
+        ],
+    )
     preference_model = preference_comparisons.PreferenceModel(
         model=reward_net,
         noise_prob=0.1,

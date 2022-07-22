@@ -359,6 +359,13 @@ class PreferenceModel(nn.Module):
     def forward(self, fragment_pairs: Sequence[TrajectoryPair]):
         """Computes the preference probability of the first fragment for all pairs.
 
+        Note: This function passes the gradient through for non-ensemble models.
+              For an ensemble model, this function should not be used for loss
+              calculation. It can be used in case when passing the gradient is not
+              required like during active selection and inference time.
+              The EnsembleTrainer passes each member through this function instead of
+              passing the EnsembleNetwork.
+
         Args:
             fragment_pairs: batch of pair of fragments.
 
