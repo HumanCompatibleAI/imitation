@@ -41,3 +41,10 @@ if [ "${skipexpensive:-}" != "true" ]; then
     flake8 "${file_array[@]}"
   fi
 fi
+
+set +x
+
+echo
+echo
+printf "\e[1;32mCode checks completed. No errors found\e[0m"
+echo

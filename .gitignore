@@ -158,3 +158,5 @@ dmypy.json
 /tests/testdata/reward_models
 # Produced by examples/quickstart.sh
 /quickstart/
+
+.vscode/
