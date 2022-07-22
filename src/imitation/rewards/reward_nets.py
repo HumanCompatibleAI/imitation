@@ -550,3 +550,115 @@ class BasicPotentialMLP(nn.Module):
 
     def forward(self, state: th.Tensor) -> th.Tensor:
         return self._potential_net(state)
+
+
+class ChannelFirstRewardWrapper(RewardNetWrapper):
+    """A RewardNetWrapper to handle inconsistent (h,w,c) vs (h,c,w) conventions.
+
+    Transposes observations when necessary to ensure the channel dimension appears
+    before the height and width dimensions.
+    """
+
+    def __init__(
+        self,
+        base: RewardNet,
+    ):
+        """Set up a ChannelFirstRewardWrapper instance.
+
+        Args:
+            base: the base reward net.
+        """
+        super().__init__(
+            base=base,
+        )
+        self.obs_is_image = preprocessing.is_image_space(
+            base.observation_space,
+            check_channels=True,
+        )
+
+    def is_image(
+        self,
+        state: th.Tensor,
+    ) -> bool:
+        """Checks if the state is a valid image.
+
+        Checks the shape, dtype, range, and number of channels.
+        Valid images are RGB, RGBD, or GrayScale with values in [0,255].
+
+        Args:
+            state: the state tensor being input into the reward net.
+
+        Returns:
+            Whether the input is a valid image.
+        """
+        if len(state.shape) in [3, 4]:
+            first_channel_dim = 0 if len(state.shape) == 3 else 1
+            n_channels = (
+                state.shape[first_channel_dim]
+                if self.has_channels_first(state)
+                else state.shape[-1]
+            )
+            is_image = (
+                n_channels in [1, 3, 4]
+                and state.dtype == th.uint8
+                and bool(th.all(state <= 255))
+            )
+            return is_image
+        else:
+            return False
+
+    def has_channels_first(
+        self,
+        state: th.Tensor,
+    ) -> bool:
+        """Checks whether an observation's channel dim comes before height and width.
+
+        Uses the heuristic that the channel dimension is the smallest of the non-batch
+        dimensions.
+
+        Args:
+            state: state tensor being input into the reward net.
+
+        Returns:
+            Whether the input has its channel dim before the height and width dims.
+        """
+        smallest_dim = (
+            np.argmin(state.shape)
+            if len(state.shape) == 3
+            else np.argmin(state.shape[1:])
+        )
+        return smallest_dim == 0
+
+    def transpose(
+        self,
+        state: th.Tensor,
+    ) -> th.Tensor:
+        """Transposes the state to put the channel dim before height and width."""
+        if len(state.shape) == 3:
+            return th.permute(state, (2, 0, 1))
+        else:
+            return th.permute(state, (0, 3, 1, 2))
+
+    def forward(
+        self,
+        state: th.Tensor,
+        action: th.Tensor,
+        next_state: th.Tensor,
+        done: th.Tensor,
+    ) -> th.Tensor:
+        """Transpose state and next_state if necessary."""
+        state_needs_transpose = (
+            self.obs_is_image
+            and self.is_image(state)
+            and not self.has_channels_first(state)
+        )
+        transp_state = self.transpose(state) if state_needs_transpose else state
+        next_state_needs_transpose = (
+            self.obs_is_image
+            and self.is_image(next_state)
+            and not self.has_channels_first(next_state)
+        )
+        transp_next_state = (
+            self.transpose(next_state) if next_state_needs_transpose else next_state
+        )
+        return self.base(transp_state, action, transp_next_state, done)
