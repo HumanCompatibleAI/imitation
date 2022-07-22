@@ -634,7 +634,7 @@ class SimpleDAggerTrainer(DAggerTrainer):
 
             for traj in trajectories:
                 self._logger.record_mean(
-                    "dagger/mean_episode_reward",
+                    util.get_universal_path("dagger/mean_episode_reward"),
                     np.sum(traj.rews),
                 )
                 round_timestep_count += len(traj)
@@ -642,10 +642,18 @@ class SimpleDAggerTrainer(DAggerTrainer):
 
             round_episode_count += len(trajectories)
 
-            self._logger.record("dagger/total_timesteps", total_timestep_count)
-            self._logger.record("dagger/round_num", round_num)
-            self._logger.record("dagger/round_episode_count", round_episode_count)
-            self._logger.record("dagger/round_timestep_count", round_timestep_count)
+            self._logger.record(
+                util.get_universal_path("dagger/total_timesteps"), total_timestep_count
+            )
+            self._logger.record(util.get_universal_path("dagger/round_num"), round_num)
+            self._logger.record(
+                util.get_universal_path("dagger/round_episode_count"),
+                round_episode_count,
+            )
+            self._logger.record(
+                util.get_universal_path("dagger/round_timestep_count"),
+                round_timestep_count,
+            )
 
             # `logger.dump` is called inside BC.train within the following fn call:
             self.extend_and_update(bc_train_kwargs)

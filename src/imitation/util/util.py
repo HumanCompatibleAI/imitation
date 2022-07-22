@@ -5,6 +5,7 @@ import functools
 import itertools
 import os
 import uuid
+from pathlib import Path
 from typing import (
     Any,
     Callable,
@@ -236,3 +237,8 @@ def tensor_iter_norm(
     # = sum(x**ord for x in tensor for tensor in tensor_iter)**(1/ord)
     # = th.norm(concatenated tensors)
     return th.norm(norm_tensor, p=ord)
+
+
+def get_universal_path(path):
+    unipath = Path(path)
+    return str(unipath.resolve())

@@ -1048,8 +1048,8 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
                     self.dataset,
                     epoch_multiplier=epoch_multiplier,
                 )
-            reward_loss = self.logger.name_to_value["mean/reward/loss"]
-            reward_accuracy = self.logger.name_to_value["mean/reward/accuracy"]
+            reward_loss = self.logger.name_to_value[util.get_universal_path("mean/reward/loss")]
+            reward_accuracy = self.logger.name_to_value[util.get_universal_path("mean/reward/accuracy")]
 
             ###################
             # Train the agent #
