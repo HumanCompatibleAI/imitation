@@ -105,13 +105,6 @@ commands:
           command: if (-not (Test-Path venv)) { .\ci\build_and_activate_venv.ps1 -venv venv }
           shell: powershell.exe
 
-      - run:
-          name: activate venv
-          # Only create venv if it's not been restored from cache
-          command: .\venv\Scripts\activate
-          shell: powershell.exe
-
-
       - save_cache:
           paths:
             - .\venv
@@ -241,6 +234,7 @@ jobs:
 
   unit-test-windows:
     executor: unit-test-windows
+    shell: bash.exe
     # executor:
     #   name: win/default
     steps:
@@ -257,7 +251,6 @@ jobs:
               sleep 1
             done
           background: true
-          shell: bash.exe
 
       # Note: The setup.py checksum in the cache name ensures that we retrain our expert
       # policies, which are cached in the pytest cache, whenever setup.py changes. This
@@ -286,9 +279,7 @@ jobs:
             coverage combine  # rewrite paths from virtualenv to src/
           shell: powershell.exe
 
-      - run:
-          command: codecov/upload
-          shell: bash.exe
+      - codecov/upload
 
       - save_cache:
           key: v7-win-pytest-cache-{{ checksum "setup.py" }}
