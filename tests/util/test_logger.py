@@ -103,30 +103,72 @@ def test_name_to_value(tmpdir):
 
     with hier_logger.accumulate_means("foo"):
         hier_logger.record("A", 1)
-        assert hier_logger.name_to_value[util.get_universal_path("raw/foo/A")] == 1
-        assert hier_logger.name_to_count[util.get_universal_path("raw/foo/A")] == 0
         assert (
-            hier_logger.name_to_excluded[util.get_universal_path("raw/foo/A")] is None
+            hier_logger.name_to_value[util.get_universal_path_from_posix("raw/foo/A")]
+            == 1
+        )
+        assert (
+            hier_logger.name_to_count[util.get_universal_path_from_posix("raw/foo/A")]
+            == 0
+        )
+        assert (
+            hier_logger.name_to_excluded[
+                util.get_universal_path_from_posix("raw/foo/A")
+            ]
+            is None
         )
         hier_logger.record("B", 10)
-        assert hier_logger.name_to_value[util.get_universal_path("raw/foo/B")] == 10
-        assert hier_logger.name_to_count[util.get_universal_path("raw/foo/B")] == 0
         assert (
-            hier_logger.name_to_excluded[util.get_universal_path("raw/foo/B")] is None
+            hier_logger.name_to_value[util.get_universal_path_from_posix("raw/foo/B")]
+            == 10
+        )
+        assert (
+            hier_logger.name_to_count[util.get_universal_path_from_posix("raw/foo/B")]
+            == 0
+        )
+        assert (
+            hier_logger.name_to_excluded[
+                util.get_universal_path_from_posix("raw/foo/B")
+            ]
+            is None
         )
         hier_logger.dump()
         hier_logger.record("B", 20)
-        assert hier_logger.name_to_value[util.get_universal_path("raw/foo/B")] == 20
-        assert hier_logger.name_to_count[util.get_universal_path("raw/foo/B")] == 0
         assert (
-            hier_logger.name_to_excluded[util.get_universal_path("raw/foo/B")] is None
+            hier_logger.name_to_value[util.get_universal_path_from_posix("raw/foo/B")]
+            == 20
         )
-    assert hier_logger.name_to_value[util.get_universal_path("mean/foo/A")] == 1
-    assert hier_logger.name_to_count[util.get_universal_path("mean/foo/A")] == 1
-    assert hier_logger.name_to_excluded[util.get_universal_path("mean/foo/A")] is None
-    assert hier_logger.name_to_value[util.get_universal_path("mean/foo/B")] == 15
-    assert hier_logger.name_to_count[util.get_universal_path("mean/foo/B")] == 2
-    assert hier_logger.name_to_excluded[util.get_universal_path("mean/foo/B")] is None
+        assert (
+            hier_logger.name_to_count[util.get_universal_path_from_posix("raw/foo/B")]
+            == 0
+        )
+        assert (
+            hier_logger.name_to_excluded[
+                util.get_universal_path_from_posix("raw/foo/B")
+            ]
+            is None
+        )
+    assert (
+        hier_logger.name_to_value[util.get_universal_path_from_posix("mean/foo/A")] == 1
+    )
+    assert (
+        hier_logger.name_to_count[util.get_universal_path_from_posix("mean/foo/A")] == 1
+    )
+    assert (
+        hier_logger.name_to_excluded[util.get_universal_path_from_posix("mean/foo/A")]
+        is None
+    )
+    assert (
+        hier_logger.name_to_value[util.get_universal_path_from_posix("mean/foo/B")]
+        == 15
+    )
+    assert (
+        hier_logger.name_to_count[util.get_universal_path_from_posix("mean/foo/B")] == 2
+    )
+    assert (
+        hier_logger.name_to_excluded[util.get_universal_path_from_posix("mean/foo/B")]
+        is None
+    )
     hier_logger.dump()
     assert len(hier_logger.name_to_value) == 0
     assert len(hier_logger.name_to_count) == 0
@@ -160,15 +202,15 @@ def test_hard(tmpdir):
 
     hier_logger.dump()  # Writes 1 mean each from "gen" and "disc".
 
-    expect_raw_gen = {util.get_universal_path("raw/gen/E"): [2, 0]}
+    expect_raw_gen = {util.get_universal_path_from_posix("raw/gen/E"): [2, 0]}
     expect_raw_disc = {
-        util.get_universal_path("raw/disc/C"): [2, 4, 3],
-        util.get_universal_path("raw/disc/D"): [2, "", ""],
+        util.get_universal_path_from_posix("raw/disc/C"): [2, 4, 3],
+        util.get_universal_path_from_posix("raw/disc/D"): [2, "", ""],
     }
     expect_default = {
-        util.get_universal_path("mean/gen/E"): [1],
-        util.get_universal_path("mean/disc/C"): [3],
-        util.get_universal_path("mean/disc/D"): [2],
+        util.get_universal_path_from_posix("mean/gen/E"): [1],
+        util.get_universal_path_from_posix("mean/disc/C"): [3],
+        util.get_universal_path_from_posix("mean/disc/D"): [2],
         "no_context": [1],
     }
 
@@ -187,15 +229,15 @@ def test_hard(tmpdir):
 
     hier_logger.dump()  # Writes 1 mean from "disc". "gen" is blank.
 
-    expect_raw_gen = {util.get_universal_path("raw/gen/E"): [2, 0]}
+    expect_raw_gen = {util.get_universal_path_from_posix("raw/gen/E"): [2, 0]}
     expect_raw_disc = {
-        util.get_universal_path("raw/disc/C"): [2, 4, 3, ""],
-        util.get_universal_path("raw/disc/D"): [2, "", "", 100],
+        util.get_universal_path_from_posix("raw/disc/C"): [2, 4, 3, ""],
+        util.get_universal_path_from_posix("raw/disc/D"): [2, "", "", 100],
     }
     expect_default = {
-        util.get_universal_path("mean/gen/E"): [1, ""],
-        util.get_universal_path("mean/disc/C"): [3, ""],
-        util.get_universal_path("mean/disc/D"): [2, 100],
+        util.get_universal_path_from_posix("mean/gen/E"): [1, ""],
+        util.get_universal_path_from_posix("mean/disc/C"): [3, ""],
+        util.get_universal_path_from_posix("mean/disc/D"): [2, 100],
         "no_context": [1, 2],
     }
 

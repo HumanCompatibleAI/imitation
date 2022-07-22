@@ -5,7 +5,6 @@ import functools
 import itertools
 import os
 import uuid
-from pathlib import Path
 from typing import (
     Any,
     Callable,
@@ -239,6 +238,8 @@ def tensor_iter_norm(
     return th.norm(norm_tensor, p=ord)
 
 
-def get_universal_path(path):
-    unipath = Path(path)
-    return str(unipath.resolve())
+def get_universal_path_from_posix_from_posix(path):
+    if os.name == "nt":
+        return path.replace("/", "\\")
+    else:
+        return path
