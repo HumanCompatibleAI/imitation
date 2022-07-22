@@ -182,12 +182,12 @@ def train_preference_comparisons(
         custom_logger=custom_logger,
     )
     if active_selection:
-        preference_predictor = preference_comparisons.PreferencePredictor(
+        preference_model = preference_comparisons.PreferenceModel(
             **cross_entropy_loss_kwargs,
             model=reward_net,
         )
         fragmenter = preference_comparisons.ActiveSelectionFragmenter(
-            preference_predictor=preference_predictor,
+            preference_model=preference_model,
             base_fragmenter=fragmenter,
             fragment_sample_factor=transition_oversampling,
             uncertainty_on=uncertainty_on,

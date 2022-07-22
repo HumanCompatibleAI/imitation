@@ -399,7 +399,7 @@ def test_active_fragmenter_discount_rate_no_crash(
 ):
     # also use a non-zero noise probability to check that doesn't cause errors
     reward_net = reward_nets.RewardEnsemble(venv.observation_space, venv.action_space)
-    preference_predictor = preference_comparisons.PreferencePredictor(
+    preference_model = preference_comparisons.PreferenceModel(
         model=reward_net,
         noise_prob=0.1,
         discount_factor=0.9,
@@ -407,7 +407,7 @@ def test_active_fragmenter_discount_rate_no_crash(
     )
 
     fragmenter = preference_comparisons.ActiveSelectionFragmenter(
-        preference_predictor=preference_predictor,
+        preference_model=preference_model,
         base_fragmenter=random_fragmenter,
         fragment_sample_factor=2,
         uncertainty_on=uncertainty_on,
@@ -440,7 +440,7 @@ def test_active_fragmenter_discount_rate_no_crash(
 
 def test_active_fragmenter_uncertainty_on_not_supported_error(venv, random_fragmenter):
     reward_net = reward_nets.RewardEnsemble(venv.observation_space, venv.action_space)
-    preference_predictor = preference_comparisons.PreferencePredictor(
+    preference_model = preference_comparisons.PreferenceModel(
         model=reward_net,
         noise_prob=0.1,
         discount_factor=0.9,
@@ -448,7 +448,7 @@ def test_active_fragmenter_uncertainty_on_not_supported_error(venv, random_fragm
     )
     with pytest.raises(ValueError):
         preference_comparisons.ActiveSelectionFragmenter(
-            preference_predictor=preference_predictor,
+            preference_model=preference_model,
             base_fragmenter=random_fragmenter,
             fragment_sample_factor=2,
             uncertainty_on="uncertainty_on",

@@ -317,8 +317,8 @@ def _get_trajectories(
     return trajectories
 
 
-class PreferencePredictor(nn.Module):
-    """Class to convert two fragment's rewards into preference probability."""
+class PreferenceModel(nn.Module):
+    """Class to convert two fragments' rewards into preference probability."""
 
     def __init__(
         self,
@@ -357,7 +357,7 @@ class PreferencePredictor(nn.Module):
             self.model = base_model
 
     def forward(self, fragment_pairs: Sequence[TrajectoryPair]):
-        """Computes the preference probability of first fragment for all pairs.
+        """Computes the preference probability of the first fragment for all pairs.
 
         Args:
             fragment_pairs: batch of pair of fragments.
@@ -369,14 +369,12 @@ class PreferencePredictor(nn.Module):
                    (num_fragment_pairs, num_networks) for ensemble of networks.
 
         """
+        batch_size = len(fragment_pairs)
+        probs_shape = (batch_size,)
         if self.is_ensemble:
-            probs = th.empty(
-                len(fragment_pairs),
-                self.model.num_members,
-                dtype=th.float32,
-            )
-        else:
-            probs = th.empty(len(fragment_pairs), dtype=th.float32)
+            probs_shape = (batch_size, self.model.num_members)
+        probs = th.empty(*probs_shape, dtype=th.float32)
+
         for i, fragment in enumerate(fragment_pairs):
             frag1, frag2 = fragment
             trans1 = rollout.flatten_trajectories([frag1])
@@ -407,10 +405,13 @@ class PreferencePredictor(nn.Module):
         done = transitions.dones
         if self.is_ensemble:
             rews = self.model.predict_processed_all(state, action, next_state, done)
+            assert rews.shape == (len(state), self.model.num_members)
             return util.safe_to_tensor(rews).to(self.model.device)
         else:
             preprocessed = self.model.preprocess(state, action, next_state, done)
-            return self.model(*preprocessed)
+            rews = self.model(*preprocessed)
+            assert rews.shape == (len(state),)
+            return rews
 
     def probability(
         self,
@@ -428,12 +429,12 @@ class PreferencePredictor(nn.Module):
         Returns:
             The softmax of the difference between the (discounted) return of the
             first and second trajectory.
+            Shape: (num_ensemble_members, ) for ensemble model and
+                   () for non-ensemble model which is a torch scalar.
         """
-        # TODO(lev) this could be extracted into its own class.
-        if self.is_ensemble:
-            assert rews1.ndim == rews2.ndim == 2
-        else:
-            assert rews1.ndim == rews2.ndim == 1
+        # check rews has correct shape based on the model
+        expected_dims = 2 if self.is_ensemble else 1
+        assert rews1.ndim == rews2.ndim == expected_dims
         # First, we compute the difference of the returns of
         # the two fragments. We have a special case for a discount
         # factor of 1 to avoid unnecessary computation (especially
@@ -452,7 +453,12 @@ class PreferencePredictor(nn.Module):
         # is the first dimension of that softmax, representing the
         # probability that fragment 1 is preferred.
         model_probability = 1 / (1 + returns_diff.exp())
-        return self.noise_prob * 0.5 + (1 - self.noise_prob) * model_probability
+        probability = self.noise_prob * 0.5 + (1 - self.noise_prob) * model_probability
+        if self.is_ensemble:
+            assert probability.shape == (self.model.num_members,)
+        else:
+            assert probability.shape == ()
+        return probability
 
 
 class Fragmenter(abc.ABC):
@@ -589,13 +595,13 @@ class RandomFragmenter(Fragmenter):
 class ActiveSelectionFragmenter(Fragmenter):
     """Sample fragments of trajectories based on active selection.
 
-    Actively picks the fragment paris with the highest uncertainty (variance)
+    Actively picks the fragment pairs with the highest uncertainty (variance)
     of rewards/probabilties/predictions from ensemble model.
     """
 
     def __init__(
         self,
-        preference_predictor: PreferencePredictor,
+        preference_model: PreferenceModel,
         base_fragmenter: Fragmenter,
         fragment_sample_factor: float,
         uncertainty_on: str = "logits",
@@ -604,7 +610,7 @@ class ActiveSelectionFragmenter(Fragmenter):
         """Initialize the active selection fragmenter.
 
         Args:
-            preference_predictor: a model that predicts the preference of frag A.
+            preference_model: a model that predicts the preference of frag A.
             base_fragmenter: fragmenter instance to get
                 fragment pairs from trajectories
             fragment_sample_factor: the factor of the number of
@@ -617,12 +623,14 @@ class ActiveSelectionFragmenter(Fragmenter):
             ValueError: `uncertainty_on` not in logit|probability|label.
         """
         super().__init__(custom_logger=custom_logger)
-        self.preference_predictor = preference_predictor
+        self.preference_model = preference_model
         self.base_fragmenter = base_fragmenter
         self.fragment_sample_factor = fragment_sample_factor
-        # self.preference_predictor = PreferencePredictor()
         if not (uncertainty_on in ["logit", "probability", "label"]):
-            raise ValueError(f"{uncertainty_on} not supported.")
+            raise ValueError(
+                f"""{uncertainty_on} not supported.
+                `uncertainty_on` Should be from `logit`, `probability`, or `label`""",
+            )
         self.uncertainty_on = uncertainty_on
 
     def __call__(
@@ -633,50 +641,64 @@ class ActiveSelectionFragmenter(Fragmenter):
     ) -> Sequence[TrajectoryWithRewPair]:
         # sample a large number (self.fragment_sample_factor*num_pairs)
         # of fragments from all the trajectories
+        fragments_to_sample = int(self.fragment_sample_factor * num_pairs)
         fragment_pairs = self.base_fragmenter(
-            trajectories,
-            fragment_length,
-            int(self.fragment_sample_factor * num_pairs),
+            trajectories=trajectories,
+            fragment_length=fragment_length,
+            num_pairs=fragments_to_sample,
         )
         var_estimates = []
-        for i, fragment in enumerate(fragment_pairs):
+        for fragment in fragment_pairs:
             frag1, frag2 = fragment
             trans1 = rollout.flatten_trajectories([frag1])
             trans2 = rollout.flatten_trajectories([frag2])
-            if self.uncertainty_on == "logit":
-                with th.no_grad():
-                    # NOTE: Should we first sum the rewards
-                    # and then take the var (curr approach)
-                    # or first take the var and then sum the rewards?
-                    _, rew1_var = self._reward_moments(trans1)
-                    _, rew2_var = self._reward_moments(trans2)
-                var_estimates.append(rew1_var + rew2_var)
-            else:  # uncertainty_on is probability or label
-                with th.no_grad():
-                    rews1 = self.preference_predictor.rewards(trans1)
-                    rews2 = self.preference_predictor.rewards(trans2)
-                    probs = (
-                        self.preference_predictor.probability(rews1, rews2)
-                        .cpu()
-                        .numpy()
-                    )
-                if self.uncertainty_on == "probability":
-                    var_estimates.append(probs.var())
-                else:  # uncertainty_on is label
-                    preds = (probs > 0.5).astype(np.float32)
-                    # probability estimate of Bernoulli random variable
-                    prob_estimate = preds.mean()
-                    # variance estimate of Bernoulli random variable
-                    var_estimate = prob_estimate * (1 - prob_estimate)
-                    var_estimates.append(var_estimate)
+            with th.no_grad():
+                rews1 = self.preference_model.rewards(trans1)
+                rews2 = self.preference_model.rewards(trans2)
+            var_estimate = self.variance_estimate(rews1, rews2)
+            var_estimates.append(var_estimate)
 
         fragment_idxs = np.argsort(var_estimates)[::-1]  # sort in descending order
         # return fragment pairs that have the highest uncertainty
         return [fragment_pairs[idx] for idx in fragment_idxs[:num_pairs]]
 
-    def _reward_moments(self, transitions):
-        rewards = self.preference_predictor.rewards(transitions).sum(0)
-        return rewards.mean().cpu().numpy(), rewards.var().cpu().numpy()
+    def variance_estimate(self, rews1, rews2) -> float:
+        """Gets the variance estimate from the rewards of a fragment pair.
+
+        Args:
+            rews1: rewards obtained by all the ensemble models for the first fragment.
+                Shape: (fragment_length, num_ensemble_members)
+            rews2: rewards obtained by all the ensemble models for the second fragment.
+                Shape: (fragment_length, num_ensemble_members)
+
+        Returns:
+            the variance estimate based on the `uncertainty_on` flag.
+        """
+        if self.uncertainty_on == "logit":
+            rews1, rews2 = rews1.sum(0), rews2.sum(0)
+            var_estimate = (rews1 - rews2).var()
+        else:  # uncertainty_on is probability or label
+            probs = (
+                self.preference_model.probability(
+                    rews1,
+                    rews2,
+                )
+                .cpu()
+                .numpy()
+            )
+            if self.uncertainty_on == "probability":
+                var_estimate = probs.var()
+            else:  # uncertainty_on is label
+                preds = (probs > 0.5).astype(np.float32)
+                # probability estimate of Bernoulli random variable
+                prob_estimate = preds.mean()
+                # variance estimate of Bernoulli random variable
+                var_estimate = prob_estimate * (1 - prob_estimate)
+        return var_estimate
+
+    def _rewards(self, transitions):
+        rewards = self.preference_model.rewards(transitions).sum(0)
+        return rewards
 
 
 class PreferenceGatherer(abc.ABC):
@@ -966,13 +988,13 @@ class CrossEntropyRewardLoss(RewardLoss):
                 reward model and the target probabilities in `preferences`. Metrics
                 are include accuracy.
         """
-        preference_predictor = PreferencePredictor(
+        preference_model = PreferenceModel(
             model,
             noise_prob=self.noise_prob,
             discount_factor=self.discount_factor,
             threshold=self.threshold,
         )
-        probs = preference_predictor(fragment_pairs)
+        probs = preference_model(fragment_pairs)
         # TODO(ejnnr): Here and below, > 0.5 is problematic
         # because getting exactly 0.5 is actually somewhat
         # common in some environments (as long as sample=False or temperature=0).
