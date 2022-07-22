@@ -16,6 +16,7 @@ from stable_baselines3.common.vec_env import DummyVecEnv
 from imitation.data import rollout
 from imitation.policies import base
 from imitation.rewards import reward_nets, serialize
+from imitation.testing.reward_nets import make_ensemble
 from imitation.util import networks, util
 
 
@@ -32,11 +33,12 @@ DESERIALIZATION_TYPES = [
     "RewardNet_unshaped",
 ]
 
+
 # Reward net classes, allowed kwargs
-REWARD_NETS = [
-    (reward_nets.BasicRewardNet, {"normalize_input_layer"}),
-    (reward_nets.BasicShapedRewardNet, {"normalize_input_layer"}),
-    (reward_nets.RewardEnsemble, set()),
+MAKE_REWARD_NET = [
+    reward_nets.BasicRewardNet,
+    reward_nets.BasicShapedRewardNet,
+    make_ensemble,
 ]
 
 
@@ -57,22 +59,23 @@ NORMALIZE_OUTPUT_LAYER = [
 
 
 @pytest.mark.parametrize("env_name", ENVS)
-@pytest.mark.parametrize("reward_net_cls_allowed_kwargs", REWARD_NETS)
+@pytest.mark.parametrize("reward_net_cls", MAKE_REWARD_NET)
 @pytest.mark.parametrize("reward_net_kwargs", REWARD_NET_KWARGS)
 @pytest.mark.parametrize("normalize_output_layer", NORMALIZE_OUTPUT_LAYER)
 def test_init_no_crash(
     env_name,
-    reward_net_cls_allowed_kwargs,
+    reward_net_cls,
     reward_net_kwargs,
     normalize_output_layer,
 ):
-    reward_net_cls, allowed_kwargs = reward_net_cls_allowed_kwargs
     env = gym.make(env_name)
+
     reward_net = reward_net_cls(
         env.observation_space,
         env.action_space,
-        **{k: v for k, v in reward_net_kwargs.items() if k in allowed_kwargs},
+        **reward_net_kwargs,
     )
+
     if normalize_output_layer:
         reward_net = reward_nets.NormalizedRewardNet(
             reward_net,
@@ -223,16 +226,15 @@ def test_cant_load_unnorm_as_norm(env_name, tmpdir):
 
 
 @pytest.mark.parametrize("env_name", ENVS)
-@pytest.mark.parametrize("net_cls_allowed_kwargs", REWARD_NETS)
+@pytest.mark.parametrize("net_cls", MAKE_REWARD_NET)
 @pytest.mark.parametrize("normalize_rewards", [True, False])
 def test_serialize_identity(
     env_name,
-    net_cls_allowed_kwargs,
+    net_cls,
     normalize_rewards,
     tmpdir,
 ):
     """Does output of deserialized reward network match that of original?"""
-    net_cls, _ = net_cls_allowed_kwargs
     logging.info(f"Testing {net_cls}")
 
     venv = util.make_vec_env(env_name, n_envs=1, parallel=False)
@@ -342,21 +344,13 @@ def test_potential_net_2d_obs():
 
 
 @pytest.mark.parametrize("env_name", ENVS)
-@pytest.mark.parametrize("net_cls_allowed_kwargs", REWARD_NETS)
 @pytest.mark.parametrize("num_members", [1, 2, 4])
-def test_reward_ensemble_creation(env_name, net_cls_allowed_kwargs, num_members):
+def test_reward_ensemble_creation(env_name, num_members):
     """A simple test of the RewardEnsemble constructor."""
     env = gym.make(env_name)
-    net_cls, _ = net_cls_allowed_kwargs
-    ensemble = reward_nets.RewardEnsemble(
-        env.action_space,
-        env.observation_space,
-        num_members,
-        net_cls,
-    )
+    ensemble = make_ensemble(env.observation_space, env.action_space, num_members)
     assert ensemble
     assert ensemble.num_members == num_members
-    assert isinstance(ensemble.members[0], net_cls)
 
 
 class MockRewardNet(reward_nets.RewardNet):
@@ -406,8 +400,10 @@ def two_ensemble(env_2d) -> reward_nets.RewardEnsemble:
     return reward_nets.RewardEnsemble(
         env_2d.observation_space,
         env_2d.action_space,
-        num_members=2,
-        member_cls=MockRewardNet,
+        members=[
+            MockRewardNet(env_2d.observation_space, env_2d.action_space)
+            for _ in range(2)
+        ],
     )
 
 
@@ -423,16 +419,6 @@ def numpy_transitions() -> NumpyTransitions:
         np.zeros((10, 5, 5)),
         np.zeros((10,), dtype=bool),
     )
-
-
-@pytest.mark.parametrize("bad_input", [0, -1, 0.5])
-def test_reward_ensemble_test_value_error(env_2d, bad_input):
-    with pytest.raises(ValueError):
-        reward_nets.RewardEnsemble(
-            env_2d.action_space,
-            env_2d.observation_space,
-            num_members=bad_input,
-        )
 
 
 def test_reward_ensemble_predict_reward_moments(
@@ -457,11 +443,9 @@ def test_reward_ensemble_predict_reward_moments(
 
 
 def test_ensemble_members_have_different_parameters(env_2d):
-    ensemble = reward_nets.RewardEnsemble(
+    ensemble = make_ensemble(
         env_2d.observation_space,
         env_2d.action_space,
-        num_members=2,
-        member_cls=reward_nets.BasicRewardNet,
     )
 
     assert not th.allclose(

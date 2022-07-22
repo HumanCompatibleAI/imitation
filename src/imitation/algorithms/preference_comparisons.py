@@ -908,7 +908,7 @@ def preference_collate_fn(
 
 
 class LossAndMetrics(NamedTuple):
-    """Return type of all for reward losses."""
+    """Loss and auxiliary metrics for reward network training."""
 
     loss: th.Tensor
     metrics: Mapping[str, th.Tensor]

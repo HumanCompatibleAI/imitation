@@ -1,7 +1,7 @@
 """Constructs deep network reward models."""
 
 import abc
-from typing import Any, Callable, Iterable, Mapping, Optional, Sequence, Tuple, Type
+from typing import Callable, Iterable, Optional, Sequence, Tuple, Type
 
 import gym
 import numpy as np
@@ -215,8 +215,8 @@ class RewardNet(nn.Module, abc.ABC):
 class RewardNetWrapper(RewardNet):
     """An abstract RewardNet wrapping a base network.
 
-    Note: The warper will default to forwarding calls to `device`, `forward`,
-        `preproces`, `predict`, and `predict_processed` on the base reward net unless
+    Note: The wrapper will default to forwarding calls to `device`, `forward`,
+        `preproces`, `predict`, and `predict_processed` to the base reward net unless
         explicitly overridden in a subclases.
     """
 
@@ -642,38 +642,26 @@ class RewardEnsemble(RewardNetWithVariance):
         self,
         observation_space: gym.Space,
         action_space: gym.Space,
-        num_members: int = 5,
-        member_cls: Type[RewardNet] = BasicRewardNet,
-        member_kwargs: Mapping[str, Any] = {},
-        member_normalize_output_layer: Optional[Type[nn.Module]] = None,
+        members: Iterable[RewardNet],
     ):
         """Initialize the RewardEnsemble.
 
         Args:
             observation_space: the observation space of the environment
             action_space: the action space of the environment
-            num_members: the number of members in the ensemble. Must be at least 1.
-            member_cls: class of the constituent reward networks
-            member_kwargs: keyword arguments to pass to the ensemble members
-            member_normalize_output_layer: The normalization layer to use for the
-                member classes. Defaults to None.
+            members: the member networks that will make up the ensemble.
 
         Raises:
             ValueError: if num_members is less than 1
         """
         super().__init__(observation_space, action_space)
-        if num_members < 1:
+
+        members = list(members)
+        if not members:
             raise ValueError("Must be at least 1 member in the ensemble.")
 
         self.members = nn.ModuleList(
-            make_reward_net(
-                observation_space,
-                action_space,
-                member_cls,
-                member_kwargs,
-                member_normalize_output_layer,
-            )
-            for _ in range(num_members)
+            members,
         )
 
     @property
@@ -780,7 +768,7 @@ class AddSTDRewardWrapper(RewardNetWrapper):
     base: RewardNetWithVariance
 
     def __init__(self, base: RewardNetWithVariance, default_alpha: float = 0.0):
-        """Create a reward network that added a multiple of the standard deviation.
+        """Create a reward network that adds a multiple of the standard deviation.
 
         Args:
             base: A reward network that keeps track of its epistemic variance.
@@ -793,7 +781,7 @@ class AddSTDRewardWrapper(RewardNetWrapper):
         """
         super().__init__(base)
         if not isinstance(base, RewardNetWithVariance):
-            raise ValueError(
+            raise TypeError(
                 "Cannot add standard deviation to reward net that "
                 "is not an instance of RewardNetWithVariance!",
             )
@@ -836,45 +824,3 @@ class AddSTDRewardWrapper(RewardNetWrapper):
         )
 
         return reward_mean + alpha * np.sqrt(reward_var)
-
-
-def make_reward_net(
-    observation_space: gym.Space,
-    action_space: gym.Space,
-    net_cls: Type[RewardNet],
-    net_kwargs: Mapping[str, Any],
-    normalize_output_layer: Type[nn.Module],
-    add_std_alpha: Optional[float] = None,
-) -> RewardNet:
-    """Builds a reward network.
-
-    Args:
-        observation_space: the observation space of the environment.
-        action_space: the action space of the environment.
-        net_cls: Class of reward network to construct.
-        net_kwargs: Keyword arguments passed to reward network constructor.
-        normalize_output_layer: Wrapping the reward_net with NormalizedRewardNet
-            to normalize the reward output.
-        add_std_alpha: multiple of reward function standard deviation to add to the
-            reward in predict_processed. Must be None when using a reward function that
-            does not keep track of variance. Defaults to None.
-
-    Returns:
-        A, possibly wrapped, instance of `net_cls`.
-    """
-    reward_net = net_cls(
-        observation_space,
-        action_space,
-        **net_kwargs,
-    )
-
-    if add_std_alpha is not None:
-        reward_net = AddSTDRewardWrapper(reward_net, default_alpha=add_std_alpha)
-
-    if normalize_output_layer is not None:
-        reward_net = NormalizedRewardNet(
-            reward_net,
-            normalize_output_layer,
-        )
-
-    return reward_net

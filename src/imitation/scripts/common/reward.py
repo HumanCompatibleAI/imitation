@@ -1,6 +1,7 @@
 """Common configuration elements for reward network training."""
 
 import logging
+import typing
 from typing import Any, Mapping, Optional, Type
 
 import sacred
@@ -18,9 +19,11 @@ logger = logging.getLogger(__name__)
 def config():
     # Custom reward network
     net_cls = None
-    add_std_alpha = None
     net_kwargs = {}
     normalize_output_layer = networks.RunningNorm
+    add_std_alpha = None
+    ensemble_size = None
+    ensemble_member_config = {}
     locals()  # quieten flake8
 
 
@@ -47,10 +50,14 @@ def normalize_output_running():
 @reward_ingredient.named_config
 def reward_ensemble():
     net_cls = reward_nets.RewardEnsemble
-    normalize_output_layer = None
-    net_kwargs = {"member_normalize_output_layer": networks.RunningNorm}
     add_std_alpha = 0
-    locals()  # quieten flake8
+    ensemble_size = 5
+    ensemble_member_config = {
+        "net_cls": reward_nets.BasicRewardNet,
+        "net_kwargs": {},
+        "normalize_output_layer": networks.RunningNorm,
+    }
+    locals()
 
 
 @reward_ingredient.config_hook
@@ -71,6 +78,28 @@ def config_hook(config, command_name, logger):
     return res
 
 
+def _make_reward_net(
+    venv: vec_env.VecEnv,
+    net_cls: Type[reward_nets.RewardNet],
+    net_kwargs: Mapping[str, Any],
+    normalize_output_layer: Optional[Type[nn.Module]],
+):
+    """Helper function for creating reward nets."""
+    reward_net = net_cls(
+        venv.observation_space,
+        venv.action_space,
+        **net_kwargs,
+    )
+
+    if normalize_output_layer is not None:
+        reward_net = reward_nets.NormalizedRewardNet(
+            reward_net,
+            normalize_output_layer,
+        )
+
+    return reward_net
+
+
 @reward_ingredient.capture
 def make_reward_net(
     venv: vec_env.VecEnv,
@@ -78,6 +107,8 @@ def make_reward_net(
     net_kwargs: Mapping[str, Any],
     normalize_output_layer: Optional[Type[nn.Module]],
     add_std_alpha: Optional[float],
+    ensemble_size: Optional[int],
+    ensemble_member_config: Optional[Mapping[str, Any]],
 ) -> reward_nets.RewardNet:
     """Builds a reward network.
 
@@ -90,17 +121,42 @@ def make_reward_net(
         add_std_alpha: multiple of reward function standard deviation to add to the
             reward in predict_processed. Must be None when using a reward function that
             does not keep track of variance. Defaults to None.
+        ensemble_size: The number of ensemble members to create. Must set if using
+            `net_cls =` :class: `reward_nets.RewardEnsemble`.
+        ensemble_member_config: The configuration for individual ensemble
+            members. Note that ensemble_members.net_cls must not be
+            :class: `reward_nets.RewardEnsemble`. Must be set if using
+            `net_cls = ` :class: `reward_nets.RewardEnsemble`.
 
     Returns:
         A, possibly wrapped, instance of `net_cls`.
+
+    Raises:
+        ValueError: Using a reward ensemble but failed to provide configuration.
     """
-    reward_net = reward_nets.make_reward_net(
-        venv.observation_space,
-        venv.action_space,
-        net_cls,
-        net_kwargs,
-        normalize_output_layer,
-        add_std_alpha,
-    )
-    logging.info(f"Reward network:\n {reward_net}")
-    return reward_net
+    if issubclass(net_cls, reward_nets.RewardEnsemble):
+        net_cls = typing.cast(Type[reward_nets.RewardEnsemble], net_cls)
+        if ensemble_member_config is None:
+            raise ValueError("Must specify ensemble_member_config.")
+
+        if ensemble_size is None:
+            raise ValueError("Must specify ensemble_size.")
+
+        members = [
+            _make_reward_net(venv, **ensemble_member_config)
+            for _ in range(ensemble_size)
+        ]
+
+        reward_net = net_cls(venv.observation_space, venv.observation_space, members)
+
+        if add_std_alpha is not None:
+            reward_net = reward_nets.AddSTDRewardWrapper(
+                reward_net,
+                default_alpha=add_std_alpha,
+            )
+
+        # TODO should we support normalization on top of the ensemble or just within
+        # it?
+        return reward_net
+    else:
+        return _make_reward_net(venv, net_cls, net_kwargs, normalize_output_layer)
