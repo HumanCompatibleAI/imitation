@@ -37,8 +37,10 @@ executors:
       # If you change these, also change ci/code_checks.sh
       SRC_FILES: src/ tests/ experiments/ examples/ docs/conf.py setup.py
       NUM_CPUS: 2
-  unit-test-windows: win/server-2022
-
+  unit-test-windows: 
+    machine:
+      image: win/server-2022
+      shell: bash.exe
 
 commands:
   dependencies:
@@ -71,11 +73,6 @@ commands:
       - run:
           name: print installed packages
           command: pip freeze --all
-
-  # codecov-upload-windows:
-  #   shell: bash.exe
-  #   steps:
-  #     - codecov/upload
 
   dependencies-windows:
     # You must still manually update the Docker image if any
@@ -234,7 +231,6 @@ jobs:
 
   unit-test-windows:
     executor: unit-test-windows
-    shell: bash.exe
     # executor:
     #   name: win/default
     steps:
