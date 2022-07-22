@@ -85,11 +85,13 @@ commands:
       # Download and cache dependencies
       - restore_cache:
           keys:
-            - v5-win-dependencies-{{ checksum "setup.py" }}
+            - v6-win-dependencies-{{ checksum "setup.py" }}
 
       - run:
           name: install python
-          command: choco install --side-by-side -y python --version 3.8
+          command: |
+            $ErrorActionPreference = "Stop"  # exit immediately on any error
+            choco install --side-by-side -y python --version 3.8
           shell: powershell.exe
 
       - run:
@@ -106,17 +108,19 @@ commands:
       - save_cache:
           paths:
             - .\venv
-          key: v5-win-dependencies-{{ checksum "setup.py" }}
+          key: v6-win-dependencies-{{ checksum "setup.py" }}
 
       - run:
           name: install imitation
           command: |
+            $ErrorActionPreference = "Stop"  # exit immediately on any error
             .\venv\Scripts\activate
             pip install --upgrade --force-reinstall --no-deps .
           shell: powershell.exe
       - run:
           name: print installed packages
           command: |
+            $ErrorActionPreference = "Stop"  # exit immediately on any error
             .\venv\Scripts\activate
             pip freeze --all
           shell: powershell.exe
@@ -237,17 +241,17 @@ jobs:
     steps:
       - dependencies-windows
 
-      - run:
-          name: Memory Monitor
-          command: |
-            mkdir /tmp/resource-usage
-            export FILE=/tmp/resource-usage/memory.txt
-            while true; do
-              ps -u root eo pid,%cpu,%mem,args,uname --sort=-%mem >> $FILE
-              echo "----------" >> $FILE
-              sleep 1
-            done
-          background: true
+      # - run:
+      #     name: Memory Monitor
+      #     command: |
+      #       mkdir /tmp/resource-usage
+      #       export FILE=/tmp/resource-usage/memory.txt
+      #       while true; do
+      #         ps -u root eo pid,%cpu,%mem,args,uname --sort=-%mem >> $FILE
+      #         echo "----------" >> $FILE
+      #         sleep 1
+      #       done
+      #     background: true
 
       # Note: The setup.py checksum in the cache name ensures that we retrain our expert
       # policies, which are cached in the pytest cache, whenever setup.py changes. This
@@ -255,17 +259,18 @@ jobs:
       # still better than nothing.
       - restore_cache:
           keys:
-            - v7-win-pytest-cache-{{ checksum "setup.py" }}
+            - v8-win-pytest-cache-{{ checksum "setup.py" }}
             # This prefix-matched key restores the most recent pytest cache with any
             # checksum. If that cached policy happens to be still loadable, we avoid
             # retraining. See https://circleci.com/docs/2.0/caching/#restoring-cache
-            - v7-win-pytest-cache-
+            - v8-win-pytest-cache-
           paths:
             - .pytest_cache
 
       - run:
           name: run tests
           command: |
+            $ErrorActionPreference = "Stop"  # exit immediately on any error
             .\venv\Scripts\activate
             # Xdummy-entrypoint.py: starts an X server and sets DISPLAY, then runs wrapped command.
             pytest -n 4 --cov=venv\Lib\site-packages\imitation `
@@ -279,7 +284,7 @@ jobs:
       - codecov/upload
 
       - save_cache:
-          key: v7-win-pytest-cache-{{ checksum "setup.py" }}
+          key: v8-win-pytest-cache-{{ checksum "setup.py" }}
           paths:
             - .pytest_cache
 
@@ -289,7 +294,7 @@ jobs:
 
       - store_test_results:
           path: \tmp\test-reports
-          unit-test:
+          unit-test-windows:
 
       - store_artifacts:
           path: \tmp\resource-usage
