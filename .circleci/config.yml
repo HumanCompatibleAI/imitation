@@ -37,11 +37,6 @@ executors:
       # If you change these, also change ci/code_checks.sh
       SRC_FILES: src/ tests/ experiments/ examples/ docs/conf.py setup.py
       NUM_CPUS: 2
-  # unit-test-windows: 
-  #   win/server-2022:
-  #     shell: bash.exe
-
-
 
 commands:
   dependencies:
@@ -303,17 +298,17 @@ jobs:
 
 workflows:
   version: 2
-  # test: 
-  #   jobs:
-  #     - lint:
-  #         context:
-  #         - docker-hub-creds
-  #     - type:
-  #         context:
-  #         - docker-hub-creds
-  #     - unit-test:
-  #         context:
-  #         - docker-hub-creds
+  test: 
+    jobs:
+      - lint:
+          context:
+          - docker-hub-creds
+      - type:
+          context:
+          - docker-hub-creds
+      - unit-test:
+          context:
+          - docker-hub-creds
 
   windows-test:
     jobs:
