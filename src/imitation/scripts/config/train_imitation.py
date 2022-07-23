@@ -66,6 +66,7 @@ def defaults(
     policy_cls = None  # Type of a Stable Baselines3 policy architecture.
     policy_kwargs = None  # Keyword arguments for policy constructor.
 
+
 @train_imitation_ex.named_config
 def mountain_car():
     common = dict(env_name="MountainCar-v0")

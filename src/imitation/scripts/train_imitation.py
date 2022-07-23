@@ -108,10 +108,10 @@ def train_imitation(
     """Runs DAgger (if `use_dagger`) or BC (otherwise) training.
 
     Args:
-        bc_kwargs: Keyword arguments passed through to `bc_algorithm.BC` constructor.
-        bc_train_kwargs: Keyword arguments passed through to `bc_algorithm.train` method.
+        bc_kwargs: Keyword arguments passed through to `bc.BC` constructor.
+        bc_train_kwargs: Keyword arguments passed through to `bc.train` method.
         dagger: Arguments for DAgger training.
-        use_dagger: If True, train using DAgger; otherwise, use bc_algorithm.
+        use_dagger: If True, train using DAgger; otherwise, use bc.
         agent_path: Path to directory containing pre-trained agent for warm start. If
             None, train from scratch.
 
@@ -173,7 +173,7 @@ def train_imitation(
 
 @train_imitation_ex.command
 def bc() -> Mapping[str, Mapping[str, float]]:
-    """Run BC experiment using a Sacred interface to bc_algorithm.
+    """Run BC experiment using a Sacred interface to bc.
 
     Returns:
         Statistics for rollouts from the trained policy and expert data.
