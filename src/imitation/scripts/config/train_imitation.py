@@ -60,8 +60,11 @@ def defaults(
                 "final",
             ),
         )
-    agent_path = None
+    agent_path = None  # Path to load agent from, optional.
 
+    # Specify arguments below if agent_path for pre-trained policy is not provided.
+    policy_cls = None  # Type of a Stable Baselines3 policy architecture.
+    policy_kwargs = None  # Keyword arguments for policy constructor.
 
 @train_imitation_ex.named_config
 def mountain_car():

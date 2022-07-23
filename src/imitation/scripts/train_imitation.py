@@ -7,7 +7,7 @@ from typing import Any, Mapping, Optional, Type
 from sacred.observers import FileStorageObserver
 from stable_baselines3.common import policies, utils, vec_env
 
-from imitation.algorithms.bc import BC, reconstruct_policy
+from imitation.algorithms import bc as bc_algorithm
 from imitation.algorithms.dagger import SimpleDAggerTrainer
 from imitation.data import rollout
 from imitation.policies import serialize
@@ -20,8 +20,8 @@ logger = logging.getLogger(__name__)
 @train_imitation_ex.capture(prefix="train")
 def make_policy(
     venv: vec_env.VecEnv,
-    policy_cls: Type[policies.BasePolicy],
-    policy_kwargs: Mapping[str, Any],
+    policy_cls: Optional[Type[policies.BasePolicy]],
+    policy_kwargs: Optional[Mapping[str, Any]],
     policy_path: Optional[str],
 ) -> policies.BasePolicy:
     """Makes policy.
@@ -29,13 +29,22 @@ def make_policy(
     Args:
         venv: Vectorized environment we will be imitating demos from.
         policy_cls: Type of a Stable Baselines3 policy architecture.
+            Specify only if policy_path is not specified.
         policy_kwargs: Keyword arguments for policy constructor.
+            Specify only if policy_path is not specified.
         policy_path: Path to serialized policy. If provided, then load the
             policy from this path. Otherwise, make a new policy.
+            Specify only if policy_cls and policy_kwargs are not specified.
 
     Returns:
         A Stable Baselines3 policy.
     """
+    if policy_path is None and (policy_cls is None or policy_kwargs is None):
+        raise ValueError(
+            "Either policy_path or both policy_cls and policy_kwargs must be "
+            "specified.",
+        )
+
     policy_kwargs = dict(policy_kwargs)
     if issubclass(policy_cls, policies.ActorCriticPolicy):
         policy_kwargs.update(
@@ -47,7 +56,7 @@ def make_policy(
             },
         )
     if policy_path is not None:
-        policy = reconstruct_policy(policy_path)
+        policy = bc_algorithm.reconstruct_policy(policy_path)
     else:
         policy = policy_cls(**policy_kwargs)
     logger.info(f"Policy network summary:\n {policy}")
@@ -99,10 +108,10 @@ def train_imitation(
     """Runs DAgger (if `use_dagger`) or BC (otherwise) training.
 
     Args:
-        bc_kwargs: Keyword arguments passed through to `bc.BC` constructor.
-        bc_train_kwargs: Keyword arguments passed through to `BC.train` method.
+        bc_kwargs: Keyword arguments passed through to `bc_algorithm.BC` constructor.
+        bc_train_kwargs: Keyword arguments passed through to `bc_algorithm.train` method.
         dagger: Arguments for DAgger training.
-        use_dagger: If True, train using DAgger; otherwise, use BC.
+        use_dagger: If True, train using DAgger; otherwise, use bc_algorithm.
         agent_path: Path to directory containing pre-trained agent for warm start. If
             None, train from scratch.
 
@@ -117,7 +126,7 @@ def train_imitation(
     if not use_dagger or dagger["use_offline_rollouts"]:
         expert_trajs = demonstrations.load_expert_trajs()
 
-    bc_trainer = BC(
+    bc_trainer = bc_algorithm.BC(
         observation_space=venv.observation_space,
         action_space=venv.action_space,
         policy=imit_policy,
@@ -164,7 +173,7 @@ def train_imitation(
 
 @train_imitation_ex.command
 def bc() -> Mapping[str, Mapping[str, float]]:
-    """Run BC experiment using a Sacred interface to BC.
+    """Run BC experiment using a Sacred interface to bc_algorithm.
 
     Returns:
         Statistics for rollouts from the trained policy and expert data.

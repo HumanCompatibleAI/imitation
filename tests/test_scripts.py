@@ -88,8 +88,8 @@ def test_main_console(script_mod):
 _rl_agent_loading_configs = {
     "agent_path": CARTPOLE_TEST_POLICY_PATH,
     # FIXME(yawen): the policy we load was trained on 8 parallel environments
-    # and for some reason using it breaks if we use just 1 (like would be the
-    # default with the fast named_config)
+    #  and for some reason using it breaks if we use just 1 (like would be the
+    #  default with the fast named_config)
     "common": dict(num_vec=8),
 }
 
