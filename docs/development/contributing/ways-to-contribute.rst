@@ -9,7 +9,7 @@ There are four main ways you can contribute to imitation:
 * `Contributing to the documentation <#contributing-to-the-documentation>`_
 * `Contributing to the codebase <#contributing-to-the-codebase>`_
 
-Please, note that by contributing to the project, you are agreeing to license your work under :ref:`imitation's license <License>`, as per
+Please note that by contributing to the project, you are agreeing to license your work under :ref:`imitation's MIT license <License>`, as per
 `GitHub's terms of service <https://docs.github.com/en/site-policy/github-terms/github-terms-of-service#6-contributions-under-repository-license>`_.
 
 Reporting bugs
@@ -56,9 +56,9 @@ When you **submit the feature request**:
 Contributing to the documentation
 ---------------------------------
 
-One of the simplest ways to get started contributing imitation is through improving the documentation. Currently, our documentation some gaps, and we would love to have you help us fill them. You can help by adding missing sections of the API docs, editing existing content to make it more readable, clear and accessible, or contribute with new content, such as tutorials and FAQs.
+One of the simplest ways to start contributing to imitation is through improving the documentation. Currently, our documentation has some gaps, and we would love to have you help us fill them. You can help by adding missing sections of the API docs, editing existing content to make it more readable, clear and accessible, or contributing new content, such as tutorials and FAQs.
 
-If you have struggled to understand something about our codebase and managed to figure it out in the end, please consider improving the relevant documentation section, adding a tutorial or a FAQ entry, so that other users can learn from your experience.
+If you have struggled to understand something about our codebase and managed to figure it out in the end, please consider improving the relevant documentation section, or adding a tutorial or a FAQ entry, so that other users can learn from your experience.
 
 Before submitting a pull request, please create an issue with the *documentation* label so that we can track the gap. You can then reference the issue in your pull request by including the issue number.
 
@@ -79,7 +79,8 @@ Once you're ready to start working on your pull request, please make sure to fol
 **Before you submit**\ , please make sure that:
 
 
-* PRs should include unit tests for any new features, and add type annotations where possible. It is OK to omit annotations when it would make the code significantly more complex.
+* Your PR includes unit tests for any new features.
+* Your PR includes type annotations, except when it would make the code significantly more complex.
 * You have run the unit tests and there are no errors. We use ``pytest`` for unit testing: run ``pytest tests/`` to run the test suite.
 * You should run ``ci/code_checks.sh`` to run linting and static type checks. We use ``pytype`` for static type analysis.
 

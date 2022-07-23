@@ -23,4 +23,4 @@ To ensure that the imitation community remains open and inclusive, we have a few
 
 * **When we disagree, try to understand why**. It is important that we resolve disagreements and differing views constructively. Focus on helping to resolve issues and learning from mistakes.
 
-Adapted from the original text courtesy of the `Django project <https://www.djangoproject.com/conduct/>`_.
+Adapted from the original text courtesy of the `Django project <https://www.djangoproject.com/conduct/>`_, licensed under a `Creative Commons Attribution 3.0 License <https://creativecommons.org/licenses/by/3.0/>`_.

@@ -23,7 +23,7 @@ Main Features
 
 .. toctree::
    :maxdepth: 2
-   :caption: Getting started
+   :caption: Getting Started
    :hidden:
 
    getting-started/installation
@@ -45,7 +45,7 @@ Main Features
 
 .. toctree::
    :maxdepth: 3
-   :caption: API reference
+   :caption: API Reference
    :hidden:
 
    modules/imitation
