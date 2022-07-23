@@ -14,7 +14,7 @@ defaults: &defaults
   working_directory: /imitation
 
 executors:
-  unit-test:
+  unit-test-linux:
     <<: *defaults
     resource_class: xlarge
     environment:
@@ -39,7 +39,7 @@ executors:
       NUM_CPUS: 2
 
 commands:
-  dependencies:
+  dependencies-linux:
     # You must still manually update the Docker image if any
     # binary (non-Python) dependencies change.
     description: "Check out and update Python dependencies."
@@ -126,7 +126,7 @@ jobs:
     executor: lint
 
     steps:
-      - dependencies
+      - dependencies-linux
 
       - run:
           name: install shellcheck
@@ -163,16 +163,16 @@ jobs:
   type:
     executor: type
     steps:
-      - dependencies
+      - dependencies-linux
 
       - run:
           name: pytype
           command: pytype --version && pytype -j "${NUM_CPUS}" ${SRC_FILES[@]}
 
-  unit-test:
-    executor: unit-test
+  unit-test-linux:
+    executor: unit-test-linux
     steps:
-      - dependencies
+      - dependencies-linux
 
       - run:
           name: Memory Monitor
@@ -232,21 +232,10 @@ jobs:
   unit-test-windows:
     executor:
       name: win/default
-      shell: bash.exe
+      size: xlarge
+
     steps:
       - dependencies-windows
-
-      # - run:
-      #     name: Memory Monitor
-      #     command: |
-      #       mkdir /tmp/resource-usage
-      #       export FILE=/tmp/resource-usage/memory.txt
-      #       while true; do
-      #         ps -u root eo pid,%cpu,%mem,args,uname --sort=-%mem >> $FILE
-      #         echo "----------" >> $FILE
-      #         sleep 1
-      #       done
-      #     background: true
 
       # Note: The setup.py checksum in the cache name ensures that we retrain our expert
       # policies, which are cached in the pytest cache, whenever setup.py changes. This
@@ -267,8 +256,7 @@ jobs:
           command: |
             $ErrorActionPreference = "Stop"  # exit immediately on any error
             .\venv\Scripts\activate
-            # Xdummy-entrypoint.py: starts an X server and sets DISPLAY, then runs wrapped command.
-            pytest -n 4 --cov=venv\Lib\site-packages\imitation `
+            pytest -n auto --cov=venv\Lib\site-packages\imitation `
             --cov=tests --junitxml=\tmp\test-reports\junit.xml -k 'not run_example_sh_scripts' `
             -vv tests\ --ignore tests\test_experiments.py ` --ignore tests\test_scripts.py
             if ($LASTEXITCODE -ne 0) { throw "pytest failed" }
@@ -306,10 +294,7 @@ workflows:
       - type:
           context:
           - docker-hub-creds
-      - unit-test:
+      - unit-test-linux:
           context:
           - docker-hub-creds
-
-  windows-test:
-    jobs:
       - unit-test-windows
