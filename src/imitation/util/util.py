@@ -236,10 +236,3 @@ def tensor_iter_norm(
     # = sum(x**ord for x in tensor for tensor in tensor_iter)**(1/ord)
     # = th.norm(concatenated tensors)
     return th.norm(norm_tensor, p=ord)
-
-
-def get_universal_path_from_posix(path):
-    if os.name == "nt":
-        return path.replace("/", "\\")
-    else:
-        return path
