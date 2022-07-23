@@ -93,6 +93,9 @@ def gather_tb_directories() -> dict:
         A dict with two keys. "gather_dir" (str) is a path to a /tmp/ directory
         containing all the TensorBoard runs filtered from `source_dir`.
         "n_tb_dirs" (int) is the number of TensorBoard directories that were filtered.
+
+    Raises:
+        OSError: If the symlink cannot be created.
     """
     os.makedirs("/tmp/analysis_tb", exist_ok=True)
     tmp_dir = tempfile.mkdtemp(dir="/tmp/analysis_tb/")

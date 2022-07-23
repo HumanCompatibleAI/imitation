@@ -647,7 +647,8 @@ class SimpleDAggerTrainer(DAggerTrainer):
                 total_timestep_count,
             )
             self._logger.record(
-                util.get_universal_path_from_posix("dagger/round_num"), round_num
+                util.get_universal_path_from_posix("dagger/round_num"),
+                round_num,
             )
             self._logger.record(
                 util.get_universal_path_from_posix("dagger/round_episode_count"),
