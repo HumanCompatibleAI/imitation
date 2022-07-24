@@ -130,12 +130,11 @@ def gather_tb_directories() -> dict:
                     os.symlink(tb_src_dir, tb_symlink)
                 except OSError as e:
                     if os.name == "nt":  # Windows
-                        raise OSError(
-                            (
-                                "Exception occurred while creating symlink. "
-                                "Please ensure that Developer mode is enabled."
-                            ),
-                        ) from e
+                        msg = (
+                            "Exception occurred while creating symlink. "
+                            "Please ensure that Developer mode is enabled."
+                        )
+                        raise OSError(msg) from e
                     else:
                         raise e
                 tb_dirs_count += 1
