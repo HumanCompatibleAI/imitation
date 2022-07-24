@@ -6,11 +6,21 @@
 # Imitation Learning Baseline Implementations
 
 This project aims to provide clean implementations of imitation and reward learning algorithms.
-Currently, we have implementations of Behavioral Cloning, [DAgger](https://arxiv.org/pdf/1011.0686.pdf) (with synthetic examples), density-based reward modeling, [Maximum Causal Entropy Inverse Reinforcement Learning](https://www.cs.cmu.edu/~bziebart/publications/maximum-causal-entropy.pdf), [Adversarial Inverse Reinforcement Learning](https://arxiv.org/abs/1710.11248), [Generative Adversarial Imitation Learning](https://arxiv.org/abs/1606.03476) and [Deep RL from Human Preferences](https://arxiv.org/abs/1706.03741).
+Currently, we have implementations of the algorithms below:
 
-Read [the documentation here](https://imitation.readthedocs.io/en/latest/).
+| Algorithm                                             | Paper                                                                    | API Docs |
+|-------------------------------------------------------|--------------------------------------------------------------------------|----------|
+| Behavioral Cloning                                    |                                                                          |          |
+| DAgger                                                | https://arxiv.org/pdf/1011.0686.pdf                                      |          |
+| Density-Based Reward Modeling                         |                                                                          |          |
+| Maximum Causal Entropy Inverse Reinforcement Learning | https://www.cs.cmu.edu/~bziebart/publications/maximum-causal-entropy.pdf |          |
+| Adversarial Inverse Reinforcement Learning            | https://arxiv.org/abs/1710.11248                                         |          |
+| Generative Adversarial Imitation Learning             | https://arxiv.org/abs/1606.03476                                         |          |
+| Deep RL from Human Preferences                        | https://arxiv.org/abs/1706.03741                                         |          |
 
-## Installation:
+You can find [the documentation here](https://imitation.readthedocs.io/en/latest/).
+
+## Installation
 
 ### Installing PyPI release
 
@@ -45,11 +55,11 @@ For macOS users, some packages are required to run experiments (see `./experimen
 brew install coreutils gnu-getopt parallel
 ```
 
-### Optional Mujoco Dependency:
+### Optional Mujoco Dependency
 
 Follow instructions to install [mujoco_py v1.5 here](https://github.com/openai/mujoco-py/tree/498b451a03fb61e5bdfcb6956d8d7c881b1098b5#install-mujoco).
 
-## CLI Quickstart:
+## CLI Quickstart
 
 We provide several CLI scripts as a front-end to the algorithms implemented in `imitation`. These use [Sacred](https://github.com/idsia/sacred) for configuration and replicability.
 
@@ -73,7 +83,7 @@ Tips:
 
 For more information on how to configure Sacred CLI options, see the [Sacred docs](https://sacred.readthedocs.io/en/stable/).
 
-## Python Interface Quickstart:
+## Python Interface Quickstart
 
 See [examples/quickstart.py](examples/quickstart.py) for an example script that loads CartPole-v1 demonstrations and trains BC, GAIL, and AIRL models on that data.
 
