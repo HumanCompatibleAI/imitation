@@ -1,5 +1,7 @@
+.. _First Steps:
+
 ===========
-First steps
+First Steps
 ===========
 
 Imitation can be used in two main ways: through its command-line interface (CLI) or Python API.
