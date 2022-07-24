@@ -39,7 +39,7 @@ TESTS_REQUIRE = [
     "wandb",
 ] + PARALLEL_REQUIRE
 DOCS_REQUIRE = [
-    "sphinx",
+    "sphinx==5.0.2",
     "sphinx-autodoc-typehints",
     "sphinx-rtd-theme",
     "sphinxcontrib-napoleon",
