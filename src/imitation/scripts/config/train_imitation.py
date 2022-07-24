@@ -42,6 +42,7 @@ def config():
     )
     agent_path = None  # Path to load agent from, optional.
 
+
 @train_imitation_ex.config
 def defaults(
     common,
