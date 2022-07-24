@@ -44,7 +44,7 @@ DOCS_REQUIRE = [
     "sphinx-rtd-theme",
     "sphinxcontrib-napoleon",
     "furo",
-    "sphinx-copybutton"
+    "sphinx-copybutton",
 ]
 
 
