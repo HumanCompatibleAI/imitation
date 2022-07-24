@@ -3,6 +3,7 @@
 import logging
 import os.path as osp
 from typing import Any, Mapping, Optional, Type
+import warnings
 
 from sacred.observers import FileStorageObserver
 from stable_baselines3.common import policies, utils, vec_env
@@ -20,9 +21,9 @@ logger = logging.getLogger(__name__)
 @train_imitation_ex.capture(prefix="train")
 def make_policy(
     venv: vec_env.VecEnv,
-    policy_cls: Optional[Type[policies.BasePolicy]],
-    policy_kwargs: Optional[Mapping[str, Any]],
-    policy_path: Optional[str],
+    policy_cls: Type[policies.BasePolicy],
+    policy_kwargs: Mapping[str, Any],
+    agent_path: Optional[str],
 ) -> policies.BasePolicy:
     """Makes policy.
 
@@ -32,19 +33,13 @@ def make_policy(
             Specify only if policy_path is not specified.
         policy_kwargs: Keyword arguments for policy constructor.
             Specify only if policy_path is not specified.
-        policy_path: Path to serialized policy. If provided, then load the
+        agent_path: Path to serialized policy. If provided, then load the
             policy from this path. Otherwise, make a new policy.
             Specify only if policy_cls and policy_kwargs are not specified.
 
     Returns:
         A Stable Baselines3 policy.
     """
-    if policy_path is None and (policy_cls is None or policy_kwargs is None):
-        raise ValueError(
-            "Either policy_path or both policy_cls and policy_kwargs must be "
-            "specified.",
-        )
-
     policy_kwargs = dict(policy_kwargs)
     if issubclass(policy_cls, policies.ActorCriticPolicy):
         policy_kwargs.update(
@@ -55,8 +50,12 @@ def make_policy(
                 "lr_schedule": utils.get_schedule_fn(1),
             },
         )
-    if policy_path is not None:
-        policy = bc_algorithm.reconstruct_policy(policy_path)
+    if agent_path is not None:
+        warnings.warn(
+            "When agent_path is specified, policy_cls and policy_kwargs are ignored.",
+            RuntimeWarning,
+        )
+        policy = bc_algorithm.reconstruct_policy(agent_path)
     else:
         policy = policy_cls(**policy_kwargs)
     logger.info(f"Policy network summary:\n {policy}")
@@ -103,17 +102,14 @@ def train_imitation(
     bc_train_kwargs: Mapping[str, Any],
     dagger: Mapping[str, Any],
     use_dagger: bool,
-    agent_path: Optional[str],
 ) -> Mapping[str, Mapping[str, float]]:
     """Runs DAgger (if `use_dagger`) or BC (otherwise) training.
 
     Args:
         bc_kwargs: Keyword arguments passed through to `bc.BC` constructor.
-        bc_train_kwargs: Keyword arguments passed through to `bc.train` method.
+        bc_train_kwargs: Keyword arguments passed through to `BC.train()` method.
         dagger: Arguments for DAgger training.
-        use_dagger: If True, train using DAgger; otherwise, use bc.
-        agent_path: Path to directory containing pre-trained agent for warm start. If
-            None, train from scratch.
+        use_dagger: If True, train using DAgger; otherwise, use BC.
 
     Returns:
         Statistics for rollouts from the trained policy and demonstration data.
@@ -173,7 +169,7 @@ def train_imitation(
 
 @train_imitation_ex.command
 def bc() -> Mapping[str, Mapping[str, float]]:
-    """Run BC experiment using a Sacred interface to bc.
+    """Run BC experiment using a Sacred interface to BC.
 
     Returns:
         Statistics for rollouts from the trained policy and expert data.

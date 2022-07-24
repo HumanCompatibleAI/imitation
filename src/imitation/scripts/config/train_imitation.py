@@ -40,7 +40,7 @@ def config():
         expert_policy_type=None,  # 'ppo', 'random', or 'zero'
         total_timesteps=1e5,
     )
-
+    agent_path = None  # Path to load agent from, optional.
 
 @train_imitation_ex.config
 def defaults(
@@ -60,11 +60,6 @@ def defaults(
                 "final",
             ),
         )
-    agent_path = None  # Path to load agent from, optional.
-
-    # Specify arguments below if agent_path for pre-trained policy is not provided.
-    policy_cls = None  # Type of a Stable Baselines3 policy architecture.
-    policy_kwargs = None  # Keyword arguments for policy constructor.
 
 
 @train_imitation_ex.named_config
