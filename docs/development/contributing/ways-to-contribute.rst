@@ -4,13 +4,16 @@ Ways to contribute
 
 There are four main ways you can contribute to imitation:
 
-* `Reporting bugs <#reporting-bugs>`_
-* `Suggesting new features <#suggesting-new-features>`_
-* `Contributing to the documentation <#contributing-to-the-documentation>`_
-* `Contributing to the codebase <#contributing-to-the-codebase>`_
+* :ref:`reporting-bugs`
+* :ref:`suggesting-new-features`
+* :ref:`contributing-to-the-documentation`
+* :ref:`contributing-to-the-codebase`
 
 Please note that by contributing to the project, you are agreeing to license your work under :ref:`imitation's MIT license <License>`, as per
 `GitHub's terms of service <https://docs.github.com/en/site-policy/github-terms/github-terms-of-service#6-contributions-under-repository-license>`_.
+
+
+.. _`reporting-bugs`:
 
 Reporting bugs
 --------------
@@ -33,6 +36,8 @@ When submitting a bug report, please **include the following information**\ :
 * Information on your OS name and version, Python version, and other relevant information (e.g. hardware configuration if using the GPU), and
 * Whether the problem arose when upgrading to a certain version of imitation, and if so, what version.
 
+.. _`suggesting-new-features`:
+
 Suggesting new features
 -----------------------
 
@@ -53,6 +58,8 @@ When you **submit the feature request**:
 * If you want to request an API change, provide examples of how the feature would be used.
 * If you want to request a new algorithm implementation, please provide a link to the relevant paper or publication.
 
+.. _`contributing-to-the-documentation`:
+
 Contributing to the documentation
 ---------------------------------
 
@@ -61,6 +68,8 @@ One of the simplest ways to start contributing to imitation is through improving
 If you have struggled to understand something about our codebase and managed to figure it out in the end, please consider improving the relevant documentation section, or adding a tutorial or a FAQ entry, so that other users can learn from your experience.
 
 Before submitting a pull request, please create an issue with the *documentation* label so that we can track the gap. You can then reference the issue in your pull request by including the issue number.
+
+.. _`contributing-to-the-codebase`:
 
 Contributing to the codebase
 ----------------------------
