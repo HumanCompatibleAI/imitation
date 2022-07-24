@@ -49,7 +49,7 @@ commands:
       # Download and cache dependencies
       - restore_cache:
           keys:
-            - v5-dependencies-{{ checksum "setup.py" }}
+            - v6-unix-dependencies-{{ checksum "setup.py" }}
 
       - run:
           name: install dependencies
@@ -60,7 +60,7 @@ commands:
       - save_cache:
           paths:
             - /venv
-          key: v5-dependencies-{{ checksum "setup.py" }}
+          key: v6-unix-dependencies-{{ checksum "setup.py" }}
 
       - run:
           name: install imitation
@@ -71,10 +71,16 @@ commands:
           command: pip freeze --all
 
   dependencies-windows:
-    # You must still manually update the Docker image if any
-    # binary (non-Python) dependencies change.
     description: "Check out and update Python dependencies."
     steps:
+      # Note: The error preference is set to Stop in powershell which only applies to
+      # cmdlets. For exes, will have to manually check $LastErrorCode as done for pytest.
+      - run:
+          name: set error preference for ps
+          command: |
+            Add-Content -Path $PSHOME/Profile.ps1 -Value "`$ErrorActionPreference='Stop'"
+          shell: powershell.exe
+
       - checkout
 
       # Download and cache dependencies
@@ -233,6 +239,10 @@ jobs:
     executor:
       name: win/default
       size: xlarge
+      # using bash.exe as the default shell because te codecov/upload command 
+      # does not work if we default to powershell.exe as it internally uses a bash script. 
+      # Moreover it is not possible to specify the shell just for that command.
+      shell: bash.exe
 
     steps:
       - dependencies-windows
@@ -243,11 +253,11 @@ jobs:
       # still better than nothing.
       - restore_cache:
           keys:
-            - v8-win-pytest-cache-{{ checksum "setup.py" }}
+            - v7-pytest-cache-{{ checksum "setup.py" }}
             # This prefix-matched key restores the most recent pytest cache with any
             # checksum. If that cached policy happens to be still loadable, we avoid
             # retraining. See https://circleci.com/docs/2.0/caching/#restoring-cache
-            - v8-win-pytest-cache-
+            - v7-pytest-cache-
           paths:
             - .pytest_cache
 
@@ -259,6 +269,7 @@ jobs:
             pytest -n auto --cov=venv\Lib\site-packages\imitation `
             --cov=tests --junitxml=\tmp\test-reports\junit.xml -k 'not run_example_sh_scripts' `
             -vv tests\ --ignore tests\test_experiments.py ` --ignore tests\test_scripts.py
+            # manually checking (required for exes) and returning if pytest gives error code other than 0
             if ($LASTEXITCODE -ne 0) { throw "pytest failed" }
             mv .coverage .coverage.imitation
             coverage combine  # rewrite paths from virtualenv to src/
@@ -267,7 +278,7 @@ jobs:
       - codecov/upload
 
       - save_cache:
-          key: v8-win-pytest-cache-{{ checksum "setup.py" }}
+          key: v7-pytest-cache-{{ checksum "setup.py" }}
           paths:
             - .pytest_cache
 

@@ -130,9 +130,14 @@ def gather_tb_directories() -> dict:
                     os.symlink(tb_src_dir, tb_symlink)
                 except OSError as e:
                     if os.name == "nt":  # Windows
-                        print("Exception occurred while creating symlink.")
-                        print("Please ensure that Developer model is enabled.")
-                    raise e
+                        raise OSError(
+                            (
+                                "Exception occurred while creating symlink. "
+                                "Please ensure that Developer mode is enabled."
+                            ),
+                        ) from e
+                    else:
+                        raise e
                 tb_dirs_count += 1
 
     logging.info(f"Symlinked {tb_dirs_count} TensorBoard dirs to {tmp_dir}.")
