@@ -101,7 +101,7 @@ setup(
         # TODO(adam): switch to master once stable-baselines3 PR#979 merged
         #  https://github.com/DLR-RM/stable-baselines3/pull/979
         #  (and then switch to PyPi once it makes it to release)
-        "stable-baselines3@git+https://github.com:DLR-RM/stable-baselines3.git@"
+        "stable-baselines3@git+https://github.com/DLR-RM/stable-baselines3.git@"
         "b4dcae9b426fff062c2bae9e8f6df3e5a15b020d",
         # TODO(nora) switch back to PyPi once 0.8.3 makes it to release:
         "sacred@git+https://github.com/IDSIA/sacred.git@0.8.3",
