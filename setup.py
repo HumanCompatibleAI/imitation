@@ -92,8 +92,9 @@ setup(
         "tqdm",
         "scikit-learn>=0.21.2",
         "stable-baselines3>=1.5.0",
-        # TODO(nora) switch back to PyPi once 0.8.3 makes it to release:
-        "sacred@git+https://github.com/IDSIA/sacred.git@0.8.3",
+        # TODO(adam) switch to upstream release if they make it
+        #  See https://github.com/IDSIA/sacred/issues/879
+        "chai-sacred>=0.8.3",
         "tensorboard>=1.14",
     ],
     tests_require=TESTS_REQUIRE,
