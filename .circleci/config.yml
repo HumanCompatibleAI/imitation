@@ -91,7 +91,6 @@ commands:
       - run:
           name: install python
           command: |
-            $ErrorActionPreference = "Stop"  # exit immediately on any error
             choco install --side-by-side -y python --version 3.8
           shell: powershell.exe
 
@@ -114,14 +113,12 @@ commands:
       - run:
           name: install imitation
           command: |
-            $ErrorActionPreference = "Stop"  # exit immediately on any error
             .\venv\Scripts\activate
             pip install --upgrade --force-reinstall --no-deps .
           shell: powershell.exe
       - run:
           name: print installed packages
           command: |
-            $ErrorActionPreference = "Stop"  # exit immediately on any error
             .\venv\Scripts\activate
             pip freeze --all
           shell: powershell.exe
@@ -264,7 +261,6 @@ jobs:
       - run:
           name: run tests
           command: |
-            $ErrorActionPreference = "Stop"  # exit immediately on any error
             .\venv\Scripts\activate
             pytest -n auto --cov=venv\Lib\site-packages\imitation `
             --cov=tests --junitxml=\tmp\test-reports\junit.xml -k 'not run_example_sh_scripts' `
