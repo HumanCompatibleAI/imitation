@@ -70,7 +70,9 @@ class InstallCommand(install):
 setup(
     cmdclass={"install": InstallCommand},
     name="imitation",
-    use_scm_version=True,
+    # Disable local scheme to allow uploads to Test PyPI.
+    # See https://github.com/pypa/setuptools_scm/issues/342
+    use_scm_version={"local_scheme": "no-local-version"},
     setup_requires=["setuptools_scm"],
     description="Implementation of modern reward and imitation learning algorithms.",
     long_description=get_readme(),
