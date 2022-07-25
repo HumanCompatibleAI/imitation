@@ -28,6 +28,7 @@ from torch import nn
 from torch.utils import data as data_th
 from tqdm.auto import tqdm
 
+from imitation import reg
 from imitation.algorithms import base
 from imitation.data import rollout, types, wrappers
 from imitation.data.types import (
@@ -875,8 +876,10 @@ class BasicRewardTrainer(RewardTrainer):
         self.optim = th.optim.AdamW(
             self._model.parameters(),
             lr=lr,
-            weight_decay=weight_decay,
         )
+        self.regularizer: Optional[reg.Regularizer] = reg.WeightDecayRegularizer(
+            weight_decay, optimizer=self.optim
+        ) if weight_decay > 0 else None
 
     def _make_data_loader(self, dataset: PreferenceDataset) -> data_th.DataLoader:
         """Make a dataloader."""
@@ -889,15 +892,33 @@ class BasicRewardTrainer(RewardTrainer):
 
     def _train(self, dataset: PreferenceDataset, epoch_multiplier: float = 1.0) -> None:
         """Trains for `epoch_multiplier * self.epochs` epochs over `dataset`."""
-        dataloader = self._make_data_loader(dataset)
+        if self.regularizer:
+            val_length = int(len(dataset) * self.val_split)
+            train_length = len(dataset) - val_length
+            train_dataset, val_dataset = data_th.random_split(dataset, lengths=[train_length, val_length])
+            dataloader = self._make_data_loader(train_dataset)
+            val_dataloader = self._make_data_loader(val_dataset)
+        else:
+            dataloader = self._make_data_loader(dataset)
+            val_dataloader = None
+        
         epochs = round(self.epochs * epoch_multiplier)
 
         for _ in tqdm(range(epochs), desc="Training reward model"):
+            train_loss = 0.0
+            val_loss = 0.0
             for fragment_pairs, preferences in dataloader:
                 self.optim.zero_grad()
                 loss = self._training_inner_loop(fragment_pairs, preferences)
-                loss.backward()
+                train_loss += loss.item()
+                self.regularizer.regularize(loss)
                 self.optim.step()
+            
+            if val_dataloader:
+                for fragment_pairs, preferences in val_dataloader:
+                    loss = self._training_inner_loop(fragment_pairs, preferences)
+                    val_loss += loss.item()
+                    self.regularizer.update_params(train_loss, val_loss)
 
     def _training_inner_loop(
         self,
