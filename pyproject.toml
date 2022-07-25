@@ -8,4 +8,4 @@ build-backend = "setuptools.build_meta"
 local_scheme = "no-local-version"
 
 [tool.black]
-target-version = ["py37"]
+target-version = ["py38"]
