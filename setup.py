@@ -37,7 +37,6 @@ TESTS_REQUIRE = [
     "pytype",
     "scipy>=1.8.0",
     "wandb",
-    "huggingface_sb3",
 ] + PARALLEL_REQUIRE
 DOCS_REQUIRE = [
     "sphinx",
@@ -96,6 +95,7 @@ setup(
         # TODO(nora) switch back to PyPi once 0.8.3 makes it to release:
         "sacred@git+https://github.com/IDSIA/sacred.git@0.8.3",
         "tensorboard>=1.14",
+        "huggingface_sb3>=2.2.1",
     ],
     tests_require=TESTS_REQUIRE,
     extras_require={
