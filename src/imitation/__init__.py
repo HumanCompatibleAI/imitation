@@ -1,3 +1,9 @@
 """imitation: implementations of imitation and reward learning algorithms."""
 
-__version__ = "0.3.0"
+from importlib import metadata
+
+try:
+    __version__ = metadata.version("imitation")
+except metadata.PackageNotFoundError:
+    # package is not installed
+    pass

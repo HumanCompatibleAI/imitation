@@ -1,2 +1,7 @@
+[build-system]
+requires = ["setuptools>=45", "setupcools_scm[toml]>=6.2"]
+
+[tools.setuptools_scm]
+
 [tool.black]
 target-version = ["py37"]

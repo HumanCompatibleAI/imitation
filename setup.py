@@ -6,8 +6,6 @@ from sys import platform
 from setuptools import find_packages, setup
 from setuptools.command.install import install
 
-import src.imitation  # pytype: disable=import-error
-
 PARALLEL_REQUIRE = ["ray[debug,tune]>=1.13.0"]
 TESTS_REQUIRE = [
     "seals",
@@ -72,7 +70,6 @@ class InstallCommand(install):
 setup(
     cmdclass={"install": InstallCommand},
     name="imitation",
-    version=src.imitation.__version__,
     description="Implementation of modern reward and imitation learning algorithms.",
     long_description=get_readme(),
     long_description_content_type="text/markdown",
