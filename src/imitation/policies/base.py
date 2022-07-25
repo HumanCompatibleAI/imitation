@@ -7,6 +7,7 @@ import gym
 import numpy as np
 import torch as th
 from stable_baselines3.common import policies, torch_layers
+from stable_baselines3.sac import policies as sac_policies
 from torch import nn
 
 from imitation.util import networks
@@ -63,12 +64,28 @@ class FeedForward32Policy(policies.ActorCriticPolicy):
 
     Note: This differs from stable_baselines3 ActorCriticPolicy in two ways: by
     having 32 rather than 64 units, and by having policy and value networks
-    share weights except at the final layer.
+    share weights except at the final layer, where there are different linear heads.
     """
 
     def __init__(self, *args, **kwargs):
         """Builds FeedForward32Policy; arguments passed to `ActorCriticPolicy`."""
         super().__init__(*args, **kwargs, net_arch=[32, 32])
+
+
+class SAC1024Policy(sac_policies.SACPolicy):
+    """Actor and value networks with two hidden layers of 1024 units respectively.
+
+    This matches the implementation of SAC policies in the PEBBLE paper. See:
+    https://arxiv.org/pdf/2106.05091.pdf
+    https://github.com/denisyarats/pytorch_sac/blob/master/config/agent/sac.yaml
+
+    Note: This differs from stable_baselines3 SACPolicy by having 1024 hidden units
+    in each layer instead of the default value of 256.
+    """
+
+    def __init__(self, *args, **kwargs):
+        """Builds SAC1024Policy; arguments passed to `SACPolicy`."""
+        super().__init__(*args, **kwargs, net_arch=[1024, 1024])
 
 
 class NormalizeFeaturesExtractor(torch_layers.FlattenExtractor):

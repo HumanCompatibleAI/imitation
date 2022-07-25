@@ -2,6 +2,7 @@
 
 
 import contextlib
+import copy
 import dataclasses
 import os
 import pathlib
@@ -118,13 +119,6 @@ def pushd(dir_path):
         os.chdir(orig_dir)
 
 
-def _assert_dataclasses_equal(a, b) -> None:
-    d1, d2 = dataclasses.asdict(a), dataclasses.asdict(b)
-    assert d1.keys() == d2.keys()
-    for k, v in d1.items():
-        assert np.array_equal(v, d2[k])
-
-
 @pytest.mark.parametrize("obs_space", OBS_SPACES)
 @pytest.mark.parametrize("act_space", ACT_SPACES)
 @pytest.mark.parametrize("length", LENGTHS)
@@ -146,8 +140,74 @@ class TestData:
         for traj in trajs:
             assert len(traj) == length
 
+    def test_traj_unequal_to_other_types(
+        self,
+        trajectory: types.Trajectory,
+        trajectory_rew: types.TrajectoryWithRew,
+    ) -> None:
+        """Test trajectories unequal to objects of different types."""
+        for t in [trajectory, trajectory_rew]:
+            # Trajectory compare unequal to things that are not trajectories
+            assert t != 42
+            assert t != "foobar"
+
+        # Trajectory compares unequal to a copy of itself but with reward
+        assert trajectory != trajectory_rew
+
+    def test_traj_equal_to_self_and_copies(
+        self,
+        trajectory: types.Trajectory,
+        trajectory_rew: types.TrajectoryWithRew,
+    ) -> None:
+        """Test that trajectories are equal to themselves and copies."""
+        for t in [trajectory, trajectory_rew]:
+            # Equal to itself
+            assert t == t
+            # And to copy
+            assert t == copy.copy(t)
+
+    def test_traj_unequal_to_perturbations(
+        self,
+        trajectory: types.Trajectory,
+        trajectory_rew: types.TrajectoryWithRew,
+        length: int,
+    ) -> None:
+        """Test that trajectories unequal to perturbed versions."""
+        # Unequal to a copy of itself truncated
+        new_length = length - 1
+        if new_length > 0:
+            assert trajectory != types.Trajectory(
+                obs=trajectory.obs[: new_length + 1],
+                acts=trajectory.acts[:new_length],
+                infos=trajectory.obs[:new_length],
+                terminal=trajectory.terminal,
+            )
+
+        # Or with contents changed
+        for t in [trajectory, trajectory_rew]:
+            as_dict = dataclasses.asdict(t)
+            for k in as_dict.keys():
+                perturbed = dict(as_dict)
+                if k == "infos":
+                    perturbed["infos"] = [{"foo": 42}] * len(as_dict["infos"])
+                else:
+                    perturbed[k] = as_dict[k] + 1
+                assert trajectory != type(t)(**perturbed)
+
+    @pytest.mark.parametrize("type_safe", [False, True])
+    @pytest.mark.parametrize("use_pickle", [False, True])
+    @pytest.mark.parametrize("use_rewards", [False, True])
     @pytest.mark.parametrize("use_chdir", [False, True])
-    def test_save_trajectories(self, trajectory_rew, use_chdir, tmpdir):
+    def test_save_trajectories(
+        self,
+        trajectory: types.Trajectory,
+        trajectory_rew: types.TrajectoryWithRew,
+        use_chdir,
+        tmpdir,
+        use_pickle,
+        use_rewards,
+        type_safe,
+    ):
         """Check that trajectories are properly saved."""
         if use_chdir:
             # Test no relative path without directory edge-case.
@@ -157,16 +217,36 @@ class TestData:
             chdir_context = contextlib.nullcontext()
             save_dir = tmpdir
 
-        trajs = [trajectory_rew]
-        save_path = pathlib.Path(save_dir, "trajs.pkl")
+        trajs = [trajectory_rew if use_rewards else trajectory]
+        save_path = pathlib.Path(save_dir, "trajs")
 
         with chdir_context:
-            types.save(str(save_path), trajs)
-            with open(save_path, "rb") as f:
-                loaded_trajs = pickle.load(f)
+            if use_pickle:
+                # Pickle format
+                with open(save_path, "wb") as f:
+                    pickle.dump(trajs, f)
+            else:
+                # .npz format
+                types.save(save_path, trajs)
+
+                # Test that heterogeneous lists of trajectories throw an error
+                if use_rewards:
+                    with pytest.raises(ValueError):
+                        types.save(save_path, [trajectory, trajectory_rew])
+
+            if type_safe:
+                if use_rewards:
+                    loaded_trajs = types.load_with_rewards(save_path)
+                else:
+                    with pytest.raises(ValueError):
+                        loaded_trajs = types.load_with_rewards(save_path)
+                    loaded_trajs = types.load(save_path)
+            else:
+                loaded_trajs = types.load(save_path)
+
             assert len(trajs) == len(loaded_trajs)
             for t1, t2 in zip(trajs, loaded_trajs):
-                _assert_dataclasses_equal(t1, t2)
+                assert t1 == t2
 
     def test_invalid_trajectories(
         self,

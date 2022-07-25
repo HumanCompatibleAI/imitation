@@ -27,6 +27,8 @@ def train_rl_defaults():
     policy_save_interval = 10000  # Num timesteps between saves (<=0 disables)
     policy_save_final = True  # If True, save after training is finished.
 
+    agent_path = None  # Path to load agent from, optional.
+
 
 @train_rl_ex.config
 def default_end_cond(rollout_save_n_timesteps, rollout_save_n_episodes):
@@ -66,7 +68,7 @@ def seals_cartpole():
 
 @train_rl_ex.named_config
 def half_cheetah():
-    common = dict(env_name="seals/HalfCheetah-v0")
+    common = dict(env_name="HalfCheetah-v3")
     total_timesteps = int(5e6)  # does OK after 1e6, but continues improving
 
 
@@ -130,6 +132,6 @@ def seals_walker():
 
 @train_rl_ex.named_config
 def fast():
-    """Intended for testing purposes: small # of updates, ends quickly."""
+    # Intended for testing purposes: small # of updates, ends quickly.
     total_timesteps = int(4)
     policy_save_interval = 2

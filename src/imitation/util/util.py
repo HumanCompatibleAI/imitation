@@ -25,6 +25,34 @@ from stable_baselines3.common import monitor
 from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecEnv
 
 
+def oric(x: np.ndarray) -> np.ndarray:
+    """Optimal rounding under integer constraints.
+
+    Given a vector of real numbers such that the sum is an integer, returns a vector
+    of rounded integers that preserves the sum and which minimizes the Lp-norm of the
+    difference between the rounded and original vectors for all p >= 1. Algorithm from
+    https://arxiv.org/abs/1501.00014. Runs in O(n log n) time.
+
+    Args:
+        x: A 1D vector of real numbers that sum to an integer.
+
+    Returns:
+        A 1D vector of rounded integers, preserving the sum.
+    """
+    rounded = np.floor(x)
+    shortfall = x - rounded
+
+    # The total shortfall should be *exactly* an integer, but we
+    # round to account for numerical error.
+    total_shortfall = np.round(shortfall.sum()).astype(int)
+    indices = np.argsort(-shortfall)
+
+    # Apportion the total shortfall to the elements in order of
+    # decreasing shortfall.
+    rounded[indices[:total_shortfall]] += 1
+    return rounded.astype(int)
+
+
 def make_unique_timestamp() -> str:
     """Timestamp, with random uuid added to avoid collisions."""
     ISO_TIMESTAMP = "%Y%m%d_%H%M%S"
@@ -158,6 +186,26 @@ def endless_iter(iterable: Iterable[T]) -> Iterator[T]:
         raise ValueError(f"iterable {iterable} had no elements to iterate over.")
 
     return itertools.chain.from_iterable(itertools.repeat(iterable))
+
+
+def safe_to_tensor(numpy_array: np.ndarray, **kwargs) -> th.Tensor:
+    """Converts a NumPy array to a PyTorch tensor.
+
+    The data is copied in the case where the array is non-writable. Unfortunately if
+    you just use `th.as_tensor` for this, an ugly warning is logged and there's
+    undefined behavior if you try to write to the tensor.
+
+    Args:
+        numpy_array: The numpy array to convert to a PyTorch tensor.
+        kwargs: Additional keyword arguments to pass to `th.as_tensor`.
+
+    Returns:
+        A PyTorch tensor with the same content as `numpy_array`.
+    """
+    if not numpy_array.flags.writeable:
+        numpy_array = numpy_array.copy()
+
+    return th.as_tensor(numpy_array, **kwargs)
 
 
 def tensor_iter_norm(

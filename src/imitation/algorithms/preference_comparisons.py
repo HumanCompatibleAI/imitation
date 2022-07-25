@@ -7,12 +7,13 @@ import abc
 import math
 import pickle
 import random
-from typing import Any, Callable, List, Mapping, Optional, Sequence, Tuple, Union
+from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple, Union
 
 import numpy as np
 import torch as th
 from scipy import special
-from stable_baselines3.common import base_class, vec_env
+from stable_baselines3.common import base_class, type_aliases, vec_env
+from tqdm.auto import tqdm
 
 from imitation.algorithms import base
 from imitation.data import rollout, types, wrappers
@@ -24,10 +25,9 @@ from imitation.data.types import (
     Transitions,
 )
 from imitation.policies import exploration_wrapper
-from imitation.rewards import common as rewards_common
-from imitation.rewards import reward_nets, reward_wrapper
+from imitation.rewards import reward_function, reward_nets, reward_wrapper
 from imitation.util import logger as imit_logger
-from imitation.util import networks
+from imitation.util import networks, util
 
 
 class TrajectoryGenerator(abc.ABC):
@@ -111,7 +111,7 @@ class AgentTrainer(TrajectoryGenerator):
     def __init__(
         self,
         algorithm: base_class.BaseAlgorithm,
-        reward_fn: Union[rewards_common.RewardFn, reward_nets.RewardNet],
+        reward_fn: Union[reward_function.RewardFn, reward_nets.RewardNet],
         exploration_frac: float = 0.0,
         switch_prob: float = 0.5,
         random_prob: float = 0.5,
@@ -566,10 +566,18 @@ class PreferenceDataset(th.utils.data.Dataset):
     method.
     """
 
-    def __init__(self):
-        """Builds an empty PreferenceDataset."""
+    def __init__(self, max_size: Optional[int] = None):
+        """Builds an empty PreferenceDataset.
+
+        Args:
+            max_size: Maximum number of preference comparisons to store in the dataset.
+                If None (default), the dataset can grow indefinitely. Otherwise, the
+                dataset acts as a FIFO queue, and the oldest comparisons are evicted
+                when `push()` is called and the dataset is at max capacity.
+        """
         self.fragments1: List[TrajectoryWithRew] = []
         self.fragments2: List[TrajectoryWithRew] = []
+        self.max_size = max_size
         self.preferences = np.array([])
 
     def push(
@@ -600,6 +608,14 @@ class PreferenceDataset(th.utils.data.Dataset):
         self.fragments1.extend(fragments1)
         self.fragments2.extend(fragments2)
         self.preferences = np.concatenate((self.preferences, preferences))
+
+        # Evict old samples if the dataset is at max capacity
+        if self.max_size is not None:
+            extra = len(self.preferences) - self.max_size
+            if extra > 0:
+                self.fragments1 = self.fragments1[extra:]
+                self.fragments2 = self.fragments2[extra:]
+                self.preferences = self.preferences[extra:]
 
     def __getitem__(self, i) -> Tuple[TrajectoryWithRewPair, float]:
         return (self.fragments1[i], self.fragments2[i]), self.preferences[i]
@@ -805,13 +821,21 @@ class CrossEntropyRewardTrainer(RewardTrainer):
             collate_fn=preference_collate_fn,
         )
         epochs = round(self.epochs * epoch_multiplier)
-        for _ in range(epochs):
+
+        for _ in tqdm(range(epochs), desc="Training reward model"):
             for fragment_pairs, preferences in dataloader:
                 self.optim.zero_grad()
                 loss = self._loss(fragment_pairs, preferences)
                 loss.backward()
                 self.optim.step()
                 self.logger.record("loss", loss.item())
+
+
+QUERY_SCHEDULES: Dict[str, type_aliases.Schedule] = {
+    "constant": lambda t: 1.0,
+    "hyperbolic": lambda t: 1.0 / (1.0 + t),
+    "inverse_quadratic": lambda t: 1.0 / (1.0 + t**2),
+}
 
 
 class PreferenceComparisons(base.BaseImitationAlgorithm):
@@ -821,10 +845,11 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
         self,
         trajectory_generator: TrajectoryGenerator,
         reward_model: reward_nets.RewardNet,
+        num_iterations: int,
         fragmenter: Optional[Fragmenter] = None,
         preference_gatherer: Optional[PreferenceGatherer] = None,
         reward_trainer: Optional[RewardTrainer] = None,
-        comparisons_per_iteration: int = 100,
+        comparison_queue_size: Optional[int] = None,
         fragment_length: int = 100,
         transition_oversampling: float = 1,
         initial_comparison_frac: float = 0.1,
@@ -832,6 +857,7 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
         allow_variable_horizon: bool = False,
         seed: Optional[int] = None,
+        query_schedule: Union[str, type_aliases.Schedule] = "hyperbolic",
     ):
         """Initialize the preference comparison trainer.
 
@@ -843,6 +869,8 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
                 an RL agent on the learned reward function (can also be a sampler
                 from a static dataset of trajectories though).
             reward_model: a RewardNet instance to be used for learning the reward
+            num_iterations: number of times to train the agent against the reward model
+                and then train the reward model against newly gathered preferences.
             fragmenter: takes in a set of trajectories and returns pairs of fragments
                 for which preferences will be gathered. These fragments could be random,
                 or they could be selected more deliberately (active learning).
@@ -854,10 +882,9 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
             reward_trainer: trains the reward model based on pairs of fragments and
                 associated preferences. Default is to use the preference model
                 and loss function from DRLHP.
-            comparisons_per_iteration: number of preferences to gather at once (before
-                switching back to agent training). This doesn't impact the total number
-                of comparisons that are gathered, only the frequency of switching
-                between preference gathering and agent training.
+            comparison_queue_size: the maximum number of comparisons to keep in the
+                queue for training the reward model. If None, the queue will grow
+                without bound as new comparisons are added.
             fragment_length: number of timesteps per fragment that is used to elicit
                 preferences
             transition_oversampling: factor by which to oversample transitions before
@@ -888,6 +915,18 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
                 Only used when default components are used; if you instantiate your
                 own fragmenter, preference gatherer, etc., you are responsible for
                 seeding them!
+            query_schedule: one of ("constant", "hyperbolic", "inverse_quadratic"), or
+                a function that takes in a float between 0 and 1 inclusive,
+                representing a fraction of the total number of timesteps elapsed up to
+                some time T, and returns a potentially unnormalized probability
+                indicating the fraction of `total_comparisons` that should be queried
+                at that iteration. This function will be called `num_iterations` times
+                in `__init__()` with values from `np.linspace(0, 1, num_iterations)`
+                as input. The outputs will be normalized to sum to 1 and then used to
+                apportion the comparisons among the `num_iterations` iterations.
+
+        Raises:
+            ValueError: if `query_schedule` is not a valid string or callable.
         """
         super().__init__(
             custom_logger=custom_logger,
@@ -922,13 +961,19 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
         )
         self.preference_gatherer.logger = self.logger
 
-        self.comparisons_per_iteration = comparisons_per_iteration
         self.fragment_length = fragment_length
-        self.transition_oversampling = transition_oversampling
         self.initial_comparison_frac = initial_comparison_frac
         self.initial_epoch_multiplier = initial_epoch_multiplier
+        self.num_iterations = num_iterations
+        self.transition_oversampling = transition_oversampling
+        if callable(query_schedule):
+            self.query_schedule = query_schedule
+        elif query_schedule in QUERY_SCHEDULES:
+            self.query_schedule = QUERY_SCHEDULES[query_schedule]
+        else:
+            raise ValueError(f"Unknown query schedule: {query_schedule}")
 
-        self.dataset = PreferenceDataset()
+        self.dataset = PreferenceDataset(max_size=comparison_queue_size)
 
     def train(
         self,
@@ -946,46 +991,35 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
         Returns:
             A dictionary with final metrics such as loss and accuracy
             of the reward model.
-
-        Raises:
-            ValueError: `total_comparisons < self.comparisons_per_iteration`.
         """
         initial_comparisons = int(total_comparisons * self.initial_comparison_frac)
         total_comparisons -= initial_comparisons
-        iterations, extra_comparisons = divmod(
-            total_comparisons,
-            self.comparisons_per_iteration,
-        )
-        if iterations == 0:
-            raise ValueError(
-                f"total_comparisons={total_comparisons} is less than "
-                f"comparisons_per_iteration={self.comparisons_per_iteration}",
-            )
-        timesteps_per_iteration, extra_timesteps = divmod(total_timesteps, iterations)
 
+        # Compute the number of comparisons to request at each iteration in advance.
+        vec_schedule = np.vectorize(self.query_schedule)
+        unnormalized_probs = vec_schedule(np.linspace(0, 1, self.num_iterations))
+        probs = unnormalized_probs / np.sum(unnormalized_probs)
+        shares = util.oric(probs * total_comparisons)
+        schedule = [initial_comparisons] + shares.tolist()
+        print(f"Query schedule: {schedule}")
+
+        timesteps_per_iteration, extra_timesteps = divmod(
+            total_timesteps,
+            self.num_iterations,
+        )
         reward_loss = None
         reward_accuracy = None
 
-        for i in range(iterations):
+        for i, num_pairs in enumerate(schedule):
             ##########################
             # Gather new preferences #
             ##########################
-            num_pairs = self.comparisons_per_iteration
-            # If the number of comparisons per iterations doesn't exactly divide
-            # the desired total number of comparisons, we collect the remainder
-            # right at the beginning to pretrain the reward model slightly.
-            # WARNING: This means that slightly changing the total number of
-            # comparisons or the number of comparisons per iteration can
-            # significantly change the proportion of pretraining comparisons!
-            #
-            # In addition, we collect the comparisons specified via
-            # initial_comparison_frac.
-            if i == 0:
-                num_pairs += extra_comparisons + initial_comparisons
             num_steps = math.ceil(
                 self.transition_oversampling * 2 * num_pairs * self.fragment_length,
             )
-            self.logger.log(f"Collecting {num_steps} trajectory steps")
+            self.logger.log(
+                f"Collecting {2 * num_pairs} fragments ({num_steps} transitions)",
+            )
             trajectories = self.trajectory_generator.sample(num_steps)
             # This assumes there are no fragments missing initial timesteps
             # (but allows for fragments missing terminal timesteps).
@@ -994,10 +1028,10 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
             self.logger.log("Creating fragment pairs")
             fragments = self.fragmenter(trajectories, self.fragment_length, num_pairs)
             with self.logger.accumulate_means("preferences"):
-                self.logger.log("gathering preferences")
+                self.logger.log("Gathering preferences")
                 preferences = self.preference_gatherer(fragments)
             self.dataset.push(fragments, preferences)
-            self.logger.log(f"Dataset now contains {len(self.dataset)} samples")
+            self.logger.log(f"Dataset now contains {len(self.dataset)} comparisons")
 
             ##########################
             # Train the reward model #
@@ -1010,7 +1044,6 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
                 epoch_multiplier = self.initial_epoch_multiplier
 
             with self.logger.accumulate_means("reward"):
-                self.logger.log("Training reward model")
                 self.reward_trainer.train(
                     self.dataset,
                     epoch_multiplier=epoch_multiplier,
@@ -1025,7 +1058,7 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
             # if the number of timesteps per iterations doesn't exactly divide
             # the desired total number of timesteps, we train the agent a bit longer
             # at the end of training (where the reward model is presumably best)
-            if i == iterations - 1:
+            if i == self.num_iterations - 1:
                 num_steps += extra_timesteps
             with self.logger.accumulate_means("agent"):
                 self.logger.log(f"Training agent for {num_steps} timesteps")

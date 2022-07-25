@@ -43,7 +43,7 @@ def get_expert_trajectories(
 def generate_expert_trajs(
     n_expert_demos: Optional[int],
     common,
-) -> Sequence[types.Trajectory]:
+) -> Optional[Sequence[types.Trajectory]]:
     """Generates expert demonstrations.
 
     Args:

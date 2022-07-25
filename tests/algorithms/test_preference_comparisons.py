@@ -155,17 +155,32 @@ def test_transitions_left_in_buffer(agent_trainer):
         agent_trainer.train(steps=1)
 
 
-def test_trainer_no_crash(agent_trainer, reward_net, fragmenter, custom_logger):
+@pytest.mark.parametrize(
+    "schedule",
+    ["constant", "hyperbolic", "inverse_quadratic", lambda t: 1 / (1 + t**3)],
+)
+def test_trainer_no_crash(
+    agent_trainer,
+    reward_net,
+    fragmenter,
+    custom_logger,
+    schedule,
+):
     main_trainer = preference_comparisons.PreferenceComparisons(
         agent_trainer,
         reward_net,
+        num_iterations=2,
         transition_oversampling=2,
         fragment_length=2,
-        comparisons_per_iteration=2,
         fragmenter=fragmenter,
         custom_logger=custom_logger,
+        query_schedule=schedule,
     )
-    main_trainer.train(10, 3)
+    result = main_trainer.train(100, 10)
+    # We don't expect good performance after training for 10 (!) timesteps,
+    # but check stats are within the bounds they should lie in.
+    assert result["reward_loss"] > 0.0
+    assert 0.0 < result["reward_accuracy"] <= 1.0
 
 
 def test_discount_rate_no_crash(agent_trainer, reward_net, fragmenter, custom_logger):
@@ -178,14 +193,14 @@ def test_discount_rate_no_crash(agent_trainer, reward_net, fragmenter, custom_lo
     main_trainer = preference_comparisons.PreferenceComparisons(
         agent_trainer,
         reward_net,
+        num_iterations=2,
         transition_oversampling=2,
         fragment_length=2,
-        comparisons_per_iteration=2,
         fragmenter=fragmenter,
         reward_trainer=reward_trainer,
         custom_logger=custom_logger,
     )
-    main_trainer.train(10, 3)
+    main_trainer.train(100, 10)
 
 
 def test_synthetic_gatherer_deterministic(agent_trainer, fragmenter):
@@ -250,6 +265,22 @@ def test_preference_dataset_errors(agent_trainer, fragmenter):
         dataset.push(fragments, preferences)
 
 
+def test_preference_dataset_queue(agent_trainer, fragmenter):
+    dataset = preference_comparisons.PreferenceDataset(max_size=5)
+    trajectories = agent_trainer.sample(10)
+
+    gatherer = preference_comparisons.SyntheticGatherer()
+    for i in range(6):
+        fragments = fragmenter(trajectories, fragment_length=2, num_pairs=1)
+        preferences = gatherer(fragments)
+        assert len(dataset) == min(i, 5)
+        dataset.push(fragments, preferences)
+        assert len(dataset) == min(i + 1, 5)
+
+    # The first comparison should have been evicted to keep the size at 5
+    assert len(dataset) == 5
+
+
 def test_store_and_load_preference_dataset(agent_trainer, fragmenter, tmp_path):
     dataset = preference_comparisons.PreferenceDataset()
     trajectories = agent_trainer.sample(10)
@@ -279,10 +310,10 @@ def test_exploration_no_crash(agent, reward_net, fragmenter, custom_logger):
     main_trainer = preference_comparisons.PreferenceComparisons(
         agent_trainer,
         reward_net,
+        num_iterations=2,
         transition_oversampling=2,
         fragment_length=5,
-        comparisons_per_iteration=2,
         fragmenter=fragmenter,
         custom_logger=custom_logger,
     )
-    main_trainer.train(10, 3)
+    main_trainer.train(100, 10)

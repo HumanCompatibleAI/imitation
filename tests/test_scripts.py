@@ -9,6 +9,7 @@ import collections
 import filecmp
 import os
 import pathlib
+import pickle
 import shutil
 import subprocess
 import sys
@@ -17,14 +18,20 @@ from collections import Counter
 from typing import List, Optional
 from unittest import mock
 
+import numpy as np
 import pandas as pd
 import pytest
 import ray.tune as tune
 import sacred
 import sacred.utils
+import stable_baselines3
+import torch as th
 
+from imitation.data import types
+from imitation.rewards import reward_nets
 from imitation.scripts import (
     analyze,
+    convert_trajs,
     eval_policy,
     parallel,
     train_adversarial,
@@ -32,7 +39,7 @@ from imitation.scripts import (
     train_preference_comparisons,
     train_rl,
 )
-from imitation.util import networks
+from imitation.util import networks, util
 
 ALL_SCRIPTS_MODS = [
     analyze,
@@ -43,6 +50,9 @@ ALL_SCRIPTS_MODS = [
     train_preference_comparisons,
     train_rl,
 ]
+
+TEST_DATA_PATH = pathlib.Path("tests/testdata")
+OLD_FMT_ROLLOUT_TEST_DATA_PATH = TEST_DATA_PATH / "old_format_rollout.pkl"
 
 
 @pytest.fixture(autouse=True)
@@ -69,18 +79,22 @@ def test_main_console(script_mod):
         script_mod.main_console()
 
 
+_rl_agent_loading_configs = {
+    # FIXME(yawen): the policy we load was trained on 8 parallel environments
+    # and for some reason using it breaks if we use just 1 (like would be the
+    # default with the fast named_config)
+    "common": dict(num_vec=2),
+}
+
 PREFERENCE_COMPARISON_CONFIGS = [
     {},
     {
-        # TODO(ejnnr): the policy we load was trained on 2 parallel environments
-        # and for some reason using it breaks if we use just 1 (like would be the
-        # default with the fast named_config)
-        "common": dict(num_vec=2),
         # We're testing preference saving and disabling sampling here as well;
         # having yet another run just for those would be wasteful since they
         # don't interact with warm starting an agent.
         "save_preferences": True,
         "gatherer_kwargs": {"sample": False},
+        **_rl_agent_loading_configs,
     },
     {
         "checkpoint_interval": 1,
@@ -102,6 +116,8 @@ ALGO_FAST_CONFIGS = {
     "rl": ["common.fast", "rl.fast", "train.fast", "fast"],
 }
 
+RL_SAC_NAMED_CONFIGS = ["rl.sac", "train.sac"]
+
 
 @pytest.mark.parametrize("config", PREFERENCE_COMPARISON_CONFIGS)
 def test_train_preference_comparisons_main(tmpdir, config):
@@ -113,6 +129,46 @@ def test_train_preference_comparisons_main(tmpdir, config):
     )
     assert run.status == "COMPLETED"
     assert isinstance(run.result, dict)
+
+
+@pytest.mark.parametrize(
+    "env_name",
+    ["seals_cartpole", "mountain_car", "seals_mountain_car"],
+)
+def test_train_preference_comparisons_envs_no_crash(tmpdir, env_name):
+    """Test envs specified in imitation.scripts.config.train_preference_comparisons."""
+    config_updates = dict(common=dict(log_root=tmpdir))
+    run = train_preference_comparisons.train_preference_comparisons_ex.run(
+        named_configs=[env_name] + ALGO_FAST_CONFIGS["preference_comparison"],
+        config_updates=config_updates,
+    )
+    assert run.status == "COMPLETED"
+    assert isinstance(run.result, dict)
+
+
+def test_train_preference_comparisons_sac(tmpdir):
+    config_updates = dict(common=dict(log_root=tmpdir))
+    run = train_preference_comparisons.train_preference_comparisons_ex.run(
+        # make sure rl.sac named_config is called after rl.fast to overwrite
+        # rl_kwargs.batch_size to None
+        named_configs=["pendulum"]
+        + ALGO_FAST_CONFIGS["preference_comparison"]
+        + RL_SAC_NAMED_CONFIGS,
+        config_updates=config_updates,
+    )
+    assert run.config["rl"]["rl_cls"] is stable_baselines3.SAC
+    assert run.status == "COMPLETED"
+    assert isinstance(run.result, dict)
+
+    with pytest.raises(Exception, match=".*set 'batch_size' at top-level.*"):
+        train_preference_comparisons.train_preference_comparisons_ex.run(
+            # make sure rl.sac named_config is called after rl.fast to overwrite
+            # rl_kwargs.batch_size to None
+            named_configs=["pendulum"]
+            + RL_SAC_NAMED_CONFIGS
+            + ALGO_FAST_CONFIGS["preference_comparison"],
+            config_updates=config_updates,
+        )
 
 
 @pytest.mark.parametrize(
@@ -176,13 +232,17 @@ def test_train_bc_main(tmpdir):
     assert isinstance(run.result, dict)
 
 
-def test_train_rl_main(tmpdir):
-    """Smoke test for imitation.scripts.train_rl.rollouts_and_policy."""
+TRAIN_RL_PPO_CONFIGS = [{}, _rl_agent_loading_configs]
+
+
+@pytest.mark.parametrize("config", TRAIN_RL_PPO_CONFIGS)
+def test_train_rl_main(tmpdir, config):
+    """Smoke test for imitation.scripts.train_rl."""
+    config_updates = dict(common=dict(log_root=tmpdir))
+    sacred.utils.recursive_update(config_updates, config)
     run = train_rl.train_rl_ex.run(
         named_configs=["seals_cartpole"] + ALGO_FAST_CONFIGS["rl"],
-        config_updates=dict(
-            common=dict(log_root=tmpdir),
-        ),
+        config_updates=config_updates,
     )
     assert run.status == "COMPLETED"
     assert isinstance(run.result, dict)
@@ -192,13 +252,27 @@ def test_train_rl_wb_logging(tmpdir):
     """Smoke test for imitation.scripts.common.common.wandb_logging."""
     with pytest.raises(Exception, match=".*api_key not configured.*"):
         train_rl.train_rl_ex.run(
-            named_configs=["seals_cartpole"]
+            named_configs=["cartpole"]
             + ALGO_FAST_CONFIGS["rl"]
             + ["common.wandb_logging"],
             config_updates=dict(
                 common=dict(log_root=tmpdir),
             ),
         )
+
+
+def test_train_rl_sac(tmpdir):
+    run = train_rl.train_rl_ex.run(
+        # make sure rl.sac named_config is called after rl.fast to overwrite
+        # rl_kwargs.batch_size to None
+        named_configs=["pendulum"] + ALGO_FAST_CONFIGS["rl"] + RL_SAC_NAMED_CONFIGS,
+        config_updates=dict(
+            common=dict(log_root=tmpdir),
+        ),
+    )
+    assert run.config["rl"]["rl_cls"] is stable_baselines3.SAC
+    assert run.status == "COMPLETED"
+    assert isinstance(run.result, dict)
 
 
 EVAL_POLICY_CONFIGS = [
@@ -250,21 +324,21 @@ def _check_train_ex_result(result: dict):
     "named_configs",
     (
         [],
+        ["train.normalize_running", "reward.normalize_input_running"],
         ["train.normalize_disable", "reward.normalize_input_disable"],
     ),
 )
-def test_train_adversarial(tmpdir, named_configs):
+@pytest.mark.parametrize("command", ("airl", "gail"))
+def test_train_adversarial(tmpdir, named_configs, command):
     """Smoke test for imitation.scripts.train_adversarial."""
     named_configs = named_configs + ["seals_cartpole"] + ALGO_FAST_CONFIGS["adversarial"]
     config_updates = {
-        "common": {
-            "log_root": tmpdir,
-        },
+        "common": dict(log_root=tmpdir),
         # TensorBoard logs to get extra coverage
-        "algorithm_kwargs": {"init_tensorboard": True},
+        "algorithm_kwargs": dict(init_tensorboard=True),
     }
     run = train_adversarial.train_adversarial_ex.run(
-        command_name="gail",
+        command_name=command,
         named_configs=named_configs,
         config_updates=config_updates,
     )
@@ -272,15 +346,33 @@ def test_train_adversarial(tmpdir, named_configs):
     _check_train_ex_result(run.result)
 
 
-@pytest.mark.skip  # TODO(ernestum): this one gets stuck for some reason
+@pytest.mark.parametrize("command", ("airl", "gail"))
+def test_train_adversarial_sac(tmpdir, command):
+    """Smoke test for imitation.scripts.train_adversarial."""
+    # Make sure rl.sac named_config is called after rl.fast to overwrite
+    # rl_kwargs.batch_size to None
+    named_configs = (
+        ["pendulum"] + ALGO_FAST_CONFIGS["adversarial"] + RL_SAC_NAMED_CONFIGS
+    )
+    config_updates = {
+        "common": dict(log_root=tmpdir),
+    }
+    run = train_adversarial.train_adversarial_ex.run(
+        command_name=command,
+        named_configs=named_configs,
+        config_updates=config_updates,
+    )
+    assert run.config["rl"]["rl_cls"] is stable_baselines3.SAC
+    assert run.status == "COMPLETED"
+    _check_train_ex_result(run.result)
+
+@pytest.mark.skip("stalls for now")
 def test_train_adversarial_algorithm_value_error(tmpdir):
     """Error on bad algorithm arguments."""
     base_named_configs = ["seals_cartpole"] + ALGO_FAST_CONFIGS["adversarial"]
     base_config_updates = collections.ChainMap(
         {
-            "common": {
-                "log_root": tmpdir,
-            },
+            "common": dict(log_root=tmpdir),
         },
     )
 
@@ -341,12 +433,32 @@ def test_transfer_learning(tmpdir: str) -> None:
         named_configs=["seals_cartpole"] + ALGO_FAST_CONFIGS["rl"],
         config_updates=dict(
             common=dict(log_dir=log_dir_data),
-            reward_type="RewardNet_shaped",
+            reward_type="RewardNet_unshaped",
             reward_path=reward_path,
         ),
     )
     assert run.status == "COMPLETED"
     _check_rollout_stats(run.result)
+
+
+def test_train_rl_double_normalization(tmpdir: str):
+    venv = util.make_vec_env("CartPole-v1", n_envs=1, parallel=False)
+    net = reward_nets.BasicRewardNet(venv.observation_space, venv.action_space)
+    net = reward_nets.NormalizedRewardNet(net, networks.RunningNorm)
+    tmppath = os.path.join(tmpdir, "reward.pt")
+    th.save(net, tmppath)
+
+    log_dir_data = os.path.join(tmpdir, "train_rl")
+    with pytest.warns(RuntimeWarning):
+        train_rl.train_rl_ex.run(
+            named_configs=["cartpole"] + ALGO_FAST_CONFIGS["rl"],
+            config_updates=dict(
+                common=dict(log_dir=log_dir_data),
+                reward_type="RewardNet_normalized",
+                normalize_reward=True,
+                reward_path=tmppath,
+            ),
+        )
 
 
 PARALLEL_CONFIG_UPDATES = [
@@ -542,21 +654,32 @@ def test_analyze_gather_tb(tmpdir: str):
     assert run.result["n_tb_dirs"] == 2
 
 
-def test_convert_trajs_in_place(tmpdir: str):
-    shutil.copy(CARTPOLE_TEST_ROLLOUT_PATH, tmpdir)
-    tmp_path = os.path.join(tmpdir, os.path.basename(CARTPOLE_TEST_ROLLOUT_PATH))
-    exit_code = subprocess.call(
-        ["python", "-m", "imitation.scripts.convert_trajs_in_place", tmp_path],
-    )
-    assert exit_code == 0
+def test_convert_trajs(tmpdir: str):
+    """Tests that convert_trajs is idempotent and does not change the data."""
+    shutil.copy(OLD_FMT_ROLLOUT_TEST_DATA_PATH, tmpdir)
+    tmp_path = os.path.join(tmpdir, os.path.basename(OLD_FMT_ROLLOUT_TEST_DATA_PATH))
+    with open(tmp_path, "rb") as f:
+        pickle.load(f)  # check it's in pickle format to start with
+    args = ["convert_trajs.py", tmp_path]
+    with mock.patch.object(sys, "argv", args):
+        convert_trajs.main()
 
-    shutil.copy(tmp_path, tmp_path + ".new")
-    exit_code = subprocess.call(
-        ["python", "-m", "imitation.scripts.convert_trajs_in_place", tmp_path],
-    )
-    assert exit_code == 0
+    npz_tmp_path = tmp_path.replace(".pkl", ".npz")
+    np.load(npz_tmp_path, allow_pickle=True)  # check it's now in npz format
+
+    shutil.copy(npz_tmp_path, npz_tmp_path + ".orig")
+    args = ["convert_trajs.py", npz_tmp_path]
+    with mock.patch.object(sys, "argv", args):
+        convert_trajs.main()
 
     assert filecmp.cmp(
-        tmp_path,
-        tmp_path + ".new",
-    ), "convert_trajs_in_place not idempotent"
+        npz_tmp_path,
+        npz_tmp_path + ".orig",
+    ), "convert_trajs not idempotent"
+
+    from_pkl = types.load(tmp_path)
+    from_npz = types.load(npz_tmp_path)
+
+    assert len(from_pkl) == len(from_npz)
+    for t_pkl, t_npz in zip(from_pkl, from_npz):
+        assert t_pkl == t_npz

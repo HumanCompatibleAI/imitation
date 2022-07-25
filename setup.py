@@ -1,12 +1,17 @@
 """Setup for imitation: a reward and imitation learning library."""
 
+import warnings
+from sys import platform
+
 from setuptools import find_packages, setup
+from setuptools.command.install import install
 
 import src.imitation  # pytype: disable=import-error
 
+PARALLEL_REQUIRE = ["ray[debug,tune]>=1.13.0"]
 TESTS_REQUIRE = [
     "seals",
-    "black",
+    "black[jupyter]",
     "coverage",
     "codecov",
     "codespell",
@@ -19,6 +24,7 @@ TESTS_REQUIRE = [
     "flake8-debugger",
     "flake8-docstrings",
     "flake8-isort",
+    "hypothesis",
     "ipykernel",
     "jupyter",
     # remove pin once https://github.com/jupyter/jupyter_client/issues/637 fixed
@@ -29,18 +35,16 @@ TESTS_REQUIRE = [
     "pytest-notebook",
     "pytest-xdist",
     "pytype",
-    "ray[debug,tune]~=0.8.5",
     "scipy>=1.8.0",
     "wandb",
     "huggingface_sb3",
-]
+] + PARALLEL_REQUIRE
 DOCS_REQUIRE = [
     "sphinx",
     "sphinx-autodoc-typehints",
     "sphinx-rtd-theme",
     "sphinxcontrib-napoleon",
 ]
-PARALLEL_REQUIRE = ["ray[debug,tune]~=0.8.5"]
 
 
 def get_readme() -> str:
@@ -49,7 +53,25 @@ def get_readme() -> str:
         return f.read()
 
 
+class InstallCommand(install):
+    """Custom install command to throw warnings about external dependencies."""
+
+    def run(self):
+        """Run the install command."""
+        install.run(self)
+
+        if platform == "darwin":
+            warnings.warn(
+                "Installation of important packages for macOS is required. "
+                "Scripts in the experiments folder will likely not run without these "
+                "packages: gnu-getopt, parallel, coreutils. They can be installed with "
+                "Homebrew by running `brew install gnu-getopt parallel coreutils`."
+                "See https://brew.sh/ for installation instructions.",
+            )
+
+
 setup(
+    cmdclass={"install": InstallCommand},
     name="imitation",
     version=src.imitation.__version__,
     description="Implementation of modern reward and imitation learning algorithms.",
@@ -70,14 +92,9 @@ setup(
         "torch>=1.4.0",
         "tqdm",
         "scikit-learn>=0.21.2",
-        # TODO(adam): switch back to PyPi once following makes it to release:
-        # https://github.com/DLR-RM/stable-baselines3/pull/734 is released
-        (
-            "stable-baselines3@git+https://github.com/carlosluis/stable-baselines3.git"
-            "@gym_fixes#egg=stable-baselines3"
-        ),
-        "stable-baselines3>=1.4.0",
-        "sacred~=0.8.1",
+        "stable-baselines3>=1.5.0",
+        # TODO(nora) switch back to PyPi once 0.8.3 makes it to release:
+        "sacred@git+https://github.com/IDSIA/sacred.git@0.8.3",
         "tensorboard>=1.14",
     ],
     tests_require=TESTS_REQUIRE,

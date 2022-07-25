@@ -11,9 +11,9 @@ This can be used:
 import logging
 import os
 import os.path as osp
+import warnings
 from typing import Mapping, Optional
 
-import sacred.run
 from sacred.observers import FileStorageObserver
 from stable_baselines3.common import callbacks
 from stable_baselines3.common.vec_env import VecNormalize
@@ -29,8 +29,6 @@ from imitation.scripts.config.train_rl import train_rl_ex
 @train_rl_ex.main
 def train_rl(
     *,
-    _run: sacred.run.Run,
-    _seed: int,
     total_timesteps: int,
     normalize_reward: bool,
     normalize_kwargs: dict,
@@ -41,6 +39,7 @@ def train_rl(
     rollout_save_n_episodes: Optional[int],
     policy_save_interval: int,
     policy_save_final: bool,
+    agent_path: Optional[str],
 ) -> Mapping[str, float]:
     """Trains an expert policy from scratch and saves the rollouts and policy.
 
@@ -53,7 +52,9 @@ def train_rl(
 
     Args:
         total_timesteps: Number of training timesteps in `model.learn()`.
-        normalize_reward: If True, then rescale and clip reward.
+        normalize_reward: Applies normalization and clipping to the reward function by
+            keeping a running average of training rewards. Note: this is may be
+            redundant if using a learned reward that is already normalized.
         normalize_kwargs: kwargs for `VecNormalize`.
         reward_type: If provided, then load the serialized reward of this type,
             wrapping the environment in this reward. This is useful to test
@@ -77,6 +78,7 @@ def train_rl(
             don't save intermediate updates.
         policy_save_final: If True, then save the policy right after training is
             finished.
+        agent_path: Path to load warm-started agent.
 
     Returns:
         The return value of `rollout_stats()` using the final policy.
@@ -102,6 +104,12 @@ def train_rl(
         # so normalizing it makes training more stable. Note we do *not* normalize
         # observations here; use the `NormalizeFeaturesExtractor` instead.
         venv = VecNormalize(venv, norm_obs=False, **normalize_kwargs)
+        if reward_type == "RewardNet_normalized":
+            warnings.warn(
+                "Applying normalization to already normalized reward function. \
+                Consider setting normalize_reward as False",
+                RuntimeWarning,
+            )
 
     if policy_save_interval > 0:
         save_policy_callback = serialize.SavePolicyCallback(policy_dir)
@@ -112,7 +120,10 @@ def train_rl(
         callback_objs.append(save_policy_callback)
     callback = callbacks.CallbackList(callback_objs)
 
-    rl_algo = rl.make_rl_algo(venv)
+    if agent_path is None:
+        rl_algo = rl.make_rl_algo(venv)
+    else:
+        rl_algo = rl.load_rl_algo_from_path(agent_path=agent_path, venv=venv)
     rl_algo.set_logger(custom_logger)
     rl_algo.learn(total_timesteps, callback=callback)
 

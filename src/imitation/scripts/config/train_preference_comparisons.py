@@ -16,13 +16,20 @@ train_preference_comparisons_ex = sacred.Experiment(
 )
 
 
+MUJOCO_SHARED_LOCALS = dict(rl=dict(rl_kwargs=dict(ent_coef=0.1)))
+ANT_SHARED_LOCALS = dict(
+    total_timesteps=int(3e7),
+    rl=dict(batch_size=16384),
+)
+
+
 @train_preference_comparisons_ex.config
 def train_defaults():
     fragment_length = 100  # timesteps per fragment used for comparisons
     total_timesteps = int(1e6)  # total number of environment timesteps
     total_comparisons = 5000  # total number of comparisons to elicit
-    # comparisons to gather before switching back to agent training
-    comparisons_per_iteration = 100
+    num_iterations = 5  # Arbitrary, should be tuned for the task
+    comparison_queue_size = None
     # factor by which to oversample transitions before creating fragments
     transition_oversampling = 1
     # fraction of total_comparisons that will be sampled right at the beginning
@@ -48,12 +55,40 @@ def train_defaults():
     allow_variable_horizon = False
 
     checkpoint_interval = 0  # Num epochs between saving (<0 disables, =0 final only)
+    query_schedule = "hyperbolic"
 
 
 @train_preference_comparisons_ex.named_config
 def cartpole():
     common = dict(env_name="CartPole-v1")
     allow_variable_horizon = True
+
+
+@train_preference_comparisons_ex.named_config
+def seals_ant():
+    locals().update(**MUJOCO_SHARED_LOCALS)
+    locals().update(**ANT_SHARED_LOCALS)
+    common = dict(env_name="seals/Ant-v0")
+
+
+@train_preference_comparisons_ex.named_config
+def half_cheetah():
+    locals().update(**MUJOCO_SHARED_LOCALS)
+    common = dict(env_name="HalfCheetah-v2")
+    rl = dict(batch_size=16384, rl_kwargs=dict(batch_size=1024))
+
+
+@train_preference_comparisons_ex.named_config
+def seals_hopper():
+    locals().update(**MUJOCO_SHARED_LOCALS)
+    common = dict(env_name="seals/Hopper-v0")
+
+
+@train_preference_comparisons_ex.named_config
+def seals_humanoid():
+    locals().update(**MUJOCO_SHARED_LOCALS)
+    common = dict(env_name="seals/Humanoid-v0")
+    total_timesteps = int(4e6)
 
 
 @train_preference_comparisons_ex.named_config
@@ -80,9 +115,10 @@ def seals_mountain_car():
 @train_preference_comparisons_ex.named_config
 def fast():
     # Minimize the amount of computation. Useful for test cases.
-    total_timesteps = 2
-    total_comparisons = 3
-    comparisons_per_iteration = 2
+    total_timesteps = 50
+    total_comparisons = 5
+    initial_comparison_frac = 0.2
+    num_iterations = 1
     fragment_length = 2
     reward_trainer_kwargs = {
         "epochs": 1,
