@@ -1,43 +1,51 @@
 """Setup for imitation: a reward and imitation learning library."""
 
+import os
 import warnings
 from sys import platform
 
 from setuptools import find_packages, setup
 from setuptools.command.install import install
 
+IS_NOT_WINDOWS = os.name != "nt"
+
 PARALLEL_REQUIRE = ["ray[debug,tune]>=1.13.0"]
-TESTS_REQUIRE = [
-    "seals",
-    "black[jupyter]",
-    "coverage",
-    "codecov",
-    "codespell",
-    "darglint",
-    "filelock",
-    "flake8",
-    "flake8-blind-except",
-    "flake8-builtins",
-    "flake8-commas",
-    "flake8-debugger",
-    "flake8-docstrings",
-    "flake8-isort",
-    "hypothesis",
-    "ipykernel",
-    "jupyter",
-    # remove pin once https://github.com/jupyter/jupyter_client/issues/637 fixed
-    "jupyter-client<7.0",
-    "pandas",
-    "pytest",
-    "pytest-cov",
-    "pytest-notebook",
-    "pytest-xdist",
-    "pytype",
-    "scipy>=1.8.0",
-    "wandb",
-] + PARALLEL_REQUIRE
+PYTYPE = ["pytype"] if IS_NOT_WINDOWS else []
+TESTS_REQUIRE = (
+    [
+        "seals",
+        "black[jupyter]",
+        "coverage",
+        "codecov",
+        "codespell",
+        "darglint",
+        "filelock",
+        "flake8",
+        "flake8-blind-except",
+        "flake8-builtins",
+        "flake8-commas",
+        "flake8-debugger",
+        "flake8-docstrings",
+        "flake8-isort",
+        "hypothesis",
+        "ipykernel",
+        "jupyter",
+        # remove pin once https://github.com/jupyter/jupyter_client/issues/637 fixed
+        "jupyter-client<7.0",
+        "pandas",
+        "pytest",
+        "pytest-cov",
+        "pytest-notebook",
+        "pytest-xdist",
+        "scipy>=1.8.0",
+        "wandb",
+    ]
+    + PARALLEL_REQUIRE
+    + PYTYPE
+)
 DOCS_REQUIRE = [
-    "sphinx",
+    # TODO(adam): unpin once https://github.com/sphinx-doc/sphinx/issues/10705 fixed
+    "sphinx~=5.0.2",
     "sphinx-autodoc-typehints",
     "sphinx-rtd-theme",
     "sphinxcontrib-napoleon",
@@ -107,12 +115,12 @@ setup(
             "ntfy[slack]",
             "ipdb",
             "isort~=5.0",
-            "pytype",
             "codespell",
             # for convenience
             *TESTS_REQUIRE,
             *DOCS_REQUIRE,
-        ],
+        ]
+        + PYTYPE,
         "test": TESTS_REQUIRE,
         "docs": DOCS_REQUIRE,
         "parallel": PARALLEL_REQUIRE,
