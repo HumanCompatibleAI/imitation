@@ -102,7 +102,7 @@ setup(
         #  https://github.com/DLR-RM/stable-baselines3/pull/979
         #  (and then switch to PyPi once it makes it to release)
         "stable-baselines3@git+https://github.com/DLR-RM/stable-baselines3.git@"
-        "b4dcae9b426fff062c2bae9e8f6df3e5a15b020d",
+        "ff4bc96afa6336c5f4d0ebd8a40aec398fe648ba",
         # TODO(nora) switch back to PyPi once 0.8.3 makes it to release:
         "sacred@git+https://github.com/IDSIA/sacred.git@0.8.3",
         "tensorboard>=1.14",
