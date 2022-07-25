@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=45", "setupcools_scm[toml]>=6.2"]
+requires = ["setuptools>=45", "setuptools_scm[toml]>=6.2"]
 
 [tools.setuptools_scm]
 
