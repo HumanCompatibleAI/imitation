@@ -1,5 +1,6 @@
 """Setup for imitation: a reward and imitation learning library."""
 
+import os
 import warnings
 from sys import platform
 
@@ -8,38 +9,45 @@ from setuptools.command.install import install
 
 import src.imitation  # pytype: disable=import-error
 
+IS_NOT_WINDOWS = os.name != "nt"
+
 PARALLEL_REQUIRE = ["ray[debug,tune]>=1.13.0"]
-TESTS_REQUIRE = [
-    "seals",
-    "black[jupyter]",
-    "coverage",
-    "codecov",
-    "codespell",
-    "darglint",
-    "filelock",
-    "flake8",
-    "flake8-blind-except",
-    "flake8-builtins",
-    "flake8-commas",
-    "flake8-debugger",
-    "flake8-docstrings",
-    "flake8-isort",
-    "hypothesis",
-    "ipykernel",
-    "jupyter",
-    # remove pin once https://github.com/jupyter/jupyter_client/issues/637 fixed
-    "jupyter-client<7.0",
-    "pandas",
-    "pytest",
-    "pytest-cov",
-    "pytest-notebook",
-    "pytest-xdist",
-    "pytype",
-    "scipy>=1.8.0",
-    "wandb",
-] + PARALLEL_REQUIRE
+PYTYPE = ["pytype"] if IS_NOT_WINDOWS else []
+TESTS_REQUIRE = (
+    [
+        "seals",
+        "black[jupyter]",
+        "coverage",
+        "codecov",
+        "codespell",
+        "darglint",
+        "filelock",
+        "flake8",
+        "flake8-blind-except",
+        "flake8-builtins",
+        "flake8-commas",
+        "flake8-debugger",
+        "flake8-docstrings",
+        "flake8-isort",
+        "hypothesis",
+        "ipykernel",
+        "jupyter",
+        # remove pin once https://github.com/jupyter/jupyter_client/issues/637 fixed
+        "jupyter-client<7.0",
+        "pandas",
+        "pytest",
+        "pytest-cov",
+        "pytest-notebook",
+        "pytest-xdist",
+        "scipy>=1.8.0",
+        "wandb",
+    ]
+    + PARALLEL_REQUIRE
+    + PYTYPE
+)
 DOCS_REQUIRE = [
-    "sphinx",
+    # TODO(adam): unpin once https://github.com/sphinx-doc/sphinx/issues/10705 fixed
+    "sphinx~=5.0.2",
     "sphinx-autodoc-typehints",
     "sphinx-rtd-theme",
     "sphinxcontrib-napoleon",
@@ -91,7 +99,11 @@ setup(
         "torch>=1.4.0",
         "tqdm",
         "scikit-learn>=0.21.2",
-        "stable-baselines3>=1.5.0",
+        # TODO(adam): switch to master once stable-baselines3 PR#979 merged
+        #  https://github.com/DLR-RM/stable-baselines3/pull/979
+        #  (and then switch to PyPi once it makes it to release)
+        "stable-baselines3@git+https://github.com/DLR-RM/stable-baselines3.git@"
+        "ff4bc96afa6336c5f4d0ebd8a40aec398fe648ba",
         # TODO(nora) switch back to PyPi once 0.8.3 makes it to release:
         "sacred@git+https://github.com/IDSIA/sacred.git@0.8.3",
         "tensorboard>=1.14",
@@ -105,12 +117,12 @@ setup(
             "ntfy[slack]",
             "ipdb",
             "isort~=5.0",
-            "pytype",
             "codespell",
             # for convenience
             *TESTS_REQUIRE,
             *DOCS_REQUIRE,
-        ],
+        ]
+        + PYTYPE,
         "test": TESTS_REQUIRE,
         "docs": DOCS_REQUIRE,
         "parallel": PARALLEL_REQUIRE,

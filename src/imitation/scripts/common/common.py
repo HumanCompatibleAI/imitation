@@ -138,7 +138,7 @@ def make_venv(
 ) -> vec_env.VecEnv:
     """Builds the vector environment.
 
-     Args:
+    Args:
         env_name: The environment to train in.
         num_vec: Number of `gym.Env` instances to combine into a vector environment.
         parallel: Whether to use "true" parallelism. If True, then use `SubProcVecEnv`.

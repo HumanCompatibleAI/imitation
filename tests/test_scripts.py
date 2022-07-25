@@ -88,8 +88,8 @@ def test_main_console(script_mod):
 _RL_AGENT_LOADING_CONFIGS = {
     "agent_path": CARTPOLE_TEST_POLICY_PATH,
     # FIXME(yawen): the policy we load was trained on 8 parallel environments
-    # and for some reason using it breaks if we use just 1 (like would be the
-    # default with the fast named_config)
+    #  and for some reason using it breaks if we use just 1 (like would be the
+    #  default with the fast named_config)
     "common": dict(num_vec=8),
 }
 
@@ -236,6 +236,40 @@ def test_train_dagger_main(tmpdir):
     assert isinstance(run.result, dict)
 
 
+def test_train_dagger_warmstart(tmpdir):
+    run = train_imitation.train_imitation_ex.run(
+        command_name="dagger",
+        named_configs=["cartpole"] + ALGO_FAST_CONFIGS["imitation"],
+        config_updates=dict(
+            common=dict(log_root=tmpdir),
+            demonstrations=dict(rollout_path=CARTPOLE_TEST_ROLLOUT_PATH),
+            dagger=dict(
+                expert_policy_type="ppo",
+                expert_policy_path=CARTPOLE_TEST_POLICY_PATH,
+            ),
+        ),
+    )
+    assert run.status == "COMPLETED"
+
+    log_dir = pathlib.Path(run.config["common"]["log_dir"])
+    policy_path = log_dir / "scratch" / "policy-latest.pt"
+    run_warmstart = train_imitation.train_imitation_ex.run(
+        command_name="dagger",
+        named_configs=["cartpole"] + ALGO_FAST_CONFIGS["imitation"],
+        config_updates=dict(
+            common=dict(log_root=tmpdir),
+            demonstrations=dict(rollout_path=CARTPOLE_TEST_ROLLOUT_PATH),
+            dagger=dict(
+                expert_policy_type="ppo",
+                expert_policy_path=CARTPOLE_TEST_POLICY_PATH,
+            ),
+            agent_path=policy_path,
+        ),
+    )
+    assert run_warmstart.status == "COMPLETED"
+    assert isinstance(run_warmstart.result, dict)
+
+
 def test_train_dagger_error_and_exceptions(tmpdir):
     with pytest.raises(Exception, match=".*expert_policy_path cannot be None.*"):
         train_imitation.train_imitation_ex.run(
@@ -263,6 +297,32 @@ def test_train_bc_main(tmpdir):
     )
     assert run.status == "COMPLETED"
     assert isinstance(run.result, dict)
+
+
+def test_train_bc_warmstart(tmpdir):
+    run = train_imitation.train_imitation_ex.run(
+        command_name="bc",
+        named_configs=["cartpole"] + ALGO_FAST_CONFIGS["imitation"],
+        config_updates=dict(
+            common=dict(log_root=tmpdir),
+            demonstrations=dict(rollout_path=CARTPOLE_TEST_ROLLOUT_PATH),
+        ),
+    )
+    assert run.status == "COMPLETED"
+
+    policy_path = pathlib.Path(run.config["common"]["log_dir"]) / "final.th"
+    run_warmstart = train_imitation.train_imitation_ex.run(
+        command_name="bc",
+        named_configs=["cartpole"] + ALGO_FAST_CONFIGS["imitation"],
+        config_updates=dict(
+            common=dict(log_root=tmpdir),
+            demonstrations=dict(rollout_path=CARTPOLE_TEST_ROLLOUT_PATH),
+            agent_path=policy_path,
+        ),
+    )
+
+    assert run_warmstart.status == "COMPLETED"
+    assert isinstance(run_warmstart.result, dict)
 
 
 TRAIN_RL_PPO_CONFIGS = [{}, _RL_AGENT_LOADING_CONFIGS]
@@ -378,6 +438,35 @@ def test_train_adversarial(tmpdir, named_configs, command):
     )
     assert run.status == "COMPLETED"
     _check_train_ex_result(run.result)
+
+
+@pytest.mark.parametrize("command", ("airl", "gail"))
+def test_train_adversarial_warmstart(tmpdir, command):
+    named_configs = ["cartpole"] + ALGO_FAST_CONFIGS["adversarial"]
+    config_updates = {
+        "common": dict(log_root=tmpdir),
+        "demonstrations": dict(rollout_path=CARTPOLE_TEST_ROLLOUT_PATH),
+    }
+    run = train_adversarial.train_adversarial_ex.run(
+        command_name=command,
+        named_configs=named_configs,
+        config_updates=config_updates,
+    )
+
+    log_dir = pathlib.Path(run.config["common"]["log_dir"])
+    policy_path = log_dir / "checkpoints" / "final" / "gen_policy"
+
+    run_warmstart = train_adversarial.train_adversarial_ex.run(
+        command_name=command,
+        named_configs=named_configs,
+        config_updates={
+            "agent_path": policy_path,
+            **config_updates,
+        },
+    )
+
+    assert run_warmstart.status == "COMPLETED"
+    _check_train_ex_result(run_warmstart.result)
 
 
 @pytest.mark.parametrize("command", ("airl", "gail"))
