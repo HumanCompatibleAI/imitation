@@ -16,7 +16,7 @@ def config():
     policy_type = "ppo"  # right now only ppo supported
     policy_path = None  # path to zip-file containing an expert policy
     huggingface_repo_id = None
-    hugginface_orga = "ernestumorga"  # TODO(ernestum): change to official orga
+    hugginface_orga = "HumanCompatibleAI"
 
     locals()  # quieten flake8
 

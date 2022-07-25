@@ -59,9 +59,8 @@ def cartpole_venv(request) -> VecEnv:
 
 @pytest.fixture
 def cartpole_expert_policy():
-    #TODO(ernestum): load from official orga
     return PPO.load(
-        load_from_hub("ernestumorga/ppo-seals-CartPole-v0", "ppo-seals-CartPole-v0.zip")
+        load_from_hub("HumanCompatibleAI/ppo-seals-CartPole-v0", "ppo-seals-CartPole-v0.zip")
     ).policy
 
 
@@ -91,9 +90,8 @@ def pendulum_venv() -> VecEnv:
 
 @pytest.fixture
 def pendulum_expert_policy() -> BasePolicy:
-    # TODO(ernestum): load from official orga
     return PPO.load(
-        load_from_hub("ernestumorga/ppo-Pendulum-v1", "ppo-Pendulum-v1.zip")
+        load_from_hub("HumanCompatibleAI/ppo-Pendulum-v1", "ppo-Pendulum-v1.zip")
     ).policy
 
 
