@@ -1,6 +1,6 @@
 import sacred
 
-from huggingface_sb3 import ModelName, ModelRepoId, load_from_hub
+from huggingface_sb3 import EnvironmentName, ModelName, ModelRepoId, load_from_hub
 from stable_baselines3 import PPO
 from stable_baselines3.common import policies
 
@@ -26,7 +26,7 @@ def get_huggingface_repo_id(common, huggingface_repo_id, policy_type, hugginface
     if huggingface_repo_id is not None:
         return huggingface_repo_id
     else:
-        return ModelRepoId(hugginface_orga, ModelName(policy_type, EnvironmentError(common['env_name'])))
+        return ModelRepoId(hugginface_orga, ModelName(policy_type, EnvironmentName(common['env_name'])))
 
 
 @expert_ingredient.capture
@@ -34,7 +34,7 @@ def get_expert_path(common, policy_path, policy_type):
     if policy_path is not None:
         return policy_path
     else:
-        model_name = ModelName(policy_type, EnvironmentError(common['env_name']))
+        model_name = ModelName(policy_type, EnvironmentName(common['env_name']))
         return load_from_hub(get_huggingface_repo_id(), model_name.filename)
 
 
