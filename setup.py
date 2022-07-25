@@ -70,6 +70,8 @@ class InstallCommand(install):
 setup(
     cmdclass={"install": InstallCommand},
     name="imitation",
+    use_scm_version=True,
+    setup_requires=["setuptools_scm"],
     description="Implementation of modern reward and imitation learning algorithms.",
     long_description=get_readme(),
     long_description_content_type="text/markdown",
