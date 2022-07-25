@@ -11,6 +11,10 @@ jobs:
 
     steps:
     - uses: actions/checkout@master
+      with:
+        # Fetch tags needed by setuptools_scm to infer version number
+        # See https://github.com/pypa/setuptools_scm/issues/414
+        fetch-depth: 0
     - name: Set up Python 3.10
       uses: actions/setup-python@v3
       with:
