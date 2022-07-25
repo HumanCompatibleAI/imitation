@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@master
+    - uses: actions/checkout@v3
       with:
         # Fetch tags needed by setuptools_scm to infer version number
         # See https://github.com/pypa/setuptools_scm/issues/414
