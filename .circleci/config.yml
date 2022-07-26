@@ -89,9 +89,10 @@ commands:
             - v6-win-dependencies-{{ checksum "setup.py" }}
 
       - run:
-          name: install python
+          name: install python and binary dependencies
           command: |
             choco install --side-by-side -y python --version 3.8
+            choco install -y ffmpeg
           shell: powershell.exe
 
       - run:
@@ -264,7 +265,7 @@ jobs:
             .\venv\Scripts\activate
             pytest -n auto --cov=venv\Lib\site-packages\imitation `
             --cov=tests --junitxml=\tmp\test-reports\junit.xml -k 'not run_example_sh_scripts' `
-            -vv tests\ --ignore tests\test_experiments.py ` --ignore tests\test_scripts.py
+            -vv tests\ --ignore tests\test_experiments.py
             # manually checking (required for exes) and returning if pytest gives error code other than 0
             if ($LASTEXITCODE -ne 0) { throw "pytest failed" }
             mv .coverage .coverage.imitation
