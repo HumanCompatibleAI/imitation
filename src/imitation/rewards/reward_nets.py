@@ -1,11 +1,13 @@
 """Constructs deep network reward models."""
 
 import abc
+import math
 from typing import Callable, Iterable, Sequence, Tuple, Type
 
 import gym
 import numpy as np
 import torch as th
+from gym import spaces
 from stable_baselines3.common import preprocessing
 from torch import nn
 
@@ -317,6 +319,166 @@ class BasicRewardNet(RewardNet):
         outputs = self.mlp(inputs_concat)
         assert outputs.shape == state.shape[:1]
 
+        return outputs
+
+
+class CnnRewardNet(RewardNet):
+    """CNN that takes as input the state, action, next state and done flag.
+
+    Inputs are boosted to tensors with channel, height, and width dimensions, and then
+    concatenated. Each input can be enabled or disable by the `use_*` constructor
+    keyword arguments.
+    """
+
+    def __init__(
+        self,
+        observation_space: gym.Space,
+        action_space: gym.Space,
+        use_state: bool = True,
+        use_action: bool = True,
+        use_next_state: bool = False,
+        use_done: bool = False,
+        **kwargs,
+    ):
+        """Builds reward CNN.
+
+        Args:
+            observation_space: The observation space.
+            action_space: The action space.
+            use_state: should the current state be included as an input to the CNN?
+            use_action: should the current action be included as an input to the CNN?
+            use_next_state: should the next state be included as an input to the CNN?
+            use_done: should the "done" flag be included as an input to the CNN?
+            kwargs: passed straight through to `build_cnn`.
+        """
+        super().__init__(observation_space, action_space)
+        self.use_state = use_state
+        self.use_action = use_action
+        self.use_next_state = use_next_state
+        self.use_done = use_done
+        self.input_size = 0
+
+        if not self.can_handle_space(observation_space):
+            raise ValueError(
+                "CnnRewardNet doesn't know how to deal with this observation space.",
+            )
+        if not self.can_handle_space(action_space):
+            raise ValueError(
+                "CnnRewardNet doesn't know how to deal with this action space.",
+            )
+
+        if self.use_state:
+            self.input_size += self.get_num_channels(observation_space)
+
+        if self.use_action:
+            self.input_size += self.get_num_channels(action_space)
+
+        if self.use_next_state:
+            self.input_size += self.get_num_channels(observation_space)
+
+        if self.use_done:
+            self.input_size += 1
+
+        full_build_cnn_kwargs = {"hid_channels": (32, 32)}
+        full_build_cnn_kwargs.update(kwargs)
+        full_build_cnn_kwargs.update(
+            {
+                "in_channels": self.input_size,
+                "out_size": 1,
+                "squeeze_output": True,
+            },
+        )
+
+        self.cnn = networks.build_cnn(**full_build_cnn_kwargs)
+
+    def can_handle_space(self, my_space: gym.Space) -> int:
+        """Tells us if this CNN can handle the given gym space."""
+        is_box = isinstance(my_space, spaces.Box)
+        is_discrete = isinstance(my_space, spaces.Discrete)
+        is_multi_discrete = isinstance(my_space, spaces.MultiDiscrete)
+        is_multi_binary = isinstance(my_space, spaces.MultiBinary)
+        space_is_ok = is_box or is_discrete or is_multi_discrete or is_multi_binary
+        shape_is_ok = True
+        if is_multi_discrete:
+            shape_is_ok = len(my_space.nvec.shape) == 1
+        if is_multi_binary:
+            shape_is_ok = isinstance(my_space.n, int)
+        return space_is_ok and shape_is_ok
+
+    def get_num_channels(self, my_space: gym.Space) -> int:
+        """Gets number of channels for the representation of a gym space."""
+        if isinstance(my_space, spaces.Box):
+            my_dim = (
+                my_space.shape[0]
+                if preprocessing.is_image_space_channels_first(my_space)
+                else my_space.shape[-1]
+            )
+        elif isinstance(my_space, spaces.Discrete):
+            my_dim = my_space.n
+        elif isinstance(my_space, spaces.MultiDiscrete):
+            my_dim = sum(my_space.nvec)
+        elif isinstance(my_space, spaces.MultiBinary):
+            my_dim = my_space.n if isinstance(my_space.n, int) else sum(my_space.n)
+        else:
+            assert False, "get_num_channels can't recognize the input space"
+
+        return my_dim
+
+    def forward(
+        self,
+        state: th.Tensor,
+        action: th.Tensor,
+        next_state: th.Tensor,
+        done: th.Tensor,
+    ) -> th.Tensor:
+        """Computes rewardNet value on input state, action, next_state, and done flag.
+
+        Takes inputs that will be used, reshapes them to have compatible dimensions,
+        concatenates them, and inputs them into the CNN.
+        """
+        inputs = []
+        if self.use_state:
+            inputs.append(state)
+        if self.use_action:
+            inputs.append(action)
+        if self.use_next_state:
+            inputs.append(next_state)
+        if self.use_done:
+            inputs.append(done)
+
+        unsqueezed_inputs = [
+            tens if len(tens.shape) > 2 else tens.view(*tens.shape, 1, 1)
+            for tens in inputs
+        ]
+        max_height = max(unsqueezed_inputs, key=(lambda tens: tens.size(-2))).size(-2)
+        max_width = max(unsqueezed_inputs, key=(lambda tens: tens.size(-1))).size(-1)
+        boosted_inputs = []
+        for tens in unsqueezed_inputs:
+            if tens.size(-2) != max_height or tens.size(-1) != max_width:
+                # then you need boosting
+                if tens.size(-1) > 1 or tens.size(-1) > 1:
+                    # then you're a box
+                    height_diff = max_height - tens.size(-2)
+                    pad_bot = math.floor(height_diff / 2)
+                    pad_top = height_diff - pad_bot
+                    width_diff = max_width - tens.size(-1)
+                    pad_left = math.floor(width_diff / 2)
+                    pad_right = width_diff - pad_left
+                    boosted_tens = nn.functional.pad(
+                        tens, (pad_top, pad_bot, pad_left, pad_right),
+                    )
+                else:
+                    # then you're a one-hot vector
+                    boosted_tens = tens.expand(
+                        *tens.shape[:-2], max_height, max_width,
+                    )
+                assert boosted_tens.shape[-2:] == th.Size([max_height, max_width])
+            else:
+                # then you don't need boosting
+                boosted_tens = tens
+            boosted_inputs.append(boosted_tens)
+        inputs_concat = th.cat(boosted_inputs, dim=-3)
+        outputs = self.cnn(inputs_concat)
         return outputs
 
 

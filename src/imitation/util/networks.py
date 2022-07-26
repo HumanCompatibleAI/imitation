@@ -3,7 +3,7 @@ import collections
 import contextlib
 import functools
 from abc import ABC, abstractclassmethod
-from typing import Iterable, Optional, Type
+from typing import Iterable, Optional, Type, Union
 
 import torch as th
 from torch import nn
@@ -86,7 +86,11 @@ class BaseNorm(nn.Module, ABC):
             with th.no_grad():
                 self.update_stats(x)
 
-        return (x - self.running_mean) / th.sqrt(self.running_var + self.eps)
+        running_mean_ = (self.running_mean if len(x.shape) == 2
+                         else self.running_mean[:, None, None])
+        running_var_ = (self.running_var if len(x.shape) == 2
+                        else self.running_var[:, None, None])
+        return (x - running_mean_) / th.sqrt(running_var_ + self.eps)
 
     @abstractclassmethod
     def update_stats(self, batch: th.Tensor) -> None:
@@ -113,8 +117,13 @@ class RunningNorm(BaseNorm):
         Args:
             batch: A batch of data to use to update the running mean and variance.
         """
-        batch_mean = th.mean(batch, dim=0)
-        batch_var = th.var(batch, dim=0, unbiased=False)
+        if len(batch.shape) == 2:
+            batch_mean = th.mean(batch, dim=0)
+            batch_var = th.var(batch, dim=0, unbiased=False)
+        else:
+            assert len(batch.shape) == 4
+            batch_mean = th.mean(batch, dim=[0,2,3])
+            batch_var = th.var(batch, dim=[0,2,3], unbiased=False)
         batch_count = batch.shape[0]
 
         delta = batch_mean - self.running_mean
@@ -131,7 +140,7 @@ class RunningNorm(BaseNorm):
 
 class EMANorm(BaseNorm):
     """Similar to RunningNorm but uses an exponential weighting."""
-
+    # TODO(daniel) get this to work with CNN stuff
     def __init__(
         self,
         num_features: int,
@@ -259,3 +268,93 @@ def build_mlp(
     model = nn.Sequential(layers)
 
     return model
+
+
+def build_cnn(
+    in_channels: int,
+    hid_channels: Iterable[int],
+    out_size: int = 1,
+    name: Optional[str] = None,
+    activation: Type[nn.Module] = nn.ReLU,
+    kernel_size: int = 3,
+    stride: int = 1,
+    padding: Union[int, str] = "same",
+    dropout_prob: float = 0.0,
+    squeeze_output: bool = False,
+    normalize_input_layer: Optional[Type[nn.Module]] = None,
+) -> nn.Module:
+    """Constructs a Torch CNN.
+
+    Args:
+        in_channels: number of channels of individual inputs; input to the CNN will have
+            shape (batch_size, in_size, in_height, in_width).
+        hid_channels: number of channels of hidden layers. If this is an empty iterable,
+            then we build a linear function approximator.
+        out_size: required size of output vector.
+        name: Name to use as a prefix for the layers ID.
+        activation: activation to apply after hidden layers.
+        kernel_size: size of convolutional kernels.
+        stride: stride of convolutional kernels.
+        padding: padding of convolutional kernels.
+        dropout_prob: Dropout probability to use after each hidden layer. If 0,
+            no dropout layers are added to the network.
+        squeeze_output: if out_size=1, then squeeze_input=True ensures that CNN
+            output is of size (B,) instead of (B,1).
+        normalize_input_layer: if specified, module to use to normalize inputs;
+            e.g. `nn.BatchNorm` or `RunningNorm`.
+
+    Returns:
+        nn.Module: a CNN mapping from inputs of size (batch_size, in_size, in_height,
+            in_width) to (batch_size, out_size), unless out_size=1 and
+            squeeze_output=True, in which case the output is of size (batch_size, ).
+
+    Raises:
+        ValueError: if squeeze_output was supplied with out_size!=1.
+    """
+    layers = collections.OrderedDict()
+
+    if name is None:
+        prefix = ""
+    else:
+        prefix = f"{name}_"
+
+    # Normalize input layer
+    if normalize_input_layer:
+        layers[f"{prefix}normalize_input"] = normalize_input_layer(in_channels)
+
+    prev_channels = in_channels
+    for i, n_channels in enumerate(hid_channels):
+        layers[f"{prefix}conv{i}"] = nn.Conv2d(
+            prev_channels, n_channels, kernel_size, stride=stride, padding=padding,
+        )
+        prev_channels = n_channels
+        if activation:
+            layers[f"{prefix}act{i}"] = activation()
+        if dropout_prob > 0.0:
+            layers[f"{prefix}dropout{i}"] = nn.Dropout(dropout_prob)
+
+    # final dense layer
+    layers[f"{prefix}avg_pool"] = nn.AdaptiveAvgPool2d(1)
+    layers[f"{prefix}flatten"] = SmartFlatten()
+    layers[f"{prefix}dense_final"] = nn.Linear(prev_channels, out_size)
+
+    if squeeze_output:
+        if out_size != 1:
+            raise ValueError("squeeze_output is only applicable when out_size=1")
+        layers[f"{prefix}squeeze"] = SqueezeLayer()
+
+    model = nn.Sequential(layers)
+    return model
+
+
+class SmartFlatten(nn.Module):
+    """Pytorch module to flatten non-batch dimensions of a tensor.
+
+    Checks whether input has a batch dimension to determine how to flatten.
+    """
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, in_tensor: th.Tensor) -> th.Tensor:
+        my_start_dim = 1 if len(in_tensor.shape) == 4 else 0
+        return th.flatten(in_tensor, start_dim=my_start_dim, end_dim=-1)
