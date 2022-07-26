@@ -29,6 +29,7 @@ def defaults():
     algorithm_specific = {}  # algorithm_specific[algorithm] is merged with config
 
     checkpoint_interval = 0  # Num epochs between checkpoints (<0 disables)
+    agent_path = None  # Path to load agent from, optional.
 
 
 @train_adversarial_ex.config

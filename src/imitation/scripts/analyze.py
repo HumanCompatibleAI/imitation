@@ -93,6 +93,9 @@ def gather_tb_directories() -> dict:
         A dict with two keys. "gather_dir" (str) is a path to a /tmp/ directory
         containing all the TensorBoard runs filtered from `source_dir`.
         "n_tb_dirs" (int) is the number of TensorBoard directories that were filtered.
+
+    Raises:
+        OSError: If the symlink cannot be created.
     """
     os.makedirs("/tmp/analysis_tb", exist_ok=True)
     tmp_dir = tempfile.mkdtemp(dir="/tmp/analysis_tb/")
@@ -123,7 +126,17 @@ def gather_tb_directories() -> dict:
                 os.makedirs(symlinks_dir, exist_ok=True)
 
                 tb_symlink = osp.join(symlinks_dir, run_name)
-                os.symlink(tb_src_dir, tb_symlink)
+                try:
+                    os.symlink(tb_src_dir, tb_symlink)
+                except OSError as e:
+                    if os.name == "nt":  # Windows
+                        msg = (
+                            "Exception occurred while creating symlink. "
+                            "Please ensure that Developer mode is enabled."
+                        )
+                        raise OSError(msg) from e
+                    else:
+                        raise e
                 tb_dirs_count += 1
 
     logging.info(f"Symlinked {tb_dirs_count} TensorBoard dirs to {tmp_dir}.")

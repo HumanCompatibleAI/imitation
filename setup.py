@@ -1,45 +1,51 @@
 """Setup for imitation: a reward and imitation learning library."""
 
+import os
 import warnings
 from sys import platform
 
 from setuptools import find_packages, setup
 from setuptools.command.install import install
 
-import src.imitation  # pytype: disable=import-error
+IS_NOT_WINDOWS = os.name != "nt"
 
 PARALLEL_REQUIRE = ["ray[debug,tune]>=1.13.0"]
-TESTS_REQUIRE = [
-    "seals",
-    "black[jupyter]",
-    "coverage",
-    "codecov",
-    "codespell",
-    "darglint",
-    "filelock",
-    "flake8",
-    "flake8-blind-except",
-    "flake8-builtins",
-    "flake8-commas",
-    "flake8-debugger",
-    "flake8-docstrings",
-    "flake8-isort",
-    "hypothesis",
-    "ipykernel",
-    "jupyter",
-    # remove pin once https://github.com/jupyter/jupyter_client/issues/637 fixed
-    "jupyter-client<7.0",
-    "pandas",
-    "pytest",
-    "pytest-cov",
-    "pytest-notebook",
-    "pytest-xdist",
-    "pytype",
-    "scipy>=1.8.0",
-    "wandb",
-] + PARALLEL_REQUIRE
+PYTYPE = ["pytype"] if IS_NOT_WINDOWS else []
+TESTS_REQUIRE = (
+    [
+        "seals",
+        "black[jupyter]",
+        "coverage",
+        "codecov",
+        "codespell",
+        "darglint",
+        "filelock",
+        "flake8",
+        "flake8-blind-except",
+        "flake8-builtins",
+        "flake8-commas",
+        "flake8-debugger",
+        "flake8-docstrings",
+        "flake8-isort",
+        "hypothesis",
+        "ipykernel",
+        "jupyter",
+        # remove pin once https://github.com/jupyter/jupyter_client/issues/637 fixed
+        "jupyter-client<7.0",
+        "pandas",
+        "pytest",
+        "pytest-cov",
+        "pytest-notebook",
+        "pytest-xdist",
+        "scipy>=1.8.0",
+        "wandb",
+    ]
+    + PARALLEL_REQUIRE
+    + PYTYPE
+)
 DOCS_REQUIRE = [
-    "sphinx",
+    # TODO(adam): unpin once https://github.com/sphinx-doc/sphinx/issues/10705 fixed
+    "sphinx~=5.0.2",
     "sphinx-autodoc-typehints",
     "sphinx-rtd-theme",
     "sphinxcontrib-napoleon",
@@ -72,7 +78,10 @@ class InstallCommand(install):
 setup(
     cmdclass={"install": InstallCommand},
     name="imitation",
-    version=src.imitation.__version__,
+    # Disable local scheme to allow uploads to Test PyPI.
+    # See https://github.com/pypa/setuptools_scm/issues/342
+    use_scm_version={"local_scheme": "no-local-version"},
+    setup_requires=["setuptools_scm"],
     description="Implementation of modern reward and imitation learning algorithms.",
     long_description=get_readme(),
     long_description_content_type="text/markdown",
@@ -92,8 +101,9 @@ setup(
         "tqdm",
         "scikit-learn>=0.21.2",
         "stable-baselines3>=1.5.0",
-        # TODO(nora) switch back to PyPi once 0.8.3 makes it to release:
-        "sacred@git+https://github.com/IDSIA/sacred.git@0.8.3",
+        # TODO(adam) switch to upstream release if they make it
+        #  See https://github.com/IDSIA/sacred/issues/879
+        "chai-sacred>=0.8.3",
         "tensorboard>=1.14",
     ],
     tests_require=TESTS_REQUIRE,
@@ -105,12 +115,12 @@ setup(
             "ntfy[slack]",
             "ipdb",
             "isort~=5.0",
-            "pytype",
             "codespell",
             # for convenience
             *TESTS_REQUIRE,
             *DOCS_REQUIRE,
-        ],
+        ]
+        + PYTYPE,
         "test": TESTS_REQUIRE,
         "docs": DOCS_REQUIRE,
         "parallel": PARALLEL_REQUIRE,
