@@ -21,6 +21,8 @@ from imitation.util import networks, util
 
 
 def _potential(x):
+    # _potential is never actually called in the tests: we just need a dummy
+    # potential to be able to construct shaped reward networks.
     return th.zeros(x.shape[0], device=x.device)  # pragma: no cover
 
 
