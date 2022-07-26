@@ -449,6 +449,19 @@ def env_2d() -> Env2D:
     return Env2D()
 
 
+def test_ensemble_errors_if_there_are_to_few_members(env_2d):
+    for num_members in range(2):
+        with pytest.raises(ValueError):
+            reward_nets.RewardEnsemble(
+                env_2d.observation_space,
+                env_2d.action_space,
+                members=[
+                    MockRewardNet(env_2d.observation_space, env_2d.action_space)
+                    for _ in range(num_members)
+                ],
+            )
+
+
 @pytest.fixture
 def two_ensemble(env_2d) -> reward_nets.RewardEnsemble:
     """A simple reward ensemble made up of two mock reward nets."""
@@ -493,6 +506,13 @@ def test_ensemble_members_have_different_parameters(env_2d):
         next(ensemble.members[0].parameters()),
         next(ensemble.members[1].parameters()),
     )
+
+
+def test_add_std_wrapper_raises_error_when_wrapping_wrong_type(env_2d):
+    mock_env = MockRewardNet(env_2d.observation_space, env_2d.action_space)
+    assert not isinstance(mock_env, reward_nets.RewardNetWithVariance)
+    with pytest.raises(TypeError):
+        reward_nets.AddSTDRewardWrapper(mock_env, default_alpha=0.1)
 
 
 def test_add_std_reward_wrapper(
