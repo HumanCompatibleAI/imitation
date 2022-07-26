@@ -1,6 +1,5 @@
 """Tests for the preference comparisons reward learning implementation."""
 
-import os
 import re
 from typing import Sequence
 
@@ -177,13 +176,11 @@ def test_trainer_no_crash(
         custom_logger=custom_logger,
         query_schedule=schedule,
     )
-    # TODO(GH494): remove this skip once SB3 fixed
-    if os.name != "nt":
-        result = main_trainer.train(100, 10)
-        # We don't expect good performance after training for 10 (!) timesteps,
-        # but check stats are within the bounds they should lie in.
-        assert result["reward_loss"] > 0.0
-        assert 0.0 < result["reward_accuracy"] <= 1.0
+    result = main_trainer.train(100, 10)
+    # We don't expect good performance after training for 10 (!) timesteps,
+    # but check stats are within the bounds they should lie in.
+    assert result["reward_loss"] > 0.0
+    assert 0.0 < result["reward_accuracy"] <= 1.0
 
 
 def test_discount_rate_no_crash(agent_trainer, reward_net, fragmenter, custom_logger):
@@ -203,9 +200,7 @@ def test_discount_rate_no_crash(agent_trainer, reward_net, fragmenter, custom_lo
         reward_trainer=reward_trainer,
         custom_logger=custom_logger,
     )
-    # TODO(GH494): remove this skip once SB3 fixed
-    if os.name != "nt":
-        main_trainer.train(100, 10)
+    main_trainer.train(100, 10)
 
 
 def test_synthetic_gatherer_deterministic(agent_trainer, fragmenter):
@@ -321,6 +316,4 @@ def test_exploration_no_crash(agent, reward_net, fragmenter, custom_logger):
         fragmenter=fragmenter,
         custom_logger=custom_logger,
     )
-    # TODO(GH494): remove this skip once SB3 fixed
-    if os.name != "nt":
-        main_trainer.train(100, 10)
+    main_trainer.train(100, 10)

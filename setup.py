@@ -100,7 +100,7 @@ setup(
         "torch>=1.4.0",
         "tqdm",
         "scikit-learn>=0.21.2",
-        "stable-baselines3>=1.5.0",
+        "stable-baselines3@git+https://github.com/DLR-RM/stable-baselines3.git@master",
         # TODO(adam) switch to upstream release if they make it
         #  See https://github.com/IDSIA/sacred/issues/879
         "chai-sacred>=0.8.3",
