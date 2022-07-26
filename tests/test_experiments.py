@@ -35,7 +35,7 @@ HAS_FULL_ROLLOUTS = _test_path.exists()
 )
 def test_experiments_fast(script_name: str):
     """Quickly check that experiments run successfully on fast mode."""
-    if os.name == "nt":
+    if os.name == "nt":  # pragma: no cover
         pytest.skip("bash shell scripts not ported to Windows.")
 
     env = None

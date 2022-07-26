@@ -763,7 +763,7 @@ def test_analyze_imitation(tmpdir: str, run_names: List[str], run_sacred_fn):
 
 
 def test_analyze_gather_tb(tmpdir: str):
-    if os.name == "nt":
+    if os.name == "nt":  # pragma: no cover
         pytest.skip("gather_tb uses symlinks: not supported by Windows")
 
     config_updates = dict(local_dir=tmpdir, run_name="test")
