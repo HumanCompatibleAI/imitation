@@ -449,7 +449,7 @@ def env_2d() -> Env2D:
     return Env2D()
 
 
-def test_ensemble_errors_if_there_are_to_few_members(env_2d):
+def test_ensemble_errors_if_there_are_too_few_members(env_2d):
     for num_members in range(2):
         with pytest.raises(ValueError):
             reward_nets.RewardEnsemble(

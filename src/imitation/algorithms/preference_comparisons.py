@@ -1004,10 +1004,15 @@ def _make_reward_trainer(
         base_model = base_model.base
 
     if isinstance(base_model, reward_nets.RewardEnsemble):
-        if reward_model is base_model or (
+        # reward_model may include an AddSTDRewardWrapper for RL training; but we
+        # must train directly on the base model for reward model training.
+        is_base = reward_model is base_model
+        is_std_wrapper = (
             isinstance(reward_model, reward_nets.AddSTDRewardWrapper)
             and reward_model.base is base_model
-        ):
+        )
+
+        if is_base or is_std_wrapper:
             return EnsembleTrainer(base_model, loss, **reward_trainer_kwargs)
         else:
             raise ValueError(

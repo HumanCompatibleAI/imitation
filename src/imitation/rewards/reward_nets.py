@@ -278,7 +278,7 @@ class RewardNetWrapper(RewardNet):
         next_state: np.ndarray,
         done: np.ndarray,
     ) -> th.Tensor:
-        __doc__ = super().predict.__doc__  # noqa: F841
+        __doc__ = super().predict_th.__doc__  # noqa: F841
         return self.base.predict_th(state, action, next_state, done)
 
     def preprocess(
