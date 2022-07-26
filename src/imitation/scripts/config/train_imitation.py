@@ -40,6 +40,7 @@ def config():
         expert_policy_type=None,  # 'ppo', 'random', or 'zero'
         total_timesteps=1e5,
     )
+    agent_path = None  # Path to load agent from, optional.
 
 
 @train_imitation_ex.config
