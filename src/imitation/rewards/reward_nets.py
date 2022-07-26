@@ -667,8 +667,8 @@ class RewardEnsemble(RewardNetWithVariance):
         super().__init__(observation_space, action_space)
 
         members = list(members)
-        if not members:
-            raise ValueError("Must be at least 1 member in the ensemble.")
+        if len(members) < 2:
+            raise ValueError("Must be at least 2 member in the ensemble.")
 
         self.members = nn.ModuleList(
             members,
