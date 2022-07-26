@@ -7,8 +7,6 @@ from sys import platform
 from setuptools import find_packages, setup
 from setuptools.command.install import install
 
-import src.imitation  # pytype: disable=import-error
-
 IS_NOT_WINDOWS = os.name != "nt"
 
 PARALLEL_REQUIRE = ["ray[debug,tune]>=1.13.0"]
@@ -80,7 +78,10 @@ class InstallCommand(install):
 setup(
     cmdclass={"install": InstallCommand},
     name="imitation",
-    version=src.imitation.__version__,
+    # Disable local scheme to allow uploads to Test PyPI.
+    # See https://github.com/pypa/setuptools_scm/issues/342
+    use_scm_version={"local_scheme": "no-local-version"},
+    setup_requires=["setuptools_scm"],
     description="Implementation of modern reward and imitation learning algorithms.",
     long_description=get_readme(),
     long_description_content_type="text/markdown",
@@ -99,13 +100,10 @@ setup(
         "torch>=1.4.0",
         "tqdm",
         "scikit-learn>=0.21.2",
-        # TODO(adam): switch to master once stable-baselines3 PR#979 merged
-        #  https://github.com/DLR-RM/stable-baselines3/pull/979
-        #  (and then switch to PyPi once it makes it to release)
-        "stable-baselines3@git+https://github.com/DLR-RM/stable-baselines3.git@"
-        "ff4bc96afa6336c5f4d0ebd8a40aec398fe648ba",
-        # TODO(nora) switch back to PyPi once 0.8.3 makes it to release:
-        "sacred@git+https://github.com/IDSIA/sacred.git@0.8.3",
+        "stable-baselines3>=1.5.0",
+        # TODO(adam) switch to upstream release if they make it
+        #  See https://github.com/IDSIA/sacred/issues/879
+        "chai-sacred>=0.8.3",
         "tensorboard>=1.14",
     ],
     tests_require=TESTS_REQUIRE,
