@@ -19,14 +19,14 @@
 
 # -- Project information -----------------------------------------------------
 
-import imitation  # pytype: disable=import-error
+from importlib import metadata
 
 project = "imitation"
-copyright = "2019-2021, Center for Human-Compatible AI"  # noqa: A001
+copyright = "2019-2022, Center for Human-Compatible AI"  # noqa: A001
 author = "Center for Human-Compatible AI"
 
 # The full version, including alpha/beta/rc tags
-release = imitation.__version__
+version = metadata.version("imitation")
 
 
 # -- General configuration ---------------------------------------------------
