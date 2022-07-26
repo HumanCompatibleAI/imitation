@@ -271,6 +271,16 @@ class RewardNetWrapper(RewardNet):
         __doc__ = super().predict.__doc__  # noqa: F841
         return self.base.predict(state, action, next_state, done)
 
+    def predict_th(
+        self,
+        state: np.ndarray,
+        action: np.ndarray,
+        next_state: np.ndarray,
+        done: np.ndarray,
+    ) -> th.Tensor:
+        __doc__ = super().predict.__doc__  # noqa: F841
+        return self.base.predict_th(state, action, next_state, done)
+
     def preprocess(
         self,
         state: np.ndarray,
@@ -288,7 +298,7 @@ class RewardNetWrapper(RewardNet):
 
     @property
     def dtype(self) -> th.dtype:
-        return super().dtype
+        return self.base.dtype
 
 
 class RewardNetWithVariance(RewardNet):

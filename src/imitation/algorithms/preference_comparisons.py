@@ -993,19 +993,27 @@ class EnsembleTrainer(BasicRewardTrainer):
 def _make_reward_trainer(
     reward_model: reward_nets.RewardNet,
     loss: RewardLoss,
-    reward_trainer_kwargs: Mapping[str, Any] = {},
+    reward_trainer_kwargs: Optional[Mapping[str, Any]] = None,
 ) -> RewardTrainer:
     """Construct the correct type of reward trainer for this reward function."""
+    if reward_trainer_kwargs is None:
+        reward_trainer_kwargs = {}
+
     base_model = reward_model
     while hasattr(base_model, "base"):
         base_model = base_model.base
 
     if isinstance(base_model, reward_nets.RewardEnsemble):
-        return EnsembleTrainer(
-            base_model,
-            loss,
-            **reward_trainer_kwargs,
-        )
+        if reward_model is base_model or (
+            isinstance(reward_model, reward_nets.AddSTDRewardWrapper)
+            and reward_model.base is base_model
+        ):
+            return EnsembleTrainer(base_model, loss, **reward_trainer_kwargs)
+        else:
+            raise ValueError(
+                "RewardEnsemble can only be wrapped"
+                f" by AddSTDRewardWrapper but found {type(reward_model).__name__}.",
+            )
     else:
         return BasicRewardTrainer(
             reward_model,

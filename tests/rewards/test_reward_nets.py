@@ -21,7 +21,7 @@ from imitation.util import networks, util
 
 
 def _potential(x):
-    return th.zeros(x.shape[0])
+    return th.zeros(x.shape[0], device=x.device)  # pragma: no cover
 
 
 ENVS = ["FrozenLake-v1", "CartPole-v1", "Pendulum-v1"]
@@ -56,6 +56,34 @@ NORMALIZE_OUTPUT_LAYER = [
     None,
     networks.RunningNorm,
 ]
+
+
+NumpyTransitions = Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]
+
+
+@pytest.fixture
+def numpy_transitions() -> NumpyTransitions:
+    """A batch of states, actions, next_states, and dones as np.ndarrays for Env2D."""
+    return (
+        np.zeros((10, 5, 5)),
+        np.zeros((10, 1), dtype=int),
+        np.zeros((10, 5, 5)),
+        np.zeros((10,), dtype=bool),
+    )
+
+
+TorchTransitions = Tuple[th.Tensor, th.Tensor, th.Tensor, th.Tensor]
+
+
+@pytest.fixture
+def torch_transitions() -> TorchTransitions:
+    """A batch of states, actions, next_states, and dones as th.Tensors for Env2D."""
+    return (
+        th.zeros((10, 5, 5)),
+        th.zeros((10, 1), dtype=int),
+        th.zeros((10, 5, 5)),
+        th.zeros((10,), dtype=bool),
+    )
 
 
 @pytest.mark.parametrize("env_name", ENVS)
@@ -135,6 +163,34 @@ def test_reward_valid(env_name, reward_type, tmpdir):
     assert isinstance(pred_reward[0], numbers.Number)
 
 
+def test_wrappers_default_to_passing_on_method_calls_to_base(
+    numpy_transitions: NumpyTransitions,
+    torch_transitions: TorchTransitions,
+):
+    base = mock.MagicMock()
+    wrapper = reward_nets.RewardNetWrapper(base)
+    # Check method calls
+    for attr, call_with, return_value in [
+        ("forward", torch_transitions, th.zeros(10)),
+        ("predict_th", numpy_transitions, np.zeros(10)),
+        ("predict", numpy_transitions, np.zeros(10)),
+        ("predict_processed", numpy_transitions, np.zeros(10)),
+        ("preprocess", numpy_transitions, torch_transitions),
+    ]:
+        setattr(base, attr, mock.MagicMock(return_value=return_value))
+        assert getattr(wrapper, attr)(*call_with) is return_value
+        getattr(base, attr).assert_called_once_with(*call_with)
+
+    # Check property lookups
+    return_value = th.device("cpu")
+    base.device = mock.PropertyMock(return_value=return_value)
+    assert wrapper.device is base.device
+
+    return_value = th.float32
+    base.dtype = mock.PropertyMock(return_value=return_value)
+    assert wrapper.dtype is base.dtype
+
+
 def test_strip_wrappers_basic():
     venv = util.make_vec_env("FrozenLake-v1", n_envs=1, parallel=False)
     net = reward_nets.BasicRewardNet(venv.observation_space, venv.action_space)
@@ -205,10 +261,17 @@ def test_validate_wrapper_structure():
             {(WrapperB,)},
         )
 
+    # The prefix is longer then set of wrappers
+    with raises_error_ctxmgr:
+        serialize._validate_wrapper_structure(
+            reward_net,
+            {(WrapperB, RewardNetA, WrapperB)},
+        )
+
     # This should not raise a type error since one of the prefixes matches
     serialize._validate_wrapper_structure(
         reward_net,
-        [[WrapperB, RewardNetA], [[RewardNetA]]],
+        {(WrapperB, RewardNetA), (RewardNetA,)},
     )
 
     # This should raise a type error since none the prefix is in the incorrect order
@@ -396,20 +459,6 @@ def two_ensemble(env_2d) -> reward_nets.RewardEnsemble:
             MockRewardNet(env_2d.observation_space, env_2d.action_space)
             for _ in range(2)
         ],
-    )
-
-
-NumpyTransitions = Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]
-
-
-@pytest.fixture
-def numpy_transitions() -> NumpyTransitions:
-    """A batch of states, actions, next_states, and dones as np.ndarrays for Env2D."""
-    return (
-        np.zeros((10, 5, 5)),
-        np.zeros((10, 1), dtype=int),
-        np.zeros((10, 5, 5)),
-        np.zeros((10,), dtype=bool),
     )
 
 
