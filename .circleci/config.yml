@@ -264,8 +264,7 @@ jobs:
           command: |
             .\venv\Scripts\activate
             pytest -n auto --cov=venv\Lib\site-packages\imitation `
-            --cov=tests --junitxml=\tmp\test-reports\junit.xml -k 'not run_example_sh_scripts' `
-            -vv tests\ --ignore tests\test_experiments.py
+            --cov=tests --junitxml=\tmp\test-reports\junit.xml -vv tests\
             # manually checking (required for exes) and returning if pytest gives error code other than 0
             if ($LASTEXITCODE -ne 0) { throw "pytest failed" }
             mv .coverage .coverage.imitation
