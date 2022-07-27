@@ -465,12 +465,15 @@ class CnnRewardNet(RewardNet):
                     pad_left = math.floor(width_diff / 2)
                     pad_right = width_diff - pad_left
                     boosted_tens = nn.functional.pad(
-                        tens, (pad_top, pad_bot, pad_left, pad_right),
+                        tens,
+                        (pad_top, pad_bot, pad_left, pad_right),
                     )
                 else:
                     # then you're a one-hot vector
                     boosted_tens = tens.expand(
-                        *tens.shape[:-2], max_height, max_width,
+                        *tens.shape[:-2],
+                        max_height,
+                        max_width,
                     )
                 assert boosted_tens.shape[-2:] == th.Size([max_height, max_width])
             else:
@@ -744,8 +747,10 @@ class ChannelFirstRewardWrapper(RewardNetWrapper):
     ) -> bool:
         """Checks if the state is a valid image.
 
-        Checks the shape, dtype, range, and number of channels.
-        Valid images are RGB, RGBD, or GrayScale with values in [0,255].
+        Checks the shape and number of channels.
+        Valid images are RGB, RGBD, or GrayScale.
+        Note that checking is not rigourous, as by this point the image may have been
+        normalized, so we can't check dtype or range.
 
         Args:
             state: the state tensor being input into the reward net.
@@ -760,12 +765,7 @@ class ChannelFirstRewardWrapper(RewardNetWrapper):
                 if self.has_channels_first(state)
                 else state.shape[-1]
             )
-            is_image = (
-                n_channels in [1, 3, 4]
-                and state.dtype == th.uint8
-                and bool(th.all(state <= 255))
-            )
-            return is_image
+            return n_channels in [1, 3, 4]
         else:
             return False
 
