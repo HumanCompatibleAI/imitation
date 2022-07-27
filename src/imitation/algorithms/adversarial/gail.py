@@ -3,8 +3,7 @@
 from typing import Optional
 
 import torch as th
-from stable_baselines3.common import base_class
-from stable_baselines3.common import vec_env
+from stable_baselines3.common import base_class, vec_env
 from torch.nn import functional as F
 
 from imitation.algorithms import base
@@ -141,7 +140,7 @@ class GAIL(common.AdversarialTrainer):
         done: th.Tensor,
         log_policy_act_prob: Optional[th.Tensor] = None,
     ) -> th.Tensor:
-        """Compute the discriminator's logits for each state-action sample.
+        r"""Compute the discriminator's logits for each state-action sample.
 
         Args:
             state: The state of the environment at the time of the action.
