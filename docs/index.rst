@@ -48,6 +48,9 @@ Main Features
    algorithms/gail
    algorithms/airl
    algorithms/dagger
+   algorithms/density
+   algorithms/mce_irl
+   algorithms/preference_comparisons
 
 
 API Reference
