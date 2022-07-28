@@ -3,8 +3,7 @@
 from typing import Optional
 
 import torch as th
-from stable_baselines3.common import base_class
-from stable_baselines3.common.vec_env.base_vec_env import VecEnv
+from stable_baselines3.common import base_class, vec_env
 from torch.nn import functional as F
 
 from imitation.algorithms import base
@@ -30,8 +29,8 @@ class RewardNetFromDiscriminatorLogit(reward_nets.RewardNet):
     as shown on line 5 of Algorithm 1. In the paper, :math:`D` is the probability
     distribution learned by the discriminator, where :math:`D(X)=1` if the trajectory
     comes from the generator, and :math:`D(X)=0` if it comes from the expert.
-    In this implementation, we have decided to use the convention that :math:`D(X)=0`
-    if the trajectory comes from the generator,
+    In this implementation, we have decided to use the opposite convention that
+    :math:`D(X)=0` if the trajectory comes from the generator,
     and :math:`D(X)=1` if it comes from the expert. Therefore, the resulting cost
     function is:
 
@@ -95,7 +94,7 @@ class GAIL(common.AdversarialTrainer):
         *,
         demonstrations: base.AnyTransitions,
         demo_batch_size: int,
-        venv: VecEnv,
+        venv: vec_env.VecEnv,
         gen_algo: base_class.BaseAlgorithm,
         reward_net: reward_nets.RewardNet,
         **kwargs,
@@ -141,7 +140,7 @@ class GAIL(common.AdversarialTrainer):
         done: th.Tensor,
         log_policy_act_prob: Optional[th.Tensor] = None,
     ) -> th.Tensor:
-        """Compute the discriminator's logits for each state-action sample.
+        r"""Compute the discriminator's logits for each state-action sample.
 
         Args:
             state: The state of the environment at the time of the action.
@@ -150,7 +149,7 @@ class GAIL(common.AdversarialTrainer):
             done: whether a `terminal state` (as defined under the MDP of the task) has
                 been reached.
             log_policy_act_prob: The log probability of the action taken by the
-                generator.
+                generator, :math:`\log{P(a|s)}`.
 
         Returns:
             The logits of the discriminator for each state-action sample.
