@@ -2,12 +2,13 @@
 
 import logging
 import os.path as osp
+import warnings
 from typing import Any, Mapping, Optional, Type
 
 from sacred.observers import FileStorageObserver
 from stable_baselines3.common import policies, utils, vec_env
 
-from imitation.algorithms.bc import BC
+from imitation.algorithms import bc as bc_algorithm
 from imitation.algorithms.dagger import SimpleDAggerTrainer
 from imitation.data import rollout
 from imitation.policies import serialize
@@ -22,13 +23,19 @@ def make_policy(
     venv: vec_env.VecEnv,
     policy_cls: Type[policies.BasePolicy],
     policy_kwargs: Mapping[str, Any],
+    agent_path: Optional[str],
 ) -> policies.BasePolicy:
     """Makes policy.
 
     Args:
         venv: Vectorized environment we will be imitating demos from.
         policy_cls: Type of a Stable Baselines3 policy architecture.
+            Specify only if policy_path is not specified.
         policy_kwargs: Keyword arguments for policy constructor.
+            Specify only if policy_path is not specified.
+        agent_path: Path to serialized policy. If provided, then load the
+            policy from this path. Otherwise, make a new policy.
+            Specify only if policy_cls and policy_kwargs are not specified.
 
     Returns:
         A Stable Baselines3 policy.
@@ -43,7 +50,14 @@ def make_policy(
                 "lr_schedule": utils.get_schedule_fn(1),
             },
         )
-    policy = policy_cls(**policy_kwargs)
+    if agent_path is not None:
+        warnings.warn(
+            "When agent_path is specified, policy_cls and policy_kwargs are ignored.",
+            RuntimeWarning,
+        )
+        policy = bc_algorithm.reconstruct_policy(agent_path)
+    else:
+        policy = policy_cls(**policy_kwargs)
     logger.info(f"Policy network summary:\n {policy}")
     return policy
 
@@ -88,27 +102,31 @@ def train_imitation(
     bc_train_kwargs: Mapping[str, Any],
     dagger: Mapping[str, Any],
     use_dagger: bool,
+    agent_path: Optional[str],
 ) -> Mapping[str, Mapping[str, float]]:
     """Runs DAgger (if `use_dagger`) or BC (otherwise) training.
 
     Args:
         bc_kwargs: Keyword arguments passed through to `bc.BC` constructor.
-        bc_train_kwargs: Keyword arguments passed through to `BC.train` method.
+        bc_train_kwargs: Keyword arguments passed through to `BC.train()` method.
         dagger: Arguments for DAgger training.
         use_dagger: If True, train using DAgger; otherwise, use BC.
+        agent_path: Path to serialized policy. If provided, then load the
+            policy from this path. Otherwise, make a new policy.
+            Specify only if policy_cls and policy_kwargs are not specified.
 
     Returns:
         Statistics for rollouts from the trained policy and demonstration data.
     """
     custom_logger, log_dir = common.setup_logging()
     venv = common.make_venv()
-    imit_policy = make_policy(venv)
+    imit_policy = make_policy(venv, agent_path=agent_path)
 
     expert_trajs = None
     if not use_dagger or dagger["use_offline_rollouts"]:
         expert_trajs = demonstrations.load_expert_trajs()
 
-    bc_trainer = BC(
+    bc_trainer = bc_algorithm.BC(
         observation_space=venv.observation_space,
         action_space=venv.action_space,
         policy=imit_policy,

@@ -3,7 +3,7 @@
 import logging
 import os
 import os.path as osp
-from typing import Any, Mapping, Type
+from typing import Any, Mapping, Optional, Type
 
 import sacred.commands
 import torch as th
@@ -72,6 +72,7 @@ def train_adversarial(
     algorithm_kwargs: Mapping[str, Any],
     total_timesteps: int,
     checkpoint_interval: int,
+    agent_path: Optional[str],
 ) -> Mapping[str, Mapping[str, float]]:
     """Train an adversarial-network-based imitation learning algorithm.
 
@@ -94,6 +95,10 @@ def train_adversarial(
             `checkpoint_interval` rounds and after training is complete. If 0,
             then only save weights after training is complete. If <0, then don't
             save weights at all.
+        agent_path: Path to a directory containing a pre-trained agent. If
+            provided, then the agent will be initialized using this stored policy
+            (warm start). If not provided, then the agent will be initialized using
+            a random policy.
 
     Returns:
         A dictionary with two keys. "imit_stats" gives the return value of
@@ -111,7 +116,12 @@ def train_adversarial(
     expert_trajs = demonstrations.load_expert_trajs()
 
     venv = common_config.make_venv()
-    gen_algo = rl.make_rl_algo(venv)
+
+    if agent_path is None:
+        gen_algo = rl.make_rl_algo(venv)
+    else:
+        gen_algo = rl.load_rl_algo_from_path(agent_path=agent_path, venv=venv)
+
     reward_net = reward.make_reward_net(venv)
 
     logger.info(f"Using '{algo_cls}' algorithm")
