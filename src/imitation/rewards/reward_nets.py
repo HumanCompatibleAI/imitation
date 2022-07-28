@@ -350,6 +350,10 @@ class CnnRewardNet(RewardNet):
             use_next_state: should the next state be included as an input to the CNN?
             use_done: should the "done" flag be included as an input to the CNN?
             kwargs: passed straight through to `build_cnn`.
+
+        Raises:
+            ValueError: if observation or action space is not easily massaged into a
+                CNN input.
         """
         super().__init__(observation_space, action_space)
         self.use_state = use_state
@@ -435,6 +439,15 @@ class CnnRewardNet(RewardNet):
 
         Takes inputs that will be used, reshapes them to have compatible dimensions,
         concatenates them, and inputs them into the CNN.
+
+        Args:
+            state: current state.
+            action: current action.
+            next_state: next state.
+            done: flag for whether the episode is over.
+
+        Returns:
+            th.Tensor: reward of the transition.
         """
         inputs = []
         if self.use_state:
@@ -749,7 +762,7 @@ class ChannelFirstRewardWrapper(RewardNetWrapper):
 
         Checks the shape and number of channels.
         Valid images are RGB, RGBD, or GrayScale.
-        Note that checking is not rigourous, as by this point the image may have been
+        Note that checking is not rigorous, as by this point the image may have been
         normalized, so we can't check dtype or range.
 
         Args:

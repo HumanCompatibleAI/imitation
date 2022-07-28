@@ -86,10 +86,12 @@ class BaseNorm(nn.Module, ABC):
             with th.no_grad():
                 self.update_stats(x)
 
-        running_mean_ = (self.running_mean if len(x.shape) == 2
-                         else self.running_mean[:, None, None])
-        running_var_ = (self.running_var if len(x.shape) == 2
-                        else self.running_var[:, None, None])
+        running_mean_ = (
+            self.running_mean if len(x.shape) == 2 else self.running_mean[:, None, None]
+        )
+        running_var_ = (
+            self.running_var if len(x.shape) == 2 else self.running_var[:, None, None]
+        )
         return (x - running_mean_) / th.sqrt(running_var_ + self.eps)
 
     @abstractclassmethod
@@ -117,13 +119,9 @@ class RunningNorm(BaseNorm):
         Args:
             batch: A batch of data to use to update the running mean and variance.
         """
-        if len(batch.shape) == 2:
-            batch_mean = th.mean(batch, dim=0)
-            batch_var = th.var(batch, dim=0, unbiased=False)
-        else:
-            assert len(batch.shape) == 4
-            batch_mean = th.mean(batch, dim=[0,2,3])
-            batch_var = th.var(batch, dim=[0,2,3], unbiased=False)
+        reduce_dims = 0 if len(batch.shape) == 2 else [0, 2, 3]
+        batch_mean = th.mean(batch, dim=reduce_dims)
+        batch_var = th.var(batch, dim=reduce_dims, unbiased=False)
         batch_count = batch.shape[0]
 
         delta = batch_mean - self.running_mean
@@ -140,7 +138,7 @@ class RunningNorm(BaseNorm):
 
 class EMANorm(BaseNorm):
     """Similar to RunningNorm but uses an exponential weighting."""
-    # TODO(daniel) get this to work with CNN stuff
+
     def __init__(
         self,
         num_features: int,
@@ -151,7 +149,7 @@ class EMANorm(BaseNorm):
 
         Args:
             num_features: Number of features; the length of the non-batch dim.
-            decay: how quickly the weight on past samples decays over time
+            decay: how quickly the weight on past samples decays over time.
             eps: small constant for for numerical stability.
 
         Raises:
@@ -174,23 +172,35 @@ class EMANorm(BaseNorm):
             batch: A batch of data to use to update the running mean and variance.
         """
         b_size = batch.shape[0]
+        reduce_dims = 0 if len(batch.shape) == 2 else [0, 2, 3]
 
         if self.count == 0:
-            self.running_mean = th.mean(batch, dim=0)
+            self.running_mean = th.mean(batch, dim=reduce_dims)
             if b_size > 1:
-                self.running_var = th.var(batch, dim=0)
+                self.running_var = th.var(batch, dim=reduce_dims)
         else:
             # Shuffle the batch since we don't don't want to bias the mean
-            # towards data that appears latter in the batch
+            # towards data that appears later in the batch
             perm = th.randperm(b_size)
 
             alpha = 1 - self.decay
 
             for i in range(b_size):
-                diff = batch[perm[i], ...] - self.running_mean
+                new_sample = (
+                    batch[perm[i], ...]
+                    if len(batch.shape) == 2
+                    else th.mean(batch[perm[i], ...], dim=[1, 2])
+                )
+                diff = new_sample - self.running_mean
                 incr = alpha * diff
                 self.running_mean += incr
                 self.running_var = self.decay * (self.running_var + diff * incr)
+                if len(batch.shape) == 4:
+                    # add correction for within-image variance
+                    self.running_var += (1 - self.decay) * th.var(
+                        batch[perm[i], ...],
+                        dim=[1, 2],
+                    )
 
         self.count += b_size
 
@@ -325,7 +335,11 @@ def build_cnn(
     prev_channels = in_channels
     for i, n_channels in enumerate(hid_channels):
         layers[f"{prefix}conv{i}"] = nn.Conv2d(
-            prev_channels, n_channels, kernel_size, stride=stride, padding=padding,
+            prev_channels,
+            n_channels,
+            kernel_size,
+            stride=stride,
+            padding=padding,
         )
         prev_channels = n_channels
         if activation:
@@ -352,7 +366,9 @@ class SmartFlatten(nn.Module):
 
     Checks whether input has a batch dimension to determine how to flatten.
     """
+
     def __init__(self):
+        """Initialize module to flatten non-batch dimensions of a tensor."""
         super().__init__()
 
     def forward(self, in_tensor: th.Tensor) -> th.Tensor:
