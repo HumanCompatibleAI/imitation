@@ -1,2 +1,11 @@
+[build-system]
+requires = ["setuptools>=45", "setuptools_scm[toml]>=6.2"]
+build-backend = "setuptools.build_meta"
+
+[tools.setuptools_scm]
+# Disable local scheme to allow uploads to Test PyPI.
+# See https://github.com/pypa/setuptools_scm/issues/342
+local_scheme = "no-local-version"
+
 [tool.black]
-target-version = ["py37"]
+target-version = ["py38"]

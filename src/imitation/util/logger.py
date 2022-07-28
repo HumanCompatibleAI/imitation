@@ -112,7 +112,7 @@ class HierarchicalLogger(sb_logger.Logger):
             logger = self._cached_loggers[subdir]
         else:
             subdir = types.path_to_str(subdir)
-            folder = os.path.join(self.default_logger.dir, "raw", subdir)
+            folder = "/".join([self.default_logger.dir, "raw", subdir])
             os.makedirs(folder, exist_ok=True)
             output_formats = _build_output_formats(folder, self.format_strs)
             logger = sb_logger.Logger(folder, list(output_formats))
@@ -131,10 +131,10 @@ class HierarchicalLogger(sb_logger.Logger):
     def record(self, key, val, exclude=None):
         if self.current_logger is not None:  # In accumulate_means context.
             assert self._subdir is not None
-            raw_key = os.path.join("raw", self._subdir, key)
+            raw_key = "/".join(["raw", self._subdir, key])
             self.current_logger.record(raw_key, val, exclude)
 
-            mean_key = os.path.join("mean", self._subdir, key)
+            mean_key = "/".join(["mean", self._subdir, key])
             self.default_logger.record_mean(mean_key, val, exclude)
         else:  # Not in accumulate_means context.
             self.default_logger.record(key, val, exclude)
