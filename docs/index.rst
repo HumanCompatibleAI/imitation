@@ -37,7 +37,6 @@ Main Features
    getting-started/what-is-imitation
    getting-started/variable-horizon
    getting-started/first-steps
-   getting-started/faq
 
 .. toctree::
    :maxdepth: 2
