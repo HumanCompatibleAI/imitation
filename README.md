@@ -6,13 +6,13 @@
 # Imitation Learning Baseline Implementations
 
 This project aims to provide clean implementations of imitation and reward learning algorithms.
-Currently, we have implementations of the algorithms below. 'Discrete' stands for whether the algorithm supports discrete action/state spapces, and 'Continuous' stands for whether the algorithm supports continuous action/state spaces.
+Currently, we have implementations of the algorithms below. 'Discrete' and 'Continous' stands for whether the algorithm supports discrete or continuous action/state spaces respectively.
 
 | Algorithm (+ link to paper)                                                                                                       | API Docs                                                                                   | Discrete | Continuous |
 |-----------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------|----------|------------|
 | Behavioral Cloning                                                                                                                | [`algorithms.bc`](https://imitation.readthedocs.io/en/latest/algorithms/bc.html)           | ✅        | ✅          |
 | [DAgger](https://arxiv.org/pdf/1011.0686.pdf)                                                                                     | [`algorithms.dagger`](https://imitation.readthedocs.io/en/latest/algorithms/dagger.html)   | ✅        | ✅          |
-| Density-Based Reward Modeling                                                                                                     | [`algorithms.density`](https://imitation.readthedocs.io/en/latest/algorithms/density.html) | ✅        | ❓          |
+| Density-Based Reward Modeling                                                                                                     | [`algorithms.density`](https://imitation.readthedocs.io/en/latest/algorithms/density.html) | ✅        | ✅          |
 | [Maximum Causal Entropy Inverse Reinforcement Learning](https://www.cs.cmu.edu/~bziebart/publications/maximum-causal-entropy.pdf) | [`algorithms.mce_irl`](https://imitation.readthedocs.io/en/latest/algorithms/mce_irl.html) | ✅        | ❌          |
 | [Adversarial Inverse Reinforcement Learning](https://arxiv.org/abs/1710.11248)                                                    | [`algoritms.airl`](https://imitation.readthedocs.io/en/latest/algorithms/airl.html)        | ✅        | ✅          |
 | [Generative Adversarial Imitation Learning](https://arxiv.org/abs/1606.03476)                                                     | [`algorithms.gail`](https://imitation.readthedocs.io/en/latest/algorithms/gail.html)       | ✅        | ✅          |
