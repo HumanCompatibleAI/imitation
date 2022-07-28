@@ -56,7 +56,7 @@ DOCS_REQUIRE = [
 
 def get_readme() -> str:
     """Retrieve content from README."""
-    with open("README.md", "r") as f:
+    with open("README.md", "r", encoding="utf-8") as f:
         return f.read()
 
 
