@@ -12,7 +12,8 @@ from imitation.data.wrappers import RolloutInfoWrapper
 from imitation.scripts.common import common, expert
 
 demonstrations_ingredient = sacred.Ingredient(
-    "demonstrations", ingredients=[expert.expert_ingredient, common.common_ingredient]
+    "demonstrations",
+    ingredients=[expert.expert_ingredient, common.common_ingredient],
 )
 logger = logging.getLogger(__name__)
 
@@ -56,7 +57,7 @@ def generate_expert_trajs(
         The expert trajectories.
     """
     rollout_env = DummyVecEnv(
-        [lambda: RolloutInfoWrapper(gym.make(common["env_name"])) for _ in range(4)]
+        [lambda: RolloutInfoWrapper(gym.make(common["env_name"])) for _ in range(4)],
     )
     if n_expert_demos is not None:
         return rollout.rollout(

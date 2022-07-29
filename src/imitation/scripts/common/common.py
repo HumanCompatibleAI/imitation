@@ -5,7 +5,7 @@ import os
 from typing import Any, Mapping, Sequence, Tuple, Union
 
 import sacred
-import seals
+import seals  # noqa: F401
 from stable_baselines3.common import vec_env
 
 from imitation.scripts.common import wb

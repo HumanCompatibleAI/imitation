@@ -26,7 +26,8 @@ def get_huggingface_repo_id(common, huggingface_repo_id, policy_type, hugginface
         return huggingface_repo_id
     else:
         return ModelRepoId(
-            hugginface_orga, ModelName(policy_type, EnvironmentName(common["env_name"]))
+            hugginface_orga,
+            ModelName(policy_type, EnvironmentName(common["env_name"])),
         )
 
 
