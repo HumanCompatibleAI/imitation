@@ -1,13 +1,11 @@
 """Configuration settings for train_dagger, training DAgger from synthetic demos."""
 
-import os
-
 import sacred
 import torch as th
 
 from imitation.scripts.common import common
 from imitation.scripts.common import demonstrations as demos_common
-from imitation.scripts.common import train, expert
+from imitation.scripts.common import expert, train
 
 train_imitation_ex = sacred.Experiment(
     "train_imitation",

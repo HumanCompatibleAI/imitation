@@ -5,13 +5,13 @@ import os
 from typing import Any, Mapping, Sequence, Tuple, Union
 
 import sacred
+import seals
 from stable_baselines3.common import vec_env
 
 from imitation.scripts.common import wb
 from imitation.util import logger as imit_logger
 from imitation.util import sacred as sacred_util
 from imitation.util import util
-import seals
 
 common_ingredient = sacred.Ingredient("common", ingredients=[wb.wandb_ingredient])
 logger = logging.getLogger(__name__)

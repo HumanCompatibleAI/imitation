@@ -87,7 +87,6 @@ def parallel(
     base_config_updates = copy.deepcopy(base_config_updates)
     search_space = copy.deepcopy(search_space)
 
-
     trainable = _ray_tune_sacred_wrapper(
         sacred_ex_name,
         run_name,

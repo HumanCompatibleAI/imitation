@@ -10,7 +10,7 @@ from stable_baselines3.common import policies, utils, vec_env
 from imitation.algorithms.bc import BC
 from imitation.algorithms.dagger import SimpleDAggerTrainer
 from imitation.data import rollout
-from imitation.scripts.common import common, demonstrations, train, expert
+from imitation.scripts.common import common, demonstrations, expert, train
 from imitation.scripts.config.train_imitation import train_imitation_ex
 
 logger = logging.getLogger(__name__)

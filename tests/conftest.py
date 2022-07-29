@@ -3,17 +3,17 @@ import os
 import pickle
 import traceback
 import warnings
-from typing import Callable, Sequence
+from typing import Sequence
 
 import gym
 import pytest
 import torch
 from filelock import FileLock
-from huggingface_sb3 import load_from_hub
 from stable_baselines3 import PPO
 from stable_baselines3.common.policies import BasePolicy
 from stable_baselines3.common.vec_env import DummyVecEnv, VecEnv
 
+from huggingface_sb3 import load_from_hub
 from imitation.data import rollout, types
 from imitation.data.types import TrajectoryWithRew
 from imitation.data.wrappers import RolloutInfoWrapper
@@ -59,7 +59,8 @@ def cartpole_venv(request) -> VecEnv:
 @pytest.fixture
 def cartpole_expert_policy():
     return PPO.load(
-        load_from_hub("HumanCompatibleAI/ppo-seals-CartPole-v0", "ppo-seals-CartPole-v0.zip")
+        load_from_hub("HumanCompatibleAI/ppo-seals-CartPole-v0",
+                      "ppo-seals-CartPole-v0.zip")
     ).policy
 
 

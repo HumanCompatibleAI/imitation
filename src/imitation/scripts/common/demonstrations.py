@@ -9,10 +9,11 @@ from stable_baselines3.common.vec_env import DummyVecEnv
 
 from imitation.data import rollout, types
 from imitation.data.wrappers import RolloutInfoWrapper
+from imitation.scripts.common import common, expert
 
-from imitation.scripts.common import expert, common
-
-demonstrations_ingredient = sacred.Ingredient("demonstrations", ingredients=[expert.expert_ingredient, common.common_ingredient])
+demonstrations_ingredient = sacred.Ingredient(
+    "demonstrations", ingredients=[expert.expert_ingredient, common.common_ingredient]
+)
 logger = logging.getLogger(__name__)
 
 

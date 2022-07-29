@@ -11,7 +11,6 @@ import os
 import pathlib
 import pickle
 import shutil
-import subprocess
 import sys
 import tempfile
 from collections import Counter
@@ -331,7 +330,9 @@ def _check_train_ex_result(result: dict):
 @pytest.mark.parametrize("command", ("airl", "gail"))
 def test_train_adversarial(tmpdir, named_configs, command):
     """Smoke test for imitation.scripts.train_adversarial."""
-    named_configs = named_configs + ["seals_cartpole"] + ALGO_FAST_CONFIGS["adversarial"]
+    named_configs = (
+        named_configs + ["seals_cartpole"] + ALGO_FAST_CONFIGS["adversarial"]
+    )
     config_updates = {
         "common": dict(log_root=tmpdir),
         # TensorBoard logs to get extra coverage
@@ -365,6 +366,7 @@ def test_train_adversarial_sac(tmpdir, command):
     assert run.config["rl"]["rl_cls"] is stable_baselines3.SAC
     assert run.status == "COMPLETED"
     _check_train_ex_result(run.result)
+
 
 @pytest.mark.skip("stalls for now")
 def test_train_adversarial_algorithm_value_error(tmpdir):
