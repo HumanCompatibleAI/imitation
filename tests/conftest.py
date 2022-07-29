@@ -9,11 +9,11 @@ import gym
 import pytest
 import torch
 from filelock import FileLock
+from huggingface_sb3 import load_from_hub
 from stable_baselines3 import PPO
 from stable_baselines3.common.policies import BasePolicy
 from stable_baselines3.common.vec_env import DummyVecEnv, VecEnv
 
-from huggingface_sb3 import load_from_hub
 from imitation.data import rollout, types
 from imitation.data.types import TrajectoryWithRew
 from imitation.data.wrappers import RolloutInfoWrapper
@@ -62,7 +62,7 @@ def cartpole_expert_policy():
         load_from_hub(
             "HumanCompatibleAI/ppo-seals-CartPole-v0",
             "ppo-seals-CartPole-v0.zip",
-        )
+        ),
     ).policy
 
 
@@ -96,7 +96,7 @@ def pendulum_expert_policy() -> BasePolicy:
         load_from_hub(
             "HumanCompatibleAI/ppo-Pendulum-v1",
             "ppo-Pendulum-v1.zip",
-        )
+        ),
     ).policy
 
 

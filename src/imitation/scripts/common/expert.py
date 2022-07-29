@@ -1,9 +1,9 @@
 """Common configuration elements for loading of expert policies."""
 import sacred
+from huggingface_sb3 import EnvironmentName, ModelName, ModelRepoId, load_from_hub
 from stable_baselines3 import PPO
 from stable_baselines3.common import policies
 
-from huggingface_sb3 import EnvironmentName, ModelName, ModelRepoId, load_from_hub
 from imitation.policies import base
 from imitation.scripts.common.common import common_ingredient, make_venv
 
