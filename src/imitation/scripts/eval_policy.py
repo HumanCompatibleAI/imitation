@@ -77,8 +77,6 @@ def eval_policy(
         render_fps: The target number of frames per second to render on screen.
         videos: If True, saves videos to `log_dir`.
         video_kwargs: Keyword arguments passed through to `video_wrapper.VideoWrapper`.
-        policy_type: A unique identifier for the saved policy,
-            defined in POLICY_CLASSES. If None, then uses a random policy.
         reward_type: If specified, overrides the environment reward with
             a reward of this.
         reward_path: If reward_type is specified, the path to a serialized reward

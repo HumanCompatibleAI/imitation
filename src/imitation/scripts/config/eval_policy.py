@@ -104,7 +104,7 @@ def seals_walker():
 
 @eval_policy_ex.named_config
 def fast():
-    common = dict(env_name="seals/CartPole-v0", num_vec=1, parallel=False)  # TODO(ernestum): switch back to seals/cartpole
+    common = dict(env_name="seals/CartPole-v0", num_vec=1, parallel=False)
     render = True
     eval_n_timesteps = 1
     eval_n_episodes = None

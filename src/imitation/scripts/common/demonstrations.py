@@ -50,12 +50,10 @@ def generate_expert_trajs(
     Args:
         n_expert_demos: The number of trajectories to load.
             Dataset is truncated to this length if specified.
+        common: The common config.
 
     Returns:
         The expert trajectories.
-
-    Raises:
-        ValueError: There are fewer trajectories than `n_expert_demos`.
     """
     rollout_env = DummyVecEnv(
         [lambda: RolloutInfoWrapper(gym.make(common["env_name"])) for _ in range(4)]

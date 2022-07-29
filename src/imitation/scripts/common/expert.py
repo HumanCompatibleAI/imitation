@@ -1,3 +1,4 @@
+"""Common configuration elements for loading of expert policies."""
 import sacred
 from stable_baselines3 import PPO
 from stable_baselines3.common import policies
