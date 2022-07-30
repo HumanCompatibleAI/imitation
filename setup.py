@@ -58,12 +58,14 @@ DOCS_REQUIRE = [
     "sphinx-autodoc-typehints",
     "sphinx-rtd-theme",
     "sphinxcontrib-napoleon",
+    "furo",
+    "sphinx-copybutton",
 ]
 
 
 def get_readme() -> str:
     """Retrieve content from README."""
-    with open("README.md", "r") as f:
+    with open("README.md", "r", encoding="utf-8") as f:
         return f.read()
 
 
@@ -125,6 +127,7 @@ setup(
             "ipdb",
             "isort~=5.0",
             "codespell",
+            "sphinx-autobuild",
             # for convenience
             *TESTS_REQUIRE,
             *DOCS_REQUIRE,
