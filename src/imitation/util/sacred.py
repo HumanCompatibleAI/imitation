@@ -99,7 +99,17 @@ def build_sacred_symlink(log_dir: types.AnyPath, run: sacred.run.Run) -> None:
 
     # Use relative paths so we can mount the output directory at different paths
     # (e.g. when copying across machines).
-    symlink_path.symlink_to(target_path, target_is_directory=True)
+    try:
+        symlink_path.symlink_to(target_path, target_is_directory=True)
+    except OSError as e:
+        if os.name == "nt":  # Windows
+            msg = (
+                "Exception occurred while creating symlink. "
+                "Please ensure that Developer mode is enabled."
+            )
+            raise OSError(msg) from e
+        else:
+            raise e
 
 
 def get_sacred_dir_from_run(run: sacred.run.Run) -> Union[pathlib.Path, None]:

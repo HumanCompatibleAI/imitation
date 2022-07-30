@@ -13,7 +13,7 @@ from imitation.algorithms import preference_comparisons
 from imitation.data import types
 from imitation.data.types import TrajectoryWithRew
 from imitation.rewards import reward_nets
-from imitation.util import util
+from imitation.util import networks, util
 
 
 @pytest.fixture
@@ -235,6 +235,36 @@ def test_correct_reward_trainer_used_by_default(
         assert isinstance(
             main_trainer.reward_trainer,
             preference_comparisons.BasicRewardTrainer,
+        )
+
+
+def test_init_raises_error_when_trying_use_improperly_wrapped_ensemble(
+    agent_trainer,
+    venv,
+    fragmenter,
+    custom_logger,
+):
+    reward_net = testing_reward_nets.make_ensemble(
+        venv.observation_space,
+        venv.action_space,
+    )
+    reward_net = reward_nets.NormalizedRewardNet(reward_net, networks.RunningNorm)
+    rgx = (
+        r"RewardEnsemble can only be wrapped by "
+        r"AddSTDRewardWrapper but found NormalizedRewardNet."
+    )
+    with pytest.raises(
+        ValueError,
+        match=rgx,
+    ):
+        preference_comparisons.PreferenceComparisons(
+            agent_trainer,
+            reward_net,
+            num_iterations=2,
+            transition_oversampling=2,
+            fragment_length=2,
+            fragmenter=fragmenter,
+            custom_logger=custom_logger,
         )
 
 
