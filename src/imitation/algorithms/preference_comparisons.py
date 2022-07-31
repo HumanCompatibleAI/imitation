@@ -887,7 +887,8 @@ class BasicRewardTrainer(RewardTrainer):
             custom_logger: Where to log to; if None (default), creates a new logger.
 
         Raises:
-            ValueError: if ``weight_decay`` is non-zero but ``weight_decay_updater`` is None.
+            ValueError: if ``weight_decay`` is non-zero but ``weight_decay_updater`` is 
+            None.
         """
         super().__init__(model, custom_logger)
         self.loss = loss
@@ -899,12 +900,6 @@ class BasicRewardTrainer(RewardTrainer):
         )
         self.seed = seed
         self.val_split = val_split
-        if self.val_split == 0 and self.regularizer is not None:
-            raise ValueError(
-                "If you pass a weight decay updater, you must also pass a non-zero value for val_split."
-            )
-        if self.val_split < 0 or self.val_split > 1:
-            raise ValueError("val_split must be strictly between 0 and 1.")
 
         # TODO(juan) this could accept an arbitrary regularizer function
         #  in the future if we wanted, with some changes in the __init__ arguments.
@@ -917,6 +912,12 @@ class BasicRewardTrainer(RewardTrainer):
             if weight_decay > 0
             else None
         )
+        if self.val_split == 0 and self.regularizer is not None:
+            raise ValueError(
+                "If you pass a weight decay updater, you must also pass a non-zero value for val_split."
+            )
+        if self.val_split < 0 or self.val_split > 1:
+            raise ValueError("val_split must be strictly between 0 and 1.")
 
     def _make_data_loader(self, dataset: PreferenceDataset) -> data_th.DataLoader:
         """Make a dataloader."""
