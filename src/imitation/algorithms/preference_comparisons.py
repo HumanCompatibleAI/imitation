@@ -18,6 +18,7 @@ from typing import (
     Sequence,
     Tuple,
     Union,
+    cast,
 )
 
 import numpy as np
@@ -699,6 +700,7 @@ def _evaluate_reward_on_transitions(
     )
     return model(*preprocessed)
 
+
 class CrossEntropyRewardLoss(RewardLoss):
     """Compute the cross entropy reward loss."""
 
@@ -851,7 +853,10 @@ class BasicRewardTrainer(RewardTrainer):
         epochs: int = 1,
         lr: float = 1e-3,
         weight_decay: float = 0.0,
+        weight_decay_updater: Optional[reg.UpdateParamFn] = None,
+        val_split: float = 0.0,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
+        seed: int = 0,
     ):
         """Initialize the reward model trainer.
 
@@ -866,7 +871,23 @@ class BasicRewardTrainer(RewardTrainer):
             weight_decay: the weight decay factor for the reward model's weights
                 to use with ``th.optim.AdamW``. This is similar to but not equivalent
                 to L2 regularization, see https://arxiv.org/abs/1711.05101
+            weight_decay_updater: a function that takes validation and training
+                losses, and the current weight decay value, and returns the new
+                weight decay value to use in the next epoch. This is only used
+                if ``weight_decay`` is non-zero. Unless this parameter is specified,
+                a constant weight decay value is used by default.
+            val_split: the fraction of the dataset to use for validation. Validation
+                is performed to determine the best weight decay value. Since
+                the weight decay is constant by default, this is also set to be
+                0 by default, since no validation data is needed. If you pass
+                a weight decay updater, you must also pass a non-zero value for
+                this parameter.
+            seed: the random seed to use for splitting the dataset into training
+                and validation.
             custom_logger: Where to log to; if None (default), creates a new logger.
+
+        Raises:
+            ValueError: if ``weight_decay`` is non-zero but ``weight_decay_updater`` is None.
         """
         super().__init__(model, custom_logger)
         self.loss = loss
@@ -876,9 +897,26 @@ class BasicRewardTrainer(RewardTrainer):
             self._model.parameters(),
             lr=lr,
         )
-        self.regularizer: Optional[reg.Regularizer] = reg.WeightDecayRegularizer(
-            weight_decay, optimizer=self.optim
-        ) if weight_decay > 0 else None
+        self.seed = seed
+        self.val_split = val_split
+        if self.val_split == 0 and self.regularizer is not None:
+            raise ValueError(
+                "If you pass a weight decay updater, you must also pass a non-zero value for val_split."
+            )
+        if self.val_split < 0 or self.val_split > 1:
+            raise ValueError("val_split must be strictly between 0 and 1.")
+
+        # TODO(juan) this could accept an arbitrary regularizer function
+        #  in the future if we wanted, with some changes in the __init__ arguments.
+        self.regularizer: Optional[reg.Regularizer] = (
+            reg.WeightDecayRegularizer(
+                initial_lambda=weight_decay,
+                optimizer=self.optim,
+                update_params_fn=weight_decay_updater or reg.ConstantParamScaler(),
+            )
+            if weight_decay > 0
+            else None
+        )
 
     def _make_data_loader(self, dataset: PreferenceDataset) -> data_th.DataLoader:
         """Make a dataloader."""
@@ -894,13 +932,17 @@ class BasicRewardTrainer(RewardTrainer):
         if self.regularizer:
             val_length = int(len(dataset) * self.val_split)
             train_length = len(dataset) - val_length
-            train_dataset, val_dataset = data_th.random_split(dataset, lengths=[train_length, val_length])
+            train_dataset, val_dataset = data_th.random_split(
+                dataset,
+                lengths=[train_length, val_length],
+                generator=th.Generator().manual_seed(self.seed),
+            )
             dataloader = self._make_data_loader(train_dataset)
             val_dataloader = self._make_data_loader(val_dataset)
         else:
             dataloader = self._make_data_loader(dataset)
             val_dataloader = None
-        
+
         epochs = round(self.epochs * epoch_multiplier)
 
         for _ in tqdm(range(epochs), desc="Training reward model"):
@@ -910,14 +952,19 @@ class BasicRewardTrainer(RewardTrainer):
                 self.optim.zero_grad()
                 loss = self._training_inner_loop(fragment_pairs, preferences)
                 train_loss += loss.item()
-                self.regularizer.regularize(loss)
+                if self.regularizer:
+                    self.regularizer.regularize(loss)
                 self.optim.step()
-            
-            if val_dataloader:
+
+            if self.regularizer:
+                # TODO(juan) my type checker complains because it cannot infer the type
+                #  of val_dataloader by checking the logic. Is there a better way
+                #  to do this, or should we leave the cast?
+                val_dataloader = cast(data_th.DataLoader, val_dataloader)
                 for fragment_pairs, preferences in val_dataloader:
                     loss = self._training_inner_loop(fragment_pairs, preferences)
                     val_loss += loss.item()
-                    self.regularizer.update_params(train_loss, val_loss)
+                self.regularizer.update_params(train_loss, val_loss)
 
     def _training_inner_loop(
         self,
