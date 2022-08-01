@@ -180,7 +180,7 @@ commands:
           paths:
             - .pytest_cache
 
-  store-test-output:
+  store-test-output-unix:
     description: "Store the output of tests."
     steps:
       - store_artifacts:
@@ -274,7 +274,7 @@ jobs:
 
       - codecov/upload
       - save-pytest-cache
-      - store-test-output
+      - store-test-output-unix
 
   unit-test-macos:
     macos:
@@ -293,7 +293,7 @@ jobs:
                     -vv tests/
 
       - save-pytest-cache
-      - store-test-output
+      - store-test-output-unix
 
 
   unit-test-windows:
@@ -323,7 +323,19 @@ jobs:
 
       - codecov/upload
       - save-pytest-cache
-      - store-test-output
+      - store_artifacts:
+          path: \tmp\test-reports
+          destination: test-reports
+
+      - store_test_results:
+          path: \tmp\test-reports
+          unit-test-windows:
+
+      - store_artifacts:
+          path: \tmp\resource-usage
+          destination: resource-usage
+
+
 
 
 workflows:
