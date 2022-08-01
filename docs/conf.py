@@ -6,6 +6,8 @@
 # list see the documentation:
 # http://www.sphinx-doc.org/en/master/config
 
+import os
+
 # -- Path setup --------------------------------------------------------------
 
 # If extensions (or modules to document with autodoc) are in another directory,
@@ -48,7 +50,7 @@ extensions = [
 napoleon_google_docstring = True
 napoleon_numpy_docstring = False
 autosummary_generate = True
-sphinx_github_changelog_token = "mock-token"  # TODO(tomtseng)
+sphinx_github_changelog_token = os.environ.get("GITHUB_TOKEN")
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
