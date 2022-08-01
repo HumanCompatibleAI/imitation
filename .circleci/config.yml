@@ -87,7 +87,7 @@ commands:
     steps:
       - run:
           name: install macOS packages
-          command: brew install coreutils ffmpeg
+          command: brew install coreutils ffmpeg gnu-getopt
 
       - checkout
 
