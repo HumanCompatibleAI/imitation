@@ -112,7 +112,7 @@ class HierarchicalLogger(sb_logger.Logger):
             logger = self._cached_loggers[subdir]
         else:
             subdir = types.path_to_str(subdir)
-            folder = "/".join([self.default_logger.dir, "raw", subdir])
+            folder = os.path.join(self.default_logger.dir, "raw", subdir)
             os.makedirs(folder, exist_ok=True)
             output_formats = _build_output_formats(folder, self.format_strs)
             logger = sb_logger.Logger(folder, list(output_formats))

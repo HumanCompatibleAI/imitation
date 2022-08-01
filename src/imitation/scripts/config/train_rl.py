@@ -19,6 +19,7 @@ def train_rl_defaults():
     # If specified, overrides the ground-truth environment reward
     reward_type = None  # override reward type
     reward_path = None  # override reward path
+    load_reward_kwargs = {}
 
     rollout_save_final = True  # If True, save after training is finished.
     rollout_save_n_timesteps = None  # Min timesteps saved per file, optional.

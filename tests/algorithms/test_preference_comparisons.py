@@ -8,11 +8,12 @@ import pytest
 import seals  # noqa: F401
 import stable_baselines3
 
+import imitation.testing.reward_nets as testing_reward_nets
 from imitation.algorithms import preference_comparisons
 from imitation.data import types
 from imitation.data.types import TrajectoryWithRew
 from imitation.rewards import reward_nets
-from imitation.util import util
+from imitation.util import networks, util
 
 
 @pytest.fixture
@@ -23,9 +24,17 @@ def venv():
     )
 
 
-@pytest.fixture
-def reward_net(venv):
-    return reward_nets.BasicRewardNet(venv.observation_space, venv.action_space)
+@pytest.fixture(
+    params=[
+        reward_nets.BasicRewardNet,
+        testing_reward_nets.make_ensemble,
+        lambda *args: reward_nets.AddSTDRewardWrapper(
+            testing_reward_nets.make_ensemble(*args),
+        ),
+    ],
+)
+def reward_net(request, venv):
+    return request.param(venv.observation_space, venv.action_space)
 
 
 @pytest.fixture
@@ -183,13 +192,96 @@ def test_trainer_no_crash(
     assert 0.0 < result["reward_accuracy"] <= 1.0
 
 
-def test_discount_rate_no_crash(agent_trainer, reward_net, fragmenter, custom_logger):
-    # also use a non-zero noise probability to check that doesn't cause errors
-    reward_trainer = preference_comparisons.CrossEntropyRewardTrainer(
-        reward_net,
+def test_reward_ensemble_trainer_raises_type_error(venv):
+    reward_net = reward_nets.BasicRewardNet(venv.observation_space, venv.action_space)
+    loss = preference_comparisons.CrossEntropyRewardLoss(
         noise_prob=0.1,
         discount_factor=0.9,
+        threshold=50,
     )
+    with pytest.raises(
+        TypeError,
+        match=r"RewardEnsemble expected by EnsembleTrainer not .*",
+    ):
+        preference_comparisons.EnsembleTrainer(
+            reward_net,
+            loss,
+        )
+
+
+def test_correct_reward_trainer_used_by_default(
+    agent_trainer,
+    reward_net,
+    fragmenter,
+    custom_logger,
+):
+    main_trainer = preference_comparisons.PreferenceComparisons(
+        agent_trainer,
+        reward_net,
+        num_iterations=2,
+        transition_oversampling=2,
+        fragment_length=2,
+        fragmenter=fragmenter,
+        custom_logger=custom_logger,
+    )
+
+    base_reward_net = reward_net.base if hasattr(reward_net, "base") else reward_net
+    if isinstance(base_reward_net, reward_nets.RewardEnsemble):
+        assert isinstance(
+            main_trainer.reward_trainer,
+            preference_comparisons.EnsembleTrainer,
+        )
+    else:
+        assert isinstance(
+            main_trainer.reward_trainer,
+            preference_comparisons.BasicRewardTrainer,
+        )
+
+
+def test_init_raises_error_when_trying_use_improperly_wrapped_ensemble(
+    agent_trainer,
+    venv,
+    fragmenter,
+    custom_logger,
+):
+    reward_net = testing_reward_nets.make_ensemble(
+        venv.observation_space,
+        venv.action_space,
+    )
+    reward_net = reward_nets.NormalizedRewardNet(reward_net, networks.RunningNorm)
+    rgx = (
+        r"RewardEnsemble can only be wrapped by "
+        r"AddSTDRewardWrapper but found NormalizedRewardNet."
+    )
+    with pytest.raises(
+        ValueError,
+        match=rgx,
+    ):
+        preference_comparisons.PreferenceComparisons(
+            agent_trainer,
+            reward_net,
+            num_iterations=2,
+            transition_oversampling=2,
+            fragment_length=2,
+            fragmenter=fragmenter,
+            custom_logger=custom_logger,
+        )
+
+
+def test_discount_rate_no_crash(agent_trainer, venv, fragmenter, custom_logger):
+    # also use a non-zero noise probability to check that doesn't cause errors
+    reward_net = reward_nets.BasicRewardNet(venv.observation_space, venv.action_space)
+    loss = preference_comparisons.CrossEntropyRewardLoss(
+        noise_prob=0.1,
+        discount_factor=0.9,
+        threshold=50,
+    )
+
+    reward_trainer = preference_comparisons.BasicRewardTrainer(
+        reward_net,
+        loss,
+    )
+
     main_trainer = preference_comparisons.PreferenceComparisons(
         agent_trainer,
         reward_net,
