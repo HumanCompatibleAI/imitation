@@ -44,14 +44,18 @@ commands:
     steps:
       - run:
           name: install imitation
-          command: pip install --upgrade --force-reinstall --no-deps .
+          command: |
+            source ~/venv/bin/activate
+            pip install --upgrade --force-reinstall --no-deps .
 
   print-installed-packages-unix:
     description: "Print installed Python packages."
     steps:
       - run:
           name: print installed packages
-          command: pip freeze --all
+          command: |
+            source ~/venv/bin/activate
+            pip freeze --all
 
   dependencies-linux:
     # You must still manually update the Docker image if any
@@ -68,7 +72,7 @@ commands:
       - run:
           name: install dependencies
           # Only create venv if it's not been restored from cache
-          command: "[[ -d ~/venv ]] || ./ci/build_and_activate_venv.sh /venv"
+          command: "[[ -d ~/venv ]] || ./ci/build_and_activate_venv.sh ~/venv"
 
       - save_cache:
           paths:
@@ -266,7 +270,7 @@ jobs:
           name: run tests
           command: |
             # Xdummy-entrypoint.py: starts an X server and sets DISPLAY, then runs wrapped command.
-            Xdummy-entrypoint.py pytest -n ${NUM_CPUS} --cov=/venv/lib/python3.8/site-packages/imitation \
+            Xdummy-entrypoint.py pytest -n ${NUM_CPUS} --cov=~/venv/lib/python3.8/site-packages/imitation \
                    --cov=tests --junitxml=/tmp/test-reports/junit.xml \
                     -vv tests/
             mv .coverage .coverage.imitation
@@ -287,6 +291,7 @@ jobs:
       - run:
           name: run tests
           command: |
+            source ~/venv/bin/activate
             # Xdummy-entrypoint.py: starts an X server and sets DISPLAY, then runs wrapped command.
             Xdummy-entrypoint.py pytest -n ${NUM_CPUS} \
                    --junitxml=/tmp/test-reports/junit.xml \
