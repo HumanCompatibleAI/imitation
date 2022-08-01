@@ -39,14 +39,14 @@ executors:
       NUM_CPUS: 2
 
 commands:
-  install-imitation:
+  install-imitation-unix:
     description: "Install `imitation`."
     steps:
       - run:
           name: install imitation
           command: pip install --upgrade --force-reinstall --no-deps .
 
-  print-installed-packages:
+  print-installed-packages-unix:
     description: "Print installed Python packages."
     steps:
       - run:
@@ -75,8 +75,8 @@ commands:
             - /venv
           key: v6-linux-dependencies-{{ checksum "setup.py" }}
 
-      - install-imitation
-      - print-installed-packages
+      - install-imitation-unix
+      - print-installed-packages-unix
 
   dependencies-macos:
     description: "Check out and update Python dependencies on macOS."
@@ -98,13 +98,8 @@ commands:
             - ~/venv
           key: v6-macos-dependencies-{{ checksum "setup.py" }}
 
-      - run:
-          name: install imitation
-          command: pip install --upgrade --force-reinstall --no-deps .
-
-      - run:
-          name: print installed packages
-          command: pip freeze --all
+      - install-imitation-unix
+      - print-installed-packages-unix
 
   dependencies-windows:
     description: "Check out and update Python dependencies on Windows."
@@ -205,7 +200,7 @@ jobs:
     executor: lint
 
     steps:
-      - dependencies-unix
+      - dependencies-linux
 
       - run:
           name: install shellcheck
@@ -242,7 +237,7 @@ jobs:
   type:
     executor: type
     steps:
-      - dependencies-unix
+      - dependencies-linux
 
       - run:
           name: pytype
@@ -251,7 +246,7 @@ jobs:
   unit-test-linux:
     executor: unit-test-linux
     steps:
-      - dependencies-unix
+      - dependencies-linux
 
       - run:
           name: Memory Monitor
@@ -286,7 +281,7 @@ jobs:
       xcode: 13.4.1
 
     steps:
-      - dependencies-unix
+      - dependencies-macos
       - restore-pytest-cache
 
       - run:
