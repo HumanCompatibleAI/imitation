@@ -53,7 +53,7 @@ TESTS_REQUIRE = (
     + PYTYPE
 )
 DOCS_REQUIRE = [
-    "sphinx",
+    "sphinx~=5.1.1",
     "sphinx-autodoc-typehints",
     "sphinx-rtd-theme",
     "sphinxcontrib-napoleon",
