@@ -107,4 +107,4 @@ We also implement a density-based reward baseline. You can find an [example note
 
 # Contributing
 
-See [Contributing to imitation](https://imitation.readthedocs.io/en/latest/guide/contributing.html) for more information.
+See [Contributing to imitation](https://imitation.readthedocs.io/en/latest/development/contributing/index.html) for more information.
