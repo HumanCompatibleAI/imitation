@@ -85,6 +85,10 @@ commands:
   dependencies-macos:
     description: "Check out and update Python dependencies on macOS."
     steps:
+      - run:
+          name: install macOS packages
+          command: brew install coreutils ffmpeg
+
       - checkout
 
       - restore_cache:
