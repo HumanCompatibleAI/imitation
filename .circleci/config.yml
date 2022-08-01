@@ -257,7 +257,7 @@ jobs:
           name: run tests
           command: |
             # Xdummy-entrypoint.py: starts an X server and sets DISPLAY, then runs wrapped command.
-            Xdummy-entrypoint.py pytest -n ${NUM_CPUS} --cov=/venv/lib/python3.8/site-packages/imitation \
+            Xdummy-entrypoint.py pytest -n ${NUM_CPUS} \
                    --junitxml=/tmp/test-reports/junit.xml \
                     -vv tests/
 
