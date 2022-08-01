@@ -39,28 +39,28 @@ executors:
       NUM_CPUS: 2
 
 commands:
-  dependencies-linux:
+  dependencies-unix:
     # You must still manually update the Docker image if any
     # binary (non-Python) dependencies change.
-    description: "Check out and update Python dependencies."
+    description: "Check out and update Python dependencies on a UNIX operating system."
     steps:
       - checkout
 
-      # Download and cache dependencies
+      # Download and cache dependencies. The cache key is parameterized by {{ arch }} so
+      # that Ubuntu and macOS don't share the same cache.
       - restore_cache:
           keys:
-            - v6-unix-dependencies-{{ checksum "setup.py" }}
+            - v6-unix-{{ arch }}-dependencies-{{ checksum "setup.py" }}
 
       - run:
           name: install dependencies
           # Only create venv if it's not been restored from cache
           command: "[[ -d /venv ]] || ./ci/build_and_activate_venv.sh /venv"
 
-
       - save_cache:
           paths:
             - /venv
-          key: v6-unix-dependencies-{{ checksum "setup.py" }}
+          key: v6-unix-{{ arch }}-dependencies--{{ checksum "setup.py" }}
 
       - run:
           name: install imitation
@@ -71,7 +71,7 @@ commands:
           command: pip freeze --all
 
   dependencies-windows:
-    description: "Check out and update Python dependencies."
+    description: "Check out and update Python dependencies on Windows."
     steps:
       # Note: The error preference is set to Stop in powershell which only applies to
       # cmdlets. For exes, will have to manually check $LastErrorCode as done for pytest.
@@ -124,13 +124,52 @@ commands:
             pip freeze --all
           shell: powershell.exe
 
+  restore-pytest-cache:
+    description: "Restore .pytest_cache from CircleCI cache."
+    steps:
+      # The setup.py checksum in the cache name ensures that we retrain our expert
+      # policies, which are cached in the pytest cache, whenever setup.py changes. This
+      # is just a rough heuristic to decide when the experts should be retrained but
+      # still better than nothing.
+      - restore_cache:
+          keys:
+            - v7-pytest-cache-{{ checksum "setup.py" }}
+            # This prefix-matched key restores the most recent pytest cache with any
+            # checksum. If that cached policy happens to be still loadable, we avoid
+            # retraining. See https://circleci.com/docs/2.0/caching/#restoring-cache
+            - v7-pytest-cache-
+          paths:
+            - .pytest_cache
+
+  save-pytest-cache:
+    description: "Save .pytest_cache in CircleCI cache."
+    steps:
+      - save_cache:
+          key: v7-pytest-cache-{{ checksum "setup.py" }}
+          paths:
+            - .pytest_cache
+
+  store-test-output:
+    description: "Store the output of tests."
+    steps:
+      - store_artifacts:
+          path: /tmp/test-reports
+          destination: test-reports
+
+      - store_test_results:
+          path: /tmp/test-reports
+
+      - store_artifacts:
+          path: /tmp/resource-usage
+          destination: resource-usage
+
 
 jobs:
   lint:
     executor: lint
 
     steps:
-      - dependencies-linux
+      - dependencies-unix
 
       - run:
           name: install shellcheck
@@ -167,7 +206,7 @@ jobs:
   type:
     executor: type
     steps:
-      - dependencies-linux
+      - dependencies-unix
 
       - run:
           name: pytype
@@ -176,7 +215,7 @@ jobs:
   unit-test-linux:
     executor: unit-test-linux
     steps:
-      - dependencies-linux
+      - dependencies-unix
 
       - run:
           name: Memory Monitor
@@ -190,19 +229,7 @@ jobs:
             done
           background: true
 
-      # Note: The setup.py checksum in the cache name ensures that we retrain our expert
-      # policies, which are cached in the pytest cache, whenever setup.py changes. This
-      # is just a rough heuristic to decide when the experts should be retrained but
-      # still better than nothing.
-      - restore_cache:
-          keys:
-            - v7-pytest-cache-{{ checksum "setup.py" }}
-            # This prefix-matched key restores the most recent pytest cache with any
-            # checksum. If that cached policy happens to be still loadable, we avoid
-            # retraining. See https://circleci.com/docs/2.0/caching/#restoring-cache
-            - v7-pytest-cache-
-          paths:
-            - .pytest_cache
+      - restore-pytest-cache
 
       - run:
           name: run tests
@@ -215,49 +242,41 @@ jobs:
             coverage combine  # rewrite paths from virtualenv to src/
 
       - codecov/upload
+      - save-pytest-cache
+      - store-test-output
 
-      - save_cache:
-          key: v7-pytest-cache-{{ checksum "setup.py" }}
-          paths:
-            - .pytest_cache
+  unit-test-macos:
+    macos:
+      xcode: 13.4.1
 
-      - store_artifacts:
-          path: /tmp/test-reports
-          destination: test-reports
+    steps:
+      - dependencies-unix
+      - restore-pytest-cache
 
-      - store_test_results:
-          path: /tmp/test-reports
-          unit-test:
+      - run:
+        name: run tests
+        command: |
+          # Xdummy-entrypoint.py: starts an X server and sets DISPLAY, then runs wrapped command.
+          Xdummy-entrypoint.py pytest -n ${NUM_CPUS} --cov=/venv/lib/python3.8/site-packages/imitation \
+                 --junitxml=/tmp/test-reports/junit.xml \
+                  -vv tests/
 
-      - store_artifacts:
-          path: /tmp/resource-usage
-          destination: resource-usage
+      - save-pytest-cache
+      - store-test-output
+
 
   unit-test-windows:
     executor:
       name: win/default
       size: xlarge
-      # using bash.exe as the default shell because the codecov/upload command 
-      # does not work if we default to powershell.exe as it internally uses a bash script. 
+      # using bash.exe as the default shell because the codecov/upload command
+      # does not work if we default to powershell.exe as it internally uses a bash script.
       # Moreover it is not possible to specify the shell just for that command.
       shell: bash.exe
 
     steps:
       - dependencies-windows
-
-      # Note: The setup.py checksum in the cache name ensures that we retrain our expert
-      # policies, which are cached in the pytest cache, whenever setup.py changes. This
-      # is just a rough heuristic to decide when the experts should be retrained but
-      # still better than nothing.
-      - restore_cache:
-          keys:
-            - v7-pytest-cache-{{ checksum "setup.py" }}
-            # This prefix-matched key restores the most recent pytest cache with any
-            # checksum. If that cached policy happens to be still loadable, we avoid
-            # retraining. See https://circleci.com/docs/2.0/caching/#restoring-cache
-            - v7-pytest-cache-
-          paths:
-            - .pytest_cache
+      - restore-pytest-cache
 
       - run:
           name: run tests
@@ -272,28 +291,13 @@ jobs:
           shell: powershell.exe
 
       - codecov/upload
-
-      - save_cache:
-          key: v7-pytest-cache-{{ checksum "setup.py" }}
-          paths:
-            - .pytest_cache
-
-      - store_artifacts:
-          path: \tmp\test-reports
-          destination: test-reports
-
-      - store_test_results:
-          path: \tmp\test-reports
-          unit-test-windows:
-
-      - store_artifacts:
-          path: \tmp\resource-usage
-          destination: resource-usage
+      - save-pytest-cache
+      - store-test-output
 
 
 workflows:
   version: 2
-  test: 
+  test:
     jobs:
       - lint:
           context:
@@ -304,4 +308,5 @@ workflows:
       - unit-test-linux:
           context:
           - docker-hub-creds
+      - unit-test-macos
       - unit-test-windows
