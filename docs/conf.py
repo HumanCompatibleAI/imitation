@@ -42,11 +42,13 @@ extensions = [
     "sphinx.ext.mathjax",
     "sphinx.ext.viewcode",
     "sphinx_copybutton",
+    "sphinx_github_changelog",
 ]
 
 napoleon_google_docstring = True
 napoleon_numpy_docstring = False
 autosummary_generate = True
+sphinx_github_changelog_token = "mock-token"  # TODO(tomtseng)
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
