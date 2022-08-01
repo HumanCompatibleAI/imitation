@@ -368,7 +368,6 @@ def test_train_adversarial_sac(tmpdir, command):
     _check_train_ex_result(run.result)
 
 
-@pytest.mark.skip("stalls for now")
 def test_train_adversarial_algorithm_value_error(tmpdir):
     """Error on bad algorithm arguments."""
     base_named_configs = ["seals_cartpole"] + ALGO_FAST_CONFIGS["adversarial"]
@@ -393,16 +392,6 @@ def test_train_adversarial_algorithm_value_error(tmpdir):
             named_configs=base_named_configs,
             config_updates=base_config_updates.new_child(
                 {"demonstrations.rollout_path": "path/BAD_VALUE"},
-            ),
-        )
-
-    n_traj = 1234567
-    with pytest.raises(ValueError, match=f".*{n_traj}.*"):
-        train_adversarial.train_adversarial_ex.run(
-            command_name="gail",
-            named_configs=base_named_configs,
-            config_updates=base_config_updates.new_child(
-                {"demonstrations.n_expert_demos": n_traj},
             ),
         )
 
