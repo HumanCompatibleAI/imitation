@@ -207,6 +207,7 @@ def train_preference_comparisons(
         reward_net,
         loss,
         reward_trainer_kwargs,
+        seed=_seed,
     )
 
     main_trainer = preference_comparisons.PreferenceComparisons(

@@ -358,7 +358,10 @@ class PreferenceModel(nn.Module):
             self.member_pref_models = []
             for member in self.model.members:
                 member_pref_model = PreferenceModel(
-                    member, self.noise_prob, self.discount_factor, self.threshold
+                    member,
+                    self.noise_prob,
+                    self.discount_factor,
+                    self.threshold,
                 )
                 self.member_pref_models.append(member_pref_model)
 
@@ -716,10 +719,6 @@ class ActiveSelectionFragmenter(Fragmenter):
                 var_estimate = prob_estimate * (1 - prob_estimate)
         return var_estimate
 
-    def _rewards(self, transitions):
-        rewards = self.preference_model.rewards(transitions).sum(0)
-        return rewards
-
 
 class PreferenceGatherer(abc.ABC):
     """Base class for gathering preference comparisons between trajectory fragments."""
@@ -940,9 +939,9 @@ class RewardLoss(nn.Module, abc.ABC):
     @abc.abstractmethod
     def forward(
         self,
-        model: reward_nets.RewardNet,
         fragment_pairs: Sequence[TrajectoryPair],
         preferences: np.ndarray,
+        ensemble_member_index: Optional[int] = None,
     ) -> LossAndMetrics:
         """Computes the loss.
 
@@ -951,6 +950,7 @@ class RewardLoss(nn.Module, abc.ABC):
             fragment_pairs: Batch consisting of pairs of trajectory fragments.
             preferences: The probability that the first fragment is preferred
                 over the second. Typically 0, 1 or 0.5 (tie).
+            ensemble_member_index: index of member network in ensemble model
 
         Returns: # noqa: DAR202
             loss: the loss
@@ -1110,7 +1110,7 @@ class BasicRewardTrainer(RewardTrainer):
         fragment_pairs: Sequence[TrajectoryPair],
         preferences: np.ndarray,
     ) -> th.Tensor:
-        output = self.loss.forward(self._model, fragment_pairs, preferences)
+        output = self.loss.forward(fragment_pairs, preferences)
         loss = output.loss
         self.logger.record("loss", loss.item())
         for name, value in output.metrics.items():
@@ -1131,6 +1131,7 @@ class EnsembleTrainer(BasicRewardTrainer):
         epochs: int = 1,
         lr: float = 1e-3,
         weight_decay: float = 0.0,
+        seed: Optional[int] = None,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
     ):
         """Initialize the reward model trainer.
@@ -1146,6 +1147,7 @@ class EnsembleTrainer(BasicRewardTrainer):
             weight_decay: the weight decay factor for the reward model's weights
                 to use with ``th.optim.AdamW``. This is similar to but not equivalent
                 to L2 regularization, see https://arxiv.org/abs/1711.05101
+            seed: seed for the internal RNG used in bagging
             custom_logger: Where to log to; if None (default), creates a new logger.
 
         Raises:
@@ -1165,16 +1167,26 @@ class EnsembleTrainer(BasicRewardTrainer):
             weight_decay,
             custom_logger,
         )
+        self.rng = np.random.default_rng(seed=seed)
 
     def _training_inner_loop(
         self,
         fragment_pairs: Sequence[TrajectoryPair],
         preferences: np.ndarray,
     ) -> th.Tensor:
+        assert len(fragment_pairs) == preferences.shape[0]
         losses = []
         metrics = []
         for member_idx in range(self._model.num_members):
-            output = self.loss.forward(fragment_pairs, preferences, member_idx)
+            # sample fragments for training via bagging
+            sample_idx = self.rng.choice(
+                np.arange(len(fragment_pairs)),
+                size=len(fragment_pairs),
+                replace=True,
+            )
+            sample_fragments = [fragment_pairs[i] for i in sample_idx]
+            sample_preferences = preferences[sample_idx]
+            output = self.loss.forward(sample_fragments, sample_preferences, member_idx)
             losses.append(output.loss)
             metrics.append(output.metrics)
         losses = th.stack(losses)
@@ -1208,6 +1220,7 @@ def _make_reward_trainer(
     reward_model: reward_nets.RewardNet,
     loss: RewardLoss,
     reward_trainer_kwargs: Mapping[str, Any] = {},
+    seed: Optional[int] = None,
 ) -> RewardTrainer:
     """Construct the correct type of reward trainer for this reward function."""
     if reward_trainer_kwargs is None:
@@ -1224,7 +1237,7 @@ def _make_reward_trainer(
         )
 
         if is_base or is_std_wrapper:
-            return EnsembleTrainer(base_model, loss, **reward_trainer_kwargs)
+            return EnsembleTrainer(base_model, loss, seed=seed, **reward_trainer_kwargs)
         else:
             raise ValueError(
                 "RewardEnsemble can only be wrapped"
@@ -1347,9 +1360,9 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
         self.model = reward_model
 
         if reward_trainer is None:
-            preference_model = PreferenceModel()
+            preference_model = PreferenceModel(reward_model)
             loss = CrossEntropyRewardLoss(preference_model)
-            self.reward_trainer = _make_reward_trainer(reward_model, loss)
+            self.reward_trainer = _make_reward_trainer(reward_model, loss, seed=seed)
         else:
             self.reward_trainer = reward_trainer
 
