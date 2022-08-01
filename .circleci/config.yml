@@ -60,7 +60,7 @@ commands:
       - save_cache:
           paths:
             - /venv
-          key: v6-unix-{{ arch }}-dependencies--{{ checksum "setup.py" }}
+          key: v6-unix-{{ arch }}-dependencies-{{ checksum "setup.py" }}
 
       - run:
           name: install imitation
