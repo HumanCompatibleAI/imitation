@@ -11,8 +11,56 @@ from imitation.algorithms.adversarial import common
 from imitation.rewards import reward_nets
 
 
-class LogSigmoidRewardNet(reward_nets.RewardNet):
-    """Wrapper for reward network that takes log sigmoid of wrapped network."""
+class RewardNetFromDiscriminatorLogit(reward_nets.RewardNet):
+    r"""Converts the discriminator logits raw value to a reward signal.
+
+    Wrapper for reward network that takes in the logits of the discriminator
+    probability distribution and outputs the corresponding reward for the GAIL
+    algorithm.
+
+    Below is the derivation of the transformation that needs to be applied.
+
+    The GAIL paper defines the cost function of the generator as:
+
+    .. math::
+
+        \log{D}
+
+    as shown on line 5 of Algorithm 1. In the paper, :math:`D` is the probability
+    distribution learned by the discriminator, where :math:`D(X)=1` if the trajectory
+    comes from the generator, and :math:`D(X)=0` if it comes from the expert.
+    In this implementation, we have decided to use the opposite convention that
+    :math:`D(X)=0` if the trajectory comes from the generator,
+    and :math:`D(X)=1` if it comes from the expert. Therefore, the resulting cost
+    function is:
+
+    .. math::
+
+        \log{(1-D)}
+
+    Since our algorithm trains using a reward function instead of a loss function, we
+    need to invert the sign to get:
+
+    .. math::
+
+        R=-\log{(1-D)}=\log{\frac{1}{1-D}}
+
+    Now, let :math:`L` be the output of our reward net, which gives us the logits of D
+    (:math:`L=\operatorname{logit}{D}`). We can write:
+
+    .. math::
+
+        D=\operatorname{sigmoid}{L}=\frac{1}{1+e^{-L}}
+
+    Since :math:`1-\operatorname{sigmoid}{(L)}` is the same as
+    :math:`\operatorname{sigmoid}{(-L)}`, we can write:
+
+    .. math::
+
+        R=-\log{\operatorname{sigmoid}{(-L)}}
+
+    which is a non-decreasing map from the logits of D to the reward.
+    """
 
     def __init__(self, base: reward_nets.RewardNet):
         """Builds LogSigmoidRewardNet to wrap `reward_net`."""
@@ -31,9 +79,8 @@ class LogSigmoidRewardNet(reward_nets.RewardNet):
         next_state: th.Tensor,
         done: th.Tensor,
     ) -> th.Tensor:
-        """Computes negative log sigmoid of base reward network."""
         logits = self.base.forward(state, action, next_state, done)
-        return -F.logsigmoid(logits)
+        return -F.logsigmoid(-logits)
 
 
 class GAIL(common.AdversarialTrainer):
@@ -74,7 +121,8 @@ class GAIL(common.AdversarialTrainer):
         # Raw self._reward_net is discriminator logits
         reward_net = reward_net.to(gen_algo.device)
         # Process it to produce output suitable for RL training
-        self._processed_reward = LogSigmoidRewardNet(reward_net)
+        # Applies a -log(sigmoid(-logits)) to the logits (see class for explanation)
+        self._processed_reward = RewardNetFromDiscriminatorLogit(reward_net)
         super().__init__(
             demonstrations=demonstrations,
             demo_batch_size=demo_batch_size,
@@ -84,7 +132,7 @@ class GAIL(common.AdversarialTrainer):
             **kwargs,
         )
 
-    def logits_gen_is_high(
+    def logits_expert_is_high(
         self,
         state: th.Tensor,
         action: th.Tensor,
@@ -92,7 +140,20 @@ class GAIL(common.AdversarialTrainer):
         done: th.Tensor,
         log_policy_act_prob: Optional[th.Tensor] = None,
     ) -> th.Tensor:
-        """Compute the discriminator's logits for each state-action sample."""
+        r"""Compute the discriminator's logits for each state-action sample.
+
+        Args:
+            state: The state of the environment at the time of the action.
+            action: The action taken by the expert or generator.
+            next_state: The state of the environment after the action.
+            done: whether a `terminal state` (as defined under the MDP of the task) has
+                been reached.
+            log_policy_act_prob: The log probability of the action taken by the
+                generator, :math:`\log{P(a|s)}`.
+
+        Returns:
+            The logits of the discriminator for each state-action sample.
+        """
         del log_policy_act_prob
         logits = self._reward_net(state, action, next_state, done)
         assert logits.shape == state.shape[:1]

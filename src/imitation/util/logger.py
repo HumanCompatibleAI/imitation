@@ -131,10 +131,10 @@ class HierarchicalLogger(sb_logger.Logger):
     def record(self, key, val, exclude=None):
         if self.current_logger is not None:  # In accumulate_means context.
             assert self._subdir is not None
-            raw_key = os.path.join("raw", self._subdir, key)
+            raw_key = "/".join(["raw", self._subdir, key])
             self.current_logger.record(raw_key, val, exclude)
 
-            mean_key = os.path.join("mean", self._subdir, key)
+            mean_key = "/".join(["mean", self._subdir, key])
             self.default_logger.record_mean(mean_key, val, exclude)
         else:  # Not in accumulate_means context.
             self.default_logger.record(key, val, exclude)

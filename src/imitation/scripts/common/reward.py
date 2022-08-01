@@ -52,6 +52,7 @@ def reward_ensemble():
     net_cls = reward_nets.RewardEnsemble
     add_std_alpha = 0
     ensemble_size = 5
+    normalize_output_layer = None
     ensemble_member_config = {
         "net_cls": reward_nets.BasicRewardNet,
         "net_kwargs": {},
@@ -70,11 +71,13 @@ def config_hook(config, command_name, logger):
         if command_name == "airl":
             default_net = reward_nets.BasicShapedRewardNet
         res["net_cls"] = default_net
+
     if "normalize_input_layer" not in config["reward"]["net_kwargs"]:
         res["net_kwargs"] = {"normalize_input_layer": networks.RunningNorm}
 
-    if config["reward"]["net_cls"] is reward_nets.RewardEnsemble:
+    if "net_cls" in res and issubclass(res["net_cls"], reward_nets.RewardEnsemble):
         del res["net_kwargs"]["normalize_input_layer"]
+
     return res
 
 
@@ -155,8 +158,9 @@ def make_reward_net(
                 default_alpha=add_std_alpha,
             )
 
-        # TODO should we support normalization on top of the ensemble or just within
-        # it?
+        if normalize_output_layer is not None:
+            raise ValueError("Output normalization not supported on RewardEnsembles.")
+
         return reward_net
     else:
         return _make_reward_net(venv, net_cls, net_kwargs, normalize_output_layer)

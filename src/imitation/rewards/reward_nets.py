@@ -271,6 +271,16 @@ class RewardNetWrapper(RewardNet):
         __doc__ = super().predict.__doc__  # noqa: F841
         return self.base.predict(state, action, next_state, done)
 
+    def predict_th(
+        self,
+        state: np.ndarray,
+        action: np.ndarray,
+        next_state: np.ndarray,
+        done: np.ndarray,
+    ) -> th.Tensor:
+        __doc__ = super().predict_th.__doc__  # noqa: F841
+        return self.base.predict_th(state, action, next_state, done)
+
     def preprocess(
         self,
         state: np.ndarray,
@@ -288,7 +298,7 @@ class RewardNetWrapper(RewardNet):
 
     @property
     def dtype(self) -> th.dtype:
-        return super().dtype
+        return self.base.dtype
 
 
 class RewardNetWithVariance(RewardNet):
@@ -657,8 +667,8 @@ class RewardEnsemble(RewardNetWithVariance):
         super().__init__(observation_space, action_space)
 
         members = list(members)
-        if not members:
-            raise ValueError("Must be at least 1 member in the ensemble.")
+        if len(members) < 2:
+            raise ValueError("Must be at least 2 member in the ensemble.")
 
         self.members = nn.ModuleList(
             members,
@@ -719,7 +729,7 @@ class RewardEnsemble(RewardNetWithVariance):
 
         Returns:
             * Reward mean of shape `(batch_size,)`.
-            * Reward std of shape `(batch_size,)`.
+            * Reward variance of shape `(batch_size,)`.
         """
         batch_size = state.shape[0]
         all_rewards = self.predict_processed_all(
@@ -747,8 +757,7 @@ class RewardEnsemble(RewardNetWithVariance):
         **kwargs,
     ) -> np.ndarray:
         """Return the mean of the ensemble members."""
-        mean, _ = self.predict_reward_moments(state, action, next_state, done, **kwargs)
-        return mean
+        return self.predict(state, action, next_state, done, **kwargs)
 
     def predict(
         self,
@@ -759,7 +768,8 @@ class RewardEnsemble(RewardNetWithVariance):
         **kwargs,
     ):
         """Return the mean of the ensemble members."""
-        return self.predict_processed(state, action, next_state, done, **kwargs)
+        mean, _ = self.predict_reward_moments(state, action, next_state, done, **kwargs)
+        return mean
 
 
 class AddSTDRewardWrapper(RewardNetWrapper):

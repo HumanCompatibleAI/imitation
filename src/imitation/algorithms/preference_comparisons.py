@@ -25,7 +25,7 @@ import torch as th
 from scipy import special
 from stable_baselines3.common import base_class, type_aliases, vec_env
 from torch import nn
-from torch.utils.data import DataLoader
+from torch.utils import data as data_th
 from tqdm.auto import tqdm
 
 from imitation.algorithms import base
@@ -985,7 +985,7 @@ class CrossEntropyRewardLoss(RewardLoss):
         """Computes the loss.
 
         Args:
-            model: Model to predict fragment preferences.
+            model: the reward network to call
             fragment_pairs: Batch consisting of pairs of trajectory fragments.
             preferences: The probability that the first fragment is preferred
                 over the second. Typically 0, 1 or 0.5 (tie).
@@ -1093,9 +1093,9 @@ class BasicRewardTrainer(RewardTrainer):
             weight_decay=weight_decay,
         )
 
-    def _make_data_loader(self, dataset: PreferenceDataset) -> DataLoader:
+    def _make_data_loader(self, dataset: PreferenceDataset) -> data_th.DataLoader:
         """Make a dataloader."""
-        return DataLoader(
+        return data_th.DataLoader(
             dataset,
             batch_size=self.batch_size,
             shuffle=True,
@@ -1142,7 +1142,24 @@ class EnsembleTrainer(BasicRewardTrainer):
         weight_decay: float = 0.0,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
     ):
-        """Create an ensemble trainer."""
+        """Initialize the reward model trainer.
+
+        Args:
+            model: the RewardNet instance to be trained
+            loss: the loss to use
+            batch_size: number of fragment pairs per batch
+            epochs: number of epochs in each training iteration (can be adjusted
+                on the fly by specifying an `epoch_multiplier` in `self.train()`
+                if longer training is desired in specific cases).
+            lr: the learning rate
+            weight_decay: the weight decay factor for the reward model's weights
+                to use with ``th.optim.AdamW``. This is similar to but not equivalent
+                to L2 regularization, see https://arxiv.org/abs/1711.05101
+            custom_logger: Where to log to; if None (default), creates a new logger.
+
+        Raises:
+            TypeError: if model is not a RewardEnsemble.
+        """
         if not isinstance(model, reward_nets.RewardEnsemble):
             raise TypeError(
                 f"RewardEnsemble expected by EnsembleTrainer not {type(model)}.",
@@ -1202,14 +1219,26 @@ def _make_reward_trainer(
     reward_trainer_kwargs: Mapping[str, Any] = {},
 ) -> RewardTrainer:
     """Construct the correct type of reward trainer for this reward function."""
+    if reward_trainer_kwargs is None:
+        reward_trainer_kwargs = {}
     is_ensemble, base_model = is_base_model_ensemble(reward_model)
 
     if is_ensemble:
-        return EnsembleTrainer(
-            base_model,
-            loss,
-            **reward_trainer_kwargs,
+        # reward_model may include an AddSTDRewardWrapper for RL training; but we
+        # must train directly on the base model for reward model training.
+        is_base = reward_model is base_model
+        is_std_wrapper = (
+            isinstance(reward_model, reward_nets.AddSTDRewardWrapper)
+            and reward_model.base is base_model
         )
+
+        if is_base or is_std_wrapper:
+            return EnsembleTrainer(base_model, loss, **reward_trainer_kwargs)
+        else:
+            raise ValueError(
+                "RewardEnsemble can only be wrapped"
+                f" by AddSTDRewardWrapper but found {type(reward_model).__name__}.",
+            )
     else:
         return BasicRewardTrainer(
             reward_model,

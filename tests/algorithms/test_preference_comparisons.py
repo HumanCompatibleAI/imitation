@@ -8,12 +8,12 @@ import pytest
 import seals  # noqa: F401
 import stable_baselines3
 
+import imitation.testing.reward_nets as testing_reward_nets
 from imitation.algorithms import preference_comparisons
 from imitation.data import types
 from imitation.data.types import TrajectoryWithRew
 from imitation.rewards import reward_nets
-from imitation.testing.reward_nets import make_ensemble
-from imitation.util import util
+from imitation.util import networks, util
 
 UNCERTAINTY_ON = ["logit", "probability", "label"]
 
@@ -29,9 +29,9 @@ def venv():
 @pytest.fixture(
     params=[
         reward_nets.BasicRewardNet,
-        make_ensemble,
+        testing_reward_nets.make_ensemble,
         lambda *args: reward_nets.AddSTDRewardWrapper(
-            make_ensemble(*args),
+            testing_reward_nets.make_ensemble(*args),
         ),
     ],
 )
@@ -227,15 +227,8 @@ def test_correct_reward_trainer_used_by_default(
         custom_logger=custom_logger,
     )
 
-    if isinstance(reward_net, reward_nets.RewardEnsemble):
-        assert isinstance(
-            main_trainer.reward_trainer,
-            preference_comparisons.EnsembleTrainer,
-        )
-    elif hasattr(reward_net, "base") and isinstance(
-        reward_net.base,
-        reward_nets.RewardEnsemble,
-    ):
+    base_reward_net = reward_net.base if hasattr(reward_net, "base") else reward_net
+    if isinstance(base_reward_net, reward_nets.RewardEnsemble):
         assert isinstance(
             main_trainer.reward_trainer,
             preference_comparisons.EnsembleTrainer,
@@ -244,6 +237,36 @@ def test_correct_reward_trainer_used_by_default(
         assert isinstance(
             main_trainer.reward_trainer,
             preference_comparisons.BasicRewardTrainer,
+        )
+
+
+def test_init_raises_error_when_trying_use_improperly_wrapped_ensemble(
+    agent_trainer,
+    venv,
+    random_fragmenter,
+    custom_logger,
+):
+    reward_net = testing_reward_nets.make_ensemble(
+        venv.observation_space,
+        venv.action_space,
+    )
+    reward_net = reward_nets.NormalizedRewardNet(reward_net, networks.RunningNorm)
+    rgx = (
+        r"RewardEnsemble can only be wrapped by "
+        r"AddSTDRewardWrapper but found NormalizedRewardNet."
+    )
+    with pytest.raises(
+        ValueError,
+        match=rgx,
+    ):
+        preference_comparisons.PreferenceComparisons(
+            agent_trainer,
+            reward_net,
+            num_iterations=2,
+            transition_oversampling=2,
+            fragment_length=2,
+            fragmenter=random_fragmenter,
+            custom_logger=custom_logger,
         )
 
 
