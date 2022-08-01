@@ -40,7 +40,7 @@ def save_checkpoint(
 ):
     """Save reward model and optionally policy."""
     os.makedirs(save_path, exist_ok=True)
-    th.save(trainer.reward_trainer.model, os.path.join(save_path, "reward_net.pt"))
+    th.save(trainer.model, os.path.join(save_path, "reward_net.pt"))
     if allow_save_policy:
         # Note: We should only save the model as model.pkl if `trajectory_generator`
         # contains one. Specifically we check if the `trajectory_generator` contains an
@@ -68,6 +68,7 @@ def train_preference_comparisons(
     trajectory_generator_kwargs: Mapping[str, Any],
     save_preferences: bool,
     agent_path: Optional[str],
+    cross_entropy_loss_kwargs: Mapping[str, Any],
     reward_trainer_kwargs: Mapping[str, Any],
     gatherer_cls: Type[preference_comparisons.PreferenceGatherer],
     gatherer_kwargs: Mapping[str, Any],
@@ -108,7 +109,8 @@ def train_preference_comparisons(
         save_preferences: if True, store the final dataset of preferences to disk.
         agent_path: if given, initialize the agent using this stored policy
             rather than randomly.
-        reward_trainer_kwargs: passed to CrossEntropyRewardTrainer
+        cross_entropy_loss_kwargs: passed to CrossEntropyRewardLoss
+        reward_trainer_kwargs: passed to BasicRewardTrainer or EnsembleRewardTrainer
         gatherer_cls: type of PreferenceGatherer to use (defaults to SyntheticGatherer)
         gatherer_kwargs: passed to the PreferenceGatherer specified by gatherer_cls
         fragmenter_kwargs: passed to RandomFragmenter
@@ -180,10 +182,15 @@ def train_preference_comparisons(
         seed=_seed,
         custom_logger=custom_logger,
     )
-    reward_trainer = preference_comparisons.CrossEntropyRewardTrainer(
-        model=reward_net,
-        **reward_trainer_kwargs,
-        custom_logger=custom_logger,
+
+    loss = preference_comparisons.CrossEntropyRewardLoss(
+        **cross_entropy_loss_kwargs,
+    )
+
+    reward_trainer = preference_comparisons._make_reward_trainer(
+        reward_net,
+        loss,
+        reward_trainer_kwargs,
     )
 
     main_trainer = preference_comparisons.PreferenceComparisons(

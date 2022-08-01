@@ -51,6 +51,11 @@ ALL_SCRIPTS_MODS = [
 ]
 
 TEST_DATA_PATH = pathlib.Path("tests/testdata")
+CARTPOLE_TEST_DATA_PATH = TEST_DATA_PATH / "expert_models/cartpole_0/"
+CARTPOLE_TEST_POLICY_PATH = CARTPOLE_TEST_DATA_PATH / "policies/final"
+
+PENDULUM_TEST_DATA_PATH = TEST_DATA_PATH / "expert_models/pendulum_0/"
+
 OLD_FMT_ROLLOUT_TEST_DATA_PATH = TEST_DATA_PATH / "old_format_rollout.pkl"
 
 
@@ -79,10 +84,11 @@ def test_main_console(script_mod):
 
 
 _rl_agent_loading_configs = {
+    "agent_path": CARTPOLE_TEST_POLICY_PATH,
     # FIXME(yawen): the policy we load was trained on 8 parallel environments
-    # and for some reason using it breaks if we use just 1 (like would be the
-    # default with the fast named_config)
-    "common": dict(num_vec=2),
+    #  and for some reason using it breaks if we use just 1 (like would be the
+    #  default with the fast named_config)
+    "common": dict(num_vec=8),
 }
 
 PREFERENCE_COMPARISON_CONFIGS = [
@@ -178,7 +184,7 @@ def test_train_preference_comparisons_sac(tmpdir):
         ["reward.normalize_output_disable"],
     ),
 )
-def test_train_preference_comparisons_reward_norm_named_config(tmpdir, named_configs):
+def test_train_preference_comparisons_reward_named_config(tmpdir, named_configs):
     config_updates = dict(common=dict(log_root=tmpdir))
     run = train_preference_comparisons.train_preference_comparisons_ex.run(
         named_configs=["seals_cartpole"]
@@ -224,7 +230,7 @@ def test_train_bc_main(tmpdir):
         command_name="bc",
         named_configs=["seals_cartpole"] + ALGO_FAST_CONFIGS["imitation"],
         config_updates=dict(
-            common=dict(log_root=tmpdir),
+            common=dict(log_root=tmpdir)
         ),
     )
     assert run.status == "COMPLETED"
@@ -330,9 +336,7 @@ def _check_train_ex_result(result: dict):
 @pytest.mark.parametrize("command", ("airl", "gail"))
 def test_train_adversarial(tmpdir, named_configs, command):
     """Smoke test for imitation.scripts.train_adversarial."""
-    named_configs = (
-        named_configs + ["seals_cartpole"] + ALGO_FAST_CONFIGS["adversarial"]
-    )
+    named_configs = named_configs + ["seals_cartpole"] + ALGO_FAST_CONFIGS["adversarial"]
     config_updates = {
         "common": dict(log_root=tmpdir),
         # TensorBoard logs to get extra coverage
@@ -356,7 +360,7 @@ def test_train_adversarial_sac(tmpdir, command):
         ["pendulum"] + ALGO_FAST_CONFIGS["adversarial"] + RL_SAC_NAMED_CONFIGS
     )
     config_updates = {
-        "common": dict(log_root=tmpdir),
+        "common": dict(log_root=tmpdir)
     }
     run = train_adversarial.train_adversarial_ex.run(
         command_name=command,
@@ -373,7 +377,7 @@ def test_train_adversarial_algorithm_value_error(tmpdir):
     base_named_configs = ["seals_cartpole"] + ALGO_FAST_CONFIGS["adversarial"]
     base_config_updates = collections.ChainMap(
         {
-            "common": dict(log_root=tmpdir),
+            "common": dict(log_root=tmpdir)
         },
     )
 
@@ -626,6 +630,9 @@ def test_analyze_imitation(tmpdir: str, run_names: List[str], run_sacred_fn):
 
 
 def test_analyze_gather_tb(tmpdir: str):
+    if os.name == "nt":  # pragma: no cover
+        pytest.skip("gather_tb uses symlinks: not supported by Windows")
+
     config_updates = dict(local_dir=tmpdir, run_name="test")
     config_updates.update(PARALLEL_CONFIG_LOW_RESOURCE)
     parallel_run = parallel.parallel_ex.run(
