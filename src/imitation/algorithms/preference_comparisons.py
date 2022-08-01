@@ -347,16 +347,26 @@ class PreferenceModel(nn.Module):
         """
         super().__init__()
         self.model = model
-        self.discount_factor = discount_factor
         self.noise_prob = noise_prob
+        self.discount_factor = discount_factor
         self.threshold = threshold
         self.is_ensemble, base_model = is_base_model_ensemble(self.model)
         # if the base model is an ensemble model, then keep the base model as
         # model to get rewards from all networks
         if self.is_ensemble:
             self.model = base_model
+            self.member_pref_models = []
+            for member in self.model.members:
+                member_pref_model = PreferenceModel(
+                    member, self.noise_prob, self.discount_factor, self.threshold
+                )
+                self.member_pref_models.append(member_pref_model)
 
-    def forward(self, fragment_pairs: Sequence[TrajectoryPair]):
+    def forward(
+        self,
+        fragment_pairs: Sequence[TrajectoryPair],
+        ensemble_member_index: Optional[int] = None,
+    ):
         """Computes the preference probability of the first fragment for all pairs.
 
         Note: This function passes the gradient through for non-ensemble models.
@@ -368,6 +378,7 @@ class PreferenceModel(nn.Module):
 
         Args:
             fragment_pairs: batch of pair of fragments.
+            ensemble_member_index: index of member network in ensemble model
 
         Returns:
             The preference probability for the first fragment for all fragment pairs
@@ -376,12 +387,15 @@ class PreferenceModel(nn.Module):
                    (num_fragment_pairs, num_networks) for ensemble of networks.
 
         """
-        batch_size = len(fragment_pairs)
-        probs_shape = (batch_size,)
         if self.is_ensemble:
-            probs_shape = (batch_size, self.model.num_members)
-        probs = th.empty(*probs_shape, dtype=th.float32)
+            assert (
+                ensemble_member_index is not None
+            ), "`ensemble_member_index` required for ensemble models"
 
+            pref_model = self.member_pref_models[ensemble_member_index]
+            return pref_model(fragment_pairs)
+
+        probs = th.empty(len(fragment_pairs), dtype=th.float32)
         for i, fragment in enumerate(fragment_pairs):
             frag1, frag2 = fragment
             trans1 = rollout.flatten_trajectories([frag1])
@@ -654,8 +668,8 @@ class ActiveSelectionFragmenter(Fragmenter):
             fragment_length=fragment_length,
             num_pairs=fragments_to_sample,
         )
-        var_estimates = []
-        for fragment in fragment_pairs:
+        var_estimates = np.zeros(len(fragment_pairs))
+        for i, fragment in enumerate(fragment_pairs):
             frag1, frag2 = fragment
             trans1 = rollout.flatten_trajectories([frag1])
             trans2 = rollout.flatten_trajectories([frag2])
@@ -663,8 +677,7 @@ class ActiveSelectionFragmenter(Fragmenter):
                 rews1 = self.preference_model.rewards(trans1)
                 rews2 = self.preference_model.rewards(trans2)
             var_estimate = self.variance_estimate(rews1, rews2)
-            var_estimates.append(var_estimate)
-
+            var_estimates[i] = var_estimate
         fragment_idxs = np.argsort(var_estimates)[::-1]  # sort in descending order
         # return fragment pairs that have the highest uncertainty
         return [fragment_pairs[idx] for idx in fragment_idxs[:num_pairs]]
@@ -683,7 +696,7 @@ class ActiveSelectionFragmenter(Fragmenter):
         """
         if self.uncertainty_on == "logit":
             rews1, rews2 = rews1.sum(0), rews2.sum(0)
-            var_estimate = (rews1 - rews2).var()
+            var_estimate = (rews1 - rews2).var().item()
         else:  # uncertainty_on is probability or label
             probs = (
                 self.preference_model.probability(
@@ -950,58 +963,36 @@ class CrossEntropyRewardLoss(RewardLoss):
 
     def __init__(
         self,
-        noise_prob: float = 0.0,
-        discount_factor: float = 1.0,
-        threshold: float = 50,
+        preference_model: PreferenceModel,
     ):
         """Create cross entropy reward loss.
 
         Args:
-            noise_prob: assumed probability with which the preference
-                is uniformly random (used for the model of preference generation
-                that is used for the loss)
-            discount_factor: the model of preference generation uses a softmax
-                of returns as the probability that a fragment is preferred.
-                This is the discount factor used to calculate those returns.
-                Default is 1, i.e. undiscounted sums of rewards (which is what
-                the DRLHP paper uses).
-            threshold: the preference model used to compute the loss contains
-                a softmax of returns. To avoid overflows, we clip differences
-                in returns that are above this threshold. This threshold
-                is therefore in logspace. The default value of 50 means
-                that probabilities below 2e-22 are rounded up to 2e-22.
+            preference_model: model to predict the preferred fragment from a pair.
         """
         super().__init__()
-        self.discount_factor = discount_factor
-        self.noise_prob = noise_prob
-        self.threshold = threshold
+        self.preference_model = preference_model
 
     def forward(
         self,
-        model: reward_nets.RewardNet,
         fragment_pairs: Sequence[TrajectoryPair],
         preferences: np.ndarray,
+        ensemble_member_index: Optional[int] = None,
     ) -> LossAndMetrics:
         """Computes the loss.
 
         Args:
-            model: the reward network to call
             fragment_pairs: Batch consisting of pairs of trajectory fragments.
             preferences: The probability that the first fragment is preferred
                 over the second. Typically 0, 1 or 0.5 (tie).
+            ensemble_member_index: index of member network in ensemble model
 
         Returns:
             The cross-entropy loss between the probability predicted by the
                 reward model and the target probabilities in `preferences`. Metrics
                 are include accuracy.
         """
-        preference_model = PreferenceModel(
-            model,
-            noise_prob=self.noise_prob,
-            discount_factor=self.discount_factor,
-            threshold=self.threshold,
-        )
-        probs = preference_model(fragment_pairs)
+        probs = self.preference_model(fragment_pairs, ensemble_member_index)
         # TODO(ejnnr): Here and below, > 0.5 is problematic
         # because getting exactly 0.5 is actually somewhat
         # common in some environments (as long as sample=False or temperature=0).
@@ -1182,8 +1173,8 @@ class EnsembleTrainer(BasicRewardTrainer):
     ) -> th.Tensor:
         losses = []
         metrics = []
-        for member in self._model.members:
-            output = self.loss.forward(member, fragment_pairs, preferences)
+        for member_idx in range(self._model.num_members):
+            output = self.loss.forward(fragment_pairs, preferences, member_idx)
             losses.append(output.loss)
             metrics.append(output.metrics)
         losses = th.stack(losses)
@@ -1356,7 +1347,8 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
         self.model = reward_model
 
         if reward_trainer is None:
-            loss = CrossEntropyRewardLoss()
+            preference_model = PreferenceModel()
+            loss = CrossEntropyRewardLoss(preference_model)
             self.reward_trainer = _make_reward_trainer(reward_model, loss)
         else:
             self.reward_trainer = reward_trainer

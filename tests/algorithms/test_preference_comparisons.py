@@ -196,11 +196,14 @@ def test_trainer_no_crash(
 
 def test_reward_ensemble_trainer_raises_type_error(venv):
     reward_net = reward_nets.BasicRewardNet(venv.observation_space, venv.action_space)
-    loss = preference_comparisons.CrossEntropyRewardLoss(
+    preference_model = preference_comparisons.PreferenceModel(
+        model=reward_net,
         noise_prob=0.1,
         discount_factor=0.9,
         threshold=50,
     )
+    loss = preference_comparisons.CrossEntropyRewardLoss(preference_model)
+
     with pytest.raises(
         TypeError,
         match=r"RewardEnsemble expected by EnsembleTrainer not .*",
@@ -273,12 +276,13 @@ def test_init_raises_error_when_trying_use_improperly_wrapped_ensemble(
 def test_discount_rate_no_crash(agent_trainer, venv, random_fragmenter, custom_logger):
     # also use a non-zero noise probability to check that doesn't cause errors
     reward_net = reward_nets.BasicRewardNet(venv.observation_space, venv.action_space)
-    loss = preference_comparisons.CrossEntropyRewardLoss(
+    preference_model = preference_comparisons.PreferenceModel(
+        model=reward_net,
         noise_prob=0.1,
         discount_factor=0.9,
         threshold=50,
     )
-
+    loss = preference_comparisons.CrossEntropyRewardLoss(preference_model)
     reward_trainer = preference_comparisons.BasicRewardTrainer(
         reward_net,
         loss,
@@ -445,11 +449,13 @@ def test_active_fragmenter_discount_rate_no_crash(
         custom_logger=custom_logger,
     )
 
-    loss = preference_comparisons.CrossEntropyRewardLoss(
+    preference_model = preference_comparisons.PreferenceModel(
+        model=reward_net,
         noise_prob=0.1,
         discount_factor=0.9,
         threshold=50,
     )
+    loss = preference_comparisons.CrossEntropyRewardLoss(preference_model)
 
     reward_trainer = preference_comparisons.EnsembleTrainer(
         reward_net,

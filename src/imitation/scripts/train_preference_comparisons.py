@@ -181,11 +181,11 @@ def train_preference_comparisons(
         seed=_seed,
         custom_logger=custom_logger,
     )
+    preference_model = preference_comparisons.PreferenceModel(
+        **cross_entropy_loss_kwargs,
+        model=reward_net,
+    )
     if active_selection:
-        preference_model = preference_comparisons.PreferenceModel(
-            **cross_entropy_loss_kwargs,
-            model=reward_net,
-        )
         fragmenter = preference_comparisons.ActiveSelectionFragmenter(
             preference_model=preference_model,
             base_fragmenter=fragmenter,
@@ -200,7 +200,7 @@ def train_preference_comparisons(
     )
 
     loss = preference_comparisons.CrossEntropyRewardLoss(
-        **cross_entropy_loss_kwargs,
+        preference_model,
     )
 
     reward_trainer = preference_comparisons._make_reward_trainer(
