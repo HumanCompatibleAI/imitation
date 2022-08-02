@@ -49,7 +49,7 @@ commands:
       # Download and cache dependencies
       - restore_cache:
           keys:
-            - v6-linux-dependencies-{{ checksum "setup.py" }}
+            - v6-linux-dependencies-{{ checksum "setup.py" }}-DEBUGGING # TODO(tomtseng) rm DEBUGGING
 
       - run:
           name: install dependencies
@@ -59,7 +59,7 @@ commands:
       - save_cache:
           paths:
             - /venv
-          key: v6-linux-dependencies-{{ checksum "setup.py" }}
+          key: v6-linux-dependencies-{{ checksum "setup.py" }}-DEBUGGING # TODO(tomtseng) rm DEBUGGING
 
       - run:
           name: install imitation
