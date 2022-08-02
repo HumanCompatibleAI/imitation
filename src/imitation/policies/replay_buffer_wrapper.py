@@ -1,7 +1,7 @@
 """Wrapper for reward labeling for transitions sampled from a replay buffer."""
 
 
-from typing import Mapping, Optional
+from typing import Mapping, Optional, Type
 
 import numpy as np
 import torch as th
@@ -27,7 +27,13 @@ def _samples_to_reward_fn_input(
 class ReplayBufferRewardWrapper(ReplayBuffer):
     """Relabel the rewards in transitions sampled from a ReplayBuffer."""
 
-    def __init__(self, *args, reward_fn: Optional[RewardFn] = None, **kwargs):
+    def __init__(
+        self,
+        *args,
+        replay_buffer_cls: Type[ReplayBuffer] = ReplayBuffer,
+        reward_fn: Optional[RewardFn] = None,
+        **kwargs,
+    ):
         """Builds ReplayBufferRewardWrapper.
 
         Note(yawen): we directly inherit ReplayBuffer in this case and leave out the
@@ -36,10 +42,11 @@ class ReplayBufferRewardWrapper(ReplayBuffer):
 
         Args:
             *args: Arguments to ReplayBuffer.
+            replay_buffer_cls: Class of the replay buffer.
             reward_fn: Reward function for reward relabeling.
             **kwargs: keyword arguments for ReplayBuffer.
         """
-        self.replay_buffer = ReplayBuffer(*args, **kwargs)
+        self.replay_buffer = replay_buffer_cls(*args, **kwargs)
         self.reward_fn = reward_fn
 
     def sample(self, *args, **kwargs):
