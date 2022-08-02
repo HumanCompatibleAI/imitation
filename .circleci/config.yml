@@ -282,6 +282,7 @@ jobs:
   unit-test-macos:
     macos:
       xcode: 13.4.1
+    resource_class: large
 
     steps:
       - dependencies-macos
