@@ -33,7 +33,7 @@ pip install imitation
 
 ### Install from source
 
-If you like, you can install `imitation` from source to [contribute to the project](https://imitation.readthedocs.io/en/latest/guide/contributing.html) or access the very last features before a stable release. You can do this by cloning the GitHub repository and running the installer directly. First run:
+If you like, you can install `imitation` from source to [contribute to the project][contributing] or access the very last features before a stable release. You can do this by cloning the GitHub repository and running the installer directly. First run:
 `git clone http://github.com/HumanCompatibleAI/imitation && cd imitation`.
 
 For development mode, then run:
@@ -90,7 +90,7 @@ See [examples/quickstart.py](examples/quickstart.py) for an example script that 
 
 ### Density reward baseline
 
-We also implement a density-based reward baseline. You can find an [example notebook here](examples/density_baseline_demo.ipynb).
+We also implement a density-based reward baseline. You can find an [example notebook here](examples/7_train_density.ipynb).
 
 # Citations (BibTeX)
 
@@ -107,4 +107,7 @@ We also implement a density-based reward baseline. You can find an [example note
 
 # Contributing
 
-See [Contributing to imitation](https://imitation.readthedocs.io/en/latest/guide/contributing.html) for more information.
+See [Contributing to imitation][contributing] for more information.
+
+
+[contributing]: https://imitation.readthedocs.io/en/latest/development/contributing/index.html
