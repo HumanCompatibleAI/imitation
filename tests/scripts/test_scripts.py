@@ -229,9 +229,7 @@ def test_train_bc_main(tmpdir):
     run = train_imitation.train_imitation_ex.run(
         command_name="bc",
         named_configs=["seals_cartpole"] + ALGO_FAST_CONFIGS["imitation"],
-        config_updates=dict(
-            common=dict(log_root=tmpdir)
-        ),
+        config_updates=dict(common=dict(log_root=tmpdir)),
     )
     assert run.status == "COMPLETED"
     assert isinstance(run.result, dict)
@@ -336,7 +334,9 @@ def _check_train_ex_result(result: dict):
 @pytest.mark.parametrize("command", ("airl", "gail"))
 def test_train_adversarial(tmpdir, named_configs, command):
     """Smoke test for imitation.scripts.train_adversarial."""
-    named_configs = named_configs + ["seals_cartpole"] + ALGO_FAST_CONFIGS["adversarial"]
+    named_configs = (
+        named_configs + ["seals_cartpole"] + ALGO_FAST_CONFIGS["adversarial"]
+    )
     config_updates = {
         "common": dict(log_root=tmpdir),
         # TensorBoard logs to get extra coverage
@@ -359,9 +359,7 @@ def test_train_adversarial_sac(tmpdir, command):
     named_configs = (
         ["pendulum"] + ALGO_FAST_CONFIGS["adversarial"] + RL_SAC_NAMED_CONFIGS
     )
-    config_updates = {
-        "common": dict(log_root=tmpdir)
-    }
+    config_updates = dict(common=dict(log_root=tmpdir))
     run = train_adversarial.train_adversarial_ex.run(
         command_name=command,
         named_configs=named_configs,
@@ -375,11 +373,7 @@ def test_train_adversarial_sac(tmpdir, command):
 def test_train_adversarial_algorithm_value_error(tmpdir):
     """Error on bad algorithm arguments."""
     base_named_configs = ["seals_cartpole"] + ALGO_FAST_CONFIGS["adversarial"]
-    base_config_updates = collections.ChainMap(
-        {
-            "common": dict(log_root=tmpdir)
-        },
-    )
+    base_config_updates = collections.ChainMap(dict(common=dict(log_root=tmpdir)))
 
     with pytest.raises(TypeError, match=".*BAD_VALUE.*"):
         train_adversarial.train_adversarial_ex.run(
@@ -601,7 +595,7 @@ def test_analyze_imitation(tmpdir: str, run_names: List[str], run_sacred_fn):
     sacred_logs_dir = tmpdir = pathlib.Path(tmpdir)
 
     # Generate sacred logs (other logs are put in separate tmpdir for deletion).
-    for i, run_name in enumerate(run_names):
+    for run_name in run_names:
         with tempfile.TemporaryDirectory(prefix="junk") as log_dir:
             run = run_sacred_fn(run_name, sacred_logs_dir, log_dir)
             assert run.status == "COMPLETED"
