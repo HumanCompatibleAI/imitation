@@ -2,8 +2,9 @@
 
 import logging
 import warnings
-from typing import Any, Mapping, Type
+from typing import Any, Mapping, Optional, Type
 
+import gym
 import sacred
 import stable_baselines3 as sb3
 from stable_baselines3.common import (
@@ -14,6 +15,8 @@ from stable_baselines3.common import (
 )
 
 from imitation.policies import serialize
+from imitation.policies.replay_buffer_wrapper import ReplayBufferRewardWrapper
+from imitation.rewards.reward_function import RewardFn
 from imitation.scripts.common.train import train_ingredient
 
 rl_ingredient = sacred.Ingredient("rl", ingredients=[train_ingredient])
@@ -80,6 +83,7 @@ def make_rl_algo(
     rl_kwargs: Mapping[str, Any],
     train: Mapping[str, Any],
     _seed: int,
+    relabel_reward_fn: Optional[RewardFn] = None,
 ) -> base_class.BaseAlgorithm:
     """Instantiates a Stable Baselines3 RL algorithm.
 
@@ -90,6 +94,8 @@ def make_rl_algo(
         rl_kwargs: Keyword arguments for RL algorithm constructor.
         train: Configuration for the train ingredient. We need the
             policy_cls and policy_kwargs component.
+        relabel_reward_fn: Reward function used for reward relabeling
+            in replay or rollout buffers of RL algorithms.
 
     Returns:
         The RL algorithm.
@@ -117,6 +123,13 @@ def make_rl_algo(
         if rl_kwargs.get("batch_size") is not None:
             raise ValueError("set 'batch_size' at top-level")
         rl_kwargs["batch_size"] = batch_size
+        if relabel_reward_fn:
+            assert not isinstance(venv.observation_space, gym.spaces.Dict)
+            # Note(yawen): We don't support HerReplayBuffer or DictReplayBuffer yet,
+            # since current RewardFn only takes in NumPy array-based inputs.
+            rl_kwargs["replay_buffer_class"] = ReplayBufferRewardWrapper
+            rl_kwargs["replay_buffer_kwargs"] = dict(reward_fn=relabel_reward_fn)
+
     else:
         raise TypeError(f"Unsupported RL algorithm '{rl_cls}'")
     rl_algo = rl_cls(
@@ -142,7 +155,17 @@ def load_rl_algo_from_path(
     rl_cls: Type[base_class.BaseAlgorithm],
     rl_kwargs: Mapping[str, Any],
     _seed: int,
+    relabel_reward_fn: Optional[RewardFn] = None,
 ) -> base_class.BaseAlgorithm:
+    rl_kwargs = dict(rl_kwargs)
+    if relabel_reward_fn and issubclass(
+        rl_cls,
+        off_policy_algorithm.OffPolicyAlgorithm,
+    ):
+        assert not isinstance(venv.observation_space, gym.spaces.Dict)
+        # Note(yawen): We don't support HerReplayBuffer or DictReplayBuffer yet.
+        rl_kwargs["replay_buffer_class"] = ReplayBufferRewardWrapper
+        rl_kwargs["replay_buffer_kwargs"] = dict(reward_fn=relabel_reward_fn)
     agent = serialize.load_stable_baselines_model(
         cls=rl_cls,
         path=agent_path,

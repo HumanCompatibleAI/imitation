@@ -4,7 +4,6 @@ Trains a reward model and optionally a policy based on preferences
 between trajectory fragments.
 """
 import abc
-import functools
 import math
 import pickle
 import random
@@ -24,12 +23,7 @@ from typing import (
 import numpy as np
 import torch as th
 from scipy import special
-from stable_baselines3.common import (
-    base_class,
-    off_policy_algorithm,
-    type_aliases,
-    vec_env,
-)
+from stable_baselines3.common import base_class, type_aliases, vec_env
 from torch import nn
 from torch.utils import data as data_th
 from tqdm.auto import tqdm
@@ -43,7 +37,7 @@ from imitation.data.types import (
     TrajectoryWithRewPair,
     Transitions,
 )
-from imitation.policies import exploration_wrapper, replay_buffer_wrapper
+from imitation.policies import exploration_wrapper
 from imitation.rewards import reward_function, reward_nets, reward_wrapper
 from imitation.util import logger as imit_logger
 from imitation.util import networks, util
@@ -136,7 +130,6 @@ class AgentTrainer(TrajectoryGenerator):
         random_prob: float = 0.5,
         seed: Optional[int] = None,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
-        reward_relabel: bool = False,
     ):
         """Initialize the agent trainer.
 
@@ -167,16 +160,6 @@ class AgentTrainer(TrajectoryGenerator):
             reward_fn = reward_fn.predict_processed
         self.reward_fn = reward_fn
         self.exploration_frac = exploration_frac
-
-        if reward_relabel:
-            assert isinstance(self.algorithm, off_policy_algorithm.OffPolicyAlgorithm)
-            relabel_reward_fn = functools.partial(reward_fn, update_stats=False)
-            self.algorithm.replay_buffer = (
-                replay_buffer_wrapper.ReplayBufferRewardWrapper(
-                    self.algorithm.replay_buffer,
-                    relabel_reward_fn,
-                )
-            )
 
         venv = self.algorithm.get_env()
         if not isinstance(venv, vec_env.VecEnv):
