@@ -253,9 +253,7 @@ def test_train_bc_main_with_expert_path(tmpdir):
         named_configs=["seals_cartpole"] + ALGO_FAST_CONFIGS["imitation"],
         config_updates=dict(
             common=dict(log_root=tmpdir),
-            expert=dict(
-                policy_path="tests/testdata/expert_models/cartpole_0/policies/final/model.zip"
-            ),
+            expert=dict(policy_path=CARTPOLE_TEST_POLICY_PATH / "model.zip"),
         ),
     )
     assert run.status == "COMPLETED"
