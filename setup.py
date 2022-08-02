@@ -29,7 +29,9 @@ TESTS_REQUIRE = (
         "codespell",
         "darglint",
         "filelock",
-        "flake8",
+        # TODO(adam): remove pin once flake8-isort fixed:
+        #  https://github.com/gforcada/flake8-isort/issues/115
+        "flake8~=4.0.1",
         "flake8-blind-except",
         "flake8-builtins",
         "flake8-commas",
