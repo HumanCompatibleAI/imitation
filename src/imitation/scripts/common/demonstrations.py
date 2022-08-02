@@ -55,6 +55,9 @@ def generate_expert_trajs(
 
     Returns:
         The expert trajectories.
+
+    Raises:
+        ValueError: If n_expert_demos is None.
     """
     if n_expert_demos is None:
         raise ValueError("n_expert_demos must be specified when rollout_path is None")
