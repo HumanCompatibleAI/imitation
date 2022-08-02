@@ -55,8 +55,7 @@ TESTS_REQUIRE = (
     + PYTYPE
 )
 DOCS_REQUIRE = [
-    # TODO(adam): unpin once https://github.com/sphinx-doc/sphinx/issues/10705 fixed
-    "sphinx~=5.0.2",
+    "sphinx~=5.1.1",
     "sphinx-autodoc-typehints",
     "sphinx-rtd-theme",
     "sphinxcontrib-napoleon",
