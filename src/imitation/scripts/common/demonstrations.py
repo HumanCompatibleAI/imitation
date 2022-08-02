@@ -56,17 +56,17 @@ def generate_expert_trajs(
     Returns:
         The expert trajectories.
     """
+    if n_expert_demos is None:
+        raise ValueError("n_expert_demos must be specified when rollout_path is None")
+
     rollout_env = DummyVecEnv(
         [lambda: RolloutInfoWrapper(gym.make(common["env_name"])) for _ in range(4)],
     )
-    if n_expert_demos is not None:
-        return rollout.rollout(
-            expert.get_expert_policy(),
-            rollout_env,
-            rollout.make_sample_until(min_timesteps=2000, min_episodes=n_expert_demos),
-        )
-    else:
-        return None
+    return rollout.rollout(
+        expert.get_expert_policy(),
+        rollout_env,
+        rollout.make_sample_until(min_timesteps=2000, min_episodes=n_expert_demos),
+    )
 
 
 @demonstrations_ingredient.capture
