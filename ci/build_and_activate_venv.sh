@@ -45,7 +45,7 @@ if [[ ${venv} == "" ]]; then
   venv="venv"
 fi
 
-virtualenv -p python3.8 ${venv}
+virtualenv -p python3.9 ${venv}
 # shellcheck disable=SC1090,SC1091
 source ${venv}/bin/activate
 python -m pip install --upgrade pip
