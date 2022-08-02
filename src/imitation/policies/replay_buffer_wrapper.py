@@ -1,10 +1,11 @@
 """Wrapper for reward labeling for transitions sampled from a replay buffer."""
 
 
-from typing import Mapping
+from typing import Mapping, Union
 
 import numpy as np
 import torch as th
+from gym import spaces
 from stable_baselines3.common.buffers import ReplayBuffer
 from stable_baselines3.common.type_aliases import ReplayBufferSamples
 
@@ -24,27 +25,59 @@ def _samples_to_reward_fn_input(
     )
 
 
-class ReplayBufferRewardWrapper:
+class ReplayBufferRewardWrapper(ReplayBuffer):
     """Relabel the rewards in transitions sampled from a ReplayBuffer."""
 
-    def __init__(self, replay_buffer: ReplayBuffer, reward_fn: RewardFn):
+    def __init__(
+        self,
+        buffer_size: int,
+        observation_space: spaces.Space,
+        action_space: spaces.Space,
+        reward_fn: RewardFn,
+        device: Union[th.device, str] = "cpu",
+        n_envs: int = 1,
+        optimize_memory_usage: bool = False,
+        handle_timeout_termination: bool = True,
+    ):
         """Builds ReplayBufferRewardWrapper.
 
+        Note(yawen): we directly inherit ReplayBuffer in this case and leave out the
+        choice of DictReplayBuffer because the current RewardFn only takes in NumPy
+        array-based inputs, and SAC is the only use case for ReplayBuffer relabeling.
+
         Args:
-            replay_buffer: Replay buffer to wrap.
+            buffer_size: Max number of element in the buffer
+            observation_space: Observation space
+            action_space: Action space
             reward_fn: The reward function used to relabel rewards.
+            device: Device to store the data in
+            n_envs: Number of parallel environments
+            optimize_memory_usage: Enable a memory efficient variant
+                of the replay buffer which reduces by almost a factor two the memory
+                used, at a cost of more complexity.
+            handle_timeout_termination: Handle timeout termination (due to timelimit)
+                separately and treat the task as infinite horizon task.
+                https://github.com/DLR-RM/stable-baselines3/issues/284
         """
-        self.replay_buffer = replay_buffer
+        super().__init__(
+            buffer_size,
+            observation_space,
+            action_space,
+            device,
+            n_envs,
+            optimize_memory_usage,
+            handle_timeout_termination,
+        )
         self.reward_fn = reward_fn
+        self.device = device
 
     def sample(self, *args, **kwargs):
-        samples = self.replay_buffer.sample(*args, **kwargs)
+        samples = self.sample(*args, **kwargs)
 
         rewards = self.reward_fn(**_samples_to_reward_fn_input(samples))
 
-        device = samples.rewards.device
         shape = samples.rewards.shape
-        rewards_th = util.safe_to_tensor(rewards).reshape(shape).to(device)
+        rewards_th = util.safe_to_tensor(rewards).reshape(shape).to(self.device)
 
         return ReplayBufferSamples(
             samples.observations,
@@ -53,18 +86,3 @@ class ReplayBufferRewardWrapper:
             samples.dones,
             rewards_th,
         )
-
-    def add(self, *args, **kwargs):
-        self.replay_buffer.add(*args, **kwargs)
-
-    def size(self) -> int:
-        return self.replay_buffer.size()
-
-    def extend(self, *args, **kwargs) -> None:
-        self.replay_buffer.extend(*args, **kwargs)
-
-    def reset(self) -> None:
-        self.replay_buffer.reset()
-
-    def to_torch(self, array: np.ndarray, copy: bool = True) -> th.Tensor:
-        return self.replay_buffer.to_torch(array, copy)

@@ -14,7 +14,7 @@ import shutil
 import sys
 import tempfile
 from collections import Counter
-from typing import List, Optional
+from typing import List, Mapping, Optional
 from unittest import mock
 
 import numpy as np
@@ -156,10 +156,8 @@ def test_train_preference_comparisons_envs_no_crash(tmpdir, env_name):
     assert isinstance(run.result, dict)
 
 
-@pytest.mark.parametrize("reward_relabel", (False, True))
-def test_train_preference_comparisons_sac(tmpdir, reward_relabel):
+def test_train_preference_comparisons_sac(tmpdir):
     config_updates = dict(
-        trajectory_generator_kwargs=dict(reward_relabel=reward_relabel),
         common=dict(log_root=tmpdir),
     )
     run = train_preference_comparisons.train_preference_comparisons_ex.run(
@@ -568,15 +566,16 @@ def test_transfer_learning(tmpdir: str) -> None:
 
 
 @pytest.mark.parametrize(
-    "named_configs",
+    "named_configs_dict",
     (
-        [],
-        ["reward.reward_ensemble"],
+        dict(pc=[], rl=[]),
+        dict(pc=["rl.sac", "train.sac"], rl=["rl.sac", "train.sac"]),
+        dict(pc=["reward.reward_ensemble"], rl=[]),
     ),
 )
 def test_preference_comparisons_transfer_learning(
     tmpdir: str,
-    named_configs: List[str],
+    named_configs_dict: Mapping[str, List[str]],
 ) -> None:
     """Transfer learning smoke test.
 
@@ -584,20 +583,20 @@ def test_preference_comparisons_transfer_learning(
 
     Args:
         tmpdir: Temporary directory to save results to.
-        named_configs: Named configs to use.
+        named_configs_dict: Named configs for preference_comparisons and rl.
     """
     tmpdir = pathlib.Path(tmpdir)
 
     log_dir_train = tmpdir / "train"
     run = train_preference_comparisons.train_preference_comparisons_ex.run(
-        named_configs=["cartpole"]
+        named_configs=["pendulum"]
         + ALGO_FAST_CONFIGS["preference_comparison"]
-        + named_configs,
+        + named_configs_dict["pc"],
         config_updates=dict(common=dict(log_dir=log_dir_train)),
     )
     assert run.status == "COMPLETED"
 
-    if "reward.reward_ensemble" in named_configs:
+    if "reward.reward_ensemble" in named_configs_dict["pc"]:
         assert run.config["reward"]["net_cls"] is reward_nets.RewardEnsemble
         assert run.config["reward"]["add_std_alpha"] == 0.0
         reward_type = "RewardNet_std_added"
@@ -608,13 +607,15 @@ def test_preference_comparisons_transfer_learning(
 
     log_dir_data = tmpdir / "train_rl"
     reward_path = log_dir_train / "checkpoints" / "final" / "reward_net.pt"
+    agent_path = log_dir_train / "checkpoints" / "final" / "policy"
     run = train_rl.train_rl_ex.run(
-        named_configs=["cartpole"] + ALGO_FAST_CONFIGS["rl"],
+        named_configs=["pendulum"] + ALGO_FAST_CONFIGS["rl"] + named_configs_dict["rl"],
         config_updates=dict(
             common=dict(log_dir=log_dir_data),
             reward_type=reward_type,
             reward_path=reward_path,
             load_reward_kwargs=load_reward_kwargs,
+            agent_path=agent_path,
         ),
     )
     assert run.status == "COMPLETED"
