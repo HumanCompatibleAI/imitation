@@ -49,8 +49,7 @@ commands:
       # Download and cache dependencies
       - restore_cache:
           keys:
-            # TODO(tomtseng) this is just for debugging
-            - v6-unix-dependencies-{{ checksum "setup.py" }}-NO-MUJOCO
+            - v6-unix-dependencies-{{ checksum "setup.py" }}
 
       - run:
           name: install dependencies
@@ -61,8 +60,7 @@ commands:
       - save_cache:
           paths:
             - /venv
-          # TODO(tomtseng) this is just for debugging
-          key: v6-unix-dependencies-{{ checksum "setup.py" }}-NO-MUJOCO
+          key: v6-unix-dependencies-{{ checksum "setup.py" }}
 
       - run:
           name: install imitation
@@ -239,8 +237,8 @@ jobs:
     executor:
       name: win/default
       size: xlarge
-      # using bash.exe as the default shell because the codecov/upload command
-      # does not work if we default to powershell.exe as it internally uses a bash script.
+      # using bash.exe as the default shell because the codecov/upload command 
+      # does not work if we default to powershell.exe as it internally uses a bash script. 
       # Moreover it is not possible to specify the shell just for that command.
       shell: bash.exe
 
@@ -295,7 +293,7 @@ jobs:
 
 workflows:
   version: 2
-  test:
+  test: 
     jobs:
       - lint:
           context:
