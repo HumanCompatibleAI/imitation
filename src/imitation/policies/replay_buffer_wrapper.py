@@ -5,6 +5,7 @@ from typing import Mapping, Optional
 
 import numpy as np
 import torch as th
+from gym import spaces
 from stable_baselines3.common.buffers import ReplayBuffer
 from stable_baselines3.common.type_aliases import ReplayBufferSamples
 
@@ -24,7 +25,7 @@ def _samples_to_reward_fn_input(
     )
 
 
-class ReplayBufferRewardWrapper:
+class ReplayBufferRewardWrapper(ReplayBuffer):
     """Relabel the rewards in transitions sampled from a ReplayBuffer."""
 
     def __init__(self, *args, reward_fn: Optional[RewardFn] = None, **kwargs):
@@ -41,6 +42,7 @@ class ReplayBufferRewardWrapper:
         """
         self.replay_buffer = ReplayBuffer(*args, **kwargs)
         self.reward_fn = reward_fn
+        self.device = device
 
     def sample(self, *args, **kwargs):
         samples = self.replay_buffer.sample(*args, **kwargs)
@@ -59,18 +61,3 @@ class ReplayBufferRewardWrapper:
             samples.dones,
             rewards_th,
         )
-
-    def add(self, *args, **kwargs):
-        self.replay_buffer.add(*args, **kwargs)
-
-    def size(self) -> int:
-        return self.replay_buffer.size()
-
-    def extend(self, *args, **kwargs) -> None:
-        self.replay_buffer.extend(*args, **kwargs)
-
-    def reset(self) -> None:
-        self.replay_buffer.reset()
-
-    def to_torch(self, array: np.ndarray, copy: bool = True) -> th.Tensor:
-        return self.replay_buffer.to_torch(array, copy)
