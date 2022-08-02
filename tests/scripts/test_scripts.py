@@ -237,7 +237,7 @@ def test_train_bc_main(tmpdir):
 
 def test_train_bc_main_with_none_demonstrations_raises_value_error(tmpdir):
     with pytest.raises(ValueError, match=".*n_expert_demos.*rollout_path.*"):
-        run = train_imitation.train_imitation_ex.run(
+        train_imitation.train_imitation_ex.run(
             command_name="bc",
             named_configs=["seals_cartpole"] + ALGO_FAST_CONFIGS["imitation"],
             config_updates=dict(
