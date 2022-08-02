@@ -4,8 +4,6 @@
 from typing import Mapping, Optional
 
 import numpy as np
-import torch as th
-from gym import spaces
 from stable_baselines3.common.buffers import ReplayBuffer
 from stable_baselines3.common.type_aliases import ReplayBufferSamples
 
@@ -42,7 +40,6 @@ class ReplayBufferRewardWrapper(ReplayBuffer):
         """
         self.replay_buffer = ReplayBuffer(*args, **kwargs)
         self.reward_fn = reward_fn
-        self.device = device
 
     def sample(self, *args, **kwargs):
         samples = self.replay_buffer.sample(*args, **kwargs)
