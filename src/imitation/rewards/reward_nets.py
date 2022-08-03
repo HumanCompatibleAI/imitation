@@ -792,11 +792,14 @@ class ChannelFirstRewardWrapper(RewardNetWrapper):
     ) -> th.Tensor:
         """Transpose state and next_state if necessary."""
         if self.obs_is_image:
-            transp_state = (self.transpose(state) if not self.has_channels_first(state)
-                            else state)
-            transp_next_state = (self.transpose(next_state)
-                                 if not self.has_channels_first(next_state)
-                                 else next_state)
+            transp_state = (
+                self.transpose(state) if not self.has_channels_first(state) else state
+            )
+            transp_next_state = (
+                self.transpose(next_state)
+                if not self.has_channels_first(next_state)
+                else next_state
+            )
             return self.base(transp_state, action, transp_next_state, done)
         else:
             return self.base(state, action, next_state, done)
