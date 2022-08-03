@@ -13,7 +13,7 @@ PARALLEL_REQUIRE = ["ray[debug,tune]>=1.13.0"]
 PYTYPE = ["pytype"] if IS_NOT_WINDOWS else []
 if IS_NOT_WINDOWS:
     # TODO(adam): use this for Windows as well once PyPI is at >=1.6.1
-    STABLE_BASELINES3 = "stable-baselines3>=1.6.0"
+    STABLE_BASELINES3 = "stable-baselines3[extra]>=1.6.0"
 else:
     STABLE_BASELINES3 = (
         "stable-baselines3@git+"
