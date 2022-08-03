@@ -787,7 +787,7 @@ class CrossEntropyRewardLoss(RewardLoss):
                 gt_probs,
                 preferences_th,
             )
-
+        metrics = {key: value.detach().cpu() for key, value in metrics.items()}
         return LossAndMetrics(
             loss=th.nn.functional.binary_cross_entropy(probs, preferences_th),
             metrics=metrics,
@@ -930,7 +930,7 @@ class BasicRewardTrainer(RewardTrainer):
         loss = output.loss
         self.logger.record("loss", loss.item())
         for name, value in output.metrics.items():
-            self.logger.record(name, value)
+            self.logger.record(name, value.item())
         return loss
 
 
