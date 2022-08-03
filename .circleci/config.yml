@@ -87,7 +87,7 @@ commands:
           # Only create venv if it's not been restored from cache.
           # We use python3.9 on macOS due to a bug with importing `ray` in python3.8:
           # https://github.com/ray-project/ray/issues/27380
-          command: "[[ -d ~/venv ]] || ./ci/build_and_activate_venv.sh python3.9 ~/venv"
+          command: "[[ -d ~/venv ]] || ./ci/build_and_activate_venv.sh ~/venv python3.9"
 
       - save_cache:
           paths:
