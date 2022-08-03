@@ -20,48 +20,47 @@ else:
         "https://github.com/DLR-RM/stable-baselines3.git@master"
     )
 
+# Note: the versions of the test and doc requirements should be tightly pinned to known
+#   working versions to make our CI/CD pipeline as stable as possible.
 TESTS_REQUIRE = (
     [
-        "seals",
-        "black[jupyter]",
-        "coverage",
-        "codecov",
-        "codespell",
-        "darglint",
-        "filelock",
-        # TODO(adam): remove pin once flake8-isort fixed:
-        #  https://github.com/gforcada/flake8-isort/issues/115
+        "seals==0.1.2",
+        "black[jupyter]~=22.6.0",
+        "coverage~=6.4.2",
+        "codecov~=2.1.12",
+        "codespell~=2.1.0",
+        "darglint~=1.8.1",
+        "filelock~=3.7.1",
         "flake8~=4.0.1",
-        "flake8-blind-except",
-        "flake8-builtins",
-        "flake8-commas",
-        "flake8-debugger",
-        "flake8-docstrings",
-        "flake8-isort",
-        "hypothesis",
-        "ipykernel",
-        "jupyter",
-        # remove pin once https://github.com/jupyter/jupyter_client/issues/637 fixed
-        "jupyter-client<7.0",
-        "pandas",
-        "pytest",
-        "pytest-cov",
-        "pytest-notebook",
-        "pytest-xdist",
-        "scipy>=1.8.0",
-        "wandb",
+        "flake8-blind-except==0.2.1",
+        "flake8-builtins~=1.5.3",
+        "flake8-commas~=2.1.0",
+        "flake8-debugger~=4.1.2",
+        "flake8-docstrings~=1.6.0",
+        "flake8-isort~=4.1.2",
+        "hypothesis~=6.54.1",
+        "ipykernel~=6.15.1",
+        "jupyter~=1.0.0",
+        "jupyter-client~=6.1.12",
+        "pandas~=1.4.3",
+        "pytest~=7.1.2",
+        "pytest-cov~=3.0.0",
+        "pytest-notebook==0.8.0",
+        "pytest-xdist~=2.5.0",
+        "scipy~=1.9.0",
+        "wandb=0.12.21",
     ]
     + PARALLEL_REQUIRE
     + PYTYPE
 )
 DOCS_REQUIRE = [
     "sphinx~=5.1.1",
-    "sphinx-autodoc-typehints",
-    "sphinx-rtd-theme",
-    "sphinxcontrib-napoleon",
-    "furo",
-    "sphinx-copybutton",
-    "sphinx-github-changelog",
+    "sphinx-autodoc-typehints~=1.19.1",
+    "sphinx-rtd-theme~=1.0.0",
+    "sphinxcontrib-napoleon==0.7",
+    "furo==2022.6.21",
+    "sphinx-copybutton==0.5.0",
+    "sphinx-github-changelog~=1.2.0",
 ]
 
 
@@ -103,6 +102,10 @@ setup(
     packages=find_packages("src"),
     package_dir={"": "src"},
     package_data={"imitation": ["py.typed", "envs/examples/airl_envs/assets/*.xml"]},
+    # Note: while we are strict with our test and doc requirement versions, we try to
+    #   impose as little restrictions on the install requirements as possible. Try to
+    #   encode only known incompatibilities here. This prevents nasty dependency issues
+    #   for our users.
     install_requires=[
         # If you change gym version here, change it in "mujoco" below too.
         # pinned to 0.21 until https://github.com/DLR-RM/stable-baselines3/pull/780
