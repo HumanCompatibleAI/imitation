@@ -725,6 +725,12 @@ def _generate_test_rollouts(tmpdir: str, env_named_config: str) -> pathlib.Path:
 
 
 def test_parallel_train_adversarial_custom_env(tmpdir):
+    if os.name == "nt":  # pragma: no cover
+        pytest.skip(
+            "`ray.init()` times out when this test runs concurrently with other "
+            "test_parallel tests on Windows (e.g., `pytest -n auto -k test_parallel`)"
+        )
+
     env_named_config = "pendulum"
     rollout_path = _generate_test_rollouts(tmpdir, env_named_config)
 
