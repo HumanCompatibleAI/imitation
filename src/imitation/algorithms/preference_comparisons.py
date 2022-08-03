@@ -995,17 +995,13 @@ class EnsembleTrainer(BasicRewardTrainer):
         loss = losses.sum()
 
         self.logger.record("loss", loss.item())
-        self.logger.record("loss_std", loss.std().item())
-        # Note here we are returning all the losses not just the mean
-        # This will give us a histogram
-        self.logger.record("dist_loss", losses.detach().cpu().numpy())
+        self.logger.record("loss_std", losses.std().item())
 
         # Turn metrics from a list of dictionaries into a dictionary of
-        # tensors. Again this should give us a histogram in tensorboard.
+        # tensors.
         metrics = {k: th.stack([di[k] for di in metrics]) for k in metrics[0]}
         for name, value in metrics.items():
             self.logger.record(name, value.mean().item())
-            self.logger.record(f"dist_{name}", value.cpu().numpy())
 
         return loss
 
