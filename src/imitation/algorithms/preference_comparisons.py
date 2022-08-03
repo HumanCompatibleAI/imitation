@@ -769,7 +769,9 @@ class CrossEntropyRewardLoss(RewardLoss):
             rews2 = _evaluate_reward_on_transitions(model, trans2)
             probs[i] = self._probability(rews1, rews2)
             if gt_reward_available:
-                gt_probs[i] = self._probability(frag1.rews, frag2.rews)
+                gt_rews_1 = th.from_numpy(frag1.rews)
+                gt_rews_2 = th.from_numpy(frag2.rews)
+                gt_probs[i] = self._probability(gt_rews_1, gt_rews_2)
         # TODO(ejnnr): Here and below, > 0.5 is problematic
         # because getting exactly 0.5 is actually somewhat
         # common in some environments (as long as sample=False or temperature=0).
