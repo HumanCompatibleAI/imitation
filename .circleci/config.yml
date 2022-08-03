@@ -49,7 +49,7 @@ commands:
       # Download and cache dependencies
       - restore_cache:
           keys:
-            - v6-linux-dependencies-{{ checksum "setup.py" }}-DEBUGGING
+            - v6-linux-dependencies-{{ checksum "setup.py" }}-{{ checksum "ci/build_and_activate_venv.sh" }}
 
       - run:
           name: install dependencies
@@ -59,7 +59,7 @@ commands:
       - save_cache:
           paths:
             - /venv
-          key: v6-linux-dependencies-{{ checksum "setup.py" }}-DEBUGGING
+          key: v6-linux-dependencies-{{ checksum "setup.py" }}-{{ checksum "ci/build_and_activate_venv.sh" }}
 
       - run:
           name: install imitation
@@ -80,18 +80,19 @@ commands:
 
       - restore_cache:
           keys:
-            - v6-macos-dependencies-{{ checksum "setup.py" }}-DEBUGGING #TODO(tomtseng)
+            - v6-macos-dependencies-{{ checksum "setup.py" }}-{{ checksum "ci/build_and_activate_venv.sh" }}
 
       - run:
           name: install dependencies
           # Only create venv if it's not been restored from cache.
-          # Skip installing MuJoCo for simplicity.
-          command: "[[ -d ~/venv ]] || ./ci/build_and_activate_venv.sh --skip-mujoco ~/venv"
+          # We use python3.9 on macOS due to a bug with importing `ray` in python3.8:
+          # https://github.com/ray-project/ray/issues/27380
+          command: "[[ -d ~/venv ]] || ./ci/build_and_activate_venv.sh python3.9 ~/venv"
 
       - save_cache:
           paths:
             - ~/venv
-          key: v6-macos-dependencies-{{ checksum "setup.py" }}-DEBUGGING #TODO(tomtseng)
+          key: v6-macos-dependencies-{{ checksum "setup.py" }}-{{ checksum "ci/build_and_activate_venv.sh" }}
 
       - run:
           name: install imitation
@@ -121,7 +122,8 @@ commands:
       # Download and cache dependencies
       - restore_cache:
           keys:
-            - v6-win-dependencies-{{ checksum "setup.py" }}
+            - v6-win-dependencies-{{ checksum "setup.py" }}-{{ checksum "ci/build_and_activate_venv.ps1" }}
+
 
       - run:
           name: install python and binary dependencies
@@ -144,7 +146,7 @@ commands:
       - save_cache:
           paths:
             - .\venv
-          key: v6-win-dependencies-{{ checksum "setup.py" }}
+          key: v6-win-dependencies-{{ checksum "setup.py" }}-{{ checksum "ci/build_and_activate_venv.ps1" }}
 
       - run:
           name: install imitation
