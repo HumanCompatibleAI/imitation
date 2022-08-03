@@ -29,7 +29,9 @@ TESTS_REQUIRE = (
         "codespell",
         "darglint",
         "filelock",
-        "flake8",
+        # TODO(adam): remove pin once flake8-isort fixed:
+        #  https://github.com/gforcada/flake8-isort/issues/115
+        "flake8~=4.0.1",
         "flake8-blind-except",
         "flake8-builtins",
         "flake8-commas",
@@ -53,8 +55,7 @@ TESTS_REQUIRE = (
     + PYTYPE
 )
 DOCS_REQUIRE = [
-    # TODO(adam): unpin once https://github.com/sphinx-doc/sphinx/issues/10705 fixed
-    "sphinx~=5.0.2",
+    "sphinx~=5.1.1",
     "sphinx-autodoc-typehints",
     "sphinx-rtd-theme",
     "sphinxcontrib-napoleon",
