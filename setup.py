@@ -20,6 +20,10 @@ else:
         "https://github.com/DLR-RM/stable-baselines3.git@master"
     )
 
+# pinned to 0.21 until https://github.com/DLR-RM/stable-baselines3/pull/780 goes
+# upstream.
+GYM_VERSION_SPECIFIER="==0.21.0"
+
 # Note: the versions of the test and doc requirements should be tightly pinned to known
 #   working versions to make our CI/CD pipeline as stable as possible.
 TESTS_REQUIRE = (
@@ -107,10 +111,7 @@ setup(
     #   encode only known incompatibilities here. This prevents nasty dependency issues
     #   for our users.
     install_requires=[
-        # If you change gym version here, change it in "mujoco" below too.
-        # pinned to 0.21 until https://github.com/DLR-RM/stable-baselines3/pull/780
-        # goes upstream.
-        "gym[classic_control]==0.21.0",
+        "gym[classic_control]" + GYM_VERSION_SPECIFIER,
         "matplotlib",
         "numpy>=1.15",
         "torch>=1.4.0",
@@ -142,7 +143,7 @@ setup(
         "docs": DOCS_REQUIRE,
         "parallel": PARALLEL_REQUIRE,
         "mujoco": [
-            "gym[classic_control,mujoco]==0.21.0",
+            "gym[classic_control,mujoco]" + GYM_VERSION_SPECIFIER,
         ],
     },
     entry_points={
