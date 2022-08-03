@@ -52,7 +52,7 @@ TESTS_REQUIRE = (
         "pytest-notebook==0.8.0",
         "pytest-xdist~=2.5.0",
         "scipy~=1.9.0",
-        "wandb=0.12.21",
+        "wandb==0.12.21",
     ]
     + PARALLEL_REQUIRE
     + PYTYPE
