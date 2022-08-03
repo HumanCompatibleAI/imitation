@@ -13,7 +13,7 @@ if [[ ${venv} == "" ]]; then
   venv="venv"
 fi
 python_version=$2
-if [[ ${venv} == "" ]]; then
+if [[ ${python_version} == "" ]]; then
   python_version="python3.8"
 fi
 

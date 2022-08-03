@@ -124,7 +124,6 @@ commands:
           keys:
             - v6-win-dependencies-{{ checksum "setup.py" }}-{{ checksum "ci/build_and_activate_venv.ps1" }}
 
-
       - run:
           name: install python and binary dependencies
           command: |
