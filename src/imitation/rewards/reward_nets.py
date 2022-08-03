@@ -434,11 +434,11 @@ class CnnRewardNet(RewardNet):
         Args:
             observation_space: The observation space.
             action_space: The action space.
-            use_state: should the current state be included as an input to the CNN?
-            use_action: should the current action be included as an input to the CNN?
-            use_next_state: should the next state be included as an input to the CNN?
-            use_done: should the "done" flag be included as an input to the CNN?
-            kwargs: passed straight through to `build_cnn`.
+            use_state: Should the current state be included as an input to the CNN?
+            use_action: Should the current action be included as an input to the CNN?
+            use_next_state: Should the next state be included as an input to the CNN?
+            use_done: Should the "done" flag be included as an input to the CNN?
+            kwargs: Passed straight through to `build_cnn`.
 
         Raises:
             ValueError: if observation or action space is not easily massaged into a
