@@ -22,7 +22,7 @@ else:
 
 # pinned to 0.21 until https://github.com/DLR-RM/stable-baselines3/pull/780 goes
 # upstream.
-GYM_VERSION_SPECIFIER="==0.21.0"
+GYM_VERSION_SPECIFIER = "==0.21.0"
 
 # Note: the versions of the test and doc requirements should be tightly pinned to known
 #   working versions to make our CI/CD pipeline as stable as possible.
