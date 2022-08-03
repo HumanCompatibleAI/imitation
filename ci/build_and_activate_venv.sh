@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# usage: ./build_and_activate_venv.sh [venv_path] [python_version]
+# Usage: ./build_and_activate_venv.sh [venv_path] [python_version]
 #   venv_path: Path at which the virtualenv directory should be created. Defaults to
 #     'venv'.
 #   python_version: Version of python to be used in the virtualenv. Defaults to
