@@ -699,6 +699,12 @@ def _evaluate_reward_on_transitions(
     return model(*preprocessed)
 
 
+def _trajectory_pair_includes_reward(fragment_pair: TrajectoryPair):
+    """Return true if and only if both fragments in the pair include rewards."""
+    frag1, frag2 = fragment_pair
+    return isinstance(frag1, TrajectoryWithRew) and isinstance(frag2, TrajectoryWithRew)
+
+
 class CrossEntropyRewardLoss(RewardLoss):
     """Compute the cross entropy reward loss."""
 
@@ -747,9 +753,14 @@ class CrossEntropyRewardLoss(RewardLoss):
         Returns:
             The cross-entropy loss between the probability predicted by the
                 reward model and the target probabilities in `preferences`. Metrics
-                are include accuracy.
+                are accuracy, and gt_reward_loss, if the ground truth reward is
+                available.
         """
+        gt_reward_available = _trajectory_pair_includes_reward(fragment_pairs[0])
         probs = th.empty(len(fragment_pairs), dtype=th.float32)
+        if gt_reward_available:
+            gt_probs = th.empty(len(fragment_pairs), dtype=th.float32)
+
         for i, fragment in enumerate(fragment_pairs):
             frag1, frag2 = fragment
             trans1 = rollout.flatten_trajectories([frag1])
@@ -757,6 +768,8 @@ class CrossEntropyRewardLoss(RewardLoss):
             rews1 = _evaluate_reward_on_transitions(model, trans1)
             rews2 = _evaluate_reward_on_transitions(model, trans2)
             probs[i] = self._probability(rews1, rews2)
+            if gt_reward_available:
+                gt_probs[i] = self._probability(frag1.rews, frag2.rews)
         # TODO(ejnnr): Here and below, > 0.5 is problematic
         # because getting exactly 0.5 is actually somewhat
         # common in some environments (as long as sample=False or temperature=0).
@@ -765,10 +778,17 @@ class CrossEntropyRewardLoss(RewardLoss):
         predictions = (probs > 0.5).float()
         preferences_th = th.as_tensor(preferences, dtype=th.float32)
         ground_truth = (preferences_th > 0.5).float()
-        accuracy = (predictions == ground_truth).float().mean()
+        metrics = {}
+        metrics["accuracy"] = (predictions == ground_truth).float().mean()
+        if gt_reward_available:
+            metrics["gt_reward_loss"] = th.nn.functional.binary_cross_entropy(
+                gt_probs,
+                preferences_th,
+            )
+
         return LossAndMetrics(
             loss=th.nn.functional.binary_cross_entropy(probs, preferences_th),
-            metrics={"accuracy": accuracy.detach().cpu()},
+            metrics=metrics,
         )
 
     def _probability(self, rews1: th.Tensor, rews2: th.Tensor) -> th.Tensor:
