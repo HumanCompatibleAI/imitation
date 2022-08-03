@@ -75,10 +75,12 @@ class AIRL(common.AdversarialTrainer):
 
         In Fu's AIRL paper (https://arxiv.org/pdf/1710.11248.pdf), the
         discriminator output was given as
-        $$
-        D_{\theta}(s,a) =
-        \frac{ \exp{r_{\theta}(s,a)} } { \exp{r_{\theta}(s,a)} + \pi(a|s) }
-        $$
+
+        .. math::
+
+            D_{\theta}(s,a) =
+            \frac{ \exp{r_{\theta}(s,a)} } { \exp{r_{\theta}(s,a)} + \pi(a|s) }
+
         with a high value corresponding to the expert and a low value corresponding to
         the generator.
 
@@ -86,9 +88,11 @@ class AIRL(common.AdversarialTrainer):
         taken by the expert rather than the generator.
 
         The logit of the above is given as
-        $$
-        \operatorname{logit}(D_{\theta}(s,a)) = r_{\theta}(s,a) - \log{ \pi(a|s) }
-        $$
+
+        .. math::
+
+            \operatorname{logit}(D_{\theta}(s,a)) = r_{\theta}(s,a) - \log{ \pi(a|s) }
+
         which is what is returned by this function.
 
         Args:
@@ -98,13 +102,13 @@ class AIRL(common.AdversarialTrainer):
             done: whether a `terminal state` (as defined under the MDP of the task) has
                 been reached.
             log_policy_act_prob: The log probability of the action taken by the
-                generator.
+                generator, :math:`\log{ \pi(a|s) }`.
 
         Returns:
             The logits of the discriminator for each state-action sample.
 
         Raises:
-            TypeError: If `log_policy_act_prob` is not a tensor.
+            TypeError: If `log_policy_act_prob` is None.
         """
         if log_policy_act_prob is None:
             raise TypeError(

@@ -1,5 +1,6 @@
 """Tests examples/*: quickstart code and Jupyter notebook."""
 
+import os
 import pathlib
 import subprocess
 import sys
@@ -62,6 +63,8 @@ def test_run_example_py_scripts(py_path):
 @pytest.mark.parametrize("sh_path", SH_PATHS)
 def test_run_example_sh_scripts(sh_path):
     """Smoke test ensuring that shell example scripts run without error."""
+    if os.name == "nt":  # pragma: no cover
+        pytest.skip("bash shell scripts not ported to Windows.")
     for _ in range(2):  # Repeat because historically these have failed on second run.
         exit_code = subprocess.call(["env", "bash", "-e", sh_path])
         assert exit_code == 0
@@ -75,6 +78,6 @@ def test_example_snippets_are_in_readme(snippet_path):
     """Check that README.md examples haven't diverged from snippets."""
     with open(snippet_path, "r") as f:
         x = "".join(f.readlines()[2:])  # strip away shebang line
-    with open("README.md") as f:
+    with open("README.md", "r", encoding="utf-8") as f:
         y = f.read()
     assert x in y, f"{snippet_path} has diverged from README.md"
