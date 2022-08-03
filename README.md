@@ -3,36 +3,64 @@
 [![codecov](https://codecov.io/gh/HumanCompatibleAI/imitation/branch/master/graph/badge.svg)](https://codecov.io/gh/HumanCompatibleAI/imitation)
 [![PyPI version](https://badge.fury.io/py/imitation.svg)](https://badge.fury.io/py/imitation)
 
-
 # Imitation Learning Baseline Implementations
 
 This project aims to provide clean implementations of imitation and reward learning algorithms.
-Currently, we have implementations of Behavioral Cloning, [DAgger](https://arxiv.org/pdf/1011.0686.pdf) (with synthetic examples), density-based reward modeling, [Maximum Causal Entropy Inverse Reinforcement Learning](https://www.cs.cmu.edu/~bziebart/publications/maximum-causal-entropy.pdf), [Adversarial Inverse Reinforcement Learning](https://arxiv.org/abs/1710.11248), [Generative Adversarial Imitation Learning](https://arxiv.org/abs/1606.03476) and [Deep RL from Human Preferences](https://arxiv.org/abs/1706.03741).
+Currently, we have implementations of the algorithms below. 'Discrete' and 'Continous' stands for whether the algorithm supports discrete or continuous action/state spaces respectively.
 
-Read [the documentation here](https://imitation.readthedocs.io/en/latest/).
+| Algorithm (+ link to paper)                                                                                                       | API Docs                                                                                                                 | Discrete | Continuous |
+|-----------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------|----------|------------|
+| Behavioral Cloning                                                                                                                | [`algorithms.bc`](https://imitation.readthedocs.io/en/latest/algorithms/bc.html)                                         | ✅        | ✅          |
+| [DAgger](https://arxiv.org/pdf/1011.0686.pdf)                                                                                     | [`algorithms.dagger`](https://imitation.readthedocs.io/en/latest/algorithms/dagger.html)                                 | ✅        | ✅          |
+| Density-Based Reward Modeling                                                                                                     | [`algorithms.density`](https://imitation.readthedocs.io/en/latest/algorithms/density.html)                               | ✅        | ✅          |
+| [Maximum Causal Entropy Inverse Reinforcement Learning](https://www.cs.cmu.edu/~bziebart/publications/maximum-causal-entropy.pdf) | [`algorithms.mce_irl`](https://imitation.readthedocs.io/en/latest/algorithms/mce_irl.html)                               | ✅        | ❌          |
+| [Adversarial Inverse Reinforcement Learning](https://arxiv.org/abs/1710.11248)                                                    | [`algoritms.airl`](https://imitation.readthedocs.io/en/latest/algorithms/airl.html)                                      | ✅        | ✅          |
+| [Generative Adversarial Imitation Learning](https://arxiv.org/abs/1606.03476)                                                     | [`algorithms.gail`](https://imitation.readthedocs.io/en/latest/algorithms/gail.html)                                     | ✅        | ✅          |
+| [Deep RL from Human Preferences](https://arxiv.org/abs/1706.03741)                                                                | [`algorithms.preference_comparisons`](https://imitation.readthedocs.io/en/latest/algorithms/preference_comparisons.html) | ✅        | ✅          |
 
-## Installation:
+
+You can find [the documentation here](https://imitation.readthedocs.io/en/latest/).
+
+## Installation
 
 ### Installing PyPI release
+
+Installing the PyPI release is the standard way to use `imitation`, and the recommended way for most users.
 
 ```
 pip install imitation
 ```
 
-### Install latest commit
+### Install from source
+
+If you like, you can install `imitation` from source to [contribute to the project][contributing] or access the very last features before a stable release. You can do this by cloning the GitHub repository and running the installer directly. First run:
+`git clone http://github.com/HumanCompatibleAI/imitation && cd imitation`.
+
+For development mode, then run:
 
 ```
-git clone http://github.com/HumanCompatibleAI/imitation
-cd imitation
-pip install -e .
+pip install -e ".[dev]"
 ```
 
-### Optional Mujoco Dependency:
+This will run `setup.py` in development mode, and install the additional dependencies required for development. For regular use, run instead
 
-Follow instructions to install [mujoco\_py v1.5 here](https://github.com/openai/mujoco-py/tree/498b451a03fb61e5bdfcb6956d8d7c881b1098b5#install-mujoco).
+```
+pip install .
+```
 
+Additional extras are available depending on your needs. Namely, `tests` for running the test suite, `docs` for building the documentation, and `parallel` for parallelizing the training. The `dev` extra already installs the `tests` and `docs` dependencies automatically.
 
-## CLI Quickstart:
+For macOS users, some packages are required to run experiments (see `./experiments/README.md` for details). First, install Homebrew if not available (see [Homebrew](https://brew.sh/)). Then, run:
+
+```
+brew install coreutils gnu-getopt parallel
+```
+
+### Optional Mujoco Dependency
+
+Follow instructions to install [mujoco_py v1.5 here](https://github.com/openai/mujoco-py/tree/498b451a03fb61e5bdfcb6956d8d7c881b1098b5#install-mujoco).
+
+## CLI Quickstart
 
 We provide several CLI scripts as a front-end to the algorithms implemented in `imitation`. These use [Sacred](https://github.com/idsia/sacred) for configuration and replicability.
 
@@ -48,23 +76,24 @@ python -m imitation.scripts.train_adversarial gail with pendulum common.fast dem
 # Train AIRL from demonstrations. Tensorboard logs saved in output/ (default log directory).
 python -m imitation.scripts.train_adversarial airl with pendulum common.fast demonstrations.fast train.fast rl.fast fast demonstrations.rollout_path=quickstart/rl/rollouts/final.pkl
 ```
+
 Tips:
-  * Remove the "fast" options from the commands above to allow training run to completion.
-  * `python -m imitation.scripts.train_rl print_config` will list Sacred script options. These configuration options are documented in each script's docstrings.
+
+- Remove the "fast" options from the commands above to allow training run to completion.
+- `python -m imitation.scripts.train_rl print_config` will list Sacred script options. These configuration options are documented in each script's docstrings.
 
 For more information on how to configure Sacred CLI options, see the [Sacred docs](https://sacred.readthedocs.io/en/stable/).
 
-
-## Python Interface Quickstart:
+## Python Interface Quickstart
 
 See [examples/quickstart.py](examples/quickstart.py) for an example script that loads CartPole-v1 demonstrations and trains BC, GAIL, and AIRL models on that data.
 
-
 ### Density reward baseline
 
-We also implement a density-based reward baseline. You can find an [example notebook here](examples/density_baseline_demo.ipynb).
+We also implement a density-based reward baseline. You can find an [example notebook here](examples/7_train_density.ipynb).
 
 # Citations (BibTeX)
+
 ```
 @misc{wang2020imitation,
   author = {Wang, Steven and Toyer, Sam and Gleave, Adam and Emmons, Scott},
@@ -77,4 +106,8 @@ We also implement a density-based reward baseline. You can find an [example note
 ```
 
 # Contributing
-See [CONTRIBUTING.md](CONTRIBUTING.md).
+
+See [Contributing to imitation][contributing] for more information.
+
+
+[contributing]: https://imitation.readthedocs.io/en/latest/development/contributing/index.html

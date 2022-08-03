@@ -12,7 +12,7 @@ import logging
 import os
 import os.path as osp
 import warnings
-from typing import Mapping, Optional
+from typing import Any, Mapping, Optional
 
 from sacred.observers import FileStorageObserver
 from stable_baselines3.common import callbacks
@@ -34,6 +34,7 @@ def train_rl(
     normalize_kwargs: dict,
     reward_type: Optional[str],
     reward_path: Optional[str],
+    load_reward_kwargs: Optional[Mapping[str, Any]],
     rollout_save_final: bool,
     rollout_save_n_timesteps: Optional[int],
     rollout_save_n_episodes: Optional[int],
@@ -63,6 +64,9 @@ def train_rl(
         reward_path: A specifier, such as a path to a file on disk, used by
             reward_type to load the reward model. For more information, see
             `imitation.rewards.serialize.load_reward`.
+        load_reward_kwargs: Additional kwargs to pass to `predict_processed`.
+            Examples are 'alpha' for :class: `AddSTDRewardWrapper` and 'update_stats'
+            for :class: `NormalizedRewardNet`.
         rollout_save_final: If True, then save rollouts right after training is
             finished.
         rollout_save_n_timesteps: The minimum number of timesteps saved in every
@@ -94,7 +98,7 @@ def train_rl(
     )
     callback_objs = []
     if reward_type is not None:
-        reward_fn = load_reward(reward_type, reward_path, venv)
+        reward_fn = load_reward(reward_type, reward_path, venv, **load_reward_kwargs)
         venv = RewardVecEnvWrapper(venv, reward_fn)
         callback_objs.append(venv.make_log_callback())
         logging.info(f"Wrapped env in reward {reward_type} from {reward_path}.")

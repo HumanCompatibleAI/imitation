@@ -41,11 +41,13 @@ extensions = [
     "sphinx.ext.autosummary",
     "sphinx.ext.mathjax",
     "sphinx.ext.viewcode",
-    "sphinx_rtd_theme",
+    "sphinx_copybutton",
+    "sphinx_github_changelog",
 ]
 
 napoleon_google_docstring = True
 napoleon_numpy_docstring = False
+autosummary_generate = True
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
@@ -68,12 +70,23 @@ autodoc_default_options = {
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = "sphinx_rtd_theme"
+html_theme = "furo"
+html_title = "imitation"
+html_theme_options = {
+    "source_repository": "https://github.com/HumanCompatibleAI/imitation",
+    "source_branch": "master",
+    "source_directory": "docs",
+    "light_css_variables": {
+        "sidebar-item-font-size": "85%",
+    },
+}
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = []
+html_static_path = ["_static"]
+
+html_css_files = ["css/custom.css"]
 
 # -- Customization -----------------------------------------------------------
 
