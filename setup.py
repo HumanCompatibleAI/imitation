@@ -61,6 +61,7 @@ DOCS_REQUIRE = [
     "sphinxcontrib-napoleon",
     "furo",
     "sphinx-copybutton",
+    "sphinx-github-changelog",
 ]
 
 
