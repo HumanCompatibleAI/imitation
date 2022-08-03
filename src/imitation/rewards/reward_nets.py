@@ -749,38 +749,7 @@ class ChannelFirstRewardWrapper(RewardNetWrapper):
         super().__init__(
             base=base,
         )
-        self.obs_is_image = preprocessing.is_image_space(
-            base.observation_space,
-            check_channels=True,
-        )
-
-    def is_image(
-        self,
-        state: th.Tensor,
-    ) -> bool:
-        """Checks if the state is a valid image.
-
-        Checks the shape and number of channels.
-        Valid images are RGB, RGBD, or GrayScale.
-        Note that checking is not rigorous, as by this point the image may have been
-        normalized, so we can't check dtype or range.
-
-        Args:
-            state: the state tensor being input into the reward net.
-
-        Returns:
-            Whether the input is a valid image.
-        """
-        if len(state.shape) in [3, 4]:
-            first_channel_dim = 0 if len(state.shape) == 3 else 1
-            n_channels = (
-                state.shape[first_channel_dim]
-                if self.has_channels_first(state)
-                else state.shape[-1]
-            )
-            return n_channels in [1, 3, 4]
-        else:
-            return False
+        self.obs_is_image = preprocessing.is_image_space(base.observation_space)
 
     def has_channels_first(
         self,
@@ -822,18 +791,12 @@ class ChannelFirstRewardWrapper(RewardNetWrapper):
         done: th.Tensor,
     ) -> th.Tensor:
         """Transpose state and next_state if necessary."""
-        state_needs_transpose = (
-            self.obs_is_image
-            and self.is_image(state)
-            and not self.has_channels_first(state)
-        )
-        transp_state = self.transpose(state) if state_needs_transpose else state
-        next_state_needs_transpose = (
-            self.obs_is_image
-            and self.is_image(next_state)
-            and not self.has_channels_first(next_state)
-        )
-        transp_next_state = (
-            self.transpose(next_state) if next_state_needs_transpose else next_state
-        )
-        return self.base(transp_state, action, transp_next_state, done)
+        if self.obs_is_image:
+            transp_state = (self.transpose(state) if not self.has_channels_first(state)
+                            else state)
+            transp_next_state = (self.transpose(next_state)
+                                 if not self.has_channels_first(next_state)
+                                 else next_state)
+            return self.base(transp_state, action, transp_next_state, done)
+        else:
+            return self.base(state, action, next_state, done)
