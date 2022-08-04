@@ -78,23 +78,21 @@ def sac():
 def _maybe_add_relabel_buffer(
     rl_kwargs: Dict[str, Any],
     relabel_reward_fn: Optional[RewardFn] = None,
-) -> None:
+) -> Dict[str, Any]:
+    _rl_kwargs = dict(rl_kwargs)
     if relabel_reward_fn:
-        _replay_buffer_kwargs = dict(reward_fn=relabel_reward_fn)
-        if "replay_buffer_class" in rl_kwargs:
-            if not rl_kwargs["replay_buffer_class"] is buffers.ReplayBuffer:
-                raise TypeError("")
-            _replay_buffer_kwargs["replay_buffer_class"] = rl_kwargs[
-                "replay_buffer_class"
-            ]
+        _buffer_kwargs = dict(reward_fn=relabel_reward_fn)
+        if "replay_buffer_class" in _rl_kwargs:
+            _buffer_kwargs["replay_buffer_class"] = _rl_kwargs["replay_buffer_class"]
         else:
-            _replay_buffer_kwargs["replay_buffer_class"] = buffers.ReplayBuffer
+            _buffer_kwargs["replay_buffer_class"] = buffers.ReplayBuffer
 
-        rl_kwargs["replay_buffer_class"] = ReplayBufferRewardWrapper
-        if "replay_buffer_kwargs" in rl_kwargs:
-            rl_kwargs.update(_replay_buffer_kwargs)
-        else:
-            rl_kwargs["replay_buffer_kwargs"] = _replay_buffer_kwargs
+        _rl_kwargs["replay_buffer_class"] = ReplayBufferRewardWrapper
+
+        if "replay_buffer_kwargs" in _rl_kwargs:
+            _buffer_kwargs.update(_rl_kwargs["replay_buffer_kwargs"])
+        _rl_kwargs["replay_buffer_kwargs"] = _buffer_kwargs
+    return _rl_kwargs
 
 
 @rl_ingredient.capture
@@ -146,7 +144,7 @@ def make_rl_algo(
         if rl_kwargs.get("batch_size") is not None:
             raise ValueError("set 'batch_size' at top-level")
         rl_kwargs["batch_size"] = batch_size
-        _maybe_add_relabel_buffer(
+        rl_kwargs = _maybe_add_relabel_buffer(
             rl_kwargs=rl_kwargs,
             relabel_reward_fn=relabel_reward_fn,
         )
@@ -179,7 +177,7 @@ def load_rl_algo_from_path(
 ) -> base_class.BaseAlgorithm:
     rl_kwargs = dict(rl_kwargs)
     if issubclass(rl_cls, off_policy_algorithm.OffPolicyAlgorithm):
-        _maybe_add_relabel_buffer(
+        rl_kwargs = _maybe_add_relabel_buffer(
             rl_kwargs=rl_kwargs,
             relabel_reward_fn=relabel_reward_fn,
         )
