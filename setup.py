@@ -45,6 +45,8 @@ TESTS_REQUIRE = (
         "hypothesis~=6.54.1",
         "ipykernel~=6.15.1",
         "jupyter~=1.0.0",
+        # TODO: upgrade jupyter-client once
+        #  https://github.com/jupyter/jupyter_client/issues/637 is fixed
         "jupyter-client~=6.1.12",
         "pandas~=1.4.3",
         "pytest~=7.1.2",
