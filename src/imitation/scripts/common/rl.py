@@ -112,7 +112,6 @@ def make_rl_algo(
         rl_cls: Type of a Stable Baselines3 RL algorithm.
         batch_size: The batch size of the RL algorithm.
         rl_kwargs: Keyword arguments for RL algorithm constructor.
-        rl_buffer_kwargs: Keyword arguments for RL buffer constructor.
         train: Configuration for the train ingredient. We need the
             policy_cls and policy_kwargs component.
         relabel_reward_fn: Reward function used for reward relabeling
