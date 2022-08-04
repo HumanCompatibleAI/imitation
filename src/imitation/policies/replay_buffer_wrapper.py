@@ -64,9 +64,6 @@ class ReplayBufferRewardWrapper(ReplayBuffer):
 
     def sample(self, *args, **kwargs):
         samples = self.replay_buffer.sample(*args, **kwargs)
-        if self.reward_fn is None:
-            return samples
-
         rewards = self.reward_fn(**_samples_to_reward_fn_input(samples))
         shape = samples.rewards.shape
         device = samples.rewards.device

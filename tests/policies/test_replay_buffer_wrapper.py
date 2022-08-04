@@ -52,20 +52,18 @@ def test_invalid_args():
         TypeError,
         match=r".*unexpected keyword argument 'replay_buffer_class'.*",
     ):
-        rl_algo = make_wrapper_n_algo(
+        make_wrapper_n_algo(
             rl_cls=sb3.PPO,
             policy_cls=policies.ActorCriticPolicy,
             replay_buffer_class=buffers.ReplayBuffer,
         )
-        del rl_algo
 
     with pytest.raises(AssertionError, match=r".*only ReplayBuffer is supported.*"):
-        rl_algo = make_wrapper_n_algo(
+        make_wrapper_n_algo(
             rl_cls=sb3.SAC,
             policy_cls=sb3.sac.policies.SACPolicy,
             replay_buffer_class=buffers.DictReplayBuffer,
         )
-        del rl_algo
 
 
 def test_wrapper_class(tmpdir):
