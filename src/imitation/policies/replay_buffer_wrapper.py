@@ -1,10 +1,11 @@
 """Wrapper for reward labeling for transitions sampled from a replay buffer."""
 
 
-from typing import Mapping, Optional, Type
+from typing import Mapping, Type
 
 import numpy as np
 import torch as th
+from gym import spaces
 from stable_baselines3.common.buffers import ReplayBuffer
 from stable_baselines3.common.type_aliases import ReplayBufferSamples
 
@@ -29,24 +30,36 @@ class ReplayBufferRewardWrapper(ReplayBuffer):
 
     def __init__(
         self,
-        *args,
-        replay_buffer_cls: Type[ReplayBuffer] = ReplayBuffer,
-        reward_fn: Optional[RewardFn] = None,
+        buffer_size: int,
+        observation_space: spaces.Space,
+        action_space: spaces.Space,
+        *,
+        replay_buffer_class: Type[ReplayBuffer],
+        reward_fn: RewardFn,
         **kwargs,
     ):
         """Builds ReplayBufferRewardWrapper.
 
-        Note(yawen): we directly inherit ReplayBuffer in this case and leave out the
-        choice of DictReplayBuffer because the current RewardFn only takes in NumPy
-        array-based inputs, and SAC is the only use case for ReplayBuffer relabeling.
-
         Args:
-            *args: Arguments to ReplayBuffer.
-            replay_buffer_cls: Class of the replay buffer.
+            buffer_size: Max number of element in the buffer
+            observation_space: Observation space
+            action_space: Action space
+            replay_buffer_class: Class of the replay buffer.
             reward_fn: Reward function for reward relabeling.
             **kwargs: keyword arguments for ReplayBuffer.
         """
-        self.replay_buffer = replay_buffer_cls(*args, **kwargs)
+        # Note(yawen-d): we directly inherit ReplayBuffer and leave out the case of
+        # DictReplayBuffer because the current RewardFn only takes in NumPy array-based
+        # inputs, and SAC is the only use case for ReplayBuffer relabeling. See:
+        # https://github.com/HumanCompatibleAI/imitation/pull/459#issuecomment-1201997194
+        assert replay_buffer_class is ReplayBuffer, "only ReplayBuffer is supported"
+        assert not isinstance(observation_space, spaces.Dict)
+        self.replay_buffer = replay_buffer_class(
+            buffer_size,
+            observation_space,
+            action_space,
+            **kwargs,
+        )
         self.reward_fn = reward_fn
 
     def sample(self, *args, **kwargs):
@@ -72,9 +85,6 @@ class ReplayBufferRewardWrapper(ReplayBuffer):
 
     def size(self) -> int:
         return self.replay_buffer.size()
-
-    def extend(self, *args, **kwargs) -> None:
-        self.replay_buffer.extend(*args, **kwargs)
 
     def reset(self) -> None:
         self.replay_buffer.reset()
