@@ -25,6 +25,8 @@ import sacred
 import sacred.utils
 import stable_baselines3
 import torch as th
+from stable_baselines3.common import buffers
+from stable_baselines3.her.her_replay_buffer import HerReplayBuffer
 
 from imitation.data import types
 from imitation.rewards import reward_nets
@@ -172,15 +174,46 @@ def test_train_preference_comparisons_sac(tmpdir):
     assert run.status == "COMPLETED"
     assert isinstance(run.result, dict)
 
+    # Make sure rl.sac named_config is called after rl.fast to overwrite
+    # rl_kwargs.batch_size to None
     with pytest.raises(Exception, match=".*set 'batch_size' at top-level.*"):
         train_preference_comparisons.train_preference_comparisons_ex.run(
-            # make sure rl.sac named_config is called after rl.fast to overwrite
-            # rl_kwargs.batch_size to None
             named_configs=["pendulum"]
             + RL_SAC_NAMED_CONFIGS
             + ALGO_FAST_CONFIGS["preference_comparison"],
             config_updates=config_updates,
         )
+
+
+def test_train_preference_comparisons_sac_reward_relabel(tmpdir):
+    def _run_reward_relabel_sac_preference_comparisons(buffer_cls):
+        config_updates = dict(
+            common=dict(log_root=tmpdir),
+            rl=dict(
+                rl_kwargs=dict(
+                    replay_buffer_class=buffer_cls,
+                    replay_buffer_kwargs=dict(handle_timeout_termination=True),
+                ),
+            ),
+        )
+        run = train_preference_comparisons.train_preference_comparisons_ex.run(
+            # make sure rl.sac named_config is called after rl.fast to overwrite
+            # rl_kwargs.batch_size to None
+            named_configs=["pendulum"]
+            + ALGO_FAST_CONFIGS["preference_comparison"]
+            + RL_SAC_NAMED_CONFIGS,
+            config_updates=config_updates,
+        )
+        return run
+
+    run = _run_reward_relabel_sac_preference_comparisons(buffers.ReplayBuffer)
+    assert run.status == "COMPLETED"
+    del run
+
+    with pytest.raises(AssertionError, match=".*only ReplayBuffer is supported.*"):
+        _run_reward_relabel_sac_preference_comparisons(buffers.DictReplayBuffer)
+    with pytest.raises(AssertionError, match=".*only ReplayBuffer is supported.*"):
+        _run_reward_relabel_sac_preference_comparisons(HerReplayBuffer)
 
 
 @pytest.mark.parametrize(
