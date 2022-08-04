@@ -20,7 +20,7 @@ def zero_reward_fn(
     action: np.ndarray,
     next_state: np.ndarray,
     done: np.ndarray,
-):
+) -> np.ndarray:
     del action, next_state, done
     return np.zeros(state.shape[0], dtype=np.float32)
 
@@ -29,7 +29,7 @@ def make_algo_with_wrapped_buffer(
     rl_cls: Type[off_policy_algorithm.OffPolicyAlgorithm],
     policy_cls: Type[BasePolicy],
     replay_buffer_class: Type[buffers.ReplayBuffer],
-):
+) -> off_policy_algorithm.OffPolicyAlgorithm:
     venv = util.make_vec_env("Pendulum-v1", n_envs=1)
     rl_kwargs = dict(
         replay_buffer_class=ReplayBufferRewardWrapper,

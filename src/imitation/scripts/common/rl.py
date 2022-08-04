@@ -80,19 +80,19 @@ def _maybe_add_relabel_buffer(
     relabel_reward_fn: Optional[RewardFn] = None,
 ) -> Dict[str, Any]:
     """Use ReplayBufferRewardWrapper in rl_kwargs if relabel_reward_fn is not None."""
-    _rl_kwargs = dict(rl_kwargs)
+    rl_kwargs = dict(rl_kwargs)
     if relabel_reward_fn:
         _buffer_kwargs = dict(reward_fn=relabel_reward_fn)
-        _buffer_kwargs["replay_buffer_class"] = _rl_kwargs.get(
+        _buffer_kwargs["replay_buffer_class"] = rl_kwargs.get(
             "replay_buffer_class",
             buffers.ReplayBuffer,
         )
-        _rl_kwargs["replay_buffer_class"] = ReplayBufferRewardWrapper
+        rl_kwargs["replay_buffer_class"] = ReplayBufferRewardWrapper
 
-        if "replay_buffer_kwargs" in _rl_kwargs:
-            _buffer_kwargs.update(_rl_kwargs["replay_buffer_kwargs"])
-        _rl_kwargs["replay_buffer_kwargs"] = _buffer_kwargs
-    return _rl_kwargs
+        if "replay_buffer_kwargs" in rl_kwargs:
+            _buffer_kwargs.update(rl_kwargs["replay_buffer_kwargs"])
+        rl_kwargs["replay_buffer_kwargs"] = _buffer_kwargs
+    return rl_kwargs
 
 
 @rl_ingredient.capture
