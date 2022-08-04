@@ -41,7 +41,7 @@ class ReplayBufferRewardWrapper(ReplayBuffer):
         """Builds ReplayBufferRewardWrapper.
 
         Args:
-            buffer_size: Max number of element in the buffer
+            buffer_size: Max number of elements in the buffer
             observation_space: Observation space
             action_space: Action space
             replay_buffer_class: Class of the replay buffer.

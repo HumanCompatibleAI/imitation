@@ -1,4 +1,4 @@
-"""Tests ExplorationWrapper."""
+"""Test imitation.policies.replay_buffer_wrapper."""
 
 import os.path as osp
 from typing import Type
@@ -6,6 +6,7 @@ from typing import Type
 import numpy as np
 import pytest
 import stable_baselines3 as sb3
+import torch as th
 from stable_baselines3.common import buffers, off_policy_algorithm, policies
 from stable_baselines3.common.policies import BasePolicy
 from stable_baselines3.common.save_util import load_from_pkl
@@ -24,7 +25,7 @@ def zero_reward_fn(
     return np.zeros(state.shape[0], dtype=np.float32)
 
 
-def make_wrapper_n_algo(
+def make_algo_with_wrapped_buffer(
     rl_cls: Type[off_policy_algorithm.OffPolicyAlgorithm],
     policy_cls: Type[BasePolicy],
     replay_buffer_class: Type[buffers.ReplayBuffer],
@@ -52,14 +53,14 @@ def test_invalid_args():
         TypeError,
         match=r".*unexpected keyword argument 'replay_buffer_class'.*",
     ):
-        make_wrapper_n_algo(
+        make_algo_with_wrapped_buffer(
             rl_cls=sb3.PPO,
             policy_cls=policies.ActorCriticPolicy,
             replay_buffer_class=buffers.ReplayBuffer,
         )
 
     with pytest.raises(AssertionError, match=r".*only ReplayBuffer is supported.*"):
-        make_wrapper_n_algo(
+        make_algo_with_wrapped_buffer(
             rl_cls=sb3.SAC,
             policy_cls=sb3.sac.policies.SACPolicy,
             replay_buffer_class=buffers.DictReplayBuffer,
@@ -67,13 +68,13 @@ def test_invalid_args():
 
 
 def test_wrapper_class(tmpdir):
-    rl_algo = make_wrapper_n_algo(
+    rl_algo = make_algo_with_wrapped_buffer(
         rl_cls=sb3.SAC,
         policy_cls=sb3.sac.policies.SACPolicy,
         replay_buffer_class=buffers.ReplayBuffer,
     )
 
-    total_timesteps = 200
+    total_timesteps = 20
     rl_algo.learn(total_timesteps=total_timesteps)
 
     buffer_path = osp.join(tmpdir, "buffer.pkl")
@@ -91,4 +92,5 @@ def test_wrapper_class(tmpdir):
     assert 0 == replay_buffer_wrapper.size() == replay_buffer.size()
 
     # to_torch()
-    replay_buffer_wrapper.to_torch(np.ones(42))
+    tensor = replay_buffer_wrapper.to_torch(np.ones(42))
+    assert type(tensor) is th.Tensor
