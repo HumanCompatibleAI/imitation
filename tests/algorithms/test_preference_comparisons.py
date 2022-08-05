@@ -54,8 +54,8 @@ def fragmenter():
 
 
 @pytest.fixture
-def agent_trainer(agent, reward_net):
-    return preference_comparisons.AgentTrainer(agent, reward_net)
+def agent_trainer(agent, reward_net, venv):
+    return preference_comparisons.AgentTrainer(agent, reward_net, venv)
 
 
 def _check_trajs_equal(
@@ -71,15 +71,23 @@ def _check_trajs_equal(
         assert traj1.terminal == traj2.terminal
 
 
-def test_missing_environment(agent):
-    # Create an agent that doesn't have its environment set.
-    # More realistically, this can happen when loading a stored agent.
-    agent.env = None
+def test_mismatched_observation_space(reward_net, venv):
+    other_venv = util.make_vec_env(
+        "seals/MountainCar-v0",
+        n_envs=1,
+    )
+    agent = stable_baselines3.PPO(
+        "MlpPolicy",
+        other_venv,
+        n_epochs=1,
+        batch_size=2,
+        n_steps=10,
+    )
     with pytest.raises(
         ValueError,
-        match="The environment for the agent algorithm must be set.",
+        match="spaces do not match",
     ):
-        preference_comparisons.AgentTrainer(agent, reward_net)
+        preference_comparisons.AgentTrainer(agent, reward_net, venv)
 
 
 def test_trajectory_dataset_seeding(
@@ -393,10 +401,11 @@ def test_store_and_load_preference_dataset(agent_trainer, fragmenter, tmp_path):
         _check_trajs_equal(fragments, loaded_fragments)
 
 
-def test_exploration_no_crash(agent, reward_net, fragmenter, custom_logger):
+def test_exploration_no_crash(agent, reward_net, venv, fragmenter, custom_logger):
     agent_trainer = preference_comparisons.AgentTrainer(
         agent,
         reward_net,
+        venv,
         exploration_frac=0.5,
     )
     main_trainer = preference_comparisons.PreferenceComparisons(
@@ -409,3 +418,41 @@ def test_exploration_no_crash(agent, reward_net, fragmenter, custom_logger):
         custom_logger=custom_logger,
     )
     main_trainer.train(100, 10)
+
+
+# TODO before submitting PR:
+# - this takes like 40 seconds to run. how hard is it to write a dummy gym env whose
+#   observations seem like images? should do some searching too to see if that already
+#   exists
+def test_image_environment_no_crash(fragmenter, custom_logger):
+    # SB3 algorithms may internally rearrange the channel dimension in environments with
+    # image observations. This test checks that no assertions trigger from observation
+    # space mismatches.
+    venv = util.make_vec_env(
+        "CarRacing-v0",
+        n_envs=1,
+    )
+    reward_net = reward_nets.BasicRewardNet(venv.observation_space, venv.action_space)
+    agent = stable_baselines3.PPO(
+        "MlpPolicy",
+        venv,
+        n_epochs=1,
+        batch_size=2,
+        n_steps=10,
+    )
+    agent_trainer = preference_comparisons.AgentTrainer(
+        agent,
+        reward_net,
+        venv,
+        exploration_frac=0.5,
+    )
+    main_trainer = preference_comparisons.PreferenceComparisons(
+        agent_trainer,
+        reward_net,
+        num_iterations=2,
+        transition_oversampling=2,
+        fragment_length=2,
+        fragmenter=fragmenter,
+        custom_logger=custom_logger,
+    )
+    main_trainer.train(3, 10)

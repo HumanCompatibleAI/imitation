@@ -24,6 +24,7 @@ import numpy as np
 import torch as th
 from scipy import special
 from stable_baselines3.common import base_class, type_aliases, vec_env
+from stable_baselines3.common.utils import check_for_correct_spaces
 from torch import nn
 from torch.utils import data as data_th
 from tqdm.auto import tqdm
@@ -125,6 +126,7 @@ class AgentTrainer(TrajectoryGenerator):
         self,
         algorithm: base_class.BaseAlgorithm,
         reward_fn: Union[reward_function.RewardFn, reward_nets.RewardNet],
+        venv: vec_env.VecEnv,
         exploration_frac: float = 0.0,
         switch_prob: float = 0.5,
         random_prob: float = 0.5,
@@ -135,9 +137,9 @@ class AgentTrainer(TrajectoryGenerator):
 
         Args:
             algorithm: the stable-baselines algorithm to use for training.
-                Its environment must be set.
             reward_fn: either a RewardFn or a RewardNet instance that will supply
                 the rewards used for training the agent.
+            venv: vectorized environment to train in.
             exploration_frac: fraction of the trajectories that will be generated
                 partially randomly rather than only by the agent when sampling.
             switch_prob: the probability of switching the current policy at each
@@ -148,24 +150,32 @@ class AgentTrainer(TrajectoryGenerator):
             custom_logger: Where to log to; if None (default), creates a new logger.
 
         Raises:
-            ValueError: `algorithm` does not have an environment set.
+            ValueError: action and observation spaces of `venv` and `reward_fn` do not
+                match
         """
         self.algorithm = algorithm
         # NOTE: this has to come after setting self.algorithm because super().__init__
         # will set self.logger, which also sets the logger for the algorithm
         super().__init__(custom_logger)
         if isinstance(reward_fn, reward_nets.RewardNet):
+            check_for_correct_spaces(
+                    venv,
+                    reward_fn.observation_space,
+                    reward_fn.action_space,
+            )
             reward_fn = reward_fn.predict_processed
         self.reward_fn = reward_fn
         self.exploration_frac = exploration_frac
 
-        venv = self.algorithm.get_env()
-        if not isinstance(venv, vec_env.VecEnv):
-            raise ValueError("The environment for the agent algorithm must be set.")
         # The BufferingWrapper records all trajectories, so we can return
         # them after training. This should come first (before the wrapper that
         # changes the reward function), so that we return the original environment
         # rewards.
+        # When applying RewardVecEnvWrapper, we should use `venv` instead of
+        # `algorithm.get_env()` because SB3 may apply some wrappers to `algorithm`'s env
+        # under the hood. In particular, in image-based environments, SB3 may move the
+        # image-channel dimension in the observation space, making `algorithm.get_env()`
+        # not match with `reward_fn`.
         self.buffering_wrapper = wrappers.BufferingWrapper(venv)
         self.venv = reward_wrapper.RewardVecEnvWrapper(
             self.buffering_wrapper,
@@ -176,7 +186,7 @@ class AgentTrainer(TrajectoryGenerator):
         self.algorithm.set_env(self.venv)
         policy_callable = rollout._policy_to_callable(
             self.algorithm,
-            self.venv,
+            self.algorithm.get_env(),
             # By setting deterministic_policy to False, we ensure that the rollouts
             # are collected from a deterministic policy only if self.algorithm is
             # deterministic. If self.algorithm is stochastic, then policy_callable
@@ -185,7 +195,7 @@ class AgentTrainer(TrajectoryGenerator):
         )
         self.exploration_wrapper = exploration_wrapper.ExplorationWrapper(
             policy_callable=policy_callable,
-            venv=self.venv,
+            venv=self.algorithm.get_env(),
             random_prob=random_prob,
             switch_prob=switch_prob,
             seed=seed,
@@ -249,7 +259,7 @@ class AgentTrainer(TrajectoryGenerator):
             # Instead, we collect the trajectories using the BufferingWrapper.
             rollout.generate_trajectories(
                 self.algorithm,
-                self.buffering_wrapper,
+                self.algorithm.get_env(),
                 sample_until=sample_until,
                 # By setting deterministic_policy to False, we ensure that the rollouts
                 # are collected from a deterministic policy only if self.algorithm is
@@ -271,7 +281,7 @@ class AgentTrainer(TrajectoryGenerator):
             )
             rollout.generate_trajectories(
                 policy=self.exploration_wrapper,
-                venv=self.buffering_wrapper,
+                venv=self.algorithm.get_env(),
                 sample_until=sample_until,
                 # buffering_wrapper collects rollouts from a non-deterministic policy
                 # so we do that here as well for consistency.
