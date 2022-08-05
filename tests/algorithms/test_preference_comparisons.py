@@ -73,23 +73,19 @@ def _check_trajs_equal(
         assert traj1.terminal == traj2.terminal
 
 
-def test_mismatched_observation_space(reward_net, venv):
+def test_mismatched_spaces(venv, agent):
     other_venv = util.make_vec_env(
         "seals/MountainCar-v0",
         n_envs=1,
     )
-    agent = stable_baselines3.PPO(
-        "MlpPolicy",
-        other_venv,
-        n_epochs=1,
-        batch_size=2,
-        n_steps=10,
+    bad_reward_net = reward_nets.BasicRewardNet(
+        other_venv.observation_space, other_venv.action_space
     )
     with pytest.raises(
         ValueError,
         match="spaces do not match",
     ):
-        preference_comparisons.AgentTrainer(agent, reward_net, venv)
+        preference_comparisons.AgentTrainer(agent, bad_reward_net, venv)
 
 
 def test_trajectory_dataset_seeding(
@@ -422,7 +418,7 @@ def test_exploration_no_crash(agent, reward_net, venv, fragmenter, custom_logger
     main_trainer.train(100, 10)
 
 
-def test_image_environment_agent_trainer_sample(fragmenter, custom_logger):
+def test_agent_trainer_sample_in_image_environment(fragmenter, custom_logger):
     # SB3 algorithms may internally rearrange the channel dimension in environments with
     # image observations.
     # This test checks that despite the rearrangement, `AgentTrainer.sample` returns

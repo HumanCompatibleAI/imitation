@@ -159,9 +159,9 @@ class AgentTrainer(TrajectoryGenerator):
         super().__init__(custom_logger)
         if isinstance(reward_fn, reward_nets.RewardNet):
             check_for_correct_spaces(
-                    venv,
-                    reward_fn.observation_space,
-                    reward_fn.action_space,
+                venv,
+                reward_fn.observation_space,
+                reward_fn.action_space,
             )
             reward_fn = reward_fn.predict_processed
         self.reward_fn = reward_fn
