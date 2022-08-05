@@ -87,10 +87,10 @@ class BaseNorm(nn.Module, ABC):
                 self.update_stats(x)
 
         running_mean_ = (
-            self.running_mean if len(x.shape) == 2 else self.running_mean[:, None, None]
+            self.running_mean[:, None, None] if len(x.shape) == 4 else self.running_mean
         )
         running_var_ = (
-            self.running_var if len(x.shape) == 2 else self.running_var[:, None, None]
+            self.running_var[:, None, None] if len(x.shape) == 4 else self.running_var
         )
         return (x - running_mean_) / th.sqrt(running_var_ + self.eps)
 
@@ -119,7 +119,7 @@ class RunningNorm(BaseNorm):
         Args:
             batch: A batch of data to use to update the running mean and variance.
         """
-        reduce_dims = 0 if len(batch.shape) == 2 else [0, 2, 3]
+        reduce_dims = [0, 2, 3] if len(batch.shape) == 4 else 0
         batch_mean = th.mean(batch, dim=reduce_dims)
         batch_var = th.var(batch, dim=reduce_dims, unbiased=False)
         batch_count = batch.shape[0]
@@ -172,7 +172,7 @@ class EMANorm(BaseNorm):
             batch: A batch of data to use to update the running mean and variance.
         """
         b_size = batch.shape[0]
-        reduce_dims = 0 if len(batch.shape) == 2 else [0, 2, 3]
+        reduce_dims = [0, 2, 3] if len(batch.shape) == 4 else 0
 
         if self.count == 0:
             self.running_mean = th.mean(batch, dim=reduce_dims)
@@ -187,9 +187,9 @@ class EMANorm(BaseNorm):
 
             for i in range(b_size):
                 new_sample = (
-                    batch[perm[i], ...]
-                    if len(batch.shape) == 2
-                    else th.mean(batch[perm[i], ...], dim=[1, 2])
+                    th.mean(batch[perm[i], ...], dim=[1, 2])
+                    if len(batch.shape) == 4
+                    else batch[perm[i], ...]
                 )
                 diff = new_sample - self.running_mean
                 incr = alpha * diff
