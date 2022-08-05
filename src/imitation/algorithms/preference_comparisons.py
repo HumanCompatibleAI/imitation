@@ -151,7 +151,7 @@ class AgentTrainer(TrajectoryGenerator):
 
         Raises:
             ValueError: action and observation spaces of `venv` and `reward_fn` do not
-                match
+                match.
         """
         self.algorithm = algorithm
         # NOTE: this has to come after setting self.algorithm because super().__init__
