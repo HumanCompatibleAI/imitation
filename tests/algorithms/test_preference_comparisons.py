@@ -418,7 +418,21 @@ def test_exploration_no_crash(agent, reward_net, venv, fragmenter, custom_logger
     main_trainer.train(100, 10)
 
 
-def test_agent_trainer_sample_image_observations(fragmenter, custom_logger):
+def test_agent_trainer_populates_buffer(agent_trainer):
+    agent_trainer.train(steps=1)
+    assert agent_trainer.buffering_wrapper.n_transitions > 0
+
+
+def test_agent_trainer_sample(agent_trainer):
+    trajectories = agent_trainer.sample(2)
+    assert len(trajectories) > 0
+    assert all(
+        trajectory.obs.shape[1:] == venv.observation_space.shape
+        for trajectory in trajectories
+    )
+
+
+def test_agent_trainer_sample_image_observations():
     # SB3 algorithms may internally rearrange the channel dimension in environments with
     # image observations.
     # This test checks that despite the rearrangement, `AgentTrainer.sample` returns
@@ -444,8 +458,3 @@ def test_agent_trainer_sample_image_observations(fragmenter, custom_logger):
         trajectory.obs.shape[1:] == venv.observation_space.shape
         for trajectory in trajectories
     )
-
-
-def test_agent_trainer_populates_buffer(agent_trainer):
-    agent_trainer.train(steps=1)
-    assert agent_trainer.buffering_wrapper.n_transitions > 0
