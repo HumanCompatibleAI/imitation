@@ -125,10 +125,10 @@ def _load_trajectory(npz_path: str) -> types.Trajectory:
 
     # infos=None is saved as array(None) which leads to a type checking error upon
     # `Trajectory` initialization. Convert to None to prevent error.
-    # infos = dict_data["infos"]
-    # if infos.shape == ():
-    #     assert infos.item() is None
-    #     dict_data["infos"] = None
+    infos = dict_data["infos"]
+    if infos.shape == ():
+        assert infos.item() is None
+        dict_data["infos"] = None
 
     cls = types.TrajectoryWithRew if has_rew else types.Trajectory
     return cls(**dict_data)
