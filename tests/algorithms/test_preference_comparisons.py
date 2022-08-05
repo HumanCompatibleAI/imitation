@@ -79,7 +79,8 @@ def test_mismatched_spaces(venv, agent):
         n_envs=1,
     )
     bad_reward_net = reward_nets.BasicRewardNet(
-        other_venv.observation_space, other_venv.action_space
+        other_venv.observation_space,
+        other_venv.action_space,
     )
     with pytest.raises(
         ValueError,
