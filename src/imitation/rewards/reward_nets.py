@@ -411,12 +411,15 @@ class BasicRewardNet(RewardNet):
         return outputs
 
 
-class CnnRewardNet(RewardNet):
+class CnnRewardNet_(RewardNet):
     """CNN that takes as input the state, action, next state and done flag.
 
     Inputs are boosted to tensors with channel, height, and width dimensions, and then
     concatenated. Each input can be enabled or disable by the `use_*` constructor
     keyword arguments.
+
+    Note that this should always be wrapped in a ChannelFirstRewardWrapper, as
+    implemented in the CnnRewardNet class.
     """
 
     def __init__(
@@ -453,11 +456,11 @@ class CnnRewardNet(RewardNet):
 
         if not self.can_handle_space(observation_space):
             raise ValueError(
-                "CnnRewardNet doesn't know how to deal with this observation space.",
+                "CnnRewardNet_ doesn't know how to deal with this observation space.",
             )
         if not self.can_handle_space(action_space):
             raise ValueError(
-                "CnnRewardNet doesn't know how to deal with this action space.",
+                "CnnRewardNet_ doesn't know how to deal with this action space.",
             )
 
         if self.use_state:
@@ -819,7 +822,9 @@ class ChannelFirstRewardWrapper(RewardNetWrapper):
     """A RewardNetWrapper to handle inconsistent (h,w,c) vs (h,c,w) conventions.
 
     Transposes observations when necessary to ensure the channel dimension appears
-    before the height and width dimensions.
+    before the height and width dimensions. Only does so on image observation spaces,
+    and detects the channel dimension by assuming that it is the smallest of the
+    non-batch dimensions.
     """
 
     def __init__(
@@ -888,6 +893,38 @@ class ChannelFirstRewardWrapper(RewardNetWrapper):
             return self.base(transp_state, action, transp_next_state, done)
         else:
             return self.base(state, action, next_state, done)
+
+
+class CnnRewardNet(ChannelFirstRewardWrapper):
+    """CNN that takes as input the state, action, next state and done flag.
+
+    Inputs are transposed to (c,h,w) format as necessary, boosted to tensors with
+    channel, height, and width dimensions, and then concatenated. Each input can be
+    enabled or disable by the `use_*` constructor keyword arguments.
+    """
+
+    def __init__(
+        self,
+        observation_space: gym.Space,
+        action_space: gym.Space,
+        use_state: bool = True,
+        use_action: bool = True,
+        use_next_state: bool = False,
+        use_done: bool = False,
+        **kwargs,
+    ):
+        """Wrap a `CnnRewardNet_` in a `ChannelFirstRewardWrapper`."""
+        super().__init__(
+            CnnRewardNet_(
+                observation_space,
+                action_space,
+                use_state,
+                use_action,
+                use_next_state,
+                use_done,
+                **kwargs,
+            ),
+        )
 
 
 class RewardEnsemble(RewardNetWithVariance):
