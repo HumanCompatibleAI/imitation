@@ -148,10 +148,6 @@ class AgentTrainer(TrajectoryGenerator):
                 during exploration.
             seed: random seed for exploratory trajectories.
             custom_logger: Where to log to; if None (default), creates a new logger.
-
-        Raises:
-            ValueError: action and observation spaces of `venv` and `reward_fn` do not
-                match.
         """
         self.algorithm = algorithm
         # NOTE: this has to come after setting self.algorithm because super().__init__
