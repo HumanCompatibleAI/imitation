@@ -19,9 +19,6 @@ else:
         "stable-baselines3@git+"
         "https://github.com/DLR-RM/stable-baselines3.git@master"
     )
-# pinned to 0.21 until https://github.com/DLR-RM/stable-baselines3/pull/780
-# goes upstream.
-GYM_VERSION= "==0.21.0"
 
 TESTS_REQUIRE = (
     [
@@ -41,7 +38,6 @@ TESTS_REQUIRE = (
         "flake8-debugger",
         "flake8-docstrings",
         "flake8-isort",
-        "gym[box2d]" + GYM_VERSION,
         "hypothesis",
         "ipykernel",
         "jupyter",
@@ -108,7 +104,10 @@ setup(
     package_dir={"": "src"},
     package_data={"imitation": ["py.typed", "envs/examples/airl_envs/assets/*.xml"]},
     install_requires=[
-        "gym[classic_control]" + GYM_VERSION,
+        # If you change gym version here, change it in "mujoco" below too.
+        # pinned to 0.21 until https://github.com/DLR-RM/stable-baselines3/pull/780
+        # goes upstream.
+        "gym[classic_control]==0.21.0",
         "matplotlib",
         "numpy>=1.15",
         "torch>=1.4.0",
@@ -140,7 +139,7 @@ setup(
         "docs": DOCS_REQUIRE,
         "parallel": PARALLEL_REQUIRE,
         "mujoco": [
-            "gym[classic_control,mujoco]" + GYM_VERSION,
+            "gym[classic_control,mujoco]==0.21.0",
         ],
     },
     entry_points={

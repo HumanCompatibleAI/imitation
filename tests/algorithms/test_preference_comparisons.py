@@ -7,6 +7,8 @@ import numpy as np
 import pytest
 import seals  # noqa: F401
 import stable_baselines3
+from stable_baselines3.common.envs import FakeImageEnv
+from stable_baselines3.common.vec_env import DummyVecEnv
 
 import imitation.testing.reward_nets as testing_reward_nets
 from imitation.algorithms import preference_comparisons
@@ -420,18 +422,11 @@ def test_exploration_no_crash(agent, reward_net, venv, fragmenter, custom_logger
     main_trainer.train(100, 10)
 
 
-# TODO before submitting PR:
-# - this takes like 40 seconds to run. how hard is it to write a dummy gym env whose
-#   observations seem like images? should do some searching too to see if that already
-#   exists
 def test_image_environment_no_crash(fragmenter, custom_logger):
     # SB3 algorithms may internally rearrange the channel dimension in environments with
     # image observations. This test checks that no assertions trigger from observation
     # space mismatches.
-    venv = util.make_vec_env(
-        "CarRacing-v0",
-        n_envs=1,
-    )
+    venv = DummyVecEnv([lambda: FakeImageEnv()])
     reward_net = reward_nets.BasicRewardNet(venv.observation_space, venv.action_space)
     agent = stable_baselines3.PPO(
         "MlpPolicy",
