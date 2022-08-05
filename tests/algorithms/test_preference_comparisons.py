@@ -418,7 +418,7 @@ def test_exploration_no_crash(agent, reward_net, venv, fragmenter, custom_logger
     main_trainer.train(100, 10)
 
 
-def test_agent_trainer_sample_in_image_environment(fragmenter, custom_logger):
+def test_agent_trainer_sample_image_observations(fragmenter, custom_logger):
     # SB3 algorithms may internally rearrange the channel dimension in environments with
     # image observations.
     # This test checks that despite the rearrangement, `AgentTrainer.sample` returns
