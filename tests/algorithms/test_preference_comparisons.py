@@ -422,12 +422,11 @@ def test_exploration_no_crash(agent, reward_net, venv, fragmenter, custom_logger
     main_trainer.train(100, 10)
 
 
-# TODO(tomtseng): I think you should just assert on sample() (check output shape), not
-# set up all of this stuff
-def test_image_environment_no_crash(fragmenter, custom_logger):
+def test_image_environment_agent_trainer_sample(fragmenter, custom_logger):
     # SB3 algorithms may internally rearrange the channel dimension in environments with
-    # image observations. This test checks that no assertions trigger from observation
-    # space mismatches.
+    # image observations.
+    # This test checks that despite the rearrangement, `AgentTrainer.sample` returns
+    # observations with the correct shape.
     venv = DummyVecEnv([lambda: FakeImageEnv()])
     reward_net = reward_nets.BasicRewardNet(venv.observation_space, venv.action_space)
     agent = stable_baselines3.PPO(
@@ -443,16 +442,13 @@ def test_image_environment_no_crash(fragmenter, custom_logger):
         venv,
         exploration_frac=0.5,
     )
-    main_trainer = preference_comparisons.PreferenceComparisons(
-        agent_trainer,
-        reward_net,
-        num_iterations=2,
-        transition_oversampling=2,
-        fragment_length=2,
-        fragmenter=fragmenter,
-        custom_logger=custom_logger,
+    trajectories = agent_trainer.sample(2)
+    assert len(trajectories) > 0
+    assert all(
+        trajectory.obs.shape[1:] == venv.observation_space.shape
+        for trajectory in trajectories
     )
-    main_trainer.train(3, 10)
+
 
 def test_agent_trainer_populates_buffer(agent_trainer):
     agent_trainer.train(steps=1)
