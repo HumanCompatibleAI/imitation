@@ -424,7 +424,7 @@ def test_agent_trainer_populates_buffer(agent_trainer):
     assert agent_trainer.buffering_wrapper.n_transitions > 0
 
 
-def test_agent_trainer_sample(agent_trainer):
+def test_agent_trainer_sample(venv, agent_trainer):
     trajectories = agent_trainer.sample(2)
     assert len(trajectories) > 0
     assert all(
