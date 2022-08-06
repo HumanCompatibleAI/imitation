@@ -1,10 +1,12 @@
+.. _dagger docs:
+
 =======================
 DAgger
 =======================
 
 `DAgger <https://arxiv.org/abs/1011.0686>`_ (Dataset Aggregation) iteratively trains a
 policy using supervised learning on a dataset of observation-action pairs from expert demonstrations
-(like :ref:`behavioral cloning <behavioral cloning>`), runs the policy to gather
+(like :ref:`behavioral cloning <behavioral cloning docs>`), runs the policy to gather
 observations, queries the expert for good actions on those observations, and adds the
 newly labeled observations to the dataset. DAgger improves on behavioral cloning by
 training on a dataset that better resembles the observations the trained policy is
