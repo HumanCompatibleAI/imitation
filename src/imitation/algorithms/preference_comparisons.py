@@ -23,8 +23,7 @@ from typing import (
 import numpy as np
 import torch as th
 from scipy import special
-from stable_baselines3.common import base_class, type_aliases, vec_env
-from stable_baselines3.common.utils import check_for_correct_spaces
+from stable_baselines3.common import base_class, type_aliases, utils, vec_env
 from torch import nn
 from torch.utils import data as data_th
 from tqdm.auto import tqdm
@@ -154,7 +153,7 @@ class AgentTrainer(TrajectoryGenerator):
         # will set self.logger, which also sets the logger for the algorithm
         super().__init__(custom_logger)
         if isinstance(reward_fn, reward_nets.RewardNet):
-            check_for_correct_spaces(
+            utils.check_for_correct_spaces(
                 venv,
                 reward_fn.observation_space,
                 reward_fn.action_space,
@@ -167,11 +166,11 @@ class AgentTrainer(TrajectoryGenerator):
         # them after training. This should come first (before the wrapper that
         # changes the reward function), so that we return the original environment
         # rewards.
-        # When applying RewardVecEnvWrapper, we should use `venv` instead of
-        # `algorithm.get_env()` because SB3 may apply some wrappers to `algorithm`'s env
-        # under the hood. In particular, in image-based environments, SB3 may move the
-        # image-channel dimension in the observation space, making `algorithm.get_env()`
-        # not match with `reward_fn`.
+        # When applying BufferingWrapper and RewardVecEnvWrapper, we should use `venv`
+        # instead of `algorithm.get_env()` because SB3 may apply some wrappers to
+        # `algorithm`'s env under the hood. In particular, in image-based environments,
+        # SB3 may move the image-channel dimension in the observation space, making
+        # `algorithm.get_env()` not match with `reward_fn`.
         self.buffering_wrapper = wrappers.BufferingWrapper(venv)
         self.venv = reward_wrapper.RewardVecEnvWrapper(
             self.buffering_wrapper,
@@ -180,6 +179,8 @@ class AgentTrainer(TrajectoryGenerator):
         self.log_callback = self.venv.make_log_callback()
 
         self.algorithm.set_env(self.venv)
+        # Unlike with BufferingWrapper, we should use `algorithm.get_env()` instead
+        # of `venv` when interacting with `algorithm`.
         policy_callable = rollout._policy_to_callable(
             self.algorithm,
             self.algorithm.get_env(),

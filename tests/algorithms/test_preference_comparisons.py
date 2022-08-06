@@ -434,10 +434,12 @@ def test_agent_trainer_sample(venv, agent_trainer):
 
 
 def test_agent_trainer_sample_image_observations():
-    # SB3 algorithms may internally rearrange the channel dimension in environments with
-    # image observations.
-    # This test checks that despite the rearrangement, `AgentTrainer.sample` returns
-    # observations with the correct shape.
+    """Test `AgentTrainer.sample()` in an image environment.
+
+    SB3 algorithms may rearrange the channel dimension in environments with image
+    observations, but `sample()` should return observations matching the original
+    environment.
+    """
     venv = DummyVecEnv([lambda: FakeImageEnv()])
     reward_net = reward_nets.BasicRewardNet(venv.observation_space, venv.action_space)
     agent = stable_baselines3.PPO(
