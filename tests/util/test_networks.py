@@ -32,11 +32,7 @@ def test_running_norm_identity_eval(normalization_layer: Type[networks.BaseNorm]
 
 
 def test_running_norm_identity_train():
-    """Test that the running norm will not change already normalized data.
-
-    Args:
-        normalization_layer: the normalization layer to be tested.
-    """
+    """Test that the running norm will not change already normalized data."""
     running_norm = networks.RunningNorm(1, eps=0.0)
     running_norm.train()  # stats will change in eval mode
     normalized = th.Tensor([-1, -1, -1, -1, 1, 1, 1, 1])  # mean 0, variance 1
