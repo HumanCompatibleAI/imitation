@@ -387,7 +387,7 @@ class PreferenceModel(nn.Module):
             The preference probability for the first fragment for all fragment pairs
             given by the network(s).
             Shape: (num_fragment_pairs, ) for models with single reward networks and
-                   (num_fragment_pairs, num_networks) for ensemble of networks.
+            (num_fragment_pairs, num_networks) for ensemble of networks.
 
         """
         if self.is_ensemble:
@@ -428,7 +428,7 @@ class PreferenceModel(nn.Module):
         Returns:
             The reward given by the network(s) for all the transitions.
             Shape: (num_transitions, ) for Single reward network and
-                   (num_transitions, num_networks) for ensemble of networks.
+            (num_transitions, num_networks) for ensemble of networks.
         """
         state = transitions.obs
         action = transitions.acts
@@ -461,7 +461,7 @@ class PreferenceModel(nn.Module):
             The softmax of the difference between the (discounted) return of the
             first and second trajectory.
             Shape: (num_ensemble_members, ) for ensemble model and
-                   () for non-ensemble model which is a torch scalar.
+            () for non-ensemble model which is a torch scalar.
         """
         # check rews has correct shape based on the model
         expected_dims = 2 if self.is_ensemble else 1
@@ -697,9 +697,9 @@ class ActiveSelectionFragmenter(Fragmenter):
 
         Args:
             rews1: rewards obtained by all the ensemble models for the first fragment.
-                Shape: (fragment_length, num_ensemble_members)
+            Shape: (fragment_length, num_ensemble_members)
             rews2: rewards obtained by all the ensemble models for the second fragment.
-                Shape: (fragment_length, num_ensemble_members)
+            Shape: (fragment_length, num_ensemble_members)
 
         Returns:
             the variance estimate based on the `uncertainty_on` flag.
