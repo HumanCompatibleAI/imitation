@@ -16,3 +16,4 @@ Code or a description of how to reproduce the bug.
 ## Environment
 - Operating system and version:
 - Python version:
+- Output of `pip freeze --all`:
