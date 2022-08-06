@@ -31,14 +31,13 @@ def test_running_norm_identity_eval(normalization_layer: Type[networks.BaseNorm]
         assert_equal(running_norm.forward(x), x)
 
 
-@pytest.mark.parametrize("normalization_layer", NORMALIZATION_LAYERS)
-def test_running_norm_identity_train(normalization_layer: Type[networks.BaseNorm]):
+def test_running_norm_identity_train():
     """Test that the running norm will not change already normalized data.
 
     Args:
         normalization_layer: the normalization layer to be tested.
     """
-    running_norm = normalization_layer(1, eps=0.0)
+    running_norm = networks.RunningNorm(1, eps=0.0)
     running_norm.train()  # stats will change in eval mode
     normalized = th.Tensor([-1, -1, -1, -1, 1, 1, 1, 1])  # mean 0, variance 1
     for _ in range(10):
@@ -133,7 +132,7 @@ def test_parameters_converge(
     running_norm = normalization_layer(num_dims)
     running_norm.train()
 
-    num_samples = 500
+    num_samples = 1000
     with th.random.fork_rng():
         th.random.manual_seed(42)
         data = th.randn(num_samples, num_dims) * sd + mean
@@ -192,3 +191,41 @@ def test_input_validation_on_ema_norm():
         networks.EMANorm(128, decay=-0.1)
 
     networks.EMANorm(128, decay=0.05)
+
+
+def test_ema_norm_batch_correctness():
+    norm_for_incremental = networks.EMANorm(256, 0.5)
+    norm_for_batch = networks.EMANorm(256, 0.5)
+    norm_for_incremental.train(), norm_for_batch.train()
+
+    with th.random.fork_rng():
+        th.random.manual_seed(42)
+        random_tensor = th.randn(64, 256)
+        for _ in range(100):
+            # calculating EMA of a moving distribution
+            random_tensor += 1
+            norm_for_batch(random_tensor)
+
+        # seeding torch's random module again so that the random permutation
+        # is exactly the same for both incremental and batch method
+        th.random.manual_seed(42)
+        random_tensor = th.randn(64, 256)
+        for _ in range(100):
+            random_tensor += 1
+            with th.no_grad():
+                norm_for_incremental.update_stats_incremental(random_tensor)
+
+    norm_for_incremental.eval(), norm_for_batch.eval()
+    th.testing.assert_close(
+        norm_for_incremental.running_mean,
+        norm_for_batch.running_mean,
+        rtol=0.05,
+        atol=0.1,
+    )
+
+    th.testing.assert_close(
+        norm_for_incremental.running_var,
+        norm_for_batch.running_var,
+        rtol=0.05,
+        atol=0.1,
+    )

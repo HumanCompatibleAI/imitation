@@ -143,7 +143,7 @@ class EMANorm(BaseNorm):
         Args:
             num_features: Number of features; the length of the non-batch dim.
             decay: how quickly the weight on past samples decays over time
-            eps: small constant for for numerical stability.
+            eps: small constant for numerical stability.
 
         Raises:
             ValueError: if decay is out of range.
@@ -155,7 +155,7 @@ class EMANorm(BaseNorm):
 
         self.decay = decay
 
-    def update_stats(self, batch: th.Tensor) -> None:
+    def update_stats_incremental(self, batch: th.Tensor) -> None:
         """Update `self.running_mean` and `self.running_var`.
 
         Reference Finch (2009), "Incremental calculation of weighted mean and variance".
@@ -165,23 +165,64 @@ class EMANorm(BaseNorm):
             batch: A batch of data to use to update the running mean and variance.
         """
         b_size = batch.shape[0]
+        # Shuffle the batch since we don't don't want to bias the mean
+        # towards data that appears latter in the batch
+        perm = th.randperm(b_size)
+        batch = batch[perm]
+        alpha = 1 - self.decay
 
         if self.count == 0:
-            self.running_mean = th.mean(batch, dim=0)
+            # geometric progession of decay: decay^(N-1),...,decay,1
+            weights = th.vander(th.tensor([self.decay]), N=b_size).T
+            weights[1:] *= alpha
+            self.running_mean = th.sum(weights * batch, dim=0)
             if b_size > 1:
-                self.running_var = th.var(batch, dim=0)
+                self.running_var = th.sum(weights * (batch**2), dim=0)
+                self.running_var -= self.running_mean**2
         else:
-            # Shuffle the batch since we don't don't want to bias the mean
-            # towards data that appears latter in the batch
-            perm = th.randperm(b_size)
-
-            alpha = 1 - self.decay
-
             for i in range(b_size):
-                diff = batch[perm[i], ...] - self.running_mean
+                diff = batch[i, ...] - self.running_mean
                 incr = alpha * diff
                 self.running_mean += incr
                 self.running_var = self.decay * (self.running_var + diff * incr)
+
+        self.count += b_size
+
+    def update_stats(self, batch: th.Tensor) -> None:
+        """Update `self.running_mean` and `self.running_var` in batch mode.
+
+        Args:
+            batch: A batch of data to use to update the running mean and variance.
+        """
+        b_size = batch.shape[0]
+        batch = batch.reshape(b_size, -1)
+        # Shuffle the batch since we don't don't want to bias the mean
+        # towards data that appears latter in the batch
+        perm = th.randperm(b_size)
+        batch = batch[perm]
+        # geometric progession of decay: decay^(N-1),...,decay,1
+        weights = th.vander(th.tensor([self.decay]), N=b_size).T
+        alpha = 1 - self.decay
+        if self.count == 0:
+            weights[1:] *= alpha
+            self.running_mean = th.sum(weights * batch, dim=0)
+            if b_size > 1:
+                self.running_var = th.sum(weights * (batch**2), dim=0)
+                self.running_var -= self.running_mean**2
+        else:
+            running_weight = self.decay * weights[0]
+            weights *= alpha
+            weighted_batch = weights * batch
+            batch_ema_mean = weighted_batch.sum(dim=0)
+
+            self.running_var = running_weight * (
+                self.running_var + self.running_mean**2
+            )
+            self.running_mean *= running_weight
+            self.running_mean += batch_ema_mean
+
+            self.running_var += th.sum(weighted_batch * batch, dim=0)
+            self.running_var -= self.running_mean**2
 
         self.count += b_size
 
