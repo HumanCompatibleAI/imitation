@@ -953,7 +953,6 @@ class RewardLoss(nn.Module, abc.ABC):
         """Computes the loss.
 
         Args:
-            model: the reward network
             fragment_pairs: Batch consisting of pairs of trajectory fragments.
             preferences: The probability that the first fragment is preferred
                 over the second. Typically 0, 1 or 0.5 (tie).
