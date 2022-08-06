@@ -10,7 +10,7 @@ policy using supervised learning on a dataset of observation-action pairs from e
 observations, queries the expert for good actions on those observations, and adds the
 newly labeled observations to the dataset. DAgger improves on behavioral cloning by
 training on a dataset that better resembles the observations the trained policy is
-likely to encounter, but it requires querying the expert.
+likely to encounter, but it requires querying the expert online.
 
 Notes
 -----
