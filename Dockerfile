@@ -33,16 +33,11 @@ RUN apt-get update -q \
 
 ENV LANG C.UTF-8
 
-RUN    mkdir -p /root/.mujoco \
-    && curl -o mjpro150.zip https://www.roboti.us/download/mjpro150_linux.zip \
-    && unzip mjpro150.zip -d /root/.mujoco \
-    && rm mjpro150.zip && curl -o /root/.mujoco/mjkey.txt https://www.roboti.us/file/mjkey.txt
-
 # Set the PATH to the venv before we create the venv, so it's visible in base.
 # This is since we may create the venv outside of Docker, e.g. in CI
 # or by binding it in for local development.
 ENV PATH="/venv/bin:$PATH"
-ENV LD_LIBRARY_PATH /usr/local/nvidia/lib64:/root/.mujoco/mjpro150/bin:${LD_LIBRARY_PATH}
+ENV LD_LIBRARY_PATH /usr/local/nvidia/lib64:${LD_LIBRARY_PATH}
 
 # Run Xdummy mock X server by default so that rendering will work.
 COPY ci/xorg.conf /etc/dummy_xorg.conf
