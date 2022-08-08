@@ -181,8 +181,8 @@ class EMANorm(BaseNorm):
                 weights[1:] *= alpha
             self.running_mean = th.sum(weights * batch, dim=0)
             if b_size > 1:
-                self.running_var = th.sum(weights * (batch**2), dim=0)
-                self.running_var -= self.running_mean**2
+                mean_adjusted_batch = batch - self.running_mean
+                self.running_var = th.sum(weights * (mean_adjusted_batch**2), dim=0)
             else:
                 self.running_var = th.zeros_like(self.running_mean)
         else:
