@@ -1,4 +1,7 @@
 Release Notes
 =============
 
-Please, read the `release history <https://github.com/HumanCompatibleAI/imitation/releases>`_ page on GitHub for the release notes of each version.
+.. changelog::
+    :changelog-url: https://imitation.readthedocs.io/en/latest/development/release-notes.html
+    :github: https://github.com/HumanCompatibleAI/imitation/releases
+    :pypi: https://pypi.org/project/imitation/

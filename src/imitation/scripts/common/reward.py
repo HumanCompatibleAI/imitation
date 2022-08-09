@@ -150,7 +150,7 @@ def make_reward_net(
             for _ in range(ensemble_size)
         ]
 
-        reward_net = net_cls(venv.observation_space, venv.observation_space, members)
+        reward_net = net_cls(venv.observation_space, venv.action_space, members)
 
         if add_std_alpha is not None:
             reward_net = reward_nets.AddSTDRewardWrapper(

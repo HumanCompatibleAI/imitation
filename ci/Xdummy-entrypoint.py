@@ -1,5 +1,8 @@
 #!/usr/bin/python3
 
+# This script starts an X server and sets DISPLAY, then runs wrapped command.
+# Usage: ./Xdummy-entrypoint.py [command]
+#
 # Adapted from https://github.com/openai/mujoco-py/blob/master/vendor/Xdummy-entrypoint
 # Copyright OpenAI; MIT License
 
