@@ -247,58 +247,19 @@ def test_train_bc_main_with_none_demonstrations_raises_value_error(tmpdir):
         )
 
 
-def test_train_bc_main_with_expert_path(tmpdir):
+@pytest.mark.parametrize("expert_config", [
+    pytest.param(dict(policy_path=CARTPOLE_TEST_POLICY_PATH / "model.zip"), id="policy_path"),
+    pytest.param(dict(huggingface_repo_id="HumanCompatibleAI/ppo-seals-CartPole-v0"), id="huggingface_repo_id"),
+    pytest.param(dict(policy_type="random"), id="random policy"),
+    pytest.param(dict(policy_type="zero"), id="zero policy")]
+)
+def test_train_bc_main(tmpdir, expert_config):
     run = train_imitation.train_imitation_ex.run(
         command_name="bc",
         named_configs=["seals_cartpole"] + ALGO_FAST_CONFIGS["imitation"],
         config_updates=dict(
             common=dict(log_root=tmpdir),
-            expert=dict(policy_path=CARTPOLE_TEST_POLICY_PATH / "model.zip"),
-        ),
-    )
-    assert run.status == "COMPLETED"
-    assert isinstance(run.result, dict)
-
-
-def test_train_bc_main_with_huggingface_repo_id(tmpdir):
-    run = train_imitation.train_imitation_ex.run(
-        command_name="bc",
-        named_configs=["seals_cartpole"] + ALGO_FAST_CONFIGS["imitation"],
-        config_updates=dict(
-            common=dict(log_root=tmpdir),
-            expert=dict(
-                huggingface_repo_id="HumanCompatibleAI/ppo-seals-CartPole-v0",
-            ),
-        ),
-    )
-    assert run.status == "COMPLETED"
-    assert isinstance(run.result, dict)
-
-
-def test_train_bc_main_with_random_expert(tmpdir):
-    run = train_imitation.train_imitation_ex.run(
-        command_name="bc",
-        named_configs=["seals_cartpole"] + ALGO_FAST_CONFIGS["imitation"],
-        config_updates=dict(
-            common=dict(log_root=tmpdir),
-            expert=dict(
-                policy_type="random",
-            ),
-        ),
-    )
-    assert run.status == "COMPLETED"
-    assert isinstance(run.result, dict)
-
-
-def test_train_bc_main_with_zero_expert(tmpdir):
-    run = train_imitation.train_imitation_ex.run(
-        command_name="bc",
-        named_configs=["seals_cartpole"] + ALGO_FAST_CONFIGS["imitation"],
-        config_updates=dict(
-            common=dict(log_root=tmpdir),
-            expert=dict(
-                policy_type="zero",
-            ),
+            expert=expert_config,
         ),
     )
     assert run.status == "COMPLETED"
