@@ -6,7 +6,7 @@ from typing import Mapping, Type
 import numpy as np
 import torch as th
 from gym import spaces
-from stable_baselines3.common.buffers import ReplayBuffer
+from stable_baselines3.common.buffers import BaseBuffer, ReplayBuffer
 from stable_baselines3.common.type_aliases import ReplayBufferSamples
 
 from imitation.rewards.reward_function import RewardFn
@@ -25,7 +25,7 @@ def _samples_to_reward_fn_input(
     )
 
 
-class ReplayBufferRewardWrapper(ReplayBuffer):
+class ReplayBufferRewardWrapper(BaseBuffer):
     """Relabel the rewards in transitions sampled from a ReplayBuffer."""
 
     def __init__(
@@ -61,6 +61,24 @@ class ReplayBufferRewardWrapper(ReplayBuffer):
             **kwargs,
         )
         self.reward_fn = reward_fn
+        _base_kwargs = {k: v for k, v in kwargs.items() if k in ["device", "n_envs"]}
+        super().__init__(buffer_size, observation_space, action_space, **_base_kwargs)
+
+    @property
+    def pos(self) -> int:
+        return self.replay_buffer.pos
+
+    @pos.setter
+    def pos(self, pos: int):
+        self.replay_buffer.pos = pos
+
+    @property
+    def full(self) -> bool:
+        return self.replay_buffer.full
+
+    @full.setter
+    def full(self, full: bool):
+        self.replay_buffer.full = full
 
     def sample(self, *args, **kwargs):
         samples = self.replay_buffer.sample(*args, **kwargs)
@@ -88,3 +106,6 @@ class ReplayBufferRewardWrapper(ReplayBuffer):
 
     def to_torch(self, array: np.ndarray, copy: bool = True) -> th.Tensor:
         return self.replay_buffer.to_torch(array, copy)
+
+    def _get_samples(self):
+        raise NotImplementedError("_get_samples is intentionally not implemented.")

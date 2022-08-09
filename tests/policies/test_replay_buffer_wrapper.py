@@ -94,3 +94,7 @@ def test_wrapper_class(tmpdir):
     # to_torch()
     tensor = replay_buffer_wrapper.to_torch(np.ones(42))
     assert type(tensor) is th.Tensor
+
+    # raise error for _get_samples()
+    with pytest.raises(NotImplementedError, match=r".*_get_samples.*"):
+        replay_buffer_wrapper._get_samples()
