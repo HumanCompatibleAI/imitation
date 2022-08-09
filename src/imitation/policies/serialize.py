@@ -30,7 +30,7 @@ def load_stable_baselines_model(
 
     Args:
         cls: Stable Baselines RL algorithm.
-        path: Path to directory containing saved model data.
+        path: Path to zip file containing saved model data.
         venv: Environment to train on.
         kwargs: Passed through to `cls.load`.
 
@@ -42,22 +42,22 @@ def load_stable_baselines_model(
         The deserialized RL algorithm.
     """
     logging.info(f"Loading Stable Baselines policy for '{cls}' from '{path}'")
-    policy_dir = pathlib.Path(path)
-    if not policy_dir.is_dir():
+    path = pathlib.Path(path)
+
+    if not path.parent.is_dir():
         raise FileNotFoundError(
-            f"path={path} needs to be a directory containing model.zip.",
+            f"path={path.parent} needs to be a directory containing {path.name}.",
         )
 
     # SOMEDAY(adam): added 2022-01, can probably remove this check in 2023
-    vec_normalize_path = policy_dir / "vec_normalize.pkl"
+    vec_normalize_path = path.parent / "vec_normalize.pkl"
     if vec_normalize_path.exists():
         raise FileExistsError(
             "Outdated policy format: we do not support restoring normalization "
             "statistics from '{vec_normalize_path}'",
         )
 
-    model_path = policy_dir / "model.zip"
-    return cls.load(model_path, env=venv, **kwargs)
+    return cls.load(path, env=venv, **kwargs)
 
 
 def _load_stable_baselines(
@@ -106,26 +106,29 @@ _add_stable_baselines_policies(STABLE_BASELINES_CLASSES)
 
 def load_policy(
     policy_type: str,
-    policy_path: str,
+    policy_dir: str,
     venv: vec_env.VecEnv,
+    filename: str = "model.zip",
 ) -> policies.BasePolicy:
     """Load serialized policy.
 
     Args:
         policy_type: A key in `policy_registry`, e.g. `ppo`.
-        policy_path: A path on disk where the policy is stored.
+        policy_dir: A path on disk where the policy is stored.
         venv: An environment that the policy is to be used with.
+        filename: The filename of the policy.
 
     Returns:
         The deserialized policy.
     """
     agent_loader = policy_registry.get(policy_type)
-    return agent_loader(policy_path, venv)
+    return agent_loader(os.path.join(policy_dir, filename), venv)
 
 
 def save_stable_model(
     output_dir: str,
     model: base_class.BaseAlgorithm,
+    filename: str = "model.zip",
 ) -> None:
     """Serialize Stable Baselines model.
 
@@ -134,12 +137,13 @@ def save_stable_model(
     Args:
         output_dir: Path to the save directory.
         model: The stable baselines model.
+        filename: The filename of the model.
     """
     # Save each model in new directory in case we want to add metadata or other
     # information in future. (E.g. we used to save `VecNormalize` statistics here,
     # although that is no longer necessary.)
     os.makedirs(output_dir, exist_ok=True)
-    model.save(os.path.join(output_dir, "model.zip"))
+    model.save(os.path.join(output_dir, filename))
     logging.info("Saved policy to %s", output_dir)
 
 

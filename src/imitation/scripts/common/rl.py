@@ -1,6 +1,7 @@
 """Common configuration elements for reinforcement learning."""
 
 import logging
+import os
 import warnings
 from typing import Any, Mapping, Type
 
@@ -145,7 +146,7 @@ def load_rl_algo_from_path(
 ) -> base_class.BaseAlgorithm:
     agent = serialize.load_stable_baselines_model(
         cls=rl_cls,
-        path=agent_path,
+        path=os.path.join(agent_path, "model.zip"),
         venv=venv,
         seed=_seed,
         **rl_kwargs,
