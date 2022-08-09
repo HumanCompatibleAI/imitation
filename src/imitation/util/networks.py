@@ -190,28 +190,20 @@ class EMANorm(BaseNorm):
                 running_weight = self.decay * weights[0]
             else:
                 running_weight = self.decay
-            weights *= alpha
-            # running weight + weights should now sum to 1
-
-            # Storing E[x^2] of previous data in running_var
-            # and then re-adjusting the weights of previous data
-            # Note: E[x^2] = Variance + mean^2 holds for all weighting
-            # scheme if all the terms are computed using the weights
-            self.running_var = running_weight * (
-                self.running_var + self.running_mean**2
-            )
 
             # computing the updated running mean using the current batch
-            weighted_batch = weights * batch
-            weighted_batch_mean = weighted_batch.sum(dim=0)
-            self.running_mean *= running_weight
-            self.running_mean += weighted_batch_mean
+            mean_adjusted_batch = batch - self.running_mean
+            weighted_batch = weights * mean_adjusted_batch
+            delta = alpha * weighted_batch.sum(dim=0)
+            self.running_mean += delta
 
-            # Adding the weighted E[x^2] for the current batch
-            self.running_var += th.sum(weighted_batch * batch, dim=0)
-            # Subtracting the new mean to get the updated (weighted) variance
-            # Variance = E[x^2] - E[x]^2; RHS computed with the updated weights
-            self.running_var -= self.running_mean**2
+            adjusted_batch_variance = th.sum(
+                weighted_batch * mean_adjusted_batch,
+                dim=0,
+            )
+            # Var = decay*Var + alpha*S - delta^2
+            self.running_var *= running_weight
+            self.running_var += alpha * adjusted_batch_variance - delta**2
 
         self.count += b_size
 

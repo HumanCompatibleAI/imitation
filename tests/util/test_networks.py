@@ -270,13 +270,14 @@ def run_ema_norm(norm, random_tensor):
 
 
 @pytest.mark.parametrize("decay_within_batch", [False, True])
-def test_ema_norm_batch_correctness(decay_within_batch):
+@pytest.mark.parametrize("decay", [0.5, 0.99])
+def test_ema_norm_batch_correctness(decay_within_batch, decay):
     norm_for_incremental = EMANormIncremental(
         num_features=256,
-        decay=0.99,
+        decay=decay,
         decay_within_batch=decay_within_batch,
     )
-    norm_for_batch = networks.EMANorm(256, 0.99, decay_within_batch=decay_within_batch)
+    norm_for_batch = networks.EMANorm(256, decay, decay_within_batch=decay_within_batch)
     random_tensor = th.randn(64, 256)
     for i in range(100):
         norm_for_incremental.train(), norm_for_batch.train()
