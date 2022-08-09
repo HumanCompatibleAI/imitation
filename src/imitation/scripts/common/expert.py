@@ -15,18 +15,18 @@ def config():
     policy_type = "ppo"  # right now only ppo supported
     policy_path = None  # path to zip-file containing an expert policy
     huggingface_repo_id = None
-    hugginface_orga = "HumanCompatibleAI"
+    huggingface_orga = "HumanCompatibleAI"
 
     locals()  # quieten flake8
 
 
 @expert_ingredient.capture
-def get_huggingface_repo_id(common, huggingface_repo_id, policy_type, hugginface_orga):
+def get_huggingface_repo_id(common, huggingface_repo_id, policy_type, huggingface_orga):
     if huggingface_repo_id is not None:
         return huggingface_repo_id
     else:
         return ModelRepoId(
-            hugginface_orga,
+            huggingface_orga,
             ModelName(policy_type, EnvironmentName(common["env_name"])),
         )
 
