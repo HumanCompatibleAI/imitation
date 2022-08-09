@@ -29,6 +29,7 @@ def make_algo_with_wrapped_buffer(
     rl_cls: Type[off_policy_algorithm.OffPolicyAlgorithm],
     policy_cls: Type[BasePolicy],
     replay_buffer_class: Type[buffers.ReplayBuffer],
+    buffer_size: int = 100,
 ) -> off_policy_algorithm.OffPolicyAlgorithm:
     venv = util.make_vec_env("Pendulum-v1", n_envs=1)
     rl_kwargs = dict(
@@ -37,6 +38,7 @@ def make_algo_with_wrapped_buffer(
             replay_buffer_class=replay_buffer_class,
             reward_fn=zero_reward_fn,
         ),
+        buffer_size=buffer_size,
     )
     rl_algo = rl_cls(
         policy=policy_cls,
@@ -68,13 +70,16 @@ def test_invalid_args():
 
 
 def test_wrapper_class(tmpdir):
+    buffer_size = 15
+    total_timesteps = 20
+
     rl_algo = make_algo_with_wrapped_buffer(
         rl_cls=sb3.SAC,
         policy_cls=sb3.sac.policies.SACPolicy,
         replay_buffer_class=buffers.ReplayBuffer,
+        buffer_size=buffer_size,
     )
 
-    total_timesteps = 20
     rl_algo.learn(total_timesteps=total_timesteps)
 
     buffer_path = osp.join(tmpdir, "buffer.pkl")
@@ -83,13 +88,19 @@ def test_wrapper_class(tmpdir):
     replay_buffer = replay_buffer_wrapper.replay_buffer
 
     # replay_buffer_wrapper.sample(...) should return zero-reward transitions
-    assert total_timesteps == replay_buffer_wrapper.size() == replay_buffer.size()
+    assert buffer_size == replay_buffer_wrapper.size() == replay_buffer.size()
     assert (replay_buffer_wrapper.sample(total_timesteps).rewards == 0.0).all()
     assert (replay_buffer.sample(total_timesteps).rewards != 0.0).all()  # seed=42
+
+    # replay_buffer_wrapper.pos, replay_buffer_wrapper.full
+    assert replay_buffer_wrapper.pos == total_timesteps - buffer_size
+    assert replay_buffer_wrapper.full
 
     # reset()
     replay_buffer_wrapper.reset()
     assert 0 == replay_buffer_wrapper.size() == replay_buffer.size()
+    assert replay_buffer_wrapper.pos == 0
+    assert not replay_buffer_wrapper.full
 
     # to_torch()
     tensor = replay_buffer_wrapper.to_torch(np.ones(42))
