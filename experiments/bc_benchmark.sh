@@ -30,7 +30,7 @@ while true; do
       shift
       ;;
     --paper)  # Table benchmark settings
-      ENVS=(seals_cartpole seals_mountain_car half_cheetah)
+      ENVS=(seals_cartpole seals_mountain_car seals_half_cheetah)
       shift
       ;;
     -w | --wandb)

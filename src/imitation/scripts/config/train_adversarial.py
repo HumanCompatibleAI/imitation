@@ -103,6 +103,35 @@ def seals_ant():
 @train_adversarial_ex.named_config
 def half_cheetah():
     locals().update(**MUJOCO_SHARED_LOCALS)
+    common = dict(env_name="HalfCheetah-v2")
+    rl = dict(batch_size=16384, rl_kwargs=dict(batch_size=1024))
+    algorithm_specific = dict(
+        airl=dict(total_timesteps=int(5e6)),
+        gail=dict(total_timesteps=int(8e6)),
+    )
+    reward = dict(
+        algorithm_specific=dict(
+            airl=dict(
+                net_cls=reward_nets.BasicShapedRewardNet,
+                net_kwargs=dict(
+                    reward_hid_sizes=(32,),
+                    potential_hid_sizes=(32,),
+                ),
+            ),
+        ),
+    )
+    algorithm_kwargs = dict(
+        # Number of discriminator updates after each round of generator updates
+        n_disc_updates_per_round=16,
+        # Equivalent to no replay buffer if batch size is the same
+        gen_replay_buffer_capacity=16384,
+        demo_batch_size=8192,
+    )
+
+
+@train_adversarial_ex.named_config
+def seals_half_cheetah():
+    locals().update(**MUJOCO_SHARED_LOCALS)
     common = dict(env_name="seals/HalfCheetah-v0")
     rl = dict(batch_size=16384, rl_kwargs=dict(batch_size=1024))
     algorithm_specific = dict(
