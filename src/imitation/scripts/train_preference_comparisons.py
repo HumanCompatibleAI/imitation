@@ -152,6 +152,7 @@ def train_preference_comparisons(
         trajectory_generator = preference_comparisons.AgentTrainer(
             algorithm=agent,
             reward_fn=reward_net,
+            venv=venv,
             exploration_frac=exploration_frac,
             seed=_seed,
             custom_logger=custom_logger,

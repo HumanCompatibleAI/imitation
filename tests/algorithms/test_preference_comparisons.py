@@ -7,6 +7,8 @@ import numpy as np
 import pytest
 import seals  # noqa: F401
 import stable_baselines3
+from stable_baselines3.common.envs import FakeImageEnv
+from stable_baselines3.common.vec_env import DummyVecEnv
 
 import imitation.testing.reward_nets as testing_reward_nets
 from imitation.algorithms import preference_comparisons
@@ -54,8 +56,8 @@ def fragmenter():
 
 
 @pytest.fixture
-def agent_trainer(agent, reward_net):
-    return preference_comparisons.AgentTrainer(agent, reward_net)
+def agent_trainer(agent, reward_net, venv):
+    return preference_comparisons.AgentTrainer(agent, reward_net, venv)
 
 
 def _check_trajs_equal(
@@ -71,15 +73,20 @@ def _check_trajs_equal(
         assert traj1.terminal == traj2.terminal
 
 
-def test_missing_environment(agent):
-    # Create an agent that doesn't have its environment set.
-    # More realistically, this can happen when loading a stored agent.
-    agent.env = None
+def test_mismatched_spaces(venv, agent):
+    other_venv = util.make_vec_env(
+        "seals/MountainCar-v0",
+        n_envs=1,
+    )
+    bad_reward_net = reward_nets.BasicRewardNet(
+        other_venv.observation_space,
+        other_venv.action_space,
+    )
     with pytest.raises(
         ValueError,
-        match="The environment for the agent algorithm must be set.",
+        match="spaces do not match",
     ):
-        preference_comparisons.AgentTrainer(agent, reward_net)
+        preference_comparisons.AgentTrainer(agent, bad_reward_net, venv)
 
 
 def test_trajectory_dataset_seeding(
@@ -393,10 +400,11 @@ def test_store_and_load_preference_dataset(agent_trainer, fragmenter, tmp_path):
         _check_trajs_equal(fragments, loaded_fragments)
 
 
-def test_exploration_no_crash(agent, reward_net, fragmenter, custom_logger):
+def test_exploration_no_crash(agent, reward_net, venv, fragmenter, custom_logger):
     agent_trainer = preference_comparisons.AgentTrainer(
         agent,
         reward_net,
+        venv,
         exploration_frac=0.5,
     )
     main_trainer = preference_comparisons.PreferenceComparisons(
@@ -409,3 +417,47 @@ def test_exploration_no_crash(agent, reward_net, fragmenter, custom_logger):
         custom_logger=custom_logger,
     )
     main_trainer.train(100, 10)
+
+
+def test_agent_trainer_populates_buffer(agent_trainer):
+    agent_trainer.train(steps=1)
+    assert agent_trainer.buffering_wrapper.n_transitions > 0
+
+
+def test_agent_trainer_sample(venv, agent_trainer):
+    trajectories = agent_trainer.sample(2)
+    assert len(trajectories) > 0
+    assert all(
+        trajectory.obs.shape[1:] == venv.observation_space.shape
+        for trajectory in trajectories
+    )
+
+
+def test_agent_trainer_sample_image_observations():
+    """Test `AgentTrainer.sample()` in an image environment.
+
+    SB3 algorithms may rearrange the channel dimension in environments with image
+    observations, but `sample()` should return observations matching the original
+    environment.
+    """
+    venv = DummyVecEnv([lambda: FakeImageEnv()])
+    reward_net = reward_nets.BasicRewardNet(venv.observation_space, venv.action_space)
+    agent = stable_baselines3.PPO(
+        "MlpPolicy",
+        venv,
+        n_epochs=1,
+        batch_size=2,
+        n_steps=10,
+    )
+    agent_trainer = preference_comparisons.AgentTrainer(
+        agent,
+        reward_net,
+        venv,
+        exploration_frac=0.5,
+    )
+    trajectories = agent_trainer.sample(2)
+    assert len(trajectories) > 0
+    assert all(
+        trajectory.obs.shape[1:] == venv.observation_space.shape
+        for trajectory in trajectories
+    )
