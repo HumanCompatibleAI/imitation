@@ -3,6 +3,8 @@
 Trains a reward model and optionally a policy based on preferences
 between trajectory fragments.
 """
+from __future__ import generators
+
 import abc
 import math
 import pickle
@@ -289,6 +291,82 @@ class AgentTrainer(TrajectoryGenerator):
     def logger(self, value: imit_logger.HierarchicalLogger):
         self._logger = value
         self.algorithm.set_logger(self.logger)
+
+
+class MixtureOfTrajectoryGenerators(TrajectoryGenerator):
+    """A collection of trajectory generators merged together."""
+
+    members: Sequence[TrajectoryGenerator]
+
+    def __init__(
+        self,
+        members: Sequence[TrajectoryGenerator],
+        custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
+    ):
+        """Create a mixture of trajectory generators.
+
+        Args:
+            members: Individual trajectory generators that will make up the ensemble.
+            custom_logger: Custom logger passed to super class.
+
+        Raises:
+            ValueError: if members is empty.
+        """
+        if len(members) == 0:
+            raise ValueError(
+                "MixtureOfTrajectoryGenerators requires at least one member!",
+            )
+        self.members = tuple(members)
+        super().__init__(custom_logger=custom_logger)
+
+    def sample(self, steps: int) -> Sequence[TrajectoryWithRew]:
+        """Sample a batch of trajectories splitting evenly amongst the mixture members.
+
+        Args:
+            steps: All trajectories taken together should
+                have at least this many steps.
+
+        Returns:
+            A list of sampled trajectories with rewards (which should
+            be the environment rewards, not ones from a reward model).
+        """
+        n = len(self.members)
+        # Approximately evenly partition work.
+        d = steps // n
+        r = steps % n
+        i = np.random.randint(n)
+        partition = [d] * n
+        partition[i] += r
+        trajectories = []
+
+        for s, generator in zip(partition, self.members):
+            trajectories.extend(generator.sample(s))
+
+        return trajectories
+
+    def train(self, steps: int, **kwargs):
+        """Train an agent if the trajectory generator uses one.
+
+        By default, this method does nothing and doesn't need
+        to be overridden in subclasses that don't require training.
+
+        Args:
+            steps: number of environment steps to train for.
+            **kwargs: additional keyword arguments to pass on to
+                the training procedure.
+        """
+        for generator in self.members:
+            generator.train(steps, **kwargs)
+
+    @property
+    def logger(self) -> imit_logger.HierarchicalLogger:
+        return self._logger
+
+    @logger.setter
+    def logger(self, value: imit_logger.HierarchicalLogger):
+        self._logger = value
+        for generator in self.members:
+            generator.logger = value
 
 
 def _get_trajectories(

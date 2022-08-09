@@ -2,6 +2,7 @@
 
 import re
 from typing import Sequence
+from unittest import mock
 
 import numpy as np
 import pytest
@@ -51,6 +52,17 @@ def agent(venv):
 @pytest.fixture
 def fragmenter():
     return preference_comparisons.RandomFragmenter(seed=0, warning_threshold=0)
+
+
+@pytest.fixture
+def trajectory_with_reward() -> TrajectoryWithRew:
+    return TrajectoryWithRew(
+        obs=np.zeros((33, 10), dtype=float),
+        acts=np.zeros(32, dtype=int),
+        infos=None,
+        terminal=False,
+        rews=np.zeros(32, dtype=float),
+    )
 
 
 @pytest.fixture
@@ -162,6 +174,28 @@ def test_transitions_left_in_buffer(agent_trainer):
         ),
     ):
         agent_trainer.train(steps=1)
+
+
+def test_mixture_of_trajectory_generators_train_and_sample(trajectory_with_reward):
+    gen_1 = mock.Mock(spec=preference_comparisons.TrajectoryGenerator)
+    gen_2 = mock.Mock(spec=preference_comparisons.TrajectoryGenerator)
+    gen_1.sample.return_value = 6 * [trajectory_with_reward]
+    gen_2.sample.return_value = 6 * [trajectory_with_reward]
+    mixture = preference_comparisons.MixtureOfTrajectoryGenerators(
+        members=(gen_1, gen_2),
+    )
+    mixture.train(steps=10, foo=4)
+    assert gen_1.train.called_once_with(steps=10, foo=4)
+    assert gen_2.train.called_once_with(steps=10, foo=4)
+    mixture.sample(11)
+    assert gen_1.sample.call_args.args[0] + gen_2.sample.call_args.args[0] == 11
+
+
+def test_mixture_of_trajectory_generators_raises_value_error_when_members_is_empty():
+    with pytest.raises(ValueError):
+        preference_comparisons.MixtureOfTrajectoryGenerators(
+            members=[],
+        )
 
 
 @pytest.mark.parametrize(
