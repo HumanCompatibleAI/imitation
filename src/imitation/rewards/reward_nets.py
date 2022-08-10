@@ -415,8 +415,8 @@ class CnnRewardNet(RewardNet):
     """CNN that takes as input the state, action, next state and done flag.
 
     Inputs are boosted to tensors with channel, height, and width dimensions, and then
-    concatenated. Image inputs are transposed to (c,h,w) format. Each input can be
-    enabled or disable by the `use_*` constructor keyword arguments.
+    concatenated. Image inputs are by default transposed to (c,h,w) format. Each input
+    can be enabled or disable by the `use_*` constructor keyword arguments.
     """
 
     def __init__(
@@ -427,6 +427,7 @@ class CnnRewardNet(RewardNet):
         use_action: bool = True,
         use_next_state: bool = False,
         use_done: bool = False,
+        hwc_format: bool = True,
         **kwargs,
     ):
         """Builds reward CNN.
@@ -438,6 +439,8 @@ class CnnRewardNet(RewardNet):
             use_action: Should the current action be included as an input to the CNN?
             use_next_state: Should the next state be included as an input to the CNN?
             use_done: Should the "done" flag be included as an input to the CNN?
+            hwc_format: Are image inputs in (h,w,c) format (True), or (c,h,w) (False)?
+                If hwc_format is False, image inputs are not transposed.
             kwargs: Passed straight through to `build_cnn`.
 
         Raises:
@@ -451,6 +454,7 @@ class CnnRewardNet(RewardNet):
         self.use_done = use_done
         self.input_size = 0
         self.obs_is_image = preprocessing.is_image_space(observation_space)
+        self.hwc_format = hwc_format
 
         if not self.can_handle_space(observation_space):
             raise ValueError(
@@ -537,9 +541,9 @@ class CnnRewardNet(RewardNet):
     ) -> th.Tensor:
         """Computes rewardNet value on input state, action, next_state, and done flag.
 
-        Takes inputs that will be used, transposes image states to (c,h,w) format,
-        reshapes inputs to have compatible dimensions, concatenates them, and inputs
-        them into the CNN.
+        Takes inputs that will be used, transposes image states to (c,h,w) format if
+        needed, reshapes inputs to have compatible dimensions, concatenates them, and
+        inputs them into the CNN.
 
         Args:
             state: current state.
@@ -551,15 +555,14 @@ class CnnRewardNet(RewardNet):
             th.Tensor: reward of the transition.
         """
         inputs = []
+        do_transpose = self.obs_is_image and self.hwc_format
         if self.use_state:
-            state_ = self.transpose(state) if self.obs_is_image else state
+            state_ = self.transpose(state) if do_transpose else state
             inputs.append(state_)
         if self.use_action:
             inputs.append(action)
         if self.use_next_state:
-            next_state_ = (
-                self.transpose(next_state) if self.obs_is_image else next_state
-            )
+            next_state_ = self.transpose(next_state) if do_transpose else next_state
             inputs.append(next_state_)
         if self.use_done:
             inputs.append(done)
