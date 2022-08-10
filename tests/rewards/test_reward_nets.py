@@ -27,6 +27,7 @@ def _potential(x):
 
 
 ENVS = ["FrozenLake-v1", "CartPole-v1", "Pendulum-v1"]
+IMAGE_ENVS = ["Asteroids-v4"]
 DESERIALIZATION_TYPES = [
     "zero",
     "RewardNet_normalized",
@@ -42,6 +43,7 @@ MAKE_REWARD_NET = [
     reward_nets.BasicShapedRewardNet,
     testing_reward_nets.make_ensemble,
 ]
+MAKE_IMAGE_REWARD_NET = [reward_nets.CnnRewardNet]
 
 
 MAKE_BASIC_REWARD_NET_WRAPPERS = [
@@ -113,11 +115,29 @@ def test_init_no_crash(
         )
 
 
+@pytest.mark.parametrize("env_name", IMAGE_ENVS)
+@pytest.mark.parametrize("reward_net_cls", MAKE_IMAGE_REWARD_NET)
+@pytest.mark.parametrize("reward_net_kwargs", REWARD_NET_KWARGS)
+@pytest.mark.parametrize("normalize_output_layer", NORMALIZE_OUTPUT_LAYER)
+def test_image_init_no_crash(
+    env_name,
+    reward_net_cls,
+    reward_net_kwargs,
+    normalize_output_layer,
+):
+    test_init_no_crash(
+        env_name,
+        reward_net_cls,
+        reward_net_kwargs,
+        normalize_output_layer,
+    )
+
+
 def _sample(space, n):
     return np.array([space.sample() for _ in range(n)])
 
 
-def _make_env_and_save_reward_net(env_name, reward_type, tmpdir):
+def _make_env_and_save_reward_net(env_name, reward_type, tmpdir, is_image=False):
     venv = util.make_vec_env(env_name, n_envs=1, parallel=False)
     save_path = os.path.join(tmpdir, "norm_reward.pt")
 
@@ -132,7 +152,11 @@ def _make_env_and_save_reward_net(env_name, reward_type, tmpdir):
     if reward_type == "zero":
         return venv, save_path
 
-    net = reward_nets.BasicRewardNet(venv.observation_space, venv.action_space)
+    net = (
+        reward_nets.BasicRewardNet(venv.observation_space, venv.action_space)
+        if not is_image
+        else reward_nets.CnnRewardNet(venv.observation_space, venv.action_space)
+    )
 
     if reward_type == "RewardNet_normalized":
         net = reward_nets.NormalizedRewardNet(net, networks.RunningNorm)
@@ -150,7 +174,37 @@ def _make_env_and_save_reward_net(env_name, reward_type, tmpdir):
 def test_reward_valid(env_name, reward_type, tmpdir):
     """Test output of reward function is appropriate shape and type."""
     venv = util.make_vec_env(env_name, n_envs=1, parallel=False)
-    venv, tmppath = _make_env_and_save_reward_net(env_name, reward_type, tmpdir)
+    venv, tmppath = _make_env_and_save_reward_net(
+        env_name,
+        reward_type,
+        tmpdir,
+        is_image=False,
+    )
+
+    TRAJECTORY_LEN = 10
+    obs = _sample(venv.observation_space, TRAJECTORY_LEN)
+    actions = _sample(venv.action_space, TRAJECTORY_LEN)
+    next_obs = _sample(venv.observation_space, TRAJECTORY_LEN)
+    steps = np.arange(0, TRAJECTORY_LEN)
+
+    reward_fn = serialize.load_reward(reward_type, tmppath, venv)
+    pred_reward = reward_fn(obs, actions, next_obs, steps)
+
+    assert pred_reward.shape == (TRAJECTORY_LEN,)
+    assert isinstance(pred_reward[0], numbers.Number)
+
+
+@pytest.mark.parametrize("env_name", IMAGE_ENVS)
+@pytest.mark.parametrize("reward_type", DESERIALIZATION_TYPES)
+def test_reward_valid_image(env_name, reward_type, tmpdir):
+    """Test output of reward function is appropriate shape and type."""
+    venv = util.make_vec_env(env_name, n_envs=1, parallel=False)
+    venv, tmppath = _make_env_and_save_reward_net(
+        env_name,
+        reward_type,
+        tmpdir,
+        is_image=True,
+    )
 
     TRAJECTORY_LEN = 10
     obs = _sample(venv.observation_space, TRAJECTORY_LEN)
@@ -207,6 +261,20 @@ def test_strip_wrappers_basic():
     assert isinstance(net, reward_nets.BasicRewardNet)
 
 
+def test_strip_wrappers_image_basic():
+    venv = util.make_vec_env("Asteroids-v4", n_envs=1, parallel=False)
+    net = reward_nets.CnnRewardNet(venv.observation_space, venv.action_space)
+    net = reward_nets.NormalizedRewardNet(net, networks.RunningNorm)
+    net = serialize._strip_wrappers(
+        net,
+        wrapper_types=[reward_nets.NormalizedRewardNet],
+    )
+    assert isinstance(net, reward_nets.CnnRewardNet)
+    # This removing a wrapper from an unwrapped reward net should do nothing
+    net = serialize._strip_wrappers(net, wrapper_types=[reward_nets.ShapedRewardNet])
+    assert isinstance(net, reward_nets.CnnRewardNet)
+
+
 def test_strip_wrappers_complex():
     venv = util.make_vec_env("FrozenLake-v1", n_envs=1, parallel=False)
     net = reward_nets.BasicRewardNet(venv.observation_space, venv.action_space)
@@ -226,6 +294,27 @@ def test_strip_wrappers_complex():
         wrapper_types=[reward_nets.NormalizedRewardNet, reward_nets.ShapedRewardNet],
     )
     assert isinstance(net, reward_nets.BasicRewardNet)
+
+
+def test_strip_wrappers_image_complex():
+    venv = util.make_vec_env("Asteroids-v4", n_envs=1, parallel=False)
+    net = reward_nets.CnnRewardNet(venv.observation_space, venv.action_space)
+    net = reward_nets.ShapedRewardNet(net, _potential, discount_factor=0.99)
+    net = reward_nets.NormalizedRewardNet(net, networks.RunningNorm)
+    # Removing in incorrect order should do nothing
+    net = serialize._strip_wrappers(
+        net,
+        wrapper_types=[reward_nets.ShapedRewardNet, reward_nets.NormalizedRewardNet],
+    )
+
+    assert isinstance(net, reward_nets.NormalizedRewardNet)
+    assert isinstance(net.base, reward_nets.ShapedRewardNet)
+    # Correct order should work
+    net = serialize._strip_wrappers(
+        net,
+        wrapper_types=[reward_nets.NormalizedRewardNet, reward_nets.ShapedRewardNet],
+    )
+    assert isinstance(net, reward_nets.CnnRewardNet)
 
 
 def test_validate_wrapper_structure():
@@ -363,6 +452,19 @@ def test_serialize_identity(
         assert len(predictions) == 3
         assert np.allclose(predictions[0], predictions[1])
         assert np.allclose(predictions[0], predictions[2])
+
+
+@pytest.mark.parametrize("env_name", IMAGE_ENVS)
+@pytest.mark.parametrize("net_cls", MAKE_IMAGE_REWARD_NET)
+@pytest.mark.parametrize("normalize_rewards", [True, False])
+def test_serialize_identity_images(
+    env_name,
+    net_cls,
+    normalize_rewards,
+    tmpdir,
+):
+    """Does output of deserialized reward CNN match that of original?"""
+    test_serialize_identity(env_name, net_cls, normalize_rewards, tmpdir)
 
 
 class Env2D(gym.Env):
