@@ -172,11 +172,12 @@ class AgentTrainer(TrajectoryGenerator):
         # SB3 may move the image-channel dimension in the observation space, making
         # `algorithm.get_env()` not match with `reward_fn`.
         self.buffering_wrapper = wrappers.BufferingWrapper(venv)
-        self.venv = reward_wrapper.RewardVecEnvWrapper(
+        self.venv = self.reward_venv_wrapper = reward_wrapper.RewardVecEnvWrapper(
             self.buffering_wrapper,
             reward_fn=self.reward_fn,
         )
-        self.log_callback = self.venv.make_log_callback()
+
+        self.log_callback = self.reward_venv_wrapper.make_log_callback()
 
         self.algorithm.set_env(self.venv)
         # Unlike with BufferingWrapper, we should use `algorithm.get_env()` instead
