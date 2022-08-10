@@ -16,7 +16,7 @@ if IS_NOT_WINDOWS:
     STABLE_BASELINES3 = "stable-baselines3[extra]>=1.6.0"
 else:
     STABLE_BASELINES3 = (
-        "stable-baselines3@git+"
+        "stable-baselines3[extra]@git+"
         "https://github.com/DLR-RM/stable-baselines3.git@master"
     )
 
