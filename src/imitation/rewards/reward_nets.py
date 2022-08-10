@@ -411,15 +411,12 @@ class BasicRewardNet(RewardNet):
         return outputs
 
 
-class CnnRewardNet_(RewardNet):
+class CnnRewardNet(RewardNet):
     """CNN that takes as input the state, action, next state and done flag.
 
     Inputs are boosted to tensors with channel, height, and width dimensions, and then
-    concatenated. Each input can be enabled or disable by the `use_*` constructor
-    keyword arguments.
-
-    Note that this should always be wrapped in a ChannelFirstRewardWrapper, as
-    implemented in the CnnRewardNet class.
+    concatenated. Image inputs are transposed to (c,h,w) format. Each input can be
+    enabled or disable by the `use_*` constructor keyword arguments.
     """
 
     def __init__(
@@ -453,14 +450,15 @@ class CnnRewardNet_(RewardNet):
         self.use_next_state = use_next_state
         self.use_done = use_done
         self.input_size = 0
+        self.obs_is_image = preprocessing.is_image_space(observation_space)
 
         if not self.can_handle_space(observation_space):
             raise ValueError(
-                "CnnRewardNet_ doesn't know how to deal with this observation space.",
+                "CnnRewardNet doesn't know how to deal with this observation space.",
             )
         if not self.can_handle_space(action_space):
             raise ValueError(
-                "CnnRewardNet_ doesn't know how to deal with this action space.",
+                "CnnRewardNet doesn't know how to deal with this action space.",
             )
 
         if self.use_state:
@@ -520,6 +518,16 @@ class CnnRewardNet_(RewardNet):
 
         return my_dim
 
+    def transpose(
+        self,
+        state: th.Tensor,
+    ) -> th.Tensor:
+        """Transposes the state to put the channel dim before height and width."""
+        if len(state.shape) == 3:
+            return th.permute(state, (2, 0, 1))
+        else:
+            return th.permute(state, (0, 3, 1, 2))
+
     def forward(
         self,
         state: th.Tensor,
@@ -529,8 +537,9 @@ class CnnRewardNet_(RewardNet):
     ) -> th.Tensor:
         """Computes rewardNet value on input state, action, next_state, and done flag.
 
-        Takes inputs that will be used, reshapes them to have compatible dimensions,
-        concatenates them, and inputs them into the CNN.
+        Takes inputs that will be used, transposes image states to (c,h,w) format,
+        reshapes inputs to have compatible dimensions, concatenates them, and inputs
+        them into the CNN.
 
         Args:
             state: current state.
@@ -543,11 +552,15 @@ class CnnRewardNet_(RewardNet):
         """
         inputs = []
         if self.use_state:
-            inputs.append(state)
+            state_ = self.transpose(state) if self.obs_is_image else state
+            inputs.append(state_)
         if self.use_action:
             inputs.append(action)
         if self.use_next_state:
-            inputs.append(next_state)
+            next_state_ = (
+                self.transpose(next_state) if self.obs_is_image else next_state
+            )
+            inputs.append(next_state_)
         if self.use_done:
             inputs.append(done)
 
@@ -816,115 +829,6 @@ class BasicPotentialMLP(nn.Module):
 
     def forward(self, state: th.Tensor) -> th.Tensor:
         return self._potential_net(state)
-
-
-class ChannelFirstRewardWrapper(RewardNetWrapper):
-    """A RewardNetWrapper to handle inconsistent (h,w,c) vs (h,c,w) conventions.
-
-    Transposes observations when necessary to ensure the channel dimension appears
-    before the height and width dimensions. Only does so on image observation spaces,
-    and detects the channel dimension by assuming that it is the smallest of the
-    non-batch dimensions.
-    """
-
-    def __init__(
-        self,
-        base: RewardNet,
-    ):
-        """Set up a ChannelFirstRewardWrapper instance.
-
-        Args:
-            base: the base reward net.
-        """
-        super().__init__(
-            base=base,
-        )
-        self.obs_is_image = preprocessing.is_image_space(base.observation_space)
-
-    def has_channels_first(
-        self,
-        state: th.Tensor,
-    ) -> bool:
-        """Checks whether an observation's channel dim comes before height and width.
-
-        Uses the heuristic that the channel dimension is the smallest of the non-batch
-        dimensions.
-
-        Args:
-            state: state tensor being input into the reward net.
-
-        Returns:
-            Whether the input has its channel dim before the height and width dims.
-        """
-        smallest_dim = (
-            np.argmin(state.shape)
-            if len(state.shape) == 3
-            else np.argmin(state.shape[1:])
-        )
-        return smallest_dim == 0
-
-    def transpose(
-        self,
-        state: th.Tensor,
-    ) -> th.Tensor:
-        """Transposes the state to put the channel dim before height and width."""
-        if len(state.shape) == 3:
-            return th.permute(state, (2, 0, 1))
-        else:
-            return th.permute(state, (0, 3, 1, 2))
-
-    def forward(
-        self,
-        state: th.Tensor,
-        action: th.Tensor,
-        next_state: th.Tensor,
-        done: th.Tensor,
-    ) -> th.Tensor:
-        """Transpose state and next_state if necessary."""
-        if self.obs_is_image:
-            transp_state = (
-                self.transpose(state) if not self.has_channels_first(state) else state
-            )
-            transp_next_state = (
-                self.transpose(next_state)
-                if not self.has_channels_first(next_state)
-                else next_state
-            )
-            return self.base(transp_state, action, transp_next_state, done)
-        else:
-            return self.base(state, action, next_state, done)
-
-
-class CnnRewardNet(ChannelFirstRewardWrapper):
-    """CNN that takes as input the state, action, next state and done flag.
-
-    Inputs are transposed to (c,h,w) format as necessary, boosted to tensors with
-    channel, height, and width dimensions, and then concatenated. Each input can be
-    enabled or disable by the `use_*` constructor keyword arguments.
-    """
-
-    def __init__(
-        self,
-        observation_space: gym.Space,
-        action_space: gym.Space,
-        use_state: bool = True,
-        use_action: bool = True,
-        use_next_state: bool = False,
-        use_done: bool = False,
-        **kwargs,
-    ):
-        """Wrap a `CnnRewardNet_` in a `ChannelFirstRewardWrapper`."""
-        super().__init__(
-            CnnRewardNet_(
-                observation_space,
-                action_space,
-                use_state,
-                use_action,
-                use_next_state,
-                use_done,
-                **kwargs,
-            ),
-        )
 
 
 class RewardEnsemble(RewardNetWithVariance):
