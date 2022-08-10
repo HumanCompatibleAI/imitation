@@ -14,7 +14,7 @@ import shutil
 import sys
 import tempfile
 from collections import Counter
-from typing import List, Optional
+from typing import List, Mapping, Optional
 from unittest import mock
 
 import numpy as np
@@ -25,6 +25,8 @@ import sacred
 import sacred.utils
 import stable_baselines3
 import torch as th
+from stable_baselines3.common import buffers
+from stable_baselines3.her.her_replay_buffer import HerReplayBuffer
 
 from imitation.data import types
 from imitation.rewards import reward_nets
@@ -85,7 +87,7 @@ def test_main_console(script_mod):
         script_mod.main_console()
 
 
-_rl_agent_loading_configs = {
+_RL_AGENT_LOADING_CONFIGS = {
     "agent_path": CARTPOLE_TEST_POLICY_PATH,
     # FIXME(yawen): the policy we load was trained on 8 parallel environments
     #  and for some reason using it breaks if we use just 1 (like would be the
@@ -104,7 +106,7 @@ PREFERENCE_COMPARISON_CONFIGS = [
         # don't interact with warm starting an agent.
         "save_preferences": True,
         "gatherer_kwargs": {"sample": False},
-        **_rl_agent_loading_configs,
+        **_RL_AGENT_LOADING_CONFIGS,
     },
     {
         "checkpoint_interval": 1,
@@ -157,7 +159,9 @@ def test_train_preference_comparisons_envs_no_crash(tmpdir, env_name):
 
 
 def test_train_preference_comparisons_sac(tmpdir):
-    config_updates = dict(common=dict(log_root=tmpdir))
+    config_updates = dict(
+        common=dict(log_root=tmpdir),
+    )
     run = train_preference_comparisons.train_preference_comparisons_ex.run(
         # make sure rl.sac named_config is called after rl.fast to overwrite
         # rl_kwargs.batch_size to None
@@ -170,15 +174,46 @@ def test_train_preference_comparisons_sac(tmpdir):
     assert run.status == "COMPLETED"
     assert isinstance(run.result, dict)
 
+    # Make sure rl.sac named_config is called after rl.fast to overwrite
+    # rl_kwargs.batch_size to None
     with pytest.raises(Exception, match=".*set 'batch_size' at top-level.*"):
         train_preference_comparisons.train_preference_comparisons_ex.run(
-            # make sure rl.sac named_config is called after rl.fast to overwrite
-            # rl_kwargs.batch_size to None
             named_configs=["pendulum"]
             + RL_SAC_NAMED_CONFIGS
             + ALGO_FAST_CONFIGS["preference_comparison"],
             config_updates=config_updates,
         )
+
+
+def test_train_preference_comparisons_sac_reward_relabel(tmpdir):
+    def _run_reward_relabel_sac_preference_comparisons(buffer_cls):
+        config_updates = dict(
+            common=dict(log_root=tmpdir),
+            rl=dict(
+                rl_kwargs=dict(
+                    replay_buffer_class=buffer_cls,
+                    replay_buffer_kwargs=dict(handle_timeout_termination=True),
+                ),
+            ),
+        )
+        run = train_preference_comparisons.train_preference_comparisons_ex.run(
+            # make sure rl.sac named_config is called after rl.fast to overwrite
+            # rl_kwargs.batch_size to None
+            named_configs=["pendulum"]
+            + ALGO_FAST_CONFIGS["preference_comparison"]
+            + RL_SAC_NAMED_CONFIGS,
+            config_updates=config_updates,
+        )
+        return run
+
+    run = _run_reward_relabel_sac_preference_comparisons(buffers.ReplayBuffer)
+    assert run.status == "COMPLETED"
+    del run
+
+    with pytest.raises(AssertionError, match=".*only ReplayBuffer is supported.*"):
+        _run_reward_relabel_sac_preference_comparisons(buffers.DictReplayBuffer)
+    with pytest.raises(AssertionError, match=".*only ReplayBuffer is supported.*"):
+        _run_reward_relabel_sac_preference_comparisons(HerReplayBuffer)
 
 
 @pytest.mark.parametrize(
@@ -321,7 +356,7 @@ def test_train_bc_warmstart(tmpdir):
     assert isinstance(run_warmstart.result, dict)
 
 
-TRAIN_RL_PPO_CONFIGS = [{}, _rl_agent_loading_configs]
+TRAIN_RL_PPO_CONFIGS = [{}, _RL_AGENT_LOADING_CONFIGS]
 
 
 @pytest.mark.parametrize("config", TRAIN_RL_PPO_CONFIGS)
@@ -564,15 +599,16 @@ def test_transfer_learning(tmpdir: str) -> None:
 
 
 @pytest.mark.parametrize(
-    "named_configs",
+    "named_configs_dict",
     (
-        [],
-        ["reward.reward_ensemble"],
+        dict(pc=[], rl=[]),
+        dict(pc=["rl.sac", "train.sac"], rl=["rl.sac", "train.sac"]),
+        dict(pc=["reward.reward_ensemble"], rl=[]),
     ),
 )
 def test_preference_comparisons_transfer_learning(
     tmpdir: str,
-    named_configs: List[str],
+    named_configs_dict: Mapping[str, List[str]],
 ) -> None:
     """Transfer learning smoke test.
 
@@ -580,20 +616,20 @@ def test_preference_comparisons_transfer_learning(
 
     Args:
         tmpdir: Temporary directory to save results to.
-        named_configs: Named configs to use.
+        named_configs_dict: Named configs for preference_comparisons and rl.
     """
     tmpdir = pathlib.Path(tmpdir)
 
     log_dir_train = tmpdir / "train"
     run = train_preference_comparisons.train_preference_comparisons_ex.run(
-        named_configs=["cartpole"]
+        named_configs=["pendulum"]
         + ALGO_FAST_CONFIGS["preference_comparison"]
-        + named_configs,
+        + named_configs_dict["pc"],
         config_updates=dict(common=dict(log_dir=log_dir_train)),
     )
     assert run.status == "COMPLETED"
 
-    if "reward.reward_ensemble" in named_configs:
+    if "reward.reward_ensemble" in named_configs_dict["pc"]:
         assert run.config["reward"]["net_cls"] is reward_nets.RewardEnsemble
         assert run.config["reward"]["add_std_alpha"] == 0.0
         reward_type = "RewardNet_std_added"
@@ -604,13 +640,15 @@ def test_preference_comparisons_transfer_learning(
 
     log_dir_data = tmpdir / "train_rl"
     reward_path = log_dir_train / "checkpoints" / "final" / "reward_net.pt"
+    agent_path = log_dir_train / "checkpoints" / "final" / "policy"
     run = train_rl.train_rl_ex.run(
-        named_configs=["cartpole"] + ALGO_FAST_CONFIGS["rl"],
+        named_configs=["pendulum"] + ALGO_FAST_CONFIGS["rl"] + named_configs_dict["rl"],
         config_updates=dict(
             common=dict(log_dir=log_dir_data),
             reward_type=reward_type,
             reward_path=reward_path,
             load_reward_kwargs=load_reward_kwargs,
+            agent_path=agent_path,
         ),
     )
     assert run.status == "COMPLETED"
