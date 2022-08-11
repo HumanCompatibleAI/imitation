@@ -95,6 +95,8 @@ _RL_AGENT_LOADING_CONFIGS = {
     "common": dict(num_vec=8),
 }
 
+_TRAIN_VIDEO_CONFIGS = {"train": {"videos": True}}
+
 PREFERENCE_COMPARISON_CONFIGS = [
     {},
     {
@@ -109,8 +111,9 @@ PREFERENCE_COMPARISON_CONFIGS = [
         **_RL_AGENT_LOADING_CONFIGS,
     },
     {
+        # Test that we can save checkpoints and videos
         "checkpoint_interval": 1,
-        # Test that we can save checkpoints
+        **_TRAIN_VIDEO_CONFIGS,
     },
 ]
 
@@ -356,7 +359,11 @@ def test_train_bc_warmstart(tmpdir):
     assert isinstance(run_warmstart.result, dict)
 
 
-TRAIN_RL_PPO_CONFIGS = [{}, _RL_AGENT_LOADING_CONFIGS]
+TRAIN_RL_PPO_CONFIGS = [
+    {},
+    _RL_AGENT_LOADING_CONFIGS,
+    _TRAIN_VIDEO_CONFIGS,
+]
 
 
 @pytest.mark.parametrize("config", TRAIN_RL_PPO_CONFIGS)
@@ -520,6 +527,22 @@ def test_train_adversarial_sac(tmpdir, command):
     assert run.config["rl"]["rl_cls"] is stable_baselines3.SAC
     assert run.status == "COMPLETED"
     _check_train_ex_result(run.result)
+
+
+def test_train_adversarial_video_saving(tmpdir):
+    """Smoke test for imitation.scripts.train_adversarial."""
+    named_configs = ["pendulum"] + ALGO_FAST_CONFIGS["adversarial"]
+    config_updates = {
+        "common": dict(log_root=tmpdir),
+        "demonstrations": dict(rollout_path=PENDULUM_TEST_ROLLOUT_PATH),
+        **_TRAIN_VIDEO_CONFIGS,
+    }
+    run = train_adversarial.train_adversarial_ex.run(
+        command_name="gail",
+        named_configs=named_configs,
+        config_updates=config_updates,
+    )
+    assert run.status == "COMPLETED"
 
 
 def test_train_adversarial_algorithm_value_error(tmpdir):

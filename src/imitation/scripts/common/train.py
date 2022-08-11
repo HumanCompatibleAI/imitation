@@ -23,6 +23,10 @@ def config():
     # Evaluation
     n_episodes_eval = 50  # Num of episodes for final mean ground truth return
 
+    # Visualization
+    videos = False  # save video files
+    video_kwargs = {}  # arguments to VideoWrapper
+
     locals()  # quieten flake8
 
 

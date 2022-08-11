@@ -202,7 +202,10 @@ class WandbOutputFormat(sb_logger.KVWriter):
             if excluded is not None and "wandb" in excluded:
                 continue
 
-            self.wandb_module.log({key: value}, step=step)
+            if key != "video":
+                self.wandb_module.log({key: value}, step=step)
+            else:
+                self.wandb_module.log({"video": self.wandb_module.Video(value)})
         self.wandb_module.log({}, commit=True)
 
     def close(self) -> None:

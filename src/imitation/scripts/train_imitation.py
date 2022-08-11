@@ -14,6 +14,7 @@ from imitation.data import rollout
 from imitation.policies import serialize
 from imitation.scripts.common import common, demonstrations, train
 from imitation.scripts.config.train_imitation import train_imitation_ex
+from imitation.util import video_wrapper
 
 logger = logging.getLogger(__name__)
 
@@ -98,6 +99,7 @@ def load_expert_policy(
 @train_imitation_ex.capture
 def train_imitation(
     _run,
+    _config: Mapping[str, Any],
     bc_kwargs: Mapping[str, Any],
     bc_train_kwargs: Mapping[str, Any],
     dagger: Mapping[str, Any],
@@ -120,6 +122,7 @@ def train_imitation(
     """
     custom_logger, log_dir = common.setup_logging()
     venv = common.make_venv()
+    eval_venv = common.make_venv(log_dir=None)
     imit_policy = make_policy(venv, agent_path=agent_path)
 
     expert_trajs = None
@@ -162,6 +165,15 @@ def train_imitation(
         bc_trainer.train(**bc_train_kwargs)
         # TODO(adam): add checkpointing to BC?
         bc_trainer.save_policy(policy_path=osp.join(log_dir, "final.th"))
+
+    if _config["train"]["videos"]:
+        video_wrapper.record_and_save_video(
+            output_dir=log_dir,
+            policy=imit_policy,
+            eval_venv=eval_venv,
+            video_kwargs=_config["train"]["video_kwargs"],
+            logger=custom_logger,
+        )
 
     return {
         "imit_stats": train.eval_policy(imit_policy, venv),

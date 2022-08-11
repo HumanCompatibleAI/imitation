@@ -2,7 +2,7 @@
 
 import logging
 import os
-from typing import Any, Mapping, Sequence, Tuple, Union
+from typing import Any, Mapping, Optional, Sequence, Tuple, Union
 
 import sacred
 from stable_baselines3.common import vec_env
@@ -131,7 +131,7 @@ def make_venv(
     env_name: str,
     num_vec: int,
     parallel: bool,
-    log_dir: str,
+    log_dir: Optional[str],
     max_episode_steps: int,
     env_make_kwargs: Mapping[str, Any],
     **kwargs,

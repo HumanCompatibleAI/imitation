@@ -9,6 +9,7 @@ from typing import Any, Mapping, Optional, Type
 import sacred.commands
 import torch as th
 from sacred.observers import FileStorageObserver
+from stable_baselines3.common import vec_env
 
 from imitation.algorithms.adversarial import airl as airl_algo
 from imitation.algorithms.adversarial import common
@@ -18,21 +19,33 @@ from imitation.policies import serialize
 from imitation.scripts.common import common as common_config
 from imitation.scripts.common import demonstrations, reward, rl, train
 from imitation.scripts.config.train_adversarial import train_adversarial_ex
+from imitation.util import video_wrapper
 
 logger = logging.getLogger("imitation.scripts.train_adversarial")
 
 
-def save(trainer, save_path):
+def save(
+    _config: Mapping[str, Any],
+    trainer: common.AdversarialTrainer,
+    save_path: str,
+    eval_venv: vec_env.VecEnv,
+) -> None:
     """Save discriminator and generator."""
     # We implement this here and not in Trainer since we do not want to actually
     # serialize the whole Trainer (including e.g. expert demonstrations).
     os.makedirs(save_path, exist_ok=True)
     th.save(trainer.reward_train, os.path.join(save_path, "reward_train.pt"))
     th.save(trainer.reward_test, os.path.join(save_path, "reward_test.pt"))
-    serialize.save_stable_model(
-        os.path.join(save_path, "gen_policy"),
-        trainer.gen_algo,
-    )
+    policy_path = os.path.join(save_path, "gen_policy")
+    serialize.save_stable_model(policy_path, trainer.gen_algo)
+    if _config["train"]["videos"]:
+        video_wrapper.record_and_save_video(
+            output_dir=policy_path,
+            policy=trainer.gen_algo.policy,
+            eval_venv=eval_venv,
+            video_kwargs=_config["train"]["video_kwargs"],
+            logger=trainer.logger,
+        )
 
 
 def _add_hook(ingredient: sacred.Ingredient) -> None:
@@ -68,6 +81,7 @@ for ingredient in [train_adversarial_ex] + train_adversarial_ex.ingredients:
 def train_adversarial(
     _run,
     _seed: int,
+    _config: Mapping[str, Any],
     show_config: bool,
     algo_cls: Type[common.AdversarialTrainer],
     algorithm_kwargs: Mapping[str, Any],
@@ -85,6 +99,7 @@ def train_adversarial(
 
     Args:
         _seed: Random seed.
+        _config: Sacred configuration dict.
         show_config: Print the merged config before starting training. This is
             analogous to the print_config command, but will show config after
             rather than before merging `algorithm_specific` arguments.
@@ -117,6 +132,7 @@ def train_adversarial(
     expert_trajs = demonstrations.load_expert_trajs()
 
     venv = common_config.make_venv()
+    eval_venv = common_config.make_venv(log_dir=None)
 
     reward_net = reward.make_reward_net(venv)
     relabel_reward_fn = functools.partial(
@@ -153,13 +169,15 @@ def train_adversarial(
 
     def callback(round_num):
         if checkpoint_interval > 0 and round_num % checkpoint_interval == 0:
-            save(trainer, os.path.join(log_dir, "checkpoints", f"{round_num:05d}"))
+            save_path = os.path.join(log_dir, "checkpoints", f"{round_num:05d}")
+            save(_config, trainer, save_path, eval_venv)
 
     trainer.train(total_timesteps, callback)
 
     # Save final artifacts.
     if checkpoint_interval >= 0:
-        save(trainer, os.path.join(log_dir, "checkpoints", "final"))
+        save_path = os.path.join(log_dir, "checkpoints", "final")
+        save(_config, trainer, save_path, eval_venv)
 
     return {
         "imit_stats": train.eval_policy(trainer.policy, trainer.venv_train),
