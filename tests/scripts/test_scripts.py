@@ -52,6 +52,7 @@ ALL_SCRIPTS_MODS = [
 
 TEST_DATA_PATH = pathlib.Path("tests/testdata")
 CARTPOLE_TEST_DATA_PATH = TEST_DATA_PATH / "expert_models/cartpole_0/"
+CARTPOLE_TEST_ROLLOUT_PATH = CARTPOLE_TEST_DATA_PATH / "rollouts/final.pkl"
 CARTPOLE_TEST_POLICY_PATH = CARTPOLE_TEST_DATA_PATH / "policies/final"
 
 PENDULUM_TEST_DATA_PATH = TEST_DATA_PATH / "expert_models/pendulum_0/"
@@ -233,6 +234,40 @@ def test_train_bc_main(tmpdir):
     )
     assert run.status == "COMPLETED"
     assert isinstance(run.result, dict)
+
+
+def test_train_dagger_warmstart(tmpdir):
+    run = train_imitation.train_imitation_ex.run(
+        command_name="dagger",
+        named_configs=["seals_cartpole"] + ALGO_FAST_CONFIGS["imitation"],
+        config_updates=dict(
+            common=dict(log_root=tmpdir),
+            demonstrations=dict(rollout_path=CARTPOLE_TEST_ROLLOUT_PATH),
+            dagger=dict(
+                expert_policy_type="ppo",
+                expert_policy_path=CARTPOLE_TEST_POLICY_PATH,
+            ),
+        ),
+    )
+    assert run.status == "COMPLETED"
+
+    log_dir = pathlib.Path(run.config["common"]["log_dir"])
+    policy_path = log_dir / "scratch" / "policy-latest.pt"
+    run_warmstart = train_imitation.train_imitation_ex.run(
+        command_name="dagger",
+        named_configs=["seals_cartpole"] + ALGO_FAST_CONFIGS["imitation"],
+        config_updates=dict(
+            common=dict(log_root=tmpdir),
+            demonstrations=dict(rollout_path=CARTPOLE_TEST_ROLLOUT_PATH),
+            dagger=dict(
+                expert_policy_type="ppo",
+                expert_policy_path=CARTPOLE_TEST_POLICY_PATH,
+            ),
+            agent_path=policy_path,
+        ),
+    )
+    assert run_warmstart.status == "COMPLETED"
+    assert isinstance(run_warmstart.result, dict)
 
 
 def test_train_bc_main_with_none_demonstrations_raises_value_error(tmpdir):
