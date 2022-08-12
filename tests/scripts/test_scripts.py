@@ -496,6 +496,60 @@ def test_transfer_learning(tmpdir: str) -> None:
     _check_rollout_stats(run.result)
 
 
+@pytest.mark.parametrize(
+    "named_configs",
+    (
+        [],
+        ["reward.reward_ensemble"],
+    ),
+)
+def test_preference_comparisons_transfer_learning(
+    tmpdir: str,
+    named_configs: List[str],
+) -> None:
+    """Transfer learning smoke test.
+
+    Saves a preference comparisons ensemble reward, then loads it for transfer learning.
+
+    Args:
+        tmpdir: Temporary directory to save results to.
+        named_configs: Named configs to use.
+    """
+    tmpdir = pathlib.Path(tmpdir)
+
+    log_dir_train = tmpdir / "train"
+    run = train_preference_comparisons.train_preference_comparisons_ex.run(
+        named_configs=["cartpole"]
+        + ALGO_FAST_CONFIGS["preference_comparison"]
+        + named_configs,
+        config_updates=dict(common=dict(log_dir=log_dir_train)),
+    )
+    assert run.status == "COMPLETED"
+
+    if "reward.reward_ensemble" in named_configs:
+        assert run.config["reward"]["net_cls"] is reward_nets.RewardEnsemble
+        assert run.config["reward"]["add_std_alpha"] == 0.0
+        reward_type = "RewardNet_std_added"
+        load_reward_kwargs = {"alpha": -1}
+    else:
+        reward_type = "RewardNet_unnormalized"
+        load_reward_kwargs = {}
+
+    log_dir_data = tmpdir / "train_rl"
+    reward_path = log_dir_train / "checkpoints" / "final" / "reward_net.pt"
+    run = train_rl.train_rl_ex.run(
+        named_configs=["cartpole"] + ALGO_FAST_CONFIGS["rl"],
+        config_updates=dict(
+            common=dict(log_dir=log_dir_data),
+            reward_type=reward_type,
+            reward_path=reward_path,
+            load_reward_kwargs=load_reward_kwargs,
+        ),
+    )
+    assert run.status == "COMPLETED"
+    _check_rollout_stats(run.result)
+
+
 def test_train_rl_double_normalization(tmpdir: str):
     venv = util.make_vec_env("CartPole-v1", n_envs=1, parallel=False)
     net = reward_nets.BasicRewardNet(venv.observation_space, venv.action_space)
