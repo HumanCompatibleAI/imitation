@@ -5,10 +5,10 @@ from typing import Optional, Sequence
 
 import gym
 import sacred
-from stable_baselines3.common.vec_env import DummyVecEnv
+from stable_baselines3.common import vec_env
 
 from imitation.data import rollout, types
-from imitation.data.wrappers import RolloutInfoWrapper
+from imitation.data import wrappers
 from imitation.scripts.common import common, expert
 
 demonstrations_ingredient = sacred.Ingredient(
@@ -62,8 +62,11 @@ def generate_expert_trajs(
     if n_expert_demos is None:
         raise ValueError("n_expert_demos must be specified when rollout_path is None")
 
-    rollout_env = DummyVecEnv(
-        [lambda: RolloutInfoWrapper(gym.make(common["env_name"])) for _ in range(4)],
+    rollout_env = vec_env.DummyVecEnv(
+        [
+            lambda: wrappers.RolloutInfoWrapper(gym.make(common["env_name"]))
+            for _ in range(4)
+        ],
     )
     return rollout.rollout(
         expert.get_expert_policy(),

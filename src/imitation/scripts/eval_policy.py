@@ -14,7 +14,7 @@ from imitation.data import rollout, types
 from imitation.rewards import reward_wrapper
 from imitation.rewards.serialize import load_reward
 from imitation.scripts.common import common
-from imitation.scripts.common.expert import get_expert_policy
+from imitation.scripts.common import expert
 from imitation.scripts.config.eval_policy import eval_policy_ex
 from imitation.util import video_wrapper
 
@@ -101,7 +101,9 @@ def eval_policy(
             venv = reward_wrapper.RewardVecEnvWrapper(venv, reward_fn)
             logging.info(f"Wrapped env in reward {reward_type} from {reward_path}.")
 
-        trajs = rollout.generate_trajectories(get_expert_policy(), venv, sample_until)
+        trajs = rollout.generate_trajectories(
+            expert.get_expert_policy(), venv, sample_until
+        )
 
         if rollout_save_path:
             types.save(rollout_save_path.replace("{log_dir}", log_dir), trajs)
