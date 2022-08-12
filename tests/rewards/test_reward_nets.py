@@ -11,6 +11,7 @@ import gym
 import numpy as np
 import pytest
 import torch as th
+from gym import spaces
 from stable_baselines3.common.vec_env import DummyVecEnv
 
 import imitation.testing.reward_nets as testing_reward_nets
@@ -54,6 +55,7 @@ MAKE_BASIC_REWARD_NET_WRAPPERS = [
 REWARD_NET_KWARGS = [
     {},
     {"normalize_input_layer": networks.RunningNorm},
+    {"use_next_state": True},
 ]
 
 NORMALIZE_OUTPUT_LAYER = [
@@ -88,6 +90,53 @@ def torch_transitions() -> TorchTransitions:
         th.zeros((10, 5, 5)),
         th.zeros((10,), dtype=bool),
     )
+
+
+class RandomBoxyEnv(gym.Env):
+    """A random gym environment where the state and action spaces are boxes."""
+
+    def __init__(
+        self,
+        num_obs_channels: int,
+        obs_height: int,
+        obs_width: int,
+        num_act_channels: int,
+        act_height: int,
+        act_width: int,
+    ):
+        """Initializes the environment.
+
+        Args:
+            num_obs_channels: number of channels of observation.
+            obs_height: height of observation.
+            obs_width: width of observation.
+            num_act_channels: number of channels of action.
+            act_height: height of action.
+            act_width: width of action.
+        """
+        super(RandomBoxyEnv, self).__init__()
+        self.observation_space = spaces.Box(
+            low=0,
+            high=255,
+            shape=(obs_height, obs_width, num_obs_channels),
+            dtype=np.uint8,
+        )
+        self.action_space = spaces.Box(
+            low=0,
+            high=255,
+            shape=(act_height, act_width, num_act_channels),
+            dtype=np.uint8,
+        )
+
+    def step(self, action):
+        next_obs = self.observation_space.sample()
+        rew = 0.0
+        done = False
+        info = {}
+        return next_obs, rew, done, info
+
+    def reset(self):
+        return self.observation_space.sample()
 
 
 @pytest.mark.parametrize("env_name", ENVS)
@@ -217,6 +266,56 @@ def test_reward_valid_image(env_name, reward_type, tmpdir):
 
     assert pred_reward.shape == (TRAJECTORY_LEN,)
     assert isinstance(pred_reward[0], numbers.Number)
+
+
+@pytest.mark.parametrize("reward_net_cls", MAKE_IMAGE_REWARD_NET)
+@pytest.mark.parametrize("reward_net_kwargs", REWARD_NET_KWARGS)
+def test_cnn_reward_handle_boxy_actions(reward_net_cls, reward_net_kwargs):
+    TRAJECTORY_LEN = 10
+    small_acts_env = RandomBoxyEnv(
+        num_obs_channels=3,
+        obs_height=10,
+        obs_width=10,
+        num_act_channels=2,
+        act_height=5,
+        act_width=6,
+    )
+    reward_net = reward_net_cls(
+        small_acts_env.observation_space,
+        small_acts_env.action_space,
+    )
+    obs = _sample(small_acts_env.observation_space, TRAJECTORY_LEN)
+    acts = _sample(small_acts_env.action_space, TRAJECTORY_LEN)
+    next_obs = _sample(small_acts_env.observation_space, TRAJECTORY_LEN)
+    steps = np.arange(0, TRAJECTORY_LEN)
+    rewards = reward_net.predict_processed(obs, acts, next_obs, steps)
+    assert rewards.shape == (TRAJECTORY_LEN,)
+    assert isinstance(rewards[0], numbers.Number)
+
+
+@pytest.mark.parametrize("reward_net_cls", MAKE_IMAGE_REWARD_NET)
+@pytest.mark.parametrize("reward_net_kwargs", REWARD_NET_KWARGS)
+def test_cnn_reward_handle_mixed_boxy_actions(reward_net_cls, reward_net_kwargs):
+    TRAJECTORY_LEN = 10
+    mixed_box_env = RandomBoxyEnv(
+        num_obs_channels=3,
+        obs_height=10,
+        obs_width=10,
+        num_act_channels=4,
+        act_height=5,
+        act_width=15,
+    )
+    reward_net = reward_net_cls(
+        mixed_box_env.observation_space,
+        mixed_box_env.action_space,
+    )
+    obs = _sample(mixed_box_env.observation_space, TRAJECTORY_LEN)
+    acts = _sample(mixed_box_env.action_space, TRAJECTORY_LEN)
+    next_obs = _sample(mixed_box_env.observation_space, TRAJECTORY_LEN)
+    steps = np.arange(0, TRAJECTORY_LEN)
+    rewards = reward_net.predict_processed(obs, acts, next_obs, steps)
+    assert rewards.shape == (TRAJECTORY_LEN,)
+    assert isinstance(rewards[0], numbers.Number)
 
 
 def test_wrappers_default_to_passing_on_method_calls_to_base(

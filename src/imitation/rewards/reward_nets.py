@@ -441,6 +441,7 @@ class CnnRewardNet(RewardNet):
             use_done: Should the "done" flag be included as an input to the CNN?
             hwc_format: Are image inputs in (h,w,c) format (True), or (c,h,w) (False)?
                 If hwc_format is False, image inputs are not transposed.
+                Note that this affects both state and action inputs.
             kwargs: Passed straight through to `build_cnn`.
 
         Raises:
@@ -454,6 +455,9 @@ class CnnRewardNet(RewardNet):
         self.use_done = use_done
         self.input_size = 0
         self.obs_is_image = preprocessing.is_image_space(observation_space)
+        self.act_is_box_with_channels = (
+            isinstance(action_space, spaces.Box) and len(action_space.shape) == 3
+        )
         self.hwc_format = hwc_format
 
         if not self.can_handle_space(observation_space):
@@ -506,11 +510,7 @@ class CnnRewardNet(RewardNet):
     def get_num_channels(self, my_space: gym.Space) -> int:
         """Gets number of channels for the representation of a gym space."""
         if isinstance(my_space, spaces.Box):
-            my_dim = (
-                my_space.shape[0]
-                if preprocessing.is_image_space_channels_first(my_space)
-                else my_space.shape[-1]
-            )
+            my_dim = my_space.shape[-1] if self.hwc_format else my_space.shape[0]
         elif isinstance(my_space, spaces.Discrete):
             my_dim = my_space.n
         elif isinstance(my_space, spaces.MultiDiscrete):
@@ -524,13 +524,13 @@ class CnnRewardNet(RewardNet):
 
     def transpose(
         self,
-        state: th.Tensor,
+        inp: th.Tensor,
     ) -> th.Tensor:
         """Transposes the state to put the channel dim before height and width."""
-        if len(state.shape) == 3:
-            return th.permute(state, (2, 0, 1))
+        if len(inp.shape) == 3:
+            return th.permute(inp, (2, 0, 1))
         else:
-            return th.permute(state, (0, 3, 1, 2))
+            return th.permute(inp, (0, 3, 1, 2))
 
     def forward(
         self,
@@ -555,14 +555,16 @@ class CnnRewardNet(RewardNet):
             th.Tensor: reward of the transition.
         """
         inputs = []
-        do_transpose = self.obs_is_image and self.hwc_format
+        transpose_states = self.obs_is_image and self.hwc_format
+        transpose_acts = self.act_is_box_with_channels and self.hwc_format
         if self.use_state:
-            state_ = self.transpose(state) if do_transpose else state
+            state_ = self.transpose(state) if transpose_states else state
             inputs.append(state_)
         if self.use_action:
-            inputs.append(action)
+            action_ = self.transpose(action) if transpose_acts else action
+            inputs.append(action_)
         if self.use_next_state:
-            next_state_ = self.transpose(next_state) if do_transpose else next_state
+            next_state_ = self.transpose(next_state) if transpose_states else next_state
             inputs.append(next_state_)
         if self.use_done:
             inputs.append(done)
@@ -587,7 +589,7 @@ class CnnRewardNet(RewardNet):
                     pad_right = width_diff - pad_left
                     boosted_tens = nn.functional.pad(
                         tens,
-                        (pad_top, pad_bot, pad_left, pad_right),
+                        (pad_left, pad_right, pad_top, pad_bot),
                     )
                 else:
                     # then you're a one-hot vector
