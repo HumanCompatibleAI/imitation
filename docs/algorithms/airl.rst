@@ -14,6 +14,54 @@ Notes
 -----
 - AIRL paper: `Learning Robust Rewards with Adversarial Inverse Reinforcement Learning <https://arxiv.org/abs/1710.11248>`_
 
+Example
+=======
+
+Detailed example notebook: `4_train_airl.ipynb <https://github.com/HumanCompatibleAI/imitation/blob/master/examples/4_train_airl.ipynb>`_
+
+.. code-block:: python
+
+    from stable_baselines3 import PPO
+    from stable_baselines3.ppo import MlpPolicy
+    from stable_baselines3.common.vec_env import DummyVecEnv
+    from stable_baselines3.common.evaluation import evaluate_policy
+    import gym
+    import seals
+    from imitation.data import rollout
+    from imitation.data.wrappers import RolloutInfoWrapper
+    from imitation.algorithms.adversarial.airl import AIRL
+    from imitation.rewards.reward_nets import BasicShapedRewardNet
+    from imitation.util.networks import RunningNorm
+    
+    env = gym.make("seals/CartPole-v0")
+    expert = PPO(policy=MlpPolicy, env=env)
+    expert.learn(1000)
+
+    rollouts = rollout.rollout(
+        expert,
+        DummyVecEnv([lambda: RolloutInfoWrapper(gym.make("seals/CartPole-v0"))] * 5),
+        rollout.make_sample_until(min_timesteps=None, min_episodes=60),
+    )
+
+    venv = DummyVecEnv([lambda: gym.make("seals/CartPole-v0")] * 8)
+    learner = PPO(env=venv, policy=MlpPolicy)
+    reward_net = BasicShapedRewardNet(
+        venv.observation_space, venv.action_space, normalize_input_layer=RunningNorm
+    )
+    airl_trainer = AIRL(
+        demonstrations=rollouts,
+        demo_batch_size=1024,
+        gen_replay_buffer_capacity=2048,
+        n_disc_updates_per_round=4,
+        venv=venv,
+        gen_algo=learner,
+        reward_net=reward_net,
+    )
+    airl_trainer.train(20000)
+    learner_rewards_after_training, _ = evaluate_policy(
+        learner, venv, 100, return_episode_rewards=True
+    )
+
 
 API
 ===
