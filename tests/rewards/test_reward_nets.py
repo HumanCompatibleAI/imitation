@@ -63,6 +63,8 @@ NORMALIZE_OUTPUT_LAYER = [
     networks.RunningNorm,
 ]
 
+WEIRD_ACTION_SPACES = ["SmallBox", "RectBox", "MultiDiscrete", "MultiBinary"]
+
 
 NumpyTransitions = Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]
 
@@ -92,41 +94,46 @@ def torch_transitions() -> TorchTransitions:
     )
 
 
-class RandomBoxyEnv(gym.Env):
-    """A random gym environment where the state and action spaces are boxes."""
+class RandomImageEnv(gym.Env):
+    """A random gym image environment where the action space is not discrete."""
 
     def __init__(
         self,
-        num_obs_channels: int,
-        obs_height: int,
-        obs_width: int,
-        num_act_channels: int,
-        act_height: int,
-        act_width: int,
+        act_type: str,
     ):
-        """Initializes the environment.
+        """Initialize environment.
 
         Args:
-            num_obs_channels: number of channels of observation.
-            obs_height: height of observation.
-            obs_width: width of observation.
-            num_act_channels: number of channels of action.
-            act_height: height of action.
-            act_width: width of action.
+            act_type: "SmallBox" for box that's uniformly smaller than the observation
+                space. "RectBox" for a box that's shorter but wider than the obs space.
+                "MultiDiscrete", "MultiBinary" self-explanatory.
         """
-        super(RandomBoxyEnv, self).__init__()
+        super(RandomImageEnv, self).__init__()
         self.observation_space = spaces.Box(
             low=0,
             high=255,
-            shape=(obs_height, obs_width, num_obs_channels),
+            shape=(10, 10, 3),
             dtype=np.uint8,
         )
-        self.action_space = spaces.Box(
-            low=0,
-            high=255,
-            shape=(act_height, act_width, num_act_channels),
-            dtype=np.uint8,
-        )
+        assert act_type in ["SmallBox", "RectBox", "MultiDiscrete", "MultiBinary"]
+        if act_type == "SmallBox":
+            self.action_space = spaces.Box(
+                low=0,
+                high=255,
+                shape=(5, 6, 2),
+                dtype=np.uint8,
+            )
+        elif act_type == "RectBox":
+            self.action_space = spaces.Box(
+                low=0,
+                high=255,
+                shape=(5, 15, 4),
+                dtype=np.uint8,
+            )
+        elif act_type == "MultiDiscrete":
+            self.action_space = spaces.MultiDiscrete([5, 2, 2])
+        else:
+            self.action_space = spaces.MultiBinary(10)
 
     def step(self, action):
         next_obs = self.observation_space.sample()
@@ -270,48 +277,22 @@ def test_reward_valid_image(env_name, reward_type, tmpdir):
 
 @pytest.mark.parametrize("reward_net_cls", MAKE_IMAGE_REWARD_NET)
 @pytest.mark.parametrize("reward_net_kwargs", REWARD_NET_KWARGS)
-def test_cnn_reward_handle_boxy_actions(reward_net_cls, reward_net_kwargs):
+@pytest.mark.parametrize("space_string", WEIRD_ACTION_SPACES)
+def test_cnn_reward_handle_weird_actions(
+    reward_net_cls,
+    reward_net_kwargs,
+    space_string,
+):
     TRAJECTORY_LEN = 10
-    small_acts_env = RandomBoxyEnv(
-        num_obs_channels=3,
-        obs_height=10,
-        obs_width=10,
-        num_act_channels=2,
-        act_height=5,
-        act_width=6,
-    )
+    multi_env = RandomImageEnv(space_string)
     reward_net = reward_net_cls(
-        small_acts_env.observation_space,
-        small_acts_env.action_space,
+        multi_env.observation_space,
+        multi_env.action_space,
+        **reward_net_kwargs,
     )
-    obs = _sample(small_acts_env.observation_space, TRAJECTORY_LEN)
-    acts = _sample(small_acts_env.action_space, TRAJECTORY_LEN)
-    next_obs = _sample(small_acts_env.observation_space, TRAJECTORY_LEN)
-    steps = np.arange(0, TRAJECTORY_LEN)
-    rewards = reward_net.predict_processed(obs, acts, next_obs, steps)
-    assert rewards.shape == (TRAJECTORY_LEN,)
-    assert isinstance(rewards[0], numbers.Number)
-
-
-@pytest.mark.parametrize("reward_net_cls", MAKE_IMAGE_REWARD_NET)
-@pytest.mark.parametrize("reward_net_kwargs", REWARD_NET_KWARGS)
-def test_cnn_reward_handle_mixed_boxy_actions(reward_net_cls, reward_net_kwargs):
-    TRAJECTORY_LEN = 10
-    mixed_box_env = RandomBoxyEnv(
-        num_obs_channels=3,
-        obs_height=10,
-        obs_width=10,
-        num_act_channels=4,
-        act_height=5,
-        act_width=15,
-    )
-    reward_net = reward_net_cls(
-        mixed_box_env.observation_space,
-        mixed_box_env.action_space,
-    )
-    obs = _sample(mixed_box_env.observation_space, TRAJECTORY_LEN)
-    acts = _sample(mixed_box_env.action_space, TRAJECTORY_LEN)
-    next_obs = _sample(mixed_box_env.observation_space, TRAJECTORY_LEN)
+    obs = _sample(multi_env.observation_space, TRAJECTORY_LEN)
+    acts = _sample(multi_env.action_space, TRAJECTORY_LEN)
+    next_obs = _sample(multi_env.observation_space, TRAJECTORY_LEN)
     steps = np.arange(0, TRAJECTORY_LEN)
     rewards = reward_net.predict_processed(obs, acts, next_obs, steps)
     assert rewards.shape == (TRAJECTORY_LEN,)
