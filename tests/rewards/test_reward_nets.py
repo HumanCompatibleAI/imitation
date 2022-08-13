@@ -55,7 +55,8 @@ MAKE_BASIC_REWARD_NET_WRAPPERS = [
 REWARD_NET_KWARGS = [
     {},
     {"normalize_input_layer": networks.RunningNorm},
-    {"use_next_state": True},
+    {"normalize_input_layer": networks.EMANorm},
+    {"use_next_state": True, "dropout_prob": 0.3},
 ]
 
 NORMALIZE_OUTPUT_LAYER = [
@@ -137,10 +138,7 @@ class RandomImageEnv(gym.Env):
 
     def step(self, action):
         next_obs = self.observation_space.sample()
-        rew = 0.0
-        done = False
-        info = {}
-        return next_obs, rew, done, info
+        return next_obs, 0.0, False, {}
 
     def reset(self):
         return self.observation_space.sample()
