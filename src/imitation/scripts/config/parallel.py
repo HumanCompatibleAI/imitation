@@ -85,8 +85,10 @@ def example_cartpole_rl():
         "config_updates": {
             "rl": {
                 "rl_kwargs": {
-                    "learning_rate": tune.grid_search(np.logspace(3e-6, 1e-1, num=3)),
-                    "nminibatches": tune.grid_search([16, 32, 64]),
+                    "learning_rate": tune.grid_search(
+                        np.logspace(3e-6, 1e-1, num=2).tolist(),
+                    ),
+                    "batch_size": tune.grid_search([16, 32, 64]),
                 },
             },
         },
@@ -108,8 +110,10 @@ def example_rl_easy():
         "config_updates": {
             "rl": {
                 "rl_kwargs": {
-                    "learning_rate": tune.grid_search(np.logspace(3e-6, 1e-1, num=3)),
-                    "nminibatches": tune.grid_search([16, 32, 64]),
+                    "learning_rate": tune.grid_search(
+                        np.logspace(3e-6, 1e-1, num=3).tolist(),
+                    ),
+                    "batch_size": tune.grid_search([16, 32, 64]),
                 },
             },
         },
@@ -129,9 +133,9 @@ def example_gail_easy():
                 "rl": {
                     "rl_kwargs": {
                         "learning_rate": tune.grid_search(
-                            np.logspace(3e-6, 1e-1, num=3),
+                            np.logspace(3e-6, 1e-1, num=3).tolist(),
                         ),
-                        "nminibatches": tune.grid_search([16, 32, 64]),
+                        "batch_size": tune.grid_search([16, 32, 64]),
                     },
                 },
             },

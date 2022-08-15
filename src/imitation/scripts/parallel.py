@@ -73,8 +73,16 @@ def parallel(
     if not isinstance(base_config_updates, collections.abc.Mapping):
         raise TypeError("base_config_updates must be a Mapping")
 
-    if not isinstance(search_space["named_configs"], collections.abc.Sequence):
-        raise TypeError('search_space["named_configs"] must be a Sequence')
+    if isinstance(search_space["named_configs"], collections.abc.Sequence):
+        pass
+    elif isinstance(search_space["named_configs"], collections.abc.Mapping):
+        named_config_seq = search_space["named_configs"].get("grid_search")
+        assert isinstance(named_config_seq, collections.abc.Sequence)
+    else:
+        raise TypeError(
+            "search_space['named_configs'] must be a Sequence"
+            "or a tune.grid_search object.",
+        )
 
     if not isinstance(search_space["config_updates"], collections.abc.Mapping):
         raise TypeError('search_space["config_updates"] must be a Mapping')
