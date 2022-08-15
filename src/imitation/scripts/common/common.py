@@ -49,7 +49,7 @@ def hook(config, command_name, logger):
     if config["common"]["log_dir"] is None:
         env_sanitized = config["common"]["env_name"].replace("/", "_")
         log_dir = os.path.join(
-            "output",
+            config["common"]["log_root"] or "output",
             command_name,
             env_sanitized,
             util.make_unique_timestamp(),
