@@ -416,7 +416,7 @@ class CnnRewardNet(RewardNet):
 
     Inputs are boosted to tensors with channel, height, and width dimensions, and then
     concatenated. Image inputs are by default transposed to (c,h,w) format. Each input
-    can be enabled or disable by the `use_*` constructor keyword arguments.
+    can be enabled or disabled by the `use_*` constructor keyword arguments.
     """
 
     def __init__(
