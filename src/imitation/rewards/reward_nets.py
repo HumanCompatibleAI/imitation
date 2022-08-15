@@ -2,7 +2,7 @@
 
 import abc
 import math
-from typing import Callable, Iterable, Optional, Sequence, Tuple, Type
+from typing import Callable, Iterable, Optional, Sequence, Tuple, Type, Union
 
 import gym
 import numpy as np
@@ -379,16 +379,12 @@ class BasicRewardNet(RewardNet):
 
         full_build_mlp_kwargs = {
             "hid_sizes": (32, 32),
+            **kwargs,
+            # we do not want the values below to be overridden
+            "in_size": combined_size,
+            "out_size": 1,
+            "squeeze_output": True,
         }
-        full_build_mlp_kwargs.update(kwargs)
-        full_build_mlp_kwargs.update(
-            {
-                # we do not want these overridden
-                "in_size": combined_size,
-                "out_size": 1,
-                "squeeze_output": True,
-            },
-        )
 
         self.mlp = networks.build_mlp(**full_build_mlp_kwargs)
 
@@ -481,44 +477,54 @@ class CnnRewardNet(RewardNet):
         if self.use_done:
             self.input_size += 1
 
-        full_build_cnn_kwargs = {"hid_channels": (32, 32)}
-        full_build_cnn_kwargs.update(kwargs)
-        full_build_cnn_kwargs.update(
-            {
-                "in_channels": self.input_size,
-                "out_size": 1,
-                "squeeze_output": True,
-            },
-        )
+        full_build_cnn_kwargs = {
+            "hid_channels": (32, 32),
+            **kwargs,
+            # we do not want the values below to be overridden
+            "in_channels": self.input_size,
+            "out_size": 1,
+            "squeeze_output": True,
+        }
 
         self.cnn = networks.build_cnn(**full_build_cnn_kwargs)
 
-    def can_handle_space(self, my_space: gym.Space) -> int:
+    def can_handle_space(self, space: gym.Space) -> bool:
         """Tells us if this CNN can handle the given gym space."""
-        is_box = isinstance(my_space, spaces.Box)
-        is_discrete = isinstance(my_space, spaces.Discrete)
-        is_multi_discrete = isinstance(my_space, spaces.MultiDiscrete)
-        is_multi_binary = isinstance(my_space, spaces.MultiBinary)
-        space_is_ok = is_box or is_discrete or is_multi_discrete or is_multi_binary
-        shape_is_ok = True
-        if is_multi_discrete:
-            shape_is_ok = len(my_space.nvec.shape) == 1
-        if is_multi_binary:
-            shape_is_ok = isinstance(my_space.n, int)
+        space_is_ok = isinstance(
+            space,
+            (spaces.Box, spaces.Discrete, spaces.MultiDiscrete, spaces.MultiBinary),
+        )
+        if isinstance(space, spaces.MultiDiscrete):
+            shape_is_ok = len(space.nvec.shape) == 1
+        elif isinstance(space, spaces.MultiBinary):
+            shape_is_ok = isinstance(space.n, int)
+        else:
+            shape_is_ok = True
         return space_is_ok and shape_is_ok
 
-    def get_num_channels(self, my_space: gym.Space) -> int:
+    def get_num_channels(
+        self,
+        space: Union[
+            spaces.Box,
+            spaces.Discrete,
+            spaces.MultiDiscrete,
+            spaces.MultiBinary,
+        ],
+    ) -> int:
         """Gets number of channels for the representation of a gym space."""
-        if isinstance(my_space, spaces.Box):
-            my_dim = my_space.shape[-1] if self.hwc_format else my_space.shape[0]
-        elif isinstance(my_space, spaces.Discrete):
-            my_dim = my_space.n
-        elif isinstance(my_space, spaces.MultiDiscrete):
-            my_dim = sum(my_space.nvec)
-        elif isinstance(my_space, spaces.MultiBinary):
-            my_dim = my_space.n if isinstance(my_space.n, int) else sum(my_space.n)
+        if isinstance(space, spaces.Box):
+            my_dim = space.shape[-1] if self.hwc_format else space.shape[0]
+        elif isinstance(space, spaces.Discrete):
+            my_dim = space.n
+        elif isinstance(space, spaces.MultiDiscrete):
+            my_dim = sum(space.nvec)
+        elif isinstance(space, spaces.MultiBinary):
+            my_dim = space.n if isinstance(space.n, int) else sum(space.n)
         else:
-            assert False, "get_num_channels can't recognize the input space"
+            raise TypeError(
+                "get_num_channels can't recognize the input space. "
+                + "Please provide one of Discrete, MultiDiscrete, MultiBinary, Box.",
+            )
 
         return my_dim
 
@@ -529,8 +535,13 @@ class CnnRewardNet(RewardNet):
         """Transposes the state to put the channel dim before height and width."""
         if len(inp.shape) == 3:
             return th.permute(inp, (2, 0, 1))
-        else:
+        elif len(inp.shape) == 4:
             return th.permute(inp, (0, 3, 1, 2))
+        else:
+            raise ValueError(
+                "CnnRewardNet.transpose was given an input such that len(input.shape) "
+                + "is not 3 or 4.",
+            )
 
     def forward(
         self,
