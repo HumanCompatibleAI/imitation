@@ -48,8 +48,9 @@ def hook(config, command_name, logger):
     updates = {}
     if config["common"]["log_dir"] is None:
         env_sanitized = config["common"]["env_name"].replace("/", "_")
+        log_root = config["common"]["log_root"] or "output"
         log_dir = os.path.join(
-            config["common"]["log_root"] or "output",
+            log_root,
             command_name,
             env_sanitized,
             util.make_unique_timestamp(),
