@@ -8,6 +8,7 @@ experiment implicitly sets parallel=False.
 import collections
 import filecmp
 import os
+import os.path as osp
 import pathlib
 import pickle
 import shutil
@@ -95,8 +96,6 @@ _RL_AGENT_LOADING_CONFIGS = {
     "common": dict(num_vec=8),
 }
 
-_TRAIN_VIDEO_CONFIGS = {"train": {"videos": True}}
-
 PREFERENCE_COMPARISON_CONFIGS = [
     {},
     {
@@ -111,9 +110,8 @@ PREFERENCE_COMPARISON_CONFIGS = [
         **_RL_AGENT_LOADING_CONFIGS,
     },
     {
-        # Test that we can save checkpoints and videos
+        # Test that we can save checkpoints
         "checkpoint_interval": 1,
-        **_TRAIN_VIDEO_CONFIGS,
     },
 ]
 
@@ -359,11 +357,7 @@ def test_train_bc_warmstart(tmpdir):
     assert isinstance(run_warmstart.result, dict)
 
 
-TRAIN_RL_PPO_CONFIGS = [
-    {},
-    _RL_AGENT_LOADING_CONFIGS,
-    _TRAIN_VIDEO_CONFIGS,
-]
+TRAIN_RL_PPO_CONFIGS = [{}, _RL_AGENT_LOADING_CONFIGS]
 
 
 @pytest.mark.parametrize("config", TRAIN_RL_PPO_CONFIGS)
@@ -527,22 +521,6 @@ def test_train_adversarial_sac(tmpdir, command):
     assert run.config["rl"]["rl_cls"] is stable_baselines3.SAC
     assert run.status == "COMPLETED"
     _check_train_ex_result(run.result)
-
-
-def test_train_adversarial_video_saving(tmpdir):
-    """Smoke test for imitation.scripts.train_adversarial."""
-    named_configs = ["pendulum"] + ALGO_FAST_CONFIGS["adversarial"]
-    config_updates = {
-        "common": dict(log_root=tmpdir),
-        "demonstrations": dict(rollout_path=PENDULUM_TEST_ROLLOUT_PATH),
-        **_TRAIN_VIDEO_CONFIGS,
-    }
-    run = train_adversarial.train_adversarial_ex.run(
-        command_name="gail",
-        named_configs=named_configs,
-        config_updates=config_updates,
-    )
-    assert run.status == "COMPLETED"
 
 
 def test_train_adversarial_algorithm_value_error(tmpdir):
@@ -929,3 +907,78 @@ def test_convert_trajs(tmpdir: str):
     assert len(from_pkl) == len(from_npz)
     for t_pkl, t_npz in zip(from_pkl, from_npz):
         assert t_pkl == t_npz
+
+
+_TRAIN_VIDEO_CONFIGS = {"train": {"videos": True}}
+VIDEO_NAME = "video.000000.mp4"
+VIDEO_PATH_DICT = dict(
+    rl=lambda d: osp.join(d, "policies", "final", "videos"),
+    adversarial=lambda d: osp.join(d, "checkpoints", "final", "gen_policy", "videos"),
+    pc=lambda d: osp.join(d, "checkpoints", "final", "policy", "videos"),
+    bc=lambda d: osp.join(d, "videos"),
+)
+
+
+def _check_video_exists(log_dir, algo):
+    video_dir = VIDEO_PATH_DICT[algo](log_dir)
+    assert os.path.exists(video_dir)
+    assert VIDEO_NAME in os.listdir(video_dir)
+
+
+def test_train_rl_video_saving(tmpdir):
+    """Smoke test for imitation.scripts.train_rl."""
+    config_updates = dict(
+        common=dict(log_root=tmpdir),
+        **_TRAIN_VIDEO_CONFIGS,
+    )
+    run = train_rl.train_rl_ex.run(
+        named_configs=["cartpole"] + ALGO_FAST_CONFIGS["rl"],
+        config_updates=config_updates,
+    )
+    assert run.status == "COMPLETED"
+    _check_video_exists(run.config["common"]["log_dir"], "rl")
+
+
+def test_train_adversarial_video_saving(tmpdir):
+    """Smoke test for imitation.scripts.train_adversarial."""
+    named_configs = ["pendulum"] + ALGO_FAST_CONFIGS["adversarial"]
+    config_updates = {
+        "common": dict(log_root=tmpdir),
+        "demonstrations": dict(rollout_path=PENDULUM_TEST_ROLLOUT_PATH),
+        **_TRAIN_VIDEO_CONFIGS,
+    }
+    run = train_adversarial.train_adversarial_ex.run(
+        command_name="gail",
+        named_configs=named_configs,
+        config_updates=config_updates,
+    )
+    assert run.status == "COMPLETED"
+    _check_video_exists(run.config["common"]["log_dir"], "adversarial")
+
+
+def test_train_preference_comparisons_video_saving(tmpdir):
+    config_updates = dict(
+        common=dict(log_root=tmpdir),
+        **_TRAIN_VIDEO_CONFIGS,
+    )
+    run = train_preference_comparisons.train_preference_comparisons_ex.run(
+        named_configs=["cartpole"] + ALGO_FAST_CONFIGS["preference_comparison"],
+        config_updates=config_updates,
+    )
+    assert run.status == "COMPLETED"
+    _check_video_exists(run.config["common"]["log_dir"], "pc")
+
+
+def test_train_bc_video_saving(tmpdir):
+    config_updates = dict(
+        common=dict(log_root=tmpdir),
+        demonstrations=dict(rollout_path=CARTPOLE_TEST_ROLLOUT_PATH),
+        **_TRAIN_VIDEO_CONFIGS,
+    )
+    run = train_imitation.train_imitation_ex.run(
+        command_name="bc",
+        named_configs=["cartpole"] + ALGO_FAST_CONFIGS["imitation"],
+        config_updates=config_updates,
+    )
+    assert run.status == "COMPLETED"
+    _check_video_exists(run.config["common"]["log_dir"], "bc")
