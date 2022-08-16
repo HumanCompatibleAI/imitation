@@ -6,6 +6,7 @@ from sys import platform
 
 from setuptools import find_packages, setup
 from setuptools.command.install import install
+from setuptools_scm import version as scm_version
 
 IS_NOT_WINDOWS = os.name != "nt"
 
@@ -93,12 +94,32 @@ class InstallCommand(install):
             )
 
 
+def get_version(version: scm_version.ScmVersion) -> str:
+    if version.node:
+        version.node = str(int(version.node.lstrip("g"), 16))
+    if version.exact:
+        return version.format_with("{tag}")
+    else:
+        return version.format_next_version(
+            scm_version.guess_next_version,
+            fmt="{guessed}.dev{node}",
+        )
+
+
+def get_local_version(version: scm_version.ScmVersion, time_format="%Y%m%d") -> str:
+    return version.format_choice(
+        "",
+        "+d{time:{time_format}}",
+        time_format=time_format,
+    )
+
+
 setup(
     cmdclass={"install": InstallCommand},
     name="imitation",
     # Disable local scheme to allow uploads to Test PyPI.
     # See https://github.com/pypa/setuptools_scm/issues/342
-    use_scm_version={"local_scheme": "no-local-version"},
+    use_scm_version={"local_scheme": get_local_version, "version_scheme": get_version},
     setup_requires=["setuptools_scm"],
     description="Implementation of modern reward and imitation learning algorithms.",
     long_description=get_readme(),
