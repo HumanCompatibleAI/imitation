@@ -238,6 +238,11 @@ def train_preference_comparisons(
             total_comparisons,
             callback=save_callback,
         )
+
+        # Storing and evaluating policy only useful if we generated trajectory data
+        if bool(trajectory_path is None):
+            results = dict(results)
+            results["rollout"] = train.eval_policy(agent, venv)
     finally:
         venv.close()
 
@@ -251,11 +256,6 @@ def train_preference_comparisons(
             save_path=os.path.join(log_dir, "checkpoints", "final"),
             allow_save_policy=bool(trajectory_path is None),
         )
-
-    # Storing and evaluating policy only useful if we actually generate trajectory data
-    if bool(trajectory_path is None):
-        results = dict(results)
-        results["rollout"] = train.eval_policy(agent, venv)
 
     return results
 

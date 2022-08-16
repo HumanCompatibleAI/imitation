@@ -160,11 +160,13 @@ def train_adversarial(
         # Save final artifacts.
         if checkpoint_interval >= 0:
             save(trainer, os.path.join(log_dir, "checkpoints", "final"))
+
+        imit_stats = train.eval_policy(trainer.policy, trainer.venv_train)
     finally:
         venv.close()
 
     return {
-        "imit_stats": train.eval_policy(trainer.policy, trainer.venv_train),
+        "imit_stats": imit_stats,
         "expert_stats": rollout.rollout_stats(expert_trajs),
     }
 

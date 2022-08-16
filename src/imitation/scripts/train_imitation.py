@@ -164,11 +164,13 @@ def train_imitation(
             bc_trainer.train(**bc_train_kwargs)
             # TODO(adam): add checkpointing to BC?
             bc_trainer.save_policy(policy_path=osp.join(log_dir, "final.th"))
+
+        imit_stats = train.eval_policy(imit_policy, venv)
     finally:
         venv.close()
 
     return {
-        "imit_stats": train.eval_policy(imit_policy, venv),
+        "imit_stats": imit_stats,
         "expert_stats": rollout.rollout_stats(
             model._all_demos if use_dagger else expert_trajs,
         ),
