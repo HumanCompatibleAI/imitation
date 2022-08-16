@@ -29,7 +29,7 @@ from torch import nn
 from torch.utils import data as data_th
 from tqdm.auto import tqdm
 
-from imitation import reg
+from imitation import regularization
 from imitation.algorithms import base
 from imitation.data import rollout, types, wrappers
 from imitation.data.types import (
@@ -853,7 +853,7 @@ class BasicRewardTrainer(RewardTrainer):
         epochs: int = 1,
         lr: float = 1e-3,
         weight_decay: float = 0.0,
-        weight_decay_updater: Optional[reg.UpdateParamFn] = None,
+        weight_decay_updater: Optional[regularization.UpdateParamFn] = None,
         val_split: float = 0.0,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
         seed: int = 0,
@@ -887,7 +887,7 @@ class BasicRewardTrainer(RewardTrainer):
             custom_logger: Where to log to; if None (default), creates a new logger.
 
         Raises:
-            ValueError: if ``weight_decay`` is non-zero but ``weight_decay_updater`` is 
+            ValueError: if ``weight_decay`` is non-zero but ``weight_decay_updater`` is
             None.
         """
         super().__init__(model, custom_logger)
@@ -903,11 +903,13 @@ class BasicRewardTrainer(RewardTrainer):
 
         # TODO(juan) this could accept an arbitrary regularizer function
         #  in the future if we wanted, with some changes in the __init__ arguments.
-        self.regularizer: Optional[reg.Regularizer] = (
-            reg.WeightDecayRegularizer(
+        self.regularizer: Optional[regularization.Regularizer] = (
+            regularization.WeightDecayRegularizer(
                 initial_lambda=weight_decay,
                 optimizer=self.optim,
-                update_params_fn=weight_decay_updater or reg.ConstantParamScaler(),
+                update_params_fn=weight_decay_updater
+                or regularization.ConstantParamScaler(),
+                logger=self.logger,
             )
             if weight_decay > 0
             else None
