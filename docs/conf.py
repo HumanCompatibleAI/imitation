@@ -42,6 +42,7 @@ extensions = [
     "sphinx.ext.mathjax",
     "sphinx.ext.viewcode",
     "sphinx_copybutton",
+    "sphinx_github_changelog",
 ]
 
 napoleon_google_docstring = True
