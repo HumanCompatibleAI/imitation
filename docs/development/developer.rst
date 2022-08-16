@@ -4,40 +4,41 @@ Developer Guide
 ==================
 
 This guide explains the library structure of imitation. The code is organized such that logically similar files
-are grouped into a folder. We maintain the following modules in src/imitation:
+are grouped into a folder. We maintain the following modules in ``src/imitation``:
 
-- algorithms
+- ``algorithms``: the core implementation of imitation and reward learning algorithms.
 
-- data
+- ``data``: modules to collect, store and manipulate transition and trajectories from RL environments.
 
-- envs
+- ``envs``: provides test environments.
 
-- policies
+- ``policies``: modules defining policies and methods to manipulate them (e.g. serialization).
 
-- rewards
+- ``rewards``: modules to build, serialize and preprocess neural network based reward functions.
 
-- scripts
+- ``scripts``: command-line scripts for running experiments through sacred.
 
-- util
+- ``util``: provides utility functions like logging, configurations, etc.
 
 
 Algorithms
 ----------
 
-The base algorithm class implements the following two classes:
+The ``imitation.algorithms.base`` module defines the following two classes:
 
 - ``BaseImitationAlgorithm``: Base class for all imitation algorithms. 
 
-- ``DemonstrationAlgorithm``: Base class for all demonstration based algorithms like BC, IRL, etc. This class is inherited from ``BaseImitationAlgorithm``.
-    Demonstration algorithms offers following methods and properties:
+- | ``DemonstrationAlgorithm``: Base class for all demonstration based algorithms like BC, IRL, etc. This class subclasses ``BaseImitationAlgorithm``. 
+  | Demonstration algorithms offers following methods and properties:
+
     - ``policy`` property that returns a policy imitating the demonstration data.
 
     - ``set_demonstrations()`` method that sets the demonstrations data for learning.
 
-All of the algorithms provide the ``train()`` method for training an agent using the algorithm.
+All of the algorithms provide the ``train()`` method for training an agent and/or reward network.
 
-All the available algorithms are present in algorithms/ with each algorithm in a distinct file. 
-Adversarial algorithms like AIRL and GAIL are present in algorithms/adversarial.
+All the available algorithms are present in ``algorithms/`` with each algorithm in a distinct file. 
+Adversarial algorithms like AIRL and GAIL are present in ``algorithms/adversarial``.
 
 
 Data
@@ -60,6 +61,11 @@ Rewards
 .. automodule:: imitation.rewards
     :noindex:
 
+    ``rewards.reward_wrapper.RewardVecEnvWrapper``: This class wraps a ``VecEnv`` with a custom ``RewardFn``. 
+    The default reward function of the environment is overridden with the passed reward function 
+    and the original rewards are stored in the ``info_dict`` with the ``original_env_rew`` key. 
+    This class is used to override the original reward function of an environment with a learned 
+    reward function from the reward learning algorithms like preference comparisons.
 
 Scripts
 -------
