@@ -3,10 +3,13 @@
 import os
 import warnings
 from sys import platform
+from typing import TYPE_CHECKING
 
 from setuptools import find_packages, setup
 from setuptools.command.install import install
-from setuptools_scm import version as scm_version
+
+if TYPE_CHECKING:
+    from setuptools_scm.version import ScmVersion
 
 IS_NOT_WINDOWS = os.name != "nt"
 
@@ -56,6 +59,7 @@ TESTS_REQUIRE = (
         "pytest-xdist~=2.5.0",
         "scipy~=1.9.0",
         "wandb==0.12.21",
+        "setuptools_scm~=7.0.5",
     ]
     + PARALLEL_REQUIRE
     + PYTYPE
@@ -94,7 +98,9 @@ class InstallCommand(install):
             )
 
 
-def get_version(version: scm_version.ScmVersion) -> str:
+def get_version(version: "ScmVersion") -> str:
+    from setuptools_scm import version as scm_version
+
     if version.node:
         version.node = str(int(version.node.lstrip("g"), 16))
     if version.exact:
@@ -106,7 +112,7 @@ def get_version(version: scm_version.ScmVersion) -> str:
         )
 
 
-def get_local_version(version: scm_version.ScmVersion, time_format="%Y%m%d") -> str:
+def get_local_version(version: "ScmVersion", time_format="%Y%m%d") -> str:
     return version.format_choice(
         "",
         "+d{time:{time_format}}",
