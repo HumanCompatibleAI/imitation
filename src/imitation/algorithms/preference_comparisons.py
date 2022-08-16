@@ -946,7 +946,8 @@ class BasicRewardTrainer(RewardTrainer):
         )
         if self.val_split == 0 and self.regularizer is not None:
             raise ValueError(
-                "If you pass a weight decay updater, you must also pass a non-zero value for val_split."
+                "If you pass a weight decay updater, you must also pass "
+                "a non-zero value for val_split.",
             )
         if self.val_split < 0 or self.val_split > 1:
             raise ValueError("val_split must be strictly between 0 and 1.")
