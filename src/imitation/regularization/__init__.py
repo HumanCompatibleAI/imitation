@@ -6,6 +6,8 @@ from typing import Protocol, Union
 import torch as th
 from torch import optim
 
+from imitation.util import logger as imit_logger
+
 
 class UpdateParamFn(Protocol):
     """Protocol type for functions that update the regularizer parameter.
@@ -38,6 +40,7 @@ class Regularizer(abc.ABC):
         optimizer: optim.Optimizer,
         initial_lambda: float,
         update_params_fn: UpdateParamFn,
+        logger: imit_logger.HierarchicalLogger,
     ) -> None:
         """Initialize the regularizer.
 
@@ -48,6 +51,9 @@ class Regularizer(abc.ABC):
         self.optimizer: optim.Optimizer = optimizer
         self.lambda_: float = initial_lambda
         self.update_params_fn: UpdateParamFn = update_params_fn
+        self.logger: imit_logger.HierarchicalLogger = logger
+
+        self.logger.record("regularization_lambda", self.lambda_)
 
     @abc.abstractmethod
     def regularize(self, loss: th.Tensor) -> None:
@@ -55,6 +61,7 @@ class Regularizer(abc.ABC):
 
     def update_params(self, train_loss, val_loss):
         self.lambda_ = self.update_params_fn(self.lambda_, train_loss, val_loss)
+        self.logger.record("regularization_lambda", self.lambda_)
 
 
 class LossRegularizer(Regularizer):
