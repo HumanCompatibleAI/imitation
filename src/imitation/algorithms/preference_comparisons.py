@@ -918,7 +918,7 @@ class BasicRewardTrainer(RewardTrainer):
 
         Raises:
             ValueError: if ``weight_decay`` is non-zero but ``weight_decay_updater`` is
-            None.
+                None.
         """
         super().__init__(model, custom_logger)
         self.loss = loss
