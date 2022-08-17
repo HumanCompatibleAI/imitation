@@ -362,7 +362,7 @@ def build_cnn(
 
 
 class SmartFlatten(nn.Module):
-    """Pytorch module to flatten non-batch dimensions of a tensor.
+    """PyTorch module to flatten non-batch dimensions of a tensor.
 
     Checks whether input has a batch dimension to determine how to flatten.
     """
