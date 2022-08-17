@@ -204,18 +204,19 @@ class AgentTrainer(TrajectoryGenerator):
             RuntimeError: Transitions left in `self.buffering_wrapper`; call
                 `self.sample` first to clear them.
         """
-        n_transitions = self.buffering_wrapper.n_transitions
-        if n_transitions:
-            raise RuntimeError(
-                f"There are {n_transitions} transitions left in the buffer. "
-                "Call AgentTrainer.sample() first to clear them.",
+        with self.logger.accumulate_means("agent"):
+            n_transitions = self.buffering_wrapper.n_transitions
+            if n_transitions:
+                raise RuntimeError(
+                    f"There are {n_transitions} transitions left in the buffer. "
+                    "Call AgentTrainer.sample() first to clear them.",
+                )
+            self.algorithm.learn(
+                total_timesteps=steps,
+                reset_num_timesteps=False,
+                callback=self.log_callback,
+                **kwargs,
             )
-        self.algorithm.learn(
-            total_timesteps=steps,
-            reset_num_timesteps=False,
-            callback=self.log_callback,
-            **kwargs,
-        )
 
     def sample(self, steps: int) -> Sequence[types.TrajectoryWithRew]:
         agent_trajs, _ = self.buffering_wrapper.pop_finished_trajectories()
@@ -355,8 +356,9 @@ class MixtureOfTrajectoryGenerators(TrajectoryGenerator):
             **kwargs: additional keyword arguments to pass on to
                 the training procedure.
         """
-        for generator in self.members:
-            generator.train(steps, **kwargs)
+        for i, generator in enumerate(self.members):
+            with self.logger.add_prefix(f"generator_{i}"):
+                generator.train(steps, **kwargs)
 
     @property
     def logger(self) -> imit_logger.HierarchicalLogger:
@@ -1353,9 +1355,8 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
             # at the end of training (where the reward model is presumably best)
             if i == self.num_iterations - 1:
                 num_steps += extra_timesteps
-            with self.logger.accumulate_means("agent"):
-                self.logger.log(f"Training agent for {num_steps} timesteps")
-                self.trajectory_generator.train(steps=num_steps)
+            self.logger.log(f"Training agent for {num_steps} timesteps")
+            self.trajectory_generator.train(steps=num_steps)
 
             self.logger.dump(self._iteration)
 
