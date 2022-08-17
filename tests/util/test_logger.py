@@ -195,3 +195,42 @@ def test_hard(tmpdir):
     _compare_csv_lines(osp.join(tmpdir, "progress.csv"), expect_default)
     _compare_csv_lines(osp.join(tmpdir, "raw", "gen", "progress.csv"), expect_raw_gen)
     _compare_csv_lines(osp.join(tmpdir, "raw", "disc", "progress.csv"), expect_raw_disc)
+
+
+def test_prefix(tmpdir):
+    hier_logger = logger.configure(tmpdir)
+
+    with hier_logger.add_prefix("foo"):
+        with hier_logger.accumulate_means("bar"):
+            hier_logger.record("A", 1)
+            hier_logger.record("B", 2)
+            hier_logger.dump()
+
+    hier_logger.record("no_context", 1)
+
+    with hier_logger.accumulate_means("blat"):
+        hier_logger.record("C", 3)
+        hier_logger.dump()
+
+    hier_logger.dump()
+
+    expect_raw_foo_bar = {
+        "raw/foo/bar/A": [1],
+        "raw/foo/bar/B": [2],
+    }
+    expect_raw_blat = {
+        "raw/blat/C": [3],
+    }
+    expect_default = {
+        "mean/foo/bar/A": [1],
+        "mean/foo/bar/B": [2],
+        "mean/blat/C": [3],
+        "no_context": [1],
+    }
+
+    _compare_csv_lines(osp.join(tmpdir, "progress.csv"), expect_default)
+    _compare_csv_lines(
+        osp.join(tmpdir, "raw", "foo", "bar", "progress.csv"),
+        expect_raw_foo_bar,
+    )
+    _compare_csv_lines(osp.join(tmpdir, "raw", "blat", "progress.csv"), expect_raw_blat)
