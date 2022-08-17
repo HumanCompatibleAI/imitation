@@ -68,6 +68,7 @@ def train_preference_comparisons(
     trajectory_generator_kwargs: Mapping[str, Any],
     save_preferences: bool,
     agent_path: Optional[str],
+    num_agents: int,
     cross_entropy_loss_kwargs: Mapping[str, Any],
     reward_trainer_kwargs: Mapping[str, Any],
     gatherer_cls: Type[preference_comparisons.PreferenceGatherer],
@@ -109,6 +110,7 @@ def train_preference_comparisons(
         save_preferences: if True, store the final dataset of preferences to disk.
         agent_path: if given, initialize the agent using this stored policy
             rather than randomly.
+        num_agents: number of agents to train the reward model against.
         cross_entropy_loss_kwargs: passed to CrossEntropyRewardLoss
         reward_trainer_kwargs: passed to BasicRewardTrainer or EnsembleRewardTrainer
         gatherer_cls: type of PreferenceGatherer to use (defaults to SyntheticGatherer)
@@ -146,20 +148,38 @@ def train_preference_comparisons(
     else:
         agent = rl_common.load_rl_algo_from_path(agent_path=agent_path, venv=venv)
 
-    if trajectory_path is None:
+    if num_agents < 1:
+        raise ValueError("num_agents must be at least 1!")
+
+    def make_agent_trainer(seed: Optional[int] = None):
+        if agent_path is None:
+            agent = rl_common.make_rl_algo(venv)
+        else:
+            agent = rl_common.load_rl_algo_from_path(agent_path=agent_path, venv=venv)
+
         # Setting the logger here is not really necessary (PreferenceComparisons
         # takes care of that automatically) but it avoids creating unnecessary loggers
-        trajectory_generator = preference_comparisons.AgentTrainer(
+        return preference_comparisons.AgentTrainer(
             algorithm=agent,
             reward_fn=reward_net,
             exploration_frac=exploration_frac,
-            seed=_seed,
+            seed=_seed if seed is None else seed,
             custom_logger=custom_logger,
             **trajectory_generator_kwargs,
         )
+
+    if trajectory_path is None and num_agents == 1:
+        trajectory_generator = make_agent_trainer()
         # Stable Baselines will automatically occupy GPU 0 if it is available. Let's use
         # the same device as the SB3 agent for the reward model.
         reward_net = reward_net.to(trajectory_generator.algorithm.device)
+    elif trajectory_path is None and num_agents > 1:
+        members = [make_agent_trainer(_seed * i) for i in range(num_agents)]
+        trajectory_generator = preference_comparisons.MixtureOfTrajectoryGenerators(
+            members=members,
+            custom_logger=custom_logger,
+        )
+        reward_net = reward_net.to(members[0].algorithm.device)
     else:
         if exploration_frac > 0:
             raise ValueError(

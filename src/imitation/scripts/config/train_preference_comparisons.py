@@ -43,6 +43,7 @@ def train_defaults():
     save_preferences = False  # save preference dataset at the end?
     agent_path = None  # path to a (partially) trained agent to load at the beginning
     # type of PreferenceGatherer to use
+    num_agents = 1  # The number of agents to train the reward against.
     gatherer_cls = preference_comparisons.SyntheticGatherer
     # arguments passed on to the PreferenceGatherer specified by gatherer_cls
     gatherer_kwargs = {}
