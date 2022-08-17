@@ -206,11 +206,8 @@ def _make_env_and_save_reward_net(env_name, reward_type, tmpdir, is_image=False)
     if reward_type == "zero":
         return venv, save_path
 
-    net = (
-        reward_nets.BasicRewardNet(venv.observation_space, venv.action_space)
-        if not is_image
-        else reward_nets.CnnRewardNet(venv.observation_space, venv.action_space)
-    )
+    net_cls = reward_nets.CnnRewardNet if is_image else reward_nets.BasicRewardNet
+    net = net_cls(venv.observation_space, venv.action_space)
 
     if reward_type == "RewardNet_normalized":
         net = reward_nets.NormalizedRewardNet(net, networks.RunningNorm)
