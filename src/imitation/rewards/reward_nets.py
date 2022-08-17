@@ -584,7 +584,7 @@ class CnnRewardNet(RewardNet):
             tens if len(tens.shape) > 2 else tens.view(*tens.shape, 1, 1)
             for tens in inputs
         ]
-        max_height = max(unsqueezed_inputs, key=(lambda tens: tens.size(-2))).size(-2)
+        max_height = max(map(lambda tens: tens.size(-2), unsqueezed_inputs))
         max_width = max(unsqueezed_inputs, key=(lambda tens: tens.size(-1))).size(-1)
         boosted_inputs = []
         for tens in unsqueezed_inputs:
