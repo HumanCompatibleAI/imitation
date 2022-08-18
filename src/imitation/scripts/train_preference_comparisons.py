@@ -183,6 +183,7 @@ def train_preference_comparisons(
         # Stable Baselines will automatically occupy GPU 0 if it is available. Let's use
         # the same device as the SB3 agent for the reward model.
         reward_net = reward_net.to(trajectory_generator.algorithm.device)
+        allow_save_policy = True
     elif trajectory_path is None and num_agents > 1:
         members = [make_agent_trainer(_seed * i) for i in range(num_agents)]
         trajectory_generator = preference_comparisons.MixtureOfTrajectoryGenerators(
@@ -190,7 +191,9 @@ def train_preference_comparisons(
             custom_logger=custom_logger,
         )
         reward_net = reward_net.to(members[0].algorithm.device)
+        allow_save_policy = False
     else:
+        allow_save_policy = False
         if exploration_frac > 0:
             raise ValueError(
                 "exploration_frac can't be set when a trajectory dataset is used",
@@ -245,7 +248,7 @@ def train_preference_comparisons(
             save_checkpoint(
                 trainer=main_trainer,
                 save_path=os.path.join(log_dir, "checkpoints", f"{iteration_num:04d}"),
-                allow_save_policy=bool(trajectory_path is None),
+                allow_save_policy=allow_save_policy,
             )
 
     results = main_trainer.train(
