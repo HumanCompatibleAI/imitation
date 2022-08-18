@@ -148,7 +148,7 @@ setup(
             *ATARI_REQUIRE,
         ]
         + PYTYPE,
-        "test": TESTS_REQUIRE,
+        "test": [*TESTS_REQUIRE, *ATARI_REQUIRE],
         "docs": DOCS_REQUIRE,
         "parallel": PARALLEL_REQUIRE,
         "mujoco": [
