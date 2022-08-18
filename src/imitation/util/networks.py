@@ -136,7 +136,6 @@ class EMANorm(BaseNorm):
         self,
         num_features: int,
         decay: float = 0.99,
-        decay_within_batch: bool = False,
         eps: float = 1e-5,
     ):
         """Builds EMARunningNorm.
@@ -144,8 +143,6 @@ class EMANorm(BaseNorm):
         Args:
             num_features: Number of features; the length of the non-batch dim.
             decay: how quickly the weight on past samples decays over time
-            decay_within_batch: Whether to apply exponential decay within the batch.
-                if False, examples within a batch are given uniform weight.
             eps: small constant for numerical stability.
 
         Raises:
@@ -157,12 +154,11 @@ class EMANorm(BaseNorm):
             raise ValueError("decay must be between 0 and 1")
 
         self.decay = decay
-        self.decay_within_batch = decay_within_batch
 
     def update_stats(self, batch: th.Tensor) -> None:
         """Update `self.running_mean` and `self.running_var` in batch mode.
 
-        Reference Algorithm 2 from:
+        Reference Algorithm 3 from:
         https://github.com/HumanCompatibleAI/imitation/files/9364938/Incremental_batch_EMA_and_EMV.pdf
 
         Args:
@@ -172,42 +168,22 @@ class EMANorm(BaseNorm):
         if len(batch.shape) == 1:
             batch = batch.reshape(b_size, 1)
 
-        # geometric progession of decay: decay^(N-1),...,decay,1
-        if self.decay_within_batch:
-            weights = th.vander(th.tensor([self.decay]), N=b_size).T
-        else:
-            weights = th.ones((b_size, 1)) / b_size
         alpha = 1 - self.decay
         if self.count == 0:
-            if self.decay_within_batch:
-                # weights sum to 1 after this
-                weights[1:] *= alpha
-            self.running_mean = th.sum(weights * batch, dim=0)
+            self.running_mean = batch.mean(0)
             if b_size > 1:
-                mean_adjusted_batch = batch - self.running_mean
-                self.running_var = th.sum(weights * (mean_adjusted_batch**2), dim=0)
+                self.running_var = batch.var(0, unbiased=False)
             else:
                 self.running_var = th.zeros_like(self.running_mean)
         else:
-            if self.decay_within_batch:
-                running_weight = self.decay * weights[0]
-            else:
-                running_weight = self.decay
+            # update running mean
+            delta_mean = batch.mean(0) - self.running_mean
+            self.running_mean += alpha * delta_mean
 
-            # computing the updated running mean using the current batch
-            mean_adjusted_batch = batch - self.running_mean
-            weighted_batch = weights * mean_adjusted_batch
-            delta = alpha * weighted_batch.sum(dim=0)
-            self.running_mean += delta
-
-            # weighted variance of batch centered with old running mean
-            S = th.sum(
-                weighted_batch * mean_adjusted_batch,
-                dim=0,
-            )
-            # Variance = decay*Variance + alpha*S - delta^2
-            self.running_var *= running_weight
-            self.running_var += alpha * S - delta**2
+            # update running variance
+            batch_var = batch.var(0, unbiased=False)
+            delta_var = batch_var + self.decay * delta_mean**2 - self.running_var
+            self.running_var += alpha * delta_var
 
         self.count += b_size
 

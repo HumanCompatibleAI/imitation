@@ -15,7 +15,6 @@ assert_equal = functools.partial(th.testing.assert_close, rtol=0, atol=0)
 NORMALIZATION_LAYERS = [
     networks.RunningNorm,
     networks.EMANorm,
-    functools.partial(networks.EMANorm, decay_within_batch=True),
 ]
 
 
@@ -26,14 +25,12 @@ class EMANormIncremental(networks.EMANorm):
         self,
         num_features: int,
         decay: float = 0.99,
-        decay_within_batch: bool = False,
         eps: float = 1e-5,
     ):
         """Builds EMARunningNormIncremental."""
         super().__init__(
             num_features,
             decay=decay,
-            decay_within_batch=decay_within_batch,
             eps=eps,
         )
 
@@ -50,37 +47,24 @@ class EMANormIncremental(networks.EMANorm):
         if len(batch.shape) == 1:
             batch = batch.reshape(b_size, 1)
         alpha = 1 - self.decay
-        if self.decay_within_batch:
-            start_index = 0
-            if self.count == 0:
-                self.running_mean = batch[0]
-                self.running_var = th.zeros_like(self.running_mean, dtype=th.float)
-                start_index = 1
-
-            for i in range(start_index, b_size):
-                diff = batch[i, ...] - self.running_mean
-                incr = alpha * diff
-                self.running_mean += incr
-                self.running_var = self.decay * (self.running_var + diff * incr)
-        else:
-            if self.count == 0:
-                self.running_mean = batch.mean(dim=0)
-                if b_size > 1:
-                    self.running_var = batch.var(dim=0, unbiased=False)
-                else:
-                    self.running_var = th.zeros_like(self.running_mean, dtype=th.float)
+        if self.count == 0:
+            self.running_mean = batch.mean(dim=0)
+            if b_size > 1:
+                self.running_var = batch.var(dim=0, unbiased=False)
             else:
-                # E[x^2] of previous data
-                self.running_var += self.running_mean**2
+                self.running_var = th.zeros_like(self.running_mean, dtype=th.float)
+        else:
+            # E[x^2] of previous data
+            self.running_var += self.running_mean**2
 
-                # update running mean
-                diff = batch.mean(0) - self.running_mean
-                self.running_mean += alpha * diff
+            # update running mean
+            diff = batch.mean(0) - self.running_mean
+            self.running_mean += alpha * diff
 
-                # update running variance
-                sqdiff = (batch**2).mean(0) - self.running_var
-                self.running_var += alpha * sqdiff
-                self.running_var -= self.running_mean**2
+            # update running variance
+            sqdiff = (batch**2).mean(0) - self.running_var
+            self.running_var += alpha * sqdiff
+            self.running_var -= self.running_mean**2
 
         self.count += b_size
 
@@ -259,16 +243,14 @@ def test_input_validation_on_ema_norm():
     networks.EMANorm(128, decay=0.05)
 
 
-@pytest.mark.parametrize("decay_within_batch", [False, True])
 @pytest.mark.parametrize("decay", [0.5, 0.99])
 @pytest.mark.parametrize("input_shape", [(64,), (1, 256), (64, 256)])
-def test_ema_norm_batch_correctness(decay_within_batch, decay, input_shape):
+def test_ema_norm_batch_correctness(decay, input_shape):
     norm_for_incremental = EMANormIncremental(
         num_features=256,
         decay=decay,
-        decay_within_batch=decay_within_batch,
     )
-    norm_for_batch = networks.EMANorm(256, decay, decay_within_batch=decay_within_batch)
+    norm_for_batch = networks.EMANorm(256, decay)
     random_tensor = th.randn(input_shape)
     for i in range(100):
         norm_for_incremental.train(), norm_for_batch.train()
