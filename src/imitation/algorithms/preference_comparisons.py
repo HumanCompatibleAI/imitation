@@ -357,7 +357,7 @@ class MixtureOfTrajectoryGenerators(TrajectoryGenerator):
                 the training procedure.
         """
         for i, generator in enumerate(self.members):
-            with self.logger.add_prefix(f"generator_{i}"):
+            with self.logger.add_prefix(f"gen_{i}"):
                 generator.train(steps, **kwargs)
 
     @property
