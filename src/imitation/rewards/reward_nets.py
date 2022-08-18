@@ -536,14 +536,12 @@ class CnnRewardNet(RewardNet):
         inp: th.Tensor,
     ) -> th.Tensor:
         """Transposes the state to put the channel dim before height and width."""
-        if len(inp.shape) == 3:
-            return th.permute(inp, (2, 0, 1))
-        elif len(inp.shape) == 4:
+        if len(inp.shape) == 4:
             return th.permute(inp, (0, 3, 1, 2))
         else:
             raise ValueError(
                 "CnnRewardNet.transpose was given an input such that len(input.shape) "
-                + "is not 3 or 4.",
+                + "is not 4.",
             )
 
     def forward(
@@ -585,23 +583,23 @@ class CnnRewardNet(RewardNet):
             tens if len(tens.shape) > 2 else tens.view(*tens.shape, 1, 1)
             for tens in inputs
         ]
-        max_height = max(map(lambda tens: tens.size(-2), unsqueezed_inputs))
-        max_width = max(map(lambda tens: tens.size(-1), unsqueezed_inputs))
+        max_height = max(map(lambda tens: tens.size(2), unsqueezed_inputs))
+        max_width = max(map(lambda tens: tens.size(3), unsqueezed_inputs))
         boosted_inputs = []
         for tens in unsqueezed_inputs:
-            if tens.size(-2) != max_height or tens.size(-1) != max_width:
+            if tens.size(2) != max_height or tens.size(3) != max_width:
                 # then you need boosting
                 boosted_tens = tens.expand(
-                    *tens.shape[:-2],
+                    *tens.shape[:2],
                     max_height,
                     max_width,
                 )
-                assert boosted_tens.shape[-2:] == th.Size([max_height, max_width])
+                assert boosted_tens.shape[2:] == th.Size([max_height, max_width])
             else:
                 # then you don't need boosting
                 boosted_tens = tens
             boosted_inputs.append(boosted_tens)
-        inputs_concat = th.cat(boosted_inputs, dim=-3)
+        inputs_concat = th.cat(boosted_inputs, dim=1)
         outputs = self.cnn(inputs_concat)
         return outputs
 

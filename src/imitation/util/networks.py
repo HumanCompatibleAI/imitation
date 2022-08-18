@@ -349,7 +349,7 @@ def build_cnn(
 
     # final dense layer
     layers[f"{prefix}avg_pool"] = nn.AdaptiveAvgPool2d(1)
-    layers[f"{prefix}flatten"] = SmartFlatten()
+    layers[f"{prefix}flatten"] = nn.Flatten()
     layers[f"{prefix}dense_final"] = nn.Linear(prev_channels, out_size)
 
     if squeeze_output:
@@ -359,18 +359,3 @@ def build_cnn(
 
     model = nn.Sequential(layers)
     return model
-
-
-class SmartFlatten(nn.Module):
-    """PyTorch module to flatten non-batch dimensions of a tensor.
-
-    Checks whether input has a batch dimension to determine how to flatten.
-    """
-
-    def __init__(self):
-        """Initialize module to flatten non-batch dimensions of a tensor."""
-        super().__init__()
-
-    def forward(self, in_tensor: th.Tensor) -> th.Tensor:
-        my_start_dim = 1 if len(in_tensor.shape) == 4 else 0
-        return th.flatten(in_tensor, start_dim=my_start_dim, end_dim=-1)
