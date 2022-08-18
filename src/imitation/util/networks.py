@@ -162,6 +162,9 @@ class EMANorm(BaseNorm):
     def update_stats(self, batch: th.Tensor) -> None:
         """Update `self.running_mean` and `self.running_var` in batch mode.
 
+        Reference Algorithm 2 from:
+        https://github.com/HumanCompatibleAI/imitation/files/9364938/Incremental_batch_EMA_and_EMV.pdf
+
         Args:
             batch: A batch of data to use to update the running mean and variance.
         """
@@ -197,13 +200,14 @@ class EMANorm(BaseNorm):
             delta = alpha * weighted_batch.sum(dim=0)
             self.running_mean += delta
 
-            adjusted_batch_variance = th.sum(
+            # weighted variance of batch centered with old running mean
+            S = th.sum(
                 weighted_batch * mean_adjusted_batch,
                 dim=0,
             )
-            # Var = decay*Var + alpha*S - delta^2
+            # Variance = decay*Variance + alpha*S - delta^2
             self.running_var *= running_weight
-            self.running_var += alpha * adjusted_batch_variance - delta**2
+            self.running_var += alpha * S - delta**2
 
         self.count += b_size
 

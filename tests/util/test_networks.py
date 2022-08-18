@@ -12,14 +12,10 @@ from imitation.util import networks
 assert_equal = functools.partial(th.testing.assert_close, rtol=0, atol=0)
 
 
-def EMANormDecayWithinBatch(*args, **kwargs):
-    return networks.EMANorm(*args, **kwargs, decay_within_batch=True)
-
-
 NORMALIZATION_LAYERS = [
     networks.RunningNorm,
     networks.EMANorm,
-    EMANormDecayWithinBatch,
+    functools.partial(networks.EMANorm, decay_within_batch=True),
 ]
 
 
@@ -51,6 +47,8 @@ class EMANormIncremental(networks.EMANorm):
             batch: A batch of data to use to update the running mean and variance.
         """
         b_size = batch.shape[0]
+        if len(batch.shape) == 1:
+            batch = batch.reshape(b_size, 1)
         alpha = 1 - self.decay
         if self.decay_within_batch:
             start_index = 0
@@ -261,24 +259,17 @@ def test_input_validation_on_ema_norm():
     networks.EMANorm(128, decay=0.05)
 
 
-def run_ema_norm(norm, random_tensor):
-    moving_random_tensor = random_tensor.clone()
-    for _ in range(100):
-        # calculating EMA of a moving distribution
-        # moving_random_tensor += 1
-        norm(moving_random_tensor)
-
-
 @pytest.mark.parametrize("decay_within_batch", [False, True])
 @pytest.mark.parametrize("decay", [0.5, 0.99])
-def test_ema_norm_batch_correctness(decay_within_batch, decay):
+@pytest.mark.parametrize("input_shape", [(64,), (1, 256), (64, 256)])
+def test_ema_norm_batch_correctness(decay_within_batch, decay, input_shape):
     norm_for_incremental = EMANormIncremental(
         num_features=256,
         decay=decay,
         decay_within_batch=decay_within_batch,
     )
     norm_for_batch = networks.EMANorm(256, decay, decay_within_batch=decay_within_batch)
-    random_tensor = th.randn(64, 256)
+    random_tensor = th.randn(input_shape)
     for i in range(100):
         norm_for_incremental.train(), norm_for_batch.train()
         # moving distribution
