@@ -265,7 +265,7 @@ def train_preference_comparisons(
         save_checkpoint(
             trainer=main_trainer,
             save_path=os.path.join(log_dir, "checkpoints", "final"),
-            allow_save_policy=bool(trajectory_path is None),
+            allow_save_policy=allow_save_policy,
         )
 
     # Storing and evaluating policy only useful if we actually generate trajectory data
