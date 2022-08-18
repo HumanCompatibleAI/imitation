@@ -4,6 +4,7 @@ Can be used as a CLI script, or the `train_preference_comparisons` function
 can be called directly.
 """
 
+import functools
 import os
 from typing import Any, Mapping, Optional, Type, Union
 
@@ -143,10 +144,18 @@ def train_preference_comparisons(
     venv = common.make_venv()
 
     reward_net = reward.make_reward_net(venv)
+    relabel_reward_fn = functools.partial(
+        reward_net.predict_processed,
+        update_stats=False,
+    )
     if agent_path is None:
-        agent = rl_common.make_rl_algo(venv)
+        agent = rl_common.make_rl_algo(venv, relabel_reward_fn=relabel_reward_fn)
     else:
-        agent = rl_common.load_rl_algo_from_path(agent_path=agent_path, venv=venv)
+        agent = rl_common.load_rl_algo_from_path(
+            agent_path=agent_path,
+            venv=venv,
+            relabel_reward_fn=relabel_reward_fn,
+        )
 
     if num_agents < 1:
         raise ValueError("num_agents must be at least 1!")
@@ -162,6 +171,7 @@ def train_preference_comparisons(
         return preference_comparisons.AgentTrainer(
             algorithm=agent,
             reward_fn=reward_net,
+            venv=venv,
             exploration_frac=exploration_frac,
             seed=_seed if seed is None else seed,
             custom_logger=custom_logger,
