@@ -223,7 +223,7 @@ def build_mlp(
             shape (batch_size, in_size).
         hid_sizes: sizes of hidden layers. If this is an empty iterable, then we build
             a linear function approximator.
-        out_size: required size of output vector.
+        out_size: size of output vector.
         name: Name to use as a prefix for the layers ID.
         activation: activation to apply after hidden layers.
         dropout_prob: Dropout probability to use after each hidden layer. If 0,
@@ -300,7 +300,7 @@ def build_cnn(
             shape (batch_size, in_size, in_height, in_width).
         hid_channels: number of channels of hidden layers. If this is an empty iterable,
             then we build a linear function approximator.
-        out_size: required size of output vector.
+        out_size: size of output vector.
         name: Name to use as a prefix for the layers ID.
         activation: activation to apply after hidden layers.
         kernel_size: size of convolutional kernels.
