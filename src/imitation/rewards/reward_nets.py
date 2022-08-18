@@ -1,7 +1,6 @@
 """Constructs deep network reward models."""
 
 import abc
-import math
 from typing import Callable, Iterable, Optional, Sequence, Tuple, Type, Union
 
 import gym
@@ -411,8 +410,9 @@ class CnnRewardNet(RewardNet):
     """CNN that takes as input the state, action, next state and done flag.
 
     Inputs are boosted to tensors with channel, height, and width dimensions, and then
-    concatenated. Image inputs are by default transposed to (c,h,w) format. Each input
-    can be enabled or disabled by the `use_*` constructor keyword arguments.
+    concatenated. Image inputs are assumed to be in (h,w,c) format, unless the argument
+    hwc_format=False is passed in. Each input can be enabled or disabled by the `use_*`
+    constructor keyword arguments. Actions are also boosted and concatenated
     """
 
     def __init__(
@@ -437,7 +437,6 @@ class CnnRewardNet(RewardNet):
             use_done: Should the "done" flag be included as an input to the CNN?
             hwc_format: Are image inputs in (h,w,c) format (True), or (c,h,w) (False)?
                 If hwc_format is False, image inputs are not transposed.
-                Note that this affects both state and action inputs.
             kwargs: Passed straight through to `build_cnn`.
 
         Raises:
@@ -451,28 +450,29 @@ class CnnRewardNet(RewardNet):
         self.use_done = use_done
         self.input_size = 0
         self.obs_is_image = preprocessing.is_image_space(observation_space)
-        self.act_is_box_with_channels = (
-            isinstance(action_space, spaces.Box) and len(action_space.shape) == 3
-        )
+        self.act_is_box = isinstance(action_space, spaces.Box)
         self.hwc_format = hwc_format
 
-        if not self.can_handle_space(observation_space):
+        if (self.use_state or self.use_next_state) and not self.can_handle_space(
+            observation_space,
+            is_obs=True,
+        ):
             raise ValueError(
                 "CnnRewardNet doesn't know how to deal with this observation space.",
             )
-        if not self.can_handle_space(action_space):
+        if self.use_action and not self.can_handle_space(action_space, is_obs=False):
             raise ValueError(
                 "CnnRewardNet doesn't know how to deal with this action space.",
             )
 
         if self.use_state:
-            self.input_size += self.get_num_channels(observation_space)
+            self.input_size += self.get_num_channels(observation_space, is_obs=True)
 
         if self.use_action:
-            self.input_size += self.get_num_channels(action_space)
+            self.input_size += self.get_num_channels(action_space, is_obs=False)
 
         if self.use_next_state:
-            self.input_size += self.get_num_channels(observation_space)
+            self.input_size += self.get_num_channels(observation_space, is_obs=True)
 
         if self.use_done:
             self.input_size += 1
@@ -488,13 +488,15 @@ class CnnRewardNet(RewardNet):
 
         self.cnn = networks.build_cnn(**full_build_cnn_kwargs)
 
-    def can_handle_space(self, space: gym.Space) -> bool:
+    def can_handle_space(self, space: gym.Space, is_obs: bool) -> bool:
         """Tells us if this CNN can handle the given gym space."""
         space_is_ok = isinstance(
             space,
             (spaces.Box, spaces.Discrete, spaces.MultiDiscrete, spaces.MultiBinary),
         )
-        if isinstance(space, spaces.MultiDiscrete):
+        if isinstance(space, spaces.Box):
+            shape_is_ok = len(space.shape) == (3 if is_obs else 1)
+        elif isinstance(space, spaces.MultiDiscrete):
             shape_is_ok = len(space.nvec.shape) == 1
         elif isinstance(space, spaces.MultiBinary):
             shape_is_ok = isinstance(space.n, int)
@@ -510,16 +512,17 @@ class CnnRewardNet(RewardNet):
             spaces.MultiDiscrete,
             spaces.MultiBinary,
         ],
+        is_obs: bool,
     ) -> int:
         """Gets number of channels for the representation of a gym space."""
         if isinstance(space, spaces.Box):
-            my_dim = space.shape[-1] if self.hwc_format else space.shape[0]
+            my_dim = space.shape[-1] if is_obs and self.hwc_format else space.shape[0]
         elif isinstance(space, spaces.Discrete):
             my_dim = space.n
         elif isinstance(space, spaces.MultiDiscrete):
             my_dim = sum(space.nvec)
         elif isinstance(space, spaces.MultiBinary):
-            my_dim = space.n if isinstance(space.n, int) else sum(space.n)
+            my_dim = space.n
         else:
             raise TypeError(
                 "get_num_channels can't recognize the input space. "
@@ -567,13 +570,11 @@ class CnnRewardNet(RewardNet):
         """
         inputs = []
         transpose_states = self.obs_is_image and self.hwc_format
-        transpose_acts = self.act_is_box_with_channels and self.hwc_format
         if self.use_state:
             state_ = self.transpose(state) if transpose_states else state
             inputs.append(state_)
         if self.use_action:
-            action_ = self.transpose(action) if transpose_acts else action
-            inputs.append(action_)
+            inputs.append(action)
         if self.use_next_state:
             next_state_ = self.transpose(next_state) if transpose_states else next_state
             inputs.append(next_state_)
@@ -590,25 +591,11 @@ class CnnRewardNet(RewardNet):
         for tens in unsqueezed_inputs:
             if tens.size(-2) != max_height or tens.size(-1) != max_width:
                 # then you need boosting
-                if tens.size(-1) > 1 or tens.size(-1) > 1:
-                    # then you're a box
-                    height_diff = max_height - tens.size(-2)
-                    pad_bot = math.floor(height_diff / 2)
-                    pad_top = height_diff - pad_bot
-                    width_diff = max_width - tens.size(-1)
-                    pad_left = math.floor(width_diff / 2)
-                    pad_right = width_diff - pad_left
-                    boosted_tens = nn.functional.pad(
-                        tens,
-                        (pad_left, pad_right, pad_top, pad_bot),
-                    )
-                else:
-                    # then you're a one-hot vector
-                    boosted_tens = tens.expand(
-                        *tens.shape[:-2],
-                        max_height,
-                        max_width,
-                    )
+                boosted_tens = tens.expand(
+                    *tens.shape[:-2],
+                    max_height,
+                    max_width,
+                )
                 assert boosted_tens.shape[-2:] == th.Size([max_height, max_width])
             else:
                 # then you don't need boosting

@@ -64,7 +64,7 @@ NORMALIZE_OUTPUT_LAYER = [
     networks.RunningNorm,
 ]
 
-WEIRD_ACTION_SPACES = ["SmallBox", "RectBox", "MultiDiscrete", "MultiBinary"]
+ACTION_SPACES = ["Box", "Discrete", "MultiDiscrete", "MultiBinary"]
 
 
 NumpyTransitions = Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]
@@ -96,7 +96,7 @@ def torch_transitions() -> TorchTransitions:
 
 
 class RandomImageEnv(gym.Env):
-    """A random gym image environment where the action space is not discrete."""
+    """A random gym image environment."""
 
     def __init__(
         self,
@@ -105,9 +105,7 @@ class RandomImageEnv(gym.Env):
         """Initialize environment.
 
         Args:
-            act_type: "SmallBox" for box that's uniformly smaller than the observation
-                space. "RectBox" for a box that's shorter but wider than the obs space.
-                "MultiDiscrete", "MultiBinary" self-explanatory.
+            act_type: "Box", "Discrete", "MultiDiscrete", "MultiBinary"
         """
         super(RandomImageEnv, self).__init__()
         self.observation_space = spaces.Box(
@@ -116,25 +114,20 @@ class RandomImageEnv(gym.Env):
             shape=(10, 10, 3),
             dtype=np.uint8,
         )
-        assert act_type in ["SmallBox", "RectBox", "MultiDiscrete", "MultiBinary"]
-        if act_type == "SmallBox":
+        assert act_type in ["Box", "Discrete", "MultiDiscrete", "MultiBinary"]
+        if act_type == "Box":
             self.action_space = spaces.Box(
-                low=0,
-                high=255,
-                shape=(5, 6, 2),
-                dtype=np.uint8,
+                low=-1.0,
+                high=1.0,
+                shape=(8,),
+                dtype=np.float32,
             )
-        elif act_type == "RectBox":
-            self.action_space = spaces.Box(
-                low=0,
-                high=255,
-                shape=(5, 15, 4),
-                dtype=np.uint8,
-            )
+        elif act_type == "Discrete":
+            self.action_space = spaces.Discrete(8)
         elif act_type == "MultiDiscrete":
             self.action_space = spaces.MultiDiscrete([5, 2, 2])
         else:
-            self.action_space = spaces.MultiBinary(10)
+            self.action_space = spaces.MultiBinary(5)
 
     def step(self, action):
         next_obs = self.observation_space.sample()
@@ -272,7 +265,7 @@ def test_reward_valid_image(env_name, reward_type, tmpdir):
 
 @pytest.mark.parametrize("reward_net_cls", MAKE_IMAGE_REWARD_NET)
 @pytest.mark.parametrize("reward_net_kwargs", REWARD_NET_KWARGS)
-@pytest.mark.parametrize("space_string", WEIRD_ACTION_SPACES)
+@pytest.mark.parametrize("space_string", ACTION_SPACES)
 def test_cnn_reward_handle_weird_actions(
     reward_net_cls,
     reward_net_kwargs,
