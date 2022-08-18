@@ -13,10 +13,10 @@ PARALLEL_REQUIRE = ["ray[debug,tune]>=1.13.0"]
 PYTYPE = ["pytype==2022.7.26"] if IS_NOT_WINDOWS else []
 if IS_NOT_WINDOWS:
     # TODO(adam): use this for Windows as well once PyPI is at >=1.6.1
-    STABLE_BASELINES3 = "stable-baselines3[extra]>=1.6.0"
+    STABLE_BASELINES3 = "stable-baselines3>=1.6.0"
 else:
     STABLE_BASELINES3 = (
-        "stable-baselines3[extra]@git+"
+        "stable-baselines3@git+"
         "https://github.com/DLR-RM/stable-baselines3.git@master"
     )
 
@@ -67,6 +67,12 @@ DOCS_REQUIRE = [
     "furo==2022.6.21",
     "sphinx-copybutton==0.5.0",
     "sphinx-github-changelog~=1.2.0",
+]
+ATARI_REQUIRE = [
+    "opencv-python",
+    "ale-py==0.7.4",
+    "pillow",
+    "autorom[accept-rom-license]~=0.4.2",
 ]
 
 
@@ -139,6 +145,7 @@ setup(
             # for convenience
             *TESTS_REQUIRE,
             *DOCS_REQUIRE,
+            *ATARI_REQUIRE,
         ]
         + PYTYPE,
         "test": TESTS_REQUIRE,
@@ -147,6 +154,7 @@ setup(
         "mujoco": [
             "gym[classic_control,mujoco]" + GYM_VERSION_SPECIFIER,
         ],
+        "atari": ATARI_REQUIRE,
     },
     entry_points={
         "console_scripts": [

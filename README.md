@@ -48,7 +48,7 @@ This will run `setup.py` in development mode, and install the additional depende
 pip install .
 ```
 
-Additional extras are available depending on your needs. Namely, `tests` for running the test suite, `docs` for building the documentation, and `parallel` for parallelizing the training. The `dev` extra already installs the `tests` and `docs` dependencies automatically.
+Additional extras are available depending on your needs. Namely, `tests` for running the test suite, `docs` for building the documentation, `parallel` for parallelizing the training, and `atari` for including atari environments. The `dev` extra already installs the `tests`, `docs`, and `atari` dependencies automatically.
 
 For macOS users, some packages are required to run experiments (see `./experiments/README.md` for details). First, install Homebrew if not available (see [Homebrew](https://brew.sh/)). Then, run:
 
