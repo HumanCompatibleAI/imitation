@@ -1,5 +1,6 @@
 """Common configuration elements for scripts."""
 
+import contextlib
 import logging
 import os
 from typing import Any, Mapping, Sequence, Tuple, Union
@@ -126,6 +127,7 @@ def setup_logging(
     return custom_logger, log_dir
 
 
+@contextlib.contextmanager
 @common_ingredient.capture
 def make_venv(
     _seed,
@@ -151,16 +153,20 @@ def make_venv(
         env_make_kwargs: The kwargs passed to `spec.make` of a gym environment.
         kwargs: Passed through to `util.make_vec_env`.
 
-    Returns:
+    Yields:
         The constructed vector environment.
     """
-    return util.make_vec_env(
-        env_name,
-        num_vec,
-        seed=_seed,
-        parallel=parallel,
-        max_episode_steps=max_episode_steps,
-        log_dir=log_dir,
-        env_make_kwargs=env_make_kwargs,
-        **kwargs,
-    )
+    try:
+        venv = util.make_vec_env(
+            env_name,
+            num_vec,
+            seed=_seed,
+            parallel=parallel,
+            max_episode_steps=max_episode_steps,
+            log_dir=log_dir,
+            env_make_kwargs=env_make_kwargs,
+            **kwargs,
+        )
+        yield venv
+    finally:
+        venv.close()

@@ -139,9 +139,8 @@ def train_preference_comparisons(
         ValueError: Inconsistency between config and deserialized policy normalization.
     """
     custom_logger, log_dir = common.setup_logging()
-    venv = common.make_venv()
 
-    try:
+    with common.make_venv() as venv:
         reward_net = reward.make_reward_net(venv)
         relabel_reward_fn = functools.partial(
             reward_net.predict_processed,
@@ -243,8 +242,6 @@ def train_preference_comparisons(
         if bool(trajectory_path is None):
             results = dict(results)
             results["rollout"] = train.eval_policy(agent, venv)
-    finally:
-        venv.close()
 
     if save_preferences:
         main_trainer.dataset.save(os.path.join(log_dir, "preferences.pkl"))

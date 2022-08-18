@@ -116,8 +116,7 @@ def train_adversarial(
     custom_logger, log_dir = common_config.setup_logging()
     expert_trajs = demonstrations.load_expert_trajs()
 
-    venv = common_config.make_venv()
-    try:
+    with common_config.make_venv() as venv:
         reward_net = reward.make_reward_net(venv)
         relabel_reward_fn = functools.partial(
             reward_net.predict_processed,
@@ -156,14 +155,11 @@ def train_adversarial(
                 save(trainer, os.path.join(log_dir, "checkpoints", f"{round_num:05d}"))
 
         trainer.train(total_timesteps, callback)
-
-        # Save final artifacts.
-        if checkpoint_interval >= 0:
-            save(trainer, os.path.join(log_dir, "checkpoints", "final"))
-
         imit_stats = train.eval_policy(trainer.policy, trainer.venv_train)
-    finally:
-        venv.close()
+
+    # Save final artifacts.
+    if checkpoint_interval >= 0:
+        save(trainer, os.path.join(log_dir, "checkpoints", "final"))
 
     return {
         "imit_stats": imit_stats,

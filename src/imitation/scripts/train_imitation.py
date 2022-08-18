@@ -119,9 +119,8 @@ def train_imitation(
         Statistics for rollouts from the trained policy and demonstration data.
     """
     custom_logger, log_dir = common.setup_logging()
-    venv = common.make_venv()
 
-    try:
+    with common.make_venv() as venv:
         imit_policy = make_policy(venv, agent_path=agent_path)
 
         expert_trajs = None
@@ -166,8 +165,6 @@ def train_imitation(
             bc_trainer.save_policy(policy_path=osp.join(log_dir, "final.th"))
 
         imit_stats = train.eval_policy(imit_policy, venv)
-    finally:
-        venv.close()
 
     return {
         "imit_stats": imit_stats,
