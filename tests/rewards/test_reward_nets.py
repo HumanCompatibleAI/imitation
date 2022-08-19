@@ -213,16 +213,13 @@ def _make_env_and_save_reward_net(env_name, reward_type, tmpdir, is_image=False)
     return venv, save_path
 
 
-@pytest.mark.parametrize("env_name", ENVS)
-@pytest.mark.parametrize("reward_type", DESERIALIZATION_TYPES)
-def test_reward_valid(env_name, reward_type, tmpdir):
-    """Test output of reward function is appropriate shape and type."""
+def is_reward_valid(env_name, reward_type, tmpdir, is_image):
     venv = util.make_vec_env(env_name, n_envs=1, parallel=False)
     venv, tmppath = _make_env_and_save_reward_net(
         env_name,
         reward_type,
         tmpdir,
-        is_image=False,
+        is_image=is_image,
     )
 
     TRAJECTORY_LEN = 10
@@ -234,33 +231,23 @@ def test_reward_valid(env_name, reward_type, tmpdir):
     reward_fn = serialize.load_reward(reward_type, tmppath, venv)
     pred_reward = reward_fn(obs, actions, next_obs, steps)
 
+    assert isinstance(pred_reward, np.ndarray)
     assert pred_reward.shape == (TRAJECTORY_LEN,)
-    assert isinstance(pred_reward[0], numbers.Number)
+    assert np.issubdtype(pred_reward.dtype, np.number)
+
+
+@pytest.mark.parametrize("env_name", ENVS)
+@pytest.mark.parametrize("reward_type", DESERIALIZATION_TYPES)
+def test_reward_valid(env_name, reward_type, tmpdir):
+    """Test output of reward function is appropriate shape and type."""
+    is_reward_valid(env_name, reward_type, tmpdir, is_image=False)
 
 
 @pytest.mark.parametrize("env_name", IMAGE_ENVS)
 @pytest.mark.parametrize("reward_type", DESERIALIZATION_TYPES)
 def test_reward_valid_image(env_name, reward_type, tmpdir):
     """Test output of reward function is appropriate shape and type."""
-    venv = util.make_vec_env(env_name, n_envs=1, parallel=False)
-    venv, tmppath = _make_env_and_save_reward_net(
-        env_name,
-        reward_type,
-        tmpdir,
-        is_image=True,
-    )
-
-    TRAJECTORY_LEN = 10
-    obs = _sample(venv.observation_space, TRAJECTORY_LEN)
-    actions = _sample(venv.action_space, TRAJECTORY_LEN)
-    next_obs = _sample(venv.observation_space, TRAJECTORY_LEN)
-    steps = np.arange(0, TRAJECTORY_LEN)
-
-    reward_fn = serialize.load_reward(reward_type, tmppath, venv)
-    pred_reward = reward_fn(obs, actions, next_obs, steps)
-
-    assert pred_reward.shape == (TRAJECTORY_LEN,)
-    assert isinstance(pred_reward[0], numbers.Number)
+    is_reward_valid(env_name, reward_type, tmpdir, is_image=True)
 
 
 @pytest.mark.parametrize("reward_net_cls", MAKE_IMAGE_REWARD_NET)
@@ -449,15 +436,7 @@ def test_cant_load_unnorm_as_norm(env_name, tmpdir):
         serialize.load_reward("RewardNet_normalized", tmppath, venv)
 
 
-@pytest.mark.parametrize("env_name", ENVS)
-@pytest.mark.parametrize("net_cls", MAKE_REWARD_NET)
-@pytest.mark.parametrize("normalize_rewards", [True, False])
-def test_serialize_identity(
-    env_name,
-    net_cls,
-    normalize_rewards,
-    tmpdir,
-):
+def serialize_deserialize_identity(env_name, net_cls, normalize_rewards, tmpdir):
     """Does output of deserialized reward network match that of original?"""
     logging.info(f"Testing {net_cls}")
 
@@ -522,6 +501,19 @@ def test_serialize_identity(
         assert np.allclose(predictions[0], predictions[2])
 
 
+@pytest.mark.parametrize("env_name", ENVS)
+@pytest.mark.parametrize("net_cls", MAKE_REWARD_NET)
+@pytest.mark.parametrize("normalize_rewards", [True, False])
+def test_serialize_identity(
+    env_name,
+    net_cls,
+    normalize_rewards,
+    tmpdir,
+):
+    """Does output of deserialized reward MLP match that of original?"""
+    serialize_deserialize_identity(env_name, net_cls, normalize_rewards, tmpdir)
+
+
 @pytest.mark.parametrize("env_name", IMAGE_ENVS)
 @pytest.mark.parametrize("net_cls", MAKE_IMAGE_REWARD_NET)
 @pytest.mark.parametrize("normalize_rewards", [True, False])
@@ -532,7 +524,12 @@ def test_serialize_identity_images(
     tmpdir,
 ):
     """Does output of deserialized reward CNN match that of original?"""
-    test_serialize_identity(env_name, net_cls, normalize_rewards, tmpdir)
+    serialize_deserialize_identity(
+        env_name,
+        net_cls,
+        normalize_rewards,
+        tmpdir,
+    )
 
 
 class Env2D(gym.Env):
