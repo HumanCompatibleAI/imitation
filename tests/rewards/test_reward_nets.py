@@ -210,7 +210,13 @@ def _make_env_and_save_reward_net(env_name, reward_type, tmpdir, is_image=False)
     if reward_type == "RewardNet_normalized":
         net = reward_nets.NormalizedRewardNet(net, networks.RunningNorm)
     elif reward_type == "RewardNet_shaped":
-        net = reward_nets.ShapedRewardNet(net, _potential, discount_factor=0.99)
+        pot_cls = (
+            reward_nets.BasicPotentialMLP
+            if not is_image
+            else reward_nets.BasicPotentialCNN
+        )
+        potential = pot_cls(venv.observation_space, [8, 8])
+        net = reward_nets.ShapedRewardNet(net, potential, discount_factor=0.99)
     elif reward_type in ["RewardNet_unshaped", "RewardNet_unnormalized"]:
         pass
 

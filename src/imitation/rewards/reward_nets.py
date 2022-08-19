@@ -531,19 +531,6 @@ class CnnRewardNet(RewardNet):
 
         return my_dim
 
-    def transpose(
-        self,
-        inp: th.Tensor,
-    ) -> th.Tensor:
-        """Transposes the state to put the channel dim before height and width."""
-        if len(inp.shape) == 4:
-            return th.permute(inp, (0, 3, 1, 2))
-        else:
-            raise ValueError(
-                "CnnRewardNet.transpose was given an input such that len(input.shape) "
-                + "is not 4.",
-            )
-
     def forward(
         self,
         state: th.Tensor,
@@ -569,12 +556,12 @@ class CnnRewardNet(RewardNet):
         inputs = []
         transpose_states = self.obs_is_image and self.hwc_format
         if self.use_state:
-            state_ = self.transpose(state) if transpose_states else state
+            state_ = cnn_transpose(state) if transpose_states else state
             inputs.append(state_)
         if self.use_action:
             inputs.append(action)
         if self.use_next_state:
-            next_state_ = self.transpose(next_state) if transpose_states else next_state
+            next_state_ = cnn_transpose(next_state) if transpose_states else next_state
             inputs.append(next_state_)
         if self.use_done:
             inputs.append(done)
@@ -602,6 +589,16 @@ class CnnRewardNet(RewardNet):
         inputs_concat = th.cat(boosted_inputs, dim=1)
         outputs = self.cnn(inputs_concat)
         return outputs
+
+
+def cnn_transpose(tens: th.Tensor) -> th.Tensor:
+    """Transpose a (b,h,w,c)-formatted tensor to (b,c,h,w) format."""
+    if len(tens.shape) == 4:
+        return th.permute(tens, (0, 3, 1, 2))
+    else:
+        raise ValueError(
+            "cnn_transpose was given an input such that len(input.shape) is not 4.",
+        )
 
 
 class NormalizedRewardNet(RewardNetWrapper):
@@ -733,7 +730,7 @@ class BasicShapedRewardNet(ShapedRewardNet):
     """Shaped reward net based on MLPs.
 
     This is just a very simple convenience class for instantiating a BasicRewardNet
-    and a BasicPotentialShaping and wrapping them inside a ShapedRewardNet.
+    and a BasicPotentialMLP and wrapping them inside a ShapedRewardNet.
     Mainly exists for backwards compatibility after
     https://github.com/HumanCompatibleAI/imitation/pull/311
     to keep the scripts working.
@@ -830,6 +827,46 @@ class BasicPotentialMLP(nn.Module):
 
     def forward(self, state: th.Tensor) -> th.Tensor:
         return self._potential_net(state)
+
+
+class BasicPotentialCNN(nn.Module):
+    """Simple implementation of a potential using a CNN."""
+
+    def __init__(
+        self,
+        observation_space: gym.Space,
+        hid_sizes: Iterable[int],
+        hwc_format: bool = True,
+        **kwargs,
+    ):
+        """Initialize the potential.
+
+        Args:
+            observation_space: observation space of the environment.
+            hid_sizes: number of channels in hidden layers of the CNN.
+            hwc_format: format of the observation. True if channel dimension is last,
+                False if channel dimension is first.
+            kwargs: passed straight through to `build_cnn`.
+
+        Raises:
+            ValueError: if observations are not images.
+        """
+        super().__init__()
+        self.hwc_format = hwc_format
+        if not preprocessing.is_image_space(observation_space):
+            raise ValueError("CNN potential must be given image inputs.")
+        obs_shape = observation_space.shape
+        in_channels = obs_shape[-1] if self.hwc_format else obs_shape[0]
+        self._potential_net = networks.build_cnn(
+            in_channels=in_channels,
+            hid_channels=hid_sizes,
+            squeeze_output=True,
+            **kwargs,
+        )
+
+    def forward(self, state: th.Tensor) -> th.Tensor:
+        state_ = cnn_transpose(state) if self.hwc_format else state
+        return self._potential_net(state_)
 
 
 class RewardEnsemble(RewardNetWithVariance):
