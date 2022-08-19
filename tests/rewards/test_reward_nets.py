@@ -224,7 +224,7 @@ def _make_env_and_save_reward_net(env_name, reward_type, tmpdir, is_image=False)
     return venv, save_path
 
 
-def is_reward_valid(env_name, reward_type, tmpdir, is_image):
+def _is_reward_valid(env_name, reward_type, tmpdir, is_image):
     venv = util.make_vec_env(env_name, n_envs=1, parallel=False)
     venv, tmppath = _make_env_and_save_reward_net(
         env_name,
@@ -251,14 +251,14 @@ def is_reward_valid(env_name, reward_type, tmpdir, is_image):
 @pytest.mark.parametrize("reward_type", DESERIALIZATION_TYPES)
 def test_reward_valid(env_name, reward_type, tmpdir):
     """Test output of reward function is appropriate shape and type."""
-    is_reward_valid(env_name, reward_type, tmpdir, is_image=False)
+    _is_reward_valid(env_name, reward_type, tmpdir, is_image=False)
 
 
 @pytest.mark.parametrize("env_name", IMAGE_ENVS)
 @pytest.mark.parametrize("reward_type", DESERIALIZATION_TYPES)
 def test_reward_valid_image(env_name, reward_type, tmpdir):
     """Test output of reward function is appropriate shape and type."""
-    is_reward_valid(env_name, reward_type, tmpdir, is_image=True)
+    _is_reward_valid(env_name, reward_type, tmpdir, is_image=True)
 
 
 @pytest.mark.parametrize("reward_net_cls", MAKE_IMAGE_REWARD_NET)
@@ -448,7 +448,7 @@ def test_cant_load_unnorm_as_norm(env_name, tmpdir):
         serialize.load_reward("RewardNet_normalized", tmppath, venv)
 
 
-def serialize_deserialize_identity(env_name, net_cls, normalize_rewards, tmpdir):
+def _serialize_deserialize_identity(env_name, net_cls, normalize_rewards, tmpdir):
     """Does output of deserialized reward network match that of original?"""
     logging.info(f"Testing {net_cls}")
 
@@ -523,7 +523,7 @@ def test_serialize_identity(
     tmpdir,
 ):
     """Does output of deserialized reward MLP match that of original?"""
-    serialize_deserialize_identity(env_name, net_cls, normalize_rewards, tmpdir)
+    _serialize_deserialize_identity(env_name, net_cls, normalize_rewards, tmpdir)
 
 
 @pytest.mark.parametrize("env_name", IMAGE_ENVS)
@@ -536,7 +536,7 @@ def test_serialize_identity_images(
     tmpdir,
 ):
     """Does output of deserialized reward CNN match that of original?"""
-    serialize_deserialize_identity(
+    _serialize_deserialize_identity(
         env_name,
         net_cls,
         normalize_rewards,
