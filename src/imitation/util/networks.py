@@ -135,7 +135,7 @@ class EMANorm(BaseNorm):
     def __init__(
         self,
         num_features: int,
-        decay: float = 0.99,
+        decay: float = 0.9997,
         eps: float = 1e-5,
     ):
         """Builds EMARunningNorm.
