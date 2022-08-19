@@ -1,7 +1,6 @@
 """Tests `imitation.rewards.reward_nets` and `imitation.rewards.serialize`."""
 
 import logging
-import numbers
 import os
 import tempfile
 from typing import Tuple
@@ -57,6 +56,12 @@ REWARD_NET_KWARGS = [
     {"normalize_input_layer": networks.RunningNorm},
     {"normalize_input_layer": networks.EMANorm},
     {"use_next_state": True, "dropout_prob": 0.3},
+]
+
+IMAGE_REWARD_NET_KWARGS = [
+    {},
+    {"use_next_state": True},
+    {"dropout_prob": 0.3},
 ]
 
 NORMALIZE_OUTPUT_LAYER = [
@@ -164,7 +169,7 @@ def test_init_no_crash(
 
 @pytest.mark.parametrize("env_name", IMAGE_ENVS)
 @pytest.mark.parametrize("reward_net_cls", MAKE_IMAGE_REWARD_NET)
-@pytest.mark.parametrize("reward_net_kwargs", REWARD_NET_KWARGS)
+@pytest.mark.parametrize("reward_net_kwargs", IMAGE_REWARD_NET_KWARGS)
 @pytest.mark.parametrize("normalize_output_layer", NORMALIZE_OUTPUT_LAYER)
 def test_image_init_no_crash(
     env_name,
@@ -251,7 +256,7 @@ def test_reward_valid_image(env_name, reward_type, tmpdir):
 
 
 @pytest.mark.parametrize("reward_net_cls", MAKE_IMAGE_REWARD_NET)
-@pytest.mark.parametrize("reward_net_kwargs", REWARD_NET_KWARGS)
+@pytest.mark.parametrize("reward_net_kwargs", IMAGE_REWARD_NET_KWARGS)
 @pytest.mark.parametrize("space_string", ACTION_SPACES)
 def test_cnn_reward_handle_weird_actions(
     reward_net_cls,
@@ -270,8 +275,9 @@ def test_cnn_reward_handle_weird_actions(
     next_obs = _sample(multi_env.observation_space, TRAJECTORY_LEN)
     steps = np.arange(0, TRAJECTORY_LEN)
     rewards = reward_net.predict_processed(obs, acts, next_obs, steps)
+    assert isinstance(rewards, np.ndarray)
     assert rewards.shape == (TRAJECTORY_LEN,)
-    assert isinstance(rewards[0], numbers.Number)
+    assert np.issubdtype(rewards.dtype, np.number)
 
 
 def test_wrappers_default_to_passing_on_method_calls_to_base(

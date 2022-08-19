@@ -119,9 +119,8 @@ class RunningNorm(BaseNorm):
         Args:
             batch: A batch of data to use to update the running mean and variance.
         """
-        reduce_dims = [0, 2, 3] if len(batch.shape) == 4 else 0
-        batch_mean = th.mean(batch, dim=reduce_dims)
-        batch_var = th.var(batch, dim=reduce_dims, unbiased=False)
+        batch_mean = th.mean(batch, dim=0)
+        batch_var = th.var(batch, dim=0, unbiased=False)
         batch_count = batch.shape[0]
 
         delta = batch_mean - self.running_mean
@@ -172,12 +171,11 @@ class EMANorm(BaseNorm):
             batch: A batch of data to use to update the running mean and variance.
         """
         b_size = batch.shape[0]
-        reduce_dims = [0, 2, 3] if len(batch.shape) == 4 else 0
 
         if self.count == 0:
-            self.running_mean = th.mean(batch, dim=reduce_dims)
+            self.running_mean = th.mean(batch, dim=0)
             if b_size > 1:
-                self.running_var = th.var(batch, dim=reduce_dims)
+                self.running_var = th.var(batch, dim=0)
         else:
             # Shuffle the batch since we don't don't want to bias the mean
             # towards data that appears later in the batch
@@ -186,21 +184,10 @@ class EMANorm(BaseNorm):
             alpha = 1 - self.decay
 
             for i in range(b_size):
-                new_sample = (
-                    th.mean(batch[perm[i], ...], dim=[1, 2])
-                    if len(batch.shape) == 4
-                    else batch[perm[i], ...]
-                )
-                diff = new_sample - self.running_mean
+                diff = batch[perm[i], ...] - self.running_mean
                 incr = alpha * diff
                 self.running_mean += incr
                 self.running_var = self.decay * (self.running_var + diff * incr)
-                if len(batch.shape) == 4:
-                    # add correction for within-image variance
-                    self.running_var += (1 - self.decay) * th.var(
-                        batch[perm[i], ...],
-                        dim=[1, 2],
-                    )
 
         self.count += b_size
 
