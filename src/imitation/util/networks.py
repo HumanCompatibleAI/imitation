@@ -86,13 +86,7 @@ class BaseNorm(nn.Module, ABC):
             with th.no_grad():
                 self.update_stats(x)
 
-        running_mean_ = (
-            self.running_mean[:, None, None] if len(x.shape) == 4 else self.running_mean
-        )
-        running_var_ = (
-            self.running_var[:, None, None] if len(x.shape) == 4 else self.running_var
-        )
-        return (x - running_mean_) / th.sqrt(running_var_ + self.eps)
+        return (x - self.running_mean) / th.sqrt(self.running_var + self.eps)
 
     @abstractclassmethod
     def update_stats(self, batch: th.Tensor) -> None:
