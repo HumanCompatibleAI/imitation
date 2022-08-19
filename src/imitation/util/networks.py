@@ -272,7 +272,6 @@ def build_cnn(
     padding: Union[int, str] = "same",
     dropout_prob: float = 0.0,
     squeeze_output: bool = False,
-    normalize_input_layer: Optional[Type[nn.Module]] = None,
 ) -> nn.Module:
     """Constructs a Torch CNN.
 
@@ -291,8 +290,6 @@ def build_cnn(
             no dropout layers are added to the network.
         squeeze_output: if out_size=1, then squeeze_input=True ensures that CNN
             output is of size (B,) instead of (B,1).
-        normalize_input_layer: if specified, module to use to normalize inputs;
-            e.g. `nn.BatchNorm` or `RunningNorm`.
 
     Returns:
         nn.Module: a CNN mapping from inputs of size (batch_size, in_size, in_height,
@@ -308,10 +305,6 @@ def build_cnn(
         prefix = ""
     else:
         prefix = f"{name}_"
-
-    # Normalize input layer
-    if normalize_input_layer:
-        layers[f"{prefix}normalize_input"] = normalize_input_layer(in_channels)
 
     prev_channels = in_channels
     for i, n_channels in enumerate(hid_channels):
