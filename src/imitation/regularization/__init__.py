@@ -30,6 +30,11 @@ class UpdateParamFn(Protocol):
 class Regularizer(abc.ABC):
     """Abstract class for creating regularizers with a common interface."""
 
+    optimizer: optim.Optimizer
+    lambda_: float
+    update_params_fn: UpdateParamFn
+    logger: imit_logger.HierarchicalLogger
+
     def __init__(
         self,
         optimizer: optim.Optimizer,
@@ -46,10 +51,10 @@ class Regularizer(abc.ABC):
                 the train and val loss, and returns the new lambda.
             logger: The logger to which the regularizer will log its parameters.
         """
-        self.optimizer: optim.Optimizer = optimizer
-        self.lambda_: float = initial_lambda
-        self.update_params_fn: UpdateParamFn = update_params_fn
-        self.logger: imit_logger.HierarchicalLogger = logger
+        self.optimizer = optimizer
+        self.lambda_ = initial_lambda
+        self.update_params_fn = update_params_fn
+        self.logger = logger
 
         self.logger.record("regularization_lambda", self.lambda_)
 
@@ -61,7 +66,7 @@ class Regularizer(abc.ABC):
             loss: The loss to regularize.
         """
 
-    def update_params(self, train_loss, val_loss) -> None:
+    def update_params(self, train_loss: th.Tensor, val_loss: th.Tensor) -> None:
         """Update the regularization parameter.
 
         This method calls the update_params_fn to update the regularization parameter,
@@ -144,7 +149,7 @@ class L2Regularizer(LossRegularizer):
             loss: The loss to regularize.
 
         Returns:
-            The scaled L2 norm of the weights.
+            The squared L2 norm of the weights.
         """
         penalty = 0
         for group in self.optimizer.param_groups:
@@ -232,8 +237,9 @@ class IntervalParamScaler:
         Returns:
             The new value of the lambda.
         """
-        # TODO(juan) does this division below work? they are tensors.
-        #  Hopefully they are always of rank zero. Should we check this?
+        # assert that the tensors val_loss and train_loss are both scalars
+        assert val_loss.dim() == 0
+        assert train_loss.dim() == 0
         val_to_train_ratio = val_loss / train_loss
         if val_to_train_ratio > self.tolerable_interval[1]:
             lambda_ *= 1 + self.scaling_factor
@@ -251,4 +257,5 @@ class ConstantParamScaler:
         train_loss: th.Tensor,
         val_loss: th.Tensor,
     ) -> float:
+        del train_loss, val_loss
         return lambda_
