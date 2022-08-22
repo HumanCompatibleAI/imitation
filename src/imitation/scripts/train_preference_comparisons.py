@@ -148,23 +148,19 @@ def train_preference_comparisons(
         reward_net.predict_processed,
         update_stats=False,
     )
-    if agent_path is None:
-        agent = rl_common.make_rl_algo(venv, relabel_reward_fn=relabel_reward_fn)
-    else:
-        agent = rl_common.load_rl_algo_from_path(
-            agent_path=agent_path,
-            venv=venv,
-            relabel_reward_fn=relabel_reward_fn,
-        )
 
-    if num_agents < 1:
-        raise ValueError("num_agents must be at least 1!")
+    if num_agents < 1 or isinstance(num_agents, int):
+        raise ValueError("num_agents must be a positive integer!")
 
     def make_agent_trainer(seed: Optional[int] = None):
         if agent_path is None:
-            agent = rl_common.make_rl_algo(venv)
+            agent = rl_common.make_rl_algo(venv, relabel_reward_fn=relabel_reward_fn)
         else:
-            agent = rl_common.load_rl_algo_from_path(agent_path=agent_path, venv=venv)
+            agent = rl_common.load_rl_algo_from_path(
+                agent_path=agent_path,
+                venv=venv,
+                relabel_reward_fn=relabel_reward_fn,
+            )
 
         # Setting the logger here is not really necessary (PreferenceComparisons
         # takes care of that automatically) but it avoids creating unnecessary loggers
@@ -179,21 +175,22 @@ def train_preference_comparisons(
         )
 
     if trajectory_path is None and num_agents == 1:
+        single_agent = True
         trajectory_generator = make_agent_trainer()
         # Stable Baselines will automatically occupy GPU 0 if it is available. Let's use
         # the same device as the SB3 agent for the reward model.
         reward_net = reward_net.to(trajectory_generator.algorithm.device)
-        allow_save_policy = True
     elif trajectory_path is None and num_agents > 1:
-        members = [make_agent_trainer(_seed * i) for i in range(num_agents)]
+        single_agent = False
+        members = [make_agent_trainer(_seed + i) for i in range(num_agents)]
         trajectory_generator = preference_comparisons.MixtureOfTrajectoryGenerators(
             members=members,
             custom_logger=custom_logger,
         )
         reward_net = reward_net.to(members[0].algorithm.device)
-        allow_save_policy = False
     else:
-        allow_save_policy = False
+        single_agent = False
+
         if exploration_frac > 0:
             raise ValueError(
                 "exploration_frac can't be set when a trajectory dataset is used",
@@ -248,7 +245,7 @@ def train_preference_comparisons(
             save_checkpoint(
                 trainer=main_trainer,
                 save_path=os.path.join(log_dir, "checkpoints", f"{iteration_num:04d}"),
-                allow_save_policy=allow_save_policy,
+                allow_save_policy=single_agent,
             )
 
     results = main_trainer.train(
@@ -265,13 +262,13 @@ def train_preference_comparisons(
         save_checkpoint(
             trainer=main_trainer,
             save_path=os.path.join(log_dir, "checkpoints", "final"),
-            allow_save_policy=allow_save_policy,
+            allow_save_policy=single_agent,
         )
 
     # Storing and evaluating policy only useful if we actually generate trajectory data
-    if bool(trajectory_path is None):
+    if trajectory_path is None and single_agent:
         results = dict(results)
-        results["rollout"] = train.eval_policy(agent, venv)
+        results["rollout"] = train.eval_policy(trajectory_generator.algorithm, venv)
 
     return results
 

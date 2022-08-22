@@ -234,3 +234,11 @@ def test_prefix(tmpdir):
         expect_raw_foo_bar,
     )
     _compare_csv_lines(osp.join(tmpdir, "raw", "blat", "progress.csv"), expect_raw_blat)
+
+
+def test_cant_add_prefix_within_accumulate_means(tmpdir):
+    hier_logger = logger.configure(tmpdir)
+    with pytest.raises(RuntimeError):
+        with hier_logger.accumulate_means("foo"):
+            with hier_logger.add_prefix("bar"):
+                pass

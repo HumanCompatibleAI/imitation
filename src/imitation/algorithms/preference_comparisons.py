@@ -321,9 +321,9 @@ class MixtureOfTrajectoryGenerators(TrajectoryGenerator):
         Raises:
             ValueError: if members is empty.
         """
-        if len(members) == 0:
+        if len(members) < 2:
             raise ValueError(
-                "MixtureOfTrajectoryGenerators requires at least one member!",
+                "MixtureOfTrajectoryGenerators requires at least two member!",
             )
         self.members = tuple(members)
         super().__init__(custom_logger=custom_logger)
@@ -343,9 +343,9 @@ class MixtureOfTrajectoryGenerators(TrajectoryGenerator):
         # Approximately evenly partition work.
         d = steps // n
         r = steps % n
-        i = np.random.randint(n)
         partition = [d] * n
-        partition[i] += r
+        for i in range(r):
+            partition[i] += 1
         trajectories = []
 
         for s, generator in zip(partition, self.members):

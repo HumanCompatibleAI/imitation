@@ -101,7 +101,7 @@ class HierarchicalLogger(sb_logger.Logger):
             self._prefixes.pop()
 
     @contextlib.contextmanager
-    def accumulate_means(self, name: types.AnyPath) -> Generator[None, None, None]:
+    def accumulate_means(self, name: str) -> Generator[None, None, None]:
         """Temporarily modifies this HierarchicalLogger to accumulate means values.
 
         Within this context manager, `self.record(key, value)` writes the "raw" values
@@ -143,7 +143,6 @@ class HierarchicalLogger(sb_logger.Logger):
         if self.current_logger is not None:
             raise RuntimeError("Nested `accumulate_means` context")
 
-        name = types.path_to_str(name)
         subdir = os.path.join(*self._prefixes, name)
 
         if subdir in self._cached_loggers:
