@@ -194,7 +194,7 @@ class WeightDecayRegularizer(WeightRegularizer):
 class IntervalParamScaler:
     """Scales the lambda of the regularizer by some constant factor.
 
-    Lambda is scaled up if the ratio of the validation loss to the training lossq
+    Lambda is scaled up if the ratio of the validation loss to the training loss
     is above the tolerable interval, and scaled down if the ratio is below the
     tolerable interval. Nothing happens if the ratio is within the tolerable
     interval.
