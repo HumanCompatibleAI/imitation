@@ -1,4 +1,4 @@
-"""Implements a variety of reguarlization techniques for NN weights."""
+"""Implements a variety of regularization techniques for NN weights."""
 
 import abc
 from typing import Protocol, Tuple, Union
@@ -77,7 +77,7 @@ class Regularizer(abc.ABC):
             train_loss: The loss on the training set.
             val_loss: The loss on the validation set.
         """
-        # This avoids logging the lambda every time if we are using a constnat value.
+        # This avoids logging the lambda every time if we are using a constant value.
         # It also makes the code faster as it avoids an extra function call and variable
         # assignment, even though this is probably trivial and has not been benchmarked.
         if not isinstance(self.update_params_fn, ConstantParamScaler):
@@ -199,7 +199,7 @@ class WeightDecayRegularizer(WeightRegularizer):
 class IntervalParamScaler:
     """Scales the lambda of the regularizer by some constant factor.
 
-    Lambda is scaled up if the ratio of the validation loss to the training lossq
+    Lambda is scaled up if the ratio of the validation loss to the training loss
     is above the tolerable interval, and scaled down if the ratio is below the
     tolerable interval. Nothing happens if the ratio is within the tolerable
     interval.
