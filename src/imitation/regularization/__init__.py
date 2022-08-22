@@ -140,47 +140,38 @@ class WeightRegularizer(Regularizer):
                 param.data = th.add(param.data, self._regularize_weight(param, group))
 
 
-class L2Regularizer(LossRegularizer):
-    """Applies L2 regularization to a loss function."""
+class LpRegularizer(LossRegularizer):
+    """Applies Lp regularization to a loss function."""
+
+    p: int
+    def __init__(
+        self,
+        optimizer: optim.Optimizer,
+        initial_lambda: float,
+        update_params_fn: UpdateParamFn,
+        logger: imit_logger.HierarchicalLogger,
+        p: int,
+    ) -> None:
+        super().__init__(optimizer, initial_lambda, update_params_fn, logger)
+        self.p = p
 
     def _regularize_loss(self, loss: th.Tensor) -> Union[float, th.Tensor]:
         """Returns the loss penalty.
 
-        Calculates the squared L2 norm of the weights in the optimizer,
+        Calculates the p-th power of the Lp norm of the weights in the optimizer,
         and returns a scaled version of it as the penalty.
 
         Args:
             loss: The loss to regularize.
 
         Returns:
-            The squared L2 norm of the weights.
+            The scaled pth power of the Lp norm of the network weights.
         """
+        del loss
         penalty = 0
         for group in self.optimizer.param_groups:
             for param in group["params"]:
-                penalty += th.sum(param.data.pow(2))
-        return self.lambda_ * penalty
-
-
-class L1Regularizer(LossRegularizer):
-    """Applies L1 regularization to a loss function."""
-
-    def _regularize_loss(self, loss: th.Tensor) -> Union[float, th.Tensor]:
-        """Returns the loss penalty.
-
-        Calculates the L1 norm of the weights in the optimizer,
-        and returns a scaled version of it as the penalty.
-
-        Args:
-            loss: The loss to regularize.
-
-        Returns:
-            The scaled L1 norm of the weights.
-        """
-        penalty = 0
-        for group in self.optimizer.param_groups:
-            for param in group["params"]:
-                penalty += th.sum(th.abs(param.data))
+                penalty += th.linalg.vector_norm(param.data, ord=self.p).pow(self.p)
         return self.lambda_ * penalty
 
 
