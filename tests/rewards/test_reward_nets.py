@@ -10,7 +10,6 @@ import gym
 import numpy as np
 import pytest
 import torch as th
-from gym import spaces
 from stable_baselines3.common.vec_env import DummyVecEnv
 
 import imitation.testing.reward_nets as testing_reward_nets
@@ -56,21 +55,21 @@ REWARD_NET_KWARGS = [
     {"normalize_input_layer": networks.RunningNorm},
     {"normalize_input_layer": networks.EMANorm},
     {"use_next_state": True, "dropout_prob": 0.3},
+    {"use_done": True},
 ]
 
 IMAGE_REWARD_NET_KWARGS = [
     {},
-    {"use_next_state": True},
+    {"use_next_state": True, "use_action": False},
     {"dropout_prob": 0.3},
+    {"use_done": True, "use_action": True},
+    {"use_done": True, "use_action": False},
 ]
 
 NORMALIZE_OUTPUT_LAYER = [
     None,
     networks.RunningNorm,
 ]
-
-ACTION_SPACES = ["Box", "Discrete", "MultiDiscrete", "MultiBinary"]
-
 
 NumpyTransitions = Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]
 
@@ -98,48 +97,6 @@ def torch_transitions() -> TorchTransitions:
         th.zeros((10, 5, 5)),
         th.zeros((10,), dtype=bool),
     )
-
-
-class RandomImageEnv(gym.Env):
-    """A random gym image environment."""
-
-    def __init__(
-        self,
-        act_type: str,
-    ):
-        """Initialize environment.
-
-        Args:
-            act_type: "Box", "Discrete", "MultiDiscrete", "MultiBinary"
-        """
-        super(RandomImageEnv, self).__init__()
-        self.observation_space = spaces.Box(
-            low=0,
-            high=255,
-            shape=(10, 10, 3),
-            dtype=np.uint8,
-        )
-        assert act_type in ["Box", "Discrete", "MultiDiscrete", "MultiBinary"]
-        if act_type == "Box":
-            self.action_space = spaces.Box(
-                low=-1.0,
-                high=1.0,
-                shape=(8,),
-                dtype=np.float32,
-            )
-        elif act_type == "Discrete":
-            self.action_space = spaces.Discrete(8)
-        elif act_type == "MultiDiscrete":
-            self.action_space = spaces.MultiDiscrete([5, 2, 2])
-        else:
-            self.action_space = spaces.MultiBinary(5)
-
-    def step(self, action):
-        next_obs = self.observation_space.sample()
-        return next_obs, 0.0, False, {}
-
-    def reset(self):
-        return self.observation_space.sample()
 
 
 @pytest.mark.parametrize("env_name", ENVS)
@@ -259,31 +216,6 @@ def test_reward_valid(env_name, reward_type, tmpdir):
 def test_reward_valid_image(env_name, reward_type, tmpdir):
     """Test output of reward function is appropriate shape and type."""
     _is_reward_valid(env_name, reward_type, tmpdir, is_image=True)
-
-
-@pytest.mark.parametrize("reward_net_cls", MAKE_IMAGE_REWARD_NET)
-@pytest.mark.parametrize("reward_net_kwargs", IMAGE_REWARD_NET_KWARGS)
-@pytest.mark.parametrize("space_string", ACTION_SPACES)
-def test_cnn_reward_handle_weird_actions(
-    reward_net_cls,
-    reward_net_kwargs,
-    space_string,
-):
-    TRAJECTORY_LEN = 10
-    multi_env = RandomImageEnv(space_string)
-    reward_net = reward_net_cls(
-        multi_env.observation_space,
-        multi_env.action_space,
-        **reward_net_kwargs,
-    )
-    obs = _sample(multi_env.observation_space, TRAJECTORY_LEN)
-    acts = _sample(multi_env.action_space, TRAJECTORY_LEN)
-    next_obs = _sample(multi_env.observation_space, TRAJECTORY_LEN)
-    steps = np.arange(0, TRAJECTORY_LEN)
-    rewards = reward_net.predict_processed(obs, acts, next_obs, steps)
-    assert isinstance(rewards, np.ndarray)
-    assert rewards.shape == (TRAJECTORY_LEN,)
-    assert np.issubdtype(rewards.dtype, np.number)
 
 
 def test_wrappers_default_to_passing_on_method_calls_to_base(
