@@ -933,17 +933,17 @@ class BasicRewardTrainer(RewardTrainer):
 
         # TODO(juan) this could accept an arbitrary regularizer function
         #  in the future if we wanted, with some changes in the __init__ arguments.
-        self.regularizer: Optional[regularization.Regularizer] = (
-            regularization.WeightDecayRegularizer(
-                initial_lambda=weight_decay,
-                optimizer=self.optim,
-                update_params_fn=weight_decay_updater
-                or regularization.ConstantParamScaler(),
-                logger=self.logger,
+        self.regularizer = None
+        if weight_decay > 0:
+            self.regularizer: Optional[regularization.Regularizer] = (
+                regularization.WeightDecayRegularizer(
+                    initial_lambda=weight_decay,
+                    optimizer=self.optim,
+                    update_params_fn=weight_decay_updater
+                    or regularization.ConstantParamScaler(),
+                    logger=self.logger,
+                )
             )
-            if weight_decay > 0
-            else None
-        )
         if self.val_split == 0 and self.regularizer is not None:
             raise ValueError(
                 "If you pass a weight decay updater, you must also pass "
