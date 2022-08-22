@@ -8,8 +8,8 @@ from torch import optim
 
 from imitation.util import logger as imit_logger
 
-
 LossType = Union[th.Tensor, float]
+
 
 class UpdateParamFn(Protocol):
     """Protocol type for functions that update the regularizer parameter.
