@@ -17,6 +17,7 @@ from typing import (
     Optional,
     Sequence,
     Tuple,
+    Type,
     Union,
     cast,
 )
@@ -875,6 +876,8 @@ class RewardTrainer(abc.ABC):
 class BasicRewardTrainer(RewardTrainer):
     """Train a basic reward model."""
 
+    regularizer: Optional[regularization.Regularizer]
+
     def __init__(
         self,
         model: reward_nets.RewardNet,
@@ -882,9 +885,11 @@ class BasicRewardTrainer(RewardTrainer):
         batch_size: int = 32,
         epochs: int = 1,
         lr: float = 1e-3,
-        weight_decay: float = 0.0,
-        weight_decay_updater: Optional[regularization.UpdateParamFn] = None,
-        val_split: float = 0.0,
+        reg_class: Optional[Type[regularization.Regularizer]] = None,
+        reg_lambda: float = 0.0,
+        reg_lambda_updater: Optional[regularization.UpdateParamFn] = None,
+        reg_val_split: float = 0.0,
+        reg_extra_kwargs: Optional[Dict[str, Any]] = None,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
         seed: int = 0,
     ):
@@ -898,28 +903,67 @@ class BasicRewardTrainer(RewardTrainer):
                 on the fly by specifying an `epoch_multiplier` in `self.train()`
                 if longer training is desired in specific cases).
             lr: the learning rate
-            weight_decay: the weight decay factor for the reward model's weights
-                to use with ``th.optim.AdamW``. This is similar to but not equivalent
-                to L2 regularization, see https://arxiv.org/abs/1711.05101
-            weight_decay_updater: a function that takes validation and training
-                losses, and the current weight decay value, and returns the new
-                weight decay value to use in the next epoch. This is only used
-                if ``weight_decay`` is non-zero. Unless this parameter is specified,
-                a constant weight decay value is used by default.
-            val_split: the fraction of the dataset to use for validation. Validation
+            reg_class: the regularization class to use. If not specified, no regularization
+                is used.
+            reg_lambda: the initial regularization strength. For the case of 
+                weight decay regularization, this is the weight decay parameter.
+            reg_lambda_updater: a function that updates the regularization strength.
+                It takes validation and training losses, and the current regularization 
+                parameter value (lambda), and returns the new lambda to use in the next
+                epoch. This is only used if ``reg_lambda`` is non-zero.
+                If not specified, the regularization strength is kept constant.
+            reg_val_split: the fraction of the dataset to use for validation. Validation
                 is performed to determine the best weight decay value. Since
                 the weight decay is constant by default, this is also set to be
                 0 by default, since no validation data is needed. If you pass
                 a weight decay updater, you must also pass a non-zero value for
                 this parameter.
+            reg_extra_kwargs: extra keyword arguments to pass to the regularization
+                constructor.
             seed: the random seed to use for splitting the dataset into training
                 and validation.
             custom_logger: Where to log to; if None (default), creates a new logger.
 
         Raises:
-            ValueError: if ``weight_decay`` is non-zero but ``weight_decay_updater`` is
+            ValueError: if ``reg_lambda`` is non-zero but ``reg_lambda_updater`` is
                 None.
         """
+        if reg_class is None:
+            if reg_lambda > 0:
+                raise ValueError(
+                    "Regularization strength is non-zero but no regularizer class "
+                    "is specified."
+                )
+            if reg_lambda_updater is not None:
+                raise ValueError(
+                    "Regularization updater class was provided but no regularizer class "
+                    "is specified."
+                )
+            if reg_val_split > 0:
+                raise ValueError(
+                    "Validation split is non-zero but no regularizer class "
+                    "is specified."
+                )
+            if reg_extra_kwargs is not None:
+                raise ValueError(
+                    "Extra regularization arguments provided but no regularizer class "
+                    "is specified."
+                )
+        else:
+            if reg_lambda_updater is not None and reg_val_split == 0:
+                raise ValueError(
+                    "If you pass a regularizer parameter updater, you must also "
+                    "pass a non-zero value for the validation split."
+                )
+            if self.val_split < 0 or self.val_split > 1:
+                raise ValueError("val_split must be strictly between 0 and 1.")
+            if reg_lambda_updater is None and reg_lambda == 0:
+                raise ValueError(
+                    "If you do not pass a regularizer parameter updater your "
+                    "regularization strength must be non-zero, as this would "
+                    "result in no regularization."
+                )
+        
         super().__init__(model, custom_logger)
         self.loss = loss
         self.batch_size = batch_size
@@ -929,34 +973,22 @@ class BasicRewardTrainer(RewardTrainer):
             lr=lr,
         )
         self.seed = seed
-        self.val_split = val_split
+        self.val_split = reg_val_split
 
-        # TODO(juan) this could accept an arbitrary regularizer function
-        #  in the future if we wanted, with some changes in the __init__ arguments.
         self.regularizer = None
-        if weight_decay > 0:
-            self.regularizer: Optional[regularization.Regularizer] = (
-                regularization.WeightDecayRegularizer(
-                    initial_lambda=weight_decay,
+        if reg_class is not None:
+            self.regularizer = (
+                reg_class(
+                    initial_lambda=reg_lambda,
                     optimizer=self.optim,
-                    update_params_fn=weight_decay_updater
+                    update_params_fn=reg_lambda_updater
                     or regularization.ConstantParamScaler(),
                     logger=self.logger,
                 )
             )
 
-        if self.val_split == 0 and self.regularizer is not None:
-            raise ValueError(
-                "If you pass a weight decay updater, you must also pass "
-                "a non-zero value for val_split.",
-            )
-        if self.val_split != 0 and self.regularizer is None:
-            raise ValueError(
-                "If you pass a non-zero value for val_split, you must also pass "
-                "a weight decay updater.",
-            )
-        if self.val_split < 0 or self.val_split > 1:
-            raise ValueError("val_split must be strictly between 0 and 1.")
+
+
 
     def _make_data_loader(self, dataset: PreferenceDataset) -> data_th.DataLoader:
         """Make a dataloader."""
