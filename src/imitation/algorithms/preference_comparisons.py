@@ -377,31 +377,37 @@ class PreferenceModel(nn.Module):
         self,
         fragment_pairs: Sequence[TrajectoryPair],
         ensemble_member_index: Optional[int] = None,
-    ):
+    ) -> Tuple[th.Tensor, Optional[th.Tensor]]:
         """Computes the preference probability of the first fragment for all pairs.
 
         Note: This function passes the gradient through for non-ensemble models.
               For an ensemble model, this function should not be used for loss
-              calculation. It can be used in case when passing the gradient is not
-              required like during active selection and inference time.
-              The EnsembleTrainer passes each member through this function instead of
-              passing the EnsembleNetwork.
+              calculation. It can be used in case where passing the gradient is not
+              required such as during active selection or inference time.
+              Therefore, the EnsembleTrainer passes each member network through this
+              function instead of passing the EnsembleNetwork object with the use of
+              `ensemble_member_index`.
 
         Args:
             fragment_pairs: batch of pair of fragments.
-            ensemble_member_index: index of member network in ensemble model
+            ensemble_member_index: index of member network in ensemble model.
+                If the model is an ensemble of networks, this cannot be None.
+
+        Raises:
+            ValueError: `uncertainty_on` not in logit|probability|label.
 
         Returns:
-            The preference probability for the first fragment for all fragment pairs
-            given by the network(s).
-            Shape - (num_fragment_pairs, ) for models with single reward networks and
-            (num_fragment_pairs, num_networks) for ensemble of networks.
+            A tuple with the first element as the preference probabilities for the
+            first fragment for all fragment pairs given by the network(s).
+            If the ground truth rewards are available, it also returns gt preference
+            probabilities in the second element of the tuple (else None).
+            Reward probability shape - (num_fragment_pairs, ) for non-ensemble reward
+            network and (num_fragment_pairs, num_networks) for an ensemble of networks.
 
         """
         if self.is_ensemble:
-            assert (
-                ensemble_member_index is not None
-            ), "`ensemble_member_index` required for ensemble models"
+            if ensemble_member_index is None:
+                raise ValueError("`ensemble_member_index` required for ensemble models")
 
             pref_model = self.member_pref_models[ensemble_member_index]
             return pref_model(fragment_pairs)
@@ -649,7 +655,8 @@ class ActiveSelectionFragmenter(Fragmenter):
         """Initialize the active selection fragmenter.
 
         Args:
-            preference_model: a model that predicts the preference of frag A.
+            preference_model: an ensemble model that predicts the
+                preference of the first fragment over the other.
             base_fragmenter: fragmenter instance to get
                 fragment pairs from trajectories
             fragment_sample_factor: the factor of the number of
@@ -659,9 +666,14 @@ class ActiveSelectionFragmenter(Fragmenter):
             custom_logger: Where to log to; if None (default), creates a new logger.
 
         Raises:
+            ValueError: Preference model not wrapped over an ensemble of networks.
             ValueError: `uncertainty_on` not in logit|probability|label.
         """
         super().__init__(custom_logger=custom_logger)
+        if not preference_model.is_ensemble:
+            raise ValueError(
+                "Preference model not wrapped over an ensemble of networks.",
+            )
         self.preference_model = preference_model
         self.base_fragmenter = base_fragmenter
         self.fragment_sample_factor = fragment_sample_factor
@@ -713,25 +725,22 @@ class ActiveSelectionFragmenter(Fragmenter):
             the variance estimate based on the `uncertainty_on` flag.
         """
         if self.uncertainty_on == "logit":
-            rews1, rews2 = rews1.sum(0), rews2.sum(0)
-            var_estimate = (rews1 - rews2).var().item()
+            returns1, returns2 = rews1.sum(0), rews2.sum(0)
+            var_estimate = (returns1 - returns2).var().item()
         else:  # uncertainty_on is probability or label
-            probs = (
-                self.preference_model.probability(
-                    rews1,
-                    rews2,
-                )
-                .cpu()
-                .numpy()
-            )
+            probs = self.preference_model.probability(rews1, rews2)
+            probs = probs.cpu().numpy()
+            assert probs.shape == (self.preference_model.model.num_members,)
             if self.uncertainty_on == "probability":
                 var_estimate = probs.var()
-            else:  # uncertainty_on is label
+            elif self.uncertainty_on == "label":  # uncertainty_on is label
                 preds = (probs > 0.5).astype(np.float32)
                 # probability estimate of Bernoulli random variable
                 prob_estimate = preds.mean()
                 # variance estimate of Bernoulli random variable
                 var_estimate = prob_estimate * (1 - prob_estimate)
+            else:
+                raise ValueError(f"{self.uncertainty_on} not supported.")
         return var_estimate
 
 
