@@ -721,6 +721,9 @@ class ActiveSelectionFragmenter(Fragmenter):
             rews2: rewards obtained by all the ensemble models for the second fragment.
                 Shape - (fragment_length, num_ensemble_members)
 
+        Raises:
+            ValueError: unsupported `uncertainty_on` argument specified.
+
         Returns:
             the variance estimate based on the `uncertainty_on` flag.
         """
