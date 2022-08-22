@@ -77,12 +77,23 @@ class HierarchicalLogger(sb_logger.Logger):
     def add_prefix(self, prefix: str) -> Generator[None, None, None]:
         """Add a prefix to the subdirectory used to accumulate means.
 
+        This prefix only applies when a `accumulate_means` context is active. If there
+        are multiple active prefixes, then they are concatenated.
+
         Args:
             prefix: The prefix to add to the named sub.
 
         Yields:
             None when the context manager is entered
+
+        Raises:
+            RuntimeError: if accumulate means context is already active.
         """
+        if self.current_logger is not None:
+            raise RuntimeError(
+                "Cannot add prefix when accumulate_means context is already active.",
+            )
+
         try:
             self._prefixes.append(prefix)
             yield
@@ -93,19 +104,24 @@ class HierarchicalLogger(sb_logger.Logger):
     def accumulate_means(self, name: types.AnyPath) -> Generator[None, None, None]:
         """Temporarily modifies this HierarchicalLogger to accumulate means values.
 
-        During this context, `self.record(key, value)` writes the "raw" values in
-        "{self.default_logger.log_dir}/{prefix}/{name}" under the key
+        Within this context manager, `self.record(key, value)` writes the "raw" values
+        in "{self.default_logger.log_dir}/{prefix}/{name}" under the key
         "raw/{prefix}/{name}/{key}". At the same time, any call to `self.record` will
         also accumulate mean values on the default logger by calling
         `self.default_logger.record_mean(f"mean/{prefix}/{name}/{key}", value)`.
 
-        During the context, `self.record(key, value)` will write the "raw" values in
-        `"{self.default_logger.log_dir}/name"` under the key
+        Within this context manager, `self.record(key, value)` will write the "raw"
+        values in `"{self.default_logger.log_dir}/{prefix}/{name}"` under the key
         "raw/{prefix}/{name}/key".
+
+        Multiple prefixes may be active at once. In this case the `prefix` is simply the
+        concatenation of each of the active prefixes in the order they
+        where created e.g. if the active `prefixes` are ['foo', 'bar'] then
+        the `prefix` is 'foo/bar'.
 
         After the context exits, calling `self.dump()` will write the means
         of all the "raw" values accumulated during this context to
-        `self.default_logger` under keys with the prefix `mean/{prefix}/{name}/`
+        `self.default_logger` under keys of the form  `mean/{prefix}/{name}/{key}`
 
         Note that the behavior of other logging methods, `log` and `record_mean`
         are unmodified and will go straight to the default logger.
