@@ -72,7 +72,7 @@ class Regularizer(abc.ABC):
             train_loss: The loss on the training set.
             val_loss: The loss on the validation set.
         """
-        # This avoids logging the lambda every time if we are using a constnat value.
+        # This avoids logging the lambda every time if we are using a constant value.
         # It also makes the code faster as it avoids an extra function call and variable
         # assignment, even though this is probably trivial and has not been benchmarked.
         if not isinstance(self.update_params_fn, ConstantParamScaler):
