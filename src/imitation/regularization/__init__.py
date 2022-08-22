@@ -1,4 +1,4 @@
-"""Implements a variety of reguarlization techniques for NN weights."""
+"""Implements a variety of regularization techniques for NN weights."""
 
 import abc
 from typing import Protocol, Tuple, Union
