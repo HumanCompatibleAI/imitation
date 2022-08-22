@@ -991,10 +991,7 @@ class BasicRewardTrainer(RewardTrainer):
                 self.optim.step()
 
             if self.regularizer:
-                # TODO(juan) my type checker complains because it cannot infer the type
-                #  of val_dataloader by checking the logic. Is there a better way
-                #  to do this, or should we leave the cast?
-                val_dataloader = cast(data_th.DataLoader, val_dataloader)
+                assert val_dataloader is not None
                 for fragment_pairs, preferences in val_dataloader:
                     loss = self._training_inner_loop(fragment_pairs, preferences)
                     val_loss += loss.item()

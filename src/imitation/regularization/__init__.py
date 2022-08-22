@@ -9,6 +9,8 @@ from torch import optim
 from imitation.util import logger as imit_logger
 
 
+LossType = Union[th.Tensor, float]
+
 class UpdateParamFn(Protocol):
     """Protocol type for functions that update the regularizer parameter.
 
@@ -17,13 +19,12 @@ class UpdateParamFn(Protocol):
     because a user might wish to provide their own implementation without having to
     inherit from the base class, e.g. by defining a function instead of a class.
 
-    Note: the way this is currently designed to work, calls to objects implementing
-    this protocol should be fully functional, i.e. stateless and idempotent. The class
-    structure should only be used to store constant hyperparameters.
-    (Alternatively, closures can be used).
+    Note: if you implement `UpdateParamFn`, your implementation MUST be side-effect
+    free, i.e. stateless and idempotent. The class structure should only be used
+    to store constant hyperparameters. (Alternatively, closures can be used for that).
     """
 
-    def __call__(self, lambda_, train_loss: th.Tensor, val_loss: th.Tensor) -> float:
+    def __call__(self, lambda_, train_loss: LossType, val_loss: LossType) -> float:
         ...
 
 
@@ -59,14 +60,15 @@ class Regularizer(abc.ABC):
         self.logger.record("regularization_lambda", self.lambda_)
 
     @abc.abstractmethod
-    def regularize(self, loss: th.Tensor) -> None:
+    def regularize(self, loss: th.Tensor) -> th.Tensor:
         """Abstract method for performing the regularization step.
 
         Args:
             loss: The loss to regularize.
         """
+        ...
 
-    def update_params(self, train_loss: th.Tensor, val_loss: th.Tensor) -> None:
+    def update_params(self, train_loss: LossType, val_loss: LossType) -> None:
         """Update the regularization parameter.
 
         This method calls the update_params_fn to update the regularization parameter,
@@ -103,10 +105,12 @@ class LossRegularizer(Regularizer):
         """
         ...
 
-    def regularize(self, loss: th.Tensor) -> None:
+    def regularize(self, loss: th.Tensor) -> th.Tensor:
         """Add the regularization term to the loss and compute gradients."""
         regularized_loss = th.add(loss, self._regularize_loss(loss))
         regularized_loss.backward()
+        self.logger.record("regularized_loss", regularized_loss.item())
+        return regularized_loss
 
 
 class WeightRegularizer(Regularizer):
@@ -219,8 +223,8 @@ class IntervalParamScaler:
     def __call__(
         self,
         lambda_: float,
-        train_loss: th.Tensor,
-        val_loss: th.Tensor,
+        train_loss: LossType,
+        val_loss: LossType,
     ) -> float:
         """Scales the lambda of the regularizer by some constant factor.
 
@@ -238,8 +242,8 @@ class IntervalParamScaler:
             The new value of the lambda.
         """
         # assert that the tensors val_loss and train_loss are both scalars
-        assert val_loss.dim() == 0
-        assert train_loss.dim() == 0
+        assert isinstance(val_loss, float) or val_loss.dim() == 0
+        assert isinstance(train_loss, float) or train_loss.dim() == 0
         val_to_train_ratio = val_loss / train_loss
         if val_to_train_ratio > self.tolerable_interval[1]:
             lambda_ *= 1 + self.scaling_factor
@@ -254,8 +258,8 @@ class ConstantParamScaler:
     def __call__(
         self,
         lambda_: float,
-        train_loss: th.Tensor,
-        val_loss: th.Tensor,
+        train_loss: Union[float, th.Tensor],
+        val_loss: Union[float, th.Tensor],
     ) -> float:
         del train_loss, val_loss
         return lambda_
