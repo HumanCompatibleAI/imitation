@@ -478,6 +478,7 @@ def test_train_adversarial_warmstart(tmpdir, command):
     config_updates = {
         "common": dict(log_root=tmpdir),
         "demonstrations": dict(rollout_path=CARTPOLE_TEST_ROLLOUT_PATH),
+        "checkpoint_interval": 1,
     }
     run = train_adversarial.train_adversarial_ex.run(
         command_name=command,
