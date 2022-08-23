@@ -148,113 +148,122 @@ def train_preference_comparisons(
         ValueError: Inconsistency between config and deserialized policy normalization.
     """
     custom_logger, log_dir = common.setup_logging()
-    venv = common.make_venv()
 
-    reward_net = reward.make_reward_net(venv)
-    relabel_reward_fn = functools.partial(
-        reward_net.predict_processed,
-        update_stats=False,
-    )
-    if agent_path is None:
-        agent = rl_common.make_rl_algo(venv, relabel_reward_fn=relabel_reward_fn)
-    else:
-        agent = rl_common.load_rl_algo_from_path(
-            agent_path=agent_path,
-            venv=venv,
-            relabel_reward_fn=relabel_reward_fn,
+    with common.make_venv() as venv:
+        reward_net = reward.make_reward_net(venv)
+        relabel_reward_fn = functools.partial(
+            reward_net.predict_processed,
+            update_stats=False,
         )
-
-    if trajectory_path is None:
-        # Setting the logger here is not really necessary (PreferenceComparisons
-        # takes care of that automatically) but it avoids creating unnecessary loggers
-        trajectory_generator = preference_comparisons.AgentTrainer(
-            algorithm=agent,
-            reward_fn=reward_net,
-            venv=venv,
-            exploration_frac=exploration_frac,
-            seed=_seed,
-            custom_logger=custom_logger,
-            **trajectory_generator_kwargs,
-        )
-        # Stable Baselines will automatically occupy GPU 0 if it is available. Let's use
-        # the same device as the SB3 agent for the reward model.
-        reward_net = reward_net.to(trajectory_generator.algorithm.device)
-    else:
-        if exploration_frac > 0:
-            raise ValueError(
-                "exploration_frac can't be set when a trajectory dataset is used",
-            )
-        trajectory_generator = preference_comparisons.TrajectoryDataset(
-            trajectories=types.load_with_rewards(trajectory_path),
-            seed=_seed,
-            custom_logger=custom_logger,
-            **trajectory_generator_kwargs,
-        )
-
-    fragmenter = preference_comparisons.RandomFragmenter(
-        **fragmenter_kwargs,
-        seed=_seed,
-        custom_logger=custom_logger,
-    )
-    preference_model = preference_comparisons.PreferenceModel(
-        **preference_model_kwargs,
-        model=reward_net,
-    )
-    if active_selection:
-        fragmenter = preference_comparisons.ActiveSelectionFragmenter(
-            preference_model=preference_model,
-            base_fragmenter=fragmenter,
-            fragment_sample_factor=active_selection_oversampling,
-            uncertainty_on=uncertainty_on,
-            custom_logger=custom_logger,
-        )
-    gatherer = gatherer_cls(
-        **gatherer_kwargs,
-        seed=_seed,
-        custom_logger=custom_logger,
-    )
-
-    loss = preference_comparisons.CrossEntropyRewardLoss(
-        preference_model,
-    )
-
-    reward_trainer = preference_comparisons._make_reward_trainer(
-        reward_net,
-        loss,
-        reward_trainer_kwargs,
-        seed=_seed,
-    )
-
-    main_trainer = preference_comparisons.PreferenceComparisons(
-        trajectory_generator,
-        reward_net,
-        num_iterations=num_iterations,
-        fragmenter=fragmenter,
-        preference_gatherer=gatherer,
-        reward_trainer=reward_trainer,
-        comparison_queue_size=comparison_queue_size,
-        fragment_length=fragment_length,
-        transition_oversampling=transition_oversampling,
-        initial_comparison_frac=initial_comparison_frac,
-        custom_logger=custom_logger,
-        allow_variable_horizon=allow_variable_horizon,
-        seed=_seed,
-        query_schedule=query_schedule,
-    )
-
-    def save_callback(iteration_num):
-        if checkpoint_interval > 0 and iteration_num % checkpoint_interval == 0:
-            save_checkpoint(
-                trainer=main_trainer,
-                save_path=os.path.join(log_dir, "checkpoints", f"{iteration_num:04d}"),
-                allow_save_policy=bool(trajectory_path is None),
+        if agent_path is None:
+            agent = rl_common.make_rl_algo(venv, relabel_reward_fn=relabel_reward_fn)
+        else:
+            agent = rl_common.load_rl_algo_from_path(
+                agent_path=agent_path,
+                venv=venv,
+                relabel_reward_fn=relabel_reward_fn,
             )
 
-    results = main_trainer.train(
-        total_timesteps,
-        total_comparisons,
-        callback=save_callback,
-    )
+        if trajectory_path is None:
+            # Setting the logger here is not necessary (PreferenceComparisons takes care
+            # of it automatically) but it avoids creating unnecessary loggers.
+            trajectory_generator = preference_comparisons.AgentTrainer(
+                algorithm=agent,
+                reward_fn=reward_net,
+                venv=venv,
+                exploration_frac=exploration_frac,
+                seed=_seed,
+                custom_logger=custom_logger,
+                **trajectory_generator_kwargs,
+            )
+            # Stable Baselines will automatically occupy GPU 0 if it is available.
+            # Let's use the same device as the SB3 agent for the reward model.
+            reward_net = reward_net.to(trajectory_generator.algorithm.device)
+        else:
+            if exploration_frac > 0:
+                raise ValueError(
+                    "exploration_frac can't be set when a trajectory dataset is used",
+                )
+            trajectory_generator = preference_comparisons.TrajectoryDataset(
+                trajectories=types.load_with_rewards(trajectory_path),
+                seed=_seed,
+                custom_logger=custom_logger,
+                **trajectory_generator_kwargs,
+            )
+
+        fragmenter = preference_comparisons.RandomFragmenter(
+            **fragmenter_kwargs,
+            seed=_seed,
+            custom_logger=custom_logger,
+        )
+        preference_model = preference_comparisons.PreferenceModel(
+            **preference_model_kwargs,
+            model=reward_net,
+        )
+        if active_selection:
+            fragmenter = preference_comparisons.ActiveSelectionFragmenter(
+                preference_model=preference_model,
+                base_fragmenter=fragmenter,
+                fragment_sample_factor=active_selection_oversampling,
+                uncertainty_on=uncertainty_on,
+                custom_logger=custom_logger,
+            )
+        gatherer = gatherer_cls(
+            **gatherer_kwargs,
+            seed=_seed,
+            custom_logger=custom_logger,
+        )
+
+        loss = preference_comparisons.CrossEntropyRewardLoss(
+            preference_model,
+        )
+
+        reward_trainer = preference_comparisons._make_reward_trainer(
+            reward_net,
+            loss,
+            reward_trainer_kwargs,
+            seed=_seed,
+        )
+
+        main_trainer = preference_comparisons.PreferenceComparisons(
+            trajectory_generator,
+            reward_net,
+            num_iterations=num_iterations,
+            fragmenter=fragmenter,
+            preference_gatherer=gatherer,
+            reward_trainer=reward_trainer,
+            comparison_queue_size=comparison_queue_size,
+            fragment_length=fragment_length,
+            transition_oversampling=transition_oversampling,
+            initial_comparison_frac=initial_comparison_frac,
+            custom_logger=custom_logger,
+            allow_variable_horizon=allow_variable_horizon,
+            seed=_seed,
+            query_schedule=query_schedule,
+        )
+
+        def save_callback(iteration_num):
+            if checkpoint_interval > 0 and iteration_num % checkpoint_interval == 0:
+                save_checkpoint(
+                    trainer=main_trainer,
+                    save_path=os.path.join(
+                        log_dir,
+                        "checkpoints",
+                        f"{iteration_num:04d}",
+                    ),
+                    allow_save_policy=bool(trajectory_path is None),
+                )
+
+        results = main_trainer.train(
+            total_timesteps,
+            total_comparisons,
+            callback=save_callback,
+        )
+
+        # Storing and evaluating policy only useful if we generated trajectory data
+        if bool(trajectory_path is None):
+            results = dict(results)
+            results["rollout"] = train.eval_policy(agent, venv)
 
     if save_preferences:
         main_trainer.dataset.save(os.path.join(log_dir, "preferences.pkl"))
