@@ -527,13 +527,18 @@ class CnnRewardNet(RewardNet):
         inputs_concat = th.cat(inputs, dim=1)
         outputs = self.cnn(inputs_concat)
         if self.use_action and not self.use_done:
+            # for discrete action spaces, action is passed to forward as a one-hot
+            # vector.
             rewards = th.sum(outputs * action, dim=1)
         elif self.use_action and self.use_done:
+            # here, we double the size of the one-hot vector, where the first entries
+            # are for done=False and the second are for done=True.
             action_done_false = action * (1 - done)
             action_done_true = action * done
             full_acts = th.cat((action_done_false, action_done_true), dim=1)
             rewards = th.sum(outputs * full_acts, dim=1)
         elif not self.use_action and self.use_done:
+            # here we turn done into a one-hot vector.
             dones_binary = done.type(th.IntTensor)
             dones_one_hot = nn.functional.one_hot(dones_binary, num_classes=2)
             rewards = th.sum(outputs * dones_one_hot, dim=1)
