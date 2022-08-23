@@ -3,13 +3,17 @@
 import os
 import warnings
 from sys import platform
+from typing import TYPE_CHECKING
 
 from setuptools import find_packages, setup
 from setuptools.command.install import install
 
+if TYPE_CHECKING:
+    from setuptools_scm.version import ScmVersion
+
 IS_NOT_WINDOWS = os.name != "nt"
 
-PARALLEL_REQUIRE = ["ray[debug,tune]>=1.13.0"]
+PARALLEL_REQUIRE = ["ray[debug,tune]~=1.13.0"]
 PYTYPE = ["pytype==2022.7.26"] if IS_NOT_WINDOWS else []
 if IS_NOT_WINDOWS:
     # TODO(adam): use this for Windows as well once PyPI is at >=1.6.1
@@ -55,6 +59,7 @@ TESTS_REQUIRE = (
         "pytest-xdist~=2.5.0",
         "scipy~=1.9.0",
         "wandb==0.12.21",
+        "setuptools_scm~=7.0.5",
     ]
     + PARALLEL_REQUIRE
     + PYTYPE
@@ -99,12 +104,85 @@ class InstallCommand(install):
             )
 
 
+def get_version(version: "ScmVersion") -> str:
+    """Generates the version string for the package.
+
+    This function replaces the default version format used by setuptools_scm
+    to allow development builds to be versioned using the git commit hash
+    instead of the number of commits since the last release, which leads to
+    duplicate version identifiers when using multiple branches
+    (see https://github.com/HumanCompatibleAI/imitation/issues/500).
+
+    The version has the following format:
+
+    {version}[.dev{build}]
+    where build is the shortened commit hash converted to base 10.
+
+    Args:
+        version: The version object given by setuptools_scm, calculated
+            from the git repository.
+
+    Returns:
+        The formatted version string to use for the package.
+    """
+    # We import setuptools_scm here because it is only installed after the module
+    # is loaded and the setup function is called.
+    from setuptools_scm import version as scm_version
+
+    if version.node:
+        # By default node corresponds to the short commit hash when using git,
+        # plus a "g" prefix. We remove the "g" prefix from the commit hash which
+        # is added by setuptools_scm by default ("g" for git vs. mercurial etc.)
+        # because letters are not valid for version identifiers in PEP 440.
+        # We also convert from hexadecimal to base 10 for the same reason.
+        version.node = str(int(version.node.lstrip("g"), 16))
+    if version.exact:
+        # an exact version is when the current commit is tagged with a version.
+        return version.format_with("{tag}")
+    else:
+        # the current commit is not tagged with a version, so we guess
+        # what the "next" version will be (this can be disabled but is the
+        # default behavior of setuptools_scm so it has been left in).
+        return version.format_next_version(
+            scm_version.guess_next_version,
+            fmt="{guessed}.dev{node}",
+        )
+
+
+def get_local_version(version: "ScmVersion", time_format="%Y%m%d") -> str:
+    """Generates the local version string for the package.
+
+    By default, when commits are made on top of a release version, setuptools_scm
+    sets the version to be {version}.dev{distance}+{node} where {distance} is the number
+    of commits since the last release and {node} is the short commit hash.
+    This function replaces the default version format used by setuptools_scm
+    so that committed changes away from a release version are not considered
+    local versions but dev versions instead (by using the format
+    {version}.dev{node} instead. This is so that we can push test releases
+    to TestPyPI (it does not accept local versions).
+
+    Local versions are still present if there are uncommitted changes (if the tree
+    is dirty), in which case the current date is added to the version.
+
+    Args:
+        version: The version object given by setuptools_scm, calculated
+            from the git repository.
+        time_format: The format to use for the date.
+
+    Returns:
+        The formatted local version string to use for the package.
+    """
+    return version.format_choice(
+        "",
+        "+d{time:{time_format}}",
+        time_format=time_format,
+    )
+
+
 setup(
     cmdclass={"install": InstallCommand},
     name="imitation",
-    # Disable local scheme to allow uploads to Test PyPI.
-    # See https://github.com/pypa/setuptools_scm/issues/342
-    use_scm_version={"local_scheme": "no-local-version"},
+    use_scm_version={"local_scheme": get_local_version, "version_scheme": get_version},
     setup_requires=["setuptools_scm"],
     description="Implementation of modern reward and imitation learning algorithms.",
     long_description=get_readme(),
