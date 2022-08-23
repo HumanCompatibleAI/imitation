@@ -548,7 +548,7 @@ def cnn_transpose(tens: th.Tensor) -> th.Tensor:
         return th.permute(tens, (0, 3, 1, 2))
     else:
         raise ValueError(
-            f"Invalid input: len(tens.shape) = {len(tens.shape}) != 4.",
+            f"Invalid input: len(tens.shape) = {len(tens.shape)} != 4.",
         )
 
 
