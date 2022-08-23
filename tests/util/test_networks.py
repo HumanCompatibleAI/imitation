@@ -248,7 +248,7 @@ def test_input_validation_on_ema_norm():
     networks.EMANorm(128, decay=0.05)
 
 
-@pytest.mark.parametrize("decay", [0.99, 0.999, 0.9999])
+@pytest.mark.parametrize("decay", [0.5, 0.99, 0.999, 0.9999])
 @pytest.mark.parametrize("input_shape", [(64,), (1, 256), (64, 256)])
 def test_ema_norm_batch_correctness(decay, input_shape):
     norm_for_incremental = EMANormIncremental(
@@ -257,7 +257,7 @@ def test_ema_norm_batch_correctness(decay, input_shape):
     )
     norm_for_batch = networks.EMANorm(256, decay)
     random_tensor = th.randn(input_shape)
-    for i in range(100):
+    for i in range(1000):
         norm_for_incremental.train(), norm_for_batch.train()
         # moving distribution
         tensor_input = random_tensor.clone() + i
