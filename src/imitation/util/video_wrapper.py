@@ -33,12 +33,16 @@ class VideoWrapper(gym.Wrapper):
                 metadata), then saving to different files can be useful.
         """
         super().__init__(env)
-        self.episode_id = 0
+        self._episode_id = 0
         self.video_recorder = None
         self.single_video = single_video
 
         self.directory = os.path.abspath(directory)
         os.makedirs(self.directory, exist_ok=True)
+
+    @property
+    def episode_id(self) -> int:
+        return self._episode_id
 
     def _reset_video_recorder(self) -> None:
         """Creates a video recorder if one does not already exist.
@@ -59,14 +63,14 @@ class VideoWrapper(gym.Wrapper):
                 env=self.env,
                 base_path=os.path.join(
                     self.directory,
-                    "video.{:06}".format(self.episode_id),
+                    "video.{:06}".format(self._episode_id),
                 ),
-                metadata={"episode_id": self.episode_id},
+                metadata={"episode_id": self._episode_id},
             )
 
     def reset(self):
         self._reset_video_recorder()
-        self.episode_id += 1
+        self._episode_id += 1
         return self.env.reset()
 
     def step(self, action):
@@ -85,28 +89,29 @@ def record_and_save_video(
     output_dir: str,
     policy: policies.BasePolicy,
     eval_venv: vec_env.VecEnv,
-    video_kwargs: Mapping[str, Any],
+    video_kwargs: Optional[Mapping[str, Any]] = None,
     logger: Optional[sb_logger.Logger] = None,
 ) -> None:
     video_dir = osp.join(output_dir, "videos")
     video_venv = VideoWrapper(
         eval_venv,
         directory=video_dir,
-        **video_kwargs,
+        **(video_kwargs or dict()),
     )
-    sample_until = rollout.make_sample_until(min_timesteps=None, min_episodes=2)
-    # video.{:06}".format(VideoWrapper.episode_id) will be saved within
+    sample_until = rollout.make_sample_until(min_timesteps=None, min_episodes=1)
+    # video.{:06}.mp4".format(VideoWrapper.episode_id) will be saved within
     # rollout.generate_trajectories()
     rollout.generate_trajectories(policy, video_venv, sample_until)
-    assert "video.000000.mp4" in os.listdir(video_dir)
-    video_path = osp.join(video_dir, "video.000000.mp4")
+    video_name = "video.{:06}.mp4".format(video_venv.episode_id - 1)
+    assert video_name in os.listdir(video_dir)
+    video_path = osp.join(video_dir, video_name)
     if logger:
         logger.record("video", video_path)
         logger.log(f"Recording and saving video to {video_path} ...")
 
 
 class SaveVideoCallback(callbacks.EventCallback):
-    """Saves the policy using `save_n_record_video` each time it is called.
+    """Saves the policy using `record_and_save_video` each time when it is called.
 
     Should be used in conjunction with `callbacks.EveryNTimesteps`
     or another event-based trigger.
@@ -116,8 +121,8 @@ class SaveVideoCallback(callbacks.EventCallback):
         self,
         policy_dir: str,
         eval_venv: vec_env.VecEnv,
-        video_kwargs: Mapping[str, Any],
         *args,
+        video_kwargs: Optional[Mapping[str, Any]] = None,
         **kwargs,
     ):
         """Builds SavePolicyCallback.
@@ -125,14 +130,14 @@ class SaveVideoCallback(callbacks.EventCallback):
         Args:
             policy_dir: Directory to save checkpoints.
             eval_venv: Environment to evaluate the policy on.
-            video_kwargs: Keyword arguments to pass to `VideoWrapper`.
             *args: Passed through to `callbacks.EventCallback`.
+            video_kwargs: Keyword arguments to pass to `VideoWrapper`.
             **kwargs: Passed through to `callbacks.EventCallback`.
         """
         super().__init__(*args, **kwargs)
         self.policy_dir = policy_dir
         self.eval_venv = eval_venv
-        self.video_kwargs = video_kwargs
+        self.video_kwargs = video_kwargs or dict()
 
     def _on_step(self) -> bool:
         output_dir = os.path.join(self.policy_dir, f"{self.num_timesteps:012d}")

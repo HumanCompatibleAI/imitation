@@ -478,6 +478,7 @@ def test_train_adversarial_warmstart(tmpdir, command):
     config_updates = {
         "common": dict(log_root=tmpdir),
         "demonstrations": dict(rollout_path=CARTPOLE_TEST_ROLLOUT_PATH),
+        "checkpoint_interval": 1,
     }
     run = train_adversarial.train_adversarial_ex.run(
         command_name=command,
@@ -910,7 +911,8 @@ def test_convert_trajs(tmpdir: str):
 
 
 _TRAIN_VIDEO_CONFIGS = {"train": {"videos": True}}
-VIDEO_NAME = "video.000000.mp4"
+VIDEO_NAME = "video.{:06}.mp4".format(0)
+# Change the following if the file structure of checkpoints changed.
 VIDEO_PATH_DICT = dict(
     rl=lambda d: osp.join(d, "policies", "final", "videos"),
     adversarial=lambda d: osp.join(d, "checkpoints", "final", "gen_policy", "videos"),

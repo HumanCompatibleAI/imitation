@@ -22,17 +22,17 @@ from imitation.scripts.common import train
 from imitation.scripts.config.train_preference_comparisons import (
     train_preference_comparisons_ex,
 )
-from imitation.util import video_wrapper
 
 
 def save_checkpoint(
-    _config: Mapping[str, Any],
     trainer: preference_comparisons.PreferenceComparisons,
-    save_path: str,
+    log_dir: str,
     allow_save_policy: Optional[bool],
     eval_venv: vec_env.VecEnv,
+    round_str: str,
 ) -> None:
     """Save reward model and optionally policy."""
+    save_path = osp.join(log_dir, "checkpoints", round_str)
     os.makedirs(save_path, exist_ok=True)
     th.save(trainer.model, osp.join(save_path, "reward_net.pt"))
     if allow_save_policy:
@@ -45,14 +45,12 @@ def save_checkpoint(
             output_dir=policy_dir,
             model=trainer.trajectory_generator.algorithm,
         )
-        if _config["train"]["videos"]:
-            video_wrapper.record_and_save_video(
-                output_dir=policy_dir,
-                policy=trainer.trajectory_generator.algorithm.policy,
-                eval_venv=eval_venv,
-                video_kwargs=_config["train"]["video_kwargs"],
-                logger=trainer.logger,
-            )
+        train.save_video(
+            output_dir=policy_dir,
+            policy=trainer.trajectory_generator.algorithm.policy,
+            eval_venv=eval_venv,
+            logger=trainer.logger,
+        )
     else:
         trainer.logger.warn(
             "trainer.trajectory_generator doesn't contain a policy to save.",
@@ -62,7 +60,6 @@ def save_checkpoint(
 @train_preference_comparisons_ex.main
 def train_preference_comparisons(
     _seed: int,
-    _config: Mapping[str, Any],
     total_timesteps: int,
     total_comparisons: int,
     num_iterations: int,
@@ -88,7 +85,6 @@ def train_preference_comparisons(
 
     Args:
         _seed: Random seed.
-        _config: Sacred configuration dict.
         total_timesteps: number of environment interaction steps
         total_comparisons: number of preferences to gather in total
         num_iterations: number of times to train the agent against the reward model
@@ -146,126 +142,124 @@ def train_preference_comparisons(
         ValueError: Inconsistency between config and deserialized policy normalization.
     """
     custom_logger, log_dir = common.setup_logging()
-    venv = common.make_venv()
-    eval_venv = common.make_venv(log_dir=None)
 
-    reward_net = reward.make_reward_net(venv)
-    relabel_reward_fn = functools.partial(
-        reward_net.predict_processed,
-        update_stats=False,
-    )
-    if agent_path is None:
-        agent = rl_common.make_rl_algo(venv, relabel_reward_fn=relabel_reward_fn)
-    else:
-        agent = rl_common.load_rl_algo_from_path(
-            agent_path=agent_path,
-            venv=venv,
-            relabel_reward_fn=relabel_reward_fn,
+    with common.make_venv() as venv:
+        reward_net = reward.make_reward_net(venv)
+        relabel_reward_fn = functools.partial(
+            reward_net.predict_processed,
+            update_stats=False,
         )
+        if agent_path is None:
+            agent = rl_common.make_rl_algo(venv, relabel_reward_fn=relabel_reward_fn)
+        else:
+            agent = rl_common.load_rl_algo_from_path(
+                agent_path=agent_path,
+                venv=venv,
+                relabel_reward_fn=relabel_reward_fn,
+            )
 
-    if trajectory_path is None:
-        # Setting the logger here is not really necessary (PreferenceComparisons
-        # takes care of that automatically) but it avoids creating unnecessary loggers
-        trajectory_generator = preference_comparisons.AgentTrainer(
-            algorithm=agent,
-            reward_fn=reward_net,
-            venv=venv,
-            exploration_frac=exploration_frac,
+        if trajectory_path is None:
+            # Setting the logger here is not necessary (PreferenceComparisons takes care
+            # of it automatically) but it avoids creating unnecessary loggers.
+            trajectory_generator = preference_comparisons.AgentTrainer(
+                algorithm=agent,
+                reward_fn=reward_net,
+                venv=venv,
+                exploration_frac=exploration_frac,
+                seed=_seed,
+                custom_logger=custom_logger,
+                **trajectory_generator_kwargs,
+            )
+            # Stable Baselines will automatically occupy GPU 0 if it is available.
+            # Let's use the same device as the SB3 agent for the reward model.
+            reward_net = reward_net.to(trajectory_generator.algorithm.device)
+        else:
+            if exploration_frac > 0:
+                raise ValueError(
+                    "exploration_frac can't be set when a trajectory dataset is used",
+                )
+            trajectory_generator = preference_comparisons.TrajectoryDataset(
+                trajectories=types.load_with_rewards(trajectory_path),
+                seed=_seed,
+                custom_logger=custom_logger,
+                **trajectory_generator_kwargs,
+            )
+
+        fragmenter = preference_comparisons.RandomFragmenter(
+            **fragmenter_kwargs,
             seed=_seed,
             custom_logger=custom_logger,
-            **trajectory_generator_kwargs,
         )
-        # Stable Baselines will automatically occupy GPU 0 if it is available. Let's use
-        # the same device as the SB3 agent for the reward model.
-        reward_net = reward_net.to(trajectory_generator.algorithm.device)
-    else:
-        if exploration_frac > 0:
-            raise ValueError(
-                "exploration_frac can't be set when a trajectory dataset is used",
-            )
-        trajectory_generator = preference_comparisons.TrajectoryDataset(
-            trajectories=types.load_with_rewards(trajectory_path),
+        gatherer = gatherer_cls(
+            **gatherer_kwargs,
             seed=_seed,
             custom_logger=custom_logger,
-            **trajectory_generator_kwargs,
         )
 
-    fragmenter = preference_comparisons.RandomFragmenter(
-        **fragmenter_kwargs,
-        seed=_seed,
-        custom_logger=custom_logger,
-    )
-    gatherer = gatherer_cls(
-        **gatherer_kwargs,
-        seed=_seed,
-        custom_logger=custom_logger,
-    )
+        loss = preference_comparisons.CrossEntropyRewardLoss(
+            **cross_entropy_loss_kwargs,
+        )
 
-    loss = preference_comparisons.CrossEntropyRewardLoss(
-        **cross_entropy_loss_kwargs,
-    )
+        reward_trainer = preference_comparisons._make_reward_trainer(
+            reward_net,
+            loss,
+            reward_trainer_kwargs,
+        )
 
-    reward_trainer = preference_comparisons._make_reward_trainer(
-        reward_net,
-        loss,
-        reward_trainer_kwargs,
-    )
+        main_trainer = preference_comparisons.PreferenceComparisons(
+            trajectory_generator,
+            reward_net,
+            num_iterations=num_iterations,
+            fragmenter=fragmenter,
+            preference_gatherer=gatherer,
+            reward_trainer=reward_trainer,
+            comparison_queue_size=comparison_queue_size,
+            fragment_length=fragment_length,
+            transition_oversampling=transition_oversampling,
+            initial_comparison_frac=initial_comparison_frac,
+            custom_logger=custom_logger,
+            allow_variable_horizon=allow_variable_horizon,
+            seed=_seed,
+            query_schedule=query_schedule,
+        )
 
-    main_trainer = preference_comparisons.PreferenceComparisons(
-        trajectory_generator,
-        reward_net,
-        num_iterations=num_iterations,
-        fragmenter=fragmenter,
-        preference_gatherer=gatherer,
-        reward_trainer=reward_trainer,
-        comparison_queue_size=comparison_queue_size,
-        fragment_length=fragment_length,
-        transition_oversampling=transition_oversampling,
-        initial_comparison_frac=initial_comparison_frac,
-        custom_logger=custom_logger,
-        allow_variable_horizon=allow_variable_horizon,
-        seed=_seed,
-        query_schedule=query_schedule,
-    )
+        # Create an eval_venv for policy evaluation and maybe visualization.
+        with common.make_venv(num_vec=1, log_dir=None) as eval_venv:
 
-    def save_callback(iteration_num, traj_generator_num_steps):
-        if checkpoint_interval > 0 and iteration_num % checkpoint_interval == 0:
-            save_path = osp.join(
-                log_dir,
-                "checkpoints",
-                f"iter_{iteration_num:04d}_step_{traj_generator_num_steps:08d}",
-            )
-            save_checkpoint(
-                _config,
-                trainer=main_trainer,
-                save_path=save_path,
-                allow_save_policy=bool(trajectory_path is None),
-                eval_venv=eval_venv,
+            def save_callback(iter_num, traj_gen_num_steps):
+                if checkpoint_interval > 0 and iter_num % checkpoint_interval == 0:
+                    round_str = f"iter_{iter_num:04d}_step_{traj_gen_num_steps:08d}"
+                    save_checkpoint(
+                        trainer=main_trainer,
+                        log_dir=log_dir,
+                        allow_save_policy=bool(trajectory_path is None),
+                        eval_venv=eval_venv,
+                        round_str=round_str,
+                    )
+
+            results = main_trainer.train(
+                total_timesteps,
+                total_comparisons,
+                callback=save_callback,
             )
 
-    results = main_trainer.train(
-        total_timesteps,
-        total_comparisons,
-        callback=save_callback,
-    )
+            # Save final artifacts.
+            if checkpoint_interval >= 0:
+                save_checkpoint(
+                    trainer=main_trainer,
+                    log_dir=log_dir,
+                    allow_save_policy=bool(trajectory_path is None),
+                    eval_venv=eval_venv,
+                    round_str="final",
+                )
+
+        # Storing and evaluating policy only useful if we generated trajectory data
+        if bool(trajectory_path is None):
+            results = dict(results)
+            results["rollout"] = train.eval_policy(agent, venv)
 
     if save_preferences:
         main_trainer.dataset.save(osp.join(log_dir, "preferences.pkl"))
-
-    # Save final artifacts.
-    if checkpoint_interval >= 0:
-        save_checkpoint(
-            _config,
-            trainer=main_trainer,
-            save_path=osp.join(log_dir, "checkpoints", "final"),
-            allow_save_policy=bool(trajectory_path is None),
-            eval_venv=eval_venv,
-        )
-
-    # Storing and evaluating policy only useful if we actually generate trajectory data
-    if bool(trajectory_path is None):
-        results = dict(results)
-        results["rollout"] = train.eval_policy(agent, venv)
 
     return results
 

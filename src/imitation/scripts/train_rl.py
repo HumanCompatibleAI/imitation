@@ -54,6 +54,7 @@ def train_rl(
         - Rollouts are saved to `{log_dir}/rollouts/{step}.pkl`.
 
     Args:
+        _config: Configuration dictionary of the current run.
         total_timesteps: Number of training timesteps in `model.learn()`.
         normalize_reward: Applies normalization and clipping to the reward function by
             keeping a running average of training rewards. Note: this is may be
@@ -95,79 +96,81 @@ def train_rl(
     os.makedirs(rollout_dir, exist_ok=True)
     os.makedirs(policy_dir, exist_ok=True)
 
-    venv = common.make_venv(
-        post_wrappers=[lambda env, idx: wrappers.RolloutInfoWrapper(env)],
-    )
-    eval_venv = common.make_venv(log_dir=None)
-
-    callback_objs = []
-    if reward_type is not None:
-        reward_fn = load_reward(reward_type, reward_path, venv, **load_reward_kwargs)
-        venv = RewardVecEnvWrapper(venv, reward_fn)
-        callback_objs.append(venv.make_log_callback())
-        logging.info(f"Wrapped env in reward {reward_type} from {reward_path}.")
-
-    if normalize_reward:
-        # Normalize reward. Reward scale effectively changes the learning rate,
-        # so normalizing it makes training more stable. Note we do *not* normalize
-        # observations here; use the `NormalizeFeaturesExtractor` instead.
-        venv = VecNormalize(venv, norm_obs=False, **normalize_kwargs)
-        if reward_type == "RewardNet_normalized":
-            warnings.warn(
-                "Applying normalization to already normalized reward function. \
-                Consider setting normalize_reward as False",
-                RuntimeWarning,
+    post_wrappers = [lambda env, idx: wrappers.RolloutInfoWrapper(env)]
+    with common.make_venv(post_wrappers=post_wrappers) as venv:
+        callback_objs = []
+        if reward_type is not None:
+            reward_fn = load_reward(
+                reward_type,
+                reward_path,
+                venv,
+                **load_reward_kwargs,
             )
+            venv = RewardVecEnvWrapper(venv, reward_fn)
+            callback_objs.append(venv.make_log_callback())
+            logging.info(f"Wrapped env in reward {reward_type} from {reward_path}.")
 
-    if policy_save_interval > 0:
-        save_policy_callback = serialize.SavePolicyCallback(policy_dir)
-        save_policy_callback = callbacks.EveryNTimesteps(
-            policy_save_interval,
-            save_policy_callback,
-        )
-        callback_objs.append(save_policy_callback)
+        if normalize_reward:
+            # Normalize reward. Reward scale effectively changes the learning rate,
+            # so normalizing it makes training more stable. Note we do *not* normalize
+            # observations here; use the `NormalizeFeaturesExtractor` instead.
+            venv = VecNormalize(venv, norm_obs=False, **normalize_kwargs)
+            if reward_type == "RewardNet_normalized":
+                warnings.warn(
+                    "Applying normalization to already normalized reward function. \
+                    Consider setting normalize_reward as False",
+                    RuntimeWarning,
+                )
 
-        if _config["train"]["videos"]:
-            save_video_callback = video_wrapper.SaveVideoCallback(
-                policy_dir,
-                eval_venv,
-                video_kwargs=_config["train"]["video_kwargs"],
+        with common.make_venv(num_vec=1, log_dir=None) as eval_venv:
+            if policy_save_interval > 0:
+                save_policy_callback = serialize.SavePolicyCallback(policy_dir)
+                save_policy_callback = callbacks.EveryNTimesteps(
+                    policy_save_interval,
+                    save_policy_callback,
+                )
+                callback_objs.append(save_policy_callback)
+
+                if _config["train"]["videos"]:
+                    save_video_callback = video_wrapper.SaveVideoCallback(
+                        policy_dir,
+                        eval_venv,
+                        video_kwargs=_config["train"]["video_kwargs"],
+                    )
+                    save_video_callback = callbacks.EveryNTimesteps(
+                        policy_save_interval,
+                        save_video_callback,
+                    )
+                    callback_objs.append(save_video_callback)
+            callback = callbacks.CallbackList(callback_objs)
+
+            if agent_path is None:
+                rl_algo = rl.make_rl_algo(venv)
+            else:
+                rl_algo = rl.load_rl_algo_from_path(agent_path=agent_path, venv=venv)
+            rl_algo.set_logger(custom_logger)
+            rl_algo.learn(total_timesteps, callback=callback)
+
+            if policy_save_final:
+                output_dir = os.path.join(policy_dir, "final")
+                serialize.save_stable_model(output_dir, rl_algo)
+                train.save_video(
+                    output_dir=output_dir,
+                    policy=rl_algo.policy,
+                    eval_venv=eval_venv,
+                    logger=rl_algo.logger,
+                )
+        # Save final artifacts after training is complete.
+        if rollout_save_final:
+            save_path = osp.join(rollout_dir, "final.pkl")
+            sample_until = rollout.make_sample_until(
+                rollout_save_n_timesteps,
+                rollout_save_n_episodes,
             )
-            save_video_callback = callbacks.EveryNTimesteps(
-                policy_save_interval,
-                save_video_callback,
-            )
-            callback_objs.append(save_video_callback)
-    callback = callbacks.CallbackList(callback_objs)
+            types.save(save_path, rollout.rollout(rl_algo, venv, sample_until))
 
-    if agent_path is None:
-        rl_algo = rl.make_rl_algo(venv)
-    else:
-        rl_algo = rl.load_rl_algo_from_path(agent_path=agent_path, venv=venv)
-    rl_algo.set_logger(custom_logger)
-    rl_algo.learn(total_timesteps, callback=callback)
-
-    # Save final artifacts after training is complete.
-    if rollout_save_final:
-        save_path = osp.join(rollout_dir, "final.pkl")
-        sample_until = rollout.make_sample_until(
-            rollout_save_n_timesteps,
-            rollout_save_n_episodes,
-        )
-        types.save(save_path, rollout.rollout(rl_algo, venv, sample_until))
-    if policy_save_final:
-        output_dir = os.path.join(policy_dir, "final")
-        serialize.save_stable_model(output_dir, rl_algo)
-        video_wrapper.record_and_save_video(
-            output_dir=output_dir,
-            policy=rl_algo.policy,
-            eval_venv=eval_venv,
-            video_kwargs=_config["train"]["video_kwargs"],
-            logger=rl_algo.logger,
-        )
-
-    # Final evaluation of expert policy.
-    return train.eval_policy(rl_algo, venv)
+        # Final evaluation of expert policy.
+        return train.eval_policy(rl_algo, venv)
 
 
 def main_console():
