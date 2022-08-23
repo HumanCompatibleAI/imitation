@@ -118,60 +118,63 @@ def train_imitation(
         Statistics for rollouts from the trained policy and demonstration data.
     """
     custom_logger, log_dir = common.setup_logging()
-    venv = common.make_venv()
-    eval_venv = common.make_venv(log_dir=None)
-    imit_policy = make_policy(venv, agent_path=agent_path)
 
-    expert_trajs = None
-    if not use_dagger or dagger["use_offline_rollouts"]:
-        expert_trajs = demonstrations.load_expert_trajs()
+    with common.make_venv() as venv:
+        eval_venv = common.make_venv(log_dir=None)
+        imit_policy = make_policy(venv, agent_path=agent_path)
 
-    bc_trainer = bc_algorithm.BC(
-        observation_space=venv.observation_space,
-        action_space=venv.action_space,
-        policy=imit_policy,
-        demonstrations=expert_trajs,
-        custom_logger=custom_logger,
-        **bc_kwargs,
-    )
-    bc_train_kwargs = dict(log_rollouts_venv=venv, **bc_train_kwargs)
-    if bc_train_kwargs["n_epochs"] is None and bc_train_kwargs["n_batches"] is None:
-        if use_dagger:
-            bc_train_kwargs["n_epochs"] = 4
-        else:
-            bc_train_kwargs["n_batches"] = 50_000
+        expert_trajs = None
+        if not use_dagger or dagger["use_offline_rollouts"]:
+            expert_trajs = demonstrations.load_expert_trajs()
 
-    if use_dagger:
-        expert_policy = load_expert_policy(venv=venv)
-        model = SimpleDAggerTrainer(
-            venv=venv,
-            scratch_dir=osp.join(log_dir, "scratch"),
-            expert_trajs=expert_trajs,
-            expert_policy=expert_policy,
+        bc_trainer = bc_algorithm.BC(
+            observation_space=venv.observation_space,
+            action_space=venv.action_space,
+            policy=imit_policy,
+            demonstrations=expert_trajs,
             custom_logger=custom_logger,
-            bc_trainer=bc_trainer,
+            **bc_kwargs,
         )
-        model.train(
-            total_timesteps=int(dagger["total_timesteps"]),
-            bc_train_kwargs=bc_train_kwargs,
-        )
-        # TODO(adam): add checkpointing to DAgger?
-        save_locations = model.save_trainer()
-        print(f"Model saved to {save_locations}")
-    else:
-        bc_trainer.train(**bc_train_kwargs)
-        # TODO(adam): add checkpointing to BC?
-        bc_trainer.save_policy(policy_path=osp.join(log_dir, "final.th"))
+        bc_train_kwargs = dict(log_rollouts_venv=venv, **bc_train_kwargs)
+        if bc_train_kwargs["n_epochs"] is None and bc_train_kwargs["n_batches"] is None:
+            if use_dagger:
+                bc_train_kwargs["n_epochs"] = 4
+            else:
+                bc_train_kwargs["n_batches"] = 50_000
 
-    train.save_video(
-        output_dir=log_dir,
-        policy=imit_policy,
-        eval_venv=eval_venv,
-        logger=custom_logger,
-    )
+        if use_dagger:
+            expert_policy = load_expert_policy(venv=venv)
+            model = SimpleDAggerTrainer(
+                venv=venv,
+                scratch_dir=osp.join(log_dir, "scratch"),
+                expert_trajs=expert_trajs,
+                expert_policy=expert_policy,
+                custom_logger=custom_logger,
+                bc_trainer=bc_trainer,
+            )
+            model.train(
+                total_timesteps=int(dagger["total_timesteps"]),
+                bc_train_kwargs=bc_train_kwargs,
+            )
+            # TODO(adam): add checkpointing to DAgger?
+            save_locations = model.save_trainer()
+            print(f"Model saved to {save_locations}")
+        else:
+            bc_trainer.train(**bc_train_kwargs)
+            # TODO(adam): add checkpointing to BC?
+            bc_trainer.save_policy(policy_path=osp.join(log_dir, "final.th"))
+
+        imit_stats = train.eval_policy(imit_policy, eval_venv)
+
+        train.save_video(
+            output_dir=log_dir,
+            policy=imit_policy,
+            eval_venv=eval_venv,
+            logger=custom_logger,
+        )
 
     return {
-        "imit_stats": train.eval_policy(imit_policy, venv),
+        "imit_stats": imit_stats,
         "expert_stats": rollout.rollout_stats(
             model._all_demos if use_dagger else expert_trajs,
         ),
