@@ -682,7 +682,11 @@ class ActiveSelectionFragmenter(Fragmenter):
                 f"""{uncertainty_on} not supported.
                 `uncertainty_on` Should be from `logit`, `probability`, or `label`""",
             )
-        self.uncertainty_on = uncertainty_on
+        self._uncertainty_on = uncertainty_on
+
+    @property
+    def uncertainty_on(self) -> str:
+        return self._uncertainty_on
 
     def __call__(
         self,
@@ -721,9 +725,6 @@ class ActiveSelectionFragmenter(Fragmenter):
             rews2: rewards obtained by all the ensemble models for the second fragment.
                 Shape - (fragment_length, num_ensemble_members)
 
-        Raises:
-            ValueError: unsupported `uncertainty_on` argument specified.
-
         Returns:
             the variance estimate based on the `uncertainty_on` flag.
         """
@@ -742,8 +743,6 @@ class ActiveSelectionFragmenter(Fragmenter):
                 prob_estimate = preds.mean()
                 # variance estimate of Bernoulli random variable
                 var_estimate = prob_estimate * (1 - prob_estimate)
-            else:
-                raise ValueError(f"{self.uncertainty_on} not supported.")
         return var_estimate
 
 
@@ -1255,7 +1254,7 @@ def is_base_model_ensemble(reward_model):
 def _make_reward_trainer(
     reward_model: reward_nets.RewardNet,
     loss: RewardLoss,
-    reward_trainer_kwargs: Mapping[str, Any] = {},
+    reward_trainer_kwargs: Optional[Mapping[str, Any]] = None,
     seed: Optional[int] = None,
 ) -> RewardTrainer:
     """Construct the correct type of reward trainer for this reward function."""

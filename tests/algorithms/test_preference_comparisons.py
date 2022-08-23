@@ -489,7 +489,8 @@ def test_active_fragmenter_discount_rate_no_crash(
     main_trainer.train(100, 10)
 
 
-def test_active_fragmenter_uncertainty_on_not_supported_error(venv, random_fragmenter):
+@pytest.fixture
+def ensemble_preference_model(venv) -> preference_comparisons.PreferenceComparisons:
     reward_net = reward_nets.RewardEnsemble(
         venv.observation_space,
         venv.action_space,
@@ -498,12 +499,53 @@ def test_active_fragmenter_uncertainty_on_not_supported_error(venv, random_fragm
             for _ in range(2)
         ],
     )
-    preference_model = preference_comparisons.PreferenceModel(
+    return preference_comparisons.PreferenceModel(
         model=reward_net,
         noise_prob=0.1,
         discount_factor=0.9,
         threshold=50,
     )
+
+
+@pytest.fixture
+def preference_model(venv) -> preference_comparisons.PreferenceComparisons:
+    reward_net = reward_nets.BasicRewardNet(venv.observation_space, venv.action_space)
+    return preference_comparisons.PreferenceModel(
+        model=reward_net,
+        noise_prob=0.1,
+        discount_factor=0.9,
+        threshold=50,
+    )
+
+
+def test_probability_model_raises_error_when_ensemble_member_index_not_provided(
+    ensemble_preference_model,
+):
+    assert ensemble_preference_model.is_ensemble
+    with pytest.raises(
+        ValueError,
+        match="`ensemble_member_index` required for ensemble models",
+    ):
+        ensemble_preference_model([])
+
+
+def test_active_fragmenter_uncertainty_on_not_supported_error(
+    ensemble_preference_model,
+    random_fragmenter,
+):
+    with pytest.raises(ValueError):
+        preference_comparisons.ActiveSelectionFragmenter(
+            preference_model=ensemble_preference_model,
+            base_fragmenter=random_fragmenter,
+            fragment_sample_factor=2,
+            uncertainty_on="uncertainty_on",
+        )
+
+
+def test_active_selection_raises_error_when_initialized_without_an_ensemble(
+    preference_model,
+    random_fragmenter,
+):
     with pytest.raises(ValueError):
         preference_comparisons.ActiveSelectionFragmenter(
             preference_model=preference_model,
