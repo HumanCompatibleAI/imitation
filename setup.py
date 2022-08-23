@@ -125,16 +125,16 @@ def get_version(version: "ScmVersion") -> str:
 
     if version.node:
         # By default node corresponds to the short commit hash when using git,
-        # plus a "g" prefix.
-        # We remove the "g" prefix from the commit hash which is added by
-        # setuptools_scm by default ("g" for git vs. mercurial etc.)
+        # plus a "g" prefix. We remove the "g" prefix from the commit hash which
+        # is added by setuptools_scm by default ("g" for git vs. mercurial etc.)
         # because letters are not valid for version identifiers in PEP 440.
+        # We also convert from hexadecimal to base 10 for the same reason.
         version.node = str(int(version.node.lstrip("g"), 16))
     if version.exact:
         # an exact version is when the current commit is tagged with a version.
         return version.format_with("{tag}")
     else:
-        # the current commit is not tagged with a version, so we use guess
+        # the current commit is not tagged with a version, so we guess
         # what the "next" version will be (this can be disabled but is the
         # default behavior of setuptools_scm so it has been left in).
         return version.format_next_version(
