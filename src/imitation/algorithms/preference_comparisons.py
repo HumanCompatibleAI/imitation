@@ -669,7 +669,6 @@ class ActiveSelectionFragmenter(Fragmenter):
 
         Raises:
             ValueError: Preference model not wrapped over an ensemble of networks.
-            ValueError: `uncertainty_on` not in logit|probability|label.
         """
         super().__init__(custom_logger=custom_logger)
         if not preference_model.is_ensemble:
@@ -729,9 +728,6 @@ class ActiveSelectionFragmenter(Fragmenter):
                 Shape - (fragment_length, num_ensemble_members)
             rews2: rewards obtained by all the ensemble models for the second fragment.
                 Shape - (fragment_length, num_ensemble_members)
-
-        Raises:
-            ValueError: `uncertainty_on` not in logit|probability|label.
 
         Returns:
             the variance estimate based on the `uncertainty_on` flag.
