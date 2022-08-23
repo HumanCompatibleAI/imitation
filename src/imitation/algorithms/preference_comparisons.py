@@ -394,7 +394,7 @@ class PreferenceModel(nn.Module):
                 If the model is an ensemble of networks, this cannot be None.
 
         Raises:
-            ValueError: `uncertainty_on` not in logit|probability|label.
+            ValueError: if `ensemble_member_index` is None when `model` is an ensemble.
 
         Returns:
             A tuple with the first element as the preference probabilities for the
@@ -407,7 +407,9 @@ class PreferenceModel(nn.Module):
         """
         if self.is_ensemble:
             if ensemble_member_index is None:
-                raise ValueError("`ensemble_member_index` required for ensemble models")
+                raise ValueError(
+                    "`ensemble_member_index` required for ensemble models.",
+                )
 
             pref_model = self.member_pref_models[ensemble_member_index]
             return pref_model(fragment_pairs)
@@ -677,16 +679,19 @@ class ActiveSelectionFragmenter(Fragmenter):
         self.preference_model = preference_model
         self.base_fragmenter = base_fragmenter
         self.fragment_sample_factor = fragment_sample_factor
-        if not (uncertainty_on in ["logit", "probability", "label"]):
-            raise ValueError(
-                f"""{uncertainty_on} not supported.
-                `uncertainty_on` Should be from `logit`, `probability`, or `label`""",
-            )
         self._uncertainty_on = uncertainty_on
+        if not (uncertainty_on in ["logit", "probability", "label"]):
+            self.raise_uncertainty_on_not_supported()
 
     @property
     def uncertainty_on(self) -> str:
         return self._uncertainty_on
+
+    def raise_uncertainty_on_not_supported(self):
+        raise ValueError(
+            f"""{self.uncertainty_on} not supported.
+            `uncertainty_on` should be from `logit`, `probability`, or `label`""",
+        )
 
     def __call__(
         self,
@@ -725,6 +730,9 @@ class ActiveSelectionFragmenter(Fragmenter):
             rews2: rewards obtained by all the ensemble models for the second fragment.
                 Shape - (fragment_length, num_ensemble_members)
 
+        Raises:
+            ValueError: `uncertainty_on` not in logit|probability|label.
+
         Returns:
             the variance estimate based on the `uncertainty_on` flag.
         """
@@ -743,6 +751,8 @@ class ActiveSelectionFragmenter(Fragmenter):
                 prob_estimate = preds.mean()
                 # variance estimate of Bernoulli random variable
                 var_estimate = prob_estimate * (1 - prob_estimate)
+            else:
+                self.raise_uncertainty_on_not_supported()
         return var_estimate
 
 

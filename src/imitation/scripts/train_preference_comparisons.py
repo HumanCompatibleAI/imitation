@@ -113,7 +113,7 @@ def train_preference_comparisons(
         save_preferences: if True, store the final dataset of preferences to disk.
         agent_path: if given, initialize the agent using this stored policy
             rather than randomly.
-        preference_model_kwargs: passed to CrossEntropyRewardLoss
+        preference_model_kwargs: passed to PreferenceModel
         reward_trainer_kwargs: passed to BasicRewardTrainer or EnsembleRewardTrainer
         gatherer_cls: type of PreferenceGatherer to use (defaults to SyntheticGatherer)
         gatherer_kwargs: passed to the PreferenceGatherer specified by gatherer_cls

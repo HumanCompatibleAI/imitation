@@ -7,6 +7,7 @@ import numpy as np
 import pytest
 import seals  # noqa: F401
 import stable_baselines3
+import torch as th
 from stable_baselines3.common.envs import FakeImageEnv
 from stable_baselines3.common.vec_env import DummyVecEnv
 
@@ -533,7 +534,8 @@ def test_active_fragmenter_uncertainty_on_not_supported_error(
     ensemble_preference_model,
     random_fragmenter,
 ):
-    with pytest.raises(ValueError):
+    re_match = r".* not supported\.\n\s+`uncertainty_on` should be from .*"
+    with pytest.raises(ValueError, match=re_match):
         preference_comparisons.ActiveSelectionFragmenter(
             preference_model=ensemble_preference_model,
             base_fragmenter=random_fragmenter,
@@ -541,17 +543,31 @@ def test_active_fragmenter_uncertainty_on_not_supported_error(
             uncertainty_on="uncertainty_on",
         )
 
+    with pytest.raises(ValueError, match=re_match):
+        fragmenter = preference_comparisons.ActiveSelectionFragmenter(
+            preference_model=ensemble_preference_model,
+            base_fragmenter=random_fragmenter,
+            fragment_sample_factor=2,
+            uncertainty_on="logit",
+        )
+        fragmenter._uncertainty_on = "uncertainty_on"
+        members = ensemble_preference_model.model.num_members
+        fragmenter.variance_estimate(th.rand(10, members), th.rand(10, members))
+
 
 def test_active_selection_raises_error_when_initialized_without_an_ensemble(
     preference_model,
     random_fragmenter,
 ):
-    with pytest.raises(ValueError):
+    with pytest.raises(
+        ValueError,
+        match=r"Preference model not wrapped over an ensemble.*",
+    ):
         preference_comparisons.ActiveSelectionFragmenter(
             preference_model=preference_model,
             base_fragmenter=random_fragmenter,
             fragment_sample_factor=2,
-            uncertainty_on="uncertainty_on",
+            uncertainty_on="logit",
         )
 
 
