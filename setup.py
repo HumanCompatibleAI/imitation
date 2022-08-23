@@ -157,6 +157,14 @@ def get_local_version(version: "ScmVersion", time_format="%Y%m%d") -> str:
 
     Local versions are still present if there are uncommitted changes (if the tree
     is dirty), in which case the current date is added to the version.
+
+    Args:
+        version: The version object given by setuptools_scm, calculated
+            from the git repository.
+        time_format: The format to use for the date.
+
+    Returns:
+        The formatted local version string to use for the package.
     """
     return version.format_choice(
         "",
