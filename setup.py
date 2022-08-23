@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 
 IS_NOT_WINDOWS = os.name != "nt"
 
-PARALLEL_REQUIRE = ["ray[debug,tune]~=1.13.0"]
+PARALLEL_REQUIRE = ["ray[debug,tune]~=2.0.0"]
 ATARI_REQUIRE = [
     "opencv-python",
     "ale-py==0.7.4",
