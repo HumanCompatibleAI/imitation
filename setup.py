@@ -114,13 +114,14 @@ def get_version(version: "ScmVersion") -> str:
 
     Args:
         version: The version object given by setuptools_scm, calculated
-        from the git repository.
+            from the git repository.
+
     Returns:
         The formatted version string to use for the package.
     """
     # We import setuptools_scm here because it is only installed after the module
     # is loaded and the setup function is called.
-    from setuptools_scm import version as scm_version
+    from setuptools_scm import version as scm_version  # pytype: disable=import-error
 
     if version.node:
         # By default node corresponds to the short commit hash when using git,
