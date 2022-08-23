@@ -240,5 +240,5 @@ def test_cant_add_prefix_within_accumulate_means(tmpdir):
     hier_logger = logger.configure(tmpdir)
     with pytest.raises(RuntimeError):
         with hier_logger.accumulate_means("foo"):
-            with hier_logger.add_prefix("bar"):
+            with hier_logger.add_prefix("bar"):  # pragma: no cover
                 pass
