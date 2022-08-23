@@ -121,7 +121,7 @@ def get_version(version: "ScmVersion") -> str:
     """
     # We import setuptools_scm here because it is only installed after the module
     # is loaded and the setup function is called.
-    from setuptools_scm import version as scm_version  # pytype: disable=import-error
+    from setuptools_scm import version as scm_version
 
     if version.node:
         # By default node corresponds to the short commit hash when using git,
