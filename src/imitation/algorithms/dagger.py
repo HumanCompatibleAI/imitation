@@ -372,11 +372,7 @@ class DAggerTrainer(base.BaseImitationAlgorithm):
         return demo_transitions, num_demos_by_round
 
     def _get_demo_paths(self, round_dir):
-        return [
-            os.path.join(round_dir, p)
-            for p in os.listdir(round_dir)
-            if p.endswith(".npz")
-        ]
+        return [round_dir / p for p in os.listdir(round_dir) if p.endswith(".npz")]
 
     def _demo_dir_path_for_round(self, round_num: Optional[int] = None) -> pathlib.Path:
         if round_num is None:
