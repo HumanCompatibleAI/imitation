@@ -22,17 +22,17 @@ from imitation.scripts.common import train
 from imitation.scripts.config.train_preference_comparisons import (
     train_preference_comparisons_ex,
 )
-from imitation.util import video_wrapper
 
 
 def save_checkpoint(
-    _config: Mapping[str, Any],
     trainer: preference_comparisons.PreferenceComparisons,
-    save_path: str,
+    log_dir: str,
     allow_save_policy: Optional[bool],
     eval_venv: vec_env.VecEnv,
+    round_str: str,
 ) -> None:
     """Save reward model and optionally policy."""
+    save_path = osp.join(log_dir, "checkpoints", round_str)
     os.makedirs(save_path, exist_ok=True)
     th.save(trainer.model, osp.join(save_path, "reward_net.pt"))
     if allow_save_policy:
@@ -45,14 +45,12 @@ def save_checkpoint(
             output_dir=policy_dir,
             model=trainer.trajectory_generator.algorithm,
         )
-        if _config["train"]["videos"]:
-            video_wrapper.record_and_save_video(
-                output_dir=policy_dir,
-                policy=trainer.trajectory_generator.algorithm.policy,
-                eval_venv=eval_venv,
-                video_kwargs=_config["train"]["video_kwargs"],
-                logger=trainer.logger,
-            )
+        train.save_video(
+            output_dir=policy_dir,
+            policy=trainer.trajectory_generator.algorithm.policy,
+            eval_venv=eval_venv,
+            logger=trainer.logger,
+        )
     else:
         trainer.logger.warn(
             "trainer.trajectory_generator doesn't contain a policy to save.",
@@ -62,7 +60,6 @@ def save_checkpoint(
 @train_preference_comparisons_ex.main
 def train_preference_comparisons(
     _seed: int,
-    _config: Mapping[str, Any],
     total_timesteps: int,
     total_comparisons: int,
     num_iterations: int,
@@ -88,7 +85,6 @@ def train_preference_comparisons(
 
     Args:
         _seed: Random seed.
-        _config: Sacred configuration dict.
         total_timesteps: number of environment interaction steps
         total_comparisons: number of preferences to gather in total
         num_iterations: number of times to train the agent against the reward model
@@ -230,17 +226,13 @@ def train_preference_comparisons(
 
     def save_callback(iteration_num, traj_generator_num_steps):
         if checkpoint_interval > 0 and iteration_num % checkpoint_interval == 0:
-            save_path = osp.join(
-                log_dir,
-                "checkpoints",
-                f"iter_{iteration_num:04d}_step_{traj_generator_num_steps:08d}",
-            )
+            round_str = f"iter_{iteration_num:04d}_step_{traj_generator_num_steps:08d}"
             save_checkpoint(
-                _config,
                 trainer=main_trainer,
-                save_path=save_path,
+                log_dir=log_dir,
                 allow_save_policy=bool(trajectory_path is None),
                 eval_venv=eval_venv,
+                round_str=round_str,
             )
 
     results = main_trainer.train(
@@ -255,11 +247,11 @@ def train_preference_comparisons(
     # Save final artifacts.
     if checkpoint_interval >= 0:
         save_checkpoint(
-            _config,
             trainer=main_trainer,
-            save_path=osp.join(log_dir, "checkpoints", "final"),
+            log_dir=log_dir,
             allow_save_policy=bool(trajectory_path is None),
             eval_venv=eval_venv,
+            round_str="final",
         )
 
     # Storing and evaluating policy only useful if we actually generate trajectory data

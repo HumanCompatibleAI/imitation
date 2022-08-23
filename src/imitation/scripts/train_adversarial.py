@@ -19,18 +19,18 @@ from imitation.policies import serialize
 from imitation.scripts.common import common as common_config
 from imitation.scripts.common import demonstrations, reward, rl, train
 from imitation.scripts.config.train_adversarial import train_adversarial_ex
-from imitation.util import video_wrapper
 
 logger = logging.getLogger("imitation.scripts.train_adversarial")
 
 
-def save(
-    _config: Mapping[str, Any],
+def save_checkpoint(
     trainer: common.AdversarialTrainer,
-    save_path: str,
+    log_dir: str,
     eval_venv: vec_env.VecEnv,
+    round_str: str,
 ) -> None:
     """Save discriminator and generator."""
+    save_path = os.path.join(log_dir, "checkpoints", round_str)
     # We implement this here and not in Trainer since we do not want to actually
     # serialize the whole Trainer (including e.g. expert demonstrations).
     os.makedirs(save_path, exist_ok=True)
@@ -38,14 +38,12 @@ def save(
     th.save(trainer.reward_test, os.path.join(save_path, "reward_test.pt"))
     policy_path = os.path.join(save_path, "gen_policy")
     serialize.save_stable_model(policy_path, trainer.gen_algo)
-    if _config["train"]["videos"]:
-        video_wrapper.record_and_save_video(
-            output_dir=policy_path,
-            policy=trainer.gen_algo.policy,
-            eval_venv=eval_venv,
-            video_kwargs=_config["train"]["video_kwargs"],
-            logger=trainer.logger,
-        )
+    train.save_video(
+        output_dir=policy_path,
+        policy=trainer.gen_algo.policy,
+        eval_venv=eval_venv,
+        logger=trainer.logger,
+    )
 
 
 def _add_hook(ingredient: sacred.Ingredient) -> None:
@@ -80,8 +78,6 @@ for ingredient in [train_adversarial_ex] + train_adversarial_ex.ingredients:
 @train_adversarial_ex.capture
 def train_adversarial(
     _run,
-    _seed: int,
-    _config: Mapping[str, Any],
     show_config: bool,
     algo_cls: Type[common.AdversarialTrainer],
     algorithm_kwargs: Mapping[str, Any],
@@ -98,8 +94,6 @@ def train_adversarial(
         - Generator policies are saved to `f"{log_dir}/checkpoints/{step}/gen_policy/"`.
 
     Args:
-        _seed: Random seed.
-        _config: Sacred configuration dict.
         show_config: Print the merged config before starting training. This is
             analogous to the print_config command, but will show config after
             rather than before merging `algorithm_specific` arguments.
@@ -169,15 +163,13 @@ def train_adversarial(
 
     def callback(round_num):
         if checkpoint_interval > 0 and round_num % checkpoint_interval == 0:
-            save_path = os.path.join(log_dir, "checkpoints", f"{round_num:05d}")
-            save(_config, trainer, save_path, eval_venv)
+            save_checkpoint(trainer, log_dir, eval_venv, round_str=f"{round_num:05d}")
 
     trainer.train(total_timesteps, callback)
 
     # Save final artifacts.
     if checkpoint_interval >= 0:
-        save_path = os.path.join(log_dir, "checkpoints", "final")
-        save(_config, trainer, save_path, eval_venv)
+        save_checkpoint(trainer, log_dir, eval_venv, round_str="final")
 
     return {
         "imit_stats": train.eval_policy(trainer.policy, trainer.venv_train),

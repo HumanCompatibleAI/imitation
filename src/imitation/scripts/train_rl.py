@@ -54,6 +54,7 @@ def train_rl(
         - Rollouts are saved to `{log_dir}/rollouts/{step}.pkl`.
 
     Args:
+        _config: Configuration dictionary of the current run.
         total_timesteps: Number of training timesteps in `model.learn()`.
         normalize_reward: Applies normalization and clipping to the reward function by
             keeping a running average of training rewards. Note: this is may be
@@ -158,11 +159,10 @@ def train_rl(
     if policy_save_final:
         output_dir = os.path.join(policy_dir, "final")
         serialize.save_stable_model(output_dir, rl_algo)
-        video_wrapper.record_and_save_video(
+        train.save_video(
             output_dir=output_dir,
             policy=rl_algo.policy,
             eval_venv=eval_venv,
-            video_kwargs=_config["train"]["video_kwargs"],
             logger=rl_algo.logger,
         )
 

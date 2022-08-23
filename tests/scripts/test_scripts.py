@@ -910,7 +910,7 @@ def test_convert_trajs(tmpdir: str):
 
 
 _TRAIN_VIDEO_CONFIGS = {"train": {"videos": True}}
-VIDEO_NAME = "video.000000.mp4"
+VIDEO_NAME = "video.{:06}.mp4".format(0)
 VIDEO_PATH_DICT = dict(
     rl=lambda d: osp.join(d, "policies", "final", "videos"),
     adversarial=lambda d: osp.join(d, "checkpoints", "final", "gen_policy", "videos"),

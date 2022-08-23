@@ -1,14 +1,16 @@
 """Common configuration elements for training imitation algorithms."""
 
 import logging
-from typing import Any, Mapping, Union
+from typing import Any, Mapping, Optional, Union
 
 import sacred
+import stable_baselines3.common.logger as sb_logger
 from stable_baselines3.common import base_class, policies, torch_layers, vec_env
 
 import imitation.util.networks
 from imitation.data import rollout
 from imitation.policies import base
+from imitation.util import video_wrapper
 
 train_ingredient = sacred.Ingredient("train")
 logger = logging.getLogger(__name__)
@@ -100,6 +102,26 @@ def eval_policy(
         sample_until=sample_until_eval,
     )
     return rollout.rollout_stats(trajs)
+
+
+@train_ingredient.capture
+def save_video(
+    videos: bool,
+    video_kwargs: Mapping[str, Any],
+    output_dir: str,
+    policy: policies.BasePolicy,
+    eval_venv: vec_env.VecEnv,
+    logger: Optional[sb_logger.Logger] = None,
+) -> None:
+    """Save video of imitation policy evaluation."""
+    if videos:
+        video_wrapper.record_and_save_video(
+            output_dir=output_dir,
+            policy=policy,
+            eval_venv=eval_venv,
+            video_kwargs=video_kwargs,
+            logger=logger,
+        )
 
 
 @train_ingredient.capture
