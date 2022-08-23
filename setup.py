@@ -14,6 +14,12 @@ if TYPE_CHECKING:
 IS_NOT_WINDOWS = os.name != "nt"
 
 PARALLEL_REQUIRE = ["ray[debug,tune]~=1.13.0"]
+ATARI_REQUIRE = [
+    "opencv-python",
+    "ale-py==0.7.4",
+    "pillow",
+    "autorom[accept-rom-license]~=0.4.2",
+]
 PYTYPE = ["pytype==2022.7.26"] if IS_NOT_WINDOWS else []
 if IS_NOT_WINDOWS:
     # TODO(adam): use this for Windows as well once PyPI is at >=1.6.1
@@ -62,6 +68,7 @@ TESTS_REQUIRE = (
         "setuptools_scm~=7.0.5",
     ]
     + PARALLEL_REQUIRE
+    + ATARI_REQUIRE
     + PYTYPE
 )
 DOCS_REQUIRE = [
@@ -72,12 +79,6 @@ DOCS_REQUIRE = [
     "furo==2022.6.21",
     "sphinx-copybutton==0.5.0",
     "sphinx-github-changelog~=1.2.0",
-]
-ATARI_REQUIRE = [
-    "opencv-python",
-    "ale-py==0.7.4",
-    "pillow",
-    "autorom[accept-rom-license]~=0.4.2",
 ]
 
 
@@ -223,10 +224,9 @@ setup(
             # for convenience
             *TESTS_REQUIRE,
             *DOCS_REQUIRE,
-            *ATARI_REQUIRE,
         ]
         + PYTYPE,
-        "test": [*TESTS_REQUIRE, *ATARI_REQUIRE],
+        "test": TESTS_REQUIRE,
         "docs": DOCS_REQUIRE,
         "parallel": PARALLEL_REQUIRE,
         "mujoco": [
