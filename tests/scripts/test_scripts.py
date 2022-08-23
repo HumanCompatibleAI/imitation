@@ -146,7 +146,7 @@ def test_train_preference_comparisons_main(tmpdir, config):
 
 def test_train_preference_comparison_zero_agents_raises_value_error(tmpdir):
     config_updates = dict(common=dict(log_root=tmpdir), num_agents=0)
-    with pytest.raises(ValueError, match="num_agents must be at least 1!"):
+    with pytest.raises(ValueError, match="num_agents must be a positive integer!"):
         train_preference_comparisons.train_preference_comparisons_ex.run(
             named_configs=["cartpole"] + ALGO_FAST_CONFIGS["preference_comparison"],
             config_updates=config_updates,
