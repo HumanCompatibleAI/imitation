@@ -120,7 +120,6 @@ def train_imitation(
     custom_logger, log_dir = common.setup_logging()
 
     with common.make_venv() as venv:
-        eval_venv = common.make_venv(log_dir=None)
         imit_policy = make_policy(venv, agent_path=agent_path)
 
         expert_trajs = None
@@ -164,14 +163,15 @@ def train_imitation(
             # TODO(adam): add checkpointing to BC?
             bc_trainer.save_policy(policy_path=osp.join(log_dir, "final.th"))
 
-        imit_stats = train.eval_policy(imit_policy, eval_venv)
+        imit_stats = train.eval_policy(imit_policy, venv)
 
-        train.save_video(
-            output_dir=log_dir,
-            policy=imit_policy,
-            eval_venv=eval_venv,
-            logger=custom_logger,
-        )
+        with common.make_venv(num_vec=1, log_dir=None) as eval_venv:
+            train.save_video(
+                output_dir=log_dir,
+                policy=imit_policy,
+                eval_venv=eval_venv,
+                logger=custom_logger,
+            )
 
     return {
         "imit_stats": imit_stats,

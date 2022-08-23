@@ -144,7 +144,6 @@ def train_preference_comparisons(
     custom_logger, log_dir = common.setup_logging()
 
     with common.make_venv() as venv:
-        eval_venv = common.make_venv(log_dir=None)
         reward_net = reward.make_reward_net(venv)
         relabel_reward_fn = functools.partial(
             reward_net.predict_processed,
@@ -224,22 +223,35 @@ def train_preference_comparisons(
             query_schedule=query_schedule,
         )
 
-        def save_callback(iteration_num, traj_gen_num_steps):
-            if checkpoint_interval > 0 and iteration_num % checkpoint_interval == 0:
-                round_str = f"iter_{iteration_num:04d}_step_{traj_gen_num_steps:08d}"
-            save_checkpoint(
-                trainer=main_trainer,
-                log_dir=log_dir,
-                allow_save_policy=bool(trajectory_path is None),
-                eval_venv=eval_venv,
-                round_str=round_str,
+        # Create an eval_venv for policy evaluation and maybe visualization.
+        with common.make_venv(num_vec=1, log_dir=None) as eval_venv:
+
+            def save_callback(iter_num, traj_gen_num_steps):
+                if checkpoint_interval > 0 and iter_num % checkpoint_interval == 0:
+                    round_str = f"iter_{iter_num:04d}_step_{traj_gen_num_steps:08d}"
+                    save_checkpoint(
+                        trainer=main_trainer,
+                        log_dir=log_dir,
+                        allow_save_policy=bool(trajectory_path is None),
+                        eval_venv=eval_venv,
+                        round_str=round_str,
+                    )
+
+            results = main_trainer.train(
+                total_timesteps,
+                total_comparisons,
+                callback=save_callback,
             )
 
-        results = main_trainer.train(
-            total_timesteps,
-            total_comparisons,
-            callback=save_callback,
-        )
+            # Save final artifacts.
+            if checkpoint_interval >= 0:
+                save_checkpoint(
+                    trainer=main_trainer,
+                    log_dir=log_dir,
+                    allow_save_policy=bool(trajectory_path is None),
+                    eval_venv=eval_venv,
+                    round_str="final",
+                )
 
         # Storing and evaluating policy only useful if we generated trajectory data
         if bool(trajectory_path is None):
@@ -248,16 +260,6 @@ def train_preference_comparisons(
 
     if save_preferences:
         main_trainer.dataset.save(osp.join(log_dir, "preferences.pkl"))
-
-    # Save final artifacts.
-    if checkpoint_interval >= 0:
-        save_checkpoint(
-            trainer=main_trainer,
-            log_dir=log_dir,
-            allow_save_policy=bool(trajectory_path is None),
-            eval_venv=eval_venv,
-            round_str="final",
-        )
 
     return results
 

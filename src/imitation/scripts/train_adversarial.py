@@ -126,7 +126,6 @@ def train_adversarial(
     expert_trajs = demonstrations.load_expert_trajs()
 
     with common_config.make_venv() as venv:
-        eval_venv = common_config.make_venv(log_dir=None)
 
         reward_net = reward.make_reward_net(venv)
         relabel_reward_fn = functools.partial(
@@ -161,16 +160,20 @@ def train_adversarial(
             **algorithm_kwargs,
         )
 
-        def callback(round_num):
-            if checkpoint_interval > 0 and round_num % checkpoint_interval == 0:
-                save_checkpoint(trainer, log_dir, eval_venv, round_str=f"{round_num:05d}")
+        with common_config.make_venv(num_vec=1, log_dir=None) as eval_venv:
 
-        trainer.train(total_timesteps, callback)
+            def callback(round_num):
+                if checkpoint_interval > 0 and round_num % checkpoint_interval == 0:
+                    round_str = f"{round_num:05d}"
+                    save_checkpoint(trainer, log_dir, eval_venv, round_str=round_str)
+
+            trainer.train(total_timesteps, callback)
+
+            # Save final artifacts.
+            if checkpoint_interval >= 0:
+                save_checkpoint(trainer, log_dir, eval_venv, round_str="final")
+
         imit_stats = train.eval_policy(trainer.policy, trainer.venv_train)
-
-    # Save final artifacts.
-    if checkpoint_interval >= 0:
-        save_checkpoint(trainer, log_dir, eval_venv, round_str="final")
 
     return {
         "imit_stats": imit_stats,
