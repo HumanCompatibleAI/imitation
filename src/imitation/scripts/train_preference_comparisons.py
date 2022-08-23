@@ -276,11 +276,6 @@ def train_preference_comparisons(
             allow_save_policy=bool(trajectory_path is None),
         )
 
-    # Storing and evaluating policy only useful if we actually generate trajectory data
-    if bool(trajectory_path is None):
-        results = dict(results)
-        results["rollout"] = train.eval_policy(agent, venv)
-
     return results
 
 
