@@ -107,14 +107,6 @@ def parallel(
         base_config_updates,
     )
 
-    # Disable all Ray Loggers.
-    #
-    # JSON and CSV loggers are redundant now that we have Sacred logs.
-    # TensorBoard logs don't contain useful information (inner Sacred experiment
-    # never gets access to `reporter`), and clog up the TensorBoard Runs
-    # dashboard.
-    ray_loggers = ()
-
     ray.init(**init_kwargs)
     try:
         ray.tune.run(
@@ -122,7 +114,6 @@ def parallel(
             config=search_space,
             name=run_name,
             local_dir=local_dir,
-            loggers=ray_loggers,
             resources_per_trial=resources_per_trial,
             sync_config=ray.tune.syncer.SyncConfig(upload_dir=upload_dir),
         )
