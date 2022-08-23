@@ -41,6 +41,49 @@ class HierarchicalLogger(sb_logger.Logger):
     `self.accumulate_means` creates a context manager. While in this context,
     values are loggged to a sub-logger, with only mean values recorded in the
     top-level (root) logger.
+
+    >>> import tempfile
+    >>> with tempfile.TemporaryDirectory() as dir:
+    ...     logger: HierarchicalLogger = configure(dir, ('log',))
+    ...     # record the key value pair (loss, 1.0) to path `dir`
+    ...     # at step 1.
+    ...     logger.record("loss", 1.0)
+    ...     logger.dump(step=1)
+    ...     with logger.accumulate_means("dataset"):
+    ...         # record the key value pair `("raw/dataset/entropy", 5.0)` to path
+    ...         # `dir/raw/dataset` at step 100
+    ...         logger.record("entropy", 5.0)
+    ...         logger.dump(step=100)
+    ...         # record the key value pair `("raw/dataset/entropy", 5.0)` to path
+    ...         # `dir/raw/dataset` at step 200
+    ...         logger.record("entropy", 6.0)
+    ...         logger.dump(step=200)
+    ...     # record the key value pair `("mean/dataset/entropy", 5.5)` to path
+    ...     # `dir` at step 1.
+    ...     logger.dump(step=1)
+    ...     with logger.add_prefix("foo"):
+    ...         with logger.accumulate_means("bar"):
+    ...             # record the key value pair ("raw/foo/bar/entropy", 42.0) to path
+    ...             # `dir/raw/foo/bar` at step 2000
+    ...             logger.record("biz", 42.0)
+    ...             logger.dump(step=2000)
+    ...     # record the key value pair `("mean/foo/bar/entropy", 42.0)` to path
+    ...     # `dir` at step 1.
+    ...     logger.dump(step=1)
+    ...     with open(os.path.join(dir, 'log.txt')) as f:
+    ...         print(f.read())
+    -------------------
+    | loss | 1        |
+    -------------------
+    ---------------------------------
+    | mean/              |          |
+    |    dataset/entropy | 5.5      |
+    ---------------------------------
+    -----------------------------
+    | mean/          |          |
+    |    foo/bar/biz | 42       |
+    -----------------------------
+    <BLANKLINE>
     """
 
     def __init__(
