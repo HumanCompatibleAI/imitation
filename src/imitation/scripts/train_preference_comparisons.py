@@ -149,7 +149,7 @@ def train_preference_comparisons(
         update_stats=False,
     )
 
-    if num_agents < 1 or isinstance(num_agents, int):
+    if num_agents < 1 or not isinstance(num_agents, int):
         raise ValueError("num_agents must be a positive integer!")
 
     def make_agent_trainer(seed: Optional[int] = None):
