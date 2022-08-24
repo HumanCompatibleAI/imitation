@@ -333,7 +333,6 @@ jobs:
 
       - store_test_results:
           path: \tmp\test-reports
-          unit-test-windows:
 
       - store_artifacts:
           path: \tmp\resource-usage
