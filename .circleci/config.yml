@@ -283,7 +283,7 @@ jobs:
   unit-test-macos:
     macos:
       xcode: 13.4.1
-
+    parallelism: 2
     steps:
       - dependencies-macos
       - restore-pytest-cache
@@ -292,7 +292,8 @@ jobs:
           name: run tests
           command: |
             source ~/venv/bin/activate
-            pytest -n auto --junitxml=/tmp/test-reports/junit.xml -vv tests/
+            TESTFILES=$(circleci tests glob tests/**/test*.py | circleci tests split --split-by=timings)
+            pytest -n auto --junitxml=/tmp/test-reports/junit.xml -vv $TESTFILES
 
       - save-pytest-cache
       - store-test-output-unix
