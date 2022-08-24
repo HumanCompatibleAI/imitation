@@ -37,8 +37,8 @@ class EMANormIncremental(networks.EMANorm):
     def update_stats(self, batch: th.Tensor) -> None:
         """Update `self.running_mean` and `self.running_var` incrementally.
 
-        Reference Finch (2009), "Incremental calculation of weighted mean and variance".
-            (https://fanf2.user.srcf.net/hermes/doc/antiforgery/stats.pdf)
+        Reference Algorithm 2 from:
+        https://github.com/HumanCompatibleAI/imitation/files/9364938/Incremental_batch_EMA_and_EMV.pdf
 
         Args:
             batch: A batch of data to use to update the running mean and variance.
@@ -54,17 +54,15 @@ class EMANormIncremental(networks.EMANorm):
             else:
                 self.running_var = th.zeros_like(self.running_mean, dtype=th.float)
         else:
-            # E[x^2] of previous data
-            self.running_var += self.running_mean**2
+            S = th.mean((batch - self.running_mean) ** 2, dim=0)
 
             # update running mean
-            diff = batch.mean(0) - self.running_mean
-            self.running_mean += alpha * diff
+            delta = alpha * (batch.mean(0) - self.running_mean)
+            self.running_mean += delta
 
             # update running variance
-            sqdiff = (batch**2).mean(0) - self.running_var
-            self.running_var += alpha * sqdiff
-            self.running_var -= self.running_mean**2
+            self.running_var *= self.decay
+            self.running_var += alpha * S - delta**2
 
         self.count += b_size
 
@@ -251,8 +249,9 @@ def test_input_validation_on_ema_norm():
 @pytest.mark.parametrize("decay", [0.5, 0.99, 0.999, 0.9999])
 @pytest.mark.parametrize("input_shape", [(64,), (1, 256), (64, 256)])
 def test_ema_norm_batch_correctness(decay, input_shape):
+    num_features = input_shape[-1] if len(input_shape) == 2 else 1
     norm_for_incremental = EMANormIncremental(
-        num_features=256,
+        num_features=num_features,
         decay=decay,
     )
     norm_for_batch = networks.EMANorm(256, decay)

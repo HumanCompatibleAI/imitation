@@ -3,14 +3,18 @@
 import os
 import warnings
 from sys import platform
+from typing import TYPE_CHECKING
 
 from setuptools import find_packages, setup
 from setuptools.command.install import install
 
+if TYPE_CHECKING:
+    from setuptools_scm.version import ScmVersion
+
 IS_NOT_WINDOWS = os.name != "nt"
 
-PARALLEL_REQUIRE = ["ray[debug,tune]>=1.13.0"]
-PYTYPE = ["pytype"] if IS_NOT_WINDOWS else []
+PARALLEL_REQUIRE = ["ray[debug,tune]~=2.0.0"]
+PYTYPE = ["pytype==2022.7.26"] if IS_NOT_WINDOWS else []
 if IS_NOT_WINDOWS:
     # TODO(adam): use this for Windows as well once PyPI is at >=1.6.1
     STABLE_BASELINES3 = "stable-baselines3>=1.6.0"
@@ -20,48 +24,54 @@ else:
         "https://github.com/DLR-RM/stable-baselines3.git@master"
     )
 
+# pinned to 0.21 until https://github.com/DLR-RM/stable-baselines3/pull/780 goes
+# upstream.
+GYM_VERSION_SPECIFIER = "==0.21.0"
+
+# Note: the versions of the test and doc requirements should be tightly pinned to known
+#   working versions to make our CI/CD pipeline as stable as possible.
 TESTS_REQUIRE = (
     [
-        "seals",
-        "black[jupyter]",
-        "coverage",
-        "codecov",
-        "codespell",
-        "darglint",
-        "filelock",
-        # TODO(adam): remove pin once flake8-isort fixed:
-        #  https://github.com/gforcada/flake8-isort/issues/115
+        "seals==0.1.2",
+        "black[jupyter]~=22.6.0",
+        "coverage~=6.4.2",
+        "codecov~=2.1.12",
+        "codespell~=2.1.0",
+        "darglint~=1.8.1",
+        "filelock~=3.7.1",
         "flake8~=4.0.1",
-        "flake8-blind-except",
-        "flake8-builtins",
-        "flake8-commas",
-        "flake8-debugger",
-        "flake8-docstrings",
-        "flake8-isort",
-        "hypothesis",
-        "ipykernel",
-        "jupyter",
-        # remove pin once https://github.com/jupyter/jupyter_client/issues/637 fixed
-        "jupyter-client<7.0",
-        "pandas",
-        "pytest",
-        "pytest-cov",
-        "pytest-notebook",
-        "pytest-xdist",
-        "scipy>=1.8.0",
-        "wandb",
+        "flake8-blind-except==0.2.1",
+        "flake8-builtins~=1.5.3",
+        "flake8-commas~=2.1.0",
+        "flake8-debugger~=4.1.2",
+        "flake8-docstrings~=1.6.0",
+        "flake8-isort~=4.1.2",
+        "hypothesis~=6.54.1",
+        "ipykernel~=6.15.1",
+        "jupyter~=1.0.0",
+        # TODO: upgrade jupyter-client once
+        #  https://github.com/jupyter/jupyter_client/issues/637 is fixed
+        "jupyter-client~=6.1.12",
+        "pandas~=1.4.3",
+        "pytest~=7.1.2",
+        "pytest-cov~=3.0.0",
+        "pytest-notebook==0.8.0",
+        "pytest-xdist~=2.5.0",
+        "scipy~=1.9.0",
+        "wandb==0.12.21",
+        "setuptools_scm~=7.0.5",
     ]
     + PARALLEL_REQUIRE
     + PYTYPE
 )
 DOCS_REQUIRE = [
     "sphinx~=5.1.1",
-    "sphinx-autodoc-typehints",
-    "sphinx-rtd-theme",
-    "sphinxcontrib-napoleon",
-    "furo",
-    "sphinx-copybutton",
-    "sphinx-github-changelog",
+    "sphinx-autodoc-typehints~=1.19.1",
+    "sphinx-rtd-theme~=1.0.0",
+    "sphinxcontrib-napoleon==0.7",
+    "furo==2022.6.21",
+    "sphinx-copybutton==0.5.0",
+    "sphinx-github-changelog~=1.2.0",
 ]
 
 
@@ -88,12 +98,85 @@ class InstallCommand(install):
             )
 
 
+def get_version(version: "ScmVersion") -> str:
+    """Generates the version string for the package.
+
+    This function replaces the default version format used by setuptools_scm
+    to allow development builds to be versioned using the git commit hash
+    instead of the number of commits since the last release, which leads to
+    duplicate version identifiers when using multiple branches
+    (see https://github.com/HumanCompatibleAI/imitation/issues/500).
+
+    The version has the following format:
+
+    {version}[.dev{build}]
+    where build is the shortened commit hash converted to base 10.
+
+    Args:
+        version: The version object given by setuptools_scm, calculated
+            from the git repository.
+
+    Returns:
+        The formatted version string to use for the package.
+    """
+    # We import setuptools_scm here because it is only installed after the module
+    # is loaded and the setup function is called.
+    from setuptools_scm import version as scm_version
+
+    if version.node:
+        # By default node corresponds to the short commit hash when using git,
+        # plus a "g" prefix. We remove the "g" prefix from the commit hash which
+        # is added by setuptools_scm by default ("g" for git vs. mercurial etc.)
+        # because letters are not valid for version identifiers in PEP 440.
+        # We also convert from hexadecimal to base 10 for the same reason.
+        version.node = str(int(version.node.lstrip("g"), 16))
+    if version.exact:
+        # an exact version is when the current commit is tagged with a version.
+        return version.format_with("{tag}")
+    else:
+        # the current commit is not tagged with a version, so we guess
+        # what the "next" version will be (this can be disabled but is the
+        # default behavior of setuptools_scm so it has been left in).
+        return version.format_next_version(
+            scm_version.guess_next_version,
+            fmt="{guessed}.dev{node}",
+        )
+
+
+def get_local_version(version: "ScmVersion", time_format="%Y%m%d") -> str:
+    """Generates the local version string for the package.
+
+    By default, when commits are made on top of a release version, setuptools_scm
+    sets the version to be {version}.dev{distance}+{node} where {distance} is the number
+    of commits since the last release and {node} is the short commit hash.
+    This function replaces the default version format used by setuptools_scm
+    so that committed changes away from a release version are not considered
+    local versions but dev versions instead (by using the format
+    {version}.dev{node} instead. This is so that we can push test releases
+    to TestPyPI (it does not accept local versions).
+
+    Local versions are still present if there are uncommitted changes (if the tree
+    is dirty), in which case the current date is added to the version.
+
+    Args:
+        version: The version object given by setuptools_scm, calculated
+            from the git repository.
+        time_format: The format to use for the date.
+
+    Returns:
+        The formatted local version string to use for the package.
+    """
+    return version.format_choice(
+        "",
+        "+d{time:{time_format}}",
+        time_format=time_format,
+    )
+
+
 setup(
     cmdclass={"install": InstallCommand},
     name="imitation",
-    # Disable local scheme to allow uploads to Test PyPI.
-    # See https://github.com/pypa/setuptools_scm/issues/342
-    use_scm_version={"local_scheme": "no-local-version"},
+    use_scm_version={"local_scheme": get_local_version, "version_scheme": get_version},
     setup_requires=["setuptools_scm"],
     description="Implementation of modern reward and imitation learning algorithms.",
     long_description=get_readme(),
@@ -103,11 +186,12 @@ setup(
     packages=find_packages("src"),
     package_dir={"": "src"},
     package_data={"imitation": ["py.typed", "envs/examples/airl_envs/assets/*.xml"]},
+    # Note: while we are strict with our test and doc requirement versions, we try to
+    #   impose as little restrictions on the install requirements as possible. Try to
+    #   encode only known incompatibilities here. This prevents nasty dependency issues
+    #   for our users.
     install_requires=[
-        # If you change gym version here, change it in "mujoco" below too.
-        # pinned to 0.21 until https://github.com/DLR-RM/stable-baselines3/pull/780
-        # goes upstream.
-        "gym[classic_control]==0.21.0",
+        "gym[classic_control]" + GYM_VERSION_SPECIFIER,
         "matplotlib",
         "numpy>=1.15",
         "torch>=1.4.0",
@@ -139,7 +223,7 @@ setup(
         "docs": DOCS_REQUIRE,
         "parallel": PARALLEL_REQUIRE,
         "mujoco": [
-            "gym[classic_control,mujoco]==0.21.0",
+            "gym[classic_control,mujoco]" + GYM_VERSION_SPECIFIER,
         ],
     },
     entry_points={

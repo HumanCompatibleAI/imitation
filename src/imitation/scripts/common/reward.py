@@ -127,7 +127,7 @@ def make_reward_net(
         ensemble_size: The number of ensemble members to create. Must set if using
             `net_cls =` :class: `reward_nets.RewardEnsemble`.
         ensemble_member_config: The configuration for individual ensemble
-            members. Note that ensemble_members.net_cls must not be
+            members. Note that `ensemble_member_config.net_cls` must not be
             :class: `reward_nets.RewardEnsemble`. Must be set if using
             `net_cls = ` :class: `reward_nets.RewardEnsemble`.
 
@@ -150,7 +150,7 @@ def make_reward_net(
             for _ in range(ensemble_size)
         ]
 
-        reward_net = net_cls(venv.observation_space, venv.observation_space, members)
+        reward_net = net_cls(venv.observation_space, venv.action_space, members)
 
         if add_std_alpha is not None:
             reward_net = reward_nets.AddSTDRewardWrapper(
