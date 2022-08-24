@@ -190,12 +190,20 @@ def test_mixture_of_trajectory_generators_train_and_sample(trajectory_with_rewar
     gen_2.sample.return_value = 6 * [trajectory_with_reward]
     mixture = preference_comparisons.MixtureOfTrajectoryGenerators(
         members=(gen_1, gen_2),
+        share_training_steps=False,
     )
     mixture.train(steps=10, foo=4)
     assert gen_1.train.called_once_with(steps=10, foo=4)
     assert gen_2.train.called_once_with(steps=10, foo=4)
+    mixture.share_training_steps = True
+    mixture.train(11)
+    assert gen_1.train.call_args.args[0] + gen_2.train.call_args.args[0] == 11
+    assert gen_1.train.call_args.args[0] >= 5
+    assert gen_2.train.call_args.args[0] >= 5
     mixture.sample(11)
     assert gen_1.sample.call_args.args[0] + gen_2.sample.call_args.args[0] == 11
+    assert gen_1.sample.call_args.args[0] >= 5
+    assert gen_2.sample.call_args.args[0] >= 5
 
 
 def test_mixture_of_trajectory_generators_raises_value_error_when_members_is_empty():

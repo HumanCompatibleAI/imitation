@@ -78,6 +78,7 @@ def train_preference_comparisons(
     allow_variable_horizon: bool,
     checkpoint_interval: int,
     query_schedule: Union[str, type_aliases.Schedule],
+    share_training_steps_among_agents: bool,
 ) -> Mapping[str, Any]:
     """Train a reward model using preference comparisons.
 
@@ -133,6 +134,9 @@ def train_preference_comparisons(
             be allocated to each iteration. "hyperbolic" and "inverse_quadratic"
             apportion fewer queries to later iterations when the policy is assumed
             to be better and more stable.
+        share_training_steps_among_agents: If True (default), when training with
+            num_agents > 1 training steps are split equally among the agents. If
+            False, all agents train for the full number of steps.
 
     Returns:
         Rollout statistics from trained policy.
@@ -190,6 +194,7 @@ def train_preference_comparisons(
             trajectory_generator = preference_comparisons.MixtureOfTrajectoryGenerators(
                 members=members,
                 custom_logger=custom_logger,
+                share_training_steps=share_training_steps_among_agents,
             )
             # Again using the same device as the SB3 agent
             reward_net = reward_net.to(members[0].algorithm.device)

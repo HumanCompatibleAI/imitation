@@ -311,12 +311,16 @@ class MixtureOfTrajectoryGenerators(TrajectoryGenerator):
         self,
         members: Sequence[TrajectoryGenerator],
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
+        share_training_steps: bool = True,
     ):
         """Create a mixture of trajectory generators.
 
         Args:
             members: Individual trajectory generators that will make up the ensemble.
             custom_logger: Custom logger passed to super class.
+            share_training_steps: If True, training steps are split equally among the
+                trajectory generators. If False, all each trajectory generator train
+                for the full number of steps. Defaults to True.
 
         Raises:
             ValueError: if members is empty.
@@ -327,6 +331,18 @@ class MixtureOfTrajectoryGenerators(TrajectoryGenerator):
             )
         self.members = tuple(members)
         super().__init__(custom_logger=custom_logger)
+        self.share_training_steps = share_training_steps
+
+    def _partition(self, steps: int) -> Sequence[int]:
+        """Partition steps into len(self.members) close to equal parts."""
+        n = len(self.members)
+        # Approximately evenly partition work.
+        d = steps // n
+        r = steps % n
+        partition = [d] * n
+        for i in range(r):
+            partition[i] += 1
+        return partition
 
     def sample(self, steps: int) -> Sequence[TrajectoryWithRew]:
         """Sample a batch of trajectories splitting evenly amongst the mixture members.
@@ -339,34 +355,30 @@ class MixtureOfTrajectoryGenerators(TrajectoryGenerator):
             A list of sampled trajectories with rewards (which should
             be the environment rewards, not ones from a reward model).
         """
-        n = len(self.members)
-        # Approximately evenly partition work.
-        d = steps // n
-        r = steps % n
-        partition = [d] * n
-        for i in range(r):
-            partition[i] += 1
         trajectories = []
-
-        for s, generator in zip(partition, self.members):
+        for s, generator in zip(self._partition(steps), self.members):
             trajectories.extend(generator.sample(s))
-
         return trajectories
 
     def train(self, steps: int, **kwargs):
-        """Train an agent if the trajectory generator uses one.
+        """Train each trajectory generator.
 
-        By default, this method does nothing and doesn't need
-        to be overridden in subclasses that don't require training.
+        If self.share_training_steps is set to true, training steps are split equally
+        among the trajectory generators. Otherwise, all each trajectory generator trains
+        for the full number of steps.
 
         Args:
             steps: number of environment steps to train for.
-            **kwargs: additional keyword arguments to pass on to
-                the training procedure.
+            **kwargs: additional keyword arguments to passed along to members.
         """
-        for i, generator in enumerate(self.members):
+        if self.share_training_steps:
+            steps_to_train = self._partition(steps)
+        else:
+            steps_to_train = [steps]
+
+        for i, (generator, s) in enumerate(zip(self.members, steps_to_train)):
             with self.logger.add_prefix(f"gen_{i}"):
-                generator.train(steps, **kwargs)
+                generator.train(s, **kwargs)
 
     @property
     def logger(self) -> imit_logger.HierarchicalLogger:
