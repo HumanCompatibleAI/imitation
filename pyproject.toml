@@ -2,10 +2,14 @@
 requires = ["setuptools>=45", "setuptools_scm[toml]>=6.2"]
 build-backend = "setuptools.build_meta"
 
-[tools.setuptools_scm]
-# Disable local scheme to allow uploads to Test PyPI.
-# See https://github.com/pypa/setuptools_scm/issues/342
-local_scheme = "no-local-version"
+# TODO(juan): we've commented this out because currently
+# there's no way (that we could find in the docs) to point
+# the local_scheme and version_scheme to a function from the
+# pyproject.toml file, so setup.py has to be used.
+# [tool.setuptools_scm]
+# # Disable local scheme to allow uploads to Test PyPI.
+# # See https://github.com/pypa/setuptools_scm/issues/342
+# local_scheme = "imitation.version:get_version"
 
 [tool.black]
 target-version = ["py38"]

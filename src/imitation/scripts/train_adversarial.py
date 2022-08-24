@@ -1,5 +1,6 @@
 """Train GAIL or AIRL."""
 
+import functools
 import logging
 import os
 import os.path as osp
@@ -115,45 +116,53 @@ def train_adversarial(
     custom_logger, log_dir = common_config.setup_logging()
     expert_trajs = demonstrations.load_expert_trajs()
 
-    venv = common_config.make_venv()
+    with common_config.make_venv() as venv:
+        reward_net = reward.make_reward_net(venv)
+        relabel_reward_fn = functools.partial(
+            reward_net.predict_processed,
+            update_stats=False,
+        )
 
-    if agent_path is None:
-        gen_algo = rl.make_rl_algo(venv)
-    else:
-        gen_algo = rl.load_rl_algo_from_path(agent_path=agent_path, venv=venv)
+        if agent_path is None:
+            gen_algo = rl.make_rl_algo(venv, relabel_reward_fn=relabel_reward_fn)
+        else:
+            gen_algo = rl.load_rl_algo_from_path(
+                agent_path=agent_path,
+                venv=venv,
+                relabel_reward_fn=relabel_reward_fn,
+            )
 
-    reward_net = reward.make_reward_net(venv)
+        logger.info(f"Using '{algo_cls}' algorithm")
+        algorithm_kwargs = dict(algorithm_kwargs)
+        for k in ("shared", "airl", "gail"):
+            # Config hook has copied relevant subset of config to top-level.
+            # But due to Sacred limitations, cannot delete the rest of it.
+            # So do that here to avoid passing in invalid arguments to constructor.
+            if k in algorithm_kwargs:
+                del algorithm_kwargs[k]
+        trainer = algo_cls(
+            venv=venv,
+            demonstrations=expert_trajs,
+            gen_algo=gen_algo,
+            log_dir=log_dir,
+            reward_net=reward_net,
+            custom_logger=custom_logger,
+            **algorithm_kwargs,
+        )
 
-    logger.info(f"Using '{algo_cls}' algorithm")
-    algorithm_kwargs = dict(algorithm_kwargs)
-    for k in ("shared", "airl", "gail"):
-        # Config hook has copied relevant subset of config to top-level.
-        # But due to Sacred limitations, cannot delete the rest of it.
-        # So do that here to avoid passing in invalid arguments to constructor.
-        if k in algorithm_kwargs:
-            del algorithm_kwargs[k]
-    trainer = algo_cls(
-        venv=venv,
-        demonstrations=expert_trajs,
-        gen_algo=gen_algo,
-        log_dir=log_dir,
-        reward_net=reward_net,
-        custom_logger=custom_logger,
-        **algorithm_kwargs,
-    )
+        def callback(round_num):
+            if checkpoint_interval > 0 and round_num % checkpoint_interval == 0:
+                save(trainer, os.path.join(log_dir, "checkpoints", f"{round_num:05d}"))
 
-    def callback(round_num):
-        if checkpoint_interval > 0 and round_num % checkpoint_interval == 0:
-            save(trainer, os.path.join(log_dir, "checkpoints", f"{round_num:05d}"))
-
-    trainer.train(total_timesteps, callback)
+        trainer.train(total_timesteps, callback)
+        imit_stats = train.eval_policy(trainer.policy, trainer.venv_train)
 
     # Save final artifacts.
     if checkpoint_interval >= 0:
         save(trainer, os.path.join(log_dir, "checkpoints", "final"))
 
     return {
-        "imit_stats": train.eval_policy(trainer.policy, trainer.venv_train),
+        "imit_stats": imit_stats,
         "expert_stats": rollout.rollout_stats(expert_trajs),
     }
 
