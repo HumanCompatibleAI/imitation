@@ -10,11 +10,12 @@ import filecmp
 import os
 import pathlib
 import pickle
+import platform
 import shutil
 import sys
 import tempfile
 from collections import Counter
-from typing import List, Mapping, Optional
+from typing import Dict, List, Mapping, Optional
 from unittest import mock
 
 import numpy as np
@@ -413,12 +414,20 @@ def test_train_rl_sac(tmpdir):
     assert isinstance(run.result, dict)
 
 
-EVAL_POLICY_CONFIGS = [
-    {"videos": True},
-    {"videos": True, "video_kwargs": {"single_video": False}},
+# check if platform is macos
+
+EVAL_POLICY_CONFIGS: List[Dict] = [
     {"reward_type": "zero", "reward_path": "foobar"},
     {"rollout_save_path": "{log_dir}/rollouts.pkl"},
 ]
+
+if platform.system() != "Darwin":
+    EVAL_POLICY_CONFIGS.extend(
+        [
+            {"videos": True},
+            {"videos": True, "video_kwargs": {"single_video": False}},
+        ],
+    )
 
 
 @pytest.mark.parametrize("config", EVAL_POLICY_CONFIGS)
