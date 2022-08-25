@@ -380,12 +380,18 @@ def test_cant_load_unnorm_as_norm(env_name, tmpdir):
         serialize.load_reward("RewardNet_normalized", tmppath, venv)
 
 
-def _serialize_deserialize_identity(env_name, net_cls, normalize_rewards, tmpdir):
+def _serialize_deserialize_identity(
+    env_name,
+    net_cls,
+    net_kwargs,
+    normalize_rewards,
+    tmpdir,
+):
     """Does output of deserialized reward network match that of original?"""
     logging.info(f"Testing {net_cls}")
 
     venv = util.make_vec_env(env_name, n_envs=1, parallel=False)
-    original = net_cls(venv.observation_space, venv.action_space)
+    original = net_cls(venv.observation_space, venv.action_space, **net_kwargs)
     if normalize_rewards:
         original = reward_nets.NormalizedRewardNet(original, networks.RunningNorm)
     random = base.RandomPolicy(venv.observation_space, venv.action_space)
@@ -447,23 +453,33 @@ def _serialize_deserialize_identity(env_name, net_cls, normalize_rewards, tmpdir
 
 @pytest.mark.parametrize("env_name", ENVS)
 @pytest.mark.parametrize("net_cls", MAKE_REWARD_NET)
+@pytest.mark.parametrize("net_kwargs", REWARD_NET_KWARGS)
 @pytest.mark.parametrize("normalize_rewards", [True, False])
 def test_serialize_identity(
     env_name,
     net_cls,
+    net_kwargs,
     normalize_rewards,
     tmpdir,
 ):
     """Does output of deserialized reward MLP match that of original?"""
-    _serialize_deserialize_identity(env_name, net_cls, normalize_rewards, tmpdir)
+    _serialize_deserialize_identity(
+        env_name,
+        net_cls,
+        net_kwargs,
+        normalize_rewards,
+        tmpdir,
+    )
 
 
 @pytest.mark.parametrize("env_name", IMAGE_ENVS)
 @pytest.mark.parametrize("net_cls", MAKE_IMAGE_REWARD_NET)
+@pytest.mark.parametrize("net_kwargs", IMAGE_REWARD_NET_KWARGS)
 @pytest.mark.parametrize("normalize_rewards", [True, False])
 def test_serialize_identity_images(
     env_name,
     net_cls,
+    net_kwargs,
     normalize_rewards,
     tmpdir,
 ):
@@ -471,6 +487,7 @@ def test_serialize_identity_images(
     _serialize_deserialize_identity(
         env_name,
         net_cls,
+        net_kwargs,
         normalize_rewards,
         tmpdir,
     )
