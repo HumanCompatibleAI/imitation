@@ -533,13 +533,14 @@ class CnnRewardNet(RewardNet):
         elif self.use_action and self.use_done:
             # here, we double the size of the one-hot vector, where the first entries
             # are for done=False and the second are for done=True.
-            action_done_false = action * (1 - done)
-            action_done_true = action * done
+            action_done_false = action * (1 - done[:, None])
+            action_done_true = action * done[:, None]
             full_acts = th.cat((action_done_false, action_done_true), dim=1)
             rewards = th.sum(outputs * full_acts, dim=1)
         elif not self.use_action and self.use_done:
             # here we turn done into a one-hot vector.
-            dones_binary = done.type(th.IntTensor)
+            dones_binary = done.type(th.LongTensor)
+            print(f"{dones_binary.shape=}")
             dones_one_hot = nn.functional.one_hot(dones_binary, num_classes=2)
             rewards = th.sum(outputs * dones_one_hot, dim=1)
         else:
