@@ -143,7 +143,7 @@ class EMANorm(BaseNorm):
         Args:
             num_features: Number of features; the length of the non-batch dim.
             decay: how quickly the weight on past samples decays over time.
-            eps: small constant for for numerical stability.
+            eps: small constant for numerical stability.
 
         Raises:
             ValueError: if decay is out of range.
@@ -156,32 +156,34 @@ class EMANorm(BaseNorm):
         self.decay = decay
 
     def update_stats(self, batch: th.Tensor) -> None:
-        """Update `self.running_mean` and `self.running_var`.
+        """Update `self.running_mean` and `self.running_var` in batch mode.
 
-        Reference Finch (2009), "Incremental calculation of weighted mean and variance".
-            (https://fanf2.user.srcf.net/hermes/doc/antiforgery/stats.pdf)
+        Reference Algorithm 3 from:
+        https://github.com/HumanCompatibleAI/imitation/files/9364938/Incremental_batch_EMA_and_EMV.pdf
 
         Args:
             batch: A batch of data to use to update the running mean and variance.
         """
         b_size = batch.shape[0]
+        if len(batch.shape) == 1:
+            batch = batch.reshape(b_size, 1)
 
+        alpha = 1 - self.decay
         if self.count == 0:
-            self.running_mean = th.mean(batch, dim=0)
+            self.running_mean = batch.mean(0)
             if b_size > 1:
-                self.running_var = th.var(batch, dim=0)
+                self.running_var = batch.var(0, unbiased=False)
+            else:
+                self.running_var = th.zeros_like(self.running_mean)
         else:
-            # Shuffle the batch since we don't don't want to bias the mean
-            # towards data that appears later in the batch
-            perm = th.randperm(b_size)
+            # update running mean
+            delta_mean = batch.mean(0) - self.running_mean
+            self.running_mean += alpha * delta_mean
 
-            alpha = 1 - self.decay
-
-            for i in range(b_size):
-                diff = batch[perm[i], ...] - self.running_mean
-                incr = alpha * diff
-                self.running_mean += incr
-                self.running_var = self.decay * (self.running_var + diff * incr)
+            # update running variance
+            batch_var = batch.var(0, unbiased=False)
+            delta_var = batch_var + self.decay * delta_mean**2 - self.running_var
+            self.running_var += alpha * delta_var
 
         self.count += b_size
 
