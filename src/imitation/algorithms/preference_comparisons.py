@@ -1212,28 +1212,48 @@ class EnsembleTrainer(BasicRewardTrainer):
             weight_decay,
             custom_logger,
         )
-        self.rng = np.random.default_rng(seed=seed)
+        self.rng = th.Generator()
+        if seed:
+            self.rng = self.rng.manual_seed(seed)
+
+    def _train(self, dataset: PreferenceDataset, epoch_multiplier: float = 1.0) -> None:
+        """Trains for `epoch_multiplier * self.epochs` epochs over `dataset`."""
+        # dataloader = self._make_data_loader(dataset)
+        sampler = data_th.RandomSampler(
+            dataset,
+            replacement=True,
+            num_samples=len(dataset),
+            generator=self.rng,
+        )
+        sampler = data_th.BatchSampler(sampler, self.batch_size, drop_last=False)
+
+        epochs = round(self.epochs * epoch_multiplier)
+        for member_idx in range(self._model.num_members):
+            bagging_dataset = list(sampler)
+            for _ in tqdm(range(epochs), desc="Training reward model"):
+                for batch_idxs in bagging_dataset:
+                    fragment_pairs, preferences = preference_collate_fn(
+                        dataset[i] for i in batch_idxs
+                    )
+                    self.optim.zero_grad()
+                    loss = self._training_inner_loop(
+                        fragment_pairs, preferences, member_idx
+                    )
+                    loss.backward()
+                    self.optim.step()
 
     def _training_inner_loop(
         self,
         fragment_pairs: Sequence[TrajectoryPair],
         preferences: np.ndarray,
+        member_idx: int,
     ) -> th.Tensor:
         assert len(fragment_pairs) == preferences.shape[0]
         losses = []
         metrics = []
-        for member_idx in range(self._model.num_members):
-            # sample fragments for training via bagging
-            sample_idx = self.rng.choice(
-                np.arange(len(fragment_pairs)),
-                size=len(fragment_pairs),
-                replace=True,
-            )
-            sample_fragments = [fragment_pairs[i] for i in sample_idx]
-            sample_preferences = preferences[sample_idx]
-            output = self.loss.forward(sample_fragments, sample_preferences, member_idx)
-            losses.append(output.loss)
-            metrics.append(output.metrics)
+        output = self.loss.forward(fragment_pairs, preferences, member_idx)
+        losses.append(output.loss)
+        metrics.append(output.metrics)
         losses = th.stack(losses)
         loss = losses.sum()
 
