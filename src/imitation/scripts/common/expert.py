@@ -1,6 +1,6 @@
 """Common configuration elements for loading of expert policies."""
-import sacred
 import huggingface_sb3 as hfsb3
+import sacred
 import stable_baselines3 as sb3
 from stable_baselines3.common import policies
 
@@ -36,7 +36,9 @@ def get_expert_path(common, policy_path, policy_type):
     if policy_path is not None:
         return policy_path
     else:
-        model_name = hfsb3.ModelName(policy_type, hfsb3.EnvironmentName(common["env_name"]))
+        model_name = hfsb3.ModelName(
+            policy_type, hfsb3.EnvironmentName(common["env_name"])
+        )
         return hfsb3.load_from_hub(get_huggingface_repo_id(), model_name.filename)
 
 
