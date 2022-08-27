@@ -540,7 +540,6 @@ class CnnRewardNet(RewardNet):
         elif not self.use_action and self.use_done:
             # here we turn done into a one-hot vector.
             dones_binary = done.type(th.LongTensor)
-            print(f"{dones_binary.shape=}")
             dones_one_hot = nn.functional.one_hot(dones_binary, num_classes=2)
             rewards = th.sum(outputs * dones_one_hot, dim=1)
         else:
