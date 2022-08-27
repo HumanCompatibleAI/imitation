@@ -27,6 +27,11 @@ def config():
 
 
 @train_ingredient.named_config
+def cnn_policy():
+    policy_cls = base.CnnPolicy  # noqa: F841
+
+
+@train_ingredient.named_config
 def fast():
     n_episodes_eval = 1  # noqa: F841
 

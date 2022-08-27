@@ -1,6 +1,7 @@
 """Configuration for imitation.scripts.train_preference_comparisons."""
 
 import sacred
+from stable_baselines3.common.atari_wrappers import AtariWrapper
 
 from imitation.algorithms import preference_comparisons
 from imitation.scripts.common import common, reward, rl, train
@@ -113,6 +114,14 @@ def mountain_car():
 @train_preference_comparisons_ex.named_config
 def seals_mountain_car():
     common = dict(env_name="seals/MountainCar-v0")
+
+
+@train_preference_comparisons_ex.named_config
+def asteroids():
+    common = dict(
+        env_name="AsteroidsNoFrameskip-v4",
+        post_wrappers=[lambda env, _: AtariWrapper(env)],
+    )
 
 
 @train_preference_comparisons_ex.named_config

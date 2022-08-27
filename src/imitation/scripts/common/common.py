@@ -3,9 +3,10 @@
 import contextlib
 import logging
 import os
-from typing import Any, Mapping, Sequence, Tuple, Union
+from typing import Any, Callable, Mapping, Optional, Sequence, Tuple, Union
 
 import sacred
+from gym import Env
 from stable_baselines3.common import vec_env
 
 from imitation.scripts.common import wb
@@ -33,6 +34,7 @@ def config():
     num_vec = 8  # number of environments in VecEnv
     parallel = True  # Use SubprocVecEnv rather than DummyVecEnv
     max_episode_steps = None  # Set to positive int to limit episode horizons
+    post_wrappers = []  # Sequence of wrappers to apply to each env in the VecEnv
     env_make_kwargs = {}  # The kwargs passed to `spec.make`.
 
     locals()  # quieten flake8
@@ -136,6 +138,7 @@ def make_venv(
     parallel: bool,
     log_dir: str,
     max_episode_steps: int,
+    post_wrappers: Optional[Sequence[Callable[[Env, int], Env]]],
     env_make_kwargs: Mapping[str, Any],
     **kwargs,
 ) -> vec_env.VecEnv:
@@ -149,6 +152,8 @@ def make_venv(
         max_episode_steps: If not None, then a TimeLimit wrapper is applied to each
             environment to artificially limit the maximum number of timesteps in an
             episode.
+        post_wrappers: If specified, iteratively wraps each environment with each
+            of the wrappers specified in the sequence.
         log_dir: Logs episode return statistics to a subdirectory 'monitor`.
         env_make_kwargs: The kwargs passed to `spec.make` of a gym environment.
         kwargs: Passed through to `util.make_vec_env`.
@@ -162,8 +167,9 @@ def make_venv(
             num_vec,
             seed=_seed,
             parallel=parallel,
-            max_episode_steps=max_episode_steps,
             log_dir=log_dir,
+            max_episode_steps=max_episode_steps,
+            post_wrappers=post_wrappers,
             env_make_kwargs=env_make_kwargs,
             **kwargs,
         )
