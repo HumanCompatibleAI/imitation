@@ -99,16 +99,7 @@ def torch_transitions() -> TorchTransitions:
     )
 
 
-@pytest.mark.parametrize("env_name", ENVS)
-@pytest.mark.parametrize("reward_net_cls", MAKE_REWARD_NET)
-@pytest.mark.parametrize("reward_net_kwargs", REWARD_NET_KWARGS)
-@pytest.mark.parametrize("normalize_output_layer", NORMALIZE_OUTPUT_LAYER)
-def test_init_no_crash(
-    env_name,
-    reward_net_cls,
-    reward_net_kwargs,
-    normalize_output_layer,
-):
+def _init_no_crash(env_name, reward_net_cls, reward_net_kwargs, normalize_output_layer):
     env = gym.make(env_name)
 
     reward_net = reward_net_cls(
@@ -124,6 +115,24 @@ def test_init_no_crash(
         )
 
 
+@pytest.mark.parametrize("env_name", ENVS)
+@pytest.mark.parametrize("reward_net_cls", MAKE_REWARD_NET)
+@pytest.mark.parametrize("reward_net_kwargs", REWARD_NET_KWARGS)
+@pytest.mark.parametrize("normalize_output_layer", NORMALIZE_OUTPUT_LAYER)
+def test_init_no_crash(
+    env_name,
+    reward_net_cls,
+    reward_net_kwargs,
+    normalize_output_layer,
+):
+    _init_no_crash(
+        env_name,
+        reward_net_cls,
+        reward_net_kwargs,
+        normalize_output_layer,
+    )
+
+
 @pytest.mark.parametrize("env_name", IMAGE_ENVS)
 @pytest.mark.parametrize("reward_net_cls", MAKE_IMAGE_REWARD_NET)
 @pytest.mark.parametrize("reward_net_kwargs", IMAGE_REWARD_NET_KWARGS)
@@ -134,7 +143,7 @@ def test_image_init_no_crash(
     reward_net_kwargs,
     normalize_output_layer,
 ):
-    test_init_no_crash(
+    _init_no_crash(
         env_name,
         reward_net_cls,
         reward_net_kwargs,
