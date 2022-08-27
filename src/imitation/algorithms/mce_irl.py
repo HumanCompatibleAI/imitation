@@ -14,17 +14,17 @@ import numpy as np
 import scipy.special
 import torch as th
 from stable_baselines3.common import policies
+from seals import base_envs as envs
 
 from imitation.algorithms import base
 from imitation.data import rollout, types
-from imitation.envs import resettable_env
 from imitation.rewards import reward_nets
 from imitation.util import logger as imit_logger
 from imitation.util import networks, util
 
 
 def mce_partition_fh(
-    env: resettable_env.TabularModelEnv,
+    env: envs.TabularModelPOMDP,
     *,
     reward: Optional[np.ndarray] = None,
     discount: float = 1.0,
@@ -46,8 +46,8 @@ def mce_partition_fh(
     """
     # shorthand
     horizon = env.horizon
-    n_states = env.n_states
-    n_actions = env.n_actions
+    n_states = env.state_dim
+    n_actions = env.action_dim
     T = env.transition_matrix
     if reward is None:
         reward = env.reward_matrix
@@ -77,7 +77,7 @@ def mce_partition_fh(
 
 
 def mce_occupancy_measures(
-    env: resettable_env.TabularModelEnv,
+    env: envs.TabularModelPOMDP,
     *,
     reward: Optional[np.ndarray] = None,
     pi: Optional[np.ndarray] = None,
@@ -102,8 +102,8 @@ def mce_occupancy_measures(
     """
     # shorthand
     horizon = env.horizon
-    n_states = env.n_states
-    n_actions = env.n_actions
+    n_states = env.state_dim
+    n_actions = env.action_dim
     T = env.transition_matrix
     if reward is None:
         reward = env.reward_matrix
@@ -252,7 +252,7 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
     def __init__(
         self,
         demonstrations: Optional[MCEDemonstrations],
-        env: resettable_env.TabularModelEnv,
+        env: envs.TabularModelPOMDP,
         reward_net: reward_nets.RewardNet,
         optimizer_cls: Type[th.optim.Optimizer] = th.optim.Adam,
         optimizer_kwargs: Optional[Mapping[str, Any]] = None,
@@ -313,17 +313,17 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
         # Initialize policy to be uniform random. We don't use this for MCE IRL
         # training, but it gives us something to return at all times with `policy`
         # property, similar to other algorithms.
-        ones = np.ones((self.env.horizon, self.env.n_states, self.env.n_actions))
-        uniform_pi = ones / self.env.n_actions
+        ones = np.ones((self.env.horizon, self.env.state_dim, self.env.action_dim))
+        uniform_pi = ones / self.env.action_dim
         self._policy = TabularPolicy(
-            state_space=self.env.pomdp_state_space,
+            state_space=self.env.state_space,
             action_space=self.env.action_space,
             pi=uniform_pi,
             rng=self.rng,
         )
 
     def _set_demo_from_trajectories(self, trajs: Iterable[types.Trajectory]) -> None:
-        self.demo_state_om = np.zeros((self.env.n_states,))
+        self.demo_state_om = np.zeros((self.env.state_dim,))
         num_demos = 0
         for traj in trajs:
             cum_discount = 1.0
@@ -339,7 +339,7 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
         dones: Optional[np.ndarray],
         next_obses: Optional[np.ndarray],
     ) -> None:
-        self.demo_state_om = np.zeros((self.env.n_states,))
+        self.demo_state_om = np.zeros((self.env.state_dim,))
 
         for obs in obses:
             if isinstance(obs, th.Tensor):
@@ -360,7 +360,7 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
         else:
             warnings.warn(
                 "Training MCEIRL with transitions that lack next observation."
-                "This will result in systematically wrong occupancy measure estimates.",
+                "This gwill result in systematically wrong occupancy measure estimates.",
             )
 
         # Normalize occupancy measure estimates
