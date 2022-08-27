@@ -4,6 +4,7 @@ import collections
 import dataclasses
 import logging
 import os
+import pathlib
 from typing import Callable, Mapping, Optional, Sequence, Tuple, Type
 
 import numpy as np
@@ -187,7 +188,7 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
         self.venv = venv
         self.gen_algo = gen_algo
         self._reward_net = reward_net.to(gen_algo.device)
-        self._log_dir = log_dir
+        self._log_dir = pathlib.Path(log_dir).resolve()
 
         # Create graph for optimising/recording stats on discriminator
         self._disc_opt_cls = disc_opt_cls
@@ -201,9 +202,9 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
 
         if self._init_tensorboard:
             logging.info("building summary directory at " + self._log_dir)
-            summary_dir = os.path.join(self._log_dir, "summary")
-            os.makedirs(summary_dir, exist_ok=True)
-            self._summary_writer = thboard.SummaryWriter(summary_dir)
+            summary_dir = self._log_dir / "summary"
+            summary_dir.mkdir(parents=True, exist_ok=True)
+            self._summary_writer = thboard.SummaryWriter(str(summary_dir))
 
         venv = self.venv_buffering = wrappers.BufferingWrapper(self.venv)
 

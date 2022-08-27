@@ -6,6 +6,7 @@ import json
 import logging
 import os
 import os.path as osp
+import pathlib
 import tempfile
 import warnings
 from collections import OrderedDict
@@ -97,24 +98,25 @@ def gather_tb_directories() -> dict:
     Raises:
         OSError: If the symlink cannot be created.
     """
-    os.makedirs("/tmp/analysis_tb", exist_ok=True)
-    tmp_dir = tempfile.mkdtemp(dir="/tmp/analysis_tb/")
+    tb_analysis_dir = pathlib.Path("/tmp/analysis_tb")
+    tb_analysis_dir.mkdir(exist_ok=True)
+    tmp_dir = pathlib.Path(tempfile.mkdtemp(dir=tb_analysis_dir))
 
     tb_dirs_count = 0
     for sd in _gather_sacred_dicts():
         # Expecting a path like "~/ray_results/{run_name}/sacred/1".
         # Want to search for all Tensorboard dirs inside
         # "~/ray_results/{run_name}".
-        sacred_dir = sd.sacred_dir.rstrip("/")
-        run_dir = osp.dirname(osp.dirname(sacred_dir))
-        run_name = osp.basename(run_dir)
+        sacred_dir = pathlib.Path(sd.sacred_dir)
+        run_dir = sacred_dir.parent.parent
+        run_name = run_dir.name
 
         # log is what we use as subdirectory in new code.
         # rl, tb, sb_tb all appear in old versions.
         for basename in ["log", "rl", "tb", "sb_tb"]:
             tb_src_dirs = tuple(
                 sacred_util.filter_subdirs(
-                    run_dir,
+                    str(run_dir),
                     lambda path: osp.basename(path) == basename,
                 ),
             )
@@ -122,12 +124,12 @@ def gather_tb_directories() -> dict:
                 assert len(tb_src_dirs) == 1, "expect at most one TB dir of each type"
                 tb_src_dir = tb_src_dirs[0]
 
-                symlinks_dir = osp.join(tmp_dir, basename)
-                os.makedirs(symlinks_dir, exist_ok=True)
+                symlinks_dir = tmp_dir / basename
+                symlinks_dir.mkdir(exist_ok=True)
 
-                tb_symlink = osp.join(symlinks_dir, run_name)
+                tb_symlink = symlinks_dir / run_name
                 try:
-                    os.symlink(tb_src_dir, tb_symlink)
+                    tb_symlink.symlink_to(tb_src_dir)
                 except OSError as e:
                     if os.name == "nt":  # Windows
                         msg = (
@@ -318,7 +320,8 @@ def _make_return_summary(stats: dict, prefix="") -> str:
 
 
 def main_console():
-    observer = FileStorageObserver(osp.join("output", "sacred", "analyze"))
+    observer_path = pathlib.Path.cwd() / "output" / "sacred" / "analyze"
+    observer = FileStorageObserver(observer_path)
     analysis_ex.observers.append(observer)
     analysis_ex.run_commandline()
 

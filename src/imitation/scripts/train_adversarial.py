@@ -4,6 +4,7 @@ import functools
 import logging
 import os
 import os.path as osp
+import pathlib
 from typing import Any, Mapping, Optional, Type
 
 import sacred.commands
@@ -22,15 +23,15 @@ from imitation.scripts.config.train_adversarial import train_adversarial_ex
 logger = logging.getLogger("imitation.scripts.train_adversarial")
 
 
-def save(trainer, save_path):
+def save(trainer: common.AdversarialTrainer, save_path: pathlib.Path):
     """Save discriminator and generator."""
     # We implement this here and not in Trainer since we do not want to actually
     # serialize the whole Trainer (including e.g. expert demonstrations).
-    os.makedirs(save_path, exist_ok=True)
-    th.save(trainer.reward_train, os.path.join(save_path, "reward_train.pt"))
-    th.save(trainer.reward_test, os.path.join(save_path, "reward_test.pt"))
+    save_path.mkdir(parents=True, exist_ok=True)
+    th.save(trainer.reward_train, save_path / "reward_train.pt")
+    th.save(trainer.reward_test, save_path / "reward_test.pt")
     serialize.save_stable_model(
-        os.path.join(save_path, "gen_policy"),
+        save_path / "gen_policy",
         trainer.gen_algo,
     )
 
@@ -113,7 +114,8 @@ def train_adversarial(
         # So, support showing merged config from `train_adversarial {airl,gail}`.
         sacred.commands.print_config(_run)
 
-    custom_logger, log_dir = common_config.setup_logging()
+    custom_logger, _log_dir = common_config.setup_logging()
+    log_dir = pathlib.Path(_log_dir)
     expert_trajs = demonstrations.load_expert_trajs()
 
     with common_config.make_venv() as venv:
@@ -144,22 +146,22 @@ def train_adversarial(
             venv=venv,
             demonstrations=expert_trajs,
             gen_algo=gen_algo,
-            log_dir=log_dir,
+            log_dir=str(log_dir),
             reward_net=reward_net,
             custom_logger=custom_logger,
             **algorithm_kwargs,
         )
 
-        def callback(round_num):
+        def callback(round_num: int, /) -> None:
             if checkpoint_interval > 0 and round_num % checkpoint_interval == 0:
-                save(trainer, os.path.join(log_dir, "checkpoints", f"{round_num:05d}"))
+                save(trainer, log_dir / "checkpoints" / f"{round_num:05d}")
 
         trainer.train(total_timesteps, callback)
         imit_stats = train.eval_policy(trainer.policy, trainer.venv_train)
 
     # Save final artifacts.
     if checkpoint_interval >= 0:
-        save(trainer, os.path.join(log_dir, "checkpoints", "final"))
+        save(trainer, log_dir / "checkpoints" / "final")
 
     return {
         "imit_stats": imit_stats,
@@ -178,7 +180,8 @@ def airl():
 
 
 def main_console():
-    observer = FileStorageObserver(osp.join("output", "sacred", "train_adversarial"))
+    observer_path = pathlib.Path.cwd() / "output" / "sacred" / "train_adversarial"
+    observer = FileStorageObserver(observer_path)
     train_adversarial_ex.observers.append(observer)
     train_adversarial_ex.run_commandline()
 

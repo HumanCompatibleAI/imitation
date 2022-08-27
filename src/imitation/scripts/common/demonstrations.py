@@ -2,7 +2,8 @@
 
 import logging
 import os
-from typing import Optional, Sequence
+import pathlib
+from typing import Dict, Optional, Sequence
 
 import sacred
 
@@ -27,23 +28,22 @@ def fast():
     n_expert_demos = 1  # noqa: F841
 
 
-def guess_expert_dir(data_dir: str, env_name: str) -> str:
+def guess_expert_dir(data_dir: pathlib.Path, env_name: str) -> pathlib.Path:
+    assert data_dir.is_absolute()
     rollout_hint = env_name.rsplit("-", 1)[0].replace("/", "_").lower()
-    return os.path.join(data_dir, "expert_models", f"{rollout_hint}_0")
+    return data_dir / "expert_models" / f"{rollout_hint}_0"
 
 
 @demonstrations_ingredient.config_hook
 def hook(config, command_name, logger):
     """If rollout_path not set explicitly, then guess it based on environment name."""
     del command_name, logger
-    updates = {}
+    updates: Dict[str, str] = {}
     if config["demonstrations"]["rollout_path"] is None:
         data_dir = config["demonstrations"]["data_dir"]
         env_name = config["common"]["env_name"].replace("/", "_")
-        updates["rollout_path"] = os.path.join(
-            guess_expert_dir(data_dir, env_name),
-            "rollouts",
-            "final.pkl",
+        updates["rollout_path"] = str(
+            guess_expert_dir(data_dir, env_name) / "rollouts" / "final.pkl"
         )
     return updates
 

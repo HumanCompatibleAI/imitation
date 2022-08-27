@@ -1,6 +1,7 @@
 """Wrapper to record rendered video frames from an environment."""
 
 import os
+import pathlib
 
 import gym
 from gym.wrappers.monitoring import video_recorder
@@ -33,8 +34,8 @@ class VideoWrapper(gym.Wrapper):
         self.video_recorder = None
         self.single_video = single_video
 
-        self.directory = os.path.abspath(directory)
-        os.makedirs(self.directory)
+        self.directory = pathlib.Path(types.path_to_str(directory)).resolve()
+        self.directory.mkdir(parents=True, exist_ok=True)
 
     def _reset_video_recorder(self) -> None:
         """Creates a video recorder if one does not already exist.
@@ -53,10 +54,7 @@ class VideoWrapper(gym.Wrapper):
             # No video recorder -- start a new one.
             self.video_recorder = video_recorder.VideoRecorder(
                 env=self.env,
-                base_path=os.path.join(
-                    self.directory,
-                    "video.{:06}".format(self.episode_id),
-                ),
+                base_path=str(self.directory / f"video.{self.episode_id:06}"),
                 metadata={"episode_id": self.episode_id},
             )
 

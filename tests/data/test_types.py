@@ -111,7 +111,7 @@ def _check_transitions_get_item(trans, key):
 @contextlib.contextmanager
 def pushd(dir_path):
     """Change directory temporarily inside context."""
-    orig_dir = os.getcwd()
+    orig_dir = pathlib.Path.cwd()
     try:
         os.chdir(dir_path)
         yield

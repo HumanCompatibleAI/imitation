@@ -382,7 +382,7 @@ class DAggerTrainer(base.BaseImitationAlgorithm):
     def _try_load_demos(self) -> None:
         """Load the dataset for this round into self.bc_trainer as a DataLoader."""
         demo_dir = self._demo_dir_path_for_round()
-        demo_paths = self._get_demo_paths(demo_dir) if os.path.isdir(demo_dir) else []
+        demo_paths = self._get_demo_paths(demo_dir) if demo_dir.is_dir() else []
         if len(demo_paths) == 0:
             raise NeedsDemosException(
                 f"No demos found for round {self.round_num} in dir '{demo_dir}'. "

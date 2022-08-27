@@ -1,8 +1,8 @@
 """Evaluate policies: render policy interactively, save videos, log episode return."""
 
 import logging
-import os
-import os.path as osp
+import pathlib
+import re
 import time
 from typing import Any, Mapping, Optional
 
@@ -40,12 +40,12 @@ class InteractiveRender(VecEnvWrapper):
         return ob
 
 
-def video_wrapper_factory(log_dir: str, **kwargs):
+def video_wrapper_factory(log_dir: pathlib.Path, **kwargs):
     """Returns a function that wraps the environment in a video recorder."""
 
-    def f(env: gym.Env, i: int) -> gym.Env:
+    def f(env: gym.Env, i: int) -> video_wrapper.VideoWrapper:
         """Wraps `env` in a recorder saving videos to `{log_dir}/videos/{i}`."""
-        directory = os.path.join(log_dir, "videos", str(i))
+        directory = log_dir / "videos" / str(i)
         return video_wrapper.VideoWrapper(env, directory=directory, **kwargs)
 
     return f
@@ -116,7 +116,8 @@ def eval_policy(
 
 
 def main_console():
-    observer = FileStorageObserver(osp.join("output", "sacred", "eval_policy"))
+    observer_path = pathlib.Path.cwd() / "output" / "sacred" / "eval_policy"
+    observer = FileStorageObserver(observer_path)
     eval_policy_ex.observers.append(observer)
     eval_policy_ex.run_commandline()
 

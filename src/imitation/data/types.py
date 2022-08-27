@@ -40,6 +40,11 @@ def path_to_str(path: AnyPath) -> str:
         return str(path)
 
 
+def path_to_pathlib(path: AnyPath) -> pathlib.Path:
+    """Converts a path to a pathlib.Path."""
+    return pathlib.Path(path_to_str(path))
+
+
 @dataclasses.dataclass(frozen=True)
 class Trajectory:
     """A trajectory, e.g. a one episode rollout from an expert policy."""

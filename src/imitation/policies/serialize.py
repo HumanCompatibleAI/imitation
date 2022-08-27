@@ -124,7 +124,7 @@ def load_policy(
 
 
 def save_stable_model(
-    output_dir: str,
+    output_dir: pathlib.Path,
     model: base_class.BaseAlgorithm,
 ) -> None:
     """Serialize Stable Baselines model.
@@ -138,9 +138,10 @@ def save_stable_model(
     # Save each model in new directory in case we want to add metadata or other
     # information in future. (E.g. we used to save `VecNormalize` statistics here,
     # although that is no longer necessary.)
-    os.makedirs(output_dir, exist_ok=True)
-    model.save(os.path.join(output_dir, "model.zip"))
-    logging.info("Saved policy to %s", output_dir)
+    output_dir = output_dir.resolve()
+    output_dir.mkdir(parents=True, exist_ok=True)
+    model.save(str(output_dir / "model.zip"))
+    logging.info(f"Saved policy to {output_dir}")
 
 
 class SavePolicyCallback(callbacks.EventCallback):
@@ -152,7 +153,7 @@ class SavePolicyCallback(callbacks.EventCallback):
 
     def __init__(
         self,
-        policy_dir: str,
+        policy_dir: pathlib.Path,
         *args,
         **kwargs,
     ):
@@ -167,6 +168,7 @@ class SavePolicyCallback(callbacks.EventCallback):
         self.policy_dir = policy_dir
 
     def _on_step(self) -> bool:
-        output_dir = os.path.join(self.policy_dir, f"{self.num_timesteps:012d}")
+        assert self.model is not None
+        output_dir = self.policy_dir / f"{self.num_timesteps:012d}"
         save_stable_model(output_dir, self.model)
         return True

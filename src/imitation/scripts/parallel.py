@@ -3,6 +3,7 @@
 import collections.abc
 import copy
 import os
+import pathlib
 from typing import Any, Callable, Mapping, Optional, Sequence
 
 import ray
@@ -96,9 +97,9 @@ def parallel(
             and "data_dir" not in base_config_updates.get("demonstrations", {})
         )
         if no_data_dir:
-            data_dir = os.path.join(os.getcwd(), "data/")
+            data_dir = pathlib.Path.cwd() / "data"
             base_config_updates = dict(base_config_updates)
-            base_config_updates["demonstrations.data_dir"] = data_dir
+            base_config_updates["demonstrations.data_dir"] = str(data_dir)
 
     trainable = _ray_tune_sacred_wrapper(
         sacred_ex_name,
@@ -229,7 +230,8 @@ def _ray_tune_sacred_wrapper(
 
 
 def main_console():
-    observer = FileStorageObserver(os.path.join("output", "sacred", "parallel"))
+    observer_path = pathlib.Path.cwd() / "output" / "sacred" / "parallel"
+    observer = FileStorageObserver(observer_path)
     parallel_ex.observers.append(observer)
     parallel_ex.run_commandline()
 

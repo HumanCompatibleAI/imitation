@@ -3,8 +3,9 @@
 import contextlib
 import datetime
 import os
+import pathlib
 import tempfile
-from typing import Any, Dict, Generator, Optional, Sequence, Tuple, Union
+from typing import Any, Dict, Generator, List, Optional, Sequence, Tuple, Union
 
 import stable_baselines3.common.logger as sb_logger
 
@@ -12,7 +13,7 @@ from imitation.data import types
 
 
 def _build_output_formats(
-    folder: str,
+    folder: pathlib.Path,
     format_strs: Sequence[str],
 ) -> Sequence[sb_logger.KVWriter]:
     """Build output formats for initializing a Stable Baselines Logger.
@@ -25,13 +26,13 @@ def _build_output_formats(
     Returns:
         A list of output formats, one corresponding to each `format_strs`.
     """
-    os.makedirs(folder, exist_ok=True)
-    output_formats = []
+    folder.mkdir(parents=True, exist_ok=True)
+    output_formats: List[sb_logger.KVWriter] = []
     for f in format_strs:
         if f == "wandb":
             output_formats.append(WandbOutputFormat())
         else:
-            output_formats.append(sb_logger.make_output_format(f, folder))
+            output_formats.append(sb_logger.make_output_format(f, str(folder)))
     return output_formats
 
 
@@ -42,6 +43,12 @@ class HierarchicalLogger(sb_logger.Logger):
     values are loggged to a sub-logger, with only mean values recorded in the
     top-level (root) logger.
     """
+
+    default_logger: sb_logger.Logger
+    current_logger: Optional[sb_logger.Logger]
+    _cached_loggers: Dict[str, sb_logger.Logger]
+    _subdir: Optional[str]
+    _format_strs: Sequence[str]
 
     def __init__(
         self,
@@ -108,19 +115,21 @@ class HierarchicalLogger(sb_logger.Logger):
         if self.current_logger is not None:
             raise RuntimeError("Nested `accumulate_means` context")
 
-        if subdir in self._cached_loggers:
-            logger = self._cached_loggers[subdir]
+        subdir_str = types.path_to_str(subdir)
+        if subdir_str in self._cached_loggers:
+            logger = self._cached_loggers[subdir_str]
         else:
-            subdir = types.path_to_str(subdir)
-            folder = os.path.join(self.default_logger.dir, "raw", subdir)
-            os.makedirs(folder, exist_ok=True)
+            default_logger_dir = self.default_logger.dir
+            assert default_logger_dir is not None
+            folder = pathlib.Path(default_logger_dir) / "raw" / subdir_str
+            folder.mkdir(exist_ok=True, parents=True)
             output_formats = _build_output_formats(folder, self.format_strs)
-            logger = sb_logger.Logger(folder, list(output_formats))
-            self._cached_loggers[subdir] = logger
+            logger = sb_logger.Logger(str(folder), list(output_formats))
+            self._cached_loggers[subdir_str] = logger
 
         try:
             self.current_logger = logger
-            self._subdir = subdir
+            self._subdir = subdir_str
             self._update_name_to_maps()
             yield
         finally:
@@ -227,15 +236,16 @@ def configure(
         The configured HierarchicalLogger instance.
     """
     if folder is None:
+        tempdir = pathlib.Path(tempfile.gettempdir())
         now = datetime.datetime.now()
         timestamp = now.strftime("imitation-%Y-%m-%d-%H-%M-%S-%f")
-        folder = os.path.join(tempfile.gettempdir(), timestamp)
+        folder = tempdir / timestamp
     else:
-        folder = types.path_to_str(folder)
+        folder = types.path_to_pathlib(folder)
     if format_strs is None:
         format_strs = ["stdout", "log", "csv"]
     output_formats = _build_output_formats(folder, format_strs)
-    default_logger = sb_logger.Logger(folder, list(output_formats))
+    default_logger = sb_logger.Logger(str(folder), list(output_formats))
     hier_format_strs = [f for f in format_strs if f != "wandb"]
     hier_logger = HierarchicalLogger(default_logger, hier_format_strs)
     return hier_logger
