@@ -201,7 +201,7 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
         )
 
         if self._init_tensorboard:
-            logging.info("building summary directory at " + self._log_dir)
+            logging.info(f"building summary directory at {self._log_dir}")
             summary_dir = self._log_dir / "summary"
             summary_dir.mkdir(parents=True, exist_ok=True)
             self._summary_writer = thboard.SummaryWriter(str(summary_dir))

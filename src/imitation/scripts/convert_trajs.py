@@ -16,7 +16,7 @@ import warnings
 from imitation.data import types
 
 
-def update_traj_file_in_place(path: pathlib.Path) -> None:
+def update_traj_file_in_place(path: str) -> None:
     """Modifies trajectories pickle file in-place to update data to new format.
 
     The new data is saved as `Sequence[imitation.types.TrajectoryWithRew]`.
@@ -34,6 +34,7 @@ def update_traj_file_in_place(path: pathlib.Path) -> None:
         )
         trajs = types.load(path)
 
+    path = pathlib.Path(path)
     ext = path.suffix
     new_ext = ".npz" if ext in (".pkl", ".npz") else ext + ".npz"
     types.save(path.with_suffix(new_ext), trajs)

@@ -110,7 +110,8 @@ def eval_policy(
         trajs = rollout.generate_trajectories(policy, venv, sample_until)
 
     if rollout_save_path:
-        types.save(rollout_save_path.replace("{log_dir}", log_dir), trajs)
+
+        types.save(log_dir / rollout_save_path.lstrip("{log_dir}/"), trajs)
 
     return rollout.rollout_stats(trajs)
 

@@ -28,7 +28,8 @@ def fast():
     n_expert_demos = 1  # noqa: F841
 
 
-def guess_expert_dir(data_dir: pathlib.Path, env_name: str) -> pathlib.Path:
+def guess_expert_dir(data_dir: str, env_name: str) -> pathlib.Path:
+    data_dir = pathlib.Path(data_dir)
     assert data_dir.is_absolute()
     rollout_hint = env_name.rsplit("-", 1)[0].replace("/", "_").lower()
     return data_dir / "expert_models" / f"{rollout_hint}_0"
