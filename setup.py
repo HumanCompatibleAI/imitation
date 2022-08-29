@@ -197,7 +197,7 @@ setup(
         "tqdm",
         "scikit-learn>=0.21.2",
         "seals@git+"
-        "https://github.com/HumanCompatibleAI/seals.git@imitation-envs-to-seals",
+        "https://github.com/HumanCompatibleAI/seals.git@b7dc25f78165d5ef87cb4d7d47790e391898d167",
         STABLE_BASELINES3,
         # TODO(adam) switch to upstream release if they make it
         #  See https://github.com/IDSIA/sacred/issues/879
