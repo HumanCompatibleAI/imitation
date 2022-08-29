@@ -60,7 +60,7 @@ def test_save_stable_model_errors_and_warnings(tmpdir, policy_env_name_pair):
 
     # Trigger FileNotError for nonexistent directory
     dir_nonexistent = tmpdir / "i_dont_exist"
-    with pytest.raises(FileNotFoundError, match=".*needs to be a directory.*"):
+    with pytest.raises(FileNotFoundError):
         serialize.load_policy(policy, venv, path=str(dir_nonexistent))
 
 
