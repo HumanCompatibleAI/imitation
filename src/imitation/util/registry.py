@@ -8,7 +8,7 @@ import gym
 from stable_baselines3.common.vec_env import VecEnv
 
 T = TypeVar("T")
-LoaderFn = Callable[[str, VecEnv], T]
+LoaderFn = Callable[..., T]
 """The type stored in Registry is commonly an instance of LoaderFn."""
 
 
