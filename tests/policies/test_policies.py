@@ -27,7 +27,7 @@ assert_equal = functools.partial(th.testing.assert_close, rtol=0, atol=0)
 def test_actions_valid(env_name, policy_type):
     """Test output actions of our custom policies always lie in action space."""
     venv = util.make_vec_env(env_name, n_envs=1, parallel=False)
-    policy = serialize.load_policy(policy_type, "foobar", venv)
+    policy = serialize.load_policy(policy_type, venv)
     transitions = rollout.generate_transitions(policy, venv, n_timesteps=100)
 
     for a in transitions.acts:
@@ -51,17 +51,17 @@ def test_save_stable_model_errors_and_warnings(tmpdir, policy_env_name_pair):
     dir_a = tmpdir / "a"
     dir_a.mkdir()
     with pytest.raises(FileNotFoundError, match=".*No such file or.*model.zip.*"):
-        serialize.load_policy(policy, str(dir_a), venv)
+        serialize.load_policy(policy, venv, path=str(dir_a))
 
     vec_normalize = dir_a / "vec_normalize.pkl"
     vec_normalize.touch()
     with pytest.raises(FileExistsError, match="Outdated policy format.*"):
-        serialize.load_policy(policy, str(dir_a), venv)
+        serialize.load_policy(policy, venv, path=str(dir_a))
 
     # Trigger FileNotError for nonexistent directory
     dir_nonexistent = tmpdir / "i_dont_exist"
     with pytest.raises(FileNotFoundError, match=".*needs to be a directory.*"):
-        serialize.load_policy(policy, str(dir_nonexistent), venv)
+        serialize.load_policy(policy, venv, path=str(dir_nonexistent))
 
 
 def _test_serialize_identity(env_name, model_cfg, tmpdir):
@@ -85,7 +85,7 @@ def _test_serialize_identity(env_name, model_cfg, tmpdir):
     )
 
     serialize.save_stable_model(tmpdir, model)
-    loaded = serialize.load_policy(model_name, tmpdir, venv)
+    loaded = serialize.load_policy(model_name, venv, path=tmpdir)
     venv.env_method("seed", 0)
     venv.reset()
     new_rollout = rollout.generate_transitions(

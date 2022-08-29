@@ -10,12 +10,16 @@ from typing import Callable, Type, TypeVar
 
 from stable_baselines3.common import base_class, callbacks, policies, vec_env
 
+import huggingface_sb3 as hfsb3
 from imitation.policies import base
 from imitation.util import registry
 
 Algorithm = TypeVar("Algorithm", bound=base_class.BaseAlgorithm)
 
-PolicyLoaderFn = Callable[[str, vec_env.VecEnv], policies.BasePolicy]
+# Note: a VecEnv will always be passed first and then any kwargs. There is just no
+# proper way to specify this in python yet. For details see
+# https://stackoverflow.com/questions/61569324/type-annotation-for-callable-that-takes-kwargs
+PolicyLoaderFn = Callable[..., policies.BasePolicy]
 
 policy_registry: registry.Registry[PolicyLoaderFn] = registry.Registry()
 
@@ -60,7 +64,7 @@ def load_stable_baselines_model(
     return cls.load(path, env=venv, **kwargs)
 
 
-def _load_stable_baselines(
+def _load_stable_baselines_from_file(
     cls: Type[base_class.BaseAlgorithm],
 ) -> PolicyLoaderFn:
     """Higher-order function, returning a policy loading function.
@@ -72,9 +76,35 @@ def _load_stable_baselines(
         A function loading policies trained via cls.
     """
 
-    def f(path: str, venv: vec_env.VecEnv) -> policies.BasePolicy:
+    def f(venv: vec_env.VecEnv, path: str) -> policies.BasePolicy:
         """Loads a policy saved to path, for environment env."""
         model = load_stable_baselines_model(cls, path, venv)
+        return getattr(model, "policy")
+
+    return f
+
+
+def _load_stable_baselines_from_huggingface(
+    algo_name: str,
+    cls: Type[base_class.BaseAlgorithm],
+) -> PolicyLoaderFn:
+    """Higher-order function, returning a policy loading function.
+
+    Args:
+        cls: The RL algorithm, e.g. `stable_baselines3.PPO`.
+
+    Returns:
+        A function loading policies trained via cls.
+    """
+
+    def f(venv: vec_env.VecEnv,
+          env_id: str,
+          organization: str = "HumanCompatibleAI") -> policies.BasePolicy:
+        """Loads a policy saved to path, for environment env."""
+        model_name = hfsb3.ModelName(algo_name, hfsb3.EnvironmentName(env_id))
+        repo_id = hfsb3.ModelRepoId(organization, model_name)
+        filename = hfsb3.load_from_hub(repo_id, model_name.filename)
+        model = load_stable_baselines_model(cls, filename, venv)
         return getattr(model, "policy")
 
     return f
@@ -90,39 +120,45 @@ policy_registry.register(
 )
 
 
-def _add_stable_baselines_policies(classes):
+def _add_stable_baselines_policies_from_file(classes):
     for k, cls_name in classes.items():
         cls = registry.load_attr(cls_name)
-        fn = _load_stable_baselines(cls)
+        fn = _load_stable_baselines_from_file(cls)
         policy_registry.register(k, value=fn)
+
+
+def _add_stable_baselines_policies_from_huggingface(classes):
+    for k, cls_name in classes.items():
+        cls = registry.load_attr(cls_name)
+        fn = _load_stable_baselines_from_huggingface(k, cls)
+        policy_registry.register(f"{k}-huggingface", value=fn)
 
 
 STABLE_BASELINES_CLASSES = {
     "ppo": "stable_baselines3:PPO",
     "sac": "stable_baselines3:SAC",
 }
-_add_stable_baselines_policies(STABLE_BASELINES_CLASSES)
+_add_stable_baselines_policies_from_file(STABLE_BASELINES_CLASSES)
+_add_stable_baselines_policies_from_huggingface(STABLE_BASELINES_CLASSES)
 
 
 def load_policy(
     policy_type: str,
-    policy_dir: str,
     venv: vec_env.VecEnv,
-    filename: str = "model.zip",
+    **kwargs,
 ) -> policies.BasePolicy:
-    """Load serialized policy.
+    """
+    Load serialized policy.
 
     Args:
         policy_type: A key in `policy_registry`, e.g. `ppo`.
-        policy_dir: A path on disk where the policy is stored.
         venv: An environment that the policy is to be used with.
-        filename: The filename of the policy.
-
+        kwargs: Additional arguments to pass to the policy loader.
     Returns:
         The deserialized policy.
     """
     agent_loader = policy_registry.get(policy_type)
-    return agent_loader(os.path.join(policy_dir, filename), venv)
+    return agent_loader(venv, **kwargs)
 
 
 def save_stable_model(

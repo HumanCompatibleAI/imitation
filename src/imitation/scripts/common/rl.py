@@ -144,9 +144,15 @@ def load_rl_algo_from_path(
     rl_kwargs: Mapping[str, Any],
     _seed: int,
 ) -> base_class.BaseAlgorithm:
+
+    # If the agent path points to a directory, we assume, that the model filename is
+    # "model.zip".
+    if os.path.isdir(agent_path):
+        agent_path = os.path.join(agent_path, "model.zip")
+
     agent = serialize.load_stable_baselines_model(
         cls=rl_cls,
-        path=os.path.join(agent_path, "model.zip"),
+        path=agent_path,
         venv=venv,
         seed=_seed,
         **rl_kwargs,

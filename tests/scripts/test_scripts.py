@@ -84,30 +84,6 @@ def test_main_console(script_mod):
         script_mod.main_console()
 
 
-_rl_agent_loading_configs = {
-    "agent_path": CARTPOLE_TEST_POLICY_PATH,
-    # FIXME(yawen): the policy we load was trained on 8 parallel environments
-    #  and for some reason using it breaks if we use just 1 (like would be the
-    #  default with the fast named_config)
-    "common": dict(num_vec=8),
-}
-
-PREFERENCE_COMPARISON_CONFIGS = [
-    {},
-    {
-        # We're testing preference saving and disabling sampling here as well;
-        # having yet another run just for those would be wasteful since they
-        # don't interact with warm starting an agent.
-        "save_preferences": True,
-        "gatherer_kwargs": {"sample": False},
-        **_rl_agent_loading_configs,
-    },
-    {
-        "checkpoint_interval": 1,
-        # Test that we can save checkpoints
-    },
-]
-
 ALGO_FAST_CONFIGS = {
     "adversarial": [
         "common.fast",
@@ -125,12 +101,39 @@ ALGO_FAST_CONFIGS = {
 RL_SAC_NAMED_CONFIGS = ["rl.sac", "train.sac"]
 
 
-@pytest.mark.parametrize("config", PREFERENCE_COMPARISON_CONFIGS)
-def test_train_preference_comparisons_main(tmpdir, config):
+@pytest.fixture(
+    params=["plain", "with_expert_trajectories", "warmstart", "with_checkpoints"]
+)
+def preference_comparison_config(request):
+    return dict(
+        plain={},
+        with_expert_trajectories={"trajectory_path": CARTPOLE_TEST_ROLLOUT_PATH},
+        warmstart={  # TODO(max): for some reason this does not finish.
+            # We're testing preference saving and disabling sampling here as well;
+            # having yet another run just for those would be wasteful since they
+            # don't interact with warm starting an agent.
+            "save_preferences": True,
+            "gatherer_kwargs": {"sample": False},
+            "agent_path": CARTPOLE_TEST_POLICY_PATH,
+            # FIXME(yawen): the policy we load was trained on 8 parallel environments
+            #  and for some reason using it breaks if we use just 1 (like would be the
+            #  default with the fast named_config)
+            "common": dict(num_vec=8),
+        },
+        with_checkpoints={
+            "checkpoint_interval": 1,
+            # Test that we can save checkpoints
+        },
+    )[request.param]
+
+
+def test_train_preference_comparisons_main(tmpdir, preference_comparison_config):
     config_updates = dict(common=dict(log_root=tmpdir))
-    sacred.utils.recursive_update(config_updates, config)
+    sacred.utils.recursive_update(config_updates, preference_comparison_config)
     run = train_preference_comparisons.train_preference_comparisons_ex.run(
-        named_configs=["seals_cartpole"] + ALGO_FAST_CONFIGS["preference_comparison"],
+        # Note: we have to use the cartpole and not the seals_cartpole config because
+        #  the seals_cartpole config needs a fixed horizon.
+        named_configs=["cartpole"] + ALGO_FAST_CONFIGS["preference_comparison"],
         config_updates=config_updates,
     )
     assert run.status == "COMPLETED"
@@ -241,9 +244,9 @@ def test_train_dagger_warmstart(tmpdir):
         config_updates=dict(
             common=dict(log_root=tmpdir),
             demonstrations=dict(rollout_path=CARTPOLE_TEST_ROLLOUT_PATH),
-            dagger=dict(
-                expert_policy_type="ppo",
-                expert_policy_path=CARTPOLE_TEST_POLICY_PATH,
+            expert=dict(
+                policy_type="ppo",
+                loader_kwargs=dict(path=CARTPOLE_TEST_POLICY_PATH / "model.zip"),
             ),
         ),
     )
@@ -257,10 +260,6 @@ def test_train_dagger_warmstart(tmpdir):
         config_updates=dict(
             common=dict(log_root=tmpdir),
             demonstrations=dict(rollout_path=CARTPOLE_TEST_ROLLOUT_PATH),
-            dagger=dict(
-                expert_policy_type="ppo",
-                expert_policy_path=CARTPOLE_TEST_POLICY_PATH,
-            ),
             agent_path=policy_path,
         ),
     )
@@ -280,14 +279,28 @@ def test_train_bc_main_with_none_demonstrations_raises_value_error(tmpdir):
         )
 
 
-@pytest.mark.parametrize("expert_config", [
-    pytest.param(dict(policy_path=CARTPOLE_TEST_POLICY_PATH / "model.zip"), id="policy_path"),
-    pytest.param(dict(huggingface_repo_id="HumanCompatibleAI/ppo-seals-CartPole-v0"), id="huggingface_repo_id"),
-    pytest.param(dict(policy_type="random"), id="random policy"),
-    pytest.param(dict(policy_type="zero"), id="zero policy")]
+@pytest.fixture(
+    params=[
+        "expert_from_path",
+        "expert_from_huggingface",
+        "random_expert",
+        "zero_expert",
+    ]
 )
-def test_train_bc_main(tmpdir, expert_config):
-    run = train_imitation.train_imitation_ex.run(
+def bc_config(tmpdir, request):
+    expert_config = dict(
+        expert_from_path=dict(
+            policy_type="ppo",
+            loader_kwargs=dict(path=CARTPOLE_TEST_POLICY_PATH / "model.zip"),
+        ),
+        expert_from_huggingface=dict(
+            policy_type="ppo-huggingface",
+            loader_kwargs=dict(env_id="seals/CartPole-v0"),
+        ),
+        random_expert=dict(policy_type="random"),
+        zero_expert=dict(policy_type="zero"),
+    )[request.param]
+    return dict(
         command_name="bc",
         named_configs=["seals_cartpole"] + ALGO_FAST_CONFIGS["imitation"],
         config_updates=dict(
@@ -295,21 +308,31 @@ def test_train_bc_main(tmpdir, expert_config):
             expert=expert_config,
         ),
     )
+
+
+def test_train_bc_main(bc_config):
+    run = train_imitation.train_imitation_ex.run(**bc_config)
     assert run.status == "COMPLETED"
     assert isinstance(run.result, dict)
 
 
-TRAIN_RL_PPO_CONFIGS = [{}, _rl_agent_loading_configs]
+@pytest.fixture(params=["cold_start", "warm_start"])
+def rl_train_ppo_config(request, tmpdir):
+    config = dict(common=dict(log_root=tmpdir))
+    if request.param == "warm_start":
+        # FIXME(yawen): the policy we load was trained on 8 parallel environments
+        #  and for some reason using it breaks if we use just 1 (like would be the
+        #  default with the fast named_config)
+        config["agent_path"] = CARTPOLE_TEST_POLICY_PATH / "model.zip"
+        config["common"] = dict(num_vec=8)
+    return config
 
 
-@pytest.mark.parametrize("config", TRAIN_RL_PPO_CONFIGS)
-def test_train_rl_main(tmpdir, config):
+def test_train_rl_main(rl_train_ppo_config):
     """Smoke test for imitation.scripts.train_rl."""
-    config_updates = dict(common=dict(log_root=tmpdir))
-    sacred.utils.recursive_update(config_updates, config)
     run = train_rl.train_rl_ex.run(
         named_configs=["seals_cartpole"] + ALGO_FAST_CONFIGS["rl"],
-        config_updates=config_updates,
+        config_updates=rl_train_ppo_config,
     )
     assert run.status == "COMPLETED"
     assert isinstance(run.result, dict)
