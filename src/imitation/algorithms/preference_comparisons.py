@@ -352,6 +352,10 @@ class PreferenceModel(nn.Module):
                 in returns that are above this threshold. This threshold
                 is therefore in logspace. The default value of 50 means
                 that probabilities below 2e-22 are rounded up to 2e-22.
+
+        Raises:
+            ValueError: if `RewardEnsemble` is wrapped around a class
+                other than `AddSTDRewardWrapper`.
         """
         super().__init__()
         self.model = model
@@ -362,6 +366,19 @@ class PreferenceModel(nn.Module):
         # if the base model is an ensemble model, then keep the base model as
         # model to get rewards from all networks
         if self.is_ensemble:
+            # reward_model may include an AddSTDRewardWrapper for RL training; but we
+            # must train directly on the base model for reward model training.
+            is_base = model is base_model
+            is_std_wrapper = (
+                isinstance(model, reward_nets.AddSTDRewardWrapper)
+                and model.base is base_model
+            )
+
+            if not (is_base or is_std_wrapper):
+                raise ValueError(
+                    "RewardEnsemble can only be wrapped"
+                    f" by AddSTDRewardWrapper but found {type(model).__name__}.",
+                )
             self.model = base_model
             self.member_pref_models = []
             for member in self.model.members:
@@ -376,7 +393,6 @@ class PreferenceModel(nn.Module):
     def forward(
         self,
         fragment_pairs: Sequence[TrajectoryPair],
-        ensemble_member_index: Optional[int] = None,
     ) -> Tuple[th.Tensor, Optional[th.Tensor]]:
         """Computes the preference probability of the first fragment for all pairs.
 
@@ -390,11 +406,6 @@ class PreferenceModel(nn.Module):
 
         Args:
             fragment_pairs: batch of pair of fragments.
-            ensemble_member_index: index of member network in ensemble model.
-                If the model is an ensemble of networks, this cannot be None.
-
-        Raises:
-            ValueError: if `ensemble_member_index` is None when `model` is an ensemble.
 
         Returns:
             A tuple with the first element as the preference probabilities for the
@@ -405,15 +416,6 @@ class PreferenceModel(nn.Module):
             network and (num_fragment_pairs, num_networks) for an ensemble of networks.
 
         """
-        if self.is_ensemble:
-            if ensemble_member_index is None:
-                raise ValueError(
-                    "`ensemble_member_index` required for ensemble models.",
-                )
-
-            pref_model = self.member_pref_models[ensemble_member_index]
-            return pref_model(fragment_pairs)
-
         probs = th.empty(len(fragment_pairs), dtype=th.float32)
         gt_reward_available = _trajectory_pair_includes_reward(fragment_pairs[0])
         if gt_reward_available:
@@ -973,7 +975,7 @@ class RewardLoss(nn.Module, abc.ABC):
         self,
         fragment_pairs: Sequence[TrajectoryPair],
         preferences: np.ndarray,
-        ensemble_member_index: Optional[int] = None,
+        preference_model: PreferenceModel,
     ) -> LossAndMetrics:
         """Computes the loss.
 
@@ -981,7 +983,7 @@ class RewardLoss(nn.Module, abc.ABC):
             fragment_pairs: Batch consisting of pairs of trajectory fragments.
             preferences: The probability that the first fragment is preferred
                 over the second. Typically 0, 1 or 0.5 (tie).
-            ensemble_member_index: index of member network in ensemble model
+            preference_model: model to predict the preferred fragment from a pair.
 
         Returns: # noqa: DAR202
             loss: the loss
@@ -998,23 +1000,15 @@ def _trajectory_pair_includes_reward(fragment_pair: TrajectoryPair):
 class CrossEntropyRewardLoss(RewardLoss):
     """Compute the cross entropy reward loss."""
 
-    def __init__(
-        self,
-        preference_model: PreferenceModel,
-    ):
-        """Create cross entropy reward loss.
-
-        Args:
-            preference_model: model to predict the preferred fragment from a pair.
-        """
+    def __init__(self):
+        """Create cross entropy reward loss."""
         super().__init__()
-        self.preference_model = preference_model
 
     def forward(
         self,
         fragment_pairs: Sequence[TrajectoryPair],
         preferences: np.ndarray,
-        ensemble_member_index: Optional[int] = None,
+        preference_model: PreferenceModel,
     ) -> LossAndMetrics:
         """Computes the loss.
 
@@ -1022,7 +1016,7 @@ class CrossEntropyRewardLoss(RewardLoss):
             fragment_pairs: Batch consisting of pairs of trajectory fragments.
             preferences: The probability that the first fragment is preferred
                 over the second. Typically 0, 1 or 0.5 (tie).
-            ensemble_member_index: index of member network in ensemble model
+            preference_model: model to predict the preferred fragment from a pair.
 
         Returns:
             The cross-entropy loss between the probability predicted by the
@@ -1030,7 +1024,7 @@ class CrossEntropyRewardLoss(RewardLoss):
                 are accuracy, and gt_reward_loss, if the ground truth reward is
                 available.
         """
-        probs, gt_probs = self.preference_model(fragment_pairs, ensemble_member_index)
+        probs, gt_probs = preference_model(fragment_pairs)
         # TODO(ejnnr): Here and below, > 0.5 is problematic
         # because getting exactly 0.5 is actually somewhat
         # common in some environments (as long as sample=False or temperature=0).
@@ -1063,17 +1057,25 @@ class RewardTrainer(abc.ABC):
 
     def __init__(
         self,
-        model: reward_nets.RewardNet,
+        preference_model: PreferenceModel,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
     ):
         """Initialize the reward trainer.
 
         Args:
-            model: the RewardNet instance to be trained
+            preference_model: the preference model to train the reward network.
             custom_logger: Where to log to; if None (default), creates a new logger.
         """
-        self._model = model
-        self.logger = custom_logger or imit_logger.configure()
+        self._preference_model = preference_model
+        self._logger = custom_logger or imit_logger.configure()
+
+    @property
+    def logger(self):
+        return self._logger
+
+    @logger.setter
+    def logger(self, custom_logger):
+        self._logger = custom_logger
 
     def train(self, dataset: PreferenceDataset, epoch_multiplier: float = 1.0) -> None:
         """Train the reward model on a batch of fragment pairs and preferences.
@@ -1083,7 +1085,7 @@ class RewardTrainer(abc.ABC):
             epoch_multiplier: how much longer to train for than usual
                 (measured relatively).
         """
-        with networks.training(self._model):
+        with networks.training(self._preference_model.model):
             self._train(dataset, epoch_multiplier)
 
     @abc.abstractmethod
@@ -1096,7 +1098,7 @@ class BasicRewardTrainer(RewardTrainer):
 
     def __init__(
         self,
-        model: reward_nets.RewardNet,
+        preference_model: PreferenceModel,
         loss: RewardLoss,
         batch_size: int = 32,
         epochs: int = 1,
@@ -1107,7 +1109,7 @@ class BasicRewardTrainer(RewardTrainer):
         """Initialize the reward model trainer.
 
         Args:
-            model: the RewardNet instance to be trained
+            preference_model: the preference model to train the reward network.
             loss: the loss to use
             batch_size: number of fragment pairs per batch
             epochs: number of epochs in each training iteration (can be adjusted
@@ -1119,12 +1121,12 @@ class BasicRewardTrainer(RewardTrainer):
                 to L2 regularization, see https://arxiv.org/abs/1711.05101
             custom_logger: Where to log to; if None (default), creates a new logger.
         """
-        super().__init__(model, custom_logger)
+        super().__init__(preference_model, custom_logger)
         self.loss = loss
         self.batch_size = batch_size
         self.epochs = epochs
         self.optim = th.optim.AdamW(
-            self._model.parameters(),
+            self._preference_model.model.parameters(),
             lr=lr,
             weight_decay=weight_decay,
         )
@@ -1155,7 +1157,7 @@ class BasicRewardTrainer(RewardTrainer):
         fragment_pairs: Sequence[TrajectoryPair],
         preferences: np.ndarray,
     ) -> th.Tensor:
-        output = self.loss.forward(fragment_pairs, preferences)
+        output = self.loss.forward(fragment_pairs, preferences, self._preference_model)
         loss = output.loss
         self.logger.record("loss", loss.item())
         for name, value in output.metrics.items():
@@ -1166,11 +1168,9 @@ class BasicRewardTrainer(RewardTrainer):
 class EnsembleTrainer(BasicRewardTrainer):
     """Train a reward ensemble."""
 
-    _model: reward_nets.RewardEnsemble
-
     def __init__(
         self,
-        model: reward_nets.RewardEnsemble,
+        preference_model: PreferenceModel,
         loss: RewardLoss,
         batch_size: int = 32,
         epochs: int = 1,
@@ -1182,7 +1182,7 @@ class EnsembleTrainer(BasicRewardTrainer):
         """Initialize the reward model trainer.
 
         Args:
-            model: the RewardNet instance to be trained
+            preference_model: the preference model to train the reward network.
             loss: the loss to use
             batch_size: number of fragment pairs per batch
             epochs: number of epochs in each training iteration (can be adjusted
@@ -1198,13 +1198,13 @@ class EnsembleTrainer(BasicRewardTrainer):
         Raises:
             TypeError: if model is not a RewardEnsemble.
         """
-        if not isinstance(model, reward_nets.RewardEnsemble):
+        if not preference_model.is_ensemble:
             raise TypeError(
-                f"RewardEnsemble expected by EnsembleTrainer not {type(model)}.",
+                "Preference Model of a RewardEnsemble expected by EnsembleTrainer.",
             )
 
         super().__init__(
-            model,
+            preference_model,
             loss,
             batch_size,
             epochs,
@@ -1212,61 +1212,40 @@ class EnsembleTrainer(BasicRewardTrainer):
             weight_decay,
             custom_logger,
         )
+        self.member_trainers = []
+        for member_pref_model in self._preference_model.member_pref_models:
+            reward_trainer = BasicRewardTrainer(
+                member_pref_model,
+                loss,
+                batch_size,
+                epochs,
+                lr,
+                weight_decay,
+                self.logger,
+            )
+            self.member_trainers.append(reward_trainer)
         self.rng = th.Generator()
         if seed:
             self.rng = self.rng.manual_seed(seed)
 
+    @RewardTrainer.logger.setter
+    def logger(self, custom_logger):
+        self._logger = custom_logger
+        for member_trainer in self.member_trainers:
+            member_trainer._logger = custom_logger
+
     def _train(self, dataset: PreferenceDataset, epoch_multiplier: float = 1.0) -> None:
         """Trains for `epoch_multiplier * self.epochs` epochs over `dataset`."""
-        # dataloader = self._make_data_loader(dataset)
         sampler = data_th.RandomSampler(
             dataset,
             replacement=True,
             num_samples=len(dataset),
             generator=self.rng,
         )
-        sampler = data_th.BatchSampler(sampler, self.batch_size, drop_last=False)
-
-        epochs = round(self.epochs * epoch_multiplier)
-        for member_idx in range(self._model.num_members):
-            bagging_dataset = list(sampler)
-            for _ in tqdm(range(epochs), desc="Training reward model"):
-                for batch_idxs in bagging_dataset:
-                    fragment_pairs, preferences = preference_collate_fn(
-                        dataset[i] for i in batch_idxs
-                    )
-                    self.optim.zero_grad()
-                    loss = self._training_inner_loop(
-                        fragment_pairs, preferences, member_idx
-                    )
-                    loss.backward()
-                    self.optim.step()
-
-    def _training_inner_loop(
-        self,
-        fragment_pairs: Sequence[TrajectoryPair],
-        preferences: np.ndarray,
-        member_idx: int,
-    ) -> th.Tensor:
-        assert len(fragment_pairs) == preferences.shape[0]
-        losses = []
-        metrics = []
-        output = self.loss.forward(fragment_pairs, preferences, member_idx)
-        losses.append(output.loss)
-        metrics.append(output.metrics)
-        losses = th.stack(losses)
-        loss = losses.sum()
-
-        self.logger.record("loss", loss.item())
-        self.logger.record("loss_std", losses.std().item())
-
-        # Turn metrics from a list of dictionaries into a dictionary of
-        # tensors.
-        metrics = {k: th.stack([di[k] for di in metrics]) for k in metrics[0]}
-        for name, value in metrics.items():
-            self.logger.record(name, value.mean().item())
-
-        return loss
+        for member_idx in range(len(self.member_trainers)):
+            # sampler gives new indexes on every call
+            bagging_dataset = data_th.Subset(dataset, list(sampler))
+            self.member_trainers[member_idx]._train(bagging_dataset, epoch_multiplier)
 
 
 def is_base_model_ensemble(reward_model):
@@ -1278,7 +1257,7 @@ def is_base_model_ensemble(reward_model):
 
 
 def _make_reward_trainer(
-    reward_model: reward_nets.RewardNet,
+    preference_model: PreferenceModel,
     loss: RewardLoss,
     reward_trainer_kwargs: Optional[Mapping[str, Any]] = None,
     seed: Optional[int] = None,
@@ -1286,27 +1265,17 @@ def _make_reward_trainer(
     """Construct the correct type of reward trainer for this reward function."""
     if reward_trainer_kwargs is None:
         reward_trainer_kwargs = {}
-    is_ensemble, base_model = is_base_model_ensemble(reward_model)
 
-    if is_ensemble:
-        # reward_model may include an AddSTDRewardWrapper for RL training; but we
-        # must train directly on the base model for reward model training.
-        is_base = reward_model is base_model
-        is_std_wrapper = (
-            isinstance(reward_model, reward_nets.AddSTDRewardWrapper)
-            and reward_model.base is base_model
+    if preference_model.is_ensemble:
+        return EnsembleTrainer(
+            preference_model,
+            loss,
+            seed=seed,
+            **reward_trainer_kwargs,
         )
-
-        if is_base or is_std_wrapper:
-            return EnsembleTrainer(base_model, loss, seed=seed, **reward_trainer_kwargs)
-        else:
-            raise ValueError(
-                "RewardEnsemble can only be wrapped"
-                f" by AddSTDRewardWrapper but found {type(reward_model).__name__}.",
-            )
     else:
         return BasicRewardTrainer(
-            reward_model,
+            preference_model,
             loss=loss,
             **reward_trainer_kwargs,
         )
@@ -1422,8 +1391,12 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
 
         if reward_trainer is None:
             preference_model = PreferenceModel(reward_model)
-            loss = CrossEntropyRewardLoss(preference_model)
-            self.reward_trainer = _make_reward_trainer(reward_model, loss, seed=seed)
+            loss = CrossEntropyRewardLoss()
+            self.reward_trainer = _make_reward_trainer(
+                preference_model,
+                loss,
+                seed=seed,
+            )
         else:
             self.reward_trainer = reward_trainer
 
