@@ -48,6 +48,9 @@ def load_stable_baselines_model(
     logging.info(f"Loading Stable Baselines policy for '{cls}' from '{path}'")
     path = pathlib.Path(path)
 
+    if path.is_dir():
+        path = path / "model.zip"
+
     if not path.parent.is_dir():
         raise FileNotFoundError(
             f"path={path.parent} needs to be a directory containing {path.name}.",
