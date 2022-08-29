@@ -208,7 +208,7 @@ def test_reward_ensemble_trainer_raises_type_error(venv):
     )
     with pytest.raises(
         TypeError,
-        match=r"RewardEnsemble expected by EnsembleTrainer not .*",
+        match=r"RewardEnsemble expected by EnsembleTrainer, not .*",
     ):
         preference_comparisons.EnsembleTrainer(
             model=reward_net,  # type: ignore
