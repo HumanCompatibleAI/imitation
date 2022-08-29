@@ -211,8 +211,8 @@ def test_reward_ensemble_trainer_raises_type_error(venv):
         match=r"RewardEnsemble expected by EnsembleTrainer not .*",
     ):
         preference_comparisons.EnsembleTrainer(
-            reward_net,
-            loss,
+            model=reward_net,  # type: ignore
+            loss=loss,
         )
 
 

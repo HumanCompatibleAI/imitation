@@ -11,7 +11,7 @@ from imitation.util import logger as imit_logger
 LossType = Union[th.Tensor, float]
 
 
-class UpdateParamFn(Protocol):
+class LambdaUpdater(Protocol):
     """Protocol type for functions that update the regularizer parameter.
 
     A callable object that takes in the current lambda and the train and val loss, and
@@ -33,14 +33,14 @@ class Regularizer(abc.ABC):
 
     optimizer: optim.Optimizer
     lambda_: float
-    update_params_fn: UpdateParamFn
+    lambda_updater: LambdaUpdater
     logger: imit_logger.HierarchicalLogger
 
     def __init__(
         self,
         optimizer: optim.Optimizer,
         initial_lambda: float,
-        update_params_fn: UpdateParamFn,
+        lambda_updater: LambdaUpdater,
         logger: imit_logger.HierarchicalLogger,
     ) -> None:
         """Initialize the regularizer.
@@ -48,13 +48,13 @@ class Regularizer(abc.ABC):
         Args:
             optimizer: The optimizer to which the regularizer is attached.
             initial_lambda: The initial value of the regularization parameter.
-            update_params_fn: A callable object that takes in the current lambda and
+            lambda_updater: A callable object that takes in the current lambda and
                 the train and val loss, and returns the new lambda.
             logger: The logger to which the regularizer will log its parameters.
         """
         self.optimizer = optimizer
         self.lambda_ = initial_lambda
-        self.update_params_fn = update_params_fn
+        self.lambda_updater = lambda_updater
         self.logger = logger
 
         self.logger.record("regularization_lambda", self.lambda_)
@@ -71,8 +71,8 @@ class Regularizer(abc.ABC):
     def update_params(self, train_loss: LossType, val_loss: LossType) -> None:
         """Update the regularization parameter.
 
-        This method calls the update_params_fn to update the regularization parameter,
-        and assigns the new value to self.lambda_. Then logs the new value using
+        This method calls the lambda_updater to update the regularization parameter,
+        and assigns the new value to `self.lambda_`. Then logs the new value using
         the provided logger.
 
         Args:
@@ -82,8 +82,8 @@ class Regularizer(abc.ABC):
         # This avoids logging the lambda every time if we are using a constant value.
         # It also makes the code faster as it avoids an extra function call and variable
         # assignment, even though this is probably trivial and has not been benchmarked.
-        if not isinstance(self.update_params_fn, ConstantParamScaler):
-            self.lambda_ = self.update_params_fn(self.lambda_, train_loss, val_loss)
+        if not isinstance(self.lambda_updater, ConstantParamScaler):
+            self.lambda_ = self.lambda_updater(self.lambda_, train_loss, val_loss)
             self.logger.record("regularization_lambda", self.lambda_)
 
 
@@ -144,15 +144,17 @@ class LpRegularizer(LossRegularizer):
     """Applies Lp regularization to a loss function."""
 
     p: int
+
     def __init__(
         self,
         optimizer: optim.Optimizer,
         initial_lambda: float,
-        update_params_fn: UpdateParamFn,
+        lambda_updater: LambdaUpdater,
         logger: imit_logger.HierarchicalLogger,
         p: int,
     ) -> None:
-        super().__init__(optimizer, initial_lambda, update_params_fn, logger)
+        """Initialize the regularizer."""
+        super().__init__(optimizer, initial_lambda, lambda_updater, logger)
         self.p = p
 
     def _regularize_loss(self, loss: th.Tensor) -> Union[float, th.Tensor]:

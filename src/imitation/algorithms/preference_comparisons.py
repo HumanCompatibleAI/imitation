@@ -19,7 +19,6 @@ from typing import (
     Tuple,
     Type,
     Union,
-    cast,
 )
 
 import numpy as np
@@ -624,7 +623,7 @@ class PreferenceDataset(th.utils.data.Dataset):
         if preferences.shape != (len(fragments),):
             raise ValueError(
                 f"Unexpected preferences shape {preferences.shape}, "
-                f"expected {(len(fragments), )}",
+                f"expected {(len(fragments),)}",
             )
         if preferences.dtype != np.float32:
             raise ValueError("preferences should have dtype float32")
@@ -885,13 +884,13 @@ class BasicRewardTrainer(RewardTrainer):
         batch_size: int = 32,
         epochs: int = 1,
         lr: float = 1e-3,
-        reg_class: Optional[Type[regularization.Regularizer]] = None,
-        reg_lambda: float = 0.0,
-        reg_lambda_updater: Optional[regularization.UpdateParamFn] = None,
-        reg_val_split: float = 0.0,
-        reg_extra_kwargs: Optional[Dict[str, Any]] = None,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
         seed: int = 0,
+        reg_class: Optional[Type[regularization.Regularizer]] = None,
+        reg_lambda: float = 0.0,
+        reg_lambda_updater: Optional[regularization.LambdaUpdater] = None,
+        reg_val_split: float = 0.0,
+        reg_extra_kwargs: Optional[Dict[str, Any]] = None,
     ):
         """Initialize the reward model trainer.
 
@@ -903,12 +902,12 @@ class BasicRewardTrainer(RewardTrainer):
                 on the fly by specifying an `epoch_multiplier` in `self.train()`
                 if longer training is desired in specific cases).
             lr: the learning rate
-            reg_class: the regularization class to use. If not specified, no regularization
-                is used.
-            reg_lambda: the initial regularization strength. For the case of 
+            reg_class: the regularization class to use. If not specified, no
+                regularization is used.
+            reg_lambda: the initial regularization strength. For the case of
                 weight decay regularization, this is the weight decay parameter.
             reg_lambda_updater: a function that updates the regularization strength.
-                It takes validation and training losses, and the current regularization 
+                It takes validation and training losses, and the current regularization
                 parameter value (lambda), and returns the new lambda to use in the next
                 epoch. This is only used if ``reg_lambda`` is non-zero.
                 If not specified, the regularization strength is kept constant.
@@ -916,7 +915,7 @@ class BasicRewardTrainer(RewardTrainer):
                 is performed to determine the best weight decay value. Since
                 the weight decay is constant by default, this is also set to be
                 0 by default, since no validation data is needed. If you pass
-                a weight decay updater, you must also pass a non-zero value for
+                a lambda updater, you must also pass a non-zero value for
                 this parameter.
             reg_extra_kwargs: extra keyword arguments to pass to the regularization
                 constructor.
@@ -932,38 +931,45 @@ class BasicRewardTrainer(RewardTrainer):
             if reg_lambda > 0:
                 raise ValueError(
                     "Regularization strength is non-zero but no regularizer class "
-                    "is specified."
+                    "is specified.",
                 )
             if reg_lambda_updater is not None:
                 raise ValueError(
-                    "Regularization updater class was provided but no regularizer class "
-                    "is specified."
+                    "Regularization updater class was provided but no regularizer "
+                    "class is specified.",
                 )
             if reg_val_split > 0:
                 raise ValueError(
                     "Validation split is non-zero but no regularizer class "
-                    "is specified."
+                    "is specified.",
                 )
             if reg_extra_kwargs is not None:
                 raise ValueError(
                     "Extra regularization arguments provided but no regularizer class "
-                    "is specified."
+                    "is specified.",
                 )
         else:
             if reg_lambda_updater is not None and reg_val_split == 0:
                 raise ValueError(
                     "If you pass a regularizer parameter updater, you must also "
-                    "pass a non-zero value for the validation split."
+                    "pass a non-zero value for the validation split. Otherwise "
+                    "the updater won't have any validation data to use for updating.",
                 )
-            if self.val_split < 0 or self.val_split > 1:
+            elif reg_lambda_updater is None and reg_val_split > 0:
+                raise ValueError(
+                    "If you pass a non-zero validation split, you must also "
+                    "pass a regularizer parameter updater. Otherwise you are wasting"
+                    " data into the validation split that will not be used.",
+                )
+            if reg_val_split < 0 or reg_val_split > 1:
                 raise ValueError("val_split must be strictly between 0 and 1.")
             if reg_lambda_updater is None and reg_lambda == 0:
                 raise ValueError(
                     "If you do not pass a regularizer parameter updater your "
                     "regularization strength must be non-zero, as this would "
-                    "result in no regularization."
+                    "result in no regularization.",
                 )
-        
+
         super().__init__(model, custom_logger)
         self.loss = loss
         self.batch_size = batch_size
@@ -977,18 +983,13 @@ class BasicRewardTrainer(RewardTrainer):
 
         self.regularizer = None
         if reg_class is not None:
-            self.regularizer = (
-                reg_class(
-                    initial_lambda=reg_lambda,
-                    optimizer=self.optim,
-                    update_params_fn=reg_lambda_updater
-                    or regularization.ConstantParamScaler(),
-                    logger=self.logger,
-                )
+            lambda_updater = reg_lambda_updater or regularization.ConstantParamScaler()
+            self.regularizer = reg_class(
+                initial_lambda=reg_lambda,
+                optimizer=self.optim,
+                lambda_updater=lambda_updater,
+                logger=self.logger,
             )
-
-
-
 
     def _make_data_loader(self, dataset: PreferenceDataset) -> data_th.DataLoader:
         """Make a dataloader."""
@@ -1060,8 +1061,13 @@ class EnsembleTrainer(BasicRewardTrainer):
         batch_size: int = 32,
         epochs: int = 1,
         lr: float = 1e-3,
-        weight_decay: float = 0.0,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
+        seed: int = 0,
+        reg_class: Optional[Type[regularization.Regularizer]] = None,
+        reg_lambda: float = 0.0,
+        reg_lambda_updater: Optional[regularization.LambdaUpdater] = None,
+        reg_val_split: float = 0.0,
+        reg_extra_kwargs: Optional[Dict[str, Any]] = None,
     ):
         """Initialize the reward model trainer.
 
@@ -1083,17 +1089,22 @@ class EnsembleTrainer(BasicRewardTrainer):
         """
         if not isinstance(model, reward_nets.RewardEnsemble):
             raise TypeError(
-                f"RewardEnsemble expected by EnsembleTrainer not {type(model)}.",
+                f"RewardEnsemble expected by EnsembleTrainer, not {type(model)}.",
             )
 
         super().__init__(
-            model,
-            loss,
-            batch_size,
-            epochs,
-            lr,
-            weight_decay,
-            custom_logger,
+            model=model,
+            loss=loss,
+            batch_size=batch_size,
+            epochs=epochs,
+            lr=lr,
+            custom_logger=custom_logger,
+            seed=seed,
+            reg_class=reg_class,
+            reg_lambda=reg_lambda,
+            reg_lambda_updater=reg_lambda_updater,
+            reg_val_split=reg_val_split,
+            reg_extra_kwargs=reg_extra_kwargs,
         )
 
     def _training_inner_loop(
