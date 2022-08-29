@@ -102,7 +102,12 @@ RL_SAC_NAMED_CONFIGS = ["rl.sac", "train.sac"]
 
 
 @pytest.fixture(
-    params=["plain", "with_expert_trajectories", "warmstart", "with_checkpoints"]
+    params=[
+        "plain",
+        "with_expert_trajectories",
+        "warmstart",
+        "with_checkpoints",
+    ],
 )
 def preference_comparison_config(request):
     return dict(
@@ -227,16 +232,6 @@ def test_train_dagger_main(tmpdir):
     assert isinstance(run.result, dict)
 
 
-def test_train_bc_main(tmpdir):
-    run = train_imitation.train_imitation_ex.run(
-        command_name="bc",
-        named_configs=["seals_cartpole"] + ALGO_FAST_CONFIGS["imitation"],
-        config_updates=dict(common=dict(log_root=tmpdir)),
-    )
-    assert run.status == "COMPLETED"
-    assert isinstance(run.result, dict)
-
-
 def test_train_dagger_warmstart(tmpdir):
     run = train_imitation.train_imitation_ex.run(
         command_name="dagger",
@@ -285,7 +280,7 @@ def test_train_bc_main_with_none_demonstrations_raises_value_error(tmpdir):
         "expert_from_huggingface",
         "random_expert",
         "zero_expert",
-    ]
+    ],
 )
 def bc_config(tmpdir, request):
     expert_config = dict(

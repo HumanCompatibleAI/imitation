@@ -8,9 +8,9 @@ import os
 import pathlib
 from typing import Callable, Type, TypeVar
 
+import huggingface_sb3 as hfsb3
 from stable_baselines3.common import base_class, callbacks, policies, vec_env
 
-import huggingface_sb3 as hfsb3
 from imitation.policies import base
 from imitation.util import registry
 
@@ -91,15 +91,18 @@ def _load_stable_baselines_from_huggingface(
     """Higher-order function, returning a policy loading function.
 
     Args:
+        algo_name: The name of the algorithm, e.g. `ppo`.
         cls: The RL algorithm, e.g. `stable_baselines3.PPO`.
 
     Returns:
         A function loading policies trained via cls.
     """
 
-    def f(venv: vec_env.VecEnv,
-          env_id: str,
-          organization: str = "HumanCompatibleAI") -> policies.BasePolicy:
+    def f(
+        venv: vec_env.VecEnv,
+        env_id: str,
+        organization: str = "HumanCompatibleAI",
+    ) -> policies.BasePolicy:
         """Loads a policy saved to path, for environment env."""
         model_name = hfsb3.ModelName(algo_name, hfsb3.EnvironmentName(env_id))
         repo_id = hfsb3.ModelRepoId(organization, model_name)
@@ -147,13 +150,13 @@ def load_policy(
     venv: vec_env.VecEnv,
     **kwargs,
 ) -> policies.BasePolicy:
-    """
-    Load serialized policy.
+    """Load serialized policy.
 
     Args:
         policy_type: A key in `policy_registry`, e.g. `ppo`.
         venv: An environment that the policy is to be used with.
-        kwargs: Additional arguments to pass to the policy loader.
+        **kwargs: Additional arguments to pass to the policy loader.
+
     Returns:
         The deserialized policy.
     """
