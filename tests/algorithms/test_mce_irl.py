@@ -315,7 +315,7 @@ def test_mce_irl_demo_formats():
         generator_seed=42,
     )
     state_env = envs.ExposePOMDPStateWrapper(mdp)
-    state_venv = vec_env.DummyVecEnv([lambda: state_env] * 4)
+    state_venv = vec_env.DummyVecEnv([lambda: state_env])
     trajs = rollout.generate_trajectories(
         policy=None,
         venv=state_venv,
@@ -392,7 +392,7 @@ def test_mce_irl_reasonable_mdp(
         assert tensor_iter_norm(reward_net.parameters()) < 1000
 
         state_env = envs.ExposePOMDPStateWrapper(mdp)
-        state_venv = vec_env.DummyVecEnv([lambda: state_env] * 4)
+        state_venv = vec_env.DummyVecEnv([lambda: state_env])
         trajs = rollout.generate_trajectories(
             mce_irl.policy,
             state_venv,
