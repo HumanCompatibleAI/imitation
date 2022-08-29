@@ -902,6 +902,9 @@ class BasicRewardTrainer(RewardTrainer):
                 on the fly by specifying an `epoch_multiplier` in `self.train()`
                 if longer training is desired in specific cases).
             lr: the learning rate
+            seed: the random seed to use for splitting the dataset into training
+                and validation.
+            custom_logger: Where to log to; if None (default), creates a new logger.
             reg_class: the regularization class to use. If not specified, no
                 regularization is used.
             reg_lambda: the initial regularization strength. For the case of
@@ -919,9 +922,6 @@ class BasicRewardTrainer(RewardTrainer):
                 this parameter.
             reg_extra_kwargs: extra keyword arguments to pass to the regularization
                 constructor.
-            seed: the random seed to use for splitting the dataset into training
-                and validation.
-            custom_logger: Where to log to; if None (default), creates a new logger.
 
         Raises:
             ValueError: if ``reg_lambda`` is non-zero but ``reg_lambda_updater`` is
@@ -1079,10 +1079,26 @@ class EnsembleTrainer(BasicRewardTrainer):
                 on the fly by specifying an `epoch_multiplier` in `self.train()`
                 if longer training is desired in specific cases).
             lr: the learning rate
-            weight_decay: the weight decay factor for the reward model's weights
-                to use with ``th.optim.AdamW``. This is similar to but not equivalent
-                to L2 regularization, see https://arxiv.org/abs/1711.05101
+            seed: the random seed to use for splitting the dataset into training
+                and validation.
             custom_logger: Where to log to; if None (default), creates a new logger.
+            reg_class: the regularization class to use. If not specified, no
+                regularization is used.
+            reg_lambda: the initial regularization strength. For the case of
+                weight decay regularization, this is the weight decay parameter.
+            reg_lambda_updater: a function that updates the regularization strength.
+                It takes validation and training losses, and the current regularization
+                parameter value (lambda), and returns the new lambda to use in the next
+                epoch. This is only used if ``reg_lambda`` is non-zero.
+                If not specified, the regularization strength is kept constant.
+            reg_val_split: the fraction of the dataset to use for validation. Validation
+                is performed to determine the best weight decay value. Since
+                the weight decay is constant by default, this is also set to be
+                0 by default, since no validation data is needed. If you pass
+                a lambda updater, you must also pass a non-zero value for
+                this parameter.
+            reg_extra_kwargs: extra keyword arguments to pass to the regularization
+                constructor.
 
         Raises:
             TypeError: if model is not a RewardEnsemble.
