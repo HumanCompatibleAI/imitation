@@ -210,9 +210,7 @@ def test_train_dagger_main(tmpdir):
             named_configs=["seals_cartpole"] + ALGO_FAST_CONFIGS["imitation"],
             config_updates=dict(
                 common=dict(log_root=tmpdir),
-                dagger=dict(
-                    expert_policy_type="ppo",
-                ),
+                demonstrations=dict(rollout_path=CARTPOLE_TEST_ROLLOUT_PATH),
             ),
         )
     for warning in record:
@@ -405,6 +403,7 @@ def test_train_adversarial(tmpdir, named_configs, command):
     )
     config_updates = {
         "common": dict(log_root=tmpdir),
+        "demonstrations": dict(rollout_path=CARTPOLE_TEST_ROLLOUT_PATH),
         # TensorBoard logs to get extra coverage
         "algorithm_kwargs": dict(init_tensorboard=True),
     }
@@ -475,6 +474,7 @@ def test_transfer_learning(tmpdir: str) -> None:
         named_configs=["seals_cartpole"] + ALGO_FAST_CONFIGS["adversarial"],
         config_updates=dict(
             common=dict(log_dir=log_dir_train),
+            demonstrations=dict(rollout_path=CARTPOLE_TEST_ROLLOUT_PATH),
         ),
     )
     assert run.status == "COMPLETED"
@@ -684,6 +684,7 @@ def _run_train_adv_for_test_analyze_imit(run_name, sacred_logs_dir, log_dir):
         named_configs=["seals_cartpole"] + ALGO_FAST_CONFIGS["adversarial"],
         config_updates=dict(
             common=dict(log_root=log_dir),
+            demonstrations=dict(rollout_path=CARTPOLE_TEST_ROLLOUT_PATH),
             checkpoint_interval=-1,
         ),
         options={"--name": run_name, "--file_storage": sacred_logs_dir},
@@ -697,6 +698,7 @@ def _run_train_bc_for_test_analyze_imit(run_name, sacred_logs_dir, log_dir):
         named_configs=["seals_cartpole"] + ALGO_FAST_CONFIGS["imitation"],
         config_updates=dict(
             common=dict(log_dir=log_dir),
+            demonstrations=dict(rollout_path=CARTPOLE_TEST_ROLLOUT_PATH),
         ),
         options={"--name": run_name, "--file_storage": sacred_logs_dir},
     )
