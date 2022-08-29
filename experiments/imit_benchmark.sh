@@ -111,6 +111,12 @@ parallel -j 25% --header : --results "${LOG_ROOT}/parallel/" --colsep , --progre
   :::: $CONFIG_CSV \
   ::: seed "${SEEDS[@]}"
 
+# Print the name of each stderr output file the line containing "Result"
+pushd "${LOG_ROOT}/parallel"
+# Note: tail prints the name of each file, that we pass as an argument surrounded by '=='.
+#       therefore we grep for either '==' or 'Result'
+find . -name stderr -print0 | sort -z | xargs -0 tail -n 15 | grep -E '==|Result'
+popd
 
 echo "[Optional] Upload new reward models to S3 (replacing old ones) using the commands:"
 echo "aws s3 rm --recursive s3://shwang-chai/public/data/reward_models/${ALGORITHM}/"
