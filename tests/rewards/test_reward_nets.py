@@ -44,8 +44,7 @@ MAKE_REWARD_NET = [
 ]
 
 
-MAKE_BASIC_REWARD_NET_WRAPPERS = [
-    lambda base: reward_nets.ShapedRewardNet(base, _potential, 0.99),
+MAKE_SIMPLE_REWARD_NET_WRAPPERS = [
     lambda base: reward_nets.NormalizedRewardNet(base, networks.RunningNorm),
 ]
 
@@ -531,7 +530,7 @@ def test_add_std_reward_wrapper(
     assert np.allclose(rewards, 1 - 0.5 * np.sqrt(8))
 
 
-@pytest.mark.parametrize("make_wrapper", MAKE_BASIC_REWARD_NET_WRAPPERS)
+@pytest.mark.parametrize("make_wrapper", MAKE_SIMPLE_REWARD_NET_WRAPPERS)
 def test_wrappers_pass_on_kwargs(
     make_wrapper: reward_nets.RewardNetWrapper,
     env_2d: Env2D,
