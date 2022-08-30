@@ -500,7 +500,7 @@ class ShapedRewardNet(RewardNetWrapper):
         self.potential = potential
         self.discount_factor = discount_factor
 
-        if not isinstance(base, RewardNetWrapper):
+        if isinstance(base, RewardNetWrapper):
             # Doing this could cause confusing errors like normalization
             # not being applied.
             raise ValueError("Shaping cannot be applied to wrapped reward nets.")
