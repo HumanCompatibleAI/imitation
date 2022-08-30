@@ -29,7 +29,6 @@ from torch import nn
 from torch.utils import data as data_th
 from tqdm.auto import tqdm
 
-from imitation import regularization
 from imitation.algorithms import base
 from imitation.data import rollout, types, wrappers
 from imitation.data.types import (
@@ -40,6 +39,7 @@ from imitation.data.types import (
     Transitions,
 )
 from imitation.policies import exploration_wrapper
+from imitation.regularization import regularizers, updaters
 from imitation.rewards import reward_function, reward_nets, reward_wrapper
 from imitation.util import logger as imit_logger
 from imitation.util import networks, util
@@ -391,7 +391,7 @@ class PreferenceModel(nn.Module):
               `ensemble_member_index`.
 
         Args:
-            fragment_pairs: batch of pair of fragments.
+            fragment_pairs: batch of pairs of fragments.
             ensemble_member_index: index of member network in ensemble model.
                 If the model is an ensemble of networks, this cannot be None.
 
@@ -1034,14 +1034,16 @@ class CrossEntropyRewardLoss(RewardLoss):
         """
         probs, gt_probs = self.preference_model(fragment_pairs, ensemble_member_index)
         # TODO(ejnnr): Here and below, > 0.5 is problematic
-        # because getting exactly 0.5 is actually somewhat
-        # common in some environments (as long as sample=False or temperature=0).
-        # In a sense that "only" creates class imbalance
-        # but it's still misleading.
+        #  because getting exactly 0.5 is actually somewhat
+        #  common in some environments (as long as sample=False or temperature=0).
+        #  In a sense that "only" creates class imbalance
+        #  but it's still misleading.
         predictions = (probs > 0.5).float()
         preferences_th = th.as_tensor(preferences, dtype=th.float32)
         ground_truth = (preferences_th > 0.5).float()
         metrics = {}
+        # TODO(juan) why convert to float if you are then doing a boolean comparison?
+        #  seems like a bad practice and also a waste of RAM.
         metrics["accuracy"] = (predictions == ground_truth).float().mean()
         if gt_probs is not None:
             metrics["gt_reward_loss"] = th.nn.functional.binary_cross_entropy(
@@ -1096,7 +1098,7 @@ class RewardTrainer(abc.ABC):
 class BasicRewardTrainer(RewardTrainer):
     """Train a basic reward model."""
 
-    regularizer: Optional[regularization.Regularizer]
+    regularizer: Optional[regularizers.Regularizer]
 
     def __init__(
         self,
@@ -1107,9 +1109,9 @@ class BasicRewardTrainer(RewardTrainer):
         lr: float = 1e-3,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
         seed: int = 0,
-        reg_class: Optional[Type[regularization.Regularizer]] = None,
+        reg_class: Optional[Type[regularizers.Regularizer]] = None,
         reg_lambda: float = 0.0,
-        reg_lambda_updater: Optional[regularization.LambdaUpdater] = None,
+        reg_lambda_updater: Optional[updaters.LambdaUpdater] = None,
         reg_val_split: float = 0.0,
         reg_extra_kwargs: Optional[Dict[str, Any]] = None,
     ):
@@ -1204,7 +1206,7 @@ class BasicRewardTrainer(RewardTrainer):
 
         self.regularizer = None
         if reg_class is not None:
-            lambda_updater = reg_lambda_updater or regularization.ConstantParamScaler()
+            lambda_updater = reg_lambda_updater or updaters.ConstantParamScaler()
             self.regularizer = reg_class(
                 initial_lambda=reg_lambda,
                 optimizer=self.optim,
@@ -1285,9 +1287,9 @@ class EnsembleTrainer(BasicRewardTrainer):
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
         seed: int = 0,
         rng_seed: Optional[int] = None,
-        reg_class: Optional[Type[regularization.Regularizer]] = None,
+        reg_class: Optional[Type[regularizers.Regularizer]] = None,
         reg_lambda: float = 0.0,
-        reg_lambda_updater: Optional[regularization.LambdaUpdater] = None,
+        reg_lambda_updater: Optional[updaters.LambdaUpdater] = None,
         reg_val_split: float = 0.0,
         reg_extra_kwargs: Optional[Dict[str, Any]] = None,
     ):
