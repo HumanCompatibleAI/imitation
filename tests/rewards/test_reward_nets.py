@@ -464,6 +464,11 @@ def test_ensemble_errors_if_there_are_too_few_members(env_2d):
 
 
 @pytest.fixture
+def zero_reward_net(env_2d) -> MockRewardNet:
+    return MockRewardNet(env_2d.observation_space, env_2d.action_space, value=0)
+
+
+@pytest.fixture
 def two_ensemble(env_2d) -> reward_nets.RewardEnsemble:
     """A simple reward ensemble made up of two mock reward nets."""
     return reward_nets.RewardEnsemble(
@@ -530,13 +535,14 @@ def test_add_std_reward_wrapper(
     assert np.allclose(rewards, 1 - 0.5 * np.sqrt(8))
 
 
-def test_shaped_reward_net(env_2d: Env2D, numpy_transitions: NumpyTransitions):
-    reward_net = MockRewardNet(env_2d.observation_space, env_2d.action_space, value=0)
-
+def test_shaped_reward_net(
+    zero_reward_net: MockRewardNet,
+    numpy_transitions: NumpyTransitions,
+):
     def potential(x: th.Tensor):
         return th.full((x.shape[0],), 10, device=x.device)
 
-    shaped = reward_nets.ShapedRewardNet(reward_net, potential, 0.9)
+    shaped = reward_nets.ShapedRewardNet(zero_reward_net, potential, 0.9)
     shaped_rew = th.full((10,), -1, dtype=th.float32)
     forward_args = shaped.preprocess(*numpy_transitions)
     assert th.allclose(shaped(*forward_args), shaped_rew)
@@ -546,24 +552,33 @@ def test_shaped_reward_net(env_2d: Env2D, numpy_transitions: NumpyTransitions):
 
 
 @pytest.mark.parametrize("make_wrapper", MAKE_SIMPLE_REWARD_NET_WRAPPERS)
+def test_shaping_cannot_be_applied_to_wrapped_reward_network(
+    zero_reward_net: MockRewardNet,
+    make_wrapper: reward_nets.RewardNetWrapper,
+):
+    wrapped_net = make_wrapper(zero_reward_net)
+    with pytest.raises(
+        ValueError,
+        match=r"Shaping cannot be applied to wrapped reward nets.",
+    ):
+        reward_nets.ShapedRewardNet(wrapped_net, _potential, 0.99)
+
+
+@pytest.mark.parametrize("make_wrapper", MAKE_SIMPLE_REWARD_NET_WRAPPERS)
 def test_wrappers_pass_on_kwargs(
     make_wrapper: reward_nets.RewardNetWrapper,
-    env_2d: Env2D,
+    zero_reward_net: MockRewardNet,
     numpy_transitions: NumpyTransitions,
 ):
-    basic_reward_net = reward_nets.BasicRewardNet(
-        env_2d.observation_space,
-        env_2d.action_space,
-    )
-    basic_reward_net.predict_processed = mock.Mock(return_value=np.zeros((10,)))
+    zero_reward_net.predict_processed = mock.Mock(return_value=np.zeros((10,)))
     wrapped_reward_net = make_wrapper(
-        basic_reward_net,
+        zero_reward_net,
     )
     wrapped_reward_net.predict_processed(
         *numpy_transitions,
         foobar=42,
     )
-    basic_reward_net.predict_processed.assert_called_once_with(
+    zero_reward_net.predict_processed.assert_called_once_with(
         *numpy_transitions,
         foobar=42,
     )
