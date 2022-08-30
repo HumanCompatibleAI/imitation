@@ -2,6 +2,7 @@
 
 from typing import Protocol, Tuple, Union
 
+import numpy as np
 import torch as th
 
 LossType = Union[th.Tensor, float]
@@ -37,18 +38,34 @@ class IntervalParamScaler(LambdaUpdater):
         """Initialize the interval parameter scaler.
 
         Args:
-            scaling_factor: The factor by which to scale the lambda.
+            scaling_factor: The factor by which to scale the lambda, a value in (0, 1).
             tolerable_interval: The interval within which the ratio of the validation
-                loss to the training loss is considered acceptable.
+                loss to the training loss is considered acceptable. A tuple whose first
+                element is at least 0 and the second element is greater than the first.
+
+        Raises:
+            ValueError: If the tolerable interval is not a tuple of length 2.
+            ValueError: if the scaling factor is not in (0, 1).
+            ValueError: if the tolerable interval is negative or not a proper interval.
         """
+        eps = np.finfo(float).eps
+        if not (eps < scaling_factor < 1 - eps):
+            raise ValueError("scaling_factor must be in (0, 1) within machine precision.")
+        if len(tolerable_interval) != 2:
+            raise ValueError("tolerable_interval must be a tuple of length 2")
+        if not (0 <= tolerable_interval[0] < tolerable_interval[1]):
+            raise ValueError("tolerable_interval must be a tuple whose first element "
+                             "is at least 0 and the second element is greater than "
+                             "the first")
+
         self.scaling_factor = scaling_factor
         self.tolerable_interval = tolerable_interval
 
     def __call__(
-        self,
-        lambda_: float,
-        train_loss: LossType,
-        val_loss: LossType,
+            self,
+            lambda_: float,
+            train_loss: LossType,
+            val_loss: LossType,
     ) -> float:
         """Scales the lambda of the regularizer by some constant factor.
 
@@ -64,10 +81,33 @@ class IntervalParamScaler(LambdaUpdater):
 
         Returns:
             The new value of the lambda.
+
+        Raises:
+            ValueError: If the loss on the validation set is not a scalar.
+            ValueError: if lambda_ is zero (will result in no scaling).
+            ValueError: if lambda_ is not a float.
         """
         # assert that the tensors val_loss and train_loss are both scalars
-        assert isinstance(val_loss, float) or val_loss.dim() == 0
-        assert isinstance(train_loss, float) or train_loss.dim() == 0
+        try:
+            assert isinstance(val_loss, float) or (isinstance(val_loss, th.Tensor) and val_loss.dim() == 0)
+            assert isinstance(train_loss, float) or (isinstance(train_loss, th.Tensor) and train_loss.dim() == 0)
+        except AssertionError as exc:
+            raise ValueError("val_loss and train_loss must be scalars") from exc
+        if np.finfo(float).eps > lambda_:
+            raise ValueError("lambda_ must not be zero. Make sure that you're not "
+                             "scaling the value of lambda down too quickly or passing an "
+                             "initial value of zero to the lambda parameter.")
+        if not isinstance(lambda_, float):
+            raise ValueError("lambda_ must be a float")
+
+        eps = np.finfo(float).eps
+        if train_loss < eps and val_loss < eps:
+            # 0/0 is undefined, so return the current lambda
+            return lambda_
+        elif train_loss < eps <= val_loss:
+            # the ratio would be infinite
+            return lambda_ * (1 + self.scaling_factor)
+
         val_to_train_ratio = val_loss / train_loss
         if val_to_train_ratio > self.tolerable_interval[1]:
             lambda_ *= 1 + self.scaling_factor
@@ -80,10 +120,10 @@ class ConstantParamScaler(LambdaUpdater):
     """A dummy param scaler implementation to use as default."""
 
     def __call__(
-        self,
-        lambda_: float,
-        train_loss: Union[float, th.Tensor],
-        val_loss: Union[float, th.Tensor],
+            self,
+            lambda_: float,
+            train_loss: Union[float, th.Tensor],
+            val_loss: Union[float, th.Tensor],
     ) -> float:
         del train_loss, val_loss
         return lambda_
