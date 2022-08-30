@@ -483,18 +483,27 @@ class ShapedRewardNet(RewardNetWrapper):
 
         Args:
             base: the base reward net to which the potential shaping
-                will be added.
+                will be added. Shaping must be applied directly to the raw reward net.
+                See error below.
             potential: A callable which takes
                 a batch of states (as a PyTorch tensor) and returns a batch of
                 potentials for these states. If this is a PyTorch Module, it becomes
                 a submodule of the ShapedRewardNet instance.
             discount_factor: discount factor to use for the potential shaping.
+
+        Raises:
+            ValueError: if the base network is an instance of RewardNetWrapper.
         """
         super().__init__(
             base=base,
         )
         self.potential = potential
         self.discount_factor = discount_factor
+
+        if not isinstance(base, RewardNetWrapper):
+            # Doing this could cause confusing errors like normalization
+            # not being applied.
+            raise ValueError("Shaping cannot be applied to wrapped reward nets.")
 
     def forward(
         self,
@@ -532,6 +541,52 @@ class ShapedRewardNet(RewardNetWrapper):
         )
         assert final_rew.shape == state.shape[:1]
         return final_rew
+
+    def predict_th(
+        self,
+        state: np.ndarray,
+        action: np.ndarray,
+        next_state: np.ndarray,
+        done: np.ndarray,
+    ) -> th.Tensor:
+        __doc__ = super().forward.__doc__  # noqa: F841
+        with networks.evaluating(self):
+            # switch to eval mode (affecting normalization, dropout, etc)
+
+            state_th, action_th, next_state_th, done_th = self.preprocess(
+                state,
+                action,
+                next_state,
+                done,
+            )
+            with th.no_grad():
+                rew_th = self(state_th, action_th, next_state_th, done_th)
+
+            assert rew_th.shape == state.shape[:1]
+            return rew_th
+
+    def predict(
+        self,
+        state: np.ndarray,
+        action: np.ndarray,
+        next_state: np.ndarray,
+        done: np.ndarray,
+    ) -> np.ndarray:
+        __doc__ = super().forward.__doc__  # noqa: F841
+        rew_th = self.predict_th(state, action, next_state, done)
+        return rew_th.detach().cpu().numpy().flatten()
+
+    def predict_processed(
+        self,
+        state: np.ndarray,
+        action: np.ndarray,
+        next_state: np.ndarray,
+        done: np.ndarray,
+        **kwargs,
+    ) -> np.ndarray:
+        __doc__ = super().forward.__doc__  # noqa: F841
+        del kwargs
+        return self.predict(state, action, next_state, done)
 
 
 class BasicShapedRewardNet(ShapedRewardNet):
