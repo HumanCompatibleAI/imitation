@@ -89,9 +89,7 @@ def eval_policy(
     log_dir = common.make_log_dir()
     sample_until = rollout.make_sample_until(eval_n_timesteps, eval_n_episodes)
     post_wrappers = [video_wrapper_factory(log_dir, **video_kwargs)] if videos else None
-    venv = common.make_venv(post_wrappers=post_wrappers)
-
-    try:
+    with common.make_venv(post_wrappers=post_wrappers) as venv:
         if render:
             venv = InteractiveRender(venv, render_fps)
 
@@ -101,17 +99,15 @@ def eval_policy(
             logging.info(f"Wrapped env in reward {reward_type} from {reward_path}.")
 
         trajs = rollout.generate_trajectories(
-            expert.get_expert_policy(),
+            expert.get_expert_policy(venv),
             venv,
             sample_until,
         )
 
-        if rollout_save_path:
-            types.save(rollout_save_path.replace("{log_dir}", log_dir), trajs)
+    if rollout_save_path:
+        types.save(rollout_save_path.replace("{log_dir}", log_dir), trajs)
 
-        return rollout.rollout_stats(trajs)
-    finally:
-        venv.close()
+    return rollout.rollout_stats(trajs)
 
 
 def main_console():

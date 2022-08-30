@@ -15,9 +15,8 @@ def config():
 
 
 @expert_ingredient.capture
-def get_expert_policy(policy_type, loader_kwargs, common):
-    env = make_venv()
+def get_expert_policy(venv, policy_type, loader_kwargs, common):
     if "huggingface" in policy_type:  # TODO(max): this is a hack
         loader_kwargs = loader_kwargs.copy()
         loader_kwargs["env_id"] = common["env_name"]
-    return serialize.load_policy(policy_type, env, **loader_kwargs)
+    return serialize.load_policy(policy_type, venv, **loader_kwargs)

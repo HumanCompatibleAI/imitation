@@ -10,11 +10,12 @@ import filecmp
 import os
 import pathlib
 import pickle
+import platform
 import shutil
 import sys
 import tempfile
 from collections import Counter
-from typing import List, Optional
+from typing import Dict, List, Mapping, Optional
 from unittest import mock
 
 import numpy as np
@@ -25,6 +26,8 @@ import sacred
 import sacred.utils
 import stable_baselines3
 import torch as th
+from stable_baselines3.common import buffers
+from stable_baselines3.her.her_replay_buffer import HerReplayBuffer
 
 from imitation.data import types
 from imitation.rewards import reward_nets
@@ -56,6 +59,7 @@ CARTPOLE_TEST_ROLLOUT_PATH = CARTPOLE_TEST_DATA_PATH / "rollouts/final.pkl"
 CARTPOLE_TEST_POLICY_PATH = CARTPOLE_TEST_DATA_PATH / "policies/final"
 
 PENDULUM_TEST_DATA_PATH = TEST_DATA_PATH / "expert_models/pendulum_0/"
+PENDULUM_TEST_ROLLOUT_PATH = PENDULUM_TEST_DATA_PATH / "rollouts/final.pkl"
 
 OLD_FMT_ROLLOUT_TEST_DATA_PATH = TEST_DATA_PATH / "old_format_rollout.pkl"
 
@@ -113,7 +117,7 @@ def preference_comparison_config(request):
     return dict(
         plain={},
         with_expert_trajectories={"trajectory_path": CARTPOLE_TEST_ROLLOUT_PATH},
-        warmstart={  # TODO(max): for some reason this does not finish.
+        warmstart={
             # We're testing preference saving and disabling sampling here as well;
             # having yet another run just for those would be wasteful since they
             # don't interact with warm starting an agent.
@@ -174,15 +178,46 @@ def test_train_preference_comparisons_sac(tmpdir):
     assert run.status == "COMPLETED"
     assert isinstance(run.result, dict)
 
+    # Make sure rl.sac named_config is called after rl.fast to overwrite
+    # rl_kwargs.batch_size to None
     with pytest.raises(Exception, match=".*set 'batch_size' at top-level.*"):
         train_preference_comparisons.train_preference_comparisons_ex.run(
-            # make sure rl.sac named_config is called after rl.fast to overwrite
-            # rl_kwargs.batch_size to None
             named_configs=["pendulum"]
             + RL_SAC_NAMED_CONFIGS
             + ALGO_FAST_CONFIGS["preference_comparison"],
             config_updates=config_updates,
         )
+
+
+def test_train_preference_comparisons_sac_reward_relabel(tmpdir):
+    def _run_reward_relabel_sac_preference_comparisons(buffer_cls):
+        config_updates = dict(
+            common=dict(log_root=tmpdir),
+            rl=dict(
+                rl_kwargs=dict(
+                    replay_buffer_class=buffer_cls,
+                    replay_buffer_kwargs=dict(handle_timeout_termination=True),
+                ),
+            ),
+        )
+        run = train_preference_comparisons.train_preference_comparisons_ex.run(
+            # make sure rl.sac named_config is called after rl.fast to overwrite
+            # rl_kwargs.batch_size to None
+            named_configs=["pendulum"]
+            + ALGO_FAST_CONFIGS["preference_comparison"]
+            + RL_SAC_NAMED_CONFIGS,
+            config_updates=config_updates,
+        )
+        return run
+
+    run = _run_reward_relabel_sac_preference_comparisons(buffers.ReplayBuffer)
+    assert run.status == "COMPLETED"
+    del run
+
+    with pytest.raises(AssertionError, match=".*only ReplayBuffer is supported.*"):
+        _run_reward_relabel_sac_preference_comparisons(buffers.DictReplayBuffer)
+    with pytest.raises(AssertionError, match=".*only ReplayBuffer is supported.*"):
+        _run_reward_relabel_sac_preference_comparisons(HerReplayBuffer)
 
 
 @pytest.mark.parametrize(
@@ -239,10 +274,6 @@ def test_train_dagger_warmstart(tmpdir):
         config_updates=dict(
             common=dict(log_root=tmpdir),
             demonstrations=dict(rollout_path=CARTPOLE_TEST_ROLLOUT_PATH),
-            expert=dict(
-                policy_type="ppo",
-                loader_kwargs=dict(path=CARTPOLE_TEST_POLICY_PATH / "model.zip"),
-            ),
         ),
     )
     assert run.status == "COMPLETED"
@@ -301,14 +332,47 @@ def bc_config(tmpdir, request):
         config_updates=dict(
             common=dict(log_root=tmpdir),
             expert=expert_config,
+            demonstrations=dict(rollout_path=CARTPOLE_TEST_ROLLOUT_PATH),
         ),
     )
+    assert run.status == "COMPLETED"
+    assert isinstance(run.result, dict)
 
 
 def test_train_bc_main(bc_config):
     run = train_imitation.train_imitation_ex.run(**bc_config)
     assert run.status == "COMPLETED"
     assert isinstance(run.result, dict)
+
+
+def test_train_bc_warmstart(tmpdir):
+    run = train_imitation.train_imitation_ex.run(
+        command_name="bc",
+        named_configs=["seals_cartpole"] + ALGO_FAST_CONFIGS["imitation"],
+        config_updates=dict(
+            common=dict(log_root=tmpdir),
+            demonstrations=dict(rollout_path=CARTPOLE_TEST_ROLLOUT_PATH),
+            expert=dict(
+                policy_type="ppo-huggingface",
+                loader_kwargs=dict(env_id="seals/CartPole-v0"),
+            )
+        ),
+    )
+    assert run.status == "COMPLETED"
+
+    policy_path = pathlib.Path(run.config["common"]["log_dir"]) / "final.th"
+    run_warmstart = train_imitation.train_imitation_ex.run(
+        command_name="bc",
+        named_configs=["seals_cartpole"] + ALGO_FAST_CONFIGS["imitation"],
+        config_updates=dict(
+            common=dict(log_root=tmpdir),
+            demonstrations=dict(rollout_path=CARTPOLE_TEST_ROLLOUT_PATH),
+            agent_path=policy_path,
+        ),
+    )
+
+    assert run_warmstart.status == "COMPLETED"
+    assert isinstance(run_warmstart.result, dict)
 
 
 @pytest.fixture(params=["cold_start", "warm_start"])
@@ -323,11 +387,13 @@ def rl_train_ppo_config(request, tmpdir):
     return config
 
 
-def test_train_rl_main(rl_train_ppo_config):
+def test_train_rl_main(tmpdir, rl_train_ppo_config):
     """Smoke test for imitation.scripts.train_rl."""
+    config_updates = dict(common=dict(log_root=tmpdir))
+    sacred.utils.recursive_update(config_updates, rl_train_ppo_config)
     run = train_rl.train_rl_ex.run(
-        named_configs=["seals_cartpole"] + ALGO_FAST_CONFIGS["rl"],
-        config_updates=rl_train_ppo_config,
+        named_configs=["cartpole"] + ALGO_FAST_CONFIGS["rl"],
+        config_updates=config_updates,
     )
     assert run.status == "COMPLETED"
     assert isinstance(run.result, dict)
@@ -360,12 +426,20 @@ def test_train_rl_sac(tmpdir):
     assert isinstance(run.result, dict)
 
 
-EVAL_POLICY_CONFIGS = [
-    {"videos": True},
-    {"videos": True, "video_kwargs": {"single_video": False}},
+# check if platform is macos
+
+EVAL_POLICY_CONFIGS: List[Dict] = [
     {"reward_type": "zero", "reward_path": "foobar"},
     {"rollout_save_path": "{log_dir}/rollouts.pkl"},
 ]
+
+if platform.system() != "Darwin":
+    EVAL_POLICY_CONFIGS.extend(
+        [
+            {"videos": True},
+            {"videos": True, "video_kwargs": {"single_video": False}},
+        ],
+    )
 
 
 @pytest.mark.parametrize("config", EVAL_POLICY_CONFIGS)
@@ -435,6 +509,35 @@ def test_train_adversarial(tmpdir, named_configs, command):
 
 
 @pytest.mark.parametrize("command", ("airl", "gail"))
+def test_train_adversarial_warmstart(tmpdir, command):
+    named_configs = ["cartpole"] + ALGO_FAST_CONFIGS["adversarial"]
+    config_updates = {
+        "common": dict(log_root=tmpdir),
+        "demonstrations": dict(rollout_path=CARTPOLE_TEST_ROLLOUT_PATH),
+    }
+    run = train_adversarial.train_adversarial_ex.run(
+        command_name=command,
+        named_configs=named_configs,
+        config_updates=config_updates,
+    )
+
+    log_dir = pathlib.Path(run.config["common"]["log_dir"])
+    policy_path = log_dir / "checkpoints" / "final" / "gen_policy"
+
+    run_warmstart = train_adversarial.train_adversarial_ex.run(
+        command_name=command,
+        named_configs=named_configs,
+        config_updates={
+            "agent_path": policy_path,
+            **config_updates,
+        },
+    )
+
+    assert run_warmstart.status == "COMPLETED"
+    _check_train_ex_result(run_warmstart.result)
+
+
+@pytest.mark.parametrize("command", ("airl", "gail"))
 def test_train_adversarial_sac(tmpdir, command):
     """Smoke test for imitation.scripts.train_adversarial."""
     # Make sure rl.sac named_config is called after rl.fast to overwrite
@@ -442,7 +545,10 @@ def test_train_adversarial_sac(tmpdir, command):
     named_configs = (
         ["pendulum"] + ALGO_FAST_CONFIGS["adversarial"] + RL_SAC_NAMED_CONFIGS
     )
-    config_updates = dict(common=dict(log_root=tmpdir))
+    config_updates = {
+        "common": dict(log_root=tmpdir),
+        "demonstrations": dict(rollout_path=PENDULUM_TEST_ROLLOUT_PATH),
+    }
     run = train_adversarial.train_adversarial_ex.run(
         command_name=command,
         named_configs=named_configs,
@@ -455,8 +561,13 @@ def test_train_adversarial_sac(tmpdir, command):
 
 def test_train_adversarial_algorithm_value_error(tmpdir):
     """Error on bad algorithm arguments."""
-    base_named_configs = ["seals_cartpole"] + ALGO_FAST_CONFIGS["adversarial"]
-    base_config_updates = collections.ChainMap(dict(common=dict(log_root=tmpdir)))
+    base_named_configs = ["cartpole"] + ALGO_FAST_CONFIGS["adversarial"]
+    base_config_updates = collections.ChainMap(
+        {
+            "common": dict(log_root=tmpdir),
+            "demonstrations": dict(rollout_path=CARTPOLE_TEST_ROLLOUT_PATH),
+        },
+    )
 
     with pytest.raises(TypeError, match=".*BAD_VALUE.*"):
         train_adversarial.train_adversarial_ex.run(
@@ -473,6 +584,16 @@ def test_train_adversarial_algorithm_value_error(tmpdir):
             named_configs=base_named_configs,
             config_updates=base_config_updates.new_child(
                 {"demonstrations.rollout_path": "path/BAD_VALUE"},
+            ),
+        )
+
+    n_traj = 1234567
+    with pytest.raises(ValueError, match=f".*{n_traj}.*"):
+        train_adversarial.train_adversarial_ex.run(
+            command_name="gail",
+            named_configs=base_named_configs,
+            config_updates=base_config_updates.new_child(
+                {"demonstrations.n_expert_demos": n_traj},
             ),
         )
 
@@ -515,15 +636,16 @@ def test_transfer_learning(tmpdir: str) -> None:
 
 
 @pytest.mark.parametrize(
-    "named_configs",
+    "named_configs_dict",
     (
-        [],
-        ["reward.reward_ensemble"],
+        dict(pc=[], rl=[]),
+        dict(pc=["rl.sac", "train.sac"], rl=["rl.sac", "train.sac"]),
+        dict(pc=["reward.reward_ensemble"], rl=[]),
     ),
 )
 def test_preference_comparisons_transfer_learning(
     tmpdir: str,
-    named_configs: List[str],
+    named_configs_dict: Mapping[str, List[str]],
 ) -> None:
     """Transfer learning smoke test.
 
@@ -531,20 +653,20 @@ def test_preference_comparisons_transfer_learning(
 
     Args:
         tmpdir: Temporary directory to save results to.
-        named_configs: Named configs to use.
+        named_configs_dict: Named configs for preference_comparisons and rl.
     """
     tmpdir = pathlib.Path(tmpdir)
 
     log_dir_train = tmpdir / "train"
     run = train_preference_comparisons.train_preference_comparisons_ex.run(
-        named_configs=["cartpole"]
+        named_configs=["pendulum"]
         + ALGO_FAST_CONFIGS["preference_comparison"]
-        + named_configs,
+        + named_configs_dict["pc"],
         config_updates=dict(common=dict(log_dir=log_dir_train)),
     )
     assert run.status == "COMPLETED"
 
-    if "reward.reward_ensemble" in named_configs:
+    if "reward.reward_ensemble" in named_configs_dict["pc"]:
         assert run.config["reward"]["net_cls"] is reward_nets.RewardEnsemble
         assert run.config["reward"]["add_std_alpha"] == 0.0
         reward_type = "RewardNet_std_added"
@@ -555,13 +677,15 @@ def test_preference_comparisons_transfer_learning(
 
     log_dir_data = tmpdir / "train_rl"
     reward_path = log_dir_train / "checkpoints" / "final" / "reward_net.pt"
+    agent_path = log_dir_train / "checkpoints" / "final" / "policy"
     run = train_rl.train_rl_ex.run(
-        named_configs=["cartpole"] + ALGO_FAST_CONFIGS["rl"],
+        named_configs=["pendulum"] + ALGO_FAST_CONFIGS["rl"] + named_configs_dict["rl"],
         config_updates=dict(
             common=dict(log_dir=log_dir_data),
             reward_type=reward_type,
             reward_path=reward_path,
             load_reward_kwargs=load_reward_kwargs,
+            agent_path=agent_path,
         ),
     )
     assert run.status == "COMPLETED"
@@ -603,6 +727,10 @@ PARALLEL_CONFIG_UPDATES = [
     dict(
         sacred_ex_name="train_adversarial",
         base_named_configs=["seals_cartpole"] + ALGO_FAST_CONFIGS["adversarial"],
+        base_config_updates={
+            # Need absolute path because raylet runs in different working directory.
+            "demonstrations.rollout_path": CARTPOLE_TEST_ROLLOUT_PATH.absolute(),
+        },
         search_space={
             "command_name": tune.grid_search(["gail", "airl"]),
         },
