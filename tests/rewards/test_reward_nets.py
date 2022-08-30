@@ -530,6 +530,21 @@ def test_add_std_reward_wrapper(
     assert np.allclose(rewards, 1 - 0.5 * np.sqrt(8))
 
 
+def test_shaped_reward_net(env_2d: Env2D, numpy_transitions: NumpyTransitions):
+    reward_net = MockRewardNet(env_2d.observation_space, env_2d.action_space, value=0)
+
+    def potential(x: th.Tensor):
+        return th.full((x.shape[0],), 10, device=x.device)
+
+    shaped = reward_nets.ShapedRewardNet(reward_net, potential, 0.9)
+    shaped_rew = th.full((10,), -1, dtype=th.float32)
+    forward_args = shaped.preprocess(*numpy_transitions)
+    assert th.allclose(shaped(*forward_args), shaped_rew)
+    assert th.allclose(shaped.predict_th(*numpy_transitions), shaped_rew)
+    assert np.allclose(shaped.predict(*numpy_transitions), shaped_rew.numpy())
+    assert np.allclose(shaped.predict_processed(*numpy_transitions), shaped_rew.numpy())
+
+
 @pytest.mark.parametrize("make_wrapper", MAKE_SIMPLE_REWARD_NET_WRAPPERS)
 def test_wrappers_pass_on_kwargs(
     make_wrapper: reward_nets.RewardNetWrapper,
