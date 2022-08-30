@@ -154,6 +154,8 @@ class EMANorm(BaseNorm):
             raise ValueError("decay must be between 0 and 1")
 
         self.decay = decay
+        self.inv_learning_rate = 0
+        self.num_batches = 0
 
     def update_stats(self, batch: th.Tensor) -> None:
         """Update `self.running_mean` and `self.running_var` in batch mode.
@@ -168,24 +170,24 @@ class EMANorm(BaseNorm):
         if len(batch.shape) == 1:
             batch = batch.reshape(b_size, 1)
 
-        alpha = 1 - self.decay
-        if self.count == 0:
-            self.running_mean = batch.mean(0)
-            if b_size > 1:
-                self.running_var = batch.var(0, unbiased=False)
-            else:
-                self.running_var = th.zeros_like(self.running_mean)
-        else:
-            # update running mean
-            delta_mean = batch.mean(0) - self.running_mean
-            self.running_mean += alpha * delta_mean
+        self.inv_learning_rate += self.decay**self.num_batches
+        learning_rate = 1 / self.inv_learning_rate
 
-            # update running variance
-            batch_var = batch.var(0, unbiased=False)
-            delta_var = batch_var + self.decay * delta_mean**2 - self.running_var
-            self.running_var += alpha * delta_var
+        # update running mean
+        delta_mean = batch.mean(0) - self.running_mean
+        self.running_mean += learning_rate * delta_mean
+
+        # update running variance
+        batch_var = batch.var(0, unbiased=False)
+        delta_var = (
+            batch_var
+            + (1 - self.inv_learning_rate) * delta_mean**2
+            - self.running_var
+        )
+        self.running_var += learning_rate * delta_var
 
         self.count += b_size
+        self.num_batches += 1
 
 
 def build_mlp(
