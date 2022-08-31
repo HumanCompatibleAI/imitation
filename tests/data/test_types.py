@@ -1,13 +1,12 @@
 """Tests of `imitation.data.types`."""
 
-
 import contextlib
 import copy
 import dataclasses
 import os
 import pathlib
 import pickle
-from typing import Any, Callable
+from typing import Any, Callable, Sequence
 
 import gym
 import numpy as np
@@ -27,7 +26,8 @@ ACT_SPACES = SPACES
 LENGTHS = [0, 1, 2, 10]
 
 
-def _check_1d_shape(fn: Callable[[np.ndarray], Any], length: float, expected_msg: str):
+def _check_1d_shape(fn: Callable[[np.ndarray], Any], length: int, expected_msg: str):
+    assert isinstance(length, int)
     for shape in [(), (length, 1), (length, 2), (length - 1,), (length + 1,)]:
         with pytest.raises(ValueError, match=expected_msg):
             fn(np.zeros(shape))
@@ -35,9 +35,9 @@ def _check_1d_shape(fn: Callable[[np.ndarray], Any], length: float, expected_msg
 
 @pytest.fixture
 def trajectory(
-    obs_space: gym.Space,
-    act_space: gym.Space,
-    length: int,
+        obs_space: gym.Space,
+        act_space: gym.Space,
+        length: int,
 ) -> types.Trajectory:
     """Fixture to generate trajectory of length `length` iid sampled from spaces."""
     if length == 0:
@@ -57,9 +57,9 @@ def trajectory_rew(trajectory: types.Trajectory) -> types.TrajectoryWithRew:
 
 @pytest.fixture
 def transitions_min(
-    obs_space: gym.Space,
-    act_space: gym.Space,
-    length: int,
+        obs_space: gym.Space,
+        act_space: gym.Space,
+        length: int,
 ) -> types.TransitionsMinimal:
     obs = np.array([obs_space.sample() for _ in range(length)])
     acts = np.array([act_space.sample() for _ in range(length)])
@@ -69,9 +69,9 @@ def transitions_min(
 
 @pytest.fixture
 def transitions(
-    transitions_min: types.TransitionsMinimal,
-    obs_space: gym.Space,
-    length: int,
+        transitions_min: types.TransitionsMinimal,
+        obs_space: gym.Space,
+        length: int,
 ) -> types.Transitions:
     """Fixture to generate transitions of length `length` iid sampled from spaces."""
     next_obs = np.array([obs_space.sample() for _ in range(length)])
@@ -85,8 +85,8 @@ def transitions(
 
 @pytest.fixture
 def transitions_rew(
-    transitions: types.Transitions,
-    length: int,
+        transitions: types.Transitions,
+        length: int,
 ) -> types.TransitionsWithRew:
     """Like `transitions` but with reward randomly sampled from a Gaussian."""
     rews = np.random.randn(length)
@@ -129,10 +129,10 @@ class TestData:
     """
 
     def test_valid_trajectories(
-        self,
-        trajectory: types.Trajectory,
-        trajectory_rew: types.TrajectoryWithRew,
-        length: int,
+            self,
+            trajectory: types.Trajectory,
+            trajectory_rew: types.TrajectoryWithRew,
+            length: int,
     ) -> None:
         """Checks trajectories can be created for a variety of lengths and spaces."""
         trajs = [trajectory, trajectory_rew]
@@ -141,9 +141,9 @@ class TestData:
             assert len(traj) == length
 
     def test_traj_unequal_to_other_types(
-        self,
-        trajectory: types.Trajectory,
-        trajectory_rew: types.TrajectoryWithRew,
+            self,
+            trajectory: types.Trajectory,
+            trajectory_rew: types.TrajectoryWithRew,
     ) -> None:
         """Test trajectories unequal to objects of different types."""
         for t in [trajectory, trajectory_rew]:
@@ -155,9 +155,9 @@ class TestData:
         assert trajectory != trajectory_rew
 
     def test_traj_equal_to_self_and_copies(
-        self,
-        trajectory: types.Trajectory,
-        trajectory_rew: types.TrajectoryWithRew,
+            self,
+            trajectory: types.Trajectory,
+            trajectory_rew: types.TrajectoryWithRew,
     ) -> None:
         """Test that trajectories are equal to themselves and copies."""
         for t in [trajectory, trajectory_rew]:
@@ -167,10 +167,10 @@ class TestData:
             assert t == copy.copy(t)
 
     def test_traj_unequal_to_perturbations(
-        self,
-        trajectory: types.Trajectory,
-        trajectory_rew: types.TrajectoryWithRew,
-        length: int,
+            self,
+            trajectory: types.Trajectory,
+            trajectory_rew: types.TrajectoryWithRew,
+            length: int,
     ) -> None:
         """Test that trajectories unequal to perturbed versions."""
         # Unequal to a copy of itself truncated
@@ -199,15 +199,16 @@ class TestData:
     @pytest.mark.parametrize("use_rewards", [False, True])
     @pytest.mark.parametrize("use_chdir", [False, True])
     def test_save_trajectories(
-        self,
-        trajectory: types.Trajectory,
-        trajectory_rew: types.TrajectoryWithRew,
-        use_chdir,
-        tmpdir,
-        use_pickle,
-        use_rewards,
-        type_safe,
+            self,
+            trajectory: types.Trajectory,
+            trajectory_rew: types.TrajectoryWithRew,
+            use_chdir,
+            tmpdir,
+            use_pickle,
+            use_rewards,
+            type_safe,
     ):
+        chdir_context: contextlib.AbstractContextManager
         """Check that trajectories are properly saved."""
         if use_chdir:
             # Test no relative path without directory edge-case.
@@ -234,12 +235,13 @@ class TestData:
                     with pytest.raises(ValueError):
                         types.save(save_path, [trajectory, trajectory_rew])
 
+            loaded_trajs: Sequence[types.Trajectory]
             if type_safe:
                 if use_rewards:
                     loaded_trajs = types.load_with_rewards(save_path)
                 else:
                     with pytest.raises(ValueError):
-                        loaded_trajs = types.load_with_rewards(save_path)
+                        types.load_with_rewards(save_path)
                     loaded_trajs = types.load(save_path)
             else:
                 loaded_trajs = types.load(save_path)
@@ -249,32 +251,32 @@ class TestData:
                 assert t1 == t2
 
     def test_invalid_trajectories(
-        self,
-        trajectory: types.Trajectory,
-        trajectory_rew: types.TrajectoryWithRew,
+            self,
+            trajectory: types.Trajectory,
+            trajectory_rew: types.TrajectoryWithRew,
     ) -> None:
         """Checks input validation catches space and dtype related errors."""
         trajs = [trajectory, trajectory_rew]
         for traj in trajs:
             with pytest.raises(
-                ValueError,
-                match=r"expected one more observations than actions.*",
+                    ValueError,
+                    match=r"expected one more observations than actions.*",
             ):
                 dataclasses.replace(traj, obs=traj.obs[:-1])
             with pytest.raises(
-                ValueError,
-                match=r"expected one more observations than actions.*",
+                    ValueError,
+                    match=r"expected one more observations than actions.*",
             ):
                 dataclasses.replace(traj, acts=traj.acts[:-1])
 
             with pytest.raises(
-                ValueError,
-                match=r"infos when present must be present for each action.*",
+                    ValueError,
+                    match=r"infos when present must be present for each action.*",
             ):
                 dataclasses.replace(traj, infos=traj.infos[:-1])
             with pytest.raises(
-                ValueError,
-                match=r"infos when present must be present for each action.*",
+                    ValueError,
+                    match=r"infos when present must be present for each action.*",
             ):
                 dataclasses.replace(traj, obs=traj.obs[:-1], acts=traj.acts[:-1])
 
@@ -291,12 +293,12 @@ class TestData:
             )
 
     def test_valid_transitions(
-        self,
-        transitions_min: types.TransitionsMinimal,
-        transitions: types.Transitions,
-        transitions_rew: types.TransitionsWithRew,
-        length: int,
-        n_checks: int = 20,
+            self,
+            transitions_min: types.TransitionsMinimal,
+            transitions: types.Transitions,
+            transitions_rew: types.TransitionsWithRew,
+            length: int,
+            n_checks: int = 20,
     ) -> None:
         """Checks initialization, indexing, and slicing sanity."""
         for trans in [transitions_min, transitions, transitions_rew]:
@@ -320,11 +322,11 @@ class TestData:
                 _check_transitions_get_item(trans, s)
 
     def test_invalid_transitions(
-        self,
-        transitions_min: types.Transitions,
-        transitions: types.Transitions,
-        transitions_rew: types.TransitionsWithRew,
-        length: int,
+            self,
+            transitions_min: types.Transitions,
+            transitions: types.Transitions,
+            transitions_rew: types.TransitionsWithRew,
+            length: int,
     ) -> None:
         """Checks input validation catches space and dtype related errors."""
         if length == 0:
@@ -332,26 +334,26 @@ class TestData:
 
         for trans in [transitions_min, transitions, transitions_rew]:
             with pytest.raises(
-                ValueError,
-                match=r"obs and acts must have same number of timesteps:.*",
+                    ValueError,
+                    match=r"obs and acts must have same number of timesteps:.*",
             ):
                 dataclasses.replace(trans, acts=trans.acts[:-1])
             with pytest.raises(
-                ValueError,
-                match=r"obs and infos must have same number of timesteps:.*",
+                    ValueError,
+                    match=r"obs and infos must have same number of timesteps:.*",
             ):
                 dataclasses.replace(trans, infos=[{}] * (length - 1))
 
         for trans in [transitions, transitions_rew]:
             with pytest.raises(
-                ValueError,
-                match=r"obs and next_obs must have same shape:.*",
+                    ValueError,
+                    match=r"obs and next_obs must have same shape:.*",
             ):
                 dataclasses.replace(trans, next_obs=np.zeros((len(trans), 4, 2)))
 
             with pytest.raises(
-                ValueError,
-                match=r"obs and next_obs must have the same dtype:.*",
+                    ValueError,
+                    match=r"obs and next_obs must have the same dtype:.*",
             ):
                 dataclasses.replace(
                     trans,
