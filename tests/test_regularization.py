@@ -117,42 +117,49 @@ def test_interval_param_scaler_init_raises():
         ValueError,
         match=r"scaling_factor must be in \(0, 1\) within machine precision.",
     ):
-        # cannot be larger than one as this would make lambda negative when scaling down.
+        # cannot be larger than one as this would make lambda
+        # negative when scaling down.
         updaters.IntervalParamScaler(1.1, (0.1, 0.9))
     with pytest.raises(
         ValueError,
         match=r"scaling_factor must be in \(0, 1\) within machine precision.",
     ):
-        # cannot be exactly zero, as this never changes the value of lambda when scaling up.
+        # cannot be exactly zero, as this never changes the value
+        # of lambda when scaling up.
         updaters.IntervalParamScaler(0.0, (0.1, 0.9))
     with pytest.raises(
         ValueError,
         match=r"scaling_factor must be in \(0, 1\) within machine precision.",
     ):
-        # cannot be exactly one, as when lambda is scaled down this brings it to zero.
+        # cannot be exactly one, as when lambda is scaled down
+        # this brings it to zero.
         updaters.IntervalParamScaler(1.0, (0.1, 0.9))
 
     # an interval obviously needs two elements only.
     with pytest.raises(
-        ValueError, match="tolerable_interval must be a tuple of length 2"
+        ValueError,
+        match="tolerable_interval must be a tuple of length 2",
     ):
         updaters.IntervalParamScaler(0.5, (0.1, 0.9, 0.5))  # type: ignore
     with pytest.raises(
-        ValueError, match="tolerable_interval must be a tuple of length 2"
+        ValueError,
+        match="tolerable_interval must be a tuple of length 2",
     ):
         updaters.IntervalParamScaler(0.5, (0.1,))  # type: ignore
 
     # the first element of the interval must be at least 0.
     with pytest.raises(
         ValueError,
-        match="tolerable_interval must be a tuple whose first element is at least 0.*",
+        match="tolerable_interval must be a tuple whose first element "
+        "is at least 0.*",
     ):
         updaters.IntervalParamScaler(0.5, (-0.1, 0.9))
 
     # the second element of the interval must be greater than the first.
     with pytest.raises(
         ValueError,
-        match="tolerable_interval must be a tuple.*the second element is greater than the first",
+        match="tolerable_interval must be a tuple.*the second "
+        "element is greater than the first",
     ):
         updaters.IntervalParamScaler(0.5, (0.1, 0.05))
 
@@ -174,6 +181,8 @@ def initial_lambda(request):
 
 
 class SimpleRegularizer(regularizers.Regularizer[None]):
+    """A simple regularizer that does nothing."""
+
     def regularize(self, loss: th.Tensor) -> None:
         ...
 
@@ -211,7 +220,8 @@ def test_regularizer_update_params(
     expected_lambda_value = interval_param_scaler(initial_lambda, train_loss, val_loss)
     assert updater.lambda_ == expected_lambda_value
     assert expected_lambda_value != initial_lambda
-    # TODO(juan) where's the historic data for this? should check the initial value is there
+    # TODO(juan) where's the historic data for this? should check the
+    #  initial value is there
     assert (
         hierarchical_logger.default_logger.name_to_value["regularization_lambda"]
         == expected_lambda_value
@@ -219,6 +229,11 @@ def test_regularizer_update_params(
 
 
 class SimpleLossRegularizer(regularizers.LossRegularizer):
+    """A simple loss regularizer.
+
+    It multiplies the total loss by lambda_+1.
+    """
+
     def _loss_penalty(self, loss: th.Tensor) -> th.Tensor:
         return loss * self.lambda_  # this multiplies the total loss by lambda_+1.
 
@@ -257,6 +272,11 @@ def test_loss_regularizer(
 
 
 class SimpleWeightRegularizer(regularizers.WeightRegularizer):
+    """A simple weight regularizer.
+
+    It multiplies the total weight by lambda_+1.
+    """
+
     def _weight_penalty(self, weight, group):
         # this multiplies the total weight by lambda_+1.
         # However, the grad is only calculated with respect to the
@@ -310,19 +330,23 @@ def test_lp_regularizer_p_value_raises(hierarchical_logger, simple_optimizer, p)
 
 MULTI_PARAM_OPTIMIZER_INIT_VALS = [-1.0, 0.0, 1.0]
 MULTI_PARAM_OPTIMIZER_ARGS = itertools.product(
-    MULTI_PARAM_OPTIMIZER_INIT_VALS, MULTI_PARAM_OPTIMIZER_INIT_VALS
+    MULTI_PARAM_OPTIMIZER_INIT_VALS,
+    MULTI_PARAM_OPTIMIZER_INIT_VALS,
 )
 
 
 @pytest.fixture(scope="module", params=MULTI_PARAM_OPTIMIZER_ARGS)
 def multi_param_optimizer(request):
     return th.optim.Adam(
-        [th.tensor(p, requires_grad=True) for p in request.param], lr=0.1
+        [th.tensor(p, requires_grad=True) for p in request.param],
+        lr=0.1,
     )
 
 
 MULTI_PARAM_AND_LR_OPTIMIZER_ARGS = itertools.product(
-    MULTI_PARAM_OPTIMIZER_INIT_VALS, MULTI_PARAM_OPTIMIZER_INIT_VALS, [0.001, 0.01, 0.1]
+    MULTI_PARAM_OPTIMIZER_INIT_VALS,
+    MULTI_PARAM_OPTIMIZER_INIT_VALS,
+    [0.001, 0.01, 0.1],
 )
 
 
@@ -361,10 +385,11 @@ def test_lp_regularizer(
     regularizer.optimizer.zero_grad()
     regularized_loss = regularizer.regularize(train_loss)
     loss_penalty = sum(
-        [th.linalg.vector_norm(param.data, ord=p).pow(p) for param in params]
+        [th.linalg.vector_norm(param.data, ord=p).pow(p) for param in params],
     )
     assert th.allclose(
-        regularized_loss.data, train_loss + initial_lambda * loss_penalty
+        regularized_loss.data,
+        train_loss + initial_lambda * loss_penalty,
     )
     assert (
         regularized_loss
@@ -372,7 +397,8 @@ def test_lp_regularizer(
     )
     for param in params:
         assert th.allclose(
-            param.grad, p * initial_lambda * th.abs(param).pow(p - 1) * th.sign(param)
+            param.grad,
+            p * initial_lambda * th.abs(param).pow(p - 1) * th.sign(param),
         )
 
 
@@ -404,6 +430,7 @@ def test_weight_decay_regularizer(
     regularizer.regularize(train_loss)
     for weight, initial_weight_value in zip(weights, initial_weight_values):
         assert th.allclose(
-            weight.data, initial_weight_value * (1 - lr * initial_lambda)
+            weight.data,
+            initial_weight_value * (1 - lr * initial_lambda),
         )
         assert th.allclose(weight.grad, train_loss_base * initial_weight_value)

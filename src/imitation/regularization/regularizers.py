@@ -12,7 +12,7 @@ from imitation.util import logger as imit_logger
 # this is not actually a scalar, dimension check is still required for tensor.
 Scalar = Union[th.Tensor, float]
 
-R = TypeVar("R", bound=Union[th.Tensor, float, None])
+R = TypeVar("R")
 
 
 class Regularizer(abc.ABC, Generic[R]):
@@ -49,6 +49,7 @@ class Regularizer(abc.ABC, Generic[R]):
     @abc.abstractmethod
     def regularize(self, loss: th.Tensor) -> R:
         """Abstract method for performing the regularization step.
+
         The return type is a generic and the specific implementation
         must describe the meaning of the return type.
 
@@ -109,7 +110,7 @@ class LossRegularizer(Regularizer[Scalar]):
         return regularized_loss
 
 
-class WeightRegularizer(Regularizer[None]):
+class WeightRegularizer(Regularizer):
     """Abstract base class for regularizers that regularize the weights of a network.
 
     Requires the user to implement the _weight_penalty method.

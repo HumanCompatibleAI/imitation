@@ -51,7 +51,7 @@ class IntervalParamScaler(LambdaUpdater):
         eps = np.finfo(float).eps
         if not (eps < scaling_factor < 1 - eps):
             raise ValueError(
-                "scaling_factor must be in (0, 1) within machine precision."
+                "scaling_factor must be in (0, 1) within machine precision.",
             )
         if len(tolerable_interval) != 2:
             raise ValueError("tolerable_interval must be a tuple of length 2")
@@ -59,7 +59,7 @@ class IntervalParamScaler(LambdaUpdater):
             raise ValueError(
                 "tolerable_interval must be a tuple whose first element "
                 "is at least 0 and the second element is greater than "
-                "the first"
+                "the first",
             )
 
         self.scaling_factor = scaling_factor
@@ -105,7 +105,7 @@ class IntervalParamScaler(LambdaUpdater):
             raise ValueError(
                 "lambda_ must not be zero. Make sure that you're not "
                 "scaling the value of lambda down too quickly or passing an "
-                "initial value of zero to the lambda parameter."
+                "initial value of zero to the lambda parameter.",
             )
         if not isinstance(lambda_, float):
             raise ValueError("lambda_ must be a float")
