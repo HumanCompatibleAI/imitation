@@ -184,7 +184,7 @@ class SimpleRegularizer(regularizers.Regularizer[None]):
     """A simple regularizer that does nothing."""
 
     def regularize(self, loss: th.Tensor) -> None:
-        pass
+        pass  # pragma: no cover
 
 
 @pytest.mark.parametrize(
@@ -203,7 +203,7 @@ def test_regularizer_update_params(
     interval_param_scaler,
     train_loss,
 ):
-    updater = SimpleRegularizer(
+    regularizer = SimpleRegularizer(
         initial_lambda=initial_lambda,
         logger=hierarchical_logger,
         lambda_updater=interval_param_scaler,
@@ -211,14 +211,14 @@ def test_regularizer_update_params(
     )
     val_to_train_loss_ratio = interval_param_scaler.tolerable_interval[1] * 2
     val_loss = train_loss * val_to_train_loss_ratio
-    assert updater.lambda_ == initial_lambda
+    assert regularizer.lambda_ == initial_lambda
     assert (
         hierarchical_logger.default_logger.name_to_value["regularization_lambda"]
         == initial_lambda
     )
-    updater.update_params(train_loss, val_loss)
+    regularizer.update_params(train_loss, val_loss)
     expected_lambda_value = interval_param_scaler(initial_lambda, train_loss, val_loss)
-    assert updater.lambda_ == expected_lambda_value
+    assert regularizer.lambda_ == expected_lambda_value
     assert expected_lambda_value != initial_lambda
     # TODO(juan) where's the historic data for this? should check the
     #  initial value is there
