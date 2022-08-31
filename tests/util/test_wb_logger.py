@@ -87,7 +87,7 @@ class MockWandb:
 mock_wandb = MockWandb()
 
 
-@mock.patch.object(wandb, "__init__", mock_wandb.__init__)
+@mock.patch.object(wandb, "__init__", mock_wandb.__init__)  # type: ignore
 @mock.patch.object(wandb, "init", mock_wandb.init)
 @mock.patch.object(wandb, "log", mock_wandb.log)
 @mock.patch.object(wandb, "finish", mock_wandb.finish)
