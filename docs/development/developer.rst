@@ -80,17 +80,11 @@ Rewards
 
 Scripts
 -------
-.. automodule:: imitation.scripts
-    :noindex:
-
-.. autosummary:: 
-    :recursive:
-    :template: autosummary/module.rst
-
-    imitation.scripts.common
+.. .. automodule:: imitation.scripts
+..     :noindex:
 
 We use Sacred to provide a command-line interface to run the experiments. The scripts to run the end-to-end experiments are
-available in ``scripts/``. You can take a look at the following docs to understand how to use Sacred:
+available in ``scripts/``. You can take a look at the following doc links to understand how to use Sacred:
 
 - `Experiment Overview <https://sacred.readthedocs.io/en/stable/experiment.html>`_: Explains how to create and run experiments. All the experiment objects are defined in ``scripts/config`` in the respective algorithm name file and their ``main`` functions are defined in algorithm name file in ``scripts/``. For example, ``train_rl_ex`` object is defined in ``scripts.config.train_rl`` and its main function is in ``scripts.train_rl``.
 
