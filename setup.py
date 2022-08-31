@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 
 IS_NOT_WINDOWS = os.name != "nt"
 
-PARALLEL_REQUIRE = ["ray[debug,tune]~=1.13.0"]
+PARALLEL_REQUIRE = ["ray[debug,tune]~=2.0.0"]
 PYTYPE = ["pytype==2022.7.26"] if IS_NOT_WINDOWS else []
 if IS_NOT_WINDOWS:
     # TODO(adam): use this for Windows as well once PyPI is at >=1.6.1

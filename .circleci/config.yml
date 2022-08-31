@@ -74,7 +74,7 @@ commands:
     steps:
       - run:
           name: install macOS packages
-          command: brew install coreutils ffmpeg gnu-getopt
+          command: HOMEBREW_NO_AUTO_UPDATE=1 brew install coreutils parallel gnu-getopt
 
       - checkout
 
@@ -283,7 +283,7 @@ jobs:
   unit-test-macos:
     macos:
       xcode: 13.4.1
-
+    parallelism: 2
     steps:
       - dependencies-macos
       - restore-pytest-cache
@@ -292,7 +292,8 @@ jobs:
           name: run tests
           command: |
             source ~/venv/bin/activate
-            pytest -n auto --junitxml=/tmp/test-reports/junit.xml -vv tests/
+            TESTFILES=$(circleci tests glob tests/**/test*.py | circleci tests split --split-by=timings)
+            pytest -n auto --junitxml=/tmp/test-reports/junit.xml -vv $TESTFILES
 
       - save-pytest-cache
       - store-test-output-unix
@@ -332,7 +333,6 @@ jobs:
 
       - store_test_results:
           path: \tmp\test-reports
-          unit-test-windows:
 
       - store_artifacts:
           path: \tmp\resource-usage
