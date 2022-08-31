@@ -42,11 +42,11 @@ class DucktypedDataset:
 
 @pytest.fixture
 def trainer(
-    batch_size,
-    cartpole_venv,
-    expert_data_type,
-    custom_logger,
-    cartpole_expert_trajectories,
+        batch_size,
+        cartpole_venv,
+        expert_data_type,
+        custom_logger,
+        cartpole_expert_trajectories,
 ):
     trans = rollout.flatten_trajectories(cartpole_expert_trajectories)
     if expert_data_type == "data_loader":
@@ -101,6 +101,7 @@ def test_bc(trainer: bc.BC, cartpole_venv):
         15,
         return_episode_rewards=True,
     )
+    assert isinstance(novice_rewards, (list, tuple))
 
     trainer.train(
         n_epochs=1,
@@ -114,6 +115,7 @@ def test_bc(trainer: bc.BC, cartpole_venv):
         15,
         return_episode_rewards=True,
     )
+    assert isinstance(rewards_after_training, (list, tuple))
     assert reward_improvement.is_significant_reward_improvement(
         novice_rewards,
         rewards_after_training,
@@ -159,10 +161,10 @@ class _DataLoaderFailsOnNthIter:
 
 @pytest.mark.parametrize("no_yield_after_iter", [0, 1, 5])
 def test_bc_data_loader_empty_iter_error(
-    cartpole_venv: vec_env.VecEnv,
-    no_yield_after_iter: bool,
-    custom_logger: logger.HierarchicalLogger,
-    cartpole_expert_trajectories,
+        cartpole_venv: vec_env.VecEnv,
+        no_yield_after_iter: bool,
+        custom_logger: logger.HierarchicalLogger,
+        cartpole_expert_trajectories,
 ) -> None:
     """Check that we error out if the DataLoader suddenly stops yielding any batches.
 

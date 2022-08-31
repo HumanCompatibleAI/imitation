@@ -2,7 +2,7 @@
 
 import contextlib
 import os
-from typing import Any, Mapping
+from typing import Any, Mapping, Union, Type
 
 import numpy as np
 import pytest
@@ -42,7 +42,7 @@ ENV_NAMES = ["FrozenLake-v1", "CartPole-v1", "Pendulum-v1"]
 EXPERT_BATCH_SIZES = [1, 128]
 
 
-@pytest.fixture(params=ALGORITHM_KWARGS.values(), ids=ALGORITHM_KWARGS.keys())
+@pytest.fixture(params=ALGORITHM_KWARGS.values(), ids=list(ALGORITHM_KWARGS.keys()))
 def _algorithm_kwargs(request):
     """Auto-parametrizes `_rl_algorithm_cls` for the `trainer` fixture."""
     return dict(request.param)
@@ -55,15 +55,16 @@ def expert_transitions(cartpole_expert_trajectories):
 
 @contextlib.contextmanager
 def make_trainer(
-    algorithm_kwargs: Mapping[str, Any],
-    tmpdir: str,
-    expert_transitions: types.Transitions,
-    expert_batch_size: int = 1,
-    env_name: str = "seals/CartPole-v0",
-    num_envs: int = 1,
-    parallel: bool = False,
-    convert_dataset: bool = False,
+        algorithm_kwargs: Mapping[str, Any],
+        tmpdir: str,
+        expert_transitions: types.Transitions,
+        expert_batch_size: int = 1,
+        env_name: str = "seals/CartPole-v0",
+        num_envs: int = 1,
+        parallel: bool = False,
+        convert_dataset: bool = False,
 ):
+    expert_data: Union[th_data.DataLoader, th_data.Dataset]
     if convert_dataset:
         expert_data = th_data.DataLoader(
             expert_transitions,
@@ -78,7 +79,7 @@ def make_trainer(
     venv = util.make_vec_env(env_name, n_envs=num_envs, parallel=parallel)
     model_cls = algorithm_kwargs["model_class"]
     gen_algo = model_cls(algorithm_kwargs["policy_class"], venv)
-    reward_net_cls = reward_nets.BasicRewardNet
+    reward_net_cls: Type[reward_nets.RewardNet] = reward_nets.BasicRewardNet
     if algorithm_kwargs["algorithm_cls"] == airl.AIRL:
         reward_net_cls = reward_nets.BasicShapedRewardNet
     reward_net = reward_net_cls(venv.observation_space, venv.action_space)
@@ -126,7 +127,7 @@ def test_airl_fail_fast(custom_logger, tmpdir):
         )
 
 
-@pytest.fixture(params=ALGORITHM_KWARGS.values(), ids=ALGORITHM_KWARGS.keys())
+@pytest.fixture(params=ALGORITHM_KWARGS.values(), ids=list(ALGORITHM_KWARGS.keys()))
 def trainer(request, tmpdir, expert_transitions):
     with make_trainer(request.param, tmpdir, expert_transitions) as trainer:
         yield trainer
@@ -138,8 +139,8 @@ def test_train_disc_no_samples_error(trainer: common.AdversarialTrainer):
 
 
 def test_train_disc_unequal_expert_gen_samples_error(
-    trainer: common.AdversarialTrainer,
-    expert_transitions: types.Transitions,
+        trainer: common.AdversarialTrainer,
+        expert_transitions: types.Transitions,
 ):
     """Test that train_disc raises error when n_gen != n_expert samples."""
     if len(expert_transitions) < 2:  # pragma: no cover
@@ -170,20 +171,20 @@ def _expert_batch_size(request):
 
 @pytest.fixture
 def trainer_parametrized(
-    _algorithm_kwargs,
-    _parallel,
-    _convert_dataset,
-    _expert_batch_size,
-    tmpdir,
-    expert_transitions,
-):
-    with make_trainer(
         _algorithm_kwargs,
+        _parallel,
+        _convert_dataset,
+        _expert_batch_size,
         tmpdir,
         expert_transitions,
-        parallel=_parallel,
-        convert_dataset=_convert_dataset,
-        expert_batch_size=_expert_batch_size,
+):
+    with make_trainer(
+            _algorithm_kwargs,
+            tmpdir,
+            expert_transitions,
+            parallel=_parallel,
+            convert_dataset=_convert_dataset,
+            expert_batch_size=_expert_batch_size,
     ) as trainer:
         yield trainer
 
@@ -201,8 +202,8 @@ def test_train_disc_step_no_crash(trainer_parametrized, _expert_batch_size):
 
 
 def test_train_gen_train_disc_no_crash(
-    trainer_parametrized: common.AdversarialTrainer,
-    n_updates: int = 2,
+        trainer_parametrized: common.AdversarialTrainer,
+        n_updates: int = 2,
 ) -> None:
     trainer_parametrized.train_gen(n_updates * trainer_parametrized.gen_train_timesteps)
     trainer_parametrized.train_disc()
@@ -210,26 +211,26 @@ def test_train_gen_train_disc_no_crash(
 
 @pytest.fixture
 def trainer_batch_sizes(
-    _algorithm_kwargs,
-    _expert_batch_size,
-    tmpdir,
-    expert_transitions,
-):
-    with make_trainer(
         _algorithm_kwargs,
+        _expert_batch_size,
         tmpdir,
         expert_transitions,
-        expert_batch_size=_expert_batch_size,
+):
+    with make_trainer(
+            _algorithm_kwargs,
+            tmpdir,
+            expert_transitions,
+            expert_batch_size=_expert_batch_size,
     ) as trainer:
         yield trainer
 
 
 def test_train_disc_improve_D(
-    trainer_batch_sizes,
-    tmpdir,
-    expert_transitions,
-    _expert_batch_size,
-    n_steps=3,
+        trainer_batch_sizes,
+        tmpdir,
+        expert_transitions,
+        _expert_batch_size,
+        n_steps=3,
 ):
     expert_samples = expert_transitions[:_expert_batch_size]
     expert_samples = types.dataclass_quick_asdict(expert_samples)
@@ -262,18 +263,18 @@ def trainer_diverse_env(_algorithm_kwargs, _env_name, tmpdir, expert_transitions
     if _algorithm_kwargs["model_class"] == stable_baselines3.DQN:
         pytest.skip("DQN does not support all environments.")
     with make_trainer(
-        _algorithm_kwargs,
-        tmpdir,
-        expert_transitions,
-        env_name=_env_name,
+            _algorithm_kwargs,
+            tmpdir,
+            expert_transitions,
+            env_name=_env_name,
     ) as trainer:
         yield trainer
 
 
 @pytest.mark.parametrize("n_timesteps", [2, 4, 10])
 def test_logits_expert_is_high_log_policy_act_prob(
-    trainer_diverse_env: common.AdversarialTrainer,
-    n_timesteps: int,
+        trainer_diverse_env: common.AdversarialTrainer,
+        n_timesteps: int,
 ):
     """Smoke test calling `logits_expert_is_high` on `AdversarialTrainer`.
 
@@ -300,6 +301,7 @@ def test_logits_expert_is_high_log_policy_act_prob(
     log_act_prob_non_none = th.as_tensor(log_act_prob_non_none).to(obs.device)
 
     for log_act_prob in [None, log_act_prob_non_none]:
+        maybe_error_ctx: contextlib.AbstractContextManager
         if isinstance(trainer_diverse_env, airl.AIRL) and log_act_prob is None:
             maybe_error_ctx = pytest.raises(TypeError, match="Non-None.*required.*")
         else:
