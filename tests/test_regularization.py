@@ -251,7 +251,7 @@ def test_weight_regularizer(
 @pytest.mark.parametrize("p", [0.5, 1.5, -1, 0, "random value"])
 def test_lp_regularizer_p_value_raises(hierarchical_logger, simple_optimizer, p):
     with pytest.raises(ValueError, match="p must be a positive integer"):
-        regularizers.LPRegularizer(
+        regularizers.LpRegularizer(
             initial_lambda=1.,
             logger=hierarchical_logger,
             lambda_updater=updaters.ConstantParamScaler(),
@@ -260,7 +260,7 @@ def test_lp_regularizer_p_value_raises(hierarchical_logger, simple_optimizer, p)
         )
 
 
-MULTI_PARAM_OPTIMIZER_INIT_VALS = [-1, -0.1, 0., 0.1, 1.]
+MULTI_PARAM_OPTIMIZER_INIT_VALS = [-1., 0., 1.]
 MULTI_PARAM_OPTIMIZER_PARAMS = itertools.product(
     MULTI_PARAM_OPTIMIZER_INIT_VALS, MULTI_PARAM_OPTIMIZER_INIT_VALS)
 
@@ -275,7 +275,7 @@ def multi_param_optimizer(request):
     th.tensor(1.),
     th.tensor(0.1),
 ])
-@pytest.mark.parametrize("p", [2])
+@pytest.mark.parametrize("p", [1, 2, 3])
 def test_lp_regularizer(
         hierarchical_logger,
         multi_param_optimizer,
@@ -291,16 +291,14 @@ def test_lp_regularizer(
         p=p,
     )
     params = multi_param_optimizer.param_groups[0]["params"]
+    regularizer.optimizer.zero_grad()
     regularized_loss = regularizer.regularize(train_loss)
     loss_penalty = sum([th.linalg.vector_norm(param.data, ord=p).pow(p) for param in params])
     assert th.allclose(regularized_loss.data, train_loss + initial_lambda * loss_penalty)
     assert regularized_loss == hierarchical_logger.default_logger.name_to_value['regularized_loss']
-    if p > 1:
-        for param in params:
-            assert th.allclose(param.grad, p * initial_lambda * th.abs(param.data) * param.pow(p - 1))
-    else:
-        for param in params:
-            if th.allclose(param.data, th.tensor(0.)):
-                assert th.allclose(param.grad, th.tensor(0.))
-            else:
-                assert th.allclose(param.grad, initial_lambda * th.sign(param.data))
+    for param in params:
+        assert th.allclose(param.grad, p * initial_lambda * th.abs(param).pow(p - 1) * th.sign(param))
+
+
+def test_weight_decay_regularizer():
+    pass
