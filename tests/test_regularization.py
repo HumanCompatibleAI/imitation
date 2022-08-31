@@ -261,13 +261,22 @@ def test_lp_regularizer_p_value_raises(hierarchical_logger, simple_optimizer, p)
 
 
 MULTI_PARAM_OPTIMIZER_INIT_VALS = [-1., 0., 1.]
-MULTI_PARAM_OPTIMIZER_PARAMS = itertools.product(
+MULTI_PARAM_OPTIMIZER_ARGS = itertools.product(
     MULTI_PARAM_OPTIMIZER_INIT_VALS, MULTI_PARAM_OPTIMIZER_INIT_VALS)
 
 
-@pytest.fixture(scope="module", params=MULTI_PARAM_OPTIMIZER_PARAMS)
+@pytest.fixture(scope="module", params=MULTI_PARAM_OPTIMIZER_ARGS)
 def multi_param_optimizer(request):
     return th.optim.Adam([th.tensor(p, requires_grad=True) for p in request.param], lr=0.1)
+
+
+MULTI_PARAM_AND_LR_OPTIMIZER_ARGS = itertools.product(
+    MULTI_PARAM_OPTIMIZER_INIT_VALS, MULTI_PARAM_OPTIMIZER_INIT_VALS, [0.001, 0.01, 0.1])
+
+
+@pytest.fixture(scope="module", params=MULTI_PARAM_AND_LR_OPTIMIZER_ARGS)
+def multi_param_and_lr_optimizer(request):
+    return th.optim.Adam([th.tensor(p, requires_grad=True) for p in request.param[:-1]], lr=request.param[-1])
 
 
 @pytest.mark.parametrize("train_loss", [
@@ -300,5 +309,29 @@ def test_lp_regularizer(
         assert th.allclose(param.grad, p * initial_lambda * th.abs(param).pow(p - 1) * th.sign(param))
 
 
-def test_weight_decay_regularizer():
-    pass
+@pytest.mark.parametrize("train_loss_base", [
+    th.tensor(1.),
+    th.tensor(0.1),
+    th.tensor(0.01),
+])
+def test_weight_decay_regularizer(
+        multi_param_and_lr_optimizer,
+        hierarchical_logger,
+        initial_lambda,
+        train_loss_base,
+):
+    regularizer = regularizers.WeightDecayRegularizer(
+        initial_lambda=initial_lambda,
+        logger=hierarchical_logger,
+        lambda_updater=updaters.ConstantParamScaler(),
+        optimizer=multi_param_and_lr_optimizer,
+    )
+    weights = regularizer.optimizer.param_groups[0]["params"]
+    lr = regularizer.optimizer.param_groups[0]["lr"]
+    initial_weight_values = [weight.data.clone() for weight in weights]
+    regularizer.optimizer.zero_grad()
+    train_loss = train_loss_base * sum(th.pow(weight, 2) / 2 for weight in weights)
+    regularizer.regularize(train_loss)
+    for weight, initial_weight_value in zip(weights, initial_weight_values):
+        assert th.allclose(weight.data, initial_weight_value * (1 - lr * initial_lambda))
+        assert th.allclose(weight.grad, train_loss_base * initial_weight_value)
