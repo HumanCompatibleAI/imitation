@@ -49,7 +49,7 @@ class _CountingEnv(gym.Env):  # pragma: no cover
 
 
 def _make_buffering_venv(
-        error_on_premature_reset: bool,
+    error_on_premature_reset: bool,
 ) -> BufferingWrapper:
     venv = DummyVecEnv([_CountingEnv] * 2)
     wrapped_venv = BufferingWrapper(venv, error_on_premature_reset)
@@ -65,7 +65,7 @@ def _assert_equal_scrambled_vectors(a: np.ndarray, b: np.ndarray) -> None:
 
 
 def _join_transitions(
-        trans_list: Sequence[types.TransitionsWithRew],
+    trans_list: Sequence[types.TransitionsWithRew],
 ) -> types.TransitionsWithRew:
     def concat(x):
         return np.concatenate(list(x))
@@ -90,9 +90,9 @@ def _join_transitions(
 @pytest.mark.parametrize("n_steps", [1, 2, 20, 21])
 @pytest.mark.parametrize("extra_pop_timesteps", [(), (1,), (4, 8)])
 def test_pop(
-        episode_lengths: Sequence[int],
-        n_steps: int,
-        extra_pop_timesteps: Sequence[int],
+    episode_lengths: Sequence[int],
+    n_steps: int,
+    extra_pop_timesteps: Sequence[int],
 ) -> None:
     """Check pop_transitions() results for BufferWrapper.
 

@@ -36,10 +36,10 @@ class TerminalSentinelEnv(gym.Env):
 
 
 def _sample_fixed_length_trajectories(
-        episode_lengths: Sequence[int],
-        min_episodes: int,
-        policy_type: str = "policy",
-        **kwargs,
+    episode_lengths: Sequence[int],
+    min_episodes: int,
+    policy_type: str = "policy",
+    **kwargs,
 ) -> Sequence[types.Trajectory]:
     venv = vec_env.DummyVecEnv(
         [functools.partial(TerminalSentinelEnv, length) for length in episode_lengths],
@@ -115,9 +115,9 @@ def test_complete_trajectories(policy_type) -> None:
     ],
 )
 def test_unbiased_trajectories(
-        episode_lengths: Sequence[int],
-        min_episodes: int,
-        expected_counts: Mapping[int, int],
+    episode_lengths: Sequence[int],
+    min_episodes: int,
+    expected_counts: Mapping[int, int],
 ) -> None:
     """Checks trajectories are sampled without bias towards shorter episodes.
 

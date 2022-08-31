@@ -23,8 +23,8 @@ from imitation.util import util
 
 @pytest.fixture(params=[True, False])
 def maybe_pendulum_expert_trajectories(
-        pendulum_expert_trajectories: Sequence[TrajectoryWithRew],
-        request,
+    pendulum_expert_trajectories: Sequence[TrajectoryWithRew],
+    request,
 ) -> Optional[Sequence[TrajectoryWithRew]]:
     keep_trajs = request.param
     if keep_trajs:
@@ -104,12 +104,12 @@ def test_traj_collector(tmpdir, pendulum_venv):
 
 
 def _build_dagger_trainer(
-        tmpdir,
-        venv,
-        beta_schedule,
-        expert_policy,
-        pendulum_expert_rollouts: List[TrajectoryWithRew],
-        custom_logger,
+    tmpdir,
+    venv,
+    beta_schedule,
+    expert_policy,
+    pendulum_expert_rollouts: List[TrajectoryWithRew],
+    custom_logger,
 ):
     del expert_policy
     if pendulum_expert_rollouts is not None:
@@ -133,12 +133,12 @@ def _build_dagger_trainer(
 
 
 def _build_simple_dagger_trainer(
-        tmpdir,
-        venv,
-        beta_schedule,
-        expert_policy,
-        pendulum_expert_rollouts: Optional[List[TrajectoryWithRew]],
-        custom_logger,
+    tmpdir,
+    venv,
+    beta_schedule,
+    expert_policy,
+    pendulum_expert_rollouts: Optional[List[TrajectoryWithRew]],
+    custom_logger,
 ):
     bc_trainer = bc.BC(
         observation_space=venv.observation_space,
@@ -164,13 +164,13 @@ def beta_schedule(request):
 
 @pytest.fixture(params=[_build_dagger_trainer, _build_simple_dagger_trainer])
 def init_trainer_fn(
-        request,
-        tmpdir,
-        pendulum_venv,
-        beta_schedule,
-        pendulum_expert_policy,
-        maybe_pendulum_expert_trajectories: Optional[List[TrajectoryWithRew]],
-        custom_logger,
+    request,
+    tmpdir,
+    pendulum_venv,
+    beta_schedule,
+    pendulum_expert_policy,
+    maybe_pendulum_expert_trajectories: Optional[List[TrajectoryWithRew]],
+    custom_logger,
 ):
     # Provide a trainer initialization fixture in addition `trainer` fixture below
     # for tests that want to initialize multiple DAggerTrainer.
@@ -192,12 +192,12 @@ def trainer(init_trainer_fn):
 
 @pytest.fixture
 def simple_dagger_trainer(
-        tmpdir,
-        pendulum_venv,
-        beta_schedule,
-        pendulum_expert_policy,
-        maybe_pendulum_expert_trajectories: Optional[List[TrajectoryWithRew]],
-        custom_logger,
+    tmpdir,
+    pendulum_venv,
+    beta_schedule,
+    pendulum_expert_policy,
+    maybe_pendulum_expert_trajectories: Optional[List[TrajectoryWithRew]],
+    custom_logger,
 ):
     return _build_simple_dagger_trainer(
         tmpdir,
@@ -210,15 +210,15 @@ def simple_dagger_trainer(
 
 
 def test_trainer_needs_demos_exception_error(
-        trainer,
-        maybe_pendulum_expert_trajectories: Optional[List[TrajectoryWithRew]],
+    trainer,
+    maybe_pendulum_expert_trajectories: Optional[List[TrajectoryWithRew]],
 ):
     assert trainer.round_num == 0
     error_ctx = pytest.raises(dagger.NeedsDemosException)
     ctx: contextlib.AbstractContextManager
     if maybe_pendulum_expert_trajectories is not None and isinstance(
-            trainer,
-            dagger.SimpleDAggerTrainer,
+        trainer,
+        dagger.SimpleDAggerTrainer,
     ):
         # In this case, demos should be preloaded and we shouldn't experience
         # the NeedsDemoException error.
@@ -333,10 +333,10 @@ def test_trainer_save_reload(tmpdir, init_trainer_fn, pendulum_venv):
 
 @pytest.mark.parametrize("num_episodes", [1, 4])
 def test_simple_dagger_trainer_train(
-        simple_dagger_trainer: dagger.SimpleDAggerTrainer,
-        pendulum_venv,
-        num_episodes: int,
-        tmpdir: str,
+    simple_dagger_trainer: dagger.SimpleDAggerTrainer,
+    pendulum_venv,
+    num_episodes: int,
+    tmpdir: str,
 ):
     episode_length = 200  # for Pendulum-v1
     rollout_min_episodes = 2
@@ -366,12 +366,12 @@ def test_policy_save_reload(tmpdir, trainer):
 
 
 def test_simple_dagger_space_mismatch_error(
-        tmpdir,
-        pendulum_venv,
-        beta_schedule,
-        pendulum_expert_policy,
-        maybe_pendulum_expert_trajectories: Optional[List[TrajectoryWithRew]],
-        custom_logger,
+    tmpdir,
+    pendulum_venv,
+    beta_schedule,
+    pendulum_expert_policy,
+    maybe_pendulum_expert_trajectories: Optional[List[TrajectoryWithRew]],
+    custom_logger,
 ):
     class MismatchedSpace(gym.spaces.Space):
         """Dummy space that is not equal to any other space."""
