@@ -1172,7 +1172,7 @@ class BasicRewardTrainer(RewardTrainer):
                     "is specified.",
                 )
         else:
-            if reg_lambda_updater is not None and reg_val_split == 0:
+            if reg_lambda_updater is not None and np.allclose(reg_val_split, 0.0):
                 raise ValueError(
                     "If you pass a regularizer parameter updater, you must also "
                     "pass a non-zero value for the validation split. Otherwise "
@@ -1186,7 +1186,7 @@ class BasicRewardTrainer(RewardTrainer):
                 )
             if reg_val_split < 0 or reg_val_split > 1:
                 raise ValueError("val_split must be strictly between 0 and 1.")
-            if reg_lambda_updater is None and reg_lambda == 0:
+            if reg_lambda_updater is None and np.allclose(reg_lambda, 0.0):
                 raise ValueError(
                     "If you do not pass a regularizer parameter updater your "
                     "regularization strength must be non-zero, as this would "
@@ -1212,6 +1212,7 @@ class BasicRewardTrainer(RewardTrainer):
                 optimizer=self.optim,
                 lambda_updater=lambda_updater,
                 logger=self.logger,
+                **(reg_extra_kwargs or {}),
             )
 
     def _make_data_loader(self, dataset: PreferenceDataset) -> data_th.DataLoader:
@@ -1225,9 +1226,17 @@ class BasicRewardTrainer(RewardTrainer):
 
     def _train(self, dataset: PreferenceDataset, epoch_multiplier: float = 1.0) -> None:
         """Trains for `epoch_multiplier * self.epochs` epochs over `dataset`."""
-        if self.regularizer:
+        if self.regularizer and self.val_split > 0:
             val_length = int(len(dataset) * self.val_split)
             train_length = len(dataset) - val_length
+            if val_length < 1 or train_length < 1:
+                raise ValueError(
+                    "Not enough data samples to split into training and validation, "
+                    "or the validation split is too large/small. "
+                    "Make sure you've generated enough initial preference data. "
+                    "You can adjust this through initial_comparison_frac in "
+                    "PreferenceComparisons.",
+                )
             train_dataset, val_dataset = data_th.random_split(
                 dataset,
                 lengths=[train_length, val_length],
@@ -1252,7 +1261,7 @@ class BasicRewardTrainer(RewardTrainer):
                     self.regularizer.regularize(loss)
                 self.optim.step()
 
-            if self.regularizer:
+            if self.regularizer and self.val_split > 0:
                 assert val_dataloader is not None
                 for fragment_pairs, preferences in val_dataloader:
                     loss = self._training_inner_loop(fragment_pairs, preferences)
