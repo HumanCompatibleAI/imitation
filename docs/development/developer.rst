@@ -31,11 +31,11 @@ The ``imitation.algorithms.base`` module defines the following two classes:
 - | ``DemonstrationAlgorithm``: Base class for all demonstration based algorithms like BC, IRL, etc. This class subclasses ``BaseImitationAlgorithm``. 
   | Demonstration algorithms offers following methods and properties:
 
-    - ``policy`` property that returns a policy imitating the demonstration data.
+  - ``policy`` property that returns a policy imitating the demonstration data.
 
-    - ``set_demonstrations()`` method that sets the demonstrations data for learning.
+  - ``set_demonstrations()`` method that sets the demonstrations data for learning.
 
-All of the algorithms provide the ``train()`` method for training an agent and/or reward network.
+All of the algorithms provide the ``train()`` method for training an agent and/or a reward network.
 
 All the available algorithms are present in ``algorithms/`` with each algorithm in a distinct file. 
 Adversarial algorithms like AIRL and GAIL are present in ``algorithms/adversarial``.
@@ -46,15 +46,26 @@ Data
 .. automodule:: imitation.data
     :noindex:
 
-Envs
-----
-.. automodule:: imitation.envs
-    :noindex:
+    ``data.wrapper.BufferingWrapper``: Wraps a ``VecEnv`` to save the trajectories from all the environments
+    in a buffer.
 
-Policies
---------
-.. automodule:: imitation.policies
-    :noindex:
+    ``data.wrapper.RolloutInfoWrapper``: Wraps a ``gym.Env`` to log the original observations and rewards recieved from 
+    the environment. The observations and rewards of the entire episode is logged in the ``info`` dictionary with the
+    key "rollout" of the step where the episode ends. This wrapper is useful to save rollout trajectories, especially
+    in cases where you want to bypass the reward and/or observation overrides from other wrappers. 
+    See ``data.rollout.unwrap_traj`` for details and ``scripts/train_rl.py`` for example usecase.
+
+    ``data.rollout.rollout``: Generates rollout by taking in any policy as input along with the environment. 
+
+.. Envs
+.. ----
+.. .. automodule:: imitation.envs
+..     :noindex:
+
+.. Policies
+.. --------
+.. .. automodule:: imitation.policies
+..     :noindex:
 
 Rewards
 -------
@@ -72,7 +83,35 @@ Scripts
 .. automodule:: imitation.scripts
     :noindex:
 
-Util
-----
-.. automodule:: imitation.util
-    :noindex:
+.. autosummary:: 
+    :recursive:
+    :template: autosummary/module.rst
+
+    imitation.scripts.common
+
+We use Sacred to provide a command-line interface to run the experiments. The scripts to run the end-to-end experiments are
+available in ``scripts/``. You can take a look at the following docs to understand how to use Sacred:
+
+- `Experiment Overview <https://sacred.readthedocs.io/en/stable/experiment.html>`_: Explains how to create and run experiments. All the experiment objects are defined in ``scripts/config`` in the respective algorithm name file and their ``main`` functions are defined in algorithm name file in ``scripts/``. For example, ``train_rl_ex`` object is defined in ``scripts.config.train_rl`` and its main function is in ``scripts.train_rl``.
+
+- `Ingredients <https://sacred.readthedocs.io/en/stable/ingredients.html>`_: Explains how to use ingredients to avoid code duplication across experiments. The ingredients used in our experiments are defined in ``scripts/common/``:
+  
+  .. autosummary:: 
+    imitation.scripts.common.common
+    imitation.scripts.common.demonstrations
+    imitation.scripts.common.reward
+    imitation.scripts.common.rl
+    imitation.scripts.common.train
+    imitation.scripts.common.wb    
+
+- `Configurations <https://sacred.readthedocs.io/en/stable/configuration.html>`_: Explains how to use configurations to parametrize runs. The configurations for different algorithms are defined in their file in ``scripts/``. Some of the commonly used configs and ingredients used across algorithms are defined in ``scripts/common/``.
+
+- `Command-Line Interface <https://sacred.readthedocs.io/en/stable/command_line.html>`_: Explains how to run the experiments through the command-line interface. Also note the section on how to `print configs <https://sacred.readthedocs.io/en/stable/command_line.html#print-config>`_ to verify the configurations used for the run.
+
+- `Controlling Randomness <https://sacred.readthedocs.io/en/stable/randomness.html>`_: Explains how to control randomness by seeding experiments through Sacred.
+
+.. Util
+.. ----
+.. .. automodule:: imitation.util
+..     :noindex:
+
