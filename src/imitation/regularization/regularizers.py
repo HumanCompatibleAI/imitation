@@ -56,7 +56,6 @@ class Regularizer(abc.ABC, Generic[R]):
         Args:
             loss: The loss to regularize.
         """
-        ...
 
     def update_params(self, train_loss: Scalar, val_loss: Scalar) -> None:
         """Update the regularization parameter.
@@ -93,7 +92,6 @@ class LossRegularizer(Regularizer[Scalar]):
         Args:
             loss: The loss function to which the regularization term is added.
         """
-        ...
 
     def regularize(self, loss: th.Tensor) -> Scalar:
         """Add the regularization term to the loss and compute gradients.
@@ -127,7 +125,6 @@ class WeightRegularizer(Regularizer):
             weight: The weight (network parameter) to regularize.
             group: The group of parameters to which the weight belongs.
         """
-        pass
 
     def regularize(self, loss: th.Tensor) -> None:
         """Regularize the weights of the network."""

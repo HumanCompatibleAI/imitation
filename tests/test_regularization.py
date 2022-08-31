@@ -184,7 +184,7 @@ class SimpleRegularizer(regularizers.Regularizer[None]):
     """A simple regularizer that does nothing."""
 
     def regularize(self, loss: th.Tensor) -> None:
-        ...
+        pass
 
 
 @pytest.mark.parametrize(

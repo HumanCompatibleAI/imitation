@@ -630,6 +630,34 @@ def test_reward_trainer_regularization_raises(
             reg_lambda=0.0,
         )
 
+    initial_lambda = 0.1
+    reward_trainer = preference_comparisons.BasicRewardTrainer(
+        reward_net,
+        loss,
+        reg_class=regularizers.LpRegularizer,
+        reg_lambda=initial_lambda,
+        reg_val_split=0.2,
+        reg_lambda_updater=interval_param_scaler,
+        reg_extra_kwargs=dict(p=2),
+        custom_logger=custom_logger,
+    )
+
+    main_trainer = preference_comparisons.PreferenceComparisons(
+        agent_trainer,
+        reward_net,
+        num_iterations=2,
+        transition_oversampling=2,
+        fragment_length=2,
+        fragmenter=random_fragmenter,
+        reward_trainer=reward_trainer,
+        custom_logger=custom_logger,
+    )
+    with pytest.raises(
+        ValueError,
+        match="Not enough data samples to split " "into training and validation.*",
+    ):
+        main_trainer.train(100, 10)
+
 
 @pytest.fixture
 def ensemble_preference_model(venv) -> preference_comparisons.PreferenceModel:
