@@ -1,8 +1,8 @@
 """Helper methods to build and run neural networks."""
+import abc
 import collections
 import contextlib
 import functools
-from abc import ABC, abstractclassmethod
 from typing import Iterable, Optional, Type
 
 import torch as th
@@ -44,7 +44,7 @@ class SqueezeLayer(nn.Module):
         return new_value
 
 
-class BaseNorm(nn.Module, ABC):
+class BaseNorm(nn.Module, abc.ABC):
     """Base class for layers that try to normalize the input to mean 0 and variance 1.
 
     Similar to BatchNorm, LayerNorm, etc. but whereas they only use statistics from
@@ -88,7 +88,7 @@ class BaseNorm(nn.Module, ABC):
 
         return (x - self.running_mean) / th.sqrt(self.running_var + self.eps)
 
-    @abstractclassmethod
+    @abc.abstractmethod
     def update_stats(self, batch: th.Tensor) -> None:
         """Update `self.running_mean`, `self.running_var` and `self.count`."""
 
