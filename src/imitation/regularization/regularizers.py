@@ -24,11 +24,11 @@ class Regularizer(abc.ABC, Generic[R]):
     logger: imit_logger.HierarchicalLogger
 
     def __init__(
-            self,
-            optimizer: optim.Optimizer,
-            initial_lambda: float,
-            lambda_updater: updaters.LambdaUpdater,
-            logger: imit_logger.HierarchicalLogger,
+        self,
+        optimizer: optim.Optimizer,
+        initial_lambda: float,
+        lambda_updater: updaters.LambdaUpdater,
+        logger: imit_logger.HierarchicalLogger,
     ) -> None:
         """Initialize the regularizer.
 
@@ -142,12 +142,12 @@ class LpRegularizer(LossRegularizer):
     p: int
 
     def __init__(
-            self,
-            optimizer: optim.Optimizer,
-            initial_lambda: float,
-            lambda_updater: updaters.LambdaUpdater,
-            logger: imit_logger.HierarchicalLogger,
-            p: int,
+        self,
+        optimizer: optim.Optimizer,
+        initial_lambda: float,
+        lambda_updater: updaters.LambdaUpdater,
+        logger: imit_logger.HierarchicalLogger,
+        p: int,
     ) -> None:
         """Initialize the regularizer."""
         super().__init__(optimizer, initial_lambda, lambda_updater, logger)

@@ -6,13 +6,13 @@ import numpy as np
 import pytest
 import torch as th
 
-from imitation.regularization import updaters, regularizers
+from imitation.regularization import regularizers, updaters
 from imitation.util import logger as imit_logger
 
 CONSTANT_PARAM_SCALER_TEST_ARGS = [
-    (10., 0, 0),
+    (10.0, 0, 0),
     (0.1, 0, 0),
-    (10., 1., 1.),
+    (10.0, 1.0, 1.0),
 ]
 
 
@@ -22,28 +22,37 @@ def test_constant_param_scaler(lambda_, train_loss, val_loss):
     assert scaler(lambda_, train_loss, val_loss) == lambda_
 
 
-@pytest.fixture(scope="module", params=[
-    (0.5, (0.9, 1)),  # unlikely to fall inside the interval
-    (0.5, (0.01, 10)),  # likely to fall inside the interval
-])
+@pytest.fixture(
+    scope="module",
+    params=[
+        (0.5, (0.9, 1)),  # unlikely to fall inside the interval
+        (0.5, (0.01, 10)),  # likely to fall inside the interval
+    ],
+)
 def interval_param_scaler(request):
     return updaters.IntervalParamScaler(*request.param)
 
 
-@pytest.mark.parametrize("lambda_", [
-    10.,
-    0.001,
-])
-@pytest.mark.parametrize("train_loss", [
-    th.tensor(100.),
-    th.tensor(10.),
-    th.tensor(0.1),
-    th.tensor(0.0),
-    100.,
-    10.,
-    0.1,
-    0.0,
-])
+@pytest.mark.parametrize(
+    "lambda_",
+    [
+        10.0,
+        0.001,
+    ],
+)
+@pytest.mark.parametrize(
+    "train_loss",
+    [
+        th.tensor(100.0),
+        th.tensor(10.0),
+        th.tensor(0.1),
+        th.tensor(0.0),
+        100.0,
+        10.0,
+        0.1,
+        0.0,
+    ],
+)
 def test_interval_param_scaler(lambda_, train_loss, interval_param_scaler):
     scaler = interval_param_scaler
     tolerable_interval = scaler.tolerable_interval
@@ -73,57 +82,78 @@ def test_interval_param_scaler(lambda_, train_loss, interval_param_scaler):
         # validation loss is nonzero, the ratio is infinite, so we should see the lambda
         # increase by the scaling factor.
         # We try it for both a tensor and a float value.
-        val_loss = th.tensor(0.)
+        val_loss = th.tensor(0.0)
         assert scaler(lambda_, train_loss, val_loss) == lambda_
-        val_loss = 0.
+        val_loss = 0.0
         assert scaler(lambda_, train_loss, val_loss) == lambda_
-        val_loss = th.tensor(1.)
+        val_loss = th.tensor(1.0)
         assert scaler(lambda_, train_loss, val_loss) == lambda_ * (1 + scaling_factor)
-        val_loss = 1.
+        val_loss = 1.0
         assert scaler(lambda_, train_loss, val_loss) == lambda_ * (1 + scaling_factor)
 
 
 def test_interval_param_scaler_raises(interval_param_scaler):
     scaler = interval_param_scaler
     with pytest.raises(ValueError, match="val_loss and train_loss must be scalars"):
-        scaler(0., th.Tensor([1., 2.]), th.Tensor([3., 4.]))
+        scaler(0.0, th.Tensor([1.0, 2.0]), th.Tensor([3.0, 4.0]))
     with pytest.raises(ValueError, match="val_loss and train_loss must be scalars"):
-        scaler(0., "random value", "random value")  # type: ignore
+        scaler(0.0, "random value", "random value")  # type: ignore
     with pytest.raises(ValueError, match="lambda_ must be a float"):
-        scaler(th.tensor(1.0), 1., 1.)  # type: ignore
+        scaler(th.tensor(1.0), 1.0, 1.0)  # type: ignore
     with pytest.raises(ValueError, match="lambda_ must not be zero.*"):
-        scaler(0., 1., 1.)
+        scaler(0.0, 1.0, 1.0)
 
 
 def test_interval_param_scaler_init_raises():
     # this validates the value of scaling_factor.
-    with pytest.raises(ValueError, match=r"scaling_factor must be in \(0, 1\) within machine precision."):
+    with pytest.raises(
+        ValueError,
+        match=r"scaling_factor must be in \(0, 1\) within machine precision.",
+    ):
         # cannot be negative as this is counter-intuitive to
         # the direction of scaling (just use the reciprocal).
         updaters.IntervalParamScaler(-1, (0.1, 0.9))
-    with pytest.raises(ValueError, match=r"scaling_factor must be in \(0, 1\) within machine precision."):
+    with pytest.raises(
+        ValueError,
+        match=r"scaling_factor must be in \(0, 1\) within machine precision.",
+    ):
         # cannot be larger than one as this would make lambda negative when scaling down.
         updaters.IntervalParamScaler(1.1, (0.1, 0.9))
-    with pytest.raises(ValueError, match=r"scaling_factor must be in \(0, 1\) within machine precision."):
+    with pytest.raises(
+        ValueError,
+        match=r"scaling_factor must be in \(0, 1\) within machine precision.",
+    ):
         # cannot be exactly zero, as this never changes the value of lambda when scaling up.
-        updaters.IntervalParamScaler(0., (0.1, 0.9))
-    with pytest.raises(ValueError, match=r"scaling_factor must be in \(0, 1\) within machine precision."):
+        updaters.IntervalParamScaler(0.0, (0.1, 0.9))
+    with pytest.raises(
+        ValueError,
+        match=r"scaling_factor must be in \(0, 1\) within machine precision.",
+    ):
         # cannot be exactly one, as when lambda is scaled down this brings it to zero.
-        updaters.IntervalParamScaler(1., (0.1, 0.9))
+        updaters.IntervalParamScaler(1.0, (0.1, 0.9))
 
     # an interval obviously needs two elements only.
-    with pytest.raises(ValueError, match="tolerable_interval must be a tuple of length 2"):
+    with pytest.raises(
+        ValueError, match="tolerable_interval must be a tuple of length 2"
+    ):
         updaters.IntervalParamScaler(0.5, (0.1, 0.9, 0.5))  # type: ignore
-    with pytest.raises(ValueError, match="tolerable_interval must be a tuple of length 2"):
+    with pytest.raises(
+        ValueError, match="tolerable_interval must be a tuple of length 2"
+    ):
         updaters.IntervalParamScaler(0.5, (0.1,))  # type: ignore
 
     # the first element of the interval must be at least 0.
-    with pytest.raises(ValueError, match="tolerable_interval must be a tuple whose first element is at least 0.*"):
+    with pytest.raises(
+        ValueError,
+        match="tolerable_interval must be a tuple whose first element is at least 0.*",
+    ):
         updaters.IntervalParamScaler(0.5, (-0.1, 0.9))
 
     # the second element of the interval must be greater than the first.
-    with pytest.raises(ValueError,
-                       match="tolerable_interval must be a tuple.*the second element is greater than the first"):
+    with pytest.raises(
+        ValueError,
+        match="tolerable_interval must be a tuple.*the second element is greater than the first",
+    ):
         updaters.IntervalParamScaler(0.5, (0.1, 0.05))
 
 
@@ -133,12 +163,12 @@ def hierarchical_logger():
     return imit_logger.configure(tmpdir, ["tensorboard", "stdout", "csv"])
 
 
-@pytest.fixture(scope="module", params=[0.1, 1., 10.])
+@pytest.fixture(scope="module", params=[0.1, 1.0, 10.0])
 def simple_optimizer(request):
     return th.optim.Adam([th.tensor(request.param, requires_grad=True)], lr=0.1)
 
 
-@pytest.fixture(scope="module", params=[0.1, 1., 10.])
+@pytest.fixture(scope="module", params=[0.1, 1.0, 10.0])
 def initial_lambda(request):
     return request.param
 
@@ -148,18 +178,21 @@ class SimpleRegularizer(regularizers.Regularizer[None]):
         ...
 
 
-@pytest.mark.parametrize("train_loss", [
-    th.tensor(10.),
-    th.tensor(1.),
-    th.tensor(0.1),
-    th.tensor(0.01),
-])
+@pytest.mark.parametrize(
+    "train_loss",
+    [
+        th.tensor(10.0),
+        th.tensor(1.0),
+        th.tensor(0.1),
+        th.tensor(0.01),
+    ],
+)
 def test_regularizer_update_params(
-        initial_lambda,
-        hierarchical_logger,
-        simple_optimizer,
-        interval_param_scaler,
-        train_loss,
+    initial_lambda,
+    hierarchical_logger,
+    simple_optimizer,
+    interval_param_scaler,
+    train_loss,
 ):
     updater = SimpleRegularizer(
         initial_lambda=initial_lambda,
@@ -170,13 +203,19 @@ def test_regularizer_update_params(
     val_to_train_loss_ratio = interval_param_scaler.tolerable_interval[1] * 2
     val_loss = train_loss * val_to_train_loss_ratio
     assert updater.lambda_ == initial_lambda
-    assert hierarchical_logger.default_logger.name_to_value['regularization_lambda'] == initial_lambda
+    assert (
+        hierarchical_logger.default_logger.name_to_value["regularization_lambda"]
+        == initial_lambda
+    )
     updater.update_params(train_loss, val_loss)
     expected_lambda_value = interval_param_scaler(initial_lambda, train_loss, val_loss)
     assert updater.lambda_ == expected_lambda_value
     assert expected_lambda_value != initial_lambda
     # TODO(juan) where's the historic data for this? should check the initial value is there
-    assert hierarchical_logger.default_logger.name_to_value['regularization_lambda'] == expected_lambda_value
+    assert (
+        hierarchical_logger.default_logger.name_to_value["regularization_lambda"]
+        == expected_lambda_value
+    )
 
 
 class SimpleLossRegularizer(regularizers.LossRegularizer):
@@ -184,17 +223,20 @@ class SimpleLossRegularizer(regularizers.LossRegularizer):
         return loss * self.lambda_  # this multiplies the total loss by lambda_+1.
 
 
-@pytest.mark.parametrize("train_loss_base", [
-    th.tensor(10.),
-    th.tensor(1.),
-    th.tensor(0.1),
-    th.tensor(0.01),
-])
+@pytest.mark.parametrize(
+    "train_loss_base",
+    [
+        th.tensor(10.0),
+        th.tensor(1.0),
+        th.tensor(0.1),
+        th.tensor(0.01),
+    ],
+)
 def test_loss_regularizer(
-        hierarchical_logger,
-        simple_optimizer,
-        initial_lambda,
-        train_loss_base,
+    hierarchical_logger,
+    simple_optimizer,
+    initial_lambda,
+    train_loss_base,
 ):
     regularizer = SimpleLossRegularizer(
         initial_lambda=initial_lambda,
@@ -207,7 +249,10 @@ def test_loss_regularizer(
     regularizer.optimizer.zero_grad()
     regularized_loss = regularizer.regularize(train_loss)
     assert th.allclose(regularized_loss.data, train_loss * (initial_lambda + 1))
-    assert hierarchical_logger.default_logger.name_to_value['regularized_loss'] == regularized_loss
+    assert (
+        hierarchical_logger.default_logger.name_to_value["regularized_loss"]
+        == regularized_loss
+    )
     assert th.allclose(loss_param.grad, train_loss_base * (initial_lambda + 1))
 
 
@@ -221,17 +266,20 @@ class SimpleWeightRegularizer(regularizers.WeightRegularizer):
         return weight * self.lambda_
 
 
-@pytest.mark.parametrize("train_loss_base", [
-    th.tensor(10.),
-    th.tensor(1.),
-    th.tensor(0.1),
-    th.tensor(0.01),
-])
+@pytest.mark.parametrize(
+    "train_loss_base",
+    [
+        th.tensor(10.0),
+        th.tensor(1.0),
+        th.tensor(0.1),
+        th.tensor(0.01),
+    ],
+)
 def test_weight_regularizer(
-        hierarchical_logger,
-        simple_optimizer,
-        initial_lambda,
-        train_loss_base,
+    hierarchical_logger,
+    simple_optimizer,
+    initial_lambda,
+    train_loss_base,
 ):
     regularizer = SimpleWeightRegularizer(
         initial_lambda=initial_lambda,
@@ -252,7 +300,7 @@ def test_weight_regularizer(
 def test_lp_regularizer_p_value_raises(hierarchical_logger, simple_optimizer, p):
     with pytest.raises(ValueError, match="p must be a positive integer"):
         regularizers.LpRegularizer(
-            initial_lambda=1.,
+            initial_lambda=1.0,
             logger=hierarchical_logger,
             lambda_updater=updaters.ConstantParamScaler(),
             optimizer=simple_optimizer,
@@ -260,37 +308,47 @@ def test_lp_regularizer_p_value_raises(hierarchical_logger, simple_optimizer, p)
         )
 
 
-MULTI_PARAM_OPTIMIZER_INIT_VALS = [-1., 0., 1.]
+MULTI_PARAM_OPTIMIZER_INIT_VALS = [-1.0, 0.0, 1.0]
 MULTI_PARAM_OPTIMIZER_ARGS = itertools.product(
-    MULTI_PARAM_OPTIMIZER_INIT_VALS, MULTI_PARAM_OPTIMIZER_INIT_VALS)
+    MULTI_PARAM_OPTIMIZER_INIT_VALS, MULTI_PARAM_OPTIMIZER_INIT_VALS
+)
 
 
 @pytest.fixture(scope="module", params=MULTI_PARAM_OPTIMIZER_ARGS)
 def multi_param_optimizer(request):
-    return th.optim.Adam([th.tensor(p, requires_grad=True) for p in request.param], lr=0.1)
+    return th.optim.Adam(
+        [th.tensor(p, requires_grad=True) for p in request.param], lr=0.1
+    )
 
 
 MULTI_PARAM_AND_LR_OPTIMIZER_ARGS = itertools.product(
-    MULTI_PARAM_OPTIMIZER_INIT_VALS, MULTI_PARAM_OPTIMIZER_INIT_VALS, [0.001, 0.01, 0.1])
+    MULTI_PARAM_OPTIMIZER_INIT_VALS, MULTI_PARAM_OPTIMIZER_INIT_VALS, [0.001, 0.01, 0.1]
+)
 
 
 @pytest.fixture(scope="module", params=MULTI_PARAM_AND_LR_OPTIMIZER_ARGS)
 def multi_param_and_lr_optimizer(request):
-    return th.optim.Adam([th.tensor(p, requires_grad=True) for p in request.param[:-1]], lr=request.param[-1])
+    return th.optim.Adam(
+        [th.tensor(p, requires_grad=True) for p in request.param[:-1]],
+        lr=request.param[-1],
+    )
 
 
-@pytest.mark.parametrize("train_loss", [
-    th.tensor(10.),
-    th.tensor(1.),
-    th.tensor(0.1),
-])
+@pytest.mark.parametrize(
+    "train_loss",
+    [
+        th.tensor(10.0),
+        th.tensor(1.0),
+        th.tensor(0.1),
+    ],
+)
 @pytest.mark.parametrize("p", [1, 2, 3])
 def test_lp_regularizer(
-        hierarchical_logger,
-        multi_param_optimizer,
-        initial_lambda,
-        train_loss,
-        p,
+    hierarchical_logger,
+    multi_param_optimizer,
+    initial_lambda,
+    train_loss,
+    p,
 ):
     regularizer = regularizers.LpRegularizer(
         initial_lambda=initial_lambda,
@@ -302,23 +360,35 @@ def test_lp_regularizer(
     params = multi_param_optimizer.param_groups[0]["params"]
     regularizer.optimizer.zero_grad()
     regularized_loss = regularizer.regularize(train_loss)
-    loss_penalty = sum([th.linalg.vector_norm(param.data, ord=p).pow(p) for param in params])
-    assert th.allclose(regularized_loss.data, train_loss + initial_lambda * loss_penalty)
-    assert regularized_loss == hierarchical_logger.default_logger.name_to_value['regularized_loss']
+    loss_penalty = sum(
+        [th.linalg.vector_norm(param.data, ord=p).pow(p) for param in params]
+    )
+    assert th.allclose(
+        regularized_loss.data, train_loss + initial_lambda * loss_penalty
+    )
+    assert (
+        regularized_loss
+        == hierarchical_logger.default_logger.name_to_value["regularized_loss"]
+    )
     for param in params:
-        assert th.allclose(param.grad, p * initial_lambda * th.abs(param).pow(p - 1) * th.sign(param))
+        assert th.allclose(
+            param.grad, p * initial_lambda * th.abs(param).pow(p - 1) * th.sign(param)
+        )
 
 
-@pytest.mark.parametrize("train_loss_base", [
-    th.tensor(1.),
-    th.tensor(0.1),
-    th.tensor(0.01),
-])
+@pytest.mark.parametrize(
+    "train_loss_base",
+    [
+        th.tensor(1.0),
+        th.tensor(0.1),
+        th.tensor(0.01),
+    ],
+)
 def test_weight_decay_regularizer(
-        multi_param_and_lr_optimizer,
-        hierarchical_logger,
-        initial_lambda,
-        train_loss_base,
+    multi_param_and_lr_optimizer,
+    hierarchical_logger,
+    initial_lambda,
+    train_loss_base,
 ):
     regularizer = regularizers.WeightDecayRegularizer(
         initial_lambda=initial_lambda,
@@ -333,5 +403,7 @@ def test_weight_decay_regularizer(
     train_loss = train_loss_base * sum(th.pow(weight, 2) / 2 for weight in weights)
     regularizer.regularize(train_loss)
     for weight, initial_weight_value in zip(weights, initial_weight_values):
-        assert th.allclose(weight.data, initial_weight_value * (1 - lr * initial_lambda))
+        assert th.allclose(
+            weight.data, initial_weight_value * (1 - lr * initial_lambda)
+        )
         assert th.allclose(weight.grad, train_loss_base * initial_weight_value)

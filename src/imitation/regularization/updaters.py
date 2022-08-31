@@ -50,22 +50,26 @@ class IntervalParamScaler(LambdaUpdater):
         """
         eps = np.finfo(float).eps
         if not (eps < scaling_factor < 1 - eps):
-            raise ValueError("scaling_factor must be in (0, 1) within machine precision.")
+            raise ValueError(
+                "scaling_factor must be in (0, 1) within machine precision."
+            )
         if len(tolerable_interval) != 2:
             raise ValueError("tolerable_interval must be a tuple of length 2")
         if not (0 <= tolerable_interval[0] < tolerable_interval[1]):
-            raise ValueError("tolerable_interval must be a tuple whose first element "
-                             "is at least 0 and the second element is greater than "
-                             "the first")
+            raise ValueError(
+                "tolerable_interval must be a tuple whose first element "
+                "is at least 0 and the second element is greater than "
+                "the first"
+            )
 
         self.scaling_factor = scaling_factor
         self.tolerable_interval = tolerable_interval
 
     def __call__(
-            self,
-            lambda_: float,
-            train_loss: LossType,
-            val_loss: LossType,
+        self,
+        lambda_: float,
+        train_loss: LossType,
+        val_loss: LossType,
     ) -> float:
         """Scales the lambda of the regularizer by some constant factor.
 
@@ -89,14 +93,20 @@ class IntervalParamScaler(LambdaUpdater):
         """
         # assert that the tensors val_loss and train_loss are both scalars
         try:
-            assert isinstance(val_loss, float) or (isinstance(val_loss, th.Tensor) and val_loss.dim() == 0)
-            assert isinstance(train_loss, float) or (isinstance(train_loss, th.Tensor) and train_loss.dim() == 0)
+            assert isinstance(val_loss, float) or (
+                isinstance(val_loss, th.Tensor) and val_loss.dim() == 0
+            )
+            assert isinstance(train_loss, float) or (
+                isinstance(train_loss, th.Tensor) and train_loss.dim() == 0
+            )
         except AssertionError as exc:
             raise ValueError("val_loss and train_loss must be scalars") from exc
         if np.finfo(float).eps > lambda_:
-            raise ValueError("lambda_ must not be zero. Make sure that you're not "
-                             "scaling the value of lambda down too quickly or passing an "
-                             "initial value of zero to the lambda parameter.")
+            raise ValueError(
+                "lambda_ must not be zero. Make sure that you're not "
+                "scaling the value of lambda down too quickly or passing an "
+                "initial value of zero to the lambda parameter."
+            )
         if not isinstance(lambda_, float):
             raise ValueError("lambda_ must be a float")
 
@@ -120,10 +130,10 @@ class ConstantParamScaler(LambdaUpdater):
     """A dummy param scaler implementation to use as default."""
 
     def __call__(
-            self,
-            lambda_: float,
-            train_loss: Union[float, th.Tensor],
-            val_loss: Union[float, th.Tensor],
+        self,
+        lambda_: float,
+        train_loss: Union[float, th.Tensor],
+        val_loss: Union[float, th.Tensor],
     ) -> float:
         del train_loss, val_loss
         return lambda_
