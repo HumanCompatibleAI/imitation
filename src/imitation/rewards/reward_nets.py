@@ -159,7 +159,7 @@ class RewardNet(nn.Module, abc.ABC):
             done: End-of-episode (terminal state) indicator of shape `(batch_size,)`.
 
         Returns:
-            Computed rewards of shape `(batch_size,`).
+            Computed rewards of shape `(batch_size,)`.
         """
         rew_th = self.predict_th(state, action, next_state, done)
         return rew_th.detach().cpu().numpy().flatten()
@@ -540,7 +540,6 @@ class CnnRewardNet(RewardNet):
         elif not self.use_action and self.use_done:
             # here we turn done into a one-hot vector.
             dones_binary = done.type(th.LongTensor)
-            print(f"{dones_binary.shape=}")
             dones_one_hot = nn.functional.one_hot(dones_binary, num_classes=2)
             rewards = th.sum(outputs * dones_one_hot, dim=1)
         else:
@@ -681,6 +680,36 @@ class ShapedRewardNet(RewardNetWrapper):
         )
         assert final_rew.shape == state.shape[:1]
         return final_rew
+
+    def predict_th(
+        self,
+        state: np.ndarray,
+        action: np.ndarray,
+        next_state: np.ndarray,
+        done: np.ndarray,
+    ) -> th.Tensor:
+        with networks.evaluating(self):
+            state_th, action_th, next_state_th, done_th = self.base.preprocess(
+                state,
+                action,
+                next_state,
+                done,
+            )
+            with th.no_grad():
+                rew_th = self(state_th, action_th, next_state_th, done_th)
+
+            assert rew_th.shape == state.shape[:1]
+            return rew_th
+
+    def predict(
+        self,
+        state: np.ndarray,
+        action: np.ndarray,
+        next_state: np.ndarray,
+        done: np.ndarray,
+    ) -> np.ndarray:
+        rew_th = self.predict_th(state, action, next_state, done)
+        return rew_th.detach().cpu().numpy().flatten()
 
 
 class BasicShapedRewardNet(ShapedRewardNet):
