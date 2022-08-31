@@ -1,7 +1,6 @@
 """Common configuration elements for reinforcement learning."""
 
 import logging
-import os
 import warnings
 from typing import Any, Dict, Mapping, Optional, Type
 

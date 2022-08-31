@@ -335,8 +335,6 @@ def bc_config(tmpdir, request):
             demonstrations=dict(rollout_path=CARTPOLE_TEST_ROLLOUT_PATH),
         ),
     )
-    assert run.status == "COMPLETED"
-    assert isinstance(run.result, dict)
 
 
 def test_train_bc_main(bc_config):
@@ -355,10 +353,11 @@ def test_train_bc_warmstart(tmpdir):
             expert=dict(
                 policy_type="ppo-huggingface",
                 loader_kwargs=dict(env_id="seals/CartPole-v0"),
-            )
+            ),
         ),
     )
     assert run.status == "COMPLETED"
+    assert isinstance(run.result, dict)
 
     policy_path = pathlib.Path(run.config["common"]["log_dir"]) / "final.th"
     run_warmstart = train_imitation.train_imitation_ex.run(

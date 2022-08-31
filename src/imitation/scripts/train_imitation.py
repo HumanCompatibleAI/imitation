@@ -11,7 +11,6 @@ from stable_baselines3.common import policies, utils, vec_env
 from imitation.algorithms import bc as bc_algorithm
 from imitation.algorithms.dagger import SimpleDAggerTrainer
 from imitation.data import rollout
-from imitation.policies import serialize
 from imitation.scripts.common import common, demonstrations, expert, train
 from imitation.scripts.config.train_imitation import train_imitation_ex
 
