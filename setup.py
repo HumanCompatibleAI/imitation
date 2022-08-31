@@ -60,6 +60,7 @@ TESTS_REQUIRE = (
         "scipy~=1.9.0",
         "wandb==0.12.21",
         "setuptools_scm~=7.0.5",
+        "mujoco-py~=2.1.2.14",
     ]
     + PARALLEL_REQUIRE
     + PYTYPE
