@@ -1,10 +1,13 @@
 """Tests for `imitation.regularization.*`."""
+import itertools
+import tempfile
 
 import numpy as np
 import pytest
 import torch as th
 
-from imitation.regularization import updaters
+from imitation.regularization import updaters, regularizers
+from imitation.util import logger as imit_logger
 
 CONSTANT_PARAM_SCALER_TEST_ARGS = [
     (10., 0, 0),
@@ -19,9 +22,9 @@ def test_constant_param_scaler(lambda_, train_loss, val_loss):
     assert scaler(lambda_, train_loss, val_loss) == lambda_
 
 
-@pytest.fixture(params=[
-    (0.5, (0.5, 1)),
-    (0.75, (0.01, 10)),
+@pytest.fixture(scope="module", params=[
+    (0.5, (0.9, 1)),  # unlikely to fall inside the interval
+    (0.5, (0.01, 10)),  # likely to fall inside the interval
 ])
 def interval_param_scaler(request):
     return updaters.IntervalParamScaler(*request.param)
@@ -32,9 +35,11 @@ def interval_param_scaler(request):
     0.001,
 ])
 @pytest.mark.parametrize("train_loss", [
+    th.tensor(100.),
     th.tensor(10.),
     th.tensor(0.1),
     th.tensor(0.0),
+    100.,
     10.,
     0.1,
     0.0,
@@ -120,3 +125,182 @@ def test_interval_param_scaler_init_raises():
     with pytest.raises(ValueError,
                        match="tolerable_interval must be a tuple.*the second element is greater than the first"):
         updaters.IntervalParamScaler(0.5, (0.1, 0.05))
+
+
+@pytest.fixture(scope="module")
+def hierarchical_logger():
+    tmpdir = tempfile.mkdtemp()
+    return imit_logger.configure(tmpdir, ["tensorboard", "stdout", "csv"])
+
+
+@pytest.fixture(scope="module", params=[0.1, 1., 10.])
+def simple_optimizer(request):
+    return th.optim.Adam([th.tensor(request.param, requires_grad=True)], lr=0.1)
+
+
+@pytest.fixture(scope="module", params=[0.1, 1., 10.])
+def initial_lambda(request):
+    return request.param
+
+
+class SimpleRegularizer(regularizers.Regularizer[None]):
+    def regularize(self, loss: th.Tensor) -> None:
+        ...
+
+
+@pytest.mark.parametrize("train_loss", [
+    th.tensor(10.),
+    th.tensor(1.),
+    th.tensor(0.1),
+    th.tensor(0.01),
+])
+def test_regularizer_update_params(
+        initial_lambda,
+        hierarchical_logger,
+        simple_optimizer,
+        interval_param_scaler,
+        train_loss,
+):
+    updater = SimpleRegularizer(
+        initial_lambda=initial_lambda,
+        logger=hierarchical_logger,
+        lambda_updater=interval_param_scaler,
+        optimizer=simple_optimizer,
+    )
+    val_to_train_loss_ratio = interval_param_scaler.tolerable_interval[1] * 2
+    val_loss = train_loss * val_to_train_loss_ratio
+    assert updater.lambda_ == initial_lambda
+    assert hierarchical_logger.default_logger.name_to_value['regularization_lambda'] == initial_lambda
+    updater.update_params(train_loss, val_loss)
+    expected_lambda_value = interval_param_scaler(initial_lambda, train_loss, val_loss)
+    assert updater.lambda_ == expected_lambda_value
+    assert expected_lambda_value != initial_lambda
+    # TODO(juan) where's the historic data for this? should check the initial value is there
+    assert hierarchical_logger.default_logger.name_to_value['regularization_lambda'] == expected_lambda_value
+
+
+class SimpleLossRegularizer(regularizers.LossRegularizer):
+    def _loss_penalty(self, loss: th.Tensor) -> th.Tensor:
+        return loss * self.lambda_  # this multiplies the total loss by lambda_+1.
+
+
+@pytest.mark.parametrize("train_loss_base", [
+    th.tensor(10.),
+    th.tensor(1.),
+    th.tensor(0.1),
+    th.tensor(0.01),
+])
+def test_loss_regularizer(
+        hierarchical_logger,
+        simple_optimizer,
+        initial_lambda,
+        train_loss_base,
+):
+    regularizer = SimpleLossRegularizer(
+        initial_lambda=initial_lambda,
+        logger=hierarchical_logger,
+        lambda_updater=updaters.ConstantParamScaler(),
+        optimizer=simple_optimizer,
+    )
+    loss_param = simple_optimizer.param_groups[0]["params"][0]
+    train_loss = train_loss_base * loss_param
+    regularizer.optimizer.zero_grad()
+    regularized_loss = regularizer.regularize(train_loss)
+    assert th.allclose(regularized_loss.data, train_loss * (initial_lambda + 1))
+    assert hierarchical_logger.default_logger.name_to_value['regularized_loss'] == regularized_loss
+    assert th.allclose(loss_param.grad, train_loss_base * (initial_lambda + 1))
+
+
+class SimpleWeightRegularizer(regularizers.WeightRegularizer):
+    def _weight_penalty(self, weight, group):
+        # this multiplies the total weight by lambda_+1.
+        # However, the grad is only calculated with respect to the
+        # previous value of the weight.
+        # This difference is only noticeable if the grad of the loss
+        # has a functional dependence on the weight (i.e. not linear).
+        return weight * self.lambda_
+
+
+@pytest.mark.parametrize("train_loss_base", [
+    th.tensor(10.),
+    th.tensor(1.),
+    th.tensor(0.1),
+    th.tensor(0.01),
+])
+def test_weight_regularizer(
+        hierarchical_logger,
+        simple_optimizer,
+        initial_lambda,
+        train_loss_base,
+):
+    regularizer = SimpleWeightRegularizer(
+        initial_lambda=initial_lambda,
+        logger=hierarchical_logger,
+        lambda_updater=updaters.ConstantParamScaler(),
+        optimizer=simple_optimizer,
+    )
+    weight = simple_optimizer.param_groups[0]["params"][0]
+    initial_weight_value = weight.data.clone()
+    regularizer.optimizer.zero_grad()
+    train_loss = train_loss_base * th.pow(weight, 2) / 2
+    regularizer.regularize(train_loss)
+    assert th.allclose(weight.data, initial_weight_value * (initial_lambda + 1))
+    assert th.allclose(weight.grad, train_loss_base * initial_weight_value)
+
+
+@pytest.mark.parametrize("p", [0.5, 1.5, -1, 0, "random value"])
+def test_lp_regularizer_p_value_raises(hierarchical_logger, simple_optimizer, p):
+    with pytest.raises(ValueError, match="p must be a positive integer"):
+        regularizers.LPRegularizer(
+            initial_lambda=1.,
+            logger=hierarchical_logger,
+            lambda_updater=updaters.ConstantParamScaler(),
+            optimizer=simple_optimizer,
+            p=p,
+        )
+
+
+MULTI_PARAM_OPTIMIZER_INIT_VALS = [-1, -0.1, 0., 0.1, 1.]
+MULTI_PARAM_OPTIMIZER_PARAMS = itertools.product(
+    MULTI_PARAM_OPTIMIZER_INIT_VALS, MULTI_PARAM_OPTIMIZER_INIT_VALS)
+
+
+@pytest.fixture(scope="module", params=MULTI_PARAM_OPTIMIZER_PARAMS)
+def multi_param_optimizer(request):
+    return th.optim.Adam([th.tensor(p, requires_grad=True) for p in request.param], lr=0.1)
+
+
+@pytest.mark.parametrize("train_loss", [
+    th.tensor(10.),
+    th.tensor(1.),
+    th.tensor(0.1),
+])
+@pytest.mark.parametrize("p", [2])
+def test_lp_regularizer(
+        hierarchical_logger,
+        multi_param_optimizer,
+        initial_lambda,
+        train_loss,
+        p,
+):
+    regularizer = regularizers.LpRegularizer(
+        initial_lambda=initial_lambda,
+        logger=hierarchical_logger,
+        lambda_updater=updaters.ConstantParamScaler(),
+        optimizer=multi_param_optimizer,
+        p=p,
+    )
+    params = multi_param_optimizer.param_groups[0]["params"]
+    regularized_loss = regularizer.regularize(train_loss)
+    loss_penalty = sum([th.linalg.vector_norm(param.data, ord=p).pow(p) for param in params])
+    assert th.allclose(regularized_loss.data, train_loss + initial_lambda * loss_penalty)
+    assert regularized_loss == hierarchical_logger.default_logger.name_to_value['regularized_loss']
+    if p > 1:
+        for param in params:
+            assert th.allclose(param.grad, p * initial_lambda * th.abs(param.data) * param.pow(p - 1))
+    else:
+        for param in params:
+            if th.allclose(param.data, th.tensor(0.)):
+                assert th.allclose(param.grad, th.tensor(0.))
+            else:
+                assert th.allclose(param.grad, initial_lambda * th.sign(param.data))

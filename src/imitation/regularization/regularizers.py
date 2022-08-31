@@ -9,13 +9,13 @@ from torch import optim
 from imitation.regularization import updaters
 from imitation.util import logger as imit_logger
 
-LossType = Union[th.Tensor, float]
-RegularizeReturnType = TypeVar(
-    "RegularizeReturnType", bound=Union[th.Tensor, float, None]
-)
+# this is not actually a scalar, dimension check is still required for tensor.
+Scalar = Union[th.Tensor, float]
+
+R = TypeVar("R", bound=Union[th.Tensor, float, None])
 
 
-class Regularizer(abc.ABC, Generic[RegularizeReturnType]):
+class Regularizer(abc.ABC, Generic[R]):
     """Abstract class for creating regularizers with a common interface."""
 
     optimizer: optim.Optimizer
@@ -24,11 +24,11 @@ class Regularizer(abc.ABC, Generic[RegularizeReturnType]):
     logger: imit_logger.HierarchicalLogger
 
     def __init__(
-        self,
-        optimizer: optim.Optimizer,
-        initial_lambda: float,
-        lambda_updater: updaters.LambdaUpdater,
-        logger: imit_logger.HierarchicalLogger,
+            self,
+            optimizer: optim.Optimizer,
+            initial_lambda: float,
+            lambda_updater: updaters.LambdaUpdater,
+            logger: imit_logger.HierarchicalLogger,
     ) -> None:
         """Initialize the regularizer.
 
@@ -47,15 +47,17 @@ class Regularizer(abc.ABC, Generic[RegularizeReturnType]):
         self.logger.record("regularization_lambda", self.lambda_)
 
     @abc.abstractmethod
-    def regularize(self, loss: th.Tensor) -> RegularizeReturnType:
+    def regularize(self, loss: th.Tensor) -> R:
         """Abstract method for performing the regularization step.
+        The return type is a generic and the specific implementation
+        must describe the meaning of the return type.
 
         Args:
             loss: The loss to regularize.
         """
         ...
 
-    def update_params(self, train_loss: LossType, val_loss: LossType) -> None:
+    def update_params(self, train_loss: Scalar, val_loss: Scalar) -> None:
         """Update the regularization parameter.
 
         This method calls the lambda_updater to update the regularization parameter,
@@ -74,14 +76,14 @@ class Regularizer(abc.ABC, Generic[RegularizeReturnType]):
             self.logger.record("regularization_lambda", self.lambda_)
 
 
-class LossRegularizer(Regularizer[LossType]):
+class LossRegularizer(Regularizer[Scalar]):
     """Abstract base class for regularizers that add a loss term to the loss function.
 
-    Requires the user to implement the _regularize_loss method.
+    Requires the user to implement the _loss_penalty method.
     """
 
     @abc.abstractmethod
-    def _regularize_loss(self, loss: LossType) -> LossType:
+    def _loss_penalty(self, loss: Scalar) -> Scalar:
         """Implement this method to add a loss term to the loss function.
 
         This method should return the term to be added to the loss function,
@@ -92,9 +94,16 @@ class LossRegularizer(Regularizer[LossType]):
         """
         ...
 
-    def regularize(self, loss: th.Tensor) -> LossType:
-        """Add the regularization term to the loss and compute gradients."""
-        regularized_loss = th.add(loss, self._regularize_loss(loss))
+    def regularize(self, loss: th.Tensor) -> Scalar:
+        """Add the regularization term to the loss and compute gradients.
+
+        Args:
+            loss: The loss to regularize.
+
+        Returns:
+            The regularized loss.
+        """
+        regularized_loss = th.add(loss, self._loss_penalty(loss))
         regularized_loss.backward()
         self.logger.record("regularized_loss", regularized_loss.item())
         return regularized_loss
@@ -103,11 +112,11 @@ class LossRegularizer(Regularizer[LossType]):
 class WeightRegularizer(Regularizer[None]):
     """Abstract base class for regularizers that regularize the weights of a network.
 
-    Requires the user to implement the _regularize_weight method.
+    Requires the user to implement the _weight_penalty method.
     """
 
     @abc.abstractmethod
-    def _regularize_weight(self, weight, group) -> Union[float, th.Tensor]:
+    def _weight_penalty(self, weight: th.Tensor, group: dict) -> Scalar:
         """Implement this method to regularize the weights of the network.
 
         This method should return the regularization term to be added to the weight,
@@ -124,7 +133,7 @@ class WeightRegularizer(Regularizer[None]):
         loss.backward()
         for group in self.optimizer.param_groups:
             for param in group["params"]:
-                param.data = th.add(param.data, self._regularize_weight(param, group))
+                param.data = th.add(param.data, self._weight_penalty(param, group))
 
 
 class LpRegularizer(LossRegularizer):
@@ -133,18 +142,20 @@ class LpRegularizer(LossRegularizer):
     p: int
 
     def __init__(
-        self,
-        optimizer: optim.Optimizer,
-        initial_lambda: float,
-        lambda_updater: updaters.LambdaUpdater,
-        logger: imit_logger.HierarchicalLogger,
-        p: int,
+            self,
+            optimizer: optim.Optimizer,
+            initial_lambda: float,
+            lambda_updater: updaters.LambdaUpdater,
+            logger: imit_logger.HierarchicalLogger,
+            p: int,
     ) -> None:
         """Initialize the regularizer."""
         super().__init__(optimizer, initial_lambda, lambda_updater, logger)
+        if not isinstance(p, int) or p < 1:
+            raise ValueError("p must be a positive integer")
         self.p = p
 
-    def _regularize_loss(self, loss: LossType) -> LossType:
+    def _loss_penalty(self, loss: Scalar) -> Scalar:
         """Returns the loss penalty.
 
         Calculates the p-th power of the Lp norm of the weights in the optimizer,
@@ -160,14 +171,14 @@ class LpRegularizer(LossRegularizer):
         penalty = 0
         for group in self.optimizer.param_groups:
             for param in group["params"]:
-                penalty += th.linalg.vector_norm(param.data, ord=self.p).pow(self.p)
+                penalty += th.linalg.vector_norm(param, ord=self.p).pow(self.p)
         return self.lambda_ * penalty
 
 
 class WeightDecayRegularizer(WeightRegularizer):
     """Applies weight decay to a loss function."""
 
-    def _regularize_weight(self, weight, group) -> LossType:
+    def _weight_penalty(self, weight, group) -> Scalar:
         """Returns the weight penalty.
 
         Args:
