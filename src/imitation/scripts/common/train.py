@@ -90,9 +90,15 @@ def eval_policy(
         `rollout_stats()` on the expert demonstrations loaded from `rollout_path`.
     """
     sample_until_eval = rollout.make_min_episodes(n_episodes_eval)
+    # Set RL algorithm's env to venv, removing any cruft wrappers that the RL
+    # algorithm's environment may have accumulated.
+    rl_algo.set_env(venv)
+    # Generate trajectories with the RL algorithm's env - SB3 may apply wrappers under
+    # the hood to get it to work with the RL algorithm (e.g. transposing images so they
+    # can be fed into CNNs).
     trajs = rollout.generate_trajectories(
         rl_algo,
-        venv,
+        rl_algo.get_env(),
         sample_until=sample_until_eval,
     )
     return rollout.rollout_stats(trajs)
