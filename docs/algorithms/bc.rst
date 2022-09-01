@@ -19,13 +19,15 @@ Detailed example notebook: `1_train_bc.ipynb <https://github.com/HumanCompatible
 
 .. testcode::
     
-    from stable_baselines3 import PPO
-    from stable_baselines3.ppo import MlpPolicy
     import gym
+    from stable_baselines3 import PPO
+    from stable_baselines3.common.evaluation import evaluate_policy
+    from stable_baselines3.common.vec_env import DummyVecEnv
+    from stable_baselines3.ppo import MlpPolicy
+
+    from imitation.algorithms import bc
     from imitation.data import rollout
     from imitation.data.wrappers import RolloutInfoWrapper
-    from stable_baselines3.common.vec_env import DummyVecEnv
-    from imitation.algorithms import bc
 
     env = gym.make("CartPole-v1")
     expert = PPO(policy=MlpPolicy, env=env)
@@ -38,14 +40,19 @@ Detailed example notebook: `1_train_bc.ipynb <https://github.com/HumanCompatible
     )
     transitions = rollout.flatten_trajectories(rollouts)
 
-    
     bc_trainer = bc.BC(
         observation_space=env.observation_space,
         action_space=env.action_space,
         demonstrations=transitions,
     )
     bc_trainer.train(n_epochs=1)
+    reward, _ = evaluate_policy(bc_trainer.policy, env, 10)
+    print("Reward:", reward)
 
+.. testoutput::
+    :hide:
+
+    ...
 
 API
 ===

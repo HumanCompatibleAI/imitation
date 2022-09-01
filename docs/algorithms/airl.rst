@@ -21,18 +21,18 @@ Detailed example notebook: `4_train_airl.ipynb <https://github.com/HumanCompatib
 
 .. testcode::
 
-    from stable_baselines3 import PPO
-    from stable_baselines3.ppo import MlpPolicy
-    from stable_baselines3.common.vec_env import DummyVecEnv
-    from stable_baselines3.common.evaluation import evaluate_policy
     import gym
-    import seals
+    from stable_baselines3 import PPO
+    from stable_baselines3.common.evaluation import evaluate_policy
+    from stable_baselines3.common.vec_env import DummyVecEnv
+    from stable_baselines3.ppo import MlpPolicy
+
+    from imitation.algorithms.adversarial.airl import AIRL
     from imitation.data import rollout
     from imitation.data.wrappers import RolloutInfoWrapper
-    from imitation.algorithms.adversarial.airl import AIRL
     from imitation.rewards.reward_nets import BasicShapedRewardNet
     from imitation.util.networks import RunningNorm
-    
+
     env = gym.make("seals/CartPole-v0")
     expert = PPO(policy=MlpPolicy, env=env)
     expert.learn(1000)
@@ -46,7 +46,9 @@ Detailed example notebook: `4_train_airl.ipynb <https://github.com/HumanCompatib
     venv = DummyVecEnv([lambda: gym.make("seals/CartPole-v0")] * 8)
     learner = PPO(env=venv, policy=MlpPolicy)
     reward_net = BasicShapedRewardNet(
-        venv.observation_space, venv.action_space, normalize_input_layer=RunningNorm
+        venv.observation_space,
+        venv.action_space,
+        normalize_input_layer=RunningNorm,
     )
     airl_trainer = AIRL(
         demonstrations=rollouts,
@@ -58,10 +60,13 @@ Detailed example notebook: `4_train_airl.ipynb <https://github.com/HumanCompatib
         reward_net=reward_net,
     )
     airl_trainer.train(20000)
-    learner_rewards_after_training, _ = evaluate_policy(
-        learner, venv, 100, return_episode_rewards=True
-    )
+    rewards, _ = evaluate_policy(learner, venv, 100, return_episode_rewards=True)
+    print("Rewards:", rewards)
 
+.. testoutput::
+    :hide:
+
+    ...
 
 API
 ===

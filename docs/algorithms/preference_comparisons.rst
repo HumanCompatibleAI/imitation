@@ -19,27 +19,30 @@ Detailed example notebook: `5_train_preference_comparisons.ipynb <https://github
 
 .. testcode::
 
+    from stable_baselines3 import PPO
+    from stable_baselines3.common.evaluation import evaluate_policy
+    from stable_baselines3.ppo import MlpPolicy
+
     from imitation.algorithms import preference_comparisons
+    from imitation.policies.base import FeedForward32Policy, NormalizeFeaturesExtractor
     from imitation.rewards.reward_nets import BasicRewardNet
+    from imitation.rewards.reward_wrapper import RewardVecEnvWrapper
     from imitation.util.networks import RunningNorm
     from imitation.util.util import make_vec_env
-    from imitation.policies.base import FeedForward32Policy, NormalizeFeaturesExtractor
-    import gym
-    from stable_baselines3 import PPO
-    from stable_baselines3.ppo import MlpPolicy
-    from imitation.rewards.reward_wrapper import RewardVecEnvWrapper
-
 
     venv = make_vec_env("Pendulum-v1")
 
     reward_net = BasicRewardNet(
-        venv.observation_space, venv.action_space, normalize_input_layer=RunningNorm
+        venv.observation_space, venv.action_space, normalize_input_layer=RunningNorm,
     )
 
     fragmenter = preference_comparisons.RandomFragmenter(warning_threshold=0, seed=0)
     gatherer = preference_comparisons.SyntheticGatherer(seed=0)
+    preference_model = preference_comparisons.PreferenceModel(reward_net)
     reward_trainer = preference_comparisons.BasicRewardTrainer(
-        model=reward_net, loss=preference_comparisons.CrossEntropyRewardLoss(), epochs=3
+        model=reward_net,
+        loss=preference_comparisons.CrossEntropyRewardLoss(preference_model),
+        epochs=3,
     )
 
     agent = PPO(
@@ -67,15 +70,11 @@ Detailed example notebook: `5_train_preference_comparisons.ipynb <https://github
         fragmenter=fragmenter,
         preference_gatherer=gatherer,
         reward_trainer=reward_trainer,
-        fragment_length=100,
-        transition_oversampling=1,
-        initial_comparison_frac=0.1,
-        allow_variable_horizon=False,
         seed=0,
         initial_epoch_multiplier=1,
     )
-
     pref_comparisons.train(total_timesteps=5_000, total_comparisons=200)
+
     learned_reward_venv = RewardVecEnvWrapper(venv, reward_net.predict)
     learner = PPO(
         policy=MlpPolicy,
@@ -85,8 +84,12 @@ Detailed example notebook: `5_train_preference_comparisons.ipynb <https://github
     learner.learn(1000)
 
     reward, _ = evaluate_policy(learner.policy, venv, 10)
-    print(reward)
+    print("Reward:", reward)
 
+.. testoutput::
+    :hide:
+    
+    ...
 
 API
 ===

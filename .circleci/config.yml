@@ -237,7 +237,7 @@ jobs:
 
       - run:
           name: sphinx
-          command: pushd docs/ && make clean && make html && popd
+          command: pushd docs/ && make clean && make doctest && make html && popd
 
   type:
     executor: type

@@ -16,6 +16,13 @@
    {% block functions %}
    {% if functions %}
    .. rubric:: {{ _('Functions') }}
+   .. testsetup::
+
+      from {{ fullname }} import *
+
+   .. doctest::
+      
+      pass
 
    .. autosummary::
    {% for item in functions %}
