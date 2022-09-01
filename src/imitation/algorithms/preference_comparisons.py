@@ -18,6 +18,7 @@ from typing import (
     Sequence,
     Tuple,
     Union,
+    cast,
 )
 
 import numpy as np
@@ -182,9 +183,11 @@ class AgentTrainer(TrajectoryGenerator):
         self.algorithm.set_env(self.venv)
         # Unlike with BufferingWrapper, we should use `algorithm.get_env()` instead
         # of `venv` when interacting with `algorithm`.
+        algo_venv = self.algorithm.get_env()
+        assert algo_venv is not None
         policy_callable = rollout._policy_to_callable(
             self.algorithm,
-            self.algorithm.get_env(),
+            algo_venv,
             # By setting deterministic_policy to False, we ensure that the rollouts
             # are collected from a deterministic policy only if self.algorithm is
             # deterministic. If self.algorithm is stochastic, then policy_callable
@@ -193,7 +196,7 @@ class AgentTrainer(TrajectoryGenerator):
         )
         self.exploration_wrapper = exploration_wrapper.ExplorationWrapper(
             policy_callable=policy_callable,
-            venv=self.algorithm.get_env(),
+            venv=algo_venv,
             random_prob=random_prob,
             switch_prob=switch_prob,
             seed=seed,
@@ -255,9 +258,11 @@ class AgentTrainer(TrajectoryGenerator):
             # here because 1) they might miss initial timesteps taken by the RL agent
             # and 2) their rewards are the ones provided by the reward model!
             # Instead, we collect the trajectories using the BufferingWrapper.
+            algo_venv = self.algorithm.get_env()
+            assert algo_venv is not None
             rollout.generate_trajectories(
                 self.algorithm,
-                self.algorithm.get_env(),
+                algo_venv,
                 sample_until=sample_until,
                 # By setting deterministic_policy to False, we ensure that the rollouts
                 # are collected from a deterministic policy only if self.algorithm is
@@ -270,30 +275,35 @@ class AgentTrainer(TrajectoryGenerator):
 
         agent_trajs = _get_trajectories(agent_trajs, agent_steps)
 
-        exploration_trajs = []
+        trajectories = list(agent_trajs)
+
         if exploration_steps > 0:
             self.logger.log(f"Sampling {exploration_steps} exploratory transitions.")
             sample_until = rollout.make_sample_until(
                 min_timesteps=exploration_steps,
                 min_episodes=None,
             )
+            algo_venv = self.algorithm.get_env()
+            assert algo_venv is not None
             rollout.generate_trajectories(
                 policy=self.exploration_wrapper,
-                venv=self.algorithm.get_env(),
+                venv=algo_venv,
                 sample_until=sample_until,
-                # buffering_wrapper collects rollouts from a non-deterministic policy
+                # buffering_wrapper collects rollouts from a non-deterministic policy,
                 # so we do that here as well for consistency.
                 deterministic_policy=False,
             )
             exploration_trajs, _ = self.buffering_wrapper.pop_finished_trajectories()
             exploration_trajs = _get_trajectories(exploration_trajs, exploration_steps)
-        # We call _get_trajectories separately on agent_trajs and exploration_trajs
-        # and then just concatenate. This could mean we return slightly too many
-        # transitions, but it gets the proportion of exploratory and agent transitions
-        # roughly right.
-        return list(agent_trajs) + list(exploration_trajs)
+            # We call _get_trajectories separately on agent_trajs and exploration_trajs
+            # and then just concatenate. This could mean we return slightly too many
+            # transitions, but it gets the proportion of exploratory and agent transitions
+            # roughly right.
+            trajectories.extend(list(exploration_trajs))
+        return trajectories
 
-    @TrajectoryGenerator.logger.setter
+    # Type ignore due to https://github.com/python/mypy/issues/5936
+    @TrajectoryGenerator.logger.setter  # type: ignore[attr-defined]
     def logger(self, value: imit_logger.HierarchicalLogger):
         self._logger = value
         self.algorithm.set_logger(self.logger)
@@ -318,6 +328,7 @@ def _get_trajectories(
     # Now we find the first index that gives us enough
     # total steps:
     idx = (steps_cumsum >= steps).argmax()
+    assert isinstance(idx, int)
     # we need to include the element at position idx
     trajectories = trajectories[: idx + 1]
     # sanity check
@@ -358,15 +369,19 @@ class PreferenceModel(nn.Module):
         self.noise_prob = noise_prob
         self.discount_factor = discount_factor
         self.threshold = threshold
-        self.is_ensemble, base_model = is_base_model_ensemble(self.model)
+        self.is_ensemble: bool
+        base_model = get_base_model(model)
+        self.is_ensemble = isinstance(base_model, reward_nets.RewardEnsemble)
         # if the base model is an ensemble model, then keep the base model as
         # model to get rewards from all networks
         if self.is_ensemble:
-            self.model = base_model
+            # For some reason, mypy is not able to infer the type of base_model
+            # when self.is_ensemble is True.
+            self.model = cast(reward_nets.RewardEnsemble, base_model)
             self.member_pref_models = []
             for member in self.model.members:
                 member_pref_model = PreferenceModel(
-                    member,
+                    cast(reward_nets.RewardNet, member),  # nn.ModuleList is not generic
                     self.noise_prob,
                     self.discount_factor,
                     self.threshold,
@@ -426,6 +441,10 @@ class PreferenceModel(nn.Module):
             rews2 = self.rewards(trans2)
             probs[i] = self.probability(rews1, rews2)
             if gt_reward_available:
+                frag1, frag2 = cast(TrajectoryWithRew, frag1), cast(
+                    TrajectoryWithRew,
+                    frag2,
+                )
                 gt_rews_1 = th.from_numpy(frag1.rews)
                 gt_rews_2 = th.from_numpy(frag2.rews)
                 gt_probs[i] = self.probability(gt_rews_1, gt_rews_2)
@@ -451,7 +470,7 @@ class PreferenceModel(nn.Module):
         next_state = transitions.next_obs
         done = transitions.dones
         if self.is_ensemble:
-            rews = self.model.predict_processed_all(state, action, next_state, done)
+            rews = self.model.predict_processed_all(state, action, next_state, done)  # type: ignore[operator]
             assert rews.shape == (len(state), self.model.num_members)
             return util.safe_to_tensor(rews).to(self.model.device)
         else:
@@ -487,7 +506,7 @@ class PreferenceModel(nn.Module):
         # factor of 1 to avoid unnecessary computation (especially
         # since this is the default setting).
         if self.discount_factor == 1:
-            returns_diff = (rews2 - rews1).sum(axis=0)
+            returns_diff = (rews2 - rews1).sum(axis=0)  # type: ignore[call-overload]
         else:
             discounts = self.discount_factor ** th.arange(len(rews1))
             if self.is_ensemble:
@@ -737,12 +756,12 @@ class ActiveSelectionFragmenter(Fragmenter):
             var_estimate = (returns1 - returns2).var().item()
         else:  # uncertainty_on is probability or label
             probs = self.preference_model.probability(rews1, rews2)
-            probs = probs.cpu().numpy()
-            assert probs.shape == (self.preference_model.model.num_members,)
+            probs_np = probs.cpu().numpy()
+            assert probs_np.shape == (self.preference_model.model.num_members,)
             if self.uncertainty_on == "probability":
-                var_estimate = probs.var()
+                var_estimate = probs_np.var()
             elif self.uncertainty_on == "label":  # uncertainty_on is label
-                preds = (probs > 0.5).astype(np.float32)
+                preds = (probs_np > 0.5).astype(np.float32)
                 # probability estimate of Bernoulli random variable
                 prob_estimate = preds.mean()
                 # variance estimate of Bernoulli random variable
@@ -917,7 +936,7 @@ class PreferenceDataset(th.utils.data.Dataset):
         if preferences.shape != (len(fragments),):
             raise ValueError(
                 f"Unexpected preferences shape {preferences.shape}, "
-                f"expected {(len(fragments), )}",
+                f"expected {(len(fragments),)}",
             )
         if preferences.dtype != np.float32:
             raise ValueError("preferences should have dtype float32")
@@ -1220,8 +1239,8 @@ class EnsembleTrainer(BasicRewardTrainer):
         preferences: np.ndarray,
     ) -> th.Tensor:
         assert len(fragment_pairs) == preferences.shape[0]
-        losses = []
-        metrics = []
+        losses_list = []
+        metrics_list = []
         for member_idx in range(self._model.num_members):
             # sample fragments for training via bagging
             sample_idx = self.rng.choice(
@@ -1232,9 +1251,9 @@ class EnsembleTrainer(BasicRewardTrainer):
             sample_fragments = [fragment_pairs[i] for i in sample_idx]
             sample_preferences = preferences[sample_idx]
             output = self.loss.forward(sample_fragments, sample_preferences, member_idx)
-            losses.append(output.loss)
-            metrics.append(output.metrics)
-        losses = th.stack(losses)
+            losses_list.append(output.loss)
+            metrics_list.append(output.metrics)
+        losses = th.stack(losses_list)
         loss = losses.sum()
 
         self.logger.record("loss", loss.item())
@@ -1242,19 +1261,21 @@ class EnsembleTrainer(BasicRewardTrainer):
 
         # Turn metrics from a list of dictionaries into a dictionary of
         # tensors.
-        metrics = {k: th.stack([di[k] for di in metrics]) for k in metrics[0]}
+        metrics = {k: th.stack([di[k] for di in metrics_list]) for k in metrics_list[0]}
         for name, value in metrics.items():
             self.logger.record(name, value.mean().item())
 
         return loss
 
 
-def is_base_model_ensemble(reward_model):
+def get_base_model(
+    reward_model: reward_nets.RewardNet,
+) -> Union[reward_nets.RewardNet, reward_nets.RewardEnsemble]:
     base_model = reward_model
     while hasattr(base_model, "base"):
-        base_model = base_model.base
+        base_model = cast(reward_nets.RewardNet, base_model.base)
 
-    return isinstance(base_model, reward_nets.RewardEnsemble), base_model
+    return base_model
 
 
 def _make_reward_trainer(
@@ -1266,9 +1287,12 @@ def _make_reward_trainer(
     """Construct the correct type of reward trainer for this reward function."""
     if reward_trainer_kwargs is None:
         reward_trainer_kwargs = {}
-    is_ensemble, base_model = is_base_model_ensemble(reward_model)
+
+    base_model = get_base_model(reward_model)
+    is_ensemble = isinstance(base_model, reward_nets.RewardEnsemble)
 
     if is_ensemble:
+        base_model = cast(reward_nets.RewardEnsemble, base_model)
         # reward_model may include an AddSTDRewardWrapper for RL training; but we
         # must train directly on the base model for reward model training.
         is_base = reward_model is base_model
