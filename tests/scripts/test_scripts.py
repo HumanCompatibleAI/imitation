@@ -10,11 +10,12 @@ import filecmp
 import os
 import pathlib
 import pickle
+import platform
 import shutil
 import sys
 import tempfile
 from collections import Counter
-from typing import List, Mapping, Optional
+from typing import Dict, List, Mapping, Optional
 from unittest import mock
 
 import numpy as np
@@ -242,6 +243,20 @@ def test_train_preference_comparisons_reward_named_config(tmpdir, named_configs)
     assert isinstance(run.result, dict)
 
 
+@pytest.mark.parametrize("config", PREFERENCE_COMPARISON_CONFIGS)
+def test_train_preference_comparisons_active_learning(tmpdir, config):
+    config_updates = dict(common=dict(log_root=tmpdir), active_selection=True)
+    sacred.utils.recursive_update(config_updates, config)
+    run = train_preference_comparisons.train_preference_comparisons_ex.run(
+        named_configs=["cartpole"]
+        + ALGO_FAST_CONFIGS["preference_comparison"]
+        + ["reward.reward_ensemble"],
+        config_updates=config_updates,
+    )
+    assert run.status == "COMPLETED"
+    assert isinstance(run.result, dict)
+
+
 def test_train_dagger_main(tmpdir):
     with pytest.warns(None) as record:
         run = train_imitation.train_imitation_ex.run(
@@ -399,12 +414,20 @@ def test_train_rl_sac(tmpdir):
     assert isinstance(run.result, dict)
 
 
-EVAL_POLICY_CONFIGS = [
-    {"videos": True},
-    {"videos": True, "video_kwargs": {"single_video": False}},
+# check if platform is macos
+
+EVAL_POLICY_CONFIGS: List[Dict] = [
     {"reward_type": "zero", "reward_path": "foobar"},
     {"rollout_save_path": "{log_dir}/rollouts.pkl"},
 ]
+
+if platform.system() != "Darwin":
+    EVAL_POLICY_CONFIGS.extend(
+        [
+            {"videos": True},
+            {"videos": True, "video_kwargs": {"single_video": False}},
+        ],
+    )
 
 
 @pytest.mark.parametrize("config", EVAL_POLICY_CONFIGS)
