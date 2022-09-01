@@ -251,13 +251,13 @@ def test_input_validation_on_ema_norm():
 
 @pytest.mark.parametrize("decay", [0.5, 0.99])
 @pytest.mark.parametrize("input_shape", [(64,), (1, 256), (64, 256)])
-def test_ema_norm_batch_correctness(decay, input_shape):
+def test_ema_norm_algo_2_and_3_are_the_same(decay, input_shape):
     num_features = input_shape[-1] if len(input_shape) == 2 else 1
     ema_norm_algo_2 = EMANormAlgorithm2(
         num_features=num_features,
         decay=decay,
     )
-    ema_norm_algo_3 = networks.EMANorm(256, decay)
+    ema_norm_algo_3 = networks.EMANorm(num_features, decay)
     random_tensor = th.randn(input_shape)
     for i in range(1000):
         ema_norm_algo_2.train(), ema_norm_algo_3.train()

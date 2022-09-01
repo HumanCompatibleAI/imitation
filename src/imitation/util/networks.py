@@ -179,11 +179,7 @@ class EMANorm(BaseNorm):
 
         # update running variance
         batch_var = batch.var(0, unbiased=False)
-        delta_var = (
-            batch_var
-            + (1 - self.inv_learning_rate) * delta_mean**2
-            - self.running_var
-        )
+        delta_var = batch_var + (1 - learning_rate) * delta_mean**2 - self.running_var
         self.running_var += learning_rate * delta_var
 
         self.count += b_size
