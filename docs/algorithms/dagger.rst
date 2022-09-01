@@ -21,7 +21,7 @@ Example
 
 Detailed example notebook: `2_train_dagger.ipynb <https://github.com/HumanCompatibleAI/imitation/blob/master/examples/2_train_dagger.ipynb>`_
 
-.. code-block:: python
+.. testcode::
 
     from stable_baselines3 import PPO
     from stable_baselines3.ppo import MlpPolicy

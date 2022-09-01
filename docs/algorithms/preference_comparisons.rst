@@ -17,7 +17,7 @@ Example
 
 Detailed example notebook: `5_train_preference_comparisons.ipynb <https://github.com/HumanCompatibleAI/imitation/blob/master/examples/5_train_preference_comparisons.ipynb>`_
 
-.. code-block:: python
+.. testcode::
 
     from imitation.algorithms import preference_comparisons
     from imitation.rewards.reward_nets import BasicRewardNet

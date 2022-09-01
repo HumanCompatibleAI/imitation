@@ -7,7 +7,7 @@ Example
 
 Detailed example notebook: `7_train_density.ipynb <https://github.com/HumanCompatibleAI/imitation/blob/master/examples/7_train_density.ipynb>`_
 
-.. code-block:: python
+.. testcode::
 
     import pprint
     from imitation.algorithms import density as db

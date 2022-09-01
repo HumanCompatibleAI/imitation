@@ -9,7 +9,7 @@ Example
 
 Detailed example notebook: `6_train_mce.ipynb <https://github.com/HumanCompatibleAI/imitation/blob/master/examples/6_train_mce.ipynb>`_
 
-.. code-block:: python
+.. testcode::
 
     from functools import partial
     from imitation.algorithms.mce_irl import (

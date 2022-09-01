@@ -19,7 +19,7 @@ Example
 
 Detailed example notebook: `4_train_airl.ipynb <https://github.com/HumanCompatibleAI/imitation/blob/master/examples/4_train_airl.ipynb>`_
 
-.. code-block:: python
+.. testcode::
 
     from stable_baselines3 import PPO
     from stable_baselines3.ppo import MlpPolicy
