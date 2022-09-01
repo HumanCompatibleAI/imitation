@@ -1,6 +1,8 @@
 """Configuration for imitation.scripts.train_preference_comparisons."""
 
 import sacred
+from gym.wrappers import TimeLimit
+from seals.util import AutoResetWrapper
 from stable_baselines3.common.atari_wrappers import AtariWrapper
 
 from imitation.algorithms import preference_comparisons
@@ -120,7 +122,12 @@ def seals_mountain_car():
 def asteroids():
     common = dict(
         env_name="AsteroidsNoFrameskip-v4",
-        post_wrappers=[lambda env, _: AtariWrapper(env)],
+        post_wrappers=[
+            lambda env, _: TimeLimit(
+                AtariWrapper(AutoResetWrapper(env), terminal_on_life_loss=False),
+                max_episode_steps=5,
+            ),
+        ],  # TODO(daniel) asteroids_fast vs normal asteroids
     )
 
 
