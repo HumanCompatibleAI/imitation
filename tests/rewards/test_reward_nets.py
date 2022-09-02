@@ -528,6 +528,8 @@ def test_shaped_reward_net(
         return th.full((x.shape[0],), 10, device=x.device)
 
     shaped = reward_nets.ShapedRewardNet(zero_reward_net, potential, 0.9)
+    # We expect the shaped reward to be -1 since,
+    # r'(s,a,s') = r(s,a,s') + \gamma \theta(s') - \theta(s) = (0) + (0.9)(10) - 10 = -1
     shaped_rew = th.full((10,), -1, dtype=th.float32)
     forward_args = shaped.preprocess(*numpy_transitions)
     assert th.allclose(shaped(*forward_args), shaped_rew)
