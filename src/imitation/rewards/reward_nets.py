@@ -542,51 +542,9 @@ class ShapedRewardNet(RewardNetWrapper):
         assert final_rew.shape == state.shape[:1]
         return final_rew
 
-    def predict_th(
-        self,
-        state: np.ndarray,
-        action: np.ndarray,
-        next_state: np.ndarray,
-        done: np.ndarray,
-    ) -> th.Tensor:
-        __doc__ = super().forward.__doc__  # noqa: F841
-        with networks.evaluating(self):
-            # switch to eval mode (affecting normalization, dropout, etc)
-
-            state_th, action_th, next_state_th, done_th = self.preprocess(
-                state,
-                action,
-                next_state,
-                done,
-            )
-            with th.no_grad():
-                rew_th = self(state_th, action_th, next_state_th, done_th)
-
-            assert rew_th.shape == state.shape[:1]
-            return rew_th
-
-    def predict(
-        self,
-        state: np.ndarray,
-        action: np.ndarray,
-        next_state: np.ndarray,
-        done: np.ndarray,
-    ) -> np.ndarray:
-        __doc__ = super().forward.__doc__  # noqa: F841
-        rew_th = self.predict_th(state, action, next_state, done)
-        return rew_th.detach().cpu().numpy().flatten()
-
-    def predict_processed(
-        self,
-        state: np.ndarray,
-        action: np.ndarray,
-        next_state: np.ndarray,
-        done: np.ndarray,
-        **kwargs,
-    ) -> np.ndarray:
-        __doc__ = super().forward.__doc__  # noqa: F841
-        del kwargs
-        return self.predict(state, action, next_state, done)
+    predict_th = RewardNet.predict_th
+    predict = RewardNet.predict
+    predict_processed = RewardNet.predict_processed
 
 
 class BasicShapedRewardNet(ShapedRewardNet):
