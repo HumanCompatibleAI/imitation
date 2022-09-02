@@ -4,7 +4,7 @@ import logging
 import numbers
 import os
 import tempfile
-from typing import Tuple
+from typing import Callable, Tuple
 from unittest import mock
 
 import gym
@@ -43,9 +43,17 @@ MAKE_REWARD_NET = [
     testing_reward_nets.make_ensemble,
 ]
 
-
-MAKE_SIMPLE_REWARD_NET_WRAPPERS = [
+MakeForwardWrapper = Callable[[reward_nets.RewardNet], reward_nets.ForwardWrapper]
+MAKE_PREDICT_PROCESSED_WRAPPERS = [
     lambda base: reward_nets.NormalizedRewardNet(base, networks.RunningNorm),
+]
+
+MakePredictProcessedWrapper = Callable[
+    [reward_nets.RewardNet],
+    reward_nets.PredictProcessedWrapper,
+]
+MAKE_FORWARD_WRAPPERS = [
+    lambda base: reward_nets.ShapedRewardNet(base, _potential, 0.99),
 ]
 
 REWARD_NET_KWARGS = [
@@ -162,34 +170,6 @@ def test_reward_valid(env_name, reward_type, tmpdir):
 
     assert pred_reward.shape == (TRAJECTORY_LEN,)
     assert isinstance(pred_reward[0], numbers.Number)
-
-
-def test_wrappers_default_to_passing_on_method_calls_to_base(
-    numpy_transitions: NumpyTransitions,
-    torch_transitions: TorchTransitions,
-):
-    base = mock.MagicMock()
-    wrapper = reward_nets.RewardNetWrapper(base)
-    # Check method calls
-    for attr, call_with, return_value in [
-        ("forward", torch_transitions, th.zeros(10)),
-        ("predict_th", numpy_transitions, np.zeros(10)),
-        ("predict", numpy_transitions, np.zeros(10)),
-        ("predict_processed", numpy_transitions, np.zeros(10)),
-        ("preprocess", numpy_transitions, torch_transitions),
-    ]:
-        setattr(base, attr, mock.MagicMock(return_value=return_value))
-        assert getattr(wrapper, attr)(*call_with) is return_value
-        getattr(base, attr).assert_called_once_with(*call_with)
-
-    # Check property lookups
-    return_value = th.device("cpu")
-    base.device = mock.PropertyMock(return_value=return_value)
-    assert wrapper.device is base.device
-
-    return_value = th.float32
-    base.dtype = mock.PropertyMock(return_value=return_value)
-    assert wrapper.dtype is base.dtype
 
 
 def test_strip_wrappers_basic():
@@ -468,6 +448,11 @@ def zero_reward_net(env_2d) -> MockRewardNet:
     return MockRewardNet(env_2d.observation_space, env_2d.action_space, value=0)
 
 
+@pytest.fixture(params=MAKE_PREDICT_PROCESSED_WRAPPERS)
+def predict_processed_wrapper(request, zero_reward_net):
+    return request.param(zero_reward_net)
+
+
 @pytest.fixture
 def two_ensemble(env_2d) -> reward_nets.RewardEnsemble:
     """A simple reward ensemble made up of two mock reward nets."""
@@ -551,27 +536,29 @@ def test_shaped_reward_net(
     assert np.allclose(shaped.predict_processed(*numpy_transitions), shaped_rew.numpy())
 
 
-@pytest.mark.parametrize("make_wrapper", MAKE_SIMPLE_REWARD_NET_WRAPPERS)
-def test_shaping_cannot_be_applied_to_wrapped_reward_network(
-    zero_reward_net: MockRewardNet,
-    make_wrapper: reward_nets.RewardNetWrapper,
+@pytest.mark.parametrize("make_forward_wrapper", MAKE_FORWARD_WRAPPERS)
+def test_forward_wrapper_cannot_be_applied_predict_processed_wrapper(
+    predict_processed_wrapper: reward_nets.PredictProcessedWrapper,
+    make_forward_wrapper: MakeForwardWrapper,
 ):
-    wrapped_net = make_wrapper(zero_reward_net)
     with pytest.raises(
         ValueError,
-        match=r"Shaping cannot be applied to wrapped reward nets.",
+        match=r"ForwardWrapper cannot be applied on top of PredictProcessedWrapper!",
     ):
-        reward_nets.ShapedRewardNet(wrapped_net, _potential, 0.99)
+        make_forward_wrapper(predict_processed_wrapper)
 
 
-@pytest.mark.parametrize("make_wrapper", MAKE_SIMPLE_REWARD_NET_WRAPPERS)
-def test_wrappers_pass_on_kwargs(
-    make_wrapper: reward_nets.RewardNetWrapper,
+@pytest.mark.parametrize(
+    "make_predict_processed_wrapper",
+    MAKE_PREDICT_PROCESSED_WRAPPERS,
+)
+def test_predict_processed_wrappers_pass_on_kwargs(
+    make_predict_processed_wrapper: MakePredictProcessedWrapper,
     zero_reward_net: MockRewardNet,
     numpy_transitions: NumpyTransitions,
 ):
     zero_reward_net.predict_processed = mock.Mock(return_value=np.zeros((10,)))
-    wrapped_reward_net = make_wrapper(
+    wrapped_reward_net = make_predict_processed_wrapper(
         zero_reward_net,
     )
     wrapped_reward_net.predict_processed(
@@ -582,6 +569,36 @@ def test_wrappers_pass_on_kwargs(
         *numpy_transitions,
         foobar=42,
     )
+
+
+def test_predict_processed_wrappers_to_pass_on_method_calls_to_base(
+    numpy_transitions: NumpyTransitions,
+    torch_transitions: TorchTransitions,
+    predict_processed_wrapper: reward_nets.PredictProcessedWrapper,
+):
+    base = mock.create_autospec(MockRewardNet)
+
+    base.device = th.device("cpu")
+
+    base.dtype = th.float32
+
+    predict_processed_wrapper._base = base
+    # Check method calls
+    for attr, call_with, return_value in [
+        ("forward", torch_transitions, th.zeros(10)),
+        ("predict_th", numpy_transitions, np.zeros(10)),
+        ("predict", numpy_transitions, np.zeros(10)),
+        ("predict_processed", numpy_transitions, np.zeros(10)),
+        ("preprocess", numpy_transitions, torch_transitions),
+    ]:
+        setattr(base, attr, mock.MagicMock(return_value=return_value))
+        getattr(predict_processed_wrapper, attr)(*call_with)
+        getattr(base, attr).assert_called_once_with(*call_with)
+
+    # Check property lookups
+    assert predict_processed_wrapper.device is base.device
+
+    assert predict_processed_wrapper.dtype is base.dtype
 
 
 def test_load_reward_passes_along_alpha_to_add_std_wrappers_predict_processed_method(

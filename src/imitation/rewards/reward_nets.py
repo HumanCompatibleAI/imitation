@@ -213,11 +213,10 @@ class RewardNet(nn.Module, abc.ABC):
 
 
 class RewardNetWrapper(RewardNet):
-    """An abstract RewardNet wrapping a base network.
+    """Abstract class representing a wrapper that modifies a `RewardNet`'s functionality.
 
-    Note: The wrapper will default to forwarding calls to `device`, `forward`,
-        `preproces`, `predict`, and `predict_processed` to the base reward net unless
-        explicitly overridden in a subclases.
+    In general `RewardNetWrapper`s should either override `ForwardWrapper`
+    or `PredictProcessedWrapper`.
     """
 
     def __init__(
@@ -240,6 +239,46 @@ class RewardNetWrapper(RewardNet):
     def base(self) -> RewardNet:
         return self._base
 
+
+class ForwardWrapper(RewardNetWrapper):
+    """An abstract RewardNetWrapper that changes the behavior of forward.
+
+    Note that all forward wrappers must be placed before all
+    predict processed wrappers.
+    """
+
+    def __init__(
+        self,
+        base: RewardNet,
+    ):
+        """Create a forward wrapper.
+
+        Args:
+            base: The base reward network
+
+        Raises:
+            ValueError: if the base network is a `PredictProcessedWrapper`.
+        """
+        super().__init__(base)
+        if isinstance(base, PredictProcessedWrapper):
+            # Doing this could cause confusing errors like normalization
+            # not being applied.
+            raise ValueError(
+                "ForwardWrapper cannot be applied on top of PredictProcessedWrapper!",
+            )
+
+
+class PredictProcessedWrapper(RewardNetWrapper):
+    """An abstract RewardNetWrapper that changes the behavior of predict_processed.
+
+    Subclasses should override `predict_processed`. Implementations
+    should pass along `kwargs` to the `base` reward nets `predict_processed` method.
+
+    Note: The wrapper will default to forwarding calls to `device`, `forward`,
+        `preproces` and `predict` to the base reward net unless
+        explicitly overridden in a subclass.
+    """
+
     def forward(
         self,
         state: th.Tensor,
@@ -250,6 +289,7 @@ class RewardNetWrapper(RewardNet):
         __doc__ = super().forward.__doc__  # noqa: F841
         return self.base.forward(state, action, next_state, done)
 
+    @abc.abstractmethod
     def predict_processed(
         self,
         state: np.ndarray,
@@ -258,8 +298,7 @@ class RewardNetWrapper(RewardNet):
         done: np.ndarray,
         **kwargs,
     ) -> np.ndarray:
-        __doc__ = super().predict_processed.__doc__  # noqa: F841
-        return self.base.predict_processed(state, action, next_state, done, **kwargs)
+        ...
 
     def predict(
         self,
@@ -409,7 +448,7 @@ class BasicRewardNet(RewardNet):
         return outputs
 
 
-class NormalizedRewardNet(RewardNetWrapper):
+class NormalizedRewardNet(PredictProcessedWrapper):
     """A reward net that normalizes the output of its base network."""
 
     def __init__(
@@ -470,7 +509,7 @@ class NormalizedRewardNet(RewardNetWrapper):
         return rew
 
 
-class ShapedRewardNet(RewardNetWrapper):
+class ShapedRewardNet(ForwardWrapper):
     """A RewardNet consisting of a base network and a potential shaping."""
 
     def __init__(
@@ -490,20 +529,12 @@ class ShapedRewardNet(RewardNetWrapper):
                 potentials for these states. If this is a PyTorch Module, it becomes
                 a submodule of the ShapedRewardNet instance.
             discount_factor: discount factor to use for the potential shaping.
-
-        Raises:
-            ValueError: if the base network is an instance of RewardNetWrapper.
         """
         super().__init__(
             base=base,
         )
         self.potential = potential
         self.discount_factor = discount_factor
-
-        if isinstance(base, RewardNetWrapper):
-            # Doing this could cause confusing errors like normalization
-            # not being applied.
-            raise ValueError("Shaping cannot be applied to wrapped reward nets.")
 
     def forward(
         self,
@@ -541,52 +572,6 @@ class ShapedRewardNet(RewardNetWrapper):
         )
         assert final_rew.shape == state.shape[:1]
         return final_rew
-
-    def predict_th(
-        self,
-        state: np.ndarray,
-        action: np.ndarray,
-        next_state: np.ndarray,
-        done: np.ndarray,
-    ) -> th.Tensor:
-        __doc__ = super().forward.__doc__  # noqa: F841
-        with networks.evaluating(self):
-            # switch to eval mode (affecting normalization, dropout, etc)
-
-            state_th, action_th, next_state_th, done_th = self.preprocess(
-                state,
-                action,
-                next_state,
-                done,
-            )
-            with th.no_grad():
-                rew_th = self(state_th, action_th, next_state_th, done_th)
-
-            assert rew_th.shape == state.shape[:1]
-            return rew_th
-
-    def predict(
-        self,
-        state: np.ndarray,
-        action: np.ndarray,
-        next_state: np.ndarray,
-        done: np.ndarray,
-    ) -> np.ndarray:
-        __doc__ = super().forward.__doc__  # noqa: F841
-        rew_th = self.predict_th(state, action, next_state, done)
-        return rew_th.detach().cpu().numpy().flatten()
-
-    def predict_processed(
-        self,
-        state: np.ndarray,
-        action: np.ndarray,
-        next_state: np.ndarray,
-        done: np.ndarray,
-        **kwargs,
-    ) -> np.ndarray:
-        __doc__ = super().forward.__doc__  # noqa: F841
-        del kwargs
-        return self.predict(state, action, next_state, done)
 
 
 class BasicShapedRewardNet(ShapedRewardNet):
@@ -827,7 +812,7 @@ class RewardEnsemble(RewardNetWithVariance):
         return mean
 
 
-class AddSTDRewardWrapper(RewardNetWrapper):
+class AddSTDRewardWrapper(PredictProcessedWrapper):
     """Adds a multiple of the estimated standard deviation to mean reward."""
 
     base: RewardNetWithVariance
