@@ -87,6 +87,10 @@ class MockWandb:
 mock_wandb = MockWandb()
 
 
+# we ignore the type below as one should technically not access the
+# __init__ method directly but only by creating an instance.
+
+
 @mock.patch.object(wandb, "__init__", mock_wandb.__init__)  # type: ignore
 @mock.patch.object(wandb, "init", mock_wandb.init)
 @mock.patch.object(wandb, "log", mock_wandb.log)

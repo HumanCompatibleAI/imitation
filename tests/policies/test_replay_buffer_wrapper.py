@@ -54,6 +54,8 @@ def test_invalid_args():
         TypeError,
         match=r".*unexpected keyword argument 'replay_buffer_class'.*",
     ):
+        # we ignore the type because we are intentionally
+        # passing the wrong type for the test
         make_algo_with_wrapped_buffer(
             rl_cls=sb3.PPO,  # type: ignore
             policy_cls=policies.ActorCriticPolicy,
