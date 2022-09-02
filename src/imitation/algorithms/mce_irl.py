@@ -7,7 +7,7 @@ Follows the description in chapters 9 and 10 of Brian Ziebart's `PhD thesis`_.
 """
 import collections
 import warnings
-from typing import Any, Iterable, Mapping, Optional, Tuple, Type, Union
+from typing import Any, Iterable, Mapping, Optional, Tuple, Type, Union, List
 
 import gym
 import numpy as np
@@ -24,10 +24,10 @@ from imitation.util import networks, util
 
 
 def mce_partition_fh(
-    env: resettable_env.TabularModelEnv,
-    *,
-    reward: Optional[np.ndarray] = None,
-    discount: float = 1.0,
+        env: resettable_env.TabularModelEnv,
+        *,
+        reward: Optional[np.ndarray] = None,
+        discount: float = 1.0,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     r"""Performs the soft Bellman backup for a finite-horizon MDP.
 
@@ -77,11 +77,11 @@ def mce_partition_fh(
 
 
 def mce_occupancy_measures(
-    env: resettable_env.TabularModelEnv,
-    *,
-    reward: Optional[np.ndarray] = None,
-    pi: Optional[np.ndarray] = None,
-    discount: float = 1.0,
+        env: resettable_env.TabularModelEnv,
+        *,
+        reward: Optional[np.ndarray] = None,
+        pi: Optional[np.ndarray] = None,
+        discount: float = 1.0,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """Calculate state visitation frequency Ds for each state s under a given policy pi.
 
@@ -140,13 +140,15 @@ def squeeze_r(r_output: th.Tensor) -> th.Tensor:
 
 class TabularPolicy(policies.BasePolicy):
     """A tabular policy. Cannot be trained -- prediction only."""
+    pi: np.ndarray
+    rng: np.random.RandomState
 
     def __init__(
-        self,
-        state_space: gym.Space,
-        action_space: gym.Space,
-        pi: np.ndarray,
-        rng: Optional[np.random.RandomState],
+            self,
+            state_space: gym.Space,
+            action_space: gym.Space,
+            pi: np.ndarray,
+            rng: Optional[np.random.RandomState],
     ):
         """Builds TabularPolicy.
 
@@ -162,8 +164,7 @@ class TabularPolicy(policies.BasePolicy):
         assert isinstance(action_space, gym.spaces.Discrete), "action not tabular"
         # What we call state space here is observation space in SB3 nomenclature.
         super().__init__(observation_space=state_space, action_space=action_space)
-        self.rng = rng or np.random
-        self.pi = None
+        self.rng = rng or np.random.RandomState()
         self.set_pi(pi)
 
     def set_pi(self, pi: np.ndarray) -> None:
@@ -176,15 +177,15 @@ class TabularPolicy(policies.BasePolicy):
     def _predict(self, observation: th.Tensor, deterministic: bool = False):
         raise NotImplementedError("Should never be called as predict overridden.")
 
-    def forward(self, observation: th.Tensor, deterministic: bool = False):
+    def forward(self, observation: th.Tensor, deterministic: bool = False):  # type: ignore[override]
         raise NotImplementedError("Should never be called.")
 
-    def predict(
-        self,
-        observation: np.ndarray,
-        state: Optional[np.ndarray] = None,
-        mask: Optional[np.ndarray] = None,
-        deterministic: bool = False,
+    def predict(  # type: ignore[override]
+            self,
+            observation: np.ndarray,
+            state: Optional[np.ndarray] = None,
+            mask: Optional[np.ndarray] = None,
+            deterministic: bool = False,
     ) -> Tuple[np.ndarray, np.ndarray]:
         """Predict action to take in given state.
 
@@ -218,12 +219,12 @@ class TabularPolicy(policies.BasePolicy):
         if mask is not None:
             timesteps[mask] = 0
 
-        actions = []
+        actions: List[int] = []
         for obs, t in zip(observation, timesteps):
             assert self.observation_space.contains(obs), "illegal state"
             dist = self.pi[t, obs, :]
             if deterministic:
-                actions.append(dist.argmax())
+                actions.append(int(dist.argmax()))
             else:
                 actions.append(self.rng.choice(len(dist), p=dist))
 
@@ -250,20 +251,20 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
     demo_state_om: Optional[np.ndarray]
 
     def __init__(
-        self,
-        demonstrations: Optional[MCEDemonstrations],
-        env: resettable_env.TabularModelEnv,
-        reward_net: reward_nets.RewardNet,
-        optimizer_cls: Type[th.optim.Optimizer] = th.optim.Adam,
-        optimizer_kwargs: Optional[Mapping[str, Any]] = None,
-        discount: float = 1.0,
-        linf_eps: float = 1e-3,
-        grad_l2_eps: float = 1e-4,
-        # TODO(adam): do we need log_interval or can just use record_mean...?
-        log_interval: Optional[int] = 100,
-        *,
-        rng: Optional[np.random.RandomState] = None,
-        custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
+            self,
+            demonstrations: Optional[MCEDemonstrations],
+            env: resettable_env.TabularModelEnv,
+            reward_net: reward_nets.RewardNet,
+            optimizer_cls: Type[th.optim.Optimizer] = th.optim.Adam,
+            optimizer_kwargs: Optional[Mapping[str, Any]] = None,
+            discount: float = 1.0,
+            linf_eps: float = 1e-3,
+            grad_l2_eps: float = 1e-4,
+            # TODO(adam): do we need log_interval or can just use record_mean...?
+            log_interval: Optional[int] = 100,
+            *,
+            rng: Optional[np.random.RandomState] = None,
+            custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
     ):
         r"""Creates MCE IRL.
 
@@ -334,10 +335,10 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
         self.demo_state_om /= num_demos
 
     def _set_demo_from_obs(
-        self,
-        obses: np.ndarray,
-        dones: Optional[np.ndarray],
-        next_obses: Optional[np.ndarray],
+            self,
+            obses: np.ndarray,
+            dones: Optional[np.ndarray],
+            next_obses: Optional[np.ndarray],
     ) -> None:
         self.demo_state_om = np.zeros((self.env.n_states,))
 
@@ -351,6 +352,10 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
         # as they will not appear anywhere else; but ignore next observations
         # for all other states as they occur elsewhere in dataset.
         if next_obses is not None:
+            # TODO(juan) this is wrong; dones is an optional
+            #  and zip() cannot handle this when it's None.
+            #  either require an np.ndarray or do something else
+            #  if the value is None.
             for done, obs in zip(dones, next_obses):
                 if isinstance(done, th.Tensor):
                     done = done.item()  # must be scalar
@@ -376,6 +381,10 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
         # Demonstrations are either trajectories or transitions;
         # we must compute occupancy measure from this.
         if isinstance(demonstrations, Iterable):
+            # TODO(juan) this is wrong; if this is a container (list-like)
+            #  object then a new fresh iterator will be generated every time,
+            #  but for a general iterator calling next() exhaust the
+            #  iterator.
             first_item = next(iter(demonstrations))
             if isinstance(first_item, types.Trajectory):
                 self._set_demo_from_trajectories(demonstrations)
@@ -401,13 +410,14 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
             # Collect them together into one big NumPy array. This is inefficient,
             # we could compute the running statistics instead, but in practice do
             # not expect large dataset sizes together with MCE IRL.
-            collated = collections.defaultdict(list)
+            collated_list = collections.defaultdict(list)
             for batch in demonstrations:
                 assert isinstance(batch, Mapping)
                 for k in ("obs", "dones", "next_obs"):
                     if k in batch:
-                        collated[k].append(batch[k])
-            for k, v in collated.items():
+                        collated_list[k].append(batch[k])
+            collated = {}
+            for k, v in collated_list.items():
                 collated[k] = np.concatenate(v)
 
             assert "obs" in collated
@@ -474,6 +484,7 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
             dtype=self.reward_net.dtype,
             device=self.reward_net.device,
         )
+        assert self.demo_state_om is not None
         assert self.demo_state_om.shape == (len(obs_mat),)
 
         with networks.training(self.reward_net):
