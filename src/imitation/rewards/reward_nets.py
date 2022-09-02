@@ -542,6 +542,9 @@ class ShapedRewardNet(RewardNetWrapper):
         assert final_rew.shape == state.shape[:1]
         return final_rew
 
+    # Use concrete implementations from base class rather than our direct
+    # superclass as we do not want to forward predict to base class, but
+    # rather call forward here.
     predict_th = RewardNet.predict_th
     predict = RewardNet.predict
     predict_processed = RewardNet.predict_processed
