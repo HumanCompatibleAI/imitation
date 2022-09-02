@@ -9,7 +9,9 @@ expert_ingredient = sacred.Ingredient("expert", ingredients=[common_ingredient])
 
 @expert_ingredient.config
 def config():
+    # [ppo, sac, random, zero, huggingface-ppo, huggingface-sac] or your own.
     policy_type = "ppo-huggingface"
+    # See imitation.policies.serialize.load_policy for options.
     loader_kwargs = dict()
     locals()  # quieten flake8
 
