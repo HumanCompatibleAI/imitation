@@ -68,7 +68,7 @@ class BaseNorm(nn.Module, ABC):
         self.register_buffer("running_mean", th.empty(num_features))
         self.register_buffer("running_var", th.empty(num_features))
         self.register_buffer("count", th.empty((), dtype=th.int))
-        self.reset_running_stats()
+        BaseNorm.reset_running_stats(self)
 
     def reset_running_stats(self) -> None:
         """Resets running stats to defaults, yielding the identity transformation."""
@@ -132,6 +132,9 @@ class RunningNorm(BaseNorm):
 class EMANorm(BaseNorm):
     """Similar to RunningNorm but uses an exponential weighting."""
 
+    inv_learning_rate: th.Tensor
+    num_batches: th.IntTensor
+
     def __init__(
         self,
         num_features: int,
@@ -154,8 +157,15 @@ class EMANorm(BaseNorm):
             raise ValueError("decay must be between 0 and 1")
 
         self.decay = decay
-        self.inv_learning_rate = 0
-        self.num_batches = 0
+        self.register_buffer("inv_learning_rate", th.empty(()))
+        self.register_buffer("num_batches", th.empty((), dtype=th.int))
+        EMANorm.reset_running_stats(self)
+
+    def reset_running_stats(self):
+        """Reset the running stats of the normalization layer."""
+        super().reset_running_stats()
+        self.inv_learning_rate.zero_()
+        self.num_batches.zero_()
 
     def update_stats(self, batch: th.Tensor) -> None:
         """Update `self.running_mean` and `self.running_var` in batch mode.
