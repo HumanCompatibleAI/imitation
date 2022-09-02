@@ -101,7 +101,7 @@ def test_running_norm_identity_train(normalization_layer: Type[networks.BaseNorm
     running_norm.train()  # stats will change in eval mode
     normalized = th.Tensor([-1, -1, -1, -1, 1, 1, 1, 1])  # mean 0, variance 1
     for _ in range(10):
-        th.testing.assert_allclose(
+        th.testing.assert_close(
             running_norm.forward(normalized),
             normalized,
             rtol=0.05,
