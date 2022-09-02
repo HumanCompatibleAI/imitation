@@ -298,7 +298,7 @@ class PredictProcessedWrapper(RewardNetWrapper):
         done: np.ndarray,
         **kwargs,
     ) -> np.ndarray:
-        ...
+        """Predict processed must be overridden in subclasses."""
 
     def predict(
         self,
