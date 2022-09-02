@@ -16,7 +16,11 @@ def config():
 
 @expert_ingredient.capture
 def get_expert_policy(venv, policy_type, loader_kwargs, common):
-    if "huggingface" in policy_type:  # TODO(max): this is a hack
+    if "huggingface" in policy_type:
+        # Note: unfortunately we need to pass the venv **and** its name to the
+        # huggingface policy loader since there is no way to get the name from the venv.
+        # The name is needed to deduce the repo id and load the correct huggingface
+        # model.
         loader_kwargs = loader_kwargs.copy()
-        loader_kwargs["env_id"] = common["env_name"]
+        loader_kwargs["env_name"] = common["env_name"]
     return serialize.load_policy(policy_type, venv, **loader_kwargs)

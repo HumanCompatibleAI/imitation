@@ -103,11 +103,11 @@ def _load_stable_baselines_from_huggingface(
 
     def f(
         venv: vec_env.VecEnv,
-        env_id: str,
+        env_name: str,
         organization: str = "HumanCompatibleAI",
     ) -> policies.BasePolicy:
         """Loads a policy saved to path, for environment env."""
-        model_name = hfsb3.ModelName(algo_name, hfsb3.EnvironmentName(env_id))
+        model_name = hfsb3.ModelName(algo_name, hfsb3.EnvironmentName(env_name))
         repo_id = hfsb3.ModelRepoId(organization, model_name)
         filename = hfsb3.load_from_hub(repo_id, model_name.filename)
         model = load_stable_baselines_model(cls, filename, venv)
