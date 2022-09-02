@@ -167,8 +167,8 @@ def test_train_preference_comparisons_sac(tmpdir):
         # make sure rl.sac named_config is called after rl.fast to overwrite
         # rl_kwargs.batch_size to None
         named_configs=["pendulum"]
-                      + ALGO_FAST_CONFIGS["preference_comparison"]
-                      + RL_SAC_NAMED_CONFIGS,
+        + ALGO_FAST_CONFIGS["preference_comparison"]
+        + RL_SAC_NAMED_CONFIGS,
         config_updates=config_updates,
     )
     assert run.config["rl"]["rl_cls"] is stable_baselines3.SAC
@@ -180,8 +180,8 @@ def test_train_preference_comparisons_sac(tmpdir):
     with pytest.raises(Exception, match=".*set 'batch_size' at top-level.*"):
         train_preference_comparisons.train_preference_comparisons_ex.run(
             named_configs=["pendulum"]
-                          + RL_SAC_NAMED_CONFIGS
-                          + ALGO_FAST_CONFIGS["preference_comparison"],
+            + RL_SAC_NAMED_CONFIGS
+            + ALGO_FAST_CONFIGS["preference_comparison"],
             config_updates=config_updates,
         )
 
@@ -201,8 +201,8 @@ def test_train_preference_comparisons_sac_reward_relabel(tmpdir):
             # make sure rl.sac named_config is called after rl.fast to overwrite
             # rl_kwargs.batch_size to None
             named_configs=["pendulum"]
-                          + ALGO_FAST_CONFIGS["preference_comparison"]
-                          + RL_SAC_NAMED_CONFIGS,
+            + ALGO_FAST_CONFIGS["preference_comparison"]
+            + RL_SAC_NAMED_CONFIGS,
             config_updates=config_updates,
         )
         return run
@@ -220,17 +220,17 @@ def test_train_preference_comparisons_sac_reward_relabel(tmpdir):
 @pytest.mark.parametrize(
     "named_configs",
     (
-            [],
-            ["reward.normalize_output_running"],
-            ["reward.normalize_output_disable"],
+        [],
+        ["reward.normalize_output_running"],
+        ["reward.normalize_output_disable"],
     ),
 )
 def test_train_preference_comparisons_reward_named_config(tmpdir, named_configs):
     config_updates = dict(common=dict(log_root=tmpdir))
     run = train_preference_comparisons.train_preference_comparisons_ex.run(
         named_configs=["cartpole"]
-                      + ALGO_FAST_CONFIGS["preference_comparison"]
-                      + named_configs,
+        + ALGO_FAST_CONFIGS["preference_comparison"]
+        + named_configs,
         config_updates=config_updates,
     )
     if "reward.normalize_output_running" in named_configs:
@@ -249,8 +249,8 @@ def test_train_preference_comparisons_active_learning(tmpdir, config):
     sacred.utils.recursive_update(config_updates, config)
     run = train_preference_comparisons.train_preference_comparisons_ex.run(
         named_configs=["cartpole"]
-                      + ALGO_FAST_CONFIGS["preference_comparison"]
-                      + ["reward.reward_ensemble"],
+        + ALGO_FAST_CONFIGS["preference_comparison"]
+        + ["reward.reward_ensemble"],
         config_updates=config_updates,
     )
     assert run.status == "COMPLETED"
@@ -275,8 +275,8 @@ def test_train_dagger_main(tmpdir):
         # PyTorch wants writeable arrays.
         # See https://github.com/HumanCompatibleAI/imitation/issues/219
         assert not (
-                warning.category == UserWarning
-                and "NumPy array is not writeable" in warning.message.args[0]
+            warning.category == UserWarning
+            and "NumPy array is not writeable" in warning.message.args[0]
         )
     assert run.status == "COMPLETED"
     assert isinstance(run.result, dict)
@@ -392,8 +392,8 @@ def test_train_rl_wb_logging(tmpdir):
     with pytest.raises(Exception, match=".*api_key not configured.*"):
         train_rl.train_rl_ex.run(
             named_configs=["cartpole"]
-                          + ALGO_FAST_CONFIGS["rl"]
-                          + ["common.wandb_logging"],
+            + ALGO_FAST_CONFIGS["rl"]
+            + ["common.wandb_logging"],
             config_updates=dict(
                 common=dict(log_root=tmpdir),
             ),
@@ -471,9 +471,9 @@ def _check_train_ex_result(result: dict):
 @pytest.mark.parametrize(
     "named_configs",
     (
-            [],
-            ["train.normalize_running", "reward.normalize_input_running"],
-            ["train.normalize_disable", "reward.normalize_input_disable"],
+        [],
+        ["train.normalize_running", "reward.normalize_input_running"],
+        ["train.normalize_disable", "reward.normalize_input_disable"],
     ),
 )
 @pytest.mark.parametrize("command", ("airl", "gail"))
@@ -530,7 +530,7 @@ def test_train_adversarial_sac(tmpdir, command):
     # Make sure rl.sac named_config is called after rl.fast to overwrite
     # rl_kwargs.batch_size to None
     named_configs = (
-            ["pendulum"] + ALGO_FAST_CONFIGS["adversarial"] + RL_SAC_NAMED_CONFIGS
+        ["pendulum"] + ALGO_FAST_CONFIGS["adversarial"] + RL_SAC_NAMED_CONFIGS
     )
     config_updates = {
         "common": dict(log_root=tmpdir),
@@ -625,14 +625,14 @@ def test_transfer_learning(tmpdir: str) -> None:
 @pytest.mark.parametrize(
     "named_configs_dict",
     (
-            dict(pc=[], rl=[]),
-            dict(pc=["rl.sac", "train.sac"], rl=["rl.sac", "train.sac"]),
-            dict(pc=["reward.reward_ensemble"], rl=[]),
+        dict(pc=[], rl=[]),
+        dict(pc=["rl.sac", "train.sac"], rl=["rl.sac", "train.sac"]),
+        dict(pc=["reward.reward_ensemble"], rl=[]),
     ),
 )
 def test_preference_comparisons_transfer_learning(
-        tmpdir: str,
-        named_configs_dict: Mapping[str, List[str]],
+    tmpdir: str,
+    named_configs_dict: Mapping[str, List[str]],
 ) -> None:
     """Transfer learning smoke test.
 
@@ -647,8 +647,8 @@ def test_preference_comparisons_transfer_learning(
     log_dir_train = tmpdir_path / "train"
     run = train_preference_comparisons.train_preference_comparisons_ex.run(
         named_configs=["pendulum"]
-                      + ALGO_FAST_CONFIGS["preference_comparison"]
-                      + named_configs_dict["pc"],
+        + ALGO_FAST_CONFIGS["preference_comparison"]
+        + named_configs_dict["pc"],
         config_updates=dict(common=dict(log_dir=log_dir_train)),
     )
     assert run.status == "COMPLETED"
@@ -682,7 +682,8 @@ def test_preference_comparisons_transfer_learning(
 def test_train_rl_double_normalization(tmpdir: str):
     venv = util.make_vec_env("CartPole-v1", n_envs=1, parallel=False)
     basic_reward_net = reward_nets.BasicRewardNet(
-        venv.observation_space, venv.action_space,
+        venv.observation_space,
+        venv.action_space,
     )
     net = reward_nets.NormalizedRewardNet(basic_reward_net, networks.RunningNorm)
     tmppath = os.path.join(tmpdir, "reward.pt")
@@ -844,8 +845,8 @@ def _run_train_bc_for_test_analyze_imit(run_name, sacred_logs_dir, log_dir):
 @pytest.mark.parametrize(
     "run_sacred_fn",
     (
-            _run_train_adv_for_test_analyze_imit,
-            _run_train_bc_for_test_analyze_imit,
+        _run_train_adv_for_test_analyze_imit,
+        _run_train_bc_for_test_analyze_imit,
     ),
 )
 def test_analyze_imitation(tmpdir: str, run_names: List[str], run_sacred_fn):

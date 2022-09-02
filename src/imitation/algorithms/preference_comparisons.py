@@ -327,8 +327,7 @@ def _get_trajectories(
     steps_cumsum = np.cumsum([len(traj) for traj in trajectories])
     # Now we find the first index that gives us enough
     # total steps:
-    idx = (steps_cumsum >= steps).argmax()
-    assert isinstance(idx, int)
+    idx = int((steps_cumsum >= steps).argmax())
     # we need to include the element at position idx
     trajectories = trajectories[: idx + 1]
     # sanity check

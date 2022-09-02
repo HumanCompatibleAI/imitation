@@ -7,7 +7,7 @@ Follows the description in chapters 9 and 10 of Brian Ziebart's `PhD thesis`_.
 """
 import collections
 import warnings
-from typing import Any, Iterable, Mapping, Optional, Tuple, Type, Union, List
+from typing import Any, Iterable, List, Mapping, Optional, Tuple, Type, Union
 
 import gym
 import numpy as np
@@ -24,10 +24,10 @@ from imitation.util import networks, util
 
 
 def mce_partition_fh(
-        env: resettable_env.TabularModelEnv,
-        *,
-        reward: Optional[np.ndarray] = None,
-        discount: float = 1.0,
+    env: resettable_env.TabularModelEnv,
+    *,
+    reward: Optional[np.ndarray] = None,
+    discount: float = 1.0,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     r"""Performs the soft Bellman backup for a finite-horizon MDP.
 
@@ -77,11 +77,11 @@ def mce_partition_fh(
 
 
 def mce_occupancy_measures(
-        env: resettable_env.TabularModelEnv,
-        *,
-        reward: Optional[np.ndarray] = None,
-        pi: Optional[np.ndarray] = None,
-        discount: float = 1.0,
+    env: resettable_env.TabularModelEnv,
+    *,
+    reward: Optional[np.ndarray] = None,
+    pi: Optional[np.ndarray] = None,
+    discount: float = 1.0,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """Calculate state visitation frequency Ds for each state s under a given policy pi.
 
@@ -140,15 +140,16 @@ def squeeze_r(r_output: th.Tensor) -> th.Tensor:
 
 class TabularPolicy(policies.BasePolicy):
     """A tabular policy. Cannot be trained -- prediction only."""
+
     pi: np.ndarray
     rng: np.random.RandomState
 
     def __init__(
-            self,
-            state_space: gym.Space,
-            action_space: gym.Space,
-            pi: np.ndarray,
-            rng: Optional[np.random.RandomState],
+        self,
+        state_space: gym.Space,
+        action_space: gym.Space,
+        pi: np.ndarray,
+        rng: Optional[np.random.RandomState],
     ):
         """Builds TabularPolicy.
 
@@ -181,11 +182,11 @@ class TabularPolicy(policies.BasePolicy):
         raise NotImplementedError("Should never be called.")
 
     def predict(  # type: ignore[override]
-            self,
-            observation: np.ndarray,
-            state: Optional[np.ndarray] = None,
-            mask: Optional[np.ndarray] = None,
-            deterministic: bool = False,
+        self,
+        observation: np.ndarray,
+        state: Optional[np.ndarray] = None,
+        mask: Optional[np.ndarray] = None,
+        deterministic: bool = False,
     ) -> Tuple[np.ndarray, np.ndarray]:
         """Predict action to take in given state.
 
@@ -251,20 +252,20 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
     demo_state_om: Optional[np.ndarray]
 
     def __init__(
-            self,
-            demonstrations: Optional[MCEDemonstrations],
-            env: resettable_env.TabularModelEnv,
-            reward_net: reward_nets.RewardNet,
-            optimizer_cls: Type[th.optim.Optimizer] = th.optim.Adam,
-            optimizer_kwargs: Optional[Mapping[str, Any]] = None,
-            discount: float = 1.0,
-            linf_eps: float = 1e-3,
-            grad_l2_eps: float = 1e-4,
-            # TODO(adam): do we need log_interval or can just use record_mean...?
-            log_interval: Optional[int] = 100,
-            *,
-            rng: Optional[np.random.RandomState] = None,
-            custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
+        self,
+        demonstrations: Optional[MCEDemonstrations],
+        env: resettable_env.TabularModelEnv,
+        reward_net: reward_nets.RewardNet,
+        optimizer_cls: Type[th.optim.Optimizer] = th.optim.Adam,
+        optimizer_kwargs: Optional[Mapping[str, Any]] = None,
+        discount: float = 1.0,
+        linf_eps: float = 1e-3,
+        grad_l2_eps: float = 1e-4,
+        # TODO(adam): do we need log_interval or can just use record_mean...?
+        log_interval: Optional[int] = 100,
+        *,
+        rng: Optional[np.random.RandomState] = None,
+        custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
     ):
         r"""Creates MCE IRL.
 
@@ -335,10 +336,10 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
         self.demo_state_om /= num_demos
 
     def _set_demo_from_obs(
-            self,
-            obses: np.ndarray,
-            dones: Optional[np.ndarray],
-            next_obses: Optional[np.ndarray],
+        self,
+        obses: np.ndarray,
+        dones: Optional[np.ndarray],
+        next_obses: Optional[np.ndarray],
     ) -> None:
         self.demo_state_om = np.zeros((self.env.n_states,))
 
