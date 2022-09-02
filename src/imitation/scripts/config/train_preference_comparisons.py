@@ -36,7 +36,7 @@ def train_defaults():
     initial_comparison_frac = 0.1
     # fraction of sampled trajectories that will include some random actions
     exploration_frac = 0.0
-    cross_entropy_loss_kwargs = {}
+    preference_model_kwargs = {}
     reward_trainer_kwargs = {
         "epochs": 3,
     }
@@ -46,6 +46,9 @@ def train_defaults():
     gatherer_cls = preference_comparisons.SyntheticGatherer
     # arguments passed on to the PreferenceGatherer specified by gatherer_cls
     gatherer_kwargs = {}
+    active_selection = False
+    active_selection_oversampling = 2
+    uncertainty_on = "logit"
     fragmenter_kwargs = {
         "warning_threshold": 0,
     }
