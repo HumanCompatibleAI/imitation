@@ -119,7 +119,7 @@ def seals_mountain_car():
 
 
 @train_preference_comparisons_ex.named_config
-def asteroids():
+def asteroids_fast():
     common = dict(
         env_name="AsteroidsNoFrameskip-v4",
         post_wrappers=[
@@ -127,7 +127,20 @@ def asteroids():
                 AtariWrapper(AutoResetWrapper(env), terminal_on_life_loss=False),
                 max_episode_steps=5,
             ),
-        ],  # TODO(daniel) asteroids_fast vs normal asteroids
+        ],
+    )
+
+
+@train_preference_comparisons_ex.named_config
+def asteroids():
+    common = dict(
+        env_name="AsteroidsNoFrameskip-v4",
+        post_wrappers=[
+            lambda env, _: TimeLimit(
+                AtariWrapper(AutoResetWrapper(env), terminal_on_life_loss=False),
+                max_episode_steps=100_000,
+            ),
+        ],
     )
 
 
