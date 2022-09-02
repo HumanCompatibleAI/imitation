@@ -19,7 +19,11 @@ NORMALIZATION_LAYERS = [
 
 
 class EMANormAlgorithm2(networks.EMANorm):
-    """EMA Norm using algorithm 2."""
+    """EMA Norm using algorithm 2 from the reference below.
+
+    Reference:
+    https://github.com/HumanCompatibleAI/imitation/files/9456540/Incremental_batch_EMA_and_EMV.pdf
+    """
 
     def __init__(
         self,

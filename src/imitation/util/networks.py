@@ -161,7 +161,7 @@ class EMANorm(BaseNorm):
         """Update `self.running_mean` and `self.running_var` in batch mode.
 
         Reference Algorithm 3 from:
-        https://github.com/HumanCompatibleAI/imitation/files/9364938/Incremental_batch_EMA_and_EMV.pdf
+        https://github.com/HumanCompatibleAI/imitation/files/9456540/Incremental_batch_EMA_and_EMV.pdf
 
         Args:
             batch: A batch of data to use to update the running mean and variance.
