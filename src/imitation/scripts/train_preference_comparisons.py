@@ -197,7 +197,7 @@ def train_preference_comparisons(
             )
             # Again using the same device as the SB3 agent
             reward_net = reward_net.to(members[0].algorithm.device)
-
+        else:
             if exploration_frac > 0:
                 raise ValueError(
                     "exploration_frac can't be set when a trajectory dataset is used",
