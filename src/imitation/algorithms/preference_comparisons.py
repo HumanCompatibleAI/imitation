@@ -338,6 +338,10 @@ class MixtureOfTrajectoryGenerators(TrajectoryGenerator):
         n = len(self.members)
         # Approximately evenly partition work.
         d = steps // n
+        if d == 0:
+            raise ValueError(
+                f"Cannot partition only {steps} steps among {n} members!",
+            )
         r = steps % n
         partition = [d] * n
         for i in range(r):
