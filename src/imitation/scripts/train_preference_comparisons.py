@@ -155,7 +155,6 @@ def train_preference_comparisons(
 
         if num_agents < 1 or not isinstance(num_agents, int):
             raise ValueError("num_agents must be a positive integer!")
-        is_single_agent = num_agents == 1
 
         def make_agent_trainer(seed: Optional[int] = None):
             if agent_path is None:
@@ -184,11 +183,13 @@ def train_preference_comparisons(
             )
 
         if trajectory_path is None and num_agents == 1:
+            single_agent = True
             trajectory_generator = make_agent_trainer()
             # Stable Baselines will automatically occupy GPU 0 if it is available.
             # Let's use the same device as the SB3 agent for the reward model.
             reward_net = reward_net.to(trajectory_generator.algorithm.device)
         elif trajectory_path is None and num_agents > 1:
+            single_agent = False
             members = [make_agent_trainer(_seed + i) for i in range(num_agents)]
             trajectory_generator = preference_comparisons.MixtureOfTrajectoryGenerators(
                 members=members,
@@ -198,6 +199,8 @@ def train_preference_comparisons(
             # Again using the same device as the SB3 agent
             reward_net = reward_net.to(members[0].algorithm.device)
         else:
+            single_agent = False
+
             if exploration_frac > 0:
                 raise ValueError(
                     "exploration_frac can't be set when a trajectory dataset is used",
@@ -256,7 +259,7 @@ def train_preference_comparisons(
                         "checkpoints",
                         f"{iteration_num:04d}",
                     ),
-                    allow_save_policy=is_single_agent,
+                    allow_save_policy=single_agent,
                 )
 
         results = main_trainer.train(
@@ -266,7 +269,7 @@ def train_preference_comparisons(
         )
 
         # Storing and evaluating policy only useful if we generated trajectory data
-        if trajectory_path is None and is_single_agent:
+        if trajectory_path is None and single_agent:
             results = dict(results)
             results["rollout"] = train.eval_policy(trajectory_generator.algorithm, venv)
 
@@ -278,7 +281,7 @@ def train_preference_comparisons(
         save_checkpoint(
             trainer=main_trainer,
             save_path=os.path.join(log_dir, "checkpoints", "final"),
-            allow_save_policy=is_single_agent,
+            allow_save_policy=single_agent,
         )
 
     return results
