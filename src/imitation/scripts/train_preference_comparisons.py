@@ -155,7 +155,7 @@ def train_preference_comparisons(
 
         if num_agents < 1 or not isinstance(num_agents, int):
             raise ValueError("num_agents must be a positive integer!")
-        is_single_agent = num_agents == 1 
+        is_single_agent = num_agents == 1
 
         def make_agent_trainer(seed: Optional[int] = None):
             if agent_path is None:
@@ -182,6 +182,7 @@ def train_preference_comparisons(
                 custom_logger=custom_logger,
                 **trajectory_generator_kwargs,
             )
+
         if trajectory_path is None and num_agents == 1:
             trajectory_generator = make_agent_trainer()
             # Stable Baselines will automatically occupy GPU 0 if it is available.
