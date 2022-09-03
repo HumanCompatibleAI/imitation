@@ -6,7 +6,7 @@ then rewards the agent for following that estimate.
 
 import enum
 import itertools
-from typing import Iterable, Mapping, Optional
+from typing import Dict, Iterable, Optional
 
 import numpy as np
 from gym.spaces.utils import flatten
@@ -39,7 +39,20 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
     and then computes a reward using the log of these probabilities.
     """
 
-    transitions: Mapping[Optional[int], np.ndarray]
+    is_stationary: bool
+    density_type: DensityType
+    venv: vec_env.VecEnv
+    transitions: Dict[Optional[int], np.ndarray]
+    kernel: str
+    kernel_bandwidth: float
+    standardise: bool
+
+    _scaler: Optional[preprocessing.StandardScaler]
+    _density_models: Dict[Optional[int], neighbors.KernelDensity]
+    rl_algo: Optional[base_class.BaseAlgorithm]
+    buffering_wrapper: wrappers.BufferingWrapper
+    venv_wrapped: reward_wrapper.RewardVecEnvWrapper
+    wrapper_callback: reward_wrapper.WrappedRewardCallback
 
     def __init__(
         self,
@@ -93,7 +106,7 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
         self.is_stationary = is_stationary
         self.density_type = density_type
         self.venv = venv
-        self.transitions = {}
+        self.transitions = dict()
         super().__init__(
             demonstrations=demonstrations,
             custom_logger=custom_logger,
@@ -104,7 +117,7 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
         self.kernel_bandwidth = kernel_bandwidth
         self.standardise = standardise_inputs
         self._scaler = None
-        self._density_models = {}
+        self._density_models = dict()
 
         self.rl_algo = rl_algo
         self.buffering_wrapper = wrappers.BufferingWrapper(self.venv)
@@ -121,6 +134,13 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
         next_obs_b: Optional[np.ndarray],
     ) -> None:
         next_obs_b = next_obs_b or itertools.repeat(None)
+        # TODO(juan) I think this assumes that if next_obs_b is an array,
+        #  it has at least two axes, and zip maps along the first one.
+        #  This is not checked for, and if the array has only one dimension
+        #  it would raise an obscure error within _preprocess_transition.
+        #  _preprocess_transition also requires next_obs to be an ndarray
+        #  that is part of the observation space, so not sure how
+        #  this isn't failing when next_obs_b is None.
         for obs, act, next_obs in zip(obs_b, act_b, next_obs_b):
             flat_trans = self._preprocess_transition(obs, act, next_obs)
             self.transitions.setdefault(None, []).append(flat_trans)
@@ -222,12 +242,16 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
         else:
             raise ValueError(f"Unknown density type {self.density_type}")
 
+    # TODO(juan) I opted for renaming the function signature to match the
+    #  rewards.reward_function.RewardFn protocol, but changing the protocol
+    #  or making the arguments positional-only are two other valid approaches
+    #  if the previous names are better suited.
     def __call__(
         self,
-        obs_b: np.ndarray,
-        act_b: np.ndarray,
-        next_obs_b: np.ndarray,
-        dones: np.ndarray,
+        state: np.ndarray,
+        action: np.ndarray,
+        next_state: np.ndarray,
+        done: np.ndarray,
         steps: Optional[np.ndarray] = None,
     ) -> np.ndarray:
         r"""Compute reward from given (s,a,s') transition batch.
@@ -236,12 +260,12 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
         VecEnvs.
 
         Args:
-            obs_b: current batch of observations.
-            act_b: batch of actions that agent took in response to those
+            state: current batch of observations.
+            action: batch of actions that agent took in response to those
                 observations.
-            next_obs_b: batch of observations encountered after the
+            next_state: batch of observations encountered after the
                 agent took those actions.
-            dones: is it terminal state?
+            done: is it terminal state?
             steps: What timestep is this from? Used if `self.is_stationary` is false,
                 otherwise ignored.
 
@@ -258,11 +282,11 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
         if not self.is_stationary and steps is None:
             raise ValueError("steps must be provided with non-stationary models")
 
-        del dones  # TODO(adam): should we handle terminal state specially in any way?
+        del done  # TODO(adam): should we handle terminal state specially in any way?
 
         rew_list = []
-        assert len(obs_b) == len(act_b) and len(obs_b) == len(next_obs_b)
-        for idx, (obs, act, next_obs) in enumerate(zip(obs_b, act_b, next_obs_b)):
+        assert len(state) == len(action) and len(state) == len(next_state)
+        for idx, (obs, act, next_obs) in enumerate(zip(state, action, next_state)):
             flat_trans = self._preprocess_transition(obs, act, next_obs)
             scaled_padded_trans = self._scaler.transform(flat_trans[np.newaxis])
             if self.is_stationary:
