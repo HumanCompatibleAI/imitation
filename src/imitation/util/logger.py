@@ -4,7 +4,7 @@ import contextlib
 import datetime
 import os
 import tempfile
-from typing import Any, Dict, Generator, Optional, Sequence, Tuple, Union
+from typing import Any, Dict, Generator, List, Optional, Sequence, Tuple, Union
 
 import stable_baselines3.common.logger as sb_logger
 
@@ -85,6 +85,13 @@ class HierarchicalLogger(sb_logger.Logger):
     -----------------------------
     <BLANKLINE>
     """
+
+    default_logger: sb_logger.Logger
+    current_logger: Optional[sb_logger.Logger]
+    _cached_loggers: Dict[str, sb_logger.Logger]
+    _prefixes: List[str]
+    _subdir: Optional[str]
+    _name: Optional[str]
 
     def __init__(
         self,
