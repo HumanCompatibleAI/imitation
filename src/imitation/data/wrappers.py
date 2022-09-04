@@ -1,6 +1,6 @@
 """Environment wrappers for collecting rollouts."""
 
-from typing import Sequence, Tuple
+from typing import List, Optional, Sequence, Tuple
 
 import gym
 import numpy as np
@@ -14,6 +14,10 @@ class BufferingWrapper(VecEnvWrapper):
 
     Retrieve saved transitions using `pop_transitions()`.
     """
+
+    error_on_premature_event: bool
+    _trajectories: List[types.Trajectory]
+    _traj_accum: Optional[rollout.TrajectoryAccumulator]
 
     def __init__(self, venv: VecEnv, error_on_premature_reset: bool = True):
         """Builds BufferingWrapper.
