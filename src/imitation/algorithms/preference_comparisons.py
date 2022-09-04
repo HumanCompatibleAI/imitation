@@ -297,8 +297,8 @@ class AgentTrainer(TrajectoryGenerator):
             exploration_trajs = _get_trajectories(exploration_trajs, exploration_steps)
             # We call _get_trajectories separately on agent_trajs and exploration_trajs
             # and then just concatenate. This could mean we return slightly too many
-            # transitions, but it gets the proportion of exploratory and agent transitions
-            # roughly right.
+            # transitions, but it gets the proportion of exploratory and agent
+            # transitions roughly right.
             trajectories.extend(list(exploration_trajs))
         return trajectories
 
@@ -469,7 +469,7 @@ class PreferenceModel(nn.Module):
         next_state = transitions.next_obs
         done = transitions.dones
         if self.is_ensemble:
-            rews = self.model.predict_processed_all(state, action, next_state, done)  # type: ignore[operator]
+            rews = self.model.predict_processed_all(state, action, next_state, done)
             assert rews.shape == (len(state), self.model.num_members)
             return util.safe_to_tensor(rews).to(self.model.device)
         else:

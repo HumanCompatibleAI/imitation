@@ -540,7 +540,7 @@ def test_wrappers_pass_on_kwargs(
     )
     # TODO(juan) reassigning a method is very bad practice. I added
     #  type ignore for now but is there not a better way to do this?
-    basic_reward_net.predict_processed = mock.Mock(return_value=np.zeros((10,)))  # type: ignore
+    basic_reward_net.predict_processed = mock.Mock(return_value=np.zeros((10,)))
     wrapped_reward_net = make_wrapper(
         basic_reward_net,
     )
