@@ -275,7 +275,7 @@ class PredictProcessedWrapper(RewardNetWrapper):
     should pass along `kwargs` to the `base` reward nets `predict_processed` method.
 
     Note: The wrapper will default to forwarding calls to `device`, `forward`,
-        `preproces` and `predict` to the base reward net unless
+        `preprocess` and `predict` to the base reward net unless
         explicitly overridden in a subclass.
     """
 
