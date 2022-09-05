@@ -4,7 +4,17 @@ import collections
 import dataclasses
 import logging
 import os
-from typing import Callable, Mapping, Optional, Sequence, Tuple, Type, Iterable, Iterator, overload
+from typing import (
+    Callable,
+    Iterable,
+    Iterator,
+    Mapping,
+    Optional,
+    Sequence,
+    Tuple,
+    Type,
+    overload,
+)
 
 import numpy as np
 import torch as th
@@ -21,9 +31,9 @@ from imitation.util import logger, networks, util
 
 
 def compute_train_stats(
-        disc_logits_expert_is_high: th.Tensor,
-        labels_expert_is_one: th.Tensor,
-        disc_loss: th.Tensor,
+    disc_logits_expert_is_high: th.Tensor,
+    labels_expert_is_one: th.Tensor,
+    disc_loss: th.Tensor,
 ) -> Mapping[str, float]:
     """Train statistics for GAIL/AIRL discriminator.
 
@@ -107,24 +117,24 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
     _endless_expert_iterator: Optional[Iterator[base.TransitionMapping]]
 
     def __init__(
-            self,
-            *,
-            demonstrations: base.AnyTransitions,
-            demo_batch_size: int,
-            venv: vec_env.VecEnv,
-            gen_algo: base_class.BaseAlgorithm,
-            reward_net: reward_nets.RewardNet,
-            n_disc_updates_per_round: int = 2,
-            log_dir: str = "output/",
-            disc_opt_cls: Type[th.optim.Optimizer] = th.optim.Adam,
-            disc_opt_kwargs: Optional[Mapping] = None,
-            gen_train_timesteps: Optional[int] = None,
-            gen_replay_buffer_capacity: Optional[int] = None,
-            custom_logger: Optional[logger.HierarchicalLogger] = None,
-            init_tensorboard: bool = False,
-            init_tensorboard_graph: bool = False,
-            debug_use_ground_truth: bool = False,
-            allow_variable_horizon: bool = False,
+        self,
+        *,
+        demonstrations: base.AnyTransitions,
+        demo_batch_size: int,
+        venv: vec_env.VecEnv,
+        gen_algo: base_class.BaseAlgorithm,
+        reward_net: reward_nets.RewardNet,
+        n_disc_updates_per_round: int = 2,
+        log_dir: str = "output/",
+        disc_opt_cls: Type[th.optim.Optimizer] = th.optim.Adam,
+        disc_opt_kwargs: Optional[Mapping] = None,
+        gen_train_timesteps: Optional[int] = None,
+        gen_replay_buffer_capacity: Optional[int] = None,
+        custom_logger: Optional[logger.HierarchicalLogger] = None,
+        init_tensorboard: bool = False,
+        init_tensorboard_graph: bool = False,
+        debug_use_ground_truth: bool = False,
+        allow_variable_horizon: bool = False,
     ):
         """Builds AdversarialTrainer.
 
@@ -251,12 +261,12 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
 
     @abc.abstractmethod
     def logits_expert_is_high(
-            self,
-            state: th.Tensor,
-            action: th.Tensor,
-            next_state: th.Tensor,
-            done: th.Tensor,
-            log_policy_act_prob: Optional[th.Tensor] = None,
+        self,
+        state: th.Tensor,
+        action: th.Tensor,
+        next_state: th.Tensor,
+        done: th.Tensor,
+        log_policy_act_prob: Optional[th.Tensor] = None,
     ) -> th.Tensor:
         """Compute the discriminator's logits for each state-action sample.
 
@@ -299,10 +309,10 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
         return next(self._endless_expert_iterator)
 
     def train_disc(
-            self,
-            *,
-            expert_samples: Optional[Mapping] = None,
-            gen_samples: Optional[Mapping] = None,
+        self,
+        *,
+        expert_samples: Optional[Mapping] = None,
+        gen_samples: Optional[Mapping] = None,
     ) -> Optional[Mapping[str, float]]:
         """Perform a single discriminator update, optionally using provided samples.
 
@@ -366,9 +376,9 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
         return train_stats
 
     def train_gen(
-            self,
-            total_timesteps: Optional[int] = None,
-            learn_kwargs: Optional[Mapping] = None,
+        self,
+        total_timesteps: Optional[int] = None,
+        learn_kwargs: Optional[Mapping] = None,
     ) -> None:
         """Trains the generator to maximize the discriminator loss.
 
@@ -402,9 +412,9 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
         self._gen_replay_buffer.store(gen_samples)
 
     def train(
-            self,
-            total_timesteps: int,
-            callback: Optional[Callable[[int], None]] = None,
+        self,
+        total_timesteps: int,
+        callback: Optional[Callable[[int], None]] = None,
     ) -> None:
         """Alternates between training the generator and discriminator.
 
@@ -444,16 +454,16 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
     @overload
     def _torchify_array(self, ndarray: None) -> None:
         ...
-    
+
     def _torchify_array(self, ndarray: Optional[np.ndarray]) -> Optional[th.Tensor]:
         if ndarray is not None:
             return th.as_tensor(ndarray, device=self.reward_train.device)
         return None
 
     def _get_log_policy_act_prob(
-            self,
-            obs_th: th.Tensor,
-            acts_th: th.Tensor,
+        self,
+        obs_th: th.Tensor,
+        acts_th: th.Tensor,
     ) -> Optional[th.Tensor]:
         """Evaluates the given actions on the given observations.
 
@@ -491,10 +501,10 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
         return log_policy_act_prob_th
 
     def _make_disc_train_batch(
-            self,
-            *,
-            gen_samples: Optional[Mapping] = None,
-            expert_samples: Optional[Mapping] = None,
+        self,
+        *,
+        gen_samples: Optional[Mapping] = None,
+        expert_samples: Optional[Mapping] = None,
     ) -> Mapping[str, th.Tensor]:
         """Build and return training batch for the next discriminator update.
 

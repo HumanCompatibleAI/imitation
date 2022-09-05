@@ -63,14 +63,14 @@ def make_unique_timestamp() -> str:
 
 
 def make_vec_env(
-        env_name: str,
-        n_envs: int = 8,
-        seed: int = 0,
-        parallel: bool = False,
-        log_dir: Optional[str] = None,
-        max_episode_steps: Optional[int] = None,
-        post_wrappers: Optional[Sequence[Callable[[gym.Env, int], gym.Env]]] = None,
-        env_make_kwargs: Optional[Mapping[str, Any]] = None,
+    env_name: str,
+    n_envs: int = 8,
+    seed: int = 0,
+    parallel: bool = False,
+    log_dir: Optional[str] = None,
+    max_episode_steps: Optional[int] = None,
+    post_wrappers: Optional[Sequence[Callable[[gym.Env, int], gym.Env]]] = None,
+    env_make_kwargs: Optional[Mapping[str, Any]] = None,
 ) -> VecEnv:
     """Makes a vectorized environment.
 
@@ -216,8 +216,8 @@ def safe_to_tensor(numpy_array: np.ndarray, **kwargs) -> th.Tensor:
 
 
 def tensor_iter_norm(
-        tensor_iter: Iterable[th.Tensor],
-        ord: Union[int, float] = 2,  # noqa: A002
+    tensor_iter: Iterable[th.Tensor],
+    ord: Union[int, float] = 2,  # noqa: A002
 ) -> th.Tensor:
     """Compute the norm of a big vector that is produced one tensor chunk at a time.
 

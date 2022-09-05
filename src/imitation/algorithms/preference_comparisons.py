@@ -96,10 +96,10 @@ class TrajectoryDataset(TrajectoryGenerator):
     """A fixed dataset of trajectories."""
 
     def __init__(
-            self,
-            trajectories: Sequence[TrajectoryWithRew],
-            seed: Optional[int] = None,
-            custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
+        self,
+        trajectories: Sequence[TrajectoryWithRew],
+        seed: Optional[int] = None,
+        custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
     ):
         """Creates a dataset loaded from `path`.
 
@@ -123,15 +123,15 @@ class AgentTrainer(TrajectoryGenerator):
     """Wrapper for training an SB3 algorithm on an arbitrary reward function."""
 
     def __init__(
-            self,
-            algorithm: base_class.BaseAlgorithm,
-            reward_fn: Union[reward_function.RewardFn, reward_nets.RewardNet],
-            venv: vec_env.VecEnv,
-            exploration_frac: float = 0.0,
-            switch_prob: float = 0.5,
-            random_prob: float = 0.5,
-            seed: Optional[int] = None,
-            custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
+        self,
+        algorithm: base_class.BaseAlgorithm,
+        reward_fn: Union[reward_function.RewardFn, reward_nets.RewardNet],
+        venv: vec_env.VecEnv,
+        exploration_frac: float = 0.0,
+        switch_prob: float = 0.5,
+        random_prob: float = 0.5,
+        seed: Optional[int] = None,
+        custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
     ):
         """Initialize the agent trainer.
 
@@ -310,8 +310,8 @@ class AgentTrainer(TrajectoryGenerator):
 
 
 def _get_trajectories(
-        trajectories: Sequence[TrajectoryWithRew],
-        steps: int,
+    trajectories: Sequence[TrajectoryWithRew],
+    steps: int,
 ) -> Sequence[TrajectoryWithRew]:
     """Get enough trajectories to have at least `steps` transitions in total."""
     if steps == 0:
@@ -339,11 +339,11 @@ class PreferenceModel(nn.Module):
     """Class to convert two fragments' rewards into preference probability."""
 
     def __init__(
-            self,
-            model: reward_nets.RewardNet,
-            noise_prob: float = 0.0,
-            discount_factor: float = 1.0,
-            threshold: float = 50,
+        self,
+        model: reward_nets.RewardNet,
+        noise_prob: float = 0.0,
+        discount_factor: float = 1.0,
+        threshold: float = 50,
     ):
         """Create Preference Prediction Model.
 
@@ -388,9 +388,9 @@ class PreferenceModel(nn.Module):
                 self.member_pref_models.append(member_pref_model)
 
     def forward(
-            self,
-            fragment_pairs: Sequence[TrajectoryPair],
-            ensemble_member_index: Optional[int] = None,
+        self,
+        fragment_pairs: Sequence[TrajectoryPair],
+        ensemble_member_index: Optional[int] = None,
     ) -> Tuple[th.Tensor, Optional[th.Tensor]]:
         """Computes the preference probability of the first fragment for all pairs.
 
@@ -451,8 +451,8 @@ class PreferenceModel(nn.Module):
         return probs, (gt_probs if gt_reward_available else None)
 
     def rewards(
-            self,
-            transitions: Transitions,
+        self,
+        transitions: Transitions,
     ) -> th.Tensor:
         """Computes the reward for all transitions.
 
@@ -481,9 +481,9 @@ class PreferenceModel(nn.Module):
             return rews
 
     def probability(
-            self,
-            rews1: th.Tensor,
-            rews2: th.Tensor,
+        self,
+        rews1: th.Tensor,
+        rews2: th.Tensor,
     ) -> th.Tensor:
         """Computes the Boltzmann rational probability that the first trajectory is best.
 
@@ -541,10 +541,10 @@ class Fragmenter(abc.ABC):
 
     @abc.abstractmethod
     def __call__(
-            self,
-            trajectories: Sequence[TrajectoryWithRew],
-            fragment_length: int,
-            num_pairs: int,
+        self,
+        trajectories: Sequence[TrajectoryWithRew],
+        fragment_length: int,
+        num_pairs: int,
     ) -> Sequence[TrajectoryWithRewPair]:
         """Create fragment pairs out of a sequence of trajectories.
 
@@ -572,10 +572,10 @@ class RandomFragmenter(Fragmenter):
     """
 
     def __init__(
-            self,
-            seed: Optional[float] = None,
-            warning_threshold: int = 10,
-            custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
+        self,
+        seed: Optional[float] = None,
+        warning_threshold: int = 10,
+        custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
     ):
         """Initialize the fragmenter.
 
@@ -591,10 +591,10 @@ class RandomFragmenter(Fragmenter):
         self.warning_threshold = warning_threshold
 
     def __call__(
-            self,
-            trajectories: Sequence[TrajectoryWithRew],
-            fragment_length: int,
-            num_pairs: int,
+        self,
+        trajectories: Sequence[TrajectoryWithRew],
+        fragment_length: int,
+        num_pairs: int,
     ) -> Sequence[TrajectoryWithRewPair]:
         fragments: List[TrajectoryWithRew] = []
 
@@ -624,8 +624,8 @@ class RandomFragmenter(Fragmenter):
                 "of fragment pairs. Some transitions will appear multiple times.",
             )
         elif (
-                self.warning_threshold
-                and sum(weights) < self.warning_threshold * num_transitions
+            self.warning_threshold
+            and sum(weights) < self.warning_threshold * num_transitions
         ):
             # If the number of available transitions is not much larger
             # than the number of requires ones, we already give a warning.
@@ -645,7 +645,7 @@ class RandomFragmenter(Fragmenter):
             end = start + fragment_length
             terminal = (end == n) and traj.terminal
             fragment = TrajectoryWithRew(
-                obs=traj.obs[start: end + 1],
+                obs=traj.obs[start : end + 1],
                 acts=traj.acts[start:end],
                 infos=traj.infos[start:end] if traj.infos is not None else None,
                 rews=traj.rews[start:end],
@@ -667,12 +667,12 @@ class ActiveSelectionFragmenter(Fragmenter):
     """
 
     def __init__(
-            self,
-            preference_model: PreferenceModel,
-            base_fragmenter: Fragmenter,
-            fragment_sample_factor: float,
-            uncertainty_on: str = "logits",
-            custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
+        self,
+        preference_model: PreferenceModel,
+        base_fragmenter: Fragmenter,
+        fragment_sample_factor: float,
+        uncertainty_on: str = "logits",
+        custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
     ):
         """Initialize the active selection fragmenter.
 
@@ -713,10 +713,10 @@ class ActiveSelectionFragmenter(Fragmenter):
         )
 
     def __call__(
-            self,
-            trajectories: Sequence[TrajectoryWithRew],
-            fragment_length: int,
-            num_pairs: int,
+        self,
+        trajectories: Sequence[TrajectoryWithRew],
+        fragment_length: int,
+        num_pairs: int,
     ) -> Sequence[TrajectoryWithRewPair]:
         # sample a large number (self.fragment_sample_factor*num_pairs)
         # of fragments from all the trajectories
@@ -776,9 +776,9 @@ class PreferenceGatherer(abc.ABC):
     """Base class for gathering preference comparisons between trajectory fragments."""
 
     def __init__(
-            self,
-            seed: Optional[int] = None,
-            custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
+        self,
+        seed: Optional[int] = None,
+        custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
     ):
         """Initializes the preference gatherer.
 
@@ -816,13 +816,13 @@ class SyntheticGatherer(PreferenceGatherer):
     """Computes synthetic preferences using ground-truth environment rewards."""
 
     def __init__(
-            self,
-            temperature: float = 1,
-            discount_factor: float = 1,
-            sample: bool = True,
-            seed: Optional[int] = None,
-            threshold: float = 50,
-            custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
+        self,
+        temperature: float = 1,
+        discount_factor: float = 1,
+        sample: bool = True,
+        seed: Optional[int] = None,
+        threshold: float = 50,
+        custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
     ):
         """Initialize the synthetic preference gatherer.
 
@@ -870,8 +870,8 @@ class SyntheticGatherer(PreferenceGatherer):
         # how good we can expect the performance of the learned reward
         # model to be at predicting preferences.
         entropy = -(
-                special.xlogy(model_probs, model_probs)
-                + special.xlogy(1 - model_probs, 1 - model_probs)
+            special.xlogy(model_probs, model_probs)
+            + special.xlogy(1 - model_probs, 1 - model_probs)
         ).mean()
         self.logger.record("entropy", entropy)
 
@@ -918,9 +918,9 @@ class PreferenceDataset(th.utils.data.Dataset):
         self.preferences = np.array([])
 
     def push(
-            self,
-            fragments: Sequence[TrajectoryWithRewPair],
-            preferences: np.ndarray,
+        self,
+        fragments: Sequence[TrajectoryWithRewPair],
+        preferences: np.ndarray,
     ):
         """Add more samples to the dataset.
 
@@ -972,7 +972,7 @@ class PreferenceDataset(th.utils.data.Dataset):
 
 
 def preference_collate_fn(
-        batch: Sequence[Tuple[TrajectoryWithRewPair, float]],
+    batch: Sequence[Tuple[TrajectoryWithRewPair, float]],
 ) -> Tuple[Sequence[TrajectoryWithRewPair], np.ndarray]:
     fragment_pairs, preferences = zip(*batch)
     return list(fragment_pairs), np.array(preferences)
@@ -990,10 +990,10 @@ class RewardLoss(nn.Module, abc.ABC):
 
     @abc.abstractmethod
     def forward(
-            self,
-            fragment_pairs: Sequence[TrajectoryPair],
-            preferences: np.ndarray,
-            ensemble_member_index: Optional[int] = None,
+        self,
+        fragment_pairs: Sequence[TrajectoryPair],
+        preferences: np.ndarray,
+        ensemble_member_index: Optional[int] = None,
     ) -> LossAndMetrics:
         """Computes the loss.
 
@@ -1019,8 +1019,8 @@ class CrossEntropyRewardLoss(RewardLoss):
     """Compute the cross entropy reward loss."""
 
     def __init__(
-            self,
-            preference_model: PreferenceModel,
+        self,
+        preference_model: PreferenceModel,
     ):
         """Create cross entropy reward loss.
 
@@ -1031,10 +1031,10 @@ class CrossEntropyRewardLoss(RewardLoss):
         self.preference_model = preference_model
 
     def forward(
-            self,
-            fragment_pairs: Sequence[TrajectoryPair],
-            preferences: np.ndarray,
-            ensemble_member_index: Optional[int] = None,
+        self,
+        fragment_pairs: Sequence[TrajectoryPair],
+        preferences: np.ndarray,
+        ensemble_member_index: Optional[int] = None,
     ) -> LossAndMetrics:
         """Computes the loss.
 
@@ -1082,9 +1082,9 @@ class RewardTrainer(abc.ABC):
     """
 
     def __init__(
-            self,
-            model: reward_nets.RewardNet,
-            custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
+        self,
+        model: reward_nets.RewardNet,
+        custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
     ):
         """Initialize the reward trainer.
 
@@ -1115,14 +1115,14 @@ class BasicRewardTrainer(RewardTrainer):
     """Train a basic reward model."""
 
     def __init__(
-            self,
-            model: reward_nets.RewardNet,
-            loss: RewardLoss,
-            batch_size: int = 32,
-            epochs: int = 1,
-            lr: float = 1e-3,
-            weight_decay: float = 0.0,
-            custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
+        self,
+        model: reward_nets.RewardNet,
+        loss: RewardLoss,
+        batch_size: int = 32,
+        epochs: int = 1,
+        lr: float = 1e-3,
+        weight_decay: float = 0.0,
+        custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
     ):
         """Initialize the reward model trainer.
 
@@ -1171,9 +1171,9 @@ class BasicRewardTrainer(RewardTrainer):
                 self.optim.step()
 
     def _training_inner_loop(
-            self,
-            fragment_pairs: Sequence[TrajectoryPair],
-            preferences: np.ndarray,
+        self,
+        fragment_pairs: Sequence[TrajectoryPair],
+        preferences: np.ndarray,
     ) -> th.Tensor:
         output = self.loss.forward(fragment_pairs, preferences)
         loss = output.loss
@@ -1189,15 +1189,15 @@ class EnsembleTrainer(BasicRewardTrainer):
     _model: reward_nets.RewardEnsemble
 
     def __init__(
-            self,
-            model: reward_nets.RewardEnsemble,
-            loss: RewardLoss,
-            batch_size: int = 32,
-            epochs: int = 1,
-            lr: float = 1e-3,
-            weight_decay: float = 0.0,
-            seed: Optional[int] = None,
-            custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
+        self,
+        model: reward_nets.RewardEnsemble,
+        loss: RewardLoss,
+        batch_size: int = 32,
+        epochs: int = 1,
+        lr: float = 1e-3,
+        weight_decay: float = 0.0,
+        seed: Optional[int] = None,
+        custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
     ):
         """Initialize the reward model trainer.
 
@@ -1235,9 +1235,9 @@ class EnsembleTrainer(BasicRewardTrainer):
         self.rng = np.random.default_rng(seed=seed)
 
     def _training_inner_loop(
-            self,
-            fragment_pairs: Sequence[TrajectoryPair],
-            preferences: np.ndarray,
+        self,
+        fragment_pairs: Sequence[TrajectoryPair],
+        preferences: np.ndarray,
     ) -> th.Tensor:
         assert len(fragment_pairs) == preferences.shape[0]
         losses_list = []
@@ -1270,7 +1270,7 @@ class EnsembleTrainer(BasicRewardTrainer):
 
 
 def get_base_model(
-        reward_model: reward_nets.RewardNet,
+    reward_model: reward_nets.RewardNet,
 ) -> Union[reward_nets.RewardNet, reward_nets.RewardEnsemble]:
     base_model = reward_model
     while hasattr(base_model, "base"):
@@ -1280,10 +1280,10 @@ def get_base_model(
 
 
 def _make_reward_trainer(
-        reward_model: reward_nets.RewardNet,
-        loss: RewardLoss,
-        reward_trainer_kwargs: Optional[Mapping[str, Any]] = None,
-        seed: Optional[int] = None,
+    reward_model: reward_nets.RewardNet,
+    loss: RewardLoss,
+    reward_trainer_kwargs: Optional[Mapping[str, Any]] = None,
+    seed: Optional[int] = None,
 ) -> RewardTrainer:
     """Construct the correct type of reward trainer for this reward function."""
     if reward_trainer_kwargs is None:
@@ -1298,8 +1298,8 @@ def _make_reward_trainer(
         # must train directly on the base model for reward model training.
         is_base = reward_model is base_model
         is_std_wrapper = (
-                isinstance(reward_model, reward_nets.AddSTDRewardWrapper)
-                and reward_model.base is base_model
+            isinstance(reward_model, reward_nets.AddSTDRewardWrapper)
+            and reward_model.base is base_model
         )
 
         if is_base or is_std_wrapper:
@@ -1320,7 +1320,7 @@ def _make_reward_trainer(
 QUERY_SCHEDULES: Dict[str, type_aliases.Schedule] = {
     "constant": lambda t: 1.0,
     "hyperbolic": lambda t: 1.0 / (1.0 + t),
-    "inverse_quadratic": lambda t: 1.0 / (1.0 + t ** 2),
+    "inverse_quadratic": lambda t: 1.0 / (1.0 + t**2),
 }
 
 
@@ -1328,22 +1328,22 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
     """Main interface for reward learning using preference comparisons."""
 
     def __init__(
-            self,
-            trajectory_generator: TrajectoryGenerator,
-            reward_model: reward_nets.RewardNet,
-            num_iterations: int,
-            fragmenter: Optional[Fragmenter] = None,
-            preference_gatherer: Optional[PreferenceGatherer] = None,
-            reward_trainer: Optional[RewardTrainer] = None,
-            comparison_queue_size: Optional[int] = None,
-            fragment_length: int = 100,
-            transition_oversampling: float = 1,
-            initial_comparison_frac: float = 0.1,
-            initial_epoch_multiplier: float = 200.0,
-            custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
-            allow_variable_horizon: bool = False,
-            seed: Optional[int] = None,
-            query_schedule: Union[str, type_aliases.Schedule] = "hyperbolic",
+        self,
+        trajectory_generator: TrajectoryGenerator,
+        reward_model: reward_nets.RewardNet,
+        num_iterations: int,
+        fragmenter: Optional[Fragmenter] = None,
+        preference_gatherer: Optional[PreferenceGatherer] = None,
+        reward_trainer: Optional[RewardTrainer] = None,
+        comparison_queue_size: Optional[int] = None,
+        fragment_length: int = 100,
+        transition_oversampling: float = 1,
+        initial_comparison_frac: float = 0.1,
+        initial_epoch_multiplier: float = 200.0,
+        custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
+        allow_variable_horizon: bool = False,
+        seed: Optional[int] = None,
+        query_schedule: Union[str, type_aliases.Schedule] = "hyperbolic",
     ):
         """Initialize the preference comparison trainer.
 
@@ -1464,10 +1464,10 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
         self.dataset = PreferenceDataset(max_size=comparison_queue_size)
 
     def train(
-            self,
-            total_timesteps: int,
-            total_comparisons: int,
-            callback: Optional[Callable[[int], None]] = None,
+        self,
+        total_timesteps: int,
+        total_comparisons: int,
+        callback: Optional[Callable[[int], None]] = None,
     ) -> Mapping[str, Any]:
         """Train the reward model and the policy if applicable.
 

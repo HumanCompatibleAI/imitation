@@ -19,14 +19,14 @@ class AIRL(common.AdversarialTrainer):
     """
 
     def __init__(
-            self,
-            *,
-            demonstrations: base.AnyTransitions,
-            demo_batch_size: int,
-            venv: vec_env.VecEnv,
-            gen_algo: base_class.BaseAlgorithm,
-            reward_net: reward_nets.RewardNet,
-            **kwargs,
+        self,
+        *,
+        demonstrations: base.AnyTransitions,
+        demo_batch_size: int,
+        venv: vec_env.VecEnv,
+        gen_algo: base_class.BaseAlgorithm,
+        reward_net: reward_nets.RewardNet,
+        **kwargs,
     ):
         """Builds an AIRL trainer.
 
@@ -65,12 +65,12 @@ class AIRL(common.AdversarialTrainer):
             )
 
     def logits_expert_is_high(
-            self,
-            state: th.Tensor,
-            action: th.Tensor,
-            next_state: th.Tensor,
-            done: th.Tensor,
-            log_policy_act_prob: Optional[th.Tensor] = None,
+        self,
+        state: th.Tensor,
+        action: th.Tensor,
+        next_state: th.Tensor,
+        done: th.Tensor,
+        log_policy_act_prob: Optional[th.Tensor] = None,
     ) -> th.Tensor:
         r"""Compute the discriminator's logits for each state-action sample.
 
