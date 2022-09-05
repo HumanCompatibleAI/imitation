@@ -16,7 +16,7 @@ are grouped into a folder. We maintain the following modules in ``src/imitation`
 
 - ``rewards``: modules to build, serialize and preprocess neural network based reward functions.
 
-- ``scripts``: command-line scripts for running experiments through sacred.
+- ``scripts``: command-line scripts for running experiments through Sacred.
 
 - ``util``: provides utility functions like logging, configurations, etc.
 
@@ -29,7 +29,7 @@ The ``imitation.algorithms.base`` module defines the following two classes:
 - ``BaseImitationAlgorithm``: Base class for all imitation algorithms. 
 
 - | ``DemonstrationAlgorithm``: Base class for all demonstration based algorithms like BC, IRL, etc. This class subclasses ``BaseImitationAlgorithm``. 
-  | Demonstration algorithms offers following methods and properties:
+  | Demonstration algorithms offer the following methods and properties:
 
   - ``policy`` property that returns a policy imitating the demonstration data.
 
@@ -46,21 +46,16 @@ Data
 .. automodule:: imitation.data
     :noindex:
 
-    ``data.wrapper.BufferingWrapper``: Wraps a ``VecEnv`` to save the trajectories from all the environments
+    ``data.wrapper.BufferingWrapper``: Wraps a vectorized environment ``VecEnv`` to save the trajectories from all the environments
     in a buffer.
 
-    ``data.wrapper.RolloutInfoWrapper``: Wraps a ``gym.Env`` to log the original observations and rewards recieved from 
-    the environment. The observations and rewards of the entire episode is logged in the ``info`` dictionary with the
-    key "rollout" of the step where the episode ends. This wrapper is useful to save rollout trajectories, especially
+    ``data.wrapper.RolloutInfoWrapper``: Wraps a ``gym.Env`` environment to log the original observations and rewards recieved from 
+    the environment. The observations and rewards of the entire episode are logged in the ``info`` dictionary with the
+    key ``"rollout"``, in the final time step of the episode. This wrapper is useful for saving rollout trajectories, especially
     in cases where you want to bypass the reward and/or observation overrides from other wrappers. 
-    See ``data.rollout.unwrap_traj`` for details and ``scripts/train_rl.py`` for example usecase.
+    See ``data.rollout.unwrap_traj`` for details and ``scripts/train_rl.py`` for an example use case.
 
     ``data.rollout.rollout``: Generates rollout by taking in any policy as input along with the environment. 
-
-.. Envs
-.. ----
-.. .. automodule:: imitation.envs
-..     :noindex:
 
 .. Policies
 .. --------
@@ -80,13 +75,11 @@ Rewards
 
 Scripts
 -------
-.. .. automodule:: imitation.scripts
-..     :noindex:
 
 We use Sacred to provide a command-line interface to run the experiments. The scripts to run the end-to-end experiments are
 available in ``scripts/``. You can take a look at the following doc links to understand how to use Sacred:
 
-- `Experiment Overview <https://sacred.readthedocs.io/en/stable/experiment.html>`_: Explains how to create and run experiments. All the experiment objects are defined in ``scripts/config`` in the respective algorithm name file and their ``main`` functions are defined in algorithm name file in ``scripts/``. For example, ``train_rl_ex`` object is defined in ``scripts.config.train_rl`` and its main function is in ``scripts.train_rl``.
+- `Experiment Overview <https://sacred.readthedocs.io/en/stable/experiment.html>`_: Explains how to create and run experiments. Each script, defined in ``scripts/``, has a corresponding experiment object, defined in ``scripts/config``, with the experiment object and Python source files named after the algorithm(s) supported. For example, the ``train_rl_ex`` object is defined in ``scripts.config.train_rl`` and its main function is in ``scripts.train_rl``.
 
 - `Ingredients <https://sacred.readthedocs.io/en/stable/ingredients.html>`_: Explains how to use ingredients to avoid code duplication across experiments. The ingredients used in our experiments are defined in ``scripts/common/``:
   
@@ -96,7 +89,7 @@ available in ``scripts/``. You can take a look at the following doc links to und
     imitation.scripts.common.reward
     imitation.scripts.common.rl
     imitation.scripts.common.train
-    imitation.scripts.common.wb    
+    imitation.scripts.common.wb
 
 - `Configurations <https://sacred.readthedocs.io/en/stable/configuration.html>`_: Explains how to use configurations to parametrize runs. The configurations for different algorithms are defined in their file in ``scripts/``. Some of the commonly used configs and ingredients used across algorithms are defined in ``scripts/common/``.
 
