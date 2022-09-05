@@ -54,7 +54,7 @@ class HierarchicalLogger(sb_logger.Logger):
     ...         # `dir/raw/dataset` at step 100
     ...         logger.record("entropy", 5.0)
     ...         logger.dump(step=100)
-    ...         # record the key value pair `("raw/dataset/entropy", 5.0)` to path
+    ...         # record the key value pair `("raw/dataset/entropy", 6.0)` to path
     ...         # `dir/raw/dataset` at step 200
     ...         logger.record("entropy", 6.0)
     ...         logger.dump(step=200)
@@ -154,8 +154,8 @@ class HierarchicalLogger(sb_logger.Logger):
         """Temporarily modifies this HierarchicalLogger to accumulate means values.
 
         Within this context manager, `self.record(key, value)` writes the "raw" values
-        in "{self.default_logger.log_dir}/{prefix}/{name}" under the key
-        "raw/{prefix}/{name}/{key}". At the same time, any call to `self.record` will
+        in `f"{self.default_logger.log_dir}/{prefix}/{name}"` under the key
+        `"raw/{prefix}/{name}/{key}"`. At the same time, any call to `self.record` will
         also accumulate mean values on the default logger by calling
         `self.default_logger.record_mean(f"mean/{prefix}/{name}/{key}", value)`.
 
