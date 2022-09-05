@@ -159,10 +159,6 @@ class HierarchicalLogger(sb_logger.Logger):
         also accumulate mean values on the default logger by calling
         `self.default_logger.record_mean(f"mean/{prefix}/{name}/{key}", value)`.
 
-        Within this context manager, `self.record(key, value)` will write the "raw"
-        values in `"{self.default_logger.log_dir}/{prefix}/{name}"` under the key
-        "raw/{prefix}/{name}/key".
-
         Multiple prefixes may be active at once. In this case the `prefix` is simply the
         concatenation of each of the active prefixes in the order they
         where created e.g. if the active `prefixes` are ['foo', 'bar'] then
