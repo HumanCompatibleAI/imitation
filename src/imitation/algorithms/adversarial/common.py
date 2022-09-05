@@ -4,7 +4,7 @@ import collections
 import dataclasses
 import logging
 import os
-from typing import Callable, Mapping, Optional, Sequence, Tuple, Type
+from typing import Callable, Mapping, Optional, Sequence, Tuple, Type, Iterable, Iterator, overload
 
 import numpy as np
 import torch as th
@@ -21,9 +21,9 @@ from imitation.util import logger, networks, util
 
 
 def compute_train_stats(
-    disc_logits_expert_is_high: th.Tensor,
-    labels_expert_is_one: th.Tensor,
-    disc_loss: th.Tensor,
+        disc_logits_expert_is_high: th.Tensor,
+        labels_expert_is_one: th.Tensor,
+        disc_loss: th.Tensor,
 ) -> Mapping[str, float]:
     """Train statistics for GAIL/AIRL discriminator.
 
@@ -63,7 +63,7 @@ def compute_train_stats(
         else:
             # float() is defensive, since we cannot divide Torch tensors by
             # Python ints
-            expert_acc = _n_pred_expert / float(n_expert)
+            expert_acc = _n_pred_expert.item() / float(n_expert)
 
         _n_pred_gen = th.sum(th.logical_and(bin_is_generated_true, correct_vec))
         _n_gen_or_1 = max(1, n_generated)
@@ -103,25 +103,28 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
     If `debug_use_ground_truth=True` was passed into the initializer then
     `self.venv_train` is the same as `self.venv`."""
 
+    _demo_data_loader: Optional[Iterable[base.TransitionMapping]]
+    _endless_expert_iterator: Optional[Iterator[base.TransitionMapping]]
+
     def __init__(
-        self,
-        *,
-        demonstrations: base.AnyTransitions,
-        demo_batch_size: int,
-        venv: vec_env.VecEnv,
-        gen_algo: base_class.BaseAlgorithm,
-        reward_net: reward_nets.RewardNet,
-        n_disc_updates_per_round: int = 2,
-        log_dir: str = "output/",
-        disc_opt_cls: Type[th.optim.Optimizer] = th.optim.Adam,
-        disc_opt_kwargs: Optional[Mapping] = None,
-        gen_train_timesteps: Optional[int] = None,
-        gen_replay_buffer_capacity: Optional[int] = None,
-        custom_logger: Optional[logger.HierarchicalLogger] = None,
-        init_tensorboard: bool = False,
-        init_tensorboard_graph: bool = False,
-        debug_use_ground_truth: bool = False,
-        allow_variable_horizon: bool = False,
+            self,
+            *,
+            demonstrations: base.AnyTransitions,
+            demo_batch_size: int,
+            venv: vec_env.VecEnv,
+            gen_algo: base_class.BaseAlgorithm,
+            reward_net: reward_nets.RewardNet,
+            n_disc_updates_per_round: int = 2,
+            log_dir: str = "output/",
+            disc_opt_cls: Type[th.optim.Optimizer] = th.optim.Adam,
+            disc_opt_kwargs: Optional[Mapping] = None,
+            gen_train_timesteps: Optional[int] = None,
+            gen_replay_buffer_capacity: Optional[int] = None,
+            custom_logger: Optional[logger.HierarchicalLogger] = None,
+            init_tensorboard: bool = False,
+            init_tensorboard_graph: bool = False,
+            debug_use_ground_truth: bool = False,
+            allow_variable_horizon: bool = False,
     ):
         """Builds AdversarialTrainer.
 
@@ -212,6 +215,7 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
             self.venv_wrapped = venv
             self.gen_callback = None
         else:
+            # TODO(juan) this is a bug; venv is going unused.
             venv = self.venv_wrapped = reward_wrapper.RewardVecEnvWrapper(
                 venv,
                 reward_fn=self.reward_train.predict_processed,
@@ -227,6 +231,8 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
             assert gen_algo_env is not None
             self.gen_train_timesteps = gen_algo_env.num_envs
             if hasattr(self.gen_algo, "n_steps"):  # on policy
+                # TODO(juan) this looks like a bug; could not find n_steps
+                #  defined anywhere in the codebase.
                 self.gen_train_timesteps *= self.gen_algo.n_steps
         else:
             self.gen_train_timesteps = gen_train_timesteps
@@ -240,16 +246,17 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
 
     @property
     def policy(self) -> policies.BasePolicy:
+        # TODO(juan) either change the return type to optional or add an assertion.
         return self.gen_algo.policy
 
     @abc.abstractmethod
     def logits_expert_is_high(
-        self,
-        state: th.Tensor,
-        action: th.Tensor,
-        next_state: th.Tensor,
-        done: th.Tensor,
-        log_policy_act_prob: Optional[th.Tensor] = None,
+            self,
+            state: th.Tensor,
+            action: th.Tensor,
+            next_state: th.Tensor,
+            done: th.Tensor,
+            log_policy_act_prob: Optional[th.Tensor] = None,
     ) -> th.Tensor:
         """Compute the discriminator's logits for each state-action sample.
 
@@ -288,13 +295,14 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
         self._endless_expert_iterator = util.endless_iter(self._demo_data_loader)
 
     def _next_expert_batch(self) -> Mapping:
+        assert self._endless_expert_iterator is not None
         return next(self._endless_expert_iterator)
 
     def train_disc(
-        self,
-        *,
-        expert_samples: Optional[Mapping] = None,
-        gen_samples: Optional[Mapping] = None,
+            self,
+            *,
+            expert_samples: Optional[Mapping] = None,
+            gen_samples: Optional[Mapping] = None,
     ) -> Optional[Mapping[str, float]]:
         """Perform a single discriminator update, optionally using provided samples.
 
@@ -358,9 +366,9 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
         return train_stats
 
     def train_gen(
-        self,
-        total_timesteps: Optional[int] = None,
-        learn_kwargs: Optional[Mapping] = None,
+            self,
+            total_timesteps: Optional[int] = None,
+            learn_kwargs: Optional[Mapping] = None,
     ) -> None:
         """Trains the generator to maximize the discriminator loss.
 
@@ -394,9 +402,9 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
         self._gen_replay_buffer.store(gen_samples)
 
     def train(
-        self,
-        total_timesteps: int,
-        callback: Optional[Callable[[int], None]] = None,
+            self,
+            total_timesteps: int,
+            callback: Optional[Callable[[int], None]] = None,
     ) -> None:
         """Alternates between training the generator and discriminator.
 
@@ -429,14 +437,23 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
                 callback(r)
             self.logger.dump(self._global_step)
 
+    @overload
+    def _torchify_array(self, ndarray: np.ndarray) -> th.Tensor:
+        ...
+
+    @overload
+    def _torchify_array(self, ndarray: None) -> None:
+        ...
+    
     def _torchify_array(self, ndarray: Optional[np.ndarray]) -> Optional[th.Tensor]:
         if ndarray is not None:
             return th.as_tensor(ndarray, device=self.reward_train.device)
+        return None
 
     def _get_log_policy_act_prob(
-        self,
-        obs_th: th.Tensor,
-        acts_th: th.Tensor,
+            self,
+            obs_th: th.Tensor,
+            acts_th: th.Tensor,
     ) -> Optional[th.Tensor]:
         """Evaluates the given actions on the given observations.
 
@@ -474,10 +491,10 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
         return log_policy_act_prob_th
 
     def _make_disc_train_batch(
-        self,
-        *,
-        gen_samples: Optional[Mapping] = None,
-        expert_samples: Optional[Mapping] = None,
+            self,
+            *,
+            gen_samples: Optional[Mapping] = None,
+            expert_samples: Optional[Mapping] = None,
     ) -> Mapping[str, th.Tensor]:
         """Build and return training batch for the next discriminator update.
 
@@ -502,8 +519,8 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
                 raise RuntimeError(
                     "No generator samples for training. " "Call `train_gen()` first.",
                 )
-            gen_samples = self._gen_replay_buffer.sample(self.demo_batch_size)
-            gen_samples = types.dataclass_quick_asdict(gen_samples)
+            gen_samples_dataclass = self._gen_replay_buffer.sample(self.demo_batch_size)
+            gen_samples = types.dataclass_quick_asdict(gen_samples_dataclass)
 
         n_gen = len(gen_samples["obs"])
         n_expert = len(expert_samples["obs"])

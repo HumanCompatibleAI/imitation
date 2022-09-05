@@ -63,14 +63,14 @@ def make_unique_timestamp() -> str:
 
 
 def make_vec_env(
-    env_name: str,
-    n_envs: int = 8,
-    seed: int = 0,
-    parallel: bool = False,
-    log_dir: Optional[str] = None,
-    max_episode_steps: Optional[int] = None,
-    post_wrappers: Optional[Sequence[Callable[[gym.Env, int], gym.Env]]] = None,
-    env_make_kwargs: Optional[Mapping[str, Any]] = None,
+        env_name: str,
+        n_envs: int = 8,
+        seed: int = 0,
+        parallel: bool = False,
+        log_dir: Optional[str] = None,
+        max_episode_steps: Optional[int] = None,
+        post_wrappers: Optional[Sequence[Callable[[gym.Env, int], gym.Env]]] = None,
+        env_make_kwargs: Optional[Mapping[str, Any]] = None,
 ) -> VecEnv:
     """Makes a vectorized environment.
 
@@ -183,6 +183,10 @@ def endless_iter(iterable: Iterable[T]) -> Iterator[T]:
     Raises:
         ValueError: `iterable` is empty -- the first call it to returns no elements.
     """
+    # TODO(juan) this is wrong; if the iterable is not a container then the first
+    #  element will be wasted if it's not stored. The sensible solution is to
+    #  restrict the type of `iterable` to `Sequence` (this same issue is present
+    #  in a few other places in the codebase).
     try:
         next(iter(iterable))
     except StopIteration:
@@ -212,8 +216,8 @@ def safe_to_tensor(numpy_array: np.ndarray, **kwargs) -> th.Tensor:
 
 
 def tensor_iter_norm(
-    tensor_iter: Iterable[th.Tensor],
-    ord: Union[int, float] = 2,  # noqa: A002
+        tensor_iter: Iterable[th.Tensor],
+        ord: Union[int, float] = 2,  # noqa: A002
 ) -> th.Tensor:
     """Compute the norm of a big vector that is produced one tensor chunk at a time.
 
