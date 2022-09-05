@@ -6,7 +6,6 @@ from typing import Any, Mapping, Optional, Type
 
 import sacred
 from stable_baselines3.common import vec_env
-from torch import nn
 
 from imitation.rewards import reward_nets
 from imitation.util import networks
@@ -82,10 +81,10 @@ def config_hook(config, command_name, logger):
 
 
 def _make_reward_net(
-    venv: vec_env.VecEnv,
-    net_cls: Type[reward_nets.RewardNet],
-    net_kwargs: Mapping[str, Any],
-    normalize_output_layer: Optional[Type[nn.Module]],
+        venv: vec_env.VecEnv,
+        net_cls: Type[reward_nets.RewardNet],
+        net_kwargs: Mapping[str, Any],
+        normalize_output_layer: Optional[Type[networks.BaseNorm]],
 ):
     """Helper function for creating reward nets."""
     reward_net = net_cls(
@@ -105,13 +104,13 @@ def _make_reward_net(
 
 @reward_ingredient.capture
 def make_reward_net(
-    venv: vec_env.VecEnv,
-    net_cls: Type[reward_nets.RewardNet],
-    net_kwargs: Mapping[str, Any],
-    normalize_output_layer: Optional[Type[nn.Module]],
-    add_std_alpha: Optional[float],
-    ensemble_size: Optional[int],
-    ensemble_member_config: Optional[Mapping[str, Any]],
+        venv: vec_env.VecEnv,
+        net_cls: Type[reward_nets.RewardNet],
+        net_kwargs: Mapping[str, Any],
+        normalize_output_layer: Optional[Type[networks.BaseNorm]],
+        add_std_alpha: Optional[float],
+        ensemble_size: Optional[int],
+        ensemble_member_config: Optional[Mapping[str, Any]],
 ) -> reward_nets.RewardNet:
     """Builds a reward network.
 
@@ -150,9 +149,11 @@ def make_reward_net(
             for _ in range(ensemble_size)
         ]
 
-        reward_net = net_cls(venv.observation_space, venv.action_space, members)
+        reward_net: reward_nets.RewardNet = net_cls(venv.observation_space, venv.action_space, members)
 
         if add_std_alpha is not None:
+            if not isinstance(reward_net, reward_nets.RewardNetWithVariance):
+                raise ValueError("add_std_alpha is only supported for reward nets with variance tracking.")
             reward_net = reward_nets.AddSTDRewardWrapper(
                 reward_net,
                 default_alpha=add_std_alpha,

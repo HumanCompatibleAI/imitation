@@ -26,12 +26,12 @@ def wandb_config():
 
 @wandb_ingredient.capture
 def wandb_init(
-    _run,
-    wandb_name_prefix: str,
-    wandb_tag: Optional[str],
-    wandb_kwargs: Mapping[str, Any],
-    wandb_additional_info: Mapping[str, Any],
-    log_dir: str,
+        _run,
+        wandb_name_prefix: str,
+        wandb_tag: Optional[str],
+        wandb_kwargs: Mapping[str, Any],
+        wandb_additional_info: Mapping[str, Any],
+        log_dir: str,
 ) -> None:
     """Putting everything together to get the W&B kwargs for wandb.init().
 
@@ -49,15 +49,12 @@ def wandb_init(
     env_name = _run.config["common"]["env_name"]
     root_seed = _run.config["seed"]
 
-    updated_wandb_kwargs = {}
-    updated_wandb_kwargs.update(wandb_kwargs)
-    updated_wandb_kwargs.update(
-        dict(
-            name="-".join([wandb_name_prefix, env_name, f"seed{root_seed}"]),
-            tags=[env_name, f"seed{root_seed}"] + ([wandb_tag] if wandb_tag else []),
-            dir=log_dir,
-        ),
-    )
+    updated_wandb_kwargs: Mapping[str, Any] = {
+        **wandb_kwargs,
+        "name": f"{wandb_name_prefix}-{env_name}-seed{root_seed}",
+        "tags": [env_name, f"seed{root_seed}"] + ([wandb_tag] if wandb_tag else []),
+        "dir": log_dir,
+    }
     try:
         import wandb
     except ModuleNotFoundError as e:

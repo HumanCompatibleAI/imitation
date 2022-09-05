@@ -3,7 +3,7 @@
 import contextlib
 import logging
 import os
-from typing import Any, Mapping, Sequence, Tuple, Union
+from typing import Any, Mapping, Sequence, Tuple, Union, Generator
 
 import sacred
 from stable_baselines3.common import vec_env
@@ -76,9 +76,9 @@ def fast():
 
 @common_ingredient.capture
 def make_log_dir(
-    _run,
-    log_dir: str,
-    log_level: Union[int, str],
+        _run,
+        log_dir: str,
+        log_level: Union[int, str],
 ) -> str:
     """Creates log directory and sets up symlink to Sacred logs.
 
@@ -105,8 +105,8 @@ def make_log_dir(
 
 @common_ingredient.capture
 def setup_logging(
-    _run,
-    log_format_strs: Sequence[str],
+        _run,
+        log_format_strs: Sequence[str],
 ) -> Tuple[imit_logger.HierarchicalLogger, str]:
     """Builds the imitation logger.
 
@@ -130,15 +130,15 @@ def setup_logging(
 @contextlib.contextmanager
 @common_ingredient.capture
 def make_venv(
-    _seed,
-    env_name: str,
-    num_vec: int,
-    parallel: bool,
-    log_dir: str,
-    max_episode_steps: int,
-    env_make_kwargs: Mapping[str, Any],
-    **kwargs,
-) -> vec_env.VecEnv:
+        _seed,
+        env_name: str,
+        num_vec: int,
+        parallel: bool,
+        log_dir: str,
+        max_episode_steps: int,
+        env_make_kwargs: Mapping[str, Any],
+        **kwargs,
+) -> Generator[vec_env.VecEnv, None, None]:
     """Builds the vector environment.
 
     Args:

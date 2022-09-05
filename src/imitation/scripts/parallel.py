@@ -3,7 +3,7 @@
 import collections.abc
 import copy
 import os
-from typing import Any, Callable, Mapping, Optional, Sequence
+from typing import Any, Callable, Mapping, Optional, Sequence, Dict
 
 import ray
 import ray.tune
@@ -15,15 +15,15 @@ from imitation.scripts.config.parallel import parallel_ex
 
 @parallel_ex.main
 def parallel(
-    sacred_ex_name: str,
-    run_name: str,
-    search_space: Mapping[str, Any],
-    base_named_configs: Sequence[str],
-    base_config_updates: Mapping[str, Any],
-    resources_per_trial: Mapping[str, Any],
-    init_kwargs: Mapping[str, Any],
-    local_dir: Optional[str],
-    upload_dir: Optional[str],
+        sacred_ex_name: str,
+        run_name: str,
+        search_space: Mapping[str, Any],
+        base_named_configs: Sequence[str],
+        base_config_updates: Mapping[str, Any],
+        resources_per_trial: Mapping[str, Any],
+        init_kwargs: Mapping[str, Any],
+        local_dir: Optional[str],
+        upload_dir: Optional[str],
 ) -> None:
     """Parallelize multiple runs of another Sacred Experiment using Ray Tune.
 
@@ -92,8 +92,8 @@ def parallel(
     # each Raylet.
     if sacred_ex_name == "train_adversarial":
         no_data_dir = (
-            "demonstrations.data_dir" not in base_config_updates
-            and "data_dir" not in base_config_updates.get("demonstrations", {})
+                "demonstrations.data_dir" not in base_config_updates
+                and "data_dir" not in base_config_updates.get("demonstrations", {})
         )
         if no_data_dir:
             data_dir = os.path.join(os.getcwd(), "data/")
@@ -122,10 +122,10 @@ def parallel(
 
 
 def _ray_tune_sacred_wrapper(
-    sacred_ex_name: str,
-    run_name: str,
-    base_named_configs: list,
-    base_config_updates: Mapping[str, Any],
+        sacred_ex_name: str,
+        run_name: str,
+        base_named_configs: list,
+        base_config_updates: Mapping[str, Any],
 ) -> Callable[[Mapping[str, Any], Any], Mapping[str, Any]]:
     """From an Experiment build a wrapped run function suitable for Ray Tune.
 
@@ -178,7 +178,7 @@ def _ray_tune_sacred_wrapper(
         sacred.SETTINGS.CAPTURE_MODE = "sys"
 
         run_kwargs = config
-        updated_run_kwargs = {}
+        updated_run_kwargs: Dict[str, Any] = {}
         # Import inside function rather than in module because Sacred experiments
         # are not picklable, and Ray requires this function to be picklable.
         from imitation.scripts.train_adversarial import train_adversarial_ex
@@ -192,14 +192,10 @@ def _ray_tune_sacred_wrapper(
         ex.observers = [FileStorageObserver("sacred")]
 
         # Apply base configs to get modified `named_configs` and `config_updates`.
-        named_configs = []
-        named_configs.extend(base_named_configs)
-        named_configs.extend(run_kwargs["named_configs"])
+        named_configs = [*base_named_configs, *run_kwargs["named_configs"]]
         updated_run_kwargs["named_configs"] = named_configs
 
-        config_updates = {}
-        config_updates.update(base_config_updates)
-        config_updates.update(run_kwargs["config_updates"])
+        config_updates = {**base_config_updates, **run_kwargs["config_updates"]}
         updated_run_kwargs["config_updates"] = config_updates
 
         # Add other run_kwargs items to updated_run_kwargs.

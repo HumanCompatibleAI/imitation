@@ -28,19 +28,19 @@ from imitation.scripts.config.train_rl import train_rl_ex
 
 @train_rl_ex.main
 def train_rl(
-    *,
-    total_timesteps: int,
-    normalize_reward: bool,
-    normalize_kwargs: dict,
-    reward_type: Optional[str],
-    reward_path: Optional[str],
-    load_reward_kwargs: Optional[Mapping[str, Any]],
-    rollout_save_final: bool,
-    rollout_save_n_timesteps: Optional[int],
-    rollout_save_n_episodes: Optional[int],
-    policy_save_interval: int,
-    policy_save_final: bool,
-    agent_path: Optional[str],
+        *,
+        total_timesteps: int,
+        normalize_reward: bool,
+        normalize_kwargs: dict,
+        reward_type: Optional[str],
+        reward_path: Optional[str],
+        load_reward_kwargs: Optional[Mapping[str, Any]],
+        rollout_save_final: bool,
+        rollout_save_n_timesteps: Optional[int],
+        rollout_save_n_episodes: Optional[int],
+        policy_save_interval: int,
+        policy_save_final: bool,
+        agent_path: Optional[str],
 ) -> Mapping[str, float]:
     """Trains an expert policy from scratch and saves the rollouts and policy.
 
@@ -120,7 +120,7 @@ def train_rl(
                 )
 
         if policy_save_interval > 0:
-            save_policy_callback = serialize.SavePolicyCallback(policy_dir)
+            save_policy_callback: callbacks.EventCallback = serialize.SavePolicyCallback(policy_dir)
             save_policy_callback = callbacks.EveryNTimesteps(
                 policy_save_interval,
                 save_policy_callback,

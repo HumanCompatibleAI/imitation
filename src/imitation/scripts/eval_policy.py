@@ -53,19 +53,19 @@ def video_wrapper_factory(log_dir: str, **kwargs):
 
 @eval_policy_ex.main
 def eval_policy(
-    _run,
-    _seed: int,
-    eval_n_timesteps: Optional[int],
-    eval_n_episodes: Optional[int],
-    render: bool,
-    render_fps: int,
-    videos: bool,
-    video_kwargs: Mapping[str, Any],
-    policy_type: Optional[str],
-    policy_path: Optional[str],
-    reward_type: Optional[str] = None,
-    reward_path: Optional[str] = None,
-    rollout_save_path: Optional[str] = None,
+        _run,
+        _seed: int,
+        eval_n_timesteps: Optional[int],
+        eval_n_episodes: Optional[int],
+        render: bool,
+        render_fps: int,
+        videos: bool,
+        video_kwargs: Mapping[str, Any],
+        policy_type: Optional[str],
+        policy_path: Optional[str],
+        reward_type: Optional[str] = None,
+        reward_path: Optional[str] = None,
+        rollout_save_path: Optional[str] = None,
 ):
     """Rolls a policy out in an environment, collecting statistics.
 
@@ -106,6 +106,7 @@ def eval_policy(
 
         policy = None
         if policy_type is not None:
+            assert policy_path is not None
             policy = serialize.load_policy(policy_type, policy_path, venv)
         trajs = rollout.generate_trajectories(policy, venv, sample_until)
 

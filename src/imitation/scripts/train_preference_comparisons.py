@@ -24,8 +24,8 @@ from imitation.scripts.config.train_preference_comparisons import (
 
 
 def save_model(
-    agent_trainer: preference_comparisons.AgentTrainer,
-    save_path: str,
+        agent_trainer: preference_comparisons.AgentTrainer,
+        save_path: str,
 ):
     """Save the model as model.pkl."""
     serialize.save_stable_model(
@@ -35,9 +35,9 @@ def save_model(
 
 
 def save_checkpoint(
-    trainer: preference_comparisons.PreferenceComparisons,
-    save_path: str,
-    allow_save_policy: Optional[bool],
+        trainer: preference_comparisons.PreferenceComparisons,
+        save_path: str,
+        allow_save_policy: Optional[bool],
 ):
     """Save reward model and optionally policy."""
     os.makedirs(save_path, exist_ok=True)
@@ -56,30 +56,30 @@ def save_checkpoint(
 
 @train_preference_comparisons_ex.main
 def train_preference_comparisons(
-    _seed: int,
-    total_timesteps: int,
-    total_comparisons: int,
-    num_iterations: int,
-    comparison_queue_size: Optional[int],
-    fragment_length: int,
-    transition_oversampling: float,
-    initial_comparison_frac: float,
-    exploration_frac: float,
-    trajectory_path: Optional[str],
-    trajectory_generator_kwargs: Mapping[str, Any],
-    save_preferences: bool,
-    agent_path: Optional[str],
-    preference_model_kwargs: Mapping[str, Any],
-    reward_trainer_kwargs: Mapping[str, Any],
-    gatherer_cls: Type[preference_comparisons.PreferenceGatherer],
-    gatherer_kwargs: Mapping[str, Any],
-    active_selection: bool,
-    active_selection_oversampling: int,
-    uncertainty_on: str,
-    fragmenter_kwargs: Mapping[str, Any],
-    allow_variable_horizon: bool,
-    checkpoint_interval: int,
-    query_schedule: Union[str, type_aliases.Schedule],
+        _seed: int,
+        total_timesteps: int,
+        total_comparisons: int,
+        num_iterations: int,
+        comparison_queue_size: Optional[int],
+        fragment_length: int,
+        transition_oversampling: float,
+        initial_comparison_frac: float,
+        exploration_frac: float,
+        trajectory_path: Optional[str],
+        trajectory_generator_kwargs: Mapping[str, Any],
+        save_preferences: bool,
+        agent_path: Optional[str],
+        preference_model_kwargs: Mapping[str, Any],
+        reward_trainer_kwargs: Mapping[str, Any],
+        gatherer_cls: Type[preference_comparisons.PreferenceGatherer],
+        gatherer_kwargs: Mapping[str, Any],
+        active_selection: bool,
+        active_selection_oversampling: int,
+        uncertainty_on: str,
+        fragmenter_kwargs: Mapping[str, Any],
+        allow_variable_horizon: bool,
+        checkpoint_interval: int,
+        query_schedule: Union[str, type_aliases.Schedule],
 ) -> Mapping[str, Any]:
     """Train a reward model using preference comparisons.
 
@@ -191,7 +191,7 @@ def train_preference_comparisons(
                 **trajectory_generator_kwargs,
             )
 
-        fragmenter = preference_comparisons.RandomFragmenter(
+        fragmenter: preference_comparisons.Fragmenter = preference_comparisons.RandomFragmenter(
             **fragmenter_kwargs,
             seed=_seed,
             custom_logger=custom_logger,

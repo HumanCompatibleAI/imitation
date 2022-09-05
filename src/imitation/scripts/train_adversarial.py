@@ -60,20 +60,20 @@ def _add_hook(ingredient: sacred.Ingredient) -> None:
         algorithm_specific = {}  # noqa: F841
 
 
-for ingredient in [train_adversarial_ex] + train_adversarial_ex.ingredients:
+for ingredient in [train_adversarial_ex, *train_adversarial_ex.ingredients]:
     _add_hook(ingredient)
 
 
 @train_adversarial_ex.capture
 def train_adversarial(
-    _run,
-    _seed: int,
-    show_config: bool,
-    algo_cls: Type[common.AdversarialTrainer],
-    algorithm_kwargs: Mapping[str, Any],
-    total_timesteps: int,
-    checkpoint_interval: int,
-    agent_path: Optional[str],
+        _run,
+        _seed: int,
+        show_config: bool,
+        algo_cls: Type[common.AdversarialTrainer],
+        algorithm_kwargs: Mapping[str, Any],
+        total_timesteps: int,
+        checkpoint_interval: int,
+        agent_path: Optional[str],
 ) -> Mapping[str, Mapping[str, float]]:
     """Train an adversarial-network-based imitation learning algorithm.
 

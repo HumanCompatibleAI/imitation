@@ -3,14 +3,14 @@
 import logging
 import os.path as osp
 import warnings
-from typing import Any, Mapping, Optional, Type
+from typing import Any, Mapping, Optional, Type, Sequence, List, cast
 
 from sacred.observers import FileStorageObserver
 from stable_baselines3.common import policies, utils, vec_env
 
 from imitation.algorithms import bc as bc_algorithm
 from imitation.algorithms.dagger import SimpleDAggerTrainer
-from imitation.data import rollout
+from imitation.data import rollout, types
 from imitation.policies import serialize
 from imitation.scripts.common import common, demonstrations, train
 from imitation.scripts.config.train_imitation import train_imitation_ex
@@ -20,10 +20,10 @@ logger = logging.getLogger(__name__)
 
 @train_imitation_ex.capture(prefix="train")
 def make_policy(
-    venv: vec_env.VecEnv,
-    policy_cls: Type[policies.BasePolicy],
-    policy_kwargs: Mapping[str, Any],
-    agent_path: Optional[str],
+        venv: vec_env.VecEnv,
+        policy_cls: Type[policies.BasePolicy],
+        policy_kwargs: Mapping[str, Any],
+        agent_path: Optional[str],
 ) -> policies.BasePolicy:
     """Makes policy.
 
@@ -50,6 +50,7 @@ def make_policy(
                 "lr_schedule": utils.get_schedule_fn(1),
             },
         )
+    policy: policies.BasePolicy
     if agent_path is not None:
         warnings.warn(
             "When agent_path is specified, policy_cls and policy_kwargs are ignored.",
@@ -64,9 +65,9 @@ def make_policy(
 
 @train_imitation_ex.capture(prefix="dagger")
 def load_expert_policy(
-    venv: vec_env.VecEnv,
-    expert_policy_type: Optional[str],
-    expert_policy_path: Optional[str],
+        venv: vec_env.VecEnv,
+        expert_policy_type: Optional[str],
+        expert_policy_path: Optional[str],
 ) -> policies.BasePolicy:
     """Loads expert policy from `expert_policy_path`.
 
@@ -88,6 +89,10 @@ def load_expert_policy(
     """
     if expert_policy_path is None:
         raise ValueError("expert_policy_path cannot be None")
+
+    if expert_policy_type is None:
+        raise ValueError("expert_policy_type cannot be None")
+
     # TODO(shwang): Add support for directly loading a BasePolicy `*.th` file.
     expert_policy = serialize.load_policy(expert_policy_type, expert_policy_path, venv)
     if not isinstance(expert_policy, policies.BasePolicy):
@@ -97,12 +102,12 @@ def load_expert_policy(
 
 @train_imitation_ex.capture
 def train_imitation(
-    _run,
-    bc_kwargs: Mapping[str, Any],
-    bc_train_kwargs: Mapping[str, Any],
-    dagger: Mapping[str, Any],
-    use_dagger: bool,
-    agent_path: Optional[str],
+        _run,
+        bc_kwargs: Mapping[str, Any],
+        bc_train_kwargs: Mapping[str, Any],
+        dagger: Mapping[str, Any],
+        use_dagger: bool,
+        agent_path: Optional[str],
 ) -> Mapping[str, Mapping[str, float]]:
     """Runs DAgger (if `use_dagger`) or BC (otherwise) training.
 
@@ -123,7 +128,7 @@ def train_imitation(
     with common.make_venv() as venv:
         imit_policy = make_policy(venv, agent_path=agent_path)
 
-        expert_trajs = None
+        expert_trajs: Optional[Sequence[types.Trajectory]] = None
         if not use_dagger or dagger["use_offline_rollouts"]:
             expert_trajs = demonstrations.load_expert_trajs()
 
@@ -166,11 +171,22 @@ def train_imitation(
 
         imit_stats = train.eval_policy(imit_policy, venv)
 
+    # TODO(juan): I'm not super happy with this solution for the type system.
+    #  is model._all_demos always Sequence[TrajectoryWithRew]? We can change
+    #  the type in the class definition. Same goes for demonstrations.load_expert_trajs.
+    #  using assert doesn't work because we'd have to loop over all the trajectories
+    #  and check that each one is a TrajectoryWithRew, which seems inefficient
+    #  just for adding type annotations.
+    trajectories: List[types.TrajectoryWithRew]
+    if use_dagger:
+        assert expert_trajs is not None
+        trajectories = cast(List[types.TrajectoryWithRew], expert_trajs)
+    else:
+        trajectories = cast(List[types.TrajectoryWithRew], model._all_demos)
+
     return {
         "imit_stats": imit_stats,
-        "expert_stats": rollout.rollout_stats(
-            model._all_demos if use_dagger else expert_trajs,
-        ),
+        "expert_stats": rollout.rollout_stats(trajectories),
     }
 
 

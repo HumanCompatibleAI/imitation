@@ -9,7 +9,7 @@ import os.path as osp
 import tempfile
 import warnings
 from collections import OrderedDict
-from typing import Any, Callable, List, Mapping, Optional, Sequence, Set
+from typing import Any, Callable, List, Mapping, Optional, Sequence, Set, Iterable
 
 import pandas as pd
 from sacred.observers import FileStorageObserver
@@ -21,10 +21,10 @@ from imitation.util.sacred import dict_get_nested as get
 
 @analysis_ex.capture
 def _gather_sacred_dicts(
-    source_dirs: Sequence[str],
-    run_name: Optional[str],
-    env_name: Optional[str],
-    skip_failed_runs: bool,
+        source_dirs: Sequence[str],
+        run_name: Optional[str],
+        env_name: Optional[str],
+        skip_failed_runs: bool,
 ) -> List[sacred_util.SacredDicts]:
     """Helper function for parsing and selecting Sacred experiment JSON files.
 
@@ -49,14 +49,15 @@ def _gather_sacred_dicts(
     sacred_dirs = itertools.chain.from_iterable(
         sacred_util.filter_subdirs(source_dir) for source_dir in source_dirs
     )
-    sacred_dicts = []
+    sacred_dicts_list = []
 
     for sacred_dir in sacred_dirs:
         try:
-            sacred_dicts.append(sacred_util.SacredDicts.load_from_dir(sacred_dir))
+            sacred_dicts_list.append(sacred_util.SacredDicts.load_from_dir(sacred_dir))
         except json.JSONDecodeError:
             warnings.warn(f"Invalid JSON file in {sacred_dir}", RuntimeWarning)
 
+    sacred_dicts: Iterable = sacred_dicts_list
     if run_name is not None:
         sacred_dicts = filter(
             lambda sd: get(sd.run, "experiment.name") == run_name,
@@ -179,7 +180,7 @@ def _return_summaries(sd: sacred_util.SacredDicts) -> dict:
         # Assuming here that `result.imit_stats` and `result.expert_stats` are
         # formatted correctly.
         imit_expert_ratio = (
-            imit_stats["monitor_return_mean"] / expert_stats["return_mean"]
+                imit_stats["monitor_return_mean"] / expert_stats["return_mean"]
         )
     else:
         imit_expert_ratio = None
@@ -216,7 +217,6 @@ table_entry_fns: sd_to_table_entry_type = collections.OrderedDict(
         ("imit_expert_ratio", lambda sd: _return_summaries(sd)["imit_expert_ratio"]),
     ],
 )
-
 
 # If `verbosity` is at least the length of this list, then we use all table_entry_fns
 # as columns of table.
@@ -260,10 +260,10 @@ def _get_table_entry_fns_subset(table_verbosity: int) -> sd_to_table_entry_type:
 
 @analysis_ex.command
 def analyze_imitation(
-    csv_output_path: Optional[str],
-    tex_output_path: Optional[str],
-    print_table: bool,
-    table_verbosity: int,
+        csv_output_path: Optional[str],
+        tex_output_path: Optional[str],
+        print_table: bool,
+        table_verbosity: int,
 ) -> pd.DataFrame:
     """Parse Sacred logs and generate a DataFrame for imitation learning results.
 
