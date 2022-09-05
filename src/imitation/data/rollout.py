@@ -28,6 +28,9 @@ def unwrap_traj(traj: types.TrajectoryWithRew) -> types.TrajectoryWithRew:
 
     Returns:
         A copy of `traj` with replaced `obs` and `rews` fields.
+
+    Raises:
+        ValueError: If `traj.infos` is None
     """
     if traj.infos is None:
         raise ValueError("Trajectory must have infos to unwrap")

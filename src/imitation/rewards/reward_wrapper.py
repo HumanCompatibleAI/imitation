@@ -1,7 +1,7 @@
 """Common wrapper for adding custom reward values to an environment."""
 
 import collections
-from typing import Deque, Optional
+from typing import Deque
 
 import numpy as np
 from stable_baselines3.common import callbacks
@@ -13,8 +13,6 @@ from imitation.rewards import reward_function
 
 class WrappedRewardCallback(callbacks.BaseCallback):
     """Logs mean wrapped reward as part of RL (or other) training."""
-
-    logger: Optional[sb_logger.Logger]  # type: ignore[assignment]
 
     def __init__(self, episode_rewards: Deque[float], *args, **kwargs):
         """Builds WrappedRewardCallback.
@@ -34,7 +32,7 @@ class WrappedRewardCallback(callbacks.BaseCallback):
         if len(self.episode_rewards) == 0:
             return
         mean = sum(self.episode_rewards) / len(self.episode_rewards)
-        assert self.logger is not None
+        assert isinstance(self.logger, sb_logger.Logger)
         self.logger.record("rollout/ep_rew_wrapped_mean", mean)
 
 
