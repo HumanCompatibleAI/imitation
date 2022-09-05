@@ -390,7 +390,7 @@ class BasicRewardNet(RewardNet):
         kwargs = {
             k: v
             for k, v in kwargs.items()
-            if k not in ("in_size", "out_size", "squeeze_output")
+            if k not in ("in_size", "out_size", "squeeze_output", "hid_sizes")
         }
         self.mlp = networks.build_mlp(
             hid_sizes=(32, 32),

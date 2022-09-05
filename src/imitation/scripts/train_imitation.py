@@ -179,10 +179,10 @@ def train_imitation(
     #  just for adding type annotations.
     trajectories: List[types.TrajectoryWithRew]
     if use_dagger:
+        trajectories = cast(List[types.TrajectoryWithRew], model._all_demos)
+    else:
         assert expert_trajs is not None
         trajectories = cast(List[types.TrajectoryWithRew], expert_trajs)
-    else:
-        trajectories = cast(List[types.TrajectoryWithRew], model._all_demos)
 
     return {
         "imit_stats": imit_stats,
