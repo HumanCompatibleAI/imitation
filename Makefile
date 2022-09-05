@@ -17,7 +17,24 @@ formatcheck:
 	codespell -I .codespell.skip --skip='*.pyc,tests/testdata/*,*.ipynb,*.csv' ${SRC_FILES}
 
 docscheck:
-	pushd docs/
-	make clean
-	make html
-	popd
+	pushd docs/ \
+	&& make clean \
+	&& make html \
+	&& popd
+
+cleandocs:
+	pushd docs/ \
+	&& make clean \
+	&& popd
+
+cleantests:
+	rm -rf output/
+	rm -rf quickstart/
+
+cleancache:
+	rm -rf .mypy_cache/
+	rm -rf .pytest_cache/
+	rm -rf .pytype/
+	rm -rf .hypothesis/
+
+clean: cleandocs cleancache cleantests
