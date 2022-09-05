@@ -200,11 +200,10 @@ def test_hard(tmpdir):
 def test_prefix(tmpdir):
     hier_logger = logger.configure(tmpdir)
 
-    with hier_logger.add_prefix("foo"):
-        with hier_logger.accumulate_means("bar"):
-            hier_logger.record("A", 1)
-            hier_logger.record("B", 2)
-            hier_logger.dump()
+    with hier_logger.add_prefix("foo"), hier_logger.accumulate_means("bar"):
+        hier_logger.record("A", 1)
+        hier_logger.record("B", 2)
+        hier_logger.dump()
 
     hier_logger.record("no_context", 1)
 
@@ -237,8 +236,6 @@ def test_prefix(tmpdir):
 
 
 def test_cant_add_prefix_within_accumulate_means(tmpdir):
-    hier_logger = logger.configure(tmpdir)
-    with pytest.raises(RuntimeError):
-        with hier_logger.accumulate_means("foo"):
-            with hier_logger.add_prefix("bar"):  # pragma: no cover
-                pass
+    h = logger.configure(tmpdir)
+    with pytest.raises(RuntimeError), h.accumulate_means("foo"), h.add_prefix("bar"):
+        pass  # pragma: no cover
