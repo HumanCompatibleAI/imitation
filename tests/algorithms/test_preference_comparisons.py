@@ -192,18 +192,32 @@ def test_mixture_of_trajectory_generators_train_and_sample(trajectory_with_rewar
         members=(gen_1, gen_2),
         share_training_steps=False,
     )
-    mixture.train(steps=10, foo=4)
-    assert gen_1.train.called_once_with(steps=10, foo=4)
-    assert gen_2.train.called_once_with(steps=10, foo=4)
+    training_steps = 11
+    num_generators = 2
+    kwargs = dict(foo=4)
+    mixture.train(steps=training_steps, **kwargs)
+    # When share training steps is off we expect each
+    # generator to train for the full 10 step
+    assert gen_1.train.called_once_with(steps=training_steps, **kwargs)
+    assert gen_2.train.called_once_with(steps=training_steps, **kwargs)
+    # When `share_training_step`s is enabled we expect the training steps to be split
+    # close to equally amongst the generators
     mixture.share_training_steps = True
-    mixture.train(11)
-    assert gen_1.train.call_args.args[0] + gen_2.train.call_args.args[0] == 11
-    assert gen_1.train.call_args.args[0] >= 5
-    assert gen_2.train.call_args.args[0] >= 5
-    mixture.sample(11)
-    assert gen_1.sample.call_args.args[0] + gen_2.sample.call_args.args[0] == 11
-    assert gen_1.sample.call_args.args[0] >= 5
-    assert gen_2.sample.call_args.args[0] >= 5
+    mixture.train(training_steps)
+    assert (
+        gen_1.train.call_args.args[0] + gen_2.train.call_args.args[0] == training_steps
+    )
+    assert gen_1.train.call_args.args[0] >= training_steps // num_generators
+    assert gen_2.train.call_args.args[0] >= training_steps // num_generators
+    num_samples = 11
+    # Similarly, we expect the samples to always be split evenly amongst the
+    # generators.
+    mixture.sample(training_steps)
+    assert (
+        gen_1.sample.call_args.args[0] + gen_2.sample.call_args.args[0] == num_samples
+    )
+    assert gen_1.sample.call_args.args[0] >= num_samples // num_generators
+    assert gen_2.sample.call_args.args[0] >= num_samples // num_generators
 
 
 def test_mixture_of_trajectory_generators_raises_value_error_when_members_is_empty():
