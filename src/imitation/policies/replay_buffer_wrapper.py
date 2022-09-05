@@ -12,7 +12,7 @@ from imitation.util import util
 
 
 def _samples_to_reward_fn_input(
-        samples: ReplayBufferSamples,
+    samples: ReplayBufferSamples,
 ) -> Mapping[str, np.ndarray]:
     """Convert a sample from a replay buffer to a numpy array."""
     return dict(
@@ -27,14 +27,14 @@ class ReplayBufferRewardWrapper(BaseBuffer):
     """Relabel the rewards in transitions sampled from a ReplayBuffer."""
 
     def __init__(
-            self,
-            buffer_size: int,
-            observation_space: spaces.Space,
-            action_space: spaces.Space,
-            *,
-            replay_buffer_class: Type[ReplayBuffer],
-            reward_fn: RewardFn,
-            **kwargs,
+        self,
+        buffer_size: int,
+        observation_space: spaces.Space,
+        action_space: spaces.Space,
+        *,
+        replay_buffer_class: Type[ReplayBuffer],
+        reward_fn: RewardFn,
+        **kwargs,
     ):
         """Builds ReplayBufferRewardWrapper.
 

@@ -92,9 +92,9 @@ class NormalizeFeaturesExtractor(torch_layers.FlattenExtractor):
     """Feature extractor that flattens then normalizes input."""
 
     def __init__(
-            self,
-            observation_space: gym.Space,
-            normalize_class: Type[nn.Module] = networks.RunningNorm,
+        self,
+        observation_space: gym.Space,
+        normalize_class: Type[nn.Module] = networks.RunningNorm,
     ):
         """Builds NormalizeFeaturesExtractor.
 

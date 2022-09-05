@@ -21,10 +21,10 @@ policy_registry: registry.Registry[PolicyLoaderFn] = registry.Registry()
 
 
 def load_stable_baselines_model(
-        cls: Type[Algorithm],
-        path: str,
-        venv: vec_env.VecEnv,
-        **kwargs,
+    cls: Type[Algorithm],
+    path: str,
+    venv: vec_env.VecEnv,
+    **kwargs,
 ) -> Algorithm:
     """Helper method to load RL models from Stable Baselines.
 
@@ -64,7 +64,7 @@ def load_stable_baselines_model(
 
 
 def _load_stable_baselines(
-        cls: Type[base_class.BaseAlgorithm],
+    cls: Type[base_class.BaseAlgorithm],
 ) -> PolicyLoaderFn:
     """Higher-order function, returning a policy loading function.
 
@@ -108,9 +108,9 @@ _add_stable_baselines_policies(STABLE_BASELINES_CLASSES)
 
 
 def load_policy(
-        policy_type: str,
-        policy_path: str,
-        venv: vec_env.VecEnv,
+    policy_type: str,
+    policy_path: str,
+    venv: vec_env.VecEnv,
 ) -> policies.BasePolicy:
     """Load serialized policy.
 
@@ -127,8 +127,8 @@ def load_policy(
 
 
 def save_stable_model(
-        output_dir: str,
-        model: base_class.BaseAlgorithm,
+    output_dir: str,
+    model: base_class.BaseAlgorithm,
 ) -> None:
     """Serialize Stable Baselines model.
 
@@ -154,10 +154,10 @@ class SavePolicyCallback(callbacks.EventCallback):
     """
 
     def __init__(
-            self,
-            policy_dir: str,
-            *args,
-            **kwargs,
+        self,
+        policy_dir: str,
+        *args,
+        **kwargs,
     ):
         """Builds SavePolicyCallback.
 
