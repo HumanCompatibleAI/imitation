@@ -21,10 +21,10 @@ policy_registry: registry.Registry[PolicyLoaderFn] = registry.Registry()
 
 
 def load_stable_baselines_model(
-    cls: Type[Algorithm],
-    path: str,
-    venv: vec_env.VecEnv,
-    **kwargs,
+        cls: Type[Algorithm],
+        path: str,
+        venv: vec_env.VecEnv,
+        **kwargs,
 ) -> Algorithm:
     """Helper method to load RL models from Stable Baselines.
 
@@ -57,11 +57,14 @@ def load_stable_baselines_model(
         )
 
     model_path = policy_dir / "model.zip"
-    return cls.load(model_path, env=venv, **kwargs)
+    # TODO(juan) remove the type ignore when this SB3 PR gets merged
+    #  and released:
+    #  https://github.com/DLR-RM/stable-baselines3/pull/1043
+    return cls.load(model_path, env=venv, **kwargs)  # type: ignore[return-value]
 
 
 def _load_stable_baselines(
-    cls: Type[base_class.BaseAlgorithm],
+        cls: Type[base_class.BaseAlgorithm],
 ) -> PolicyLoaderFn:
     """Higher-order function, returning a policy loading function.
 
@@ -105,9 +108,9 @@ _add_stable_baselines_policies(STABLE_BASELINES_CLASSES)
 
 
 def load_policy(
-    policy_type: str,
-    policy_path: str,
-    venv: vec_env.VecEnv,
+        policy_type: str,
+        policy_path: str,
+        venv: vec_env.VecEnv,
 ) -> policies.BasePolicy:
     """Load serialized policy.
 
@@ -124,8 +127,8 @@ def load_policy(
 
 
 def save_stable_model(
-    output_dir: str,
-    model: base_class.BaseAlgorithm,
+        output_dir: str,
+        model: base_class.BaseAlgorithm,
 ) -> None:
     """Serialize Stable Baselines model.
 
@@ -151,10 +154,10 @@ class SavePolicyCallback(callbacks.EventCallback):
     """
 
     def __init__(
-        self,
-        policy_dir: str,
-        *args,
-        **kwargs,
+            self,
+            policy_dir: str,
+            *args,
+            **kwargs,
     ):
         """Builds SavePolicyCallback.
 
@@ -167,6 +170,7 @@ class SavePolicyCallback(callbacks.EventCallback):
         self.policy_dir = policy_dir
 
     def _on_step(self) -> bool:
+        assert self.model is not None
         output_dir = os.path.join(self.policy_dir, f"{self.num_timesteps:012d}")
         save_stable_model(output_dir, self.model)
         return True

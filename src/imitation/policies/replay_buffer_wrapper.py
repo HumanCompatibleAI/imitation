@@ -1,6 +1,5 @@
 """Wrapper for reward labeling for transitions sampled from a replay buffer."""
 
-
 from typing import Mapping, Type
 
 import numpy as np
@@ -13,7 +12,7 @@ from imitation.util import util
 
 
 def _samples_to_reward_fn_input(
-    samples: ReplayBufferSamples,
+        samples: ReplayBufferSamples,
 ) -> Mapping[str, np.ndarray]:
     """Convert a sample from a replay buffer to a numpy array."""
     return dict(
@@ -28,14 +27,14 @@ class ReplayBufferRewardWrapper(BaseBuffer):
     """Relabel the rewards in transitions sampled from a ReplayBuffer."""
 
     def __init__(
-        self,
-        buffer_size: int,
-        observation_space: spaces.Space,
-        action_space: spaces.Space,
-        *,
-        replay_buffer_class: Type[ReplayBuffer],
-        reward_fn: RewardFn,
-        **kwargs,
+            self,
+            buffer_size: int,
+            observation_space: spaces.Space,
+            action_space: spaces.Space,
+            *,
+            replay_buffer_class: Type[ReplayBuffer],
+            reward_fn: RewardFn,
+            **kwargs,
     ):
         """Builds ReplayBufferRewardWrapper.
 
@@ -63,16 +62,20 @@ class ReplayBufferRewardWrapper(BaseBuffer):
         _base_kwargs = {k: v for k, v in kwargs.items() if k in ["device", "n_envs"]}
         super().__init__(buffer_size, observation_space, action_space, **_base_kwargs)
 
-    @property
-    def pos(self) -> int:
+    # TODO(juan) remove the type ignore once the merged PR
+    #  https://github.com/python/mypy/pull/13475
+    #  is released into a mypy version on pypi.
+
+    @property  # type: ignore[override]
+    def pos(self) -> int:  # type: ignore[override]
         return self.replay_buffer.pos
 
     @pos.setter
     def pos(self, pos: int):
         self.replay_buffer.pos = pos
 
-    @property
-    def full(self) -> bool:
+    @property  # type: ignore[override]
+    def full(self) -> bool:  # type: ignore[override]
         return self.replay_buffer.full
 
     @full.setter

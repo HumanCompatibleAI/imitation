@@ -92,9 +92,9 @@ class NormalizeFeaturesExtractor(torch_layers.FlattenExtractor):
     """Feature extractor that flattens then normalizes input."""
 
     def __init__(
-        self,
-        observation_space: gym.Space,
-        normalize_class: Type[nn.Module] = networks.RunningNorm,
+            self,
+            observation_space: gym.Space,
+            normalize_class: Type[nn.Module] = networks.RunningNorm,
     ):
         """Builds NormalizeFeaturesExtractor.
 
@@ -105,7 +105,12 @@ class NormalizeFeaturesExtractor(torch_layers.FlattenExtractor):
                 e.g. `nn.BatchNorm*` or `nn.LayerNorm`.
         """
         super().__init__(observation_space)
-        self.normalize = normalize_class(self.features_dim)
+        # Below we have to ignore the type error when initializing the class because
+        # there is no simple way of specifying a protocol that admits one positional
+        # argument for the number of features while being compatible with nn.Module.
+        # (it would require defining a base class and forcing all the subclasses
+        # to inherit from it).
+        self.normalize = normalize_class(self.features_dim)  # type: ignore[call-arg]
 
     def forward(self, observations: th.Tensor) -> th.Tensor:
         flattened = super().forward(observations)
