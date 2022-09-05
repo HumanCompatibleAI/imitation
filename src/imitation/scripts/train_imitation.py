@@ -3,7 +3,7 @@
 import logging
 import os.path as osp
 import warnings
-from typing import Any, Mapping, Optional, Type, Sequence, List, cast
+from typing import Any, List, Mapping, Optional, Sequence, Type, cast
 
 from sacred.observers import FileStorageObserver
 from stable_baselines3.common import policies, utils, vec_env
@@ -20,10 +20,10 @@ logger = logging.getLogger(__name__)
 
 @train_imitation_ex.capture(prefix="train")
 def make_policy(
-        venv: vec_env.VecEnv,
-        policy_cls: Type[policies.BasePolicy],
-        policy_kwargs: Mapping[str, Any],
-        agent_path: Optional[str],
+    venv: vec_env.VecEnv,
+    policy_cls: Type[policies.BasePolicy],
+    policy_kwargs: Mapping[str, Any],
+    agent_path: Optional[str],
 ) -> policies.BasePolicy:
     """Makes policy.
 
@@ -65,9 +65,9 @@ def make_policy(
 
 @train_imitation_ex.capture(prefix="dagger")
 def load_expert_policy(
-        venv: vec_env.VecEnv,
-        expert_policy_type: Optional[str],
-        expert_policy_path: Optional[str],
+    venv: vec_env.VecEnv,
+    expert_policy_type: Optional[str],
+    expert_policy_path: Optional[str],
 ) -> policies.BasePolicy:
     """Loads expert policy from `expert_policy_path`.
 
@@ -102,12 +102,12 @@ def load_expert_policy(
 
 @train_imitation_ex.capture
 def train_imitation(
-        _run,
-        bc_kwargs: Mapping[str, Any],
-        bc_train_kwargs: Mapping[str, Any],
-        dagger: Mapping[str, Any],
-        use_dagger: bool,
-        agent_path: Optional[str],
+    _run,
+    bc_kwargs: Mapping[str, Any],
+    bc_train_kwargs: Mapping[str, Any],
+    dagger: Mapping[str, Any],
+    use_dagger: bool,
+    agent_path: Optional[str],
 ) -> Mapping[str, Mapping[str, float]]:
     """Runs DAgger (if `use_dagger`) or BC (otherwise) training.
 

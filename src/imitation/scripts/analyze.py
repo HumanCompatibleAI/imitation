@@ -9,7 +9,7 @@ import os.path as osp
 import tempfile
 import warnings
 from collections import OrderedDict
-from typing import Any, Callable, List, Mapping, Optional, Sequence, Set, Iterable
+from typing import Any, Callable, Iterable, List, Mapping, Optional, Sequence, Set
 
 import pandas as pd
 from sacred.observers import FileStorageObserver
@@ -21,10 +21,10 @@ from imitation.util.sacred import dict_get_nested as get
 
 @analysis_ex.capture
 def _gather_sacred_dicts(
-        source_dirs: Sequence[str],
-        run_name: Optional[str],
-        env_name: Optional[str],
-        skip_failed_runs: bool,
+    source_dirs: Sequence[str],
+    run_name: Optional[str],
+    env_name: Optional[str],
+    skip_failed_runs: bool,
 ) -> List[sacred_util.SacredDicts]:
     """Helper function for parsing and selecting Sacred experiment JSON files.
 
@@ -180,7 +180,7 @@ def _return_summaries(sd: sacred_util.SacredDicts) -> dict:
         # Assuming here that `result.imit_stats` and `result.expert_stats` are
         # formatted correctly.
         imit_expert_ratio = (
-                imit_stats["monitor_return_mean"] / expert_stats["return_mean"]
+            imit_stats["monitor_return_mean"] / expert_stats["return_mean"]
         )
     else:
         imit_expert_ratio = None
@@ -260,10 +260,10 @@ def _get_table_entry_fns_subset(table_verbosity: int) -> sd_to_table_entry_type:
 
 @analysis_ex.command
 def analyze_imitation(
-        csv_output_path: Optional[str],
-        tex_output_path: Optional[str],
-        print_table: bool,
-        table_verbosity: int,
+    csv_output_path: Optional[str],
+    tex_output_path: Optional[str],
+    print_table: bool,
+    table_verbosity: int,
 ) -> pd.DataFrame:
     """Parse Sacred logs and generate a DataFrame for imitation learning results.
 

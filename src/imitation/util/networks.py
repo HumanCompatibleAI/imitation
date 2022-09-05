@@ -3,7 +3,7 @@ import abc
 import collections
 import contextlib
 import functools
-from typing import Iterable, Optional, Type
+from typing import Iterable, Optional, OrderedDict, Type
 
 import torch as th
 from torch import nn
@@ -205,7 +205,7 @@ def build_mlp(
     dropout_prob: float = 0.0,
     squeeze_output: bool = False,
     flatten_input: bool = False,
-    normalize_input_layer: Optional[Type[nn.Module]] = None,
+    normalize_input_layer: Optional[Type[BaseNorm]] = None,
 ) -> nn.Module:
     """Constructs a Torch MLP.
 
@@ -234,7 +234,7 @@ def build_mlp(
     Raises:
         ValueError: if squeeze_output was supplied with out_size!=1.
     """
-    layers = collections.OrderedDict()
+    layers: OrderedDict[str, nn.Module] = collections.OrderedDict()
 
     if name is None:
         prefix = ""

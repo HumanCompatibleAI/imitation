@@ -4,7 +4,9 @@ import collections
 from typing import Deque, Optional
 
 import numpy as np
-from stable_baselines3.common import callbacks, vec_env, logger as sb_logger
+from stable_baselines3.common import callbacks
+from stable_baselines3.common import logger as sb_logger
+from stable_baselines3.common import vec_env
 
 from imitation.rewards import reward_function
 
@@ -48,10 +50,10 @@ class RewardVecEnvWrapper(vec_env.VecEnvWrapper):
     """
 
     def __init__(
-            self,
-            venv: vec_env.VecEnv,
-            reward_fn: reward_function.RewardFn,
-            ep_history: int = 100,
+        self,
+        venv: vec_env.VecEnv,
+        reward_fn: reward_function.RewardFn,
+        ep_history: int = 100,
     ):
         """Builds RewardVecEnvWrapper.
 

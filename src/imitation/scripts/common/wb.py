@@ -26,12 +26,12 @@ def wandb_config():
 
 @wandb_ingredient.capture
 def wandb_init(
-        _run,
-        wandb_name_prefix: str,
-        wandb_tag: Optional[str],
-        wandb_kwargs: Mapping[str, Any],
-        wandb_additional_info: Mapping[str, Any],
-        log_dir: str,
+    _run,
+    wandb_name_prefix: str,
+    wandb_tag: Optional[str],
+    wandb_kwargs: Mapping[str, Any],
+    wandb_additional_info: Mapping[str, Any],
+    log_dir: str,
 ) -> None:
     """Putting everything together to get the W&B kwargs for wandb.init().
 

@@ -67,10 +67,10 @@ class LinearBetaSchedule(BetaSchedule):
 
 
 def reconstruct_trainer(
-        scratch_dir: types.AnyPath,
-        venv: vec_env.VecEnv,
-        custom_logger: Optional[logger.HierarchicalLogger] = None,
-        device: Union[th.device, str] = "auto",
+    scratch_dir: types.AnyPath,
+    venv: vec_env.VecEnv,
+    custom_logger: Optional[logger.HierarchicalLogger] = None,
+    device: Union[th.device, str] = "auto",
 ) -> "DAggerTrainer":
     """Reconstruct trainer from the latest snapshot in some working directory.
 
@@ -97,9 +97,9 @@ def reconstruct_trainer(
 
 
 def _save_dagger_demo(
-        trajectory: types.Trajectory,
-        save_dir: types.AnyPath,
-        prefix: str = "",
+    trajectory: types.Trajectory,
+    save_dir: types.AnyPath,
+    prefix: str = "",
 ) -> None:
     # TODO(shwang): This is possibly redundant with types.save(). Note
     #   however that NPZ save here is likely more space efficient than
@@ -147,11 +147,11 @@ class InteractiveTrajectoryCollector(vec_env.VecEnvWrapper):
     """
 
     def __init__(
-            self,
-            venv: vec_env.VecEnv,
-            get_robot_acts: Callable[[np.ndarray], np.ndarray],
-            beta: float,
-            save_dir: types.AnyPath,
+        self,
+        venv: vec_env.VecEnv,
+        get_robot_acts: Callable[[np.ndarray], np.ndarray],
+        beta: float,
+        save_dir: types.AnyPath,
     ):
         """Builds InteractiveTrajectoryCollector.
 
@@ -302,13 +302,13 @@ class DAggerTrainer(base.BaseImitationAlgorithm):
     """The default number of BC training epochs in `extend_and_update`."""
 
     def __init__(
-            self,
-            *,
-            venv: vec_env.VecEnv,
-            scratch_dir: types.AnyPath,
-            beta_schedule: Optional[Callable[[int], float]] = None,
-            bc_trainer: bc.BC,
-            custom_logger: Optional[logger.HierarchicalLogger] = None,
+        self,
+        *,
+        venv: vec_env.VecEnv,
+        scratch_dir: types.AnyPath,
+        beta_schedule: Optional[Callable[[int], float]] = None,
+        bc_trainer: bc.BC,
+        custom_logger: Optional[logger.HierarchicalLogger] = None,
     ):
         """Builds DAggerTrainer.
 
@@ -522,13 +522,13 @@ class SimpleDAggerTrainer(DAggerTrainer):
     """Simpler subclass of DAggerTrainer for training with synthetic feedback."""
 
     def __init__(
-            self,
-            *,
-            venv: vec_env.VecEnv,
-            scratch_dir: types.AnyPath,
-            expert_policy: policies.BasePolicy,
-            expert_trajs: Optional[Sequence[types.Trajectory]] = None,
-            **dagger_trainer_kwargs,
+        self,
+        *,
+        venv: vec_env.VecEnv,
+        scratch_dir: types.AnyPath,
+        expert_policy: policies.BasePolicy,
+        expert_trajs: Optional[Sequence[types.Trajectory]] = None,
+        **dagger_trainer_kwargs,
     ):
         """Builds SimpleDAggerTrainer.
 
@@ -573,12 +573,12 @@ class SimpleDAggerTrainer(DAggerTrainer):
                 )
 
     def train(
-            self,
-            total_timesteps: int,
-            *,
-            rollout_round_min_episodes: int = 3,
-            rollout_round_min_timesteps: int = 500,
-            bc_train_kwargs: Optional[dict] = None,
+        self,
+        total_timesteps: int,
+        *,
+        rollout_round_min_episodes: int = 3,
+        rollout_round_min_timesteps: int = 500,
+        bc_train_kwargs: Optional[dict] = None,
     ) -> None:
         """Train the DAgger agent.
 

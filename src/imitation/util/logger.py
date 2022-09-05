@@ -4,7 +4,7 @@ import contextlib
 import datetime
 import os
 import tempfile
-from typing import Any, Dict, Generator, Optional, Sequence, Tuple, Union
+from typing import Any, Dict, Generator, List, Optional, Sequence, Tuple, Union
 
 import stable_baselines3.common.logger as sb_logger
 
@@ -26,7 +26,7 @@ def _build_output_formats(
         A list of output formats, one corresponding to each `format_strs`.
     """
     os.makedirs(folder, exist_ok=True)
-    output_formats = []
+    output_formats: List[sb_logger.KVWriter] = []
     for f in format_strs:
         if f == "wandb":
             output_formats.append(WandbOutputFormat())
@@ -42,6 +42,12 @@ class HierarchicalLogger(sb_logger.Logger):
     values are loggged to a sub-logger, with only mean values recorded in the
     top-level (root) logger.
     """
+
+    default_logger: sb_logger.Logger
+    current_logger: Optional[sb_logger.Logger]
+    _cached_loggers: Dict[str, sb_logger.Logger]
+    _subdir: Optional[str]
+    format_strs: Sequence[str]
 
     def __init__(
         self,
@@ -108,10 +114,11 @@ class HierarchicalLogger(sb_logger.Logger):
         if self.current_logger is not None:
             raise RuntimeError("Nested `accumulate_means` context")
 
+        subdir = types.path_to_str(subdir)
         if subdir in self._cached_loggers:
             logger = self._cached_loggers[subdir]
         else:
-            subdir = types.path_to_str(subdir)
+            assert self.default_logger.dir is not None
             folder = os.path.join(self.default_logger.dir, "raw", subdir)
             os.makedirs(folder, exist_ok=True)
             output_formats = _build_output_formats(folder, self.format_strs)
