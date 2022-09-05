@@ -264,7 +264,7 @@ class ReplayBuffer:
         if venv is not None:
             if not all([x is None for x in params]):
                 raise ValueError(
-                    "Cannot specify both shape/dtype and also environment."
+                    "Cannot specify both shape/dtype and also environment.",
                 )
             obs_shape = tuple(venv.observation_space.shape)
             act_shape = tuple(venv.action_space.shape)

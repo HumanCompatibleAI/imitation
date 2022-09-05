@@ -686,7 +686,7 @@ class RewardEnsemble(RewardNetWithVariance):
         next_state: np.ndarray,
         done: np.ndarray,
         **kwargs,
-    ) -> Tuple[np.ndarray, np.ndarray]:
+    ) -> np.ndarray:
         """Get the results of predict processed on all of the members.
 
         Args:
@@ -705,7 +705,7 @@ class RewardEnsemble(RewardNetWithVariance):
             member.predict_processed(state, action, next_state, done, **kwargs)
             for member in self.members
         ]
-        rewards = np.stack(rewards, axis=-1)
+        rewards: np.ndarray = np.stack(rewards, axis=-1)
         assert rewards.shape == (batch_size, self.num_members)
         return rewards
 

@@ -214,7 +214,8 @@ def test_buffer_init_errors():
 
 def test_replay_buffer_init_errors():
     with pytest.raises(
-        ValueError, match=r"Cannot specify both shape/dtype and also environment"
+        ValueError,
+        match=r"Cannot specify both shape/dtype and also environment",
     ):
         ReplayBuffer(15, venv="MockEnv", obs_shape=(10, 10))
     with pytest.raises(ValueError, match=r"Shape or dtype missing.*"):
