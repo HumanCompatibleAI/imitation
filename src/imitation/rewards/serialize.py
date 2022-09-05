@@ -1,19 +1,12 @@
 """Load serialized reward functions of different types."""
 
-from typing import Any, Callable, Iterable, Sequence, Type, Union
+from typing import Any, Callable, Iterable, Sequence, Type, Union, cast
 
 import numpy as np
 import torch as th
 from stable_baselines3.common.vec_env import VecEnv
 
-from imitation.rewards import reward_function
-from imitation.rewards.reward_nets import (
-    AddSTDRewardWrapper,
-    NormalizedRewardNet,
-    RewardNet,
-    RewardNetWrapper,
-    ShapedRewardNet,
-)
+from imitation.rewards import reward_function, reward_nets
 from imitation.util import registry, util
 
 # TODO(sam): I suspect this whole file can be replaced with th.load calls. Try
@@ -55,9 +48,9 @@ class ValidateRewardFn(reward_function.RewardFn):
 
 
 def _strip_wrappers(
-    reward_net: RewardNet,
-    wrapper_types: Iterable[Type[RewardNetWrapper]],
-) -> RewardNet:
+    reward_net: reward_nets.RewardNet,
+    wrapper_types: Iterable[Type[reward_nets.RewardNetWrapper]],
+) -> reward_nets.RewardNet:
     """Attempts to remove provided wrappers.
 
     Strips wrappers of type `wrapper_type` from `reward_net` in order until either the
@@ -74,7 +67,7 @@ def _strip_wrappers(
     for wrapper_type in wrapper_types:
         assert issubclass(
             wrapper_type,
-            RewardNetWrapper,
+            reward_nets.RewardNetWrapper,
         ), f"trying to remove non-wrapper type {wrapper_type}"
 
         if isinstance(reward_net, wrapper_type):
@@ -86,7 +79,7 @@ def _strip_wrappers(
 
 
 def _make_functional(
-    net: RewardNet,
+    net: reward_nets.RewardNet,
     attr: str = "predict",
     default_kwargs=None,
     **kwargs,
@@ -97,7 +90,7 @@ def _make_functional(
     return lambda *args: getattr(net, attr)(*args, **default_kwargs)
 
 
-WrapperPrefix = Sequence[Type[RewardNet]]
+WrapperPrefix = Sequence[Type[reward_nets.RewardNet]]
 
 
 def _prefix_matches(wrappers: Sequence[Type[Any]], prefix: Sequence[Type[Any]]):
@@ -120,9 +113,9 @@ def _prefix_matches(wrappers: Sequence[Type[Any]], prefix: Sequence[Type[Any]]):
 
 
 def _validate_wrapper_structure(
-    reward_net: Union[RewardNet, RewardNetWrapper],
+    reward_net: Union[reward_nets.RewardNet, reward_nets.RewardNetWrapper],
     prefixes: Iterable[WrapperPrefix],
-) -> RewardNet:
+) -> reward_nets.RewardNet:
     """Reward net if it has a valid structure.
 
     A wrapper prefix specifies, from outermost to innermost, which wrappers must
@@ -155,7 +148,7 @@ def _validate_wrapper_structure(
     wrappers = []
     while hasattr(wrapper, "base"):
         wrappers.append(wrapper.__class__)
-        wrapper = wrapper.base
+        wrapper = cast(reward_nets.RewardNet, wrapper.base)
     wrappers.append(wrapper.__class__)  # append the final reward net
 
     if any(_prefix_matches(wrappers, prefix) for prefix in prefixes):
@@ -198,16 +191,19 @@ reward_registry.register(
     key="RewardNet_shaped",
     value=lambda path, _, **kwargs: ValidateRewardFn(
         _make_functional(
-            _validate_wrapper_structure(th.load(str(path)), {(ShapedRewardNet,)}),
+            _validate_wrapper_structure(
+                th.load(str(path)), {(reward_nets.ShapedRewardNet,)}
+            ),
         ),
     ),
 )
 
-
 reward_registry.register(
     key="RewardNet_unshaped",
     value=lambda path, _, **kwargs: ValidateRewardFn(
-        _make_functional(_strip_wrappers(th.load(str(path)), (ShapedRewardNet,))),
+        _make_functional(
+            _strip_wrappers(th.load(str(path)), (reward_nets.ShapedRewardNet,))
+        ),
     ),
 )
 
@@ -215,7 +211,9 @@ reward_registry.register(
     key="RewardNet_normalized",
     value=lambda path, _, **kwargs: ValidateRewardFn(
         _make_functional(
-            _validate_wrapper_structure(th.load(str(path)), {(NormalizedRewardNet,)}),
+            _validate_wrapper_structure(
+                th.load(str(path)), {(reward_nets.NormalizedRewardNet,)}
+            ),
             attr="predict_processed",
             default_kwargs={"update_stats": False},
             **kwargs,
@@ -226,7 +224,9 @@ reward_registry.register(
 reward_registry.register(
     key="RewardNet_unnormalized",
     value=lambda path, _, **kwargs: ValidateRewardFn(
-        _make_functional(_strip_wrappers(th.load(str(path)), (NormalizedRewardNet,))),
+        _make_functional(
+            _strip_wrappers(th.load(str(path)), (reward_nets.NormalizedRewardNet,))
+        ),
     ),
 )
 
@@ -238,11 +238,14 @@ reward_registry.register(
                 _validate_wrapper_structure(
                     th.load(str(path)),
                     {
-                        (AddSTDRewardWrapper,),
-                        (NormalizedRewardNet, AddSTDRewardWrapper),
+                        (reward_nets.AddSTDRewardWrapper,),
+                        (
+                            reward_nets.NormalizedRewardNet,
+                            reward_nets.AddSTDRewardWrapper,
+                        ),
                     },
                 ),
-                (NormalizedRewardNet,),
+                (reward_nets.NormalizedRewardNet,),
             ),
             attr="predict_processed",
             default_kwargs={},
@@ -250,7 +253,6 @@ reward_registry.register(
         ),
     ),
 )
-
 
 reward_registry.register(key="zero", value=load_zero)
 
