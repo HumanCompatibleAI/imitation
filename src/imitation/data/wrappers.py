@@ -4,6 +4,7 @@ from typing import List, Optional, Sequence, Tuple
 
 import gym
 import numpy as np
+import numpy.typing as npt
 from stable_baselines3.common.vec_env import VecEnv, VecEnvWrapper
 
 from imitation.data import rollout, types
@@ -16,8 +17,12 @@ class BufferingWrapper(VecEnvWrapper):
     """
 
     error_on_premature_event: bool
-    _trajectories: List[types.Trajectory]
+    _trajectories: List[types.TrajectoryWithRew]
+    _ep_lens: List[int]
+    _init_reset: bool
     _traj_accum: Optional[rollout.TrajectoryAccumulator]
+    _timesteps: Optional[npt.NDArray[np.int_]]
+    n_transitions: Optional[int]
 
     def __init__(self, venv: VecEnv, error_on_premature_reset: bool = True):
         """Builds BufferingWrapper.
@@ -39,9 +44,9 @@ class BufferingWrapper(VecEnvWrapper):
 
     def reset(self, **kwargs):
         if (
-            self._init_reset
-            and self.error_on_premature_reset
-            and self.n_transitions > 0
+                self._init_reset
+                and self.error_on_premature_reset
+                and self.n_transitions > 0
         ):  # noqa: E127
             raise RuntimeError("BufferingWrapper reset() before samples were accessed")
         self._init_reset = True
@@ -85,6 +90,7 @@ class BufferingWrapper(VecEnvWrapper):
 
     def _finish_partial_trajectories(self) -> Sequence[types.TrajectoryWithRew]:
         """Finishes and returns partial trajectories in `self._traj_accum`."""
+        assert self._traj_accum is not None
         trajs = []
         for i in range(self.num_envs):
             # Check that we have any transitions at all.
@@ -103,7 +109,7 @@ class BufferingWrapper(VecEnvWrapper):
         return trajs
 
     def pop_finished_trajectories(
-        self,
+            self,
     ) -> Tuple[Sequence[types.TrajectoryWithRew], Sequence[int]]:
         """Pops recorded complete trajectories `trajs` and episode lengths `ep_lens`.
 
@@ -122,7 +128,7 @@ class BufferingWrapper(VecEnvWrapper):
         return trajectories, ep_lens
 
     def pop_trajectories(
-        self,
+            self,
     ) -> Tuple[Sequence[types.TrajectoryWithRew], Sequence[int]]:
         """Pops recorded trajectories `trajs` and episode lengths `ep_lens`.
 
