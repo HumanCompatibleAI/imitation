@@ -386,7 +386,7 @@ class BasicRewardNet(RewardNet):
             combined_size += 1
 
         # kwargs except for in_size, out_size, squeeze_output keys,
-        # so they are not overriden.
+        # so they are not overridden.
         kwargs = {
             k: v
             for k, v in kwargs.items()

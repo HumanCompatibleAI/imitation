@@ -192,7 +192,8 @@ reward_registry.register(
     value=lambda path, _, **kwargs: ValidateRewardFn(
         _make_functional(
             _validate_wrapper_structure(
-                th.load(str(path)), {(reward_nets.ShapedRewardNet,)}
+                th.load(str(path)),
+                {(reward_nets.ShapedRewardNet,)},
             ),
         ),
     ),
@@ -202,7 +203,7 @@ reward_registry.register(
     key="RewardNet_unshaped",
     value=lambda path, _, **kwargs: ValidateRewardFn(
         _make_functional(
-            _strip_wrappers(th.load(str(path)), (reward_nets.ShapedRewardNet,))
+            _strip_wrappers(th.load(str(path)), (reward_nets.ShapedRewardNet,)),
         ),
     ),
 )
@@ -212,7 +213,8 @@ reward_registry.register(
     value=lambda path, _, **kwargs: ValidateRewardFn(
         _make_functional(
             _validate_wrapper_structure(
-                th.load(str(path)), {(reward_nets.NormalizedRewardNet,)}
+                th.load(str(path)),
+                {(reward_nets.NormalizedRewardNet,)},
             ),
             attr="predict_processed",
             default_kwargs={"update_stats": False},
@@ -225,7 +227,7 @@ reward_registry.register(
     key="RewardNet_unnormalized",
     value=lambda path, _, **kwargs: ValidateRewardFn(
         _make_functional(
-            _strip_wrappers(th.load(str(path)), (reward_nets.NormalizedRewardNet,))
+            _strip_wrappers(th.load(str(path)), (reward_nets.NormalizedRewardNet,)),
         ),
     ),
 )

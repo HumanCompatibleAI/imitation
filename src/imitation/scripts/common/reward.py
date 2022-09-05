@@ -150,13 +150,16 @@ def make_reward_net(
         ]
 
         reward_net: reward_nets.RewardNet = net_cls(
-            venv.observation_space, venv.action_space, members
+            venv.observation_space,
+            venv.action_space,
+            members,
         )
 
         if add_std_alpha is not None:
             if not isinstance(reward_net, reward_nets.RewardNetWithVariance):
                 raise ValueError(
-                    "add_std_alpha is only supported for reward nets with variance tracking."
+                    "add_std_alpha is only supported for "
+                    "reward nets with variance tracking.",
                 )
             reward_net = reward_nets.AddSTDRewardWrapper(
                 reward_net,
