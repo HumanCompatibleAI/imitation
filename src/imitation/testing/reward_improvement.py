@@ -66,4 +66,5 @@ def mean_reward_improved_by(
     >>> mean_reward_improved_by([5, 8, 7], [8, 9, 10], 5)
     False
     """
-    return np.mean(new_rewards) - np.mean(old_rewards) >= min_improvement
+    improvement = np.mean(new_rewards) - np.mean(old_rewards)  # type: ignore
+    return improvement >= min_improvement

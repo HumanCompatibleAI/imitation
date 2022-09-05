@@ -44,9 +44,9 @@ class BufferingWrapper(VecEnvWrapper):
 
     def reset(self, **kwargs):
         if (
-                self._init_reset
-                and self.error_on_premature_reset
-                and self.n_transitions > 0
+            self._init_reset
+            and self.error_on_premature_reset
+            and self.n_transitions > 0
         ):  # noqa: E127
             raise RuntimeError("BufferingWrapper reset() before samples were accessed")
         self._init_reset = True
@@ -109,7 +109,7 @@ class BufferingWrapper(VecEnvWrapper):
         return trajs
 
     def pop_finished_trajectories(
-            self,
+        self,
     ) -> Tuple[Sequence[types.TrajectoryWithRew], Sequence[int]]:
         """Pops recorded complete trajectories `trajs` and episode lengths `ep_lens`.
 
@@ -128,7 +128,7 @@ class BufferingWrapper(VecEnvWrapper):
         return trajectories, ep_lens
 
     def pop_trajectories(
-            self,
+        self,
     ) -> Tuple[Sequence[types.TrajectoryWithRew], Sequence[int]]:
         """Pops recorded trajectories `trajs` and episode lengths `ep_lens`.
 
