@@ -68,7 +68,7 @@ class BaseNorm(nn.Module, abc.ABC):
         self.register_buffer("running_mean", th.empty(num_features))
         self.register_buffer("running_var", th.empty(num_features))
         self.register_buffer("count", th.empty((), dtype=th.int))
-        self.reset_running_stats()
+        BaseNorm.reset_running_stats(self)
 
     def reset_running_stats(self) -> None:
         """Resets running stats to defaults, yielding the identity transformation."""
@@ -132,6 +132,9 @@ class RunningNorm(BaseNorm):
 class EMANorm(BaseNorm):
     """Similar to RunningNorm but uses an exponential weighting."""
 
+    inv_learning_rate: th.Tensor
+    num_batches: th.IntTensor
+
     def __init__(
         self,
         num_features: int,
@@ -154,12 +157,21 @@ class EMANorm(BaseNorm):
             raise ValueError("decay must be between 0 and 1")
 
         self.decay = decay
+        self.register_buffer("inv_learning_rate", th.empty(()))
+        self.register_buffer("num_batches", th.empty((), dtype=th.int))
+        EMANorm.reset_running_stats(self)
+
+    def reset_running_stats(self):
+        """Reset the running stats of the normalization layer."""
+        super().reset_running_stats()
+        self.inv_learning_rate.zero_()
+        self.num_batches.zero_()
 
     def update_stats(self, batch: th.Tensor) -> None:
         """Update `self.running_mean` and `self.running_var` in batch mode.
 
         Reference Algorithm 3 from:
-        https://github.com/HumanCompatibleAI/imitation/files/9364938/Incremental_batch_EMA_and_EMV.pdf
+        https://github.com/HumanCompatibleAI/imitation/files/9456540/Incremental_batch_EMA_and_EMV.pdf
 
         Args:
             batch: A batch of data to use to update the running mean and variance.
@@ -168,24 +180,20 @@ class EMANorm(BaseNorm):
         if len(batch.shape) == 1:
             batch = batch.reshape(b_size, 1)
 
-        alpha = 1 - self.decay
-        if self.count == 0:
-            self.running_mean = batch.mean(0)
-            if b_size > 1:
-                self.running_var = batch.var(0, unbiased=False)
-            else:
-                self.running_var = th.zeros_like(self.running_mean)
-        else:
-            # update running mean
-            delta_mean = batch.mean(0) - self.running_mean
-            self.running_mean += alpha * delta_mean
+        self.inv_learning_rate += self.decay**self.num_batches
+        learning_rate = 1 / self.inv_learning_rate
 
-            # update running variance
-            batch_var = batch.var(0, unbiased=False)
-            delta_var = batch_var + self.decay * delta_mean**2 - self.running_var
-            self.running_var += alpha * delta_var
+        # update running mean
+        delta_mean = batch.mean(0) - self.running_mean
+        self.running_mean += learning_rate * delta_mean
+
+        # update running variance
+        batch_var = batch.var(0, unbiased=False)
+        delta_var = batch_var + (1 - learning_rate) * delta_mean**2 - self.running_var
+        self.running_var += learning_rate * delta_var
 
         self.count += b_size
+        self.num_batches += 1
 
 
 def build_mlp(
