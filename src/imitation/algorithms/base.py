@@ -25,10 +25,10 @@ class BaseImitationAlgorithm(abc.ABC):
     """Horizon of trajectories seen so far (None if no trajectories seen)."""
 
     def __init__(
-            self,
-            *,
-            custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
-            allow_variable_horizon: bool = False,
+        self,
+        *,
+        custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
+        allow_variable_horizon: bool = False,
     ):
         """Creates an imitation learning algorithm.
 
@@ -124,11 +124,11 @@ class DemonstrationAlgorithm(BaseImitationAlgorithm, Generic[TransitionKind]):
     """An algorithm that learns from demonstration: BC, IRL, etc."""
 
     def __init__(
-            self,
-            *,
-            demonstrations: Optional[AnyTransitions],
-            custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
-            allow_variable_horizon: bool = False,
+        self,
+        *,
+        demonstrations: Optional[AnyTransitions],
+        custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
+        allow_variable_horizon: bool = False,
     ):
         """Creates an algorithm that learns from demonstrations.
 
@@ -177,9 +177,9 @@ class _WrappedDataLoader:
     """Wraps a data loader (batch iterable) and checks for specified batch size."""
 
     def __init__(
-            self,
-            data_loader: Iterable[TransitionMapping],
-            expected_batch_size: int,
+        self,
+        data_loader: Iterable[TransitionMapping],
+        expected_batch_size: int,
     ):
         """Builds _WrapedDataLoader.
 
@@ -215,9 +215,9 @@ class _WrappedDataLoader:
 
 
 def make_data_loader(
-        transitions: AnyTransitions,
-        batch_size: int,
-        data_loader_kwargs: Optional[Mapping[str, Any]] = None,
+    transitions: AnyTransitions,
+    batch_size: int,
+    data_loader_kwargs: Optional[Mapping[str, Any]] = None,
 ) -> Iterable[TransitionMapping]:
     """Converts demonstration data to Torch data loader.
 
