@@ -361,9 +361,11 @@ def generate_trajectories(
     #
     # To start with, all environments are active.
     active = np.ones(venv.num_envs, dtype=bool)
+    assert isinstance(obs, np.ndarray)
     while np.any(active):
         acts = get_actions(obs)
         obs, rews, dones, infos = venv.step(acts)
+        assert isinstance(obs, np.ndarray)
 
         # If an environment is inactive, i.e. the episode completed for that
         # environment after `sample_until(trajectories)` was true, then we do
@@ -392,7 +394,7 @@ def generate_trajectories(
     # `trajectories` sooner. Shuffle to avoid bias in order. This is important
     # when callees end up truncating the number of trajectories or transitions.
     # It is also cheap, since we're just shuffling pointers.
-    rng.shuffle(trajectories)
+    rng.shuffle(trajectories)  # type: ignore[arg-type]
 
     # Sanity checks.
     for trajectory in trajectories:
@@ -477,7 +479,7 @@ def flatten_trajectories(
         The trajectories flattened into a single batch of Transitions.
     """
     keys = ["obs", "next_obs", "acts", "dones", "infos"]
-    parts = {key: [] for key in keys}
+    parts: Mapping[str, List[np.ndarray]] = {key: [] for key in keys}
     for traj in trajectories:
         parts["acts"].append(traj.acts)
 
