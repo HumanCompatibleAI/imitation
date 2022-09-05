@@ -271,7 +271,7 @@ class ReplayBuffer:
             obs_dtype = venv.observation_space.dtype
             act_dtype = venv.action_space.dtype
         else:
-            if None in params:
+            if any([x is None for x in params]):
                 raise ValueError("Shape or dtype missing and no environment specified.")
 
         assert obs_shape is not None
