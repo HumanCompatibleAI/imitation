@@ -214,7 +214,7 @@ def test_preference_model_raises_type_error(venv):
 
     with pytest.raises(
         TypeError,
-        match=r"Preference Model of a RewardEnsemble expected by EnsembleTrainer.",
+        match=r"PreferenceModel of a RewardEnsemble expected by EnsembleTrainer.",
     ):
         preference_comparisons.EnsembleTrainer(
             preference_model,

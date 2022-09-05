@@ -675,7 +675,7 @@ class ActiveSelectionFragmenter(Fragmenter):
         super().__init__(custom_logger=custom_logger)
         if not preference_model.is_ensemble:
             raise ValueError(
-                "Preference model not wrapped over an ensemble of networks.",
+                "PreferenceModel not wrapped over an ensemble of networks.",
             )
         self.preference_model = preference_model
         self.base_fragmenter = base_fragmenter
@@ -1200,7 +1200,7 @@ class EnsembleTrainer(BasicRewardTrainer):
         """
         if not preference_model.is_ensemble:
             raise TypeError(
-                "Preference Model of a RewardEnsemble expected by EnsembleTrainer.",
+                "PreferenceModel of a RewardEnsemble expected by EnsembleTrainer.",
             )
 
         super().__init__(
@@ -1232,7 +1232,7 @@ class EnsembleTrainer(BasicRewardTrainer):
     def logger(self, custom_logger):
         self._logger = custom_logger
         for member_trainer in self.member_trainers:
-            member_trainer._logger = custom_logger
+            member_trainer.logger = custom_logger
 
     def _train(self, dataset: PreferenceDataset, epoch_multiplier: float = 1.0) -> None:
         """Trains for `epoch_multiplier * self.epochs` epochs over `dataset`."""
