@@ -130,8 +130,8 @@ def preference_comparison_config(request):
             "common": dict(num_vec=8),
         },
         with_checkpoints={
-            "checkpoint_interval": 1,
             # Test that we can save checkpoints
+            "checkpoint_interval": 1,
         },
     )[request.param]
 
