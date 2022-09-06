@@ -81,7 +81,7 @@ def seals_half_cheetah():
         env_name="seals/HalfCheetah-v0",
         num_vec=1,
         train=dict(
-            policy="MlpPolicy",
+            policy_cls="MlpPolicy",
             policy_kwargs=dict(
                 activation_fn=nn.Tanh, net_arch=[dict(pi=[64, 64], vf=[64, 64])]
             ),
@@ -154,7 +154,7 @@ def seals_ant():
         env_name="seals/Ant-v0",
         num_vec=1,
         train=dict(
-            policy="MlpPolicy",
+            policy_cls="MlpPolicy",
             policy_kwargs=dict(
                 activation_fn=nn.Tanh, net_arch=[dict(pi=[64, 64], vf=[64, 64])]
             ),
