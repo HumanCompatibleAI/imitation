@@ -185,13 +185,13 @@ class TabularPolicy(policies.BasePolicy):
     ):
         raise NotImplementedError("Should never be called.")
 
-    def predict(  # type: ignore[override]
+    def predict(
         self,
-        observation: np.ndarray,
-        state: Optional[np.ndarray] = None,
-        mask: Optional[np.ndarray] = None,
+        observation: Union[np.ndarray, Mapping[str, np.ndarray]],
+        state: Optional[Tuple[np.ndarray, ...]] = None,
+        episode_start: Optional[np.ndarray] = None,
         deterministic: bool = False,
-    ) -> Tuple[np.ndarray, np.ndarray]:
+    ) -> Tuple[np.ndarray, Optional[Tuple[np.ndarray, ...]]]:
         """Predict action to take in given state.
 
         Arguments follow SB3 naming convention as this is an SB3 policy.
@@ -205,24 +205,22 @@ class TabularPolicy(policies.BasePolicy):
         Args:
             observation: States in the underlying MDP.
             state: Hidden states of the policy -- used to represent timesteps by us.
-            mask: Has episode completed?
+            episode_start: Has episode completed?
             deterministic: If true, pick action with highest probability; otherwise,
                 sample.
 
         Returns:
             Tuple of the actions and new hidden states.
         """
-        timesteps = state  # rename to avoid confusion
-        del state
-
-        if timesteps is None:
+        if state is None:
             timesteps = np.zeros(len(observation), dtype=int)
         else:
-            timesteps = np.array(timesteps)
+            assert len(state) == 1
+            timesteps = state[0]
         assert len(timesteps) == len(observation), "timestep and obs batch size differ"
 
-        if mask is not None:
-            timesteps[mask] = 0
+        if episode_start is not None:
+            timesteps[episode_start] = 0
 
         actions: List[int] = []
         for obs, t in zip(observation, timesteps):
@@ -234,7 +232,8 @@ class TabularPolicy(policies.BasePolicy):
                 actions.append(self.rng.choice(len(dist), p=dist))
 
         timesteps += 1  # increment timestep
-        return np.array(actions), timesteps
+        state = (timesteps,)
+        return np.array(actions), state
 
 
 MCEDemonstrations = Union[np.ndarray, base.AnyTransitions]
