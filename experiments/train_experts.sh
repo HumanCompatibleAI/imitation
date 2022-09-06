@@ -15,7 +15,7 @@ RESULTS_FILE="results.txt"
 extra_configs=()
 print_config=0
 
-if ! TEMP=$($GNU_GETOPT -o frw -l fast,regenerate,wandb -- "$@"); then
+if ! TEMP=$($GNU_GETOPT -o frw -l fast,regenerate,wandb,print -- "$@"); then
   exit 1
 fi
 eval set -- "$TEMP"
@@ -68,7 +68,7 @@ done
 
 if [[ $print_config ]]; then
   parallel -j 25% --header : --progress --results ${OUTPUT_DIR}/parallel/ \
-    python -m imitation.scripts.train_rl print_config \
+    python3 -m imitation.scripts.train_rl print_config \
     --capture=sys \
     with \
     '{env}' "${extra_configs[@]}" \
@@ -84,7 +84,7 @@ fi
 echo "Writing logs in ${OUTPUT_DIR}"
 # Train experts.
 parallel -j 25% --header : --progress --results ${OUTPUT_DIR}/parallel/ \
-  python -m imitation.scripts.train_rl \
+  python3 -m imitation.scripts.train_rl \
   --capture=sys \
   with \
   '{env}' "${extra_configs[@]}" \

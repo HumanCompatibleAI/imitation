@@ -76,9 +76,9 @@ def half_cheetah():
 @train_rl_ex.named_config
 def seals_half_cheetah():
     common = dict(env_name="seals/HalfCheetah-v0")
-    total_timesteps = int(5e6)  # does OK after 1e6, but continues improving
+    # total_timesteps = int(5e6)  # does OK after 1e6, but continues improving
+    total_timesteps = 1e6
     rl = dict(
-        total_timesteps=1e6,
         batch_size=64,
         rl_kwargs=dict(
             normalize=True,
@@ -141,8 +141,8 @@ def reacher():
 @train_rl_ex.named_config
 def seals_ant():
     common = dict(env_name="seals/Ant-v0")
+    total_timesteps = (1e6,)
     rl = dict(
-        total_timesteps=1e6,
         batch_size=16,
         rl_kwargs=dict(
             normalize=True,
