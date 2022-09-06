@@ -368,17 +368,14 @@ class PreferenceModel(nn.Module):
         self.noise_prob = noise_prob
         self.discount_factor = discount_factor
         self.threshold = threshold
-        self.is_ensemble: bool
         base_model = get_base_model(model)
-        self.is_ensemble = isinstance(base_model, reward_nets.RewardEnsemble)
+        self.ensemble_model = None
         # if the base model is an ensemble model, then keep the base model as
         # model to get rewards from all networks
-        if self.is_ensemble:
-            # For some reason, mypy is not able to infer the type of base_model
-            # when self.is_ensemble is True.
-            self.model = cast(reward_nets.RewardEnsemble, base_model)
+        if isinstance(base_model, reward_nets.RewardEnsemble):
+            self.ensemble_model = base_model
             self.member_pref_models = []
-            for member in self.model.members:
+            for member in self.ensemble_model.members:
                 member_pref_model = PreferenceModel(
                     cast(reward_nets.RewardNet, member),  # nn.ModuleList is not generic
                     self.noise_prob,
@@ -419,7 +416,7 @@ class PreferenceModel(nn.Module):
             network and (num_fragment_pairs, num_networks) for an ensemble of networks.
 
         """
-        if self.is_ensemble:
+        if self.ensemble_model is not None:
             if ensemble_member_index is None:
                 raise ValueError(
                     "`ensemble_member_index` required for ensemble models.",
@@ -468,17 +465,20 @@ class PreferenceModel(nn.Module):
         action = transitions.acts
         next_state = transitions.next_obs
         done = transitions.dones
-        if self.is_ensemble:
-            # TODO(juan) for some super strange reason mypy thinks
-            #  self.model.predict_processed_all is a tensor?
-            rews = self.model.predict_processed_all(state, action, next_state, done)
-            assert rews.shape == (len(state), self.model.num_members)
-            return util.safe_to_tensor(rews).to(self.model.device)
+        if self.ensemble_model is not None:
+            rews_np = self.ensemble_model.predict_processed_all(
+                state,
+                action,
+                next_state,
+                done,
+            )
+            assert rews_np.shape == (len(state), self.ensemble_model.num_members)
+            rews = util.safe_to_tensor(rews_np).to(self.ensemble_model.device)
         else:
             preprocessed = self.model.preprocess(state, action, next_state, done)
             rews = self.model(*preprocessed)
             assert rews.shape == (len(state),)
-            return rews
+        return rews
 
     def probability(
         self,
@@ -500,7 +500,7 @@ class PreferenceModel(nn.Module):
             () for non-ensemble model which is a torch scalar.
         """
         # check rews has correct shape based on the model
-        expected_dims = 2 if self.is_ensemble else 1
+        expected_dims = 2 if self.ensemble_model is not None else 1
         assert rews1.ndim == rews2.ndim == expected_dims
         # First, we compute the difference of the returns of
         # the two fragments. We have a special case for a discount
@@ -510,7 +510,7 @@ class PreferenceModel(nn.Module):
             returns_diff = (rews2 - rews1).sum(axis=0)  # type: ignore[call-overload]
         else:
             discounts = self.discount_factor ** th.arange(len(rews1))
-            if self.is_ensemble:
+            if self.ensemble_model is not None:
                 discounts = discounts.reshape(-1, 1)
             returns_diff = (discounts * (rews2 - rews1)).sum(axis=0)
         # Clip to avoid overflows (which in particular may occur
@@ -521,7 +521,7 @@ class PreferenceModel(nn.Module):
         # probability that fragment 1 is preferred.
         model_probability = 1 / (1 + returns_diff.exp())
         probability = self.noise_prob * 0.5 + (1 - self.noise_prob) * model_probability
-        if self.is_ensemble:
+        if self.ensemble_model is not None:
             assert probability.shape == (self.model.num_members,)
         else:
             assert probability.shape == ()
@@ -915,7 +915,7 @@ class PreferenceDataset(th.utils.data.Dataset):
         self.fragments1: List[TrajectoryWithRew] = []
         self.fragments2: List[TrajectoryWithRew] = []
         self.max_size = max_size
-        self.preferences = np.array([])
+        self.preferences: np.ndarray = np.array([])
 
     def push(
         self,
@@ -1271,7 +1271,7 @@ class EnsembleTrainer(BasicRewardTrainer):
 
 def get_base_model(
     reward_model: reward_nets.RewardNet,
-) -> Union[reward_nets.RewardNet, reward_nets.RewardEnsemble]:
+) -> reward_nets.RewardNet:
     base_model = reward_model
     while hasattr(base_model, "base"):
         base_model = cast(reward_nets.RewardNet, base_model.base)
@@ -1290,10 +1290,8 @@ def _make_reward_trainer(
         reward_trainer_kwargs = {}
 
     base_model = get_base_model(reward_model)
-    is_ensemble = isinstance(base_model, reward_nets.RewardEnsemble)
 
-    if is_ensemble:
-        base_model = cast(reward_nets.RewardEnsemble, base_model)
+    if isinstance(base_model, reward_nets.RewardEnsemble):
         # reward_model may include an AddSTDRewardWrapper for RL training; but we
         # must train directly on the base model for reward model training.
         is_base = reward_model is base_model
