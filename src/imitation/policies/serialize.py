@@ -4,7 +4,6 @@
 # torch.load() and torch.save() calls
 
 import logging
-import os
 import pathlib
 from typing import Callable, Type, TypeVar
 
@@ -138,7 +137,6 @@ def save_stable_model(
     # Save each model in new directory in case we want to add metadata or other
     # information in future. (E.g. we used to save `VecNormalize` statistics here,
     # although that is no longer necessary.)
-    output_dir = output_dir.resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
     model.save(str(output_dir / "model.zip"))
     logging.info(f"Saved policy to {output_dir}")

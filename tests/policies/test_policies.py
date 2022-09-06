@@ -10,7 +10,7 @@ import torch as th
 from stable_baselines3.common import preprocessing
 from torch import nn
 
-from imitation.data import rollout
+from imitation.data import rollout, types
 from imitation.policies import base, serialize
 from imitation.util import registry, util
 
@@ -84,7 +84,7 @@ def _test_serialize_identity(env_name, model_cfg, tmpdir):
         rng=np.random.RandomState(0),
     )
 
-    serialize.save_stable_model(tmpdir, model)
+    serialize.save_stable_model(types.parse_path(tmpdir), model)
     loaded = serialize.load_policy(model_name, tmpdir, venv)
     venv.env_method("seed", 0)
     venv.reset()

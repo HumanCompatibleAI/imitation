@@ -5,6 +5,7 @@ import os
 import sacred
 import torch as th
 
+from imitation.data import types
 from imitation.scripts.common import common
 from imitation.scripts.common import demonstrations as demos_common
 from imitation.scripts.common import train
@@ -54,7 +55,7 @@ def defaults(
             expert_policy_type="ppo",
             expert_policy_path=os.path.join(
                 demos_common.guess_expert_dir(
-                    demonstrations["data_dir"],
+                    types.parse_path(demonstrations["data_dir"]),
                     common["env_name"],
                 ),
                 "policies",
