@@ -8,6 +8,7 @@ from typing import Any, Generator, Mapping, Sequence, Tuple, Union
 import sacred
 from stable_baselines3.common import vec_env
 
+from imitation.data import types
 from imitation.scripts.common import wb
 from imitation.util import logger as imit_logger
 from imitation.util import sacred as sacred_util
@@ -50,11 +51,11 @@ def hook(config, command_name: str, logger):
     if config["common"]["log_dir"] is None:
         env_sanitized = config["common"]["env_name"].replace("/", "_")
         assert isinstance(env_sanitized, str)
-        config_log_root = config["common"]["log_root"]
+        config_log_root = types.parse_optional_path(config["common"]["log_root"])
         log_root = (
-            pathlib.Path(config_log_root)
+            config_log_root
             if config_log_root
-            else pathlib.Path.cwd() / "output"
+            else types.parse_path("output")  # relative to cwd
         )
         log_dir = log_root / command_name / env_sanitized / util.make_unique_timestamp()
         updates["log_dir"] = str(log_dir)
@@ -92,17 +93,17 @@ def make_log_dir(
     Returns:
         The `log_dir`. This avoids the caller needing to capture this argument.
     """
-    _log_dir = pathlib.Path(log_dir)
-    _log_dir.mkdir(parents=True, exist_ok=True)
+    parsed_log_dir = types.parse_path(log_dir)
+    parsed_log_dir.mkdir(parents=True, exist_ok=True)
     # convert strings of digits to numbers; but leave levels like 'INFO' unmodified
     try:
         log_level = int(log_level)
     except ValueError:
         pass
     logging.basicConfig(level=log_level)
-    logger.info("Logging to %s", _log_dir)
-    sacred_util.build_sacred_symlink(_log_dir, _run)
-    return _log_dir
+    logger.info("Logging to %s", parsed_log_dir)
+    sacred_util.build_sacred_symlink(parsed_log_dir, _run)
+    return parsed_log_dir
 
 
 @common_ingredient.capture

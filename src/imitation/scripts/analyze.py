@@ -16,6 +16,7 @@ import pandas as pd
 from sacred.observers import FileStorageObserver
 
 import imitation.util.sacred as sacred_util
+from imitation.data import types
 from imitation.scripts.config.analyze import analysis_ex
 from imitation.util.sacred import dict_get_nested as get
 
@@ -108,7 +109,7 @@ def gather_tb_directories() -> dict:
         # Expecting a path like "~/ray_results/{run_name}/sacred/1".
         # Want to search for all Tensorboard dirs inside
         # "~/ray_results/{run_name}".
-        sacred_dir = pathlib.Path(sd.sacred_dir)
+        sacred_dir = types.parse_path(sd.sacred_dir)
         run_dir = sacred_dir.parent.parent
         run_name = run_dir.name
 

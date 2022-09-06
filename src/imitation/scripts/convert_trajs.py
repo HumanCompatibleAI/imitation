@@ -9,13 +9,12 @@ format. The path is the same as the original but with an ".npz" extension
 (i.e. "A.pkl" -> "A.npz", "A.npz" -> "A.npz", "A" -> "A.npz", "A.foo" -> "A.foo.npz").
 """
 
-import pathlib
 import warnings
 
 from imitation.data import types
 
 
-def update_traj_file_in_place(path: str) -> None:
+def update_traj_file_in_place(path_str: str, /) -> None:
     """Modifies trajectories pickle file in-place to update data to new format.
 
     The new data is saved as `Sequence[imitation.types.TrajectoryWithRew]`.
@@ -24,6 +23,7 @@ def update_traj_file_in_place(path: str) -> None:
         path: Path to a pickle file containing `Sequence[imitation.types.Trajectory]`
             or `Sequence[imitation.old_types.TrajectoryWithRew]`.
     """
+    path = types.parse_path(path_str)
     with warnings.catch_warnings():
         # Filter out DeprecationWarning because we expect to load old trajectories here.
         warnings.filterwarnings(
@@ -33,7 +33,6 @@ def update_traj_file_in_place(path: str) -> None:
         )
         trajs = types.load(path)
 
-    path = pathlib.Path(path)
     ext = path.suffix
     new_ext = ".npz" if ext in (".pkl", ".npz") else ext + ".npz"
     types.save(path.with_suffix(new_ext), trajs)

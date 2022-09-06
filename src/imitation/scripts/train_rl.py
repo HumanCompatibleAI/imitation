@@ -86,8 +86,7 @@ def train_rl(
     Returns:
         The return value of `rollout_stats()` using the final policy.
     """
-    custom_logger, _log_dir = common.setup_logging()
-    log_dir = pathlib.Path(_log_dir)
+    custom_logger, log_dir = common.setup_logging()
     rollout_dir = log_dir / "rollouts"
     policy_dir = log_dir / "policies"
     rollout_dir.mkdir(parents=True, exist_ok=True)

@@ -4,7 +4,7 @@ import json
 import os
 import pathlib
 import warnings
-from typing import Any, Callable, NamedTuple, Sequence, Union
+from typing import Any, Callable, NamedTuple, Sequence, Optional
 
 import sacred
 import sacred.observers
@@ -80,16 +80,14 @@ def filter_subdirs(
 
 def build_sacred_symlink(log_dir: types.AnyPath, run: sacred.run.Run) -> None:
     """Constructs a symlink "{log_dir}/sacred" => "${SACRED_PATH}"."""
-    if isinstance(log_dir, bytes):
-        log_dir = log_dir.decode("utf-8")
-    log_dir = pathlib.Path(log_dir)
+    log_dir = types.parse_path(log_dir)
 
     sacred_dir = get_sacred_dir_from_run(run)
     if sacred_dir is None:
         warnings.warn(RuntimeWarning("Couldn't find sacred directory."))
         return
-    symlink_path = pathlib.Path(log_dir, "sacred")
-    target_path = pathlib.Path(os.path.relpath(sacred_dir, start=log_dir))
+    symlink_path = log_dir / "sacred"
+    target_path = sacred_dir.relative_to(log_dir)
 
     # Path.symlink_to errors if the symlink already exists. In our case, we actually
     # want to override the symlink to point to the most recent Sacred dir. The
@@ -116,11 +114,11 @@ def build_sacred_symlink(log_dir: types.AnyPath, run: sacred.run.Run) -> None:
             raise e
 
 
-def get_sacred_dir_from_run(run: sacred.run.Run) -> Union[pathlib.Path, None]:
+def get_sacred_dir_from_run(run: sacred.run.Run) -> Optional[pathlib.Path]:
     """Returns path to the sacred directory, or None if not found."""
     for obs in run.observers:
         if isinstance(obs, sacred.observers.FileStorageObserver):
-            return pathlib.Path(obs.dir)
+            return types.parse_path(obs.dir)
     return None
 
 

@@ -213,13 +213,14 @@ class TestData:
         if use_chdir:
             # Test no relative path without directory edge-case.
             chdir_context = pushd(tmpdir)
-            save_dir = ""
+            save_dir_str = ""
         else:
             chdir_context = contextlib.nullcontext()
-            save_dir = tmpdir
+            save_dir_str = tmpdir
+        save_dir = types.parse_path(save_dir_str)
 
         trajs = [trajectory_rew if use_rewards else trajectory]
-        save_path = pathlib.Path(save_dir, "trajs")
+        save_path = save_dir / "trajs"
 
         with chdir_context:
             if use_pickle:

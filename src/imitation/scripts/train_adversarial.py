@@ -112,8 +112,7 @@ def train_adversarial(
         # So, support showing merged config from `train_adversarial {airl,gail}`.
         sacred.commands.print_config(_run)
 
-    custom_logger, _log_dir = common_config.setup_logging()
-    log_dir = pathlib.Path(_log_dir)
+    custom_logger, log_dir = common_config.setup_logging()
     expert_trajs = demonstrations.load_expert_trajs()
 
     with common_config.make_venv() as venv:

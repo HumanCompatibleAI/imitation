@@ -53,7 +53,7 @@ ALL_SCRIPTS_MODS = [
     train_rl,
 ]
 
-TEST_DATA_PATH = pathlib.Path("tests/testdata")
+TEST_DATA_PATH = types.parse_path("tests/testdata")
 CARTPOLE_TEST_DATA_PATH = TEST_DATA_PATH / "expert_models/cartpole_0/"
 CARTPOLE_TEST_ROLLOUT_PATH = CARTPOLE_TEST_DATA_PATH / "rollouts/final.pkl"
 CARTPOLE_TEST_POLICY_PATH = CARTPOLE_TEST_DATA_PATH / "policies/final"
@@ -297,7 +297,7 @@ def test_train_dagger_warmstart(tmpdir):
     )
     assert run.status == "COMPLETED"
 
-    log_dir = pathlib.Path(run.config["common"]["log_dir"])
+    log_dir = types.parse_path(run.config["common"]["log_dir"])
     policy_path = log_dir / "scratch" / "policy-latest.pt"
     run_warmstart = train_imitation.train_imitation_ex.run(
         command_name="dagger",
@@ -356,7 +356,7 @@ def test_train_bc_warmstart(tmpdir):
     )
     assert run.status == "COMPLETED"
 
-    policy_path = pathlib.Path(run.config["common"]["log_dir"]) / "final.th"
+    policy_path = types.parse_path(run.config["common"]["log_dir"]) / "final.th"
     run_warmstart = train_imitation.train_imitation_ex.run(
         command_name="bc",
         named_configs=["cartpole"] + ALGO_FAST_CONFIGS["imitation"],
@@ -508,7 +508,7 @@ def test_train_adversarial_warmstart(tmpdir, command):
         config_updates=config_updates,
     )
 
-    log_dir = pathlib.Path(run.config["common"]["log_dir"])
+    log_dir = types.parse_path(run.config["common"]["log_dir"])
     policy_path = log_dir / "checkpoints" / "final" / "gen_policy"
 
     run_warmstart = train_adversarial.train_adversarial_ex.run(
@@ -593,7 +593,7 @@ def test_transfer_learning(tmpdir: str) -> None:
     Args:
         tmpdir: Temporary directory to save results to.
     """
-    tmpdir_path = pathlib.Path(tmpdir)
+    tmpdir_path = types.parse_path(tmpdir)
     log_dir_train = tmpdir_path / "train"
     run = train_adversarial.train_adversarial_ex.run(
         command_name="airl",
@@ -642,7 +642,7 @@ def test_preference_comparisons_transfer_learning(
         tmpdir: Temporary directory to save results to.
         named_configs_dict: Named configs for preference_comparisons and rl.
     """
-    tmpdir_path = pathlib.Path(tmpdir)
+    tmpdir_path = types.parse_path(tmpdir)
 
     log_dir_train = tmpdir_path / "train"
     run = train_preference_comparisons.train_preference_comparisons_ex.run(
@@ -778,7 +778,7 @@ def test_parallel_arg_errors(tmpdir):
 
 
 def _generate_test_rollouts(tmpdir: str, env_named_config: str) -> pathlib.Path:
-    tmpdir_path = pathlib.Path(tmpdir)
+    tmpdir_path = types.parse_path(tmpdir)
     train_rl.train_rl_ex.run(
         named_configs=[env_named_config] + ALGO_FAST_CONFIGS["rl"],
         config_updates=dict(
@@ -850,7 +850,7 @@ def _run_train_bc_for_test_analyze_imit(run_name, sacred_logs_dir, log_dir):
     ),
 )
 def test_analyze_imitation(tmpdir: str, run_names: List[str], run_sacred_fn):
-    sacred_logs_dir = tmpdir_path = pathlib.Path(tmpdir)
+    sacred_logs_dir = tmpdir_path = types.parse_path(tmpdir)
 
     # Generate sacred logs (other logs are put in separate tmpdir for deletion).
     for i, run_name in enumerate(run_names):

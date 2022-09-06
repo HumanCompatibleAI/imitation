@@ -89,7 +89,8 @@ def reconstruct_trainer(
         A deserialized `DAggerTrainer`.
     """
     custom_logger = custom_logger or logger.configure()
-    checkpoint_path = pathlib.Path(scratch_dir, "checkpoint-latest.pt")
+    scratch_dir = types.parse_path(scratch_dir)
+    checkpoint_path = scratch_dir / "checkpoint-latest.pt"
     trainer = th.load(checkpoint_path, map_location=utils.get_device(device))
     trainer.venv = venv
     trainer._logger = custom_logger
@@ -105,14 +106,14 @@ def _save_dagger_demo(
     #   however that NPZ save here is likely more space efficient than
     #   pickle from types.save(), and types.save only accepts
     #   TrajectoryWithRew right now (subclass of Trajectory).
-    save_dir = pathlib.Path(save_dir)
+    save_dir = types.parse_path(save_dir)
     assert isinstance(trajectory, types.Trajectory)
     actual_prefix = f"{prefix}-" if prefix else ""
     timestamp = util.make_unique_timestamp()
     filename = f"{actual_prefix}dagger-demo-{timestamp}.npz"
 
     save_dir.mkdir(parents=True, exist_ok=True)
-    npz_path = pathlib.Path(save_dir, filename)
+    npz_path = save_dir / filename
     np.savez_compressed(npz_path, **dataclasses.asdict(trajectory))
     logging.info(f"Saved demo at '{npz_path}'")
 
@@ -327,7 +328,7 @@ class DAggerTrainer(base.BaseImitationAlgorithm):
         if beta_schedule is None:
             beta_schedule = LinearBetaSchedule(15)
         self.beta_schedule = beta_schedule
-        self.scratch_dir = pathlib.Path(scratch_dir)
+        self.scratch_dir = types.parse_path(scratch_dir)
         self.venv = venv
         self.round_num = 0
         self._last_loaded_round = -1

@@ -1,7 +1,6 @@
 """Tests `imitation.policies.*`."""
 
 import functools
-import pathlib
 from typing import cast
 
 import gym
@@ -45,7 +44,7 @@ def test_actions_valid(env_name, policy_type):
 def test_save_stable_model_errors_and_warnings(tmpdir, policy_env_name_pair):
     """Check errors and warnings in `save_stable_model()`."""
     policy, env_name = policy_env_name_pair
-    tmpdir = pathlib.Path(tmpdir)
+    tmpdir = types.parse_path(tmpdir)
     venv = util.make_vec_env(env_name)
 
     # Trigger FileNotFoundError for no model.{zip,pkl}

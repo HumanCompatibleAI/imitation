@@ -147,8 +147,7 @@ def train_preference_comparisons(
     Raises:
         ValueError: Inconsistency between config and deserialized policy normalization.
     """
-    custom_logger, _log_dir = common.setup_logging()
-    log_dir = pathlib.Path(_log_dir)
+    custom_logger, log_dir = common.setup_logging()
 
     with common.make_venv() as venv:
         reward_net = reward.make_reward_net(venv)

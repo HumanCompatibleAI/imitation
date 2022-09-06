@@ -9,6 +9,7 @@ from typing import Callable, Type, TypeVar
 
 from stable_baselines3.common import base_class, callbacks, policies, vec_env
 
+from imitation.data import types
 from imitation.policies import base
 from imitation.util import registry
 
@@ -41,7 +42,7 @@ def load_stable_baselines_model(
         The deserialized RL algorithm.
     """
     logging.info(f"Loading Stable Baselines policy for '{cls}' from '{path}'")
-    policy_dir = pathlib.Path(path)
+    policy_dir = types.parse_path(path)
     if not policy_dir.is_dir():
         raise FileNotFoundError(
             f"path={path} needs to be a directory containing model.zip.",

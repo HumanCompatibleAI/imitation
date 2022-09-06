@@ -6,8 +6,6 @@ from typing import Optional
 import gym
 from gym.wrappers.monitoring import video_recorder
 
-from imitation.data import types
-
 
 class VideoWrapper(gym.Wrapper):
     """Creates videos from wrapped environment by calling render after each timestep."""
@@ -15,12 +13,12 @@ class VideoWrapper(gym.Wrapper):
     episode_id: int
     video_recorder: Optional[video_recorder.VideoRecorder]
     single_video: bool
-    directory: str
+    directory: pathlib.Path
 
     def __init__(
         self,
         env: gym.Env,
-        directory: types.AnyPath,
+        directory: pathlib.Path,
         single_video: bool = True,
     ):
         """Builds a VideoWrapper.
@@ -39,7 +37,7 @@ class VideoWrapper(gym.Wrapper):
         self.video_recorder = None
         self.single_video = single_video
 
-        self.directory = pathlib.Path(types.path_to_str(directory)).resolve()
+        self.directory = directory
         self.directory.mkdir(parents=True, exist_ok=True)
 
     def _reset_video_recorder(self) -> None:

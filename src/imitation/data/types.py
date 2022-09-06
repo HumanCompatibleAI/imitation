@@ -88,18 +88,38 @@ def parse_path(
             raise ValueError(f"Path {str(parsed_path)} is not absolute")
 
 
-def path_to_str(path: AnyPath) -> str:
-    if isinstance(path, bytes):
-        return path.decode()
+def parse_optional_path(
+    path: Optional[AnyPath],
+    allow_relative: bool = True,
+    base_directory: Optional[pathlib.Path] = None,
+) -> Optional[pathlib.Path]:
+    """Parse an optional path to a `pathlib.Path` object.
+
+    All resulting paths are resolved, absolute paths. If `allow_relative` is True,
+    then relative paths are allowed as input, and are resolved relative to the
+    current working directory, or relative to `base_directory` if it is
+    specified.
+
+    Args:
+        path: The path to parse. Can be a string, bytes, or `os.PathLike`.
+        allow_relative: If True, then relative paths are allowed as input, and
+            are resolved relative to the current working directory. If false,
+            an error is raised if the path is not absolute.
+        base_directory: If specified, then relative paths are resolved relative
+            to this directory, instead of the current working directory.
+
+    Returns:
+        A `pathlib.Path` object, or None if `path` is None.
+
+    Raises:
+        ValueError: If `allow_relative` is False and the path is not absolute.
+        ValueError: If `base_directory` is specified and `allow_relative` is
+            False.
+    """
+    if path is None:
+        return None
     else:
-        return str(path)
-
-
-def path_to_pathlib(path: AnyPath) -> pathlib.Path:
-    """Converts a path to a pathlib.Path."""
-    if isinstance(path, pathlib.Path):
-        return path
-    return pathlib.Path(path_to_str(path))
+        return parse_path(path, allow_relative, base_directory)
 
 
 @dataclasses.dataclass(frozen=True)
