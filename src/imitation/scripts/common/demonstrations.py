@@ -70,7 +70,7 @@ def generate_expert_trajs(
     return rollout.rollout(
         expert.get_expert_policy(rollout_env),
         rollout_env,
-        rollout.make_sample_until(min_timesteps=2000, min_episodes=n_expert_demos),
+        rollout.make_sample_until(min_episodes=n_expert_demos),
     )
 
 
