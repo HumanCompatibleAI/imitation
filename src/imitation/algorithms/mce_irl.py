@@ -13,8 +13,8 @@ import gym
 import numpy as np
 import scipy.special
 import torch as th
-from stable_baselines3.common import policies
 from seals import base_envs as envs
+from stable_baselines3.common import policies
 
 from imitation.algorithms import base
 from imitation.data import rollout, types
@@ -360,7 +360,7 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
         else:
             warnings.warn(
                 "Training MCEIRL with transitions that lack next observation."
-                "This gwill result in systematically wrong occupancy measure estimates.",
+                "This will result in systematically wrong occupancy measure estimates.",
             )
 
         # Normalize occupancy measure estimates

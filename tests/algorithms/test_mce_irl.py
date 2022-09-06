@@ -6,9 +6,9 @@ import gym
 import numpy as np
 import pytest
 import torch as th
-from stable_baselines3.common import vec_env
 from seals import base_envs as envs
 from seals.diagnostics import imitation_examples as imit_envs
+from stable_baselines3.common import vec_env
 
 from imitation.algorithms import base
 from imitation.algorithms.mce_irl import (
@@ -118,7 +118,9 @@ def test_policy_om_random_mdp(discount: float):
 
 class ReasonablePOMDP(envs.TabularModelPOMDP):
     """A tabular MDP with sensible parameters."""
+
     def __init__(self):
+        """Initialize a ReasonablePOMDP."""
         observation_matrix = np.array(
             [
                 [3, -5, -1, -1, -4, 5, 3, 0],

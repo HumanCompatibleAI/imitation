@@ -1,10 +1,8 @@
-"""Tests for `imitation.envs.*`."""
+"""Tests for seal environments."""
 
 import gym
-import numpy as np
 import pytest
 from seals.testing import envs as seals_test
-from stable_baselines3.common import envs, vec_env
 
 from imitation.testing import envs as imitation_test
 
