@@ -34,9 +34,9 @@ def dataclass_quick_asdict(obj) -> Dict[str, Any]:
 
 
 def parse_path(
-        path: AnyPath,
-        allow_relative: bool = True,
-        base_directory: Optional[pathlib.Path] = None
+    path: AnyPath,
+    allow_relative: bool = True,
+    base_directory: Optional[pathlib.Path] = None,
 ) -> pathlib.Path:
     """
     Parse a path, and check that it is absolute. If `allow_relative` is True,

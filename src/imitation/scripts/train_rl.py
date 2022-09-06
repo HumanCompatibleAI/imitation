@@ -9,8 +9,6 @@ This can be used:
 """
 
 import logging
-import os
-import os.path as osp
 import pathlib
 import warnings
 from typing import Any, Mapping, Optional

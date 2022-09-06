@@ -2,8 +2,6 @@
 
 import functools
 import logging
-import os
-import os.path as osp
 import pathlib
 from typing import Any, Mapping, Optional, Type
 

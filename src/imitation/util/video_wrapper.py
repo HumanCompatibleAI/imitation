@@ -1,6 +1,5 @@
 """Wrapper to record rendered video frames from an environment."""
 
-import os
 import pathlib
 from typing import Optional
 

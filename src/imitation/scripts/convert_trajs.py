@@ -9,7 +9,6 @@ format. The path is the same as the original but with an ".npz" extension
 (i.e. "A.pkl" -> "A.npz", "A.npz" -> "A.npz", "A" -> "A.npz", "A.foo" -> "A.foo.npz").
 """
 
-import os
 import pathlib
 import warnings
 

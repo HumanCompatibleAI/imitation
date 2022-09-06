@@ -2,7 +2,6 @@
 
 import logging
 import pathlib
-import re
 import time
 from typing import Any, Mapping, Optional
 
