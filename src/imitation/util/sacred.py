@@ -4,7 +4,7 @@ import json
 import os
 import pathlib
 import warnings
-from typing import Any, Callable, NamedTuple, Sequence, Optional
+from typing import Any, Callable, NamedTuple, Optional, Sequence
 
 import sacred
 import sacred.observers

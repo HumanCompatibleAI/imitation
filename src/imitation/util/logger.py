@@ -78,7 +78,7 @@ class HierarchicalLogger(sb_logger.Logger):
         self.name_to_excluded = self._logger.name_to_excluded
 
     @contextlib.contextmanager
-    def accumulate_means(self, subdir: types.AnyPath) -> Generator[None, None, None]:
+    def accumulate_means(self, subdir: str) -> Generator[None, None, None]:
         """Temporarily modifies this HierarchicalLogger to accumulate means values.
 
         During this context, `self.record(key, value)` writes the "raw" values in
@@ -114,21 +114,20 @@ class HierarchicalLogger(sb_logger.Logger):
         if self.current_logger is not None:
             raise RuntimeError("Nested `accumulate_means` context")
 
-        subdir_str = types.path_to_str(subdir)
-        if subdir_str in self._cached_loggers:
-            logger = self._cached_loggers[subdir_str]
+        if subdir in self._cached_loggers:
+            logger = self._cached_loggers[subdir]
         else:
             default_logger_dir = self.default_logger.dir
             assert default_logger_dir is not None
-            folder = types.parse_path(default_logger_dir) / "raw" / subdir_str
+            folder = types.parse_path(default_logger_dir) / "raw" / subdir
             folder.mkdir(exist_ok=True, parents=True)
             output_formats = _build_output_formats(folder, self.format_strs)
             logger = sb_logger.Logger(str(folder), list(output_formats))
-            self._cached_loggers[subdir_str] = logger
+            self._cached_loggers[subdir] = logger
 
         try:
             self.current_logger = logger
-            self._subdir = subdir_str
+            self._subdir = subdir
             self._update_name_to_maps()
             yield
         finally:
