@@ -20,7 +20,7 @@ import numpy as np
 import torch as th
 import torch.utils.tensorboard as thboard
 import tqdm
-from stable_baselines3.common import base_class, policies, vec_env
+from stable_baselines3.common import on_policy_algorithm, policies, vec_env
 from stable_baselines3.sac import policies as sac_policies
 from torch.nn import functional as F
 
@@ -116,13 +116,15 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
     _demo_data_loader: Optional[Iterable[base.TransitionMapping]]
     _endless_expert_iterator: Optional[Iterator[base.TransitionMapping]]
 
+    venv_wrapped: vec_env.VecEnvWrapper
+
     def __init__(
         self,
         *,
         demonstrations: base.AnyTransitions,
         demo_batch_size: int,
         venv: vec_env.VecEnv,
-        gen_algo: base_class.BaseAlgorithm,
+        gen_algo: on_policy_algorithm.OnPolicyAlgorithm,
         reward_net: reward_nets.RewardNet,
         n_disc_updates_per_round: int = 2,
         log_dir: str = "output/",
@@ -218,16 +220,15 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
             os.makedirs(summary_dir, exist_ok=True)
             self._summary_writer = thboard.SummaryWriter(summary_dir)
 
-        venv = self.venv_buffering = wrappers.BufferingWrapper(self.venv)
+        self.venv_buffering = wrappers.BufferingWrapper(self.venv)
 
         if debug_use_ground_truth:
             # Would use an identity reward fn here, but RewardFns can't see rewards.
-            self.venv_wrapped = venv
+            self.venv_wrapped = self.venv_buffering
             self.gen_callback = None
         else:
-            # TODO(juan) this is a bug; venv is going unused.
-            venv = self.venv_wrapped = reward_wrapper.RewardVecEnvWrapper(
-                venv,
+            self.venv_wrapped = reward_wrapper.RewardVecEnvWrapper(
+                self.venv_buffering,
                 reward_fn=self.reward_train.predict_processed,
             )
             self.gen_callback = self.venv_wrapped.make_log_callback()
@@ -256,8 +257,9 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
 
     @property
     def policy(self) -> policies.BasePolicy:
-        # TODO(juan) either change the return type to optional or add an assertion.
-        return self.gen_algo.policy
+        policy = self.gen_algo.policy
+        assert policy is not None
+        return policy
 
     @abc.abstractmethod
     def logits_expert_is_high(
