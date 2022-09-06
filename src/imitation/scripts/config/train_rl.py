@@ -80,15 +80,18 @@ def seals_half_cheetah():
     common = dict(
         env_name="seals/HalfCheetah-v0",
         num_vec=1,
-        train=dict(
-            policy_cls="MlpPolicy",
-            policy_kwargs=dict(
-                activation_fn=nn.Tanh, net_arch=[dict(pi=[64, 64], vf=[64, 64])]
-            ),
+    )
+
+    train = dict(
+        policy_cls="MlpPolicy",
+        policy_kwargs=dict(
+            activation_fn=nn.Tanh,
+            net_arch=[dict(pi=[64, 64], vf=[64, 64])],
         ),
     )
     # total_timesteps = int(5e6)  # does OK after 1e6, but continues improving
     total_timesteps = 1e6
+
     rl = dict(
         batch_size=512,
         rl_kwargs=dict(
@@ -153,15 +156,18 @@ def seals_ant():
     common = dict(
         env_name="seals/Ant-v0",
         num_vec=1,
-        train=dict(
-            policy_cls="MlpPolicy",
-            policy_kwargs=dict(
-                activation_fn=nn.Tanh, net_arch=[dict(pi=[64, 64], vf=[64, 64])]
-            ),
+    )
+
+    train = dict(
+        policy_cls="MlpPolicy",
+        policy_kwargs=dict(
+            activation_fn=nn.Tanh,
+            net_arch=[dict(pi=[64, 64], vf=[64, 64])],
         ),
     )
 
-    total_timesteps = (1e6,)
+    total_timesteps = 1e6
+
     rl = dict(
         batch_size=2048,
         rl_kwargs=dict(
