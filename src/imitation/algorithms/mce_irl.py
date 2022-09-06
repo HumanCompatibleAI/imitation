@@ -355,11 +355,7 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
         # then possibly shuffled. So add next observations for terminal states,
         # as they will not appear anywhere else; but ignore next observations
         # for all other states as they occur elsewhere in dataset.
-        if next_obses is not None:
-            # TODO(juan) this is wrong; dones is an optional
-            #  and zip() cannot handle this when it's None.
-            #  either require an np.ndarray or do something else
-            #  if the value is None.
+        if dones is not None and next_obses is not None:
             for done, obs in zip(dones, next_obses):
                 if isinstance(done, th.Tensor):
                     done = done.item()  # must be scalar
