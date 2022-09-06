@@ -416,9 +416,7 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
                 for k in ("obs", "dones", "next_obs"):
                     if k in batch:
                         collated_list[k].append(batch[k])
-            collated = {}
-            for k, v in collated_list.items():
-                collated[k] = np.concatenate(v)
+            collated = {k: np.concatenate(v) for k, v in collated_list.items()}
 
             assert "obs" in collated
             for k, v in collated.items():
