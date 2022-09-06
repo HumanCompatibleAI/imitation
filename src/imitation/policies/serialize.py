@@ -70,7 +70,8 @@ def load_stable_baselines_model(
 def _load_stable_baselines_from_file(
     cls: Type[base_class.BaseAlgorithm],
 ) -> PolicyLoaderFn:
-    """Higher-order function, returning a policy loading function.
+    """Higher-order function, returning a policy loading function that was loaded from
+    a path on disc.
 
     Args:
         cls: The RL algorithm, e.g. `stable_baselines3.PPO`.
@@ -91,7 +92,8 @@ def _load_stable_baselines_from_huggingface(
     algo_name: str,
     cls: Type[base_class.BaseAlgorithm],
 ) -> PolicyLoaderFn:
-    """Higher-order function, returning a policy loading function.
+    """Higher-order function, returning a policy loading function that was loaded from
+    huggingface.
 
     Args:
         algo_name: The name of the algorithm, e.g. `ppo`.
