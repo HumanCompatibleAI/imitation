@@ -97,7 +97,6 @@ def seals_half_cheetah():
         rl_kwargs=dict(
             normalize=True,
             n_envs=1,
-            policy="MlpPolicy",
             batch_size=64,
             clip_range=0.1,
             ent_coef=3.794797423594763e-06,
