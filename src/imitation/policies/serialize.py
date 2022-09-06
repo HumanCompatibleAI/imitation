@@ -160,7 +160,7 @@ def load_policy(
     - `zero` and `random` policy take no kwargs
     - `ppo` and `sac` policies take a `path` argument with a path to a zip file or to a
       folder containing a `model.zip` file.
-    - ppo-huggingface and sac-huggingface policies take an `env_name` and optional
+    - `ppo-huggingface` and `sac-huggingface` policies take an `env_name` and optional
       `organization` argument.
 
     Args:
