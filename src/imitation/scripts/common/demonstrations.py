@@ -41,7 +41,7 @@ def hook(config, command_name, logger):
         data_dir = types.parse_path(config["demonstrations"]["data_dir"])
         env_name = config["common"]["env_name"].replace("/", "_")
         updates["rollout_path"] = str(
-            guess_expert_dir(data_dir, env_name) / "rollouts" / "final.pkl"
+            guess_expert_dir(data_dir, env_name) / "rollouts" / "final.pkl",
         )
     return updates
 

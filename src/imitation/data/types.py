@@ -38,8 +38,9 @@ def parse_path(
     allow_relative: bool = True,
     base_directory: Optional[pathlib.Path] = None,
 ) -> pathlib.Path:
-    """
-    Parse a path, and check that it is absolute. If `allow_relative` is True,
+    """Parse a path to a `pathlib.Path` object.
+
+    All resulting paths are resolved, absolute paths. If `allow_relative` is True,
     then relative paths are allowed as input, and are resolved relative to the
     current working directory, or relative to `base_directory` if it is
     specified.
@@ -62,7 +63,7 @@ def parse_path(
     """
     if base_directory is not None and not allow_relative:
         raise ValueError(
-            "If `base_directory` is specified, then `allow_relative` must be True."
+            "If `base_directory` is specified, then `allow_relative` must be True.",
         )
 
     parsed_path: pathlib.Path
