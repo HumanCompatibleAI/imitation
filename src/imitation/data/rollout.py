@@ -3,7 +3,17 @@
 import collections
 import dataclasses
 import logging
-from typing import Callable, Dict, Hashable, List, Mapping, Optional, Sequence, Union
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Hashable,
+    List,
+    Mapping,
+    Optional,
+    Sequence,
+    Union,
+)
 
 import numpy as np
 from stable_baselines3.common.base_class import BaseAlgorithm
@@ -57,7 +67,7 @@ class TrajectoryAccumulator:
 
     def add_step(
         self,
-        step_dict: Mapping[str, np.ndarray],
+        step_dict: Mapping[str, Union[np.ndarray, Mapping[str, Any]]],
         key: Hashable = None,
     ) -> None:
         """Add a single step to the partial trajectory identified by `key`.
@@ -130,7 +140,7 @@ class TrajectoryAccumulator:
             A list of completed trajectories. There should be one trajectory for
             each `True` in the `dones` argument.
         """
-        trajs = []
+        trajs: List[types.TrajectoryWithRew] = []
         for env_idx in range(len(obs)):
             assert env_idx in self.partial_trajectories
             assert list(self.partial_trajectories[env_idx][0].keys()) == ["obs"], (
