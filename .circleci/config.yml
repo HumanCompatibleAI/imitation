@@ -351,6 +351,9 @@ workflows:
       - lint:
           context:
           - docker-hub-creds
+      - docs:
+          context:
+          - docker-hub-creds
       - type:
           context:
           - docker-hub-creds
