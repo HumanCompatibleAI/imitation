@@ -1,6 +1,8 @@
 """Configuration settings for train_rl, training a policy with RL."""
 
+
 import sacred
+from torch import nn as nn
 
 from imitation.scripts.common import common, rl, train
 
@@ -75,7 +77,16 @@ def half_cheetah():
 
 @train_rl_ex.named_config
 def seals_half_cheetah():
-    common = dict(env_name="seals/HalfCheetah-v0", num_vec=1)
+    common = dict(
+        env_name="seals/HalfCheetah-v0",
+        num_vec=1,
+        train=dict(
+            policy="MlpPolicy",
+            policy_kwargs=dict(
+                activation_fn=nn.Tanh, net_arch=[dict(pi=[64, 64], vf=[64, 64])]
+            ),
+        ),
+    )
     # total_timesteps = int(5e6)  # does OK after 1e6, but continues improving
     total_timesteps = 1e6
     rl = dict(
@@ -139,13 +150,22 @@ def reacher():
 
 @train_rl_ex.named_config
 def seals_ant():
-    common = dict(env_name="seals/Ant-v0", num_vec=1)
+    common = dict(
+        env_name="seals/Ant-v0",
+        num_vec=1,
+        train=dict(
+            policy="MlpPolicy",
+            policy_kwargs=dict(
+                activation_fn=nn.Tanh, net_arch=[dict(pi=[64, 64], vf=[64, 64])]
+            ),
+        ),
+    )
+
     total_timesteps = (1e6,)
     rl = dict(
         batch_size=2048,
         rl_kwargs=dict(
             normalize=True,
-            policy="MlpPolicy",
             batch_size=16,
             clip_range=0.3,
             ent_coef=3.1441389214159857e-06,
