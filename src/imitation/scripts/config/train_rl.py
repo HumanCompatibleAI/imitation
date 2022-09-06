@@ -91,12 +91,11 @@ def seals_half_cheetah():
     )
     # total_timesteps = int(5e6)  # does OK after 1e6, but continues improving
     total_timesteps = 1e6
+    normalize_reward = True
 
     rl = dict(
         batch_size=512,
         rl_kwargs=dict(
-            normalize=True,
-            n_envs=1,
             batch_size=64,
             clip_range=0.1,
             ent_coef=3.794797423594763e-06,
@@ -166,11 +165,11 @@ def seals_ant():
     )
 
     total_timesteps = 1e6
+    normalize_reward = True
 
     rl = dict(
         batch_size=2048,
         rl_kwargs=dict(
-            normalize=True,
             batch_size=16,
             clip_range=0.3,
             ent_coef=3.1441389214159857e-06,
