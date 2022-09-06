@@ -421,6 +421,189 @@ def _get_trajectories(
     return trajectories
 
 
+class PreferenceModel(nn.Module):
+    """Class to convert two fragments' rewards into preference probability."""
+
+    def __init__(
+        self,
+        model: reward_nets.RewardNet,
+        noise_prob: float = 0.0,
+        discount_factor: float = 1.0,
+        threshold: float = 50,
+    ):
+        """Create Preference Prediction Model.
+
+        Args:
+            model: base model to compute reward.
+            noise_prob: assumed probability with which the preference
+                is uniformly random (used for the model of preference generation
+                that is used for the loss).
+            discount_factor: the model of preference generation uses a softmax
+                of returns as the probability that a fragment is preferred.
+                This is the discount factor used to calculate those returns.
+                Default is 1, i.e. undiscounted sums of rewards (which is what
+                the DRLHP paper uses).
+            threshold: the preference model used to compute the loss contains
+                a softmax of returns. To avoid overflows, we clip differences
+                in returns that are above this threshold. This threshold
+                is therefore in logspace. The default value of 50 means
+                that probabilities below 2e-22 are rounded up to 2e-22.
+        """
+        super().__init__()
+        self.model = model
+        self.noise_prob = noise_prob
+        self.discount_factor = discount_factor
+        self.threshold = threshold
+        self.is_ensemble, base_model = is_base_model_ensemble(self.model)
+        # if the base model is an ensemble model, then keep the base model as
+        # model to get rewards from all networks
+        if self.is_ensemble:
+            self.model = base_model
+            self.member_pref_models = []
+            for member in self.model.members:
+                member_pref_model = PreferenceModel(
+                    member,
+                    self.noise_prob,
+                    self.discount_factor,
+                    self.threshold,
+                )
+                self.member_pref_models.append(member_pref_model)
+
+    def forward(
+        self,
+        fragment_pairs: Sequence[TrajectoryPair],
+        ensemble_member_index: Optional[int] = None,
+    ) -> Tuple[th.Tensor, Optional[th.Tensor]]:
+        """Computes the preference probability of the first fragment for all pairs.
+
+        Note: This function passes the gradient through for non-ensemble models.
+              For an ensemble model, this function should not be used for loss
+              calculation. It can be used in case where passing the gradient is not
+              required such as during active selection or inference time.
+              Therefore, the EnsembleTrainer passes each member network through this
+              function instead of passing the EnsembleNetwork object with the use of
+              `ensemble_member_index`.
+
+        Args:
+            fragment_pairs: batch of pair of fragments.
+            ensemble_member_index: index of member network in ensemble model.
+                If the model is an ensemble of networks, this cannot be None.
+
+        Raises:
+            ValueError: if `ensemble_member_index` is None when `model` is an ensemble.
+
+        Returns:
+            A tuple with the first element as the preference probabilities for the
+            first fragment for all fragment pairs given by the network(s).
+            If the ground truth rewards are available, it also returns gt preference
+            probabilities in the second element of the tuple (else None).
+            Reward probability shape - (num_fragment_pairs, ) for non-ensemble reward
+            network and (num_fragment_pairs, num_networks) for an ensemble of networks.
+
+        """
+        if self.is_ensemble:
+            if ensemble_member_index is None:
+                raise ValueError(
+                    "`ensemble_member_index` required for ensemble models.",
+                )
+
+            pref_model = self.member_pref_models[ensemble_member_index]
+            return pref_model(fragment_pairs)
+
+        probs = th.empty(len(fragment_pairs), dtype=th.float32)
+        gt_reward_available = _trajectory_pair_includes_reward(fragment_pairs[0])
+        if gt_reward_available:
+            gt_probs = th.empty(len(fragment_pairs), dtype=th.float32)
+        for i, fragment in enumerate(fragment_pairs):
+            frag1, frag2 = fragment
+            trans1 = rollout.flatten_trajectories([frag1])
+            trans2 = rollout.flatten_trajectories([frag2])
+            rews1 = self.rewards(trans1)
+            rews2 = self.rewards(trans2)
+            probs[i] = self.probability(rews1, rews2)
+            if gt_reward_available:
+                gt_rews_1 = th.from_numpy(frag1.rews)
+                gt_rews_2 = th.from_numpy(frag2.rews)
+                gt_probs[i] = self.probability(gt_rews_1, gt_rews_2)
+
+        return probs, (gt_probs if gt_reward_available else None)
+
+    def rewards(
+        self,
+        transitions: Transitions,
+    ) -> th.Tensor:
+        """Computes the reward for all transitions.
+
+        Args:
+            transitions: batch of obs-act-obs-done for a fragment of a trajectory.
+
+        Returns:
+            The reward given by the network(s) for all the transitions.
+            Shape - (num_transitions, ) for Single reward network and
+            (num_transitions, num_networks) for ensemble of networks.
+        """
+        state = transitions.obs
+        action = transitions.acts
+        next_state = transitions.next_obs
+        done = transitions.dones
+        if self.is_ensemble:
+            rews = self.model.predict_processed_all(state, action, next_state, done)
+            assert rews.shape == (len(state), self.model.num_members)
+            return util.safe_to_tensor(rews).to(self.model.device)
+        else:
+            preprocessed = self.model.preprocess(state, action, next_state, done)
+            rews = self.model(*preprocessed)
+            assert rews.shape == (len(state),)
+            return rews
+
+    def probability(
+        self,
+        rews1: th.Tensor,
+        rews2: th.Tensor,
+    ) -> th.Tensor:
+        """Computes the Boltzmann rational probability that the first trajectory is best.
+
+        Args:
+            rews1: array/matrix of rewards for the first trajectory fragment.
+                matrix for ensemble models and array for non-ensemble models.
+            rews2: array/matrix of rewards for the second trajectory fragment.
+                matrix for ensemble models and array for non-ensemble models.
+
+        Returns:
+            The softmax of the difference between the (discounted) return of the
+            first and second trajectory.
+            Shape - (num_ensemble_members, ) for ensemble model and
+            () for non-ensemble model which is a torch scalar.
+        """
+        # check rews has correct shape based on the model
+        expected_dims = 2 if self.is_ensemble else 1
+        assert rews1.ndim == rews2.ndim == expected_dims
+        # First, we compute the difference of the returns of
+        # the two fragments. We have a special case for a discount
+        # factor of 1 to avoid unnecessary computation (especially
+        # since this is the default setting).
+        if self.discount_factor == 1:
+            returns_diff = (rews2 - rews1).sum(axis=0)
+        else:
+            discounts = self.discount_factor ** th.arange(len(rews1))
+            if self.is_ensemble:
+                discounts = discounts.reshape(-1, 1)
+            returns_diff = (discounts * (rews2 - rews1)).sum(axis=0)
+        # Clip to avoid overflows (which in particular may occur
+        # in the backwards pass even if they do not in the forward pass).
+        returns_diff = th.clip(returns_diff, -self.threshold, self.threshold)
+        # We take the softmax of the returns. model_probability
+        # is the first dimension of that softmax, representing the
+        # probability that fragment 1 is preferred.
+        model_probability = 1 / (1 + returns_diff.exp())
+        probability = self.noise_prob * 0.5 + (1 - self.noise_prob) * model_probability
+        if self.is_ensemble:
+            assert probability.shape == (self.model.num_members,)
+        else:
+            assert probability.shape == ()
+        return probability
+
+
 class Fragmenter(abc.ABC):
     """Class for creating pairs of trajectory fragments from a set of trajectories."""
 
@@ -550,6 +733,119 @@ class RandomFragmenter(Fragmenter):
         # we create a single iterator of the list and zip it with itself:
         iterator = iter(fragments)
         return list(zip(iterator, iterator))
+
+
+class ActiveSelectionFragmenter(Fragmenter):
+    """Sample fragments of trajectories based on active selection.
+
+    Actively picks the fragment pairs with the highest uncertainty (variance)
+    of rewards/probabilties/predictions from ensemble model.
+    """
+
+    def __init__(
+        self,
+        preference_model: PreferenceModel,
+        base_fragmenter: Fragmenter,
+        fragment_sample_factor: float,
+        uncertainty_on: str = "logits",
+        custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
+    ):
+        """Initialize the active selection fragmenter.
+
+        Args:
+            preference_model: an ensemble model that predicts the
+                preference of the first fragment over the other.
+            base_fragmenter: fragmenter instance to get
+                fragment pairs from trajectories
+            fragment_sample_factor: the factor of the number of
+                fragment pairs to sample from the base_fragmenter
+            uncertainty_on: the variable to calculate the variance on.
+                Can be logit|probability|label.
+            custom_logger: Where to log to; if None (default), creates a new logger.
+
+        Raises:
+            ValueError: Preference model not wrapped over an ensemble of networks.
+        """
+        super().__init__(custom_logger=custom_logger)
+        if not preference_model.is_ensemble:
+            raise ValueError(
+                "Preference model not wrapped over an ensemble of networks.",
+            )
+        self.preference_model = preference_model
+        self.base_fragmenter = base_fragmenter
+        self.fragment_sample_factor = fragment_sample_factor
+        self._uncertainty_on = uncertainty_on
+        if not (uncertainty_on in ["logit", "probability", "label"]):
+            self.raise_uncertainty_on_not_supported()
+
+    @property
+    def uncertainty_on(self) -> str:
+        return self._uncertainty_on
+
+    def raise_uncertainty_on_not_supported(self):
+        raise ValueError(
+            f"""{self.uncertainty_on} not supported.
+            `uncertainty_on` should be from `logit`, `probability`, or `label`""",
+        )
+
+    def __call__(
+        self,
+        trajectories: Sequence[TrajectoryWithRew],
+        fragment_length: int,
+        num_pairs: int,
+    ) -> Sequence[TrajectoryWithRewPair]:
+        # sample a large number (self.fragment_sample_factor*num_pairs)
+        # of fragments from all the trajectories
+        fragments_to_sample = int(self.fragment_sample_factor * num_pairs)
+        fragment_pairs = self.base_fragmenter(
+            trajectories=trajectories,
+            fragment_length=fragment_length,
+            num_pairs=fragments_to_sample,
+        )
+        var_estimates = np.zeros(len(fragment_pairs))
+        for i, fragment in enumerate(fragment_pairs):
+            frag1, frag2 = fragment
+            trans1 = rollout.flatten_trajectories([frag1])
+            trans2 = rollout.flatten_trajectories([frag2])
+            with th.no_grad():
+                rews1 = self.preference_model.rewards(trans1)
+                rews2 = self.preference_model.rewards(trans2)
+            var_estimate = self.variance_estimate(rews1, rews2)
+            var_estimates[i] = var_estimate
+        fragment_idxs = np.argsort(var_estimates)[::-1]  # sort in descending order
+        # return fragment pairs that have the highest uncertainty
+        return [fragment_pairs[idx] for idx in fragment_idxs[:num_pairs]]
+
+    def variance_estimate(self, rews1, rews2) -> float:
+        """Gets the variance estimate from the rewards of a fragment pair.
+
+        Args:
+            rews1: rewards obtained by all the ensemble models for the first fragment.
+                Shape - (fragment_length, num_ensemble_members)
+            rews2: rewards obtained by all the ensemble models for the second fragment.
+                Shape - (fragment_length, num_ensemble_members)
+
+        Returns:
+            the variance estimate based on the `uncertainty_on` flag.
+        """
+        if self.uncertainty_on == "logit":
+            returns1, returns2 = rews1.sum(0), rews2.sum(0)
+            var_estimate = (returns1 - returns2).var().item()
+        else:  # uncertainty_on is probability or label
+            probs = self.preference_model.probability(rews1, rews2)
+            probs = probs.cpu().numpy()
+            assert probs.shape == (self.preference_model.model.num_members,)
+            if self.uncertainty_on == "probability":
+                var_estimate = probs.var()
+            elif self.uncertainty_on == "label":  # uncertainty_on is label
+                preds = (probs > 0.5).astype(np.float32)
+                # probability estimate of Bernoulli random variable
+                prob_estimate = preds.mean()
+                # variance estimate of Bernoulli random variable
+                var_estimate = prob_estimate * (1 - prob_estimate)
+            else:
+                self.raise_uncertainty_on_not_supported()
+        return var_estimate
 
 
 class PreferenceGatherer(abc.ABC):
@@ -771,36 +1067,22 @@ class RewardLoss(nn.Module, abc.ABC):
     @abc.abstractmethod
     def forward(
         self,
-        model: reward_nets.RewardNet,
         fragment_pairs: Sequence[TrajectoryPair],
         preferences: np.ndarray,
+        ensemble_member_index: Optional[int] = None,
     ) -> LossAndMetrics:
         """Computes the loss.
 
         Args:
-            model: the reward network
             fragment_pairs: Batch consisting of pairs of trajectory fragments.
             preferences: The probability that the first fragment is preferred
                 over the second. Typically 0, 1 or 0.5 (tie).
+            ensemble_member_index: index of member network in ensemble model
 
         Returns: # noqa: DAR202
             loss: the loss
             metrics: a dictionary of metrics that can be logged
         """
-
-
-def _evaluate_reward_on_transitions(
-    model: reward_nets.RewardNet,
-    transitions: Transitions,
-) -> th.Tensor:
-    """Evaluate `model` on `transitions` and return the rewards with gradients."""
-    preprocessed = model.preprocess(
-        state=transitions.obs,
-        action=transitions.acts,
-        next_state=transitions.next_obs,
-        done=transitions.dones,
-    )
-    return model(*preprocessed)
 
 
 def _trajectory_pair_includes_reward(fragment_pair: TrajectoryPair):
@@ -814,45 +1096,29 @@ class CrossEntropyRewardLoss(RewardLoss):
 
     def __init__(
         self,
-        noise_prob: float = 0.0,
-        discount_factor: float = 1.0,
-        threshold: float = 50,
+        preference_model: PreferenceModel,
     ):
         """Create cross entropy reward loss.
 
         Args:
-            noise_prob: assumed probability with which the preference
-                is uniformly random (used for the model of preference generation
-                that is used for the loss)
-            discount_factor: the model of preference generation uses a softmax
-                of returns as the probability that a fragment is preferred.
-                This is the discount factor used to calculate those returns.
-                Default is 1, i.e. undiscounted sums of rewards (which is what
-                the DRLHP paper uses).
-            threshold: the preference model used to compute the loss contains
-                a softmax of returns. To avoid overflows, we clip differences
-                in returns that are above this threshold. This threshold
-                is therefore in logspace. The default value of 50 means
-                that probabilities below 2e-22 are rounded up to 2e-22.
+            preference_model: model to predict the preferred fragment from a pair.
         """
         super().__init__()
-        self.discount_factor = discount_factor
-        self.noise_prob = noise_prob
-        self.threshold = threshold
+        self.preference_model = preference_model
 
     def forward(
         self,
-        model: reward_nets.RewardNet,
         fragment_pairs: Sequence[TrajectoryPair],
         preferences: np.ndarray,
+        ensemble_member_index: Optional[int] = None,
     ) -> LossAndMetrics:
         """Computes the loss.
 
         Args:
-            model: the reward network to call
             fragment_pairs: Batch consisting of pairs of trajectory fragments.
             preferences: The probability that the first fragment is preferred
                 over the second. Typically 0, 1 or 0.5 (tie).
+            ensemble_member_index: index of member network in ensemble model
 
         Returns:
             The cross-entropy loss between the probability predicted by the
@@ -860,22 +1126,7 @@ class CrossEntropyRewardLoss(RewardLoss):
                 are accuracy, and gt_reward_loss, if the ground truth reward is
                 available.
         """
-        gt_reward_available = _trajectory_pair_includes_reward(fragment_pairs[0])
-        probs = th.empty(len(fragment_pairs), dtype=th.float32)
-        if gt_reward_available:
-            gt_probs = th.empty(len(fragment_pairs), dtype=th.float32)
-
-        for i, fragment in enumerate(fragment_pairs):
-            frag1, frag2 = fragment
-            trans1 = rollout.flatten_trajectories([frag1])
-            trans2 = rollout.flatten_trajectories([frag2])
-            rews1 = _evaluate_reward_on_transitions(model, trans1)
-            rews2 = _evaluate_reward_on_transitions(model, trans2)
-            probs[i] = self._probability(rews1, rews2)
-            if gt_reward_available:
-                gt_rews_1 = th.from_numpy(frag1.rews)
-                gt_rews_2 = th.from_numpy(frag2.rews)
-                gt_probs[i] = self._probability(gt_rews_1, gt_rews_2)
+        probs, gt_probs = self.preference_model(fragment_pairs, ensemble_member_index)
         # TODO(ejnnr): Here and below, > 0.5 is problematic
         # because getting exactly 0.5 is actually somewhat
         # common in some environments (as long as sample=False or temperature=0).
@@ -886,7 +1137,7 @@ class CrossEntropyRewardLoss(RewardLoss):
         ground_truth = (preferences_th > 0.5).float()
         metrics = {}
         metrics["accuracy"] = (predictions == ground_truth).float().mean()
-        if gt_reward_available:
+        if gt_probs is not None:
             metrics["gt_reward_loss"] = th.nn.functional.binary_cross_entropy(
                 gt_probs,
                 preferences_th,
@@ -896,36 +1147,6 @@ class CrossEntropyRewardLoss(RewardLoss):
             loss=th.nn.functional.binary_cross_entropy(probs, preferences_th),
             metrics=metrics,
         )
-
-    def _probability(self, rews1: th.Tensor, rews2: th.Tensor) -> th.Tensor:
-        """Computes the Boltzmann rational probability that the first trajectory is best.
-
-        Args:
-            rews1: A 1-dimensional array of rewards for the first trajectory fragment.
-            rews2: A 1-dimensional array of rewards for the second trajectory fragment.
-
-        Returns:
-            The softmax of the difference between the (discounted) return of the
-            first and second trajectory.
-        """
-        assert rews1.ndim == rews2.ndim == 1
-        # First, we compute the difference of the returns of
-        # the two fragments. We have a special case for a discount
-        # factor of 1 to avoid unnecessary computation (especially
-        # since this is the default setting).
-        if self.discount_factor == 1:
-            returns_diff = (rews2 - rews1).sum()
-        else:
-            discounts = self.discount_factor ** th.arange(len(rews1))
-            returns_diff = (discounts * (rews2 - rews1)).sum()
-        # Clip to avoid overflows (which in particular may occur
-        # in the backwards pass even if they do not in the forward pass).
-        returns_diff = th.clip(returns_diff, -self.threshold, self.threshold)
-        # We take the softmax of the returns. model_probability
-        # is the first dimension of that softmax, representing the
-        # probability that fragment 1 is preferred.
-        model_probability = 1 / (1 + returns_diff.exp())
-        return self.noise_prob * 0.5 + (1 - self.noise_prob) * model_probability
 
 
 class RewardTrainer(abc.ABC):
@@ -1030,7 +1251,7 @@ class BasicRewardTrainer(RewardTrainer):
         fragment_pairs: Sequence[TrajectoryPair],
         preferences: np.ndarray,
     ) -> th.Tensor:
-        output = self.loss.forward(self._model, fragment_pairs, preferences)
+        output = self.loss.forward(fragment_pairs, preferences)
         loss = output.loss
         self.logger.record("loss", loss.item())
         for name, value in output.metrics.items():
@@ -1051,6 +1272,7 @@ class EnsembleTrainer(BasicRewardTrainer):
         epochs: int = 1,
         lr: float = 1e-3,
         weight_decay: float = 0.0,
+        seed: Optional[int] = None,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
     ):
         """Initialize the reward model trainer.
@@ -1066,6 +1288,7 @@ class EnsembleTrainer(BasicRewardTrainer):
             weight_decay: the weight decay factor for the reward model's weights
                 to use with ``th.optim.AdamW``. This is similar to but not equivalent
                 to L2 regularization, see https://arxiv.org/abs/1711.05101
+            seed: seed for the internal RNG used in bagging
             custom_logger: Where to log to; if None (default), creates a new logger.
 
         Raises:
@@ -1085,16 +1308,26 @@ class EnsembleTrainer(BasicRewardTrainer):
             weight_decay,
             custom_logger,
         )
+        self.rng = np.random.default_rng(seed=seed)
 
     def _training_inner_loop(
         self,
         fragment_pairs: Sequence[TrajectoryPair],
         preferences: np.ndarray,
     ) -> th.Tensor:
+        assert len(fragment_pairs) == preferences.shape[0]
         losses = []
         metrics = []
-        for member in self._model.members:
-            output = self.loss.forward(member, fragment_pairs, preferences)
+        for member_idx in range(self._model.num_members):
+            # sample fragments for training via bagging
+            sample_idx = self.rng.choice(
+                np.arange(len(fragment_pairs)),
+                size=len(fragment_pairs),
+                replace=True,
+            )
+            sample_fragments = [fragment_pairs[i] for i in sample_idx]
+            sample_preferences = preferences[sample_idx]
+            output = self.loss.forward(sample_fragments, sample_preferences, member_idx)
             losses.append(output.loss)
             metrics.append(output.metrics)
         losses = th.stack(losses)
@@ -1112,20 +1345,26 @@ class EnsembleTrainer(BasicRewardTrainer):
         return loss
 
 
-def _make_reward_trainer(
-    reward_model: reward_nets.RewardNet,
-    loss: RewardLoss,
-    reward_trainer_kwargs: Optional[Mapping[str, Any]] = None,
-) -> RewardTrainer:
-    """Construct the correct type of reward trainer for this reward function."""
-    if reward_trainer_kwargs is None:
-        reward_trainer_kwargs = {}
-
+def is_base_model_ensemble(reward_model):
     base_model = reward_model
     while hasattr(base_model, "base"):
         base_model = base_model.base
 
-    if isinstance(base_model, reward_nets.RewardEnsemble):
+    return isinstance(base_model, reward_nets.RewardEnsemble), base_model
+
+
+def _make_reward_trainer(
+    reward_model: reward_nets.RewardNet,
+    loss: RewardLoss,
+    reward_trainer_kwargs: Optional[Mapping[str, Any]] = None,
+    seed: Optional[int] = None,
+) -> RewardTrainer:
+    """Construct the correct type of reward trainer for this reward function."""
+    if reward_trainer_kwargs is None:
+        reward_trainer_kwargs = {}
+    is_ensemble, base_model = is_base_model_ensemble(reward_model)
+
+    if is_ensemble:
         # reward_model may include an AddSTDRewardWrapper for RL training; but we
         # must train directly on the base model for reward model training.
         is_base = reward_model is base_model
@@ -1135,7 +1374,7 @@ def _make_reward_trainer(
         )
 
         if is_base or is_std_wrapper:
-            return EnsembleTrainer(base_model, loss, **reward_trainer_kwargs)
+            return EnsembleTrainer(base_model, loss, seed=seed, **reward_trainer_kwargs)
         else:
             raise ValueError(
                 "RewardEnsemble can only be wrapped"
@@ -1258,8 +1497,9 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
         self.model = reward_model
 
         if reward_trainer is None:
-            loss = CrossEntropyRewardLoss()
-            self.reward_trainer = _make_reward_trainer(reward_model, loss)
+            preference_model = PreferenceModel(reward_model)
+            loss = CrossEntropyRewardLoss(preference_model)
+            self.reward_trainer = _make_reward_trainer(reward_model, loss, seed=seed)
         else:
             self.reward_trainer = reward_trainer
 

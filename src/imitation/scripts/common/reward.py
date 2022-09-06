@@ -127,7 +127,7 @@ def make_reward_net(
         ensemble_size: The number of ensemble members to create. Must set if using
             `net_cls =` :class: `reward_nets.RewardEnsemble`.
         ensemble_member_config: The configuration for individual ensemble
-            members. Note that ensemble_members.net_cls must not be
+            members. Note that `ensemble_member_config.net_cls` must not be
             :class: `reward_nets.RewardEnsemble`. Must be set if using
             `net_cls = ` :class: `reward_nets.RewardEnsemble`.
 

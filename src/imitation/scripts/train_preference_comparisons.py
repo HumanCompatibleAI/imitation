@@ -70,10 +70,13 @@ def train_preference_comparisons(
     save_preferences: bool,
     agent_path: Optional[str],
     num_agents: int,
-    cross_entropy_loss_kwargs: Mapping[str, Any],
+    preference_model_kwargs: Mapping[str, Any],
     reward_trainer_kwargs: Mapping[str, Any],
     gatherer_cls: Type[preference_comparisons.PreferenceGatherer],
     gatherer_kwargs: Mapping[str, Any],
+    active_selection: bool,
+    active_selection_oversampling: int,
+    uncertainty_on: str,
     fragmenter_kwargs: Mapping[str, Any],
     allow_variable_horizon: bool,
     checkpoint_interval: int,
@@ -113,10 +116,16 @@ def train_preference_comparisons(
         agent_path: if given, initialize the agent using this stored policy
             rather than randomly.
         num_agents: number of agents to train the reward model against.
-        cross_entropy_loss_kwargs: passed to CrossEntropyRewardLoss
+        preference_model_kwargs: passed to PreferenceModel
         reward_trainer_kwargs: passed to BasicRewardTrainer or EnsembleRewardTrainer
         gatherer_cls: type of PreferenceGatherer to use (defaults to SyntheticGatherer)
         gatherer_kwargs: passed to the PreferenceGatherer specified by gatherer_cls
+        active_selection: use active selection fragmenter instead of random fragmenter
+        active_selection_oversampling: factor by which to oversample random fragments
+            from the base fragmenter of active selection.
+            this is usually chosen > 1 to allow the active selection algorithm to pick
+            fragment pairs with highest uncertainty. = 1 implies no active selection.
+        uncertainty_on: passed to ActiveSelectionFragmenter
         fragmenter_kwargs: passed to RandomFragmenter
         allow_variable_horizon: If False (default), algorithm will raise an
             exception if it detects trajectories of different length during
@@ -217,6 +226,18 @@ def train_preference_comparisons(
             seed=_seed,
             custom_logger=custom_logger,
         )
+        preference_model = preference_comparisons.PreferenceModel(
+            **preference_model_kwargs,
+            model=reward_net,
+        )
+        if active_selection:
+            fragmenter = preference_comparisons.ActiveSelectionFragmenter(
+                preference_model=preference_model,
+                base_fragmenter=fragmenter,
+                fragment_sample_factor=active_selection_oversampling,
+                uncertainty_on=uncertainty_on,
+                custom_logger=custom_logger,
+            )
         gatherer = gatherer_cls(
             **gatherer_kwargs,
             seed=_seed,
@@ -224,13 +245,14 @@ def train_preference_comparisons(
         )
 
         loss = preference_comparisons.CrossEntropyRewardLoss(
-            **cross_entropy_loss_kwargs,
+            preference_model,
         )
 
         reward_trainer = preference_comparisons._make_reward_trainer(
             reward_net,
             loss,
             reward_trainer_kwargs,
+            seed=_seed,
         )
 
         main_trainer = preference_comparisons.PreferenceComparisons(
