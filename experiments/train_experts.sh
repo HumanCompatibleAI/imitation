@@ -13,7 +13,7 @@ ENVS=(seals_ant seals_half_cheetah)
 OUTPUT_DIR="output/train_experts/${TIMESTAMP}"
 RESULTS_FILE="results.txt"
 extra_configs=()
-print_config=0
+print_config=false
 
 if ! TEMP=$($GNU_GETOPT -o frw -l fast,regenerate,wandb,print -- "$@"); then
   exit 1
@@ -52,7 +52,7 @@ while true; do
       shift
       ;;
     -p | --print)
-      print_config=1
+      print_config=true
       shift
       ;;
     --)
@@ -66,7 +66,7 @@ while true; do
   esac
 done
 
-if [[ $print_config ]]; then
+if [ "$print_config" = true ]; then
   parallel -j 25% --header : --progress --results ${OUTPUT_DIR}/parallel/ \
     python3 -m imitation.scripts.train_rl print_config \
     --capture=sys \
