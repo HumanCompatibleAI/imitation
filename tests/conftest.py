@@ -33,7 +33,12 @@ def load_or_train_ppo(
     os.makedirs(os.path.dirname(cache_path), exist_ok=True)
     with FileLock(cache_path + ".lock"):
         try:
-            return PPO.load(cache_path, venv)
+            ppo = PPO.load(cache_path, venv)
+            # TODO(juan): sb3 return type for .load() is too general.
+            #  See https://github.com/DLR-RM/stable-baselines3/issues/1040
+            #  remove the line blow once fixed.
+            assert isinstance(ppo, PPO)
+            return ppo
         except (OSError, AssertionError, pickle.PickleError):  # pragma: no cover
             # Note, when loading models from older stable-baselines versions, we can get
             # AssertionErrors.
@@ -110,6 +115,7 @@ def train_cartpole_expert(cartpole_env) -> Optional[PPO]:  # pragma: no cover
         )
         policy.learn(100000)
         mean_reward, _ = evaluate_policy(policy, cartpole_env, 10)
+        assert isinstance(mean_reward, float)
         if mean_reward >= 500:
             return policy
     return None
@@ -169,6 +175,7 @@ def train_pendulum_expert(pendulum_env) -> Optional[PPO]:  # pragma: no cover
         )
         policy.learn(int(1e5))
         mean_reward, _ = evaluate_policy(policy, pendulum_env, 10)
+        assert isinstance(mean_reward, float)
         if mean_reward >= -185:
             return policy
     return None

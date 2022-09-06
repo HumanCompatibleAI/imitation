@@ -1,7 +1,7 @@
 """Constructs deep network reward models."""
 
 import abc
-from typing import Callable, Iterable, Optional, Sequence, Tuple, Type
+from typing import Callable, Iterable, Optional, Sequence, Tuple, Type, cast
 
 import gym
 import numpy as np
@@ -10,6 +10,7 @@ from stable_baselines3.common import preprocessing
 from torch import nn
 
 from imitation.util import networks, util
+from imitation.util.networks import BaseNorm
 
 
 class RewardNet(nn.Module, abc.ABC):
@@ -82,20 +83,29 @@ class RewardNet(nn.Module, abc.ABC):
         del state, action, next_state, done  # unused
 
         # preprocess
-        state_th = preprocessing.preprocess_obs(
-            state_th,
-            self.observation_space,
-            self.normalize_images,
+        state_th = cast(
+            th.Tensor,
+            preprocessing.preprocess_obs(
+                state_th,
+                self.observation_space,
+                self.normalize_images,
+            ),
         )
-        action_th = preprocessing.preprocess_obs(
-            action_th,
-            self.action_space,
-            self.normalize_images,
+        action_th = cast(
+            th.Tensor,
+            preprocessing.preprocess_obs(
+                action_th,
+                self.action_space,
+                self.normalize_images,
+            ),
         )
-        next_state_th = preprocessing.preprocess_obs(
-            next_state_th,
-            self.observation_space,
-            self.normalize_images,
+        next_state_th = cast(
+            th.Tensor,
+            preprocessing.preprocess_obs(
+                next_state_th,
+                self.observation_space,
+                self.normalize_images,
+            ),
         )
         done_th = done_th.to(th.float32)
 
@@ -375,20 +385,20 @@ class BasicRewardNet(RewardNet):
         if self.use_done:
             combined_size += 1
 
-        full_build_mlp_kwargs = {
-            "hid_sizes": (32, 32),
+        # kwargs except for in_size, out_size, squeeze_output keys,
+        # so they are not overridden.
+        kwargs = {
+            k: v
+            for k, v in kwargs.items()
+            if k not in ("in_size", "out_size", "squeeze_output", "hid_sizes")
         }
-        full_build_mlp_kwargs.update(kwargs)
-        full_build_mlp_kwargs.update(
-            {
-                # we do not want these overridden
-                "in_size": combined_size,
-                "out_size": 1,
-                "squeeze_output": True,
-            },
+        self.mlp = networks.build_mlp(
+            hid_sizes=(32, 32),
+            **kwargs,
+            in_size=combined_size,
+            out_size=1,
+            squeeze_output=True,
         )
-
-        self.mlp = networks.build_mlp(**full_build_mlp_kwargs)
 
     def forward(self, state, action, next_state, done):
         inputs = []
@@ -415,7 +425,7 @@ class NormalizedRewardNet(RewardNetWrapper):
     def __init__(
         self,
         base: RewardNet,
-        normalize_output_layer: Type[nn.Module],
+        normalize_output_layer: Type[BaseNorm],
     ):
         """Initialize the NormalizedRewardNet.
 
@@ -686,7 +696,7 @@ class RewardEnsemble(RewardNetWithVariance):
         next_state: np.ndarray,
         done: np.ndarray,
         **kwargs,
-    ) -> Tuple[np.ndarray, np.ndarray]:
+    ) -> np.ndarray:
         """Get the results of predict processed on all of the members.
 
         Args:
@@ -701,11 +711,11 @@ class RewardEnsemble(RewardNetWithVariance):
                 shape `(batch_size, num_members)`.
         """
         batch_size = state.shape[0]
-        rewards = [
+        rewards_list = [
             member.predict_processed(state, action, next_state, done, **kwargs)
             for member in self.members
         ]
-        rewards = np.stack(rewards, axis=-1)
+        rewards: np.ndarray = np.stack(rewards_list, axis=-1)
         assert rewards.shape == (batch_size, self.num_members)
         return rewards
 

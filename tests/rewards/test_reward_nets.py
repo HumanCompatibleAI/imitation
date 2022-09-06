@@ -35,14 +35,12 @@ DESERIALIZATION_TYPES = [
     "RewardNet_unshaped",
 ]
 
-
 # Reward net classes, allowed kwargs
 MAKE_REWARD_NET = [
     reward_nets.BasicRewardNet,
     reward_nets.BasicShapedRewardNet,
     testing_reward_nets.make_ensemble,
 ]
-
 
 MAKE_BASIC_REWARD_NET_WRAPPERS = [
     lambda base: reward_nets.ShapedRewardNet(base, _potential, 0.99),
@@ -58,7 +56,6 @@ NORMALIZE_OUTPUT_LAYER = [
     None,
     networks.RunningNorm,
 ]
-
 
 NumpyTransitions = Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]
 
@@ -82,9 +79,9 @@ def torch_transitions() -> TorchTransitions:
     """A batch of states, actions, next_states, and dones as th.Tensors for Env2D."""
     return (
         th.zeros((10, 5, 5)),
-        th.zeros((10, 1), dtype=int),
+        th.zeros((10, 1), dtype=th.int),
         th.zeros((10, 5, 5)),
-        th.zeros((10,), dtype=bool),
+        th.zeros((10,), dtype=th.bool),
     )
 
 
@@ -541,7 +538,11 @@ def test_wrappers_pass_on_kwargs(
         env_2d.observation_space,
         env_2d.action_space,
     )
-    basic_reward_net.predict_processed = mock.Mock(return_value=np.zeros((10,)))
+    # TODO(juan) reassigning a method is very bad practice. I added
+    #  type ignore for now but is there not a better way to do this?
+    basic_reward_net.predict_processed = mock.Mock(  # type: ignore[assignment]
+        return_value=np.zeros((10,)),
+    )
     wrapped_reward_net = make_wrapper(
         basic_reward_net,
     )

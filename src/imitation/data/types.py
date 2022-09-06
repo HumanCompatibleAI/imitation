@@ -406,22 +406,25 @@ def load(path: AnyPath) -> Sequence[Trajectory]:
     # .npz format and the old pickle based format. To tell the difference we need to
     # look at the type of the resulting object. If it's the new compressed format,
     # it should be a Mapping that we need to decode, whereas if it's the old format
-    # it's just the sequence of trajectories and we can return it directly.
+    # it's just the sequence of trajectories, and we can return it directly.
     data = np.load(path, allow_pickle=True)
     if isinstance(data, Sequence):  # old format
         warnings.warn("Loading old version of Trajectory's", DeprecationWarning)
         return data
     elif isinstance(data, Mapping):  # new format
         num_trajs = len(data["indices"])
-        fields = (
+        fields = [
             # Account for the extra obs in each trajectory
             np.split(data["obs"], data["indices"] + np.arange(num_trajs) + 1),
             np.split(data["acts"], data["indices"]),
             np.split(data["infos"], data["indices"]),
             data["terminal"],
-        )
+        ]
         if "rews" in data:
-            fields += (np.split(data["rews"], data["indices"]),)
+            fields = [
+                *fields,
+                np.split(data["rews"], data["indices"]),
+            ]
             return [TrajectoryWithRew(*args) for args in zip(*fields)]
         else:
             return [Trajectory(*args) for args in zip(*fields)]
@@ -456,6 +459,8 @@ def save(path: AnyPath, trajectories: Sequence[Trajectory]):
         ValueError: If the trajectories are not all of the same type, i.e. some are
             `Trajectory` and others are `TrajectoryWithRew`.
     """
+    if isinstance(path, bytes):
+        path = path.decode("utf-8")
     p = pathlib.Path(path)
     p.parent.mkdir(parents=True, exist_ok=True)
     tmp_path = f"{path}.tmp"

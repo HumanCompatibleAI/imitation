@@ -4,7 +4,7 @@ import collections.abc
 import copy
 import os
 import pathlib
-from typing import Any, Callable, Mapping, Optional, Sequence
+from typing import Any, Callable, Dict, Mapping, Optional, Sequence
 
 import ray
 import ray.tune
@@ -108,14 +108,6 @@ def parallel(
         base_config_updates,
     )
 
-    # Disable all Ray Loggers.
-    #
-    # JSON and CSV loggers are redundant now that we have Sacred logs.
-    # TensorBoard logs don't contain useful information (inner Sacred experiment
-    # never gets access to `reporter`), and clog up the TensorBoard Runs
-    # dashboard.
-    ray_loggers = ()
-
     ray.init(**init_kwargs)
     try:
         ray.tune.run(
@@ -123,7 +115,6 @@ def parallel(
             config=search_space,
             name=run_name,
             local_dir=local_dir,
-            loggers=ray_loggers,
             resources_per_trial=resources_per_trial,
             sync_config=ray.tune.syncer.SyncConfig(upload_dir=upload_dir),
         )
@@ -188,7 +179,7 @@ def _ray_tune_sacred_wrapper(
         sacred.SETTINGS.CAPTURE_MODE = "sys"
 
         run_kwargs = config
-        updated_run_kwargs = {}
+        updated_run_kwargs: Dict[str, Any] = {}
         # Import inside function rather than in module because Sacred experiments
         # are not picklable, and Ray requires this function to be picklable.
         from imitation.scripts.train_adversarial import train_adversarial_ex
@@ -202,14 +193,10 @@ def _ray_tune_sacred_wrapper(
         ex.observers = [FileStorageObserver("sacred")]
 
         # Apply base configs to get modified `named_configs` and `config_updates`.
-        named_configs = []
-        named_configs.extend(base_named_configs)
-        named_configs.extend(run_kwargs["named_configs"])
+        named_configs = [*base_named_configs, *run_kwargs["named_configs"]]
         updated_run_kwargs["named_configs"] = named_configs
 
-        config_updates = {}
-        config_updates.update(base_config_updates)
-        config_updates.update(run_kwargs["config_updates"])
+        config_updates = {**base_config_updates, **run_kwargs["config_updates"]}
         updated_run_kwargs["config_updates"] = config_updates
 
         # Add other run_kwargs items to updated_run_kwargs.

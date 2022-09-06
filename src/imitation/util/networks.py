@@ -1,9 +1,9 @@
 """Helper methods to build and run neural networks."""
+import abc
 import collections
 import contextlib
 import functools
-from abc import ABC, abstractclassmethod
-from typing import Iterable, Optional, Type
+from typing import Iterable, Optional, OrderedDict, Type
 
 import torch as th
 from torch import nn
@@ -44,7 +44,7 @@ class SqueezeLayer(nn.Module):
         return new_value
 
 
-class BaseNorm(nn.Module, ABC):
+class BaseNorm(nn.Module, abc.ABC):
     """Base class for layers that try to normalize the input to mean 0 and variance 1.
 
     Similar to BatchNorm, LayerNorm, etc. but whereas they only use statistics from
@@ -68,7 +68,7 @@ class BaseNorm(nn.Module, ABC):
         self.register_buffer("running_mean", th.empty(num_features))
         self.register_buffer("running_var", th.empty(num_features))
         self.register_buffer("count", th.empty((), dtype=th.int))
-        self.reset_running_stats()
+        BaseNorm.reset_running_stats(self)
 
     def reset_running_stats(self) -> None:
         """Resets running stats to defaults, yielding the identity transformation."""
@@ -88,7 +88,7 @@ class BaseNorm(nn.Module, ABC):
 
         return (x - self.running_mean) / th.sqrt(self.running_var + self.eps)
 
-    @abstractclassmethod
+    @abc.abstractmethod
     def update_stats(self, batch: th.Tensor) -> None:
         """Update `self.running_mean`, `self.running_var` and `self.count`."""
 
@@ -132,6 +132,9 @@ class RunningNorm(BaseNorm):
 class EMANorm(BaseNorm):
     """Similar to RunningNorm but uses an exponential weighting."""
 
+    inv_learning_rate: th.Tensor
+    num_batches: th.IntTensor
+
     def __init__(
         self,
         num_features: int,
@@ -143,7 +146,7 @@ class EMANorm(BaseNorm):
         Args:
             num_features: Number of features; the length of the non-batch dim.
             decay: how quickly the weight on past samples decays over time
-            eps: small constant for for numerical stability.
+            eps: small constant for numerical stability.
 
         Raises:
             ValueError: if decay is out of range.
@@ -154,36 +157,43 @@ class EMANorm(BaseNorm):
             raise ValueError("decay must be between 0 and 1")
 
         self.decay = decay
+        self.register_buffer("inv_learning_rate", th.empty(()))
+        self.register_buffer("num_batches", th.empty((), dtype=th.int))
+        EMANorm.reset_running_stats(self)
+
+    def reset_running_stats(self):
+        """Reset the running stats of the normalization layer."""
+        super().reset_running_stats()
+        self.inv_learning_rate.zero_()
+        self.num_batches.zero_()
 
     def update_stats(self, batch: th.Tensor) -> None:
-        """Update `self.running_mean` and `self.running_var`.
+        """Update `self.running_mean` and `self.running_var` in batch mode.
 
-        Reference Finch (2009), "Incremental calculation of weighted mean and variance".
-            (https://fanf2.user.srcf.net/hermes/doc/antiforgery/stats.pdf)
+        Reference Algorithm 3 from:
+        https://github.com/HumanCompatibleAI/imitation/files/9456540/Incremental_batch_EMA_and_EMV.pdf
 
         Args:
             batch: A batch of data to use to update the running mean and variance.
         """
         b_size = batch.shape[0]
+        if len(batch.shape) == 1:
+            batch = batch.reshape(b_size, 1)
 
-        if self.count == 0:
-            self.running_mean = th.mean(batch, dim=0)
-            if b_size > 1:
-                self.running_var = th.var(batch, dim=0)
-        else:
-            # Shuffle the batch since we don't don't want to bias the mean
-            # towards data that appears latter in the batch
-            perm = th.randperm(b_size)
+        self.inv_learning_rate += self.decay**self.num_batches
+        learning_rate = 1 / self.inv_learning_rate
 
-            alpha = 1 - self.decay
+        # update running mean
+        delta_mean = batch.mean(0) - self.running_mean
+        self.running_mean += learning_rate * delta_mean
 
-            for i in range(b_size):
-                diff = batch[perm[i], ...] - self.running_mean
-                incr = alpha * diff
-                self.running_mean += incr
-                self.running_var = self.decay * (self.running_var + diff * incr)
+        # update running variance
+        batch_var = batch.var(0, unbiased=False)
+        delta_var = batch_var + (1 - learning_rate) * delta_mean**2 - self.running_var
+        self.running_var += learning_rate * delta_var
 
         self.count += b_size
+        self.num_batches += 1
 
 
 def build_mlp(
@@ -195,7 +205,7 @@ def build_mlp(
     dropout_prob: float = 0.0,
     squeeze_output: bool = False,
     flatten_input: bool = False,
-    normalize_input_layer: Optional[Type[nn.Module]] = None,
+    normalize_input_layer: Optional[Type[BaseNorm]] = None,
 ) -> nn.Module:
     """Constructs a Torch MLP.
 
@@ -224,7 +234,7 @@ def build_mlp(
     Raises:
         ValueError: if squeeze_output was supplied with out_size!=1.
     """
-    layers = collections.OrderedDict()
+    layers: OrderedDict[str, nn.Module] = collections.OrderedDict()
 
     if name is None:
         prefix = ""

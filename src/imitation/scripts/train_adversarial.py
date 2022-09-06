@@ -61,7 +61,7 @@ def _add_hook(ingredient: sacred.Ingredient) -> None:
         algorithm_specific = {}  # noqa: F841
 
 
-for ingredient in [train_adversarial_ex] + train_adversarial_ex.ingredients:
+for ingredient in [train_adversarial_ex, *train_adversarial_ex.ingredients]:
     _add_hook(ingredient)
 
 

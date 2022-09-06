@@ -106,6 +106,7 @@ def eval_policy(
 
         policy = None
         if policy_type is not None:
+            assert policy_path is not None
             policy = serialize.load_policy(policy_type, policy_path, venv)
         trajs = rollout.generate_trajectories(policy, venv, sample_until)
 

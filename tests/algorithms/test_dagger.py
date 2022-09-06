@@ -137,7 +137,7 @@ def _build_simple_dagger_trainer(
     venv,
     beta_schedule,
     expert_policy,
-    pendulum_expert_rollouts: List[TrajectoryWithRew],
+    pendulum_expert_rollouts: Optional[List[TrajectoryWithRew]],
     custom_logger,
 ):
     bc_trainer = bc.BC(
@@ -215,6 +215,7 @@ def test_trainer_needs_demos_exception_error(
 ):
     assert trainer.round_num == 0
     error_ctx = pytest.raises(dagger.NeedsDemosException)
+    ctx: contextlib.AbstractContextManager
     if maybe_pendulum_expert_trajectories is not None and isinstance(
         trainer,
         dagger.SimpleDAggerTrainer,

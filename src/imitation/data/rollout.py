@@ -28,7 +28,12 @@ def unwrap_traj(traj: types.TrajectoryWithRew) -> types.TrajectoryWithRew:
 
     Returns:
         A copy of `traj` with replaced `obs` and `rews` fields.
+
+    Raises:
+        ValueError: If `traj.infos` is None
     """
+    if traj.infos is None:
+        raise ValueError("Trajectory must have infos to unwrap")
     ep_info = traj.infos[-1]["rollout"]
     res = dataclasses.replace(traj, obs=ep_info["obs"], rews=ep_info["rews"])
     assert len(res.obs) == len(res.acts) + 1
@@ -88,11 +93,11 @@ class TrajectoryAccumulator:
         del self.partial_trajectories[key]
         out_dict_unstacked = collections.defaultdict(list)
         for part_dict in part_dicts:
-            for key, array in part_dict.items():
-                out_dict_unstacked[key].append(array)
+            for key_, array in part_dict.items():
+                out_dict_unstacked[key_].append(array)
         out_dict_stacked = {
-            key: np.stack(arr_list, axis=0)
-            for key, arr_list in out_dict_unstacked.items()
+            key_: np.stack(arr_list, axis=0)
+            for key_, arr_list in out_dict_unstacked.items()
         }
         traj = types.TrajectoryWithRew(**out_dict_stacked, terminal=terminal)
         assert traj.rews.shape[0] == traj.acts.shape[0] == traj.obs.shape[0] - 1
@@ -281,7 +286,7 @@ def _policy_to_callable(
             )
             return acts
 
-    elif isinstance(policy, Callable):
+    elif callable(policy):
         # When a policy callable is passed, by default we will use it directly.
         # We are not able to change the determinism of the policy when it is a
         # callable that only takes in the states.
@@ -311,7 +316,7 @@ def generate_trajectories(
     sample_until: GenTrajTerminationFn,
     *,
     deterministic_policy: bool = False,
-    rng: np.random.RandomState = np.random,
+    rng: Optional[np.random.RandomState] = None,
 ) -> Sequence[types.TrajectoryWithRew]:
     """Generate trajectory dictionaries from a policy and an environment.
 
@@ -335,6 +340,7 @@ def generate_trajectories(
         may be collected to avoid biasing process towards short episodes; the user
         should truncate if required.
     """
+    rng = rng or np.random.RandomState()
     get_actions = _policy_to_callable(policy, venv, deterministic_policy)
 
     # Collect rollout tuples.
@@ -358,9 +364,11 @@ def generate_trajectories(
     #
     # To start with, all environments are active.
     active = np.ones(venv.num_envs, dtype=bool)
+    assert isinstance(obs, np.ndarray)
     while np.any(active):
         acts = get_actions(obs)
         obs, rews, dones, infos = venv.step(acts)
+        assert isinstance(obs, np.ndarray)
 
         # If an environment is inactive, i.e. the episode completed for that
         # environment after `sample_until(trajectories)` was true, then we do
@@ -389,7 +397,7 @@ def generate_trajectories(
     # `trajectories` sooner. Shuffle to avoid bias in order. This is important
     # when callees end up truncating the number of trajectories or transitions.
     # It is also cheap, since we're just shuffling pointers.
-    rng.shuffle(trajectories)
+    rng.shuffle(trajectories)  # type: ignore[arg-type]
 
     # Sanity checks.
     for trajectory in trajectories:
@@ -474,7 +482,7 @@ def flatten_trajectories(
         The trajectories flattened into a single batch of Transitions.
     """
     keys = ["obs", "next_obs", "acts", "dones", "infos"]
-    parts = {key: [] for key in keys}
+    parts: Mapping[str, List[np.ndarray]] = {key: [] for key in keys}
     for traj in trajectories:
         parts["acts"].append(traj.acts)
 

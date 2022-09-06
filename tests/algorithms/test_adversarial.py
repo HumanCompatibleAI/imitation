@@ -2,7 +2,7 @@
 
 import contextlib
 import os
-from typing import Any, Mapping
+from typing import Any, Mapping, Type, Union
 
 import numpy as np
 import pytest
@@ -42,7 +42,7 @@ ENV_NAMES = ["FrozenLake-v1", "CartPole-v1", "Pendulum-v1"]
 EXPERT_BATCH_SIZES = [1, 128]
 
 
-@pytest.fixture(params=ALGORITHM_KWARGS.values(), ids=ALGORITHM_KWARGS.keys())
+@pytest.fixture(params=ALGORITHM_KWARGS.values(), ids=list(ALGORITHM_KWARGS.keys()))
 def _algorithm_kwargs(request):
     """Auto-parametrizes `_rl_algorithm_cls` for the `trainer` fixture."""
     return dict(request.param)
@@ -64,6 +64,7 @@ def make_trainer(
     parallel: bool = False,
     convert_dataset: bool = False,
 ):
+    expert_data: Union[th_data.DataLoader, th_data.Dataset]
     if convert_dataset:
         expert_data = th_data.DataLoader(
             expert_transitions,
@@ -78,7 +79,7 @@ def make_trainer(
     venv = util.make_vec_env(env_name, n_envs=num_envs, parallel=parallel)
     model_cls = algorithm_kwargs["model_class"]
     gen_algo = model_cls(algorithm_kwargs["policy_class"], venv)
-    reward_net_cls = reward_nets.BasicRewardNet
+    reward_net_cls: Type[reward_nets.RewardNet] = reward_nets.BasicRewardNet
     if algorithm_kwargs["algorithm_cls"] == airl.AIRL:
         reward_net_cls = reward_nets.BasicShapedRewardNet
     reward_net = reward_net_cls(venv.observation_space, venv.action_space)
@@ -126,7 +127,7 @@ def test_airl_fail_fast(custom_logger, tmpdir):
         )
 
 
-@pytest.fixture(params=ALGORITHM_KWARGS.values(), ids=ALGORITHM_KWARGS.keys())
+@pytest.fixture(params=ALGORITHM_KWARGS.values(), ids=list(ALGORITHM_KWARGS.keys()))
 def trainer(request, tmpdir, expert_transitions):
     with make_trainer(request.param, tmpdir, expert_transitions) as trainer:
         yield trainer
@@ -300,6 +301,7 @@ def test_logits_expert_is_high_log_policy_act_prob(
     log_act_prob_non_none = th.as_tensor(log_act_prob_non_none).to(obs.device)
 
     for log_act_prob in [None, log_act_prob_non_none]:
+        maybe_error_ctx: contextlib.AbstractContextManager
         if isinstance(trainer_diverse_env, airl.AIRL) and log_act_prob is None:
             maybe_error_ctx = pytest.raises(TypeError, match="Non-None.*required.*")
         else:

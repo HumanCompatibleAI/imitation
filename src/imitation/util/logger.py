@@ -48,7 +48,7 @@ class HierarchicalLogger(sb_logger.Logger):
     current_logger: Optional[sb_logger.Logger]
     _cached_loggers: Dict[str, sb_logger.Logger]
     _subdir: Optional[str]
-    _format_strs: Sequence[str]
+    format_strs: Sequence[str]
 
     def __init__(
         self,

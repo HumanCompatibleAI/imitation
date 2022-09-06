@@ -296,6 +296,8 @@ class DAggerTrainer(base.BaseImitationAlgorithm):
                    …
     """
 
+    _all_demos: List[types.Trajectory]
+
     DEFAULT_N_EPOCHS: int = 4
     """The default number of BC training epochs in `extend_and_update`."""
 

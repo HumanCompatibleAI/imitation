@@ -12,7 +12,66 @@ from imitation.util import networks
 assert_equal = functools.partial(th.testing.assert_close, rtol=0, atol=0)
 
 
-NORMALIZATION_LAYERS = [networks.RunningNorm, networks.EMANorm]
+NORMALIZATION_LAYERS = [
+    networks.RunningNorm,
+    networks.EMANorm,
+]
+
+
+class EMANormAlgorithm2(networks.EMANorm):
+    """EMA Norm using algorithm 2 from the reference below.
+
+    Reference:
+    https://github.com/HumanCompatibleAI/imitation/files/9456540/Incremental_batch_EMA_and_EMV.pdf
+    """
+
+    def __init__(
+        self,
+        num_features: int,
+        decay: float = 0.99,
+        eps: float = 1e-5,
+    ):
+        """Builds EMARunningNormIncremental."""
+        super().__init__(
+            num_features,
+            decay=decay,
+            eps=eps,
+        )
+
+    def update_stats(self, batch: th.Tensor) -> None:
+        """Update `self.running_mean` and `self.running_var` incrementally.
+
+        Reference Algorithm 2 from:
+        https://github.com/HumanCompatibleAI/imitation/files/9364938/Incremental_batch_EMA_and_EMV.pdf
+
+        Args:
+            batch: A batch of data to use to update the running mean and variance.
+        """
+        b_size = batch.shape[0]
+        if len(batch.shape) == 1:
+            batch = batch.reshape(b_size, 1)
+
+        self.inv_learning_rate += self.decay**self.num_batches
+        learning_rate = 1 / self.inv_learning_rate
+        if self.count == 0:
+            self.running_mean = batch.mean(dim=0)
+            if b_size > 1:
+                self.running_var = batch.var(dim=0, unbiased=False)
+            else:
+                self.running_var = th.zeros_like(self.running_mean, dtype=th.float)
+        else:
+            S = th.mean((batch - self.running_mean) ** 2, dim=0)
+
+            # update running mean
+            delta = learning_rate * (batch.mean(0) - self.running_mean)
+            self.running_mean += delta
+
+            # update running variance
+            self.running_var *= 1 - learning_rate
+            self.running_var += learning_rate * S - delta**2
+
+        self.count += b_size
+        self.num_batches += 1
 
 
 @pytest.mark.parametrize("normalization_layer", NORMALIZATION_LAYERS)
@@ -42,7 +101,7 @@ def test_running_norm_identity_train(normalization_layer: Type[networks.BaseNorm
     running_norm.train()  # stats will change in eval mode
     normalized = th.Tensor([-1, -1, -1, -1, 1, 1, 1, 1])  # mean 0, variance 1
     for _ in range(10):
-        th.testing.assert_allclose(
+        th.testing.assert_close(
             running_norm.forward(normalized),
             normalized,
             rtol=0.05,
@@ -133,7 +192,7 @@ def test_parameters_converge(
     running_norm = normalization_layer(num_dims)
     running_norm.train()
 
-    num_samples = 500
+    num_samples = 2000
     with th.random.fork_rng():
         th.random.manual_seed(42)
         data = th.randn(num_samples, num_dims) * sd + mean
@@ -192,3 +251,36 @@ def test_input_validation_on_ema_norm():
         networks.EMANorm(128, decay=-0.1)
 
     networks.EMANorm(128, decay=0.05)
+
+
+@pytest.mark.parametrize("decay", [0.5, 0.99])
+@pytest.mark.parametrize("input_shape", [(64,), (1, 256), (64, 256)])
+def test_ema_norm_algo_2_and_3_are_the_same(decay, input_shape):
+    num_features = input_shape[-1] if len(input_shape) == 2 else 1
+    ema_norm_algo_2 = EMANormAlgorithm2(
+        num_features=num_features,
+        decay=decay,
+    )
+    ema_norm_algo_3 = networks.EMANorm(num_features, decay)
+    random_tensor = th.randn(input_shape)
+    for i in range(1000):
+        ema_norm_algo_2.train(), ema_norm_algo_3.train()
+        # moving distribution
+        tensor_input = random_tensor.clone() + i
+        ema_norm_algo_2(tensor_input)
+        tensor_input = random_tensor.clone() + i
+        ema_norm_algo_3(tensor_input)
+
+        ema_norm_algo_2.eval(), ema_norm_algo_3.eval()
+        th.testing.assert_close(
+            ema_norm_algo_2.running_mean,
+            ema_norm_algo_3.running_mean,
+            rtol=0.05,
+            atol=0.1,
+        )
+        th.testing.assert_close(
+            ema_norm_algo_2.running_var,
+            ema_norm_algo_3.running_var,
+            rtol=0.05,
+            atol=0.1,
+        )

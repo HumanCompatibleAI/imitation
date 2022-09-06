@@ -2,6 +2,7 @@
 
 import functools
 import pathlib
+from typing import cast
 
 import gym
 import numpy as np
@@ -161,7 +162,10 @@ def test_normalize_features_extractor(obs_space: gym.Space) -> None:
 
     for i in range(10):
         obs = th.as_tensor([obs_space.sample()])
-        obs = preprocessing.preprocess_obs(obs, obs_space)
+        # TODO(juan) the cast below is because preprocess_obs has too general a type.
+        #  this should be replaced with an overload or a generic.
+        obs = cast(th.Tensor, preprocessing.preprocess_obs(obs, obs_space))
+        assert isinstance(obs, th.Tensor)
         flattened_obs = obs.flatten(1, -1)
         extracted = {k: extractor(obs) for k, extractor in extractors.items()}
         for k, v in extracted.items():

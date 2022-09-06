@@ -10,6 +10,7 @@ from typing import (
     Callable,
     Iterable,
     Iterator,
+    List,
     Mapping,
     Optional,
     Sequence,
@@ -99,7 +100,7 @@ def make_vec_env(
     spec = gym.spec(env_name)
     env_make_kwargs = env_make_kwargs or {}
 
-    def make_env(i, this_seed):
+    def make_env(i, this_seed) -> gym.Env:
         # Previously, we directly called `gym.make(env_name)`, but running
         # `imitation.scripts.train_adversarial` within `imitation.scripts.parallel`
         # created a weird interaction between Gym and Ray -- `gym.make` would fail
@@ -138,7 +139,9 @@ def make_vec_env(
 
     rng = np.random.RandomState(seed)
     env_seeds = rng.randint(0, (1 << 31) - 1, (n_envs,))
-    env_fns = [functools.partial(make_env, i, s) for i, s in enumerate(env_seeds)]
+    env_fns: List[Callable[[], gym.Env]] = [
+        functools.partial(make_env, i, s) for i, s in enumerate(env_seeds)
+    ]
     if parallel:
         # See GH hill-a/stable-baselines issue #217
         return SubprocVecEnv(env_fns, start_method="forkserver")
@@ -180,6 +183,10 @@ def endless_iter(iterable: Iterable[T]) -> Iterator[T]:
     Raises:
         ValueError: `iterable` is empty -- the first call it to returns no elements.
     """
+    # TODO(juan) this is wrong; if the iterable is not a container then the first
+    #  element will be wasted if it's not stored. The sensible solution is to
+    #  restrict the type of `iterable` to `Sequence` (this same issue is present
+    #  in a few other places in the codebase).
     try:
         next(iter(iterable))
     except StopIteration:

@@ -56,7 +56,10 @@ def load_stable_baselines_model(
         )
 
     model_path = policy_dir / "model.zip"
-    return cls.load(model_path, env=venv, **kwargs)
+    # TODO(juan) remove the type ignore when this SB3 PR gets merged
+    #  and released:
+    #  https://github.com/DLR-RM/stable-baselines3/pull/1043
+    return cls.load(model_path, env=venv, **kwargs)  # type: ignore[return-value]
 
 
 def _load_stable_baselines(

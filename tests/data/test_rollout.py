@@ -44,6 +44,7 @@ def _sample_fixed_length_trajectories(
     venv = vec_env.DummyVecEnv(
         [functools.partial(TerminalSentinelEnv, length) for length in episode_lengths],
     )
+    policy: rollout.AnyPolicy
     if policy_type == "policy":
         policy = RandomPolicy(venv.observation_space, venv.action_space)
     elif policy_type == "callable":

@@ -101,6 +101,7 @@ def test_bc(trainer: bc.BC, cartpole_venv):
         15,
         return_episode_rewards=True,
     )
+    assert isinstance(novice_rewards, (list, tuple))
 
     trainer.train(
         n_epochs=1,
@@ -114,6 +115,7 @@ def test_bc(trainer: bc.BC, cartpole_venv):
         15,
         return_episode_rewards=True,
     )
+    assert isinstance(rewards_after_training, (list, tuple))
     assert reward_improvement.is_significant_reward_improvement(
         novice_rewards,
         rewards_after_training,

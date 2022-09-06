@@ -32,21 +32,20 @@ def make_algo_with_wrapped_buffer(
     buffer_size: int = 100,
 ) -> off_policy_algorithm.OffPolicyAlgorithm:
     venv = util.make_vec_env("Pendulum-v1", n_envs=1)
-    rl_kwargs = dict(
-        replay_buffer_class=ReplayBufferRewardWrapper,
-        replay_buffer_kwargs=dict(
-            replay_buffer_class=replay_buffer_class,
-            reward_fn=zero_reward_fn,
-        ),
-        buffer_size=buffer_size,
-    )
     rl_algo = rl_cls(
         policy=policy_cls,
         policy_kwargs=dict(),
         env=venv,
         seed=42,
-        **rl_kwargs,
-    )
+        # we ignore the type below because sb3 has a bug (forgot to put Type[...])
+        # https://github.com/DLR-RM/stable-baselines3/issues/1039
+        replay_buffer_class=ReplayBufferRewardWrapper,  # type: ignore
+        replay_buffer_kwargs=dict(
+            replay_buffer_class=replay_buffer_class,
+            reward_fn=zero_reward_fn,
+        ),
+        buffer_size=buffer_size,
+    )  # type: ignore
     return rl_algo
 
 
@@ -55,8 +54,10 @@ def test_invalid_args():
         TypeError,
         match=r".*unexpected keyword argument 'replay_buffer_class'.*",
     ):
+        # we ignore the type because we are intentionally
+        # passing the wrong type for the test
         make_algo_with_wrapped_buffer(
-            rl_cls=sb3.PPO,
+            rl_cls=sb3.PPO,  # type: ignore
             policy_cls=policies.ActorCriticPolicy,
             replay_buffer_class=buffers.ReplayBuffer,
         )

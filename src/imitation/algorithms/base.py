@@ -256,14 +256,16 @@ def make_data_loader(
                 f"is smaller than batch size {batch_size}.",
             )
 
-        extra_kwargs = dict(shuffle=True, drop_last=True)
-        if data_loader_kwargs is not None:
-            extra_kwargs.update(data_loader_kwargs)
+        kwargs: Mapping[str, Any] = {
+            "shuffle": True,
+            "drop_last": True,
+            **(data_loader_kwargs or {}),
+        }
         return th_data.DataLoader(
             transitions,
             batch_size=batch_size,
             collate_fn=types.transitions_collate_fn,
-            **extra_kwargs,
+            **kwargs,
         )
     elif isinstance(transitions, Iterable):
         return _WrappedDataLoader(transitions, batch_size)

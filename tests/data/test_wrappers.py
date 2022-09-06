@@ -52,13 +52,13 @@ def _make_buffering_venv(
     error_on_premature_reset: bool,
 ) -> BufferingWrapper:
     venv = DummyVecEnv([_CountingEnv] * 2)
-    venv = BufferingWrapper(venv, error_on_premature_reset)
-    venv.reset()
-    return venv
+    wrapped_venv = BufferingWrapper(venv, error_on_premature_reset)
+    wrapped_venv.reset()
+    return wrapped_venv
 
 
-def _assert_equal_scrambled_vectors(a: np.ndarray, b: np.ndarray) -> bool:
-    """Returns True if `a` and `b` are identical up to sorting."""
+def _assert_equal_scrambled_vectors(a: np.ndarray, b: np.ndarray) -> None:
+    """Raises AssertionError if `a` and `b` are not identical up to sorting."""
     assert a.shape == b.shape
     assert a.ndim == 1
     np.testing.assert_allclose(np.sort(a), np.sort(b))
@@ -166,13 +166,13 @@ def test_pop(
     transitions_list.append(venv_buffer.pop_transitions())
 
     # Build expected transitions
-    expect_obs = []
+    expect_obs_list = []
     for ep_len in episode_lengths:
         n_complete, remainder = divmod(n_steps, ep_len)
-        expect_obs.extend([np.arange(ep_len)] * n_complete)
-        expect_obs.append(np.arange(remainder))
+        expect_obs_list.extend([np.arange(ep_len)] * n_complete)
+        expect_obs_list.append(np.arange(remainder))
 
-    expect_obs = np.concatenate(expect_obs)
+    expect_obs = np.concatenate(expect_obs_list)
     expect_next_obs = expect_obs + 1
     expect_acts = expect_obs * 2.1
     expect_rews = expect_next_obs * 10
