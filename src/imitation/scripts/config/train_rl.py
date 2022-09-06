@@ -75,11 +75,11 @@ def half_cheetah():
 
 @train_rl_ex.named_config
 def seals_half_cheetah():
-    common = dict(env_name="seals/HalfCheetah-v0")
+    common = dict(env_name="seals/HalfCheetah-v0", num_vec=1)
     # total_timesteps = int(5e6)  # does OK after 1e6, but continues improving
     total_timesteps = 1e6
     rl = dict(
-        batch_size=64,
+        batch_size=512,
         rl_kwargs=dict(
             normalize=True,
             n_envs=1,
@@ -92,7 +92,6 @@ def seals_half_cheetah():
             learning_rate=0.0003286871805949382,
             max_grad_norm=0.8,
             n_epochs=5,
-            n_steps=512,
             vf_coef=0.11483689492120866,
         ),
     )
@@ -140,10 +139,10 @@ def reacher():
 
 @train_rl_ex.named_config
 def seals_ant():
-    common = dict(env_name="seals/Ant-v0")
+    common = dict(env_name="seals/Ant-v0", num_vec=1)
     total_timesteps = (1e6,)
     rl = dict(
-        batch_size=16,
+        batch_size=2048,
         rl_kwargs=dict(
             normalize=True,
             policy="MlpPolicy",
@@ -155,7 +154,6 @@ def seals_ant():
             learning_rate=0.00017959211641976886,
             max_grad_norm=0.9,
             n_epochs=10,
-            n_steps=2048,
             # policy_kwargs are same as the defaults
             vf_coef=0.4351450387648799,
         ),
