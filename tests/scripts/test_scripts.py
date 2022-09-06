@@ -319,10 +319,7 @@ def bc_config(tmpdir, request):
             policy_type="ppo",
             loader_kwargs=dict(path=CARTPOLE_TEST_POLICY_PATH / "model.zip"),
         ),
-        expert_from_huggingface=dict(
-            policy_type="ppo-huggingface",
-            loader_kwargs=dict(env_id="seals/CartPole-v0"),
-        ),
+        expert_from_huggingface=dict(policy_type="ppo-huggingface"),
         random_expert=dict(policy_type="random"),
         zero_expert=dict(policy_type="zero"),
     )[request.param]
@@ -350,10 +347,7 @@ def test_train_bc_warmstart(tmpdir):
         config_updates=dict(
             common=dict(log_root=tmpdir),
             demonstrations=dict(rollout_path=CARTPOLE_TEST_ROLLOUT_PATH),
-            expert=dict(
-                policy_type="ppo-huggingface",
-                loader_kwargs=dict(env_id="seals/CartPole-v0"),
-            ),
+            expert=dict(policy_type="ppo-huggingface"),
         ),
     )
     assert run.status == "COMPLETED"
