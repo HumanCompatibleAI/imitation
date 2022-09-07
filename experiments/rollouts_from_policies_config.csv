@@ -1,13 +1,3 @@
-env_config_name,n_demonstrations
-cartpole,40
-mountain_car,40
-seals_cartpole,40
-seals_mountain_car,40
-acrobot,40
-seals_half_cheetah,40
-hopper,40
-walker,40
-swimmer,40
-ant,40
-humanoid,240
-reacher,40
+env_config_name,n_demonstrations,best_seed
+seals_half_cheetah,100,1
+seals_ant,100,1
