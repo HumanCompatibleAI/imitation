@@ -373,7 +373,7 @@ def generate_trajectories(
     #
     # To start with, all environments are active.
     active = np.ones(venv.num_envs, dtype=bool)
-    assert isinstance(obs, np.ndarray)
+    assert isinstance(obs, np.ndarray), "Dict/tuple observations are not supported."
     while np.any(active):
         acts = get_actions(obs)
         obs, rews, dones, infos = venv.step(acts)
