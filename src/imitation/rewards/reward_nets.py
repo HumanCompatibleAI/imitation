@@ -239,6 +239,15 @@ class RewardNetWrapper(RewardNet):
     def base(self) -> RewardNet:
         return self._base
 
+    @property
+    def device(self) -> th.device:
+        __doc__ = super().device.__doc__  # noqa: F841
+        return self.base.device
+
+    @property
+    def dtype(self) -> th.dtype:
+        return self.base.dtype
+
 
 class ForwardWrapper(RewardNetWrapper):
     """An abstract RewardNetWrapper that changes the behavior of forward.
@@ -272,7 +281,7 @@ class PredictProcessedWrapper(RewardNetWrapper):
     """An abstract RewardNetWrapper that changes the behavior of predict_processed.
 
     Subclasses should override `predict_processed`. Implementations
-    should pass along `kwargs` to the `base` reward nets `predict_processed` method.
+    should pass along `kwargs` to the `base` reward net's `predict_processed` method.
 
     Note: The wrapper will default to forwarding calls to `device`, `forward`,
         `preprocess` and `predict` to the base reward net unless
@@ -329,15 +338,6 @@ class PredictProcessedWrapper(RewardNetWrapper):
     ) -> Tuple[th.Tensor, th.Tensor, th.Tensor, th.Tensor]:
         __doc__ = super().preprocess.__doc__  # noqa: F841
         return self.base.preprocess(state, action, next_state, done)
-
-    @property
-    def device(self) -> th.device:
-        __doc__ = super().device.__doc__  # noqa: F841
-        return self.base.device
-
-    @property
-    def dtype(self) -> th.dtype:
-        return self.base.dtype
 
 
 class RewardNetWithVariance(RewardNet):
