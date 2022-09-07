@@ -100,7 +100,7 @@ def make_vec_env(
     spec = gym.spec(env_name)
     env_make_kwargs = env_make_kwargs or {}
 
-    def make_env(i, this_seed) -> gym.Env:
+    def make_env(i: int, this_seed: int) -> gym.Env:
         # Previously, we directly called `gym.make(env_name)`, but running
         # `imitation.scripts.train_adversarial` within `imitation.scripts.parallel`
         # created a weird interaction between Gym and Ray -- `gym.make` would fail
