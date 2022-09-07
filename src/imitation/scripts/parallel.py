@@ -192,7 +192,7 @@ def _ray_tune_sacred_wrapper(
         ex.observers = [FileStorageObserver("sacred")]
 
         # Apply base configs to get modified `named_configs` and `config_updates`.
-        named_configs = [*base_named_configs, *run_kwargs["named_configs"]]
+        named_configs = base_named_configs + run_kwargs["named_configs"]
         updated_run_kwargs["named_configs"] = named_configs
 
         config_updates = {**base_config_updates, **run_kwargs["config_updates"]}
