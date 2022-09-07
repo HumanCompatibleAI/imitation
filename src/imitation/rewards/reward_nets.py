@@ -10,7 +10,6 @@ from stable_baselines3.common import preprocessing
 from torch import nn
 
 from imitation.util import networks, util
-from imitation.util.networks import BaseNorm
 
 
 class RewardNet(nn.Module, abc.ABC):
@@ -425,7 +424,7 @@ class NormalizedRewardNet(RewardNetWrapper):
     def __init__(
         self,
         base: RewardNet,
-        normalize_output_layer: Type[BaseNorm],
+        normalize_output_layer: Type[networks.BaseNorm],
     ):
         """Initialize the NormalizedRewardNet.
 
