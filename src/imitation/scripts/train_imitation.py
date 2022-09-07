@@ -3,7 +3,7 @@
 import logging
 import os.path as osp
 import warnings
-from typing import Any, List, Mapping, Optional, Sequence, Type, cast
+from typing import Any, Mapping, Optional, Sequence, Type, cast
 
 from sacred.observers import FileStorageObserver
 from stable_baselines3.common import policies, utils, vec_env
@@ -177,12 +177,12 @@ def train_imitation(
     #  using assert doesn't work because we'd have to loop over all the trajectories
     #  and check that each one is a TrajectoryWithRew, which seems inefficient
     #  just for adding type annotations.
-    trajectories: List[types.TrajectoryWithRew]
+    trajectories: Sequence[types.TrajectoryWithRew]
     if use_dagger:
-        trajectories = cast(List[types.TrajectoryWithRew], model._all_demos)
+        trajectories = cast(Sequence[types.TrajectoryWithRew], model._all_demos)
     else:
         assert expert_trajs is not None
-        trajectories = cast(List[types.TrajectoryWithRew], expert_trajs)
+        trajectories = cast(Sequence[types.TrajectoryWithRew], expert_trajs)
 
     return {
         "imit_stats": imit_stats,
