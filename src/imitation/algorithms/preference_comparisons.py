@@ -437,10 +437,8 @@ class PreferenceModel(nn.Module):
             rews2 = self.rewards(trans2)
             probs[i] = self.probability(rews1, rews2)
             if gt_reward_available:
-                frag1, frag2 = cast(TrajectoryWithRew, frag1), cast(
-                    TrajectoryWithRew,
-                    frag2,
-                )
+                frag1 = cast(TrajectoryWithRew, frag1)
+                frag2 = cast(TrajectoryWithRew, frag2)
                 gt_rews_1 = th.from_numpy(frag1.rews)
                 gt_rews_2 = th.from_numpy(frag2.rews)
                 gt_probs[i] = self.probability(gt_rews_1, gt_rews_2)
@@ -691,7 +689,7 @@ class ActiveSelectionFragmenter(Fragmenter):
             ValueError: Preference model not wrapped over an ensemble of networks.
         """
         super().__init__(custom_logger=custom_logger)
-        if not preference_model.is_ensemble:
+        if preference_model.ensemble_model is None:
             raise ValueError(
                 "Preference model not wrapped over an ensemble of networks.",
             )
