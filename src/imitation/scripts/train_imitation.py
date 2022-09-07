@@ -87,11 +87,11 @@ def load_expert_policy(
         ValueError: `expert_policy_path` is None.
         TypeError: The policy loaded from `expert_policy_path` is not a SB3 policy.
     """
-    if expert_policy_path is None:
-        raise ValueError("expert_policy_path cannot be None")
-
     if expert_policy_type is None:
         raise ValueError("expert_policy_type cannot be None")
+
+    if expert_policy_path is None:
+        raise ValueError("expert_policy_path cannot be None")
 
     # TODO(shwang): Add support for directly loading a BasePolicy `*.th` file.
     expert_policy = serialize.load_policy(expert_policy_type, expert_policy_path, venv)
