@@ -18,7 +18,8 @@ from typing import (
     Sequence,
     Tuple,
     Type,
-    Union, )
+    Union,
+)
 
 import numpy as np
 import torch as th
@@ -1264,8 +1265,11 @@ class BasicRewardTrainer(RewardTrainer):
                 train_loss = 0.0
                 for fragment_pairs, preferences in dataloader:
                     self.optim.zero_grad()
-                    loss = self._training_inner_loop(fragment_pairs, preferences,
-                                                     mode="train")
+                    loss = self._training_inner_loop(
+                        fragment_pairs,
+                        preferences,
+                        mode="train",
+                    )
                     train_loss += loss.item()
                     if self.regularizer:
                         self.regularizer.regularize(loss)
@@ -1278,8 +1282,11 @@ class BasicRewardTrainer(RewardTrainer):
 
                 val_loss = 0.0
                 for fragment_pairs, preferences in val_dataloader:
-                    loss = self._training_inner_loop(fragment_pairs, preferences,
-                                                     mode="val")
+                    loss = self._training_inner_loop(
+                        fragment_pairs,
+                        preferences,
+                        mode="val",
+                    )
                     val_loss += loss.item()
                 self.regularizer.update_params(train_loss, val_loss)
 
@@ -1291,8 +1298,6 @@ class BasicRewardTrainer(RewardTrainer):
                 val = self.logger.name_to_value[key]
                 new_key = key.replace(f"mean/reward/epoch-{epoch_num}", "reward/final")
                 self.logger.record(new_key, val)
-
-
 
     def _training_inner_loop(
         self,
