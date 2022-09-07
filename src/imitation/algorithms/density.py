@@ -133,15 +133,16 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
         act_b: np.ndarray,
         next_obs_b: Optional[np.ndarray],
     ) -> None:
-        next_obs_b = next_obs_b or itertools.repeat(None)
-        # TODO(juan) I think this assumes that if next_obs_b is an array,
-        #  it has at least two axes, and zip maps along the first one.
-        #  This is not checked for, and if the array has only one dimension
-        #  it would raise an obscure error within _preprocess_transition.
-        #  _preprocess_transition also requires next_obs to be an ndarray
-        #  that is part of the observation space, so not sure how
-        #  this isn't failing when next_obs_b is None.
-        for obs, act, next_obs in zip(obs_b, act_b, next_obs_b):
+        if next_obs_b is None and self.density_type == DensityType.STATE_STATE_DENSITY:
+            raise ValueError(
+                "STATE_STATE_DENSITY requires next_obs_b "
+                "to be provided, but it was None",
+            )
+        if next_obs_b is not None:
+            assert next_obs_b.shape[1:] == self.venv.observation_space.shape
+        
+        next_obs_b_iterator = next_obs_b or itertools.repeat(None)
+        for obs, act, next_obs in zip(obs_b, act_b, next_obs_b_iterator):
             flat_trans = self._preprocess_transition(obs, act, next_obs)
             self.transitions.setdefault(None, []).append(flat_trans)
 
@@ -220,7 +221,7 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
         self,
         obs: np.ndarray,
         act: np.ndarray,
-        next_obs: np.ndarray,
+        next_obs: Optional[np.ndarray],
     ) -> np.ndarray:
         """Compute flattened transition on subset specified by `self.density_type`."""
         if self.density_type == DensityType.STATE_DENSITY:
@@ -233,6 +234,7 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
                 ],
             )
         elif self.density_type == DensityType.STATE_STATE_DENSITY:
+            assert next_obs is not None
             return np.concatenate(
                 [
                     flatten(self.venv.observation_space, obs),
@@ -242,10 +244,6 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
         else:
             raise ValueError(f"Unknown density type {self.density_type}")
 
-    # TODO(juan) I opted for renaming the function signature to match the
-    #  rewards.reward_function.RewardFn protocol, but changing the protocol
-    #  or making the arguments positional-only are two other valid approaches
-    #  if the previous names are better suited.
     def __call__(
         self,
         state: np.ndarray,
