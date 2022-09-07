@@ -140,7 +140,7 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
             )
         if next_obs_b is not None:
             assert next_obs_b.shape[1:] == self.venv.observation_space.shape
-        
+
         next_obs_b_iterator = next_obs_b or itertools.repeat(None)
         for obs, act, next_obs in zip(obs_b, act_b, next_obs_b_iterator):
             flat_trans = self._preprocess_transition(obs, act, next_obs)

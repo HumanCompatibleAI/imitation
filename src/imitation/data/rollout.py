@@ -106,8 +106,7 @@ class TrajectoryAccumulator:
             for k, array in part_dict.items():
                 out_dict_unstacked[k].append(array)
         out_dict_stacked = {
-            k: np.stack(arr_list, axis=0)
-            for k, arr_list in out_dict_unstacked.items()
+            k: np.stack(arr_list, axis=0) for k, arr_list in out_dict_unstacked.items()
         }
         traj = types.TrajectoryWithRew(**out_dict_stacked, terminal=terminal)
         assert traj.rews.shape[0] == traj.acts.shape[0] == traj.obs.shape[0] - 1
