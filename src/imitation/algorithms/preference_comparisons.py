@@ -1228,7 +1228,8 @@ class BasicRewardTrainer(RewardTrainer):
     def requires_regularizer_update(self) -> bool:
         """Whether the regularizer requires updating.
 
-        If true, this means that a validation dataset will be used.
+        Returns:
+            If true, this means that a validation dataset will be used.
         """
         return self.regularizer is not None and self.val_split > 0
 
