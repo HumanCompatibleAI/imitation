@@ -302,8 +302,11 @@ class AgentTrainer(TrajectoryGenerator):
             trajectories.extend(list(exploration_trajs))
         return trajectories
 
-    # Type ignore due to https://github.com/python/mypy/issues/5936
-    @TrajectoryGenerator.logger.setter  # type: ignore[attr-defined]
+    @property
+    def logger(self):
+        return super().logger
+
+    @logger.setter
     def logger(self, value: imit_logger.HierarchicalLogger):
         self._logger = value
         self.algorithm.set_logger(self.logger)
