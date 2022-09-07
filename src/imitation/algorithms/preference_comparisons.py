@@ -18,8 +18,7 @@ from typing import (
     Sequence,
     Tuple,
     Type,
-    Union,
-)
+    Union, )
 
 import numpy as np
 import torch as th
@@ -1224,9 +1223,17 @@ class BasicRewardTrainer(RewardTrainer):
             collate_fn=preference_collate_fn,
         )
 
+    @property
+    def requires_regularizer_update(self) -> bool:
+        """Whether the regularizer requires updating.
+
+        If true, this means that a validation dataset will be used.
+        """
+        return self.regularizer is not None and self.val_split > 0
+
     def _train(self, dataset: PreferenceDataset, epoch_multiplier: float = 1.0) -> None:
         """Trains for `epoch_multiplier * self.epochs` epochs over `dataset`."""
-        if self.regularizer and self.val_split > 0:
+        if self.requires_regularizer_update:
             val_length = int(len(dataset) * self.val_split)
             train_length = len(dataset) - val_length
             if val_length < 1 or train_length < 1:
@@ -1250,35 +1257,60 @@ class BasicRewardTrainer(RewardTrainer):
 
         epochs = round(self.epochs * epoch_multiplier)
 
-        for _ in tqdm(range(epochs), desc="Training reward model"):
-            train_loss = 0.0
-            val_loss = 0.0
-            for fragment_pairs, preferences in dataloader:
-                self.optim.zero_grad()
-                loss = self._training_inner_loop(fragment_pairs, preferences)
-                train_loss += loss.item()
-                if self.regularizer:
-                    self.regularizer.regularize(loss)
-                self.optim.step()
+        assert epochs > 0, "Must train for at least one epoch."
+        epoch_num = 0
+        for epoch_num in tqdm(range(epochs), desc="Training reward model"):
+            with self.logger.accumulate_means(f"reward/epoch-{epoch_num}"):
+                train_loss = 0.0
+                for fragment_pairs, preferences in dataloader:
+                    self.optim.zero_grad()
+                    loss = self._training_inner_loop(fragment_pairs, preferences,
+                                                     mode="train")
+                    train_loss += loss.item()
+                    if self.regularizer:
+                        self.regularizer.regularize(loss)
+                    self.optim.step()
 
-            if self.regularizer and self.val_split > 0:
+                if not self.requires_regularizer_update:
+                    continue
                 assert val_dataloader is not None
+                assert self.regularizer is not None
+
+                val_loss = 0.0
                 for fragment_pairs, preferences in val_dataloader:
-                    loss = self._training_inner_loop(fragment_pairs, preferences)
+                    loss = self._training_inner_loop(fragment_pairs, preferences,
+                                                     mode="val")
                     val_loss += loss.item()
                 self.regularizer.update_params(train_loss, val_loss)
+
+        # after training all the epochs,
+        # record also the final value in a separate key for easy access.
+        keys = list(self.logger.name_to_value.keys())
+        for key in keys:
+            if key.startswith(f"mean/reward/epoch-{epoch_num}"):
+                val = self.logger.name_to_value[key]
+                new_key = key.replace(f"mean/reward/epoch-{epoch_num}", "reward/final")
+                self.logger.record(new_key, val)
+
+
 
     def _training_inner_loop(
         self,
         fragment_pairs: Sequence[TrajectoryPair],
         preferences: np.ndarray,
+        mode: Optional[str] = None,
     ) -> th.Tensor:
         output = self.loss.forward(fragment_pairs, preferences)
         loss = output.loss
-        self.logger.record("loss", loss.item())
+        self.logger.record(self._get_logger_key(mode, "loss"), loss.item())
         for name, value in output.metrics.items():
-            self.logger.record(name, value.item())
+            self.logger.record(self._get_logger_key(mode, name), value.item())
         return loss
+
+    def _get_logger_key(self, mode: Optional[str], key: str) -> str:
+        if mode is None:
+            return key
+        return f"{mode}/{key}"
 
 
 class EnsembleTrainer(BasicRewardTrainer):
@@ -1362,6 +1394,7 @@ class EnsembleTrainer(BasicRewardTrainer):
         self,
         fragment_pairs: Sequence[TrajectoryPair],
         preferences: np.ndarray,
+        mode: Optional[str] = None,
     ) -> th.Tensor:
         assert len(fragment_pairs) == preferences.shape[0]
         losses = []
@@ -1381,14 +1414,14 @@ class EnsembleTrainer(BasicRewardTrainer):
         losses = th.stack(losses)
         loss = losses.sum()
 
-        self.logger.record("loss", loss.item())
-        self.logger.record("loss_std", losses.std().item())
+        self.logger.record(self._get_logger_key(mode, "loss"), loss.item())
+        self.logger.record(self._get_logger_key(mode, "loss_std"), losses.std().item())
 
         # Turn metrics from a list of dictionaries into a dictionary of
         # tensors.
         metrics = {k: th.stack([di[k] for di in metrics]) for k in metrics[0]}
         for name, value in metrics.items():
-            self.logger.record(name, value.mean().item())
+            self.logger.record(self._get_logger_key(mode, name), value.mean().item())
 
         return loss
 
@@ -1650,13 +1683,12 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
             if i == 0:
                 epoch_multiplier = self.initial_epoch_multiplier
 
-            with self.logger.accumulate_means("reward"):
-                self.reward_trainer.train(
-                    self.dataset,
-                    epoch_multiplier=epoch_multiplier,
-                )
-            reward_loss = self.logger.name_to_value["mean/reward/loss"]
-            reward_accuracy = self.logger.name_to_value["mean/reward/accuracy"]
+            self.reward_trainer.train(
+                self.dataset,
+                epoch_multiplier=epoch_multiplier,
+            )
+            reward_loss = self.logger.name_to_value["reward/final/train/loss"]
+            reward_accuracy = self.logger.name_to_value["reward/final/train/accuracy"]
 
             ###################
             # Train the agent #

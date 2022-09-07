@@ -546,7 +546,7 @@ def test_reward_trainer_regularization_raises(
     loss = preference_comparisons.CrossEntropyRewardLoss(preference_model)
     with pytest.raises(
         ValueError,
-        match="Regularization strength is non-zero " "but no regularizer.*",
+        match="Regularization strength is non-zero but no regularizer.*",
     ):
         preference_comparisons.BasicRewardTrainer(
             reward_net,
@@ -576,7 +576,7 @@ def test_reward_trainer_regularization_raises(
         )
     with pytest.raises(
         ValueError,
-        match="Extra regularization arguments provided " "but no regularizer.*",
+        match="Extra regularization arguments provided but no regularizer.*",
     ):
         preference_comparisons.BasicRewardTrainer(
             reward_net,
