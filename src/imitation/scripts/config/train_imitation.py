@@ -80,8 +80,8 @@ def ant():
 def seals_ant():
     common = dict(env_name="seals/Ant-v0")
     demonstrations = dict(
-        rollout_path="output/train_experts/2022-09-05T18:27:27-07:00/"
-        "seals_ant_1/rollouts/final.pkl",
+        rollout_path="/home/taufeeque/imitation/output/train_experts/"
+        "2022-09-05T18:27:27-07:00/seals_ant_1/rollouts/final.pkl",
     )
 
 
@@ -98,8 +98,8 @@ def seals_half_cheetah():
     bc_kwargs = dict(l2_weight=0.0)
     dagger = dict(total_timesteps=60000)
     demonstrations = dict(
-        rollout_path="output/train_experts/2022-09-05T18:27:27-07:00/"
-        "seals_half_cheetah_1/rollouts/final.pkl",
+        rollout_path="/home/taufeeque/imitation/output/train_experts/"
+        "2022-09-05T18:27:27-07:00/seals_half_cheetah_1/rollouts/final.pkl",
     )
 
 

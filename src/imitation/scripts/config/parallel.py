@@ -155,7 +155,7 @@ def example_bc():
         "common": {"wandb": {"wandb_kwargs": {"project": "algorithm-benchmark"}}}
     }
     search_space = {
-        "named_configs": [[env] for env in MY_ENVS],
+        "named_configs": [env for env in MY_ENVS],
         "config_updates": {
             "bc_kwargs": dict(
                 # batch_size=tune.grid_search([16, 32, 64]),
