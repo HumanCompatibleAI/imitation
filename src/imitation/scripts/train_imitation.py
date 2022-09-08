@@ -159,6 +159,7 @@ def train_imitation(
                 expert_policy=expert_policy,
                 custom_logger=custom_logger,
                 bc_trainer=bc_trainer,
+                random_state=random_state,
             )
             model.train(
                 total_timesteps=int(dagger["total_timesteps"]),

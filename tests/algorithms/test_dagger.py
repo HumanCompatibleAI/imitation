@@ -41,7 +41,8 @@ def test_beta_schedule():
         assert np.allclose(three_step_sched(i), (3 - i) / 3 if i <= 2 else 0)
 
 
-def test_traj_collector_seed(tmpdir, pendulum_venv):
+def test_traj_collector_seed(tmpdir, pendulum_venv, random_state_fixed):
+    random_state = random_state_fixed
     collector = dagger.InteractiveTrajectoryCollector(
         venv=pendulum_venv,
         get_robot_acts=lambda o: [
@@ -49,6 +50,7 @@ def test_traj_collector_seed(tmpdir, pendulum_venv):
         ],
         beta=0.5,
         save_dir=tmpdir,
+        random_state=random_state,
     )
     seeds1 = collector.seed(42)
     obs1 = collector.reset()
@@ -59,7 +61,8 @@ def test_traj_collector_seed(tmpdir, pendulum_venv):
     np.testing.assert_array_equal(obs1, obs2)
 
 
-def test_traj_collector(tmpdir, pendulum_venv):
+def test_traj_collector(tmpdir, pendulum_venv, random_state_fixed):
+    random_state = random_state_fixed
     robot_calls = 0
     num_episodes = 0
 
@@ -73,6 +76,7 @@ def test_traj_collector(tmpdir, pendulum_venv):
         get_robot_acts=get_random_acts,
         beta=0.5,
         save_dir=tmpdir,
+        random_state=random_state,
     )
     collector.reset()
     zero_acts = np.zeros(
@@ -131,6 +135,7 @@ def _build_dagger_trainer(
         beta_schedule=beta_schedule,
         bc_trainer=bc_trainer,
         custom_logger=custom_logger,
+        random_state=random_state,
     )
 
 
@@ -158,6 +163,7 @@ def _build_simple_dagger_trainer(
         expert_policy=expert_policy,
         expert_trajs=pendulum_expert_rollouts,
         custom_logger=custom_logger,
+        random_state=random_state,
     )
 
 
@@ -421,6 +427,7 @@ def test_dagger_not_enough_transitions_error(tmpdir, custom_logger, random_state
         scratch_dir=tmpdir,
         bc_trainer=bc_trainer,
         custom_logger=custom_logger,
+        random_state=random_state,
     )
     collector = trainer.create_trajectory_collector()
     policy = base.RandomPolicy(venv.observation_space, venv.action_space)

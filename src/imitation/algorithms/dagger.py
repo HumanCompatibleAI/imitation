@@ -152,6 +152,7 @@ class InteractiveTrajectoryCollector(vec_env.VecEnvWrapper):
         get_robot_acts: Callable[[np.ndarray], np.ndarray],
         beta: float,
         save_dir: types.AnyPath,
+        random_state: np.random.RandomState,
     ):
         """Builds InteractiveTrajectoryCollector.
 
@@ -175,7 +176,7 @@ class InteractiveTrajectoryCollector(vec_env.VecEnvWrapper):
         self._done_before = True
         self._is_reset = False
         self._last_user_actions = None
-        self.rng = np.random.RandomState()
+        self.rng = random_state
 
     def seed(self, seed=Optional[int]) -> List[Union[None, int]]:
         """Set the seed for the DAgger random number generator and wrapped VecEnv.
@@ -306,6 +307,7 @@ class DAggerTrainer(base.BaseImitationAlgorithm):
         *,
         venv: vec_env.VecEnv,
         scratch_dir: types.AnyPath,
+        random_state: np.random.RandomState,
         beta_schedule: Optional[Callable[[int], float]] = None,
         bc_trainer: bc.BC,
         custom_logger: Optional[logger.HierarchicalLogger] = None,
@@ -332,6 +334,7 @@ class DAggerTrainer(base.BaseImitationAlgorithm):
         self.round_num = 0
         self._last_loaded_round = -1
         self._all_demos = []
+        self.random_state = random_state
 
         utils.check_for_correct_spaces(
             self.venv,
@@ -473,6 +476,7 @@ class DAggerTrainer(base.BaseImitationAlgorithm):
             get_robot_acts=lambda acts: self.bc_trainer.policy.predict(acts)[0],
             beta=beta,
             save_dir=save_dir,
+            random_state=self.random_state,
         )
         return collector
 
@@ -527,6 +531,7 @@ class SimpleDAggerTrainer(DAggerTrainer):
         venv: vec_env.VecEnv,
         scratch_dir: types.AnyPath,
         expert_policy: policies.BasePolicy,
+        random_state: np.random.RandomState,
         expert_trajs: Optional[Sequence[types.Trajectory]] = None,
         **dagger_trainer_kwargs,
     ):
@@ -549,7 +554,12 @@ class SimpleDAggerTrainer(DAggerTrainer):
             ValueError: The observation or action space does not match between
                 `venv` and `expert_policy`.
         """
-        super().__init__(venv=venv, scratch_dir=scratch_dir, **dagger_trainer_kwargs)
+        super().__init__(
+            venv=venv,
+            scratch_dir=scratch_dir,
+            random_state=random_state,
+            **dagger_trainer_kwargs,
+        )
         self.expert_policy = expert_policy
         if expert_policy.observation_space != self.venv.observation_space:
             raise ValueError(
