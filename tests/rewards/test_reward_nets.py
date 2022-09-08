@@ -127,7 +127,10 @@ def _sample(space, n):
 
 def _make_env_and_save_reward_net(env_name, reward_type, tmpdir, random_state):
     venv = util.make_vec_env(
-        env_name, n_envs=1, parallel=False, random_state=random_state
+        env_name,
+        n_envs=1,
+        parallel=False,
+        random_state=random_state,
     )
     save_path = os.path.join(tmpdir, "norm_reward.pt")
 
@@ -162,10 +165,16 @@ def test_reward_valid(env_name, reward_type, tmpdir, random_state_fixed):
     random_state = random_state_fixed
     # TODO(juan) the line below is not being used?
     venv = util.make_vec_env(
-        env_name, n_envs=1, parallel=False, random_state=random_state
+        env_name,
+        n_envs=1,
+        parallel=False,
+        random_state=random_state,
     )
     venv, tmppath = _make_env_and_save_reward_net(
-        env_name, reward_type, tmpdir, random_state
+        env_name,
+        reward_type,
+        tmpdir,
+        random_state,
     )
 
     TRAJECTORY_LEN = 10
@@ -184,7 +193,10 @@ def test_reward_valid(env_name, reward_type, tmpdir, random_state_fixed):
 def test_strip_wrappers_basic(random_state_fixed):
     random_state = random_state_fixed
     venv = util.make_vec_env(
-        "FrozenLake-v1", n_envs=1, parallel=False, random_state=random_state
+        "FrozenLake-v1",
+        n_envs=1,
+        parallel=False,
+        random_state=random_state,
     )
     net = reward_nets.BasicRewardNet(venv.observation_space, venv.action_space)
     net = reward_nets.NormalizedRewardNet(net, networks.RunningNorm)
@@ -201,7 +213,10 @@ def test_strip_wrappers_basic(random_state_fixed):
 def test_strip_wrappers_complex(random_state_fixed):
     random_state = random_state_fixed
     venv = util.make_vec_env(
-        "FrozenLake-v1", n_envs=1, parallel=False, random_state=random_state
+        "FrozenLake-v1",
+        n_envs=1,
+        parallel=False,
+        random_state=random_state,
     )
     net = reward_nets.BasicRewardNet(venv.observation_space, venv.action_space)
     net = reward_nets.ShapedRewardNet(net, _potential, discount_factor=0.99)
@@ -303,7 +318,10 @@ def test_serialize_identity(
     logging.info(f"Testing {net_cls}")
 
     venv = util.make_vec_env(
-        env_name, n_envs=1, parallel=False, random_state=random_state
+        env_name,
+        n_envs=1,
+        parallel=False,
+        random_state=random_state,
     )
     original = net_cls(venv.observation_space, venv.action_space)
     if normalize_rewards:
@@ -318,7 +336,10 @@ def test_serialize_identity(
     assert original.action_space == loaded.action_space
 
     transitions = rollout.generate_transitions(
-        random, venv, n_timesteps=100, random_state=random_state
+        random,
+        venv,
+        n_timesteps=100,
+        random_state=random_state,
     )
 
     if isinstance(original, reward_nets.NormalizedRewardNet):
@@ -661,7 +682,10 @@ def test_training_regression(normalize_input_layer, random_state_fixed):
     random = base.RandomPolicy(venv.observation_space, venv.action_space)
     for _ in range(2):
         transitions = rollout.generate_transitions(
-            random, venv, n_timesteps=100, random_state=random_state
+            random,
+            venv,
+            n_timesteps=100,
+            random_state=random_state,
         )
         trans_args = (
             transitions.obs,

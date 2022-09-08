@@ -29,11 +29,17 @@ def test_actions_valid(env_name, policy_type, random_state_fixed):
     """Test output actions of our custom policies always lie in action space."""
     random_state = random_state_fixed
     venv = util.make_vec_env(
-        env_name, n_envs=1, parallel=False, random_state=random_state
+        env_name,
+        n_envs=1,
+        parallel=False,
+        random_state=random_state,
     )
     policy = serialize.load_policy(policy_type, "foobar", venv)
     transitions = rollout.generate_transitions(
-        policy, venv, n_timesteps=100, random_state=random_state
+        policy,
+        venv,
+        n_timesteps=100,
+        random_state=random_state,
     )
 
     for a in transitions.acts:
@@ -48,7 +54,9 @@ def test_actions_valid(env_name, policy_type, random_state_fixed):
     ],
 )
 def test_save_stable_model_errors_and_warnings(
-    tmpdir, policy_env_name_pair, random_state_fixed
+    tmpdir,
+    policy_env_name_pair,
+    random_state_fixed,
 ):
     """Check errors and warnings in `save_stable_model()`."""
     random_state = random_state_fixed
@@ -76,7 +84,10 @@ def test_save_stable_model_errors_and_warnings(
 def _test_serialize_identity(env_name, model_cfg, tmpdir, random_state):
     """Test output actions of deserialized policy are same as original."""
     venv = util.make_vec_env(
-        env_name, n_envs=1, parallel=False, random_state=random_state
+        env_name,
+        n_envs=1,
+        parallel=False,
+        random_state=random_state,
     )
 
     model_name, model_cls_name = model_cfg
@@ -126,7 +137,10 @@ def test_serialize_identity(env_name, model_cfg, tmpdir, random_state_fixed):
 @pytest.mark.parametrize("env_name", [SIMPLE_CONTINUOUS_ENV])
 @pytest.mark.parametrize("model_cfg", CONTINUOUS_ONLY_CONFIGS)
 def test_serialize_identity_continuous_only(
-    env_name, model_cfg, tmpdir, random_state_fixed
+    env_name,
+    model_cfg,
+    tmpdir,
+    random_state_fixed,
 ):
     """Test serialize identity for continuous_only algorithms."""
     _test_serialize_identity(env_name, model_cfg, tmpdir, random_state_fixed)

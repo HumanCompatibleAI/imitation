@@ -9,7 +9,6 @@ import os
 import random
 from typing import Any, Mapping, Optional, Type, Union
 
-import numpy as np
 import torch as th
 from sacred.observers import FileStorageObserver
 from stable_baselines3.common import type_aliases
@@ -23,7 +22,6 @@ from imitation.scripts.common import seeding, train
 from imitation.scripts.config.train_preference_comparisons import (
     train_preference_comparisons_ex,
 )
-from imitation.util import util
 
 
 def save_model(

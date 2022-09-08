@@ -21,7 +21,8 @@ from imitation.scripts.common import seeding
 from imitation.scripts.common.train import train_ingredient
 
 rl_ingredient = sacred.Ingredient(
-    "rl", ingredients=[train_ingredient, seeding.seeding_ingredient]
+    "rl",
+    ingredients=[train_ingredient, seeding.seeding_ingredient],
 )
 logger = logging.getLogger(__name__)
 

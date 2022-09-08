@@ -7,7 +7,6 @@ import time
 from typing import Any, Mapping, Optional
 
 import gym
-import numpy as np
 from sacred.observers import FileStorageObserver
 from stable_baselines3.common.vec_env import VecEnvWrapper
 
@@ -109,7 +108,10 @@ def eval_policy(
             assert policy_path is not None
             policy = serialize.load_policy(policy_type, policy_path, venv)
         trajs = rollout.generate_trajectories(
-            policy, venv, sample_until, random_state=random_state
+            policy,
+            venv,
+            sample_until,
+            random_state=random_state,
         )
 
     if rollout_save_path:

@@ -1,3 +1,5 @@
+"""Single source of truth for seeding random number generators in experiments."""
+
 from typing import Optional
 
 import numpy as np

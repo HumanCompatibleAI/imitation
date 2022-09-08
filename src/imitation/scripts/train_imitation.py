@@ -5,7 +5,6 @@ import os.path as osp
 import warnings
 from typing import Any, Mapping, Optional, Sequence, Type, cast
 
-import numpy as np
 from sacred.observers import FileStorageObserver
 from stable_baselines3.common import policies, utils, vec_env
 

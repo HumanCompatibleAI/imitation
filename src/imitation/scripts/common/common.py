@@ -5,7 +5,6 @@ import logging
 import os
 from typing import Any, Generator, Mapping, Sequence, Tuple, Union
 
-import numpy as np
 import sacred
 from stable_baselines3.common import vec_env
 
@@ -15,7 +14,8 @@ from imitation.util import sacred as sacred_util
 from imitation.util import util
 
 common_ingredient = sacred.Ingredient(
-    "common", ingredients=[wb.wandb_ingredient, seeding.seeding_ingredient]
+    "common",
+    ingredients=[wb.wandb_ingredient, seeding.seeding_ingredient],
 )
 logger = logging.getLogger(__name__)
 

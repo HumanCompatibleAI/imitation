@@ -83,6 +83,7 @@ def test_complete_trajectories(policy_type, random_state_fixed) -> None:
 
     Args:
         policy_type: Kind of policy to use when generating trajectories.
+        random_state_fixed: Random state to use.
     """
     random_state = random_state_fixed
     min_episodes = 13
@@ -142,10 +143,13 @@ def test_unbiased_trajectories(
         min_episodes: The minimum number of episodes to sample.
         expected_counts: Mapping from episode length to expected number of episodes
             of that length (omit if 0 episodes of that length expected).
+        random_state_fixed: Random state to use.
     """
     random_state = random_state_fixed
     trajectories = _sample_fixed_length_trajectories(
-        episode_lengths, min_episodes, random_state
+        episode_lengths,
+        min_episodes,
+        random_state,
     )
     assert len(trajectories) == sum(expected_counts.values())
     traj_lens = np.array([len(traj) for traj in trajectories])
@@ -197,7 +201,10 @@ def test_rollout_stats(random_state_fixed):
 
     policy = serialize.load_policy("zero", "UNUSED", venv)
     trajs = rollout.generate_trajectories(
-        policy, venv, rollout.make_min_episodes(10), random_state=random_state
+        policy,
+        venv,
+        rollout.make_min_episodes(10),
+        random_state=random_state,
     )
     s = rollout.rollout_stats(trajs)
 
@@ -220,7 +227,10 @@ def test_unwrap_traj(random_state_fixed):
 
     policy = serialize.load_policy("zero", "UNUSED", venv)
     trajs = rollout.generate_trajectories(
-        policy, venv, rollout.make_min_episodes(10), random_state=random_state
+        policy,
+        venv,
+        rollout.make_min_episodes(10),
+        random_state=random_state,
     )
     trajs_unwrapped = [rollout.unwrap_traj(t) for t in trajs]
     trajs_unwrapped_twice = [rollout.unwrap_traj(t) for t in trajs_unwrapped]

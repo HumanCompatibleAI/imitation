@@ -1,7 +1,5 @@
 """Wrapper to turn a policy into a more exploratory version."""
 
-from typing import Optional
-
 import numpy as np
 from stable_baselines3.common import vec_env
 

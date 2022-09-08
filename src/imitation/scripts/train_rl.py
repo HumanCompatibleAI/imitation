@@ -14,7 +14,6 @@ import os.path as osp
 import warnings
 from typing import Any, Mapping, Optional
 
-import numpy as np
 from sacred.observers import FileStorageObserver
 from stable_baselines3.common import callbacks
 from stable_baselines3.common.vec_env import VecNormalize
@@ -147,7 +146,8 @@ def train_rl(
                 rollout_save_n_episodes,
             )
             types.save(
-                save_path, rollout.rollout(rl_algo, venv, sample_until, random_state)
+                save_path,
+                rollout.rollout(rl_algo, venv, sample_until, random_state),
             )
         if policy_save_final:
             output_dir = os.path.join(policy_dir, "final")

@@ -165,6 +165,7 @@ class InteractiveTrajectoryCollector(vec_env.VecEnvWrapper):
                 robot action. The choice of robot or human action is independently
                 randomized for each individual `Env` at every timestep.
             save_dir: directory to save collected trajectories in.
+            random_state: random state for random number generation.
         """
         super().__init__(venv)
         self.get_robot_acts = get_robot_acts
@@ -318,6 +319,7 @@ class DAggerTrainer(base.BaseImitationAlgorithm):
             venv: Vectorized training environment.
             scratch_dir: Directory to use to store intermediate training
                 information (e.g. for resuming training).
+            random_state: random state for random number generation.
             beta_schedule: Provides a value of `beta` (the probability of taking
                 expert action in any given state) at each round of training. If
                 `None`, then `linear_beta_schedule` will be used instead.

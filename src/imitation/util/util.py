@@ -163,7 +163,8 @@ def make_seeds(random_state: np.random.RandomState, n: int) -> List[int]:
 
 
 def make_seeds(
-    random_state: np.random.RandomState, n: Optional[int] = None
+    random_state: np.random.RandomState,
+    n: Optional[int] = None,
 ) -> Union[List[int], int]:
     """Generate n random seeds from a random state.
 
@@ -174,7 +175,6 @@ def make_seeds(
     Returns:
         A list of n random seeds.
     """
-
     seeds: List[int] = random_state.randint(0, (1 << 31) - 1, (n or 1,)).tolist()
     if n is None:
         return seeds[0]

@@ -432,7 +432,10 @@ def test_dagger_not_enough_transitions_error(tmpdir, custom_logger, random_state
     collector = trainer.create_trajectory_collector()
     policy = base.RandomPolicy(venv.observation_space, venv.action_space)
     rollout.generate_trajectories(
-        policy, collector, rollout.make_min_episodes(1), random_state=random_state
+        policy,
+        collector,
+        rollout.make_min_episodes(1),
+        random_state=random_state,
     )
     with pytest.raises(ValueError, match="Not enough transitions.*"):
         trainer.extend_and_update()

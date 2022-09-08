@@ -78,7 +78,10 @@ def make_trainer(
         expert_data = expert_transitions
 
     venv = util.make_vec_env(
-        env_name, n_envs=num_envs, parallel=parallel, random_state=random_state
+        env_name,
+        n_envs=num_envs,
+        parallel=parallel,
+        random_state=random_state,
     )
     model_cls = algorithm_kwargs["model_class"]
     gen_algo = model_cls(algorithm_kwargs["policy_class"], venv)
@@ -115,7 +118,10 @@ def test_airl_fail_fast(custom_logger, tmpdir, random_state_fixed):
 
     gen_algo = stable_baselines3.DQN(stable_baselines3.dqn.MlpPolicy, venv)
     small_data = rollout.generate_transitions(
-        gen_algo, venv, n_timesteps=20, random_state=random_state
+        gen_algo,
+        venv,
+        n_timesteps=20,
+        random_state=random_state,
     )
     reward_net = reward_nets.BasicShapedRewardNet(
         observation_space=venv.observation_space,
@@ -138,7 +144,10 @@ def test_airl_fail_fast(custom_logger, tmpdir, random_state_fixed):
 def trainer(request, tmpdir, expert_transitions, random_state_fixed):
     random_state = random_state_fixed
     with make_trainer(
-        request.param, tmpdir, expert_transitions, random_state
+        request.param,
+        tmpdir,
+        expert_transitions,
+        random_state,
     ) as trainer:
         yield trainer
 
@@ -203,7 +212,9 @@ def trainer_parametrized(
 
 
 def test_train_disc_step_no_crash(
-    trainer_parametrized, _expert_batch_size, random_state_fixed
+    trainer_parametrized,
+    _expert_batch_size,
+    random_state_fixed,
 ):
     random_state = random_state_fixed
     transitions = rollout.generate_transitions(
@@ -283,7 +294,11 @@ def _env_name(request):
 
 @pytest.fixture
 def trainer_diverse_env(
-    _algorithm_kwargs, _env_name, tmpdir, expert_transitions, random_state_fixed
+    _algorithm_kwargs,
+    _env_name,
+    tmpdir,
+    expert_transitions,
+    random_state_fixed,
 ):
     random_state = random_state_fixed
     if _algorithm_kwargs["model_class"] == stable_baselines3.DQN:
@@ -312,6 +327,7 @@ def test_logits_expert_is_high_log_policy_act_prob(
     Args:
         trainer_diverse_env: The trainer to test.
         n_timesteps: The number of timesteps of rollouts to collect.
+        random_state_fixed: The random state to use.
     """
     random_state = random_state_fixed
     trans = rollout.generate_transitions(

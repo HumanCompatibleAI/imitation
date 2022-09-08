@@ -788,7 +788,7 @@ class PreferenceGatherer(abc.ABC):
         """Initializes the preference gatherer.
 
         Args:
-            seed: seed for the internal RNG, if applicable
+            random_state: random state for random number generation, if applicable.
             custom_logger: Where to log to; if None (default), creates a new logger.
         """
         # The random seed isn't used here, but it's useful to have this
@@ -1311,7 +1311,10 @@ def _make_reward_trainer(
 
         if is_base or is_std_wrapper:
             return EnsembleTrainer(
-                base_model, loss, random_state=random_state, **reward_trainer_kwargs
+                base_model,
+                loss,
+                random_state=random_state,
+                **reward_trainer_kwargs,
             )
         else:
             raise ValueError(
@@ -1440,7 +1443,7 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
             raise ValueError(
                 "If you don't provide a random state, you must provide your own "
                 "seeded fragmenter and preference gatherer. You can initialize"
-                "a random state with `np.random.RandomState(seed)`."
+                "a random state with `np.random.RandomState(seed)`.",
             )
         elif self.random_state is not None and None not in (
             preference_gatherer,
@@ -1448,14 +1451,16 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
         ):
             raise ValueError(
                 "If you provide your own fragmenter and preference gatherer, you "
-                "don't need to provide a random state."
+                "don't need to provide a random state.",
             )
 
         if reward_trainer is None:
             preference_model = PreferenceModel(reward_model)
             loss = CrossEntropyRewardLoss(preference_model)
             self.reward_trainer = _make_reward_trainer(
-                reward_model, loss, random_state=self.random_state
+                reward_model,
+                loss,
+                random_state=self.random_state,
             )
         else:
             self.reward_trainer = reward_trainer

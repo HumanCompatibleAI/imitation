@@ -59,7 +59,8 @@ def agent(venv):
 def random_fragmenter(random_state_fixed):
     random_state = random_state_fixed
     return preference_comparisons.RandomFragmenter(
-        random_state=random.Random(util.make_seeds(random_state)), warning_threshold=0
+        random_state=random.Random(util.make_seeds(random_state)),
+        warning_threshold=0,
     )
 
 
@@ -100,7 +101,10 @@ def test_mismatched_spaces(venv, agent, random_state_fixed):
         match="spaces do not match",
     ):
         preference_comparisons.AgentTrainer(
-            agent, bad_reward_net, venv, random_state=random_state
+            agent,
+            bad_reward_net,
+            venv,
+            random_state=random_state,
         )
 
 
@@ -305,7 +309,11 @@ def test_init_raises_error_when_trying_use_improperly_wrapped_ensemble(
 
 
 def test_discount_rate_no_crash(
-    agent_trainer, venv, random_fragmenter, custom_logger, random_state_fixed
+    agent_trainer,
+    venv,
+    random_fragmenter,
+    custom_logger,
+    random_state_fixed,
 ):
     random_state = random_state_fixed
     # also use a non-zero noise probability to check that doesn't cause errors
@@ -337,11 +345,14 @@ def test_discount_rate_no_crash(
 
 
 def test_synthetic_gatherer_deterministic(
-    agent_trainer, random_fragmenter, random_state_fixed
+    agent_trainer,
+    random_fragmenter,
+    random_state_fixed,
 ):
     random_state = random_state_fixed
     gatherer = preference_comparisons.SyntheticGatherer(
-        temperature=0, random_state=random_state
+        temperature=0,
+        random_state=random_state,
     )
     trajectories = agent_trainer.sample(10)
     fragments = random_fragmenter(trajectories, fragment_length=2, num_pairs=2)
@@ -421,7 +432,10 @@ def test_preference_dataset_queue(agent_trainer, random_fragmenter, random_state
 
 
 def test_store_and_load_preference_dataset(
-    agent_trainer, random_fragmenter, tmp_path, random_state_fixed
+    agent_trainer,
+    random_fragmenter,
+    tmp_path,
+    random_state_fixed,
 ):
     random_state = random_state_fixed
     dataset = preference_comparisons.PreferenceDataset()

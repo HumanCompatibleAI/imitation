@@ -158,7 +158,7 @@ class TabularPolicy(policies.BasePolicy):
             action_space: The action space of the environment.
             pi: A tabular policy. Three-dimensional array, where pi[t,s,a]
                 is the probability of taking action a at state s at timestep t.
-            rng: Random state, used for sampling when `predict` is called with
+            random_state: Random state, used for sampling when `predict` is called with
                 `deterministic=False`.
         """
         assert isinstance(state_space, gym.spaces.Discrete), "state not tabular"

@@ -181,6 +181,7 @@ def test_bc_data_loader_empty_iter_error(
         no_yield_after_iter: Data loader stops yielding after this many calls.
         custom_logger: Where to log to.
         cartpole_expert_trajectories: The expert trajectories to use.
+        random_state_fixed: Random state to use.
     """
     batch_size = 32
     random_state = random_state_fixed

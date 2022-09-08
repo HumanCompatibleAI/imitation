@@ -186,7 +186,9 @@ class RolloutStatsComputer:
     #   https://stable-baselines3.readthedocs.io/en/master/guide/callbacks.html#evalcallback
 
     def __call__(
-        self, policy: policies.ActorCriticPolicy, random_state: np.random.RandomState
+        self,
+        policy: policies.ActorCriticPolicy,
+        random_state: np.random.RandomState,
     ) -> Mapping[str, float]:
         if self.venv is not None and self.n_episodes > 0:
             trajs = rollout.generate_trajectories(

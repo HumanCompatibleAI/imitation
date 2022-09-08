@@ -682,7 +682,10 @@ def test_preference_comparisons_transfer_learning(
 def test_train_rl_double_normalization(tmpdir: str, random_state_fixed):
     random_state = random_state_fixed
     venv = util.make_vec_env(
-        "CartPole-v1", n_envs=1, parallel=False, random_state=random_state
+        "CartPole-v1",
+        n_envs=1,
+        parallel=False,
+        random_state=random_state,
     )
     basic_reward_net = reward_nets.BasicRewardNet(
         venv.observation_space,

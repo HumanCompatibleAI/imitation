@@ -606,7 +606,11 @@ def rollout(
         should truncate if required.
     """
     trajs = generate_trajectories(
-        policy, venv, sample_until, random_state=random_state, **kwargs
+        policy,
+        venv,
+        sample_until,
+        random_state=random_state,
+        **kwargs,
     )
     if unwrap:
         trajs = [unwrap_traj(traj) for traj in trajs]

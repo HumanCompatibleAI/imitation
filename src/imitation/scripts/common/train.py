@@ -3,7 +3,6 @@
 import logging
 from typing import Any, Mapping, Union
 
-import numpy as np
 import sacred
 from stable_baselines3.common import base_class, policies, torch_layers, vec_env
 
