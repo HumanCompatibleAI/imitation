@@ -220,6 +220,20 @@ def _is_reward_valid(env_name, reward_type, tmpdir, is_image):
     assert np.issubdtype(pred_reward.dtype, np.number)
 
 
+@pytest.mark.parametrize("env_name", ENVS)
+@pytest.mark.parametrize("reward_type", DESERIALIZATION_TYPES)
+def test_reward_valid(env_name, reward_type, tmpdir):
+    """Test output of reward function is appropriate shape and type."""
+    _is_reward_valid(env_name, reward_type, tmpdir, is_image=False)
+
+
+@pytest.mark.parametrize("env_name", IMAGE_ENVS)
+@pytest.mark.parametrize("reward_type", DESERIALIZATION_TYPES)
+def test_reward_valid_image(env_name, reward_type, tmpdir):
+    """Test output of reward function is appropriate shape and type."""
+    _is_reward_valid(env_name, reward_type, tmpdir, is_image=True)
+
+
 def test_strip_wrappers_basic():
     venv = util.make_vec_env("FrozenLake-v1", n_envs=1, parallel=False)
     net = reward_nets.BasicRewardNet(venv.observation_space, venv.action_space)
