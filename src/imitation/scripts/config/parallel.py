@@ -164,8 +164,10 @@ def example_bc():
                     lr=tune.grid_search([1e-3, 1e-4]),
                 ),
             ),
-            "bc_train_kwargs": dict(n_epochs=np.linspace(1, 7, num=3, dtype=int)),
+            "bc_train_kwargs": dict(
+                n_epochs=tune.grid_search(np.linspace(1, 7, num=3, dtype=int))
+            ),
         },
         "command_name": "bc",
     }
-    resources_per_trial = dict(cpu=4, gpu=1)
+    resources_per_trial = dict(cpu=2)
