@@ -17,9 +17,9 @@ from stable_baselines3.common import type_aliases
 from imitation.algorithms import preference_comparisons
 from imitation.data import types
 from imitation.policies import serialize
-from imitation.scripts.common import common, reward, seeding
+from imitation.scripts.common import common, reward
 from imitation.scripts.common import rl as rl_common
-from imitation.scripts.common import train
+from imitation.scripts.common import seeding, train
 from imitation.scripts.config.train_preference_comparisons import (
     train_preference_comparisons_ex,
 )

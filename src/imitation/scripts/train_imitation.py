@@ -13,7 +13,7 @@ from imitation.algorithms import bc as bc_algorithm
 from imitation.algorithms.dagger import SimpleDAggerTrainer
 from imitation.data import rollout, types
 from imitation.policies import serialize
-from imitation.scripts.common import common, demonstrations, train, seeding
+from imitation.scripts.common import common, demonstrations, seeding, train
 from imitation.scripts.config.train_imitation import train_imitation_ex
 
 logger = logging.getLogger(__name__)

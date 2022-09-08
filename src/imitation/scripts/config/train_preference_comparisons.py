@@ -3,7 +3,7 @@
 import sacred
 
 from imitation.algorithms import preference_comparisons
-from imitation.scripts.common import common, reward, rl, train, seeding
+from imitation.scripts.common import common, reward, rl, seeding, train
 
 train_preference_comparisons_ex = sacred.Experiment(
     "train_preference_comparisons",

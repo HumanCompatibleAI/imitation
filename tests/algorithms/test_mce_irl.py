@@ -339,7 +339,9 @@ def test_mce_irl_demo_formats(random_state_fixed):
                 use_done=False,
                 hid_sizes=[],
             )
-            mce_irl = MCEIRL(demo, mdp, reward_net, linf_eps=1e-3, random_state=random_state)
+            mce_irl = MCEIRL(
+                demo, mdp, reward_net, linf_eps=1e-3, random_state=random_state
+            )
             assert np.allclose(mce_irl.demo_state_om.sum(), mdp.horizon + 1)
             final_counts[kind] = mce_irl.train(max_iter=5)
 

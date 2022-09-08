@@ -99,7 +99,9 @@ def test_mismatched_spaces(venv, agent, random_state_fixed):
         ValueError,
         match="spaces do not match",
     ):
-        preference_comparisons.AgentTrainer(agent, bad_reward_net, venv, random_state=random_state)
+        preference_comparisons.AgentTrainer(
+            agent, bad_reward_net, venv, random_state=random_state
+        )
 
 
 def test_trajectory_dataset_seeding(
@@ -334,9 +336,13 @@ def test_discount_rate_no_crash(
     main_trainer.train(100, 10)
 
 
-def test_synthetic_gatherer_deterministic(agent_trainer, random_fragmenter, random_state_fixed):
+def test_synthetic_gatherer_deterministic(
+    agent_trainer, random_fragmenter, random_state_fixed
+):
     random_state = random_state_fixed
-    gatherer = preference_comparisons.SyntheticGatherer(temperature=0, random_state=random_state)
+    gatherer = preference_comparisons.SyntheticGatherer(
+        temperature=0, random_state=random_state
+    )
     trajectories = agent_trainer.sample(10)
     fragments = random_fragmenter(trajectories, fragment_length=2, num_pairs=2)
     preferences1 = gatherer(fragments)
@@ -414,7 +420,9 @@ def test_preference_dataset_queue(agent_trainer, random_fragmenter, random_state
     assert len(dataset) == 5
 
 
-def test_store_and_load_preference_dataset(agent_trainer, random_fragmenter, tmp_path, random_state_fixed):
+def test_store_and_load_preference_dataset(
+    agent_trainer, random_fragmenter, tmp_path, random_state_fixed
+):
     random_state = random_state_fixed
     dataset = preference_comparisons.PreferenceDataset()
     trajectories = agent_trainer.sample(10)

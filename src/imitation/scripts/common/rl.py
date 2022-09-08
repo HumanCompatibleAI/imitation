@@ -20,7 +20,9 @@ from imitation.rewards.reward_function import RewardFn
 from imitation.scripts.common import seeding
 from imitation.scripts.common.train import train_ingredient
 
-rl_ingredient = sacred.Ingredient("rl", ingredients=[train_ingredient, seeding.seeding_ingredient])
+rl_ingredient = sacred.Ingredient(
+    "rl", ingredients=[train_ingredient, seeding.seeding_ingredient]
+)
 logger = logging.getLogger(__name__)
 
 
