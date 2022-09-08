@@ -140,3 +140,30 @@ def example_gail_easy():
     search_space = {
         "command_name": "gail",
     }
+
+
+MY_ENVS = ["seals_half_cheetah", "seals_ant"]
+
+
+@parallel_ex.named_config
+def example_bc():
+    sacred_ex_name = "train_imitation"
+    run_name = "example-bc"
+    n_seeds = 5
+    search_space = {
+        "named_configs": tune.grid_search([[env] for env in MY_ENVS]),
+        "config_updates": {
+            "bc_kwargs": dict(
+                batch_size=tune.grid_search([16, 32, 64]),
+                l2_weight=tune.grid_search([1e-4, 0]),  # L2 regularization weight
+                optimizer_kwargs=dict(
+                    lr=tune.grid_search([1e-3, 1e-4]),
+                ),
+            ),
+            "bc_train_kwargs": dict(n_epochs=np.linspace(1, 7, num=3, dtype=int)),
+        },
+    }
+    search_space = {
+        "command_name": "bc",
+    }
+    resources_per_trial = dict(cpu=2)

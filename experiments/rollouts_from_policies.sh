@@ -54,6 +54,8 @@ parallel -j 25% --header : --results "${OUTPUT_DIR}/parallel_rollout/" --progres
   with \
   '{env_config_name}' \
   common.log_root="${OUTPUT_DIR}" \
+  expert.policy_type="ppo" \
+  expert.loader_kwargs.path="${OUTPUT_DIR}/{env_config_name}_{best_seed}/policies/final/" \
   rollout_save_path="${OUTPUT_DIR}/{env_config_name}_{best_seed}/rollouts/final.pkl" \
   eval_n_episodes='{n_demonstrations}' \
   eval_n_timesteps=None \
