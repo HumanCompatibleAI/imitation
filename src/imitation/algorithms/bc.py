@@ -185,12 +185,15 @@ class RolloutStatsComputer:
     #   EvalCallback could be a good fit:
     #   https://stable-baselines3.readthedocs.io/en/master/guide/callbacks.html#evalcallback
 
-    def __call__(self, policy: policies.ActorCriticPolicy) -> Mapping[str, float]:
+    def __call__(
+        self, policy: policies.ActorCriticPolicy, random_state: np.random.RandomState
+    ) -> Mapping[str, float]:
         if self.venv is not None and self.n_episodes > 0:
             trajs = rollout.generate_trajectories(
                 policy,
                 self.venv,
                 rollout.make_min_episodes(self.n_episodes),
+                random_state=random_state,
             )
             return rollout.rollout_stats(trajs)
         else:
@@ -272,6 +275,7 @@ class BC(algo_base.DemonstrationAlgorithm):
         *,
         observation_space: gym.Space,
         action_space: gym.Space,
+        random_state: np.random.RandomState,
         policy: Optional[policies.ActorCriticPolicy] = None,
         demonstrations: Optional[algo_base.AnyTransitions] = None,
         batch_size: int = 32,
@@ -316,6 +320,8 @@ class BC(algo_base.DemonstrationAlgorithm):
 
         self.action_space = action_space
         self.observation_space = observation_space
+
+        self.random_state = random_state
 
         if policy is None:
             policy = policy_base.FeedForward32Policy(
@@ -401,6 +407,9 @@ class BC(algo_base.DemonstrationAlgorithm):
             self._bc_logger.reset_tensorboard_steps()
         self._bc_logger.log_epoch(0)
 
+        # TODO(juan) docstrings above say that this can be none and that no rollouts
+        #  are generated. However initializing this requires passing a non-None
+        #  venv.
         compute_rollout_stats = RolloutStatsComputer(
             log_rollouts_venv,
             log_rollouts_n_episodes,
@@ -438,7 +447,7 @@ class BC(algo_base.DemonstrationAlgorithm):
             loss = self.trainer(batch)
 
             if batch_num % log_interval == 0:
-                rollout_stats = compute_rollout_stats(self.policy)
+                rollout_stats = compute_rollout_stats(self.policy, self.random_state)
 
                 self._bc_logger.log_batch(
                     batch_num,

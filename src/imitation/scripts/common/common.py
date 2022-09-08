@@ -5,6 +5,7 @@ import logging
 import os
 from typing import Any, Generator, Mapping, Sequence, Tuple, Union
 
+import numpy as np
 import sacred
 from stable_baselines3.common import vec_env
 
@@ -130,7 +131,7 @@ def setup_logging(
 @contextlib.contextmanager
 @common_ingredient.capture
 def make_venv(
-    _seed,
+    random_state: np.random.RandomState,
     env_name: str,
     num_vec: int,
     parallel: bool,
@@ -159,8 +160,8 @@ def make_venv(
     try:
         venv = util.make_vec_env(
             env_name,
-            num_vec,
-            seed=_seed,
+            random_state=random_state,
+            n_envs=num_vec,
             parallel=parallel,
             max_episode_steps=max_episode_steps,
             log_dir=log_dir,

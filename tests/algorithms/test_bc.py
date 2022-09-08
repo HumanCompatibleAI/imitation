@@ -47,7 +47,9 @@ def trainer(
     expert_data_type,
     custom_logger,
     cartpole_expert_trajectories,
+    random_state_fixed,
 ):
+    random_state = random_state_fixed
     trans = rollout.flatten_trajectories(cartpole_expert_trajectories)
     if expert_data_type == "data_loader":
         expert_data = th_data.DataLoader(
@@ -70,10 +72,12 @@ def trainer(
         batch_size=batch_size,
         demonstrations=expert_data,
         custom_logger=custom_logger,
+        random_state=random_state,
     )
 
 
-def test_weight_decay_init_error(cartpole_venv, custom_logger):
+def test_weight_decay_init_error(cartpole_venv, custom_logger, random_state_fixed):
+    random_state = random_state_fixed
     with pytest.raises(ValueError, match=".*weight_decay.*"):
         bc.BC(
             observation_space=cartpole_venv.observation_space,
@@ -81,6 +85,7 @@ def test_weight_decay_init_error(cartpole_venv, custom_logger):
             demonstrations=None,
             optimizer_kwargs=dict(weight_decay=1e-4),
             custom_logger=custom_logger,
+            random_state=random_state,
         )
 
 
@@ -165,6 +170,7 @@ def test_bc_data_loader_empty_iter_error(
     no_yield_after_iter: bool,
     custom_logger: logger.HierarchicalLogger,
     cartpole_expert_trajectories,
+    random_state_fixed,
 ) -> None:
     """Check that we error out if the DataLoader suddenly stops yielding any batches.
 
@@ -177,6 +183,7 @@ def test_bc_data_loader_empty_iter_error(
         cartpole_expert_trajectories: The expert trajectories to use.
     """
     batch_size = 32
+    random_state = random_state_fixed
     trans = rollout.flatten_trajectories(cartpole_expert_trajectories)
     dummy_yield_value = dataclasses.asdict(trans[:batch_size])
 
@@ -189,6 +196,7 @@ def test_bc_data_loader_empty_iter_error(
         action_space=cartpole_venv.action_space,
         batch_size=batch_size,
         custom_logger=custom_logger,
+        random_state=random_state,
     )
     trainer.set_demonstrations(bad_data_loader)
     with pytest.raises(AssertionError, match=".*no data.*"):

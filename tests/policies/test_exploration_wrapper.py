@@ -15,6 +15,7 @@ def make_wrapper(random_prob, switch_prob):
     venv = util.make_vec_env(
         "seals/CartPole-v0",
         n_envs=1,
+        random_state=np.random.RandomState(),
     )
     return (
         exploration_wrapper.ExplorationWrapper(
@@ -22,7 +23,7 @@ def make_wrapper(random_prob, switch_prob):
             venv=venv,
             random_prob=random_prob,
             switch_prob=switch_prob,
-            seed=0,
+            random_state=np.random.RandomState(0),
         ),
         venv,
     )

@@ -6,6 +6,7 @@ import numpy as np
 from stable_baselines3.common import vec_env
 
 from imitation.data import rollout
+from imitation.util import util
 
 
 class ExplorationWrapper:
@@ -25,7 +26,7 @@ class ExplorationWrapper:
         venv: vec_env.VecEnv,
         random_prob: float,
         switch_prob: float,
-        seed: Optional[int] = None,
+        random_state: np.random.RandomState,
     ):
         """Initializes the ExplorationWrapper.
 
@@ -34,14 +35,16 @@ class ExplorationWrapper:
             venv: The environment to use (needed for sampling random actions).
             random_prob: The probability of picking the random policy when switching.
             switch_prob: The probability of switching away from the current policy.
-            seed: The random seed to use.
+            random_state: The random state to use for seeding the environment and for
+                switching policies.
         """
         self.wrapped_policy = policy_callable
         self.random_prob = random_prob
         self.switch_prob = switch_prob
         self.venv = venv
 
-        self.rng = np.random.RandomState(seed)
+        self.rng = random_state
+        seed = util.make_seeds(self.rng)
         self.venv.action_space.seed(seed)
 
         self.current_policy = policy_callable

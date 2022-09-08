@@ -53,7 +53,7 @@ def test_buffer(capacity, chunk_len, sample_shape) -> None:
     buf = Buffer(
         capacity,
         sample_shapes={"a": sample_shape, "b": sample_shape},
-        dtypes={"a": float, "b": float},
+        dtypes={"a": np.dtype(float), "b": np.dtype(float)},
     )
 
     to_insert = 3 * capacity

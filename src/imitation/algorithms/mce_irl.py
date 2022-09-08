@@ -149,7 +149,7 @@ class TabularPolicy(policies.BasePolicy):
         state_space: gym.Space,
         action_space: gym.Space,
         pi: np.ndarray,
-        rng: Optional[np.random.RandomState],
+        random_state: np.random.RandomState,
     ):
         """Builds TabularPolicy.
 
@@ -165,7 +165,7 @@ class TabularPolicy(policies.BasePolicy):
         assert isinstance(action_space, gym.spaces.Discrete), "action not tabular"
         # What we call state space here is observation space in SB3 nomenclature.
         super().__init__(observation_space=state_space, action_space=action_space)
-        self.rng = rng or np.random.RandomState()
+        self.rng = random_state
         self.set_pi(pi)
 
     def set_pi(self, pi: np.ndarray) -> None:
@@ -259,6 +259,7 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
         demonstrations: Optional[MCEDemonstrations],
         env: resettable_env.TabularModelEnv,
         reward_net: reward_nets.RewardNet,
+        random_state: np.random.RandomState,
         optimizer_cls: Type[th.optim.Optimizer] = th.optim.Adam,
         optimizer_kwargs: Optional[Mapping[str, Any]] = None,
         discount: float = 1.0,
@@ -267,7 +268,6 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
         # TODO(adam): do we need log_interval or can just use record_mean...?
         log_interval: Optional[int] = 100,
         *,
-        rng: Optional[np.random.RandomState] = None,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
     ):
         r"""Creates MCE IRL.
@@ -279,10 +279,11 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
                 The demonstrations must have observations one-hot coded unless
                 demonstrations is a state-occupancy measure.
             env: a tabular MDP.
+            random_state: random state used for sampling from policy.
             reward_net: a neural network that computes rewards for the supplied
                 observations.
-            optimizer_cls: optimiser to use for supervised training.
-            optimizer_kwargs: keyword arguments for optimiser construction.
+            optimizer_cls: optimizer to use for supervised training.
+            optimizer_kwargs: keyword arguments for optimizer construction.
             discount: the discount factor to use when computing occupancy measure.
                 If not 1.0 (undiscounted), then `demonstrations` must either be
                 a (discounted) state-occupancy measure, or trajectories. Transitions
@@ -295,7 +296,6 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
                 MCE IRL gradient falls below this value.
             log_interval: how often to log current loss stats (using `logging`).
                 None to disable.
-            rng: random state used for sampling from policy.
             custom_logger: Where to log to; if None (default), creates a new logger.
         """
         self.discount = discount
@@ -313,7 +313,7 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
         self.linf_eps = linf_eps
         self.grad_l2_eps = grad_l2_eps
         self.log_interval = log_interval
-        self.rng = rng
+        self.rng = random_state
 
         # Initialize policy to be uniform random. We don't use this for MCE IRL
         # training, but it gives us something to return at all times with `policy`
@@ -324,7 +324,7 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
             state_space=self.env.pomdp_state_space,
             action_space=self.env.action_space,
             pi=uniform_pi,
-            rng=self.rng,
+            random_state=self.rng,
         )
 
     def _set_demo_from_trajectories(self, trajs: Iterable[types.Trajectory]) -> None:

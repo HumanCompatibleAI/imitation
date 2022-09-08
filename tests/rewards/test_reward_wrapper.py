@@ -17,20 +17,21 @@ class FunkyReward:
         return (np.arange(len(obs)) + 1).astype("float32")
 
 
-def test_reward_overwrite():
+def test_reward_overwrite(random_state_fixed):
     """Test that reward wrapper actually overwrites base rewards."""
+    random_state = random_state_fixed
     env_name = "Pendulum-v1"
     num_envs = 3
-    env = util.make_vec_env(env_name, num_envs)
+    env = util.make_vec_env(env_name, random_state=random_state, n_envs=num_envs)
     reward_fn = FunkyReward()
     wrapped_env = reward_wrapper.RewardVecEnvWrapper(env, reward_fn)
     policy = RandomPolicy(env.observation_space, env.action_space)
     sample_until = rollout.make_min_episodes(10)
     default_stats = rollout.rollout_stats(
-        rollout.generate_trajectories(policy, env, sample_until),
+        rollout.generate_trajectories(policy, env, sample_until, random_state),
     )
     wrapped_stats = rollout.rollout_stats(
-        rollout.generate_trajectories(policy, wrapped_env, sample_until),
+        rollout.generate_trajectories(policy, wrapped_env, sample_until, random_state),
     )
     # Pendulum-v1 always has negative rewards
     assert default_stats["return_max"] < 0

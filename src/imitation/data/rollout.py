@@ -323,9 +323,9 @@ def generate_trajectories(
     policy: AnyPolicy,
     venv: VecEnv,
     sample_until: GenTrajTerminationFn,
+    random_state: np.random.RandomState,
     *,
     deterministic_policy: bool = False,
-    rng: Optional[np.random.RandomState] = None,
 ) -> Sequence[types.TrajectoryWithRew]:
     """Generate trajectory dictionaries from a policy and an environment.
 
@@ -342,14 +342,13 @@ def generate_trajectories(
         deterministic_policy: If True, asks policy to deterministically return
             action. Note the trajectories might still be non-deterministic if the
             environment has non-determinism!
-        rng: used for shuffling trajectories.
+        random_state: used for shuffling trajectories.
 
     Returns:
         Sequence of trajectories, satisfying `sample_until`. Additional trajectories
         may be collected to avoid biasing process towards short episodes; the user
         should truncate if required.
     """
-    rng = rng or np.random.RandomState()
     get_actions = _policy_to_callable(policy, venv, deterministic_policy)
 
     # Collect rollout tuples.
@@ -406,7 +405,7 @@ def generate_trajectories(
     # `trajectories` sooner. Shuffle to avoid bias in order. This is important
     # when callees end up truncating the number of trajectories or transitions.
     # It is also cheap, since we're just shuffling pointers.
-    rng.shuffle(trajectories)  # type: ignore[arg-type]
+    random_state.shuffle(trajectories)  # type: ignore[arg-type]
 
     # Sanity checks.
     for trajectory in trajectories:
@@ -529,6 +528,7 @@ def generate_transitions(
     policy: AnyPolicy,
     venv: VecEnv,
     n_timesteps: int,
+    random_state: np.random.RandomState,
     *,
     truncate: bool = True,
     **kwargs,
@@ -556,6 +556,7 @@ def generate_transitions(
         policy,
         venv,
         sample_until=make_min_timesteps(n_timesteps),
+        random_state=random_state,
         **kwargs,
     )
     transitions = flatten_trajectories_with_rew(traj)
@@ -570,6 +571,7 @@ def rollout(
     policy: AnyPolicy,
     venv: VecEnv,
     sample_until: GenTrajTerminationFn,
+    random_state: np.random.RandomState,
     *,
     unwrap: bool = True,
     exclude_infos: bool = True,
@@ -588,6 +590,7 @@ def rollout(
             3) None, in which case actions will be sampled randomly.
         venv: The vectorized environments.
         sample_until: End condition for rollout sampling.
+        random_state: Random state to use for sampling.
         unwrap: If True, then save original observations and rewards (instead of
             potentially wrapped observations and rewards) by calling
             `unwrap_traj()`.
@@ -602,7 +605,9 @@ def rollout(
         may be collected to avoid biasing process towards short episodes; the user
         should truncate if required.
     """
-    trajs = generate_trajectories(policy, venv, sample_until, **kwargs)
+    trajs = generate_trajectories(
+        policy, venv, sample_until, random_state=random_state, **kwargs
+    )
     if unwrap:
         trajs = [unwrap_traj(traj) for traj in trajs]
     if exclude_infos:

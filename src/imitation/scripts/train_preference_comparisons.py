@@ -6,8 +6,10 @@ can be called directly.
 
 import functools
 import os
+import random
 from typing import Any, Mapping, Optional, Type, Union
 
+import numpy as np
 import torch as th
 from sacred.observers import FileStorageObserver
 from stable_baselines3.common import type_aliases
@@ -21,6 +23,7 @@ from imitation.scripts.common import train
 from imitation.scripts.config.train_preference_comparisons import (
     train_preference_comparisons_ex,
 )
+from imitation.util import util
 
 
 def save_model(
@@ -56,7 +59,7 @@ def save_checkpoint(
 
 @train_preference_comparisons_ex.main
 def train_preference_comparisons(
-    _seed: int,
+    random_state: np.random.RandomState,
     total_timesteps: int,
     total_comparisons: int,
     num_iterations: int,
@@ -84,7 +87,7 @@ def train_preference_comparisons(
     """Train a reward model using preference comparisons.
 
     Args:
-        _seed: Random seed.
+        random_state: Random state for the internal random number generation.
         total_timesteps: number of environment interaction steps
         total_comparisons: number of preferences to gather in total
         num_iterations: number of times to train the agent against the reward model
@@ -148,6 +151,7 @@ def train_preference_comparisons(
         ValueError: Inconsistency between config and deserialized policy normalization.
     """
     custom_logger, log_dir = common.setup_logging()
+    seed = util.make_seeds(random_state)
 
     with common.make_venv() as venv:
         reward_net = reward.make_reward_net(venv)
@@ -172,7 +176,7 @@ def train_preference_comparisons(
                 reward_fn=reward_net,
                 venv=venv,
                 exploration_frac=exploration_frac,
-                seed=_seed,
+                random_state=random_state,
                 custom_logger=custom_logger,
                 **trajectory_generator_kwargs,
             )
@@ -186,7 +190,7 @@ def train_preference_comparisons(
                 )
             trajectory_generator = preference_comparisons.TrajectoryDataset(
                 trajectories=types.load_with_rewards(trajectory_path),
-                seed=_seed,
+                random_state=random.Random(seed),
                 custom_logger=custom_logger,
                 **trajectory_generator_kwargs,
             )
@@ -194,7 +198,7 @@ def train_preference_comparisons(
         fragmenter: preference_comparisons.Fragmenter = (
             preference_comparisons.RandomFragmenter(
                 **fragmenter_kwargs,
-                seed=_seed,
+                random_state=random.Random(seed),
                 custom_logger=custom_logger,
             )
         )
@@ -212,7 +216,7 @@ def train_preference_comparisons(
             )
         gatherer = gatherer_cls(
             **gatherer_kwargs,
-            seed=_seed,
+            random_state=random_state,
             custom_logger=custom_logger,
         )
 
@@ -223,8 +227,8 @@ def train_preference_comparisons(
         reward_trainer = preference_comparisons._make_reward_trainer(
             reward_net,
             loss,
+            random_state,
             reward_trainer_kwargs,
-            seed=_seed,
         )
 
         main_trainer = preference_comparisons.PreferenceComparisons(
@@ -240,7 +244,7 @@ def train_preference_comparisons(
             initial_comparison_frac=initial_comparison_frac,
             custom_logger=custom_logger,
             allow_variable_horizon=allow_variable_horizon,
-            seed=_seed,
+            random_state=random_state,
             query_schedule=query_schedule,
         )
 

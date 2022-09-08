@@ -631,7 +631,7 @@ class SimpleDAggerTrainer(DAggerTrainer):
                 venv=collector,
                 sample_until=sample_until,
                 deterministic_policy=True,
-                rng=collector.rng,
+                random_state=collector.rng,
             )
 
             for traj in trajectories:

@@ -269,7 +269,8 @@ def test_tabular_policy():
     np.testing.assert_equal(timesteps[0], 2 - mask.astype(int))
 
 
-def test_tabular_policy_randomness():
+def test_tabular_policy_randomness(random_state_fixed):
+    random_state = random_state_fixed
     state_space = gym.spaces.Discrete(2)
     action_space = gym.spaces.Discrete(2)
     pi = np.array(
@@ -280,12 +281,11 @@ def test_tabular_policy_randomness():
             ],
         ],
     )
-    rng = np.random.RandomState(42)
     tabular = TabularPolicy(
         state_space=state_space,
         action_space=action_space,
         pi=pi,
-        rng=rng,
+        random_state=random_state,
     )
 
     actions, _ = tabular.predict(np.zeros((100,), dtype=int))
@@ -297,7 +297,8 @@ def test_tabular_policy_randomness():
     np.testing.assert_equal(actions, 0)
 
 
-def test_mce_irl_demo_formats():
+def test_mce_irl_demo_formats(fixed_random_state):
+    random_state = fixed_random_state
     mdp = model_envs.RandomMDP(
         n_states=5,
         n_actions=3,
@@ -313,6 +314,7 @@ def test_mce_irl_demo_formats():
         policy=None,
         venv=state_venv,
         sample_until=rollout.make_min_timesteps(100),
+        random_state=random_state,
     )
     demonstrations = {
         "trajs": trajs,
@@ -357,7 +359,9 @@ def test_mce_irl_demo_formats():
 def test_mce_irl_reasonable_mdp(
     model_kwargs: Mapping[str, Any],
     discount: float,
+    random_state_fixed,
 ):
+    random_state = random_state_fixed
     with th.random.fork_rng():
         th.random.manual_seed(715298)
 
@@ -377,7 +381,14 @@ def test_mce_irl_reasonable_mdp(
             use_done=False,
             **model_kwargs,
         )
-        mce_irl = MCEIRL(D, mdp, reward_net, linf_eps=1e-3, discount=discount)
+        mce_irl = MCEIRL(
+            D,
+            mdp,
+            reward_net,
+            linf_eps=1e-3,
+            discount=discount,
+            random_state=random_state,
+        )
         final_counts = mce_irl.train()
 
         assert np.allclose(final_counts, D, atol=1e-3, rtol=1e-3)
@@ -390,6 +401,7 @@ def test_mce_irl_reasonable_mdp(
             mce_irl.policy,
             state_venv,
             sample_until=rollout.make_min_episodes(5),
+            random_state=random_state,
         )
         stats = rollout.rollout_stats(trajs)
         if discount > 0.0:  # skip check when discount==0.0 (random policy)

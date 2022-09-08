@@ -16,6 +16,7 @@ from typing import (
     Sequence,
     TypeVar,
     Union,
+    overload,
 )
 
 import gym
@@ -64,8 +65,8 @@ def make_unique_timestamp() -> str:
 
 def make_vec_env(
     env_name: str,
+    random_state: np.random.RandomState,
     n_envs: int = 8,
-    seed: int = 0,
     parallel: bool = False,
     log_dir: Optional[str] = None,
     max_episode_steps: Optional[int] = None,
@@ -76,6 +77,7 @@ def make_vec_env(
 
     Args:
         env_name: The Env's string id in Gym.
+        random_state: The random state to use to seed the environment.
         n_envs: The number of duplicate environments.
         seed: The environment seed.
         parallel: If True, uses SubprocVecEnv; otherwise, DummyVecEnv.
@@ -137,8 +139,7 @@ def make_vec_env(
 
         return env
 
-    rng = np.random.RandomState(seed)
-    env_seeds = rng.randint(0, (1 << 31) - 1, (n_envs,))
+    env_seeds = make_seeds(random_state, n_envs)
     env_fns: List[Callable[[], gym.Env]] = [
         functools.partial(make_env, i, s) for i, s in enumerate(env_seeds)
     ]
@@ -147,6 +148,38 @@ def make_vec_env(
         return SubprocVecEnv(env_fns, start_method="forkserver")
     else:
         return DummyVecEnv(env_fns)
+
+
+@overload
+def make_seeds(
+    random_state: np.random.RandomState,
+) -> int:
+    ...
+
+
+@overload
+def make_seeds(random_state: np.random.RandomState, n: int) -> List[int]:
+    ...
+
+
+def make_seeds(
+    random_state: np.random.RandomState, n: Optional[int] = None
+) -> Union[List[int], int]:
+    """Generate n random seeds from a random state.
+
+    Args:
+        random_state: The random state to use to generate seeds.
+        n: The number of seeds to generate.
+
+    Returns:
+        A list of n random seeds.
+    """
+
+    seeds: List[int] = random_state.randint(0, (1 << 31) - 1, (n or 1,)).tolist()
+    if n is None:
+        return seeds[0]
+    else:
+        return seeds
 
 
 def docstring_parameter(*args, **kwargs):
