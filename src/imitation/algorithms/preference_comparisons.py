@@ -1261,15 +1261,16 @@ class BasicRewardTrainer(RewardTrainer):
 
         assert epochs > 0, "Must train for at least one epoch."
         epoch_num = 0
-        for epoch_num in tqdm(range(epochs), desc="Training reward model"):
-            with self.logger.accumulate_means(f"reward/epoch-{epoch_num}"):
+        with self.logger.accumulate_means(f"reward"):
+            for epoch_num in tqdm(range(epochs), desc="Training reward model"):
+                prefix = f"epoch-{epoch_num}"
                 train_loss = 0.0
                 for fragment_pairs, preferences in dataloader:
                     self.optim.zero_grad()
                     loss = self._training_inner_loop(
                         fragment_pairs,
                         preferences,
-                        mode="train",
+                        mode=f"{prefix}/train",
                     )
                     train_loss += loss.item()
                     if self.regularizer:
@@ -1286,7 +1287,7 @@ class BasicRewardTrainer(RewardTrainer):
                     loss = self._training_inner_loop(
                         fragment_pairs,
                         preferences,
-                        mode="val",
+                        mode=f"{prefix}/val",
                     )
                     val_loss += loss.item()
                 self.regularizer.update_params(train_loss, val_loss)
