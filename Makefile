@@ -25,6 +25,7 @@ docscheck:
 cleandocs:
 	pushd docs/ \
 	&& make clean \
+	&& rm -rf _api/ \
 	&& popd
 
 cleantests:
