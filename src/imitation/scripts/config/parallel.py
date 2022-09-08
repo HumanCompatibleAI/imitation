@@ -150,6 +150,10 @@ def example_bc():
     sacred_ex_name = "train_imitation"
     run_name = "example-bc"
     n_seeds = 5
+    base_named_configs = "common.wandb_logging"
+    base_config_updates = {
+        "common": {"wandb": {"wandb_kwargs": {"project": "algorithm-benchmark"}}}
+    }
     search_space = {
         "named_configs": tune.grid_search([[env] for env in MY_ENVS]),
         "config_updates": {
