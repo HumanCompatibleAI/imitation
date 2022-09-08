@@ -10,7 +10,6 @@ from stable_baselines3.common import preprocessing
 from torch import nn
 
 from imitation.util import networks, util
-from imitation.util.networks import BaseNorm
 
 
 class RewardNet(nn.Module, abc.ABC):
@@ -83,6 +82,8 @@ class RewardNet(nn.Module, abc.ABC):
         del state, action, next_state, done  # unused
 
         # preprocess
+        # we only support array spaces, so we cast
+        # the observation to torch tensors.
         state_th = cast(
             th.Tensor,
             preprocessing.preprocess_obs(
@@ -394,10 +395,10 @@ class BasicRewardNet(RewardNet):
         }
         self.mlp = networks.build_mlp(
             hid_sizes=(32, 32),
-            **kwargs,
             in_size=combined_size,
             out_size=1,
             squeeze_output=True,
+            **kwargs,
         )
 
     def forward(self, state, action, next_state, done):
@@ -425,7 +426,7 @@ class NormalizedRewardNet(RewardNetWrapper):
     def __init__(
         self,
         base: RewardNet,
-        normalize_output_layer: Type[BaseNorm],
+        normalize_output_layer: Type[networks.BaseNorm],
     ):
         """Initialize the NormalizedRewardNet.
 

@@ -524,7 +524,7 @@ def preference_model(venv) -> preference_comparisons.PreferenceModel:
 def test_probability_model_raises_error_when_ensemble_member_index_not_provided(
     ensemble_preference_model,
 ):
-    assert ensemble_preference_model.is_ensemble
+    assert ensemble_preference_model.ensemble_model is not None
     with pytest.raises(
         ValueError,
         match="`ensemble_member_index` required for ensemble models",

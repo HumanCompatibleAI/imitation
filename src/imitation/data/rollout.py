@@ -103,11 +103,10 @@ class TrajectoryAccumulator:
         del self.partial_trajectories[key]
         out_dict_unstacked = collections.defaultdict(list)
         for part_dict in part_dicts:
-            for key_, array in part_dict.items():
-                out_dict_unstacked[key_].append(array)
+            for k, array in part_dict.items():
+                out_dict_unstacked[k].append(array)
         out_dict_stacked = {
-            key_: np.stack(arr_list, axis=0)
-            for key_, arr_list in out_dict_unstacked.items()
+            k: np.stack(arr_list, axis=0) for k, arr_list in out_dict_unstacked.items()
         }
         traj = types.TrajectoryWithRew(**out_dict_stacked, terminal=terminal)
         assert traj.rews.shape[0] == traj.acts.shape[0] == traj.obs.shape[0] - 1
@@ -374,7 +373,7 @@ def generate_trajectories(
     #
     # To start with, all environments are active.
     active = np.ones(venv.num_envs, dtype=bool)
-    assert isinstance(obs, np.ndarray)
+    assert isinstance(obs, np.ndarray), "Dict/tuple observations are not supported."
     while np.any(active):
         acts = get_actions(obs)
         obs, rews, dones, infos = venv.step(acts)

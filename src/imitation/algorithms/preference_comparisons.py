@@ -302,8 +302,11 @@ class AgentTrainer(TrajectoryGenerator):
             trajectories.extend(list(exploration_trajs))
         return trajectories
 
-    # Type ignore due to https://github.com/python/mypy/issues/5936
-    @TrajectoryGenerator.logger.setter  # type: ignore[attr-defined]
+    @property
+    def logger(self):
+        return super().logger
+
+    @logger.setter
     def logger(self, value: imit_logger.HierarchicalLogger):
         self._logger = value
         self.algorithm.set_logger(self.logger)
@@ -437,10 +440,8 @@ class PreferenceModel(nn.Module):
             rews2 = self.rewards(trans2)
             probs[i] = self.probability(rews1, rews2)
             if gt_reward_available:
-                frag1, frag2 = cast(TrajectoryWithRew, frag1), cast(
-                    TrajectoryWithRew,
-                    frag2,
-                )
+                frag1 = cast(TrajectoryWithRew, frag1)
+                frag2 = cast(TrajectoryWithRew, frag2)
                 gt_rews_1 = th.from_numpy(frag1.rews)
                 gt_rews_2 = th.from_numpy(frag2.rews)
                 gt_probs[i] = self.probability(gt_rews_1, gt_rews_2)
@@ -691,7 +692,7 @@ class ActiveSelectionFragmenter(Fragmenter):
             ValueError: Preference model not wrapped over an ensemble of networks.
         """
         super().__init__(custom_logger=custom_logger)
-        if not preference_model.is_ensemble:
+        if preference_model.ensemble_model is None:
             raise ValueError(
                 "Preference model not wrapped over an ensemble of networks.",
             )

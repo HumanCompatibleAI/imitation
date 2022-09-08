@@ -251,22 +251,22 @@ def test_tabular_policy():
     states = np.array([0, 1, 1, 0, 1])
     actions, timesteps = tabular.predict(states)
     np.testing.assert_array_equal(states, actions)
-    np.testing.assert_equal(timesteps, 1)
+    np.testing.assert_equal(timesteps[0], 1)
 
     mask = np.zeros((5,), dtype=bool)
     actions, timesteps = tabular.predict(states, timesteps, mask)
     np.testing.assert_array_equal(1 - states, actions)
-    np.testing.assert_equal(timesteps, 2)
+    np.testing.assert_equal(timesteps[0], 2)
 
     mask = np.ones((5,), dtype=bool)
     actions, timesteps = tabular.predict(states, timesteps, mask)
     np.testing.assert_array_equal(states, actions)
-    np.testing.assert_equal(timesteps, 1)
+    np.testing.assert_equal(timesteps[0], 1)
 
     mask = (1 - states).astype(bool)
     actions, timesteps = tabular.predict(states, timesteps, mask)
     np.testing.assert_array_equal(np.zeros((5,)), actions)
-    np.testing.assert_equal(timesteps, 2 - mask.astype(int))
+    np.testing.assert_equal(timesteps[0], 2 - mask.astype(int))
 
 
 def test_tabular_policy_randomness():
