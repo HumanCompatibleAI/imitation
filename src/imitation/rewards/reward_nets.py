@@ -224,11 +224,10 @@ class RewardNet(nn.Module, abc.ABC):
 
 
 class RewardNetWrapper(RewardNet):
-    """An abstract RewardNet wrapping a base network.
+    """Abstract class representing a wrapper that modifies a `RewardNet`'s functionality.
 
-    Note: The wrapper will default to forwarding calls to `device`, `forward`,
-        `preproces`, `predict`, and `predict_processed` to the base reward net unless
-        explicitly overridden in a subclases.
+    In general `RewardNetWrapper`s should either subclass `ForwardWrapper`
+    or `PredictProcessedWrapper`.
     """
 
     def __init__(
@@ -251,6 +250,55 @@ class RewardNetWrapper(RewardNet):
     def base(self) -> RewardNet:
         return self._base
 
+    @property
+    def device(self) -> th.device:
+        __doc__ = super().device.__doc__  # noqa: F841
+        return self.base.device
+
+    @property
+    def dtype(self) -> th.dtype:
+        return self.base.dtype
+
+
+class ForwardWrapper(RewardNetWrapper):
+    """An abstract RewardNetWrapper that changes the behavior of forward.
+
+    Note that all forward wrappers must be placed before all
+    predict processed wrappers.
+    """
+
+    def __init__(
+        self,
+        base: RewardNet,
+    ):
+        """Create a forward wrapper.
+
+        Args:
+            base: The base reward network
+
+        Raises:
+            ValueError: if the base network is a `PredictProcessedWrapper`.
+        """
+        super().__init__(base)
+        if isinstance(base, PredictProcessedWrapper):
+            # Doing this could cause confusing errors like normalization
+            # not being applied.
+            raise ValueError(
+                "ForwardWrapper cannot be applied on top of PredictProcessedWrapper!",
+            )
+
+
+class PredictProcessedWrapper(RewardNetWrapper):
+    """An abstract RewardNetWrapper that changes the behavior of predict_processed.
+
+    Subclasses should override `predict_processed`. Implementations
+    should pass along `kwargs` to the `base` reward net's `predict_processed` method.
+
+    Note: The wrapper will default to forwarding calls to `device`, `forward`,
+        `preprocess` and `predict` to the base reward net unless
+        explicitly overridden in a subclass.
+    """
+
     def forward(
         self,
         state: th.Tensor,
@@ -261,6 +309,7 @@ class RewardNetWrapper(RewardNet):
         __doc__ = super().forward.__doc__  # noqa: F841
         return self.base.forward(state, action, next_state, done)
 
+    @abc.abstractmethod
     def predict_processed(
         self,
         state: np.ndarray,
@@ -269,8 +318,7 @@ class RewardNetWrapper(RewardNet):
         done: np.ndarray,
         **kwargs,
     ) -> np.ndarray:
-        __doc__ = super().predict_processed.__doc__  # noqa: F841
-        return self.base.predict_processed(state, action, next_state, done, **kwargs)
+        """Predict processed must be overridden in subclasses."""
 
     def predict(
         self,
@@ -301,15 +349,6 @@ class RewardNetWrapper(RewardNet):
     ) -> Tuple[th.Tensor, th.Tensor, th.Tensor, th.Tensor]:
         __doc__ = super().preprocess.__doc__  # noqa: F841
         return self.base.preprocess(state, action, next_state, done)
-
-    @property
-    def device(self) -> th.device:
-        __doc__ = super().device.__doc__  # noqa: F841
-        return self.base.device
-
-    @property
-    def dtype(self) -> th.dtype:
-        return self.base.dtype
 
 
 class RewardNetWithVariance(RewardNet):
@@ -420,7 +459,7 @@ class BasicRewardNet(RewardNet):
         return outputs
 
 
-class NormalizedRewardNet(RewardNetWrapper):
+class NormalizedRewardNet(PredictProcessedWrapper):
     """A reward net that normalizes the output of its base network."""
 
     def __init__(
@@ -481,7 +520,7 @@ class NormalizedRewardNet(RewardNetWrapper):
         return rew
 
 
-class ShapedRewardNet(RewardNetWrapper):
+class ShapedRewardNet(ForwardWrapper):
     """A RewardNet consisting of a base network and a potential shaping."""
 
     def __init__(
@@ -494,7 +533,8 @@ class ShapedRewardNet(RewardNetWrapper):
 
         Args:
             base: the base reward net to which the potential shaping
-                will be added.
+                will be added. Shaping must be applied directly to the raw reward net.
+                See error below.
             potential: A callable which takes
                 a batch of states (as a PyTorch tensor) and returns a batch of
                 potentials for these states. If this is a PyTorch Module, it becomes
@@ -783,7 +823,7 @@ class RewardEnsemble(RewardNetWithVariance):
         return mean
 
 
-class AddSTDRewardWrapper(RewardNetWrapper):
+class AddSTDRewardWrapper(PredictProcessedWrapper):
     """Adds a multiple of the estimated standard deviation to mean reward."""
 
     base: RewardNetWithVariance
