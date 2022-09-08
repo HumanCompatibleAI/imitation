@@ -171,9 +171,7 @@ def example_bc():
             ),
             # "bc_train_kwargs": dict(n_epochs=np.linspace(1, 7, num=3, dtype=int)),
             "bc_train_kwargs": dict(
-                n_epochs=[
-                    2,
-                ]
+                n_epochs=tune.grid_search([2]),
             ),
         },
         "command_name": "bc",
