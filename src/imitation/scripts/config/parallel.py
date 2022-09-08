@@ -149,23 +149,33 @@ MY_ENVS = ["seals_half_cheetah", "seals_ant"]
 def example_bc():
     sacred_ex_name = "train_imitation"
     run_name = "example-bc"
-    n_seeds = 5
+    n_seeds = 1
     base_named_configs = ["common.wandb_logging"]
     base_config_updates = {
         "common": {"wandb": {"wandb_kwargs": {"project": "algorithm-benchmark"}}}
     }
     search_space = {
-        "named_configs": tune.grid_search([[env] for env in MY_ENVS]),
+        "named_configs": [[env] for env in MY_ENVS],
         "config_updates": {
             "bc_kwargs": dict(
-                batch_size=tune.grid_search([16, 32, 64]),
-                l2_weight=tune.grid_search([1e-4, 0]),  # L2 regularization weight
+                # batch_size=tune.grid_search([16, 32, 64]),
+                # l2_weight=tune.grid_search([1e-4, 0]),  # L2 regularization weight
+                # optimizer_kwargs=dict(
+                #     lr=tune.grid_search([1e-3, 1e-4]),
+                # ),
+                batch_size=tune.grid_search([16]),
+                l2_weight=tune.grid_search([1e-4]),  # L2 regularization weight
                 optimizer_kwargs=dict(
-                    lr=tune.grid_search([1e-3, 1e-4]),
+                    lr=tune.grid_search([1e-3]),
                 ),
             ),
-            "bc_train_kwargs": dict(n_epochs=np.linspace(1, 7, num=3, dtype=int)),
+            # "bc_train_kwargs": dict(n_epochs=np.linspace(1, 7, num=3, dtype=int)),
+            "bc_train_kwargs": dict(
+                n_epochs=[
+                    2,
+                ]
+            ),
         },
         "command_name": "bc",
     }
-    resources_per_trial = dict(cpu=2)
+    resources_per_trial = dict(cpu=4)

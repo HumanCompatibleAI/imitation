@@ -169,11 +169,13 @@ def _ray_tune_sacred_wrapper(
         # Import inside function rather than in module because Sacred experiments
         # are not picklable, and Ray requires this function to be picklable.
         from imitation.scripts.train_adversarial import train_adversarial_ex
+        from imitation.scripts.train_imitation import train_imitation_ex
         from imitation.scripts.train_rl import train_rl_ex
 
         experiments = {
             "train_rl": train_rl_ex,
             "train_adversarial": train_adversarial_ex,
+            "train_imitation": train_imitation_ex,
         }
         ex = experiments[sacred_ex_name]
         ex.observers = [FileStorageObserver("sacred")]
