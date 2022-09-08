@@ -1261,7 +1261,7 @@ class BasicRewardTrainer(RewardTrainer):
 
         assert epochs > 0, "Must train for at least one epoch."
         epoch_num = 0
-        with self.logger.accumulate_means(f"reward"):
+        with self.logger.accumulate_means("reward"):
             for epoch_num in tqdm(range(epochs), desc="Training reward model"):
                 prefix = f"epoch-{epoch_num}"
                 train_loss = 0.0
