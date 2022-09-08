@@ -240,12 +240,12 @@ def test_tabular_policy():
     pi = np.stack(
         [np.eye(2), 1 - np.eye(2)],
     )
-    rng = np.random.RandomState(42)
+    random_state = np.random.RandomState(42)
     tabular = TabularPolicy(
         state_space=state_space,
         action_space=action_space,
         pi=pi,
-        rng=rng,
+        random_state=random_state,
     )
 
     states = np.array([0, 1, 1, 0, 1])
@@ -297,8 +297,8 @@ def test_tabular_policy_randomness(random_state_fixed):
     np.testing.assert_equal(actions, 0)
 
 
-def test_mce_irl_demo_formats(fixed_random_state):
-    random_state = fixed_random_state
+def test_mce_irl_demo_formats(random_state_fixed):
+    random_state = random_state_fixed
     mdp = model_envs.RandomMDP(
         n_states=5,
         n_actions=3,
@@ -339,7 +339,7 @@ def test_mce_irl_demo_formats(fixed_random_state):
                 use_done=False,
                 hid_sizes=[],
             )
-            mce_irl = MCEIRL(demo, mdp, reward_net, linf_eps=1e-3)
+            mce_irl = MCEIRL(demo, mdp, reward_net, linf_eps=1e-3, random_state=random_state)
             assert np.allclose(mce_irl.demo_state_om.sum(), mdp.horizon + 1)
             final_counts[kind] = mce_irl.train(max_iter=5)
 

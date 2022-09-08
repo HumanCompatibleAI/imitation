@@ -14,6 +14,7 @@ import os.path as osp
 import warnings
 from typing import Any, Mapping, Optional
 
+import numpy as np
 from sacred.observers import FileStorageObserver
 from stable_baselines3.common import callbacks
 from stable_baselines3.common.vec_env import VecNormalize
@@ -22,7 +23,7 @@ from imitation.data import rollout, types, wrappers
 from imitation.policies import serialize
 from imitation.rewards.reward_wrapper import RewardVecEnvWrapper
 from imitation.rewards.serialize import load_reward
-from imitation.scripts.common import common, rl, train
+from imitation.scripts.common import common, rl, train, seeding
 from imitation.scripts.config.train_rl import train_rl_ex
 
 
@@ -87,6 +88,7 @@ def train_rl(
     Returns:
         The return value of `rollout_stats()` using the final policy.
     """
+    random_state = seeding.make_random_state()
     custom_logger, log_dir = common.setup_logging()
     rollout_dir = osp.join(log_dir, "rollouts")
     policy_dir = osp.join(log_dir, "policies")
@@ -144,7 +146,7 @@ def train_rl(
                 rollout_save_n_timesteps,
                 rollout_save_n_episodes,
             )
-            types.save(save_path, rollout.rollout(rl_algo, venv, sample_until))
+            types.save(save_path, rollout.rollout(rl_algo, venv, sample_until, random_state))
         if policy_save_final:
             output_dir = os.path.join(policy_dir, "final")
             serialize.save_stable_model(output_dir, rl_algo)

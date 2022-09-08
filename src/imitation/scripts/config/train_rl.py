@@ -2,11 +2,11 @@
 
 import sacred
 
-from imitation.scripts.common import common, rl, train
+from imitation.scripts.common import common, rl, train, seeding
 
 train_rl_ex = sacred.Experiment(
     "train_rl",
-    ingredients=[common.common_ingredient, train.train_ingredient, rl.rl_ingredient],
+    ingredients=[common.common_ingredient, train.train_ingredient, rl.rl_ingredient, seeding.seeding_ingredient],
 )
 
 

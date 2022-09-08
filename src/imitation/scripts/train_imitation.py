@@ -5,6 +5,7 @@ import os.path as osp
 import warnings
 from typing import Any, Mapping, Optional, Sequence, Type, cast
 
+import numpy as np
 from sacred.observers import FileStorageObserver
 from stable_baselines3.common import policies, utils, vec_env
 
@@ -12,7 +13,7 @@ from imitation.algorithms import bc as bc_algorithm
 from imitation.algorithms.dagger import SimpleDAggerTrainer
 from imitation.data import rollout, types
 from imitation.policies import serialize
-from imitation.scripts.common import common, demonstrations, train
+from imitation.scripts.common import common, demonstrations, train, seeding
 from imitation.scripts.config.train_imitation import train_imitation_ex
 
 logger = logging.getLogger(__name__)
@@ -123,6 +124,7 @@ def train_imitation(
     Returns:
         Statistics for rollouts from the trained policy and demonstration data.
     """
+    random_state = seeding.make_random_state()
     custom_logger, log_dir = common.setup_logging()
 
     with common.make_venv() as venv:
@@ -138,6 +140,7 @@ def train_imitation(
             policy=imit_policy,
             demonstrations=expert_trajs,
             custom_logger=custom_logger,
+            random_state=random_state,
             **bc_kwargs,
         )
         bc_train_kwargs = dict(log_rollouts_venv=venv, **bc_train_kwargs)

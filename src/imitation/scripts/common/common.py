@@ -9,12 +9,12 @@ import numpy as np
 import sacred
 from stable_baselines3.common import vec_env
 
-from imitation.scripts.common import wb
+from imitation.scripts.common import wb, seeding
 from imitation.util import logger as imit_logger
 from imitation.util import sacred as sacred_util
 from imitation.util import util
 
-common_ingredient = sacred.Ingredient("common", ingredients=[wb.wandb_ingredient])
+common_ingredient = sacred.Ingredient("common", ingredients=[wb.wandb_ingredient, seeding.seeding_ingredient])
 logger = logging.getLogger(__name__)
 
 
@@ -131,7 +131,6 @@ def setup_logging(
 @contextlib.contextmanager
 @common_ingredient.capture
 def make_venv(
-    random_state: np.random.RandomState,
     env_name: str,
     num_vec: int,
     parallel: bool,
@@ -157,6 +156,7 @@ def make_venv(
     Yields:
         The constructed vector environment.
     """
+    random_state = seeding.make_random_state()
     try:
         venv = util.make_vec_env(
             env_name,

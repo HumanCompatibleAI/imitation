@@ -17,7 +17,7 @@ from stable_baselines3.common import type_aliases
 from imitation.algorithms import preference_comparisons
 from imitation.data import types
 from imitation.policies import serialize
-from imitation.scripts.common import common, reward
+from imitation.scripts.common import common, reward, seeding
 from imitation.scripts.common import rl as rl_common
 from imitation.scripts.common import train
 from imitation.scripts.config.train_preference_comparisons import (
@@ -59,7 +59,6 @@ def save_checkpoint(
 
 @train_preference_comparisons_ex.main
 def train_preference_comparisons(
-    random_state: np.random.RandomState,
     total_timesteps: int,
     total_comparisons: int,
     num_iterations: int,
@@ -87,7 +86,6 @@ def train_preference_comparisons(
     """Train a reward model using preference comparisons.
 
     Args:
-        random_state: Random state for the internal random number generation.
         total_timesteps: number of environment interaction steps
         total_comparisons: number of preferences to gather in total
         num_iterations: number of times to train the agent against the reward model
@@ -151,7 +149,8 @@ def train_preference_comparisons(
         ValueError: Inconsistency between config and deserialized policy normalization.
     """
     custom_logger, log_dir = common.setup_logging()
-    seed = util.make_seeds(random_state)
+    random_state = seeding.make_random_state()
+    seed = seeding.get_seed()
 
     with common.make_venv() as venv:
         reward_net = reward.make_reward_net(venv)
@@ -244,7 +243,6 @@ def train_preference_comparisons(
             initial_comparison_frac=initial_comparison_frac,
             custom_logger=custom_logger,
             allow_variable_horizon=allow_variable_horizon,
-            random_state=random_state,
             query_schedule=query_schedule,
         )
 

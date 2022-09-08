@@ -2,11 +2,11 @@
 
 import sacred
 
-from imitation.scripts.common import common
+from imitation.scripts.common import common, seeding
 
 eval_policy_ex = sacred.Experiment(
     "eval_policy",
-    ingredients=[common.common_ingredient],
+    ingredients=[common.common_ingredient, seeding.seeding_ingredient],
 )
 
 
