@@ -43,7 +43,7 @@ def hook(config, command_name, logger):
         updates["rollout_path"] = os.path.join(
             guess_expert_dir(data_dir, env_name),
             "rollouts",
-            "final.pkl",
+            "final.npz",
         )
     return updates
 
