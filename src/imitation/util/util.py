@@ -251,7 +251,10 @@ def safe_to_numpy(obj: None, warn: bool = False) -> None:
     ...
 
 
-def safe_to_numpy(obj: Optional[Union[np.ndarray, th.Tensor]], warn=False):
+def safe_to_numpy(
+    obj: Optional[Union[np.ndarray, th.Tensor]],
+    warn=False,
+) -> Optional[np.ndarray]:
     """Convert torch tensor to numpy.
 
     If the object is already a numpy array, return it as is.
@@ -259,12 +262,16 @@ def safe_to_numpy(obj: Optional[Union[np.ndarray, th.Tensor]], warn=False):
 
     Args:
         obj: torch tensor object to convert to numpy array
+        warn: if True, warn if the object is not already a numpy array. Useful for
+            warning the user of a potential performance hit if a torch tensor is
+            not the expected input type.
 
     Returns: object converted to numpy array
 
     """
     if obj is None:
-        return None
+        # We ignore the type due to https://github.com/google/pytype/issues/445
+        return None  # type: ignore[bad-return-type]
     elif isinstance(obj, np.ndarray):
         return obj
     else:

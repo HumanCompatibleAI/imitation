@@ -182,7 +182,7 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
                     )
             else:
                 raise TypeError(
-                    f"Unsupported demonstration type {type(demonstrations)}"
+                    f"Unsupported demonstration type {type(demonstrations)}",
                 )
         elif isinstance(demonstrations, types.TransitionsMinimal):
             next_obs_b = getattr(demonstrations, "next_obs", None)
