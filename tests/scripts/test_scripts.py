@@ -781,7 +781,7 @@ def _generate_test_rollouts(tmpdir: str, env_named_config: str) -> pathlib.Path:
             common=dict(log_dir=tmpdir),
         ),
     )
-    rollout_path = tmpdir / "rollouts/final.npz"
+    rollout_path = tmpdir / "rollouts/final.pkl"
     return rollout_path.absolute()
 
 
