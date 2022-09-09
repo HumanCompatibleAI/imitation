@@ -16,7 +16,8 @@ from stable_baselines3.common import base_class, vec_env
 from imitation.algorithms import base
 from imitation.data import rollout, types, wrappers
 from imitation.rewards import reward_wrapper
-from imitation.util import logger as imit_logger, util
+from imitation.util import logger as imit_logger
+from imitation.util import util
 
 
 class DensityType(enum.Enum):

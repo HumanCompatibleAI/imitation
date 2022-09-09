@@ -14,9 +14,10 @@ from typing import (
     Mapping,
     Optional,
     Sequence,
+    Tuple,
     TypeVar,
     Union,
-    overload, Tuple,
+    overload,
 )
 
 import gym
@@ -269,9 +270,7 @@ def tensor_iter_norm(
     return th.norm(norm_tensor, p=ord)
 
 
-def get_first_iter_element(
-        iterable: Iterable[T]
-) -> Tuple[T, Iterable[T]]:
+def get_first_iter_element(iterable: Iterable[T]) -> Tuple[T, Iterable[T]]:
     """
     Gets the first element of the iterable, and returns a new iterable that adds the
     first element back using itertools.chain.
