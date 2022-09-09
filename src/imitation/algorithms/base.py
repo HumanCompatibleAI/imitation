@@ -114,6 +114,11 @@ class BaseImitationAlgorithm(abc.ABC):
 
 TransitionMapping = Mapping[str, Union[np.ndarray, th.Tensor]]
 TransitionKind = TypeVar("TransitionKind", bound=types.TransitionsMinimal)
+# TODO(juan) AnyTransitions is used in many places but TransitionKind
+#  is just a type variable. If what we want is to allow for subclasses of
+#  types.TransitionsMinimal, we should use that type directly, as that is already
+#  built into the type system. Most places that use AnyTransitions aren't actually
+#  treating the type as a generic.
 AnyTransitions = Union[
     Iterable[types.Trajectory],
     Iterable[TransitionMapping],

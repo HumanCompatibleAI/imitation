@@ -6,7 +6,8 @@ then rewards the agent for following that estimate.
 
 import enum
 import itertools
-from typing import Dict, Iterable, Optional
+from collections.abc import Mapping
+from typing import Dict, Iterable, Optional, cast
 
 import numpy as np
 from gym.spaces.utils import flatten
@@ -157,26 +158,34 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
         if isinstance(demonstrations, Iterable):
             first_item, demonstrations = util.get_first_iter_element(demonstrations)
             if isinstance(first_item, types.Trajectory):
-                # Demonstrations are trajectories.
-                # We have timestep information.
+                # we assume that all elements are also types.Trajectory.
+                # (this means we have timestamp information)
+                # It's not perfectly type safe, but it allows for the flexibility of
+                # using iterables, which is useful for large data structures.
+                demonstrations = cast(Iterable[types.Trajectory], demonstrations)
+
                 for traj in demonstrations:
                     for i, (obs, act, next_obs) in enumerate(
                         zip(traj.obs[:-1], traj.acts, traj.obs[1:]),
                     ):
                         flat_trans = self._preprocess_transition(obs, act, next_obs)
                         self.transitions.setdefault(i, []).append(flat_trans)
-            else:
-                # Demonstrations are a Torch DataLoader or other Mapping iterable
+            elif isinstance(first_item, Mapping):
+                # analogous to cast above.
+                demonstrations = cast(Iterable[base.TransitionMapping], demonstrations)
+
                 for batch in demonstrations:
                     self._set_demo_from_batch(
-                        batch["obs"],
-                        batch["acts"],
-                        batch.get("next_obs"),
+                        util.safe_to_numpy(batch["obs"], warn=True),
+                        util.safe_to_numpy(batch["acts"], warn=True),
+                        util.safe_to_numpy(batch.get("next_obs"), warn=True),
                     )
+            else:
+                raise TypeError(
+                    f"Unsupported demonstration type {type(demonstrations)}"
+                )
         elif isinstance(demonstrations, types.TransitionsMinimal):
-            next_obs_b = (
-                demonstrations.next_obs if hasattr(demonstrations, "next_obs") else None
-            )
+            next_obs_b = getattr(demonstrations, "next_obs", None)
             self._set_demo_from_batch(
                 demonstrations.obs,
                 demonstrations.acts,

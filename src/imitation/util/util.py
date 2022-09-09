@@ -5,6 +5,7 @@ import functools
 import itertools
 import os
 import uuid
+import warnings
 from typing import (
     Any,
     Callable,
@@ -240,6 +241,38 @@ def safe_to_tensor(numpy_array: np.ndarray, **kwargs) -> th.Tensor:
     return th.as_tensor(numpy_array, **kwargs)
 
 
+@overload
+def safe_to_numpy(obj: Union[np.ndarray, th.Tensor], warn: bool = False) -> np.ndarray:
+    ...
+
+
+@overload
+def safe_to_numpy(obj: None, warn: bool = False) -> None:
+    ...
+
+
+def safe_to_numpy(obj: Optional[Union[np.ndarray, th.Tensor]], warn=False):
+    """Convert torch tensor to numpy.
+
+    If the object is already a numpy array, return it as is.
+    If the object is none, returns none.
+
+    Args:
+        obj: torch tensor object to convert to numpy array
+
+    Returns: object converted to numpy array
+
+    """
+    if obj is None:
+        return None
+    elif isinstance(obj, np.ndarray):
+        return obj
+    else:
+        if warn:
+            warnings.warn(f"Converted tensor {obj} to numpy array.")
+        return obj.detach().cpu().numpy()
+
+
 def tensor_iter_norm(
     tensor_iter: Iterable[th.Tensor],
     ord: Union[int, float] = 2,  # noqa: A002
@@ -271,10 +304,9 @@ def tensor_iter_norm(
 
 
 def get_first_iter_element(iterable: Iterable[T]) -> Tuple[T, Iterable[T]]:
-    """
-    Gets the first element of the iterable, and returns a new iterable that adds the
-    first element back using itertools.chain.
+    """Get first element of an iterable and a new fresh iterable.
 
+    The fresh iterable has the first element added back using itertools.chain.
     If the iterable is a tuple or list, this is equivalent to (iterable[0], iterable).
 
     Args:
