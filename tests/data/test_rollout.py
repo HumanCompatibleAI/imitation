@@ -192,6 +192,9 @@ def test_rollout_stats(random_state_fixed):
     """Applying `ObsRewIncrementWrapper` halves the reward mean.
 
     `rollout_stats` should reflect this.
+
+    Args:
+        random_state_fixed: Random state to use (with fixed seed).
     """
     random_state = random_state_fixed
     env = gym.make("CartPole-v1")
@@ -218,6 +221,9 @@ def test_unwrap_traj(random_state_fixed):
     """Check that unwrap_traj reverses `ObsRewIncrementWrapper`.
 
     Also check that unwrapping twice is a no-op.
+
+    Args:
+        random_state_fixed: Random state to use (with fixed seed).
     """
     random_state = random_state_fixed
     env = gym.make("CartPole-v1")

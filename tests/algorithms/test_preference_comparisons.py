@@ -649,6 +649,9 @@ def test_agent_trainer_sample_image_observations(random_state_fixed):
     SB3 algorithms may rearrange the channel dimension in environments with image
     observations, but `sample()` should return observations matching the original
     environment.
+
+    Args:
+        random_state_fixed: Random state (with a fixed seed).
     """
     random_state = random_state_fixed
     venv = DummyVecEnv([lambda: FakeImageEnv()])

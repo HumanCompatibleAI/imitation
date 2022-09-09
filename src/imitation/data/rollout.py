@@ -543,6 +543,7 @@ def generate_transitions(
             - None, in which case actions will be sampled randomly
         venv: The vectorized environments to interact with.
         n_timesteps: The minimum number of timesteps to sample.
+        random_state: The random state to use for sampling trajectories.
         truncate: If True, then drop any additional samples to ensure that exactly
             `n_timesteps` samples are returned.
         **kwargs: Passed-through to generate_trajectories.

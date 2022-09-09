@@ -850,6 +850,9 @@ class SyntheticGatherer(PreferenceGatherer):
                 This threshold is therefore in logspace. The default value
                 of 50 means that probabilities below 2e-22 are rounded up to 2e-22.
             custom_logger: Where to log to; if None (default), creates a new logger.
+
+        Raises:
+            ValueError: if `sample` is true and no random state is provided.
         """
         super().__init__(custom_logger=custom_logger)
         self.temperature = temperature

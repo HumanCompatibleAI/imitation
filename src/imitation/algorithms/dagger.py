@@ -547,6 +547,7 @@ class SimpleDAggerTrainer(DAggerTrainer):
             scratch_dir: Directory to use to store intermediate training
                 information (e.g. for resuming training).
             expert_policy: The expert policy used to generate synthetic demonstrations.
+            random_state: Random state to use for the random number generator.
             expert_trajs: Optional starting dataset that is inserted into the round 0
                 dataset.
             dagger_trainer_kwargs: Other keyword arguments passed to the

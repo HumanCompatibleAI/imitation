@@ -79,7 +79,6 @@ def make_vec_env(
         env_name: The Env's string id in Gym.
         random_state: The random state to use to seed the environment.
         n_envs: The number of duplicate environments.
-        seed: The environment seed.
         parallel: If True, uses SubprocVecEnv; otherwise, DummyVecEnv.
         log_dir: If specified, saves Monitor output to this directory.
         max_episode_steps: If specified, wraps each env in a TimeLimit wrapper
