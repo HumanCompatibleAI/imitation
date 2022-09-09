@@ -16,7 +16,7 @@ from stable_baselines3.common import base_class, vec_env
 from imitation.algorithms import base
 from imitation.data import rollout, types, wrappers
 from imitation.rewards import reward_wrapper
-from imitation.util import logger as imit_logger
+from imitation.util import logger as imit_logger, util
 
 
 class DensityType(enum.Enum):
@@ -154,7 +154,7 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
         self.transitions = {}
 
         if isinstance(demonstrations, Iterable):
-            first_item = next(iter(demonstrations))
+            first_item, demonstrations = util.get_first_iter_element(demonstrations)
             if isinstance(first_item, types.Trajectory):
                 # Demonstrations are trajectories.
                 # We have timestep information.

@@ -16,7 +16,7 @@ from typing import (
     Sequence,
     TypeVar,
     Union,
-    overload,
+    overload, Tuple,
 )
 
 import gym
@@ -215,15 +215,7 @@ def endless_iter(iterable: Iterable[T]) -> Iterator[T]:
     Raises:
         ValueError: `iterable` is empty -- the first call it to returns no elements.
     """
-    # TODO(juan) this is wrong; if the iterable is not a container then the first
-    #  element will be wasted if it's not stored. The sensible solution is to
-    #  restrict the type of `iterable` to `Sequence` (this same issue is present
-    #  in a few other places in the codebase).
-    try:
-        next(iter(iterable))
-    except StopIteration:
-        raise ValueError(f"iterable {iterable} had no elements to iterate over.")
-
+    _, iterable = get_first_iter_element(iterable)
     return itertools.chain.from_iterable(itertools.repeat(iterable))
 
 
@@ -275,3 +267,29 @@ def tensor_iter_norm(
     # = sum(x**ord for x in tensor for tensor in tensor_iter)**(1/ord)
     # = th.norm(concatenated tensors)
     return th.norm(norm_tensor, p=ord)
+
+
+def get_first_iter_element(
+        iterable: Iterable[T]
+) -> Tuple[T, Iterable[T]]:
+    """
+    Gets the first element of the iterable, and returns a new iterable that adds the
+    first element back using itertools.chain.
+
+    If the iterable is a tuple or list, this is equivalent to (iterable[0], iterable).
+
+    Args:
+        iterable: The iterable to get the first element of.
+
+    Returns:
+        A tuple containing the first element of the iterable, and a fresh iterable
+        with all the elements.
+    """
+    if isinstance(iterable, (list, tuple)):
+        return iterable[0], iterable
+    else:
+        try:
+            first_element = next(iter(iterable))
+            return first_element, itertools.chain([first_element], iterable)
+        except StopIteration:
+            raise ValueError(f"iterable {iterable} had no elements to iterate over.")

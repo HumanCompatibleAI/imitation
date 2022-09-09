@@ -381,11 +381,7 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
         # Demonstrations are either trajectories or transitions;
         # we must compute occupancy measure from this.
         if isinstance(demonstrations, Iterable):
-            # TODO(juan) this is wrong; if this is a container (list-like)
-            #  object then a new fresh iterator will be generated every time,
-            #  but for a general iterator calling next() exhaust the
-            #  iterator.
-            first_item = next(iter(demonstrations))
+            first_item, demonstrations = util.get_first_iter_element(demonstrations)
             if isinstance(first_item, types.Trajectory):
                 self._set_demo_from_trajectories(demonstrations)
                 return

@@ -9,7 +9,7 @@ import torch.utils.data as th_data
 from stable_baselines3.common import policies
 
 from imitation.data import rollout, types
-from imitation.util import logger as imit_logger
+from imitation.util import logger as imit_logger, util
 
 
 class BaseImitationAlgorithm(abc.ABC):
@@ -242,10 +242,7 @@ def make_data_loader(
         raise ValueError(f"batch_size={batch_size} must be positive.")
 
     if isinstance(transitions, Iterable):
-        try:
-            first_item = next(iter(transitions))
-        except StopIteration:
-            first_item = None
+        first_item, transitions = util.get_first_iter_element(transitions)
         if isinstance(first_item, types.Trajectory):
             transitions = rollout.flatten_trajectories(list(transitions))
 
