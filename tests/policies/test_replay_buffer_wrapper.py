@@ -38,8 +38,10 @@ def make_algo_with_wrapped_buffer(
         policy_kwargs=dict(),
         env=venv,
         seed=42,
-        # we ignore the type below because sb3 has a bug (forgot to put Type[...])
-        # https://github.com/DLR-RM/stable-baselines3/issues/1039
+        # TODO(juan) we ignore the type below due to
+        #  https://github.com/DLR-RM/stable-baselines3/issues/1039
+        #  PR fixing this has been merged to master,
+        #  remove the type ignore in the next sb3 release.
         replay_buffer_class=ReplayBufferRewardWrapper,  # type: ignore
         replay_buffer_kwargs=dict(
             replay_buffer_class=replay_buffer_class,
