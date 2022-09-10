@@ -19,6 +19,8 @@ def test_endless_iter():
     assert next(it) == 0
     assert next(it) == 1
     assert next(it) == 0
+    assert next(it) == 1
+    assert next(it) == 0
 
 
 def test_endless_iter_error():

@@ -190,7 +190,9 @@ def test_bc_data_loader_empty_iter_error(
 
     bad_data_loader = _DataLoaderFailsOnNthIter(
         dummy_yield_value=dummy_yield_value,
-        no_yield_after_iter=no_yield_after_iter,
+        # add 1 as BC uses up an iteration from getting the first element
+        # for type checking
+        no_yield_after_iter=no_yield_after_iter + 1,
     )
     trainer = bc.BC(
         observation_space=cartpole_venv.observation_space,
