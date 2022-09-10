@@ -489,13 +489,12 @@ class CnnRewardNet(RewardNet):
         self.use_action = use_action
         self.use_next_state = use_next_state
         self.use_done = use_done
-        self.obs_is_image = preprocessing.is_image_space(observation_space)
         self.hwc_format = hwc_format
 
         if not (self.use_state or self.use_next_state):
             raise ValueError("CnnRewardNet must take current or next state as input.")
 
-        if not self.obs_is_image:
+        if not preprocessing.is_image_space(observation_space):
             raise ValueError(
                 "CnnRewardNet requires observations to be images.",
             )
