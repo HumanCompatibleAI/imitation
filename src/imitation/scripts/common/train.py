@@ -76,6 +76,9 @@ def eval_policy(
 ) -> Mapping[str, float]:
     """Evaluation of imitation learned policy.
 
+    Has the side effect of setting `rl_algo`'s environment to `venv`
+    if it is a `BaseAlgorithm`.
+
     Args:
         rl_algo: Algorithm to evaluate.
         venv: Environment to evaluate on.
