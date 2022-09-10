@@ -158,6 +158,68 @@ def test_image_init_no_crash(
     )
 
 
+NOT_QUITE_IMAGE_SPACES = (
+    gym.spaces.Box(0, 255, shape=(210, 160, 3), dtype=np.float32),
+    gym.spaces.Box(0, 254, shape=(210, 160, 3), dtype=np.uint8),
+    gym.spaces.Box(1, 255, shape=(210, 160, 3), dtype=np.uint8),
+    gym.spaces.Box(0, 255, shape=(210, 160), dtype=np.uint8),
+)
+
+
+def test_cnn_reward_net_input_validation():
+    atari_obs_space = gym.spaces.Box(0, 255, shape=(210, 160, 3), dtype=np.uint8)
+    atari_action_space = gym.spaces.Discrete(14)
+
+    with pytest.raises(ValueError, match="must take current or next state"):
+        reward_nets.CnnRewardNet(
+            atari_obs_space,
+            atari_action_space,
+            use_state=False,
+            use_next_state=False,
+        )
+
+    for obs_space in NOT_QUITE_IMAGE_SPACES:
+        with pytest.raises(ValueError, match="requires observations to be images"):
+            reward_nets.CnnRewardNet(
+                obs_space,
+                atari_action_space,
+            )
+
+    illegal_act_space = gym.spaces.MultiDiscrete((2, 2))
+    with pytest.raises(ValueError, match="can only use Discrete action spaces."):
+        reward_nets.CnnRewardNet(
+            atari_obs_space,
+            illegal_act_space,
+        )
+
+    reward_nets.CnnRewardNet(
+        atari_obs_space,
+        illegal_act_space,
+        use_action=False,
+    )
+
+
+def test_cnn_potential_input_validation():
+    for obs_space in NOT_QUITE_IMAGE_SPACES:
+        with pytest.raises(ValueError, match="must be given image inputs"):
+            reward_nets.BasicPotentialCNN(
+                obs_space,
+                hid_sizes=(32,),
+            )
+
+
+@pytest.mark.parametrize("dimensions", (1, 3, 4, 5))
+def test_cnn_transpose_input_validation(dimensions: int):
+    shape = (2,) * dimensions
+    tens = th.zeros(shape)
+
+    if dimensions == 4:  # should succeed
+        reward_nets.cnn_transpose(tens)
+    else:  # should fail
+        with pytest.raises(ValueError, match="Invalid input: "):
+            reward_nets.cnn_transpose(tens)
+
+
 def _sample(space, n):
     return np.array([space.sample() for _ in range(n)])
 
@@ -198,7 +260,6 @@ def _make_env_and_save_reward_net(env_name, reward_type, tmpdir, is_image=False)
 
 
 def _is_reward_valid(env_name, reward_type, tmpdir, is_image):
-    venv = util.make_vec_env(env_name, n_envs=1, parallel=False)
     venv, tmppath = _make_env_and_save_reward_net(
         env_name,
         reward_type,
