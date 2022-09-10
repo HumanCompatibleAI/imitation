@@ -25,6 +25,30 @@ def test_endless_iter_error():
     x = []
     with pytest.raises(ValueError, match="no elements"):
         util.endless_iter(x)
+    with pytest.raises(ValueError, match="needs a non-iterator Iterable"):
+        generator = (x for x in range(5))
+        util.endless_iter(generator)
+
+
+@given(
+    st.lists(
+        st.integers(),
+        min_size=1,
+    ),
+)
+def test_get_first_iter_element(input_seq):
+    with pytest.raises(ValueError, match="iterable.* had no elements"):
+        util.get_first_iter_element([])
+
+    first_element, new_iterable = util.get_first_iter_element(input_seq)
+    assert first_element == input_seq[0]
+    assert input_seq is new_iterable
+
+    an_iterator = (x for x in input_seq)
+    first_element, new_iterable = util.get_first_iter_element(input_seq)
+    assert first_element == input_seq[0]
+    assert list(an_iterator) == input_seq
+    assert list(an_iterator) == []
 
 
 @given(
