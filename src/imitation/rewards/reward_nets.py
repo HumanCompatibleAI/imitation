@@ -247,7 +247,18 @@ class RewardNetWrapper(RewardNet):
 
     @property
     def dtype(self) -> th.dtype:
+        __doc__ = super().dtype.__doc__  # noqa: F841
         return self.base.dtype
+
+    def preprocess(
+        self,
+        state: np.ndarray,
+        action: np.ndarray,
+        next_state: np.ndarray,
+        done: np.ndarray,
+    ) -> Tuple[th.Tensor, th.Tensor, th.Tensor, th.Tensor]:
+        __doc__ = super().preprocess.__doc__  # noqa: F841
+        return self.base.preprocess(state, action, next_state, done)
 
 
 class ForwardWrapper(RewardNetWrapper):
@@ -329,16 +340,6 @@ class PredictProcessedWrapper(RewardNetWrapper):
     ) -> th.Tensor:
         __doc__ = super().predict_th.__doc__  # noqa: F841
         return self.base.predict_th(state, action, next_state, done)
-
-    def preprocess(
-        self,
-        state: np.ndarray,
-        action: np.ndarray,
-        next_state: np.ndarray,
-        done: np.ndarray,
-    ) -> Tuple[th.Tensor, th.Tensor, th.Tensor, th.Tensor]:
-        __doc__ = super().preprocess.__doc__  # noqa: F841
-        return self.base.preprocess(state, action, next_state, done)
 
 
 class RewardNetWithVariance(RewardNet):
@@ -720,36 +721,6 @@ class ShapedRewardNet(ForwardWrapper):
         )
         assert final_rew.shape == state.shape[:1]
         return final_rew
-
-    def predict_th(
-        self,
-        state: np.ndarray,
-        action: np.ndarray,
-        next_state: np.ndarray,
-        done: np.ndarray,
-    ) -> th.Tensor:
-        with networks.evaluating(self):
-            state_th, action_th, next_state_th, done_th = self.base.preprocess(
-                state,
-                action,
-                next_state,
-                done,
-            )
-            with th.no_grad():
-                rew_th = self(state_th, action_th, next_state_th, done_th)
-
-            assert rew_th.shape == state.shape[:1]
-            return rew_th
-
-    def predict(
-        self,
-        state: np.ndarray,
-        action: np.ndarray,
-        next_state: np.ndarray,
-        done: np.ndarray,
-    ) -> np.ndarray:
-        rew_th = self.predict_th(state, action, next_state, done)
-        return rew_th.detach().cpu().numpy().flatten()
 
 
 class BasicShapedRewardNet(ShapedRewardNet):
