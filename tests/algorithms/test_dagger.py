@@ -33,12 +33,35 @@ def maybe_pendulum_expert_trajectories(
         return None
 
 
-def test_beta_schedule():
+def test_linear_beta_schedule():
     one_step_sched = dagger.LinearBetaSchedule(1)
     three_step_sched = dagger.LinearBetaSchedule(3)
     for i in range(10):
         assert np.allclose(one_step_sched(i), 1 if i == 0 else 0)
         assert np.allclose(three_step_sched(i), (3 - i) / 3 if i <= 2 else 0)
+
+
+def test_indicator_beta_schedule():
+    one_step_sched = dagger.IndicatorBetaSchedule(1)
+    three_step_sched = dagger.IndicatorBetaSchedule(3)
+    for i in range(10):
+        assert np.allclose(one_step_sched(i), 1 if i == 0 else 0)
+        assert np.allclose(three_step_sched(i), 1 if i <= 2 else 0)
+
+
+def test_exponential_beta_schedule():
+    constant_sched = dagger.ExponentialBetaSchedule(1)
+    decay = 0.5
+    decaying_sched = dagger.ExponentialBetaSchedule(decay)
+    for i in range(10):
+        assert np.allclose(constant_sched(i), 1)
+        assert np.allclose(decaying_sched(i), decay**i)
+
+    with pytest.raises(
+        ValueError,
+        match=r"decay_probability lies outside the range \(0, 1\]\.",
+    ):
+        decaying_sched = dagger.ExponentialBetaSchedule(1.1)
 
 
 def test_traj_collector_seed(tmpdir, pendulum_venv):
