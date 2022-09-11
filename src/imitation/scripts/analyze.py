@@ -240,7 +240,7 @@ table_verbosity_mapping.append(table_verbosity_mapping[-1] | {"n_expert_demos"})
 # verbosity 2
 table_verbosity_mapping.append(
     table_verbosity_mapping[-1]
-    | {"status", "imit_expert_ratio", "exp_command", "run_name"},
+    | {"status", "imit_expert_ratio", "exp_command", "run_name", "seed", ""},
 )
 
 
@@ -281,16 +281,22 @@ def analyze_imitation(
     Returns:
         The DataFrame generated from the Sacred logs.
     """
-    table_entry_fns_subset = _get_table_entry_fns_subset(table_verbosity)
+    if table_verbosity == -1:
+        table_entry_fns_subset = _get_table_entry_fns_subset(0)
+    else:
+        table_entry_fns_subset = _get_table_entry_fns_subset(table_verbosity)
 
-    rows = []
+    df = pd.DataFrame()
     for sd in _gather_sacred_dicts():
-        row = OrderedDict()
-        for col_name, make_entry_fn in table_entry_fns_subset.items():
-            row[col_name] = make_entry_fn(sd)
-        rows.append(row)
+        new_df = pd.DataFrame()
+        if table_verbosity == -1:
+            new_df = pd.json_normalize(sd.config)
 
-    df = pd.DataFrame(rows)
+        for col_name, make_entry_fn in table_entry_fns_subset.items():
+            new_df[col_name] = make_entry_fn(sd)
+
+        df = pd.concat([df, new_df])
+
     if len(df) > 0:
         df.sort_values(by=["algo", "env_name"], inplace=True)
 

@@ -142,20 +142,19 @@ def example_gail_easy():
     }
 
 
-MY_ENVS = ["seals_half_cheetah", "seals_ant"]
+MY_ENVS = ["seals_ant", "seals_half_cheetah"]
 
 
 @parallel_ex.named_config
 def example_bc():
     sacred_ex_name = "train_imitation"
-    run_name = "example-bc"
+    run_name = "bc_tuning_seals_half_cheetah"
     n_seeds = 5
-    base_named_configs = ["common.wandb_logging"]
+    base_named_configs = ["common.wandb_logging", "seals_half_cheetah"]
     base_config_updates = {
-        "common": {"wandb": {"wandb_kwargs": {"project": "algorithm-benchmark"}}}
+        "common": {"wandb": {"wandb_kwargs": {"project": "algorithm-benchmark"}}},
     }
     search_space = {
-        "named_configs": [env for env in MY_ENVS],
         "config_updates": {
             "bc_kwargs": dict(
                 batch_size=tune.grid_search([16, 32, 64]),
@@ -165,9 +164,62 @@ def example_bc():
                 ),
             ),
             "bc_train_kwargs": dict(
-                n_epochs=tune.grid_search(np.linspace(1, 7, num=3, dtype=int))
+                n_epochs=tune.grid_search([1, 4, 7]),
             ),
         },
         "command_name": "bc",
     }
     resources_per_trial = dict(cpu=2)
+
+
+@parallel_ex.named_config
+def example_dagger():
+    sacred_ex_name = "train_imitation"
+    run_name = "dagger_tuning"
+    n_seeds = 5
+    base_named_configs = ["common.wandb_logging"]
+    base_config_updates = {
+        "common": {"wandb": {"wandb_kwargs": {"project": "algorithm-benchmark"}}},
+    }
+    search_space = {
+        "named_configs": tune.grid_search([[env] for env in EASY_ENVS]),
+        "config_updates": {
+            "bc_kwargs": dict(
+                batch_size=tune.grid_search([16, 32, 64]),
+                l2_weight=tune.grid_search([1e-4, 0]),  # L2 regularization weight
+                optimizer_kwargs=dict(
+                    lr=tune.grid_search([1e-3, 1e-4]),
+                ),
+            ),
+            "bc_train_kwargs": dict(
+                n_epochs=tune.grid_search([1, 4, 7]),
+            ),
+        },
+        "command_name": "dagger",
+    }
+    resources_per_trial = dict(cpu=2)
+
+
+@parallel_ex.named_config
+def example_gail_():
+    sacred_ex_name = "train_adversarial"
+    run_name = "gail-tuning"
+    n_seeds = 5
+    search_space = {
+        "named_configs": tune.grid_search([[env] for env in MY_ENVS]),
+        "config_updates": {
+            "init_trainer_kwargs": {
+                "rl": {
+                    "rl_kwargs": {
+                        "learning_rate": tune.grid_search(
+                            np.logspace(3e-6, 1e-1, num=3),
+                        ),
+                        "nminibatches": tune.grid_search([16, 32, 64]),
+                    },
+                },
+            },
+        },
+    }
+    search_space = {
+        "command_name": "gail",
+    }
