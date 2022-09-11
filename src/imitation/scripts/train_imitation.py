@@ -117,9 +117,11 @@ def train_imitation(
                 expert_policy=expert_policy,
                 custom_logger=custom_logger,
                 bc_trainer=bc_trainer,
+                beta_schedule=dagger["beta_schedule"],
             )
             model.train(
                 total_timesteps=int(dagger["total_timesteps"]),
+                rollout_round_min_episodes=dagger["rollout_round_min_episodes"],
                 bc_train_kwargs=bc_train_kwargs,
             )
             # TODO(adam): add checkpointing to DAgger?

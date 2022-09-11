@@ -12,6 +12,7 @@ import numpy as np
 import ray.tune as tune
 import sacred
 
+from imitation.algorithms.dagger import ExponentialBetaSchedule, LinearBetaSchedule
 from imitation.util.util import make_unique_timestamp
 
 parallel_ex = sacred.Experiment("parallel")
@@ -180,19 +181,40 @@ def example_dagger():
     base_named_configs = ["common.wandb_logging"]
     base_config_updates = {
         "common": {"wandb": {"wandb_kwargs": {"project": "algorithm-benchmark"}}},
+        "dagger": {"total_timesteps": 1e5},
+        "bc_kwargs": {
+            "batch_size": 16,
+            "l2_weight": 1e-4,
+            "optimizer_kwargs": {"lr": 1e-3},
+        },
     }
     search_space = {
-        "named_configs": tune.grid_search([[env] for env in EASY_ENVS]),
         "config_updates": {
-            "bc_kwargs": dict(
-                batch_size=tune.grid_search([16, 32, 64]),
-                l2_weight=tune.grid_search([1e-4, 0]),  # L2 regularization weight
-                optimizer_kwargs=dict(
-                    lr=tune.grid_search([1e-3, 1e-4]),
-                ),
-            ),
+            # "bc_kwargs": dict(
+            #     batch_size=tune.grid_search([16, 32, 64]),
+            #     l2_weight=tune.grid_search([1e-4, 0]),  # L2 regularization weight
+            #     optimizer_kwargs=dict(
+            #         lr=tune.grid_search([1e-3, 1e-4]),
+            #     ),
+            # ),
+            # "bc_train_kwargs": dict(
+            #     n_epochs=tune.grid_search([1, 4, 7]),
+            # ),
+            # "dagger": dict(
+            #     beta_schedule=tune.grid_search(
+            #         [LinearBetaSchedule(i) for i in [1, 5, 15]]
+            #         + [ExponentialBetaSchedule(i) for i in [0.3, 0.5, 0.7]],
+            #     ),
+            #     rollout_round_min_episodes=tune.grid_search([3, 5, 10]),
+            # ),
             "bc_train_kwargs": dict(
-                n_epochs=tune.grid_search([1, 4, 7]),
+                n_epochs=tune.grid_search([1]),
+            ),
+            "dagger": dict(
+                beta_schedule=tune.grid_search(
+                    [LinearBetaSchedule(i) for i in [1]],
+                ),
+                rollout_round_min_episodes=tune.grid_search([10]),
             ),
         },
         "command_name": "dagger",
@@ -201,7 +223,7 @@ def example_dagger():
 
 
 @parallel_ex.named_config
-def example_gail_():
+def example_gail():
     sacred_ex_name = "train_adversarial"
     run_name = "gail-tuning"
     n_seeds = 5
