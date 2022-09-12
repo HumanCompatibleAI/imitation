@@ -34,7 +34,8 @@ def load_stable_baselines_model(
 
     Args:
         cls: Stable Baselines RL algorithm.
-        path: Path to zip file containing saved model data.
+        path: Path to zip file containing saved model data or to a folder containing a
+            `model.zip` file.
         venv: Environment to train on.
         kwargs: Passed through to `cls.load`.
 
