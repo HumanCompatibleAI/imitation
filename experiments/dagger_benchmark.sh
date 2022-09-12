@@ -2,14 +2,17 @@
 set -e
 source experiments/common.sh
 
-ENVS=(seals_cartpole)
+CONFIG_CSV=${CONFIG_CSV:-experiments/rollouts_from_policies_config.csv}
+
+ENVS=(seals_ant seals_half_cheetah)
 SEEDS=(0 1 2 3 4)
 LOG_ROOT="output/dagger_benchmark/${TIMESTAMP}"
 extra_configs=()
 extra_options=()
 extra_parallel_options=()
+print_config=""
 
-if ! TEMP=$($GNU_GETOPT -o fTw -l fast,wandb,paper,tmux,pdb,echo,run_name:,log_root:,file_storage: -- "$@"); then
+if ! TEMP=$($GNU_GETOPT -o fTwp -l fast,wandb,paper,tmux,pdb,echo,run_name:,log_root:,file_storage:,timestamp:,print -- "$@"); then
   exit 1
 fi
 eval set -- "$TEMP"
@@ -28,7 +31,7 @@ while true; do
       ;;
     -w | --wandb)
       # activate wandb logging by adding 'wandb' format string to common.log_format_strs
-      extra_configs=("${extra_configs[@]}" "common.wandb_logging")
+      extra_configs=("${extra_configs[@]}" "common.wandb_logging" "common.wandb.wandb_kwargs.project='algorithm-benchmark' ")
       shift
       ;;
     -T | --tmux)
@@ -61,6 +64,14 @@ while true; do
       extra_parallel_options=("${extra_parallel_options[@]}" echo)
       shift
       ;;
+    --timestamp)
+      TIMESTAMP="$2"
+      shift 2
+      ;;
+    -p | --print)
+      print_config="print_config"
+      shift
+      ;;
     --)
       shift
       break
@@ -75,26 +86,18 @@ done
 mkdir -p "${LOG_ROOT}"
 echo "Logging to: ${LOG_ROOT}"
 
-parallel -j 25% --header : --results "${LOG_ROOT}/parallel/" --colsep , --progress \
-  "${extra_parallel_options[@]}" \
-  python -m imitation.scripts.train_imitation \
-  --capture=sys \
-  "${extra_options[@]}" \
-  dagger \
-  with \
-  '{env_config_name}' \
-  common.log_dir="${LOG_ROOT}/{env_config_name}_{seed}" \
-  dagger.expert_policy_type='ppo' \
-  seed='{seed}' \
-  "${extra_configs[@]}" \
-  ::: env_config_name "${ENVS[@]}" \
-  ::: seed "${SEEDS[@]}"
+OUTPUT_DIR="${HOME}/imitation/output/train_experts/${TIMESTAMP}"
 
-# Directory path is really long. Enter the directory to shorten results output,
-# which includes directory of each stdout file.
-pushd "${LOG_ROOT}/parallel"
-find . -name stderr -print0 | sort -z | xargs -0 tail -n 15 | grep -E '==|Result'
-popd
+while IFS="," read -r env n_demos best_seed
+do
+  named_configs="search_space.named_configs=[\"${env}\"]"
+  echo ${named_configs}
+  python3 -m imitation.scripts.parallel ${print_config} with example_dagger seed=0 \
+  ${named_configs} \
+  base_config_updates.expert.policy_type="ppo" \
+  base_config_updates.expert.loader_kwargs.path="${OUTPUT_DIR}/${env}_${best_seed}/policies/final/"
+done < <(tail -n +2 ${CONFIG_CSV})
 
 # shellcheck disable=SC2016
 echo 'Generate results table using `python -m imitation.scripts.analyze`'
+# python3 -m imitation.scripts.analyze analyze_imitation with source_dir_str=~/ray_results/dagger_tuning csv_output_path=logs_dagger_tuning.csv table_verbosity=-1

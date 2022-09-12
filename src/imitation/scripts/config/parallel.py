@@ -190,31 +190,15 @@ def example_dagger():
     }
     search_space = {
         "config_updates": {
-            # "bc_kwargs": dict(
-            #     batch_size=tune.grid_search([16, 32, 64]),
-            #     l2_weight=tune.grid_search([1e-4, 0]),  # L2 regularization weight
-            #     optimizer_kwargs=dict(
-            #         lr=tune.grid_search([1e-3, 1e-4]),
-            #     ),
-            # ),
-            # "bc_train_kwargs": dict(
-            #     n_epochs=tune.grid_search([1, 4, 7]),
-            # ),
-            # "dagger": dict(
-            #     beta_schedule=tune.grid_search(
-            #         [LinearBetaSchedule(i) for i in [1, 5, 15]]
-            #         + [ExponentialBetaSchedule(i) for i in [0.3, 0.5, 0.7]],
-            #     ),
-            #     rollout_round_min_episodes=tune.grid_search([3, 5, 10]),
-            # ),
             "bc_train_kwargs": dict(
-                n_epochs=tune.grid_search([1]),
+                n_epochs=tune.grid_search([4, 7, 10]),
             ),
             "dagger": dict(
                 beta_schedule=tune.grid_search(
-                    [LinearBetaSchedule(i) for i in [1]],
+                    [LinearBetaSchedule(i) for i in [1, 5, 15]]
+                    + [ExponentialBetaSchedule(i) for i in [0.3, 0.5, 0.7]],
                 ),
-                rollout_round_min_episodes=tune.grid_search([10]),
+                rollout_round_min_episodes=tune.grid_search([3, 5, 10]),
             ),
         },
         "command_name": "dagger",
