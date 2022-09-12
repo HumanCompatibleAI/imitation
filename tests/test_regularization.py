@@ -104,6 +104,10 @@ def test_interval_param_scaler_raises(interval_param_scaler):
         scaler(0.0, 1.0, 1.0)
     with pytest.raises(ValueError, match="lambda_ must be non-negative.*"):
         scaler(-1.0, 1.0, 1.0)
+    with pytest.raises(ValueError, match="losses must be non-negative.*"):
+        scaler(1.0, -1.0, 1.0)
+    with pytest.raises(ValueError, match="losses must be non-negative.*"):
+        scaler(1.0, 1.0, -1.0)
 
 
 def test_interval_param_scaler_init_raises():

@@ -114,6 +114,8 @@ class IntervalParamScaler(LambdaUpdater):
             raise ValueError("lambda_ must be non-negative")
         if not isinstance(lambda_, float):
             raise ValueError("lambda_ must be a float")
+        if train_loss < 0 or val_loss < 0:
+            raise ValueError("losses must be non-negative for this updater")
 
         eps = np.finfo(float).eps
         if train_loss < eps and val_loss < eps:
