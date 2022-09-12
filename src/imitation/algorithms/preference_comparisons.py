@@ -1145,12 +1145,13 @@ class BasicRewardTrainer(RewardTrainer):
         dataloader = self._make_data_loader(dataset)
         epochs = round(self.epochs * epoch_multiplier)
 
-        for _ in tqdm(range(epochs), desc="Training reward model"):
-            for fragment_pairs, preferences in dataloader:
-                self.optim.zero_grad()
-                loss = self._training_inner_loop(fragment_pairs, preferences)
-                loss.backward()
-                self.optim.step()
+        for epoch in tqdm(range(epochs), desc="Training reward model"):
+            with self.logger.accumulate_means(f"reward/epoch/{epoch}"):
+                for fragment_pairs, preferences in dataloader:
+                    self.optim.zero_grad()
+                    loss = self._training_inner_loop(fragment_pairs, preferences)
+                    loss.backward()
+                    self.optim.step()
 
     def _training_inner_loop(
         self,
@@ -1499,13 +1500,15 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
             if i == 0:
                 epoch_multiplier = self.initial_epoch_multiplier
 
-            with self.logger.accumulate_means("reward"):
-                self.reward_trainer.train(
-                    self.dataset,
-                    epoch_multiplier=epoch_multiplier,
-                )
-            reward_loss = self.logger.name_to_value["mean/reward/loss"]
-            reward_accuracy = self.logger.name_to_value["mean/reward/accuracy"]
+            self.reward_trainer.train(
+                self.dataset,
+                epoch_multiplier=epoch_multiplier,
+            )
+            epochs = epoch_multiplier * self.reward_trainer.epochs
+            reward_loss = self.logger.name_to_value[f"mean/reward/epoch/{epochs}/loss"]
+            reward_accuracy = self.logger.name_to_value[
+                f"mean/reward/epoch/{epochs}/accuracy"
+            ]
 
             ###################
             # Train the agent #
