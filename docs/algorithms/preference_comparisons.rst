@@ -2,13 +2,16 @@
 Preference comparisons
 ======================
 
-The preference comparisons algorithms learns a reward function from the preferences between pairs of 
-trajectories. The reward function is learnt by gathering the preference between trajectories and 
-training a reward network with the cross entropy loss to predict the trajectory that will get a higher reward.
+The preference comparison algorithm learns a reward function from preferences between pairs of trajectories.
+The comparisons are modeled as being generated from a Bradley-Terry (or Boltzmann rational) model,
+where the probability of preferring trajectory A over B is proportional to the exponential of the
+difference between the return of trajectory A minus B. In other words, the difference in returns forms a logit
+for a binary classification problem, and accordingly the reward function is trained using a cross-entropy loss 
+to predict the preference comparison.
 
 Notes
 -----
-- Preference comparisons paper: `Deep Reinforcement Learning from Human Preferences <https://arxiv.org/pdf/1706.03741.pdf>`_
+- Our implementation is based on the  `Deep Reinforcement Learning from Human Preferences <https://arxiv.org/pdf/1706.03741.pdf>`_ algorithm.
 
 - An ensemble of reward networks can also be trained instead of a single network. The uncertainty in the preference between the member networks can be used to actively select preference queries.
     
@@ -75,15 +78,7 @@ Detailed example notebook: `5_train_preference_comparisons.ipynb <https://github
     )
     pref_comparisons.train(total_timesteps=5_000, total_comparisons=200)
 
-    learned_reward_venv = RewardVecEnvWrapper(venv, reward_net.predict)
-    learner = PPO(
-        policy=MlpPolicy,
-        env=learned_reward_venv,
-        n_steps=64,
-    )
-    learner.learn(1000)
-
-    reward, _ = evaluate_policy(learner.policy, venv, 10)
+    reward, _ = evaluate_policy(agent.policy, venv, 10)
     print("Reward:", reward)
 
 .. testoutput::

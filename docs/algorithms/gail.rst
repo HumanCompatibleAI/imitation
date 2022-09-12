@@ -30,6 +30,7 @@ Detailed example notebook: `3_train_gail.ipynb <https://github.com/HumanCompatib
     from imitation.data.wrappers import RolloutInfoWrapper
     from imitation.rewards.reward_nets import BasicRewardNet
     from imitation.util.networks import RunningNorm
+    from imitation.util.util import make_vec_env
 
     env = gym.make("seals/CartPole-v0")
     expert = PPO(policy=MlpPolicy, env=env, n_steps=64)
@@ -37,11 +38,15 @@ Detailed example notebook: `3_train_gail.ipynb <https://github.com/HumanCompatib
 
     rollouts = rollout.rollout(
         expert,
-        DummyVecEnv([lambda: RolloutInfoWrapper(gym.make("seals/CartPole-v0"))] * 5),
+        make_vec_env(
+            "seals/CartPole-v0",
+            n_envs=5,
+            post_wrappers=[lambda env, _: RolloutInfoWrapper(env)],
+        ),
         rollout.make_sample_until(min_timesteps=None, min_episodes=60),
     )
 
-    venv = DummyVecEnv([lambda: gym.make("seals/CartPole-v0")] * 8)
+    venv = make_vec_env("seals/CartPole-v0", n_envs=8)
     learner = PPO(env=venv, policy=MlpPolicy)
     reward_net = BasicRewardNet(
         venv.observation_space,

@@ -29,19 +29,21 @@ Detailed example notebook: `7_train_density.ipynb <https://github.com/HumanCompa
     )
     density_trainer.train()
 
-    novice_stats = density_trainer.test_policy()
-    pprint.pprint(novice_stats)
-    novice_stats_im = density_trainer.test_policy(true_reward=False, n_trajectories=1)
-    pprint.pprint(novice_stats_im)
+    def print_stats(density_trainer, n_trajectories):
+        stats = density_trainer.test_policy(n_trajectories=n_trajectories)
+        print("True reward function stats:")
+        pprint.pprint(stats)
+        stats_im = density_trainer.test_policy(true_reward=False, n_trajectories=n_trajectories)
+        print("Imitation reward function stats:")
+        pprint.pprint(stats_im)
+
+    print("Stats before training:")
+    print_stats(density_trainer, 1)
 
     density_trainer.train_policy(100)
 
-    good_stats = density_trainer.test_policy(n_trajectories=1)
-    print("Trained stats:")
-    pprint.pprint(good_stats)
-    novice_stats_im = density_trainer.test_policy(true_reward=False)
-    print("Trained stats (imitation reward function):")
-    pprint.pprint(novice_stats_im)
+    print("Stats after training:")
+    print_stats(density_trainer, 1)
 
 .. testoutput::
     :hide:
