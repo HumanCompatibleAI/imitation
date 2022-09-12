@@ -66,7 +66,7 @@ class BatchIteratorWithEpochEndCallback:
 
                 if not some_batch_was_yielded:
                     raise AssertionError(
-                        f"Data loader returned no data after during epoch "
+                        f"Data loader returned no data during epoch "
                         f"{epoch_num} -- did it reset correctly?",
                     )
                 if self.on_epoch_end is not None:
