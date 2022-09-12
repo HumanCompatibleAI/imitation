@@ -221,8 +221,6 @@ def test_regularizer_update_params(
     expected_lambda_value = interval_param_scaler(initial_lambda, train_loss, val_loss)
     assert regularizer.lambda_ == expected_lambda_value
     assert expected_lambda_value != initial_lambda
-    # TODO(juan) where's the historic data for this? should check the
-    #  initial value is there
     assert (
         hierarchical_logger.default_logger.name_to_value["regularization_lambda"]
         == expected_lambda_value
