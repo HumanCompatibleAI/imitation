@@ -49,6 +49,18 @@ def acrobot():
 
 
 @train_rl_ex.named_config
+def asteroids():
+    common = dict(
+        env_name="AsteroidsNoFrameskip-v4",
+        post_wrappers=[
+            lambda env, _: AutoResetWrapper(env),
+            lambda env, _: AtariWrapper(env, terminal_on_life_loss=False),
+            lambda env, _: TimeLimit(env, max_episode_steps=100_000),
+        ]
+    )
+
+
+@train_rl_ex.named_config
 def ant():
     common = dict(env_name="Ant-v2")
     rl = dict(batch_size=16384)
