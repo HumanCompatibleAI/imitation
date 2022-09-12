@@ -5,7 +5,7 @@ from typing import Optional, Sequence
 
 import sacred
 
-from imitation.data import rollout, types
+from imitation.data import rollout, types, wrappers
 from imitation.scripts.common import common, expert
 
 demonstrations_ingredient = sacred.Ingredient(
@@ -41,14 +41,12 @@ def get_expert_trajectories(
 @demonstrations_ingredient.capture
 def generate_expert_trajs(
     n_expert_demos: Optional[int],
-    common,
 ) -> Optional[Sequence[types.Trajectory]]:
     """Generates expert demonstrations.
 
     Args:
         n_expert_demos: The number of trajectories to load.
             Dataset is truncated to this length if specified.
-        common: The common config.
 
     Returns:
         The expert trajectories.
@@ -59,7 +57,10 @@ def generate_expert_trajs(
     if n_expert_demos is None:
         raise ValueError("n_expert_demos must be specified when rollout_path is None")
 
-    with common.make_venv(log_dir=None) as rollout_env:
+    with common.make_venv(
+        log_dir=None,
+        post_wrappers=[lambda env, i: wrappers.RolloutInfoWrapper(env)],
+    ) as rollout_env:
         return rollout.rollout(
             expert.get_expert_policy(rollout_env),
             rollout_env,
