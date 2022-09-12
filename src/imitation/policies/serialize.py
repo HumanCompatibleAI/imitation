@@ -50,11 +50,10 @@ def load_stable_baselines_model(
 
     if path.is_dir():
         path = path / "model.zip"
-
-    if not path.parent.is_dir():
-        raise FileNotFoundError(
-            f"path={path.parent} needs to be a directory containing {path.name}.",
-        )
+        if not path.exists():
+            raise FileNotFoundError(
+                f"Expected '{path}' to be a directory containing a 'model.zip' file."
+            )
 
     # SOMEDAY(adam): added 2022-01, can probably remove this check in 2023
     vec_normalize_path = path.parent / "vec_normalize.pkl"
