@@ -209,6 +209,7 @@ setup(
         #  See https://github.com/IDSIA/sacred/issues/879
         "chai-sacred>=0.8.3",
         "tensorboard>=1.14",
+        "huggingface_sb3>=2.2.1",
     ],
     tests_require=TESTS_REQUIRE,
     extras_require={
