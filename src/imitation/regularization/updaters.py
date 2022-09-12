@@ -91,16 +91,19 @@ class IntervalParamScaler(LambdaUpdater):
             ValueError: if lambda_ is zero (will result in no scaling).
             ValueError: if lambda_ is not a float.
         """
-        # assert that the tensors val_loss and train_loss are both scalars
-        try:
-            assert isinstance(val_loss, float) or (
-                isinstance(val_loss, th.Tensor) and val_loss.dim() == 0
-            )
-            assert isinstance(train_loss, float) or (
-                isinstance(train_loss, th.Tensor) and train_loss.dim() == 0
-            )
-        except AssertionError as exc:
-            raise ValueError("val_loss and train_loss must be scalars") from exc
+        # check that the tensors val_loss and train_loss are both scalars
+        if not (
+            isinstance(val_loss, float)
+            or (isinstance(val_loss, th.Tensor) and val_loss.dim() == 0)
+        ):
+            raise ValueError("val_loss must be a scalar")
+
+        if not (
+            isinstance(train_loss, float)
+            or (isinstance(train_loss, th.Tensor) and train_loss.dim() == 0)
+        ):
+            raise ValueError("train_loss must be a scalar")
+
         if np.finfo(float).eps > lambda_:
             raise ValueError(
                 "lambda_ must not be zero. Make sure that you're not "
