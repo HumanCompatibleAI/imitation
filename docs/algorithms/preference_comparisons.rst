@@ -2,6 +2,89 @@
 Preference comparisons
 ======================
 
+The preference comparison algorithm learns a reward function from preferences between pairs of trajectories.
+The comparisons are modeled as being generated from a Bradley-Terry (or Boltzmann rational) model,
+where the probability of preferring trajectory A over B is proportional to the exponential of the
+difference between the return of trajectory A minus B. In other words, the difference in returns forms a logit
+for a binary classification problem, and accordingly the reward function is trained using a cross-entropy loss 
+to predict the preference comparison.
+
+Notes
+-----
+- Our implementation is based on the  `Deep Reinforcement Learning from Human Preferences <https://arxiv.org/pdf/1706.03741.pdf>`_ algorithm.
+
+- An ensemble of reward networks can also be trained instead of a single network. The uncertainty in the preference between the member networks can be used to actively select preference queries.
+    
+Example
+=======
+
+Detailed example notebook: `5_train_preference_comparisons.ipynb <https://github.com/HumanCompatibleAI/imitation/blob/master/examples/5_train_preference_comparisons.ipynb>`_
+
+.. testcode::
+
+    from stable_baselines3 import PPO
+    from stable_baselines3.common.evaluation import evaluate_policy
+    from stable_baselines3.ppo import MlpPolicy
+
+    from imitation.algorithms import preference_comparisons
+    from imitation.policies.base import FeedForward32Policy, NormalizeFeaturesExtractor
+    from imitation.rewards.reward_nets import BasicRewardNet
+    from imitation.rewards.reward_wrapper import RewardVecEnvWrapper
+    from imitation.util.networks import RunningNorm
+    from imitation.util.util import make_vec_env
+
+    venv = make_vec_env("Pendulum-v1")
+
+    reward_net = BasicRewardNet(
+        venv.observation_space, venv.action_space, normalize_input_layer=RunningNorm,
+    )
+
+    fragmenter = preference_comparisons.RandomFragmenter(warning_threshold=0, seed=0)
+    gatherer = preference_comparisons.SyntheticGatherer(seed=0)
+    preference_model = preference_comparisons.PreferenceModel(reward_net)
+    reward_trainer = preference_comparisons.BasicRewardTrainer(
+        model=reward_net,
+        loss=preference_comparisons.CrossEntropyRewardLoss(preference_model),
+        epochs=3,
+    )
+
+    agent = PPO(
+        policy=FeedForward32Policy,
+        policy_kwargs=dict(
+            features_extractor_class=NormalizeFeaturesExtractor,
+            features_extractor_kwargs=dict(normalize_class=RunningNorm),
+        ),
+        env=venv,
+        n_steps=2048 // venv.num_envs,
+    )
+
+    trajectory_generator = preference_comparisons.AgentTrainer(
+        algorithm=agent,
+        reward_fn=reward_net,
+        venv=venv,
+        exploration_frac=0.0,
+        seed=0,
+    )
+
+    pref_comparisons = preference_comparisons.PreferenceComparisons(
+        trajectory_generator,
+        reward_net,
+        num_iterations=5,
+        fragmenter=fragmenter,
+        preference_gatherer=gatherer,
+        reward_trainer=reward_trainer,
+        seed=0,
+        initial_epoch_multiplier=1,
+    )
+    pref_comparisons.train(total_timesteps=5_000, total_comparisons=200)
+
+    reward, _ = evaluate_policy(agent.policy, venv, 10)
+    print("Reward:", reward)
+
+.. testoutput::
+    :hide:
+    
+    ...
 
 API
 ===

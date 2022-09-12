@@ -161,18 +161,19 @@ def make_venv(
     Yields:
         The constructed vector environment.
     """
+    # Note: we create the venv outside the try -- finally block for the case that env
+    #     creation fails.
+    venv = util.make_vec_env(
+        env_name,
+        num_vec,
+        seed=_seed,
+        parallel=parallel,
+        max_episode_steps=max_episode_steps,
+        log_dir=log_dir,
+        env_make_kwargs=env_make_kwargs,
+        **kwargs,
+    )
     try:
-        venv = util.make_vec_env(
-            env_name,
-            num_vec,
-            seed=_seed,
-            parallel=parallel,
-            log_dir=log_dir,
-            max_episode_steps=max_episode_steps,
-            post_wrappers=post_wrappers,
-            env_make_kwargs=env_make_kwargs,
-            **kwargs,
-        )
         yield venv
     finally:
         venv.close()
