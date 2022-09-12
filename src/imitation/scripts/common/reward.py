@@ -61,6 +61,11 @@ def reward_ensemble():
     locals()
 
 
+@reward_ingredient.named_config
+def cnn_reward():
+    net_cls = reward_nets.CnnRewardNet  # noqa: F841
+
+
 @reward_ingredient.config_hook
 def config_hook(config, command_name, logger):
     """Sets default values for `net_cls` and `net_kwargs`."""
@@ -72,7 +77,10 @@ def config_hook(config, command_name, logger):
             default_net = reward_nets.BasicShapedRewardNet
         res["net_cls"] = default_net
 
-    if "normalize_input_layer" not in config["reward"]["net_kwargs"]:
+    if (
+        "normalize_input_layer" not in config["reward"]["net_kwargs"]
+        and config["reward"]["net_cls"] != reward_nets.CnnRewardNet
+    ):
         res["net_kwargs"] = {"normalize_input_layer": networks.RunningNorm}
 
     if "net_cls" in res and issubclass(res["net_cls"], reward_nets.RewardEnsemble):
