@@ -179,7 +179,10 @@ class SimpleRegularizer(regularizers.Regularizer[None]):
 
 
 def test_regularizer_init_no_crash(
-    initial_lambda, hierarchical_logger, simple_optimizer, interval_param_scaler
+    initial_lambda,
+    hierarchical_logger,
+    simple_optimizer,
+    interval_param_scaler,
 ):
     SimpleRegularizer(
         initial_lambda=initial_lambda,
@@ -254,7 +257,8 @@ def test_regularizer_init_raises(
             val_split=0.2,
         )
     with pytest.raises(
-        ValueError, match=".*pass.*parameter updater.*must.*specify.*validation split.*"
+        ValueError,
+        match=".*pass.*parameter updater.*must.*specify.*validation split.*",
     ):
         SimpleRegularizer(
             initial_lambda=initial_lambda,
@@ -264,7 +268,8 @@ def test_regularizer_init_raises(
             val_split=None,
         )
     with pytest.raises(
-        ValueError, match=".*pass.*validation split.*must.*pass.*parameter updater.*"
+        ValueError,
+        match=".*pass.*validation split.*must.*pass.*parameter updater.*",
     ):
         SimpleRegularizer(
             initial_lambda=initial_lambda,

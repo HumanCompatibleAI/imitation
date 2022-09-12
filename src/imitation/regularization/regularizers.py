@@ -15,14 +15,47 @@ Scalar = Union[th.Tensor, float]
 
 R = TypeVar("R")
 Self = TypeVar("Self", bound="Regularizer")
-T_Regularizer_co = TypeVar("T_Regularizer_co", covariant=True)
+T_Regularizer_co = TypeVar(
+    "T_Regularizer_co",
+    covariant=True,
+)  # type: ignore[not-supported-yet]
 
 
 class RegularizerFactory(Protocol[T_Regularizer_co]):
+    """Protocol for functions that create regularizers.
+
+    The regularizer factory is meant to be used as a way to create a regularizer
+    in two steps. First, the end-user creates a regularizer factory by calling
+    the `.create()` method of a regularizer class. This allows specifying
+    all the relevant configuration to the regularization algorithm. Then, the
+    network algorithm finishes setting up the optimizer and logger, and calls
+    the regularizer factory to create the regularizer.
+
+    This two-step process separates the configuration of the regularization
+    algorithm from additional "operational" parameters. This is useful because it
+    solves two problems:
+        1. The end-user does not have access to the optimizer and logger when
+        configuring the regularization algorithm.
+        2. Validation of the configuration is done outside the network constructor.
+
+    It also allows re-using a same regularizer factory for multiple networks.
+    """
+
     def __call__(
-        self, *, optimizer: optim.Optimizer, logger: imit_logger.HierarchicalLogger
+        self,
+        *,
+        optimizer: optim.Optimizer,
+        logger: imit_logger.HierarchicalLogger,
     ) -> T_Regularizer_co:
-        ...
+        """Constructs a regularizer from the factory.
+
+        Args:
+            optimizer: The optimizer used by the network.
+            logger: The logger used by the network.
+
+        Returns:
+            A regularizer.
+        """
 
 
 class Regularizer(abc.ABC, Generic[R]):
@@ -50,12 +83,14 @@ class Regularizer(abc.ABC, Generic[R]):
             lambda_updater: A callable object that takes in the current lambda and
                 the train and val loss, and returns the new lambda.
             logger: The logger to which the regularizer will log its parameters.
+            val_split: The fraction of the training data to use as validation data
+                for the lambda updater. Can be none if no lambda updater is provided.
         """
         if lambda_updater is None and np.allclose(initial_lambda, 0.0):
             raise ValueError(
                 "If you do not pass a regularizer parameter updater your "
                 "regularization strength must be non-zero, as this would "
-                "result in no regularization."
+                "result in no regularization.",
             )
 
         if val_split is not None and (
@@ -70,13 +105,13 @@ class Regularizer(abc.ABC, Generic[R]):
             raise ValueError(
                 "If you pass a regularizer parameter updater, you must also "
                 "specify a validation split. Otherwise the updater won't have any "
-                "validation data to use for updating."
+                "validation data to use for updating.",
             )
         elif lambda_updater is None and val_split is not None:
             raise ValueError(
                 "If you pass a validation split, you must also "
                 "pass a regularizer parameter updater. Otherwise you are wasting"
-                " data into the validation split that will not be used."
+                " data into the validation split that will not be used.",
             )
 
         self.optimizer = optimizer
@@ -98,7 +133,9 @@ class Regularizer(abc.ABC, Generic[R]):
         """Create a regularizer."""
 
         def factory(
-            *, optimizer: optim.Optimizer, logger: imit_logger.HierarchicalLogger
+            *,
+            optimizer: optim.Optimizer,
+            logger: imit_logger.HierarchicalLogger,
         ) -> Self:
             return cls(
                 initial_lambda=initial_lambda,
