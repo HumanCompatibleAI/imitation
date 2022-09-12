@@ -1038,9 +1038,9 @@ class CrossEntropyRewardLoss(RewardLoss):
         #  common in some environments (as long as sample=False or temperature=0).
         #  In a sense that "only" creates class imbalance
         #  but it's still misleading.
-        predictions = (probs > 0.5).float()
+        predictions = (probs > 0.5)
         preferences_th = th.as_tensor(preferences, dtype=th.float32)
-        ground_truth = (preferences_th > 0.5).float()
+        ground_truth = (preferences_th > 0.5)
         metrics = {}
         # TODO(juan) why convert to float if you are then doing a boolean comparison?
         #  seems like a bad practice and also a waste of RAM.
