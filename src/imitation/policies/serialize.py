@@ -53,7 +53,7 @@ def load_stable_baselines_model(
         path = path / "model.zip"
         if not path.exists():
             raise FileNotFoundError(
-                f"Expected '{path}' to be a directory containing a 'model.zip' file."
+                f"Expected '{path}' to be a directory containing a 'model.zip' file.",
             )
 
     # SOMEDAY(adam): added 2022-01, can probably remove this check in 2023
@@ -70,8 +70,7 @@ def load_stable_baselines_model(
 def _load_stable_baselines_from_file(
     cls: Type[base_class.BaseAlgorithm],
 ) -> PolicyLoaderFn:
-    """Higher-order function, returning a policy loading function that was loaded from
-    a path on disc.
+    """Creates a policy loading function to read a policy from a file.
 
     Args:
         cls: The RL algorithm, e.g. `stable_baselines3.PPO`.
@@ -92,8 +91,7 @@ def _load_stable_baselines_from_huggingface(
     algo_name: str,
     cls: Type[base_class.BaseAlgorithm],
 ) -> PolicyLoaderFn:
-    """Higher-order function, returning a policy loading function that was loaded from
-    huggingface.
+    """Creates a policy loading function to load from huggingface.
 
     Args:
         algo_name: The name of the algorithm, e.g. `ppo`.

@@ -103,7 +103,7 @@ def seals_ant():
 CHEETAH_SHARED_LOCALS = dict(
     MUJOCO_SHARED_LOCALS,
     rl=dict(batch_size=16384, rl_kwargs=dict(batch_size=1024)),
-    algorithm_specific = dict(
+    algorithm_specific=dict(
         airl=dict(total_timesteps=int(5e6)),
         gail=dict(total_timesteps=int(8e6)),
     ),
