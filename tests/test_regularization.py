@@ -10,7 +10,6 @@ from imitation.regularization import regularizers, updaters
 from imitation.util import logger as imit_logger
 
 
-
 @pytest.fixture(
     scope="module",
     params=[
@@ -107,22 +106,22 @@ def test_interval_param_scaler_init_raises():
     # this validates the value of scaling_factor.
     interval_err_msg = r"scaling_factor must be in \(0, 1\) within machine precision."
 
-    with pytest.raises(ValueError,match=interval_err_msg):
+    with pytest.raises(ValueError, match=interval_err_msg):
         # cannot be negative as this is counter-intuitive to
         # the direction of scaling (just use the reciprocal).
         updaters.IntervalParamScaler(-1, (0.1, 0.9))
 
-    with pytest.raises(ValueError,match=interval_err_msg):
+    with pytest.raises(ValueError, match=interval_err_msg):
         # cannot be larger than one as this would make lambda
         # negative when scaling down.
         updaters.IntervalParamScaler(1.1, (0.1, 0.9))
 
-    with pytest.raises(ValueError,match=interval_err_msg):
+    with pytest.raises(ValueError, match=interval_err_msg):
         # cannot be exactly zero, as this never changes the value
         # of lambda when scaling up.
         updaters.IntervalParamScaler(0.0, (0.1, 0.9))
 
-    with pytest.raises(ValueError,match=interval_err_msg):
+    with pytest.raises(ValueError, match=interval_err_msg):
         # cannot be exactly one, as when lambda is scaled down
         # this brings it to zero.
         updaters.IntervalParamScaler(1.0, (0.1, 0.9))

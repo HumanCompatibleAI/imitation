@@ -1,7 +1,7 @@
 """Implements the regularizer base class and some standard regularizers."""
 
 import abc
-from typing import Generic, TypeVar, Union, Optional, Type
+from typing import Generic, Optional, Protocol, Type, TypeVar, Union
 
 import numpy as np
 import torch as th
@@ -14,6 +14,15 @@ from imitation.util import logger as imit_logger
 Scalar = Union[th.Tensor, float]
 
 R = TypeVar("R")
+Self = TypeVar("Self", bound="Regularizer")
+T_Regularizer_co = TypeVar("T_Regularizer_co", covariant=True)
+
+
+class RegularizerFactory(Protocol[T_Regularizer_co]):
+    def __call__(
+        self, *, optimizer: optim.Optimizer, logger: imit_logger.HierarchicalLogger
+    ) -> T_Regularizer_co:
+        ...
 
 
 class Regularizer(abc.ABC, Generic[R]):
@@ -23,6 +32,7 @@ class Regularizer(abc.ABC, Generic[R]):
     lambda_: float
     lambda_updater: Optional[updaters.LambdaUpdater]
     logger: imit_logger.HierarchicalLogger
+    val_split: Optional[float]
 
     def __init__(
         self,
@@ -30,6 +40,7 @@ class Regularizer(abc.ABC, Generic[R]):
         initial_lambda: float,
         lambda_updater: Optional[updaters.LambdaUpdater],
         logger: imit_logger.HierarchicalLogger,
+        val_split: Optional[float] = None,
     ) -> None:
         """Initialize the regularizer.
 
@@ -40,7 +51,6 @@ class Regularizer(abc.ABC, Generic[R]):
                 the train and val loss, and returns the new lambda.
             logger: The logger to which the regularizer will log its parameters.
         """
-
         if lambda_updater is None and np.allclose(initial_lambda, 0.0):
             raise ValueError(
                 "If you do not pass a regularizer parameter updater your "
@@ -48,13 +58,55 @@ class Regularizer(abc.ABC, Generic[R]):
                 "result in no regularization.",
             )
 
+        if val_split is not None and (
+            np.allclose(val_split, 0.0) or val_split <= 0 or val_split >= 1
+        ):
+            raise ValueError("val_split must be a float strictly between 0 and 1.")
+
+        if lambda_updater is not None and val_split is None:
+            raise ValueError(
+                "If you pass a regularizer parameter updater, you must also "
+                "specify a validation split. Otherwise the updater won't have any "
+                "validation data to use for updating.",
+            )
+        elif lambda_updater is None and val_split is not None:
+            raise ValueError(
+                "If you pass a validation split, you must also "
+                "pass a regularizer parameter updater. Otherwise you are wasting"
+                " data into the validation split that will not be used.",
+            )
+
         self.optimizer = optimizer
         self.lambda_ = initial_lambda
         self.lambda_updater = lambda_updater
         self.logger = logger
+        self.val_split = val_split
 
         self.logger.record("regularization_lambda", self.lambda_)
 
+    @classmethod
+    def create(
+        cls: Type[Self],
+        initial_lambda: float,
+        lambda_updater: Optional[updaters.LambdaUpdater] = None,
+        val_split: float = 0.0,
+        **kwargs,
+    ) -> RegularizerFactory[Self]:
+        """Create a regularizer."""
+
+        def factory(
+            *, optimizer: optim.Optimizer, logger: imit_logger.HierarchicalLogger
+        ) -> Self:
+            return cls(
+                initial_lambda=initial_lambda,
+                optimizer=optimizer,
+                lambda_updater=lambda_updater,
+                logger=logger,
+                val_split=val_split,
+                **kwargs,
+            )
+
+        return factory
 
     @abc.abstractmethod
     def regularize(self, loss: th.Tensor) -> R:
@@ -150,7 +202,7 @@ class LpRegularizer(LossRegularizer):
         self,
         optimizer: optim.Optimizer,
         initial_lambda: float,
-        lambda_updater: updaters.LambdaUpdater,
+        lambda_updater: Optional[updaters.LambdaUpdater],
         logger: imit_logger.HierarchicalLogger,
         p: int,
     ) -> None:
@@ -194,79 +246,3 @@ class WeightDecayRegularizer(WeightRegularizer):
             The weight penalty (to add to the current value of the weight)
         """
         return -self.lambda_ * group["lr"] * weight.data
-
-
-class RegularizerFactory:
-    """Factory class for creating regularizers."""
-
-    @staticmethod
-    def create(
-        regularizer_cls: Optional[Type[Regularizer]],
-        initial_lambda: float,
-        lambda_updater: Optional[updaters.LambdaUpdater],
-        val_split: float,
-        optimizer: optim.Optimizer,
-        logger: imit_logger.HierarchicalLogger,
-        **kwargs,
-    ) -> Optional[Regularizer]:
-        """Create a regularizer.
-
-        This method takes care of validate the regularization arguments passed to any
-        network, and returns a regularizer object if a regularizer_cls is provided.
-
-        Args:
-            regularizer_cls: The class of the regularizer to create.
-            initial_lambda: The initial value of the regularization parameter.
-            lambda_updater: The updater for the regularization parameter.
-            val_split: The fraction of the training data to use for validation.
-            optimizer: The optimizer to use for training.
-            logger: The logger to use for logging.
-            **kwargs: Additional keyword arguments to pass to the regularizer.
-
-        Returns:
-            A regularizer object if a regularizer_cls is provided, None otherwise.
-        """
-        if regularizer_cls is None:
-            if initial_lambda > 0:
-                raise ValueError(
-                    "Regularization strength is non-zero but no regularizer class "
-                    "is specified.",
-                )
-            if lambda_updater is not None:
-                raise ValueError(
-                    "Regularization updater class was provided but no regularizer "
-                    "class is specified.",
-                )
-            if val_split > 0:
-                raise ValueError(
-                    "Validation split is non-zero but no regularizer class "
-                    "is specified.",
-                )
-            if kwargs:
-                raise ValueError(
-                    "Regularizer class is not specified but kwargs are provided.",
-                )
-            return None
-        else:
-            if lambda_updater is not None and np.allclose(val_split, 0.0):
-                raise ValueError(
-                    "If you pass a regularizer parameter updater, you must also "
-                    "pass a non-zero value for the validation split. Otherwise "
-                    "the updater won't have any validation data to use for updating.",
-                )
-            elif lambda_updater is None and val_split > 0:
-                raise ValueError(
-                    "If you pass a non-zero validation split, you must also "
-                    "pass a regularizer parameter updater. Otherwise you are wasting"
-                    " data into the validation split that will not be used.",
-                )
-            if val_split < 0 or val_split > 1:
-                raise ValueError("val_split must be strictly between 0 and 1.")
-
-            return regularizer_cls(
-                initial_lambda=initial_lambda,
-                optimizer=optimizer,
-                lambda_updater=lambda_updater,
-                logger=logger,
-                **kwargs,
-            )

@@ -1107,11 +1107,7 @@ class BasicRewardTrainer(RewardTrainer):
         lr: float = 1e-3,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
         seed: Optional[int] = None,
-        reg_class: Optional[Type[regularizers.Regularizer]] = None,
-        reg_lambda: float = 0.0,
-        reg_lambda_updater: Optional[updaters.LambdaUpdater] = None,
-        reg_val_split: float = 0.0,
-        reg_extra_kwargs: Optional[Dict[str, Any]] = None,
+        regularizer_factory: Optional[regularizers.RegularizerFactory] = None,
     ):
         """Initialize the reward model trainer.
 
@@ -1126,25 +1122,11 @@ class BasicRewardTrainer(RewardTrainer):
             seed: the random seed to use for splitting the dataset into training
                 and validation.
             custom_logger: Where to log to; if None (default), creates a new logger.
-            reg_class: the regularization class to use. If not specified, no
-                regularization is used.
-            reg_lambda: the initial regularization strength. For the case of
-                weight decay regularization, this is the weight decay parameter.
-            reg_lambda_updater: a function that updates the regularization strength.
-                It takes validation and training losses, and the current regularization
-                parameter value (lambda), and returns the new lambda to use in the next
-                epoch. This is only used if ``reg_lambda`` is non-zero.
-                If not specified, the regularization strength is kept constant.
-            reg_val_split: the fraction of the dataset to use for validation. Validation
-                is performed to determine the best weight decay value. Since
-                the weight decay is constant by default, this is also set to be
-                0 by default, since no validation data is needed. If you pass
-                a lambda updater, you must also pass a non-zero value for
-                this parameter.
-            reg_extra_kwargs: extra keyword arguments to pass to the regularization
-                constructor.
+            regularizer_factory: if you would like to apply regularization during
+                training, specify a regularizer factory here. The factory will be
+                used to construct a regularizer. See
+                ``imitation.regularization.RegularizerFactory`` for more details.
         """
-
         super().__init__(model, custom_logger)
         self.loss = loss
         self.batch_size = batch_size
@@ -1154,16 +1136,10 @@ class BasicRewardTrainer(RewardTrainer):
             lr=lr,
         )
         self.seed = seed
-        self.val_split = reg_val_split
-        self.regularizer = regularizers.RegularizerFactory.create(
-            regularizer_cls=reg_class,
-            initial_lambda=reg_lambda,
-            lambda_updater=reg_lambda_updater,
-            val_split=reg_val_split,
+        self.regularizer = regularizer_factory(
             optimizer=self.optim,
             logger=self.logger,
-            **(reg_extra_kwargs or {}),
-        )
+        ) if regularizer_factory is not None else None
 
     def _make_data_loader(self, dataset: PreferenceDataset) -> data_th.DataLoader:
         """Make a dataloader."""
@@ -1181,12 +1157,12 @@ class BasicRewardTrainer(RewardTrainer):
         Returns:
             If true, this means that a validation dataset will be used.
         """
-        return self.regularizer is not None and self.val_split > 0
+        return self.regularizer is not None and self.regularizer.val_split is not None
 
     def _train(self, dataset: PreferenceDataset, epoch_multiplier: float = 1.0) -> None:
         """Trains for `epoch_multiplier * self.epochs` epochs over `dataset`."""
-        if self.requires_regularizer_update:
-            val_length = int(len(dataset) * self.val_split)
+        if self.regularizer is not None and self.regularizer.val_split is not None:
+            val_length = int(len(dataset) * self.regularizer.val_split)
             train_length = len(dataset) - val_length
             if val_length < 1 or train_length < 1:
                 raise ValueError(
