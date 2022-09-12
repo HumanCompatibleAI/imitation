@@ -9,17 +9,6 @@ import torch as th
 from imitation.regularization import regularizers, updaters
 from imitation.util import logger as imit_logger
 
-CONSTANT_PARAM_SCALER_TEST_ARGS = [
-    (10.0, 0, 0),
-    (0.1, 0, 0),
-    (10.0, 1.0, 1.0),
-]
-
-
-@pytest.mark.parametrize("lambda_,train_loss,val_loss", CONSTANT_PARAM_SCALER_TEST_ARGS)
-def test_constant_param_scaler(lambda_, train_loss, val_loss):
-    scaler = updaters.ConstantParamScaler()
-    assert scaler(lambda_, train_loss, val_loss) == lambda_
 
 
 @pytest.fixture(
@@ -257,7 +246,7 @@ def test_loss_regularizer(
     regularizer = SimpleLossRegularizer(
         initial_lambda=initial_lambda,
         logger=hierarchical_logger,
-        lambda_updater=updaters.ConstantParamScaler(),
+        lambda_updater=None,
         optimizer=simple_optimizer,
     )
     loss_param = simple_optimizer.param_groups[0]["params"][0]
@@ -305,7 +294,7 @@ def test_weight_regularizer(
     regularizer = SimpleWeightRegularizer(
         initial_lambda=initial_lambda,
         logger=hierarchical_logger,
-        lambda_updater=updaters.ConstantParamScaler(),
+        lambda_updater=None,
         optimizer=simple_optimizer,
     )
     weight = simple_optimizer.param_groups[0]["params"][0]
@@ -323,7 +312,7 @@ def test_lp_regularizer_p_value_raises(hierarchical_logger, simple_optimizer, p)
         regularizers.LpRegularizer(
             initial_lambda=1.0,
             logger=hierarchical_logger,
-            lambda_updater=updaters.ConstantParamScaler(),
+            lambda_updater=None,
             optimizer=simple_optimizer,
             p=p,
         )
@@ -378,7 +367,7 @@ def test_lp_regularizer(
     regularizer = regularizers.LpRegularizer(
         initial_lambda=initial_lambda,
         logger=hierarchical_logger,
-        lambda_updater=updaters.ConstantParamScaler(),
+        lambda_updater=None,
         optimizer=multi_param_optimizer,
         p=p,
     )
@@ -420,7 +409,7 @@ def test_weight_decay_regularizer(
     regularizer = regularizers.WeightDecayRegularizer(
         initial_lambda=initial_lambda,
         logger=hierarchical_logger,
-        lambda_updater=updaters.ConstantParamScaler(),
+        lambda_updater=None,
         optimizer=multi_param_and_lr_optimizer,
     )
     weights = regularizer.optimizer.param_groups[0]["params"]

@@ -576,13 +576,13 @@ def test_reward_trainer_regularization_raises(
         )
     with pytest.raises(
         ValueError,
-        match="Extra regularization arguments provided but no regularizer.*",
+        match="Regularizer class is not specified but kwargs are provided.*",
     ):
         preference_comparisons.BasicRewardTrainer(
             reward_net,
             loss,
             reg_class=None,
-            reg_extra_kwargs=dict(),
+            reg_extra_kwargs=dict(key="value"),
         )
     with pytest.raises(
         ValueError,
@@ -628,6 +628,7 @@ def test_reward_trainer_regularization_raises(
             loss,
             reg_class=regularizers.LpRegularizer,
             reg_lambda=0.0,
+            reg_extra_kwargs=dict(p=2),
         )
 
     initial_lambda = 0.1

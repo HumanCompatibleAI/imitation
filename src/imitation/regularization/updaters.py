@@ -131,16 +131,3 @@ class IntervalParamScaler(LambdaUpdater):
         elif val_to_train_ratio < self.tolerable_interval[0]:
             lambda_ *= 1 - self.scaling_factor
         return lambda_
-
-
-class ConstantParamScaler(LambdaUpdater):
-    """A dummy param scaler implementation to use as default."""
-
-    def __call__(
-        self,
-        lambda_: float,
-        train_loss: Union[float, th.Tensor],
-        val_loss: Union[float, th.Tensor],
-    ) -> float:
-        del train_loss, val_loss
-        return lambda_

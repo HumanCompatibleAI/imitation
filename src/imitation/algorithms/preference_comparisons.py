@@ -1143,53 +1143,7 @@ class BasicRewardTrainer(RewardTrainer):
                 this parameter.
             reg_extra_kwargs: extra keyword arguments to pass to the regularization
                 constructor.
-
-        Raises:
-            ValueError: if ``reg_lambda`` is non-zero but ``reg_lambda_updater`` is
-                None.
         """
-        if reg_class is None:
-            if reg_lambda > 0:
-                raise ValueError(
-                    "Regularization strength is non-zero but no regularizer class "
-                    "is specified.",
-                )
-            if reg_lambda_updater is not None:
-                raise ValueError(
-                    "Regularization updater class was provided but no regularizer "
-                    "class is specified.",
-                )
-            if reg_val_split > 0:
-                raise ValueError(
-                    "Validation split is non-zero but no regularizer class "
-                    "is specified.",
-                )
-            if reg_extra_kwargs is not None:
-                raise ValueError(
-                    "Extra regularization arguments provided but no regularizer class "
-                    "is specified.",
-                )
-        else:
-            if reg_lambda_updater is not None and np.allclose(reg_val_split, 0.0):
-                raise ValueError(
-                    "If you pass a regularizer parameter updater, you must also "
-                    "pass a non-zero value for the validation split. Otherwise "
-                    "the updater won't have any validation data to use for updating.",
-                )
-            elif reg_lambda_updater is None and reg_val_split > 0:
-                raise ValueError(
-                    "If you pass a non-zero validation split, you must also "
-                    "pass a regularizer parameter updater. Otherwise you are wasting"
-                    " data into the validation split that will not be used.",
-                )
-            if reg_val_split < 0 or reg_val_split > 1:
-                raise ValueError("val_split must be strictly between 0 and 1.")
-            if reg_lambda_updater is None and np.allclose(reg_lambda, 0.0):
-                raise ValueError(
-                    "If you do not pass a regularizer parameter updater your "
-                    "regularization strength must be non-zero, as this would "
-                    "result in no regularization.",
-                )
 
         super().__init__(model, custom_logger)
         self.loss = loss
@@ -1201,17 +1155,15 @@ class BasicRewardTrainer(RewardTrainer):
         )
         self.seed = seed
         self.val_split = reg_val_split
-
-        self.regularizer = None
-        if reg_class is not None:
-            lambda_updater = reg_lambda_updater or updaters.ConstantParamScaler()
-            self.regularizer = reg_class(
-                initial_lambda=reg_lambda,
-                optimizer=self.optim,
-                lambda_updater=lambda_updater,
-                logger=self.logger,
-                **(reg_extra_kwargs or {}),
-            )
+        self.regularizer = regularizers.RegularizerFactory.create(
+            regularizer_cls=reg_class,
+            initial_lambda=reg_lambda,
+            lambda_updater=reg_lambda_updater,
+            val_split=reg_val_split,
+            optimizer=self.optim,
+            logger=self.logger,
+            **(reg_extra_kwargs or {}),
+        )
 
     def _make_data_loader(self, dataset: PreferenceDataset) -> data_th.DataLoader:
         """Make a dataloader."""
