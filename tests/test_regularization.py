@@ -102,6 +102,8 @@ def test_interval_param_scaler_raises(interval_param_scaler):
         scaler(th.tensor(1.0), 1.0, 1.0)  # type: ignore
     with pytest.raises(ValueError, match="lambda_ must not be zero.*"):
         scaler(0.0, 1.0, 1.0)
+    with pytest.raises(ValueError, match="lambda_ must be non-negative.*"):
+        scaler(-1.0, 1.0, 1.0)
 
 
 def test_interval_param_scaler_init_raises():

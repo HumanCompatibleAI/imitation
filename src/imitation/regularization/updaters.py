@@ -104,12 +104,14 @@ class IntervalParamScaler(LambdaUpdater):
         ):
             raise ValueError("train_loss must be a scalar")
 
-        if np.finfo(float).eps > lambda_:
+        if np.finfo(float).eps > abs(lambda_):
             raise ValueError(
                 "lambda_ must not be zero. Make sure that you're not "
                 "scaling the value of lambda down too quickly or passing an "
                 "initial value of zero to the lambda parameter.",
             )
+        elif lambda_ < 0:
+            raise ValueError("lambda_ must be non-negative")
         if not isinstance(lambda_, float):
             raise ValueError("lambda_ must be a float")
 
