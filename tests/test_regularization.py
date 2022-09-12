@@ -94,12 +94,14 @@ def test_interval_param_scaler(lambda_, train_loss, interval_param_scaler):
 
 def test_interval_param_scaler_raises(interval_param_scaler):
     scaler = interval_param_scaler
-    with pytest.raises(ValueError, match="val_loss and train_loss must be scalars"):
+    with pytest.raises(ValueError, match="val_loss must be a scalar"):
         scaler(1.0, 1.0, th.Tensor([3.0, 4.0]))
-    with pytest.raises(ValueError, match="val_loss and train_loss must be scalars"):
+    with pytest.raises(ValueError, match="train_loss must be a scalar"):
         scaler(1.0, th.Tensor([1.0, 2.0]), 1.0)
-    with pytest.raises(ValueError, match="val_loss and train_loss must be scalars"):
-        scaler(1.0, "random value", "random value")  # type: ignore
+    with pytest.raises(ValueError, match="train_loss must be a scalar"):
+        scaler(1.0, "random value", th.tensor(1.0))  # type: ignore
+    with pytest.raises(ValueError, match="val_loss must be a scalar"):
+        scaler(1.0, 1.0, "random value")  # type: ignore
     with pytest.raises(ValueError, match="lambda_ must be a float"):
         scaler(th.tensor(1.0), 1.0, 1.0)  # type: ignore
     with pytest.raises(ValueError, match="lambda_ must not be zero.*"):
