@@ -91,7 +91,7 @@ def _load_stable_baselines_from_huggingface(
     algo_name: str,
     cls: Type[base_class.BaseAlgorithm],
 ) -> PolicyLoaderFn:
-    """Creates a policy loading function to load from huggingface.
+    """Creates a policy loading function to load from Hugging Face.
 
     Args:
         algo_name: The name of the algorithm, e.g. `ppo`.
