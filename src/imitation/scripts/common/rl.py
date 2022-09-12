@@ -137,7 +137,7 @@ def make_rl_algo(
     if issubclass(rl_cls, on_policy_algorithm.OnPolicyAlgorithm):
         assert (
             "n_steps" not in rl_kwargs
-        ), "set 'n_steps' at top-level using 'batch_size'"
+        ), "set 'n_steps' at top-level using 'batch_size'. n_steps = batch_size // num_vec"
         rl_kwargs["n_steps"] = batch_size // venv.num_envs
     elif issubclass(rl_cls, off_policy_algorithm.OffPolicyAlgorithm):
         if rl_kwargs.get("batch_size") is not None:
