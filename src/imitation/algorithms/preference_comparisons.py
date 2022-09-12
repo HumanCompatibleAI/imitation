@@ -1106,7 +1106,7 @@ class BasicRewardTrainer(RewardTrainer):
         epochs: int = 1,
         lr: float = 1e-3,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
-        seed: int = 0,
+        seed: Optional[int] = None,
         reg_class: Optional[Type[regularizers.Regularizer]] = None,
         reg_lambda: float = 0.0,
         reg_lambda_updater: Optional[updaters.LambdaUpdater] = None,
@@ -1247,7 +1247,7 @@ class BasicRewardTrainer(RewardTrainer):
             train_dataset, val_dataset = data_th.random_split(
                 dataset,
                 lengths=[train_length, val_length],
-                generator=th.Generator().manual_seed(self.seed),
+                generator=th.Generator().manual_seed(self.seed) if self.seed else None,
             )
             dataloader = self._make_data_loader(train_dataset)
             val_dataloader = self._make_data_loader(val_dataset)
@@ -1331,8 +1331,7 @@ class EnsembleTrainer(BasicRewardTrainer):
         epochs: int = 1,
         lr: float = 1e-3,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
-        seed: int = 0,
-        rng_seed: Optional[int] = None,
+        seed: Optional[int] = None,
         reg_class: Optional[Type[regularizers.Regularizer]] = None,
         reg_lambda: float = 0.0,
         reg_lambda_updater: Optional[updaters.LambdaUpdater] = None,
@@ -1350,8 +1349,7 @@ class EnsembleTrainer(BasicRewardTrainer):
                 if longer training is desired in specific cases).
             lr: the learning rate
             seed: the random seed to use for splitting the dataset into training
-                and validation.
-            rng_seed: seed for the internal RNG used in bagging
+                and validation, and for bagging.
             custom_logger: Where to log to; if None (default), creates a new logger.
             reg_class: the regularization class to use. If not specified, no
                 regularization is used.
@@ -1393,7 +1391,7 @@ class EnsembleTrainer(BasicRewardTrainer):
             reg_val_split=reg_val_split,
             reg_extra_kwargs=reg_extra_kwargs,
         )
-        self.rng = np.random.default_rng(seed=rng_seed)
+        self.rng = np.random.default_rng(seed=seed)
 
     def _training_inner_loop(
         self,
