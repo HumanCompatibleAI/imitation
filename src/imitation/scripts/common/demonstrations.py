@@ -61,17 +61,12 @@ def generate_expert_trajs(
     if n_expert_demos is None:
         raise ValueError("n_expert_demos must be specified when rollout_path is None")
 
-    rollout_env = vec_env.DummyVecEnv(
-        [
-            lambda: wrappers.RolloutInfoWrapper(gym.make(common["env_name"]))
-            for _ in range(4)
-        ],
-    )
-    return rollout.rollout(
-        expert.get_expert_policy(rollout_env),
-        rollout_env,
-        rollout.make_sample_until(min_episodes=n_expert_demos),
-    )
+    with common.make_venv(log_dir=None) as rollout_env:
+        return rollout.rollout(
+            expert.get_expert_policy(rollout_env),
+            rollout_env,
+            rollout.make_sample_until(min_episodes=n_expert_demos),
+        )
 
 
 @demonstrations_ingredient.capture
