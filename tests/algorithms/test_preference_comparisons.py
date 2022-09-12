@@ -510,14 +510,16 @@ def test_reward_trainer_regularization_no_crash(
     reward_net = reward_nets.BasicRewardNet(venv.observation_space, venv.action_space)
     loss = preference_comparisons.CrossEntropyRewardLoss(preference_model)
     initial_lambda = 0.1
+    regularizer_factory = regularizers.LpRegularizer.create(
+        initial_lambda=initial_lambda,
+        val_split=0.2,
+        lambda_updater=interval_param_scaler,
+        p=2,
+    )
     reward_trainer = preference_comparisons.BasicRewardTrainer(
         reward_net,
         loss,
-        reg_class=regularizers.LpRegularizer,
-        reg_lambda=initial_lambda,
-        reg_val_split=0.2,
-        reg_lambda_updater=interval_param_scaler,
-        reg_extra_kwargs=dict(p=2),
+        regularizer_factory=regularizer_factory,
         custom_logger=custom_logger,
     )
 
@@ -544,102 +546,17 @@ def test_reward_trainer_regularization_raises(
 ):
     reward_net = reward_nets.BasicRewardNet(venv.observation_space, venv.action_space)
     loss = preference_comparisons.CrossEntropyRewardLoss(preference_model)
-    with pytest.raises(
-        ValueError,
-        match="Regularization strength is non-zero but no regularizer.*",
-    ):
-        preference_comparisons.BasicRewardTrainer(
-            reward_net,
-            loss,
-            reg_class=None,
-            reg_lambda=0.1,
-        )
-    with pytest.raises(
-        ValueError,
-        match="Regularization updater class was provided but no regularizer.*",
-    ):
-        preference_comparisons.BasicRewardTrainer(
-            reward_net,
-            loss,
-            reg_lambda_updater=interval_param_scaler,
-            reg_class=None,
-        )
-    with pytest.raises(
-        ValueError,
-        match="Validation split is non-zero but no regularizer.*",
-    ):
-        preference_comparisons.BasicRewardTrainer(
-            reward_net,
-            loss,
-            reg_class=None,
-            reg_val_split=0.2,
-        )
-    with pytest.raises(
-        ValueError,
-        match="Regularizer class is not specified but kwargs are provided.*",
-    ):
-        preference_comparisons.BasicRewardTrainer(
-            reward_net,
-            loss,
-            reg_class=None,
-            reg_extra_kwargs=dict(key="value"),
-        )
-    with pytest.raises(
-        ValueError,
-        match="If you pass a regularizer parameter updater, you must also "
-        "pass a non-zero value for the validation split.*",
-    ):
-        preference_comparisons.BasicRewardTrainer(
-            reward_net,
-            loss,
-            reg_lambda_updater=interval_param_scaler,
-            reg_class=regularizers.LpRegularizer,
-            reg_lambda=0.1,
-            reg_val_split=0.0,
-        )
-    with pytest.raises(
-        ValueError,
-        match="If you pass a non-zero validation split, you must also "
-        "pass a regularizer parameter updater.*",
-    ):
-        preference_comparisons.BasicRewardTrainer(
-            reward_net,
-            loss,
-            reg_class=regularizers.LpRegularizer,
-            reg_lambda=0.1,
-            reg_val_split=0.2,
-        )
-    with pytest.raises(ValueError, match="val_split must be strictly between 0 and 1."):
-        preference_comparisons.BasicRewardTrainer(
-            reward_net,
-            loss,
-            reg_class=regularizers.LpRegularizer,
-            reg_lambda=0.1,
-            reg_lambda_updater=interval_param_scaler,
-            reg_val_split=1.1,
-        )
-    with pytest.raises(
-        ValueError,
-        match="If you do not pass a regularizer parameter updater your "
-        "regularization strength must be non-zero.*",
-    ):
-        preference_comparisons.BasicRewardTrainer(
-            reward_net,
-            loss,
-            reg_class=regularizers.LpRegularizer,
-            reg_lambda=0.0,
-            reg_extra_kwargs=dict(p=2),
-        )
-
     initial_lambda = 0.1
+    regularizer_factory = regularizers.LpRegularizer.create(
+        initial_lambda=initial_lambda,
+        val_split=0.2,
+        lambda_updater=interval_param_scaler,
+        p=2,
+    )
     reward_trainer = preference_comparisons.BasicRewardTrainer(
         reward_net,
         loss,
-        reg_class=regularizers.LpRegularizer,
-        reg_lambda=initial_lambda,
-        reg_val_split=0.2,
-        reg_lambda_updater=interval_param_scaler,
-        reg_extra_kwargs=dict(p=2),
+        regularizer_factory=regularizer_factory,
         custom_logger=custom_logger,
     )
 

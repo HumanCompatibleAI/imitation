@@ -156,9 +156,7 @@ class AgentTrainer(TrajectoryGenerator):
         super().__init__(custom_logger)
         if isinstance(reward_fn, reward_nets.RewardNet):
             utils.check_for_correct_spaces(
-                venv,
-                reward_fn.observation_space,
-                reward_fn.action_space,
+                venv, reward_fn.observation_space, reward_fn.action_space
             )
             reward_fn = reward_fn.predict_processed
         self.reward_fn = reward_fn
@@ -175,8 +173,7 @@ class AgentTrainer(TrajectoryGenerator):
         # `algorithm.get_env()` not match with `reward_fn`.
         self.buffering_wrapper = wrappers.BufferingWrapper(venv)
         self.venv = self.reward_venv_wrapper = reward_wrapper.RewardVecEnvWrapper(
-            self.buffering_wrapper,
-            reward_fn=self.reward_fn,
+            self.buffering_wrapper, reward_fn=self.reward_fn
         )
 
         self.log_callback = self.reward_venv_wrapper.make_log_callback()
@@ -216,7 +213,7 @@ class AgentTrainer(TrajectoryGenerator):
         if n_transitions:
             raise RuntimeError(
                 f"There are {n_transitions} transitions left in the buffer. "
-                "Call AgentTrainer.sample() first to clear them.",
+                "Call AgentTrainer.sample() first to clear them."
             )
         self.algorithm.learn(
             total_timesteps=steps,
@@ -240,18 +237,17 @@ class AgentTrainer(TrajectoryGenerator):
         if self.exploration_frac > 0 and exploration_steps == 0:
             self.logger.warn(
                 "No exploration steps included: exploration_frac = "
-                f"{self.exploration_frac} > 0 but steps={steps} is too small.",
+                f"{self.exploration_frac} > 0 but steps={steps} is too small."
             )
         agent_steps = steps - exploration_steps
 
         if avail_steps < agent_steps:
             self.logger.log(
                 f"Requested {agent_steps} transitions but only {avail_steps} in buffer."
-                f" Sampling {agent_steps - avail_steps} additional transitions.",
+                f" Sampling {agent_steps - avail_steps} additional transitions."
             )
             sample_until = rollout.make_sample_until(
-                min_timesteps=agent_steps - avail_steps,
-                min_episodes=None,
+                min_timesteps=agent_steps - avail_steps, min_episodes=None
             )
             # Important note: we don't want to use the trajectories returned
             # here because 1) they might miss initial timesteps taken by the RL agent
@@ -276,8 +272,7 @@ class AgentTrainer(TrajectoryGenerator):
         if exploration_steps > 0:
             self.logger.log(f"Sampling {exploration_steps} exploratory transitions.")
             sample_until = rollout.make_sample_until(
-                min_timesteps=exploration_steps,
-                min_episodes=None,
+                min_timesteps=exploration_steps, min_episodes=None
             )
             rollout.generate_trajectories(
                 policy=self.exploration_wrapper,
@@ -302,8 +297,7 @@ class AgentTrainer(TrajectoryGenerator):
 
 
 def _get_trajectories(
-    trajectories: Sequence[TrajectoryWithRew],
-    steps: int,
+    trajectories: Sequence[TrajectoryWithRew], steps: int
 ) -> Sequence[TrajectoryWithRew]:
     """Get enough trajectories to have at least `steps` transitions in total."""
     if steps == 0:
@@ -312,7 +306,7 @@ def _get_trajectories(
     available_steps = sum(len(traj) for traj in trajectories)
     if available_steps < steps:
         raise RuntimeError(
-            f"Asked for {steps} transitions but only {available_steps} available",
+            f"Asked for {steps} transitions but only {available_steps} available"
         )
     # We need the cumulative sum of trajectory lengths
     # to determine how many trajectories to return:
@@ -368,10 +362,7 @@ class PreferenceModel(nn.Module):
             self.member_pref_models = []
             for member in self.model.members:
                 member_pref_model = PreferenceModel(
-                    member,
-                    self.noise_prob,
-                    self.discount_factor,
-                    self.threshold,
+                    member, self.noise_prob, self.discount_factor, self.threshold
                 )
                 self.member_pref_models.append(member_pref_model)
 
@@ -410,7 +401,7 @@ class PreferenceModel(nn.Module):
         if self.is_ensemble:
             if ensemble_member_index is None:
                 raise ValueError(
-                    "`ensemble_member_index` required for ensemble models.",
+                    "`ensemble_member_index` required for ensemble models."
                 )
 
             pref_model = self.member_pref_models[ensemble_member_index]
@@ -434,10 +425,7 @@ class PreferenceModel(nn.Module):
 
         return probs, (gt_probs if gt_reward_available else None)
 
-    def rewards(
-        self,
-        transitions: Transitions,
-    ) -> th.Tensor:
+    def rewards(self, transitions: Transitions) -> th.Tensor:
         """Computes the reward for all transitions.
 
         Args:
@@ -462,11 +450,7 @@ class PreferenceModel(nn.Module):
             assert rews.shape == (len(state),)
             return rews
 
-    def probability(
-        self,
-        rews1: th.Tensor,
-        rews2: th.Tensor,
-    ) -> th.Tensor:
+    def probability(self, rews1: th.Tensor, rews2: th.Tensor) -> th.Tensor:
         """Computes the Boltzmann rational probability that the first trajectory is best.
 
         Args:
@@ -586,14 +570,14 @@ class RandomFragmenter(Fragmenter):
         if len(trajectories) == 0:
             raise ValueError(
                 "No trajectories are long enough for the desired fragment length "
-                f"of {fragment_length}.",
+                f"of {fragment_length}."
             )
         num_discarded = prev_num_trajectories - len(trajectories)
         if num_discarded:
             self.logger.log(
                 f"Discarded {num_discarded} out of {prev_num_trajectories} "
                 "trajectories because they are shorter than the desired length "
-                f"of {fragment_length}.",
+                f"of {fragment_length}."
             )
 
         weights = [len(traj) for traj in trajectories]
@@ -603,7 +587,7 @@ class RandomFragmenter(Fragmenter):
         if sum(weights) < num_transitions:
             self.logger.warn(
                 "Fewer transitions available than needed for desired number "
-                "of fragment pairs. Some transitions will appear multiple times.",
+                "of fragment pairs. Some transitions will appear multiple times."
             )
         elif (
             self.warning_threshold
@@ -616,7 +600,7 @@ class RandomFragmenter(Fragmenter):
                 f"Samples will contain {num_transitions} transitions in total "
                 f"and only {sum(weights)} are available. "
                 f"Because we sample with replacement, a significant number "
-                "of transitions are likely to appear multiple times.",
+                "of transitions are likely to appear multiple times."
             )
 
         # we need two fragments for each comparison
@@ -675,7 +659,7 @@ class ActiveSelectionFragmenter(Fragmenter):
         super().__init__(custom_logger=custom_logger)
         if not preference_model.is_ensemble:
             raise ValueError(
-                "Preference model not wrapped over an ensemble of networks.",
+                "Preference model not wrapped over an ensemble of networks."
             )
         self.preference_model = preference_model
         self.base_fragmenter = base_fragmenter
@@ -691,7 +675,7 @@ class ActiveSelectionFragmenter(Fragmenter):
     def raise_uncertainty_on_not_supported(self):
         raise ValueError(
             f"""{self.uncertainty_on} not supported.
-            `uncertainty_on` should be from `logit`, `probability`, or `label`""",
+            `uncertainty_on` should be from `logit`, `probability`, or `label`"""
         )
 
     def __call__(
@@ -869,7 +853,7 @@ class SyntheticGatherer(PreferenceGatherer):
                     rollout.discounted_sum(f2.rews, self.discount_factor),
                 )
                 for f1, f2 in fragment_pairs
-            ],
+            ]
         )
         return np.array(rews1, dtype=np.float32), np.array(rews2, dtype=np.float32)
 
@@ -899,11 +883,7 @@ class PreferenceDataset(th.utils.data.Dataset):
         self.max_size = max_size
         self.preferences = np.array([])
 
-    def push(
-        self,
-        fragments: Sequence[TrajectoryWithRewPair],
-        preferences: np.ndarray,
-    ):
+    def push(self, fragments: Sequence[TrajectoryWithRewPair], preferences: np.ndarray):
         """Add more samples to the dataset.
 
         Args:
@@ -919,7 +899,7 @@ class PreferenceDataset(th.utils.data.Dataset):
         if preferences.shape != (len(fragments),):
             raise ValueError(
                 f"Unexpected preferences shape {preferences.shape}, "
-                f"expected {(len(fragments),)}",
+                f"expected {(len(fragments),)}"
             )
         if preferences.dtype != np.float32:
             raise ValueError("preferences should have dtype float32")
@@ -954,7 +934,7 @@ class PreferenceDataset(th.utils.data.Dataset):
 
 
 def preference_collate_fn(
-    batch: Sequence[Tuple[TrajectoryWithRewPair, float]],
+    batch: Sequence[Tuple[TrajectoryWithRewPair, float]]
 ) -> Tuple[Sequence[TrajectoryWithRewPair], np.ndarray]:
     fragment_pairs, preferences = zip(*batch)
     return list(fragment_pairs), np.array(preferences)
@@ -1000,10 +980,7 @@ def _trajectory_pair_includes_reward(fragment_pair: TrajectoryPair):
 class CrossEntropyRewardLoss(RewardLoss):
     """Compute the cross entropy reward loss."""
 
-    def __init__(
-        self,
-        preference_model: PreferenceModel,
-    ):
+    def __init__(self, preference_model: PreferenceModel):
         """Create cross entropy reward loss.
 
         Args:
@@ -1045,8 +1022,7 @@ class CrossEntropyRewardLoss(RewardLoss):
         metrics["accuracy"] = (predictions == ground_truth).float().mean()
         if gt_probs is not None:
             metrics["gt_reward_loss"] = th.nn.functional.binary_cross_entropy(
-                gt_probs,
-                preferences_th,
+                gt_probs, preferences_th
             )
         metrics = {key: value.detach().cpu() for key, value in metrics.items()}
         return LossAndMetrics(
@@ -1131,15 +1107,13 @@ class BasicRewardTrainer(RewardTrainer):
         self.loss = loss
         self.batch_size = batch_size
         self.epochs = epochs
-        self.optim = th.optim.AdamW(
-            self._model.parameters(),
-            lr=lr,
-        )
+        self.optim = th.optim.AdamW(self._model.parameters(), lr=lr)
         self.seed = seed
-        self.regularizer = regularizer_factory(
-            optimizer=self.optim,
-            logger=self.logger,
-        ) if regularizer_factory is not None else None
+        self.regularizer = (
+            regularizer_factory(optimizer=self.optim, logger=self.logger)
+            if regularizer_factory is not None
+            else None
+        )
 
     def _make_data_loader(self, dataset: PreferenceDataset) -> data_th.DataLoader:
         """Make a dataloader."""
@@ -1170,7 +1144,7 @@ class BasicRewardTrainer(RewardTrainer):
                     "or the validation split is too large/small. "
                     "Make sure you've generated enough initial preference data. "
                     "You can adjust this through initial_comparison_frac in "
-                    "PreferenceComparisons.",
+                    "PreferenceComparisons."
                 )
             train_dataset, val_dataset = data_th.random_split(
                 dataset,
@@ -1194,9 +1168,7 @@ class BasicRewardTrainer(RewardTrainer):
                 for fragment_pairs, preferences in dataloader:
                     self.optim.zero_grad()
                     loss = self._training_inner_loop(
-                        fragment_pairs,
-                        preferences,
-                        mode=f"{prefix}/train",
+                        fragment_pairs, preferences, mode=f"{prefix}/train"
                     )
                     train_loss += loss.item()
                     if self.regularizer:
@@ -1211,9 +1183,7 @@ class BasicRewardTrainer(RewardTrainer):
                 val_loss = 0.0
                 for fragment_pairs, preferences in val_dataloader:
                     loss = self._training_inner_loop(
-                        fragment_pairs,
-                        preferences,
-                        mode=f"{prefix}/val",
+                        fragment_pairs, preferences, mode=f"{prefix}/val"
                     )
                     val_loss += loss.item()
                 self.regularizer.update_params(train_loss, val_loss)
@@ -1260,11 +1230,7 @@ class EnsembleTrainer(BasicRewardTrainer):
         lr: float = 1e-3,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
         seed: Optional[int] = None,
-        reg_class: Optional[Type[regularizers.Regularizer]] = None,
-        reg_lambda: float = 0.0,
-        reg_lambda_updater: Optional[updaters.LambdaUpdater] = None,
-        reg_val_split: float = 0.0,
-        reg_extra_kwargs: Optional[Dict[str, Any]] = None,
+        regularizer_factory: Optional[regularizers.RegularizerFactory] = None,
     ):
         """Initialize the reward model trainer.
 
@@ -1279,30 +1245,15 @@ class EnsembleTrainer(BasicRewardTrainer):
             seed: the random seed to use for splitting the dataset into training
                 and validation, and for bagging.
             custom_logger: Where to log to; if None (default), creates a new logger.
-            reg_class: the regularization class to use. If not specified, no
-                regularization is used.
-            reg_lambda: the initial regularization strength. For the case of
-                weight decay regularization, this is the weight decay parameter.
-            reg_lambda_updater: a function that updates the regularization strength.
-                It takes validation and training losses, and the current regularization
-                parameter value (lambda), and returns the new lambda to use in the next
-                epoch. This is only used if ``reg_lambda`` is non-zero.
-                If not specified, the regularization strength is kept constant.
-            reg_val_split: the fraction of the dataset to use for validation. Validation
-                is performed to determine the best weight decay value. Since
-                the weight decay is constant by default, this is also set to be
-                0 by default, since no validation data is needed. If you pass
-                a lambda updater, you must also pass a non-zero value for
-                this parameter.
-            reg_extra_kwargs: extra keyword arguments to pass to the regularization
-                constructor.
+            regularizer_factory: A factory for creating a regularizer. If None,
+                no regularization is used.
 
         Raises:
             TypeError: if model is not a RewardEnsemble.
         """
         if not isinstance(model, reward_nets.RewardEnsemble):
             raise TypeError(
-                f"RewardEnsemble expected by EnsembleTrainer, not {type(model)}.",
+                f"RewardEnsemble expected by EnsembleTrainer, not {type(model)}."
             )
 
         super().__init__(
@@ -1313,11 +1264,7 @@ class EnsembleTrainer(BasicRewardTrainer):
             lr=lr,
             custom_logger=custom_logger,
             seed=seed,
-            reg_class=reg_class,
-            reg_lambda=reg_lambda,
-            reg_lambda_updater=reg_lambda_updater,
-            reg_val_split=reg_val_split,
-            reg_extra_kwargs=reg_extra_kwargs,
+            regularizer_factory=regularizer_factory,
         )
         self.rng = np.random.default_rng(seed=seed)
 
@@ -1333,9 +1280,7 @@ class EnsembleTrainer(BasicRewardTrainer):
         for member_idx in range(self._model.num_members):
             # sample fragments for training via bagging
             sample_idx = self.rng.choice(
-                np.arange(len(fragment_pairs)),
-                size=len(fragment_pairs),
-                replace=True,
+                np.arange(len(fragment_pairs)), size=len(fragment_pairs), replace=True
             )
             sample_fragments = [fragment_pairs[i] for i in sample_idx]
             sample_preferences = preferences[sample_idx]
@@ -1390,14 +1335,10 @@ def _make_reward_trainer(
         else:
             raise ValueError(
                 "RewardEnsemble can only be wrapped"
-                f" by AddSTDRewardWrapper but found {type(reward_model).__name__}.",
+                f" by AddSTDRewardWrapper but found {type(reward_model).__name__}."
             )
     else:
-        return BasicRewardTrainer(
-            reward_model,
-            loss=loss,
-            **reward_trainer_kwargs,
-        )
+        return BasicRewardTrainer(reward_model, loss=loss, **reward_trainer_kwargs)
 
 
 QUERY_SCHEDULES: Dict[str, type_aliases.Schedule] = {
@@ -1498,8 +1439,7 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
             ValueError: if `query_schedule` is not a valid string or callable.
         """
         super().__init__(
-            custom_logger=custom_logger,
-            allow_variable_horizon=allow_variable_horizon,
+            custom_logger=custom_logger, allow_variable_horizon=allow_variable_horizon
         )
 
         # for keeping track of the global iteration, in case train() is called
@@ -1522,13 +1462,11 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
         self.trajectory_generator = trajectory_generator
         self.trajectory_generator.logger = self.logger
         self.fragmenter = fragmenter or RandomFragmenter(
-            custom_logger=self.logger,
-            seed=seed,
+            custom_logger=self.logger, seed=seed
         )
         self.fragmenter.logger = self.logger
         self.preference_gatherer = preference_gatherer or SyntheticGatherer(
-            custom_logger=self.logger,
-            seed=seed,
+            custom_logger=self.logger, seed=seed
         )
         self.preference_gatherer.logger = self.logger
 
@@ -1575,8 +1513,7 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
         print(f"Query schedule: {schedule}")
 
         timesteps_per_iteration, extra_timesteps = divmod(
-            total_timesteps,
-            self.num_iterations,
+            total_timesteps, self.num_iterations
         )
         reward_loss = None
         reward_accuracy = None
@@ -1586,10 +1523,10 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
             # Gather new preferences #
             ##########################
             num_steps = math.ceil(
-                self.transition_oversampling * 2 * num_pairs * self.fragment_length,
+                self.transition_oversampling * 2 * num_pairs * self.fragment_length
             )
             self.logger.log(
-                f"Collecting {2 * num_pairs} fragments ({num_steps} transitions)",
+                f"Collecting {2 * num_pairs} fragments ({num_steps} transitions)"
             )
             trajectories = self.trajectory_generator.sample(num_steps)
             # This assumes there are no fragments missing initial timesteps
@@ -1614,10 +1551,7 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
             if i == 0:
                 epoch_multiplier = self.initial_epoch_multiplier
 
-            self.reward_trainer.train(
-                self.dataset,
-                epoch_multiplier=epoch_multiplier,
-            )
+            self.reward_trainer.train(self.dataset, epoch_multiplier=epoch_multiplier)
             reward_loss = self.logger.name_to_value["reward/final/train/loss"]
             reward_accuracy = self.logger.name_to_value["reward/final/train/accuracy"]
 

@@ -178,6 +178,103 @@ class SimpleRegularizer(regularizers.Regularizer[None]):
         pass  # pragma: no cover
 
 
+def test_regularizer_init_no_crash(
+    initial_lambda, hierarchical_logger, simple_optimizer, interval_param_scaler
+):
+    SimpleRegularizer(
+        initial_lambda=initial_lambda,
+        optimizer=simple_optimizer,
+        logger=hierarchical_logger,
+        lambda_updater=interval_param_scaler,
+        val_split=0.2,
+    )
+
+    SimpleRegularizer(
+        initial_lambda=initial_lambda,
+        optimizer=simple_optimizer,
+        logger=hierarchical_logger,
+        lambda_updater=None,
+        val_split=None,
+    )
+
+    SimpleRegularizer.create(
+        initial_lambda=initial_lambda,
+        lambda_updater=interval_param_scaler,
+        val_split=0.2,
+    )(
+        optimizer=simple_optimizer,
+        logger=hierarchical_logger,
+    )
+
+
+@pytest.mark.parametrize(
+    "val_split",
+    [
+        0.0,
+        1.0,
+        -10,
+        10,
+        "random value",
+        10**-100,
+    ],
+)
+def test_regularizer_init_raises_on_val_split(
+    initial_lambda,
+    hierarchical_logger,
+    simple_optimizer,
+    interval_param_scaler,
+    val_split,
+):
+    val_split_err_msg = "val_split must be a float strictly between.*"
+    with pytest.raises(ValueError, match=val_split_err_msg):
+        return SimpleRegularizer(
+            initial_lambda=initial_lambda,
+            optimizer=simple_optimizer,
+            logger=hierarchical_logger,
+            lambda_updater=interval_param_scaler,
+            val_split=val_split,
+        )
+
+
+def test_regularizer_init_raises(
+    initial_lambda,
+    hierarchical_logger,
+    simple_optimizer,
+    interval_param_scaler,
+):
+    with pytest.raises(
+        ValueError,
+        match=".*do not pass.*parameter updater.*regularization strength.*non-zero",
+    ):
+        SimpleRegularizer(
+            initial_lambda=0.0,
+            optimizer=simple_optimizer,
+            logger=hierarchical_logger,
+            lambda_updater=None,
+            val_split=0.2,
+        )
+    with pytest.raises(
+        ValueError, match=".*pass.*parameter updater.*must.*specify.*validation split.*"
+    ):
+        SimpleRegularizer(
+            initial_lambda=initial_lambda,
+            optimizer=simple_optimizer,
+            logger=hierarchical_logger,
+            lambda_updater=interval_param_scaler,
+            val_split=None,
+        )
+    with pytest.raises(
+        ValueError, match=".*pass.*validation split.*must.*pass.*parameter updater.*"
+    ):
+        SimpleRegularizer(
+            initial_lambda=initial_lambda,
+            optimizer=simple_optimizer,
+            logger=hierarchical_logger,
+            lambda_updater=None,
+            val_split=0.2,
+        )
+
+
 @pytest.mark.parametrize(
     "train_loss",
     [
@@ -199,6 +296,7 @@ def test_regularizer_update_params(
         logger=hierarchical_logger,
         lambda_updater=interval_param_scaler,
         optimizer=simple_optimizer,
+        val_split=0.1,
     )
     val_to_train_loss_ratio = interval_param_scaler.tolerable_interval[1] * 2
     val_loss = train_loss * val_to_train_loss_ratio

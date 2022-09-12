@@ -55,11 +55,14 @@ class Regularizer(abc.ABC, Generic[R]):
             raise ValueError(
                 "If you do not pass a regularizer parameter updater your "
                 "regularization strength must be non-zero, as this would "
-                "result in no regularization.",
+                "result in no regularization."
             )
 
         if val_split is not None and (
-            np.allclose(val_split, 0.0) or val_split <= 0 or val_split >= 1
+            not isinstance(val_split, float)
+            or np.allclose(val_split, 0.0)
+            or val_split <= 0
+            or val_split >= 1
         ):
             raise ValueError("val_split must be a float strictly between 0 and 1.")
 
@@ -67,13 +70,13 @@ class Regularizer(abc.ABC, Generic[R]):
             raise ValueError(
                 "If you pass a regularizer parameter updater, you must also "
                 "specify a validation split. Otherwise the updater won't have any "
-                "validation data to use for updating.",
+                "validation data to use for updating."
             )
         elif lambda_updater is None and val_split is not None:
             raise ValueError(
                 "If you pass a validation split, you must also "
                 "pass a regularizer parameter updater. Otherwise you are wasting"
-                " data into the validation split that will not be used.",
+                " data into the validation split that will not be used."
             )
 
         self.optimizer = optimizer
@@ -205,9 +208,10 @@ class LpRegularizer(LossRegularizer):
         lambda_updater: Optional[updaters.LambdaUpdater],
         logger: imit_logger.HierarchicalLogger,
         p: int,
+        val_split: Optional[float] = None,
     ) -> None:
         """Initialize the regularizer."""
-        super().__init__(optimizer, initial_lambda, lambda_updater, logger)
+        super().__init__(optimizer, initial_lambda, lambda_updater, logger, val_split)
         if not isinstance(p, int) or p < 1:
             raise ValueError("p must be a positive integer")
         self.p = p
