@@ -50,11 +50,11 @@ def test_save_stable_model_errors_and_warnings(tmpdir, policy_env_name_pair):
     # Trigger FileNotFoundError for no model.{zip,pkl}
     dir_a = tmpdir / "a"
     dir_a.mkdir()
-    with pytest.raises(FileNotFoundError, match=".*No such file or.*model.zip.*"):
+    with pytest.raises(FileNotFoundError, match=".*Expected.*model.zip.*"):
         serialize.load_policy(policy, venv, path=str(dir_a))
 
-    vec_normalize = dir_a / "vec_normalize.pkl"
-    vec_normalize.touch()
+    (dir_a / "vec_normalize.pkl").touch()
+    (dir_a / "model.zip").touch()
     with pytest.raises(FileExistsError, match="Outdated policy format.*"):
         serialize.load_policy(policy, venv, path=str(dir_a))
 
