@@ -25,7 +25,9 @@ def config():
 
 @demonstrations_ingredient.named_config
 def fast():
-    n_expert_demos = 1  # noqa: F841
+    # Note: we can't pick `n_expert_demos=1` here because for envs with short episodes
+    #   that does not generate the minimum number of transitions required for one batch.
+    n_expert_demos = 10  # noqa: F841
 
 
 @demonstrations_ingredient.capture
