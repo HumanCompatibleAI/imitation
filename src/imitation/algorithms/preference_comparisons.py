@@ -1310,7 +1310,8 @@ class EnsembleTrainer(BasicRewardTrainer):
 
         self.logger.record(self._get_logger_key(prefix, "loss"), loss.item())
         self.logger.record(
-            self._get_logger_key(prefix, "loss_std"), losses.std().item()
+            self._get_logger_key(prefix, "loss_std"),
+            losses.std().item(),
         )
 
         # Turn metrics from a list of dictionaries into a dictionary of

@@ -53,9 +53,6 @@ class RegularizerFactory(Protocol[T_Regularizer_co]):
         Args:
             optimizer: The optimizer used by the network.
             logger: The logger used by the network.
-
-        Returns:
-            A regularizer.
         """
 
 
@@ -86,6 +83,16 @@ class Regularizer(abc.ABC, Generic[R]):
             logger: The logger to which the regularizer will log its parameters.
             val_split: The fraction of the training data to use as validation data
                 for the lambda updater. Can be none if no lambda updater is provided.
+
+        Raises:
+            ValueError: if no lambda updater is provided and the initial regularization
+                strength (initial_lambda) is zero.
+            ValueError: if val_split is provided but it's not a float in the (0, 1)
+                interval.
+            ValueError: if a lambda updater is provided but no validation split
+                is provided.
+            ValueError: if a validation split is set, but no lambda updater is
+                provided.
         """
         if lambda_updater is None and np.allclose(initial_lambda, 0.0):
             raise ValueError(
