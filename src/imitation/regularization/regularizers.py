@@ -149,11 +149,18 @@ class Regularizer(abc.ABC, Generic[R]):
         return factory
 
     @abc.abstractmethod
-    def regularize(self, loss: th.Tensor) -> R:
+    def regularize_and_backward(self, loss: th.Tensor) -> R:
         """Abstract method for performing the regularization step.
 
         The return type is a generic and the specific implementation
         must describe the meaning of the return type.
+
+        This step will also call `loss.backward()` for the user.
+        This is because the regularizer may require the
+        loss to be called before or after the regularization step.
+        Leaving this to the user would force them to make their
+        implementation dependent on the regularizer algorithm used,
+        while being prone to errors.
 
         Args:
             loss: The loss to regularize.
@@ -192,7 +199,7 @@ class LossRegularizer(Regularizer[Scalar]):
             loss: The loss function to which the regularization term is added.
         """
 
-    def regularize(self, loss: th.Tensor) -> Scalar:
+    def regularize_and_backward(self, loss: th.Tensor) -> Scalar:
         """Add the regularization term to the loss and compute gradients.
 
         Args:
@@ -225,8 +232,8 @@ class WeightRegularizer(Regularizer):
             group: The group of parameters to which the weight belongs.
         """
 
-    def regularize(self, loss: th.Tensor) -> None:
-        """Regularize the weights of the network."""
+    def regularize_and_backward(self, loss: th.Tensor) -> None:
+        """Regularize the weights of the network, and call ``loss.backward()``."""
         loss.backward()
         for group in self.optimizer.param_groups:
             for param in group["params"]:

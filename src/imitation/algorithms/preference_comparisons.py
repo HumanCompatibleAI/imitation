@@ -1183,7 +1183,9 @@ class BasicRewardTrainer(RewardTrainer):
                     )
                     train_loss += loss.item()
                     if self.regularizer:
-                        self.regularizer.regularize(loss)
+                        self.regularizer.regularize_and_backward(loss)
+                    else:
+                        loss.backward()
                     self.optim.step()
 
                 if not self.requires_regularizer_update:

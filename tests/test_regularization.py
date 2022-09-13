@@ -174,7 +174,7 @@ def initial_lambda(request):
 class SimpleRegularizer(regularizers.Regularizer[None]):
     """A simple regularizer that does nothing."""
 
-    def regularize(self, loss: th.Tensor) -> None:
+    def regularize_and_backward(self, loss: th.Tensor) -> None:
         pass  # pragma: no cover
 
 
@@ -354,7 +354,7 @@ def test_loss_regularizer(
     loss_param = simple_optimizer.param_groups[0]["params"][0]
     train_loss = train_loss_base * loss_param
     regularizer.optimizer.zero_grad()
-    regularized_loss = regularizer.regularize(train_loss)
+    regularized_loss = regularizer.regularize_and_backward(train_loss)
     assert th.allclose(regularized_loss.data, train_loss * (initial_lambda + 1))
     assert (
         hierarchical_logger.default_logger.name_to_value["regularized_loss"]
@@ -403,7 +403,7 @@ def test_weight_regularizer(
     initial_weight_value = weight.data.clone()
     regularizer.optimizer.zero_grad()
     train_loss = train_loss_base * th.pow(weight, 2) / 2
-    regularizer.regularize(train_loss)
+    regularizer.regularize_and_backward(train_loss)
     assert th.allclose(weight.data, initial_weight_value * (initial_lambda + 1))
     assert th.allclose(weight.grad, train_loss_base * initial_weight_value)
 
@@ -475,7 +475,7 @@ def test_lp_regularizer(
     )
     params = multi_param_optimizer.param_groups[0]["params"]
     regularizer.optimizer.zero_grad()
-    regularized_loss = regularizer.regularize(train_loss)
+    regularized_loss = regularizer.regularize_and_backward(train_loss)
     loss_penalty = sum(
         [th.linalg.vector_norm(param.data, ord=p).pow(p) for param in params],
     )
@@ -519,7 +519,7 @@ def test_weight_decay_regularizer(
     initial_weight_values = [weight.data.clone() for weight in weights]
     regularizer.optimizer.zero_grad()
     train_loss = train_loss_base * sum(th.pow(weight, 2) / 2 for weight in weights)
-    regularizer.regularize(train_loss)
+    regularizer.regularize_and_backward(train_loss)
     for weight, initial_weight_value in zip(weights, initial_weight_values):
         assert th.allclose(
             weight.data,
