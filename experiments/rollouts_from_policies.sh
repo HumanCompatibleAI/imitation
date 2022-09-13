@@ -1,12 +1,5 @@
 #!/usr/bin/env bash
 
-# This script loads expert PPO policies of the form
-# `${DATA_DIR}/expert_models/{env_config_name}_0/policies/final/`
-# and generates rollouts. The rollouts are saved to
-# `${DATA_DIR}/expert_models/{env_config_name}_0/rollouts/final.pkl`
-#
-# DATA_DIR is "data/" by default, but can be configured via `export DATA_DIR=foobar`.
-#
 # The values of {env_config_name} are defined in the config file
 # `experiments/rollouts_from_policies.csv`.
 #
@@ -22,7 +15,6 @@ set -e  # Exit on error.
 
 source experiments/common.sh
 
-DATA_DIR=${DATA_DIR:-data}
 CONFIG_CSV=${CONFIG_CSV:-experiments/rollouts_from_policies_config.csv}
 OUTPUT_DIR="output/train_experts/${TIMESTAMP}"
 
@@ -49,10 +41,6 @@ while true; do
   esac
 done
 
-expert_models_dir=${DATA_DIR}/expert_models
-
-echo "Loading config from ${expert_models_dir}"
-echo "Loading expert models from ${DATA_DIR}/expert_models}"
 echo "Writing logs in ${OUTPUT_DIR}, and saving rollouts in ${OUTPUT_DIR}/expert_models/*/rollouts/"
 
 parallel -j 25% --header : --results "${OUTPUT_DIR}/parallel/" --colsep , \
@@ -61,7 +49,6 @@ parallel -j 25% --header : --results "${OUTPUT_DIR}/parallel/" --colsep , \
   with \
   '{env_config_name}' \
   common.log_root="${OUTPUT_DIR}" \
-  policy_type="ppo" policy_path="${expert_models_dir}/{env_config_name}_0/policies/final/" \
   rollout_save_path="${OUTPUT_DIR}/{env_config_name}_0/rollouts/final.pkl" \
   eval_n_episodes='{n_demonstrations}' \
   eval_n_timesteps=None \

@@ -8,7 +8,7 @@ import gym
 from stable_baselines3.common.vec_env import VecEnv
 
 T = TypeVar("T")
-LoaderFn = Callable[[str, VecEnv], T]
+LoaderFn = Callable[..., T]
 """The type stored in Registry is commonly an instance of LoaderFn."""
 
 
@@ -83,8 +83,7 @@ def build_loader_fn_require_space(
     """Converts a factory taking observation and action space into a LoaderFn."""
 
     @functools.wraps(fn)
-    def wrapper(path: str, venv: VecEnv) -> T:
-        del path
+    def wrapper(venv: VecEnv) -> T:
         return fn(venv.observation_space, venv.action_space, **kwargs)
 
     return wrapper
@@ -94,8 +93,7 @@ def build_loader_fn_require_env(fn: Callable[[VecEnv], T], **kwargs) -> LoaderFn
     """Converts a factory taking an environment into a LoaderFn."""
 
     @functools.wraps(fn)
-    def wrapper(path: str, venv: VecEnv) -> T:
-        del path
+    def wrapper(venv: VecEnv) -> T:
         return fn(venv, **kwargs)
 
     return wrapper

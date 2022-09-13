@@ -123,7 +123,7 @@ def train_adversarial(
         sacred.commands.print_config(_run)
 
     custom_logger, log_dir = common_config.setup_logging()
-    expert_trajs = demonstrations.load_expert_trajs()
+    expert_trajs = demonstrations.get_expert_trajectories()
 
     with common_config.make_venv() as venv:
 

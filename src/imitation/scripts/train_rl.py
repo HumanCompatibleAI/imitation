@@ -167,7 +167,10 @@ def train_rl(
                 rollout_save_n_timesteps,
                 rollout_save_n_episodes,
             )
-            types.save(save_path, rollout.rollout(rl_algo, venv, sample_until))
+            types.save(
+                save_path,
+                rollout.rollout(rl_algo, rl_algo.get_env(), sample_until),
+            )
 
         # Final evaluation of expert policy.
         return train.eval_policy(rl_algo, venv)
