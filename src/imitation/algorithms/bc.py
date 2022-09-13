@@ -180,7 +180,7 @@ class RolloutStatsComputer:
         n_episodes: The number of episodes to base the statistics on.
     """
 
-    venv: vec_env.VecEnv
+    venv: Optional[vec_env.VecEnv]
     n_episodes: int
 
     # TODO(shwang): Maybe instead use a callback that can be shared between
@@ -413,9 +413,6 @@ class BC(algo_base.DemonstrationAlgorithm):
             self._bc_logger.reset_tensorboard_steps()
         self._bc_logger.log_epoch(0)
 
-        # TODO(juan) docstrings above say that this can be none and that no rollouts
-        #  are generated. However initializing this requires passing a non-None
-        #  venv.
         compute_rollout_stats = RolloutStatsComputer(
             log_rollouts_venv,
             log_rollouts_n_episodes,
