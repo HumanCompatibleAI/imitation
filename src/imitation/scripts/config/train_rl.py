@@ -1,6 +1,9 @@
 """Configuration settings for train_rl, training a policy with RL."""
 
 import sacred
+from gym.wrappers import TimeLimit
+from seals.util import AutoResetWrapper
+from stable_baselines3.common.atari_wrappers import AtariWrapper
 
 from imitation.scripts.common import common, rl, train
 
@@ -46,6 +49,18 @@ def default_end_cond(rollout_save_n_timesteps, rollout_save_n_episodes):
 @train_rl_ex.named_config
 def acrobot():
     common = dict(env_name="Acrobot-v1")
+
+
+@train_rl_ex.named_config
+def asteroids():
+    common = dict(
+        env_name="AsteroidsNoFrameskip-v4",
+        post_wrappers=[
+            lambda env, _: AutoResetWrapper(env),
+            lambda env, _: AtariWrapper(env, terminal_on_life_loss=False),
+            lambda env, _: TimeLimit(env, max_episode_steps=100_000),
+        ],
+    )
 
 
 @train_rl_ex.named_config
