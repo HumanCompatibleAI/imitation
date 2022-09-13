@@ -38,7 +38,7 @@ class TerminalSentinelEnv(gym.Env):
 def _sample_fixed_length_trajectories(
     episode_lengths: Sequence[int],
     min_episodes: int,
-    random_state: np.random.RandomState,
+    rng: np.random.Generator,
     policy_type: str = "policy",
     **kwargs,
 ) -> Sequence[types.Trajectory]:
@@ -65,7 +65,7 @@ def _sample_fixed_length_trajectories(
         policy,
         venv,
         sample_until=sample_until,
-        random_state=random_state,
+        rng=rng,
         **kwargs,
     )
     return trajectories
@@ -75,7 +75,7 @@ def _sample_fixed_length_trajectories(
     "policy_type",
     ["policy", "callable", "random"],
 )
-def test_complete_trajectories(policy_type, random_state_fixed) -> None:
+def test_complete_trajectories(policy_type, rng) -> None:
     """Checks trajectories include the terminal observation.
 
     This is hidden by default by VecEnv's auto-reset; we add it back in using
@@ -83,9 +83,8 @@ def test_complete_trajectories(policy_type, random_state_fixed) -> None:
 
     Args:
         policy_type: Kind of policy to use when generating trajectories.
-        random_state_fixed: Random state to use.
+        rng: Random state to use.
     """
-    random_state = random_state_fixed
     min_episodes = 13
     max_acts = 5
     num_envs = 4
@@ -93,7 +92,7 @@ def test_complete_trajectories(policy_type, random_state_fixed) -> None:
         [max_acts] * num_envs,
         min_episodes,
         policy_type=policy_type,
-        random_state=random_state,
+        rng=rng,
     )
     assert len(trajectories) >= min_episodes
     expected_obs = np.array([[0]] * max_acts + [[1]])
@@ -123,7 +122,7 @@ def test_unbiased_trajectories(
     episode_lengths: Sequence[int],
     min_episodes: int,
     expected_counts: Mapping[int, int],
-    random_state_fixed,
+    rng,
 ) -> None:
     """Checks trajectories are sampled without bias towards shorter episodes.
 
@@ -143,13 +142,12 @@ def test_unbiased_trajectories(
         min_episodes: The minimum number of episodes to sample.
         expected_counts: Mapping from episode length to expected number of episodes
             of that length (omit if 0 episodes of that length expected).
-        random_state_fixed: Random state to use.
+        rng: Random state to use.
     """
-    random_state = random_state_fixed
     trajectories = _sample_fixed_length_trajectories(
         episode_lengths,
         min_episodes,
-        random_state,
+        rng,
     )
     assert len(trajectories) == sum(expected_counts.values())
     traj_lens = np.array([len(traj) for traj in trajectories])
@@ -166,12 +164,12 @@ def test_seed_trajectories():
     However, `TerminalSentinelEnv` is fixed-length deterministic, so there are no
     such confounders in this test.
     """
-    rng_a1 = np.random.RandomState(0)
-    rng_a2 = np.random.RandomState(0)
-    rng_b = np.random.RandomState(1)
-    traj_a1 = _sample_fixed_length_trajectories([3, 5], 2, random_state=rng_a1)
-    traj_a2 = _sample_fixed_length_trajectories([3, 5], 2, random_state=rng_a2)
-    traj_b = _sample_fixed_length_trajectories([3, 5], 2, random_state=rng_b)
+    rng_a1 = np.random.default_rng(0)
+    rng_a2 = np.random.default_rng(0)
+    rng_b = np.random.default_rng(1)
+    traj_a1 = _sample_fixed_length_trajectories([3, 5], 2, rng=rng_a1)
+    traj_a2 = _sample_fixed_length_trajectories([3, 5], 2, rng=rng_a2)
+    traj_b = _sample_fixed_length_trajectories([3, 5], 2, rng=rng_b)
     assert [len(traj) for traj in traj_a1] == [len(traj) for traj in traj_a2]
     assert [len(traj) for traj in traj_a1] != [len(traj) for traj in traj_b]
 
@@ -188,15 +186,14 @@ class ObsRewHalveWrapper(gym.Wrapper):
         return obs / 2, rew / 2, done, info
 
 
-def test_rollout_stats(random_state_fixed):
+def test_rollout_stats(rng):
     """Applying `ObsRewIncrementWrapper` halves the reward mean.
 
     `rollout_stats` should reflect this.
 
     Args:
-        random_state_fixed: Random state to use (with fixed seed).
+        rng: Random state to use (with fixed seed).
     """
-    random_state = random_state_fixed
     env = gym.make("CartPole-v1")
     env = monitor.Monitor(env, None)
     env = ObsRewHalveWrapper(env)
@@ -207,7 +204,7 @@ def test_rollout_stats(random_state_fixed):
         policy,
         venv,
         rollout.make_min_episodes(10),
-        random_state=random_state,
+        rng=rng,
     )
     s = rollout.rollout_stats(trajs)
 
@@ -217,15 +214,14 @@ def test_rollout_stats(random_state_fixed):
     np.testing.assert_allclose(s["return_max"], s["monitor_return_max"] / 2)
 
 
-def test_unwrap_traj(random_state_fixed):
+def test_unwrap_traj(rng):
     """Check that unwrap_traj reverses `ObsRewIncrementWrapper`.
 
     Also check that unwrapping twice is a no-op.
 
     Args:
-        random_state_fixed: Random state to use (with fixed seed).
+        rng: Random state to use (with fixed seed).
     """
-    random_state = random_state_fixed
     env = gym.make("CartPole-v1")
     env = wrappers.RolloutInfoWrapper(env)
     env = ObsRewHalveWrapper(env)
@@ -236,7 +232,7 @@ def test_unwrap_traj(random_state_fixed):
         policy,
         venv,
         rollout.make_min_episodes(10),
-        random_state=random_state,
+        rng=rng,
     )
     trajs_unwrapped = [rollout.unwrap_traj(t) for t in trajs]
     trajs_unwrapped_twice = [rollout.unwrap_traj(t) for t in trajs_unwrapped]
@@ -282,21 +278,19 @@ def test_compute_returns(gamma):
     assert abs(rollout.discounted_sum(rewards, gamma) - returns) < 1e-8
 
 
-def test_generate_trajectories_type_error(random_state_fixed):
-    random_state = random_state_fixed
+def test_generate_trajectories_type_error(rng):
     venv = vec_env.DummyVecEnv([functools.partial(TerminalSentinelEnv, 1)])
     sample_until = rollout.make_min_episodes(1)
     with pytest.raises(TypeError, match="Policy must be.*got <class 'str'> instead"):
         rollout.generate_trajectories(
             "strings_are_not_valid_policies",  # type: ignore
             venv,
-            random_state=random_state,
+            rng=rng,
             sample_until=sample_until,
         )
 
 
-def test_generate_trajectories_value_error(random_state_fixed):
-    random_state = random_state_fixed
+def test_generate_trajectories_value_error(rng):
     venv = vec_env.DummyVecEnv([functools.partial(TerminalSentinelEnv, 1)])
     sample_until = rollout.make_min_episodes(1)
 
@@ -305,6 +299,6 @@ def test_generate_trajectories_value_error(random_state_fixed):
             lambda obs: np.zeros(len(obs), dtype=int),
             venv,
             sample_until=sample_until,
-            random_state=random_state,
+            rng=rng,
             deterministic_policy=True,
         )

@@ -44,9 +44,8 @@ def test_density_reward(
     is_stationary,
     pendulum_venv,
     pendulum_expert_trajectories: Sequence[TrajectoryWithRew],
-    random_state_fixed,
+    rng,
 ):
-    random_state = random_state_fixed
     # use only a subset of trajectories
     expert_trajectories_all = pendulum_expert_trajectories[:8]
     n_experts = len(expert_trajectories_all)
@@ -59,7 +58,7 @@ def test_density_reward(
         is_stationary=is_stationary,
         kernel_bandwidth=0.2,
         standardise_inputs=True,
-        random_state=random_state,
+        rng=rng,
     )
     reward_fn.train()
 
@@ -74,7 +73,7 @@ def test_density_reward(
         random_policy,
         pendulum_venv,
         sample_until=sample_until,
-        random_state=random_state,
+        rng=rng,
     )
     expert_trajectories_test = expert_trajectories_all[n_experts // 2 :]
     random_returns = score_trajectories(random_trajectories, reward_fn)
@@ -89,9 +88,8 @@ def test_density_reward(
 def test_density_trainer_smoke(
     pendulum_venv,
     pendulum_expert_trajectories: Sequence[TrajectoryWithRew],
-    random_state_fixed,
+    rng,
 ):
-    random_state = random_state_fixed
     # tests whether density trainer runs, not whether it's good
     # (it's actually really poor)
     rollouts = pendulum_expert_trajectories[:2]
@@ -100,7 +98,7 @@ def test_density_trainer_smoke(
         demonstrations=rollouts,
         venv=pendulum_venv,
         rl_algo=rl_algo,
-        random_state=random_state,
+        rng=rng,
     )
     density_trainer.train()
     density_trainer.train_policy(n_timesteps=2)

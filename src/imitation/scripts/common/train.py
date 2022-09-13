@@ -9,9 +9,9 @@ from stable_baselines3.common import base_class, policies, torch_layers, vec_env
 import imitation.util.networks
 from imitation.data import rollout
 from imitation.policies import base
-from imitation.scripts.common import seeding
+from imitation.scripts.common import common
 
-train_ingredient = sacred.Ingredient("train", ingredients=[seeding.seeding_ingredient])
+train_ingredient = sacred.Ingredient("train", ingredients=[common.common_ingredient])
 logger = logging.getLogger(__name__)
 
 
@@ -90,13 +90,13 @@ def eval_policy(
         "monitor_return" key). "expert_stats" gives the return value of
         `rollout_stats()` on the expert demonstrations loaded from `rollout_path`.
     """
-    random_state = seeding.make_random_state()
+    rng = common.make_rng()
     sample_until_eval = rollout.make_min_episodes(n_episodes_eval)
     trajs = rollout.generate_trajectories(
         rl_algo,
         venv,
         sample_until=sample_until_eval,
-        random_state=random_state,
+        rng=rng,
     )
     return rollout.rollout_stats(trajs)
 

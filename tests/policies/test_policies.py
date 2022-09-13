@@ -25,21 +25,20 @@ assert_equal = functools.partial(th.testing.assert_close, rtol=0, atol=0)
 
 @pytest.mark.parametrize("env_name", SIMPLE_ENVS)
 @pytest.mark.parametrize("policy_type", HARDCODED_TYPES)
-def test_actions_valid(env_name, policy_type, random_state_fixed):
+def test_actions_valid(env_name, policy_type, rng):
     """Test output actions of our custom policies always lie in action space."""
-    random_state = random_state_fixed
     venv = util.make_vec_env(
         env_name,
         n_envs=1,
         parallel=False,
-        random_state=random_state,
+        rng=rng,
     )
     policy = serialize.load_policy(policy_type, "foobar", venv)
     transitions = rollout.generate_transitions(
         policy,
         venv,
         n_timesteps=100,
-        random_state=random_state,
+        rng=rng,
     )
 
     for a in transitions.acts:
@@ -56,13 +55,12 @@ def test_actions_valid(env_name, policy_type, random_state_fixed):
 def test_save_stable_model_errors_and_warnings(
     tmpdir,
     policy_env_name_pair,
-    random_state_fixed,
+    rng,
 ):
     """Check errors and warnings in `save_stable_model()`."""
-    random_state = random_state_fixed
     policy, env_name = policy_env_name_pair
     tmpdir = pathlib.Path(tmpdir)
-    venv = util.make_vec_env(env_name, random_state=random_state)
+    venv = util.make_vec_env(env_name, rng=rng)
 
     # Trigger FileNotFoundError for no model.{zip,pkl}
     dir_a = tmpdir / "a"
@@ -81,13 +79,13 @@ def test_save_stable_model_errors_and_warnings(
         serialize.load_policy(policy, str(dir_nonexistent), venv)
 
 
-def _test_serialize_identity(env_name, model_cfg, tmpdir, random_state):
+def _test_serialize_identity(env_name, model_cfg, tmpdir, rng):
     """Test output actions of deserialized policy are same as original."""
     venv = util.make_vec_env(
         env_name,
         n_envs=1,
         parallel=False,
-        random_state=random_state,
+        rng=rng,
     )
 
     model_name, model_cls_name = model_cfg
@@ -103,7 +101,7 @@ def _test_serialize_identity(env_name, model_cfg, tmpdir, random_state):
         venv,
         n_timesteps=1000,
         deterministic_policy=True,
-        random_state=np.random.RandomState(0),
+        rng=np.random.default_rng(0),
     )
 
     serialize.save_stable_model(tmpdir, model)
@@ -115,7 +113,7 @@ def _test_serialize_identity(env_name, model_cfg, tmpdir, random_state):
         venv,
         n_timesteps=1000,
         deterministic_policy=True,
-        random_state=np.random.RandomState(0),
+        rng=np.random.default_rng(0),
     )
 
     assert np.allclose(orig_rollout.acts, new_rollout.acts)
@@ -129,9 +127,9 @@ CONTINUOUS_ONLY_CONFIGS = [cfg for cfg in SB_CONFIGS if cfg[0] in CONTINUOUS_ONL
 
 @pytest.mark.parametrize("env_name", SIMPLE_ENVS)
 @pytest.mark.parametrize("model_cfg", NORMAL_CONFIGS)
-def test_serialize_identity(env_name, model_cfg, tmpdir, random_state_fixed):
+def test_serialize_identity(env_name, model_cfg, tmpdir, rng):
     """Test output actions of deserialized policy are same as original."""
-    _test_serialize_identity(env_name, model_cfg, tmpdir, random_state_fixed)
+    _test_serialize_identity(env_name, model_cfg, tmpdir, rng)
 
 
 @pytest.mark.parametrize("env_name", [SIMPLE_CONTINUOUS_ENV])
@@ -140,10 +138,10 @@ def test_serialize_identity_continuous_only(
     env_name,
     model_cfg,
     tmpdir,
-    random_state_fixed,
+    rng,
 ):
     """Test serialize identity for continuous_only algorithms."""
-    _test_serialize_identity(env_name, model_cfg, tmpdir, random_state_fixed)
+    _test_serialize_identity(env_name, model_cfg, tmpdir, rng)
 
 
 class ZeroModule(nn.Module):

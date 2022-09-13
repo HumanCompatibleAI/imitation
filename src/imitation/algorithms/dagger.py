@@ -152,7 +152,7 @@ class InteractiveTrajectoryCollector(vec_env.VecEnvWrapper):
         get_robot_acts: Callable[[np.ndarray], np.ndarray],
         beta: float,
         save_dir: types.AnyPath,
-        random_state: np.random.RandomState,
+        rng: np.random.Generator,
     ):
         """Builds InteractiveTrajectoryCollector.
 
@@ -165,7 +165,7 @@ class InteractiveTrajectoryCollector(vec_env.VecEnvWrapper):
                 robot action. The choice of robot or human action is independently
                 randomized for each individual `Env` at every timestep.
             save_dir: directory to save collected trajectories in.
-            random_state: random state for random number generation.
+            rng: random state for random number generation.
         """
         super().__init__(venv)
         self.get_robot_acts = get_robot_acts
@@ -177,7 +177,7 @@ class InteractiveTrajectoryCollector(vec_env.VecEnvWrapper):
         self._done_before = True
         self._is_reset = False
         self._last_user_actions = None
-        self.rng = random_state
+        self.rng = rng
 
     def seed(self, seed=Optional[int]) -> List[Union[None, int]]:
         """Set the seed for the DAgger random number generator and wrapped VecEnv.
@@ -192,7 +192,7 @@ class InteractiveTrajectoryCollector(vec_env.VecEnvWrapper):
             A list containing the seeds for each individual env. Note that all list
             elements may be None, if the env does not return anything when seeded.
         """
-        self.rng = np.random.RandomState(seed=seed)
+        self.rng = np.random.default_rng(seed=seed)
         return self.venv.seed(seed)
 
     def reset(self) -> np.ndarray:
@@ -308,7 +308,7 @@ class DAggerTrainer(base.BaseImitationAlgorithm):
         *,
         venv: vec_env.VecEnv,
         scratch_dir: types.AnyPath,
-        random_state: np.random.RandomState,
+        rng: np.random.Generator,
         beta_schedule: Optional[Callable[[int], float]] = None,
         bc_trainer: bc.BC,
         custom_logger: Optional[logger.HierarchicalLogger] = None,
@@ -319,7 +319,7 @@ class DAggerTrainer(base.BaseImitationAlgorithm):
             venv: Vectorized training environment.
             scratch_dir: Directory to use to store intermediate training
                 information (e.g. for resuming training).
-            random_state: random state for random number generation.
+            rng: random state for random number generation.
             beta_schedule: Provides a value of `beta` (the probability of taking
                 expert action in any given state) at each round of training. If
                 `None`, then `linear_beta_schedule` will be used instead.
@@ -336,7 +336,7 @@ class DAggerTrainer(base.BaseImitationAlgorithm):
         self.round_num = 0
         self._last_loaded_round = -1
         self._all_demos = []
-        self.random_state = random_state
+        self.rng = rng
 
         utils.check_for_correct_spaces(
             self.venv,
@@ -478,7 +478,7 @@ class DAggerTrainer(base.BaseImitationAlgorithm):
             get_robot_acts=lambda acts: self.bc_trainer.policy.predict(acts)[0],
             beta=beta,
             save_dir=save_dir,
-            random_state=self.random_state,
+            rng=self.rng,
         )
         return collector
 
@@ -533,7 +533,7 @@ class SimpleDAggerTrainer(DAggerTrainer):
         venv: vec_env.VecEnv,
         scratch_dir: types.AnyPath,
         expert_policy: policies.BasePolicy,
-        random_state: np.random.RandomState,
+        rng: np.random.Generator,
         expert_trajs: Optional[Sequence[types.Trajectory]] = None,
         **dagger_trainer_kwargs,
     ):
@@ -547,7 +547,7 @@ class SimpleDAggerTrainer(DAggerTrainer):
             scratch_dir: Directory to use to store intermediate training
                 information (e.g. for resuming training).
             expert_policy: The expert policy used to generate synthetic demonstrations.
-            random_state: Random state to use for the random number generator.
+            rng: Random state to use for the random number generator.
             expert_trajs: Optional starting dataset that is inserted into the round 0
                 dataset.
             dagger_trainer_kwargs: Other keyword arguments passed to the
@@ -560,7 +560,7 @@ class SimpleDAggerTrainer(DAggerTrainer):
         super().__init__(
             venv=venv,
             scratch_dir=scratch_dir,
-            random_state=random_state,
+            rng=rng,
             **dagger_trainer_kwargs,
         )
         self.expert_policy = expert_policy
@@ -644,7 +644,7 @@ class SimpleDAggerTrainer(DAggerTrainer):
                 venv=collector,
                 sample_until=sample_until,
                 deterministic_policy=True,
-                random_state=collector.rng,
+                rng=collector.rng,
             )
 
             for traj in trajectories:

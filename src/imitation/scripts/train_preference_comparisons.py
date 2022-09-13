@@ -18,7 +18,7 @@ from imitation.data import types
 from imitation.policies import serialize
 from imitation.scripts.common import common, reward
 from imitation.scripts.common import rl as rl_common
-from imitation.scripts.common import seeding, train
+from imitation.scripts.common import train
 from imitation.scripts.config.train_preference_comparisons import (
     train_preference_comparisons_ex,
 )
@@ -147,8 +147,7 @@ def train_preference_comparisons(
         ValueError: Inconsistency between config and deserialized policy normalization.
     """
     custom_logger, log_dir = common.setup_logging()
-    random_state = seeding.make_random_state()
-    seed = seeding.get_seed()
+    rng = common.make_rng()
 
     with common.make_venv() as venv:
         reward_net = reward.make_reward_net(venv)
@@ -173,7 +172,7 @@ def train_preference_comparisons(
                 reward_fn=reward_net,
                 venv=venv,
                 exploration_frac=exploration_frac,
-                random_state=random_state,
+                rng=rng,
                 custom_logger=custom_logger,
                 **trajectory_generator_kwargs,
             )
@@ -187,7 +186,7 @@ def train_preference_comparisons(
                 )
             trajectory_generator = preference_comparisons.TrajectoryDataset(
                 trajectories=types.load_with_rewards(trajectory_path),
-                random_state=random.Random(seed),
+                rng=rng,
                 custom_logger=custom_logger,
                 **trajectory_generator_kwargs,
             )
@@ -195,7 +194,7 @@ def train_preference_comparisons(
         fragmenter: preference_comparisons.Fragmenter = (
             preference_comparisons.RandomFragmenter(
                 **fragmenter_kwargs,
-                random_state=random.Random(seed),
+                rng=rng,
                 custom_logger=custom_logger,
             )
         )
@@ -213,7 +212,7 @@ def train_preference_comparisons(
             )
         gatherer = gatherer_cls(
             **gatherer_kwargs,
-            random_state=random_state,
+            rng=rng,
             custom_logger=custom_logger,
         )
 
@@ -224,7 +223,7 @@ def train_preference_comparisons(
         reward_trainer = preference_comparisons._make_reward_trainer(
             reward_net,
             loss,
-            random_state,
+            rng,
             reward_trainer_kwargs,
         )
 

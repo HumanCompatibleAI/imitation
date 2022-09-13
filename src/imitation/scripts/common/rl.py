@@ -17,12 +17,12 @@ from stable_baselines3.common import (
 from imitation.policies import serialize
 from imitation.policies.replay_buffer_wrapper import ReplayBufferRewardWrapper
 from imitation.rewards.reward_function import RewardFn
-from imitation.scripts.common import seeding
+from imitation.scripts.common import common
 from imitation.scripts.common.train import train_ingredient
 
 rl_ingredient = sacred.Ingredient(
     "rl",
-    ingredients=[train_ingredient, seeding.seeding_ingredient],
+    ingredients=[train_ingredient, common.common_ingredient],
 )
 logger = logging.getLogger(__name__)
 
@@ -106,6 +106,7 @@ def make_rl_algo(
     batch_size: int,
     rl_kwargs: Mapping[str, Any],
     train: Mapping[str, Any],
+    _seed,
     relabel_reward_fn: Optional[RewardFn] = None,
 ) -> base_class.BaseAlgorithm:
     """Instantiates a Stable Baselines3 RL algorithm.
@@ -127,7 +128,6 @@ def make_rl_algo(
         ValueError: `gen_batch_size` not divisible by `venv.num_envs`.
         TypeError: `rl_cls` is neither `OnPolicyAlgorithm` nor `OffPolicyAlgorithm`.
     """
-    seed = seeding.get_seed()
     if batch_size % venv.num_envs != 0:
         raise ValueError(
             f"num_envs={venv.num_envs} must evenly divide batch_size={batch_size}.",
@@ -161,7 +161,7 @@ def make_rl_algo(
         # https://github.com/DLR-RM/stable-baselines3/blob/30772aa9f53a4cf61571ee90046cdc454c1b11d7/sb3/common/off_policy_algorithm.py#L145
         policy_kwargs=dict(train["policy_kwargs"]),
         env=venv,
-        seed=seed,
+        seed=_seed,
         **rl_kwargs,
     )
     logger.info(f"RL algorithm: {type(rl_algo)}")
@@ -171,13 +171,13 @@ def make_rl_algo(
 
 @rl_ingredient.capture
 def load_rl_algo_from_path(
+    _seed,
     agent_path: str,
     venv: vec_env.VecEnv,
     rl_cls: Type[base_class.BaseAlgorithm],
     rl_kwargs: Mapping[str, Any],
     relabel_reward_fn: Optional[RewardFn] = None,
 ) -> base_class.BaseAlgorithm:
-    seed = seeding.get_seed()
     rl_kwargs = dict(rl_kwargs)
     if issubclass(rl_cls, off_policy_algorithm.OffPolicyAlgorithm):
         rl_kwargs = _maybe_add_relabel_buffer(
@@ -188,7 +188,7 @@ def load_rl_algo_from_path(
         cls=rl_cls,
         path=agent_path,
         venv=venv,
-        seed=seed,
+        seed=_seed,
         **rl_kwargs,
     )
     logger.info(f"Warm starting agent from '{agent_path}'")

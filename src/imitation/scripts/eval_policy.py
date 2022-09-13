@@ -14,7 +14,7 @@ from imitation.data import rollout, types
 from imitation.policies import serialize
 from imitation.rewards import reward_wrapper
 from imitation.rewards.serialize import load_reward
-from imitation.scripts.common import common, seeding
+from imitation.scripts.common import common
 from imitation.scripts.config.eval_policy import eval_policy_ex
 from imitation.util import video_wrapper
 
@@ -90,7 +90,7 @@ def eval_policy(
     Returns:
         Return value of `imitation.util.rollout.rollout_stats()`.
     """
-    random_state = seeding.make_random_state()
+    rng = common.make_rng()
     log_dir = common.make_log_dir()
     sample_until = rollout.make_sample_until(eval_n_timesteps, eval_n_episodes)
     post_wrappers = [video_wrapper_factory(log_dir, **video_kwargs)] if videos else None
@@ -111,7 +111,7 @@ def eval_policy(
             policy,
             venv,
             sample_until,
-            random_state=random_state,
+            rng=rng,
         )
 
     if rollout_save_path:

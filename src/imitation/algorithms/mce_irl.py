@@ -142,14 +142,14 @@ class TabularPolicy(policies.BasePolicy):
     """A tabular policy. Cannot be trained -- prediction only."""
 
     pi: np.ndarray
-    rng: np.random.RandomState
+    rng: np.random.Generator
 
     def __init__(
         self,
         state_space: gym.Space,
         action_space: gym.Space,
         pi: np.ndarray,
-        random_state: np.random.RandomState,
+        rng: np.random.Generator,
     ):
         """Builds TabularPolicy.
 
@@ -158,14 +158,14 @@ class TabularPolicy(policies.BasePolicy):
             action_space: The action space of the environment.
             pi: A tabular policy. Three-dimensional array, where pi[t,s,a]
                 is the probability of taking action a at state s at timestep t.
-            random_state: Random state, used for sampling when `predict` is called with
+            rng: Random state, used for sampling when `predict` is called with
                 `deterministic=False`.
         """
         assert isinstance(state_space, gym.spaces.Discrete), "state not tabular"
         assert isinstance(action_space, gym.spaces.Discrete), "action not tabular"
         # What we call state space here is observation space in SB3 nomenclature.
         super().__init__(observation_space=state_space, action_space=action_space)
-        self.rng = random_state
+        self.rng = rng
         self.set_pi(pi)
 
     def set_pi(self, pi: np.ndarray) -> None:
@@ -259,7 +259,7 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
         demonstrations: Optional[MCEDemonstrations],
         env: resettable_env.TabularModelEnv,
         reward_net: reward_nets.RewardNet,
-        random_state: np.random.RandomState,
+        rng: np.random.Generator,
         optimizer_cls: Type[th.optim.Optimizer] = th.optim.Adam,
         optimizer_kwargs: Optional[Mapping[str, Any]] = None,
         discount: float = 1.0,
@@ -279,7 +279,7 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
                 The demonstrations must have observations one-hot coded unless
                 demonstrations is a state-occupancy measure.
             env: a tabular MDP.
-            random_state: random state used for sampling from policy.
+            rng: random state used for sampling from policy.
             reward_net: a neural network that computes rewards for the supplied
                 observations.
             optimizer_cls: optimizer to use for supervised training.
@@ -313,7 +313,7 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
         self.linf_eps = linf_eps
         self.grad_l2_eps = grad_l2_eps
         self.log_interval = log_interval
-        self.rng = random_state
+        self.rng = rng
 
         # Initialize policy to be uniform random. We don't use this for MCE IRL
         # training, but it gives us something to return at all times with `policy`
@@ -324,7 +324,7 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
             state_space=self.env.pomdp_state_space,
             action_space=self.env.action_space,
             pi=uniform_pi,
-            random_state=self.rng,
+            rng=self.rng,
         )
 
     def _set_demo_from_trajectories(self, trajs: Iterable[types.Trajectory]) -> None:

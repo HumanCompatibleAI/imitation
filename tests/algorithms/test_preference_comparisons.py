@@ -22,12 +22,12 @@ UNCERTAINTY_ON = ["logit", "probability", "label"]
 
 
 @pytest.fixture
-def venv(random_state_fixed):
-    random_state = random_state_fixed
+def venv(rng):
+    rng
     return util.make_vec_env(
         "seals/CartPole-v0",
         n_envs=1,
-        random_state=random_state,
+        rng=rng,
     )
 
 
@@ -56,18 +56,17 @@ def agent(venv):
 
 
 @pytest.fixture
-def random_fragmenter(random_state_fixed):
-    random_state = random_state_fixed
+def random_fragmenter(rng):
     return preference_comparisons.RandomFragmenter(
-        random_state=random.Random(util.make_seeds(random_state)),
+        rng=rng,
         warning_threshold=0,
     )
 
 
 @pytest.fixture
-def agent_trainer(agent, reward_net, venv, random_state_fixed):
-    random_state = random_state_fixed
-    return preference_comparisons.AgentTrainer(agent, reward_net, venv, random_state)
+def agent_trainer(agent, reward_net, venv, rng):
+    rng
+    return preference_comparisons.AgentTrainer(agent, reward_net, venv, rng)
 
 
 def _check_trajs_equal(
@@ -85,12 +84,11 @@ def _check_trajs_equal(
         assert traj1.terminal == traj2.terminal
 
 
-def test_mismatched_spaces(venv, agent, random_state_fixed):
-    random_state = random_state_fixed
+def test_mismatched_spaces(venv, agent, rng):
     other_venv = util.make_vec_env(
         "seals/MountainCar-v0",
         n_envs=1,
-        random_state=random_state,
+        rng=rng,
     )
     bad_reward_net = reward_nets.BasicRewardNet(
         other_venv.observation_space,
@@ -104,7 +102,7 @@ def test_mismatched_spaces(venv, agent, random_state_fixed):
             agent,
             bad_reward_net,
             venv,
-            random_state=random_state,
+            rng=rng,
         )
 
 
@@ -114,12 +112,12 @@ def test_trajectory_dataset_seeding(
 ):
     dataset1 = preference_comparisons.TrajectoryDataset(
         cartpole_expert_trajectories,
-        random_state=random.Random(0),
+        rng=np.random.default_rng(0),
     )
     sample1 = dataset1.sample(num_samples)
     dataset2 = preference_comparisons.TrajectoryDataset(
         cartpole_expert_trajectories,
-        random_state=random.Random(0),
+        rng=np.random.default_rng(0),
     )
     sample2 = dataset2.sample(num_samples)
 
@@ -127,7 +125,7 @@ def test_trajectory_dataset_seeding(
 
     dataset3 = preference_comparisons.TrajectoryDataset(
         cartpole_expert_trajectories,
-        random_state=random.Random(42),
+        rng=np.random.default_rng(42),
     )
     sample3 = dataset3.sample(num_samples)
     with pytest.raises(AssertionError):
@@ -139,10 +137,11 @@ def test_trajectory_dataset_seeding(
 def test_trajectory_dataset_len(
     cartpole_expert_trajectories: Sequence[TrajectoryWithRew],
     num_steps: int,
+    rng,
 ):
     dataset = preference_comparisons.TrajectoryDataset(
         cartpole_expert_trajectories,
-        random_state=random.Random(0),
+        rng=rng,
     )
     sample = dataset.sample(num_steps)
     lengths = [len(t) for t in sample]
@@ -153,10 +152,11 @@ def test_trajectory_dataset_len(
 
 def test_trajectory_dataset_too_long(
     cartpole_expert_trajectories: Sequence[TrajectoryWithRew],
+    rng,
 ):
     dataset = preference_comparisons.TrajectoryDataset(
         cartpole_expert_trajectories,
-        random_state=random.Random(0),
+        rng=rng,
     )
     with pytest.raises(RuntimeError, match="Asked for.*but only.* available"):
         dataset.sample(100000)
@@ -164,11 +164,12 @@ def test_trajectory_dataset_too_long(
 
 def test_trajectory_dataset_shuffle(
     cartpole_expert_trajectories: Sequence[TrajectoryWithRew],
+    rng,
     num_steps: int = 400,
 ):
     dataset = preference_comparisons.TrajectoryDataset(
         cartpole_expert_trajectories,
-        random_state=random.Random(0),
+        rng,
     )
     sample = dataset.sample(num_steps)
     sample2 = dataset.sample(num_steps)
@@ -200,9 +201,8 @@ def test_trainer_no_crash(
     random_fragmenter,
     custom_logger,
     schedule,
-    random_state_fixed,
+    rng,
 ):
-    random_state = random_state_fixed
     main_trainer = preference_comparisons.PreferenceComparisons(
         agent_trainer,
         reward_net,
@@ -212,7 +212,7 @@ def test_trainer_no_crash(
         fragmenter=random_fragmenter,
         custom_logger=custom_logger,
         query_schedule=schedule,
-        random_state=random_state,
+        rng=rng,
     )
     result = main_trainer.train(100, 10)
     # We don't expect good performance after training for 10 (!) timesteps,
@@ -221,8 +221,7 @@ def test_trainer_no_crash(
     assert 0.0 < result["reward_accuracy"] <= 1.0
 
 
-def test_reward_ensemble_trainer_raises_type_error(venv, random_state_fixed):
-    random_state = random_state_fixed
+def test_reward_ensemble_trainer_raises_type_error(venv, rng):
     reward_net = reward_nets.BasicRewardNet(venv.observation_space, venv.action_space)
     preference_model = preference_comparisons.PreferenceModel(
         model=reward_net,
@@ -239,7 +238,7 @@ def test_reward_ensemble_trainer_raises_type_error(venv, random_state_fixed):
         preference_comparisons.EnsembleTrainer(
             reward_net,
             loss,
-            random_state=random_state,
+            rng=rng,
         )
 
 
@@ -248,9 +247,8 @@ def test_correct_reward_trainer_used_by_default(
     reward_net,
     random_fragmenter,
     custom_logger,
-    random_state_fixed,
+    rng,
 ):
-    random_state = random_state_fixed
     main_trainer = preference_comparisons.PreferenceComparisons(
         agent_trainer,
         reward_net,
@@ -258,7 +256,7 @@ def test_correct_reward_trainer_used_by_default(
         transition_oversampling=2,
         fragment_length=2,
         fragmenter=random_fragmenter,
-        random_state=random_state,
+        rng=rng,
         custom_logger=custom_logger,
     )
 
@@ -280,9 +278,8 @@ def test_init_raises_error_when_trying_use_improperly_wrapped_ensemble(
     venv,
     random_fragmenter,
     custom_logger,
-    random_state_fixed,
+    rng,
 ):
-    random_state = random_state_fixed
     reward_net = testing_reward_nets.make_ensemble(
         venv.observation_space,
         venv.action_space,
@@ -303,7 +300,7 @@ def test_init_raises_error_when_trying_use_improperly_wrapped_ensemble(
             transition_oversampling=2,
             fragment_length=2,
             fragmenter=random_fragmenter,
-            random_state=random_state,
+            rng=rng,
             custom_logger=custom_logger,
         )
 
@@ -313,9 +310,8 @@ def test_discount_rate_no_crash(
     venv,
     random_fragmenter,
     custom_logger,
-    random_state_fixed,
+    rng,
 ):
-    random_state = random_state_fixed
     # also use a non-zero noise probability to check that doesn't cause errors
     reward_net = reward_nets.BasicRewardNet(venv.observation_space, venv.action_space)
     preference_model = preference_comparisons.PreferenceModel(
@@ -337,7 +333,7 @@ def test_discount_rate_no_crash(
         transition_oversampling=2,
         fragment_length=2,
         fragmenter=random_fragmenter,
-        random_state=random_state,
+        rng=rng,
         reward_trainer=reward_trainer,
         custom_logger=custom_logger,
     )
@@ -347,12 +343,11 @@ def test_discount_rate_no_crash(
 def test_synthetic_gatherer_deterministic(
     agent_trainer,
     random_fragmenter,
-    random_state_fixed,
+    rng,
 ):
-    random_state = random_state_fixed
     gatherer = preference_comparisons.SyntheticGatherer(
         temperature=0,
-        random_state=random_state,
+        rng=rng,
     )
     trajectories = agent_trainer.sample(10)
     fragments = random_fragmenter(trajectories, fragment_length=2, num_pairs=2)
@@ -387,7 +382,7 @@ def test_fragments_terminal(random_fragmenter):
 def test_fragments_too_short_error(agent_trainer):
     trajectories = agent_trainer.sample(2)
     random_fragmenter = preference_comparisons.RandomFragmenter(
-        random_state=random.Random(0),
+        rng=random.Random(0),
         warning_threshold=0,
     )
     with pytest.raises(
@@ -414,12 +409,11 @@ def test_preference_dataset_errors(agent_trainer, random_fragmenter):
         dataset.push(fragments, preferences)
 
 
-def test_preference_dataset_queue(agent_trainer, random_fragmenter, random_state_fixed):
-    random_state = random_state_fixed
+def test_preference_dataset_queue(agent_trainer, random_fragmenter, rng):
     dataset = preference_comparisons.PreferenceDataset(max_size=5)
     trajectories = agent_trainer.sample(10)
 
-    gatherer = preference_comparisons.SyntheticGatherer(random_state=random_state)
+    gatherer = preference_comparisons.SyntheticGatherer(rng=rng)
     for i in range(6):
         fragments = random_fragmenter(trajectories, fragment_length=2, num_pairs=1)
         preferences = gatherer(fragments)
@@ -435,13 +429,12 @@ def test_store_and_load_preference_dataset(
     agent_trainer,
     random_fragmenter,
     tmp_path,
-    random_state_fixed,
+    rng,
 ):
-    random_state = random_state_fixed
     dataset = preference_comparisons.PreferenceDataset()
     trajectories = agent_trainer.sample(10)
     fragments = random_fragmenter(trajectories, fragment_length=2, num_pairs=2)
-    gatherer = preference_comparisons.SyntheticGatherer(random_state=random_state)
+    gatherer = preference_comparisons.SyntheticGatherer(rng=rng)
     preferences = gatherer(fragments)
     dataset.push(fragments, preferences)
 
@@ -463,14 +456,13 @@ def test_exploration_no_crash(
     venv,
     random_fragmenter,
     custom_logger,
-    random_state_fixed,
+    rng,
 ):
-    random_state = random_state_fixed
     agent_trainer = preference_comparisons.AgentTrainer(
         agent,
         reward_net,
         venv,
-        random_state=random_state,
+        rng=rng,
         exploration_frac=0.5,
     )
     main_trainer = preference_comparisons.PreferenceComparisons(
@@ -480,7 +472,7 @@ def test_exploration_no_crash(
         transition_oversampling=2,
         fragment_length=5,
         fragmenter=random_fragmenter,
-        random_state=random_state,
+        rng=rng,
         custom_logger=custom_logger,
     )
     main_trainer.train(100, 10)
@@ -493,9 +485,8 @@ def test_active_fragmenter_discount_rate_no_crash(
     random_fragmenter,
     uncertainty_on,
     custom_logger,
-    random_state_fixed,
+    rng,
 ):
-    random_state = random_state_fixed
     # also use a non-zero noise probability to check that doesn't cause errors
     reward_net = reward_nets.RewardEnsemble(
         venv.observation_space,
@@ -531,7 +522,7 @@ def test_active_fragmenter_discount_rate_no_crash(
     reward_trainer = preference_comparisons.EnsembleTrainer(
         reward_net,
         loss,
-        random_state=random_state,
+        rng=rng,
     )
 
     main_trainer = preference_comparisons.PreferenceComparisons(
@@ -541,7 +532,7 @@ def test_active_fragmenter_discount_rate_no_crash(
         transition_oversampling=2,
         fragment_length=2,
         fragmenter=fragmenter,
-        random_state=random_state,
+        rng=rng,
         reward_trainer=reward_trainer,
         custom_logger=custom_logger,
     )
@@ -643,7 +634,7 @@ def test_agent_trainer_sample(venv, agent_trainer):
     )
 
 
-def test_agent_trainer_sample_image_observations(random_state_fixed):
+def test_agent_trainer_sample_image_observations(rng):
     """Test `AgentTrainer.sample()` in an image environment.
 
     SB3 algorithms may rearrange the channel dimension in environments with image
@@ -651,9 +642,8 @@ def test_agent_trainer_sample_image_observations(random_state_fixed):
     environment.
 
     Args:
-        random_state_fixed: Random state (with a fixed seed).
+        rng: Random state (with a fixed seed).
     """
-    random_state = random_state_fixed
     venv = DummyVecEnv([lambda: FakeImageEnv()])
     reward_net = reward_nets.BasicRewardNet(venv.observation_space, venv.action_space)
     agent = stable_baselines3.PPO(
@@ -668,7 +658,7 @@ def test_agent_trainer_sample_image_observations(random_state_fixed):
         reward_net,
         venv,
         exploration_frac=0.5,
-        random_state=random_state,
+        rng=rng,
     )
     trajectories = agent_trainer.sample(2)
     assert len(trajectories) > 0

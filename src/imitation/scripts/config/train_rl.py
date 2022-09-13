@@ -2,7 +2,7 @@
 
 import sacred
 
-from imitation.scripts.common import common, rl, seeding, train
+from imitation.scripts.common import common, rl, train
 
 train_rl_ex = sacred.Experiment(
     "train_rl",
@@ -10,7 +10,6 @@ train_rl_ex = sacred.Experiment(
         common.common_ingredient,
         train.train_ingredient,
         rl.rl_ingredient,
-        seeding.seeding_ingredient,
     ],
 )
 

@@ -15,7 +15,7 @@ from imitation.data import rollout
 from imitation.data.wrappers import RolloutInfoWrapper
 
 env = gym.make("CartPole-v1")
-random_state = np.random.RandomState(0)
+rng = np.random.default_rng(0)
 
 
 def train_expert():
@@ -42,7 +42,7 @@ def sample_expert_transitions():
         expert,
         DummyVecEnv([lambda: RolloutInfoWrapper(env)]),
         rollout.make_sample_until(min_timesteps=None, min_episodes=50),
-        random_state=random_state,
+        rng=rng,
     )
     return rollout.flatten_trajectories(rollouts)
 
@@ -52,7 +52,7 @@ bc_trainer = bc.BC(
     observation_space=env.observation_space,
     action_space=env.action_space,
     demonstrations=transitions,
-    random_state=random_state,
+    rng=rng,
 )
 
 reward, _ = evaluate_policy(bc_trainer.policy, env, n_eval_episodes=3, render=True)

@@ -61,7 +61,7 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
         *,
         demonstrations: Optional[base.AnyTransitions],
         venv: vec_env.VecEnv,
-        random_state: np.random.RandomState,
+        rng: np.random.Generator,
         density_type: DensityType = DensityType.STATE_ACTION_DENSITY,
         kernel: str = "gaussian",
         kernel_bandwidth: float = 0.5,
@@ -85,7 +85,7 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
                 any environment interaction to fit the reward model, but we use this
                 to extract the observation and action space, and to train the RL
                 algorithm `rl_algo` (if specified).
-            random_state: random state for sampling from demonstrations.
+            rng: random state for sampling from demonstrations.
             rl_algo: An RL algorithm to train on the resulting reward model (optional).
             is_stationary: if True, share same density models for all timesteps;
                 if False, use a different density model for each timestep.
@@ -122,7 +122,7 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
         self.standardise = standardise_inputs
         self._scaler = None
         self._density_models = dict()
-        self.random_state = random_state
+        self.rng = rng
 
         self.rl_algo = rl_algo
         self.buffering_wrapper = wrappers.BufferingWrapper(self.venv)
@@ -357,7 +357,7 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
             self.rl_algo,
             self.venv if true_reward else self.venv_wrapped,
             sample_until=rollout.make_min_episodes(n_trajectories),
-            random_state=self.random_state,
+            rng=self.rng,
         )
         # We collect `trajs` above so disregard return value from `pop_trajectories`,
         # but still call it to clear out any saved trajectories.

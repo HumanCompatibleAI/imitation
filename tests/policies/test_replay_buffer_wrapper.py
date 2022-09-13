@@ -29,10 +29,10 @@ def make_algo_with_wrapped_buffer(
     rl_cls: Type[off_policy_algorithm.OffPolicyAlgorithm],
     policy_cls: Type[BasePolicy],
     replay_buffer_class: Type[buffers.ReplayBuffer],
-    random_state: np.random.RandomState,
+    rng: np.random.Generator,
     buffer_size: int = 100,
 ) -> off_policy_algorithm.OffPolicyAlgorithm:
-    venv = util.make_vec_env("Pendulum-v1", n_envs=1, random_state=random_state)
+    venv = util.make_vec_env("Pendulum-v1", n_envs=1, rng=rng)
     rl_algo = rl_cls(
         policy=policy_cls,
         policy_kwargs=dict(),
@@ -52,8 +52,7 @@ def make_algo_with_wrapped_buffer(
     return rl_algo
 
 
-def test_invalid_args(random_state_fixed):
-    random_state = random_state_fixed
+def test_invalid_args(rng):
     with pytest.raises(
         TypeError,
         match=r".*unexpected keyword argument 'replay_buffer_class'.*",
@@ -64,7 +63,7 @@ def test_invalid_args(random_state_fixed):
             rl_cls=sb3.PPO,  # type: ignore
             policy_cls=policies.ActorCriticPolicy,
             replay_buffer_class=buffers.ReplayBuffer,
-            random_state=random_state,
+            rng=rng,
         )
 
     with pytest.raises(AssertionError, match=r".*only ReplayBuffer is supported.*"):
@@ -72,12 +71,11 @@ def test_invalid_args(random_state_fixed):
             rl_cls=sb3.SAC,
             policy_cls=sb3.sac.policies.SACPolicy,
             replay_buffer_class=buffers.DictReplayBuffer,
-            random_state=random_state,
+            rng=rng,
         )
 
 
-def test_wrapper_class(tmpdir, random_state_fixed):
-    random_state = random_state_fixed
+def test_wrapper_class(tmpdir, rng):
     buffer_size = 15
     total_timesteps = 20
 
@@ -86,7 +84,7 @@ def test_wrapper_class(tmpdir, random_state_fixed):
         policy_cls=sb3.sac.policies.SACPolicy,
         replay_buffer_class=buffers.ReplayBuffer,
         buffer_size=buffer_size,
-        random_state=random_state,
+        rng=rng,
     )
 
     rl_algo.learn(total_timesteps=total_timesteps)

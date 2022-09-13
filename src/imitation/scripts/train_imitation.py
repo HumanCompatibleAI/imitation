@@ -12,7 +12,7 @@ from imitation.algorithms import bc as bc_algorithm
 from imitation.algorithms.dagger import SimpleDAggerTrainer
 from imitation.data import rollout, types
 from imitation.policies import serialize
-from imitation.scripts.common import common, demonstrations, seeding, train
+from imitation.scripts.common import common, demonstrations, train
 from imitation.scripts.config.train_imitation import train_imitation_ex
 
 logger = logging.getLogger(__name__)
@@ -123,7 +123,7 @@ def train_imitation(
     Returns:
         Statistics for rollouts from the trained policy and demonstration data.
     """
-    random_state = seeding.make_random_state()
+    rng = common.make_rng()
     custom_logger, log_dir = common.setup_logging()
 
     with common.make_venv() as venv:
@@ -139,7 +139,7 @@ def train_imitation(
             policy=imit_policy,
             demonstrations=expert_trajs,
             custom_logger=custom_logger,
-            random_state=random_state,
+            rng=rng,
             **bc_kwargs,
         )
         bc_train_kwargs = dict(log_rollouts_venv=venv, **bc_train_kwargs)
@@ -158,7 +158,7 @@ def train_imitation(
                 expert_policy=expert_policy,
                 custom_logger=custom_logger,
                 bc_trainer=bc_trainer,
-                random_state=random_state,
+                rng=rng,
             )
             model.train(
                 total_timesteps=int(dagger["total_timesteps"]),

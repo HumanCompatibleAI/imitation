@@ -5,17 +5,18 @@ import logging
 import os
 from typing import Any, Generator, Mapping, Sequence, Tuple, Union
 
+import numpy as np
 import sacred
 from stable_baselines3.common import vec_env
 
-from imitation.scripts.common import seeding, wb
+from imitation.scripts.common import wb
 from imitation.util import logger as imit_logger
 from imitation.util import sacred as sacred_util
 from imitation.util import util
 
 common_ingredient = sacred.Ingredient(
     "common",
-    ingredients=[wb.wandb_ingredient, seeding.seeding_ingredient],
+    ingredients=[wb.wandb_ingredient],
 )
 logger = logging.getLogger(__name__)
 
@@ -75,6 +76,12 @@ def fast():
     max_episode_steps = 5
 
     locals()  # quieten flake8
+
+
+@common_ingredient.capture
+def make_rng(_seed) -> np.random.Generator:
+    """Creates a `np.random.Generator` with the given seed."""
+    return np.random.default_rng(_seed)
 
 
 @common_ingredient.capture
@@ -158,11 +165,11 @@ def make_venv(
     Yields:
         The constructed vector environment.
     """
-    random_state = seeding.make_random_state()
+    rng = make_rng()
     try:
         venv = util.make_vec_env(
             env_name,
-            random_state=random_state,
+            rng=rng,
             n_envs=num_vec,
             parallel=parallel,
             max_episode_steps=max_episode_steps,

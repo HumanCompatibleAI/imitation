@@ -12,7 +12,7 @@ def make_random_trans_mat(
     n_states,
     n_actions,
     max_branch_factor,
-    rand_state=np.random,
+    rng: np.random.Generator,
 ) -> np.ndarray:
     """Make a 'random' transition matrix.
 
@@ -28,7 +28,7 @@ def make_random_trans_mat(
         n_actions: Number of actions.
         max_branch_factor: Maximum number of states that can be reached from
             each state-action pair.
-        rand_state: NumPy random state.
+        rng: NumPy random state.
 
     Returns:
         The transition matrix `mat`, where `mat[s,a,next_s]` gives the probability
@@ -39,26 +39,26 @@ def make_random_trans_mat(
         for action in range(n_actions):
             # uniformly sample a number of successors in [1,max_branch_factor]
             # for this action
-            succs = rand_state.randint(1, max_branch_factor + 1)
-            next_states = rand_state.choice(n_states, size=(succs,), replace=False)
+            succs = rng.integers(1, max_branch_factor + 1)
+            next_states = rng.choice(n_states, size=(succs,), replace=False)
             # generate random vec in probability simplex
-            next_vec = rand_state.dirichlet(np.ones((succs,)))
+            next_vec = rng.dirichlet(np.ones((succs,)))
             next_vec = next_vec / np.sum(next_vec)
             out_mat[start_state, action, next_states] = next_vec
     return out_mat
 
 
-def make_random_state_dist(
+def make_rng_dist(
     n_avail: int,
     n_states: int,
-    rand_state: np.random.RandomState = np.random,
+    rng: np.random.Generator,
 ) -> np.ndarray:
     """Make a random initial state distribution over n_states.
 
     Args:
         n_avail: Number of states available to transition into.
         n_states: Total number of states.
-        rand_state: NumPy random state.
+        rng: NumPy random state.
 
     Returns:
         An initial state distribution that is zero at all but a uniformly random
@@ -71,8 +71,8 @@ def make_random_state_dist(
     """  # noqa: DAR402
     assert 0 < n_avail <= n_states
     init_dist = np.zeros((n_states,))
-    next_states = rand_state.choice(n_states, size=(n_avail,), replace=False)
-    avail_state_dist = rand_state.dirichlet(np.ones((n_avail,)))
+    next_states = rng.choice(n_states, size=(n_avail,), replace=False)
+    avail_state_dist = rng.dirichlet(np.ones((n_avail,)))
     init_dist[next_states] = avail_state_dist
     assert np.sum(init_dist > 0) == n_avail
     init_dist = init_dist / np.sum(init_dist)
@@ -83,7 +83,7 @@ def make_obs_mat(
     n_states: int,
     is_random: bool,
     obs_dim: Optional[int],
-    rand_state: np.random.RandomState = np.random,
+    rng: np.random.Generator,
 ) -> np.ndarray:
     """Makes an observation matrix with a single observation for each state.
 
@@ -94,7 +94,7 @@ def make_obs_mat(
                     If `False`, are unique one-hot vectors for each state.
         obs_dim (int or NoneType): Must be `None` if `is_random == False`.
                  Otherwise, this must be set to the size of the random vectors.
-        rand_state (np.random.RandomState): Random number generator.
+        rng (np.random.Generator): Random number generator.
 
     Returns:
         A matrix of shape `(n_states, obs_dim if is_random else n_states)`.
@@ -102,7 +102,7 @@ def make_obs_mat(
     if not is_random:
         assert obs_dim is None
     if is_random:
-        obs_mat = rand_state.normal(0, 2, (n_states, obs_dim))
+        obs_mat = rng.normal(0, 2, (n_states, obs_dim))
     else:
         obs_mat = np.identity(n_states)
     assert (
@@ -145,7 +145,7 @@ class RandomMDP(TabularModelEnv):
         super().__init__()
         # this generator is ONLY for constructing the MDP, not for controlling
         # random outcomes during rollouts
-        rand_gen = np.random.RandomState(generator_seed)
+        rng = np.random.default_rng(generator_seed)
         if random_obs:
             if obs_dim is None:
                 obs_dim = n_states
@@ -155,21 +155,21 @@ class RandomMDP(TabularModelEnv):
             n_states=n_states,
             is_random=random_obs,
             obs_dim=obs_dim,
-            rand_state=rand_gen,
+            rng=rng,
         )
         self._transition_matrix = make_random_trans_mat(
             n_states=n_states,
             n_actions=n_actions,
             max_branch_factor=branch_factor,
-            rand_state=rand_gen,
+            rng=rng,
         )
-        self._initial_state_dist = make_random_state_dist(
+        self._initial_state_dist = make_rng_dist(
             n_avail=branch_factor,
             n_states=n_states,
-            rand_state=rand_gen,
+            rng=rng,
         )
         self._horizon = horizon
-        self._reward_weights = rand_gen.randn(self._observation_matrix.shape[-1])
+        self._reward_weights = rng.standard_normal(self._observation_matrix.shape[-1])
         self._reward_matrix = self._observation_matrix @ self._reward_weights
         assert self._reward_matrix.shape == (self.n_states,)
 

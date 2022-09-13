@@ -125,12 +125,12 @@ def _sample(space, n):
     return np.array([space.sample() for _ in range(n)])
 
 
-def _make_env_and_save_reward_net(env_name, reward_type, tmpdir, random_state):
+def _make_env_and_save_reward_net(env_name, reward_type, tmpdir, rng):
     venv = util.make_vec_env(
         env_name,
         n_envs=1,
         parallel=False,
-        random_state=random_state,
+        rng=rng,
     )
     save_path = os.path.join(tmpdir, "norm_reward.pt")
 
@@ -160,14 +160,13 @@ def _make_env_and_save_reward_net(env_name, reward_type, tmpdir, random_state):
 
 @pytest.mark.parametrize("env_name", ENVS)
 @pytest.mark.parametrize("reward_type", DESERIALIZATION_TYPES)
-def test_reward_valid(env_name, reward_type, tmpdir, random_state_fixed):
+def test_reward_valid(env_name, reward_type, tmpdir, rng):
     """Test output of reward function is appropriate shape and type."""
-    random_state = random_state_fixed
     venv, tmppath = _make_env_and_save_reward_net(
         env_name,
         reward_type,
         tmpdir,
-        random_state,
+        rng,
     )
 
     TRAJECTORY_LEN = 10
@@ -183,13 +182,12 @@ def test_reward_valid(env_name, reward_type, tmpdir, random_state_fixed):
     assert isinstance(pred_reward[0], numbers.Number)
 
 
-def test_strip_wrappers_basic(random_state_fixed):
-    random_state = random_state_fixed
+def test_strip_wrappers_basic(rng):
     venv = util.make_vec_env(
         "FrozenLake-v1",
         n_envs=1,
         parallel=False,
-        random_state=random_state,
+        rng=rng,
     )
     net = reward_nets.BasicRewardNet(venv.observation_space, venv.action_space)
     net = reward_nets.NormalizedRewardNet(net, networks.RunningNorm)
@@ -203,13 +201,12 @@ def test_strip_wrappers_basic(random_state_fixed):
     assert isinstance(net, reward_nets.BasicRewardNet)
 
 
-def test_strip_wrappers_complex(random_state_fixed):
-    random_state = random_state_fixed
+def test_strip_wrappers_complex(rng):
     venv = util.make_vec_env(
         "FrozenLake-v1",
         n_envs=1,
         parallel=False,
-        random_state=random_state,
+        rng=rng,
     )
     net = reward_nets.BasicRewardNet(venv.observation_space, venv.action_space)
     net = reward_nets.ShapedRewardNet(net, _potential, discount_factor=0.99)
@@ -284,13 +281,12 @@ def test_validate_wrapper_structure():
 
 
 @pytest.mark.parametrize("env_name", ENVS)
-def test_cant_load_unnorm_as_norm(env_name, tmpdir, random_state_fixed):
-    random_state = random_state_fixed
+def test_cant_load_unnorm_as_norm(env_name, tmpdir, rng):
     venv, tmppath = _make_env_and_save_reward_net(
         env_name,
         "RewardNet_unnormalized",
         tmpdir,
-        random_state=random_state,
+        rng=rng,
     )
     with pytest.raises(TypeError):
         serialize.load_reward("RewardNet_normalized", tmppath, venv)
@@ -304,17 +300,16 @@ def test_serialize_identity(
     net_cls,
     normalize_rewards,
     tmpdir,
-    random_state_fixed,
+    rng,
 ):
     """Does output of deserialized reward network match that of original?"""
-    random_state = random_state_fixed
     logging.info(f"Testing {net_cls}")
 
     venv = util.make_vec_env(
         env_name,
         n_envs=1,
         parallel=False,
-        random_state=random_state,
+        rng=rng,
     )
     original = net_cls(venv.observation_space, venv.action_space)
     if normalize_rewards:
@@ -332,7 +327,7 @@ def test_serialize_identity(
         random,
         venv,
         n_timesteps=100,
-        random_state=random_state,
+        rng=rng,
     )
 
     if isinstance(original, reward_nets.NormalizedRewardNet):
@@ -653,9 +648,8 @@ def test_device_for_parameterless_model(env_name):
 
 
 @pytest.mark.parametrize("normalize_input_layer", [None, networks.RunningNorm])
-def test_training_regression(normalize_input_layer, random_state_fixed):
+def test_training_regression(normalize_input_layer, rng):
     """Test reward_net normalization by training a regression model."""
-    random_state = random_state_fixed
     venv = DummyVecEnv([lambda: gym.make("CartPole-v0")] * 2)
     reward_net = reward_nets.BasicRewardNet(
         venv.observation_space,
@@ -678,7 +672,7 @@ def test_training_regression(normalize_input_layer, random_state_fixed):
             random,
             venv,
             n_timesteps=100,
-            random_state=random_state,
+            rng=rng,
         )
         trans_args = (
             transitions.obs,

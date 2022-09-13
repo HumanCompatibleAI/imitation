@@ -58,7 +58,7 @@ def load_or_rollout_trajectories(
     cache_path,
     policy,
     venv,
-    random_state,
+    rng,
 ) -> Sequence[TrajectoryWithRew]:
     os.makedirs(os.path.dirname(cache_path), exist_ok=True)
     with FileLock(cache_path + ".lock"):
@@ -73,7 +73,7 @@ def load_or_rollout_trajectories(
                 policy,
                 venv,
                 rollout.make_sample_until(min_timesteps=2000, min_episodes=57),
-                random_state=random_state,
+                rng=rng,
             )
             types.save(cache_path, rollouts)
             return rollouts
@@ -141,9 +141,8 @@ def cartpole_expert_trajectories(
     cartpole_expert_policy,
     cartpole_venv,
     pytestconfig,
-    random_state_fixed,
+    rng,
 ) -> Sequence[TrajectoryWithRew]:
-    random_state = random_state_fixed
     rollouts_path = str(
         pytestconfig.cache.makedir("experts") / CARTPOLE_ENV_NAME / "rollout.npz",
     )
@@ -151,7 +150,7 @@ def cartpole_expert_trajectories(
         rollouts_path,
         cartpole_expert_policy,
         cartpole_venv,
-        random_state,
+        rng,
     )
 
 
@@ -204,17 +203,16 @@ def pendulum_expert_trajectories(
     pendulum_expert_policy,
     pendulum_venv,
     pytestconfig,
-    random_state_fixed,
+    rng,
 ) -> Sequence[TrajectoryWithRew]:
     rollouts_path = str(
         pytestconfig.cache.makedir("experts") / PENDULUM_ENV_NAME / "rollout.npz",
     )
-    random_state = random_state_fixed
     return load_or_rollout_trajectories(
         rollouts_path,
         pendulum_expert_policy,
         pendulum_venv,
-        random_state=random_state,
+        rng=rng,
     )
 
 
@@ -239,10 +237,10 @@ def custom_logger(tmpdir: str) -> logger.HierarchicalLogger:
 
 
 @pytest.fixture()
-def random_state_fixed() -> np.random.RandomState:
-    return np.random.RandomState(0)
+def rng_fixed() -> np.random.Generator:
+    return np.random.default_rng(0)
 
 
 @pytest.fixture()
-def random_state() -> np.random.RandomState:
-    return np.random.RandomState()
+def rng() -> np.random.Generator:
+    return np.random.default_rng()
