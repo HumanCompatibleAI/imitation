@@ -280,8 +280,10 @@ def safe_to_numpy(
         return obj
     else:
         if warn:
-            warnings.warn(f"Converted tensor to numpy array, might affect performance. "
-                          f"Make sure this is the intended behavior.")
+            warnings.warn(
+                "Converted tensor to numpy array, might affect performance. "
+                "Make sure this is the intended behavior.",
+            )
         return obj.detach().cpu().numpy()
 
 
