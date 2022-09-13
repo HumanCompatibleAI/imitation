@@ -38,7 +38,7 @@ class RegularizerFactory(Protocol[T_Regularizer_co]):
         configuring the regularization algorithm.
         2. Validation of the configuration is done outside the network constructor.
 
-    It also allows re-using a same regularizer factory for multiple networks.
+    It also allows re-using the same regularizer factory for multiple networks.
     """
 
     def __call__(
