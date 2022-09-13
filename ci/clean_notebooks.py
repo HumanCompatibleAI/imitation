@@ -30,6 +30,11 @@ def clean_notebook(file: pathlib.Path, check_only=False) -> None:
     with open(file) as f:
         nb = nbformat.read(f, as_version=4)
 
+    was_dirty = False
+
+    if check_only:
+        print(f"Checking {file}")
+
     # Remove the output and metadata from each cell
     # also reset the execution count
     # if the cell has no code, remove it
@@ -38,23 +43,28 @@ def clean_notebook(file: pathlib.Path, check_only=False) -> None:
             if check_only:
                 raise UncleanNotebookError(f"Notebook {file} has outputs")
             cell["outputs"] = []
+            was_dirty = True
         if "metadata" in cell and cell["metadata"]:
             if check_only:
                 raise UncleanNotebookError(f"Notebook {file} has metadata")
             cell["metadata"] = {}
+            was_dirty = True
         if "execution_count" in cell and cell["execution_count"]:
             if check_only:
                 raise UncleanNotebookError(f"Notebook {file} has execution count")
             cell["execution_count"] = None
+            was_dirty = True
         if cell["cell_type"] == "code" and not cell["source"]:
             if check_only:
                 raise UncleanNotebookError(f"Notebook {file} has empty code cell")
             nb.cells.remove(cell)
+            was_dirty = True
 
-    if not check_only:
+    if not check_only and was_dirty:
         # Write the notebook
         with open(file, "w") as f:
             nbformat.write(nb, f)
+        print(f"Cleaned {file}")
 
 
 if __name__ == "__main__":
@@ -91,7 +101,6 @@ if __name__ == "__main__":
         print("No notebooks found")
         exit(1)
     for file in files:
-        print(f"Cleaning {file}" if not check_only else f"Checking {file}")
         try:
             clean_notebook(file, check_only=check_only)
         except UncleanNotebookError:

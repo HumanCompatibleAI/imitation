@@ -7,7 +7,7 @@ from typing import Iterable, Optional, OrderedDict, Type, Union
 
 import torch as th
 from torch import nn
-from torch.nn.modules import normalization, batchnorm
+from torch.nn.modules import batchnorm, normalization
 
 
 @contextlib.contextmanager
