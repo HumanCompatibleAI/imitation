@@ -104,6 +104,8 @@ ALGO_FAST_CONFIGS = {
 
 RL_SAC_NAMED_CONFIGS = ["rl.sac", "train.sac"]
 
+ASTEROIDS_CNN_POLICY_CONFIG = ["asteroids_short_episodes", "train.cnn"]
+
 
 @pytest.fixture(
     params=[
@@ -243,6 +245,20 @@ def test_train_preference_comparisons_reward_named_config(tmpdir, named_configs)
         assert run.config["reward"]["normalize_output_layer"] is None
     else:
         assert run.config["reward"]["normalize_output_layer"] is networks.RunningNorm
+    assert run.status == "COMPLETED"
+    assert isinstance(run.result, dict)
+
+
+def test_train_preference_comparisons_image_env(tmpdir):
+    config_updates = dict(common=dict(log_root=tmpdir))
+    run = train_preference_comparisons.train_preference_comparisons_ex.run(
+        named_configs=(
+            ["reward.cnn_reward"]
+            + ASTEROIDS_CNN_POLICY_CONFIG
+            + ALGO_FAST_CONFIGS["preference_comparison"]
+        ),
+        config_updates=config_updates,
+    )
     assert run.status == "COMPLETED"
     assert isinstance(run.result, dict)
 
@@ -416,6 +432,16 @@ def test_train_rl_sac(tmpdir):
         ),
     )
     assert run.config["rl"]["rl_cls"] is stable_baselines3.SAC
+    assert run.status == "COMPLETED"
+    assert isinstance(run.result, dict)
+
+
+def test_train_rl_image_env(tmpdir):
+    config_updates = dict(common=dict(log_root=tmpdir))
+    run = train_rl.train_rl_ex.run(
+        named_configs=ASTEROIDS_CNN_POLICY_CONFIG + ALGO_FAST_CONFIGS["rl"],
+        config_updates=config_updates,
+    )
     assert run.status == "COMPLETED"
     assert isinstance(run.result, dict)
 
