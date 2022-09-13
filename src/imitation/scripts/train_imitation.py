@@ -174,23 +174,13 @@ def train_imitation(
 
         imit_stats = train.eval_policy(imit_policy, venv)
 
-    # TODO(juan): I'm not super happy with this solution for the type system.
-    #  is model._all_demos always Sequence[TrajectoryWithRew]? We can change
-    #  the type in the class definition. Same goes for demonstrations.load_expert_trajs.
-    #  using assert doesn't work because we'd have to loop over all the trajectories
-    #  and check that each one is a TrajectoryWithRew, which seems inefficient
-    #  just for adding type annotations.
-    trajectories: Sequence[types.TrajectoryWithRew]
-    if use_dagger:
-        trajectories = cast(Sequence[types.TrajectoryWithRew], model._all_demos)
-    else:
-        assert expert_trajs is not None
-        trajectories = cast(Sequence[types.TrajectoryWithRew], expert_trajs)
-
-    return {
-        "imit_stats": imit_stats,
-        "expert_stats": rollout.rollout_stats(trajectories),
-    }
+    stats = {"imit_stats": imit_stats}
+    trajectories = model._all_demos if use_dagger else expert_trajs
+    assert trajectories is not None
+    if all(isinstance(t, types.TrajectoryWithRew) for t in trajectories):
+        expert_stats = rollout.rollout_stats(cast(Sequence[types.TrajectoryWithRew], trajectories))
+        stats["expert_stats"] = expert_stats
+    return stats
 
 
 @train_imitation_ex.command
