@@ -166,7 +166,7 @@ def make_seeds(random_state: np.random.RandomState, n: int) -> List[int]:
 def make_seeds(
     random_state: np.random.RandomState,
     n: Optional[int] = None,
-) -> Union[List[int], int]:
+) -> Union[Sequence[int], int]:
     """Generate n random seeds from a random state.
 
     Args:
