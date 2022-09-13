@@ -190,6 +190,7 @@ def test_normalize_features_extractor(obs_space: gym.Space) -> None:
         obs = th.as_tensor([obs_space.sample()])
         # TODO(juan) the cast below is because preprocess_obs has too general a type.
         #  this should be replaced with an overload or a generic.
+        #  https://github.com/DLR-RM/stable-baselines3/issues/1065
         obs = cast(th.Tensor, preprocessing.preprocess_obs(obs, obs_space))
         assert isinstance(obs, th.Tensor)
         flattened_obs = obs.flatten(1, -1)
