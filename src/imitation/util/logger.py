@@ -62,11 +62,11 @@ class HierarchicalLogger(sb_logger.Logger):
     ...     # `dir` at step 1.
     ...     logger.dump(step=1)
     ...     with logger.add_prefix("foo"), logger.accumulate_means("bar"):
-    ...         # record the key value pair ("raw/foo/bar/entropy", 42.0) to path
+    ...         # record the key value pair ("raw/foo/bar/biz", 42.0) to path
     ...         # `dir/raw/foo/bar` at step 2000
     ...         logger.record("biz", 42.0)
     ...         logger.dump(step=2000)
-    ...     # record the key value pair `("mean/foo/bar/entropy", 42.0)` to path
+    ...     # record the key value pair `("mean/foo/bar/biz", 42.0)` to path
     ...     # `dir` at step 1.
     ...     logger.dump(step=1)
     ...     with open(os.path.join(dir, 'log.txt')) as f:
