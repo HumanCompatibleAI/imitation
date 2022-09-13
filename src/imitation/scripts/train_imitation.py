@@ -178,7 +178,9 @@ def train_imitation(
     trajectories = model._all_demos if use_dagger else expert_trajs
     assert trajectories is not None
     if all(isinstance(t, types.TrajectoryWithRew) for t in trajectories):
-        expert_stats = rollout.rollout_stats(cast(Sequence[types.TrajectoryWithRew], trajectories))
+        expert_stats = rollout.rollout_stats(
+            cast(Sequence[types.TrajectoryWithRew], trajectories),
+        )
         stats["expert_stats"] = expert_stats
     return stats
 
