@@ -163,13 +163,6 @@ def _make_env_and_save_reward_net(env_name, reward_type, tmpdir, random_state):
 def test_reward_valid(env_name, reward_type, tmpdir, random_state_fixed):
     """Test output of reward function is appropriate shape and type."""
     random_state = random_state_fixed
-    # TODO(juan) the line below is not being used?
-    venv = util.make_vec_env(
-        env_name,
-        n_envs=1,
-        parallel=False,
-        random_state=random_state,
-    )
     venv, tmppath = _make_env_and_save_reward_net(
         env_name,
         reward_type,
