@@ -64,10 +64,33 @@ if __name__ == "__main__":
     import traceback
 
     parser = argparse.ArgumentParser()
+    # capture files and paths to clean
+    parser.add_argument(
+        "files",
+        nargs="+",
+        type=pathlib.Path,
+        help="List of files or paths to clean",
+    )
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args()
     check_only = args.check
-    for file in pathlib.Path.cwd().glob("**/*.ipynb"):
+    # build list of files to scan from list of paths and files
+    files = []
+    if len(args.files) == 0:
+        parser.print_help()
+        exit(1)
+    for file in args.files:
+        if file.is_dir():
+            files.extend(file.glob("*.ipynb"))
+        else:
+            if file.suffix == ".ipynb":
+                files.append(file)
+            else:
+                print(f"Skipping {file} (not a notebook)")
+    if not files:
+        print("No notebooks found")
+        exit(1)
+    for file in files:
         print(f"Cleaning {file}" if not check_only else f"Checking {file}")
         try:
             clean_notebook(file, check_only=check_only)

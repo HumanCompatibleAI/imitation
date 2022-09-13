@@ -7,7 +7,7 @@ set -x  # echo commands
 set -e  # quit immediately on error
 
 echo "Source format checking"
-./ci/clean_notebooks.py --check
+./ci/clean_notebooks.py --check "${SRC_FILES[@]}"
 flake8 --darglint-ignore-regex '.*' "${SRC_FILES[@]}"
 black --check --diff "${SRC_FILES[@]}"
 codespell -I .codespell.skip --skip='*.pyc,tests/testdata/*,*.ipynb,*.csv' "${SRC_FILES[@]}"
