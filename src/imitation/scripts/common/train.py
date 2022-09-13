@@ -37,6 +37,15 @@ def sac():
 
 
 @train_ingredient.named_config
+def cnn():
+    policy_cls = base.CnnPolicy  # noqa: F841
+    # If features_extractor_class is not set, it will be set to a
+    # NormalizeFeaturesExtractor by default via the config hook, which implements an MLP.
+    # Therefore, to actually get this to implement a CNN, we need to set it here.
+    policy_kwargs = {"features_extractor_class": torch_layers.NatureCNN}  # noqa: F841
+
+
+@train_ingredient.named_config
 def normalize_disable():
     policy_kwargs = {  # noqa: F841
         # FlattenExtractor is the default for SB3; but we specify it here

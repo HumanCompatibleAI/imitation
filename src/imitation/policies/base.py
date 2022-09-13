@@ -88,6 +88,14 @@ class SAC1024Policy(sac_policies.SACPolicy):
         super().__init__(*args, **kwargs, net_arch=[1024, 1024])
 
 
+class CnnPolicy(policies.ActorCriticCnnPolicy):
+    """A CNN Actor-Critic policy."""
+
+    def __init__(self, *args, **kwargs):
+        """Builds CnnPolicy; arguments passed to `CnnActorCriticPolicy`."""
+        super().__init__(*args, **kwargs)
+
+
 class NormalizeFeaturesExtractor(torch_layers.FlattenExtractor):
     """Feature extractor that flattens then normalizes input."""
 
