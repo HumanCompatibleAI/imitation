@@ -185,7 +185,7 @@ def test_rollout_stats():
     env = ObsRewHalveWrapper(env)
     venv = vec_env.DummyVecEnv([lambda: env])
 
-    policy = serialize.load_policy("zero", "UNUSED", venv)
+    policy = serialize.load_policy("zero", venv)
     trajs = rollout.generate_trajectories(policy, venv, rollout.make_min_episodes(10))
     s = rollout.rollout_stats(trajs)
 
@@ -205,7 +205,7 @@ def test_unwrap_traj():
     env = ObsRewHalveWrapper(env)
     venv = vec_env.DummyVecEnv([lambda: env])
 
-    policy = serialize.load_policy("zero", "UNUSED", venv)
+    policy = serialize.load_policy("zero", venv)
     trajs = rollout.generate_trajectories(policy, venv, rollout.make_min_episodes(10))
     trajs_unwrapped = [rollout.unwrap_traj(t) for t in trajs]
     trajs_unwrapped_twice = [rollout.unwrap_traj(t) for t in trajs_unwrapped]
