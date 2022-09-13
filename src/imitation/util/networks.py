@@ -96,7 +96,7 @@ class BaseNorm(nn.Module, abc.ABC):
 
 AnyNorm = Union[
     normalization.LayerNorm,
-    normalization.GroupNorm,
+    # normalization.GroupNorm,  # does not work as it requires kwargs
     normalization.LocalResponseNorm,
     batchnorm._BatchNorm,
     BaseNorm,
