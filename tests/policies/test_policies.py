@@ -79,7 +79,7 @@ def test_save_stable_model_errors_and_warnings(
         serialize.load_policy(policy, venv, path=str(dir_nonexistent))
 
 
-def _test_serialize_identity(env_name, model_cfg, tmpdir):
+def _test_serialize_identity(env_name, model_cfg, tmpdir, rng):
     """Test output actions of deserialized policy are same as original."""
     venv = util.make_vec_env(
         env_name,

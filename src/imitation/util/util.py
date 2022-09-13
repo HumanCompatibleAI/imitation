@@ -67,6 +67,7 @@ def make_unique_timestamp() -> str:
 
 def make_vec_env(
     env_name: str,
+    *,
     rng: np.random.Generator,
     n_envs: int = 8,
     parallel: bool = False,

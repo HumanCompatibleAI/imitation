@@ -195,6 +195,78 @@ def test_transitions_left_in_buffer(agent_trainer):
     "schedule",
     ["constant", "hyperbolic", "inverse_quadratic", lambda t: 1 / (1 + t**3)],
 )
+def test_preference_comparisons_raises(
+    agent_trainer,
+    reward_net,
+    random_fragmenter,
+    preference_model,
+    custom_logger,
+    schedule,
+    rng,
+):
+    loss = preference_comparisons.CrossEntropyRewardLoss(preference_model)
+    reward_trainer = preference_comparisons.BasicRewardTrainer(
+        reward_net,
+        loss,
+    )
+    gatherer = preference_comparisons.SyntheticGatherer(rng=rng)
+    # no rng, must provide fragmenter, preference gatherer, reward trainer
+    no_rng_msg = (
+        ".*don't provide.*random state.*provide.*fragmenter"
+        ".*preference gatherer.*reward_trainer.*"
+    )
+
+    def build_preference_comparsions(gatherer, reward_trainer, fragmenter, rng):
+        preference_comparisons.PreferenceComparisons(
+            agent_trainer,
+            reward_net,
+            num_iterations=2,
+            transition_oversampling=2,
+            reward_trainer=reward_trainer,
+            preference_gatherer=gatherer,
+            fragmenter=fragmenter,
+            custom_logger=custom_logger,
+            query_schedule=schedule,
+            rng=rng,
+        )
+
+    with pytest.raises(ValueError, match=no_rng_msg):
+        build_preference_comparsions(gatherer, None, None, rng=None)
+
+    with pytest.raises(ValueError, match=no_rng_msg):
+        build_preference_comparsions(None, reward_trainer, None, rng=None)
+
+    with pytest.raises(ValueError, match=no_rng_msg):
+        build_preference_comparsions(None, None, random_fragmenter, rng=None)
+
+    # This should not raise
+    build_preference_comparsions(gatherer, reward_trainer, random_fragmenter, rng=None)
+
+    # if providing fragmenter, preference gatherer, reward trainer, does not need rng.
+    with_rng_msg = (
+        "provide.*fragmenter.*preference gatherer.*reward trainer"
+        ".*don't need.*random state.*"
+    )
+
+    with pytest.raises(ValueError, match=with_rng_msg):
+        build_preference_comparsions(
+            gatherer,
+            reward_trainer,
+            random_fragmenter,
+            rng=rng,
+        )
+
+    # This should not raise
+    build_preference_comparsions(None, None, None, rng=rng)
+    build_preference_comparsions(gatherer, None, None, rng=rng)
+    build_preference_comparsions(None, reward_trainer, None, rng=rng)
+    build_preference_comparsions(None, None, random_fragmenter, rng=rng)
+
+
+@pytest.mark.parametrize(
+    "schedule",
+    ["constant", "hyperbolic", "inverse_quadratic", lambda t: 1 / (1 + t**3)],
+)
 def test_trainer_no_crash(
     agent_trainer,
     reward_net,

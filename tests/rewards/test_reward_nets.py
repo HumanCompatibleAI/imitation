@@ -360,8 +360,8 @@ def test_strip_wrappers_complex(rng):
     assert isinstance(net, reward_nets.BasicRewardNet)
 
 
-def test_strip_wrappers_image_complex():
-    venv = util.make_vec_env("Asteroids-v4", n_envs=1, parallel=False)
+def test_strip_wrappers_image_complex(rng):
+    venv = util.make_vec_env("Asteroids-v4", n_envs=1, parallel=False, rng=rng)
     net = reward_nets.CnnRewardNet(venv.observation_space, venv.action_space)
     net = reward_nets.ShapedRewardNet(net, _potential, discount_factor=0.99)
     net = reward_nets.NormalizedRewardNet(net, networks.RunningNorm)
@@ -538,6 +538,7 @@ def test_serialize_identity(
     net_kwargs,
     normalize_rewards,
     tmpdir,
+    rng,
 ):
     """Does output of deserialized reward MLP match that of original?"""
     _serialize_deserialize_identity(
@@ -546,6 +547,7 @@ def test_serialize_identity(
         net_kwargs,
         normalize_rewards,
         tmpdir,
+        rng,
     )
 
 
@@ -559,6 +561,7 @@ def test_serialize_identity_images(
     net_kwargs,
     normalize_rewards,
     tmpdir,
+    rng,
 ):
     """Does output of deserialized reward CNN match that of original?"""
     _serialize_deserialize_identity(
@@ -567,6 +570,7 @@ def test_serialize_identity_images(
         net_kwargs,
         normalize_rewards,
         tmpdir,
+        rng,
     )
 
 

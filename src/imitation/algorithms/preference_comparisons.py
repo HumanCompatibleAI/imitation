@@ -1455,8 +1455,8 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
             fragmenter,
         ):
             raise ValueError(
-                "If you provide your own fragmenter and preference gatherer, you "
-                "don't need to provide a random state.",
+                "If you provide your own fragmenter, preference gatherer, "
+                "and reward trainer, you don't need to provide a random state.",
             )
 
         if reward_trainer is None:

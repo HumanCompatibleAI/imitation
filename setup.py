@@ -217,7 +217,7 @@ setup(
         # recommended packages for development
         "dev": [
             "autopep8",
-            "awscli",
+            # "awscli",
             "ntfy[slack]",
             "ipdb",
             "isort~=5.0",
