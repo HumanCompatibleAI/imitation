@@ -119,7 +119,7 @@ def seals_mountain_car():
 
 
 @train_preference_comparisons_ex.named_config
-def asteroids_fast():
+def asteroids_short_episodes():
     common = dict(
         env_name="AsteroidsNoFrameskip-v4",
         post_wrappers=[
