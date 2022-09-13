@@ -34,9 +34,10 @@ class RegularizerFactory(Protocol[T_Regularizer_co]):
     This two-step process separates the configuration of the regularization
     algorithm from additional "operational" parameters. This is useful because it
     solves two problems:
-        1. The end-user does not have access to the optimizer and logger when
-        configuring the regularization algorithm.
-        2. Validation of the configuration is done outside the network constructor.
+
+    #. The end-user does not have access to the optimizer and logger when
+       configuring the regularization algorithm.
+    #. Validation of the configuration is done outside the network constructor.
 
     It also allows re-using the same regularizer factory for multiple networks.
     """
@@ -99,7 +100,9 @@ class Regularizer(abc.ABC, Generic[R]):
             or val_split <= 0
             or val_split >= 1
         ):
-            raise ValueError(f"val_split = {val_split} must be a float strictly between 0 and 1.")
+            raise ValueError(
+                f"val_split = {val_split} must be a float strictly between 0 and 1.",
+            )
 
         if lambda_updater is not None and val_split is None:
             raise ValueError(

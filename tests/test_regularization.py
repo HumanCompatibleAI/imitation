@@ -228,7 +228,7 @@ def test_regularizer_init_raises_on_val_split(
     interval_param_scaler,
     val_split,
 ):
-    val_split_err_msg = "val_split must be a float strictly between.*"
+    val_split_err_msg = "val_split.*must be a float.*between.*"
     with pytest.raises(ValueError, match=val_split_err_msg):
         return SimpleRegularizer(
             initial_lambda=initial_lambda,
