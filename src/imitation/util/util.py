@@ -275,7 +275,7 @@ def safe_to_numpy(
     """
     if obj is None:
         # We ignore the type due to https://github.com/google/pytype/issues/445
-        return None  # type: ignore[bad-return-type]
+        return None  # pytype: disable=bad-return-type
     elif isinstance(obj, np.ndarray):
         return obj
     else:
