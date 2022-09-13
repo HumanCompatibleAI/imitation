@@ -97,7 +97,7 @@ def train_rl(
     os.makedirs(policy_dir, exist_ok=True)
 
     all_post_wrappers = common["post_wrappers"] + [
-        lambda env, idx: wrappers.RolloutInfoWrapper(env)
+        lambda env, idx: wrappers.RolloutInfoWrapper(env),
     ]
     with scripts_common.make_venv(post_wrappers=all_post_wrappers) as venv:
         callback_objs = []
