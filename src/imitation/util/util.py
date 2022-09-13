@@ -280,7 +280,8 @@ def safe_to_numpy(
         return obj
     else:
         if warn:
-            warnings.warn(f"Converted tensor {obj} to numpy array.")
+            warnings.warn(f"Converted tensor to numpy array, might affect performance. "
+                          f"Make sure this is the intended behavior.")
         return obj.detach().cpu().numpy()
 
 
@@ -337,6 +338,7 @@ def get_first_iter_element(iterable: Iterable[T]) -> Tuple[T, Iterable[T]]:
     except StopIteration:
         raise ValueError(f"iterable {iterable} had no elements to iterate over.")
 
+    return_iterable: Iterable[T]
     if iterator == iterable:
         # `iterable` was an iterator. Getting `first_element` will have removed it
         # from `iterator`, so we need to add a fresh iterable with `first_element`
