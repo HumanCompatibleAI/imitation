@@ -3,7 +3,7 @@
 import sacred
 
 from imitation.rewards import reward_nets
-from imitation.scripts.common import common, demonstrations, reward, rl, train
+from imitation.scripts.common import common, demonstrations, expert, reward, rl, train
 
 train_adversarial_ex = sacred.Experiment(
     "train_adversarial",
@@ -13,6 +13,7 @@ train_adversarial_ex = sacred.Experiment(
         reward.reward_ingredient,
         rl.rl_ingredient,
         train.train_ingredient,
+        expert.expert_ingredient,
     ],
 )
 
@@ -99,16 +100,14 @@ def seals_ant():
     common = dict(env_name="seals/Ant-v0")
 
 
-@train_adversarial_ex.named_config
-def half_cheetah():
-    locals().update(**MUJOCO_SHARED_LOCALS)
-    common = dict(env_name="HalfCheetah-v2")
-    rl = dict(batch_size=16384, rl_kwargs=dict(batch_size=1024))
-    algorithm_specific = dict(
+CHEETAH_SHARED_LOCALS = dict(
+    MUJOCO_SHARED_LOCALS,
+    rl=dict(batch_size=16384, rl_kwargs=dict(batch_size=1024)),
+    algorithm_specific=dict(
         airl=dict(total_timesteps=int(5e6)),
         gail=dict(total_timesteps=int(8e6)),
-    )
-    reward = dict(
+    ),
+    reward=dict(
         algorithm_specific=dict(
             airl=dict(
                 net_cls=reward_nets.BasicShapedRewardNet,
@@ -118,14 +117,27 @@ def half_cheetah():
                 ),
             ),
         ),
-    )
-    algorithm_kwargs = dict(
+    ),
+    algorithm_kwargs=dict(
         # Number of discriminator updates after each round of generator updates
         n_disc_updates_per_round=16,
         # Equivalent to no replay buffer if batch size is the same
         gen_replay_buffer_capacity=16384,
         demo_batch_size=8192,
-    )
+    ),
+)
+
+
+@train_adversarial_ex.named_config
+def half_cheetah():
+    locals().update(**CHEETAH_SHARED_LOCALS)
+    common = dict(env_name="HalfCheetah-v2")
+
+
+@train_adversarial_ex.named_config
+def seals_half_cheetah():
+    locals().update(**CHEETAH_SHARED_LOCALS)
+    common = dict(env_name="seals/HalfCheetah-v0")
 
 
 @train_adversarial_ex.named_config

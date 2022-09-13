@@ -14,10 +14,7 @@ from imitation.util import logger as imit_logger
 from imitation.util import sacred as sacred_util
 from imitation.util import util
 
-common_ingredient = sacred.Ingredient(
-    "common",
-    ingredients=[wb.wandb_ingredient],
-)
+common_ingredient = sacred.Ingredient("common", ingredients=[wb.wandb_ingredient])
 logger = logging.getLogger(__name__)
 
 
@@ -166,17 +163,19 @@ def make_venv(
         The constructed vector environment.
     """
     rng = make_rng()
+    # Note: we create the venv outside the try -- finally block for the case that env
+    #     creation fails.
+    venv = util.make_vec_env(
+        env_name,
+        rng=rng,
+        n_envs=num_vec,
+        parallel=parallel,
+        max_episode_steps=max_episode_steps,
+        log_dir=log_dir,
+        env_make_kwargs=env_make_kwargs,
+        **kwargs,
+    )
     try:
-        venv = util.make_vec_env(
-            env_name,
-            rng=rng,
-            n_envs=num_vec,
-            parallel=parallel,
-            max_episode_steps=max_episode_steps,
-            log_dir=log_dir,
-            env_make_kwargs=env_make_kwargs,
-            **kwargs,
-        )
         yield venv
     finally:
         venv.close()

@@ -6,6 +6,7 @@ from typing import Callable, Iterable, Optional, Sequence, Tuple, Type, cast
 import gym
 import numpy as np
 import torch as th
+from gym import spaces
 from stable_baselines3.common import preprocessing
 from torch import nn
 
@@ -169,7 +170,7 @@ class RewardNet(nn.Module, abc.ABC):
             done: End-of-episode (terminal state) indicator of shape `(batch_size,)`.
 
         Returns:
-            Computed rewards of shape `(batch_size,`).
+            Computed rewards of shape `(batch_size,)`.
         """
         rew_th = self.predict_th(state, action, next_state, done)
         return rew_th.detach().cpu().numpy().flatten()
@@ -257,7 +258,18 @@ class RewardNetWrapper(RewardNet):
 
     @property
     def dtype(self) -> th.dtype:
+        __doc__ = super().dtype.__doc__  # noqa: F841
         return self.base.dtype
+
+    def preprocess(
+        self,
+        state: np.ndarray,
+        action: np.ndarray,
+        next_state: np.ndarray,
+        done: np.ndarray,
+    ) -> Tuple[th.Tensor, th.Tensor, th.Tensor, th.Tensor]:
+        __doc__ = super().preprocess.__doc__  # noqa: F841
+        return self.base.preprocess(state, action, next_state, done)
 
 
 class ForwardWrapper(RewardNetWrapper):
@@ -340,16 +352,6 @@ class PredictProcessedWrapper(RewardNetWrapper):
         __doc__ = super().predict_th.__doc__  # noqa: F841
         return self.base.predict_th(state, action, next_state, done)
 
-    def preprocess(
-        self,
-        state: np.ndarray,
-        action: np.ndarray,
-        next_state: np.ndarray,
-        done: np.ndarray,
-    ) -> Tuple[th.Tensor, th.Tensor, th.Tensor, th.Tensor]:
-        __doc__ = super().preprocess.__doc__  # noqa: F841
-        return self.base.preprocess(state, action, next_state, done)
-
 
 class RewardNetWithVariance(RewardNet):
     """A reward net that keeps track of its epistemic uncertainty through variance."""
@@ -425,20 +427,16 @@ class BasicRewardNet(RewardNet):
         if self.use_done:
             combined_size += 1
 
-        # kwargs except for in_size, out_size, squeeze_output keys,
-        # so they are not overridden.
-        kwargs = {
-            k: v
-            for k, v in kwargs.items()
-            if k not in ("in_size", "out_size", "squeeze_output", "hid_sizes")
-        }
-        self.mlp = networks.build_mlp(
-            hid_sizes=(32, 32),
-            in_size=combined_size,
-            out_size=1,
-            squeeze_output=True,
+        full_build_mlp_kwargs = {
+            "hid_sizes": (32, 32),
             **kwargs,
-        )
+            # we do not want the values below to be overridden
+            "in_size": combined_size,
+            "out_size": 1,
+            "squeeze_output": True,
+        }
+
+        self.mlp = networks.build_mlp(**full_build_mlp_kwargs)
 
     def forward(self, state, action, next_state, done):
         inputs = []
@@ -457,6 +455,156 @@ class BasicRewardNet(RewardNet):
         assert outputs.shape == state.shape[:1]
 
         return outputs
+
+
+class CnnRewardNet(RewardNet):
+    """CNN that takes as input the state, action, next state and done flag.
+
+    Inputs are boosted to tensors with channel, height, and width dimensions, and then
+    concatenated. Image inputs are assumed to be in (h,w,c) format, unless the argument
+    hwc_format=False is passed in. Each input can be enabled or disabled by the `use_*`
+    constructor keyword arguments, but either `use_state` or `use_next_state` must be
+    True.
+    """
+
+    def __init__(
+        self,
+        observation_space: gym.Space,
+        action_space: gym.Space,
+        use_state: bool = True,
+        use_action: bool = True,
+        use_next_state: bool = False,
+        use_done: bool = False,
+        hwc_format: bool = True,
+        **kwargs,
+    ):
+        """Builds reward CNN.
+
+        Args:
+            observation_space: The observation space.
+            action_space: The action space.
+            use_state: Should the current state be included as an input to the CNN?
+            use_action: Should the current action be included as an input to the CNN?
+            use_next_state: Should the next state be included as an input to the CNN?
+            use_done: Should the "done" flag be included as an input to the CNN?
+            hwc_format: Are image inputs in (h,w,c) format (True), or (c,h,w) (False)?
+                If hwc_format is False, image inputs are not transposed.
+            kwargs: Passed straight through to `build_cnn`.
+
+        Raises:
+            ValueError: if observation or action space is not easily massaged into a
+                CNN input.
+        """
+        super().__init__(observation_space, action_space)
+        self.use_state = use_state
+        self.use_action = use_action
+        self.use_next_state = use_next_state
+        self.use_done = use_done
+        self.hwc_format = hwc_format
+
+        if not (self.use_state or self.use_next_state):
+            raise ValueError("CnnRewardNet must take current or next state as input.")
+
+        if not preprocessing.is_image_space(observation_space):
+            raise ValueError(
+                "CnnRewardNet requires observations to be images.",
+            )
+        if self.use_action and not isinstance(action_space, spaces.Discrete):
+            raise ValueError(
+                "CnnRewardNet can only use Discrete action spaces.",
+            )
+
+        input_size = 0
+        output_size = 1
+
+        if self.use_state:
+            input_size += self.get_num_channels_obs(observation_space)
+
+        if self.use_action:
+            output_size = action_space.n
+
+        if self.use_next_state:
+            input_size += self.get_num_channels_obs(observation_space)
+
+        if self.use_done:
+            output_size *= 2
+
+        full_build_cnn_kwargs = {
+            "hid_channels": (32, 32),
+            **kwargs,
+            # we do not want the values below to be overridden
+            "in_channels": input_size,
+            "out_size": output_size,
+            "squeeze_output": output_size == 1,
+        }
+
+        self.cnn = networks.build_cnn(**full_build_cnn_kwargs)
+
+    def get_num_channels_obs(self, space: spaces.Box) -> int:
+        """Gets number of channels for the observation."""
+        return space.shape[-1] if self.hwc_format else space.shape[0]
+
+    def forward(
+        self,
+        state: th.Tensor,
+        action: th.Tensor,
+        next_state: th.Tensor,
+        done: th.Tensor,
+    ) -> th.Tensor:
+        """Computes rewardNet value on input state, action, next_state, and done flag.
+
+        Takes inputs that will be used, transposes image states to (c,h,w) format if
+        needed, reshapes inputs to have compatible dimensions, concatenates them, and
+        inputs them into the CNN.
+
+        Args:
+            state: current state.
+            action: current action.
+            next_state: next state.
+            done: flag for whether the episode is over.
+
+        Returns:
+            th.Tensor: reward of the transition.
+        """
+        inputs = []
+        if self.use_state:
+            state_ = cnn_transpose(state) if self.hwc_format else state
+            inputs.append(state_)
+        if self.use_next_state:
+            next_state_ = cnn_transpose(next_state) if self.hwc_format else next_state
+            inputs.append(next_state_)
+
+        inputs_concat = th.cat(inputs, dim=1)
+        outputs = self.cnn(inputs_concat)
+        if self.use_action and not self.use_done:
+            # for discrete action spaces, action is passed to forward as a one-hot
+            # vector.
+            rewards = th.sum(outputs * action, dim=1)
+        elif self.use_action and self.use_done:
+            # here, we double the size of the one-hot vector, where the first entries
+            # are for done=False and the second are for done=True.
+            action_done_false = action * (1 - done[:, None])
+            action_done_true = action * done[:, None]
+            full_acts = th.cat((action_done_false, action_done_true), dim=1)
+            rewards = th.sum(outputs * full_acts, dim=1)
+        elif not self.use_action and self.use_done:
+            # here we turn done into a one-hot vector.
+            dones_binary = done.type(th.LongTensor)
+            dones_one_hot = nn.functional.one_hot(dones_binary, num_classes=2)
+            rewards = th.sum(outputs * dones_one_hot, dim=1)
+        else:
+            rewards = outputs
+        return rewards
+
+
+def cnn_transpose(tens: th.Tensor) -> th.Tensor:
+    """Transpose a (b,h,w,c)-formatted tensor to (b,c,h,w) format."""
+    if len(tens.shape) == 4:
+        return th.permute(tens, (0, 3, 1, 2))
+    else:
+        raise ValueError(
+            f"Invalid input: len(tens.shape) = {len(tens.shape)} != 4.",
+        )
 
 
 class NormalizedRewardNet(PredictProcessedWrapper):
@@ -589,7 +737,7 @@ class BasicShapedRewardNet(ShapedRewardNet):
     """Shaped reward net based on MLPs.
 
     This is just a very simple convenience class for instantiating a BasicRewardNet
-    and a BasicPotentialShaping and wrapping them inside a ShapedRewardNet.
+    and a BasicPotentialMLP and wrapping them inside a ShapedRewardNet.
     Mainly exists for backwards compatibility after
     https://github.com/HumanCompatibleAI/imitation/pull/311
     to keep the scripts working.
@@ -686,6 +834,46 @@ class BasicPotentialMLP(nn.Module):
 
     def forward(self, state: th.Tensor) -> th.Tensor:
         return self._potential_net(state)
+
+
+class BasicPotentialCNN(nn.Module):
+    """Simple implementation of a potential using a CNN."""
+
+    def __init__(
+        self,
+        observation_space: gym.Space,
+        hid_sizes: Iterable[int],
+        hwc_format: bool = True,
+        **kwargs,
+    ):
+        """Initialize the potential.
+
+        Args:
+            observation_space: observation space of the environment.
+            hid_sizes: number of channels in hidden layers of the CNN.
+            hwc_format: format of the observation. True if channel dimension is last,
+                False if channel dimension is first.
+            kwargs: passed straight through to `build_cnn`.
+
+        Raises:
+            ValueError: if observations are not images.
+        """
+        super().__init__()
+        self.hwc_format = hwc_format
+        if not preprocessing.is_image_space(observation_space):
+            raise ValueError("CNN potential must be given image inputs.")
+        obs_shape = observation_space.shape
+        in_channels = obs_shape[-1] if self.hwc_format else obs_shape[0]
+        self._potential_net = networks.build_cnn(
+            in_channels=in_channels,
+            hid_channels=hid_sizes,
+            squeeze_output=True,
+            **kwargs,
+        )
+
+    def forward(self, state: th.Tensor) -> th.Tensor:
+        state_ = cnn_transpose(state) if self.hwc_format else state
+        return self._potential_net(state_)
 
 
 class RewardEnsemble(RewardNetWithVariance):

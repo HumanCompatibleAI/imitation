@@ -11,10 +11,9 @@ from sacred.observers import FileStorageObserver
 from stable_baselines3.common.vec_env import VecEnvWrapper
 
 from imitation.data import rollout, types
-from imitation.policies import serialize
 from imitation.rewards import reward_wrapper
 from imitation.rewards.serialize import load_reward
-from imitation.scripts.common import common
+from imitation.scripts.common import common, expert
 from imitation.scripts.config.eval_policy import eval_policy_ex
 from imitation.util import video_wrapper
 
@@ -60,8 +59,6 @@ def eval_policy(
     render_fps: int,
     videos: bool,
     video_kwargs: Mapping[str, Any],
-    policy_type: Optional[str],
-    policy_path: Optional[str],
     reward_type: Optional[str] = None,
     reward_path: Optional[str] = None,
     rollout_save_path: Optional[str] = None,
@@ -77,9 +74,6 @@ def eval_policy(
         render_fps: The target number of frames per second to render on screen.
         videos: If True, saves videos to `log_dir`.
         video_kwargs: Keyword arguments passed through to `video_wrapper.VideoWrapper`.
-        policy_type: A unique identifier for the saved policy,
-            defined in POLICY_CLASSES. If None, then uses a random policy.
-        policy_path: A path to the serialized policy.
         reward_type: If specified, overrides the environment reward with
             a reward of this.
         reward_path: If reward_type is specified, the path to a serialized reward
@@ -103,12 +97,8 @@ def eval_policy(
             venv = reward_wrapper.RewardVecEnvWrapper(venv, reward_fn)
             logging.info(f"Wrapped env in reward {reward_type} from {reward_path}.")
 
-        policy = None
-        if policy_type is not None:
-            assert policy_path is not None
-            policy = serialize.load_policy(policy_type, policy_path, venv)
         trajs = rollout.generate_trajectories(
-            policy,
+            expert.get_expert_policy(venv),
             venv,
             sample_until,
             rng=rng,

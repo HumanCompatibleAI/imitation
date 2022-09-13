@@ -147,7 +147,7 @@ def train_rl(
             )
             types.save(
                 save_path,
-                rollout.rollout(rl_algo, venv, sample_until, rng),
+                rollout.rollout(rl_algo, rl_algo.get_env(), sample_until, rng=rng),
             )
         if policy_save_final:
             output_dir = os.path.join(policy_dir, "final")
