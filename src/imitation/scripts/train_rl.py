@@ -86,6 +86,7 @@ def train_rl(
         policy_save_final: If True, then save the policy right after training is
             finished.
         agent_path: Path to load warm-started agent.
+        common: Dummy argument for the `common` ingredient configuration.
 
     Returns:
         The return value of `rollout_stats()` using the final policy.
