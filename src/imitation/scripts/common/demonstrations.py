@@ -43,7 +43,6 @@ def get_expert_trajectories(
 @demonstrations_ingredient.capture
 def generate_expert_trajs(
     n_expert_demos: Optional[int],
-    rng,
 ) -> Optional[Sequence[types.Trajectory]]:
     """Generates expert demonstrations.
 
@@ -57,6 +56,7 @@ def generate_expert_trajs(
     Raises:
         ValueError: If n_expert_demos is None.
     """
+    rng = common.make_rng()
     if n_expert_demos is None:
         raise ValueError("n_expert_demos must be specified when rollout_path is None")
 
