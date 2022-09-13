@@ -99,7 +99,7 @@ class Regularizer(abc.ABC, Generic[R]):
             or val_split <= 0
             or val_split >= 1
         ):
-            raise ValueError("val_split must be a float strictly between 0 and 1.")
+            raise ValueError(f"val_split = {val_split} must be a float strictly between 0 and 1.")
 
         if lambda_updater is not None and val_split is None:
             raise ValueError(
