@@ -15,10 +15,10 @@ Scalar = Union[th.Tensor, float]
 
 R = TypeVar("R")
 Self = TypeVar("Self", bound="Regularizer")
-T_Regularizer_co = TypeVar(
+T_Regularizer_co = TypeVar(  # pytype: disable=not-supported-yet
     "T_Regularizer_co",
     covariant=True,
-)  # type: ignore[not-supported-yet]
+)
 
 
 class RegularizerFactory(Protocol[T_Regularizer_co]):
