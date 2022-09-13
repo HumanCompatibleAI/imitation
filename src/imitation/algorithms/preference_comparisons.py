@@ -1179,7 +1179,7 @@ class BasicRewardTrainer(RewardTrainer):
                     loss = self._training_inner_loop(
                         fragment_pairs,
                         preferences,
-                        mode=f"{prefix}/train",
+                        prefix=f"{prefix}/train",
                     )
                     train_loss += loss.item()
                     if self.regularizer:
@@ -1198,7 +1198,7 @@ class BasicRewardTrainer(RewardTrainer):
                     loss = self._training_inner_loop(
                         fragment_pairs,
                         preferences,
-                        mode=f"{prefix}/val",
+                        prefix=f"{prefix}/val",
                     )
                     val_loss += loss.item()
                 self.regularizer.update_params(train_loss, val_loss)
@@ -1216,13 +1216,13 @@ class BasicRewardTrainer(RewardTrainer):
         self,
         fragment_pairs: Sequence[TrajectoryPair],
         preferences: np.ndarray,
-        mode: Optional[str] = None,
+        prefix: Optional[str] = None,
     ) -> th.Tensor:
         output = self.loss.forward(fragment_pairs, preferences)
         loss = output.loss
-        self.logger.record(self._get_logger_key(mode, "loss"), loss.item())
+        self.logger.record(self._get_logger_key(prefix, "loss"), loss.item())
         for name, value in output.metrics.items():
-            self.logger.record(self._get_logger_key(mode, name), value.item())
+            self.logger.record(self._get_logger_key(prefix, name), value.item())
         return loss
 
     # TODO(juan) refactor & remove once #529 is merged.
@@ -1288,7 +1288,7 @@ class EnsembleTrainer(BasicRewardTrainer):
         self,
         fragment_pairs: Sequence[TrajectoryPair],
         preferences: np.ndarray,
-        mode: Optional[str] = None,
+        prefix: Optional[str] = None,
     ) -> th.Tensor:
         assert len(fragment_pairs) == preferences.shape[0]
         losses = []
@@ -1308,14 +1308,16 @@ class EnsembleTrainer(BasicRewardTrainer):
         losses = th.stack(losses)
         loss = losses.sum()
 
-        self.logger.record(self._get_logger_key(mode, "loss"), loss.item())
-        self.logger.record(self._get_logger_key(mode, "loss_std"), losses.std().item())
+        self.logger.record(self._get_logger_key(prefix, "loss"), loss.item())
+        self.logger.record(
+            self._get_logger_key(prefix, "loss_std"), losses.std().item()
+        )
 
         # Turn metrics from a list of dictionaries into a dictionary of
         # tensors.
         metrics = {k: th.stack([di[k] for di in metrics]) for k in metrics[0]}
         for name, value in metrics.items():
-            self.logger.record(self._get_logger_key(mode, name), value.mean().item())
+            self.logger.record(self._get_logger_key(prefix, name), value.mean().item())
 
         return loss
 
