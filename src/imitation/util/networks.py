@@ -3,10 +3,11 @@ import abc
 import collections
 import contextlib
 import functools
-from typing import Iterable, Optional, OrderedDict, Type
+from typing import Iterable, Optional, OrderedDict, Type, Union
 
 import torch as th
 from torch import nn
+from torch.nn.modules import normalization, batchnorm
 
 
 @contextlib.contextmanager
@@ -91,6 +92,15 @@ class BaseNorm(nn.Module, abc.ABC):
     @abc.abstractmethod
     def update_stats(self, batch: th.Tensor) -> None:
         """Update `self.running_mean`, `self.running_var` and `self.count`."""
+
+
+AnyNorm = Union[
+    normalization.LayerNorm,
+    normalization.GroupNorm,
+    normalization.LocalResponseNorm,
+    batchnorm._BatchNorm,
+    BaseNorm,
+]
 
 
 class RunningNorm(BaseNorm):
@@ -205,7 +215,7 @@ def build_mlp(
     dropout_prob: float = 0.0,
     squeeze_output: bool = False,
     flatten_input: bool = False,
-    normalize_input_layer: Optional[Type[BaseNorm]] = None,
+    normalize_input_layer: Optional[Type[AnyNorm]] = None,
 ) -> nn.Module:
     """Constructs a Torch MLP.
 
