@@ -1223,6 +1223,7 @@ class BasicRewardTrainer(RewardTrainer):
             self.logger.record(self._get_logger_key(mode, name), value.item())
         return loss
 
+    # TODO(juan) refactor & remove once #529 is merged.
     def _get_logger_key(self, mode: Optional[str], key: str) -> str:
         if mode is None:
             return key
