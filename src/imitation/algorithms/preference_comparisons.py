@@ -861,7 +861,7 @@ class SyntheticGatherer(PreferenceGatherer):
         self.threshold = threshold
 
         if self.sample and self.rng is None:
-            raise ValueError("If sample is True, then rng must be provided.")
+            raise ValueError("If `sample` is True, then `rng` must be provided.")
 
     def __call__(self, fragment_pairs: Sequence[TrajectoryWithRewPair]) -> np.ndarray:
         """Computes probability fragment 1 is preferred over fragment 2."""
