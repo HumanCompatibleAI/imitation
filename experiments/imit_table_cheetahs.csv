@@ -1,3 +1,2 @@
 env_config_name,n_expert_demos
-half_cheetah_gail,40
-half_cheetah_airl,40
+seals_half_cheetah,40
