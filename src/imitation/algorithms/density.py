@@ -143,8 +143,13 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
                 "STATE_STATE_DENSITY requires next_obs_b "
                 "to be provided, but it was None",
             )
+
+        assert act_b.shape[1:] == self.venv.action_space.shape
+        assert obs_b.shape[1:] == self.venv.observation_space.shape
+        assert len(act_b) == len(obs_b)
         if next_obs_b is not None:
             assert next_obs_b.shape[1:] == self.venv.observation_space.shape
+            assert len(next_obs_b) == len(obs_b)
 
         next_obs_b_iterator = next_obs_b or itertools.repeat(None)
         for obs, act, next_obs in zip(obs_b, act_b, next_obs_b_iterator):
