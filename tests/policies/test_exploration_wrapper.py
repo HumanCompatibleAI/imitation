@@ -40,6 +40,9 @@ def test_random_prob(rng):
     (2) `random_prob=1.0`: Initial and following policies are always random policies.
     (3) `random_prob=0.5`: Around half-half for constant and random policies.
 
+    Args:
+        rng (np.random.Generator): random number generator.
+
     Raises:
         ValueError: Unknown policy type to switch.
     """
@@ -81,6 +84,9 @@ def test_switch_prob(rng):
     (1) `switch_prob=0.0`: The policy never switches after initial switch.
     (2) `switch_prob=1.0`: The policy always switches and the distribution of
         policies is determined by `random_prob`.
+
+    Args:
+        rng (np.random.Generator): random number generator.
     """
     wrapper, venv = make_wrapper(random_prob=0.5, switch_prob=0.0, rng=rng)
     policy = wrapper.current_policy

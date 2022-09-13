@@ -18,7 +18,8 @@ Example
 Detailed example notebook: `1_train_bc.ipynb <https://github.com/HumanCompatibleAI/imitation/blob/master/examples/1_train_bc.ipynb>`_
 
 .. testcode::
-    
+
+    import numpy as np
     import gym
     from stable_baselines3 import PPO
     from stable_baselines3.common.evaluation import evaluate_policy
@@ -29,6 +30,7 @@ Detailed example notebook: `1_train_bc.ipynb <https://github.com/HumanCompatible
     from imitation.data import rollout
     from imitation.data.wrappers import RolloutInfoWrapper
 
+    rng = np.random.default_rng(0)
     env = gym.make("CartPole-v1")
     expert = PPO(policy=MlpPolicy, env=env)
     expert.learn(1000)
@@ -37,6 +39,7 @@ Detailed example notebook: `1_train_bc.ipynb <https://github.com/HumanCompatible
         expert,
         DummyVecEnv([lambda: RolloutInfoWrapper(env)]),
         rollout.make_sample_until(min_timesteps=None, min_episodes=50),
+        rng=rng,
     )
     transitions = rollout.flatten_trajectories(rollouts)
 
