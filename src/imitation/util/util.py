@@ -257,7 +257,7 @@ def safe_to_numpy(obj: None, warn: bool = False) -> None:
 
 def safe_to_numpy(
     obj: Optional[Union[np.ndarray, th.Tensor]],
-    warn=False,
+    warn: bool = False,
 ) -> Optional[np.ndarray]:
     """Convert torch tensor to numpy.
 
