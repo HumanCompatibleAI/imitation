@@ -43,6 +43,7 @@ def get_expert_trajectories(
 @demonstrations_ingredient.capture
 def generate_expert_trajs(
     n_expert_demos: Optional[int],
+    rng,
 ) -> Optional[Sequence[types.Trajectory]]:
     """Generates expert demonstrations.
 
@@ -67,6 +68,7 @@ def generate_expert_trajs(
             expert.get_expert_policy(rollout_env),
             rollout_env,
             rollout.make_sample_until(min_episodes=n_expert_demos),
+            rng=rng,
         )
 
 

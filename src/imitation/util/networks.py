@@ -215,7 +215,7 @@ def build_mlp(
     dropout_prob: float = 0.0,
     squeeze_output: bool = False,
     flatten_input: bool = False,
-    normalize_input_layer: Optional[Type[AnyNorm]] = None,
+    normalize_input_layer: Optional[Type[nn.Module]] = None,
 ) -> nn.Module:
     """Constructs a Torch MLP.
 
