@@ -3,7 +3,7 @@ import collections
 import contextlib
 import functools
 from abc import ABC, abstractclassmethod
-from typing import Iterable, Optional, Type
+from typing import Iterable, Optional, Type, Union
 
 import torch as th
 from torch import nn
@@ -68,7 +68,7 @@ class BaseNorm(nn.Module, ABC):
         self.register_buffer("running_mean", th.empty(num_features))
         self.register_buffer("running_var", th.empty(num_features))
         self.register_buffer("count", th.empty((), dtype=th.int))
-        self.reset_running_stats()
+        BaseNorm.reset_running_stats(self)
 
     def reset_running_stats(self) -> None:
         """Resets running stats to defaults, yielding the identity transformation."""
@@ -132,6 +132,9 @@ class RunningNorm(BaseNorm):
 class EMANorm(BaseNorm):
     """Similar to RunningNorm but uses an exponential weighting."""
 
+    inv_learning_rate: th.Tensor
+    num_batches: th.IntTensor
+
     def __init__(
         self,
         num_features: int,
@@ -142,7 +145,7 @@ class EMANorm(BaseNorm):
 
         Args:
             num_features: Number of features; the length of the non-batch dim.
-            decay: how quickly the weight on past samples decays over time
+            decay: how quickly the weight on past samples decays over time.
             eps: small constant for numerical stability.
 
         Raises:
@@ -154,12 +157,21 @@ class EMANorm(BaseNorm):
             raise ValueError("decay must be between 0 and 1")
 
         self.decay = decay
+        self.register_buffer("inv_learning_rate", th.empty(()))
+        self.register_buffer("num_batches", th.empty((), dtype=th.int))
+        EMANorm.reset_running_stats(self)
+
+    def reset_running_stats(self):
+        """Reset the running stats of the normalization layer."""
+        super().reset_running_stats()
+        self.inv_learning_rate.zero_()
+        self.num_batches.zero_()
 
     def update_stats(self, batch: th.Tensor) -> None:
         """Update `self.running_mean` and `self.running_var` in batch mode.
 
         Reference Algorithm 3 from:
-        https://github.com/HumanCompatibleAI/imitation/files/9364938/Incremental_batch_EMA_and_EMV.pdf
+        https://github.com/HumanCompatibleAI/imitation/files/9456540/Incremental_batch_EMA_and_EMV.pdf
 
         Args:
             batch: A batch of data to use to update the running mean and variance.
@@ -168,24 +180,20 @@ class EMANorm(BaseNorm):
         if len(batch.shape) == 1:
             batch = batch.reshape(b_size, 1)
 
-        alpha = 1 - self.decay
-        if self.count == 0:
-            self.running_mean = batch.mean(0)
-            if b_size > 1:
-                self.running_var = batch.var(0, unbiased=False)
-            else:
-                self.running_var = th.zeros_like(self.running_mean)
-        else:
-            # update running mean
-            delta_mean = batch.mean(0) - self.running_mean
-            self.running_mean += alpha * delta_mean
+        self.inv_learning_rate += self.decay**self.num_batches
+        learning_rate = 1 / self.inv_learning_rate
 
-            # update running variance
-            batch_var = batch.var(0, unbiased=False)
-            delta_var = batch_var + self.decay * delta_mean**2 - self.running_var
-            self.running_var += alpha * delta_var
+        # update running mean
+        delta_mean = batch.mean(0) - self.running_mean
+        self.running_mean += learning_rate * delta_mean
+
+        # update running variance
+        batch_var = batch.var(0, unbiased=False)
+        delta_var = batch_var + (1 - learning_rate) * delta_mean**2 - self.running_var
+        self.running_var += learning_rate * delta_var
 
         self.count += b_size
+        self.num_batches += 1
 
 
 def build_mlp(
@@ -206,7 +214,7 @@ def build_mlp(
             shape (batch_size, in_size).
         hid_sizes: sizes of hidden layers. If this is an empty iterable, then we build
             a linear function approximator.
-        out_size: required size of output vector.
+        out_size: size of output vector.
         name: Name to use as a prefix for the layers ID.
         activation: activation to apply after hidden layers.
         dropout_prob: Dropout probability to use after each hidden layer. If 0,
@@ -260,4 +268,78 @@ def build_mlp(
 
     model = nn.Sequential(layers)
 
+    return model
+
+
+def build_cnn(
+    in_channels: int,
+    hid_channels: Iterable[int],
+    out_size: int = 1,
+    name: Optional[str] = None,
+    activation: Type[nn.Module] = nn.ReLU,
+    kernel_size: int = 3,
+    stride: int = 1,
+    padding: Union[int, str] = "same",
+    dropout_prob: float = 0.0,
+    squeeze_output: bool = False,
+) -> nn.Module:
+    """Constructs a Torch CNN.
+
+    Args:
+        in_channels: number of channels of individual inputs; input to the CNN will have
+            shape (batch_size, in_size, in_height, in_width).
+        hid_channels: number of channels of hidden layers. If this is an empty iterable,
+            then we build a linear function approximator.
+        out_size: size of output vector.
+        name: Name to use as a prefix for the layers ID.
+        activation: activation to apply after hidden layers.
+        kernel_size: size of convolutional kernels.
+        stride: stride of convolutional kernels.
+        padding: padding of convolutional kernels.
+        dropout_prob: Dropout probability to use after each hidden layer. If 0,
+            no dropout layers are added to the network.
+        squeeze_output: if out_size=1, then squeeze_input=True ensures that CNN
+            output is of size (B,) instead of (B,1).
+
+    Returns:
+        nn.Module: a CNN mapping from inputs of size (batch_size, in_size, in_height,
+            in_width) to (batch_size, out_size), unless out_size=1 and
+            squeeze_output=True, in which case the output is of size (batch_size, ).
+
+    Raises:
+        ValueError: if squeeze_output was supplied with out_size!=1.
+    """
+    layers = collections.OrderedDict()
+
+    if name is None:
+        prefix = ""
+    else:
+        prefix = f"{name}_"
+
+    prev_channels = in_channels
+    for i, n_channels in enumerate(hid_channels):
+        layers[f"{prefix}conv{i}"] = nn.Conv2d(
+            prev_channels,
+            n_channels,
+            kernel_size,
+            stride=stride,
+            padding=padding,
+        )
+        prev_channels = n_channels
+        if activation:
+            layers[f"{prefix}act{i}"] = activation()
+        if dropout_prob > 0.0:
+            layers[f"{prefix}dropout{i}"] = nn.Dropout(dropout_prob)
+
+    # final dense layer
+    layers[f"{prefix}avg_pool"] = nn.AdaptiveAvgPool2d(1)
+    layers[f"{prefix}flatten"] = nn.Flatten()
+    layers[f"{prefix}dense_final"] = nn.Linear(prev_channels, out_size)
+
+    if squeeze_output:
+        if out_size != 1:
+            raise ValueError("squeeze_output is only applicable when out_size=1")
+        layers[f"{prefix}squeeze"] = SqueezeLayer()
+
+    model = nn.Sequential(layers)
     return model

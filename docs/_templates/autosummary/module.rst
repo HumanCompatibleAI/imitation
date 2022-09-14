@@ -16,6 +16,16 @@
    {% block functions %}
    {% if functions %}
    .. rubric:: {{ _('Functions') }}
+   .. testsetup::
+
+      # import all functions from module since examples don't import them
+      from {{ fullname }} import *
+
+   .. doctest::
+      
+      # empty test needed in case the module has no example usage.
+      # otherwise, testsetup throws an error
+      pass
 
    .. autosummary::
    {% for item in functions %}
