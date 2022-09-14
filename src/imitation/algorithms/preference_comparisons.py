@@ -1331,17 +1331,17 @@ class EnsembleTrainer(BasicRewardTrainer):
                 elif key.startswith("reward/final"):
                     new_key = key.replace(
                         "reward/final",
-                        f"reward/final/member-{member_idx}",
+                        f"reward/member-{member_idx}/final/",
                     )
                     self.logger.record(new_key, val)
 
         metrics = defaultdict(float)
         keys = list(self.logger.name_to_value.keys())
         for key in keys:
-            if key.startswith("final/reward/member-"):
+            if key.startswith("reward/member-") and "final" in key:
                 val = self.logger.name_to_value[key]
                 key_list = key.split("/")
-                key_list.pop(2)
+                key_list.pop(1)
                 metrics["/".join(key_list)] += val
 
         for k, v in metrics.items():
