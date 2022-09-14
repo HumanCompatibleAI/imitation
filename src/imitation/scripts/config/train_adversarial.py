@@ -98,6 +98,25 @@ def seals_ant():
     locals().update(**MUJOCO_SHARED_LOCALS)
     locals().update(**ANT_SHARED_LOCALS)
     common = dict(env_name="seals/Ant-v0")
+    demonstrations = dict(
+        rollout_path="/home/taufeeque/imitation/output/train_experts/"
+        "2022-09-05T18:27:27-07:00/seals_ant_1/rollouts/final.pkl",
+    )
+    rl = dict(
+        batch_size=2048,
+        rl_kwargs=dict(
+            batch_size=16,
+            clip_range=0.3,
+            ent_coef=3.1441389214159857e-06,
+            gae_lambda=0.8,
+            gamma=0.995,
+            learning_rate=0.00017959211641976886,
+            max_grad_norm=0.9,
+            n_epochs=10,
+            # policy_kwargs are same as the defaults
+            vf_coef=0.4351450387648799,
+        ),
+    )
 
 
 @train_adversarial_ex.named_config
@@ -133,27 +152,44 @@ def half_cheetah():
 def seals_half_cheetah():
     locals().update(**MUJOCO_SHARED_LOCALS)
     common = dict(env_name="seals/HalfCheetah-v0")
-    rl = dict(batch_size=16384, rl_kwargs=dict(batch_size=1024))
-    algorithm_specific = dict(
-        airl=dict(total_timesteps=int(5e6)),
-        gail=dict(total_timesteps=int(8e6)),
+    demonstrations = dict(
+        rollout_path="/home/taufeeque/imitation/output/train_experts/"
+        "2022-09-05T18:27:27-07:00/seals_half_cheetah_1/rollouts/final.pkl",
     )
-    reward = dict(
-        algorithm_specific=dict(
-            airl=dict(
-                net_cls=reward_nets.BasicShapedRewardNet,
-                net_kwargs=dict(
-                    reward_hid_sizes=(32,),
-                    potential_hid_sizes=(32,),
-                ),
-            ),
+    rl = dict(
+        batch_size=512,
+        rl_kwargs=dict(
+            batch_size=64,
+            clip_range=0.1,
+            ent_coef=3.794797423594763e-06,
+            gae_lambda=0.95,
+            gamma=0.95,
+            learning_rate=0.0003286871805949382,
+            max_grad_norm=0.8,
+            n_epochs=5,
+            vf_coef=0.11483689492120866,
         ),
     )
+    # algorithm_specific = dict(
+    #     airl=dict(total_timesteps=int(5e6)),
+    #     gail=dict(total_timesteps=int(8e6)),
+    # )
+    # reward = dict(
+    #     algorithm_specific=dict(
+    #         airl=dict(
+    #             net_cls=reward_nets.BasicShapedRewardNet,
+    #             net_kwargs=dict(
+    #                 reward_hid_sizes=(32,),
+    #                 potential_hid_sizes=(32,),
+    #             ),
+    #         ),
+    #     ),
+    # )
     algorithm_kwargs = dict(
         # Number of discriminator updates after each round of generator updates
         n_disc_updates_per_round=16,
         # Equivalent to no replay buffer if batch size is the same
-        gen_replay_buffer_capacity=16384,
+        gen_replay_buffer_capacity=512,
         demo_batch_size=8192,
     )
 

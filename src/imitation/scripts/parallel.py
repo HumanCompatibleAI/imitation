@@ -17,6 +17,7 @@ from imitation.scripts.config.parallel import parallel_ex
 def parallel(
     sacred_ex_name: str,
     run_name: str,
+    num_samples: int,
     search_space: Mapping[str, Any],
     base_named_configs: Sequence[str],
     base_config_updates: Mapping[str, Any],
@@ -40,6 +41,7 @@ def parallel(
             under the 'experiment.name' key. This is equivalent to using the Sacred
             CLI '--name' option on the inner experiment. Offline analysis jobs can use
             this argument to group similar data.
+        num_samples: Number of times to sample from the hyperparameter space.
         search_space: A dictionary which can contain Ray Tune search objects like
             `ray.tune.grid_search` and `ray.tune.sample_from`, and is
             passed as the `config` argument to `ray.tune.run()`. After the
@@ -99,6 +101,7 @@ def parallel(
         ray.tune.run(
             trainable,
             config=search_space,
+            num_samples=num_samples,
             name=run_name,
             local_dir=local_dir,
             resources_per_trial=resources_per_trial,

@@ -35,6 +35,7 @@ def config():
     local_dir = None  # `local_dir` arg for `ray.tune.run`
     upload_dir = None  # `upload_dir` arg for `ray.tune.run`
     n_seeds = 3  # Number of seeds to search over by default
+    num_samples = 1  # Number of samples per grid search configuration
 
 
 @parallel_ex.config
@@ -203,7 +204,7 @@ def example_dagger():
         },
         "command_name": "dagger",
     }
-    resources_per_trial = dict(cpu=2)
+    resources_per_trial = dict(cpu=2, gpu=0.1)
 
 
 @parallel_ex.named_config
@@ -211,21 +212,28 @@ def example_gail():
     sacred_ex_name = "train_adversarial"
     run_name = "gail-tuning"
     n_seeds = 5
+    base_named_configs = ["common.wandb_logging"]
+    base_config_updates = {
+        "common": {"wandb": {"wandb_kwargs": {"project": "algorithm-benchmark"}}},
+        "total_timesteps": 1e5,
+    }
     search_space = {
-        "named_configs": tune.grid_search([[env] for env in MY_ENVS]),
+        "named_configs": tune.grid_search([[env] for env in EASY_ENVS]),
         "config_updates": {
-            "init_trainer_kwargs": {
-                "rl": {
-                    "rl_kwargs": {
-                        "learning_rate": tune.grid_search(
-                            np.logspace(3e-6, 1e-1, num=3),
-                        ),
-                        "nminibatches": tune.grid_search([16, 32, 64]),
-                    },
-                },
+            "algorithm_kwargs": dict(
+                demo_batch_size=tune.choice([512, 1024, 2048]),
+                n_disc_updates_per_round=tune.choice([2, 4, 8]),
+                gen_replay_buffer_capacity=tune.choice([512, 1024]),
+                # gen_train_timesteps=0,
+            ),
+            "rl": {
+                "batch_size": tune.choice([512, 1024, 2048]),
+                "rl_kwargs": {"ent_coef": tune.loguniform(1e-18, 1e-3)},
             },
+            "algorithm_specific": {},
         },
     }
     search_space = {
         "command_name": "gail",
     }
+    resources_per_trial = dict(cpu=2)
