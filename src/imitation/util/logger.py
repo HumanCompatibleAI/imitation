@@ -66,7 +66,7 @@ def _build_output_formats(
 
     Args:
         folder: Path to directory that logs are written to.
-        format_strs: An list of output format strings. For details on available
+        format_strs: A list of output format strings. For details on available
             output formats see `stable_baselines3.logger.make_output_format`.
 
     Returns:

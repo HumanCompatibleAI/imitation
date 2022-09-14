@@ -195,6 +195,7 @@ def test_trainer_no_crash(
         fragmenter=random_fragmenter,
         custom_logger=custom_logger,
         query_schedule=schedule,
+        initial_epoch_multiplier=2,
     )
     result = main_trainer.train(100, 10)
     # We don't expect good performance after training for 10 (!) timesteps,

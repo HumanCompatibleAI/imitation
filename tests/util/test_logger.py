@@ -1,6 +1,7 @@
 """Tests `imitation.util.logger`."""
 
 import csv
+import json
 import os.path as osp
 from collections import defaultdict
 
@@ -21,13 +22,36 @@ def _csv_to_dict(csv_path: str) -> dict:
     return result
 
 
+def _json_to_dict(json_path: str) -> dict:
+    result = defaultdict(list)
+    all_line_dicts = []
+    with open(json_path, "r") as f:
+        for line in f.readlines():
+            line_dict = json.loads(line)
+            all_line_dicts.append(line_dict)
+    all_keys = set().union(*[list(line_dict.keys()) for line_dict in all_line_dicts])
+    all_keys = list(all_keys)
+    for line_dict in all_line_dicts:
+        for key in all_keys:
+            if key in line_dict:
+                result[key].append(line_dict[key])
+            else:
+                result[key].append("")
+    return result
+
+
 def _compare_csv_lines(csv_path: str, expect: dict):
     observed = _csv_to_dict(csv_path)
     assert expect == observed
 
 
+def _compare_json_lines(json_path: str, expect: dict):
+    observed = _json_to_dict(json_path)
+    assert expect == observed
+
+
 def test_no_accum(tmpdir):
-    hier_logger = logger.configure(tmpdir, ["csv"])
+    hier_logger = logger.configure(tmpdir, ["csv", "json"])
     assert hier_logger.get_dir() == tmpdir
 
     # Check that the recorded "A": -1 is overwritten by "A": 1 in the next line.
@@ -43,6 +67,12 @@ def test_no_accum(tmpdir):
     hier_logger.dump()
     expect = {"A": [1, 2, ""], "B": [1, "", 3]}
     _compare_csv_lines(osp.join(tmpdir, "progress.csv"), expect)
+    _compare_json_lines(osp.join(tmpdir, "progress.json"), expect)
+
+
+def test_raise_unknown_format():
+    with pytest.raises(ValueError, match=r"Unknown format specified:.*"):
+        logger.make_output_format("txt", "log_dir")
 
 
 def test_free_form(tmpdir):

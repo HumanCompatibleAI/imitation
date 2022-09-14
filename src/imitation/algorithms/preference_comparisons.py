@@ -1328,10 +1328,10 @@ class EnsembleTrainer(BasicRewardTrainer):
                         f"mean/reward/member-{member_idx}",
                     )
                     self.logger.record(new_key, val)
-                elif key.startswith("final/reward"):
+                elif key.startswith("reward/final"):
                     new_key = key.replace(
-                        "final/reward",
-                        f"final/reward/member-{member_idx}",
+                        "reward/final",
+                        f"reward/final/member-{member_idx}",
                     )
                     self.logger.record(new_key, val)
 
