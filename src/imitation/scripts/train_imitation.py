@@ -63,7 +63,6 @@ def make_policy(
 
 @train_imitation_ex.capture
 def train_imitation(
-    _run,
     bc_kwargs: Mapping[str, Any],
     bc_train_kwargs: Mapping[str, Any],
     dagger: Mapping[str, Any],
@@ -131,6 +130,14 @@ def train_imitation(
             bc_trainer.save_policy(policy_path=osp.join(log_dir, "final.th"))
 
         imit_stats = train.eval_policy(imit_policy, venv)
+
+        with common.make_venv(num_vec=1, log_dir=None) as eval_venv:
+            train.save_video(
+                output_dir=log_dir,
+                policy=imit_policy,
+                eval_venv=eval_venv,
+                logger=custom_logger,
+            )
 
     return {
         "imit_stats": imit_stats,

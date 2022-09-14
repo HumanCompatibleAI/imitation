@@ -1467,6 +1467,7 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
         # for keeping track of the global iteration, in case train() is called
         # multiple times
         self._iteration = 0
+        self.trajectory_generator_num_steps = 0
 
         self.model = reward_model
 
@@ -1512,7 +1513,7 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
         self,
         total_timesteps: int,
         total_comparisons: int,
-        callback: Optional[Callable[[int], None]] = None,
+        callback: Optional[Callable[[int, int], None]] = None,
     ) -> Mapping[str, Any]:
         """Train the reward model and the policy if applicable.
 
@@ -1592,14 +1593,15 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
             with self.logger.accumulate_means("agent"):
                 self.logger.log(f"Training agent for {num_steps} timesteps")
                 self.trajectory_generator.train(steps=num_steps)
+            self.trajectory_generator_num_steps += num_steps
 
             self.logger.dump(self._iteration)
 
             ########################
             # Additional Callbacks #
             ########################
-            if callback:
-                callback(self._iteration)
             self._iteration += 1
+            if callback:
+                callback(self._iteration, self.trajectory_generator_num_steps)
 
         return {"reward_loss": reward_loss, "reward_accuracy": reward_accuracy}

@@ -28,7 +28,7 @@ def train_defaults():
     fragment_length = 100  # timesteps per fragment used for comparisons
     total_timesteps = int(1e6)  # total number of environment timesteps
     total_comparisons = 5000  # total number of comparisons to elicit
-    num_iterations = 5  # Arbitrary, should be tuned for the task
+    num_iterations = 50  # Arbitrary, should be tuned for the task
     comparison_queue_size = None
     # factor by which to oversample transitions before creating fragments
     transition_oversampling = 1
@@ -39,6 +39,7 @@ def train_defaults():
     preference_model_kwargs = {}
     reward_trainer_kwargs = {
         "epochs": 3,
+        "weight_decay": 0.0,
     }
     save_preferences = False  # save preference dataset at the end?
     agent_path = None  # path to a (partially) trained agent to load at the beginning
