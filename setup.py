@@ -217,7 +217,6 @@ setup(
         "dev": [
             "autopep8",
             "awscli",
-            "ntfy[slack]",
             "ipdb",
             "isort~=5.0",
             "codespell",
