@@ -23,6 +23,7 @@ fi
 if [ "${skipexpensive:-}" != "true" ]; then
   echo "Type checking"
   pytype -j auto "${SRC_FILES[@]}"
+  mypy --show-error-codes "${SRC_FILES[@]}"
 
   echo "Building docs (validates docstrings)"
   pushd docs/

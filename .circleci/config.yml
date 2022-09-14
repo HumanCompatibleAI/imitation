@@ -257,6 +257,10 @@ jobs:
           name: pytype
           command: pytype --version && pytype -j "${NUM_CPUS}" ${SRC_FILES[@]}
 
+      - run:
+          name: mypy
+          command: mypy --version && mypy ${SRC_FILES[@]}
+
   unit-test-linux:
     executor: unit-test-linux
     steps:
