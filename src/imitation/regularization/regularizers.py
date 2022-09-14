@@ -85,10 +85,10 @@ class Regularizer(abc.ABC, Generic[R]):
                 for the lambda updater. Can be none if no lambda updater is provided.
 
         Raises:
-            ValueError: if no lambda updater is provided and the initial regularization
-                strength (initial_lambda) is zero.
-            ValueError: if val_split is provided but it's not a float in the (0, 1)
-                interval.
+            ValueError: if no lambda updater (``lambda_updater``) is provided and the
+                initial regularization strength (``initial_lambda``) is zero.
+            ValueError: if a validation split (``val_split``) is provided but it's not a
+                float in the (0, 1) interval.
             ValueError: if a lambda updater is provided but no validation split
                 is provided.
             ValueError: if a validation split is set, but no lambda updater is
