@@ -170,7 +170,7 @@ class Regularizer(abc.ABC, Generic[R]):
         loss to be called before or after the regularization step.
         Leaving this to the user would force them to make their
         implementation dependent on the regularizer algorithm used,
-        while being prone to errors.
+        which is prone to errors.
 
         Args:
             loss: The loss to regularize.
