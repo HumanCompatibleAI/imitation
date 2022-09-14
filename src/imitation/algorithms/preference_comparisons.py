@@ -38,6 +38,7 @@ from imitation.data.types import (
     Transitions,
 )
 from imitation.policies import exploration_wrapper
+from imitation.regularization import regularizers
 from imitation.rewards import reward_function, reward_nets, reward_wrapper
 from imitation.util import logger as imit_logger
 from imitation.util import networks, util
@@ -389,7 +390,7 @@ class PreferenceModel(nn.Module):
               `ensemble_member_index`.
 
         Args:
-            fragment_pairs: batch of pair of fragments.
+            fragment_pairs: batch of pairs of fragments.
             ensemble_member_index: index of member network in ensemble model.
                 If the model is an ensemble of networks, this cannot be None.
 
@@ -432,10 +433,7 @@ class PreferenceModel(nn.Module):
 
         return probs, (gt_probs if gt_reward_available else None)
 
-    def rewards(
-        self,
-        transitions: Transitions,
-    ) -> th.Tensor:
+    def rewards(self, transitions: Transitions) -> th.Tensor:
         """Computes the reward for all transitions.
 
         Args:
@@ -460,11 +458,7 @@ class PreferenceModel(nn.Module):
             assert rews.shape == (len(state),)
             return rews
 
-    def probability(
-        self,
-        rews1: th.Tensor,
-        rews2: th.Tensor,
-    ) -> th.Tensor:
+    def probability(self, rews1: th.Tensor, rews2: th.Tensor) -> th.Tensor:
         """Computes the Boltzmann rational probability that the first trajectory is best.
 
         Args:
@@ -897,11 +891,7 @@ class PreferenceDataset(th.utils.data.Dataset):
         self.max_size = max_size
         self.preferences = np.array([])
 
-    def push(
-        self,
-        fragments: Sequence[TrajectoryWithRewPair],
-        preferences: np.ndarray,
-    ):
+    def push(self, fragments: Sequence[TrajectoryWithRewPair], preferences: np.ndarray):
         """Add more samples to the dataset.
 
         Args:
@@ -917,7 +907,7 @@ class PreferenceDataset(th.utils.data.Dataset):
         if preferences.shape != (len(fragments),):
             raise ValueError(
                 f"Unexpected preferences shape {preferences.shape}, "
-                f"expected {(len(fragments), )}",
+                f"expected {(len(fragments),)}",
             )
         if preferences.dtype != np.float32:
             raise ValueError("preferences should have dtype float32")
@@ -998,10 +988,7 @@ def _trajectory_pair_includes_reward(fragment_pair: TrajectoryPair):
 class CrossEntropyRewardLoss(RewardLoss):
     """Compute the cross entropy reward loss."""
 
-    def __init__(
-        self,
-        preference_model: PreferenceModel,
-    ):
+    def __init__(self, preference_model: PreferenceModel):
         """Create cross entropy reward loss.
 
         Args:
@@ -1032,13 +1019,13 @@ class CrossEntropyRewardLoss(RewardLoss):
         """
         probs, gt_probs = self.preference_model(fragment_pairs, ensemble_member_index)
         # TODO(ejnnr): Here and below, > 0.5 is problematic
-        # because getting exactly 0.5 is actually somewhat
-        # common in some environments (as long as sample=False or temperature=0).
-        # In a sense that "only" creates class imbalance
-        # but it's still misleading.
-        predictions = (probs > 0.5).float()
+        #  because getting exactly 0.5 is actually somewhat
+        #  common in some environments (as long as sample=False or temperature=0).
+        #  In a sense that "only" creates class imbalance
+        #  but it's still misleading.
+        predictions = probs > 0.5
         preferences_th = th.as_tensor(preferences, dtype=th.float32)
-        ground_truth = (preferences_th > 0.5).float()
+        ground_truth = preferences_th > 0.5
         metrics = {}
         metrics["accuracy"] = (predictions == ground_truth).float().mean()
         if gt_probs is not None:
@@ -1094,6 +1081,8 @@ class RewardTrainer(abc.ABC):
 class BasicRewardTrainer(RewardTrainer):
     """Train a basic reward model."""
 
+    regularizer: Optional[regularizers.Regularizer]
+
     def __init__(
         self,
         model: reward_nets.RewardNet,
@@ -1101,8 +1090,9 @@ class BasicRewardTrainer(RewardTrainer):
         batch_size: int = 32,
         epochs: int = 1,
         lr: float = 1e-3,
-        weight_decay: float = 0.0,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
+        seed: Optional[int] = None,
+        regularizer_factory: Optional[regularizers.RegularizerFactory] = None,
     ):
         """Initialize the reward model trainer.
 
@@ -1114,19 +1104,24 @@ class BasicRewardTrainer(RewardTrainer):
                 on the fly by specifying an `epoch_multiplier` in `self.train()`
                 if longer training is desired in specific cases).
             lr: the learning rate
-            weight_decay: the weight decay factor for the reward model's weights
-                to use with ``th.optim.AdamW``. This is similar to but not equivalent
-                to L2 regularization, see https://arxiv.org/abs/1711.05101
+            seed: the random seed to use for splitting the dataset into training
+                and validation.
             custom_logger: Where to log to; if None (default), creates a new logger.
+            regularizer_factory: if you would like to apply regularization during
+                training, specify a regularizer factory here. The factory will be
+                used to construct a regularizer. See
+                ``imitation.regularization.RegularizerFactory`` for more details.
         """
         super().__init__(model, custom_logger)
         self.loss = loss
         self.batch_size = batch_size
         self.epochs = epochs
-        self.optim = th.optim.AdamW(
-            self._model.parameters(),
-            lr=lr,
-            weight_decay=weight_decay,
+        self.optim = th.optim.AdamW(self._model.parameters(), lr=lr)
+        self.seed = seed
+        self.regularizer = (
+            regularizer_factory(optimizer=self.optim, logger=self.logger)
+            if regularizer_factory is not None
+            else None
         )
 
     def _make_data_loader(self, dataset: PreferenceDataset) -> data_th.DataLoader:
@@ -1138,29 +1133,103 @@ class BasicRewardTrainer(RewardTrainer):
             collate_fn=preference_collate_fn,
         )
 
+    @property
+    def requires_regularizer_update(self) -> bool:
+        """Whether the regularizer requires updating.
+
+        Returns:
+            If true, this means that a validation dataset will be used.
+        """
+        return self.regularizer is not None and self.regularizer.val_split is not None
+
     def _train(self, dataset: PreferenceDataset, epoch_multiplier: float = 1.0) -> None:
         """Trains for `epoch_multiplier * self.epochs` epochs over `dataset`."""
-        dataloader = self._make_data_loader(dataset)
+        if self.regularizer is not None and self.regularizer.val_split is not None:
+            val_length = int(len(dataset) * self.regularizer.val_split)
+            train_length = len(dataset) - val_length
+            if val_length < 1 or train_length < 1:
+                raise ValueError(
+                    "Not enough data samples to split into training and validation, "
+                    "or the validation split is too large/small. "
+                    "Make sure you've generated enough initial preference data. "
+                    "You can adjust this through initial_comparison_frac in "
+                    "PreferenceComparisons.",
+                )
+            train_dataset, val_dataset = data_th.random_split(
+                dataset,
+                lengths=[train_length, val_length],
+                generator=th.Generator().manual_seed(self.seed) if self.seed else None,
+            )
+            dataloader = self._make_data_loader(train_dataset)
+            val_dataloader = self._make_data_loader(val_dataset)
+        else:
+            dataloader = self._make_data_loader(dataset)
+            val_dataloader = None
+
         epochs = round(self.epochs * epoch_multiplier)
 
-        for _ in tqdm(range(epochs), desc="Training reward model"):
-            for fragment_pairs, preferences in dataloader:
-                self.optim.zero_grad()
-                loss = self._training_inner_loop(fragment_pairs, preferences)
-                loss.backward()
-                self.optim.step()
+        assert epochs > 0, "Must train for at least one epoch."
+        epoch_num = 0
+        with self.logger.accumulate_means("reward"):
+            for epoch_num in tqdm(range(epochs), desc="Training reward model"):
+                prefix = f"epoch-{epoch_num}"
+                train_loss = 0.0
+                for fragment_pairs, preferences in dataloader:
+                    self.optim.zero_grad()
+                    loss = self._training_inner_loop(
+                        fragment_pairs,
+                        preferences,
+                        prefix=f"{prefix}/train",
+                    )
+                    train_loss += loss.item()
+                    if self.regularizer:
+                        self.regularizer.regularize_and_backward(loss)
+                    else:
+                        loss.backward()
+                    self.optim.step()
+
+                if not self.requires_regularizer_update:
+                    continue
+                assert val_dataloader is not None
+                assert self.regularizer is not None
+
+                val_loss = 0.0
+                for fragment_pairs, preferences in val_dataloader:
+                    loss = self._training_inner_loop(
+                        fragment_pairs,
+                        preferences,
+                        prefix=f"{prefix}/val",
+                    )
+                    val_loss += loss.item()
+                self.regularizer.update_params(train_loss, val_loss)
+
+        # after training all the epochs,
+        # record also the final value in a separate key for easy access.
+        keys = list(self.logger.name_to_value.keys())
+        for key in keys:
+            if key.startswith(f"mean/reward/epoch-{epoch_num}"):
+                val = self.logger.name_to_value[key]
+                new_key = key.replace(f"mean/reward/epoch-{epoch_num}", "reward/final")
+                self.logger.record(new_key, val)
 
     def _training_inner_loop(
         self,
         fragment_pairs: Sequence[TrajectoryPair],
         preferences: np.ndarray,
+        prefix: Optional[str] = None,
     ) -> th.Tensor:
         output = self.loss.forward(fragment_pairs, preferences)
         loss = output.loss
-        self.logger.record("loss", loss.item())
+        self.logger.record(self._get_logger_key(prefix, "loss"), loss.item())
         for name, value in output.metrics.items():
-            self.logger.record(name, value.item())
+            self.logger.record(self._get_logger_key(prefix, name), value.item())
         return loss
+
+    # TODO(juan) refactor & remove once #529 is merged.
+    def _get_logger_key(self, mode: Optional[str], key: str) -> str:
+        if mode is None:
+            return key
+        return f"{mode}/{key}"
 
 
 class EnsembleTrainer(BasicRewardTrainer):
@@ -1175,9 +1244,9 @@ class EnsembleTrainer(BasicRewardTrainer):
         batch_size: int = 32,
         epochs: int = 1,
         lr: float = 1e-3,
-        weight_decay: float = 0.0,
-        seed: Optional[int] = None,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
+        seed: Optional[int] = None,
+        regularizer_factory: Optional[regularizers.RegularizerFactory] = None,
     ):
         """Initialize the reward model trainer.
 
@@ -1189,28 +1258,29 @@ class EnsembleTrainer(BasicRewardTrainer):
                 on the fly by specifying an `epoch_multiplier` in `self.train()`
                 if longer training is desired in specific cases).
             lr: the learning rate
-            weight_decay: the weight decay factor for the reward model's weights
-                to use with ``th.optim.AdamW``. This is similar to but not equivalent
-                to L2 regularization, see https://arxiv.org/abs/1711.05101
-            seed: seed for the internal RNG used in bagging
+            seed: the random seed to use for splitting the dataset into training
+                and validation, and for bagging.
             custom_logger: Where to log to; if None (default), creates a new logger.
+            regularizer_factory: A factory for creating a regularizer. If None,
+                no regularization is used.
 
         Raises:
             TypeError: if model is not a RewardEnsemble.
         """
         if not isinstance(model, reward_nets.RewardEnsemble):
             raise TypeError(
-                f"RewardEnsemble expected by EnsembleTrainer not {type(model)}.",
+                f"RewardEnsemble expected by EnsembleTrainer, not {type(model)}.",
             )
 
         super().__init__(
-            model,
-            loss,
-            batch_size,
-            epochs,
-            lr,
-            weight_decay,
-            custom_logger,
+            model=model,
+            loss=loss,
+            batch_size=batch_size,
+            epochs=epochs,
+            lr=lr,
+            custom_logger=custom_logger,
+            seed=seed,
+            regularizer_factory=regularizer_factory,
         )
         self.rng = np.random.default_rng(seed=seed)
 
@@ -1218,6 +1288,7 @@ class EnsembleTrainer(BasicRewardTrainer):
         self,
         fragment_pairs: Sequence[TrajectoryPair],
         preferences: np.ndarray,
+        prefix: Optional[str] = None,
     ) -> th.Tensor:
         assert len(fragment_pairs) == preferences.shape[0]
         losses = []
@@ -1237,14 +1308,17 @@ class EnsembleTrainer(BasicRewardTrainer):
         losses = th.stack(losses)
         loss = losses.sum()
 
-        self.logger.record("loss", loss.item())
-        self.logger.record("loss_std", losses.std().item())
+        self.logger.record(self._get_logger_key(prefix, "loss"), loss.item())
+        self.logger.record(
+            self._get_logger_key(prefix, "loss_std"),
+            losses.std().item(),
+        )
 
         # Turn metrics from a list of dictionaries into a dictionary of
         # tensors.
         metrics = {k: th.stack([di[k] for di in metrics]) for k in metrics[0]}
         for name, value in metrics.items():
-            self.logger.record(name, value.mean().item())
+            self.logger.record(self._get_logger_key(prefix, name), value.mean().item())
 
         return loss
 
@@ -1285,11 +1359,7 @@ def _make_reward_trainer(
                 f" by AddSTDRewardWrapper but found {type(reward_model).__name__}.",
             )
     else:
-        return BasicRewardTrainer(
-            reward_model,
-            loss=loss,
-            **reward_trainer_kwargs,
-        )
+        return BasicRewardTrainer(reward_model, loss=loss, **reward_trainer_kwargs)
 
 
 QUERY_SCHEDULES: Dict[str, type_aliases.Schedule] = {
@@ -1506,13 +1576,9 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
             if i == 0:
                 epoch_multiplier = self.initial_epoch_multiplier
 
-            with self.logger.accumulate_means("reward"):
-                self.reward_trainer.train(
-                    self.dataset,
-                    epoch_multiplier=epoch_multiplier,
-                )
-            reward_loss = self.logger.name_to_value["mean/reward/loss"]
-            reward_accuracy = self.logger.name_to_value["mean/reward/accuracy"]
+            self.reward_trainer.train(self.dataset, epoch_multiplier=epoch_multiplier)
+            reward_loss = self.logger.name_to_value["reward/final/train/loss"]
+            reward_accuracy = self.logger.name_to_value["reward/final/train/accuracy"]
 
             ###################
             # Train the agent #
