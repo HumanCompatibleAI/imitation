@@ -210,30 +210,60 @@ def example_dagger():
 @parallel_ex.named_config
 def example_gail():
     sacred_ex_name = "train_adversarial"
-    run_name = "gail-tuning"
+    run_name = "gail_tuning"
     n_seeds = 5
-    base_named_configs = ["common.wandb_logging"]
+    base_named_configs = ["common.wandb_logging", "seals_half_cheetah"]
     base_config_updates = {
         "common": {"wandb": {"wandb_kwargs": {"project": "algorithm-benchmark"}}},
-        "total_timesteps": 1e5,
+        "total_timesteps": 1e6,
     }
     search_space = {
-        "named_configs": tune.grid_search([[env] for env in EASY_ENVS]),
+        # "named_configs": tune.grid_search([[env] for env in MY_ENVS]),
         "config_updates": {
             "algorithm_kwargs": dict(
                 demo_batch_size=tune.choice([512, 1024, 2048]),
                 n_disc_updates_per_round=tune.choice([2, 4, 8]),
-                gen_replay_buffer_capacity=tune.choice([512, 1024]),
+                # gen_replay_buffer_capacity=tune.choice([512, 1024]),
                 # gen_train_timesteps=0,
             ),
             "rl": {
                 "batch_size": tune.choice([512, 1024, 2048]),
-                "rl_kwargs": {"ent_coef": tune.loguniform(1e-18, 1e-3)},
+                "rl_kwargs": {"ent_coef": tune.choice([0, 1e-3, 1e-1])},
             },
             "algorithm_specific": {},
         },
-    }
-    search_space = {
         "command_name": "gail",
     }
-    resources_per_trial = dict(cpu=2)
+    num_samples = 50
+    resources_per_trial = dict(cpu=3)
+
+
+@parallel_ex.named_config
+def example_airl():
+    sacred_ex_name = "train_adversarial"
+    run_name = "airl_tuning"
+    n_seeds = 5
+    base_named_configs = ["common.wandb_logging", "seals_half_cheetah"]
+    base_config_updates = {
+        "common": {"wandb": {"wandb_kwargs": {"project": "algorithm-benchmark"}}},
+        "total_timesteps": 1e6,
+    }
+    search_space = {
+        # "named_configs": tune.grid_search([[env] for env in MY_ENVS]),
+        "config_updates": {
+            "algorithm_kwargs": dict(
+                demo_batch_size=tune.choice([512, 1024, 2048]),
+                n_disc_updates_per_round=tune.choice([2, 4, 8]),
+                # gen_replay_buffer_capacity=tune.choice([512, 1024]),
+                # gen_train_timesteps=0,
+            ),
+            "rl": {
+                "batch_size": tune.choice([512, 1024, 2048]),
+                "rl_kwargs": {"ent_coef": tune.choice([0, 1e-3, 1e-1])},
+            },
+            "algorithm_specific": {},
+        },
+        "command_name": "airl",
+    }
+    num_samples = 50
+    resources_per_trial = dict(cpu=3)
