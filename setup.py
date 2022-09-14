@@ -80,7 +80,9 @@ DOCS_REQUIRE = [
     "sphinx-copybutton==0.5.0",
     "sphinx-github-changelog~=1.2.0",
     "nbsphinx~=0.8.9",
-]
+    "ipykernel~=6.15.2",
+    "seals==0.1.2",
+] + ATARI_REQUIRE
 
 
 def get_readme() -> str:
