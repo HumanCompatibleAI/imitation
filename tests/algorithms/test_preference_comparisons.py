@@ -550,7 +550,7 @@ def test_active_selection_raises_error_when_initialized_without_an_ensemble(
 ):
     with pytest.raises(
         ValueError,
-        match=r"Preference model not wrapped over an ensemble.*",
+        match=r"PreferenceModel not wrapped over an ensemble.*",
     ):
         preference_comparisons.ActiveSelectionFragmenter(
             preference_model=preference_model,

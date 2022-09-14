@@ -1077,19 +1077,26 @@ class RewardTrainer(abc.ABC):
     def logger(self, custom_logger):
         self._logger = custom_logger
 
-    def train(self, dataset: PreferenceDataset, epoch_multiplier: float = 1.0) -> None:
+    def train(
+        self, dataset: PreferenceDataset, epoch_multiplier: float = 1.0
+    ) -> Mapping[str, Any]:
         """Train the reward model on a batch of fragment pairs and preferences.
 
         Args:
             dataset: the dataset of preference comparisons to train on.
             epoch_multiplier: how much longer to train for than usual
                 (measured relatively).
+
+        Returns:
+            dictionary of metrics for the last epoch of training
         """
         with networks.training(self._preference_model.model):
-            self._train(dataset, epoch_multiplier)
+            return self._train(dataset, epoch_multiplier)
 
     @abc.abstractmethod
-    def _train(self, dataset: PreferenceDataset, epoch_multiplier: float) -> None:
+    def _train(
+        self, dataset: PreferenceDataset, epoch_multiplier: float
+    ) -> Mapping[str, Any]:
         """Train the reward model; see ``train`` for details."""
 
 
@@ -1146,12 +1153,21 @@ class BasicRewardTrainer(RewardTrainer):
         epochs = round(self.epochs * epoch_multiplier)
 
         for epoch in tqdm(range(epochs), desc="Training reward model"):
-            with self.logger.accumulate_means(f"reward/epoch/{epoch}"):
+            with self.logger.accumulate_means(f"epoch/{epoch}"):
                 for fragment_pairs, preferences in dataloader:
                     self.optim.zero_grad()
                     loss = self._training_inner_loop(fragment_pairs, preferences)
                     loss.backward()
                     self.optim.step()
+
+        metrics = {}
+        metrics["loss"] = self.logger.name_to_value[
+            f"mean/reward/epoch/{epochs-1}/loss"
+        ]
+        metrics["accuracy"] = self.logger.name_to_value[
+            f"mean/reward/epoch/{epochs-1}/accuracy"
+        ]
+        return metrics
 
     def _training_inner_loop(
         self,
@@ -1243,10 +1259,21 @@ class EnsembleTrainer(BasicRewardTrainer):
             num_samples=len(dataset),
             generator=self.rng,
         )
+        member_metrics = []
         for member_idx in range(len(self.member_trainers)):
             # sampler gives new indexes on every call
-            bagging_dataset = data_th.Subset(dataset, list(sampler))
-            self.member_trainers[member_idx]._train(bagging_dataset, epoch_multiplier)
+            with self.logger.add_prefix(f"ensemble_member/{member_idx}"):
+                bagging_dataset = data_th.Subset(dataset, list(sampler))
+                metrics = self.member_trainers[member_idx]._train(
+                    bagging_dataset, epoch_multiplier
+                )
+                member_metrics.append(metrics)
+
+        metrics = {}
+        for k in member_metrics[0].keys():
+            metrics[k] = np.mean([m[k] for m in member_metrics])
+
+        return metrics
 
 
 def is_base_model_ensemble(reward_model):
@@ -1499,16 +1526,12 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
             epoch_multiplier = 1.0
             if i == 0:
                 epoch_multiplier = self.initial_epoch_multiplier
-
-            self.reward_trainer.train(
-                self.dataset,
-                epoch_multiplier=epoch_multiplier,
-            )
-            epochs = epoch_multiplier * self.reward_trainer.epochs
-            reward_loss = self.logger.name_to_value[f"mean/reward/epoch/{epochs}/loss"]
-            reward_accuracy = self.logger.name_to_value[
-                f"mean/reward/epoch/{epochs}/accuracy"
-            ]
+            with self.logger.add_prefix("reward"):
+                metrics = self.reward_trainer.train(
+                    self.dataset,
+                    epoch_multiplier=epoch_multiplier,
+                )
+            reward_loss, reward_accuracy = metrics["loss"], metrics["accuracy"]
 
             ###################
             # Train the agent #
