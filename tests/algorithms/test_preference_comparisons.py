@@ -204,7 +204,7 @@ def test_trainer_no_crash(
     assert 0.0 < result["reward_accuracy"] <= 1.0
 
 
-def test_preference_model_raises_type_error(venv):
+def test_reward_ensemble_trainer_raises_type_error(venv):
     reward_net = reward_nets.BasicRewardNet(venv.observation_space, venv.action_space)
     preference_model = preference_comparisons.PreferenceModel(
         model=reward_net,

@@ -1335,18 +1335,18 @@ class EnsembleTrainer(BasicRewardTrainer):
                     )
                     self.logger.record(new_key, val)
 
-        metrics = defaultdict(float)
+        metrics = defaultdict(list)
         keys = list(self.logger.name_to_value.keys())
         for key in keys:
             if key.startswith("reward/member-") and "final" in key:
                 val = self.logger.name_to_value[key]
                 key_list = key.split("/")
                 key_list.pop(1)
-                metrics["/".join(key_list)] += val
+                metrics["/".join(key_list)].append(val)
 
         for k, v in metrics.items():
-            metrics[k] = v / len(self.member_trainers)
-            self.logger.record(k, metrics[k])
+            self.logger.record(k, np.mean(v))
+            self.logger.record(k + "_std", np.std(v))
 
 
 def is_base_model_ensemble(reward_model):
