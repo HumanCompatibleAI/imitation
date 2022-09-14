@@ -22,6 +22,8 @@ Detailed example notebook: `5_train_preference_comparisons.ipynb <https://github
 
 .. testcode::
 
+    import numpy as np
+
     from stable_baselines3 import PPO
     from stable_baselines3.common.evaluation import evaluate_policy
     from stable_baselines3.ppo import MlpPolicy
@@ -32,6 +34,8 @@ Detailed example notebook: `5_train_preference_comparisons.ipynb <https://github
     from imitation.rewards.reward_wrapper import RewardVecEnvWrapper
     from imitation.util.networks import RunningNorm
     from imitation.util.util import make_vec_env
+
+    rng = np.random.default_rng(0)
 
     venv = make_vec_env("Pendulum-v1")
 
@@ -46,6 +50,7 @@ Detailed example notebook: `5_train_preference_comparisons.ipynb <https://github
         model=reward_net,
         loss=preference_comparisons.CrossEntropyRewardLoss(preference_model),
         epochs=3,
+        rng=rng,
     )
 
     agent = PPO(

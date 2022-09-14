@@ -208,6 +208,7 @@ def test_preference_comparisons_raises(
     reward_trainer = preference_comparisons.BasicRewardTrainer(
         reward_net,
         loss,
+        rng=rng,
     )
     gatherer = preference_comparisons.SyntheticGatherer(rng=rng)
     # no rng, must provide fragmenter, preference gatherer, reward trainer
@@ -396,6 +397,7 @@ def test_discount_rate_no_crash(
     reward_trainer = preference_comparisons.BasicRewardTrainer(
         reward_net,
         loss,
+        rng=rng,
     )
 
     main_trainer = preference_comparisons.PreferenceComparisons(
@@ -626,6 +628,7 @@ def test_reward_trainer_regularization_no_crash(
     custom_logger,
     preference_model,
     interval_param_scaler,
+    rng,
 ):
     reward_net = reward_nets.BasicRewardNet(venv.observation_space, venv.action_space)
     loss = preference_comparisons.CrossEntropyRewardLoss(preference_model)
@@ -641,6 +644,7 @@ def test_reward_trainer_regularization_no_crash(
         loss,
         regularizer_factory=regularizer_factory,
         custom_logger=custom_logger,
+        rng=rng,
     )
 
     main_trainer = preference_comparisons.PreferenceComparisons(
@@ -652,6 +656,7 @@ def test_reward_trainer_regularization_no_crash(
         fragmenter=random_fragmenter,
         reward_trainer=reward_trainer,
         custom_logger=custom_logger,
+        rng=rng,
     )
     main_trainer.train(50, 50)
 
@@ -663,6 +668,7 @@ def test_reward_trainer_regularization_raises(
     custom_logger,
     preference_model,
     interval_param_scaler,
+    rng,
 ):
     reward_net = reward_nets.BasicRewardNet(venv.observation_space, venv.action_space)
     loss = preference_comparisons.CrossEntropyRewardLoss(preference_model)
@@ -678,6 +684,7 @@ def test_reward_trainer_regularization_raises(
         loss,
         regularizer_factory=regularizer_factory,
         custom_logger=custom_logger,
+        rng=rng,
     )
 
     main_trainer = preference_comparisons.PreferenceComparisons(
@@ -689,6 +696,7 @@ def test_reward_trainer_regularization_raises(
         fragmenter=random_fragmenter,
         reward_trainer=reward_trainer,
         custom_logger=custom_logger,
+        rng=rng,
     )
     with pytest.raises(
         ValueError,

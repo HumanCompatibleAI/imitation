@@ -1189,7 +1189,7 @@ class BasicRewardTrainer(RewardTrainer):
                 dataset,
                 lengths=[train_length, val_length],
                 # we convert the numpy generator to the pytorch generator.
-                generator=th.Generator().manual_seed(util.make_seeds(self.rng))
+                generator=th.Generator().manual_seed(util.make_seeds(self.rng)),
             )
             dataloader = self._make_data_loader(train_dataset)
             val_dataloader = self._make_data_loader(val_dataset)
@@ -1395,7 +1395,12 @@ def _make_reward_trainer(
                 f" by AddSTDRewardWrapper but found {type(reward_model).__name__}.",
             )
     else:
-        return BasicRewardTrainer(reward_model, loss=loss, **reward_trainer_kwargs)
+        return BasicRewardTrainer(
+            reward_model,
+            loss=loss,
+            rng=rng,
+            **reward_trainer_kwargs,
+        )
 
 
 QUERY_SCHEDULES: Dict[str, type_aliases.Schedule] = {
