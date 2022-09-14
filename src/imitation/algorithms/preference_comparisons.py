@@ -327,7 +327,7 @@ class MixtureOfTrajectoryGenerators(TrajectoryGenerator):
         """
         if len(members) < 2:
             raise ValueError(
-                "MixtureOfTrajectoryGenerators requires at least two member!",
+                "MixtureOfTrajectoryGenerators requires at least two members!",
             )
         self.members = tuple(members)
         super().__init__(custom_logger=custom_logger)
