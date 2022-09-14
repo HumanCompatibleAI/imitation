@@ -242,14 +242,14 @@ def example_gail():
 def example_airl():
     sacred_ex_name = "train_adversarial"
     run_name = "airl_tuning"
-    n_seeds = 5
-    base_named_configs = ["common.wandb_logging", "seals_half_cheetah"]
+    n_seeds = 3
+    base_named_configs = ["common.wandb_logging"]
     base_config_updates = {
         "common": {"wandb": {"wandb_kwargs": {"project": "algorithm-benchmark"}}},
-        "total_timesteps": 1e6,
+        "total_timesteps": 1e7,
     }
     search_space = {
-        # "named_configs": tune.grid_search([[env] for env in MY_ENVS]),
+        "named_configs": tune.grid_search([[env] for env in MY_ENVS]),
         "config_updates": {
             "algorithm_kwargs": dict(
                 demo_batch_size=tune.choice([512, 1024, 2048]),
@@ -259,7 +259,10 @@ def example_airl():
             ),
             "rl": {
                 "batch_size": tune.choice([512, 1024, 2048]),
-                "rl_kwargs": {"ent_coef": tune.choice([0, 1e-3, 1e-1])},
+                "rl_kwargs": {
+                    "ent_coef": tune.choice([0, 1e-3, 1e-1]),
+                    "learning_rate": tune.loguniform(1e-5, 1e-3),
+                },
             },
             "algorithm_specific": {},
         },
