@@ -99,11 +99,11 @@ def make_obs_mat(
     Returns:
         A matrix of shape `(n_states, obs_dim if is_random else n_states)`.
     """
-    if not is_random:
-        assert obs_dim is None
     if is_random:
+        assert obs_dim is not None
         obs_mat = rng.normal(0, 2, (n_states, obs_dim))
     else:
+        assert obs_dim is None
         obs_mat = np.identity(n_states)
     assert (
         obs_mat.ndim == 2 and obs_mat.shape[:1] == (n_states,) and obs_mat.shape[1] > 0

@@ -226,7 +226,7 @@ def endless_iter(iterable: Iterable[T]) -> Iterator[T]:
     return itertools.chain.from_iterable(itertools.repeat(iterable))
 
 
-def safe_to_tensor(numpy_array: np.ndarray, **kwargs) -> th.Tensor:
+def safe_to_tensor(array: Union[np.ndarray, th.Tensor], **kwargs) -> th.Tensor:
     """Converts a NumPy array to a PyTorch tensor.
 
     The data is copied in the case where the array is non-writable. Unfortunately if
@@ -234,16 +234,19 @@ def safe_to_tensor(numpy_array: np.ndarray, **kwargs) -> th.Tensor:
     undefined behavior if you try to write to the tensor.
 
     Args:
-        numpy_array: The numpy array to convert to a PyTorch tensor.
+        array: The numpy array to convert to a PyTorch tensor.
         kwargs: Additional keyword arguments to pass to `th.as_tensor`.
 
     Returns:
-        A PyTorch tensor with the same content as `numpy_array`.
+        A PyTorch tensor with the same content as `array`.
     """
-    if not numpy_array.flags.writeable:
-        numpy_array = numpy_array.copy()
+    if isinstance(array, th.Tensor):
+        return array
 
-    return th.as_tensor(numpy_array, **kwargs)
+    if not array.flags.writeable:
+        array = array.copy()
+
+    return th.as_tensor(array, **kwargs)
 
 
 @overload

@@ -319,7 +319,7 @@ def build_cnn(
     Raises:
         ValueError: if squeeze_output was supplied with out_size!=1.
     """
-    layers = collections.OrderedDict()
+    layers: OrderedDict[str, nn.Module] = collections.OrderedDict()
 
     if name is None:
         prefix = ""

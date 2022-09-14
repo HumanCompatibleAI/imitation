@@ -304,10 +304,12 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
         assert len(state) == len(action) and len(state) == len(next_state)
         for idx, (obs, act, next_obs) in enumerate(zip(state, action, next_state)):
             flat_trans = self._preprocess_transition(obs, act, next_obs)
+            assert self._scaler is not None
             scaled_padded_trans = self._scaler.transform(flat_trans[np.newaxis])
             if self.is_stationary:
                 rew = self._density_models[None].score(scaled_padded_trans)
             else:
+                assert steps is not None
                 time = steps[idx]
                 if time >= len(self._density_models):
                     # Can't do anything sensible here yet. Correct solution is to use
@@ -334,6 +336,7 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
                 method of the imitation RL model. Refer to Stable Baselines docs for
                 details.
         """
+        assert self.rl_algo is not None
         self.rl_algo.set_env(self.venv_wrapped)
         self.rl_algo.learn(
             n_timesteps,
@@ -373,4 +376,5 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
 
     @property
     def policy(self) -> base_class.BasePolicy:
+        assert self.rl_algo is not None
         return self.rl_algo.policy

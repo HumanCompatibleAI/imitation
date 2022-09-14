@@ -272,6 +272,7 @@ class TestData:
                 ValueError,
                 match=r"infos when present must be present for each action.*",
             ):
+                assert traj.infos is not None
                 dataclasses.replace(traj, infos=traj.infos[:-1])
             with pytest.raises(
                 ValueError,

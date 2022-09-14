@@ -1,7 +1,7 @@
 """Constructs deep network reward models."""
 
 import abc
-from typing import Callable, Iterable, Optional, Sequence, Tuple, Type, cast
+from typing import Callable, Iterable, Optional, Sequence, Tuple, Type, cast, Dict, Any
 
 import gym
 import numpy as np
@@ -427,7 +427,7 @@ class BasicRewardNet(RewardNet):
         if self.use_done:
             combined_size += 1
 
-        full_build_mlp_kwargs = {
+        full_build_mlp_kwargs: Dict[str, Any] = {
             "hid_sizes": (32, 32),
             **kwargs,
             # we do not want the values below to be overridden
@@ -529,7 +529,7 @@ class CnnRewardNet(RewardNet):
         if self.use_done:
             output_size *= 2
 
-        full_build_cnn_kwargs = {
+        full_build_cnn_kwargs: Dict[str, Any] = {
             "hid_channels": (32, 32),
             **kwargs,
             # we do not want the values below to be overridden

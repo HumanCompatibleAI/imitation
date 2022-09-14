@@ -27,7 +27,7 @@ from stable_baselines3.common import policies, utils, vec_env
 from imitation.algorithms import base as algo_base
 from imitation.data import rollout, types
 from imitation.policies import base as policy_base
-from imitation.util import logger as imit_logger
+from imitation.util import logger as imit_logger, util
 
 
 @dataclasses.dataclass(frozen=True)
@@ -113,6 +113,8 @@ class BehaviorCloningLossCalculator:
             A BCTrainingMetrics object with the loss and all the components it
             consists of.
         """
+        obs = util.safe_to_tensor(obs)
+        acts = util.safe_to_tensor(acts)
         _, log_prob, entropy = policy.evaluate_actions(obs, acts)
         prob_true_act = th.exp(log_prob).mean()
         log_prob = log_prob.mean()
@@ -426,6 +428,7 @@ class BC(algo_base.DemonstrationAlgorithm):
             if on_epoch_end is not None:
                 on_epoch_end()
 
+        assert self._demo_data_loader is not None
         demonstration_batches = BatchIteratorWithEpochEndCallback(
             self._demo_data_loader,
             n_epochs,
@@ -466,4 +469,4 @@ class BC(algo_base.DemonstrationAlgorithm):
         Args:
             policy_path: path to save policy to.
         """
-        th.save(self.policy, policy_path)
+        th.save(self.policy, types.path_to_str(policy_path))

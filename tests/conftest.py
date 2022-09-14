@@ -97,12 +97,14 @@ def pendulum_venv() -> VecEnv:
 
 @pytest.fixture
 def pendulum_expert_policy() -> BasePolicy:
-    return PPO.load(
+    policy = PPO.load(
         load_from_hub(
             "HumanCompatibleAI/ppo-Pendulum-v1",
             "ppo-Pendulum-v1.zip",
         ),
     ).policy
+    assert policy is not None
+    return policy
 
 
 @pytest.fixture

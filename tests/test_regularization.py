@@ -1,6 +1,7 @@
 """Tests for `imitation.regularization.*`."""
 import itertools
 import tempfile
+from typing import Union
 
 import numpy as np
 import pytest
@@ -326,7 +327,7 @@ class SimpleLossRegularizer(regularizers.LossRegularizer):
     It multiplies the total loss by lambda_+1.
     """
 
-    def _loss_penalty(self, loss: th.Tensor) -> th.Tensor:
+    def _loss_penalty(self, loss: regularizers.Scalar) -> regularizers.Scalar:
         return loss * self.lambda_  # this multiplies the total loss by lambda_+1.
 
 

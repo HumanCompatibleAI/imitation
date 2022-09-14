@@ -21,7 +21,7 @@ from torch.utils import data as th_data
 
 from imitation.algorithms import base, bc
 from imitation.data import rollout, types
-from imitation.util import logger, util
+from imitation.util import logger as imit_logger, util
 
 
 class BetaSchedule(abc.ABC):
@@ -69,7 +69,7 @@ class LinearBetaSchedule(BetaSchedule):
 def reconstruct_trainer(
     scratch_dir: types.AnyPath,
     venv: vec_env.VecEnv,
-    custom_logger: Optional[logger.HierarchicalLogger] = None,
+    custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
     device: Union[th.device, str] = "auto",
 ) -> "DAggerTrainer":
     """Reconstruct trainer from the latest snapshot in some working directory.
@@ -88,8 +88,8 @@ def reconstruct_trainer(
     Returns:
         A deserialized `DAggerTrainer`.
     """
-    custom_logger = custom_logger or logger.configure()
-    checkpoint_path = pathlib.Path(scratch_dir, "checkpoint-latest.pt")
+    custom_logger = custom_logger or imit_logger.configure()
+    checkpoint_path = pathlib.Path(types.path_to_str(scratch_dir), "checkpoint-latest.pt")
     trainer = th.load(checkpoint_path, map_location=utils.get_device(device))
     trainer.venv = venv
     trainer._logger = custom_logger
@@ -105,14 +105,14 @@ def _save_dagger_demo(
     #   however that NPZ save here is likely more space efficient than
     #   pickle from types.save(), and types.save only accepts
     #   TrajectoryWithRew right now (subclass of Trajectory).
-    save_dir = pathlib.Path(save_dir)
+    save_dir_obj = pathlib.Path(types.path_to_str(save_dir))
     assert isinstance(trajectory, types.Trajectory)
     actual_prefix = f"{prefix}-" if prefix else ""
     timestamp = util.make_unique_timestamp()
     filename = f"{actual_prefix}dagger-demo-{timestamp}.npz"
 
-    save_dir.mkdir(parents=True, exist_ok=True)
-    npz_path = pathlib.Path(save_dir, filename)
+    save_dir_obj.mkdir(parents=True, exist_ok=True)
+    npz_path = save_dir_obj / filename
     np.savez_compressed(npz_path, **dataclasses.asdict(trajectory))
     logging.info(f"Saved demo at '{npz_path}'")
 
@@ -145,6 +145,10 @@ class InteractiveTrajectoryCollector(vec_env.VecEnvWrapper):
     Demonstrations are saved as `TrajectoryWithRew` to `self.save_dir` at the end
     of every episode.
     """
+
+    traj_accum: Optional[rollout.TrajectoryAccumulator]
+    _last_obs: Optional[np.ndarray]
+    _last_user_actions: Optional[np.ndarray]
 
     def __init__(
         self,
@@ -203,6 +207,7 @@ class InteractiveTrajectoryCollector(vec_env.VecEnvWrapper):
         """
         self.traj_accum = rollout.TrajectoryAccumulator()
         obs = self.venv.reset()
+        assert isinstance(obs, np.ndarray)
         for i, ob in enumerate(obs):
             self.traj_accum.add_step({"obs": ob}, key=i)
         self._last_obs = obs
@@ -230,6 +235,7 @@ class InteractiveTrajectoryCollector(vec_env.VecEnvWrapper):
                 and executed instead via `self.get_robot_act`.
         """
         assert self._is_reset, "call .reset() before .step()"
+        assert self._last_obs is not None
 
         # Replace each given action with a robot action 100*(1-beta)% of the time.
         actual_acts = np.array(actions)
@@ -250,6 +256,9 @@ class InteractiveTrajectoryCollector(vec_env.VecEnvWrapper):
             Observation, reward, dones (is terminal?) and info dict.
         """
         next_obs, rews, dones, infos = self.venv.step_wait()
+        assert isinstance(next_obs, np.ndarray)
+        assert self.traj_accum is not None
+        assert self._last_user_actions is not None
         self._last_obs = next_obs
         fresh_demos = self.traj_accum.add_steps_and_auto_finish(
             obs=next_obs,
@@ -311,7 +320,7 @@ class DAggerTrainer(base.BaseImitationAlgorithm):
         rng: np.random.Generator,
         beta_schedule: Optional[Callable[[int], float]] = None,
         bc_trainer: bc.BC,
-        custom_logger: Optional[logger.HierarchicalLogger] = None,
+        custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
     ):
         """Builds DAggerTrainer.
 
@@ -331,7 +340,7 @@ class DAggerTrainer(base.BaseImitationAlgorithm):
         if beta_schedule is None:
             beta_schedule = LinearBetaSchedule(15)
         self.beta_schedule = beta_schedule
-        self.scratch_dir = pathlib.Path(scratch_dir)
+        self.scratch_dir = pathlib.Path(types.path_to_str(scratch_dir))
         self.venv = venv
         self.round_num = 0
         self._last_loaded_round = -1
@@ -353,8 +362,12 @@ class DAggerTrainer(base.BaseImitationAlgorithm):
         del d["_logger"]
         return d
 
-    @base.BaseImitationAlgorithm.logger.setter
-    def logger(self, value: logger.HierarchicalLogger) -> None:
+    @property
+    def logger(self) -> imit_logger.HierarchicalLogger:
+        """Returns logger for this object."""
+        return super().logger
+    @logger.setter
+    def logger(self, value: imit_logger.HierarchicalLogger) -> None:
         # DAgger and inner-BC logger should stay in sync
         self._logger = value
         self.bc_trainer.logger = value
