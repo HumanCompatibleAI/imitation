@@ -44,6 +44,7 @@ extensions = [
     "sphinx_copybutton",
     "sphinx_github_changelog",
     "sphinx.ext.doctest",
+    "nbsphinx",
 ]
 
 napoleon_google_docstring = True

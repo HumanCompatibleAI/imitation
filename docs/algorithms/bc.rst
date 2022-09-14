@@ -15,7 +15,7 @@ approaches to learning from demonstrations).
 Example
 =======
 
-Detailed example notebook: `1_train_bc.ipynb <https://github.com/HumanCompatibleAI/imitation/blob/master/examples/1_train_bc.ipynb>`_
+Detailed example notebook: :doc:`../tutorials/1_train_bc`
 
 .. testcode::
     

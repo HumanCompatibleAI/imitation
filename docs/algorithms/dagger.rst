@@ -19,7 +19,7 @@ Notes
 Example
 =======
 
-Detailed example notebook: `2_train_dagger.ipynb <https://github.com/HumanCompatibleAI/imitation/blob/master/examples/2_train_dagger.ipynb>`_
+Detailed example notebook: :doc:`../tutorials/2_train_dagger`
 
 .. testcode::
 

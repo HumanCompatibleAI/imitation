@@ -18,7 +18,7 @@ Notes
 Example
 =======
 
-Detailed example notebook: `5_train_preference_comparisons.ipynb <https://github.com/HumanCompatibleAI/imitation/blob/master/examples/5_train_preference_comparisons.ipynb>`_
+Detailed example notebook: :doc:`../tutorials/5_train_preference_comparisons`
 
 .. testcode::
 
