@@ -1,7 +1,7 @@
 """Constructs deep network reward models."""
 
 import abc
-from typing import Callable, Iterable, Optional, Sequence, Tuple, Type, cast, Dict, Any
+from typing import Any, Callable, Dict, Iterable, Optional, Sequence, Tuple, Type, cast
 
 import gym
 import numpy as np

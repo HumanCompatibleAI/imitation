@@ -1,7 +1,6 @@
 """Tests for `imitation.regularization.*`."""
 import itertools
 import tempfile
-from typing import Union
 
 import numpy as np
 import pytest

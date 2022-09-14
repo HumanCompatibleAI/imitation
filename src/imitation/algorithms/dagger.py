@@ -21,7 +21,8 @@ from torch.utils import data as th_data
 
 from imitation.algorithms import base, bc
 from imitation.data import rollout, types
-from imitation.util import logger as imit_logger, util
+from imitation.util import logger as imit_logger
+from imitation.util import util
 
 
 class BetaSchedule(abc.ABC):
@@ -89,7 +90,10 @@ def reconstruct_trainer(
         A deserialized `DAggerTrainer`.
     """
     custom_logger = custom_logger or imit_logger.configure()
-    checkpoint_path = pathlib.Path(types.path_to_str(scratch_dir), "checkpoint-latest.pt")
+    checkpoint_path = pathlib.Path(
+        types.path_to_str(scratch_dir),
+        "checkpoint-latest.pt",
+    )
     trainer = th.load(checkpoint_path, map_location=utils.get_device(device))
     trainer.venv = venv
     trainer._logger = custom_logger
@@ -366,6 +370,7 @@ class DAggerTrainer(base.BaseImitationAlgorithm):
     def logger(self) -> imit_logger.HierarchicalLogger:
         """Returns logger for this object."""
         return super().logger
+
     @logger.setter
     def logger(self, value: imit_logger.HierarchicalLogger) -> None:
         # DAgger and inner-BC logger should stay in sync

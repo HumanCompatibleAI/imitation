@@ -27,7 +27,8 @@ from stable_baselines3.common import policies, utils, vec_env
 from imitation.algorithms import base as algo_base
 from imitation.data import rollout, types
 from imitation.policies import base as policy_base
-from imitation.util import logger as imit_logger, util
+from imitation.util import logger as imit_logger
+from imitation.util import util
 
 
 @dataclasses.dataclass(frozen=True)
