@@ -1210,7 +1210,7 @@ class BasicRewardTrainer(RewardTrainer):
             if key.startswith(f"mean/reward/epoch-{epoch_num}"):
                 val = self.logger.name_to_value[key]
                 new_key = key.replace(f"mean/reward/epoch-{epoch_num}", "reward/final")
-                self.logger.record(new_key, val)
+                self.logger.record(new_key, val, exclude="wandb")
 
     def _training_inner_loop(
         self,
