@@ -7,7 +7,6 @@ import sys
 from typing import Iterable, Sequence
 
 import pytest
-from pytest_notebook import execution, notebook
 
 
 def _paths_to_strs(x: Iterable[pathlib.Path]) -> Sequence[str]:
