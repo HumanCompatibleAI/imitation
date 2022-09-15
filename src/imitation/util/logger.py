@@ -29,9 +29,6 @@ def make_output_format(
 
     Returns:
         the logger.
-
-    Raises:
-        ValueError: if `_format` is unknown.
     """
     os.makedirs(log_dir, exist_ok=True)
     if _format == "stdout":
