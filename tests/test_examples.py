@@ -31,23 +31,7 @@ EXAMPLES_DIR = THIS_DIR / ".." / "examples"
 TUTORIALS_DIR = THIS_DIR / ".." / "docs" / "tutorials"
 
 SH_PATHS = _paths_to_strs(EXAMPLES_DIR.glob("*.sh"))
-NB_PATHS = _paths_to_strs(TUTORIALS_DIR.glob("*.ipynb"))
 PY_PATHS = _paths_to_strs(EXAMPLES_DIR.glob("*.py"))
-
-
-@pytest.mark.parametrize("nb_path", NB_PATHS)
-def test_run_tutorial_notebooks_notebooks(nb_path) -> None:
-    """Smoke test ensuring that example notebooks run without error.
-
-    The `pytest_notebook` package also includes regression test functionality against
-    saved notebook outputs, if we want to check that later.
-
-    Args:
-        nb_path: Path to the notebook to test.
-    """
-    nb = notebook.load_notebook(nb_path)
-    result = execution.execute_notebook(nb, cwd=TUTORIALS_DIR, timeout=120)
-    assert result.exec_error is None
 
 
 @pytest.mark.parametrize("py_path", PY_PATHS)
