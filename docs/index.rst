@@ -70,9 +70,7 @@ Main Features
    :caption: Experts
    :hidden:
 
-   experts/experts-from-disk
-   experts/huggingface-experts
-   experts/uploading-huggingface-experts
+   experts/loading-experts
 
 
 API Reference
