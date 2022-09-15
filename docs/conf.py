@@ -18,7 +18,7 @@
 
 
 # -- Project information -----------------------------------------------------
-
+import os
 from importlib import metadata
 
 project = "imitation"
@@ -51,7 +51,7 @@ napoleon_google_docstring = True
 napoleon_numpy_docstring = False
 autosummary_generate = True
 
-nb_execution_mode = "cache"
+nb_execution_mode = os.getenv("NB_EXECUTION_MODE", "cache")
 nb_execution_timeout = 120
 nb_merge_streams = True
 nb_output_stderr = "remove"

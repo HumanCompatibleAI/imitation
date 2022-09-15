@@ -242,6 +242,10 @@ jobs:
       - dependencies-linux
       - run:
           name: sphinx
+          environment:
+            # Note: we don't want to execute the example notebooks in this step since
+            #   this happens in a separate readthedocs job anyway.
+            NB_EXECUTION_MODE: "off"
           command: pushd docs/ && make clean && make doctest && popd
 
   type:
