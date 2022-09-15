@@ -1148,7 +1148,12 @@ class BasicRewardTrainer(RewardTrainer):
         """
         return self.regularizer is not None and self.regularizer.val_split is not None
 
-    def _train(self, dataset: PreferenceDataset, epoch_multiplier: float = 1.0) -> None:
+    def _train(
+        self,
+        dataset: PreferenceDataset,
+        epoch_multiplier: float = 1.0,
+        prefix: Optional[str] = None,
+    ) -> None:
         """Trains for `epoch_multiplier * self.epochs` epochs over `dataset`."""
         if self.regularizer is not None and self.regularizer.val_split is not None:
             val_length = int(len(dataset) * self.regularizer.val_split)
@@ -1178,14 +1183,14 @@ class BasicRewardTrainer(RewardTrainer):
         epoch_num = 0
         with self.logger.accumulate_means("reward"):
             for epoch_num in tqdm(range(epochs), desc="Training reward model"):
-                prefix = f"epoch-{epoch_num}"
+                logger_prefix = self._get_logger_key(prefix, f"epoch-{epoch_num}")
                 train_loss = 0.0
                 for fragment_pairs, preferences in dataloader:
                     self.optim.zero_grad()
                     loss = self._training_inner_loop(
                         fragment_pairs,
                         preferences,
-                        prefix=f"{prefix}/train",
+                        prefix=f"{logger_prefix}/train",
                     )
                     train_loss += loss.item()
                     if self.regularizer:
@@ -1204,7 +1209,7 @@ class BasicRewardTrainer(RewardTrainer):
                     loss = self._training_inner_loop(
                         fragment_pairs,
                         preferences,
-                        prefix=f"{prefix}/val",
+                        prefix=f"{logger_prefix}/val",
                     )
                     val_loss += loss.item()
                 self.regularizer.update_params(train_loss, val_loss)
@@ -1213,9 +1218,12 @@ class BasicRewardTrainer(RewardTrainer):
         # record also the final value in a separate key for easy access.
         keys = list(self.logger.name_to_value.keys())
         for key in keys:
-            if key.startswith(f"mean/reward/epoch-{epoch_num}"):
+            if key.startswith("mean/reward/" + logger_prefix):
                 val = self.logger.name_to_value[key]
-                new_key = key.replace(f"mean/reward/epoch-{epoch_num}", "reward/final")
+                new_key = key.replace(
+                    "mean/reward/" + logger_prefix,
+                    "reward/" + self._get_logger_key(prefix, "final"),
+                )
                 self.logger.record(new_key, val)
 
     def _training_inner_loop(
@@ -1318,23 +1326,13 @@ class EnsembleTrainer(BasicRewardTrainer):
         for member_idx in range(len(self.member_trainers)):
             # sampler gives new indexes on every call
             bagging_dataset = data_th.Subset(dataset, list(sampler))
-            self.member_trainers[member_idx]._train(bagging_dataset, epoch_multiplier)
-            keys = list(self.logger.name_to_value.keys())
-            for key in keys:
-                val = self.logger.name_to_value[key]
-                if key.startswith("mean/reward/epoch-"):
-                    new_key = key.replace(
-                        "mean/reward",
-                        f"mean/reward/member-{member_idx}",
-                    )
-                    self.logger.record(new_key, val)
-                elif key.startswith("reward/final"):
-                    new_key = key.replace(
-                        "reward/final",
-                        f"reward/member-{member_idx}/final/",
-                    )
-                    self.logger.record(new_key, val)
+            self.member_trainers[member_idx]._train(
+                bagging_dataset,
+                epoch_multiplier,
+                prefix=f"member-{member_idx}",
+            )
 
+        # average the metrics across the member models
         metrics = defaultdict(list)
         keys = list(self.logger.name_to_value.keys())
         for key in keys:

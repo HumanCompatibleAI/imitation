@@ -7,14 +7,7 @@ import sys
 import tempfile
 from typing import Any, Dict, Generator, Optional, Sequence, Tuple, Union
 
-from stable_baselines3.common.logger import (
-    CSVOutputFormat,
-    HumanOutputFormat,
-    JSONOutputFormat,
-    KVWriter,
-    Logger,
-    TensorBoardOutputFormat,
-)
+import stable_baselines3.common.logger as sb_logger
 
 from imitation.data import types
 
@@ -24,7 +17,7 @@ def make_output_format(
     log_dir: str,
     log_suffix: str = "",
     max_length: int = 40,
-) -> KVWriter:
+) -> sb_logger.KVWriter:
     """Returns a logger for the requested format.
 
     Args:
@@ -42,26 +35,20 @@ def make_output_format(
     """
     os.makedirs(log_dir, exist_ok=True)
     if _format == "stdout":
-        return HumanOutputFormat(sys.stdout, max_length=max_length)
+        return sb_logger.HumanOutputFormat(sys.stdout, max_length=max_length)
     elif _format == "log":
-        return HumanOutputFormat(
+        return sb_logger.HumanOutputFormat(
             os.path.join(log_dir, f"log{log_suffix}.txt"),
             max_length=max_length,
         )
-    elif _format == "json":
-        return JSONOutputFormat(os.path.join(log_dir, f"progress{log_suffix}.json"))
-    elif _format == "csv":
-        return CSVOutputFormat(os.path.join(log_dir, f"progress{log_suffix}.csv"))
-    elif _format == "tensorboard":
-        return TensorBoardOutputFormat(log_dir)
     else:
-        raise ValueError(f"Unknown format specified: {_format}")
+        return sb_logger.make_output_format(_format, log_dir, log_suffix)
 
 
 def _build_output_formats(
     folder: str,
     format_strs: Sequence[str],
-) -> Sequence[KVWriter]:
+) -> Sequence[sb_logger.KVWriter]:
     """Build output formats for initializing a Stable Baselines Logger.
 
     Args:
@@ -82,7 +69,7 @@ def _build_output_formats(
     return output_formats
 
 
-class HierarchicalLogger(Logger):
+class HierarchicalLogger(sb_logger.Logger):
     """A logger supporting contexts for accumulating mean values.
 
     `self.accumulate_means` creates a context manager. While in this context,
@@ -92,7 +79,7 @@ class HierarchicalLogger(Logger):
 
     def __init__(
         self,
-        default_logger: Logger,
+        default_logger: sb_logger.Logger,
         format_strs: Sequence[str] = ("stdout", "log", "csv"),
     ):
         """Builds HierarchicalLogger.
@@ -162,7 +149,7 @@ class HierarchicalLogger(Logger):
             folder = os.path.join(self.default_logger.dir, "raw", subdir)
             os.makedirs(folder, exist_ok=True)
             output_formats = _build_output_formats(folder, self.format_strs)
-            logger = Logger(folder, list(output_formats))
+            logger = sb_logger.Logger(folder, list(output_formats))
             self._cached_loggers[subdir] = logger
 
         try:
@@ -214,7 +201,7 @@ class HierarchicalLogger(Logger):
             logger.close()
 
 
-class WandbOutputFormat(KVWriter):
+class WandbOutputFormat(sb_logger.KVWriter):
     """A stable-baseline logger that writes to wandb.
 
     Users need to call `wandb.init()` before initializing `WandbOutputFormat`.
@@ -282,7 +269,7 @@ def configure(
     if format_strs is None:
         format_strs = ["stdout", "log", "csv"]
     output_formats = _build_output_formats(folder, format_strs)
-    default_logger = Logger(folder, list(output_formats))
+    default_logger = sb_logger.Logger(folder, list(output_formats))
     hier_format_strs = [f for f in format_strs if f != "wandb"]
     hier_logger = HierarchicalLogger(default_logger, hier_format_strs)
     return hier_logger

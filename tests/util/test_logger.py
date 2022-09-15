@@ -23,20 +23,24 @@ def _csv_to_dict(csv_path: str) -> dict:
 
 
 def _json_to_dict(json_path: str) -> dict:
+    r"""Loads the saved json logging file and convert it to expected dict format.
+
+    Args:
+        json_path: Path of the json log file.
+            Stored in the format - '{"A": 1, "B": 1}\n{"A": 2}\n{"B": 3}\n'
+
+    Returns:
+        dictionary in the format - `{"A": [1, 2, ""], "B": [1, "", 3]}`
+    """
     result = defaultdict(list)
-    all_line_dicts = []
     with open(json_path, "r") as f:
-        for line in f.readlines():
-            line_dict = json.loads(line)
-            all_line_dicts.append(line_dict)
+        all_line_dicts = [json.loads(line) for line in f.readlines()]
+    # get all the keys in the dict so as to add "" if the key is not present in a line
     all_keys = set().union(*[list(line_dict.keys()) for line_dict in all_line_dicts])
-    all_keys = list(all_keys)
+
     for line_dict in all_line_dicts:
         for key in all_keys:
-            if key in line_dict:
-                result[key].append(line_dict[key])
-            else:
-                result[key].append("")
+            result[key].append(line_dict.get(key, ""))
     return result
 
 
