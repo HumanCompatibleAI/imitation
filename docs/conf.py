@@ -53,6 +53,8 @@ autosummary_generate = True
 
 nb_execution_mode = "cache"
 nb_execution_timeout = 120
+nb_merge_streams = True
+nb_output_stderr = "remove"
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
