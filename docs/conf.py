@@ -44,12 +44,15 @@ extensions = [
     "sphinx_copybutton",
     "sphinx_github_changelog",
     "sphinx.ext.doctest",
-    "nbsphinx",
+    "myst_nb",
 ]
 
 napoleon_google_docstring = True
 napoleon_numpy_docstring = False
 autosummary_generate = True
+
+nb_execution_mode = "cache"
+nb_execution_timeout = 120
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
