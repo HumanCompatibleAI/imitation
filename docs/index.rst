@@ -65,6 +65,16 @@ Main Features
    tutorials/6_train_mce
    tutorials/7_train_density
 
+.. toctree::
+   :maxdepth: 2
+   :caption: Experts
+   :hidden:
+
+   experts/experts-from-disk
+   experts/huggingface-experts
+   experts/uploading-huggingface-experts
+
+
 API Reference
 ~~~~~~~~~~~~~
 
