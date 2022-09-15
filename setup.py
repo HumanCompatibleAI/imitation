@@ -79,7 +79,7 @@ DOCS_REQUIRE = [
     "furo==2022.6.21",
     "sphinx-copybutton==0.5.0",
     "sphinx-github-changelog~=1.2.0",
-    "nbsphinx~=0.8.9",
+    "myst-nb==0.16.0",
     "ipykernel~=6.15.2",
     "seals==0.1.2",
 ] + ATARI_REQUIRE
