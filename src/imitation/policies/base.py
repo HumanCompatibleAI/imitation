@@ -114,7 +114,9 @@ class CnnPolicy(policies.ActorCriticCnnPolicy):
     def transpose_space(self, observation_space: gym.spaces.Box) -> gym.spaces.Box:
         if not isinstance(observation_space, gym.spaces.Box):
             raise TypeError("This code assumes that observation spaces are gym Boxes.")
-        if not (observation_space.low == 0 and observation_space.high == 255):
+        if not (
+            np.all(observation_space.low == 0) and np.all(observation_space.high == 255)
+        ):
             error_msg = (
                 "This code assumes the observation space values range from "
                 + "0 to 255."
