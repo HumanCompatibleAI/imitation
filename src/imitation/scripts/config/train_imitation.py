@@ -111,13 +111,13 @@ def seals_humanoid():
 
 
 @train_imitation_ex.named_config
-def asteroids_short_episodes():
+def asteroids():
     common = dict(
         env_name="AsteroidsNoFrameskip-v4",
         post_wrappers=[
             lambda env, _: AutoResetWrapper(env),
             lambda env, _: AtariWrapper(env, terminal_on_life_loss=False),
-            lambda env, _: TimeLimit(env, max_episode_steps=100),
+            lambda env, _: TimeLimit(env, max_episode_steps=100_000),
         ],
     )
     train = dict(
@@ -127,13 +127,13 @@ def asteroids_short_episodes():
 
 
 @train_imitation_ex.named_config
-def asteroids():
+def asteroids_short_episodes():
     common = dict(
         env_name="AsteroidsNoFrameskip-v4",
         post_wrappers=[
             lambda env, _: AutoResetWrapper(env),
             lambda env, _: AtariWrapper(env, terminal_on_life_loss=False),
-            lambda env, _: TimeLimit(env, max_episode_steps=100_000),
+            lambda env, _: TimeLimit(env, max_episode_steps=100),
         ],
     )
     train = dict(

@@ -119,18 +119,6 @@ def seals_mountain_car():
 
 
 @train_preference_comparisons_ex.named_config
-def asteroids_short_episodes():
-    common = dict(
-        env_name="AsteroidsNoFrameskip-v4",
-        post_wrappers=[
-            lambda env, _: AutoResetWrapper(env),
-            lambda env, _: AtariWrapper(env, terminal_on_life_loss=False),
-            lambda env, _: TimeLimit(env, max_episode_steps=100),
-        ],
-    )
-
-
-@train_preference_comparisons_ex.named_config
 def asteroids():
     common = dict(
         env_name="AsteroidsNoFrameskip-v4",
@@ -138,6 +126,18 @@ def asteroids():
             lambda env, _: AutoResetWrapper(env),
             lambda env, _: AtariWrapper(env, terminal_on_life_loss=False),
             lambda env, _: TimeLimit(env, max_episode_steps=100_000),
+        ],
+    )
+
+
+@train_preference_comparisons_ex.named_config
+def asteroids_short_episodes():
+    common = dict(
+        env_name="AsteroidsNoFrameskip-v4",
+        post_wrappers=[
+            lambda env, _: AutoResetWrapper(env),
+            lambda env, _: AtariWrapper(env, terminal_on_life_loss=False),
+            lambda env, _: TimeLimit(env, max_episode_steps=100),
         ],
     )
 
