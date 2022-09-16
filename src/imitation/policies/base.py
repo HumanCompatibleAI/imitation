@@ -110,7 +110,6 @@ class CnnPolicy(policies.ActorCriticCnnPolicy):
                 },
             )
         super().__init__(*args, **kwargs)
-        # self.base_policy = policies.ActorCriticCnnPolicy(*args, **kwargs)
 
     def transpose_space(self, observation_space: gym.spaces.Box) -> gym.spaces.Box:
         if not isinstance(observation_space, gym.spaces.Box):
@@ -139,7 +138,6 @@ class CnnPolicy(policies.ActorCriticCnnPolicy):
             obs_ = networks.cnn_transpose(obs)
         else:
             obs_ = obs
-        # return self.base_policy.forward(obs_, deterministic)
         # Preprocess the observation if needed
         features = self.extract_features(obs_)
         latent_pi, latent_vf = self.mlp_extractor(features)
@@ -150,14 +148,6 @@ class CnnPolicy(policies.ActorCriticCnnPolicy):
         log_prob = distribution.log_prob(actions)
         return actions, values, log_prob
 
-    # def _predict(self, observation: th.Tensor, deterministic: bool = False
-    # ) -> th.Tensor:
-    #     if self.transpose_input:
-    #         obs_ = networks.cnn_transpose(observation)
-    #     else:
-    #         obs_ = observation
-    #     return self.base_policy._predict(obs_, deterministic)
-
     def evaluate_actions(
         self,
         obs: th.Tensor,
@@ -167,7 +157,6 @@ class CnnPolicy(policies.ActorCriticCnnPolicy):
             obs_ = networks.cnn_transpose(obs)
         else:
             obs_ = obs
-        # return self.base_policy.evaluate_actions(obs_, actions)
         # Preprocess the observation if needed
         features = self.extract_features(obs_)
         latent_pi, latent_vf = self.mlp_extractor(features)
@@ -181,7 +170,6 @@ class CnnPolicy(policies.ActorCriticCnnPolicy):
             obs_ = networks.cnn_transpose(obs)
         else:
             obs_ = obs
-        # return self.base_policy.get_distribution(obs_)
         features = self.extract_features(obs_)
         latent_pi = self.mlp_extractor.forward_actor(features)
         return self._get_action_dist_from_latent(latent_pi)
@@ -191,7 +179,6 @@ class CnnPolicy(policies.ActorCriticCnnPolicy):
             obs_ = networks.cnn_transpose(obs)
         else:
             obs_ = obs
-        # return self.base_policy.predict_values(obs_)
         features = self.extract_features(obs_)
         latent_vf = self.mlp_extractor.forward_critic(features)
         return self.value_net(latent_vf)
