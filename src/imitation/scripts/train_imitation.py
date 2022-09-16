@@ -69,7 +69,7 @@ def train_imitation(
     dagger: Mapping[str, Any],
     use_dagger: bool,
     agent_path: Optional[str],
-    transpose_obs: bool,
+    transpose_obs: bool = False,
 ) -> Mapping[str, Mapping[str, float]]:
     """Runs DAgger (if `use_dagger`) or BC (otherwise) training.
 
