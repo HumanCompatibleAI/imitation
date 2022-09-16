@@ -34,14 +34,14 @@ To load a policy from HuggingFace, use either `ppo-huggingface` or `sac-huggingf
 the policy type.
 By default, the policies are loaded from the HumanCompatibleAI repository, but you can
 override this by setting the `organization` parameter in the `loader_kwargs`.
-When using the python API, you also have to speciyf the environment name as `env_name`.
+When using the python API, you also have to specify the environment name as `env_name`.
 
 Uploading a policy to HuggingFace
 ---------------------------------
 
 The `huggingface-sb3 package <https://github.com/huggingface/huggingface_sb3>`_ provides
 utilities to push your own models to HuggingFace and load them from there.
-Make sure use the naming scheme helpers
+Make sure to use the naming scheme helpers
 `as described in the readme <https://github.com/huggingface/huggingface_sb3#case-5-i-want-to-automate-uploaddownload-from-the-hub>`_.
 Otherwise the loader will not be able to find your model in the repository.
 
