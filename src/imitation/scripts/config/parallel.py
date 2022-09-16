@@ -242,7 +242,7 @@ def example_gail():
 def example_airl():
     sacred_ex_name = "train_adversarial"
     run_name = "airl_tuning"
-    n_seeds = 3
+    n_seeds = 1
     base_named_configs = ["common.wandb_logging"]
     base_config_updates = {
         "common": {"wandb": {"wandb_kwargs": {"project": "algorithm-benchmark"}}},
@@ -253,7 +253,7 @@ def example_airl():
         "config_updates": {
             "algorithm_kwargs": dict(
                 demo_batch_size=tune.choice([512, 1024, 2048]),
-                n_disc_updates_per_round=tune.choice([2, 4, 8]),
+                n_disc_updates_per_round=tune.choice([2, 4, 8, 16]),
                 # gen_replay_buffer_capacity=tune.choice([512, 1024]),
                 # gen_train_timesteps=0,
             ),
@@ -269,4 +269,4 @@ def example_airl():
         "command_name": "airl",
     }
     num_samples = 50
-    resources_per_trial = dict(cpu=3)
+    resources_per_trial = dict(cpu=4)
