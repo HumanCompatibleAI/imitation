@@ -61,6 +61,10 @@ CARTPOLE_TEST_POLICY_PATH = CARTPOLE_TEST_DATA_PATH / "policies/final"
 PENDULUM_TEST_DATA_PATH = TEST_DATA_PATH / "expert_models/pendulum_0/"
 PENDULUM_TEST_ROLLOUT_PATH = PENDULUM_TEST_DATA_PATH / "rollouts/final.pkl"
 
+ASTEROIDS_TEST_DATA_PATH = TEST_DATA_PATH / "expert_models/asteroids_short_episodes_0/"
+ASTEROIDS_TEST_ROLLOUT_PATH = TEST_DATA_PATH / "rollouts/final.pkl"
+ASTEROIDS_TEST_POLICY_PATH = TEST_DATA_PATH / "policies/final"
+
 OLD_FMT_ROLLOUT_TEST_DATA_PATH = TEST_DATA_PATH / "old_format_rollout.pkl"
 
 
@@ -308,6 +312,21 @@ def test_train_dagger_warmstart(tmpdir):
     )
     assert run_warmstart.status == "COMPLETED"
     assert isinstance(run_warmstart.result, dict)
+
+
+def test_train_dagger_with_image_env(tmpdir):
+    run = train_imitation.train_imitation_ex.run(
+        command_name="dagger",
+        named_configs=(
+            ["asteroids_short_episodes", "cnn"] + ALGO_FAST_CONFIGS["imitation"]
+        ),
+        config_updates=dict(
+            common=dict(log_root=tmpdir),
+            demonstrations=dict(rollout_path=ASTEROIDS_TEST_ROLLOUT_PATH),
+        ),
+    )
+    assert run.status == "COMPLETED"
+    assert isinstance(run.result, dict)
 
 
 def test_train_bc_main_with_none_demonstrations_raises_value_error(tmpdir):

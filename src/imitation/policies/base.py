@@ -1,12 +1,13 @@
 """Custom policy classes and convenience methods."""
 
 import abc
-from typing import Type
+from typing import Tuple, Type
 
 import gym
 import numpy as np
 import torch as th
 from stable_baselines3.common import policies, torch_layers
+from stable_baselines3.common.distributions import Distribution
 from stable_baselines3.sac import policies as sac_policies
 from torch import nn
 
@@ -89,11 +90,111 @@ class SAC1024Policy(sac_policies.SACPolicy):
 
 
 class CnnPolicy(policies.ActorCriticCnnPolicy):
-    """A CNN Actor-Critic policy."""
+    """A CNN Actor-Critic policy.
 
-    def __init__(self, *args, **kwargs):
+    This policy optionally transposes its observation inputs. Note that if this is done,
+    the policy expects the observation space to be a Box with values ranging from 0 to
+    255. Methods are copy-pasted from StableBaselines 3's ActorCriticPolicy, with an
+    initial check whether or not to transpose an observation input.
+    """
+
+    def __init__(self, *args, transpose_input: bool = False, **kwargs):
         """Builds CnnPolicy; arguments passed to `CnnActorCriticPolicy`."""
+        self.transpose_input = transpose_input
+        if self.transpose_input:
+            kwargs.update(
+                {
+                    "observation_space": self.transpose_space(
+                        kwargs["observation_space"],
+                    ),
+                },
+            )
         super().__init__(*args, **kwargs)
+        # self.base_policy = policies.ActorCriticCnnPolicy(*args, **kwargs)
+
+    def transpose_space(self, observation_space: gym.spaces.Box) -> gym.spaces.Box:
+        if not isinstance(observation_space, gym.spaces.Box):
+            raise TypeError("This code assumes that observation spaces are gym Boxes.")
+        if not (observation_space.low == 0 and observation_space.high == 255):
+            error_msg = (
+                "This code assumes the observation space values range from "
+                + "0 to 255."
+            )
+            raise ValueError(error_msg)
+        h, w, c = observation_space.shape
+        new_shape = (c, h, w)
+        return gym.spaces.Box(
+            low=0,
+            high=255,
+            shape=new_shape,
+            dtype=observation_space.dtype,
+        )
+
+    def forward(
+        self,
+        obs: th.Tensor,
+        deterministic: bool = False,
+    ) -> Tuple[th.Tensor, th.Tensor, th.Tensor]:
+        if self.transpose_input:
+            obs_ = networks.cnn_transpose(obs)
+        else:
+            obs_ = obs
+        # return self.base_policy.forward(obs_, deterministic)
+        # Preprocess the observation if needed
+        features = self.extract_features(obs_)
+        latent_pi, latent_vf = self.mlp_extractor(features)
+        # Evaluate the values for the given observations
+        values = self.value_net(latent_vf)
+        distribution = self._get_action_dist_from_latent(latent_pi)
+        actions = distribution.get_actions(deterministic=deterministic)
+        log_prob = distribution.log_prob(actions)
+        return actions, values, log_prob
+
+    # def _predict(self, observation: th.Tensor, deterministic: bool = False
+    # ) -> th.Tensor:
+    #     if self.transpose_input:
+    #         obs_ = networks.cnn_transpose(observation)
+    #     else:
+    #         obs_ = observation
+    #     return self.base_policy._predict(obs_, deterministic)
+
+    def evaluate_actions(
+        self,
+        obs: th.Tensor,
+        actions: th.Tensor,
+    ) -> Tuple[th.Tensor, th.Tensor, th.Tensor]:
+        if self.transpose_input:
+            obs_ = networks.cnn_transpose(obs)
+        else:
+            obs_ = obs
+        # return self.base_policy.evaluate_actions(obs_, actions)
+        # Preprocess the observation if needed
+        features = self.extract_features(obs_)
+        latent_pi, latent_vf = self.mlp_extractor(features)
+        distribution = self._get_action_dist_from_latent(latent_pi)
+        log_prob = distribution.log_prob(actions)
+        values = self.value_net(latent_vf)
+        return values, log_prob, distribution.entropy()
+
+    def get_distribution(self, obs: th.Tensor) -> Distribution:
+        if self.transpose_input:
+            obs_ = networks.cnn_transpose(obs)
+        else:
+            obs_ = obs
+        # return self.base_policy.get_distribution(obs_)
+        features = self.extract_features(obs_)
+        latent_pi = self.mlp_extractor.forward_actor(features)
+        return self._get_action_dist_from_latent(latent_pi)
+
+    def predict_values(self, obs: th.Tensor) -> th.Tensor:
+        if self.transpose_input:
+            obs_ = networks.cnn_transpose(obs)
+        else:
+            obs_ = obs
+        # return self.base_policy.predict_values(obs_)
+        features = self.extract_features(obs_)
+        latent_vf = self.mlp_extractor.forward_critic(features)
+        return self.value_net(latent_vf)
 
 
 class NormalizeFeaturesExtractor(torch_layers.FlattenExtractor):

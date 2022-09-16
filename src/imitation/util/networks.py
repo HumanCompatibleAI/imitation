@@ -196,6 +196,16 @@ class EMANorm(BaseNorm):
         self.num_batches += 1
 
 
+def cnn_transpose(tens: th.Tensor) -> th.Tensor:
+    """Transpose a (b,h,w,c)-formatted tensor to (b,c,h,w) format."""
+    if len(tens.shape) == 4:
+        return th.permute(tens, (0, 3, 1, 2))
+    else:
+        raise ValueError(
+            f"Invalid input: len(tens.shape) = {len(tens.shape)} != 4.",
+        )
+
+
 def build_mlp(
     in_size: int,
     hid_sizes: Iterable[int],

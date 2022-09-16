@@ -2,7 +2,12 @@
 
 import sacred
 import torch as th
+from gym.wrappers import TimeLimit
+from seals.util import AutoResetWrapper
+from stable_baselines3.common import torch_layers
+from stable_baselines3.common.atari_wrappers import AtariWrapper
 
+from imitation.policies import base
 from imitation.scripts.common import common
 from imitation.scripts.common import demonstrations as demos_common
 from imitation.scripts.common import expert, train
@@ -103,6 +108,46 @@ def humanoid():
 @train_imitation_ex.named_config
 def seals_humanoid():
     common = dict(env_name="seals/Humanoid-v0")
+
+
+@train_imitation_ex.named_config
+def asteroids_short_episodes():
+    common = dict(
+        env_name="AsteroidsNoFrameskip-v4",
+        post_wrappers=[
+            lambda env, _: AutoResetWrapper(env),
+            lambda env, _: AtariWrapper(env, terminal_on_life_loss=False),
+            lambda env, _: TimeLimit(env, max_episode_steps=100),
+        ],
+    )
+    train = dict(
+        policy_kwargs=dict(transpose_input=True),
+    )
+    transpose_obs = True
+
+
+@train_imitation_ex.named_config
+def asteroids():
+    common = dict(
+        env_name="AsteroidsNoFrameskip-v4",
+        post_wrappers=[
+            lambda env, _: AutoResetWrapper(env),
+            lambda env, _: AtariWrapper(env, terminal_on_life_loss=False),
+            lambda env, _: TimeLimit(env, max_episode_steps=100_000),
+        ],
+    )
+    train = dict(
+        policy_kwargs=dict(transpose_input=True),
+    )
+    transpose_obs = True
+
+
+@train_imitation_ex.named_config
+def cnn():
+    train = dict(
+        policy_cls=base.CnnPolicy,
+        policy_kwargs=dict(features_extractor_class=torch_layers.NatureCNN),
+    )
 
 
 @train_imitation_ex.named_config
