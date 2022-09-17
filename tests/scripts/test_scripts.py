@@ -62,8 +62,8 @@ PENDULUM_TEST_DATA_PATH = TEST_DATA_PATH / "expert_models/pendulum_0/"
 PENDULUM_TEST_ROLLOUT_PATH = PENDULUM_TEST_DATA_PATH / "rollouts/final.pkl"
 
 ASTEROIDS_TEST_DATA_PATH = TEST_DATA_PATH / "expert_models/asteroids_short_episodes_0/"
-ASTEROIDS_TEST_ROLLOUT_PATH = TEST_DATA_PATH / "rollouts/final.pkl"
-ASTEROIDS_TEST_POLICY_PATH = TEST_DATA_PATH / "policies/final"
+ASTEROIDS_TEST_ROLLOUT_PATH = ASTEROIDS_TEST_DATA_PATH / "rollouts/final.pkl"
+ASTEROIDS_TEST_POLICY_PATH = ASTEROIDS_TEST_DATA_PATH / "policies/final"
 
 OLD_FMT_ROLLOUT_TEST_DATA_PATH = TEST_DATA_PATH / "old_format_rollout.pkl"
 
@@ -635,6 +635,26 @@ def test_train_adversarial_algorithm_value_error(tmpdir):
                 {"demonstrations.n_expert_demos": n_traj},
             ),
         )
+
+
+@pytest.mark.parametrize("command", ("airl", "gail"))
+def test_train_adversarial_image_env(tmpdir, command):
+    """Smoke test for imitation.scripts.train_adversarial on atari."""
+    named_configs = (
+        ASTEROIDS_CNN_POLICY_CONFIG + ALGO_FAST_CONFIGS["adversarial"]
+        + ["reward.cnn_reward"]
+    )
+    config_updates = {
+        "common": dict(log_root=tmpdir),
+        "demonstrations": dict(rollout_path=ASTEROIDS_TEST_ROLLOUT_PATH),
+    }
+    run = train_adversarial.train_adversarial_ex.run(
+        command_name=command,
+        named_configs=named_configs,
+        config_updates=config_updates,
+    )
+    assert run.status == "COMPLETED"
+    _check_train_ex_result(run.result)
 
 
 def test_transfer_learning(tmpdir: str) -> None:

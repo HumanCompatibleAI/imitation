@@ -117,6 +117,7 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
         disc_opt_kwargs: Optional[Mapping] = None,
         gen_train_timesteps: Optional[int] = None,
         gen_replay_buffer_capacity: Optional[int] = None,
+        transpose_obs: bool = False,
         custom_logger: Optional[logger.HierarchicalLogger] = None,
         init_tensorboard: bool = False,
         init_tensorboard_graph: bool = False,
@@ -152,6 +153,9 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
                 the generator that can be stored). By default this is equal to
                 `gen_train_timesteps`, meaning that we sample only from the most
                 recent batch of generator samples.
+            transpose_obs: Whether observations will need to be transposed from (h,w,c)
+                format to be manually fed into the policy. Should usually be True for
+                image environments, and usually be False otherwise.
             custom_logger: Where to log to; if None (default), creates a new logger.
             init_tensorboard: If True, makes various discriminator
                 TensorBoard summaries.
@@ -206,6 +210,7 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
             self._summary_writer = thboard.SummaryWriter(summary_dir)
 
         venv = self.venv_buffering = wrappers.BufferingWrapper(self.venv)
+        self.transpose_obs = transpose_obs
 
         if debug_use_ground_truth:
             # Would use an identity reward fn here, but RewardFns can't see rewards.
@@ -447,18 +452,19 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
         Returns:
             A batch of log policy action probabilities.
         """
+        obs_th_ = networks.cnn_transpose(obs_th) if self.transpose_obs else obs_th
         if isinstance(self.policy, policies.ActorCriticPolicy):
             # policies.ActorCriticPolicy has a concrete implementation of
             # evaluate_actions to generate log_policy_act_prob given obs and actions.
             _, log_policy_act_prob_th, _ = self.policy.evaluate_actions(
-                obs_th,
+                obs_th_,
                 acts_th,
             )
         elif isinstance(self.policy, sac_policies.SACPolicy):
             gen_algo_actor = self.policy.actor
             assert gen_algo_actor is not None
             # generate log_policy_act_prob from SAC actor.
-            mean_actions, log_std, _ = gen_algo_actor.get_action_dist_params(obs_th)
+            mean_actions, log_std, _ = gen_algo_actor.get_action_dist_params(obs_th_)
             distribution = gen_algo_actor.action_dist.proba_distribution(
                 mean_actions,
                 log_std,
