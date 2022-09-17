@@ -81,9 +81,9 @@ def train_imitation(
         agent_path: Path to serialized policy. If provided, then load the
             policy from this path. Otherwise, make a new policy.
             Specify only if policy_cls and policy_kwargs are not specified.
-        transpose_obs: Whether observations will need to be transposed to be fed into
-            the policy. Should usually be True for image environments, and usually be
-            False otherwise.
+        transpose_obs: Whether observations will need to be transposed from (h,w,c)
+            format to be fed into the policy. Should usually be True for image
+            environments, and usually be False otherwise.
 
     Returns:
         Statistics for rollouts from the trained policy and demonstration data.
