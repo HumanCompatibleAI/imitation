@@ -3,12 +3,43 @@
 import contextlib
 import datetime
 import os
+import sys
 import tempfile
 from typing import Any, Dict, Generator, Optional, Sequence, Tuple, Union
 
 import stable_baselines3.common.logger as sb_logger
 
 from imitation.data import types
+
+
+def make_output_format(
+    _format: str,
+    log_dir: str,
+    log_suffix: str = "",
+    max_length: int = 40,
+) -> sb_logger.KVWriter:
+    """Returns a logger for the requested format.
+
+    Args:
+        _format: the requested format to log to
+            ('stdout', 'log', 'json' or 'csv' or 'tensorboard').
+        log_dir: the logging directory.
+        log_suffix: the suffix for the log file.
+        max_length: the maximum length beyond which the keys get truncated.
+
+    Returns:
+        the logger.
+    """
+    os.makedirs(log_dir, exist_ok=True)
+    if _format == "stdout":
+        return sb_logger.HumanOutputFormat(sys.stdout, max_length=max_length)
+    elif _format == "log":
+        return sb_logger.HumanOutputFormat(
+            os.path.join(log_dir, f"log{log_suffix}.txt"),
+            max_length=max_length,
+        )
+    else:
+        return sb_logger.make_output_format(_format, log_dir, log_suffix)
 
 
 def _build_output_formats(
@@ -19,7 +50,7 @@ def _build_output_formats(
 
     Args:
         folder: Path to directory that logs are written to.
-        format_strs: An list of output format strings. For details on available
+        format_strs: A list of output format strings. For details on available
             output formats see `stable_baselines3.logger.make_output_format`.
 
     Returns:
@@ -31,7 +62,7 @@ def _build_output_formats(
         if f == "wandb":
             output_formats.append(WandbOutputFormat())
         else:
-            output_formats.append(sb_logger.make_output_format(f, folder))
+            output_formats.append(make_output_format(f, folder))
     return output_formats
 
 

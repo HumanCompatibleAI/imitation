@@ -43,8 +43,8 @@ Detailed example notebook: `5_train_preference_comparisons.ipynb <https://github
     gatherer = preference_comparisons.SyntheticGatherer(seed=0)
     preference_model = preference_comparisons.PreferenceModel(reward_net)
     reward_trainer = preference_comparisons.BasicRewardTrainer(
-        model=reward_net,
-        loss=preference_comparisons.CrossEntropyRewardLoss(preference_model),
+        preference_model=preference_model,
+        loss=preference_comparisons.CrossEntropyRewardLoss(),
         epochs=3,
     )
 

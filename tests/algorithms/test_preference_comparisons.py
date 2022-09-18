@@ -195,6 +195,7 @@ def test_trainer_no_crash(
         fragmenter=random_fragmenter,
         custom_logger=custom_logger,
         query_schedule=schedule,
+        initial_epoch_multiplier=2,
     )
     result = main_trainer.train(100, 10)
     # We don't expect good performance after training for 10 (!) timesteps,
@@ -211,15 +212,15 @@ def test_reward_ensemble_trainer_raises_type_error(venv):
         discount_factor=0.9,
         threshold=50,
     )
-    loss = preference_comparisons.CrossEntropyRewardLoss(preference_model)
+    loss = preference_comparisons.CrossEntropyRewardLoss()
 
     with pytest.raises(
         TypeError,
-        match=r"RewardEnsemble expected by EnsembleTrainer, not .*",
+        match=r"PreferenceModel of a RewardEnsemble expected by EnsembleTrainer.",
     ):
         preference_comparisons.EnsembleTrainer(
-            model=reward_net,  # type: ignore
-            loss=loss,
+            preference_model,
+            loss,
         )
 
 
@@ -291,9 +292,9 @@ def test_discount_rate_no_crash(agent_trainer, venv, random_fragmenter, custom_l
         discount_factor=0.9,
         threshold=50,
     )
-    loss = preference_comparisons.CrossEntropyRewardLoss(preference_model)
+    loss = preference_comparisons.CrossEntropyRewardLoss()
     reward_trainer = preference_comparisons.BasicRewardTrainer(
-        reward_net,
+        preference_model,
         loss,
     )
 
@@ -471,10 +472,10 @@ def test_active_fragmenter_discount_rate_no_crash(
         discount_factor=0.9,
         threshold=50,
     )
-    loss = preference_comparisons.CrossEntropyRewardLoss(preference_model)
+    loss = preference_comparisons.CrossEntropyRewardLoss()
 
     reward_trainer = preference_comparisons.EnsembleTrainer(
-        reward_net,
+        preference_model,
         loss,
     )
 
@@ -508,7 +509,7 @@ def test_reward_trainer_regularization_no_crash(
     interval_param_scaler,
 ):
     reward_net = reward_nets.BasicRewardNet(venv.observation_space, venv.action_space)
-    loss = preference_comparisons.CrossEntropyRewardLoss(preference_model)
+    loss = preference_comparisons.CrossEntropyRewardLoss()
     initial_lambda = 0.1
     regularizer_factory = regularizers.LpRegularizer.create(
         initial_lambda=initial_lambda,
@@ -517,7 +518,7 @@ def test_reward_trainer_regularization_no_crash(
         p=2,
     )
     reward_trainer = preference_comparisons.BasicRewardTrainer(
-        reward_net,
+        preference_model,
         loss,
         regularizer_factory=regularizer_factory,
         custom_logger=custom_logger,
@@ -545,7 +546,7 @@ def test_reward_trainer_regularization_raises(
     interval_param_scaler,
 ):
     reward_net = reward_nets.BasicRewardNet(venv.observation_space, venv.action_space)
-    loss = preference_comparisons.CrossEntropyRewardLoss(preference_model)
+    loss = preference_comparisons.CrossEntropyRewardLoss()
     initial_lambda = 0.1
     regularizer_factory = regularizers.LpRegularizer.create(
         initial_lambda=initial_lambda,
@@ -554,7 +555,7 @@ def test_reward_trainer_regularization_raises(
         p=2,
     )
     reward_trainer = preference_comparisons.BasicRewardTrainer(
-        reward_net,
+        preference_model,
         loss,
         regularizer_factory=regularizer_factory,
         custom_logger=custom_logger,
@@ -606,17 +607,6 @@ def preference_model(venv) -> preference_comparisons.PreferenceModel:
     )
 
 
-def test_probability_model_raises_error_when_ensemble_member_index_not_provided(
-    ensemble_preference_model,
-):
-    assert ensemble_preference_model.is_ensemble
-    with pytest.raises(
-        ValueError,
-        match="`ensemble_member_index` required for ensemble models",
-    ):
-        ensemble_preference_model([])
-
-
 def test_active_fragmenter_uncertainty_on_not_supported_error(
     ensemble_preference_model,
     random_fragmenter,
@@ -648,7 +638,7 @@ def test_active_selection_raises_error_when_initialized_without_an_ensemble(
 ):
     with pytest.raises(
         ValueError,
-        match=r"Preference model not wrapped over an ensemble.*",
+        match=r"PreferenceModel not wrapped over an ensemble.*",
     ):
         preference_comparisons.ActiveSelectionFragmenter(
             preference_model=preference_model,

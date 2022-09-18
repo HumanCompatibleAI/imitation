@@ -214,12 +214,10 @@ def train_preference_comparisons(
             custom_logger=custom_logger,
         )
 
-        loss = preference_comparisons.CrossEntropyRewardLoss(
-            preference_model,
-        )
+        loss = preference_comparisons.CrossEntropyRewardLoss()
 
         reward_trainer = preference_comparisons._make_reward_trainer(
-            reward_net,
+            preference_model,
             loss,
             reward_trainer_kwargs,
             seed=_seed,
