@@ -1172,7 +1172,7 @@ class BasicRewardTrainer(RewardTrainer):
         epoch_num = 0
         with self.logger.accumulate_means("reward"):
             for epoch_num in tqdm(range(epochs), desc="Training reward model"):
-                prefix = f"epoch-{epoch_num}"
+                prefix = f"epoch/{epoch_num}"
                 train_loss = 0.0
                 for fragment_pairs, preferences in dataloader:
                     self.optim.zero_grad()
@@ -1210,7 +1210,7 @@ class BasicRewardTrainer(RewardTrainer):
             if key.startswith(f"mean/reward/epoch/{epoch_num}"):
                 val = self.logger.name_to_value[key]
                 new_key = key.replace(f"mean/reward/epoch/{epoch_num}", "reward/final")
-                self.logger.record(new_key, val, exclude=["tensorboard", "wandb"])
+                self.logger.record(new_key, val, exclude=["wandb"])
 
     def _training_inner_loop(
         self,
@@ -1220,9 +1220,10 @@ class BasicRewardTrainer(RewardTrainer):
     ) -> th.Tensor:
         output = self.loss.forward(fragment_pairs, preferences)
         loss = output.loss
-        self.logger.record(self._get_logger_key(prefix, "loss"), loss.item())
+        exclude = ["wandb"] if "epoch" in prefix else None
+        self.logger.record(self._get_logger_key(prefix, "loss"), loss.item(), exclude=exclude)
         for name, value in output.metrics.items():
-            self.logger.record(self._get_logger_key(prefix, name), value.item())
+            self.logger.record(self._get_logger_key(prefix, name), value.item(), exclude=exclude)
         return loss
 
     # TODO(juan) refactor & remove once #529 is merged.
