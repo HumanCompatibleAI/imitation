@@ -224,6 +224,18 @@ reward_registry.register(
 )
 
 reward_registry.register(
+    key="RewardNet_normalized_update",
+    value=lambda path, _, **kwargs: ValidateRewardFn(
+        _make_functional(
+            _validate_wrapper_structure(th.load(str(path)), {(NormalizedRewardNet,)}),
+            attr="predict_processed",
+            default_kwargs={"update_stats": True},
+            **kwargs,
+        ),
+    ),
+)
+
+reward_registry.register(
     key="RewardNet_unnormalized",
     value=lambda path, _, **kwargs: ValidateRewardFn(
         _make_functional(_strip_wrappers(th.load(str(path)), (NormalizedRewardNet,))),

@@ -35,6 +35,7 @@ def save_checkpoint(
     save_path = osp.join(log_dir, "checkpoints", round_str)
     os.makedirs(save_path, exist_ok=True)
     th.save(trainer.model, osp.join(save_path, "reward_net.pt"))
+    trainer.dataset.save(osp.join(log_dir, "preferences.pkl"))
     if allow_save_policy:
         # Note: We should only save the model as model.pkl if `trajectory_generator`
         # contains one. Specifically we check if the `trajectory_generator` contains an
