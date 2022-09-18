@@ -1207,10 +1207,10 @@ class BasicRewardTrainer(RewardTrainer):
         # record also the final value in a separate key for easy access.
         keys = list(self.logger.name_to_value.keys())
         for key in keys:
-            if key.startswith(f"mean/reward/epoch-{epoch_num}"):
+            if key.startswith(f"mean/reward/epoch/{epoch_num}"):
                 val = self.logger.name_to_value[key]
-                new_key = key.replace(f"mean/reward/epoch-{epoch_num}", "reward/final")
-                self.logger.record(new_key, val, exclude="wandb")
+                new_key = key.replace(f"mean/reward/epoch/{epoch_num}", "reward/final")
+                self.logger.record(new_key, val, exclude=["tensorboard", "wandb"])
 
     def _training_inner_loop(
         self,
