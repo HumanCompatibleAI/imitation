@@ -35,9 +35,11 @@ TUTORIAL_PATHS = _paths_to_strs(TUTORIALS_DIR.glob("*.ipynb"))
 PY_PATHS = _paths_to_strs(EXAMPLES_DIR.glob("*.py"))
 
 
+# Note: This is excluded from coverage since is computed on linux. However, it is
+#   covered by mac and windows runners.
 @pytest.mark.skipif(sys.platform == "linux", reason="Linux is covered by readthedocs.")
 @pytest.mark.parametrize("nb_path", TUTORIAL_PATHS)
-def test_run_tutorial_notebooks(nb_path) -> None:
+def test_run_tutorial_notebooks(nb_path) -> None:  # pragma: no cover
     """Smoke test ensuring that tutorial notebooks run without error.
 
     The `pytest_notebook` package also includes regression test functionality against
