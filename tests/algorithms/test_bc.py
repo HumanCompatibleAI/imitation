@@ -208,11 +208,12 @@ def test_that_weight_decay_in_optimizer_raises_error(cartpole_venv, custom_logge
 
 
 @pytest.mark.parametrize(
-    duration_args=[
-        dict(n_epochs=1, n_batches=10),
-        dict(),
-        dict(n_epochs=None, n_batches=None),
-    ]
+    "duration_args",
+    [
+        pytest.param(dict(n_epochs=1, n_batches=10), id="both specified"),
+        pytest.param(dict(), id="neither specified"),
+        pytest.param(dict(n_epochs=None, n_batches=None), id="both None"),
+    ],
 )
 def test_that_wrong_training_duration_specification_raises_error(
     cartpole_bc_trainer,

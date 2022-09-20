@@ -55,7 +55,7 @@ def get_expert_trajectories(pytestconfig, env_name: str, min_episodes: int = 60)
         return trajectories
 
 
-@pytest.fixture(params=[1, 4])
+@pytest.fixture(params=[1, 4], ids=lambda n: f"vecenv({n})")
 def cartpole_venv(request) -> VecEnv:
     num_envs = request.param
     return DummyVecEnv(
