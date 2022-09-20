@@ -7,7 +7,7 @@ import sys
 from typing import Iterable, Sequence
 
 import pytest
-from pytest_notebook import execution, notebook
+import pytest_notebook as ptnb
 
 
 def _paths_to_strs(x: Iterable[pathlib.Path]) -> Sequence[str]:
@@ -46,8 +46,8 @@ def test_run_tutorial_notebooks(nb_path) -> None:
     Args:
         nb_path: Path to the notebook to test.
     """
-    nb = notebook.load_notebook(nb_path)
-    result = execution.execute_notebook(nb, cwd=TUTORIALS_DIR, timeout=120)
+    nb = ptnb.notebook.load_notebook(nb_path)
+    result = ptnb.execution.execute_notebook(nb, cwd=TUTORIALS_DIR, timeout=120)
     assert result.exec_error is None
 
 
