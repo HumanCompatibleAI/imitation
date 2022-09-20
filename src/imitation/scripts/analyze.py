@@ -165,6 +165,8 @@ def _get_algo_name(sd: sacred_util.SacredDicts) -> str:
 
 def _return_summaries(sd: sacred_util.SacredDicts) -> dict:
     imit_stats = get(sd.run, "result.imit_stats")
+    if imit_stats is None:
+        imit_stats = get(sd.run, "result.rollout")
     expert_stats = get(sd.run, "result.expert_stats")
 
     expert_return_summary = None

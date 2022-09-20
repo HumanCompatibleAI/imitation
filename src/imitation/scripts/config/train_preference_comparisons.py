@@ -69,9 +69,24 @@ def cartpole():
 
 @train_preference_comparisons_ex.named_config
 def seals_ant():
-    locals().update(**MUJOCO_SHARED_LOCALS)
-    locals().update(**ANT_SHARED_LOCALS)
+    # locals().update(**MUJOCO_SHARED_LOCALS)
+    # locals().update(**ANT_SHARED_LOCALS)
     common = dict(env_name="seals/Ant-v0")
+    rl = dict(
+        batch_size=2048,
+        rl_kwargs=dict(
+            batch_size=16,
+            clip_range=0.3,
+            ent_coef=3.1441389214159857e-06,
+            gae_lambda=0.8,
+            gamma=0.995,
+            learning_rate=0.00017959211641976886,
+            max_grad_norm=0.9,
+            n_epochs=10,
+            # policy_kwargs are same as the defaults
+            vf_coef=0.4351450387648799,
+        ),
+    )
 
 
 @train_preference_comparisons_ex.named_config
@@ -79,6 +94,26 @@ def half_cheetah():
     locals().update(**MUJOCO_SHARED_LOCALS)
     common = dict(env_name="HalfCheetah-v2")
     rl = dict(batch_size=16384, rl_kwargs=dict(batch_size=1024))
+
+
+@train_preference_comparisons_ex.named_config
+def seals_half_cheetah():
+    # locals().update(**MUJOCO_SHARED_LOCALS)
+    common = dict(env_name="seals/HalfCheetah-v0")
+    rl = dict(
+        batch_size=512,
+        rl_kwargs=dict(
+            batch_size=64,
+            clip_range=0.1,
+            ent_coef=3.794797423594763e-06,
+            gae_lambda=0.95,
+            gamma=0.95,
+            learning_rate=0.0003286871805949382,
+            max_grad_norm=0.8,
+            n_epochs=5,
+            vf_coef=0.11483689492120866,
+        ),
+    )
 
 
 @train_preference_comparisons_ex.named_config

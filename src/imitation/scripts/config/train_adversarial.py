@@ -95,8 +95,8 @@ def pendulum():
 
 @train_adversarial_ex.named_config
 def seals_ant():
-    locals().update(**MUJOCO_SHARED_LOCALS)
-    locals().update(**ANT_SHARED_LOCALS)
+    # locals().update(**MUJOCO_SHARED_LOCALS)
+    # locals().update(**ANT_SHARED_LOCALS)
     common = dict(env_name="seals/Ant-v0")
     demonstrations = dict(
         rollout_path="/home/taufeeque/imitation/output/train_experts/"
@@ -150,7 +150,7 @@ def half_cheetah():
 
 @train_adversarial_ex.named_config
 def seals_half_cheetah():
-    locals().update(**MUJOCO_SHARED_LOCALS)
+    # locals().update(**MUJOCO_SHARED_LOCALS)
     common = dict(env_name="seals/HalfCheetah-v0")
     demonstrations = dict(
         rollout_path="/home/taufeeque/imitation/output/train_experts/"
