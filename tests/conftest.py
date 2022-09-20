@@ -6,6 +6,7 @@ import warnings
 from typing import Sequence
 
 import gym
+import huggingface_sb3 as hfsb3
 import pytest
 import seals  # noqa: F401
 import torch
@@ -13,7 +14,6 @@ from filelock import FileLock
 from stable_baselines3.common.policies import BasePolicy
 from stable_baselines3.common.vec_env import DummyVecEnv, VecEnv
 
-import huggingface_sb3 as hfsb3
 from imitation.data import rollout, types, wrappers
 from imitation.data.types import TrajectoryWithRew
 from imitation.data.wrappers import RolloutInfoWrapper
@@ -95,7 +95,9 @@ def pendulum_venv() -> VecEnv:
 @pytest.fixture
 def pendulum_expert_policy(pendulum_venv) -> BasePolicy:
     return serialize.load_policy(
-        "ppo-huggingface", pendulum_venv, env_name=PENDULUM_ENV_NAME
+        "ppo-huggingface",
+        pendulum_venv,
+        env_name=PENDULUM_ENV_NAME,
     )
 
 

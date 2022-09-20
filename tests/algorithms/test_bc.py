@@ -8,10 +8,10 @@ import hypothesis
 import hypothesis.strategies as st
 import pytest
 import torch as th
+from conftest import get_expert_trajectories
 from stable_baselines3.common import evaluation, vec_env
 from torch.utils import data as th_data
 
-from conftest import get_expert_trajectories
 from imitation.algorithms import bc
 from imitation.data import rollout, types
 from imitation.data.wrappers import RolloutInfoWrapper
@@ -28,7 +28,7 @@ def make_expert_trajectory_loader(
 ):
     trajectories = get_expert_trajectories(pytestconfig, env_name)
     transitions = rollout.flatten_trajectories(
-        trajectories[: max(max_num_trajectories, batch_size)]
+        trajectories[: max(max_num_trajectories, batch_size)],
     )
     if expert_data_type == "data_loader":
         return th_data.DataLoader(
@@ -50,11 +50,14 @@ def make_expert_trajectory_loader(
 
             def __iter__(self):
                 for start in range(
-                    0, len(self.trans) - self.batch_size, self.batch_size
+                    0,
+                    len(self.trans) - self.batch_size,
+                    self.batch_size,
                 ):
                     end = start + self.batch_size
                     d = dict(
-                        obs=self.trans.obs[start:end], acts=self.trans.acts[start:end]
+                        obs=self.trans.obs[start:end],
+                        acts=self.trans.acts[start:end],
                     )
                     d = {k: util.safe_to_tensor(v) for k, v in d.items()}
                     yield d
@@ -184,7 +187,7 @@ def test_smoke_bc_training(
         custom_rollout_venv = util.make_vec_env(
             env_name,
             num_envs,
-            post_wrappers=[lambda e, _: RolloutInfoWrapper(e)]
+            post_wrappers=[lambda e, _: RolloutInfoWrapper(e)],
         )
     else:
         custom_rollout_venv = None
@@ -204,14 +207,16 @@ def test_that_weight_decay_in_optimizer_raises_error(cartpole_venv, custom_logge
         )
 
 
-@pytest.mark.parametrize(duration_args = [
-    dict(n_epochs=1, n_batches=10),
-    dict(),
-    dict(n_epochs=None, n_batches=None),
-])
+@pytest.mark.parametrize(
+    duration_args=[
+        dict(n_epochs=1, n_batches=10),
+        dict(),
+        dict(n_epochs=None, n_batches=None),
+    ]
+)
 def test_that_wrong_training_duration_specification_raises_error(
-        cartpole_bc_trainer,
-        duration_args,
+    cartpole_bc_trainer,
+    duration_args,
 ):
     with pytest.raises(ValueError, match="exactly one.*n_epochs"):
         cartpole_bc_trainer.train(**duration_args)
