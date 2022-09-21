@@ -104,7 +104,7 @@ def bc_train_args(draw):
         on_epoch_end=draw(st.sampled_from([None, lambda: None])),
         on_batch_end=draw(st.sampled_from([None, lambda: None])),
         log_interval=draw(st.integers(500, 10000)),
-        log_rollouts_n_episodes=draw(st.sampled_from([-1, 2])),
+        log_rollouts_n_episodes=draw(st.sampled_from([-1, 1, 2])),
         progress_bar=draw(st.booleans()),
         reset_tensorboard=draw(st.booleans()),
     )
@@ -249,14 +249,6 @@ def test_that_bc_improves_rewards(cartpole_bc_trainer, cartpole_venv):
     )
 
 
-def test_smoke_log_rollouts(cartpole_bc_trainer, cartpole_venv):
-    cartpole_bc_trainer.train(
-        n_batches=20,
-        log_rollouts_venv=cartpole_venv,
-        log_rollouts_n_episodes=1,
-    )
-
-
 class _DataLoaderFailsOnNthIter:
     """A dummy DataLoader that yields after a number of calls of `__iter__`.
 
@@ -326,15 +318,3 @@ def test_save_reload(cartpole_bc_trainer, tmpdir):
     assert len(var_values) == len(new_values)
     for old, new in zip(var_values, new_values):
         assert th.allclose(old, new)
-
-
-def test_train_progress_bar_visibility(cartpole_bc_trainer):
-    """Smoke test for toggling progress bar visibility."""
-    for visible in [True, False]:
-        cartpole_bc_trainer.train(n_batches=1, progress_bar=visible)
-
-
-def test_train_reset_tensorboard(cartpole_bc_trainer):
-    """Smoke test for reset_tensorboard parameter."""
-    for reset in [True, False]:
-        cartpole_bc_trainer.train(n_batches=1, reset_tensorboard=reset)
