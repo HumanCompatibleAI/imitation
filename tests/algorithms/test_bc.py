@@ -17,6 +17,10 @@ from imitation.data.wrappers import RolloutInfoWrapper
 from imitation.testing import reward_improvement
 from imitation.util import logger, util
 
+#########
+# UTILS
+#########
+
 
 def make_expert_trajectory_loader(
     pytestconfig,
@@ -88,6 +92,11 @@ def cartpole_bc_trainer(
     )
 
 
+##########################
+# PARAMETER DISTRIBUTIONS
+##########################
+
+
 # Note: we don't use the Mujoco envs here because mujoco is not installed on CI.
 envs = st.sampled_from(["Pendulum-v1", "seals/CartPole-v0"])
 batch_sizes = st.integers(min_value=1, max_value=50)
@@ -112,6 +121,11 @@ def bc_train_args(draw):
     duration = draw(st.integers(1, 3))
     args[duration_measure] = duration
     return args
+
+
+##############
+# SMOKE TESTS
+##############
 
 
 @hypothesis.given(
@@ -192,31 +206,9 @@ def test_smoke_bc_training(
     trainer.train(log_rollouts_venv=custom_rollout_venv, **train_args)
 
 
-def test_that_weight_decay_in_optimizer_raises_error(cartpole_venv, custom_logger):
-    with pytest.raises(ValueError, match=".*weight_decay.*"):
-        bc.BC(
-            observation_space=cartpole_venv.observation_space,
-            action_space=cartpole_venv.action_space,
-            demonstrations=None,
-            optimizer_kwargs=dict(weight_decay=1e-4),
-            custom_logger=custom_logger,
-        )
-
-
-@pytest.mark.parametrize(
-    "duration_args",
-    [
-        pytest.param(dict(n_epochs=1, n_batches=10), id="both specified"),
-        pytest.param(dict(), id="neither specified"),
-        pytest.param(dict(n_epochs=None, n_batches=None), id="both None"),
-    ],
-)
-def test_that_wrong_training_duration_specification_raises_error(
-    cartpole_bc_trainer,
-    duration_args,
-):
-    with pytest.raises(ValueError, match="exactly one.*n_epochs"):
-        cartpole_bc_trainer.train(**duration_args)
+#####################
+# TEST FUNCTIONALITY
+#####################
 
 
 def test_that_bc_improves_rewards(cartpole_bc_trainer, cartpole_venv):
@@ -249,11 +241,56 @@ def test_that_bc_improves_rewards(cartpole_bc_trainer, cartpole_venv):
     )
 
 
-class _DataLoaderFailsOnNthIter:
-    """A dummy DataLoader that yields after a number of calls of `__iter__`.
+def test_that_policy_reconstruction_preserves_parameters(cartpole_bc_trainer, tmpdir):
+    # GIVEN
+    pol_path = os.path.join(tmpdir, "policy.pt")
+    original_parameters = list(cartpole_bc_trainer.policy.parameters())
 
-    Used by `test_bc_data_loader_empty_iter_error`.
-    """
+    # WHEN
+    cartpole_bc_trainer.save_policy(pol_path)
+    reconstructed_policy = bc.reconstruct_policy(pol_path)
+
+    # THEN
+    reconstructed_parameters = list(reconstructed_policy.parameters())
+    assert len(original_parameters) == len(reconstructed_parameters)
+    for original, reconstructed in zip(original_parameters, reconstructed_parameters):
+        assert th.allclose(original, reconstructed)
+
+
+#############################################
+# ENSURE EXCEPTIONS ARE THROWN WHEN EXPECTED
+#############################################
+
+
+def test_that_weight_decay_in_optimizer_raises_error(cartpole_venv, custom_logger):
+    with pytest.raises(ValueError, match=".*weight_decay.*"):
+        bc.BC(
+            observation_space=cartpole_venv.observation_space,
+            action_space=cartpole_venv.action_space,
+            demonstrations=None,
+            optimizer_kwargs=dict(weight_decay=1e-4),
+            custom_logger=custom_logger,
+        )
+
+
+@pytest.mark.parametrize(
+    "duration_args",
+    [
+        pytest.param(dict(n_epochs=1, n_batches=10), id="both specified"),
+        pytest.param(dict(), id="neither specified"),
+        pytest.param(dict(n_epochs=None, n_batches=None), id="both None"),
+    ],
+)
+def test_that_wrong_training_duration_specification_raises_error(
+    cartpole_bc_trainer,
+    duration_args,
+):
+    with pytest.raises(ValueError, match="exactly one.*n_epochs"):
+        cartpole_bc_trainer.train(**duration_args)
+
+
+class _DataLoaderThatFailsOnNthIter:
+    """A dummy DataLoader stops to yield after a number of calls to `__iter__`."""
 
     def __init__(self, dummy_yield_value: dict, no_yield_after_iter: int = 1):
         """Builds dummy data loader.
@@ -294,7 +331,7 @@ def test_that_bc_raises_error_when_data_loader_is_empty(
     trans = rollout.flatten_trajectories(cartpole_expert_trajectories)
     dummy_yield_value = dataclasses.asdict(trans[:batch_size])
 
-    bad_data_loader = _DataLoaderFailsOnNthIter(
+    bad_data_loader = _DataLoaderThatFailsOnNthIter(
         dummy_yield_value=dummy_yield_value,
         no_yield_after_iter=no_yield_after_iter,
     )
@@ -307,14 +344,3 @@ def test_that_bc_raises_error_when_data_loader_is_empty(
     trainer.set_demonstrations(bad_data_loader)
     with pytest.raises(AssertionError, match=".*no data.*"):
         trainer.train(n_batches=20)
-
-
-def test_save_reload(cartpole_bc_trainer, tmpdir):
-    pol_path = os.path.join(tmpdir, "policy.pt")
-    var_values = list(cartpole_bc_trainer.policy.parameters())
-    cartpole_bc_trainer.save_policy(pol_path)
-    new_policy = bc.reconstruct_policy(pol_path)
-    new_values = list(new_policy.parameters())
-    assert len(var_values) == len(new_values)
-    for old, new in zip(var_values, new_values):
-        assert th.allclose(old, new)
