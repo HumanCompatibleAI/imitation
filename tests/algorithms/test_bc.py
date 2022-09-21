@@ -3,7 +3,6 @@
 import dataclasses
 import os
 
-import gym
 import hypothesis
 import hypothesis.strategies as st
 import pytest
@@ -133,10 +132,7 @@ def test_smoke_bc_creation(
     expert_data_type,
     pytestconfig,
 ):
-    # GIVEN
-    env = vec_env.DummyVecEnv(
-        [lambda: RolloutInfoWrapper(gym.make(env_name)) for _ in range(num_envs)],
-    )
+    env = util.make_vec_env(env_name, num_envs)
     bc.BC(
         observation_space=env.observation_space,
         action_space=env.action_space,
