@@ -14,6 +14,12 @@ if TYPE_CHECKING:
 IS_NOT_WINDOWS = os.name != "nt"
 
 PARALLEL_REQUIRE = ["ray[debug,tune]~=2.0.0"]
+ATARI_REQUIRE = [
+    "opencv-python",
+    "ale-py==0.7.4",
+    "pillow",
+    "autorom[accept-rom-license]~=0.4.2",
+]
 PYTYPE = ["pytype==2022.7.26"] if IS_NOT_WINDOWS else []
 if IS_NOT_WINDOWS:
     # TODO(adam): use this for Windows as well once PyPI is at >=1.6.1
@@ -62,6 +68,7 @@ TESTS_REQUIRE = (
         "setuptools_scm~=7.0.5",
     ]
     + PARALLEL_REQUIRE
+    + ATARI_REQUIRE
     + PYTYPE
 )
 DOCS_REQUIRE = [
@@ -202,6 +209,7 @@ setup(
         #  See https://github.com/IDSIA/sacred/issues/879
         "chai-sacred>=0.8.3",
         "tensorboard>=1.14",
+        "huggingface_sb3>=2.2.1",
     ],
     tests_require=TESTS_REQUIRE,
     extras_require={
@@ -209,7 +217,6 @@ setup(
         "dev": [
             "autopep8",
             "awscli",
-            "ntfy[slack]",
             "ipdb",
             "isort~=5.0",
             "codespell",
@@ -225,6 +232,7 @@ setup(
         "mujoco": [
             "gym[classic_control,mujoco]" + GYM_VERSION_SPECIFIER,
         ],
+        "atari": ATARI_REQUIRE,
     },
     entry_points={
         "console_scripts": [
