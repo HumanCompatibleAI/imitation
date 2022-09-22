@@ -4,7 +4,7 @@ Developer Guide
 ==================
 
 This guide explains the library structure of imitation. The code is organized such that logically similar files
-are grouped into a folder. We maintain the following modules in ``src/imitation``:
+are grouped into a folder. We maintain the following subpackages in ``src/imitation``:
 
 - ``algorithms``: the core implementation of imitation and reward learning algorithms.
 
@@ -57,21 +57,37 @@ Data
 
     ``data.rollout.rollout``: Generates rollout by taking in any policy as input along with the environment. 
 
-.. Policies
-.. --------
-.. .. automodule:: imitation.policies
-..     :noindex:
+Policies
+--------
+
+The ``imitation.policies`` subpackage defines the following modules:
+
+- ``policies.base``: defines commonly used policies across the library like ``FeedForward32Policy``, ``SAC1024Policy``, ``NormalizeFeaturesExtractor``, etc.
+- ``policies.exploration_wrapper``: defines the ``ExplorationWrapper`` class that wraps a policy to create a partially randomized policy useful for exploration.
+- ``policies.replay_buffer_wrapper``: defines the ``ReplayBufferRewardWrapper`` to wrap a replay buffer that returns transitions with rewards specified by a reward function.
+- ``policies.serialize``: defines various functions to save and load serialized policies from the disk or from huggingface hub.
 
 Rewards
 -------
-.. automodule:: imitation.rewards
-    :noindex:
 
-    ``rewards.reward_wrapper.RewardVecEnvWrapper``: This class wraps a ``VecEnv`` with a custom ``RewardFn``. 
-    The default reward function of the environment is overridden with the passed reward function 
-    and the original rewards are stored in the ``info_dict`` with the ``original_env_rew`` key. 
-    This class is used to override the original reward function of an environment with a learned 
-    reward function from the reward learning algorithms like preference comparisons.
+The ``imitation.rewards`` subpackage contains code related to building, serializing and loading reward networks. 
+Some of the classes include:
+
+- ``rewards.reward_nets.RewardNet``: is the base reward network class. Reward networks can takes state, action, and the next state as input to predict the reward. The ``forward`` method is used while training the network whereas the ``predict`` method is used during evaluation.
+
+- ``rewards.reward_nets.BasicRewardNet``: builds an MLP reward network.
+
+- ``rewards.reward_nets.CnnRewardNet``: is similar to ``BasicRewardNet`` but builds a CNN instead of an MLP network.
+
+- ``rewards.reward_nets.RewardEnsemble``: builds an ensemble of reward networks.
+
+- ``rewards.reward_wrapper.RewardVecEnvWrapper``: This class wraps a ``VecEnv`` with a custom ``RewardFn``. 
+  The default reward function of the environment is overridden with the passed reward function 
+  and the original rewards are stored in the ``info_dict`` with the ``original_env_rew`` key. 
+  This class is used to override the original reward function of an environment with a learned 
+  reward function from the reward learning algorithms like preference comparisons.
+
+The ``imitation.rewards.serialize`` module contains functions to load serialized reward functions.
 
 Scripts
 -------
@@ -97,8 +113,7 @@ available in ``scripts/``. You can take a look at the following doc links to und
 
 - `Controlling Randomness <https://sacred.readthedocs.io/en/stable/randomness.html>`_: Explains how to control randomness by seeding experiments through Sacred.
 
-.. Util
-.. ----
-.. .. automodule:: imitation.util
-..     :noindex:
+Util
+----
 
+``imitation.util.logger.HierarchicalLogger``:
