@@ -240,3 +240,22 @@ def fast():
         demo_batch_size=1,
         n_disc_updates_per_round=4,
     )
+
+
+@train_adversarial_ex.named_config
+def debug_nans():
+    common = {"wandb": {"wandb_kwargs": {"project": "algorithm-benchmark"}}}
+    total_timesteps = 1e7
+    algorithm_kwargs = dict(
+        demo_batch_size=128,
+        n_disc_updates_per_round=8,
+        # both are same as rl.batch_size
+        # gen_replay_buffer_capacity=tune.choice([512, 1024]),
+        # gen_train_timesteps=0,
+    )
+    rl = {
+        "batch_size": 4096,
+        "rl_kwargs": {"ent_coef": 0.1, "learning_rate": 7.316377404994506e-05},
+    }
+    seed = 0
+    checkpoint_interval = 1

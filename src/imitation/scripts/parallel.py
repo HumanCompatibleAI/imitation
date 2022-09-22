@@ -18,6 +18,7 @@ def parallel(
     sacred_ex_name: str,
     run_name: str,
     num_samples: int,
+    n_seeds: int,
     search_space: Mapping[str, Any],
     base_named_configs: Sequence[str],
     base_config_updates: Mapping[str, Any],
@@ -25,6 +26,7 @@ def parallel(
     init_kwargs: Mapping[str, Any],
     local_dir: Optional[str],
     upload_dir: Optional[str],
+    eval_best_trial: bool = False,
 ) -> None:
     """Parallelize multiple runs of another Sacred Experiment using Ray Tune.
 
@@ -98,7 +100,7 @@ def parallel(
 
     ray.init(**init_kwargs)
     try:
-        ray.tune.run(
+        result = ray.tune.run(
             trainable,
             config=search_space,
             num_samples=num_samples,
@@ -106,7 +108,22 @@ def parallel(
             local_dir=local_dir,
             resources_per_trial=resources_per_trial,
             sync_config=ray.tune.syncer.SyncConfig(upload_dir=upload_dir),
+            metric="mean_return",
+            mode="max",
         )
+        if eval_best_trial:
+            best_config = result.get_best_config(metric="mean_return", mode="max")
+            best_config["config_updates"].update(
+                seed=ray.tune.grid_search(list(range(n_seeds))),
+            )
+            ray.tune.run(
+                trainable,
+                config={
+                    "named_configs": best_config["named_configs"],
+                    "config_updates": best_config["config_updates"],
+                },
+                name=run_name + "_best_hp_eval",
+            )
     finally:
         ray.shutdown()
 
@@ -202,9 +219,11 @@ def _ray_tune_sacred_wrapper(
         for k, v in run_kwargs.items():
             if k not in updated_run_kwargs:
                 updated_run_kwargs[k] = v
-
         run = ex.run(**updated_run_kwargs, options={"--run": run_name})
-
+        if sacred_ex_name == "train_preference_comparisons":
+            reporter(mean_return=run.result["rollout"]["monitor_return_mean"])
+        else:
+            reporter(mean_return=run.result["imit_stats"]["monitor_return_mean"])
         # Ray Tune has a string formatting error if raylet completes without
         # any calls to `reporter`.
         reporter(done=True)

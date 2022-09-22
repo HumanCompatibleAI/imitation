@@ -507,6 +507,27 @@ def test_train_adversarial(tmpdir, named_configs, command):
     _check_train_ex_result(run.result)
 
 
+def test_train_adversarial_debug():
+    """Smoke test for imitation.scripts.train_adversarial."""
+    named_configs = ["seals_ant", "debug_nans"]
+    config_updates = {
+        "common": dict(log_root="/home/tf/imitation/debug", parallel=False),
+        "demonstrations": dict(
+            rollout_path="/home/tf/imitation/download/final.pkl",
+        ),
+        # TensorBoard logs to get extra coverage
+        # "algorithm_kwargs": dict(init_tensorboard=True),
+        "agent_path": "/home/tf/imitation/download/01124/gen_policy",
+    }
+    run = train_adversarial.train_adversarial_ex.run(
+        command_name="airl",
+        named_configs=named_configs,
+        config_updates=config_updates,
+    )
+    assert run.status == "COMPLETED"
+    _check_train_ex_result(run.result)
+
+
 @pytest.mark.parametrize("command", ("airl", "gail"))
 def test_train_adversarial_warmstart(tmpdir, command):
     named_configs = ["cartpole"] + ALGO_FAST_CONFIGS["adversarial"]

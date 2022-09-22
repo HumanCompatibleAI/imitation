@@ -34,13 +34,14 @@ def config():
 
     local_dir = None  # `local_dir` arg for `ray.tune.run`
     upload_dir = None  # `upload_dir` arg for `ray.tune.run`
-    n_seeds = 3  # Number of seeds to search over by default
+    n_seeds = 5  # Number of seeds to search over by default
     num_samples = 1  # Number of samples per grid search configuration
 
-
-@parallel_ex.config
-def seeds(n_seeds):
-    search_space = {"config_updates": {"seed": tune.grid_search(list(range(n_seeds)))}}
+    # @parallel_ex.config
+    # def seeds(n_seeds):
+    #     search_space = {
+    #         "config_updates": {"seed": tune.grid_search(list(range(n_seeds)))}
+    #     }
 
 
 @parallel_ex.named_config
@@ -236,10 +237,10 @@ def example_gail():
             },
             "algorithm_specific": {},
         },
-        "command_name": "airl",
+        "command_name": "gail",
     }
     num_samples = 100
-    resources_per_trial = dict(cpu=4)
+    resources_per_trial = dict(cpu=5)
 
 
 @parallel_ex.named_config
@@ -281,11 +282,12 @@ def example_airl():
 def example_pc():
     sacred_ex_name = "train_preference_comparisons"
     run_name = "pc_tuning"
-    n_seeds = 1
+    n_seeds = 5
+    eval_best_trial = True
     base_named_configs = ["common.wandb_logging"]
     base_config_updates = {
         "common": {"wandb": {"wandb_kwargs": {"project": "algorithm-benchmark"}}},
-        "total_timesteps": 1e7,
+        "total_timesteps": 2e7,
         "total_comparisons": 5000,
         "query_schedule": "hyperbolic",
     }
@@ -304,3 +306,34 @@ def example_pc():
     }
     # num_samples = 1
     resources_per_trial = dict(cpu=4)
+
+
+@parallel_ex.named_config
+def debug_eval():
+    sacred_ex_name = "train_preference_comparisons"
+    run_name = "debug_eval"
+    n_seeds = 5
+    eval_best_trial = True
+    base_named_configs = ["seals_half_cheetah"]
+    base_config_updates = {
+        "common": {"wandb": {"wandb_kwargs": {"project": "algorithm-benchmark"}}},
+        "total_timesteps": 50,
+        "total_comparisons": 10,
+        # "query_schedule": "hyperbolic",
+        "num_iterations": 1,
+        "fragment_length": 2,
+    }
+    search_space = {
+        # "named_configs": tune.grid_search([[env] for env in MY_ENVS]),
+        "config_updates": {
+            # "num_iterations": tune.grid_search([5, 20, 50]),
+            "initial_comparison_frac": tune.grid_search([0.1, 0.2, 0.3]),
+            # "reward_trainer_kwargs": {
+            #     "epochs": tune.grid_search([1, 2, 3]),
+            # },
+            # "query_schedule": tune.grid_search(
+            #     ["constant", "hyperbolic", "inverse_quadratic"],
+            # ),
+        },
+    }
+    resources_per_trial = dict(cpu=1)
