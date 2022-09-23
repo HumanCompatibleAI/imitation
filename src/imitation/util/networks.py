@@ -94,15 +94,6 @@ class BaseNorm(nn.Module, abc.ABC):
         """Update `self.running_mean`, `self.running_var` and `self.count`."""
 
 
-AnyNorm = Union[
-    normalization.LayerNorm,
-    # normalization.GroupNorm,  # does not work as it requires kwargs
-    normalization.LocalResponseNorm,
-    batchnorm._BatchNorm,
-    BaseNorm,
-]
-
-
 class RunningNorm(BaseNorm):
     """Normalizes input to mean 0 and standard deviation 1 using a running average.
 
@@ -256,7 +247,14 @@ def build_mlp(
 
     # Normalize input layer
     if normalize_input_layer:
-        layers[f"{prefix}normalize_input"] = normalize_input_layer(in_size)
+        try:
+            layer_instance = normalize_input_layer(in_size)  # type: ignore[call-arg]
+        except TypeError as exc:
+            raise ValueError(
+                f"normalize_input_layer={normalize_input_layer} is not a valid "
+                "normalization layer type accepting only one argument (in_size)."
+            ) from exc
+        layers[f"{prefix}normalize_input"] = layer_instance
 
     # Hidden layers
     prev_size = in_size
