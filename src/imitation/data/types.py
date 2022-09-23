@@ -5,7 +5,7 @@ import logging
 import os
 import pathlib
 import warnings
-from typing import Any, Dict, Mapping, Optional, Sequence, Tuple, TypeVar, Union, cast
+from typing import Any, Dict, Mapping, Optional, Sequence, Tuple, TypeVar, Union, cast, Iterator, overload
 
 import numpy as np
 import torch as th
@@ -169,8 +169,11 @@ def transitions_collate_fn(
     return result
 
 
+TransitionsMinimalSelf = TypeVar("TransitionsMinimalSelf", bound="TransitionsMinimal")
+
+
 @dataclasses.dataclass(frozen=True)
-class TransitionsMinimal(th_data.Dataset):
+class TransitionsMinimal(th_data.Dataset, Sequence[Mapping[str, np.ndarray]]):
     """A Torch-compatible `Dataset` of obs-act transitions.
 
     This class and its subclasses are usually instantiated via
@@ -200,7 +203,7 @@ class TransitionsMinimal(th_data.Dataset):
     infos: np.ndarray
     """Array of info dicts. Shape: (batch_size,)."""
 
-    def __len__(self):
+    def __len__(self) -> int:
         """Returns number of transitions. Always positive."""
         return len(self.obs)
 
@@ -238,6 +241,14 @@ class TransitionsMinimal(th_data.Dataset):
     # @overload
     # def __getitem__(self, key: int) -> Mapping[str, np.ndarray]:
     #     pass  # pragma: no cover
+
+    @overload
+    def __getitem__(self, key: int) -> Mapping[str, np.ndarray]:
+        pass
+
+    @overload
+    def __getitem__(self: TransitionsMinimalSelf, key: slice) -> TransitionsMinimalSelf:
+        pass
 
     def __getitem__(self, key):
         """See TransitionsMinimal docstring for indexing and slicing semantics."""
