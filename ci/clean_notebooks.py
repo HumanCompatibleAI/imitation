@@ -91,7 +91,7 @@ if __name__ == "__main__":
         exit(1)
     for file in args.files:
         if file.is_dir():
-            files.extend(file.glob("*.ipynb"))
+            files.extend(file.glob("**/*.ipynb"))
         else:
             if file.suffix == ".ipynb":
                 files.append(file)
