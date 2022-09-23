@@ -7,7 +7,7 @@ then rewards the agent for following that estimate.
 import enum
 import itertools
 from collections.abc import Mapping
-from typing import Dict, Iterable, Optional, cast
+from typing import Dict, Iterable, Optional, cast, List
 
 import numpy as np
 from gym.spaces.utils import flatten
@@ -137,7 +137,7 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
         obs_b: np.ndarray,
         act_b: np.ndarray,
         next_obs_b: Optional[np.ndarray],
-    ) -> None:
+    ) -> Dict[Optional[int], List[np.ndarray]]:
         if next_obs_b is None and self.density_type == DensityType.STATE_STATE_DENSITY:
             raise ValueError(
                 "STATE_STATE_DENSITY requires next_obs_b "
@@ -151,14 +151,16 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
             assert next_obs_b.shape[1:] == self.venv.observation_space.shape
             assert len(next_obs_b) == len(obs_b)
 
+        transitions: Dict[Optional[int], List[np.ndarray]] = {}
         next_obs_b_iterator = next_obs_b or itertools.repeat(None)
         for obs, act, next_obs in zip(obs_b, act_b, next_obs_b_iterator):
             flat_trans = self._preprocess_transition(obs, act, next_obs)
-            self.transitions.setdefault(None, []).append(flat_trans)
+            transitions.setdefault(None, []).append(flat_trans)
+        return transitions
 
     def set_demonstrations(self, demonstrations: base.AnyTransitions) -> None:
         """Sets the demonstration data."""
-        self.transitions = {}
+        transitions: Dict[Optional[int], List[np.ndarray]] = {}
 
         if isinstance(demonstrations, Iterable):
             first_item, demonstrations = util.get_first_iter_element(demonstrations)
@@ -174,17 +176,17 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
                         zip(traj.obs[:-1], traj.acts, traj.obs[1:]),
                     ):
                         flat_trans = self._preprocess_transition(obs, act, next_obs)
-                        self.transitions.setdefault(i, []).append(flat_trans)
+                        transitions.setdefault(i, []).append(flat_trans)
             elif isinstance(first_item, Mapping):
                 # analogous to cast above.
                 demonstrations = cast(Iterable[base.TransitionMapping], demonstrations)
 
                 for batch in demonstrations:
-                    self._set_demo_from_batch(
+                    transitions.update(self._set_demo_from_batch(
                         util.safe_to_numpy(batch["obs"], warn=True),
                         util.safe_to_numpy(batch["acts"], warn=True),
                         util.safe_to_numpy(batch.get("next_obs"), warn=True),
-                    )
+                    ))
             else:
                 raise TypeError(
                     f"Unsupported demonstration type {type(demonstrations)}",
@@ -199,7 +201,7 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
         else:
             raise TypeError(f"Unsupported demonstration type {type(demonstrations)}")
 
-        self.transitions = {k: np.stack(v, axis=0) for k, v in self.transitions.items()}
+        self.transitions = {k: np.stack(v, axis=0) for k, v in transitions.items()}
 
         if not self.is_stationary and None in self.transitions:
             raise ValueError(
@@ -213,7 +215,7 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
     def train(self):
         """Fits the density model to demonstration data `self.transitions`."""
         # if requested, we'll scale demonstration transitions so that they have
-        # zero mean and unit variance (i.e all components are equally important)
+        # zero mean and unit variance (i.e. all components are equally important)
         self._scaler = preprocessing.StandardScaler(
             with_mean=self.standardise,
             with_std=self.standardise,
@@ -377,4 +379,5 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
     @property
     def policy(self) -> base_class.BasePolicy:
         assert self.rl_algo is not None
+        assert self.rl_algo.policy is not None
         return self.rl_algo.policy
