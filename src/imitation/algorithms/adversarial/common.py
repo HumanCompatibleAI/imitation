@@ -380,6 +380,10 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
             self.gen_algo.rollout_buffer,
             n_rollout_steps=total_timesteps,
         )
+        gen_trajs, ep_lens = self.venv_buffering.pop_trajectories()
+        self._check_fixed_horizon(ep_lens)
+        gen_samples = rollout.flatten_trajectories_with_rew(gen_trajs)
+        self._gen_replay_buffer.store(gen_samples)
 
     def train_gen(
         self,
@@ -407,11 +411,6 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
             #     )
             self.gen_algo.train()
             self._global_step += 1
-
-        gen_trajs, ep_lens = self.venv_buffering.pop_trajectories()
-        self._check_fixed_horizon(ep_lens)
-        gen_samples = rollout.flatten_trajectories_with_rew(gen_trajs)
-        self._gen_replay_buffer.store(gen_samples)
 
     def train(
         self,
