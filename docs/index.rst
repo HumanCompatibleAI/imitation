@@ -82,6 +82,7 @@ API Reference
    :caption: Development
    :hidden:
 
+   development/developer
    development/contributing/index
    development/release-notes
    development/license
