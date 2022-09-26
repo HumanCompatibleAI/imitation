@@ -16,6 +16,7 @@ from torch.nn import functional as F
 
 from imitation.algorithms import base
 from imitation.data import buffer, rollout, types, wrappers
+from imitation.policies import replay_buffer_wrapper
 from imitation.rewards import reward_nets, reward_wrapper
 from imitation.util import logger, networks, util
 
@@ -357,6 +358,29 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
 
         return train_stats
 
+    def collect_rollouts(
+        self,
+        total_timesteps: Optional[int] = None,
+        callback: MaybeCallback = None,
+    ):
+        """Collect rollouts.
+
+        Args:
+            total_timesteps: The number of transitions to sample from
+                `self.venv_train` during training. By default,
+                `self.gen_train_timesteps`.
+        """
+        if total_timesteps is None:
+            total_timesteps = self.gen_train_timesteps
+
+        # NOTE (Taufeeque): call setup_learn or not?
+        self.gen_algo.collect_rollouts(
+            self.gen_algo.env,
+            callback,
+            self.gen_algo.rollout_buffer,
+            n_rollout_steps=total_timesteps,
+        )
+
     def train_gen(
         self,
         total_timesteps: Optional[int] = None,
@@ -368,24 +392,20 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
         discriminator training) with `self.disc_batch_size` transitions.
 
         Args:
-            total_timesteps: The number of transitions to sample from
-                `self.venv_train` during training. By default,
-                `self.gen_train_timesteps`.
             learn_kwargs: kwargs for the Stable Baselines `RLModel.learn()`
                 method.
         """
-        if total_timesteps is None:
-            total_timesteps = self.gen_train_timesteps
         if learn_kwargs is None:
             learn_kwargs = {}
 
         with self.logger.accumulate_means("gen"):
-            self.gen_algo.learn(
-                total_timesteps=total_timesteps,
-                reset_num_timesteps=False,
-                callback=self.gen_callback,
-                **learn_kwargs,
-            )
+            #     self.gen_algo.learn(
+            #         total_timesteps=total_timesteps,
+            #         reset_num_timesteps=False,
+            #         callback=self.gen_callback,
+            #         **learn_kwargs,
+            #     )
+            self.gen_algo.train()
             self._global_step += 1
 
         gen_trajs, ep_lens = self.venv_buffering.pop_trajectories()
@@ -420,11 +440,12 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
             f"total_timesteps={total_timesteps})!"
         )
         for r in tqdm.tqdm(range(0, n_rounds), desc="round"):
-            self.train_gen(self.gen_train_timesteps)
+            self.collect_rollouts(self.gen_train_timesteps)
             for _ in range(self.n_disc_updates_per_round):
                 with networks.training(self.reward_train):
                     # switch to training mode (affects dropout, normalization)
                     self.train_disc()
+            self.train_gen()
             if callback:
                 callback(r)
             self.logger.dump(self._global_step)
