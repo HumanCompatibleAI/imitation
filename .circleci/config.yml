@@ -235,14 +235,18 @@ jobs:
           name: codespell
           command: codespell -I .codespell.skip --skip='*.pyc,tests/testdata/*,*.ipynb,*.csv' ${SRC_FILES}
 
-  docs:
+  doctest:
     executor: static-analysis-medium
 
     steps:
       - dependencies-linux
       - run:
           name: sphinx
-          command: pushd docs/ && make clean && make doctest && make html && popd
+          environment:
+            # Note: we don't want to execute the example notebooks in this step since
+            #   this happens in a separate readthedocs job anyway.
+            NB_EXECUTION_MODE: "off"
+          command: pushd docs/ && make clean && make doctest && popd
 
   type:
     executor: static-analysis-medium
@@ -351,7 +355,7 @@ workflows:
       - lint:
           context:
           - docker-hub-creds
-      - docs:
+      - doctest:
           context:
           - docker-hub-creds
       - type:

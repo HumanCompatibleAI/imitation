@@ -7,7 +7,7 @@ Implements `Modeling Interaction via the Principle of Maximum Causal Entropy <ht
 Example
 =======
 
-Detailed example notebook: `6_train_mce.ipynb <https://github.com/HumanCompatibleAI/imitation/blob/master/examples/6_train_mce.ipynb>`_
+Detailed example notebook: :doc:`../tutorials/6_train_mce`
 
 .. testcode::
 
