@@ -3,43 +3,12 @@
 import contextlib
 import datetime
 import os
-import sys
 import tempfile
-from typing import Any, Dict, Generator, Optional, Sequence, Tuple, Union
+from typing import Any, Dict, Generator, List, Optional, Sequence, Tuple, Union
 
 import stable_baselines3.common.logger as sb_logger
 
 from imitation.data import types
-
-
-def make_output_format(
-    _format: str,
-    log_dir: str,
-    log_suffix: str = "",
-    max_length: int = 40,
-) -> sb_logger.KVWriter:
-    """Returns a logger for the requested format.
-
-    Args:
-        _format: the requested format to log to
-            ('stdout', 'log', 'json' or 'csv' or 'tensorboard').
-        log_dir: the logging directory.
-        log_suffix: the suffix for the log file.
-        max_length: the maximum length beyond which the keys get truncated.
-
-    Returns:
-        the logger.
-    """
-    os.makedirs(log_dir, exist_ok=True)
-    if _format == "stdout":
-        return sb_logger.HumanOutputFormat(sys.stdout, max_length=max_length)
-    elif _format == "log":
-        return sb_logger.HumanOutputFormat(
-            os.path.join(log_dir, f"log{log_suffix}.txt"),
-            max_length=max_length,
-        )
-    else:
-        return sb_logger.make_output_format(_format, log_dir, log_suffix)
 
 
 def _build_output_formats(
@@ -50,7 +19,7 @@ def _build_output_formats(
 
     Args:
         folder: Path to directory that logs are written to.
-        format_strs: A list of output format strings. For details on available
+        format_strs: An list of output format strings. For details on available
             output formats see `stable_baselines3.logger.make_output_format`.
 
     Returns:
@@ -62,7 +31,7 @@ def _build_output_formats(
         if f == "wandb":
             output_formats.append(WandbOutputFormat())
         else:
-            output_formats.append(make_output_format(f, folder))
+            output_formats.append(sb_logger.make_output_format(f, folder))
     return output_formats
 
 
@@ -72,7 +41,56 @@ class HierarchicalLogger(sb_logger.Logger):
     `self.accumulate_means` creates a context manager. While in this context,
     values are loggged to a sub-logger, with only mean values recorded in the
     top-level (root) logger.
+
+    >>> import tempfile
+    >>> with tempfile.TemporaryDirectory() as dir:
+    ...     logger: HierarchicalLogger = configure(dir, ('log',))
+    ...     # record the key value pair (loss, 1.0) to path `dir`
+    ...     # at step 1.
+    ...     logger.record("loss", 1.0)
+    ...     logger.dump(step=1)
+    ...     with logger.accumulate_means("dataset"):
+    ...         # record the key value pair `("raw/dataset/entropy", 5.0)` to path
+    ...         # `dir/raw/dataset` at step 100
+    ...         logger.record("entropy", 5.0)
+    ...         logger.dump(step=100)
+    ...         # record the key value pair `("raw/dataset/entropy", 6.0)` to path
+    ...         # `dir/raw/dataset` at step 200
+    ...         logger.record("entropy", 6.0)
+    ...         logger.dump(step=200)
+    ...     # record the key value pair `("mean/dataset/entropy", 5.5)` to path
+    ...     # `dir` at step 1.
+    ...     logger.dump(step=1)
+    ...     with logger.add_prefix("foo"), logger.accumulate_means("bar"):
+    ...         # record the key value pair ("raw/foo/bar/biz", 42.0) to path
+    ...         # `dir/raw/foo/bar` at step 2000
+    ...         logger.record("biz", 42.0)
+    ...         logger.dump(step=2000)
+    ...     # record the key value pair `("mean/foo/bar/biz", 42.0)` to path
+    ...     # `dir` at step 1.
+    ...     logger.dump(step=1)
+    ...     with open(os.path.join(dir, 'log.txt')) as f:
+    ...         print(f.read())
+    -------------------
+    | loss | 1        |
+    -------------------
+    ---------------------------------
+    | mean/              |          |
+    |    dataset/entropy | 5.5      |
+    ---------------------------------
+    -----------------------------
+    | mean/          |          |
+    |    foo/bar/biz | 42       |
+    -----------------------------
+    <BLANKLINE>
     """
+
+    default_logger: sb_logger.Logger
+    current_logger: Optional[sb_logger.Logger]
+    _cached_loggers: Dict[str, sb_logger.Logger]
+    _prefixes: List[str]
+    _subdir: Optional[str]
+    _name: Optional[str]
 
     def __init__(
         self,
@@ -93,7 +111,9 @@ class HierarchicalLogger(sb_logger.Logger):
         self.default_logger = default_logger
         self.current_logger = None
         self._cached_loggers = {}
+        self._prefixes = []
         self._subdir = None
+        self._name = None
         self.format_strs = format_strs
         super().__init__(folder=self.default_logger.dir, output_formats=[])
 
@@ -103,27 +123,56 @@ class HierarchicalLogger(sb_logger.Logger):
         self.name_to_excluded = self._logger.name_to_excluded
 
     @contextlib.contextmanager
-    def accumulate_means(self, subdir: types.AnyPath) -> Generator[None, None, None]:
+    def add_prefix(self, prefix: str) -> Generator[None, None, None]:
+        """Add a prefix to the subdirectory used to accumulate means.
+
+        This prefix only applies when a `accumulate_means` context is active. If there
+        are multiple active prefixes, then they are concatenated.
+
+        Args:
+            prefix: The prefix to add to the named sub.
+
+        Yields:
+            None when the context manager is entered
+
+        Raises:
+            RuntimeError: if accumulate means context is already active.
+        """
+        if self.current_logger is not None:
+            raise RuntimeError(
+                "Cannot add prefix when accumulate_means context is already active.",
+            )
+
+        try:
+            self._prefixes.append(prefix)
+            yield
+        finally:
+            self._prefixes.pop()
+
+    @contextlib.contextmanager
+    def accumulate_means(self, name: str) -> Generator[None, None, None]:
         """Temporarily modifies this HierarchicalLogger to accumulate means values.
 
-        During this context, `self.record(key, value)` writes the "raw" values in
-        "{self.default_logger.log_dir}/{subdir}" under the key "raw/{subdir}/{key}".
-        At the same time, any call to `self.record` will also accumulate mean values
-        on the default logger by calling
-        `self.default_logger.record_mean(f"mean/{subdir}/{key}", value)`.
+        Within this context manager, `self.record(key, value)` writes the "raw" values
+        in `f"{self.default_logger.log_dir}/{prefix}/{name}"` under the key
+        `"raw/{prefix}/{name}/{key}"`. At the same time, any call to `self.record` will
+        also accumulate mean values on the default logger by calling
+        `self.default_logger.record_mean(f"mean/{prefix}/{name}/{key}", value)`.
 
-        During the context, `self.record(key, value)` will write the "raw" values in
-        `"{self.default_logger.log_dir}/subdir"` under the key "raw/{subdir}/key".
+        Multiple prefixes may be active at once. In this case the `prefix` is simply the
+        concatenation of each of the active prefixes in the order they
+        where created e.g. if the active `prefixes` are ['foo', 'bar'] then
+        the `prefix` is 'foo/bar'.
 
         After the context exits, calling `self.dump()` will write the means
         of all the "raw" values accumulated during this context to
-        `self.default_logger` under keys with the prefix `mean/{subdir}/`
+        `self.default_logger` under keys of the form  `mean/{prefix}/{name}/{key}`
 
         Note that the behavior of other logging methods, `log` and `record_mean`
         are unmodified and will go straight to the default logger.
 
         Args:
-            subdir: A string key which determines the `folder` where raw data is
+            name: A string key which determines the `folder` where raw data is
                 written and temporary logging prefixes for raw and mean data. Entering
                 an `accumulate_means` context in the future with the same `subdir`
                 will safely append to logs written in this folder rather than
@@ -139,10 +188,11 @@ class HierarchicalLogger(sb_logger.Logger):
         if self.current_logger is not None:
             raise RuntimeError("Nested `accumulate_means` context")
 
+        subdir = os.path.join(*self._prefixes, name)
+
         if subdir in self._cached_loggers:
             logger = self._cached_loggers[subdir]
         else:
-            subdir = types.path_to_str(subdir)
             folder = os.path.join(self.default_logger.dir, "raw", subdir)
             os.makedirs(folder, exist_ok=True)
             output_formats = _build_output_formats(folder, self.format_strs)
@@ -152,20 +202,22 @@ class HierarchicalLogger(sb_logger.Logger):
         try:
             self.current_logger = logger
             self._subdir = subdir
+            self._name = name
             self._update_name_to_maps()
             yield
         finally:
             self.current_logger = None
             self._subdir = None
+            self._name = None
             self._update_name_to_maps()
 
     def record(self, key, val, exclude=None):
         if self.current_logger is not None:  # In accumulate_means context.
             assert self._subdir is not None
-            raw_key = "/".join(["raw", self._subdir, key])
+            raw_key = "/".join(["raw", *self._prefixes, self._name, key])
             self.current_logger.record(raw_key, val, exclude)
 
-            mean_key = "/".join(["mean", self._subdir, key])
+            mean_key = "/".join(["mean", *self._prefixes, self._name, key])
             self.default_logger.record_mean(mean_key, val, exclude)
         else:  # Not in accumulate_means context.
             self.default_logger.record(key, val, exclude)
