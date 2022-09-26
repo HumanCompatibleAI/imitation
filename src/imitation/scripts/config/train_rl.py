@@ -133,15 +133,34 @@ def seals_mountain_car():
 
 @train_rl_ex.named_config
 def pendulum():
-    common = dict(env_name="Pendulum-v1")
+    common = dict(env_name="Pendulum-v1", num_vec=4)
+    total_timesteps = int(1e5)
+
+    train = dict(
+        policy_cls="MlpPolicy",
+        # policy_kwargs=dict(
+        #     activation_fn=nn.Tanh,
+        #     net_arch=[dict(pi=[64, 64], vf=[64, 64])],
+        # ),
+    )
+    normalize_reward = False
+
     rl = dict(
-        batch_size=4096,
+        batch_size=1024 * 4,
         rl_kwargs=dict(
+            gae_lambda=0.95,
             gamma=0.9,
+            n_epochs=10,
+            ent_coef=0.0,
             learning_rate=1e-3,
+            clip_range=0.2,
+            use_sde=True,
+            sde_sample_freq=4,
+            # batch_size=64,
+            # max_grad_norm=0.8,
+            # vf_coef=0.11483689492120866,
         ),
     )
-    total_timesteps = int(2e5)
 
 
 @train_rl_ex.named_config
@@ -186,12 +205,64 @@ def seals_ant():
 
 @train_rl_ex.named_config
 def seals_swimmer():
-    common = dict(env_name="seals/Swimmer-v0")
+    common = dict(env_name="seals/Swimmer-v0", num_vec=1)
+    train = dict(
+        policy_cls="MlpPolicy",
+        policy_kwargs=dict(
+            activation_fn=nn.Tanh,
+            net_arch=[dict(pi=[64, 64], vf=[64, 64])],
+        ),
+    )
+
+    total_timesteps = 1e6
+    normalize_reward = True
+
+    rl = dict(
+        batch_size=2048,
+        rl_kwargs=dict(
+            batch_size=8,
+            clip_range=0.1,
+            ent_coef=5.167107294612664e-08,
+            gae_lambda=0.95,
+            gamma=0.999,
+            learning_rate=0.0001214437022727675,
+            max_grad_norm=2,
+            n_epochs=20,
+            # policy_kwargs are same as the defaults
+            vf_coef=0.6162112311062333,
+        ),
+    )
 
 
 @train_rl_ex.named_config
 def seals_walker():
-    common = dict(env_name="seals/Walker2d-v0")
+    common = dict(env_name="seals/Walker2d-v0", num_vec=1)
+    train = dict(
+        policy_cls="MlpPolicy",
+        policy_kwargs=dict(
+            activation_fn=nn.ReLU,
+            net_arch=[dict(pi=[256, 256], vf=[256, 256])],
+        ),
+    )
+
+    total_timesteps = 1e6
+    normalize_reward = True
+
+    rl = dict(
+        batch_size=2048,
+        rl_kwargs=dict(
+            batch_size=8,
+            clip_range=0.4,
+            ent_coef=0.00013057334805552262,
+            gae_lambda=0.92,
+            gamma=0.98,
+            learning_rate=3.791707778339674e-05,
+            max_grad_norm=0.6,
+            n_epochs=5,
+            # policy_kwargs are same as the defaults
+            vf_coef=0.6167177795726859,
+        ),
+    )
 
 
 # Debug configs
