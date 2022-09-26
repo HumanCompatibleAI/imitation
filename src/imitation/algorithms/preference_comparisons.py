@@ -1211,7 +1211,6 @@ class BasicRewardTrainer(RewardTrainer):
         epochs = round(self.epochs * epoch_multiplier)
 
         assert epochs > 0, "Must train for at least one epoch."
-        epoch_num = 0
         with self.logger.accumulate_means("reward"):
             for epoch_num in tqdm(range(epochs), desc="Training reward model"):
                 logger_prefix = self._get_logger_key(prefix, f"epoch-{epoch_num}")
@@ -1324,7 +1323,6 @@ class EnsembleTrainer(BasicRewardTrainer):
             rng=rng,
             regularizer_factory=regularizer_factory,
         )
-        self.rng = rng
         self.member_trainers = []
         for member_pref_model in self._preference_model.member_pref_models:
             reward_trainer = BasicRewardTrainer(
@@ -1335,11 +1333,15 @@ class EnsembleTrainer(BasicRewardTrainer):
                 lr=lr,
                 custom_logger=self.logger,
                 regularizer_factory=regularizer_factory,
+                rng=self.rng,
             )
             self.member_trainers.append(reward_trainer)
-        self.rng = rng
 
-    @RewardTrainer.logger.setter
+    @property
+    def logger(self):
+        return super().logger
+
+    @logger.setter
     def logger(self, custom_logger):
         self._logger = custom_logger
         for member_trainer in self.member_trainers:

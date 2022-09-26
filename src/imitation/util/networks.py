@@ -194,7 +194,7 @@ class EMANorm(BaseNorm):
         self.running_var += learning_rate * delta_var
 
         self.count += b_size
-        self.num_batches += 1
+        self.num_batches += 1  # type: ignore[misc]
 
 
 def build_mlp(
