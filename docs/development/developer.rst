@@ -67,15 +67,16 @@ The ``imitation.policies`` subpackage contains the following modules:
 - ``policies.base``: defines commonly used policies across the library like ``FeedForward32Policy``, ``SAC1024Policy``, ``NormalizeFeaturesExtractor``, etc.
 - ``policies.exploration_wrapper``: defines the ``ExplorationWrapper`` class that wraps a policy to create a partially randomized policy useful for exploration.
 - ``policies.replay_buffer_wrapper``: defines the ``ReplayBufferRewardWrapper`` to wrap a replay buffer that returns transitions with rewards specified by a reward function.
-- ``policies.serialize``: defines various functions to save and load serialized policies from the disk or the huggingface hub.
+- ``policies.serialize``: defines various functions to save and load serialized policies from the disk or the Hugging Face hub.
 
 Regularization
 --------------
 
-The ``imitation.regularization`` subpackage provides API for creating neural network regularizers. It provides classes such as 
-``regularizers.LpRegularizer`` and ``regularizers.WeightDecayRegularizer`` to regularizer the loss function and the weights of
+The ``imitation.regularization`` subpackage provides an API for creating neural network regularizers. It provides classes such as 
+``regularizers.LpRegularizer`` and ``regularizers.WeightDecayRegularizer`` to regularize the loss function and the weights of
 a network, respectively. The ``updaters.IntervalParamScaler`` class also provides support to scale the lambda hyperparameter
-of a regularizer if it lies outside an interval.
+of a regularizer up when the ratio of validation to training loss is above an upper bound, 
+and scales it down when the ratio drops below a lower bound.
 
 Rewards
 -------
@@ -83,19 +84,20 @@ Rewards
 The ``imitation.rewards`` subpackage contains code related to building, serializing, and loading reward networks. 
 Some of the classes include:
 
-``rewards.reward_nets.RewardNet``: is the base reward network class. Reward networks can take state, action, and the next state as input to predict the reward. The ``forward`` method is used while training the network, whereas the ``predict`` method is used during evaluation.
+- ``rewards.reward_nets.RewardNet``: is the base reward network class. Reward networks can take state, action, and the next state as input to predict the reward. 
+  The ``forward`` method is used while training the network, whereas the ``predict`` method is used during evaluation.
 
-``rewards.reward_nets.BasicRewardNet``: builds an MLP reward network.
+- ``rewards.reward_nets.BasicRewardNet``: builds a MLP reward network.
 
-``rewards.reward_nets.CnnRewardNet``: builds a CNN based reward network.
+- ``rewards.reward_nets.CnnRewardNet``: builds a CNN based reward network.
 
-``rewards.reward_nets.RewardEnsemble``: builds an ensemble of reward networks.
+- ``rewards.reward_nets.RewardEnsemble``: builds an ensemble of reward networks.
 
-``rewards.reward_wrapper.RewardVecEnvWrapper``: This class wraps a ``VecEnv`` with a custom ``RewardFn``. 
-The default reward function of the environment is overridden with the passed reward function, 
-and the original rewards are stored in the ``info_dict`` with the ``original_env_rew`` key. 
-This class is used to override the original reward function of an environment with a learned 
-reward function from the reward learning algorithms like preference comparisons.
+- ``rewards.reward_wrapper.RewardVecEnvWrapper``: This class wraps a ``VecEnv`` with a custom ``RewardFn``. 
+  The default reward function of the environment is overridden with the passed reward function, 
+  and the original rewards are stored in the ``info_dict`` with the ``original_env_rew`` key. 
+  This class is used to override the original reward function of an environment with a learned 
+  reward function from the reward learning algorithms like preference comparisons.
 
 The ``imitation.rewards.serialize`` module contains functions to load serialized reward functions.
 
@@ -127,9 +129,9 @@ Util
 ----
 
 ``imitation.util.logger.HierarchicalLogger``: A logger that supports contexts for accumulating the mean of values of all the logged keys. 
-The logger internally maintains two separate ``stable_baselines3.common.logger.Logger`` for logging the raw and the mean values.
-The ``accumulate_means`` context cannot be called inside an already open ``accumulate_means`` context. 
-The ``imitation.util.logger.configure`` function can be used to construct a ``HierarchicalLogger`` object easily.
+The logger internally maintains one separate ``stable_baselines3.common.logger.Logger`` object for logging the mean values, and one ``Logger`` object for the raw values for each context.
+The ``accumulate_means`` context cannot be called inside an already open ``accumulate_means`` context.
+The ``imitation.util.logger.configure`` function can be used to easily construct a ``HierarchicalLogger`` object.
 
 ``imitation.util.networks``: This module provides some additional neural network layers that can be used for imitation like ``RunningNorm`` and ``EMANorm`` that normalize their inputs.
 The module also provides functions like ``build_mlp`` and ``build_cnn`` to quickly build neural networks.
