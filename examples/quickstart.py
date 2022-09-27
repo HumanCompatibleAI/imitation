@@ -55,11 +55,15 @@ bc_trainer = bc.BC(
     rng=rng,
 )
 
-reward, _ = evaluate_policy(bc_trainer.policy, env, n_eval_episodes=3, render=True)
+reward, _ = evaluate_policy(
+    bc_trainer.policy, env, n_eval_episodes=3, render=True  # type: ignore
+)
 print(f"Reward before training: {reward}")
 
 print("Training a policy using Behavior Cloning")
 bc_trainer.train(n_epochs=1)
 
-reward, _ = evaluate_policy(bc_trainer.policy, env, n_eval_episodes=3, render=True)
+reward, _ = evaluate_policy(
+    bc_trainer.policy, env, n_eval_episodes=3, render=True  # type: ignore
+)
 print(f"Reward after training: {reward}")

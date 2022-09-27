@@ -45,7 +45,6 @@ executors:
       | src/imitation/algorithms/mce_irl.py$
       | src/imitation/algorithms/density.py$
       | tests/algorithms/test_bc.py$
-      | examples/quickstart.py$
       )"
 
 commands:
