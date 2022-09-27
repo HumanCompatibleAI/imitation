@@ -18,7 +18,9 @@ Detailed example notebook: :doc:`../tutorials/7_train_density`
     from imitation.data import types
     from imitation.util import util
 
-    env = util.make_vec_env("Pendulum-v1", 2)
+
+
+    env = util.make_vec_env("Pendulum-v1", rng=rng, n_envs=2)
     rollouts = types.load("../tests/testdata/expert_models/pendulum_0/rollouts/final.pkl")
 
     imitation_trainer = PPO(ActorCriticPolicy, env)
