@@ -24,9 +24,11 @@ def _csv_to_dict(csv_path: str) -> dict:
 
 def _json_to_dict(json_path: str) -> dict:
     r"""Loads the saved json logging file and convert it to expected dict format.
+
     Args:
         json_path: Path of the json log file.
             Stored in the format - '{"A": 1, "B": 1}\n{"A": 2}\n{"B": 3}\n'
+
     Returns:
         dictionary in the format - `{"A": [1, 2, ""], "B": [1, "", 3]}`
     """

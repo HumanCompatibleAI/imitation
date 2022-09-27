@@ -13,6 +13,8 @@ from imitation.data import types
 
 
 class HumanOutputFormat(sb_logger.HumanOutputFormat):
+    """Wrapper for Stable Baselines logger that prevents truncation of key prefixes."""
+
     def write(self, key_values: Dict, key_excluded: Dict, step: int = 0) -> None:
         # replace / in keys with : so that they are not truncated and give errors.
         key_values = {k.replace("/", ":"): v for k, v in key_values.items()}
@@ -26,12 +28,14 @@ def make_output_format(
     max_length: int = 50,
 ) -> sb_logger.KVWriter:
     """Returns a logger for the requested format.
+
     Args:
         _format: the requested format to log to
             ('stdout', 'log', 'json' or 'csv' or 'tensorboard').
         log_dir: the logging directory.
         log_suffix: the suffix for the log file.
         max_length: the maximum length beyond which the keys get truncated.
+
     Returns:
         the logger.
     """
@@ -284,12 +288,12 @@ class HierarchicalLogger(sb_logger.Logger):
         if self.current_logger is not None:  # In accumulate_means context.
             assert self._subdir is not None
             raw_key = "/".join(
-                ["raw", *self._prefixes, self._name, *self._key_prefixes, key]
+                ["raw", *self._prefixes, self._name, *self._key_prefixes, key],
             )
             self.current_logger.record(raw_key, val, exclude)
 
             mean_key = "/".join(
-                ["mean", *self._prefixes, self._name, *self._key_prefixes, key]
+                ["mean", *self._prefixes, self._name, *self._key_prefixes, key],
             )
             self.default_logger.record_mean(mean_key, val, exclude)
         else:  # Not in accumulate_means context.

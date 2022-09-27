@@ -1238,7 +1238,8 @@ class BasicRewardTrainer(RewardTrainer):
                     for fragment_pairs, preferences in val_dataloader:
                         with self.logger.add_key_prefix("val"):
                             val_loss += self._training_inner_loop(
-                                fragment_pairs, preferences
+                                fragment_pairs,
+                                preferences,
                             ).item()
                     self.regularizer.update_params(train_loss, val_loss)
 
@@ -1355,7 +1356,8 @@ class EnsembleTrainer(BasicRewardTrainer):
             bagging_dataset = data_th.Subset(dataset, list(sampler))
             with self.logger.add_prefix(f"member-{member_idx}"):
                 self.member_trainers[member_idx].train(
-                    bagging_dataset, epoch_multiplier=epoch_multiplier
+                    bagging_dataset,
+                    epoch_multiplier=epoch_multiplier,
                 )
 
         # average the metrics across the member models
