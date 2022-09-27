@@ -3,12 +3,41 @@
 import contextlib
 import datetime
 import os
+import sys
 import tempfile
 from typing import Any, Dict, Generator, List, Optional, Sequence, Tuple, Union
 
 import stable_baselines3.common.logger as sb_logger
 
 from imitation.data import types
+
+
+def make_output_format(
+    _format: str,
+    log_dir: str,
+    log_suffix: str = "",
+    max_length: int = 50,
+) -> sb_logger.KVWriter:
+    """Returns a logger for the requested format.
+    Args:
+        _format: the requested format to log to
+            ('stdout', 'log', 'json' or 'csv' or 'tensorboard').
+        log_dir: the logging directory.
+        log_suffix: the suffix for the log file.
+        max_length: the maximum length beyond which the keys get truncated.
+    Returns:
+        the logger.
+    """
+    os.makedirs(log_dir, exist_ok=True)
+    if _format == "stdout":
+        return sb_logger.HumanOutputFormat(sys.stdout, max_length=max_length)
+    elif _format == "log":
+        return sb_logger.HumanOutputFormat(
+            os.path.join(log_dir, f"log{log_suffix}.txt"),
+            max_length=max_length,
+        )
+    else:
+        return sb_logger.make_output_format(_format, log_dir, log_suffix)
 
 
 def _build_output_formats(
@@ -31,7 +60,7 @@ def _build_output_formats(
         if f == "wandb":
             output_formats.append(WandbOutputFormat())
         else:
-            output_formats.append(sb_logger.make_output_format(f, folder))
+            output_formats.append(make_output_format(f, folder))
     return output_formats
 
 
@@ -89,6 +118,7 @@ class HierarchicalLogger(sb_logger.Logger):
     current_logger: Optional[sb_logger.Logger]
     _cached_loggers: Dict[str, sb_logger.Logger]
     _prefixes: List[str]
+    _key_prefixes: List[str]
     _subdir: Optional[str]
     _name: Optional[str]
 
@@ -112,6 +142,7 @@ class HierarchicalLogger(sb_logger.Logger):
         self.current_logger = None
         self._cached_loggers = {}
         self._prefixes = []
+        self._key_prefixes = []
         self._subdir = None
         self._name = None
         self.format_strs = format_strs
@@ -148,6 +179,35 @@ class HierarchicalLogger(sb_logger.Logger):
             yield
         finally:
             self._prefixes.pop()
+
+    def get_prefixes(self) -> str:
+        return "/".join(self._prefixes)
+
+    @contextlib.contextmanager
+    def add_key_prefix(self, prefix: str) -> Generator[None, None, None]:
+        """Add a prefix to the keys logged during an accumulate_means context.
+
+        This prefix only applies when a `accumulate_means` context is active.
+
+        Args:
+            prefix: The prefix to add to the keys.
+
+        Yields:
+            None when the context manager is entered
+
+        Raises:
+            RuntimeError: if accumulate means context is already active.
+        """
+        if self.current_logger is None:
+            raise RuntimeError(
+                "Cannot add key prefix when accumulate_means context is not active.",
+            )
+
+        try:
+            self._key_prefixes.append(prefix)
+            yield
+        finally:
+            self._key_prefixes.pop()
 
     @contextlib.contextmanager
     def accumulate_means(self, name: str) -> Generator[None, None, None]:
@@ -214,10 +274,14 @@ class HierarchicalLogger(sb_logger.Logger):
     def record(self, key, val, exclude=None):
         if self.current_logger is not None:  # In accumulate_means context.
             assert self._subdir is not None
-            raw_key = "/".join(["raw", *self._prefixes, self._name, key])
+            raw_key = "/".join(
+                ["raw", *self._prefixes, self._name, *self._key_prefixes, key]
+            )
             self.current_logger.record(raw_key, val, exclude)
 
-            mean_key = "/".join(["mean", *self._prefixes, self._name, key])
+            mean_key = "/".join(
+                ["mean", *self._prefixes, self._name, *self._key_prefixes, key]
+            )
             self.default_logger.record_mean(mean_key, val, exclude)
         else:  # Not in accumulate_means context.
             self.default_logger.record(key, val, exclude)
