@@ -37,6 +37,16 @@ executors:
       # If you change these, also change ci/code_checks.sh
       SRC_FILES: src/ tests/ experiments/ examples/ docs/conf.py setup.py ci/clean_notebooks.py
       NUM_CPUS: 2
+      EXCLUDE_MYPY: "(?x)(
+      src/imitation/algorithms/preference_comparisons.py$
+      | src/imitation/rewards/reward_nets.py$|imitation/util/sacred.py$
+      | src/imitation/algorithms/base.py$|imitation/scripts/train_preference_comparisons.py$
+      | src/imitation/rewards/serialize.py$|imitation/scripts/common/train.py$
+      | src/imitation/algorithms/mce_irl.py$
+      | src/imitation/algorithms/density.py$
+      | tests/algorithms/test_bc.py$
+      | examples/quickstart.py$
+      )"
 
 commands:
   dependencies-linux:
@@ -263,7 +273,7 @@ jobs:
 
       - run:
           name: mypy
-          command: mypy --version && mypy ${SRC_FILES[@]} --exclude 'imitation/algorithms/preference_comparisons.py$|imitation/rewards/reward_nets.py$|imitation/util/sacred.py$|imitation/algorithms/base.py$|imitation/scripts/train_preference_comparisons.py$|imitation/rewards/serialize.py$|imitation/scripts/common/train.py$|imitation/algorithms/mce_irl.py$|imitation/algorithms/density.py$|tests/algorithms/test_bc.py$'
+          command: mypy --version && mypy ${SRC_FILES[@]} --exclude ${EXCLUDE_MYPY}
 
   unit-test-linux:
     executor: unit-test-linux
