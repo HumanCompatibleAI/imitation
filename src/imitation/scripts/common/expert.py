@@ -35,7 +35,7 @@ def config_hook(config, command_name, logger):
     if (
         e_config["policy_type"] in ("ppo", "sac")
         and "path" not in e_config["loader_kwargs"]
-    ):
+    ):  # pragma: no cover
         e_config["loader_kwargs"]["path"] = None
     return e_config
 
