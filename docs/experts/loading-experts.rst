@@ -6,10 +6,10 @@ Some algorithms, such as DAgger, can learn from an expert policy.
 
 In the :doc:`../getting-started/first-steps` tutorial, we first trained an expert and
 then imitate it's behavior using :doc:`../algorithms/bc`.
-In practice, you want to load a pre-trained policy for performance reasons.
+In practice, you may want to load a pre-trained policy for performance reasons.
 
-The python interface provides a :func:`~imitation.policies.serialize.load_policy`
-function to which you pass a `policy type` and any extra kwargs to pass to the
+The Python interface provides a :func:`~imitation.policies.serialize.load_policy`
+function to which you pass a `policy_type` and any extra kwargs to pass to the
 corresponding policy loader.
 
 While using the CLI interface, you set the `expert.policy_type` and
@@ -22,7 +22,7 @@ Loading a policy from a file
 ----------------------------
 
 To load a policy from disk, use either `ppo` or `sac` as the policy type.
-The path is specified as `path` to the `loader_kwargs` and it should either point
+The path is specified by `path` in the `loader_kwargs` and it should either point
 to a zip file containing the policy or a directory containing a `model.zip` file.
 
 Loading a policy from HuggingFace
@@ -34,7 +34,7 @@ To load a policy from HuggingFace, use either `ppo-huggingface` or `sac-huggingf
 the policy type.
 By default, the policies are loaded from the HumanCompatibleAI repository, but you can
 override this by setting the `organization` parameter in the `loader_kwargs`.
-When using the python API, you also have to specify the environment name as `env_name`.
+When using the Python API, you also have to specify the environment name as `env_name`.
 
 Uploading a policy to HuggingFace
 ---------------------------------
