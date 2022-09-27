@@ -7,7 +7,6 @@ from typing import Iterable, Optional, OrderedDict, Type, Union
 
 import torch as th
 from torch import nn
-from torch.nn.modules import batchnorm, normalization
 
 
 @contextlib.contextmanager
@@ -252,7 +251,7 @@ def build_mlp(
         except TypeError as exc:
             raise ValueError(
                 f"normalize_input_layer={normalize_input_layer} is not a valid "
-                "normalization layer type accepting only one argument (in_size)."
+                "normalization layer type accepting only one argument (in_size).",
             ) from exc
         layers[f"{prefix}normalize_input"] = layer_instance
 

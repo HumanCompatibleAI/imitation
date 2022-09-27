@@ -187,7 +187,7 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
                             util.safe_to_numpy(batch["obs"], warn=True),
                             util.safe_to_numpy(batch["acts"], warn=True),
                             util.safe_to_numpy(batch.get("next_obs"), warn=True),
-                        )
+                        ),
                     )
             else:
                 raise TypeError(

@@ -8,7 +8,6 @@ import warnings
 from typing import (
     Any,
     Dict,
-    Iterator,
     Mapping,
     Optional,
     Sequence,

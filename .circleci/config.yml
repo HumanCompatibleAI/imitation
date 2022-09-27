@@ -225,7 +225,7 @@ jobs:
 
       - run:
           name: ipynb-check
-          command: ./ci/clean_notebooks.py --check ${SRC_FILES}
+          command: ./ci/clean_notebooks.py --check ./docs/tutorials
 
       - run:
           name: flake8
