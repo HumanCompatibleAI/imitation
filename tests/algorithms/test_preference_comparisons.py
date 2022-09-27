@@ -204,9 +204,9 @@ def test_preference_comparisons_raises(
     schedule,
     rng,
 ):
-    loss = preference_comparisons.CrossEntropyRewardLoss(preference_model)
+    loss = preference_comparisons.CrossEntropyRewardLoss()
     reward_trainer = preference_comparisons.BasicRewardTrainer(
-        reward_net,
+        preference_model,
         loss,
         rng=rng,
     )

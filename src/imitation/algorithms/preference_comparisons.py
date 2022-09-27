@@ -1302,7 +1302,7 @@ class EnsembleTrainer(BasicRewardTrainer):
         Raises:
             TypeError: if model is not a RewardEnsemble.
         """
-        if not preference_model.is_ensemble:
+        if preference_model.ensemble_model is None:
             raise TypeError(
                 "PreferenceModel of a RewardEnsemble expected by EnsembleTrainer.",
             )
@@ -1347,7 +1347,8 @@ class EnsembleTrainer(BasicRewardTrainer):
             dataset,
             replacement=True,
             num_samples=len(dataset),
-            generator=self.rng,
+            # we convert the numpy generator to the pytorch generator.
+            generator=th.Generator().manual_seed(util.make_seeds(self.rng)),
         )
         for member_idx in range(len(self.member_trainers)):
             # sampler gives new indexes on every call
@@ -1390,7 +1391,7 @@ def _make_reward_trainer(
     if reward_trainer_kwargs is None:
         reward_trainer_kwargs = {}
 
-    if preference_model.is_ensemble:
+    if preference_model.ensemble_model is not None:
         return EnsembleTrainer(
             preference_model,
             loss,

@@ -7,7 +7,7 @@ then rewards the agent for following that estimate.
 import enum
 import itertools
 from collections.abc import Mapping
-from typing import Dict, Iterable, Optional, cast, List
+from typing import Dict, Iterable, List, Optional, cast
 
 import numpy as np
 from gym.spaces.utils import flatten
@@ -182,11 +182,13 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
                 demonstrations = cast(Iterable[base.TransitionMapping], demonstrations)
 
                 for batch in demonstrations:
-                    transitions.update(self._set_demo_from_batch(
-                        util.safe_to_numpy(batch["obs"], warn=True),
-                        util.safe_to_numpy(batch["acts"], warn=True),
-                        util.safe_to_numpy(batch.get("next_obs"), warn=True),
-                    ))
+                    transitions.update(
+                        self._set_demo_from_batch(
+                            util.safe_to_numpy(batch["obs"], warn=True),
+                            util.safe_to_numpy(batch["acts"], warn=True),
+                            util.safe_to_numpy(batch.get("next_obs"), warn=True),
+                        )
+                    )
             else:
                 raise TypeError(
                     f"Unsupported demonstration type {type(demonstrations)}",
