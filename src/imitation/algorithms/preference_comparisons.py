@@ -1215,7 +1215,6 @@ class BasicRewardTrainer(RewardTrainer):
         # record also the final value in a separate key for easy access.
         keys = list(self.logger.name_to_value.keys())
         outer_prefix = self.logger.get_prefixes()
-        outer_prefix = outer_prefix + "/" if outer_prefix else ""
         for key in keys:
             base_path = f"{outer_prefix}reward/"  # existing prefix + accum_means ctx
             epoch_path = f"mean/{base_path}epoch-{epoch_num}/"  # mean for last epoch
@@ -1333,10 +1332,10 @@ class EnsembleTrainer(BasicRewardTrainer):
         metrics = defaultdict(list)
         keys = list(self.logger.name_to_value.keys())
         for key in keys:
-            if key.startswith("reward/member-") and "final" in key:
+            if re.match(r"member-(\d+)/reward/(.+)", key) and "final" in key:
                 val = self.logger.name_to_value[key]
                 key_list = key.split("/")
-                key_list.pop(1)
+                key_list.pop(0)
                 metrics["/".join(key_list)].append(val)
 
         for k, v in metrics.items():
@@ -1596,8 +1595,11 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
                 epoch_multiplier = self.initial_epoch_multiplier
 
             self.reward_trainer.train(self.dataset, epoch_multiplier=epoch_multiplier)
-            reward_loss = self.logger.name_to_value["reward/final/train/loss"]
-            reward_accuracy = self.logger.name_to_value["reward/final/train/accuracy"]
+            base_key = self.logger.get_prefixes() + "reward/final/train"
+            assert f"{base_key}/loss" in self.logger.name_to_value
+            assert f"{base_key}/accuracy" in self.logger.name_to_value
+            reward_loss = self.logger.name_to_value[f"{base_key}/loss"]
+            reward_accuracy = self.logger.name_to_value[f"{base_key}/accuracy"]
 
             ###################
             # Train the agent #

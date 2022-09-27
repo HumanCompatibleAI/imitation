@@ -12,6 +12,13 @@ import stable_baselines3.common.logger as sb_logger
 from imitation.data import types
 
 
+class HumanOutputFormat(sb_logger.HumanOutputFormat):
+    def write(self, key_values: Dict, key_excluded: Dict, step: int = 0) -> None:
+        # replace / in keys with : so that they are not truncated and give errors.
+        key_values = {k.replace("/", ":"): v for k, v in key_values.items()}
+        super().write(key_values, key_excluded, step)
+
+
 def make_output_format(
     _format: str,
     log_dir: str,
@@ -30,9 +37,9 @@ def make_output_format(
     """
     os.makedirs(log_dir, exist_ok=True)
     if _format == "stdout":
-        return sb_logger.HumanOutputFormat(sys.stdout, max_length=max_length)
+        return HumanOutputFormat(sys.stdout, max_length=max_length)
     elif _format == "log":
-        return sb_logger.HumanOutputFormat(
+        return HumanOutputFormat(
             os.path.join(log_dir, f"log{log_suffix}.txt"),
             max_length=max_length,
         )
@@ -181,7 +188,8 @@ class HierarchicalLogger(sb_logger.Logger):
             self._prefixes.pop()
 
     def get_prefixes(self) -> str:
-        return "/".join(self._prefixes)
+        prefixes = "/".join(self._prefixes)
+        return prefixes + "/" if prefixes else ""
 
     @contextlib.contextmanager
     def add_key_prefix(self, prefix: str) -> Generator[None, None, None]:

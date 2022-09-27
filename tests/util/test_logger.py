@@ -1,6 +1,7 @@
 """Tests `imitation.util.logger`."""
 
 import csv
+import json
 import os.path as osp
 from collections import defaultdict
 
