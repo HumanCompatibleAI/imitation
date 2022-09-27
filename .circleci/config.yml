@@ -273,7 +273,7 @@ jobs:
 
       - run:
           name: mypy
-          command: mypy --version && mypy ${SRC_FILES[@]} --exclude ${EXCLUDE_MYPY}
+          command: mypy --version && mypy ${SRC_FILES[@]} --exclude "${EXCLUDE_MYPY}"
 
   unit-test-linux:
     executor: unit-test-linux
