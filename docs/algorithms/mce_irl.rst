@@ -13,6 +13,8 @@ Detailed example notebook: :doc:`../tutorials/6_train_mce`
 
     from functools import partial
 
+    import numpy as np
+
     from stable_baselines3.common.vec_env import DummyVecEnv
 
     from imitation.algorithms.mce_irl import (
@@ -24,6 +26,8 @@ Detailed example notebook: :doc:`../tutorials/6_train_mce`
     from imitation.envs import resettable_env
     from imitation.envs.examples.model_envs import CliffWorld
     from imitation.rewards import reward_nets
+
+    rng = np.random.RandomState(0)
 
     env_creator = partial(CliffWorld, height=4, horizon=8, width=7, use_xy_obs=True)
     env_single = env_creator()
@@ -51,6 +55,7 @@ Detailed example notebook: :doc:`../tutorials/6_train_mce`
         reward_net,
         log_interval=250,
         optimizer_kwargs={"lr": 0.01},
+        rng=rng,
     )
     occ_measure = mce_irl.train()
 
