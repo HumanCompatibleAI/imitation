@@ -768,7 +768,7 @@ def test_predict_processed_wrappers_pass_on_kwargs(
     numpy_transitions: NumpyTransitions,
 ):
     zero_reward_net.predict_processed = mock.Mock(  # type: ignore[assignment]
-        return_value=np.zeros((10,))
+        return_value=np.zeros((10,)),
     )
     wrapped_reward_net = make_predict_processed_wrapper(
         zero_reward_net,
