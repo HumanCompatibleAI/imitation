@@ -95,3 +95,31 @@ Otherwise, the loader will not be able to find your model in the repository.
 For a convenient high-level interface to train RL models and upload them to HuggingFace,
 we recommend using the
 `rl-baselines3-zoo <https://github.com/DLR-RM/rl-baselines3-zoo/>`_.
+
+
+Custom expert types
+-------------------------
+
+If you want to use a custom expert type, you can write a corresponding factory
+function according to :py:func:`~imitation.policies.serialize.PolicyLoaderFn` and then
+register it at the :py:data:`~imitation.policies.serialize.policy_registry`.
+For example:
+
+.. code-block:: python
+
+    from imitation.policies.serialize import policy_registry
+    from stable_baselines3.common import policies
+
+    def my_policy_loader(venv, some_param: int) -> policies.BasePolicy:
+        # load your policy here
+        return policy
+
+    policy_registry.register("my-policy", my_policy_loader)
+
+Then, you can use `my-policy` as the `policy_type` in the command line interface or the
+Python API:
+
+.. code-block:: bash
+
+    python -m imitation.scripts.train_adversarial airl \
+        with expert.policy_type=my-policy expert.loader_kwargs.some_param=42
