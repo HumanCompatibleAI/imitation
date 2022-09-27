@@ -71,7 +71,7 @@ class EMANormAlgorithm2(networks.EMANorm):
             self.running_var += learning_rate * S - delta**2
 
         self.count += b_size
-        self.num_batches += 1
+        self.num_batches += 1  # type: ignore[misc]
 
 
 @pytest.mark.parametrize("normalization_layer", NORMALIZATION_LAYERS)

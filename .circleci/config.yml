@@ -263,7 +263,7 @@ jobs:
 
       - run:
           name: mypy
-          command: mypy --version && mypy ${SRC_FILES[@]}
+          command: mypy --version && mypy ${SRC_FILES[@]} --exclude 'imitation/algorithms/preference_comparisons.py$|imitation/rewards/reward_nets.py$|imitation/util/sacred.py$|imitation/algorithms/base.py$|imitation/scripts/train_preference_comparisons.py$|imitation/rewards/serialize.py$|imitation/scripts/common/train.py$|imitation/algorithms/mce_irl.py$|imitation/algorithms/density.py$|tests/algorithms/test_bc.py$'
 
   unit-test-linux:
     executor: unit-test-linux

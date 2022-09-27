@@ -1,7 +1,7 @@
 """Module of base classes and helper methods for imitation learning algorithms."""
 
 import abc
-from typing import Any, Generic, Iterable, Mapping, Optional, TypeVar, Union
+from typing import Any, Generic, Iterable, Mapping, Optional, TypeVar, Union, cast
 
 import numpy as np
 import torch as th
@@ -245,6 +245,7 @@ def make_data_loader(
     if isinstance(transitions, Iterable):
         first_item, transitions = util.get_first_iter_element(transitions)
         if isinstance(first_item, types.Trajectory):
+            transitions = cast(Iterable[types.Trajectory], transitions)
             transitions = rollout.flatten_trajectories(list(transitions))
 
     if isinstance(transitions, types.TransitionsMinimal):

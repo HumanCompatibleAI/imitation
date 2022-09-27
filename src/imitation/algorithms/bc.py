@@ -123,6 +123,8 @@ class BehaviorCloningLossCalculator:
 
         l2_norms = [th.sum(th.square(w)) for w in policy.parameters()]
         l2_norm = sum(l2_norms) / 2  # divide by 2 to cancel with gradient of square
+        # sum of list defaults to float(0) if len == 0.
+        assert isinstance(l2_norm, th.Tensor)
 
         ent_loss = -self.ent_weight * entropy
         neglogp = -log_prob
