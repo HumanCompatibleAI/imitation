@@ -10,6 +10,7 @@ Detailed example notebook: :doc:`../tutorials/7_train_density`
 .. testcode::
 
     import pprint
+    import numpy as np
 
     from stable_baselines3 import PPO
     from stable_baselines3.common.policies import ActorCriticPolicy
@@ -18,7 +19,7 @@ Detailed example notebook: :doc:`../tutorials/7_train_density`
     from imitation.data import types
     from imitation.util import util
 
-
+    rng = np.random.default_rng(0)
 
     env = util.make_vec_env("Pendulum-v1", rng=rng, n_envs=2)
     rollouts = types.load("../tests/testdata/expert_models/pendulum_0/rollouts/final.pkl")
@@ -28,6 +29,7 @@ Detailed example notebook: :doc:`../tutorials/7_train_density`
         venv=env,
         demonstrations=rollouts,
         rl_algo=imitation_trainer,
+        rng=rng,
     )
     density_trainer.train()
 

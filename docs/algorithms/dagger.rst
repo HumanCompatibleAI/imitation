@@ -48,7 +48,11 @@ Detailed example notebook: :doc:`../tutorials/2_train_dagger`
     with tempfile.TemporaryDirectory(prefix="dagger_example_") as tmpdir:
         print(tmpdir)
         dagger_trainer = SimpleDAggerTrainer(
-            venv=venv, scratch_dir=tmpdir, expert_policy=expert, bc_trainer=bc_trainer,
+            venv=venv,
+            scratch_dir=tmpdir,
+            expert_policy=expert,
+            bc_trainer=bc_trainer,
+            rng=rng,
         )
         dagger_trainer.train(2000)
 

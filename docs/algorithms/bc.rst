@@ -47,6 +47,7 @@ Detailed example notebook: :doc:`../tutorials/1_train_bc`
         observation_space=env.observation_space,
         action_space=env.action_space,
         demonstrations=transitions,
+        rng=rng,
     )
     bc_trainer.train(n_epochs=1)
     reward, _ = evaluate_policy(bc_trainer.policy, env, 10)

@@ -37,14 +37,14 @@ Detailed example notebook: :doc:`../tutorials/5_train_preference_comparisons`
 
     rng = np.random.default_rng(0)
 
-    venv = make_vec_env("Pendulum-v1")
+    venv = make_vec_env("Pendulum-v1", rng=rng)
 
     reward_net = BasicRewardNet(
         venv.observation_space, venv.action_space, normalize_input_layer=RunningNorm,
     )
 
-    fragmenter = preference_comparisons.RandomFragmenter(warning_threshold=0, seed=0)
-    gatherer = preference_comparisons.SyntheticGatherer(seed=0)
+    fragmenter = preference_comparisons.RandomFragmenter(warning_threshold=0, rng=rng)
+    gatherer = preference_comparisons.SyntheticGatherer(rng=rng)
     preference_model = preference_comparisons.PreferenceModel(reward_net)
     reward_trainer = preference_comparisons.BasicRewardTrainer(
         preference_model=preference_model,
@@ -68,7 +68,7 @@ Detailed example notebook: :doc:`../tutorials/5_train_preference_comparisons`
         reward_fn=reward_net,
         venv=venv,
         exploration_frac=0.0,
-        seed=0,
+        rng=rng,
     )
 
     pref_comparisons = preference_comparisons.PreferenceComparisons(
@@ -78,7 +78,6 @@ Detailed example notebook: :doc:`../tutorials/5_train_preference_comparisons`
         fragmenter=fragmenter,
         preference_gatherer=gatherer,
         reward_trainer=reward_trainer,
-        seed=0,
         initial_epoch_multiplier=1,
     )
     pref_comparisons.train(total_timesteps=5_000, total_comparisons=200)

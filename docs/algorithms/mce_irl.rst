@@ -27,7 +27,7 @@ Detailed example notebook: :doc:`../tutorials/6_train_mce`
     from imitation.envs.examples.model_envs import CliffWorld
     from imitation.rewards import reward_nets
 
-    rng = np.random.RandomState(0)
+    rng = np.random.default_rng(0)
 
     env_creator = partial(CliffWorld, height=4, horizon=8, width=7, use_xy_obs=True)
     env_single = env_creator()
@@ -63,6 +63,7 @@ Detailed example notebook: :doc:`../tutorials/6_train_mce`
         policy=mce_irl.policy,
         venv=state_venv,
         sample_until=rollout.make_min_timesteps(5000),
+        rng=rng,
     )
     print("Imitation stats: ", rollout.rollout_stats(imitation_trajs))
 
