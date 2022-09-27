@@ -286,9 +286,9 @@ def test_tabular_policy_randomness(rng):
         rng=rng,
     )
 
-    actions, _ = tabular.predict(np.zeros((100,), dtype=int))
+    actions, _ = tabular.predict(np.zeros((1000,), dtype=int))
     assert 0.45 <= np.mean(actions) <= 0.55
-    ones_obs = np.ones((100,), dtype=int)
+    ones_obs = np.ones((1000,), dtype=int)
     actions, _ = tabular.predict(ones_obs)
     assert 0.05 <= np.mean(actions) <= 0.15
     actions, _ = tabular.predict(ones_obs, deterministic=True)
