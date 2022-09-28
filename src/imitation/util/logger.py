@@ -218,7 +218,7 @@ class HierarchicalLogger(sb_logger.Logger):
         """Temporarily modifies this HierarchicalLogger to accumulate means values.
 
         Within this context manager, ``self.record(key, value)`` writes the "raw" values
-        in ``f"{self.default_logger.log_dir}/[{accumulate_prefix}/]{name}"`` under the 
+        in ``f"{self.default_logger.log_dir}/[{accumulate_prefix}/]{name}"`` under the
         key ``"raw/[{accumulate_prefix}/]{name}/[{key_prefix}/]{key}"``, where
         ``accumulate_prefix`` is the concatenation of all prefixes added by
         ``add_accumulate_prefix`` and ``key_prefix`` is the concatenation of all
@@ -287,12 +287,24 @@ class HierarchicalLogger(sb_logger.Logger):
         if self.current_logger is not None:  # In accumulate_means context.
             assert self._subdir is not None
             raw_key = "/".join(
-                ["raw", *self._accumulate_prefixes, self._name, *self._key_prefixes, key],
+                [
+                    "raw",
+                    *self._accumulate_prefixes,
+                    self._name,
+                    *self._key_prefixes,
+                    key,
+                ],
             )
             self.current_logger.record(raw_key, val, exclude)
 
             mean_key = "/".join(
-                ["mean", *self._accumulate_prefixes, self._name, *self._key_prefixes, key],
+                [
+                    "mean",
+                    *self._accumulate_prefixes,
+                    self._name,
+                    *self._key_prefixes,
+                    key,
+                ],
             )
             self.default_logger.record_mean(mean_key, val, exclude)
         else:  # Not in accumulate_means context.

@@ -23,7 +23,11 @@ ATARI_REQUIRE = [
 PYTYPE = ["pytype==2022.7.26"] if IS_NOT_WINDOWS else []
 if IS_NOT_WINDOWS:
     # TODO(adam): use this for Windows as well once PyPI is at >=1.6.1
-    STABLE_BASELINES3 = "stable-baselines3>=1.6.0"
+    STABLE_BASELINES3 = (
+        # "stable-baselines3>=1.6.0"
+        "stable-baselines3@git+"
+        "https://github.com/DLR-RM/stable-baselines3.git@master"
+    )
 else:
     STABLE_BASELINES3 = (
         "stable-baselines3@git+"

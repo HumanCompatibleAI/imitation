@@ -309,7 +309,9 @@ def test_key_prefix(tmpdir):
 
 def test_cant_add_prefix_within_accumulate_means(tmpdir):
     h = logger.configure(tmpdir)
-    with pytest.raises(RuntimeError), h.accumulate_means("foo"), h.add_accumulate_prefix("bar"):
+    with pytest.raises(RuntimeError), h.accumulate_means(
+        "foo"
+    ), h.add_accumulate_prefix("bar"):
         pass  # pragma: no cover
 
 
