@@ -15,8 +15,10 @@ train_rl_ex = sacred.Experiment(
 @train_rl_ex.config
 def train_rl_defaults():
     total_timesteps = int(1e6)  # Number of training timesteps in model.learn()
-    normalize_reward = True  # Use VecNormalize to normalize the reward
-    normalize_kwargs = dict()  # kwargs for `VecNormalize`
+    normalize = True  # Use VecNormalize to normalize the observation or reward
+    normalize_kwargs = dict(
+        norm_obs=False, norm_reward=False
+    )  # kwargs for `VecNormalize`
 
     # If specified, overrides the ground-truth environment reward
     reward_type = None  # override reward type
@@ -91,7 +93,8 @@ def seals_half_cheetah():
     )
     # total_timesteps = int(5e6)  # does OK after 1e6, but continues improving
     total_timesteps = 1e6
-    normalize_reward = True
+    normalize = True
+    normalize_kwargs = dict(norm_obs=False, norm_reward=True)
 
     rl = dict(
         batch_size=512,
@@ -111,7 +114,34 @@ def seals_half_cheetah():
 
 @train_rl_ex.named_config
 def seals_hopper():
-    common = dict(env_name="seals/Hopper-v0")
+    common = dict(env_name="seals/Hopper-v0", num_vec=1)
+    train = dict(
+        policy_cls="MlpPolicy",
+        policy_kwargs=dict(
+            activation_fn=nn.ReLU,
+            net_arch=[dict(pi=[64, 64], vf=[64, 64])],
+        ),
+    )
+
+    total_timesteps = 1e6
+    normalize = True
+    normalize_kwargs = dict(norm_obs=True, norm_reward=False)
+
+    rl = dict(
+        batch_size=2048,
+        rl_kwargs=dict(
+            batch_size=512,
+            clip_range=0.1,
+            ent_coef=0.0010159833764878474,
+            gae_lambda=0.98,
+            gamma=0.995,
+            learning_rate=0.0003904770450788824,
+            max_grad_norm=0.9,
+            n_epochs=20,
+            # policy_kwargs are same as the defaults
+            vf_coef=0.20315938606555833,
+        ),
+    )
 
 
 @train_rl_ex.named_config
@@ -143,7 +173,7 @@ def pendulum():
         #     net_arch=[dict(pi=[64, 64], vf=[64, 64])],
         # ),
     )
-    normalize_reward = False
+    normalize = False
 
     rl = dict(
         batch_size=1024 * 4,
@@ -184,7 +214,8 @@ def seals_ant():
     )
 
     total_timesteps = 1e6
-    normalize_reward = True
+    normalize = True
+    normalize_kwargs = dict(norm_obs=False, norm_reward=True)
 
     rl = dict(
         batch_size=2048,
@@ -215,7 +246,8 @@ def seals_swimmer():
     )
 
     total_timesteps = 1e6
-    normalize_reward = True
+    normalize = True
+    normalize_kwargs = dict(norm_obs=True, norm_reward=False)
 
     rl = dict(
         batch_size=2048,
@@ -246,7 +278,8 @@ def seals_walker():
     )
 
     total_timesteps = 1e6
-    normalize_reward = True
+    normalize = True
+    normalize_kwargs = dict(norm_obs=True, norm_reward=False)
 
     rl = dict(
         batch_size=2048,
