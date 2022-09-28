@@ -4,37 +4,13 @@
 from typing import Mapping, Type
 
 import numpy as np
+import torch as th
 from gym import spaces
 from stable_baselines3.common.buffers import BaseBuffer, ReplayBuffer, RolloutBuffer
-from stable_baselines3.common.type_aliases import (
-    ReplayBufferSamples,
-    RolloutBufferSamples,
-)
+from stable_baselines3.common.type_aliases import ReplayBufferSamples
 
 from imitation.rewards.reward_function import RewardFn
 from imitation.util import util
-
-
-class RolloutBufferMod(RolloutBuffer):
-    def __init__(
-        self,
-        buffer_size: int,
-        observation_space: spaces.Space,
-        action_space: spaces.Space,
-        device: Union[th.device, str] = "auto",
-        gae_lambda: float = 1,
-        gamma: float = 0.99,
-        n_envs: int = 1,
-    ):
-        super().__init__(
-            buffer_size,
-            observation_space,
-            action_space,
-            device,
-            gae_lambda,
-            gamma,
-            n_envs,
-        )
 
 
 def _replay_samples_to_reward_fn_input(
@@ -160,12 +136,12 @@ class RolloutBufferRewardWrapper(BaseBuffer):
             buffer_size: Max number of elements in the buffer
             observation_space: Observation space
             action_space: Action space
-            replay_buffer_class: Class of the replay buffer.
+            rollout_buffer_class: Class of the rollout buffer.
             reward_fn: Reward function for reward relabeling.
-            **kwargs: keyword arguments for ReplayBuffer.
+            **kwargs: keyword arguments for RolloutBuffer.
         """
-        # Note(yawen-d): we directly inherit ReplayBuffer and leave out the case of
-        # DictReplayBuffer because the current RewardFn only takes in NumPy array-based
+        # Note(yawen-d): we directly inherit RolloutBuffer and leave out the case of
+        # DictRolloutBuffer because the current RewardFn only takes in NumPy array-based
         # inputs, and GAIL/AIRL is the only use case for RolloutBuffer relabeling. See:
         # https://github.com/HumanCompatibleAI/imitation/pull/459#issuecomment-1201997194
         assert rollout_buffer_class is RolloutBuffer, "only RolloutBuffer is supported"
@@ -196,35 +172,16 @@ class RolloutBufferRewardWrapper(BaseBuffer):
     def full(self, full: bool):
         self.rollout_buffer.full = full
 
-    # def sample(self, *args, **kwargs):
-    #     samples = self.rollout_buffer.sample(*args, **kwargs)
-    #     rewards = self.reward_fn(**_replay_samples_to_reward_fn_input(samples))
-    #     shape = samples.rewards.shape
-    #     device = samples.rewards.device
-    #     rewards_th = util.safe_to_tensor(rewards).reshape(shape).to(device)
-
-    #     return RolloutBufferSamples(
-    #         samples.observations,
-    #         samples.actions,
-    #         samples.next_observations,
-    #         samples.dones,
-    #         rewards_th,
-    #     )
+    def reset(self):
+        self.rollout_buffer.reset()
 
     def get(self, *args, **kwargs):
-
-        rewards = self.reward_fn(**_rollout_samples_to_reward_fn_input(samples))
-        shape = samples.rewards.shape
-        device = samples.rewards.device
-        rewards_th = util.safe_to_tensor(rewards).reshape(shape).to(device)
-
-        return RolloutBufferSamples(
-            samples.observations,
-            samples.actions,
-            samples.next_observations,
-            samples.dones,
-            rewards_th,
+        self.rollout_buffer.rewards = self.reward_fn(
+            **_rollout_samples_to_reward_fn_input(self.rollout_buffer),
         )
+        self.rollout_buffer.compute_returns_and_advantage(self.last_values, self.dones)
+
+        return self.rollout_buffer.get(*args, **kwargs)
 
     def add(self, *args, **kwargs):
         self.rollout_buffer.add(*args, **kwargs)
@@ -234,3 +191,10 @@ class RolloutBufferRewardWrapper(BaseBuffer):
             "_get_samples() is intentionally not implemented."
             "This method should not be called.",
         )
+
+    def compute_returns_and_advantage(
+        self, last_values: th.Tensor, dones: np.ndarray
+    ) -> None:
+        self.last_values = last_values
+        self.last_dones = dones
+        self.rollout_buffer.compute_returns_and_advantage(last_values, dones)
