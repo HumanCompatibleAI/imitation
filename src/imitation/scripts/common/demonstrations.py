@@ -3,9 +3,7 @@
 import logging
 from typing import Optional, Sequence
 
-import gym
 import sacred
-from stable_baselines3.common import vec_env
 
 from imitation.data import rollout, types, wrappers
 from imitation.scripts.common import common, expert
