@@ -34,7 +34,8 @@ def load_stable_baselines_model(
 
     Args:
         cls: Stable Baselines RL algorithm.
-        path: Path to zip file containing saved model data.
+        path: Path to zip file containing saved model data or to a folder containing a
+            `model.zip` file.
         venv: Environment to train on.
         kwargs: Passed through to `cls.load`.
 
@@ -50,11 +51,10 @@ def load_stable_baselines_model(
 
     if path.is_dir():
         path = path / "model.zip"
-
-    if not path.parent.is_dir():
-        raise FileNotFoundError(
-            f"path={path.parent} needs to be a directory containing {path.name}.",
-        )
+        if not path.exists():
+            raise FileNotFoundError(
+                f"Expected '{path}' to be a directory containing a 'model.zip' file.",
+            )
 
     # SOMEDAY(adam): added 2022-01, can probably remove this check in 2023
     vec_normalize_path = path.parent / "vec_normalize.pkl"
@@ -70,7 +70,7 @@ def load_stable_baselines_model(
 def _load_stable_baselines_from_file(
     cls: Type[base_class.BaseAlgorithm],
 ) -> PolicyLoaderFn:
-    """Higher-order function, returning a policy loading function.
+    """Creates a policy loading function to read a policy from a file.
 
     Args:
         cls: The RL algorithm, e.g. `stable_baselines3.PPO`.
@@ -91,7 +91,7 @@ def _load_stable_baselines_from_huggingface(
     algo_name: str,
     cls: Type[base_class.BaseAlgorithm],
 ) -> PolicyLoaderFn:
-    """Higher-order function, returning a policy loading function.
+    """Creates a policy loading function to load from Hugging Face.
 
     Args:
         algo_name: The name of the algorithm, e.g. `ppo`.
@@ -160,7 +160,7 @@ def load_policy(
     - `zero` and `random` policy take no kwargs
     - `ppo` and `sac` policies take a `path` argument with a path to a zip file or to a
       folder containing a `model.zip` file.
-    - ppo-huggingface and sac-huggingface policies take an `env_name` and optional
+    - `ppo-huggingface` and `sac-huggingface` policies take an `env_name` and optional
       `organization` argument.
 
     Args:

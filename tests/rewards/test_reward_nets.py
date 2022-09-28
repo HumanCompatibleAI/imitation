@@ -1,7 +1,6 @@
 """Tests `imitation.rewards.reward_nets` and `imitation.rewards.serialize`."""
 
 import logging
-import numbers
 import os
 import tempfile
 from typing import Callable, Tuple
@@ -27,6 +26,7 @@ def _potential(x):
 
 
 ENVS = ["FrozenLake-v1", "CartPole-v1", "Pendulum-v1"]
+IMAGE_ENVS = ["Asteroids-v4"]
 DESERIALIZATION_TYPES = [
     "zero",
     "RewardNet_normalized",
@@ -42,6 +42,7 @@ MAKE_REWARD_NET = [
     reward_nets.BasicShapedRewardNet,
     testing_reward_nets.make_ensemble,
 ]
+MAKE_IMAGE_REWARD_NET = [reward_nets.CnnRewardNet]
 
 MakePredictProcessedWrapper = Callable[
     [reward_nets.RewardNet],
@@ -51,7 +52,6 @@ MAKE_PREDICT_PROCESSED_WRAPPERS = [
     lambda base: reward_nets.NormalizedRewardNet(base, networks.RunningNorm),
 ]
 
-
 MakeForwardWrapper = Callable[[reward_nets.RewardNet], reward_nets.ForwardWrapper]
 MAKE_FORWARD_WRAPPERS = [
     lambda base: reward_nets.ShapedRewardNet(base, _potential, 0.99),
@@ -60,13 +60,23 @@ MAKE_FORWARD_WRAPPERS = [
 REWARD_NET_KWARGS = [
     {},
     {"normalize_input_layer": networks.RunningNorm},
+    {"normalize_input_layer": networks.EMANorm},
+    {"use_next_state": True, "dropout_prob": 0.3},
+    {"use_done": True},
+]
+
+IMAGE_REWARD_NET_KWARGS = [
+    {},
+    {"use_next_state": True, "use_action": False},
+    {"dropout_prob": 0.3},
+    {"use_done": True, "use_action": True},
+    {"use_done": True, "use_action": False},
 ]
 
 NORMALIZE_OUTPUT_LAYER = [
     None,
     networks.RunningNorm,
 ]
-
 
 NumpyTransitions = Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]
 
@@ -96,16 +106,7 @@ def torch_transitions() -> TorchTransitions:
     )
 
 
-@pytest.mark.parametrize("env_name", ENVS)
-@pytest.mark.parametrize("reward_net_cls", MAKE_REWARD_NET)
-@pytest.mark.parametrize("reward_net_kwargs", REWARD_NET_KWARGS)
-@pytest.mark.parametrize("normalize_output_layer", NORMALIZE_OUTPUT_LAYER)
-def test_init_no_crash(
-    env_name,
-    reward_net_cls,
-    reward_net_kwargs,
-    normalize_output_layer,
-):
+def _init_no_crash(env_name, reward_net_cls, reward_net_kwargs, normalize_output_layer):
     env = gym.make(env_name)
 
     reward_net = reward_net_cls(
@@ -121,11 +122,109 @@ def test_init_no_crash(
         )
 
 
+@pytest.mark.parametrize("env_name", ENVS)
+@pytest.mark.parametrize("reward_net_cls", MAKE_REWARD_NET)
+@pytest.mark.parametrize("reward_net_kwargs", REWARD_NET_KWARGS)
+@pytest.mark.parametrize("normalize_output_layer", NORMALIZE_OUTPUT_LAYER)
+def test_init_no_crash(
+    env_name,
+    reward_net_cls,
+    reward_net_kwargs,
+    normalize_output_layer,
+):
+    _init_no_crash(
+        env_name,
+        reward_net_cls,
+        reward_net_kwargs,
+        normalize_output_layer,
+    )
+
+
+@pytest.mark.parametrize("env_name", IMAGE_ENVS)
+@pytest.mark.parametrize("reward_net_cls", MAKE_IMAGE_REWARD_NET)
+@pytest.mark.parametrize("reward_net_kwargs", IMAGE_REWARD_NET_KWARGS)
+@pytest.mark.parametrize("normalize_output_layer", NORMALIZE_OUTPUT_LAYER)
+def test_image_init_no_crash(
+    env_name,
+    reward_net_cls,
+    reward_net_kwargs,
+    normalize_output_layer,
+):
+    _init_no_crash(
+        env_name,
+        reward_net_cls,
+        reward_net_kwargs,
+        normalize_output_layer,
+    )
+
+
+NOT_QUITE_IMAGE_SPACES = (
+    gym.spaces.Box(0, 255, shape=(210, 160, 3), dtype=np.float32),
+    gym.spaces.Box(0, 254, shape=(210, 160, 3), dtype=np.uint8),
+    gym.spaces.Box(1, 255, shape=(210, 160, 3), dtype=np.uint8),
+    gym.spaces.Box(0, 255, shape=(210, 160), dtype=np.uint8),
+)
+
+
+def test_cnn_reward_net_input_validation():
+    atari_obs_space = gym.spaces.Box(0, 255, shape=(210, 160, 3), dtype=np.uint8)
+    atari_action_space = gym.spaces.Discrete(14)
+
+    with pytest.raises(ValueError, match="must take current or next state"):
+        reward_nets.CnnRewardNet(
+            atari_obs_space,
+            atari_action_space,
+            use_state=False,
+            use_next_state=False,
+        )
+
+    for obs_space in NOT_QUITE_IMAGE_SPACES:
+        with pytest.raises(ValueError, match="requires observations to be images"):
+            reward_nets.CnnRewardNet(
+                obs_space,
+                atari_action_space,
+            )
+
+    illegal_act_space = gym.spaces.MultiDiscrete((2, 2))
+    with pytest.raises(ValueError, match="can only use Discrete action spaces."):
+        reward_nets.CnnRewardNet(
+            atari_obs_space,
+            illegal_act_space,
+        )
+
+    reward_nets.CnnRewardNet(
+        atari_obs_space,
+        illegal_act_space,
+        use_action=False,
+    )
+
+
+def test_cnn_potential_input_validation():
+    for obs_space in NOT_QUITE_IMAGE_SPACES:
+        with pytest.raises(ValueError, match="must be given image inputs"):
+            reward_nets.BasicPotentialCNN(
+                obs_space,
+                hid_sizes=(32,),
+            )
+
+
+@pytest.mark.parametrize("dimensions", (1, 3, 4, 5))
+def test_cnn_transpose_input_validation(dimensions: int):
+    shape = (2,) * dimensions
+    tens = th.zeros(shape)
+
+    if dimensions == 4:  # should succeed
+        reward_nets.cnn_transpose(tens)
+    else:  # should fail
+        with pytest.raises(ValueError, match="Invalid input: "):
+            reward_nets.cnn_transpose(tens)
+
+
 def _sample(space, n):
     return np.array([space.sample() for _ in range(n)])
 
 
-def _make_env_and_save_reward_net(env_name, reward_type, tmpdir):
+def _make_env_and_save_reward_net(env_name, reward_type, tmpdir, is_image=False):
     venv = util.make_vec_env(env_name, n_envs=1, parallel=False)
     save_path = os.path.join(tmpdir, "norm_reward.pt")
 
@@ -140,12 +239,19 @@ def _make_env_and_save_reward_net(env_name, reward_type, tmpdir):
     if reward_type == "zero":
         return venv, save_path
 
-    net = reward_nets.BasicRewardNet(venv.observation_space, venv.action_space)
+    net_cls = reward_nets.CnnRewardNet if is_image else reward_nets.BasicRewardNet
+    net = net_cls(venv.observation_space, venv.action_space)
 
     if reward_type == "RewardNet_normalized":
         net = reward_nets.NormalizedRewardNet(net, networks.RunningNorm)
     elif reward_type == "RewardNet_shaped":
-        net = reward_nets.ShapedRewardNet(net, _potential, discount_factor=0.99)
+        pot_cls = (
+            reward_nets.BasicPotentialMLP
+            if not is_image
+            else reward_nets.BasicPotentialCNN
+        )
+        potential = pot_cls(venv.observation_space, [8, 8])
+        net = reward_nets.ShapedRewardNet(net, potential, discount_factor=0.99)
     elif reward_type in ["RewardNet_unshaped", "RewardNet_unnormalized"]:
         pass
 
@@ -153,12 +259,13 @@ def _make_env_and_save_reward_net(env_name, reward_type, tmpdir):
     return venv, save_path
 
 
-@pytest.mark.parametrize("env_name", ENVS)
-@pytest.mark.parametrize("reward_type", DESERIALIZATION_TYPES)
-def test_reward_valid(env_name, reward_type, tmpdir):
-    """Test output of reward function is appropriate shape and type."""
-    venv = util.make_vec_env(env_name, n_envs=1, parallel=False)
-    venv, tmppath = _make_env_and_save_reward_net(env_name, reward_type, tmpdir)
+def _is_reward_valid(env_name, reward_type, tmpdir, is_image):
+    venv, tmppath = _make_env_and_save_reward_net(
+        env_name,
+        reward_type,
+        tmpdir,
+        is_image=is_image,
+    )
 
     TRAJECTORY_LEN = 10
     obs = _sample(venv.observation_space, TRAJECTORY_LEN)
@@ -169,8 +276,23 @@ def test_reward_valid(env_name, reward_type, tmpdir):
     reward_fn = serialize.load_reward(reward_type, tmppath, venv)
     pred_reward = reward_fn(obs, actions, next_obs, steps)
 
+    assert isinstance(pred_reward, np.ndarray)
     assert pred_reward.shape == (TRAJECTORY_LEN,)
-    assert isinstance(pred_reward[0], numbers.Number)
+    assert np.issubdtype(pred_reward.dtype, np.number)
+
+
+@pytest.mark.parametrize("env_name", ENVS)
+@pytest.mark.parametrize("reward_type", DESERIALIZATION_TYPES)
+def test_reward_valid(env_name, reward_type, tmpdir):
+    """Test output of reward function is appropriate shape and type."""
+    _is_reward_valid(env_name, reward_type, tmpdir, is_image=False)
+
+
+@pytest.mark.parametrize("env_name", IMAGE_ENVS)
+@pytest.mark.parametrize("reward_type", DESERIALIZATION_TYPES)
+def test_reward_valid_image(env_name, reward_type, tmpdir):
+    """Test output of reward function is appropriate shape and type."""
+    _is_reward_valid(env_name, reward_type, tmpdir, is_image=True)
 
 
 def test_strip_wrappers_basic():
@@ -185,6 +307,20 @@ def test_strip_wrappers_basic():
     # This removing a wrapper from an unwrapped reward net should do nothing
     net = serialize._strip_wrappers(net, wrapper_types=[reward_nets.ShapedRewardNet])
     assert isinstance(net, reward_nets.BasicRewardNet)
+
+
+def test_strip_wrappers_image_basic():
+    venv = util.make_vec_env("Asteroids-v4", n_envs=1, parallel=False)
+    net = reward_nets.CnnRewardNet(venv.observation_space, venv.action_space)
+    net = reward_nets.NormalizedRewardNet(net, networks.RunningNorm)
+    net = serialize._strip_wrappers(
+        net,
+        wrapper_types=[reward_nets.NormalizedRewardNet],
+    )
+    assert isinstance(net, reward_nets.CnnRewardNet)
+    # This removing a wrapper from an unwrapped reward net should do nothing
+    net = serialize._strip_wrappers(net, wrapper_types=[reward_nets.ShapedRewardNet])
+    assert isinstance(net, reward_nets.CnnRewardNet)
 
 
 def test_strip_wrappers_complex():
@@ -206,6 +342,27 @@ def test_strip_wrappers_complex():
         wrapper_types=[reward_nets.NormalizedRewardNet, reward_nets.ShapedRewardNet],
     )
     assert isinstance(net, reward_nets.BasicRewardNet)
+
+
+def test_strip_wrappers_image_complex():
+    venv = util.make_vec_env("Asteroids-v4", n_envs=1, parallel=False)
+    net = reward_nets.CnnRewardNet(venv.observation_space, venv.action_space)
+    net = reward_nets.ShapedRewardNet(net, _potential, discount_factor=0.99)
+    net = reward_nets.NormalizedRewardNet(net, networks.RunningNorm)
+    # Removing in incorrect order should do nothing
+    net = serialize._strip_wrappers(
+        net,
+        wrapper_types=[reward_nets.ShapedRewardNet, reward_nets.NormalizedRewardNet],
+    )
+
+    assert isinstance(net, reward_nets.NormalizedRewardNet)
+    assert isinstance(net.base, reward_nets.ShapedRewardNet)
+    # Correct order should work
+    net = serialize._strip_wrappers(
+        net,
+        wrapper_types=[reward_nets.NormalizedRewardNet, reward_nets.ShapedRewardNet],
+    )
+    assert isinstance(net, reward_nets.CnnRewardNet)
 
 
 def test_validate_wrapper_structure():
@@ -272,12 +429,10 @@ def test_cant_load_unnorm_as_norm(env_name, tmpdir):
         serialize.load_reward("RewardNet_normalized", tmppath, venv)
 
 
-@pytest.mark.parametrize("env_name", ENVS)
-@pytest.mark.parametrize("net_cls", MAKE_REWARD_NET)
-@pytest.mark.parametrize("normalize_rewards", [True, False])
-def test_serialize_identity(
+def _serialize_deserialize_identity(
     env_name,
     net_cls,
+    net_kwargs,
     normalize_rewards,
     tmpdir,
 ):
@@ -285,7 +440,7 @@ def test_serialize_identity(
     logging.info(f"Testing {net_cls}")
 
     venv = util.make_vec_env(env_name, n_envs=1, parallel=False)
-    original = net_cls(venv.observation_space, venv.action_space)
+    original = net_cls(venv.observation_space, venv.action_space, **net_kwargs)
     if normalize_rewards:
         original = reward_nets.NormalizedRewardNet(original, networks.RunningNorm)
     random = base.RandomPolicy(venv.observation_space, venv.action_space)
@@ -343,6 +498,48 @@ def test_serialize_identity(
         assert len(predictions) == 3
         assert np.allclose(predictions[0], predictions[1])
         assert np.allclose(predictions[0], predictions[2])
+
+
+@pytest.mark.parametrize("env_name", ENVS)
+@pytest.mark.parametrize("net_cls", MAKE_REWARD_NET)
+@pytest.mark.parametrize("net_kwargs", REWARD_NET_KWARGS)
+@pytest.mark.parametrize("normalize_rewards", [True, False])
+def test_serialize_identity(
+    env_name,
+    net_cls,
+    net_kwargs,
+    normalize_rewards,
+    tmpdir,
+):
+    """Does output of deserialized reward MLP match that of original?"""
+    _serialize_deserialize_identity(
+        env_name,
+        net_cls,
+        net_kwargs,
+        normalize_rewards,
+        tmpdir,
+    )
+
+
+@pytest.mark.parametrize("env_name", IMAGE_ENVS)
+@pytest.mark.parametrize("net_cls", MAKE_IMAGE_REWARD_NET)
+@pytest.mark.parametrize("net_kwargs", IMAGE_REWARD_NET_KWARGS)
+@pytest.mark.parametrize("normalize_rewards", [True, False])
+def test_serialize_identity_images(
+    env_name,
+    net_cls,
+    net_kwargs,
+    normalize_rewards,
+    tmpdir,
+):
+    """Does output of deserialized reward CNN match that of original?"""
+    _serialize_deserialize_identity(
+        env_name,
+        net_cls,
+        net_kwargs,
+        normalize_rewards,
+        tmpdir,
+    )
 
 
 class Env2D(gym.Env):

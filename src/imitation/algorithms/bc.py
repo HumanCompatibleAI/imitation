@@ -59,14 +59,14 @@ class BatchIteratorWithEpochEndCallback:
 
             # Note: the islice here ensures we do not exceed self.n_epochs
             for epoch_num in itertools.islice(itertools.count(), self.n_epochs):
-                num_batches_in_epoch = 0
-                for num_batches_in_epoch, batch in enumerate(self.batch_loader):
+                some_batch_was_yielded = False
+                for batch in self.batch_loader:
                     yield batch
+                    some_batch_was_yielded = True
 
-                if num_batches_in_epoch == 0:
+                if not some_batch_was_yielded:
                     raise AssertionError(
-                        f"Data loader returned no data after "
-                        f"{num_batches_in_epoch} batches, during epoch "
+                        f"Data loader returned no data during epoch "
                         f"{epoch_num} -- did it reset correctly?",
                     )
                 if self.on_epoch_end is not None:

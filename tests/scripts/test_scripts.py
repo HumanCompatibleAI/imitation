@@ -130,8 +130,8 @@ def preference_comparison_config(request):
             "common": dict(num_vec=8),
         },
         with_checkpoints={
-            "checkpoint_interval": 1,
             # Test that we can save checkpoints
+            "checkpoint_interval": 1,
         },
     )[request.param]
 
@@ -141,7 +141,8 @@ def test_train_preference_comparisons_main(tmpdir, preference_comparison_config)
     sacred.utils.recursive_update(config_updates, preference_comparison_config)
     run = train_preference_comparisons.train_preference_comparisons_ex.run(
         # Note: we have to use the cartpole and not the seals_cartpole config because
-        #  the seals_cartpole config needs a fixed horizon.
+        #  the seals_cartpole config needs rollouts with a fixed horizon,
+        #  and the saved trajectory rollouts are variable horizon.
         named_configs=["cartpole"] + ALGO_FAST_CONFIGS["preference_comparison"],
         config_updates=config_updates,
     )
