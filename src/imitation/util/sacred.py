@@ -87,7 +87,7 @@ def build_sacred_symlink(log_dir: types.AnyPath, run: sacred.run.Run) -> None:
         warnings.warn(RuntimeWarning("Couldn't find sacred directory."))
         return
     symlink_path = log_dir / "sacred"
-    target_path = sacred_dir.relative_to(log_dir)
+    target_path = pathlib.Path(os.path.relpath(sacred_dir, start=log_dir))
 
     # Path.symlink_to errors if the symlink already exists. In our case, we actually
     # want to override the symlink to point to the most recent Sacred dir. The
