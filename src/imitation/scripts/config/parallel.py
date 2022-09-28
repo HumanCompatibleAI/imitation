@@ -213,7 +213,7 @@ def example_gail():
     sacred_ex_name = "train_adversarial"
     run_name = "gail_tuning"
     n_seeds = 1
-    base_named_configs = ["common.wandb_logging", "seals_ant"]
+    base_named_configs = ["common.wandb_logging", "seals_half_cheetah"]
     base_config_updates = {
         "common": {"wandb": {"wandb_kwargs": {"project": "algorithm-benchmark"}}},
         "total_timesteps": 1e7,
@@ -232,7 +232,7 @@ def example_gail():
                 "batch_size": tune.choice([4096, 8192, 16384]),
                 "rl_kwargs": {
                     "ent_coef": tune.choice([0, 1e-3, 1e-1]),
-                    "learning_rate": tune.loguniform(1e-5, 1e-3),
+                    "learning_rate": tune.loguniform(1e-5, 5e-3),
                 },
             },
             "algorithm_specific": {},
@@ -248,7 +248,7 @@ def example_airl():
     sacred_ex_name = "train_adversarial"
     run_name = "airl_tuning"
     n_seeds = 1
-    base_named_configs = ["common.wandb_logging", "seals_ant"]
+    base_named_configs = ["common.wandb_logging", "seals_half_cheetah"]
     base_config_updates = {
         "common": {"wandb": {"wandb_kwargs": {"project": "algorithm-benchmark"}}},
         "total_timesteps": 1e7,
@@ -267,7 +267,7 @@ def example_airl():
                 "batch_size": tune.choice([4096, 8192, 16384]),
                 "rl_kwargs": {
                     "ent_coef": tune.choice([0, 1e-3, 1e-1]),
-                    "learning_rate": tune.loguniform(1e-5, 1e-3),
+                    "learning_rate": tune.loguniform(1e-5, 5e-3),
                 },
             },
             "algorithm_specific": {},
@@ -275,7 +275,7 @@ def example_airl():
         "command_name": "airl",
     }
     num_samples = 100
-    resources_per_trial = dict(cpu=4)
+    resources_per_trial = dict(cpu=2)
 
 
 @parallel_ex.named_config
