@@ -23,7 +23,7 @@ def config():
     log_root = None
     log_dir = None
     log_level = logging.INFO
-    log_format_strs = ["tensorboard", "stdout"]
+    log_format_strs = ["tensorboard", "stdout", "csv", "json"]
     # The keys of log_format_strs_additional are concatenated to log_format_strs.
     # This allows named configs to add format strings, without changing the defaults.
     log_format_strs_additional = {}

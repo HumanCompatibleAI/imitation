@@ -76,7 +76,7 @@ def config_hook(config, command_name, logger):
         res["net_kwargs"] = {"normalize_input_layer": networks.RunningNorm}
 
     if "net_cls" in res and issubclass(res["net_cls"], reward_nets.RewardEnsemble):
-        del res["net_kwargs"]["normalize_input_layer"]
+        del res["net_kwargs"]["normalize_input_layer"]  # delete normalize_input_layer
 
     return res
 
