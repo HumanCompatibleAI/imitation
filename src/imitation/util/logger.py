@@ -63,7 +63,7 @@ def _build_output_formats(
         if f == "wandb":
             output_formats.append(WandbOutputFormat())
         else:
-            output_formats.append(sb_logger.make_output_format(f, str(folder)))
+            output_formats.append(make_output_format(f, str(folder)))
     return output_formats
 
 

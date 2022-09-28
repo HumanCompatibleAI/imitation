@@ -216,12 +216,13 @@ class TestData:
         else:
             chdir_context = contextlib.nullcontext()
             save_dir_str = tmpdir
-        save_dir = types.parse_path(save_dir_str)
-
-        trajs = [trajectory_rew if use_rewards else trajectory]
-        save_path = save_dir / "trajs"
 
         with chdir_context:
+
+            save_dir = types.parse_path(save_dir_str)
+            trajs = [trajectory_rew if use_rewards else trajectory]
+            save_path = save_dir / "trajs"
+
             if use_pickle:
                 # Pickle format
                 with open(save_path, "wb") as f:
