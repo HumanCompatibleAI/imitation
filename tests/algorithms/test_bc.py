@@ -92,35 +92,81 @@ def cartpole_bc_trainer(
     )
 
 
-##########################
-# PARAMETER DISTRIBUTIONS
-##########################
+########################
+# HYPOTHESIS STRATEGIES
+########################
+
+
+def make_bc_train_args(
+    on_epoch_end,
+    on_batch_end,
+    log_interval,
+    log_rollouts_n_episodes,
+    progress_bar,
+    reset_tensorboard,
+    duration_measure,
+    duration,
+    log_rollouts_venv,
+):
+    return {
+        "on_epoch_end": on_epoch_end,
+        "on_batch_end": on_batch_end,
+        "log_interval": log_interval,
+        "log_rollouts_n_episodes": log_rollouts_n_episodes,
+        "progress_bar": progress_bar,
+        "reset_tensorboard": reset_tensorboard,
+        duration_measure: duration,
+        "log_rollouts_venv": log_rollouts_venv,
+    }
 
 
 # Note: we don't use the Mujoco envs here because mujoco is not installed on CI.
-envs = st.sampled_from(["Pendulum-v1", "seals/CartPole-v0"])
-batch_sizes = st.integers(min_value=1, max_value=50)
+# Note: we wrap the env_names strategy in a st.shared to ensure that the same env name
+# is chosen for BC creation, expert data loading, and policy evaluation.
+env_names = st.shared(
+    st.sampled_from(["Pendulum-v1", "seals/CartPole-v0"]), key="env_name"
+)
 env_numbers = st.integers(min_value=1, max_value=10)
+envs = st.builds(
+    lambda name, num: util.make_vec_env(name, num),
+    name=env_names,
+    num=env_numbers,
+)
+rollout_envs = st.builds(
+    lambda name, num: util.make_vec_env(
+        name, num, post_wrappers=[lambda e, _: RolloutInfoWrapper(e)]
+    ),
+    name=env_names,
+    num=env_numbers,
+)
+batch_sizes = st.integers(min_value=1, max_value=50)
 loggers = st.sampled_from([None, logger.configure()])
 expert_data_types = st.sampled_from(
     ["data_loader", "ducktyped_data_loader", "transitions"],
 )
-
-
-@st.composite
-def bc_train_args(draw):
-    args = dict(
-        on_epoch_end=draw(st.sampled_from([None, lambda: None])),
-        on_batch_end=draw(st.sampled_from([None, lambda: None])),
-        log_interval=draw(st.integers(500, 10000)),
-        log_rollouts_n_episodes=draw(st.sampled_from([-1, 1, 2])),
-        progress_bar=draw(st.booleans()),
-        reset_tensorboard=draw(st.booleans()),
-    )
-    duration_measure = draw(st.sampled_from(["n_batches", "n_epochs"]))
-    duration = draw(st.integers(1, 3))
-    args[duration_measure] = duration
-    return args
+bc_train_args = st.builds(
+    make_bc_train_args,
+    on_epoch_end=st.sampled_from([None, lambda: None]),
+    on_batch_end=st.sampled_from([None, lambda: None]),
+    log_interval=st.integers(500, 10000),
+    log_rollouts_n_episodes=st.sampled_from([-1, 1, 2]),
+    progress_bar=st.booleans(),
+    reset_tensorboard=st.booleans(),
+    duration_measure=st.sampled_from(["n_batches", "n_epochs"]),
+    duration=st.integers(1, 3),
+    log_rollouts_venv=st.one_of(rollout_envs, st.just(None)),
+)
+bc_args = st.builds(
+    lambda env, batch_size, custom_logger: dict(
+        observation_space=env.observation_space,
+        action_space=env.action_space,
+        batch_size=batch_size,
+        custom_logger=custom_logger,
+    ),
+    env=envs,
+    batch_size=batch_sizes,
+    custom_logger=loggers,
+)
 
 
 ##############
@@ -129,81 +175,57 @@ def bc_train_args(draw):
 
 
 @hypothesis.given(
-    batch_size=batch_sizes,
-    env_name=envs,
-    num_envs=env_numbers,
-    custom_logger=loggers,
+    env_name=env_names,
+    bc_args=bc_args,
     expert_data_type=expert_data_types,
 )
 # Setting the deadline to none since during the first runs, the expert trajectories must
 # be computed. Later they can be loaded from cache much faster.
 @hypothesis.settings(deadline=None)
 def test_smoke_bc_creation(
-    batch_size,
     env_name,
-    num_envs,
-    custom_logger,
+    bc_args,
     expert_data_type,
     pytestconfig,
 ):
-    env = util.make_vec_env(env_name, num_envs)
     bc.BC(
-        observation_space=env.observation_space,
-        action_space=env.action_space,
-        batch_size=batch_size,
+        **bc_args,
         demonstrations=make_expert_trajectory_loader(
             pytestconfig,
-            batch_size,
+            bc_args["batch_size"],
             expert_data_type,
             env_name,
         ),
-        custom_logger=custom_logger,
     )
 
 
 @hypothesis.given(
-    env_name=envs,
-    num_envs=env_numbers,
-    train_args=bc_train_args(),
-    use_custom_rollout_venv=st.booleans(),
-    batch_size=batch_sizes,
+    env_name=env_names,
+    bc_args=bc_args,
+    train_args=bc_train_args,
     expert_data_type=expert_data_types,
 )
 @hypothesis.settings(deadline=10000, max_examples=50)
 def test_smoke_bc_training(
     env_name,
-    num_envs,
+    bc_args,
     train_args,
-    use_custom_rollout_venv,
-    batch_size,
     expert_data_type,
     pytestconfig,
 ):
     # GIVEN
-    env = util.make_vec_env(env_name, num_envs)
     trainer = bc.BC(
-        observation_space=env.observation_space,
-        action_space=env.action_space,
-        batch_size=batch_size,
+        **bc_args,
         demonstrations=make_expert_trajectory_loader(
             pytestconfig,
-            batch_size,
+            bc_args["batch_size"],
             expert_data_type,
             env_name,
             max_num_trajectories=3,  # Only use 3 trajectories to speed up the test
         ),
     )
-    if use_custom_rollout_venv:
-        custom_rollout_venv = util.make_vec_env(
-            env_name,
-            num_envs,
-            post_wrappers=[lambda e, _: RolloutInfoWrapper(e)],
-        )
-    else:
-        custom_rollout_venv = None
-
     # WHEN
-    trainer.train(log_rollouts_venv=custom_rollout_venv, **train_args)
+    trainer.train(**train_args)
 
 
 #####################
