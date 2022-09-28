@@ -1215,7 +1215,7 @@ class BasicRewardTrainer(RewardTrainer):
         # after training all the epochs,
         # record also the final value in a separate key for easy access.
         keys = list(self.logger.name_to_value.keys())
-        outer_prefix = self.logger.get_prefixes()
+        outer_prefix = self.logger.get_accumulate_prefixes()
         for key in keys:
             base_path = f"{outer_prefix}reward/"  # existing prefix + accum_means ctx
             epoch_path = f"mean/{base_path}epoch-{epoch_num}/"  # mean for last epoch
@@ -1324,7 +1324,7 @@ class EnsembleTrainer(BasicRewardTrainer):
         for member_idx in range(len(self.member_trainers)):
             # sampler gives new indexes on every call
             bagging_dataset = data_th.Subset(dataset, list(sampler))
-            with self.logger.add_prefix(f"member-{member_idx}"):
+            with self.logger.add_accumulate_prefix(f"member-{member_idx}"):
                 self.member_trainers[member_idx].train(
                     bagging_dataset,
                     epoch_multiplier=epoch_multiplier,
@@ -1597,7 +1597,7 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
                 epoch_multiplier = self.initial_epoch_multiplier
 
             self.reward_trainer.train(self.dataset, epoch_multiplier=epoch_multiplier)
-            base_key = self.logger.get_prefixes() + "reward/final/train"
+            base_key = self.logger.get_accumulate_prefixes() + "reward/final/train"
             assert f"{base_key}/loss" in self.logger.name_to_value
             assert f"{base_key}/accuracy" in self.logger.name_to_value
             reward_loss = self.logger.name_to_value[f"{base_key}/loss"]

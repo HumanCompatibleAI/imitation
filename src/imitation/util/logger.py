@@ -12,15 +12,6 @@ import stable_baselines3.common.logger as sb_logger
 from imitation.data import types
 
 
-class HumanOutputFormat(sb_logger.HumanOutputFormat):
-    """Wrapper for Stable Baselines logger that prevents truncation of key prefixes."""
-
-    def write(self, key_values: Dict, key_excluded: Dict, step: int = 0) -> None:
-        # replace / in keys with : so that they are not truncated and give errors.
-        key_values = {k.replace("/", ":"): v for k, v in key_values.items()}
-        super().write(key_values, key_excluded, step)
-
-
 def make_output_format(
     _format: str,
     log_dir: str,
@@ -41,9 +32,9 @@ def make_output_format(
     """
     os.makedirs(log_dir, exist_ok=True)
     if _format == "stdout":
-        return HumanOutputFormat(sys.stdout, max_length=max_length)
+        return sb_logger.HumanOutputFormat(sys.stdout, max_length=max_length)
     elif _format == "log":
-        return HumanOutputFormat(
+        return sb_logger.HumanOutputFormat(
             os.path.join(log_dir, f"log{log_suffix}.txt"),
             max_length=max_length,
         )
@@ -59,7 +50,7 @@ def _build_output_formats(
 
     Args:
         folder: Path to directory that logs are written to.
-        format_strs: An list of output format strings. For details on available
+        format_strs: A list of output format strings. For details on available
             output formats see `stable_baselines3.logger.make_output_format`.
 
     Returns:
@@ -101,7 +92,7 @@ class HierarchicalLogger(sb_logger.Logger):
     ...     # record the key value pair `("mean/dataset/entropy", 5.5)` to path
     ...     # `dir` at step 1.
     ...     logger.dump(step=1)
-    ...     with logger.add_prefix("foo"), logger.accumulate_means("bar"):
+    ...     with logger.add_accumulate_prefix("foo"), logger.accumulate_means("bar"):
     ...         # record the key value pair ("raw/foo/bar/biz", 42.0) to path
     ...         # `dir/raw/foo/bar` at step 2000
     ...         logger.record("biz", 42.0)
@@ -128,7 +119,7 @@ class HierarchicalLogger(sb_logger.Logger):
     default_logger: sb_logger.Logger
     current_logger: Optional[sb_logger.Logger]
     _cached_loggers: Dict[str, sb_logger.Logger]
-    _prefixes: List[str]
+    _accumulate_prefixes: List[str]
     _key_prefixes: List[str]
     _subdir: Optional[str]
     _name: Optional[str]
@@ -152,7 +143,7 @@ class HierarchicalLogger(sb_logger.Logger):
         self.default_logger = default_logger
         self.current_logger = None
         self._cached_loggers = {}
-        self._prefixes = []
+        self._accumulate_prefixes = []
         self._key_prefixes = []
         self._subdir = None
         self._name = None
@@ -165,7 +156,7 @@ class HierarchicalLogger(sb_logger.Logger):
         self.name_to_excluded = self._logger.name_to_excluded
 
     @contextlib.contextmanager
-    def add_prefix(self, prefix: str) -> Generator[None, None, None]:
+    def add_accumulate_prefix(self, prefix: str) -> Generator[None, None, None]:
         """Add a prefix to the subdirectory used to accumulate means.
 
         This prefix only applies when a `accumulate_means` context is active. If there
@@ -186,13 +177,13 @@ class HierarchicalLogger(sb_logger.Logger):
             )
 
         try:
-            self._prefixes.append(prefix)
+            self._accumulate_prefixes.append(prefix)
             yield
         finally:
-            self._prefixes.pop()
+            self._accumulate_prefixes.pop()
 
-    def get_prefixes(self) -> str:
-        prefixes = "/".join(self._prefixes)
+    def get_accumulate_prefixes(self) -> str:
+        prefixes = "/".join(self._accumulate_prefixes)
         return prefixes + "/" if prefixes else ""
 
     @contextlib.contextmanager
@@ -200,6 +191,7 @@ class HierarchicalLogger(sb_logger.Logger):
         """Add a prefix to the keys logged during an accumulate_means context.
 
         This prefix only applies when a `accumulate_means` context is active.
+        If there are multiple active prefixes, then they are concatenated.
 
         Args:
             prefix: The prefix to add to the keys.
@@ -225,26 +217,34 @@ class HierarchicalLogger(sb_logger.Logger):
     def accumulate_means(self, name: str) -> Generator[None, None, None]:
         """Temporarily modifies this HierarchicalLogger to accumulate means values.
 
-        Within this context manager, `self.record(key, value)` writes the "raw" values
-        in `f"{self.default_logger.log_dir}/{prefix}/{name}"` under the key
-        `"raw/{prefix}/{name}/{key}"`. At the same time, any call to `self.record` will
-        also accumulate mean values on the default logger by calling
-        `self.default_logger.record_mean(f"mean/{prefix}/{name}/{key}", value)`.
+        Within this context manager, ``self.record(key, value)`` writes the "raw" values
+        in ``f"{self.default_logger.log_dir}/[{accumulate_prefix}/]{name}"`` under the 
+        key ``"raw/[{accumulate_prefix}/]{name}/[{key_prefix}/]{key}"``, where
+        ``accumulate_prefix`` is the concatenation of all prefixes added by
+        ``add_accumulate_prefix`` and ``key_prefix`` is the concatenation of all
+        prefixes added by ``add_key_prefix``, if any. At the same time, any call to
+        ``self.record`` will also accumulate mean values on the default logger by
+        calling::
+
+            self.default_logger.record_mean(
+                f"mean/[{accumulate_prefix}/]{name}/[{key_prefix}/]{key}",
+                value,
+            )
 
         Multiple prefixes may be active at once. In this case the `prefix` is simply the
         concatenation of each of the active prefixes in the order they
-        where created e.g. if the active `prefixes` are ['foo', 'bar'] then
-        the `prefix` is 'foo/bar'.
+        were created e.g. if the active prefixes are ``['foo', 'bar']`` then
+        the prefix is ``'foo/bar'``.
 
-        After the context exits, calling `self.dump()` will write the means
+        After the context exits, calling ``self.dump()`` will write the means
         of all the "raw" values accumulated during this context to
-        `self.default_logger` under keys of the form  `mean/{prefix}/{name}/{key}`
+        ``self.default_logger`` under keys of the form  ``mean/{prefix}/{name}/{key}``
 
-        Note that the behavior of other logging methods, `log` and `record_mean`
+        Note that the behavior of other logging methods, ``log`` and ``record_mean``
         are unmodified and will go straight to the default logger.
 
         Args:
-            name: A string key which determines the `folder` where raw data is
+            name: A string key which determines the ``folder`` where raw data is
                 written and temporary logging prefixes for raw and mean data. Entering
                 an `accumulate_means` context in the future with the same `subdir`
                 will safely append to logs written in this folder rather than
@@ -260,7 +260,7 @@ class HierarchicalLogger(sb_logger.Logger):
         if self.current_logger is not None:
             raise RuntimeError("Nested `accumulate_means` context")
 
-        subdir = os.path.join(*self._prefixes, name)
+        subdir = os.path.join(*self._accumulate_prefixes, name)
 
         if subdir in self._cached_loggers:
             logger = self._cached_loggers[subdir]
@@ -287,12 +287,12 @@ class HierarchicalLogger(sb_logger.Logger):
         if self.current_logger is not None:  # In accumulate_means context.
             assert self._subdir is not None
             raw_key = "/".join(
-                ["raw", *self._prefixes, self._name, *self._key_prefixes, key],
+                ["raw", *self._accumulate_prefixes, self._name, *self._key_prefixes, key],
             )
             self.current_logger.record(raw_key, val, exclude)
 
             mean_key = "/".join(
-                ["mean", *self._prefixes, self._name, *self._key_prefixes, key],
+                ["mean", *self._accumulate_prefixes, self._name, *self._key_prefixes, key],
             )
             self.default_logger.record_mean(mean_key, val, exclude)
         else:  # Not in accumulate_means context.
