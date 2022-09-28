@@ -17,7 +17,7 @@ Notes
 Example
 =======
 
-Detailed example notebook: `4_train_airl.ipynb <https://github.com/HumanCompatibleAI/imitation/blob/master/examples/4_train_airl.ipynb>`_
+Detailed example notebook: :doc:`../tutorials/4_train_airl`
 
 .. testcode::
 
