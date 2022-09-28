@@ -5,14 +5,13 @@ import traceback
 import warnings
 from typing import Sequence
 
-import gym
 import huggingface_sb3 as hfsb3
 import pytest
 import seals  # noqa: F401
 import torch
 from filelock import FileLock
 from stable_baselines3.common.policies import BasePolicy
-from stable_baselines3.common.vec_env import DummyVecEnv, VecEnv
+from stable_baselines3.common.vec_env import VecEnv
 
 from imitation.data import rollout, types, wrappers
 from imitation.data.types import TrajectoryWithRew
@@ -58,11 +57,10 @@ def get_expert_trajectories(pytestconfig, env_name: str, min_episodes: int = 60)
 @pytest.fixture(params=[1, 4], ids=lambda n: f"vecenv({n})")
 def cartpole_venv(request) -> VecEnv:
     num_envs = request.param
-    return DummyVecEnv(
-        [
-            lambda: RolloutInfoWrapper(gym.make(CARTPOLE_ENV_NAME))
-            for _ in range(num_envs)
-        ],
+    return util.make_vec_env(
+        CARTPOLE_ENV_NAME,
+        n_envs=num_envs,
+        post_wrappers=[lambda env, _: RolloutInfoWrapper(env)],
     )
 
 
@@ -89,7 +87,11 @@ PENDULUM_ENV_NAME = "Pendulum-v1"
 
 @pytest.fixture
 def pendulum_venv() -> VecEnv:
-    return DummyVecEnv([lambda: RolloutInfoWrapper(gym.make(PENDULUM_ENV_NAME))] * 8)
+    return util.make_vec_env(
+        PENDULUM_ENV_NAME,
+        n_envs=8,
+        post_wrappers=[lambda env, _: RolloutInfoWrapper(env)],
+    )
 
 
 @pytest.fixture
