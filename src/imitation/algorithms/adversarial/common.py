@@ -19,7 +19,7 @@ import numpy as np
 import torch as th
 import torch.utils.tensorboard as thboard
 import tqdm
-from stable_baselines3.common import on_policy_algorithm, policies, vec_env
+from stable_baselines3.common import base_class, on_policy_algorithm, policies, vec_env
 from stable_baselines3.sac import policies as sac_policies
 from torch.nn import functional as F
 
@@ -123,7 +123,7 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
         demonstrations: base.AnyTransitions,
         demo_batch_size: int,
         venv: vec_env.VecEnv,
-        gen_algo: on_policy_algorithm.OnPolicyAlgorithm,
+        gen_algo: base_class.BaseAlgorithm,
         reward_net: reward_nets.RewardNet,
         n_disc_updates_per_round: int = 2,
         log_dir: types.AnyPath = "output/",
@@ -240,9 +240,7 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
             gen_algo_env = self.gen_algo.get_env()
             assert gen_algo_env is not None
             self.gen_train_timesteps = gen_algo_env.num_envs
-            if hasattr(self.gen_algo, "n_steps"):  # on policy
-                # TODO(juan) this looks like a bug; could not find n_steps
-                #  defined anywhere in the codebase.
+            if isinstance(self.gen_algo, on_policy_algorithm.OnPolicyAlgorithm):
                 self.gen_train_timesteps *= self.gen_algo.n_steps
         else:
             self.gen_train_timesteps = gen_train_timesteps

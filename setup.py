@@ -14,10 +14,20 @@ if TYPE_CHECKING:
 IS_NOT_WINDOWS = os.name != "nt"
 
 PARALLEL_REQUIRE = ["ray[debug,tune]~=2.0.0"]
+ATARI_REQUIRE = [
+    "opencv-python",
+    "ale-py==0.7.4",
+    "pillow",
+    "autorom[accept-rom-license]~=0.4.2",
+]
 PYTYPE = ["pytype==2022.7.26"] if IS_NOT_WINDOWS else []
 if IS_NOT_WINDOWS:
     # TODO(adam): use this for Windows as well once PyPI is at >=1.6.1
-    STABLE_BASELINES3 = "stable-baselines3>=1.6.0"
+    STABLE_BASELINES3 = (
+        # "stable-baselines3>=1.6.0"
+        "stable-baselines3@git+"
+        "https://github.com/DLR-RM/stable-baselines3.git@master"
+    )
 else:
     STABLE_BASELINES3 = (
         "stable-baselines3@git+"
@@ -63,6 +73,7 @@ TESTS_REQUIRE = (
         "setuptools_scm~=7.0.5",
     ]
     + PARALLEL_REQUIRE
+    + ATARI_REQUIRE
     + PYTYPE
 )
 DOCS_REQUIRE = [
@@ -73,7 +84,10 @@ DOCS_REQUIRE = [
     "furo==2022.6.21",
     "sphinx-copybutton==0.5.0",
     "sphinx-github-changelog~=1.2.0",
-]
+    "myst-nb==0.16.0",
+    "ipykernel~=6.15.2",
+    "seals==0.1.2",
+] + ATARI_REQUIRE
 
 
 def get_readme() -> str:
@@ -203,14 +217,14 @@ setup(
         #  See https://github.com/IDSIA/sacred/issues/879
         "chai-sacred>=0.8.3",
         "tensorboard>=1.14",
+        "huggingface_sb3>=2.2.1",
     ],
     tests_require=TESTS_REQUIRE,
     extras_require={
         # recommended packages for development
         "dev": [
             "autopep8",
-            "awscli",
-            "ntfy[slack]",
+            # "awscli",
             "ipdb",
             "isort~=5.0",
             "codespell",
@@ -226,6 +240,7 @@ setup(
         "mujoco": [
             "gym[classic_control,mujoco]" + GYM_VERSION_SPECIFIER,
         ],
+        "atari": ATARI_REQUIRE,
     },
     entry_points={
         "console_scripts": [

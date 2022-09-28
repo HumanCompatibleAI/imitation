@@ -38,6 +38,7 @@ class TerminalSentinelEnv(gym.Env):
 def _sample_fixed_length_trajectories(
     episode_lengths: Sequence[int],
     min_episodes: int,
+    rng: np.random.Generator,
     policy_type: str = "policy",
     **kwargs,
 ) -> Sequence[types.Trajectory]:
@@ -64,6 +65,7 @@ def _sample_fixed_length_trajectories(
         policy,
         venv,
         sample_until=sample_until,
+        rng=rng,
         **kwargs,
     )
     return trajectories
@@ -73,7 +75,7 @@ def _sample_fixed_length_trajectories(
     "policy_type",
     ["policy", "callable", "random"],
 )
-def test_complete_trajectories(policy_type) -> None:
+def test_complete_trajectories(policy_type, rng) -> None:
     """Checks trajectories include the terminal observation.
 
     This is hidden by default by VecEnv's auto-reset; we add it back in using
@@ -81,6 +83,7 @@ def test_complete_trajectories(policy_type) -> None:
 
     Args:
         policy_type: Kind of policy to use when generating trajectories.
+        rng: Random state to use.
     """
     min_episodes = 13
     max_acts = 5
@@ -89,6 +92,7 @@ def test_complete_trajectories(policy_type) -> None:
         [max_acts] * num_envs,
         min_episodes,
         policy_type=policy_type,
+        rng=rng,
     )
     assert len(trajectories) >= min_episodes
     expected_obs = np.array([[0]] * max_acts + [[1]])
@@ -118,6 +122,7 @@ def test_unbiased_trajectories(
     episode_lengths: Sequence[int],
     min_episodes: int,
     expected_counts: Mapping[int, int],
+    rng,
 ) -> None:
     """Checks trajectories are sampled without bias towards shorter episodes.
 
@@ -137,8 +142,13 @@ def test_unbiased_trajectories(
         min_episodes: The minimum number of episodes to sample.
         expected_counts: Mapping from episode length to expected number of episodes
             of that length (omit if 0 episodes of that length expected).
+        rng: Random state to use.
     """
-    trajectories = _sample_fixed_length_trajectories(episode_lengths, min_episodes)
+    trajectories = _sample_fixed_length_trajectories(
+        episode_lengths,
+        min_episodes,
+        rng,
+    )
     assert len(trajectories) == sum(expected_counts.values())
     traj_lens = np.array([len(traj) for traj in trajectories])
     for length, count in expected_counts.items():
@@ -154,9 +164,9 @@ def test_seed_trajectories():
     However, `TerminalSentinelEnv` is fixed-length deterministic, so there are no
     such confounders in this test.
     """
-    rng_a1 = np.random.RandomState(0)
-    rng_a2 = np.random.RandomState(0)
-    rng_b = np.random.RandomState(1)
+    rng_a1 = np.random.default_rng(0)
+    rng_a2 = np.random.default_rng(0)
+    rng_b = np.random.default_rng(1)
     traj_a1 = _sample_fixed_length_trajectories([3, 5], 2, rng=rng_a1)
     traj_a2 = _sample_fixed_length_trajectories([3, 5], 2, rng=rng_a2)
     traj_b = _sample_fixed_length_trajectories([3, 5], 2, rng=rng_b)
@@ -176,18 +186,26 @@ class ObsRewHalveWrapper(gym.Wrapper):
         return obs / 2, rew / 2, done, info
 
 
-def test_rollout_stats():
+def test_rollout_stats(rng):
     """Applying `ObsRewIncrementWrapper` halves the reward mean.
 
     `rollout_stats` should reflect this.
+
+    Args:
+        rng: Random state to use (with fixed seed).
     """
     env = gym.make("CartPole-v1")
     env = monitor.Monitor(env, None)
     env = ObsRewHalveWrapper(env)
     venv = vec_env.DummyVecEnv([lambda: env])
 
-    policy = serialize.load_policy("zero", "UNUSED", venv)
-    trajs = rollout.generate_trajectories(policy, venv, rollout.make_min_episodes(10))
+    policy = serialize.load_policy("zero", venv)
+    trajs = rollout.generate_trajectories(
+        policy,
+        venv,
+        rollout.make_min_episodes(10),
+        rng=rng,
+    )
     s = rollout.rollout_stats(trajs)
 
     np.testing.assert_allclose(s["return_mean"], s["monitor_return_mean"] / 2)
@@ -196,18 +214,26 @@ def test_rollout_stats():
     np.testing.assert_allclose(s["return_max"], s["monitor_return_max"] / 2)
 
 
-def test_unwrap_traj():
+def test_unwrap_traj(rng):
     """Check that unwrap_traj reverses `ObsRewIncrementWrapper`.
 
     Also check that unwrapping twice is a no-op.
+
+    Args:
+        rng: Random state to use (with fixed seed).
     """
     env = gym.make("CartPole-v1")
     env = wrappers.RolloutInfoWrapper(env)
     env = ObsRewHalveWrapper(env)
     venv = vec_env.DummyVecEnv([lambda: env])
 
-    policy = serialize.load_policy("zero", "UNUSED", venv)
-    trajs = rollout.generate_trajectories(policy, venv, rollout.make_min_episodes(10))
+    policy = serialize.load_policy("zero", venv)
+    trajs = rollout.generate_trajectories(
+        policy,
+        venv,
+        rollout.make_min_episodes(10),
+        rng=rng,
+    )
     trajs_unwrapped = [rollout.unwrap_traj(t) for t in trajs]
     trajs_unwrapped_twice = [rollout.unwrap_traj(t) for t in trajs_unwrapped]
 
@@ -252,18 +278,19 @@ def test_compute_returns(gamma):
     assert abs(rollout.discounted_sum(rewards, gamma) - returns) < 1e-8
 
 
-def test_generate_trajectories_type_error():
+def test_generate_trajectories_type_error(rng):
     venv = vec_env.DummyVecEnv([functools.partial(TerminalSentinelEnv, 1)])
     sample_until = rollout.make_min_episodes(1)
     with pytest.raises(TypeError, match="Policy must be.*got <class 'str'> instead"):
         rollout.generate_trajectories(
-            "strings_are_not_valid_policies",
+            "strings_are_not_valid_policies",  # type: ignore
             venv,
+            rng=rng,
             sample_until=sample_until,
         )
 
 
-def test_generate_trajectories_value_error():
+def test_generate_trajectories_value_error(rng):
     venv = vec_env.DummyVecEnv([functools.partial(TerminalSentinelEnv, 1)])
     sample_until = rollout.make_min_episodes(1)
 
@@ -272,5 +299,6 @@ def test_generate_trajectories_value_error():
             lambda obs: np.zeros(len(obs), dtype=int),
             venv,
             sample_until=sample_until,
+            rng=rng,
             deterministic_policy=True,
         )

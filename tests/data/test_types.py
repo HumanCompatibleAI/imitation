@@ -27,7 +27,6 @@ LENGTHS = [0, 1, 2, 10]
 
 
 def _check_1d_shape(fn: Callable[[np.ndarray], Any], length: int, expected_msg: str):
-    assert isinstance(length, int)
     for shape in [(), (length, 1), (length, 2), (length - 1,), (length + 1,)]:
         with pytest.raises(ValueError, match=expected_msg):
             fn(np.zeros(shape))
@@ -274,6 +273,7 @@ class TestData:
                 ValueError,
                 match=r"infos when present must be present for each action.*",
             ):
+                assert traj.infos is not None
                 dataclasses.replace(traj, infos=traj.infos[:-1])
             with pytest.raises(
                 ValueError,

@@ -20,7 +20,7 @@ executors:
     environment:
       # more CPUs visible but we're throttled to 8, which breaks auto-detect
       NUM_CPUS: 8
-  lint:
+  static-analysis-xlarge:
     <<: *defaults
     # darglint is slow enough that we benefit from xlarge even for linting.
     # However, there's little benefit from larger parallelization (I think there's
@@ -28,15 +28,28 @@ executors:
     resource_class: xlarge
     environment:
       # If you change these, also change ci/code_checks.sh
-      SRC_FILES: src/ tests/ experiments/ examples/ docs/conf.py setup.py
+      SRC_FILES: src/ tests/ experiments/ examples/ docs/conf.py setup.py ci/clean_notebooks.py
       NUM_CPUS: 8
-  type:
+  static-analysis-medium:
     <<: *defaults
     resource_class: medium
     environment:
       # If you change these, also change ci/code_checks.sh
-      SRC_FILES: src/ tests/ experiments/ examples/ docs/conf.py setup.py
+      SRC_FILES: src/ tests/ experiments/ examples/ docs/conf.py setup.py ci/clean_notebooks.py
       NUM_CPUS: 2
+      EXCLUDE_MYPY: | 
+        (?x)(
+          src/imitation/algorithms/preference_comparisons.py$
+          | src/imitation/rewards/reward_nets.py$
+          | src/imitation/util/sacred.py$
+          | src/imitation/algorithms/base.py$
+          | src/imitation/scripts/train_preference_comparisons.py$
+          | src/imitation/rewards/serialize.py$
+          | src/imitation/scripts/common/train.py$
+          | src/imitation/algorithms/mce_irl.py$
+          | src/imitation/algorithms/density.py$
+          | tests/algorithms/test_bc.py$
+        )
 
 commands:
   dependencies-linux:
@@ -202,7 +215,7 @@ commands:
 
 jobs:
   lint:
-    executor: lint
+    executor: static-analysis-xlarge
 
     steps:
       - dependencies-linux
@@ -224,6 +237,10 @@ jobs:
           exclude: SC1091
 
       - run:
+          name: ipynb-check
+          command: ./ci/clean_notebooks.py --check ./docs/tutorials
+
+      - run:
           name: flake8
           command: flake8 --version && flake8 -j "${NUM_CPUS}" ${SRC_FILES}
 
@@ -235,18 +252,31 @@ jobs:
           name: codespell
           command: codespell -I .codespell.skip --skip='*.pyc,tests/testdata/*,*.ipynb,*.csv' ${SRC_FILES}
 
+  doctest:
+    executor: static-analysis-medium
+
+    steps:
+      - dependencies-linux
       - run:
           name: sphinx
-          command: pushd docs/ && make clean && make html && popd
+          environment:
+            # Note: we don't want to execute the example notebooks in this step since
+            #   this happens in a separate readthedocs job anyway.
+            NB_EXECUTION_MODE: "off"
+          command: pushd docs/ && make clean && make doctest && popd
 
   type:
-    executor: type
+    executor: static-analysis-medium
     steps:
       - dependencies-linux
 
       - run:
           name: pytype
           command: pytype --version && pytype -j "${NUM_CPUS}" ${SRC_FILES[@]}
+
+      - run:
+          name: mypy
+          command: mypy --version && mypy ${SRC_FILES[@]} --exclude "${EXCLUDE_MYPY}"
 
   unit-test-linux:
     executor: unit-test-linux
@@ -344,6 +374,9 @@ workflows:
   test:
     jobs:
       - lint:
+          context:
+          - docker-hub-creds
+      - doctest:
           context:
           - docker-hub-creds
       - type:

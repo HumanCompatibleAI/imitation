@@ -29,16 +29,19 @@ def make_algo_with_wrapped_buffer(
     rl_cls: Type[off_policy_algorithm.OffPolicyAlgorithm],
     policy_cls: Type[BasePolicy],
     replay_buffer_class: Type[buffers.ReplayBuffer],
+    rng: np.random.Generator,
     buffer_size: int = 100,
 ) -> off_policy_algorithm.OffPolicyAlgorithm:
-    venv = util.make_vec_env("Pendulum-v1", n_envs=1)
+    venv = util.make_vec_env("Pendulum-v1", n_envs=1, rng=rng)
     rl_algo = rl_cls(
         policy=policy_cls,
         policy_kwargs=dict(),
         env=venv,
         seed=42,
-        # we ignore the type below because sb3 has a bug (forgot to put Type[...])
-        # https://github.com/DLR-RM/stable-baselines3/issues/1039
+        # TODO(juan) we ignore the type below due to
+        #  https://github.com/DLR-RM/stable-baselines3/issues/1039
+        #  PR fixing this has been merged to master,
+        #  remove the type ignore in the next sb3 release.
         replay_buffer_class=ReplayBufferRewardWrapper,  # type: ignore
         replay_buffer_kwargs=dict(
             replay_buffer_class=replay_buffer_class,
@@ -49,7 +52,7 @@ def make_algo_with_wrapped_buffer(
     return rl_algo
 
 
-def test_invalid_args():
+def test_invalid_args(rng):
     with pytest.raises(
         TypeError,
         match=r".*unexpected keyword argument 'replay_buffer_class'.*",
@@ -60,6 +63,7 @@ def test_invalid_args():
             rl_cls=sb3.PPO,  # type: ignore
             policy_cls=policies.ActorCriticPolicy,
             replay_buffer_class=buffers.ReplayBuffer,
+            rng=rng,
         )
 
     with pytest.raises(AssertionError, match=r".*only ReplayBuffer is supported.*"):
@@ -67,10 +71,11 @@ def test_invalid_args():
             rl_cls=sb3.SAC,
             policy_cls=sb3.sac.policies.SACPolicy,
             replay_buffer_class=buffers.DictReplayBuffer,
+            rng=rng,
         )
 
 
-def test_wrapper_class(tmpdir):
+def test_wrapper_class(tmpdir, rng):
     buffer_size = 15
     total_timesteps = 20
 
@@ -79,6 +84,7 @@ def test_wrapper_class(tmpdir):
         policy_cls=sb3.sac.policies.SACPolicy,
         replay_buffer_class=buffers.ReplayBuffer,
         buffer_size=buffer_size,
+        rng=rng,
     )
 
     rl_algo.learn(total_timesteps=total_timesteps)

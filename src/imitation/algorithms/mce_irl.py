@@ -142,14 +142,14 @@ class TabularPolicy(policies.BasePolicy):
     """A tabular policy. Cannot be trained -- prediction only."""
 
     pi: np.ndarray
-    rng: np.random.RandomState
+    rng: np.random.Generator
 
     def __init__(
         self,
         state_space: gym.Space,
         action_space: gym.Space,
         pi: np.ndarray,
-        rng: Optional[np.random.RandomState],
+        rng: np.random.Generator,
     ):
         """Builds TabularPolicy.
 
@@ -165,7 +165,7 @@ class TabularPolicy(policies.BasePolicy):
         assert isinstance(action_space, gym.spaces.Discrete), "action not tabular"
         # What we call state space here is observation space in SB3 nomenclature.
         super().__init__(observation_space=state_space, action_space=action_space)
-        self.rng = rng or np.random.RandomState()
+        self.rng = rng
         self.set_pi(pi)
 
     def set_pi(self, pi: np.ndarray) -> None:
@@ -185,13 +185,13 @@ class TabularPolicy(policies.BasePolicy):
     ):
         raise NotImplementedError("Should never be called.")
 
-    def predict(  # type: ignore[override]
+    def predict(
         self,
-        observation: np.ndarray,
-        state: Optional[np.ndarray] = None,
-        mask: Optional[np.ndarray] = None,
+        observation: Union[np.ndarray, Mapping[str, np.ndarray]],
+        state: Optional[Tuple[np.ndarray, ...]] = None,
+        episode_start: Optional[np.ndarray] = None,
         deterministic: bool = False,
-    ) -> Tuple[np.ndarray, np.ndarray]:
+    ) -> Tuple[np.ndarray, Optional[Tuple[np.ndarray, ...]]]:
         """Predict action to take in given state.
 
         Arguments follow SB3 naming convention as this is an SB3 policy.
@@ -205,24 +205,22 @@ class TabularPolicy(policies.BasePolicy):
         Args:
             observation: States in the underlying MDP.
             state: Hidden states of the policy -- used to represent timesteps by us.
-            mask: Has episode completed?
+            episode_start: Has episode completed?
             deterministic: If true, pick action with highest probability; otherwise,
                 sample.
 
         Returns:
             Tuple of the actions and new hidden states.
         """
-        timesteps = state  # rename to avoid confusion
-        del state
-
-        if timesteps is None:
+        if state is None:
             timesteps = np.zeros(len(observation), dtype=int)
         else:
-            timesteps = np.array(timesteps)
+            assert len(state) == 1
+            timesteps = state[0]
         assert len(timesteps) == len(observation), "timestep and obs batch size differ"
 
-        if mask is not None:
-            timesteps[mask] = 0
+        if episode_start is not None:
+            timesteps[episode_start] = 0
 
         actions: List[int] = []
         for obs, t in zip(observation, timesteps):
@@ -234,7 +232,8 @@ class TabularPolicy(policies.BasePolicy):
                 actions.append(self.rng.choice(len(dist), p=dist))
 
         timesteps += 1  # increment timestep
-        return np.array(actions), timesteps
+        state = (timesteps,)
+        return np.array(actions), state
 
 
 MCEDemonstrations = Union[np.ndarray, base.AnyTransitions]
@@ -260,6 +259,7 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
         demonstrations: Optional[MCEDemonstrations],
         env: resettable_env.TabularModelEnv,
         reward_net: reward_nets.RewardNet,
+        rng: np.random.Generator,
         optimizer_cls: Type[th.optim.Optimizer] = th.optim.Adam,
         optimizer_kwargs: Optional[Mapping[str, Any]] = None,
         discount: float = 1.0,
@@ -268,7 +268,6 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
         # TODO(adam): do we need log_interval or can just use record_mean...?
         log_interval: Optional[int] = 100,
         *,
-        rng: Optional[np.random.RandomState] = None,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
     ):
         r"""Creates MCE IRL.
@@ -280,10 +279,11 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
                 The demonstrations must have observations one-hot coded unless
                 demonstrations is a state-occupancy measure.
             env: a tabular MDP.
+            rng: random state used for sampling from policy.
             reward_net: a neural network that computes rewards for the supplied
                 observations.
-            optimizer_cls: optimiser to use for supervised training.
-            optimizer_kwargs: keyword arguments for optimiser construction.
+            optimizer_cls: optimizer to use for supervised training.
+            optimizer_kwargs: keyword arguments for optimizer construction.
             discount: the discount factor to use when computing occupancy measure.
                 If not 1.0 (undiscounted), then `demonstrations` must either be
                 a (discounted) state-occupancy measure, or trajectories. Transitions
@@ -296,7 +296,6 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
                 MCE IRL gradient falls below this value.
             log_interval: how often to log current loss stats (using `logging`).
                 None to disable.
-            rng: random state used for sampling from policy.
             custom_logger: Where to log to; if None (default), creates a new logger.
         """
         self.discount = discount
@@ -356,11 +355,7 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
         # then possibly shuffled. So add next observations for terminal states,
         # as they will not appear anywhere else; but ignore next observations
         # for all other states as they occur elsewhere in dataset.
-        if next_obses is not None:
-            # TODO(juan) this is wrong; dones is an optional
-            #  and zip() cannot handle this when it's None.
-            #  either require an np.ndarray or do something else
-            #  if the value is None.
+        if dones is not None and next_obses is not None:
             for done, obs in zip(dones, next_obses):
                 if isinstance(done, th.Tensor):
                     done = done.item()  # must be scalar
@@ -386,11 +381,7 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
         # Demonstrations are either trajectories or transitions;
         # we must compute occupancy measure from this.
         if isinstance(demonstrations, Iterable):
-            # TODO(juan) this is wrong; if this is a container (list-like)
-            #  object then a new fresh iterator will be generated every time,
-            #  but for a general iterator calling next() exhaust the
-            #  iterator.
-            first_item = next(iter(demonstrations))
+            first_item, demonstrations = util.get_first_iter_element(demonstrations)
             if isinstance(first_item, types.Trajectory):
                 self._set_demo_from_trajectories(demonstrations)
                 return
@@ -421,9 +412,7 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
                 for k in ("obs", "dones", "next_obs"):
                     if k in batch:
                         collated_list[k].append(batch[k])
-            collated = {}
-            for k, v in collated_list.items():
-                collated[k] = np.concatenate(v)
+            collated = {k: np.concatenate(v) for k, v in collated_list.items()}
 
             assert "obs" in collated
             for k, v in collated.items():

@@ -1,12 +1,31 @@
 """Buffers to store NumPy arrays and transitions in."""
 
 import dataclasses
-from typing import Mapping, Optional, Tuple
+from typing import Any, Mapping, Optional, Tuple
 
 import numpy as np
 from stable_baselines3.common import vec_env
 
 from imitation.data import types
+
+
+def num_samples(data: Mapping[Any, np.ndarray]) -> int:
+    """Computes the number of samples contained in `data`.
+
+    Args:
+        data: A Mapping from keys to NumPy arrays.
+
+    Returns:
+        The unique length of the first dimension of arrays contained in `data`.
+
+    Raises:
+        ValueError: The length is not unique.
+    """
+    n_samples_list = [arr.shape[0] for arr in data.values()]
+    n_samples_np = np.unique(n_samples_list)
+    if len(n_samples_np) > 1:
+        raise ValueError("Keys map to different length values.")
+    return int(n_samples_np[0])
 
 
 class Buffer:
@@ -150,12 +169,7 @@ class Buffer:
         if len(unexpected_keys) > 0:
             raise ValueError(f"Unexpected keys {unexpected_keys}")
 
-        n_samples_list = [arr.shape[0] for arr in data.values()]
-        n_samples_np = np.unique(n_samples_list)
-        if len(n_samples_np) > 1:
-            raise ValueError("Keys map to different length values.")
-        n_samples = int(n_samples_np[0])
-
+        n_samples = num_samples(data)
         if n_samples == 0:
             raise ValueError("Trying to store empty data.")
         if n_samples > self.capacity:
@@ -192,11 +206,7 @@ class Buffer:
             data: Same as in `self.store`'s docstring, except with the additional
                 constraint `size(data) <= self.capacity - self._idx`.
         """
-        n_samples_list = [arr.shape[0] for arr in data.values()]
-        n_samples_np = np.unique(n_samples_list)
-        assert len(n_samples_np) == 1
-        n_samples = int(n_samples_np[0])
-
+        n_samples = num_samples(data)
         assert n_samples <= self.capacity - self._idx
         idx_hi = self._idx + n_samples
         for k, arr in data.items():
@@ -250,7 +260,7 @@ class ReplayBuffer:
             capacity: The number of samples that can be stored.
             venv: The environment whose action and observation
                 spaces can be used to determine the data shapes of the underlying
-                buffers. Overrides all the following arguments.
+                buffers. Mutually exclusive with shape and dtype arguments.
             obs_shape: The shape of the observation space.
             act_shape: The shape of the action space.
             obs_dtype: The dtype of the observation space.
@@ -259,10 +269,11 @@ class ReplayBuffer:
         Raises:
             ValueError: Couldn't infer the observation and action shapes and dtypes
                 from the arguments.
+            ValueError: Specified both venv and shapes/dtypes.
         """
-        params = [obs_shape, act_shape, obs_dtype, act_dtype]
+        params = (obs_shape, act_shape, obs_dtype, act_dtype)
         if venv is not None:
-            if not all([x is None for x in params]):
+            if not all(x is None for x in params):
                 raise ValueError(
                     "Cannot specify both shape/dtype and also environment.",
                 )
@@ -271,7 +282,7 @@ class ReplayBuffer:
             obs_dtype = venv.observation_space.dtype
             act_dtype = venv.action_space.dtype
         else:
-            if any([x is None for x in params]):
+            if any(x is None for x in params):
                 raise ValueError("Shape or dtype missing and no environment specified.")
 
         assert obs_shape is not None

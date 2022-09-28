@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 
 # If you change these, also change .circleci/config.yml.
-SRC_FILES=(src/ tests/ experiments/ examples/ docs/conf.py setup.py)
+SRC_FILES=(src/ tests/ experiments/ examples/ docs/conf.py setup.py ci/clean_notebooks.py)
 
 set -x  # echo commands
 set -e  # quit immediately on error
 
 echo "Source format checking"
+./ci/clean_notebooks.py --check ./docs/tutorials/
 flake8 --darglint-ignore-regex '.*' "${SRC_FILES[@]}"
 black --check --diff "${SRC_FILES[@]}"
 codespell -I .codespell.skip --skip='*.pyc,tests/testdata/*,*.ipynb,*.csv' "${SRC_FILES[@]}"
@@ -22,6 +23,7 @@ fi
 if [ "${skipexpensive:-}" != "true" ]; then
   echo "Type checking"
   pytype -j auto "${SRC_FILES[@]}"
+  mypy --show-error-codes "${SRC_FILES[@]}"
 
   echo "Building docs (validates docstrings)"
   pushd docs/

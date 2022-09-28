@@ -58,6 +58,7 @@ def make_trainer(
     algorithm_kwargs: Mapping[str, Any],
     tmpdir: str,
     expert_transitions: types.Transitions,
+    rng: np.random.Generator,
     expert_batch_size: int = 1,
     env_name: str = "seals/CartPole-v0",
     num_envs: int = 1,
@@ -76,7 +77,12 @@ def make_trainer(
     else:
         expert_data = expert_transitions
 
-    venv = util.make_vec_env(env_name, n_envs=num_envs, parallel=parallel)
+    venv = util.make_vec_env(
+        env_name,
+        n_envs=num_envs,
+        parallel=parallel,
+        rng=rng,
+    )
     model_cls = algorithm_kwargs["model_class"]
     gen_algo = model_cls(algorithm_kwargs["policy_class"], venv)
     reward_net_cls: Type[reward_nets.RewardNet] = reward_nets.BasicRewardNet
@@ -101,15 +107,21 @@ def make_trainer(
         venv.close()
 
 
-def test_airl_fail_fast(custom_logger, tmpdir):
+def test_airl_fail_fast(custom_logger, tmpdir, rng):
     venv = util.make_vec_env(
         "seals/CartPole-v0",
         n_envs=1,
         parallel=False,
+        rng=rng,
     )
 
     gen_algo = stable_baselines3.DQN(stable_baselines3.dqn.MlpPolicy, venv)
-    small_data = rollout.generate_transitions(gen_algo, venv, n_timesteps=20)
+    small_data = rollout.generate_transitions(
+        gen_algo,
+        venv,
+        n_timesteps=20,
+        rng=rng,
+    )
     reward_net = reward_nets.BasicShapedRewardNet(
         observation_space=venv.observation_space,
         action_space=venv.action_space,
@@ -128,8 +140,13 @@ def test_airl_fail_fast(custom_logger, tmpdir):
 
 
 @pytest.fixture(params=ALGORITHM_KWARGS.values(), ids=list(ALGORITHM_KWARGS.keys()))
-def trainer(request, tmpdir, expert_transitions):
-    with make_trainer(request.param, tmpdir, expert_transitions) as trainer:
+def trainer(request, tmpdir, expert_transitions, rng):
+    with make_trainer(
+        request.param,
+        tmpdir,
+        expert_transitions,
+        rng,
+    ) as trainer:
         yield trainer
 
 
@@ -177,11 +194,13 @@ def trainer_parametrized(
     _expert_batch_size,
     tmpdir,
     expert_transitions,
+    rng,
 ):
     with make_trainer(
         _algorithm_kwargs,
         tmpdir,
         expert_transitions,
+        rng=rng,
         parallel=_parallel,
         convert_dataset=_convert_dataset,
         expert_batch_size=_expert_batch_size,
@@ -189,12 +208,17 @@ def trainer_parametrized(
         yield trainer
 
 
-def test_train_disc_step_no_crash(trainer_parametrized, _expert_batch_size):
+def test_train_disc_step_no_crash(
+    trainer_parametrized,
+    _expert_batch_size,
+    rng,
+):
     transitions = rollout.generate_transitions(
         trainer_parametrized.gen_algo,
         trainer_parametrized.venv,
         n_timesteps=_expert_batch_size,
         truncate=True,
+        rng=rng,
     )
     trainer_parametrized.train_disc(
         gen_samples=types.dataclass_quick_asdict(transitions),
@@ -215,12 +239,14 @@ def trainer_batch_sizes(
     _expert_batch_size,
     tmpdir,
     expert_transitions,
+    rng,
 ):
     with make_trainer(
         _algorithm_kwargs,
         tmpdir,
         expert_transitions,
         expert_batch_size=_expert_batch_size,
+        rng=rng,
     ) as trainer:
         yield trainer
 
@@ -230,6 +256,7 @@ def test_train_disc_improve_D(
     tmpdir,
     expert_transitions,
     _expert_batch_size,
+    rng,
     n_steps=3,
 ):
     expert_samples = expert_transitions[:_expert_batch_size]
@@ -239,6 +266,7 @@ def test_train_disc_improve_D(
         trainer_batch_sizes.venv_train,
         n_timesteps=_expert_batch_size,
         truncate=True,
+        rng=rng,
     )
     gen_samples = types.dataclass_quick_asdict(gen_samples)
     init_stats = final_stats = None
@@ -259,13 +287,20 @@ def _env_name(request):
 
 
 @pytest.fixture
-def trainer_diverse_env(_algorithm_kwargs, _env_name, tmpdir, expert_transitions):
+def trainer_diverse_env(
+    _algorithm_kwargs,
+    _env_name,
+    tmpdir,
+    expert_transitions,
+    rng,
+):
     if _algorithm_kwargs["model_class"] == stable_baselines3.DQN:
         pytest.skip("DQN does not support all environments.")
     with make_trainer(
         _algorithm_kwargs,
         tmpdir,
         expert_transitions,
+        rng=rng,
         env_name=_env_name,
     ) as trainer:
         yield trainer
@@ -275,6 +310,7 @@ def trainer_diverse_env(_algorithm_kwargs, _env_name, tmpdir, expert_transitions
 def test_logits_expert_is_high_log_policy_act_prob(
     trainer_diverse_env: common.AdversarialTrainer,
     n_timesteps: int,
+    rng,
 ):
     """Smoke test calling `logits_expert_is_high` on `AdversarialTrainer`.
 
@@ -284,11 +320,13 @@ def test_logits_expert_is_high_log_policy_act_prob(
     Args:
         trainer_diverse_env: The trainer to test.
         n_timesteps: The number of timesteps of rollouts to collect.
+        rng: The random state to use.
     """
     trans = rollout.generate_transitions(
         policy=None,
         venv=trainer_diverse_env.venv,
         n_timesteps=n_timesteps,
+        rng=rng,
     )
 
     obs, acts, next_obs, dones = trainer_diverse_env.reward_train.preprocess(

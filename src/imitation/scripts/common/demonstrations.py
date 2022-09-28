@@ -1,49 +1,75 @@
 """Common configuration element for scripts learning from demonstrations."""
 
 import logging
-import pathlib
-from typing import Dict, Optional, Sequence
+from typing import Optional, Sequence
 
 import sacred
 
-from imitation.data import types
+from imitation.data import rollout, types, wrappers
+from imitation.scripts.common import common, expert
 
-demonstrations_ingredient = sacred.Ingredient("demonstrations")
+demonstrations_ingredient = sacred.Ingredient(
+    "demonstrations",
+    ingredients=[expert.expert_ingredient, common.common_ingredient],
+)
 logger = logging.getLogger(__name__)
 
 
 @demonstrations_ingredient.config
 def config():
     # Demonstrations
-    data_dir = "data/"
     rollout_path = None  # path to file containing rollouts
     n_expert_demos = None  # Num demos used. None uses every demo possible
-
     locals()  # quieten flake8
 
 
 @demonstrations_ingredient.named_config
 def fast():
-    n_expert_demos = 1  # noqa: F841
+    # Note: we can't pick `n_expert_demos=1` here because for envs with short episodes
+    #   that does not generate the minimum number of transitions required for one batch.
+    n_expert_demos = 10  # noqa: F841
 
 
-def guess_expert_dir(data_dir: pathlib.Path, env_name: str) -> pathlib.Path:
-    rollout_hint = env_name.rsplit("-", 1)[0].replace("/", "_").lower()
-    return data_dir / "expert_models" / f"{rollout_hint}_0"
+@demonstrations_ingredient.capture
+def get_expert_trajectories(
+    rollout_path: str,
+) -> Sequence[types.Trajectory]:
+    if rollout_path is not None:
+        return load_expert_trajs()
+    else:
+        return generate_expert_trajs()
 
 
-@demonstrations_ingredient.config_hook
-def hook(config, command_name, logger):
-    """If rollout_path not set explicitly, then guess it based on environment name."""
-    del command_name, logger
-    updates: Dict[str, str] = {}
-    if config["demonstrations"]["rollout_path"] is None:
-        data_dir = types.parse_path(config["demonstrations"]["data_dir"])
-        env_name = config["common"]["env_name"].replace("/", "_")
-        updates["rollout_path"] = str(
-            guess_expert_dir(data_dir, env_name) / "rollouts" / "final.pkl",
+@demonstrations_ingredient.capture
+def generate_expert_trajs(
+    n_expert_demos: Optional[int],
+) -> Optional[Sequence[types.Trajectory]]:
+    """Generates expert demonstrations.
+
+    Args:
+        n_expert_demos: The number of trajectories to load.
+            Dataset is truncated to this length if specified.
+
+    Returns:
+        The expert trajectories.
+
+    Raises:
+        ValueError: If n_expert_demos is None.
+    """
+    rng = common.make_rng()
+    if n_expert_demos is None:
+        raise ValueError("n_expert_demos must be specified when rollout_path is None")
+
+    with common.make_venv(
+        log_dir=None,
+        post_wrappers=[lambda env, i: wrappers.RolloutInfoWrapper(env)],
+    ) as rollout_env:
+        return rollout.rollout(
+            expert.get_expert_policy(rollout_env),
+            rollout_env,
+            rollout.make_sample_until(min_episodes=n_expert_demos),
+            rng=rng,
         )
-    return updates
 
 
 @demonstrations_ingredient.capture

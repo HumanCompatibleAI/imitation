@@ -86,6 +86,7 @@ def train_rl(
     Returns:
         The return value of `rollout_stats()` using the final policy.
     """
+    rng = common.make_rng()
     custom_logger, log_dir = common.setup_logging()
     rollout_dir = log_dir / "rollouts"
     policy_dir = log_dir / "policies"
@@ -143,7 +144,10 @@ def train_rl(
                 rollout_save_n_timesteps,
                 rollout_save_n_episodes,
             )
-            types.save(save_path, rollout.rollout(rl_algo, venv, sample_until))
+            types.save(
+                save_path,
+                rollout.rollout(rl_algo, rl_algo.get_env(), sample_until, rng=rng),
+            )
         if policy_save_final:
             output_dir = policy_dir / "final"
             serialize.save_stable_model(output_dir, rl_algo)

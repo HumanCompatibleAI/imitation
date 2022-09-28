@@ -5,6 +5,7 @@ import logging
 import pathlib
 from typing import Any, Generator, Mapping, Sequence, Tuple, Union
 
+import numpy as np
 import sacred
 from stable_baselines3.common import vec_env
 
@@ -77,6 +78,12 @@ def fast():
 
 
 @common_ingredient.capture
+def make_rng(_seed) -> np.random.Generator:
+    """Creates a `np.random.Generator` with the given seed."""
+    return np.random.default_rng(_seed)
+
+
+@common_ingredient.capture
 def make_log_dir(
     _run,
     log_dir: str,
@@ -133,7 +140,6 @@ def setup_logging(
 @contextlib.contextmanager
 @common_ingredient.capture
 def make_venv(
-    _seed,
     env_name: str,
     num_vec: int,
     parallel: bool,
@@ -159,17 +165,20 @@ def make_venv(
     Yields:
         The constructed vector environment.
     """
+    rng = make_rng()
+    # Note: we create the venv outside the try -- finally block for the case that env
+    #     creation fails.
+    venv = util.make_vec_env(
+        env_name,
+        rng=rng,
+        n_envs=num_vec,
+        parallel=parallel,
+        max_episode_steps=max_episode_steps,
+        log_dir=log_dir,
+        env_make_kwargs=env_make_kwargs,
+        **kwargs,
+    )
     try:
-        venv = util.make_vec_env(
-            env_name,
-            num_vec,
-            seed=_seed,
-            parallel=parallel,
-            max_episode_steps=max_episode_steps,
-            log_dir=log_dir,
-            env_make_kwargs=env_make_kwargs,
-            **kwargs,
-        )
         yield venv
     finally:
         venv.close()

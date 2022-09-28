@@ -17,9 +17,13 @@ from stable_baselines3.common import (
 from imitation.policies import serialize
 from imitation.policies.replay_buffer_wrapper import ReplayBufferRewardWrapper
 from imitation.rewards.reward_function import RewardFn
+from imitation.scripts.common import common
 from imitation.scripts.common.train import train_ingredient
 
-rl_ingredient = sacred.Ingredient("rl", ingredients=[train_ingredient])
+rl_ingredient = sacred.Ingredient(
+    "rl",
+    ingredients=[train_ingredient, common.common_ingredient],
+)
 logger = logging.getLogger(__name__)
 
 
@@ -102,7 +106,7 @@ def make_rl_algo(
     batch_size: int,
     rl_kwargs: Mapping[str, Any],
     train: Mapping[str, Any],
-    _seed: int,
+    _seed,
     relabel_reward_fn: Optional[RewardFn] = None,
 ) -> base_class.BaseAlgorithm:
     """Instantiates a Stable Baselines3 RL algorithm.
@@ -135,9 +139,10 @@ def make_rl_algo(
     # possible translation, and I would expect the appropriate hyperparameter
     # to be similar between them.
     if issubclass(rl_cls, on_policy_algorithm.OnPolicyAlgorithm):
-        assert (
-            "n_steps" not in rl_kwargs
-        ), "set 'n_steps' at top-level using 'batch_size'"
+        assert "n_steps" not in rl_kwargs, (
+            "set 'n_steps' at top-level using 'batch_size'. "
+            "n_steps = batch_size // num_vec"
+        )
         rl_kwargs["n_steps"] = batch_size // venv.num_envs
     elif issubclass(rl_cls, off_policy_algorithm.OffPolicyAlgorithm):
         if rl_kwargs.get("batch_size") is not None:
@@ -167,11 +172,11 @@ def make_rl_algo(
 
 @rl_ingredient.capture
 def load_rl_algo_from_path(
+    _seed,
     agent_path: str,
     venv: vec_env.VecEnv,
     rl_cls: Type[base_class.BaseAlgorithm],
     rl_kwargs: Mapping[str, Any],
-    _seed: int,
     relabel_reward_fn: Optional[RewardFn] = None,
 ) -> base_class.BaseAlgorithm:
     rl_kwargs = dict(rl_kwargs)

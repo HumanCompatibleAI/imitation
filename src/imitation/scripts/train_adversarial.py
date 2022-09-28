@@ -66,7 +66,6 @@ for ingredient in [train_adversarial_ex, *train_adversarial_ex.ingredients]:
 @train_adversarial_ex.capture
 def train_adversarial(
     _run,
-    _seed: int,
     show_config: bool,
     algo_cls: Type[common.AdversarialTrainer],
     algorithm_kwargs: Mapping[str, Any],
@@ -83,7 +82,6 @@ def train_adversarial(
         - Generator policies are saved to `f"{log_dir}/checkpoints/{step}/gen_policy/"`.
 
     Args:
-        _seed: Random seed.
         show_config: Print the merged config before starting training. This is
             analogous to the print_config command, but will show config after
             rather than before merging `algorithm_specific` arguments.
@@ -113,7 +111,7 @@ def train_adversarial(
         sacred.commands.print_config(_run)
 
     custom_logger, log_dir = common_config.setup_logging()
-    expert_trajs = demonstrations.load_expert_trajs()
+    expert_trajs = demonstrations.get_expert_trajectories()
 
     with common_config.make_venv() as venv:
         reward_net = reward.make_reward_net(venv)

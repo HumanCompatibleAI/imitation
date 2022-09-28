@@ -1,7 +1,7 @@
 """Module of base classes and helper methods for imitation learning algorithms."""
 
 import abc
-from typing import Any, Generic, Iterable, Mapping, Optional, TypeVar, Union
+from typing import Any, Generic, Iterable, Mapping, Optional, TypeVar, Union, cast
 
 import numpy as np
 import torch as th
@@ -10,6 +10,7 @@ from stable_baselines3.common import policies
 
 from imitation.data import rollout, types
 from imitation.util import logger as imit_logger
+from imitation.util import util
 
 
 class BaseImitationAlgorithm(abc.ABC):
@@ -39,7 +40,7 @@ class BaseImitationAlgorithm(abc.ABC):
                 training. If True, overrides this safety check. WARNING: variable
                 horizon episodes leak information about the reward via termination
                 condition, and can seriously confound evaluation. Read
-                https://imitation.readthedocs.io/en/latest/guide/variable_horizon.html
+                https://imitation.readthedocs.io/en/latest/getting-started/variable-horizon.html
                 before overriding this.
         """
         self._logger = custom_logger or imit_logger.configure()
@@ -52,8 +53,8 @@ class BaseImitationAlgorithm(abc.ABC):
                 "Additionally, even unbiased algorithms can exploit "
                 "the information leak from the termination condition, "
                 "producing spuriously high performance. See "
-                "https://imitation.readthedocs.io/en/latest/guide/variable_horizon.html"
-                " for more information.",
+                "https://imitation.readthedocs.io/en/latest/getting-started/"
+                "variable-horizon.html for more information.",
             )
         self._horizon = None
 
@@ -116,7 +117,7 @@ TransitionKind = TypeVar("TransitionKind", bound=types.TransitionsMinimal)
 AnyTransitions = Union[
     Iterable[types.Trajectory],
     Iterable[TransitionMapping],
-    TransitionKind,
+    types.TransitionsMinimal,
 ]
 
 
@@ -242,11 +243,9 @@ def make_data_loader(
         raise ValueError(f"batch_size={batch_size} must be positive.")
 
     if isinstance(transitions, Iterable):
-        try:
-            first_item = next(iter(transitions))
-        except StopIteration:
-            first_item = None
+        first_item, transitions = util.get_first_iter_element(transitions)
         if isinstance(first_item, types.Trajectory):
+            transitions = cast(Iterable[types.Trajectory], transitions)
             transitions = rollout.flatten_trajectories(list(transitions))
 
     if isinstance(transitions, types.TransitionsMinimal):

@@ -24,11 +24,21 @@ assert_equal = functools.partial(th.testing.assert_close, rtol=0, atol=0)
 
 @pytest.mark.parametrize("env_name", SIMPLE_ENVS)
 @pytest.mark.parametrize("policy_type", HARDCODED_TYPES)
-def test_actions_valid(env_name, policy_type):
+def test_actions_valid(env_name, policy_type, rng):
     """Test output actions of our custom policies always lie in action space."""
-    venv = util.make_vec_env(env_name, n_envs=1, parallel=False)
-    policy = serialize.load_policy(policy_type, "foobar", venv)
-    transitions = rollout.generate_transitions(policy, venv, n_timesteps=100)
+    venv = util.make_vec_env(
+        env_name,
+        n_envs=1,
+        parallel=False,
+        rng=rng,
+    )
+    policy = serialize.load_policy(policy_type, venv)
+    transitions = rollout.generate_transitions(
+        policy,
+        venv,
+        n_timesteps=100,
+        rng=rng,
+    )
 
     for a in transitions.acts:
         assert venv.action_space.contains(a)
@@ -41,32 +51,41 @@ def test_actions_valid(env_name, policy_type):
         ("sac", SIMPLE_CONTINUOUS_ENV),
     ],
 )
-def test_save_stable_model_errors_and_warnings(tmpdir, policy_env_name_pair):
+def test_save_stable_model_errors_and_warnings(
+    tmpdir,
+    policy_env_name_pair,
+    rng,
+):
     """Check errors and warnings in `save_stable_model()`."""
     policy, env_name = policy_env_name_pair
     tmpdir = types.parse_path(tmpdir)
-    venv = util.make_vec_env(env_name)
+    venv = util.make_vec_env(env_name, rng=rng)
 
     # Trigger FileNotFoundError for no model.{zip,pkl}
     dir_a = tmpdir / "a"
     dir_a.mkdir()
-    with pytest.raises(FileNotFoundError, match=".*No such file or.*model.zip.*"):
-        serialize.load_policy(policy, str(dir_a), venv)
+    with pytest.raises(FileNotFoundError, match=".*Expected.*model.zip.*"):
+        serialize.load_policy(policy, venv, path=str(dir_a))
 
-    vec_normalize = dir_a / "vec_normalize.pkl"
-    vec_normalize.touch()
+    (dir_a / "vec_normalize.pkl").touch()
+    (dir_a / "model.zip").touch()
     with pytest.raises(FileExistsError, match="Outdated policy format.*"):
-        serialize.load_policy(policy, str(dir_a), venv)
+        serialize.load_policy(policy, venv, path=str(dir_a))
 
     # Trigger FileNotError for nonexistent directory
     dir_nonexistent = tmpdir / "i_dont_exist"
-    with pytest.raises(FileNotFoundError, match=".*needs to be a directory.*"):
-        serialize.load_policy(policy, str(dir_nonexistent), venv)
+    with pytest.raises(FileNotFoundError):
+        serialize.load_policy(policy, venv, path=str(dir_nonexistent))
 
 
-def _test_serialize_identity(env_name, model_cfg, tmpdir):
+def _test_serialize_identity(env_name, model_cfg, tmpdir, rng):
     """Test output actions of deserialized policy are same as original."""
-    venv = util.make_vec_env(env_name, n_envs=1, parallel=False)
+    venv = util.make_vec_env(
+        env_name,
+        n_envs=1,
+        parallel=False,
+        rng=rng,
+    )
 
     model_name, model_cls_name = model_cfg
     model_cls = registry.load_attr(model_cls_name)
@@ -81,11 +100,11 @@ def _test_serialize_identity(env_name, model_cfg, tmpdir):
         venv,
         n_timesteps=1000,
         deterministic_policy=True,
-        rng=np.random.RandomState(0),
+        rng=np.random.default_rng(0),
     )
 
     serialize.save_stable_model(types.parse_path(tmpdir), model)
-    loaded = serialize.load_policy(model_name, tmpdir, venv)
+    loaded = serialize.load_policy(model_name, venv, path=tmpdir)
     venv.env_method("seed", 0)
     venv.reset()
     new_rollout = rollout.generate_transitions(
@@ -93,7 +112,7 @@ def _test_serialize_identity(env_name, model_cfg, tmpdir):
         venv,
         n_timesteps=1000,
         deterministic_policy=True,
-        rng=np.random.RandomState(0),
+        rng=np.random.default_rng(0),
     )
 
     assert np.allclose(orig_rollout.acts, new_rollout.acts)
@@ -107,16 +126,21 @@ CONTINUOUS_ONLY_CONFIGS = [cfg for cfg in SB_CONFIGS if cfg[0] in CONTINUOUS_ONL
 
 @pytest.mark.parametrize("env_name", SIMPLE_ENVS)
 @pytest.mark.parametrize("model_cfg", NORMAL_CONFIGS)
-def test_serialize_identity(env_name, model_cfg, tmpdir):
+def test_serialize_identity(env_name, model_cfg, tmpdir, rng):
     """Test output actions of deserialized policy are same as original."""
-    _test_serialize_identity(env_name, model_cfg, tmpdir)
+    _test_serialize_identity(env_name, model_cfg, tmpdir, rng)
 
 
 @pytest.mark.parametrize("env_name", [SIMPLE_CONTINUOUS_ENV])
 @pytest.mark.parametrize("model_cfg", CONTINUOUS_ONLY_CONFIGS)
-def test_serialize_identity_continuous_only(env_name, model_cfg, tmpdir):
+def test_serialize_identity_continuous_only(
+    env_name,
+    model_cfg,
+    tmpdir,
+    rng,
+):
     """Test serialize identity for continuous_only algorithms."""
-    _test_serialize_identity(env_name, model_cfg, tmpdir)
+    _test_serialize_identity(env_name, model_cfg, tmpdir, rng)
 
 
 class ZeroModule(nn.Module):
@@ -163,6 +187,7 @@ def test_normalize_features_extractor(obs_space: gym.Space) -> None:
         obs = th.as_tensor([obs_space.sample()])
         # TODO(juan) the cast below is because preprocess_obs has too general a type.
         #  this should be replaced with an overload or a generic.
+        #  https://github.com/DLR-RM/stable-baselines3/issues/1065
         obs = cast(th.Tensor, preprocessing.preprocess_obs(obs, obs_space))
         assert isinstance(obs, th.Tensor)
         flattened_obs = obs.flatten(1, -1)

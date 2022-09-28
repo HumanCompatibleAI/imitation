@@ -56,7 +56,6 @@ def save_checkpoint(
 
 @train_preference_comparisons_ex.main
 def train_preference_comparisons(
-    _seed: int,
     total_timesteps: int,
     total_comparisons: int,
     num_iterations: int,
@@ -84,7 +83,6 @@ def train_preference_comparisons(
     """Train a reward model using preference comparisons.
 
     Args:
-        _seed: Random seed.
         total_timesteps: number of environment interaction steps
         total_comparisons: number of preferences to gather in total
         num_iterations: number of times to train the agent against the reward model
@@ -148,6 +146,7 @@ def train_preference_comparisons(
         ValueError: Inconsistency between config and deserialized policy normalization.
     """
     custom_logger, log_dir = common.setup_logging()
+    rng = common.make_rng()
 
     with common.make_venv() as venv:
         reward_net = reward.make_reward_net(venv)
@@ -172,7 +171,7 @@ def train_preference_comparisons(
                 reward_fn=reward_net,
                 venv=venv,
                 exploration_frac=exploration_frac,
-                seed=_seed,
+                rng=rng,
                 custom_logger=custom_logger,
                 **trajectory_generator_kwargs,
             )
@@ -186,7 +185,7 @@ def train_preference_comparisons(
                 )
             trajectory_generator = preference_comparisons.TrajectoryDataset(
                 trajectories=types.load_with_rewards(trajectory_path),
-                seed=_seed,
+                rng=rng,
                 custom_logger=custom_logger,
                 **trajectory_generator_kwargs,
             )
@@ -194,7 +193,7 @@ def train_preference_comparisons(
         fragmenter: preference_comparisons.Fragmenter = (
             preference_comparisons.RandomFragmenter(
                 **fragmenter_kwargs,
-                seed=_seed,
+                rng=rng,
                 custom_logger=custom_logger,
             )
         )
@@ -212,19 +211,17 @@ def train_preference_comparisons(
             )
         gatherer = gatherer_cls(
             **gatherer_kwargs,
-            seed=_seed,
+            rng=rng,
             custom_logger=custom_logger,
         )
 
-        loss = preference_comparisons.CrossEntropyRewardLoss(
-            preference_model,
-        )
+        loss = preference_comparisons.CrossEntropyRewardLoss()
 
         reward_trainer = preference_comparisons._make_reward_trainer(
-            reward_net,
+            preference_model,
             loss,
+            rng,
             reward_trainer_kwargs,
-            seed=_seed,
         )
 
         main_trainer = preference_comparisons.PreferenceComparisons(
@@ -240,7 +237,6 @@ def train_preference_comparisons(
             initial_comparison_frac=initial_comparison_frac,
             custom_logger=custom_logger,
             allow_variable_horizon=allow_variable_horizon,
-            seed=_seed,
             query_schedule=query_schedule,
         )
 

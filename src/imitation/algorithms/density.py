@@ -6,7 +6,8 @@ then rewards the agent for following that estimate.
 
 import enum
 import itertools
-from typing import Dict, Iterable, Optional
+from collections.abc import Mapping
+from typing import Dict, Iterable, List, Optional, cast
 
 import numpy as np
 from gym.spaces.utils import flatten
@@ -17,6 +18,7 @@ from imitation.algorithms import base
 from imitation.data import rollout, types, wrappers
 from imitation.rewards import reward_wrapper
 from imitation.util import logger as imit_logger
+from imitation.util import util
 
 
 class DensityType(enum.Enum):
@@ -59,6 +61,7 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
         *,
         demonstrations: Optional[base.AnyTransitions],
         venv: vec_env.VecEnv,
+        rng: np.random.Generator,
         density_type: DensityType = DensityType.STATE_ACTION_DENSITY,
         kernel: str = "gaussian",
         kernel_bandwidth: float = 0.5,
@@ -82,6 +85,7 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
                 any environment interaction to fit the reward model, but we use this
                 to extract the observation and action space, and to train the RL
                 algorithm `rl_algo` (if specified).
+            rng: random state for sampling from demonstrations.
             rl_algo: An RL algorithm to train on the resulting reward model (optional).
             is_stationary: if True, share same density models for all timesteps;
                 if False, use a different density model for each timestep.
@@ -118,6 +122,7 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
         self.standardise = standardise_inputs
         self._scaler = None
         self._density_models = dict()
+        self.rng = rng
 
         self.rl_algo = rl_algo
         self.buffering_wrapper = wrappers.BufferingWrapper(self.venv)
@@ -132,46 +137,64 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
         obs_b: np.ndarray,
         act_b: np.ndarray,
         next_obs_b: Optional[np.ndarray],
-    ) -> None:
-        next_obs_b = next_obs_b or itertools.repeat(None)
-        # TODO(juan) I think this assumes that if next_obs_b is an array,
-        #  it has at least two axes, and zip maps along the first one.
-        #  This is not checked for, and if the array has only one dimension
-        #  it would raise an obscure error within _preprocess_transition.
-        #  _preprocess_transition also requires next_obs to be an ndarray
-        #  that is part of the observation space, so not sure how
-        #  this isn't failing when next_obs_b is None.
-        for obs, act, next_obs in zip(obs_b, act_b, next_obs_b):
+    ) -> Dict[Optional[int], List[np.ndarray]]:
+        if next_obs_b is None and self.density_type == DensityType.STATE_STATE_DENSITY:
+            raise ValueError(
+                "STATE_STATE_DENSITY requires next_obs_b "
+                "to be provided, but it was None",
+            )
+
+        assert act_b.shape[1:] == self.venv.action_space.shape
+        assert obs_b.shape[1:] == self.venv.observation_space.shape
+        assert len(act_b) == len(obs_b)
+        if next_obs_b is not None:
+            assert next_obs_b.shape[1:] == self.venv.observation_space.shape
+            assert len(next_obs_b) == len(obs_b)
+
+        transitions: Dict[Optional[int], List[np.ndarray]] = {}
+        next_obs_b_iterator = next_obs_b or itertools.repeat(None)
+        for obs, act, next_obs in zip(obs_b, act_b, next_obs_b_iterator):
             flat_trans = self._preprocess_transition(obs, act, next_obs)
-            self.transitions.setdefault(None, []).append(flat_trans)
+            transitions.setdefault(None, []).append(flat_trans)
+        return transitions
 
     def set_demonstrations(self, demonstrations: base.AnyTransitions) -> None:
         """Sets the demonstration data."""
-        self.transitions = {}
+        transitions: Dict[Optional[int], List[np.ndarray]] = {}
 
         if isinstance(demonstrations, Iterable):
-            first_item = next(iter(demonstrations))
+            first_item, demonstrations = util.get_first_iter_element(demonstrations)
             if isinstance(first_item, types.Trajectory):
-                # Demonstrations are trajectories.
-                # We have timestep information.
+                # we assume that all elements are also types.Trajectory.
+                # (this means we have timestamp information)
+                # It's not perfectly type safe, but it allows for the flexibility of
+                # using iterables, which is useful for large data structures.
+                demonstrations = cast(Iterable[types.Trajectory], demonstrations)
+
                 for traj in demonstrations:
                     for i, (obs, act, next_obs) in enumerate(
                         zip(traj.obs[:-1], traj.acts, traj.obs[1:]),
                     ):
                         flat_trans = self._preprocess_transition(obs, act, next_obs)
-                        self.transitions.setdefault(i, []).append(flat_trans)
-            else:
-                # Demonstrations are a Torch DataLoader or other Mapping iterable
+                        transitions.setdefault(i, []).append(flat_trans)
+            elif isinstance(first_item, Mapping):
+                # analogous to cast above.
+                demonstrations = cast(Iterable[base.TransitionMapping], demonstrations)
+
                 for batch in demonstrations:
-                    self._set_demo_from_batch(
-                        batch["obs"],
-                        batch["acts"],
-                        batch.get("next_obs"),
+                    transitions.update(
+                        self._set_demo_from_batch(
+                            util.safe_to_numpy(batch["obs"], warn=True),
+                            util.safe_to_numpy(batch["acts"], warn=True),
+                            util.safe_to_numpy(batch.get("next_obs"), warn=True),
+                        ),
                     )
+            else:
+                raise TypeError(
+                    f"Unsupported demonstration type {type(demonstrations)}",
+                )
         elif isinstance(demonstrations, types.TransitionsMinimal):
-            next_obs_b = (
-                demonstrations.next_obs if hasattr(demonstrations, "next_obs") else None
-            )
+            next_obs_b = getattr(demonstrations, "next_obs", None)
             self._set_demo_from_batch(
                 demonstrations.obs,
                 demonstrations.acts,
@@ -180,7 +203,7 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
         else:
             raise TypeError(f"Unsupported demonstration type {type(demonstrations)}")
 
-        self.transitions = {k: np.stack(v, axis=0) for k, v in self.transitions.items()}
+        self.transitions = {k: np.stack(v, axis=0) for k, v in transitions.items()}
 
         if not self.is_stationary and None in self.transitions:
             raise ValueError(
@@ -194,7 +217,7 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
     def train(self):
         """Fits the density model to demonstration data `self.transitions`."""
         # if requested, we'll scale demonstration transitions so that they have
-        # zero mean and unit variance (i.e all components are equally important)
+        # zero mean and unit variance (i.e. all components are equally important)
         self._scaler = preprocessing.StandardScaler(
             with_mean=self.standardise,
             with_std=self.standardise,
@@ -220,7 +243,7 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
         self,
         obs: np.ndarray,
         act: np.ndarray,
-        next_obs: np.ndarray,
+        next_obs: Optional[np.ndarray],
     ) -> np.ndarray:
         """Compute flattened transition on subset specified by `self.density_type`."""
         if self.density_type == DensityType.STATE_DENSITY:
@@ -233,6 +256,7 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
                 ],
             )
         elif self.density_type == DensityType.STATE_STATE_DENSITY:
+            assert next_obs is not None
             return np.concatenate(
                 [
                     flatten(self.venv.observation_space, obs),
@@ -242,10 +266,6 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
         else:
             raise ValueError(f"Unknown density type {self.density_type}")
 
-    # TODO(juan) I opted for renaming the function signature to match the
-    #  rewards.reward_function.RewardFn protocol, but changing the protocol
-    #  or making the arguments positional-only are two other valid approaches
-    #  if the previous names are better suited.
     def __call__(
         self,
         state: np.ndarray,
@@ -288,10 +308,12 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
         assert len(state) == len(action) and len(state) == len(next_state)
         for idx, (obs, act, next_obs) in enumerate(zip(state, action, next_state)):
             flat_trans = self._preprocess_transition(obs, act, next_obs)
+            assert self._scaler is not None
             scaled_padded_trans = self._scaler.transform(flat_trans[np.newaxis])
             if self.is_stationary:
                 rew = self._density_models[None].score(scaled_padded_trans)
             else:
+                assert steps is not None
                 time = steps[idx]
                 if time >= len(self._density_models):
                     # Can't do anything sensible here yet. Correct solution is to use
@@ -318,6 +340,7 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
                 method of the imitation RL model. Refer to Stable Baselines docs for
                 details.
         """
+        assert self.rl_algo is not None
         self.rl_algo.set_env(self.venv_wrapped)
         self.rl_algo.learn(
             n_timesteps,
@@ -346,6 +369,7 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
             self.rl_algo,
             self.venv if true_reward else self.venv_wrapped,
             sample_until=rollout.make_min_episodes(n_trajectories),
+            rng=self.rng,
         )
         # We collect `trajs` above so disregard return value from `pop_trajectories`,
         # but still call it to clear out any saved trajectories.
@@ -356,4 +380,6 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
 
     @property
     def policy(self) -> base_class.BasePolicy:
+        assert self.rl_algo is not None
+        assert self.rl_algo.policy is not None
         return self.rl_algo.policy

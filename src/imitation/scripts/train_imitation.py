@@ -4,7 +4,7 @@ import logging
 import os.path as osp
 import pathlib
 import warnings
-from typing import Any, List, Mapping, Optional, Sequence, Type, cast
+from typing import Any, Mapping, Optional, Sequence, Type, cast
 
 from sacred.observers import FileStorageObserver
 from stable_baselines3.common import policies, utils, vec_env
@@ -12,8 +12,7 @@ from stable_baselines3.common import policies, utils, vec_env
 from imitation.algorithms import bc as bc_algorithm
 from imitation.algorithms.dagger import SimpleDAggerTrainer
 from imitation.data import rollout, types
-from imitation.policies import serialize
-from imitation.scripts.common import common, demonstrations, train
+from imitation.scripts.common import common, demonstrations, expert, train
 from imitation.scripts.config.train_imitation import train_imitation_ex
 
 logger = logging.getLogger(__name__)
@@ -64,43 +63,6 @@ def make_policy(
     return policy
 
 
-@train_imitation_ex.capture(prefix="dagger")
-def load_expert_policy(
-    venv: vec_env.VecEnv,
-    expert_policy_type: Optional[str],
-    expert_policy_path: Optional[str],
-) -> policies.BasePolicy:
-    """Loads expert policy from `expert_policy_path`.
-
-    Args:
-        venv: Vectorized environment the policy will be operating in.
-        expert_policy_type: Either 'ppo', 'zero', or 'random'. This is used as the
-            `policy_type` argument to `imitation.policies.serialize.load_policy`.
-        expert_policy_path: Either a path to a policy directory containing model.zip
-            (and optionally, vec_normalize.pkl) or None if policy type is 'zero' or
-            'random'. This is used as the `policy_path` argument to
-            `imitation.policies.serialize.load_policy`.
-
-    Returns:
-        The deserialized expert policy from `expert_policy_path`.
-
-    Raises:
-        ValueError: `expert_policy_path` is None.
-        TypeError: The policy loaded from `expert_policy_path` is not a SB3 policy.
-    """
-    if expert_policy_path is None:
-        raise ValueError("expert_policy_path cannot be None")
-
-    if expert_policy_type is None:
-        raise ValueError("expert_policy_type cannot be None")
-
-    # TODO(shwang): Add support for directly loading a BasePolicy `*.th` file.
-    expert_policy = serialize.load_policy(expert_policy_type, expert_policy_path, venv)
-    if not isinstance(expert_policy, policies.BasePolicy):
-        raise TypeError(f"Unexpected type for expert_policy: {type(expert_policy)}")
-    return expert_policy
-
-
 @train_imitation_ex.capture
 def train_imitation(
     _run,
@@ -124,6 +86,7 @@ def train_imitation(
     Returns:
         Statistics for rollouts from the trained policy and demonstration data.
     """
+    rng = common.make_rng()
     custom_logger, log_dir = common.setup_logging()
 
     with common.make_venv() as venv:
@@ -131,7 +94,7 @@ def train_imitation(
 
         expert_trajs: Optional[Sequence[types.Trajectory]] = None
         if not use_dagger or dagger["use_offline_rollouts"]:
-            expert_trajs = demonstrations.load_expert_trajs()
+            expert_trajs = demonstrations.get_expert_trajectories()
 
         bc_trainer = bc_algorithm.BC(
             observation_space=venv.observation_space,
@@ -139,6 +102,7 @@ def train_imitation(
             policy=imit_policy,
             demonstrations=expert_trajs,
             custom_logger=custom_logger,
+            rng=rng,
             **bc_kwargs,
         )
         bc_train_kwargs = dict(log_rollouts_venv=venv, **bc_train_kwargs)
@@ -149,7 +113,7 @@ def train_imitation(
                 bc_train_kwargs["n_batches"] = 50_000
 
         if use_dagger:
-            expert_policy = load_expert_policy(venv=venv)
+            expert_policy = expert.get_expert_policy(venv)
             model = SimpleDAggerTrainer(
                 venv=venv,
                 scratch_dir=osp.join(log_dir, "scratch"),
@@ -157,6 +121,7 @@ def train_imitation(
                 expert_policy=expert_policy,
                 custom_logger=custom_logger,
                 bc_trainer=bc_trainer,
+                rng=rng,
             )
             model.train(
                 total_timesteps=int(dagger["total_timesteps"]),
@@ -172,23 +137,15 @@ def train_imitation(
 
         imit_stats = train.eval_policy(imit_policy, venv)
 
-    # TODO(juan): I'm not super happy with this solution for the type system.
-    #  is model._all_demos always Sequence[TrajectoryWithRew]? We can change
-    #  the type in the class definition. Same goes for demonstrations.load_expert_trajs.
-    #  using assert doesn't work because we'd have to loop over all the trajectories
-    #  and check that each one is a TrajectoryWithRew, which seems inefficient
-    #  just for adding type annotations.
-    trajectories: List[types.TrajectoryWithRew]
-    if use_dagger:
-        trajectories = cast(List[types.TrajectoryWithRew], model._all_demos)
-    else:
-        assert expert_trajs is not None
-        trajectories = cast(List[types.TrajectoryWithRew], expert_trajs)
-
-    return {
-        "imit_stats": imit_stats,
-        "expert_stats": rollout.rollout_stats(trajectories),
-    }
+    stats = {"imit_stats": imit_stats}
+    trajectories = model._all_demos if use_dagger else expert_trajs
+    assert trajectories is not None
+    if all(isinstance(t, types.TrajectoryWithRew) for t in trajectories):
+        expert_stats = rollout.rollout_stats(
+            cast(Sequence[types.TrajectoryWithRew], trajectories),
+        )
+        stats["expert_stats"] = expert_stats
+    return stats
 
 
 @train_imitation_ex.command
