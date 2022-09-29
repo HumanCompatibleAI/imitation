@@ -4,8 +4,8 @@ Loading Experts
 
 The algorithms in the imitation library are all about learning from some kind of
 expert.
-In many cases it is practical that this expert is a piece of software itself.
-The library natively supports experts trained using the
+In many cases this expert is a piece of software itself.
+The `imitation` library natively supports experts trained using the
 `stable-baselines3 <https://github.com/DLR-RM/stable-baselines3>`_ reinforcement
 learning library.
 
