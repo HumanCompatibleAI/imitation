@@ -140,8 +140,14 @@ commands:
       - run:
           name: install python and binary dependencies
           command: |
-            choco install --side-by-side -y python --version 3.8
+            choco install --side-by-side -y python --version=3.8.10
             choco install -y ffmpeg
+          shell: powershell.exe
+
+      - run:
+          name: upgrade pip
+          command: |
+              python -m pip install --upgrade pip
           shell: powershell.exe
 
       - run:
