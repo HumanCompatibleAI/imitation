@@ -208,7 +208,7 @@ def test_smoke_bc_creation(
     train_args=bc_train_args,
     expert_data_type=expert_data_types,
 )
-@hypothesis.settings(deadline=10000, max_examples=50)
+@hypothesis.settings(deadline=20000, max_examples=50)
 def test_smoke_bc_training(
     env_name,
     bc_args,
