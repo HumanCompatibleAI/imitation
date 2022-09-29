@@ -10,7 +10,7 @@ The library natively supports experts trained using the
 learning library.
 
 For example, BC and DAgger can learn from an expert policy and the command line
-interface to AIRL/GAIL allows to specify an expert to sample demonstrations from.
+interface of AIRL/GAIL allows one to specify an expert to sample demonstrations from.
 
 In the :doc:`../getting-started/first-steps` tutorial, we first train an expert policy
 using the stable-baselines3 library and then imitate it's behavior using
@@ -37,7 +37,7 @@ The path is specified by `path` in the `loader_kwargs` and it should either poin
 to a zip file containing the policy or a directory containing a `model.zip` file that
 was created by stable-baselines3.
 
-In command line interface the `expert.policy_type` and `expert.loader_kwargs`
+In the command line interface the `expert.policy_type` and `expert.loader_kwargs`
 parameters define the expert policy to load.
 For example, to train AIRL on a PPO expert, you would use the following command:
 
