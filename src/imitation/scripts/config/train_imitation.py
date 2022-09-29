@@ -3,7 +3,6 @@
 import sacred
 import torch as th
 
-from imitation.data import types
 from imitation.scripts.common import common
 from imitation.scripts.common import demonstrations as demos_common
 from imitation.scripts.common import expert, train

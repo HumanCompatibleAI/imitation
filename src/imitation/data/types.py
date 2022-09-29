@@ -121,11 +121,6 @@ def parse_optional_path(
 
     Returns:
         A `pathlib.Path` object, or None if `path` is None.
-
-    Raises:
-        ValueError: If `allow_relative` is False and the path is not absolute.
-        ValueError: If `base_directory` is specified and `allow_relative` is
-            False.
     """
     if path is None:
         return None

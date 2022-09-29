@@ -20,7 +20,8 @@ def update_traj_file_in_place(path_str: str, /) -> None:
     The new data is saved as `Sequence[imitation.types.TrajectoryWithRew]`.
 
     Args:
-        path: Path to a pickle file containing `Sequence[imitation.types.Trajectory]`
+        path_str: Path to a pickle file containing
+            `Sequence[imitation.types.Trajectory]`
             or `Sequence[imitation.old_types.TrajectoryWithRew]`.
     """
     path = types.parse_path(path_str)
