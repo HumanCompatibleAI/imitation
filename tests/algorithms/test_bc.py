@@ -124,7 +124,8 @@ def make_bc_train_args(
 # Note: we wrap the env_names strategy in a st.shared to ensure that the same env name
 # is chosen for BC creation, expert data loading, and policy evaluation.
 env_names = st.shared(
-    st.sampled_from(["Pendulum-v1", "seals/CartPole-v0"]), key="env_name"
+    st.sampled_from(["Pendulum-v1", "seals/CartPole-v0"]),
+    key="env_name",
 )
 env_numbers = st.integers(min_value=1, max_value=10)
 envs = st.builds(
@@ -134,7 +135,9 @@ envs = st.builds(
 )
 rollout_envs = st.builds(
     lambda name, num: util.make_vec_env(
-        name, num, post_wrappers=[lambda e, _: RolloutInfoWrapper(e)]
+        name,
+        num,
+        post_wrappers=[lambda e, _: RolloutInfoWrapper(e)],
     ),
     name=env_names,
     num=env_numbers,
