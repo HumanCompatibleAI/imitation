@@ -18,7 +18,6 @@ def parallel(
     sacred_ex_name: str,
     run_name: str,
     num_samples: int,
-    n_seeds: int,
     search_space: Mapping[str, Any],
     base_named_configs: Sequence[str],
     base_config_updates: Mapping[str, Any],
@@ -27,6 +26,7 @@ def parallel(
     local_dir: Optional[str],
     upload_dir: Optional[str],
     eval_best_trial: bool = False,
+    eval_trial_seeds: int = 5,
 ) -> None:
     """Parallelize multiple runs of another Sacred Experiment using Ray Tune.
 
@@ -108,22 +108,28 @@ def parallel(
             local_dir=local_dir,
             resources_per_trial=resources_per_trial,
             sync_config=ray.tune.syncer.SyncConfig(upload_dir=upload_dir),
-            metric="mean_return",
-            mode="max",
+            # metric="mean_return",
+            # mode="max",
         )
         if eval_best_trial:
-            best_config = result.get_best_config(metric="mean_return", mode="max")
-            best_config["config_updates"].update(
-                seed=ray.tune.grid_search(list(range(n_seeds))),
-            )
-            ray.tune.run(
-                trainable,
-                config={
-                    "named_configs": best_config["named_configs"],
-                    "config_updates": best_config["config_updates"],
-                },
-                name=run_name + "_best_hp_eval",
-            )
+            grps = result.results_df.groupby("config.named_configs")
+            idx = grps["mean_return"].transform(max) == result.results_df["mean_return"]
+            best_config_df = result.results_df[idx]
+            for trial_id in best_config_df["trial_id"]:
+                trial = [trial for trial in result.trials if trial_id in str(trial)][0]
+                best_config = trial.config
+                # best_config = result.get_best_config(metric="mean_return", mode="max")
+                best_config["config_updates"].update(
+                    seed=ray.tune.grid_search(list(range(100, 100 + eval_trial_seeds))),
+                )
+                ray.tune.run(
+                    trainable,
+                    config={
+                        "named_configs": best_config["named_configs"],
+                        "config_updates": best_config["config_updates"],
+                    },
+                    name=run_name + "_best_hp_eval",
+                )
     finally:
         ray.shutdown()
 

@@ -155,12 +155,6 @@ def half_cheetah():
 
 @train_adversarial_ex.named_config
 def seals_half_cheetah():
-    locals().update(**CHEETAH_SHARED_LOCALS)
-    common = dict(env_name="seals/HalfCheetah-v0")
-
-
-@train_adversarial_ex.named_config
-def seals_half_cheetah():
     # locals().update(**MUJOCO_SHARED_LOCALS)
     common = dict(env_name="seals/HalfCheetah-v0")
     demonstrations = dict(

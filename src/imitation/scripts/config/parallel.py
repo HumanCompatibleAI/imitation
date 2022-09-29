@@ -34,14 +34,15 @@ def config():
 
     local_dir = None  # `local_dir` arg for `ray.tune.run`
     upload_dir = None  # `upload_dir` arg for `ray.tune.run`
-    n_seeds = 5  # Number of seeds to search over by default
+    n_seeds = 1  # Number of seeds to search over by default
+    eval_best_trial = False
+    eval_trial_seeds = 5  # Number of seeds to search over by default
     num_samples = 1  # Number of samples per grid search configuration
 
-    # @parallel_ex.config
-    # def seeds(n_seeds):
-    #     search_space = {
-    #         "config_updates": {"seed": tune.grid_search(list(range(n_seeds)))}
-    #     }
+
+@parallel_ex.config
+def seeds(n_seeds):
+    search_space = {"config_updates": {"seed": tune.grid_search(list(range(n_seeds)))}}
 
 
 @parallel_ex.named_config
