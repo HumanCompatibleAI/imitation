@@ -276,7 +276,7 @@ jobs:
 
       - run:
           name: mypy
-          command: mypy --version && mypy ${SRC_FILES[@]} --exclude "${EXCLUDE_MYPY}"
+          command: mypy --version && mypy ${SRC_FILES[@]} --exclude "${EXCLUDE_MYPY}" --follow-imports=silent --show-error-codes
 
   unit-test-linux:
     executor: unit-test-linux
