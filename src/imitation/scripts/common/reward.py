@@ -156,11 +156,7 @@ def make_reward_net(
         )
 
         if add_std_alpha is not None:
-            if not isinstance(reward_net, reward_nets.RewardNetWithVariance):
-                raise ValueError(
-                    "add_std_alpha is only supported for "
-                    "reward nets with variance tracking.",
-                )
+            assert isinstance(reward_net, reward_nets.RewardNetWithVariance)
             reward_net = reward_nets.AddSTDRewardWrapper(
                 reward_net,
                 default_alpha=add_std_alpha,
