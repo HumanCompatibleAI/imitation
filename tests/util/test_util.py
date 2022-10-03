@@ -93,6 +93,13 @@ def test_safe_to_tensor():
         assert not np.may_share_memory(numpy, torch)
 
 
+def test_safe_to_numpy():
+    tensor = th.tensor([1, 2, 3])
+    numpy = util.safe_to_numpy(tensor)
+    assert (numpy == tensor.numpy()).all()
+    assert util.safe_to_numpy(None) is None
+
+
 def test_tensor_iter_norm():
     # vector is [1,0,1,1,-5,-6]; its 2-norm is 8, and 1-norm is 14
     tensor_list = [
