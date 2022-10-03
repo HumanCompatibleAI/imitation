@@ -251,27 +251,17 @@ def test_unwrap_traj(rng):
 def test_unwrap_traj_raises_no_infos():
     """Check that unwrap_traj raises ValueError if no infos in trajectory."""
     with pytest.raises(ValueError, match="Trajectory must have infos to unwrap"):
+        acts = np.array([0])
+        obs = np.array([[0, 0]])
+        rews = np.array([0.0])
         rollout.unwrap_traj(
             types.TrajectoryWithRew(
-                acts=np.array(
-                    [
-                        0,
-                    ]
-                ),
-                obs=np.array(
-                    [
-                        0,
-                        0,
-                    ]
-                ),
+                acts=acts,
+                obs=obs,
                 terminal=False,
-                rews=np.array(
-                    [
-                        0.0,
-                    ]
-                ),
+                rews=rews,
                 infos=None,
-            )
+            ),
         )
 
 

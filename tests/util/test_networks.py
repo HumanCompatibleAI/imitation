@@ -246,7 +246,8 @@ def test_build_mlp_norm_training(init_kwargs) -> None:
 def test_build_mlp_raises_on_invalid_normalize_input_layer() -> None:
     """Test that `networks.build_mlp()` raises on invalid input layer."""
     with pytest.raises(
-        ValueError, match="normalize_input_layer.*not a valid normalization layer.*"
+        ValueError,
+        match="normalize_input_layer.*not a valid normalization layer.*",
     ):
         networks.build_mlp(
             in_size=1,

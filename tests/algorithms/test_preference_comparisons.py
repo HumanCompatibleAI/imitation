@@ -436,7 +436,8 @@ def test_synthetic_gatherer_raises(
     random_fragmenter,
 ):
     with pytest.raises(
-        ValueError, match="If `sample` is True, then `rng` must be provided"
+        ValueError,
+        match="If `sample` is True, then `rng` must be provided",
     ):
         preference_comparisons.SyntheticGatherer(
             temperature=0,
