@@ -1,4 +1,4 @@
 [report]
 exclude_lines =
-    pragma: not covered
+    pragma: no cover
     @overload
