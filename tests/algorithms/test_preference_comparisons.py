@@ -432,10 +432,12 @@ def test_synthetic_gatherer_deterministic(
 
 
 def test_synthetic_gatherer_raises(
-        agent_trainer,
-        random_fragmenter,
+    agent_trainer,
+    random_fragmenter,
 ):
-    with pytest.raises(ValueError, match="If `sample` is True, then `rng` must be provided"):
+    with pytest.raises(
+        ValueError, match="If `sample` is True, then `rng` must be provided"
+    ):
         preference_comparisons.SyntheticGatherer(
             temperature=0,
             sample=True,
