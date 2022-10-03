@@ -146,10 +146,5 @@ def custom_logger(tmpdir: str) -> logger.HierarchicalLogger:
 
 
 @pytest.fixture()
-def rng_fixed() -> np.random.Generator:
-    return np.random.default_rng(0)
-
-
-@pytest.fixture()
 def rng() -> np.random.Generator:
     return np.random.default_rng()
