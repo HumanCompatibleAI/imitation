@@ -1,6 +1,7 @@
 """Tests for `imitation.algorithms.density_baselines`."""
 
 from typing import Sequence
+from dataclasses import asdict
 
 import numpy as np
 import pytest
@@ -103,3 +104,56 @@ def test_density_trainer_smoke(
     density_trainer.train()
     density_trainer.train_policy(n_timesteps=2)
     density_trainer.test_policy(n_trajectories=2)
+
+
+def test_density_with_other_trajectory_types(
+        pendulum_expert_trajectories: Sequence[TrajectoryWithRew],
+        pendulum_venv,
+        rng,
+):
+    rl_algo = stable_baselines3.PPO(policies.ActorCriticPolicy, pendulum_venv)
+    rollouts = pendulum_expert_trajectories[:2]
+    transitions = rollout.flatten_trajectories_with_rew(rollouts)
+    transitions_mappings = [asdict(transitions),]
+
+    minimal_transitions = types.TransitionsMinimal(
+        obs=transitions.obs,
+        acts=transitions.acts,
+        infos=transitions.infos,
+    )
+    DensityAlgorithm(
+        demonstrations=transitions_mappings,
+        venv=pendulum_venv,
+        rl_algo=rl_algo,
+        rng=rng,
+    )
+
+    DensityAlgorithm(
+        demonstrations=minimal_transitions,
+        venv=pendulum_venv,
+        rl_algo=rl_algo,
+        rng=rng,
+    )
+
+
+def test_density_trainer_raises(
+        pendulum_venv,
+        rng,
+):
+    rl_algo = stable_baselines3.PPO(policies.ActorCriticPolicy, pendulum_venv)
+    density_trainer = DensityAlgorithm(
+        venv=pendulum_venv,
+        rl_algo=rl_algo,
+        rng=rng,
+        demonstrations=None,
+        density_type=DensityType.STATE_STATE_DENSITY,
+    )
+    with pytest.raises(ValueError, match="STATE_STATE_DENSITY requires next_obs_b"):
+        density_trainer._get_demo_from_batch(
+            np.zeros((1, 3)),
+            np.zeros((1, 1)),
+            None,
+        )
+
+    with pytest.raises(TypeError, match="Unsupported demonstration type"):
+        density_trainer.set_demonstrations("foo")
