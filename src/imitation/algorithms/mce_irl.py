@@ -177,7 +177,7 @@ class TabularPolicy(policies.BasePolicy):
 
     def _predict(self, observation: th.Tensor, deterministic: bool = False):
         raise NotImplementedError(  # pragma: no cover
-            "Should never be called as predict overridden."
+            "Should never be called as predict overridden.",
         )
 
     def forward(  # type: ignore[override]
