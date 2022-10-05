@@ -7,90 +7,14 @@ import hypothesis
 import hypothesis.strategies as st
 import pytest
 import torch as th
-from conftest import get_expert_trajectories
 from stable_baselines3.common import evaluation, vec_env
-from torch.utils import data as th_data
 
 from imitation.algorithms import bc
-from imitation.data import rollout, types
+from imitation.data import rollout
 from imitation.data.wrappers import RolloutInfoWrapper
-from imitation.testing import reward_improvement
+from imitation.testing import failing_data_loader, reward_improvement
+from imitation.testing.expert_trajectories import make_expert_transition_loader
 from imitation.util import logger, util
-
-#########
-# UTILS
-#########
-
-
-def make_expert_trajectory_loader(
-    pytestconfig,
-    batch_size,
-    expert_data_type,
-    env_name: str,
-    max_num_trajectories: int = -1,
-):
-    trajectories = get_expert_trajectories(pytestconfig, env_name)
-    transitions = rollout.flatten_trajectories(
-        trajectories[: max(max_num_trajectories, batch_size)],
-    )
-    if expert_data_type == "data_loader":
-        return th_data.DataLoader(
-            transitions,
-            batch_size=batch_size,
-            shuffle=True,
-            drop_last=True,
-            collate_fn=types.transitions_collate_fn,
-        )
-    elif expert_data_type == "ducktyped_data_loader":
-
-        class DucktypedDataset:
-            """Used to check that any iterator over Dict[str, Tensor] works with BC."""
-
-            def __init__(self, transitions: types.TransitionsMinimal, batch_size: int):
-                """Builds `DucktypedDataset`."""
-                self.trans = transitions
-                self.batch_size = batch_size
-
-            def __iter__(self):
-                for start in range(
-                    0,
-                    len(self.trans) - self.batch_size,
-                    self.batch_size,
-                ):
-                    end = start + self.batch_size
-                    d = dict(
-                        obs=self.trans.obs[start:end],
-                        acts=self.trans.acts[start:end],
-                    )
-                    d = {k: util.safe_to_tensor(v) for k, v in d.items()}
-                    yield d
-
-        return DucktypedDataset(transitions, batch_size)
-    elif expert_data_type == "transitions":
-        return transitions
-    else:  # pragma: no cover
-        raise ValueError(expert_data_type)
-
-
-@pytest.fixture
-def cartpole_bc_trainer(
-    pytestconfig,
-    cartpole_venv,
-    cartpole_expert_trajectories,
-):
-    return bc.BC(
-        observation_space=cartpole_venv.observation_space,
-        action_space=cartpole_venv.action_space,
-        batch_size=50,
-        demonstrations=make_expert_trajectory_loader(
-            pytestconfig,
-            50,
-            "transitions",
-            "seals/CartPole-v0",
-        ),
-        custom_logger=None,
-    )
-
 
 ########################
 # HYPOTHESIS STRATEGIES
@@ -193,11 +117,12 @@ def test_smoke_bc_creation(
 ):
     bc.BC(
         **bc_args,
-        demonstrations=make_expert_trajectory_loader(
-            pytestconfig,
+        demonstrations=make_expert_transition_loader(
+            pytestconfig.cache.makedir("experts"),
             bc_args["batch_size"],
             expert_data_type,
             env_name,
+            num_trajectories=60,
         ),
     )
 
@@ -219,12 +144,12 @@ def test_smoke_bc_training(
     # GIVEN
     trainer = bc.BC(
         **bc_args,
-        demonstrations=make_expert_trajectory_loader(
-            pytestconfig,
+        demonstrations=make_expert_transition_loader(
+            pytestconfig.cache.makedir("experts"),
             bc_args["batch_size"],
             expert_data_type,
             env_name,
-            max_num_trajectories=3,  # Only use 3 trajectories to speed up the test
+            num_trajectories=3,  # Only use 3 trajectories to speed up the test
         ),
     )
     # WHEN
@@ -314,27 +239,6 @@ def test_that_wrong_training_duration_specification_raises_error(
         cartpole_bc_trainer.train(**duration_args)
 
 
-class _DataLoaderThatFailsOnNthIter:
-    """A dummy DataLoader stops to yield after a number of calls to `__iter__`."""
-
-    def __init__(self, dummy_yield_value: dict, no_yield_after_iter: int = 1):
-        """Builds dummy data loader.
-
-        Args:
-            dummy_yield_value: The value to yield on each call.
-            no_yield_after_iter: `__iter__` will raise `StopIteration` after
-                this many calls.
-        """
-        self.iter_count = 0
-        self.dummy_yield_value = dummy_yield_value
-        self.no_yield_after_iter = no_yield_after_iter
-
-    def __iter__(self):
-        if self.iter_count < self.no_yield_after_iter:
-            yield self.dummy_yield_value
-        self.iter_count += 1
-
-
 @pytest.mark.parametrize("no_yield_after_iter", [0, 1, 5])
 def test_that_bc_raises_error_when_data_loader_is_empty(
     cartpole_venv: vec_env.VecEnv,
@@ -356,7 +260,7 @@ def test_that_bc_raises_error_when_data_loader_is_empty(
     trans = rollout.flatten_trajectories(cartpole_expert_trajectories)
     dummy_yield_value = dataclasses.asdict(trans[:batch_size])
 
-    bad_data_loader = _DataLoaderThatFailsOnNthIter(
+    bad_data_loader = failing_data_loader.DataLoaderThatFailsOnNthIter(
         dummy_yield_value=dummy_yield_value,
         no_yield_after_iter=no_yield_after_iter,
     )
