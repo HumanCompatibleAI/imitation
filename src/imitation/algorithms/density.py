@@ -152,7 +152,9 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
             assert len(next_obs_b) == len(obs_b)
 
         transitions: Dict[Optional[int], List[np.ndarray]] = {}
-        next_obs_b_iterator = next_obs_b if next_obs_b is not None else itertools.repeat(None)
+        next_obs_b_iterator = (
+            next_obs_b if next_obs_b is not None else itertools.repeat(None)
+        )
         for obs, act, next_obs in zip(obs_b, act_b, next_obs_b_iterator):
             flat_trans = self._preprocess_transition(obs, act, next_obs)
             transitions.setdefault(None, []).append(flat_trans)

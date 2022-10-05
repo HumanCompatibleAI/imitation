@@ -1,7 +1,7 @@
 """Tests for `imitation.algorithms.density_baselines`."""
 
-from typing import Sequence
 from dataclasses import asdict
+from typing import Sequence
 
 import numpy as np
 import pytest
@@ -107,14 +107,16 @@ def test_density_trainer_smoke(
 
 
 def test_density_with_other_trajectory_types(
-        pendulum_expert_trajectories: Sequence[TrajectoryWithRew],
-        pendulum_venv,
-        rng,
+    pendulum_expert_trajectories: Sequence[TrajectoryWithRew],
+    pendulum_venv,
+    rng,
 ):
     rl_algo = stable_baselines3.PPO(policies.ActorCriticPolicy, pendulum_venv)
     rollouts = pendulum_expert_trajectories[:2]
     transitions = rollout.flatten_trajectories_with_rew(rollouts)
-    transitions_mappings = [asdict(transitions),]
+    transitions_mappings = [
+        asdict(transitions),
+    ]
 
     minimal_transitions = types.TransitionsMinimal(
         obs=transitions.obs,
@@ -137,8 +139,8 @@ def test_density_with_other_trajectory_types(
 
 
 def test_density_trainer_raises(
-        pendulum_venv,
-        rng,
+    pendulum_venv,
+    rng,
 ):
     rl_algo = stable_baselines3.PPO(policies.ActorCriticPolicy, pendulum_venv)
     density_trainer = DensityAlgorithm(

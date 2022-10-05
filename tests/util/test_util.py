@@ -47,7 +47,7 @@ def test_get_first_iter_element(input_seq):
     assert input_seq is new_iterable
 
     an_iterator = (x for x in input_seq)
-    first_element, new_iterable = util.get_first_iter_element(input_seq)
+    first_element, new_iterable = util.get_first_iter_element(an_iterator)
     assert first_element == input_seq[0]
     assert list(an_iterator) == input_seq
     assert list(an_iterator) == []
