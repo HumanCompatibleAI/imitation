@@ -155,6 +155,19 @@ def seals_walker():
     common = dict(env_name="seals/Walker2d-v0")
 
 
+# Procgen configs
+
+
+@train_rl_ex.named_config
+def coinrun():
+    common = dict(env_name="procgen:procgen-coinrun-v0")
+
+
+@train_rl_ex.named_config
+def maze():
+    common = dict(env_name="procgen:procgen-maze-v0")
+
+
 # Debug configs
 
 

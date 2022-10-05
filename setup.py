@@ -14,11 +14,12 @@ if TYPE_CHECKING:
 IS_NOT_WINDOWS = os.name != "nt"
 
 PARALLEL_REQUIRE = ["ray[debug,tune]~=2.0.0"]
-ATARI_REQUIRE = [
+IMAGE_ENV_REQUIRE = [
     "opencv-python",
     "ale-py==0.7.4",
     "pillow",
     "autorom[accept-rom-license]~=0.4.2",
+    "procgen==0.10.4",
 ]
 PYTYPE = ["pytype==2022.7.26"] if IS_NOT_WINDOWS else []
 if IS_NOT_WINDOWS:
@@ -68,7 +69,7 @@ TESTS_REQUIRE = (
         "setuptools_scm~=7.0.5",
     ]
     + PARALLEL_REQUIRE
-    + ATARI_REQUIRE
+    + IMAGE_ENV_REQUIRE
     + PYTYPE
 )
 DOCS_REQUIRE = [
@@ -233,7 +234,7 @@ setup(
         "mujoco": [
             "gym[classic_control,mujoco]" + GYM_VERSION_SPECIFIER,
         ],
-        "atari": ATARI_REQUIRE,
+        "image_envs": IMAGE_ENV_REQUIRE,
     },
     entry_points={
         "console_scripts": [
