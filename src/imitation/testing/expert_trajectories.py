@@ -67,7 +67,8 @@ def lazy_generate_expert_trajectories(
 
     trajectories_path = environment_cache_path / "rollout.npz"
 
-    with FileLock(environment_cache_path / "rollout.npz.lock"):
+    # Note: we cast to str here because FileLock doesn't support pathlib.Path.
+    with FileLock(str(environment_cache_path / "rollout.npz.lock")):
         try:
             trajectories = types.load_with_rewards(trajectories_path)
         except (FileNotFoundError, pickle.PickleError) as e:  # pragma: no cover
