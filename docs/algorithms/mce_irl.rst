@@ -38,7 +38,7 @@ Detailed example notebook: :doc:`../tutorials/6_train_mce`
     _, om = mce_occupancy_measures(env_single, pi=pi)
 
     reward_net = reward_nets.BasicRewardNet(
-        env_single.pomdp_observation_space,
+        env_single.observation_space,
         env_single.action_space,
         hid_sizes=[256],
         use_action=False,
