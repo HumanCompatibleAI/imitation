@@ -27,7 +27,7 @@ def generate_expert_trajectories(
 
     Args:
         env_id: The environment to generate trajectories for.
-        num_trajectories: The number of episodes to generate.
+        num_trajectories: The number of trajectories to generate.
 
     Returns:
         A list of trajectories with rewards.
