@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 import torch as th
 from seals import base_envs as envs
-from seals.diagnostics import imitation_examples as imit_envs
+from seals.diagnostics import random_trans
 from stable_baselines3.common import vec_env
 
 from imitation.algorithms import base
@@ -52,7 +52,7 @@ def test_random_mdp():
         horizon = 5 * (i + 1)
         random_obs = (i % 2) == 0
         obs_dim = (i * 3 + 4) ** 2 + i
-        mdp = imit_envs.RandomMDP(
+        mdp = random_trans.RandomTransitionEnv(
             n_states=n_states,
             n_actions=n_actions,
             branch_factor=branch_factor,
@@ -307,7 +307,7 @@ def test_tabular_policy_randomness():
 
 
 def test_mce_irl_demo_formats():
-    mdp = imit_envs.RandomMDP(
+    mdp = random_trans.RandomTransitionEnv(
         n_states=5,
         n_actions=3,
         branch_factor=2,
