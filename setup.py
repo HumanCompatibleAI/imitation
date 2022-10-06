@@ -72,7 +72,6 @@ DOCS_REQUIRE = [
     "sphinx-github-changelog~=1.2.0",
     "myst-nb==0.16.0",
     "ipykernel~=6.15.2",
-    "seals==0.1.2",
 ] + ATARI_REQUIRE
 
 
@@ -198,9 +197,7 @@ setup(
         "torch>=1.4.0",
         "tqdm",
         "scikit-learn>=0.21.2",
-        "seals@git+"
-        "https://github.com/HumanCompatibleAI/seals.git"
-        "@cf97099cee047b26bb643dc6ab684aca9bcd83b2",
+        "seals==0.1.4",
         STABLE_BASELINES3,
         # TODO(adam) switch to upstream release if they make it
         #  See https://github.com/IDSIA/sacred/issues/879
