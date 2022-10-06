@@ -46,11 +46,16 @@ def test_get_first_iter_element(input_seq):
     assert first_element == input_seq[0]
     assert input_seq is new_iterable
 
-    an_iterator = (x for x in input_seq)
-    first_element, new_iterable = util.get_first_iter_element(an_iterator)
+    def generator_fn():
+        for x in input_seq:
+            yield x
+
+    generator = generator_fn()
+    assert generator == iter(generator)
+    first_element, new_iterable = util.get_first_iter_element(generator)
     assert first_element == input_seq[0]
-    assert list(an_iterator) == input_seq
-    assert list(an_iterator) == []
+    assert list(new_iterable) == input_seq
+    assert list(new_iterable) == []
 
 
 @given(
