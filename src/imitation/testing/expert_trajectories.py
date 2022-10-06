@@ -23,7 +23,7 @@ def generate_expert_trajectories(
 ) -> Sequence[types.TrajectoryWithRew]:
     """Generate expert trajectories for the given environment.
 
-    Note: will just pull a pretrained policy from the huggingface model hub.
+    Note: will just pull a pretrained policy from the Hugging Face model hub.
 
     Args:
         env_id: The environment to generate trajectories for.
