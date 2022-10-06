@@ -80,7 +80,7 @@ def lazy_generate_expert_trajectories(
     if len(trajectories) >= num_trajectories:
         return trajectories[:num_trajectories]
     else:
-        # If it is not enough, just throw clear the cache and generate more.
+        # If it is not enough, just throw away the cache and generate more.
         trajectories_path.unlink()
         return lazy_generate_expert_trajectories(cache_path, env_id, num_trajectories)
 
@@ -92,7 +92,7 @@ def make_expert_transition_loader(
     env_name: str,
     num_trajectories: int = 1,
 ):
-    """Creates different kinds of pytorch data loaders for expert transitions.
+    """Creates different kinds of PyTorch data loaders for expert transitions.
 
     Args:
         cache_dir: The directory to use for caching the expert trajectories.
@@ -164,4 +164,4 @@ def make_expert_transition_loader(
     elif expert_data_type == "transitions":
         return transitions
     else:  # pragma: no cover
-        raise ValueError(expert_data_type)
+        raise ValueError(f"Unexpected data type '{expert_data_type}'")
