@@ -2,7 +2,6 @@
 import math
 import pathlib
 import pickle
-import traceback
 import warnings
 from os import PathLike
 from pathlib import Path
@@ -71,10 +70,15 @@ def lazy_generate_expert_trajectories(
     with FileLock(environment_cache_path / "rollout.npz.lock"):
         try:
             trajectories = types.load_with_rewards(trajectories_path)
-        except (FileNotFoundError, pickle.PickleError):  # pragma: no cover
+        except (FileNotFoundError, pickle.PickleError) as e:  # pragma: no cover
+            generation_reason = (
+                "the cache is cold"
+                if isinstance(e, FileNotFoundError)
+                else "trajectory file format in the cache is outdated"
+            )
             warnings.warn(
-                "Recomputing expert trajectories due to the following error when "
-                "trying to load them:\n" + traceback.format_exc(),
+                f"Generating expert trajectories for {env_id} because "
+                f"{generation_reason}.",
             )
             trajectories = generate_expert_trajectories(env_id, num_trajectories)
             types.save(trajectories_path, trajectories)
