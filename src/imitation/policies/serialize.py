@@ -21,8 +21,11 @@ Algorithm = TypeVar("Algorithm", bound=base_class.BaseAlgorithm)
 # https://stackoverflow.com/questions/61569324/type-annotation-for-callable-that-takes-kwargs
 # TODO(juan) this can be fixed using ParamSpec. To be looked at later.
 PolicyLoaderFn = Callable[..., policies.BasePolicy]
+"""A policy loader function that takes a VecEnv before any other custom arguments and
+returns a stable_baselines3 base policy policy."""
 
 policy_registry: registry.Registry[PolicyLoaderFn] = registry.Registry()
+"""Registry of policy loading functions. Add your own here if desired."""
 
 
 def load_stable_baselines_model(

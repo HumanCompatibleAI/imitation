@@ -46,11 +46,16 @@ def test_get_first_iter_element(input_seq):
     assert first_element == input_seq[0]
     assert input_seq is new_iterable
 
-    an_iterator = (x for x in input_seq)
-    first_element, new_iterable = util.get_first_iter_element(input_seq)
+    def generator_fn():
+        for x in input_seq:
+            yield x
+
+    generator = generator_fn()
+    assert generator == iter(generator)
+    first_element, new_iterable = util.get_first_iter_element(generator)
     assert first_element == input_seq[0]
-    assert list(an_iterator) == input_seq
-    assert list(an_iterator) == []
+    assert list(new_iterable) == input_seq
+    assert list(new_iterable) == []
 
 
 @given(
@@ -91,6 +96,13 @@ def test_safe_to_tensor():
         numpy.flags.writeable = False
         torch = util.safe_to_tensor(numpy)
         assert not np.may_share_memory(numpy, torch)
+
+
+def test_safe_to_numpy():
+    tensor = th.tensor([1, 2, 3])
+    numpy = util.safe_to_numpy(tensor)
+    assert (numpy == tensor.numpy()).all()
+    assert util.safe_to_numpy(None) is None
 
 
 def test_tensor_iter_norm():

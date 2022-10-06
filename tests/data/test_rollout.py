@@ -248,6 +248,23 @@ def test_unwrap_traj(rng):
         np.testing.assert_equal(t1.rews, t2.rews)
 
 
+def test_unwrap_traj_raises_no_infos():
+    """Check that unwrap_traj raises ValueError if no infos in trajectory."""
+    with pytest.raises(ValueError, match="Trajectory must have infos to unwrap"):
+        acts = np.array([0])
+        obs = np.array([0, 0])
+        rews = np.array([0.0])
+        rollout.unwrap_traj(
+            types.TrajectoryWithRew(
+                acts=acts,
+                obs=obs,
+                terminal=False,
+                rews=rews,
+                infos=None,
+            ),
+        )
+
+
 def test_make_sample_until_errors():
     with pytest.raises(ValueError, match="At least one.*"):
         rollout.make_sample_until(min_timesteps=None, min_episodes=None)

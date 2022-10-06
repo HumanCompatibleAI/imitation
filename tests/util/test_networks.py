@@ -243,6 +243,20 @@ def test_build_mlp_norm_training(init_kwargs) -> None:
         optimizer.step()
 
 
+def test_build_mlp_raises_on_invalid_normalize_input_layer() -> None:
+    """Test that `networks.build_mlp()` raises on invalid input layer."""
+    with pytest.raises(
+        ValueError,
+        match="normalize_input_layer.*not a valid normalization layer.*",
+    ):
+        networks.build_mlp(
+            in_size=1,
+            hid_sizes=[16, 16],
+            out_size=1,
+            normalize_input_layer=th.nn.Module,
+        )
+
+
 def test_input_validation_on_ema_norm():
     with pytest.raises(ValueError):
         networks.EMANorm(128, decay=1.1)

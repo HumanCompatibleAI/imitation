@@ -431,6 +431,20 @@ def test_synthetic_gatherer_deterministic(
     assert np.all(preferences1 == preferences2)
 
 
+def test_synthetic_gatherer_raises(
+    agent_trainer,
+    random_fragmenter,
+):
+    with pytest.raises(
+        ValueError,
+        match="If `sample` is True, then `rng` must be provided",
+    ):
+        preference_comparisons.SyntheticGatherer(
+            temperature=0,
+            sample=True,
+        )
+
+
 def test_fragments_terminal(random_fragmenter):
     trajectories = [
         types.TrajectoryWithRew(
