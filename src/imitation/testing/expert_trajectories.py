@@ -36,13 +36,15 @@ def generate_expert_trajectories(
         env_id,
         post_wrappers=[lambda e, _: wrappers.RolloutInfoWrapper(e)],
     )
-    trajectories = rollout.rollout(
-        serialize.load_policy("ppo-huggingface", env, env_name=env_id),
-        env,
-        rollout.make_sample_until(min_episodes=num_trajectories),
-    )
-    env.close()
-    return trajectories
+    try:
+        expert = serialize.load_policy("ppo-huggingface", env, env_name=env_id)
+        return rollout.rollout(
+            expert,
+            env,
+            rollout.make_sample_until(min_episodes=num_trajectories),
+        )
+    finally:
+        env.close()
 
 
 def lazy_generate_expert_trajectories(
