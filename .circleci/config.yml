@@ -20,7 +20,7 @@ executors:
     environment:
       # more CPUs visible but we're throttled to 8, which breaks auto-detect
       NUM_CPUS: 8
-  lint:
+  static-analysis-xlarge:
     <<: *defaults
     # darglint is slow enough that we benefit from xlarge even for linting.
     # However, there's little benefit from larger parallelization (I think there's
@@ -30,7 +30,7 @@ executors:
       # If you change these, also change ci/code_checks.sh
       SRC_FILES: src/ tests/ experiments/ examples/ docs/conf.py setup.py
       NUM_CPUS: 8
-  type:
+  static-analysis-medium:
     <<: *defaults
     resource_class: medium
     environment:
@@ -127,8 +127,14 @@ commands:
       - run:
           name: install python and binary dependencies
           command: |
-            choco install --side-by-side -y python --version 3.8
+            choco install --side-by-side -y python --version=3.8.10
             choco install -y ffmpeg
+          shell: powershell.exe
+
+      - run:
+          name: upgrade pip
+          command: |
+              python -m pip install --upgrade pip
           shell: powershell.exe
 
       - run:
@@ -202,7 +208,7 @@ commands:
 
 jobs:
   lint:
-    executor: lint
+    executor: static-analysis-xlarge
 
     steps:
       - dependencies-linux
@@ -235,12 +241,21 @@ jobs:
           name: codespell
           command: codespell -I .codespell.skip --skip='*.pyc,tests/testdata/*,*.ipynb,*.csv' ${SRC_FILES}
 
+  doctest:
+    executor: static-analysis-medium
+
+    steps:
+      - dependencies-linux
       - run:
           name: sphinx
-          command: pushd docs/ && make clean && make html && popd
+          environment:
+            # Note: we don't want to execute the example notebooks in this step since
+            #   this happens in a separate readthedocs job anyway.
+            NB_EXECUTION_MODE: "off"
+          command: pushd docs/ && make clean && make doctest && popd
 
   type:
-    executor: type
+    executor: static-analysis-medium
     steps:
       - dependencies-linux
 
@@ -344,6 +359,9 @@ workflows:
   test:
     jobs:
       - lint:
+          context:
+          - docker-hub-creds
+      - doctest:
           context:
           - docker-hub-creds
       - type:

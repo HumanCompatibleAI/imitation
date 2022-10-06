@@ -18,7 +18,7 @@
 
 
 # -- Project information -----------------------------------------------------
-
+import os
 from importlib import metadata
 
 project = "imitation"
@@ -43,11 +43,18 @@ extensions = [
     "sphinx.ext.viewcode",
     "sphinx_copybutton",
     "sphinx_github_changelog",
+    "sphinx.ext.doctest",
+    "myst_nb",
 ]
 
 napoleon_google_docstring = True
 napoleon_numpy_docstring = False
 autosummary_generate = True
+
+nb_execution_mode = os.getenv("NB_EXECUTION_MODE", "cache")
+nb_execution_timeout = 120
+nb_merge_streams = True
+nb_output_stderr = "remove"
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]

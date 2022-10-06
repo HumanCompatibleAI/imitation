@@ -18,8 +18,12 @@ NORMALIZATION_LAYERS = [
 ]
 
 
-class EMANormIncremental(networks.EMANorm):
-    """EMA Norm with every new instance added incrementally in a for loop."""
+class EMANormAlgorithm2(networks.EMANorm):
+    """EMA Norm using algorithm 2 from the reference below.
+
+    Reference:
+    https://github.com/HumanCompatibleAI/imitation/files/9456540/Incremental_batch_EMA_and_EMV.pdf
+    """
 
     def __init__(
         self,
@@ -46,7 +50,9 @@ class EMANormIncremental(networks.EMANorm):
         b_size = batch.shape[0]
         if len(batch.shape) == 1:
             batch = batch.reshape(b_size, 1)
-        alpha = 1 - self.decay
+
+        self.inv_learning_rate += self.decay**self.num_batches
+        learning_rate = 1 / self.inv_learning_rate
         if self.count == 0:
             self.running_mean = batch.mean(dim=0)
             if b_size > 1:
@@ -57,14 +63,15 @@ class EMANormIncremental(networks.EMANorm):
             S = th.mean((batch - self.running_mean) ** 2, dim=0)
 
             # update running mean
-            delta = alpha * (batch.mean(0) - self.running_mean)
+            delta = learning_rate * (batch.mean(0) - self.running_mean)
             self.running_mean += delta
 
             # update running variance
-            self.running_var *= self.decay
-            self.running_var += alpha * S - delta**2
+            self.running_var *= 1 - learning_rate
+            self.running_var += learning_rate * S - delta**2
 
         self.count += b_size
+        self.num_batches += 1
 
 
 @pytest.mark.parametrize("normalization_layer", NORMALIZATION_LAYERS)
@@ -94,7 +101,7 @@ def test_running_norm_identity_train(normalization_layer: Type[networks.BaseNorm
     running_norm.train()  # stats will change in eval mode
     normalized = th.Tensor([-1, -1, -1, -1, 1, 1, 1, 1])  # mean 0, variance 1
     for _ in range(10):
-        th.testing.assert_allclose(
+        th.testing.assert_close(
             running_norm.forward(normalized),
             normalized,
             rtol=0.05,
@@ -248,32 +255,32 @@ def test_input_validation_on_ema_norm():
 
 @pytest.mark.parametrize("decay", [0.5, 0.99])
 @pytest.mark.parametrize("input_shape", [(64,), (1, 256), (64, 256)])
-def test_ema_norm_batch_correctness(decay, input_shape):
+def test_ema_norm_algo_2_and_3_are_the_same(decay, input_shape):
     num_features = input_shape[-1] if len(input_shape) == 2 else 1
-    norm_for_incremental = EMANormIncremental(
+    ema_norm_algo_2 = EMANormAlgorithm2(
         num_features=num_features,
         decay=decay,
     )
-    norm_for_batch = networks.EMANorm(256, decay)
+    ema_norm_algo_3 = networks.EMANorm(num_features, decay)
     random_tensor = th.randn(input_shape)
     for i in range(1000):
-        norm_for_incremental.train(), norm_for_batch.train()
+        ema_norm_algo_2.train(), ema_norm_algo_3.train()
         # moving distribution
         tensor_input = random_tensor.clone() + i
-        norm_for_incremental(tensor_input)
+        ema_norm_algo_2(tensor_input)
         tensor_input = random_tensor.clone() + i
-        norm_for_batch(tensor_input)
+        ema_norm_algo_3(tensor_input)
 
-        norm_for_incremental.eval(), norm_for_batch.eval()
+        ema_norm_algo_2.eval(), ema_norm_algo_3.eval()
         th.testing.assert_close(
-            norm_for_incremental.running_mean,
-            norm_for_batch.running_mean,
+            ema_norm_algo_2.running_mean,
+            ema_norm_algo_3.running_mean,
             rtol=0.05,
             atol=0.1,
         )
         th.testing.assert_close(
-            norm_for_incremental.running_var,
-            norm_for_batch.running_var,
+            ema_norm_algo_2.running_var,
+            ema_norm_algo_3.running_var,
             rtol=0.05,
             atol=0.1,
         )

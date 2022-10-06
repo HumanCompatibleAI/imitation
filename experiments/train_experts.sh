@@ -8,7 +8,7 @@ set -e
 source experiments/common.sh
 
 SEEDS=(0 1 2)
-ENVS=(acrobot cartpole mountain_car reacher half_cheetah)
+ENVS=(acrobot cartpole mountain_car reacher seals_half_cheetah)
 ENVS=("${ENVS[@]}" seals_hopper ant seals_humanoid swimmer seals_walker)
 OUTPUT_DIR="output/train_experts/${TIMESTAMP}"
 RESULTS_FILE="results.txt"

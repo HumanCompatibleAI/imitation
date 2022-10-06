@@ -8,6 +8,7 @@ import os
 import pathlib
 from typing import Callable, Type, TypeVar
 
+import huggingface_sb3 as hfsb3
 from stable_baselines3.common import base_class, callbacks, policies, vec_env
 
 from imitation.policies import base
@@ -15,9 +16,15 @@ from imitation.util import registry
 
 Algorithm = TypeVar("Algorithm", bound=base_class.BaseAlgorithm)
 
-PolicyLoaderFn = Callable[[str, vec_env.VecEnv], policies.BasePolicy]
+# Note: a VecEnv will always be passed first and then any kwargs. There is just no
+# proper way to specify this in python yet. For details see
+# https://stackoverflow.com/questions/61569324/type-annotation-for-callable-that-takes-kwargs
+PolicyLoaderFn = Callable[..., policies.BasePolicy]
+"""A policy loader function that takes a VecEnv before any other custom arguments and
+returns a stable_baselines3 base policy policy."""
 
 policy_registry: registry.Registry[PolicyLoaderFn] = registry.Registry()
+"""Registry of policy loading functions. Add your own here if desired."""
 
 
 def load_stable_baselines_model(
@@ -30,7 +37,8 @@ def load_stable_baselines_model(
 
     Args:
         cls: Stable Baselines RL algorithm.
-        path: Path to directory containing saved model data.
+        path: Path to zip file containing saved model data or to a folder containing a
+            `model.zip` file.
         venv: Environment to train on.
         kwargs: Passed through to `cls.load`.
 
@@ -42,28 +50,30 @@ def load_stable_baselines_model(
         The deserialized RL algorithm.
     """
     logging.info(f"Loading Stable Baselines policy for '{cls}' from '{path}'")
-    policy_dir = pathlib.Path(path)
-    if not policy_dir.is_dir():
-        raise FileNotFoundError(
-            f"path={path} needs to be a directory containing model.zip.",
-        )
+    path = pathlib.Path(path)
+
+    if path.is_dir():
+        path = path / "model.zip"
+        if not path.exists():
+            raise FileNotFoundError(
+                f"Expected '{path}' to be a directory containing a 'model.zip' file.",
+            )
 
     # SOMEDAY(adam): added 2022-01, can probably remove this check in 2023
-    vec_normalize_path = policy_dir / "vec_normalize.pkl"
+    vec_normalize_path = path.parent / "vec_normalize.pkl"
     if vec_normalize_path.exists():
         raise FileExistsError(
             "Outdated policy format: we do not support restoring normalization "
             "statistics from '{vec_normalize_path}'",
         )
 
-    model_path = policy_dir / "model.zip"
-    return cls.load(model_path, env=venv, **kwargs)
+    return cls.load(path, env=venv, **kwargs)
 
 
-def _load_stable_baselines(
+def _load_stable_baselines_from_file(
     cls: Type[base_class.BaseAlgorithm],
 ) -> PolicyLoaderFn:
-    """Higher-order function, returning a policy loading function.
+    """Creates a policy loading function to read a policy from a file.
 
     Args:
         cls: The RL algorithm, e.g. `stable_baselines3.PPO`.
@@ -72,9 +82,38 @@ def _load_stable_baselines(
         A function loading policies trained via cls.
     """
 
-    def f(path: str, venv: vec_env.VecEnv) -> policies.BasePolicy:
+    def f(venv: vec_env.VecEnv, path: str) -> policies.BasePolicy:
         """Loads a policy saved to path, for environment env."""
         model = load_stable_baselines_model(cls, path, venv)
+        return getattr(model, "policy")
+
+    return f
+
+
+def _load_stable_baselines_from_huggingface(
+    algo_name: str,
+    cls: Type[base_class.BaseAlgorithm],
+) -> PolicyLoaderFn:
+    """Creates a policy loading function to load from Hugging Face.
+
+    Args:
+        algo_name: The name of the algorithm, e.g. `ppo`.
+        cls: The RL algorithm, e.g. `stable_baselines3.PPO`.
+
+    Returns:
+        A function loading policies trained via cls.
+    """
+
+    def f(
+        venv: vec_env.VecEnv,
+        env_name: str,
+        organization: str = "HumanCompatibleAI",
+    ) -> policies.BasePolicy:
+        """Loads a policy saved to path, for environment env."""
+        model_name = hfsb3.ModelName(algo_name, hfsb3.EnvironmentName(env_name))
+        repo_id = hfsb3.ModelRepoId(organization, model_name)
+        filename = hfsb3.load_from_hub(repo_id, model_name.filename)
+        model = load_stable_baselines_model(cls, filename, venv)
         return getattr(model, "policy")
 
     return f
@@ -90,42 +129,59 @@ policy_registry.register(
 )
 
 
-def _add_stable_baselines_policies(classes):
+def _add_stable_baselines_policies_from_file(classes):
     for k, cls_name in classes.items():
         cls = registry.load_attr(cls_name)
-        fn = _load_stable_baselines(cls)
+        fn = _load_stable_baselines_from_file(cls)
         policy_registry.register(k, value=fn)
+
+
+def _add_stable_baselines_policies_from_huggingface(classes):
+    for k, cls_name in classes.items():
+        cls = registry.load_attr(cls_name)
+        fn = _load_stable_baselines_from_huggingface(k, cls)
+        policy_registry.register(f"{k}-huggingface", value=fn)
 
 
 STABLE_BASELINES_CLASSES = {
     "ppo": "stable_baselines3:PPO",
     "sac": "stable_baselines3:SAC",
 }
-_add_stable_baselines_policies(STABLE_BASELINES_CLASSES)
+_add_stable_baselines_policies_from_file(STABLE_BASELINES_CLASSES)
+_add_stable_baselines_policies_from_huggingface(STABLE_BASELINES_CLASSES)
 
 
 def load_policy(
     policy_type: str,
-    policy_path: str,
     venv: vec_env.VecEnv,
+    **kwargs,
 ) -> policies.BasePolicy:
     """Load serialized policy.
 
+    Note on the kwargs:
+
+    - `zero` and `random` policy take no kwargs
+    - `ppo` and `sac` policies take a `path` argument with a path to a zip file or to a
+      folder containing a `model.zip` file.
+    - `ppo-huggingface` and `sac-huggingface` policies take an `env_name` and optional
+      `organization` argument.
+
     Args:
         policy_type: A key in `policy_registry`, e.g. `ppo`.
-        policy_path: A path on disk where the policy is stored.
         venv: An environment that the policy is to be used with.
+        **kwargs: Additional arguments to pass to the policy loader.
 
     Returns:
         The deserialized policy.
     """
     agent_loader = policy_registry.get(policy_type)
-    return agent_loader(policy_path, venv)
+    return agent_loader(venv, **kwargs)
 
 
 def save_stable_model(
     output_dir: str,
     model: base_class.BaseAlgorithm,
+    filename: str = "model.zip",
 ) -> None:
     """Serialize Stable Baselines model.
 
@@ -134,12 +190,13 @@ def save_stable_model(
     Args:
         output_dir: Path to the save directory.
         model: The stable baselines model.
+        filename: The filename of the model.
     """
     # Save each model in new directory in case we want to add metadata or other
     # information in future. (E.g. we used to save `VecNormalize` statistics here,
     # although that is no longer necessary.)
     os.makedirs(output_dir, exist_ok=True)
-    model.save(os.path.join(output_dir, "model.zip"))
+    model.save(os.path.join(output_dir, filename))
     logging.info("Saved policy to %s", output_dir)
 
 

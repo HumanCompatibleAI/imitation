@@ -1,6 +1,7 @@
 """Tests `imitation.util.logger`."""
 
 import csv
+import json
 import os.path as osp
 from collections import defaultdict
 
@@ -21,13 +22,40 @@ def _csv_to_dict(csv_path: str) -> dict:
     return result
 
 
+def _json_to_dict(json_path: str) -> dict:
+    r"""Loads the saved json logging file and convert it to expected dict format.
+
+    Args:
+        json_path: Path of the json log file.
+            Stored in the format - '{"A": 1, "B": 1}\n{"A": 2}\n{"B": 3}\n'
+
+    Returns:
+        dictionary in the format - `{"A": [1, 2, ""], "B": [1, "", 3]}`
+    """
+    result = defaultdict(list)
+    with open(json_path, "r") as f:
+        all_line_dicts = [json.loads(line) for line in f.readlines()]
+    # get all the keys in the dict so as to add "" if the key is not present in a line
+    all_keys = set().union(*[list(line_dict.keys()) for line_dict in all_line_dicts])
+
+    for line_dict in all_line_dicts:
+        for key in all_keys:
+            result[key].append(line_dict.get(key, ""))
+    return result
+
+
 def _compare_csv_lines(csv_path: str, expect: dict):
     observed = _csv_to_dict(csv_path)
     assert expect == observed
 
 
+def _compare_json_lines(json_path: str, expect: dict):
+    observed = _json_to_dict(json_path)
+    assert expect == observed
+
+
 def test_no_accum(tmpdir):
-    hier_logger = logger.configure(tmpdir, ["csv"])
+    hier_logger = logger.configure(tmpdir, ["csv", "json"])
     assert hier_logger.get_dir() == tmpdir
 
     # Check that the recorded "A": -1 is overwritten by "A": 1 in the next line.
@@ -43,6 +71,12 @@ def test_no_accum(tmpdir):
     hier_logger.dump()
     expect = {"A": [1, 2, ""], "B": [1, "", 3]}
     _compare_csv_lines(osp.join(tmpdir, "progress.csv"), expect)
+    _compare_json_lines(osp.join(tmpdir, "progress.json"), expect)
+
+
+def test_raise_unknown_format():
+    with pytest.raises(ValueError, match=r"Unknown format specified:.*"):
+        logger.make_output_format("txt", "log_dir")
 
 
 def test_free_form(tmpdir):
@@ -129,8 +163,8 @@ def test_name_to_value(tmpdir):
 def test_hard(tmpdir):
     hier_logger = logger.configure(tmpdir)
 
-    # Part One: Test logging outside of the accumulating scope, and within scopes
-    # with two different different logging keys (including a repeat).
+    # Part One: Test logging outside the accumulating scope, and within scopes
+    # with two different logging keys (including a repeat).
 
     hier_logger.record("no_context", 1)
 
@@ -195,3 +229,93 @@ def test_hard(tmpdir):
     _compare_csv_lines(osp.join(tmpdir, "progress.csv"), expect_default)
     _compare_csv_lines(osp.join(tmpdir, "raw", "gen", "progress.csv"), expect_raw_gen)
     _compare_csv_lines(osp.join(tmpdir, "raw", "disc", "progress.csv"), expect_raw_disc)
+
+
+def test_accumulate_prefix(tmpdir):
+    hier_logger = logger.configure(tmpdir)
+
+    with hier_logger.add_accumulate_prefix("foo"), hier_logger.accumulate_means("bar"):
+        hier_logger.record("A", 1)
+        hier_logger.record("B", 2)
+        hier_logger.dump()
+
+    hier_logger.record("no_context", 1)
+
+    with hier_logger.accumulate_means("blat"):
+        hier_logger.record("C", 3)
+        hier_logger.dump()
+
+    hier_logger.dump()
+
+    expect_raw_foo_bar = {
+        "raw/foo/bar/A": [1],
+        "raw/foo/bar/B": [2],
+    }
+    expect_raw_blat = {
+        "raw/blat/C": [3],
+    }
+    expect_default = {
+        "mean/foo/bar/A": [1],
+        "mean/foo/bar/B": [2],
+        "mean/blat/C": [3],
+        "no_context": [1],
+    }
+
+    _compare_csv_lines(osp.join(tmpdir, "progress.csv"), expect_default)
+    _compare_csv_lines(
+        osp.join(tmpdir, "raw", "foo", "bar", "progress.csv"),
+        expect_raw_foo_bar,
+    )
+    _compare_csv_lines(osp.join(tmpdir, "raw", "blat", "progress.csv"), expect_raw_blat)
+
+
+def test_key_prefix(tmpdir):
+    hier_logger = logger.configure(tmpdir)
+
+    with hier_logger.accumulate_means("foo"), hier_logger.add_key_prefix("bar"):
+        hier_logger.record("A", 1)
+        hier_logger.record("B", 2)
+        hier_logger.dump()
+
+    hier_logger.record("no_context", 1)
+
+    with hier_logger.accumulate_means("blat"):
+        hier_logger.record("C", 3)
+        hier_logger.dump()
+
+    hier_logger.dump()
+
+    expect_raw_foo_bar = {
+        "raw/foo/bar/A": [1],
+        "raw/foo/bar/B": [2],
+    }
+    expect_raw_blat = {
+        "raw/blat/C": [3],
+    }
+    expect_default = {
+        "mean/foo/bar/A": [1],
+        "mean/foo/bar/B": [2],
+        "mean/blat/C": [3],
+        "no_context": [1],
+    }
+
+    _compare_csv_lines(osp.join(tmpdir, "progress.csv"), expect_default)
+    _compare_csv_lines(
+        osp.join(tmpdir, "raw", "foo", "progress.csv"),
+        expect_raw_foo_bar,
+    )
+    _compare_csv_lines(osp.join(tmpdir, "raw", "blat", "progress.csv"), expect_raw_blat)
+
+
+def test_cant_add_prefix_within_accumulate_means(tmpdir):
+    h = logger.configure(tmpdir)
+    with pytest.raises(RuntimeError):
+        with h.accumulate_means("foo"), h.add_accumulate_prefix("bar"):
+            pass  # pragma: no cover
+
+
+def test_cant_add_key_prefix_outside_accumulate_means(tmpdir):
+    h = logger.configure(tmpdir)
+    with pytest.raises(RuntimeError):
+        with h.add_key_prefix("bar"):
+            pass  # pragma: no cover
