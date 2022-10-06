@@ -87,8 +87,8 @@ def lazy_generate_expert_trajectories(
 
 def make_expert_transition_loader(
     cache_dir: Path,
-    batch_size,
-    expert_data_type,
+    batch_size: int,
+    expert_data_type: str,
     env_name: str,
     num_trajectories: int = 1,
 ):
