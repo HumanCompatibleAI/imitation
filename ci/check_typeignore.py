@@ -59,7 +59,7 @@ def main(root_dir: str):
     try:
         check_files(files)
     except ValueError as e:
-        print(e)
+        traceback.print_exc(file=sys.stderr)
         sys.exit(1)
 
 
