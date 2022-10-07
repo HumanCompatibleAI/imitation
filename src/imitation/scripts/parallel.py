@@ -2,6 +2,7 @@
 
 import collections.abc
 import copy
+import glob
 import os
 from typing import Any, Callable, Mapping, Optional, Sequence
 
@@ -27,6 +28,7 @@ def parallel(
     upload_dir: Optional[str],
     eval_best_trial: bool = False,
     eval_trial_seeds: int = 5,
+    experiment_checkpoint_path: str = "",
 ) -> None:
     """Parallelize multiple runs of another Sacred Experiment using Ray Tune.
 
@@ -100,24 +102,64 @@ def parallel(
 
     ray.init(**init_kwargs)
     try:
-        result = ray.tune.run(
-            trainable,
-            config=search_space,
-            num_samples=num_samples,
-            name=run_name,
-            local_dir=local_dir,
-            resources_per_trial=resources_per_trial,
-            sync_config=ray.tune.syncer.SyncConfig(upload_dir=upload_dir),
-            # metric="mean_return",
-            # mode="max",
+        if experiment_checkpoint_path:
+            result = ray.tune.ExperimentAnalysis(experiment_checkpoint_path)
+            result._load_checkpoints_from_latest(
+                glob.glob(experiment_checkpoint_path + "/experiment_state*.json"),
+            )
+            result.trials = None
+            result.fetch_trial_dataframes()
+        else:
+            result = ray.tune.run(
+                trainable,
+                config=search_space,
+                num_samples=num_samples,
+                name=run_name,
+                local_dir=local_dir,
+                resources_per_trial=resources_per_trial,
+                sync_config=ray.tune.syncer.SyncConfig(upload_dir=upload_dir),
+                # metric="mean_return",
+                # mode="max",
+            )
+        print("Best config:")
+        t = result.trials[0]
+        print(t.metric_analysis)
+        print(t.last_result)
+        key = (
+            "rollout"
+            if sacred_ex_name == "train_preference_comparisons"
+            else "imit_stats"
         )
+        key += "/monitor_return_mean"
         if eval_best_trial:
-            grps = result.results_df.groupby("config.named_configs")
-            idx = grps["mean_return"].transform(max) == result.results_df["mean_return"]
-            best_config_df = result.results_df[idx]
-            for trial_id in best_config_df["trial_id"]:
-                trial = [trial for trial in result.trials if trial_id in str(trial)][0]
+            print(result.results_df.columns)
+            df = result.results_df
+            print(df.head())
+            print(df[["config/named_configs", key]])
+            grp_keys = [
+                c for c in df.columns if c.startswith("config") and "seed" not in c
+            ]
+            print("groups keys:", grp_keys)
+            df["config/named_configs"] = df["config/named_configs"].map(
+                lambda x: tuple(x)
+            )
+            # df[key] = df[key].map(lambda x: x["last"])
+            grps = df.groupby(grp_keys)
+            print(grps[key])
+            df["mean_return"] = grps[key].transform(lambda x: x.mean())
+            # print("df_avg cols:", df_avg.columns, df_avg)
+            idx = (
+                df.groupby("config/named_configs")["mean_return"].transform(max)
+                == df["mean_return"]
+            )
+            best_config_df = df[idx][df["config/config_updates/seed"] == 0]
+            for i, row in best_config_df.iterrows():
+                tag = row["experiment_tag"]
+                trial = [t for t in result.trials if tag in t.experiment_tag][0]
                 best_config = trial.config
+                print("Named configs:", best_config["named_configs"])
+                print("Mean return:", row["mean_return"])
+                print("Total seeds:", (df["mean_return"] == row["mean_return"]).sum())
                 # best_config = result.get_best_config(metric="mean_return", mode="max")
                 best_config["config_updates"].update(
                     seed=ray.tune.grid_search(list(range(100, 100 + eval_trial_seeds))),
@@ -127,6 +169,7 @@ def parallel(
                     config={
                         "named_configs": best_config["named_configs"],
                         "config_updates": best_config["config_updates"],
+                        "command_name": best_config.get("command_name", None),
                     },
                     name=run_name + "_best_hp_eval",
                 )
@@ -226,13 +269,16 @@ def _ray_tune_sacred_wrapper(
             if k not in updated_run_kwargs:
                 updated_run_kwargs[k] = v
         run = ex.run(**updated_run_kwargs, options={"--run": run_name})
-        if sacred_ex_name == "train_preference_comparisons":
-            reporter(mean_return=run.result["rollout"]["monitor_return_mean"])
-        else:
-            reporter(mean_return=run.result["imit_stats"]["monitor_return_mean"])
         # Ray Tune has a string formatting error if raylet completes without
         # any calls to `reporter`.
-        reporter(done=True)
+        # reporter(done=True)
+        # if sacred_ex_name == "train_preference_comparisons":
+        #     #reporter(mean_return=run.result["rollout"]["monitor_return_mean"])
+        #     #ray.tune.report(mean_return=run.result["rollout"]["monitor_return_mean"])
+        #     ray.tune.report(mean_return=234)
+        # else:
+        #     # reporter(mean_return=run.result["imit_stats"]["monitor_return_mean"])
+        #     ray.tune.report(mean_return=run.result["imit_stats"]["monitor_return_mean"])
 
         assert run.status == "COMPLETED"
         return run.result

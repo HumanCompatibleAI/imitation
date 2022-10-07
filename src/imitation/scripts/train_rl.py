@@ -30,7 +30,7 @@ from imitation.scripts.config.train_rl import train_rl_ex
 def train_rl(
     *,
     total_timesteps: int,
-    normalize: bool,
+    normalize_reward: bool,
     normalize_kwargs: dict,
     reward_type: Optional[str],
     reward_path: Optional[str],
@@ -53,10 +53,9 @@ def train_rl(
 
     Args:
         total_timesteps: Number of training timesteps in `model.learn()`.
-        normalize: Applies normalization and clipping to the reward function by
-            keeping a running average of training rewards or the observations.
-            Note: this is may be redundant if using a learned reward that is
-            already normalized.
+        normalize_reward: Applies normalization and clipping to the reward function by
+            keeping a running average of training rewards. Note: this is may be
+            redundant if using a learned reward that is already normalized.
         normalize_kwargs: kwargs for `VecNormalize`.
         reward_type: If provided, then load the serialized reward of this type,
             wrapping the environment in this reward. This is useful to test
@@ -108,14 +107,12 @@ def train_rl(
             callback_objs.append(venv.make_log_callback())
             logging.info(f"Wrapped env in reward {reward_type} from {reward_path}.")
 
-        if normalize:
+        if normalize_reward:
             # Normalize reward. Reward scale effectively changes the learning rate,
             # so normalizing it makes training more stable. Note we do *not* normalize
             # observations here; use the `NormalizeFeaturesExtractor` instead.
-            venv = VecNormalize(venv, **normalize_kwargs)
-            if reward_type == "RewardNet_normalized" and normalize_kwargs.get(
-                "norm_reward", False
-            ):
+            venv = VecNormalize(venv, norm_obs=False, **normalize_kwargs)
+            if reward_type == "RewardNet_normalized":
                 warnings.warn(
                     "Applying normalization to already normalized reward function. \
                     Consider setting normalize_reward as False",

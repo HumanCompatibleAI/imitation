@@ -15,10 +15,8 @@ train_rl_ex = sacred.Experiment(
 @train_rl_ex.config
 def train_rl_defaults():
     total_timesteps = int(1e6)  # Number of training timesteps in model.learn()
-    normalize = True  # Use VecNormalize to normalize the observation or reward
-    normalize_kwargs = dict(
-        norm_obs=False, norm_reward=False
-    )  # kwargs for `VecNormalize`
+    normalize_reward = True  # Use VecNormalize to normalize the reward
+    normalize_kwargs = dict()  # kwargs for `VecNormalize`
 
     # If specified, overrides the ground-truth environment reward
     reward_type = None  # override reward type
@@ -93,8 +91,7 @@ def seals_half_cheetah():
     )
     # total_timesteps = int(5e6)  # does OK after 1e6, but continues improving
     total_timesteps = 1e6
-    normalize = True
-    normalize_kwargs = dict(norm_obs=False, norm_reward=True)
+    normalize_reward = False
 
     rl = dict(
         batch_size=512,
@@ -124,8 +121,7 @@ def seals_hopper():
     )
 
     total_timesteps = 1e6
-    normalize = True
-    normalize_kwargs = dict(norm_obs=True, norm_reward=False)
+    normalize_reward = False
 
     rl = dict(
         batch_size=2048,
@@ -173,7 +169,7 @@ def pendulum():
         #     net_arch=[dict(pi=[64, 64], vf=[64, 64])],
         # ),
     )
-    normalize = False
+    normalize_reward = False
 
     rl = dict(
         batch_size=1024 * 4,
@@ -214,8 +210,7 @@ def seals_ant():
     )
 
     total_timesteps = 1e6
-    normalize = True
-    normalize_kwargs = dict(norm_obs=False, norm_reward=True)
+    normalize_reward = False
 
     rl = dict(
         batch_size=2048,
@@ -246,8 +241,7 @@ def seals_swimmer():
     )
 
     total_timesteps = 1e6
-    normalize = True
-    normalize_kwargs = dict(norm_obs=True, norm_reward=False)
+    normalize_reward = False
 
     rl = dict(
         batch_size=2048,
@@ -278,8 +272,7 @@ def seals_walker():
     )
 
     total_timesteps = 1e6
-    normalize = True
-    normalize_kwargs = dict(norm_obs=True, norm_reward=False)
+    normalize_reward = False
 
     rl = dict(
         batch_size=2048,
