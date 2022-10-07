@@ -131,12 +131,12 @@ def test_interval_param_scaler_init_raises():
         ValueError,
         match="tolerable_interval must be a tuple of length 2",
     ):
-        updaters.IntervalParamScaler(0.5, (0.1, 0.9, 0.5))
+        updaters.IntervalParamScaler(0.5, (0.1, 0.9, 0.5))  # type: ignore[arg-type]
     with pytest.raises(
         ValueError,
         match="tolerable_interval must be a tuple of length 2",
     ):
-        updaters.IntervalParamScaler(0.5, (0.1,))
+        updaters.IntervalParamScaler(0.5, (0.1,))  # type: ignore[arg-type]
 
     # the first element of the interval must be at least 0.
     with pytest.raises(
