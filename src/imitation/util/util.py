@@ -177,7 +177,9 @@ def make_seeds(
     Returns:
         A list of n random seeds.
     """
-    seeds: List[int] = rng.integers(0, (1 << 31) - 1, (n or 1,)).tolist()
+    seeds: List[int] = rng.integers(
+        0, (1 << 31) - 1, (n if n is not None else 1,)
+    ).tolist()
     if n is None:
         return seeds[0]
     else:
