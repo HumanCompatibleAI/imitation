@@ -235,7 +235,7 @@ def safe_to_tensor(array: Union[np.ndarray, th.Tensor], **kwargs) -> th.Tensor:
     undefined behavior if you try to write to the tensor.
 
     Args:
-        array: The numpy array to convert to a PyTorch tensor.
+        array: The array to convert to a PyTorch tensor.
         kwargs: Additional keyword arguments to pass to `th.as_tensor`.
 
     Returns:
@@ -337,7 +337,7 @@ def get_first_iter_element(iterable: Iterable[T]) -> Tuple[T, Iterable[T]]:
         with all the elements.
 
     Raises:
-        ValueError: `iterable` is empty -- the first call it to returns no elements.
+        ValueError: `iterable` is empty -- the first call to it returns no elements.
     """
     iterator = iter(iterable)
     try:
