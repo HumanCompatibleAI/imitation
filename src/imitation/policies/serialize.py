@@ -68,10 +68,7 @@ def load_stable_baselines_model(
             "statistics from '{vec_normalize_path}'",
         )
 
-    # TODO(juan) remove the type ignore when this SB3 PR gets merged
-    #  and released:
-    #  https://github.com/DLR-RM/stable-baselines3/pull/1043
-    return cls.load(path_obj, env=venv, **kwargs)  # type: ignore[return-value]
+    return cls.load(path_obj, env=venv, **kwargs)
 
 
 def _load_stable_baselines_from_file(
