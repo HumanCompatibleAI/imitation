@@ -158,4 +158,4 @@ def test_density_trainer_raises(
         )
 
     with pytest.raises(TypeError, match="Unsupported demonstration type"):
-        density_trainer.set_demonstrations("foo")
+        density_trainer.set_demonstrations("foo")  # type: ignore[arg-type]
