@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 """Clean all notebooks in the repository."""
+import argparse
 import pathlib
+import traceback
 from typing import Any, List, Tuple
 
 import nbformat
@@ -72,9 +74,6 @@ def clean_notebook(file: pathlib.Path, check_only=False) -> None:
 if __name__ == "__main__":
     # if the argument --check has been passed, check if the notebooks are clean
     # otherwise, clean them in-place
-    import argparse
-    import traceback
-
     parser = argparse.ArgumentParser()
     # capture files and paths to clean
     parser.add_argument(
