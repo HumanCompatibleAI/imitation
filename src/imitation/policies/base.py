@@ -40,7 +40,7 @@ class HardCodedPolicy(policies.BasePolicy, abc.ABC):
     def forward(self, *args):
         # technically BasePolicy is a Torch module, so this needs a forward()
         # method
-        raise NotImplementedError()  # pragma: no cover
+        raise NotImplementedError()
 
 
 class RandomPolicy(HardCodedPolicy):

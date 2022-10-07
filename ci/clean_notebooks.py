@@ -2,6 +2,7 @@
 """Clean all notebooks in the repository."""
 import argparse
 import pathlib
+import sys
 import traceback
 from typing import Any, List, Tuple
 
@@ -100,13 +101,13 @@ def main():
                 print(f"Skipping {file} (not a notebook)")
     if not files:
         print("No notebooks found")
-        exit(1)
+        sys.exit(1)
     for file in files:
         try:
             clean_notebook(file, check_only=check_only)
         except UncleanNotebookError:
             traceback.print_exc()
-            exit(1)
+            sys.exit(1)
 
 
 if __name__ == "__main__":
