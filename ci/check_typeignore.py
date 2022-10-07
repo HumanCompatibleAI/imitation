@@ -13,8 +13,6 @@ import re
 import sys
 from typing import List
 
-import click
-
 # Regex to match a "# type: ignore" comment not followed by a reason.
 TYPE_IGNORE_COMMENT = re.compile(r"#\s*type:\s*ignore\s*(?![^\[]*\[)")
 
@@ -74,6 +72,7 @@ def parse_args():
     )
     args = parser.parse_args()
     return parser, args
+
 
 def main():
     """Check for invalid "# type: ignore" comments."""

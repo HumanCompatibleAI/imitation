@@ -4,7 +4,7 @@ from typing import Mapping, Type
 
 import numpy as np
 from gym import spaces
-from stable_baselines3.common.buffers import BaseBuffer, ReplayBuffer
+from stable_baselines3.common.buffers import ReplayBuffer
 from stable_baselines3.common.type_aliases import ReplayBufferSamples
 
 from imitation.rewards.reward_function import RewardFn

@@ -90,7 +90,7 @@ def parse_args():
 
 
 def get_files(input_paths: List):
-    """build list of files to scan from list of paths and files"""
+    """Build list of files to scan from list of paths and files."""
     files = []
     for file in input_paths:
         if file.is_dir():
