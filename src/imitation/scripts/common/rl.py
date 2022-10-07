@@ -172,7 +172,7 @@ def make_rl_algo(
 
 @rl_ingredient.capture
 def load_rl_algo_from_path(
-    _seed,
+    _seed: int,
     agent_path: str,
     venv: vec_env.VecEnv,
     rl_cls: Type[base_class.BaseAlgorithm],
