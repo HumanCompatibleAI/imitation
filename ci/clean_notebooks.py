@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 """Clean all notebooks in the repository."""
 import pathlib
+from typing import List, Tuple, Any
 
 import nbformat
 
@@ -38,27 +39,28 @@ def clean_notebook(file: pathlib.Path, check_only=False) -> None:
     # Remove the output and metadata from each cell
     # also reset the execution count
     # if the cell has no code, remove it
+    fields_defaults: List[Tuple[str, Any]] = [
+        ("execution_count", None),
+        ("outputs", []),
+        ("metadata", {}),
+    ]
     for cell in nb.cells:
-        if "outputs" in cell and cell["outputs"]:
-            if check_only:
-                raise UncleanNotebookError(f"Notebook {file} has outputs")
-            cell["outputs"] = []
-            was_dirty = True
-        if "metadata" in cell and cell["metadata"]:
-            if check_only:
-                raise UncleanNotebookError(f"Notebook {file} has metadata")
-            cell["metadata"] = {}
-            was_dirty = True
-        if "execution_count" in cell and cell["execution_count"]:
-            if check_only:
-                raise UncleanNotebookError(f"Notebook {file} has execution count")
-            cell["execution_count"] = None
-            was_dirty = True
         if cell["cell_type"] == "code" and not cell["source"]:
             if check_only:
                 raise UncleanNotebookError(f"Notebook {file} has empty code cell")
             nb.cells.remove(cell)
             was_dirty = True
+        for field, default in fields_defaults:
+            if cell.get(field) != default:
+                was_dirty = True
+                if check_only:
+                    raise UncleanNotebookError(
+                        f"Notebook {file} is not clean: cell has "
+                        f"field {field!r} with value {cell[field]!r} (expected "
+                        f"{default!r}). Cell:\n{cell['source']!r}"
+                    )
+                else:
+                    cell[field] = default
 
     if not check_only and was_dirty:
         # Write the notebook
