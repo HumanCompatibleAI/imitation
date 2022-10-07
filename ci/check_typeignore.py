@@ -6,8 +6,7 @@ This script checks that no files in our source code have a "#type: ignore" comme
 without explicitly indicating the reason for the ignore. This is to ensure that we
 don't accidentally ignore errors that we should be fixing.
 """
-
-
+import argparse
 import os
 import pathlib
 import re
@@ -51,29 +50,37 @@ def check_files(files: List[pathlib.Path]):
         check_file(file)
 
 
-def get_files_to_check(root_dir: pathlib.Path) -> List[pathlib.Path]:
+def get_files_to_check(root_dirs: List[pathlib.Path]) -> List[pathlib.Path]:
     """Returns a list of files that should be checked for "# type: ignore" comments."""
     # Get the list of files that should be checked.
     files = []
-    for root, _, filenames in os.walk(root_dir):
-        for filename in filenames:
-            if filename.endswith(".py"):
-                files.append(pathlib.Path(root) / filename)
+    for root_dir in root_dirs:
+        for root, _, filenames in os.walk(root_dir):
+            for filename in filenames:
+                if filename.endswith(".py"):
+                    files.append(pathlib.Path(root) / filename)
 
     return files
 
 
-@click.command()
-@click.option(
-    "--root-dir",
-    type=click.Path(exists=True, file_okay=False, dir_okay=True),
-    default="src",
-)
-def main(root_dir: str):
+def parse_args():
+    """Parse command-line arguments."""
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "files",
+        nargs="+",
+        type=pathlib.Path,
+        help="List of files or paths to check for invalid '# type: ignore' comments.",
+    )
+    args = parser.parse_args()
+    return parser, args
+
+def main():
     """Check for invalid "# type: ignore" comments."""
-    files = get_files_to_check(pathlib.Path(root_dir))
+    parser, args = parse_args()
+    file_list = get_files_to_check(args.files)
     try:
-        check_files(files)
+        check_files(file_list)
     except InvalidTypeIgnore as e:
         print(e)
         sys.exit(1)

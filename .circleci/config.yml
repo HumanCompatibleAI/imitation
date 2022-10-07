@@ -248,7 +248,7 @@ jobs:
 
       - run:
           name: typeignore-check
-          command: ./ci/check_typeignore.py
+          command: ./ci/check_typeignore.py ./src/ ./tests/
 
       - run:
           name: flake8

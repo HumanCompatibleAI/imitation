@@ -87,11 +87,11 @@ def test_interval_param_scaler_raises(interval_param_scaler):
     with pytest.raises(ValueError, match="train_loss must be a scalar"):
         scaler(1.0, th.Tensor([1.0, 2.0]), 1.0)
     with pytest.raises(ValueError, match="train_loss must be a scalar"):
-        scaler(1.0, "random value", th.tensor(1.0))  # type: ignore
+        scaler(1.0, "random value", th.tensor(1.0))
     with pytest.raises(ValueError, match="val_loss must be a scalar"):
-        scaler(1.0, 1.0, "random value")  # type: ignore
+        scaler(1.0, 1.0, "random value")
     with pytest.raises(ValueError, match="lambda_ must be a float"):
-        scaler(th.tensor(1.0), 1.0, 1.0)  # type: ignore
+        scaler(th.tensor(1.0), 1.0, 1.0)
     with pytest.raises(ValueError, match="lambda_ must not be zero.*"):
         scaler(0.0, 1.0, 1.0)
     with pytest.raises(ValueError, match="lambda_ must be non-negative.*"):
@@ -131,12 +131,12 @@ def test_interval_param_scaler_init_raises():
         ValueError,
         match="tolerable_interval must be a tuple of length 2",
     ):
-        updaters.IntervalParamScaler(0.5, (0.1, 0.9, 0.5))  # type: ignore
+        updaters.IntervalParamScaler(0.5, (0.1, 0.9, 0.5))
     with pytest.raises(
         ValueError,
         match="tolerable_interval must be a tuple of length 2",
     ):
-        updaters.IntervalParamScaler(0.5, (0.1,))  # type: ignore
+        updaters.IntervalParamScaler(0.5, (0.1,))
 
     # the first element of the interval must be at least 0.
     with pytest.raises(

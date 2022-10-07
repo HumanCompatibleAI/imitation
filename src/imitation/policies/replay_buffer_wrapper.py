@@ -23,7 +23,7 @@ def _samples_to_reward_fn_input(
     )
 
 
-class ReplayBufferRewardWrapper(BaseBuffer):
+class ReplayBufferRewardWrapper(ReplayBuffer):
     """Relabel the rewards in transitions sampled from a ReplayBuffer."""
 
     def __init__(
