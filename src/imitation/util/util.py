@@ -235,7 +235,7 @@ def safe_to_tensor(array: Union[np.ndarray, th.Tensor], **kwargs) -> th.Tensor:
     undefined behavior if you try to write to the tensor.
 
     Args:
-        array: The numpy array to convert to a PyTorch tensor.
+        array: The array to convert to a PyTorch tensor.
         kwargs: Additional keyword arguments to pass to `th.as_tensor`.
 
     Returns:
