@@ -71,8 +71,9 @@ def clean_notebook(file: pathlib.Path, check_only=False) -> None:
             nbformat.write(nb, f)
         print(f"Cleaned {file}")
 
-def main():
-    """Clean all notebooks in the repository, or check that they are clean."""
+
+def parse_args():
+    """Parse command-line arguments."""
     # if the argument --check has been passed, check if the notebooks are clean
     # otherwise, clean them in-place
     parser = argparse.ArgumentParser()
@@ -85,13 +86,13 @@ def main():
     )
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args()
-    check_only = args.check
-    # build list of files to scan from list of paths and files
+    return parser, args
+
+
+def get_files(input_paths: List):
+    """build list of files to scan from list of paths and files"""
     files = []
-    if len(args.files) == 0:
-        parser.print_help()
-        exit(1)
-    for file in args.files:
+    for file in input_paths:
         if file.is_dir():
             files.extend(file.glob("**/*.ipynb"))
         else:
@@ -102,6 +103,21 @@ def main():
     if not files:
         print("No notebooks found")
         sys.exit(1)
+    return files
+
+
+def main():
+    """Clean all notebooks in the repository, or check that they are clean."""
+    parser, args = parse_args()
+    check_only = args.check
+    input_paths = args.files
+
+    if len(input_paths) == 0:
+        parser.print_help()
+        sys.exit(1)
+
+    files = get_files(input_paths)
+
     for file in files:
         try:
             clean_notebook(file, check_only=check_only)
