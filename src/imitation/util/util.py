@@ -337,7 +337,7 @@ def get_first_iter_element(iterable: Iterable[T]) -> Tuple[T, Iterable[T]]:
         with all the elements.
 
     Raises:
-        ValueError: `iterable` is empty -- the first call it to returns no elements.
+        ValueError: `iterable` is empty -- the first call to it returns no elements.
     """
     iterator = iter(iterable)
     try:
