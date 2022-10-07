@@ -4,6 +4,7 @@ import dataclasses
 import logging
 import os
 import pathlib
+import types
 import warnings
 from typing import (
     Any,
@@ -420,9 +421,7 @@ def save(path: AnyPath, trajectories: Sequence[Trajectory]):
         ValueError: If the trajectories are not all of the same type, i.e. some are
             `Trajectory` and others are `TrajectoryWithRew`.
     """
-    if isinstance(path, bytes):
-        path = path.decode("utf-8")
-    p = pathlib.Path(path)
+    p = pathlib.Path(types.path_to_str(path))
     p.parent.mkdir(parents=True, exist_ok=True)
     tmp_path = f"{path}.tmp"
 

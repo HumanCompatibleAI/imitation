@@ -1519,20 +1519,20 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
         self.model = reward_model
         self.rng = rng
 
-        if self.rng is None and None in (
+        # are any of the optional args that require a rng None?
+        has_any_rng_args_none = None in (
             preference_gatherer,
             fragmenter,
             reward_trainer,
-        ):
+        )
+
+        if self.rng is None and has_any_rng_args_none:
             raise ValueError(
                 "If you don't provide a random state, you must provide your own "
                 "seeded fragmenter, preference gatherer, and reward_trainer. "
                 "You can initialize a random state with `np.random.default_rng(seed)`.",
             )
-        elif self.rng is not None and None not in (
-            preference_gatherer,
-            fragmenter,
-        ):
+        elif self.rng is not None and not has_any_rng_args_none:
             raise ValueError(
                 "If you provide your own fragmenter, preference gatherer, "
                 "and reward trainer, you don't need to provide a random state.",
