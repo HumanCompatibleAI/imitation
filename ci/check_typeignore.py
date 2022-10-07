@@ -1,12 +1,16 @@
 #!/usr/bin/env python
 
-"""This script checks that no files in our source code have a "#type: ignore" comment without explicitly indicating the
-reason for the ignore. This is to ensure that we don't accidentally ignore errors that we should be fixing."""
+"""Check for invalid "# type: ignore" comments.
+
+This script checks that no files in our source code have a "#type: ignore" comment
+without explicitly indicating the reason for the ignore. This is to ensure that we
+don't accidentally ignore errors that we should be fixing.
+"""
 
 
 import os
-import re
 import pathlib
+import re
 import sys
 from typing import List
 
@@ -22,21 +26,27 @@ TYPE_IGNORE_REASON_COMMENT = re.compile(r"#\s*type:\s*ignore\[(?P<reason>.*)\]")
 class InvalidTypeIgnore(ValueError):
     """Raised when a file has an invalid "# type: ignore" comment."""
 
+
 def check_file(file: pathlib.Path):
     """Checks that the given file has no "# type: ignore" comments without a reason."""
     with open(file, "r") as f:
         for i, line in enumerate(f):
             if TYPE_IGNORE_COMMENT.search(line):
-                raise InvalidTypeIgnore(f"{file}:{i+1}: Found a '# type: ignore' comment without a reason.")
+                raise InvalidTypeIgnore(
+                    f"{file}:{i+1}: Found a '# type: ignore' comment without a reason.",
+                )
 
             if search := TYPE_IGNORE_REASON_COMMENT.search(line):
                 reason = search.group("reason")
                 if reason == "":
-                    raise InvalidTypeIgnore(f"{file}:{i+1}: Found a '# type: ignore[]' comment without a reason.")
+                    raise InvalidTypeIgnore(
+                        f"{file}:{i+1}: Found a '# type: ignore[]' "
+                        "comment without a reason.",
+                    )
 
 
 def check_files(files: List[pathlib.Path]):
-    """Checks that the given files have no "# type: ignore" comments without a reason."""
+    """Checks that the given files have no type: ignore comments without a reason."""
     for file in files:
         check_file(file)
 
@@ -54,10 +64,13 @@ def get_files_to_check(root_dir: pathlib.Path) -> List[pathlib.Path]:
 
 
 @click.command()
-@click.option("--root-dir", type=click.Path(exists=True, file_okay=False, dir_okay=True), default="src")
+@click.option(
+    "--root-dir",
+    type=click.Path(exists=True, file_okay=False, dir_okay=True),
+    default="src",
+)
 def main(root_dir: str):
-    """Checks that no files in our source code have a "#type: ignore" comment without explicitly indicating the
-    reason for the ignore. This is to ensure that we don't accidentally ignore errors that we should be fixing."""
+    """Check for invalid "# type: ignore" comments."""
     files = get_files_to_check(pathlib.Path(root_dir))
     try:
         check_files(files)

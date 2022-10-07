@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """Clean all notebooks in the repository."""
 import pathlib
-from typing import List, Tuple, Any
+from typing import Any, List, Tuple
 
 import nbformat
 
@@ -57,7 +57,7 @@ def clean_notebook(file: pathlib.Path, check_only=False) -> None:
                     raise UncleanNotebookError(
                         f"Notebook {file} is not clean: cell has "
                         f"field {field!r} with value {cell[field]!r} (expected "
-                        f"{default!r}). Cell:\n{cell['source']!r}"
+                        f"{default!r}). Cell:\n{cell['source']!r}",
                     )
                 else:
                     cell[field] = default
