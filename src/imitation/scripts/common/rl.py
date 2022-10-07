@@ -106,7 +106,7 @@ def make_rl_algo(
     batch_size: int,
     rl_kwargs: Mapping[str, Any],
     train: Mapping[str, Any],
-    _seed,
+    _seed: int,
     relabel_reward_fn: Optional[RewardFn] = None,
 ) -> base_class.BaseAlgorithm:
     """Instantiates a Stable Baselines3 RL algorithm.
