@@ -70,8 +70,8 @@ def clean_notebook(file: pathlib.Path, check_only=False) -> None:
             nbformat.write(nb, f)
         print(f"Cleaned {file}")
 
-
-if __name__ == "__main__":
+def main():
+    """Clean all notebooks in the repository, or check that they are clean."""
     # if the argument --check has been passed, check if the notebooks are clean
     # otherwise, clean them in-place
     parser = argparse.ArgumentParser()
@@ -107,3 +107,7 @@ if __name__ == "__main__":
         except UncleanNotebookError:
             traceback.print_exc()
             exit(1)
+
+
+if __name__ == "__main__":
+    main()
