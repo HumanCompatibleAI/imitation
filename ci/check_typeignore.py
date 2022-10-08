@@ -45,6 +45,8 @@ def check_file(file: pathlib.Path):
 def check_files(files: List[pathlib.Path]):
     """Checks that the given files have no type: ignore comments without a reason."""
     for file in files:
+        if file == pathlib.Path(__file__):
+            continue
         check_file(file)
 
 
