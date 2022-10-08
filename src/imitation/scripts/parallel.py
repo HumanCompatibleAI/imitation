@@ -9,6 +9,9 @@ from typing import Any, Callable, Mapping, Optional, Sequence
 import ray
 import ray.tune
 import sacred
+from ray.tune.schedulers import ASHAScheduler
+from ray.tune.search import ConcurrencyLimiter
+from ray.tune.search.optuna import OptunaSearch
 from sacred.observers import FileStorageObserver
 
 from imitation.scripts.config.parallel import parallel_ex
@@ -110,6 +113,15 @@ def parallel(
             result.trials = None
             result.fetch_trial_dataframes()
         else:
+            search_alg = OptunaSearch()
+            scheduler = ASHAScheduler(
+                time_attr="training_iteration",
+                max_t=10000,
+                grace_period=10,
+                reduction_factor=3,
+                brackets=1,
+            )
+            # search_alg = ConcurrencyLimiter(OptunaSearch(), max_concurrent=4)
             result = ray.tune.run(
                 trainable,
                 config=search_space,
@@ -118,8 +130,10 @@ def parallel(
                 local_dir=local_dir,
                 resources_per_trial=resources_per_trial,
                 sync_config=ray.tune.syncer.SyncConfig(upload_dir=upload_dir),
-                # metric="mean_return",
-                # mode="max",
+                search_alg=search_alg,
+                scheduler=scheduler,
+                metric="mean_return",
+                mode="max",
             )
         print("Best config:")
         t = result.trials[0]

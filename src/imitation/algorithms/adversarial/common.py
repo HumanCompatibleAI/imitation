@@ -10,6 +10,7 @@ import numpy as np
 import torch as th
 import torch.utils.tensorboard as thboard
 import tqdm
+from ray.air import session
 from stable_baselines3.common import base_class, on_policy_algorithm, policies
 from stable_baselines3.common import utils as sb3_utils
 from stable_baselines3.common import vec_env
@@ -502,6 +503,16 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
             self.train_gen()
             if callback:
                 callback(r)
+            if (
+                session._get_session()
+                and "rollout/ep_rew_mean" in self.logger.name_to_value
+            ):
+                session.report(
+                    {
+                        "training_iteration": r,
+                        "mean_return": self.logger.name_to_value["rollout/ep_rew_mean"],
+                    },
+                )
             self.logger.dump(self._global_step)
 
     def _torchify_array(self, ndarray: Optional[np.ndarray]) -> Optional[th.Tensor]:

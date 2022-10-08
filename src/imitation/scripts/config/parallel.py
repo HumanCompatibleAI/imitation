@@ -46,7 +46,7 @@ def config():
 def seeds(n_seeds_start, n_seeds):
     search_space = {
         "config_updates": {
-            "seed": tune.grid_search(
+            "seed": tune.choice(
                 list(range(n_seeds_start, n_seeds_start + n_seeds)),
             )
         }
@@ -266,7 +266,7 @@ def example_airl():
         "total_timesteps": 1e7,
     }
     search_space = {
-        "named_configs": tune.grid_search([[env] for env in MY_ENVS]),
+        # "named_configs": tune.grid_search([[env] for env in MY_ENVS]),
         "config_updates": {
             "algorithm_kwargs": dict(
                 demo_batch_size=tune.choice([32, 128, 512, 2048, 8192]),
@@ -371,11 +371,11 @@ def debug_eval_adv():
         "total_timesteps": 2048,
     }
     search_space = {
-        "named_configs": tune.grid_search([[env] for env in MY_ENVS]),
+        # "named_configs": tune.grid_search([[env] for env in MY_ENVS]),
         "config_updates": {
             "algorithm_kwargs": dict(
                 # demo_batch_size=tune.choice([32, 128, 512, 2048, 8192]),
-                n_disc_updates_per_round=tune.grid_search([1, 2]),
+                n_disc_updates_per_round=tune.choice([1, 2]),
                 # both are same as rl.batch_size
                 # gen_replay_buffer_capacity=tune.choice([512, 1024]),
                 # gen_train_timesteps=0,
@@ -391,5 +391,5 @@ def debug_eval_adv():
         },
         "command_name": "airl",
     }
-
-    resources_per_trial = dict(cpu=1)
+    num_samples = 2
+    resources_per_trial = dict(cpu=4)
