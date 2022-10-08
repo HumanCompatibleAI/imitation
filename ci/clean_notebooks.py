@@ -51,6 +51,7 @@ def clean_notebook(file: pathlib.Path, check_only=False) -> None:
     Raises:
         UncleanNotebookError: If `check_only` is True and the notebook is not clean.
             Message contains brief description of the reason for the failure.
+        ValueError: unknown cell structure action.
     """
     # Read the notebook
     with open(file) as f:
