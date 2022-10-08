@@ -15,17 +15,17 @@ class UncleanNotebookError(Exception):
 
 markdown_structure: Dict[str, Dict[str, Any]] = {
     "cell_type": {"do": "keep"},
-    "metadata": {"do": "default", "value": dict()},
+    "metadata": {"do": "constant", "value": dict()},
     "source": {"do": "keep"},
     "id": {"do": "keep"},
 }
 
 code_structure: Dict[str, Dict[str, Any]] = {
     "cell_type": {"do": "keep"},
-    "metadata": {"do": "default", "value": dict()},
+    "metadata": {"do": "constant", "value": dict()},
     "source": {"do": "keep"},
-    "outputs": {"do": "default", "value": list()},
-    "execution_count": {"do": "default", "value": None},
+    "outputs": {"do": "constant", "value": list()},
+    "execution_count": {"do": "constant", "value": None},
     "id": {"do": "keep"},
 }
 
@@ -85,16 +85,16 @@ def clean_notebook(file: pathlib.Path, check_only=False) -> None:
                 cell_structure = structure[cell["cell_type"]][key]
                 if cell_structure["do"] == "keep":
                     continue
-                elif cell_structure["do"] == "default":
-                    default_value = cell_structure["value"]
-                    if cell[key] != default_value:
+                elif cell_structure["do"] == "constant":
+                    constant_value = cell_structure["value"]
+                    if cell[key] != constant_value:
                         if check_only:
                             raise UncleanNotebookError(
-                                f"Notebook {file} has non-default cell key {key}"
+                                f"Notebook {file} has illegal cell value for key {key}"
                                 f" (value: {cell[key]}, "
-                                f"expected: {default_value})",
+                                f"expected: {constant_value})",
                             )
-                        cell[key] = default_value
+                        cell[key] = constant_value
                         was_dirty = True
                 else:
                     raise ValueError(
