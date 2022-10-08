@@ -87,7 +87,6 @@ def parse_path(
     else:
         parsed_path = pathlib.Path(str(path))
 
-    parsed_path = parsed_path.resolve()
     if parsed_path.is_absolute():
         return parsed_path
     else:

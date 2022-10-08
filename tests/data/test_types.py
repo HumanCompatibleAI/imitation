@@ -218,7 +218,6 @@ class TestData:
             save_dir_str = tmpdir
 
         with chdir_context:
-
             save_dir = types.parse_path(save_dir_str)
             trajs = [trajectory_rew if use_rewards else trajectory]
             save_path = save_dir / "trajs"
@@ -389,3 +388,37 @@ def test_zero_length_fails():
     empty = np.array([])
     with pytest.raises(ValueError, match=r"Degenerate trajectory.*"):
         types.Trajectory(obs=np.array([42]), acts=empty, infos=None, terminal=True)
+
+
+def test_parse_path():
+    # absolute paths
+    assert types.parse_path("/foo/bar") == pathlib.Path("/foo/bar")
+    assert types.parse_path(pathlib.Path("/foo/bar")) == pathlib.Path("/foo/bar")
+    assert types.parse_path(b"/foo/bar") == pathlib.Path("/foo/bar")
+
+    # relative paths. implicit conversion to cwd
+    assert types.parse_path("foo/bar") == pathlib.Path.cwd() / "foo/bar"
+    assert types.parse_path(pathlib.Path("foo/bar")) == pathlib.Path.cwd() / "foo/bar"
+    assert types.parse_path(b"foo/bar") == pathlib.Path.cwd() / "foo/bar"
+
+    # relative paths. conversion using custom base directory
+    base_dir = pathlib.Path("/foo/bar")
+    assert types.parse_path("baz", base_directory=base_dir) == base_dir / "baz"
+    assert (
+        types.parse_path(pathlib.Path("baz"), base_directory=base_dir)
+        == base_dir / "baz"
+    )
+    assert types.parse_path(b"baz", base_directory=base_dir) == base_dir / "baz"
+
+    # pass a relative path but disallowing relative paths. should raise error.
+    with pytest.raises(ValueError, match="Path .* is not absolute"):
+        types.parse_path("foo/bar", allow_relative=False)
+
+    # pass a base direectory but disallowing relative paths. should raise error.
+    with pytest.raises(
+        ValueError,
+        match="If `base_directory` is specified, then `allow_relative` must be True.",
+    ):
+        types.parse_path(
+            "foo/bar", base_directory=pathlib.Path("/foo/bar"), allow_relative=False
+        )
