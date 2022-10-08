@@ -5,7 +5,6 @@ import itertools
 import json
 import logging
 import os
-import os.path as osp
 import pathlib
 import tempfile
 import warnings
@@ -49,7 +48,8 @@ def _gather_sacred_dicts(
     # e.g. chain.from_iterable([["pathone", "pathtwo"], [], ["paththree"]]) =>
     # ("pathone", "pathtwo", "paththree")
     sacred_dirs = itertools.chain.from_iterable(
-        sacred_util.filter_subdirs(source_dir) for source_dir in source_dirs
+        sacred_util.filter_subdirs(types.parse_path(source_dir))
+        for source_dir in source_dirs
     )
     sacred_dicts_list = []
 
@@ -109,8 +109,7 @@ def gather_tb_directories() -> dict:
         # Expecting a path like "~/ray_results/{run_name}/sacred/1".
         # Want to search for all Tensorboard dirs inside
         # "~/ray_results/{run_name}".
-        sacred_dir = types.parse_path(sd.sacred_dir)
-        run_dir = sacred_dir.parent.parent
+        run_dir = sd.sacred_dir.parent.parent
         run_name = run_dir.name
 
         # log is what we use as subdirectory in new code.
@@ -118,8 +117,8 @@ def gather_tb_directories() -> dict:
         for basename in ["log", "rl", "tb", "sb_tb"]:
             tb_src_dirs = tuple(
                 sacred_util.filter_subdirs(
-                    str(run_dir),
-                    lambda path: osp.basename(path) == basename,
+                    run_dir,
+                    lambda path: path.name == basename,
                 ),
             )
             if tb_src_dirs:

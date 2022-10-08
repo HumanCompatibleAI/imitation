@@ -420,5 +420,7 @@ def test_parse_path():
         match="If `base_directory` is specified, then `allow_relative` must be True.",
     ):
         types.parse_path(
-            "foo/bar", base_directory=pathlib.Path("/foo/bar"), allow_relative=False
+            "foo/bar",
+            base_directory=pathlib.Path("/foo/bar"),
+            allow_relative=False,
         )
