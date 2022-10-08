@@ -4,13 +4,35 @@ import argparse
 import pathlib
 import sys
 import traceback
-from typing import Any, List, Tuple
+from typing import Any, List, Tuple, Dict
 
 import nbformat
 
 
 class UncleanNotebookError(Exception):
     """Raised when a notebook is unclean."""
+
+
+markdown_structure: Dict[str, Dict[str, Any]] = {
+    "cell_type": {"do": "keep"},
+    "metadata": {"do": "default", "value": dict()},
+    "source": {"do": "keep"},
+    "id": {"do": "keep"},
+}
+
+code_structure: Dict[str, Dict[str, Any]] = {
+    "cell_type": {"do": "keep"},
+    "metadata": {"do": "default", "value": dict()},
+    "source": {"do": "keep"},
+    "outputs": {"do": "default", "value": list()},
+    "execution_count": {"do": "default", "value": None},
+    "id": {"do": "keep"},
+}
+
+structure: Dict[str, Dict[str, Dict[str, Any]]] = {
+    "markdown": markdown_structure,
+    "code": code_structure,
+}
 
 
 def clean_notebook(file: pathlib.Path, check_only=False) -> None:
@@ -39,31 +61,44 @@ def clean_notebook(file: pathlib.Path, check_only=False) -> None:
     if check_only:
         print(f"Checking {file}")
 
-    # Remove the output and metadata from each cell
-    # also reset the execution count
-    # if the cell has no code, remove it
-    fields_defaults: List[Tuple[str, Any]] = [
-        ("execution_count", None),
-        ("outputs", []),
-        ("metadata", {}),
-    ]
     for cell in nb.cells:
+
+        # Remove empty cells
         if cell["cell_type"] == "code" and not cell["source"]:
             if check_only:
                 raise UncleanNotebookError(f"Notebook {file} has empty code cell")
             nb.cells.remove(cell)
             was_dirty = True
-        for field, default in fields_defaults:
-            if cell.get(field) != default:
-                was_dirty = True
+
+        # Clean the cell
+        # (copy the cell keys list so we can iterate over it while modifying it)
+        for key in list(cell):
+            if key not in structure[cell["cell_type"]]:
                 if check_only:
                     raise UncleanNotebookError(
-                        f"Notebook {file} is not clean: cell has "
-                        f"field {field!r} with value {cell[field]!r} (expected "
-                        f"{default!r}). Cell:\n{cell['source']!r}",
+                        f"Notebook {file} has unknown cell key {key}"
                     )
+                del cell[key]
+                was_dirty = True
+            else:
+                cell_structure = structure[cell["cell_type"]][key]
+                if cell_structure["do"] == "keep":
+                    continue
+                elif cell_structure["do"] == "default":
+                    default_value = cell_structure["value"]
+                    if cell[key] != default_value:
+                        if check_only:
+                            raise UncleanNotebookError(
+                                f"Notebook {file} has non-default cell key {key}"
+                                f" (value: {cell[key]}, "
+                                f"expected: {default_value})",
+                            )
+                        cell[key] = default_value
+                        was_dirty = True
                 else:
-                    cell[field] = default
+                    raise ValueError(
+                        f"Unknown cell structure action {cell_structure['do']}"
+                    )
 
     if not check_only and was_dirty:
         # Write the notebook
