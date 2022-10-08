@@ -4,7 +4,7 @@ import argparse
 import pathlib
 import sys
 import traceback
-from typing import Any, List, Tuple, Dict
+from typing import Any, Dict, List
 
 import nbformat
 
@@ -76,7 +76,7 @@ def clean_notebook(file: pathlib.Path, check_only=False) -> None:
             if key not in structure[cell["cell_type"]]:
                 if check_only:
                     raise UncleanNotebookError(
-                        f"Notebook {file} has unknown cell key {key}"
+                        f"Notebook {file} has unknown cell key {key}",
                     )
                 del cell[key]
                 was_dirty = True
@@ -97,7 +97,7 @@ def clean_notebook(file: pathlib.Path, check_only=False) -> None:
                         was_dirty = True
                 else:
                     raise ValueError(
-                        f"Unknown cell structure action {cell_structure['do']}"
+                        f"Unknown cell structure action {cell_structure['do']}",
                     )
 
     if not check_only and was_dirty:
