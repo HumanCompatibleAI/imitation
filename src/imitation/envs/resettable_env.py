@@ -27,7 +27,7 @@ class ResettableEnv(gym.Env, abc.ABC):
         self._action_space = None
         self.cur_state = None
         self._n_actions_taken = None
-        self.rand_state: Optional[np.random.RandomState] = None
+        self.rng: Optional[np.random.Generator] = None
         self.seed()
 
     @abc.abstractmethod
@@ -113,7 +113,7 @@ class ResettableEnv(gym.Env, abc.ABC):
             # Gym API wants list of seeds to be returned for some reason, so
             # generate a seed explicitly in this case
             seed = np.random.randint(0, 1 << 31)
-        self.rand_state = np.random.RandomState(seed)
+        self.rng = np.random.default_rng(seed)
         return [seed]
 
     def reset(self):
@@ -177,12 +177,12 @@ class TabularModelEnv(ResettableEnv, abc.ABC):
         return self._action_space
 
     def initial_state(self):
-        return self.rand_state.choice(self.n_states, p=self.initial_state_dist)
+        return self.rng.choice(self.n_states, p=self.initial_state_dist)
 
     def transition(self, state, action):
         out_dist = self.transition_matrix[state, action]
         choice_states = np.arange(self.n_states)
-        return int(self.rand_state.choice(choice_states, p=out_dist, size=()))
+        return int(self.rng.choice(choice_states, p=out_dist, size=()))
 
     def reward(self, state, action, new_state):
         reward = self.reward_matrix[state]

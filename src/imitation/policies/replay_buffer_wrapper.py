@@ -1,11 +1,10 @@
 """Wrapper for reward labeling for transitions sampled from a replay buffer."""
 
-
 from typing import Mapping, Type
 
 import numpy as np
 from gym import spaces
-from stable_baselines3.common.buffers import BaseBuffer, ReplayBuffer
+from stable_baselines3.common.buffers import ReplayBuffer
 from stable_baselines3.common.type_aliases import ReplayBufferSamples
 
 from imitation.rewards.reward_function import RewardFn
@@ -24,7 +23,7 @@ def _samples_to_reward_fn_input(
     )
 
 
-class ReplayBufferRewardWrapper(BaseBuffer):
+class ReplayBufferRewardWrapper(ReplayBuffer):
     """Relabel the rewards in transitions sampled from a ReplayBuffer."""
 
     def __init__(
@@ -63,16 +62,20 @@ class ReplayBufferRewardWrapper(BaseBuffer):
         _base_kwargs = {k: v for k, v in kwargs.items() if k in ["device", "n_envs"]}
         super().__init__(buffer_size, observation_space, action_space, **_base_kwargs)
 
-    @property
-    def pos(self) -> int:
+    # TODO(juan) remove the type ignore once the merged PR
+    #  https://github.com/python/mypy/pull/13475
+    #  is released into a mypy version on pypi.
+
+    @property  # type: ignore[override]
+    def pos(self) -> int:  # type: ignore[override]
         return self.replay_buffer.pos
 
     @pos.setter
     def pos(self, pos: int):
         self.replay_buffer.pos = pos
 
-    @property
-    def full(self) -> bool:
+    @property  # type: ignore[override]
+    def full(self) -> bool:  # type: ignore[override]
         return self.replay_buffer.full
 
     @full.setter

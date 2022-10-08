@@ -57,7 +57,7 @@ def _build_output_formats(
         A list of output formats, one corresponding to each `format_strs`.
     """
     os.makedirs(folder, exist_ok=True)
-    output_formats = []
+    output_formats: List[sb_logger.KVWriter] = []
     for f in format_strs:
         if f == "wandb":
             output_formats.append(WandbOutputFormat())
@@ -123,6 +123,7 @@ class HierarchicalLogger(sb_logger.Logger):
     _key_prefixes: List[str]
     _subdir: Optional[str]
     _name: Optional[str]
+    format_strs: Sequence[str]
 
     def __init__(
         self,
@@ -265,6 +266,7 @@ class HierarchicalLogger(sb_logger.Logger):
         if subdir in self._cached_loggers:
             logger = self._cached_loggers[subdir]
         else:
+            assert self.default_logger.dir is not None
             folder = os.path.join(self.default_logger.dir, "raw", subdir)
             os.makedirs(folder, exist_ok=True)
             output_formats = _build_output_formats(folder, self.format_strs)
@@ -352,7 +354,7 @@ class WandbOutputFormat(sb_logger.KVWriter):
         """
         try:
             import wandb
-        except ModuleNotFoundError as e:
+        except ModuleNotFoundError as e:  # pragma: no cover
             raise ModuleNotFoundError(
                 "Trying to log data with `WandbOutputFormat` "
                 "but `wandb` not installed: try `pip install wandb`.",

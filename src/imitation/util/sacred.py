@@ -7,6 +7,8 @@ import warnings
 from typing import Any, Callable, NamedTuple, Sequence, Union
 
 import sacred
+import sacred.observers
+import sacred.run
 
 from imitation.data import types
 
@@ -78,6 +80,8 @@ def filter_subdirs(
 
 def build_sacred_symlink(log_dir: types.AnyPath, run: sacred.run.Run) -> None:
     """Constructs a symlink "{log_dir}/sacred" => "${SACRED_PATH}"."""
+    if isinstance(log_dir, bytes):
+        log_dir = log_dir.decode("utf-8")
     log_dir = pathlib.Path(log_dir)
 
     sacred_dir = get_sacred_dir_from_run(run)

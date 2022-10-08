@@ -22,6 +22,8 @@ Detailed example notebook: :doc:`../tutorials/5_train_preference_comparisons`
 
 .. testcode::
 
+    import numpy as np
+
     from stable_baselines3 import PPO
     from stable_baselines3.common.evaluation import evaluate_policy
     from stable_baselines3.ppo import MlpPolicy
@@ -33,19 +35,22 @@ Detailed example notebook: :doc:`../tutorials/5_train_preference_comparisons`
     from imitation.util.networks import RunningNorm
     from imitation.util.util import make_vec_env
 
-    venv = make_vec_env("Pendulum-v1")
+    rng = np.random.default_rng(0)
+
+    venv = make_vec_env("Pendulum-v1", rng=rng)
 
     reward_net = BasicRewardNet(
         venv.observation_space, venv.action_space, normalize_input_layer=RunningNorm,
     )
 
-    fragmenter = preference_comparisons.RandomFragmenter(warning_threshold=0, seed=0)
-    gatherer = preference_comparisons.SyntheticGatherer(seed=0)
+    fragmenter = preference_comparisons.RandomFragmenter(warning_threshold=0, rng=rng)
+    gatherer = preference_comparisons.SyntheticGatherer(rng=rng)
     preference_model = preference_comparisons.PreferenceModel(reward_net)
     reward_trainer = preference_comparisons.BasicRewardTrainer(
         preference_model=preference_model,
         loss=preference_comparisons.CrossEntropyRewardLoss(),
         epochs=3,
+        rng=rng,
     )
 
     agent = PPO(
@@ -63,7 +68,7 @@ Detailed example notebook: :doc:`../tutorials/5_train_preference_comparisons`
         reward_fn=reward_net,
         venv=venv,
         exploration_frac=0.0,
-        seed=0,
+        rng=rng,
     )
 
     pref_comparisons = preference_comparisons.PreferenceComparisons(
@@ -73,7 +78,6 @@ Detailed example notebook: :doc:`../tutorials/5_train_preference_comparisons`
         fragmenter=fragmenter,
         preference_gatherer=gatherer,
         reward_trainer=reward_trainer,
-        seed=0,
         initial_epoch_multiplier=1,
     )
     pref_comparisons.train(total_timesteps=5_000, total_comparisons=200)
