@@ -1,7 +1,7 @@
 """Module of base classes and helper methods for imitation learning algorithms."""
 
 import abc
-from typing import Any, Generic, Iterable, Mapping, Optional, TypeVar, Union
+from typing import Any, Generic, Iterable, Mapping, Optional, TypeVar, Union, cast
 
 import numpy as np
 import torch as th
@@ -10,6 +10,7 @@ from stable_baselines3.common import policies
 
 from imitation.data import rollout, types
 from imitation.util import logger as imit_logger
+from imitation.util import util
 
 
 class BaseImitationAlgorithm(abc.ABC):
@@ -116,7 +117,7 @@ TransitionKind = TypeVar("TransitionKind", bound=types.TransitionsMinimal)
 AnyTransitions = Union[
     Iterable[types.Trajectory],
     Iterable[TransitionMapping],
-    TransitionKind,
+    types.TransitionsMinimal,
 ]
 
 
@@ -242,11 +243,9 @@ def make_data_loader(
         raise ValueError(f"batch_size={batch_size} must be positive.")
 
     if isinstance(transitions, Iterable):
-        try:
-            first_item = next(iter(transitions))
-        except StopIteration:
-            first_item = None
+        first_item, transitions = util.get_first_iter_element(transitions)
         if isinstance(first_item, types.Trajectory):
+            transitions = cast(Iterable[types.Trajectory], transitions)
             transitions = rollout.flatten_trajectories(list(transitions))
 
     if isinstance(transitions, types.TransitionsMinimal):
@@ -256,14 +255,16 @@ def make_data_loader(
                 f"is smaller than batch size {batch_size}.",
             )
 
-        extra_kwargs = dict(shuffle=True, drop_last=True)
-        if data_loader_kwargs is not None:
-            extra_kwargs.update(data_loader_kwargs)
+        kwargs: Mapping[str, Any] = {
+            "shuffle": True,
+            "drop_last": True,
+            **(data_loader_kwargs or {}),
+        }
         return th_data.DataLoader(
             transitions,
             batch_size=batch_size,
             collate_fn=types.transitions_collate_fn,
-            **extra_kwargs,
+            **kwargs,
         )
     elif isinstance(transitions, Iterable):
         return _WrappedDataLoader(transitions, batch_size)

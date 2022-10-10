@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
-# This script starts an X server and sets DISPLAY, then runs wrapped command.
+"""This script starts an X server and sets DISPLAY, then runs wrapped command."""
+
 # Usage: ./Xdummy-entrypoint.py [command]
 #
 # Adapted from https://github.com/openai/mujoco-py/blob/master/vendor/Xdummy-entrypoint
@@ -31,7 +32,7 @@ if __name__ == "__main__":
             "-config",
             "/etc/dummy_xorg.conf",
             ":0",
-        ]
+        ],
     )
     os.environ["DISPLAY"] = ":0"
 

@@ -9,7 +9,7 @@ import os.path as osp
 import tempfile
 import warnings
 from collections import OrderedDict
-from typing import Any, Callable, List, Mapping, Optional, Sequence, Set
+from typing import Any, Callable, Iterable, List, Mapping, Optional, Sequence, Set
 
 import pandas as pd
 from sacred.observers import FileStorageObserver
@@ -49,14 +49,15 @@ def _gather_sacred_dicts(
     sacred_dirs = itertools.chain.from_iterable(
         sacred_util.filter_subdirs(source_dir) for source_dir in source_dirs
     )
-    sacred_dicts = []
+    sacred_dicts_list = []
 
     for sacred_dir in sacred_dirs:
         try:
-            sacred_dicts.append(sacred_util.SacredDicts.load_from_dir(sacred_dir))
+            sacred_dicts_list.append(sacred_util.SacredDicts.load_from_dir(sacred_dir))
         except json.JSONDecodeError:
             warnings.warn(f"Invalid JSON file in {sacred_dir}", RuntimeWarning)
 
+    sacred_dicts: Iterable = sacred_dicts_list
     if run_name is not None:
         sacred_dicts = filter(
             lambda sd: get(sd.run, "experiment.name") == run_name,
@@ -216,7 +217,6 @@ table_entry_fns: sd_to_table_entry_type = collections.OrderedDict(
         ("imit_expert_ratio", lambda sd: _return_summaries(sd)["imit_expert_ratio"]),
     ],
 )
-
 
 # If `verbosity` is at least the length of this list, then we use all table_entry_fns
 # as columns of table.

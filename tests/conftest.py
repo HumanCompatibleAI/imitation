@@ -6,6 +6,7 @@ import warnings
 from typing import Sequence
 
 import gym
+import numpy as np
 import pytest
 import torch
 from filelock import FileLock
@@ -26,6 +27,7 @@ def load_or_rollout_trajectories(
     cache_path,
     policy,
     venv,
+    rng,
 ) -> Sequence[TrajectoryWithRew]:
     os.makedirs(os.path.dirname(cache_path), exist_ok=True)
     with FileLock(cache_path + ".lock"):
@@ -40,6 +42,7 @@ def load_or_rollout_trajectories(
                 policy,
                 venv,
                 rollout.make_sample_until(min_timesteps=2000, min_episodes=57),
+                rng=rng,
             )
             types.save(cache_path, rollouts)
             return rollouts
@@ -71,6 +74,7 @@ def cartpole_expert_trajectories(
     cartpole_expert_policy,
     cartpole_venv,
     pytestconfig,
+    rng,
 ) -> Sequence[TrajectoryWithRew]:
     rollouts_path = str(
         pytestconfig.cache.makedir("experts") / CARTPOLE_ENV_NAME / "rollout.npz",
@@ -79,6 +83,7 @@ def cartpole_expert_trajectories(
         rollouts_path,
         cartpole_expert_policy,
         cartpole_venv,
+        rng,
     )
 
 
@@ -92,12 +97,14 @@ def pendulum_venv() -> VecEnv:
 
 @pytest.fixture
 def pendulum_expert_policy() -> BasePolicy:
-    return PPO.load(
+    policy = PPO.load(
         load_from_hub(
             "HumanCompatibleAI/ppo-Pendulum-v1",
             "ppo-Pendulum-v1.zip",
         ),
     ).policy
+    assert policy is not None
+    return policy
 
 
 @pytest.fixture
@@ -105,6 +112,7 @@ def pendulum_expert_trajectories(
     pendulum_expert_policy,
     pendulum_venv,
     pytestconfig,
+    rng,
 ) -> Sequence[TrajectoryWithRew]:
     rollouts_path = str(
         pytestconfig.cache.makedir("experts") / PENDULUM_ENV_NAME / "rollout.npz",
@@ -113,6 +121,7 @@ def pendulum_expert_trajectories(
         rollouts_path,
         pendulum_expert_policy,
         pendulum_venv,
+        rng=rng,
     )
 
 
@@ -134,3 +143,8 @@ def torch_single_threaded():
 @pytest.fixture()
 def custom_logger(tmpdir: str) -> logger.HierarchicalLogger:
     return logger.configure(tmpdir)
+
+
+@pytest.fixture()
+def rng() -> np.random.Generator:
+    return np.random.default_rng()

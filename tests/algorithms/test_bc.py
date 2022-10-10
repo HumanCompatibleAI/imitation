@@ -47,6 +47,7 @@ def trainer(
     expert_data_type,
     custom_logger,
     cartpole_expert_trajectories,
+    rng,
 ):
     trans = rollout.flatten_trajectories(cartpole_expert_trajectories)
     if expert_data_type == "data_loader":
@@ -70,10 +71,11 @@ def trainer(
         batch_size=batch_size,
         demonstrations=expert_data,
         custom_logger=custom_logger,
+        rng=rng,
     )
 
 
-def test_weight_decay_init_error(cartpole_venv, custom_logger):
+def test_weight_decay_init_error(cartpole_venv, custom_logger, rng):
     with pytest.raises(ValueError, match=".*weight_decay.*"):
         bc.BC(
             observation_space=cartpole_venv.observation_space,
@@ -81,6 +83,7 @@ def test_weight_decay_init_error(cartpole_venv, custom_logger):
             demonstrations=None,
             optimizer_kwargs=dict(weight_decay=1e-4),
             custom_logger=custom_logger,
+            rng=rng,
         )
 
 
@@ -101,6 +104,7 @@ def test_bc(trainer: bc.BC, cartpole_venv):
         15,
         return_episode_rewards=True,
     )
+    assert isinstance(novice_rewards, list)
 
     trainer.train(
         n_epochs=1,
@@ -114,6 +118,7 @@ def test_bc(trainer: bc.BC, cartpole_venv):
         15,
         return_episode_rewards=True,
     )
+    assert isinstance(rewards_after_training, list)
     assert reward_improvement.is_significant_reward_improvement(
         novice_rewards,
         rewards_after_training,
@@ -163,6 +168,7 @@ def test_bc_data_loader_empty_iter_error(
     no_yield_after_iter: bool,
     custom_logger: logger.HierarchicalLogger,
     cartpole_expert_trajectories,
+    rng,
 ) -> None:
     """Check that we error out if the DataLoader suddenly stops yielding any batches.
 
@@ -173,6 +179,7 @@ def test_bc_data_loader_empty_iter_error(
         no_yield_after_iter: Data loader stops yielding after this many calls.
         custom_logger: Where to log to.
         cartpole_expert_trajectories: The expert trajectories to use.
+        rng: Random state to use.
     """
     batch_size = 32
     trans = rollout.flatten_trajectories(cartpole_expert_trajectories)
@@ -180,13 +187,16 @@ def test_bc_data_loader_empty_iter_error(
 
     bad_data_loader = _DataLoaderFailsOnNthIter(
         dummy_yield_value=dummy_yield_value,
-        no_yield_after_iter=no_yield_after_iter,
+        # add 1 as BC uses up an iteration from getting the first element
+        # for type checking
+        no_yield_after_iter=no_yield_after_iter + 1,
     )
     trainer = bc.BC(
         observation_space=cartpole_venv.observation_space,
         action_space=cartpole_venv.action_space,
         batch_size=batch_size,
         custom_logger=custom_logger,
+        rng=rng,
     )
     trainer.set_demonstrations(bad_data_loader)
     with pytest.raises(AssertionError, match=".*no data.*"):
