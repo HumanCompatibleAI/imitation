@@ -19,7 +19,7 @@ IMAGE_ENV_REQUIRE = [
     "ale-py==0.7.4",
     "pillow",
     "autorom[accept-rom-license]~=0.4.2",
-    "procgen==0.10.4",
+    "procgen==0.10.7",
     "gym3@git+https://github.com/openai/gym3.git#4c3824680eaf9dd04dce224ee3d4856429878226",
 ]
 PYTYPE = ["pytype==2022.7.26"] if IS_NOT_WINDOWS else []
@@ -77,7 +77,7 @@ DOCS_REQUIRE = [
     "myst-nb==0.16.0",
     "ipykernel~=6.15.2",
     "seals==0.1.2",
-] + ATARI_REQUIRE
+] + IMAGE_ENV_REQUIRE
 
 
 def get_readme() -> str:
