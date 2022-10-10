@@ -55,7 +55,7 @@ ALL_SCRIPTS_MODS = [
 
 TEST_DATA_PATH = types.parse_path("tests/testdata")
 
-if not TEST_DATA_PATH.exists():
+if not TEST_DATA_PATH.exists():  # pragma: no cover
     raise RuntimeError(
         "Folder with test data has not been found. Make sure you are "
         "running tests relative to the base imitation project folder.",

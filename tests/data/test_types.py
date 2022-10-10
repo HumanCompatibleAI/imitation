@@ -429,3 +429,7 @@ def test_parse_path():
             base_directory=pathlib.Path("/foo/bar"),
             allow_relative=False,
         )
+
+    # Parse optional path. Works the same way but passes None down the line.
+    assert types.parse_optional_path(None) is None
+    assert types.parse_optional_path("/foo/bar") == types.parse_path("/foo/bar")
