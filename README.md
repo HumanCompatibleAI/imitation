@@ -90,7 +90,7 @@ See [examples/quickstart.py](examples/quickstart.py) for an example script that 
 
 ### Density reward baseline
 
-We also implement a density-based reward baseline. You can find an [example notebook here](examples/7_train_density.ipynb).
+We also implement a density-based reward baseline. You can find an [example notebook here](docs/tutorials/7_train_density.ipynb).
 
 # Citations (BibTeX)
 

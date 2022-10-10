@@ -7,11 +7,13 @@ Implements `Modeling Interaction via the Principle of Maximum Causal Entropy <ht
 Example
 =======
 
-Detailed example notebook: `6_train_mce.ipynb <https://github.com/HumanCompatibleAI/imitation/blob/master/examples/6_train_mce.ipynb>`_
+Detailed example notebook: :doc:`../tutorials/6_train_mce`
 
 .. testcode::
 
     from functools import partial
+
+    import numpy as np
 
     from stable_baselines3.common.vec_env import DummyVecEnv
 
@@ -24,6 +26,8 @@ Detailed example notebook: `6_train_mce.ipynb <https://github.com/HumanCompatibl
     from imitation.envs import resettable_env
     from imitation.envs.examples.model_envs import CliffWorld
     from imitation.rewards import reward_nets
+
+    rng = np.random.default_rng(0)
 
     env_creator = partial(CliffWorld, height=4, horizon=8, width=7, use_xy_obs=True)
     env_single = env_creator()
@@ -51,6 +55,7 @@ Detailed example notebook: `6_train_mce.ipynb <https://github.com/HumanCompatibl
         reward_net,
         log_interval=250,
         optimizer_kwargs={"lr": 0.01},
+        rng=rng,
     )
     occ_measure = mce_irl.train()
 
@@ -58,6 +63,7 @@ Detailed example notebook: `6_train_mce.ipynb <https://github.com/HumanCompatibl
         policy=mce_irl.policy,
         venv=state_venv,
         sample_until=rollout.make_min_timesteps(5000),
+        rng=rng,
     )
     print("Imitation stats: ", rollout.rollout_stats(imitation_trajs))
 

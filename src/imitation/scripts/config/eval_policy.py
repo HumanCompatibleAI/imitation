@@ -58,6 +58,11 @@ def half_cheetah():
 
 
 @eval_policy_ex.named_config
+def seals_half_cheetah():
+    common = dict(env_name="seals/HalfCheetah-v0")
+
+
+@eval_policy_ex.named_config
 def seals_hopper():
     common = dict(env_name="seals/Hopper-v0")
 

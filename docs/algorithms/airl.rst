@@ -17,10 +17,11 @@ Notes
 Example
 =======
 
-Detailed example notebook: `4_train_airl.ipynb <https://github.com/HumanCompatibleAI/imitation/blob/master/examples/4_train_airl.ipynb>`_
+Detailed example notebook: :doc:`../tutorials/4_train_airl`
 
 .. testcode::
 
+    import numpy as np
     import gym
     from stable_baselines3 import PPO
     from stable_baselines3.common.evaluation import evaluate_policy
@@ -34,6 +35,8 @@ Detailed example notebook: `4_train_airl.ipynb <https://github.com/HumanCompatib
     from imitation.util.networks import RunningNorm
     from imitation.util.util import make_vec_env
 
+    rng = np.random.default_rng(0)
+
     env = gym.make("seals/CartPole-v0")
     expert = PPO(policy=MlpPolicy, env=env)
     expert.learn(1000)
@@ -42,13 +45,15 @@ Detailed example notebook: `4_train_airl.ipynb <https://github.com/HumanCompatib
         expert,
         make_vec_env(
             "seals/CartPole-v0",
+            rng=rng,
             n_envs=5,
             post_wrappers=[lambda env, _: RolloutInfoWrapper(env)],
         ),
         rollout.make_sample_until(min_timesteps=None, min_episodes=60),
+        rng=rng,
     )
 
-    venv = make_vec_env("seals/CartPole-v0", n_envs=8)
+    venv = make_vec_env("seals/CartPole-v0", rng=rng, n_envs=8)
     learner = PPO(env=venv, policy=MlpPolicy)
     reward_net = BasicShapedRewardNet(
         venv.observation_space,

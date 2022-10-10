@@ -1,6 +1,7 @@
 """Wrapper to record rendered video frames from an environment."""
 
 import os
+from typing import Optional
 
 import gym
 from gym.wrappers.monitoring import video_recorder
@@ -10,6 +11,11 @@ from imitation.data import types
 
 class VideoWrapper(gym.Wrapper):
     """Creates videos from wrapped environment by calling render after each timestep."""
+
+    episode_id: int
+    video_recorder: Optional[video_recorder.VideoRecorder]
+    single_video: bool
+    directory: str
 
     def __init__(
         self,
@@ -33,7 +39,7 @@ class VideoWrapper(gym.Wrapper):
         self.video_recorder = None
         self.single_video = single_video
 
-        self.directory = os.path.abspath(directory)
+        self.directory = str(os.path.abspath(directory))
         os.makedirs(self.directory)
 
     def _reset_video_recorder(self) -> None:

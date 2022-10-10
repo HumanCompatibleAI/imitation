@@ -91,6 +91,7 @@ def train_rl(
     Returns:
         The return value of `rollout_stats()` using the final policy.
     """
+    rng = common.make_rng()
     custom_logger, log_dir = scripts_common.setup_logging()
     rollout_dir = osp.join(log_dir, "rollouts")
     policy_dir = osp.join(log_dir, "policies")
@@ -126,7 +127,9 @@ def train_rl(
                 )
 
         if policy_save_interval > 0:
-            save_policy_callback = serialize.SavePolicyCallback(policy_dir)
+            save_policy_callback: callbacks.EventCallback = (
+                serialize.SavePolicyCallback(policy_dir)
+            )
             save_policy_callback = callbacks.EveryNTimesteps(
                 policy_save_interval,
                 save_policy_callback,
@@ -150,7 +153,7 @@ def train_rl(
             )
             types.save(
                 save_path,
-                rollout.rollout(rl_algo, rl_algo.get_env(), sample_until),
+                rollout.rollout(rl_algo, rl_algo.get_env(), sample_until, rng=rng),
             )
         if policy_save_final:
             output_dir = os.path.join(policy_dir, "final")

@@ -71,7 +71,7 @@ class EMANormAlgorithm2(networks.EMANorm):
             self.running_var += learning_rate * S - delta**2
 
         self.count += b_size
-        self.num_batches += 1
+        self.num_batches += 1  # type: ignore[misc]
 
 
 @pytest.mark.parametrize("normalization_layer", NORMALIZATION_LAYERS)
@@ -241,6 +241,20 @@ def test_build_mlp_norm_training(init_kwargs) -> None:
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
+
+
+def test_build_mlp_raises_on_invalid_normalize_input_layer() -> None:
+    """Test that `networks.build_mlp()` raises on invalid input layer."""
+    with pytest.raises(
+        ValueError,
+        match="normalize_input_layer.*not a valid normalization layer.*",
+    ):
+        networks.build_mlp(
+            in_size=1,
+            hid_sizes=[16, 16],
+            out_size=1,
+            normalize_input_layer=th.nn.Module,
+        )
 
 
 def test_input_validation_on_ema_norm():

@@ -23,15 +23,7 @@ IMAGE_ENV_REQUIRE = [
     "gym3@git+https://github.com/openai/gym3.git#4c3824680eaf9dd04dce224ee3d4856429878226",
 ]
 PYTYPE = ["pytype==2022.7.26"] if IS_NOT_WINDOWS else []
-if IS_NOT_WINDOWS:
-    # TODO(adam): use this for Windows as well once PyPI is at >=1.6.1
-    STABLE_BASELINES3 = "stable-baselines3>=1.6.0"
-else:
-    STABLE_BASELINES3 = (
-        "stable-baselines3@git+"
-        "https://github.com/DLR-RM/stable-baselines3.git@master"
-    )
-
+STABLE_BASELINES3 = "stable-baselines3>=1.6.1"
 # pinned to 0.21 until https://github.com/DLR-RM/stable-baselines3/pull/780 goes
 # upstream.
 GYM_VERSION_SPECIFIER = "==0.21.0"
@@ -60,6 +52,7 @@ TESTS_REQUIRE = (
         # TODO: upgrade jupyter-client once
         #  https://github.com/jupyter/jupyter_client/issues/637 is fixed
         "jupyter-client~=6.1.12",
+        "mypy==0.971",
         "pandas~=1.4.3",
         "pytest~=7.1.2",
         "pytest-cov~=3.0.0",
@@ -81,7 +74,10 @@ DOCS_REQUIRE = [
     "furo==2022.6.21",
     "sphinx-copybutton==0.5.0",
     "sphinx-github-changelog~=1.2.0",
-]
+    "myst-nb==0.16.0",
+    "ipykernel~=6.15.2",
+    "seals==0.1.2",
+] + ATARI_REQUIRE
 
 
 def get_readme() -> str:
@@ -218,8 +214,6 @@ setup(
         # recommended packages for development
         "dev": [
             "autopep8",
-            "awscli",
-            "ntfy[slack]",
             "ipdb",
             "isort~=5.0",
             "codespell",

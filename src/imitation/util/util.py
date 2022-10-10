@@ -5,16 +5,20 @@ import functools
 import itertools
 import os
 import uuid
+import warnings
 from typing import (
     Any,
     Callable,
     Iterable,
     Iterator,
+    List,
     Mapping,
     Optional,
     Sequence,
+    Tuple,
     TypeVar,
     Union,
+    overload,
 )
 
 import gym
@@ -63,8 +67,9 @@ def make_unique_timestamp() -> str:
 
 def make_vec_env(
     env_name: str,
+    *,
+    rng: np.random.Generator,
     n_envs: int = 8,
-    seed: int = 0,
     parallel: bool = False,
     log_dir: Optional[str] = None,
     max_episode_steps: Optional[int] = None,
@@ -75,8 +80,8 @@ def make_vec_env(
 
     Args:
         env_name: The Env's string id in Gym.
+        rng: The random state to use to seed the environment.
         n_envs: The number of duplicate environments.
-        seed: The environment seed.
         parallel: If True, uses SubprocVecEnv; otherwise, DummyVecEnv.
         log_dir: If specified, saves Monitor output to this directory.
         max_episode_steps: If specified, wraps each env in a TimeLimit wrapper
@@ -99,7 +104,7 @@ def make_vec_env(
     spec = gym.spec(env_name)
     env_make_kwargs = env_make_kwargs or {}
 
-    def make_env(i, this_seed):
+    def make_env(i: int, this_seed: int) -> gym.Env:
         # Previously, we directly called `gym.make(env_name)`, but running
         # `imitation.scripts.train_adversarial` within `imitation.scripts.parallel`
         # created a weird interaction between Gym and Ray -- `gym.make` would fail
@@ -136,14 +141,48 @@ def make_vec_env(
 
         return env
 
-    rng = np.random.RandomState(seed)
-    env_seeds = rng.randint(0, (1 << 31) - 1, (n_envs,))
-    env_fns = [functools.partial(make_env, i, s) for i, s in enumerate(env_seeds)]
+    env_seeds = make_seeds(rng, n_envs)
+    env_fns: List[Callable[[], gym.Env]] = [
+        functools.partial(make_env, i, s) for i, s in enumerate(env_seeds)
+    ]
     if parallel:
         # See GH hill-a/stable-baselines issue #217
         return SubprocVecEnv(env_fns, start_method="forkserver")
     else:
         return DummyVecEnv(env_fns)
+
+
+@overload
+def make_seeds(
+    rng: np.random.Generator,
+) -> int:
+    ...
+
+
+@overload
+def make_seeds(rng: np.random.Generator, n: int) -> List[int]:
+    ...
+
+
+def make_seeds(
+    rng: np.random.Generator,
+    n: Optional[int] = None,
+) -> Union[Sequence[int], int]:
+    """Generate n random seeds from a random state.
+
+    Args:
+        rng: The random state to use to generate seeds.
+        n: The number of seeds to generate.
+
+    Returns:
+        A list of n random seeds.
+    """
+    seeds_arr = rng.integers(0, (1 << 31) - 1, (n if n is not None else 1,))
+    seeds: List[int] = seeds_arr.tolist()
+    if n is None:
+        return seeds[0]
+    else:
+        return seeds
 
 
 def docstring_parameter(*args, **kwargs):
@@ -172,23 +211,23 @@ def endless_iter(iterable: Iterable[T]) -> Iterator[T]:
     0
 
     Args:
-        iterable: The object to endlessly iterate over.
+        iterable: The non-iterator iterable object to endlessly iterate over.
 
     Returns:
         An iterator that repeats the elements in `iterable` forever.
 
     Raises:
-        ValueError: `iterable` is empty -- the first call it to returns no elements.
+        ValueError: if iterable is an iterator -- that will be exhausted, so
+            cannot be iterated over endlessly.
     """
-    try:
-        next(iter(iterable))
-    except StopIteration:
-        raise ValueError(f"iterable {iterable} had no elements to iterate over.")
+    if iter(iterable) == iterable:
+        raise ValueError("endless_iter needs a non-iterator Iterable.")
 
+    _, iterable = get_first_iter_element(iterable)
     return itertools.chain.from_iterable(itertools.repeat(iterable))
 
 
-def safe_to_tensor(numpy_array: np.ndarray, **kwargs) -> th.Tensor:
+def safe_to_tensor(array: Union[np.ndarray, th.Tensor], **kwargs) -> th.Tensor:
     """Converts a NumPy array to a PyTorch tensor.
 
     The data is copied in the case where the array is non-writable. Unfortunately if
@@ -196,16 +235,61 @@ def safe_to_tensor(numpy_array: np.ndarray, **kwargs) -> th.Tensor:
     undefined behavior if you try to write to the tensor.
 
     Args:
-        numpy_array: The numpy array to convert to a PyTorch tensor.
+        array: The array to convert to a PyTorch tensor.
         kwargs: Additional keyword arguments to pass to `th.as_tensor`.
 
     Returns:
-        A PyTorch tensor with the same content as `numpy_array`.
+        A PyTorch tensor with the same content as `array`.
     """
-    if not numpy_array.flags.writeable:
-        numpy_array = numpy_array.copy()
+    if isinstance(array, th.Tensor):
+        return array
 
-    return th.as_tensor(numpy_array, **kwargs)
+    if not array.flags.writeable:
+        array = array.copy()
+
+    return th.as_tensor(array, **kwargs)
+
+
+@overload
+def safe_to_numpy(obj: Union[np.ndarray, th.Tensor], warn: bool = False) -> np.ndarray:
+    ...
+
+
+@overload
+def safe_to_numpy(obj: None, warn: bool = False) -> None:
+    ...
+
+
+def safe_to_numpy(
+    obj: Optional[Union[np.ndarray, th.Tensor]],
+    warn: bool = False,
+) -> Optional[np.ndarray]:
+    """Convert torch tensor to numpy.
+
+    If the object is already a numpy array, return it as is.
+    If the object is none, returns none.
+
+    Args:
+        obj: torch tensor object to convert to numpy array
+        warn: if True, warn if the object is not already a numpy array. Useful for
+            warning the user of a potential performance hit if a torch tensor is
+            not the expected input type.
+
+    Returns:
+        Object converted to numpy array
+    """
+    if obj is None:
+        # We ignore the type due to https://github.com/google/pytype/issues/445
+        return None  # pytype: disable=bad-return-type
+    elif isinstance(obj, np.ndarray):
+        return obj
+    else:
+        if warn:
+            warnings.warn(
+                "Converted tensor to numpy array, might affect performance. "
+                "Make sure this is the intended behavior.",
+            )
+        return obj.detach().cpu().numpy()
 
 
 def tensor_iter_norm(
@@ -236,3 +320,42 @@ def tensor_iter_norm(
     # = sum(x**ord for x in tensor for tensor in tensor_iter)**(1/ord)
     # = th.norm(concatenated tensors)
     return th.norm(norm_tensor, p=ord)
+
+
+def get_first_iter_element(iterable: Iterable[T]) -> Tuple[T, Iterable[T]]:
+    """Get first element of an iterable and a new fresh iterable.
+
+    The fresh iterable has the first element added back using ``itertools.chain``.
+    If the iterable is not an iterator, this is equivalent to
+    ``(next(iter(iterable)), iterable)``.
+
+    Args:
+        iterable: The iterable to get the first element of.
+
+    Returns:
+        A tuple containing the first element of the iterable, and a fresh iterable
+        with all the elements.
+
+    Raises:
+        ValueError: `iterable` is empty -- the first call to it returns no elements.
+    """
+    iterator = iter(iterable)
+    try:
+        first_element = next(iterator)
+    except StopIteration:
+        raise ValueError(f"iterable {iterable} had no elements to iterate over.")
+
+    return_iterable: Iterable[T]
+    if iterator == iterable:
+        # `iterable` was an iterator. Getting `first_element` will have removed it
+        # from `iterator`, so we need to add a fresh iterable with `first_element`
+        # added back in.
+        return_iterable = itertools.chain([first_element], iterator)
+    else:
+        # `iterable` was not an iterator; we can just return `iterable`.
+        # `iter(iterable)` will give a fresh iterator containing the first element.
+        # It's preferable to return `iterable` without modification so that users
+        # can generate new iterators from it as needed.
+        return_iterable = iterable
+
+    return first_element, return_iterable

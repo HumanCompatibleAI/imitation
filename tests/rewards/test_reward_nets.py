@@ -100,9 +100,9 @@ def torch_transitions() -> TorchTransitions:
     """A batch of states, actions, next_states, and dones as th.Tensors for Env2D."""
     return (
         th.zeros((10, 5, 5)),
-        th.zeros((10, 1), dtype=int),
+        th.zeros((10, 1), dtype=th.int),
         th.zeros((10, 5, 5)),
-        th.zeros((10,), dtype=bool),
+        th.zeros((10,), dtype=th.bool),
     )
 
 
@@ -224,8 +224,13 @@ def _sample(space, n):
     return np.array([space.sample() for _ in range(n)])
 
 
-def _make_env_and_save_reward_net(env_name, reward_type, tmpdir, is_image=False):
-    venv = util.make_vec_env(env_name, n_envs=1, parallel=False)
+def _make_env_and_save_reward_net(env_name, reward_type, tmpdir, rng, is_image=False):
+    venv = util.make_vec_env(
+        env_name,
+        n_envs=1,
+        parallel=False,
+        rng=rng,
+    )
     save_path = os.path.join(tmpdir, "norm_reward.pt")
 
     assert reward_type in [
@@ -259,11 +264,12 @@ def _make_env_and_save_reward_net(env_name, reward_type, tmpdir, is_image=False)
     return venv, save_path
 
 
-def _is_reward_valid(env_name, reward_type, tmpdir, is_image):
+def _is_reward_valid(env_name, reward_type, tmpdir, rng, is_image):
     venv, tmppath = _make_env_and_save_reward_net(
         env_name,
         reward_type,
         tmpdir,
+        rng,
         is_image=is_image,
     )
 
@@ -283,20 +289,25 @@ def _is_reward_valid(env_name, reward_type, tmpdir, is_image):
 
 @pytest.mark.parametrize("env_name", ENVS)
 @pytest.mark.parametrize("reward_type", DESERIALIZATION_TYPES)
-def test_reward_valid(env_name, reward_type, tmpdir):
+def test_reward_valid(env_name, reward_type, tmpdir, rng):
     """Test output of reward function is appropriate shape and type."""
-    _is_reward_valid(env_name, reward_type, tmpdir, is_image=False)
+    _is_reward_valid(env_name, reward_type, tmpdir, rng, is_image=False)
 
 
 @pytest.mark.parametrize("env_name", IMAGE_ENVS)
 @pytest.mark.parametrize("reward_type", DESERIALIZATION_TYPES)
-def test_reward_valid_image(env_name, reward_type, tmpdir):
+def test_reward_valid_image(env_name, reward_type, tmpdir, rng):
     """Test output of reward function is appropriate shape and type."""
-    _is_reward_valid(env_name, reward_type, tmpdir, is_image=True)
+    _is_reward_valid(env_name, reward_type, tmpdir, rng, is_image=True)
 
 
-def test_strip_wrappers_basic():
-    venv = util.make_vec_env("FrozenLake-v1", n_envs=1, parallel=False)
+def test_strip_wrappers_basic(rng):
+    venv = util.make_vec_env(
+        "FrozenLake-v1",
+        n_envs=1,
+        parallel=False,
+        rng=rng,
+    )
     net = reward_nets.BasicRewardNet(venv.observation_space, venv.action_space)
     net = reward_nets.NormalizedRewardNet(net, networks.RunningNorm)
     net = serialize._strip_wrappers(
@@ -309,8 +320,8 @@ def test_strip_wrappers_basic():
     assert isinstance(net, reward_nets.BasicRewardNet)
 
 
-def test_strip_wrappers_image_basic():
-    venv = util.make_vec_env("Asteroids-v4", n_envs=1, parallel=False)
+def test_strip_wrappers_image_basic(rng):
+    venv = util.make_vec_env("Asteroids-v4", n_envs=1, parallel=False, rng=rng)
     net = reward_nets.CnnRewardNet(venv.observation_space, venv.action_space)
     net = reward_nets.NormalizedRewardNet(net, networks.RunningNorm)
     net = serialize._strip_wrappers(
@@ -323,8 +334,13 @@ def test_strip_wrappers_image_basic():
     assert isinstance(net, reward_nets.CnnRewardNet)
 
 
-def test_strip_wrappers_complex():
-    venv = util.make_vec_env("FrozenLake-v1", n_envs=1, parallel=False)
+def test_strip_wrappers_complex(rng):
+    venv = util.make_vec_env(
+        "FrozenLake-v1",
+        n_envs=1,
+        parallel=False,
+        rng=rng,
+    )
     net = reward_nets.BasicRewardNet(venv.observation_space, venv.action_space)
     net = reward_nets.ShapedRewardNet(net, _potential, discount_factor=0.99)
     net = reward_nets.NormalizedRewardNet(net, networks.RunningNorm)
@@ -344,8 +360,8 @@ def test_strip_wrappers_complex():
     assert isinstance(net, reward_nets.BasicRewardNet)
 
 
-def test_strip_wrappers_image_complex():
-    venv = util.make_vec_env("Asteroids-v4", n_envs=1, parallel=False)
+def test_strip_wrappers_image_complex(rng):
+    venv = util.make_vec_env("Asteroids-v4", n_envs=1, parallel=False, rng=rng)
     net = reward_nets.CnnRewardNet(venv.observation_space, venv.action_space)
     net = reward_nets.ShapedRewardNet(net, _potential, discount_factor=0.99)
     net = reward_nets.NormalizedRewardNet(net, networks.RunningNorm)
@@ -419,11 +435,12 @@ def test_validate_wrapper_structure():
 
 
 @pytest.mark.parametrize("env_name", ENVS)
-def test_cant_load_unnorm_as_norm(env_name, tmpdir):
+def test_cant_load_unnorm_as_norm(env_name, tmpdir, rng):
     venv, tmppath = _make_env_and_save_reward_net(
         env_name,
         "RewardNet_unnormalized",
         tmpdir,
+        rng=rng,
     )
     with pytest.raises(TypeError):
         serialize.load_reward("RewardNet_normalized", tmppath, venv)
@@ -435,11 +452,17 @@ def _serialize_deserialize_identity(
     net_kwargs,
     normalize_rewards,
     tmpdir,
+    rng,
 ):
     """Does output of deserialized reward network match that of original?"""
     logging.info(f"Testing {net_cls}")
 
-    venv = util.make_vec_env(env_name, n_envs=1, parallel=False)
+    venv = util.make_vec_env(
+        env_name,
+        n_envs=1,
+        parallel=False,
+        rng=rng,
+    )
     original = net_cls(venv.observation_space, venv.action_space, **net_kwargs)
     if normalize_rewards:
         original = reward_nets.NormalizedRewardNet(original, networks.RunningNorm)
@@ -452,7 +475,12 @@ def _serialize_deserialize_identity(
     assert original.observation_space == loaded.observation_space
     assert original.action_space == loaded.action_space
 
-    transitions = rollout.generate_transitions(random, venv, n_timesteps=100)
+    transitions = rollout.generate_transitions(
+        random,
+        venv,
+        n_timesteps=100,
+        rng=rng,
+    )
 
     if isinstance(original, reward_nets.NormalizedRewardNet):
         wrapped_rew_fn = serialize.load_reward("RewardNet_normalized", tmppath, venv)
@@ -510,6 +538,7 @@ def test_serialize_identity(
     net_kwargs,
     normalize_rewards,
     tmpdir,
+    rng,
 ):
     """Does output of deserialized reward MLP match that of original?"""
     _serialize_deserialize_identity(
@@ -518,6 +547,7 @@ def test_serialize_identity(
         net_kwargs,
         normalize_rewards,
         tmpdir,
+        rng,
     )
 
 
@@ -531,6 +561,7 @@ def test_serialize_identity_images(
     net_kwargs,
     normalize_rewards,
     tmpdir,
+    rng,
 ):
     """Does output of deserialized reward CNN match that of original?"""
     _serialize_deserialize_identity(
@@ -539,6 +570,7 @@ def test_serialize_identity_images(
         net_kwargs,
         normalize_rewards,
         tmpdir,
+        rng,
     )
 
 
@@ -735,7 +767,9 @@ def test_predict_processed_wrappers_pass_on_kwargs(
     zero_reward_net: testing_reward_nets.MockRewardNet,
     numpy_transitions: NumpyTransitions,
 ):
-    zero_reward_net.predict_processed = mock.Mock(return_value=np.zeros((10,)))
+    zero_reward_net.predict_processed = mock.Mock(  # type: ignore[assignment]
+        return_value=np.zeros((10,)),
+    )
     wrapped_reward_net = make_predict_processed_wrapper(
         zero_reward_net,
     )
@@ -814,7 +848,7 @@ def test_device_for_parameterless_model(env_name):
 
 
 @pytest.mark.parametrize("normalize_input_layer", [None, networks.RunningNorm])
-def test_training_regression(normalize_input_layer):
+def test_training_regression(normalize_input_layer, rng):
     """Test reward_net normalization by training a regression model."""
     venv = DummyVecEnv([lambda: gym.make("CartPole-v0")] * 2)
     reward_net = reward_nets.BasicRewardNet(
@@ -834,7 +868,12 @@ def test_training_regression(normalize_input_layer):
     # Getting transitions from a random policy
     random = base.RandomPolicy(venv.observation_space, venv.action_space)
     for _ in range(2):
-        transitions = rollout.generate_transitions(random, venv, n_timesteps=100)
+        transitions = rollout.generate_transitions(
+            random,
+            venv,
+            n_timesteps=100,
+            rng=rng,
+        )
         trans_args = (
             transitions.obs,
             transitions.acts,
