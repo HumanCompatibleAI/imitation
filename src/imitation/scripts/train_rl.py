@@ -91,7 +91,7 @@ def train_rl(
     Returns:
         The return value of `rollout_stats()` using the final policy.
     """
-    rng = common.make_rng()
+    rng = scripts_common.make_rng()
     custom_logger, log_dir = scripts_common.setup_logging()
     rollout_dir = osp.join(log_dir, "rollouts")
     policy_dir = osp.join(log_dir, "policies")
