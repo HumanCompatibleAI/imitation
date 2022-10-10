@@ -56,7 +56,7 @@ def test_invalid_args(rng):
         # we ignore the type because we are intentionally
         # passing the wrong type for the test
         make_algo_with_wrapped_buffer(
-            rl_cls=sb3.PPO,  # type: ignore
+            rl_cls=sb3.PPO,  # type: ignore[arg-type]
             policy_cls=policies.ActorCriticPolicy,
             replay_buffer_class=buffers.ReplayBuffer,
             rng=rng,
