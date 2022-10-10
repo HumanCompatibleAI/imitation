@@ -104,8 +104,7 @@ def eval_policy(
         )
 
     if rollout_save_path:
-
-        types.save(log_dir / rollout_save_path.lstrip("{log_dir}/"), trajs)
+        types.save(log_dir / rollout_save_path.replace("{log_dir}/", ""), trajs)
 
     return rollout.rollout_stats(trajs)
 

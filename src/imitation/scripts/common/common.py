@@ -52,12 +52,8 @@ def hook(config, command_name: str, logger):
     if config["common"]["log_dir"] is None:
         env_sanitized = config["common"]["env_name"].replace("/", "_")
         assert isinstance(env_sanitized, str)
-        config_log_root = types.parse_optional_path(config["common"]["log_root"])
-        log_root = (
-            config_log_root
-            if config_log_root
-            else types.parse_path("output")  # relative to cwd
-        )
+        config_log_root = config["common"]["log_root"] or "output"
+        log_root = types.parse_path(config_log_root)
         log_dir = log_root / command_name / env_sanitized / util.make_unique_timestamp()
         updates["log_dir"] = str(log_dir)
     return updates

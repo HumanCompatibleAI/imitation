@@ -198,7 +198,7 @@ def save_stable_model(
     # information in future. (E.g. we used to save `VecNormalize` statistics here,
     # although that is no longer necessary.)
     output_dir.mkdir(parents=True, exist_ok=True)
-    model.save(str(output_dir / filename))
+    model.save(output_dir / filename)
     logging.info(f"Saved policy to {output_dir}")
 
 

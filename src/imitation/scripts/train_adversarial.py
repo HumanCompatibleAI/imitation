@@ -141,7 +141,7 @@ def train_adversarial(
             venv=venv,
             demonstrations=expert_trajs,
             gen_algo=gen_algo,
-            log_dir=str(log_dir),
+            log_dir=log_dir,
             reward_net=reward_net,
             custom_logger=custom_logger,
             **algorithm_kwargs,
