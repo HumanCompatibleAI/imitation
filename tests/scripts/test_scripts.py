@@ -56,8 +56,10 @@ ALL_SCRIPTS_MODS = [
 TEST_DATA_PATH = types.parse_path("tests/testdata")
 
 if not TEST_DATA_PATH.exists():
-    raise RuntimeError("Folder with test data has not been found. Make sure you are "
-                       "running tests relative to the base imitation project folder.")
+    raise RuntimeError(
+        "Folder with test data has not been found. Make sure you are "
+        "running tests relative to the base imitation project folder.",
+    )
 
 CARTPOLE_TEST_DATA_PATH = TEST_DATA_PATH / "expert_models/cartpole_0/"
 CARTPOLE_TEST_ROLLOUT_PATH = CARTPOLE_TEST_DATA_PATH / "rollouts/final.pkl"
