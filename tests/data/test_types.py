@@ -394,7 +394,7 @@ def test_parse_path():
     if os.name == "nt":  # pragma: no cover
         pytest.skip(
             "Windows uses path.WindowsPath instead when paths are resolved, which"
-            "cannot be compared directly to pathlib.Path objects."
+            "cannot be compared directly to pathlib.Path objects.",
         )
     # absolute paths
     assert types.parse_path("/foo/bar") == pathlib.Path("/foo/bar")
