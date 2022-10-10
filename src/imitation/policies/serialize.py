@@ -66,7 +66,7 @@ def load_stable_baselines_model(
     if vec_normalize_path.exists():
         raise FileExistsError(
             "Outdated policy format: we do not support restoring normalization "
-            "statistics from '{vec_normalize_path}'",
+            f"statistics from '{vec_normalize_path}'",
         )
 
     return cls.load(path_obj, env=venv, **kwargs)
