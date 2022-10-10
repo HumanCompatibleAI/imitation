@@ -41,7 +41,7 @@ def test_beta_schedule():
         assert np.allclose(three_step_sched(i), (3 - i) / 3 if i <= 2 else 0)
 
 
-def test_traj_collector_seed(tmpdir, pendulum_venv):
+def test_traj_collector_seed(tmpdir, pendulum_venv, rng):
     collector = dagger.InteractiveTrajectoryCollector(
         venv=pendulum_venv,
         get_robot_acts=lambda o: [
@@ -49,6 +49,7 @@ def test_traj_collector_seed(tmpdir, pendulum_venv):
         ],
         beta=0.5,
         save_dir=tmpdir,
+        rng=rng,
     )
     seeds1 = collector.seed(42)
     obs1 = collector.reset()
@@ -59,7 +60,7 @@ def test_traj_collector_seed(tmpdir, pendulum_venv):
     np.testing.assert_array_equal(obs1, obs2)
 
 
-def test_traj_collector(tmpdir, pendulum_venv):
+def test_traj_collector(tmpdir, pendulum_venv, rng):
     robot_calls = 0
     num_episodes = 0
 
@@ -73,6 +74,7 @@ def test_traj_collector(tmpdir, pendulum_venv):
         get_robot_acts=get_random_acts,
         beta=0.5,
         save_dir=tmpdir,
+        rng=rng,
     )
     collector.reset()
     zero_acts = np.zeros(
@@ -110,6 +112,7 @@ def _build_dagger_trainer(
     expert_policy,
     pendulum_expert_rollouts: List[TrajectoryWithRew],
     custom_logger,
+    rng: np.random.Generator,
 ):
     del expert_policy
     if pendulum_expert_rollouts is not None:
@@ -122,6 +125,7 @@ def _build_dagger_trainer(
         action_space=venv.action_space,
         optimizer_kwargs=dict(lr=1e-3),
         custom_logger=custom_logger,
+        rng=rng,
     )
     return dagger.DAggerTrainer(
         venv=venv,
@@ -129,6 +133,7 @@ def _build_dagger_trainer(
         beta_schedule=beta_schedule,
         bc_trainer=bc_trainer,
         custom_logger=custom_logger,
+        rng=rng,
     )
 
 
@@ -137,14 +142,16 @@ def _build_simple_dagger_trainer(
     venv,
     beta_schedule,
     expert_policy,
-    pendulum_expert_rollouts: List[TrajectoryWithRew],
+    pendulum_expert_rollouts: Optional[List[TrajectoryWithRew]],
     custom_logger,
+    rng,
 ):
     bc_trainer = bc.BC(
         observation_space=venv.observation_space,
         action_space=venv.action_space,
         optimizer_kwargs=dict(lr=1e-3),
         custom_logger=custom_logger,
+        rng=rng,
     )
     return dagger.SimpleDAggerTrainer(
         venv=venv,
@@ -154,6 +161,7 @@ def _build_simple_dagger_trainer(
         expert_policy=expert_policy,
         expert_trajs=pendulum_expert_rollouts,
         custom_logger=custom_logger,
+        rng=rng,
     )
 
 
@@ -171,6 +179,7 @@ def init_trainer_fn(
     pendulum_expert_policy,
     maybe_pendulum_expert_trajectories: Optional[List[TrajectoryWithRew]],
     custom_logger,
+    rng,
 ):
     # Provide a trainer initialization fixture in addition `trainer` fixture below
     # for tests that want to initialize multiple DAggerTrainer.
@@ -182,6 +191,7 @@ def init_trainer_fn(
         pendulum_expert_policy,
         maybe_pendulum_expert_trajectories,
         custom_logger,
+        rng,
     )
 
 
@@ -198,6 +208,7 @@ def simple_dagger_trainer(
     pendulum_expert_policy,
     maybe_pendulum_expert_trajectories: Optional[List[TrajectoryWithRew]],
     custom_logger,
+    rng,
 ):
     return _build_simple_dagger_trainer(
         tmpdir,
@@ -206,6 +217,7 @@ def simple_dagger_trainer(
         pendulum_expert_policy,
         maybe_pendulum_expert_trajectories,
         custom_logger,
+        rng,
     )
 
 
@@ -215,6 +227,7 @@ def test_trainer_needs_demos_exception_error(
 ):
     assert trainer.round_num == 0
     error_ctx = pytest.raises(dagger.NeedsDemosException)
+    ctx: contextlib.AbstractContextManager
     if maybe_pendulum_expert_trajectories is not None and isinstance(
         trainer,
         dagger.SimpleDAggerTrainer,
@@ -237,13 +250,14 @@ def test_trainer_needs_demos_exception_error(
         trainer.extend_and_update(dict(n_epochs=1))
 
 
-def test_trainer_train_arguments(trainer, pendulum_expert_policy):
+def test_trainer_train_arguments(trainer, pendulum_expert_policy, rng):
     def add_samples():
         collector = trainer.create_trajectory_collector()
         rollout.generate_trajectories(
             pendulum_expert_policy,
             collector,
             sample_until=rollout.make_min_timesteps(40),
+            rng=rng,
         )
 
     # Lower default number of epochs for the no-arguments call that follows.
@@ -371,6 +385,7 @@ def test_simple_dagger_space_mismatch_error(
     pendulum_expert_policy,
     maybe_pendulum_expert_trajectories: Optional[List[TrajectoryWithRew]],
     custom_logger,
+    rng,
 ):
     class MismatchedSpace(gym.spaces.Space):
         """Dummy space that is not equal to any other space."""
@@ -388,26 +403,34 @@ def test_simple_dagger_space_mismatch_error(
                     pendulum_expert_policy,
                     maybe_pendulum_expert_trajectories,
                     custom_logger,
+                    rng,
                 )
 
 
-def test_dagger_not_enough_transitions_error(tmpdir, custom_logger):
-    venv = util.make_vec_env("CartPole-v0")
+def test_dagger_not_enough_transitions_error(tmpdir, custom_logger, rng):
+    venv = util.make_vec_env("CartPole-v0", rng=rng)
     # Initialize with large batch size to ensure error down the line.
     bc_trainer = bc.BC(
         observation_space=venv.observation_space,
         action_space=venv.action_space,
         batch_size=100_000,
         custom_logger=custom_logger,
+        rng=rng,
     )
     trainer = dagger.DAggerTrainer(
         venv=venv,
         scratch_dir=tmpdir,
         bc_trainer=bc_trainer,
         custom_logger=custom_logger,
+        rng=rng,
     )
     collector = trainer.create_trajectory_collector()
     policy = base.RandomPolicy(venv.observation_space, venv.action_space)
-    rollout.generate_trajectories(policy, collector, rollout.make_min_episodes(1))
+    rollout.generate_trajectories(
+        policy,
+        collector,
+        rollout.make_min_episodes(1),
+        rng=rng,
+    )
     with pytest.raises(ValueError, match="Not enough transitions.*"):
         trainer.extend_and_update()

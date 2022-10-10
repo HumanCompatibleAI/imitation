@@ -5,7 +5,18 @@ import logging
 import os
 import pathlib
 import warnings
-from typing import Any, Dict, Mapping, Optional, Sequence, Tuple, TypeVar, Union, cast
+from typing import (
+    Any,
+    Dict,
+    Mapping,
+    Optional,
+    Sequence,
+    Tuple,
+    TypeVar,
+    Union,
+    cast,
+    overload,
+)
 
 import numpy as np
 import torch as th
@@ -169,8 +180,11 @@ def transitions_collate_fn(
     return result
 
 
+TransitionsMinimalSelf = TypeVar("TransitionsMinimalSelf", bound="TransitionsMinimal")
+
+
 @dataclasses.dataclass(frozen=True)
-class TransitionsMinimal(th_data.Dataset):
+class TransitionsMinimal(th_data.Dataset, Sequence[Mapping[str, np.ndarray]]):
     """A Torch-compatible `Dataset` of obs-act transitions.
 
     This class and its subclasses are usually instantiated via
@@ -200,7 +214,7 @@ class TransitionsMinimal(th_data.Dataset):
     infos: np.ndarray
     """Array of info dicts. Shape: (batch_size,)."""
 
-    def __len__(self):
+    def __len__(self) -> int:
         """Returns number of transitions. Always positive."""
         return len(self.obs)
 
@@ -238,6 +252,14 @@ class TransitionsMinimal(th_data.Dataset):
     # @overload
     # def __getitem__(self, key: int) -> Mapping[str, np.ndarray]:
     #     pass  # pragma: no cover
+
+    @overload
+    def __getitem__(self, key: int) -> Mapping[str, np.ndarray]:
+        pass
+
+    @overload
+    def __getitem__(self: TransitionsMinimalSelf, key: slice) -> TransitionsMinimalSelf:
+        pass
 
     def __getitem__(self, key):
         """See TransitionsMinimal docstring for indexing and slicing semantics."""
@@ -345,22 +367,25 @@ def load(path: AnyPath) -> Sequence[Trajectory]:
     # .npz format and the old pickle based format. To tell the difference we need to
     # look at the type of the resulting object. If it's the new compressed format,
     # it should be a Mapping that we need to decode, whereas if it's the old format
-    # it's just the sequence of trajectories and we can return it directly.
+    # it's just the sequence of trajectories, and we can return it directly.
     data = np.load(path, allow_pickle=True)
     if isinstance(data, Sequence):  # old format
         warnings.warn("Loading old version of Trajectory's", DeprecationWarning)
         return data
     elif isinstance(data, Mapping):  # new format
         num_trajs = len(data["indices"])
-        fields = (
+        fields = [
             # Account for the extra obs in each trajectory
             np.split(data["obs"], data["indices"] + np.arange(num_trajs) + 1),
             np.split(data["acts"], data["indices"]),
             np.split(data["infos"], data["indices"]),
             data["terminal"],
-        )
+        ]
         if "rews" in data:
-            fields += (np.split(data["rews"], data["indices"]),)
+            fields = [
+                *fields,
+                np.split(data["rews"], data["indices"]),
+            ]
             return [TrajectoryWithRew(*args) for args in zip(*fields)]
         else:
             return [Trajectory(*args) for args in zip(*fields)]
@@ -395,9 +420,9 @@ def save(path: AnyPath, trajectories: Sequence[Trajectory]):
         ValueError: If the trajectories are not all of the same type, i.e. some are
             `Trajectory` and others are `TrajectoryWithRew`.
     """
-    p = pathlib.Path(path)
+    p = pathlib.Path(path_to_str(path))
     p.parent.mkdir(parents=True, exist_ok=True)
-    tmp_path = f"{path}.tmp"
+    tmp_path = f"{p}.tmp"
 
     infos = [
         # Replace 'None' values for `infos`` with array of empty dicts
@@ -423,5 +448,5 @@ def save(path: AnyPath, trajectories: Sequence[Trajectory]):
         np.savez_compressed(f, **condensed)
 
     # Ensure atomic write
-    os.replace(tmp_path, path)
-    logging.info(f"Dumped demonstrations to {path}.")
+    os.replace(tmp_path, p)
+    logging.info(f"Dumped demonstrations to {p}.")

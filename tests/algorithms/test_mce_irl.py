@@ -242,14 +242,13 @@ def test_policy_om_reasonable_pomdp(discount: float):
     assert np.allclose(Dt[0], pomdp.initial_state_dist)
 
 
-def test_tabular_policy():
+def test_tabular_policy(rng):
     """Tests tabular policy prediction, especially timestep calculation and masking."""
     state_space = gym.spaces.Discrete(2)
     action_space = gym.spaces.Discrete(2)
     pi = np.stack(
         [np.eye(2), 1 - np.eye(2)],
     )
-    rng = np.random.RandomState(42)
     tabular = TabularPolicy(
         state_space=state_space,
         action_space=action_space,
@@ -260,25 +259,25 @@ def test_tabular_policy():
     states = np.array([0, 1, 1, 0, 1])
     actions, timesteps = tabular.predict(states)
     np.testing.assert_array_equal(states, actions)
-    np.testing.assert_equal(timesteps, 1)
+    np.testing.assert_equal(timesteps[0], 1)
 
     mask = np.zeros((5,), dtype=bool)
     actions, timesteps = tabular.predict(states, timesteps, mask)
     np.testing.assert_array_equal(1 - states, actions)
-    np.testing.assert_equal(timesteps, 2)
+    np.testing.assert_equal(timesteps[0], 2)
 
     mask = np.ones((5,), dtype=bool)
     actions, timesteps = tabular.predict(states, timesteps, mask)
     np.testing.assert_array_equal(states, actions)
-    np.testing.assert_equal(timesteps, 1)
+    np.testing.assert_equal(timesteps[0], 1)
 
     mask = (1 - states).astype(bool)
     actions, timesteps = tabular.predict(states, timesteps, mask)
     np.testing.assert_array_equal(np.zeros((5,)), actions)
-    np.testing.assert_equal(timesteps, 2 - mask.astype(int))
+    np.testing.assert_equal(timesteps[0], 2 - mask.astype(int))
 
 
-def test_tabular_policy_randomness():
+def test_tabular_policy_randomness(rng):
     state_space = gym.spaces.Discrete(2)
     action_space = gym.spaces.Discrete(2)
     pi = np.array(
@@ -289,7 +288,6 @@ def test_tabular_policy_randomness():
             ],
         ],
     )
-    rng = np.random.RandomState(42)
     tabular = TabularPolicy(
         state_space=state_space,
         action_space=action_space,
@@ -297,16 +295,16 @@ def test_tabular_policy_randomness():
         rng=rng,
     )
 
-    actions, _ = tabular.predict(np.zeros((100,), dtype=int))
+    actions, _ = tabular.predict(np.zeros((1000,), dtype=int))
     assert 0.45 <= np.mean(actions) <= 0.55
-    ones_obs = np.ones((100,), dtype=int)
+    ones_obs = np.ones((1000,), dtype=int)
     actions, _ = tabular.predict(ones_obs)
     assert 0.05 <= np.mean(actions) <= 0.15
     actions, _ = tabular.predict(ones_obs, deterministic=True)
     np.testing.assert_equal(actions, 0)
 
 
-def test_mce_irl_demo_formats():
+def test_mce_irl_demo_formats(rng):
     mdp = random_trans.RandomTransitionEnv(
         n_states=5,
         n_actions=3,
@@ -322,6 +320,7 @@ def test_mce_irl_demo_formats():
         policy=None,
         venv=state_venv,
         sample_until=rollout.make_min_timesteps(100),
+        rng=rng,
     )
     demonstrations = {
         "trajs": trajs,
@@ -346,7 +345,13 @@ def test_mce_irl_demo_formats():
                 use_done=False,
                 hid_sizes=[],
             )
-            mce_irl = MCEIRL(demo, mdp, reward_net, linf_eps=1e-3)
+            mce_irl = MCEIRL(
+                demo,
+                mdp,
+                reward_net,
+                linf_eps=1e-3,
+                rng=rng,
+            )
             assert np.allclose(mce_irl.demo_state_om.sum(), mdp.horizon + 1)
             final_counts[kind] = mce_irl.train(max_iter=5)
 
@@ -366,6 +371,7 @@ def test_mce_irl_demo_formats():
 def test_mce_irl_reasonable_mdp(
     model_kwargs: Mapping[str, Any],
     discount: float,
+    rng,
 ):
     with th.random.fork_rng():
         th.random.manual_seed(715298)
@@ -386,7 +392,14 @@ def test_mce_irl_reasonable_mdp(
             use_done=False,
             **model_kwargs,
         )
-        mce_irl = MCEIRL(D, mdp, reward_net, linf_eps=1e-3, discount=discount)
+        mce_irl = MCEIRL(
+            D,
+            mdp,
+            reward_net,
+            linf_eps=1e-3,
+            discount=discount,
+            rng=rng,
+        )
         final_counts = mce_irl.train()
 
         assert np.allclose(final_counts, D, atol=1e-3, rtol=1e-3)
@@ -399,6 +412,7 @@ def test_mce_irl_reasonable_mdp(
             mce_irl.policy,
             state_venv,
             sample_until=rollout.make_min_episodes(5),
+            rng=rng,
         )
         stats = rollout.rollout_stats(trajs)
         if discount > 0.0:  # skip check when discount==0.0 (random policy)

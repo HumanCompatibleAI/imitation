@@ -6,7 +6,6 @@ between trajectory fragments.
 import abc
 import math
 import pickle
-import random
 import re
 from collections import defaultdict
 from typing import (
@@ -20,6 +19,7 @@ from typing import (
     Sequence,
     Tuple,
     Union,
+    cast,
 )
 
 import numpy as np
@@ -100,19 +100,19 @@ class TrajectoryDataset(TrajectoryGenerator):
     def __init__(
         self,
         trajectories: Sequence[TrajectoryWithRew],
-        seed: Optional[int] = None,
+        rng: np.random.Generator,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
     ):
         """Creates a dataset loaded from `path`.
 
         Args:
             trajectories: the dataset of rollouts.
-            seed: Seed for RNG used for shuffling dataset.
+            rng: RNG used for shuffling dataset.
             custom_logger: Where to log to; if None (default), creates a new logger.
         """
         super().__init__(custom_logger=custom_logger)
         self._trajectories = trajectories
-        self.rng = random.Random(seed)
+        self.rng = rng
 
     def sample(self, steps: int) -> Sequence[TrajectoryWithRew]:
         # make a copy before shuffling
@@ -129,10 +129,10 @@ class AgentTrainer(TrajectoryGenerator):
         algorithm: base_class.BaseAlgorithm,
         reward_fn: Union[reward_function.RewardFn, reward_nets.RewardNet],
         venv: vec_env.VecEnv,
+        rng: np.random.Generator,
         exploration_frac: float = 0.0,
         switch_prob: float = 0.5,
         random_prob: float = 0.5,
-        seed: Optional[int] = None,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
     ):
         """Initialize the agent trainer.
@@ -142,13 +142,13 @@ class AgentTrainer(TrajectoryGenerator):
             reward_fn: either a RewardFn or a RewardNet instance that will supply
                 the rewards used for training the agent.
             venv: vectorized environment to train in.
+            rng: random number generator used for exploration and for sampling.
             exploration_frac: fraction of the trajectories that will be generated
                 partially randomly rather than only by the agent when sampling.
             switch_prob: the probability of switching the current policy at each
                 step for the exploratory samples.
             random_prob: the probability of picking the random policy when switching
                 during exploration.
-            seed: random seed for exploratory trajectories.
             custom_logger: Where to log to; if None (default), creates a new logger.
         """
         self.algorithm = algorithm
@@ -164,6 +164,7 @@ class AgentTrainer(TrajectoryGenerator):
             reward_fn = reward_fn.predict_processed
         self.reward_fn = reward_fn
         self.exploration_frac = exploration_frac
+        self.rng = rng
 
         # The BufferingWrapper records all trajectories, so we can return
         # them after training. This should come first (before the wrapper that
@@ -185,9 +186,11 @@ class AgentTrainer(TrajectoryGenerator):
         self.algorithm.set_env(self.venv)
         # Unlike with BufferingWrapper, we should use `algorithm.get_env()` instead
         # of `venv` when interacting with `algorithm`.
+        algo_venv = self.algorithm.get_env()
+        assert algo_venv is not None
         policy_callable = rollout._policy_to_callable(
             self.algorithm,
-            self.algorithm.get_env(),
+            algo_venv,
             # By setting deterministic_policy to False, we ensure that the rollouts
             # are collected from a deterministic policy only if self.algorithm is
             # deterministic. If self.algorithm is stochastic, then policy_callable
@@ -196,10 +199,10 @@ class AgentTrainer(TrajectoryGenerator):
         )
         self.exploration_wrapper = exploration_wrapper.ExplorationWrapper(
             policy_callable=policy_callable,
-            venv=self.algorithm.get_env(),
+            venv=algo_venv,
             random_prob=random_prob,
             switch_prob=switch_prob,
-            seed=seed,
+            rng=self.rng,
         )
 
     def train(self, steps: int, **kwargs) -> None:
@@ -258,45 +261,57 @@ class AgentTrainer(TrajectoryGenerator):
             # here because 1) they might miss initial timesteps taken by the RL agent
             # and 2) their rewards are the ones provided by the reward model!
             # Instead, we collect the trajectories using the BufferingWrapper.
+            algo_venv = self.algorithm.get_env()
+            assert algo_venv is not None
             rollout.generate_trajectories(
                 self.algorithm,
-                self.algorithm.get_env(),
+                algo_venv,
                 sample_until=sample_until,
                 # By setting deterministic_policy to False, we ensure that the rollouts
                 # are collected from a deterministic policy only if self.algorithm is
                 # deterministic. If self.algorithm is stochastic, then policy_callable
                 # will also be stochastic.
                 deterministic_policy=False,
+                rng=self.rng,
             )
             additional_trajs, _ = self.buffering_wrapper.pop_finished_trajectories()
             agent_trajs = list(agent_trajs) + list(additional_trajs)
 
         agent_trajs = _get_trajectories(agent_trajs, agent_steps)
 
-        exploration_trajs = []
+        trajectories = list(agent_trajs)
+
         if exploration_steps > 0:
             self.logger.log(f"Sampling {exploration_steps} exploratory transitions.")
             sample_until = rollout.make_sample_until(
                 min_timesteps=exploration_steps,
                 min_episodes=None,
             )
+            algo_venv = self.algorithm.get_env()
+            assert algo_venv is not None
             rollout.generate_trajectories(
                 policy=self.exploration_wrapper,
-                venv=self.algorithm.get_env(),
+                venv=algo_venv,
                 sample_until=sample_until,
-                # buffering_wrapper collects rollouts from a non-deterministic policy
+                # buffering_wrapper collects rollouts from a non-deterministic policy,
                 # so we do that here as well for consistency.
                 deterministic_policy=False,
+                rng=self.rng,
             )
             exploration_trajs, _ = self.buffering_wrapper.pop_finished_trajectories()
             exploration_trajs = _get_trajectories(exploration_trajs, exploration_steps)
-        # We call _get_trajectories separately on agent_trajs and exploration_trajs
-        # and then just concatenate. This could mean we return slightly too many
-        # transitions, but it gets the proportion of exploratory and agent transitions
-        # roughly right.
-        return list(agent_trajs) + list(exploration_trajs)
+            # We call _get_trajectories separately on agent_trajs and exploration_trajs
+            # and then just concatenate. This could mean we return slightly too many
+            # transitions, but it gets the proportion of exploratory and agent
+            # transitions roughly right.
+            trajectories.extend(list(exploration_trajs))
+        return trajectories
 
-    @TrajectoryGenerator.logger.setter
+    @property
+    def logger(self):
+        return super().logger
+
+    @logger.setter
     def logger(self, value: imit_logger.HierarchicalLogger):
         self._logger = value
         self.algorithm.set_logger(self.logger)
@@ -320,7 +335,7 @@ def _get_trajectories(
     steps_cumsum = np.cumsum([len(traj) for traj in trajectories])
     # Now we find the first index that gives us enough
     # total steps:
-    idx = (steps_cumsum >= steps).argmax()
+    idx = int((steps_cumsum >= steps).argmax())
     # we need to include the element at position idx
     trajectories = trajectories[: idx + 1]
     # sanity check
@@ -365,10 +380,11 @@ class PreferenceModel(nn.Module):
         self.noise_prob = noise_prob
         self.discount_factor = discount_factor
         self.threshold = threshold
-        self.is_ensemble, base_model = is_base_model_ensemble(self.model)
+        base_model = get_base_model(model)
+        self.ensemble_model = None
         # if the base model is an ensemble model, then keep the base model as
         # model to get rewards from all networks
-        if self.is_ensemble:
+        if isinstance(base_model, reward_nets.RewardEnsemble):
             # reward_model may include an AddSTDRewardWrapper for RL training; but we
             # must train directly on the base model for reward model training.
             is_base = model is base_model
@@ -382,11 +398,11 @@ class PreferenceModel(nn.Module):
                     "RewardEnsemble can only be wrapped"
                     f" by AddSTDRewardWrapper but found {type(model).__name__}.",
                 )
-            self.model = base_model
+            self.ensemble_model = base_model
             self.member_pref_models = []
-            for member in self.model.members:
+            for member in self.ensemble_model.members:
                 member_pref_model = PreferenceModel(
-                    member,
+                    cast(reward_nets.RewardNet, member),  # nn.ModuleList is not generic
                     self.noise_prob,
                     self.discount_factor,
                     self.threshold,
@@ -431,6 +447,8 @@ class PreferenceModel(nn.Module):
             rews2 = self.rewards(trans2)
             probs[i] = self.probability(rews1, rews2)
             if gt_reward_available:
+                frag1 = cast(TrajectoryWithRew, frag1)
+                frag2 = cast(TrajectoryWithRew, frag2)
                 gt_rews_1 = th.from_numpy(frag1.rews)
                 gt_rews_2 = th.from_numpy(frag2.rews)
                 gt_probs[i] = self.probability(gt_rews_1, gt_rews_2)
@@ -452,15 +470,20 @@ class PreferenceModel(nn.Module):
         action = transitions.acts
         next_state = transitions.next_obs
         done = transitions.dones
-        if self.is_ensemble:
-            rews = self.model.predict_processed_all(state, action, next_state, done)
-            assert rews.shape == (len(state), self.model.num_members)
-            return util.safe_to_tensor(rews).to(self.model.device)
+        if self.ensemble_model is not None:
+            rews_np = self.ensemble_model.predict_processed_all(
+                state,
+                action,
+                next_state,
+                done,
+            )
+            assert rews_np.shape == (len(state), self.ensemble_model.num_members)
+            rews = util.safe_to_tensor(rews_np).to(self.ensemble_model.device)
         else:
             preprocessed = self.model.preprocess(state, action, next_state, done)
             rews = self.model(*preprocessed)
             assert rews.shape == (len(state),)
-            return rews
+        return rews
 
     def probability(self, rews1: th.Tensor, rews2: th.Tensor) -> th.Tensor:
         """Computes the Boltzmann rational probability that the first trajectory is best.
@@ -478,17 +501,17 @@ class PreferenceModel(nn.Module):
             () for non-ensemble model which is a torch scalar.
         """
         # check rews has correct shape based on the model
-        expected_dims = 2 if self.is_ensemble else 1
+        expected_dims = 2 if self.ensemble_model is not None else 1
         assert rews1.ndim == rews2.ndim == expected_dims
         # First, we compute the difference of the returns of
         # the two fragments. We have a special case for a discount
         # factor of 1 to avoid unnecessary computation (especially
         # since this is the default setting).
         if self.discount_factor == 1:
-            returns_diff = (rews2 - rews1).sum(axis=0)
+            returns_diff = (rews2 - rews1).sum(axis=0)  # type: ignore[call-overload]
         else:
             discounts = self.discount_factor ** th.arange(len(rews1))
-            if self.is_ensemble:
+            if self.ensemble_model is not None:
                 discounts = discounts.reshape(-1, 1)
             returns_diff = (discounts * (rews2 - rews1)).sum(axis=0)
         # Clip to avoid overflows (which in particular may occur
@@ -499,7 +522,7 @@ class PreferenceModel(nn.Module):
         # probability that fragment 1 is preferred.
         model_probability = 1 / (1 + returns_diff.exp())
         probability = self.noise_prob * 0.5 + (1 - self.noise_prob) * model_probability
-        if self.is_ensemble:
+        if self.ensemble_model is not None:
             assert probability.shape == (self.model.num_members,)
         else:
             assert probability.shape == ()
@@ -551,21 +574,21 @@ class RandomFragmenter(Fragmenter):
 
     def __init__(
         self,
-        seed: Optional[float] = None,
+        rng: np.random.Generator,
         warning_threshold: int = 10,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
     ):
         """Initialize the fragmenter.
 
         Args:
-            seed: an optional seed for the internal RNG
+            rng: the random number generator
             warning_threshold: give a warning if the number of available
                 transitions is less than this many times the number of
                 required samples. Set to 0 to disable this warning.
             custom_logger: Where to log to; if None (default), creates a new logger.
         """
         super().__init__(custom_logger)
-        self.rng = random.Random(seed)
+        self.rng = rng
         self.warning_threshold = warning_threshold
 
     def __call__(
@@ -617,9 +640,9 @@ class RandomFragmenter(Fragmenter):
 
         # we need two fragments for each comparison
         for _ in range(2 * num_pairs):
-            traj = self.rng.choices(trajectories, weights, k=1)[0]
+            traj = self.rng.choice(trajectories, p=np.array(weights) / sum(weights))
             n = len(traj)
-            start = self.rng.randint(0, n - fragment_length)
+            start = self.rng.integers(0, n - fragment_length, endpoint=True)
             end = start + fragment_length
             terminal = (end == n) and traj.terminal
             fragment = TrajectoryWithRew(
@@ -669,7 +692,7 @@ class ActiveSelectionFragmenter(Fragmenter):
             ValueError: Preference model not wrapped over an ensemble of networks.
         """
         super().__init__(custom_logger=custom_logger)
-        if not preference_model.is_ensemble:
+        if preference_model.ensemble_model is None:
             raise ValueError(
                 "PreferenceModel not wrapped over an ensemble of networks.",
             )
@@ -735,12 +758,12 @@ class ActiveSelectionFragmenter(Fragmenter):
             var_estimate = (returns1 - returns2).var().item()
         else:  # uncertainty_on is probability or label
             probs = self.preference_model.probability(rews1, rews2)
-            probs = probs.cpu().numpy()
-            assert probs.shape == (self.preference_model.model.num_members,)
+            probs_np = probs.cpu().numpy()
+            assert probs_np.shape == (self.preference_model.model.num_members,)
             if self.uncertainty_on == "probability":
-                var_estimate = probs.var()
+                var_estimate = probs_np.var()
             elif self.uncertainty_on == "label":  # uncertainty_on is label
-                preds = (probs > 0.5).astype(np.float32)
+                preds = (probs_np > 0.5).astype(np.float32)
                 # probability estimate of Bernoulli random variable
                 prob_estimate = preds.mean()
                 # variance estimate of Bernoulli random variable
@@ -755,20 +778,20 @@ class PreferenceGatherer(abc.ABC):
 
     def __init__(
         self,
-        seed: Optional[int] = None,
+        rng: Optional[np.random.Generator] = None,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
     ):
         """Initializes the preference gatherer.
 
         Args:
-            seed: seed for the internal RNG, if applicable
+            rng: random number generator, if applicable.
             custom_logger: Where to log to; if None (default), creates a new logger.
         """
         # The random seed isn't used here, but it's useful to have this
         # as an argument nevertheless because that means we can always
         # pass in a seed in training scripts (without worrying about whether
         # the PreferenceGatherer we use needs one).
-        del seed
+        del rng
         self.logger = custom_logger or imit_logger.configure()
 
     @abc.abstractmethod
@@ -798,7 +821,7 @@ class SyntheticGatherer(PreferenceGatherer):
         temperature: float = 1,
         discount_factor: float = 1,
         sample: bool = True,
-        seed: Optional[int] = None,
+        rng: Optional[np.random.Generator] = None,
         threshold: float = 50,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
     ):
@@ -815,20 +838,27 @@ class SyntheticGatherer(PreferenceGatherer):
                 a Bernoulli distribution (or 0.5 in the case of ties with zero
                 temperature). If False, then the underlying Bernoulli probabilities
                 are returned instead.
-            seed: seed for the internal RNG (only used if temperature > 0 and sample)
+            rng: random number generator, only used if
+                ``temperature > 0`` and ``sample=True``
             threshold: preferences are sampled from a softmax of returns.
                 To avoid overflows, we clip differences in returns that are
                 above this threshold (after multiplying with temperature).
                 This threshold is therefore in logspace. The default value
                 of 50 means that probabilities below 2e-22 are rounded up to 2e-22.
             custom_logger: Where to log to; if None (default), creates a new logger.
+
+        Raises:
+            ValueError: if `sample` is true and no random state is provided.
         """
         super().__init__(custom_logger=custom_logger)
         self.temperature = temperature
         self.discount_factor = discount_factor
         self.sample = sample
-        self.rng = np.random.default_rng(seed=seed)
+        self.rng = rng
         self.threshold = threshold
+
+        if self.sample and self.rng is None:
+            raise ValueError("If `sample` is True, then `rng` must be provided.")
 
     def __call__(self, fragment_pairs: Sequence[TrajectoryWithRewPair]) -> np.ndarray:
         """Computes probability fragment 1 is preferred over fragment 2."""
@@ -893,7 +923,7 @@ class PreferenceDataset(th.utils.data.Dataset):
         self.fragments1: List[TrajectoryWithRew] = []
         self.fragments2: List[TrajectoryWithRew] = []
         self.max_size = max_size
-        self.preferences = np.array([])
+        self.preferences: np.ndarray = np.array([])
 
     def push(self, fragments: Sequence[TrajectoryWithRewPair], preferences: np.ndarray):
         """Add more samples to the dataset.
@@ -1094,11 +1124,11 @@ class BasicRewardTrainer(RewardTrainer):
         self,
         preference_model: PreferenceModel,
         loss: RewardLoss,
+        rng: np.random.Generator,
         batch_size: int = 32,
         epochs: int = 1,
         lr: float = 1e-3,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
-        seed: Optional[int] = None,
         regularizer_factory: Optional[regularizers.RegularizerFactory] = None,
     ):
         """Initialize the reward model trainer.
@@ -1106,13 +1136,13 @@ class BasicRewardTrainer(RewardTrainer):
         Args:
             preference_model: the preference model to train the reward network.
             loss: the loss to use
+            rng: the random number generator to use for splitting the dataset into
+                training and validation.
             batch_size: number of fragment pairs per batch
             epochs: number of epochs in each training iteration (can be adjusted
                 on the fly by specifying an `epoch_multiplier` in `self.train()`
                 if longer training is desired in specific cases).
             lr: the learning rate
-            seed: the random seed to use for splitting the dataset into training
-                and validation.
             custom_logger: Where to log to; if None (default), creates a new logger.
             regularizer_factory: if you would like to apply regularization during
                 training, specify a regularizer factory here. The factory will be
@@ -1124,7 +1154,7 @@ class BasicRewardTrainer(RewardTrainer):
         self.batch_size = batch_size
         self.epochs = epochs
         self.optim = th.optim.AdamW(self._preference_model.parameters(), lr=lr)
-        self.seed = seed
+        self.rng = rng
         self.regularizer = (
             regularizer_factory(optimizer=self.optim, logger=self.logger)
             if regularizer_factory is not None
@@ -1169,7 +1199,8 @@ class BasicRewardTrainer(RewardTrainer):
             train_dataset, val_dataset = data_th.random_split(
                 dataset,
                 lengths=[train_length, val_length],
-                generator=th.Generator().manual_seed(self.seed) if self.seed else None,
+                # we convert the numpy generator to the pytorch generator.
+                generator=th.Generator().manual_seed(util.make_seeds(self.rng)),
             )
             dataloader = self._make_data_loader(train_dataset)
             val_dataloader = self._make_data_loader(val_dataset)
@@ -1247,11 +1278,11 @@ class EnsembleTrainer(BasicRewardTrainer):
         self,
         preference_model: PreferenceModel,
         loss: RewardLoss,
+        rng: np.random.Generator,
         batch_size: int = 32,
         epochs: int = 1,
         lr: float = 1e-3,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
-        seed: Optional[int] = None,
         regularizer_factory: Optional[regularizers.RegularizerFactory] = None,
     ):
         """Initialize the reward model trainer.
@@ -1259,13 +1290,12 @@ class EnsembleTrainer(BasicRewardTrainer):
         Args:
             preference_model: the preference model to train the reward network.
             loss: the loss to use
+            rng: random state for the internal RNG used in bagging
             batch_size: number of fragment pairs per batch
             epochs: number of epochs in each training iteration (can be adjusted
                 on the fly by specifying an `epoch_multiplier` in `self.train()`
                 if longer training is desired in specific cases).
             lr: the learning rate
-            seed: the random seed to use for splitting the dataset into training
-                and validation, and for bagging.
             custom_logger: Where to log to; if None (default), creates a new logger.
             regularizer_factory: A factory for creating a regularizer. If None,
                 no regularization is used.
@@ -1273,7 +1303,7 @@ class EnsembleTrainer(BasicRewardTrainer):
         Raises:
             TypeError: if model is not a RewardEnsemble.
         """
-        if not preference_model.is_ensemble:
+        if preference_model.ensemble_model is None:
             raise TypeError(
                 "PreferenceModel of a RewardEnsemble expected by EnsembleTrainer.",
             )
@@ -1285,6 +1315,7 @@ class EnsembleTrainer(BasicRewardTrainer):
             epochs=epochs,
             lr=lr,
             custom_logger=custom_logger,
+            rng=rng,
             regularizer_factory=regularizer_factory,
         )
         self.member_trainers = []
@@ -1297,11 +1328,9 @@ class EnsembleTrainer(BasicRewardTrainer):
                 lr=lr,
                 custom_logger=self.logger,
                 regularizer_factory=regularizer_factory,
+                rng=self.rng,
             )
             self.member_trainers.append(reward_trainer)
-        self.rng = th.Generator()
-        if seed:
-            self.rng = self.rng.manual_seed(seed)
 
     @property
     def logger(self):
@@ -1319,7 +1348,8 @@ class EnsembleTrainer(BasicRewardTrainer):
             dataset,
             replacement=True,
             num_samples=len(dataset),
-            generator=self.rng,
+            # we convert the numpy generator to the pytorch generator.
+            generator=th.Generator().manual_seed(util.make_seeds(self.rng)),
         )
         for member_idx in range(len(self.member_trainers)):
             # sampler gives new indexes on every call
@@ -1345,35 +1375,36 @@ class EnsembleTrainer(BasicRewardTrainer):
             self.logger.record(k + "_std", np.std(v))
 
 
-def is_base_model_ensemble(reward_model):
+def get_base_model(reward_model: reward_nets.RewardNet) -> reward_nets.RewardNet:
     base_model = reward_model
     while hasattr(base_model, "base"):
-        base_model = base_model.base
+        base_model = cast(reward_nets.RewardNet, base_model.base)
 
-    return isinstance(base_model, reward_nets.RewardEnsemble), base_model
+    return base_model
 
 
 def _make_reward_trainer(
     preference_model: PreferenceModel,
     loss: RewardLoss,
+    rng: np.random.Generator,
     reward_trainer_kwargs: Optional[Mapping[str, Any]] = None,
-    seed: Optional[int] = None,
 ) -> RewardTrainer:
     """Construct the correct type of reward trainer for this reward function."""
     if reward_trainer_kwargs is None:
         reward_trainer_kwargs = {}
 
-    if preference_model.is_ensemble:
+    if preference_model.ensemble_model is not None:
         return EnsembleTrainer(
             preference_model,
             loss,
-            seed=seed,
+            rng=rng,
             **reward_trainer_kwargs,
         )
     else:
         return BasicRewardTrainer(
             preference_model,
             loss=loss,
+            rng=rng,
             **reward_trainer_kwargs,
         )
 
@@ -1403,7 +1434,7 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
         initial_epoch_multiplier: float = 200.0,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
         allow_variable_horizon: bool = False,
-        seed: Optional[int] = None,
+        rng: Optional[np.random.Generator] = None,
         query_schedule: Union[str, type_aliases.Schedule] = "hyperbolic",
     ):
         """Initialize the preference comparison trainer.
@@ -1458,7 +1489,8 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
                 condition, and can seriously confound evaluation. Read
                 https://imitation.readthedocs.io/en/latest/guide/variable_horizon.html
                 before overriding this.
-            seed: seed to use for initializing subcomponents such as fragmenter.
+            rng: random number generator to use for initializing subcomponents such as
+                fragmenter.
                 Only used when default components are used; if you instantiate your
                 own fragmenter, preference gatherer, etc., you are responsible for
                 seeding them!
@@ -1485,14 +1517,35 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
         self._iteration = 0
 
         self.model = reward_model
+        self.rng = rng
+
+        # are any of the optional args that require a rng None?
+        has_any_rng_args_none = None in (
+            preference_gatherer,
+            fragmenter,
+            reward_trainer,
+        )
+
+        if self.rng is None and has_any_rng_args_none:
+            raise ValueError(
+                "If you don't provide a random state, you must provide your own "
+                "seeded fragmenter, preference gatherer, and reward_trainer. "
+                "You can initialize a random state with `np.random.default_rng(seed)`.",
+            )
+        elif self.rng is not None and not has_any_rng_args_none:
+            raise ValueError(
+                "If you provide your own fragmenter, preference gatherer, "
+                "and reward trainer, you don't need to provide a random state.",
+            )
 
         if reward_trainer is None:
+            assert self.rng is not None
             preference_model = PreferenceModel(reward_model)
             loss = CrossEntropyRewardLoss()
             self.reward_trainer = _make_reward_trainer(
                 preference_model,
                 loss,
-                seed=seed,
+                rng=self.rng,
             )
         else:
             self.reward_trainer = reward_trainer
@@ -1503,15 +1556,24 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
         self.reward_trainer.logger = self.logger
         self.trajectory_generator = trajectory_generator
         self.trajectory_generator.logger = self.logger
-        self.fragmenter = fragmenter or RandomFragmenter(
-            custom_logger=self.logger,
-            seed=seed,
-        )
+        if fragmenter:
+            self.fragmenter = fragmenter
+        else:
+            assert self.rng is not None
+            self.fragmenter = RandomFragmenter(
+                custom_logger=self.logger,
+                rng=self.rng,
+            )
         self.fragmenter.logger = self.logger
-        self.preference_gatherer = preference_gatherer or SyntheticGatherer(
-            custom_logger=self.logger,
-            seed=seed,
-        )
+        if preference_gatherer:
+            self.preference_gatherer = preference_gatherer
+        else:
+            assert self.rng is not None
+            self.preference_gatherer = SyntheticGatherer(
+                custom_logger=self.logger,
+                rng=self.rng,
+            )
+
         self.preference_gatherer.logger = self.logger
 
         self.fragment_length = fragment_length

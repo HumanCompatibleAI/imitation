@@ -19,6 +19,8 @@ Algorithm = TypeVar("Algorithm", bound=base_class.BaseAlgorithm)
 # Note: a VecEnv will always be passed first and then any kwargs. There is just no
 # proper way to specify this in python yet. For details see
 # https://stackoverflow.com/questions/61569324/type-annotation-for-callable-that-takes-kwargs
+# TODO(juan) this can be fixed using ParamSpec
+#  (https://github.com/HumanCompatibleAI/imitation/issues/574)
 PolicyLoaderFn = Callable[..., policies.BasePolicy]
 """A policy loader function that takes a VecEnv before any other custom arguments and
 returns a stable_baselines3 base policy policy."""
@@ -50,24 +52,24 @@ def load_stable_baselines_model(
         The deserialized RL algorithm.
     """
     logging.info(f"Loading Stable Baselines policy for '{cls}' from '{path}'")
-    path = pathlib.Path(path)
+    path_obj = pathlib.Path(path)
 
-    if path.is_dir():
-        path = path / "model.zip"
-        if not path.exists():
+    if path_obj.is_dir():
+        path_obj = path_obj / "model.zip"
+        if not path_obj.exists():
             raise FileNotFoundError(
                 f"Expected '{path}' to be a directory containing a 'model.zip' file.",
             )
 
     # SOMEDAY(adam): added 2022-01, can probably remove this check in 2023
-    vec_normalize_path = path.parent / "vec_normalize.pkl"
+    vec_normalize_path = path_obj.parent / "vec_normalize.pkl"
     if vec_normalize_path.exists():
         raise FileExistsError(
             "Outdated policy format: we do not support restoring normalization "
             "statistics from '{vec_normalize_path}'",
         )
 
-    return cls.load(path, env=venv, **kwargs)
+    return cls.load(path_obj, env=venv, **kwargs)
 
 
 def _load_stable_baselines_from_file(
@@ -224,6 +226,7 @@ class SavePolicyCallback(callbacks.EventCallback):
         self.policy_dir = policy_dir
 
     def _on_step(self) -> bool:
+        assert self.model is not None
         output_dir = os.path.join(self.policy_dir, f"{self.num_timesteps:012d}")
         save_stable_model(output_dir, self.model)
         return True

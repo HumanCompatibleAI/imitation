@@ -4,13 +4,23 @@ import collections
 import dataclasses
 import logging
 import os
-from typing import Callable, Mapping, Optional, Sequence, Tuple, Type
+from typing import (
+    Callable,
+    Iterable,
+    Iterator,
+    Mapping,
+    Optional,
+    Sequence,
+    Tuple,
+    Type,
+    overload,
+)
 
 import numpy as np
 import torch as th
 import torch.utils.tensorboard as thboard
 import tqdm
-from stable_baselines3.common import base_class, policies, vec_env
+from stable_baselines3.common import base_class, on_policy_algorithm, policies, vec_env
 from stable_baselines3.sac import policies as sac_policies
 from torch.nn import functional as F
 
@@ -63,7 +73,7 @@ def compute_train_stats(
         else:
             # float() is defensive, since we cannot divide Torch tensors by
             # Python ints
-            expert_acc = _n_pred_expert / float(n_expert)
+            expert_acc = _n_pred_expert.item() / float(n_expert)
 
         _n_pred_gen = th.sum(th.logical_and(bin_is_generated_true, correct_vec))
         _n_gen_or_1 = max(1, n_generated)
@@ -102,6 +112,11 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
 
     If `debug_use_ground_truth=True` was passed into the initializer then
     `self.venv_train` is the same as `self.venv`."""
+
+    _demo_data_loader: Optional[Iterable[base.TransitionMapping]]
+    _endless_expert_iterator: Optional[Iterator[base.TransitionMapping]]
+
+    venv_wrapped: vec_env.VecEnvWrapper
 
     def __init__(
         self,
@@ -205,15 +220,15 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
             os.makedirs(summary_dir, exist_ok=True)
             self._summary_writer = thboard.SummaryWriter(summary_dir)
 
-        venv = self.venv_buffering = wrappers.BufferingWrapper(self.venv)
+        self.venv_buffering = wrappers.BufferingWrapper(self.venv)
 
         if debug_use_ground_truth:
             # Would use an identity reward fn here, but RewardFns can't see rewards.
-            self.venv_wrapped = venv
+            self.venv_wrapped = self.venv_buffering
             self.gen_callback = None
         else:
-            venv = self.venv_wrapped = reward_wrapper.RewardVecEnvWrapper(
-                venv,
+            self.venv_wrapped = reward_wrapper.RewardVecEnvWrapper(
+                self.venv_buffering,
                 reward_fn=self.reward_train.predict_processed,
             )
             self.gen_callback = self.venv_wrapped.make_log_callback()
@@ -226,7 +241,7 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
             gen_algo_env = self.gen_algo.get_env()
             assert gen_algo_env is not None
             self.gen_train_timesteps = gen_algo_env.num_envs
-            if hasattr(self.gen_algo, "n_steps"):  # on policy
+            if isinstance(self.gen_algo, on_policy_algorithm.OnPolicyAlgorithm):
                 self.gen_train_timesteps *= self.gen_algo.n_steps
         else:
             self.gen_train_timesteps = gen_train_timesteps
@@ -240,7 +255,9 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
 
     @property
     def policy(self) -> policies.BasePolicy:
-        return self.gen_algo.policy
+        policy = self.gen_algo.policy
+        assert policy is not None
+        return policy
 
     @abc.abstractmethod
     def logits_expert_is_high(
@@ -288,6 +305,7 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
         self._endless_expert_iterator = util.endless_iter(self._demo_data_loader)
 
     def _next_expert_batch(self) -> Mapping:
+        assert self._endless_expert_iterator is not None
         return next(self._endless_expert_iterator)
 
     def train_disc(
@@ -429,9 +447,18 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
                 callback(r)
             self.logger.dump(self._global_step)
 
+    @overload
+    def _torchify_array(self, ndarray: np.ndarray) -> th.Tensor:
+        ...
+
+    @overload
+    def _torchify_array(self, ndarray: None) -> None:
+        ...
+
     def _torchify_array(self, ndarray: Optional[np.ndarray]) -> Optional[th.Tensor]:
         if ndarray is not None:
             return th.as_tensor(ndarray, device=self.reward_train.device)
+        return None
 
     def _get_log_policy_act_prob(
         self,
@@ -502,8 +529,8 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
                 raise RuntimeError(
                     "No generator samples for training. " "Call `train_gen()` first.",
                 )
-            gen_samples = self._gen_replay_buffer.sample(self.demo_batch_size)
-            gen_samples = types.dataclass_quick_asdict(gen_samples)
+            gen_samples_dataclass = self._gen_replay_buffer.sample(self.demo_batch_size)
+            gen_samples = types.dataclass_quick_asdict(gen_samples_dataclass)
 
         n_gen = len(gen_samples["obs"])
         n_expert = len(expert_samples["obs"])
