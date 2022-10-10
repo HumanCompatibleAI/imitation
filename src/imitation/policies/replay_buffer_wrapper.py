@@ -4,7 +4,7 @@ from typing import Mapping, Type
 
 import numpy as np
 from gym import spaces
-from stable_baselines3.common.buffers import BaseBuffer, ReplayBuffer
+from stable_baselines3.common.buffers import ReplayBuffer
 from stable_baselines3.common.type_aliases import ReplayBufferSamples
 
 from imitation.rewards.reward_function import RewardFn
@@ -23,7 +23,7 @@ def _samples_to_reward_fn_input(
     )
 
 
-class ReplayBufferRewardWrapper(BaseBuffer):
+class ReplayBufferRewardWrapper(ReplayBuffer):
     """Relabel the rewards in transitions sampled from a ReplayBuffer."""
 
     def __init__(

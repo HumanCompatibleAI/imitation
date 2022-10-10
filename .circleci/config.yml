@@ -28,14 +28,14 @@ executors:
     resource_class: xlarge
     environment:
       # If you change these, also change ci/code_checks.sh
-      SRC_FILES: src/ tests/ experiments/ examples/ docs/conf.py setup.py ci/clean_notebooks.py
+      SRC_FILES: src/ tests/ experiments/ examples/ docs/conf.py setup.py ci/
       NUM_CPUS: 8
   static-analysis-medium:
     <<: *defaults
     resource_class: medium
     environment:
       # If you change these, also change ci/code_checks.sh
-      SRC_FILES: src/ tests/ experiments/ examples/ docs/conf.py setup.py ci/clean_notebooks.py
+      SRC_FILES: src/ tests/ experiments/ examples/ docs/conf.py setup.py ci/
       NUM_CPUS: 2
       EXCLUDE_MYPY: | 
         (?x)(
@@ -244,6 +244,10 @@ jobs:
       - run:
           name: ipynb-check
           command: ./ci/clean_notebooks.py --check ./docs/tutorials
+
+      - run:
+          name: typeignore-check
+          command: ./ci/check_typeignore.py ${SRC_FILES}
 
       - run:
           name: flake8

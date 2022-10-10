@@ -1,12 +1,38 @@
 #!/usr/bin/env python
 """Clean all notebooks in the repository."""
+import argparse
 import pathlib
+import sys
+import traceback
+from typing import Any, Dict, List
 
 import nbformat
 
 
 class UncleanNotebookError(Exception):
     """Raised when a notebook is unclean."""
+
+
+markdown_structure: Dict[str, Dict[str, Any]] = {
+    "cell_type": {"do": "keep"},
+    "metadata": {"do": "constant", "value": dict()},
+    "source": {"do": "keep"},
+    "id": {"do": "keep"},
+}
+
+code_structure: Dict[str, Dict[str, Any]] = {
+    "cell_type": {"do": "keep"},
+    "metadata": {"do": "constant", "value": dict()},
+    "source": {"do": "keep"},
+    "outputs": {"do": "constant", "value": list()},
+    "execution_count": {"do": "constant", "value": None},
+    "id": {"do": "keep"},
+}
+
+structure: Dict[str, Dict[str, Dict[str, Any]]] = {
+    "markdown": markdown_structure,
+    "code": code_structure,
+}
 
 
 def clean_notebook(file: pathlib.Path, check_only=False) -> None:
@@ -25,6 +51,7 @@ def clean_notebook(file: pathlib.Path, check_only=False) -> None:
     Raises:
         UncleanNotebookError: If `check_only` is True and the notebook is not clean.
             Message contains brief description of the reason for the failure.
+        ValueError: unknown cell structure action.
     """
     # Read the notebook
     with open(file) as f:
@@ -35,30 +62,44 @@ def clean_notebook(file: pathlib.Path, check_only=False) -> None:
     if check_only:
         print(f"Checking {file}")
 
-    # Remove the output and metadata from each cell
-    # also reset the execution count
-    # if the cell has no code, remove it
     for cell in nb.cells:
-        if "outputs" in cell and cell["outputs"]:
-            if check_only:
-                raise UncleanNotebookError(f"Notebook {file} has outputs")
-            cell["outputs"] = []
-            was_dirty = True
-        if "metadata" in cell and cell["metadata"]:
-            if check_only:
-                raise UncleanNotebookError(f"Notebook {file} has metadata")
-            cell["metadata"] = {}
-            was_dirty = True
-        if "execution_count" in cell and cell["execution_count"]:
-            if check_only:
-                raise UncleanNotebookError(f"Notebook {file} has execution count")
-            cell["execution_count"] = None
-            was_dirty = True
+
+        # Remove empty cells
         if cell["cell_type"] == "code" and not cell["source"]:
             if check_only:
                 raise UncleanNotebookError(f"Notebook {file} has empty code cell")
             nb.cells.remove(cell)
             was_dirty = True
+
+        # Clean the cell
+        # (copy the cell keys list so we can iterate over it while modifying it)
+        for key in list(cell):
+            if key not in structure[cell["cell_type"]]:
+                if check_only:
+                    raise UncleanNotebookError(
+                        f"Notebook {file} has unknown cell key {key}",
+                    )
+                del cell[key]
+                was_dirty = True
+            else:
+                cell_structure = structure[cell["cell_type"]][key]
+                if cell_structure["do"] == "keep":
+                    continue
+                elif cell_structure["do"] == "constant":
+                    constant_value = cell_structure["value"]
+                    if cell[key] != constant_value:
+                        if check_only:
+                            raise UncleanNotebookError(
+                                f"Notebook {file} has illegal cell value for key {key}"
+                                f" (value: {cell[key]}, "
+                                f"expected: {constant_value})",
+                            )
+                        cell[key] = constant_value
+                        was_dirty = True
+                else:
+                    raise ValueError(
+                        f"Unknown cell structure action {cell_structure['do']}",
+                    )
 
     if not check_only and was_dirty:
         # Write the notebook
@@ -67,12 +108,10 @@ def clean_notebook(file: pathlib.Path, check_only=False) -> None:
         print(f"Cleaned {file}")
 
 
-if __name__ == "__main__":
+def parse_args():
+    """Parse command-line arguments."""
     # if the argument --check has been passed, check if the notebooks are clean
     # otherwise, clean them in-place
-    import argparse
-    import traceback
-
     parser = argparse.ArgumentParser()
     # capture files and paths to clean
     parser.add_argument(
@@ -83,13 +122,13 @@ if __name__ == "__main__":
     )
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args()
-    check_only = args.check
-    # build list of files to scan from list of paths and files
+    return parser, args
+
+
+def get_files(input_paths: List):
+    """Build list of files to scan from list of paths and files."""
     files = []
-    if len(args.files) == 0:
-        parser.print_help()
-        exit(1)
-    for file in args.files:
+    for file in input_paths:
         if file.is_dir():
             files.extend(file.glob("**/*.ipynb"))
         else:
@@ -99,10 +138,29 @@ if __name__ == "__main__":
                 print(f"Skipping {file} (not a notebook)")
     if not files:
         print("No notebooks found")
-        exit(1)
+        sys.exit(1)
+    return files
+
+
+def main():
+    """Clean all notebooks in the repository, or check that they are clean."""
+    parser, args = parse_args()
+    check_only = args.check
+    input_paths = args.files
+
+    if len(input_paths) == 0:
+        parser.print_help()
+        sys.exit(1)
+
+    files = get_files(input_paths)
+
     for file in files:
         try:
             clean_notebook(file, check_only=check_only)
         except UncleanNotebookError:
             traceback.print_exc()
-            exit(1)
+            sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

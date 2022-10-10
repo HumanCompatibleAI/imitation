@@ -19,7 +19,8 @@ Algorithm = TypeVar("Algorithm", bound=base_class.BaseAlgorithm)
 # Note: a VecEnv will always be passed first and then any kwargs. There is just no
 # proper way to specify this in python yet. For details see
 # https://stackoverflow.com/questions/61569324/type-annotation-for-callable-that-takes-kwargs
-# TODO(juan) this can be fixed using ParamSpec. To be looked at later.
+# TODO(juan) this can be fixed using ParamSpec
+#  (https://github.com/HumanCompatibleAI/imitation/issues/574)
 PolicyLoaderFn = Callable[..., policies.BasePolicy]
 """A policy loader function that takes a VecEnv before any other custom arguments and
 returns a stable_baselines3 base policy policy."""
@@ -68,10 +69,7 @@ def load_stable_baselines_model(
             "statistics from '{vec_normalize_path}'",
         )
 
-    # TODO(juan) remove the type ignore when this SB3 PR gets merged
-    #  and released:
-    #  https://github.com/DLR-RM/stable-baselines3/pull/1043
-    return cls.load(path_obj, env=venv, **kwargs)  # type: ignore[return-value]
+    return cls.load(path_obj, env=venv, **kwargs)
 
 
 def _load_stable_baselines_from_file(

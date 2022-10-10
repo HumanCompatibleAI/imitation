@@ -500,7 +500,7 @@ def save(path: AnyPath, trajectories: Sequence[Trajectory]):
         path = path.decode("utf-8")
     p = pathlib.Path(path)
     p.parent.mkdir(parents=True, exist_ok=True)
-    tmp_path = f"{path}.tmp"
+    tmp_path = f"{p}.tmp"
 
     infos = [
         # Replace 'None' values for `infos`` with array of empty dicts
@@ -526,5 +526,5 @@ def save(path: AnyPath, trajectories: Sequence[Trajectory]):
         np.savez_compressed(f, **condensed)
 
     # Ensure atomic write
-    os.replace(tmp_path, path)
-    logging.info(f"Dumped demonstrations to {path}.")
+    os.replace(tmp_path, p)
+    logging.info(f"Dumped demonstrations to {p}.")

@@ -123,19 +123,25 @@ def test_density_with_other_trajectory_types(
         acts=transitions.acts,
         infos=transitions.infos,
     )
-    DensityAlgorithm(
+    d = DensityAlgorithm(
         demonstrations=transitions_mappings,
         venv=pendulum_venv,
         rl_algo=rl_algo,
         rng=rng,
     )
+    d.train()
+    d.train_policy(n_timesteps=2)
+    d.test_policy(n_trajectories=2)
 
-    DensityAlgorithm(
+    d = DensityAlgorithm(
         demonstrations=minimal_transitions,
         venv=pendulum_venv,
         rl_algo=rl_algo,
         rng=rng,
     )
+    d.train()
+    d.train_policy(n_timesteps=2)
+    d.test_policy(n_trajectories=2)
 
 
 def test_density_trainer_raises(
@@ -158,4 +164,4 @@ def test_density_trainer_raises(
         )
 
     with pytest.raises(TypeError, match="Unsupported demonstration type"):
-        density_trainer.set_demonstrations("foo")  # type: ignore
+        density_trainer.set_demonstrations("foo")  # type: ignore[arg-type]
