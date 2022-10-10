@@ -12,7 +12,7 @@ brew install coreutils gnu-getopt parallel
 
 ### Phase 1: Download RL (PPO2) expert policies.
 
-Models are saved in HuggingFace, and to work with these scripts should be downloaded to `data/expert_models/`. Environments to train with:
+Expert policies have been saved in HuggingFace, and to work with these scripts should be downloaded to `data/expert_models/`. Environments with pre-trained models:
 - [CartPole](https://huggingface.co/HumanCompatibleAI/ppo-seals-CartPole-v0)
 - [MountainCar](https://huggingface.co/HumanCompatibleAI/ppo-seals-MountainCar-v0)
 - [HalfCheetah](https://huggingface.co/HumanCompatibleAI/ppo-seals-HalfCheetah-v0)
@@ -22,6 +22,7 @@ Models are saved in HuggingFace, and to work with these scripts should be downlo
 - [Ant](https://huggingface.co/HumanCompatibleAI/ppo-seals-Ant-v0)
 - [Humanoid](https://huggingface.co/HumanCompatibleAI/ppo-seals-Humanoid-v0)
 
+To download, clone the [rl-baselines3-zoo repository](https://github.com/DLR-RM/rl-baselines3-zoo), and run a command like `python rl_zoo3/load_from_hub.py --algo ppo --env seals/Ant-v0 -orga HumanCompatibleAI -f ../imitation/data/expert_models/` (but modifying the path if necessary to ensure the correct download location).
 
 ### Phase 2: Generate expert demonstrations from models.
 
