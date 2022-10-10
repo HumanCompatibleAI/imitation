@@ -300,7 +300,7 @@ def test_generate_trajectories_type_error(rng):
     sample_until = rollout.make_min_episodes(1)
     with pytest.raises(TypeError, match="Policy must be.*got <class 'str'> instead"):
         rollout.generate_trajectories(
-            "strings_are_not_valid_policies",  # type: ignore
+            "strings_are_not_valid_policies",  # type: ignore[arg-type]
             venv,
             rng=rng,
             sample_until=sample_until,
