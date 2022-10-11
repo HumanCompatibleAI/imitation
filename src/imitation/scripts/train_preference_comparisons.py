@@ -5,7 +5,7 @@ can be called directly.
 """
 
 import functools
-import os
+import pathlib
 from typing import Any, Mapping, Optional, Type, Union
 
 import torch as th
@@ -25,23 +25,23 @@ from imitation.scripts.config.train_preference_comparisons import (
 
 def save_model(
     agent_trainer: preference_comparisons.AgentTrainer,
-    save_path: str,
+    save_path: pathlib.Path,
 ):
     """Save the model as model.pkl."""
     serialize.save_stable_model(
-        output_dir=os.path.join(save_path, "policy"),
+        output_dir=save_path / "policy",
         model=agent_trainer.algorithm,
     )
 
 
 def save_checkpoint(
     trainer: preference_comparisons.PreferenceComparisons,
-    save_path: str,
+    save_path: pathlib.Path,
     allow_save_policy: Optional[bool],
 ):
     """Save reward model and optionally policy."""
-    os.makedirs(save_path, exist_ok=True)
-    th.save(trainer.model, os.path.join(save_path, "reward_net.pt"))
+    save_path.mkdir(parents=True, exist_ok=True)
+    th.save(trainer.model, save_path / "reward_net.pt")
     if allow_save_policy:
         # Note: We should only save the model as model.pkl if `trajectory_generator`
         # contains one. Specifically we check if the `trajectory_generator` contains an
@@ -244,11 +244,7 @@ def train_preference_comparisons(
             if checkpoint_interval > 0 and iteration_num % checkpoint_interval == 0:
                 save_checkpoint(
                     trainer=main_trainer,
-                    save_path=os.path.join(
-                        log_dir,
-                        "checkpoints",
-                        f"{iteration_num:04d}",
-                    ),
+                    save_path=log_dir / "checkpoints" / f"{iteration_num:04d}",
                     allow_save_policy=bool(trajectory_path is None),
                 )
 
@@ -264,13 +260,13 @@ def train_preference_comparisons(
             results["rollout"] = train.eval_policy(agent, venv)
 
     if save_preferences:
-        main_trainer.dataset.save(os.path.join(log_dir, "preferences.pkl"))
+        main_trainer.dataset.save(log_dir / "preferences.pkl")
 
     # Save final artifacts.
     if checkpoint_interval >= 0:
         save_checkpoint(
             trainer=main_trainer,
-            save_path=os.path.join(log_dir, "checkpoints", "final"),
+            save_path=log_dir / "checkpoints" / "final",
             allow_save_policy=bool(trajectory_path is None),
         )
 
@@ -278,9 +274,10 @@ def train_preference_comparisons(
 
 
 def main_console():
-    observer = FileStorageObserver(
-        os.path.join("output", "sacred", "train_preference_comparisons"),
+    observer_path = (
+        pathlib.Path.cwd() / "output" / "sacred" / "train_preference_comparisons"
     )
+    observer = FileStorageObserver(observer_path)
     train_preference_comparisons_ex.observers.append(observer)
     train_preference_comparisons_ex.run_commandline()
 
