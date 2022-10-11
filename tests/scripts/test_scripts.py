@@ -15,7 +15,7 @@ import shutil
 import sys
 import tempfile
 from collections import Counter
-from typing import Dict, List, Mapping, Optional
+from typing import Any, Dict, List, Mapping, Optional
 from unittest import mock
 
 import numpy as np
@@ -470,6 +470,7 @@ def _check_train_ex_result(result: dict):
     assert "monitor_return_mean" not in expert_stats
 
     imit_stats = result.get("imit_stats")
+    assert isinstance(imit_stats, dict)
     _check_rollout_stats(imit_stats)
 
 
@@ -600,8 +601,8 @@ def test_transfer_learning(tmpdir: str) -> None:
     Args:
         tmpdir: Temporary directory to save results to.
     """
-    tmpdir = pathlib.Path(tmpdir)
-    log_dir_train = tmpdir / "train"
+    tmpdir_path = pathlib.Path(tmpdir)
+    log_dir_train = tmpdir_path / "train"
     run = train_adversarial.train_adversarial_ex.run(
         command_name="airl",
         named_configs=["seals_cartpole"] + ALGO_FAST_CONFIGS["adversarial"],
@@ -615,7 +616,7 @@ def test_transfer_learning(tmpdir: str) -> None:
 
     _check_rollout_stats(run.result["imit_stats"])
 
-    log_dir_data = tmpdir / "train_rl"
+    log_dir_data = tmpdir_path / "train_rl"
     reward_path = log_dir_train / "checkpoints" / "final" / "reward_test.pt"
     run = train_rl.train_rl_ex.run(
         named_configs=["seals_cartpole"] + ALGO_FAST_CONFIGS["rl"],
@@ -649,9 +650,9 @@ def test_preference_comparisons_transfer_learning(
         tmpdir: Temporary directory to save results to.
         named_configs_dict: Named configs for preference_comparisons and rl.
     """
-    tmpdir = pathlib.Path(tmpdir)
+    tmpdir_path = pathlib.Path(tmpdir)
 
-    log_dir_train = tmpdir / "train"
+    log_dir_train = tmpdir_path / "train"
     run = train_preference_comparisons.train_preference_comparisons_ex.run(
         named_configs=["pendulum"]
         + ALGO_FAST_CONFIGS["preference_comparison"]
@@ -669,7 +670,7 @@ def test_preference_comparisons_transfer_learning(
         reward_type = "RewardNet_unnormalized"
         load_reward_kwargs = {}
 
-    log_dir_data = tmpdir / "train_rl"
+    log_dir_data = tmpdir_path / "train_rl"
     reward_path = log_dir_train / "checkpoints" / "final" / "reward_net.pt"
     agent_path = log_dir_train / "checkpoints" / "final" / "policy"
     run = train_rl.train_rl_ex.run(
@@ -686,10 +687,18 @@ def test_preference_comparisons_transfer_learning(
     _check_rollout_stats(run.result)
 
 
-def test_train_rl_double_normalization(tmpdir: str):
-    venv = util.make_vec_env("CartPole-v1", n_envs=1, parallel=False)
-    net = reward_nets.BasicRewardNet(venv.observation_space, venv.action_space)
-    net = reward_nets.NormalizedRewardNet(net, networks.RunningNorm)
+def test_train_rl_double_normalization(tmpdir: str, rng):
+    venv = util.make_vec_env(
+        "CartPole-v1",
+        n_envs=1,
+        parallel=False,
+        rng=rng,
+    )
+    basic_reward_net = reward_nets.BasicRewardNet(
+        venv.observation_space,
+        venv.action_space,
+    )
+    net = reward_nets.NormalizedRewardNet(basic_reward_net, networks.RunningNorm)
     tmppath = os.path.join(tmpdir, "reward.pt")
     th.save(net, tmppath)
 
@@ -782,14 +791,14 @@ def test_parallel_arg_errors(tmpdir):
 
 
 def _generate_test_rollouts(tmpdir: str, env_named_config: str) -> pathlib.Path:
-    tmpdir = pathlib.Path(tmpdir)
+    tmpdir_path = pathlib.Path(tmpdir)
     train_rl.train_rl_ex.run(
         named_configs=[env_named_config] + ALGO_FAST_CONFIGS["rl"],
         config_updates=dict(
             common=dict(log_dir=tmpdir),
         ),
     )
-    rollout_path = tmpdir / "rollouts/final.pkl"
+    rollout_path = tmpdir_path / "rollouts/final.pkl"
     return rollout_path.absolute()
 
 
@@ -854,7 +863,7 @@ def _run_train_bc_for_test_analyze_imit(run_name, sacred_logs_dir, log_dir):
     ),
 )
 def test_analyze_imitation(tmpdir: str, run_names: List[str], run_sacred_fn):
-    sacred_logs_dir = tmpdir = pathlib.Path(tmpdir)
+    sacred_logs_dir = tmpdir_path = pathlib.Path(tmpdir)
 
     # Generate sacred logs (other logs are put in separate tmpdir for deletion).
     for run_name in run_names:
@@ -870,8 +879,8 @@ def test_analyze_imitation(tmpdir: str, run_names: List[str], run_sacred_fn):
                 source_dirs=[sacred_logs_dir],
                 env_name="seals/CartPole-v0",
                 run_name=run_name,
-                csv_output_path=tmpdir / "analysis.csv",
-                tex_output_path=tmpdir / "analysis.tex",
+                csv_output_path=tmpdir_path / "analysis.csv",
+                tex_output_path=tmpdir_path / "analysis.tex",
                 print_table=True,
             ),
         )
@@ -889,7 +898,7 @@ def test_analyze_gather_tb(tmpdir: str):
     if os.name == "nt":  # pragma: no cover
         pytest.skip("gather_tb uses symlinks: not supported by Windows")
 
-    config_updates = dict(local_dir=tmpdir, run_name="test")
+    config_updates: Dict[str, Any] = dict(local_dir=tmpdir, run_name="test")
     config_updates.update(PARALLEL_CONFIG_LOW_RESOURCE)
     parallel_run = parallel.parallel_ex.run(
         named_configs=["generate_test_data"],

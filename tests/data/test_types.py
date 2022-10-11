@@ -1,13 +1,12 @@
 """Tests of `imitation.data.types`."""
 
-
 import contextlib
 import copy
 import dataclasses
 import os
 import pathlib
 import pickle
-from typing import Any, Callable
+from typing import Any, Callable, Sequence
 
 import gym
 import numpy as np
@@ -27,7 +26,7 @@ ACT_SPACES = SPACES
 LENGTHS = [0, 1, 2, 10]
 
 
-def _check_1d_shape(fn: Callable[[np.ndarray], Any], length: float, expected_msg: str):
+def _check_1d_shape(fn: Callable[[np.ndarray], Any], length: int, expected_msg: str):
     for shape in [(), (length, 1), (length, 2), (length - 1,), (length + 1,)]:
         with pytest.raises(ValueError, match=expected_msg):
             fn(np.zeros(shape))
@@ -208,6 +207,7 @@ class TestData:
         use_rewards,
         type_safe,
     ):
+        chdir_context: contextlib.AbstractContextManager
         """Check that trajectories are properly saved."""
         if use_chdir:
             # Test no relative path without directory edge-case.
@@ -234,12 +234,13 @@ class TestData:
                     with pytest.raises(ValueError):
                         types.save(save_path, [trajectory, trajectory_rew])
 
+            loaded_trajs: Sequence[types.Trajectory]
             if type_safe:
                 if use_rewards:
                     loaded_trajs = types.load_with_rewards(save_path)
                 else:
                     with pytest.raises(ValueError):
-                        loaded_trajs = types.load_with_rewards(save_path)
+                        types.load_with_rewards(save_path)
                     loaded_trajs = types.load(save_path)
             else:
                 loaded_trajs = types.load(save_path)
@@ -271,6 +272,7 @@ class TestData:
                 ValueError,
                 match=r"infos when present must be present for each action.*",
             ):
+                assert traj.infos is not None
                 dataclasses.replace(traj, infos=traj.infos[:-1])
             with pytest.raises(
                 ValueError,

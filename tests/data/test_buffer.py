@@ -53,7 +53,7 @@ def test_buffer(capacity, chunk_len, sample_shape) -> None:
     buf = Buffer(
         capacity,
         sample_shapes={"a": sample_shape, "b": sample_shape},
-        dtypes={"a": float, "b": float},
+        dtypes={"a": np.dtype(float), "b": np.dtype(float)},
     )
 
     to_insert = 3 * capacity
@@ -213,7 +213,10 @@ def test_buffer_init_errors():
 
 
 def test_replay_buffer_init_errors():
-    with pytest.raises(ValueError, match=r"Specified.* and environment"):
+    with pytest.raises(
+        ValueError,
+        match=r"Cannot specify both shape/dtype and also environment",
+    ):
         ReplayBuffer(15, venv="MockEnv", obs_shape=(10, 10))
     with pytest.raises(ValueError, match=r"Shape or dtype missing.*"):
         ReplayBuffer(15, obs_shape=(10, 10), act_shape=(15,), obs_dtype=bool)

@@ -7,7 +7,7 @@ from imitation.rewards import reward_function, serialize
 
 OBS = np.random.randint(0, 10, (64, 100))
 ACTS = NEXT_OBS = OBS
-DONES = np.zeros(64, dtype=np.bool)
+DONES = np.zeros(64, dtype=np.bool_)
 
 
 def _funky_reward_fn(obs, act, next_obs, done):

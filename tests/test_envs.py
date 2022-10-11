@@ -1,4 +1,5 @@
 """Tests for `imitation.envs.*`."""
+from typing import List
 
 import gym
 import numpy as np
@@ -16,8 +17,7 @@ ENV_NAMES = [
     if env_spec.id.startswith("imitation/")
 ]
 
-DETERMINISTIC_ENVS = []
-
+DETERMINISTIC_ENVS: List[str] = []
 
 env = pytest.fixture(seals_test.make_env_fixture(skip_fn=pytest.skip))
 

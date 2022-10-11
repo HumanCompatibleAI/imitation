@@ -56,6 +56,7 @@ def generate_expert_trajs(
     Raises:
         ValueError: If n_expert_demos is None.
     """
+    rng = common.make_rng()
     if n_expert_demos is None:
         raise ValueError("n_expert_demos must be specified when rollout_path is None")
 
@@ -67,6 +68,7 @@ def generate_expert_trajs(
             expert.get_expert_policy(rollout_env),
             rollout_env,
             rollout.make_sample_until(min_episodes=n_expert_demos),
+            rng=rng,
         )
 
 
