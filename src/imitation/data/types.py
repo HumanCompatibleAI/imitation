@@ -113,7 +113,7 @@ def parse_optional_path(
     Args:
         path: The path to parse. Can be a string, bytes, or `os.PathLike`.
         allow_relative: If True, then relative paths are allowed as input, and
-            are resolved relative to the current working directory. If false,
+            are resolved relative to the current working directory. If False,
             an error is raised if the path is not absolute.
         base_directory: If specified, then relative paths are resolved relative
             to this directory, instead of the current working directory.
