@@ -3,7 +3,6 @@ import abc
 import collections
 import dataclasses
 import logging
-import os
 from typing import (
     Callable,
     Iterable,
@@ -127,7 +126,7 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
         gen_algo: base_class.BaseAlgorithm,
         reward_net: reward_nets.RewardNet,
         n_disc_updates_per_round: int = 2,
-        log_dir: str = "output/",
+        log_dir: types.AnyPath = "output/",
         disc_opt_cls: Type[th.optim.Optimizer] = th.optim.Adam,
         disc_opt_kwargs: Optional[Mapping] = None,
         gen_train_timesteps: Optional[int] = None,
@@ -202,7 +201,7 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
         self.venv = venv
         self.gen_algo = gen_algo
         self._reward_net = reward_net.to(gen_algo.device)
-        self._log_dir = log_dir
+        self._log_dir = types.parse_path(log_dir)
 
         # Create graph for optimising/recording stats on discriminator
         self._disc_opt_cls = disc_opt_cls
@@ -215,10 +214,10 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
         )
 
         if self._init_tensorboard:
-            logging.info("building summary directory at " + self._log_dir)
-            summary_dir = os.path.join(self._log_dir, "summary")
-            os.makedirs(summary_dir, exist_ok=True)
-            self._summary_writer = thboard.SummaryWriter(summary_dir)
+            logging.info(f"building summary directory at {self._log_dir}")
+            summary_dir = self._log_dir / "summary"
+            summary_dir.mkdir(parents=True, exist_ok=True)
+            self._summary_writer = thboard.SummaryWriter(str(summary_dir))
 
         self.venv_buffering = wrappers.BufferingWrapper(self.venv)
 

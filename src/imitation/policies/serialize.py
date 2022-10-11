@@ -4,13 +4,13 @@
 # torch.load() and torch.save() calls
 
 import logging
-import os
 import pathlib
 from typing import Callable, Type, TypeVar
 
 import huggingface_sb3 as hfsb3
 from stable_baselines3.common import base_class, callbacks, policies, vec_env
 
+from imitation.data import types
 from imitation.policies import base
 from imitation.util import registry
 
@@ -52,7 +52,7 @@ def load_stable_baselines_model(
         The deserialized RL algorithm.
     """
     logging.info(f"Loading Stable Baselines policy for '{cls}' from '{path}'")
-    path_obj = pathlib.Path(path)
+    path_obj = types.parse_path(path)
 
     if path_obj.is_dir():
         path_obj = path_obj / "model.zip"
@@ -181,7 +181,7 @@ def load_policy(
 
 
 def save_stable_model(
-    output_dir: str,
+    output_dir: pathlib.Path,
     model: base_class.BaseAlgorithm,
     filename: str = "model.zip",
 ) -> None:
@@ -197,9 +197,9 @@ def save_stable_model(
     # Save each model in new directory in case we want to add metadata or other
     # information in future. (E.g. we used to save `VecNormalize` statistics here,
     # although that is no longer necessary.)
-    os.makedirs(output_dir, exist_ok=True)
-    model.save(os.path.join(output_dir, filename))
-    logging.info("Saved policy to %s", output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    model.save(output_dir / filename)
+    logging.info(f"Saved policy to {output_dir}")
 
 
 class SavePolicyCallback(callbacks.EventCallback):
@@ -211,7 +211,7 @@ class SavePolicyCallback(callbacks.EventCallback):
 
     def __init__(
         self,
-        policy_dir: str,
+        policy_dir: pathlib.Path,
         *args,
         **kwargs,
     ):
@@ -227,6 +227,6 @@ class SavePolicyCallback(callbacks.EventCallback):
 
     def _on_step(self) -> bool:
         assert self.model is not None
-        output_dir = os.path.join(self.policy_dir, f"{self.num_timesteps:012d}")
+        output_dir = self.policy_dir / f"{self.num_timesteps:012d}"
         save_stable_model(output_dir, self.model)
         return True

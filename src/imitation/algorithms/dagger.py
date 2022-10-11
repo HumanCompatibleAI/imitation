@@ -90,10 +90,8 @@ def reconstruct_trainer(
         A deserialized `DAggerTrainer`.
     """
     custom_logger = custom_logger or imit_logger.configure()
-    checkpoint_path = pathlib.Path(
-        types.path_to_str(scratch_dir),
-        "checkpoint-latest.pt",
-    )
+    scratch_dir = types.parse_path(scratch_dir)
+    checkpoint_path = scratch_dir / "checkpoint-latest.pt"
     trainer = th.load(checkpoint_path, map_location=utils.get_device(device))
     trainer.venv = venv
     trainer._logger = custom_logger
@@ -109,14 +107,14 @@ def _save_dagger_demo(
     #   however that NPZ save here is likely more space efficient than
     #   pickle from types.save(), and types.save only accepts
     #   TrajectoryWithRew right now (subclass of Trajectory).
-    save_dir_obj = pathlib.Path(types.path_to_str(save_dir))
+    save_dir = types.parse_path(save_dir)
     assert isinstance(trajectory, types.Trajectory)
     actual_prefix = f"{prefix}-" if prefix else ""
     timestamp = util.make_unique_timestamp()
     filename = f"{actual_prefix}dagger-demo-{timestamp}.npz"
 
-    save_dir_obj.mkdir(parents=True, exist_ok=True)
-    npz_path = save_dir_obj / filename
+    save_dir.mkdir(parents=True, exist_ok=True)
+    npz_path = save_dir / filename
     np.savez_compressed(npz_path, **dataclasses.asdict(trajectory))
     logging.info(f"Saved demo at '{npz_path}'")
 
@@ -344,7 +342,7 @@ class DAggerTrainer(base.BaseImitationAlgorithm):
         if beta_schedule is None:
             beta_schedule = LinearBetaSchedule(15)
         self.beta_schedule = beta_schedule
-        self.scratch_dir = pathlib.Path(types.path_to_str(scratch_dir))
+        self.scratch_dir = types.parse_path(scratch_dir)
         self.venv = venv
         self.round_num = 0
         self._last_loaded_round = -1
@@ -397,11 +395,7 @@ class DAggerTrainer(base.BaseImitationAlgorithm):
         return demo_transitions, num_demos_by_round
 
     def _get_demo_paths(self, round_dir):
-        return [
-            os.path.join(round_dir, p)
-            for p in os.listdir(round_dir)
-            if p.endswith(".npz")
-        ]
+        return [round_dir / p for p in os.listdir(round_dir) if p.endswith(".npz")]
 
     def _demo_dir_path_for_round(self, round_num: Optional[int] = None) -> pathlib.Path:
         if round_num is None:
@@ -411,7 +405,7 @@ class DAggerTrainer(base.BaseImitationAlgorithm):
     def _try_load_demos(self) -> None:
         """Load the dataset for this round into self.bc_trainer as a DataLoader."""
         demo_dir = self._demo_dir_path_for_round()
-        demo_paths = self._get_demo_paths(demo_dir) if os.path.isdir(demo_dir) else []
+        demo_paths = self._get_demo_paths(demo_dir) if demo_dir.is_dir() else []
         if len(demo_paths) == 0:
             raise NeedsDemosException(
                 f"No demos found for round {self.round_num} in dir '{demo_dir}'. "
