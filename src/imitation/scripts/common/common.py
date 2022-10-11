@@ -55,7 +55,7 @@ def hook(config, command_name: str, logger):
         config_log_root = config["common"]["log_root"] or "output"
         log_root = types.parse_path(config_log_root)
         log_dir = log_root / command_name / env_sanitized / util.make_unique_timestamp()
-        updates["log_dir"] = str(log_dir)
+        updates["log_dir"] = log_dir
     return updates
 
 

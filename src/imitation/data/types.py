@@ -493,12 +493,10 @@ def save(path: AnyPath, trajectories: Sequence[Trajectory]):
         trajectories: The trajectories to save.
 
     Raises:
-        ValueError: If the trajectories are not all of the same type, i.e. some are
+        ValueError: If not all trajectories have the same type, i.e. some are
             `Trajectory` and others are `TrajectoryWithRew`.
     """
-    if isinstance(path, bytes):
-        path = path.decode("utf-8")
-    p = pathlib.Path(path)
+    p = parse_path(path)
     p.parent.mkdir(parents=True, exist_ok=True)
     tmp_path = f"{p}.tmp"
 
