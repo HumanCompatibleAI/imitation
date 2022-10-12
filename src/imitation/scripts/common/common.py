@@ -3,10 +3,8 @@
 import contextlib
 import logging
 import os
-from typing import Any, Callable, Generator, Mapping, Optional, Sequence, Tuple, Union
 import pathlib
 from typing import Any, Callable, Generator, Mapping, Optional, Sequence, Tuple, Union
->>>>>>> master
 
 import numpy as np
 import sacred
