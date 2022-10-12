@@ -13,7 +13,7 @@ Detailed example notebook: :doc:`../tutorials/6_train_mce`
 
     from functools import partial
 
-    from seals import base_envs as envs
+    from seals import base_envs
     from seals.diagnostics.cliff_world import CliffWorldEnv
     import numpy as np
 
@@ -32,7 +32,7 @@ Detailed example notebook: :doc:`../tutorials/6_train_mce`
     env_creator = partial(CliffWorldEnv, height=4, horizon=8, width=7, use_xy_obs=True)
     env_single = env_creator()
 
-    state_env_creator = lambda: envs.ExposePOMDPStateWrapper(env_creator())
+    state_env_creator = lambda: base_envs.ExposePOMDPStateWrapper(env_creator())
 
     # This is just a vectorized environment because `generate_trajectories` expects one
     state_venv = DummyVecEnv([state_env_creator] * 4)

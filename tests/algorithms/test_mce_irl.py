@@ -6,7 +6,7 @@ import gym
 import numpy as np
 import pytest
 import torch as th
-from seals import base_envs as envs
+from seals import base_envs
 from seals.diagnostics import random_trans
 from stable_baselines3.common import vec_env
 
@@ -116,7 +116,7 @@ def test_policy_om_random_mdp(discount: float):
     assert np.allclose(np.sum(D), expected_sum)
 
 
-class ReasonablePOMDP(envs.TabularModelPOMDP):
+class ReasonablePOMDP(base_envs.TabularModelPOMDP):
     """A tabular MDP with sensible parameters."""
 
     def __init__(self):
@@ -314,7 +314,7 @@ def test_mce_irl_demo_formats(rng):
         obs_dim=None,
         generator_seed=42,
     )
-    state_env = envs.ExposePOMDPStateWrapper(mdp)
+    state_env = base_envs.ExposePOMDPStateWrapper(mdp)
     state_venv = vec_env.DummyVecEnv([lambda: state_env])
     trajs = rollout.generate_trajectories(
         policy=None,
@@ -406,7 +406,7 @@ def test_mce_irl_reasonable_mdp(
         # make sure weights have non-insane norm
         assert tensor_iter_norm(reward_net.parameters()) < 1000
 
-        state_env = envs.ExposePOMDPStateWrapper(mdp)
+        state_env = base_envs.ExposePOMDPStateWrapper(mdp)
         state_venv = vec_env.DummyVecEnv([lambda: state_env])
         trajs = rollout.generate_trajectories(
             mce_irl.policy,

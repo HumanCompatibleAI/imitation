@@ -13,7 +13,7 @@ import gym
 import numpy as np
 import scipy.special
 import torch as th
-from seals import base_envs as envs
+from seals import base_envs
 from stable_baselines3.common import policies
 
 from imitation.algorithms import base
@@ -24,7 +24,7 @@ from imitation.util import networks, util
 
 
 def mce_partition_fh(
-    env: envs.TabularModelPOMDP,
+    env: base_envs.TabularModelPOMDP,
     *,
     reward: Optional[np.ndarray] = None,
     discount: float = 1.0,
@@ -77,7 +77,7 @@ def mce_partition_fh(
 
 
 def mce_occupancy_measures(
-    env: envs.TabularModelPOMDP,
+    env: base_envs.TabularModelPOMDP,
     *,
     reward: Optional[np.ndarray] = None,
     pi: Optional[np.ndarray] = None,
@@ -257,7 +257,7 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
     def __init__(
         self,
         demonstrations: Optional[MCEDemonstrations],
-        env: envs.TabularModelPOMDP,
+        env: base_envs.TabularModelPOMDP,
         reward_net: reward_nets.RewardNet,
         rng: np.random.Generator,
         optimizer_cls: Type[th.optim.Optimizer] = th.optim.Adam,
