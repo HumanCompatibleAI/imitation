@@ -118,9 +118,5 @@ pushd "${LOG_ROOT}/parallel"
 find . -name stderr -print0 | sort -z | xargs -0 tail -n 15 | grep -E '==|Result'
 popd
 
-echo "[Optional] Upload new reward models to S3 (replacing old ones) using the commands:"
-echo "aws s3 rm --recursive s3://shwang-chai/public/data/reward_models/${ALGORITHM}/"
-echo "aws s3 sync --exclude '*/rollouts/*' --exclude '*/checkpoints/*' --include '*/checkpoints/final/*' '${LOG_ROOT}' s3://shwang-chai/public/data/reward_models/${ALGORITHM}/"
-
 # shellcheck disable=SC2016
 echo 'Generate results table using `python -m imitation.scripts.analyze`'

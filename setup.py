@@ -212,7 +212,6 @@ setup(
         # recommended packages for development
         "dev": [
             "autopep8",
-            "awscli",
             "ipdb",
             "isort~=5.0",
             "codespell",
