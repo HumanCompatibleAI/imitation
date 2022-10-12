@@ -92,10 +92,10 @@ def train_rl(
     """
     rng = scripts_common.make_rng()
     custom_logger, log_dir = scripts_common.setup_logging()
-    rollout_dir = osp.join(log_dir, "rollouts")
-    policy_dir = osp.join(log_dir, "policies")
-    os.makedirs(rollout_dir, exist_ok=True)
-    os.makedirs(policy_dir, exist_ok=True)
+    rollout_dir = log_dir / "rollouts"
+    policy_dir = log_dir / "policies")
+    rollout_dir.mkdir(parents=True, exist_ok=True)
+    policy_dir.mkdir(parents=True, exist_ok=True)
 
     all_post_wrappers = common["post_wrappers"] + [
         lambda env, idx: wrappers.RolloutInfoWrapper(env),
