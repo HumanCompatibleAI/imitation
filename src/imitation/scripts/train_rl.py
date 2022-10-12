@@ -9,8 +9,7 @@ This can be used:
 """
 
 import logging
-import os
-import os.path as osp
+import pathlib
 import warnings
 from typing import Any, Mapping, Optional
 
@@ -146,7 +145,7 @@ def train_rl(
 
         # Save final artifacts after training is complete.
         if rollout_save_final:
-            save_path = osp.join(rollout_dir, "final.pkl")
+            save_path = rollout_dir / "final.pkl"
             sample_until = rollout.make_sample_until(
                 rollout_save_n_timesteps,
                 rollout_save_n_episodes,
@@ -156,7 +155,7 @@ def train_rl(
                 rollout.rollout(rl_algo, rl_algo.get_env(), sample_until, rng=rng),
             )
         if policy_save_final:
-            output_dir = os.path.join(policy_dir, "final")
+            output_dir = policy_dir / "final"
             serialize.save_stable_model(output_dir, rl_algo)
 
         # Final evaluation of expert policy.
@@ -164,7 +163,8 @@ def train_rl(
 
 
 def main_console():
-    observer = FileStorageObserver(osp.join("output", "sacred", "train_rl"))
+    observer_path = pathlib.Path.cwd() / "output" / "sacred" / "train_rl"
+    observer = FileStorageObserver(observer_path)
     train_rl_ex.observers.append(observer)
     train_rl_ex.run_commandline()
 

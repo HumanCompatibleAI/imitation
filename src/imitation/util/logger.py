@@ -3,6 +3,7 @@
 import contextlib
 import datetime
 import os
+import pathlib
 import sys
 import tempfile
 from typing import Any, Dict, Generator, List, Optional, Sequence, Tuple, Union
@@ -43,7 +44,7 @@ def make_output_format(
 
 
 def _build_output_formats(
-    folder: str,
+    folder: pathlib.Path,
     format_strs: Sequence[str],
 ) -> Sequence[sb_logger.KVWriter]:
     """Build output formats for initializing a Stable Baselines Logger.
@@ -56,13 +57,13 @@ def _build_output_formats(
     Returns:
         A list of output formats, one corresponding to each `format_strs`.
     """
-    os.makedirs(folder, exist_ok=True)
+    folder.mkdir(parents=True, exist_ok=True)
     output_formats: List[sb_logger.KVWriter] = []
     for f in format_strs:
         if f == "wandb":
             output_formats.append(WandbOutputFormat())
         else:
-            output_formats.append(make_output_format(f, folder))
+            output_formats.append(make_output_format(f, str(folder)))
     return output_formats
 
 
@@ -266,11 +267,12 @@ class HierarchicalLogger(sb_logger.Logger):
         if subdir in self._cached_loggers:
             logger = self._cached_loggers[subdir]
         else:
-            assert self.default_logger.dir is not None
-            folder = os.path.join(self.default_logger.dir, "raw", subdir)
-            os.makedirs(folder, exist_ok=True)
+            default_logger_dir = self.default_logger.dir
+            assert default_logger_dir is not None
+            folder = types.parse_path(default_logger_dir) / "raw" / subdir
+            folder.mkdir(exist_ok=True, parents=True)
             output_formats = _build_output_formats(folder, self.format_strs)
-            logger = sb_logger.Logger(folder, list(output_formats))
+            logger = sb_logger.Logger(str(folder), list(output_formats))
             self._cached_loggers[subdir] = logger
 
         try:
@@ -400,15 +402,16 @@ def configure(
         The configured HierarchicalLogger instance.
     """
     if folder is None:
+        tempdir = types.parse_path(tempfile.gettempdir())
         now = datetime.datetime.now()
         timestamp = now.strftime("imitation-%Y-%m-%d-%H-%M-%S-%f")
-        folder = os.path.join(tempfile.gettempdir(), timestamp)
+        folder = tempdir / timestamp
     else:
-        folder = types.path_to_str(folder)
+        folder = types.parse_path(folder)
     if format_strs is None:
         format_strs = ["stdout", "log", "csv"]
     output_formats = _build_output_formats(folder, format_strs)
-    default_logger = sb_logger.Logger(folder, list(output_formats))
+    default_logger = sb_logger.Logger(str(folder), list(output_formats))
     hier_format_strs = [f for f in format_strs if f != "wandb"]
     hier_logger = HierarchicalLogger(default_logger, hier_format_strs)
     return hier_logger

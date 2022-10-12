@@ -5,7 +5,6 @@ SRC_FILES=(src/ tests/ experiments/ examples/ docs/conf.py setup.py ci/)
 EXCLUDE_MYPY="(?x)(
   src/imitation/algorithms/preference_comparisons.py$
   | src/imitation/rewards/reward_nets.py$
-  | src/imitation/util/sacred.py$
   | src/imitation/algorithms/base.py$
   | src/imitation/scripts/train_preference_comparisons.py$
   | src/imitation/rewards/serialize.py$
