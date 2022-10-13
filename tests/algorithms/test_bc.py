@@ -12,7 +12,7 @@ from stable_baselines3.common import evaluation, vec_env
 from imitation.algorithms import bc
 from imitation.data import rollout
 from imitation.data.wrappers import RolloutInfoWrapper
-from imitation.testing import failing_data_loader, reward_improvement
+from imitation.testing import reward_improvement
 from imitation.testing.expert_trajectories import make_expert_transition_loader
 from imitation.util import logger, util
 
@@ -256,20 +256,38 @@ def test_that_bc_raises_error_when_data_loader_is_empty(
         custom_logger: Where to log to.
         cartpole_expert_trajectories: The expert trajectories to use.
     """
+    # GIVEN
     batch_size = 32
     trans = rollout.flatten_trajectories(cartpole_expert_trajectories)
     dummy_yield_value = dataclasses.asdict(trans[:batch_size])
 
-    bad_data_loader = failing_data_loader.DataLoaderThatFailsOnNthIter(
-        dummy_yield_value=dummy_yield_value,
-        no_yield_after_iter=no_yield_after_iter,
-    )
+    class DataLoaderThatFailsOnNthIter:
+        """A dummy DataLoader stops to yield after a number of calls to `__iter__`."""
+
+        def __init__(self, no_yield_after_iter: int):
+            """Builds dummy data loader.
+
+            Args:
+                no_yield_after_iter: `__iter__` will raise `StopIteration` after
+                    this many calls.
+            """
+            self.iter_count = 0
+            self.no_yield_after_iter = no_yield_after_iter
+
+        def __iter__(self):
+            if self.iter_count < self.no_yield_after_iter:
+                yield dummy_yield_value
+            self.iter_count += 1
+
+    bad_data_loader = DataLoaderThatFailsOnNthIter(no_yield_after_iter)
     trainer = bc.BC(
         observation_space=cartpole_venv.observation_space,
         action_space=cartpole_venv.action_space,
         batch_size=batch_size,
         custom_logger=custom_logger,
     )
+
+    # WHEN
     trainer.set_demonstrations(bad_data_loader)
-    with pytest.raises(AssertionError, match=".*no data.*"):
+    with pytest.raises(AssertionError, match=".*no data.*"):  # THEN
         trainer.train(n_batches=20)
