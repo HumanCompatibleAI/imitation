@@ -649,7 +649,8 @@ def test_train_adversarial_algorithm_value_error(tmpdir):
 def test_train_adversarial_image_env(tmpdir, command):
     """Smoke test for imitation.scripts.train_adversarial on atari."""
     named_configs = (
-        ASTEROIDS_CNN_POLICY_CONFIG + ALGO_FAST_CONFIGS["adversarial"]
+        ASTEROIDS_CNN_POLICY_CONFIG
+        + ALGO_FAST_CONFIGS["adversarial"]
         + ["reward.cnn_reward"]
     )
     config_updates = {

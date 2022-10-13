@@ -93,7 +93,7 @@ def train_rl(
     rng = scripts_common.make_rng()
     custom_logger, log_dir = scripts_common.setup_logging()
     rollout_dir = log_dir / "rollouts"
-    policy_dir = log_dir / "policies")
+    policy_dir = log_dir / "policies"
     rollout_dir.mkdir(parents=True, exist_ok=True)
     policy_dir.mkdir(parents=True, exist_ok=True)
 

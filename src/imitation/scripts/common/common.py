@@ -2,7 +2,6 @@
 
 import contextlib
 import logging
-import os
 import pathlib
 from typing import Any, Callable, Generator, Mapping, Optional, Sequence, Tuple, Union
 

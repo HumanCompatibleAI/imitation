@@ -20,7 +20,7 @@ IMAGE_ENV_REQUIRE = [
     "pillow",
     "autorom[accept-rom-license]~=0.4.2",
     "procgen==0.10.7",
-    "gym3@git+https://github.com/openai/gym3.git#4c3824680eaf9dd04dce224ee3d4856429878226",
+    "gym3@git+https://github.com/openai/gym3.git#4c3824680eaf9dd04dce224ee3d4856429878226",  # noqa: E501
 ]
 PYTYPE = ["pytype==2022.7.26"] if IS_NOT_WINDOWS else []
 STABLE_BASELINES3 = "stable-baselines3>=1.6.1"
