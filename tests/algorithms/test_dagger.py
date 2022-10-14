@@ -278,7 +278,7 @@ def test_trainer_makes_progress(init_trainer_fn, pendulum_venv, pendulum_expert_
         # https://arxiv.org/pdf/2106.09556.pdf
         assert np.mean(novice_rewards) < -1000
         # Train for 6 iterations. (5 or less causes test to fail on some configs.)
-        for i in range(6):
+        for i in range(10):
             # roll out a few trajectories for dataset, then train for a few steps
             collector = trainer.create_trajectory_collector()
             for _ in range(5):
