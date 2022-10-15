@@ -262,6 +262,7 @@ def train_preference_comparisons(
         if bool(trajectory_path is None):
             results = dict(results)
             results["rollout"] = train.eval_policy(agent, venv)
+            results["mean_return"] = results["rollout"]["monitor_return_mean"]
 
     if save_preferences:
         main_trainer.dataset.save(os.path.join(log_dir, "preferences.pkl"))

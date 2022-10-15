@@ -5,7 +5,7 @@ via CLI. For example, a user should add a new
 `@parallel_ex.named_config` to define a new parallel experiment.
 
 Adding custom named configs is necessary because the CLI interface can't add
-search spaces to the config like `"seed": tune.grid_search([0, 1, 2, 3])`.
+search spaces to the config like `"seed": tune.choice([0, 1, 2, 3])`.
 """
 
 import numpy as np
@@ -34,23 +34,25 @@ def config():
 
     local_dir = None  # `local_dir` arg for `ray.tune.run`
     upload_dir = None  # `upload_dir` arg for `ray.tune.run`
-    n_seeds_start = 0
-    n_seeds = 1  # Number of seeds to search over by default
+    # n_seeds_start = 0
+    # n_seeds = 1  # Number of seeds to search over by default
     experiment_checkpoint_path = ""
     eval_best_trial = False
     eval_trial_seeds = 5  # Number of seeds to search over by default
     num_samples = 1  # Number of samples per grid search configuration
+    repeat = 3
+    env = "seals_half_cheetah"
 
 
-@parallel_ex.config
-def seeds(n_seeds_start, n_seeds):
-    search_space = {
-        "config_updates": {
-            "seed": tune.choice(
-                list(range(n_seeds_start, n_seeds_start + n_seeds)),
-            )
-        }
-    }
+# @parallel_ex.config
+# def seeds(n_seeds_start, n_seeds):
+#     search_space = {
+#         "config_updates": {
+#             "seed": tune.choice(
+#                 list(range(n_seeds_start, n_seeds_start + n_seeds)),
+#             )
+#         }
+#     }
 
 
 @parallel_ex.named_config
@@ -75,7 +77,7 @@ def generate_test_data():
         "config_updates": {
             "rl": {
                 "rl_kwargs": {
-                    "learning_rate": tune.grid_search(
+                    "learning_rate": tune.choice(
                         [3e-4 * x for x in (1 / 3, 1 / 2)],
                     ),
                 },
@@ -97,8 +99,8 @@ def example_cartpole_rl():
         "config_updates": {
             "rl": {
                 "rl_kwargs": {
-                    "learning_rate": tune.grid_search(np.logspace(3e-6, 1e-1, num=3)),
-                    "nminibatches": tune.grid_search([16, 32, 64]),
+                    "learning_rate": tune.choice(np.logspace(3e-6, 1e-1, num=3)),
+                    "nminibatches": tune.choice([16, 32, 64]),
                 },
             },
         },
@@ -116,12 +118,12 @@ def example_rl_easy():
     run_name = "example-rl-easy"
     n_seeds = 2
     search_space = {
-        "named_configs": tune.grid_search([[env] for env in EASY_ENVS]),
+        "named_configs": tune.choice([[env] for env in EASY_ENVS]),
         "config_updates": {
             "rl": {
                 "rl_kwargs": {
-                    "learning_rate": tune.grid_search(np.logspace(3e-6, 1e-1, num=3)),
-                    "nminibatches": tune.grid_search([16, 32, 64]),
+                    "learning_rate": tune.choice(np.logspace(3e-6, 1e-1, num=3)),
+                    "nminibatches": tune.choice([16, 32, 64]),
                 },
             },
         },
@@ -135,15 +137,15 @@ def example_gail_easy():
     run_name = "example-gail-easy"
     n_seeds = 1
     search_space = {
-        "named_configs": tune.grid_search([[env] for env in EASY_ENVS]),
+        "named_configs": tune.choice([[env] for env in EASY_ENVS]),
         "config_updates": {
             "init_trainer_kwargs": {
                 "rl": {
                     "rl_kwargs": {
-                        "learning_rate": tune.grid_search(
+                        "learning_rate": tune.choice(
                             np.logspace(3e-6, 1e-1, num=3),
                         ),
-                        "nminibatches": tune.grid_search([16, 32, 64]),
+                        "nminibatches": tune.choice([16, 32, 64]),
                     },
                 },
             },
@@ -157,38 +159,49 @@ def example_gail_easy():
 MY_ENVS = ["seals_ant", "seals_half_cheetah"]
 
 
+@parallel_ex.config_hook
+def config_hook(config, command_name, logger):
+    """Sets env."""
+    del command_name, logger
+    res = {}
+    if config["env"]:
+        res["base_named_configs"] = config["base_named_configs"] + [config["env"]]
+    return res
+
+
 @parallel_ex.named_config
 def example_bc():
     sacred_ex_name = "train_imitation"
-    run_name = "bc_tuning_seals_half_cheetah"
-    n_seeds = 5
-    base_named_configs = ["common.wandb_logging", "seals_half_cheetah"]
+    run_name = "bc_tuning_hc"
+    base_named_configs = ["common.wandb_logging"]
     base_config_updates = {
         "common": {"wandb": {"wandb_kwargs": {"project": "algorithm-benchmark"}}},
     }
     search_space = {
         "config_updates": {
             "bc_kwargs": dict(
-                batch_size=tune.grid_search([16, 32, 64]),
-                l2_weight=tune.grid_search([1e-4, 0]),  # L2 regularization weight
+                batch_size=tune.choice([16, 32, 64]),
+                l2_weight=tune.choice([1e-4, 0]),  # L2 regularization weight
                 optimizer_kwargs=dict(
-                    lr=tune.grid_search([1e-3, 1e-4]),
+                    lr=tune.choice([1e-3, 1e-4]),
                 ),
             ),
             "bc_train_kwargs": dict(
-                n_epochs=tune.grid_search([1, 4, 7]),
+                n_epochs=tune.choice([1, 4, 7]),
             ),
         },
         "command_name": "bc",
     }
-    resources_per_trial = dict(cpu=2)
+    num_samples = 36
+    eval_best_trial = True
+    eval_trial_seeds = 5
+    resources_per_trial = dict(cpu=4)
 
 
 @parallel_ex.named_config
 def example_dagger():
     sacred_ex_name = "train_imitation"
     run_name = "dagger_tuning"
-    n_seeds = 5
     base_named_configs = ["common.wandb_logging"]
     base_config_updates = {
         "common": {"wandb": {"wandb_kwargs": {"project": "algorithm-benchmark"}}},
@@ -202,14 +215,14 @@ def example_dagger():
     search_space = {
         "config_updates": {
             "bc_train_kwargs": dict(
-                n_epochs=tune.grid_search([4, 7, 10]),
+                n_epochs=tune.choice([4, 7, 10]),
             ),
             "dagger": dict(
-                beta_schedule=tune.grid_search(
+                beta_schedule=tune.choice(
                     [LinearBetaSchedule(i) for i in [1, 5, 15]]
                     + [ExponentialBetaSchedule(i) for i in [0.3, 0.5, 0.7]],
                 ),
-                rollout_round_min_episodes=tune.grid_search([3, 5, 10]),
+                rollout_round_min_episodes=tune.choice([3, 5, 10]),
             ),
         },
         "command_name": "dagger",
@@ -220,15 +233,14 @@ def example_dagger():
 @parallel_ex.named_config
 def example_gail():
     sacred_ex_name = "train_adversarial"
-    run_name = "gail_tuning"
-    n_seeds = 1
+    run_name = "gail_tuning_hc"
     base_named_configs = ["common.wandb_logging"]
     base_config_updates = {
         "common": {"wandb": {"wandb_kwargs": {"project": "algorithm-benchmark"}}},
         "total_timesteps": 1e7,
     }
     search_space = {
-        "named_configs": tune.grid_search([[env] for env in MY_ENVS]),
+        # "named_configs": tune.choice([[env] for env in MY_ENVS]),
         "config_updates": {
             "algorithm_kwargs": dict(
                 demo_batch_size=tune.choice([32, 128, 512, 2048, 8192]),
@@ -251,22 +263,23 @@ def example_gail():
     num_samples = 100
     eval_best_trial = True
     eval_trial_seeds = 5
-    experiment_checkpoint_path = f"/home/taufeeque/ray_results/{run_name}"
+    repeat = 3
+    # experiment_checkpoint_path = f"/home/taufeeque/ray_results/{run_name}"
     resources_per_trial = dict(cpu=2)
 
 
 @parallel_ex.named_config
 def example_airl():
     sacred_ex_name = "train_adversarial"
-    run_name = "airl_tuning"
-    n_seeds = 1
+    run_name = "airl_tuning_hc"
+    # n_seeds = 1
     base_named_configs = ["common.wandb_logging"]
     base_config_updates = {
         "common": {"wandb": {"wandb_kwargs": {"project": "algorithm-benchmark"}}},
         "total_timesteps": 1e7,
     }
     search_space = {
-        # "named_configs": tune.grid_search([[env] for env in MY_ENVS]),
+        # "named_configs": tune.choice([[env] for env in MY_ENVS]),
         "config_updates": {
             "algorithm_kwargs": dict(
                 demo_batch_size=tune.choice([32, 128, 512, 2048, 8192]),
@@ -289,6 +302,8 @@ def example_airl():
     num_samples = 100
     eval_best_trial = True
     eval_trial_seeds = 5
+    repeat = 3
+    # experiment_checkpoint_path = f"/home/taufeeque/ray_results/{run_name}"
     resources_per_trial = dict(cpu=2)
 
 
@@ -296,7 +311,6 @@ def example_airl():
 def example_pc():
     sacred_ex_name = "train_preference_comparisons"
     run_name = "pc_tuning"
-    n_seeds = 2
     base_named_configs = ["common.wandb_logging"]
     base_config_updates = {
         "common": {"wandb": {"wandb_kwargs": {"project": "algorithm-benchmark"}}},
@@ -305,14 +319,14 @@ def example_pc():
         "query_schedule": "hyperbolic",
     }
     search_space = {
-        "named_configs": tune.grid_search([[env] for env in MY_ENVS]),
+        "named_configs": tune.choice([[env] for env in MY_ENVS]),
         "config_updates": {
-            "num_iterations": tune.grid_search([5, 20, 50]),
-            "initial_comparison_frac": tune.grid_search([0.1, 0.3]),
+            "num_iterations": tune.choice([5, 20, 50]),
+            "initial_comparison_frac": tune.choice([0.1, 0.3]),
             "reward_trainer_kwargs": {
-                "epochs": tune.grid_search([5, 10, 15]),
+                "epochs": tune.choice([5, 10, 15]),
             },
-            # "query_schedule": tune.grid_search(
+            # "query_schedule": tune.choice(
             #     ["constant", "hyperbolic", "inverse_quadratic"],
             # ),
         },
@@ -320,6 +334,7 @@ def example_pc():
     # num_samples = 1
     eval_best_trial = True
     eval_trial_seeds = 5
+    repeat = 3
     resources_per_trial = dict(cpu=2)
 
 
@@ -327,7 +342,6 @@ def example_pc():
 def debug_eval():
     sacred_ex_name = "train_preference_comparisons"
     run_name = "debug_eval"
-    n_seeds = 2
     eval_trial_seeds = 2
     eval_best_trial = True
     # base_named_configs = ["seals_half_cheetah"]
@@ -340,14 +354,14 @@ def debug_eval():
         "fragment_length": 2,
     }
     search_space = {
-        "named_configs": tune.grid_search([[env] for env in MY_ENVS]),
+        "named_configs": tune.choice([[env] for env in MY_ENVS]),
         "config_updates": {
-            # "num_iterations": tune.grid_search([5, 20, 50]),
-            "initial_comparison_frac": tune.grid_search([0.1, 0.2]),
+            # "num_iterations": tune.choice([5, 20, 50]),
+            "initial_comparison_frac": tune.choice([0.1, 0.2]),
             # "reward_trainer_kwargs": {
-            #     "epochs": tune.grid_search([1, 2, 3]),
+            #     "epochs": tune.choice([1, 2, 3]),
             # },
-            # "query_schedule": tune.grid_search(
+            # "query_schedule": tune.choice(
             #     ["constant", "hyperbolic", "inverse_quadratic"],
             # ),
         },
@@ -358,9 +372,9 @@ def debug_eval():
 @parallel_ex.named_config
 def debug_eval_adv():
     sacred_ex_name = "train_adversarial"
-    run_name = "airl_tuning"
-    n_seeds = 1
-    base_named_configs = ["seals_half_cheetah"]
+    run_name = "airl_tuning_debug"
+    # n_seeds = 5
+    base_named_configs = []
     eval_best_trial = True
     eval_trial_seeds = 2
     base_config_updates = {
@@ -371,7 +385,7 @@ def debug_eval_adv():
         "total_timesteps": 2048,
     }
     search_space = {
-        # "named_configs": tune.grid_search([[env] for env in MY_ENVS]),
+        # "named_configs": tune.choice([[env] for env in MY_ENVS]),
         "config_updates": {
             "algorithm_kwargs": dict(
                 # demo_batch_size=tune.choice([32, 128, 512, 2048, 8192]),
@@ -392,4 +406,5 @@ def debug_eval_adv():
         "command_name": "airl",
     }
     num_samples = 2
-    resources_per_trial = dict(cpu=4)
+    repeat = 2
+    resources_per_trial = dict(cpu=8)

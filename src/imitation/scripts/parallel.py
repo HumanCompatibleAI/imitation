@@ -6,12 +6,12 @@ import glob
 import os
 from typing import Any, Callable, Mapping, Optional, Sequence
 
+import numpy as np
 import ray
 import ray.tune
 import sacred
-from ray.tune.schedulers import ASHAScheduler
-from ray.tune.search import ConcurrencyLimiter
-from ray.tune.search.optuna import OptunaSearch
+from ray.tune import schedulers, search
+from ray.tune.search import optuna
 from sacred.observers import FileStorageObserver
 
 from imitation.scripts.config.parallel import parallel_ex
@@ -29,6 +29,7 @@ def parallel(
     init_kwargs: Mapping[str, Any],
     local_dir: Optional[str],
     upload_dir: Optional[str],
+    repeat: int = 3,
     eval_best_trial: bool = False,
     eval_trial_seeds: int = 5,
     experiment_checkpoint_path: str = "",
@@ -113,32 +114,30 @@ def parallel(
             result.trials = None
             result.fetch_trial_dataframes()
         else:
-            search_alg = OptunaSearch()
-            scheduler = ASHAScheduler(
-                time_attr="training_iteration",
-                max_t=10000,
-                grace_period=10,
-                reduction_factor=3,
-                brackets=1,
-            )
-            # search_alg = ConcurrencyLimiter(OptunaSearch(), max_concurrent=4)
+            search_alg = optuna.OptunaSearch()
+            search_alg = search.Repeater(search_alg, repeat=repeat)
+            # scheduler = schedulers.ASHAScheduler(
+            #     time_attr="training_iteration",
+            #     max_t=10000,
+            #     grace_period=10,
+            #     reduction_factor=3,
+            #     brackets=1,
+            # )
+            # search_alg = ConcurrencyLimiter(search_alg, max_concurrent=4)
             result = ray.tune.run(
                 trainable,
                 config=search_space,
-                num_samples=num_samples,
+                num_samples=num_samples * repeat,
                 name=run_name,
                 local_dir=local_dir,
                 resources_per_trial=resources_per_trial,
                 sync_config=ray.tune.syncer.SyncConfig(upload_dir=upload_dir),
                 search_alg=search_alg,
-                scheduler=scheduler,
+                # scheduler=scheduler,
                 metric="mean_return",
                 mode="max",
             )
         print("Best config:")
-        t = result.trials[0]
-        print(t.metric_analysis)
-        print(t.last_result)
         key = (
             "rollout"
             if sacred_ex_name == "train_preference_comparisons"
@@ -146,10 +145,11 @@ def parallel(
         )
         key += "/monitor_return_mean"
         if eval_best_trial:
-            print(result.results_df.columns)
             df = result.results_df
+            print(df.columns)
             print(df.head())
             print(df[["config/named_configs", key]])
+
             grp_keys = [
                 c for c in df.columns if c.startswith("config") and "seed" not in c
             ]
@@ -166,19 +166,24 @@ def parallel(
                 df.groupby("config/named_configs")["mean_return"].transform(max)
                 == df["mean_return"]
             )
-            best_config_df = df[idx][df["config/config_updates/seed"] == 0]
+            best_config_df = df[idx]
+            envs_processed = set()
             for i, row in best_config_df.iterrows():
                 tag = row["experiment_tag"]
                 trial = [t for t in result.trials if tag in t.experiment_tag][0]
                 best_config = trial.config
-                print("Named configs:", best_config["named_configs"])
+                env = tuple(best_config["named_configs"])
+                if env in envs_processed:
+                    continue
+                envs_processed.add(env)
+                print("Named configs:", env)
                 print("Mean return:", row["mean_return"])
                 print("Total seeds:", (df["mean_return"] == row["mean_return"]).sum())
-                # best_config = result.get_best_config(metric="mean_return", mode="max")
+                best_config = result.get_best_config(metric="mean_return", mode="max")
                 best_config["config_updates"].update(
                     seed=ray.tune.grid_search(list(range(100, 100 + eval_trial_seeds))),
                 )
-                ray.tune.run(
+                eval_result = ray.tune.run(
                     trainable,
                     config={
                         "named_configs": best_config["named_configs"],
@@ -187,6 +192,10 @@ def parallel(
                     },
                     name=run_name + "_best_hp_eval",
                 )
+                returns = eval_result.results_df["mean_return"].to_numpy()
+                print("Returns:", returns)
+                print(np.mean(returns), np.std(returns))
+
     finally:
         ray.shutdown()
 
@@ -276,12 +285,16 @@ def _ray_tune_sacred_wrapper(
         config_updates = {}
         config_updates.update(base_config_updates)
         config_updates.update(run_kwargs["config_updates"])
+        if "__trial_index__" in run_kwargs:
+            config_updates.update(seed=run_kwargs.pop("__trial_index__"))
         updated_run_kwargs["config_updates"] = config_updates
 
         # Add other run_kwargs items to updated_run_kwargs.
         for k, v in run_kwargs.items():
             if k not in updated_run_kwargs:
                 updated_run_kwargs[k] = v
+        if "seed" in updated_run_kwargs["config_updates"]:
+            print("seed =", updated_run_kwargs["config_updates"]["seed"])
         run = ex.run(**updated_run_kwargs, options={"--run": run_name})
         # Ray Tune has a string formatting error if raylet completes without
         # any calls to `reporter`.

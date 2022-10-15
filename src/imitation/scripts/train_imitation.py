@@ -139,6 +139,7 @@ def train_imitation(
         "expert_stats": rollout.rollout_stats(
             model._all_demos if use_dagger else expert_trajs,
         ),
+        "mean_return": imit_stats["monitor_return_mean"],
     }
 
 
