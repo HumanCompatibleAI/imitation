@@ -107,6 +107,89 @@ def seals_walker():
     common = dict(env_name="seals/Walker2d-v0")
 
 
+# Procgen configs
+
+
+@train_rl_ex.named_config
+def coinrun():
+    common = dict(env_name="procgen:procgen-coinrun-v0")
+
+
+@train_rl_ex.named_config
+def maze():
+    common = dict(env_name="procgen:procgen-maze-v0")
+
+
+@train_rl_ex.named_config
+def bigfish():
+    common = dict(env_name="procgen:procgen-bigfish-v0")
+
+
+@train_rl_ex.named_config
+def bossfight():
+    common = dict(env_name="procgen:procgen-bossfight-v0")
+
+
+@train_rl_ex.named_config
+def caveflyer():
+    common = dict(env_name="procgen:procgen-caveflyer-v0")
+
+
+@train_rl_ex.named_config
+def chaser():
+    common = dict(env_name="procgen:procgen-chaser-v0")
+
+
+@train_rl_ex.named_config
+def climber():
+    common = dict(env_name="procgen:procgen-climber-v0")
+
+
+@train_rl_ex.named_config
+def dodgeball():
+    common = dict(env_name="procgen:procgen-dodgeball-v0")
+
+
+@train_rl_ex.named_config
+def fruitbot():
+    common = dict(env_name="procgen:procgen-fruitbot-v0")
+
+
+@train_rl_ex.named_config
+def heist():
+    common = dict(env_name="procgen:procgen-heist-v0")
+
+
+@train_rl_ex.named_config
+def jumper():
+    common = dict(env_name="procgen:procgen-jumper-v0")
+
+
+@train_rl_ex.named_config
+def leaper():
+    common = dict(env_name="procgen:procgen-leaper-v0")
+
+
+@train_rl_ex.named_config
+def miner():
+    common = dict(env_name="procgen:procgen-miner-v0")
+
+
+@train_rl_ex.named_config
+def ninja():
+    common = dict(env_name="procgen:procgen-ninja-v0")
+
+
+@train_rl_ex.named_config
+def plunder():
+    common = dict(env_name="procgen:procgen-plunder-v0")
+
+
+@train_rl_ex.named_config
+def starpilot():
+    common = dict(env_name="procgen:procgen-starpilot-v0")
+
+
 @eval_policy_ex.named_config
 def fast():
     common = dict(env_name="seals/CartPole-v0", num_vec=1, parallel=False)
