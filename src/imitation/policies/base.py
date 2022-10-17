@@ -1,7 +1,7 @@
 """Custom policy classes and convenience methods."""
 
 import abc
-from typing import Tuple, Type
+from typing import Optional, Tuple, Type
 
 import gym
 import numpy as np
@@ -41,7 +41,7 @@ class HardCodedPolicy(policies.BasePolicy, abc.ABC):
     def forward(self, *args):
         # technically BasePolicy is a Torch module, so this needs a forward()
         # method
-        raise NotImplementedError()
+        raise NotImplementedError()  # pragma: no cover
 
 
 class RandomPolicy(HardCodedPolicy):
@@ -154,7 +154,7 @@ class CnnPolicy(policies.ActorCriticCnnPolicy):
         self,
         obs: th.Tensor,
         actions: th.Tensor,
-    ) -> Tuple[th.Tensor, th.Tensor, th.Tensor]:
+    ) -> Tuple[th.Tensor, th.Tensor, Optional[th.Tensor]]:
         if self.transpose_input:
             obs_ = networks.cnn_transpose(obs)
         else:

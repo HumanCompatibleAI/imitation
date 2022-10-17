@@ -472,4 +472,4 @@ class BC(algo_base.DemonstrationAlgorithm):
         Args:
             policy_path: path to save policy to.
         """
-        th.save(self.policy, types.path_to_str(policy_path))
+        th.save(self.policy, types.parse_path(policy_path))

@@ -9,7 +9,11 @@ from imitation.scripts.common import common, rl, train
 
 train_rl_ex = sacred.Experiment(
     "train_rl",
-    ingredients=[common.common_ingredient, train.train_ingredient, rl.rl_ingredient],
+    ingredients=[
+        common.common_ingredient,
+        train.train_ingredient,
+        rl.rl_ingredient,
+    ],
 )
 
 
@@ -236,6 +240,7 @@ def plunder():
 @train_rl_ex.named_config
 def starpilot():
     common = dict(env_name="procgen:procgen-starpilot-v0")
+
 
 # Debug configs
 

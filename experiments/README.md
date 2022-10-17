@@ -21,6 +21,10 @@ Run `experiments/imit_benchmark.sh --run_name RUN_NAME`. To choose AIRL or GAIL,
 
 To analyze these results, run `python -m imitation.scripts.analyze with run_name=RUN_NAME`. Analysis can be run even while training is midway (will only show completed imitation learner's results). [Example output.](https://gist.github.com/shwang/4049cd4fb5cab72f2eeb7f3d15a7ab47)
 
+### Phase 3: Transfer learning.
+
+Run `experiments/transfer_learn_benchmark.sh`. To choose AIRL or GAIL, add the `--airl` and `--gail` flags (default is GAIL). Transfer rewards are loaded from `data/reward_models`.
+
 ## Hyperparameter tuning
 
 Add a named config containing the hyperparameter search space and other settings to `src/imitation/scripts/config/parallel.py`. (`def example_cartpole_rl():` is an example).

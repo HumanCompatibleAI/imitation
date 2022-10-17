@@ -2,7 +2,7 @@
 
 import collections.abc
 import copy
-import os
+import pathlib
 from typing import Any, Callable, Dict, Mapping, Optional, Sequence
 
 import ray
@@ -203,7 +203,8 @@ def _ray_tune_sacred_wrapper(
 
 
 def main_console():
-    observer = FileStorageObserver(os.path.join("output", "sacred", "parallel"))
+    observer_path = pathlib.Path.cwd() / "output" / "sacred" / "parallel"
+    observer = FileStorageObserver(observer_path)
     parallel_ex.observers.append(observer)
     parallel_ex.run_commandline()
 

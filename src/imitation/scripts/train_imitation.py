@@ -2,6 +2,7 @@
 
 import logging
 import os.path as osp
+import pathlib
 import warnings
 from typing import Any, Mapping, Optional, Sequence, Type, cast
 
@@ -178,7 +179,8 @@ def dagger() -> Mapping[str, Mapping[str, float]]:
 
 
 def main_console():
-    observer = FileStorageObserver(osp.join("output", "sacred", "train_dagger"))
+    observer_path = pathlib.Path.cwd() / "output" / "sacred" / "train_dagger"
+    observer = FileStorageObserver(observer_path)
     train_imitation_ex.observers.append(observer)
     train_imitation_ex.run_commandline()
 
