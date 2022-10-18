@@ -28,15 +28,27 @@ executors:
     resource_class: xlarge
     environment:
       # If you change these, also change ci/code_checks.sh
-      SRC_FILES: src/ tests/ experiments/ examples/ docs/conf.py setup.py
+      SRC_FILES: src/ tests/ experiments/ examples/ docs/conf.py setup.py ci/
       NUM_CPUS: 8
   static-analysis-medium:
     <<: *defaults
     resource_class: medium
     environment:
       # If you change these, also change ci/code_checks.sh
-      SRC_FILES: src/ tests/ experiments/ examples/ docs/conf.py setup.py
+      SRC_FILES: src/ tests/ experiments/ examples/ docs/conf.py setup.py ci/
       NUM_CPUS: 2
+      EXCLUDE_MYPY: | 
+        (?x)(
+          src/imitation/algorithms/preference_comparisons.py$
+          | src/imitation/rewards/reward_nets.py$
+          | src/imitation/algorithms/base.py$
+          | src/imitation/scripts/train_preference_comparisons.py$
+          | src/imitation/rewards/serialize.py$
+          | src/imitation/scripts/common/train.py$
+          | src/imitation/algorithms/mce_irl.py$
+          | src/imitation/algorithms/density.py$
+          | tests/algorithms/test_bc.py$
+        )
 
 commands:
   dependencies-linux:
@@ -127,8 +139,14 @@ commands:
       - run:
           name: install python and binary dependencies
           command: |
-            choco install --side-by-side -y python --version 3.8
+            choco install --side-by-side -y python --version=3.8.10
             choco install -y ffmpeg
+          shell: powershell.exe
+
+      - run:
+          name: upgrade pip
+          command: |
+              python -m pip install --upgrade pip
           shell: powershell.exe
 
       - run:
@@ -224,6 +242,14 @@ jobs:
           exclude: SC1091
 
       - run:
+          name: ipynb-check
+          command: ./ci/clean_notebooks.py --check ./docs/tutorials
+
+      - run:
+          name: typeignore-check
+          command: ./ci/check_typeignore.py ${SRC_FILES}
+
+      - run:
           name: flake8
           command: flake8 --version && flake8 -j "${NUM_CPUS}" ${SRC_FILES}
 
@@ -235,14 +261,18 @@ jobs:
           name: codespell
           command: codespell -I .codespell.skip --skip='*.pyc,tests/testdata/*,*.ipynb,*.csv' ${SRC_FILES}
 
-  docs:
+  doctest:
     executor: static-analysis-medium
 
     steps:
       - dependencies-linux
       - run:
           name: sphinx
-          command: pushd docs/ && make clean && make doctest && make html && popd
+          environment:
+            # Note: we don't want to execute the example notebooks in this step since
+            #   this happens in a separate readthedocs job anyway.
+            NB_EXECUTION_MODE: "off"
+          command: pushd docs/ && make clean && make doctest && popd
 
   type:
     executor: static-analysis-medium
@@ -252,6 +282,10 @@ jobs:
       - run:
           name: pytype
           command: pytype --version && pytype -j "${NUM_CPUS}" ${SRC_FILES[@]}
+
+      - run:
+          name: mypy
+          command: mypy --version && mypy ${SRC_FILES[@]} --exclude "${EXCLUDE_MYPY}" --follow-imports=silent --show-error-codes
 
   unit-test-linux:
     executor: unit-test-linux
@@ -351,7 +385,7 @@ workflows:
       - lint:
           context:
           - docker-hub-creds
-      - docs:
+      - doctest:
           context:
           - docker-hub-creds
       - type:

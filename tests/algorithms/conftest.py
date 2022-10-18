@@ -48,6 +48,7 @@ def cartpole_bc_trainer(
     pytestconfig,
     cartpole_venv,
     cartpole_expert_trajectories,
+    rng,
 ):
     return bc.BC(
         observation_space=cartpole_venv.observation_space,
@@ -60,6 +61,7 @@ def cartpole_bc_trainer(
             "seals/CartPole-v0",
         ),
         custom_logger=None,
+        rng=rng,
     )
 
 

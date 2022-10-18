@@ -1,5 +1,6 @@
 """Fixtures common across tests."""
 
+import numpy as np
 import pytest
 import seals  # noqa: F401
 import torch
@@ -39,3 +40,8 @@ def torch_single_threaded():
 @pytest.fixture()
 def custom_logger(tmpdir: str) -> logger.HierarchicalLogger:
     return logger.configure(tmpdir)
+
+
+@pytest.fixture()
+def rng() -> np.random.Generator:
+    return np.random.default_rng()

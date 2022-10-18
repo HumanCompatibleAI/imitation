@@ -28,6 +28,7 @@ from imitation.algorithms import base as algo_base
 from imitation.data import rollout, types
 from imitation.policies import base as policy_base
 from imitation.util import logger as imit_logger
+from imitation.util import util
 
 
 @dataclasses.dataclass(frozen=True)
@@ -113,6 +114,8 @@ class BehaviorCloningLossCalculator:
             A BCTrainingMetrics object with the loss and all the components it
             consists of.
         """
+        obs = util.safe_to_tensor(obs)
+        acts = util.safe_to_tensor(acts)
         _, log_prob, entropy = policy.evaluate_actions(obs, acts)
         prob_true_act = th.exp(log_prob).mean()
         log_prob = log_prob.mean()
@@ -120,6 +123,8 @@ class BehaviorCloningLossCalculator:
 
         l2_norms = [th.sum(th.square(w)) for w in policy.parameters()]
         l2_norm = sum(l2_norms) / 2  # divide by 2 to cancel with gradient of square
+        # sum of list defaults to float(0) if len == 0.
+        assert isinstance(l2_norm, th.Tensor)
 
         ent_loss = -self.ent_weight * entropy
         neglogp = -log_prob
@@ -177,7 +182,7 @@ class RolloutStatsComputer:
         n_episodes: The number of episodes to base the statistics on.
     """
 
-    venv: vec_env.VecEnv
+    venv: Optional[vec_env.VecEnv]
     n_episodes: int
 
     # TODO(shwang): Maybe instead use a callback that can be shared between
@@ -185,12 +190,17 @@ class RolloutStatsComputer:
     #   EvalCallback could be a good fit:
     #   https://stable-baselines3.readthedocs.io/en/master/guide/callbacks.html#evalcallback
 
-    def __call__(self, policy: policies.ActorCriticPolicy) -> Mapping[str, float]:
+    def __call__(
+        self,
+        policy: policies.ActorCriticPolicy,
+        rng: np.random.Generator,
+    ) -> Mapping[str, float]:
         if self.venv is not None and self.n_episodes > 0:
             trajs = rollout.generate_trajectories(
                 policy,
                 self.venv,
                 rollout.make_min_episodes(self.n_episodes),
+                rng=rng,
             )
             return rollout.rollout_stats(trajs)
         else:
@@ -272,6 +282,7 @@ class BC(algo_base.DemonstrationAlgorithm):
         *,
         observation_space: gym.Space,
         action_space: gym.Space,
+        rng: np.random.Generator,
         policy: Optional[policies.ActorCriticPolicy] = None,
         demonstrations: Optional[algo_base.AnyTransitions] = None,
         batch_size: int = 32,
@@ -287,6 +298,7 @@ class BC(algo_base.DemonstrationAlgorithm):
         Args:
             observation_space: the observation space of the environment.
             action_space: the action space of the environment.
+            rng: the random state to use for the random number generator.
             policy: a Stable Baselines3 policy; if unspecified,
                 defaults to `FeedForward32Policy`.
             demonstrations: Demonstrations from an expert (optional). Transitions
@@ -316,6 +328,8 @@ class BC(algo_base.DemonstrationAlgorithm):
 
         self.action_space = action_space
         self.observation_space = observation_space
+
+        self.rng = rng
 
         if policy is None:
             policy = policy_base.FeedForward32Policy(
@@ -417,6 +431,7 @@ class BC(algo_base.DemonstrationAlgorithm):
             if on_epoch_end is not None:
                 on_epoch_end()
 
+        assert self._demo_data_loader is not None
         demonstration_batches = BatchIteratorWithEpochEndCallback(
             self._demo_data_loader,
             n_epochs,
@@ -438,7 +453,7 @@ class BC(algo_base.DemonstrationAlgorithm):
             loss = self.trainer(batch)
 
             if batch_num % log_interval == 0:
-                rollout_stats = compute_rollout_stats(self.policy)
+                rollout_stats = compute_rollout_stats(self.policy, self.rng)
 
                 self._bc_logger.log_batch(
                     batch_num,
@@ -457,4 +472,4 @@ class BC(algo_base.DemonstrationAlgorithm):
         Args:
             policy_path: path to save policy to.
         """
-        th.save(self.policy, policy_path)
+        th.save(self.policy, types.parse_path(policy_path))

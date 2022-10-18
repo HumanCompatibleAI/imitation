@@ -51,6 +51,27 @@ Main Features
    algorithms/mce_irl
    algorithms/preference_comparisons
 
+.. toctree::
+   :maxdepth: 2
+   :caption: Tutorials
+   :hidden:
+
+   tutorials/1_train_bc
+   tutorials/2_train_dagger
+   tutorials/3_train_gail
+   tutorials/4_train_airl
+   tutorials/5_train_preference_comparisons
+   tutorials/5a_train_preference_comparisons_with_cnn
+   tutorials/6_train_mce
+   tutorials/7_train_density
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Experts
+   :hidden:
+
+   experts/loading-experts
+
 
 API Reference
 ~~~~~~~~~~~~~
@@ -69,6 +90,7 @@ API Reference
    :caption: Development
    :hidden:
 
+   development/developer
    development/contributing/index
    development/release-notes
    development/license

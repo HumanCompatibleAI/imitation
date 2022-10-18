@@ -114,6 +114,7 @@ def test_smoke_bc_creation(
     bc_args,
     expert_data_type,
     pytestconfig,
+    rng,
 ):
     bc.BC(
         **bc_args,
@@ -124,6 +125,7 @@ def test_smoke_bc_creation(
             env_name,
             num_trajectories=60,
         ),
+        rng=rng,
     )
 
 
@@ -140,6 +142,7 @@ def test_smoke_bc_training(
     train_args,
     expert_data_type,
     pytestconfig,
+    rng,
 ):
     # GIVEN
     trainer = bc.BC(
@@ -151,6 +154,7 @@ def test_smoke_bc_training(
             env_name,
             num_trajectories=3,  # Only use 3 trajectories to speed up the test
         ),
+        rng=rng,
     )
     # WHEN
     trainer.train(**train_args)
@@ -169,6 +173,7 @@ def test_that_bc_improves_rewards(cartpole_bc_trainer, cartpole_venv):
         15,
         return_episode_rewards=True,
     )
+    assert isinstance(novice_rewards, list)
 
     # WHEN
     cartpole_bc_trainer.train(n_epochs=1)
@@ -180,6 +185,7 @@ def test_that_bc_improves_rewards(cartpole_bc_trainer, cartpole_venv):
     )
 
     # THEN
+    assert isinstance(rewards_after_training, list)
     assert reward_improvement.is_significant_reward_improvement(
         novice_rewards,
         rewards_after_training,
@@ -212,7 +218,7 @@ def test_that_policy_reconstruction_preserves_parameters(cartpole_bc_trainer, tm
 #############################################
 
 
-def test_that_weight_decay_in_optimizer_raises_error(cartpole_venv, custom_logger):
+def test_that_weight_decay_in_optimizer_raises_error(cartpole_venv, custom_logger, rng):
     with pytest.raises(ValueError, match=".*weight_decay.*"):
         bc.BC(
             observation_space=cartpole_venv.observation_space,
@@ -220,6 +226,7 @@ def test_that_weight_decay_in_optimizer_raises_error(cartpole_venv, custom_logge
             demonstrations=None,
             optimizer_kwargs=dict(weight_decay=1e-4),
             custom_logger=custom_logger,
+            rng=rng,
         )
 
 
@@ -245,6 +252,7 @@ def test_that_bc_raises_error_when_data_loader_is_empty(
     no_yield_after_iter: bool,
     custom_logger: logger.HierarchicalLogger,
     cartpole_expert_trajectories,
+    rng,
 ) -> None:
     """Check that we error out if the DataLoader suddenly stops yielding any batches.
 
@@ -255,6 +263,7 @@ def test_that_bc_raises_error_when_data_loader_is_empty(
         no_yield_after_iter: Data loader stops yielding after this many calls.
         custom_logger: Where to log to.
         cartpole_expert_trajectories: The expert trajectories to use.
+        rng: Random state to use.
     """
     # GIVEN
     batch_size = 32
@@ -279,12 +288,15 @@ def test_that_bc_raises_error_when_data_loader_is_empty(
                 yield dummy_yield_value
             self.iter_count += 1
 
-    bad_data_loader = DataLoaderThatFailsOnNthIter(no_yield_after_iter)
+    # add 1 as BC uses up an iteration from getting the first element
+    # for type checking
+    bad_data_loader = DataLoaderThatFailsOnNthIter(no_yield_after_iter + 1)
     trainer = bc.BC(
         observation_space=cartpole_venv.observation_space,
         action_space=cartpole_venv.action_space,
         batch_size=batch_size,
         custom_logger=custom_logger,
+        rng=rng,
     )
 
     # WHEN

@@ -3,7 +3,17 @@
 import collections
 import dataclasses
 import logging
-from typing import Callable, Dict, Hashable, List, Mapping, Optional, Sequence, Union
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Hashable,
+    List,
+    Mapping,
+    Optional,
+    Sequence,
+    Union,
+)
 
 import numpy as np
 from stable_baselines3.common.base_class import BaseAlgorithm
@@ -28,7 +38,12 @@ def unwrap_traj(traj: types.TrajectoryWithRew) -> types.TrajectoryWithRew:
 
     Returns:
         A copy of `traj` with replaced `obs` and `rews` fields.
+
+    Raises:
+        ValueError: If `traj.infos` is None
     """
+    if traj.infos is None:
+        raise ValueError("Trajectory must have infos to unwrap")
     ep_info = traj.infos[-1]["rollout"]
     res = dataclasses.replace(traj, obs=ep_info["obs"], rews=ep_info["rews"])
     assert len(res.obs) == len(res.acts) + 1
@@ -52,7 +67,7 @@ class TrajectoryAccumulator:
 
     def add_step(
         self,
-        step_dict: Mapping[str, np.ndarray],
+        step_dict: Mapping[str, Union[np.ndarray, Mapping[str, Any]]],
         key: Hashable = None,
     ) -> None:
         """Add a single step to the partial trajectory identified by `key`.
@@ -88,11 +103,10 @@ class TrajectoryAccumulator:
         del self.partial_trajectories[key]
         out_dict_unstacked = collections.defaultdict(list)
         for part_dict in part_dicts:
-            for key, array in part_dict.items():
-                out_dict_unstacked[key].append(array)
+            for k, array in part_dict.items():
+                out_dict_unstacked[k].append(array)
         out_dict_stacked = {
-            key: np.stack(arr_list, axis=0)
-            for key, arr_list in out_dict_unstacked.items()
+            k: np.stack(arr_list, axis=0) for k, arr_list in out_dict_unstacked.items()
         }
         traj = types.TrajectoryWithRew(**out_dict_stacked, terminal=terminal)
         assert traj.rews.shape[0] == traj.acts.shape[0] == traj.obs.shape[0] - 1
@@ -125,7 +139,7 @@ class TrajectoryAccumulator:
             A list of completed trajectories. There should be one trajectory for
             each `True` in the `dones` argument.
         """
-        trajs = []
+        trajs: List[types.TrajectoryWithRew] = []
         for env_idx in range(len(obs)):
             assert env_idx in self.partial_trajectories
             assert list(self.partial_trajectories[env_idx][0].keys()) == ["obs"], (
@@ -281,7 +295,7 @@ def _policy_to_callable(
             )
             return acts
 
-    elif isinstance(policy, Callable):
+    elif callable(policy):
         # When a policy callable is passed, by default we will use it directly.
         # We are not able to change the determinism of the policy when it is a
         # callable that only takes in the states.
@@ -309,9 +323,9 @@ def generate_trajectories(
     policy: AnyPolicy,
     venv: VecEnv,
     sample_until: GenTrajTerminationFn,
+    rng: np.random.Generator,
     *,
     deterministic_policy: bool = False,
-    rng: np.random.RandomState = np.random,
 ) -> Sequence[types.TrajectoryWithRew]:
     """Generate trajectory dictionaries from a policy and an environment.
 
@@ -358,9 +372,11 @@ def generate_trajectories(
     #
     # To start with, all environments are active.
     active = np.ones(venv.num_envs, dtype=bool)
+    assert isinstance(obs, np.ndarray), "Dict/tuple observations are not supported."
     while np.any(active):
         acts = get_actions(obs)
         obs, rews, dones, infos = venv.step(acts)
+        assert isinstance(obs, np.ndarray)
 
         # If an environment is inactive, i.e. the episode completed for that
         # environment after `sample_until(trajectories)` was true, then we do
@@ -389,7 +405,7 @@ def generate_trajectories(
     # `trajectories` sooner. Shuffle to avoid bias in order. This is important
     # when callees end up truncating the number of trajectories or transitions.
     # It is also cheap, since we're just shuffling pointers.
-    rng.shuffle(trajectories)
+    rng.shuffle(trajectories)  # type: ignore[arg-type]
 
     # Sanity checks.
     for trajectory in trajectories:
@@ -474,7 +490,7 @@ def flatten_trajectories(
         The trajectories flattened into a single batch of Transitions.
     """
     keys = ["obs", "next_obs", "acts", "dones", "infos"]
-    parts = {key: [] for key in keys}
+    parts: Mapping[str, List[np.ndarray]] = {key: [] for key in keys}
     for traj in trajectories:
         parts["acts"].append(traj.acts)
 
@@ -512,6 +528,7 @@ def generate_transitions(
     policy: AnyPolicy,
     venv: VecEnv,
     n_timesteps: int,
+    rng: np.random.Generator,
     *,
     truncate: bool = True,
     **kwargs,
@@ -526,6 +543,7 @@ def generate_transitions(
             - None, in which case actions will be sampled randomly
         venv: The vectorized environments to interact with.
         n_timesteps: The minimum number of timesteps to sample.
+        rng: The random state to use for sampling trajectories.
         truncate: If True, then drop any additional samples to ensure that exactly
             `n_timesteps` samples are returned.
         **kwargs: Passed-through to generate_trajectories.
@@ -539,6 +557,7 @@ def generate_transitions(
         policy,
         venv,
         sample_until=make_min_timesteps(n_timesteps),
+        rng=rng,
         **kwargs,
     )
     transitions = flatten_trajectories_with_rew(traj)
@@ -553,6 +572,7 @@ def rollout(
     policy: AnyPolicy,
     venv: VecEnv,
     sample_until: GenTrajTerminationFn,
+    rng: np.random.Generator,
     *,
     unwrap: bool = True,
     exclude_infos: bool = True,
@@ -571,6 +591,7 @@ def rollout(
             3) None, in which case actions will be sampled randomly.
         venv: The vectorized environments.
         sample_until: End condition for rollout sampling.
+        rng: Random state to use for sampling.
         unwrap: If True, then save original observations and rewards (instead of
             potentially wrapped observations and rewards) by calling
             `unwrap_traj()`.
@@ -585,7 +606,13 @@ def rollout(
         may be collected to avoid biasing process towards short episodes; the user
         should truncate if required.
     """
-    trajs = generate_trajectories(policy, venv, sample_until, **kwargs)
+    trajs = generate_trajectories(
+        policy,
+        venv,
+        sample_until,
+        rng=rng,
+        **kwargs,
+    )
     if unwrap:
         trajs = [unwrap_traj(traj) for traj in trajs]
     if exclude_infos:
