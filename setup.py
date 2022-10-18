@@ -32,7 +32,6 @@ GYM_VERSION_SPECIFIER = "==0.21.0"
 #   working versions to make our CI/CD pipeline as stable as possible.
 TESTS_REQUIRE = (
     [
-        "seals==0.1.2",
         "black[jupyter]~=22.6.0",
         "coverage~=6.4.2",
         "codecov~=2.1.12",
@@ -76,7 +75,6 @@ DOCS_REQUIRE = [
     "sphinx-github-changelog~=1.2.0",
     "myst-nb==0.16.0",
     "ipykernel~=6.15.2",
-    "seals==0.1.2",
 ] + IMAGE_ENV_REQUIRE
 
 
@@ -202,6 +200,7 @@ setup(
         "torch>=1.4.0",
         "tqdm",
         "scikit-learn>=0.21.2",
+        "seals==0.1.4",
         STABLE_BASELINES3,
         # TODO(adam) switch to upstream release if they make it
         #  See https://github.com/IDSIA/sacred/issues/879

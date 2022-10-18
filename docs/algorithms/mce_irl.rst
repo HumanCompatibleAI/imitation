@@ -13,6 +13,8 @@ Detailed example notebook: :doc:`../tutorials/6_train_mce`
 
     from functools import partial
 
+    from seals import base_envs
+    from seals.diagnostics.cliff_world import CliffWorldEnv
     import numpy as np
 
     from stable_baselines3.common.vec_env import DummyVecEnv
@@ -23,24 +25,24 @@ Detailed example notebook: :doc:`../tutorials/6_train_mce`
         mce_partition_fh,
     )
     from imitation.data import rollout
-    from imitation.envs import resettable_env
-    from imitation.envs.examples.model_envs import CliffWorld
     from imitation.rewards import reward_nets
 
     rng = np.random.default_rng(0)
 
-    env_creator = partial(CliffWorld, height=4, horizon=8, width=7, use_xy_obs=True)
+    env_creator = partial(CliffWorldEnv, height=4, horizon=8, width=7, use_xy_obs=True)
     env_single = env_creator()
 
+    state_env_creator = lambda: base_envs.ExposePOMDPStateWrapper(env_creator())
+
     # This is just a vectorized environment because `generate_trajectories` expects one
-    state_venv = resettable_env.DictExtractWrapper(DummyVecEnv([env_creator] * 4), "state")
+    state_venv = DummyVecEnv([state_env_creator] * 4)
 
     _, _, pi = mce_partition_fh(env_single)
 
     _, om = mce_occupancy_measures(env_single, pi=pi)
 
     reward_net = reward_nets.BasicRewardNet(
-        env_single.pomdp_observation_space,
+        env_single.observation_space,
         env_single.action_space,
         hid_sizes=[256],
         use_action=False,
