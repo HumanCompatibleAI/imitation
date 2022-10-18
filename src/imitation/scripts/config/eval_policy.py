@@ -25,6 +25,13 @@ def replay_defaults():
 
     rollout_save_path = None  # where to save rollouts to -- if None, do not save
 
+    explore_kwargs = None # kwargs to feed to ExplorationWrapper -- if None, do not wrap
+
+
+@eval_policy_ex.named_config
+def explore_eps_greedy():
+    explore_kwargs = dict(switch_prob=1.0, random_prob=0.1)
+
 
 @eval_policy_ex.named_config
 def render():
