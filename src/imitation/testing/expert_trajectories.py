@@ -20,7 +20,7 @@ from imitation.util import util
 def generate_expert_trajectories(
     env_id: str,
     num_trajectories: int,
-    rng: np.random.RandomState,
+    rng: np.random.Generator,
 ) -> Sequence[types.TrajectoryWithRew]:
     """Generate expert trajectories for the given environment.
 
@@ -55,7 +55,7 @@ def lazy_generate_expert_trajectories(
     cache_path: PathLike,
     env_id: str,
     num_trajectories: int,
-    rng: np.random.RandomState,
+    rng: np.random.Generator,
 ) -> Sequence[types.TrajectoryWithRew]:
     """Generate or load expert trajectories from cache.
 
@@ -109,7 +109,7 @@ def make_expert_transition_loader(
     batch_size: int,
     expert_data_type: str,
     env_name: str,
-    rng: np.random.RandomState,
+    rng: np.random.Generator,
     num_trajectories: int = 1,
 ):
     """Creates different kinds of PyTorch data loaders for expert transitions.
