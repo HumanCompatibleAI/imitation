@@ -10,6 +10,7 @@ from sacred.observers import FileStorageObserver
 from stable_baselines3.common.vec_env import VecEnvWrapper
 
 from imitation.data import rollout, types
+from imitation.policies.exploration_wrapper import ExplorationWrapper
 from imitation.rewards import reward_wrapper
 from imitation.rewards.serialize import load_reward
 from imitation.scripts.common import common, expert
@@ -61,6 +62,7 @@ def eval_policy(
     reward_type: Optional[str] = None,
     reward_path: Optional[str] = None,
     rollout_save_path: Optional[str] = None,
+    explore_kwargs: Optional[Mapping[str, Any]] = None,
 ):
     """Rolls a policy out in an environment, collecting statistics.
 
@@ -79,6 +81,9 @@ def eval_policy(
             of `reward_type` to override the environment reward with.
         rollout_save_path: where to save rollouts used for computing stats to disk;
             if None, then do not save.
+        explore_kwargs: keyword arguments to an exploration wrapper to apply before
+            rolling out, not including policy_callable, venv, and rng; if None, then
+            do not wrap.
 
     Returns:
         Return value of `imitation.util.rollout.rollout_stats()`.
@@ -96,12 +101,14 @@ def eval_policy(
             venv = reward_wrapper.RewardVecEnvWrapper(venv, reward_fn)
             logging.info(f"Wrapped env in reward {reward_type} from {reward_path}.")
 
-        trajs = rollout.generate_trajectories(
-            expert.get_expert_policy(venv),
-            venv,
-            sample_until,
-            rng=rng,
-        )
+        policy = expert.get_expert_policy(venv)
+        if explore_kwargs is not None:
+            policy = ExplorationWrapper(policy, venv, rng=rng, **explore_kwargs)
+            log_str = (
+                f"Wrapped policy in ExplorationWrapper with kwargs {explore_kwargs}"
+            )
+            logging.info(log_str)
+        trajs = rollout.generate_trajectories(policy, venv, sample_until, rng=rng)
 
     if rollout_save_path:
         types.save(log_dir / rollout_save_path.replace("{log_dir}/", ""), trajs)
