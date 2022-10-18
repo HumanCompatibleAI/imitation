@@ -5,6 +5,7 @@ import os
 
 import hypothesis
 import hypothesis.strategies as st
+import numpy as np
 import pytest
 import torch as th
 from stable_baselines3.common import evaluation, vec_env
@@ -51,20 +52,26 @@ env_names = st.shared(
     st.sampled_from(["Pendulum-v1", "seals/CartPole-v0"]),
     key="env_name",
 )
+# Note: we wrap the rngs strategy in a st.shared to ensure that the same RNG is used
+# everywhere.
+rngs = st.shared(st.builds(np.random.default_rng), key="rng")
 env_numbers = st.integers(min_value=1, max_value=10)
 envs = st.builds(
-    lambda name, num: util.make_vec_env(name, num),
+    lambda name, num, rng: util.make_vec_env(name, n_envs=num, rng=rng),
     name=env_names,
     num=env_numbers,
+    rng=rngs,
 )
 rollout_envs = st.builds(
-    lambda name, num: util.make_vec_env(
+    lambda name, num, rng: util.make_vec_env(
         name,
-        num,
+        n_envs=num,
         post_wrappers=[lambda e, _: RolloutInfoWrapper(e)],
+        rng=rng,
     ),
     name=env_names,
     num=env_numbers,
+    rng=rngs,
 )
 batch_sizes = st.integers(min_value=1, max_value=50)
 loggers = st.sampled_from([None, logger.configure()])
@@ -84,15 +91,17 @@ bc_train_args = st.builds(
     log_rollouts_venv=st.one_of(rollout_envs, st.just(None)),
 )
 bc_args = st.builds(
-    lambda env, batch_size, custom_logger: dict(
+    lambda env, batch_size, custom_logger, rng: dict(
         observation_space=env.observation_space,
         action_space=env.action_space,
         batch_size=batch_size,
         custom_logger=custom_logger,
+        rng=rng,
     ),
     env=envs,
     batch_size=batch_sizes,
     custom_logger=loggers,
+    rng=rngs,
 )
 
 
@@ -114,7 +123,6 @@ def test_smoke_bc_creation(
     bc_args,
     expert_data_type,
     pytestconfig,
-    rng,
 ):
     bc.BC(
         **bc_args,
@@ -125,7 +133,6 @@ def test_smoke_bc_creation(
             env_name,
             num_trajectories=60,
         ),
-        rng=rng,
     )
 
 
@@ -142,7 +149,6 @@ def test_smoke_bc_training(
     train_args,
     expert_data_type,
     pytestconfig,
-    rng,
 ):
     # GIVEN
     trainer = bc.BC(
@@ -154,7 +160,6 @@ def test_smoke_bc_training(
             env_name,
             num_trajectories=3,  # Only use 3 trajectories to speed up the test
         ),
-        rng=rng,
     )
     # WHEN
     trainer.train(**train_args)
