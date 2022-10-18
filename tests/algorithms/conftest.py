@@ -86,9 +86,10 @@ def pendulum_expert_policy(pendulum_venv) -> BasePolicy:
 
 
 @pytest.fixture
-def pendulum_venv() -> VecEnv:
+def pendulum_venv(rng) -> VecEnv:
     return util.make_vec_env(
         PENDULUM_ENV_NAME,
         n_envs=8,
         post_wrappers=[lambda env, _: RolloutInfoWrapper(env)],
+        rng=rng,
     )
