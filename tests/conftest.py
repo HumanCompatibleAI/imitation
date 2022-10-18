@@ -13,12 +13,13 @@ CARTPOLE_ENV_NAME = "seals/CartPole-v0"
 
 
 @pytest.fixture(params=[1, 4], ids=lambda n: f"vecenv({n})")
-def cartpole_venv(request) -> VecEnv:
+def cartpole_venv(request, rng) -> VecEnv:
     num_envs = request.param
     return util.make_vec_env(
         CARTPOLE_ENV_NAME,
         n_envs=num_envs,
         post_wrappers=[lambda env, _: RolloutInfoWrapper(env)],
+        rng=rng,
     )
 
 
