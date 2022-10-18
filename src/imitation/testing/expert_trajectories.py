@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Sequence
 
 import huggingface_sb3 as hfsb3
+import numpy as np
 from filelock import FileLock
 from torch.utils import data as th_data
 
@@ -19,6 +20,7 @@ from imitation.util import util
 def generate_expert_trajectories(
     env_id: str,
     num_trajectories: int,
+    rng: np.random.RandomState,
 ) -> Sequence[types.TrajectoryWithRew]:
     """Generate expert trajectories for the given environment.
 
@@ -27,6 +29,7 @@ def generate_expert_trajectories(
     Args:
         env_id: The environment to generate trajectories for.
         num_trajectories: The number of trajectories to generate.
+        rng: The random number generator to use.
 
     Returns:
         A list of trajectories with rewards.
@@ -34,6 +37,7 @@ def generate_expert_trajectories(
     env = util.make_vec_env(
         env_id,
         post_wrappers=[lambda e, _: wrappers.RolloutInfoWrapper(e)],
+        rng=rng,
     )
     try:
         expert = serialize.load_policy("ppo-huggingface", env, env_name=env_id)
@@ -41,6 +45,7 @@ def generate_expert_trajectories(
             expert,
             env,
             rollout.make_sample_until(min_episodes=num_trajectories),
+            rng=rng,
         )
     finally:
         env.close()
@@ -50,6 +55,7 @@ def lazy_generate_expert_trajectories(
     cache_path: PathLike,
     env_id: str,
     num_trajectories: int,
+    rng: np.random.RandomState,
 ) -> Sequence[types.TrajectoryWithRew]:
     """Generate or load expert trajectories from cache.
 
@@ -58,6 +64,7 @@ def lazy_generate_expert_trajectories(
             trajectories.
         env_id: The environment to generate trajectories for.
         num_trajectories: The number of trajectories to generate.
+        rng: The random number generator to use.
 
     Returns:
         A list of trajectories with rewards.
@@ -81,7 +88,7 @@ def lazy_generate_expert_trajectories(
                 f"Generating expert trajectories for {env_id} because "
                 f"{generation_reason}.",
             )
-            trajectories = generate_expert_trajectories(env_id, num_trajectories)
+            trajectories = generate_expert_trajectories(env_id, num_trajectories, rng)
             types.save(trajectories_path, trajectories)
 
     if len(trajectories) >= num_trajectories:
@@ -89,7 +96,12 @@ def lazy_generate_expert_trajectories(
     else:
         # If it is not enough, just throw away the cache and generate more.
         trajectories_path.unlink()
-        return lazy_generate_expert_trajectories(cache_path, env_id, num_trajectories)
+        return lazy_generate_expert_trajectories(
+            cache_path,
+            env_id,
+            num_trajectories,
+            rng,
+        )
 
 
 def make_expert_transition_loader(
@@ -97,6 +109,7 @@ def make_expert_transition_loader(
     batch_size: int,
     expert_data_type: str,
     env_name: str,
+    rng: np.random.RandomState,
     num_trajectories: int = 1,
 ):
     """Creates different kinds of PyTorch data loaders for expert transitions.
@@ -107,6 +120,7 @@ def make_expert_transition_loader(
         expert_data_type: The type of expert data to use. Can be one of "data_loader",
             "ducktyped_data_loader", "transitions".
         env_name: The environment to generate trajectories for.
+        rng: The random number generator to use.
         num_trajectories: The number of trajectories to generate.
 
     Raises:
@@ -119,6 +133,7 @@ def make_expert_transition_loader(
         cache_dir,
         env_name,
         num_trajectories,
+        rng,
     )
     transitions = rollout.flatten_trajectories(trajectories)
 
@@ -132,6 +147,7 @@ def make_expert_transition_loader(
                 cache_dir,
                 env_name,
                 min_required_trajectories,
+                rng,
             ),
         )
 

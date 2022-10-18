@@ -32,11 +32,13 @@ def cartpole_expert_trajectories(
     cartpole_expert_policy,
     cartpole_venv,
     pytestconfig,
+    rng,
 ) -> Sequence[TrajectoryWithRew]:
     return lazy_generate_expert_trajectories(
         pytestconfig.cache.makedir("experts"),
         CARTPOLE_ENV_NAME,
         60,
+        rng,
     )
 
 
@@ -68,11 +70,13 @@ def cartpole_bc_trainer(
 @pytest.fixture
 def pendulum_expert_trajectories(
     pytestconfig,
+    rng,
 ) -> Sequence[TrajectoryWithRew]:
     return lazy_generate_expert_trajectories(
         pytestconfig.cache.makedir("experts"),
         PENDULUM_ENV_NAME,
         60,
+        rng,
     )
 
 
