@@ -2,6 +2,7 @@
 
 import dataclasses
 import os
+from typing import Callable, Optional, Sequence
 
 import hypothesis
 import hypothesis.strategies as st
@@ -11,7 +12,7 @@ import torch as th
 from stable_baselines3.common import evaluation, vec_env
 
 from imitation.algorithms import bc
-from imitation.data import rollout
+from imitation.data import rollout, types
 from imitation.data.wrappers import RolloutInfoWrapper
 from imitation.testing import reward_improvement
 from imitation.testing.expert_trajectories import make_expert_transition_loader
@@ -23,15 +24,15 @@ from imitation.util import logger, util
 
 
 def make_bc_train_args(
-    on_epoch_end,
-    on_batch_end,
-    log_interval,
-    log_rollouts_n_episodes,
-    progress_bar,
-    reset_tensorboard,
-    duration_measure,
-    duration,
-    log_rollouts_venv,
+    on_epoch_end: Callable[[], None],
+    on_batch_end: Callable[[], None],
+    log_interval: int,
+    log_rollouts_n_episodes: int,
+    progress_bar: bool,
+    reset_tensorboard: bool,
+    duration_measure: str,
+    duration: int,
+    log_rollouts_venv: Optional[vec_env.VecEnv],
 ):
     return {
         "on_epoch_end": on_epoch_end,
@@ -120,11 +121,11 @@ bc_args = st.builds(
 # be computed. Later they can be loaded from cache much faster.
 @hypothesis.settings(deadline=None)
 def test_smoke_bc_creation(
-    env_name,
-    bc_args,
-    expert_data_type,
-    rng,
-    pytestconfig,
+    env_name: str,
+    bc_args: dict,
+    expert_data_type: str,
+    rng: np.random.Generator,
+    pytestconfig: pytest.Config,
 ):
     bc.BC(
         **bc_args,
@@ -148,12 +149,12 @@ def test_smoke_bc_creation(
 )
 @hypothesis.settings(deadline=20000, max_examples=50)
 def test_smoke_bc_training(
-    env_name,
-    bc_args,
-    train_args,
-    expert_data_type,
-    rng,
-    pytestconfig,
+    env_name: str,
+    bc_args: dict,
+    train_args: dict,
+    expert_data_type: str,
+    rng: np.random.Generator,
+    pytestconfig: pytest.Config,
 ):
     # GIVEN
     trainer = bc.BC(
@@ -176,7 +177,10 @@ def test_smoke_bc_training(
 #####################
 
 
-def test_that_bc_improves_rewards(cartpole_bc_trainer, cartpole_venv):
+def test_that_bc_improves_rewards(
+    cartpole_bc_trainer: bc.BC,
+    cartpole_venv: vec_env.VecEnv,
+):
     # GIVEN
     novice_rewards, _ = evaluation.evaluate_policy(
         cartpole_bc_trainer.policy,
@@ -208,7 +212,10 @@ def test_that_bc_improves_rewards(cartpole_bc_trainer, cartpole_venv):
     )
 
 
-def test_that_policy_reconstruction_preserves_parameters(cartpole_bc_trainer, tmpdir):
+def test_that_policy_reconstruction_preserves_parameters(
+    cartpole_bc_trainer: bc.BC,
+    tmpdir,
+):
     # GIVEN
     pol_path = os.path.join(tmpdir, "policy.pt")
     original_parameters = list(cartpole_bc_trainer.policy.parameters())
@@ -229,7 +236,11 @@ def test_that_policy_reconstruction_preserves_parameters(cartpole_bc_trainer, tm
 #############################################
 
 
-def test_that_weight_decay_in_optimizer_raises_error(cartpole_venv, custom_logger, rng):
+def test_that_weight_decay_in_optimizer_raises_error(
+    cartpole_venv: vec_env.VecEnv,
+    custom_logger: logger.HierarchicalLogger,
+    rng: np.random.Generator,
+):
     with pytest.raises(ValueError, match=".*weight_decay.*"):
         bc.BC(
             observation_space=cartpole_venv.observation_space,
@@ -250,8 +261,8 @@ def test_that_weight_decay_in_optimizer_raises_error(cartpole_venv, custom_logge
     ],
 )
 def test_that_wrong_training_duration_specification_raises_error(
-    cartpole_bc_trainer,
-    duration_args,
+    cartpole_bc_trainer: bc.BC,
+    duration_args: dict,
 ):
     with pytest.raises(ValueError, match="exactly one.*n_epochs"):
         cartpole_bc_trainer.train(**duration_args)
@@ -262,8 +273,8 @@ def test_that_bc_raises_error_when_data_loader_is_empty(
     cartpole_venv: vec_env.VecEnv,
     no_yield_after_iter: bool,
     custom_logger: logger.HierarchicalLogger,
-    cartpole_expert_trajectories,
-    rng,
+    cartpole_expert_trajectories: Sequence[types.TrajectoryWithRew],
+    rng: np.random.Generator,
 ) -> None:
     """Check that we error out if the DataLoader suddenly stops yielding any batches.
 
