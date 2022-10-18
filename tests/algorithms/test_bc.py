@@ -114,6 +114,7 @@ bc_args = st.builds(
     env_name=env_names,
     bc_args=bc_args,
     expert_data_type=expert_data_types,
+    rng=rngs,
 )
 # Setting the deadline to none since during the first runs, the expert trajectories must
 # be computed. Later they can be loaded from cache much faster.
@@ -122,15 +123,17 @@ def test_smoke_bc_creation(
     env_name,
     bc_args,
     expert_data_type,
+    rng,
     pytestconfig,
 ):
     bc.BC(
         **bc_args,
         demonstrations=make_expert_transition_loader(
-            pytestconfig.cache.makedir("experts"),
-            bc_args["batch_size"],
-            expert_data_type,
-            env_name,
+            cache_dir=pytestconfig.cache.makedir("experts"),
+            batch_size=bc_args["batch_size"],
+            expert_data_type=expert_data_type,
+            env_name=env_name,
+            rng=rng,
             num_trajectories=60,
         ),
     )
@@ -141,6 +144,7 @@ def test_smoke_bc_creation(
     bc_args=bc_args,
     train_args=bc_train_args,
     expert_data_type=expert_data_types,
+    rng=rngs,
 )
 @hypothesis.settings(deadline=20000, max_examples=50)
 def test_smoke_bc_training(
@@ -148,16 +152,18 @@ def test_smoke_bc_training(
     bc_args,
     train_args,
     expert_data_type,
+    rng,
     pytestconfig,
 ):
     # GIVEN
     trainer = bc.BC(
         **bc_args,
         demonstrations=make_expert_transition_loader(
-            pytestconfig.cache.makedir("experts"),
-            bc_args["batch_size"],
-            expert_data_type,
-            env_name,
+            cache_dir=pytestconfig.cache.makedir("experts"),
+            batch_size=bc_args["batch_size"],
+            expert_data_type=expert_data_type,
+            env_name=env_name,
+            rng=rng,
             num_trajectories=3,  # Only use 3 trajectories to speed up the test
         ),
     )
