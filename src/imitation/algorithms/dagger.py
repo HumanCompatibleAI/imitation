@@ -40,6 +40,18 @@ class BetaSchedule(abc.ABC):
                 actions will be sampled the remainder of the time.
         """  # noqa: DAR202
 
+    def __repr__(self):
+        return f"{type(self).__name__}()"
+
+    def __eq__(self, other):
+        return self.__repr__() == other.__repr__()
+
+    def __hash__(self):
+        return hash(self.__repr__())
+
+    def __lt__(self, other):
+        return self.__repr__() < other.__repr__()
+
 
 class LinearBetaSchedule(BetaSchedule):
     """Linearly-decreasing schedule for beta."""
@@ -65,6 +77,9 @@ class LinearBetaSchedule(BetaSchedule):
         assert round_num >= 0
         return min(1, max(0, (self.rampdown_rounds - round_num) / self.rampdown_rounds))
 
+    def __repr__(self):
+        return f"{type(self).__name__}({self.rampdown_rounds!r})"
+
 
 class IndicatorBetaSchedule(BetaSchedule):
     """Beta schedule that switches off after a number of rounds."""
@@ -88,6 +103,9 @@ class IndicatorBetaSchedule(BetaSchedule):
         """
         assert round_num >= 0
         return 1 if round_num < self.rampdown_rounds else 0
+
+    def __repr__(self):
+        return f"{type(self).__name__}({self.rampdown_rounds!r})"
 
 
 class ExponentialBetaSchedule(BetaSchedule):
@@ -117,6 +135,9 @@ class ExponentialBetaSchedule(BetaSchedule):
         """
         assert round_num >= 0
         return self.decay_probability**round_num
+
+    def __repr__(self):
+        return f"{type(self).__name__}({self.decay_probability!r})"
 
 
 def reconstruct_trainer(

@@ -10,7 +10,7 @@ import numpy as np
 import ray
 import ray.tune
 import sacred
-from ray.tune import schedulers, search
+from ray.tune import search
 from ray.tune.search import optuna
 from sacred.observers import FileStorageObserver
 
@@ -146,6 +146,7 @@ def parallel(
         key += "/monitor_return_mean"
         if eval_best_trial:
             df = result.results_df
+            df = df[df["config/named_configs"].notna()]
             print(df.columns)
             print(df.head())
             print(df[["config/named_configs", key]])
@@ -179,7 +180,6 @@ def parallel(
                 print("Named configs:", env)
                 print("Mean return:", row["mean_return"])
                 print("Total seeds:", (df["mean_return"] == row["mean_return"]).sum())
-                best_config = result.get_best_config(metric="mean_return", mode="max")
                 best_config["config_updates"].update(
                     seed=ray.tune.grid_search(list(range(100, 100 + eval_trial_seeds))),
                 )
@@ -293,8 +293,6 @@ def _ray_tune_sacred_wrapper(
         for k, v in run_kwargs.items():
             if k not in updated_run_kwargs:
                 updated_run_kwargs[k] = v
-        if "seed" in updated_run_kwargs["config_updates"]:
-            print("seed =", updated_run_kwargs["config_updates"]["seed"])
         run = ex.run(**updated_run_kwargs, options={"--run": run_name})
         # Ray Tune has a string formatting error if raylet completes without
         # any calls to `reporter`.

@@ -159,50 +159,41 @@ def example_gail_easy():
 MY_ENVS = ["seals_ant", "seals_half_cheetah"]
 
 
-@parallel_ex.config_hook
-def config_hook(config, command_name, logger):
-    """Sets env."""
-    del command_name, logger
-    res = {}
-    if config["env"]:
-        res["base_named_configs"] = config["base_named_configs"] + [config["env"]]
-    return res
-
-
 @parallel_ex.named_config
 def example_bc():
     sacred_ex_name = "train_imitation"
     run_name = "bc_tuning_hc"
-    base_named_configs = ["common.wandb_logging"]
+    base_named_configs = ["common.wandb_logging", "seals_half_cheetah"]
     base_config_updates = {
         "common": {"wandb": {"wandb_kwargs": {"project": "algorithm-benchmark"}}},
     }
     search_space = {
         "config_updates": {
             "bc_kwargs": dict(
-                batch_size=tune.choice([16, 32, 64]),
-                l2_weight=tune.choice([1e-4, 0]),  # L2 regularization weight
+                batch_size=tune.choice([8, 16, 32, 64]),
+                l2_weight=tune.loguniform(1e-6, 1e-2),  # L2 regularization weight
                 optimizer_kwargs=dict(
-                    lr=tune.choice([1e-3, 1e-4]),
+                    lr=tune.loguniform(1e-5, 1e-2),
                 ),
             ),
             "bc_train_kwargs": dict(
-                n_epochs=tune.choice([1, 4, 7]),
+                n_epochs=tune.choice([1, 5, 10, 20]),
             ),
         },
         "command_name": "bc",
     }
-    num_samples = 36
+    num_samples = 64
     eval_best_trial = True
     eval_trial_seeds = 5
+    repeat = 3
     resources_per_trial = dict(cpu=4)
 
 
 @parallel_ex.named_config
 def example_dagger():
     sacred_ex_name = "train_imitation"
-    run_name = "dagger_tuning"
-    base_named_configs = ["common.wandb_logging"]
+    run_name = "dagger_tuning_hc"
+    base_named_configs = ["common.wandb_logging", "seals_half_cheetah"]
     base_config_updates = {
         "common": {"wandb": {"wandb_kwargs": {"project": "algorithm-benchmark"}}},
         "dagger": {"total_timesteps": 1e5},
@@ -215,7 +206,7 @@ def example_dagger():
     search_space = {
         "config_updates": {
             "bc_train_kwargs": dict(
-                n_epochs=tune.choice([4, 7, 10]),
+                n_epochs=tune.choice([1, 5, 10]),
             ),
             "dagger": dict(
                 beta_schedule=tune.choice(
@@ -227,7 +218,11 @@ def example_dagger():
         },
         "command_name": "dagger",
     }
-    resources_per_trial = dict(cpu=2, gpu=0.1)
+    num_samples = 50
+    repeat = 3
+    eval_best_trial = True
+    eval_trial_seeds = 5
+    resources_per_trial = dict(cpu=4)
 
 
 @parallel_ex.named_config
@@ -253,7 +248,7 @@ def example_gail():
                 "batch_size": tune.choice([4096, 8192, 16384]),
                 "rl_kwargs": {
                     "ent_coef": tune.loguniform(1e-6, 1e-2),
-                    "learning_rate": tune.loguniform(1e-5, 5e-3),
+                    "learning_rate": tune.loguniform(1e-5, 1e-2),
                 },
             },
             "algorithm_specific": {},
@@ -292,7 +287,7 @@ def example_airl():
                 "batch_size": tune.choice([4096, 8192, 16384]),
                 "rl_kwargs": {
                     "ent_coef": tune.loguniform(1e-6, 1e-2),
-                    "learning_rate": tune.loguniform(1e-5, 5e-3),
+                    "learning_rate": tune.loguniform(1e-5, 1e-2),
                 },
             },
             "algorithm_specific": {},
@@ -311,7 +306,7 @@ def example_airl():
 def example_pc():
     sacred_ex_name = "train_preference_comparisons"
     run_name = "pc_tuning"
-    base_named_configs = ["common.wandb_logging"]
+    base_named_configs = ["common.wandb_logging", "seals_half_cheetah"]
     base_config_updates = {
         "common": {"wandb": {"wandb_kwargs": {"project": "algorithm-benchmark"}}},
         "total_timesteps": 2e7,
@@ -319,19 +314,24 @@ def example_pc():
         "query_schedule": "hyperbolic",
     }
     search_space = {
-        "named_configs": tune.choice([[env] for env in MY_ENVS]),
+        "named_configs": tune.choice(
+            [
+                ["reward.normalize_output_disable"],
+                ["reward.normalize_output_running"],
+            ],
+        ),
         "config_updates": {
             "num_iterations": tune.choice([5, 20, 50]),
-            "initial_comparison_frac": tune.choice([0.1, 0.3]),
+            "initial_comparison_frac": tune.choice([0.1, 0.2]),
             "reward_trainer_kwargs": {
-                "epochs": tune.choice([5, 10, 15]),
+                "epochs": tune.choice([1, 5, 10, 15]),
             },
             # "query_schedule": tune.choice(
             #     ["constant", "hyperbolic", "inverse_quadratic"],
             # ),
         },
     }
-    # num_samples = 1
+    num_samples = 36
     eval_best_trial = True
     eval_trial_seeds = 5
     repeat = 3
@@ -408,3 +408,17 @@ def debug_eval_adv():
     num_samples = 2
     repeat = 2
     resources_per_trial = dict(cpu=8)
+
+
+# @parallel_ex.config_hook
+# def config_hook(config, command_name, logger):
+#     """Sets env."""
+#     del command_name, logger
+#     res = {}
+#     print(config)
+#     if config["env"]:
+#         res["base_named_configs"] = tuple(
+#             config["base_named_configs"] + [config["env"]]
+#         )
+#     print(res)
+#     return res
