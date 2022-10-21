@@ -268,60 +268,49 @@ def test_that_wrong_training_duration_specification_raises_error(
         cartpole_bc_trainer.train(**duration_args)
 
 
-@pytest.mark.parametrize("no_yield_after_iter", [0, 1, 5])
+# Start at 1 as BC uses up an iteration from getting the first element for type checking
+@pytest.mark.parametrize("no_yield_after_iter", [1, 2, 6])
 def test_that_bc_raises_error_when_data_loader_is_empty(
-    cartpole_venv: vec_env.VecEnv,
-    no_yield_after_iter: bool,
-    custom_logger: logger.HierarchicalLogger,
+    no_yield_after_iter: int,
+    cartpole_bc_trainer: bc.BC,
     cartpole_expert_trajectories: Sequence[types.TrajectoryWithRew],
-    rng: np.random.Generator,
+    custom_logger: logger.HierarchicalLogger,
 ) -> None:
     """Check that we error out if the DataLoader suddenly stops yielding any batches.
 
     At one point, we entered an updateless infinite loop in this edge case.
 
     Args:
-        cartpole_venv: Environment to test in.
         no_yield_after_iter: Data loader stops yielding after this many calls.
-        custom_logger: Where to log to.
+        cartpole_bc_trainer: BC trainer.
         cartpole_expert_trajectories: The expert trajectories to use.
-        rng: Random state to use.
+        custom_logger: Where to log to.
     """
     # GIVEN
-    batch_size = 32
+    batch_size = cartpole_bc_trainer.batch_size
     trans = rollout.flatten_trajectories(cartpole_expert_trajectories)
     dummy_yield_value = dataclasses.asdict(trans[:batch_size])
 
     class DataLoaderThatFailsOnNthIter:
         """A dummy DataLoader stops to yield after a number of calls to `__iter__`."""
 
-        def __init__(self, no_yield_after_iter: int):
-            """Builds dummy data loader.
-
-            Args:
-                no_yield_after_iter: `__iter__` will raise `StopIteration` after
-                    this many calls.
-            """
-            self.iter_count = 0
-            self.no_yield_after_iter = no_yield_after_iter
+        iter_count = 0
 
         def __iter__(self):
-            if self.iter_count < self.no_yield_after_iter:
+            if self.iter_count < no_yield_after_iter:
                 yield dummy_yield_value
             self.iter_count += 1
 
-    # add 1 as BC uses up an iteration from getting the first element
-    # for type checking
-    bad_data_loader = DataLoaderThatFailsOnNthIter(no_yield_after_iter + 1)
-    trainer = bc.BC(
-        observation_space=cartpole_venv.observation_space,
-        action_space=cartpole_venv.action_space,
-        batch_size=batch_size,
-        custom_logger=custom_logger,
-        rng=rng,
-    )
+    batch_cnt = 0
+
+    def inc_batch_cnt():
+        nonlocal batch_cnt
+        batch_cnt += 1
 
     # WHEN
-    trainer.set_demonstrations(bad_data_loader)
+    cartpole_bc_trainer.set_demonstrations(DataLoaderThatFailsOnNthIter())
     with pytest.raises(AssertionError, match=".*no data.*"):  # THEN
-        trainer.train(n_batches=20)
+        cartpole_bc_trainer.train(n_batches=20, on_batch_end=inc_batch_cnt)
+
+    # THEN
+    assert batch_cnt == no_yield_after_iter
