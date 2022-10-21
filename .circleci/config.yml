@@ -389,16 +389,11 @@ jobs:
             pip install pytest-flakefinder pytest-xdist
             TESTFILES=$(circleci tests glob tests/**/test*.py | circleci tests split --split-by=timings)
             Xdummy-entrypoint.py pytest -n auto \
-#                   --cov=/venv/lib/python3.8/site-packages/imitation \
-#                   --cov=tests \
                    --junitxml=/tmp/test-reports/junit.xml \
-                   -vv $TESTFILES
-                   --flake-finder
+                   -vv $TESTFILES \
+                   --flake-finder \
                    --flake-runs=500
-#            mv .coverage .coverage.imitation
-#            coverage combine  # rewrite paths from virtualenv to src/
 
-#      - codecov/upload
       - save-pytest-cache
       - store-test-output-unix
 
