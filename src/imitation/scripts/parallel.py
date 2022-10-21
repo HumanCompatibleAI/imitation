@@ -191,6 +191,7 @@ def parallel(
                         "command_name": best_config.get("command_name", None),
                     },
                     name=run_name + "_best_hp_eval",
+                    resources_per_trial=resources_per_trial * 8,
                 )
                 returns = eval_result.results_df["mean_return"].to_numpy()
                 print("Returns:", returns)

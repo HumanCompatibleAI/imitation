@@ -105,6 +105,33 @@ def seals_half_cheetah():
 
 
 @train_imitation_ex.named_config
+def seals_hopper():
+    common = dict(env_name="seals/Hopper-v0")
+    demonstrations = dict(
+        rollout_path="/home/taufeeque/imitation/output/train_experts/"
+        "2022-10-11T06:27:42-07:00/seals_hopper_2/rollouts/final.pkl",
+    )
+
+
+@train_imitation_ex.named_config
+def seals_swimmer():
+    common = dict(env_name="seals/Swimmer-v0")
+    demonstrations = dict(
+        rollout_path="/home/taufeeque/imitation/output/train_experts/"
+        "2022-10-11T06:27:42-07:00/seals_swimmer_4/rollouts/final.pkl",
+    )
+
+
+@train_imitation_ex.named_config
+def seals_walker():
+    common = dict(env_name="seals/Walker2d-v0")
+    demonstrations = dict(
+        rollout_path="/home/taufeeque/imitation/output/train_experts/"
+        "2022-10-11T06:27:42-07:00/seals_walker_8/rollouts/final.pkl",
+    )
+
+
+@train_imitation_ex.named_config
 def humanoid():
     common = dict(env_name="Humanoid-v2")
 

@@ -7,7 +7,7 @@ set -e
 
 source experiments/common.sh
 
-SEEDS=(0 1 2 3 4)
+SEEDS=(0 1 2 3 4 5 6 7 8 9)
 # ENVS=(seals_ant seals_half_cheetah)
 ENVS=(pendulum seals_hopper seals_swimmer seals_walker)
 

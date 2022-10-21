@@ -1,6 +1,7 @@
 """Configuration for imitation.scripts.train_adversarial."""
 
 import sacred
+from torch import nn
 
 from imitation.rewards import reward_nets
 from imitation.scripts.common import common, demonstrations, expert, reward, rl, train
@@ -201,8 +202,90 @@ def seals_half_cheetah():
 
 @train_adversarial_ex.named_config
 def seals_hopper():
-    locals().update(**MUJOCO_SHARED_LOCALS)
+    # locals().update(**MUJOCO_SHARED_LOCALS)
     common = dict(env_name="seals/Hopper-v0")
+    demonstrations = dict(
+        rollout_path="/home/taufeeque/imitation/output/train_experts/"
+        "2022-10-11T06:27:42-07:00/seals_hopper_2/rollouts/final.pkl",
+    )
+    train = dict(
+        policy_cls="MlpPolicy",
+        policy_kwargs=dict(
+            activation_fn=nn.ReLU,
+            net_arch=[dict(pi=[64, 64], vf=[64, 64])],
+        ),
+    )
+    rl = dict(
+        batch_size=2048,
+        rl_kwargs=dict(
+            batch_size=512,
+            clip_range=0.1,
+            ent_coef=0.0010159833764878474,
+            gae_lambda=0.98,
+            gamma=0.995,
+            learning_rate=0.0003904770450788824,
+            max_grad_norm=0.9,
+            n_epochs=20,
+            vf_coef=0.20315938606555833,
+        ),
+    )
+
+
+@train_adversarial_ex.named_config
+def seals_swimmer():
+    # locals().update(**MUJOCO_SHARED_LOCALS)
+    common = dict(env_name="seals/Swimmer-v0")
+    total_timesteps = int(2e6)
+    demonstrations = dict(
+        rollout_path="/home/taufeeque/imitation/output/train_experts/"
+        "2022-10-11T06:27:42-07:00/seals_swimmer_4/rollouts/final.pkl",
+    )
+    rl = dict(
+        batch_size=2048,
+        rl_kwargs=dict(
+            batch_size=8,
+            clip_range=0.1,
+            ent_coef=5.167107294612664e-08,
+            gae_lambda=0.95,
+            gamma=0.999,
+            learning_rate=0.0001214437022727675,
+            max_grad_norm=2,
+            n_epochs=20,
+            # policy_kwargs are same as the defaults
+            vf_coef=0.6162112311062333,
+        ),
+    )
+
+
+@train_adversarial_ex.named_config
+def seals_walker():
+    # locals().update(**MUJOCO_SHARED_LOCALS)
+    common = dict(env_name="seals/Walker2d-v0")
+    demonstrations = dict(
+        rollout_path="/home/taufeeque/imitation/output/train_experts/"
+        "2022-10-11T06:27:42-07:00/seals_walker_8/rollouts/final.pkl",
+    )
+    train = dict(
+        policy_cls="MlpPolicy",
+        policy_kwargs=dict(
+            activation_fn=nn.ReLU,
+            net_arch=[dict(pi=[256, 256], vf=[256, 256])],
+        ),
+    )
+    rl = dict(
+        batch_size=2048,
+        rl_kwargs=dict(
+            batch_size=8,
+            clip_range=0.4,
+            ent_coef=0.00013057334805552262,
+            gae_lambda=0.92,
+            gamma=0.98,
+            learning_rate=3.791707778339674e-05,
+            max_grad_norm=0.6,
+            n_epochs=5,
+            vf_coef=0.6167177795726859,
+        ),
+    )
 
 
 @train_adversarial_ex.named_config
@@ -216,19 +299,6 @@ def seals_humanoid():
 def reacher():
     common = dict(env_name="Reacher-v2")
     algorithm_kwargs = {"allow_variable_horizon": True}
-
-
-@train_adversarial_ex.named_config
-def seals_swimmer():
-    locals().update(**MUJOCO_SHARED_LOCALS)
-    common = dict(env_name="seals/Swimmer-v0")
-    total_timesteps = int(2e6)
-
-
-@train_adversarial_ex.named_config
-def seals_walker():
-    locals().update(**MUJOCO_SHARED_LOCALS)
-    common = dict(env_name="seals/Walker2d-v0")
 
 
 # Debug configs
