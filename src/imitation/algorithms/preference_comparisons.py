@@ -884,6 +884,7 @@ class SyntheticGatherer(PreferenceGatherer):
         self.logger.record("entropy", entropy)
 
         if self.sample:
+            assert(self.rng is not None)
             return self.rng.binomial(n=1, p=model_probs).astype(np.float32)
         return model_probs
 

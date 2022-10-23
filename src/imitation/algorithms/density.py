@@ -151,10 +151,12 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
             assert next_obs_b.shape[1:] == self.venv.observation_space.shape
             assert len(next_obs_b) == len(obs_b)
 
+        if next_obs_b is not None:
+            next_obs_b_iterator: Iterable = next_obs_b
+        else:
+            next_obs_b_iterator = itertools.repeat(None)
+
         transitions: Dict[Optional[int], List[np.ndarray]] = {}
-        next_obs_b_iterator = (
-            next_obs_b if next_obs_b is not None else itertools.repeat(None)
-        )
         for obs, act, next_obs in zip(obs_b, act_b, next_obs_b_iterator):
             flat_trans = self._preprocess_transition(obs, act, next_obs)
             transitions.setdefault(None, []).append(flat_trans)
@@ -174,7 +176,9 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
                 ),
             )
         elif isinstance(demonstrations, Iterable):
-            first_item, demonstrations = util.get_first_iter_element(demonstrations)
+            # Inferring the correct type here is difficult with generics.
+            first_item, demonstrations = (
+              util.get_first_iter_element(demonstrations)) # type: ignore[assignment]
             if isinstance(first_item, types.Trajectory):
                 # we assume that all elements are also types.Trajectory.
                 # (this means we have timestamp information)

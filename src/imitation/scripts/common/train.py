@@ -1,7 +1,7 @@
 """Common configuration elements for training imitation algorithms."""
 
 import logging
-from typing import Any, Mapping, Union
+from typing import Any, Mapping, Union, cast
 
 import sacred
 from stable_baselines3.common import base_class, policies, torch_layers, vec_env
@@ -102,7 +102,7 @@ def eval_policy(
         # Generate trajectories with the RL algorithm's env - SB3 may apply wrappers
         # under the hood to get it to work with the RL algorithm (e.g. transposing
         # images so they can be fed into CNNs).
-        train_env = rl_algo.get_env()
+        train_env = cast(vec_env.VecEnv, rl_algo.get_env())
     else:
         train_env = venv
     trajs = rollout.generate_trajectories(
