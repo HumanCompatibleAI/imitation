@@ -192,7 +192,7 @@ class _WrappedDataLoader:
         self.expected_batch_size = expected_batch_size
 
     def __iter__(self):
-        """Iterator yielding data from `self.data_loader`, checking `self.expected_batch_size`.
+        """Yields data from `self.data_loader`, checking `self.expected_batch_size`.
 
         Yields:
             Identity -- yields same batches as from `self.data_loader`.
@@ -244,7 +244,10 @@ def make_data_loader(
 
     if isinstance(transitions, Iterable):
         # Inferring the correct type here is difficult with generics.
-        first_item, transitions = util.get_first_iter_element(  # type: ignore[assignment]
+        (
+            first_item,
+            transitions,
+        ) = util.get_first_iter_element(  # type: ignore[assignment]
             transitions
         )
         if isinstance(first_item, types.Trajectory):
@@ -270,8 +273,8 @@ def make_data_loader(
             **kwargs,
         )
     elif isinstance(transitions, Iterable):
-        # Safe to ignore this error since we've already coerced Iterable transitions into
-        # Iterable[TransitionMapping]
+        # Safe to ignore this error since we've already coerced Iterable[Trajectory]
+        # `transitions` into Iterable[TransitionMapping]
         return _WrappedDataLoader(transitions, batch_size)  # type: ignore[arg-type]
     else:
         raise TypeError(f"`demonstrations` unexpected type {type(transitions)}")
