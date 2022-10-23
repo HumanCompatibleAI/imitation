@@ -177,8 +177,9 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
             )
         elif isinstance(demonstrations, Iterable):
             # Inferring the correct type here is difficult with generics.
-            first_item, demonstrations = (
-              util.get_first_iter_element(demonstrations)) # type: ignore[assignment]
+            first_item, demonstrations = util.get_first_iter_element(
+                demonstrations
+            )  # type: ignore[assignment]
             if isinstance(first_item, types.Trajectory):
                 # we assume that all elements are also types.Trajectory.
                 # (this means we have timestamp information)

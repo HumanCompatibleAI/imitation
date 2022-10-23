@@ -243,9 +243,10 @@ def make_data_loader(
         raise ValueError(f"batch_size={batch_size} must be positive.")
 
     if isinstance(transitions, Iterable):
-         # Inferring the correct type here is difficult with generics.
-        first_item, transitions = (
-           util.get_first_iter_element(transitions)) # type: ignore[assignment]
+        # Inferring the correct type here is difficult with generics.
+        first_item, transitions = util.get_first_iter_element(
+            transitions
+        )  # type: ignore[assignment]
         if isinstance(first_item, types.Trajectory):
             transitions = cast(Iterable[types.Trajectory], transitions)
             transitions = rollout.flatten_trajectories(list(transitions))
@@ -271,6 +272,6 @@ def make_data_loader(
     elif isinstance(transitions, Iterable):
         # Safe to ignore this error since we've already coerced Iterable transitions into
         # Iterable[TransitionMapping]
-        return _WrappedDataLoader(transitions, batch_size) # type: ignore[arg-type]
+        return _WrappedDataLoader(transitions, batch_size)  # type: ignore[arg-type]
     else:
         raise TypeError(f"`demonstrations` unexpected type {type(transitions)}")
