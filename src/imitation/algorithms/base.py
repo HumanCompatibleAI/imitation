@@ -248,7 +248,7 @@ def make_data_loader(
             first_item,
             transitions,
         ) = util.get_first_iter_element(  # type: ignore[assignment]
-            transitions
+            transitions,
         )
         if isinstance(first_item, types.Trajectory):
             transitions = cast(Iterable[types.Trajectory], transitions)

@@ -47,7 +47,8 @@ def save_checkpoint(
         # contains one. Currently we are slightly over-conservative, by requiring
         # that an AgentTrainer be used if we're saving the policy.
         assert isinstance(
-            trainer.trajectory_generator, preference_comparisons.AgentTrainer
+            trainer.trajectory_generator,
+            preference_comparisons.AgentTrainer,
         )
         save_model(trainer.trajectory_generator, save_path)
     else:

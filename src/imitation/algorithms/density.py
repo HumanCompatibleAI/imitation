@@ -181,7 +181,7 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
                 first_item,
                 demonstrations,
             ) = util.get_first_iter_element(  # type: ignore[assignment]
-                demonstrations
+                demonstrations,
             )
             if isinstance(first_item, types.Trajectory):
                 # we assume that all elements are also types.Trajectory.
