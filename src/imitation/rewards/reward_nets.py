@@ -985,7 +985,7 @@ class RewardEnsemble(RewardNetWithVariance):
 
     def forward(self, *args) -> th.Tensor:
         """The forward method of the ensemble should in general not be used directly."""
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def predict_processed(
         self,
