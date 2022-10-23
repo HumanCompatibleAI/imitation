@@ -244,9 +244,9 @@ def make_data_loader(
 
     if isinstance(transitions, Iterable):
         # Inferring the correct type here is difficult with generics.
-        first_item, transitions = util.get_first_iter_element(
+        first_item, transitions = util.get_first_iter_element(  # type: ignore[assignment]
             transitions
-        )  # type: ignore[assignment]
+        )
         if isinstance(first_item, types.Trajectory):
             transitions = cast(Iterable[types.Trajectory], transitions)
             transitions = rollout.flatten_trajectories(list(transitions))
