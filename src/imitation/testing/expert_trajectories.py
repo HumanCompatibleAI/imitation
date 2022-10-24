@@ -21,7 +21,7 @@ def generate_expert_trajectories(
     env_id: str,
     num_trajectories: int,
     rng: np.random.Generator,
-) -> Sequence[types.TrajectoryWithRew]:
+) -> Sequence[types.TrajectoryWithRew]:  # pragma: no cover
     """Generate expert trajectories for the given environment.
 
     Note: will just pull a pretrained policy from the Hugging Face model hub.
@@ -93,7 +93,7 @@ def lazy_generate_expert_trajectories(
 
     if len(trajectories) >= num_trajectories:
         return trajectories[:num_trajectories]
-    else:
+    else:  # pragma: no cover
         # If it is not enough, just throw away the cache and generate more.
         trajectories_path.unlink()
         return lazy_generate_expert_trajectories(
@@ -137,7 +137,7 @@ def make_expert_transition_loader(
     )
     transitions = rollout.flatten_trajectories(trajectories)
 
-    if len(transitions) < batch_size:
+    if len(transitions) < batch_size:  # pragma: no cover
         # If we have less transitions than the batch size, we estimate the trajectory
         # length and generate enough trajectories to fill the batch size.
         trajectory_length = len(transitions) // len(trajectories)
