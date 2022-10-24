@@ -294,7 +294,8 @@ def test_that_bc_raises_error_when_data_loader_is_empty(
     class DataLoaderThatFailsOnNthIter:
         """A dummy DataLoader stops to yield after a number of calls to `__iter__`."""
 
-        iter_count = 0
+        def __init__(self):
+            self.iter_count = 0
 
         def __iter__(self):
             if self.iter_count < no_yield_after_iter:
