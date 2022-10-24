@@ -188,17 +188,12 @@ class AgentTrainer(TrajectoryGenerator):
         # of `venv` when interacting with `algorithm`.
         algo_venv = self.algorithm.get_env()
         assert algo_venv is not None
-        policy_callable = rollout._policy_to_callable(
-            self.algorithm,
-            algo_venv,
-            # By setting deterministic_policy to False, we ensure that the rollouts
-            # are collected from a deterministic policy only if self.algorithm is
-            # deterministic. If self.algorithm is stochastic, then policy_callable
-            # will also be stochastic.
-            deterministic_policy=False,
-        )
+        # This wrapper ensures that rollouts are only collected from a deterministic
+        # policy (when not in exploration mode) if self.algorithm is deterministic.
+        # If self.algorithm is stochastic, then self.exploration_wrapper will also be
+        # stochastic.
         self.exploration_wrapper = exploration_wrapper.ExplorationWrapper(
-            policy_callable=policy_callable,
+            policy=self.algorithm,
             venv=algo_venv,
             random_prob=random_prob,
             switch_prob=switch_prob,

@@ -104,7 +104,7 @@ def eval_policy(
         policy = expert.get_expert_policy(venv)
         if explore_kwargs is not None:
             policy = ExplorationWrapper(
-                rollout._policy_to_callable(policy, venv),
+                policy,
                 venv,
                 rng=rng,
                 **explore_kwargs,
