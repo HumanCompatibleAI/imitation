@@ -432,6 +432,7 @@ def test_train_rl_sac(tmpdir):
 EVAL_POLICY_CONFIGS: List[Dict] = [
     {"reward_type": "zero", "reward_path": "foobar"},
     {"rollout_save_path": "{log_dir}/rollouts.pkl"},
+    {"explore_kwargs": {"switch_prob": 1.0, "random_prob": 0.1}},
 ]
 
 if platform.system() != "Darwin":
