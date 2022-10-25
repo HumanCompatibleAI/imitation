@@ -62,11 +62,11 @@ if not TEST_DATA_PATH.exists():  # pragma: no cover
     )
 
 CARTPOLE_TEST_DATA_PATH = TEST_DATA_PATH / "expert_models/cartpole_0/"
-CARTPOLE_TEST_ROLLOUT_PATH = CARTPOLE_TEST_DATA_PATH / "rollouts/final.pkl"
+CARTPOLE_TEST_ROLLOUT_PATH = CARTPOLE_TEST_DATA_PATH / "rollouts/final.npz"
 CARTPOLE_TEST_POLICY_PATH = CARTPOLE_TEST_DATA_PATH / "policies/final"
 
 PENDULUM_TEST_DATA_PATH = TEST_DATA_PATH / "expert_models/pendulum_0/"
-PENDULUM_TEST_ROLLOUT_PATH = PENDULUM_TEST_DATA_PATH / "rollouts/final.pkl"
+PENDULUM_TEST_ROLLOUT_PATH = PENDULUM_TEST_DATA_PATH / "rollouts/final.npz"
 
 OLD_FMT_ROLLOUT_TEST_DATA_PATH = TEST_DATA_PATH / "old_format_rollout.pkl"
 
@@ -431,8 +431,8 @@ def test_train_rl_sac(tmpdir):
 
 EVAL_POLICY_CONFIGS: List[Dict] = [
     {"reward_type": "zero", "reward_path": "foobar"},
-    {"rollout_save_path": "{log_dir}/rollouts.pkl"},
     {"explore_kwargs": {"switch_prob": 1.0, "random_prob": 0.1}},
+    {"rollout_save_path": "{log_dir}/rollouts.npz"},
 ]
 
 if platform.system() != "Darwin":
@@ -806,7 +806,7 @@ def _generate_test_rollouts(tmpdir: str, env_named_config: str) -> pathlib.Path:
             common=dict(log_dir=tmpdir),
         ),
     )
-    rollout_path = tmpdir_path / "rollouts/final.pkl"
+    rollout_path = tmpdir_path / "rollouts/final.npz"
     return rollout_path.absolute()
 
 

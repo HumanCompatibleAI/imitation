@@ -14,7 +14,7 @@ import torch.random
 from stable_baselines3.common import evaluation, policies
 
 from imitation.algorithms import bc, dagger
-from imitation.data import rollout
+from imitation.data import rollout, types
 from imitation.data.types import TrajectoryWithRew
 from imitation.policies import base
 from imitation.testing import reward_improvement
@@ -100,7 +100,7 @@ def test_traj_collector(tmpdir, pendulum_venv, rng):
     file_paths = glob.glob(os.path.join(tmpdir, "dagger-demo-*.npz"))
     assert num_episodes == 5 * pendulum_venv.num_envs
     assert len(file_paths) == num_episodes
-    trajs = map(dagger._load_trajectory, file_paths)
+    trajs = [types.load(p)[0] for p in file_paths]
     nonzero_acts = sum(np.sum(traj.acts != 0) for traj in trajs)
     assert nonzero_acts == 0
 

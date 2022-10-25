@@ -103,6 +103,7 @@ def eval_policy(
         # under the hood to get it to work with the RL algorithm (e.g. transposing
         # images so they can be fed into CNNs).
         train_env = rl_algo.get_env()
+        assert train_env is not None
     else:
         train_env = venv
     trajs = rollout.generate_trajectories(
