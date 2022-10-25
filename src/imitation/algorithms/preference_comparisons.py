@@ -15,6 +15,7 @@ from typing import (
     List,
     Mapping,
     NamedTuple,
+    NoReturn,
     Optional,
     Sequence,
     Tuple,
@@ -707,7 +708,7 @@ class ActiveSelectionFragmenter(Fragmenter):
     def uncertainty_on(self) -> str:
         return self._uncertainty_on
 
-    def raise_uncertainty_on_not_supported(self):
+    def raise_uncertainty_on_not_supported(self) -> NoReturn:
         raise ValueError(
             f"""{self.uncertainty_on} not supported.
             `uncertainty_on` should be from `logit`, `probability`, or `label`""",
