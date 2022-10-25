@@ -44,9 +44,12 @@ def save_checkpoint(
     th.save(trainer.model, save_path / "reward_net.pt")
     if allow_save_policy:
         # Note: We should only save the model as model.pkl if `trajectory_generator`
-        # contains one. Specifically we check if the `trajectory_generator` contains an
-        # `algorithm` attribute.
-        assert hasattr(trainer.trajectory_generator, "algorithm")
+        # contains one. Currently we are slightly over-conservative, by requiring
+        # that an AgentTrainer be used if we're saving the policy.
+        assert isinstance(
+            trainer.trajectory_generator,
+            preference_comparisons.AgentTrainer,
+        )
         save_model(trainer.trajectory_generator, save_path)
     else:
         trainer.logger.warn(
@@ -166,7 +169,7 @@ def train_preference_comparisons(
         if trajectory_path is None:
             # Setting the logger here is not necessary (PreferenceComparisons takes care
             # of it automatically) but it avoids creating unnecessary loggers.
-            trajectory_generator = preference_comparisons.AgentTrainer(
+            agent_trainer = preference_comparisons.AgentTrainer(
                 algorithm=agent,
                 reward_fn=reward_net,
                 venv=venv,
@@ -177,7 +180,10 @@ def train_preference_comparisons(
             )
             # Stable Baselines will automatically occupy GPU 0 if it is available.
             # Let's use the same device as the SB3 agent for the reward model.
-            reward_net = reward_net.to(trajectory_generator.algorithm.device)
+            reward_net = reward_net.to(agent_trainer.algorithm.device)
+            trajectory_generator: preference_comparisons.TrajectoryGenerator = (
+                agent_trainer
+            )
         else:
             if exploration_frac > 0:
                 raise ValueError(
