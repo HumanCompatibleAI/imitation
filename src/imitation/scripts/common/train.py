@@ -1,7 +1,7 @@
 """Common configuration elements for training imitation algorithms."""
 
 import logging
-from typing import Any, Mapping, Union, cast
+from typing import Any, Mapping, Union
 
 import sacred
 from stable_baselines3.common import base_class, policies, torch_layers, vec_env
