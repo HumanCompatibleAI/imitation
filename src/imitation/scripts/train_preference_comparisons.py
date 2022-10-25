@@ -27,7 +27,7 @@ def save_model(
     agent_trainer: preference_comparisons.AgentTrainer,
     save_path: pathlib.Path,
 ):
-    """Save the model as model.pkl."""
+    """Save the model as `model.zip`."""
     serialize.save_stable_model(
         output_dir=save_path / "policy",
         model=agent_trainer.algorithm,
@@ -43,7 +43,7 @@ def save_checkpoint(
     save_path.mkdir(parents=True, exist_ok=True)
     th.save(trainer.model, save_path / "reward_net.pt")
     if allow_save_policy:
-        # Note: We should only save the model as model.pkl if `trajectory_generator`
+        # Note: We should only save the model as model.zip if `trajectory_generator`
         # contains one. Currently we are slightly over-conservative, by requiring
         # that an AgentTrainer be used if we're saving the policy.
         assert isinstance(
