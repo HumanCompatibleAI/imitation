@@ -273,7 +273,7 @@ def make_data_loader(
             **kwargs,
         )
     elif isinstance(transitions, Iterable):
-        # Safe to ignore this error since we've already coerced Iterable[Trajectory]
+        # Safe to ignore this error since we've already converted Iterable[Trajectory]
         # `transitions` into Iterable[TransitionMapping]
         return _WrappedDataLoader(transitions, batch_size)  # type: ignore[arg-type]
     else:
