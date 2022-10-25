@@ -102,9 +102,8 @@ def eval_policy(
         # Generate trajectories with the RL algorithm's env - SB3 may apply wrappers
         # under the hood to get it to work with the RL algorithm (e.g. transposing
         # images so they can be fed into CNNs).
-        maybe_train_env = rl_algo.get_env()
-        assert maybe_train_env is not None
-        train_env = maybe_train_env
+        train_env = rl_algo.get_env()
+        assert train_env is not None
     else:
         train_env = venv
     trajs = rollout.generate_trajectories(
