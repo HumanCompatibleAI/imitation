@@ -291,11 +291,11 @@ class DAggerTrainer(base.BaseImitationAlgorithm):
     directory with the following structure::
 
        scratch-dir-name/
-           checkpoint-001.pkl
-           checkpoint-002.pkl
+           checkpoint-001.pt
+           checkpoint-002.pt
            …
-           checkpoint-XYZ.pkl
-           checkpoint-latest.pkl
+           checkpoint-XYZ.pt
+           checkpoint-latest.pt
            demos/
                round-000/
                    demos_round_000_000.npz
