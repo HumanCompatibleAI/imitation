@@ -392,7 +392,7 @@ jobs:
                    --junitxml=/tmp/test-reports/junit.xml \
                    -vv $TESTFILES \
                    --flake-finder \
-                   --flake-runs=500
+                   --flake-runs=10
 
       - save-pytest-cache
       - store-test-output-unix
@@ -420,3 +420,8 @@ workflows:
       - flakiness-benchmark:
           context:
           - docker-hub-creds
+          filters:
+            branches:
+              only:
+                - master
+                - flaky-tests
