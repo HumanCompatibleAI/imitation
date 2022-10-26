@@ -7,7 +7,7 @@ Follows the description in chapters 9 and 10 of Brian Ziebart's `PhD thesis`_.
 """
 import collections
 import warnings
-from typing import Any, Iterable, List, Mapping, Optional, Tuple, Type, Union
+from typing import Any, Iterable, List, Mapping, Optional, Tuple, Type, Union, cast
 
 import gym
 import numpy as np
@@ -318,6 +318,7 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
         # Initialize policy to be uniform random. We don't use this for MCE IRL
         # training, but it gives us something to return at all times with `policy`
         # property, similar to other algorithms.
+        assert isinstance(self.env.horizon, int)
         ones = np.ones((self.env.horizon, self.env.state_dim, self.env.action_dim))
         uniform_pi = ones / self.env.action_dim
         self._policy = TabularPolicy(
@@ -383,6 +384,9 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
         if isinstance(demonstrations, Iterable):
             first_item, demonstrations = util.get_first_iter_element(demonstrations)
             if isinstance(first_item, types.Trajectory):
+                # Safe since we know the first item is a Trajectory and `demonstrations`
+                # is an Iterable
+                demonstrations = cast(Iterable[types.Trajectory], demonstrations)
                 self._set_demo_from_trajectories(demonstrations)
                 return
 

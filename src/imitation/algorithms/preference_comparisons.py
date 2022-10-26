@@ -118,7 +118,8 @@ class TrajectoryDataset(TrajectoryGenerator):
     def sample(self, steps: int) -> Sequence[TrajectoryWithRew]:
         # make a copy before shuffling
         trajectories = list(self._trajectories)
-        self.rng.shuffle(trajectories)
+        # numpy's typing thinks it can't accept a list here, but it can
+        self.rng.shuffle(trajectories)  # type: ignore[arg-type]
         return _get_trajectories(trajectories, steps)
 
 
@@ -641,7 +642,11 @@ class RandomFragmenter(Fragmenter):
 
         # we need two fragments for each comparison
         for _ in range(2 * num_pairs):
-            traj = self.rng.choice(trajectories, p=np.array(weights) / sum(weights))
+            # numpy's typing thinks it can't accept a list here, but it can
+            traj = self.rng.choice(
+                trajectories,  # type: ignore[arg-type]
+                p=np.array(weights) / sum(weights),
+            )
             n = len(traj)
             start = self.rng.integers(0, n - fragment_length, endpoint=True)
             end = start + fragment_length
@@ -1204,7 +1209,9 @@ class BasicRewardTrainer(RewardTrainer):
                 # we convert the numpy generator to the pytorch generator.
                 generator=th.Generator().manual_seed(util.make_seeds(self.rng)),
             )
+            assert isinstance(train_dataset, PreferenceDataset)
             dataloader = self._make_data_loader(train_dataset)
+            assert isinstance(val_dataset, PreferenceDataset)
             val_dataloader = self._make_data_loader(val_dataset)
         else:
             dataloader = self._make_data_loader(dataset)

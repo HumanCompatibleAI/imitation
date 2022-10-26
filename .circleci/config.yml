@@ -39,10 +39,7 @@ executors:
       NUM_CPUS: 2
       EXCLUDE_MYPY: | 
         (?x)(
-          src/imitation/algorithms/preference_comparisons.py$
-          | src/imitation/rewards/serialize.py$
-          | src/imitation/algorithms/mce_irl.py$
-          | tests/algorithms/test_bc.py$
+          tests/algorithms/test_bc.py$
         )
 
 commands:

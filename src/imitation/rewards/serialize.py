@@ -173,14 +173,19 @@ def _validate_wrapper_structure(
 def load_zero(path: str, venv: VecEnv) -> reward_function.RewardFn:
     del path, venv
 
-    def f(
-        obs: np.ndarray,
-        act: np.ndarray,
-        next_obs: np.ndarray,
-        dones: np.ndarray,
-    ) -> np.ndarray:
-        del act, next_obs, dones  # Unused.
-        return np.zeros(obs.shape[0])
+    class f(reward_function.RewardFn):
+        def __init__(self):
+            super().__init__()
+
+        def __call__(
+            self,
+            obs: np.ndarray,
+            act: np.ndarray,
+            next_obs: np.ndarray,
+            dones: np.ndarray,
+        ) -> np.ndarray:
+            del act, next_obs, dones  # Unused.
+            return np.zeros(obs.shape[0])
 
     return f
 
