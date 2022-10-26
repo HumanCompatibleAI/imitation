@@ -1,6 +1,6 @@
 """Load serialized reward functions of different types."""
 
-from typing import Any, Callable, Iterable, Sequence, Type, Union, cast
+from typing import Any, Callable, Dict, Iterable, Optional, Sequence, Type, Union, cast
 
 import numpy as np
 import torch as th
@@ -26,7 +26,7 @@ class ValidateRewardFn(reward_function.RewardFn):
     def __init__(
         self,
         reward_fn: reward_function.RewardFn,
-    ):
+    ) -> None:
         """Builds the reward validator.
 
         Args:
@@ -81,8 +81,8 @@ def _strip_wrappers(
 def _make_functional(
     net: reward_nets.RewardNet,
     attr: str = "predict",
-    default_kwargs=None,
-    **kwargs,
+    default_kwargs: Optional[Dict[str, Any]] = None,
+    **kwargs: Any,
 ) -> reward_function.RewardFn:
     if default_kwargs is None:
         default_kwargs = {}
@@ -93,7 +93,7 @@ def _make_functional(
 WrapperPrefix = Sequence[Type[reward_nets.RewardNet]]
 
 
-def _prefix_matches(wrappers: Sequence[Type[Any]], prefix: Sequence[Type[Any]]):
+def _prefix_matches(wrappers: Sequence[Type[Any]], prefix: Sequence[Type[Any]]) -> bool:
     """Return true if `prefix` is a prefix of `wrappers`."""
     # Base cases
     if len(prefix) == 0:
@@ -174,13 +174,13 @@ def load_zero(path: str, venv: VecEnv) -> reward_function.RewardFn:
     del path, venv
 
     def f(
-        obs: np.ndarray,
-        act: np.ndarray,
-        next_obs: np.ndarray,
-        dones: np.ndarray,
+        state: np.ndarray,
+        action: np.ndarray,
+        next_state: np.ndarray,
+        done: np.ndarray,
     ) -> np.ndarray:
-        del act, next_obs, dones  # Unused.
-        return np.zeros(obs.shape[0])
+        del action, next_state, done  # Unused.
+        return np.zeros(state.shape[0])
 
     return f
 
@@ -264,7 +264,7 @@ def load_reward(
     reward_type: str,
     reward_path: str,
     venv: VecEnv,
-    **kwargs,
+    **kwargs: Any,
 ) -> reward_function.RewardFn:
     """Load serialized reward.
 

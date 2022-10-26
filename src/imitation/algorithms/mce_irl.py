@@ -7,7 +7,19 @@ Follows the description in chapters 9 and 10 of Brian Ziebart's `PhD thesis`_.
 """
 import collections
 import warnings
-from typing import Any, Iterable, List, Mapping, Optional, Tuple, Type, Union
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Iterable,
+    List,
+    Mapping,
+    NoReturn,
+    Optional,
+    Tuple,
+    Type,
+    Union,
+    cast,
+)
 
 import gym
 import numpy as np
@@ -45,7 +57,7 @@ def mce_partition_fh(
         \pi is a 3d array, indexed \pi[t,s,a].
     """
     # shorthand
-    horizon = env.horizon
+    horizon = int(env.horizon)
     n_states = env.state_dim
     n_actions = env.action_dim
     T = env.transition_matrix
@@ -101,7 +113,7 @@ def mce_occupancy_measures(
         and records the expected discounted number of times each state is visited.
     """
     # shorthand
-    horizon = env.horizon
+    horizon = int(env.horizon)
     n_states = env.state_dim
     n_actions = env.action_dim
     T = env.transition_matrix
@@ -150,7 +162,7 @@ class TabularPolicy(policies.BasePolicy):
         action_space: gym.Space,
         pi: np.ndarray,
         rng: np.random.Generator,
-    ):
+    ) -> None:
         """Builds TabularPolicy.
 
         Args:
@@ -182,7 +194,7 @@ class TabularPolicy(policies.BasePolicy):
         self,
         observation: th.Tensor,
         deterministic: bool = False,
-    ):
+    ) -> NoReturn:
         raise NotImplementedError("Should never be called.")  # pragma: no cover
 
     def predict(
@@ -269,7 +281,7 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
         log_interval: Optional[int] = 100,
         *,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
-    ):
+    ) -> None:
         r"""Creates MCE IRL.
 
         Args:
@@ -318,7 +330,7 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
         # Initialize policy to be uniform random. We don't use this for MCE IRL
         # training, but it gives us something to return at all times with `policy`
         # property, similar to other algorithms.
-        ones = np.ones((self.env.horizon, self.env.state_dim, self.env.action_dim))
+        ones = np.ones((int(self.env.horizon), self.env.state_dim, self.env.action_dim))
         uniform_pi = ones / self.env.action_dim
         self._policy = TabularPolicy(
             state_space=self.env.state_space,
@@ -383,6 +395,8 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
         if isinstance(demonstrations, Iterable):
             first_item, demonstrations = util.get_first_iter_element(demonstrations)
             if isinstance(first_item, types.Trajectory):
+                if TYPE_CHECKING:
+                    demonstrations = cast(Iterable[types.Trajectory], demonstrations)
                 self._set_demo_from_trajectories(demonstrations)
                 return
 
@@ -427,7 +441,7 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
                 f"Unsupported demonstration type {type(demonstrations)}",
             )
 
-    def _train_step(self, obs_mat: th.Tensor):
+    def _train_step(self, obs_mat: th.Tensor) -> Tuple[np.ndarray, np.ndarray]:
         self.optimizer.zero_grad()
 
         # get reward predicted for each state by current model, & compute

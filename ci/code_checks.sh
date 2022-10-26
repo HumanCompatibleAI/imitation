@@ -2,17 +2,6 @@
 
 # If you change these, also change .circleci/config.yml.
 SRC_FILES=(src/ tests/ experiments/ examples/ docs/conf.py setup.py ci/)
-EXCLUDE_MYPY="(?x)(
-  src/imitation/algorithms/preference_comparisons.py$
-  | src/imitation/rewards/reward_nets.py$
-  | src/imitation/algorithms/base.py$
-  | src/imitation/scripts/train_preference_comparisons.py$
-  | src/imitation/rewards/serialize.py$
-  | src/imitation/scripts/common/train.py$
-  | src/imitation/algorithms/mce_irl.py$
-  | src/imitation/algorithms/density.py$
-  | tests/algorithms/test_bc.py$
-)"
 
 set -x  # echo commands
 set -e  # quit immediately on error
@@ -34,7 +23,7 @@ fi
 if [ "${skipexpensive:-}" != "true" ]; then
   echo "Type checking"
   pytype -j auto "${SRC_FILES[@]}"
-  mypy "${SRC_FILES[@]}" --exclude "${EXCLUDE_MYPY}" --follow-imports=silent --show-error-codes
+  mypy "${SRC_FILES[@]}" --follow-imports=silent --show-error-codes
 
   echo "Building docs (validates docstrings)"
   pushd docs/

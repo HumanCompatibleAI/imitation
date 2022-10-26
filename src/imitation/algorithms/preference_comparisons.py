@@ -74,7 +74,7 @@ class TrajectoryGenerator(abc.ABC):
             be the environment rewards, not ones from a reward model).
         """  # noqa: DAR202
 
-    def train(self, steps: int, **kwargs):
+    def train(self, steps: int, **kwargs: Any) -> None:
         """Train an agent if the trajectory generator uses one.
 
         By default, this method does nothing and doesn't need
@@ -91,7 +91,7 @@ class TrajectoryGenerator(abc.ABC):
         return self._logger
 
     @logger.setter
-    def logger(self, value: imit_logger.HierarchicalLogger):
+    def logger(self, value: imit_logger.HierarchicalLogger) -> None:
         self._logger = value
 
 
@@ -135,7 +135,7 @@ class AgentTrainer(TrajectoryGenerator):
         switch_prob: float = 0.5,
         random_prob: float = 0.5,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
-    ):
+    ) -> None:
         """Initialize the agent trainer.
 
         Args:
@@ -309,11 +309,11 @@ class AgentTrainer(TrajectoryGenerator):
         return trajectories
 
     @property
-    def logger(self):
+    def logger(self) -> imit_logger.HierarchicalLogger:
         return super().logger
 
     @logger.setter
-    def logger(self, value: imit_logger.HierarchicalLogger):
+    def logger(self, value: imit_logger.HierarchicalLogger) -> None:
         self._logger = value
         self.algorithm.set_logger(self.logger)
 
@@ -353,7 +353,7 @@ class PreferenceModel(nn.Module):
         noise_prob: float = 0.0,
         discount_factor: float = 1.0,
         threshold: float = 50,
-    ):
+    ) -> None:
         """Create Preference Prediction Model.
 
         Args:
@@ -578,7 +578,7 @@ class RandomFragmenter(Fragmenter):
         rng: np.random.Generator,
         warning_threshold: int = 10,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
-    ):
+    ) -> None:
         """Initialize the fragmenter.
 
         Args:
@@ -675,7 +675,7 @@ class ActiveSelectionFragmenter(Fragmenter):
         fragment_sample_factor: float,
         uncertainty_on: str = "logits",
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
-    ):
+    ) -> None:
         """Initialize the active selection fragmenter.
 
         Args:
@@ -742,7 +742,7 @@ class ActiveSelectionFragmenter(Fragmenter):
         # return fragment pairs that have the highest uncertainty
         return [fragment_pairs[idx] for idx in fragment_idxs[:num_pairs]]
 
-    def variance_estimate(self, rews1, rews2) -> float:
+    def variance_estimate(self, rews1: th.Tensor, rews2: th.Tensor) -> float:
         """Gets the variance estimate from the rewards of a fragment pair.
 
         Args:
@@ -781,7 +781,7 @@ class PreferenceGatherer(abc.ABC):
         self,
         rng: Optional[np.random.Generator] = None,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
-    ):
+    ) -> None:
         """Initializes the preference gatherer.
 
         Args:
@@ -825,7 +825,7 @@ class SyntheticGatherer(PreferenceGatherer):
         rng: Optional[np.random.Generator] = None,
         threshold: float = 50,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
-    ):
+    ) -> None:
         """Initialize the synthetic preference gatherer.
 
         Args:
@@ -902,7 +902,7 @@ class SyntheticGatherer(PreferenceGatherer):
         return np.array(rews1, dtype=np.float32), np.array(rews2, dtype=np.float32)
 
 
-class PreferenceDataset(th.utils.data.Dataset):
+class PreferenceDataset(data_th.Dataset):
     """A PyTorch Dataset for preference comparisons.
 
     Each item is a tuple consisting of two trajectory fragments
@@ -913,7 +913,7 @@ class PreferenceDataset(th.utils.data.Dataset):
     method.
     """
 
-    def __init__(self, max_size: Optional[int] = None):
+    def __init__(self, max_size: Optional[int] = None) -> None:
         """Builds an empty PreferenceDataset.
 
         Args:
@@ -927,7 +927,11 @@ class PreferenceDataset(th.utils.data.Dataset):
         self.max_size = max_size
         self.preferences: np.ndarray = np.array([])
 
-    def push(self, fragments: Sequence[TrajectoryWithRewPair], preferences: np.ndarray):
+    def push(
+        self,
+        fragments: Sequence[TrajectoryWithRewPair],
+        preferences: np.ndarray,
+    ) -> None:
         """Add more samples to the dataset.
 
         Args:
@@ -960,7 +964,7 @@ class PreferenceDataset(th.utils.data.Dataset):
                 self.fragments2 = self.fragments2[extra:]
                 self.preferences = self.preferences[extra:]
 
-    def __getitem__(self, i) -> Tuple[TrajectoryWithRewPair, float]:
+    def __getitem__(self, i: int) -> Tuple[TrajectoryWithRewPair, float]:
         return (self.fragments1[i], self.fragments2[i]), self.preferences[i]
 
     def __len__(self) -> int:
@@ -979,7 +983,7 @@ class PreferenceDataset(th.utils.data.Dataset):
 
 def preference_collate_fn(
     batch: Sequence[Tuple[TrajectoryWithRewPair, float]],
-) -> Tuple[Sequence[TrajectoryWithRewPair], np.ndarray]:
+) -> Tuple[List[TrajectoryWithRewPair], np.ndarray]:
     fragment_pairs, preferences = zip(*batch)
     return list(fragment_pairs), np.array(preferences)
 
@@ -988,7 +992,7 @@ class LossAndMetrics(NamedTuple):
     """Loss and auxiliary metrics for reward network training."""
 
     loss: th.Tensor
-    metrics: Mapping[str, th.Tensor]
+    metrics: Dict[str, th.Tensor]
 
 
 class RewardLoss(nn.Module, abc.ABC):
@@ -1015,7 +1019,7 @@ class RewardLoss(nn.Module, abc.ABC):
         """
 
 
-def _trajectory_pair_includes_reward(fragment_pair: TrajectoryPair):
+def _trajectory_pair_includes_reward(fragment_pair: TrajectoryPair) -> bool:
     """Return true if and only if both fragments in the pair include rewards."""
     frag1, frag2 = fragment_pair
     return isinstance(frag1, TrajectoryWithRew) and isinstance(frag2, TrajectoryWithRew)
@@ -1024,7 +1028,7 @@ def _trajectory_pair_includes_reward(fragment_pair: TrajectoryPair):
 class CrossEntropyRewardLoss(RewardLoss):
     """Compute the cross entropy reward loss."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Create cross entropy reward loss."""
         super().__init__()
 
@@ -1083,7 +1087,7 @@ class RewardTrainer(abc.ABC):
         self,
         preference_model: PreferenceModel,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
-    ):
+    ) -> None:
         """Initialize the reward trainer.
 
         Args:
@@ -1094,11 +1098,11 @@ class RewardTrainer(abc.ABC):
         self._logger = custom_logger or imit_logger.configure()
 
     @property
-    def logger(self):
+    def logger(self) -> imit_logger.HierarchicalLogger:
         return self._logger
 
     @logger.setter
-    def logger(self, custom_logger):
+    def logger(self, custom_logger: imit_logger.HierarchicalLogger) -> None:
         self._logger = custom_logger
 
     def train(self, dataset: PreferenceDataset, epoch_multiplier: float = 1.0) -> None:
@@ -1132,7 +1136,7 @@ class BasicRewardTrainer(RewardTrainer):
         lr: float = 1e-3,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
         regularizer_factory: Optional[regularizers.RegularizerFactory] = None,
-    ):
+    ) -> None:
         """Initialize the reward model trainer.
 
         Args:
@@ -1163,7 +1167,7 @@ class BasicRewardTrainer(RewardTrainer):
             else None
         )
 
-    def _make_data_loader(self, dataset: PreferenceDataset) -> data_th.DataLoader:
+    def _make_data_loader(self, dataset: data_th.Dataset) -> data_th.DataLoader:
         """Make a dataloader."""
         return data_th.DataLoader(
             dataset,
@@ -1286,7 +1290,7 @@ class EnsembleTrainer(BasicRewardTrainer):
         lr: float = 1e-3,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
         regularizer_factory: Optional[regularizers.RegularizerFactory] = None,
-    ):
+    ) -> None:
         """Initialize the reward model trainer.
 
         Args:
@@ -1335,11 +1339,11 @@ class EnsembleTrainer(BasicRewardTrainer):
             self.member_trainers.append(reward_trainer)
 
     @property
-    def logger(self):
+    def logger(self) -> imit_logger.HierarchicalLogger:
         return super().logger
 
     @logger.setter
-    def logger(self, custom_logger):
+    def logger(self, custom_logger: imit_logger.HierarchicalLogger) -> None:
         self._logger = custom_logger
         for member_trainer in self.member_trainers:
             member_trainer.logger = custom_logger
@@ -1438,7 +1442,7 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
         allow_variable_horizon: bool = False,
         rng: Optional[np.random.Generator] = None,
         query_schedule: Union[str, type_aliases.Schedule] = "hyperbolic",
-    ):
+    ) -> None:
         """Initialize the preference comparison trainer.
 
         The loggers of all subcomponents are overridden with the logger used
@@ -1597,7 +1601,7 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
         total_timesteps: int,
         total_comparisons: int,
         callback: Optional[Callable[[int], None]] = None,
-    ) -> Mapping[str, Any]:
+    ) -> dict[str, Any]:
         """Train the reward model and the policy if applicable.
 
         Args:

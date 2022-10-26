@@ -7,7 +7,7 @@ then rewards the agent for following that estimate.
 import enum
 import itertools
 from collections.abc import Mapping
-from typing import Dict, Iterable, List, Optional, cast
+from typing import Any, Dict, Iterable, List, Optional, cast
 
 import numpy as np
 from gym.spaces.utils import flatten
@@ -226,7 +226,7 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
                 None: np.concatenate(list(self.transitions.values()), axis=0),
             }
 
-    def train(self):
+    def train(self) -> None:
         """Fits the density model to demonstration data `self.transitions`."""
         # if requested, we'll scale demonstration transitions so that they have
         # zero mean and unit variance (i.e. all components are equally important)
@@ -343,7 +343,7 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
         rew_array = np.asarray(rew_list, dtype="float32")
         return rew_array
 
-    def train_policy(self, n_timesteps: int = int(1e6), **kwargs):
+    def train_policy(self, n_timesteps: int = int(1e6), **kwargs: Any):
         """Train the imitation policy for a given number of timesteps.
 
         Args:
@@ -365,7 +365,12 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
         trajs, ep_lens = self.buffering_wrapper.pop_trajectories()
         self._check_fixed_horizon(ep_lens)
 
-    def test_policy(self, *, n_trajectories: int = 10, true_reward: bool = True):
+    def test_policy(
+        self,
+        *,
+        n_trajectories: int = 10,
+        true_reward: bool = True,
+    ) -> Dict[str, float]:
         """Test current imitation policy on environment & give some rollout stats.
 
         Args:

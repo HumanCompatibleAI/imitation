@@ -43,7 +43,7 @@ class BatchIteratorWithEpochEndCallback:
     n_batches: Optional[int]
     on_epoch_end: Optional[Callable[[int], None]]
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         epochs_and_batches_specified = (
             self.n_epochs is not None and self.n_batches is not None
         )
@@ -56,7 +56,7 @@ class BatchIteratorWithEpochEndCallback:
             )
 
     def __iter__(self) -> Iterator[algo_base.TransitionMapping]:
-        def batch_iterator():
+        def batch_iterator() -> Iterator[algo_base.TransitionMapping]:
 
             # Note: the islice here ensures we do not exceed self.n_epochs
             for epoch_num in itertools.islice(itertools.count(), self.n_epochs):
