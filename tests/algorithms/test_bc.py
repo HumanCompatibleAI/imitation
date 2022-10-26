@@ -130,7 +130,7 @@ def test_smoke_bc_creation(
     bc.BC(
         **bc_args,
         demonstrations=make_expert_transition_loader(
-            cache_dir=pytestconfig.cache.makedir("experts"),
+            cache_dir=pytestconfig.cache.mkdir("experts"),
             batch_size=bc_args["batch_size"],
             expert_data_type=expert_data_type,
             env_name=env_name,
@@ -160,7 +160,7 @@ def test_smoke_bc_training(
     trainer = bc.BC(
         **bc_args,
         demonstrations=make_expert_transition_loader(
-            cache_dir=pytestconfig.cache.makedir("experts"),
+            cache_dir=pytestconfig.cache.mkdir("experts"),
             batch_size=bc_args["batch_size"],
             expert_data_type=expert_data_type,
             env_name=env_name,
