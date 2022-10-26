@@ -118,7 +118,7 @@ class TrajectoryDataset(TrajectoryGenerator):
     def sample(self, steps: int) -> Sequence[TrajectoryWithRew]:
         # make a copy before shuffling
         trajectories = list(self._trajectories)
-        self.rng.shuffle(trajectories)
+        self.rng.shuffle(trajectories)  # type: ignore[arg-type]
         return _get_trajectories(trajectories, steps)
 
 
@@ -641,7 +641,8 @@ class RandomFragmenter(Fragmenter):
 
         # we need two fragments for each comparison
         for _ in range(2 * num_pairs):
-            traj = self.rng.choice(trajectories, p=np.array(weights) / sum(weights))
+            p = np.array(weights) / sum(weights)
+            traj = self.rng.choice(trajectories, p=p)  # type: ignore[arg-type]
             n = len(traj)
             start = self.rng.integers(0, n - fragment_length, endpoint=True)
             end = start + fragment_length
@@ -1601,7 +1602,7 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
         total_timesteps: int,
         total_comparisons: int,
         callback: Optional[Callable[[int], None]] = None,
-    ) -> dict[str, Any]:
+    ) -> Dict[str, Any]:
         """Train the reward model and the policy if applicable.
 
         Args:

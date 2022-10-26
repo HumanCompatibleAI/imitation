@@ -127,6 +127,7 @@ def test_smoke_bc_creation(
     rng: np.random.Generator,
     pytestconfig: pytest.Config,
 ):
+    assert pytestconfig.cache is not None
     bc.BC(
         **bc_args,
         demonstrations=make_expert_transition_loader(
@@ -156,6 +157,7 @@ def test_smoke_bc_training(
     rng: np.random.Generator,
     pytestconfig: pytest.Config,
 ):
+    assert pytestconfig.cache is not None
     # GIVEN
     trainer = bc.BC(
         **bc_args,
@@ -183,7 +185,7 @@ def test_that_bc_improves_rewards(
 ):
     # GIVEN
     novice_rewards, _ = evaluation.evaluate_policy(
-        cartpole_bc_trainer.policy,
+        cartpole_bc_trainer.policy,  # type: ignore[arg-type]
         cartpole_venv,
         15,
         return_episode_rewards=True,
@@ -193,7 +195,7 @@ def test_that_bc_improves_rewards(
     # WHEN
     cartpole_bc_trainer.train(n_epochs=1)
     rewards_after_training, _ = evaluation.evaluate_policy(
-        cartpole_bc_trainer.policy,
+        cartpole_bc_trainer.policy,  # type: ignore[arg-type]
         cartpole_venv,
         15,
         return_episode_rewards=True,
