@@ -8,7 +8,6 @@ Follows the description in chapters 9 and 10 of Brian Ziebart's `PhD thesis`_.
 import collections
 import warnings
 from typing import (
-    TYPE_CHECKING,
     Any,
     Iterable,
     List,
@@ -395,8 +394,7 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
         if isinstance(demonstrations, Iterable):
             first_item, demonstrations = util.get_first_iter_element(demonstrations)
             if isinstance(first_item, types.Trajectory):
-                if TYPE_CHECKING:
-                    demonstrations = cast(Iterable[types.Trajectory], demonstrations)
+                demonstrations = cast(Iterable[types.Trajectory], demonstrations)
                 self._set_demo_from_trajectories(demonstrations)
                 return
 
