@@ -474,8 +474,10 @@ def test_gradient_accumulation(
         th.manual_seed(seed)
         reward_trainer2.train(dataset)
 
-        assert all(th.allclose(p1, p2) for p1, p2 in zip(reward_net1.parameters(),
-                                                         reward_net2.parameters()))
+        assert all(
+            th.allclose(p1, p2)
+            for p1, p2 in zip(reward_net1.parameters(), reward_net2.parameters())
+        )
 
 
 def test_synthetic_gatherer_deterministic(
