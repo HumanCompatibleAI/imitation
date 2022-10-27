@@ -73,10 +73,9 @@ OLD_FMT_ROLLOUT_TEST_DATA_PATH = TEST_DATA_PATH / "old_format_rollout.pkl"
 
 @pytest.fixture(autouse=True)
 def sacred_capture_use_sys():
+
     """Set Sacred capture mode to "sys" because default "fd" option leads to error.
-
     See https://github.com/IDSIA/sacred/issues/289.
-
     Yields:
         None after setting capture mode; restores it after yield.
     """
@@ -604,7 +603,6 @@ def test_transfer_learning(tmpdir: str) -> None:
     """Transfer learning smoke test.
 
     Saves a dummy AIRL test reward, then loads it for transfer learning.
-
     Args:
         tmpdir: Temporary directory to save results to.
     """
@@ -649,10 +647,9 @@ def test_preference_comparisons_transfer_learning(
     tmpdir: str,
     named_configs_dict: Mapping[str, List[str]],
 ) -> None:
+
     """Transfer learning smoke test.
-
     Saves a preference comparisons ensemble reward, then loads it for transfer learning.
-
     Args:
         tmpdir: Temporary directory to save results to.
         named_configs_dict: Named configs for preference_comparisons and rl.
@@ -953,3 +950,61 @@ def test_convert_trajs(tmpdir: str):
     assert len(from_pkl) == len(from_npz)
     for t_pkl, t_npz in zip(from_pkl, from_npz):
         assert t_pkl == t_npz
+
+
+#_TRAIN_VIDEO_CONFIGS = {"train": {"videos": True}}
+# Change the following if the file structure of checkpoints changed.
+VIDEO_FILE_PATH = "video.{:06}.mp4".format(0)
+VIDEO_PATH_DICT = dict(
+    rl=lambda d: d / "videos",
+    adversarial=lambda d: d / "checkpoints" / "videos",
+    pc=lambda d: d / "checkpoints" / "videos"
+)
+
+
+def _check_video_exists(log_dir, algo):
+    video_dir = VIDEO_PATH_DICT[algo](log_dir)
+    assert os.path.exists(video_dir)
+    assert VIDEO_FILE_PATH in os.listdir(video_dir)
+
+
+def test_train_rl_video_saving(tmpdir):
+    """Smoke test for imitation.scripts.train_rl."""
+    config_updates = dict(
+        common=dict(log_root=tmpdir)    )
+    run = train_rl.train_rl_ex.run(
+        named_configs=["cartpole"] + ALGO_FAST_CONFIGS["rl"],
+        config_updates=config_updates,
+    )
+
+    assert run.status == "COMPLETED"
+    _check_video_exists(run.config["common"]["log_dir"], "rl")
+
+
+def test_train_adversarial_video_saving(tmpdir):
+    """Smoke test for imitation.scripts.train_adversarial."""
+    named_configs = ["pendulum"] + ALGO_FAST_CONFIGS["adversarial"]
+    config_updates = dict(
+        common=dict(log_root=tmpdir),
+        demonstrations=dict(rollout_path=PENDULUM_TEST_ROLLOUT_PATH),
+        checkpoint_interval=1    )
+    run = train_adversarial.train_adversarial_ex.run(
+        command_name="gail",
+        named_configs=named_configs,
+        config_updates=config_updates,
+    )
+    assert run.status == "COMPLETED"
+    _check_video_exists(run.config["common"]["log_dir"], "adversarial")
+
+
+def test_train_preference_comparisons_video_saving(tmpdir):
+    config_updates = dict(
+        common=dict(log_root=tmpdir),
+        checkpoint_interval=1
+    )
+    run = train_preference_comparisons.train_preference_comparisons_ex.run(
+        named_configs=["cartpole"] + ALGO_FAST_CONFIGS["preference_comparison"],
+        config_updates=config_updates,
+    )
+    assert run.status == "COMPLETED"
+    _check_video_exists(run.config["common"]["log_dir"], "pc")

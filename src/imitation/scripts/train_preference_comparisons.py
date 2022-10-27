@@ -21,6 +21,8 @@ from imitation.scripts.common import train
 from imitation.scripts.config.train_preference_comparisons import (
     train_preference_comparisons_ex,
 )
+import imitation.util.video_wrapper as video_wrapper
+
 
 
 def save_model(
@@ -149,14 +151,24 @@ def train_preference_comparisons(
         ValueError: Inconsistency between config and deserialized policy normalization.
     """
     custom_logger, log_dir = common.setup_logging()
+    checkpoint_dir = log_dir / "checkpoints"
+    video_dir = checkpoint_dir / "videos"
+    checkpoint_dir.mkdir(parents=True, exist_ok=True)
+    video_dir.mkdir(parents=True, exist_ok=True)
+
     rng = common.make_rng()
 
-    with common.make_venv() as venv:
+    post_wrappers = None
+    if checkpoint_interval > 0:
+        post_wrappers = [video_wrapper.video_wrapper_factory(video_dir, checkpoint_interval)]
+        
+    with common.make_venv(post_wrappers=post_wrappers) as venv:
         reward_net = reward.make_reward_net(venv)
         relabel_reward_fn = functools.partial(
             reward_net.predict_processed,
             update_stats=False,
         )
+
         if agent_path is None:
             agent = rl_common.make_rl_algo(venv, relabel_reward_fn=relabel_reward_fn)
         else:
@@ -286,7 +298,6 @@ def main_console():
     observer = FileStorageObserver(observer_path)
     train_preference_comparisons_ex.observers.append(observer)
     train_preference_comparisons_ex.run_commandline()
-
 
 if __name__ == "__main__":  # pragma: no cover
     main_console()
