@@ -1168,7 +1168,7 @@ class BasicRewardTrainer(RewardTrainer):
             else None
         )
 
-    def _make_data_loader(self, dataset: PreferenceDataset) -> data_th.DataLoader:
+    def _make_data_loader(self, dataset: th.utils.data.Dataset) -> data_th.DataLoader:
         """Make a dataloader."""
         return data_th.DataLoader(
             dataset,
@@ -1209,9 +1209,7 @@ class BasicRewardTrainer(RewardTrainer):
                 # we convert the numpy generator to the pytorch generator.
                 generator=th.Generator().manual_seed(util.make_seeds(self.rng)),
             )
-            assert isinstance(train_dataset, PreferenceDataset)
             dataloader = self._make_data_loader(train_dataset)
-            assert isinstance(val_dataset, PreferenceDataset)
             val_dataloader = self._make_data_loader(val_dataset)
         else:
             dataloader = self._make_data_loader(dataset)
