@@ -1146,8 +1146,6 @@ class BasicRewardTrainer(RewardTrainer):
                 The gradients are accumulated until `batch_size` examples are seen
                 before making an optimization step. Must be a factor of `batch_size`.
                 Optional, defaults to `batch_size`.
-            number of steps to accumulate
-                gradients for before performing an optimization step.
             epochs: number of epochs in each training iteration (can be adjusted
                 on the fly by specifying an `epoch_multiplier` in `self.train()`
                 if longer training is desired in specific cases).
@@ -1157,6 +1155,9 @@ class BasicRewardTrainer(RewardTrainer):
                 training, specify a regularizer factory here. The factory will be
                 used to construct a regularizer. See
                 ``imitation.regularization.RegularizerFactory`` for more details.
+
+        Raises:
+            ValueError: if the batch size is not a multiple of the minibatch size.
         """
         super().__init__(preference_model, custom_logger)
         self.loss = loss
@@ -1247,8 +1248,7 @@ class BasicRewardTrainer(RewardTrainer):
                             self.optim.step()
                             self.optim.zero_grad()
                             accumulated_size = 0
-                    if 0 < accumulated_size < self.batch_size:
-                        self.optim.step()
+                    self.optim.step()  # for any leftover gradients
 
                     if not self.requires_regularizer_update:
                         continue
@@ -1328,6 +1328,7 @@ class EnsembleTrainer(BasicRewardTrainer):
 
         Raises:
             TypeError: if model is not a RewardEnsemble.
+            ValueError: if the batch size is not a multiple of the minibatch size.
         """
         if preference_model.ensemble_model is None:
             raise TypeError(
