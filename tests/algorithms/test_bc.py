@@ -194,7 +194,7 @@ def test_that_bc_improves_rewards(
     #    making a new protocol type, and might make error messages slightly
     #    more confusing?
     novice_rewards, _ = evaluation.evaluate_policy(
-        cartpole_bc_trainer.policy, # type: ignore[arg-type]
+        cartpole_bc_trainer.policy,  # type: ignore[arg-type]
         cartpole_venv,
         15,
         return_episode_rewards=True,
@@ -204,7 +204,7 @@ def test_that_bc_improves_rewards(
     # WHEN
     cartpole_bc_trainer.train(n_epochs=1)
     rewards_after_training, _ = evaluation.evaluate_policy(
-        cartpole_bc_trainer.policy, #type: ignore[arg-type]
+        cartpole_bc_trainer.policy,  # type: ignore[arg-type]
         cartpole_venv,
         15,
         return_episode_rewards=True,

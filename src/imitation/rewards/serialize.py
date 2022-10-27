@@ -187,7 +187,7 @@ def load_zero(path: str, venv: VecEnv) -> reward_function.RewardFn:
             del act, next_obs, dones  # Unused.
             return np.zeros(obs.shape[0])
 
-    return f
+    return f()
 
 
 # TODO(adam): I think we can get rid of this and have just one RewardNet.
