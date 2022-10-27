@@ -415,6 +415,69 @@ def test_discount_rate_no_crash(
     main_trainer.train(100, 10)
 
 
+def test_gradient_accumulation(
+    agent_trainer,
+    venv,
+    random_fragmenter,
+    custom_logger,
+    rng,
+):
+    # Test that training steps on the same dataset with different minibatch sizes
+    # result in the same reward network.
+
+    loss = preference_comparisons.CrossEntropyRewardLoss()
+
+    preference_gatherer = preference_comparisons.SyntheticGatherer(
+        custom_logger=custom_logger,
+        rng=rng,
+    )
+
+    dataset = preference_comparisons.PreferenceDataset()
+    trajectory = agent_trainer.sample(17)
+    fragments = random_fragmenter(trajectory, 1, 17)
+    preferences = preference_gatherer(fragments)
+    dataset.push(fragments, preferences)
+
+    seed = rng.integers(2**32)
+    rng1 = np.random.default_rng(seed)
+    rng2 = np.random.default_rng(seed)
+
+    seed = rng.integers(2**32)
+    th.manual_seed(seed)
+    reward_net1 = reward_nets.BasicRewardNet(venv.observation_space, venv.action_space)
+    th.manual_seed(seed)
+    reward_net2 = reward_nets.BasicRewardNet(venv.observation_space, venv.action_space)
+
+    preference_model1 = preference_comparisons.PreferenceModel(model=reward_net1)
+    reward_trainer1 = preference_comparisons.BasicRewardTrainer(
+        preference_model1,
+        loss,
+        rng=rng1,
+        batch_size=12,
+    )
+
+    preference_model2 = preference_comparisons.PreferenceModel(model=reward_net2)
+    reward_trainer2 = preference_comparisons.BasicRewardTrainer(
+        preference_model2,
+        loss,
+        rng=rng2,
+        batch_size=12,
+        minibatch_size=3,
+    )
+
+    for _ in range(5):
+        seed = rng.integers(2**32)
+
+        th.manual_seed(seed)
+        reward_trainer1.train(dataset)
+
+        th.manual_seed(seed)
+        reward_trainer2.train(dataset)
+
+        assert all(th.allclose(p1, p2) for p1, p2 in zip(reward_net1.parameters(),
+                                                         reward_net2.parameters()))
+
+
 def test_synthetic_gatherer_deterministic(
     agent_trainer,
     random_fragmenter,
