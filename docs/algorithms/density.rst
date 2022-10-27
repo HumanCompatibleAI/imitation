@@ -22,7 +22,7 @@ Detailed example notebook: :doc:`../tutorials/7_train_density`
     rng = np.random.default_rng(0)
 
     env = util.make_vec_env("Pendulum-v1", rng=rng, n_envs=2)
-    rollouts = types.load("../tests/testdata/expert_models/pendulum_0/rollouts/final.pkl")
+    rollouts = types.load("../tests/testdata/expert_models/pendulum_0/rollouts/final.npz")
 
     imitation_trainer = PPO(ActorCriticPolicy, env)
     density_trainer = db.DensityAlgorithm(

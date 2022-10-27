@@ -51,7 +51,7 @@ def train_rl(
       "final"):
 
         - Policies are saved to `{log_dir}/policies/{step}/`.
-        - Rollouts are saved to `{log_dir}/rollouts/{step}.pkl`.
+        - Rollouts are saved to `{log_dir}/rollouts/{step}.npz`.
 
     Args:
         total_timesteps: Number of training timesteps in `model.learn()`.
@@ -145,7 +145,7 @@ def train_rl(
 
         # Save final artifacts after training is complete.
         if rollout_save_final:
-            save_path = rollout_dir / "final.pkl"
+            save_path = rollout_dir / "final.npz"
             sample_until = rollout.make_sample_until(
                 rollout_save_n_timesteps,
                 rollout_save_n_episodes,

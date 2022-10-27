@@ -7,7 +7,6 @@ policy.
 """
 
 import abc
-import dataclasses
 import logging
 import os
 import pathlib
@@ -103,37 +102,15 @@ def _save_dagger_demo(
     save_dir: types.AnyPath,
     prefix: str = "",
 ) -> None:
-    # TODO(shwang): This is possibly redundant with types.save(). Note
-    #   however that NPZ save here is likely more space efficient than
-    #   pickle from types.save(), and types.save only accepts
-    #   TrajectoryWithRew right now (subclass of Trajectory).
     save_dir = types.parse_path(save_dir)
     assert isinstance(trajectory, types.Trajectory)
     actual_prefix = f"{prefix}-" if prefix else ""
     timestamp = util.make_unique_timestamp()
     filename = f"{actual_prefix}dagger-demo-{timestamp}.npz"
 
-    save_dir.mkdir(parents=True, exist_ok=True)
     npz_path = save_dir / filename
-    np.savez_compressed(npz_path, **dataclasses.asdict(trajectory))
+    types.save(npz_path, [trajectory])
     logging.info(f"Saved demo at '{npz_path}'")
-
-
-def _load_trajectory(npz_path: str) -> types.Trajectory:
-    """Load a single trajectory from a compressed Numpy file."""
-    np_data = np.load(npz_path, allow_pickle=True)
-    has_rew = "rews" in np_data
-    dict_data = dict(np_data.items())
-
-    # infos=None is saved as array(None) which leads to a type checking error upon
-    # `Trajectory` initialization. Convert to None to prevent error.
-    infos = dict_data["infos"]
-    if infos.shape == ():
-        assert infos.item() is None
-        dict_data["infos"] = None
-
-    cls = types.TrajectoryWithRew if has_rew else types.Trajectory
-    return cls(**dict_data)
 
 
 class InteractiveTrajectoryCollector(vec_env.VecEnvWrapper):
@@ -291,11 +268,11 @@ class DAggerTrainer(base.BaseImitationAlgorithm):
     directory with the following structure::
 
        scratch-dir-name/
-           checkpoint-001.pkl
-           checkpoint-002.pkl
+           checkpoint-001.pt
+           checkpoint-002.pt
            …
-           checkpoint-XYZ.pkl
-           checkpoint-latest.pkl
+           checkpoint-XYZ.pt
+           checkpoint-latest.pt
            demos/
                round-000/
                    demos_round_000_000.npz
@@ -388,7 +365,7 @@ class DAggerTrainer(base.BaseImitationAlgorithm):
         for round_num in range(self._last_loaded_round + 1, self.round_num + 1):
             round_dir = self._demo_dir_path_for_round(round_num)
             demo_paths = self._get_demo_paths(round_dir)
-            self._all_demos.extend(_load_trajectory(p) for p in demo_paths)
+            self._all_demos.extend(types.load(p)[0] for p in demo_paths)
             num_demos_by_round.append(len(demo_paths))
         logging.info(f"Loaded {len(self._all_demos)} total")
         demo_transitions = rollout.flatten_trajectories(self._all_demos)

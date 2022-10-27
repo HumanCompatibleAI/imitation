@@ -1,126 +1,24 @@
 """Fixtures common across tests."""
-import os
-import pickle
-import traceback
-import warnings
-from typing import Sequence
 
-import gym
 import numpy as np
 import pytest
+import seals  # noqa: F401
 import torch
-from filelock import FileLock
-from huggingface_sb3 import load_from_hub
-from stable_baselines3 import PPO
-from stable_baselines3.common.policies import BasePolicy
-from stable_baselines3.common.vec_env import DummyVecEnv, VecEnv
+from stable_baselines3.common.vec_env import VecEnv
 
-from imitation.data import rollout, types
-from imitation.data.types import TrajectoryWithRew
 from imitation.data.wrappers import RolloutInfoWrapper
-from imitation.util import logger
+from imitation.util import logger, util
 
-CARTPOLE_ENV_NAME = "CartPole-v1"
-
-
-def load_or_rollout_trajectories(
-    cache_path,
-    policy,
-    venv,
-    rng,
-) -> Sequence[TrajectoryWithRew]:
-    os.makedirs(os.path.dirname(cache_path), exist_ok=True)
-    with FileLock(cache_path + ".lock"):
-        try:
-            return types.load_with_rewards(cache_path)
-        except (OSError, pickle.PickleError):  # pragma: no cover
-            warnings.warn(
-                "Recomputing expert trajectories due to the following error when "
-                "trying to load them:\n" + traceback.format_exc(),
-            )
-            rollouts = rollout.rollout(
-                policy,
-                venv,
-                rollout.make_sample_until(min_timesteps=2000, min_episodes=57),
-                rng=rng,
-            )
-            types.save(cache_path, rollouts)
-            return rollouts
+CARTPOLE_ENV_NAME = "seals/CartPole-v0"
 
 
-@pytest.fixture(params=[1, 4])
-def cartpole_venv(request) -> VecEnv:
+@pytest.fixture(params=[1, 4], ids=lambda n: f"vecenv({n})")
+def cartpole_venv(request, rng) -> VecEnv:
     num_envs = request.param
-    return DummyVecEnv(
-        [
-            lambda: RolloutInfoWrapper(gym.make(CARTPOLE_ENV_NAME))
-            for _ in range(num_envs)
-        ],
-    )
-
-
-@pytest.fixture
-def cartpole_expert_policy():
-    return PPO.load(
-        load_from_hub(
-            "HumanCompatibleAI/ppo-seals-CartPole-v0",
-            "ppo-seals-CartPole-v0.zip",
-        ),
-    ).policy
-
-
-@pytest.fixture
-def cartpole_expert_trajectories(
-    cartpole_expert_policy,
-    cartpole_venv,
-    pytestconfig,
-    rng,
-) -> Sequence[TrajectoryWithRew]:
-    rollouts_path = str(
-        pytestconfig.cache.makedir("experts") / CARTPOLE_ENV_NAME / "rollout.npz",
-    )
-    return load_or_rollout_trajectories(
-        rollouts_path,
-        cartpole_expert_policy,
-        cartpole_venv,
-        rng,
-    )
-
-
-PENDULUM_ENV_NAME = "Pendulum-v1"
-
-
-@pytest.fixture
-def pendulum_venv() -> VecEnv:
-    return DummyVecEnv([lambda: RolloutInfoWrapper(gym.make(PENDULUM_ENV_NAME))] * 8)
-
-
-@pytest.fixture
-def pendulum_expert_policy() -> BasePolicy:
-    policy = PPO.load(
-        load_from_hub(
-            "HumanCompatibleAI/ppo-Pendulum-v1",
-            "ppo-Pendulum-v1.zip",
-        ),
-    ).policy
-    assert policy is not None
-    return policy
-
-
-@pytest.fixture
-def pendulum_expert_trajectories(
-    pendulum_expert_policy,
-    pendulum_venv,
-    pytestconfig,
-    rng,
-) -> Sequence[TrajectoryWithRew]:
-    rollouts_path = str(
-        pytestconfig.cache.makedir("experts") / PENDULUM_ENV_NAME / "rollout.npz",
-    )
-    return load_or_rollout_trajectories(
-        rollouts_path,
-        pendulum_expert_policy,
-        pendulum_venv,
+    return util.make_vec_env(
+        CARTPOLE_ENV_NAME,
+        n_envs=num_envs,
+        post_wrappers=[lambda env, _: RolloutInfoWrapper(env)],
         rng=rng,
     )
 

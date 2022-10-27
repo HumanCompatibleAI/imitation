@@ -591,7 +591,7 @@ class CnnRewardNet(RewardNet):
             rewards = th.sum(outputs * full_acts, dim=1)
         elif not self.use_action and self.use_done:
             # here we turn done into a one-hot vector.
-            dones_binary = done.type(th.LongTensor)
+            dones_binary = done.long()
             dones_one_hot = nn.functional.one_hot(dones_binary, num_classes=2)
             rewards = th.sum(outputs * dones_one_hot, dim=1)
         else:
@@ -977,7 +977,7 @@ class RewardEnsemble(RewardNetWithVariance):
 
     def forward(self, *args) -> th.Tensor:
         """The forward method of the ensemble should in general not be used directly."""
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def predict_processed(
         self,
