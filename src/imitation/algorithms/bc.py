@@ -459,22 +459,19 @@ class BC(algo_base.DemonstrationAlgorithm):
                 on_batch_end()
 
         self.optimizer.zero_grad()
-        t_loss = 0
         for (batch_num, batch_size, num_samples_so_far), batch in batches_with_stats:
             obs = th.as_tensor(batch["obs"], device=self.policy.device).detach()
             acts = th.as_tensor(batch["acts"], device=self.policy.device).detach()
             training_metrics = self.loss_calculator(self.policy, obs, acts)
 
             loss = training_metrics.loss * batch_size / self.batch_size
-            t_loss += loss.item()
             loss.backward()
 
             batch_num = batch_num * self.minibatch_size // self.batch_size
             if num_samples_so_far % self.batch_size == 0:
                 process_batch()
-                print(t_loss)
-                t_loss = 0
         if num_samples_so_far % self.batch_size != 0:
+            # for any leftover gradients
             batch_num += 1
             process_batch()
 
