@@ -10,7 +10,7 @@ import sacred
 from stable_baselines3.common import vec_env
 
 from imitation.data import types
-from imitation.scripts.common import wb
+from imitation.scripts.ingredients import wb
 from imitation.util import logger as imit_logger
 from imitation.util import sacred as sacred_util
 from imitation.util import util

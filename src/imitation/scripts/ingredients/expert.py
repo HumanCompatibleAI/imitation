@@ -2,7 +2,7 @@
 import sacred
 
 from imitation.policies import serialize
-from imitation.scripts.common.common import common_ingredient
+from imitation.scripts.ingredients.common import common_ingredient
 
 expert_ingredient = sacred.Ingredient("expert", ingredients=[common_ingredient])
 

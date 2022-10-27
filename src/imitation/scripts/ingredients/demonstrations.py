@@ -6,7 +6,7 @@ from typing import Optional, Sequence
 import sacred
 
 from imitation.data import rollout, types, wrappers
-from imitation.scripts.common import common, expert
+from imitation.scripts.ingredients import common, expert
 
 demonstrations_ingredient = sacred.Ingredient(
     "demonstrations",

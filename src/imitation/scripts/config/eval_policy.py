@@ -2,7 +2,7 @@
 
 import sacred
 
-from imitation.scripts.common import common, expert
+from imitation.scripts.ingredients import common, expert
 
 eval_policy_ex = sacred.Experiment(
     "eval_policy",

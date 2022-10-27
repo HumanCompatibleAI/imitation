@@ -3,9 +3,9 @@
 import sacred
 import torch as th
 
-from imitation.scripts.common import common
-from imitation.scripts.common import demonstrations as demos_common
-from imitation.scripts.common import expert, train
+from imitation.scripts.ingredients import common
+from imitation.scripts.ingredients import demonstrations as demos_common
+from imitation.scripts.ingredients import expert, train
 
 train_imitation_ex = sacred.Experiment(
     "train_imitation",

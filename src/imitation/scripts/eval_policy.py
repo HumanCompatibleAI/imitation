@@ -13,8 +13,8 @@ from imitation.data import rollout, types
 from imitation.policies.exploration_wrapper import ExplorationWrapper
 from imitation.rewards import reward_wrapper
 from imitation.rewards.serialize import load_reward
-from imitation.scripts.common import common, expert
 from imitation.scripts.config.eval_policy import eval_policy_ex
+from imitation.scripts.ingredients import common, expert
 from imitation.util import video_wrapper
 
 

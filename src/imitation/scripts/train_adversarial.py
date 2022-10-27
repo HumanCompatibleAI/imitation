@@ -14,9 +14,9 @@ from imitation.algorithms.adversarial import common
 from imitation.algorithms.adversarial import gail as gail_algo
 from imitation.data import rollout
 from imitation.policies import serialize
-from imitation.scripts.common import common as common_config
-from imitation.scripts.common import demonstrations, reward, rl, train
 from imitation.scripts.config.train_adversarial import train_adversarial_ex
+from imitation.scripts.ingredients import common as common_config
+from imitation.scripts.ingredients import demonstrations, reward, rl, train
 
 logger = logging.getLogger("imitation.scripts.train_adversarial")
 

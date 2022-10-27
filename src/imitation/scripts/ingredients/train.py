@@ -9,7 +9,7 @@ from stable_baselines3.common import base_class, policies, torch_layers, vec_env
 import imitation.util.networks
 from imitation.data import rollout
 from imitation.policies import base
-from imitation.scripts.common import common
+from imitation.scripts.ingredients import common
 
 train_ingredient = sacred.Ingredient("train", ingredients=[common.common_ingredient])
 logger = logging.getLogger(__name__)

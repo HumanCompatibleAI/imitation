@@ -21,8 +21,8 @@ from imitation.data import rollout, types, wrappers
 from imitation.policies import serialize
 from imitation.rewards.reward_wrapper import RewardVecEnvWrapper
 from imitation.rewards.serialize import load_reward
-from imitation.scripts.common import common, rl, train
 from imitation.scripts.config.train_rl import train_rl_ex
+from imitation.scripts.ingredients import common, rl, train
 
 
 @train_rl_ex.main
