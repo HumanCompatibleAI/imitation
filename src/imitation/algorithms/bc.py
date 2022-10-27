@@ -142,26 +142,6 @@ class BehaviorCloningLossCalculator:
         )
 
 
-@dataclasses.dataclass(frozen=True)
-class BehaviorCloningTrainer:
-    """Functor to fit a policy to expert demonstration data."""
-
-    loss: BehaviorCloningLossCalculator
-    optimizer: th.optim.Optimizer
-    policy: policies.ActorCriticPolicy
-
-    def __call__(self, batch) -> BCTrainingMetrics:
-        obs = th.as_tensor(batch["obs"], device=self.policy.device).detach()
-        acts = th.as_tensor(batch["acts"], device=self.policy.device).detach()
-        training_metrics = self.loss(self.policy, obs, acts)
-
-        self.optimizer.zero_grad()
-        training_metrics.loss.backward()
-        self.optimizer.step()
-
-        return training_metrics
-
-
 def enumerate_batches(
     batch_it: Iterable[algo_base.TransitionMapping],
 ) -> Iterable[Tuple[Tuple[int, int, int], algo_base.TransitionMapping]]:
@@ -348,16 +328,12 @@ class BC(algo_base.DemonstrationAlgorithm):
             if "weight_decay" in optimizer_kwargs:
                 raise ValueError("Use the parameter l2_weight instead of weight_decay.")
         optimizer_kwargs = optimizer_kwargs or {}
-        optimizer = optimizer_cls(
+        self.optimizer = optimizer_cls(
             self.policy.parameters(),
             **optimizer_kwargs,
         )
-        loss_computer = BehaviorCloningLossCalculator(ent_weight, l2_weight)
-        self.trainer = BehaviorCloningTrainer(
-            loss_computer,
-            optimizer,
-            policy,
-        )
+
+        self.loss_calculator = BehaviorCloningLossCalculator(ent_weight, l2_weight)
 
     @property
     def policy(self) -> policies.ActorCriticPolicy:
@@ -450,7 +426,13 @@ class BC(algo_base.DemonstrationAlgorithm):
             tqdm_progress_bar = batches_with_stats
 
         for (batch_num, batch_size, num_samples_so_far), batch in batches_with_stats:
-            loss = self.trainer(batch)
+            obs = th.as_tensor(batch["obs"], device=self.policy.device).detach()
+            acts = th.as_tensor(batch["acts"], device=self.policy.device).detach()
+            training_metrics = self.loss_calculator(self.policy, obs, acts)
+
+            self.optimizer.zero_grad()
+            training_metrics.loss.backward()
+            self.optimizer.step()
 
             if batch_num % log_interval == 0:
                 rollout_stats = compute_rollout_stats(self.policy, self.rng)
@@ -459,7 +441,7 @@ class BC(algo_base.DemonstrationAlgorithm):
                     batch_num,
                     batch_size,
                     num_samples_so_far,
-                    loss,
+                    training_metrics,
                     rollout_stats,
                 )
 
