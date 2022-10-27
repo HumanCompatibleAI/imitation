@@ -9,6 +9,7 @@ import sacred.commands
 import torch as th
 from sacred.observers import FileStorageObserver
 
+import imitation.util.video_wrapper as video_wrapper
 from imitation.algorithms.adversarial import airl as airl_algo
 from imitation.algorithms.adversarial import common
 from imitation.algorithms.adversarial import gail as gail_algo
@@ -111,9 +112,16 @@ def train_adversarial(
         sacred.commands.print_config(_run)
 
     custom_logger, log_dir = common_config.setup_logging()
+    checkpoint_dir = log_dir / "checkpoints"
+    video_dir = checkpoint_dir / "videos"
+    checkpoint_dir.mkdir(parents=True, exist_ok=True)
+    video_dir.mkdir(parents=True, exist_ok=True)
+
     expert_trajs = demonstrations.get_expert_trajectories()
 
-    with common_config.make_venv() as venv:
+    post_wrappers = [video_wrapper.video_wrapper_factory(video_dir, checkpoint_interval)] if checkpoint_interval > 0 else None
+
+    with common_config.make_venv(post_wrappers=post_wrappers) as venv:
         reward_net = reward.make_reward_net(venv)
         relabel_reward_fn = functools.partial(
             reward_net.predict_processed,

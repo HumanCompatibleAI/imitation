@@ -12,6 +12,8 @@ import torch as th
 from sacred.observers import FileStorageObserver
 from stable_baselines3.common import type_aliases
 
+import gym
+import imitation.util.video_wrapper as video_wrapper
 from imitation.algorithms import preference_comparisons
 from imitation.data import types
 from imitation.policies import serialize
@@ -149,14 +151,24 @@ def train_preference_comparisons(
         ValueError: Inconsistency between config and deserialized policy normalization.
     """
     custom_logger, log_dir = common.setup_logging()
+    checkpoint_dir = log_dir / "checkpoints"
+    video_dir = checkpoint_dir / "videos"
+    checkpoint_dir.mkdir(parents=True, exist_ok=True)
+    video_dir.mkdir(parents=True, exist_ok=True)
+
     rng = common.make_rng()
 
-    with common.make_venv() as venv:
+    post_wrappers = [video_wrapper.video_wrapper_factory(video_dir, checkpoint_interval)] if checkpoint_interval > 0 else None
+    with common.make_venv(post_wrappers=post_wrappers) as venv:
         reward_net = reward.make_reward_net(venv)
         relabel_reward_fn = functools.partial(
             reward_net.predict_processed,
             update_stats=False,
         )
+
+        #if checkpoint_interval > 0:
+        #    venv = VideoWrapper(venv, directory=video_dir, cadence=checkpoint_interval)
+
         if agent_path is None:
             agent = rl_common.make_rl_algo(venv, relabel_reward_fn=relabel_reward_fn)
         else:
@@ -286,7 +298,6 @@ def main_console():
     observer = FileStorageObserver(observer_path)
     train_preference_comparisons_ex.observers.append(observer)
     train_preference_comparisons_ex.run_commandline()
-
 
 if __name__ == "__main__":  # pragma: no cover
     main_console()

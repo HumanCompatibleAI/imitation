@@ -1,5 +1,4 @@
 """Uses RL to train a policy from scratch, saving rollouts and policy.
-
 This can be used:
     1. To train a policy on a ground-truth reward function, as a source of
        synthetic "expert" demonstrations to train IRL or imitation learning
@@ -17,6 +16,7 @@ from sacred.observers import FileStorageObserver
 from stable_baselines3.common import callbacks
 from stable_baselines3.common.vec_env import VecNormalize
 
+import imitation.util.video_wrapper as video_wrapper
 from imitation.data import rollout, types, wrappers
 from imitation.policies import serialize
 from imitation.rewards.reward_wrapper import RewardVecEnvWrapper
@@ -42,14 +42,11 @@ def train_rl(
     agent_path: Optional[str],
 ) -> Mapping[str, float]:
     """Trains an expert policy from scratch and saves the rollouts and policy.
-
     Checkpoints:
       At applicable training steps `step` (where step is either an integer or
       "final"):
-
         - Policies are saved to `{log_dir}/policies/{step}/`.
         - Rollouts are saved to `{log_dir}/rollouts/{step}.npz`.
-
     Args:
         total_timesteps: Number of training timesteps in `model.learn()`.
         normalize_reward: Applies normalization and clipping to the reward function by
@@ -82,7 +79,6 @@ def train_rl(
         policy_save_final: If True, then save the policy right after training is
             finished.
         agent_path: Path to load warm-started agent.
-
     Returns:
         The return value of `rollout_stats()` using the final policy.
     """
@@ -90,10 +86,16 @@ def train_rl(
     custom_logger, log_dir = common.setup_logging()
     rollout_dir = log_dir / "rollouts"
     policy_dir = log_dir / "policies"
+    video_dir = log_dir / "videos"
     rollout_dir.mkdir(parents=True, exist_ok=True)
     policy_dir.mkdir(parents=True, exist_ok=True)
+    video_dir.mkdir(parents=True, exist_ok=True)
 
     post_wrappers = [lambda env, idx: wrappers.RolloutInfoWrapper(env)]
+
+    if policy_save_interval > 0:
+        post_wrappers.append(video_wrapper.video_wrapper_factory(video_dir, policy_save_interval))
+
     with common.make_venv(post_wrappers=post_wrappers) as venv:
         callback_objs = []
         if reward_type is not None:
