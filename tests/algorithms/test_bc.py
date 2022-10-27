@@ -127,10 +127,12 @@ def test_smoke_bc_creation(
     rng: np.random.Generator,
     pytestconfig: pytest.Config,
 ):
+    cache = pytestconfig.cache
+    assert cache is not None
     bc.BC(
         **bc_args,
         demonstrations=make_expert_transition_loader(
-            cache_dir=pytestconfig.cache.makedir("experts"),
+            cache_dir=cache.mkdir("experts"),
             batch_size=bc_args["batch_size"],
             expert_data_type=expert_data_type,
             env_name=env_name,
@@ -156,11 +158,13 @@ def test_smoke_bc_training(
     rng: np.random.Generator,
     pytestconfig: pytest.Config,
 ):
+    cache = pytestconfig.cache
+    assert cache is not None
     # GIVEN
     trainer = bc.BC(
         **bc_args,
         demonstrations=make_expert_transition_loader(
-            cache_dir=pytestconfig.cache.makedir("experts"),
+            cache_dir=cache.mkdir("experts"),
             batch_size=bc_args["batch_size"],
             expert_data_type=expert_data_type,
             env_name=env_name,
@@ -182,8 +186,15 @@ def test_that_bc_improves_rewards(
     cartpole_venv: vec_env.VecEnv,
 ):
     # GIVEN
+    # TODO ask reviewer about preference between:
+    # 1) This
+    # 2) Making `evaluate_policy` accept a 'SupportsPredict' protocol arg,
+    #    instead of the overly restrictive 'BaseAlgorithm', when we
+    #    only use part of that API in the actual function. Would require
+    #    making a new protocol type, and might make error messages slightly
+    #    more confusing?
     novice_rewards, _ = evaluation.evaluate_policy(
-        cartpole_bc_trainer.policy,
+        cartpole_bc_trainer.policy, # type: ignore[arg-type]
         cartpole_venv,
         15,
         return_episode_rewards=True,
@@ -193,7 +204,7 @@ def test_that_bc_improves_rewards(
     # WHEN
     cartpole_bc_trainer.train(n_epochs=1)
     rewards_after_training, _ = evaluation.evaluate_policy(
-        cartpole_bc_trainer.policy,
+        cartpole_bc_trainer.policy, #type: ignore[arg-type]
         cartpole_venv,
         15,
         return_episode_rewards=True,

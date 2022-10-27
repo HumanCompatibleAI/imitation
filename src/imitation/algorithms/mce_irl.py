@@ -45,6 +45,10 @@ def mce_partition_fh(
         \pi is a 3d array, indexed \pi[t,s,a].
     """
     # shorthand
+    # TODO ask Adam if this isn't better solved by changing the types in
+    # the Seals repo to enforce that horizon is an int. Seems like it should
+    # be an int, but the default value is np(inf), which is a float.
+    assert isinstance(env.horizon, int)
     horizon = env.horizon
     n_states = env.state_dim
     n_actions = env.action_dim
@@ -101,6 +105,7 @@ def mce_occupancy_measures(
         and records the expected discounted number of times each state is visited.
     """
     # shorthand
+    assert isinstance(env.horizon, int)
     horizon = env.horizon
     n_states = env.state_dim
     n_actions = env.action_dim

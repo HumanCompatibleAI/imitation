@@ -38,9 +38,7 @@ executors:
       SRC_FILES: src/ tests/ experiments/ examples/ docs/conf.py setup.py ci/
       NUM_CPUS: 2
       EXCLUDE_MYPY: | 
-        (?x)(
-          tests/algorithms/test_bc.py$
-        )
+        (?x)()
 
 commands:
   dependencies-linux:
