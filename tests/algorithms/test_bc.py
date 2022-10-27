@@ -212,6 +212,61 @@ def test_that_bc_improves_rewards(
     )
 
 
+def test_gradient_accumulation(
+    cartpole_venv: vec_env.VecEnv,
+    rng,
+    pytestconfig,
+):
+    demonstrations = make_expert_transition_loader(
+        cache_dir=pytestconfig.cache.makedir("experts"),
+        batch_size=6,
+        expert_data_type="transitions",
+        env_name="seals/CartPole-v0",
+        rng=None,
+        num_trajectories=17,
+    )
+
+    seed = rng.integers(2**32)
+
+    th.manual_seed(seed)
+    bc_trainer1 = bc.BC(
+        observation_space=cartpole_venv.observation_space,
+        action_space=cartpole_venv.action_space,
+        batch_size=12,
+        demonstrations=demonstrations,
+        custom_logger=None,
+        rng=None,
+    )
+
+    th.manual_seed(seed)
+    bc_trainer2 = bc.BC(
+        observation_space=cartpole_venv.observation_space,
+        action_space=cartpole_venv.action_space,
+        batch_size=12,
+        minibatch_size=3,
+        demonstrations=demonstrations,
+        custom_logger=None,
+        rng=None,
+    )
+
+    for _ in range(5):
+        seed = rng.integers(2**32)
+
+        th.manual_seed(seed)
+        bc_trainer1.train(n_batches=1)
+
+        th.manual_seed(seed)
+        bc_trainer2.train(n_batches=1)
+
+        assert all(
+            th.allclose(p2, p2, atol=3e-8)
+            for p1, p2 in zip(
+                bc_trainer1.policy.parameters(),
+                bc_trainer2.policy.parameters(),
+            )
+        )
+
+
 def test_that_policy_reconstruction_preserves_parameters(
     cartpole_bc_trainer: bc.BC,
     tmpdir,
