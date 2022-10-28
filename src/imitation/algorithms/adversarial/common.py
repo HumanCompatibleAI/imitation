@@ -1,19 +1,8 @@
 """Core code for adversarial imitation learning, shared between GAIL and AIRL."""
 import abc
-import collections
 import dataclasses
 import logging
-from typing import (
-    Callable,
-    Iterable,
-    Iterator,
-    Mapping,
-    Optional,
-    Sequence,
-    Tuple,
-    Type,
-    overload,
-)
+from typing import Callable, Iterable, Iterator, Mapping, Optional, Type, overload
 
 import numpy as np
 import torch as th
@@ -81,23 +70,20 @@ def compute_train_stats(
         label_dist = th.distributions.Bernoulli(logits=disc_logits_expert_is_high)
         entropy = th.mean(label_dist.entropy())
 
-    pairs = [
-        ("disc_loss", float(th.mean(disc_loss))),
-        # accuracy, as well as accuracy on *just* expert examples and *just*
-        # generated examples
-        ("disc_acc", float(acc)),
-        ("disc_acc_expert", float(expert_acc)),
-        ("disc_acc_gen", float(generated_acc)),
+    return {
+        "disc_loss": float(th.mean(disc_loss)),
+        "disc_acc": float(acc),
+        "disc_acc_expert": float(expert_acc),  # accuracy on just expert examples
+        "disc_acc_gen": float(generated_acc),  # accuracy on just generated examples
         # entropy of the predicted label distribution, averaged equally across
         # both classes (if this drops then disc is very good or has given up)
-        ("disc_entropy", float(entropy)),
+        "disc_entropy": float(entropy),
         # true number of expert demos and predicted number of expert demos
-        ("disc_proportion_expert_true", float(pct_expert)),
-        ("disc_proportion_expert_pred", float(pct_expert_pred)),
-        ("n_expert", float(n_expert)),
-        ("n_generated", float(n_generated)),
-    ]  # type: Sequence[Tuple[str, float]]
-    return collections.OrderedDict(pairs)
+        "disc_proportion_expert_true": float(pct_expert),
+        "disc_proportion_expert_pred": float(pct_expert_pred),
+        "n_expert": float(n_expert),
+        "n_generated": float(n_generated),
+    }
 
 
 class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):

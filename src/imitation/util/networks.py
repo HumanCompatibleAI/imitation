@@ -3,7 +3,7 @@ import abc
 import collections
 import contextlib
 import functools
-from typing import Iterable, Optional, OrderedDict, Type, Union
+from typing import Dict, Iterable, Optional, Type, Union
 
 import torch as th
 from torch import nn
@@ -234,7 +234,7 @@ def build_mlp(
     Raises:
         ValueError: if squeeze_output was supplied with out_size!=1.
     """
-    layers: OrderedDict[str, nn.Module] = collections.OrderedDict()
+    layers: Dict[str, nn.Module] = {}
 
     if name is None:
         prefix = ""
@@ -273,7 +273,7 @@ def build_mlp(
             raise ValueError("squeeze_output is only applicable when out_size=1")
         layers[f"{prefix}squeeze"] = SqueezeLayer()
 
-    model = nn.Sequential(layers)
+    model = nn.Sequential(collections.OrderedDict(layers))
 
     return model
 
@@ -316,7 +316,7 @@ def build_cnn(
     Raises:
         ValueError: if squeeze_output was supplied with out_size!=1.
     """
-    layers: OrderedDict[str, nn.Module] = collections.OrderedDict()
+    layers: Dict[str, nn.Module] = {}
 
     if name is None:
         prefix = ""
@@ -348,5 +348,5 @@ def build_cnn(
             raise ValueError("squeeze_output is only applicable when out_size=1")
         layers[f"{prefix}squeeze"] = SqueezeLayer()
 
-    model = nn.Sequential(layers)
+    model = nn.Sequential(collections.OrderedDict(layers))
     return model

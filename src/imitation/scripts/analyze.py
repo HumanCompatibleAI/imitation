@@ -1,6 +1,5 @@
 """Commands to analyze experimental results."""
 
-import collections
 import itertools
 import json
 import logging
@@ -8,7 +7,6 @@ import os
 import pathlib
 import tempfile
 import warnings
-from collections import OrderedDict
 from typing import Any, Callable, Iterable, List, Mapping, Optional, Sequence, Set
 
 import pandas as pd
@@ -198,32 +196,24 @@ def _return_summaries(sd: sacred_util.SacredDicts) -> dict:
 
 sd_to_table_entry_type = Mapping[str, Callable[[sacred_util.SacredDicts], Any]]
 
-# This OrderedDict maps column names to functions that get table entries, given the
+# This dict maps column names to functions that get table entries, given the
 # row's unique SacredDicts object.
-table_entry_fns: sd_to_table_entry_type = collections.OrderedDict(
-    [
-        ("status", lambda sd: get(sd.run, "status")),
-        ("exp_command", _get_exp_command),
-        ("algo", _get_algo_name),
-        ("env_name", lambda sd: get(sd.config, "common.env_name")),
-        ("n_expert_demos", lambda sd: get(sd.config, "demonstrations.n_expert_demos")),
-        ("run_name", lambda sd: get(sd.run, "experiment.name")),
-        (
-            "expert_return_summary",
-            lambda sd: _return_summaries(sd)["expert_return_summary"],
-        ),
-        (
-            "imit_return_summary",
-            lambda sd: _return_summaries(sd)["imit_return_summary"],
-        ),
-        ("imit_expert_ratio", lambda sd: _return_summaries(sd)["imit_expert_ratio"]),
-    ],
-)
+table_entry_fns: sd_to_table_entry_type = {
+    "status": lambda sd: get(sd.run, "status"),
+    "exp_command": _get_exp_command,
+    "algo": _get_algo_name,
+    "env_name": lambda sd: get(sd.config, "common.env_name"),
+    "n_expert_demos": lambda sd: get(sd.config, "demonstrations.n_expert_demos"),
+    "run_name": lambda sd: get(sd.run, "experiment.name"),
+    "expert_return_summary": lambda sd: _return_summaries(sd)["expert_return_summary"],
+    "imit_return_summary": lambda sd: _return_summaries(sd)["imit_return_summary"],
+    "imit_expert_ratio": lambda sd: _return_summaries(sd)["imit_expert_ratio"],
+}
 
 # If `verbosity` is at least the length of this list, then we use all table_entry_fns
 # as columns of table.
 # Otherwise, use only the subset at index `verbosity`. The subset of columns is
-# still arranged in the same order as in the `table_entry_fns` OrderedDict.
+# still arranged in the same order as in the `table_entry_fns` dict.
 table_verbosity_mapping: List[Set[str]] = []
 
 # verbosity 0
@@ -252,12 +242,7 @@ def _get_table_entry_fns_subset(table_verbosity: int) -> sd_to_table_entry_type:
         return table_entry_fns
     else:
         keys_subset = table_verbosity_mapping[table_verbosity]
-        result = OrderedDict()
-        for k, v in table_entry_fns.items():
-            if k not in keys_subset:
-                continue
-            result[k] = v
-        return result
+        return {k: v for k, v in table_entry_fns.items() if k in keys_subset}
 
 
 @analysis_ex.command
@@ -287,7 +272,7 @@ def analyze_imitation(
 
     rows = []
     for sd in _gather_sacred_dicts():
-        row = OrderedDict()
+        row = {}
         for col_name, make_entry_fn in table_entry_fns_subset.items():
             row[col_name] = make_entry_fn(sd)
         rows.append(row)
