@@ -45,12 +45,12 @@ def mce_partition_fh(
         \pi is a 3d array, indexed \pi[t,s,a].
 
     Raises:
-        ValueError: if the horizon is not finite (or an integer).
+        ValueError: if ``env.horizon`` is None (infinite horizon).
     """
     # shorthand
-    if not isinstance(env.horizon, int):
-        raise ValueError("Only finite (integer) horizons are supported.")
     horizon = env.horizon
+    if horizon is None:
+        raise ValueError("Only finite-horizon environments are supported.")
     n_states = env.state_dim
     n_actions = env.action_dim
     T = env.transition_matrix
@@ -106,12 +106,12 @@ def mce_occupancy_measures(
         and records the expected discounted number of times each state is visited.
 
     Raises:
-        ValueError: if the horizon is not finite (or an integer).
+        ValueError: if ``env.horizon`` is None (infinite horizon).
     """
     # shorthand
-    if not isinstance(env.horizon, int):
-        raise ValueError("Only finite (integer) horizons are supported.")
     horizon = env.horizon
+    if horizon is None:
+        raise ValueError("Only finite-horizon environments are supported.")
     n_states = env.state_dim
     n_actions = env.action_dim
     T = env.transition_matrix
@@ -331,8 +331,8 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
         # Initialize policy to be uniform random. We don't use this for MCE IRL
         # training, but it gives us something to return at all times with `policy`
         # property, similar to other algorithms.
-        if not isinstance(self.env.horizon, int):
-            raise ValueError("Only finite (integer) horizons are supported.")
+        if self.env.horizon is None:
+            raise ValueError("Only finite-horizon environments are supported.")
         ones = np.ones((self.env.horizon, self.env.state_dim, self.env.action_dim))
         uniform_pi = ones / self.env.action_dim
         self._policy = TabularPolicy(
@@ -384,7 +384,7 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
             )
 
         # Normalize occupancy measure estimates
-        assert isinstance(self.env.horizon, int)
+        assert self.env.horizon is not None
         self.demo_state_om *= (self.env.horizon + 1) / self.demo_state_om.sum()
 
     def set_demonstrations(self, demonstrations: MCEDemonstrations) -> None:

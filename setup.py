@@ -198,7 +198,7 @@ setup(
         "torch>=1.4.0",
         "tqdm",
         "scikit-learn>=0.21.2",
-        "seals==0.1.4",
+        "seals==0.1.5",
         STABLE_BASELINES3,
         # TODO(adam) switch to upstream release if they make it
         #  See https://github.com/IDSIA/sacred/issues/879
