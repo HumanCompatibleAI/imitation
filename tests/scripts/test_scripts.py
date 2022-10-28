@@ -1,5 +1,4 @@
 """Smoke tests for CLI programs in `imitation.scripts.*`.
-
 Every test in this file should use `parallel=False` to turn off multiprocessing because
 codecov might interact poorly with multiprocessing. The 'fast' named_config for each
 experiment implicitly sets parallel=False.
@@ -601,7 +600,6 @@ def test_train_adversarial_algorithm_value_error(tmpdir):
 
 def test_transfer_learning(tmpdir: str) -> None:
     """Transfer learning smoke test.
-
     Saves a dummy AIRL test reward, then loads it for transfer learning.
     Args:
         tmpdir: Temporary directory to save results to.
@@ -951,8 +949,6 @@ def test_convert_trajs(tmpdir: str):
     for t_pkl, t_npz in zip(from_pkl, from_npz):
         assert t_pkl == t_npz
 
-
-#_TRAIN_VIDEO_CONFIGS = {"train": {"videos": True}}
 # Change the following if the file structure of checkpoints changed.
 VIDEO_FILE_PATH = "video.{:06}.mp4".format(0)
 VIDEO_PATH_DICT = dict(
@@ -961,17 +957,16 @@ VIDEO_PATH_DICT = dict(
     pc=lambda d: d / "checkpoints" / "videos"
 )
 
-
 def _check_video_exists(log_dir, algo):
     video_dir = VIDEO_PATH_DICT[algo](log_dir)
     assert os.path.exists(video_dir)
     assert VIDEO_FILE_PATH in os.listdir(video_dir)
 
-
 def test_train_rl_video_saving(tmpdir):
     """Smoke test for imitation.scripts.train_rl."""
     config_updates = dict(
-        common=dict(log_root=tmpdir)    )
+        common=dict(log_root=tmpdir)    
+        )
     run = train_rl.train_rl_ex.run(
         named_configs=["cartpole"] + ALGO_FAST_CONFIGS["rl"],
         config_updates=config_updates,
@@ -980,14 +975,14 @@ def test_train_rl_video_saving(tmpdir):
     assert run.status == "COMPLETED"
     _check_video_exists(run.config["common"]["log_dir"], "rl")
 
-
 def test_train_adversarial_video_saving(tmpdir):
     """Smoke test for imitation.scripts.train_adversarial."""
     named_configs = ["pendulum"] + ALGO_FAST_CONFIGS["adversarial"]
     config_updates = dict(
         common=dict(log_root=tmpdir),
         demonstrations=dict(rollout_path=PENDULUM_TEST_ROLLOUT_PATH),
-        checkpoint_interval=1    )
+        checkpoint_interval=1    
+        )
     run = train_adversarial.train_adversarial_ex.run(
         command_name="gail",
         named_configs=named_configs,
@@ -995,7 +990,6 @@ def test_train_adversarial_video_saving(tmpdir):
     )
     assert run.status == "COMPLETED"
     _check_video_exists(run.config["common"]["log_dir"], "adversarial")
-
 
 def test_train_preference_comparisons_video_saving(tmpdir):
     config_updates = dict(

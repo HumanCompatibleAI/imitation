@@ -12,6 +12,8 @@ import torch as th
 from sacred.observers import FileStorageObserver
 from stable_baselines3.common import type_aliases
 
+import gym
+import imitation.util.video_wrapper as video_wrapper
 from imitation.algorithms import preference_comparisons
 from imitation.data import types
 from imitation.policies import serialize
