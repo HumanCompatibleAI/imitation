@@ -370,7 +370,7 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
         *,
         n_trajectories: int = 10,
         true_reward: bool = True,
-    ) -> Dict[str, float]:
+    ) -> Mapping[str, float]:
         """Test current imitation policy on environment & give some rollout stats.
 
         Args:
