@@ -343,7 +343,7 @@ def test_gradient_accumulation(
                 # theoretically possible that with very unlucky seeding,
                 # this could fail.
                 assert all(
-                    th.allclose(p1, p2, atol=3e-8, rtol=3e-5)
+                    th.allclose(p1, p2, atol=5e-8, rtol=5e-5)
                     for p1, p2 in zip(
                         trainer1._reward_net.parameters(),
                         trainer2._reward_net.parameters(),

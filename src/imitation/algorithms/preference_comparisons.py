@@ -1344,7 +1344,6 @@ class EnsembleTrainer(BasicRewardTrainer):
 
         Raises:
             TypeError: if model is not a RewardEnsemble.
-            ValueError: if the batch size is not a multiple of the minibatch size.
         """
         if preference_model.ensemble_model is None:
             raise TypeError(

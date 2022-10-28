@@ -512,14 +512,14 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
         gen_samples: Optional[Mapping] = None,
         expert_samples: Optional[Mapping] = None,
     ) -> Iterator[Mapping[str, th.Tensor]]:
-        """Build and return training batch for the next discriminator update.
+        """Build and return training minibatches for the next discriminator update.
 
         Args:
             gen_samples: Same as in `train_disc`.
             expert_samples: Same as in `train_disc`.
 
-        Returns:
-            The training batch: state, action, next state, dones, labels
+        Yields:
+            The training minibatch: state, action, next state, dones, labels
             and policy log-probabilities.
 
         Raises:
