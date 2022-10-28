@@ -186,7 +186,7 @@ def test_that_bc_improves_rewards(
     cartpole_venv: vec_env.VecEnv,
 ):
     # GIVEN
-    # TODO: the upstream annotation for this function is overly-conservative
+    # TODO(GH#600): the upstream annotation for this function is overly-conservative
     # but passing the policy at runtime works, so this should be changed
     # upstream (the ignore can subsequently be removed)
     novice_rewards, _ = evaluation.evaluate_policy(
