@@ -1,5 +1,6 @@
 """Tests for the preference comparisons reward learning implementation."""
 
+import math
 import re
 from typing import Sequence
 
@@ -171,10 +172,15 @@ def test_trajectory_dataset_shuffle(
         cartpole_expert_trajectories,
         rng,
     )
-    sample = dataset.sample(num_steps)
-    sample2 = dataset.sample(num_steps)
+    n_trajectories = len(cartpole_expert_trajectories)
+    flakiness_prob = 1 / n_trajectories
+    max_flakiness = 1e-6
+    # Choose num_samples s.t. flakiness_prob**num_samples <= max_flakiness
+    num_samples = math.ceil(math.log(max_flakiness) / math.log(flakiness_prob))
+    samples = [dataset.sample(num_steps) for _ in range(num_samples)]
     with pytest.raises(AssertionError):
-        _check_trajs_equal(sample, sample2)
+        for sample in samples[1:]:
+            _check_trajs_equal(samples[0], sample)
 
 
 def test_transitions_left_in_buffer(agent_trainer):
