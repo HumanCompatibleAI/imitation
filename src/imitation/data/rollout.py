@@ -426,7 +426,7 @@ def generate_trajectories(
 
 def rollout_stats(
     trajectories: Sequence[types.TrajectoryWithRew],
-) -> Dict[str, float]:
+) -> Mapping[str, float]:
     """Calculates various stats for a sequence of trajectories.
 
     Args:

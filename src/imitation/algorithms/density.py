@@ -343,7 +343,7 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
         rew_array = np.asarray(rew_list, dtype="float32")
         return rew_array
 
-    def train_policy(self, n_timesteps: int = int(1e6), **kwargs: Any):
+    def train_policy(self, n_timesteps: int = int(1e6), **kwargs: Any) -> None:
         """Train the imitation policy for a given number of timesteps.
 
         Args:

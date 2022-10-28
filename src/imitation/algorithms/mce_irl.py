@@ -7,18 +7,7 @@ Follows the description in chapters 9 and 10 of Brian Ziebart's `PhD thesis`_.
 """
 import collections
 import warnings
-from typing import (
-    Any,
-    Iterable,
-    List,
-    Mapping,
-    NoReturn,
-    Optional,
-    Tuple,
-    Type,
-    Union,
-    cast,
-)
+from typing import Any, Iterable, List, Mapping, NoReturn, Optional, Tuple, Type, Union
 
 import gym
 import numpy as np
@@ -408,10 +397,9 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
         # Demonstrations are either trajectories or transitions;
         # we must compute occupancy measure from this.
         if isinstance(demonstrations, Iterable):
-            first_item, demonstrations = util.get_first_iter_element(demonstrations)
+            first_item, demonstrations_it = util.get_first_iter_element(demonstrations)
             if isinstance(first_item, types.Trajectory):
-                demonstrations = cast(Iterable[types.Trajectory], demonstrations)
-                self._set_demo_from_trajectories(demonstrations)
+                self._set_demo_from_trajectories(demonstrations_it)
                 return
 
         # Demonstrations are from some kind of transitions-like object. This does

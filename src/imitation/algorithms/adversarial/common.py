@@ -2,7 +2,7 @@
 import abc
 import dataclasses
 import logging
-from typing import Callable, Dict, Iterable, Iterator, Mapping, Optional, Type, overload
+from typing import Callable, Iterable, Iterator, Mapping, Optional, Type, overload
 
 import numpy as np
 import torch as th
@@ -22,7 +22,7 @@ def compute_train_stats(
     disc_logits_expert_is_high: th.Tensor,
     labels_expert_is_one: th.Tensor,
     disc_loss: th.Tensor,
-) -> Dict[str, float]:
+) -> Mapping[str, float]:
     """Train statistics for GAIL/AIRL discriminator.
 
     Args:

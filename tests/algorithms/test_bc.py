@@ -127,11 +127,12 @@ def test_smoke_bc_creation(
     rng: np.random.Generator,
     pytestconfig: pytest.Config,
 ):
-    assert pytestconfig.cache is not None
+    cache = pytestconfig.cache
+    assert cache is not None
     bc.BC(
         **bc_args,
         demonstrations=make_expert_transition_loader(
-            cache_dir=pytestconfig.cache.mkdir("experts"),
+            cache_dir=cache.mkdir("experts"),
             batch_size=bc_args["batch_size"],
             expert_data_type=expert_data_type,
             env_name=env_name,
@@ -157,12 +158,13 @@ def test_smoke_bc_training(
     rng: np.random.Generator,
     pytestconfig: pytest.Config,
 ):
-    assert pytestconfig.cache is not None
+    cache = pytestconfig.cache
+    assert cache is not None
     # GIVEN
     trainer = bc.BC(
         **bc_args,
         demonstrations=make_expert_transition_loader(
-            cache_dir=pytestconfig.cache.mkdir("experts"),
+            cache_dir=cache.mkdir("experts"),
             batch_size=bc_args["batch_size"],
             expert_data_type=expert_data_type,
             env_name=env_name,
@@ -184,6 +186,9 @@ def test_that_bc_improves_rewards(
     cartpole_venv: vec_env.VecEnv,
 ):
     # GIVEN
+    # TODO: the upstream annotation for this function is overly-conservative
+    # but passing the policy at runtime works, so this should be changed
+    # upstream (the ignore can subsequently be removed)
     novice_rewards, _ = evaluation.evaluate_policy(
         cartpole_bc_trainer.policy,  # type: ignore[arg-type]
         cartpole_venv,
