@@ -503,9 +503,11 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
                 predicted_r_np, visitations = self._train_step(torch_obs_mat)
 
                 # these are just for termination conditions & debug logging
-                grad_norm = util.tensor_iter_norm(
-                    p.grad for p in self.reward_net.parameters()
-                ).item()
+                grads = []
+                for p in self.reward_net.parameters():
+                    assert p.grad is not None
+                    grads.append(p)
+                grad_norm = util.tensor_iter_norm(grads).item()
                 linf_delta = np.max(np.abs(self.demo_state_om - visitations))
 
                 if self.log_interval is not None and 0 == (t % self.log_interval):
