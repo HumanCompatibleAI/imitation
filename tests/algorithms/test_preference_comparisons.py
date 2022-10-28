@@ -415,6 +415,24 @@ def test_discount_rate_no_crash(
     main_trainer.train(100, 10)
 
 
+def create_reward_trainer(
+    venv,
+    seed: int,
+):
+    th.manual_seed(seed)
+    reward_net = reward_nets.BasicRewardNet(venv.observation_space, venv.action_space)
+    preference_model = preference_comparisons.PreferenceModel(model=reward_net)
+    loss = preference_comparisons.CrossEntropyRewardLoss()
+    rng = np.random.default_rng(seed)
+    reward_trainer = preference_comparisons.BasicRewardTrainer(
+        preference_model,
+        loss,
+        rng=rng,
+        batch_size=12,
+    )
+    return reward_trainer, reward_net
+
+
 def test_gradient_accumulation(
     agent_trainer,
     venv,
@@ -424,14 +442,10 @@ def test_gradient_accumulation(
 ):
     # Test that training steps on the same dataset with different minibatch sizes
     # result in the same reward network.
-
-    loss = preference_comparisons.CrossEntropyRewardLoss()
-
     preference_gatherer = preference_comparisons.SyntheticGatherer(
         custom_logger=custom_logger,
         rng=rng,
     )
-
     dataset = preference_comparisons.PreferenceDataset()
     trajectory = agent_trainer.sample(17)
     fragments = random_fragmenter(trajectory, 1, 17)
@@ -439,31 +453,8 @@ def test_gradient_accumulation(
     dataset.push(fragments, preferences)
 
     seed = rng.integers(2**32)
-    rng1 = np.random.default_rng(seed)
-    rng2 = np.random.default_rng(seed)
-
-    seed = rng.integers(2**32)
-    th.manual_seed(seed)
-    reward_net1 = reward_nets.BasicRewardNet(venv.observation_space, venv.action_space)
-    th.manual_seed(seed)
-    reward_net2 = reward_nets.BasicRewardNet(venv.observation_space, venv.action_space)
-
-    preference_model1 = preference_comparisons.PreferenceModel(model=reward_net1)
-    reward_trainer1 = preference_comparisons.BasicRewardTrainer(
-        preference_model1,
-        loss,
-        rng=rng1,
-        batch_size=12,
-    )
-
-    preference_model2 = preference_comparisons.PreferenceModel(model=reward_net2)
-    reward_trainer2 = preference_comparisons.BasicRewardTrainer(
-        preference_model2,
-        loss,
-        rng=rng2,
-        batch_size=12,
-        minibatch_size=3,
-    )
+    reward_trainer1, reward_net1 = create_reward_trainer(venv, seed)
+    reward_trainer2, reward_net2 = create_reward_trainer(venv, seed)
 
     for _ in range(5):
         seed = rng.integers(2**32)
