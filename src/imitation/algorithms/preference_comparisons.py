@@ -988,7 +988,7 @@ class PreferenceDataset(data_th.Dataset):
 
 def preference_collate_fn(
     batch: Sequence[Tuple[TrajectoryWithRewPair, float]],
-) -> Tuple[List[TrajectoryWithRewPair], np.ndarray]:
+) -> Tuple[Sequence[TrajectoryWithRewPair], np.ndarray]:
     fragment_pairs, preferences = zip(*batch)
     return list(fragment_pairs), np.array(preferences)
 
@@ -997,7 +997,7 @@ class LossAndMetrics(NamedTuple):
     """Loss and auxiliary metrics for reward network training."""
 
     loss: th.Tensor
-    metrics: Dict[str, th.Tensor]
+    metrics: Mapping[str, th.Tensor]
 
 
 class RewardLoss(nn.Module, abc.ABC):
