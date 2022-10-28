@@ -280,6 +280,77 @@ def test_train_disc_improve_D(
     assert final_stats["disc_loss"] < init_stats["disc_loss"]
 
 
+def test_gradient_accumulation(
+    _algorithm_kwargs,
+    tmpdir,
+    expert_transitions,
+    rng,
+):
+    batch_size = 12
+
+    with make_trainer(
+        _algorithm_kwargs,
+        tmpdir,
+        expert_transitions,
+        rng,
+    ) as trainer:
+        expert_samples = expert_transitions[:batch_size]
+        expert_samples = types.dataclass_quick_asdict(expert_samples)
+        gen_samples = rollout.generate_transitions(
+            trainer.gen_algo,
+            trainer.venv_train,
+            n_timesteps=batch_size,
+            truncate=True,
+            rng=rng,
+        )
+        gen_samples = types.dataclass_quick_asdict(gen_samples)
+
+    seed = rng.integers(2**32)
+
+    th.manual_seed(seed)
+    rng1 = np.random.default_rng(seed)
+    with make_trainer(
+        _algorithm_kwargs,
+        tmpdir,
+        expert_transitions,
+        rng1,
+        batch_size,
+    ) as trainer1:
+        th.manual_seed(seed)
+        rng2 = np.random.default_rng(seed)
+        with make_trainer(
+            _algorithm_kwargs,
+            tmpdir,
+            expert_transitions,
+            rng2,
+            batch_size,
+        ) as trainer2:
+            trainer2.demo_minibatch_size = 3
+
+            for _ in range(5):
+                trainer1.train_disc(
+                    gen_samples=gen_samples,
+                    expert_samples=expert_samples,
+                )
+                trainer2.train_disc(
+                    gen_samples=gen_samples,
+                    expert_samples=expert_samples,
+                )
+
+                # Note: due to numerical instability, the models are
+                # bound to diverge at some point, but should be stable
+                # over the short time frame we test over; however, it is
+                # theoretically possible that with very unlucky seeding,
+                # this could fail.
+                assert all(
+                    th.allclose(p1, p2, atol=3e-8, rtol=3e-5)
+                    for p1, p2 in zip(
+                        trainer1._reward_net.parameters(),
+                        trainer2._reward_net.parameters(),
+                    )
+                )
+
+
 @pytest.fixture(params=ENV_NAMES)
 def _env_name(request):
     """Auto-parameterizes `_env_name`."""

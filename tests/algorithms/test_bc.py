@@ -258,6 +258,11 @@ def test_gradient_accumulation(
         th.manual_seed(seed)
         bc_trainer2.train(n_batches=1)
 
+        # Note: due to numerical instability, the models are
+        # bound to diverge at some point, but should be stable
+        # over the short time frame we test over; however, it is
+        # theoretically possible that with very unlucky seeding,
+        # this could fail.
         assert all(
             th.allclose(p2, p2, atol=3e-8)
             for p1, p2 in zip(

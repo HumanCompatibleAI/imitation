@@ -474,6 +474,11 @@ def test_gradient_accumulation(
         th.manual_seed(seed)
         reward_trainer2.train(dataset)
 
+        # Note: due to numerical instability, the models are
+        # bound to diverge at some point, but should be stable
+        # over the short time frame we test over; however, it is
+        # theoretically possible that with very unlucky seeding,
+        # this could fail.
         assert all(
             th.allclose(p1, p2)
             for p1, p2 in zip(reward_net1.parameters(), reward_net2.parameters())
