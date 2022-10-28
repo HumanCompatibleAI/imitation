@@ -37,7 +37,7 @@ class ExplorationWrapper:
             rng: The random state to use for seeding the environment and for
                 switching policies.
             deterministic_policy: Whether to make the policy deterministic when not
-                exploring. If policy is a PolicyCallable, this must be False.
+                exploring. This must be False when ``policy`` is a ``PolicyCallable``.
         """
         policy_callable = rollout.policy_to_callable(policy, venv, deterministic_policy)
         self.wrapped_policy = policy_callable
