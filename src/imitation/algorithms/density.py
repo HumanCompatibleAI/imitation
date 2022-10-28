@@ -365,12 +365,7 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
         trajs, ep_lens = self.buffering_wrapper.pop_trajectories()
         self._check_fixed_horizon(ep_lens)
 
-    def test_policy(
-        self,
-        *,
-        n_trajectories: int = 10,
-        true_reward: bool = True,
-    ) -> Mapping[str, float]:
+    def test_policy(self, *, n_trajectories: int = 10, true_reward: bool = True):
         """Test current imitation policy on environment & give some rollout stats.
 
         Args:
