@@ -6,9 +6,8 @@ Prerequisites
 -------------
 
 - Python 3.8+
-
 - (Optional) OpenGL (to render gym environments)
-
+- (Optional) FFmpeg (to encode videos of renders)
 - (Optional) MuJoCo (follow instructions to install `mujoco\_py v1.5 here`_)
 
 .. _mujoco_py v1.5 here:
