@@ -1143,8 +1143,12 @@ class BasicRewardTrainer(RewardTrainer):
                 training and validation.
             batch_size: number of fragment pairs per batch
             minibatch_size: size of minibatch to calculate gradients over.
-                The gradients are accumulated until `batch_size` examples are seen
-                before making an optimization step. Must be a factor of `batch_size`.
+                The gradients are accumulated until `batch_size` examples
+                are processed before making an optimization step. This
+                is useful in GPU training to reduce memory usage, since
+                fewer examples are loaded into memory at once,
+                facilitating training with larger batch sizes, but is
+                generally slower. Must be a factor of `batch_size`.
                 Optional, defaults to `batch_size`.
             epochs: number of epochs in each training iteration (can be adjusted
                 on the fly by specifying an `epoch_multiplier` in `self.train()`
@@ -1236,7 +1240,14 @@ class BasicRewardTrainer(RewardTrainer):
                                 fragment_pairs,
                                 preferences,
                             )
+
+                            # Renormalise the loss to be averaged over
+                            # the whole batch size instead of the
+                            # minibatch size. If there is an incomplete
+                            # batch, its gradients will be smaller,
+                            # which may be helpful for stability.
                             loss *= len(fragment_pairs) / self.batch_size
+
                         train_loss += loss.item()
                         if self.regularizer:
                             self.regularizer.regularize_and_backward(loss)
@@ -1244,11 +1255,12 @@ class BasicRewardTrainer(RewardTrainer):
                             loss.backward()
 
                         accumulated_size += len(fragment_pairs)
-                        if accumulated_size == self.batch_size:
+                        if accumulated_size >= self.batch_size:
                             self.optim.step()
                             self.optim.zero_grad()
                             accumulated_size = 0
-                    self.optim.step()  # for any leftover gradients
+                    if accumulated_size != 0:
+                        self.optim.step()  # if there remains an incomplete batch
 
                     if not self.requires_regularizer_update:
                         continue
@@ -1315,8 +1327,12 @@ class EnsembleTrainer(BasicRewardTrainer):
             rng: random state for the internal RNG used in bagging
             batch_size: number of fragment pairs per batch
             minibatch_size: size of minibatch to calculate gradients over.
-                The gradients are accumulated until `batch_size` examples are seen
-                before making an optimization step. Must be a factor of `batch_size`.
+                The gradients are accumulated until `batch_size` examples
+                are processed before making an optimization step. This
+                is useful in GPU training to reduce memory usage, since
+                fewer examples are loaded into memory at once,
+                facilitating training with larger batch sizes, but is
+                generally slower. Must be a factor of `batch_size`.
                 Optional, defaults to `batch_size`.
             epochs: number of epochs in each training iteration (can be adjusted
                 on the fly by specifying an `epoch_multiplier` in `self.train()`

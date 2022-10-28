@@ -288,8 +288,12 @@ class BC(algo_base.DemonstrationAlgorithm):
                 keywords to arrays containing observations, etc).
             batch_size: The number of samples in each batch of expert data.
             minibatch_size: size of minibatch to calculate gradients over.
-                The gradients are accumulated until `batch_size` examples are seen
-                before making an optimization step. Must be a factor of `batch_size`.
+                The gradients are accumulated until `batch_size` examples
+                are processed before making an optimization step. This
+                is useful in GPU training to reduce memory usage, since
+                fewer examples are loaded into memory at once,
+                facilitating training with larger batch sizes, but is
+                generally slower. Must be a factor of `batch_size`.
                 Optional, defaults to `batch_size`.
             optimizer_cls: optimiser to use for supervised training.
             optimizer_kwargs: keyword arguments, excluding learning rate and
@@ -301,7 +305,7 @@ class BC(algo_base.DemonstrationAlgorithm):
 
         Raises:
             ValueError: If `weight_decay` is specified in `optimizer_kwargs` (use the
-                parameter `l2_weight` instead.),
+                parameter `l2_weight` instead),
                 or if the batch size is not a multiple of the minibatch size.
         """
         self._demo_data_loader: Optional[Iterable[algo_base.TransitionMapping]] = None
@@ -449,7 +453,7 @@ class BC(algo_base.DemonstrationAlgorithm):
 
                 self._bc_logger.log_batch(
                     batch_num,
-                    batch_size,
+                    minibatch_size,
                     num_samples_so_far,
                     training_metrics,
                     rollout_stats,
@@ -459,19 +463,27 @@ class BC(algo_base.DemonstrationAlgorithm):
                 on_batch_end()
 
         self.optimizer.zero_grad()
-        for (batch_num, batch_size, num_samples_so_far), batch in batches_with_stats:
+        for (
+            batch_num,
+            minibatch_size,
+            num_samples_so_far,
+        ), batch in batches_with_stats:
             obs = th.as_tensor(batch["obs"], device=self.policy.device).detach()
             acts = th.as_tensor(batch["acts"], device=self.policy.device).detach()
             training_metrics = self.loss_calculator(self.policy, obs, acts)
 
-            loss = training_metrics.loss * batch_size / self.batch_size
+            # Renormalise the loss to be averaged over the whole
+            # batch size instead of the minibatch size.
+            # If there is an incomplete batch, its gradients will be
+            # smaller, which may be helpful for stability.
+            loss = training_metrics.loss * minibatch_size / self.batch_size
             loss.backward()
 
             batch_num = batch_num * self.minibatch_size // self.batch_size
             if num_samples_so_far % self.batch_size == 0:
                 process_batch()
         if num_samples_so_far % self.batch_size != 0:
-            # for any leftover gradients
+            # if there remains an incomplete batch
             batch_num += 1
             process_batch()
 

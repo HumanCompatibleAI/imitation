@@ -142,8 +142,11 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
                 next observation tensors as input and computes a reward signal.
             demo_minibatch_size: size of minibatch to calculate gradients over.
                 The gradients are accumulated until the entire batch is
-                processed before making an optimization step.
-                Must be a factor of `demo_batch_size`.
+                processed before making an optimization step. This is
+                useful in GPU training to reduce memory usage, since
+                fewer examples are loaded into memory at once,
+                facilitating training with larger batch sizes, but is
+                generally slower. Must be a factor of `demo_batch_size`.
                 Optional, defaults to `demo_batch_size`.
             n_disc_updates_per_round: The number of discriminator updates after each
                 round of generator updates in AdversarialTrainer.learn().
@@ -310,7 +313,7 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
         *,
         expert_samples: Optional[Mapping] = None,
         gen_samples: Optional[Mapping] = None,
-    ) -> Optional[Mapping[str, float]]:
+    ) -> Mapping[str, float]:
         """Perform a single discriminator update, optionally using provided samples.
 
         Args:
@@ -352,6 +355,9 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
                     disc_logits,
                     batch["labels_expert_is_one"].float(),
                 )
+
+                # Renormalise the loss to be averaged over the whole
+                # batch size instead of the minibatch size.
                 loss *= self.demo_minibatch_size / self.demo_batch_size
                 loss.backward()
 
