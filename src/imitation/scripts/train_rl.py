@@ -38,10 +38,10 @@ def train_rl(
     rollout_save_n_timesteps: Optional[int],
     rollout_save_n_episodes: Optional[int],
     policy_save_interval: int,
+    video_save_interval: int,
     policy_save_final: bool,
     agent_path: Optional[str],
 ) -> Mapping[str, float]:
-
     """Trains an expert policy from scratch and saves the rollouts and policy.
     Checkpoints:
       At applicable training steps `step` (where step is either an integer or
@@ -77,6 +77,10 @@ def train_rl(
         policy_save_interval: The number of training updates between in between
             intermediate rollout saves. If the argument is nonpositive, then
             don't save intermediate updates.
+        video_save_interval: The number of steps to take before saving a video.
+            After that step count is reached, the step count is reset and the next
+            episode will be recorded in full. Empty or negative values means no
+            video is saved.
         policy_save_final: If True, then save the policy right after training is
             finished.
         agent_path: Path to load warm-started agent.
@@ -87,17 +91,16 @@ def train_rl(
     custom_logger, log_dir = common.setup_logging()
     rollout_dir = log_dir / "rollouts"
     policy_dir = log_dir / "policies"
-    video_dir = log_dir / "videos"
     rollout_dir.mkdir(parents=True, exist_ok=True)
     policy_dir.mkdir(parents=True, exist_ok=True)
-    video_dir.mkdir(parents=True, exist_ok=True)
 
     post_wrappers = [lambda env, idx: wrappers.RolloutInfoWrapper(env)]
 
-    if policy_save_interval > 0:
-        post_wrappers.append(
-            video_wrapper.video_wrapper_factory(video_dir, policy_save_interval)
-        )
+    post_wrappers = common.setup_video_saving(
+        base_dir=log_dir,
+        video_save_interval=video_save_interval,
+        post_wrappers=post_wrappers
+    )
 
     with common.make_venv(post_wrappers=post_wrappers) as venv:
         callback_objs = []

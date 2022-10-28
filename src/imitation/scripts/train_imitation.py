@@ -71,6 +71,7 @@ def train_imitation(
     dagger: Mapping[str, Any],
     use_dagger: bool,
     agent_path: Optional[str],
+    video_save_interval: int
 ) -> Mapping[str, Mapping[str, float]]:
     """Runs DAgger (if `use_dagger`) or BC (otherwise) training.
 
@@ -82,6 +83,10 @@ def train_imitation(
         agent_path: Path to serialized policy. If provided, then load the
             policy from this path. Otherwise, make a new policy.
             Specify only if policy_cls and policy_kwargs are not specified.
+        video_save_interval: The number of steps to take before saving a video.
+            After that step count is reached, the step count is reset and the next
+            episode will be recorded in full. Empty or negative values means no
+            video is saved.
 
     Returns:
         Statistics for rollouts from the trained policy and demonstration data.
@@ -89,7 +94,13 @@ def train_imitation(
     rng = common.make_rng()
     custom_logger, log_dir = common.setup_logging()
 
-    with common.make_venv() as venv:
+    post_wrappers = common.setup_video_saving(
+        base_dir=log_dir,
+        video_save_interval=video_save_interval,
+        post_wrappers=None
+    )
+
+    with common.make_venv(post_wrappers=post_wrappers) as venv:
         imit_policy = make_policy(venv, agent_path=agent_path)
 
         expert_trajs: Optional[Sequence[types.Trajectory]] = None

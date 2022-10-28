@@ -72,9 +72,9 @@ OLD_FMT_ROLLOUT_TEST_DATA_PATH = TEST_DATA_PATH / "old_format_rollout.pkl"
 
 @pytest.fixture(autouse=True)
 def sacred_capture_use_sys():
-
     """Set Sacred capture mode to "sys" because default "fd" option leads to error.
     See https://github.com/IDSIA/sacred/issues/289.
+
     Yields:
         None after setting capture mode; restores it after yield.
     """
@@ -600,7 +600,9 @@ def test_train_adversarial_algorithm_value_error(tmpdir):
 
 def test_transfer_learning(tmpdir: str) -> None:
     """Transfer learning smoke test.
+
     Saves a dummy AIRL test reward, then loads it for transfer learning.
+
     Args:
         tmpdir: Temporary directory to save results to.
     """
@@ -645,9 +647,9 @@ def test_preference_comparisons_transfer_learning(
     tmpdir: str,
     named_configs_dict: Mapping[str, List[str]],
 ) -> None:
-
     """Transfer learning smoke test.
     Saves a preference comparisons ensemble reward, then loads it for transfer learning.
+
     Args:
         tmpdir: Temporary directory to save results to.
         named_configs_dict: Named configs for preference_comparisons and rl.
@@ -954,18 +956,22 @@ VIDEO_FILE_PATH = "video.{:06}.mp4".format(0)
 VIDEO_PATH_DICT = dict(
     rl=lambda d: d / "videos",
     adversarial=lambda d: d / "checkpoints" / "videos",
-    pc=lambda d: d / "checkpoints" / "videos"
+    pc=lambda d: d / "checkpoints" / "videos",
+    bc=lambda d: d / "videos"
 )
 
 def _check_video_exists(log_dir, algo):
     video_dir = VIDEO_PATH_DICT[algo](log_dir)
-    assert os.path.exists(video_dir)
-    assert VIDEO_FILE_PATH in os.listdir(video_dir)
+    video_file = video_dir / VIDEO_FILE_PATH
+    assert video_dir.exists()
+    assert video_file.exists()
 
+@pytest.mark.skipif(sys.platform == "darwin", reason="ffmpeg takes a long time to install")
 def test_train_rl_video_saving(tmpdir):
     """Smoke test for imitation.scripts.train_rl."""
     config_updates = dict(
-        common=dict(log_root=tmpdir)    
+        common=dict(log_root=tmpdir),
+        video_save_interval=1,
         )
     run = train_rl.train_rl_ex.run(
         named_configs=["cartpole"] + ALGO_FAST_CONFIGS["rl"],
@@ -975,13 +981,14 @@ def test_train_rl_video_saving(tmpdir):
     assert run.status == "COMPLETED"
     _check_video_exists(run.config["common"]["log_dir"], "rl")
 
+@pytest.mark.skipif(sys.platform == "darwin", reason="ffmpeg takes a long time to install")
 def test_train_adversarial_video_saving(tmpdir):
     """Smoke test for imitation.scripts.train_adversarial."""
     named_configs = ["pendulum"] + ALGO_FAST_CONFIGS["adversarial"]
     config_updates = dict(
         common=dict(log_root=tmpdir),
         demonstrations=dict(rollout_path=PENDULUM_TEST_ROLLOUT_PATH),
-        checkpoint_interval=1    
+        video_save_interval=1,
         )
     run = train_adversarial.train_adversarial_ex.run(
         command_name="gail",
@@ -991,10 +998,11 @@ def test_train_adversarial_video_saving(tmpdir):
     assert run.status == "COMPLETED"
     _check_video_exists(run.config["common"]["log_dir"], "adversarial")
 
+@pytest.mark.skipif(sys.platform == "darwin", reason="ffmpeg takes a long time to install")
 def test_train_preference_comparisons_video_saving(tmpdir):
     config_updates = dict(
         common=dict(log_root=tmpdir),
-        checkpoint_interval=1
+        video_save_interval=1,
     )
     run = train_preference_comparisons.train_preference_comparisons_ex.run(
         named_configs=["cartpole"] + ALGO_FAST_CONFIGS["preference_comparison"],
@@ -1002,3 +1010,18 @@ def test_train_preference_comparisons_video_saving(tmpdir):
     )
     assert run.status == "COMPLETED"
     _check_video_exists(run.config["common"]["log_dir"], "pc")
+
+@pytest.mark.skipif(sys.platform == "darwin", reason="ffmpeg takes a long time to install")
+def test_train_bc_video_saving(tmpdir):
+    config_updates = dict(
+        common=dict(log_root=tmpdir),
+        demonstrations=dict(rollout_path=CARTPOLE_TEST_ROLLOUT_PATH),
+        video_save_interval=1,
+    )
+    run = train_imitation.train_imitation_ex.run(
+        command_name="bc",
+        named_configs=["cartpole"] + ALGO_FAST_CONFIGS["imitation"],
+        config_updates=config_updates,
+    )
+    assert run.status == "COMPLETED"
+    _check_video_exists(run.config["common"]["log_dir"], "bc")

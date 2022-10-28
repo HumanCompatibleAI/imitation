@@ -10,8 +10,6 @@ import imitation.util.networks
 from imitation.data import rollout
 from imitation.policies import base
 from imitation.scripts.common import common
-from imitation.util import video_wrapper
-
 
 train_ingredient = sacred.Ingredient("train", ingredients=[common.common_ingredient])
 logger = logging.getLogger(__name__)

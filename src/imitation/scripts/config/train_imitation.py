@@ -38,6 +38,7 @@ def config():
         total_timesteps=1e5,
     )
     agent_path = None  # Path to load agent from, optional.
+    video_save_interval = 0 # <=0 means no saving
 
 
 @train_imitation_ex.named_config

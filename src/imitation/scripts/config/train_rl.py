@@ -30,6 +30,7 @@ def train_rl_defaults():
     rollout_save_n_episodes = None  # Num episodes saved per file, optional.
 
     policy_save_interval = 10000  # Num timesteps between saves (<=0 disables)
+    video_save_interval = 0  # Number of steps before saving video (<=0 disables)
     policy_save_final = True  # If True, save after training is finished.
 
     agent_path = None  # Path to load agent from, optional.

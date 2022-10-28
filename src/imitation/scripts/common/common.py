@@ -3,8 +3,9 @@
 import contextlib
 import logging
 import pathlib
-from typing import Any, Generator, Mapping, Sequence, Tuple, Union
+from typing import Any, Generator, Mapping, Sequence, Tuple, Union, Optional, Callable
 
+import gym
 import numpy as np
 import sacred
 from stable_baselines3.common import vec_env
@@ -14,6 +15,7 @@ from imitation.scripts.common import wb
 from imitation.util import logger as imit_logger
 from imitation.util import sacred as sacred_util
 from imitation.util import util
+import imitation.util.video_wrapper as video_wrapper
 
 common_ingredient = sacred.Ingredient("common", ingredients=[wb.wandb_ingredient])
 logger = logging.getLogger(__name__)
@@ -131,6 +133,51 @@ def setup_logging(
         format_strs=log_format_strs,
     )
     return custom_logger, log_dir
+
+@common_ingredient.capture
+def setup_video_saving(
+    _run,
+    base_dir: pathlib.Path,
+    video_save_interval: int,
+    post_wrappers: Optional[Sequence[Callable[[gym.Env, int], gym.Env]]] = None,
+) -> Optional[Sequence[Callable[[gym.Env, int], gym.Env]]]:
+    """Adds video saving to the existing post wrappers.
+
+    Args:
+        base_dir: the videos will be saved to a videos subdirectory under
+            this base directory
+        video_save_interval: the video wrapper will save a video of the next
+                episode that begins after every Nth step. So if
+                video_save_interval=100 and each episode has 30 steps, it will record
+                the 4th episode(first to start after step_count=100) and then the 7th
+                episode (first to start after step_count=200).
+        post_wrappers: If specified, iteratively wraps each environment with each
+            of the wrappers specified in the sequence. The argument should be a
+            Callable accepting two arguments, the Env to be wrapped and the
+            environment index, and returning the wrapped Env.
+
+    Returns:
+        A new post_wrapper list with the video saving wrapper appended to the
+        existing list. If the existing post wrapper was null, it will create a
+        new list with just the video wrapper. If the video_save_interval is <=0,
+        it will just return the inputted post_wrapper
+    """
+
+    if video_save_interval > 0:
+
+        video_dir = base_dir / "videos"
+        video_dir.mkdir(parents=True, exist_ok=True)
+
+        post_wrappers_copy = [wrapper for wrapper in post_wrappers] \
+            if post_wrappers != None else []
+        post_wrappers_copy.append(
+            video_wrapper.video_wrapper_factory(video_dir, video_save_interval)
+        )
+
+        return post_wrappers_copy
+
+    return post_wrappers
+
 
 
 @contextlib.contextmanager
