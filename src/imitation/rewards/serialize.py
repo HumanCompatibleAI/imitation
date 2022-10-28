@@ -173,21 +173,16 @@ def _validate_wrapper_structure(
 def load_zero(path: str, venv: VecEnv) -> reward_function.RewardFn:
     del path, venv
 
-    class f(reward_function.RewardFn):
-        def __init__(self):
-            super().__init__()
+    def f(
+        state: np.ndarray,
+        action: np.ndarray,
+        next_state: np.ndarray,
+        done: np.ndarray,
+    ) -> np.ndarray:
+        del action, next_state, done  # Unused.
+        return np.zeros(state.shape[0])
 
-        def __call__(
-            self,
-            obs: np.ndarray,
-            act: np.ndarray,
-            next_obs: np.ndarray,
-            dones: np.ndarray,
-        ) -> np.ndarray:
-            del act, next_obs, dones  # Unused.
-            return np.zeros(obs.shape[0])
-
-    return f()
+    return f
 
 
 # TODO(adam): I think we can get rid of this and have just one RewardNet.
