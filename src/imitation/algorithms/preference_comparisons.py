@@ -641,8 +641,10 @@ class RandomFragmenter(Fragmenter):
 
         # we need two fragments for each comparison
         for _ in range(2 * num_pairs):
-            p = np.array(weights) / sum(weights)
-            traj = self.rng.choice(trajectories, p=p)  # type: ignore[arg-type]
+            traj = self.rng.choice(
+                trajectories,  # type: ignore[arg-type]
+                p=np.array(weights) / sum(weights),
+            )
             n = len(traj)
             start = self.rng.integers(0, n - fragment_length, endpoint=True)
             end = start + fragment_length
