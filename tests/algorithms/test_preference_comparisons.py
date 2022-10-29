@@ -836,3 +836,75 @@ def test_agent_trainer_sample_image_observations(rng):
         trajectory.obs.shape[1:] == venv.observation_space.shape
         for trajectory in trajectories
     )
+
+
+# class AngularCartpoleRewardNet(reward_nets.RewardNet):
+#    """ Simple reward net for Cartpole that approximates
+#        reward as the absolute value of pole angular velocity """
+#    def __init__(
+#        self,
+#        observation_space: gym.Space,
+#        action_space: gym.Space,
+#    ):
+#        """
+#        Args:
+#            observation_space: observation space of the env
+#            action_space: action space of the env
+#        """
+#        super().__init__(observation_space, action_space)
+#
+#    def forward(
+#        self,
+#        state: th.Tensor,
+#        action: th.Tensor,
+#        next_state: th.Tensor,
+#        done: th.Tensor,
+#    ) -> th.Tensor:
+#        batch_size = state.shape[0]
+#        return -1 * np.abs(state[:,3])
+
+
+def test_that_BasicTrainer_improves_rewards(
+    agent_trainer,
+    venv,
+    random_fragmenter,
+    custom_logger,
+    rng,
+):
+    # GIVEN
+    reward_net = reward_nets.BasicRewardNet(venv.observation_space, venv.action_space)
+    mock_reward_net = testing_reward_nets.MockRewardNet(
+        venv.observation_space,
+        venv.action_space,
+        value=12,
+    )
+
+    preference_model = preference_comparisons.PreferenceModel(
+        model=reward_net,
+        noise_prob=0.1,
+        discount_factor=0.9,
+        threshold=50,
+    )
+    loss = preference_comparisons.CrossEntropyRewardLoss()
+    reward_trainer = preference_comparisons.BasicRewardTrainer(
+        preference_model,
+        loss,
+        rng=rng,
+    )
+
+    # WHEN
+    main_trainer = preference_comparisons.PreferenceComparisons(
+        agent_trainer,
+        mock_reward_net,
+        num_iterations=2,
+        transition_oversampling=2,
+        fragment_length=2,
+        fragmenter=random_fragmenter,
+        rng=rng,
+        reward_trainer=reward_trainer,
+        custom_logger=custom_logger,
+    )
+    first_rewards = main_trainer.train(10, 20)
+    # TODO can we get away w/ less training somehow?
+    later_rewards = main_trainer.train(10000, 20)
+    assert first_rewards["reward_loss"] > later_rewards["reward_loss"]
