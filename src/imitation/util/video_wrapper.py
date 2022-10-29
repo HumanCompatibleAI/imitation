@@ -21,7 +21,7 @@ class VideoWrapper(gym.Wrapper):
         self,
         env: gym.Env,
         directory: pathlib.Path,
-        single_video: bool = True,
+        single_video: bool = False,
         video_save_interval: int = 1,
     ):
         """Builds a VideoWrapper.
@@ -38,7 +38,8 @@ class VideoWrapper(gym.Wrapper):
                 episode that begins after every Nth step. So if
                 video_save_interval=100 and each episode has 30 steps, it will record
                 the 4th episode(first to start after step_count=100) and then the 7th
-                episode (first to start after step_count=200).
+                episode (first to start after step_count=200). If single_video is true,
+                then this value does not apply as a single video is recorded throughout
         """
         super().__init__(env)
         self.episode_id = 0
@@ -48,7 +49,7 @@ class VideoWrapper(gym.Wrapper):
 
         self.directory = directory
         self.directory.mkdir(parents=True, exist_ok=True)
-        self.should_record = False
+        self.should_record = self.single_video
         self.step_count = 0
 
     def _reset_video_recorder(self) -> None:
@@ -72,7 +73,7 @@ class VideoWrapper(gym.Wrapper):
                 base_path=str(self.directory / f"video.{self.episode_id:06}"),
                 metadata={"episode_id": self.episode_id},
             )
-            self.should_record = False
+            self.should_record = self.single_video
 
     def reset(self):
         self._reset_video_recorder()
@@ -83,7 +84,7 @@ class VideoWrapper(gym.Wrapper):
         res = self.env.step(action)
         self.step_count += 1
         if self.step_count % self.video_save_interval == 0:
-            self.should_record == 0
+            self.should_record = True
         if self.video_recorder != None:
             self.video_recorder.capture_frame()
         return res
