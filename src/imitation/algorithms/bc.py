@@ -305,8 +305,8 @@ class BC(algo_base.DemonstrationAlgorithm):
 
         Raises:
             ValueError: If `weight_decay` is specified in `optimizer_kwargs` (use the
-                parameter `l2_weight` instead),
-                or if the batch size is not a multiple of the minibatch size.
+                parameter `l2_weight` instead), or if the batch size is not a multiple
+                of the minibatch size.
         """
         self._demo_data_loader: Optional[Iterable[algo_base.TransitionMapping]] = None
         self.batch_size = batch_size
@@ -420,11 +420,8 @@ class BC(algo_base.DemonstrationAlgorithm):
             if on_epoch_end is not None:
                 on_epoch_end()
 
-        n_minibatches = (
-            n_batches * self.batch_size // self.minibatch_size
-            if n_batches is not None
-            else None
-        )
+        mini_per_batch = self.batch_size // self.minibatch_size
+        n_minibatches = n_batches * mini_per_batch if n_batches is not None else None
 
         assert self._demo_data_loader is not None
         demonstration_batches = BatchIteratorWithEpochEndCallback(
