@@ -2,7 +2,7 @@
 
 import dataclasses
 import os
-from typing import Callable, Optional, Sequence
+from typing import Any, Callable, Optional, Sequence
 
 import hypothesis
 import hypothesis.strategies as st
@@ -228,48 +228,34 @@ def test_gradient_accumulation(
 
     seed = rng.integers(2**32)
 
-    th.manual_seed(seed)
-    bc_trainer1 = bc.BC(
-        observation_space=cartpole_venv.observation_space,
-        action_space=cartpole_venv.action_space,
-        batch_size=12,
-        demonstrations=demonstrations,
-        custom_logger=None,
-        rng=None,
-    )
+    def make_trainer(**kwargs: Any) -> bc.BC:
+        th.manual_seed(seed)
+        return bc.BC(
+            observation_space=cartpole_venv.observation_space,
+            action_space=cartpole_venv.action_space,
+            batch_size=12,
+            demonstrations=demonstrations,
+            custom_logger=None,
+            rng=None,
+            **kwargs,
+        )
 
-    th.manual_seed(seed)
-    bc_trainer2 = bc.BC(
-        observation_space=cartpole_venv.observation_space,
-        action_space=cartpole_venv.action_space,
-        batch_size=12,
-        minibatch_size=3,
-        demonstrations=demonstrations,
-        custom_logger=None,
-        rng=None,
-    )
+    trainers = (make_trainer(), make_trainer(minibatch_size=3))
 
     for _ in range(5):
         seed = rng.integers(2**32)
 
-        th.manual_seed(seed)
-        bc_trainer1.train(n_batches=1)
-
-        th.manual_seed(seed)
-        bc_trainer2.train(n_batches=1)
+        for trainer in trainers:
+            th.manual_seed(seed)
+            trainer.train(n_batches=1)
 
         # Note: due to numerical instability, the models are
         # bound to diverge at some point, but should be stable
         # over the short time frame we test over; however, it is
         # theoretically possible that with very unlucky seeding,
         # this could fail.
-        assert all(
-            th.allclose(p2, p2, atol=3e-8)
-            for p1, p2 in zip(
-                bc_trainer1.policy.parameters(),
-                bc_trainer2.policy.parameters(),
-            )
-        )
+        params = zip(trainers[0].policy.parameters(), trainers[1].policy.parameters())
+        assert all(th.allclose(p1, p2, atol=1e-5) for p1, p2 in params)
 
 
 def test_that_policy_reconstruction_preserves_parameters(
