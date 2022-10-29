@@ -1,4 +1,5 @@
 """Uses RL to train a policy from scratch, saving rollouts and policy.
+
 This can be used:
     1. To train a policy on a ground-truth reward function, as a source of
        synthetic "expert" demonstrations to train IRL or imitation learning
@@ -16,7 +17,6 @@ from sacred.observers import FileStorageObserver
 from stable_baselines3.common import callbacks
 from stable_baselines3.common.vec_env import VecNormalize
 
-import imitation.util.video_wrapper as video_wrapper
 from imitation.data import rollout, types, wrappers
 from imitation.policies import serialize
 from imitation.rewards.reward_wrapper import RewardVecEnvWrapper
@@ -43,11 +43,13 @@ def train_rl(
     agent_path: Optional[str],
 ) -> Mapping[str, float]:
     """Trains an expert policy from scratch and saves the rollouts and policy.
+
     Checkpoints:
       At applicable training steps `step` (where step is either an integer or
       "final"):
         - Policies are saved to `{log_dir}/policies/{step}/`.
         - Rollouts are saved to `{log_dir}/rollouts/{step}.npz`.
+
     Args:
         total_timesteps: Number of training timesteps in `model.learn()`.
         normalize_reward: Applies normalization and clipping to the reward function by
@@ -84,6 +86,7 @@ def train_rl(
         policy_save_final: If True, then save the policy right after training is
             finished.
         agent_path: Path to load warm-started agent.
+
     Returns:
         The return value of `rollout_stats()` using the final policy.
     """
@@ -99,7 +102,7 @@ def train_rl(
     post_wrappers = common.setup_video_saving(
         base_dir=log_dir,
         video_save_interval=video_save_interval,
-        post_wrappers=post_wrappers
+        post_wrappers=post_wrappers,
     )
 
     with common.make_venv(post_wrappers=post_wrappers) as venv:

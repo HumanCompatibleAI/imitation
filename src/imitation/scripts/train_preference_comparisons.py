@@ -12,7 +12,6 @@ import torch as th
 from sacred.observers import FileStorageObserver
 from stable_baselines3.common import type_aliases
 
-import gym
 from imitation.algorithms import preference_comparisons
 from imitation.data import types
 from imitation.policies import serialize
@@ -22,9 +21,6 @@ from imitation.scripts.common import train
 from imitation.scripts.config.train_preference_comparisons import (
     train_preference_comparisons_ex,
 )
-import imitation.util.video_wrapper as video_wrapper
-
-
 
 def save_model(
     agent_trainer: preference_comparisons.AgentTrainer,
@@ -164,8 +160,7 @@ def train_preference_comparisons(
 
     post_wrappers = common.setup_video_saving(
         base_dir=checkpoint_dir,
-        video_save_interval=video_save_interval,
-        post_wrappers=None
+        video_save_interval=video_save_interval
     )
 
     with common.make_venv(post_wrappers=post_wrappers) as venv:
@@ -304,6 +299,7 @@ def main_console():
     observer = FileStorageObserver(observer_path)
     train_preference_comparisons_ex.observers.append(observer)
     train_preference_comparisons_ex.run_commandline()
+
 
 if __name__ == "__main__":  # pragma: no cover
     main_console()

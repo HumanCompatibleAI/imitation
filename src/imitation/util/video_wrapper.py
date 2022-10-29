@@ -1,8 +1,9 @@
 """Wrapper to record rendered video frames from an environment."""
 
 import pathlib
-from typing import Optional, Callable
 import gym
+
+from typing import Optional, Callable
 from gym.wrappers.monitoring import video_recorder
 
 
@@ -65,8 +66,9 @@ class VideoWrapper(gym.Wrapper):
                 self.video_recorder.close()
                 self.video_recorder = None
 
-        if self.video_recorder is None and \
-        (self.should_record or self.step_count % self.video_save_interval == 0):
+        on_interval_boundary = self.step_count % self.video_save_interval == 0
+        time_to_record = self.should_record or on_interval_boundary
+        if self.video_recorder is None and time_to_record:
             # No video recorder -- start a new one.
             self.video_recorder = video_recorder.VideoRecorder(
                 env=self.env,
@@ -85,7 +87,7 @@ class VideoWrapper(gym.Wrapper):
         self.step_count += 1
         if self.step_count % self.video_save_interval == 0:
             self.should_record = True
-        if self.video_recorder != None:
+        if self.video_recorder is not None:
             self.video_recorder.capture_frame()
         return res
 
@@ -99,8 +101,9 @@ class VideoWrapper(gym.Wrapper):
 def video_wrapper_factory(
     video_dir: pathlib.Path,
     video_save_interval: int,
-    **kwargs) -> Callable:
-    def f(env: gym.Env, i: int)  -> VideoWrapper:
+    **kwargs
+    ) -> Callable:
+    def f(env: gym.Env, i: int) -> VideoWrapper:
         """
         Returns a wrapper around a gym environment records a video if and only if i is 0
 
@@ -108,11 +111,15 @@ def video_wrapper_factory(
             env: the environment to be wrapped around
             i: the index of the environment. This is to make the video wrapper compatible with
                     vectorized environments. Only environments with i=0 actually attach the VideoWrapper
+
+        Returns:
+            A video wrapper around the original environment if the index is 0.
+            Otherwise, the original environment is just returned.
         """
         return VideoWrapper(
             env,
             directory=video_dir,
             video_save_interval=video_save_interval,
-            **kwargs
+            **kwargs,
         ) if i == 0 else env
     return f

@@ -9,7 +9,6 @@ import sacred.commands
 import torch as th
 from sacred.observers import FileStorageObserver
 
-import imitation.util.video_wrapper as video_wrapper
 from imitation.algorithms.adversarial import airl as airl_algo
 from imitation.algorithms.adversarial import common
 from imitation.algorithms.adversarial import gail as gail_algo
@@ -125,7 +124,6 @@ def train_adversarial(
     post_wrappers = common_config.setup_video_saving(
         base_dir=checkpoint_dir,
         video_save_interval=video_save_interval,
-        post_wrappers=None
     )
 
     with common_config.make_venv(post_wrappers=post_wrappers) as venv:

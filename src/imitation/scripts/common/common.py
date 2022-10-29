@@ -134,6 +134,7 @@ def setup_logging(
     )
     return custom_logger, log_dir
 
+
 @common_ingredient.capture
 def setup_video_saving(
     _run,
@@ -162,22 +163,18 @@ def setup_video_saving(
         new list with just the video wrapper. If the video_save_interval is <=0,
         it will just return the inputted post_wrapper
     """
-
     if video_save_interval > 0:
-
         video_dir = base_dir / "videos"
         video_dir.mkdir(parents=True, exist_ok=True)
 
-        post_wrappers_copy = [wrapper for wrapper in post_wrappers] \
-            if post_wrappers != None else []
+        post_wrappers_copy = list(post_wrappers) if post_wrappers is not None else []
         post_wrappers_copy.append(
-            video_wrapper.video_wrapper_factory(video_dir, video_save_interval)
+            video_wrapper.video_wrapper_factory(video_dir, video_save_interval),
         )
 
         return post_wrappers_copy
 
     return post_wrappers
-
 
 
 @contextlib.contextmanager

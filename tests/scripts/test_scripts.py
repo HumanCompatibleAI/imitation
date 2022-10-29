@@ -1,4 +1,5 @@
 """Smoke tests for CLI programs in `imitation.scripts.*`.
+
 Every test in this file should use `parallel=False` to turn off multiprocessing because
 codecov might interact poorly with multiprocessing. The 'fast' named_config for each
 experiment implicitly sets parallel=False.
@@ -73,6 +74,7 @@ OLD_FMT_ROLLOUT_TEST_DATA_PATH = TEST_DATA_PATH / "old_format_rollout.pkl"
 @pytest.fixture(autouse=True)
 def sacred_capture_use_sys():
     """Set Sacred capture mode to "sys" because default "fd" option leads to error.
+    
     See https://github.com/IDSIA/sacred/issues/289.
 
     Yields:
@@ -648,6 +650,7 @@ def test_preference_comparisons_transfer_learning(
     named_configs_dict: Mapping[str, List[str]],
 ) -> None:
     """Transfer learning smoke test.
+
     Saves a preference comparisons ensemble reward, then loads it for transfer learning.
 
     Args:
@@ -951,14 +954,16 @@ def test_convert_trajs(tmpdir: str):
     for t_pkl, t_npz in zip(from_pkl, from_npz):
         assert t_pkl == t_npz
 
+
 # Change the following if the file structure of checkpoints changed.
 VIDEO_FILE_PATH = "video.{:06}.mp4".format(0)
 VIDEO_PATH_DICT = dict(
     rl=lambda d: d / "videos",
     adversarial=lambda d: d / "checkpoints" / "videos",
     pc=lambda d: d / "checkpoints" / "videos",
-    bc=lambda d: d / "videos"
+    bc=lambda d: d / "videos",
 )
+
 
 def _check_video_exists(log_dir, algo):
     video_dir = VIDEO_PATH_DICT[algo](log_dir)
@@ -966,7 +971,8 @@ def _check_video_exists(log_dir, algo):
     assert video_dir.exists()
     assert video_file.exists()
 
-@pytest.mark.skipif(sys.platform == "darwin", reason="ffmpeg takes a long time to install")
+
+@pytest.mark.skipif(sys.platform == "darwin", reason="ffmpeg instally takes awhile")
 def test_train_rl_video_saving(tmpdir):
     """Smoke test for imitation.scripts.train_rl."""
     config_updates = dict(
@@ -981,7 +987,8 @@ def test_train_rl_video_saving(tmpdir):
     assert run.status == "COMPLETED"
     _check_video_exists(run.config["common"]["log_dir"], "rl")
 
-@pytest.mark.skipif(sys.platform == "darwin", reason="ffmpeg takes a long time to install")
+
+@pytest.mark.skipif(sys.platform == "darwin", reason="ffmpeg instally takes awhile")
 def test_train_adversarial_video_saving(tmpdir):
     """Smoke test for imitation.scripts.train_adversarial."""
     named_configs = ["pendulum"] + ALGO_FAST_CONFIGS["adversarial"]
@@ -998,7 +1005,8 @@ def test_train_adversarial_video_saving(tmpdir):
     assert run.status == "COMPLETED"
     _check_video_exists(run.config["common"]["log_dir"], "adversarial")
 
-@pytest.mark.skipif(sys.platform == "darwin", reason="ffmpeg takes a long time to install")
+
+@pytest.mark.skipif(sys.platform == "darwin", reason="ffmpeg instally takes awhile")
 def test_train_preference_comparisons_video_saving(tmpdir):
     config_updates = dict(
         common=dict(log_root=tmpdir),
@@ -1011,7 +1019,8 @@ def test_train_preference_comparisons_video_saving(tmpdir):
     assert run.status == "COMPLETED"
     _check_video_exists(run.config["common"]["log_dir"], "pc")
 
-@pytest.mark.skipif(sys.platform == "darwin", reason="ffmpeg takes a long time to install")
+
+@pytest.mark.skipif(sys.platform == "darwin", reason="ffmpeg instally takes awhile")
 def test_train_bc_video_saving(tmpdir):
     config_updates = dict(
         common=dict(log_root=tmpdir),

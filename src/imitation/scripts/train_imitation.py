@@ -71,7 +71,7 @@ def train_imitation(
     dagger: Mapping[str, Any],
     use_dagger: bool,
     agent_path: Optional[str],
-    video_save_interval: int
+    video_save_interval: int,
 ) -> Mapping[str, Mapping[str, float]]:
     """Runs DAgger (if `use_dagger`) or BC (otherwise) training.
 
@@ -97,7 +97,6 @@ def train_imitation(
     post_wrappers = common.setup_video_saving(
         base_dir=log_dir,
         video_save_interval=video_save_interval,
-        post_wrappers=None
     )
 
     with common.make_venv(post_wrappers=post_wrappers) as venv:
