@@ -115,6 +115,15 @@ def seals_half_cheetah():
             vf_coef=0.11483689492120866,
         ),
     )
+    num_iterations = 50
+    total_timesteps = 20000000
+    # train = dict(
+    #     policy_cls="MlpPolicy",
+    #     policy_kwargs=dict(
+    #         activation_fn=nn.ReLU,
+    #         # net_arch=[dict(pi=[64, 64], vf=[64, 64])],
+    #     ),
+    # )
 
 
 @train_preference_comparisons_ex.named_config

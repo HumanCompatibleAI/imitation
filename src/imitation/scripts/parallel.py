@@ -183,6 +183,7 @@ def parallel(
                 best_config["config_updates"].update(
                     seed=ray.tune.grid_search(list(range(100, 100 + eval_trial_seeds))),
                 )
+                resources_per_trial = {k: 8 * v for k, v in resources_per_trial.items()}
                 eval_result = ray.tune.run(
                     trainable,
                     config={
@@ -191,7 +192,7 @@ def parallel(
                         "command_name": best_config.get("command_name", None),
                     },
                     name=run_name + "_best_hp_eval",
-                    resources_per_trial=resources_per_trial * 8,
+                    resources_per_trial=resources_per_trial,
                 )
                 returns = eval_result.results_df["mean_return"].to_numpy()
                 print("Returns:", returns)

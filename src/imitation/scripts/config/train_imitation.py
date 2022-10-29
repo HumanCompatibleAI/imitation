@@ -1,5 +1,7 @@
 """Configuration settings for train_dagger, training DAgger from synthetic demos."""
 
+import pathlib
+
 import sacred
 import torch as th
 
@@ -80,10 +82,20 @@ def ant():
 @train_imitation_ex.named_config
 def seals_ant():
     common = dict(env_name="seals/Ant-v0")
-    demonstrations = dict(
-        rollout_path="/home/taufeeque/imitation/output/train_experts/"
-        "2022-09-05T18:27:27-07:00/seals_ant_1/rollouts/final.pkl",
+    expert_dir = str(
+        pathlib.Path.home() / "imitation/output/train_experts/"
+        "2022-09-05T18:27:27-07:00/seals_ant_1/"
     )
+    demonstrations = dict(
+        rollout_path=expert_dir + "rollouts/final.pkl",
+    )
+    expert = {
+        "policy_type": "ppo",
+        "loader_kwargs": {
+            "path": expert_dir + "policies/final/",
+        },
+    }
+    del expert_dir
 
 
 @train_imitation_ex.named_config
@@ -98,37 +110,77 @@ def seals_half_cheetah():
     common = dict(env_name="seals/HalfCheetah-v0")
     bc_kwargs = dict(l2_weight=0.0)
     dagger = dict(total_timesteps=60000)
-    demonstrations = dict(
-        rollout_path="/home/taufeeque/imitation/output/train_experts/"
-        "2022-09-05T18:27:27-07:00/seals_half_cheetah_1/rollouts/final.pkl",
+    expert_dir = str(
+        pathlib.Path.home() / "imitation/output/train_experts/"
+        "2022-09-05T18:27:27-07:00/seals_half_cheetah_1/"
     )
+    demonstrations = dict(
+        rollout_path=expert_dir + "rollouts/final.pkl",
+    )
+    expert = {
+        "policy_type": "ppo",
+        "loader_kwargs": {
+            "path": expert_dir + "policies/final/",
+        },
+    }
+    del expert_dir
 
 
 @train_imitation_ex.named_config
 def seals_hopper():
     common = dict(env_name="seals/Hopper-v0")
-    demonstrations = dict(
-        rollout_path="/home/taufeeque/imitation/output/train_experts/"
-        "2022-10-11T06:27:42-07:00/seals_hopper_2/rollouts/final.pkl",
+    expert_dir = str(
+        pathlib.Path.home() / "imitation/output/train_experts/"
+        "2022-10-11T06:27:42-07:00/seals_hopper_2/"
     )
+    demonstrations = dict(
+        rollout_path=expert_dir + "rollouts/final.pkl",
+    )
+    expert = {
+        "policy_type": "ppo",
+        "loader_kwargs": {
+            "path": expert_dir + "policies/final/",
+        },
+    }
+    del expert_dir
 
 
 @train_imitation_ex.named_config
 def seals_swimmer():
     common = dict(env_name="seals/Swimmer-v0")
-    demonstrations = dict(
-        rollout_path="/home/taufeeque/imitation/output/train_experts/"
-        "2022-10-11T06:27:42-07:00/seals_swimmer_4/rollouts/final.pkl",
+    expert_dir = str(
+        pathlib.Path.home() / "/imitation/output/train_experts/"
+        "2022-10-11T06:27:42-07:00/seals_swimmer_4/"
     )
+    demonstrations = dict(
+        rollout_path=expert_dir + "rollouts/final.pkl",
+    )
+    expert = {
+        "policy_type": "ppo",
+        "loader_kwargs": {
+            "path": expert_dir + "policies/final/",
+        },
+    }
+    del expert_dir
 
 
 @train_imitation_ex.named_config
 def seals_walker():
     common = dict(env_name="seals/Walker2d-v0")
-    demonstrations = dict(
-        rollout_path="/home/taufeeque/imitation/output/train_experts/"
-        "2022-10-11T06:27:42-07:00/seals_walker_8/rollouts/final.pkl",
+    expert_dir = str(
+        pathlib.Path.home() / "imitation/output/train_experts/"
+        "2022-10-11T06:27:42-07:00/seals_walker_8/"
     )
+    demonstrations = dict(
+        rollout_path=expert_dir + "rollouts/final.pkl",
+    )
+    expert = {
+        "policy_type": "ppo",
+        "loader_kwargs": {
+            "path": expert_dir + "policies/final/",
+        },
+    }
+    del expert_dir
 
 
 @train_imitation_ex.named_config
