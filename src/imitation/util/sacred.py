@@ -4,9 +4,11 @@ import json
 import os
 import pathlib
 import warnings
-from typing import Any, Callable, NamedTuple, Sequence, Union
+from typing import Any, Callable, NamedTuple, Optional, Sequence
 
 import sacred
+import sacred.observers
+import sacred.run
 
 from imitation.data import types
 
@@ -14,35 +16,31 @@ from imitation.data import types
 class SacredDicts(NamedTuple):
     """Each dict `foo` is loaded from `f"{sacred_dir}/foo.json"`."""
 
-    sacred_dir: str
+    sacred_dir: pathlib.Path
     config: dict
     run: dict
 
     @classmethod
-    def load_from_dir(cls, sacred_dir: str):
-        args = []
-        for field in cls._fields:
-            if field == "sacred_dir":
-                args.append(sacred_dir)
-            else:
-                json_path = os.path.join(sacred_dir, f"{field}.json")
-                with open(json_path, "r") as f:
-                    args.append(json.load(f))
-        return cls(*args)
+    def load_from_dir(cls, sacred_dir: pathlib.Path):
+        return cls(
+            sacred_dir=sacred_dir,
+            config=json.loads((sacred_dir / "config.json").read_text()),
+            run=json.loads((sacred_dir / "run.json").read_text()),
+        )
 
 
-def dir_contains_sacred_jsons(dir_path: str) -> bool:
-    run_path = os.path.join(dir_path, "run.json")
-    config_path = os.path.join(dir_path, "config.json")
-    return os.path.isfile(run_path) and os.path.isfile(config_path)
+def dir_contains_sacred_jsons(dir_path: pathlib.Path) -> bool:
+    run_path = dir_path / "run.json"
+    config_path = dir_path / "config.json"
+    return run_path.is_file() and config_path.is_file()
 
 
 def filter_subdirs(
-    root_dir: str,
-    filter_fn: Callable[[str], bool] = dir_contains_sacred_jsons,
+    root_dir: pathlib.Path,
+    filter_fn: Callable[[pathlib.Path], bool] = dir_contains_sacred_jsons,
     *,
     nested_ok: bool = False,
-) -> Sequence[str]:
+) -> Sequence[pathlib.Path]:
     """Walks through a directory tree, returning paths to filtered subdirectories.
 
     Does not follow symlinks.
@@ -62,29 +60,30 @@ def filter_subdirs(
             paths is a subdirecotry of another.
     """
     filtered_dirs = set()
-    for root, _, _ in os.walk(root_dir, followlinks=False):
+    for root_str, _, _ in os.walk(root_dir, followlinks=False):
+        root = pathlib.Path(root_str)
         if filter_fn(root):
             filtered_dirs.add(root)
 
     if not nested_ok:
         for dirpath in filtered_dirs:
-            components = os.path.split(dirpath)
-            for i in range(1, len(components)):
-                prefix = os.path.join(*components[0:i])
-                if prefix in filtered_dirs:
-                    raise ValueError(f"Parent {prefix} to {dir} also a dir directory")
+            for other_dirpath in filtered_dirs:
+                if dirpath != other_dirpath and other_dirpath in dirpath.parents:
+                    raise ValueError(
+                        f"Found nested directories: {dirpath} and {other_dirpath}",
+                    )
     return list(filtered_dirs)
 
 
 def build_sacred_symlink(log_dir: types.AnyPath, run: sacred.run.Run) -> None:
     """Constructs a symlink "{log_dir}/sacred" => "${SACRED_PATH}"."""
-    log_dir = pathlib.Path(log_dir)
+    log_dir = types.parse_path(log_dir)
 
     sacred_dir = get_sacred_dir_from_run(run)
     if sacred_dir is None:
         warnings.warn(RuntimeWarning("Couldn't find sacred directory."))
         return
-    symlink_path = pathlib.Path(log_dir, "sacred")
+    symlink_path = log_dir / "sacred"
     target_path = pathlib.Path(os.path.relpath(sacred_dir, start=log_dir))
 
     # Path.symlink_to errors if the symlink already exists. In our case, we actually
@@ -112,11 +111,11 @@ def build_sacred_symlink(log_dir: types.AnyPath, run: sacred.run.Run) -> None:
             raise e
 
 
-def get_sacred_dir_from_run(run: sacred.run.Run) -> Union[pathlib.Path, None]:
+def get_sacred_dir_from_run(run: sacred.run.Run) -> Optional[pathlib.Path]:
     """Returns path to the sacred directory, or None if not found."""
     for obs in run.observers:
         if isinstance(obs, sacred.observers.FileStorageObserver):
-            return pathlib.Path(obs.dir)
+            return types.parse_path(obs.dir)
     return None
 
 

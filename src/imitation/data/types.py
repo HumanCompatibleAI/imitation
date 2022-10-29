@@ -5,7 +5,18 @@ import logging
 import os
 import pathlib
 import warnings
-from typing import Any, Dict, Mapping, Optional, Sequence, Tuple, TypeVar, Union, cast
+from typing import (
+    Any,
+    Dict,
+    Mapping,
+    Optional,
+    Sequence,
+    Tuple,
+    TypeVar,
+    Union,
+    cast,
+    overload,
+)
 
 import numpy as np
 import torch as th
@@ -33,11 +44,87 @@ def dataclass_quick_asdict(obj) -> Dict[str, Any]:
     return d
 
 
-def path_to_str(path: AnyPath) -> str:
-    if isinstance(path, bytes):
-        return path.decode()
+def parse_path(
+    path: AnyPath,
+    allow_relative: bool = True,
+    base_directory: Optional[pathlib.Path] = None,
+) -> pathlib.Path:
+    """Parse a path to a `pathlib.Path` object.
+
+    All resulting paths are resolved, absolute paths. If `allow_relative` is True,
+    then relative paths are allowed as input, and are resolved relative to the
+    current working directory, or relative to `base_directory` if it is
+    specified.
+
+    Args:
+        path: The path to parse. Can be a string, bytes, or `os.PathLike`.
+        allow_relative: If True, then relative paths are allowed as input, and
+            are resolved relative to the current working directory. If False,
+            an error is raised if the path is not absolute.
+        base_directory: If specified, then relative paths are resolved relative
+            to this directory, instead of the current working directory.
+
+    Returns:
+        A `pathlib.Path` object.
+
+    Raises:
+        ValueError: If `allow_relative` is False and the path is not absolute.
+        ValueError: If `base_directory` is specified and `allow_relative` is
+            False.
+    """
+    if base_directory is not None and not allow_relative:
+        raise ValueError(
+            "If `base_directory` is specified, then `allow_relative` must be True.",
+        )
+
+    parsed_path: pathlib.Path
+    if isinstance(path, pathlib.Path):
+        parsed_path = path
+    elif isinstance(path, str):
+        parsed_path = pathlib.Path(path)
+    elif isinstance(path, bytes):
+        parsed_path = pathlib.Path(path.decode())
     else:
-        return str(path)
+        parsed_path = pathlib.Path(str(path))
+
+    if parsed_path.is_absolute():
+        return parsed_path
+    else:
+        if allow_relative:
+            base_directory = base_directory or pathlib.Path.cwd()
+            # relative to current working directory
+            return base_directory / parsed_path
+        else:
+            raise ValueError(f"Path {str(parsed_path)} is not absolute")
+
+
+def parse_optional_path(
+    path: Optional[AnyPath],
+    allow_relative: bool = True,
+    base_directory: Optional[pathlib.Path] = None,
+) -> Optional[pathlib.Path]:
+    """Parse an optional path to a `pathlib.Path` object.
+
+    All resulting paths are resolved, absolute paths. If `allow_relative` is True,
+    then relative paths are allowed as input, and are resolved relative to the
+    current working directory, or relative to `base_directory` if it is
+    specified.
+
+    Args:
+        path: The path to parse. Can be a string, bytes, or `os.PathLike`.
+        allow_relative: If True, then relative paths are allowed as input, and
+            are resolved relative to the current working directory. If False,
+            an error is raised if the path is not absolute.
+        base_directory: If specified, then relative paths are resolved relative
+            to this directory, instead of the current working directory.
+
+    Returns:
+        A `pathlib.Path` object, or None if `path` is None.
+    """
+    if path is None:
+        return None
+    else:
+        return parse_path(path, allow_relative, base_directory)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -169,8 +256,11 @@ def transitions_collate_fn(
     return result
 
 
+TransitionsMinimalSelf = TypeVar("TransitionsMinimalSelf", bound="TransitionsMinimal")
+
+
 @dataclasses.dataclass(frozen=True)
-class TransitionsMinimal(th_data.Dataset):
+class TransitionsMinimal(th_data.Dataset, Sequence[Mapping[str, np.ndarray]]):
     """A Torch-compatible `Dataset` of obs-act transitions.
 
     This class and its subclasses are usually instantiated via
@@ -200,7 +290,7 @@ class TransitionsMinimal(th_data.Dataset):
     infos: np.ndarray
     """Array of info dicts. Shape: (batch_size,)."""
 
-    def __len__(self):
+    def __len__(self) -> int:
         """Returns number of transitions. Always positive."""
         return len(self.obs)
 
@@ -238,6 +328,14 @@ class TransitionsMinimal(th_data.Dataset):
     # @overload
     # def __getitem__(self, key: int) -> Mapping[str, np.ndarray]:
     #     pass  # pragma: no cover
+
+    @overload
+    def __getitem__(self, key: int) -> Mapping[str, np.ndarray]:
+        pass
+
+    @overload
+    def __getitem__(self: TransitionsMinimalSelf, key: slice) -> TransitionsMinimalSelf:
+        pass
 
     def __getitem__(self, key):
         """See TransitionsMinimal docstring for indexing and slicing semantics."""
@@ -345,22 +443,25 @@ def load(path: AnyPath) -> Sequence[Trajectory]:
     # .npz format and the old pickle based format. To tell the difference we need to
     # look at the type of the resulting object. If it's the new compressed format,
     # it should be a Mapping that we need to decode, whereas if it's the old format
-    # it's just the sequence of trajectories and we can return it directly.
+    # it's just the sequence of trajectories, and we can return it directly.
     data = np.load(path, allow_pickle=True)
     if isinstance(data, Sequence):  # old format
         warnings.warn("Loading old version of Trajectory's", DeprecationWarning)
         return data
     elif isinstance(data, Mapping):  # new format
         num_trajs = len(data["indices"])
-        fields = (
+        fields = [
             # Account for the extra obs in each trajectory
             np.split(data["obs"], data["indices"] + np.arange(num_trajs) + 1),
             np.split(data["acts"], data["indices"]),
             np.split(data["infos"], data["indices"]),
             data["terminal"],
-        )
+        ]
         if "rews" in data:
-            fields += (np.split(data["rews"], data["indices"]),)
+            fields = [
+                *fields,
+                np.split(data["rews"], data["indices"]),
+            ]
             return [TrajectoryWithRew(*args) for args in zip(*fields)]
         else:
             return [Trajectory(*args) for args in zip(*fields)]
@@ -392,12 +493,12 @@ def save(path: AnyPath, trajectories: Sequence[Trajectory]):
         trajectories: The trajectories to save.
 
     Raises:
-        ValueError: If the trajectories are not all of the same type, i.e. some are
+        ValueError: If not all trajectories have the same type, i.e. some are
             `Trajectory` and others are `TrajectoryWithRew`.
     """
-    p = pathlib.Path(path)
+    p = parse_path(path)
     p.parent.mkdir(parents=True, exist_ok=True)
-    tmp_path = f"{path}.tmp"
+    tmp_path = f"{p}.tmp"
 
     infos = [
         # Replace 'None' values for `infos`` with array of empty dicts
@@ -423,5 +524,5 @@ def save(path: AnyPath, trajectories: Sequence[Trajectory]):
         np.savez_compressed(f, **condensed)
 
     # Ensure atomic write
-    os.replace(tmp_path, path)
-    logging.info(f"Dumped demonstrations to {path}.")
+    os.replace(tmp_path, p)
+    logging.info(f"Dumped demonstrations to {p}.")

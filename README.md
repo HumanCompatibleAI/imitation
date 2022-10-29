@@ -23,6 +23,13 @@ You can find [the documentation here](https://imitation.readthedocs.io/en/latest
 
 ## Installation
 
+### Prerequisites
+
+- Python 3.8+
+- (Optional) OpenGL (to render Gym environments)
+- (Optional) FFmpeg (to encode videos of renders)
+- (Optional) MuJoCo (follow instructions to install [mujoco_py v1.5 here](https://github.com/openai/mujoco-py/tree/498b451a03fb61e5bdfcb6956d8d7c881b1098b5#install-mujoco))
+
 ### Installing PyPI release
 
 Installing the PyPI release is the standard way to use `imitation`, and the recommended way for most users.
@@ -56,10 +63,6 @@ For macOS users, some packages are required to run experiments (see `./experimen
 brew install coreutils gnu-getopt parallel
 ```
 
-### Optional Mujoco Dependency
-
-Follow instructions to install [mujoco_py v1.5 here](https://github.com/openai/mujoco-py/tree/498b451a03fb61e5bdfcb6956d8d7c881b1098b5#install-mujoco).
-
 ## CLI Quickstart
 
 We provide several CLI scripts as a front-end to the algorithms implemented in `imitation`. These use [Sacred](https://github.com/idsia/sacred) for configuration and replicability.
@@ -71,10 +74,10 @@ From [examples/quickstart.sh:](examples/quickstart.sh)
 python -m imitation.scripts.train_rl with pendulum common.fast train.fast rl.fast fast common.log_dir=quickstart/rl/
 
 # Train GAIL from demonstrations. Tensorboard logs saved in output/ (default log directory).
-python -m imitation.scripts.train_adversarial gail with pendulum common.fast demonstrations.fast train.fast rl.fast fast demonstrations.rollout_path=quickstart/rl/rollouts/final.pkl
+python -m imitation.scripts.train_adversarial gail with pendulum common.fast demonstrations.fast train.fast rl.fast fast demonstrations.rollout_path=quickstart/rl/rollouts/final.npz
 
 # Train AIRL from demonstrations. Tensorboard logs saved in output/ (default log directory).
-python -m imitation.scripts.train_adversarial airl with pendulum common.fast demonstrations.fast train.fast rl.fast fast demonstrations.rollout_path=quickstart/rl/rollouts/final.pkl
+python -m imitation.scripts.train_adversarial airl with pendulum common.fast demonstrations.fast train.fast rl.fast fast demonstrations.rollout_path=quickstart/rl/rollouts/final.npz
 ```
 
 Tips:

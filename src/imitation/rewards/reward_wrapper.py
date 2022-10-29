@@ -4,7 +4,9 @@ import collections
 from typing import Deque
 
 import numpy as np
-from stable_baselines3.common import callbacks, vec_env
+from stable_baselines3.common import callbacks
+from stable_baselines3.common import logger as sb_logger
+from stable_baselines3.common import vec_env
 
 from imitation.rewards import reward_function
 
@@ -21,7 +23,7 @@ class WrappedRewardCallback(callbacks.BaseCallback):
             **kwargs: Passed through to `callbacks.BaseCallback`.
         """
         self.episode_rewards = episode_rewards
-        super().__init__(self, *args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def _on_step(self) -> bool:
         return True
@@ -30,6 +32,7 @@ class WrappedRewardCallback(callbacks.BaseCallback):
         if len(self.episode_rewards) == 0:
             return
         mean = sum(self.episode_rewards) / len(self.episode_rewards)
+        assert isinstance(self.logger, sb_logger.Logger)
         self.logger.record("rollout/ep_rew_wrapped_mean", mean)
 
 
@@ -62,7 +65,7 @@ class RewardVecEnvWrapper(vec_env.VecEnvWrapper):
         """
         assert not isinstance(venv, RewardVecEnvWrapper)
         super().__init__(venv)
-        self.episode_rewards = collections.deque(maxlen=ep_history)
+        self.episode_rewards: Deque = collections.deque(maxlen=ep_history)
         self._cumulative_rew = np.zeros((venv.num_envs,))
         self.reward_fn = reward_fn
         self._old_obs = None

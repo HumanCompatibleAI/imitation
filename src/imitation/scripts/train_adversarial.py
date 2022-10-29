@@ -2,8 +2,7 @@
 
 import functools
 import logging
-import os
-import os.path as osp
+import pathlib
 from typing import Any, Mapping, Optional, Type
 
 import sacred.commands
@@ -22,15 +21,15 @@ from imitation.scripts.config.train_adversarial import train_adversarial_ex
 logger = logging.getLogger("imitation.scripts.train_adversarial")
 
 
-def save(trainer, save_path):
+def save(trainer: common.AdversarialTrainer, save_path: pathlib.Path):
     """Save discriminator and generator."""
     # We implement this here and not in Trainer since we do not want to actually
     # serialize the whole Trainer (including e.g. expert demonstrations).
-    os.makedirs(save_path, exist_ok=True)
-    th.save(trainer.reward_train, os.path.join(save_path, "reward_train.pt"))
-    th.save(trainer.reward_test, os.path.join(save_path, "reward_test.pt"))
+    save_path.mkdir(parents=True, exist_ok=True)
+    th.save(trainer.reward_train, save_path / "reward_train.pt")
+    th.save(trainer.reward_test, save_path / "reward_test.pt")
     serialize.save_stable_model(
-        os.path.join(save_path, "gen_policy"),
+        save_path / "gen_policy",
         trainer.gen_algo,
     )
 
@@ -60,14 +59,13 @@ def _add_hook(ingredient: sacred.Ingredient) -> None:
         algorithm_specific = {}  # noqa: F841
 
 
-for ingredient in [train_adversarial_ex] + train_adversarial_ex.ingredients:
+for ingredient in [train_adversarial_ex, *train_adversarial_ex.ingredients]:
     _add_hook(ingredient)
 
 
 @train_adversarial_ex.capture
 def train_adversarial(
     _run,
-    _seed: int,
     show_config: bool,
     algo_cls: Type[common.AdversarialTrainer],
     algorithm_kwargs: Mapping[str, Any],
@@ -84,7 +82,6 @@ def train_adversarial(
         - Generator policies are saved to `f"{log_dir}/checkpoints/{step}/gen_policy/"`.
 
     Args:
-        _seed: Random seed.
         show_config: Print the merged config before starting training. This is
             analogous to the print_config command, but will show config after
             rather than before merging `algorithm_specific` arguments.
@@ -150,16 +147,16 @@ def train_adversarial(
             **algorithm_kwargs,
         )
 
-        def callback(round_num):
+        def callback(round_num: int, /) -> None:
             if checkpoint_interval > 0 and round_num % checkpoint_interval == 0:
-                save(trainer, os.path.join(log_dir, "checkpoints", f"{round_num:05d}"))
+                save(trainer, log_dir / "checkpoints" / f"{round_num:05d}")
 
         trainer.train(total_timesteps, callback)
         imit_stats = train.eval_policy(trainer.policy, trainer.venv_train)
 
     # Save final artifacts.
     if checkpoint_interval >= 0:
-        save(trainer, os.path.join(log_dir, "checkpoints", "final"))
+        save(trainer, log_dir / "checkpoints" / "final")
 
     return {
         "imit_stats": imit_stats,
@@ -179,7 +176,8 @@ def airl():
 
 
 def main_console():
-    observer = FileStorageObserver(osp.join("output", "sacred", "train_adversarial"))
+    observer_path = pathlib.Path.cwd() / "output" / "sacred" / "train_adversarial"
+    observer = FileStorageObserver(observer_path)
     train_adversarial_ex.observers.append(observer)
     train_adversarial_ex.run_commandline()
 

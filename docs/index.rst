@@ -65,6 +65,14 @@ Main Features
    tutorials/6_train_mce
    tutorials/7_train_density
 
+.. toctree::
+   :maxdepth: 2
+   :caption: Experts
+   :hidden:
+
+   experts/loading-experts
+
+
 API Reference
 ~~~~~~~~~~~~~
 

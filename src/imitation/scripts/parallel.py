@@ -3,8 +3,8 @@
 import collections.abc
 import copy
 import glob
-import os
-from typing import Any, Callable, Mapping, Optional, Sequence
+import pathlib
+from typing import Any, Callable, Dict, Mapping, Optional, Sequence
 
 import numpy as np
 import ray
@@ -259,7 +259,7 @@ def _ray_tune_sacred_wrapper(
         sacred.SETTINGS.CAPTURE_MODE = "sys"
 
         run_kwargs = config
-        updated_run_kwargs = {}
+        updated_run_kwargs: Dict[str, Any] = {}
         # Import inside function rather than in module because Sacred experiments
         # are not picklable, and Ray requires this function to be picklable.
         from imitation.scripts.train_adversarial import train_adversarial_ex
@@ -279,9 +279,7 @@ def _ray_tune_sacred_wrapper(
         ex.observers = [FileStorageObserver("sacred")]
 
         # Apply base configs to get modified `named_configs` and `config_updates`.
-        named_configs = []
-        named_configs.extend(base_named_configs)
-        named_configs.extend(run_kwargs["named_configs"])
+        named_configs = base_named_configs + run_kwargs["named_configs"]
         updated_run_kwargs["named_configs"] = named_configs
 
         config_updates = {}
@@ -314,7 +312,8 @@ def _ray_tune_sacred_wrapper(
 
 
 def main_console():
-    observer = FileStorageObserver(os.path.join("output", "sacred", "parallel"))
+    observer_path = pathlib.Path.cwd() / "output" / "sacred" / "parallel"
+    observer = FileStorageObserver(observer_path)
     parallel_ex.observers.append(observer)
     parallel_ex.run_commandline()
 

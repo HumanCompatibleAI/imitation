@@ -9,8 +9,9 @@ from stable_baselines3.common import base_class, policies, torch_layers, vec_env
 import imitation.util.networks
 from imitation.data import rollout
 from imitation.policies import base
+from imitation.scripts.common import common
 
-train_ingredient = sacred.Ingredient("train")
+train_ingredient = sacred.Ingredient("train", ingredients=[common.common_ingredient])
 logger = logging.getLogger(__name__)
 
 
@@ -92,6 +93,7 @@ def eval_policy(
         "monitor_return" key). "expert_stats" gives the return value of
         `rollout_stats()` on the expert demonstrations loaded from `rollout_path`.
     """
+    rng = common.make_rng()
     sample_until_eval = rollout.make_min_episodes(n_episodes_eval)
     if isinstance(rl_algo, base_class.BaseAlgorithm):
         # Set RL algorithm's env to venv, removing any cruft wrappers that the RL
@@ -101,12 +103,14 @@ def eval_policy(
         # under the hood to get it to work with the RL algorithm (e.g. transposing
         # images so they can be fed into CNNs).
         train_env = rl_algo.get_env()
+        assert train_env is not None
     else:
         train_env = venv
     trajs = rollout.generate_trajectories(
         rl_algo,
         train_env,
         sample_until=sample_until_eval,
+        rng=rng,
     )
     return rollout.rollout_stats(trajs)
 

@@ -17,9 +17,13 @@ from stable_baselines3.common import (
 from imitation.policies import serialize
 from imitation.policies.replay_buffer_wrapper import ReplayBufferRewardWrapper
 from imitation.rewards.reward_function import RewardFn
+from imitation.scripts.common import common
 from imitation.scripts.common.train import train_ingredient
 
-rl_ingredient = sacred.Ingredient("rl", ingredients=[train_ingredient])
+rl_ingredient = sacred.Ingredient(
+    "rl",
+    ingredients=[train_ingredient, common.common_ingredient],
+)
 logger = logging.getLogger(__name__)
 
 
@@ -168,11 +172,11 @@ def make_rl_algo(
 
 @rl_ingredient.capture
 def load_rl_algo_from_path(
+    _seed: int,
     agent_path: str,
     venv: vec_env.VecEnv,
     rl_cls: Type[base_class.BaseAlgorithm],
     rl_kwargs: Mapping[str, Any],
-    _seed: int,
     relabel_reward_fn: Optional[RewardFn] = None,
 ) -> base_class.BaseAlgorithm:
     rl_kwargs = dict(rl_kwargs)

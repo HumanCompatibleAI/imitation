@@ -1,5 +1,6 @@
 """Tests for `imitation.algorithms.density_baselines`."""
 
+from dataclasses import asdict
 from typing import Sequence
 
 import numpy as np
@@ -44,6 +45,7 @@ def test_density_reward(
     is_stationary,
     pendulum_venv,
     pendulum_expert_trajectories: Sequence[TrajectoryWithRew],
+    rng,
 ):
     # use only a subset of trajectories
     expert_trajectories_all = pendulum_expert_trajectories[:8]
@@ -57,6 +59,7 @@ def test_density_reward(
         is_stationary=is_stationary,
         kernel_bandwidth=0.2,
         standardise_inputs=True,
+        rng=rng,
     )
     reward_fn.train()
 
@@ -71,6 +74,7 @@ def test_density_reward(
         random_policy,
         pendulum_venv,
         sample_until=sample_until,
+        rng=rng,
     )
     expert_trajectories_test = expert_trajectories_all[n_experts // 2 :]
     random_returns = score_trajectories(random_trajectories, reward_fn)
@@ -85,6 +89,7 @@ def test_density_reward(
 def test_density_trainer_smoke(
     pendulum_venv,
     pendulum_expert_trajectories: Sequence[TrajectoryWithRew],
+    rng,
 ):
     # tests whether density trainer runs, not whether it's good
     # (it's actually really poor)
@@ -94,7 +99,69 @@ def test_density_trainer_smoke(
         demonstrations=rollouts,
         venv=pendulum_venv,
         rl_algo=rl_algo,
+        rng=rng,
     )
     density_trainer.train()
     density_trainer.train_policy(n_timesteps=2)
     density_trainer.test_policy(n_trajectories=2)
+
+
+def test_density_with_other_trajectory_types(
+    pendulum_expert_trajectories: Sequence[TrajectoryWithRew],
+    pendulum_venv,
+    rng,
+):
+    rl_algo = stable_baselines3.PPO(policies.ActorCriticPolicy, pendulum_venv)
+    rollouts = pendulum_expert_trajectories[:2]
+    transitions = rollout.flatten_trajectories_with_rew(rollouts)
+    transitions_mappings = [
+        asdict(transitions),
+    ]
+
+    minimal_transitions = types.TransitionsMinimal(
+        obs=transitions.obs,
+        acts=transitions.acts,
+        infos=transitions.infos,
+    )
+    d = DensityAlgorithm(
+        demonstrations=transitions_mappings,
+        venv=pendulum_venv,
+        rl_algo=rl_algo,
+        rng=rng,
+    )
+    d.train()
+    d.train_policy(n_timesteps=2)
+    d.test_policy(n_trajectories=2)
+
+    d = DensityAlgorithm(
+        demonstrations=minimal_transitions,
+        venv=pendulum_venv,
+        rl_algo=rl_algo,
+        rng=rng,
+    )
+    d.train()
+    d.train_policy(n_timesteps=2)
+    d.test_policy(n_trajectories=2)
+
+
+def test_density_trainer_raises(
+    pendulum_venv,
+    rng,
+):
+    rl_algo = stable_baselines3.PPO(policies.ActorCriticPolicy, pendulum_venv)
+    density_trainer = DensityAlgorithm(
+        venv=pendulum_venv,
+        rl_algo=rl_algo,
+        rng=rng,
+        demonstrations=None,
+        density_type=DensityType.STATE_STATE_DENSITY,
+    )
+    with pytest.raises(ValueError, match="STATE_STATE_DENSITY requires next_obs_b"):
+        density_trainer._get_demo_from_batch(
+            np.zeros((1, 3)),
+            np.zeros((1, 1)),
+            None,
+        )
+
+    with pytest.raises(TypeError, match="Unsupported demonstration type"):
+        density_trainer.set_demonstrations("foo")  # type: ignore[arg-type]

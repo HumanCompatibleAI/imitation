@@ -11,7 +11,6 @@ SCRIPT_NAMES = (
     "benchmark_and_table.sh",
     "imit_benchmark.sh",
     "rollouts_from_policies.sh",
-    "train_experts.sh",
     "transfer_learn_benchmark.sh",
 )
 

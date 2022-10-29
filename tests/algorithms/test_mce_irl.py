@@ -6,6 +6,8 @@ import gym
 import numpy as np
 import pytest
 import torch as th
+from seals import base_envs
+from seals.diagnostics import random_trans
 from stable_baselines3.common import vec_env
 
 from imitation.algorithms import base
@@ -16,8 +18,6 @@ from imitation.algorithms.mce_irl import (
     mce_partition_fh,
 )
 from imitation.data import rollout
-from imitation.envs import resettable_env
-from imitation.envs.examples import model_envs
 from imitation.rewards import reward_nets
 from imitation.util.util import tensor_iter_norm
 
@@ -52,7 +52,7 @@ def test_random_mdp():
         horizon = 5 * (i + 1)
         random_obs = (i % 2) == 0
         obs_dim = (i * 3 + 4) ** 2 + i
-        mdp = model_envs.RandomMDP(
+        mdp = random_trans.RandomTransitionEnv(
             n_states=n_states,
             n_actions=n_actions,
             branch_factor=branch_factor,
@@ -94,7 +94,7 @@ DISCOUNT_RATES = FEW_DISCOUNT_RATES + [0.5, 0.9]
 @pytest.mark.parametrize("discount", DISCOUNT_RATES)
 def test_policy_om_random_mdp(discount: float):
     """Test that optimal policy occupancy measure ("om") for a random MDP is sane."""
-    mdp = gym.make("imitation/Random-v0")
+    mdp = gym.make("seals/Random-v0")
     V, Q, pi = mce_partition_fh(mdp, discount=discount)
     assert np.all(np.isfinite(V))
     assert np.all(np.isfinite(Q))
@@ -116,97 +116,106 @@ def test_policy_om_random_mdp(discount: float):
     assert np.allclose(np.sum(D), expected_sum)
 
 
-class ReasonableMDP(resettable_env.TabularModelEnv):
+class ReasonablePOMDP(base_envs.TabularModelPOMDP):
     """A tabular MDP with sensible parameters."""
 
-    observation_matrix = np.array(
-        [
-            [3, -5, -1, -1, -4, 5, 3, 0],
-            # state 1 (top)
-            [4, -4, 2, 2, -4, -1, -2, -2],
-            # state 2 (bottom, equiv to top)
-            [3, -1, 5, -1, 0, 2, -5, 2],
-            # state 3 (middle, very low reward and so dominated by others)
-            [-5, -1, 4, 1, 4, 1, 5, 3],
-            # state 4 (final, all self loops, good reward)
-            [2, -5, 1, -5, 1, 4, 4, -3],
-        ],
-    )
-    transition_matrix = np.array(
-        [
-            # transitions out of state 0
+    def __init__(self):
+        """Initialize a ReasonablePOMDP."""
+        observation_matrix = np.array(
             [
-                # action 0: goes to state 1 (sometimes 2)
-                [0, 0.9, 0.1, 0, 0],
-                # action 1: goes to state 3 deterministically
-                [0, 0, 0, 1, 0],
-                # action 2: goes to state 2 (sometimes 2)
-                [0, 0.1, 0.9, 0, 0],
+                [3, -5, -1, -1, -4, 5, 3, 0],
+                # state 1 (top)
+                [4, -4, 2, 2, -4, -1, -2, -2],
+                # state 2 (bottom, equiv to top)
+                [3, -1, 5, -1, 0, 2, -5, 2],
+                # state 3 (middle, very low reward and so dominated by others)
+                [-5, -1, 4, 1, 4, 1, 5, 3],
+                # state 4 (final, all self loops, good reward)
+                [2, -5, 1, -5, 1, 4, 4, -3],
             ],
-            # transitions out of state 1
+        )
+        transition_matrix = np.array(
             [
-                # action 0: goes to state 3 or 4 (sub-optimal)
-                [0, 0, 0, 0.05, 0.95],
-                # action 1: goes to state 3 (bad)
-                [0, 0, 0, 1, 0],
-                # action 2: goes to state 4 (good!)
-                [0, 0, 0, 0, 1],
+                # transitions out of state 0
+                [
+                    # action 0: goes to state 1 (sometimes 2)
+                    [0, 0.9, 0.1, 0, 0],
+                    # action 1: goes to state 3 deterministically
+                    [0, 0, 0, 1, 0],
+                    # action 2: goes to state 2 (sometimes 2)
+                    [0, 0.1, 0.9, 0, 0],
+                ],
+                # transitions out of state 1
+                [
+                    # action 0: goes to state 3 or 4 (sub-optimal)
+                    [0, 0, 0, 0.05, 0.95],
+                    # action 1: goes to state 3 (bad)
+                    [0, 0, 0, 1, 0],
+                    # action 2: goes to state 4 (good!)
+                    [0, 0, 0, 0, 1],
+                ],
+                # transitions out of state 2 (basically the same)
+                [
+                    # action 0: goes to state 3 or 4 (sub-optimal)
+                    [0, 0, 0, 0.05, 0.95],
+                    # action 1: goes to state 3 (bad)
+                    [0, 0, 0, 1, 0],
+                    # action 2: goes to state 4 (good!)
+                    [0, 0, 0, 0, 1],
+                ],
+                # transitions out of state 3 (all go to state 4)
+                [
+                    # action 0
+                    [0, 0, 0, 0, 1],
+                    # action 1
+                    [0, 0, 0, 0, 1],
+                    # action 2
+                    [0, 0, 0, 0, 1],
+                ],
+                # transitions out of state 4 (all go back to state 0)
+                [
+                    # action 0
+                    [1, 0, 0, 0, 0],
+                    # action 1
+                    [1, 0, 0, 0, 0],
+                    # action 2
+                    [1, 0, 0, 0, 0],
+                ],
             ],
-            # transitions out of state 2 (basically the same)
+        )
+        reward_matrix = np.array(
             [
-                # action 0: goes to state 3 or 4 (sub-optimal)
-                [0, 0, 0, 0.05, 0.95],
-                # action 1: goes to state 3 (bad)
-                [0, 0, 0, 1, 0],
-                # action 2: goes to state 4 (good!)
-                [0, 0, 0, 0, 1],
+                # state 0 (okay reward, but we can't go back so it doesn't matter)
+                1,
+                # states 1 & 2 have same (okay) reward
+                2,
+                2,
+                # state 3 has very negative reward (so avoid it!)
+                -20,
+                # state 4 has pretty good reward (good enough that we should move out
+                # of 1 & 2)
+                3,
             ],
-            # transitions out of state 3 (all go to state 4)
-            [
-                # action 0
-                [0, 0, 0, 0, 1],
-                # action 1
-                [0, 0, 0, 0, 1],
-                # action 2
-                [0, 0, 0, 0, 1],
-            ],
-            # transitions out of state 4 (all go back to state 0)
-            [
-                # action 0
-                [1, 0, 0, 0, 0],
-                # action 1
-                [1, 0, 0, 0, 0],
-                # action 2
-                [1, 0, 0, 0, 0],
-            ],
-        ],
-    )
-    reward_matrix = np.array(
-        [
-            # state 0 (okay reward, but we can't go back so it doesn't matter)
-            1,
-            # states 1 & 2 have same (okay) reward
-            2,
-            2,
-            # state 3 has very negative reward (so avoid it!)
-            -20,
-            # state 4 has pretty good reward (good enough that we should move out
-            # of 1 & 2)
-            3,
-        ],
-    )
-    # always start in s0 or s4
-    initial_state_dist = [0.5, 0, 0, 0, 0.5]
-    horizon = 20
+        )
+        # always start in s0 or s4
+        initial_state_dist = np.array([0.5, 0.0, 0.0, 0.0, 0.5])
+        horizon = 20
+        super().__init__(
+            observation_matrix=observation_matrix,
+            transition_matrix=transition_matrix,
+            reward_matrix=reward_matrix,
+            initial_state_dist=initial_state_dist,
+            horizon=horizon,
+        )
 
 
 @pytest.mark.parametrize("discount", DISCOUNT_RATES)
-def test_policy_om_reasonable_mdp(discount: float):
+def test_policy_om_reasonable_pomdp(discount: float):
     # MDP described above
-    mdp = ReasonableMDP()
+    pomdp = ReasonablePOMDP()
     # get policy etc. for our MDP
-    V, Q, pi = mce_partition_fh(mdp, discount=discount)
-    Dt, D = mce_occupancy_measures(mdp, pi=pi, discount=discount)
+    V, Q, pi = mce_partition_fh(pomdp, discount=discount)
+    Dt, D = mce_occupancy_measures(pomdp, pi=pi, discount=discount)
     assert np.all(np.isfinite(V))
     assert np.all(np.isfinite(Q))
     assert np.all(np.isfinite(pi))
@@ -230,17 +239,16 @@ def test_policy_om_reasonable_mdp(discount: float):
         assert np.all(pi[:19, 1, 2] > pi[:19, 1, 0])
         assert np.all(pi[:19, 1, 0] > pi[:19, 1, 1])
     # check that Dt[0] matches our initial state dist
-    assert np.allclose(Dt[0], mdp.initial_state_dist)
+    assert np.allclose(Dt[0], pomdp.initial_state_dist)
 
 
-def test_tabular_policy():
+def test_tabular_policy(rng):
     """Tests tabular policy prediction, especially timestep calculation and masking."""
     state_space = gym.spaces.Discrete(2)
     action_space = gym.spaces.Discrete(2)
     pi = np.stack(
         [np.eye(2), 1 - np.eye(2)],
     )
-    rng = np.random.RandomState(42)
     tabular = TabularPolicy(
         state_space=state_space,
         action_space=action_space,
@@ -251,25 +259,25 @@ def test_tabular_policy():
     states = np.array([0, 1, 1, 0, 1])
     actions, timesteps = tabular.predict(states)
     np.testing.assert_array_equal(states, actions)
-    np.testing.assert_equal(timesteps, 1)
+    np.testing.assert_equal(timesteps[0], 1)
 
     mask = np.zeros((5,), dtype=bool)
     actions, timesteps = tabular.predict(states, timesteps, mask)
     np.testing.assert_array_equal(1 - states, actions)
-    np.testing.assert_equal(timesteps, 2)
+    np.testing.assert_equal(timesteps[0], 2)
 
     mask = np.ones((5,), dtype=bool)
     actions, timesteps = tabular.predict(states, timesteps, mask)
     np.testing.assert_array_equal(states, actions)
-    np.testing.assert_equal(timesteps, 1)
+    np.testing.assert_equal(timesteps[0], 1)
 
     mask = (1 - states).astype(bool)
     actions, timesteps = tabular.predict(states, timesteps, mask)
     np.testing.assert_array_equal(np.zeros((5,)), actions)
-    np.testing.assert_equal(timesteps, 2 - mask.astype(int))
+    np.testing.assert_equal(timesteps[0], 2 - mask.astype(int))
 
 
-def test_tabular_policy_randomness():
+def test_tabular_policy_randomness(rng):
     state_space = gym.spaces.Discrete(2)
     action_space = gym.spaces.Discrete(2)
     pi = np.array(
@@ -280,7 +288,6 @@ def test_tabular_policy_randomness():
             ],
         ],
     )
-    rng = np.random.RandomState(42)
     tabular = TabularPolicy(
         state_space=state_space,
         action_space=action_space,
@@ -288,17 +295,17 @@ def test_tabular_policy_randomness():
         rng=rng,
     )
 
-    actions, _ = tabular.predict(np.zeros((100,), dtype=int))
+    actions, _ = tabular.predict(np.zeros((1000,), dtype=int))
     assert 0.45 <= np.mean(actions) <= 0.55
-    ones_obs = np.ones((100,), dtype=int)
+    ones_obs = np.ones((1000,), dtype=int)
     actions, _ = tabular.predict(ones_obs)
     assert 0.05 <= np.mean(actions) <= 0.15
     actions, _ = tabular.predict(ones_obs, deterministic=True)
     np.testing.assert_equal(actions, 0)
 
 
-def test_mce_irl_demo_formats():
-    mdp = model_envs.RandomMDP(
+def test_mce_irl_demo_formats(rng):
+    mdp = random_trans.RandomTransitionEnv(
         n_states=5,
         n_actions=3,
         branch_factor=2,
@@ -307,12 +314,13 @@ def test_mce_irl_demo_formats():
         obs_dim=None,
         generator_seed=42,
     )
-    venv = vec_env.DummyVecEnv([lambda: mdp])
-    state_venv = resettable_env.DictExtractWrapper(venv, "state")
+    state_env = base_envs.ExposePOMDPStateWrapper(mdp)
+    state_venv = vec_env.DummyVecEnv([lambda: state_env])
     trajs = rollout.generate_trajectories(
         policy=None,
         venv=state_venv,
         sample_until=rollout.make_min_timesteps(100),
+        rng=rng,
     )
     demonstrations = {
         "trajs": trajs,
@@ -330,14 +338,20 @@ def test_mce_irl_demo_formats():
             th.random.manual_seed(715298)
             # create reward network so we can be sure it's seeded identically
             reward_net = reward_nets.BasicRewardNet(
-                mdp.pomdp_observation_space,
+                mdp.observation_space,
                 mdp.action_space,
                 use_action=False,
                 use_next_state=False,
                 use_done=False,
                 hid_sizes=[],
             )
-            mce_irl = MCEIRL(demo, mdp, reward_net, linf_eps=1e-3)
+            mce_irl = MCEIRL(
+                demo,
+                mdp,
+                reward_net,
+                linf_eps=1e-3,
+                rng=rng,
+            )
             assert np.allclose(mce_irl.demo_state_om.sum(), mdp.horizon + 1)
             final_counts[kind] = mce_irl.train(max_iter=5)
 
@@ -357,12 +371,13 @@ def test_mce_irl_demo_formats():
 def test_mce_irl_reasonable_mdp(
     model_kwargs: Mapping[str, Any],
     discount: float,
+    rng,
 ):
     with th.random.fork_rng():
         th.random.manual_seed(715298)
 
         # test MCE IRL on the MDP
-        mdp = ReasonableMDP()
+        mdp = ReasonablePOMDP()
         mdp.seed(715298)
 
         # demo occupancy measure
@@ -370,26 +385,34 @@ def test_mce_irl_reasonable_mdp(
         Dt, D = mce_occupancy_measures(mdp, pi=pi, discount=discount)
 
         reward_net = reward_nets.BasicRewardNet(
-            mdp.pomdp_observation_space,
+            mdp.observation_space,
             mdp.action_space,
             use_action=False,
             use_next_state=False,
             use_done=False,
             **model_kwargs,
         )
-        mce_irl = MCEIRL(D, mdp, reward_net, linf_eps=1e-3, discount=discount)
+        mce_irl = MCEIRL(
+            D,
+            mdp,
+            reward_net,
+            linf_eps=1e-3,
+            discount=discount,
+            rng=rng,
+        )
         final_counts = mce_irl.train()
 
         assert np.allclose(final_counts, D, atol=1e-3, rtol=1e-3)
         # make sure weights have non-insane norm
         assert tensor_iter_norm(reward_net.parameters()) < 1000
 
-        venv = vec_env.DummyVecEnv([lambda: mdp])
-        state_venv = resettable_env.DictExtractWrapper(venv, "state")
+        state_env = base_envs.ExposePOMDPStateWrapper(mdp)
+        state_venv = vec_env.DummyVecEnv([lambda: state_env])
         trajs = rollout.generate_trajectories(
             mce_irl.policy,
             state_venv,
             sample_until=rollout.make_min_episodes(5),
+            rng=rng,
         )
         stats = rollout.rollout_stats(trajs)
         if discount > 0.0:  # skip check when discount==0.0 (random policy)

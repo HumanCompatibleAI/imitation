@@ -2,12 +2,14 @@
 
 import contextlib
 import logging
-import os
-from typing import Any, Mapping, Sequence, Tuple, Union
+import pathlib
+from typing import Any, Generator, Mapping, Sequence, Tuple, Union
 
+import numpy as np
 import sacred
 from stable_baselines3.common import vec_env
 
+from imitation.data import types
 from imitation.scripts.common import wb
 from imitation.util import logger as imit_logger
 from imitation.util import sacred as sacred_util
@@ -44,18 +46,15 @@ def update_log_format_strs(log_format_strs, log_format_strs_additional):
 
 
 @common_ingredient.config_hook
-def hook(config, command_name, logger):
+def hook(config, command_name: str, logger):
     del logger
     updates = {}
     if config["common"]["log_dir"] is None:
         env_sanitized = config["common"]["env_name"].replace("/", "_")
-        log_root = config["common"]["log_root"] or "output"
-        log_dir = os.path.join(
-            log_root,
-            command_name,
-            env_sanitized,
-            util.make_unique_timestamp(),
-        )
+        assert isinstance(env_sanitized, str)
+        config_log_root = config["common"]["log_root"] or "output"
+        log_root = types.parse_path(config_log_root)
+        log_dir = log_root / command_name / env_sanitized / util.make_unique_timestamp()
         updates["log_dir"] = log_dir
     return updates
 
@@ -75,11 +74,17 @@ def fast():
 
 
 @common_ingredient.capture
+def make_rng(_seed) -> np.random.Generator:
+    """Creates a `np.random.Generator` with the given seed."""
+    return np.random.default_rng(_seed)
+
+
+@common_ingredient.capture
 def make_log_dir(
     _run,
     log_dir: str,
     log_level: Union[int, str],
-) -> str:
+) -> pathlib.Path:
     """Creates log directory and sets up symlink to Sacred logs.
 
     Args:
@@ -91,23 +96,24 @@ def make_log_dir(
     Returns:
         The `log_dir`. This avoids the caller needing to capture this argument.
     """
-    os.makedirs(log_dir, exist_ok=True)
+    parsed_log_dir = types.parse_path(log_dir)
+    parsed_log_dir.mkdir(parents=True, exist_ok=True)
     # convert strings of digits to numbers; but leave levels like 'INFO' unmodified
     try:
         log_level = int(log_level)
     except ValueError:
         pass
     logging.basicConfig(level=log_level)
-    logger.info("Logging to %s", log_dir)
-    sacred_util.build_sacred_symlink(log_dir, _run)
-    return log_dir
+    logger.info("Logging to %s", parsed_log_dir)
+    sacred_util.build_sacred_symlink(parsed_log_dir, _run)
+    return parsed_log_dir
 
 
 @common_ingredient.capture
 def setup_logging(
     _run,
     log_format_strs: Sequence[str],
-) -> Tuple[imit_logger.HierarchicalLogger, str]:
+) -> Tuple[imit_logger.HierarchicalLogger, pathlib.Path]:
     """Builds the imitation logger.
 
     Args:
@@ -119,9 +125,9 @@ def setup_logging(
     """
     log_dir = make_log_dir()
     if "wandb" in log_format_strs:
-        wb.wandb_init(log_dir=log_dir)
+        wb.wandb_init(log_dir=str(log_dir))
     custom_logger = imit_logger.configure(
-        folder=os.path.join(log_dir, "log"),
+        folder=log_dir / "log",
         format_strs=log_format_strs,
     )
     return custom_logger, log_dir
@@ -130,7 +136,6 @@ def setup_logging(
 @contextlib.contextmanager
 @common_ingredient.capture
 def make_venv(
-    _seed,
     env_name: str,
     num_vec: int,
     parallel: bool,
@@ -138,7 +143,7 @@ def make_venv(
     max_episode_steps: int,
     env_make_kwargs: Mapping[str, Any],
     **kwargs,
-) -> vec_env.VecEnv:
+) -> Generator[vec_env.VecEnv, None, None]:
     """Builds the vector environment.
 
     Args:
@@ -156,12 +161,13 @@ def make_venv(
     Yields:
         The constructed vector environment.
     """
+    rng = make_rng()
     # Note: we create the venv outside the try -- finally block for the case that env
     #     creation fails.
     venv = util.make_vec_env(
         env_name,
-        num_vec,
-        seed=_seed,
+        rng=rng,
+        n_envs=num_vec,
         parallel=parallel,
         max_episode_steps=max_episode_steps,
         log_dir=log_dir,

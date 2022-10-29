@@ -1,4 +1,5 @@
 """Adversarial Inverse Reinforcement Learning (AIRL)."""
+from typing import Optional
 
 import torch as th
 from stable_baselines3.common import base_class, policies, vec_env
@@ -69,7 +70,7 @@ class AIRL(common.AdversarialTrainer):
         action: th.Tensor,
         next_state: th.Tensor,
         done: th.Tensor,
-        log_policy_act_prob: th.Tensor,
+        log_policy_act_prob: Optional[th.Tensor] = None,
     ) -> th.Tensor:
         r"""Compute the discriminator's logits for each state-action sample.
 

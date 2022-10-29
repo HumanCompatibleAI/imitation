@@ -1,7 +1,7 @@
 """Constructs deep network reward models."""
 
 import abc
-from typing import Callable, Iterable, Optional, Sequence, Tuple, Type
+from typing import Any, Callable, Dict, Iterable, Optional, Sequence, Tuple, Type, cast
 
 import gym
 import numpy as np
@@ -83,20 +83,31 @@ class RewardNet(nn.Module, abc.ABC):
         del state, action, next_state, done  # unused
 
         # preprocess
-        state_th = preprocessing.preprocess_obs(
-            state_th,
-            self.observation_space,
-            self.normalize_images,
+        # we only support array spaces, so we cast
+        # the observation to torch tensors.
+        state_th = cast(
+            th.Tensor,
+            preprocessing.preprocess_obs(
+                state_th,
+                self.observation_space,
+                self.normalize_images,
+            ),
         )
-        action_th = preprocessing.preprocess_obs(
-            action_th,
-            self.action_space,
-            self.normalize_images,
+        action_th = cast(
+            th.Tensor,
+            preprocessing.preprocess_obs(
+                action_th,
+                self.action_space,
+                self.normalize_images,
+            ),
         )
-        next_state_th = preprocessing.preprocess_obs(
-            next_state_th,
-            self.observation_space,
-            self.normalize_images,
+        next_state_th = cast(
+            th.Tensor,
+            preprocessing.preprocess_obs(
+                next_state_th,
+                self.observation_space,
+                self.normalize_images,
+            ),
         )
         done_th = done_th.to(th.float32)
 
@@ -416,7 +427,7 @@ class BasicRewardNet(RewardNet):
         if self.use_done:
             combined_size += 1
 
-        full_build_mlp_kwargs = {
+        full_build_mlp_kwargs: Dict[str, Any] = {
             "hid_sizes": (32, 32),
             **kwargs,
             # we do not want the values below to be overridden
@@ -518,7 +529,7 @@ class CnnRewardNet(RewardNet):
         if self.use_done:
             output_size *= 2
 
-        full_build_cnn_kwargs = {
+        full_build_cnn_kwargs: Dict[str, Any] = {
             "hid_channels": (32, 32),
             **kwargs,
             # we do not want the values below to be overridden
@@ -578,7 +589,7 @@ class CnnRewardNet(RewardNet):
             rewards = th.sum(outputs * full_acts, dim=1)
         elif not self.use_action and self.use_done:
             # here we turn done into a one-hot vector.
-            dones_binary = done.type(th.LongTensor)
+            dones_binary = done.long()
             dones_one_hot = nn.functional.one_hot(dones_binary, num_classes=2)
             rewards = th.sum(outputs * dones_one_hot, dim=1)
         else:
@@ -602,7 +613,7 @@ class NormalizedRewardNet(PredictProcessedWrapper):
     def __init__(
         self,
         base: RewardNet,
-        normalize_output_layer: Type[nn.Module],
+        normalize_output_layer: Type[networks.BaseNorm],
     ):
         """Initialize the NormalizedRewardNet.
 
@@ -914,7 +925,7 @@ class RewardEnsemble(RewardNetWithVariance):
         next_state: np.ndarray,
         done: np.ndarray,
         **kwargs,
-    ) -> Tuple[np.ndarray, np.ndarray]:
+    ) -> np.ndarray:
         """Get the results of predict processed on all of the members.
 
         Args:
@@ -929,11 +940,11 @@ class RewardEnsemble(RewardNetWithVariance):
                 shape `(batch_size, num_members)`.
         """
         batch_size = state.shape[0]
-        rewards = [
+        rewards_list = [
             member.predict_processed(state, action, next_state, done, **kwargs)
             for member in self.members
         ]
-        rewards = np.stack(rewards, axis=-1)
+        rewards: np.ndarray = np.stack(rewards_list, axis=-1)
         assert rewards.shape == (batch_size, self.num_members)
         return rewards
 
@@ -974,7 +985,7 @@ class RewardEnsemble(RewardNetWithVariance):
 
     def forward(self, *args) -> th.Tensor:
         """The forward method of the ensemble should in general not be used directly."""
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def predict_processed(
         self,
