@@ -64,6 +64,7 @@ def make_trainer(
     num_envs: int = 1,
     parallel: bool = False,
     convert_dataset: bool = False,
+    **kwargs: Any,
 ):
     expert_data: Union[th_data.DataLoader, th_data.Dataset]
     if convert_dataset:
@@ -99,6 +100,7 @@ def make_trainer(
         reward_net=reward_net,
         log_dir=tmpdir,
         custom_logger=custom_logger,
+        **kwargs,
     )
 
     try:
@@ -285,70 +287,57 @@ def test_gradient_accumulation(
     tmpdir,
     expert_transitions,
     rng,
+    cartpole_venv,
+    batch_size: int = 12,
 ):
-    batch_size = 12
+    expert_samples = expert_transitions[:batch_size]
+    expert_samples = types.dataclass_quick_asdict(expert_samples)
 
-    with make_trainer(
-        _algorithm_kwargs,
-        tmpdir,
-        expert_transitions,
-        rng,
-    ) as trainer:
-        expert_samples = expert_transitions[:batch_size]
-        expert_samples = types.dataclass_quick_asdict(expert_samples)
-        gen_samples = rollout.generate_transitions(
-            trainer.gen_algo,
-            trainer.venv_train,
-            n_timesteps=batch_size,
-            truncate=True,
-            rng=rng,
-        )
-        gen_samples = types.dataclass_quick_asdict(gen_samples)
+    # TODO: do we really need this just to get generator samples fom a random policy moreover?
+    # Sample actions randomly to produce mock generator data
+    gen_samples = rollout.generate_transitions(
+        policy=None,
+        venv=cartpole_venv,
+        n_timesteps=batch_size,
+        truncate=True,
+        rng=rng,
+    )
+    gen_samples = types.dataclass_quick_asdict(gen_samples)
 
     seed = rng.integers(2**32)
 
-    th.manual_seed(seed)
-    rng1 = np.random.default_rng(seed)
-    with make_trainer(
-        _algorithm_kwargs,
-        tmpdir,
-        expert_transitions,
-        rng1,
-        batch_size,
-    ) as trainer1:
+    def trainer_ctx(**kwargs: Any):
+        rng = np.random.default_rng(seed)
         th.manual_seed(seed)
-        rng2 = np.random.default_rng(seed)
-        with make_trainer(
+        return make_trainer(
             _algorithm_kwargs,
             tmpdir,
             expert_transitions,
-            rng2,
+            rng,
             batch_size,
-        ) as trainer2:
-            trainer2.demo_minibatch_size = 3
+            **kwargs,
+        )
 
-            for _ in range(5):
-                trainer1.train_disc(
-                    gen_samples=gen_samples,
-                    expert_samples=expert_samples,
-                )
-                trainer2.train_disc(
+    with trainer_ctx() as trainer1, trainer_ctx(demo_minibatch_size=3) as trainer2:
+        for _ in range(5):
+            for trainer in (trainer1, trainer2):
+                trainer.train_disc(
                     gen_samples=gen_samples,
                     expert_samples=expert_samples,
                 )
 
-                # Note: due to numerical instability, the models are
-                # bound to diverge at some point, but should be stable
-                # over the short time frame we test over; however, it is
-                # theoretically possible that with very unlucky seeding,
-                # this could fail.
-                assert all(
-                    th.allclose(p1, p2, atol=5e-8, rtol=5e-5)
-                    for p1, p2 in zip(
-                        trainer1._reward_net.parameters(),
-                        trainer2._reward_net.parameters(),
-                    )
+            # Note: due to numerical instability, the models are
+            # bound to diverge at some point, but should be stable
+            # over the short time frame we test over; however, it is
+            # theoretically possible that with very unlucky seeding,
+            # this could fail.
+            assert all(
+                th.allclose(p1, p2, atol=5e-8, rtol=5e-5)
+                for p1, p2 in zip(
+                    trainer1._reward_net.parameters(),
+                    trainer2._reward_net.parameters(),
                 )
+            )
 
 
 @pytest.fixture(params=ENV_NAMES)
