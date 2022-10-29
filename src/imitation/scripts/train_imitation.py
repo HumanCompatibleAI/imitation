@@ -140,6 +140,38 @@ def dagger(
     return stats
 
 
+def warm_start_with_bc(bc_config: Optional[Mapping[str, Any]]) -> str:
+    """Used if one wants to pre-train a model with behavior cloning.
+
+    Args:
+        bc_config: map of the settings to run a behavior cloning experiment. There
+            should be two keys: "config_updates" and "named_configs" with each
+            corresponding to the terms one wants to pass through to the behavior
+            cloning training run.
+
+    Returns:
+        The path to where the pre-trained model is saved.
+    """
+    bc_config = bc_config if bc_config is not None else {}
+
+    config_updates: Optional[Dict[Any, Any]] = {}
+    if "config_updates" in bc_config:
+        config_updates = bc_config["config_updates"]
+
+    named_configs: Sequence[str] = []
+    if "named_configs" in bc_config:
+        named_configs = bc_config["named_configs"]
+
+    train_imitation_ex.run(
+        command_name="bc",
+        named_configs=named_configs,
+        config_updates=config_updates,
+    )
+
+    _, log_dir = logging_ingredient.setup_logging()
+    return osp.join(log_dir, "final.th")
+
+
 def main_console():
     observer_path = pathlib.Path.cwd() / "output" / "sacred" / "train_dagger"
     observer = FileStorageObserver(observer_path)

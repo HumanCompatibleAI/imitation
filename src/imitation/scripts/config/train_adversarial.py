@@ -34,6 +34,9 @@ def defaults():
 
     checkpoint_interval = 0  # Num epochs between checkpoints (<0 disables)
     agent_path = None  # Path to load agent from, optional.
+    warm_start_with_bc = False  # default to not warmstarting with behavior cloning
+    bc_config = None  # No config for behavior cloning if not warm-starting
+    device = "auto"  # Device needed only if warmstarting w/ behavior cloning
 
 
 @train_adversarial_ex.config

@@ -3,12 +3,14 @@
 import functools
 import logging
 import pathlib
-from typing import Any, Mapping, Optional, Type
+from typing import Any, Mapping, Optional, Type, Union
 
 import sacred.commands
 import torch as th
 from sacred.observers import FileStorageObserver
+from stable_baselines3.common import utils
 
+import imitation.scripts.train_imitation as train_imitation
 from imitation.algorithms.adversarial import airl as airl_algo
 from imitation.algorithms.adversarial import common
 from imitation.algorithms.adversarial import gail as gail_algo
@@ -73,6 +75,9 @@ def train_adversarial(
     total_timesteps: int,
     checkpoint_interval: int,
     agent_path: Optional[str],
+    warm_start_with_bc: bool,
+    bc_config: Optional[Mapping[str, Any]],
+    device: Union[str, th.device],
 ) -> Mapping[str, Mapping[str, float]]:
     """Train an adversarial-network-based imitation learning algorithm.
 
@@ -98,6 +103,13 @@ def train_adversarial(
             provided, then the agent will be initialized using this stored policy
             (warm start). If not provided, then the agent will be initialized using
             a random policy.
+        warm_start_with_bc: boolean indicates whether one should pre-train using
+            behavior cloning before using one of the adversarial algorithms
+        bc_config: Only applies if warm_start_with_bc=True. These are the settings
+            that govern the pre-training w/ behavior cloning. See the documentation
+            for behavior cloning for all the (optional) individual parameters.
+        device: Only needed if warm_start_with_bc is true. This is the device that
+            the training is running on. Defaults to "auto".
 
     Returns:
         A dictionary with two keys. "imit_stats" gives the return value of
@@ -106,11 +118,6 @@ def train_adversarial(
         "monitor_return" key). "expert_stats" gives the return value of
         `rollout_stats()` on the expert demonstrations.
     """
-    # This allows to specify total_timesteps and checkpoint_interval in scientific
-    # notation, which is interpreted as a float by python.
-    total_timesteps = int(total_timesteps)
-    checkpoint_interval = int(checkpoint_interval)
-
     if show_config:
         # Running `train_adversarial print_config` will show unmerged config.
         # So, support showing merged config from `train_adversarial {airl,gail}`.
@@ -118,6 +125,10 @@ def train_adversarial(
 
     custom_logger, log_dir = logging_ingredient.setup_logging()
     expert_trajs = demonstrations.get_expert_trajectories()
+
+    previous_policy_path = None
+    if warm_start_with_bc:
+        previous_policy_path = train_imitation.warm_start_with_bc(bc_config=bc_config)
 
     with environment.make_venv() as venv:
         reward_net = reward.make_reward_net(venv)
@@ -128,6 +139,12 @@ def train_adversarial(
 
         if agent_path is None:
             gen_algo = rl.make_rl_algo(venv, relabel_reward_fn=relabel_reward_fn)
+            if previous_policy_path is not None:
+                previous_policy = th.load(
+                    previous_policy_path,
+                    map_location=utils.get_device(device),
+                )
+                gen_algo.policy = previous_policy
         else:
             gen_algo = rl.load_rl_algo_from_path(
                 agent_path=agent_path,

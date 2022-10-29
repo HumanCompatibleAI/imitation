@@ -599,6 +599,36 @@ def test_train_adversarial_warmstart(tmpdir, command):
 
 
 @pytest.mark.parametrize("command", ("airl", "gail"))
+def test_train_adversarial_warmstart_with_bc(tmpdir, command):
+    """Test of warmstarts w/ behavior cloning before adversarial training."""
+    bc_config_updates = dict(
+        logging=dict(log_root=tmpdir),
+        expert=dict(policy_type="ppo-huggingface"),
+        demonstrations=dict(rollout_path=CARTPOLE_TEST_ROLLOUT_PATH),
+    )
+    bc_named_configs = ["cartpole"] + ALGO_FAST_CONFIGS["imitation"]
+
+    named_configs = ["cartpole"] + ALGO_FAST_CONFIGS["adversarial"]
+
+    config_updates = {
+        "logging": dict(log_root=tmpdir),
+        "demonstrations": dict(rollout_path=CARTPOLE_TEST_ROLLOUT_PATH),
+        "warm_start_with_bc": True,
+        "bc_config": {
+            "config_updates": bc_config_updates,
+            "named_configs": bc_named_configs,
+        },
+    }
+    run = train_adversarial.train_adversarial_ex.run(
+        command_name=command,
+        named_configs=named_configs,
+        config_updates=config_updates,
+    )
+    assert run.status == "COMPLETED"
+    _check_train_ex_result(run.result)
+
+
+@pytest.mark.parametrize("command", ("airl", "gail"))
 def test_train_adversarial_sac(tmpdir, command):
     """Smoke test for imitation.scripts.train_adversarial."""
     # Make sure rl.sac named_config is called after rl.fast to overwrite
