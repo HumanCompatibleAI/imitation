@@ -838,32 +838,6 @@ def test_agent_trainer_sample_image_observations(rng):
     )
 
 
-# class AngularCartpoleRewardNet(reward_nets.RewardNet):
-#    """ Simple reward net for Cartpole that approximates
-#        reward as the absolute value of pole angular velocity """
-#    def __init__(
-#        self,
-#        observation_space: gym.Space,
-#        action_space: gym.Space,
-#    ):
-#        """
-#        Args:
-#            observation_space: observation space of the env
-#            action_space: action space of the env
-#        """
-#        super().__init__(observation_space, action_space)
-#
-#    def forward(
-#        self,
-#        state: th.Tensor,
-#        action: th.Tensor,
-#        next_state: th.Tensor,
-#        done: th.Tensor,
-#    ) -> th.Tensor:
-#        batch_size = state.shape[0]
-#        return -1 * np.abs(state[:,3])
-
-
 def test_that_BasicTrainer_improves_rewards(
     agent_trainer,
     venv,
@@ -905,6 +879,8 @@ def test_that_BasicTrainer_improves_rewards(
         custom_logger=custom_logger,
     )
     first_rewards = main_trainer.train(10, 20)
-    # TODO can we get away w/ less training somehow?
-    later_rewards = main_trainer.train(10000, 20)
+
+    # TODO ask for suggestions on how to make this
+    #      test not flaky w/o training for so long
+    later_rewards = main_trainer.train(5000, 20)
     assert first_rewards["reward_loss"] > later_rewards["reward_loss"]
