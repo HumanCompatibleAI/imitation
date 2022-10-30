@@ -293,7 +293,6 @@ def test_gradient_accumulation(
     expert_samples = expert_transitions[:batch_size]
     expert_samples = types.dataclass_quick_asdict(expert_samples)
 
-    # TODO: do we really need this just to get generator samples fom a random policy moreover?
     # Sample actions randomly to produce mock generator data
     gen_samples = rollout.generate_transitions(
         policy=None,
