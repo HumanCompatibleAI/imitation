@@ -571,7 +571,7 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
         assert batch_size == len(gen_samples["next_obs"])
 
         for i in range(0, batch_size, self.demo_minibatch_size):
-            # take minibatch slice (I think this creates views so no memory issues)
+            # take minibatch slice (this creates views so no memory issues)
             expert_batch = {
                 k: v[i : i + self.demo_minibatch_size]
                 for k, v in expert_samples.items()
