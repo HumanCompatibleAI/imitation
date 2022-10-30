@@ -294,14 +294,14 @@ def test_gradient_accumulation(
     expert_samples = types.dataclass_quick_asdict(expert_samples)
 
     # Sample actions randomly to produce mock generator data
-    gen_samples = rollout.generate_transitions(
+    gen_samples_trans = rollout.generate_transitions(
         policy=None,
         venv=cartpole_venv,
         n_timesteps=batch_size,
         truncate=True,
         rng=rng,
     )
-    gen_samples = types.dataclass_quick_asdict(gen_samples)
+    gen_samples = types.dataclass_quick_asdict(gen_samples_trans)
 
     seed = rng.integers(2**32)
 
