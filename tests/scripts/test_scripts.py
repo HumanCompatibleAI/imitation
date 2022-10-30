@@ -431,6 +431,7 @@ def test_train_rl_sac(tmpdir):
 
 EVAL_POLICY_CONFIGS: List[Dict] = [
     {"reward_type": "zero", "reward_path": "foobar"},
+    {"explore_kwargs": {"switch_prob": 1.0, "random_prob": 0.1}},
     {"rollout_save_path": "{log_dir}/rollouts.npz"},
 ]
 
